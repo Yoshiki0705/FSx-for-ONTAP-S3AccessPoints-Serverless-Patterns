@@ -4,14 +4,14 @@
 
 Amazon FSx for NetApp ONTAP の S3 Access Points を活用した、業界別サーバーレス自動化パターン集です。
 
-> **本リポジトリの位置づけ**: これは「設計判断を学ぶためのリファレンス実装」です。各パターンは AWS 環境で E2E 検証済みであり、PoC から本番環境まで段階的に適用できます。コスト最適化、セキュリティ、エラーハンドリングの設計判断を具体的なコードで示すことを目的としています。
+> **本リポジトリの位置づけ**: これは「設計判断を学ぶためのリファレンス実装」です。一部ユースケースは AWS 環境で E2E 検証済みであり、その他のユースケースも CloudFormation デプロイ、共通 Discovery Lambda、主要コンポーネントの動作確認を実施しています。PoC から本番環境への段階的な適用を想定し、コスト最適化、セキュリティ、エラーハンドリングの設計判断を具体的なコードで示すことを目的としています。
 
 ## 関連記事
 
 本リポジトリは以下の記事の実践的なコンパニオンです:
 
-- **FSx for NetApp ONTAP の S3 Access Points で実現する業界別サーバーレス自動化パターン**
-  [dev.to 記事](docs/article-draft.md)
+- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
+  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
 
 記事ではアーキテクチャの設計思想とトレードオフを解説し、本リポジトリでは具体的な再利用可能な実装パターンを提供します。
 
@@ -152,7 +152,7 @@ EventBridge Scheduler (定期実行)
 
 - **AWS アカウント**: 有効な AWS アカウントと適切な IAM 権限
 - **FSx for NetApp ONTAP**: デプロイ済みのファイルシステム
-  - ONTAP バージョン: 9.17.1P4D3 以上
+  - ONTAP バージョン: S3 Access Points をサポートするバージョン（9.17.1P4D3 で検証済み）
   - S3 Access Point が有効化されたボリューム（network origin: `internet` 推奨）
 - **ネットワーク**: VPC、プライベートサブネット、ルートテーブル
 - **Secrets Manager**: ONTAP REST API 認証情報（`{"username":"fsxadmin","password":"..."}` 形式）を事前登録
@@ -319,7 +319,7 @@ aws cloudformation create-stack \
 | Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~$28.80 | Secrets Manager, FSx, CloudWatch, SNS 用。本番環境では `true` 推奨 |
 | CloudWatch Alarms | `EnableCloudWatchAlarms` | `false` | ~$0.10/アラーム | Step Functions 失敗率、Lambda エラー率の監視 |
 
-> **S3 Gateway VPC Endpoint** は無料のため、常にデフォルト有効です。
+> **S3 Gateway VPC Endpoint** は追加の時間課金がないため、VPC 内 Lambda から S3 AP にアクセスする構成では有効化を推奨します。ただし、既存の S3 Gateway Endpoint がある場合や、PoC / デモ用途で Lambda を VPC 外に配置する場合は `EnableS3GatewayEndpoint=false` を指定してください。
 
 ## セキュリティと認可モデル
 
@@ -328,22 +328,23 @@ aws cloudformation create-stack \
 | レイヤー | 役割 | 制御対象 |
 |---------|------|---------|
 | **IAM** | AWS サービスと S3 Access Points へのアクセス制御 | Lambda 実行ロール、S3 AP ポリシー |
-| **S3 Access Point** | IAM アイデンティティをファイルシステムユーザーにマッピング | S3 AP ポリシーによるアクセス制御 |
+| **S3 Access Point** | S3 AP に関連付けられたファイルシステムユーザーを通じてアクセス境界を定義 | S3 AP ポリシー、network origin、関連付けユーザー |
 | **ONTAP ファイルシステム** | ファイルレベルの権限を強制 | UNIX パーミッション / NTFS ACL |
 | **ONTAP REST API** | メタデータとコントロールプレーン操作のみ公開 | Secrets Manager 認証 + TLS |
 
 **重要な設計上の注意点**:
 
 - S3 API はファイルレベルの ACL を公開しません。ファイル権限情報は **ONTAP REST API 経由でのみ** 取得可能です（UC1 の ACL Collection がこのパターン）
-- S3 AP のアクセスは IAM ポリシーと S3 AP ポリシーの **両方** が許可する場合のみ成功します
+- S3 AP 経由のアクセスは、IAM / S3 AP ポリシーで許可された後、S3 AP に関連付けられた UNIX / Windows ファイルシステムユーザーとして ONTAP 側で認可されます
 - ONTAP REST API の認証情報は Secrets Manager で管理し、Lambda 環境変数には格納しません
 
 ## 互換性マトリックス
 
 | 項目 | サポート値 |
 |------|----------|
-| ONTAP バージョン | 9.17.1P4D3 以上 |
-| AWS リージョン | ap-northeast-1（東京） |
+| ONTAP バージョン | 9.17.1P4D3 で検証済み（S3 Access Points をサポートするバージョンが必要） |
+| 検証済みリージョン | ap-northeast-1（東京） |
+| 推奨リージョン | us-east-1 / us-west-2（全 AI/ML サービス利用時） |
 | Python バージョン | 3.12+ |
 | CloudFormation Transform | AWS::Serverless-2016-10-31 |
 | S3 AP セキュリティスタイル | UNIX (root), NTFS |
@@ -427,9 +428,9 @@ fsxn-s3ap-serverless-patterns/
 ├── media-vfx/                         # UC4: メディア
 ├── healthcare-dicom/                  # UC5: 医療
 ├── scripts/                           # 検証・デプロイスクリプト
+│   ├── deploy_uc.sh                  # UC デプロイスクリプト（汎用）
 │   ├── verify_shared_modules.py      # 共通モジュール AWS 環境検証
-│   ├── verify_cfn_templates.sh       # CloudFormation テンプレート検証
-│   └── deploy_uc1.sh                 # UC1 デプロイスクリプト
+│   └── verify_cfn_templates.sh       # CloudFormation テンプレート検証
 ├── .github/workflows/                 # CI/CD (lint, test)
 └── docs/                              # ドキュメント
     ├── guides/                        # 操作手順書
@@ -477,8 +478,38 @@ ruff check .
 ruff format --check .
 
 # CloudFormation テンプレート検証
-cfn-lint */template.yaml
+cfn-lint */template.yaml */template-deploy.yaml
 ```
+
+## このパターン集を使うべきケース / 使うべきでないケース
+
+### 使うべきケース
+
+- FSx for ONTAP 上の既存 NAS データを移動せずにサーバーレス処理したい
+- Lambda から NFS / SMB マウントせずにファイル一覧取得や前処理を行いたい
+- S3 Access Points と ONTAP REST API の責務分離を学びたい
+- 業界別の AI / ML 処理パターンを PoC として素早く検証したい
+- EventBridge Scheduler + Step Functions によるポーリングベース設計が許容される
+
+### 使うべきでないケース
+
+- リアルタイムのファイル変更イベント処理が必須（S3 Event Notification 非対応）
+- Presigned URL など、完全な S3 バケット互換性が必要
+- 既に EC2 / ECS ベースの常時稼働バッチ基盤があり、NFS マウント運用が許容される
+- ファイルデータが既に S3 標準バケットに存在し、S3 イベント通知で処理可能
+
+## 本番適用時の追加検討事項
+
+本リポジトリは本番適用を見据えた設計判断を含みますが、実際の本番環境では以下を追加で検討してください。
+
+- 組織の IAM / SCP / Permission Boundary との整合
+- S3 AP ポリシーと ONTAP 側ユーザー権限のレビュー
+- Lambda / Step Functions / Bedrock / Textract 等の CloudTrail 監査ログ有効化
+- CloudWatch Alarms / SNS / Incident Management 連携（`EnableCloudWatchAlarms=true`）
+- データ分類、個人情報、医療情報など業界固有のコンプライアンス要件
+- リージョン制約とクロスリージョン呼び出し時のデータレジデンシー確認
+- Step Functions の実行履歴保持期間とログレベル設定
+- Lambda の Reserved Concurrency / Provisioned Concurrency 設定
 
 ## コントリビューション
 

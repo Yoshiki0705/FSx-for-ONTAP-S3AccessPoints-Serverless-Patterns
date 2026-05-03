@@ -4,14 +4,14 @@
 
 A collection of industry-specific serverless automation patterns leveraging Amazon FSx for NetApp ONTAP S3 Access Points.
 
-> **What this repository is**: A reference implementation for learning design decisions. Each pattern is E2E verified in AWS, and can be applied incrementally from PoC to production. The goal is to demonstrate cost optimization, security, and error handling decisions through concrete code.
+> **What this repository is**: A reference implementation for learning design decisions. Some use cases are fully E2E verified in AWS, while others have been validated through CloudFormation deployment, shared Discovery Lambda, and key component testing. The goal is to demonstrate cost optimization, security, and error handling decisions through concrete code, with a path from PoC to production.
 
 ## Related Article
 
 This repository is the practical companion to the following article:
 
-- **FSx for NetApp ONTAP の S3 Access Points で実現する業界別サーバーレス自動化パターン**
-  [Article draft](docs/article-draft.md)
+- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
+  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
 
 The article explains architectural reasoning and trade-offs. This repository provides concrete, reusable implementation patterns.
 
