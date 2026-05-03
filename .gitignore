@@ -41,8 +41,8 @@ samconfig.toml
 scripts/mask_screenshots.py
 scripts/deploy_uc1.sh
 
-# Screenshots (may contain account information before masking)
-docs/screenshots/*.png
+# Screenshots raw (before masking) — run scripts/auto_mask_screenshots.py before committing
+# docs/screenshots/*.png  # Uncomment to exclude unmasked screenshots
 
 # Verification results (contain environment-specific details)
 docs/verification-results.md
