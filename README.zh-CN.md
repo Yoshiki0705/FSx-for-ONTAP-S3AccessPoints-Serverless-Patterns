@@ -19,13 +19,15 @@
 
 本仓库提供 **5 种行业专属模式**，通过 **S3 Access Points** 对存储在 FSx for NetApp ONTAP 上的企业数据进行无服务器处理。
 
+> 以下将 FSx for ONTAP S3 Access Points 简称为 **S3 AP**。
+
 每个用例都是独立的 CloudFormation 模板，共享模块（ONTAP REST API 客户端、FSx 辅助工具、S3 AP 辅助工具）位于 `shared/` 目录中。
 
 ### 主要特性
 
 - **轮询架构**: EventBridge Scheduler + Step Functions（FSx ONTAP S3 AP 不支持 `GetBucketNotificationConfiguration`）
 - **共享模块分离**: OntapClient / FsxHelper / S3ApHelper 在所有用例中复用
-- **CloudFormation 原生**: 每个用例都是独立的 CloudFormation 模板
+- **CloudFormation / SAM Transform 架构**: 每个用例都是独立的 CloudFormation 模板（使用 SAM Transform）
 - **安全优先**: 默认启用 TLS 验证、最小权限 IAM、KMS 加密
 - **成本优化**: 高成本常驻资源（VPC Endpoints 等）为可选项
 

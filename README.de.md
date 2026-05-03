@@ -19,13 +19,15 @@ Der Artikel erklärt die architektonischen Überlegungen und Kompromisse. Dieses
 
 Dieses Repository bietet **5 branchenspezifische Muster** für die serverlose Verarbeitung von Unternehmensdaten, die auf FSx for NetApp ONTAP über **S3 Access Points** gespeichert sind.
 
+> Im Folgenden wird FSx for ONTAP S3 Access Points als **S3 AP** abgekürzt.
+
 Jeder Anwendungsfall ist als eigenständiges CloudFormation-Template umgesetzt. Gemeinsam genutzte Module (ONTAP REST API Client, FSx Helper, S3 AP Helper) befinden sich in `shared/`.
 
 ### Hauptmerkmale
 
 - **Polling-basierte Architektur**: EventBridge Scheduler + Step Functions (FSx ONTAP S3 AP unterstützt `GetBucketNotificationConfiguration` nicht)
 - **Getrennte gemeinsame Module**: OntapClient / FsxHelper / S3ApHelper werden in allen Anwendungsfällen wiederverwendet
-- **CloudFormation-nativ**: Jeder Anwendungsfall ist ein eigenständiges CloudFormation-Template
+- **CloudFormation / SAM Transform basiert**: Jeder Anwendungsfall ist ein eigenständiges CloudFormation-Template mit SAM Transform
 - **Sicherheit zuerst**: TLS-Verifizierung standardmäßig aktiviert, IAM mit minimalen Berechtigungen, KMS-Verschlüsselung
 - **Kostenoptimiert**: Kostenintensive Dauerressourcen (VPC Endpoints usw.) sind optional
 
