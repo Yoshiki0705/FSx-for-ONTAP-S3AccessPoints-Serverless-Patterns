@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AWS
+.aws-sam/
+samconfig.toml
+
+# Environment-specific files (contain account IDs, resource IDs)
+scripts/mask_screenshots.py
+scripts/deploy_uc1.sh
+
+# Screenshots (may contain account information before masking)
+docs/screenshots/*.png
+
+# Verification results (contain environment-specific details)
+docs/verification-results.md
+
+# MASK_GUIDE contains environment-specific resource IDs
+docs/screenshots/MASK_GUIDE.md
+
+# Lambda deployment packages
+*.zip

@@ -1,0 +1,1036 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  UC3: 製造業（IoT センサーログ・品質検査画像の分析）
+  FSx for NetApp ONTAP S3 Access Points を活用した
+  CSV→Parquet 変換、Athena 異常検出、Rekognition 欠陥検出の
+  サーバーレスワークフロー。
+
+# =====================================================================
+# Parameters — shared/cfn/common-parameters.yaml + UC3 固有
+# =====================================================================
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias (入力読み取り用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  S3AccessPointOutputAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias (出力書き込み用、入力と同じ AP でも可)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  OntapSecretName:
+    Type: String
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
+
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge Scheduler のスケジュール式
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Lambda 関数と VPC Endpoints を配置する VPC ID
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Lambda 関数を配置するプライベートサブネット ID リスト
+
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+    Description: プライベートサブネットのルートテーブル ID リスト（S3 Gateway Endpoint 関連付け用、カンマ区切り）
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Interface VPC Endpoints を有効化する（月額 ~$28.80）
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms を有効化する
+
+  EnableS3GatewayEndpoint:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: S3 Gateway VPC Endpoint を作成する（同一 VPC に既存の場合は false）
+
+  EnableAthenaWorkgroup:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Athena Workgroup / Glue Data Catalog を有効化する
+
+  AnomalyThreshold:
+    Type: String
+    Default: "3.0"
+    Description: 異常検出閾値（標準偏差の倍数）
+
+  ConfidenceThreshold:
+    Type: String
+    Default: "80.0"
+    Description: Rekognition 欠陥検出の信頼度閾値
+
+  EnableGlueETL:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Glue ETL ジョブを有効化する（Lambda 版 Transform の代替、大規模データ向け）
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateVpcEndpoints:
+    !Equals [!Ref EnableVpcEndpoints, "true"]
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  CreateAthenaWorkgroup:
+    !Equals [!Ref EnableAthenaWorkgroup, "true"]
+  CreateGlueETL:
+    !Equals [!Ref EnableGlueETL, "true"]
+  CreateS3GatewayEndpoint:
+    !Equals [!Ref EnableS3GatewayEndpoint, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # S3 Athena Results Bucket (SSE-KMS)
+  # Athena クエリ結果専用。Athena は S3 AP に結果を書き込めないため、
+  # 標準 S3 バケットが必要。
+  # IMPORTANT: Athena 用の S3 Access Point は 'internet' network origin が必要。
+  # Athena はマネージドインフラからアクセスするため、VPC origin の AP はアクセス拒否される。
+  # -----------------------------------------------------------------
+  AthenaResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-athena-results-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: manufacturing-analytics
+
+  # -----------------------------------------------------------------
+  # SNS Topic + Email Subscription
+  # -----------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -----------------------------------------------------------------
+  # Lambda Security Group
+  # -----------------------------------------------------------------
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Lambda functions security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  # -----------------------------------------------------------------
+  # S3 Gateway Endpoint (always created — free)
+  # IMPORTANT: RouteTableIds 必須。未指定の場合、VPC 内 Lambda から
+  # S3 / S3 AP へのアクセスがタイムアウトする。
+  # -----------------------------------------------------------------
+  S3GatewayEndpoint:
+    Condition: CreateS3GatewayEndpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref PrivateRouteTableIds
+
+  # -----------------------------------------------------------------
+  # VPC Endpoint Security Group (conditional)
+  # -----------------------------------------------------------------
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateVpcEndpoints
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - VPC Endpoints security group"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: Allow HTTPS from Lambda
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpce-sg"
+
+  # -----------------------------------------------------------------
+  # Interface VPC Endpoints (conditional)
+  # -----------------------------------------------------------------
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.secretsmanager"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  FsxEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.fsx"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.monitoring"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  SnsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.sns"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups (14 day retention)
+  # -----------------------------------------------------------------
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: 14
+
+  TransformLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-transform"
+      RetentionInDays: 14
+
+  AthenaAnalysisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-athena-analysis"
+      RetentionInDays: 14
+
+  ImageAnalysisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-image-analysis"
+      RetentionInDays: 14
+
+  # -----------------------------------------------------------------
+  # IAM Roles — least-privilege per Lambda
+  # -----------------------------------------------------------------
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPoint
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt DiscoveryLogGroup.Arn
+                  - !Sub "${DiscoveryLogGroup.Arn}:*"
+
+  TransformLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-transform-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: TransformPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPoint
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt TransformLogGroup.Arn
+                  - !Sub "${TransformLogGroup.Arn}:*"
+
+  AthenaAnalysisLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-athena-analysis-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AthenaAnalysisPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: AthenaResultsBucket
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt AthenaResultsBucket.Arn
+                  - !Sub "${AthenaResultsBucket.Arn}/*"
+              - Sid: Athena
+                Effect: Allow
+                Action:
+                  - athena:StartQueryExecution
+                  - athena:GetQueryExecution
+                  - athena:GetQueryResults
+                  - athena:StopQueryExecution
+                Resource:
+                  - !Sub "arn:aws:athena:${AWS::Region}:${AWS::AccountId}:workgroup/*"
+              - Sid: Glue
+                Effect: Allow
+                Action:
+                  - glue:GetTable
+                  - glue:CreateTable
+                  - glue:UpdateTable
+                  - glue:GetDatabase
+                Resource:
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:catalog"
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:database/*"
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/*/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt AthenaAnalysisLogGroup.Arn
+                  - !Sub "${AthenaAnalysisLogGroup.Arn}:*"
+
+  ImageAnalysisLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-image-analysis-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ImageAnalysisPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPoint
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: Rekognition
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: "*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ImageAnalysisLogGroup.Arn
+                  - !Sub "${ImageAnalysisLogGroup.Arn}:*"
+
+  # -----------------------------------------------------------------
+  # Lambda Functions (Python 3.12, 256MB, 300s timeout)
+  # -----------------------------------------------------------------
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.12
+      Handler: manufacturing-analytics/functions/discovery/handler.handler
+      MemorySize: 256
+      Timeout: 300
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          PREFIX_FILTER: ""
+          SUFFIX_FILTER: ".csv,.jpg,.jpeg,.png"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+      Tags:
+        - Key: UseCase
+          Value: manufacturing-analytics
+
+  TransformFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-transform"
+      Runtime: python3.12
+      Handler: manufacturing-analytics/functions/transform/handler.handler
+      MemorySize: 256
+      Timeout: 300
+      Role: !GetAtt TransformLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+      LoggingConfig:
+        LogGroup: !Ref TransformLogGroup
+      Tags:
+        - Key: UseCase
+          Value: manufacturing-analytics
+
+  AthenaAnalysisFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-athena-analysis"
+      Runtime: python3.12
+      Handler: manufacturing-analytics/functions/athena_analysis/handler.handler
+      MemorySize: 256
+      Timeout: 300
+      Role: !GetAtt AthenaAnalysisLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          ATHENA_RESULTS_BUCKET: !Ref AthenaResultsBucket
+          GLUE_DATABASE: !Sub "${AWS::StackName}-db"
+          GLUE_TABLE: !Sub "${AWS::StackName}-sensor-data"
+          ATHENA_WORKGROUP: !Sub "${AWS::StackName}-workgroup"
+          ANOMALY_THRESHOLD: !Ref AnomalyThreshold
+      LoggingConfig:
+        LogGroup: !Ref AthenaAnalysisLogGroup
+      Tags:
+        - Key: UseCase
+          Value: manufacturing-analytics
+
+  ImageAnalysisFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-image-analysis"
+      Runtime: python3.12
+      Handler: manufacturing-analytics/functions/image_analysis/handler.handler
+      MemorySize: 256
+      Timeout: 300
+      Role: !GetAtt ImageAnalysisLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
+      LoggingConfig:
+        LogGroup: !Ref ImageAnalysisLogGroup
+      Tags:
+        - Key: UseCase
+          Value: manufacturing-analytics
+
+  # -----------------------------------------------------------------
+  # Glue Database + Table (conditional on CreateAthenaWorkgroup)
+  # -----------------------------------------------------------------
+  GlueDatabase:
+    Type: AWS::Glue::Database
+    Condition: CreateAthenaWorkgroup
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Sub "${AWS::StackName}-db"
+        Description: Manufacturing Analytics sensor data catalog
+
+  GlueTable:
+    Type: AWS::Glue::Table
+    Condition: CreateAthenaWorkgroup
+    DependsOn: GlueDatabase
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Sub "${AWS::StackName}-db"
+      TableInput:
+        Name: !Sub "${AWS::StackName}-sensor-data"
+        TableType: EXTERNAL_TABLE
+        StorageDescriptor:
+          Columns:
+            - Name: sensor_id
+              Type: string
+            - Name: timestamp
+              Type: string
+            - Name: value
+              Type: double
+            - Name: metric_name
+              Type: string
+            - Name: unit
+              Type: string
+          Location: !Sub "s3://${S3AccessPointOutputAlias}/parquet/"
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+
+  # -----------------------------------------------------------------
+  # Athena Workgroup (conditional on CreateAthenaWorkgroup)
+  # -----------------------------------------------------------------
+  AthenaWorkgroup:
+    Type: AWS::Athena::WorkGroup
+    Condition: CreateAthenaWorkgroup
+    Properties:
+      Name: !Sub "${AWS::StackName}-workgroup"
+      State: ENABLED
+      WorkGroupConfiguration:
+        ResultConfiguration:
+          OutputLocation: !Sub "s3://${AthenaResultsBucket}/athena-results/"
+        EnforceWorkGroupConfiguration: true
+        PublishCloudWatchMetricsEnabled: true
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # Discovery → Parallel[Map[Transform CSV] + Map[Image Analysis]] → Athena Analysis
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt TransformFunction.Arn
+                  - !GetAtt AthenaAnalysisFunction.Arn
+                  - !GetAtt ImageAnalysisFunction.Arn
+
+  ManufacturingStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "Manufacturing Analytics - Sensor Log & Inspection Image Workflow",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "ParallelProcessing",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "ParallelProcessing": {
+              "Type": "Parallel",
+              "ResultPath": "$.parallel_results",
+              "Next": "AthenaAnalysis",
+              "Branches": [
+                {
+                  "StartAt": "TransformCSV",
+                  "States": {
+                    "TransformCSV": {
+                      "Type": "Map",
+                      "ItemsPath": "$.discovery.csv_files",
+                      "MaxConcurrency": 10,
+                      "ResultPath": "$.transform_results",
+                      "End": true,
+                      "ItemProcessor": {
+                        "ProcessorConfig": {
+                          "Mode": "INLINE"
+                        },
+                        "StartAt": "TransformSingleCSV",
+                        "States": {
+                          "TransformSingleCSV": {
+                            "Type": "Task",
+                            "Resource": "${TransformFunction.Arn}",
+                            "Retry": [
+                              {
+                                "ErrorEquals": ["States.TaskFailed"],
+                                "IntervalSeconds": 10,
+                                "MaxAttempts": 3,
+                                "BackoffRate": 2.0
+                              }
+                            ],
+                            "Catch": [
+                              {
+                                "ErrorEquals": ["States.ALL"],
+                                "ResultPath": "$.error",
+                                "Next": "MarkTransformFailed"
+                              }
+                            ],
+                            "End": true
+                          },
+                          "MarkTransformFailed": {
+                            "Type": "Pass",
+                            "Result": {"status": "FAILED"},
+                            "End": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "StartAt": "AnalyzeImages",
+                  "States": {
+                    "AnalyzeImages": {
+                      "Type": "Map",
+                      "ItemsPath": "$.discovery.image_files",
+                      "MaxConcurrency": 10,
+                      "ResultPath": "$.image_results",
+                      "End": true,
+                      "ItemProcessor": {
+                        "ProcessorConfig": {
+                          "Mode": "INLINE"
+                        },
+                        "StartAt": "AnalyzeSingleImage",
+                        "States": {
+                          "AnalyzeSingleImage": {
+                            "Type": "Task",
+                            "Resource": "${ImageAnalysisFunction.Arn}",
+                            "Retry": [
+                              {
+                                "ErrorEquals": ["States.TaskFailed"],
+                                "IntervalSeconds": 10,
+                                "MaxAttempts": 3,
+                                "BackoffRate": 2.0
+                              }
+                            ],
+                            "Catch": [
+                              {
+                                "ErrorEquals": ["States.ALL"],
+                                "ResultPath": "$.error",
+                                "Next": "MarkImageFailed"
+                              }
+                            ],
+                            "End": true
+                          },
+                          "MarkImageFailed": {
+                            "Type": "Pass",
+                            "Result": {"status": "FAILED"},
+                            "End": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "AthenaAnalysis": {
+              "Type": "Task",
+              "Resource": "${AthenaAnalysisFunction.Arn}",
+              "ResultPath": "$.athena_results",
+              "End": true,
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 10,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref ManufacturingStateMachine
+
+  ManufacturingSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref ManufacturingStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional on CreateCloudWatchAlarms)
+  # -----------------------------------------------------------------
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref ManufacturingStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  TransformErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-transform-errors"
+      AlarmDescription: Transform Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref TransformFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  ImageAnalysisErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-image-analysis-errors"
+      AlarmDescription: Image Analysis Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ImageAnalysisFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  # -----------------------------------------------------------------
+  # Glue ETL Job (conditional on CreateGlueETL)
+  # AWS 公式チュートリアル「Build ETL pipelines using AWS Glue」準拠
+  # Lambda 版 Transform の代替として、大規模データセット向け
+  # IMPORTANT: S3 AP は internet network origin が必要
+  # -----------------------------------------------------------------
+  GlueETLRole:
+    Type: AWS::IAM::Role
+    Condition: CreateGlueETL
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-glue-etl-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      Policies:
+        - PolicyName: GlueETLPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointInput
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: AthenaResultsBucket
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !GetAtt AthenaResultsBucket.Arn
+                  - !Sub "${AthenaResultsBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws-glue/*"
+
+  GlueETLScriptBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateGlueETL
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-glue-scripts-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: UseCase
+          Value: manufacturing-analytics
+
+  GlueETLJob:
+    Type: AWS::Glue::Job
+    Condition: CreateGlueETL
+    Properties:
+      Name: !Sub "${AWS::StackName}-glue-etl"
+      Description: >-
+        CSV → Parquet 変換 Glue ETL ジョブ。
+        FSx ONTAP S3 AP 経由でセンサーログを読み取り、
+        Parquet 形式に変換して書き戻す。
+      Role: !GetAtt GlueETLRole.Arn
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub "s3://${GlueETLScriptBucket}/scripts/transform_script.py"
+        PythonVersion: "3"
+      DefaultArguments:
+        "--job-language": "python"
+        "--job-bookmark-option": "job-bookmark-enable"
+        "--enable-metrics": "true"
+        "--enable-continuous-cloudwatch-log": "true"
+        "--S3_ACCESS_POINT_INPUT": !Ref S3AccessPointAlias
+        "--S3_ACCESS_POINT_OUTPUT": !Ref S3AccessPointOutputAlias
+        "--INPUT_PREFIX": "sensor-logs/"
+        "--OUTPUT_PREFIX": "parquet/"
+      GlueVersion: "4.0"
+      WorkerType: G.1X
+      NumberOfWorkers: 2
+      Timeout: 60
+      MaxRetries: 1
+      Tags:
+        UseCase: manufacturing-analytics
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref ManufacturingStateMachine
+
+  OutputBucketName:
+    Description: S3 Athena Results Bucket Name
+    Value: !Ref AthenaResultsBucket
+
+  NotificationTopicArn:
+    Description: SNS Notification Topic ARN
+    Value: !Ref NotificationTopic
+
+  DiscoveryFunctionArn:
+    Description: Discovery Lambda Function ARN
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  TransformFunctionArn:
+    Description: Transform Lambda Function ARN
+    Value: !GetAtt TransformFunction.Arn
+
+  AthenaAnalysisFunctionArn:
+    Description: Athena Analysis Lambda Function ARN
+    Value: !GetAtt AthenaAnalysisFunction.Arn
+
+  ImageAnalysisFunctionArn:
+    Description: Image Analysis Lambda Function ARN
+    Value: !GetAtt ImageAnalysisFunction.Arn
+
+  GlueETLJobName:
+    Condition: CreateGlueETL
+    Description: Glue ETL Job Name
+    Value: !Ref GlueETLJob
+
+  GlueETLScriptBucketName:
+    Condition: CreateGlueETL
+    Description: Glue ETL Script Bucket Name
+    Value: !Ref GlueETLScriptBucket

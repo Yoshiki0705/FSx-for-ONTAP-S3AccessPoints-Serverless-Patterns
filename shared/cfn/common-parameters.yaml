@@ -1,0 +1,169 @@
+# =============================================================================
+# 共通 CloudFormation パラメータ・Conditions リファレンス
+# =============================================================================
+#
+# 本ファイルは各ユースケースの CloudFormation テンプレートで使用する
+# 共通パラメータと Conditions の定義リファレンスです。
+# 各 template.yaml にコピー＆ペーストして使用してください。
+#
+# コスト構造分析 (docs/cost-analysis.md) に基づき、固定費が発生する
+# 常時稼働リソースを opt-in 方式にすることで、デモ/PoC 環境での
+# 予期しない課金を防止します。
+#
+# 参照: shared/cfn/conditions-design.md
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  共通パラメータ・Conditions リファレンス。
+  各ユースケースの template.yaml にコピーして使用する。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  # --- FSx ONTAP / S3 Access Point ---
+  S3AccessPointAlias:
+    Type: String
+    Description: >-
+      FSx ONTAP S3 Access Point Alias。
+      例: vol-name-xxxxx-ext-s3alias
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+    ConstraintDescription: >-
+      S3 Access Point Alias は小文字英数字・ハイフンで構成され、
+      -ext-s3alias で終わる必要があります。
+
+  OntapSecretName:
+    Type: String
+    Description: >-
+      ONTAP REST API 認証情報を格納する Secrets Manager シークレット名。
+      シークレットは {"username": "...", "password": "..."} 形式の JSON。
+
+  OntapManagementIp:
+    Type: String
+    Description: >-
+      ONTAP クラスタ管理 IP アドレス。
+      OntapClient が REST API 呼び出しに使用する。
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+    ConstraintDescription: IPv4 アドレス形式で指定してください。
+
+  # --- スケジューリング ---
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: >-
+      EventBridge Scheduler のスケジュール式。
+      rate 形式 (例: rate(1 hour)) または cron 形式
+      (例: cron(0 */2 * * ? *)) を指定する。
+
+  # --- ネットワーク ---
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Lambda 関数と VPC Endpoints を配置する VPC の ID
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >-
+      Lambda 関数と Interface VPC Endpoints を配置する
+      プライベートサブネットの ID リスト（2 つ以上推奨）
+
+  # --- 出力先 ---
+  OutputBucketName:
+    Type: String
+    Description: >-
+      処理結果の出力先 S3 バケット名。
+      Manifest JSON、処理結果、レポート等を格納する。
+
+  # --- 通知 ---
+  NotificationEmail:
+    Type: String
+    Description: >-
+      SNS 通知の送信先メールアドレス。
+      ワークフロー完了/失敗時に通知を受信する。
+
+  # --- オプショナルリソース制御 ---
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Interface VPC Endpoints を有効化する（月額 ~$28.80）。
+      本番環境では true を推奨。デモ/PoC 環境では false（デフォルト）を推奨。
+      有効化すると Secrets Manager, FSx, CloudWatch, SNS の
+      Interface Endpoints が作成される。
+      S3 Gateway Endpoint は無料のため常に作成される。
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      CloudWatch Alarms を有効化する（$0.10/アラーム/月）。
+      Step Functions 実行失敗、Lambda エラーレートの監視アラームが作成される。
+      本番環境では true を推奨。
+
+  EnableAthenaWorkgroup:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Athena Workgroup を有効化する（UC1, UC3 で使用）。
+      Athena 自体はクエリ実行時のみ課金（$5.00/TB スキャン）のため、
+      デフォルト有効。UC2, UC4, UC5 など Athena を使用しない
+      ユースケースでは false に設定可能。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  # Interface VPC Endpoints の作成制御
+  # 月額 ~$28.80 の固定費。デモ/PoC ではデフォルト無効。
+  CreateVpcEndpoints:
+    !Equals [!Ref EnableVpcEndpoints, "true"]
+
+  # CloudWatch Alarms の作成制御
+  # 本番運用向け監視機能。デモ/PoC ではデフォルト無効。
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+
+  # Athena Workgroup / Glue Data Catalog の作成制御
+  # クエリ実行時のみ課金のため、デフォルト有効。
+  CreateAthenaWorkgroup:
+    !Equals [!Ref EnableAthenaWorkgroup, "true"]
+
+# =====================================================================
+# Usage Examples (コメント)
+# =====================================================================
+#
+# --- デモ/PoC 環境（最小コスト ~$1〜$3/月） ---
+# aws cloudformation deploy \
+#   --template-file template.yaml \
+#   --stack-name fsxn-s3ap-demo \
+#   --parameter-overrides \
+#     EnableVpcEndpoints=false \
+#     EnableCloudWatchAlarms=false \
+#     EnableAthenaWorkgroup=true \
+#     S3AccessPointAlias=vol-demo-xxxxx-ext-s3alias \
+#     OntapSecretName=fsxn-ontap-credentials \
+#     OntapManagementIp=10.0.0.1 \
+#     VpcId=vpc-xxxxxxxx \
+#     PrivateSubnetIds=subnet-aaaa,subnet-bbbb \
+#     OutputBucketName=fsxn-s3ap-output-demo \
+#     NotificationEmail=admin@example.com
+#
+# --- 本番環境（フル機能 ~$30〜$75/月） ---
+# aws cloudformation deploy \
+#   --template-file template.yaml \
+#   --stack-name fsxn-s3ap-production \
+#   --parameter-overrides \
+#     EnableVpcEndpoints=true \
+#     EnableCloudWatchAlarms=true \
+#     EnableAthenaWorkgroup=true \
+#     S3AccessPointAlias=vol-prod-xxxxx-ext-s3alias \
+#     OntapSecretName=fsxn-ontap-credentials-prod \
+#     OntapManagementIp=10.0.1.1 \
+#     ScheduleExpression="rate(30 minutes)" \
+#     VpcId=vpc-yyyyyyyy \
+#     PrivateSubnetIds=subnet-cccc,subnet-dddd \
+#     OutputBucketName=fsxn-s3ap-output-prod \
+#     NotificationEmail=ops-team@example.com

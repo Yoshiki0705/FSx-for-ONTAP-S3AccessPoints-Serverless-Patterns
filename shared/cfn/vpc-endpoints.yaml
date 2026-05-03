@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  VPC Endpoints for FSxN S3AP Serverless Patterns.
+  S3 Gateway Endpoint は無料のため常に作成。
+  Interface Endpoints (Secrets Manager, FSx, CloudWatch, SNS) は
+  EnableVpcEndpoints=true の場合のみ作成（月額 ~$28.80）。
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID for Lambda functions and VPC Endpoints
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnet IDs for Interface VPC Endpoints
+
+  PrivateRouteTableId:
+    Type: String
+    Description: Private route table ID for S3 Gateway Endpoint
+
+  LambdaSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group ID of Lambda functions (source for VPC Endpoint SG ingress)
+
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Interface VPC Endpoints を有効化する（月額 ~$28.80）。
+      本番環境では true を推奨。デモ/PoC 環境では false（デフォルト）を推奨。
+
+Conditions:
+  CreateVpcEndpoints:
+    !Equals [!Ref EnableVpcEndpoints, "true"]
+
+Resources:
+  # ------------------------------------------------------------------
+  # S3 Gateway Endpoint — 常に作成（無料）
+  # ------------------------------------------------------------------
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTableId
+
+  # ------------------------------------------------------------------
+  # VPC Endpoint Security Group — Interface EP 用（Condition 付き）
+  # ------------------------------------------------------------------
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateVpcEndpoints
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Security group for VPC Endpoints"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroupId
+          Description: Allow HTTPS from Lambda security group
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpce-sg"
+
+  # ------------------------------------------------------------------
+  # Interface VPC Endpoints（Condition 付き — 月額 ~$7.20/EP）
+  # ------------------------------------------------------------------
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.secretsmanager"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  FsxEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.fsx"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.monitoring"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  SnsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.sns"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+Outputs:
+  S3GatewayEndpointId:
+    Description: S3 Gateway VPC Endpoint ID (always created, free)
+    Value: !Ref S3GatewayEndpoint
+
+  VpcEndpointSecurityGroupId:
+    Condition: CreateVpcEndpoints
+    Description: Security group ID for Interface VPC Endpoints
+    Value: !Ref VpcEndpointSecurityGroup
+
+  InterfaceEndpointIds:
+    Condition: CreateVpcEndpoints
+    Description: Comma-separated Interface VPC Endpoint IDs
+    Value: !Join
+      - ","
+      - - !Ref SecretsManagerEndpoint
+        - !Ref FsxEndpoint
+        - !Ref CloudWatchEndpoint
+        - !Ref SnsEndpoint
