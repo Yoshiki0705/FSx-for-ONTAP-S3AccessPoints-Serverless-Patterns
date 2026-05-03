@@ -159,7 +159,7 @@ EventBridge Scheduler (定期執行)
 - **AWS 帳戶**: 有效的 AWS 帳戶和適當的 IAM 權限
 - **FSx for NetApp ONTAP**: 已部署的檔案系統
   - ONTAP 版本: 支援 S3 Access Points 的版本（已在 9.17.1P4D3 上驗證）
-  - 已啟用 S3 Access Point 的磁碟區（network origin 依使用案例選擇。使用 Athena / Glue 時建議 `internet`）
+  - 已關聯 S3 Access Point 的 FSx for ONTAP 磁碟區（network origin 依使用案例選擇。使用 Athena / Glue 時建議 `internet`）
 - **網路**: VPC、私有子網路、路由表
 - **Secrets Manager**: 預先註冊 ONTAP REST API 憑證（格式: `{"username":"fsxadmin","password":"..."}`）
 - **S3 儲存貯體**: 預先建立用於 Lambda 部署套件的儲存貯體（例: `fsxn-s3ap-deploy-<account-id>`）
@@ -323,6 +323,8 @@ aws cloudformation create-stack \
 
 - **按請求計費（按量付費）**: Lambda, Step Functions, S3 API, Textract, Comprehend, Rekognition, Bedrock, Athena — 不使用則為 $0
 - **常駐運行（固定費）**: Interface VPC Endpoints (~$28.80/月) — **選用（opt-in）**
+
+> Quick Start 為優先確保 VPC 內 Lambda 的連通性而指定 `EnableVpcEndpoints=true`。如果優先考慮低成本 PoC，請考慮使用 VPC 外 Lambda 配置或利用現有的 NAT / Interface VPC Endpoints。
 
 > 詳細成本分析請參閱 [docs/cost-analysis.md](docs/cost-analysis.md)。
 

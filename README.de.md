@@ -159,7 +159,7 @@ EventBridge Scheduler (periodische Ausführung)
 - **AWS-Konto**: Ein gültiges AWS-Konto mit entsprechenden IAM-Berechtigungen
 - **FSx for NetApp ONTAP**: Ein bereitgestelltes Dateisystem
   - ONTAP-Version: Eine Version, die S3 Access Points unterstützt (verifiziert mit 9.17.1P4D3)
-  - Ein Volume mit aktiviertem S3 Access Point (Network Origin je nach Anwendungsfall; `internet` empfohlen bei Athena / Glue)
+  - Ein FSx for ONTAP Volume mit zugeordnetem S3 Access Point (Network Origin je nach Anwendungsfall; `internet` empfohlen bei Athena / Glue)
 - **Netzwerk**: VPC, private Subnetze, Routentabellen
 - **Secrets Manager**: ONTAP REST API-Anmeldedaten vorab registrieren (Format: `{"username":"fsxadmin","password":"..."}`)
 - **S3-Bucket**: Vorab einen Bucket für Lambda-Bereitstellungspakete erstellen (z.B.: `fsxn-s3ap-deploy-<account-id>`)
@@ -323,6 +323,8 @@ Siehe [Verifizierungsergebnisse](docs/verification-results.md) für Details.
 
 - **Anforderungsbasiert (nutzungsabhängig)**: Lambda, Step Functions, S3 API, Textract, Comprehend, Rekognition, Bedrock, Athena — 0 $ bei Nichtnutzung
 - **Dauerbetrieb (Fixkosten)**: Interface VPC Endpoints (~28,80 $/Monat) — **Optional (Opt-in)**
+
+> Der Schnellstart gibt `EnableVpcEndpoints=true` an, um die Konnektivität von Lambda innerhalb des VPC zu priorisieren. Für ein kostengünstiges PoC erwägen Sie Lambda außerhalb des VPC oder die Nutzung vorhandener NAT / Interface VPC Endpoints.
 
 > Siehe [docs/cost-analysis.md](docs/cost-analysis.md) für eine detaillierte Kostenanalyse.
 

@@ -159,7 +159,7 @@ EventBridge Scheduler (定期実行)
 - **AWS アカウント**: 有効な AWS アカウントと適切な IAM 権限
 - **FSx for NetApp ONTAP**: デプロイ済みのファイルシステム
   - ONTAP バージョン: S3 Access Points をサポートするバージョン（9.17.1P4D3 で検証済み）
-  - S3 Access Point が有効化されたボリューム（network origin はユースケースに応じて選択。Athena / Glue 利用時は `internet` 推奨）
+  - S3 Access Point が関連付けられた FSx for ONTAP ボリューム（network origin はユースケースに応じて選択。Athena / Glue 利用時は `internet` 推奨）
 - **ネットワーク**: VPC、プライベートサブネット、ルートテーブル
 - **Secrets Manager**: ONTAP REST API 認証情報（`{"username":"fsxadmin","password":"..."}` 形式）を事前登録
 - **S3 バケット**: Lambda デプロイパッケージ格納用バケットを事前作成（例: `fsxn-s3ap-deploy-<account-id>`）
@@ -323,6 +323,8 @@ aws cloudformation create-stack \
 
 - **リクエストベース（従量課金）**: Lambda, Step Functions, S3 API, Textract, Comprehend, Rekognition, Bedrock, Athena — 使わなければ $0
 - **常時稼働（固定費）**: Interface VPC Endpoints (~$28.80/月) — **オプショナル（opt-in）**
+
+> Quick Start は VPC 内 Lambda の到達性を優先して `EnableVpcEndpoints=true` を指定しています。低コスト PoC を優先する場合は、VPC 外 Lambda 構成または既存の NAT / Interface VPC Endpoints の利用を検討してください。
 
 > 詳細なコスト分析は [docs/cost-analysis.md](docs/cost-analysis.md) を参照してください。
 
