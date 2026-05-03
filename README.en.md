@@ -8,7 +8,7 @@ A collection of industry-specific serverless automation patterns leveraging S3 A
 
 ## Related Articles
 
-This repository is a practical companion to the following article:
+This repository provides the implementation examples for the architecture described in the following article:
 
 - **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
   https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili

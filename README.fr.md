@@ -8,7 +8,7 @@ Collection de modèles d'automatisation serverless par secteur d'activité, expl
 
 ## Article associé
 
-Ce dépôt est le compagnon pratique de l'article suivant :
+Ce dépôt fournit les exemples d'implémentation de l'architecture décrite dans l'article suivant :
 
 - **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
   https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili

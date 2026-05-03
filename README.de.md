@@ -8,7 +8,7 @@ Sammlung branchenspezifischer serverloser Automatisierungsmuster auf Basis von A
 
 ## Verwandter Artikel
 
-Dieses Repository ist der praktische Begleiter zum folgenden Artikel:
+Dieses Repository liefert die Implementierungsbeispiele für die im folgenden Artikel beschriebene Architektur:
 
 - **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
   https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili

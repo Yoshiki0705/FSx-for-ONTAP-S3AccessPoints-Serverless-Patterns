@@ -8,7 +8,7 @@
 
 ## 相关文章
 
-本仓库是以下文章的实践配套：
+本仓库是以下文章中所述架构的实现示例：
 
 - **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
   https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili

@@ -8,7 +8,7 @@ Amazon FSx for NetApp ONTAP의 S3 Access Points를 활용한 업종별 서버리
 
 ## 관련 기사
 
-본 리포지토리는 다음 기사의 실천적 컴패니언입니다:
+본 리포지토리는 다음 기사에서 해설한 아키텍처의 구현 예시입니다:
 
 - **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
   https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
