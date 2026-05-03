@@ -1,8 +1,19 @@
-# FSxN S3 Access Points Serverless Patterns
+# FSxN (FSx for NetApp ONTAP) S3 Access Points Serverless Patterns
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 A collection of industry-specific serverless automation patterns leveraging Amazon FSx for NetApp ONTAP S3 Access Points.
+
+> **What this repository is**: A reference implementation for learning design decisions. Each pattern is E2E verified in AWS, and can be applied incrementally from PoC to production. The goal is to demonstrate cost optimization, security, and error handling decisions through concrete code.
+
+## Related Article
+
+This repository is the practical companion to the following article:
+
+- **FSx for NetApp ONTAP の S3 Access Points で実現する業界別サーバーレス自動化パターン**
+  [Article draft](docs/article-draft.md)
+
+The article explains architectural reasoning and trade-offs. This repository provides concrete, reusable implementation patterns.
 
 ## Overview
 

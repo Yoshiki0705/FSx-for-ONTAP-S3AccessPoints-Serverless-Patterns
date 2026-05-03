@@ -1,8 +1,19 @@
-# FSxN S3 Access Points Serverless Patterns
+# FSxN (FSx for NetApp ONTAP) S3 Access Points Serverless Patterns
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 Amazon FSx for NetApp ONTAP の S3 Access Points を活用した、業界別サーバーレス自動化パターン集です。
+
+> **本リポジトリの位置づけ**: これは「設計判断を学ぶためのリファレンス実装」です。各パターンは AWS 環境で E2E 検証済みであり、PoC から本番環境まで段階的に適用できます。コスト最適化、セキュリティ、エラーハンドリングの設計判断を具体的なコードで示すことを目的としています。
+
+## 関連記事
+
+本リポジトリは以下の記事の実践的なコンパニオンです:
+
+- **FSx for NetApp ONTAP の S3 Access Points で実現する業界別サーバーレス自動化パターン**
+  [dev.to 記事](docs/article-draft.md)
+
+記事ではアーキテクチャの設計思想とトレードオフを解説し、本リポジトリでは具体的な再利用可能な実装パターンを提供します。
 
 ## 概要
 
@@ -310,6 +321,23 @@ aws cloudformation create-stack \
 
 > **S3 Gateway VPC Endpoint** は無料のため、常にデフォルト有効です。
 
+## セキュリティと認可モデル
+
+本ソリューションは **複数の認可レイヤー** を組み合わせ、それぞれが異なる役割を担います:
+
+| レイヤー | 役割 | 制御対象 |
+|---------|------|---------|
+| **IAM** | AWS サービスと S3 Access Points へのアクセス制御 | Lambda 実行ロール、S3 AP ポリシー |
+| **S3 Access Point** | IAM アイデンティティをファイルシステムユーザーにマッピング | S3 AP ポリシーによるアクセス制御 |
+| **ONTAP ファイルシステム** | ファイルレベルの権限を強制 | UNIX パーミッション / NTFS ACL |
+| **ONTAP REST API** | メタデータとコントロールプレーン操作のみ公開 | Secrets Manager 認証 + TLS |
+
+**重要な設計上の注意点**:
+
+- S3 API はファイルレベルの ACL を公開しません。ファイル権限情報は **ONTAP REST API 経由でのみ** 取得可能です（UC1 の ACL Collection がこのパターン）
+- S3 AP のアクセスは IAM ポリシーと S3 AP ポリシーの **両方** が許可する場合のみ成功します
+- ONTAP REST API の認証情報は Secrets Manager で管理し、Lambda 環境変数には格納しません
+
 ## 互換性マトリックス
 
 | 項目 | サポート値 |
@@ -451,6 +479,10 @@ ruff format --check .
 # CloudFormation テンプレート検証
 cfn-lint */template.yaml
 ```
+
+## コントリビューション
+
+Issue や Pull Request を歓迎します。詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
 
 ## ライセンス
 
