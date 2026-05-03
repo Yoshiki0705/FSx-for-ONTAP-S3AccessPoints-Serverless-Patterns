@@ -142,10 +142,33 @@ EventBridge Scheduler (定期実行)
 - **AWS アカウント**: 有効な AWS アカウントと適切な IAM 権限
 - **FSx for NetApp ONTAP**: デプロイ済みのファイルシステム
   - ONTAP バージョン: 9.17.1P4D3 以上
-  - S3 Access Point が有効化されたボリューム
+  - S3 Access Point が有効化されたボリューム（network origin: `internet` 推奨）
 - **ネットワーク**: VPC、プライベートサブネット、ルートテーブル
+- **Secrets Manager**: ONTAP REST API 認証情報（`{"username":"fsxadmin","password":"..."}` 形式）を事前登録
+- **S3 バケット**: Lambda デプロイパッケージ格納用バケットを事前作成（例: `fsxn-s3ap-deploy-<account-id>`）
 - **Python 3.12+**: ローカル開発・テスト用
 - **AWS CLI v2**: デプロイ・管理用
+
+### 事前準備コマンド
+
+```bash
+# 1. デプロイ用 S3 バケット作成
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+aws s3 mb "s3://fsxn-s3ap-deploy-${ACCOUNT_ID}" --region $AWS_DEFAULT_REGION
+
+# 2. ONTAP 認証情報を Secrets Manager に登録
+aws secretsmanager create-secret \
+  --name fsxn-ontap-credentials \
+  --secret-string '{"username":"fsxadmin","password":"<your-ontap-password>"}' \
+  --region $AWS_DEFAULT_REGION
+
+# 3. 既存の S3 Gateway Endpoint を確認（重複作成を防ぐ）
+aws ec2 describe-vpc-endpoints \
+  --filters "Name=vpc-id,Values=<your-vpc-id>" "Name=service-name,Values=com.amazonaws.${AWS_DEFAULT_REGION}.s3" \
+  --query 'VpcEndpoints[*].{Id:VpcEndpointId,State:State}' \
+  --output table
+# → 結果がある場合は EnableS3GatewayEndpoint=false でデプロイ
+```
 
 ### VPC 内 Lambda から S3 AP にアクセスする場合の注意事項
 
@@ -169,8 +192,8 @@ EventBridge Scheduler (定期実行)
 ### 1. リポジトリのクローン
 
 ```bash
-git clone https://github.com/<your-org>/fsxn-s3ap-serverless-patterns.git
-cd fsxn-s3ap-serverless-patterns
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
+cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
 ```
 
 ### 2. 依存関係のインストール
