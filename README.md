@@ -187,6 +187,14 @@ aws ec2 describe-vpc-endpoints \
 # → 結果がある場合は EnableS3GatewayEndpoint=false でデプロイ
 ```
 
+### Lambda 配置の選択指針
+
+| 用途 | 推奨配置 | 理由 |
+|------|---------|------|
+| デモ / PoC | VPC 外 Lambda | VPC Endpoint 不要で低コスト・設定が簡単 |
+| 本番 / 閉域要件あり | VPC 内 Lambda | Secrets Manager / FSx / SNS などを PrivateLink 経由で利用可能 |
+| Athena / Glue 利用 UC | S3 AP network origin: `internet` | AWS マネージドサービスからのアクセスが必要 |
+
 ### VPC 内 Lambda から S3 AP にアクセスする場合の注意事項
 
 > **UC1 デプロイ検証（2026-05-03）で確認された重要事項**
@@ -407,9 +415,10 @@ S3 AP 経由で利用可能な API サブセット:
 | [docs/cost-analysis.md](docs/cost-analysis.md) | コスト構造分析 |
 | [docs/references.md](docs/references.md) | 参考リンク集 |
 | [docs/extension-patterns.md](docs/extension-patterns.md) | 拡張パターンガイド |
+| [docs/region-compatibility.md](docs/region-compatibility.md) | AWS リージョン別の AI/ML サービス対応状況 |
 | [docs/article-draft.md](docs/article-draft.md) | dev.to 記事の元ドラフト（公開版は README 冒頭の関連記事を参照） |
 | [docs/verification-results.md](docs/verification-results.md) | AWS 環境検証結果記録 |
-| [docs/screenshots/](docs/screenshots/README.md) | AWS コンソールスクリーンショット（検証後に追加） |
+| [docs/screenshots/](docs/screenshots/README.md) | AWS コンソールスクリーンショット（マスク済み） |
 
 ## ディレクトリ構造
 
@@ -447,6 +456,7 @@ fsxn-s3ap-serverless-patterns/
     ├── cost-analysis.md               # コスト構造分析
     ├── references.md                  # 参考リンク集
     ├── extension-patterns.md          # 拡張パターンガイド
+    ├── region-compatibility.md        # リージョン互換性マトリックス
     ├── verification-results.md        # 検証結果記録
     └── article-draft.md               # dev.to 記事の元ドラフト
 ```
