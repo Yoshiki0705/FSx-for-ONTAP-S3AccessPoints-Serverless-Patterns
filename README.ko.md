@@ -105,10 +105,10 @@ EventBridge Scheduler (정기 실행)
 | # | 디렉토리 | 업종 | 패턴 | 사용 AI/ML 서비스 | ap-northeast-1 확인 상태 |
 |---|----------|------|------|-----------------|------------------------|
 | UC1 | `legal-compliance/` | 법무・컴플라이언스 | 파일 서버 감사・데이터 거버넌스 | Athena, Bedrock | ✅ E2E 성공 |
-| UC2 | `financial-idp/` | 금융・보험 | 계약서・청구서 자동 처리 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Textract 미지원 |
+| UC2 | `financial-idp/` | 금융・보험 | 계약서・청구서 자동 처리 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ 도쿄 미지원（대응 리전 이용） |
 | UC3 | `manufacturing-analytics/` | 제조업 | IoT 센서 로그・품질 검사 이미지 분석 | Athena, Rekognition | ✅ E2E 성공 |
 | UC4 | `media-vfx/` | 미디어 | VFX 렌더링 파이프라인 | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 설정 필요 |
-| UC5 | `healthcare-dicom/` | 의료 | DICOM 이미지 자동 분류・익명화 | Rekognition, Comprehend Medical ⚠️ | ⚠️ Comprehend Medical 미지원 |
+| UC5 | `healthcare-dicom/` | 의료 | DICOM 이미지 자동 분류・익명화 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 도쿄 미지원（대응 리전 이용） |
 
 > **리전 제약**: Amazon Textract와 Amazon Comprehend Medical은 ap-northeast-1(도쿄)에서 사용할 수 없습니다. UC2는 us-east-1 등 지원 리전에서의 배포를 권장합니다. UC5의 Comprehend Medical도 마찬가지입니다. Rekognition, Comprehend, Bedrock, Athena는 ap-northeast-1에서 사용 가능합니다.
 > 
@@ -286,11 +286,13 @@ aws cloudformation create-stack \
     'ParameterKey=PrivateSubnetIds,ParameterValue=<subnet-1>,<subnet-2>' \
     'ParameterKey=PrivateRouteTableIds,ParameterValue=<rtb-1>,<rtb-2>' \
     ParameterKey=NotificationEmail,ParameterValue=<your-email@example.com> \
-    ParameterKey=EnableVpcEndpoints,ParameterValue=false \
+    ParameterKey=EnableVpcEndpoints,ParameterValue=true \
     ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true
 ```
 
 > **참고**: `<...>` 플레이스홀더를 실제 환경 값으로 교체하세요.
+>
+> **`EnableVpcEndpoints` 에 대해**: Quick Start에서는 VPC 내 Lambda에서 Secrets Manager / CloudWatch / SNS로의 도달성을 확보하기 위해 `true`를 지정합니다. 기존 Interface VPC Endpoints 또는 NAT Gateway가 있는 경우 `false`를 지정하여 비용을 절감할 수 있습니다.
 > 
 > **리전 선택**: 모든 AI/ML 서비스가 사용 가능한 `us-east-1` 또는 `us-west-2`를 권장합니다. `ap-northeast-1`에서는 Textract와 Comprehend Medical을 사용할 수 없습니다(크로스 리전 호출로 대응 가능). 자세한 내용은 [리전 호환성 매트릭스](docs/region-compatibility.md)를 참조하세요.
 
@@ -398,7 +400,7 @@ S3 AP를 통해 사용 가능한 API 서브셋:
 
 ### S3 AP 제약 사항
 
-- **PutObject 최대 크기**: 5 GB(5 GB 초과 시 멀티파트 업로드 사용)
+- **PutObject 최대 크기**: 5 GB. multipart upload API는 지원되지만, 5 GB 초과 업로드 가능 여부는 유스케이스별로 검증하세요.
 - **암호화**: SSE-FSX만 지원(FSx가 투명하게 처리, ServerSideEncryption 파라미터 지정 불필요)
 - **ACL**: `bucket-owner-full-control`만 지원
 - **미지원 기능**: Object Versioning, Object Lock, Object Lifecycle, Static Website Hosting, Requester Pays, Presigned URL

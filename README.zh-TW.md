@@ -105,10 +105,10 @@ EventBridge Scheduler (定期執行)
 | # | 目錄 | 產業 | 模式 | 使用的 AI/ML 服務 | ap-northeast-1 驗證狀態 |
 |---|------|------|------|-----------------|----------------------|
 | UC1 | `legal-compliance/` | 法務合規 | 檔案伺服器稽核與資料治理 | Athena, Bedrock | ✅ E2E 成功 |
-| UC2 | `financial-idp/` | 金融保險 | 合約/發票自動處理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Textract 不支援 |
+| UC2 | `financial-idp/` | 金融保險 | 合約/發票自動處理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ 東京不支援（使用對應區域） |
 | UC3 | `manufacturing-analytics/` | 製造業 | IoT 感測器日誌與品質檢測影像分析 | Athena, Rekognition | ✅ E2E 成功 |
 | UC4 | `media-vfx/` | 媒體 | VFX 算繪管線 | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 需設定 |
-| UC5 | `healthcare-dicom/` | 醫療 | DICOM 影像自動分類與去識別化 | Rekognition, Comprehend Medical ⚠️ | ⚠️ Comprehend Medical 不支援 |
+| UC5 | `healthcare-dicom/` | 醫療 | DICOM 影像自動分類與去識別化 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 東京不支援（使用對應區域） |
 
 > **區域限制**: Amazon Textract 和 Amazon Comprehend Medical 在 ap-northeast-1（東京）不可用。建議在 us-east-1 等支援區域部署 UC2。UC5 的 Comprehend Medical 同理。Rekognition、Comprehend、Bedrock、Athena 在 ap-northeast-1 可用。
 > 
@@ -286,11 +286,13 @@ aws cloudformation create-stack \
     'ParameterKey=PrivateSubnetIds,ParameterValue=<subnet-1>,<subnet-2>' \
     'ParameterKey=PrivateRouteTableIds,ParameterValue=<rtb-1>,<rtb-2>' \
     ParameterKey=NotificationEmail,ParameterValue=<your-email@example.com> \
-    ParameterKey=EnableVpcEndpoints,ParameterValue=false \
+    ParameterKey=EnableVpcEndpoints,ParameterValue=true \
     ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true
 ```
 
 > **注意**: 請將 `<...>` 佔位符替換為實際環境值。
+>
+> **關於 `EnableVpcEndpoints`**: Quick Start 中指定 `true` 以確保 VPC 內 Lambda 到 Secrets Manager / CloudWatch / SNS 的連通性。如果已有 Interface VPC Endpoints 或 NAT Gateway，可以指定 `false` 以降低成本。
 > 
 > **區域選擇**: 建議使用所有 AI/ML 服務均可用的 `us-east-1` 或 `us-west-2`。`ap-northeast-1` 不支援 Textract 和 Comprehend Medical（可透過跨區域呼叫解決）。詳情請參閱[區域相容性矩陣](docs/region-compatibility.md)。
 
@@ -398,7 +400,7 @@ aws cloudformation create-stack \
 
 ### S3 AP 限制事項
 
-- **PutObject 最大大小**: 5 GB（超過 5 GB 使用分段上傳）
+- **PutObject 最大大小**: 5 GB。multipart upload API 受支援，但 5 GB 以上的上傳可行性請按使用案例逐一驗證。
 - **加密**: 僅支援 SSE-FSX（FSx 透明處理，無需指定 ServerSideEncryption 參數）
 - **ACL**: 僅支援 `bucket-owner-full-control`
 - **不支援的功能**: Object Versioning, Object Lock, Object Lifecycle, Static Website Hosting, Requester Pays, Presigned URL

@@ -105,10 +105,10 @@ EventBridge Scheduler (periodische Ausführung)
 | # | Verzeichnis | Branche | Muster | Verwendete AI/ML-Dienste | ap-northeast-1 Verifizierungsstatus |
 |---|-------------|---------|--------|--------------------------|-------------------------------------|
 | UC1 | `legal-compliance/` | Recht und Compliance | Dateiserver-Audit und Data Governance | Athena, Bedrock | ✅ E2E erfolgreich |
-| UC2 | `financial-idp/` | Finanz- und Versicherungswesen | Automatisierte Vertrags- und Rechnungsverarbeitung (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Textract nicht unterstützt |
+| UC2 | `financial-idp/` | Finanz- und Versicherungswesen | Automatisierte Vertrags- und Rechnungsverarbeitung (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Nicht in Tokyo (unterstützte Region nutzen) |
 | UC3 | `manufacturing-analytics/` | Fertigung | IoT-Sensorprotokoll- und Qualitätsprüfungsbildanalyse | Athena, Rekognition | ✅ E2E erfolgreich |
 | UC4 | `media-vfx/` | Medien | VFX-Rendering-Pipeline | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud-Einrichtung erforderlich |
-| UC5 | `healthcare-dicom/` | Gesundheitswesen | Automatische DICOM-Bildklassifizierung und Anonymisierung | Rekognition, Comprehend Medical ⚠️ | ⚠️ Comprehend Medical nicht unterstützt |
+| UC5 | `healthcare-dicom/` | Gesundheitswesen | Automatische DICOM-Bildklassifizierung und Anonymisierung | Rekognition, Comprehend Medical ⚠️ | ⚠️ Nicht in Tokyo (unterstützte Region nutzen) |
 
 > **Regionale Einschränkungen**: Amazon Textract und Amazon Comprehend Medical sind in ap-northeast-1 (Tokyo) nicht verfügbar. Die Bereitstellung von UC2 in einer unterstützten Region wie us-east-1 wird empfohlen. Gleiches gilt für Comprehend Medical in UC5. Rekognition, Comprehend, Bedrock und Athena sind in ap-northeast-1 verfügbar.
 > 
@@ -286,11 +286,13 @@ aws cloudformation create-stack \
     'ParameterKey=PrivateSubnetIds,ParameterValue=<subnet-1>,<subnet-2>' \
     'ParameterKey=PrivateRouteTableIds,ParameterValue=<rtb-1>,<rtb-2>' \
     ParameterKey=NotificationEmail,ParameterValue=<your-email@example.com> \
-    ParameterKey=EnableVpcEndpoints,ParameterValue=false \
+    ParameterKey=EnableVpcEndpoints,ParameterValue=true \
     ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true
 ```
 
 > **Hinweis**: Ersetzen Sie die `<...>`-Platzhalter durch Ihre tatsächlichen Umgebungswerte.
+>
+> **Zu `EnableVpcEndpoints`**: Der Schnellstart gibt `true` an, um die Konnektivität von Lambda innerhalb des VPC zu Secrets Manager / CloudWatch / SNS sicherzustellen. Wenn bereits Interface VPC Endpoints oder ein NAT Gateway vorhanden sind, können Sie `false` angeben, um Kosten zu reduzieren.
 > 
 > **Regionsauswahl**: `us-east-1` oder `us-west-2` wird empfohlen, wo alle AI/ML-Dienste verfügbar sind. Textract und Comprehend Medical sind in `ap-northeast-1` nicht verfügbar (regionsübergreifender Aufruf kann als Workaround verwendet werden). Siehe [Regionskompatibilitätsmatrix](docs/region-compatibility.md) für Details.
 
@@ -398,7 +400,7 @@ Diese Lösung kombiniert **mehrere Autorisierungsschichten**, die jeweils eine u
 
 ### S3 AP-Einschränkungen
 
-- **Maximale PutObject-Größe**: 5 GB (Multipart-Upload für Dateien über 5 GB verwenden)
+- **Maximale PutObject-Größe**: 5 GB. Multipart-Upload-APIs werden unterstützt, aber überprüfen Sie die Upload-Machbarkeit für Objekte über 5 GB je nach Anwendungsfall.
 - **Verschlüsselung**: Nur SSE-FSX (FSx verarbeitet transparent, kein ServerSideEncryption-Parameter erforderlich)
 - **ACL**: Nur `bucket-owner-full-control` unterstützt
 - **Nicht unterstützte Funktionen**: Object Versioning, Object Lock, Object Lifecycle, Static Website Hosting, Requester Pays, Presigned URL

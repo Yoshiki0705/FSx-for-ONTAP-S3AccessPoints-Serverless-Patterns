@@ -105,10 +105,10 @@ EventBridge Scheduler (定期実行)
 | # | ディレクトリ | 業界 | パターン | 使用 AI/ML サービス | ap-northeast-1 での確認状況 |
 |---|-------------|------|---------|-------------------|-------------------|
 | UC1 | `legal-compliance/` | 法務・コンプライアンス | ファイルサーバー監査・データガバナンス | Athena, Bedrock | ✅ E2E 成功 |
-| UC2 | `financial-idp/` | 金融・保険 | 契約書・請求書の自動処理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Textract 非対応 |
+| UC2 | `financial-idp/` | 金融・保険 | 契約書・請求書の自動処理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ 東京非対応（対応リージョン利用） |
 | UC3 | `manufacturing-analytics/` | 製造業 | IoT センサーログ・品質検査画像の分析 | Athena, Rekognition | ✅ E2E 成功 |
 | UC4 | `media-vfx/` | メディア | VFX レンダリングパイプライン | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 要設定 |
-| UC5 | `healthcare-dicom/` | 医療 | DICOM 画像の自動分類・匿名化 | Rekognition, Comprehend Medical ⚠️ | ⚠️ Comprehend Medical 非対応 |
+| UC5 | `healthcare-dicom/` | 医療 | DICOM 画像の自動分類・匿名化 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 東京非対応（対応リージョン利用） |
 
 > **リージョン制約**: Amazon Textract と Amazon Comprehend Medical は ap-northeast-1（東京）で利用できません。UC2 は us-east-1 等の対応リージョンでのデプロイを推奨します。UC5 の Comprehend Medical も同様です。Rekognition, Comprehend, Bedrock, Athena は ap-northeast-1 で利用可能です。
 > 
@@ -286,11 +286,13 @@ aws cloudformation create-stack \
     'ParameterKey=PrivateSubnetIds,ParameterValue=<subnet-1>,<subnet-2>' \
     'ParameterKey=PrivateRouteTableIds,ParameterValue=<rtb-1>,<rtb-2>' \
     ParameterKey=NotificationEmail,ParameterValue=<your-email@example.com> \
-    ParameterKey=EnableVpcEndpoints,ParameterValue=false \
+    ParameterKey=EnableVpcEndpoints,ParameterValue=true \
     ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true
 ```
 
 > **注意**: `<...>` のプレースホルダーを実際の環境値に置き換えてください。
+>
+> **`EnableVpcEndpoints` について**: Quick Start では VPC 内 Lambda から Secrets Manager / CloudWatch / SNS への到達性を確保するため `true` を指定しています。既存の Interface VPC Endpoints または NAT Gateway がある場合は `false` を指定してコストを削減できます。
 > 
 > **リージョン選択**: 全 AI/ML サービスが利用可能な `us-east-1` または `us-west-2` を推奨します。`ap-northeast-1` では Textract と Comprehend Medical が利用できません（クロスリージョン呼び出しで対応可能）。詳細は [リージョン互換性マトリックス](docs/region-compatibility.md) を参照。
 
@@ -398,7 +400,7 @@ S3 AP 経由で利用可能な API サブセット:
 
 ### S3 AP の制約事項
 
-- **PutObject 最大サイズ**: 5 GB（5 GB 超はマルチパートアップロードを使用）
+- **PutObject 最大サイズ**: 5 GB。multipart upload API はサポートされていますが、5 GB 超のアップロード可否はユースケースごとに検証してください。
 - **暗号化**: SSE-FSX のみ（FSx が透過的に処理、ServerSideEncryption パラメータ指定不要）
 - **ACL**: `bucket-owner-full-control` のみサポート
 - **非対応機能**: Object Versioning, Object Lock, Object Lifecycle, Static Website Hosting, Requester Pays, Presigned URL
