@@ -88,6 +88,8 @@ graph TB
     RL --> SNS
 ```
 
+> 図は本番想定の VPC 内 Lambda 構成を示しています。PoC / デモ用途では、S3 AP の network origin が `internet` の場合に VPC 外 Lambda 構成も選択できます。詳細は後述の「Lambda 配置の選択指針」を参照してください。
+
 ### ワークフロー概要
 
 ```
@@ -100,7 +102,7 @@ EventBridge Scheduler (定期実行)
 
 ## ユースケース一覧
 
-| # | ディレクトリ | 業界 | パターン | 使用 AI/ML サービス | ap-northeast-1 検証 |
+| # | ディレクトリ | 業界 | パターン | 使用 AI/ML サービス | ap-northeast-1 での確認状況 |
 |---|-------------|------|---------|-------------------|-------------------|
 | UC1 | `legal-compliance/` | 法務・コンプライアンス | ファイルサーバー監査・データガバナンス | Athena, Bedrock | ✅ E2E 成功 |
 | UC2 | `financial-idp/` | 金融・保険 | 契約書・請求書の自動処理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Textract 非対応 |
@@ -292,7 +294,7 @@ aws cloudformation create-stack \
 | FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
-| デプロイ方式 | CloudFormation (標準) |
+| デプロイ方式 | CloudFormation（SAM Transform 利用） |
 
 全 5 ユースケースの CloudFormation スタックデプロイと Discovery Lambda の動作確認を実施済みです。
 詳細は [検証結果記録](docs/verification-results.md) を参照してください。
