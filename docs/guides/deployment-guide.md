@@ -20,13 +20,13 @@
 
 - [ ] AWS アカウントへのアクセス権限（CloudFormation, Lambda, Step Functions, S3, IAM 等）
 - [ ] AWS CLI v2 がインストール済み
-- [ ] デプロイ先リージョン: `ap-northeast-1`（東京）
+- [ ] デプロイ先リージョン: 全 AI/ML サービス利用時は `us-east-1` / `us-west-2` 推奨。詳細は [リージョン互換性マトリックス](../region-compatibility.md) を参照
 
 ### FSx for NetApp ONTAP
 
 - [ ] FSx ONTAP ファイルシステムがデプロイ済み
-- [ ] ONTAP バージョン: 9.17.1P4D3 以上
-- [ ] S3 Access Point が有効化されたボリューム
+- [ ] ONTAP バージョン: S3 Access Points をサポートするバージョン（9.17.1P4D3 で検証済み）
+- [ ] S3 Access Point が関連付けられた FSx for ONTAP ボリューム
 - [ ] ONTAP 管理用の認証情報が Secrets Manager に登録済み
 
 ### ネットワーク
@@ -130,7 +130,7 @@ bash scripts/deploy_uc1.sh
 
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+  --template-file legal-compliance/template-deploy.yaml \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -141,9 +141,11 @@ aws cloudformation deploy \
     VolumeUuid=<your-volume-uuid> \
     VpcId=<your-vpc-id> \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
+    PrivateRouteTableIds=<rtb-1>,<rtb-2> \
     NotificationEmail=<your-email@example.com> \
+    EnableVpcEndpoints=true \
   --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --region ap-northeast-1
+  --region $AWS_DEFAULT_REGION
 ```
 
 ### デプロイ結果の確認
