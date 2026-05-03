@@ -4,6 +4,17 @@
 
 Amazon FSx for NetApp ONTAP S3 Access Points를 활용한 업종별 서버리스 자동화 패턴 모음집입니다.
 
+> **본 리포지토리의 위치**: 이것은 「설계 판단을 배우기 위한 레퍼런스 구현」입니다. 일부 유스케이스는 AWS 환경에서 E2E 검증을 완료했으며, 나머지 유스케이스도 CloudFormation 배포, 공통 Discovery Lambda, 주요 컴포넌트의 동작 확인을 실시했습니다. PoC에서 프로덕션 환경으로의 단계적 적용을 상정하여, 비용 최적화, 보안, 에러 핸들링의 설계 판단을 구체적인 코드로 보여주는 것을 목적으로 합니다.
+
+## 관련 기사
+
+본 리포지토리는 다음 기사의 실천적 컴패니언입니다:
+
+- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
+  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
+
+기사에서는 아키텍처의 설계 사상과 트레이드오프를 해설하고, 본 리포지토리에서는 구체적이고 재사용 가능한 구현 패턴을 제공합니다.
+
 ## 개요
 
 이 리포지토리는 FSx for NetApp ONTAP에 저장된 엔터프라이즈 데이터를 **S3 Access Points**를 통해 서버리스로 처리하는 **5가지 업종별 패턴**을 제공합니다.

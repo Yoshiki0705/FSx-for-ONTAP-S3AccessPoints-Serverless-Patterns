@@ -4,6 +4,17 @@
 
 Collection de modèles d'automatisation serverless par secteur d'activité, exploitant les S3 Access Points d'Amazon FSx for NetApp ONTAP.
 
+> **Positionnement de ce dépôt** : Il s'agit d'une « implémentation de référence pour apprendre les décisions de conception ». Certains cas d'usage ont été entièrement vérifiés E2E dans un environnement AWS, tandis que les autres ont été validés par le déploiement CloudFormation, le Lambda Discovery partagé et les tests des composants principaux. L'objectif est de démontrer les décisions de conception en matière d'optimisation des coûts, de sécurité et de gestion des erreurs à travers du code concret, avec un chemin du PoC à la production.
+
+## Article associé
+
+Ce dépôt est le compagnon pratique de l'article suivant :
+
+- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
+  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
+
+L'article explique le raisonnement architectural et les compromis. Ce dépôt fournit des modèles d'implémentation concrets et réutilisables.
+
 ## Présentation
 
 Ce dépôt fournit **5 modèles sectoriels** pour le traitement serverless des données d'entreprise stockées sur FSx for NetApp ONTAP via les **S3 Access Points**.

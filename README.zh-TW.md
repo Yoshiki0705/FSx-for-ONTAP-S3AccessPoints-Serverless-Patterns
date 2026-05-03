@@ -4,6 +4,17 @@
 
 基於 Amazon FSx for NetApp ONTAP S3 Access Points 的產業專屬無伺服器自動化模式集合。
 
+> **本儲存庫的定位**: 這是一個「用於學習設計決策的參考實作」。部分使用案例已在 AWS 環境中完成 E2E 驗證，其他使用案例也已完成 CloudFormation 部署、共用 Discovery Lambda 及關鍵元件的功能驗證。本儲存庫以從 PoC 到正式環境的漸進式應用為目標，透過具體程式碼展示成本最佳化、安全性和錯誤處理的設計決策。
+
+## 相關文章
+
+本儲存庫是以下文章的實踐配套：
+
+- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
+  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
+
+文章解釋架構設計思想和權衡取捨，本儲存庫提供具體的、可重複使用的實作模式。
+
 ## 概述
 
 本儲存庫提供 **5 種產業專屬模式**，透過 **S3 Access Points** 對儲存在 FSx for NetApp ONTAP 上的企業資料進行無伺服器處理。
