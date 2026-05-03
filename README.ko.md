@@ -25,7 +25,7 @@ Amazon FSx for NetApp ONTAP S3 Access Points를 활용한 업종별 서버리스
 
 ### 주요 특징
 
-- **폴링 기반 아키텍처**: EventBridge Scheduler + Step Functions (FSx ONTAP S3 AP는 `GetBucketNotificationConfiguration`을 지원하지 않음)
+- **폴링 기반 아키텍처**: EventBridge Scheduler + Step Functions (S3 AP는 `GetBucketNotificationConfiguration`을 지원하지 않음)
 - **공통 모듈 분리**: OntapClient / FsxHelper / S3ApHelper를 모든 유스케이스에서 재사용
 - **CloudFormation / SAM Transform 기반**: 각 유스케이스가 독립적인 CloudFormation 템플릿(SAM Transform 사용)
 - **보안 우선**: TLS 검증 기본 활성화, 최소 권한 IAM, KMS 암호화

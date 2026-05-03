@@ -25,7 +25,7 @@
 
 ### 主要特性
 
-- **輪詢架構**: EventBridge Scheduler + Step Functions（FSx ONTAP S3 AP 不支援 `GetBucketNotificationConfiguration`）
+- **輪詢架構**: EventBridge Scheduler + Step Functions（S3 AP 不支援 `GetBucketNotificationConfiguration`）
 - **共用模組分離**: OntapClient / FsxHelper / S3ApHelper 在所有使用案例中重複使用
 - **CloudFormation / SAM Transform 架構**: 每個使用案例都是獨立的 CloudFormation 範本（使用 SAM Transform）
 - **安全優先**: 預設啟用 TLS 驗證、最小權限 IAM、KMS 加密

@@ -25,7 +25,7 @@ Chaque cas d'usage est autonome sous forme de template CloudFormation indépenda
 
 ### Caractéristiques principales
 
-- **Architecture par interrogation** : EventBridge Scheduler + Step Functions (FSx ONTAP S3 AP ne prend pas en charge `GetBucketNotificationConfiguration`)
+- **Architecture par interrogation** : EventBridge Scheduler + Step Functions (S3 AP ne prend pas en charge `GetBucketNotificationConfiguration`)
 - **Séparation des modules partagés** : OntapClient / FsxHelper / S3ApHelper réutilisés dans tous les cas d'usage
 - **CloudFormation / SAM Transform** : Chaque cas d'usage est un template CloudFormation autonome utilisant SAM Transform
 - **Sécurité avant tout** : Vérification TLS activée par défaut, IAM à moindre privilège, chiffrement KMS

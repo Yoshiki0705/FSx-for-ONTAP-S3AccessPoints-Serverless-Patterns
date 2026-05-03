@@ -25,7 +25,7 @@ Each use case is self-contained as an independent CloudFormation template, with 
 
 ### Key Features
 
-- **Polling-based architecture**: EventBridge Scheduler + Step Functions (FSx ONTAP S3 AP does not support `GetBucketNotificationConfiguration`)
+- **Polling-based architecture**: EventBridge Scheduler + Step Functions (S3 AP does not support `GetBucketNotificationConfiguration`)
 - **Shared module separation**: OntapClient / FsxHelper / S3ApHelper reused across all use cases
 - **CloudFormation / SAM Transform based**: Each use case is a standalone CloudFormation template using SAM Transform
 - **Security first**: TLS verification enabled by default, least-privilege IAM, KMS encryption
