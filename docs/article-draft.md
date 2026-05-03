@@ -2,7 +2,7 @@
 
 ---
 title: FSx for NetApp ONTAP の S3 Access Points で実現する業界別サーバーレス自動化パターン
-published: false
+published: true
 description: FSx for NetApp ONTAP の S3 Access Points を活用し、Lambda + Step Functions で業界別データ処理を自動化する 5 つのサーバーレスパターンを紹介します。
 tags: aws, serverless, fsxontap, python
 canonical_url: https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
@@ -316,7 +316,7 @@ EMR Serverless → PySpark → S3 AP (Read/Write) → FSx ONTAP
 
 - AWS アカウント
 - FSx for NetApp ONTAP（S3 Access Points をサポートするバージョン。9.17.1P4D3 で検証済み）
-- S3 Access Point が有効化されたボリューム（network origin: `internet` 推奨）
+- S3 Access Point が関連付けられた FSx for ONTAP ボリューム（network origin はユースケースに応じて選択。Athena / Glue 利用時は `internet` 推奨）
 - Python 3.12+、AWS CLI v2
 - Lambda デプロイパッケージ格納用 S3 バケット
 
@@ -357,12 +357,13 @@ aws cloudformation create-stack \
     'ParameterKey=PrivateSubnetIds,ParameterValue=<subnet-1>,<subnet-2>' \
     'ParameterKey=PrivateRouteTableIds,ParameterValue=<rtb-1>,<rtb-2>' \
     ParameterKey=NotificationEmail,ParameterValue=<your-email@example.com> \
-    ParameterKey=EnableVpcEndpoints,ParameterValue=false \
+    ParameterKey=EnableVpcEndpoints,ParameterValue=true \
     ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true
 ```
 
 > **注意事項**:
 > - `<...>` のプレースホルダーを実際の環境値に置き換えてください
+> - **`EnableVpcEndpoints` について**: VPC 内 Lambda から Secrets Manager / CloudWatch / SNS への到達性を確保するため `true` を指定しています。既存の Interface VPC Endpoints または NAT Gateway がある場合は `false` を指定してコストを削減できます
 > - 同一 VPC に複数 UC をデプロイする場合、2 番目以降は `EnableS3GatewayEndpoint=false` に設定（重複作成防止）
 > - `PrivateRouteTableIds` は S3 Gateway Endpoint のルートテーブル関連付けに必須
 > - 全 AI/ML サービスが利用可能な `us-east-1` または `us-west-2` を推奨。`ap-northeast-1` では Textract と Comprehend Medical が利用不可（クロスリージョン呼び出しで対応可能）
