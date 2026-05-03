@@ -144,7 +144,7 @@ EventBridge Scheduler (exécution périodique)
 |--------|------------|
 | Langage | Python 3.12 |
 | IaC | CloudFormation (YAML) + SAM Transform |
-| Calcul | AWS Lambda (dans le VPC) |
+| Calcul | AWS Lambda (Production : dans le VPC / PoC : hors VPC possible) |
 | Orchestration | AWS Step Functions |
 | Planification | Amazon EventBridge Scheduler |
 | Stockage | FSx for ONTAP (S3 AP) + Bucket S3 de sortie (SSE-KMS) |
@@ -159,7 +159,7 @@ EventBridge Scheduler (exécution périodique)
 - **Compte AWS** : Un compte AWS valide avec les permissions IAM appropriées
 - **FSx for NetApp ONTAP** : Un système de fichiers déployé
   - Version ONTAP : Une version prenant en charge les S3 Access Points (vérifié avec 9.17.1P4D3)
-  - Un volume avec S3 Access Point activé (network origin : `internet` recommandé)
+  - Un volume avec S3 Access Point activé (network origin selon le cas d'usage ; `internet` recommandé pour Athena / Glue)
 - **Réseau** : VPC, sous-réseaux privés, tables de routage
 - **Secrets Manager** : Pré-enregistrer les identifiants ONTAP REST API (format : `{"username":"fsxadmin","password":"..."}`)
 - **Bucket S3** : Pré-créer un bucket pour les packages de déploiement Lambda (ex. : `fsxn-s3ap-deploy-<account-id>`)
@@ -332,7 +332,7 @@ Les ressources permanentes coûteuses sont rendues optionnelles via les paramèt
 
 | Ressource | Paramètre | Par défaut | Coût fixe mensuel | Description |
 |-----------|-----------|------------|-------------------|-------------|
-| Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~28,80 $ | Pour Secrets Manager, FSx, CloudWatch, SNS. `true` recommandé pour la production |
+| Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~28,80 $ | Pour Secrets Manager, FSx, CloudWatch, SNS. `true` recommandé pour la production. Le Quick Start spécifie `true` pour la connectivité |
 | CloudWatch Alarms | `EnableCloudWatchAlarms` | `false` | ~0,10 $/alarme | Surveillance du taux d'échec Step Functions, taux d'erreur Lambda |
 
 > Le **S3 Gateway VPC Endpoint** n'a pas de frais horaires supplémentaires, son activation est donc recommandée pour les configurations où Lambda dans le VPC accède au S3 AP. Cependant, spécifiez `EnableS3GatewayEndpoint=false` si un S3 Gateway Endpoint existe déjà ou si Lambda est placé hors VPC pour le PoC / démo. Les frais standard pour les requêtes API S3, le transfert de données et l'utilisation des services AWS individuels s'appliquent toujours.

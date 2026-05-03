@@ -144,7 +144,7 @@ EventBridge Scheduler (定期実行)
 |---------|------|
 | 言語 | Python 3.12 |
 | IaC | CloudFormation (YAML) + SAM Transform |
-| コンピュート | AWS Lambda (VPC 内) |
+| コンピュート | AWS Lambda（本番: VPC 内 / PoC: VPC 外も選択可） |
 | オーケストレーション | AWS Step Functions |
 | スケジューリング | Amazon EventBridge Scheduler |
 | ストレージ | FSx for ONTAP (S3 AP) + S3 出力バケット (SSE-KMS) |
@@ -159,7 +159,7 @@ EventBridge Scheduler (定期実行)
 - **AWS アカウント**: 有効な AWS アカウントと適切な IAM 権限
 - **FSx for NetApp ONTAP**: デプロイ済みのファイルシステム
   - ONTAP バージョン: S3 Access Points をサポートするバージョン（9.17.1P4D3 で検証済み）
-  - S3 Access Point が有効化されたボリューム（network origin: `internet` 推奨）
+  - S3 Access Point が有効化されたボリューム（network origin はユースケースに応じて選択。Athena / Glue 利用時は `internet` 推奨）
 - **ネットワーク**: VPC、プライベートサブネット、ルートテーブル
 - **Secrets Manager**: ONTAP REST API 認証情報（`{"username":"fsxadmin","password":"..."}` 形式）を事前登録
 - **S3 バケット**: Lambda デプロイパッケージ格納用バケットを事前作成（例: `fsxn-s3ap-deploy-<account-id>`）
@@ -332,7 +332,7 @@ aws cloudformation create-stack \
 
 | リソース | パラメータ | デフォルト | 月額固定費 | 説明 |
 |---------|-----------|----------|-----------|------|
-| Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~$28.80 | Secrets Manager, FSx, CloudWatch, SNS 用。本番環境では `true` 推奨 |
+| Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~$28.80 | Secrets Manager, FSx, CloudWatch, SNS 用。本番環境では `true` 推奨。Quick Start では到達性優先で `true` を指定 |
 | CloudWatch Alarms | `EnableCloudWatchAlarms` | `false` | ~$0.10/アラーム | Step Functions 失敗率、Lambda エラー率の監視 |
 
 > **S3 Gateway VPC Endpoint** は追加の時間課金がないため、VPC 内 Lambda から S3 AP にアクセスする構成では有効化を推奨します。ただし、既存の S3 Gateway Endpoint がある場合や、PoC / デモ用途で Lambda を VPC 外に配置する場合は `EnableS3GatewayEndpoint=false` を指定してください。S3 API リクエストやデータ転送、各 AWS サービスの利用料金は通常どおり発生します。

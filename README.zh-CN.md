@@ -144,7 +144,7 @@ EventBridge Scheduler (定期执行)
 |------|------|
 | 语言 | Python 3.12 |
 | IaC | CloudFormation (YAML) + SAM Transform |
-| 计算 | AWS Lambda (VPC 内) |
+| 计算 | AWS Lambda（生产: VPC 内 / PoC: VPC 外也可选择） |
 | 编排 | AWS Step Functions |
 | 调度 | Amazon EventBridge Scheduler |
 | 存储 | FSx for ONTAP (S3 AP) + S3 输出桶 (SSE-KMS) |
@@ -159,7 +159,7 @@ EventBridge Scheduler (定期执行)
 - **AWS 账户**: 有效的 AWS 账户和适当的 IAM 权限
 - **FSx for NetApp ONTAP**: 已部署的文件系统
   - ONTAP 版本: 支持 S3 Access Points 的版本（已在 9.17.1P4D3 上验证）
-  - 已启用 S3 Access Point 的卷（network origin: `internet` 推荐）
+  - 已启用 S3 Access Point 的卷（network origin 根据用例选择。使用 Athena / Glue 时推荐 `internet`）
 - **网络**: VPC、私有子网、路由表
 - **Secrets Manager**: 预先注册 ONTAP REST API 凭证（格式: `{"username":"fsxadmin","password":"..."}`）
 - **S3 存储桶**: 预先创建用于 Lambda 部署包的存储桶（例: `fsxn-s3ap-deploy-<account-id>`）
@@ -332,7 +332,7 @@ aws cloudformation create-stack \
 
 | 资源 | 参数 | 默认值 | 月固定费 | 说明 |
 |------|------|--------|---------|------|
-| Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~$28.80 | 用于 Secrets Manager、FSx、CloudWatch、SNS。生产环境推荐 `true` |
+| Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~$28.80 | 用于 Secrets Manager、FSx、CloudWatch、SNS。生产环境推荐 `true`。Quick Start 中为确保连通性指定 `true` |
 | CloudWatch Alarms | `EnableCloudWatchAlarms` | `false` | ~$0.10/告警 | 监控 Step Functions 失败率、Lambda 错误率 |
 
 > **S3 Gateway VPC Endpoint** 无额外按时计费，因此在 VPC 内 Lambda 访问 S3 AP 的配置中推荐启用。但如果已存在 S3 Gateway Endpoint 或 PoC / 演示用途中 Lambda 部署在 VPC 外，请指定 `EnableS3GatewayEndpoint=false`。S3 API 请求、数据传输及各 AWS 服务使用费照常产生。
