@@ -41,6 +41,15 @@
 
 ### 部署
 
+> ⚠️ **對現有環境的影響**
+>
+> - `EnableS3GatewayEndpoint=true` 會向您的 VPC 新增 S3 Gateway Endpoint。如果已存在，請設定為 `false`。
+> - `ScheduleExpression` 會觸發定期的 Step Functions 執行。如果不需要立即使用，請在部署後停用排程。
+> - 如果 S3 儲存貯體包含物件，堆疊刪除可能會失敗。刪除前請清空儲存貯體。
+> - VPC Endpoint 刪除需要 5-15 分鐘。Lambda ENI 釋放可能會延遲 Security Group 的刪除。
+>
+> **區域**: 建議使用 `us-east-1` 或 `us-west-2` 以獲得完整的 AI/ML 服務可用性。詳見[區域相容性](docs/region-compatibility.md)。
+
 ```bash
 # 設定區域
 export AWS_DEFAULT_REGION=us-east-1
@@ -56,7 +65,9 @@ aws cloudformation create-stack \
   --parameters \
     ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
     ParameterKey=S3AccessPointAlias,ParameterValue=<your-s3ap-alias> \
-    ...
+    ParameterKey=PrivateRouteTableIds,ParameterValue=<your-route-table-ids> \
+    ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true \
+    ParameterKey=EnableVpcEndpoints,ParameterValue=false
 ```
 
 ## 文件

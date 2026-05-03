@@ -105,55 +105,21 @@ EventBridge Scheduler (定期実行)
 
 #### 全 5 UC の Step Functions ワークフロー
 
-![Step Functions 全ワークフロー](docs/screenshots/step-functions-all-succeeded.png)
-
-#### UC1 法務・コンプライアンス E2E 実行結果
-
-![UC1 Step Functions 成功](docs/screenshots/step-functions-uc1-succeeded.png)
-
-#### CloudFormation スタック一覧
-
-![CloudFormation 全スタック](docs/screenshots/cloudformation-all-stacks.png)
-
-#### FSx ONTAP S3 Access Point
-
-![FSx S3 Access Point](docs/screenshots/fsx-s3-access-point.png)
+![Step Functions 全ワークフロー](docs/screenshots/masked/step-functions-all-succeeded.png)
 
 #### AI/ML サービス画面
 
-##### Amazon Athena — クエリ実行履歴
-
-![Athena クエリ履歴](docs/screenshots/athena-query-history.png)
-
 ##### Amazon Bedrock — モデルカタログ
 
-![Bedrock モデルカタログ](docs/screenshots/bedrock-model-catalog.png)
+![Bedrock モデルカタログ](docs/screenshots/masked/bedrock-model-catalog.png)
 
 ##### Amazon Rekognition — ラベル検出
 
-![Rekognition ラベル検出](docs/screenshots/rekognition-label-detection.png)
+![Rekognition ラベル検出](docs/screenshots/masked/rekognition-label-detection.png)
 
 ##### Amazon Comprehend — エンティティ検出
 
-![Comprehend コンソール](docs/screenshots/comprehend-console.png)
-
-##### AWS Glue Data Catalog — テーブル一覧
-
-![Glue Data Catalog](docs/screenshots/glue-data-catalog-tables.png)
-
-#### インフラストラクチャ画面
-
-##### CloudWatch Logs — Lambda 実行ログ
-
-![CloudWatch ログ](docs/screenshots/cloudwatch-log-groups.png)
-
-##### Amazon SNS — 通知トピック
-
-![SNS トピック](docs/screenshots/sns-topics.png)
-
-##### AWS Secrets Manager — ONTAP 認証情報
-
-![Secrets Manager](docs/screenshots/secrets-manager.png)
+![Comprehend コンソール](docs/screenshots/masked/comprehend-console.png)
 
 ## 技術スタック
 
@@ -230,26 +196,55 @@ ruff format --check .
 
 ### 4. ユースケースのデプロイ（例: UC1 法務・コンプライアンス）
 
+> ⚠️ **既存環境への影響に関する重要事項**
+>
+> デプロイ前に以下を確認してください：
+>
+> | パラメータ | 既存環境への影響 | 確認方法 |
+> |-----------|----------------|---------|
+> | `VpcId` / `PrivateSubnetIds` | 指定した VPC/サブネットに Lambda ENI が作成される | `aws ec2 describe-network-interfaces --filters Name=group-id,Values=<sg-id>` |
+> | `EnableS3GatewayEndpoint=true` | VPC に S3 Gateway Endpoint が追加される。**同一 VPC に既存の S3 Gateway Endpoint がある場合は `false` に設定** | `aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=<vpc-id>` |
+> | `PrivateRouteTableIds` | S3 Gateway Endpoint がルートテーブルに関連付けられる。既存のルーティングには影響なし | `aws ec2 describe-route-tables --route-table-ids <rtb-id>` |
+> | `ScheduleExpression` | EventBridge Scheduler が定期的に Step Functions を実行する。**不要な実行を避けるためデプロイ後にスケジュールを無効化可能** | AWS コンソール → EventBridge → Schedules |
+> | `NotificationEmail` | SNS サブスクリプション確認メールが送信される | メール受信確認 |
+>
+> **スタック削除時の注意**:
+> - S3 バケット（Athena Results）にオブジェクトが残っている場合、削除が失敗します。事前に `aws s3 rm s3://<bucket> --recursive` で空にしてください
+> - バージョニング有効バケットは `aws s3api delete-objects` で全バージョンを削除する必要があります
+> - VPC Endpoints の削除に 5-15 分かかる場合があります
+> - Lambda の ENI 解放に時間がかかり、セキュリティグループの削除が失敗する場合があります。数分待って再試行してください
+
 ```bash
-aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+# リージョンを設定（環境変数で管理）
+export AWS_DEFAULT_REGION=us-east-1  # 全サービス対応リージョン推奨
+
+# Lambda パッケージング
+./scripts/deploy_uc.sh legal-compliance package
+
+# CloudFormation デプロイ
+aws cloudformation create-stack \
   --stack-name fsxn-legal-compliance \
-  --parameter-overrides \
-    S3AccessPointAlias=<your-volume-ext-s3alias> \
-    S3AccessPointOutputAlias=<your-output-volume-ext-s3alias> \
-    OntapSecretName=<your-ontap-secret-name> \
-    OntapManagementIp=<your-ontap-management-ip> \
-    SvmUuid=<your-svm-uuid> \
-    VolumeUuid=<your-volume-uuid> \
-    VpcId=<your-vpc-id> \
-    PrivateSubnetIds=<subnet-1>,<subnet-2> \
-    PrivateRouteTableId=<your-private-route-table-id> \
-    NotificationEmail=<your-email@example.com> \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --region ap-northeast-1
+  --template-body file://legal-compliance/template-deploy.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameters \
+    ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
+    ParameterKey=S3AccessPointAlias,ParameterValue=<your-volume-ext-s3alias> \
+    ParameterKey=S3AccessPointOutputAlias,ParameterValue=<your-output-volume-ext-s3alias> \
+    ParameterKey=OntapSecretName,ParameterValue=<your-ontap-secret-name> \
+    ParameterKey=OntapManagementIp,ParameterValue=<your-ontap-management-ip> \
+    ParameterKey=SvmUuid,ParameterValue=<your-svm-uuid> \
+    ParameterKey=VolumeUuid,ParameterValue=<your-volume-uuid> \
+    ParameterKey=VpcId,ParameterValue=<your-vpc-id> \
+    'ParameterKey=PrivateSubnetIds,ParameterValue=<subnet-1>,<subnet-2>' \
+    'ParameterKey=PrivateRouteTableIds,ParameterValue=<rtb-1>,<rtb-2>' \
+    ParameterKey=NotificationEmail,ParameterValue=<your-email@example.com> \
+    ParameterKey=EnableVpcEndpoints,ParameterValue=false \
+    ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true
 ```
 
 > **注意**: `<...>` のプレースホルダーを実際の環境値に置き換えてください。
+> 
+> **リージョン選択**: 全 AI/ML サービスが利用可能な `us-east-1` または `us-west-2` を推奨します。`ap-northeast-1` では Textract と Comprehend Medical が利用できません（クロスリージョン呼び出しで対応可能）。詳細は [リージョン互換性マトリックス](docs/region-compatibility.md) を参照。
 
 ### 検証済み環境
 

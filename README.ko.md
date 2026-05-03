@@ -41,6 +41,15 @@ Amazon FSx for NetApp ONTAP S3 Access Points를 활용한 업종별 서버리스
 
 ### 배포
 
+> ⚠️ **기존 환경에 대한 영향**
+>
+> - `EnableS3GatewayEndpoint=true`는 VPC에 S3 Gateway Endpoint를 추가합니다. 이미 존재하는 경우 `false`로 설정하세요.
+> - `ScheduleExpression`은 주기적으로 Step Functions를 실행합니다. 즉시 필요하지 않은 경우 배포 후 스케줄을 비활성화하세요.
+> - S3 버킷에 객체가 포함된 경우 스택 삭제가 실패할 수 있습니다. 삭제 전에 버킷을 비우세요.
+> - VPC Endpoint 삭제에 5-15분이 소요됩니다. Lambda ENI 해제로 인해 Security Group 삭제가 지연될 수 있습니다.
+>
+> **리전**: AI/ML 서비스의 완전한 가용성을 위해 `us-east-1` 또는 `us-west-2`를 사용하세요. [리전 호환성](docs/region-compatibility.md)을 참조하세요.
+
 ```bash
 # 리전 설정
 export AWS_DEFAULT_REGION=us-east-1
@@ -56,7 +65,9 @@ aws cloudformation create-stack \
   --parameters \
     ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
     ParameterKey=S3AccessPointAlias,ParameterValue=<your-s3ap-alias> \
-    ...
+    ParameterKey=PrivateRouteTableIds,ParameterValue=<your-route-table-ids> \
+    ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true \
+    ParameterKey=EnableVpcEndpoints,ParameterValue=false
 ```
 
 ## 문서

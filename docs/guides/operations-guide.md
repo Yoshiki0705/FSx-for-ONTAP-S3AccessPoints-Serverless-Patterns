@@ -39,7 +39,7 @@ aws cloudformation update-stack \
 | `cron(0 9 * * ? *)` | 毎日 9:00 UTC (18:00 JST) |
 | `cron(0 0 ? * MON *)` | 毎週月曜 0:00 UTC (9:00 JST) |
 
-> **参考**: EventBridge Scheduler 設定画面のスクリーンショットは [docs/screenshots/eventbridge-scheduler.png](../screenshots/eventbridge-scheduler.png) を参照してください。
+> **参考**: EventBridge Scheduler 設定画面のスクリーンショットは [do../screenshots/masked/eventbridge-scheduler.png](../screenshots/eventbridge-scheduler.png) を参照してください。
 
 ### スケジュールの一時停止
 
@@ -102,7 +102,7 @@ aws stepfunctions describe-execution \
   --region ap-northeast-1
 ```
 
-> **参考**: Step Functions ワークフロー実行画面のスクリーンショットは [docs/screenshots/step-functions-workflow.png](../screenshots/step-functions-workflow.png) を参照してください。
+> **参考**: Step Functions ワークフロー実行画面のスクリーンショットは [do../screenshots/masked/step-functions-workflow.png](../screenshots/step-functions-workflow.png) を参照してください。
 
 ---
 
@@ -154,7 +154,7 @@ aws logs filter-log-events \
 
 > **参考**: CloudWatch ログのスクリーンショットは以下を参照してください。
 
-![CloudWatch ログ](../screenshots/cloudwatch-log-groups.png)
+![CloudWatch ログ](../screenshots/masked/cloudwatch-log-groups.png)
 
 ### Step Functions 実行履歴の確認
 

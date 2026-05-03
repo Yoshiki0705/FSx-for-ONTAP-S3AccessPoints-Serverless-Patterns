@@ -1,11 +1,27 @@
 #!/bin/bash
-# UC デプロイスクリプト
+# UC デプロイスクリプト / UC Deployment Script
+#
 # Usage: ./scripts/deploy_uc.sh <uc_name> <action>
+#
+# Actions:
+#   package   - Lambda ZIP パッケージ作成 + S3 アップロード
+#   validate  - CloudFormation テンプレート検証のみ
+#   deploy    - CloudFormation デプロイ（パラメータは別途指定）
+#   delete    - スタック削除
+#
+# Environment Variables:
+#   AWS_DEFAULT_REGION  - デプロイ先リージョン (default: ap-northeast-1)
+#   DEPLOY_BUCKET       - Lambda パッケージ格納 S3 バケット (default: auto-detect)
+#
 # Examples:
-#   ./scripts/deploy_uc.sh financial-idp package    # Lambda ZIP パッケージ作成 + S3 アップロード
-#   ./scripts/deploy_uc.sh financial-idp deploy     # CloudFormation デプロイ
-#   ./scripts/deploy_uc.sh financial-idp validate   # テンプレート検証のみ
-#   ./scripts/deploy_uc.sh financial-idp delete      # スタック削除
+#   export AWS_DEFAULT_REGION=us-east-1
+#   ./scripts/deploy_uc.sh legal-compliance package
+#   ./scripts/deploy_uc.sh financial-idp validate
+#
+# Notes:
+#   - 同一 VPC に複数 UC をデプロイする場合、2 番目以降は EnableS3GatewayEndpoint=false
+#   - スタック削除前に S3 バケット（Athena Results）を空にすること
+#   - VPC Endpoints の削除に 5-15 分かかる場合あり
 
 set -euo pipefail
 

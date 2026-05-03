@@ -41,6 +41,15 @@ Chaque cas d'usage est autonome sous forme de template CloudFormation indépenda
 
 ### Déploiement
 
+> ⚠️ **Impact sur l'environnement existant**
+>
+> - `EnableS3GatewayEndpoint=true` ajoute un S3 Gateway Endpoint à votre VPC. Définissez sur `false` si un endpoint existe déjà.
+> - `ScheduleExpression` déclenche des exécutions périodiques de Step Functions. Désactivez la planification après le déploiement si elle n'est pas immédiatement nécessaire.
+> - La suppression de la pile peut échouer si les buckets S3 contiennent des objets. Videz les buckets avant la suppression.
+> - La suppression du VPC Endpoint prend 5 à 15 minutes. La libération des ENI Lambda peut retarder la suppression du Security Group.
+>
+> **Région** : Utilisez `us-east-1` ou `us-west-2` pour une disponibilité complète des services AI/ML. Voir [Compatibilité régionale](docs/region-compatibility.md).
+
 ```bash
 # Définir la région
 export AWS_DEFAULT_REGION=us-east-1
@@ -56,7 +65,9 @@ aws cloudformation create-stack \
   --parameters \
     ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
     ParameterKey=S3AccessPointAlias,ParameterValue=<your-s3ap-alias> \
-    ...
+    ParameterKey=PrivateRouteTableIds,ParameterValue=<your-route-table-ids> \
+    ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true \
+    ParameterKey=EnableVpcEndpoints,ParameterValue=false
 ```
 
 ## Documentation

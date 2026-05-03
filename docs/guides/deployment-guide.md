@@ -163,7 +163,7 @@ aws cloudformation describe-stacks \
   --region ap-northeast-1
 ```
 
-> **参考**: CloudFormation スタック作成画面のスクリーンショットは [docs/screenshots/cloudformation-stack.png](../screenshots/cloudformation-stack.png) を参照してください。
+> **参考**: CloudFormation スタック作成画面のスクリーンショットは [do../screenshots/masked/cloudformation-stack.png](../screenshots/cloudformation-stack.png) を参照してください。
 
 ---
 
@@ -218,15 +218,15 @@ aws stepfunctions list-executions \
 
 #### 全 UC ワークフロー成功画面
 
-![Step Functions 全ワークフロー成功](../screenshots/step-functions-all-succeeded.png)
+![Step Functions 全ワークフロー成功](../screenshots/masked/step-functions-all-succeeded.png)
 
 #### UC1 E2E 実行成功画面
 
-![UC1 Step Functions 成功](../screenshots/step-functions-uc1-succeeded.png)
+![UC1 Step Functions 成功](../screenshots/masked/step-functions-uc1-succeeded.png)
 
 #### Lambda 関数一覧
 
-![Lambda 全関数](../screenshots/lambda-all-functions.png)
+![Lambda 全関数](../screenshots/masked/lambda-all-functions.png)
 
 ### S3 出力バケットの確認
 
@@ -241,7 +241,7 @@ OUTPUT_BUCKET=$(aws cloudformation describe-stacks \
 aws s3 ls "s3://$OUTPUT_BUCKET/" --recursive --region ap-northeast-1
 ```
 
-> **参考**: S3 出力バケット内容のスクリーンショットは [docs/screenshots/s3-output-bucket.png](../screenshots/s3-output-bucket.png) を参照してください。
+> **参考**: S3 出力バケット内容のスクリーンショットは [do../screenshots/masked/s3-output-bucket.png](../screenshots/s3-output-bucket.png) を参照してください。
 
 ### CloudWatch ログの確認
 
@@ -252,7 +252,7 @@ aws logs describe-log-groups \
   --region ap-northeast-1
 ```
 
-> **参考**: CloudWatch ログのスクリーンショットは [docs/screenshots/cloudwatch-logs.png](../screenshots/cloudwatch-logs.png) を参照してください。
+> **参考**: CloudWatch ログのスクリーンショットは [do../screenshots/masked/cloudwatch-logs.png](../screenshots/cloudwatch-logs.png) を参照してください。
 
 ---
 
@@ -261,19 +261,40 @@ aws logs describe-log-groups \
 検証完了後、リソースを削除する場合:
 
 ```bash
-# S3 バケットの中身を空にする（バケット削除の前提条件）
-aws s3 rm "s3://$OUTPUT_BUCKET" --recursive --region ap-northeast-1
+# 1. S3 バケットの中身を空にする（バージョニング有効バケットの場合）
+BUCKET="fsxn-legal-compliance-athena-results-$(aws sts get-caller-identity --query Account --output text)"
+python3 -c "
+import boto3
+s3 = boto3.client('s3')
+versions = s3.list_object_versions(Bucket='$BUCKET')
+objects = [{'Key':v['Key'],'VersionId':v['VersionId']} for v in versions.get('Versions',[])]
+objects += [{'Key':m['Key'],'VersionId':m['VersionId']} for m in versions.get('DeleteMarkers',[])]
+if objects:
+    s3.delete_objects(Bucket='$BUCKET', Delete={'Objects': objects})
+    print(f'Deleted {len(objects)} objects/markers')
+"
 
-# CloudFormation スタックの削除
-aws cloudformation delete-stack \
-  --stack-name fsxn-legal-compliance \
-  --region ap-northeast-1
+# 2. CloudFormation スタックの削除（逆順で実行）
+for stack in fsxn-healthcare-dicom fsxn-media-vfx fsxn-manufacturing fsxn-financial-idp fsxn-legal-compliance; do
+  aws cloudformation delete-stack --stack-name "$stack" --region "$AWS_DEFAULT_REGION"
+  echo "Delete initiated: $stack"
+done
 
-# 削除完了を待機
-aws cloudformation wait stack-delete-complete \
-  --stack-name fsxn-legal-compliance \
-  --region ap-northeast-1
+# 3. 削除完了を待機（VPC Endpoints の削除に 5-15 分かかる場合あり）
+for stack in fsxn-healthcare-dicom fsxn-media-vfx fsxn-manufacturing fsxn-financial-idp fsxn-legal-compliance; do
+  aws cloudformation wait stack-delete-complete --stack-name "$stack" --region "$AWS_DEFAULT_REGION"
+  echo "Deleted: $stack"
+done
 ```
+
+### 削除が失敗する場合
+
+| エラー | 原因 | 対処法 |
+|--------|------|--------|
+| `BucketNotEmpty` | S3 バケットにオブジェクトが残っている | 上記の Python スクリプトで全バージョンを削除 |
+| `has a dependent object` (SecurityGroup) | Lambda ENI が解放されていない | 5 分待って `--retain-resources LambdaSecurityGroup` で再試行 |
+| `WorkGroup is not empty` (Athena) | Athena ワークグループにクエリ履歴が残っている | `aws athena delete-work-group --work-group <name> --recursive-delete-option` |
+| `route table already has a route` (S3 Gateway) | 同一ルートテーブルに既存の S3 Gateway Endpoint | `EnableS3GatewayEndpoint=false` でデプロイ |
 
 ---
 
