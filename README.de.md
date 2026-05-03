@@ -29,7 +29,7 @@ Jeder Anwendungsfall ist als eigenständiges CloudFormation-Template umgesetzt. 
 - **Getrennte gemeinsame Module**: OntapClient / FsxHelper / S3ApHelper werden in allen Anwendungsfällen wiederverwendet
 - **CloudFormation / SAM Transform basiert**: Jeder Anwendungsfall ist ein eigenständiges CloudFormation-Template mit SAM Transform
 - **Sicherheit zuerst**: TLS-Verifizierung standardmäßig aktiviert, IAM mit minimalen Berechtigungen, KMS-Verschlüsselung
-- **Kostenoptimiert**: Kostenintensive Dauerressourcen (VPC Endpoints usw.) sind optional
+- **Kostenoptimiert**: Kostenintensive Dauerressourcen (Interface VPC Endpoints usw.) sind optional
 
 ## Anwendungsfälle
 
@@ -100,7 +100,7 @@ aws cloudformation create-stack \
 | Schicht | Technologie |
 |---------|------------|
 | Sprache | Python 3.12 |
-| IaC | CloudFormation (YAML) |
+| IaC | CloudFormation (YAML) + SAM Transform |
 | Compute | AWS Lambda |
 | Orchestrierung | AWS Step Functions |
 | Planung | Amazon EventBridge Scheduler |

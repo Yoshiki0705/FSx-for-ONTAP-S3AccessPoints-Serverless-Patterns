@@ -29,7 +29,7 @@ Chaque cas d'usage est autonome sous forme de template CloudFormation indépenda
 - **Séparation des modules partagés** : OntapClient / FsxHelper / S3ApHelper réutilisés dans tous les cas d'usage
 - **CloudFormation / SAM Transform** : Chaque cas d'usage est un template CloudFormation autonome utilisant SAM Transform
 - **Sécurité avant tout** : Vérification TLS activée par défaut, IAM à moindre privilège, chiffrement KMS
-- **Optimisation des coûts** : Les ressources permanentes coûteuses (VPC Endpoints, etc.) sont optionnelles
+- **Optimisation des coûts** : Les ressources permanentes coûteuses (Interface VPC Endpoints, etc.) sont optionnelles
 
 ## Cas d'usage
 
@@ -100,7 +100,7 @@ aws cloudformation create-stack \
 | Couche | Technologie |
 |--------|------------|
 | Langage | Python 3.12 |
-| IaC | CloudFormation (YAML) |
+| IaC | CloudFormation (YAML) + SAM Transform |
 | Calcul | AWS Lambda |
 | Orchestration | AWS Step Functions |
 | Planification | Amazon EventBridge Scheduler |

@@ -423,7 +423,7 @@ ap-northeast-1（東京）環境で検証を実施しました。UC1 と UC3 は
 
 - 組織の IAM / SCP / Permission Boundary との整合
 - S3 AP ポリシーと ONTAP 側ユーザー権限のレビュー
-- Lambda / Step Functions / Bedrock / Textract 等の CloudTrail 監査ログ有効化
+- Lambda / Step Functions / Bedrock / Textract 等の監査ログ・実行ログ（CloudTrail / CloudWatch Logs）の有効化
 - CloudWatch Alarms / SNS / Incident Management 連携
 - データ分類、個人情報、医療情報など業界固有のコンプライアンス要件
 - リージョン制約とクロスリージョン呼び出し時のデータレジデンシー確認

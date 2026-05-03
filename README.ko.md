@@ -29,7 +29,7 @@ Amazon FSx for NetApp ONTAP S3 Access Points를 활용한 업종별 서버리스
 - **공통 모듈 분리**: OntapClient / FsxHelper / S3ApHelper를 모든 유스케이스에서 재사용
 - **CloudFormation / SAM Transform 기반**: 각 유스케이스가 독립적인 CloudFormation 템플릿(SAM Transform 사용)
 - **보안 우선**: TLS 검증 기본 활성화, 최소 권한 IAM, KMS 암호화
-- **비용 최적화**: 고비용 상시 가동 리소스(VPC Endpoints 등)는 선택 사항
+- **비용 최적화**: 고비용 상시 가동 리소스(Interface VPC Endpoints 등)는 선택 사항
 
 ## 유스케이스
 
@@ -100,7 +100,7 @@ aws cloudformation create-stack \
 | 계층 | 기술 |
 |------|------|
 | 언어 | Python 3.12 |
-| IaC | CloudFormation (YAML) |
+| IaC | CloudFormation (YAML) + SAM Transform |
 | 컴퓨팅 | AWS Lambda |
 | 오케스트레이션 | AWS Step Functions |
 | 스케줄링 | Amazon EventBridge Scheduler |

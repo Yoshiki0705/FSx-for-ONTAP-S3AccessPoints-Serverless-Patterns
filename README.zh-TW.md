@@ -29,7 +29,7 @@
 - **共用模組分離**: OntapClient / FsxHelper / S3ApHelper 在所有使用案例中重複使用
 - **CloudFormation / SAM Transform 架構**: 每個使用案例都是獨立的 CloudFormation 範本（使用 SAM Transform）
 - **安全優先**: 預設啟用 TLS 驗證、最小權限 IAM、KMS 加密
-- **成本最佳化**: 高成本常駐資源（VPC Endpoints 等）為選用項目
+- **成本最佳化**: 高成本常駐資源（Interface VPC Endpoints 等）為選用項目
 
 ## 使用案例
 
@@ -100,7 +100,7 @@ aws cloudformation create-stack \
 | 層級 | 技術 |
 |------|------|
 | 語言 | Python 3.12 |
-| IaC | CloudFormation (YAML) |
+| IaC | CloudFormation (YAML) + SAM Transform |
 | 運算 | AWS Lambda |
 | 編排 | AWS Step Functions |
 | 排程 | Amazon EventBridge Scheduler |
