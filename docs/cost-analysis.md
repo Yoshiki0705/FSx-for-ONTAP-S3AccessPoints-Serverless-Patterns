@@ -2,7 +2,7 @@
 
 ## 概要
 
-本ドキュメントは、FSxN S3 Access Points Serverless Patterns リポジトリで使用する全 AWS サービスのコスト構造を分析し、デフォルト有効/オプショナル（opt-in）の判断基準を文書化する。
+本ドキュメントは、FSx for ONTAP S3 Access Points Serverless Patterns リポジトリで使用する全 AWS サービスのコスト構造を分析し、デフォルト有効/オプショナル（opt-in）の判断基準を文書化する。
 
 **対象リージョン**: ap-northeast-1（東京）
 **価格基準日**: 2026年1月（AWS 公式料金ページ準拠）

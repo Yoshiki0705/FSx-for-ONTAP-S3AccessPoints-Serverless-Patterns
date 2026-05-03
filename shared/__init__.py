@@ -1,4 +1,4 @@
-"""shared - FSxN S3 Access Points 共通モジュール
+"""shared - FSx for ONTAP S3 Access Points 共通モジュール
 
 全ユースケースで共有する ONTAP REST API クライアント、FSx API ヘルパー、
 S3 Access Point ヘルパー、共通例外クラスを提供する。

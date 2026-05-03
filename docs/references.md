@@ -1,6 +1,6 @@
 # 参考リンク集
 
-本プロジェクト（FSxN S3 Access Points Serverless Patterns）の実装で参考にした AWS 公式ドキュメント、ブログ記事、サンプルリポジトリのリンク集です。
+本プロジェクト（FSx for ONTAP S3 Access Points Serverless Patterns）の実装で参考にした AWS 公式ドキュメント、ブログ記事、サンプルリポジトリのリンク集です。
 
 ---
 

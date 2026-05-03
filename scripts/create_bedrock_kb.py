@@ -17,7 +17,7 @@ print("Creating Knowledge Base...")
 try:
     resp = client.create_knowledge_base(
         name="fsxn-s3ap-test-kb",
-        description="FSxN S3 AP test Knowledge Base",
+        description="FSx for ONTAP S3 AP test Knowledge Base",
         roleArn=KB_ROLE_ARN,
         knowledgeBaseConfiguration={
             "type": "VECTOR",

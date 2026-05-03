@@ -1,6 +1,6 @@
 # トラブルシューティング手順書
 
-本ドキュメントでは、FSxN S3AP Serverless Patterns で発生しうるエラーと対処法を説明します。
+本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns で発生しうるエラーと対処法を説明します。
 
 ## 目次
 

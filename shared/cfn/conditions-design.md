@@ -286,7 +286,7 @@ Resources:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
         Name: !Sub "${AWS::StackName}_db"
-        Description: Data catalog for FSxN S3AP analysis
+        Description: Data catalog for FSx for ONTAP S3 AP analysis
 
   GlueTable:
     Type: AWS::Glue::Table

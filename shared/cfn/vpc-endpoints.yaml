@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  VPC Endpoints for FSxN S3AP Serverless Patterns.
+  VPC Endpoints for FSx for ONTAP S3 AP Serverless Patterns.
   S3 Gateway Endpoint は無料のため常に作成。
   Interface Endpoints (Secrets Manager, FSx, CloudWatch, SNS) は
   EnableVpcEndpoints=true の場合のみ作成（月額 ~$28.80）。

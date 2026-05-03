@@ -1,6 +1,6 @@
 # デプロイ手順書
 
-本ドキュメントでは、FSxN S3AP Serverless Patterns のデプロイ手順を説明します。
+本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns のデプロイ手順を説明します。
 
 ## 目次
 

@@ -37,7 +37,7 @@ for vol in volumes:
 
 print("\n=== Test 5: S3ApHelper PutObject + GetObject round-trip ===")
 test_key = "_test/verification_test.txt"
-test_body = "FSxN S3AP Serverless Patterns - verification test"
+test_body = "FSx for ONTAP S3 AP Serverless Patterns - verification test"
 helper.put_object(key=test_key, body=test_body, content_type="text/plain")
 print(f"PutObject: {test_key}")
 get_resp = helper.get_object(test_key)

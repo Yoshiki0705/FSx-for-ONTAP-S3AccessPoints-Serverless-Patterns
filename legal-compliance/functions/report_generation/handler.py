@@ -169,7 +169,7 @@ def handler(event, context):
     sns_client = boto3.client("sns")
     sns_response = sns_client.publish(
         TopicArn=sns_topic_arn,
-        Subject="[FSxN Compliance] レポート生成完了",
+        Subject="[FSx for ONTAP Compliance] レポート生成完了",
         Message=sns_message,
     )
 

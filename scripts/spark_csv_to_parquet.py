@@ -21,7 +21,7 @@ def main():
     input_path = f"s3://{s3_ap}/{input_prefix}"
     output_path = f"s3://{s3_ap}/{output_prefix}"
 
-    spark = SparkSession.builder.appName("FSxN-S3AP-CSV-to-Parquet").getOrCreate()
+    spark = SparkSession.builder.appName("FSx-ONTAP-S3AP-CSV-to-Parquet").getOrCreate()
 
     print(f"Reading CSV from: {input_path}")
     df = spark.read.option("header", "true").option("inferSchema", "true").csv(input_path)
