@@ -5,6 +5,7 @@ template.yaml → template-deploy.yaml 変換スクリプト
 SAM Transform を削除し、Lambda の Handler パスを修正し、
 Code: S3Bucket/S3Key を追加する。
 """
+import os
 import re
 import sys
 import yaml
@@ -12,8 +13,12 @@ import yaml
 
 def convert_template(uc_name: str) -> None:
     """UC の template.yaml を template-deploy.yaml に変換する。"""
-    input_path = f"fsxn-s3ap-serverless-patterns/{uc_name}/template.yaml"
-    output_path = f"fsxn-s3ap-serverless-patterns/{uc_name}/template-deploy.yaml"
+    # スクリプトの場所からプロジェクトルートを特定
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+
+    input_path = os.path.join(project_root, uc_name, "template.yaml")
+    output_path = os.path.join(project_root, uc_name, "template-deploy.yaml")
 
     with open(input_path, "r") as f:
         content = f.read()
@@ -51,7 +56,7 @@ def convert_template(uc_name: str) -> None:
     with open(output_path, "w") as f:
         f.write(content)
 
-    print(f"✅ Created {output_path}")
+    print(f"✅ Created {uc_name}/template-deploy.yaml")
 
 
 if __name__ == "__main__":

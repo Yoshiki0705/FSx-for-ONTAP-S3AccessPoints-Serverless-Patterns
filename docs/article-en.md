@@ -1,7 +1,7 @@
 ---
-title: "Industry-Specific Serverless Automation Patterns with FSx for ONTAP S3 Access Points"
+title: "14 Industry-Specific Serverless Automation Patterns with FSx for ONTAP S3 Access Points"
 published: true
-description: "5 serverless patterns + 3 extension patterns using FSx for ONTAP S3 Access Points with Lambda, Step Functions, and AI/ML services — verified in AWS, with design decisions for cost, security, and error handling."
+description: "14 serverless patterns using FSx for ONTAP S3 Access Points with Lambda, Step Functions, and AI/ML services (Rekognition, Textract, Comprehend Medical, Bedrock, Athena) — all E2E verified in AWS ap-northeast-1 with cross-region support."
 tags: aws, serverless, netapp, python
 canonical_url: https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
 cover_image: https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/step-functions-all-succeeded.png
@@ -10,7 +10,13 @@ series: "FSx for ONTAP S3 Access Points"
 
 ## TL;DR
 
-FSx for ONTAP S3 Access Points let you build **industry-specific serverless data pipelines** against NAS data — without moving files — using EventBridge Scheduler, Step Functions, and AWS AI/ML services. This article introduces 5 use-case patterns and 3 extension patterns, all backed by a [reference implementation repository](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) with CloudFormation templates, shared Python modules, and property-based tests.
+FSx for ONTAP S3 Access Points let you build **industry-specific serverless data pipelines** against NAS data — without moving files — using EventBridge Scheduler, Step Functions, and AWS AI/ML services. This article introduces **14 use-case patterns** (Phase 1: 5 UCs + Phase 2: 9 UCs) and 3 extension patterns, all backed by a [reference implementation repository](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) with CloudFormation templates, shared Python modules, and property-based tests.
+
+**Phase 2 highlights**:
+- 9 new industry patterns (semiconductor, genomics, energy, autonomous driving, construction, retail, logistics, education, insurance)
+- Cross-region support for Textract and Comprehend Medical (ap-northeast-1 → us-east-1)
+- Streaming download and multipart upload for TB/PB-scale data
+- All AI/ML services verified via Lambda E2E execution (Rekognition, Textract, Comprehend Medical, Bedrock, Athena)
 
 This is a continuation of [FSx for ONTAP S3 Access Points as a Serverless Automation Boundary](https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili). While the previous article covered the operational automation layer, this one focuses on **concrete, reusable industry patterns** with full deployment instructions.
 

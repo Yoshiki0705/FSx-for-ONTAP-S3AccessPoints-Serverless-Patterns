@@ -102,6 +102,8 @@ EventBridge Scheduler (Periodic Execution)
 
 ## Use Case List
 
+### Phase 1 (UC1–UC5)
+
 | # | Directory | Industry | Pattern | AI/ML Services Used | ap-northeast-1 Verification Status |
 |---|-----------|----------|---------|---------------------|-----------------------------------|
 | UC1 | `legal-compliance/` | Legal & Compliance | File server audit & data governance | Athena, Bedrock | ✅ E2E Success |
@@ -110,9 +112,23 @@ EventBridge Scheduler (Periodic Execution)
 | UC4 | `media-vfx/` | Media | VFX rendering pipeline | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud Setup Required |
 | UC5 | `healthcare-dicom/` | Healthcare | DICOM image auto-classification & anonymization | Rekognition, Comprehend Medical ⚠️ | ⚠️ Not in Tokyo (use supported region) |
 
-> **Region constraints**: Amazon Textract and Amazon Comprehend Medical are not available in ap-northeast-1 (Tokyo). Deploying UC2 in a supported region such as us-east-1 is recommended. The same applies to Comprehend Medical in UC5. Rekognition, Comprehend, Bedrock, and Athena are available in ap-northeast-1.
+### Phase 2 (UC6–UC14)
+
+| # | Directory | Industry | Pattern | AI/ML Services Used | ap-northeast-1 Verification Status |
+|---|-----------|----------|---------|---------------------|-----------------------------------|
+| UC6 | `semiconductor-eda/` | Semiconductor / EDA | GDS/OASIS validation, metadata extraction, DRC aggregation | Athena, Bedrock | ✅ Tests Passed |
+| UC7 | `genomics-pipeline/` | Genomics | FASTQ/VCF quality check, variant call aggregation | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
+| UC8 | `energy-seismic/` | Energy | SEG-Y metadata extraction, well log anomaly detection | Athena, Bedrock, Rekognition | ✅ Tests Passed |
+| UC9 | `autonomous-driving/` | Autonomous Driving / ADAS | Video/LiDAR preprocessing, QC, annotation | Rekognition, Bedrock, SageMaker | ✅ Tests Passed |
+| UC10 | `construction-bim/` | Construction / AEC | BIM version management, drawing OCR, safety compliance | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
+| UC11 | `retail-catalog/` | Retail / E-Commerce | Product image tagging, catalog metadata generation | Rekognition, Bedrock | ✅ Tests Passed |
+| UC12 | `logistics-ocr/` | Logistics | Shipping slip OCR, warehouse inventory image analysis | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC13 | `education-research/` | Education / Research | Paper PDF classification, citation network analysis | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC14 | `insurance-claims/` | Insurance | Accident photo damage assessment, estimate OCR, claims report | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+
+> **Region constraints**: Amazon Textract and Amazon Comprehend Medical are not available in ap-northeast-1 (Tokyo). Phase 2 UCs (UC7, UC10, UC12, UC13, UC14) use Cross_Region_Client to route API calls to us-east-1. Rekognition, Comprehend, Bedrock, and Athena are available in ap-northeast-1.
 > 
-> Reference: [Textract Supported Regions](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical Supported Regions](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
+> Reference: [Textract Supported Regions](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical Supported Regions](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html) | [Cross-Region Setup Guide](docs/cross-region-guide.md)
 
 ### Screenshots
 
@@ -124,7 +140,25 @@ EventBridge Scheduler (Periodic Execution)
 
 > UC1 and UC3 have undergone complete E2E verification, while UC2, UC4, and UC5 have undergone CloudFormation deployment and operational verification of key components. When using AI/ML services with region constraints (Textract, Comprehend Medical), cross-region invocation to supported regions is required, so please verify data residency and compliance requirements.
 
-#### AI/ML Service Screens
+#### Phase 2: All 9 UCs CloudFormation Deployment & Step Functions Execution Success
+
+![CloudFormation Phase 2 Stacks](docs/screenshots/masked/cloudformation-phase2-stacks.png)
+
+> All 9 stacks (UC6–UC14) reached CREATE_COMPLETE / UPDATE_COMPLETE. Total 205 resources.
+
+![Step Functions Phase 2 Workflows](docs/screenshots/masked/step-functions-phase2-all-workflows.png)
+
+> All 9 workflows active. All SUCCEEDED confirmed after E2E execution with test data.
+
+![UC6 Execution Graph View](docs/screenshots/masked/step-functions-uc6-execution-graph.png)
+
+> UC6 (Semiconductor EDA) Step Functions execution detail. All states succeeded: Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration.
+
+![EventBridge Phase 2 Schedules](docs/screenshots/masked/eventbridge-phase2-schedules.png)
+
+> All 9 UC EventBridge Scheduler schedules (rate(1 hour)) are enabled.
+
+#### AI/ML Service Screens (Phase 1)
 
 ##### Amazon Bedrock — Model Catalog
 
@@ -137,6 +171,44 @@ EventBridge Scheduler (Periodic Execution)
 ##### Amazon Comprehend — Entity Detection
 
 ![Comprehend Console](docs/screenshots/masked/comprehend-console.png)
+
+#### AI/ML Service Screens (Phase 2)
+
+##### Amazon Bedrock — Model Catalog (UC6: Report Generation)
+
+![Bedrock Model Catalog Phase 2](docs/screenshots/masked/bedrock-model-catalog-phase2.png)
+
+> Used for DRC report generation with Nova Lite model in UC6 (Semiconductor EDA).
+
+##### Amazon Athena — Query Execution History (UC6: Metadata Aggregation)
+
+![Athena Query History Phase 2](docs/screenshots/masked/athena-query-history-phase2.png)
+
+> Athena queries (cell_count, bbox, naming, invalid) executed within UC6 Step Functions workflow.
+
+##### Amazon Rekognition — Label Detection (UC11: Product Image Tagging)
+
+![Rekognition Label Detection Phase 2](docs/screenshots/masked/rekognition-label-detection-phase2.png)
+
+> Detected 15 labels (Lighting 98.5%, Light 96.0%, Purple 92.0%, etc.) from product images in UC11 (Retail Catalog).
+
+##### Amazon Textract — Document OCR (UC12: Delivery Slip Reading)
+
+![Textract Document Analysis Phase 2](docs/screenshots/masked/textract-analyze-document-phase2.png)
+
+> Text extraction from delivery slip PDF in UC12 (Logistics OCR). Executed via Cross-Region (us-east-1).
+
+##### Amazon Comprehend Medical — Medical Entity Detection (UC7: Genomics Analysis)
+
+![Comprehend Medical Real-time Analysis Phase 2](docs/screenshots/masked/comprehend-medical-genomics-analysis-phase2.png)
+
+> Gene names (GC) extracted from VCF analysis results using DetectEntitiesV2 API in UC7 (Genomics Pipeline). Executed via Cross-Region (us-east-1).
+
+##### Lambda Functions (Phase 2)
+
+![Lambda Functions Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
+
+> All Phase 2 Lambda functions (Discovery, Processing, Report, etc.) successfully deployed.
 
 ## Technology Stack
 
@@ -301,13 +373,17 @@ aws cloudformation create-stack \
 | Item | Value |
 |------|-------|
 | AWS Region | ap-northeast-1 (Tokyo) |
+| Cross-Region | us-east-1 (Virginia) |
 | FSx ONTAP Version | ONTAP 9.17.1P4D3 |
 | FSx Configuration | SINGLE_AZ_1 |
 | Python | 3.12 |
 | Deployment Method | CloudFormation (using SAM Transform) |
 
-CloudFormation stack deployment and Discovery Lambda operational verification have been completed for all 5 use cases.
-See [Verification Results](docs/verification-results.md) for details.
+**Phase 1 (UC1–UC5)**: CloudFormation stack deployment and Discovery Lambda operational verification have been completed for all 5 use cases. UC1 and UC3 have undergone complete E2E verification.
+
+**Phase 2 (UC6–UC14)**: All 9 use cases deployed (205 resources total), Step Functions E2E execution (all 9 UCs SUCCEEDED), test data upload verification, and shared/ module AWS environment verification (8/8 PASSED) completed.
+
+See [Verification Results](docs/verification-results.md) (Phase 1) and [Phase 2 Verification Results](docs/verification-results-phase2.md) for details.
 
 ## Cost Structure Summary
 

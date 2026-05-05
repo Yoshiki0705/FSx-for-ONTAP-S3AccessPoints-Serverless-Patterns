@@ -169,6 +169,8 @@ Resources:
 
   # -----------------------------------------------------------------
   # S3 Gateway Endpoint (always created — free)
+  # IMPORTANT: RouteTableIds 必須。未指定の場合、VPC 内 Lambda から
+  # S3 / S3 AP へのアクセスがタイムアウトする。
   # -----------------------------------------------------------------
   S3GatewayEndpoint:
     Condition: CreateS3GatewayEndpoint
@@ -237,6 +239,18 @@ Resources:
         - !Ref VpcEndpointSecurityGroup
       PrivateDnsEnabled: true
 
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
   SnsEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Condition: CreateVpcEndpoints
@@ -248,7 +262,6 @@ Resources:
       SecurityGroupIds:
         - !Ref VpcEndpointSecurityGroup
       PrivateDnsEnabled: true
-
 
   # -----------------------------------------------------------------
   # CloudWatch Log Groups (14 day retention)
@@ -476,7 +489,6 @@ Resources:
                   - !GetAtt ReportGenerationLogGroup.Arn
                   - !Sub "${ReportGenerationLogGroup.Arn}:*"
 
-
   # -----------------------------------------------------------------
   # Lambda Functions (Python 3.12, 256MB, 300s timeout)
   # -----------------------------------------------------------------
@@ -589,7 +601,6 @@ Resources:
       Tags:
         - Key: UseCase
           Value: legal-compliance
-
 
   # -----------------------------------------------------------------
   # Glue Database + Table (conditional on CreateAthenaWorkgroup)

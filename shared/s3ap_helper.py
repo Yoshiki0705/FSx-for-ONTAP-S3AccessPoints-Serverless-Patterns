@@ -15,6 +15,7 @@ Key patterns:
 from __future__ import annotations
 
 import logging
+from typing import Iterator
 
 import boto3
 from botocore.exceptions import ClientError
@@ -329,4 +330,214 @@ class S3ApHelper:
                 f"Failed to delete object '{key}' from S3 Access Point "
                 f"'{self._access_point}': {e}",
                 error_code=error_code,
+            ) from e
+
+    # ------------------------------------------------------------------ #
+    # Phase 2: ストリーミングダウンロード / マルチパートアップロード
+    # ------------------------------------------------------------------ #
+
+    def streaming_download(
+        self,
+        key: str,
+        chunk_size: int = 8 * 1024 * 1024,
+    ) -> Iterator[bytes]:
+        """ストリーミングダウンロード（大規模ファイル対応）
+
+        メモリに全体をロードせず、チャンク単位で yield する。
+        TB/PB クラスのファイルでも Lambda メモリ制限内で処理可能。
+
+        Args:
+            key: オブジェクトキー
+            chunk_size: チャンクサイズ（デフォルト: 8 MB）
+
+        Yields:
+            bytes: ファイルデータのチャンク
+
+        Raises:
+            S3ApHelperError: S3 API 呼び出しに失敗した場合
+        """
+        try:
+            response = self._s3_client.get_object(
+                Bucket=self.bucket_param,
+                Key=key,
+            )
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            if error_code == "AccessDenied":
+                raise S3ApHelperError(
+                    f"Access denied when streaming object '{key}' from "
+                    f"S3 Access Point '{self._access_point}'. "
+                    f"Verify that the IAM role has s3:GetObject permission "
+                    f"on the Access Point. Original error: {e}",
+                    error_code=error_code,
+                ) from e
+            raise S3ApHelperError(
+                f"Failed to stream object '{key}' from S3 Access Point "
+                f"'{self._access_point}': {e}",
+                error_code=error_code,
+            ) from e
+
+        body = response["Body"]
+        try:
+            while True:
+                chunk = body.read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            body.close()
+
+    def streaming_download_range(
+        self,
+        key: str,
+        start: int,
+        end: int,
+    ) -> bytes:
+        """Range リクエストによる部分ダウンロード
+
+        SEG-Y ヘッダー（先頭 3600 バイト）等、ファイルの一部のみ取得する場合に使用。
+
+        Args:
+            key: オブジェクトキー
+            start: 開始バイト位置
+            end: 終了バイト位置
+
+        Returns:
+            bytes: 指定範囲のデータ
+
+        Raises:
+            S3ApHelperError: S3 API 呼び出しに失敗した場合
+        """
+        try:
+            response = self._s3_client.get_object(
+                Bucket=self.bucket_param,
+                Key=key,
+                Range=f"bytes={start}-{end}",
+            )
+            return response["Body"].read()
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            if error_code == "AccessDenied":
+                raise S3ApHelperError(
+                    f"Access denied when downloading range of object '{key}' "
+                    f"from S3 Access Point '{self._access_point}'. "
+                    f"Verify that the IAM role has s3:GetObject permission "
+                    f"on the Access Point. Original error: {e}",
+                    error_code=error_code,
+                ) from e
+            raise S3ApHelperError(
+                f"Failed to download range of object '{key}' from "
+                f"S3 Access Point '{self._access_point}': {e}",
+                error_code=error_code,
+            ) from e
+
+    def multipart_upload(
+        self,
+        key: str,
+        data_iterator: Iterator[bytes],
+        content_type: str = "application/octet-stream",
+        part_size: int = 100 * 1024 * 1024,
+    ) -> dict:
+        """マルチパートアップロード（100 MB 超ファイル対応）
+
+        CreateMultipartUpload, UploadPart, CompleteMultipartUpload を使用する。
+        失敗時は AbortMultipartUpload で確実にクリーンアップする。
+
+        Args:
+            key: 出力先オブジェクトキー
+            data_iterator: データチャンクの Iterator
+            content_type: Content-Type (デフォルト: "application/octet-stream")
+            part_size: パートサイズ（デフォルト: 100 MB）
+
+        Returns:
+            dict: CompleteMultipartUpload レスポンス
+
+        Raises:
+            S3ApHelperError: マルチパートアップロードに失敗した場合
+        """
+        try:
+            create_resp = self._s3_client.create_multipart_upload(
+                Bucket=self.bucket_param,
+                Key=key,
+                ContentType=content_type,
+            )
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            raise S3ApHelperError(
+                f"Failed to create multipart upload for key '{key}' on "
+                f"S3 Access Point '{self._access_point}': {e}",
+                error_code=error_code,
+            ) from e
+
+        upload_id = create_resp["UploadId"]
+        parts: list[dict] = []
+        part_number = 1
+        buffer = b""
+
+        try:
+            for chunk in data_iterator:
+                buffer += chunk
+                while len(buffer) >= part_size:
+                    part_data = buffer[:part_size]
+                    buffer = buffer[part_size:]
+
+                    upload_resp = self._s3_client.upload_part(
+                        Bucket=self.bucket_param,
+                        Key=key,
+                        UploadId=upload_id,
+                        PartNumber=part_number,
+                        Body=part_data,
+                    )
+                    parts.append({
+                        "PartNumber": part_number,
+                        "ETag": upload_resp["ETag"],
+                    })
+                    part_number += 1
+
+            # 残りのバッファをアップロード
+            if buffer:
+                upload_resp = self._s3_client.upload_part(
+                    Bucket=self.bucket_param,
+                    Key=key,
+                    UploadId=upload_id,
+                    PartNumber=part_number,
+                    Body=buffer,
+                )
+                parts.append({
+                    "PartNumber": part_number,
+                    "ETag": upload_resp["ETag"],
+                })
+
+            # CompleteMultipartUpload
+            return self._s3_client.complete_multipart_upload(
+                Bucket=self.bucket_param,
+                Key=key,
+                UploadId=upload_id,
+                MultipartUpload={"Parts": parts},
+            )
+
+        except Exception as e:
+            # 失敗時は AbortMultipartUpload で確実にクリーンアップ
+            logger.error(
+                "Multipart upload failed for key '%s', aborting upload_id '%s': %s",
+                key,
+                upload_id,
+                str(e),
+            )
+            try:
+                self._s3_client.abort_multipart_upload(
+                    Bucket=self.bucket_param,
+                    Key=key,
+                    UploadId=upload_id,
+                )
+            except ClientError as abort_err:
+                logger.warning(
+                    "Failed to abort multipart upload '%s' for key '%s': %s",
+                    upload_id,
+                    key,
+                    str(abort_err),
+                )
+            raise S3ApHelperError(
+                f"Multipart upload failed for key '{key}': {e}",
+                error_code="MultipartUploadFailed",
             ) from e

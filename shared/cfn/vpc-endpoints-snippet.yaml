@@ -1,0 +1,86 @@
+# =============================================================================
+# VPC Endpoints スニペット — AWS 検証で確認済みの必須 Endpoints
+# =============================================================================
+# Discovery Lambda が VPC 内から AWS サービスにアクセスするために必要な
+# VPC Endpoints の定義。各 UC テンプレートの Resources セクションに含める。
+#
+# 必須 Endpoints:
+#   1. Secrets Manager (Interface) — ONTAP 認証情報取得
+#   2. FSx (Interface) — ファイルシステム/ボリューム情報取得
+#   3. CloudWatch Monitoring (Interface) — メトリクス送信
+#   4. CloudWatch Logs (Interface) — Lambda ログ書き込み
+#   5. S3 (Gateway) — S3 Access Point 経由のファイルアクセス
+#
+# 前提条件:
+#   - Condition: CreateVpcEndpoints が定義済み
+#   - Parameter: VpcId, PrivateSubnetIds が定義済み
+#   - Resource: VpcEndpointSecurityGroup が定義済み
+#
+# コスト:
+#   - Interface Endpoints: 各 ~$7.20/月 × 4 = ~$28.80/月
+#   - S3 Gateway Endpoint: 無料
+#   - 同一 VPC 内の複数 UC で共有可能（2 番目以降は EnableVpcEndpoints=false）
+# =============================================================================
+
+  # --- Interface VPC Endpoints ---
+
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.secretsmanager"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  FsxEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.fsx"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.monitoring"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  # --- Gateway VPC Endpoint (無料) ---
+  # 注意: S3 Gateway Endpoint はルートテーブルへの関連付けが必要
+  # PrivateRouteTableIds パラメータと CreateS3GatewayEndpoint Condition が必要
+
+  # S3GatewayEndpoint:
+  #   Type: AWS::EC2::VPCEndpoint
+  #   Condition: CreateS3GatewayEndpoint
+  #   Properties:
+  #     VpcId: !Ref VpcId
+  #     ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+  #     VpcEndpointType: Gateway
+  #     RouteTableIds: !Ref PrivateRouteTableIds

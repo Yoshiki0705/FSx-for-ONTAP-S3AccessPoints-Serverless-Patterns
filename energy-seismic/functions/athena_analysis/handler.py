@@ -1,0 +1,356 @@
+"""エネルギー / 石油・ガス Athena 分析 Lambda ハンドラ
+
+Athena SQL クエリを実行して坑井間・時系列の異常相関分析を行う。
+Glue Data Catalog テーブルを作成/更新し、異常検知結果を横断的に分析する。
+
+分析内容:
+    - 坑井間の異常パターン相関
+    - 時系列での異常頻度推移
+    - センサー別異常統計サマリー
+
+Environment Variables:
+    GLUE_DATABASE: Glue データベース名
+    GLUE_TABLE: Glue テーブル名
+    ATHENA_WORKGROUP: Athena ワークグループ名
+    OUTPUT_BUCKET: S3 出力バケット名
+    ANOMALY_THRESHOLD_STD: 異常検知閾値（参照用、デフォルト: 3.0）
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import time
+
+import boto3
+
+from shared.exceptions import lambda_error_handler
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_ANOMALY_THRESHOLD_STD = 3.0
+
+# Athena SQL クエリ定義
+QUERIES = {
+    "anomaly_by_well": """
+        SELECT file_key,
+               total_anomalies,
+               json_extract_scalar(anomalies, '$[0].sensor') AS primary_sensor,
+               threshold_std
+        FROM "{database}"."{table}"
+        WHERE total_anomalies > 0
+        ORDER BY total_anomalies DESC
+    """,
+    "anomaly_by_sensor": """
+        SELECT sensor,
+               COUNT(*) AS occurrence_count,
+               AVG(CAST(std_deviations AS DOUBLE)) AS avg_std_deviations,
+               MAX(CAST(std_deviations AS DOUBLE)) AS max_std_deviations
+        FROM "{database}"."{table}"
+        CROSS JOIN UNNEST(
+            CAST(json_parse(anomalies) AS ARRAY(MAP(VARCHAR, VARCHAR)))
+        ) AS t(anomaly)
+        WHERE json_array_length(anomalies) > 0
+        GROUP BY sensor
+        ORDER BY occurrence_count DESC
+    """,
+    "anomaly_summary": """
+        SELECT COUNT(*) AS total_wells,
+               SUM(total_anomalies) AS total_anomalies_all,
+               AVG(total_anomalies) AS avg_anomalies_per_well,
+               MAX(total_anomalies) AS max_anomalies_per_well,
+               COUNT(CASE WHEN total_anomalies > 0 THEN 1 END) AS wells_with_anomalies
+        FROM "{database}"."{table}"
+    """,
+}
+
+
+def _ensure_glue_table(
+    glue_client,
+    database: str,
+    table: str,
+    s3_location: str,
+) -> None:
+    """Glue Data Catalog テーブルを作成/更新する
+
+    異常検知結果 JSON を格納するテーブルを定義する。
+    テーブルが既に存在する場合はスキップする。
+
+    Args:
+        glue_client: boto3 Glue クライアント
+        database: Glue データベース名
+        table: Glue テーブル名
+        s3_location: テーブルデータの S3 ロケーション
+    """
+    try:
+        glue_client.get_table(DatabaseName=database, Name=table)
+        logger.info("Glue table %s.%s already exists", database, table)
+        return
+    except glue_client.exceptions.EntityNotFoundException:
+        pass
+
+    table_input = {
+        "Name": table,
+        "Description": "Energy seismic anomaly detection results from well log analysis",
+        "StorageDescriptor": {
+            "Columns": [
+                {"Name": "file_key", "Type": "string"},
+                {"Name": "file_size", "Type": "bigint"},
+                {"Name": "threshold_std", "Type": "double"},
+                {"Name": "curve_names", "Type": "array<string>"},
+                {"Name": "total_data_rows", "Type": "int"},
+                {"Name": "anomalies", "Type": "string"},
+                {"Name": "total_anomalies", "Type": "int"},
+                {"Name": "detected_at", "Type": "string"},
+                {"Name": "execution_id", "Type": "string"},
+            ],
+            "Location": s3_location,
+            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "SerdeInfo": {
+                "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe",
+            },
+        },
+        "TableType": "EXTERNAL_TABLE",
+    }
+
+    glue_client.create_table(
+        DatabaseName=database,
+        TableInput=table_input,
+    )
+    logger.info("Created Glue table %s.%s", database, table)
+
+
+def _execute_athena_query(
+    athena_client,
+    query: str,
+    database: str,
+    workgroup: str,
+    output_location: str,
+) -> dict:
+    """Athena クエリを実行し、結果を返す
+
+    Args:
+        athena_client: boto3 Athena クライアント
+        query: SQL クエリ文字列
+        database: Glue データベース名
+        workgroup: Athena ワークグループ名
+        output_location: クエリ結果の S3 出力先
+
+    Returns:
+        dict: クエリ結果 (status, rows, query_execution_id)
+    """
+    response = athena_client.start_query_execution(
+        QueryString=query,
+        QueryExecutionContext={"Database": database},
+        WorkGroup=workgroup,
+        ResultConfiguration={"OutputLocation": output_location},
+    )
+    query_execution_id = response["QueryExecutionId"]
+
+    # クエリ完了を待機（最大 5 分）
+    max_wait = 300
+    elapsed = 0
+    while elapsed < max_wait:
+        status = athena_client.get_query_execution(
+            QueryExecutionId=query_execution_id,
+        )
+        state = status["QueryExecution"]["Status"]["State"]
+        if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
+            break
+        time.sleep(2)
+        elapsed += 2
+
+    if state != "SUCCEEDED":
+        reason = status["QueryExecution"]["Status"].get(
+            "StateChangeReason", "Unknown"
+        )
+        logger.error("Athena query failed: %s - %s", state, reason)
+        return {
+            "status": state,
+            "reason": reason,
+            "rows": [],
+            "query_execution_id": query_execution_id,
+        }
+
+    # 結果取得
+    results = athena_client.get_query_results(
+        QueryExecutionId=query_execution_id,
+    )
+
+    rows = []
+    result_set = results.get("ResultSet", {})
+    column_info = result_set.get("ResultSetMetadata", {}).get(
+        "ColumnInfo", []
+    )
+    data_rows = result_set.get("Rows", [])
+
+    # 最初の行はヘッダー
+    for row in data_rows[1:]:
+        row_data = {}
+        for i, col in enumerate(column_info):
+            value = row["Data"][i].get("VarCharValue", "")
+            row_data[col["Name"]] = value
+        rows.append(row_data)
+
+    return {
+        "status": "SUCCEEDED",
+        "rows": rows,
+        "query_execution_id": query_execution_id,
+    }
+
+
+def _safe_float(value: str) -> float:
+    """文字列を安全に float に変換する"""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _safe_int(value: str) -> int:
+    """文字列を安全に int に変換する"""
+    try:
+        return int(float(value))
+    except (ValueError, TypeError):
+        return 0
+
+
+@lambda_error_handler
+def handler(event, context):
+    """エネルギー / 石油・ガス Athena 分析 Lambda
+
+    Athena SQL クエリを実行して坑井間・時系列の異常相関分析を行い、
+    センサー別異常統計サマリーを集計する。
+
+    Args:
+        event: 異常検知結果
+            {
+                "anomaly_results": [...],
+                "metadata_results": [...],
+                "metadata_prefix": "anomalies/"
+            }
+
+    Returns:
+        dict: status, anomaly_by_well, anomaly_by_sensor, anomaly_summary,
+              query_execution_id
+    """
+    database = os.environ["GLUE_DATABASE"]
+    table = os.environ["GLUE_TABLE"]
+    workgroup = os.environ["ATHENA_WORKGROUP"]
+    output_bucket = os.environ["OUTPUT_BUCKET"]
+
+    # Glue テーブルの S3 ロケーション
+    s3_location = f"s3://{output_bucket}/anomalies/"
+    # Athena クエリ結果の出力先
+    output_location = f"s3://{output_bucket}/athena-results/"
+
+    logger.info(
+        "Athena Analysis started: database=%s, table=%s",
+        database,
+        table,
+    )
+
+    # Glue テーブル作成/更新
+    glue_client = boto3.client("glue")
+    _ensure_glue_table(glue_client, database, table, s3_location)
+
+    # Athena クエリ実行
+    athena_client = boto3.client("athena")
+    analysis_results = {
+        "anomaly_by_well": [],
+        "anomaly_by_sensor": [],
+        "anomaly_summary": {},
+    }
+    last_query_execution_id = ""
+
+    for query_name, query_template in QUERIES.items():
+        query = query_template.format(
+            database=database,
+            table=table,
+        )
+        logger.info("Executing Athena query: %s", query_name)
+
+        result = _execute_athena_query(
+            athena_client=athena_client,
+            query=query,
+            database=database,
+            workgroup=workgroup,
+            output_location=output_location,
+        )
+        last_query_execution_id = result.get(
+            "query_execution_id", last_query_execution_id
+        )
+
+        if result["status"] != "SUCCEEDED":
+            logger.warning(
+                "Query %s failed: %s",
+                query_name,
+                result.get("reason", "Unknown"),
+            )
+            continue
+
+        rows = result.get("rows", [])
+
+        if query_name == "anomaly_by_well":
+            analysis_results["anomaly_by_well"] = [
+                {
+                    "file_key": row.get("file_key", ""),
+                    "total_anomalies": _safe_int(row.get("total_anomalies", "0")),
+                    "primary_sensor": row.get("primary_sensor", ""),
+                    "threshold_std": _safe_float(row.get("threshold_std", "3.0")),
+                }
+                for row in rows
+            ]
+
+        elif query_name == "anomaly_by_sensor":
+            analysis_results["anomaly_by_sensor"] = [
+                {
+                    "sensor": row.get("sensor", ""),
+                    "occurrence_count": _safe_int(row.get("occurrence_count", "0")),
+                    "avg_std_deviations": round(
+                        _safe_float(row.get("avg_std_deviations", "0")), 2
+                    ),
+                    "max_std_deviations": round(
+                        _safe_float(row.get("max_std_deviations", "0")), 2
+                    ),
+                }
+                for row in rows
+            ]
+
+        elif query_name == "anomaly_summary" and rows:
+            row = rows[0]
+            analysis_results["anomaly_summary"] = {
+                "total_wells": _safe_int(row.get("total_wells", "0")),
+                "total_anomalies_all": _safe_int(
+                    row.get("total_anomalies_all", "0")
+                ),
+                "avg_anomalies_per_well": round(
+                    _safe_float(row.get("avg_anomalies_per_well", "0")), 1
+                ),
+                "max_anomalies_per_well": _safe_int(
+                    row.get("max_anomalies_per_well", "0")
+                ),
+                "wells_with_anomalies": _safe_int(
+                    row.get("wells_with_anomalies", "0")
+                ),
+            }
+
+        logger.info(
+            "Query %s completed: %d rows", query_name, len(rows)
+        )
+
+    logger.info(
+        "Athena Analysis completed: wells_with_anomalies=%d, total_anomalies=%d",
+        analysis_results["anomaly_summary"].get("wells_with_anomalies", 0),
+        analysis_results["anomaly_summary"].get("total_anomalies_all", 0),
+    )
+
+    return {
+        "status": "SUCCESS",
+        "anomaly_by_well": analysis_results["anomaly_by_well"],
+        "anomaly_by_sensor": analysis_results["anomaly_by_sensor"],
+        "anomaly_summary": analysis_results["anomaly_summary"],
+        "query_execution_id": last_query_execution_id,
+    }

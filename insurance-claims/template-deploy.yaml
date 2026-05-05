@@ -1,0 +1,593 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  UC14: 保険 / 損害査定（事故写真損害評価・保険金請求レポート）
+  FSx for NetApp ONTAP S3 Access Points を活用した事故写真の損害評価、
+  見積書 OCR（Cross-Region Textract）、保険金請求レポート生成のサーバーレスワークフロー。
+  PII データのログ除外対応。
+
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+  OntapSecretName:
+    Type: String
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+  SvmUuid:
+    Type: String
+    Description: ONTAP SVM UUID
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Discovery Lambda を配置する VPC ID
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Discovery Lambda を配置するプライベートサブネット ID リスト
+  OutputBucketName:
+    Type: String
+    Default: ""
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+  CrossRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: Textract クロスリージョンターゲット
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 40
+  LambdaMemorySize:
+    Type: Number
+    Default: 256
+    MinValue: 128
+    MaxValue: 10240
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 900
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: プライベートサブネットのルートテーブル ID リスト（S3 Gateway Endpoint 用。空の場合は S3 Gateway Endpoint を作成しない）
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-lite-v1:0"
+
+Conditions:
+  CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  CreateVpcEndpoints: !Equals [!Ref EnableVpcEndpoints, "true"]
+  CreateS3GatewayEndpoint:
+    !And
+      - !Condition CreateVpcEndpoints
+      - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
+  UseAutoOutputBucket: !Equals [!Ref OutputBucketName, ""]
+
+Resources:
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - UseAutoOutputBucket
+        - !Sub "${AWS::StackName}-output-${AWS::AccountId}"
+        - !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: insurance-claims
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Discovery Lambda security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateVpcEndpoints
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - VPC Endpoints security group"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.secretsmanager"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds: [!Ref VpcEndpointSecurityGroup]
+      PrivateDnsEnabled: true
+
+  CloudWatchEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.monitoring"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateS3GatewayEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref PrivateRouteTableIds
+
+  # Log Groups — PII ログ除外設定
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: 14
+  DamageAssessmentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-damage-assessment"
+      RetentionInDays: 14
+  EstimateOcrLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-estimate-ocr"
+      RetentionInDays: 14
+  ClaimsReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-claims-report"
+      RetentionInDays: 14
+
+  # IAM Roles
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:ListBucket, s3:GetObject, s3:GetBucketLocation]
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Effect: Allow
+                Action: [secretsmanager:GetSecretValue]
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt DiscoveryLogGroup.Arn, !Sub "${DiscoveryLogGroup.Arn}:*"]
+
+  DamageAssessmentLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-damage-assessment-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DamageAssessmentPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject]
+                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Effect: Allow
+                Action: [rekognition:DetectLabels]
+                Resource: "*"
+              - Effect: Allow
+                Action: [bedrock:InvokeModel]
+                Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "${OutputBucket.Arn}/*"
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt DamageAssessmentLogGroup.Arn, !Sub "${DamageAssessmentLogGroup.Arn}:*"]
+
+  EstimateOcrLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-estimate-ocr-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: EstimateOcrPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject]
+                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Effect: Allow
+                Action: [textract:AnalyzeDocument]
+                Resource: "*"
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "${OutputBucket.Arn}/*"
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt EstimateOcrLogGroup.Arn, !Sub "${EstimateOcrLogGroup.Arn}:*"]
+
+  ClaimsReportLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-claims-report-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ClaimsReportPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [bedrock:InvokeModel]
+                Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "${OutputBucket.Arn}/*"
+              - Effect: Allow
+                Action: [sns:Publish]
+                Resource: !Ref NotificationTopic
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt ClaimsReportLogGroup.Arn, !Sub "${ClaimsReportLogGroup.Arn}:*"]
+
+  # Lambda Functions
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/insurance-claims-discovery.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: [!Ref LambdaSecurityGroup]
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          SUFFIX_FILTER: ".jpg,.jpeg,.png,.pdf,.tiff"
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          SVM_UUID: !Ref SvmUuid
+          VERIFY_SSL: "false"
+          LOG_PII_DATA: "false"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+
+  DamageAssessmentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-damage-assessment"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/insurance-claims-damage_assessment.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DamageAssessmentLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          LOG_PII_DATA: "false"
+      LoggingConfig:
+        LogGroup: !Ref DamageAssessmentLogGroup
+
+  EstimateOcrFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-estimate-ocr"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/insurance-claims-estimate_ocr.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt EstimateOcrLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+          CROSS_REGION: !Ref CrossRegion
+          LOG_PII_DATA: "false"
+      LoggingConfig:
+        LogGroup: !Ref EstimateOcrLogGroup
+
+  ClaimsReportFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-claims-report"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/insurance-claims-claims_report.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ClaimsReportLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+          LOG_PII_DATA: "false"
+      LoggingConfig:
+        LogGroup: !Ref ClaimsReportLogGroup
+
+  # Step Functions
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [lambda:InvokeFunction]
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt DamageAssessmentFunction.Arn
+                  - !GetAtt EstimateOcrFunction.Arn
+                  - !GetAtt ClaimsReportFunction.Arn
+
+  InsuranceClaimsStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "Insurance Claims - Damage Assessment & Claims Report Workflow",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "ParallelProcessing",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            },
+            "ParallelProcessing": {
+              "Type": "Parallel",
+              "ResultPath": "$.parallel_results",
+              "Next": "GenerateClaimsReport",
+              "Branches": [
+                {
+                  "StartAt": "DamageAssessmentMap",
+                  "States": {
+                    "DamageAssessmentMap": {
+                      "Type": "Map",
+                      "ItemsPath": "$.discovery.photo_objects",
+                      "MaxConcurrency": ${MapConcurrency},
+                      "End": true,
+                      "ItemProcessor": {
+                        "ProcessorConfig": {"Mode": "INLINE"},
+                        "StartAt": "AssessDamage",
+                        "States": {
+                          "AssessDamage": {
+                            "Type": "Task",
+                            "Resource": "${DamageAssessmentFunction.Arn}",
+                            "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                            "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkDamageFailed"}],
+                            "End": true
+                          },
+                          "MarkDamageFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "StartAt": "EstimateOcrMap",
+                  "States": {
+                    "EstimateOcrMap": {
+                      "Type": "Map",
+                      "ItemsPath": "$.discovery.estimate_objects",
+                      "MaxConcurrency": ${MapConcurrency},
+                      "End": true,
+                      "ItemProcessor": {
+                        "ProcessorConfig": {"Mode": "INLINE"},
+                        "StartAt": "ExtractEstimate",
+                        "States": {
+                          "ExtractEstimate": {
+                            "Type": "Task",
+                            "Resource": "${EstimateOcrFunction.Arn}",
+                            "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                            "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkEstimateFailed"}],
+                            "End": true
+                          },
+                          "MarkEstimateFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "GenerateClaimsReport": {
+              "Type": "Task",
+              "Resource": "${ClaimsReportFunction.Arn}",
+              "End": true,
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            }
+          }
+        }
+
+  # EventBridge Scheduler
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [states:StartExecution]
+                Resource: !Ref InsuranceClaimsStateMachine
+
+  InsuranceClaimsSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref InsuranceClaimsStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # CloudWatch Alarms (conditional)
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref InsuranceClaimsStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref NotificationTopic]

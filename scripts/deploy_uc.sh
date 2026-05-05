@@ -35,11 +35,22 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # UC ディレクトリとスタック名のマッピング
 case "$UC_NAME" in
+  # Phase 1 UCs
   legal-compliance)    STACK_NAME="${STACK_PREFIX}-legal-compliance" ;;
   financial-idp)       STACK_NAME="${STACK_PREFIX}-financial-idp" ;;
   manufacturing-analytics) STACK_NAME="${STACK_PREFIX}-manufacturing" ;;
   media-vfx)           STACK_NAME="${STACK_PREFIX}-media-vfx" ;;
   healthcare-dicom)    STACK_NAME="${STACK_PREFIX}-healthcare-dicom" ;;
+  # Phase 2 UCs
+  semiconductor-eda)   STACK_NAME="${STACK_PREFIX}-semiconductor-eda" ;;
+  genomics-pipeline)   STACK_NAME="${STACK_PREFIX}-genomics-pipeline" ;;
+  energy-seismic)      STACK_NAME="${STACK_PREFIX}-energy-seismic" ;;
+  autonomous-driving)  STACK_NAME="${STACK_PREFIX}-autonomous-driving" ;;
+  construction-bim)    STACK_NAME="${STACK_PREFIX}-construction-bim" ;;
+  retail-catalog)      STACK_NAME="${STACK_PREFIX}-retail-catalog" ;;
+  logistics-ocr)       STACK_NAME="${STACK_PREFIX}-logistics-ocr" ;;
+  education-research)  STACK_NAME="${STACK_PREFIX}-education-research" ;;
+  insurance-claims)    STACK_NAME="${STACK_PREFIX}-insurance-claims" ;;
   *) echo "Unknown UC: $UC_NAME"; exit 1 ;;
 esac
 
@@ -61,12 +72,11 @@ package_lambda() {
 
   # shared モジュールをコピー
   mkdir -p "${tmp_dir}/shared"
-  cp "${SHARED_DIR}/__init__.py" "${tmp_dir}/shared/"
-  cp "${SHARED_DIR}/ontap_client.py" "${tmp_dir}/shared/"
-  cp "${SHARED_DIR}/fsx_helper.py" "${tmp_dir}/shared/"
-  cp "${SHARED_DIR}/s3ap_helper.py" "${tmp_dir}/shared/"
-  cp "${SHARED_DIR}/exceptions.py" "${tmp_dir}/shared/"
-  cp "${SHARED_DIR}/discovery_handler.py" "${tmp_dir}/shared/"
+  for f in __init__.py ontap_client.py fsx_helper.py s3ap_helper.py exceptions.py discovery_handler.py cross_region_client.py; do
+    if [ -f "${SHARED_DIR}/${f}" ]; then
+      cp "${SHARED_DIR}/${f}" "${tmp_dir}/shared/"
+    fi
+  done
 
   # ZIP 作成
   (cd "${tmp_dir}" && zip -r "${PROJECT_ROOT}/${zip_name}" . -x "__pycache__/*" "*.pyc")

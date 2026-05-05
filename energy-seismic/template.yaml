@@ -1,0 +1,1166 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  UC8: エネルギー / 石油・ガス（地震探査データ処理）
+  FSx for NetApp ONTAP S3 Access Points を活用した SEG-Y 地震探査データの
+  メタデータ抽出、坑井ログ異常検知、Athena 相関分析、Bedrock コンプライアンスレポート生成のサーバーレスワークフロー。
+
+# =====================================================================
+# Parameters — Phase 1 共通 + Phase 2 拡張 + UC8 固有
+# =====================================================================
+Parameters:
+  # --- Phase 1 共通パラメータ ---
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias (入力読み取り用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  OntapSecretName:
+    Type: String
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
+
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  SvmUuid:
+    Type: String
+    Description: ONTAP SVM UUID
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge Scheduler のスケジュール式
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Discovery Lambda と VPC Endpoints を配置する VPC ID
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Discovery Lambda を配置するプライベートサブネット ID リスト
+
+  OutputBucketName:
+    Type: String
+    Default: ""
+    Description: S3 出力バケット名（空の場合は自動生成）
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+
+  # --- Phase 2 拡張パラメータ ---
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 40
+    Description: Step Functions Map ステートの最大同時実行数
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 256
+    MinValue: 128
+    MaxValue: 10240
+    Description: Lambda 関数のメモリサイズ (MB)
+
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 900
+    Description: Lambda 関数のタイムアウト (秒)
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms を有効化する
+
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Interface VPC Endpoints を有効化する（月額 ~$28.80）
+
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: プライベートサブネットのルートテーブル ID リスト（S3 Gateway Endpoint 用。空の場合は S3 Gateway Endpoint を作成しない）
+
+  # --- UC8 固有パラメータ ---
+  GlueDatabaseName:
+    Type: String
+    Default: ""
+    Description: Glue Data Catalog データベース名（空の場合はスタック名ベースで自動生成）
+
+  GlueTableName:
+    Type: String
+    Default: ""
+    Description: Glue Data Catalog テーブル名（空の場合はスタック名ベースで自動生成）
+
+  AthenaWorkgroupName:
+    Type: String
+    Default: ""
+    Description: Athena ワークグループ名（空の場合はスタック名ベースで自動生成）
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-lite-v1:0"
+    Description: Bedrock モデル ID（レポート生成用）
+
+  AnomalyThresholdStd:
+    Type: Number
+    Default: 3.0
+    MinValue: 1.0
+    MaxValue: 10.0
+    Description: 異常検知閾値（標準偏差の倍数）
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  CreateVpcEndpoints:
+    !Equals [!Ref EnableVpcEndpoints, "true"]
+  CreateS3GatewayEndpoint:
+    !And
+      - !Condition CreateVpcEndpoints
+      - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
+  UseAutoOutputBucket:
+    !Equals [!Ref OutputBucketName, ""]
+  UseAutoGlueDatabase:
+    !Equals [!Ref GlueDatabaseName, ""]
+  UseAutoGlueTable:
+    !Equals [!Ref GlueTableName, ""]
+  UseAutoAthenaWorkgroup:
+    !Equals [!Ref AthenaWorkgroupName, ""]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # S3 Output Bucket (SSE-KMS)
+  # メタデータ JSON、異常検知結果、Athena クエリ結果、レポートの出力先。
+  # -----------------------------------------------------------------
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - UseAutoOutputBucket
+        - !Sub "${AWS::StackName}-output-${AWS::AccountId}"
+        - !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: energy-seismic
+
+  # -----------------------------------------------------------------
+  # SNS Topic + Email Subscription
+  # -----------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -----------------------------------------------------------------
+  # Lambda Security Group (Discovery Lambda 用 — VPC 内)
+  # -----------------------------------------------------------------
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Discovery Lambda security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  # -----------------------------------------------------------------
+  # VPC Endpoint Security Group (conditional)
+  # -----------------------------------------------------------------
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateVpcEndpoints
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - VPC Endpoints security group"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: Allow HTTPS from Lambda
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpce-sg"
+
+  # -----------------------------------------------------------------
+  # Interface VPC Endpoints (conditional)
+  # -----------------------------------------------------------------
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.secretsmanager"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  FsxEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.fsx"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.monitoring"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateS3GatewayEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref PrivateRouteTableIds
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups (14 day retention)
+  # -----------------------------------------------------------------
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: 14
+
+  SeismicMetadataLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-seismic-metadata"
+      RetentionInDays: 14
+
+  AnomalyDetectionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-anomaly-detection"
+      RetentionInDays: 14
+
+  AthenaAnalysisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-athena-analysis"
+      RetentionInDays: 14
+
+  ComplianceReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-compliance-report"
+      RetentionInDays: 14
+
+  # -----------------------------------------------------------------
+  # IAM Roles — least-privilege per Lambda
+  # -----------------------------------------------------------------
+
+  # Discovery Lambda: VPC 内、S3 AP 読み取り + ONTAP API アクセス
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointWrite
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: SecretsManager
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+              - Sid: FsxDescribe
+                Effect: Allow
+                Action:
+                  - fsx:DescribeFileSystems
+                  - fsx:DescribeVolumes
+                  - fsx:DescribeStorageVirtualMachines
+                Resource: "*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt DiscoveryLogGroup.Arn
+                  - !Sub "${DiscoveryLogGroup.Arn}:*"
+
+  # SeismicMetadata Lambda: VPC 外、S3 AP 読み取り (Range) + S3 出力バケット書き込み
+  SeismicMetadataLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-seismic-metadata-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SeismicMetadataPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3OutputBucketWrite
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt SeismicMetadataLogGroup.Arn
+                  - !Sub "${SeismicMetadataLogGroup.Arn}:*"
+
+  # AnomalyDetection Lambda: VPC 外、S3 AP 読み取り + S3 出力バケット書き込み
+  AnomalyDetectionLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-anomaly-detection-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AnomalyDetectionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3OutputBucketWrite
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt AnomalyDetectionLogGroup.Arn
+                  - !Sub "${AnomalyDetectionLogGroup.Arn}:*"
+
+  # AthenaAnalysis Lambda: VPC 外、Glue + Athena + S3 出力バケット
+  AthenaAnalysisLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-athena-analysis-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AthenaAnalysisPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Glue
+                Effect: Allow
+                Action:
+                  - glue:GetTable
+                  - glue:CreateTable
+                  - glue:UpdateTable
+                  - glue:GetDatabase
+                Resource:
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:catalog"
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:database/*"
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/*/*"
+              - Sid: Athena
+                Effect: Allow
+                Action:
+                  - athena:StartQueryExecution
+                  - athena:GetQueryExecution
+                  - athena:GetQueryResults
+                  - athena:StopQueryExecution
+                Resource:
+                  - !Sub "arn:aws:athena:${AWS::Region}:${AWS::AccountId}:workgroup/*"
+              - Sid: S3OutputBucket
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt OutputBucket.Arn
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt AthenaAnalysisLogGroup.Arn
+                  - !Sub "${AthenaAnalysisLogGroup.Arn}:*"
+
+  # ComplianceReport Lambda: VPC 外、Bedrock + Rekognition + S3 AP 読み取り + S3 出力バケット + SNS
+  ComplianceReportLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-compliance-report-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ComplianceReportPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: Rekognition
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: "*"
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3OutputBucketWrite
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: SNSPublish
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ComplianceReportLogGroup.Arn
+                  - !Sub "${ComplianceReportLogGroup.Arn}:*"
+
+  # -----------------------------------------------------------------
+  # Lambda Functions
+  # Discovery: VPC 内 (ONTAP API アクセスが必要)
+  # SeismicMetadata / AnomalyDetection / AthenaAnalysis / ComplianceReport: VPC 外
+  # -----------------------------------------------------------------
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.12
+      Handler: energy-seismic/functions/discovery/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          PREFIX_FILTER: ""
+          SUFFIX_FILTER: ".segy,.sgy,.las,.csv"
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          SVM_UUID: !Ref SvmUuid
+          VERIFY_SSL: "false"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+      Tags:
+        - Key: UseCase
+          Value: energy-seismic
+
+  SeismicMetadataFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-seismic-metadata"
+      Runtime: python3.12
+      Handler: energy-seismic/functions/seismic_metadata/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt SeismicMetadataLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+      LoggingConfig:
+        LogGroup: !Ref SeismicMetadataLogGroup
+      Tags:
+        - Key: UseCase
+          Value: energy-seismic
+
+  AnomalyDetectionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-anomaly-detection"
+      Runtime: python3.12
+      Handler: energy-seismic/functions/anomaly_detection/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt AnomalyDetectionLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+          ANOMALY_THRESHOLD_STD: !Ref AnomalyThresholdStd
+      LoggingConfig:
+        LogGroup: !Ref AnomalyDetectionLogGroup
+      Tags:
+        - Key: UseCase
+          Value: energy-seismic
+
+  AthenaAnalysisFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-athena-analysis"
+      Runtime: python3.12
+      Handler: energy-seismic/functions/athena_analysis/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt AthenaAnalysisLambdaRole.Arn
+      Environment:
+        Variables:
+          GLUE_DATABASE: !If
+            - UseAutoGlueDatabase
+            - !Sub "${AWS::StackName}-db"
+            - !Ref GlueDatabaseName
+          GLUE_TABLE: !If
+            - UseAutoGlueTable
+            - !Sub "${AWS::StackName}-seismic-metadata"
+            - !Ref GlueTableName
+          ATHENA_WORKGROUP: !If
+            - UseAutoAthenaWorkgroup
+            - !Sub "${AWS::StackName}-workgroup"
+            - !Ref AthenaWorkgroupName
+          OUTPUT_BUCKET: !Ref OutputBucket
+          ANOMALY_THRESHOLD_STD: !Ref AnomalyThresholdStd
+      LoggingConfig:
+        LogGroup: !Ref AthenaAnalysisLogGroup
+      Tags:
+        - Key: UseCase
+          Value: energy-seismic
+
+  ComplianceReportFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-compliance-report"
+      Runtime: python3.12
+      Handler: energy-seismic/functions/compliance_report/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ComplianceReportLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+      LoggingConfig:
+        LogGroup: !Ref ComplianceReportLogGroup
+      Tags:
+        - Key: UseCase
+          Value: energy-seismic
+
+  # -----------------------------------------------------------------
+  # Glue Database + Table
+  # 地震探査メタデータ JSON のスキーマに対応する外部テーブル
+  # -----------------------------------------------------------------
+  GlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !If
+          - UseAutoGlueDatabase
+          - !Sub "${AWS::StackName}-db"
+          - !Ref GlueDatabaseName
+        Description: Energy seismic survey metadata and anomaly detection catalog
+
+  GlueTable:
+    Type: AWS::Glue::Table
+    DependsOn: GlueDatabase
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !If
+        - UseAutoGlueDatabase
+        - !Sub "${AWS::StackName}-db"
+        - !Ref GlueDatabaseName
+      TableInput:
+        Name: !If
+          - UseAutoGlueTable
+          - !Sub "${AWS::StackName}-seismic-metadata"
+          - !Ref GlueTableName
+        TableType: EXTERNAL_TABLE
+        StorageDescriptor:
+          Columns:
+            - Name: file_key
+              Type: string
+            - Name: survey_name
+              Type: string
+            - Name: coordinate_system
+              Type: string
+            - Name: sample_interval
+              Type: int
+            - Name: trace_count
+              Type: int
+            - Name: data_format_code
+              Type: int
+            - Name: measurement_system
+              Type: string
+            - Name: extracted_at
+              Type: string
+          Location: !Sub "s3://${OutputBucket}/metadata/"
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+
+  # -----------------------------------------------------------------
+  # Athena Workgroup
+  # -----------------------------------------------------------------
+  AthenaWorkgroup:
+    Type: AWS::Athena::WorkGroup
+    Properties:
+      Name: !If
+        - UseAutoAthenaWorkgroup
+        - !Sub "${AWS::StackName}-workgroup"
+        - !Ref AthenaWorkgroupName
+      State: ENABLED
+      WorkGroupConfiguration:
+        ResultConfiguration:
+          OutputLocation: !Sub "s3://${OutputBucket}/athena-results/"
+        EnforceWorkGroupConfiguration: true
+        PublishCloudWatchMetricsEnabled: true
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # Discovery → Parallel(SeismicMetadata Map, AnomalyDetection Map) → AthenaAnalysis → ComplianceReport
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt SeismicMetadataFunction.Arn
+                  - !GetAtt AnomalyDetectionFunction.Arn
+                  - !GetAtt AthenaAnalysisFunction.Arn
+                  - !GetAtt ComplianceReportFunction.Arn
+
+  SeismicStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "Energy Seismic - Survey Data Processing Workflow",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "ParallelProcessing",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "ParallelProcessing": {
+              "Type": "Parallel",
+              "ResultPath": "$.parallel_results",
+              "Next": "AthenaAnalysis",
+              "Branches": [
+                {
+                  "StartAt": "ProcessSeismicFiles",
+                  "States": {
+                    "ProcessSeismicFiles": {
+                      "Type": "Map",
+                      "ItemsPath": "$.discovery.seismic_files",
+                      "MaxConcurrency": ${MapConcurrency},
+                      "ResultPath": "$.seismic_results",
+                      "ItemProcessor": {
+                        "ProcessorConfig": {
+                          "Mode": "INLINE"
+                        },
+                        "StartAt": "ExtractSeismicMetadata",
+                        "States": {
+                          "ExtractSeismicMetadata": {
+                            "Type": "Task",
+                            "Resource": "${SeismicMetadataFunction.Arn}",
+                            "Retry": [
+                              {
+                                "ErrorEquals": ["States.TaskFailed"],
+                                "IntervalSeconds": 10,
+                                "MaxAttempts": 3,
+                                "BackoffRate": 2.0
+                              }
+                            ],
+                            "Catch": [
+                              {
+                                "ErrorEquals": ["States.ALL"],
+                                "ResultPath": "$.error",
+                                "Next": "MarkSeismicFailed"
+                              }
+                            ],
+                            "End": true
+                          },
+                          "MarkSeismicFailed": {
+                            "Type": "Pass",
+                            "Result": {"status": "FAILED"},
+                            "End": true
+                          }
+                        }
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                {
+                  "StartAt": "ProcessWellLogs",
+                  "States": {
+                    "ProcessWellLogs": {
+                      "Type": "Map",
+                      "ItemsPath": "$.discovery.well_log_files",
+                      "MaxConcurrency": ${MapConcurrency},
+                      "ResultPath": "$.anomaly_results",
+                      "ItemProcessor": {
+                        "ProcessorConfig": {
+                          "Mode": "INLINE"
+                        },
+                        "StartAt": "DetectAnomalies",
+                        "States": {
+                          "DetectAnomalies": {
+                            "Type": "Task",
+                            "Resource": "${AnomalyDetectionFunction.Arn}",
+                            "Retry": [
+                              {
+                                "ErrorEquals": ["States.TaskFailed"],
+                                "IntervalSeconds": 10,
+                                "MaxAttempts": 3,
+                                "BackoffRate": 2.0
+                              }
+                            ],
+                            "Catch": [
+                              {
+                                "ErrorEquals": ["States.ALL"],
+                                "ResultPath": "$.error",
+                                "Next": "MarkAnomalyFailed"
+                              }
+                            ],
+                            "End": true
+                          },
+                          "MarkAnomalyFailed": {
+                            "Type": "Pass",
+                            "Result": {"status": "FAILED"},
+                            "End": true
+                          }
+                        }
+                      },
+                      "End": true
+                    }
+                  }
+                }
+              ]
+            },
+            "AthenaAnalysis": {
+              "Type": "Task",
+              "Resource": "${AthenaAnalysisFunction.Arn}",
+              "ResultPath": "$.athena_results",
+              "Next": "ComplianceReport",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 10,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "ComplianceReport": {
+              "Type": "Task",
+              "Resource": "${ComplianceReportFunction.Arn}",
+              "ResultPath": "$.report",
+              "End": true,
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 10,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref SeismicStateMachine
+
+  SeismicSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref SeismicStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional on CreateCloudWatchAlarms)
+  # -----------------------------------------------------------------
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref SeismicStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  DiscoveryErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-discovery-errors"
+      AlarmDescription: Discovery Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref DiscoveryFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  SeismicMetadataErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-seismic-metadata-errors"
+      AlarmDescription: Seismic Metadata Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SeismicMetadataFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  AnomalyDetectionErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-anomaly-detection-errors"
+      AlarmDescription: Anomaly Detection Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AnomalyDetectionFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  AthenaAnalysisErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-athena-analysis-errors"
+      AlarmDescription: Athena Analysis Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AthenaAnalysisFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  ComplianceReportErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-compliance-report-errors"
+      AlarmDescription: Compliance Report Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ComplianceReportFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref SeismicStateMachine
+
+  OutputBucketName:
+    Description: S3 Output Bucket Name
+    Value: !Ref OutputBucket
+
+  NotificationTopicArn:
+    Description: SNS Notification Topic ARN
+    Value: !Ref NotificationTopic
+
+  DiscoveryFunctionArn:
+    Description: Discovery Lambda Function ARN
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  SeismicMetadataFunctionArn:
+    Description: Seismic Metadata Lambda Function ARN
+    Value: !GetAtt SeismicMetadataFunction.Arn
+
+  AnomalyDetectionFunctionArn:
+    Description: Anomaly Detection Lambda Function ARN
+    Value: !GetAtt AnomalyDetectionFunction.Arn
+
+  AthenaAnalysisFunctionArn:
+    Description: Athena Analysis Lambda Function ARN
+    Value: !GetAtt AthenaAnalysisFunction.Arn
+
+  ComplianceReportFunctionArn:
+    Description: Compliance Report Lambda Function ARN
+    Value: !GetAtt ComplianceReportFunction.Arn
+
+  GlueDatabaseName:
+    Description: Glue Data Catalog Database Name
+    Value: !If
+      - UseAutoGlueDatabase
+      - !Sub "${AWS::StackName}-db"
+      - !Ref GlueDatabaseName
+
+  GlueTableName:
+    Description: Glue Data Catalog Table Name
+    Value: !If
+      - UseAutoGlueTable
+      - !Sub "${AWS::StackName}-seismic-metadata"
+      - !Ref GlueTableName
+
+  AthenaWorkgroupName:
+    Description: Athena Workgroup Name
+    Value: !If
+      - UseAutoAthenaWorkgroup
+      - !Sub "${AWS::StackName}-workgroup"
+      - !Ref AthenaWorkgroupName

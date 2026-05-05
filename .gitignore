@@ -40,6 +40,9 @@ samconfig.toml
 # Environment-specific files (contain account IDs, resource IDs)
 scripts/mask_screenshots.py
 scripts/deploy_uc1.sh
+scripts/deploy_uc6_cloudshell.sh
+scripts/deploy_phase2_batch.sh
+scripts/capture_screenshots.sh
 
 # Screenshots — originals contain account info, masked versions are safe to publish
 docs/screenshots/originals/
@@ -47,9 +50,20 @@ docs/screenshots/originals/
 
 # Verification results (contain environment-specific details)
 docs/verification-results.md
+docs/verification-results-phase2.md
+docs/verification-results-shared-phase2.json
 
 # MASK_GUIDE contains environment-specific resource IDs
 docs/screenshots/MASK_GUIDE.md
+
+# Deployment lessons learned (contains environment-specific IPs, IDs)
+docs/guides/deployment-lessons-learned.md
+
+# Remaining issues checklist (contains environment-specific values)
+docs/remaining-issues-checklist.md
+
+# Generated test data
+test-data/
 
 # Lambda deployment packages
 *.zip

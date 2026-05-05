@@ -478,11 +478,64 @@ ap-northeast-1（東京）環境で検証を実施しました。UC1 と UC3 は
 - 既に EC2 / ECS ベースの常時稼働バッチ基盤があり、NFS マウント運用が許容される
 - ファイルデータが既に S3 標準バケットに存在し、S3 イベント通知で処理可能
 
+## Phase 2: 9 つの新規ユースケース（UC6–UC14）
+
+Phase 1 で確立した共通基盤を継承し、9 つの新規業界別パターンを追加しました。
+
+### Phase 2 の設計判断
+
+#### クロスリージョン透過性（Cross_Region_Client）
+
+Phase 1 では各 UC 内で個別にクロスリージョン呼び出しを実装していましたが、Phase 2 では `shared/cross_region_client.py` に共通化しました。
+
+```python
+from shared import CrossRegionClient, CrossRegionConfig
+
+config = CrossRegionConfig(target_region="us-east-1")
+client = CrossRegionClient(config)
+
+# Textract / Comprehend Medical を透過的にクロスリージョン呼び出し
+result = client.analyze_document(document_bytes=pdf_bytes)
+entities = client.detect_entities_v2(text=medical_text)
+```
+
+**対象 UC**: UC7（Comprehend Medical）、UC10/UC12/UC13/UC14（Textract）
+
+#### 大規模データ対応
+
+TB/PB クラスのデータを扱う UC6–UC10 向けに、S3ApHelper にストリーミング処理を追加しました。
+
+- **streaming_download**: チャンク単位で yield し、メモリに全体をロードしない
+- **streaming_download_range**: Range リクエストによる部分ダウンロード（SEG-Y ヘッダー等）
+- **multipart_upload**: 100 MB 超ファイルのマルチパートアップロード（失敗時 Abort 保証）
+
+#### Distributed Map による 10,000+ オブジェクト対応
+
+Discovery Lambda の Manifest ページネーションを拡張し、10,000 オブジェクト超の場合は自動的にチャンク分割して Distributed Map で処理します。
+
+### Phase 2 ユースケース一覧
+
+| UC | 業界 | パターン | AI/ML サービス |
+|----|------|---------|--------------|
+| UC6 | 半導体 / EDA | GDS/OASIS バリデーション・メタデータ抽出・DRC 集計 | Athena, Bedrock |
+| UC7 | ゲノミクス | FASTQ/VCF 品質チェック・バリアントコール集計 | Athena, Bedrock, Comprehend Medical |
+| UC8 | エネルギー | SEG-Y メタデータ抽出・坑井ログ異常検知 | Athena, Bedrock, Rekognition |
+| UC9 | 自動運転 / ADAS | 映像/LiDAR 前処理・品質チェック・アノテーション | Rekognition, Bedrock, SageMaker |
+| UC10 | 建設 / AEC | BIM バージョン管理・図面 OCR・安全コンプライアンス | Textract, Bedrock, Rekognition |
+| UC11 | 小売 / EC | 商品画像タグ付け・カタログメタデータ生成 | Rekognition, Bedrock |
+| UC12 | 物流 | 配送伝票 OCR・倉庫在庫画像分析 | Textract, Rekognition, Bedrock |
+| UC13 | 教育 / 研究 | 論文 PDF 分類・引用ネットワーク分析 | Textract, Comprehend, Bedrock |
+| UC14 | 保険 | 事故写真損害評価・見積書 OCR・査定レポート | Rekognition, Textract, Bedrock |
+
+### VPC 配置最適化の拡大
+
+Phase 2 では、ONTAP REST API を直接使用しない UC が多いため、VPC 外 Lambda の活用を拡大しました。S3 AP（internet origin）経由のデータアクセスと AI/ML サービス呼び出しのみの Lambda は全て VPC 外で実行し、コスト削減とコールドスタート短縮を実現しています。
+
 ## まとめ
 
 FSx for NetApp ONTAP の S3 Access Points は、エンタープライズファイルサーバーとサーバーレスアーキテクチャの橋渡しをする強力な機能です。
 
-本パターン集では、以下の設計原則に基づいて 5 つの業界別パターン + 3 つの拡張パターンを実装・検証しました:
+本パターン集では、以下の設計原則に基づいて 14 の業界別パターン（Phase 1: 5 UC + Phase 2: 9 UC）+ 3 つの拡張パターンを実装・検証しました:
 
 1. **ポーリングベース**: S3 AP の制約（イベント通知非対応）に対応した EventBridge Scheduler + Step Functions 設計
 2. **共通モジュール分離**: OntapClient / FsxHelper / S3ApHelper の再利用

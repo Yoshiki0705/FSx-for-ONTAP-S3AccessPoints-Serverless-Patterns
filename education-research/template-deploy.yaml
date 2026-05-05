@@ -1,0 +1,647 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  UC13: 教育 / 研究（論文 PDF 自動分類・引用ネットワーク分析）
+  FSx for NetApp ONTAP S3 Access Points を活用した論文 PDF の OCR テキスト抽出、
+  研究ドメイン分類、引用ネットワーク構築、メタデータ生成のサーバーレスワークフロー。
+  Cross-Region Textract 対応。
+
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+  OntapSecretName:
+    Type: String
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+  SvmUuid:
+    Type: String
+    Description: ONTAP SVM UUID
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge Scheduler のスケジュール式
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Discovery Lambda を配置する VPC ID
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Discovery Lambda を配置するプライベートサブネット ID リスト
+  OutputBucketName:
+    Type: String
+    Default: ""
+    Description: S3 出力バケット名（空の場合は自動生成）
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+  CrossRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: Textract クロスリージョンターゲット
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 40
+    Description: Step Functions Map ステートの最大同時実行数
+  LambdaMemorySize:
+    Type: Number
+    Default: 256
+    MinValue: 128
+    MaxValue: 10240
+    Description: Lambda 関数のメモリサイズ (MB)
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 900
+    Description: Lambda 関数のタイムアウト (秒)
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms を有効化する
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Interface VPC Endpoints を有効化する
+
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: プライベートサブネットのルートテーブル ID リスト（S3 Gateway Endpoint 用。空の場合は S3 Gateway Endpoint を作成しない）
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-lite-v1:0"
+    Description: Bedrock モデル ID
+
+Conditions:
+  CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  CreateVpcEndpoints: !Equals [!Ref EnableVpcEndpoints, "true"]
+  CreateS3GatewayEndpoint:
+    !And
+      - !Condition CreateVpcEndpoints
+      - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
+  UseAutoOutputBucket: !Equals [!Ref OutputBucketName, ""]
+
+Resources:
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - UseAutoOutputBucket
+        - !Sub "${AWS::StackName}-output-${AWS::AccountId}"
+        - !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: education-research
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Discovery Lambda security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateVpcEndpoints
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - VPC Endpoints security group"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: Allow HTTPS from Lambda
+
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.secretsmanager"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.monitoring"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateS3GatewayEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref PrivateRouteTableIds
+
+  # Log Groups
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: 14
+  OcrLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ocr"
+      RetentionInDays: 14
+  ClassificationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-classification"
+      RetentionInDays: 14
+  CitationAnalysisLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-citation-analysis"
+      RetentionInDays: 14
+  MetadataLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-metadata"
+      RetentionInDays: 14
+
+  # IAM Roles
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:ListBucket, s3:GetObject, s3:GetBucketLocation]
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Effect: Allow
+                Action: [secretsmanager:GetSecretValue]
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt DiscoveryLogGroup.Arn, !Sub "${DiscoveryLogGroup.Arn}:*"]
+
+  OcrLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-ocr-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: OcrPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject]
+                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Effect: Allow
+                Action: [textract:AnalyzeDocument]
+                Resource: "*"
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "${OutputBucket.Arn}/*"
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt OcrLogGroup.Arn, !Sub "${OcrLogGroup.Arn}:*"]
+
+  ClassificationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-classification-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ClassificationPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [comprehend:DetectEntities, comprehend:DetectKeyPhrases]
+                Resource: "*"
+              - Effect: Allow
+                Action: [bedrock:InvokeModel]
+                Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "${OutputBucket.Arn}/*"
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt ClassificationLogGroup.Arn, !Sub "${ClassificationLogGroup.Arn}:*"]
+
+  CitationAnalysisLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-citation-analysis-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CitationAnalysisPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "${OutputBucket.Arn}/*"
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt CitationAnalysisLogGroup.Arn, !Sub "${CitationAnalysisLogGroup.Arn}:*"]
+
+  MetadataLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-metadata-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: MetadataPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "${OutputBucket.Arn}/*"
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt MetadataLogGroup.Arn, !Sub "${MetadataLogGroup.Arn}:*"]
+
+  # Lambda Functions
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/education-research-discovery.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: [!Ref LambdaSecurityGroup]
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          PREFIX_FILTER: ""
+          SUFFIX_FILTER: ".pdf,.csv,.json,.xml"
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          SVM_UUID: !Ref SvmUuid
+          VERIFY_SSL: "false"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+
+  OcrFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ocr"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/education-research-ocr.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt OcrLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+          CROSS_REGION: !Ref CrossRegion
+      LoggingConfig:
+        LogGroup: !Ref OcrLogGroup
+
+  ClassificationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-classification"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/education-research-classification.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ClassificationLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      LoggingConfig:
+        LogGroup: !Ref ClassificationLogGroup
+
+  CitationAnalysisFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-citation-analysis"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/education-research-citation_analysis.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt CitationAnalysisLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+      LoggingConfig:
+        LogGroup: !Ref CitationAnalysisLogGroup
+
+  MetadataFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-metadata"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/education-research-metadata.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt MetadataLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+      LoggingConfig:
+        LogGroup: !Ref MetadataLogGroup
+
+  # Step Functions
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [lambda:InvokeFunction]
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt OcrFunction.Arn
+                  - !GetAtt ClassificationFunction.Arn
+                  - !GetAtt CitationAnalysisFunction.Arn
+                  - !GetAtt MetadataFunction.Arn
+
+  EducationResearchStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "Education Research - Paper Classification & Citation Network Workflow",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "OcrMap",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            },
+            "OcrMap": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.pdf_objects",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.ocr_results",
+              "Next": "ClassificationMap",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "RunOcr",
+                "States": {
+                  "RunOcr": {
+                    "Type": "Task",
+                    "Resource": "${OcrFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkOcrFailed"}],
+                    "End": true
+                  },
+                  "MarkOcrFailed": {"Type": "Pass", "Result": {"status": "ERROR"}, "End": true}
+                }
+              }
+            },
+            "ClassificationMap": {
+              "Type": "Map",
+              "ItemsPath": "$.ocr_results",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.classification_results",
+              "Next": "CitationAnalysis",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "Classify",
+                "States": {
+                  "Classify": {
+                    "Type": "Task",
+                    "Resource": "${ClassificationFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkClassFailed"}],
+                    "End": true
+                  },
+                  "MarkClassFailed": {"Type": "Pass", "Result": {"status": "ERROR"}, "End": true}
+                }
+              }
+            },
+            "CitationAnalysis": {
+              "Type": "Task",
+              "Resource": "${CitationAnalysisFunction.Arn}",
+              "ResultPath": "$.citation_results",
+              "Next": "MetadataMap",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            },
+            "MetadataMap": {
+              "Type": "Map",
+              "ItemsPath": "$.classification_results",
+              "MaxConcurrency": ${MapConcurrency},
+              "End": true,
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "GenerateMetadata",
+                "States": {
+                  "GenerateMetadata": {
+                    "Type": "Task",
+                    "Resource": "${MetadataFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkMetaFailed"}],
+                    "End": true
+                  },
+                  "MarkMetaFailed": {"Type": "Pass", "Result": {"status": "ERROR"}, "End": true}
+                }
+              }
+            }
+          }
+        }
+
+  # EventBridge Scheduler
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [states:StartExecution]
+                Resource: !Ref EducationResearchStateMachine
+
+  EducationResearchSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref EducationResearchStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # CloudWatch Alarms (conditional)
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref EducationResearchStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref NotificationTopic]

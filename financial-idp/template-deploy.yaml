@@ -209,6 +209,18 @@ Resources:
         - !Ref VpcEndpointSecurityGroup
       PrivateDnsEnabled: true
 
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
   SnsEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Condition: CreateVpcEndpoints

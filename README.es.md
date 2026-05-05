@@ -102,6 +102,8 @@ EventBridge Scheduler (ejecución periódica)
 
 ## Lista de casos de uso
 
+### Phase 1 (UC1–UC5)
+
 | # | Directorio | Sector | Patrón | Servicios AI/ML utilizados | Estado de verificación ap-northeast-1 |
 |---|------------|--------|--------|---------------------------|--------------------------------------|
 | UC1 | `legal-compliance/` | Legal y cumplimiento | Auditoría de servidor de archivos y gobernanza de datos | Athena, Bedrock | ✅ E2E exitoso |
@@ -110,7 +112,21 @@ EventBridge Scheduler (ejecución periódica)
 | UC4 | `media-vfx/` | Medios | Pipeline de renderizado VFX | Rekognition, Deadline Cloud | ⚠️ Configuración de Deadline Cloud requerida |
 | UC5 | `healthcare-dicom/` | Salud | Clasificación automática y anonimización de imágenes DICOM | Rekognition, Comprehend Medical ⚠️ | ⚠️ No en Tokio (usar región compatible) |
 
-> **Restricciones regionales**: Amazon Textract y Amazon Comprehend Medical no están disponibles en ap-northeast-1 (Tokio). Se recomienda desplegar UC2 en una región compatible como us-east-1. Lo mismo aplica para Comprehend Medical en UC5. Rekognition, Comprehend, Bedrock y Athena están disponibles en ap-northeast-1.
+### Phase 2 (UC6–UC14)
+
+| # | Directorio | Sector | Patrón | Servicios AI/ML utilizados | Estado de verificación ap-northeast-1 |
+|---|------------|--------|--------|---------------------------|--------------------------------------|
+| UC6 | `semiconductor-eda/` | Semiconductores / EDA | Validación GDS/OASIS, extracción de metadatos, agregación DRC | Athena, Bedrock | ✅ Pruebas exitosas |
+| UC7 | `genomics-pipeline/` | Genómica | Control de calidad FASTQ/VCF, agregación de llamadas de variantes | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
+| UC8 | `energy-seismic/` | Energía | Extracción de metadatos SEG-Y, detección de anomalías en pozos | Athena, Bedrock, Rekognition | ✅ Pruebas exitosas |
+| UC9 | `autonomous-driving/` | Conducción autónoma / ADAS | Preprocesamiento de video/LiDAR, QC, anotación | Rekognition, Bedrock, SageMaker | ✅ Pruebas exitosas |
+| UC10 | `construction-bim/` | Construcción / AEC | Gestión de versiones BIM, OCR de planos, cumplimiento de seguridad | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
+| UC11 | `retail-catalog/` | Comercio / E-commerce | Etiquetado de imágenes de productos, generación de metadatos de catálogo | Rekognition, Bedrock | ✅ Pruebas exitosas |
+| UC12 | `logistics-ocr/` | Logística | OCR de albaranes, análisis de imágenes de inventario | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC13 | `education-research/` | Educación / Investigación | Clasificación de PDF, análisis de red de citas | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC14 | `insurance-claims/` | Seguros | Evaluación de daños por fotos, OCR de presupuestos, informe de siniestros | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+
+> **Restricciones regionales**: Amazon Textract y Amazon Comprehend Medical no están disponibles en ap-northeast-1 (Tokio). Los UC de Phase 2 (UC7, UC10, UC12, UC13, UC14) utilizan Cross_Region_Client para enrutar las llamadas API a us-east-1. Rekognition, Comprehend, Bedrock y Athena están disponibles en ap-northeast-1.
 > 
 > Referencia: [Regiones compatibles con Textract](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Regiones compatibles con Comprehend Medical](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
 
@@ -124,7 +140,25 @@ EventBridge Scheduler (ejecución periódica)
 
 > UC1 y UC3 han sido verificados E2E completamente, mientras que UC2, UC4 y UC5 han sido validados mediante despliegue de CloudFormation y verificación operativa de componentes principales. Al usar servicios AI/ML con restricciones regionales (Textract, Comprehend Medical), se requiere invocación entre regiones a regiones compatibles. Verifique los requisitos de residencia de datos y cumplimiento.
 
-#### Pantallas de servicios AI/ML
+#### Phase 2: Despliegue CloudFormation y ejecución Step Functions exitosos para los 9 UCs
+
+![Pilas CloudFormation Phase 2](docs/screenshots/masked/cloudformation-phase2-stacks.png)
+
+> Las 9 pilas (UC6–UC14) alcanzaron CREATE_COMPLETE / UPDATE_COMPLETE. Total de 205 recursos.
+
+![Flujos de trabajo Step Functions Phase 2](docs/screenshots/masked/step-functions-phase2-all-workflows.png)
+
+> Los 9 flujos de trabajo activos. Todos SUCCEEDED confirmados tras ejecución E2E con datos de prueba.
+
+![Vista de gráfico de ejecución UC6](docs/screenshots/masked/step-functions-uc6-execution-graph.png)
+
+> Detalle de ejecución Step Functions UC6 (Semiconductores EDA). Todos los estados exitosos: Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration.
+
+![Programaciones EventBridge Phase 2](docs/screenshots/masked/eventbridge-phase2-schedules.png)
+
+> Las 9 programaciones EventBridge Scheduler (rate(1 hour)) están habilitadas.
+
+#### Pantallas de servicios AI/ML (Phase 1)
 
 ##### Amazon Bedrock — Catálogo de modelos
 
@@ -137,6 +171,44 @@ EventBridge Scheduler (ejecución periódica)
 ##### Amazon Comprehend — Detección de entidades
 
 ![Consola Comprehend](docs/screenshots/masked/comprehend-console.png)
+
+#### Pantallas de servicios AI/ML (Phase 2)
+
+##### Amazon Bedrock — Catálogo de modelos (UC6: Generación de informes)
+
+![Catálogo de modelos Bedrock Phase 2](docs/screenshots/masked/bedrock-model-catalog-phase2.png)
+
+> Utilizado para la generación de informes DRC con el modelo Nova Lite en UC6 (Semiconductores EDA).
+
+##### Amazon Athena — Historial de ejecución de consultas (UC6: Agregación de metadatos)
+
+![Historial de consultas Athena Phase 2](docs/screenshots/masked/athena-query-history-phase2.png)
+
+> Consultas Athena (cell_count, bbox, naming, invalid) ejecutadas en el flujo de trabajo Step Functions UC6.
+
+##### Amazon Rekognition — Detección de etiquetas (UC11: Etiquetado de imágenes de productos)
+
+![Detección de etiquetas Rekognition Phase 2](docs/screenshots/masked/rekognition-label-detection-phase2.png)
+
+> 15 etiquetas detectadas (Lighting 98,5%, Light 96,0%, Purple 92,0%, etc.) de imágenes de productos en UC11 (Catálogo minorista).
+
+##### Amazon Textract — OCR de documentos (UC12: Lectura de albaranes de entrega)
+
+![Análisis de documentos Textract Phase 2](docs/screenshots/masked/textract-analyze-document-phase2.png)
+
+> Extracción de texto de PDF de albaranes de entrega en UC12 (OCR logístico). Ejecutado vía Cross-Region (us-east-1).
+
+##### Amazon Comprehend Medical — Detección de entidades médicas (UC7: Análisis genómico)
+
+![Análisis en tiempo real Comprehend Medical Phase 2](docs/screenshots/masked/comprehend-medical-genomics-analysis-phase2.png)
+
+> Nombres de genes (GC) extraídos de resultados de análisis VCF usando la API DetectEntitiesV2 en UC7 (Pipeline genómico). Ejecutado vía Cross-Region (us-east-1).
+
+##### Funciones Lambda (Phase 2)
+
+![Funciones Lambda Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
+
+> Todas las funciones Lambda Phase 2 (Discovery, Processing, Report, etc.) desplegadas exitosamente.
 
 ## Stack tecnológico
 

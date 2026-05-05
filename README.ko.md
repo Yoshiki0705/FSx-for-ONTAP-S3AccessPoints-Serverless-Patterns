@@ -102,6 +102,8 @@ EventBridge Scheduler (정기 실행)
 
 ## 유스케이스 목록
 
+### Phase 1 (UC1–UC5)
+
 | # | 디렉토리 | 업종 | 패턴 | 사용 AI/ML 서비스 | ap-northeast-1 확인 상태 |
 |---|----------|------|------|-----------------|------------------------|
 | UC1 | `legal-compliance/` | 법무・컴플라이언스 | 파일 서버 감사・데이터 거버넌스 | Athena, Bedrock | ✅ E2E 성공 |
@@ -110,7 +112,21 @@ EventBridge Scheduler (정기 실행)
 | UC4 | `media-vfx/` | 미디어 | VFX 렌더링 파이프라인 | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 설정 필요 |
 | UC5 | `healthcare-dicom/` | 의료 | DICOM 이미지 자동 분류・익명화 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 도쿄 미지원（대응 리전 이용） |
 
-> **리전 제약**: Amazon Textract와 Amazon Comprehend Medical은 ap-northeast-1(도쿄)에서 사용할 수 없습니다. UC2는 us-east-1 등 지원 리전에서의 배포를 권장합니다. UC5의 Comprehend Medical도 마찬가지입니다. Rekognition, Comprehend, Bedrock, Athena는 ap-northeast-1에서 사용 가능합니다.
+### Phase 2 (UC6–UC14)
+
+| # | 디렉토리 | 업종 | 패턴 | 사용 AI/ML 서비스 | ap-northeast-1 확인 상태 |
+|---|----------|------|------|-----------------|------------------------|
+| UC6 | `semiconductor-eda/` | 반도체 / EDA | GDS/OASIS 검증・메타데이터 추출・DRC 집계 | Athena, Bedrock | ✅ 테스트 성공 |
+| UC7 | `genomics-pipeline/` | 유전체학 | FASTQ/VCF 품질 체크・변이 호출 집계 | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
+| UC8 | `energy-seismic/` | 에너지 | SEG-Y 메타데이터 추출・유정 로그 이상 감지 | Athena, Bedrock, Rekognition | ✅ 테스트 성공 |
+| UC9 | `autonomous-driving/` | 자율주행 / ADAS | 영상/LiDAR 전처리・품질 체크・어노테이션 | Rekognition, Bedrock, SageMaker | ✅ 테스트 성공 |
+| UC10 | `construction-bim/` | 건설 / AEC | BIM 버전 관리・도면 OCR・안전 컴플라이언스 | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
+| UC11 | `retail-catalog/` | 소매 / EC | 상품 이미지 태깅・카탈로그 메타데이터 생성 | Rekognition, Bedrock | ✅ 테스트 성공 |
+| UC12 | `logistics-ocr/` | 물류 | 배송 전표 OCR・창고 재고 이미지 분석 | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC13 | `education-research/` | 교육 / 연구 | 논문 PDF 분류・인용 네트워크 분석 | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC14 | `insurance-claims/` | 보험 | 사고 사진 손해 평가・견적서 OCR・사정 보고서 | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+
+> **리전 제약**: Amazon Textract와 Amazon Comprehend Medical은 ap-northeast-1(도쿄)에서 사용할 수 없습니다. Phase 2 UC(UC7, UC10, UC12, UC13, UC14)는 Cross_Region_Client를 통해 us-east-1로 API 호출을 라우팅합니다. Rekognition, Comprehend, Bedrock, Athena는 ap-northeast-1에서 사용 가능합니다.
 > 
 > 참고: [Textract 지원 리전](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 지원 리전](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
 
@@ -124,7 +140,25 @@ EventBridge Scheduler (정기 실행)
 
 > UC1・UC3은 완전한 E2E 검증, UC2・UC4・UC5는 CloudFormation 배포와 주요 컴포넌트의 동작 확인을 실시했습니다. 리전 제약이 있는 AI/ML 서비스(Textract, Comprehend Medical)를 사용하는 경우 지원 리전으로의 크로스 리전 호출이 필요하므로, 데이터 레지던시 및 컴플라이언스 요건을 확인하세요.
 
-#### AI/ML 서비스 화면
+#### Phase 2: 전체 9 UC CloudFormation 배포・Step Functions 실행 성공
+
+![CloudFormation Phase 2 스택](docs/screenshots/masked/cloudformation-phase2-stacks.png)
+
+> 전체 9 스택(UC6–UC14)이 CREATE_COMPLETE / UPDATE_COMPLETE. 총 205 리소스.
+
+![Step Functions Phase 2 워크플로우](docs/screenshots/masked/step-functions-phase2-all-workflows.png)
+
+> 전체 9 워크플로우 활성화. 테스트 데이터 투입 후 E2E 실행에서 전체 SUCCEEDED 확인.
+
+![UC6 실행 Graph View](docs/screenshots/masked/step-functions-uc6-execution-graph.png)
+
+> UC6(반도체 EDA) Step Functions 실행 상세. Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration 전체 스테이트 성공.
+
+![EventBridge Phase 2 스케줄](docs/screenshots/masked/eventbridge-phase2-schedules.png)
+
+> 전체 9 UC의 EventBridge Scheduler 스케줄(rate(1 hour))이 활성화.
+
+#### AI/ML 서비스 화면 (Phase 1)
 
 ##### Amazon Bedrock — 모델 카탈로그
 
@@ -137,6 +171,44 @@ EventBridge Scheduler (정기 실행)
 ##### Amazon Comprehend — 엔티티 검출
 
 ![Comprehend 콘솔](docs/screenshots/masked/comprehend-console.png)
+
+#### AI/ML 서비스 화면 (Phase 2)
+
+##### Amazon Bedrock — 모델 카탈로그 (UC6: 리포트 생성)
+
+![Bedrock 모델 카탈로그 Phase 2](docs/screenshots/masked/bedrock-model-catalog-phase2.png)
+
+> UC6(반도체 EDA)에서 Nova Lite 모델을 사용한 DRC 리포트 생성에 활용.
+
+##### Amazon Athena — 쿼리 실행 이력 (UC6: 메타데이터 집계)
+
+![Athena 쿼리 이력 Phase 2](docs/screenshots/masked/athena-query-history-phase2.png)
+
+> UC6의 Step Functions 워크플로우 내에서 Athena 쿼리(cell_count, bbox, naming, invalid) 실행.
+
+##### Amazon Rekognition — 라벨 검출 (UC11: 상품 이미지 태깅)
+
+![Rekognition 라벨 검출 Phase 2](docs/screenshots/masked/rekognition-label-detection-phase2.png)
+
+> UC11(소매 카탈로그)에서 상품 이미지로부터 15개 라벨(Lighting 98.5%, Light 96.0%, Purple 92.0% 등) 검출.
+
+##### Amazon Textract — 문서 OCR (UC12: 배송 전표 읽기)
+
+![Textract 문서 분석 Phase 2](docs/screenshots/masked/textract-analyze-document-phase2.png)
+
+> UC12(물류 OCR)에서 배송 전표 PDF로부터 텍스트 추출. Cross-Region(us-east-1) 경유로 실행.
+
+##### Amazon Comprehend Medical — 의료 엔티티 검출 (UC7: 게노믹스 분석)
+
+![Comprehend Medical 리얼타임 분석 Phase 2](docs/screenshots/masked/comprehend-medical-genomics-analysis-phase2.png)
+
+> UC7(게노믹스 파이프라인)에서 VCF 분석 결과로부터 유전자명(GC)을 DetectEntitiesV2 API로 추출. Cross-Region(us-east-1) 경유로 실행.
+
+##### Lambda 함수 목록 (Phase 2)
+
+![Lambda 함수 목록 Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
+
+> Phase 2의 전체 Lambda 함수(Discovery, Processing, Report 등)가 정상 배포 완료.
 
 ## 기술 스택
 

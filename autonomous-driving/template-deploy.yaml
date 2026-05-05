@@ -1,0 +1,876 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  UC9: 自動運転 / ADAS（ラベリング前処理・品質チェック）
+  FSx for NetApp ONTAP S3 Access Points を活用したダッシュカム映像 / LiDAR 点群の
+  ラベリング前処理、品質チェック、アノテーション管理のサーバーレスワークフロー。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+
+  # --- Phase 1 共通パラメータ ---
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias (入力読み取り用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  OntapSecretName:
+    Type: String
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
+
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  SvmUuid:
+    Type: String
+    Description: ONTAP SVM UUID
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge Scheduler のスケジュール式
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Discovery Lambda を配置する VPC ID
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Discovery Lambda を配置するプライベートサブネット ID リスト
+
+  OutputBucketName:
+    Type: String
+    Default: ""
+    Description: S3 出力バケット名（空の場合は自動生成）
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+
+  # --- Phase 2 拡張パラメータ ---
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 40
+    Description: Step Functions Map ステートの最大同時実行数
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 1024
+    MinValue: 128
+    MaxValue: 10240
+    Description: Lambda 関数のメモリサイズ (MB) — 動画/点群処理用に大きめ設定
+
+  LambdaTimeout:
+    Type: Number
+    Default: 600
+    MinValue: 30
+    MaxValue: 900
+    Description: Lambda 関数のタイムアウト (秒)
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms を有効化する
+
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Interface VPC Endpoints を有効化する
+
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: プライベートサブネットのルートテーブル ID リスト（S3 Gateway Endpoint 用。空の場合は S3 Gateway Endpoint を作成しない）
+
+  # --- UC9 固有パラメータ ---
+  FrameInterval:
+    Type: Number
+    Default: 1000
+    MinValue: 100
+    MaxValue: 60000
+    Description: フレーム抽出間隔 (ミリ秒)
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-lite-v1:0"
+    Description: Bedrock モデル ID（アノテーション提案生成用）
+
+  SageMakerTransformJobName:
+    Type: String
+    Default: "ad-segmentation"
+    Description: SageMaker Batch Transform ジョブ名プレフィックス
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  CreateVpcEndpoints:
+    !Equals [!Ref EnableVpcEndpoints, "true"]
+  CreateS3GatewayEndpoint:
+    !And
+      - !Condition CreateVpcEndpoints
+      - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
+  UseAutoOutputBucket:
+    !Equals [!Ref OutputBucketName, ""]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # S3 Output Bucket (SSE-KMS)
+  # -----------------------------------------------------------------
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - UseAutoOutputBucket
+        - !Sub "${AWS::StackName}-output-${AWS::AccountId}"
+        - !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+
+  # -----------------------------------------------------------------
+  # SNS Topic + Email Subscription
+  # -----------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -----------------------------------------------------------------
+  # Lambda Security Group (Discovery Lambda 用 — VPC 内)
+  # -----------------------------------------------------------------
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Discovery Lambda security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  # -----------------------------------------------------------------
+  # VPC Endpoint Security Group (conditional)
+  # -----------------------------------------------------------------
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateVpcEndpoints
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - VPC Endpoints security group"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: Allow HTTPS from Lambda
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpce-sg"
+
+  # -----------------------------------------------------------------
+  # Interface VPC Endpoints (conditional)
+  # -----------------------------------------------------------------
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.secretsmanager"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.monitoring"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateS3GatewayEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref PrivateRouteTableIds
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups (14 day retention)
+  # -----------------------------------------------------------------
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: 14
+
+  FrameExtractionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-frame-extraction"
+      RetentionInDays: 14
+
+  PointCloudQcLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-point-cloud-qc"
+      RetentionInDays: 14
+
+  AnnotationManagerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-annotation-manager"
+      RetentionInDays: 14
+
+  # -----------------------------------------------------------------
+  # IAM Roles — least-privilege per Lambda
+  # -----------------------------------------------------------------
+
+  # Discovery Lambda: VPC 内、S3 AP 読み取り + ONTAP API アクセス
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointWrite
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: SecretsManager
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+              - Sid: FsxDescribe
+                Effect: Allow
+                Action:
+                  - fsx:DescribeFileSystems
+                  - fsx:DescribeVolumes
+                  - fsx:DescribeStorageVirtualMachines
+                Resource: "*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt DiscoveryLogGroup.Arn
+                  - !Sub "${DiscoveryLogGroup.Arn}:*"
+
+  # FrameExtraction Lambda: VPC 外、S3 AP 読み取り + Rekognition + S3 出力
+  FrameExtractionLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-frame-extraction-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: FrameExtractionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: RekognitionDetectLabels
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: "*"
+              - Sid: S3OutputBucketWrite
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt FrameExtractionLogGroup.Arn
+                  - !Sub "${FrameExtractionLogGroup.Arn}:*"
+
+  # PointCloudQC Lambda: VPC 外、S3 AP 読み取り + S3 出力
+  PointCloudQcLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-point-cloud-qc-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: PointCloudQcPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3OutputBucketWrite
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt PointCloudQcLogGroup.Arn
+                  - !Sub "${PointCloudQcLogGroup.Arn}:*"
+
+  # AnnotationManager Lambda: VPC 外、Bedrock + SageMaker + S3 出力 + SNS
+  AnnotationManagerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-annotation-manager-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AnnotationManagerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: SageMaker
+                Effect: Allow
+                Action:
+                  - sagemaker:CreateTransformJob
+                  - sagemaker:DescribeTransformJob
+                Resource: "*"
+              - Sid: S3OutputBucketWrite
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: SNSPublish
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt AnnotationManagerLogGroup.Arn
+                  - !Sub "${AnnotationManagerLogGroup.Arn}:*"
+
+  # -----------------------------------------------------------------
+  # Lambda Functions
+  # -----------------------------------------------------------------
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/autonomous-driving-discovery.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          PREFIX_FILTER: ""
+          SUFFIX_FILTER: ".mp4,.avi,.mkv,.pcd,.las,.laz,.ply,.json"
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          SVM_UUID: !Ref SvmUuid
+          VERIFY_SSL: "false"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+
+  FrameExtractionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-frame-extraction"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/autonomous-driving-frame_extraction.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt FrameExtractionLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+          FRAME_INTERVAL: !Ref FrameInterval
+      LoggingConfig:
+        LogGroup: !Ref FrameExtractionLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+
+  PointCloudQcFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-point-cloud-qc"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/autonomous-driving-point_cloud_qc.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt PointCloudQcLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+      LoggingConfig:
+        LogGroup: !Ref PointCloudQcLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+
+  AnnotationManagerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-annotation-manager"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/autonomous-driving-annotation_manager.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt AnnotationManagerLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+          SAGEMAKER_TRANSFORM_JOB_NAME: !Ref SageMakerTransformJobName
+      LoggingConfig:
+        LogGroup: !Ref AnnotationManagerLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # Discovery → Parallel(FrameExtraction Map, PointCloudQC Map) → AnnotationManager
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt FrameExtractionFunction.Arn
+                  - !GetAtt PointCloudQcFunction.Arn
+                  - !GetAtt AnnotationManagerFunction.Arn
+
+  AutonomousDrivingStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "Autonomous Driving - Labeling Preprocessing & QC Workflow",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "ParallelProcessing",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "ParallelProcessing": {
+              "Type": "Parallel",
+              "ResultPath": "$.parallel_results",
+              "Next": "AnnotationManager",
+              "Branches": [
+                {
+                  "StartAt": "ProcessVideoFiles",
+                  "States": {
+                    "ProcessVideoFiles": {
+                      "Type": "Map",
+                      "ItemsPath": "$.discovery.video_files",
+                      "MaxConcurrency": ${MapConcurrency},
+                      "ResultPath": "$.detection_results",
+                      "ItemProcessor": {
+                        "ProcessorConfig": {
+                          "Mode": "INLINE"
+                        },
+                        "StartAt": "ExtractFrames",
+                        "States": {
+                          "ExtractFrames": {
+                            "Type": "Task",
+                            "Resource": "${FrameExtractionFunction.Arn}",
+                            "Retry": [
+                              {
+                                "ErrorEquals": ["States.TaskFailed"],
+                                "IntervalSeconds": 10,
+                                "MaxAttempts": 3,
+                                "BackoffRate": 2.0
+                              }
+                            ],
+                            "Catch": [
+                              {
+                                "ErrorEquals": ["States.ALL"],
+                                "ResultPath": "$.error",
+                                "Next": "MarkVideoFailed"
+                              }
+                            ],
+                            "End": true
+                          },
+                          "MarkVideoFailed": {
+                            "Type": "Pass",
+                            "Result": {"status": "ERROR"},
+                            "End": true
+                          }
+                        }
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                {
+                  "StartAt": "ProcessLidarFiles",
+                  "States": {
+                    "ProcessLidarFiles": {
+                      "Type": "Map",
+                      "ItemsPath": "$.discovery.lidar_files",
+                      "MaxConcurrency": ${MapConcurrency},
+                      "ResultPath": "$.qc_results",
+                      "ItemProcessor": {
+                        "ProcessorConfig": {
+                          "Mode": "INLINE"
+                        },
+                        "StartAt": "PointCloudQC",
+                        "States": {
+                          "PointCloudQC": {
+                            "Type": "Task",
+                            "Resource": "${PointCloudQcFunction.Arn}",
+                            "Retry": [
+                              {
+                                "ErrorEquals": ["States.TaskFailed"],
+                                "IntervalSeconds": 10,
+                                "MaxAttempts": 3,
+                                "BackoffRate": 2.0
+                              }
+                            ],
+                            "Catch": [
+                              {
+                                "ErrorEquals": ["States.ALL"],
+                                "ResultPath": "$.error",
+                                "Next": "MarkLidarFailed"
+                              }
+                            ],
+                            "End": true
+                          },
+                          "MarkLidarFailed": {
+                            "Type": "Pass",
+                            "Result": {"status": "FAIL"},
+                            "End": true
+                          }
+                        }
+                      },
+                      "End": true
+                    }
+                  }
+                }
+              ]
+            },
+            "AnnotationManager": {
+              "Type": "Task",
+              "Resource": "${AnnotationManagerFunction.Arn}",
+              "Parameters": {
+                "detection_results.$": "$.parallel_results[0].detection_results",
+                "qc_results.$": "$.parallel_results[1].qc_results"
+              },
+              "ResultPath": "$.annotation_result",
+              "End": true,
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 10,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref AutonomousDrivingStateMachine
+
+  AutonomousDrivingSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref AutonomousDrivingStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional)
+  # -----------------------------------------------------------------
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref AutonomousDrivingStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  FrameExtractionErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-frame-extraction-errors"
+      AlarmDescription: Frame Extraction Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref FrameExtractionFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  PointCloudQcErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-point-cloud-qc-errors"
+      AlarmDescription: Point Cloud QC Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PointCloudQcFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  AnnotationManagerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-annotation-manager-errors"
+      AlarmDescription: Annotation Manager Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AnnotationManagerFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic

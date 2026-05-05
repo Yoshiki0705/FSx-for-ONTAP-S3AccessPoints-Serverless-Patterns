@@ -102,6 +102,8 @@ EventBridge Scheduler (定期执行)
 
 ## 用例列表
 
+### Phase 1 (UC1–UC5)
+
 | # | 目录 | 行业 | 模式 | 使用的 AI/ML 服务 | ap-northeast-1 验证状态 |
 |---|------|------|------|-----------------|----------------------|
 | UC1 | `legal-compliance/` | 法务合规 | 文件服务器审计与数据治理 | Athena, Bedrock | ✅ E2E 成功 |
@@ -110,7 +112,21 @@ EventBridge Scheduler (定期执行)
 | UC4 | `media-vfx/` | 媒体 | VFX 渲染管线 | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 需配置 |
 | UC5 | `healthcare-dicom/` | 医疗 | DICOM 图像自动分类与脱敏 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 东京不支持（使用对应区域） |
 
-> **区域限制**: Amazon Textract 和 Amazon Comprehend Medical 在 ap-northeast-1（东京）不可用。建议在 us-east-1 等支持区域部署 UC2。UC5 的 Comprehend Medical 同理。Rekognition、Comprehend、Bedrock、Athena 在 ap-northeast-1 可用。
+### Phase 2 (UC6–UC14)
+
+| # | 目录 | 行业 | 模式 | 使用的 AI/ML 服务 | ap-northeast-1 验证状态 |
+|---|------|------|------|-----------------|----------------------|
+| UC6 | `semiconductor-eda/` | 半导体 / EDA | GDS/OASIS 验证・元数据提取・DRC 汇总 | Athena, Bedrock | ✅ 测试通过 |
+| UC7 | `genomics-pipeline/` | 基因组学 | FASTQ/VCF 质量检查・变异调用汇总 | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
+| UC8 | `energy-seismic/` | 能源 | SEG-Y 元数据提取・井日志异常检测 | Athena, Bedrock, Rekognition | ✅ 测试通过 |
+| UC9 | `autonomous-driving/` | 自动驾驶 / ADAS | 视频/LiDAR 预处理・质量检查・标注 | Rekognition, Bedrock, SageMaker | ✅ 测试通过 |
+| UC10 | `construction-bim/` | 建筑 / AEC | BIM 版本管理・图纸 OCR・安全合规 | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
+| UC11 | `retail-catalog/` | 零售 / 电商 | 商品图像标签・目录元数据生成 | Rekognition, Bedrock | ✅ 测试通过 |
+| UC12 | `logistics-ocr/` | 物流 | 运单 OCR・仓库库存图像分析 | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC13 | `education-research/` | 教育 / 研究 | 论文 PDF 分类・引用网络分析 | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC14 | `insurance-claims/` | 保险 | 事故照片损害评估・估价单 OCR・理赔报告 | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+
+> **区域限制**: Amazon Textract 和 Amazon Comprehend Medical 在 ap-northeast-1（东京）不可用。Phase 2 UC（UC7、UC10、UC12、UC13、UC14）通过 Cross_Region_Client 将 API 调用路由到 us-east-1。Rekognition、Comprehend、Bedrock、Athena 在 ap-northeast-1 可用。
 > 
 > 参考: [Textract 支持区域](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 支持区域](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
 
@@ -124,7 +140,25 @@ EventBridge Scheduler (定期执行)
 
 > UC1 和 UC3 已完成完整的 E2E 验证，UC2、UC4 和 UC5 已完成 CloudFormation 部署和主要组件的功能验证。使用有区域限制的 AI/ML 服务（Textract、Comprehend Medical）时，需要跨区域调用至支持区域，请确认数据驻留和合规要求。
 
-#### AI/ML 服务界面
+#### Phase 2: 全部 9 个 UC CloudFormation 部署・Step Functions 执行成功
+
+![CloudFormation Phase 2 堆栈](docs/screenshots/masked/cloudformation-phase2-stacks.png)
+
+> 全部 9 个堆栈（UC6–UC14）达到 CREATE_COMPLETE / UPDATE_COMPLETE。共 205 个资源。
+
+![Step Functions Phase 2 工作流](docs/screenshots/masked/step-functions-phase2-all-workflows.png)
+
+> 全部 9 个工作流已激活。投入测试数据后 E2E 执行全部 SUCCEEDED。
+
+![UC6 执行 Graph View](docs/screenshots/masked/step-functions-uc6-execution-graph.png)
+
+> UC6（半导体 EDA）Step Functions 执行详情。Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration 全部状态成功。
+
+![EventBridge Phase 2 调度](docs/screenshots/masked/eventbridge-phase2-schedules.png)
+
+> 全部 9 个 UC 的 EventBridge Scheduler 调度（rate(1 hour)）已启用。
+
+#### AI/ML 服务界面（Phase 1）
 
 ##### Amazon Bedrock — 模型目录
 
@@ -137,6 +171,44 @@ EventBridge Scheduler (定期执行)
 ##### Amazon Comprehend — 实体检测
 
 ![Comprehend 控制台](docs/screenshots/masked/comprehend-console.png)
+
+#### AI/ML 服务界面（Phase 2）
+
+##### Amazon Bedrock — 模型目录（UC6: 报告生成）
+
+![Bedrock 模型目录 Phase 2](docs/screenshots/masked/bedrock-model-catalog-phase2.png)
+
+> UC6（半导体 EDA）中使用 Nova Lite 模型生成 DRC 报告。
+
+##### Amazon Athena — 查询执行历史（UC6: 元数据汇总）
+
+![Athena 查询历史 Phase 2](docs/screenshots/masked/athena-query-history-phase2.png)
+
+> UC6 的 Step Functions 工作流中执行 Athena 查询（cell_count, bbox, naming, invalid）。
+
+##### Amazon Rekognition — 标签检测（UC11: 商品图片标记）
+
+![Rekognition 标签检测 Phase 2](docs/screenshots/masked/rekognition-label-detection-phase2.png)
+
+> UC11（零售目录）从商品图片中检测 15 个标签（Lighting 98.5%, Light 96.0%, Purple 92.0% 等）。
+
+##### Amazon Textract — 文档 OCR（UC12: 配送单据读取）
+
+![Textract 文档分析 Phase 2](docs/screenshots/masked/textract-analyze-document-phase2.png)
+
+> UC12（物流 OCR）从配送单据 PDF 中提取文本。通过 Cross-Region（us-east-1）执行。
+
+##### Amazon Comprehend Medical — 医疗实体检测（UC7: 基因组分析）
+
+![Comprehend Medical 实时分析 Phase 2](docs/screenshots/masked/comprehend-medical-genomics-analysis-phase2.png)
+
+> UC7（基因组管道）中使用 DetectEntitiesV2 API 从 VCF 分析结果中提取基因名（GC）。通过 Cross-Region（us-east-1）执行。
+
+##### Lambda 函数列表（Phase 2）
+
+![Lambda 函数列表 Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
+
+> Phase 2 的全部 Lambda 函数（Discovery, Processing, Report 等）已成功部署。
 
 ## 技术栈
 

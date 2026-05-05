@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 from datetime import datetime
 
@@ -31,6 +32,52 @@ from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
+
+
+def paginate_manifest(objects: list[dict], max_per_chunk: int = 10000) -> list[dict]:
+    """10,000+ オブジェクト対応の Manifest ページネーション
+
+    オブジェクト数が max_per_chunk 以下の場合は単一チャンクを返す。
+    超過する場合は ceil(N / max_per_chunk) チャンクに分割し、
+    全チャンクの union が元のオブジェクトリストと完全一致することを保証する。
+
+    Args:
+        objects: S3 オブジェクトのリスト
+        max_per_chunk: 1 チャンクあたりの最大オブジェクト数 (デフォルト: 10,000)
+
+    Returns:
+        list[dict]: チャンクのリスト。各チャンクは以下のキーを含む:
+            - chunk_index (int): 0-based チャンクインデックス
+            - total_chunks (int): 全チャンク数
+            - objects (list[dict]): このチャンクに含まれるオブジェクト
+            - total_objects_in_chunk (int): このチャンクのオブジェクト数
+    """
+    n = len(objects)
+    if n <= max_per_chunk:
+        return [
+            {
+                "chunk_index": 0,
+                "total_chunks": 1,
+                "objects": objects,
+                "total_objects_in_chunk": n,
+            }
+        ]
+
+    total_chunks = math.ceil(n / max_per_chunk)
+    chunks = []
+    for i in range(total_chunks):
+        start = i * max_per_chunk
+        end = min(start + max_per_chunk, n)
+        chunk_objects = objects[start:end]
+        chunks.append(
+            {
+                "chunk_index": i,
+                "total_chunks": total_chunks,
+                "objects": chunk_objects,
+                "total_objects_in_chunk": len(chunk_objects),
+            }
+        )
+    return chunks
 
 
 def generate_manifest(objects: list[dict], execution_id: str) -> dict:

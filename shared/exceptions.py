@@ -7,6 +7,7 @@
 - OntapClientError: ONTAP REST API エラー (shared.ontap_client から再エクスポート)
 - FsxHelperError: FSx API エラー (shared.fsx_helper から再エクスポート)
 - S3ApHelperError: S3 Access Point エラー
+- CrossRegionClientError: クロスリージョン API エラー
 
 デコレータ:
 - lambda_error_handler: Lambda 関数の未処理例外をキャッチし、構造化レスポンスを返す
@@ -35,6 +36,28 @@ class S3ApHelperError(Exception):
     def __init__(self, message: str, error_code: str | None = None):
         super().__init__(message)
         self.error_code = error_code
+
+
+class CrossRegionClientError(Exception):
+    """クロスリージョン API エラー
+
+    Attributes:
+        target_region: ターゲットリージョン (例: "us-east-1")
+        service_name: AWS サービス名 (例: "textract", "comprehendmedical")
+        original_error: 元の例外オブジェクト
+    """
+
+    def __init__(
+        self,
+        message: str,
+        target_region: str | None = None,
+        service_name: str | None = None,
+        original_error: Exception | None = None,
+    ):
+        super().__init__(message)
+        self.target_region = target_region
+        self.service_name = service_name
+        self.original_error = original_error
 
 
 def lambda_error_handler(func):
