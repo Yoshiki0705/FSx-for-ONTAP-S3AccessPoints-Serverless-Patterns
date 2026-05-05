@@ -29,5 +29,16 @@ jobs:
           python-version: "3.12"
       - name: Install cfn-lint
         run: pip install cfn-lint
-      - name: Lint CloudFormation templates
+      - name: Lint CloudFormation templates (Phase 1)
         run: cfn-lint */template.yaml
+      - name: Lint CloudFormation templates (Phase 2)
+        run: |
+          cfn-lint semiconductor-eda/template.yaml
+          cfn-lint genomics-pipeline/template.yaml
+          cfn-lint energy-seismic/template.yaml
+          cfn-lint autonomous-driving/template.yaml
+          cfn-lint construction-bim/template.yaml
+          cfn-lint retail-catalog/template.yaml
+          cfn-lint logistics-ocr/template.yaml
+          cfn-lint education-research/template.yaml
+          cfn-lint insurance-claims/template.yaml
