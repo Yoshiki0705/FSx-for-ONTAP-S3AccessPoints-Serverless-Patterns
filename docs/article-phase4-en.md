@@ -57,7 +57,7 @@ Phase 4 addresses all four gaps while maintaining the project's core principle: 
 | Model Registry | Disabled | $0 (metadata only) |
 | Event-Driven Prototype | Disabled | ~$0 (pay-per-event, negligible at test scale) |
 
-> **Cost warning**: The Real-time Endpoint is the only feature with significant ongoing cost (~$7/day for ml.m5.large). The cleanup script (`scripts/cleanup_phase4.sh --endpoint-only`) stops billing within minutes. Always delete the endpoint when not actively testing.
+> **Cost warning**: The Real-time Endpoint is the only feature with significant ongoing cost (~$7/day per ml.m5.large instance/variant). A two-variant A/B test roughly doubles the baseline endpoint cost. The cleanup script (`scripts/cleanup_phase4.sh --endpoint-only`) stops billing within minutes. Always delete endpoints when not actively testing.
 
 ---
 
@@ -203,10 +203,9 @@ ScalingPolicy:
 The Inference Comparison Lambda runs every 5 minutes, aggregating per-variant metrics and emitting CloudWatch EMF metrics. The following is simplified pseudo-code. In production, collect invocation and error metrics from CloudWatch metrics such as `Invocations`, `Invocation4XXErrors`, `Invocation5XXErrors`, and `ModelLatency`:
 
 ```python
-# Simplified pseudo-code: select the latest datapoint from response["Datapoints"]
-# and handle missing datapoints before emitting EMF metrics.
-for variant in endpoint_variants:
-    metrics = cloudwatch.get_metric_statistics(
+# Simplified pseudo-code — in production, handle missing datapoints and pagination
+for variant_name in endpoint_variant_names:
+    response = cloudwatch.get_metric_statistics(
         Namespace='AWS/SageMaker',
         MetricName='ModelLatency',
         Dimensions=[
@@ -219,15 +218,16 @@ for variant in endpoint_variants:
         Statistics=['Average', 'SampleCount'],
         ExtendedStatistics=['p50', 'p90', 'p99']
     )
-    # In real code, select and normalize the latest datapoint from response["Datapoints"]
+    # Select the latest datapoint; handle empty Datapoints list in production
+    datapoint = select_latest_datapoint(response.get("Datapoints", []))
     emit_emf_metric(
         namespace='FSxN-S3AP-Patterns/Inference',
         dimensions={'Variant': variant_name},
         metrics={
-            'AverageLatency': metrics['Average'],
-            'P99Latency': metrics['ExtendedStatistics']['p99'],
-            'InvocationCount': invocation_metrics['SampleCount'],
-            'ErrorRate': error_count / invocation_count
+            'AverageLatency': datapoint.get('Average'),
+            'P99Latency': datapoint.get('ExtendedStatistics', {}).get('p99'),
+            'InvocationCount': invocation_count,
+            'ErrorRate': error_count / max(invocation_count, 1)
         }
     )
 ```
