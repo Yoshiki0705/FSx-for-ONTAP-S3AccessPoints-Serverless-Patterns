@@ -128,7 +128,7 @@ dynamodb_table.put_item(
 )
 ```
 
-If a collision occurs (astronomically unlikely with 8-char hex), the Lambda retries with a new ID.
+If a collision occurs, the conditional write fails and the Lambda retries with a new ID up to 3 times.
 
 ---
 
@@ -292,18 +292,18 @@ ParameterOverrides:
 
 ### Cross-Account Access to S3 Access Points
 
-For FSx for ONTAP S3 Access Points, cross-account access is modeled with **S3 Access Point policies** and **workload-account IAM roles** — not AWS RAM. S3 Access Points (including FSx ONTAP S3 AP) are not listed as [RAM-shareable resource types](https://docs.aws.amazon.com/ram/latest/userguide/shareable.html). The cross-account pattern uses:
+For FSx for ONTAP S3 Access Points, cross-account access is modeled with **S3 Access Point policies** and **workload-account IAM roles** — not AWS RAM. S3 Access Points (including FSx ONTAP S3 AP) are not listed as [RAM-shareable resource types](https://docs.aws.amazon.com/ram/latest/userguide/shareable.html). The cross-account pattern uses an AssumeRole chain:
 
-1. **S3 Access Point resource-based policy** (on the storage account) allowing the workload account's role
-2. **Cross-account IAM role** (on the storage account) with External ID condition
-3. **Workload Lambda execution role** with `sts:AssumeRole` permission
+1. A **storage-account IAM role** (`fsxn-s3ap-storage-access-role`) trusted by workload accounts with an External ID condition
+2. **S3 Access Point policy** allowing the storage-account access role (not the workload account role directly)
+3. **Workload Lambda execution role** with `sts:AssumeRole` permission to assume the storage-account role
 
 ```json
-// S3 Access Point policy (storage account)
+// S3 Access Point policy (storage account) — Principal is the storage-account role
 {
   "Statement": [{
     "Effect": "Allow",
-    "Principal": {"AWS": "arn:aws:iam::WORKLOAD_ACCOUNT:role/fsxn-s3ap-workload-storage-access-role"},
+    "Principal": {"AWS": "arn:aws:iam::STORAGE_ACCOUNT:role/fsxn-s3ap-storage-access-role"},
     "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
     "Resource": [
       "arn:aws:s3:ap-northeast-1:STORAGE_ACCOUNT:accesspoint/my-fsxn-ap",
@@ -313,7 +313,21 @@ For FSx for ONTAP S3 Access Points, cross-account access is modeled with **S3 Ac
 }
 ```
 
-> **Note on AWS RAM**: RAM can share VPC subnets, Transit Gateway, and Route 53 Resolver rules for network connectivity between accounts. If RAM support for additional resource types is required, verify that the resource type is listed in the [AWS RAM supported resource types documentation](https://docs.aws.amazon.com/ram/latest/userguide/shareable.html).
+The storage-account role's trust policy allows the workload account to assume it with External ID:
+
+```json
+// Trust policy on fsxn-s3ap-storage-access-role (storage account)
+{
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"AWS": "arn:aws:iam::WORKLOAD_ACCOUNT:root"},
+    "Action": "sts:AssumeRole",
+    "Condition": {"StringEquals": {"sts:ExternalId": "unique-external-id"}}
+  }]
+}
+```
+
+> **Note on AWS RAM**: RAM can share VPC subnets, Transit Gateway, and Route 53 Resolver rules for network connectivity between accounts. S3 Access Points are not RAM-shareable. Verify resource type support in the [AWS RAM supported resource types documentation](https://docs.aws.amazon.com/ram/latest/userguide/shareable.html).
 
 ### Cross-Account Observability
 
@@ -346,7 +360,7 @@ S3 Bucket (PutObject)
 
 ### E2E Verification: 3.5 Seconds
 
-The event-driven prototype was verified end-to-end in ap-northeast-1:
+In our ap-northeast-1 test environment, the event-driven prototype was verified end-to-end:
 
 | Stage | Latency |
 |-------|---------|
@@ -462,7 +476,7 @@ SageMaker `CreateModel` expects the model artifact (e.g., `model.tar.gz`) to alr
 
 ### 2. CloudFormation Template > 51KB Requires S3 Bucket Deployment
 
-As Phase 4 templates grew beyond 51KB (the inline template body limit), `aws cloudformation create-stack --template-body` fails. The solution: use `aws cloudformation deploy --template-file` which automatically uploads to an S3 staging bucket, or explicitly use `--template-url` with a pre-uploaded template. Our deploy script uses a dedicated `DeployBucket` parameter for this.
+As Phase 4 templates grew beyond 51KB (the inline template body limit), `aws cloudformation create-stack --template-body` fails. Use an S3-backed deployment path such as `aws cloudformation package` followed by `aws cloudformation deploy`, or explicitly provide `--s3-bucket` to `aws cloudformation deploy`, or use `--template-url` with a pre-uploaded template. Our deploy script uses `--s3-bucket` with a dedicated `DeployBucket` parameter for this.
 
 ### 3. VPC Lambda ENI Cleanup Takes 5–20 Minutes
 
@@ -522,7 +536,7 @@ The event-driven prototype achieved 3.5-second end-to-end latency from S3 PutObj
 
 ## Conclusion
 
-Phase 4 transforms the FSxN S3AP Serverless Patterns from a demonstration project into a production-ready reference architecture:
+Phase 4 transforms the FSxN S3AP Serverless Patterns from a demonstration project into a production-oriented reference architecture:
 
 - The **DynamoDB Task Token Store** solves a real production limitation (256-char tag limit) with an elegant 8-char correlation ID pattern
 - **Multi-Variant Endpoints** enable safe model iteration with automated A/B comparison metrics
