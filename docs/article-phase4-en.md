@@ -203,7 +203,8 @@ ScalingPolicy:
 The Inference Comparison Lambda runs every 5 minutes, aggregating per-variant metrics and emitting CloudWatch EMF metrics. The following is simplified pseudo-code. In production, collect invocation and error metrics from CloudWatch metrics such as `Invocations`, `Invocation4XXErrors`, `Invocation5XXErrors`, and `ModelLatency`:
 
 ```python
-# Simplified pseudo-code — in production, handle missing datapoints and pagination
+# Simplified pseudo-code — in production, select the latest datapoint
+# from response["Datapoints"] and handle missing datapoints.
 for variant_name in endpoint_variant_names:
     response = cloudwatch.get_metric_statistics(
         Namespace='AWS/SageMaker',
@@ -231,8 +232,6 @@ for variant_name in endpoint_variant_names:
         }
     )
 ```
-
-In real code, select the latest datapoint from `response["Datapoints"]` and handle missing datapoints before emitting EMF metrics.
 
 ### Model Registry Integration
 
@@ -536,7 +535,7 @@ The event-driven prototype achieved 3.5-second end-to-end latency from S3 PutObj
 
 ## What's Next
 
-- **FSx ONTAP S3 AP native events**: When available, migrate from prototype to production event-driven architecture (no Lambda/Step Functions changes needed)
+- **FSx ONTAP S3 AP native events**: When available, migrate from the standard S3 prototype to production event-driven architecture with minimal changes to the processing workflow
 - **Serverless Inference**: Add SageMaker Serverless Inference as a third routing option for sporadic workloads
 - **Cost optimization**: Implement SageMaker Savings Plans and scheduled scaling for predictable workloads
 - **Multi-region active-active**: Extend multi-account patterns to multi-region with DynamoDB Global Tables for token store
