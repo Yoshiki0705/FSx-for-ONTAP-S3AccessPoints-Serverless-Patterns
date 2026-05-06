@@ -203,6 +203,8 @@ ScalingPolicy:
 The Inference Comparison Lambda runs every 5 minutes, aggregating per-variant metrics and emitting CloudWatch EMF metrics. The following is simplified pseudo-code. In production, collect invocation and error metrics from CloudWatch metrics such as `Invocations`, `Invocation4XXErrors`, `Invocation5XXErrors`, and `ModelLatency`:
 
 ```python
+# Simplified pseudo-code: select the latest datapoint from response["Datapoints"]
+# and handle missing datapoints before emitting EMF metrics.
 for variant in endpoint_variants:
     metrics = cloudwatch.get_metric_statistics(
         Namespace='AWS/SageMaker',
@@ -217,6 +219,7 @@ for variant in endpoint_variants:
         Statistics=['Average', 'SampleCount'],
         ExtendedStatistics=['p50', 'p90', 'p99']
     )
+    # In real code, select and normalize the latest datapoint from response["Datapoints"]
     emit_emf_metric(
         namespace='FSxN-S3AP-Patterns/Inference',
         dimensions={'Variant': variant_name},
@@ -228,6 +231,8 @@ for variant in endpoint_variants:
         }
     )
 ```
+
+In real code, select the latest datapoint from `response["Datapoints"]` and handle missing datapoints before emitting EMF metrics.
 
 ### Model Registry Integration
 
@@ -320,12 +325,14 @@ The storage-account role's trust policy allows the workload account to assume it
 {
   "Statement": [{
     "Effect": "Allow",
-    "Principal": {"AWS": "arn:aws:iam::WORKLOAD_ACCOUNT:root"},
+    "Principal": {"AWS": "arn:aws:iam::WORKLOAD_ACCOUNT:role/workload-lambda-execution-role"},
     "Action": "sts:AssumeRole",
     "Condition": {"StringEquals": {"sts:ExternalId": "unique-external-id"}}
   }]
 }
 ```
+
+> For stricter least privilege, trust a specific workload role ARN (as shown above) instead of the workload account root principal (`arn:aws:iam::WORKLOAD_ACCOUNT:root`). The External ID condition provides an additional layer of confused deputy protection regardless of which principal format is used.
 
 > **Note on AWS RAM**: RAM can share VPC subnets, Transit Gateway, and Route 53 Resolver rules for network connectivity between accounts. S3 Access Points are not RAM-shareable. Verify resource type support in the [AWS RAM supported resource types documentation](https://docs.aws.amazon.com/ram/latest/userguide/shareable.html).
 
@@ -386,10 +393,12 @@ A three-phase migration allows gradual transition when FSx ONTAP S3 AP adds nati
 
 ### Future: Native S3 AP Events
 
-When FSx ONTAP S3 AP adds native event notification support, the migration from the prototype to production requires only:
-1. Replace the S3 bucket event source with the S3 AP ARN
-2. Update the EventBridge rule pattern
-3. No changes to processing Lambdas or Step Functions
+When FSx ONTAP S3 AP adds native event notification support, the expected migration path is:
+1. Replace the prototype S3 bucket event source with the S3 AP event source
+2. Update the EventBridge rule pattern or input transformation to match the new event schema
+3. Reuse the existing processing Lambdas and Step Functions where the event payload contract remains compatible
+
+The processing Lambdas and Step Functions are designed to be reusable, but the EventBridge rule pattern and event payload mapping may need adjustment depending on the future S3 AP event schema.
 
 ---
 
