@@ -166,7 +166,7 @@ Consulte la [Guía de selección Streaming vs Polling](docs/streaming-vs-polling
 | Real-time Inference Endpoint | Inferencia de baja latencia a través de SageMaker Real-time Endpoint | UC9 (opt-in) |
 | A/B Testing | Comparación de versiones de modelos mediante Multi-Variant Endpoint | UC9 (opt-in) |
 | Model Registry | Gestión del ciclo de vida de modelos mediante SageMaker Model Registry | UC9 (opt-in) |
-| Multi-Account Deployment | Soporte multi-cuenta mediante StackSets / RAM / Cross-Account IAM | Todos los UC (plantillas proporcionadas) |
+| Multi-Account Deployment | Soporte multi-cuenta mediante StackSets / Cross-Account IAM / políticas S3 AP | Todos los UC (plantillas proporcionadas) |
 | Event-Driven Prototype | Pipeline S3 Event Notifications → EventBridge → Step Functions | Prototipo |
 
 Todas las funcionalidades de Phase 4 están controladas por CloudFormation Conditions (opt-in). No se generan costos adicionales a menos que se activen explícitamente.

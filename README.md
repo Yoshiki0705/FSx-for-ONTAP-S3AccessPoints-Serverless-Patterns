@@ -166,7 +166,7 @@ EventBridge Scheduler (定期実行)
 | Real-time Inference Endpoint | SageMaker Real-time Endpoint による低レイテンシ推論 | UC9（オプトイン） |
 | A/B Testing | Multi-Variant Endpoint によるモデルバージョン比較 | UC9（オプトイン） |
 | Model Registry | SageMaker Model Registry によるモデルライフサイクル管理 | UC9（オプトイン） |
-| Multi-Account Deployment | StackSets / RAM / Cross-Account IAM によるマルチアカウント対応 | 全 UC（テンプレート提供） |
+| Multi-Account Deployment | StackSets / Cross-Account IAM / S3 AP ポリシーによるマルチアカウント対応 | 全 UC（テンプレート提供） |
 | Event-Driven Prototype | S3 Event Notifications → EventBridge → Step Functions パイプライン | プロトタイプ |
 
 Phase 4 の全機能は CloudFormation Conditions でオプトイン制御されており、有効化しない限り追加コストは発生しません。
@@ -540,7 +540,7 @@ python3 scripts/generate_test_data.py all --upload
 
 **Phase 3（横断機能強化）**: Kinesis Data Streams（PutRecord/GetRecords）、DynamoDB 状態テーブル（CRUD）、CloudFormation テンプレートバリデーション、X-Ray トレーシング設定、CloudWatch EMF メトリクス出力を ap-northeast-1 で検証済みです。全 573 テストパス、cfn-lint 0 エラー。
 
-**Phase 4（本番 SageMaker 統合・マルチアカウント・イベント駆動）**: DynamoDB Task Token Store、Real-time Inference Endpoint、A/B Testing、Model Registry、Multi-Account テンプレート（StackSets / RAM / Cross-Account IAM）、Event-Driven Prototype を実装。全テストパス、cfn-lint 0 エラー。
+**Phase 4（本番 SageMaker 統合・マルチアカウント・イベント駆動）**: DynamoDB Task Token Store、Real-time Inference Endpoint、A/B Testing、Model Registry、Multi-Account テンプレート（StackSets / Cross-Account IAM / S3 AP ポリシー）、Event-Driven Prototype を実装。全テストパス、cfn-lint 0 エラー。
 
 詳細は [検証結果記録](docs/verification-results.md)（Phase 1）、[Phase 2 検証結果記録](docs/verification-results-phase2.md)、および [Phase 3 検証結果記録](docs/verification-results-phase3.md) を参照してください。
 

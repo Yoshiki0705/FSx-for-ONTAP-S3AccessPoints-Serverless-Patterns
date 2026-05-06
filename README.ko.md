@@ -166,7 +166,7 @@ EventBridge Scheduler (정기 실행)
 | Real-time Inference Endpoint | SageMaker Real-time Endpoint를 통한 저지연 추론 | UC9 (옵트인) |
 | A/B Testing | Multi-Variant Endpoint를 통한 모델 버전 비교 | UC9 (옵트인) |
 | Model Registry | SageMaker Model Registry를 통한 모델 라이프사이클 관리 | UC9 (옵트인) |
-| Multi-Account Deployment | StackSets / RAM / Cross-Account IAM을 통한 멀티 계정 지원 | 전체 UC (템플릿 제공) |
+| Multi-Account Deployment | StackSets / Cross-Account IAM / S3 AP 정책을 통한 멀티 계정 지원 | 전체 UC (템플릿 제공) |
 | Event-Driven Prototype | S3 Event Notifications → EventBridge → Step Functions 파이프라인 | 프로토타입 |
 
 Phase 4의 모든 기능은 CloudFormation Conditions로 옵트인 제어되며, 활성화하지 않는 한 추가 비용이 발생하지 않습니다.

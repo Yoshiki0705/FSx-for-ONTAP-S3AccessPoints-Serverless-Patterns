@@ -166,7 +166,7 @@ EventBridge Scheduler (定期执行)
 | Real-time Inference Endpoint | 通过 SageMaker Real-time Endpoint 实现低延迟推理 | UC9（可选启用） |
 | A/B Testing | 通过 Multi-Variant Endpoint 进行模型版本比较 | UC9（可选启用） |
 | Model Registry | 通过 SageMaker Model Registry 进行模型生命周期管理 | UC9（可选启用） |
-| Multi-Account Deployment | 通过 StackSets / RAM / Cross-Account IAM 实现多账户支持 | 全部 UC（提供模板） |
+| Multi-Account Deployment | 通过 StackSets / Cross-Account IAM / S3 AP 策略实现多账户支持 | 全部 UC（提供模板） |
 | Event-Driven Prototype | S3 Event Notifications → EventBridge → Step Functions 管道 | 原型 |
 
 Phase 4 的所有功能通过 CloudFormation Conditions 进行可选控制，未启用时不会产生额外费用。

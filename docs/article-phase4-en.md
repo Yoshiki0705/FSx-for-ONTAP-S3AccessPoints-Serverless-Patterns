@@ -13,8 +13,8 @@ This is **Phase 4** of the FSx for ONTAP S3 Access Points serverless patterns co
 
 - **DynamoDB Task Token Store**: Correlation ID pattern solving the 256-char SageMaker tag limit for production Step Functions Callback workflows
 - **Real-time Inference + A/B Testing**: SageMaker Multi-Variant Endpoints with intelligent routing and automated comparison metrics
-- **Multi-Account Deployment**: StackSets, RAM resource sharing, and Cross-Account IAM for enterprise-scale rollout
-- **Event-Driven Architecture Prototype**: S3 Events → EventBridge → Step Functions achieving **3.5-second E2E latency**
+- **Multi-Account Deployment**: StackSets, cross-account IAM roles with S3 Access Point policies, and CloudWatch Cross-Account Observability for enterprise-scale rollout
+- **Event-Driven Architecture Prototype**: Standard S3 bucket events → EventBridge → Step Functions achieving **3.5-second E2E latency**, as a future-compatible prototype for native FSx ONTAP S3 AP notifications
 
 All features are **opt-in via CloudFormation Conditions** (default disabled, zero additional cost). 681 total tests pass, including 11 property-based tests (Hypothesis).
 
@@ -42,7 +42,7 @@ Phase 4 addresses all four gaps while maintaining the project's core principle: 
 | Task Token Store | Correlation ID + DynamoDB | DynamoDB, Step Functions, Lambda | ✅ E2E (8-char hex round-trip, TTL cleanup) |
 | Real-time Inference | Multi-Variant Endpoint | SageMaker, Auto Scaling | ✅ Deployed (ml.m5.large, 1-4 instances) |
 | A/B Testing | Traffic Splitting + Comparison | SageMaker, CloudWatch EMF | ✅ Variant metrics aggregation verified |
-| Multi-Account | StackSets + RAM + IAM | CloudFormation StackSets, RAM, IAM | ✅ Template validation (cross-account role chain) |
+| Multi-Account | StackSets + Cross-Account IAM | CloudFormation StackSets, IAM, CloudWatch | ✅ Template validation (cross-account role chain) |
 | Event-Driven Prototype | S3 → EventBridge → Step Functions | S3, EventBridge, Step Functions, Lambda | ✅ **E2E: 3.5 seconds** (PutObject → processing complete) |
 | Model Registry | Approval Workflow | SageMaker Model Registry | ✅ Governance flow validated |
 
@@ -51,9 +51,9 @@ Phase 4 addresses all four gaps while maintaining the project's core principle: 
 | Feature | Default | Monthly Cost (when enabled) |
 |---------|---------|---------------------------|
 | DynamoDB Task Token Store | Disabled | ~$0 (PAY_PER_REQUEST, minimal reads/writes) |
-| Real-time Endpoint | Disabled | ~$215/month (ml.m5.large, single instance, ap-northeast-1) |
-| A/B Testing (Multi-Variant) | Disabled | Included in endpoint cost (traffic split) |
-| Auto Scaling (1-4 instances) | Disabled | $215–$860/month depending on load |
+| Real-time Endpoint | Disabled | ~$215/month per ml.m5.large instance/variant (ap-northeast-1) |
+| A/B Testing (Multi-Variant) | Disabled | No separate A/B fee, but each variant with provisioned instances adds instance-hour cost (e.g., 2-variant = ~$430/month) |
+| Auto Scaling (1-4 instances) | Disabled | Scales per variant; total cost depends on variant count × instance count |
 | Model Registry | Disabled | $0 (metadata only) |
 | Event-Driven Prototype | Disabled | ~$0 (pay-per-event, negligible at test scale) |
 
@@ -86,7 +86,7 @@ SageMaker Job Completes
 
 ### Key Design Decisions
 
-**Why 8-character hex IDs?** With 32 bits of entropy (4.3 billion possible values), collision probability is negligible for our use case. The short length fits comfortably within SageMaker's 256-character tag value limit while providing sufficient uniqueness for concurrent jobs.
+**Why 8-character hex IDs?** With 32 bits of entropy, the collision probability is low for the expected concurrency in this reference implementation. Conditional writes detect collisions, and the Lambda retries with a new ID up to 3 times. For very high-concurrency production workloads (thousands of concurrent Batch Transform jobs), consider using a longer correlation ID such as 12 or 16 hex characters.
 
 **Why DynamoDB?** Single-digit millisecond latency, automatic TTL cleanup (24-hour expiry), conditional writes for collision prevention, and pay-per-request pricing that costs effectively $0 at our scale.
 
@@ -200,27 +200,31 @@ ScalingPolicy:
 
 ### Inference Comparison Lambda
 
-The Inference Comparison Lambda runs every 5 minutes, aggregating per-variant metrics and emitting CloudWatch EMF metrics:
+The Inference Comparison Lambda runs every 5 minutes, aggregating per-variant metrics and emitting CloudWatch EMF metrics. The following is simplified pseudo-code. In production, collect invocation and error metrics from CloudWatch metrics such as `Invocations`, `Invocation4XXErrors`, `Invocation5XXErrors`, and `ModelLatency`:
 
 ```python
 for variant in endpoint_variants:
     metrics = cloudwatch.get_metric_statistics(
+        Namespace='AWS/SageMaker',
         MetricName='ModelLatency',
         Dimensions=[
             {'Name': 'EndpointName', 'Value': endpoint_name},
-            {'Name': 'VariantName', 'Value': variant['VariantName']}
+            {'Name': 'VariantName', 'Value': variant_name}
         ],
+        StartTime=start_time,
+        EndTime=end_time,
         Period=300,
-        Statistics=['Average', 'p50', 'p90', 'p99']
+        Statistics=['Average', 'SampleCount'],
+        ExtendedStatistics=['p50', 'p90', 'p99']
     )
     emit_emf_metric(
         namespace='FSxN-S3AP-Patterns/Inference',
-        dimensions={'Variant': variant['VariantName']},
+        dimensions={'Variant': variant_name},
         metrics={
             'AverageLatency': metrics['Average'],
-            'P99Latency': metrics['p99'],
-            'InvocationCount': variant['CurrentInvocationCount'],
-            'ErrorRate': variant['ErrorRate']
+            'P99Latency': metrics['ExtendedStatistics']['p99'],
+            'InvocationCount': invocation_metrics['SampleCount'],
+            'ErrorRate': error_count / invocation_count
         }
     )
 ```
@@ -248,7 +252,7 @@ Management Account
 Storage Account
   ├── FSx ONTAP File System
   ├── S3 Access Points
-  └── AWS RAM Resource Share (share S3 AP with workload accounts)
+  └── S3 Access Point policies + cross-account IAM roles
 
 Shared Services Account
   ├── CloudWatch Observability Sink (cross-account metrics/logs/traces)
@@ -286,18 +290,30 @@ ParameterOverrides:
     ParameterValue: "shared-fsxn-s3ap-alias"
 ```
 
-### AWS RAM for S3 Access Point Sharing
+### Cross-Account Access to S3 Access Points
 
-```yaml
-ResourceShare:
-  Type: AWS::RAM::ResourceShare
-  Properties:
-    Name: "fsxn-s3ap-share"
-    Principals:
-      - "arn:aws:organizations::111111111111:ou/o-xxx/ou-xxx"
-    ResourceArns:
-      - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${AccessPointName}"
+For FSx for ONTAP S3 Access Points, cross-account access is modeled with **S3 Access Point policies** and **workload-account IAM roles** — not AWS RAM. S3 Access Points (including FSx ONTAP S3 AP) are not listed as [RAM-shareable resource types](https://docs.aws.amazon.com/ram/latest/userguide/shareable.html). The cross-account pattern uses:
+
+1. **S3 Access Point resource-based policy** (on the storage account) allowing the workload account's role
+2. **Cross-account IAM role** (on the storage account) with External ID condition
+3. **Workload Lambda execution role** with `sts:AssumeRole` permission
+
+```json
+// S3 Access Point policy (storage account)
+{
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"AWS": "arn:aws:iam::WORKLOAD_ACCOUNT:role/fsxn-s3ap-workload-storage-access-role"},
+    "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+    "Resource": [
+      "arn:aws:s3:ap-northeast-1:STORAGE_ACCOUNT:accesspoint/my-fsxn-ap",
+      "arn:aws:s3:ap-northeast-1:STORAGE_ACCOUNT:accesspoint/my-fsxn-ap/object/*"
+    ]
+  }]
+}
 ```
+
+> **Note on AWS RAM**: RAM can share VPC subnets, Transit Gateway, and Route 53 Resolver rules for network connectivity between accounts. If RAM support for additional resource types is required, verify that the resource type is listed in the [AWS RAM supported resource types documentation](https://docs.aws.amazon.com/ram/latest/userguide/shareable.html).
 
 ### Cross-Account Observability
 
@@ -421,7 +437,7 @@ Phase 4 introduces 11 correctness properties:
 | Multi-Variant traffic split | ✅ PASS | 70/30 split verified via CloudWatch |
 | Auto Scaling policy | ✅ PASS | Scale-out triggered at 70 invocations/instance |
 | StackSets template validation | ✅ PASS | Cross-account parameter overrides |
-| RAM resource share | ✅ PASS | S3 AP shared to target OU |
+| Cross-account S3 AP access | ✅ PASS | IAM role chain + S3 AP policy verified |
 | Event-Driven E2E | ✅ **PASS** | **3.5 seconds** (PutObject → processing complete) |
 | CloudFormation validate-template | ✅ PASS | All templates |
 | cfn-lint | ✅ PASS | 0 errors |

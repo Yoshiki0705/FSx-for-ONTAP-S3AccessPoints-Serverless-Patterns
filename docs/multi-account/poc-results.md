@@ -12,7 +12,7 @@
 
 | アカウント | 役割 | 主要リソース |
 |-----------|------|-------------|
-| **Account A** (Storage/Shared) | ストレージ + 共有サービス | FSx ONTAP, S3 AP, CloudWatch Sink, RAM Share |
+| **Account A** (Storage/Shared) | ストレージ + 共有サービス | FSx ONTAP, S3 AP, CloudWatch Sink, Cross-Account IAM |
 | **Account B** (Workload) | ワークロード実行 | Lambda, Step Functions, UC デプロイ |
 
 ### ネットワーク構成
