@@ -130,6 +130,12 @@ Parameters:
     MaxValue: 60
     Description: 品質スコアの閾値（この値未満のサンプルをフラグ）
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -151,6 +157,8 @@ Conditions:
   UseAutoAthenaWorkgroup:
     !Equals [!Ref AthenaWorkgroupName, ""]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -366,12 +374,14 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -393,6 +403,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # QC Lambda: VPC 外、S3 AP ストリーミング読み取り + S3 出力バケット書き込み
   QcLambdaRole:
@@ -419,6 +435,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3OutputBucketWrite
                 Effect: Allow
                 Action:
@@ -433,6 +450,12 @@ Resources:
                 Resource:
                   - !GetAtt QcLogGroup.Arn
                   - !Sub "${QcLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # VariantAggregation Lambda: VPC 外、S3 AP 読み取り + S3 出力バケット書き込み
   VariantAggregationLambdaRole:
@@ -459,6 +482,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3OutputBucketWrite
                 Effect: Allow
                 Action:
@@ -473,6 +497,12 @@ Resources:
                 Resource:
                   - !GetAtt VariantAggregationLogGroup.Arn
                   - !Sub "${VariantAggregationLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # AthenaAnalysis Lambda: VPC 外、Glue + Athena + S3 出力バケット
   AthenaAnalysisLambdaRole:
@@ -531,6 +561,12 @@ Resources:
                 Resource:
                   - !GetAtt AthenaAnalysisLogGroup.Arn
                   - !Sub "${AthenaAnalysisLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # Summary Lambda: VPC 外、Bedrock + Comprehend Medical (Cross-Region) + S3 出力 + SNS
   # PHI 保護: 機密バイオメディカルデータのログ出力を制限
@@ -586,6 +622,12 @@ Resources:
                 Resource:
                   - !GetAtt SummaryLogGroup.Arn
                   - !Sub "${SummaryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # -----------------------------------------------------------------
   # Lambda Functions
@@ -595,6 +637,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: genomics-pipeline/functions/discovery/handler.handler
@@ -607,6 +651,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "genomics-pipeline"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           PREFIX_FILTER: ""
           SUFFIX_FILTER: ".fastq,.fastq.gz,.bam,.vcf,.vcf.gz"
@@ -623,6 +668,8 @@ Resources:
   QcFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-qc"
       Runtime: python3.12
       Handler: genomics-pipeline/functions/qc/handler.handler
@@ -633,6 +680,7 @@ Resources:
       Role: !GetAtt QcLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "genomics-pipeline"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           QC_SAMPLE_SIZE: !Ref QcSampleSize
@@ -646,6 +694,8 @@ Resources:
   VariantAggregationFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-variant-aggregation"
       Runtime: python3.12
       Handler: genomics-pipeline/functions/variant_aggregation/handler.handler
@@ -654,6 +704,7 @@ Resources:
       Role: !GetAtt VariantAggregationLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "genomics-pipeline"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
       LoggingConfig:
@@ -665,6 +716,8 @@ Resources:
   AthenaAnalysisFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-athena-analysis"
       Runtime: python3.12
       Handler: genomics-pipeline/functions/athena_analysis/handler.handler
@@ -673,6 +726,7 @@ Resources:
       Role: !GetAtt AthenaAnalysisLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "genomics-pipeline"
           GLUE_DATABASE: !If
             - UseAutoGlueDatabase
             - !Sub "${AWS::StackName}-db"
@@ -696,6 +750,8 @@ Resources:
   SummaryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-summary"
       Runtime: python3.12
       Handler: genomics-pipeline/functions/summary/handler.handler
@@ -704,6 +760,7 @@ Resources:
       Role: !GetAtt SummaryLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "genomics-pipeline"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -833,6 +890,8 @@ Resources:
   GenomicsStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |

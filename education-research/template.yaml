@@ -81,6 +81,12 @@ Parameters:
     Default: "amazon.nova-lite-v1:0"
     Description: Bedrock モデル ID
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 Conditions:
   CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateVpcEndpoints: !Equals [!Ref EnableVpcEndpoints, "true"]
@@ -89,6 +95,9 @@ Conditions:
       - !Condition CreateVpcEndpoints
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
   UseAutoOutputBucket: !Equals [!Ref OutputBucketName, ""]
+
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 
 Resources:
   OutputBucket:
@@ -238,6 +247,12 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       Policies:
@@ -250,9 +265,12 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Effect: Allow
                 Action: [s3:PutObject]
-                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Effect: Allow
                 Action: [secretsmanager:GetSecretValue]
                 Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
@@ -271,6 +289,12 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
@@ -280,7 +304,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: [s3:GetObject]
-                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Effect: Allow
                 Action: [textract:AnalyzeDocument]
                 Resource: "*"
@@ -302,6 +328,12 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
@@ -333,6 +365,12 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
@@ -358,6 +396,12 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
@@ -376,6 +420,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: education-research/functions/discovery/handler.handler
@@ -387,6 +433,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "education-research"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           PREFIX_FILTER: ""
           SUFFIX_FILTER: ".pdf,.csv,.json,.xml"
@@ -400,6 +447,8 @@ Resources:
   OcrFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
       Runtime: python3.12
       Handler: education-research/functions/ocr/handler.handler
@@ -408,6 +457,7 @@ Resources:
       Role: !GetAtt OcrLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "education-research"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           CROSS_REGION: !Ref CrossRegion
@@ -417,6 +467,8 @@ Resources:
   ClassificationFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-classification"
       Runtime: python3.12
       Handler: education-research/functions/classification/handler.handler
@@ -425,6 +477,7 @@ Resources:
       Role: !GetAtt ClassificationLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "education-research"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
       LoggingConfig:
@@ -433,6 +486,8 @@ Resources:
   CitationAnalysisFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-citation-analysis"
       Runtime: python3.12
       Handler: education-research/functions/citation_analysis/handler.handler
@@ -441,6 +496,7 @@ Resources:
       Role: !GetAtt CitationAnalysisLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "education-research"
           OUTPUT_BUCKET: !Ref OutputBucket
       LoggingConfig:
         LogGroup: !Ref CitationAnalysisLogGroup
@@ -448,6 +504,8 @@ Resources:
   MetadataFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-metadata"
       Runtime: python3.12
       Handler: education-research/functions/metadata/handler.handler
@@ -456,6 +514,7 @@ Resources:
       Role: !GetAtt MetadataLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "education-research"
           OUTPUT_BUCKET: !Ref OutputBucket
       LoggingConfig:
         LogGroup: !Ref MetadataLogGroup
@@ -489,6 +548,8 @@ Resources:
   EducationResearchStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |

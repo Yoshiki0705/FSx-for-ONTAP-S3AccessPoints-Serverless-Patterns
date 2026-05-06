@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -73,21 +74,42 @@ def _map_label_to_category_id(label: str) -> int:
     return LABEL_TO_CATEGORY.get(label.lower(), 10)
 
 
+def _compute_label_distribution(labels: list[int]) -> dict[int, int]:
+    """セグメンテーションラベルの分布を計算する
+
+    Args:
+        labels: セグメンテーションラベルのリスト
+
+    Returns:
+        dict[int, int]: ラベル ID → 出現回数のマッピング
+    """
+    distribution: dict[int, int] = {}
+    for label in labels:
+        distribution[label] = distribution.get(label, 0) + 1
+    return distribution
+
+
 def build_coco_annotations(
     detection_results: list[dict],
     qc_results: list[dict] | None = None,
+    sagemaker_output: dict | None = None,
 ) -> dict:
     """検出結果から COCO 互換アノテーション JSON を構築する
 
     Args:
         detection_results: フレーム抽出 Lambda からの検出結果リスト
         qc_results: 点群 QC Lambda からの QC 結果リスト（オプション）
+        sagemaker_output: SageMaker Batch Transform 出力（オプション）
+            - s3_path: 出力 S3 パス
+            - point_count: ポイント数
+            - labels: セグメンテーションラベルリスト
 
     Returns:
         dict: COCO 互換 JSON 構造
             - images: 画像情報リスト
             - annotations: アノテーションリスト
             - categories: カテゴリリスト
+            - point_cloud_segmentation: セグメンテーション情報（sagemaker_output 存在時）
     """
     images = []
     annotations = []
@@ -143,11 +165,28 @@ def build_coco_annotations(
             image_id += 1
 
     # 画像がない場合でもカテゴリは含める
-    return {
+    result = {
         "images": images,
         "annotations": annotations,
         "categories": COCO_CATEGORIES,
     }
+
+    # SageMaker Batch Transform 出力の統合
+    if sagemaker_output:
+        segmentation_labels = sagemaker_output.get("labels", [])
+        point_count = sagemaker_output.get("point_count", 0)
+        s3_path = sagemaker_output.get("s3_path", "")
+
+        result["point_cloud_segmentation"] = {
+            "source": "sagemaker_batch_transform",
+            "s3_path": s3_path,
+            "point_count": point_count,
+            "labels_count": len(segmentation_labels),
+            "labels": segmentation_labels,
+            "category_distribution": _compute_label_distribution(segmentation_labels),
+        }
+
+    return result
 
 
 def _convert_bbox(bbox: dict | None) -> list[float]:
@@ -216,7 +255,15 @@ def _invoke_bedrock_annotation_suggestions(
     )
 
     try:
-        response = bedrock_client.invoke_model(
+        with xray_subsegment(
+
+            name="bedrock_invokemodel",
+
+            annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "autonomous-driving"},
+
+        ):
+
+            response = bedrock_client.invoke_model(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
@@ -262,6 +309,7 @@ def _start_sagemaker_transform(
     }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """アノテーション管理 Lambda
@@ -281,6 +329,7 @@ def handler(event, context):
     """
     detection_results = event.get("detection_results", [])
     qc_results = event.get("qc_results", [])
+    sagemaker_output = event.get("sagemaker_output", None)
 
     output_bucket = os.environ["OUTPUT_BUCKET"]
     model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
@@ -296,7 +345,9 @@ def handler(event, context):
     )
 
     # COCO 互換アノテーション構築
-    coco_annotations = build_coco_annotations(detection_results, qc_results)
+    coco_annotations = build_coco_annotations(
+        detection_results, qc_results, sagemaker_output
+    )
 
     # Bedrock でアノテーション提案生成
     bedrock_client = boto3.client("bedrock-runtime")
@@ -363,6 +414,13 @@ def handler(event, context):
         len(coco_annotations["images"]),
         len(coco_annotations["annotations"]),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="annotation_manager")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "autonomous-driving"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

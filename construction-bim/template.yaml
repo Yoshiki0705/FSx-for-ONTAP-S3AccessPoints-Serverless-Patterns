@@ -101,6 +101,12 @@ Parameters:
     Default: "us-east-1"
     Description: Textract API のルーティング先リージョン（ap-northeast-1 非対応のため）
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -116,6 +122,8 @@ Conditions:
   UseAutoOutputBucket:
     !Equals [!Ref OutputBucketName, ""]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -323,12 +331,14 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -350,6 +360,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # BimParse Lambda: VPC 外、S3 AP 読み取り + S3 出力バケット書き込み
   BimParseLambdaRole:
@@ -376,6 +392,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3OutputBucketReadWrite
                 Effect: Allow
                 Action:
@@ -393,6 +410,12 @@ Resources:
                 Resource:
                   - !GetAtt BimParseLogGroup.Arn
                   - !Sub "${BimParseLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # OCR Lambda: VPC 外、Cross-Region Textract + S3 AP 読み取り + S3 出力
   OcrLambdaRole:
@@ -427,6 +450,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3OutputBucketWrite
                 Effect: Allow
                 Action:
@@ -441,6 +465,12 @@ Resources:
                 Resource:
                   - !GetAtt OcrLogGroup.Arn
                   - !Sub "${OcrLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # SafetyCheck Lambda: VPC 外、Bedrock + Rekognition + S3 出力 + SNS
   # 安全記録保護: 機密コンプライアンスデータのログ出力を制限
@@ -493,6 +523,12 @@ Resources:
                 Resource:
                   - !GetAtt SafetyCheckLogGroup.Arn
                   - !Sub "${SafetyCheckLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # -----------------------------------------------------------------
   # Lambda Functions
@@ -502,6 +538,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: construction-bim/functions/discovery/handler.handler
@@ -514,6 +552,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "construction-bim"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           PREFIX_FILTER: ""
           SUFFIX_FILTER: ".ifc,.rvt,.pdf"
@@ -530,6 +569,8 @@ Resources:
   BimParseFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-bim-parse"
       Runtime: python3.12
       Handler: construction-bim/functions/bim_parse/handler.handler
@@ -538,6 +579,7 @@ Resources:
       Role: !GetAtt BimParseLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "construction-bim"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           PREVIOUS_METADATA_PREFIX: "metadata/history/"
@@ -550,6 +592,8 @@ Resources:
   OcrFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
       Runtime: python3.12
       Handler: construction-bim/functions/ocr/handler.handler
@@ -558,6 +602,7 @@ Resources:
       Role: !GetAtt OcrLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "construction-bim"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           CROSS_REGION: !Ref CrossRegion
@@ -570,6 +615,8 @@ Resources:
   SafetyCheckFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-safety-check"
       Runtime: python3.12
       Handler: construction-bim/functions/safety_check/handler.handler
@@ -578,6 +625,7 @@ Resources:
       Role: !GetAtt SafetyCheckLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "construction-bim"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -623,6 +671,8 @@ Resources:
   ConstructionBimStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |

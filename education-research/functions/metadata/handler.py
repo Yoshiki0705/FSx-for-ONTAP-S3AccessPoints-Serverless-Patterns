@@ -18,6 +18,7 @@ from pathlib import PurePosixPath
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ def _build_paper_metadata(
     }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """論文メタデータ生成
@@ -140,5 +142,12 @@ def handler(event, context):
         file_key,
         paper_metadata.get("domain", "Unknown"),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="metadata")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "education-research"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

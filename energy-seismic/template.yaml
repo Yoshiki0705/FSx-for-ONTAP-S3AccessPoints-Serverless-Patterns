@@ -117,6 +117,12 @@ Parameters:
     MaxValue: 10.0
     Description: 異常検知閾値（標準偏差の倍数）
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -138,6 +144,8 @@ Conditions:
   UseAutoAthenaWorkgroup:
     !Equals [!Ref AthenaWorkgroupName, ""]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -347,12 +355,14 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -374,6 +384,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # SeismicMetadata Lambda: VPC 外、S3 AP 読み取り (Range) + S3 出力バケット書き込み
   SeismicMetadataLambdaRole:
@@ -400,6 +416,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3OutputBucketWrite
                 Effect: Allow
                 Action:
@@ -414,6 +431,12 @@ Resources:
                 Resource:
                   - !GetAtt SeismicMetadataLogGroup.Arn
                   - !Sub "${SeismicMetadataLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # AnomalyDetection Lambda: VPC 外、S3 AP 読み取り + S3 出力バケット書き込み
   AnomalyDetectionLambdaRole:
@@ -440,6 +463,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3OutputBucketWrite
                 Effect: Allow
                 Action:
@@ -454,6 +478,12 @@ Resources:
                 Resource:
                   - !GetAtt AnomalyDetectionLogGroup.Arn
                   - !Sub "${AnomalyDetectionLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # AthenaAnalysis Lambda: VPC 外、Glue + Athena + S3 出力バケット
   AthenaAnalysisLambdaRole:
@@ -512,6 +542,12 @@ Resources:
                 Resource:
                   - !GetAtt AthenaAnalysisLogGroup.Arn
                   - !Sub "${AthenaAnalysisLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # ComplianceReport Lambda: VPC 外、Bedrock + Rekognition + S3 AP 読み取り + S3 出力バケット + SNS
   ComplianceReportLambdaRole:
@@ -549,6 +585,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3OutputBucketWrite
                 Effect: Allow
                 Action:
@@ -569,6 +606,12 @@ Resources:
                 Resource:
                   - !GetAtt ComplianceReportLogGroup.Arn
                   - !Sub "${ComplianceReportLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # -----------------------------------------------------------------
   # Lambda Functions
@@ -578,6 +621,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: energy-seismic/functions/discovery/handler.handler
@@ -590,6 +635,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "energy-seismic"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           PREFIX_FILTER: ""
           SUFFIX_FILTER: ".segy,.sgy,.las,.csv"
@@ -606,6 +652,8 @@ Resources:
   SeismicMetadataFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-seismic-metadata"
       Runtime: python3.12
       Handler: energy-seismic/functions/seismic_metadata/handler.handler
@@ -614,6 +662,7 @@ Resources:
       Role: !GetAtt SeismicMetadataLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "energy-seismic"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
       LoggingConfig:
@@ -625,6 +674,8 @@ Resources:
   AnomalyDetectionFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-anomaly-detection"
       Runtime: python3.12
       Handler: energy-seismic/functions/anomaly_detection/handler.handler
@@ -633,6 +684,7 @@ Resources:
       Role: !GetAtt AnomalyDetectionLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "energy-seismic"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           ANOMALY_THRESHOLD_STD: !Ref AnomalyThresholdStd
@@ -645,6 +697,8 @@ Resources:
   AthenaAnalysisFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-athena-analysis"
       Runtime: python3.12
       Handler: energy-seismic/functions/athena_analysis/handler.handler
@@ -653,6 +707,7 @@ Resources:
       Role: !GetAtt AthenaAnalysisLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "energy-seismic"
           GLUE_DATABASE: !If
             - UseAutoGlueDatabase
             - !Sub "${AWS::StackName}-db"
@@ -676,6 +731,8 @@ Resources:
   ComplianceReportFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-compliance-report"
       Runtime: python3.12
       Handler: energy-seismic/functions/compliance_report/handler.handler
@@ -684,6 +741,7 @@ Resources:
       Role: !GetAtt ComplianceReportLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "energy-seismic"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -799,6 +857,8 @@ Resources:
   SeismicStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |

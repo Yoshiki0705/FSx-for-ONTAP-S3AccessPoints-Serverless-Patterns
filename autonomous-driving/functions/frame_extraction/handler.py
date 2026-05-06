@@ -28,6 +28,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,15 @@ def _run_rekognition_detection(
         list[dict]: 検出されたオブジェクトのリスト
     """
     try:
-        response = rekognition_client.detect_labels(
+        with xray_subsegment(
+
+            name="rekognition_detectlabels",
+
+            annotations={"service_name": "rekognition", "operation": "DetectLabels", "use_case": "autonomous-driving"},
+
+        ):
+
+            response = rekognition_client.detect_labels(
             Image={"Bytes": image_bytes},
             MaxLabels=20,
             MinConfidence=50.0,
@@ -152,6 +161,7 @@ def _run_rekognition_detection(
     return detections
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """ダッシュカム映像フレーム抽出 + Rekognition 物体検出
@@ -266,5 +276,12 @@ def handler(event, context):
         frames_extracted,
         len(detections),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="frame_extraction")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "autonomous-driving"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

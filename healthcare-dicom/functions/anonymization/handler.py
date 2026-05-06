@@ -25,6 +25,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,7 @@ def redact_phi_fields(metadata: dict, phi_entities: list) -> dict:
     return result
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Anonymization Lambda
@@ -170,6 +172,13 @@ def handler(event, context):
         len(phi_entities),
         output_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="anonymization")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "healthcare-dicom"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "dicom_key": dicom_key,

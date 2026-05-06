@@ -29,6 +29,7 @@ import boto3
 
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +166,19 @@ def _invoke_bedrock(bedrock_client, model_id: str, prompt: str) -> str:
         },
     })
 
-    response = bedrock_client.invoke_model(
+    with xray_subsegment(
+
+
+        name="bedrock_invokemodel",
+
+
+        annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "genomics-pipeline"},
+
+
+    ):
+
+
+        response = bedrock_client.invoke_model(
         modelId=model_id,
         contentType="application/json",
         accept="application/json",
@@ -249,6 +262,7 @@ def _extract_biomedical_entities(
     return entities
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """ゲノミクス / バイオインフォマティクス サマリー生成 Lambda
@@ -390,6 +404,13 @@ def handler(event, context):
         len(below_threshold_samples),
         sum(len(v) for v in biomedical_entities.values()),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="summary")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "genomics-pipeline"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

@@ -1,0 +1,541 @@
+# =============================================================================
+# SNS アラート自動化 — CloudWatch Alarms + SNS 通知
+# =============================================================================
+#
+# 本テンプレートは FSxN S3AP Serverless Patterns の全 14 ユースケースに対する
+# CloudWatch Alarms と SNS 通知ルールを作成する。
+#
+# 設計方針:
+# - KMS 暗号化 SNS トピック（CloudWatch Alarms のみ publish 許可）
+# - UC 別アラーム: Step Functions 失敗率、Lambda エラー率
+# - Kinesis アラーム（オプション）: iterator age 閾値超過
+# - 複合アラーム: Lambda エラー + Step Functions 失敗の同時発生
+# - 通知チャネル: email（必須）、Slack webhook（オプション）、PagerDuty（オプション）
+# - 全リソースにタグ付与: Phase=3, Component=alert-automation
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file alert-automation.yaml \
+#     --stack-name fsxn-s3ap-alerts \
+#     --capabilities CAPABILITY_IAM \
+#     --parameter-overrides \
+#       NotificationEmail=ops@example.com \
+#       UseCaseStackNames=uc01-stack,uc02-stack \
+#       SfnFailureThreshold=3 \
+#       LambdaErrorRateThreshold=5
+#
+# 参照: Requirements 9.1–9.7
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Alert Automation.
+  CloudWatch Alarms + SNS 通知による閾値ベース自動アラート。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  NotificationEmail:
+    Type: String
+    Description: >-
+      アラーム通知の送信先メールアドレス（必須）。
+      SNS サブスクリプション確認メールが送信される。
+
+  SlackWebhookUrl:
+    Type: String
+    Default: ""
+    Description: >-
+      Slack Incoming Webhook URL（オプション）。
+      空文字の場合、Slack 通知リソースは作成されない。
+
+  PagerDutyEndpoint:
+    Type: String
+    Default: ""
+    Description: >-
+      PagerDuty HTTPS エンドポイント URL（オプション）。
+      空文字の場合、PagerDuty サブスクリプションは作成されない。
+
+  UseCaseStackNames:
+    Type: CommaDelimitedList
+    Description: >-
+      デプロイ済み UC スタック名のリスト。
+      アラーム名とメトリクス参照の構築に使用する。
+
+  SfnFailureThreshold:
+    Type: Number
+    Default: 3
+    Description: >-
+      Step Functions 実行失敗数の閾値（5 分間）。
+      この値を超えるとアラームが発火する。
+
+  LambdaErrorRateThreshold:
+    Type: Number
+    Default: 5
+    Description: >-
+      Lambda エラー率の閾値（パーセント、5 分間）。
+      (Errors / Invocations) * 100 がこの値を超えるとアラームが発火する。
+
+  LambdaDurationMultiplier:
+    Type: Number
+    Default: 2
+    Description: >-
+      Lambda P90 duration 異常検知の倍率。
+      P90 がベースラインの N 倍を超えるとアラームが発火する。
+
+  EnableKinesisAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Kinesis ストリーミング関連アラームを有効化する。
+      UC11 で EnableStreamingMode=true の場合に true を設定する。
+
+  KinesisIteratorAgeThreshold:
+    Type: Number
+    Default: 60000
+    Description: >-
+      Kinesis GetRecords.IteratorAgeMilliseconds の閾値（ミリ秒）。
+      デフォルト: 60000ms (60 秒)。
+
+  KinesisStreamName:
+    Type: String
+    Default: "none"
+    Description: >-
+      Kinesis Data Stream 名。EnableKinesisAlarms=true 時に必須。
+    MinLength: 1
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  HasSlackWebhook:
+    !Not [!Equals [!Ref SlackWebhookUrl, ""]]
+
+  HasPagerDutyEndpoint:
+    !Not [!Equals [!Ref PagerDutyEndpoint, ""]]
+
+  CreateKinesisAlarms:
+    !Equals [!Ref EnableKinesisAlarms, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # KMS Key for SNS Topic Encryption
+  # -------------------------------------------------------------------
+  AlertTopicKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for FSxN S3AP alert SNS topic encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowRootAccountFullAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+          - Sid: AllowCloudWatchAlarmsToUseKey
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+            Resource: "*"
+          - Sid: AllowSNSToUseKey
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+            Resource: "*"
+      Tags:
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: alert-automation
+
+  AlertTopicKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/fsxn-s3ap-alert-topic-${AWS::StackName}"
+      TargetKeyId: !Ref AlertTopicKey
+
+  # -------------------------------------------------------------------
+  # SNS Topic (KMS Encrypted)
+  # -------------------------------------------------------------------
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "fsxn-s3ap-alerts-${AWS::StackName}"
+      DisplayName: !Sub
+        - "FSxN S3AP Alerts (monitoring ${StackCount} UC stacks)"
+        - StackCount: !Select [0, !Ref UseCaseStackNames]
+      KmsMasterKeyId: !Ref AlertTopicKey
+      Tags:
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: alert-automation
+
+  # SNS Topic Policy — CloudWatch Alarms のみ publish 許可
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudWatchAlarmsPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:*"
+          - Sid: DenyNonCloudWatchPublish
+            Effect: Deny
+            Principal: "*"
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringNotEquals:
+                aws:PrincipalServiceName: cloudwatch.amazonaws.com
+              ArnNotLike:
+                aws:PrincipalArn: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+
+  # -------------------------------------------------------------------
+  # SNS Subscriptions
+  # -------------------------------------------------------------------
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  PagerDutySubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasPagerDutyEndpoint
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: https
+      Endpoint: !Ref PagerDutyEndpoint
+
+  # -------------------------------------------------------------------
+  # Slack Webhook Lambda (Optional)
+  # -------------------------------------------------------------------
+  SlackNotifierRole:
+    Type: AWS::IAM::Role
+    Condition: HasSlackWebhook
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: alert-automation
+
+  SlackNotifierFunction:
+    Type: AWS::Lambda::Function
+    Condition: HasSlackWebhook
+    Properties:
+      FunctionName: !Sub "fsxn-s3ap-slack-notifier-${AWS::StackName}"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt SlackNotifierRole.Arn
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+      Code:
+        ZipFile: |
+          """Slack webhook notifier for CloudWatch Alarm SNS messages."""
+          import json
+          import os
+          import urllib.request
+
+          def handler(event, context):
+              """Forward SNS alarm notification to Slack webhook."""
+              webhook_url = os.environ["SLACK_WEBHOOK_URL"]
+              for record in event.get("Records", []):
+                  sns_message = record.get("Sns", {}).get("Message", "")
+                  try:
+                      alarm_data = json.loads(sns_message)
+                      text = (
+                          f":rotating_light: *CloudWatch Alarm*\n"
+                          f"*Alarm:* {alarm_data.get('AlarmName', 'Unknown')}\n"
+                          f"*State:* {alarm_data.get('NewStateValue', 'Unknown')}\n"
+                          f"*Reason:* {alarm_data.get('NewStateReason', 'N/A')}\n"
+                          f"*Region:* {alarm_data.get('Region', 'Unknown')}"
+                      )
+                  except (json.JSONDecodeError, TypeError):
+                      text = f":rotating_light: *CloudWatch Alarm*\n{sns_message}"
+
+                  payload = json.dumps({"text": text}).encode("utf-8")
+                  req = urllib.request.Request(
+                      webhook_url,
+                      data=payload,
+                      headers={"Content-Type": "application/json"},
+                  )
+                  urllib.request.urlopen(req)
+              return {"statusCode": 200}
+      Tags:
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: alert-automation
+
+  SlackNotifierPermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasSlackWebhook
+    Properties:
+      FunctionName: !Ref SlackNotifierFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref AlertTopic
+
+  SlackSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasSlackWebhook
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: lambda
+      Endpoint: !GetAtt SlackNotifierFunction.Arn
+
+  # -------------------------------------------------------------------
+  # Per-UC Alarms: Step Functions Execution Failure
+  # -------------------------------------------------------------------
+  SfnFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-SfnFailure-${AWS::StackName}"
+      AlarmDescription: !Sub |
+        {
+          "use_case": "all-use-cases",
+          "alarm_name": "SfnFailureAlarm",
+          "metric": "ExecutionsFailed",
+          "threshold": ${SfnFailureThreshold},
+          "timestamp": "dynamic"
+        }
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: !Ref SfnFailureThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      Tags:
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: alert-automation
+
+  # -------------------------------------------------------------------
+  # Per-UC Alarms: Lambda Error Rate (Math Expression)
+  # -------------------------------------------------------------------
+  LambdaErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-LambdaErrorRate-${AWS::StackName}"
+      AlarmDescription: !Sub |
+        {
+          "use_case": "all-use-cases",
+          "alarm_name": "LambdaErrorRateAlarm",
+          "metric": "ErrorRate (Errors/Invocations*100)",
+          "threshold": ${LambdaErrorRateThreshold},
+          "timestamp": "dynamic"
+        }
+      Metrics:
+        - Id: errors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: invocations
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: error_rate
+          Expression: "IF(invocations > 0, (errors / invocations) * 100, 0)"
+          Label: "Error Rate (%)"
+          ReturnData: true
+      EvaluationPeriods: 1
+      Threshold: !Ref LambdaErrorRateThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      Tags:
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: alert-automation
+
+  # -------------------------------------------------------------------
+  # Per-UC Alarms: Lambda Duration Anomaly
+  # -------------------------------------------------------------------
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-LambdaDuration-${AWS::StackName}"
+      AlarmDescription: !Sub |
+        {
+          "use_case": "all-use-cases",
+          "alarm_name": "LambdaDurationAlarm",
+          "metric": "Duration P90",
+          "threshold": "${LambdaDurationMultiplier}x baseline",
+          "timestamp": "dynamic"
+        }
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      ExtendedStatistic: p90
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: !Ref LambdaDurationMultiplier
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      Tags:
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: alert-automation
+
+  # -------------------------------------------------------------------
+  # Composite Alarm: Lambda Errors AND Step Functions Failures
+  # -------------------------------------------------------------------
+  CompositeAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-Composite-${AWS::StackName}"
+      AlarmDescription: |
+        {
+          "use_case": "all-use-cases",
+          "alarm_name": "CompositeAlarm",
+          "metric": "LambdaErrors AND SfnFailures",
+          "threshold": "both alarms in ALARM state",
+          "timestamp": "dynamic"
+        }
+      AlarmRule: !Sub "ALARM(${SfnFailureAlarm}) AND ALARM(${LambdaErrorRateAlarm})"
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      Tags:
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: alert-automation
+
+  # -------------------------------------------------------------------
+  # Kinesis Alarms (Conditional)
+  # -------------------------------------------------------------------
+  KinesisIteratorAgeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateKinesisAlarms
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-KinesisIteratorAge-${AWS::StackName}"
+      AlarmDescription: !Sub |
+        {
+          "use_case": "retail-catalog",
+          "alarm_name": "KinesisIteratorAgeAlarm",
+          "metric": "GetRecords.IteratorAgeMilliseconds",
+          "threshold": ${KinesisIteratorAgeThreshold},
+          "timestamp": "dynamic"
+        }
+      Namespace: AWS/Kinesis
+      MetricName: GetRecords.IteratorAgeMilliseconds
+      Dimensions:
+        - Name: StreamName
+          Value: !Ref KinesisStreamName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: !Ref KinesisIteratorAgeThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      Tags:
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: alert-automation
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  AlertTopicArn:
+    Description: SNS アラートトピック ARN
+    Value: !Ref AlertTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-AlertTopicArn"
+
+  AlertTopicName:
+    Description: SNS アラートトピック名
+    Value: !GetAtt AlertTopic.TopicName
+
+  KmsKeyArn:
+    Description: SNS トピック暗号化 KMS キー ARN
+    Value: !GetAtt AlertTopicKey.Arn
+
+  SfnFailureAlarmArn:
+    Description: Step Functions 失敗アラーム ARN
+    Value: !GetAtt SfnFailureAlarm.Arn
+
+  LambdaErrorRateAlarmArn:
+    Description: Lambda エラー率アラーム ARN
+    Value: !GetAtt LambdaErrorRateAlarm.Arn
+
+  CompositeAlarmArn:
+    Description: 複合アラーム ARN
+    Value: !GetAtt CompositeAlarm.Arn
+
+  KinesisIteratorAgeAlarmArn:
+    Description: Kinesis Iterator Age アラーム ARN
+    Condition: CreateKinesisAlarms
+    Value: !GetAtt KinesisIteratorAgeAlarm.Arn
+
+  SlackNotifierFunctionArn:
+    Description: Slack 通知 Lambda 関数 ARN
+    Condition: HasSlackWebhook
+    Value: !GetAtt SlackNotifierFunction.Arn

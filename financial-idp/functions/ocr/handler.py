@@ -21,6 +21,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,15 @@ def _extract_text_sync(textract_client, document_bytes: bytes) -> str:
     Returns:
         str: 抽出されたテキスト
     """
-    response = textract_client.analyze_document(
+    with xray_subsegment(
+
+        name="textract_analyzedocument",
+
+        annotations={"service_name": "textract", "operation": "AnalyzeDocument", "use_case": "financial-idp"},
+
+    ):
+
+        response = textract_client.analyze_document(
         Document={"Bytes": document_bytes},
         FeatureTypes=["TABLES", "FORMS"],
     )
@@ -127,6 +136,7 @@ def _extract_text_async(
     return "\n".join(lines)
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """OCR Lambda: ドキュメント取得 → Textract OCR 実行
@@ -192,6 +202,13 @@ def handler(event, context):
             "api_mode": api_mode,
             "error": str(e),
         }
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="ocr")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "financial-idp"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "document_key": document_key,

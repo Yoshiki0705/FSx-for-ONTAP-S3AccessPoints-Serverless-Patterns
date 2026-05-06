@@ -167,6 +167,19 @@ aws cloudformation wait stack-delete-complete \
 
 > **注意**: S3 バケットにオブジェクトが残っている場合、スタック削除が失敗することがあります。事前にバケットを空にしてください。
 
+## Supported Regions
+
+UC5 は以下のサービスを使用します:
+
+| サービス | リージョン制約 |
+|---------|-------------|
+| Amazon Rekognition | ほぼ全リージョンで利用可能 |
+| Amazon Comprehend Medical | 限定リージョンのみ対応。`COMPREHEND_MEDICAL_REGION` パラメータで対応リージョン（us-east-1 等）を指定 |
+| AWS X-Ray | ほぼ全リージョンで利用可能 |
+| CloudWatch EMF | ほぼ全リージョンで利用可能 |
+
+> Cross-Region Client 経由で Comprehend Medical API を呼び出します。データレジデンシー要件を確認してください。詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
+
 ## 参考リンク
 
 ### AWS 公式ドキュメント

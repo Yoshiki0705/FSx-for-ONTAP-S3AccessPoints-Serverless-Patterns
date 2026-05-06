@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -242,7 +243,15 @@ def detect_visual_safety_elements(
         try:
             # S3 から画像を指定して Rekognition に送信
             if "bucket" in image_info and "key" in image_info:
-                response = rekognition_client.detect_labels(
+                with xray_subsegment(
+
+                    name="rekognition_detectlabels",
+
+                    annotations={"service_name": "rekognition", "operation": "DetectLabels", "use_case": "construction-bim"},
+
+                ):
+
+                    response = rekognition_client.detect_labels(
                     Image={
                         "S3Object": {
                             "Bucket": image_info["bucket"],
@@ -294,6 +303,7 @@ def determine_overall_compliance(compliance_results: list[dict]) -> str:
     return "PASS"
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """安全コンプライアンスチェック（Bedrock + Rekognition）
@@ -413,5 +423,12 @@ def handler(event, context):
         len(compliance_results),
         visual_elements,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="safety_check")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "construction-bim"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

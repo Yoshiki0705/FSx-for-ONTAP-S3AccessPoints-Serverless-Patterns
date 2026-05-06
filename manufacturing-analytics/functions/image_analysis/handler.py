@@ -21,6 +21,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ def should_flag_for_review(confidence: float, threshold: float) -> bool:
     return confidence < threshold
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Image Analysis Lambda
@@ -142,6 +144,13 @@ def handler(event, context):
         flagged,
         output_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="image_analysis")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "manufacturing-analytics"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "output_key": output_key,

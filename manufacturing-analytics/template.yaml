@@ -90,6 +90,12 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: Glue ETL ジョブを有効化する（Lambda 版 Transform の代替、大規模データ向け）
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -105,6 +111,8 @@ Conditions:
   CreateS3GatewayEndpoint:
     !Equals [!Ref EnableS3GatewayEndpoint, "true"]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -322,12 +330,14 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -336,6 +346,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   TransformLambdaRole:
     Type: AWS::IAM::Role
@@ -361,12 +377,14 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -375,6 +393,12 @@ Resources:
                 Resource:
                   - !GetAtt TransformLogGroup.Arn
                   - !Sub "${TransformLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   AthenaAnalysisLambdaRole:
     Type: AWS::IAM::Role
@@ -402,6 +426,7 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: AthenaResultsBucket
                 Effect: Allow
                 Action:
@@ -440,6 +465,12 @@ Resources:
                 Resource:
                   - !GetAtt AthenaAnalysisLogGroup.Arn
                   - !Sub "${AthenaAnalysisLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   ImageAnalysisLambdaRole:
     Type: AWS::IAM::Role
@@ -465,12 +496,14 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: Rekognition
                 Effect: Allow
                 Action:
@@ -484,6 +517,12 @@ Resources:
                 Resource:
                   - !GetAtt ImageAnalysisLogGroup.Arn
                   - !Sub "${ImageAnalysisLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # -----------------------------------------------------------------
   # Lambda Functions (Python 3.12, 256MB, 300s timeout)
@@ -491,6 +530,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: manufacturing-analytics/functions/discovery/handler.handler
@@ -503,6 +544,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "manufacturing-analytics"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           PREFIX_FILTER: ""
@@ -516,6 +558,8 @@ Resources:
   TransformFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-transform"
       Runtime: python3.12
       Handler: manufacturing-analytics/functions/transform/handler.handler
@@ -524,6 +568,7 @@ Resources:
       Role: !GetAtt TransformLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "manufacturing-analytics"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
       LoggingConfig:
@@ -535,6 +580,8 @@ Resources:
   AthenaAnalysisFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-athena-analysis"
       Runtime: python3.12
       Handler: manufacturing-analytics/functions/athena_analysis/handler.handler
@@ -543,6 +590,7 @@ Resources:
       Role: !GetAtt AthenaAnalysisLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "manufacturing-analytics"
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           ATHENA_RESULTS_BUCKET: !Ref AthenaResultsBucket
           GLUE_DATABASE: !Sub "${AWS::StackName}-db"
@@ -558,6 +606,8 @@ Resources:
   ImageAnalysisFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-image-analysis"
       Runtime: python3.12
       Handler: manufacturing-analytics/functions/image_analysis/handler.handler
@@ -566,6 +616,7 @@ Resources:
       Role: !GetAtt ImageAnalysisLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "manufacturing-analytics"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
@@ -663,6 +714,8 @@ Resources:
   ManufacturingStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |
@@ -931,6 +984,7 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
@@ -939,6 +993,7 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: AthenaResultsBucket
                 Effect: Allow
                 Action:
@@ -955,6 +1010,12 @@ Resources:
                   - logs:PutLogEvents
                 Resource:
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws-glue/*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   GlueETLScriptBucket:
     Type: AWS::S3::Bucket

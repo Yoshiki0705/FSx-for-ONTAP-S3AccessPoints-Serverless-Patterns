@@ -73,6 +73,12 @@ Parameters:
     Type: String
     Default: "amazon.nova-lite-v1:0"
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 Conditions:
   CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateVpcEndpoints: !Equals [!Ref EnableVpcEndpoints, "true"]
@@ -81,6 +87,9 @@ Conditions:
       - !Condition CreateVpcEndpoints
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
   UseAutoOutputBucket: !Equals [!Ref OutputBucketName, ""]
+
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 
 Resources:
   OutputBucket:
@@ -220,6 +229,12 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       Policies:
@@ -232,9 +247,12 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Effect: Allow
                 Action: [s3:PutObject]
-                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Effect: Allow
                 Action: [secretsmanager:GetSecretValue]
                 Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
@@ -253,6 +271,12 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
@@ -262,7 +286,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: [s3:GetObject]
-                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Effect: Allow
                 Action: [rekognition:DetectLabels]
                 Resource: "*"
@@ -287,6 +313,12 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
@@ -296,7 +328,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: [s3:GetObject]
-                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Effect: Allow
                 Action: [textract:AnalyzeDocument]
                 Resource: "*"
@@ -318,6 +352,12 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+          - Sid: XRayTracing
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
@@ -342,6 +382,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: insurance-claims/functions/discovery/handler.handler
@@ -353,6 +395,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "insurance-claims"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           SUFFIX_FILTER: ".jpg,.jpeg,.png,.pdf,.tiff"
           ONTAP_SECRET_NAME: !Ref OntapSecretName
@@ -366,6 +409,8 @@ Resources:
   DamageAssessmentFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-damage-assessment"
       Runtime: python3.12
       Handler: insurance-claims/functions/damage_assessment/handler.handler
@@ -374,6 +419,7 @@ Resources:
       Role: !GetAtt DamageAssessmentLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "insurance-claims"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
@@ -384,6 +430,8 @@ Resources:
   EstimateOcrFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-estimate-ocr"
       Runtime: python3.12
       Handler: insurance-claims/functions/estimate_ocr/handler.handler
@@ -392,6 +440,7 @@ Resources:
       Role: !GetAtt EstimateOcrLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "insurance-claims"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           CROSS_REGION: !Ref CrossRegion
@@ -402,6 +451,8 @@ Resources:
   ClaimsReportFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-claims-report"
       Runtime: python3.12
       Handler: insurance-claims/functions/claims_report/handler.handler
@@ -410,6 +461,7 @@ Resources:
       Role: !GetAtt ClaimsReportLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "insurance-claims"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -445,6 +497,8 @@ Resources:
   InsuranceClaimsStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |

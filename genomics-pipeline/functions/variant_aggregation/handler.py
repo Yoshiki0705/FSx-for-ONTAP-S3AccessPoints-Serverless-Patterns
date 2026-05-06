@@ -32,6 +32,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,7 @@ def _streaming_text_lines(s3ap: S3ApHelper, key: str):
             yield remainder
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """ゲノミクス / バイオインフォマティクス バリアント集計 Lambda
@@ -286,6 +288,13 @@ def handler(event, context):
         variant_statistics["indel_count"],
         variant_statistics["ti_tv_ratio"],
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="variant_aggregation")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "genomics-pipeline"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

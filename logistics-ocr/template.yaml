@@ -105,6 +105,12 @@ Parameters:
     MaxValue: 100
     Description: OCR 信頼度閾値 (%)
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -120,6 +126,8 @@ Conditions:
   UseAutoOutputBucket:
     !Equals [!Ref OutputBucketName, ""]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -300,12 +308,14 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -320,6 +330,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   OcrLambdaRole:
     Type: AWS::IAM::Role
@@ -345,6 +361,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: TextractCrossRegion
                 Effect: Allow
                 Action:
@@ -364,6 +381,12 @@ Resources:
                 Resource:
                   - !GetAtt OcrLogGroup.Arn
                   - !Sub "${OcrLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   DataStructuringLambdaRole:
     Type: AWS::IAM::Role
@@ -403,6 +426,12 @@ Resources:
                 Resource:
                   - !GetAtt DataStructuringLogGroup.Arn
                   - !Sub "${DataStructuringLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   InventoryAnalysisLambdaRole:
     Type: AWS::IAM::Role
@@ -428,6 +457,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: RekognitionDetectLabels
                 Effect: Allow
                 Action:
@@ -447,6 +477,12 @@ Resources:
                 Resource:
                   - !GetAtt InventoryAnalysisLogGroup.Arn
                   - !Sub "${InventoryAnalysisLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   ReportLambdaRole:
     Type: AWS::IAM::Role
@@ -492,11 +528,19 @@ Resources:
                 Resource:
                   - !GetAtt ReportLogGroup.Arn
                   - !Sub "${ReportLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # Lambda Functions
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: logistics-ocr/functions/discovery/handler.handler
@@ -509,6 +553,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "logistics-ocr"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           PREFIX_FILTER: ""
           SUFFIX_FILTER: ".jpg,.jpeg,.png,.tiff,.pdf"
@@ -525,6 +570,8 @@ Resources:
   OcrFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
       Runtime: python3.12
       Handler: logistics-ocr/functions/ocr/handler.handler
@@ -533,6 +580,7 @@ Resources:
       Role: !GetAtt OcrLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "logistics-ocr"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           CROSS_REGION: !Ref CrossRegion
@@ -546,6 +594,8 @@ Resources:
   DataStructuringFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-data-structuring"
       Runtime: python3.12
       Handler: logistics-ocr/functions/data_structuring/handler.handler
@@ -554,6 +604,7 @@ Resources:
       Role: !GetAtt DataStructuringLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "logistics-ocr"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
       LoggingConfig:
@@ -565,6 +616,8 @@ Resources:
   InventoryAnalysisFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-inventory-analysis"
       Runtime: python3.12
       Handler: logistics-ocr/functions/inventory_analysis/handler.handler
@@ -573,6 +626,7 @@ Resources:
       Role: !GetAtt InventoryAnalysisLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "logistics-ocr"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
@@ -585,6 +639,8 @@ Resources:
   ReportFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
       Runtime: python3.12
       Handler: logistics-ocr/functions/report/handler.handler
@@ -593,6 +649,7 @@ Resources:
       Role: !GetAtt ReportLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "logistics-ocr"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -633,6 +690,8 @@ Resources:
   LogisticsOcrStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |

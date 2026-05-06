@@ -27,6 +27,7 @@ import boto3
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +132,7 @@ def _evaluate_confidence(forms: list[dict], threshold: float) -> tuple[bool, lis
     return all_above, low_confidence_fields
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """配送伝票 OCR（Cross-Region Textract）
@@ -245,5 +247,12 @@ def handler(event, context):
         len(forms),
         len(low_confidence_fields),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="ocr")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "logistics-ocr"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

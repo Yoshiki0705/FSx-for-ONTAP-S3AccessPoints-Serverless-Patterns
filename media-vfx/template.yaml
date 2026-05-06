@@ -87,6 +87,12 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: CloudFront Distribution を有効化する（S3 AP 経由のメディア配信）
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -100,6 +106,8 @@ Conditions:
   CreateS3GatewayEndpoint:
     !Equals [!Ref EnableS3GatewayEndpoint, "true"]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -287,12 +295,14 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -301,6 +311,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   JobSubmitLambdaRole:
     Type: AWS::IAM::Role
@@ -326,12 +342,14 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: DeadlineCloud
                 Effect: Allow
                 Action:
@@ -349,6 +367,12 @@ Resources:
                 Resource:
                   - !GetAtt JobSubmitLogGroup.Arn
                   - !Sub "${JobSubmitLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   QualityCheckLambdaRole:
     Type: AWS::IAM::Role
@@ -374,12 +398,14 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: S3AccessPointOutputRead
                 Effect: Allow
                 Action:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: Rekognition
                 Effect: Allow
                 Action:
@@ -399,6 +425,12 @@ Resources:
                 Resource:
                   - !GetAtt QualityCheckLogGroup.Arn
                   - !Sub "${QualityCheckLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # -----------------------------------------------------------------
   # Lambda Functions (Python 3.12, 300s timeout)
@@ -407,6 +439,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: media-vfx/functions/discovery/handler.handler
@@ -419,6 +453,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "media-vfx"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           PREFIX_FILTER: ""
@@ -432,6 +467,8 @@ Resources:
   JobSubmitFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-job-submit"
       Runtime: python3.12
       Handler: media-vfx/functions/job_submit/handler.handler
@@ -440,6 +477,7 @@ Resources:
       Role: !GetAtt JobSubmitLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "media-vfx"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           DEADLINE_FARM_ID: !Ref DeadlineFarmId
@@ -453,6 +491,8 @@ Resources:
   QualityCheckFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-quality-check"
       Runtime: python3.12
       Handler: media-vfx/functions/quality_check/handler.handler
@@ -461,6 +501,7 @@ Resources:
       Role: !GetAtt QualityCheckLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "media-vfx"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -503,6 +544,8 @@ Resources:
   VfxStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |

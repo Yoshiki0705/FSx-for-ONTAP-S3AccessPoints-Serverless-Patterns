@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,7 @@ def _generate_human_readable_report(claims_report: dict) -> str:
     return "\n".join(lines)
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """保険金請求レポート生成（Bedrock）
@@ -222,6 +224,13 @@ def handler(event, context):
         claim_id,
         output_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="claims_report")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "insurance-claims"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

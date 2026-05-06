@@ -127,6 +127,20 @@ aws cloudformation wait stack-delete-complete \
   --region ap-northeast-1
 ```
 
+## Supported Regions
+
+UC12 は以下のサービスを使用します:
+
+| サービス | リージョン制約 |
+|---------|-------------|
+| Amazon Textract | ap-northeast-1 非対応。`TEXTRACT_REGION` パラメータで対応リージョン（us-east-1 等）を指定 |
+| Amazon Rekognition | ほぼ全リージョンで利用可能 |
+| Amazon Bedrock | 対応リージョンを確認（[Bedrock 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)） |
+| AWS X-Ray | ほぼ全リージョンで利用可能 |
+| CloudWatch EMF | ほぼ全リージョンで利用可能 |
+
+> Cross-Region Client 経由で Textract API を呼び出します。データレジデンシー要件を確認してください。詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
+
 ## 参考リンク
 
 - [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)

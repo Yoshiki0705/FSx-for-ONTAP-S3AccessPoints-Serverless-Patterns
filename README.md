@@ -130,6 +130,34 @@ EventBridge Scheduler (定期実行)
 > 
 > 参考: [Textract 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html) | [クロスリージョン設定ガイド](docs/cross-region-guide.md)
 
+## リージョン選択ガイド
+
+本パターン集は **ap-northeast-1（東京）** で検証を実施していますが、必要なサービスが利用可能な任意の AWS リージョンにデプロイ可能です。
+
+### デプロイ前チェックリスト
+
+1. [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) でサービス可用性を確認
+2. Phase 3 サービスの確認:
+   - **Kinesis Data Streams**: ほぼ全リージョンで利用可能（シャード料金はリージョンにより異なる）
+   - **SageMaker Batch Transform**: インスタンスタイプの可用性がリージョンにより異なる
+   - **X-Ray / CloudWatch EMF**: ほぼ全リージョンで利用可能
+3. Cross-Region 対象サービス（Textract, Comprehend Medical）のターゲットリージョンを確認
+
+詳細は [リージョン互換性マトリックス](docs/region-compatibility.md) を参照してください。
+
+### Phase 3 機能概要
+
+| 機能 | 説明 | 対象 UC |
+|------|------|---------|
+| Kinesis ストリーミング | ニアリアルタイムファイル変更検知・処理 | UC11（オプトイン） |
+| SageMaker Batch Transform | 点群セグメンテーション推論（Callback Pattern） | UC9（オプトイン） |
+| X-Ray トレーシング | 分散トレーシングによる実行パス可視化 | 全 14 UC |
+| CloudWatch EMF | 構造化メトリクス出力（FilesProcessed, Duration, Errors） | 全 14 UC |
+| 可観測性ダッシュボード | 全 UC 横断メトリクス一元表示 | 共通 |
+| アラート自動化 | エラー率閾値ベースの SNS 通知 | 共通 |
+
+詳細は [ストリーミング vs ポーリング選択ガイド](docs/streaming-vs-polling-guide.md) を参照してください。
+
 ### スクリーンショット
 
 > 以下は検証環境での撮影例です。環境固有情報（アカウント ID 等）はマスク処理済みです。
@@ -157,6 +185,46 @@ EventBridge Scheduler (定期実行)
 ![EventBridge Phase 2 スケジュール](docs/screenshots/masked/eventbridge-phase2-schedules.png)
 
 > 全 9 UC の EventBridge Scheduler スケジュール（rate(1 hour)）が有効。
+
+#### Phase 3: リアルタイム処理・SageMaker 統合・可観測性強化
+
+##### Step Functions E2E 実行成功（UC11）
+
+![Step Functions Phase 3 実行成功](docs/screenshots/masked/phase3-step-functions-uc11-succeeded.png)
+
+> UC11 Step Functions ワークフロー E2E 実行成功。Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck 全ステート成功（8.974秒）。X-Ray トレース生成確認。
+
+##### Kinesis Data Streams（UC11 ストリーミングモード）
+
+![Kinesis Data Stream](docs/screenshots/masked/phase3-kinesis-stream-active.png)
+
+> UC11 Kinesis Data Stream（1 シャード、プロビジョンドモード）がアクティブ状態。モニタリングメトリクス表示。
+
+##### DynamoDB 状態管理テーブル（UC11 変更検知）
+
+![DynamoDB State Tables](docs/screenshots/masked/phase3-dynamodb-state-tables.png)
+
+> UC11 変更検知用 DynamoDB テーブル。streaming-state（状態管理）と streaming-dead-letter（DLQ）の2テーブル。
+
+##### 可観測性スタック
+
+![X-Ray Traces](docs/screenshots/masked/phase3-xray-traces.png)
+
+> X-Ray トレース。Stream Producer Lambda の1分間隔実行トレース（全 OK、レイテンシ 7-11ms）。
+
+![CloudWatch Dashboard](docs/screenshots/masked/phase3-cloudwatch-dashboard.png)
+
+> 全 14 UC 横断 CloudWatch ダッシュボード。Step Functions 成功/失敗、Lambda エラー率、EMF カスタムメトリクス。
+
+![CloudWatch Alarms](docs/screenshots/masked/phase3-cloudwatch-alarms.png)
+
+> Phase 3 アラート自動化。Step Functions 失敗率、Lambda エラー率、Kinesis Iterator Age の閾値アラーム（全 OK 状態）。
+
+##### S3 Access Point 確認
+
+![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
+
+> FSx for ONTAP S3 Access Point（fsxn-eda-s3ap）が Available 状態。FSx コンソールのボリューム S3 タブで確認。
 
 #### AI/ML サービス画面（Phase 1）
 
@@ -367,6 +435,8 @@ aws cloudformation create-stack \
 > **`EnableVpcEndpoints` について**: Quick Start では VPC 内 Lambda から Secrets Manager / CloudWatch / SNS への到達性を確保するため `true` を指定しています。既存の Interface VPC Endpoints または NAT Gateway がある場合は `false` を指定してコストを削減できます。
 > 
 > **リージョン選択**: 全 AI/ML サービスが利用可能な `us-east-1` または `us-west-2` を推奨します。`ap-northeast-1` では Textract と Comprehend Medical が利用できません（クロスリージョン呼び出しで対応可能）。詳細は [リージョン互換性マトリックス](docs/region-compatibility.md) を参照。
+>
+> **VPC 接続性**: Discovery Lambda は VPC 内に配置されるため、ONTAP REST API および S3 Access Point へのアクセスには NAT Gateway または Interface VPC Endpoints が必要です。`EnableVpcEndpoints=true` を設定するか、既存の NAT Gateway を使用してください。
 
 ### 5. Phase 2 UC の一括デプロイ（UC6–UC14）
 
@@ -411,7 +481,9 @@ python3 scripts/generate_test_data.py all --upload
 
 **Phase 2 (UC6–UC14)**: 全 9 ユースケースの CloudFormation デプロイ（合計 205 リソース）、Step Functions E2E 実行（全 9 UC SUCCEEDED）、テストデータ投入検証、shared/ モジュール AWS 環境検証（8/8 PASSED）を実施済みです。
 
-詳細は [検証結果記録](docs/verification-results.md)（Phase 1）および [Phase 2 検証結果記録](docs/verification-results-phase2.md) を参照してください。
+**Phase 3（横断機能強化）**: Kinesis Data Streams（PutRecord/GetRecords）、DynamoDB 状態テーブル（CRUD）、CloudFormation テンプレートバリデーション、X-Ray トレーシング設定、CloudWatch EMF メトリクス出力を ap-northeast-1 で検証済みです。全 573 テストパス、cfn-lint 0 エラー。
+
+詳細は [検証結果記録](docs/verification-results.md)（Phase 1）、[Phase 2 検証結果記録](docs/verification-results-phase2.md)、および [Phase 3 検証結果記録](docs/verification-results-phase3.md) を参照してください。
 
 ## コスト構造サマリー
 
@@ -531,6 +603,9 @@ S3 AP 経由で利用可能な API サブセット:
 | [docs/article-draft.md](docs/article-draft.md) | dev.to 記事の元ドラフト（公開版は README 冒頭の関連記事を参照） |
 | [docs/verification-results.md](docs/verification-results.md) | AWS 環境検証結果記録（Phase 1） |
 | [docs/verification-results-phase2.md](docs/verification-results-phase2.md) | AWS 環境検証結果記録（Phase 2: 全 9 UC SUCCEEDED） |
+| [docs/verification-results-phase3.md](docs/verification-results-phase3.md) | AWS 環境検証結果記録（Phase 3: Kinesis + DynamoDB + S3 AP E2E） |
+| [docs/streaming-vs-polling-guide.md](docs/streaming-vs-polling-guide.md) | ストリーミング vs ポーリング選択ガイド（8 言語対応） |
+| [docs/article-phase3-en.md](docs/article-phase3-en.md) | Phase 3 技術記事ドラフト（dev.to 用） |
 | [docs/remaining-issues-checklist.md](docs/remaining-issues-checklist.md) | 残課題チェックリスト（全件対応済み） |
 | [docs/screenshots/](docs/screenshots/README.md) | AWS コンソールスクリーンショット（マスク済み + オリジナル） |
 

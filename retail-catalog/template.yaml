@@ -89,6 +89,32 @@ Parameters:
     Default: ""
     Description: プライベートサブネットのルートテーブル ID リスト（S3 Gateway Endpoint 用。空の場合は S3 Gateway Endpoint を作成しない）
 
+  # --- Phase 3: Kinesis ストリーミングパラメータ ---
+  EnableStreamingMode:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Kinesis ストリーミングモードを有効化する
+
+  KinesisShardCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 10
+    Description: Kinesis Data Stream のシャード数
+
+  KinesisRetentionHours:
+    Type: Number
+    Default: 24
+    MinValue: 24
+    MaxValue: 168
+    Description: Kinesis Data Stream の保持期間（時間）
+
+  StreamingScheduleExpression:
+    Type: String
+    Default: "rate(1 minute)"
+    Description: Stream Producer のスケジュール式
+
   # --- UC11 固有パラメータ ---
   ConfidenceThreshold:
     Type: Number
@@ -102,10 +128,18 @@ Parameters:
     Default: "amazon.nova-lite-v1:0"
     Description: Bedrock モデル ID（カタログメタデータ生成用）
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
 Conditions:
+  CreateStreamingResources:
+    !Equals [!Ref EnableStreamingMode, "true"]
   CreateCloudWatchAlarms:
     !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateVpcEndpoints:
@@ -117,6 +151,8 @@ Conditions:
   UseAutoOutputBucket:
     !Equals [!Ref OutputBucketName, ""]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -307,12 +343,14 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -327,6 +365,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # ImageTagging Lambda: VPC 外、S3 AP 読み取り + Rekognition + S3 出力
   ImageTaggingLambdaRole:
@@ -353,6 +397,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: RekognitionDetectLabels
                 Effect: Allow
                 Action:
@@ -372,6 +417,12 @@ Resources:
                 Resource:
                   - !GetAtt ImageTaggingLogGroup.Arn
                   - !Sub "${ImageTaggingLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # CatalogMetadata Lambda: VPC 外、Bedrock + S3 出力
   CatalogMetadataLambdaRole:
@@ -412,6 +463,12 @@ Resources:
                 Resource:
                   - !GetAtt CatalogMetadataLogGroup.Arn
                   - !Sub "${CatalogMetadataLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # QualityCheck Lambda: VPC 外、S3 AP 読み取り (HeadObject/GetObject) + S3 出力
   QualityCheckLambdaRole:
@@ -438,6 +495,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3OutputBucketWrite
                 Effect: Allow
                 Action:
@@ -452,6 +510,12 @@ Resources:
                 Resource:
                   - !GetAtt QualityCheckLogGroup.Arn
                   - !Sub "${QualityCheckLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # -----------------------------------------------------------------
   # Lambda Functions
@@ -461,6 +525,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: retail-catalog/functions/discovery/handler.handler
@@ -473,6 +539,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "retail-catalog"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           PREFIX_FILTER: ""
           SUFFIX_FILTER: ".jpg,.jpeg,.png,.webp"
@@ -489,6 +556,8 @@ Resources:
   ImageTaggingFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-image-tagging"
       Runtime: python3.12
       Handler: retail-catalog/functions/image_tagging/handler.handler
@@ -497,6 +566,7 @@ Resources:
       Role: !GetAtt ImageTaggingLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "retail-catalog"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
@@ -510,6 +580,8 @@ Resources:
   CatalogMetadataFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-catalog-metadata"
       Runtime: python3.12
       Handler: retail-catalog/functions/catalog_metadata/handler.handler
@@ -518,6 +590,7 @@ Resources:
       Role: !GetAtt CatalogMetadataLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "retail-catalog"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
       LoggingConfig:
@@ -529,6 +602,8 @@ Resources:
   QualityCheckFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-quality-check"
       Runtime: python3.12
       Handler: retail-catalog/functions/quality_check/handler.handler
@@ -537,6 +612,7 @@ Resources:
       Role: !GetAtt QualityCheckLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "retail-catalog"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
       LoggingConfig:
@@ -578,6 +654,8 @@ Resources:
   RetailCatalogStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |
@@ -841,3 +919,342 @@ Resources:
       TreatMissingData: notBreaching
       AlarmActions:
         - !Ref NotificationTopic
+
+  # =================================================================
+  # Phase 3: Kinesis Streaming Resources (Condition: CreateStreamingResources)
+  # =================================================================
+
+  # -----------------------------------------------------------------
+  # Kinesis Data Stream (SSE-KMS encrypted)
+  # -----------------------------------------------------------------
+  RetailCatalogStream:
+    Type: AWS::Kinesis::Stream
+    Condition: CreateStreamingResources
+    Properties:
+      Name: !Sub "${AWS::StackName}-stream"
+      ShardCount: !Ref KinesisShardCount
+      RetentionPeriodHours: !Ref KinesisRetentionHours
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: alias/aws/kinesis
+      Tags:
+        - Key: UseCase
+          Value: retail-catalog
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: streaming
+
+  # -----------------------------------------------------------------
+  # DynamoDB State Table (change detection)
+  # -----------------------------------------------------------------
+  StreamingStateTable:
+    Type: AWS::DynamoDB::Table
+    Condition: CreateStreamingResources
+    Properties:
+      TableName: !Sub "${AWS::StackName}-streaming-state"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: file_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: file_key
+          KeyType: HASH
+      Tags:
+        - Key: UseCase
+          Value: retail-catalog
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: streaming
+
+  # -----------------------------------------------------------------
+  # DynamoDB Dead Letter Table
+  # -----------------------------------------------------------------
+  StreamingDeadLetterTable:
+    Type: AWS::DynamoDB::Table
+    Condition: CreateStreamingResources
+    Properties:
+      TableName: !Sub "${AWS::StackName}-streaming-dead-letter"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: record_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: record_id
+          KeyType: HASH
+      Tags:
+        - Key: UseCase
+          Value: retail-catalog
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: streaming
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups for Streaming Lambdas
+  # -----------------------------------------------------------------
+  StreamProducerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateStreamingResources
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-stream-producer"
+      RetentionInDays: 14
+
+  StreamConsumerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateStreamingResources
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-stream-consumer"
+      RetentionInDays: 14
+
+  # -----------------------------------------------------------------
+  # Stream Producer Lambda IAM Role
+  # -----------------------------------------------------------------
+  StreamProducerLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateStreamingResources
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-stream-producer-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: StreamProducerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointList
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+              - Sid: DynamoDBStateTable
+                Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource:
+                  - !GetAtt StreamingStateTable.Arn
+              - Sid: KinesisPutRecords
+                Effect: Allow
+                Action:
+                  - kinesis:PutRecords
+                  - kinesis:PutRecord
+                Resource:
+                  - !GetAtt RetailCatalogStream.Arn
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt StreamProducerLogGroup.Arn
+                  - !Sub "${StreamProducerLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  # -----------------------------------------------------------------
+  # Stream Consumer Lambda IAM Role
+  # -----------------------------------------------------------------
+  StreamConsumerLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateStreamingResources
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-stream-consumer-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: StreamConsumerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: KinesisRead
+                Effect: Allow
+                Action:
+                  - kinesis:GetRecords
+                  - kinesis:GetShardIterator
+                  - kinesis:DescribeStream
+                  - kinesis:DescribeStreamSummary
+                  - kinesis:ListShards
+                Resource:
+                  - !GetAtt RetailCatalogStream.Arn
+              - Sid: DynamoDBStateTables
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt StreamingStateTable.Arn
+                  - !GetAtt StreamingDeadLetterTable.Arn
+              - Sid: LambdaInvoke
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt ImageTaggingFunction.Arn
+                  - !GetAtt CatalogMetadataFunction.Arn
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt StreamConsumerLogGroup.Arn
+                  - !Sub "${StreamConsumerLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  # -----------------------------------------------------------------
+  # Stream Producer Lambda Function
+  # -----------------------------------------------------------------
+  StreamProducerFunction:
+    Type: AWS::Lambda::Function
+    Condition: CreateStreamingResources
+    Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      FunctionName: !Sub "${AWS::StackName}-stream-producer"
+      Runtime: python3.12
+      Handler: retail-catalog/functions/stream_producer/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt StreamProducerLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          KINESIS_STREAM_NAME: !Ref RetailCatalogStream
+          STATE_TABLE_NAME: !Ref StreamingStateTable
+          USE_CASE: retail-catalog
+          REGION: !Ref AWS::Region
+      LoggingConfig:
+        LogGroup: !Ref StreamProducerLogGroup
+      Tags:
+        - Key: UseCase
+          Value: retail-catalog
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: streaming
+
+  # -----------------------------------------------------------------
+  # Stream Consumer Lambda Function
+  # -----------------------------------------------------------------
+  StreamConsumerFunction:
+    Type: AWS::Lambda::Function
+    Condition: CreateStreamingResources
+    Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      FunctionName: !Sub "${AWS::StackName}-stream-consumer"
+      Runtime: python3.12
+      Handler: retail-catalog/functions/stream_consumer/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt StreamConsumerLambdaRole.Arn
+      Environment:
+        Variables:
+          STATE_TABLE_NAME: !Ref StreamingStateTable
+          DEAD_LETTER_TABLE_NAME: !Ref StreamingDeadLetterTable
+          IMAGE_TAGGING_FUNCTION: !GetAtt ImageTaggingFunction.Arn
+          CATALOG_METADATA_FUNCTION: !GetAtt CatalogMetadataFunction.Arn
+          USE_CASE: retail-catalog
+          REGION: !Ref AWS::Region
+      LoggingConfig:
+        LogGroup: !Ref StreamConsumerLogGroup
+      Tags:
+        - Key: UseCase
+          Value: retail-catalog
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: streaming
+
+  # -----------------------------------------------------------------
+  # Stream Producer EventBridge Scheduler
+  # -----------------------------------------------------------------
+  StreamProducerSchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: CreateStreamingResources
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-stream-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StreamSchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt StreamProducerFunction.Arn
+
+  StreamProducerSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: CreateStreamingResources
+    Properties:
+      Name: !Sub "${AWS::StackName}-stream-producer-schedule"
+      ScheduleExpression: !Ref StreamingScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt StreamProducerFunction.Arn
+        RoleArn: !GetAtt StreamProducerSchedulerRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # Kinesis Event Source Mapping (Stream Consumer)
+  # -----------------------------------------------------------------
+  StreamConsumerEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Condition: CreateStreamingResources
+    Properties:
+      EventSourceArn: !GetAtt RetailCatalogStream.Arn
+      FunctionName: !GetAtt StreamConsumerFunction.Arn
+      StartingPosition: LATEST
+      BatchSize: 10
+      BisectBatchOnFunctionError: true
+      MaximumRetryAttempts: 3
+      Tags:
+        - Key: UseCase
+          Value: retail-catalog
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: streaming

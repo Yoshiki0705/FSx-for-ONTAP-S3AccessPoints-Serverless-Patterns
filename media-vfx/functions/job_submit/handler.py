@@ -22,6 +22,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ def _build_job_template(asset_key: str, output_bucket: str) -> dict:
     }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Job Submit Lambda
@@ -111,6 +113,13 @@ def handler(event, context):
         queue_id,
         asset_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="job_submit")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "media-vfx"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "job_id": job_id,

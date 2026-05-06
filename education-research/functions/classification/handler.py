@@ -19,6 +19,7 @@ from pathlib import PurePosixPath
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,15 @@ def _classify_domain_with_bedrock(
 JSON のみを出力してください。"""
 
     try:
-        response = bedrock_client.invoke_model(
+        with xray_subsegment(
+
+            name="bedrock_invokemodel",
+
+            annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "education-research"},
+
+        ):
+
+            response = bedrock_client.invoke_model(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
@@ -169,6 +178,7 @@ JSON のみを出力してください。"""
         }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """論文分類（Comprehend + Bedrock）
@@ -247,5 +257,12 @@ def handler(event, context):
         classification.get("domain", "Unknown"),
         len(entities),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="classification")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "education-research"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

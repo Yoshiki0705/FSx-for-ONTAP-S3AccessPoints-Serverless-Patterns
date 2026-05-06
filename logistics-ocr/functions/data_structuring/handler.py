@@ -19,6 +19,7 @@ from pathlib import PurePosixPath
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +135,7 @@ def _ensure_required_fields(data: dict) -> dict:
     return data
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """配送伝票データ構造化（Bedrock）
@@ -221,5 +223,12 @@ def handler(event, context):
         file_key,
         output_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="data_structuring")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "logistics-ocr"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

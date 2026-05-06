@@ -1,0 +1,389 @@
+# =============================================================================
+# CloudWatch ダッシュボード — 全 14 UC 一元監視
+# =============================================================================
+#
+# 本テンプレートは FSxN S3AP Serverless Patterns の全 14 ユースケースから
+# 集約されたメトリクスを表示する CloudWatch ダッシュボードを作成する。
+#
+# 設計方針:
+# - 個別 UC スタックから独立してデプロイ可能（メトリクス namespace + dimension 規約による疎結合）
+# - Fn::Sub とパラメータ参照による動的メトリクス構築
+# - Kinesis / SageMaker ウィジェットは Conditions で制御
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file observability-dashboard.yaml \
+#     --stack-name fsxn-s3ap-dashboard \
+#     --parameter-overrides \
+#       DashboardName=FSxN-S3AP-Patterns-Dashboard \
+#       UseCaseStackNames=uc01-stack,uc02-stack,uc03-stack \
+#       EnableKinesisWidgets=true \
+#       KinesisStreamName=retail-catalog-stream
+#
+# 参照: Requirements 8.1–8.7
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — CloudWatch Dashboard.
+  全 14 UC のメトリクスを一元表示する可観測性ダッシュボード。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  DashboardName:
+    Type: String
+    Default: "FSxN-S3AP-Patterns-Dashboard"
+    Description: CloudWatch ダッシュボード名
+
+  UseCaseStackNames:
+    Type: CommaDelimitedList
+    Description: >-
+      デプロイ済み UC スタック名のリスト。
+      メトリクス参照の動的構築に使用する。
+
+  EnableKinesisWidgets:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Kinesis ストリーミング関連ウィジェットを有効化する。
+      UC11 で EnableStreamingMode=true の場合に true を設定する。
+
+  EnableSageMakerWidgets:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      SageMaker Batch Transform 関連ウィジェットを有効化する。
+      UC9 で EnableSageMakerTransform=true の場合に true を設定する。
+
+  KinesisStreamName:
+    Type: String
+    Default: ""
+    Description: >-
+      Kinesis Data Stream 名。EnableKinesisWidgets=true 時に必須。
+
+  SageMakerJobNamePrefix:
+    Type: String
+    Default: ""
+    Description: >-
+      SageMaker Batch Transform ジョブ名プレフィックス。
+      EnableSageMakerWidgets=true 時に必須。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  IncludeKinesisWidgets:
+    !Equals [!Ref EnableKinesisWidgets, "true"]
+
+  IncludeSageMakerWidgets:
+    !Equals [!Ref EnableSageMakerWidgets, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  ObservabilityDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Ref DashboardName
+      DashboardBody: !Sub
+        - |
+          {
+            "widgets": [
+              {
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 24,
+                "height": 2,
+                "properties": {
+                  "markdown": "# FSxN S3AP Serverless Patterns — Observability Dashboard\n\nMonitoring UC stacks: ${FirstStackName} (and others). Namespace: `FSxN-S3AP-Patterns` (EMF custom metrics) + `AWS/States` + `AWS/Lambda`."
+                }
+              },
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 2,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Step Functions — Execution Success/Failure (per UC)",
+                  "region": "${AWS::Region}",
+                  "metrics": [
+                    ["AWS/States", "ExecutionsSucceeded", "StateMachineArn", "${StateMachineArnPlaceholder}", {"label": "Succeeded", "stat": "Sum"}],
+                    ["AWS/States", "ExecutionsFailed", "StateMachineArn", "${StateMachineArnPlaceholder}", {"label": "Failed", "stat": "Sum"}]
+                  ],
+                  "period": 300,
+                  "stat": "Sum",
+                  "view": "timeSeries"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 2,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Step Functions — Average Execution Duration (per UC)",
+                  "region": "${AWS::Region}",
+                  "metrics": [
+                    ["AWS/States", "ExecutionTime", "StateMachineArn", "${StateMachineArnPlaceholder}", {"label": "Avg Duration", "stat": "Average"}]
+                  ],
+                  "period": 300,
+                  "stat": "Average",
+                  "view": "timeSeries"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 8,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Lambda — Error Rate (per UC)",
+                  "region": "${AWS::Region}",
+                  "metrics": [
+                    ["AWS/Lambda", "Errors", "FunctionName", "${LambdaFunctionPlaceholder}", {"label": "Errors", "stat": "Sum"}],
+                    ["AWS/Lambda", "Invocations", "FunctionName", "${LambdaFunctionPlaceholder}", {"label": "Invocations", "stat": "Sum"}]
+                  ],
+                  "period": 300,
+                  "stat": "Sum",
+                  "view": "timeSeries"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 8,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Lambda — Invocation Count (per UC)",
+                  "region": "${AWS::Region}",
+                  "metrics": [
+                    ["AWS/Lambda", "Invocations", "FunctionName", "${LambdaFunctionPlaceholder}", {"label": "Invocations", "stat": "Sum"}]
+                  ],
+                  "period": 300,
+                  "stat": "Sum",
+                  "view": "timeSeries"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 14,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                  "title": "Cross-UC — Total FilesProcessed",
+                  "region": "${AWS::Region}",
+                  "metrics": [
+                    ["FSxN-S3AP-Patterns", "FilesProcessed", {"label": "Total Files", "stat": "Sum"}]
+                  ],
+                  "period": 300,
+                  "stat": "Sum",
+                  "view": "timeSeries"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 8,
+                "y": 14,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                  "title": "Cross-UC — Overall Error Rate",
+                  "region": "${AWS::Region}",
+                  "metrics": [
+                    ["FSxN-S3AP-Patterns", "ProcessingErrors", {"label": "Errors", "stat": "Sum"}],
+                    ["FSxN-S3AP-Patterns", "FilesProcessed", {"label": "Total", "stat": "Sum"}]
+                  ],
+                  "period": 300,
+                  "stat": "Sum",
+                  "view": "timeSeries",
+                  "yAxis": {
+                    "left": {"label": "Count"}
+                  }
+                }
+              },
+              {
+                "type": "metric",
+                "x": 16,
+                "y": 14,
+                "width": 8,
+                "height": 6,
+                "properties": {
+                  "title": "Cross-UC — ProcessingDuration P50/P90/P99",
+                  "region": "${AWS::Region}",
+                  "metrics": [
+                    ["FSxN-S3AP-Patterns", "ProcessingDuration", {"label": "P50", "stat": "p50"}],
+                    ["FSxN-S3AP-Patterns", "ProcessingDuration", {"label": "P90", "stat": "p90"}],
+                    ["FSxN-S3AP-Patterns", "ProcessingDuration", {"label": "P99", "stat": "p99"}]
+                  ],
+                  "period": 300,
+                  "view": "timeSeries",
+                  "yAxis": {
+                    "left": {"label": "Milliseconds"}
+                  }
+                }
+              }${KinesisWidgetsFragment}${SageMakerWidgetsFragment}
+            ]
+          }
+        - StateMachineArnPlaceholder: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*"
+          LambdaFunctionPlaceholder: "*"
+          FirstStackName: !Select [0, !Ref UseCaseStackNames]
+          KinesisWidgetsFragment: !If
+            - IncludeKinesisWidgets
+            - !Sub |
+                ,
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 20,
+                  "width": 24,
+                  "height": 1,
+                  "properties": {
+                    "markdown": "## Kinesis Streaming Metrics (UC11)"
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 0,
+                  "y": 21,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "title": "Kinesis — Iterator Age (ms)",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/Kinesis", "GetRecords.IteratorAgeMilliseconds", "StreamName", "${KinesisStreamName}", {"label": "Iterator Age", "stat": "Maximum"}]
+                    ],
+                    "period": 60,
+                    "stat": "Maximum",
+                    "view": "timeSeries"
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 12,
+                  "y": 21,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "title": "Kinesis — Incoming Records",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/Kinesis", "IncomingRecords", "StreamName", "${KinesisStreamName}", {"label": "Incoming Records", "stat": "Sum"}]
+                    ],
+                    "period": 60,
+                    "stat": "Sum",
+                    "view": "timeSeries"
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 0,
+                  "y": 27,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "title": "Kinesis — ReadProvisionedThroughputExceeded",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/Kinesis", "ReadProvisionedThroughputExceeded", "StreamName", "${KinesisStreamName}", {"label": "Read Throttled", "stat": "Sum"}]
+                    ],
+                    "period": 60,
+                    "stat": "Sum",
+                    "view": "timeSeries"
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 12,
+                  "y": 27,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "title": "Kinesis — WriteProvisionedThroughputExceeded",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/Kinesis", "WriteProvisionedThroughputExceeded", "StreamName", "${KinesisStreamName}", {"label": "Write Throttled", "stat": "Sum"}]
+                    ],
+                    "period": 60,
+                    "stat": "Sum",
+                    "view": "timeSeries"
+                  }
+                }
+            - ""
+          SageMakerWidgetsFragment: !If
+            - IncludeSageMakerWidgets
+            - !Sub |
+                ,
+                {
+                  "type": "text",
+                  "x": 0,
+                  "y": 33,
+                  "width": 24,
+                  "height": 1,
+                  "properties": {
+                    "markdown": "## SageMaker Batch Transform Metrics (UC9)"
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 0,
+                  "y": 34,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "title": "SageMaker — Transform Job Duration",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/SageMaker", "TransformJobDuration", "JobNamePrefix", "${SageMakerJobNamePrefix}", {"label": "Duration (s)", "stat": "Average"}]
+                    ],
+                    "period": 300,
+                    "stat": "Average",
+                    "view": "timeSeries"
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 12,
+                  "y": 34,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "title": "SageMaker — Transform Job Success/Failure",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/SageMaker", "TransformJobsSucceeded", {"label": "Succeeded", "stat": "Sum"}],
+                      ["AWS/SageMaker", "TransformJobsFailed", {"label": "Failed", "stat": "Sum"}]
+                    ],
+                    "period": 300,
+                    "stat": "Sum",
+                    "view": "timeSeries"
+                  }
+                }
+            - ""
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  DashboardName:
+    Description: CloudWatch ダッシュボード名
+    Value: !Ref DashboardName
+
+  DashboardArn:
+    Description: CloudWatch ダッシュボード ARN
+    Value: !Sub "arn:aws:cloudwatch::${AWS::AccountId}:dashboard/${DashboardName}"
+
+  DashboardUrl:
+    Description: CloudWatch ダッシュボードコンソール URL
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${DashboardName}"

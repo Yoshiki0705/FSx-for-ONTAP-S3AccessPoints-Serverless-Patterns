@@ -25,6 +25,7 @@ import os
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ def csv_to_jsonlines(csv_bytes: bytes) -> tuple[str, int]:
     return "\n".join(lines) + "\n", len(lines)
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Transform Lambda
@@ -102,6 +104,13 @@ def handler(event, context):
         output_key,
         record_count,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="transform")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "manufacturing-analytics"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "output_key": output_key,

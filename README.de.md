@@ -130,6 +130,34 @@ EventBridge Scheduler (periodische Ausführung)
 > 
 > Referenz: [Von Textract unterstützte Regionen](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Von Comprehend Medical unterstützte Regionen](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
 
+## Leitfaden zur Regionsauswahl
+
+Diese Mustersammlung wurde in **ap-northeast-1 (Tokyo)** verifiziert, kann aber in jeder AWS-Region bereitgestellt werden, in der die erforderlichen Dienste verfügbar sind.
+
+### Checkliste vor der Bereitstellung
+
+1. Dienstverfügbarkeit in der [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) prüfen
+2. Phase 3 Dienste überprüfen:
+   - **Kinesis Data Streams**: In fast allen Regionen verfügbar (Shard-Preise variieren je nach Region)
+   - **SageMaker Batch Transform**: Verfügbarkeit von Instanztypen variiert je nach Region
+   - **X-Ray / CloudWatch EMF**: In fast allen Regionen verfügbar
+3. Zielregionen für Cross-Region-Dienste (Textract, Comprehend Medical) bestätigen
+
+Siehe [Regionale Kompatibilitätsmatrix](docs/region-compatibility.md) für Details.
+
+### Phase 3 Funktionsübersicht
+
+| Funktion | Beschreibung | Ziel-UC |
+|----------|-------------|---------|
+| Kinesis Streaming | Nahezu-Echtzeit-Erkennung und -Verarbeitung von Dateiänderungen | UC11 (Opt-in) |
+| SageMaker Batch Transform | Punktwolken-Segmentierungsinferenz (Callback Pattern) | UC9 (Opt-in) |
+| X-Ray Tracing | Verteiltes Tracing zur Visualisierung von Ausführungspfaden | Alle 14 UCs |
+| CloudWatch EMF | Strukturierte Metrikausgabe (FilesProcessed, Duration, Errors) | Alle 14 UCs |
+| Observability Dashboard | Zentralisierte Metrikanzeige über alle UCs | Gemeinsam |
+| Alert-Automatisierung | SNS-Benachrichtigungen basierend auf Fehlerratenschwellenwerten | Gemeinsam |
+
+Siehe [Streaming vs Polling Auswahlhilfe](docs/streaming-vs-polling-guide-de.md) für Details.
+
 ### Screenshots
 
 > Die folgenden Bilder sind Beispiele aus einer Verifizierungsumgebung. Umgebungsspezifische Informationen (Konto-IDs usw.) wurden maskiert.
@@ -209,6 +237,46 @@ EventBridge Scheduler (periodische Ausführung)
 ![Lambda-Funktionen Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
 
 > Alle Phase 2 Lambda-Funktionen (Discovery, Processing, Report usw.) erfolgreich bereitgestellt.
+
+#### Phase 3: Echtzeit-Verarbeitung, SageMaker-Integration & Observability
+
+##### Step Functions E2E-Ausführung erfolgreich (UC11)
+
+![Step Functions Phase 3 Erfolg](docs/screenshots/masked/phase3-step-functions-uc11-succeeded.png)
+
+> UC11 Step Functions-Workflow E2E-Ausführung erfolgreich. Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck alle Zustände erfolgreich (8,974s). X-Ray-Trace-Generierung bestätigt.
+
+##### Kinesis Data Streams (UC11 Streaming-Modus)
+
+![Kinesis Data Stream](docs/screenshots/masked/phase3-kinesis-stream-active.png)
+
+> UC11 Kinesis Data Stream (1 Shard, Provisioned-Modus) im aktiven Zustand. Überwachungsmetriken angezeigt.
+
+##### DynamoDB-Zustandsverwaltungstabellen (UC11 Änderungserkennung)
+
+![DynamoDB State Tables](docs/screenshots/masked/phase3-dynamodb-state-tables.png)
+
+> UC11 DynamoDB-Tabellen zur Änderungserkennung. streaming-state (Zustandsverwaltung) und streaming-dead-letter (DLQ).
+
+##### Observability-Stack
+
+![X-Ray Traces](docs/screenshots/masked/phase3-xray-traces.png)
+
+> X-Ray-Traces. Stream Producer Lambda-Ausführungstraces im 1-Minuten-Intervall (alle OK, Latenz 7-11ms).
+
+![CloudWatch Dashboard](docs/screenshots/masked/phase3-cloudwatch-dashboard.png)
+
+> Zentrales CloudWatch-Dashboard zur Überwachung aller 14 Anwendungsfälle. Step Functions Erfolg/Fehler, Lambda-Fehlerraten, EMF-benutzerdefinierte Metriken.
+
+![CloudWatch Alarms](docs/screenshots/masked/phase3-cloudwatch-alarms.png)
+
+> Phase 3 Alarm-Automatisierung. Schwellenwert-basierte Alarme für Step Functions-Fehler, Lambda-Fehlerraten und Kinesis Iterator Age (alle im OK-Zustand).
+
+##### S3 Access Point-Überprüfung
+
+![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
+
+> FSx for ONTAP S3 Access Point (fsxn-eda-s3ap) im Available-Zustand. Über die FSx-Konsole im Volume S3-Tab bestätigt.
 
 ## Technologie-Stack
 
@@ -367,6 +435,8 @@ aws cloudformation create-stack \
 > **Zu `EnableVpcEndpoints`**: Der Schnellstart gibt `true` an, um die Konnektivität von Lambda innerhalb des VPC zu Secrets Manager / CloudWatch / SNS sicherzustellen. Wenn bereits Interface VPC Endpoints oder ein NAT Gateway vorhanden sind, können Sie `false` angeben, um Kosten zu reduzieren.
 > 
 > **Regionsauswahl**: `us-east-1` oder `us-west-2` wird empfohlen, wo alle AI/ML-Dienste verfügbar sind. Textract und Comprehend Medical sind in `ap-northeast-1` nicht verfügbar (regionsübergreifender Aufruf kann als Workaround verwendet werden). Siehe [Regionskompatibilitätsmatrix](docs/region-compatibility.md) für Details.
+>
+> **VPC-Konnektivität**: Discovery Lambda wird innerhalb des VPC platziert. Der Zugriff auf die ONTAP REST API und den S3 Access Point erfordert ein NAT Gateway oder Interface VPC Endpoints. Setzen Sie `EnableVpcEndpoints=true` oder verwenden Sie ein vorhandenes NAT Gateway.
 
 ### Verifizierte Umgebung
 

@@ -17,6 +17,7 @@ import logging
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 TARGET_ENTITY_TYPES = {"DATE", "QUANTITY", "ORGANIZATION", "PERSON"}
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Entity Extraction Lambda: Comprehend で Named Entity 抽出
@@ -74,7 +76,19 @@ def handler(event, context):
             len(extracted_text.encode("utf-8")),
         )
 
-    response = comprehend_client.detect_entities(
+    with xray_subsegment(
+
+
+        name="comprehend_detectentities",
+
+
+        annotations={"service_name": "comprehend", "operation": "DetectEntities", "use_case": "financial-idp"},
+
+
+    ):
+
+
+        response = comprehend_client.detect_entities(
         Text=text_for_comprehend,
         LanguageCode="ja",
     )
@@ -114,6 +128,13 @@ def handler(event, context):
         len(entities["organizations"]),
         len(entities["persons"]),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="entity_extraction")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "financial-idp"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "document_key": document_key,

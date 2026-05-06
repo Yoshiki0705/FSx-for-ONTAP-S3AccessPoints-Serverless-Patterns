@@ -46,11 +46,13 @@ scripts/capture_screenshots.sh
 
 # Screenshots — originals contain account info, masked versions are safe to publish
 docs/screenshots/originals/
+docs/screenshots/phase3-*.png
 # docs/screenshots/masked/ is tracked (safe to publish)
 
 # Verification results (contain environment-specific details)
 docs/verification-results.md
 docs/verification-results-phase2.md
+docs/verification-results-phase3.md
 docs/verification-results-shared-phase2.json
 
 # MASK_GUIDE contains environment-specific resource IDs

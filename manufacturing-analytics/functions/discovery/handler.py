@@ -23,6 +23,7 @@ from datetime import datetime
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ INSPECTION_IMAGE_SUFFIXES = (".jpeg", ".jpg", ".png")
 ALL_SUFFIXES = SENSOR_LOG_SUFFIXES + INSPECTION_IMAGE_SUFFIXES
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Manufacturing Analytics Discovery Lambda
@@ -58,7 +60,15 @@ def handler(event, context):
     # 対象ファイルを各サフィックスで検出
     all_objects: list[dict] = []
     for suffix in ALL_SUFFIXES:
-        objects = s3ap.list_objects(prefix=prefix, suffix=suffix)
+        with xray_subsegment(
+
+            name="s3ap_list_objects",
+
+            annotations={"service_name": "s3", "operation": "ListObjectsV2", "use_case": "manufacturing-analytics"},
+
+        ):
+
+            objects = s3ap.list_objects(prefix=prefix, suffix=suffix)
         all_objects.extend(objects)
 
     # 重複排除
@@ -109,6 +119,13 @@ def handler(event, context):
         len(image_files),
         manifest_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="discovery")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "manufacturing-analytics"))
+    metrics.put_metric("FilesProcessed", float(len(objects)), "Count")
+    metrics.flush()
 
     return {
         "manifest_key": manifest_key,

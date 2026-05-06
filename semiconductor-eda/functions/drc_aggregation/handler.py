@@ -29,6 +29,7 @@ import time
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +170,15 @@ def _execute_athena_query(
     Returns:
         dict: クエリ結果 (status, rows, query_execution_id)
     """
-    response = athena_client.start_query_execution(
+    with xray_subsegment(
+
+        name="athena_startqueryexecution",
+
+        annotations={"service_name": "athena", "operation": "StartQueryExecution", "use_case": "semiconductor-eda"},
+
+    ):
+
+        response = athena_client.start_query_execution(
         QueryString=query,
         QueryExecutionContext={"Database": database},
         WorkGroup=workgroup,
@@ -229,6 +238,7 @@ def _execute_athena_query(
     }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """半導体 / EDA DRC 集計 Lambda
@@ -343,6 +353,13 @@ def handler(event, context):
         statistics["total_designs"],
         statistics["invalid_files"],
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="drc_aggregation")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "semiconductor-eda"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

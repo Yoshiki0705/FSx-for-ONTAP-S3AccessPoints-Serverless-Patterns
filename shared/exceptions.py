@@ -60,6 +60,25 @@ class CrossRegionClientError(Exception):
         self.original_error = original_error
 
 
+class StreamingError(Exception):
+    """Kinesis ストリーミングエラー
+
+    Attributes:
+        failed_records: 失敗したレコードのリスト
+        error_codes: Kinesis エラーコードのリスト
+    """
+
+    def __init__(
+        self,
+        message: str,
+        failed_records: list | None = None,
+        error_codes: list | None = None,
+    ):
+        super().__init__(message)
+        self.failed_records = failed_records or []
+        self.error_codes = error_codes or []
+
+
 def lambda_error_handler(func):
     """Lambda 関数の共通エラーハンドリングデコレータ
 

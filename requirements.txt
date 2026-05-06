@@ -1,2 +1,4 @@
 boto3>=1.35.0
 urllib3>=2.0.0
+# Optional: X-Ray トレーシング（ENABLE_XRAY=true 時のみ使用、未インストールでも動作可能）
+# aws-xray-sdk>=2.14.0

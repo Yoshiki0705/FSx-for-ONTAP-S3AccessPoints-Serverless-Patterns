@@ -34,6 +34,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -339,6 +340,7 @@ def _extract_metadata(data: bytes, file_key: str) -> dict:
         raise ValueError(f"Unknown file format for key: {file_key}")
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """半導体 / EDA メタデータ抽出 Lambda
@@ -428,6 +430,13 @@ def handler(event, context):
         metadata.get("cell_count", 0),
         metadata.get("file_format", "UNKNOWN"),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="metadata_extraction")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "semiconductor-eda"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

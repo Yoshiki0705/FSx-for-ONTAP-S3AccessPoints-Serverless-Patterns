@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +212,7 @@ def build_citation_network(
     }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """引用ネットワーク分析
@@ -286,5 +288,12 @@ def handler(event, context):
         citation_network["total_papers"],
         citation_network["total_citations"],
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="citation_analysis")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "education-research"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

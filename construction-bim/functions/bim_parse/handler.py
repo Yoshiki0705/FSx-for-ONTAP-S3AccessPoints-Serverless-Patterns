@@ -28,6 +28,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +210,15 @@ def _get_previous_metadata(
 
         # 最新のメタデータを取得
         latest = sorted(contents, key=lambda x: x["LastModified"], reverse=True)[0]
-        obj = s3_client.get_object(Bucket=output_bucket, Key=latest["Key"])
+        with xray_subsegment(
+
+            name="s3_getobject",
+
+            annotations={"service_name": "s3", "operation": "GetObject", "use_case": "construction-bim"},
+
+        ):
+
+            obj = s3_client.get_object(Bucket=output_bucket, Key=latest["Key"])
         data = json.loads(obj["Body"].read().decode("utf-8"))
         return data.get("metadata", None)
 
@@ -218,6 +227,7 @@ def _get_previous_metadata(
         return None
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """IFC ファイルメタデータ抽出 + バージョン差分検出
@@ -312,5 +322,12 @@ def handler(event, context):
         metadata["floor_count"],
         version_diff,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="bim_parse")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "construction-bim"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

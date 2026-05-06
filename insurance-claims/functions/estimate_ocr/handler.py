@@ -23,6 +23,7 @@ import boto3
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,7 @@ def _parse_estimate_data(text: str, tables: list[dict]) -> dict:
     }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """見積書 OCR（Cross-Region Textract）
@@ -239,5 +241,12 @@ def handler(event, context):
         len(estimate_data.get("repair_items", [])),
         estimate_data.get("total_estimate", 0),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="estimate_ocr")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "insurance-claims"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

@@ -162,6 +162,19 @@ aws cloudformation wait stack-delete-complete \
 
 > **注意**: S3 バケットにオブジェクトが残っている場合、スタック削除が失敗することがあります。事前にバケットを空にしてください。
 
+## Supported Regions
+
+UC3 は以下のサービスを使用します:
+
+| サービス | リージョン制約 |
+|---------|-------------|
+| Amazon Athena | ほぼ全リージョンで利用可能 |
+| Amazon Rekognition | ほぼ全リージョンで利用可能 |
+| AWS X-Ray | ほぼ全リージョンで利用可能 |
+| CloudWatch EMF | ほぼ全リージョンで利用可能 |
+
+> 詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
+
 ## 参考リンク
 
 ### AWS 公式ドキュメント

@@ -38,6 +38,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -298,6 +299,7 @@ def validate_point_cloud(
     }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """LiDAR 点群データの品質チェック
@@ -403,5 +405,12 @@ def handler(event, context):
         status,
         metrics.get("point_count", 0),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="point_cloud_qc")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "autonomous-driving"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

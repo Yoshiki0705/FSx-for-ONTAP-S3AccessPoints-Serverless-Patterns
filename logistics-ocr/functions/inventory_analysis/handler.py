@@ -20,6 +20,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,15 @@ def detect_inventory_objects(
     Returns:
         list[dict]: 検出されたラベルのリスト
     """
-    response = rekognition_client.detect_labels(
+    with xray_subsegment(
+
+        name="rekognition_detectlabels",
+
+        annotations={"service_name": "rekognition", "operation": "DetectLabels", "use_case": "logistics-ocr"},
+
+    ):
+
+        response = rekognition_client.detect_labels(
         Image={"Bytes": image_bytes},
         MaxLabels=max_labels,
     )
@@ -121,6 +130,7 @@ def estimate_shelf_occupancy(labels: list[dict]) -> float:
     return round(occupancy, 2)
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """倉庫在庫画像分析（Rekognition）
@@ -199,5 +209,12 @@ def handler(event, context):
         inventory_result["total_items"],
         shelf_occupancy,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="inventory_analysis")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "logistics-ocr"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return output_data

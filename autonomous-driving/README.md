@@ -127,3 +127,60 @@ aws cloudformation wait stack-delete-complete \
 - [Amazon SageMaker Batch Transform](https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform.html)
 - [COCO データフォーマット](https://cocodataset.org/#format-data)
 - [LAS ファイルフォーマット仕様](https://www.asprs.org/divisions-committees/lidar-division/laser-las-file-format-exchange-activities)
+
+## SageMaker Batch Transform 統合（Phase 3）
+
+Phase 3 では、**SageMaker Batch Transform による LiDAR 点群セグメンテーション推論** をオプトインで利用できます。Step Functions の Callback Pattern（`.waitForTaskToken`）を使用し、非同期でバッチ推論ジョブの完了を待機します。
+
+### 有効化
+
+```bash
+aws cloudformation deploy \
+  --template-file autonomous-driving/template.yaml \
+  --stack-name fsxn-autonomous-driving \
+  --parameter-overrides \
+    EnableSageMakerTransform=true \
+    MockMode=true \
+    ... # 他のパラメータ
+  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+```
+
+### ワークフロー
+
+```
+Discovery → Frame Extraction → Point Cloud QC
+  → [EnableSageMakerTransform=true] SageMaker Invoke (.waitForTaskToken)
+  → SageMaker Batch Transform Job
+  → EventBridge (job state change) → SageMaker Callback (SendTaskSuccess/Failure)
+  → Annotation Manager (Rekognition + SageMaker 結果統合)
+```
+
+### モックモード
+
+テスト環境では `MockMode=true`（デフォルト）を使用することで、実際の SageMaker モデルデプロイなしに Callback Pattern のデータフローを検証できます。
+
+- **MockMode=true**: SageMaker API を呼び出さず、モックセグメンテーション出力（入力 point_count と同数のランダムラベル）を生成し、直接 SendTaskSuccess を呼び出す
+- **MockMode=false**: 実際の SageMaker CreateTransformJob を実行。事前にモデルのデプロイが必要
+
+### 設定パラメータ（Phase 3 追加）
+
+| パラメータ | 説明 | デフォルト |
+|-----------|------|----------|
+| `EnableSageMakerTransform` | SageMaker Batch Transform の有効化 | `false` |
+| `MockMode` | モックモード（テスト用） | `true` |
+| `SageMakerModelName` | SageMaker モデル名 | — |
+| `SageMakerInstanceType` | Batch Transform インスタンスタイプ | `ml.m5.xlarge` |
+
+## Supported Regions
+
+UC9 は以下のサービスを使用します:
+
+| サービス | リージョン制約 |
+|---------|-------------|
+| Amazon Rekognition | ほぼ全リージョンで利用可能 |
+| Amazon Bedrock | 対応リージョンを確認（[Bedrock 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)） |
+| SageMaker Batch Transform | ほぼ全リージョンで利用可能（インスタンスタイプの可用性はリージョンにより異なる） |
+| AWS X-Ray | ほぼ全リージョンで利用可能 |
+| CloudWatch EMF | ほぼ全リージョンで利用可能 |
+
+> SageMaker Batch Transform を有効化する場合、デプロイ前に [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) でターゲットリージョンのインスタンスタイプ可用性を確認してください。詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。

@@ -22,10 +22,12 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """PII Detection Lambda
@@ -150,6 +152,13 @@ def handler(event, context):
         len(detected_texts),
         has_pii,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="pii_detection")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "healthcare-dicom"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "dicom_key": dicom_key,

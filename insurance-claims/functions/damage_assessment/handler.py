@@ -23,6 +23,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,15 @@ def detect_damage_labels(
     Returns:
         list[dict]: 検出されたラベルのリスト
     """
-    response = rekognition_client.detect_labels(
+    with xray_subsegment(
+
+        name="rekognition_detectlabels",
+
+        annotations={"service_name": "rekognition", "operation": "DetectLabels", "use_case": "insurance-claims"},
+
+    ):
+
+        response = rekognition_client.detect_labels(
         Image={"Bytes": image_bytes},
         MaxLabels=max_labels,
     )
@@ -178,6 +187,7 @@ JSON のみを出力してください。"""
         }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """事故写真の損害評価（Rekognition + Bedrock）
@@ -269,5 +279,12 @@ def handler(event, context):
         status,
         damage_assessment.get("damage_type", "unknown"),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="damage_assessment")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "insurance-claims"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

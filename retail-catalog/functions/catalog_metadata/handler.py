@@ -20,6 +20,7 @@ from pathlib import PurePosixPath
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,19 @@ def generate_catalog_metadata(bedrock_client, model_id: str, file_key: str, labe
         },
     })
 
-    response = bedrock_client.invoke_model(
+    with xray_subsegment(
+
+
+        name="bedrock_invokemodel",
+
+
+        annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "retail-catalog"},
+
+
+    ):
+
+
+        response = bedrock_client.invoke_model(
         modelId=model_id,
         body=body,
         contentType="application/json",
@@ -161,6 +174,7 @@ def _ensure_required_fields(metadata: dict, labels: list[dict]) -> dict:
     return metadata
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """小売 / EC カタログメタデータ生成 Lambda
@@ -221,6 +235,13 @@ def handler(event, context):
         output_key,
         catalog_metadata.get("product_category", "Unknown"),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="catalog_metadata")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "retail-catalog"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

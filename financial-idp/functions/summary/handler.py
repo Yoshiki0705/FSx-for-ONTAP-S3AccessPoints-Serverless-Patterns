@@ -28,6 +28,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ def build_summary_output(
     }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Summary Lambda: Bedrock でサマリー生成 → JSON 出力 → S3 書き出し
@@ -158,6 +160,13 @@ def handler(event, context):
         document_key,
         output_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="summary")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "financial-idp"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "document_key": document_key,

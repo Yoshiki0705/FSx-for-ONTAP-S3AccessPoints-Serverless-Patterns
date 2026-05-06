@@ -73,6 +73,12 @@ Parameters:
     Default: "us-east-1"
     Description: Comprehend Medical API のリージョン（ap-northeast-1 非対応のためクロスリージョン呼び出し）
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -84,6 +90,8 @@ Conditions:
   CreateS3GatewayEndpoint:
     !Equals [!Ref EnableS3GatewayEndpoint, "true"]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -277,12 +285,14 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -291,6 +301,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   DicomParseLambdaRole:
     Type: AWS::IAM::Role
@@ -316,12 +332,14 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -330,6 +348,12 @@ Resources:
                 Resource:
                   - !GetAtt DicomParseLogGroup.Arn
                   - !Sub "${DicomParseLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   PiiDetectionLambdaRole:
     Type: AWS::IAM::Role
@@ -355,12 +379,14 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: Rekognition
                 Effect: Allow
                 Action:
@@ -374,6 +400,12 @@ Resources:
                 Resource:
                   - !GetAtt PiiDetectionLogGroup.Arn
                   - !Sub "${PiiDetectionLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   AnonymizationLambdaRole:
     Type: AWS::IAM::Role
@@ -399,6 +431,7 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: ComprehendMedical
                 Effect: Allow
                 Action:
@@ -418,6 +451,12 @@ Resources:
                 Resource:
                   - !GetAtt AnonymizationLogGroup.Arn
                   - !Sub "${AnonymizationLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # -----------------------------------------------------------------
   # Lambda Functions (Python 3.12, 256MB, 300s timeout)
@@ -425,6 +464,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: healthcare-dicom/functions/discovery/handler.handler
@@ -437,6 +478,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "healthcare-dicom"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           PREFIX_FILTER: ""
@@ -450,6 +492,8 @@ Resources:
   DicomParseFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-dicom-parse"
       Runtime: python3.12
       Handler: healthcare-dicom/functions/dicom_parse/handler.handler
@@ -458,6 +502,7 @@ Resources:
       Role: !GetAtt DicomParseLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "healthcare-dicom"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
       LoggingConfig:
@@ -469,6 +514,8 @@ Resources:
   PiiDetectionFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-pii-detection"
       Runtime: python3.12
       Handler: healthcare-dicom/functions/pii_detection/handler.handler
@@ -477,6 +524,7 @@ Resources:
       Role: !GetAtt PiiDetectionLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "healthcare-dicom"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
       LoggingConfig:
@@ -488,6 +536,8 @@ Resources:
   AnonymizationFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-anonymization"
       Runtime: python3.12
       Handler: healthcare-dicom/functions/anonymization/handler.handler
@@ -496,6 +546,7 @@ Resources:
       Role: !GetAtt AnonymizationLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "healthcare-dicom"
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           SNS_TOPIC_ARN: !Ref NotificationTopic
           COMPREHEND_MEDICAL_REGION: !Ref ComprehendMedicalRegion
@@ -538,6 +589,8 @@ Resources:
   DicomStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |

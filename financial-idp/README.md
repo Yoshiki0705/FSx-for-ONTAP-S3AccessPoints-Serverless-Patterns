@@ -174,6 +174,20 @@ aws cloudformation wait stack-delete-complete \
 
 > **注意**: S3 バケットにオブジェクトが残っている場合、スタック削除が失敗することがあります。事前にバケットを空にしてください。
 
+## Supported Regions
+
+UC2 は以下のサービスを使用します:
+
+| サービス | リージョン制約 |
+|---------|-------------|
+| Amazon Textract | ap-northeast-1 非対応。`TEXTRACT_REGION` パラメータで対応リージョン（us-east-1 等）を指定 |
+| Amazon Comprehend | ほぼ全リージョンで利用可能 |
+| Amazon Bedrock | 対応リージョンを確認（[Bedrock 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)） |
+| AWS X-Ray | ほぼ全リージョンで利用可能 |
+| CloudWatch EMF | ほぼ全リージョンで利用可能 |
+
+> Cross-Region Client 経由で Textract API を呼び出します。データレジデンシー要件を確認してください。詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
+
 ## 参考リンク
 
 ### AWS 公式ドキュメント

@@ -107,6 +107,45 @@ Parameters:
     Default: "ad-segmentation"
     Description: SageMaker Batch Transform ジョブ名プレフィックス
 
+  # --- Phase 3 SageMaker 統合パラメータ ---
+  EnableSageMakerTransform:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: SageMaker Batch Transform 統合を有効化する
+
+  MockMode:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: SageMaker モックモード（テスト環境用）
+
+  SageMakerModelName:
+    Type: String
+    Default: "point-cloud-segmentation"
+    Description: SageMaker モデル名
+
+  SageMakerInstanceType:
+    Type: String
+    Default: "ml.m5.xlarge"
+    Description: SageMaker Batch Transform インスタンスタイプ
+
+  SageMakerInstanceCount:
+    Type: Number
+    Default: 1
+    Description: SageMaker Batch Transform インスタンス数
+
+  SageMakerMaxRuntimeSeconds:
+    Type: Number
+    Default: 3600
+    Description: SageMaker Batch Transform 最大実行時間（秒）
+
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -121,7 +160,11 @@ Conditions:
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
   UseAutoOutputBucket:
     !Equals [!Ref OutputBucketName, ""]
+  CreateSageMakerResources:
+    !Equals [!Ref EnableSageMakerTransform, "true"]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -312,12 +355,14 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -339,6 +384,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # FrameExtraction Lambda: VPC 外、S3 AP 読み取り + Rekognition + S3 出力
   FrameExtractionLambdaRole:
@@ -365,6 +416,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: RekognitionDetectLabels
                 Effect: Allow
                 Action:
@@ -384,6 +436,12 @@ Resources:
                 Resource:
                   - !GetAtt FrameExtractionLogGroup.Arn
                   - !Sub "${FrameExtractionLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # PointCloudQC Lambda: VPC 外、S3 AP 読み取り + S3 出力
   PointCloudQcLambdaRole:
@@ -410,6 +468,7 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
               - Sid: S3OutputBucketWrite
                 Effect: Allow
                 Action:
@@ -424,6 +483,12 @@ Resources:
                 Resource:
                   - !GetAtt PointCloudQcLogGroup.Arn
                   - !Sub "${PointCloudQcLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # AnnotationManager Lambda: VPC 外、Bedrock + SageMaker + S3 出力 + SNS
   AnnotationManagerLambdaRole:
@@ -455,7 +520,8 @@ Resources:
                 Action:
                   - sagemaker:CreateTransformJob
                   - sagemaker:DescribeTransformJob
-                Resource: "*"
+                Resource:
+                  - !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:transform-job/${AWS::StackName}-*"
               - Sid: S3OutputBucketWrite
                 Effect: Allow
                 Action:
@@ -476,6 +542,12 @@ Resources:
                 Resource:
                   - !GetAtt AnnotationManagerLogGroup.Arn
                   - !Sub "${AnnotationManagerLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # -----------------------------------------------------------------
   # Lambda Functions
@@ -483,6 +555,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: autonomous-driving/functions/discovery/handler.handler
@@ -495,6 +569,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "autonomous-driving"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           PREFIX_FILTER: ""
           SUFFIX_FILTER: ".mp4,.avi,.mkv,.pcd,.las,.laz,.ply,.json"
@@ -511,6 +586,8 @@ Resources:
   FrameExtractionFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-frame-extraction"
       Runtime: python3.12
       Handler: autonomous-driving/functions/frame_extraction/handler.handler
@@ -519,6 +596,7 @@ Resources:
       Role: !GetAtt FrameExtractionLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "autonomous-driving"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
           FRAME_INTERVAL: !Ref FrameInterval
@@ -531,6 +609,8 @@ Resources:
   PointCloudQcFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-point-cloud-qc"
       Runtime: python3.12
       Handler: autonomous-driving/functions/point_cloud_qc/handler.handler
@@ -539,6 +619,7 @@ Resources:
       Role: !GetAtt PointCloudQcLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "autonomous-driving"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
       LoggingConfig:
@@ -550,6 +631,8 @@ Resources:
   AnnotationManagerFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-annotation-manager"
       Runtime: python3.12
       Handler: autonomous-driving/functions/annotation_manager/handler.handler
@@ -558,6 +641,7 @@ Resources:
       Role: !GetAtt AnnotationManagerLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "autonomous-driving"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -597,148 +681,339 @@ Resources:
                   - !GetAtt FrameExtractionFunction.Arn
                   - !GetAtt PointCloudQcFunction.Arn
                   - !GetAtt AnnotationManagerFunction.Arn
+              - !If
+                - CreateSageMakerResources
+                - Sid: InvokeSageMakerLambda
+                  Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                  Resource:
+                    - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-sagemaker-invoke"
+                - !Ref "AWS::NoValue"
 
   AutonomousDrivingStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
-      DefinitionString: !Sub |
-        {
-          "Comment": "Autonomous Driving - Labeling Preprocessing & QC Workflow",
-          "StartAt": "Discovery",
-          "States": {
-            "Discovery": {
-              "Type": "Task",
-              "Resource": "${DiscoveryFunction.Arn}",
-              "ResultPath": "$.discovery",
-              "Next": "ParallelProcessing",
-              "Retry": [
-                {
-                  "ErrorEquals": ["States.TaskFailed"],
-                  "IntervalSeconds": 5,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2.0
-                }
-              ]
-            },
-            "ParallelProcessing": {
-              "Type": "Parallel",
-              "ResultPath": "$.parallel_results",
-              "Next": "AnnotationManager",
-              "Branches": [
-                {
-                  "StartAt": "ProcessVideoFiles",
-                  "States": {
-                    "ProcessVideoFiles": {
-                      "Type": "Map",
-                      "ItemsPath": "$.discovery.video_files",
-                      "MaxConcurrency": ${MapConcurrency},
-                      "ResultPath": "$.detection_results",
-                      "ItemProcessor": {
-                        "ProcessorConfig": {
-                          "Mode": "INLINE"
-                        },
-                        "StartAt": "ExtractFrames",
-                        "States": {
-                          "ExtractFrames": {
-                            "Type": "Task",
-                            "Resource": "${FrameExtractionFunction.Arn}",
-                            "Retry": [
-                              {
-                                "ErrorEquals": ["States.TaskFailed"],
-                                "IntervalSeconds": 10,
-                                "MaxAttempts": 3,
-                                "BackoffRate": 2.0
-                              }
-                            ],
-                            "Catch": [
-                              {
-                                "ErrorEquals": ["States.ALL"],
-                                "ResultPath": "$.error",
-                                "Next": "MarkVideoFailed"
-                              }
-                            ],
-                            "End": true
+      DefinitionString: !If
+        - CreateSageMakerResources
+        - !Sub |
+          {
+            "Comment": "Autonomous Driving - Labeling Preprocessing & QC Workflow (with SageMaker)",
+            "StartAt": "Discovery",
+            "States": {
+              "Discovery": {
+                "Type": "Task",
+                "Resource": "${DiscoveryFunction.Arn}",
+                "ResultPath": "$.discovery",
+                "Next": "ParallelProcessing",
+                "Retry": [
+                  {
+                    "ErrorEquals": ["States.TaskFailed"],
+                    "IntervalSeconds": 5,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2.0
+                  }
+                ]
+              },
+              "ParallelProcessing": {
+                "Type": "Parallel",
+                "ResultPath": "$.parallel_results",
+                "Next": "CheckSageMakerTransform",
+                "Branches": [
+                  {
+                    "StartAt": "ProcessVideoFiles",
+                    "States": {
+                      "ProcessVideoFiles": {
+                        "Type": "Map",
+                        "ItemsPath": "$.discovery.video_files",
+                        "MaxConcurrency": ${MapConcurrency},
+                        "ResultPath": "$.detection_results",
+                        "ItemProcessor": {
+                          "ProcessorConfig": {
+                            "Mode": "INLINE"
                           },
-                          "MarkVideoFailed": {
-                            "Type": "Pass",
-                            "Result": {"status": "ERROR"},
-                            "End": true
+                          "StartAt": "ExtractFrames",
+                          "States": {
+                            "ExtractFrames": {
+                              "Type": "Task",
+                              "Resource": "${FrameExtractionFunction.Arn}",
+                              "Retry": [
+                                {
+                                  "ErrorEquals": ["States.TaskFailed"],
+                                  "IntervalSeconds": 10,
+                                  "MaxAttempts": 3,
+                                  "BackoffRate": 2.0
+                                }
+                              ],
+                              "Catch": [
+                                {
+                                  "ErrorEquals": ["States.ALL"],
+                                  "ResultPath": "$.error",
+                                  "Next": "MarkVideoFailed"
+                                }
+                              ],
+                              "End": true
+                            },
+                            "MarkVideoFailed": {
+                              "Type": "Pass",
+                              "Result": {"status": "ERROR"},
+                              "End": true
+                            }
                           }
-                        }
-                      },
-                      "End": true
+                        },
+                        "End": true
+                      }
                     }
+                  },
+                  {
+                    "StartAt": "ProcessLidarFiles",
+                    "States": {
+                      "ProcessLidarFiles": {
+                        "Type": "Map",
+                        "ItemsPath": "$.discovery.lidar_files",
+                        "MaxConcurrency": ${MapConcurrency},
+                        "ResultPath": "$.qc_results",
+                        "ItemProcessor": {
+                          "ProcessorConfig": {
+                            "Mode": "INLINE"
+                          },
+                          "StartAt": "PointCloudQC",
+                          "States": {
+                            "PointCloudQC": {
+                              "Type": "Task",
+                              "Resource": "${PointCloudQcFunction.Arn}",
+                              "Retry": [
+                                {
+                                  "ErrorEquals": ["States.TaskFailed"],
+                                  "IntervalSeconds": 10,
+                                  "MaxAttempts": 3,
+                                  "BackoffRate": 2.0
+                                }
+                              ],
+                              "Catch": [
+                                {
+                                  "ErrorEquals": ["States.ALL"],
+                                  "ResultPath": "$.error",
+                                  "Next": "MarkLidarFailed"
+                                }
+                              ],
+                              "End": true
+                            },
+                            "MarkLidarFailed": {
+                              "Type": "Pass",
+                              "Result": {"status": "FAIL"},
+                              "End": true
+                            }
+                          }
+                        },
+                        "End": true
+                      }
+                    }
+                  }
+                ]
+              },
+              "CheckSageMakerTransform": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.enable_sagemaker",
+                    "BooleanEquals": false,
+                    "Next": "AnnotationManager"
+                  }
+                ],
+                "Default": "SageMakerTransform"
+              },
+              "SageMakerTransform": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                "Parameters": {
+                  "FunctionName": "${SageMakerInvokeFunction.Arn}",
+                  "Payload": {
+                    "task_token.$": "$$.Task.Token",
+                    "input_s3_path.$": "$.parallel_results[1].qc_results[0].output_key",
+                    "point_count.$": "$.parallel_results[1].qc_results[0].point_count"
                   }
                 },
-                {
-                  "StartAt": "ProcessLidarFiles",
-                  "States": {
-                    "ProcessLidarFiles": {
-                      "Type": "Map",
-                      "ItemsPath": "$.discovery.lidar_files",
-                      "MaxConcurrency": ${MapConcurrency},
-                      "ResultPath": "$.qc_results",
-                      "ItemProcessor": {
-                        "ProcessorConfig": {
-                          "Mode": "INLINE"
-                        },
-                        "StartAt": "PointCloudQC",
-                        "States": {
-                          "PointCloudQC": {
-                            "Type": "Task",
-                            "Resource": "${PointCloudQcFunction.Arn}",
-                            "Retry": [
-                              {
-                                "ErrorEquals": ["States.TaskFailed"],
-                                "IntervalSeconds": 10,
-                                "MaxAttempts": 3,
-                                "BackoffRate": 2.0
-                              }
-                            ],
-                            "Catch": [
-                              {
-                                "ErrorEquals": ["States.ALL"],
-                                "ResultPath": "$.error",
-                                "Next": "MarkLidarFailed"
-                              }
-                            ],
-                            "End": true
-                          },
-                          "MarkLidarFailed": {
-                            "Type": "Pass",
-                            "Result": {"status": "FAIL"},
-                            "End": true
-                          }
-                        }
-                      },
-                      "End": true
-                    }
+                "ResultPath": "$.sagemaker_result",
+                "Next": "AnnotationManager",
+                "TimeoutSeconds": ${SageMakerMaxRuntimeSeconds},
+                "Retry": [
+                  {
+                    "ErrorEquals": ["States.TaskFailed"],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 1,
+                    "BackoffRate": 2.0
                   }
-                }
-              ]
-            },
-            "AnnotationManager": {
-              "Type": "Task",
-              "Resource": "${AnnotationManagerFunction.Arn}",
-              "Parameters": {
-                "detection_results.$": "$.parallel_results[0].detection_results",
-                "qc_results.$": "$.parallel_results[1].qc_results"
+                ],
+                "Catch": [
+                  {
+                    "ErrorEquals": ["States.ALL"],
+                    "ResultPath": "$.sagemaker_error",
+                    "Next": "AnnotationManager"
+                  }
+                ]
               },
-              "ResultPath": "$.annotation_result",
-              "End": true,
-              "Retry": [
-                {
-                  "ErrorEquals": ["States.TaskFailed"],
-                  "IntervalSeconds": 10,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2.0
-                }
-              ]
+              "AnnotationManager": {
+                "Type": "Task",
+                "Resource": "${AnnotationManagerFunction.Arn}",
+                "Parameters": {
+                  "detection_results.$": "$.parallel_results[0].detection_results",
+                  "qc_results.$": "$.parallel_results[1].qc_results",
+                  "sagemaker_output.$": "$.sagemaker_result"
+                },
+                "ResultPath": "$.annotation_result",
+                "End": true,
+                "Retry": [
+                  {
+                    "ErrorEquals": ["States.TaskFailed"],
+                    "IntervalSeconds": 10,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2.0
+                  }
+                ]
+              }
             }
           }
-        }
+        - !Sub |
+          {
+            "Comment": "Autonomous Driving - Labeling Preprocessing & QC Workflow",
+            "StartAt": "Discovery",
+            "States": {
+              "Discovery": {
+                "Type": "Task",
+                "Resource": "${DiscoveryFunction.Arn}",
+                "ResultPath": "$.discovery",
+                "Next": "ParallelProcessing",
+                "Retry": [
+                  {
+                    "ErrorEquals": ["States.TaskFailed"],
+                    "IntervalSeconds": 5,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2.0
+                  }
+                ]
+              },
+              "ParallelProcessing": {
+                "Type": "Parallel",
+                "ResultPath": "$.parallel_results",
+                "Next": "AnnotationManager",
+                "Branches": [
+                  {
+                    "StartAt": "ProcessVideoFiles",
+                    "States": {
+                      "ProcessVideoFiles": {
+                        "Type": "Map",
+                        "ItemsPath": "$.discovery.video_files",
+                        "MaxConcurrency": ${MapConcurrency},
+                        "ResultPath": "$.detection_results",
+                        "ItemProcessor": {
+                          "ProcessorConfig": {
+                            "Mode": "INLINE"
+                          },
+                          "StartAt": "ExtractFrames",
+                          "States": {
+                            "ExtractFrames": {
+                              "Type": "Task",
+                              "Resource": "${FrameExtractionFunction.Arn}",
+                              "Retry": [
+                                {
+                                  "ErrorEquals": ["States.TaskFailed"],
+                                  "IntervalSeconds": 10,
+                                  "MaxAttempts": 3,
+                                  "BackoffRate": 2.0
+                                }
+                              ],
+                              "Catch": [
+                                {
+                                  "ErrorEquals": ["States.ALL"],
+                                  "ResultPath": "$.error",
+                                  "Next": "MarkVideoFailed"
+                                }
+                              ],
+                              "End": true
+                            },
+                            "MarkVideoFailed": {
+                              "Type": "Pass",
+                              "Result": {"status": "ERROR"},
+                              "End": true
+                            }
+                          }
+                        },
+                        "End": true
+                      }
+                    }
+                  },
+                  {
+                    "StartAt": "ProcessLidarFiles",
+                    "States": {
+                      "ProcessLidarFiles": {
+                        "Type": "Map",
+                        "ItemsPath": "$.discovery.lidar_files",
+                        "MaxConcurrency": ${MapConcurrency},
+                        "ResultPath": "$.qc_results",
+                        "ItemProcessor": {
+                          "ProcessorConfig": {
+                            "Mode": "INLINE"
+                          },
+                          "StartAt": "PointCloudQC",
+                          "States": {
+                            "PointCloudQC": {
+                              "Type": "Task",
+                              "Resource": "${PointCloudQcFunction.Arn}",
+                              "Retry": [
+                                {
+                                  "ErrorEquals": ["States.TaskFailed"],
+                                  "IntervalSeconds": 10,
+                                  "MaxAttempts": 3,
+                                  "BackoffRate": 2.0
+                                }
+                              ],
+                              "Catch": [
+                                {
+                                  "ErrorEquals": ["States.ALL"],
+                                  "ResultPath": "$.error",
+                                  "Next": "MarkLidarFailed"
+                                }
+                              ],
+                              "End": true
+                            },
+                            "MarkLidarFailed": {
+                              "Type": "Pass",
+                              "Result": {"status": "FAIL"},
+                              "End": true
+                            }
+                          }
+                        },
+                        "End": true
+                      }
+                    }
+                  }
+                ]
+              },
+              "AnnotationManager": {
+                "Type": "Task",
+                "Resource": "${AnnotationManagerFunction.Arn}",
+                "Parameters": {
+                  "detection_results.$": "$.parallel_results[0].detection_results",
+                  "qc_results.$": "$.parallel_results[1].qc_results"
+                },
+                "ResultPath": "$.annotation_result",
+                "End": true,
+                "Retry": [
+                  {
+                    "ErrorEquals": ["States.TaskFailed"],
+                    "IntervalSeconds": 10,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2.0
+                  }
+                ]
+              }
+            }
+          }
 
   # -----------------------------------------------------------------
   # EventBridge Scheduler
@@ -859,3 +1134,302 @@ Resources:
       TreatMissingData: notBreaching
       AlarmActions:
         - !Ref NotificationTopic
+
+  # =================================================================
+  # Phase 3: SageMaker Batch Transform 統合リソース (conditional)
+  # =================================================================
+
+  # -----------------------------------------------------------------
+  # SageMaker CloudWatch Log Groups (conditional)
+  # -----------------------------------------------------------------
+  SageMakerInvokeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateSageMakerResources
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-sagemaker-invoke"
+      RetentionInDays: 14
+
+  SageMakerCallbackLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateSageMakerResources
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-sagemaker-callback"
+      RetentionInDays: 14
+
+  # -----------------------------------------------------------------
+  # SageMaker IAM Execution Role (least-privilege)
+  # -----------------------------------------------------------------
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: CreateSageMakerResources
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sagemaker-execution-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SageMakerExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3ReadInput
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3WriteOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: sagemaker
+
+  # -----------------------------------------------------------------
+  # SageMaker Invoke Lambda IAM Role
+  # -----------------------------------------------------------------
+  SageMakerInvokeLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateSageMakerResources
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sagemaker-invoke-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SageMakerInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SageMakerCreateJob
+                Effect: Allow
+                Action:
+                  - sagemaker:CreateTransformJob
+                  - sagemaker:AddTags
+                Resource:
+                  - !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:transform-job/*"
+              - Sid: SageMakerPassRole
+                Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource:
+                  - !GetAtt SageMakerExecutionRole.Arn
+              - Sid: S3WriteOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: StepFunctionsSendTask
+                Effect: Allow
+                Action:
+                  - states:SendTaskSuccess
+                Resource:
+                  - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-workflow"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt SageMakerInvokeLogGroup.Arn
+                  - !Sub "${SageMakerInvokeLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: sagemaker
+
+  # -----------------------------------------------------------------
+  # SageMaker Callback Lambda IAM Role
+  # -----------------------------------------------------------------
+  SageMakerCallbackLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateSageMakerResources
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sagemaker-callback-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SageMakerCallbackPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SageMakerDescribeJob
+                Effect: Allow
+                Action:
+                  - sagemaker:DescribeTransformJob
+                  - sagemaker:ListTags
+                Resource:
+                  - !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:transform-job/*"
+              - Sid: StepFunctionsSendTask
+                Effect: Allow
+                Action:
+                  - states:SendTaskSuccess
+                  - states:SendTaskFailure
+                Resource:
+                  - !Ref AutonomousDrivingStateMachine
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt SageMakerCallbackLogGroup.Arn
+                  - !Sub "${SageMakerCallbackLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: sagemaker
+
+  # -----------------------------------------------------------------
+  # SageMaker Invoke Lambda Function
+  # -----------------------------------------------------------------
+  SageMakerInvokeFunction:
+    Type: AWS::Lambda::Function
+    Condition: CreateSageMakerResources
+    Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      FunctionName: !Sub "${AWS::StackName}-sagemaker-invoke"
+      Runtime: python3.12
+      Handler: autonomous-driving/functions/sagemaker_invoke/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt SageMakerInvokeLambdaRole.Arn
+      Environment:
+        Variables:
+          MOCK_MODE: !Ref MockMode
+          SAGEMAKER_MODEL_NAME: !Ref SageMakerModelName
+          SAGEMAKER_INSTANCE_TYPE: !Ref SageMakerInstanceType
+          OUTPUT_BUCKET: !Ref OutputBucket
+          USE_CASE: autonomous-driving
+          REGION: !Ref "AWS::Region"
+      LoggingConfig:
+        LogGroup: !Ref SageMakerInvokeLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: sagemaker
+
+  # -----------------------------------------------------------------
+  # SageMaker Callback Lambda Function
+  # -----------------------------------------------------------------
+  SageMakerCallbackFunction:
+    Type: AWS::Lambda::Function
+    Condition: CreateSageMakerResources
+    Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      FunctionName: !Sub "${AWS::StackName}-sagemaker-callback"
+      Runtime: python3.12
+      Handler: autonomous-driving/functions/sagemaker_callback/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt SageMakerCallbackLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: autonomous-driving
+          REGION: !Ref "AWS::Region"
+      LoggingConfig:
+        LogGroup: !Ref SageMakerCallbackLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "3"
+        - Key: Component
+          Value: sagemaker
+
+  # -----------------------------------------------------------------
+  # EventBridge Rule: SageMaker Transform Job State Change
+  # -----------------------------------------------------------------
+  SageMakerJobStateChangeRule:
+    Type: AWS::Events::Rule
+    Condition: CreateSageMakerResources
+    Properties:
+      Name: !Sub "${AWS::StackName}-sagemaker-job-state-change"
+      Description: "Triggers callback Lambda on SageMaker Transform job state changes"
+      EventPattern:
+        source:
+          - aws.sagemaker
+        detail-type:
+          - "SageMaker Transform Job State Change"
+        detail:
+          TransformJobStatus:
+            - Completed
+            - Failed
+            - Stopped
+      State: ENABLED
+      Targets:
+        - Id: SageMakerCallbackTarget
+          Arn: !GetAtt SageMakerCallbackFunction.Arn
+
+  SageMakerCallbackPermission:
+    Type: AWS::Lambda::Permission
+    Condition: CreateSageMakerResources
+    Properties:
+      FunctionName: !Ref SageMakerCallbackFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SageMakerJobStateChangeRule.Arn

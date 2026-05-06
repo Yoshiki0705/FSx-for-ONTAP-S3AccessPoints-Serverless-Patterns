@@ -130,6 +130,34 @@ EventBridge Scheduler (定期执行)
 > 
 > 参考: [Textract 支持区域](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 支持区域](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
 
+## 区域选择指南
+
+本模式集在 **ap-northeast-1（东京）** 进行了验证，但可以部署到任何所需服务可用的 AWS 区域。
+
+### 部署前检查清单
+
+1. 在 [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) 确认服务可用性
+2. 确认 Phase 3 服务：
+   - **Kinesis Data Streams**：几乎所有区域可用（分片定价因区域而异）
+   - **SageMaker Batch Transform**：实例类型可用性因区域而异
+   - **X-Ray / CloudWatch EMF**：几乎所有区域可用
+3. 确认 Cross-Region 目标服务（Textract、Comprehend Medical）的目标区域
+
+详情请参阅[区域兼容性矩阵](docs/region-compatibility.md)。
+
+### Phase 3 功能概要
+
+| 功能 | 说明 | 目标 UC |
+|------|------|---------|
+| Kinesis 流式处理 | 近实时文件变更检测和处理 | UC11（可选启用） |
+| SageMaker Batch Transform | 点云分割推理（Callback Pattern） | UC9（可选启用） |
+| X-Ray 追踪 | 分布式追踪实现执行路径可视化 | 全部 14 UC |
+| CloudWatch EMF | 结构化指标输出（FilesProcessed、Duration、Errors） | 全部 14 UC |
+| 可观测性仪表板 | 全 UC 横跨指标集中展示 | 共用 |
+| 告警自动化 | 基于错误率阈值的 SNS 通知 | 共用 |
+
+详情请参阅[流式处理 vs 轮询选择指南](docs/streaming-vs-polling-guide-zh-CN.md)。
+
 ### 截图
 
 > 以下为验证环境中的截图示例。环境特定信息（账户 ID 等）已进行脱敏处理。
@@ -209,6 +237,46 @@ EventBridge Scheduler (定期执行)
 ![Lambda 函数列表 Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
 
 > Phase 2 的全部 Lambda 函数（Discovery, Processing, Report 等）已成功部署。
+
+#### Phase 3: 实时处理・SageMaker 集成・可观测性强化
+
+##### Step Functions E2E 执行成功（UC11）
+
+![Step Functions Phase 3 执行成功](docs/screenshots/masked/phase3-step-functions-uc11-succeeded.png)
+
+> UC11 Step Functions 工作流 E2E 执行成功。Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck 全状态成功（8.974秒）。X-Ray 跟踪生成确认。
+
+##### Kinesis Data Streams（UC11 流式模式）
+
+![Kinesis Data Stream](docs/screenshots/masked/phase3-kinesis-stream-active.png)
+
+> UC11 Kinesis Data Stream（1 分片，预置模式）处于活跃状态。显示监控指标。
+
+##### DynamoDB 状态管理表（UC11 变更检测）
+
+![DynamoDB State Tables](docs/screenshots/masked/phase3-dynamodb-state-tables.png)
+
+> UC11 变更检测用 DynamoDB 表。streaming-state（状态管理）和 streaming-dead-letter（DLQ）两张表。
+
+##### 可观测性堆栈
+
+![X-Ray Traces](docs/screenshots/masked/phase3-xray-traces.png)
+
+> X-Ray 跟踪。Stream Producer Lambda 1分钟间隔执行跟踪（全部 OK，延迟 7-11ms）。
+
+![CloudWatch Dashboard](docs/screenshots/masked/phase3-cloudwatch-dashboard.png)
+
+> 全 14 UC 横跨集中式 CloudWatch 仪表板。Step Functions 成功/失败、Lambda 错误率、EMF 自定义指标。
+
+![CloudWatch Alarms](docs/screenshots/masked/phase3-cloudwatch-alarms.png)
+
+> Phase 3 告警自动化。Step Functions 失败率、Lambda 错误率、Kinesis Iterator Age 阈值告警（全部 OK 状态）。
+
+##### S3 Access Point 验证
+
+![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
+
+> FSx for ONTAP S3 Access Point（fsxn-eda-s3ap）处于 Available 状态。通过 FSx 控制台卷 S3 选项卡确认。
 
 ## 技术栈
 
@@ -367,6 +435,8 @@ aws cloudformation create-stack \
 > **关于 `EnableVpcEndpoints`**: Quick Start 中指定 `true` 以确保 VPC 内 Lambda 到 Secrets Manager / CloudWatch / SNS 的连通性。如果已有 Interface VPC Endpoints 或 NAT Gateway，可以指定 `false` 以降低成本。
 > 
 > **区域选择**: 推荐使用所有 AI/ML 服务均可用的 `us-east-1` 或 `us-west-2`。`ap-northeast-1` 不支持 Textract 和 Comprehend Medical（可通过跨区域调用解决）。详情请参阅[区域兼容性矩阵](docs/region-compatibility.md)。
+>
+> **VPC 连接性**: Discovery Lambda 部署在 VPC 内。访问 ONTAP REST API 和 S3 Access Point 需要 NAT Gateway 或 Interface VPC Endpoints。请设置 `EnableVpcEndpoints=true` 或使用现有的 NAT Gateway。
 
 ### 已验证环境
 

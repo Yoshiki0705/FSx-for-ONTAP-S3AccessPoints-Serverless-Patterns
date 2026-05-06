@@ -21,6 +21,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,19 @@ def _invoke_bedrock(bedrock_client, model_id: str, prompt: str) -> str:
         },
     })
 
-    response = bedrock_client.invoke_model(
+    with xray_subsegment(
+
+
+        name="bedrock_invokemodel",
+
+
+        annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "legal-compliance"},
+
+
+    ):
+
+
+        response = bedrock_client.invoke_model(
         modelId=model_id,
         contentType="application/json",
         accept="application/json",
@@ -106,6 +119,7 @@ def _invoke_bedrock(bedrock_client, model_id: str, prompt: str) -> str:
     return report_text
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Report Generation Lambda
@@ -178,6 +192,13 @@ def handler(event, context):
         report_key,
         total_findings,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="report_generation")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "legal-compliance"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "report_key": report_key,

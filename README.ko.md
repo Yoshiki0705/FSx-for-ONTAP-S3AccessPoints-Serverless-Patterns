@@ -130,6 +130,34 @@ EventBridge Scheduler (정기 실행)
 > 
 > 참고: [Textract 지원 리전](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 지원 리전](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
 
+## 리전 선택 가이드
+
+본 패턴 컬렉션은 **ap-northeast-1(도쿄)**에서 검증을 실시했지만, 필요한 서비스가 이용 가능한 모든 AWS 리전에 배포할 수 있습니다.
+
+### 배포 전 체크리스트
+
+1. [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/)에서 서비스 가용성 확인
+2. Phase 3 서비스 확인:
+   - **Kinesis Data Streams**: 거의 모든 리전에서 이용 가능 (샤드 요금은 리전에 따라 다름)
+   - **SageMaker Batch Transform**: 인스턴스 타입 가용성이 리전에 따라 다름
+   - **X-Ray / CloudWatch EMF**: 거의 모든 리전에서 이용 가능
+3. Cross-Region 대상 서비스(Textract, Comprehend Medical)의 타겟 리전 확인
+
+자세한 내용은 [리전 호환성 매트릭스](docs/region-compatibility.md)를 참조하세요.
+
+### Phase 3 기능 요약
+
+| 기능 | 설명 | 대상 UC |
+|------|------|---------|
+| Kinesis 스트리밍 | 준실시간 파일 변경 감지 및 처리 | UC11 (옵트인) |
+| SageMaker Batch Transform | 점군 세그멘테이션 추론 (Callback Pattern) | UC9 (옵트인) |
+| X-Ray 트레이싱 | 분산 트레이싱을 통한 실행 경로 시각화 | 전체 14 UC |
+| CloudWatch EMF | 구조화된 메트릭 출력 (FilesProcessed, Duration, Errors) | 전체 14 UC |
+| 관측성 대시보드 | 전체 UC 횡단 메트릭 일원 표시 | 공통 |
+| 알림 자동화 | 에러율 임계값 기반 SNS 알림 | 공통 |
+
+자세한 내용은 [스트리밍 vs 폴링 선택 가이드](docs/streaming-vs-polling-guide-ko.md)를 참조하세요.
+
 ### 스크린샷
 
 > 아래는 검증 환경에서의 촬영 예시입니다. 환경 고유 정보(계정 ID 등)는 마스킹 처리되었습니다.
@@ -209,6 +237,46 @@ EventBridge Scheduler (정기 실행)
 ![Lambda 함수 목록 Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
 
 > Phase 2의 전체 Lambda 함수(Discovery, Processing, Report 등)가 정상 배포 완료.
+
+#### Phase 3: 실시간 처리・SageMaker 통합・관측 가능성 강화
+
+##### Step Functions E2E 실행 성공 (UC11)
+
+![Step Functions Phase 3 실행 성공](docs/screenshots/masked/phase3-step-functions-uc11-succeeded.png)
+
+> UC11 Step Functions 워크플로우 E2E 실행 성공. Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck 전체 스테이트 성공 (8.974초). X-Ray 트레이스 생성 확인.
+
+##### Kinesis Data Streams (UC11 스트리밍 모드)
+
+![Kinesis Data Stream](docs/screenshots/masked/phase3-kinesis-stream-active.png)
+
+> UC11 Kinesis Data Stream (1 샤드, 프로비저닝 모드) 활성 상태. 모니터링 메트릭 표시.
+
+##### DynamoDB 상태 관리 테이블 (UC11 변경 감지)
+
+![DynamoDB State Tables](docs/screenshots/masked/phase3-dynamodb-state-tables.png)
+
+> UC11 변경 감지용 DynamoDB 테이블. streaming-state (상태 관리) 및 streaming-dead-letter (DLQ) 테이블.
+
+##### 관측 가능성 스택
+
+![X-Ray Traces](docs/screenshots/masked/phase3-xray-traces.png)
+
+> X-Ray 트레이스. Stream Producer Lambda 1분 간격 실행 트레이스 (전체 OK, 레이턴시 7-11ms).
+
+![CloudWatch Dashboard](docs/screenshots/masked/phase3-cloudwatch-dashboard.png)
+
+> 전체 14 UC 횡단 CloudWatch 대시보드. Step Functions 성공/실패, Lambda 에러율, EMF 커스텀 메트릭.
+
+![CloudWatch Alarms](docs/screenshots/masked/phase3-cloudwatch-alarms.png)
+
+> Phase 3 알림 자동화. Step Functions 실패율, Lambda 에러율, Kinesis Iterator Age 임계값 알람 (전체 OK 상태).
+
+##### S3 Access Point 확인
+
+![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
+
+> FSx for ONTAP S3 Access Point (fsxn-eda-s3ap) Available 상태. FSx 콘솔 볼륨 S3 탭에서 확인.
 
 ## 기술 스택
 
@@ -367,6 +435,8 @@ aws cloudformation create-stack \
 > **`EnableVpcEndpoints` 에 대해**: Quick Start에서는 VPC 내 Lambda에서 Secrets Manager / CloudWatch / SNS로의 도달성을 확보하기 위해 `true`를 지정합니다. 기존 Interface VPC Endpoints 또는 NAT Gateway가 있는 경우 `false`를 지정하여 비용을 절감할 수 있습니다.
 > 
 > **리전 선택**: 모든 AI/ML 서비스가 사용 가능한 `us-east-1` 또는 `us-west-2`를 권장합니다. `ap-northeast-1`에서는 Textract와 Comprehend Medical을 사용할 수 없습니다(크로스 리전 호출로 대응 가능). 자세한 내용은 [리전 호환성 매트릭스](docs/region-compatibility.md)를 참조하세요.
+>
+> **VPC 연결성**: Discovery Lambda는 VPC 내에 배치됩니다. ONTAP REST API 및 S3 Access Point에 접근하려면 NAT Gateway 또는 Interface VPC Endpoints가 필요합니다. `EnableVpcEndpoints=true`를 설정하거나 기존 NAT Gateway를 사용하세요.
 
 ### 검증 완료 환경
 

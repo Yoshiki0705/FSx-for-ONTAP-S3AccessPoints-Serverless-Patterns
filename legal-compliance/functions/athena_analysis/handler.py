@@ -30,6 +30,7 @@ import time
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +124,15 @@ def _execute_athena_query(
     Returns:
         dict: クエリ結果 (rows, column_info)
     """
-    response = athena_client.start_query_execution(
+    with xray_subsegment(
+
+        name="athena_startqueryexecution",
+
+        annotations={"service_name": "athena", "operation": "StartQueryExecution", "use_case": "legal-compliance"},
+
+    ):
+
+        response = athena_client.start_query_execution(
         QueryString=query,
         QueryExecutionContext={"Database": database},
         WorkGroup=workgroup,
@@ -167,6 +176,7 @@ def _execute_athena_query(
     return {"status": "SUCCEEDED", "rows": rows, "column_info": column_info}
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Athena Analysis Lambda
@@ -224,6 +234,13 @@ def handler(event, context):
         )
 
     logger.info("Athena Analysis completed: %d queries executed", len(query_results))
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="athena_analysis")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "legal-compliance"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "query_results": query_results,

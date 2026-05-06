@@ -120,3 +120,54 @@ aws cloudformation wait stack-delete-complete \
 - [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Amazon Bedrock API リファレンス](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
+- [ストリーミング vs ポーリング選択ガイド](../docs/streaming-vs-polling-guide.md)
+
+## Kinesis ストリーミングモード（Phase 3）
+
+Phase 3 では、EventBridge ポーリングに加えて **Kinesis Data Streams によるニアリアルタイム処理** をオプトインで利用できます。
+
+### 有効化
+
+```bash
+aws cloudformation deploy \
+  --template-file retail-catalog/template.yaml \
+  --stack-name fsxn-retail-catalog \
+  --parameter-overrides \
+    EnableStreamingMode=true \
+    ... # 他のパラメータ
+  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+```
+
+### ストリーミングモードのアーキテクチャ
+
+```
+EventBridge (rate(1 min)) → Stream Producer Lambda
+  → DynamoDB 状態テーブルと比較 → 変更検知
+  → Kinesis Data Stream → Stream Consumer Lambda
+  → 既存 ImageTagging + CatalogMetadata パイプライン
+```
+
+### 主な特徴
+
+- **変更検知**: 1 分間隔で S3 AP オブジェクト一覧と DynamoDB 状態テーブルを比較し、新規・変更・削除ファイルを検出
+- **冪等処理**: DynamoDB conditional writes による重複処理防止
+- **障害ハンドリング**: bisect-on-error + DynamoDB dead-letter テーブルで失敗レコードを退避
+- **既存パスとの共存**: ポーリングパス（EventBridge + Step Functions）は変更なし。ハイブリッド運用が可能
+
+### パターン選択
+
+どちらのパターンを選択すべきかは [ストリーミング vs ポーリング選択ガイド](../docs/streaming-vs-polling-guide.md) を参照してください。
+
+## Supported Regions
+
+UC11 は以下のサービスを使用します:
+
+| サービス | リージョン制約 |
+|---------|-------------|
+| Amazon Rekognition | ほぼ全リージョンで利用可能 |
+| Amazon Bedrock | 対応リージョンを確認（[Bedrock 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)） |
+| Kinesis Data Streams | ほぼ全リージョンで利用可能（シャード料金はリージョンにより異なる） |
+| AWS X-Ray | ほぼ全リージョンで利用可能 |
+| CloudWatch EMF | ほぼ全リージョンで利用可能 |
+
+> Kinesis ストリーミングモードを有効化する場合、シャード料金がリージョンにより異なる点に注意してください。詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。

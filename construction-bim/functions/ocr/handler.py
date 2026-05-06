@@ -25,6 +25,7 @@ import boto3
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,7 @@ def _extract_tables_from_blocks(blocks: list[dict]) -> list[dict]:
     return tables
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """図面 PDF OCR（Cross-Region Textract）
@@ -211,5 +213,12 @@ def handler(event, context):
         len(extracted_text),
         len(tables),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="ocr")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "construction-bim"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

@@ -34,6 +34,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -226,6 +227,7 @@ def _detect_anomalies(
     return anomalies
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """エネルギー / 石油・ガス 坑井ログ異常検知 Lambda
@@ -329,6 +331,13 @@ def handler(event, context):
         len(anomalies),
         output_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="anomaly_detection")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "energy-seismic"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

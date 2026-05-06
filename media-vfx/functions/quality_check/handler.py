@@ -24,6 +24,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ def evaluate_quality(labels: list[dict], threshold: float) -> dict:
     }
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Quality Check Lambda
@@ -188,5 +190,12 @@ def handler(event, context):
             job_id,
             quality_result["quality_score"],
         )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="quality_check")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "media-vfx"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return result

@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ def _build_report_prompt(
 日本語で詳細なレポートを生成してください。"""
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """配送ルート最適化レポート生成（Bedrock）
@@ -164,6 +166,13 @@ def handler(event, context):
         output_key,
         notification_sent,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="report")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "logistics-ocr"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

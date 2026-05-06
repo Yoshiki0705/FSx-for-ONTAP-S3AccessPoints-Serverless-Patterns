@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from shared.exceptions import lambda_error_handler
 from shared.ontap_client import OntapClient, OntapClientConfig
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,7 @@ def _collect_ontap_metadata(ontap_client: OntapClient, svm_uuid: str) -> dict:
     return metadata
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """保険 / 損害査定 Discovery Lambda
@@ -105,7 +107,15 @@ def handler(event, context):
     # S3 AP からオブジェクト一覧取得
     all_objects: list[dict] = []
     for suffix in suffixes:
-        objects = s3ap.list_objects(prefix=prefix, suffix=suffix)
+        with xray_subsegment(
+
+            name="s3ap_list_objects",
+
+            annotations={"service_name": "s3", "operation": "ListObjectsV2", "use_case": "insurance-claims"},
+
+        ):
+
+            objects = s3ap.list_objects(prefix=prefix, suffix=suffix)
         all_objects.extend(objects)
 
     # 重複排除
@@ -166,6 +176,13 @@ def handler(event, context):
         len(photo_objects),
         len(estimate_objects),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="discovery")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "insurance-claims"))
+    metrics.put_metric("FilesProcessed", float(len(objects)), "Count")
+    metrics.flush()
 
     return {
         "manifest_key": manifest_key,

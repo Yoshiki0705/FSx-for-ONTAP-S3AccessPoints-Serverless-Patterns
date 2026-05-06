@@ -21,6 +21,7 @@ from datetime import datetime
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ def _filter_render_assets(objects: list[dict]) -> list[dict]:
     ]
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Media VFX Discovery Lambda
@@ -119,6 +121,13 @@ def handler(event, context):
         len(render_assets),
         manifest_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="discovery")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "media-vfx"))
+    metrics.put_metric("FilesProcessed", float(len(objects)), "Count")
+    metrics.flush()
 
     return {
         "manifest_key": manifest_key,

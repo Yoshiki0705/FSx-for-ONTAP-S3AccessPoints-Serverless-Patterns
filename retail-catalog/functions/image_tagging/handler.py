@@ -23,6 +23,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,14 @@ def detect_labels(rekognition_client, image_bytes: bytes, max_labels: int = 20) 
     Returns:
         list[dict]: 検出されたラベルのリスト [{"name": str, "confidence": float}]
     """
-    response = rekognition_client.detect_labels(
-        Image={"Bytes": image_bytes},
-        MaxLabels=max_labels,
-    )
+    with xray_subsegment(
+        name="rekognition_detectlabels",
+        annotations={"service_name": "rekognition", "operation": "DetectLabels", "use_case": "retail-catalog"},
+    ):
+        response = rekognition_client.detect_labels(
+            Image={"Bytes": image_bytes},
+            MaxLabels=max_labels,
+        )
 
     labels = []
     for label in response.get("Labels", []):
@@ -72,6 +77,7 @@ def evaluate_confidence(labels: list[dict], threshold: float) -> tuple[float, bo
     return max_confidence, above_threshold
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """小売 / EC 画像タグ付け Lambda
@@ -143,6 +149,13 @@ def handler(event, context):
         max_confidence,
         len(labels),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="image_tagging")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "retail-catalog"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": status,

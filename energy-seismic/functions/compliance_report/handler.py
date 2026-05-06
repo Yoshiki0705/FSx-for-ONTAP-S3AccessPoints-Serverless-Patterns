@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,19 @@ def _invoke_bedrock(bedrock_client, model_id: str, prompt: str) -> str:
         },
     })
 
-    response = bedrock_client.invoke_model(
+    with xray_subsegment(
+
+
+        name="bedrock_invokemodel",
+
+
+        annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "energy-seismic"},
+
+
+    ):
+
+
+        response = bedrock_client.invoke_model(
         modelId=model_id,
         contentType="application/json",
         accept="application/json",
@@ -219,6 +232,7 @@ def _analyze_well_log_images(
     return results
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """エネルギー / 石油・ガス コンプライアンスレポート生成 Lambda
@@ -346,6 +360,13 @@ def handler(event, context):
         len(anomaly_results),
         len(image_analysis),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="compliance_report")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "energy-seismic"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

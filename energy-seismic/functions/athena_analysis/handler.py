@@ -26,6 +26,7 @@ import time
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,15 @@ def _execute_athena_query(
     Returns:
         dict: クエリ結果 (status, rows, query_execution_id)
     """
-    response = athena_client.start_query_execution(
+    with xray_subsegment(
+
+        name="athena_startqueryexecution",
+
+        annotations={"service_name": "athena", "operation": "StartQueryExecution", "use_case": "energy-seismic"},
+
+    ):
+
+        response = athena_client.start_query_execution(
         QueryString=query,
         QueryExecutionContext={"Database": database},
         WorkGroup=workgroup,
@@ -217,6 +226,7 @@ def _safe_int(value: str) -> int:
         return 0
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """エネルギー / 石油・ガス Athena 分析 Lambda
@@ -346,6 +356,13 @@ def handler(event, context):
         analysis_results["anomaly_summary"].get("wells_with_anomalies", 0),
         analysis_results["anomaly_summary"].get("total_anomalies_all", 0),
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="athena_analysis")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "energy-seismic"))
+    metrics.put_metric("FilesProcessed", 1.0, "Count")
+    metrics.flush()
 
     return {
         "status": "SUCCESS",

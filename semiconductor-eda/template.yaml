@@ -115,6 +115,12 @@ Parameters:
     Default: "amazon.nova-lite-v1:0"
     Description: Bedrock モデル ID（レポート生成用）
 
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -138,6 +144,8 @@ Conditions:
       - !Condition CreateVpcEndpoints
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
 
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -342,6 +350,7 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
                   - !If
                     - HasS3AccessPointName
                     - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
@@ -356,6 +365,7 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
                   - !If
                     - HasS3AccessPointName
                     - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
@@ -381,6 +391,12 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # MetadataExtraction Lambda: VPC 外、S3 AP 読み取り + S3 出力バケット書き込み
   MetadataExtractionLambdaRole:
@@ -408,6 +424,7 @@ Resources:
                   - s3:GetBucketLocation
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
                   - !If
                     - HasS3AccessPointName
                     - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
@@ -430,6 +447,12 @@ Resources:
                 Resource:
                   - !GetAtt MetadataExtractionLogGroup.Arn
                   - !Sub "${MetadataExtractionLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # DrcAggregation Lambda: VPC 外、Glue + Athena + S3 出力バケット
   DrcAggregationLambdaRole:
@@ -488,6 +511,12 @@ Resources:
                 Resource:
                   - !GetAtt DrcAggregationLogGroup.Arn
                   - !Sub "${DrcAggregationLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # ReportGeneration Lambda: VPC 外、Bedrock + S3 出力バケット + SNS
   ReportGenerationLambdaRole:
@@ -534,6 +563,12 @@ Resources:
                 Resource:
                   - !GetAtt ReportGenerationLogGroup.Arn
                   - !Sub "${ReportGenerationLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   # -----------------------------------------------------------------
   # Lambda Functions
@@ -543,6 +578,8 @@ Resources:
   DiscoveryFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: semiconductor-eda/functions/discovery/handler.handler
@@ -555,6 +592,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
+          USE_CASE: "semiconductor-eda"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           PREFIX_FILTER: ""
           SUFFIX_FILTER: ".gds,.gds2,.oas,.oasis"
@@ -571,6 +609,8 @@ Resources:
   MetadataExtractionFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-metadata-extraction"
       Runtime: python3.12
       Handler: semiconductor-eda/functions/metadata_extraction/handler.handler
@@ -579,6 +619,7 @@ Resources:
       Role: !GetAtt MetadataExtractionLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "semiconductor-eda"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
       LoggingConfig:
@@ -590,6 +631,8 @@ Resources:
   DrcAggregationFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-drc-aggregation"
       Runtime: python3.12
       Handler: semiconductor-eda/functions/drc_aggregation/handler.handler
@@ -598,6 +641,7 @@ Resources:
       Role: !GetAtt DrcAggregationLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "semiconductor-eda"
           GLUE_DATABASE: !If
             - UseAutoGlueDatabase
             - !Sub "${AWS::StackName}-db"
@@ -620,6 +664,8 @@ Resources:
   ReportGenerationFunction:
     Type: AWS::Lambda::Function
     Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report-generation"
       Runtime: python3.12
       Handler: semiconductor-eda/functions/report_generation/handler.handler
@@ -628,6 +674,7 @@ Resources:
       Role: !GetAtt ReportGenerationLambdaRole.Arn
       Environment:
         Variables:
+          USE_CASE: "semiconductor-eda"
           OUTPUT_BUCKET: !Ref OutputBucket
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
@@ -743,6 +790,8 @@ Resources:
   EdaStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |

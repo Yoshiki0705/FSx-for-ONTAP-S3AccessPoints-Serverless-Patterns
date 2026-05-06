@@ -22,6 +22,7 @@ from datetime import datetime
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
+from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 DICOM_SUFFIX = ".dcm"
 
 
+@trace_lambda_handler
 @lambda_error_handler
 def handler(event, context):
     """Healthcare DICOM Discovery Lambda
@@ -84,6 +86,13 @@ def handler(event, context):
         len(dicom_objects),
         manifest_key,
     )
+
+
+    # EMF メトリクス出力
+    metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="discovery")
+    metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "healthcare-dicom"))
+    metrics.put_metric("FilesProcessed", float(len(objects)), "Count")
+    metrics.flush()
 
     return {
         "manifest_key": manifest_key,
