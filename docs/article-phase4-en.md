@@ -13,7 +13,7 @@ This is **Phase 4** of the FSx for ONTAP S3 Access Points serverless patterns co
 
 - **DynamoDB Task Token Store**: Correlation ID pattern solving the 256-char SageMaker tag limit for production Step Functions Callback workflows
 - **Real-time Inference + A/B Testing**: SageMaker Multi-Variant Endpoints with intelligent routing and automated comparison metrics
-- **Multi-Account Deployment**: StackSets, cross-account IAM roles with S3 Access Point policies, and CloudWatch Cross-Account Observability for enterprise-scale rollout
+- **Multi-Account Deployment Patterns**: StackSets templates, cross-account IAM roles with S3 Access Point policies, and CloudWatch Cross-Account Observability for enterprise-scale rollout
 - **Event-Driven Architecture Prototype**: Standard S3 bucket events → EventBridge → Step Functions achieving **3.5-second E2E latency**, as a future-compatible prototype for native FSx ONTAP S3 AP notifications
 
 All features are **opt-in via CloudFormation Conditions** (default disabled, zero additional cost). 681 total tests pass, including 11 property-based tests (Hypothesis).
@@ -136,13 +136,13 @@ If a collision occurs, the conditional write fails and the Lambda retries with a
 
 ### Three Inference Patterns
 
-Phase 4 provides three SageMaker inference patterns, each optimized for different workload characteristics:
+Phase 4 implements two SageMaker inference patterns with routing logic, and frames Serverless Inference as a future third option for sporadic workloads:
 
 | Pattern | Latency | Cost Model | Best For |
 |---------|---------|-----------|----------|
 | Batch Transform | Minutes | Per-job | Large batch processing (≥10 files) |
 | Real-time Endpoint | Milliseconds | Per-instance-hour | Consistent low-latency needs |
-| Serverless Inference | Seconds | Per-request | Sporadic, unpredictable traffic |
+| Serverless Inference | Seconds | Per-request | Sporadic, unpredictable traffic (planned) |
 
 ### Intelligent Routing
 
