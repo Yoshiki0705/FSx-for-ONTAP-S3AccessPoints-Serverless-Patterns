@@ -42,6 +42,8 @@ scripts/mask_screenshots.py
 scripts/deploy_uc1.sh
 scripts/deploy_uc6_cloudshell.sh
 scripts/deploy_phase2_batch.sh
+scripts/deploy_phase4.sh
+scripts/cleanup_phase4.sh
 scripts/capture_screenshots.sh
 
 # Screenshots — originals contain account info, masked versions are safe to publish
@@ -53,6 +55,7 @@ docs/screenshots/phase3-*.png
 docs/verification-results.md
 docs/verification-results-phase2.md
 docs/verification-results-phase3.md
+docs/verification-results-phase4.md
 docs/verification-results-shared-phase2.json
 
 # MASK_GUIDE contains environment-specific resource IDs

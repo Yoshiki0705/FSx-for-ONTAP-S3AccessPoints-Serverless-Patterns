@@ -79,6 +79,28 @@ class StreamingError(Exception):
         self.error_codes = error_codes or []
 
 
+class TokenStorageError(Exception):
+    """Task Token ストレージエラー
+
+    DynamoDB への Task Token 保存・取得に失敗した場合に発生する。
+    Correlation ID の衝突リトライ上限超過、DynamoDB サービスエラー等。
+
+    Attributes:
+        correlation_id: 関連する Correlation ID (存在する場合)
+        retry_count: リトライ回数
+    """
+
+    def __init__(
+        self,
+        message: str,
+        correlation_id: str | None = None,
+        retry_count: int = 0,
+    ):
+        super().__init__(message)
+        self.correlation_id = correlation_id
+        self.retry_count = retry_count
+
+
 def lambda_error_handler(func):
     """Lambda 関数の共通エラーハンドリングデコレータ
 

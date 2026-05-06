@@ -1,0 +1,573 @@
+# =============================================================================
+# Cross-Account IAM ロールセットテンプレート
+# =============================================================================
+#
+# 本テンプレートはマルチアカウント環境で必要なクロスアカウント IAM ロールセットを
+# 作成する。全ロールに External ID 条件と Permission Boundary を適用する。
+#
+# ロール命名規則: {ProjectPrefix}-{AccountType}-{ResourceAccess}-Role
+# 例: fsxn-s3ap-workload-storage-access-role
+#
+# ロールセット:
+# 1. Workload → Storage: S3 AP アクセス用
+# 2. Shared Services → Workload: トラブルシューティング用（Read-Only）
+# 3. Management → All: 管理操作用
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file cross-account-roles.yaml \
+#     --stack-name fsxn-cross-account-roles \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides \
+#       StorageAccountId=111111111111 \
+#       WorkloadAccountId=222222222222 \
+#       SharedServicesAccountId=333333333333 \
+#       ManagementAccountId=444444444444 \
+#       ExternalIdStorage=ext-storage-uuid \
+#       ExternalIdSharedServices=ext-shared-uuid \
+#       ExternalIdManagement=ext-mgmt-uuid
+#
+# 参照: Requirements 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 13.7
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Cross-Account IAM Role Set.
+  マルチアカウント環境のクロスアカウントロール一式を作成する。
+  全ロールに External ID 条件と Permission Boundary を適用。
+
+# =====================================================================
+# Metadata
+# =====================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Account IDs
+        Parameters:
+          - StorageAccountId
+          - WorkloadAccountId
+          - SharedServicesAccountId
+          - ManagementAccountId
+      - Label:
+          default: External IDs
+        Parameters:
+          - ExternalIdStorage
+          - ExternalIdSharedServices
+          - ExternalIdManagement
+      - Label:
+          default: Role Configuration
+        Parameters:
+          - EnableStorageAccessRole
+          - EnableTroubleshootingRole
+          - EnableManagementRole
+      - Label:
+          default: Naming & Tags
+        Parameters:
+          - ProjectPrefix
+          - Environment
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  StorageAccountId:
+    Type: String
+    Description: >-
+      ストレージアカウント ID（FSx ONTAP / S3 AP を所有）。
+    AllowedPattern: "^[0-9]{12}$"
+
+  WorkloadAccountId:
+    Type: String
+    Description: >-
+      ワークロードアカウント ID（Lambda / Step Functions を実行）。
+    AllowedPattern: "^[0-9]{12}$"
+
+  SharedServicesAccountId:
+    Type: String
+    Description: >-
+      共有サービスアカウント ID（監視・ログ集約）。
+    AllowedPattern: "^[0-9]{12}$"
+
+  ManagementAccountId:
+    Type: String
+    Description: >-
+      管理アカウント ID（Organizations 管理、StackSets 管理）。
+    AllowedPattern: "^[0-9]{12}$"
+
+  ExternalIdStorage:
+    Type: String
+    Description: >-
+      ストレージアクセスロール用 External ID。
+    MinLength: 10
+    MaxLength: 128
+    AllowedPattern: "^[a-zA-Z0-9_\\-\\.]+$"
+
+  ExternalIdSharedServices:
+    Type: String
+    Description: >-
+      共有サービスアクセスロール用 External ID。
+    MinLength: 10
+    MaxLength: 128
+    AllowedPattern: "^[a-zA-Z0-9_\\-\\.]+$"
+
+  ExternalIdManagement:
+    Type: String
+    Description: >-
+      管理ロール用 External ID。
+    MinLength: 10
+    MaxLength: 128
+    AllowedPattern: "^[a-zA-Z0-9_\\-\\.]+$"
+
+  EnableStorageAccessRole:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Workload → Storage アクセスロールを作成する。
+
+  EnableTroubleshootingRole:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Shared Services → Workload トラブルシューティングロールを作成する。
+
+  EnableManagementRole:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Management → All 管理ロールを作成する。
+
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名のプレフィックス。
+    AllowedPattern: "^[a-z0-9\\-]+$"
+
+  Environment:
+    Type: String
+    Default: "production"
+    AllowedValues: ["development", "staging", "production"]
+    Description: デプロイ環境。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateStorageRole:
+    !Equals [!Ref EnableStorageAccessRole, "true"]
+
+  CreateTroubleshootingRole:
+    !Equals [!Ref EnableTroubleshootingRole, "true"]
+
+  CreateManagementRole:
+    !Equals [!Ref EnableManagementRole, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # Permission Boundary: 全クロスアカウントロール共通
+  # -------------------------------------------------------------------
+  CrossAccountPermissionBoundary:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${ProjectPrefix}-cross-account-permission-boundary"
+      Description: >-
+        全クロスアカウントロールに適用する Permission Boundary。
+        権限昇格を防止し、許可されたサービスのみアクセス可能にする。
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowS3APOperations
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucket
+              - s3:GetObjectVersion
+              - s3:GetObjectTagging
+              - s3:PutObjectTagging
+            Resource:
+              - "arn:aws:s3:*:*:accesspoint/*"
+              - "arn:aws:s3:*:*:accesspoint/*/object/*"
+          - Sid: AllowCloudWatchOperations
+            Effect: Allow
+            Action:
+              - cloudwatch:GetMetricData
+              - cloudwatch:GetMetricStatistics
+              - cloudwatch:ListMetrics
+              - cloudwatch:PutMetricData
+              - cloudwatch:DescribeAlarms
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:GetLogEvents
+              - logs:FilterLogEvents
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+            Resource: "*"
+          - Sid: AllowXRayOperations
+            Effect: Allow
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+              - xray:GetTraceSummaries
+              - xray:BatchGetTraces
+              - xray:GetServiceGraph
+            Resource: "*"
+          - Sid: AllowSTSOperations
+            Effect: Allow
+            Action:
+              - sts:AssumeRole
+              - sts:GetCallerIdentity
+            Resource: "*"
+          - Sid: DenyIAMEscalation
+            Effect: Deny
+            Action:
+              - iam:CreateUser
+              - iam:CreateRole
+              - iam:DeleteRole
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+              - iam:UpdateAssumeRolePolicy
+              - iam:CreatePolicy
+              - iam:DeletePolicy
+              - iam:PutUserPolicy
+              - iam:DeleteUserPolicy
+            Resource: "*"
+          - Sid: DenyOrganizationsAccess
+            Effect: Deny
+            Action:
+              - organizations:*
+            Resource: "*"
+
+  # -------------------------------------------------------------------
+  # Role 1: Workload → Storage Access Role
+  # -------------------------------------------------------------------
+  WorkloadStorageAccessRole:
+    Type: AWS::IAM::Role
+    Condition: CreateStorageRole
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-workload-storage-access-role"
+      Description: >-
+        Cross-account role for workload Lambda to access
+        S3 Access Point in storage account.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowWorkloadAccountAssume
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${WorkloadAccountId}:root"
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalIdStorage
+      MaxSessionDuration: 3600
+      PermissionsBoundary: !Ref CrossAccountPermissionBoundary
+      Policies:
+        - PolicyName: StorageAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowS3APAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetObjectVersion
+                  - s3:GetObjectTagging
+                  - s3:PutObjectTagging
+                Resource:
+                  - !Sub "arn:aws:s3:*:${StorageAccountId}:accesspoint/*"
+                  - !Sub "arn:aws:s3:*:${StorageAccountId}:accesspoint/*/object/*"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: cross-account-roles
+        - Key: Account
+          Value: storage
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: RoleType
+          Value: workload-storage-access
+
+  # -------------------------------------------------------------------
+  # Role 2: Shared Services → Workload Troubleshooting Role
+  # -------------------------------------------------------------------
+  SharedServicesReadOnlyRole:
+    Type: AWS::IAM::Role
+    Condition: CreateTroubleshootingRole
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-shared-workload-readonly-role"
+      Description: >-
+        Read-only troubleshooting role for shared services account
+        to access workload account resources.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSharedServicesAssume
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${SharedServicesAccountId}:root"
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalIdSharedServices
+      MaxSessionDuration: 3600
+      PermissionsBoundary: !Ref CrossAccountPermissionBoundary
+      Policies:
+        - PolicyName: ReadOnlyTroubleshootingPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowReadCloudWatch
+                Effect: Allow
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:GetDashboard
+                  - cloudwatch:ListDashboards
+                Resource: "*"
+              - Sid: AllowReadLogs
+                Effect: Allow
+                Action:
+                  - logs:GetLogEvents
+                  - logs:FilterLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:GetQueryResults
+                  - logs:StartQuery
+                  - logs:StopQuery
+                Resource: "*"
+              - Sid: AllowReadXRay
+                Effect: Allow
+                Action:
+                  - xray:GetTraceSummaries
+                  - xray:BatchGetTraces
+                  - xray:GetServiceGraph
+                  - xray:GetTraceGraph
+                  - xray:GetGroups
+                Resource: "*"
+              - Sid: AllowReadStepFunctions
+                Effect: Allow
+                Action:
+                  - states:DescribeExecution
+                  - states:GetExecutionHistory
+                  - states:ListExecutions
+                  - states:DescribeStateMachine
+                  - states:ListStateMachines
+                Resource: "*"
+              - Sid: AllowReadLambda
+                Effect: Allow
+                Action:
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:ListFunctions
+                  - lambda:GetPolicy
+                Resource: "*"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: cross-account-roles
+        - Key: Account
+          Value: workload
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: RoleType
+          Value: shared-workload-readonly
+
+  # -------------------------------------------------------------------
+  # Role 3: Management → Administration Role
+  # -------------------------------------------------------------------
+  ManagementAdminRole:
+    Type: AWS::IAM::Role
+    Condition: CreateManagementRole
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-management-admin-role"
+      Description: >-
+        Management account administration role for
+        StackSets deployment, configuration, and auditing.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowManagementAccountAssume
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${ManagementAccountId}:root"
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalIdManagement
+      MaxSessionDuration: 3600
+      Policies:
+        - PolicyName: ManagementAdminPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowCloudFormationOperations
+                Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                  - cloudformation:ListStacks
+                  - cloudformation:DetectStackDrift
+                  - cloudformation:DescribeStackDriftDetectionStatus
+                Resource: "*"
+              - Sid: AllowReadOperations
+                Effect: Allow
+                Action:
+                  - lambda:GetFunction
+                  - lambda:ListFunctions
+                  - states:DescribeStateMachine
+                  - states:ListStateMachines
+                  - dynamodb:DescribeTable
+                  - dynamodb:ListTables
+                  - s3:ListBucket
+                  - s3:GetBucketPolicy
+                  - s3:GetBucketTagging
+                Resource: "*"
+              - Sid: AllowTagOperations
+                Effect: Allow
+                Action:
+                  - tag:GetResources
+                  - tag:GetTagKeys
+                  - tag:GetTagValues
+                Resource: "*"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: cross-account-roles
+        - Key: Account
+          Value: all
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: RoleType
+          Value: management-admin
+
+  # -------------------------------------------------------------------
+  # CloudTrail Monitoring: Role Assumption Events
+  # -------------------------------------------------------------------
+  RoleAssumptionMonitorRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${ProjectPrefix}-role-assumption-monitor"
+      Description: >-
+        クロスアカウントロール引き受けイベントの監視。
+        全ロールの AssumeRole イベントを検知する。
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.sts
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - sts.amazonaws.com
+          eventName:
+            - AssumeRole
+          requestParameters:
+            roleArn:
+              - prefix: !Sub "arn:aws:iam::${AWS::AccountId}:role/${ProjectPrefix}-"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: cross-account-roles
+        - Key: UseCase
+          Value: multi-account
+
+  # -------------------------------------------------------------------
+  # Failed AssumeRole Alarm
+  # -------------------------------------------------------------------
+  FailedAssumeRoleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-failed-assume-role"
+      AlarmDescription: >-
+        クロスアカウントロール引き受け失敗の検知。
+        不正アクセス試行の可能性を示す。
+      Namespace: AWS/CloudTrail
+      MetricName: AssumeRoleFailures
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: cross-account-roles
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  WorkloadStorageAccessRoleArn:
+    Description: Workload → Storage アクセスロール ARN
+    Condition: CreateStorageRole
+    Value: !GetAtt WorkloadStorageAccessRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-StorageAccessRoleArn"
+
+  SharedServicesReadOnlyRoleArn:
+    Description: Shared Services → Workload Read-Only ロール ARN
+    Condition: CreateTroubleshootingRole
+    Value: !GetAtt SharedServicesReadOnlyRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ReadOnlyRoleArn"
+
+  ManagementAdminRoleArn:
+    Description: Management → Admin ロール ARN
+    Condition: CreateManagementRole
+    Value: !GetAtt ManagementAdminRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ManagementAdminRoleArn"
+
+  PermissionBoundaryArn:
+    Description: Permission Boundary ARN（全ロール共通）
+    Value: !Ref CrossAccountPermissionBoundary
+    Export:
+      Name: !Sub "${AWS::StackName}-PermissionBoundaryArn"
+
+  RoleNamingConvention:
+    Description: ロール命名規則
+    Value: !Sub "${ProjectPrefix}-{AccountType}-{ResourceAccess}-role"
+
+  CloudTrailEventPattern:
+    Description: CloudTrail イベントパターン（ロール引き受け監視用）
+    Value: !Sub |
+      {
+        "source": ["aws.sts"],
+        "detail-type": ["AWS API Call via CloudTrail"],
+        "detail": {
+          "eventSource": ["sts.amazonaws.com"],
+          "eventName": ["AssumeRole"],
+          "requestParameters": {
+            "roleArn": [{"prefix": "arn:aws:iam::${AWS::AccountId}:role/${ProjectPrefix}-"}]
+          }
+        }
+      }

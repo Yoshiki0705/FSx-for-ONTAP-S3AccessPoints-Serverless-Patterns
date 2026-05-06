@@ -158,6 +158,25 @@ EventBridge Scheduler (定期実行)
 
 詳細は [ストリーミング vs ポーリング選択ガイド](docs/streaming-vs-polling-guide.md) を参照してください。
 
+### Phase 4 機能概要
+
+| 機能 | 説明 | 対象 UC |
+|------|------|---------|
+| DynamoDB Task Token Store | SageMaker Callback Pattern の本番安全な Token 管理（Correlation ID 方式） | UC9（オプトイン） |
+| Real-time Inference Endpoint | SageMaker Real-time Endpoint による低レイテンシ推論 | UC9（オプトイン） |
+| A/B Testing | Multi-Variant Endpoint によるモデルバージョン比較 | UC9（オプトイン） |
+| Model Registry | SageMaker Model Registry によるモデルライフサイクル管理 | UC9（オプトイン） |
+| Multi-Account Deployment | StackSets / RAM / Cross-Account IAM によるマルチアカウント対応 | 全 UC（テンプレート提供） |
+| Event-Driven Prototype | S3 Event Notifications → EventBridge → Step Functions パイプライン | プロトタイプ |
+
+Phase 4 の全機能は CloudFormation Conditions でオプトイン制御されており、有効化しない限り追加コストは発生しません。
+
+詳細は以下のドキュメントを参照してください:
+- [推論コスト比較ガイド](docs/inference-cost-comparison.md)
+- [Model Registry ガイド](docs/model-registry-guide.md)
+- [Multi-Account PoC 結果](docs/multi-account/poc-results.md)
+- [Event-Driven アーキテクチャ設計](docs/event-driven/architecture-design.md)
+
 ### スクリーンショット
 
 > 以下は検証環境での撮影例です。環境固有情報（アカウント ID 等）はマスク処理済みです。
@@ -225,6 +244,44 @@ EventBridge Scheduler (定期実行)
 ![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
 
 > FSx for ONTAP S3 Access Point（fsxn-eda-s3ap）が Available 状態。FSx コンソールのボリューム S3 タブで確認。
+
+#### Phase 4: 本番 SageMaker 統合・リアルタイム推論・マルチアカウント・イベント駆動
+
+##### DynamoDB Task Token Store
+
+![DynamoDB Task Token Store](docs/screenshots/masked/phase4-dynamodb-task-token-store.png)
+
+> DynamoDB Task Token Store テーブル。Correlation ID（8 文字 hex）をパーティションキーとして Task Token を保存。TTL 有効化、PAY_PER_REQUEST モード、GSI（TransformJobNameIndex）設定済み。
+
+##### SageMaker Real-time Endpoint（Multi-Variant A/B Testing）
+
+![SageMaker Endpoint](docs/screenshots/masked/phase4-sagemaker-realtime-endpoint.png)
+
+> SageMaker Real-time Inference Endpoint。Multi-Variant 構成（model-v1: 70%, model-v2: 30%）による A/B テスト。Auto Scaling 設定済み。
+
+##### Step Functions ワークフロー（Realtime/Batch ルーティング）
+
+![Step Functions Phase 4](docs/screenshots/masked/phase4-step-functions-routing.png)
+
+> UC9 Step Functions ワークフロー。Choice State により file_count < threshold の場合は Real-time Endpoint、それ以外は Batch Transform にルーティング。
+
+##### Event-Driven Prototype — EventBridge Rule
+
+![EventBridge Rule](docs/screenshots/masked/phase4-eventbridge-event-rule.png)
+
+> Event-Driven Prototype の EventBridge Rule。S3 ObjectCreated イベントを suffix (.jpg, .png) + prefix (products/) でフィルタリングし、Step Functions をトリガー。
+
+##### Event-Driven Prototype — Step Functions 実行成功
+
+![Event-Driven Step Functions](docs/screenshots/masked/phase4-event-driven-sfn-succeeded.png)
+
+> Event-Driven Prototype の Step Functions 実行成功。S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter の全ステート成功。
+
+##### CloudFormation Phase 4 スタック
+
+![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
+
+> Phase 4 CloudFormation スタック。UC9 拡張（Task Token Store + Real-time Endpoint）と Event-Driven Prototype が CREATE_COMPLETE。
 
 #### AI/ML サービス画面（Phase 1）
 
@@ -482,6 +539,8 @@ python3 scripts/generate_test_data.py all --upload
 **Phase 2 (UC6–UC14)**: 全 9 ユースケースの CloudFormation デプロイ（合計 205 リソース）、Step Functions E2E 実行（全 9 UC SUCCEEDED）、テストデータ投入検証、shared/ モジュール AWS 環境検証（8/8 PASSED）を実施済みです。
 
 **Phase 3（横断機能強化）**: Kinesis Data Streams（PutRecord/GetRecords）、DynamoDB 状態テーブル（CRUD）、CloudFormation テンプレートバリデーション、X-Ray トレーシング設定、CloudWatch EMF メトリクス出力を ap-northeast-1 で検証済みです。全 573 テストパス、cfn-lint 0 エラー。
+
+**Phase 4（本番 SageMaker 統合・マルチアカウント・イベント駆動）**: DynamoDB Task Token Store、Real-time Inference Endpoint、A/B Testing、Model Registry、Multi-Account テンプレート（StackSets / RAM / Cross-Account IAM）、Event-Driven Prototype を実装。全テストパス、cfn-lint 0 エラー。
 
 詳細は [検証結果記録](docs/verification-results.md)（Phase 1）、[Phase 2 検証結果記録](docs/verification-results-phase2.md)、および [Phase 3 検証結果記録](docs/verification-results-phase3.md) を参照してください。
 

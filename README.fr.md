@@ -158,6 +158,25 @@ Voir la [Matrice de compatibilité régionale](docs/region-compatibility.md) pou
 
 Voir le [Guide de sélection Streaming vs Polling](docs/streaming-vs-polling-guide-fr.md) pour plus de détails.
 
+### Résumé des fonctionnalités Phase 4
+
+| Fonctionnalité | Description | UC cible |
+|----------------|-------------|----------|
+| DynamoDB Task Token Store | Gestion sécurisée des Tokens pour le SageMaker Callback Pattern (approche Correlation ID) | UC9 (opt-in) |
+| Real-time Inference Endpoint | Inférence à faible latence via SageMaker Real-time Endpoint | UC9 (opt-in) |
+| A/B Testing | Comparaison de versions de modèles via Multi-Variant Endpoint | UC9 (opt-in) |
+| Model Registry | Gestion du cycle de vie des modèles via SageMaker Model Registry | UC9 (opt-in) |
+| Multi-Account Deployment | Support multi-comptes via StackSets / RAM / Cross-Account IAM | Tous les UC (modèles fournis) |
+| Event-Driven Prototype | Pipeline S3 Event Notifications → EventBridge → Step Functions | Prototype |
+
+Toutes les fonctionnalités Phase 4 sont contrôlées par des CloudFormation Conditions (opt-in). Aucun coût supplémentaire n'est engendré sauf activation explicite.
+
+Voir les documents suivants pour plus de détails :
+- [Guide de comparaison des coûts d'inférence](docs/inference-cost-comparison.md)
+- [Guide Model Registry](docs/model-registry-guide.md)
+- [Résultats PoC Multi-Account](docs/multi-account/poc-results.md)
+- [Conception d'architecture Event-Driven](docs/event-driven/architecture-design.md)
+
 ### Captures d'écran
 
 > Les images suivantes sont des exemples capturés dans un environnement de vérification. Les informations spécifiques à l'environnement (identifiants de compte, etc.) ont été masquées.
@@ -277,6 +296,44 @@ Voir le [Guide de sélection Streaming vs Polling](docs/streaming-vs-polling-gui
 ![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
 
 > FSx for ONTAP S3 Access Point (fsxn-eda-s3ap) en état Available. Confirmé via l'onglet S3 du volume dans la console FSx.
+
+#### Phase 4 : Intégration SageMaker production, inférence temps réel, multi-compte, événementiel
+
+##### DynamoDB Task Token Store
+
+![DynamoDB Task Token Store](docs/screenshots/masked/phase4-dynamodb-task-token-store.png)
+
+> Table DynamoDB Task Token Store. Stocke les Task Tokens avec un Correlation ID hex de 8 caractères comme clé de partition. TTL activé, mode PAY_PER_REQUEST, GSI (TransformJobNameIndex) configuré.
+
+##### SageMaker Real-time Endpoint (Multi-Variant A/B Testing)
+
+![SageMaker Endpoint](docs/screenshots/masked/phase4-sagemaker-realtime-endpoint.png)
+
+> SageMaker Real-time Inference Endpoint. Configuration Multi-Variant (model-v1 : 70%, model-v2 : 30%) pour les tests A/B. Auto Scaling configuré.
+
+##### Workflow Step Functions (Routage Realtime/Batch)
+
+![Step Functions Phase 4](docs/screenshots/masked/phase4-step-functions-routing.png)
+
+> Workflow Step Functions UC9. Le Choice State route vers le Real-time Endpoint lorsque file_count < threshold, sinon vers Batch Transform.
+
+##### Event-Driven Prototype — Règle EventBridge
+
+![EventBridge Rule](docs/screenshots/masked/phase4-eventbridge-event-rule.png)
+
+> Règle EventBridge du prototype Event-Driven. Filtre les événements S3 ObjectCreated par suffix (.jpg, .png) + prefix (products/) et déclenche Step Functions.
+
+##### Event-Driven Prototype — Exécution Step Functions réussie
+
+![Event-Driven Step Functions](docs/screenshots/masked/phase4-event-driven-sfn-succeeded.png)
+
+> Exécution Step Functions du prototype Event-Driven réussie. S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter tous les états réussis.
+
+##### Stacks CloudFormation Phase 4
+
+![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
+
+> Stacks CloudFormation Phase 4. Extension UC9 (Task Token Store + Real-time Endpoint) et prototype Event-Driven CREATE_COMPLETE.
 
 ## Stack technique
 

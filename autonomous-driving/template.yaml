@@ -146,6 +146,13 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: X-Ray トレーシングを有効化する
 
+  # --- Phase 4 Task Token Store パラメータ ---
+  EnableDynamoDBTokenStore:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: DynamoDB Task Token Store を有効化する（SageMaker Callback Pattern 用）
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -162,6 +169,9 @@ Conditions:
     !Equals [!Ref OutputBucketName, ""]
   CreateSageMakerResources:
     !Equals [!Ref EnableSageMakerTransform, "true"]
+
+  CreateTokenStore:
+    !Equals [!Ref EnableDynamoDBTokenStore, "true"]
 
   EnableXRay:
     !Equals [!Ref EnableXRayTracing, "true"]
@@ -1273,6 +1283,19 @@ Resources:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                 Resource: "*"
+              - !If
+                - CreateTokenStore
+                - Sid: DynamoDBTokenStore
+                  Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                    - dynamodb:GetItem
+                    - dynamodb:DeleteItem
+                    - dynamodb:Query
+                  Resource:
+                    - !GetAtt TaskTokenStoreTable.Arn
+                    - !Sub "${TaskTokenStoreTable.Arn}/index/*"
+                - !Ref "AWS::NoValue"
       Tags:
         - Key: UseCase
           Value: autonomous-driving
@@ -1331,6 +1354,19 @@ Resources:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                 Resource: "*"
+              - !If
+                - CreateTokenStore
+                - Sid: DynamoDBTokenStore
+                  Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                    - dynamodb:GetItem
+                    - dynamodb:DeleteItem
+                    - dynamodb:Query
+                  Resource:
+                    - !GetAtt TaskTokenStoreTable.Arn
+                    - !Sub "${TaskTokenStoreTable.Arn}/index/*"
+                - !Ref "AWS::NoValue"
       Tags:
         - Key: UseCase
           Value: autonomous-driving
@@ -1362,6 +1398,9 @@ Resources:
           OUTPUT_BUCKET: !Ref OutputBucket
           USE_CASE: autonomous-driving
           REGION: !Ref "AWS::Region"
+          TOKEN_STORAGE_MODE: !If [CreateTokenStore, "dynamodb", "direct"]
+          TASK_TOKEN_TABLE_NAME: !If [CreateTokenStore, !Ref TaskTokenStoreTable, ""]
+          TOKEN_TTL_SECONDS: "86400"
       LoggingConfig:
         LogGroup: !Ref SageMakerInvokeLogGroup
       Tags:
@@ -1391,6 +1430,9 @@ Resources:
         Variables:
           USE_CASE: autonomous-driving
           REGION: !Ref "AWS::Region"
+          TOKEN_STORAGE_MODE: !If [CreateTokenStore, "dynamodb", "direct"]
+          TASK_TOKEN_TABLE_NAME: !If [CreateTokenStore, !Ref TaskTokenStoreTable, ""]
+          TOKEN_TTL_SECONDS: "86400"
       LoggingConfig:
         LogGroup: !Ref SageMakerCallbackLogGroup
       Tags:
@@ -1433,3 +1475,46 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt SageMakerJobStateChangeRule.Arn
+
+  # =================================================================
+  # Phase 4: DynamoDB Task Token Store (conditional)
+  # =================================================================
+
+  # -----------------------------------------------------------------
+  # DynamoDB Task Token Store Table
+  # -----------------------------------------------------------------
+  TaskTokenStoreTable:
+    Type: AWS::DynamoDB::Table
+    Condition: CreateTokenStore
+    Properties:
+      TableName: !Sub "${AWS::StackName}-task-token-store"
+      AttributeDefinitions:
+        - AttributeName: correlation_id
+          AttributeType: S
+        - AttributeName: transform_job_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: correlation_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: TransformJobNameIndex
+          KeySchema:
+            - AttributeName: transform_job_name
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: task-token-store

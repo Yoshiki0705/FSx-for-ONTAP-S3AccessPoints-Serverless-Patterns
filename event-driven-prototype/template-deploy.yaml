@@ -1,0 +1,527 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Event-Driven Prototype: S3 Event Notifications → EventBridge → Step Functions
+  FSx ONTAP S3 AP ネイティブ通知の将来対応を見据えた、
+  イベント駆動ファイル処理パイプラインのプロトタイプ実装。
+  通常の S3 バケットを使用して将来の動作をシミュレートする。
+
+# =====================================================================
+# Parameters — 既存 UC テンプレートと同一命名規約
+# =====================================================================
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+
+  OutputBucketName:
+    Type: String
+    Default: ""
+    Description: S3 出力バケット名（空の場合は自動生成）
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 256
+    MinValue: 128
+    MaxValue: 10240
+    Description: Lambda 関数のメモリサイズ (MB)
+
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 900
+    Description: Lambda 関数のタイムアウト (秒)
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms を有効化する
+
+  # --- Event-Driven Prototype 固有パラメータ ---
+  ConfidenceThreshold:
+    Type: Number
+    Default: 70
+    MinValue: 0
+    MaxValue: 100
+    Description: Rekognition ラベル検出の信頼度閾値 (%)
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-lite-v1:0"
+    Description: Bedrock モデル ID（カタログメタデータ生成用）
+
+  PrefixFilter:
+    Type: String
+    Default: "products/"
+    Description: EventBridge ルールのプレフィックスフィルタ
+
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 40
+    Description: Step Functions Map ステートの最大同時実行数
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  UseAutoOutputBucket:
+    !Equals [!Ref OutputBucketName, ""]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # S3 Source Bucket (Event Notifications 有効)
+  # FSx ONTAP S3 AP ネイティブ通知をシミュレート
+  # -----------------------------------------------------------------
+  SourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-source-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: event-driven-prototype
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: source-bucket
+
+  # -----------------------------------------------------------------
+  # S3 Output Bucket (SSE-KMS)
+  # -----------------------------------------------------------------
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - UseAutoOutputBucket
+        - !Sub "${AWS::StackName}-output-${AWS::AccountId}"
+        - !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: event-driven-prototype
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: output-bucket
+
+  # -----------------------------------------------------------------
+  # SNS Topic + Email Subscription
+  # -----------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups (14 day retention)
+  # -----------------------------------------------------------------
+  EventProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-event-processor"
+      RetentionInDays: 14
+
+  LatencyReporterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-latency-reporter"
+      RetentionInDays: 14
+
+  # -----------------------------------------------------------------
+  # IAM Roles — least-privilege per Lambda
+  # -----------------------------------------------------------------
+
+  # Event Processor Lambda: S3 読み取り + Rekognition + Bedrock + S3 出力
+  EventProcessorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-event-processor-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: EventProcessorPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3SourceBucketRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "${SourceBucket.Arn}/*"
+              - Sid: S3OutputBucketWrite
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: RekognitionDetectLabels
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: "*"
+              - Sid: BedrockInvokeModel
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt EventProcessorLogGroup.Arn
+                  - !Sub "${EventProcessorLogGroup.Arn}:*"
+
+  # Latency Reporter Lambda: CloudWatch メトリクス出力
+  LatencyReporterLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-latency-reporter-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LatencyReporterPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt LatencyReporterLogGroup.Arn
+                  - !Sub "${LatencyReporterLogGroup.Arn}:*"
+
+  # -----------------------------------------------------------------
+  # Lambda Functions
+  # -----------------------------------------------------------------
+  EventProcessorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-event-processor"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/event-driven-prototype-event_processor.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt EventProcessorLambdaRole.Arn
+      Environment:
+        Variables:
+          SOURCE_BUCKET: !Ref SourceBucket
+          OUTPUT_BUCKET: !Ref OutputBucket
+          CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          USE_CASE: event-driven-prototype
+      LoggingConfig:
+        LogGroup: !Ref EventProcessorLogGroup
+      Tags:
+        - Key: UseCase
+          Value: event-driven-prototype
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: event-processor
+
+  LatencyReporterFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-latency-reporter"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/event-driven-prototype-latency_reporter.zip
+      MemorySize: 128
+      Timeout: 60
+      Role: !GetAtt LatencyReporterLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: event-driven-prototype
+      LoggingConfig:
+        LogGroup: !Ref LatencyReporterLogGroup
+      Tags:
+        - Key: UseCase
+          Value: event-driven-prototype
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: latency-reporter
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # EventProcessor → LatencyReporter
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt EventProcessorFunction.Arn
+                  - !GetAtt LatencyReporterFunction.Arn
+
+  EventDrivenStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "Event-Driven Prototype - Image Processing Workflow",
+          "StartAt": "EventProcessor",
+          "States": {
+            "EventProcessor": {
+              "Type": "Task",
+              "Resource": "${EventProcessorFunction.Arn}",
+              "ResultPath": "$.processing_result",
+              "Next": "LatencyReporter",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "LatencyReporter"
+                }
+              ]
+            },
+            "LatencyReporter": {
+              "Type": "Task",
+              "Resource": "${LatencyReporterFunction.Arn}",
+              "ResultPath": "$.latency_report",
+              "End": true,
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            }
+          }
+        }
+      Tags:
+        - Key: UseCase
+          Value: event-driven-prototype
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: state-machine
+
+  # -----------------------------------------------------------------
+  # EventBridge Rule — S3 Event Notifications → Step Functions
+  # suffix フィルタ (.jpg, .png) + prefix フィルタ (products/)
+  # -----------------------------------------------------------------
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-eventbridge-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventBridgePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref EventDrivenStateMachine
+
+  S3EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${AWS::StackName}-s3-event-rule"
+      Description: "S3 ObjectCreated events for image files in products/ prefix"
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - "Object Created"
+        detail:
+          bucket:
+            name:
+              - !Ref SourceBucket
+          object:
+            key:
+              - prefix: !Ref PrefixFilter
+              - suffix: ".jpg"
+              - suffix: ".png"
+              - suffix: ".jpeg"
+              - suffix: ".webp"
+          reason:
+            - PutObject
+            - CompleteMultipartUpload
+        resources:
+          - !GetAtt SourceBucket.Arn
+      State: ENABLED
+      Targets:
+        - Id: StepFunctionsTarget
+          Arn: !Ref EventDrivenStateMachine
+          RoleArn: !GetAtt EventBridgeRole.Arn
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional)
+  # -----------------------------------------------------------------
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref EventDrivenStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  EventProcessorErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-event-processor-errors"
+      AlarmDescription: Event Processor Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref EventProcessorFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  SourceBucketName:
+    Description: S3 Source Bucket Name (simulates FSx ONTAP S3 AP)
+    Value: !Ref SourceBucket
+
+  SourceBucketArn:
+    Description: S3 Source Bucket ARN
+    Value: !GetAtt SourceBucket.Arn
+
+  OutputBucketName:
+    Description: S3 Output Bucket Name
+    Value: !Ref OutputBucket
+
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref EventDrivenStateMachine
+
+  EventRuleName:
+    Description: EventBridge Rule Name
+    Value: !Ref S3EventRule
+
+  EventProcessorFunctionArn:
+    Description: Event Processor Lambda ARN
+    Value: !GetAtt EventProcessorFunction.Arn
+
+  LatencyReporterFunctionArn:
+    Description: Latency Reporter Lambda ARN
+    Value: !GetAtt LatencyReporterFunction.Arn

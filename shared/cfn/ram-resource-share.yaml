@@ -1,0 +1,326 @@
+# =============================================================================
+# AWS RAM リソース共有テンプレート — FSx ONTAP リソース共有
+# =============================================================================
+#
+# 本テンプレートは AWS RAM (Resource Access Manager) を使用して
+# FSx ONTAP 関連リソースを複数アカウントで共有するための設定を作成する。
+#
+# 注意: FSx ONTAP S3 Access Points は現時点で AWS RAM による直接共有を
+# サポートしていない。本テンプレートでは代替パターン（クロスアカウント IAM）
+# と組み合わせて使用する設計を採用している。
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file ram-resource-share.yaml \
+#     --stack-name fsxn-ram-resource-share \
+#     --capabilities CAPABILITY_IAM \
+#     --parameter-overrides \
+#       ShareName=fsxn-shared-resources \
+#       OrganizationArn=arn:aws:organizations::123456789012:organization/o-example \
+#       EnableOrganizationSharing=true
+#
+# 参照: Requirements 10.1, 10.2, 10.3, 10.4, 10.5, 10.6
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — AWS RAM Resource Share.
+  FSx ONTAP リソースのマルチアカウント共有設定。
+
+# =====================================================================
+# Metadata
+# =====================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Resource Share Configuration
+        Parameters:
+          - ShareName
+          - EnableOrganizationSharing
+          - OrganizationArn
+          - TargetAccountIds
+      - Label:
+          default: Monitoring & Cost
+        Parameters:
+          - EnableUsageMonitoring
+          - CostAllocationTagKey
+          - NotificationEmail
+      - Label:
+          default: Naming & Tags
+        Parameters:
+          - ProjectPrefix
+          - Environment
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  ShareName:
+    Type: String
+    Default: "fsxn-s3ap-shared-resources"
+    Description: >-
+      AWS RAM リソース共有の名前。
+    AllowedPattern: "^[a-zA-Z0-9_\\-]+$"
+    MaxLength: 64
+
+  EnableOrganizationSharing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      AWS Organizations 全体での共有を有効化する。
+      false の場合、個別アカウント ID による共有を使用する。
+
+  OrganizationArn:
+    Type: String
+    Default: ""
+    Description: >-
+      AWS Organization ARN（EnableOrganizationSharing=true 時に必須）。
+      形式: arn:aws:organizations::ACCOUNT_ID:organization/o-XXXXX
+
+  TargetAccountIds:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: >-
+      共有先アカウント ID のリスト（カンマ区切り）。
+      EnableOrganizationSharing=false 時に使用。
+
+  EnableUsageMonitoring:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      共有リソースの使用量モニタリングを有効化する。
+
+  CostAllocationTagKey:
+    Type: String
+    Default: "SharedResourceCostCenter"
+    Description: >-
+      コスト配分用タグキー。各アカウントの使用量を追跡する。
+
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: >-
+      リソース共有変更通知の送信先メールアドレス（オプション）。
+
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名のプレフィックス。
+    AllowedPattern: "^[a-z0-9\\-]+$"
+
+  Environment:
+    Type: String
+    Default: "production"
+    AllowedValues: ["development", "staging", "production"]
+    Description: デプロイ環境。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  UseOrganizationSharing:
+    !Equals [!Ref EnableOrganizationSharing, "true"]
+
+  UseAccountIdSharing:
+    !Not [!Equals [!Ref EnableOrganizationSharing, "true"]]
+
+  EnableMonitoring:
+    !Equals [!Ref EnableUsageMonitoring, "true"]
+
+  HasNotificationEmail:
+    !Not [!Equals [!Ref NotificationEmail, ""]]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # AWS RAM Resource Share（Organization 共有）
+  # -------------------------------------------------------------------
+  OrganizationResourceShare:
+    Type: AWS::RAM::ResourceShare
+    Condition: UseOrganizationSharing
+    Properties:
+      Name: !Sub "${ShareName}-org"
+      AllowExternalPrincipals: false
+      Principals:
+        - !Ref OrganizationArn
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: ram-resource-share
+        - Key: Account
+          Value: management
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: !Ref CostAllocationTagKey
+          Value: shared-infrastructure
+
+  # -------------------------------------------------------------------
+  # AWS RAM Resource Share（個別アカウント共有）
+  # -------------------------------------------------------------------
+  AccountResourceShare:
+    Type: AWS::RAM::ResourceShare
+    Condition: UseAccountIdSharing
+    Properties:
+      Name: !Sub "${ShareName}-accounts"
+      AllowExternalPrincipals: false
+      Principals: !Ref TargetAccountIds
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: ram-resource-share
+        - Key: Account
+          Value: management
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: !Ref CostAllocationTagKey
+          Value: shared-infrastructure
+
+  # -------------------------------------------------------------------
+  # 使用量モニタリング: CloudWatch Dashboard
+  # -------------------------------------------------------------------
+  UsageMonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Condition: EnableMonitoring
+    Properties:
+      DashboardName: !Sub "${ProjectPrefix}-ram-usage-${AWS::StackName}"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 2,
+              "properties": {
+                "markdown": "# AWS RAM Resource Share Usage\n\nShared resources monitoring for ${ShareName}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 2,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/RAM", "ResourceShareInvitations", "ResourceShareArn", "${ShareName}"]
+                ],
+                "period": 86400,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "Resource Share Invitations"
+              }
+            }
+          ]
+        }
+
+  # -------------------------------------------------------------------
+  # 通知用 SNS トピック
+  # -------------------------------------------------------------------
+  ShareNotificationTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasNotificationEmail
+    Properties:
+      TopicName: !Sub "${ProjectPrefix}-ram-notifications"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: ram-resource-share
+        - Key: UseCase
+          Value: multi-account
+
+  ShareNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref ShareNotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -------------------------------------------------------------------
+  # EventBridge ルール: RAM 共有変更イベント監視
+  # -------------------------------------------------------------------
+  RamChangeEventRule:
+    Type: AWS::Events::Rule
+    Condition: HasNotificationEmail
+    Properties:
+      Name: !Sub "${ProjectPrefix}-ram-change-monitor"
+      Description: AWS RAM リソース共有の変更イベントを監視
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ram
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ram.amazonaws.com
+          eventName:
+            - AssociateResourceShare
+            - DisassociateResourceShare
+            - DeleteResourceShare
+            - UpdateResourceShare
+      Targets:
+        - Id: notify-ram-changes
+          Arn: !Ref ShareNotificationTopic
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: ram-resource-share
+        - Key: UseCase
+          Value: multi-account
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  ResourceShareArn:
+    Description: AWS RAM リソース共有 ARN
+    Value: !If
+      - UseOrganizationSharing
+      - !GetAtt OrganizationResourceShare.Arn
+      - !GetAtt AccountResourceShare.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ResourceShareArn"
+
+  ResourceShareId:
+    Description: AWS RAM リソース共有 ID
+    Value: !If
+      - UseOrganizationSharing
+      - !Ref OrganizationResourceShare
+      - !Ref AccountResourceShare
+
+  SharingMode:
+    Description: 共有モード（Organization / Account IDs）
+    Value: !If
+      - UseOrganizationSharing
+      - "Organization"
+      - "AccountIds"
+
+  NotificationTopicArn:
+    Description: RAM 変更通知 SNS トピック ARN
+    Condition: HasNotificationEmail
+    Value: !Ref ShareNotificationTopic
+
+  FsxSharingLimitation:
+    Description: >-
+      FSx ONTAP S3 Access Points の RAM 共有に関する制限事項。
+    Value: >-
+      FSx ONTAP S3 Access Points は現時点で AWS RAM による直接共有を
+      サポートしていません。代替パターンとして、クロスアカウント IAM ロール
+      引き受け + S3 AP リソースベースポリシーを使用してください。
+      詳細: docs/multi-account/ram-sharing.md

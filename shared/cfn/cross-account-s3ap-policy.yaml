@@ -1,0 +1,446 @@
+# =============================================================================
+# Cross-Account S3 Access Point ポリシー — IAM ロール・ポリシーテンプレート
+# =============================================================================
+#
+# 本テンプレートはワークロードアカウントの Lambda が中央ストレージアカウントの
+# S3 Access Point（FSx ONTAP）にクロスアカウントでアクセスするための
+# IAM ロールとポリシーを作成する。
+#
+# アーキテクチャ:
+#   Workload Account Lambda
+#     → AssumeRole (Cross-Account Role with External ID)
+#       → S3 Access Point (Storage Account)
+#         → FSx ONTAP Volume
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file cross-account-s3ap-policy.yaml \
+#     --stack-name fsxn-cross-account-s3ap \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides \
+#       StorageAccountId=123456789012 \
+#       WorkloadAccountId=987654321098 \
+#       S3AccessPointArn=arn:aws:s3:ap-northeast-1:123456789012:accesspoint/my-fsxn-ap \
+#       ExternalId=unique-external-id-here
+#
+# 参照: Requirements 9.1, 9.2, 9.3, 9.4, 9.5
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Cross-Account S3 Access Point Policy.
+  ワークロードアカウントからストレージアカウントの S3 AP へのクロスアカウントアクセス用
+  IAM ロール・ポリシーを作成する。
+
+# =====================================================================
+# Metadata
+# =====================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Account Configuration
+        Parameters:
+          - StorageAccountId
+          - WorkloadAccountId
+          - ExternalId
+      - Label:
+          default: S3 Access Point Configuration
+        Parameters:
+          - S3AccessPointArn
+          - EnableCrossRegion
+          - StorageRegion
+      - Label:
+          default: Naming & Tags
+        Parameters:
+          - ProjectPrefix
+          - Environment
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  StorageAccountId:
+    Type: String
+    Description: >-
+      ストレージアカウント ID（S3 Access Point を所有するアカウント）。
+    AllowedPattern: "^[0-9]{12}$"
+    ConstraintDescription: 12 桁の AWS アカウント ID を入力してください。
+
+  WorkloadAccountId:
+    Type: String
+    Description: >-
+      ワークロードアカウント ID（Lambda からアクセスするアカウント）。
+    AllowedPattern: "^[0-9]{12}$"
+    ConstraintDescription: 12 桁の AWS アカウント ID を入力してください。
+
+  ExternalId:
+    Type: String
+    Description: >-
+      クロスアカウントロール引き受け時の External ID。
+      混乱した代理問題（Confused Deputy）を防止するために必須。
+    MinLength: 10
+    MaxLength: 128
+    AllowedPattern: "^[a-zA-Z0-9_\\-\\.]+$"
+    ConstraintDescription: 英数字、ハイフン、アンダースコア、ドットのみ使用可能。
+
+  S3AccessPointArn:
+    Type: String
+    Description: >-
+      ストレージアカウントの S3 Access Point ARN。
+    AllowedPattern: "^arn:aws:s3:[a-z0-9\\-]+:[0-9]{12}:accesspoint/.+$"
+
+  EnableCrossRegion:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      クロスリージョンアクセスを有効化する。
+      true の場合、ワークロードアカウントのリージョンとストレージアカウントの
+      リージョンが異なるシナリオに対応する。
+
+  StorageRegion:
+    Type: String
+    Default: "ap-northeast-1"
+    Description: >-
+      ストレージアカウントの S3 Access Point が存在するリージョン。
+      EnableCrossRegion=true 時に使用。
+
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名のプレフィックス。
+    AllowedPattern: "^[a-z0-9\\-]+$"
+
+  Environment:
+    Type: String
+    Default: "production"
+    AllowedValues: ["development", "staging", "production"]
+    Description: デプロイ環境。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  IsCrossRegion:
+    !Equals [!Ref EnableCrossRegion, "true"]
+
+
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # Storage Account 側: S3 Access Point リソースベースポリシー
+  # （このテンプレートはポリシードキュメントの参照用。実際の AP ポリシーは
+  #   ストレージアカウントで別途設定する必要がある）
+  # -------------------------------------------------------------------
+
+  # -------------------------------------------------------------------
+  # Workload Account 側: クロスアカウントアクセス用 IAM ロール
+  # -------------------------------------------------------------------
+  CrossAccountAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-workload-storage-access-role"
+      Description: >-
+        Cross-account role for workload Lambda to access
+        S3 Access Point in storage account.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowWorkloadAccountAssume
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${WorkloadAccountId}:root"
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalId
+      MaxSessionDuration: 3600
+      PermissionsBoundary: !Ref CrossAccountPermissionBoundary
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: cross-account-s3ap
+        - Key: Account
+          Value: storage
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+
+  # -------------------------------------------------------------------
+  # S3 Access Point アクセスポリシー（Identity-based）
+  # -------------------------------------------------------------------
+  S3AccessPointPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${ProjectPrefix}-s3ap-access-policy"
+      Roles:
+        - !Ref CrossAccountAccessRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowS3APReadAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:GetObjectVersion
+              - s3:GetObjectTagging
+            Resource:
+              - !Ref S3AccessPointArn
+              - !Sub "${S3AccessPointArn}/object/*"
+          - Sid: AllowS3APWriteAccess
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:PutObjectTagging
+            Resource:
+              - !Sub "${S3AccessPointArn}/object/*"
+
+  # -------------------------------------------------------------------
+  # クロスリージョンアクセス用追加ポリシー（Conditional）
+  # -------------------------------------------------------------------
+  CrossRegionPolicy:
+    Type: AWS::IAM::Policy
+    Condition: IsCrossRegion
+    Properties:
+      PolicyName: !Sub "${ProjectPrefix}-cross-region-policy"
+      Roles:
+        - !Ref CrossAccountAccessRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCrossRegionS3Access
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:PutObject
+            Resource:
+              - !Sub "arn:aws:s3:${StorageRegion}:${StorageAccountId}:accesspoint/*"
+              - !Sub "arn:aws:s3:${StorageRegion}:${StorageAccountId}:accesspoint/*/object/*"
+
+  # -------------------------------------------------------------------
+  # Workload Account Lambda 用 IAM ロール
+  # -------------------------------------------------------------------
+  WorkloadLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-workload-lambda-role"
+      Description: >-
+        Workload account Lambda execution role with
+        permission to assume cross-account storage role.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      PermissionsBoundary: !Ref WorkloadPermissionBoundary
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: cross-account-s3ap
+        - Key: Account
+          Value: workload
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Lambda → AssumeRole ポリシー
+  AssumeStorageRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${ProjectPrefix}-assume-storage-role"
+      Roles:
+        - !Ref WorkloadLambdaRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowAssumeStorageRole
+            Effect: Allow
+            Action: sts:AssumeRole
+            Resource: !GetAtt CrossAccountAccessRole.Arn
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalId
+
+  # -------------------------------------------------------------------
+  # Permission Boundary: クロスアカウントロール用
+  # -------------------------------------------------------------------
+  CrossAccountPermissionBoundary:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${ProjectPrefix}-cross-account-boundary"
+      Description: >-
+        クロスアカウントロールの最大権限を制限する Permission Boundary。
+        S3 Access Point 操作と CloudWatch ログのみ許可。
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowS3APOperations
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucket
+              - s3:GetObjectVersion
+              - s3:GetObjectTagging
+              - s3:PutObjectTagging
+            Resource:
+              - !Sub "arn:aws:s3:*:${StorageAccountId}:accesspoint/*"
+              - !Sub "arn:aws:s3:*:${StorageAccountId}:accesspoint/*/object/*"
+          - Sid: AllowCloudWatchLogs
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "arn:aws:logs:*:${AWS::AccountId}:*"
+          - Sid: DenyAllOther
+            Effect: Deny
+            NotAction:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucket
+              - s3:GetObjectVersion
+              - s3:GetObjectTagging
+              - s3:PutObjectTagging
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: "*"
+
+  # -------------------------------------------------------------------
+  # Permission Boundary: ワークロード Lambda 用
+  # -------------------------------------------------------------------
+  WorkloadPermissionBoundary:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${ProjectPrefix}-workload-lambda-boundary"
+      Description: >-
+        ワークロード Lambda ロールの最大権限を制限する Permission Boundary。
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowAssumeRole
+            Effect: Allow
+            Action: sts:AssumeRole
+            Resource: !Sub "arn:aws:iam::${StorageAccountId}:role/${ProjectPrefix}-*"
+          - Sid: AllowLambdaBasicExecution
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+            Resource: "*"
+
+  # -------------------------------------------------------------------
+  # CloudTrail 監査用 EventBridge ルール
+  # -------------------------------------------------------------------
+  CrossAccountAuditRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${ProjectPrefix}-cross-account-audit"
+      Description: クロスアカウントロール引き受けイベントの監視
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.sts
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - sts.amazonaws.com
+          eventName:
+            - AssumeRole
+          requestParameters:
+            roleArn:
+              - !GetAtt CrossAccountAccessRole.Arn
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: cross-account-s3ap
+        - Key: Account
+          Value: audit
+        - Key: UseCase
+          Value: multi-account
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  CrossAccountAccessRoleArn:
+    Description: クロスアカウントアクセスロール ARN
+    Value: !GetAtt CrossAccountAccessRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CrossAccountAccessRoleArn"
+
+  WorkloadLambdaRoleArn:
+    Description: ワークロード Lambda ロール ARN
+    Value: !GetAtt WorkloadLambdaRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-WorkloadLambdaRoleArn"
+
+  CrossAccountPermissionBoundaryArn:
+    Description: クロスアカウント Permission Boundary ARN
+    Value: !Ref CrossAccountPermissionBoundary
+    Export:
+      Name: !Sub "${AWS::StackName}-CrossAccountBoundaryArn"
+
+  ExternalIdParameter:
+    Description: External ID（ロール引き受け時に必要）
+    Value: !Ref ExternalId
+
+  AuditRuleArn:
+    Description: CloudTrail 監査 EventBridge ルール ARN
+    Value: !GetAtt CrossAccountAuditRule.Arn
+
+  S3AccessPointResourcePolicy:
+    Description: >-
+      S3 Access Point に設定すべきリソースベースポリシーの例（参照用）。
+      ストレージアカウントで別途設定が必要。
+    Value: !Sub |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "AllowCrossAccountAccess",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::${WorkloadAccountId}:role/${ProjectPrefix}-workload-storage-access-role"
+            },
+            "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+            "Resource": [
+              "${S3AccessPointArn}",
+              "${S3AccessPointArn}/object/*"
+            ]
+          }
+        ]
+      }
+
+  OntapExportPolicyGuidance:
+    Description: >-
+      ONTAP Export Policy の設定ガイダンス（参照用）。
+    Value: >-
+      ONTAP Export Policy で S3 Access Point 経由のアクセスを許可するには、
+      export-policy rule に S3 AP のサブネット CIDR を追加し、
+      protocol を s3 に設定する必要があります。
+      詳細: docs/multi-account/cross-account-s3ap.md

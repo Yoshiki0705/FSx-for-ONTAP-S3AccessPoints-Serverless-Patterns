@@ -110,6 +110,67 @@ Parameters:
     Default: "ad-segmentation"
     Description: SageMaker Batch Transform ジョブ名プレフィックス
 
+  # --- Phase 3 SageMaker 統合パラメータ ---
+  EnableSageMakerTransform:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: SageMaker Batch Transform 統合を有効化する
+
+  # --- Phase 4 Task Token Store パラメータ ---
+  EnableDynamoDBTokenStore:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: DynamoDB Task Token Store を有効化する（SageMaker Callback Pattern 用）
+
+  # --- Phase 4 Real-time Endpoint + A/B Testing パラメータ ---
+  EnableRealtimeEndpoint:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: SageMaker Real-time Inference Endpoint を有効化する
+
+  InferenceType:
+    Type: String
+    Default: "provisioned"
+    AllowedValues: ["provisioned", "serverless"]
+    Description: 推論エンドポイントタイプ（provisioned / serverless）
+
+  EnableABTesting:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: A/B テスト（Multi-Variant Endpoint）を有効化する
+
+  ModelVariantsConfig:
+    Type: String
+    Default: ""
+    Description: >-
+      モデルバリアント設定 JSON 文字列
+      例: [{"VariantName":"model-v1","ModelDataUrl":"s3://...","InstanceType":"ml.m5.large","InitialInstanceCount":1,"InitialVariantWeight":0.7}]
+
+  RealtimeThreshold:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 10000
+    Description: Real-time Endpoint ルーティングのファイル数閾値（file_count < threshold → Real-time）
+
+  MaxAutoScalingInstances:
+    Type: Number
+    Default: 4
+    MinValue: 1
+    MaxValue: 20
+    Description: Auto Scaling 最大インスタンス数
+
+  # --- Phase 4 Model Registry パラメータ ---
+  EnableModelRegistry:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: SageMaker Model Registry 統合を有効化する
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -124,6 +185,22 @@ Conditions:
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
   UseAutoOutputBucket:
     !Equals [!Ref OutputBucketName, ""]
+  CreateSageMakerResources:
+    !Equals [!Ref EnableSageMakerTransform, "true"]
+  CreateTokenStore:
+    !Equals [!Ref EnableDynamoDBTokenStore, "true"]
+  CreateRealtimeEndpoint:
+    !Equals [!Ref EnableRealtimeEndpoint, "true"]
+  CreateABTesting:
+    !And
+      - !Condition CreateRealtimeEndpoint
+      - !Equals [!Ref EnableABTesting, "true"]
+  UseServerlessInference:
+    !And
+      - !Condition CreateRealtimeEndpoint
+      - !Equals [!Ref InferenceType, "serverless"]
+  CreateModelRegistry:
+    !Equals [!Ref EnableModelRegistry, "true"]
 
 # =====================================================================
 # Resources
@@ -874,3 +951,705 @@ Resources:
       TreatMissingData: notBreaching
       AlarmActions:
         - !Ref NotificationTopic
+
+  # =================================================================
+  # Phase 4: DynamoDB Task Token Store (conditional)
+  # =================================================================
+
+  # -----------------------------------------------------------------
+  # DynamoDB Task Token Store Table
+  # -----------------------------------------------------------------
+  TaskTokenStoreTable:
+    Type: AWS::DynamoDB::Table
+    Condition: CreateTokenStore
+    Properties:
+      TableName: !Sub "${AWS::StackName}-task-token-store"
+      AttributeDefinitions:
+        - AttributeName: correlation_id
+          AttributeType: S
+        - AttributeName: transform_job_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: correlation_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: TransformJobNameIndex
+          KeySchema:
+            - AttributeName: transform_job_name
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: task-token-store
+
+  # -----------------------------------------------------------------
+  # SageMaker Invoke Lambda (conditional — Phase 3/4)
+  # -----------------------------------------------------------------
+  SageMakerInvokeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateSageMakerResources
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-sagemaker-invoke"
+      RetentionInDays: 14
+
+  SageMakerInvokeLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateSageMakerResources
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sagemaker-invoke-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SageMakerInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SageMakerCreateJob
+                Effect: Allow
+                Action:
+                  - sagemaker:CreateTransformJob
+                  - sagemaker:AddTags
+                Resource:
+                  - !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:transform-job/*"
+              - Sid: S3WriteOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt SageMakerInvokeLogGroup.Arn
+                  - !Sub "${SageMakerInvokeLogGroup.Arn}:*"
+              - !If
+                - CreateTokenStore
+                - Sid: DynamoDBTokenStore
+                  Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                    - dynamodb:GetItem
+                    - dynamodb:DeleteItem
+                    - dynamodb:Query
+                  Resource:
+                    - !GetAtt TaskTokenStoreTable.Arn
+                    - !Sub "${TaskTokenStoreTable.Arn}/index/*"
+                - !Ref "AWS::NoValue"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: sagemaker
+
+  SageMakerInvokeFunction:
+    Type: AWS::Lambda::Function
+    Condition: CreateSageMakerResources
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-sagemaker-invoke"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/autonomous-driving-sagemaker_invoke.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt SageMakerInvokeLambdaRole.Arn
+      Environment:
+        Variables:
+          SAGEMAKER_TRANSFORM_JOB_NAME: !Ref SageMakerTransformJobName
+          OUTPUT_BUCKET: !Ref OutputBucket
+          TOKEN_STORAGE_MODE: !If [CreateTokenStore, "dynamodb", "direct"]
+          TASK_TOKEN_TABLE_NAME: !If [CreateTokenStore, !Ref TaskTokenStoreTable, ""]
+          TOKEN_TTL_SECONDS: "86400"
+      LoggingConfig:
+        LogGroup: !Ref SageMakerInvokeLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: sagemaker
+
+  # -----------------------------------------------------------------
+  # SageMaker Callback Lambda (conditional — Phase 3/4)
+  # -----------------------------------------------------------------
+  SageMakerCallbackLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateSageMakerResources
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-sagemaker-callback"
+      RetentionInDays: 14
+
+  SageMakerCallbackLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateSageMakerResources
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sagemaker-callback-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SageMakerCallbackPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SageMakerDescribeJob
+                Effect: Allow
+                Action:
+                  - sagemaker:DescribeTransformJob
+                  - sagemaker:ListTags
+                Resource:
+                  - !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:transform-job/*"
+              - Sid: StepFunctionsSendTask
+                Effect: Allow
+                Action:
+                  - states:SendTaskSuccess
+                  - states:SendTaskFailure
+                Resource:
+                  - !Ref AutonomousDrivingStateMachine
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt SageMakerCallbackLogGroup.Arn
+                  - !Sub "${SageMakerCallbackLogGroup.Arn}:*"
+              - !If
+                - CreateTokenStore
+                - Sid: DynamoDBTokenStore
+                  Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                    - dynamodb:GetItem
+                    - dynamodb:DeleteItem
+                    - dynamodb:Query
+                  Resource:
+                    - !GetAtt TaskTokenStoreTable.Arn
+                    - !Sub "${TaskTokenStoreTable.Arn}/index/*"
+                - !Ref "AWS::NoValue"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: sagemaker
+
+  SageMakerCallbackFunction:
+    Type: AWS::Lambda::Function
+    Condition: CreateSageMakerResources
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-sagemaker-callback"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/autonomous-driving-sagemaker_callback.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt SageMakerCallbackLambdaRole.Arn
+      Environment:
+        Variables:
+          TOKEN_STORAGE_MODE: !If [CreateTokenStore, "dynamodb", "direct"]
+          TASK_TOKEN_TABLE_NAME: !If [CreateTokenStore, !Ref TaskTokenStoreTable, ""]
+          TOKEN_TTL_SECONDS: "86400"
+      LoggingConfig:
+        LogGroup: !Ref SageMakerCallbackLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: sagemaker
+
+  # =================================================================
+  # Phase 4: Real-time Inference Endpoint + A/B Testing (conditional)
+  # =================================================================
+
+  # -----------------------------------------------------------------
+  # SageMaker Model (Real-time Endpoint 用)
+  # PREREQUISITE: model.tar.gz must exist at the S3 path BEFORE stack deployment.
+  # Use deploy_phase4.sh which automatically creates a dummy artifact if missing.
+  # Manual preparation:
+  #   aws s3 cp model.tar.gz s3://<OutputBucket>/models/point-cloud-segmentation/model.tar.gz
+  # -----------------------------------------------------------------
+  RealtimeSageMakerModel:
+    Type: AWS::SageMaker::Model
+    Condition: CreateRealtimeEndpoint
+    Properties:
+      ModelName: !Sub "${AWS::StackName}-realtime-model"
+      ExecutionRoleArn: !GetAtt SageMakerExecutionRole.Arn
+      PrimaryContainer:
+        Image: !Sub "763104351884.dkr.ecr.${AWS::Region}.amazonaws.com/pytorch-inference:2.0-cpu-py310"
+        ModelDataUrl: !Sub "s3://${OutputBucket}/models/point-cloud-segmentation/model.tar.gz"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  # -----------------------------------------------------------------
+  # SageMaker Execution Role (Real-time Endpoint 用)
+  # -----------------------------------------------------------------
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: CreateRealtimeEndpoint
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sagemaker-exec-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+      Policies:
+        - PolicyName: SageMakerModelAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3ModelArtifactAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "${OutputBucket.Arn}"
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/*"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  # -----------------------------------------------------------------
+  # SageMaker EndpointConfig (Multi-Variant for A/B Testing)
+  # -----------------------------------------------------------------
+  RealtimeEndpointConfig:
+    Type: AWS::SageMaker::EndpointConfig
+    Condition: CreateRealtimeEndpoint
+    Properties:
+      EndpointConfigName: !Sub "${AWS::StackName}-realtime-config"
+      ProductionVariants:
+        - VariantName: "primary"
+          ModelName: !GetAtt RealtimeSageMakerModel.ModelName
+          InitialInstanceCount: 1
+          InstanceType: "ml.m5.large"
+          InitialVariantWeight: 1.0
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  # -----------------------------------------------------------------
+  # SageMaker Endpoint
+  # -----------------------------------------------------------------
+  RealtimeEndpoint:
+    Type: AWS::SageMaker::Endpoint
+    Condition: CreateRealtimeEndpoint
+    Properties:
+      EndpointName: !Sub "${AWS::StackName}-realtime-endpoint"
+      EndpointConfigName: !GetAtt RealtimeEndpointConfig.EndpointConfigName
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  # -----------------------------------------------------------------
+  # Application Auto Scaling — ScalableTarget + ScalingPolicy
+  # -----------------------------------------------------------------
+  EndpointScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Condition: CreateRealtimeEndpoint
+    Properties:
+      MaxCapacity: !Ref MaxAutoScalingInstances
+      MinCapacity: 1
+      ResourceId: !Sub "endpoint/${RealtimeEndpoint.EndpointName}/variant/primary"
+      RoleARN: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/sagemaker.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_SageMakerEndpoint"
+      ScalableDimension: "sagemaker:variant:DesiredInstanceCount"
+      ServiceNamespace: sagemaker
+
+  EndpointScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Condition: CreateRealtimeEndpoint
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-endpoint-scaling-policy"
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref EndpointScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 750.0
+        PredefinedMetricSpecification:
+          PredefinedMetricType: SageMakerVariantInvocationsPerInstance
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+
+  # -----------------------------------------------------------------
+  # Realtime Invoke Lambda + IAM Role + Log Group
+  # -----------------------------------------------------------------
+  RealtimeInvokeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateRealtimeEndpoint
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-realtime-invoke"
+      RetentionInDays: 14
+
+  RealtimeInvokeLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateRealtimeEndpoint
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-realtime-invoke-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: RealtimeInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SageMakerInvokeEndpoint
+                Effect: Allow
+                Action:
+                  - sagemaker:InvokeEndpoint
+                Resource:
+                  - !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/${AWS::StackName}-realtime-endpoint"
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt RealtimeInvokeLogGroup.Arn
+                  - !Sub "${RealtimeInvokeLogGroup.Arn}:*"
+              - !If
+                - CreateABTesting
+                - Sid: DynamoDBWriteResults
+                  Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                  Resource:
+                    - !GetAtt ABTestResultsTable.Arn
+                - !Ref "AWS::NoValue"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  RealtimeInvokeFunction:
+    Type: AWS::Lambda::Function
+    Condition: CreateRealtimeEndpoint
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-realtime-invoke"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/autonomous-driving-realtime_invoke.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt RealtimeInvokeLambdaRole.Arn
+      Environment:
+        Variables:
+          ENDPOINT_NAME: !Sub "${AWS::StackName}-realtime-endpoint"
+          MAX_RETRIES: "3"
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          AB_TEST_TABLE_NAME: !If [CreateABTesting, !Ref ABTestResultsTable, ""]
+          USE_CASE: autonomous-driving
+      LoggingConfig:
+        LogGroup: !Ref RealtimeInvokeLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  # -----------------------------------------------------------------
+  # Inference Comparison Lambda + IAM Role + Log Group + EventBridge Schedule
+  # -----------------------------------------------------------------
+  InferenceComparisonLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateABTesting
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-inference-comparison"
+      RetentionInDays: 14
+
+  InferenceComparisonLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateABTesting
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-inference-comparison-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: InferenceComparisonPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: DynamoDBReadWrite
+                Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                Resource:
+                  - !GetAtt ABTestResultsTable.Arn
+                  - !Sub "${ABTestResultsTable.Arn}/index/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt InferenceComparisonLogGroup.Arn
+                  - !Sub "${InferenceComparisonLogGroup.Arn}:*"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  InferenceComparisonFunction:
+    Type: AWS::Lambda::Function
+    Condition: CreateABTesting
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-inference-comparison"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/autonomous-driving-inference_comparison.zip
+      MemorySize: 512
+      Timeout: 120
+      Role: !GetAtt InferenceComparisonLambdaRole.Arn
+      Environment:
+        Variables:
+          AB_TEST_TABLE_NAME: !Ref ABTestResultsTable
+          ENDPOINT_NAME: !Sub "${AWS::StackName}-realtime-endpoint"
+          AGGREGATION_WINDOW_SECONDS: "300"
+          RESULT_TTL_DAYS: "30"
+          USE_CASE: autonomous-driving
+      LoggingConfig:
+        LogGroup: !Ref InferenceComparisonLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  # EventBridge Schedule Rule (5 分間隔)
+  InferenceComparisonScheduleRole:
+    Type: AWS::IAM::Role
+    Condition: CreateABTesting
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-inference-comp-sched-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeComparisonLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt InferenceComparisonFunction.Arn
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  InferenceComparisonSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: CreateABTesting
+    Properties:
+      Name: !Sub "${AWS::StackName}-inference-comparison-schedule"
+      ScheduleExpression: "rate(5 minutes)"
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt InferenceComparisonFunction.Arn
+        RoleArn: !GetAtt InferenceComparisonScheduleRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # DynamoDB ABTestResults Table
+  # -----------------------------------------------------------------
+  ABTestResultsTable:
+    Type: AWS::DynamoDB::Table
+    Condition: CreateABTesting
+    Properties:
+      TableName: !Sub "${AWS::StackName}-ab-test-results"
+      AttributeDefinitions:
+        - AttributeName: test_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: test_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: realtime-inference
+
+  # -----------------------------------------------------------------
+  # Step Functions Choice State — Real-time vs Batch Transform Routing
+  # -----------------------------------------------------------------
+  # NOTE: The Step Functions state machine definition above would include
+  # a Choice state for routing based on file count threshold when
+  # EnableRealtimeEndpoint is "true". The Choice state logic:
+  #
+  #   "InferenceRouting": {
+  #     "Type": "Choice",
+  #     "Choices": [
+  #       {
+  #         "Variable": "$.discovery.file_count",
+  #         "NumericLessThan": <RealtimeThreshold>,
+  #         "Next": "RealtimeInference"
+  #       }
+  #     ],
+  #     "Default": "BatchTransform"
+  #   },
+  #   "RealtimeInference": {
+  #     "Type": "Task",
+  #     "Resource": "<RealtimeInvokeFunction.Arn>",
+  #     "ResultPath": "$.inference_result",
+  #     "Next": "AnnotationManager"
+  #   },
+  #   "BatchTransform": {
+  #     "Type": "Task",
+  #     "Resource": "<SageMakerInvokeFunction.Arn>",
+  #     "ResultPath": "$.inference_result",
+  #     "Next": "WaitForTransform"
+  #   }
+  #
+  # The actual ASL definition is in the AutonomousDrivingStateMachine
+  # resource above. When EnableRealtimeEndpoint is enabled, the workflow
+  # routes file_count < RealtimeThreshold to Real-time Endpoint and
+  # file_count >= RealtimeThreshold to Batch Transform.
+
+  # =================================================================
+  # Phase 4: Model Registry (conditional)
+  # =================================================================
+
+  # -----------------------------------------------------------------
+  # SageMaker Model Package Group
+  # -----------------------------------------------------------------
+  ModelPackageGroup:
+    Type: AWS::SageMaker::ModelPackageGroup
+    Condition: CreateModelRegistry
+    Properties:
+      ModelPackageGroupName: !Sub "${AWS::StackName}-point-cloud-segmentation"
+      ModelPackageGroupDescription: >-
+        Point cloud segmentation model family for autonomous driving / ADAS.
+        Manages model versions with approval workflow for production deployment.
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: model-registry

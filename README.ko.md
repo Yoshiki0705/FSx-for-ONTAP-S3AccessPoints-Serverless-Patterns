@@ -158,6 +158,25 @@ EventBridge Scheduler (정기 실행)
 
 자세한 내용은 [스트리밍 vs 폴링 선택 가이드](docs/streaming-vs-polling-guide-ko.md)를 참조하세요.
 
+### Phase 4 기능 요약
+
+| 기능 | 설명 | 대상 UC |
+|------|------|---------|
+| DynamoDB Task Token Store | SageMaker Callback Pattern의 프로덕션 안전한 Token 관리 (Correlation ID 방식) | UC9 (옵트인) |
+| Real-time Inference Endpoint | SageMaker Real-time Endpoint를 통한 저지연 추론 | UC9 (옵트인) |
+| A/B Testing | Multi-Variant Endpoint를 통한 모델 버전 비교 | UC9 (옵트인) |
+| Model Registry | SageMaker Model Registry를 통한 모델 라이프사이클 관리 | UC9 (옵트인) |
+| Multi-Account Deployment | StackSets / RAM / Cross-Account IAM을 통한 멀티 계정 지원 | 전체 UC (템플릿 제공) |
+| Event-Driven Prototype | S3 Event Notifications → EventBridge → Step Functions 파이프라인 | 프로토타입 |
+
+Phase 4의 모든 기능은 CloudFormation Conditions로 옵트인 제어되며, 활성화하지 않는 한 추가 비용이 발생하지 않습니다.
+
+자세한 내용은 다음 문서를 참조하세요:
+- [추론 비용 비교 가이드](docs/inference-cost-comparison.md)
+- [Model Registry 가이드](docs/model-registry-guide.md)
+- [Multi-Account PoC 결과](docs/multi-account/poc-results.md)
+- [Event-Driven 아키텍처 설계](docs/event-driven/architecture-design.md)
+
 ### 스크린샷
 
 > 아래는 검증 환경에서의 촬영 예시입니다. 환경 고유 정보(계정 ID 등)는 마스킹 처리되었습니다.
@@ -277,6 +296,44 @@ EventBridge Scheduler (정기 실행)
 ![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
 
 > FSx for ONTAP S3 Access Point (fsxn-eda-s3ap) Available 상태. FSx 콘솔 볼륨 S3 탭에서 확인.
+
+#### Phase 4: 프로덕션 SageMaker 통합, 실시간 추론, 멀티 계정, 이벤트 기반
+
+##### DynamoDB Task Token Store
+
+![DynamoDB Task Token Store](docs/screenshots/masked/phase4-dynamodb-task-token-store.png)
+
+> DynamoDB Task Token Store 테이블. 8자리 hex Correlation ID를 파티션 키로 Task Token을 저장. TTL 활성화, PAY_PER_REQUEST 모드, GSI(TransformJobNameIndex) 구성 완료.
+
+##### SageMaker Real-time Endpoint (Multi-Variant A/B Testing)
+
+![SageMaker Endpoint](docs/screenshots/masked/phase4-sagemaker-realtime-endpoint.png)
+
+> SageMaker Real-time Inference Endpoint. Multi-Variant 구성(model-v1: 70%, model-v2: 30%)으로 A/B 테스트. Auto Scaling 구성 완료.
+
+##### Step Functions 워크플로우 (Realtime/Batch 라우팅)
+
+![Step Functions Phase 4](docs/screenshots/masked/phase4-step-functions-routing.png)
+
+> UC9 Step Functions 워크플로우. Choice State에서 file_count < threshold인 경우 Real-time Endpoint로, 그 외에는 Batch Transform으로 라우팅.
+
+##### Event-Driven Prototype — EventBridge Rule
+
+![EventBridge Rule](docs/screenshots/masked/phase4-eventbridge-event-rule.png)
+
+> Event-Driven Prototype EventBridge Rule. S3 ObjectCreated 이벤트를 suffix (.jpg, .png) + prefix (products/)로 필터링하여 Step Functions를 트리거.
+
+##### Event-Driven Prototype — Step Functions 실행 성공
+
+![Event-Driven Step Functions](docs/screenshots/masked/phase4-event-driven-sfn-succeeded.png)
+
+> Event-Driven Prototype Step Functions 실행 성공. S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter 모든 상태 성공.
+
+##### CloudFormation Phase 4 스택
+
+![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
+
+> Phase 4 CloudFormation 스택. UC9 확장(Task Token Store + Real-time Endpoint) 및 Event-Driven Prototype CREATE_COMPLETE.
 
 ## 기술 스택
 

@@ -1,0 +1,543 @@
+# =============================================================================
+# StackSets Administration テンプレート — 管理ロール・実行ロール
+# =============================================================================
+#
+# 本テンプレートは CloudFormation StackSets によるマルチアカウントデプロイに
+# 必要な管理ロール（管理アカウント）と実行ロール（ターゲットアカウント）を作成する。
+#
+# デプロイモード:
+# - AdminMode=true: 管理アカウントに管理ロールを作成
+# - AdminMode=false: ターゲットアカウントに実行ロールを作成
+#
+# デプロイ例（管理アカウント）:
+#   aws cloudformation deploy \
+#     --template-file stacksets-admin.yaml \
+#     --stack-name fsxn-stacksets-admin \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides \
+#       AdminMode=true \
+#       AdministratorAccountId=123456789012
+#
+# デプロイ例（ターゲットアカウント）:
+#   aws cloudformation deploy \
+#     --template-file stacksets-admin.yaml \
+#     --stack-name fsxn-stacksets-execution \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides \
+#       AdminMode=false \
+#       AdministratorAccountId=123456789012
+#
+# 参照: Requirements 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — StackSets Administration.
+  CloudFormation StackSets の管理ロールと実行ロールを作成する。
+
+# =====================================================================
+# Metadata
+# =====================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Deployment Mode
+        Parameters:
+          - AdminMode
+          - AdministratorAccountId
+      - Label:
+          default: Execution Role Configuration
+        Parameters:
+          - ExecutionRolePermissionLevel
+      - Label:
+          default: Drift Detection
+        Parameters:
+          - EnableDriftDetection
+          - DriftDetectionSchedule
+      - Label:
+          default: Naming & Tags
+        Parameters:
+          - ProjectPrefix
+          - Environment
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  AdminMode:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      true: 管理アカウントに管理ロールを作成。
+      false: ターゲットアカウントに実行ロールを作成。
+
+  AdministratorAccountId:
+    Type: String
+    Description: >-
+      StackSets 管理アカウント ID。
+      実行ロールの信頼ポリシーでこのアカウントからの引き受けを許可する。
+    AllowedPattern: "^[0-9]{12}$"
+    ConstraintDescription: 12 桁の AWS アカウント ID を入力してください。
+
+  ExecutionRolePermissionLevel:
+    Type: String
+    Default: "restricted"
+    AllowedValues: ["restricted", "full"]
+    Description: >-
+      実行ロールの権限レベル。
+      restricted: FSxN S3AP パターンに必要なサービスのみ許可。
+      full: AdministratorAccess（開発環境のみ推奨）。
+
+  EnableDriftDetection:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      定期的なドリフト検出を有効化する。
+
+  DriftDetectionSchedule:
+    Type: String
+    Default: "rate(24 hours)"
+    Description: >-
+      ドリフト検出の実行スケジュール（EventBridge Schedule 形式）。
+
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名のプレフィックス。
+    AllowedPattern: "^[a-z0-9\\-]+$"
+
+  Environment:
+    Type: String
+    Default: "production"
+    AllowedValues: ["development", "staging", "production"]
+    Description: デプロイ環境。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  IsAdminMode:
+    !Equals [!Ref AdminMode, "true"]
+
+  IsExecutionMode:
+    !Not [!Equals [!Ref AdminMode, "true"]]
+
+  IsRestrictedPermissions:
+    !And
+      - !Condition IsExecutionMode
+      - !Equals [!Ref ExecutionRolePermissionLevel, "restricted"]
+
+  IsFullPermissions:
+    !And
+      - !Condition IsExecutionMode
+      - !Equals [!Ref ExecutionRolePermissionLevel, "full"]
+
+  EnableDrift:
+    !And
+      - !Condition IsAdminMode
+      - !Equals [!Ref EnableDriftDetection, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # 管理アカウント: StackSets Administration Role
+  # -------------------------------------------------------------------
+  StackSetsAdminRole:
+    Type: AWS::IAM::Role
+    Condition: IsAdminMode
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-stacksets-admin-role"
+      Description: >-
+        StackSets administration role for CloudFormation.
+        Assumes execution roles in target accounts.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StackSetsAdminPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowAssumeExecutionRole
+                Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !Sub "arn:aws:iam::*:role/${ProjectPrefix}-stacksets-execution-role"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: stacksets-admin
+        - Key: Account
+          Value: management
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+
+  # -------------------------------------------------------------------
+  # ターゲットアカウント: StackSets Execution Role（Restricted）
+  # -------------------------------------------------------------------
+  StackSetsExecutionRoleRestricted:
+    Type: AWS::IAM::Role
+    Condition: IsRestrictedPermissions
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-stacksets-execution-role"
+      Description: >-
+        StackSets execution role (restricted permissions).
+        Only allows services needed for FSxN S3AP pattern deployment.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AdministratorAccountId}:role/${ProjectPrefix}-stacksets-admin-role"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StackSetsExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowCloudFormationOperations
+                Effect: Allow
+                Action:
+                  - cloudformation:*
+                Resource: "*"
+              - Sid: AllowLambdaOperations
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                  - lambda:ListTags
+                Resource: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:${ProjectPrefix}-*"
+              - Sid: AllowStepFunctionsOperations
+                Effect: Allow
+                Action:
+                  - states:CreateStateMachine
+                  - states:DeleteStateMachine
+                  - states:UpdateStateMachine
+                  - states:DescribeStateMachine
+                  - states:TagResource
+                  - states:UntagResource
+                  - states:ListTagsForResource
+                Resource: !Sub "arn:aws:states:*:${AWS::AccountId}:stateMachine:${ProjectPrefix}-*"
+              - Sid: AllowIAMRoleOperations
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:PassRole
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:UpdateAssumeRolePolicy
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${ProjectPrefix}-*"
+              - Sid: AllowDynamoDBOperations
+                Effect: Allow
+                Action:
+                  - dynamodb:CreateTable
+                  - dynamodb:DeleteTable
+                  - dynamodb:UpdateTable
+                  - dynamodb:DescribeTable
+                  - dynamodb:TagResource
+                  - dynamodb:UntagResource
+                  - dynamodb:ListTagsOfResource
+                  - dynamodb:UpdateTimeToLive
+                  - dynamodb:DescribeTimeToLive
+                  - dynamodb:UpdateContinuousBackups
+                  - dynamodb:DescribeContinuousBackups
+                Resource: !Sub "arn:aws:dynamodb:*:${AWS::AccountId}:table/${ProjectPrefix}-*"
+              - Sid: AllowS3Operations
+                Effect: Allow
+                Action:
+                  - s3:CreateBucket
+                  - s3:DeleteBucket
+                  - s3:PutBucketPolicy
+                  - s3:GetBucketPolicy
+                  - s3:PutBucketTagging
+                  - s3:GetBucketTagging
+                  - s3:PutEncryptionConfiguration
+                  - s3:GetEncryptionConfiguration
+                Resource: !Sub "arn:aws:s3:::${ProjectPrefix}-*"
+              - Sid: AllowEventsOperations
+                Effect: Allow
+                Action:
+                  - events:PutRule
+                  - events:DeleteRule
+                  - events:PutTargets
+                  - events:RemoveTargets
+                  - events:DescribeRule
+                  - events:TagResource
+                  - events:UntagResource
+                Resource: !Sub "arn:aws:events:*:${AWS::AccountId}:rule/${ProjectPrefix}-*"
+              - Sid: AllowCloudWatchOperations
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricAlarm
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:PutDashboard
+                  - cloudwatch:DeleteDashboards
+                  - cloudwatch:TagResource
+                  - cloudwatch:UntagResource
+                Resource: "*"
+              - Sid: AllowLogsOperations
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:TagLogGroup
+                  - logs:UntagLogGroup
+                Resource: !Sub "arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/${ProjectPrefix}-*"
+              - Sid: AllowKMSOperations
+                Effect: Allow
+                Action:
+                  - kms:CreateKey
+                  - kms:CreateAlias
+                  - kms:DeleteAlias
+                  - kms:DescribeKey
+                  - kms:EnableKeyRotation
+                  - kms:PutKeyPolicy
+                  - kms:TagResource
+                  - kms:UntagResource
+                  - kms:ScheduleKeyDeletion
+                Resource: "*"
+              - Sid: AllowSNSOperations
+                Effect: Allow
+                Action:
+                  - sns:CreateTopic
+                  - sns:DeleteTopic
+                  - sns:Subscribe
+                  - sns:Unsubscribe
+                  - sns:SetTopicAttributes
+                  - sns:TagResource
+                  - sns:UntagResource
+                Resource: !Sub "arn:aws:sns:*:${AWS::AccountId}:${ProjectPrefix}-*"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: stacksets-admin
+        - Key: Account
+          Value: target
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+
+  # -------------------------------------------------------------------
+  # ターゲットアカウント: StackSets Execution Role（Full — 開発用）
+  # -------------------------------------------------------------------
+  StackSetsExecutionRoleFull:
+    Type: AWS::IAM::Role
+    Condition: IsFullPermissions
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-stacksets-execution-role"
+      Description: >-
+        StackSets execution role (full access - development only).
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AdministratorAccountId}:role/${ProjectPrefix}-stacksets-admin-role"
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: stacksets-admin
+        - Key: Account
+          Value: target
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+
+  # -------------------------------------------------------------------
+  # ドリフト検出: EventBridge Schedule + Lambda
+  # -------------------------------------------------------------------
+  DriftDetectionRole:
+    Type: AWS::IAM::Role
+    Condition: EnableDrift
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-drift-detection-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DriftDetectionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DetectStackSetDrift
+                  - cloudformation:DescribeStackSetOperation
+                  - cloudformation:ListStackSets
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${ProjectPrefix}-*"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: stacksets-admin
+
+  DriftDetectionFunction:
+    Type: AWS::Lambda::Function
+    Condition: EnableDrift
+    Properties:
+      FunctionName: !Sub "${ProjectPrefix}-drift-detection"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt DriftDetectionRole.Arn
+      Timeout: 300
+      MemorySize: 128
+      Environment:
+        Variables:
+          PROJECT_PREFIX: !Ref ProjectPrefix
+      Code:
+        ZipFile: |
+          """StackSets drift detection Lambda."""
+          import boto3
+          import os
+          import json
+
+          def handler(event, context):
+              """Detect drift in all FSxN S3AP StackSets."""
+              cfn = boto3.client("cloudformation")
+              prefix = os.environ["PROJECT_PREFIX"]
+
+              stack_sets = cfn.list_stack_sets(Status="ACTIVE")
+              results = []
+
+              for ss in stack_sets.get("Summaries", []):
+                  if prefix in ss.get("StackSetName", ""):
+                      try:
+                          response = cfn.detect_stack_set_drift(
+                              StackSetName=ss["StackSetName"],
+                              OperationPreferences={
+                                  "MaxConcurrentPercentage": 100,
+                                  "FailureTolerancePercentage": 0,
+                              },
+                          )
+                          results.append({
+                              "stack_set": ss["StackSetName"],
+                              "operation_id": response["OperationId"],
+                              "status": "drift_detection_started",
+                          })
+                      except Exception as e:
+                          results.append({
+                              "stack_set": ss["StackSetName"],
+                              "error": str(e),
+                          })
+
+              return {"statusCode": 200, "body": json.dumps(results)}
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: stacksets-admin
+
+  DriftDetectionScheduleRule:
+    Type: AWS::Events::Rule
+    Condition: EnableDrift
+    Properties:
+      Name: !Sub "${ProjectPrefix}-drift-detection-schedule"
+      Description: 定期的な StackSets ドリフト検出
+      ScheduleExpression: !Ref DriftDetectionSchedule
+      State: ENABLED
+      Targets:
+        - Id: drift-detection-lambda
+          Arn: !GetAtt DriftDetectionFunction.Arn
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: stacksets-admin
+
+  DriftDetectionPermission:
+    Type: AWS::Lambda::Permission
+    Condition: EnableDrift
+    Properties:
+      FunctionName: !Ref DriftDetectionFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DriftDetectionScheduleRule.Arn
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  AdminRoleArn:
+    Description: StackSets 管理ロール ARN
+    Condition: IsAdminMode
+    Value: !GetAtt StackSetsAdminRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-AdminRoleArn"
+
+  ExecutionRoleName:
+    Description: StackSets 実行ロール名（ターゲットアカウント）
+    Condition: IsExecutionMode
+    Value: !Sub "${ProjectPrefix}-stacksets-execution-role"
+
+  ExecutionRoleArn:
+    Description: StackSets 実行ロール ARN
+    Condition: IsExecutionMode
+    Value: !If
+      - IsRestrictedPermissions
+      - !GetAtt StackSetsExecutionRoleRestricted.Arn
+      - !GetAtt StackSetsExecutionRoleFull.Arn
+
+  PermissionLevel:
+    Description: 実行ロールの権限レベル
+    Value: !Ref ExecutionRolePermissionLevel
+
+  DriftDetectionFunctionArn:
+    Description: ドリフト検出 Lambda ARN
+    Condition: EnableDrift
+    Value: !GetAtt DriftDetectionFunction.Arn
+
+  StackSetsDeployCommand:
+    Description: StackSets デプロイコマンド例（参照用）
+    Condition: IsAdminMode
+    Value: !Sub |
+      aws cloudformation create-stack-set \
+        --stack-set-name ${ProjectPrefix}-uc-deployment \
+        --template-url https://s3.amazonaws.com/BUCKET/template.yaml \
+        --administration-role-arn ${StackSetsAdminRole.Arn} \
+        --execution-role-name ${ProjectPrefix}-stacksets-execution-role \
+        --permission-model SELF_MANAGED

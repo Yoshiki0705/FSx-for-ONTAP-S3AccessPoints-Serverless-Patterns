@@ -158,6 +158,25 @@ EventBridge Scheduler (定期執行)
 
 詳情請參閱[串流 vs 輪詢選擇指南](docs/streaming-vs-polling-guide-zh-TW.md)。
 
+### Phase 4 功能概要
+
+| 功能 | 說明 | 目標 UC |
+|------|------|---------|
+| DynamoDB Task Token Store | SageMaker Callback Pattern 的生產安全 Token 管理（Correlation ID 方式） | UC9（可選啟用） |
+| Real-time Inference Endpoint | 透過 SageMaker Real-time Endpoint 實現低延遲推論 | UC9（可選啟用） |
+| A/B Testing | 透過 Multi-Variant Endpoint 進行模型版本比較 | UC9（可選啟用） |
+| Model Registry | 透過 SageMaker Model Registry 進行模型生命週期管理 | UC9（可選啟用） |
+| Multi-Account Deployment | 透過 StackSets / RAM / Cross-Account IAM 實現多帳戶支援 | 全部 UC（提供範本） |
+| Event-Driven Prototype | S3 Event Notifications → EventBridge → Step Functions 管線 | 原型 |
+
+Phase 4 的所有功能透過 CloudFormation Conditions 進行可選控制，未啟用時不會產生額外費用。
+
+詳情請參閱以下文件：
+- [推論成本比較指南](docs/inference-cost-comparison.md)
+- [Model Registry 指南](docs/model-registry-guide.md)
+- [Multi-Account PoC 結果](docs/multi-account/poc-results.md)
+- [Event-Driven 架構設計](docs/event-driven/architecture-design.md)
+
 ### 螢幕截圖
 
 > 以下為驗證環境中的截圖範例。環境特定資訊（帳戶 ID 等）已進行遮罩處理。
@@ -277,6 +296,44 @@ EventBridge Scheduler (定期執行)
 ![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
 
 > FSx for ONTAP S3 Access Point（fsxn-eda-s3ap）處於 Available 狀態。透過 FSx 主控台磁碟區 S3 索引標籤確認。
+
+#### Phase 4: 正式 SageMaker 整合、即時推論、多帳戶、事件驅動
+
+##### DynamoDB Task Token Store
+
+![DynamoDB Task Token Store](docs/screenshots/masked/phase4-dynamodb-task-token-store.png)
+
+> DynamoDB Task Token Store 資料表。以 8 字元 hex Correlation ID 作為分區鍵儲存 Task Token。TTL 已啟用，PAY_PER_REQUEST 模式，GSI（TransformJobNameIndex）已設定。
+
+##### SageMaker Real-time Endpoint（Multi-Variant A/B Testing）
+
+![SageMaker Endpoint](docs/screenshots/masked/phase4-sagemaker-realtime-endpoint.png)
+
+> SageMaker Real-time Inference Endpoint。Multi-Variant 組態（model-v1: 70%, model-v2: 30%）用於 A/B 測試。Auto Scaling 已設定。
+
+##### Step Functions 工作流程（Realtime/Batch 路由）
+
+![Step Functions Phase 4](docs/screenshots/masked/phase4-step-functions-routing.png)
+
+> UC9 Step Functions 工作流程。Choice State 在 file_count < threshold 時路由至 Real-time Endpoint，否則路由至 Batch Transform。
+
+##### Event-Driven Prototype — EventBridge Rule
+
+![EventBridge Rule](docs/screenshots/masked/phase4-eventbridge-event-rule.png)
+
+> Event-Driven Prototype EventBridge Rule。依 suffix (.jpg, .png) + prefix (products/) 篩選 S3 ObjectCreated 事件並觸發 Step Functions。
+
+##### Event-Driven Prototype — Step Functions 執行成功
+
+![Event-Driven Step Functions](docs/screenshots/masked/phase4-event-driven-sfn-succeeded.png)
+
+> Event-Driven Prototype Step Functions 執行成功。S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter 所有狀態成功。
+
+##### CloudFormation Phase 4 堆疊
+
+![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
+
+> Phase 4 CloudFormation 堆疊。UC9 擴充（Task Token Store + Real-time Endpoint）及 Event-Driven Prototype CREATE_COMPLETE。
 
 ## 技術堆疊
 

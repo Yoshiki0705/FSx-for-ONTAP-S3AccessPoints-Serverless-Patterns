@@ -1,0 +1,614 @@
+# =============================================================================
+# Shared Services Observability テンプレート — 集中可観測性
+# =============================================================================
+#
+# 本テンプレートは共有サービスアカウントに集中可観測性インフラを構築する。
+# ワークロードアカウントからのメトリクス、ログ、トレースを集約し、
+# 統合ダッシュボードとアラートを提供する。
+#
+# コンポーネント:
+# - CloudWatch Cross-Account Observability (Sharing Link + Sink)
+# - X-Ray Cross-Account Tracing
+# - SNS Aggregated Alerts
+# - Cross-Account Dashboard
+# - IAM Roles (metric/log delivery, read-only troubleshooting)
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file shared-services-observability.yaml \
+#     --stack-name fsxn-shared-observability \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides \
+#       OrganizationId=o-example123 \
+#       WorkloadAccountIds=111111111111,222222222222 \
+#       AlertEmail=ops@example.com
+#
+# 参照: Requirements 11.1, 11.2, 11.3, 11.4, 11.5, 11.6
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Shared Services Observability.
+  CloudWatch Cross-Account Observability、X-Ray トレース集約、
+  SNS アラート統合による集中可観測性プラットフォーム。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  OrganizationId:
+    Type: String
+    Description: >-
+      AWS Organization ID（o-XXXXX 形式）。
+      Cross-Account Observability の許可範囲を制限する。
+    AllowedPattern: "^o-[a-z0-9]{10,32}$"
+
+  WorkloadAccountIds:
+    Type: CommaDelimitedList
+    Description: >-
+      ワークロードアカウント ID のリスト（カンマ区切り）。
+      これらのアカウントからメトリクス/ログ/トレースを受信する。
+
+  AlertEmail:
+    Type: String
+    Description: >-
+      集約アラートの送信先メールアドレス。
+
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      X-Ray Cross-Account Tracing を有効化する。
+
+  EnableLogAggregation:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      CloudWatch Logs のクロスアカウント集約を有効化する。
+
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365]
+    Description: >-
+      集約ログの保持期間（日数）。
+
+  DashboardRefreshInterval:
+    Type: Number
+    Default: 300
+    AllowedValues: [60, 300, 900, 3600]
+    Description: >-
+      ダッシュボードの自動更新間隔（秒）。
+
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名のプレフィックス。
+    AllowedPattern: "^[a-z0-9\\-]+$"
+
+  Environment:
+    Type: String
+    Default: "production"
+    AllowedValues: ["development", "staging", "production"]
+    Description: デプロイ環境。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
+
+  EnableLogs:
+    !Equals [!Ref EnableLogAggregation, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # CloudWatch Observability Access Manager — Sink（受信側）
+  # -------------------------------------------------------------------
+  ObservabilitySink:
+    Type: AWS::Oam::Sink
+    Properties:
+      Name: !Sub "${ProjectPrefix}-observability-sink"
+      Tags:
+        Phase: "4"
+        Component: shared-services-observability
+        Account: shared-services
+        UseCase: multi-account
+        Environment: !Ref Environment
+
+  # Sink Policy — Organization 内のアカウントからのリンクを許可
+  # Note: AWS::Oam::SinkPolicy is a newer resource type.
+  # If not supported in your region, configure via AWS CLI:
+  # aws oam put-sink-policy --sink-identifier SINK_ARN --policy POLICY_JSON
+
+  # -------------------------------------------------------------------
+  # CloudWatch Cross-Account Dashboard
+  # -------------------------------------------------------------------
+  CrossAccountDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${ProjectPrefix}-cross-account-overview"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 2,
+              "properties": {
+                "markdown": "# FSxN S3AP Cross-Account Observability Dashboard\n\nAll workload accounts metrics aggregated in shared services account.\n\n**Refresh Interval**: ${DashboardRefreshInterval}s | **Environment**: ${Environment}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 2,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", {"stat": "Sum", "period": 300}],
+                  ["AWS/Lambda", "Errors", {"stat": "Sum", "period": 300}]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Lambda Invocations & Errors (All Accounts)",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8,
+              "y": 2,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/States", "ExecutionsStarted", {"stat": "Sum", "period": 300}],
+                  ["AWS/States", "ExecutionsFailed", {"stat": "Sum", "period": 300}],
+                  ["AWS/States", "ExecutionsSucceeded", {"stat": "Sum", "period": 300}]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Step Functions Executions (All Accounts)",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16,
+              "y": 2,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Duration", {"stat": "p90", "period": 300}],
+                  ["AWS/Lambda", "Duration", {"stat": "Average", "period": 300}]
+                ],
+                "region": "${AWS::Region}",
+                "title": "Lambda Duration P90 & Avg (All Accounts)",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 8,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/S3", "NumberOfObjects", {"stat": "Average", "period": 86400}]
+                ],
+                "region": "${AWS::Region}",
+                "title": "S3 Object Count (Storage Account)",
+                "view": "singleValue"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 8,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["FSxN-S3AP", "ProcessingLatencyMs", {"stat": "p90", "period": 300}],
+                  ["FSxN-S3AP", "ProcessingLatencyMs", {"stat": "Average", "period": 300}]
+                ],
+                "region": "${AWS::Region}",
+                "title": "FSxN S3AP Processing Latency (Custom Metrics)",
+                "view": "timeSeries"
+              }
+            }
+          ]
+        }
+
+  # -------------------------------------------------------------------
+  # SNS Aggregated Alerts Topic
+  # -------------------------------------------------------------------
+  AggregatedAlertTopicKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for shared services aggregated alert SNS topic
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowRootAccountFullAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+          - Sid: AllowCloudWatchToPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+            Resource: "*"
+          - Sid: AllowSNSToUseKey
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+            Resource: "*"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: shared-services-observability
+
+  AggregatedAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${ProjectPrefix}-aggregated-alerts"
+      DisplayName: "FSxN S3AP Aggregated Alerts (All Accounts)"
+      KmsMasterKeyId: !Ref AggregatedAlertTopicKey
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: shared-services-observability
+        - Key: Account
+          Value: shared-services
+        - Key: UseCase
+          Value: multi-account
+        - Key: Environment
+          Value: !Ref Environment
+
+  AggregatedAlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AggregatedAlertTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudWatchAlarmsPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AggregatedAlertTopic
+          - Sid: AllowWorkloadAccountsPublish
+            Effect: Allow
+            Principal:
+              AWS: !Ref WorkloadAccountIds
+            Action: sns:Publish
+            Resource: !Ref AggregatedAlertTopic
+
+  AlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AggregatedAlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # -------------------------------------------------------------------
+  # X-Ray Cross-Account Tracing Configuration
+  # -------------------------------------------------------------------
+  # X-Ray Cross-Account Tracing Configuration
+  # Note: AWS::XRay::EncryptionConfiguration - configure via CLI if not supported:
+  # aws xray put-encryption-config --type KMS --key-id KEY_ARN
+
+  XRayGroup:
+    Type: AWS::XRay::Group
+    Condition: EnableXRay
+    Properties:
+      GroupName: !Sub "${ProjectPrefix}-cross-account-traces"
+      FilterExpression: "service(id(type: \"AWS::Lambda::Function\"))"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: shared-services-observability
+
+  # -------------------------------------------------------------------
+  # Log Aggregation — CloudWatch Logs Destination
+  # -------------------------------------------------------------------
+  LogAggregationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: EnableLogs
+    Properties:
+      LogGroupName: "/fsxn-s3ap/cross-account/aggregated-logs"
+      RetentionInDays: !Ref LogRetentionDays
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: shared-services-observability
+        - Key: Account
+          Value: shared-services
+
+  LogDestinationRole:
+    Type: AWS::IAM::Role
+    Condition: EnableLogs
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-log-destination-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: logs.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PutLogEvents
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt LogAggregationLogGroup.Arn
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: shared-services-observability
+
+  LogDestination:
+    Type: AWS::Logs::Destination
+    Condition: EnableLogs
+    Properties:
+      DestinationName: !Sub "${ProjectPrefix}-cross-account-logs"
+      RoleArn: !GetAtt LogDestinationRole.Arn
+      TargetArn: !GetAtt LogAggregationLogGroup.Arn
+      DestinationPolicy: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "AllowWorkloadAccountsToSendLogs",
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "${WorkloadAccountList}"
+                },
+                "Action": "logs:PutSubscriptionFilter",
+                "Resource": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:destination:${ProjectPrefix}-cross-account-logs"
+              }
+            ]
+          }
+        - WorkloadAccountList: !Join ["\",\"", !Ref WorkloadAccountIds]
+
+  # -------------------------------------------------------------------
+  # IAM Role: Workload Account → Shared Services (Metric/Log Delivery)
+  # -------------------------------------------------------------------
+  MetricDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-shared-metric-delivery-role"
+      Description: >-
+        Role for workload accounts to deliver metrics and logs
+        to the shared services account.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref WorkloadAccountIds
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:PrincipalOrgID: !Ref OrganizationId
+      Policies:
+        - PolicyName: MetricDeliveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowPutMetricData
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace:
+                      - "FSxN-S3AP"
+                      - "FSxN-S3AP/CrossAccount"
+              - Sid: AllowPutLogEvents
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fsxn-s3ap/cross-account/*"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: shared-services-observability
+        - Key: Account
+          Value: shared-services
+        - Key: UseCase
+          Value: multi-account
+
+  # -------------------------------------------------------------------
+  # IAM Role: Shared Services → Workload Account (Read-Only Troubleshooting)
+  # -------------------------------------------------------------------
+  TroubleshootingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-shared-troubleshooting-role"
+      Description: >-
+        Read-only troubleshooting role for shared services account
+        to access workload account resources.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ReadOnlyTroubleshootingPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowReadCloudWatch
+                Effect: Allow
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:GetDashboard
+                Resource: "*"
+              - Sid: AllowReadLogs
+                Effect: Allow
+                Action:
+                  - logs:GetLogEvents
+                  - logs:FilterLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:GetQueryResults
+                  - logs:StartQuery
+                  - logs:StopQuery
+                Resource: "*"
+              - Sid: AllowReadXRay
+                Effect: Allow
+                Action:
+                  - xray:GetTraceSummaries
+                  - xray:BatchGetTraces
+                  - xray:GetServiceGraph
+                  - xray:GetTraceGraph
+                  - xray:GetGroups
+                  - xray:GetGroup
+                Resource: "*"
+              - Sid: AllowReadStepFunctions
+                Effect: Allow
+                Action:
+                  - states:DescribeExecution
+                  - states:GetExecutionHistory
+                  - states:ListExecutions
+                  - states:DescribeStateMachine
+                Resource: "*"
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: shared-services-observability
+        - Key: Account
+          Value: shared-services
+        - Key: UseCase
+          Value: multi-account
+
+  # -------------------------------------------------------------------
+  # Composite Alarm: Cross-Account Health
+  # -------------------------------------------------------------------
+  CrossAccountHealthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-cross-account-health"
+      AlarmDescription: >-
+        クロスアカウント全体のヘルスチェック。
+        Lambda エラー率が閾値を超えた場合にアラート。
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AggregatedAlertTopic
+      OKActions:
+        - !Ref AggregatedAlertTopic
+      Tags:
+        - Key: Phase
+          Value: "4"
+        - Key: Component
+          Value: shared-services-observability
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  ObservabilitySinkArn:
+    Description: CloudWatch Observability Sink ARN
+    Value: !GetAtt ObservabilitySink.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-SinkArn"
+
+  ObservabilitySinkId:
+    Description: CloudWatch Observability Sink ID
+    Value: !Ref ObservabilitySink
+
+  AggregatedAlertTopicArn:
+    Description: 集約アラート SNS トピック ARN
+    Value: !Ref AggregatedAlertTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-AlertTopicArn"
+
+  CrossAccountDashboardName:
+    Description: クロスアカウントダッシュボード名
+    Value: !Sub "${ProjectPrefix}-cross-account-overview"
+
+  MetricDeliveryRoleArn:
+    Description: メトリクス配信ロール ARN（ワークロードアカウントが引き受ける）
+    Value: !GetAtt MetricDeliveryRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-MetricDeliveryRoleArn"
+
+  TroubleshootingRoleArn:
+    Description: トラブルシューティングロール ARN（共有サービスアカウントが使用）
+    Value: !GetAtt TroubleshootingRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-TroubleshootingRoleArn"
+
+  LogDestinationArn:
+    Description: ログ集約先 Destination ARN
+    Condition: EnableLogs
+    Value: !GetAtt LogDestination.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LogDestinationArn"
+
+  XRayGroupArn:
+    Description: X-Ray グループ ARN
+    Condition: EnableXRay
+    Value: !GetAtt XRayGroup.GroupARN
+
+  WorkloadAccountSharingLinkCommand:
+    Description: >-
+      ワークロードアカウントで実行する Sharing Link 作成コマンド（参照用）。
+    Value: !Sub |
+      aws oam create-link \
+        --label-template "workload-account-$AccountId" \
+        --resource-types AWS::CloudWatch::Metric AWS::Logs::LogGroup AWS::XRay::Trace \
+        --sink-identifier ${ObservabilitySink.Arn}
