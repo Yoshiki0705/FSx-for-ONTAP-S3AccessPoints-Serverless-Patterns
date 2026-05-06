@@ -200,7 +200,7 @@ ScalingPolicy:
 
 ### Inference Comparison Lambda
 
-The Inference Comparison Lambda runs every 5 minutes, aggregating per-variant metrics and emitting CloudWatch EMF metrics. The following is simplified pseudo-code. In production, collect invocation and error metrics from CloudWatch metrics such as `Invocations`, `Invocation4XXErrors`, `Invocation5XXErrors`, and `ModelLatency`:
+The Inference Comparison Lambda runs every 5 minutes, aggregating per-variant metrics and emitting CloudWatch EMF metrics. The following is simplified pseudo-code. Invocation and error counts are collected separately from CloudWatch metrics such as `Invocations`, `Invocation4XXErrors`, and `Invocation5XXErrors`:
 
 ```python
 # Simplified pseudo-code — in production, select the latest datapoint
@@ -302,8 +302,9 @@ For FSx for ONTAP S3 Access Points, cross-account access is modeled with **S3 Ac
 2. **S3 Access Point policy** allowing the storage-account access role (not the workload account role directly)
 3. **Workload Lambda execution role** with `sts:AssumeRole` permission to assume the storage-account role
 
+S3 Access Point policy (storage account) — the Principal is the storage-account role that workload accounts assume:
+
 ```json
-// S3 Access Point policy (storage account) — Principal is the storage-account role
 {
   "Statement": [{
     "Effect": "Allow",
@@ -317,10 +318,9 @@ For FSx for ONTAP S3 Access Points, cross-account access is modeled with **S3 Ac
 }
 ```
 
-The storage-account role's trust policy allows the workload account to assume it with External ID:
+Trust policy on `fsxn-s3ap-storage-access-role` (storage account) — allows the workload account's specific Lambda role to assume it with External ID:
 
 ```json
-// Trust policy on fsxn-s3ap-storage-access-role (storage account)
 {
   "Statement": [{
     "Effect": "Allow",
