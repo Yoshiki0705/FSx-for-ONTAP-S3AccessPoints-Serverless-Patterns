@@ -3,7 +3,7 @@ title: "Near-Real-Time Processing, ML Inference, and Observability for FSx for O
 published: false
 description: "Phase 3 adds near-real-time Kinesis processing, SageMaker Batch Transform with Step Functions Callback Pattern, and X-Ray/CloudWatch EMF observability across 14 FSx for ONTAP S3 Access Point patterns."
 tags: aws, serverless, netapp, python
-cover_image: https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/phase3-step-functions-uc11-succeeded.png
+cover_image: https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase3-step-functions-uc11-succeeded.png
 series: "FSx for ONTAP S3 Access Points"
 ---
 
