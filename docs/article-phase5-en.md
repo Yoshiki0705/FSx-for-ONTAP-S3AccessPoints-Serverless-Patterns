@@ -351,15 +351,15 @@ Phase 5 introduces 15 correctness properties:
 | 6 | Cost Reduction Guarantee | off_hours_max ≤ business_min |
 | 7 | Billing Alarm Threshold Ordering | warning < critical < emergency |
 | 8 | Auto-Stop Tag Protection | DoNotAutoStop=true → never stopped |
-| 9 | Non-Destructive Stop Guarantee | In production, action is "scale to minimum" or "disable scheduling", never "delete" |
+| 9 | Non-Destructive Cost Action Guarantee | In production, action is "scale to minimum" or "disable scheduling", never "delete" |
 | 10 | CI Strict Gating | Any "fail" → pipeline "failure" |
 | 11 | Deployment Stage Ordering | staging success required for production |
 | 12 | No Admin Access in IAM Policies | Action:* + Resource:* → violation |
-
-> Property Test #12 focuses on the highest-risk wildcard pattern (`Action: "*"` combined with `Resource: "*"`). Additional organization-specific cfn-guard rules can extend detection to privileged service-level wildcards (e.g., `iam:*`) or managed policy attachments like `AdministratorAccess`.
 | 13 | Cross-Region Failover Ordering | Primary first, Secondary only on failure |
 | 14 | Multi-Region Resource Isolation | No resource name collisions |
 | 15 | Active-Passive Guarantee | Secondary inactive when Primary healthy |
+
+> Property Test #12 focuses on the highest-risk wildcard pattern (`Action: "*"` combined with `Resource: "*"`). Additional organization-specific cfn-guard rules can extend detection to privileged service-level wildcards (e.g., `iam:*`) or managed policy attachments like `AdministratorAccess`.
 
 ---
 
@@ -375,6 +375,8 @@ Phase 5 introduces 15 correctness properties:
 | CI/CD Pipeline | N/A | $0 (GitHub Actions free tier for public repos; varies for private repos or larger runners) |
 | DynamoDB Global Tables | Disabled | ~$0–5 (PAY_PER_REQUEST) |
 | Multi-Region (full) | Disabled | +30–100% of base cost |
+
+> Actual multi-region cost depends on replica count, replicated write volume, standby compute, and observability retention.
 
 ---
 
@@ -460,7 +462,7 @@ Phase 5 transforms the FSxN S3AP Serverless Patterns into a production-ready, co
 - **Serverless Inference** completes the inference routing trifecta, giving operators the right tool for every traffic pattern
 - **Cost Optimization Suite** provides automated controls that can reduce SageMaker costs by up to 70%
 - **CI/CD Pipeline** enables team collaboration with automated quality gates and safe deployments
-- **Multi-Region Architecture** provides resilience patterns from simple backup (Tier 3) to zero-RPO active-active (Tier 1)
+- **Multi-Region Architecture** provides resilience patterns from simple backup (Tier 3) to near-zero-RPO active-active targets (Tier 1)
 
 All features remain opt-in, maintaining the project's core principle: **learn from the design decisions without paying for resources you don't need**.
 
