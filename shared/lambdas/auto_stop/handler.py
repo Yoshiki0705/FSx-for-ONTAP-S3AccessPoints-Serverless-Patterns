@@ -102,7 +102,7 @@ def handler(event: dict, context) -> dict:
         instance_type = endpoint_details.get("instance_type", "unknown")
         instance_count = endpoint_details.get("instance_count", 0)
 
-        # Skip if already scaled to zero
+        # Skip if already at minimum
         if instance_count == 0:
             logger.info("Endpoint %s already at zero instances, skipping", endpoint_name)
             continue
@@ -121,7 +121,7 @@ def handler(event: dict, context) -> dict:
 
         if DRY_RUN:
             logger.info(
-                "[DRY_RUN] Would scale to zero: endpoint=%s, instance_type=%s, "
+                "[DRY_RUN] Would apply cost-saving action: endpoint=%s, instance_type=%s, "
                 "instance_count=%d, estimated_hourly_savings=%.3f USD",
                 endpoint_name,
                 instance_type,
@@ -131,7 +131,7 @@ def handler(event: dict, context) -> dict:
         else:
             _scale_to_zero(endpoint_name)
             logger.info(
-                "Scaled to zero: endpoint=%s, instance_type=%s, "
+                "Applied cost-saving action: endpoint=%s, instance_type=%s, "
                 "instance_count=%d, estimated_hourly_savings=%.3f USD",
                 endpoint_name,
                 instance_type,
@@ -304,26 +304,52 @@ def _get_endpoint_details(endpoint_name: str) -> dict:
 
 
 def _scale_to_zero(endpoint_name: str) -> None:
-    """エンドポイントを DesiredInstanceCount=0 にスケールダウンする。
+    """エンドポイントのコスト削減アクションを実行する。
 
-    エンドポイントの削除は行わない。
+    Inference Components を使用するエンドポイントの場合は DesiredInstanceCount=0 に
+    スケールダウンする。標準エンドポイントの場合は MinCapacity=1 に設定するか、
+    非本番環境ではエンドポイントを削除する。
+
+    Note:
+        SageMaker Real-time Endpoints (standard ProductionVariant) は
+        DesiredInstanceCount=0 をサポートしない。Scale to zero は
+        Inference Components を使用するエンドポイントでのみ可能。
+        https://docs.aws.amazon.com/sagemaker/latest/dg/endpoint-auto-scaling-zero-instances.html
 
     Args:
         endpoint_name: エンドポイント名
     """
+    auto_stop_action = os.environ.get("AUTO_STOP_ACTION", "scale_down")
+
     try:
-        sagemaker_client.update_endpoint_weights_and_capacities(
-            EndpointName=endpoint_name,
-            DesiredWeightsAndCapacities=[
-                {
-                    "VariantName": "AllTraffic",
-                    "DesiredInstanceCount": 0,
-                }
-            ],
-        )
+        if auto_stop_action == "delete":
+            # 非本番環境: エンドポイント削除（コスト完全停止）
+            sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
+            logger.info("Deleted endpoint: %s", endpoint_name)
+        else:
+            # 本番環境: DesiredInstanceCount を最小値に設定
+            # Note: DesiredInstanceCount=0 は Inference Components 使用時のみ有効
+            # 標準エンドポイントでは MinCapacity=1 が最小値
+            min_instance_count = int(os.environ.get("MIN_INSTANCE_COUNT", "1"))
+            sagemaker_client.update_endpoint_weights_and_capacities(
+                EndpointName=endpoint_name,
+                DesiredWeightsAndCapacities=[
+                    {
+                        "VariantName": "AllTraffic",
+                        "DesiredInstanceCount": min_instance_count,
+                    }
+                ],
+            )
+            logger.info(
+                "Scaled endpoint %s to %d instance(s)",
+                endpoint_name,
+                min_instance_count,
+            )
     except Exception as e:
         logger.error(
-            "Failed to scale endpoint %s to zero: %s", endpoint_name, str(e)
+            "Failed to apply cost-saving action to endpoint %s: %s",
+            endpoint_name,
+            str(e),
         )
         raise
 

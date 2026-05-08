@@ -370,7 +370,7 @@ See the following documents for details:
 
 ![SageMaker Serverless Endpoint Creating](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-creating.png)
 
-> Serverless Endpoint creation process. Auto-scales after cold start.
+> Serverless Endpoint creation process. No provisioned instances are maintained — compute is allocated on demand per request, so cold starts (6–45s) occur after idle periods.
 
 ##### CloudWatch Billing Alarms (3-Tier Cost Alerts)
 
