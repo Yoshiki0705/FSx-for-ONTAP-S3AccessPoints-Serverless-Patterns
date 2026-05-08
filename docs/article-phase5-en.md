@@ -3,7 +3,7 @@ title: "Serverless Inference, Cost Optimization, CI/CD Pipelines, and Multi-Regi
 published: false
 description: "Phase 5 adds SageMaker Serverless Inference as a 3rd routing option, comprehensive cost optimization with Scheduled Scaling and Auto-Stop, GitHub Actions CI/CD pipelines, and Multi-Region architecture with DynamoDB Global Tables and DR Tier definitions."
 tags: aws, serverless, netapp, python
-cover_image: https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase5-architecture-overview.png
+cover_image: https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png
 series: "FSx for ONTAP S3 Access Points"
 ---
 
@@ -383,12 +383,54 @@ Overly broad cfn-guard rules can block legitimate configurations. For example, a
 
 ---
 
+## Screenshots
+
+All screenshots are from the ap-northeast-1 (Tokyo) verification environment. Account IDs and environment-specific information have been masked.
+
+### SageMaker Serverless Inference Endpoint
+
+![SageMaker Serverless Endpoint Settings](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+
+> Serverless Inference Endpoint settings: Memory 4096 MB, Max Concurrency 5. No provisioned instances — compute allocated on-demand per request.
+
+![SageMaker Serverless Endpoint Config](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-config.png)
+
+> Endpoint Configuration detail showing the ServerlessConfig parameters. This is the third routing option alongside Batch Transform and Real-time Endpoint.
+
+![SageMaker Serverless Endpoint Creating](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-creating.png)
+
+> Endpoint creation in progress. After initial creation, the endpoint scales to zero when idle and cold-starts on the first request (6–45 seconds observed).
+
+### CloudWatch Billing Alarms (3-Tier)
+
+![CloudWatch Billing Alarms](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+
+> Three-tier billing alarms: Warning ($100), Critical ($200), Emergency ($500). Each tier triggers SNS notification with escalating urgency. All alarms in OK state during verification.
+
+### DynamoDB Global Table (Multi-Region)
+
+![DynamoDB Global Table](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase5-dynamodb-global-table.png)
+
+> DynamoDB Global Table configuration for the Task Token Store. Multi-Region replication enabled between ap-northeast-1 and us-east-1.
+
+![DynamoDB Global Replicas](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+
+> Global Table replica status showing active replication across regions. TTL propagation and PITR enabled on all replicas.
+
+---
+
 ## What's Next
 
 - **FSx ONTAP S3 AP native events**: When available, migrate from polling to event-driven with the Phase 4 prototype as the blueprint
 - **SageMaker Inference Components**: Explore hosting multiple models on a single endpoint for further cost optimization
 - **AWS CDK migration**: Consider migrating from raw CloudFormation to CDK for better abstraction and testing
 - **Observability enhancement**: Add distributed tracing across regions with X-Ray cross-region service maps
+
+---
+
+## Impact Assessment
+
+All Phase 5 features are opt-in and disabled by default. For a comprehensive evaluation of the impact on existing environments when enabling features across all phases (1–5), including safe enablement order, rollback procedures, and cost impact summary, see the [Existing Environment Impact Assessment Guide](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/impact-assessment-en.md).
 
 ---
 
