@@ -9,7 +9,7 @@ series: "FSx for ONTAP S3 Access Points"
 
 ## TL;DR
 
-This is **Phase 5** of the FSx for ONTAP S3 Access Points serverless patterns collection. Building on the [Phase 1 foundation](https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili), the [14 industry patterns from Phase 2](https://dev.to/yoshikifujiwara/9-more-industry-serverless-patterns-with-fsx-for-ontap-s3-access-points-semiconductor-genomics-15e4), the [near-real-time + ML + observability stack from Phase 3](https://dev.to/yoshikifujiwara/near-real-time-processing-ml-inference-and-observability-for-fsx-for-ontap-s3-access-points--bkd), and the [production SageMaker + Multi-Account + Event-Driven from Phase 4](https://dev.to/yoshikifujiwara/production-sagemaker-patterns-multi-account-deployment-and-event-driven-architecture-for-fsx-for-ontap-s3-access-points-phase-4), Phase 5 delivers:
+This is **Phase 5** of the FSx for ONTAP S3 Access Points serverless patterns collection. Building on the [Phase 1 foundation](https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili), the [14 industry patterns from Phase 2](https://dev.to/yoshikifujiwara/9-more-industry-serverless-patterns-with-fsx-for-ontap-s3-access-points-semiconductor-genomics-15e4), the [near-real-time + ML + observability stack from Phase 3](https://dev.to/yoshikifujiwara/near-real-time-processing-ml-inference-and-observability-for-fsx-for-ontap-s3-access-points--bkd), and the [production SageMaker + Multi-Account + Event-Driven from Phase 4](https://dev.to/yoshikifujiwara/production-sagemaker-patterns-multi-account-deployment-and-event-driven-architecture-for-fsx-for-2eb2), Phase 5 delivers:
 
 - **SageMaker Serverless Inference**: 3rd routing option completing the Batch/Real-time/Serverless trifecta with cold start handling and automatic fallback
 - **Cost Optimization Suite**: Scheduled Scaling, CloudWatch Billing Alarms (3-tier), Auto-Stop Lambda for idle endpoint detection, and a comprehensive cross-phase cost guide
@@ -136,7 +136,7 @@ ScaleDownAction:
       MaxCapacity: !Ref OffHoursMaxCapacity
 ```
 
-**Cost impact**: Weekday 9–18 only = 58% reduction. Add weekend shutdown = 70% reduction.
+**Cost impact**: Up to ~70% reduction when off-hours capacity can be reduced to zero (Inference Components) or endpoints are deleted in non-production. For standard Real-time Endpoints with `MinCapacity=1`, savings depend on the business-hours vs. off-hours capacity delta (e.g., scaling from 4 instances to 1 during off-hours = 75% off-hours savings).
 
 Property Test #5 validates that `business_hours_start < business_hours_end` is enforced, and Property Test #6 validates that `off_hours_max_capacity <= business_min_capacity` (guaranteeing cost reduction).
 
@@ -470,4 +470,4 @@ All features remain opt-in, maintaining the project's core principle: **learn fr
 
 ---
 
-*This article is part of the "FSx for ONTAP S3 Access Points" series. See [Phase 1](https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili), [Phase 2](https://dev.to/yoshikifujiwara/9-more-industry-serverless-patterns-with-fsx-for-ontap-s3-access-points-semiconductor-genomics-15e4), [Phase 3](https://dev.to/yoshikifujiwara/near-real-time-processing-ml-inference-and-observability-for-fsx-for-ontap-s3-access-points--bkd), and [Phase 4](https://dev.to/yoshikifujiwara/production-sagemaker-patterns-multi-account-deployment-and-event-driven-architecture-for-fsx-for-ontap-s3-access-points-phase-4) for the foundation.*
+*This article is part of the "FSx for ONTAP S3 Access Points" series. See [Phase 1](https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili), [Phase 2](https://dev.to/yoshikifujiwara/9-more-industry-serverless-patterns-with-fsx-for-ontap-s3-access-points-semiconductor-genomics-15e4), [Phase 3](https://dev.to/yoshikifujiwara/near-real-time-processing-ml-inference-and-observability-for-fsx-for-ontap-s3-access-points--bkd), and [Phase 4](https://dev.to/yoshikifujiwara/production-sagemaker-patterns-multi-account-deployment-and-event-driven-architecture-for-fsx-for-2eb2) for the foundation.*
