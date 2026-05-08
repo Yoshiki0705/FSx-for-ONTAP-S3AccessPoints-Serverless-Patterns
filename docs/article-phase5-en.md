@@ -44,7 +44,7 @@ Phase 5 addresses all four while maintaining the project's core principle: **eve
 | Billing Alarms | 3-tier alerts | CloudWatch, SNS | Warning/Critical/Emergency |
 | Auto-Stop | Idle detection | Lambda, CloudWatch Metrics | 60-min idle threshold |
 | CI/CD Pipeline | 4-stage gating | GitHub Actions, OIDC | All stages must pass |
-| Multi-Region | Global Tables + failover | DynamoDB Global Tables, Route 53 | RPO=0 (Tier 1) |
+| Multi-Region | Global Tables + failover | DynamoDB Global Tables, Route 53 | RPO near-zero (Tier 1) |
 | Disaster Recovery | Tier 1/2/3 | Route 53, EventBridge, Step Functions | RTO: 5min–4h |
 
 ---
@@ -120,7 +120,8 @@ The most impactful cost optimization for SageMaker Endpoints is time-based scali
 ScaleUpAction:
   Type: AWS::ApplicationAutoScaling::ScheduledAction
   Properties:
-    Schedule: "cron(0 9 ? * MON-FRI *)"  # 09:00 JST weekdays
+    Schedule: "cron(0 9 ? * MON-FRI *)"
+    Timezone: "Asia/Tokyo"
     ScalableTargetAction:
       MinCapacity: !Ref BusinessMinCapacity
       MaxCapacity: !Ref BusinessMaxCapacity
@@ -128,7 +129,8 @@ ScaleUpAction:
 ScaleDownAction:
   Type: AWS::ApplicationAutoScaling::ScheduledAction
   Properties:
-    Schedule: "cron(0 18 ? * MON-FRI *)"  # 18:00 JST weekdays
+    Schedule: "cron(0 18 ? * MON-FRI *)"
+    Timezone: "Asia/Tokyo"
     ScalableTargetAction:
       MinCapacity: !Ref OffHoursMinCapacity
       MaxCapacity: !Ref OffHoursMaxCapacity
@@ -149,6 +151,8 @@ CriticalAlarm:   # Monthly spend > $200 → email + escalation
 EmergencyAlarm:  # Monthly spend > $500 → immediate action required
 ```
 
+> **Region requirement**: AWS billing metrics (`AWS/Billing` namespace) are published only in US East (N. Virginia) / `us-east-1`. Deploy billing alarm stacks in `us-east-1` regardless of where your workloads run. See [AWS documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/monitor_estimated_charges_with_cloudwatch.html).
+
 Property Test #7 validates the invariant: `warning < critical < emergency`.
 
 ### Auto-Stop Lambda
@@ -161,13 +165,22 @@ for endpoint in list_endpoints(project_prefix):
     if has_tag(endpoint, "DoNotAutoStop", "true"):
         continue  # Protected endpoint
     if get_invocations_last_n_minutes(endpoint, idle_threshold) == 0:
-        scale_to_zero(endpoint)  # Non-destructive: scale down, don't delete
+        apply_cost_saving_action(endpoint)
         emit_metric("EndpointsStoppedCount", 1)
 ```
 
+The Auto-Stop Lambda detects idle endpoints and applies the configured cost-saving action. Depending on the endpoint type and organizational policy, the action can be:
+
+- **Scale down to minimum supported capacity** (for endpoints with Inference Components that support `MinInstanceCount=0`)
+- **Disable scheduled capacity** (revert to off-hours minimum)
+- **Delete the endpoint** in non-production environments (configurable via `AUTO_STOP_ACTION` environment variable)
+
+> **Important**: SageMaker Real-time Endpoints (standard ProductionVariant-based) do not support scaling to zero instances. Only endpoints hosting [Inference Components](https://docs.aws.amazon.com/sagemaker/latest/dg/endpoint-auto-scaling-zero-instances.html) with `ManagedInstanceScaling.MinInstanceCount=0` can scale in to zero. For standard endpoints, the Auto-Stop action defaults to deleting the endpoint in non-production environments or reducing to `MinCapacity=1`.
+
 Key design decisions:
-- **Non-destructive**: Scale to zero, never delete (Property Test #9)
-- **Tag protection**: `DoNotAutoStop=true` prevents stopping (Property Test #8)
+- **Configurable action**: Scale down, disable scheduling, or delete (based on environment)
+- **Tag protection**: `DoNotAutoStop=true` prevents any action (Property Test #8)
+- **Non-destructive default**: In production, never deletes — only adjusts capacity (Property Test #9)
 - **DRY_RUN mode**: Log-only mode for safe testing
 - **EMF metrics**: `EstimatedSavingsPerHour` for cost visibility
 
@@ -260,7 +273,9 @@ Key properties:
 - **Version 2019.11.21**: Latest Global Tables version
 - **PAY_PER_REQUEST**: No capacity planning needed
 - **TTL propagation**: Automatic across all replicas
-- **Strong consistency**: Within-region writes; eventual consistency for cross-region reads
+- **Consistency**: Multi-Region Eventual Consistency (MREC) by default — writes replicate typically within one second, but cross-region reads may return stale data
+
+> **Important**: Step Functions task tokens are tied to the regional execution that generated them. Global Tables replicate the token metadata for availability, but failover logic must still call back to the correct execution region, or start a secondary workflow execution during regional failover. The token record includes `execution_region` and `state_machine_arn` attributes to avoid cross-region callback ambiguity.
 
 ### CrossRegionClient Failover
 
@@ -282,9 +297,11 @@ Property Test #13 validates: Primary region is always tried first, and Secondary
 
 | Tier | RPO | RTO | Strategy | Monthly Cost Premium |
 |------|-----|-----|----------|---------------------|
-| Tier 1 | 0 | < 5 min | Active-Active (Global Tables + dual SF) | +100% |
+| Tier 1 | Near-zero (typically < 1s) | < 5 min | Active-Active (Global Tables + dual SF) | +100% |
 | Tier 2 | < 1 hour | < 30 min | Warm Standby (Global Tables + standby Lambda) | +30–50% |
 | Tier 3 | < 24 hours | < 4 hours | Backup & Restore (S3 cross-region + manual) | +5–10% |
+
+> **Note**: Actual RPO for Tier 1 depends on DynamoDB Global Tables cross-region replication lag (typically under 1 second with MREC) and workload-specific write ordering requirements. For strict RPO=0, consider Multi-Region Strong Consistency (MRSC) mode, which synchronously replicates writes to at least one other region before returning success.
 
 ### Active-Passive Guarantee
 
@@ -334,10 +351,12 @@ Phase 5 introduces 15 correctness properties:
 | 6 | Cost Reduction Guarantee | off_hours_max ≤ business_min |
 | 7 | Billing Alarm Threshold Ordering | warning < critical < emergency |
 | 8 | Auto-Stop Tag Protection | DoNotAutoStop=true → never stopped |
-| 9 | Non-Destructive Stop Guarantee | Action is always "scale to zero", never "delete" |
+| 9 | Non-Destructive Stop Guarantee | In production, action is "scale to minimum" or "disable scheduling", never "delete" |
 | 10 | CI Strict Gating | Any "fail" → pipeline "failure" |
 | 11 | Deployment Stage Ordering | staging success required for production |
 | 12 | No Admin Access in IAM Policies | Action:* + Resource:* → violation |
+
+> Property Test #12 focuses on the highest-risk wildcard pattern (`Action: "*"` combined with `Resource: "*"`). Additional organization-specific cfn-guard rules can extend detection to privileged service-level wildcards (e.g., `iam:*`) or managed policy attachments like `AdministratorAccess`.
 | 13 | Cross-Region Failover Ordering | Primary first, Secondary only on failure |
 | 14 | Multi-Region Resource Isolation | No resource name collisions |
 | 15 | Active-Passive Guarantee | Secondary inactive when Primary healthy |
@@ -348,12 +367,12 @@ Phase 5 introduces 15 correctness properties:
 
 | Feature | Default | Monthly Cost (when enabled) |
 |---------|---------|---------------------------|
-| Serverless Inference (no PC) | Disabled | $1–300 (request-based) |
+| Serverless Inference (no PC) | Disabled | $1–300/month (depends on memory size, invocation count, and processing duration per request) |
 | Serverless Inference (PC=1) | Disabled | ~$50–160 (PC fixed cost) |
 | Scheduled Scaling | Disabled | $0 (Auto Scaling feature) |
 | Billing Alarms | Disabled | ~$0.30 (3 alarms) |
 | Auto-Stop Lambda | Disabled | ~$0 (hourly invocation) |
-| CI/CD Pipeline | N/A | $0 (GitHub Actions free tier) |
+| CI/CD Pipeline | N/A | $0 (GitHub Actions free tier for public repos; varies for private repos or larger runners) |
 | DynamoDB Global Tables | Disabled | ~$0–5 (PAY_PER_REQUEST) |
 | Multi-Region (full) | Disabled | +30–100% of base cost |
 
@@ -399,7 +418,7 @@ All screenshots are from the ap-northeast-1 (Tokyo) verification environment. Ac
 
 ![SageMaker Serverless Endpoint Creating](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-creating.png)
 
-> Endpoint creation in progress. After initial creation, the endpoint scales to zero when idle and cold-starts on the first request (6–45 seconds observed).
+> Endpoint creation in progress. No provisioned instances are maintained for standard Serverless Inference — compute is allocated on demand per request, which is why cold starts (6–45 seconds observed) can occur after idle periods.
 
 ### CloudWatch Billing Alarms (3-Tier)
 
