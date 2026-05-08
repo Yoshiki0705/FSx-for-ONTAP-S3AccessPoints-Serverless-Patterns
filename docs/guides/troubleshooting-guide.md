@@ -94,6 +94,39 @@ aws s3control get-access-point \
 
 > **参考**: S3 AP のネットワークオリジン制約については [README.md の互換性マトリックス](../../README.md) を参照してください。
 
+#### 原因 4: S3AccessPointName パラメータ未指定による ARN ベース権限不足
+
+> **UC6 デプロイ検証（2026-05-09）で発見された問題**
+
+**症状**: IAM ポリシーが S3 AP Alias ベースのみで構成され、ARN ベースの権限が不足している場合に `AccessDenied` が発生する。
+
+**確認方法**:
+
+```bash
+# Lambda 実行ロールのポリシーを確認
+aws iam get-role-policy \
+  --role-name <your-stack-name>-discovery-role \
+  --policy-name DiscoveryPolicy \
+  --region ap-northeast-1
+```
+
+ポリシーに `arn:aws:s3:<region>:<account-id>:accesspoint/<ap-name>` 形式のリソースが含まれていない場合、この問題に該当する。
+
+**対処法**: CloudFormation テンプレートの `S3AccessPointName` パラメータに S3 AP の名前（Alias ではなく作成時に指定した名前）を指定してスタックを更新する:
+
+```bash
+aws cloudformation deploy \
+  --template-file <uc>/template-deploy.yaml \
+  --stack-name <your-stack-name> \
+  --parameter-overrides \
+    S3AccessPointName=<your-s3ap-name> \
+    ... \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region ap-northeast-1
+```
+
+> **推奨**: 本番環境では常に `S3AccessPointName` を指定してください。Alias ベースのみの IAM ポリシーは一部の環境で `AccessDenied` を引き起こします。
+
 ---
 
 ## 2. VPC Endpoint 到達不能

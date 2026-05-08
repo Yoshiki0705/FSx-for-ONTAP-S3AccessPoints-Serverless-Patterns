@@ -68,6 +68,12 @@ docs/guides/deployment-lessons-learned.md
 # Remaining issues checklist (contains environment-specific values)
 docs/remaining-issues-checklist.md
 
+# Meeting prep / internal docs (contain personal names, meeting-specific info)
+**/docs/uc6-demo-script.md
+**/docs/message-to-giri.md
+**/docs/uc6-meeting-summary-ja.md
+**/docs/uc6-talk-script-en.md
+
 # Generated test data
 test-data/
 

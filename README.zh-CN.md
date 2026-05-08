@@ -523,6 +523,7 @@ aws cloudformation create-stack \
   --parameters \
     ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
     ParameterKey=S3AccessPointAlias,ParameterValue=<your-volume-ext-s3alias> \
+    ParameterKey=S3AccessPointName,ParameterValue=<your-s3ap-name> \
     ParameterKey=S3AccessPointOutputAlias,ParameterValue=<your-output-volume-ext-s3alias> \
     ParameterKey=OntapSecretName,ParameterValue=<your-ontap-secret-name> \
     ParameterKey=OntapManagementIp,ParameterValue=<your-ontap-management-ip> \

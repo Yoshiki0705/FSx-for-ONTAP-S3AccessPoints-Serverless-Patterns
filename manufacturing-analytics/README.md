@@ -86,6 +86,7 @@ aws cloudformation deploy \
   --stack-name fsxn-manufacturing-analytics \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
+    S3AccessPointName=<your-s3ap-name> \
     S3AccessPointOutputAlias=<your-output-volume-ext-s3alias> \
     OntapSecretName=<your-ontap-secret-name> \
     OntapManagementIp=<your-ontap-management-ip> \
@@ -107,11 +108,15 @@ aws cloudformation deploy \
 
 デプロイ後、指定したメールアドレスに SNS サブスクリプション確認メールが届きます。
 
+> **注意**: `S3AccessPointName` を省略すると、IAM ポリシーが Alias ベースのみとなり `AccessDenied` エラーが発生する場合があります。本番環境では指定を推奨します。詳細は [トラブルシューティングガイド](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー) を参照してください。
+
+
 ## 設定パラメータ一覧
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
 | `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |

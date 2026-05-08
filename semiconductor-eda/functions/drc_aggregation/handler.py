@@ -259,8 +259,8 @@ def handler(event, context):
     workgroup = os.environ["ATHENA_WORKGROUP"]
     output_bucket = os.environ["OUTPUT_BUCKET"]
 
-    metadata_prefix = event.get("metadata_prefix", "metadata/")
-    total_files = event.get("total_files", 0)
+    metadata_prefix = event.get("metadata_prefix", "")
+    total_files = event.get("total_objects", event.get("total_files", 0))
 
     # Glue テーブルの S3 ロケーション
     s3_location = f"s3://{output_bucket}/metadata/"

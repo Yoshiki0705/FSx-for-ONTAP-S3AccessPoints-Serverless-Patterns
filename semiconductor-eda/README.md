@@ -63,55 +63,197 @@ graph LR
 - FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム（GDS/OASIS ファイルを格納）
 - VPC、プライベートサブネット
+- **NAT Gateway または VPC Endpoints**（Discovery Lambda が VPC 内から AWS サービスにアクセスするために必要）
 - Amazon Bedrock モデルアクセスが有効（Claude / Nova）
+- ONTAP REST API 認証情報が Secrets Manager に格納済み
 
 ## デプロイ手順
 
-### 1. パラメータの準備
+### 1. S3 Access Point の作成
 
-| パラメータ | 説明 |
-|-----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） |
-| `VpcId` | VPC ID |
-| `PrivateSubnetIds` | プライベートサブネット ID リスト |
-| `NotificationEmail` | SNS 通知先メールアドレス |
+GDS/OASIS ファイルを格納するボリュームに S3 Access Point を作成します。
 
-### 2. CloudFormation デプロイ
+#### AWS CLI での作成
+
+```bash
+aws fsx create-and-attach-s3-access-point \
+  --name <your-s3ap-name> \
+  --type ONTAP \
+  --ontap-configuration '{
+    "VolumeId": "<your-volume-id>",
+    "FileSystemIdentity": {
+      "Type": "UNIX",
+      "UnixUser": {
+        "Name": "root"
+      }
+    }
+  }' \
+  --region <your-region>
+```
+
+作成後、レスポンスの `S3AccessPoint.Alias` を控えてください（`xxx-ext-s3alias` 形式）。
+
+#### AWS マネジメントコンソールでの作成
+
+1. [Amazon FSx コンソール](https://console.aws.amazon.com/fsx/) を開く
+2. 対象のファイルシステムを選択
+3. 「ボリューム」タブで対象ボリュームを選択
+4. 「S3 アクセスポイント」タブを選択
+5. 「S3 アクセスポイントの作成とアタッチ」をクリック
+6. アクセスポイント名を入力し、ファイルシステム ID タイプ（UNIX/WINDOWS）とユーザーを指定
+7. 「作成」をクリック
+
+> 詳細は [S3 Access Points for FSx for ONTAP の作成](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html) を参照してください。
+
+#### S3 AP の状態確認
+
+```bash
+aws fsx describe-s3-access-point-attachments --region <your-region> \
+  --query 'S3AccessPointAttachments[*].{Name:Name,Lifecycle:Lifecycle,Alias:S3AccessPoint.Alias}' \
+  --output table
+```
+
+`Lifecycle` が `AVAILABLE` になるまで待機してください（通常 1〜2 分）。
+
+### 2. サンプルファイルのアップロード（オプション）
+
+テスト用の GDS ファイルをボリュームにアップロードします:
+
+```bash
+S3AP_ALIAS="<your-s3ap-alias>"
+
+aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip.gds \
+  "s3://${S3AP_ALIAS}/eda-designs/test_chip.gds" --region <your-region>
+
+aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip_v2.gds2 \
+  "s3://${S3AP_ALIAS}/eda-designs/test_chip_v2.gds2" --region <your-region>
+```
+
+### 3. Lambda デプロイパッケージの作成
+
+`template-deploy.yaml` を使用する場合、Lambda 関数のコードを zip パッケージとして S3 にアップロードする必要があります。
+
+```bash
+# デプロイ用 S3 バケットの作成
+DEPLOY_BUCKET="<your-deploy-bucket-name>"
+aws s3 mb "s3://${DEPLOY_BUCKET}" --region <your-region>
+
+# 各 Lambda 関数をパッケージング
+for func in discovery metadata_extraction drc_aggregation report_generation; do
+  TMPDIR=$(mktemp -d)
+  cp semiconductor-eda/functions/${func}/handler.py "${TMPDIR}/"
+  cp -r shared "${TMPDIR}/shared"
+  (cd "${TMPDIR}" && zip -r "/tmp/semiconductor-eda-${func}.zip" . \
+    -x "*.pyc" "__pycache__/*" "shared/tests/*" "shared/cfn/*")
+  aws s3 cp "/tmp/semiconductor-eda-${func}.zip" \
+    "s3://${DEPLOY_BUCKET}/lambda/semiconductor-eda-${func}.zip" --region <your-region>
+  rm -rf "${TMPDIR}"
+done
+```
+
+### 4. CloudFormation デプロイ
 
 ```bash
 aws cloudformation deploy \
-  --template-file semiconductor-eda/template.yaml \
+  --template-file semiconductor-eda/template-deploy.yaml \
   --stack-name fsxn-semiconductor-eda \
   --parameter-overrides \
-    S3AccessPointAlias=<your-volume-ext-s3alias> \
+    DeployBucket=<your-deploy-bucket> \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    OntapSecretName=<your-secret-name> \
+    OntapManagementIp=<ontap-mgmt-ip> \
+    SvmUuid=<your-svm-uuid> \
     VpcId=<your-vpc-id> \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
-    ScheduleExpression="rate(1 hour)" \
+    PrivateRouteTableIds=<rtb-1>,<rtb-2> \
     NotificationEmail=<your-email@example.com> \
-    EnableVpcEndpoints=false \
-    EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --region ap-northeast-1
+    BedrockModelId=amazon.nova-lite-v1:0 \
+    EnableVpcEndpoints=true \
+    MapConcurrency=10 \
+    LambdaMemorySize=512 \
+    LambdaTimeout=300 \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region <your-region>
 ```
 
-### 3. SNS サブスクリプションの確認
+> **重要**: `S3AccessPointName` は S3 AP の名前（Alias ではなく作成時に指定した名前）です。IAM ポリシーで ARN ベースの権限付与に使用されます。省略すると `AccessDenied` エラーが発生する場合があります。
+
+### 5. SNS サブスクリプションの確認
 
 デプロイ後、指定したメールアドレスに確認メールが届きます。リンクをクリックして確認してください。
+
+### 6. 動作確認
+
+Step Functions を手動実行して動作を確認します:
+
+```bash
+aws stepfunctions start-execution \
+  --state-machine-arn "arn:aws:states:<region>:<account-id>:stateMachine:fsxn-semiconductor-eda-workflow" \
+  --input '{}' \
+  --region <your-region>
+```
+
+> **注意**: 初回実行では Athena の DRC 集計結果が 0 件になる場合があります。これは Glue テーブルへのメタデータ反映にタイムラグがあるためです。2 回目以降の実行で正しい統計が得られます。
+
+### テンプレートの使い分け
+
+| テンプレート | 用途 | Lambda コード |
+|-------------|------|--------------|
+| `template.yaml` | SAM CLI でのローカル開発・テスト | インラインパス参照（`sam build` が必要） |
+| `template-deploy.yaml` | 本番デプロイ | S3 バケットから zip 取得 |
+
+`template.yaml` を直接 `aws cloudformation deploy` で使用する場合は、SAM Transform の処理が必要です。本番デプロイには `template-deploy.yaml` を使用してください。
 
 ## 設定パラメータ一覧
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
+| `DeployBucket` | Lambda zip を格納する S3 バケット名 | — | ✅ |
 | `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
+| `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |
+| `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
+| `SvmUuid` | ONTAP SVM UUID | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
 | `PrivateSubnetIds` | プライベートサブネット ID リスト | — | ✅ |
+| `PrivateRouteTableIds` | プライベートサブネットのルートテーブル ID リスト（S3 Gateway Endpoint 用） | `""` | |
 | `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
+| `BedrockModelId` | Bedrock モデル ID | `amazon.nova-lite-v1:0` | |
 | `MapConcurrency` | Map ステートの並列実行数 | `10` | |
-| `LambdaMemorySize` | Lambda メモリサイズ (MB) | `512` | |
+| `LambdaMemorySize` | Lambda メモリサイズ (MB) | `256` | |
 | `LambdaTimeout` | Lambda タイムアウト (秒) | `300` | |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableXRayTracing` | X-Ray トレーシングの有効化 | `true` | |
+
+> ⚠️ **`S3AccessPointName`**: 省略可能ですが、指定しないと IAM ポリシーが Alias ベースのみとなり、一部の環境で `AccessDenied` エラーが発生します。本番環境では指定を推奨します。
+
+## トラブルシューティング
+
+### Discovery Lambda がタイムアウトする
+
+**原因**: VPC 内の Lambda が AWS サービス（Secrets Manager, S3, CloudWatch）に到達できない。
+
+**解決策**: 以下のいずれかを確認してください:
+1. `EnableVpcEndpoints=true` でデプロイし、`PrivateRouteTableIds` を指定する
+2. VPC に NAT Gateway が存在し、プライベートサブネットのルートテーブルに NAT Gateway へのルートがある
+
+### AccessDenied エラー（ListObjectsV2）
+
+**原因**: IAM ポリシーに S3 Access Point の ARN ベース権限が不足。
+
+**解決策**: `S3AccessPointName` パラメータに S3 AP の名前（Alias ではなく作成時の名前）を指定してスタックを更新する。
+
+### Athena DRC 集計結果が 0 件
+
+**原因**: DRC Aggregation Lambda が使用する `metadata_prefix` フィルタと、実際のメタデータ JSON 内の `file_key` 値が一致しない場合があります。また、初回実行時は Glue テーブルにメタデータが存在しないため 0 件になります。
+
+**解決策**:
+1. Step Functions を 2 回実行する（1 回目でメタデータが S3 に書き込まれ、2 回目で Athena が集計可能になる）
+2. Athena コンソールで直接 `SELECT * FROM "<db>"."<table>" LIMIT 10` を実行し、データが読めることを確認する
+3. データが読めるのに集計が 0 件の場合、`file_key` の値と `prefix` フィルタの整合性を確認する
 
 ## クリーンアップ
 
@@ -146,6 +288,8 @@ UC6 は以下のサービスを使用します:
 ## 参考リンク
 
 - [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [S3 Access Points の作成とアタッチ](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html)
+- [S3 Access Points のアクセス管理](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
 - [Amazon Athena ユーザーガイド](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Bedrock API リファレンス](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [GDSII フォーマット仕様](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
