@@ -466,7 +466,7 @@ Phase 5 transforms the FSxN S3AP Serverless Patterns into a production-ready, co
 - **CI/CD Pipeline** enables team collaboration with automated quality gates and safe deployments
 - **Multi-Region Architecture** provides resilience patterns from simple backup (Tier 3) to near-zero-RPO active-active targets (Tier 1)
 
-All features remain opt-in, maintaining the project's core principle: **learn from the design decisions without paying for resources you don't need**.
+All AWS runtime features remain opt-in, and the CI/CD pipeline remains optional, maintaining the project's core principle: **learn from the design decisions without paying for resources you don't need**.
 
 **Repository**: [github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 
