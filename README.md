@@ -176,6 +176,29 @@ Phase 4 の全機能は CloudFormation Conditions でオプトイン制御され
 - [Model Registry ガイド](docs/model-registry-guide.md)
 - [Multi-Account PoC 結果](docs/multi-account/poc-results.md)
 - [Event-Driven アーキテクチャ設計](docs/event-driven/architecture-design.md)
+- [既存環境影響評価ガイド](docs/impact-assessment.md)
+
+### Phase 5 機能概要
+
+| 機能 | 説明 | 対象 UC |
+|------|------|---------|
+| SageMaker Serverless Inference | 第 3 ルーティングオプション（Batch / Real-time / Serverless の 3-way 選択） | UC9（オプトイン） |
+| Scheduled Scaling | 営業時間ベースの SageMaker Endpoint 自動スケーリング | UC9（オプトイン） |
+| CloudWatch Billing Alarms | Warning / Critical / Emergency 3 段階のコストアラート | 共通（オプトイン） |
+| Auto-Stop Lambda | 未使用 SageMaker Endpoint の自動検出・スケールダウン | 共通（オプトイン） |
+| CI/CD Pipeline | GitHub Actions ワークフロー（cfn-lint → pytest → cfn-guard → Bandit → deploy） | 全 UC |
+| Multi-Region | DynamoDB Global Tables + CrossRegionClient フェイルオーバー | 共通（オプトイン） |
+| Disaster Recovery | DR Tier 1/2/3 定義、フェイルオーバーランブック | 共通（設計ドキュメント） |
+
+Phase 5 の全機能も CloudFormation Conditions でオプトイン制御されており、有効化しない限り追加コストは発生しません。
+
+詳細は以下のドキュメントを参照してください:
+- [Serverless Inference コールドスタート特性](docs/serverless-inference-cold-start.md)
+- [コスト最適化ベストプラクティスガイド](docs/cost-optimization-guide.md)
+- [CI/CD ガイド](docs/ci-cd-guide.md)
+- [Multi-Region Step Functions 設計](docs/multi-region/step-functions-design.md)
+- [Disaster Recovery ガイド](docs/multi-region/disaster-recovery.md)
+- [既存環境影響評価ガイド](docs/impact-assessment.md)
 
 ### スクリーンショット
 
@@ -334,6 +357,38 @@ Phase 4 の全機能は CloudFormation Conditions でオプトイン制御され
 ![Lambda 関数一覧 Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
 
 > Phase 2 の全 Lambda 関数（Discovery, Processing, Report 等）が正常にデプロイ済み。
+
+#### Phase 5: Serverless Inference・コスト最適化・Multi-Region
+
+##### SageMaker Serverless Inference Endpoint
+
+![SageMaker Serverless Endpoint 設定](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+
+> SageMaker Serverless Inference Endpoint の設定画面。メモリサイズ 4096 MB、最大同時実行数 5 で構成。
+
+![SageMaker Serverless Endpoint Config](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-config.png)
+
+> Serverless Endpoint Configuration の詳細。プロビジョニング不要でリクエスト時のみコンピュートリソースを割り当て。
+
+![SageMaker Serverless Endpoint 作成中](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-creating.png)
+
+> Serverless Endpoint の作成プロセス。コールドスタート後に自動スケール。
+
+##### CloudWatch Billing Alarms（3 段階コストアラート）
+
+![CloudWatch Billing Alarms](docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+
+> Warning / Critical / Emergency の 3 段階 Billing Alarms。閾値超過時に SNS 通知。
+
+##### DynamoDB Global Table（Multi-Region）
+
+![DynamoDB Global Table](docs/screenshots/masked/phase5-dynamodb-global-table.png)
+
+> DynamoDB Global Table 設定。Multi-Region レプリケーション有効化。
+
+![DynamoDB Global Replicas](docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+
+> Global Table のレプリカ構成。複数リージョン間でのデータ同期状態。
 
 ## 技術スタック
 
@@ -664,6 +719,7 @@ S3 AP 経由で利用可能な API サブセット:
 | [docs/verification-results-phase2.md](docs/verification-results-phase2.md) | AWS 環境検証結果記録（Phase 2: 全 9 UC SUCCEEDED） |
 | [docs/verification-results-phase3.md](docs/verification-results-phase3.md) | AWS 環境検証結果記録（Phase 3: Kinesis + DynamoDB + S3 AP E2E） |
 | [docs/streaming-vs-polling-guide.md](docs/streaming-vs-polling-guide.md) | ストリーミング vs ポーリング選択ガイド（8 言語対応） |
+| [docs/impact-assessment.md](docs/impact-assessment.md) | 既存環境影響評価ガイド（8 言語対応） |
 | [docs/article-phase3-en.md](docs/article-phase3-en.md) | Phase 3 技術記事ドラフト（dev.to 用） |
 | [docs/remaining-issues-checklist.md](docs/remaining-issues-checklist.md) | 残課題チェックリスト（全件対応済み） |
 | [docs/screenshots/](docs/screenshots/README.md) | AWS コンソールスクリーンショット（マスク済み + オリジナル） |

@@ -177,6 +177,27 @@ Phase 4 的所有功能通过 CloudFormation Conditions 进行可选控制，未
 - [Multi-Account PoC 结果](docs/multi-account/poc-results.md)
 - [Event-Driven 架构设计](docs/event-driven/architecture-design.md)
 
+### Phase 5 功能概要
+
+| 功能 | 说明 | 目标 UC |
+|------|------|---------|
+| SageMaker Serverless Inference | 第3路由选项（Batch / Real-time / Serverless 三路选择） | UC9（可选启用） |
+| Scheduled Scaling | 基于工作时间的 SageMaker Endpoint 自动扩缩 | UC9（可选启用） |
+| CloudWatch Billing Alarms | Warning / Critical / Emergency 三级成本告警 | 通用（可选启用） |
+| Auto-Stop Lambda | 自动检测并缩减闲置 SageMaker Endpoint | 通用（可选启用） |
+| CI/CD Pipeline | GitHub Actions 工作流（cfn-lint → pytest → cfn-guard → Bandit → deploy） | 全部 UC |
+| Multi-Region | DynamoDB Global Tables + CrossRegionClient 故障转移 | 通用（可选启用） |
+| Disaster Recovery | DR Tier 1/2/3 定义、故障转移运行手册 | 通用（设计文档） |
+
+Phase 5 的所有功能同样通过 CloudFormation Conditions 进行可选控制，未启用时不会产生额外费用。
+
+详情请参阅以下文档：
+- [Serverless Inference 冷启动特性](docs/serverless-inference-cold-start.md)
+- [成本优化最佳实践指南](docs/cost-optimization-guide.md)
+- [CI/CD 指南](docs/ci-cd-guide.md)
+- [Multi-Region Step Functions 设计](docs/multi-region/step-functions-design.md)
+- [Disaster Recovery 指南](docs/multi-region/disaster-recovery.md)
+
 ### 截图
 
 > 以下为验证环境中的截图示例。环境特定信息（账户 ID 等）已进行脱敏处理。
@@ -334,6 +355,34 @@ Phase 4 的所有功能通过 CloudFormation Conditions 进行可选控制，未
 ![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
 
 > Phase 4 CloudFormation 堆栈。UC9 扩展（Task Token Store + Real-time Endpoint）及 Event-Driven Prototype CREATE_COMPLETE。
+
+#### Phase 5: Serverless Inference·成本优化·Multi-Region
+
+##### SageMaker Serverless Inference Endpoint
+
+![SageMaker Serverless Endpoint 设置](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+
+> SageMaker Serverless Inference Endpoint 设置。内存 4096 MB，最大并发 5。
+
+![SageMaker Serverless Endpoint Config](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-config.png)
+
+> Serverless Endpoint Configuration 详情。无需预置，按需分配计算资源。
+
+##### CloudWatch Billing Alarms（3 级成本告警）
+
+![CloudWatch Billing Alarms](docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+
+> Warning / Critical / Emergency 3 级 Billing Alarms。超阈值时 SNS 通知。
+
+##### DynamoDB Global Table（Multi-Region）
+
+![DynamoDB Global Table](docs/screenshots/masked/phase5-dynamodb-global-table.png)
+
+> DynamoDB Global Table 配置。Multi-Region 复制已启用。
+
+![DynamoDB Global Replicas](docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+
+> Global Table 副本配置。多区域间数据同步。
 
 ## 技术栈
 

@@ -1,0 +1,45 @@
+# Encryption Required Rule
+# Ensures KMS encryption is enabled on DynamoDB, S3, and SNS resources
+
+# Rule: DynamoDB tables must have SSE enabled with KMS
+rule dynamodb_encryption_required when %INPUT {
+    Resources.*[ Type == "AWS::DynamoDB::Table" ] {
+        Properties.SSESpecification exists
+        Properties.SSESpecification.SSEEnabled == true
+    }
+}
+
+# Rule: DynamoDB Global Tables must have SSE enabled
+rule dynamodb_global_table_encryption when %INPUT {
+    Resources.*[ Type == "AWS::DynamoDB::GlobalTable" ] {
+        Properties.SSESpecification exists
+        Properties.SSESpecification.SSEEnabled == true
+    }
+}
+
+# Rule: S3 buckets must have server-side encryption configured
+rule s3_encryption_required when %INPUT {
+    Resources.*[ Type == "AWS::S3::Bucket" ] {
+        Properties.BucketEncryption exists
+        Properties.BucketEncryption.ServerSideEncryptionConfiguration exists
+        Properties.BucketEncryption.ServerSideEncryptionConfiguration[*] {
+            ServerSideEncryptionByDefault exists
+            ServerSideEncryptionByDefault.SSEAlgorithm in ["aws:kms", "AES256"]
+        }
+    }
+}
+
+# Rule: SNS topics must have KMS encryption
+rule sns_encryption_required when %INPUT {
+    Resources.*[ Type == "AWS::SNS::Topic" ] {
+        Properties.KmsMasterKeyId exists
+    }
+}
+
+# Rule: SQS queues must have KMS encryption
+rule sqs_encryption_required when %INPUT {
+    Resources.*[ Type == "AWS::SQS::Queue" ] {
+        Properties.KmsMasterKeyId exists or
+        Properties.SqsManagedSseEnabled == true
+    }
+}

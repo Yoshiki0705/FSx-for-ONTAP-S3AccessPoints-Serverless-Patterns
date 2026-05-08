@@ -1,0 +1,38 @@
+[
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "production"
+  },
+  {
+    "ParameterKey": "InferenceType",
+    "ParameterValue": "serverless"
+  },
+  {
+    "ParameterKey": "ServerlessMemorySizeInMB",
+    "ParameterValue": "4096"
+  },
+  {
+    "ParameterKey": "ServerlessMaxConcurrency",
+    "ParameterValue": "10"
+  },
+  {
+    "ParameterKey": "BatchThreshold",
+    "ParameterValue": "100"
+  },
+  {
+    "ParameterKey": "EnableScheduledScaling",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "BillingWarningThreshold",
+    "ParameterValue": "50"
+  },
+  {
+    "ParameterKey": "BillingCriticalThreshold",
+    "ParameterValue": "100"
+  },
+  {
+    "ParameterKey": "BillingEmergencyThreshold",
+    "ParameterValue": "500"
+  }
+]
