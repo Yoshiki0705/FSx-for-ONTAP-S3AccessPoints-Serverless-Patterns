@@ -303,6 +303,8 @@ Property Test #13 validates: Primary region is always tried first, and Secondary
 
 > **Note**: Actual RPO for Tier 1 depends on DynamoDB Global Tables cross-region replication lag (typically under 1 second with MREC) and workload-specific write ordering requirements. For strict RPO=0, consider Multi-Region Strong Consistency (MRSC) mode, which synchronously replicates writes to at least one other region before returning success.
 
+Route 53 health checks and failover routing direct event producers and API callers to the active region. For Tier 1, failover is automatic (health check failure triggers routing change within 10–30 seconds). For Tier 2/3, failover can be manual or semi-automated via CloudWatch Composite Alarms. See the [Disaster Recovery Guide](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/multi-region/disaster-recovery.md) for detailed runbooks.
+
 ### Active-Passive Guarantee
 
 Property Test #15 validates: when the Primary region health check is "healthy", the Secondary region does NOT process events. Only when Primary is "unhealthy" does Secondary activate.
