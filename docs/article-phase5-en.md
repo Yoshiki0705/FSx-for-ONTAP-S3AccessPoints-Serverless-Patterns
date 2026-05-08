@@ -445,9 +445,9 @@ All screenshots are from the ap-northeast-1 (Tokyo) verification environment. Ac
 ## What's Next
 
 - **FSx ONTAP S3 AP native events**: When available, migrate from polling to event-driven with the Phase 4 prototype as the blueprint
-- **SageMaker Inference Components**: Explore hosting multiple models on a single endpoint for further cost optimization and true scale-to-zero capability
-- **Lambda SnapStart for Python**: Reduce Discovery/Processing Lambda cold starts to sub-second with [SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) (GA in ap-northeast-1 since June 2025)
-- **SAM CLI local testing + cfn-guard Hooks**: Expand local validation with `sam local invoke` / [Finch support](https://aws.amazon.com/about-aws/whats-new/2025/10/aws-sam-cli-finch-support/), and enforce cfn-guard rules at deploy-time via [CloudFormation Hooks](https://aws.amazon.com/about-aws/whats-new/2024/11/author-aws-cloudformation-hooks-cloudformation-guard-domain-specific-language/)
+- **SageMaker Inference Components**: Explore hosting multiple models on a single endpoint for further cost optimization, including scale-to-zero patterns where `ManagedInstanceScaling.MinInstanceCount=0` is supported
+- **Lambda SnapStart for Python**: Reduce Discovery/Processing Lambda cold starts toward sub-second startup times with [SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) for supported Python runtimes and regions
+- **Local testing + deploy-time policy enforcement**: Expand validation with `sam local invoke` / [Finch support](https://aws.amazon.com/about-aws/whats-new/2025/10/aws-sam-cli-finch-support/), and enforce cfn-guard rules at deployment using [CloudFormation Guard Hooks](https://aws.amazon.com/about-aws/whats-new/2024/11/author-aws-cloudformation-hooks-cloudformation-guard-domain-specific-language/)
 
 ---
 
