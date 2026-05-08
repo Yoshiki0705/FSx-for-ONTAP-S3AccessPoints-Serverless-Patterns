@@ -16,7 +16,7 @@ This is **Phase 5** of the FSx for ONTAP S3 Access Points serverless patterns co
 - **CI/CD Pipeline**: GitHub Actions with OIDC authentication, 4-stage gating (cfn-lint → pytest → cfn-guard → Bandit), staging/production deployment with manual approval
 - **Multi-Region Architecture**: DynamoDB Global Tables for Task Token Store replication, CrossRegionClient failover, DR Tier 1/2/3 definitions with failover runbooks
 
-All features remain **opt-in via CloudFormation Conditions** (default disabled, zero additional cost). 15 property-based tests (Hypothesis) validate correctness invariants across all themes.
+All AWS runtime features remain **opt-in via CloudFormation Conditions** (default disabled, zero additional cost). The CI/CD pipeline is provided as an optional GitHub Actions workflow. 15 property-based tests (Hypothesis) validate correctness invariants across all themes.
 
 **Repository**: [github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 
