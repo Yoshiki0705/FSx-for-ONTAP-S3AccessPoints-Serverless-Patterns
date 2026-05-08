@@ -1,0 +1,19 @@
+{
+  "file_key": "eda-designs/top_chip_v3.gds",
+  "file_format": "GDSII",
+  "library_name": "TOP_CHIP_V3",
+  "units": {
+    "user_unit": 0.001,
+    "db_unit": 1e-09
+  },
+  "cell_count": 1284,
+  "bounding_box": {
+    "min_x": 0.0,
+    "min_y": 0.0,
+    "max_x": 12000.5,
+    "max_y": 9800.2
+  },
+  "creation_date": "2026-04-15T10:30:00+00:00",
+  "file_version": "6.0",
+  "extracted_at": "2026-05-08T19:30:00+00:00"
+}

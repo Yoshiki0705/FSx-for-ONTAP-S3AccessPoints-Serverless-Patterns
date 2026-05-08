@@ -1,0 +1,23 @@
+{
+  "status": "SUCCESS",
+  "statistics": {
+    "total_designs": 42,
+    "cell_count_distribution": {
+      "min": 12,
+      "max": 15847,
+      "avg": 2341,
+      "p95": 8920
+    },
+    "bounding_box_outliers": [
+      "eda-designs/analog_frontend.oas",
+      "eda-designs/test_block_debug.gds",
+      "eda-designs/legacy_io_v1.gds2"
+    ],
+    "naming_violations": [
+      "eda-designs/block-a-io.gds2",
+      "eda-designs/TOP CHIP (copy).gds"
+    ],
+    "invalid_files": 2
+  },
+  "query_execution_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
