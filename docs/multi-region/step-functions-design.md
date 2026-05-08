@@ -13,7 +13,7 @@
 | 特性 | Active-Active | Active-Passive |
 |------|--------------|----------------|
 | 両リージョンでリクエスト処理 | ✅ | ❌（Primary のみ） |
-| RPO (Recovery Point Objective) | 0（データ損失なし） | < 1 時間 |
+| RPO (Recovery Point Objective) | Near-zero（通常 < 1 秒） | < 1 時間 |
 | RTO (Recovery Time Objective) | < 5 分 | < 30 分 |
 | コスト | 高（両リージョン常時稼働） | 中（Secondary は最小構成） |
 | 複雑度 | 高（コンフリクト解決必要） | 低（単方向レプリケーション） |
@@ -26,7 +26,7 @@
 ```mermaid
 graph TD
     START{要件確認}
-    Q1{RPO = 0 が必須?}
+    Q1{RPO near-zero が必須?}
     Q2{グローバルユーザー<br/>分散が必要?}
     Q3{月額予算 > $500?}
     Q4{運用チーム<br/>24/7 対応可能?}
@@ -92,6 +92,8 @@ graph TB
 - リージョン間の依存関係なし（障害分離）
 - DynamoDB Global Tables で Task Token を共有
 - SnapMirror でデータを非同期レプリケーション
+
+> **重要**: Step Functions の Task Token はそれを生成したリージョンの execution に紐づく regional resource です。Global Tables で Token メタデータを複製しても、フェイルオーバー時には正しい execution リージョンへ callback するか、Secondary リージョンで新しい workflow execution を開始する必要があります。Token レコードには `execution_region` と `state_machine_arn` 属性を含めることを推奨します。
 
 ### 適用シナリオ
 

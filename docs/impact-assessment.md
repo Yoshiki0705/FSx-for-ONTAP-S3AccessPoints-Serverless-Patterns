@@ -180,7 +180,8 @@
 
 ### 考慮事項
 
-1. **EnableScheduledScaling**: 既存の SageMaker Endpoint に Scheduled Scaling を適用する。営業時間外にインスタンス数が 0 になる可能性がある。
+1. **EnableScheduledScaling**: 既存の SageMaker Endpoint に Scheduled Scaling を適用する。営業時間外にインスタンス数が最小値まで削減される。
+   - 注意: `DesiredInstanceCount=0` は Inference Components を使用するエンドポイントでのみ有効。標準エンドポイントの最小値は 1。
    - ロールバック: Scheduled Action を削除
 
 2. **EnableAutoStop**: アイドル状態の SageMaker Endpoint を自動的にスケールダウンする。

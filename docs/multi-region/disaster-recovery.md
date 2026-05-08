@@ -12,7 +12,7 @@
 
 | Tier | パターン | RPO | RTO | コスト | 適用シナリオ |
 |------|---------|-----|-----|--------|------------|
-| Tier 1 | Active-Active | 0（データ損失なし） | < 5 分 | 高 | ミッションクリティカル、金融、医療 |
+| Tier 1 | Active-Active | Near-zero（通常 < 1 秒） | < 5 分 | 高 | ミッションクリティカル、金融、医療 |
 | Tier 2 | Warm Standby | < 1 時間 | < 30 分 | 中 | 業務システム、SLA 99.9% |
 | Tier 3 | Pilot Light | < 24 時間 | < 4 時間 | 低 | 開発/検証環境、コスト最優先 |
 
@@ -20,7 +20,7 @@
 
 ```mermaid
 graph TB
-    subgraph "Tier 1: Active-Active (RPO=0, RTO<5min)"
+    subgraph "Tier 1: Active-Active (RPO near-zero, RTO<5min)"
         T1_P[Primary Region<br/>全コンポーネント稼働]
         T1_S[Secondary Region<br/>全コンポーネント稼働]
         T1_GT[Global Tables<br/>リアルタイムレプリケーション]
@@ -55,7 +55,7 @@ graph TB
 
 | Tier | 戦略 | RPO | 復旧手順 |
 |------|------|-----|---------|
-| Tier 1 | Global Tables (Active-Active) | 0 | 自動（レプリケーション < 1 秒） |
+| Tier 1 | Global Tables (Active-Active) | Near-zero | 自動（レプリケーション 通常 < 1 秒、MREC） |
 | Tier 2 | Global Tables (Read Replica) | < 1 秒 | Secondary をプロモート |
 | Tier 3 | Point-in-Time Recovery (PITR) | < 5 分 | PITR から復元（最大 35 日前まで） |
 

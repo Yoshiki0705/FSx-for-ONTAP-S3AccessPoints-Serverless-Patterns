@@ -372,7 +372,7 @@ Phase 5 の全機能も CloudFormation Conditions でオプトイン制御され
 
 ![SageMaker Serverless Endpoint 作成中](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-creating.png)
 
-> Serverless Endpoint の作成プロセス。コールドスタート後に自動スケール。
+> Serverless Endpoint の作成プロセス。プロビジョニング済みインスタンスは保持されず、リクエスト時にオンデマンドでコンピュートが割り当てられるため、アイドル後にコールドスタート（6–45 秒）が発生する。
 
 ##### CloudWatch Billing Alarms（3 段階コストアラート）
 

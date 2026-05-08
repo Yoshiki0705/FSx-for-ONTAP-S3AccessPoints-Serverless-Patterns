@@ -153,7 +153,7 @@ No impact unless templates are deployed. Event-Driven is an independent stack.
 
 ### Considerations
 
-1. **EnableScheduledScaling**: Instance count may drop to 0 outside business hours.
+1. **EnableScheduledScaling**: Instance count is reduced to the configured minimum outside business hours. Note: `DesiredInstanceCount=0` is only supported for endpoints hosting [Inference Components](https://docs.aws.amazon.com/sagemaker/latest/dg/endpoint-auto-scaling-zero-instances.html). Standard endpoints have a minimum of 1.
 2. **EnableAutoStop**: Protect critical endpoints with `DoNotAutoStop=true` tag.
 3. **EnableMultiRegion**: **Irreversible operation**. DynamoDB Streams must be enabled first.
 
