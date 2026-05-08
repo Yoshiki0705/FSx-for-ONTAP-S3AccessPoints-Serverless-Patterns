@@ -177,6 +177,27 @@ Voir les documents suivants pour plus de détails :
 - [Résultats PoC Multi-Account](docs/multi-account/poc-results.md)
 - [Conception d'architecture Event-Driven](docs/event-driven/architecture-design.md)
 
+### Résumé des fonctionnalités Phase 5
+
+| Fonctionnalité | Description | UC cible |
+|----------------|-------------|----------|
+| SageMaker Serverless Inference | 3ème option de routage (sélection 3 voies : Batch / Real-time / Serverless) | UC9 (opt-in) |
+| Scheduled Scaling | Auto-scaling des SageMaker Endpoints basé sur les heures de bureau | UC9 (opt-in) |
+| CloudWatch Billing Alarms | Alertes de coûts à 3 niveaux : Warning / Critical / Emergency | Commun (opt-in) |
+| Auto-Stop Lambda | Détection automatique et réduction des SageMaker Endpoints inactifs | Commun (opt-in) |
+| CI/CD Pipeline | Workflow GitHub Actions (cfn-lint → pytest → cfn-guard → Bandit → deploy) | Tous les UC |
+| Multi-Region | DynamoDB Global Tables + basculement CrossRegionClient | Commun (opt-in) |
+| Disaster Recovery | Définitions DR Tier 1/2/3, runbook de basculement | Commun (docs de conception) |
+
+Toutes les fonctionnalités Phase 5 sont également contrôlées par des CloudFormation Conditions (opt-in). Aucun coût supplémentaire n'est engendré sauf activation explicite.
+
+Voir les documents suivants pour plus de détails :
+- [Caractéristiques du démarrage à froid Serverless Inference](docs/serverless-inference-cold-start.md)
+- [Guide des meilleures pratiques d'optimisation des coûts](docs/cost-optimization-guide.md)
+- [Guide CI/CD](docs/ci-cd-guide.md)
+- [Conception Multi-Region Step Functions](docs/multi-region/step-functions-design.md)
+- [Guide Disaster Recovery](docs/multi-region/disaster-recovery.md)
+
 ### Captures d'écran
 
 > Les images suivantes sont des exemples capturés dans un environnement de vérification. Les informations spécifiques à l'environnement (identifiants de compte, etc.) ont été masquées.
@@ -334,6 +355,30 @@ Voir les documents suivants pour plus de détails :
 ![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
 
 > Stacks CloudFormation Phase 4. Extension UC9 (Task Token Store + Real-time Endpoint) et prototype Event-Driven CREATE_COMPLETE.
+
+#### Phase 5 : Serverless Inference, Optimisation des coûts & Multi-Region
+
+##### SageMaker Serverless Inference Endpoint
+
+![SageMaker Serverless Endpoint](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+
+> Configuration du SageMaker Serverless Inference Endpoint. Mémoire 4096 Mo, concurrence max 5.
+
+##### CloudWatch Billing Alarms (Alertes de coûts à 3 niveaux)
+
+![CloudWatch Billing Alarms](docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+
+> Alarmes de facturation Warning / Critical / Emergency. Notification SNS en cas de dépassement de seuil.
+
+##### DynamoDB Global Table (Multi-Region)
+
+![DynamoDB Global Table](docs/screenshots/masked/phase5-dynamodb-global-table.png)
+
+> Configuration DynamoDB Global Table. Réplication Multi-Region activée.
+
+![DynamoDB Global Replicas](docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+
+> Configuration des réplicas Global Table. Synchronisation des données entre régions.
 
 ## Stack technique
 

@@ -1,0 +1,235 @@
+# =============================================================================
+# Auto-Stop Resources — Lambda + EventBridge Schedule
+# =============================================================================
+#
+# 本テンプレートは Auto-Stop Lambda 関数と関連リソースを作成する。
+# EventBridge Schedule（1 時間ごと）でトリガーされ、アイドル状態の
+# SageMaker エンドポイントを自動的にスケールダウン（ゼロスケール）する。
+#
+# 設計方針:
+# - Lambda 関数: Python 3.12 ランタイム
+# - IAM Role: 最小権限（SageMaker 読み取り + スケール変更、CloudWatch 読み取り）
+# - EventBridge Rule: 1 時間ごとの定期実行
+# - DRY_RUN モード: テスト用にアクションなしで実行可能
+# - 全リソースにタグ付与: Phase=5, Component=auto-stop
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file auto-stop-resources.yaml \
+#     --stack-name fsxn-s3ap-auto-stop \
+#     --capabilities CAPABILITY_IAM \
+#     --parameter-overrides \
+#       ProjectPrefix=fsxn-s3ap \
+#       IdleThresholdMinutes=60 \
+#       DryRun=true \
+#       LambdaCodeS3Bucket=my-deployment-bucket \
+#       LambdaCodeS3Key=lambdas/auto-stop.zip
+#
+# 参照: Requirements 8.1–8.8
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Auto-Stop Resources.
+  アイドル SageMaker エンドポイント自動停止 Lambda + EventBridge Schedule。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: >-
+      プロジェクトプレフィックス。エンドポイントフィルタリングに使用する
+      Project タグの値プレフィックス。
+
+  IdleThresholdMinutes:
+    Type: Number
+    Default: 60
+    MinValue: 15
+    MaxValue: 1440
+    Description: >-
+      アイドル判定閾値（分）。この期間中に InvocationsPerInstance が
+      ゼロの場合、エンドポイントをスケールダウンする。
+
+  DryRun:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      DRY_RUN モード。true の場合、アクションをログ出力のみで実行しない。
+      初回デプロイ時は true で動作確認を推奨。
+
+  LambdaCodeS3Bucket:
+    Type: String
+    Description: >-
+      Lambda 関数コードの S3 バケット名。
+
+  LambdaCodeS3Key:
+    Type: String
+    Description: >-
+      Lambda 関数コードの S3 キー（ZIP ファイルパス）。
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # IAM Role for Auto-Stop Lambda
+  # -------------------------------------------------------------------
+  AutoStopLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-s3ap-auto-stop-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AutoStopSageMakerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SageMakerReadAccess
+                Effect: Allow
+                Action:
+                  - sagemaker:ListEndpoints
+                  - sagemaker:DescribeEndpoint
+                  - sagemaker:DescribeEndpointConfig
+                  - sagemaker:ListTags
+                Resource: "*"
+              - Sid: SageMakerScaleAccess
+                Effect: Allow
+                Action:
+                  - sagemaker:UpdateEndpointWeightsAndCapacities
+                Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/*"
+              - Sid: CloudWatchMetricsRead
+                Effect: Allow
+                Action:
+                  - cloudwatch:GetMetricData
+                Resource: "*"
+              - Sid: STSGetCallerIdentity
+                Effect: Allow
+                Action:
+                  - sts:GetCallerIdentity
+                Resource: "*"
+              - Sid: CloudWatchLogsAccess
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/fsxn-s3ap-auto-stop-*"
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: auto-stop
+
+  # -------------------------------------------------------------------
+  # Lambda Function — Auto-Stop
+  # -------------------------------------------------------------------
+  AutoStopFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "fsxn-s3ap-auto-stop-${AWS::StackName}"
+      Description: >-
+        アイドル SageMaker エンドポイントを自動検出し、ゼロスケールする。
+        EventBridge Schedule（1 時間ごと）でトリガー。
+      Runtime: python3.12
+      Handler: handler.handler
+      Role: !GetAtt AutoStopLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          PROJECT_PREFIX: !Ref ProjectPrefix
+          IDLE_THRESHOLD_MINUTES: !Ref IdleThresholdMinutes
+          DRY_RUN: !Ref DryRun
+          ENVIRONMENT: !Sub "${AWS::StackName}"
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: auto-stop
+
+  # -------------------------------------------------------------------
+  # CloudWatch Log Group (explicit for retention control)
+  # -------------------------------------------------------------------
+  AutoStopLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AutoStopFunction}"
+      RetentionInDays: 30
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: auto-stop
+
+  # -------------------------------------------------------------------
+  # EventBridge Schedule Rule (1 hour interval)
+  # -------------------------------------------------------------------
+  AutoStopScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "fsxn-s3ap-auto-stop-schedule-${AWS::StackName}"
+      Description: >-
+        Auto-Stop Lambda を 1 時間ごとにトリガーする。
+        アイドル SageMaker エンドポイントの自動検出・停止。
+      ScheduleExpression: "rate(1 hour)"
+      State: ENABLED
+      Targets:
+        - Id: AutoStopLambdaTarget
+          Arn: !GetAtt AutoStopFunction.Arn
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: auto-stop
+
+  # -------------------------------------------------------------------
+  # Lambda Permission for EventBridge
+  # -------------------------------------------------------------------
+  AutoStopEventBridgePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AutoStopFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt AutoStopScheduleRule.Arn
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  AutoStopFunctionArn:
+    Description: Auto-Stop Lambda 関数 ARN
+    Value: !GetAtt AutoStopFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-AutoStopFunctionArn"
+
+  AutoStopFunctionName:
+    Description: Auto-Stop Lambda 関数名
+    Value: !Ref AutoStopFunction
+
+  AutoStopRoleArn:
+    Description: Auto-Stop Lambda IAM ロール ARN
+    Value: !GetAtt AutoStopLambdaRole.Arn
+
+  ScheduleRuleArn:
+    Description: EventBridge Schedule Rule ARN
+    Value: !GetAtt AutoStopScheduleRule.Arn
+
+  LogGroupName:
+    Description: CloudWatch Log Group 名
+    Value: !Sub "/aws/lambda/${AutoStopFunction}"

@@ -1,0 +1,40 @@
+# Lambda Limits Rule
+# Ensures Lambda functions have reasonable timeout and memory limits
+
+# Rule: Lambda timeout must not exceed 900 seconds (15 minutes)
+rule lambda_timeout_limit when %INPUT {
+    Resources.*[ Type == "AWS::Lambda::Function" ] {
+        when Properties.Timeout exists {
+            Properties.Timeout <= 900
+                <<Lambda timeout must be <= 900 seconds (15 minutes)>>
+        }
+    }
+}
+
+# Rule: Lambda memory must not exceed 10240 MB (10 GB)
+rule lambda_memory_limit when %INPUT {
+    Resources.*[ Type == "AWS::Lambda::Function" ] {
+        when Properties.MemorySize exists {
+            Properties.MemorySize <= 10240
+                <<Lambda memory must be <= 10240 MB (10 GB)>>
+        }
+    }
+}
+
+# Rule: Lambda must have a timeout configured (no infinite execution)
+rule lambda_timeout_exists when %INPUT {
+    Resources.*[ Type == "AWS::Lambda::Function" ] {
+        Properties.Timeout exists
+            <<Lambda function must have an explicit Timeout configured>>
+    }
+}
+
+# Rule: Lambda reserved concurrency should be set to prevent runaway scaling
+rule lambda_reserved_concurrency_recommended when %INPUT {
+    Resources.*[ Type == "AWS::Lambda::Function" ] {
+        when Properties.ReservedConcurrentExecutions exists {
+            Properties.ReservedConcurrentExecutions <= 1000
+                <<Lambda reserved concurrency should be <= 1000>>
+        }
+    }
+}

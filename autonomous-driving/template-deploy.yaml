@@ -133,9 +133,29 @@ Parameters:
 
   InferenceType:
     Type: String
-    Default: "provisioned"
-    AllowedValues: ["provisioned", "serverless"]
-    Description: 推論エンドポイントタイプ（provisioned / serverless）
+    Default: "none"
+    AllowedValues: ["none", "provisioned", "serverless"]
+    Description: 推論エンドポイントタイプ（none / provisioned / serverless）
+
+  ServerlessMemorySizeInMB:
+    Type: Number
+    Default: 4096
+    AllowedValues: [1024, 2048, 3072, 4096, 5120, 6144]
+    Description: Serverless Inference のメモリサイズ (MB)
+
+  ServerlessMaxConcurrency:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 200
+    Description: Serverless Inference の最大同時実行数
+
+  ServerlessProvisionedConcurrency:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue: 200
+    Description: Serverless Inference の Provisioned Concurrency（0 = 無効）
 
   EnableABTesting:
     Type: String
@@ -199,6 +219,14 @@ Conditions:
     !And
       - !Condition CreateRealtimeEndpoint
       - !Equals [!Ref InferenceType, "serverless"]
+  IsServerlessInference:
+    !Equals [!Ref InferenceType, "serverless"]
+  IsProvisionedInference:
+    !Equals [!Ref InferenceType, "provisioned"]
+  HasProvisionedConcurrency:
+    !And
+      - !Condition IsServerlessInference
+      - !Not [!Equals [!Ref ServerlessProvisionedConcurrency, "0"]]
   CreateModelRegistry:
     !Equals [!Ref EnableModelRegistry, "true"]
 
@@ -689,6 +717,24 @@ Resources:
                   - !GetAtt FrameExtractionFunction.Arn
                   - !GetAtt PointCloudQcFunction.Arn
                   - !GetAtt AnnotationManagerFunction.Arn
+              - !If
+                - CreateRealtimeEndpoint
+                - Sid: InvokeRealtimeLambda
+                  Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                  Resource:
+                    - !GetAtt RealtimeInvokeFunction.Arn
+                - !Ref "AWS::NoValue"
+              - !If
+                - CreateSageMakerResources
+                - Sid: InvokeSageMakerLambda
+                  Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                  Resource:
+                    - !GetAtt SageMakerInvokeFunction.Arn
+                - !Ref "AWS::NoValue"
 
   AutonomousDrivingStateMachine:
     Type: AWS::StepFunctions::StateMachine
@@ -717,7 +763,7 @@ Resources:
             "ParallelProcessing": {
               "Type": "Parallel",
               "ResultPath": "$.parallel_results",
-              "Next": "AnnotationManager",
+              "Next": "InferenceRouting",
               "Branches": [
                 {
                   "StartAt": "ProcessVideoFiles",
@@ -811,12 +857,109 @@ Resources:
                 }
               ]
             },
+            "InferenceRouting": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.discovery.inference_type",
+                  "StringEquals": "serverless",
+                  "Next": "ServerlessInference"
+                },
+                {
+                  "Variable": "$.discovery.file_count",
+                  "NumericGreaterThanOrEqualToPath": "$.discovery.batch_threshold",
+                  "Next": "BatchTransform"
+                },
+                {
+                  "And": [
+                    {
+                      "Variable": "$.discovery.file_count",
+                      "NumericLessThanPath": "$.discovery.batch_threshold"
+                    },
+                    {
+                      "Variable": "$.discovery.inference_type",
+                      "StringEquals": "provisioned"
+                    }
+                  ],
+                  "Next": "RealtimeInference"
+                }
+              ],
+              "Default": "BatchTransform"
+            },
+            "ServerlessInference": {
+              "Type": "Task",
+              "Resource": "${RealtimeInvokeFunction.Arn}",
+              "Parameters": {
+                "s3_uri.$": "$.discovery.model_input_uri",
+                "inference_type": "serverless"
+              },
+              "ResultPath": "$.inference_result",
+              "Next": "AnnotationManager",
+              "TimeoutSeconds": 120,
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 1,
+                  "BackoffRate": 2.0
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["ServerlessColdStartTimeoutError"],
+                  "ResultPath": "$.serverless_error",
+                  "Next": "BatchTransform"
+                },
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.serverless_error",
+                  "Next": "BatchTransform"
+                }
+              ]
+            },
+            "RealtimeInference": {
+              "Type": "Task",
+              "Resource": "${RealtimeInvokeFunction.Arn}",
+              "Parameters": {
+                "s3_uri.$": "$.discovery.model_input_uri",
+                "inference_type": "provisioned"
+              },
+              "ResultPath": "$.inference_result",
+              "Next": "AnnotationManager",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "BatchTransform": {
+              "Type": "Task",
+              "Resource": "${SageMakerInvokeFunction.Arn}",
+              "Parameters": {
+                "input_uri.$": "$.discovery.model_input_uri",
+                "file_count.$": "$.discovery.file_count"
+              },
+              "ResultPath": "$.inference_result",
+              "Next": "AnnotationManager",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 10,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
             "AnnotationManager": {
               "Type": "Task",
               "Resource": "${AnnotationManagerFunction.Arn}",
               "Parameters": {
                 "detection_results.$": "$.parallel_results[0].detection_results",
-                "qc_results.$": "$.parallel_results[1].qc_results"
+                "qc_results.$": "$.parallel_results[1].qc_results",
+                "inference_result.$": "$.inference_result"
               },
               "ResultPath": "$.annotation_result",
               "End": true,
@@ -1293,6 +1436,38 @@ Resources:
           Value: realtime-inference
 
   # -----------------------------------------------------------------
+  # SageMaker Serverless EndpointConfig (Phase 5)
+  # Uses the same Model resource as provisioned endpoint
+  #
+  # 重要: Serverless Inference には 180 秒のコールドスタートタイムアウト制限がある。
+  # コンテナイメージは 500MB 以下を推奨。sklearn 公式コンテナ (~1.5GB) 等の
+  # 重量級イメージは 180 秒以内に起動できず失敗する。
+  # 軽量カスタムコンテナまたは Provisioned Concurrency の使用を検討すること。
+  # -----------------------------------------------------------------
+  ServerlessEndpointConfig:
+    Type: AWS::SageMaker::EndpointConfig
+    Condition: UseServerlessInference
+    Properties:
+      EndpointConfigName: !Sub "${AWS::StackName}-serverless-config"
+      ProductionVariants:
+        - VariantName: "serverless-primary"
+          ModelName: !GetAtt RealtimeSageMakerModel.ModelName
+          ServerlessConfig:
+            MemorySizeInMB: !Ref ServerlessMemorySizeInMB
+            MaxConcurrency: !Ref ServerlessMaxConcurrency
+            ProvisionedConcurrency: !If
+              - HasProvisionedConcurrency
+              - !Ref ServerlessProvisionedConcurrency
+              - !Ref "AWS::NoValue"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: serverless-inference
+
+  # -----------------------------------------------------------------
   # SageMaker Endpoint
   # -----------------------------------------------------------------
   RealtimeEndpoint:
@@ -1423,6 +1598,12 @@ Resources:
           S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
           AB_TEST_TABLE_NAME: !If [CreateABTesting, !Ref ABTestResultsTable, ""]
           USE_CASE: autonomous-driving
+          INFERENCE_TYPE: !Ref InferenceType
+          SERVERLESS_INITIAL_TIMEOUT: "60"
+          COLD_START_THRESHOLD_MS: "5000"
+          MODEL_NOT_READY_RETRY_DELAY: "3"
+          MODEL_NOT_READY_MAX_RETRIES: "2"
+          STEP_FUNCTIONS_TASK_TIMEOUT: "120"
       LoggingConfig:
         LogGroup: !Ref RealtimeInvokeLogGroup
       Tags:
