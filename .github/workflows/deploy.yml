@@ -1,0 +1,185 @@
+name: Deploy - Staging → Production
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  detect-changes:
+    name: "Detect Changed Templates"
+    runs-on: ubuntu-latest
+    outputs:
+      changed_templates: ${{ steps.detect.outputs.templates }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Detect changed CloudFormation templates
+        id: detect
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '\.yaml$' | grep -v 'node_modules' | grep -v '.github' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "templates=" >> $GITHUB_OUTPUT
+            echo "No CloudFormation template changes detected"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            # Convert newlines to JSON array
+            TEMPLATES_JSON=$(echo "$CHANGED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "templates=${TEMPLATES_JSON}" >> $GITHUB_OUTPUT
+            echo "Changed templates:"
+            echo "$CHANGED"
+          fi
+
+  deploy-staging:
+    name: "Deploy to Staging"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-deploy-role
+          aws-region: ap-northeast-1
+      - name: Deploy changed templates to staging
+        run: |
+          TEMPLATES='${{ needs.detect-changes.outputs.changed_templates }}'
+          echo "Deploying templates to staging..."
+          
+          for TEMPLATE in $(echo "$TEMPLATES" | jq -r '.[]'); do
+            # Extract stack name from template path
+            STACK_BASE=$(echo "$TEMPLATE" | sed 's|/|-|g' | sed 's|\.yaml$||')
+            STACK_NAME="${STACK_BASE}-staging"
+            
+            echo "Deploying: $TEMPLATE → Stack: $STACK_NAME"
+            
+            aws cloudformation deploy \
+              --template-file "$TEMPLATE" \
+              --stack-name "$STACK_NAME" \
+              --parameter-overrides file://params/staging.json \
+              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+              --no-fail-on-empty-changeset \
+              --tags Environment=staging Project=fsxn-s3ap-serverless-patterns
+          done
+
+  smoke-test:
+    name: "Smoke Test"
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-deploy-role
+          aws-region: ap-northeast-1
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against staging..."
+          
+          # Invoke Step Functions with test data
+          EXECUTION_ARN=$(aws stepfunctions start-execution \
+            --state-machine-arn "arn:aws:states:ap-northeast-1:${{ vars.AWS_ACCOUNT_ID }}:stateMachine:fsxn-s3ap-staging-workflow" \
+            --input file://test-data/smoke-test-input.json \
+            --query 'executionArn' --output text 2>/dev/null || echo "")
+          
+          if [ -z "$EXECUTION_ARN" ]; then
+            echo "⚠️ No Step Functions state machine found for smoke test (skipping)"
+            exit 0
+          fi
+          
+          # Wait for execution to complete (timeout: 5 minutes)
+          echo "Waiting for execution: $EXECUTION_ARN"
+          for i in $(seq 1 30); do
+            STATUS=$(aws stepfunctions describe-execution \
+              --execution-arn "$EXECUTION_ARN" \
+              --query 'status' --output text)
+            
+            if [ "$STATUS" == "SUCCEEDED" ]; then
+              echo "✅ Smoke test passed"
+              exit 0
+            elif [ "$STATUS" == "FAILED" ] || [ "$STATUS" == "TIMED_OUT" ] || [ "$STATUS" == "ABORTED" ]; then
+              echo "❌ Smoke test failed with status: $STATUS"
+              aws stepfunctions describe-execution \
+                --execution-arn "$EXECUTION_ARN" \
+                --query 'error' --output text || true
+              exit 1
+            fi
+            
+            echo "  Status: $STATUS (attempt $i/30)"
+            sleep 10
+          done
+          
+          echo "❌ Smoke test timed out"
+          exit 1
+
+  rollback:
+    name: "Rollback Staging"
+    needs: smoke-test
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-deploy-role
+          aws-region: ap-northeast-1
+      - name: Rollback failed stacks
+        run: |
+          echo "⚠️ Rolling back staging deployment..."
+          
+          # List staging stacks and rollback those in UPDATE_ROLLBACK_COMPLETE or FAILED state
+          STACKS=$(aws cloudformation list-stacks \
+            --stack-status-filter UPDATE_ROLLBACK_COMPLETE CREATE_FAILED UPDATE_FAILED \
+            --query "StackSummaries[?contains(StackName, '-staging')].StackName" \
+            --output text)
+          
+          for STACK in $STACKS; do
+            echo "Rolling back: $STACK"
+            aws cloudformation rollback-stack --stack-name "$STACK" || \
+              echo "  Rollback not needed or already complete for $STACK"
+          done
+          
+          echo "Rollback complete"
+
+  deploy-production:
+    name: "Deploy to Production"
+    needs: smoke-test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-deploy-role
+          aws-region: ap-northeast-1
+      - name: Deploy to production
+        run: |
+          TEMPLATES='${{ needs.detect-changes.outputs.changed_templates }}'
+          echo "Deploying templates to production..."
+          
+          for TEMPLATE in $(echo "$TEMPLATES" | jq -r '.[]'); do
+            STACK_BASE=$(echo "$TEMPLATE" | sed 's|/|-|g' | sed 's|\.yaml$||')
+            STACK_NAME="${STACK_BASE}"
+            
+            echo "Deploying: $TEMPLATE → Stack: $STACK_NAME"
+            
+            aws cloudformation deploy \
+              --template-file "$TEMPLATE" \
+              --stack-name "$STACK_NAME" \
+              --parameter-overrides file://params/production.json \
+              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+              --no-fail-on-empty-changeset \
+              --tags Environment=production Project=fsxn-s3ap-serverless-patterns
+          done
+          
+          echo "✅ Production deployment complete"

@@ -93,6 +93,97 @@ git push origin feature/your-feature-name
 
 セキュリティに関する問題を発見した場合は、Issue ではなく直接メンテナーに連絡してください。
 
+## CI/CD パイプライン要件
+
+### ローカルテスト実行
+
+PR を作成する前に、以下のテストをローカルで実行してください:
+
+```bash
+# 1. ユニットテスト + プロパティベーステスト（カバレッジ 80% 以上）
+pytest shared/tests/ use-cases/*/tests/ --cov=shared --cov-report=term-missing --cov-fail-under=80 -v
+
+# 2. 特定のテストファイルのみ実行
+pytest shared/tests/test_routing.py -v
+pytest shared/tests/test_cost_validation.py -v
+
+# 3. プロパティベーステストのみ（Hypothesis）
+pytest shared/tests/ -k "property" -v
+
+# 4. 全テスト実行（Phase 1–5）
+pytest shared/tests/ use-cases/*/tests/ security/tests/ -v
+```
+
+### テンプレートバリデーション
+
+```bash
+# cfn-lint: CloudFormation テンプレートの構文・ベストプラクティスチェック
+pip install cfn-lint
+cfn-lint use-cases/*/template.yaml use-cases/*/template-deploy.yaml
+cfn-lint shared/cfn/*.yaml
+
+# cfn-guard: セキュリティコンプライアンスチェック
+# インストール: https://github.com/aws-cloudformation/cloudformation-guard
+cfn-guard validate \
+  --data use-cases/*/template-deploy.yaml \
+  --rules security/cfn-guard-rules/
+
+# 個別ルールの実行
+cfn-guard validate \
+  --data use-cases/uc09-autonomous-driving/template-deploy.yaml \
+  --rules security/cfn-guard-rules/iam-least-privilege.guard
+```
+
+### セキュリティスキャン
+
+```bash
+# Bandit: Python コードのセキュリティスキャン
+pip install bandit
+bandit -r shared/ use-cases/ -c .bandit --severity-level medium
+
+# pip-audit: 依存関係の脆弱性チェック
+pip install pip-audit
+pip-audit -r requirements.txt
+pip-audit -r requirements-dev.txt
+
+# ruff: リンター + フォーマッター
+ruff check .
+ruff format --check .
+```
+
+### CI パイプラインのステージ
+
+GitHub Actions CI パイプライン（`.github/workflows/ci.yml`）は以下の 4 ステージで構成されます:
+
+| ステージ | ツール | 失敗条件 |
+|---------|--------|---------|
+| Stage 1 | cfn-lint | テンプレートエラー |
+| Stage 2 | pytest + Hypothesis | テスト失敗 or カバレッジ < 80% |
+| Stage 3 | cfn-guard | セキュリティルール違反 |
+| Stage 4 | Bandit + pip-audit | High/Critical findings |
+
+**全ステージがパスしない限り、PR はマージできません。**
+
+### デプロイワークフロー
+
+本番デプロイ（`.github/workflows/deploy.yml`）は以下のフローで実行されます:
+
+1. **Staging デプロイ**: main ブランチへの push で自動実行
+2. **スモークテスト**: Step Functions テストデータ実行
+3. **Manual Approval**: GitHub Environment Protection Rules（最低 1 名承認）
+4. **Production デプロイ**: 承認後に実行
+
+### ブランチ戦略
+
+```
+feature/* → PR → main (staging auto-deploy) → manual promotion → production
+```
+
+- `feature/*` ブランチで開発
+- PR 作成時に CI パイプラインが自動実行
+- main マージ後に staging 自動デプロイ
+- staging 検証後に手動承認で production デプロイ
+
 ## ライセンス
 
 本プロジェクトに貢献することで、あなたの貢献が MIT License の下でライセンスされることに同意したものとみなされます。

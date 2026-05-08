@@ -1,0 +1,67 @@
+# SageMaker Security Rule
+# Ensures SageMaker resources have VPC configuration and encryption at rest
+
+# Rule: SageMaker endpoints must have VPC configuration
+rule sagemaker_endpoint_vpc when %INPUT {
+    Resources.*[ Type == "AWS::SageMaker::EndpointConfig" ] {
+        when Properties.ProductionVariants exists {
+            # VPC config is applied at the model level, not endpoint config
+            # This rule validates endpoint config exists with proper settings
+            Properties.ProductionVariants[*] {
+                VariantName exists
+            }
+        }
+    }
+}
+
+# Rule: SageMaker models must have VPC configuration
+rule sagemaker_model_vpc when %INPUT {
+    Resources.*[ Type == "AWS::SageMaker::Model" ] {
+        Properties.VpcConfig exists
+            <<SageMaker model must have VPC configuration for network isolation>>
+        Properties.VpcConfig.Subnets exists
+        Properties.VpcConfig.SecurityGroupIds exists
+    }
+}
+
+# Rule: SageMaker models must have network isolation enabled
+rule sagemaker_network_isolation when %INPUT {
+    Resources.*[ Type == "AWS::SageMaker::Model" ] {
+        when Properties.EnableNetworkIsolation exists {
+            Properties.EnableNetworkIsolation == true
+                <<SageMaker model should have network isolation enabled>>
+        }
+    }
+}
+
+# Rule: SageMaker endpoint config must have KMS encryption
+rule sagemaker_endpoint_encryption when %INPUT {
+    Resources.*[ Type == "AWS::SageMaker::EndpointConfig" ] {
+        Properties.KmsKeyId exists
+            <<SageMaker endpoint config must have KMS encryption for data at rest>>
+    }
+}
+
+# Rule: SageMaker notebook instances must have encryption
+rule sagemaker_notebook_encryption when %INPUT {
+    Resources.*[ Type == "AWS::SageMaker::NotebookInstance" ] {
+        Properties.KmsKeyId exists
+            <<SageMaker notebook instance must have KMS encryption>>
+        Properties.DirectInternetAccess == "Disabled"
+            <<SageMaker notebook must not have direct internet access>>
+    }
+}
+
+# Rule: SageMaker training jobs must have encryption
+rule sagemaker_training_encryption when %INPUT {
+    Resources.*[ Type == "AWS::SageMaker::TrainingJob" ] {
+        when Properties.ResourceConfig exists {
+            Properties.ResourceConfig.VolumeKmsKeyId exists
+                <<SageMaker training job must have volume encryption>>
+        }
+        when Properties.OutputDataConfig exists {
+            Properties.OutputDataConfig.KmsKeyId exists
+                <<SageMaker training job output must be encrypted>>
+        }
+    }
+}

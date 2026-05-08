@@ -177,6 +177,27 @@ Phase 4의 모든 기능은 CloudFormation Conditions로 옵트인 제어되며,
 - [Multi-Account PoC 결과](docs/multi-account/poc-results.md)
 - [Event-Driven 아키텍처 설계](docs/event-driven/architecture-design.md)
 
+### Phase 5 기능 요약
+
+| 기능 | 설명 | 대상 UC |
+|------|------|---------|
+| SageMaker Serverless Inference | 제3 라우팅 옵션 (Batch / Real-time / Serverless 3-way 선택) | UC9 (옵트인) |
+| Scheduled Scaling | 업무 시간 기반 SageMaker Endpoint 자동 스케일링 | UC9 (옵트인) |
+| CloudWatch Billing Alarms | Warning / Critical / Emergency 3단계 비용 알림 | 공통 (옵트인) |
+| Auto-Stop Lambda | 미사용 SageMaker Endpoint 자동 감지 및 스케일 다운 | 공통 (옵트인) |
+| CI/CD Pipeline | GitHub Actions 워크플로우 (cfn-lint → pytest → cfn-guard → Bandit → deploy) | 전체 UC |
+| Multi-Region | DynamoDB Global Tables + CrossRegionClient 페일오버 | 공통 (옵트인) |
+| Disaster Recovery | DR Tier 1/2/3 정의, 페일오버 런북 | 공통 (설계 문서) |
+
+Phase 5의 모든 기능도 CloudFormation Conditions로 옵트인 제어되며, 활성화하지 않는 한 추가 비용이 발생하지 않습니다.
+
+자세한 내용은 다음 문서를 참조하세요:
+- [Serverless Inference 콜드 스타트 특성](docs/serverless-inference-cold-start.md)
+- [비용 최적화 베스트 프랙티스 가이드](docs/cost-optimization-guide.md)
+- [CI/CD 가이드](docs/ci-cd-guide.md)
+- [Multi-Region Step Functions 설계](docs/multi-region/step-functions-design.md)
+- [Disaster Recovery 가이드](docs/multi-region/disaster-recovery.md)
+
 ### 스크린샷
 
 > 아래는 검증 환경에서의 촬영 예시입니다. 환경 고유 정보(계정 ID 등)는 마스킹 처리되었습니다.
@@ -334,6 +355,34 @@ Phase 4의 모든 기능은 CloudFormation Conditions로 옵트인 제어되며,
 ![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
 
 > Phase 4 CloudFormation 스택. UC9 확장(Task Token Store + Real-time Endpoint) 및 Event-Driven Prototype CREATE_COMPLETE.
+
+#### Phase 5: Serverless Inference·비용 최적화·Multi-Region
+
+##### SageMaker Serverless Inference Endpoint
+
+![SageMaker Serverless Endpoint 설정](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+
+> SageMaker Serverless Inference Endpoint 설정. 메모리 4096 MB, 최대 동시 실행 5.
+
+![SageMaker Serverless Endpoint Config](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-config.png)
+
+> Serverless Endpoint Configuration 상세. 프로비저닝 불필요, 요청 시에만 컴퓨트 리소스 할당.
+
+##### CloudWatch Billing Alarms (3단계 비용 알림)
+
+![CloudWatch Billing Alarms](docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+
+> Warning / Critical / Emergency 3단계 Billing Alarms. 임계값 초과 시 SNS 알림.
+
+##### DynamoDB Global Table (Multi-Region)
+
+![DynamoDB Global Table](docs/screenshots/masked/phase5-dynamodb-global-table.png)
+
+> DynamoDB Global Table 구성. Multi-Region 복제 활성화.
+
+![DynamoDB Global Replicas](docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+
+> Global Table 레플리카 구성. 여러 리전 간 데이터 동기화.
 
 ## 기술 스택
 

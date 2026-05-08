@@ -177,6 +177,27 @@ Phase 4 的所有功能透過 CloudFormation Conditions 進行可選控制，未
 - [Multi-Account PoC 結果](docs/multi-account/poc-results.md)
 - [Event-Driven 架構設計](docs/event-driven/architecture-design.md)
 
+### Phase 5 功能概要
+
+| 功能 | 說明 | 目標 UC |
+|------|------|---------|
+| SageMaker Serverless Inference | 第3路由選項（Batch / Real-time / Serverless 三路選擇） | UC9（可選啟用） |
+| Scheduled Scaling | 基於營業時間的 SageMaker Endpoint 自動擴縮 | UC9（可選啟用） |
+| CloudWatch Billing Alarms | Warning / Critical / Emergency 三級成本警報 | 通用（可選啟用） |
+| Auto-Stop Lambda | 自動偵測並縮減閒置 SageMaker Endpoint | 通用（可選啟用） |
+| CI/CD Pipeline | GitHub Actions 工作流程（cfn-lint → pytest → cfn-guard → Bandit → deploy） | 全部 UC |
+| Multi-Region | DynamoDB Global Tables + CrossRegionClient 故障轉移 | 通用（可選啟用） |
+| Disaster Recovery | DR Tier 1/2/3 定義、故障轉移運行手冊 | 通用（設計文件） |
+
+Phase 5 的所有功能同樣透過 CloudFormation Conditions 進行可選控制，未啟用時不會產生額外費用。
+
+詳情請參閱以下文件：
+- [Serverless Inference 冷啟動特性](docs/serverless-inference-cold-start.md)
+- [成本最佳化最佳實踐指南](docs/cost-optimization-guide.md)
+- [CI/CD 指南](docs/ci-cd-guide.md)
+- [Multi-Region Step Functions 設計](docs/multi-region/step-functions-design.md)
+- [Disaster Recovery 指南](docs/multi-region/disaster-recovery.md)
+
 ### 螢幕截圖
 
 > 以下為驗證環境中的截圖範例。環境特定資訊（帳戶 ID 等）已進行遮罩處理。
@@ -334,6 +355,30 @@ Phase 4 的所有功能透過 CloudFormation Conditions 進行可選控制，未
 ![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
 
 > Phase 4 CloudFormation 堆疊。UC9 擴充（Task Token Store + Real-time Endpoint）及 Event-Driven Prototype CREATE_COMPLETE。
+
+#### Phase 5: Serverless Inference·成本最佳化·Multi-Region
+
+##### SageMaker Serverless Inference Endpoint
+
+![SageMaker Serverless Endpoint 設定](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+
+> SageMaker Serverless Inference Endpoint 設定。記憶體 4096 MB，最大並行 5。
+
+##### CloudWatch Billing Alarms（3 級成本警報）
+
+![CloudWatch Billing Alarms](docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+
+> Warning / Critical / Emergency 3 級 Billing Alarms。超閾值時 SNS 通知。
+
+##### DynamoDB Global Table（Multi-Region）
+
+![DynamoDB Global Table](docs/screenshots/masked/phase5-dynamodb-global-table.png)
+
+> DynamoDB Global Table 設定。Multi-Region 複製已啟用。
+
+![DynamoDB Global Replicas](docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+
+> Global Table 副本設定。多區域間資料同步。
 
 ## 技術堆疊
 

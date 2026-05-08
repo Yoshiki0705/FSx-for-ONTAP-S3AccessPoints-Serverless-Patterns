@@ -1,0 +1,546 @@
+# =============================================================================
+# Billing Alarm — CloudWatch Billing Alarms + Cost Dashboard
+# =============================================================================
+#
+# 本テンプレートは AWS 請求額に対する 3 段階アラーム（Warning/Critical/Emergency）
+# と月次コストダッシュボードを作成する。
+#
+# 設計方針:
+# - KMS 暗号化 SNS トピック + Email サブスクリプション
+# - 3 段階閾値: Warning < Critical < Emergency（厳密順序）
+# - オプション: サービス別アラーム（SageMaker, Lambda, DynamoDB, Kinesis）
+# - CloudWatch Dashboard: 月次コスト推移をサービス別に可視化
+# - 独立デプロイまたはネストスタック（AWS::CloudFormation::Stack）対応
+# - 全リソースにタグ付与: Phase=5, Component=billing-alarm
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file billing-alarm.yaml \
+#     --stack-name fsxn-s3ap-billing-alarms \
+#     --capabilities CAPABILITY_IAM \
+#     --parameter-overrides \
+#       NotificationEmail=ops@example.com \
+#       WarningThreshold=50 \
+#       CriticalThreshold=100 \
+#       EmergencyThreshold=500
+#
+# 注意: Billing メトリクスは us-east-1 リージョンでのみ利用可能。
+#       このテンプレートは us-east-1 にデプロイする必要がある。
+#
+# 参照: Requirements 7.1–7.7
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Billing Alarm.
+  3 段階請求アラーム + サービス別コストダッシュボード。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  WarningThreshold:
+    Type: Number
+    Default: 50
+    MinValue: 1
+    Description: >-
+      警告閾値（USD）。月次推定請求額がこの値を超えるとアラーム発火。
+
+  CriticalThreshold:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    Description: >-
+      重大閾値（USD）。月次推定請求額がこの値を超えるとアラーム発火。
+
+  EmergencyThreshold:
+    Type: Number
+    Default: 500
+    MinValue: 1
+    Description: >-
+      緊急閾値（USD）。月次推定請求額がこの値を超えるとアラーム発火。
+
+  NotificationEmail:
+    Type: String
+    Description: >-
+      アラーム通知の送信先メールアドレス（必須）。
+      SNS サブスクリプション確認メールが送信される。
+
+  Currency:
+    Type: String
+    Default: "USD"
+    AllowedValues: ["USD"]
+    Description: >-
+      請求通貨。現在は USD のみサポート。
+
+  EnablePerServiceAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      サービス別アラームを有効化する。
+      true の場合、SageMaker/Lambda/DynamoDB/Kinesis 個別アラームを作成。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  PerServiceAlarmsEnabled:
+    !Equals [!Ref EnablePerServiceAlarms, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # KMS Key for SNS Topic Encryption
+  # -------------------------------------------------------------------
+  BillingAlarmKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for FSxN S3AP billing alarm SNS topic encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowRootAccountFullAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+          - Sid: AllowCloudWatchAlarmsToUseKey
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+            Resource: "*"
+          - Sid: AllowSNSToUseKey
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+            Resource: "*"
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: billing-alarm
+
+  BillingAlarmKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/fsxn-s3ap-billing-alarm-${AWS::StackName}"
+      TargetKeyId: !Ref BillingAlarmKey
+
+  # -------------------------------------------------------------------
+  # SNS Topic (KMS Encrypted) + Email Subscription
+  # -------------------------------------------------------------------
+  BillingAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "fsxn-s3ap-billing-alarms-${AWS::StackName}"
+      DisplayName: "FSxN S3AP Billing Alarms"
+      KmsMasterKeyId: !Ref BillingAlarmKey
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: billing-alarm
+
+  BillingAlarmTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref BillingAlarmTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudWatchAlarmsPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref BillingAlarmTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:*"
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref BillingAlarmTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -------------------------------------------------------------------
+  # Billing Alarms — 3 段階 (Warning / Critical / Emergency)
+  # -------------------------------------------------------------------
+  WarningAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-Billing-Warning-${AWS::StackName}"
+      AlarmDescription: !Sub >-
+        月次推定請求額が Warning 閾値 (${WarningThreshold} ${Currency}) を超過。
+        コスト確認を推奨。
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: !Ref Currency
+      Statistic: Maximum
+      Period: 21600
+      EvaluationPeriods: 1
+      Threshold: !Ref WarningThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref BillingAlarmTopic
+      OKActions:
+        - !Ref BillingAlarmTopic
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: billing-alarm
+        - Key: Severity
+          Value: warning
+
+  CriticalAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-Billing-Critical-${AWS::StackName}"
+      AlarmDescription: !Sub >-
+        月次推定請求額が Critical 閾値 (${CriticalThreshold} ${Currency}) を超過。
+        即座のコスト削減アクションを推奨。
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: !Ref Currency
+      Statistic: Maximum
+      Period: 21600
+      EvaluationPeriods: 1
+      Threshold: !Ref CriticalThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref BillingAlarmTopic
+      OKActions:
+        - !Ref BillingAlarmTopic
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: billing-alarm
+        - Key: Severity
+          Value: critical
+
+  EmergencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-Billing-Emergency-${AWS::StackName}"
+      AlarmDescription: !Sub >-
+        月次推定請求額が Emergency 閾値 (${EmergencyThreshold} ${Currency}) を超過。
+        緊急対応が必要。リソースの即時停止を検討。
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: !Ref Currency
+      Statistic: Maximum
+      Period: 21600
+      EvaluationPeriods: 1
+      Threshold: !Ref EmergencyThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref BillingAlarmTopic
+      OKActions:
+        - !Ref BillingAlarmTopic
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: billing-alarm
+        - Key: Severity
+          Value: emergency
+
+  # -------------------------------------------------------------------
+  # Per-Service Alarms (Conditional)
+  # -------------------------------------------------------------------
+  SageMakerBillingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: PerServiceAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-Billing-SageMaker-${AWS::StackName}"
+      AlarmDescription: !Sub >-
+        SageMaker サービスの月次推定請求額が Warning 閾値 (${WarningThreshold} ${Currency}) を超過。
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: !Ref Currency
+        - Name: ServiceName
+          Value: Amazon SageMaker
+      Statistic: Maximum
+      Period: 21600
+      EvaluationPeriods: 1
+      Threshold: !Ref WarningThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref BillingAlarmTopic
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: billing-alarm
+        - Key: ServiceFilter
+          Value: SageMaker
+
+  LambdaBillingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: PerServiceAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-Billing-Lambda-${AWS::StackName}"
+      AlarmDescription: !Sub >-
+        Lambda サービスの月次推定請求額が Warning 閾値 (${WarningThreshold} ${Currency}) を超過。
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: !Ref Currency
+        - Name: ServiceName
+          Value: AWS Lambda
+      Statistic: Maximum
+      Period: 21600
+      EvaluationPeriods: 1
+      Threshold: !Ref WarningThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref BillingAlarmTopic
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: billing-alarm
+        - Key: ServiceFilter
+          Value: Lambda
+
+  DynamoDBBillingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: PerServiceAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-Billing-DynamoDB-${AWS::StackName}"
+      AlarmDescription: !Sub >-
+        DynamoDB サービスの月次推定請求額が Warning 閾値 (${WarningThreshold} ${Currency}) を超過。
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: !Ref Currency
+        - Name: ServiceName
+          Value: Amazon DynamoDB
+      Statistic: Maximum
+      Period: 21600
+      EvaluationPeriods: 1
+      Threshold: !Ref WarningThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref BillingAlarmTopic
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: billing-alarm
+        - Key: ServiceFilter
+          Value: DynamoDB
+
+  KinesisBillingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: PerServiceAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "FSxN-S3AP-Billing-Kinesis-${AWS::StackName}"
+      AlarmDescription: !Sub >-
+        Kinesis サービスの月次推定請求額が Warning 閾値 (${WarningThreshold} ${Currency}) を超過。
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: !Ref Currency
+        - Name: ServiceName
+          Value: Amazon Kinesis
+      Statistic: Maximum
+      Period: 21600
+      EvaluationPeriods: 1
+      Threshold: !Ref WarningThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref BillingAlarmTopic
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: billing-alarm
+        - Key: ServiceFilter
+          Value: Kinesis
+
+  # -------------------------------------------------------------------
+  # CloudWatch Dashboard — Month-to-Date Costs by Service
+  # -------------------------------------------------------------------
+  CostDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "FSxN-S3AP-Billing-${AWS::StackName}"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "title": "Month-to-Date Estimated Charges (Total)",
+                "metrics": [
+                  ["AWS/Billing", "EstimatedCharges", "Currency", "${Currency}"]
+                ],
+                "period": 21600,
+                "stat": "Maximum",
+                "region": "us-east-1",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "SageMaker Estimated Charges",
+                "metrics": [
+                  ["AWS/Billing", "EstimatedCharges", "ServiceName", "Amazon SageMaker", "Currency", "${Currency}"]
+                ],
+                "period": 21600,
+                "stat": "Maximum",
+                "region": "us-east-1",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Lambda Estimated Charges",
+                "metrics": [
+                  ["AWS/Billing", "EstimatedCharges", "ServiceName", "AWS Lambda", "Currency", "${Currency}"]
+                ],
+                "period": 21600,
+                "stat": "Maximum",
+                "region": "us-east-1",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "DynamoDB Estimated Charges",
+                "metrics": [
+                  ["AWS/Billing", "EstimatedCharges", "ServiceName", "Amazon DynamoDB", "Currency", "${Currency}"]
+                ],
+                "period": 21600,
+                "stat": "Maximum",
+                "region": "us-east-1",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Kinesis Estimated Charges",
+                "metrics": [
+                  ["AWS/Billing", "EstimatedCharges", "ServiceName", "Amazon Kinesis", "Currency", "${Currency}"]
+                ],
+                "period": 21600,
+                "stat": "Maximum",
+                "region": "us-east-1",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 18,
+              "width": 24,
+              "height": 3,
+              "properties": {
+                "title": "Billing Alarm Thresholds",
+                "metrics": [
+                  ["AWS/Billing", "EstimatedCharges", "Currency", "${Currency}"]
+                ],
+                "annotations": {
+                  "horizontal": [
+                    { "label": "Warning (${WarningThreshold} USD)", "value": ${WarningThreshold}, "color": "#ff7f0e" },
+                    { "label": "Critical (${CriticalThreshold} USD)", "value": ${CriticalThreshold}, "color": "#d62728" },
+                    { "label": "Emergency (${EmergencyThreshold} USD)", "value": ${EmergencyThreshold}, "color": "#7f0000" }
+                  ]
+                },
+                "period": 21600,
+                "stat": "Maximum",
+                "region": "us-east-1",
+                "view": "timeSeries"
+              }
+            }
+          ]
+        }
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  BillingAlarmTopicArn:
+    Description: Billing Alarm SNS トピック ARN
+    Value: !Ref BillingAlarmTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-BillingAlarmTopicArn"
+
+  KmsKeyArn:
+    Description: SNS トピック暗号化 KMS キー ARN
+    Value: !GetAtt BillingAlarmKey.Arn
+
+  WarningAlarmArn:
+    Description: Warning アラーム ARN
+    Value: !GetAtt WarningAlarm.Arn
+
+  CriticalAlarmArn:
+    Description: Critical アラーム ARN
+    Value: !GetAtt CriticalAlarm.Arn
+
+  EmergencyAlarmArn:
+    Description: Emergency アラーム ARN
+    Value: !GetAtt EmergencyAlarm.Arn
+
+  DashboardName:
+    Description: CloudWatch Dashboard 名
+    Value: !Sub "FSxN-S3AP-Billing-${AWS::StackName}"

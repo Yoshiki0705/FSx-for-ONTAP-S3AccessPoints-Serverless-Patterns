@@ -1,0 +1,51 @@
+# No Public Access Rule
+# Ensures no public S3 buckets and no 0.0.0.0/0 security group ingress
+
+# Rule: S3 buckets must block public access
+rule s3_no_public_access when %INPUT {
+    Resources.*[ Type == "AWS::S3::Bucket" ] {
+        Properties.PublicAccessBlockConfiguration exists
+        Properties.PublicAccessBlockConfiguration {
+            BlockPublicAcls == true
+            BlockPublicPolicy == true
+            IgnorePublicAcls == true
+            RestrictPublicBuckets == true
+        }
+    }
+}
+
+# Rule: Security groups must not allow unrestricted ingress (0.0.0.0/0)
+rule sg_no_unrestricted_ingress when %INPUT {
+    Resources.*[ Type == "AWS::EC2::SecurityGroup" ] {
+        when Properties.SecurityGroupIngress exists {
+            Properties.SecurityGroupIngress[*] {
+                CidrIp != "0.0.0.0/0"
+                    <<Security group ingress must not allow 0.0.0.0/0 (unrestricted access)>>
+            }
+        }
+    }
+}
+
+# Rule: Security groups must not allow unrestricted IPv6 ingress
+rule sg_no_unrestricted_ipv6_ingress when %INPUT {
+    Resources.*[ Type == "AWS::EC2::SecurityGroup" ] {
+        when Properties.SecurityGroupIngress exists {
+            Properties.SecurityGroupIngress[*] {
+                CidrIpv6 != "::/0"
+                    <<Security group ingress must not allow ::/0 (unrestricted IPv6 access)>>
+            }
+        }
+    }
+}
+
+# Rule: S3 bucket policies must not grant public access
+rule s3_bucket_policy_no_public when %INPUT {
+    Resources.*[ Type == "AWS::S3::BucketPolicy" ] {
+        Properties.PolicyDocument.Statement[*] {
+            when Effect == "Allow" {
+                Principal != "*"
+                    <<S3 bucket policy must not grant access to Principal: *>>
+            }
+        }
+    }
+}

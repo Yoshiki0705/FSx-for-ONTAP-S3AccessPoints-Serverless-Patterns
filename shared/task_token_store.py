@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import time
 import uuid
 from typing import Optional
@@ -41,21 +42,44 @@ class TaskTokenStore:
     Task Token を DynamoDB に保存する。TTL による自動クリーンアップ、
     conditional write による衝突防止、GSI によるジョブ名逆引きをサポート。
 
+    Global Tables 対応: region パラメータにより書き込み先リージョンを指定可能。
+    Global Tables ではローカルレプリカに自動書き込みされるため、通常は
+    region=None（現在リージョン）で動作する。source_region 属性をレコードに
+    追加し、デバッグ・監査用途に使用する。
+
     Attributes:
         table_name: DynamoDB テーブル名
         ttl_seconds: Token の有効期間（秒）。デフォルト 86400（24 時間）
+        region: DynamoDB 書き込み先リージョン。None の場合は AWS_REGION 環境変数を使用
+        source_region: レコードに付与するソースリージョン識別子
     """
 
-    def __init__(self, table_name: str, ttl_seconds: int = 86400):
-        """Initialize with DynamoDB table name and TTL configuration.
+    def __init__(
+        self,
+        table_name: str,
+        ttl_seconds: int = 86400,
+        region: Optional[str] = None,
+    ):
+        """Initialize with DynamoDB table name, TTL, and optional region.
+
+        Global Tables ではローカルレプリカに自動書き込みされるため、
+        region パラメータは主に明示的なリージョン指定が必要な場合に使用する。
+        region=None の場合は AWS_REGION 環境変数（Lambda 実行リージョン）を使用。
 
         Args:
             table_name: DynamoDB テーブル名
             ttl_seconds: Token の有効期間（秒）。デフォルト 86400（24 時間）
+            region: DynamoDB 書き込み先リージョン。None の場合は現在リージョンを使用
         """
         self.table_name = table_name
         self.ttl_seconds = ttl_seconds
-        self._dynamodb = boto3.resource("dynamodb")
+        self.region = region or os.environ.get("AWS_REGION", "ap-northeast-1")
+        self.source_region = self.region
+
+        if region:
+            self._dynamodb = boto3.resource("dynamodb", region_name=region)
+        else:
+            self._dynamodb = boto3.resource("dynamodb")
         self._table = self._dynamodb.Table(table_name)
 
     def store_token(self, task_token: str, transform_job_name: str) -> str:
@@ -89,6 +113,7 @@ class TaskTokenStore:
                         "transform_job_name": transform_job_name,
                         "created_at": current_time,
                         "ttl": ttl_value,
+                        "source_region": self.source_region,
                     },
                     ConditionExpression="attribute_not_exists(correlation_id)",
                 )

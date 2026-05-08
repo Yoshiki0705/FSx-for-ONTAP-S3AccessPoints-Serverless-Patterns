@@ -3,7 +3,7 @@
 CrossRegionConfig と CrossRegionClient の動作を検証するユニットテスト。
 unittest.mock を使用して外部依存（boto3）をモックする。
 
-Validates: Requirements 13.7, 14.7
+Validates: Requirements 13.7, 14.7, 14.4, 14.5, 14.6
 """
 
 from __future__ import annotations
@@ -338,3 +338,420 @@ class TestCrossRegionClient:
             client.detect_entities_v2(text="test")
 
         assert exc_info.value.original_error is original
+
+
+
+# ---------------------------------------------------------------------------
+# TestDiscoverRegionalEndpoints
+# ---------------------------------------------------------------------------
+
+
+class TestDiscoverRegionalEndpoints:
+    """discover_regional_endpoints() のテスト — Validates: Requirement 14.4"""
+
+    def test_discovers_from_env_vars(self, mock_session):
+        """環境変数から S3 AP ARN を取得する"""
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "S3AP_ARN_AP_NORTHEAST_1": "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/primary",
+                "S3AP_ARN_US_EAST_1": "arn:aws:s3:us-east-1:123456789012:accesspoint/secondary",
+            },
+        ):
+            endpoints = cr_client.discover_regional_endpoints()
+
+        assert "ap-northeast-1" in endpoints
+        assert "us-east-1" in endpoints
+        assert endpoints["ap-northeast-1"] == "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/primary"
+        assert endpoints["us-east-1"] == "arn:aws:s3:us-east-1:123456789012:accesspoint/secondary"
+
+    def test_falls_back_to_dynamodb_when_env_vars_empty(self, mock_session):
+        """環境変数が空の場合に DynamoDB 設定テーブルにフォールバックする"""
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        # DynamoDB テーブルのモック
+        mock_dynamodb = MagicMock()
+        mock_table = MagicMock()
+        mock_table.scan.return_value = {
+            "Items": [
+                {"region": "ap-northeast-1", "s3ap_arn": "arn:aws:s3:ap-northeast-1:123:accesspoint/p"},
+                {"region": "us-east-1", "s3ap_arn": "arn:aws:s3:us-east-1:123:accesspoint/s"},
+            ]
+        }
+        mock_dynamodb.Table.return_value = mock_table
+        mock_session.resource.return_value = mock_dynamodb
+
+        with patch.dict("os.environ", {}, clear=True):
+            # Ensure no S3AP_ARN env vars are set
+            import os
+            for key in list(os.environ.keys()):
+                if key.startswith("S3AP_ARN_"):
+                    del os.environ[key]
+
+            endpoints = cr_client.discover_regional_endpoints()
+
+        assert "ap-northeast-1" in endpoints
+        assert "us-east-1" in endpoints
+
+    def test_returns_empty_dict_when_no_source_available(self, mock_session):
+        """環境変数も DynamoDB も利用不可の場合に空辞書を返す"""
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        # DynamoDB アクセス失敗
+        mock_dynamodb = MagicMock()
+        mock_table = MagicMock()
+        mock_table.scan.side_effect = Exception("Table not found")
+        mock_dynamodb.Table.return_value = mock_table
+        mock_session.resource.return_value = mock_dynamodb
+
+        with patch.dict("os.environ", {}, clear=True):
+            import os
+            for key in list(os.environ.keys()):
+                if key.startswith("S3AP_ARN_"):
+                    del os.environ[key]
+
+            endpoints = cr_client.discover_regional_endpoints()
+
+        assert endpoints == {}
+
+
+# ---------------------------------------------------------------------------
+# TestAccessWithFailover
+# ---------------------------------------------------------------------------
+
+
+class TestAccessWithFailover:
+    """access_with_failover() のテスト — Validates: Requirements 14.4, 14.5, 14.6"""
+
+    def test_primary_success_returns_primary_region(self, mock_session):
+        """Primary リージョン成功時に Primary の結果を返す"""
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        # S3 クライアントのモック
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": b"data", "ContentLength": 4}
+        mock_session.client.return_value = mock_s3
+
+        with patch("shared.cross_region_client.EmfMetrics") as mock_emf_cls:
+            mock_emf = MagicMock()
+            mock_emf_cls.return_value = mock_emf
+
+            result = cr_client.access_with_failover(
+                "get_object", Bucket="test-bucket", Key="test-key"
+            )
+
+        assert result["region_served"] == "ap-northeast-1"
+        assert result["is_failover"] is False
+        assert "latency_ms" in result
+        assert "response" in result
+
+    def test_primary_timeout_triggers_failover_to_secondary(self, mock_session):
+        """Primary タイムアウト時に Secondary にフェイルオーバーする"""
+        from botocore.exceptions import ConnectTimeoutError
+
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        # Primary は timeout、Secondary は成功
+        mock_s3_primary = MagicMock()
+        mock_s3_primary.get_object.side_effect = ConnectTimeoutError(endpoint_url="https://s3.ap-northeast-1.amazonaws.com")
+
+        mock_s3_secondary = MagicMock()
+        mock_s3_secondary.get_object.return_value = {"Body": b"data", "ContentLength": 4}
+
+        # リージョン別に異なるクライアントを返す
+        def client_factory(service, region_name=None, config=None):
+            if region_name == "ap-northeast-1":
+                return mock_s3_primary
+            return mock_s3_secondary
+
+        mock_session.client.side_effect = client_factory
+
+        with patch("shared.cross_region_client.EmfMetrics") as mock_emf_cls:
+            mock_emf = MagicMock()
+            mock_emf_cls.return_value = mock_emf
+
+            result = cr_client.access_with_failover(
+                "get_object", Bucket="test-bucket", Key="test-key"
+            )
+
+        assert result["region_served"] == "us-east-1"
+        assert result["is_failover"] is True
+
+    def test_both_regions_fail_raises_error(self, mock_session):
+        """両リージョン失敗時に CrossRegionClientError を発生させる"""
+        from botocore.exceptions import ConnectTimeoutError, ReadTimeoutError
+
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        # 両方 timeout
+        mock_s3_primary = MagicMock()
+        mock_s3_primary.get_object.side_effect = ConnectTimeoutError(endpoint_url="https://s3.ap-northeast-1.amazonaws.com")
+
+        mock_s3_secondary = MagicMock()
+        mock_s3_secondary.get_object.side_effect = ReadTimeoutError(endpoint_url="https://s3.us-east-1.amazonaws.com")
+
+        def client_factory(service, region_name=None, config=None):
+            if region_name == "ap-northeast-1":
+                return mock_s3_primary
+            return mock_s3_secondary
+
+        mock_session.client.side_effect = client_factory
+
+        with patch("shared.cross_region_client.EmfMetrics") as mock_emf_cls:
+            mock_emf = MagicMock()
+            mock_emf_cls.return_value = mock_emf
+
+            with pytest.raises(CrossRegionClientError) as exc_info:
+                cr_client.access_with_failover(
+                    "get_object", Bucket="test-bucket", Key="test-key"
+                )
+
+            assert "failed in both" in str(exc_info.value)
+
+    def test_4xx_error_does_not_trigger_failover(self, mock_session):
+        """4xx エラー（クライアントエラー）はフェイルオーバー対象外"""
+        from botocore.exceptions import ClientError
+
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        # 403 Forbidden
+        mock_s3 = MagicMock()
+        error_response = {
+            "Error": {"Code": "AccessDenied", "Message": "Access Denied"},
+            "ResponseMetadata": {"HTTPStatusCode": 403},
+        }
+        mock_s3.get_object.side_effect = ClientError(error_response, "GetObject")
+        mock_session.client.return_value = mock_s3
+
+        with patch("shared.cross_region_client.EmfMetrics") as mock_emf_cls:
+            mock_emf = MagicMock()
+            mock_emf_cls.return_value = mock_emf
+
+            with pytest.raises(CrossRegionClientError) as exc_info:
+                cr_client.access_with_failover(
+                    "get_object", Bucket="test-bucket", Key="test-key"
+                )
+
+            # Should NOT mention failover — it's a client error
+            assert "HTTP 403" in str(exc_info.value)
+            assert exc_info.value.target_region == "ap-northeast-1"
+
+    def test_5xx_error_triggers_failover(self, mock_session):
+        """5xx エラー（サーバーエラー）はフェイルオーバーをトリガーする"""
+        from botocore.exceptions import ClientError
+
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        # Primary: 503, Secondary: success
+        mock_s3_primary = MagicMock()
+        error_response = {
+            "Error": {"Code": "ServiceUnavailable", "Message": "Service Unavailable"},
+            "ResponseMetadata": {"HTTPStatusCode": 503},
+        }
+        mock_s3_primary.get_object.side_effect = ClientError(error_response, "GetObject")
+
+        mock_s3_secondary = MagicMock()
+        mock_s3_secondary.get_object.return_value = {"Body": b"data", "ContentLength": 4}
+
+        def client_factory(service, region_name=None, config=None):
+            if region_name == "ap-northeast-1":
+                return mock_s3_primary
+            return mock_s3_secondary
+
+        mock_session.client.side_effect = client_factory
+
+        with patch("shared.cross_region_client.EmfMetrics") as mock_emf_cls:
+            mock_emf = MagicMock()
+            mock_emf_cls.return_value = mock_emf
+
+            result = cr_client.access_with_failover(
+                "get_object", Bucket="test-bucket", Key="test-key"
+            )
+
+        assert result["region_served"] == "us-east-1"
+        assert result["is_failover"] is True
+
+
+# ---------------------------------------------------------------------------
+# TestFailoverMetrics
+# ---------------------------------------------------------------------------
+
+
+class TestFailoverMetrics:
+    """フェイルオーバーメトリクス出力のテスト — Validates: Requirement 14.5"""
+
+    def test_emits_failover_count_metric_on_failover(self, mock_session):
+        """フェイルオーバー発生時に CrossRegionFailoverCount メトリクスを出力する"""
+        from botocore.exceptions import ConnectTimeoutError
+
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        mock_s3_primary = MagicMock()
+        mock_s3_primary.get_object.side_effect = ConnectTimeoutError(endpoint_url="https://s3.ap-northeast-1.amazonaws.com")
+
+        mock_s3_secondary = MagicMock()
+        mock_s3_secondary.get_object.return_value = {"Body": b"data"}
+
+        def client_factory(service, region_name=None, config=None):
+            if region_name == "ap-northeast-1":
+                return mock_s3_primary
+            return mock_s3_secondary
+
+        mock_session.client.side_effect = client_factory
+
+        with patch("shared.cross_region_client.EmfMetrics") as mock_emf_cls:
+            mock_emf = MagicMock()
+            mock_emf_cls.return_value = mock_emf
+
+            cr_client.access_with_failover(
+                "get_object", Bucket="test-bucket", Key="test-key"
+            )
+
+        # Verify CrossRegionFailoverCount was emitted
+        failover_calls = [
+            call for call in mock_emf.put_metric.call_args_list
+            if call.args[0] == "CrossRegionFailoverCount"
+        ]
+        assert len(failover_calls) == 1
+        assert failover_calls[0].args[1] == 1.0
+        assert failover_calls[0].args[2] == "Count"
+
+    def test_emits_latency_metric_on_success(self, mock_session):
+        """成功時に CrossRegionLatency メトリクスを出力する"""
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": b"data"}
+        mock_session.client.return_value = mock_s3
+
+        with patch("shared.cross_region_client.EmfMetrics") as mock_emf_cls:
+            mock_emf = MagicMock()
+            mock_emf_cls.return_value = mock_emf
+
+            cr_client.access_with_failover(
+                "get_object", Bucket="test-bucket", Key="test-key"
+            )
+
+        # Verify CrossRegionLatency was emitted
+        latency_calls = [
+            call for call in mock_emf.put_metric.call_args_list
+            if call.args[0] == "CrossRegionLatency"
+        ]
+        assert len(latency_calls) == 1
+        assert latency_calls[0].args[2] == "Milliseconds"
+
+    def test_emits_request_count_metric(self, mock_session):
+        """リクエスト時に CrossRegionRequestCount メトリクスを出力する"""
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": b"data"}
+        mock_session.client.return_value = mock_s3
+
+        with patch("shared.cross_region_client.EmfMetrics") as mock_emf_cls:
+            mock_emf = MagicMock()
+            mock_emf_cls.return_value = mock_emf
+
+            cr_client.access_with_failover(
+                "get_object", Bucket="test-bucket", Key="test-key"
+            )
+
+        # Verify CrossRegionRequestCount was emitted
+        request_calls = [
+            call for call in mock_emf.put_metric.call_args_list
+            if call.args[0] == "CrossRegionRequestCount"
+        ]
+        assert len(request_calls) == 1
+        assert request_calls[0].args[1] == 1.0
+
+    def test_flush_called_after_metrics(self, mock_session):
+        """メトリクス出力後に flush が呼ばれることを検証する"""
+        config = CrossRegionConfig()
+        cr_client = CrossRegionClient(
+            config=config,
+            session=mock_session,
+            primary_region="ap-northeast-1",
+            secondary_region="us-east-1",
+        )
+
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": b"data"}
+        mock_session.client.return_value = mock_s3
+
+        with patch("shared.cross_region_client.EmfMetrics") as mock_emf_cls:
+            mock_emf = MagicMock()
+            mock_emf_cls.return_value = mock_emf
+
+            cr_client.access_with_failover(
+                "get_object", Bucket="test-bucket", Key="test-key"
+            )
+
+        mock_emf.flush.assert_called_once()

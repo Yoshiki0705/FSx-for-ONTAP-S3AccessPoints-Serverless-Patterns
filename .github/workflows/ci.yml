@@ -1,0 +1,133 @@
+name: CI - Test & Validate
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: "Stage 1: CloudFormation Lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install cfn-lint
+        run: pip install cfn-lint
+      - name: Lint all CloudFormation templates
+        id: cfn-lint
+        run: |
+          cfn-lint '**/*.yaml' --ignore-templates '**/node_modules/**' || echo "lint_failed=true" >> $GITHUB_ENV
+      - name: Set lint outcome
+        if: env.lint_failed == 'true'
+        run: echo "LINT_RESULT=failure" >> $GITHUB_OUTPUT
+
+  test:
+    name: "Stage 2: Unit Tests & PBT"
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-dev.txt', 'requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Cache Hypothesis database
+        uses: actions/cache@v4
+        with:
+          path: .hypothesis
+          key: ${{ runner.os }}-hypothesis-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-hypothesis-
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      - name: Run tests with coverage
+        run: |
+          pytest shared/tests/ use-cases/*/tests/ \
+            --cov=shared \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            --cov-fail-under=80 \
+            -v
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            htmlcov/
+
+  security-cfn:
+    name: "Stage 3: cfn-guard Security"
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cfn-guard
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/aws-cloudformation/cloudformation-guard/main/install-guard.sh | sh
+          export PATH=~/.guard/bin:$PATH
+          echo "$HOME/.guard/bin" >> $GITHUB_PATH
+      - name: Run cfn-guard validation
+        run: |
+          cfn-guard validate \
+            --rules security/cfn-guard-rules/ \
+            --data '**/*.yaml' \
+            --show-summary all
+
+  security-python:
+    name: "Stage 4: Python Security Scan"
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install security tools
+        run: pip install bandit pip-audit
+      - name: Run Bandit scan
+        run: |
+          bandit -r shared/ use-cases/ scripts/ \
+            -ll -c .bandit \
+            -f json -o bandit-report.json || true
+          bandit -r shared/ use-cases/ scripts/ \
+            -ll -c .bandit
+      - name: Run pip-audit
+        run: pip-audit -r requirements.txt
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  final-status:
+    name: "CI Final Status"
+    runs-on: ubuntu-latest
+    needs: [lint, test, security-cfn, security-python]
+    if: always()
+    steps:
+      - name: Check all stages
+        run: |
+          if [[ "${{ needs.lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.test.result }}" == "failure" ]] || \
+             [[ "${{ needs.security-cfn.result }}" == "failure" ]] || \
+             [[ "${{ needs.security-python.result }}" == "failure" ]]; then
+            echo "❌ One or more CI stages failed"
+            echo "  Lint: ${{ needs.lint.result }}"
+            echo "  Test: ${{ needs.test.result }}"
+            echo "  Security (CFN): ${{ needs.security-cfn.result }}"
+            echo "  Security (Python): ${{ needs.security-python.result }}"
+            exit 1
+          fi
+          echo "✅ All CI stages passed"

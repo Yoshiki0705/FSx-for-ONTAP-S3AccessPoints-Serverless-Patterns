@@ -1,0 +1,140 @@
+# =============================================================================
+# Global Task Token Store — DynamoDB Global Tables
+# =============================================================================
+#
+# 本テンプレートは DynamoDB Global Table を使用した Multi-Region Task Token Store
+# を作成する。SageMaker Callback Pattern の Task Token をクロスリージョンで
+# レプリケーションし、Active-Active 構成を実現する。
+#
+# 設計方針:
+# - AWS::DynamoDB::GlobalTable (Version 2019.11.21) を使用
+# - スキーマ: PK=correlation_id (String), GSI=TransformJobNameIndex
+# - BillingMode: PAY_PER_REQUEST（オンデマンド容量）
+# - StreamSpecification: NEW_AND_OLD_IMAGES（Global Tables 必須）
+# - TTL: ttl 属性で有効化（全レプリカに自動伝播）
+# - SSE: AWS 所有キーによるデフォルト暗号化（常時有効）
+#   ※ 明示的な KMS 指定は AWSServiceRoleForDynamoDBReplication の
+#     dynamodb:DescribeTable 権限不足により Global Table 作成が失敗するため使用しない
+# - PointInTimeRecovery: 全レプリカで有効化
+# - 全リソースにタグ付与: Phase=5, Component=global-task-token-store
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file global-task-token-store.yaml \
+#     --stack-name fsxn-s3ap-global-task-token-store \
+#     --capabilities CAPABILITY_IAM \
+#     --parameter-overrides \
+#       ReplicaRegions="ap-northeast-1,us-east-1"
+#
+# 注意: Global Table はいずれか 1 リージョンからのみデプロイする。
+#       レプリカは自動的に指定リージョンに作成される。
+#
+# 参照: Requirements 13.1, 13.2, 13.3, 13.6, 13.7
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Global Task Token Store.
+  DynamoDB Global Tables による Multi-Region Task Token レプリケーション。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  ReplicaRegions:
+    Type: CommaDelimitedList
+    Default: "ap-northeast-1,us-east-1"
+    Description: >-
+      DynamoDB Global Table のレプリカリージョン一覧。
+      カンマ区切りでリージョンコードを指定する。
+
+  TableNameSuffix:
+    Type: String
+    Default: "task-token-store"
+    Description: >-
+      テーブル名のサフィックス。最終テーブル名は
+      StackName-TableNameSuffix の形式となる。
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # DynamoDB Global Table — Task Token Store
+  # -------------------------------------------------------------------
+  GlobalTaskTokenStore:
+    Type: AWS::DynamoDB::GlobalTable
+    Properties:
+      TableName: !Sub "${AWS::StackName}-${TableNameSuffix}"
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      AttributeDefinitions:
+        - AttributeName: correlation_id
+          AttributeType: S
+        - AttributeName: transform_job_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: correlation_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: TransformJobNameIndex
+          KeySchema:
+            - AttributeName: transform_job_name
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      # SSE: DynamoDB テーブルは AWS 所有キーによるデフォルト暗号化が常時有効。
+      # 明示的な SSEType: KMS 指定は AWSServiceRoleForDynamoDBReplication に
+      # dynamodb:DescribeTable 権限が不足し Global Table 作成が失敗するため削除。
+      # 参照: https://repost.aws/knowledge-center/dynamodb-global-table-sse
+      SSESpecification:
+        SSEEnabled: true
+      Replicas:
+        - Region: !Select [0, !Ref ReplicaRegions]
+          PointInTimeRecoverySpecification:
+            PointInTimeRecoveryEnabled: true
+          Tags:
+            - Key: Phase
+              Value: "5"
+            - Key: Component
+              Value: global-task-token-store
+        - Region: !Select [1, !Ref ReplicaRegions]
+          PointInTimeRecoverySpecification:
+            PointInTimeRecoveryEnabled: true
+          Tags:
+            - Key: Phase
+              Value: "5"
+            - Key: Component
+              Value: global-task-token-store
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  GlobalTableName:
+    Description: DynamoDB Global Table 名
+    Value: !Sub "${AWS::StackName}-${TableNameSuffix}"
+    Export:
+      Name: !Sub "${AWS::StackName}-GlobalTableName"
+
+  GlobalTableArn:
+    Description: DynamoDB Global Table ARN
+    Value: !GetAtt GlobalTaskTokenStore.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-GlobalTableArn"
+
+  PrimaryRegion:
+    Description: プライマリレプリカリージョン
+    Value: !Select [0, !Ref ReplicaRegions]
+
+  SecondaryRegion:
+    Description: セカンダリレプリカリージョン
+    Value: !Select [1, !Ref ReplicaRegions]
+
+  StreamArn:
+    Description: DynamoDB Streams ARN
+    Value: !GetAtt GlobalTaskTokenStore.StreamArn

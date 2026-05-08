@@ -1,0 +1,89 @@
+# Security Configuration for CI/CD Pipeline
+# Controls how security findings affect PR merge status
+
+# Severity thresholds that block PR merge
+blocking:
+  # Bandit findings that block merge
+  bandit:
+    severity:
+      - CRITICAL
+      - HIGH
+    confidence: MEDIUM
+    # Maximum allowed findings before blocking
+    max_findings: 0
+
+  # pip-audit CVE findings that block merge
+  pip-audit:
+    severity:
+      - critical
+      - high
+    # Allow known vulnerabilities with accepted risk
+    ignored_vulnerabilities: []
+
+  # cfn-guard findings that block merge
+  cfn-guard:
+    # All rule violations block merge
+    block_on_violation: true
+    # Rules that are warnings only (do not block)
+    warning_only_rules: []
+
+# Non-blocking findings (reported but don't block merge)
+reporting:
+  bandit:
+    severity:
+      - MEDIUM
+      - LOW
+    # Post findings as PR comment
+    post_pr_comment: true
+
+  pip-audit:
+    severity:
+      - moderate
+      - low
+    post_pr_comment: true
+
+# Security scan configuration
+scans:
+  bandit:
+    enabled: true
+    config_file: ".bandit"
+    targets:
+      - shared/
+      - use-cases/
+      - scripts/
+    output_format: json
+    output_file: bandit-report.json
+
+  pip-audit:
+    enabled: true
+    requirements_file: requirements.txt
+    # Also check dev dependencies
+    check_dev_dependencies: false
+
+  cfn-guard:
+    enabled: true
+    rules_directory: security/cfn-guard-rules/
+    template_patterns:
+      - "**/*.yaml"
+    exclude_patterns:
+      - "**/node_modules/**"
+      - ".github/**"
+
+# PR comment template
+pr_comment:
+  title: "🔒 Security Scan Results"
+  include_summary: true
+  include_details: true
+  # Collapse details for large reports
+  collapse_threshold: 10
+
+# Notification settings
+notifications:
+  # Notify on critical findings
+  critical_findings:
+    enabled: true
+    channels:
+      - github_issue
+  # Weekly security digest
+  weekly_digest:
+    enabled: false

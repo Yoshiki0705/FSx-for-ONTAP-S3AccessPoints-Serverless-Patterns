@@ -1,0 +1,191 @@
+# =============================================================================
+# Scheduled Scaling — Application Auto Scaling for SageMaker Endpoints
+# =============================================================================
+#
+# 本テンプレートは SageMaker エンドポイントに対する時間ベースの
+# スケーリングスケジュールを設定する。
+#
+# 設計方針:
+# - ビジネスアワー（平日）にスケールアップ、オフアワーにスケールダウン
+# - 週末シャットダウン（オプション）: 土曜 00:00 にゼロスケール
+# - ネストスタック（AWS::CloudFormation::Stack）として使用可能
+# - 全リソースにタグ付与: Phase=5, Component=scheduled-scaling
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file scheduled-scaling.yaml \
+#     --stack-name fsxn-s3ap-scheduled-scaling \
+#     --capabilities CAPABILITY_IAM \
+#     --parameter-overrides \
+#       EndpointName=my-sagemaker-endpoint \
+#       BusinessHoursStart=9 \
+#       BusinessHoursEnd=18
+#
+# 参照: Requirements 5.1–5.7
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Scheduled Scaling.
+  SageMaker エンドポイントのビジネスアワーベース自動スケーリング。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  EndpointName:
+    Type: String
+    Description: >-
+      スケーリング対象の SageMaker エンドポイント名。
+
+  BusinessHoursStart:
+    Type: String
+    Default: "9"
+    Description: >-
+      ビジネスアワー開始時刻（0–23）。スケールアップのトリガー時刻。
+
+  BusinessHoursEnd:
+    Type: String
+    Default: "18"
+    Description: >-
+      ビジネスアワー終了時刻（0–23）。スケールダウンのトリガー時刻。
+
+  Timezone:
+    Type: String
+    Default: "Asia/Tokyo"
+    Description: >-
+      スケジュールの IANA タイムゾーン。
+
+  BusinessMinCapacity:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    Description: >-
+      ビジネスアワー中の最小インスタンス数。
+
+  BusinessMaxCapacity:
+    Type: Number
+    Default: 4
+    MinValue: 1
+    Description: >-
+      ビジネスアワー中の最大インスタンス数。
+
+  OffHoursMinCapacity:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    Description: >-
+      オフアワー中の最小インスタンス数。
+
+  OffHoursMaxCapacity:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    Description: >-
+      オフアワー中の最大インスタンス数。
+
+  EnableWeekendShutdown:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      週末シャットダウンを有効化する。
+      true の場合、土曜 00:00 にキャパシティをゼロに設定する。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  WeekendShutdownEnabled:
+    !Equals [!Ref EnableWeekendShutdown, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -------------------------------------------------------------------
+  # Scalable Target — SageMaker Endpoint Variant
+  # -------------------------------------------------------------------
+  ScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3019
+    Properties:
+      MaxCapacity: !Ref BusinessMaxCapacity
+      MinCapacity: !Ref BusinessMinCapacity
+      ResourceId: !Sub "endpoint/${EndpointName}/variant/AllTraffic"
+      RoleARN: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/sagemaker.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_SageMakerEndpoint"
+      ScalableDimension: "sagemaker:variant:DesiredInstanceCount"
+      ServiceNamespace: sagemaker
+      ScheduledActions:
+        - ScheduledActionName: ScaleUpBusinessHours
+          Schedule: !Sub "cron(0 ${BusinessHoursStart} ? * MON-FRI *)"
+          Timezone: !Ref Timezone
+          ScalableTargetAction:
+            MinCapacity: !Ref BusinessMinCapacity
+            MaxCapacity: !Ref BusinessMaxCapacity
+        - ScheduledActionName: ScaleDownOffHours
+          Schedule: !Sub "cron(0 ${BusinessHoursEnd} ? * MON-FRI *)"
+          Timezone: !Ref Timezone
+          ScalableTargetAction:
+            MinCapacity: !Ref OffHoursMinCapacity
+            MaxCapacity: !Ref OffHoursMaxCapacity
+
+  # -------------------------------------------------------------------
+  # Weekend Shutdown Scheduled Action (Conditional)
+  # -------------------------------------------------------------------
+  # cfn-lint E3019 suppressed: WeekendShutdownAction shares ResourceId with
+  # ScalableTarget but is guarded by Condition WeekendShutdownEnabled.
+  # When the condition is true, this resource replaces ScalableTarget's
+  # registration with additional weekend schedules.
+  WeekendShutdownAction:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Condition: WeekendShutdownEnabled
+    DependsOn: ScalableTarget
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3019
+    Properties:
+      MaxCapacity: !Ref BusinessMaxCapacity
+      MinCapacity: 0
+      ResourceId: !Sub "endpoint/${EndpointName}/variant/AllTraffic"
+      RoleARN: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/sagemaker.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_SageMakerEndpoint"
+      ScalableDimension: "sagemaker:variant:DesiredInstanceCount"
+      ServiceNamespace: sagemaker
+      ScheduledActions:
+        - ScheduledActionName: WeekendShutdown
+          Schedule: "cron(0 0 ? * SAT *)"
+          Timezone: !Ref Timezone
+          ScalableTargetAction:
+            MinCapacity: 0
+            MaxCapacity: 0
+        - ScheduledActionName: WeekendRestart
+          Schedule: "cron(0 0 ? * MON *)"
+          Timezone: !Ref Timezone
+          ScalableTargetAction:
+            MinCapacity: !Ref BusinessMinCapacity
+            MaxCapacity: !Ref BusinessMaxCapacity
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  ScalableTargetId:
+    Description: Application Auto Scaling Scalable Target ID
+    Value: !Ref ScalableTarget
+
+  EndpointName:
+    Description: スケーリング対象エンドポイント名
+    Value: !Ref EndpointName
+
+  ScheduleDescription:
+    Description: スケジュール概要
+    Value: !Sub >-
+      Scale up at ${BusinessHoursStart}:00 (${Timezone}),
+      scale down at ${BusinessHoursEnd}:00,
+      weekend shutdown: ${EnableWeekendShutdown}

@@ -1,0 +1,205 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Multi-Region Base Template — FSxN S3AP Serverless Patterns Phase 5.
+  Creates foundational resources for secondary region deployment:
+  Route 53 Health Check, Cross-Region EventBridge Rules,
+  and deployment mode configuration (active-active / active-passive).
+  Phase=5, Component=multi-region-base
+
+Parameters:
+  PrimaryRegion:
+    Type: String
+    Default: "ap-northeast-1"
+    Description: "Primary AWS region for the deployment"
+
+  SecondaryRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: "Secondary AWS region for failover"
+
+  DeploymentMode:
+    Type: String
+    Default: "active-passive"
+    AllowedValues:
+      - "active-active"
+      - "active-passive"
+    Description: "Multi-region deployment mode"
+
+  GlobalTableName:
+    Type: String
+    Description: "DynamoDB Global Table name for Task Token Store"
+
+  PrimaryStepFunctionsArn:
+    Type: String
+    Description: "ARN of primary region Step Functions state machine"
+
+  PrimaryHealthAlarmName:
+    Type: String
+    Default: ""
+    Description: "CloudWatch Alarm name in primary region for health check (optional override)"
+
+  EventBusName:
+    Type: String
+    Default: "default"
+    Description: "EventBridge event bus name"
+
+Conditions:
+  IsActivePassive: !Equals [!Ref DeploymentMode, "active-passive"]
+  IsActiveActive: !Equals [!Ref DeploymentMode, "active-active"]
+  HasCustomAlarmName: !Not [!Equals [!Ref PrimaryHealthAlarmName, ""]]
+
+Resources:
+  # =========================================================================
+  # Route 53 Health Check — monitors primary region via CloudWatch Metric
+  # =========================================================================
+  PrimaryHealthCheck:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        Type: CLOUDWATCH_METRIC
+        InsufficientDataHealthStatus: LastKnownStatus
+        AlarmIdentifier:
+          Region: !Ref PrimaryRegion
+          Name: !If
+            - HasCustomAlarmName
+            - !Ref PrimaryHealthAlarmName
+            - !Sub "${AWS::StackName}-primary-health"
+      HealthCheckTags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-primary-health-check"
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: "multi-region-base"
+        - Key: DeploymentMode
+          Value: !Ref DeploymentMode
+
+  # =========================================================================
+  # Cross-Region EventBridge Rule — Active-Passive: forward to primary
+  # =========================================================================
+  EventBridgeRuleActivePassive:
+    Type: AWS::Events::Rule
+    Condition: IsActivePassive
+    Properties:
+      Name: !Sub "${AWS::StackName}-forward-to-primary-${SecondaryRegion}"
+      Description: >
+        Active-Passive mode: Forward events from secondary region to primary
+        region for processing. Secondary only processes when primary is unhealthy.
+      EventBusName: !Ref EventBusName
+      State: ENABLED
+      EventPattern:
+        source:
+          - "fsxn.s3ap.serverless"
+        detail-type:
+          - "ProcessingRequest"
+      Targets:
+        - Id: ForwardToPrimaryEventBus
+          Arn: !Sub "arn:aws:events:${PrimaryRegion}:${AWS::AccountId}:event-bus/${EventBusName}"
+          RoleArn: !GetAtt CrossRegionEventBridgeRole.Arn
+
+  # =========================================================================
+  # Cross-Region EventBridge Rule — Active-Active: process locally
+  # =========================================================================
+  EventBridgeRuleActiveActive:
+    Type: AWS::Events::Rule
+    Condition: IsActiveActive
+    Properties:
+      Name: !Sub "${AWS::StackName}-process-locally-${SecondaryRegion}"
+      Description: >
+        Active-Active mode: Process events locally in the secondary region.
+        Both regions independently handle their own events.
+      EventBusName: !Ref EventBusName
+      State: ENABLED
+      EventPattern:
+        source:
+          - "fsxn.s3ap.serverless"
+        detail-type:
+          - "ProcessingRequest"
+      Targets:
+        - Id: ProcessLocally
+          Arn: !Ref PrimaryStepFunctionsArn
+          RoleArn: !GetAtt StepFunctionsInvokeRole.Arn
+
+  # =========================================================================
+  # IAM Role — Cross-Region EventBridge (Active-Passive)
+  # =========================================================================
+  CrossRegionEventBridgeRole:
+    Type: AWS::IAM::Role
+    Condition: IsActivePassive
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-xregion-eb-role-${SecondaryRegion}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: CrossRegionEventBridgePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "events:PutEvents"
+                Resource:
+                  - !Sub "arn:aws:events:${PrimaryRegion}:${AWS::AccountId}:event-bus/${EventBusName}"
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: "multi-region-base"
+
+  # =========================================================================
+  # IAM Role — Step Functions Invoke (Active-Active)
+  # =========================================================================
+  StepFunctionsInvokeRole:
+    Type: AWS::IAM::Role
+    Condition: IsActiveActive
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-invoke-role-${SecondaryRegion}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: StepFunctionsInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "states:StartExecution"
+                Resource:
+                  - !Ref PrimaryStepFunctionsArn
+      Tags:
+        - Key: Phase
+          Value: "5"
+        - Key: Component
+          Value: "multi-region-base"
+
+Outputs:
+  HealthCheckId:
+    Description: "Route 53 Health Check ID for primary region monitoring"
+    Value: !Ref PrimaryHealthCheck
+    Export:
+      Name: !Sub "${AWS::StackName}-HealthCheckId"
+
+  DeploymentModeOutput:
+    Description: "Current deployment mode"
+    Value: !Ref DeploymentMode
+    Export:
+      Name: !Sub "${AWS::StackName}-DeploymentMode"
+
+  EventBridgeRuleArn:
+    Description: "ARN of the active EventBridge rule"
+    Value: !If
+      - IsActivePassive
+      - !GetAtt EventBridgeRuleActivePassive.Arn
+      - !GetAtt EventBridgeRuleActiveActive.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-EventBridgeRuleArn"

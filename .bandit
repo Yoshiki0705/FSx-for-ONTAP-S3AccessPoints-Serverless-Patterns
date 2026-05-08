@@ -1,0 +1,21 @@
+# Bandit Security Scanner Configuration
+# Project: FSxN S3AP Serverless Patterns
+
+exclude_dirs:
+  - tests
+  - shared/tests
+  - security/tests
+  - .hypothesis
+  - .pytest_cache
+  - __pycache__
+  - .git
+  - node_modules
+  - venv
+  - .venv
+
+skips:
+  - B101
+  - B601
+
+# B101: assert_used - We use assert in non-test code for invariant checks (acceptable in Lambda)
+# B601: paramiko_calls - Not applicable, no SSH in Lambda functions
