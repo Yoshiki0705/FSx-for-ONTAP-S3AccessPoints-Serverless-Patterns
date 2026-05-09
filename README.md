@@ -257,6 +257,26 @@ Phase 5 の全機能も CloudFormation Conditions でオプトイン制御され
 - [Disaster Recovery ガイド](docs/multi-region/disaster-recovery.md)
 - [既存環境影響評価ガイド](docs/impact-assessment.md)
 
+### Phase 6A 機能概要（Developer Experience）
+
+| 機能 | 説明 | 対象 |
+|------|------|------|
+| Lambda SnapStart | コールドスタート削減（1–3 秒 → 100–500ms）、Python 3.13 対応 | 全 15 テンプレート（オプトイン） |
+| Runtime 更新 | Python 3.12 → 3.13（後方互換） | 全 Lambda 関数 |
+| SAM CLI ローカルテスト | イベントテンプレート、環境変数設定、一括テストスクリプト | 全 14 UC |
+| 運用スクリプト | SnapStart 有効化・検証の自動化 | 全スタック |
+
+Phase 6A の全機能も CloudFormation Conditions でオプトイン制御されており、`EnableSnapStart=false`（デフォルト）では追加コスト・動作変更なしです。
+
+> ⚠️ **重要**: SnapStart の効果を得るには、バージョン公開と呼び出し側の ARN 更新が必要です。詳細は [SnapStart ガイド](docs/snapstart-guide.md) を参照。
+
+詳細は以下のドキュメントを参照してください:
+- [Lambda SnapStart ガイド](docs/snapstart-guide.md)
+- [SAM CLI ローカルテストガイド](docs/local-testing-guide.md)
+- [Phase 6A 検証結果](docs/verification-results-phase6a.md)
+- [Phase 6A 残課題チェックリスト](docs/remaining-issues-phase6a.md)
+- [CHANGELOG](CHANGELOG.md)
+
 ### スクリーンショット
 
 > 以下は検証環境での撮影例です。環境固有情報（アカウント ID 等）はマスク処理済みです。

@@ -354,6 +354,7 @@ aws stepfunctions start-execution \
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
 | `EnableXRayTracing` | X-Ray トレーシングの有効化 | `true` | |
+| `EnableSnapStart` | 启用 Lambda SnapStart（冷启动缩短） | `false` | |
 ⚠️ **`S3AccessPointName`**：虽然可以省略该参数,但不指定的话IAM策略将只能使用别名,这可能在某些环境下会导致 `AccessDenied` 错误。建议在生产环境中指定该参数。
 ## 故障診断
 

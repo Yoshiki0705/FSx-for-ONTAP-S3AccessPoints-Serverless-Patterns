@@ -232,6 +232,26 @@ Phase 5 的所有功能同樣透過 CloudFormation Conditions 進行可選控制
 - [Multi-Region Step Functions 設計](docs/multi-region/step-functions-design.md)
 - [Disaster Recovery 指南](docs/multi-region/disaster-recovery.md)
 
+### Phase 6A 功能概要（開發者體驗）
+
+| 功能 | 說明 | 對象 |
+|------|------|------|
+| Lambda SnapStart | 冷啟動縮短（1–3秒 → 100–500ms），Python 3.13 支援 | 全部 15 個範本（可選啟用） |
+| Runtime 升級 | Python 3.12 → 3.13（向後相容） | 全部 Lambda 函數 |
+| SAM CLI 本地測試 | 事件範本、環境變數設定、批次測試腳本 | 全部 14 UC |
+| 維運腳本 | SnapStart 啟用/驗證自動化 | 全部堆疊 |
+
+Phase 6A 的所有功能同樣透過 CloudFormation Conditions 進行可選控制，`EnableSnapStart=false`（預設值）時不會產生額外費用或行為變更。
+
+> ⚠️ **重要**：要獲得 SnapStart 效果，需要發佈版本並更新呼叫方的 ARN。詳情請參閱 [SnapStart 指南](docs/snapstart-guide.md)。
+
+詳情請參閱以下文件：
+- [Lambda SnapStart 指南](docs/snapstart-guide.md)
+- [SAM CLI 本地測試指南](docs/local-testing-guide.md)
+- [Phase 6A 驗證結果](docs/verification-results-phase6a.md)
+- [CHANGELOG](CHANGELOG.md)
+
+
 ### 螢幕截圖
 
 > 以下為驗證環境中的截圖範例。環境特定資訊（帳戶 ID 等）已進行遮罩處理。

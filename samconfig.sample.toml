@@ -1,0 +1,79 @@
+# =============================================================================
+# SAM CLI 設定ファイル（サンプル）
+# =============================================================================
+#
+# 本ファイルは SAM CLI のローカルテストおよびデプロイ設定のサンプルです。
+# 実際の環境に合わせて値を変更してください。
+#
+# 使用方法:
+#   sam local invoke -t <uc>/template-deploy.yaml DiscoveryFunction
+#   sam deploy -t <uc>/template-deploy.yaml
+#
+# 参照: docs/local-testing-guide.md
+# =============================================================================
+
+version = 0.1
+
+# -----------------------------------------------------------------------------
+# ローカルテスト設定
+# -----------------------------------------------------------------------------
+[default.local_invoke.parameters]
+# 環境変数ファイル
+env_vars = "events/env.json"
+# Docker ネットワーク（VPC Lambda のローカルテスト用）
+# docker_network = "sam-local-network"
+# コンテナホスト（Finch 使用時）
+# container_host = "unix:///run/finch.sock"
+# Lambda ランタイムイメージ
+# invoke_image = "public.ecr.aws/sam/build-python3.13:latest"
+# デバッグポート（デバッガ接続用）
+# debug_port = 5678
+# タイムアウト（秒）
+# skip_pull_image = true
+region = "ap-northeast-1"
+
+[default.local_start_lambda.parameters]
+env_vars = "events/env.json"
+region = "ap-northeast-1"
+# host = "127.0.0.1"
+# port = 3001
+
+# -----------------------------------------------------------------------------
+# デプロイ設定（参考）
+# -----------------------------------------------------------------------------
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-demo"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+# s3_bucket = "your-sam-deployment-bucket"
+# s3_prefix = "fsxn-s3ap"
+parameter_overrides = [
+    "S3AccessPointAlias=your-volume-xxxxx-ext-s3alias",
+    "S3AccessPointOutputAlias=your-volume-xxxxx-ext-s3alias",
+    "OntapSecretName=fsxn-ontap-credentials",
+    "OntapManagementIp=10.0.0.1",
+    "SvmUuid=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "VolumeUuid=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "VpcId=vpc-xxxxxxxx",
+    "PrivateSubnetIds=subnet-aaaa,subnet-bbbb",
+    "PrivateRouteTableIds=rtb-aaaa,rtb-bbbb",
+    "NotificationEmail=admin@example.com",
+    "EnableVpcEndpoints=false",
+    "EnableCloudWatchAlarms=false",
+    "EnableSnapStart=false",
+]
+
+# -----------------------------------------------------------------------------
+# 本番デプロイ設定（参考）
+# -----------------------------------------------------------------------------
+[production.deploy.parameters]
+stack_name = "fsxn-s3ap-production"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = [
+    "EnableVpcEndpoints=true",
+    "EnableCloudWatchAlarms=true",
+    "EnableSnapStart=true",
+]

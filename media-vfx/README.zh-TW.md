@@ -109,6 +109,7 @@ aws cloudformation deploy \
 | `QualityThreshold` | Rekognition 品質評価の閾値（0.0〜100.0） | `80.0` | |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | 啟用 Lambda SnapStart（冷啟動縮短） | `false` | |
 
 ## 成本結構
 

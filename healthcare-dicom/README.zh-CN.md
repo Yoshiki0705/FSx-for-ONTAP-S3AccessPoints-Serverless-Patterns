@@ -134,6 +134,7 @@ aws cloudformation deploy \
 | `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | 启用 Lambda SnapStart（冷启动缩短） | `false` | |
 
 ## 成本结构
 

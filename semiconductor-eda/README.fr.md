@@ -309,6 +309,7 @@ Voici la traduction en français :
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
 | `EnableXRayTracing` | X-Ray トレーシングの有効化 | `true` | |
+| `EnableSnapStart` | Activer Lambda SnapStart (réduction du démarrage à froid) | `false` | |
 ⚠️ **`S3AccessPointName`** : Ce paramètre est facultatif, mais si vous ne le spécifiez pas, la politique IAM sera basée uniquement sur les alias et dans certains environnements, une erreur `AccessDenied` peut se produire. Il est recommandé de le spécifier pour l'environnement de production.
 Voici la traduction en français :
 

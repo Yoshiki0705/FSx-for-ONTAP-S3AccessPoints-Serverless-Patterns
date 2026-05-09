@@ -193,6 +193,7 @@ GDSII, DRC, OASIS, GDS, Lambda, tapeout 등의 기술 용어는 번역하지 않
 | `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Lambda SnapStart 활성화 (콜드 스타트 단축) | `false` | |
 | `EnableAthenaWorkgroup` | Athena Workgroup / Glue Data Catalog の有効化 | `true` | |
 
 ## 비용 구조

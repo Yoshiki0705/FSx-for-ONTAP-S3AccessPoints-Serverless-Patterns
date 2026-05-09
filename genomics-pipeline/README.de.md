@@ -102,6 +102,7 @@ Nach dem Bereitstellen stellen Sie sicher, dass die Lambda-Umgebungsvariable `CR
 | `LambdaTimeout` | Lambda タイムアウト (秒) | `300` | |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Lambda SnapStart aktivieren (Kaltstart-Reduzierung) | `false` | |
 
 ## Bereinigung
 

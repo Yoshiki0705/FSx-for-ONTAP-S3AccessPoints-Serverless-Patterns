@@ -105,6 +105,7 @@ Après le déploiement, un e-mail de confirmation d'abonnement SNS sera envoyé 
 | `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Activer Lambda SnapStart (réduction du démarrage à froid) | `false` | |
 
 ## Structure des coûts
 

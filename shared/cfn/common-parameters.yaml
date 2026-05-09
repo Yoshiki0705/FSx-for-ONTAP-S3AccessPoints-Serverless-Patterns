@@ -176,6 +176,7 @@ Conditions:
 #     EnableVpcEndpoints=true \
 #     EnableCloudWatchAlarms=true \
 #     EnableAthenaWorkgroup=true \
+#     EnableSnapStart=true \
 #     S3AccessPointAlias=vol-prod-xxxxx-ext-s3alias \
 #     OntapSecretName=fsxn-ontap-credentials-prod \
 #     OntapManagementIp=10.0.1.1 \
@@ -184,3 +185,8 @@ Conditions:
 #     PrivateSubnetIds=subnet-cccc,subnet-dddd \
 #     OutputBucketName=fsxn-s3ap-output-prod \
 #     NotificationEmail=ops-team@example.com
+#
+# --- SnapStart 有効化後の追加手順 ---
+# EnableSnapStart=true でデプロイ後、以下を実行して SnapStart を完全有効化:
+#   ./scripts/enable-snapstart.sh fsxn-s3ap-production
+# 詳細: docs/snapstart-guide.md

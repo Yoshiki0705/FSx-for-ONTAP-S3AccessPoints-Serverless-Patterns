@@ -310,13 +310,17 @@ class TestDryRunMode:
 class TestScaleToZeroAction:
     """Tests for scale-to-zero action (DesiredInstanceCount=0)."""
 
-    def test_scale_to_zero_calls_update_with_zero_instances(self, mock_boto3_clients):
-        """Scale-to-zero sets DesiredInstanceCount=0."""
-        from shared.lambdas.auto_stop.handler import _scale_to_zero
+    def test_scale_to_zero_calls_update_with_zero_instances(self, mock_boto3_clients, monkeypatch):
+        """Scale-to-zero with MIN_INSTANCE_COUNT=0 (Inference Components) sets DesiredInstanceCount=0."""
+        from shared.lambdas.auto_stop import handler as handler_module
+
+        # Override default MIN_INSTANCE_COUNT (1 for standard endpoints) to 0
+        # since scale-to-zero with 0 instances is only valid for Inference Components endpoints
+        monkeypatch.setenv("MIN_INSTANCE_COUNT", "0")
 
         mock_sm = mock_boto3_clients["sagemaker"]
 
-        _scale_to_zero("test-endpoint")
+        handler_module._scale_to_zero("test-endpoint")
 
         mock_sm.update_endpoint_weights_and_capacities.assert_called_once_with(
             EndpointName="test-endpoint",
@@ -324,6 +328,29 @@ class TestScaleToZeroAction:
                 {
                     "VariantName": "AllTraffic",
                     "DesiredInstanceCount": 0,
+                }
+            ],
+        )
+
+    def test_scale_to_zero_default_uses_min_instance_count_one(self, mock_boto3_clients):
+        """Default MIN_INSTANCE_COUNT=1 for standard SageMaker endpoints.
+
+        Standard ProductionVariant does not support DesiredInstanceCount=0,
+        so the default minimum is 1. See:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/endpoint-auto-scaling-zero-instances.html
+        """
+        from shared.lambdas.auto_stop import handler as handler_module
+
+        mock_sm = mock_boto3_clients["sagemaker"]
+
+        handler_module._scale_to_zero("test-endpoint")
+
+        mock_sm.update_endpoint_weights_and_capacities.assert_called_once_with(
+            EndpointName="test-endpoint",
+            DesiredWeightsAndCapacities=[
+                {
+                    "VariantName": "AllTraffic",
+                    "DesiredInstanceCount": 1,
                 }
             ],
         )

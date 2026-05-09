@@ -102,6 +102,7 @@ Après le déploiement, assurez-vous que la variable d'environnement Lambda `CRO
 | `LambdaTimeout` | Lambda タイムアウト (秒) | `300` | |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Activer Lambda SnapStart (réduction du démarrage à froid) | `false` | |
 
 ## Nettoyage
 

@@ -99,6 +99,7 @@ aws cloudformation deploy \
 | `LambdaTimeout` | Lambda タイムアウト (秒) | `300` | |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | 啟用 Lambda SnapStart（冷啟動縮短） | `false` | |
 
 ## 清理
 

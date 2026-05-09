@@ -207,6 +207,7 @@ Voici la traduction du texte en français :
 | `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Activer Lambda SnapStart (réduction du démarrage à froid) | `false` | |
 | `EnableAthenaWorkgroup` | Athena Workgroup / Glue Data Catalog の有効化 | `true` | |
 
 ## Structure des coûts

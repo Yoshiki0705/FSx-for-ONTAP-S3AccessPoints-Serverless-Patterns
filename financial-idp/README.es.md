@@ -164,6 +164,7 @@ AWS Step Functions を使用して、一連のタスクを自動化します。A
 | `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Habilitar Lambda SnapStart (reducción de arranque en frío) | `false` | |
 
 ## Estructura de costos
 

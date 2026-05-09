@@ -113,6 +113,7 @@ aws cloudformation deploy \
 | `ConfidenceThreshold` | Rekognition 欠陥検出の信頼度閾値 | `80.0` | |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | 啟用 Lambda SnapStart（冷啟動縮短） | `false` | |
 | `EnableAthenaWorkgroup` | Athena Workgroup / Glue Data Catalog の有効化 | `true` | |
 
 ## 成本結構

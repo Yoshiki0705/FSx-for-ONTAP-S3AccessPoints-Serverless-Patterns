@@ -109,6 +109,7 @@ Nach der Bereitstellung erhalten Sie eine E-Mail zur Bestätigung der SNS-Abonne
 | `QualityThreshold` | Rekognition 品質評価の閾値（0.0〜100.0） | `80.0` | |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Lambda SnapStart aktivieren (Kaltstart-Reduzierung) | `false` | |
 
 ## Kostenstruktur
 

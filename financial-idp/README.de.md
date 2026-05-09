@@ -168,6 +168,7 @@ This product uses Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, 
 | `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Lambda SnapStart aktivieren (Kaltstart-Reduzierung) | `false` | |
 
 ## Kostenstruktur
 

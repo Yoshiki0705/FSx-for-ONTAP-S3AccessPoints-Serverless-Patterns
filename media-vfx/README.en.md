@@ -111,6 +111,7 @@ After deployment, an SNS subscription confirmation email will be sent to the spe
 | `QualityThreshold` | Rekognition 品質評価の閾値（0.0〜100.0） | `80.0` | |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Enable Lambda SnapStart (cold start reduction) | `false` | |
 
 ## Cost structure
 

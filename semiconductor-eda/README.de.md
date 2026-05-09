@@ -301,6 +301,7 @@ Hier sind einige Beispiele dafür, wie Sie die verschiedenen AWS-Ressourcen wie 
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
 | `EnableXRayTracing` | X-Ray トレーシングの有効化 | `true` | |
+| `EnableSnapStart` | Lambda SnapStart aktivieren (Kaltstart-Reduzierung) | `false` | |
 ⚠️ **`S3AccessPointName`**: Optional, aber wenn nicht angegeben, basiert die IAM-Richtlinie nur auf Alias, was in einigen Umgebungen zu einem `AccessDenied`-Fehler führen kann. In Produktionsumgebungen wird die Angabe empfohlen.
 ## Fehlerbehebung
 

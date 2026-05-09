@@ -231,6 +231,7 @@ If using `template.yaml` directly with `aws cloudformation deploy`, SAM Transfor
 | `EnableVpcEndpoints` | Enable Interface VPC Endpoints | `false` | |
 | `EnableCloudWatchAlarms` | Enable CloudWatch Alarms | `false` | |
 | `EnableXRayTracing` | Enable X-Ray tracing | `true` | |
+| `EnableSnapStart` | Enable Lambda SnapStart (cold start reduction) | `false` | |
 
 > ⚠️ **`S3AccessPointName`**: Optional, but if omitted the IAM policy will be Alias-based only, which may cause `AccessDenied` errors in some environments. Specifying this parameter is recommended for production environments.
 

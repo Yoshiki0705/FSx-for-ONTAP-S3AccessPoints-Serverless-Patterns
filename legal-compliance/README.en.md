@@ -188,6 +188,7 @@ After deployment, an SNS subscription confirmation email will be sent to the spe
 | `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Enable Lambda SnapStart (cold start reduction) | `false` | |
 | `EnableAthenaWorkgroup` | Athena Workgroup / Glue Data Catalog の有効化 | `true` | |
 
 ## Cost Structure

@@ -366,7 +366,7 @@ events/
 └── uc14-insurance-claims/
     └── discovery-event.json
 
-samconfig.toml                            # SAM CLI 設定
+samconfig.sample.toml                            # SAM CLI 設定（コピーして samconfig.toml として使用）
 scripts/local-test.sh                     # 一括ローカルテスト
 ```
 

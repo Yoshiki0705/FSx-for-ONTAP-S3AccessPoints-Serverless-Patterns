@@ -232,6 +232,26 @@ Phase 5의 모든 기능도 CloudFormation Conditions로 옵트인 제어되며,
 - [Multi-Region Step Functions 설계](docs/multi-region/step-functions-design.md)
 - [Disaster Recovery 가이드](docs/multi-region/disaster-recovery.md)
 
+### Phase 6A 기능 요약 (개발자 경험)
+
+| 기능 | 설명 | 대상 |
+|------|------|------|
+| Lambda SnapStart | 콜드 스타트 단축 (1–3초 → 100–500ms), Python 3.13 지원 | 전체 15 템플릿 (옵트인) |
+| Runtime 업그레이드 | Python 3.12 → 3.13 (하위 호환) | 전체 Lambda 함수 |
+| SAM CLI 로컬 테스트 | 이벤트 템플릿, 환경 변수 설정, 일괄 테스트 스크립트 | 전체 14 UC |
+| 운영 스크립트 | SnapStart 활성화/검증 자동화 | 전체 스택 |
+
+Phase 6A의 모든 기능도 CloudFormation Conditions로 옵트인 제어되며, `EnableSnapStart=false`(기본값)에서는 추가 비용이나 동작 변경이 없습니다.
+
+> ⚠️ **중요**: SnapStart 효과를 얻으려면 버전 게시와 호출 측 ARN 업데이트가 필요합니다. 자세한 내용은 [SnapStart 가이드](docs/snapstart-guide.md)를 참조하세요.
+
+자세한 내용은 다음 문서를 참조하세요:
+- [Lambda SnapStart 가이드](docs/snapstart-guide.md)
+- [SAM CLI 로컬 테스트 가이드](docs/local-testing-guide.md)
+- [Phase 6A 검증 결과](docs/verification-results-phase6a.md)
+- [CHANGELOG](CHANGELOG.md)
+
+
 ### 스크린샷
 
 > 아래는 검증 환경에서의 촬영 예시입니다. 환경 고유 정보(계정 ID 등)는 마스킹 처리되었습니다.

@@ -113,6 +113,7 @@ After deployment, an SNS subscription confirmation email will be sent to the spe
 | `ConfidenceThreshold` | Rekognition 欠陥検出の信頼度閾値 | `80.0` | |
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `EnableSnapStart` | Enable Lambda SnapStart (cold start reduction) | `false` | |
 | `EnableAthenaWorkgroup` | Athena Workgroup / Glue Data Catalog の有効化 | `true` | |
 
 ## Cost structure

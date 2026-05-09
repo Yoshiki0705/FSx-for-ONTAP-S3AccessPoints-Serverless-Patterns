@@ -305,6 +305,7 @@ Amazon Bedrock を使用して GDSII ファイルからマスクを生成し、A
 | `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
 | `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
 | `EnableXRayTracing` | X-Ray トレーシングの有効化 | `true` | |
+| `EnableSnapStart` | Habilitar Lambda SnapStart (reducción de arranque en frío) | `false` | |
 ⚠️ **`S3AccessPointName`**: Aunque opcional, si no se especifica, las políticas de IAM serán solo basadas en alias, lo que puede generar errores de `AccessDenied` en algunos entornos. Se recomienda especificarlo en entornos de producción.
 ## Resolución de problemas
 

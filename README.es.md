@@ -232,6 +232,26 @@ Consulte los siguientes documentos para más detalles:
 - [Diseño Multi-Region Step Functions](docs/multi-region/step-functions-design.md)
 - [Guía de Disaster Recovery](docs/multi-region/disaster-recovery.md)
 
+### Resumen de funcionalidades Phase 6A (Experiencia del desarrollador)
+
+| Funcionalidad | Descripción | Objetivo |
+|---------------|-------------|----------|
+| Lambda SnapStart | Reducción de arranque en frío (1–3s → 100–500ms), soporte Python 3.13 | 15 templates (opt-in) |
+| Actualización Runtime | Python 3.12 → 3.13 (retrocompatible) | Todas las funciones Lambda |
+| Test local SAM CLI | Templates de eventos, configuración de variables de entorno, script de test por lotes | 14 UC |
+| Scripts operacionales | Automatización de activación/verificación de SnapStart | Todos los stacks |
+
+Todas las funcionalidades de Phase 6A también están controladas por CloudFormation Conditions (opt-in). Con `EnableSnapStart=false` (predeterminado), no hay costos adicionales ni cambios de comportamiento.
+
+> ⚠️ **Importante**: Para obtener los beneficios de SnapStart, se requiere la publicación de versiones y la actualización de ARN del lado del llamador. Consulte la [Guía de SnapStart](docs/snapstart-guide.md) para más detalles.
+
+Consulte los siguientes documentos para más detalles:
+- [Guía Lambda SnapStart](docs/snapstart-guide.md)
+- [Guía de test local SAM CLI](docs/local-testing-guide.md)
+- [Resultados de verificación Phase 6A](docs/verification-results-phase6a.md)
+- [CHANGELOG](CHANGELOG.md)
+
+
 ### Capturas de pantalla
 
 > Las siguientes son ejemplos capturados en un entorno de verificación. La información específica del entorno (IDs de cuenta, etc.) ha sido enmascarada.
