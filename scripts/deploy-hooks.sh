@@ -203,7 +203,7 @@ aws cloudformation deploy \
         GuardRulesBucketName="${BUCKET_NAME}" \
         GuardRulesKeyPrefix="${RULES_PREFIX}" \
         FailureMode="${FAILURE_MODE}" \
-        TargetStacks="ALL" \
+        HookAlias="FSxNS3AP::Guard::Hook" \
     --tags \
         Key=Project,Value=fsxn-s3ap-serverless-patterns \
         Key=Phase,Value=6B \
