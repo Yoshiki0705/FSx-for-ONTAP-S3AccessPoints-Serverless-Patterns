@@ -49,8 +49,6 @@ scripts/capture_screenshots.sh
 
 # Screenshots — originals contain account info, masked versions are safe to publish
 docs/screenshots/originals/
-docs/screenshots/phase3-*.png
-docs/screenshots/phase6a-*.png
 # docs/screenshots/masked/ is tracked (safe to publish)
 
 # Verification results (contain environment-specific details)
