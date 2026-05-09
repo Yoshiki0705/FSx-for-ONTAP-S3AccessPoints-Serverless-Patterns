@@ -310,8 +310,10 @@ class TestDryRunMode:
 class TestScaleToZeroAction:
     """Tests for scale-to-zero action (DesiredInstanceCount=0)."""
 
-    def test_scale_to_zero_calls_update_with_zero_instances(self, mock_boto3_clients):
-        """Scale-to-zero sets DesiredInstanceCount=0."""
+    def test_scale_to_zero_calls_update_with_zero_instances(self, mock_boto3_clients, monkeypatch):
+        """Scale-to-zero sets DesiredInstanceCount=0 when MIN_INSTANCE_COUNT=0."""
+        monkeypatch.setenv("MIN_INSTANCE_COUNT", "0")
+        monkeypatch.setenv("AUTO_STOP_ACTION", "scale_down")
         from shared.lambdas.auto_stop.handler import _scale_to_zero
 
         mock_sm = mock_boto3_clients["sagemaker"]
