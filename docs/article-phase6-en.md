@@ -190,9 +190,27 @@ CloudFormation Deploy
 ./scripts/deploy-hooks.sh --failure-mode FAIL
 ```
 
-![Guard Hooks Stack Deployed](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/masked/phase6b-guard-hooks-stack-deployed.png)
+![Guard Hooks Stack Deployed](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/phase6b/guard-hooks-stack-deployed.png)
 
 > CloudFormation Guard Hooks stack deployed with 5 security rules loaded from S3.
+
+#### Real AWS Verification
+
+Deployed and verified on ap-northeast-1:
+
+- **Hook Alias**: `FSxNS3AP::Guard::Hook` (Enabled, WARN mode)
+- **S3 Rules**: 5 guard files uploaded to `fsxn-s3ap-guard-rules-{AccountId}/cfn-guard-rules/`
+- **Hook Invocation**: Confirmed via stack events — `"Hook invocations complete. Resource creation initiated"`
+
+![Guard Hooks S3 Rules](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/phase6b/guard-hooks-s3-rules.png)
+
+> S3 bucket containing 5 cfn-guard rule files for encryption, IAM, Lambda limits, public access, and SageMaker security.
+
+![Guard Hooks Enabled](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/phase6b/guard-hooks-enabled.png)
+
+> CloudFormation Hooks console showing `FSxNS3AP::Guard::Hook` enabled in WARN mode, targeting RESOURCE and STACK operations.
+
+**Key Deployment Learning**: The Hook Alias must follow the pattern `^(?!(?i)aws)[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}$` — no hyphens allowed, no `AWS` prefix.
 
 ---
 
@@ -247,6 +265,28 @@ delay = min(initial_delay * (2 ** attempt), max_delay)  # 5s, 10s, 20s, 30s...
 
 Step Functions provides the timeout safety net (300s) with Batch Transform fallback on failure.
 
+#### Real AWS Verification
+
+Deployed and verified on ap-northeast-1 (demo stack `phase6b-ic-demo`):
+
+- **Endpoint**: `phase6b-ic-demo-endpoint` (InService)
+- **Inference Component**: `phase6b-ic-demo-component` (InService, CopyCount=1)
+- **Auto Scaling**: MinCapacity=0, MaxCapacity=2 (scale-to-zero enabled)
+
+![Inference Components Stack](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/phase6b/sagemaker-inference-component.png)
+
+> CloudFormation stack with 7 resources: Model, EndpointConfig, Endpoint, InferenceComponent, ScalableTarget, ScalingPolicy, IAM Role — all CREATE_COMPLETE.
+
+![Endpoint Settings](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/docs/screenshots/phase6b/sagemaker-endpoint-settings.png)
+
+> SageMaker Endpoint Settings showing the `primary` variant on `ml.m5.large` with ManagedInstanceScaling enabled.
+
+**Key Deployment Learnings**:
+- Inference Components mode requires **no `ModelName`** and **no `InitialVariantWeight`** in ProductionVariant
+- `ExecutionRoleArn` is required at the EndpointConfig level
+- `RoutingConfig.RoutingStrategy: LEAST_OUTSTANDING_REQUESTS` is recommended
+- `ComputeResourceRequirements` must fit within the instance type capacity
+
 ---
 
 ## Validation Results
@@ -260,10 +300,10 @@ Step Functions provides the timeout safety net (300s) with Batch Transform fallb
 ### Unit Tests
 
 ```
-301 passed, 30 warnings in 132s
+310 passed, 30 warnings in 135s
 ```
 
-All tests pass including the new 4-way routing property test.
+All tests pass including the new 4-way routing property tests and validate_inference_config tests.
 
 ### Step Functions Execution
 
@@ -294,6 +334,6 @@ Phase 6 delivers production hardening and developer experience improvements acro
 | Inference routing | 3-way | 4-way (+ Inference Components) |
 | Scale-to-zero options | Serverless only (6 MB limit) | + Inference Components (no limit) |
 | Lambda runtime | Python 3.12 | Python 3.13 |
-| Unit tests | 295 pass (1 failure) | 301 pass (0 failures) |
+| Unit tests | 295 pass (1 failure) | 310 pass (0 failures) |
 
 The project's core principle remains: **every feature is opt-in with zero cost when disabled**.
