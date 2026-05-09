@@ -44,10 +44,24 @@
 | Component | Role |
 |-----------|------|
 | Step Functions | 工作流程編排 |
-| Lambda (Format Converter) | 感測器資料格式轉換 |
-| Lambda (Frame Classifier) | AI 驅動影格分類 |
-| Lambda (Annotation Generator) | 標註自動產生 |
-| Amazon Athena | 資料集統計分析 |
+| Lambda (Python 3.13) | 感測器資料品質驗證、場景分類、目錄產生 |
+| Lambda SnapStart | 冷啟動減少（`EnableSnapStart=true` 可選啟用） |
+| SageMaker (4-way routing) | 推論（Batch / Serverless / Provisioned / Inference Components） |
+| SageMaker Inference Components | 真正的 scale-to-zero（`EnableInferenceComponents=true`） |
+| Amazon Bedrock | 場景分類 / 標註建議 |
+| Amazon Athena | 中繼資料搜尋與彙總 |
+| CloudFormation Guard Hooks | 部署時安全策略強制 |
+
+### 本機測試 (Phase 6A)
+
+```bash
+# 使用 SAM CLI 進行本機測試
+sam local invoke \
+  --template autonomous-driving/template-deploy.yaml \
+  --event events/uc09-autonomous-driving/discovery-event.json \
+  --env-vars events/env.json \
+  DiscoveryFunction
+```
 
 ---
 

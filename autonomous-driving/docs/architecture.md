@@ -107,10 +107,52 @@ flowchart TB
 | S3 Access Points | ONTAP ボリュームへのサーバーレスアクセス |
 | EventBridge Scheduler | 定期トリガー |
 | Step Functions | ワークフローオーケストレーション |
-| Lambda | コンピュート（Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke） |
+| Lambda (Python 3.13) | コンピュート（Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke） |
+| Lambda SnapStart | コールドスタート削減（オプトイン、Phase 6A） |
 | Amazon Rekognition | 物体検出（車両、歩行者、交通標識） |
-| Amazon SageMaker | Batch Transform（点群セグメンテーション推論） |
+| Amazon SageMaker | 推論（4-way ルーティング: Batch / Serverless / Provisioned / Components） |
+| SageMaker Inference Components | 真の scale-to-zero（MinInstanceCount=0、Phase 6B） |
 | Amazon Bedrock | アノテーション提案生成 |
 | SNS | 処理完了通知 |
 | Secrets Manager | ONTAP REST API 認証情報管理 |
 | CloudWatch + X-Ray | オブザーバビリティ |
+| CloudFormation Guard Hooks | デプロイ時ポリシー強制（Phase 6B） |
+
+---
+
+## Inference Routing (Phase 4/5/6B)
+
+UC9 は 4-way 推論ルーティングをサポートします。`InferenceType` パラメータで選択:
+
+| パス | 条件 | レイテンシ | アイドルコスト |
+|------|------|-----------|-------------|
+| Batch Transform | `InferenceType=none` or `file_count >= threshold` | 分〜時間 | $0 |
+| Serverless Inference | `InferenceType=serverless` | 6–45 秒 (cold) | $0 |
+| Provisioned Endpoint | `InferenceType=provisioned` | ミリ秒 | ~$140/月 |
+| **Inference Components** | `InferenceType=components` | 2–5 分 (scale-from-zero) | **$0** |
+
+### Inference Components (Phase 6B)
+
+Inference Components は `MinInstanceCount=0` で真の scale-to-zero を実現:
+
+```
+SageMaker Endpoint (常時存在、アイドル時コスト $0)
+  └── Inference Component (MinInstanceCount=0)
+       ├── [アイドル] → 0 インスタンス → $0/時間
+       ├── [リクエスト到着] → Auto Scaling → インスタンス起動 (2–5 分)
+       └── [アイドルタイムアウト] → Scale-in → 0 インスタンス
+```
+
+有効化: `EnableInferenceComponents=true` + `InferenceType=components`
+
+---
+
+## Lambda SnapStart (Phase 6A)
+
+全 Lambda 関数で SnapStart をオプトインで有効化可能:
+
+- **有効化**: `EnableSnapStart=true` でスタック更新 + `scripts/enable-snapstart.sh` でバージョン公開
+- **効果**: コールドスタート 1–3 秒 → 100–500ms
+- **制約**: Published Versions にのみ適用（$LATEST には効かない）
+
+詳細: [SnapStart ガイド](../../docs/snapstart-guide.md)

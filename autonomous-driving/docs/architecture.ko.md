@@ -103,14 +103,56 @@ flowchart TB
 
 | 서비스 | 역할 |
 |--------|------|
-| FSx for NetApp ONTAP | 자율주행 데이터 스토리지 (영상 및 LiDAR) |
+| FSx for NetApp ONTAP | 자율주행 데이터 스토리지 (영상/LiDAR) |
 | S3 Access Points | ONTAP 볼륨에 대한 서버리스 접근 |
 | EventBridge Scheduler | 주기적 트리거 |
 | Step Functions | 워크플로 오케스트레이션 |
-| Lambda | 컴퓨팅 (Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke) |
+| Lambda (Python 3.13) | 컴퓨팅 (Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke) |
+| Lambda SnapStart | 콜드 스타트 감소 (옵트인, Phase 6A) |
 | Amazon Rekognition | 객체 탐지 (차량, 보행자, 교통 표지판) |
-| Amazon SageMaker | Batch Transform (포인트 클라우드 세그멘테이션 추론) |
+| Amazon SageMaker | 추론 (4-way 라우팅: Batch / Serverless / Provisioned / Components) |
+| SageMaker Inference Components | 진정한 scale-to-zero (MinInstanceCount=0, Phase 6B) |
 | Amazon Bedrock | 어노테이션 제안 생성 |
 | SNS | 처리 완료 알림 |
 | Secrets Manager | ONTAP REST API 자격 증명 관리 |
 | CloudWatch + X-Ray | 관측 가능성 |
+| CloudFormation Guard Hooks | 배포 시 정책 적용 (Phase 6B) |
+
+---
+
+## 추론 라우팅 (Phase 4/5/6B)
+
+UC9는 4-way 추론 라우팅을 지원합니다. `InferenceType` 파라미터로 선택:
+
+| 경로 | 조건 | 지연 시간 | 유휴 비용 |
+|------|------|-----------|-----------|
+| Batch Transform | `InferenceType=none` or `file_count >= threshold` | 분~시간 | $0 |
+| Serverless Inference | `InferenceType=serverless` | 6–45초 (cold) | $0 |
+| Provisioned Endpoint | `InferenceType=provisioned` | 밀리초 | ~$140/월 |
+| **Inference Components** | `InferenceType=components` | 2–5분 (scale-from-zero) | **$0** |
+
+### Inference Components (Phase 6B)
+
+Inference Components는 `MinInstanceCount=0`으로 진정한 scale-to-zero를 달성합니다:
+
+```
+SageMaker Endpoint (항상 존재, 유휴 비용 $0)
+  └── Inference Component (MinInstanceCount=0)
+       ├── [유휴] → 0 인스턴스 → $0/시간
+       ├── [요청 도착] → Auto Scaling → 인스턴스 시작 (2–5분)
+       └── [유휴 타임아웃] → Scale-in → 0 인스턴스
+```
+
+활성화: `EnableInferenceComponents=true` + `InferenceType=components`
+
+---
+
+## Lambda SnapStart (Phase 6A)
+
+모든 Lambda 함수에서 SnapStart를 옵트인으로 활성화 가능:
+
+- **활성화**: `EnableSnapStart=true`로 스택 업데이트 + `scripts/enable-snapstart.sh`로 버전 게시
+- **효과**: 콜드 스타트 1–3초 → 100–500ms
+- **제한**: Published Versions에만 적용 ($LATEST에는 적용되지 않음)
+
+상세: [SnapStart 가이드](../../docs/snapstart-guide.md)
