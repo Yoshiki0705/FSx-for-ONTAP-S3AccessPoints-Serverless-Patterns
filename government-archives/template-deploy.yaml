@@ -1,0 +1,949 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  UC16: 政府機関 — 公文書デジタルアーカイブ・FOIA 対応
+  FSx for NetApp ONTAP S3 Access Points を活用した PDF/TIFF/EML 文書の OCR、
+  分類、PII 検出、墨消し、全文検索インデックス、FOIA 期限トラッキングの
+  サーバーレスワークフロー。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  OntapSecretName:
+    Type: String
+    Default: ""
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名（optional）
+
+  OntapManagementIp:
+    Type: String
+    Default: "10.0.0.1"
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  SvmUuid:
+    Type: String
+    Default: ""
+    Description: ONTAP SVM UUID（optional）
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge Scheduler のスケジュール式
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Discovery Lambda を配置する VPC ID
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Discovery Lambda を配置するプライベートサブネット ID リスト
+
+  OutputBucketName:
+    Type: String
+    Default: ""
+    Description: S3 出力バケット名（空の場合は自動生成）
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+
+  # UC16 固有
+  OpenSearchMode:
+    Type: String
+    Default: "none"
+    AllowedValues: ["none", "serverless", "managed"]
+    Description: OpenSearch モード（none=インデックスなし、serverless=AOSS、managed=Domain）
+
+  OpenSearchCollectionName:
+    Type: String
+    Default: ""
+    Description: OpenSearch Serverless コレクション名（OpenSearchMode=serverless 時、空で自動生成）
+
+  OpenSearchDomainInstanceType:
+    Type: String
+    Default: "t3.small.search"
+    AllowedValues:
+      - "t3.small.search"
+      - "t3.medium.search"
+      - "m5.large.search"
+    Description: OpenSearch Managed Domain インスタンスタイプ（OpenSearchMode=managed 時）
+
+  SyncPageThreshold:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 3000
+    Description: Textract 同期/非同期 API の切替ページ数
+
+  DefaultRetentionYears:
+    Type: Number
+    Default: 7
+    MinValue: 1
+    MaxValue: 100
+    Description: デフォルト保存年数（NARA GRS 2.1）
+
+  ReminderDaysBefore:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    MaxValue: 30
+    Description: FOIA 期限の何日前にリマインダーを送るか
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 1024
+    MinValue: 128
+    MaxValue: 10240
+
+  LambdaTimeout:
+    Type: Number
+    Default: 600
+    MinValue: 30
+    MaxValue: 900
+
+  MapConcurrency:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 40
+    Description: Step Functions Map ステートの最大同時実行数
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90]
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  UseAutoOutputBucket:
+    !Equals [!Ref OutputBucketName, ""]
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  SnapStartEnabled:
+    !Equals [!Ref EnableSnapStart, "true"]
+  CreateOpenSearchServerless:
+    !Equals [!Ref OpenSearchMode, "serverless"]
+  CreateOpenSearchManaged:
+    !Equals [!Ref OpenSearchMode, "managed"]
+  UseAutoOpenSearchName:
+    !Equals [!Ref OpenSearchCollectionName, ""]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # S3 Output Bucket (SSE-KMS)
+  # -----------------------------------------------------------------
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If
+        - UseAutoOutputBucket
+        - !Sub "${AWS::StackName}-output-${AWS::AccountId}"
+        - !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: government-archives
+
+  # -----------------------------------------------------------------
+  # DynamoDB Tables
+  # -----------------------------------------------------------------
+  RetentionTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub "${AWS::StackName}-retention"
+      AttributeDefinitions:
+        - AttributeName: document_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: document_key
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: government-archives
+
+  FoiaRequestTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub "${AWS::StackName}-foia-requests"
+      AttributeDefinitions:
+        - AttributeName: request_id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: request_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: government-archives
+
+  # -----------------------------------------------------------------
+  # SNS Topic
+  # -----------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -----------------------------------------------------------------
+  # OpenSearch Serverless Collection (optional)
+  # -----------------------------------------------------------------
+  OpenSearchEncryptionPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Condition: CreateOpenSearchServerless
+    Properties:
+      Name: !Sub "${AWS::StackName}-enc-policy"
+      Type: encryption
+      Policy: !Sub |
+        {
+          "Rules": [{"ResourceType": "collection", "Resource": ["collection/${AWS::StackName}-archives"]}],
+          "AWSOwnedKey": true
+        }
+
+  OpenSearchNetworkPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Condition: CreateOpenSearchServerless
+    Properties:
+      Name: !Sub "${AWS::StackName}-net-policy"
+      Type: network
+      Policy: !Sub |
+        [{
+          "Rules": [
+            {"ResourceType": "collection", "Resource": ["collection/${AWS::StackName}-archives"]},
+            {"ResourceType": "dashboard", "Resource": ["collection/${AWS::StackName}-archives"]}
+          ],
+          "AllowFromPublic": true
+        }]
+
+  OpenSearchCollection:
+    Type: AWS::OpenSearchServerless::Collection
+    Condition: CreateOpenSearchServerless
+    DependsOn:
+      - OpenSearchEncryptionPolicy
+      - OpenSearchNetworkPolicy
+    Properties:
+      Name: !Sub "${AWS::StackName}-archives"
+      Type: SEARCH
+
+  # -----------------------------------------------------------------
+  # OpenSearch Managed Domain (optional)
+  # -----------------------------------------------------------------
+  OpenSearchDomain:
+    Type: AWS::OpenSearchService::Domain
+    Condition: CreateOpenSearchManaged
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      DomainName: !Sub "${AWS::StackName}-archives"
+      EngineVersion: "OpenSearch_2.11"
+      ClusterConfig:
+        InstanceType: !Ref OpenSearchDomainInstanceType
+        InstanceCount: 1
+      EBSOptions:
+        EBSEnabled: true
+        VolumeType: gp3
+        VolumeSize: 10
+      EncryptionAtRestOptions:
+        Enabled: true
+      NodeToNodeEncryptionOptions:
+        Enabled: true
+      DomainEndpointOptions:
+        EnforceHTTPS: true
+
+  # -----------------------------------------------------------------
+  # Lambda Security Group
+  # -----------------------------------------------------------------
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} Discovery Lambda SG"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups
+  # -----------------------------------------------------------------
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: !Ref LogRetentionDays
+
+  OcrLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ocr"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ClassificationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-classification"
+      RetentionInDays: !Ref LogRetentionDays
+
+  EntityExtractionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-entity-extraction"
+      RetentionInDays: !Ref LogRetentionDays
+
+  RedactionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-redaction"
+      RetentionInDays: !Ref LogRetentionDays
+
+  IndexGenerationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-index-generation"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ComplianceCheckLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-compliance-check"
+      RetentionInDays: !Ref LogRetentionDays
+
+  FoiaDeadlineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-foia-deadline"
+      RetentionInDays: !Ref LogRetentionDays
+
+  # -----------------------------------------------------------------
+  # IAM Roles
+  # -----------------------------------------------------------------
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPoint
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+
+  ProcessingLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-processing-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: ProcessingPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Access
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: S3List
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                  - !GetAtt OutputBucket.Arn
+              - Sid: Textract
+                Effect: Allow
+                Action:
+                  - textract:AnalyzeDocument
+                  - textract:DetectDocumentText
+                  - textract:StartDocumentAnalysis
+                  - textract:GetDocumentAnalysis
+                Resource: "*"
+              - Sid: Comprehend
+                Effect: Allow
+                Action:
+                  - comprehend:DetectPiiEntities
+                  - comprehend:DetectDominantLanguage
+                  - comprehend:ClassifyDocument
+                  - comprehend:DetectEntities
+                Resource: "*"
+              - Sid: DynamoDB
+                Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt RetentionTable.Arn
+                  - !GetAtt FoiaRequestTable.Arn
+                  - !Sub "${FoiaRequestTable.Arn}/index/*"
+              - Sid: SNS
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+
+  # -----------------------------------------------------------------
+  # Lambda Functions
+  # -----------------------------------------------------------------
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/government-archives-discovery.zip
+      MemorySize: 512
+      Timeout: 120
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: [!Ref LambdaSecurityGroup]
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          PREFIX_FILTER: "archives/"
+          SUFFIX_FILTER: ".pdf,.tif,.tiff,.eml,.msg,.docx,.xlsx"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+      Tags:
+        - Key: UseCase
+          Value: government-archives
+
+  OcrFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ocr"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/government-archives-ocr.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          SYNC_PAGE_THRESHOLD: !Ref SyncPageThreshold
+      LoggingConfig:
+        LogGroup: !Ref OcrLogGroup
+      Tags:
+        - Key: UseCase
+          Value: government-archives
+
+  ClassificationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-classification"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/government-archives-classification.zip
+      MemorySize: 512
+      Timeout: 180
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+      LoggingConfig:
+        LogGroup: !Ref ClassificationLogGroup
+
+  EntityExtractionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-entity-extraction"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/government-archives-entity_extraction.zip
+      MemorySize: 512
+      Timeout: 300
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+      LoggingConfig:
+        LogGroup: !Ref EntityExtractionLogGroup
+
+  RedactionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-redaction"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/government-archives-redaction.zip
+      MemorySize: 512
+      Timeout: 180
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+      LoggingConfig:
+        LogGroup: !Ref RedactionLogGroup
+
+  IndexGenerationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-index-generation"
+      Runtime: python3.13
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/government-archives-index_generation.zip
+      MemorySize: 512
+      Timeout: 180
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          OPENSEARCH_MODE: !Ref OpenSearchMode
+          OPENSEARCH_ENDPOINT: !If
+            - CreateOpenSearchServerless
+            - !GetAtt OpenSearchCollection.CollectionEndpoint
+            - !If
+              - CreateOpenSearchManaged
+              - !GetAtt OpenSearchDomain.DomainEndpoint
+              - ""
+          OPENSEARCH_INDEX_NAME: government-archives
+      LoggingConfig:
+        LogGroup: !Ref IndexGenerationLogGroup
+
+  ComplianceCheckFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-compliance-check"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/government-archives-compliance_check.zip
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          RETENTION_TABLE: !Ref RetentionTable
+          DEFAULT_RETENTION_YEARS: !Ref DefaultRetentionYears
+      LoggingConfig:
+        LogGroup: !Ref ComplianceCheckLogGroup
+
+  FoiaDeadlineFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-foia-deadline"
+      Runtime: python3.13
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/government-archives-foia_deadline_reminder.zip
+      MemorySize: 256
+      Timeout: 300
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          FOIA_TABLE: !Ref FoiaRequestTable
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+          REMINDER_DAYS_BEFORE: !Ref ReminderDaysBefore
+      LoggingConfig:
+        LogGroup: !Ref FoiaDeadlineLogGroup
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt OcrFunction.Arn
+                  - !GetAtt ClassificationFunction.Arn
+                  - !GetAtt EntityExtractionFunction.Arn
+                  - !GetAtt RedactionFunction.Arn
+                  - !GetAtt IndexGenerationFunction.Arn
+                  - !GetAtt ComplianceCheckFunction.Arn
+
+  ArchiveProcessingStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "UC16 Government Archives Processing Workflow",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "ProcessDocuments",
+              "Retry": [{
+                "ErrorEquals": ["States.TaskFailed"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 2,
+                "BackoffRate": 2.0
+              }]
+            },
+            "ProcessDocuments": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.objects",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.processed",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "Ocr",
+                "States": {
+                  "Ocr": {
+                    "Type": "Task",
+                    "Resource": "${OcrFunction.Arn}",
+                    "ResultPath": "$.ocr",
+                    "Next": "Classification"
+                  },
+                  "Classification": {
+                    "Type": "Task",
+                    "Resource": "${ClassificationFunction.Arn}",
+                    "Parameters": {
+                      "document_key.$": "$.Key",
+                      "text_key.$": "$.ocr.text_key"
+                    },
+                    "ResultPath": "$.classification",
+                    "Next": "EntityExtraction"
+                  },
+                  "EntityExtraction": {
+                    "Type": "Task",
+                    "Resource": "${EntityExtractionFunction.Arn}",
+                    "Parameters": {
+                      "document_key.$": "$.Key",
+                      "text_key.$": "$.ocr.text_key",
+                      "language.$": "$.classification.language"
+                    },
+                    "ResultPath": "$.entities",
+                    "Next": "Redaction"
+                  },
+                  "Redaction": {
+                    "Type": "Task",
+                    "Resource": "${RedactionFunction.Arn}",
+                    "Parameters": {
+                      "document_key.$": "$.Key",
+                      "text_key.$": "$.ocr.text_key",
+                      "entities.$": "$.entities.entities"
+                    },
+                    "ResultPath": "$.redaction",
+                    "Next": "IndexOrSkip"
+                  },
+                  "IndexOrSkip": {
+                    "Type": "Choice",
+                    "Choices": [
+                      {
+                        "Variable": "$.opensearch_enabled",
+                        "StringEquals": "true",
+                        "Next": "IndexGeneration"
+                      }
+                    ],
+                    "Default": "ComplianceCheck"
+                  },
+                  "IndexGeneration": {
+                    "Type": "Task",
+                    "Resource": "${IndexGenerationFunction.Arn}",
+                    "Parameters": {
+                      "document_key.$": "$.Key",
+                      "redacted_text_key.$": "$.redaction.redacted_text_key",
+                      "clearance_level.$": "$.classification.clearance_level",
+                      "pii_count.$": "$.entities.pii_count",
+                      "language.$": "$.classification.language"
+                    },
+                    "ResultPath": "$.index",
+                    "Next": "ComplianceCheck"
+                  },
+                  "ComplianceCheck": {
+                    "Type": "Task",
+                    "Resource": "${ComplianceCheckFunction.Arn}",
+                    "Parameters": {
+                      "document_key.$": "$.Key",
+                      "clearance_level.$": "$.classification.clearance_level"
+                    },
+                    "ResultPath": "$.compliance",
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Schedulers
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref ArchiveProcessingStateMachine
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt FoiaDeadlineFunction.Arn
+
+  ArchiveSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-archive-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: DISABLED
+      Target:
+        Arn: !Ref ArchiveProcessingStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: !Sub |
+          {"opensearch_enabled": "${OpenSearchMode}"}
+
+  FoiaDeadlineSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-foia-schedule"
+      ScheduleExpression: "rate(1 day)"
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: DISABLED
+      Target:
+        Arn: !GetAtt FoiaDeadlineFunction.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional)
+  # -----------------------------------------------------------------
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref ArchiveProcessingStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref ArchiveProcessingStateMachine
+    Export:
+      Name: !Sub "${AWS::StackName}-StateMachineArn"
+
+  OutputBucketName:
+    Description: S3 Output Bucket Name
+    Value: !Ref OutputBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-OutputBucket"
+
+  RetentionTableName:
+    Description: Retention Schedule Table
+    Value: !Ref RetentionTable
+
+  FoiaRequestTableName:
+    Description: FOIA Request Tracking Table
+    Value: !Ref FoiaRequestTable
+
+  NotificationTopicArn:
+    Description: SNS Notification Topic ARN
+    Value: !Ref NotificationTopic
+
+  OpenSearchMode:
+    Description: OpenSearch deployment mode
+    Value: !Ref OpenSearchMode
+
+  OpenSearchEndpoint:
+    Description: OpenSearch endpoint (if enabled)
+    Value: !If
+      - CreateOpenSearchServerless
+      - !GetAtt OpenSearchCollection.CollectionEndpoint
+      - !If
+        - CreateOpenSearchManaged
+        - !GetAtt OpenSearchDomain.DomainEndpoint
+        - "DISABLED"

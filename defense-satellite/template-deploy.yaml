@@ -1,0 +1,797 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  UC15: 防衛・宇宙 — 衛星画像解析パイプライン
+  FSx for NetApp ONTAP S3 Access Points を活用した GeoTIFF/NITF/HDF5 衛星画像の
+  タイリング、物体検出、変化検出、アラート生成のサーバーレスワークフロー。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  OntapSecretName:
+    Type: String
+    Default: ""
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名（optional）
+
+  OntapManagementIp:
+    Type: String
+    Default: "10.0.0.1"
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  SvmUuid:
+    Type: String
+    Default: ""
+    Description: ONTAP SVM UUID（optional）
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge Scheduler のスケジュール式
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Discovery Lambda を配置する VPC ID
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Discovery Lambda を配置するプライベートサブネット ID リスト
+
+  OutputBucketName:
+    Type: String
+    Default: ""
+    Description: S3 出力バケット名（空の場合は自動生成）
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+
+  # UC15 固有
+  TileSize:
+    Type: Number
+    Default: 256
+    MinValue: 64
+    MaxValue: 4096
+    Description: タイル分割サイズ
+
+  ChangeAreaThresholdKm2:
+    Type: Number
+    Default: 1.0
+    MinValue: 0.01
+    MaxValue: 1000.0
+    Description: 変化検出アラートの閾値 (km²)
+
+  InferenceType:
+    Type: String
+    Default: "none"
+    AllowedValues: ["none", "provisioned", "serverless", "components"]
+    Description: SageMaker 推論タイプ（none は Rekognition のみ使用）
+
+  SageMakerEndpointName:
+    Type: String
+    Default: ""
+    Description: SageMaker Endpoint 名（InferenceType != none の場合）
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 1024
+    MinValue: 128
+    MaxValue: 10240
+
+  LambdaTimeout:
+    Type: Number
+    Default: 600
+    MinValue: 30
+    MaxValue: 900
+
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 40
+    Description: Step Functions Map ステートの最大同時実行数
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableSageMaker:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: SageMaker 関連リソース作成を有効化（コスト発生）
+
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90]
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  UseAutoOutputBucket:
+    !Equals [!Ref OutputBucketName, ""]
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  SnapStartEnabled:
+    !Equals [!Ref EnableSnapStart, "true"]
+  CreateSageMakerResources:
+    !Equals [!Ref EnableSageMaker, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # S3 Output Bucket (SSE-KMS)
+  # -----------------------------------------------------------------
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - UseAutoOutputBucket
+        - !Sub "${AWS::StackName}-output-${AWS::AccountId}"
+        - !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: defense-satellite
+
+  # -----------------------------------------------------------------
+  # DynamoDB Change History Table
+  # -----------------------------------------------------------------
+  ChangeHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-change-history"
+      AttributeDefinitions:
+        - AttributeName: tile_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: tile_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: defense-satellite
+
+  # -----------------------------------------------------------------
+  # SNS Topic
+  # -----------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -----------------------------------------------------------------
+  # Lambda Security Group (VPC Discovery Lambda)
+  # -----------------------------------------------------------------
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Discovery Lambda security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups
+  # -----------------------------------------------------------------
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: !Ref LogRetentionDays
+
+  TilingLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-tiling"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ObjectDetectionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-object-detection"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ChangeDetectionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-change-detection"
+      RetentionInDays: !Ref LogRetentionDays
+
+  GeoEnrichmentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-geo-enrichment"
+      RetentionInDays: !Ref LogRetentionDays
+
+  AlertGenerationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-alert-generation"
+      RetentionInDays: !Ref LogRetentionDays
+
+  # -----------------------------------------------------------------
+  # IAM Roles
+  # -----------------------------------------------------------------
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointReadWrite
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt DiscoveryLogGroup.Arn
+                  - !Sub "${DiscoveryLogGroup.Arn}:*"
+
+  ProcessingLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-processing-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ProcessingPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Access
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: S3List
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !GetAtt OutputBucket.Arn
+              - Sid: Rekognition
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: "*"
+              - Sid: SageMakerInvoke
+                Effect: Allow
+                Action:
+                  - sagemaker:InvokeEndpoint
+                Resource:
+                  - !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/*"
+              - Sid: DynamoDB
+                Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt ChangeHistoryTable.Arn
+              - Sid: SNS
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+
+  # -----------------------------------------------------------------
+  # Lambda Functions
+  # -----------------------------------------------------------------
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/defense-satellite-discovery.zip
+      MemorySize: 512
+      Timeout: 120
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          PREFIX_FILTER: "satellite/"
+          SUFFIX_FILTER: ".tif,.tiff,.ntf,.nitf,.hdf,.h5"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+      Tags:
+        - Key: UseCase
+          Value: defense-satellite
+
+  TilingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-tiling"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/defense-satellite-tiling.zip
+      MemorySize: 3008
+      Timeout: 600
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          TILE_SIZE: !Ref TileSize
+      LoggingConfig:
+        LogGroup: !Ref TilingLogGroup
+      Tags:
+        - Key: UseCase
+          Value: defense-satellite
+
+  ObjectDetectionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-object-detection"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/defense-satellite-object_detection.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: 300
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          INFERENCE_TYPE: !Ref InferenceType
+          SAGEMAKER_ENDPOINT_NAME: !Ref SageMakerEndpointName
+      LoggingConfig:
+        LogGroup: !Ref ObjectDetectionLogGroup
+      Tags:
+        - Key: UseCase
+          Value: defense-satellite
+
+  ChangeDetectionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-change-detection"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/defense-satellite-change_detection.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: 180
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          CHANGE_HISTORY_TABLE: !Ref ChangeHistoryTable
+          CHANGE_AREA_THRESHOLD_KM2: !Ref ChangeAreaThresholdKm2
+      LoggingConfig:
+        LogGroup: !Ref ChangeDetectionLogGroup
+      Tags:
+        - Key: UseCase
+          Value: defense-satellite
+
+  GeoEnrichmentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-geo-enrichment"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/defense-satellite-geo_enrichment.zip
+      MemorySize: 512
+      Timeout: 120
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+      LoggingConfig:
+        LogGroup: !Ref GeoEnrichmentLogGroup
+      Tags:
+        - Key: UseCase
+          Value: defense-satellite
+
+  AlertGenerationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-alert-generation"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/defense-satellite-alert_generation.zip
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+          CHANGE_AREA_THRESHOLD_KM2: !Ref ChangeAreaThresholdKm2
+      LoggingConfig:
+        LogGroup: !Ref AlertGenerationLogGroup
+      Tags:
+        - Key: UseCase
+          Value: defense-satellite
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt TilingFunction.Arn
+                  - !GetAtt ObjectDetectionFunction.Arn
+                  - !GetAtt ChangeDetectionFunction.Arn
+                  - !GetAtt GeoEnrichmentFunction.Arn
+                  - !GetAtt AlertGenerationFunction.Arn
+
+  DefenseSatelliteStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "UC15 Defense/Space Satellite Imagery Workflow",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "ProcessImages",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "ProcessImages": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.objects",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.processed",
+              "ItemProcessor": {
+                "ProcessorConfig": {
+                  "Mode": "INLINE"
+                },
+                "StartAt": "Tiling",
+                "States": {
+                  "Tiling": {
+                    "Type": "Task",
+                    "Resource": "${TilingFunction.Arn}",
+                    "ResultPath": "$.tiling_result",
+                    "Next": "ObjectDetection",
+                    "Retry": [
+                      {
+                        "ErrorEquals": ["States.TaskFailed"],
+                        "IntervalSeconds": 10,
+                        "MaxAttempts": 2,
+                        "BackoffRate": 2.0
+                      }
+                    ]
+                  },
+                  "ObjectDetection": {
+                    "Type": "Task",
+                    "Resource": "${ObjectDetectionFunction.Arn}",
+                    "Parameters": {
+                      "tile_key.$": "$.Key",
+                      "source_key.$": "$.Key"
+                    },
+                    "ResultPath": "$.detection_result",
+                    "Next": "ChangeDetection",
+                    "Retry": [
+                      {
+                        "ErrorEquals": ["States.TaskFailed"],
+                        "IntervalSeconds": 5,
+                        "MaxAttempts": 2,
+                        "BackoffRate": 2.0
+                      }
+                    ]
+                  },
+                  "ChangeDetection": {
+                    "Type": "Task",
+                    "Resource": "${ChangeDetectionFunction.Arn}",
+                    "Parameters": {
+                      "tile_key.$": "$.Key",
+                      "detections.$": "$.detection_result.detections",
+                      "image_metadata.$": "$.tiling_result.metadata"
+                    },
+                    "ResultPath": "$.change_result",
+                    "Next": "GeoEnrichment",
+                    "Retry": [
+                      {
+                        "ErrorEquals": ["States.TaskFailed"],
+                        "IntervalSeconds": 5,
+                        "MaxAttempts": 2,
+                        "BackoffRate": 2.0
+                      }
+                    ]
+                  },
+                  "GeoEnrichment": {
+                    "Type": "Task",
+                    "Resource": "${GeoEnrichmentFunction.Arn}",
+                    "Parameters": {
+                      "tile_id.$": "$.change_result.tile_id",
+                      "detections.$": "$.change_result.detections",
+                      "image_metadata.$": "$.tiling_result.metadata",
+                      "source_key.$": "$.Key"
+                    },
+                    "ResultPath": "$.enrichment_result",
+                    "Next": "AlertGeneration"
+                  },
+                  "AlertGeneration": {
+                    "Type": "Task",
+                    "Resource": "${AlertGenerationFunction.Arn}",
+                    "Parameters": {
+                      "change_detected.$": "$.change_result.change_detected",
+                      "diff_area_km2.$": "$.change_result.diff_area_km2",
+                      "tile_id.$": "$.change_result.tile_id",
+                      "timestamp.$": "$.change_result.timestamp",
+                      "enrichment.$": "$.enrichment_result.enrichment",
+                      "enriched_detections.$": "$.enrichment_result.enriched_detections"
+                    },
+                    "ResultPath": "$.alert_result",
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref DefenseSatelliteStateMachine
+
+  DefenseSatelliteSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: DISABLED
+      Target:
+        Arn: !Ref DefenseSatelliteStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional)
+  # -----------------------------------------------------------------
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref DefenseSatelliteStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  DiscoveryErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-discovery-errors"
+      AlarmDescription: Discovery Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref DiscoveryFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref DefenseSatelliteStateMachine
+    Export:
+      Name: !Sub "${AWS::StackName}-StateMachineArn"
+
+  OutputBucketName:
+    Description: S3 Output Bucket Name
+    Value: !Ref OutputBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-OutputBucket"
+
+  ChangeHistoryTableName:
+    Description: DynamoDB Change History Table
+    Value: !Ref ChangeHistoryTable
+    Export:
+      Name: !Sub "${AWS::StackName}-ChangeHistoryTable"
+
+  NotificationTopicArn:
+    Description: SNS Notification Topic ARN
+    Value: !Ref NotificationTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-NotificationTopic"

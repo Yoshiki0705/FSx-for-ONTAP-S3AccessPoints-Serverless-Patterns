@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: UC15 Defense-Satellite SAM template for local testing
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 300
+    MemorySize: 1024
+    Environment:
+      Variables:
+        OUTPUT_BUCKET: !Ref OutputBucket
+        S3_ACCESS_POINT: !Ref S3AccessPoint
+
+Parameters:
+  S3AccessPoint:
+    Type: String
+    Default: "test-ap-ext-s3alias"
+  OutputBucket:
+    Type: String
+    Default: "test-output-bucket"
+
+Resources:
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: defense-satellite-discovery
+      CodeUri: ./functions/discovery/
+      Handler: handler.handler
+      MemorySize: 512
+      Timeout: 120
+
+  TilingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: defense-satellite-tiling
+      CodeUri: ./functions/tiling/
+      Handler: handler.handler
+      MemorySize: 3008
+
+  ObjectDetectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: defense-satellite-object-detection
+      CodeUri: ./functions/object_detection/
+      Handler: handler.handler
+
+  ChangeDetectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: defense-satellite-change-detection
+      CodeUri: ./functions/change_detection/
+      Handler: handler.handler
+      Timeout: 180
+
+  GeoEnrichmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: defense-satellite-geo-enrichment
+      CodeUri: ./functions/geo_enrichment/
+      Handler: handler.handler
+      MemorySize: 512
+      Timeout: 120
+
+  AlertGenerationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: defense-satellite-alert-generation
+      CodeUri: ./functions/alert_generation/
+      Handler: handler.handler
+      MemorySize: 256
+      Timeout: 60

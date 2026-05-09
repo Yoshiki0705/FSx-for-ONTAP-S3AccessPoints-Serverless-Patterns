@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: UC16 Government Archives SAM template for local testing
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 300
+    MemorySize: 1024
+    Environment:
+      Variables:
+        OUTPUT_BUCKET: !Ref OutputBucket
+
+Parameters:
+  S3AccessPoint:
+    Type: String
+    Default: "test-ap-ext-s3alias"
+  OutputBucket:
+    Type: String
+    Default: "test-output-bucket"
+
+Resources:
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/discovery/
+      Handler: handler.handler
+      MemorySize: 512
+      Timeout: 120
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPoint
+
+  OcrFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/ocr/
+      Handler: handler.handler
+
+  ClassificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/classification/
+      Handler: handler.handler
+      MemorySize: 512
+      Timeout: 180
+
+  EntityExtractionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/entity_extraction/
+      Handler: handler.handler
+      MemorySize: 512
+      Timeout: 300
+
+  RedactionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/redaction/
+      Handler: handler.handler
+      MemorySize: 512
+      Timeout: 180
+
+  IndexGenerationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/index_generation/
+      Handler: handler.handler
+      MemorySize: 512
+      Timeout: 180
+
+  ComplianceCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/compliance_check/
+      Handler: handler.handler
+      MemorySize: 256
+      Timeout: 60
+
+  FoiaDeadlineFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/foia_deadline_reminder/
+      Handler: handler.handler
+      MemorySize: 256
+      Timeout: 300
