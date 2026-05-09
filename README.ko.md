@@ -35,60 +35,94 @@ Amazon FSx for NetApp ONTAP의 S3 Access Points를 활용한 업종별 서버리
 
 ```mermaid
 graph TB
-    subgraph "스케줄링 레이어"
-        EBS[EventBridge Scheduler<br/>cron/rate 식]
+    subgraph "Scheduling Layer"
+        EBS[EventBridge Scheduler<br/>cron/rate expressions]
+        KDS[Kinesis Data Streams<br/>Near-real-time detection<br/>UC11 opt-in]
     end
 
-    subgraph "오케스트레이션 레이어"
+    subgraph "Orchestration Layer"
         SFN[Step Functions<br/>State Machine]
     end
 
-    subgraph "컴퓨트 레이어(VPC 내)"
-        DL[Discovery Lambda<br/>오브젝트 검출]
-        PL[Processing Lambda<br/>AI/ML 처리]
-        RL[Report Lambda<br/>리포트 생성・통지]
+    subgraph "Compute Layer"
+        DL[Discovery Lambda<br/>Object Detection<br/>Within VPC]
+        PL[Processing Lambda<br/>AI/ML Processing<br/>Map State parallel]
+        RL[Report Lambda<br/>Report Generation & Notification]
     end
 
-    subgraph "데이터 소스"
-        FSXN[FSx ONTAP Volume]
-        S3AP[S3 Access Point]
-        ONTAP_API[ONTAP REST API]
+    subgraph "Data Sources"
+        FSXN[FSx for NetApp ONTAP<br/>Volume]
+        S3AP[S3 Access Point<br/>ListObjectsV2 / GetObject /<br/>Range / PutObject]
+        ONTAP_API[ONTAP REST API<br/>ACL / Volume Metadata]
     end
 
-    subgraph "AWS 서비스"
+    subgraph "AI/ML Services"
+        BEDROCK[Amazon Bedrock<br/>Nova / Claude]
+        TEXTRACT[Amazon Textract<br/>OCR ⚠️ Cross-Region]
+        COMPREHEND[Amazon Comprehend /<br/>Comprehend Medical ⚠️]
+        REKOGNITION[Amazon Rekognition<br/>Image Analysis]
+        SAGEMAKER[Amazon SageMaker<br/>Batch / Real-time /<br/>Serverless Inference<br/>UC9 opt-in]
+    end
+
+    subgraph "Data Analytics"
+        GLUE[AWS Glue<br/>Data Catalog]
+        ATHENA[Amazon Athena<br/>SQL Analytics]
+    end
+
+    subgraph "Storage & State Management"
+        S3OUT[S3 Output Bucket<br/>SSE-KMS Encryption]
+        DDB[DynamoDB<br/>Task Token Store<br/>UC9 opt-in]
         SM[Secrets Manager]
-        S3OUT[S3 Output Bucket<br/>SSE-KMS 암호화]
-        BEDROCK[Amazon Bedrock]
-        TEXTRACT[Amazon Textract]
-        COMPREHEND[Amazon Comprehend]
-        REKOGNITION[Amazon Rekognition]
-        ATHENA[Amazon Athena]
-        SNS[SNS Topic]
     end
 
-    subgraph "VPC Endpoints(옵셔널)"
-        VPCE_S3[S3 Gateway EP<br/>무료]
+    subgraph "Notifications"
+        SNS[SNS Topic<br/>Email / Slack]
+    end
+
+    subgraph "Observability (Phase 3+)"
+        XRAY[AWS X-Ray<br/>Distributed Tracing]
+        CW[CloudWatch<br/>EMF Metrics /<br/>Dashboards]
+    end
+
+    subgraph "VPC Endpoints (Optional)"
+        VPCE_S3[S3 Gateway EP<br/>Free]
         VPCE_IF[Interface EPs<br/>Secrets Manager / FSx /<br/>CloudWatch / SNS]
     end
 
-    EBS -->|Trigger| SFN
+    EBS -->|Periodic trigger| SFN
+    KDS -->|Real-time| SFN
     SFN -->|Step 1| DL
     SFN -->|Step 2 Map| PL
     SFN -->|Step 3| RL
 
     DL -->|ListObjectsV2| S3AP
     DL -->|REST API| ONTAP_API
-    PL -->|GetObject| S3AP
+    PL -->|GetObject / Range| S3AP
     PL -->|PutObject| S3OUT
+    PL --> BEDROCK
+    PL --> TEXTRACT
+    PL --> COMPREHEND
+    PL --> REKOGNITION
+    PL --> SAGEMAKER
+    PL --> GLUE
+    PL --> ATHENA
 
     S3AP -.->|Exposes| FSXN
+    GLUE -.-> ATHENA
 
     DL --> VPCE_S3
     DL --> VPCE_IF --> SM
     RL --> SNS
+
+    SFN --> XRAY
+    DL --> CW
+    PL --> CW
+    RL --> CW
+
+    SAGEMAKER -.-> DDB
 ```
 
-> 다이어그램은 프로덕션 환경을 상정한 VPC 내 Lambda 구성을 보여줍니다. PoC / 데모 용도에서는 S3 AP의 network origin이 `internet`인 경우 VPC 외 Lambda 구성도 선택할 수 있습니다. 자세한 내용은 아래 「Lambda 배치 선택 가이드」를 참조하세요.
+> 이 다이어그램은 전체 Phase(Phase 1~5)의 서비스를 포함한 전체 아키텍처를 보여줍니다. SageMaker, Kinesis, DynamoDB는 CloudFormation Conditions로 옵트인 제어되며, 활성화하지 않는 한 추가 비용이 발생하지 않습니다. PoC/데모 용도로는 VPC 외부 Lambda 구성도 선택할 수 있습니다.
 
 ### 워크플로우 개요
 

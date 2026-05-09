@@ -35,60 +35,94 @@ Jeder Anwendungsfall ist als eigenständiges CloudFormation-Template umgesetzt. 
 
 ```mermaid
 graph TB
-    subgraph "Planungsschicht"
-        EBS[EventBridge Scheduler<br/>cron/rate-Ausdrücke]
+    subgraph "Scheduling Layer"
+        EBS[EventBridge Scheduler<br/>cron/rate expressions]
+        KDS[Kinesis Data Streams<br/>Near-real-time detection<br/>UC11 opt-in]
     end
 
-    subgraph "Orchestrierungsschicht"
+    subgraph "Orchestration Layer"
         SFN[Step Functions<br/>State Machine]
     end
 
-    subgraph "Compute-Schicht (innerhalb VPC)"
-        DL[Discovery Lambda<br/>Objekterkennung]
-        PL[Processing Lambda<br/>AI/ML-Verarbeitung]
-        RL[Report Lambda<br/>Berichterstellung und Benachrichtigung]
+    subgraph "Compute Layer"
+        DL[Discovery Lambda<br/>Object Detection<br/>Within VPC]
+        PL[Processing Lambda<br/>AI/ML Processing<br/>Map State parallel]
+        RL[Report Lambda<br/>Report Generation & Notification]
     end
 
-    subgraph "Datenquellen"
-        FSXN[FSx ONTAP Volume]
-        S3AP[S3 Access Point]
-        ONTAP_API[ONTAP REST API]
+    subgraph "Data Sources"
+        FSXN[FSx for NetApp ONTAP<br/>Volume]
+        S3AP[S3 Access Point<br/>ListObjectsV2 / GetObject /<br/>Range / PutObject]
+        ONTAP_API[ONTAP REST API<br/>ACL / Volume Metadata]
     end
 
-    subgraph "AWS-Dienste"
+    subgraph "AI/ML Services"
+        BEDROCK[Amazon Bedrock<br/>Nova / Claude]
+        TEXTRACT[Amazon Textract<br/>OCR ⚠️ Cross-Region]
+        COMPREHEND[Amazon Comprehend /<br/>Comprehend Medical ⚠️]
+        REKOGNITION[Amazon Rekognition<br/>Image Analysis]
+        SAGEMAKER[Amazon SageMaker<br/>Batch / Real-time /<br/>Serverless Inference<br/>UC9 opt-in]
+    end
+
+    subgraph "Data Analytics"
+        GLUE[AWS Glue<br/>Data Catalog]
+        ATHENA[Amazon Athena<br/>SQL Analytics]
+    end
+
+    subgraph "Storage & State Management"
+        S3OUT[S3 Output Bucket<br/>SSE-KMS Encryption]
+        DDB[DynamoDB<br/>Task Token Store<br/>UC9 opt-in]
         SM[Secrets Manager]
-        S3OUT[S3 Output Bucket<br/>SSE-KMS-Verschlüsselung]
-        BEDROCK[Amazon Bedrock]
-        TEXTRACT[Amazon Textract]
-        COMPREHEND[Amazon Comprehend]
-        REKOGNITION[Amazon Rekognition]
-        ATHENA[Amazon Athena]
-        SNS[SNS Topic]
     end
 
-    subgraph "VPC Endpoints (optional)"
-        VPCE_S3[S3 Gateway EP<br/>Kostenlos]
+    subgraph "Notifications"
+        SNS[SNS Topic<br/>Email / Slack]
+    end
+
+    subgraph "Observability (Phase 3+)"
+        XRAY[AWS X-Ray<br/>Distributed Tracing]
+        CW[CloudWatch<br/>EMF Metrics /<br/>Dashboards]
+    end
+
+    subgraph "VPC Endpoints (Optional)"
+        VPCE_S3[S3 Gateway EP<br/>Free]
         VPCE_IF[Interface EPs<br/>Secrets Manager / FSx /<br/>CloudWatch / SNS]
     end
 
-    EBS -->|Trigger| SFN
+    EBS -->|Periodic trigger| SFN
+    KDS -->|Real-time| SFN
     SFN -->|Step 1| DL
     SFN -->|Step 2 Map| PL
     SFN -->|Step 3| RL
 
     DL -->|ListObjectsV2| S3AP
     DL -->|REST API| ONTAP_API
-    PL -->|GetObject| S3AP
+    PL -->|GetObject / Range| S3AP
     PL -->|PutObject| S3OUT
+    PL --> BEDROCK
+    PL --> TEXTRACT
+    PL --> COMPREHEND
+    PL --> REKOGNITION
+    PL --> SAGEMAKER
+    PL --> GLUE
+    PL --> ATHENA
 
     S3AP -.->|Exposes| FSXN
+    GLUE -.-> ATHENA
 
     DL --> VPCE_S3
     DL --> VPCE_IF --> SM
     RL --> SNS
+
+    SFN --> XRAY
+    DL --> CW
+    PL --> CW
+    RL --> CW
+
+    SAGEMAKER -.-> DDB
 ```
 
-> Das Diagramm zeigt eine produktionsorientierte Lambda-Konfiguration innerhalb eines VPC. Für PoC / Demo-Zwecke kann bei einem S3 AP Network Origin von `internet` auch eine Lambda-Konfiguration außerhalb des VPC gewählt werden. Siehe „Leitfaden zur Lambda-Platzierung" unten für Details.
+> Das Diagramm zeigt die Gesamtarchitektur über alle Phasen (Phase 1-5). SageMaker, Kinesis und DynamoDB werden über CloudFormation Conditions (Opt-in) gesteuert und verursachen keine zusätzlichen Kosten, solange sie nicht aktiviert sind. Für PoC/Demo-Zwecke kann auch eine Lambda-Konfiguration außerhalb des VPC gewählt werden.
 
 ### Workflow-Übersicht
 
