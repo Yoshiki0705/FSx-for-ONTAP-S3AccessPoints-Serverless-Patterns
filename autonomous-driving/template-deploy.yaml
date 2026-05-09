@@ -1973,6 +1973,9 @@ Resources:
 
   # -----------------------------------------------------------------
   # Inference Component (ManagedInstanceScaling MinInstanceCount=0)
+  # Note: ComputeResourceRequirements はインスタンスタイプのキャパシティ内に
+  # 収める必要がある。ml.m5.large (2 vCPU, 8GB) の場合、
+  # NumberOfCpuCoresRequired <= 2, MinMemoryRequiredInMb <= 8192
   # -----------------------------------------------------------------
   InferenceComponent:
     Type: AWS::SageMaker::InferenceComponent
@@ -1984,8 +1987,8 @@ Resources:
       Specification:
         ModelName: !GetAtt RealtimeSageMakerModel.ModelName
         ComputeResourceRequirements:
-          NumberOfCpuCoresRequired: 2
-          MinMemoryRequiredInMb: 4096
+          NumberOfCpuCoresRequired: 1
+          MinMemoryRequiredInMb: 2048
       RuntimeConfig:
         CopyCount: 1
       Tags:
