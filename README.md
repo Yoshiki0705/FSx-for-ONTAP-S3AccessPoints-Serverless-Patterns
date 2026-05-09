@@ -786,10 +786,16 @@ S3 AP 経由で利用可能な API サブセット:
 
 ```
 fsxn-s3ap-serverless-patterns/
-├── README.md                          # 本ファイル
+├── README.md                          # 本ファイル（8 言語対応）
+├── CHANGELOG.md                       # 変更履歴
+├── CONTRIBUTING.md                    # コントリビューションガイド
 ├── LICENSE                            # MIT License
 ├── requirements.txt                   # 本番依存関係
 ├── requirements-dev.txt               # 開発依存関係
+├── conftest.py                        # pytest 共通設定
+├── pytest.ini                         # pytest 設定
+├── samconfig.sample.toml              # SAM CLI 設定サンプル (Phase 6A)
+│
 ├── shared/                            # 共通モジュール
 │   ├── __init__.py
 │   ├── ontap_client.py               # ONTAP REST API クライアント
@@ -798,8 +804,25 @@ fsxn-s3ap-serverless-patterns/
 │   ├── cross_region_client.py        # クロスリージョン API クライアント (Phase 2)
 │   ├── exceptions.py                 # 共通例外・エラーハンドラ
 │   ├── discovery_handler.py          # 共通 Discovery Lambda テンプレート
-│   ├── cfn/                          # CloudFormation スニペット
+│   ├── observability.py              # X-Ray トレーシング・EMF メトリクス (Phase 3)
+│   ├── routing.py                    # 4-way 推論ルーティング (Phase 4/5/6B)
+│   ├── task_token_store.py           # DynamoDB Task Token Store (Phase 4)
+│   ├── cost_validation.py            # コストバリデーション (Phase 5)
+│   ├── streaming/                    # ストリーミングヘルパー (Phase 3)
+│   ├── lambdas/                      # 共通 Lambda 関数
+│   │   └── auto_stop/               # SageMaker Auto-Stop Lambda (Phase 5)
+│   ├── cfn/                          # CloudFormation スニペット・テンプレート
+│   │   ├── common-parameters.yaml   # 共通パラメータ・Conditions リファレンス
+│   │   ├── vpc-endpoints.yaml       # VPC Endpoints 定義
+│   │   ├── guard-hooks.yaml         # CloudFormation Guard Hooks (Phase 6B)
+│   │   ├── auto-stop-resources.yaml # Auto-Stop リソース (Phase 5)
+│   │   ├── billing-alarm.yaml       # 課金アラーム (Phase 5)
+│   │   ├── scheduled-scaling.yaml   # スケジュールスケーリング (Phase 5)
+│   │   ├── global-task-token-store.yaml # Global Tables (Phase 5)
+│   │   ├── multi-region-base.yaml   # Multi-Region 基盤 (Phase 5)
+│   │   └── stacksets-admin.yaml     # StackSets 管理 (Phase 4)
 │   └── tests/                        # ユニットテスト・プロパティテスト
+│
 ├── legal-compliance/                  # UC1: 法務・コンプライアンス
 ├── financial-idp/                     # UC2: 金融・保険
 ├── manufacturing-analytics/           # UC3: 製造業
@@ -808,50 +831,89 @@ fsxn-s3ap-serverless-patterns/
 ├── semiconductor-eda/                 # UC6: 半導体 / EDA (Phase 2)
 ├── genomics-pipeline/                 # UC7: ゲノミクス (Phase 2)
 ├── energy-seismic/                    # UC8: エネルギー (Phase 2)
-├── autonomous-driving/                # UC9: 自動運転 / ADAS (Phase 2)
+├── autonomous-driving/                # UC9: 自動運転 / ADAS (Phase 2/3/4/5/6B)
 ├── construction-bim/                  # UC10: 建設 / AEC (Phase 2)
-├── retail-catalog/                    # UC11: 小売 / EC (Phase 2)
+├── retail-catalog/                    # UC11: 小売 / EC (Phase 2/3)
 ├── logistics-ocr/                     # UC12: 物流 (Phase 2)
 ├── education-research/                # UC13: 教育 / 研究 (Phase 2)
 ├── insurance-claims/                  # UC14: 保険 (Phase 2)
-├── scripts/                           # 検証・デプロイスクリプト
+├── event-driven-prototype/            # イベント駆動プロトタイプ (Phase 4)
+│
+├── events/                            # SAM CLI ローカルテスト用イベント (Phase 6A)
+│   ├── env.json                      # 共通環境変数テンプレート
+│   └── uc01-uc14/                    # 各 UC の discovery-event.json
+│
+├── security/                          # セキュリティルール (Phase 5/6B)
+│   ├── cfn-guard-rules/              # cfn-guard ポリシールール
+│   │   ├── encryption-required.guard
+│   │   ├── iam-least-privilege.guard
+│   │   ├── lambda-limits.guard
+│   │   ├── no-public-access.guard
+│   │   └── sagemaker-security.guard
+│   └── tests/                        # セキュリティテスト
+│
+├── scripts/                           # 検証・デプロイ・運用スクリプト
 │   ├── deploy_uc.sh                  # UC デプロイスクリプト（汎用）
-│   ├── deploy_phase2_batch.sh        # Phase 2 一括デプロイスクリプト
-│   ├── regenerate_deploy_templates.sh # template-deploy.yaml 一括再生成
-│   ├── generate_test_data.py         # テストデータ生成・S3 AP アップロード
-│   ├── create_deploy_template.py     # template.yaml → template-deploy.yaml 変換
-│   ├── verify_shared_modules.py      # 共通モジュール AWS 環境検証
-│   └── verify_cfn_templates.sh       # CloudFormation テンプレート検証
-├── .github/workflows/                 # CI/CD (lint, test)
+│   ├── deploy-hooks.sh              # Guard Hooks デプロイ (Phase 6B)
+│   ├── local-test.sh                # SAM CLI ローカルテスト (Phase 6A)
+│   ├── enable-snapstart.sh          # SnapStart 有効化 (Phase 6A)
+│   ├── verify-snapstart.sh          # SnapStart 検証 (Phase 6A)
+│   ├── regenerate_deploy_templates.sh
+│   ├── generate_deploy_templates.py
+│   ├── create_deploy_template.py
+│   ├── verify_cfn_templates.sh
+│   ├── verify_shared_modules.py
+│   └── generate_test_data.py
+│
+├── .github/workflows/                 # CI/CD (Phase 5/6A)
+│   ├── ci.yml                        # 4-stage CI パイプライン
+│   ├── deploy.yml                    # デプロイワークフロー
+│   ├── lint.yaml                     # cfn-lint + ruff
+│   └── test.yaml                     # pytest + coverage
+│
 └── docs/                              # ドキュメント
     ├── guides/                        # 操作手順書
-    │   ├── deployment-guide.md       # デプロイ手順
-    │   ├── operations-guide.md       # 運用手順
-    │   ├── troubleshooting-guide.md  # トラブルシューティング
-    │   └── deployment-lessons-learned.md # AWS デプロイ検証知見集 (Phase 2)
+    ├── event-driven/                  # イベント駆動設計 (Phase 4)
+    ├── multi-region/                  # Multi-Region 設計 (Phase 5)
+    ├── multi-account/                 # Multi-Account 設計 (Phase 4)
     ├── screenshots/                   # AWS コンソールスクリーンショット
+    │   └── masked/                   # マスク済み（公開安全）
     ├── verification-scripts/          # AWS 環境検証スクリプト
-    ├── cross-region-guide.md          # クロスリージョン設定ガイド (Phase 2)
-    ├── cost-analysis.md               # コスト構造分析
-    ├── references.md                  # 参考リンク集
-    ├── extension-patterns.md          # 拡張パターンガイド
-    ├── region-compatibility.md        # リージョン互換性マトリックス
-    ├── verification-results.md        # 検証結果記録 (Phase 1)
-    ├── verification-results-phase2.md # Phase 2 検証結果記録
-    ├── remaining-issues-checklist.md  # 残課題チェックリスト
-    └── article-draft.md               # dev.to 記事の元ドラフト
+    ├── snapstart-guide.md            # Lambda SnapStart ガイド (Phase 6A)
+    ├── local-testing-guide.md        # SAM CLI ローカルテストガイド (Phase 6A)
+    ├── guard-hooks-guide.md          # Guard Hooks ガイド (Phase 6B)
+    ├── inference-components-guide.md # Inference Components ガイド (Phase 6B)
+    ├── ci-cd-guide.md                # CI/CD ガイド (Phase 5)
+    ├── cost-optimization-guide.md    # コスト最適化ガイド (Phase 5)
+    ├── serverless-inference-cold-start.md # Serverless Inference (Phase 5)
+    ├── inference-cost-comparison.md  # 推論コスト比較 (Phase 5/6B)
+    ├── streaming-vs-polling-guide.md # ストリーミング vs ポーリング (Phase 3)
+    ├── cross-region-guide.md         # クロスリージョン設定 (Phase 2)
+    ├── cost-analysis.md              # コスト構造分析
+    ├── region-compatibility.md       # リージョン互換性マトリックス
+    ├── impact-assessment.md          # 既存環境影響評価（8 言語）
+    ├── article-phase6-en.md          # Phase 6 記事 (dev.to)
+    └── references.md                 # 参考リンク集
 ```
 
 ## 共通モジュール (shared/)
 
-| モジュール | 説明 |
-|-----------|------|
-| `ontap_client.py` | ONTAP REST API クライアント（Secrets Manager 認証、urllib3、TLS、リトライ） |
-| `fsx_helper.py` | AWS FSx API + CloudWatch メトリクス取得 |
-| `s3ap_helper.py` | S3 Access Point ヘルパー（ページネーション、サフィックスフィルタ、ストリーミング DL、マルチパート UL） |
-| `cross_region_client.py` | クロスリージョン API クライアント（Textract / Comprehend Medical 用） |
-| `exceptions.py` | 共通例外クラス、`lambda_error_handler` デコレータ |
-| `discovery_handler.py` | 共通 Discovery Lambda テンプレート（Manifest 生成、10K+ ページネーション対応） |
+| モジュール | 説明 | Phase |
+|-----------|------|-------|
+| `ontap_client.py` | ONTAP REST API クライアント（Secrets Manager 認証、urllib3、TLS、リトライ） | 1 |
+| `fsx_helper.py` | AWS FSx API + CloudWatch メトリクス取得 | 1 |
+| `s3ap_helper.py` | S3 Access Point ヘルパー（ページネーション、サフィックスフィルタ、ストリーミング DL、マルチパート UL） | 1 |
+| `exceptions.py` | 共通例外クラス、`lambda_error_handler` デコレータ | 1 |
+| `discovery_handler.py` | 共通 Discovery Lambda テンプレート（Manifest 生成、10K+ ページネーション対応） | 1 |
+| `cross_region_client.py` | クロスリージョン API クライアント（Textract / Comprehend Medical 用） | 2 |
+| `observability.py` | X-Ray トレーシング、EMF メトリクス、構造化ログ | 3 |
+| `streaming/` | Kinesis Data Streams ストリーミングヘルパー | 3 |
+| `task_token_store.py` | DynamoDB Task Token Store（非同期コールバック） | 4 |
+| `routing.py` | 4-way 推論ルーティング（Batch / Serverless / Provisioned / Components） | 4/5/6B |
+| `cost_validation.py` | コストバリデーション・予算チェック | 5 |
+| `lambdas/auto_stop/` | SageMaker Endpoint アイドル検出・自動停止 Lambda | 5 |
+| `cfn/guard-hooks.yaml` | CloudFormation Guard Hooks テンプレート | 6B |
+| `cfn/common-parameters.yaml` | 共通パラメータ・Conditions リファレンス（EnableSnapStart 含む） | 1/6A |
 
 ## 開発
 
