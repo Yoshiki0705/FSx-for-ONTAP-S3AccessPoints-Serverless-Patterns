@@ -1,0 +1,194 @@
+# UC9: 自動運転 / ADAS — 映像・LiDAR 前処理・品質チェック・アノテーション
+
+🌐 **Language / 言語**: 日本語 | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
+
+## End-to-End Architecture (Input → Output)
+
+---
+
+## High-Level Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         FSx for NetApp ONTAP                                 │
+│                                                                              │
+│  /vol/driving_data/                                                          │
+│  ├── rosbag/drive_20240315_001.bag       (ROS bag 映像+LiDAR)               │
+│  ├── lidar/scan_20240315_001.pcd         (LiDAR 点群)                        │
+│  ├── camera/front_20240315_001.mp4       (ダッシュカム映像)                  │
+│  └── camera/rear_20240315_001.h264       (リアカメラ映像)                    │
+│                                                                              │
+└──────────────────────────────────┬───────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                      S3 Access Point (Data Path)                              │
+│                                                                              │
+│  Alias: fsxn-driving-vol-ext-s3alias                                         │
+│  • ListObjectsV2 (映像/LiDAR データ検出)                                     │
+│  • GetObject (BAG/PCD/MP4/H264 取得)                                         │
+│  • No NFS/SMB mount required from Lambda                                     │
+│                                                                              │
+└──────────────────────────────────┬───────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                    EventBridge Scheduler (Trigger)                            │
+│                                                                              │
+│  Schedule: rate(1 hour) — configurable                                       │
+│  Target: Step Functions State Machine                                        │
+│                                                                              │
+└──────────────────────────────────┬───────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                    AWS Step Functions (Orchestration)                         │
+│                                                                              │
+│  ┌───────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │ Discovery  │─▶│Frame Extract │─▶│Point Cloud QC│─▶│Annotation Manager│   │
+│  │ Lambda     │  │ Lambda       │  │ Lambda       │  │ Lambda           │   │
+│  │           │  │             │  │             │  │                 │   │
+│  │ • VPC内    │  │ • キーフレー│  │ • 点密度    │  │ • Bedrock 提案  │   │
+│  │ • S3 AP   │  │   ム抽出    │  │ • 座標整合性│  │ • SageMaker 推論│   │
+│  │ • BAG/PCD │  │ • Rekognition│  │ • NaN 検証  │  │ • COCO JSON 出力│   │
+│  └───────────┘  └──────────────┘  └──────────────┘  └──────────────────┘   │
+│                                                          │                   │
+│                                                          ▼                   │
+│                                                 ┌────────────────┐          │
+│                                                 │SageMaker Invoke │          │
+│                                                 │ Lambda          │          │
+│                                                 │                │          │
+│                                                 │ • Batch Transform│         │
+│                                                 │ • 点群セグメン  │          │
+│                                                 │   テーション    │          │
+│                                                 └────────────────┘          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         Output (S3 Bucket)                                    │
+│                                                                              │
+│  s3://{stack}-output-{account}/                                              │
+│  ├── frames/YYYY/MM/DD/                                                      │
+│  │   └── drive_001_frame_0001.jpg    ← 抽出キーフレーム                     │
+│  ├── qc-reports/YYYY/MM/DD/                                                  │
+│  │   └── scan_001_qc.json           ← 点群品質レポート                      │
+│  ├── annotations/YYYY/MM/DD/                                                 │
+│  │   └── drive_001_coco.json        ← COCO 形式アノテーション              │
+│  └── inference/YYYY/MM/DD/                                                   │
+│      └── scan_001_segmentation.json  ← セグメンテーション結果              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Mermaid Diagram
+
+```mermaid
+flowchart TB
+    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+        DATA["映像 / LiDAR データ<br/>.bag, .pcd, .mp4, .h264"]
+    end
+
+    subgraph S3AP["🔗 S3 Access Point"]
+        ALIAS["S3 AP Alias<br/>ListObjectsV2 / GetObject"]
+    end
+
+    subgraph TRIGGER["⏰ Trigger"]
+        EB["EventBridge Scheduler<br/>rate(1 hour)"]
+    end
+
+    subgraph SFN["⚙️ Step Functions Workflow"]
+        DISC["1️⃣ Discovery Lambda<br/>• VPC内実行<br/>• S3 AP ファイル検出<br/>• .bag/.pcd/.mp4/.h264 フィルタ<br/>• Manifest 生成"]
+        FE["2️⃣ Frame Extraction Lambda<br/>• 映像からキーフレーム抽出<br/>• Rekognition DetectLabels<br/>  (車両, 歩行者, 交通標識)<br/>• フレーム画像 S3 出力"]
+        PC["3️⃣ Point Cloud QC Lambda<br/>• LiDAR 点群データ取得<br/>• 品質チェック<br/>  (点密度, 座標整合性, NaN検証)<br/>• QC レポート生成"]
+        AM["4️⃣ Annotation Manager Lambda<br/>• Bedrock アノテーション提案<br/>• COCO 互換 JSON 生成<br/>• アノテーションジョブ管理"]
+        SM["5️⃣ SageMaker Invoke Lambda<br/>• Batch Transform 実行<br/>• 点群セグメンテーション推論<br/>• 物体検出結果出力"]
+    end
+
+    subgraph OUTPUT["📤 Output — S3 Bucket"]
+        FRAMES["frames/*.jpg<br/>抽出キーフレーム"]
+        QCR["qc-reports/*.json<br/>点群品質レポート"]
+        ANNOT["annotations/*.json<br/>COCO アノテーション"]
+        INFER["inference/*.json<br/>ML 推論結果"]
+    end
+
+    subgraph NOTIFY["📧 Notification"]
+        SNS["Amazon SNS<br/>処理完了通知"]
+    end
+
+    DATA --> ALIAS
+    ALIAS --> DISC
+    EB --> SFN
+    DISC --> FE
+    DISC --> PC
+    FE --> AM
+    PC --> AM
+    AM --> SM
+    FE --> FRAMES
+    PC --> QCR
+    AM --> ANNOT
+    SM --> INFER
+    SM --> SNS
+```
+
+---
+
+## Data Flow Detail
+
+### Input
+| Item | Description |
+|------|-------------|
+| **Source** | FSx for NetApp ONTAP volume |
+| **File Types** | .bag, .pcd, .mp4, .h264 (ROS bag, LiDAR 点群, ダッシュカム映像) |
+| **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
+| **Read Strategy** | ファイル全体を取得（フレーム抽出・点群解析に必要） |
+
+### Processing
+| Step | Service | Function |
+|------|---------|----------|
+| Discovery | Lambda (VPC) | S3 AP で映像/LiDAR データ検出、Manifest 生成 |
+| Frame Extraction | Lambda + Rekognition | 映像からキーフレーム抽出、物体検出 |
+| Point Cloud QC | Lambda | LiDAR 点群の品質チェック（点密度、座標整合性、NaN 検証） |
+| Annotation Manager | Lambda + Bedrock | アノテーション提案生成、COCO JSON 出力 |
+| SageMaker Invoke | Lambda + SageMaker | Batch Transform による点群セグメンテーション推論 |
+
+### Output
+| Artifact | Format | Description |
+|----------|--------|-------------|
+| Key Frames | `frames/YYYY/MM/DD/{stem}_frame_{n}.jpg` | 抽出キーフレーム画像 |
+| QC Report | `qc-reports/YYYY/MM/DD/{stem}_qc.json` | 点群品質チェック結果 |
+| Annotations | `annotations/YYYY/MM/DD/{stem}_coco.json` | COCO 互換アノテーション |
+| Inference | `inference/YYYY/MM/DD/{stem}_segmentation.json` | ML 推論結果 |
+| SNS Notification | Email | 処理完了通知（処理件数・品質スコア） |
+
+---
+
+## Key Design Decisions
+
+1. **S3 AP over NFS** — Lambda から NFS マウント不要、S3 API で大容量データ取得
+2. **並列処理** — Frame Extraction と Point Cloud QC を並列実行し、処理時間を短縮
+3. **Rekognition + SageMaker 二段構成** — Rekognition で即時物体検出、SageMaker で高精度セグメンテーション
+4. **COCO 互換形式** — 業界標準のアノテーション形式で下流 ML パイプラインとの互換性確保
+5. **品質ゲート** — Point Cloud QC で品質基準を満たさないデータを早期フィルタリング
+6. **ポーリングベース** — S3 AP はイベント通知非対応のため、定期スケジュール実行
+
+---
+
+## AWS Services Used
+
+| Service | Role |
+|---------|------|
+| FSx for NetApp ONTAP | 自動運転データストレージ（映像・LiDAR 保管） |
+| S3 Access Points | ONTAP ボリュームへのサーバーレスアクセス |
+| EventBridge Scheduler | 定期トリガー |
+| Step Functions | ワークフローオーケストレーション |
+| Lambda | コンピュート（Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke） |
+| Amazon Rekognition | 物体検出（車両、歩行者、交通標識） |
+| Amazon SageMaker | Batch Transform（点群セグメンテーション推論） |
+| Amazon Bedrock | アノテーション提案生成 |
+| SNS | 処理完了通知 |
+| Secrets Manager | ONTAP REST API 認証情報管理 |
+| CloudWatch + X-Ray | オブザーバビリティ |

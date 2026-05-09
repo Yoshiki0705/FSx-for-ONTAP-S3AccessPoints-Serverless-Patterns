@@ -1,0 +1,54 @@
+# OCR de albaranes de envío y análisis de inventario -- Demo Guide
+
+🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | Español
+
+## Executive Summary
+
+Esta demo presenta un pipeline OCR para albaranes de envío y análisis de inventario. Los documentos en papel se digitalizan automáticamente para seguimiento en tiempo real.
+
+**Mensaje clave**: Procesar automáticamente albaranes por OCR para actualizar inventario en tiempo real y mejorar la eficiencia logística.
+
+**Duración prevista**: 3–5 min
+
+---
+
+## Workflow
+
+```
+Carga escaneo → Extracción OCR → Parsing campos → Actualización inventario → Informe análisis
+```
+
+---
+
+## Storyboard (5 Sections / 3–5 min)
+
+### Section 1 (0:00–0:45)
+> Problema: La entrada manual de documentos en papel es propensa a errores y consume tiempo
+
+### Section 2 (0:45–1:30)
+> Carga: Colocar imágenes escaneadas de albaranes inicia el procesamiento
+
+### Section 3 (1:30–2:30)
+> OCR y parsing: Extracción de texto y conversión a datos estructurados
+
+### Section 4 (2:30–3:45)
+> Actualización inventario: Actualización en tiempo real basada en datos extraídos
+
+### Section 5 (3:45–5:00)
+> Informe análisis: Dashboard logístico y alertas de detección de anomalías
+
+---
+
+## Technical Notes
+
+| Component | Role |
+|-----------|------|
+| Step Functions | Orquestación del flujo de trabajo |
+| Lambda (OCR Engine) | Extracción de texto de albaranes |
+| Lambda (Field Parser) | Parsing de datos estructurados |
+| Lambda (Inventory Updater) | Actualización de datos de inventario |
+| Amazon Athena | Análisis estadístico logístico |
+
+---
+
+*Este documento sirve como guía de producción para videos de demostración técnica.*

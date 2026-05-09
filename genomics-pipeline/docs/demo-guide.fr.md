@@ -1,0 +1,54 @@
+# QC de séquençage et agrégation de variants -- Demo Guide
+
+🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | Français | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+
+## Executive Summary
+
+Cette démo présente un pipeline de contrôle qualité (QC) et d'agrégation de variants pour les données de séquençage génomique.
+
+**Message clé**: Valider automatiquement la qualité des données de séquençage et agréger les variants pour que les chercheurs se concentrent sur l'analyse.
+
+**Durée prévue**: 3–5 min
+
+---
+
+## Workflow
+
+```
+Upload FASTQ → Validation QC → Appel variants → Agrégation statistique → Rapport QC
+```
+
+---
+
+## Storyboard (5 Sections / 3–5 min)
+
+### Section 1 (0:00–0:45)
+> Problématique : Le QC manuel de grandes quantités de données de séquençage est chronophage
+
+### Section 2 (0:45–1:30)
+> Upload : Placer les fichiers FASTQ pour démarrer le pipeline
+
+### Section 3 (1:30–2:30)
+> QC et analyse variants : Validation qualité automatique et appel de variants
+
+### Section 4 (2:30–3:45)
+> Résultats : Métriques QC et statistiques de variants
+
+### Section 5 (3:45–5:00)
+> Rapport QC : Rapport qualité complet et recommandations pour analyses ultérieures
+
+---
+
+## Technical Notes
+
+| Component | Role |
+|-----------|------|
+| Step Functions | Orchestration du workflow |
+| Lambda (QC Validator) | Validation qualité séquençage |
+| Lambda (Variant Caller) | Appel de variants |
+| Lambda (Stats Aggregator) | Agrégation statistiques variants |
+| Amazon Athena | Analyse métriques QC |
+
+---
+
+*Ce document sert de guide de production pour les vidéos de démonstration technique.*

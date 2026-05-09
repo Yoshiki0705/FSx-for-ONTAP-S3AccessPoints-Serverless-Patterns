@@ -1,0 +1,54 @@
+# Workflow d'anonymisation DICOM -- Demo Guide
+
+🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | Français | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+
+## Executive Summary
+
+Cette démo présente un pipeline d'anonymisation automatique de fichiers DICOM. Les informations patient sont supprimées pour un partage sécurisé des données de recherche.
+
+**Message clé**: Supprimer automatiquement les informations patient des fichiers DICOM pour un partage conforme et sécurisé.
+
+**Durée prévue**: 3–5 min
+
+---
+
+## Workflow
+
+```
+Upload DICOM → Extraction métadonnées → Détection PHI → Anonymisation → Rapport de validation
+```
+
+---
+
+## Storyboard (5 Sections / 3–5 min)
+
+### Section 1 (0:00–0:45)
+> Problématique : Le partage de données de recherche exige la conformité aux réglementations
+
+### Section 2 (0:45–1:30)
+> Upload : Placer les fichiers DICOM pour démarrer le traitement automatique
+
+### Section 3 (1:30–2:30)
+> Détection PHI et anonymisation : Détection IA des informations personnelles et masquage automatique
+
+### Section 4 (2:30–3:45)
+> Résultats : Vérification des fichiers anonymisés et statistiques de traitement
+
+### Section 5 (3:45–5:00)
+> Rapport de validation : Génération du rapport de conformité et approbation du partage
+
+---
+
+## Technical Notes
+
+| Component | Role |
+|-----------|------|
+| Step Functions | Orchestration du workflow |
+| Lambda (DICOM Parser) | Extraction métadonnées DICOM |
+| Lambda (PHI Detector) | Détection IA des informations personnelles |
+| Lambda (Anonymizer) | Exécution de l'anonymisation |
+| Amazon Athena | Analyse agrégée des résultats |
+
+---
+
+*Ce document sert de guide de production pour les vidéos de démonstration technique.*
