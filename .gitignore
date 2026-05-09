@@ -76,6 +76,9 @@ docs/remaining-issues-checklist.md
 **/docs/uc6-meeting-summary-ja.md
 **/docs/uc6-talk-script-en.md
 
+# dev.to article drafts (published separately, not part of the codebase)
+docs/article-*.md
+
 # Generated test data
 test-data/
 
