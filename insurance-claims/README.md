@@ -1,5 +1,9 @@
 # UC14: 保険 / 損害査定 — 事故写真損害評価・見積書 OCR・査定レポート
 
+🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+
+📚 **ドキュメント**: [アーキテクチャ図](docs/architecture.md) | [デモガイド](docs/demo-guide.md)
+
 ## 概要
 
 FSx for NetApp ONTAP の S3 Access Points を活用し、事故写真の損害評価、見積書の OCR テキスト抽出、保険金請求レポートの自動生成を実現するサーバーレスワークフローです。
