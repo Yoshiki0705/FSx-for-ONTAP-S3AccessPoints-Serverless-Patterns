@@ -19,7 +19,7 @@ Parameters:
 
   FailureMode:
     Type: String
-    Default: "FAIL"
+    Default: "WARN"
     AllowedValues:
       - "FAIL"
       - "WARN"
@@ -27,6 +27,12 @@ Parameters:
       Hook 失敗時の動作モード。
       FAIL: ルール違反時にデプロイをブロックする。
       WARN: ルール違反時に警告のみ出力し、デプロイは続行する。
+
+  HookAlias:
+    Type: String
+    Default: "FSxNS3AP::Guard::Hook"
+    AllowedPattern: "^(?!(?i)aws)[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}$"
+    Description: Guard Hook のエイリアス名（アカウント・リージョン内で一意）
 
   LogRetentionDays:
     Type: Number
@@ -77,27 +83,25 @@ Resources:
             Principal:
               Service: hooks.cloudformation.amazonaws.com
             Action: sts:AssumeRole
+      Path: /
       Policies:
         - PolicyName: HookExecutionPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Sid: S3ReadGuardRules
-                Effect: Allow
+              - Effect: Allow
                 Action:
                   - s3:GetObject
+                  - s3:GetObjectVersion
                   - s3:ListBucket
                 Resource:
                   - !GetAtt GuardRulesBucket.Arn
                   - !Sub "${GuardRulesBucket.Arn}/*"
-              - Sid: CloudWatchLogs
-                Effect: Allow
+              - Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
+                  - s3:PutObject
                 Resource:
-                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/cloudformation/hooks/*"
+                  - !Sub "${GuardRulesBucket.Arn}/*"
       Tags:
         - Key: Component
           Value: guard-hooks
@@ -114,48 +118,32 @@ Resources:
       RetentionInDays: !Ref LogRetentionDays
 
   # -----------------------------------------------------------------
-  # CloudFormation Guard Hook Type Registration
-  # AWS::Hooks::GuardHook は cfn-guard ルールを CloudFormation Hook として
-  # 登録するためのリソースタイプ。
+  # CloudFormation Guard Hook
+  # AWS::CloudFormation::GuardHook は cfn-guard ルールを CloudFormation Hook
+  # として登録するためのリソースタイプ。
   # -----------------------------------------------------------------
   GuardHook:
     Type: AWS::CloudFormation::GuardHook
     Properties:
-      Alias: !Sub "${AWS::StackName}::Guard::Hook"
+      Alias: !Ref HookAlias
+      ExecutionRole: !GetAtt HookExecutionRole.Arn
+      FailureMode: !Ref FailureMode
+      HookStatus: ENABLED
+      LogBucket: !Ref GuardRulesBucket
       RuleLocation:
         Uri: !Sub "s3://${GuardRulesBucket}/${GuardRulesKeyPrefix}"
-      HookStatus: "ENABLED"
       TargetOperations:
-        - "STACK"
-        - "RESOURCE"
-        - "CHANGE_SET"
-      FailureMode: !Ref FailureMode
+        - RESOURCE
+        - STACK
       TargetFilters:
-        TargetNames:
-          - "AWS::S3::Bucket"
-          - "AWS::Lambda::Function"
-          - "AWS::IAM::Role"
-          - "AWS::IAM::Policy"
-          - "AWS::DynamoDB::Table"
-          - "AWS::SageMaker::Endpoint"
-          - "AWS::SageMaker::EndpointConfig"
-          - "AWS::SageMaker::Model"
-          - "AWS::Logs::LogGroup"
         Actions:
-          - "CREATE"
-          - "UPDATE"
-        InvocationPoints:
-          - "PRE_PROVISION"
-      ExecutionRole: !GetAtt HookExecutionRole.Arn
-      LogBucket: !Ref GuardRulesBucket
-      Options:
-        InputParams:
-          Uri: !Sub "s3://${GuardRulesBucket}/${GuardRulesKeyPrefix}params.json"
+          - CREATE
+          - UPDATE
       StackFilters:
-        FilteringCriteria: "ALL"
+        FilteringCriteria: ALL
         StackNames:
-          Include:
-            - "*"
+          Exclude:
+            - !Ref "AWS::StackName"
 
 # =====================================================================
 # Outputs
@@ -175,10 +163,10 @@ Outputs:
 
   GuardHookAlias:
     Description: 登録された Guard Hook のエイリアス
-    Value: !Sub "${AWS::StackName}::Guard::Hook"
+    Value: !Ref HookAlias
     Export:
       Name: !Sub "${AWS::StackName}-GuardHookAlias"
 
-  FailureMode:
+  FailureModeOutput:
     Description: 現在の FailureMode 設定
     Value: !Ref FailureMode
