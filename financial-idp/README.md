@@ -1,5 +1,9 @@
 # UC2: 金融・保険 — 契約書・請求書の自動処理 (IDP)
 
+🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+
+📚 **ドキュメント**: [アーキテクチャ図](docs/architecture.md) | [デモガイド](docs/demo-guide.md)
+
 ## 概要
 
 FSx for NetApp ONTAP の S3 Access Points を活用し、契約書・請求書などのドキュメントを自動で OCR 処理、エンティティ抽出、サマリー生成するサーバーレスワークフローです。

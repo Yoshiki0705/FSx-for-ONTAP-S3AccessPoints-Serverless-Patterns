@@ -1,5 +1,9 @@
 # UC12: 物流 / サプライチェーン — 配送伝票 OCR・倉庫在庫画像分析
 
+🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+
+📚 **ドキュメント**: [アーキテクチャ図](docs/architecture.md) | [デモガイド](docs/demo-guide.md)
+
 ## 概要
 
 FSx for NetApp ONTAP の S3 Access Points を活用し、配送伝票の OCR テキスト抽出、倉庫在庫画像の物体検出・カウント、配送ルート最適化レポート生成を自動化するサーバーレスワークフローです。

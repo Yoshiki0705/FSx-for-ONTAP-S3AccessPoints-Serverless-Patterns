@@ -1,5 +1,9 @@
 # UC8: エネルギー / 石油・ガス — 地震探査データ処理・坑井ログ異常検知
 
+🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+
+📚 **ドキュメント**: [アーキテクチャ図](docs/architecture.md) | [デモガイド](docs/demo-guide.md)
+
 ## 概要
 
 FSx for NetApp ONTAP の S3 Access Points を活用し、SEG-Y 地震探査データのメタデータ抽出、坑井ログの異常検知、コンプライアンスレポート生成を自動化するサーバーレスワークフローです。

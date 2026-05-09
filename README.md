@@ -130,6 +130,29 @@ EventBridge Scheduler (定期実行)
 > 
 > 参考: [Textract 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html) | [クロスリージョン設定ガイド](docs/cross-region-guide.md)
 
+### ドキュメント（アーキテクチャ・デモガイド）
+
+各ユースケースの詳細なアーキテクチャ図とデモガイドは `docs/` フォルダに8言語で提供しています。
+
+| # | ユースケース | アーキテクチャ | デモガイド |
+|---|-------------|--------------|-----------|
+| UC1 | 法務・コンプライアンス | [📐 Architecture](legal-compliance/docs/architecture.md) | [🎬 Demo Guide](legal-compliance/docs/demo-guide.md) |
+| UC2 | 金融・保険 (IDP) | [📐 Architecture](financial-idp/docs/architecture.md) | [🎬 Demo Guide](financial-idp/docs/demo-guide.md) |
+| UC3 | 製造業 | [📐 Architecture](manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](manufacturing-analytics/docs/demo-guide.md) |
+| UC4 | メディア (VFX) | [📐 Architecture](media-vfx/docs/architecture.md) | [🎬 Demo Guide](media-vfx/docs/demo-guide.md) |
+| UC5 | 医療 (DICOM) | [📐 Architecture](healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](healthcare-dicom/docs/demo-guide.md) |
+| UC6 | 半導体 / EDA | [📐 Architecture](semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](semiconductor-eda/docs/demo-guide.md) |
+| UC7 | ゲノミクス | [📐 Architecture](genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](genomics-pipeline/docs/demo-guide.md) |
+| UC8 | エネルギー | [📐 Architecture](energy-seismic/docs/architecture.md) | [🎬 Demo Guide](energy-seismic/docs/demo-guide.md) |
+| UC9 | 自動運転 / ADAS | [📐 Architecture](autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](autonomous-driving/docs/demo-guide.md) |
+| UC10 | 建設 / AEC (BIM) | [📐 Architecture](construction-bim/docs/architecture.md) | [🎬 Demo Guide](construction-bim/docs/demo-guide.md) |
+| UC11 | 小売 / EC | [📐 Architecture](retail-catalog/docs/architecture.md) | [🎬 Demo Guide](retail-catalog/docs/demo-guide.md) |
+| UC12 | 物流 | [📐 Architecture](logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.md) |
+| UC13 | 教育 / 研究 | [📐 Architecture](education-research/docs/architecture.md) | [🎬 Demo Guide](education-research/docs/demo-guide.md) |
+| UC14 | 保険 | [📐 Architecture](insurance-claims/docs/architecture.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.md) |
+
+> 各ドキュメントは8言語（日本語・English・한국어・简体中文・繁體中文・Français・Deutsch・Español）で提供されています。ドキュメント上部の Language Switcher から切り替えできます。
+
 ## リージョン選択ガイド
 
 本パターン集は **ap-northeast-1（東京）** で検証を実施していますが、必要なサービスが利用可能な任意の AWS リージョンにデプロイ可能です。

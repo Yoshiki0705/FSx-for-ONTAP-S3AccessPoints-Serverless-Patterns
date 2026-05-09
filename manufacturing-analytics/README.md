@@ -1,5 +1,9 @@
 # UC3: 製造業 — IoT センサーログ・品質検査画像の分析
 
+🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+
+📚 **ドキュメント**: [アーキテクチャ図](docs/architecture.md) | [デモガイド](docs/demo-guide.md)
+
 ## 概要
 
 FSx for NetApp ONTAP の S3 Access Points を活用し、IoT センサーログの異常検出と品質検査画像の欠陥検出を自動化するサーバーレスワークフローです。

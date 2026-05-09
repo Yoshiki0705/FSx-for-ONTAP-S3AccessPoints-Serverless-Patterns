@@ -130,6 +130,29 @@ EventBridge Scheduler (Periodic Execution)
 > 
 > Reference: [Textract Supported Regions](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical Supported Regions](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html) | [Cross-Region Setup Guide](docs/cross-region-guide.md)
 
+### Documentation (Architecture & Demo Guides)
+
+Detailed architecture diagrams and demo guides for each use case are available in the `docs/` folder in 8 languages.
+
+| # | Use Case | Architecture | Demo Guide |
+|---|----------|-------------|-----------|
+| UC1 | Legal / Compliance | [📐 Architecture](legal-compliance/docs/architecture.en.md) | [🎬 Demo Guide](legal-compliance/docs/demo-guide.en.md) |
+| UC2 | Finance / Insurance (IDP) | [📐 Architecture](financial-idp/docs/architecture.en.md) | [🎬 Demo Guide](financial-idp/docs/demo-guide.en.md) |
+| UC3 | Manufacturing | [📐 Architecture](manufacturing-analytics/docs/architecture.en.md) | [🎬 Demo Guide](manufacturing-analytics/docs/demo-guide.en.md) |
+| UC4 | Media (VFX) | [📐 Architecture](media-vfx/docs/architecture.en.md) | [🎬 Demo Guide](media-vfx/docs/demo-guide.en.md) |
+| UC5 | Healthcare (DICOM) | [📐 Architecture](healthcare-dicom/docs/architecture.en.md) | [🎬 Demo Guide](healthcare-dicom/docs/demo-guide.en.md) |
+| UC6 | Semiconductor / EDA | [📐 Architecture](semiconductor-eda/docs/architecture.en.md) | [🎬 Demo Guide](semiconductor-eda/docs/demo-guide.en.md) |
+| UC7 | Genomics | [📐 Architecture](genomics-pipeline/docs/architecture.en.md) | [🎬 Demo Guide](genomics-pipeline/docs/demo-guide.en.md) |
+| UC8 | Energy | [📐 Architecture](energy-seismic/docs/architecture.en.md) | [🎬 Demo Guide](energy-seismic/docs/demo-guide.en.md) |
+| UC9 | Autonomous Driving / ADAS | [📐 Architecture](autonomous-driving/docs/architecture.en.md) | [🎬 Demo Guide](autonomous-driving/docs/demo-guide.en.md) |
+| UC10 | Construction / AEC (BIM) | [📐 Architecture](construction-bim/docs/architecture.en.md) | [🎬 Demo Guide](construction-bim/docs/demo-guide.en.md) |
+| UC11 | Retail / E-Commerce | [📐 Architecture](retail-catalog/docs/architecture.en.md) | [🎬 Demo Guide](retail-catalog/docs/demo-guide.en.md) |
+| UC12 | Logistics | [📐 Architecture](logistics-ocr/docs/architecture.en.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.en.md) |
+| UC13 | Education / Research | [📐 Architecture](education-research/docs/architecture.en.md) | [🎬 Demo Guide](education-research/docs/demo-guide.en.md) |
+| UC14 | Insurance | [📐 Architecture](insurance-claims/docs/architecture.en.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.en.md) |
+
+> All documents are available in 8 languages (日本語・English・한국어・简体中文・繁體中文・Français・Deutsch・Español). Use the Language Switcher at the top of each document to switch languages.
+
 ## Region Selection Guide
 
 This pattern collection is verified in **ap-northeast-1 (Tokyo)**, but can be deployed to any AWS region where the required services are available.

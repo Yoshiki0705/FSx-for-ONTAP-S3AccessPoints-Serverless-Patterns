@@ -1,5 +1,9 @@
 # UC5: 医療 — DICOM 画像の自動分類・匿名化
 
+🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+
+📚 **ドキュメント**: [アーキテクチャ図](docs/architecture.md) | [デモガイド](docs/demo-guide.md)
+
 ## 概要
 
 FSx for NetApp ONTAP の S3 Access Points を活用し、DICOM 医用画像の自動分類と匿名化を行うサーバーレスワークフローです。患者プライバシーの保護と効率的な画像管理を実現します。
