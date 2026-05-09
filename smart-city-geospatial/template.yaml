@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: UC17 Smart City Geospatial SAM template for local testing
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 300
+    MemorySize: 1024
+    Environment:
+      Variables:
+        OUTPUT_BUCKET: !Ref OutputBucket
+
+Parameters:
+  S3AccessPoint:
+    Type: String
+    Default: "test-ap-ext-s3alias"
+  OutputBucket:
+    Type: String
+    Default: "test-output-bucket"
+
+Resources:
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/discovery/
+      Handler: handler.handler
+
+  PreprocessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/preprocessing/
+      Handler: handler.handler
+
+  LandUseClassificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/land_use_classification/
+      Handler: handler.handler
+
+  ChangeDetectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/change_detection/
+      Handler: handler.handler
+
+  InfraAssessmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/infra_assessment/
+      Handler: handler.handler
+
+  RiskMappingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/risk_mapping/
+      Handler: handler.handler
+
+  ReportGenerationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/report_generation/
+      Handler: handler.handler

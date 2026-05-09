@@ -1,0 +1,695 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  UC17: スマートシティ — 地理空間データ解析・都市計画
+  FSx for NetApp ONTAP S3 Access Points を活用した GIS データ（GeoTIFF/Shapefile/
+  LAS 等）の前処理、土地利用分類、変化検出、インフラ評価、リスクマッピング、
+  Bedrock によるレポート生成のサーバーレスワークフロー。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  OntapSecretName:
+    Type: String
+    Default: ""
+
+  OntapManagementIp:
+    Type: String
+    Default: "10.0.0.1"
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  SvmUuid:
+    Type: String
+    Default: ""
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 day)"
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+
+  OutputBucketName:
+    Type: String
+    Default: ""
+
+  NotificationEmail:
+    Type: String
+
+  # UC17 固有
+  TargetCrs:
+    Type: String
+    Default: "EPSG:4326"
+    Description: 正規化後の座標参照系
+
+  ChangeThreshold:
+    Type: Number
+    Default: 0.15
+    MinValue: 0.01
+    MaxValue: 2.0
+    Description: 土地利用変化の検出閾値 (L1 差分、0-2)
+
+  InferenceType:
+    Type: String
+    Default: "none"
+    AllowedValues: ["none", "provisioned", "serverless", "components"]
+
+  SageMakerEndpointName:
+    Type: String
+    Default: ""
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-lite-v1:0"
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 1024
+    MinValue: 128
+    MaxValue: 10240
+
+  LambdaTimeout:
+    Type: Number
+    Default: 600
+    MinValue: 30
+    MaxValue: 900
+
+  MapConcurrency:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 40
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableSageMaker:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: SageMaker 関連リソースを作成（コスト発生）
+
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90]
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  UseAutoOutputBucket: !Equals [!Ref OutputBucketName, ""]
+  CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  SnapStartEnabled: !Equals [!Ref EnableSnapStart, "true"]
+  CreateSageMakerResources: !Equals [!Ref EnableSageMaker, "true"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If
+        - UseAutoOutputBucket
+        - !Sub "${AWS::StackName}-output-${AWS::AccountId}"
+        - !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: smart-city-geospatial
+
+  LandUseHistoryTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub "${AWS::StackName}-landuse-history"
+      AttributeDefinitions:
+        - AttributeName: area_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: area_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: smart-city-geospatial
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} Discovery Lambda SG"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  # Log groups
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: !Ref LogRetentionDays
+
+  PreprocessingLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-preprocessing"
+      RetentionInDays: !Ref LogRetentionDays
+
+  LandUseClassificationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-land-use-classification"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ChangeDetectionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-change-detection"
+      RetentionInDays: !Ref LogRetentionDays
+
+  InfraAssessmentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-infra-assessment"
+      RetentionInDays: !Ref LogRetentionDays
+
+  RiskMappingLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-risk-mapping"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ReportGenerationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-report-generation"
+      RetentionInDays: !Ref LogRetentionDays
+
+  # IAM Roles
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+
+  ProcessingLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-processing-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: ProcessingPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Access
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "${OutputBucket.Arn}/*"
+              - Sid: S3List
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                  - !GetAtt OutputBucket.Arn
+              - Sid: Rekognition
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: "*"
+              - Sid: SageMakerInvoke
+                Effect: Allow
+                Action:
+                  - sagemaker:InvokeEndpoint
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/*"
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*"
+              - Sid: DynamoDB
+                Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt LandUseHistoryTable.Arn
+              - Sid: SNS
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+
+  # Lambda Functions
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/smart-city-geospatial-discovery.zip
+      MemorySize: 512
+      Timeout: 120
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: [!Ref LambdaSecurityGroup]
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          PREFIX_FILTER: "gis/"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+
+  PreprocessingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-preprocessing"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/smart-city-geospatial-preprocessing.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          TARGET_CRS: !Ref TargetCrs
+      LoggingConfig:
+        LogGroup: !Ref PreprocessingLogGroup
+
+  LandUseClassificationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-land-use-classification"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/smart-city-geospatial-land_use_classification.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          INFERENCE_TYPE: !Ref InferenceType
+          SAGEMAKER_ENDPOINT_NAME: !Ref SageMakerEndpointName
+      LoggingConfig:
+        LogGroup: !Ref LandUseClassificationLogGroup
+
+  ChangeDetectionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-change-detection"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/smart-city-geospatial-change_detection.zip
+      MemorySize: 512
+      Timeout: 180
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          LANDUSE_HISTORY_TABLE: !Ref LandUseHistoryTable
+          CHANGE_THRESHOLD: !Ref ChangeThreshold
+      LoggingConfig:
+        LogGroup: !Ref ChangeDetectionLogGroup
+
+  InfraAssessmentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-infra-assessment"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/smart-city-geospatial-infra_assessment.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+      LoggingConfig:
+        LogGroup: !Ref InfraAssessmentLogGroup
+
+  RiskMappingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-risk-mapping"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/smart-city-geospatial-risk_mapping.zip
+      MemorySize: 512
+      Timeout: 120
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+      LoggingConfig:
+        LogGroup: !Ref RiskMappingLogGroup
+
+  ReportGenerationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report-generation"
+      Runtime: python3.13
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/smart-city-geospatial-report_generation.zip
+      MemorySize: 1024
+      Timeout: 300
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      LoggingConfig:
+        LogGroup: !Ref ReportGenerationLogGroup
+
+  # Step Functions
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt PreprocessingFunction.Arn
+                  - !GetAtt LandUseClassificationFunction.Arn
+                  - !GetAtt ChangeDetectionFunction.Arn
+                  - !GetAtt InfraAssessmentFunction.Arn
+                  - !GetAtt RiskMappingFunction.Arn
+                  - !GetAtt ReportGenerationFunction.Arn
+
+  SmartCityStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "UC17 Smart City Geospatial Workflow",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "ProcessItems",
+              "Retry": [{
+                "ErrorEquals": ["States.TaskFailed"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 2,
+                "BackoffRate": 2.0
+              }]
+            },
+            "ProcessItems": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.objects",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.processed",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "Preprocessing",
+                "States": {
+                  "Preprocessing": {
+                    "Type": "Task",
+                    "Resource": "${PreprocessingFunction.Arn}",
+                    "ResultPath": "$.preprocess",
+                    "Next": "LandUseClassification"
+                  },
+                  "LandUseClassification": {
+                    "Type": "Task",
+                    "Resource": "${LandUseClassificationFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key"
+                    },
+                    "ResultPath": "$.landuse",
+                    "Next": "ChangeDetection"
+                  },
+                  "ChangeDetection": {
+                    "Type": "Task",
+                    "Resource": "${ChangeDetectionFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key",
+                      "landuse_distribution.$": "$.landuse.landuse_distribution"
+                    },
+                    "ResultPath": "$.change",
+                    "Next": "InfraAssessment"
+                  },
+                  "InfraAssessment": {
+                    "Type": "Task",
+                    "Resource": "${InfraAssessmentFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key"
+                    },
+                    "ResultPath": "$.infra",
+                    "Next": "RiskMapping"
+                  },
+                  "RiskMapping": {
+                    "Type": "Task",
+                    "Resource": "${RiskMappingFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key",
+                      "landuse_distribution.$": "$.landuse.landuse_distribution"
+                    },
+                    "ResultPath": "$.risk",
+                    "Next": "ReportGeneration"
+                  },
+                  "ReportGeneration": {
+                    "Type": "Task",
+                    "Resource": "${ReportGenerationFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key",
+                      "landuse_distribution.$": "$.landuse.landuse_distribution",
+                      "change_magnitude.$": "$.change.change_magnitude",
+                      "dominant_change.$": "$.change.dominant_change",
+                      "risks.$": "$.risk.risks"
+                    },
+                    "ResultPath": "$.report",
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        }
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref SmartCityStateMachine
+
+  SmartCitySchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: DISABLED
+      Target:
+        Arn: !Ref SmartCityStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref SmartCityStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref SmartCityStateMachine
+    Export:
+      Name: !Sub "${AWS::StackName}-StateMachineArn"
+
+  OutputBucketName:
+    Description: S3 Output Bucket Name
+    Value: !Ref OutputBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-OutputBucket"
+
+  LandUseHistoryTableName:
+    Value: !Ref LandUseHistoryTable
+
+  NotificationTopicArn:
+    Value: !Ref NotificationTopic
