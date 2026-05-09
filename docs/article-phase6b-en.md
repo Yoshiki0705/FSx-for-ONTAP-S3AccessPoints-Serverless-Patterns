@@ -70,12 +70,10 @@ Deploying a template that violates guard rules is blocked:
 ### SageMaker Inference Component Configuration
 
 ![Inference Component](./screenshots/phase6b/sagemaker-inference-component.png)
-<!-- PLACEHOLDER: SageMaker コンソール — Inference Component 詳細画面（ComputeResourceRequirements, CopyCount） -->
 
 ### Endpoint with Inference Components
 
 ![Endpoint Components](./screenshots/phase6b/sagemaker-endpoint-components.png)
-<!-- PLACEHOLDER: SageMaker コンソール — Endpoint 詳細画面の Inference Components タブ -->
 
 ### Application Auto Scaling — ScalableTarget (MinCapacity=0)
 
