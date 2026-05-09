@@ -530,7 +530,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: legal-compliance/functions/discovery/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -562,7 +562,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-acl-collection"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: legal-compliance/functions/acl_collection/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -592,7 +592,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-athena-analysis"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: legal-compliance/functions/athena_analysis/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -617,7 +617,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report-generation"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: legal-compliance/functions/report_generation/handler.handler
       MemorySize: 256
       Timeout: 300

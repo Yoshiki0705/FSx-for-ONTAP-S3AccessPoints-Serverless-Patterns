@@ -533,7 +533,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: manufacturing-analytics/functions/discovery/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -561,7 +561,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-transform"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: manufacturing-analytics/functions/transform/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -583,7 +583,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-athena-analysis"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: manufacturing-analytics/functions/athena_analysis/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -609,7 +609,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-image-analysis"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: manufacturing-analytics/functions/image_analysis/handler.handler
       MemorySize: 256
       Timeout: 300

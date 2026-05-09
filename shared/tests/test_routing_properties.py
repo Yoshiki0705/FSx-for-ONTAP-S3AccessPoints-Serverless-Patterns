@@ -105,7 +105,7 @@ def test_three_way_routing_determinism_same_result(
         min_size=1,
         max_size=50,
         alphabet=st.characters(whitelist_categories=("L", "N")),
-    ).filter(lambda x: x not in {"provisioned", "serverless", "none"}),
+    ).filter(lambda x: x not in {"provisioned", "serverless", "none", "components"}),
 )
 def test_three_way_routing_invalid_inference_type_raises(
     file_count: int,
@@ -114,7 +114,7 @@ def test_three_way_routing_invalid_inference_type_raises(
 ):
     """Feature: fsxn-s3ap-serverless-patterns-phase5, Property 1: Three-Way Routing Determinism
 
-    For ANY inference_type value NOT in {"provisioned", "serverless", "none"},
+    For ANY inference_type value NOT in {"provisioned", "serverless", "none", "components"},
     `determine_inference_path` SHALL raise a ValueError.
 
     **Validates: Requirements 1.1, 1.2, 1.4, 1.5**
@@ -234,3 +234,173 @@ def test_serverless_config_provisioned_concurrency_non_negative(
             f"but got valid"
         )
         assert error is not None
+
+
+
+# ---------------------------------------------------------------------------
+# Property 3: Four-Way Routing Determinism (Phase 6B)
+# ---------------------------------------------------------------------------
+
+
+@settings(max_examples=100)
+@given(
+    file_count=st.integers(min_value=0, max_value=10000),
+    batch_threshold=st.integers(min_value=1, max_value=1000),
+    inference_type=st.sampled_from(["provisioned", "serverless", "none", "components"]),
+)
+def test_four_way_routing_determinism_exactly_one_path(
+    file_count: int,
+    batch_threshold: int,
+    inference_type: str,
+):
+    """Feature: fsxn-s3ap-serverless-patterns-phase6b, Property 3: Four-Way Routing Determinism
+
+    For ANY valid combination of file_count, batch_threshold, and InferenceType
+    (including "components"), `determine_inference_path` SHALL return exactly one
+    of four paths: BATCH_TRANSFORM, REALTIME_ENDPOINT, SERVERLESS_INFERENCE,
+    or INFERENCE_COMPONENTS.
+
+    **Validates: Requirements 4.1, 4.2**
+    """
+    result = determine_inference_path(
+        file_count=file_count,
+        batch_threshold=batch_threshold,
+        inference_type=inference_type,
+    )
+
+    # Result must be exactly one of the four valid InferencePath values
+    valid_paths = {
+        InferencePath.BATCH_TRANSFORM,
+        InferencePath.REALTIME_ENDPOINT,
+        InferencePath.SERVERLESS_INFERENCE,
+        InferencePath.INFERENCE_COMPONENTS,
+    }
+    assert result in valid_paths, (
+        f"Expected one of {valid_paths}, got {result} "
+        f"for file_count={file_count}, batch_threshold={batch_threshold}, "
+        f"inference_type={inference_type}"
+    )
+
+
+@settings(max_examples=100)
+@given(
+    file_count=st.integers(min_value=0, max_value=10000),
+    batch_threshold=st.integers(min_value=1, max_value=1000),
+    inference_type=st.sampled_from(["provisioned", "serverless", "none", "components"]),
+)
+def test_four_way_routing_determinism_same_result(
+    file_count: int,
+    batch_threshold: int,
+    inference_type: str,
+):
+    """Feature: fsxn-s3ap-serverless-patterns-phase6b, Property 3: Four-Way Routing Determinism
+
+    Calling `determine_inference_path` twice with the same inputs (including
+    "components") SHALL return the same result (determinism guarantee).
+
+    **Validates: Requirements 4.1, 4.2**
+    """
+    result1 = determine_inference_path(
+        file_count=file_count,
+        batch_threshold=batch_threshold,
+        inference_type=inference_type,
+    )
+    result2 = determine_inference_path(
+        file_count=file_count,
+        batch_threshold=batch_threshold,
+        inference_type=inference_type,
+    )
+
+    assert result1 == result2, (
+        f"Non-deterministic result: first call returned {result1}, "
+        f"second call returned {result2} "
+        f"for file_count={file_count}, batch_threshold={batch_threshold}, "
+        f"inference_type={inference_type}"
+    )
+
+
+@settings(max_examples=100)
+@given(
+    file_count=st.integers(min_value=0, max_value=10000),
+    batch_threshold=st.integers(min_value=1, max_value=1000),
+)
+def test_four_way_routing_components_always_returns_inference_components(
+    file_count: int,
+    batch_threshold: int,
+):
+    """Feature: fsxn-s3ap-serverless-patterns-phase6b, Property 3: Four-Way Routing Determinism
+
+    For inference_type="components", `determine_inference_path` SHALL always
+    return INFERENCE_COMPONENTS regardless of file_count and batch_threshold.
+
+    **Validates: Requirements 4.1**
+    """
+    result = determine_inference_path(
+        file_count=file_count,
+        batch_threshold=batch_threshold,
+        inference_type="components",
+    )
+
+    assert result == InferencePath.INFERENCE_COMPONENTS, (
+        f"Expected INFERENCE_COMPONENTS for inference_type='components', "
+        f"got {result} for file_count={file_count}, batch_threshold={batch_threshold}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Property 4: validate_inference_config (Phase 6B)
+# ---------------------------------------------------------------------------
+
+from shared.routing import validate_inference_config
+
+
+@settings(max_examples=100)
+@given(
+    endpoint_name=st.text(
+        min_size=1,
+        max_size=50,
+        alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="-"),
+    ),
+    component_name=st.text(
+        min_size=1,
+        max_size=50,
+        alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="-"),
+    ),
+)
+def test_validate_inference_config_components_requires_both_names(
+    endpoint_name: str,
+    component_name: str,
+):
+    """Feature: fsxn-s3ap-serverless-patterns-phase6b, Property 4: validate_inference_config
+
+    For inference_type="components", validation SHALL pass if and only if both
+    endpoint_name and component_name are non-empty.
+
+    **Validates: Requirements 4.3**
+    """
+    # Both provided → valid
+    is_valid, error = validate_inference_config(
+        inference_type="components",
+        endpoint_name=endpoint_name,
+        component_name=component_name,
+    )
+    assert is_valid is True
+    assert error is None
+
+    # Missing component_name → invalid
+    is_valid, error = validate_inference_config(
+        inference_type="components",
+        endpoint_name=endpoint_name,
+        component_name="",
+    )
+    assert is_valid is False
+    assert "component_name" in error
+
+    # Missing endpoint_name → invalid
+    is_valid, error = validate_inference_config(
+        inference_type="components",
+        endpoint_name="",
+        component_name=component_name,
+    )
+    assert is_valid is False
+    assert "endpoint_name" in error

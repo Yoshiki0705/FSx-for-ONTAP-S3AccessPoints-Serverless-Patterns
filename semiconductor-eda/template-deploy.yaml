@@ -118,6 +118,12 @@ Parameters:
     Default: "amazon.nova-lite-v1:0"
     Description: Bedrock モデル ID（レポート生成用）
 
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Lambda SnapStart を有効化する（コールドスタート削減）
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -140,6 +146,9 @@ Conditions:
     !And
       - !Condition CreateVpcEndpoints
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
+
+  SnapStartEnabled:
+    !Equals [!Ref EnableSnapStart, "true"]
 
 # =====================================================================
 # Resources
@@ -547,7 +556,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -578,7 +592,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-metadata-extraction"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -600,7 +619,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-drc-aggregation"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -633,7 +657,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-report-generation"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket

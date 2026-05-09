@@ -105,6 +105,12 @@ Parameters:
     Default: "amazon.nova-lite-v1:0"
     Description: Bedrock モデル ID（カタログメタデータ生成用）
 
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Lambda SnapStart を有効化する（コールドスタート削減）
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -119,6 +125,9 @@ Conditions:
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
   UseAutoOutputBucket:
     !Equals [!Ref OutputBucketName, ""]
+
+  SnapStartEnabled:
+    !Equals [!Ref EnableSnapStart, "true"]
 
 # =====================================================================
 # Resources
@@ -465,7 +474,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -496,7 +510,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-image-tagging"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -520,7 +539,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-catalog-metadata"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -542,7 +566,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-quality-check"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket

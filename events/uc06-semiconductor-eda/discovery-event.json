@@ -1,0 +1,11 @@
+{
+  "comment": "UC06: 半導体 EDA - Discovery Lambda ローカルテスト用イベント",
+  "source": "local-test",
+  "detail": {
+    "description": "Step Functions からの初回呼び出しを模擬。",
+    "override": {
+      "prefix_filter": "design/",
+      "suffix_filter": ".gds"
+    }
+  }
+}

@@ -112,6 +112,17 @@ Parameters:
       デフォルト有効。UC2, UC4, UC5 など Athena を使用しない
       ユースケースでは false に設定可能。
 
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Lambda SnapStart を有効化する。有効化すると Lambda 関数の
+      初期化フェーズのスナップショットがキャッシュされ、
+      コールドスタートが 100–500ms に削減される。
+      Python 3.13+ ランタイムが必要。Published Versions にのみ適用。
+      SnapStart 非対応リージョンではデプロイエラーを防ぐため false のまま使用する。
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -130,6 +141,12 @@ Conditions:
   # クエリ実行時のみ課金のため、デフォルト有効。
   CreateAthenaWorkgroup:
     !Equals [!Ref EnableAthenaWorkgroup, "true"]
+
+  # Lambda SnapStart の有効化制御
+  # 有効化するとコールドスタートが 100–500ms に削減される。
+  # デフォルト無効。Python 3.13+ ランタイムが必要。
+  SnapStartEnabled:
+    !Equals [!Ref EnableSnapStart, "true"]
 
 # =====================================================================
 # Usage Examples (コメント)

@@ -1,0 +1,11 @@
+{
+  "comment": "UC09: 自動運転 - Discovery Lambda ローカルテスト用イベント",
+  "source": "local-test",
+  "detail": {
+    "description": "Step Functions からの初回呼び出しを模擬。",
+    "override": {
+      "prefix_filter": "rosbag/",
+      "suffix_filter": ".bag"
+    }
+  }
+}

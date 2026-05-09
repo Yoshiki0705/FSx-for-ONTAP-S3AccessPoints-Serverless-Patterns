@@ -528,7 +528,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: retail-catalog/functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -559,7 +559,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-image-tagging"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: retail-catalog/functions/image_tagging/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -583,7 +583,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-catalog-metadata"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: retail-catalog/functions/catalog_metadata/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -605,7 +605,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-quality-check"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: retail-catalog/functions/quality_check/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -1144,7 +1144,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-stream-producer"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: retail-catalog/functions/stream_producer/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -1176,7 +1176,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-stream-consumer"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: retail-catalog/functions/stream_consumer/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout

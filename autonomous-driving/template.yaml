@@ -568,7 +568,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: autonomous-driving/functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -599,7 +599,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-frame-extraction"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: autonomous-driving/functions/frame_extraction/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -622,7 +622,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-point-cloud-qc"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: autonomous-driving/functions/point_cloud_qc/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -644,7 +644,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-annotation-manager"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: autonomous-driving/functions/annotation_manager/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -1385,7 +1385,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-sagemaker-invoke"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: autonomous-driving/functions/sagemaker_invoke/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -1421,7 +1421,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-sagemaker-callback"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: autonomous-driving/functions/sagemaker_callback/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout

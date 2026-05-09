@@ -385,7 +385,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: insurance-claims/functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -412,7 +412,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-damage-assessment"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: insurance-claims/functions/damage_assessment/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -433,7 +433,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-estimate-ocr"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: insurance-claims/functions/estimate_ocr/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -454,7 +454,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-claims-report"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: insurance-claims/functions/claims_report/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout

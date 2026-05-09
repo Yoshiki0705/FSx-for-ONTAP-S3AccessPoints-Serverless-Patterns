@@ -258,7 +258,7 @@ Resources:
     Condition: HasSlackWebhook
     Properties:
       FunctionName: !Sub "fsxn-s3ap-slack-notifier-${AWS::StackName}"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: index.handler
       Role: !GetAtt SlackNotifierRole.Arn
       Timeout: 30

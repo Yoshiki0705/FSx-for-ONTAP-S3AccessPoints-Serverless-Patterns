@@ -86,6 +86,12 @@ Parameters:
     Default: "us-east-1"
     Description: Textract API のリージョン（ap-northeast-1 非対応のためクロスリージョン呼び出し）
 
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Lambda SnapStart を有効化する（コールドスタート削減）
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -96,6 +102,9 @@ Conditions:
     !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateS3GatewayEndpoint:
     !Equals [!Ref EnableS3GatewayEndpoint, "true"]
+
+  SnapStartEnabled:
+    !Equals [!Ref EnableSnapStart, "true"]
 
 # =====================================================================
 # Resources
@@ -428,7 +437,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -456,7 +470,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-ocr"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -479,7 +498,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-entity-extraction"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -500,7 +524,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-summary"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket

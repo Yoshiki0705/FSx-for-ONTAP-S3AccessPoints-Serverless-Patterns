@@ -423,7 +423,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: education-research/functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -450,7 +450,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: education-research/functions/ocr/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -470,7 +470,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-classification"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: education-research/functions/classification/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -489,7 +489,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-citation-analysis"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: education-research/functions/citation_analysis/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -507,7 +507,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-metadata"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: education-research/functions/metadata/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout

@@ -134,8 +134,8 @@ Parameters:
   InferenceType:
     Type: String
     Default: "none"
-    AllowedValues: ["none", "provisioned", "serverless"]
-    Description: 推論エンドポイントタイプ（none / provisioned / serverless）
+    AllowedValues: ["none", "provisioned", "serverless", "components"]
+    Description: 推論エンドポイントタイプ（none / provisioned / serverless / components）
 
   ServerlessMemorySizeInMB:
     Type: Number
@@ -191,6 +191,45 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: SageMaker Model Registry 統合を有効化する
 
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Lambda SnapStart を有効化する（コールドスタート削減）
+
+  # --- Phase 6B Inference Components パラメータ ---
+  EnableInferenceComponents:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: SageMaker Inference Components（scale-to-zero 対応）を有効化する
+
+  InferenceComponentName:
+    Type: String
+    Default: "ad-segmentation-component"
+    Description: Inference Component 名
+
+  ComponentsMinInstanceCount:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue: 10
+    Description: Inference Components の最小インスタンス数（0 = scale-to-zero）
+
+  ComponentsMaxInstanceCount:
+    Type: Number
+    Default: 4
+    MinValue: 1
+    MaxValue: 20
+    Description: Inference Components の最大インスタンス数
+
+  ComponentsScaleFromZeroTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 60
+    MaxValue: 900
+    Description: scale-from-zero タイムアウト秒（Step Functions タスクタイムアウト）
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -229,6 +268,14 @@ Conditions:
       - !Not [!Equals [!Ref ServerlessProvisionedConcurrency, "0"]]
   CreateModelRegistry:
     !Equals [!Ref EnableModelRegistry, "true"]
+
+  SnapStartEnabled:
+    !Equals [!Ref EnableSnapStart, "true"]
+
+  CreateInferenceComponents:
+    !And
+      - !Equals [!Ref EnableInferenceComponents, "true"]
+      - !Equals [!Ref InferenceType, "components"]
 
 # =====================================================================
 # Resources
@@ -592,7 +639,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -623,7 +675,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-frame-extraction"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -646,7 +703,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-point-cloud-qc"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -668,7 +730,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-annotation-manager"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -734,6 +801,15 @@ Resources:
                     - lambda:InvokeFunction
                   Resource:
                     - !GetAtt SageMakerInvokeFunction.Arn
+                - !Ref "AWS::NoValue"
+              - !If
+                - CreateInferenceComponents
+                - Sid: InvokeComponentsLambda
+                  Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                  Resource:
+                    - !GetAtt ComponentsInvokeFunction.Arn
                 - !Ref "AWS::NoValue"
 
   AutonomousDrivingStateMachine:
@@ -866,6 +942,11 @@ Resources:
                   "Next": "ServerlessInference"
                 },
                 {
+                  "Variable": "$.discovery.inference_type",
+                  "StringEquals": "components",
+                  "Next": "ComponentsInference"
+                },
+                {
                   "Variable": "$.discovery.file_count",
                   "NumericGreaterThanOrEqualToPath": "$.discovery.batch_threshold",
                   "Next": "BatchTransform"
@@ -932,6 +1013,37 @@ Resources:
                   "IntervalSeconds": 5,
                   "MaxAttempts": 2,
                   "BackoffRate": 2.0
+                }
+              ]
+            },
+            "ComponentsInference": {
+              "Type": "Task",
+              "Resource": "${ComponentsInvokeFunction.Arn}",
+              "Parameters": {
+                "s3_uri.$": "$.discovery.model_input_uri",
+                "inference_type": "components"
+              },
+              "ResultPath": "$.inference_result",
+              "Next": "AnnotationManager",
+              "TimeoutSeconds": ${ComponentsScaleFromZeroTimeout},
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 10,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["ComponentsColdStartTimeoutError"],
+                  "ResultPath": "$.components_error",
+                  "Next": "BatchTransform"
+                },
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.components_error",
+                  "Next": "BatchTransform"
                 }
               ]
             },
@@ -1214,7 +1326,12 @@ Resources:
     Condition: CreateSageMakerResources
     Properties:
       FunctionName: !Sub "${AWS::StackName}-sagemaker-invoke"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -1316,7 +1433,12 @@ Resources:
     Condition: CreateSageMakerResources
     Properties:
       FunctionName: !Sub "${AWS::StackName}-sagemaker-callback"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -1583,7 +1705,12 @@ Resources:
     Condition: CreateRealtimeEndpoint
     Properties:
       FunctionName: !Sub "${AWS::StackName}-realtime-invoke"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -1673,7 +1800,12 @@ Resources:
     Condition: CreateABTesting
     Properties:
       FunctionName: !Sub "${AWS::StackName}-inference-comparison"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -1834,3 +1966,192 @@ Resources:
           Value: "4"
         - Key: Component
           Value: model-registry
+
+  # =================================================================
+  # Phase 6B: Inference Components (scale-to-zero) — conditional
+  # =================================================================
+
+  # -----------------------------------------------------------------
+  # Inference Component (ManagedInstanceScaling MinInstanceCount=0)
+  # -----------------------------------------------------------------
+  InferenceComponent:
+    Type: AWS::SageMaker::InferenceComponent
+    Condition: CreateInferenceComponents
+    Properties:
+      InferenceComponentName: !Ref InferenceComponentName
+      EndpointName: !GetAtt RealtimeEndpoint.EndpointName
+      VariantName: "primary"
+      Specification:
+        ModelName: !GetAtt RealtimeSageMakerModel.ModelName
+        ComputeResourceRequirements:
+          NumberOfCpuCoresRequired: 2
+          MinMemoryRequiredInMb: 4096
+      RuntimeConfig:
+        CopyCount: 1
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "6B"
+        - Key: Component
+          Value: inference-components
+
+  # -----------------------------------------------------------------
+  # Application Auto Scaling — Inference Components ScalableTarget
+  # MinCapacity: 0 で真の scale-to-zero を実現
+  # -----------------------------------------------------------------
+  ComponentsScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Condition: CreateInferenceComponents
+    Properties:
+      MaxCapacity: !Ref ComponentsMaxInstanceCount
+      MinCapacity: !Ref ComponentsMinInstanceCount
+      ResourceId: !Sub "inference-component/${InferenceComponentName}"
+      RoleARN: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/sagemaker.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_SageMakerEndpoint"
+      ScalableDimension: "sagemaker:inference-component:DesiredCopyCount"
+      ServiceNamespace: sagemaker
+    DependsOn: InferenceComponent
+
+  # -----------------------------------------------------------------
+  # Step Scaling Policy — scale-from-zero トリガー
+  # NoCapacityInvocationFailures メトリクスに基づくステップスケーリング
+  # -----------------------------------------------------------------
+  ComponentsStepScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Condition: CreateInferenceComponents
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-components-step-scaling"
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ComponentsScalableTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 120
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            ScalingAdjustment: 1
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarm — NoCapacityInvocationFailures
+  # Inference Component にキャパシティがない場合のアラーム
+  # -----------------------------------------------------------------
+  ComponentsNoCapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateInferenceComponents
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-components-no-capacity"
+      AlarmDescription: >-
+        Inference Component にキャパシティがなく呼び出しが失敗した場合に
+        scale-from-zero をトリガーする。
+      Namespace: AWS/SageMaker
+      MetricName: InvocationModelErrors
+      Dimensions:
+        - Name: EndpointName
+          Value: !GetAtt RealtimeEndpoint.EndpointName
+        - Name: InferenceComponentName
+          Value: !Ref InferenceComponentName
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ComponentsStepScalingPolicy
+
+  # -----------------------------------------------------------------
+  # Components Invoke Lambda + IAM Role + Log Group
+  # -----------------------------------------------------------------
+  ComponentsInvokeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateInferenceComponents
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-components-invoke"
+      RetentionInDays: 14
+
+  ComponentsInvokeLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateInferenceComponents
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-components-invoke-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ComponentsInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SageMakerInvokeEndpoint
+                Effect: Allow
+                Action:
+                  - sagemaker:InvokeEndpoint
+                Resource:
+                  - !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/${AWS::StackName}-realtime-endpoint"
+                  - !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:inference-component/${InferenceComponentName}"
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ComponentsInvokeLogGroup.Arn
+                  - !Sub "${ComponentsInvokeLogGroup.Arn}:*"
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "6B"
+        - Key: Component
+          Value: inference-components
+
+  ComponentsInvokeFunction:
+    Type: AWS::Lambda::Function
+    Condition: CreateInferenceComponents
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-components-invoke"
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/autonomous-driving-components_invoke.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ComponentsInvokeLambdaRole.Arn
+      Environment:
+        Variables:
+          ENDPOINT_NAME: !Sub "${AWS::StackName}-realtime-endpoint"
+          INFERENCE_COMPONENT_NAME: !Ref InferenceComponentName
+          MAX_RETRIES: "3"
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          USE_CASE: autonomous-driving
+          MODEL_NOT_READY_RETRY_DELAY: "5"
+          MODEL_NOT_READY_MAX_RETRIES: "10"
+          MODEL_NOT_READY_MAX_DELAY: "30"
+          STEP_FUNCTIONS_TASK_TIMEOUT: !Sub "${ComponentsScaleFromZeroTimeout}"
+      LoggingConfig:
+        LogGroup: !Ref ComponentsInvokeLogGroup
+      Tags:
+        - Key: UseCase
+          Value: autonomous-driving
+        - Key: Phase
+          Value: "6B"
+        - Key: Component
+          Value: inference-components

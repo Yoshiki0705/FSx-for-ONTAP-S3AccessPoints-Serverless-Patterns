@@ -90,6 +90,12 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: CloudFront Distribution を有効化する（S3 AP 経由のメディア配信）
 
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Lambda SnapStart を有効化する（コールドスタート削減）
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -102,6 +108,9 @@ Conditions:
     !Equals [!Ref EnableCloudFront, "true"]
   CreateS3GatewayEndpoint:
     !Equals [!Ref EnableS3GatewayEndpoint, "true"]
+
+  SnapStartEnabled:
+    !Equals [!Ref EnableSnapStart, "true"]
 
 # =====================================================================
 # Resources
@@ -411,7 +420,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -439,7 +453,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-job-submit"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -463,7 +482,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-quality-check"
-      Runtime: python3.12
+      Runtime: python3.13
+      SnapStart:
+        !If
+          - SnapStartEnabled
+          - ApplyOn: PublishedVersions
+          - !Ref AWS::NoValue
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket

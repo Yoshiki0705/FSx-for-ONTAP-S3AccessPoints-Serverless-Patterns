@@ -1,0 +1,11 @@
+{
+  "comment": "UC01: 法務・コンプライアンス - Discovery Lambda ローカルテスト用イベント",
+  "source": "local-test",
+  "detail": {
+    "description": "Step Functions からの初回呼び出しを模擬。Discovery Lambda は環境変数から設定を読み取るため、イベントペイロードは最小限。",
+    "override": {
+      "prefix_filter": "",
+      "suffix_filter": ""
+    }
+  }
+}

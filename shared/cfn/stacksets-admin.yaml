@@ -421,7 +421,7 @@ Resources:
     Condition: EnableDrift
     Properties:
       FunctionName: !Sub "${ProjectPrefix}-drift-detection"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: index.handler
       Role: !GetAtt DriftDetectionRole.Arn
       Timeout: 300

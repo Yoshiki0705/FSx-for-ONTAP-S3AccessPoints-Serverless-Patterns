@@ -1,0 +1,184 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  CloudFormation Guard Hooks — デプロイ時ポリシー強制スタック
+  cfn-guard ルールを S3 から読み込み、CloudFormation Hook として登録する。
+  UC テンプレートとは独立してデプロイ・管理する。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  GuardRulesBucketName:
+    Type: String
+    Description: cfn-guard ルールファイルを格納する S3 バケット名
+
+  GuardRulesKeyPrefix:
+    Type: String
+    Default: "cfn-guard-rules/"
+    Description: S3 バケット内のルールファイルプレフィックス
+
+  FailureMode:
+    Type: String
+    Default: "FAIL"
+    AllowedValues:
+      - "FAIL"
+      - "WARN"
+    Description: >-
+      Hook 失敗時の動作モード。
+      FAIL: ルール違反時にデプロイをブロックする。
+      WARN: ルール違反時に警告のみ出力し、デプロイは続行する。
+
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90]
+    Description: Hook 実行ログの保持日数
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # S3 Bucket for Guard Rules (ルールファイル格納用)
+  # -----------------------------------------------------------------
+  GuardRulesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref GuardRulesBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Component
+          Value: guard-hooks
+        - Key: Phase
+          Value: "6B"
+
+  # -----------------------------------------------------------------
+  # IAM Role for Hook Execution
+  # -----------------------------------------------------------------
+  HookExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-hook-execution-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: hooks.cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: HookExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3ReadGuardRules
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt GuardRulesBucket.Arn
+                  - !Sub "${GuardRulesBucket.Arn}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/cloudformation/hooks/*"
+      Tags:
+        - Key: Component
+          Value: guard-hooks
+        - Key: Phase
+          Value: "6B"
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Group for Hook Execution
+  # -----------------------------------------------------------------
+  HookLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/cloudformation/hooks/${AWS::StackName}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  # -----------------------------------------------------------------
+  # CloudFormation Guard Hook Type Registration
+  # AWS::Hooks::GuardHook は cfn-guard ルールを CloudFormation Hook として
+  # 登録するためのリソースタイプ。
+  # -----------------------------------------------------------------
+  GuardHook:
+    Type: AWS::CloudFormation::GuardHook
+    Properties:
+      Alias: !Sub "${AWS::StackName}::Guard::Hook"
+      RuleLocation:
+        Uri: !Sub "s3://${GuardRulesBucket}/${GuardRulesKeyPrefix}"
+      HookStatus: "ENABLED"
+      TargetOperations:
+        - "STACK"
+        - "RESOURCE"
+        - "CHANGE_SET"
+      FailureMode: !Ref FailureMode
+      TargetFilters:
+        TargetNames:
+          - "AWS::S3::Bucket"
+          - "AWS::Lambda::Function"
+          - "AWS::IAM::Role"
+          - "AWS::IAM::Policy"
+          - "AWS::DynamoDB::Table"
+          - "AWS::SageMaker::Endpoint"
+          - "AWS::SageMaker::EndpointConfig"
+          - "AWS::SageMaker::Model"
+          - "AWS::Logs::LogGroup"
+        Actions:
+          - "CREATE"
+          - "UPDATE"
+        InvocationPoints:
+          - "PRE_PROVISION"
+      ExecutionRole: !GetAtt HookExecutionRole.Arn
+      LogBucket: !Ref GuardRulesBucket
+      Options:
+        InputParams:
+          Uri: !Sub "s3://${GuardRulesBucket}/${GuardRulesKeyPrefix}params.json"
+      StackFilters:
+        FilteringCriteria: "ALL"
+        StackNames:
+          Include:
+            - "*"
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  GuardRulesBucketName:
+    Description: cfn-guard ルールファイル格納 S3 バケット名
+    Value: !Ref GuardRulesBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-GuardRulesBucket"
+
+  HookExecutionRoleArn:
+    Description: Hook 実行ロール ARN
+    Value: !GetAtt HookExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-HookExecutionRoleArn"
+
+  GuardHookAlias:
+    Description: 登録された Guard Hook のエイリアス
+    Value: !Sub "${AWS::StackName}::Guard::Hook"
+    Export:
+      Name: !Sub "${AWS::StackName}-GuardHookAlias"
+
+  FailureMode:
+    Description: 現在の FailureMode 設定
+    Value: !Ref FailureMode

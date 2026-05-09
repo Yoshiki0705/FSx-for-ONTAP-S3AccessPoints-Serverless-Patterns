@@ -1,0 +1,11 @@
+{
+  "comment": "UC10: 建設 BIM - Discovery Lambda ローカルテスト用イベント",
+  "source": "local-test",
+  "detail": {
+    "description": "Step Functions からの初回呼び出しを模擬。",
+    "override": {
+      "prefix_filter": "models/",
+      "suffix_filter": ".ifc"
+    }
+  }
+}

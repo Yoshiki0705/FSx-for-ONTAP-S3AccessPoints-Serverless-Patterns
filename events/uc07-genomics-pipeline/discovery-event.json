@@ -1,0 +1,11 @@
+{
+  "comment": "UC07: ゲノミクスパイプライン - Discovery Lambda ローカルテスト用イベント",
+  "source": "local-test",
+  "detail": {
+    "description": "Step Functions からの初回呼び出しを模擬。",
+    "override": {
+      "prefix_filter": "fastq/",
+      "suffix_filter": ".fastq.gz"
+    }
+  }
+}
