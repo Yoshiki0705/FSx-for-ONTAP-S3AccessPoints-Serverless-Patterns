@@ -146,6 +146,18 @@ delay = min(
 
 ## 有効化手順
 
+### 重要: EndpointConfig の構成差異
+
+Inference Components を使用する場合、EndpointConfig の構成が標準の Provisioned/Serverless モードと異なります:
+
+| 項目 | Provisioned/Serverless | Inference Components |
+|------|----------------------|---------------------|
+| `ModelName` in ProductionVariant | ✅ 必須 | ❌ 不要（IC 側で指定） |
+| `InitialVariantWeight` | ✅ 必須 | ❌ 不要 |
+| `ExecutionRoleArn` in EndpointConfig | ❌ 不要 | ✅ 必須 |
+| `RoutingConfig.RoutingStrategy` | ❌ 不要 | ✅ 推奨（LEAST_OUTSTANDING_REQUESTS） |
+| `ManagedInstanceScaling` | ❌ 不要 | ✅ 必須（scale-to-zero 用） |
+
 ### Step 1: パラメータ設定
 
 ```bash
@@ -214,3 +226,4 @@ aws sagemaker-runtime invoke-endpoint \
 - [scale-to-zero ドキュメント](https://docs.aws.amazon.com/sagemaker/latest/dg/endpoint-auto-scaling-zero-instances.html)
 - [Serverless Inference コールドスタートガイド](./serverless-inference-cold-start.md)
 - [推論コスト比較](./inference-cost-comparison.md)
+- [デモテンプレート](../scripts/demo-inference-components.yaml) — 最小構成の Inference Components デプロイ例

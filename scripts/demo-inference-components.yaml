@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Phase 6B Demo: SageMaker Inference Components with scale-to-zero
+  スクリーンショット撮影用の最小構成デモスタック
+
+Parameters:
+  ModelDataUrl:
+    Type: String
+    Default: "s3://fsxn-s3ap-guard-rules-178625946981/models/demo/model.tar.gz"
+    Description: S3 path to model artifact
+
+Resources:
+  # IAM Role for SageMaker
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sagemaker-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - "arn:aws:s3:::fsxn-s3ap-guard-rules-178625946981"
+                  - "arn:aws:s3:::fsxn-s3ap-guard-rules-178625946981/*"
+
+  # SageMaker Model
+  DemoModel:
+    Type: AWS::SageMaker::Model
+    Properties:
+      ModelName: !Sub "${AWS::StackName}-model"
+      ExecutionRoleArn: !GetAtt SageMakerExecutionRole.Arn
+      PrimaryContainer:
+        Image: !Sub "763104351884.dkr.ecr.${AWS::Region}.amazonaws.com/pytorch-inference:2.0-cpu-py310"
+        ModelDataUrl: !Ref ModelDataUrl
+
+  # Endpoint Config (for Inference Components - no ModelName, no InitialVariantWeight)
+  DemoEndpointConfig:
+    Type: AWS::SageMaker::EndpointConfig
+    Properties:
+      EndpointConfigName: !Sub "${AWS::StackName}-config"
+      ExecutionRoleArn: !GetAtt SageMakerExecutionRole.Arn
+      ProductionVariants:
+        - VariantName: "primary"
+          InstanceType: "ml.m5.large"
+          InitialInstanceCount: 1
+          RoutingConfig:
+            RoutingStrategy: LEAST_OUTSTANDING_REQUESTS
+          ManagedInstanceScaling:
+            Status: ENABLED
+            MinInstanceCount: 0
+            MaxInstanceCount: 2
+
+  # SageMaker Endpoint
+  DemoEndpoint:
+    Type: AWS::SageMaker::Endpoint
+    Properties:
+      EndpointName: !Sub "${AWS::StackName}-endpoint"
+      EndpointConfigName: !GetAtt DemoEndpointConfig.EndpointConfigName
+
+  # Inference Component (scale-to-zero capable)
+  DemoInferenceComponent:
+    Type: AWS::SageMaker::InferenceComponent
+    Properties:
+      InferenceComponentName: !Sub "${AWS::StackName}-component"
+      EndpointName: !GetAtt DemoEndpoint.EndpointName
+      VariantName: "primary"
+      Specification:
+        ModelName: !GetAtt DemoModel.ModelName
+        ComputeResourceRequirements:
+          NumberOfCpuCoresRequired: 1
+          MinMemoryRequiredInMb: 1024
+      RuntimeConfig:
+        CopyCount: 1
+
+  # Application Auto Scaling - ScalableTarget (MinCapacity=0 for scale-to-zero)
+  ComponentsScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 2
+      MinCapacity: 0
+      ResourceId: !Sub "inference-component/${AWS::StackName}-component"
+      RoleARN: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/sagemaker.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_SageMakerEndpoint"
+      ScalableDimension: "sagemaker:inference-component:DesiredCopyCount"
+      ServiceNamespace: sagemaker
+    DependsOn: DemoInferenceComponent
+
+  # Step Scaling Policy
+  ComponentsScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-step-scaling"
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ComponentsScalableTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 120
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            ScalingAdjustment: 1
+
+Outputs:
+  EndpointName:
+    Value: !GetAtt DemoEndpoint.EndpointName
+  InferenceComponentName:
+    Value: !Sub "${AWS::StackName}-component"
+  ScalableTargetId:
+    Value: !Ref ComponentsScalableTarget
