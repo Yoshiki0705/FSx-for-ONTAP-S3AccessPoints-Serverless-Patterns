@@ -238,25 +238,25 @@ Voir les documents suivants pour plus de détails :
 
 #### Vérification du déploiement et de l'exécution de Step Functions pour les 5 UC
 
-![Step Functions tous les workflows](docs/screenshots/masked/step-functions-all-succeeded.png)
+![Step Functions tous les workflows](docs/screenshots/masked/phase1/phase1-step-functions-all-succeeded.png)
 
 > UC1 et UC3 ont fait l'objet d'une vérification E2E complète, tandis que UC2, UC4 et UC5 ont fait l'objet d'un déploiement CloudFormation et d'une vérification opérationnelle des composants principaux. Lors de l'utilisation de services AI/ML avec des contraintes régionales (Textract, Comprehend Medical), un appel inter-régions vers les régions prises en charge est nécessaire. Veuillez vérifier les exigences de résidence des données et de conformité.
 
 #### Phase 2 : Déploiement CloudFormation et exécution Step Functions réussis pour les 9 UC
 
-![Piles CloudFormation Phase 2](docs/screenshots/masked/cloudformation-phase2-stacks.png)
+![Piles CloudFormation Phase 2](docs/screenshots/masked/phase2/phase2-cloudformation-phase2-stacks.png)
 
 > Les 9 piles (UC6–UC14) ont atteint CREATE_COMPLETE / UPDATE_COMPLETE. Total de 205 ressources.
 
-![Workflows Step Functions Phase 2](docs/screenshots/masked/step-functions-phase2-all-workflows.png)
+![Workflows Step Functions Phase 2](docs/screenshots/masked/phase2/phase2-step-functions-phase2-all-workflows.png)
 
 > Les 9 workflows sont actifs. Tous SUCCEEDED confirmés après exécution E2E avec données de test.
 
-![Vue graphique d'exécution UC6](docs/screenshots/masked/step-functions-uc6-execution-graph.png)
+![Vue graphique d'exécution UC6](docs/screenshots/masked/phase2/phase2-step-functions-uc6-execution-graph.png)
 
 > Détail d'exécution Step Functions UC6 (Semi-conducteurs EDA). Tous les états réussis : Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration.
 
-![Planifications EventBridge Phase 2](docs/screenshots/masked/eventbridge-phase2-schedules.png)
+![Planifications EventBridge Phase 2](docs/screenshots/masked/phase2/phase2-eventbridge-phase2-schedules.png)
 
 > Les 9 planifications EventBridge Scheduler (rate(1 hour)) sont activées.
 
@@ -264,51 +264,51 @@ Voir les documents suivants pour plus de détails :
 
 ##### Amazon Bedrock — Catalogue de modèles
 
-![Catalogue de modèles Bedrock](docs/screenshots/masked/bedrock-model-catalog.png)
+![Catalogue de modèles Bedrock](docs/screenshots/masked/phase1/phase1-bedrock-model-catalog.png)
 
 ##### Amazon Rekognition — Détection d'étiquettes
 
-![Détection d'étiquettes Rekognition](docs/screenshots/masked/rekognition-label-detection.png)
+![Détection d'étiquettes Rekognition](docs/screenshots/masked/phase1/phase1-rekognition-label-detection.png)
 
 ##### Amazon Comprehend — Détection d'entités
 
-![Console Comprehend](docs/screenshots/masked/comprehend-console.png)
+![Console Comprehend](docs/screenshots/masked/phase1/phase1-comprehend-console.png)
 
 #### Écrans des services AI/ML (Phase 2)
 
 ##### Amazon Bedrock — Catalogue de modèles (UC6 : Génération de rapports)
 
-![Catalogue de modèles Bedrock Phase 2](docs/screenshots/masked/bedrock-model-catalog-phase2.png)
+![Catalogue de modèles Bedrock Phase 2](docs/screenshots/masked/phase2/phase2-bedrock-model-catalog.png)
 
 > Utilisé pour la génération de rapports DRC avec le modèle Nova Lite dans UC6 (Semi-conducteurs EDA).
 
 ##### Amazon Athena — Historique d'exécution des requêtes (UC6 : Agrégation de métadonnées)
 
-![Historique des requêtes Athena Phase 2](docs/screenshots/masked/athena-query-history-phase2.png)
+![Historique des requêtes Athena Phase 2](docs/screenshots/masked/phase2/phase2-athena-query-history.png)
 
 > Requêtes Athena (cell_count, bbox, naming, invalid) exécutées dans le workflow Step Functions UC6.
 
 ##### Amazon Rekognition — Détection d'étiquettes (UC11 : Étiquetage d'images produits)
 
-![Détection d'étiquettes Rekognition Phase 2](docs/screenshots/masked/rekognition-label-detection-phase2.png)
+![Détection d'étiquettes Rekognition Phase 2](docs/screenshots/masked/phase2/phase2-rekognition-label-detection.png)
 
 > 15 étiquettes détectées (Lighting 98,5%, Light 96,0%, Purple 92,0%, etc.) à partir d'images produits dans UC11 (Catalogue de détail).
 
 ##### Amazon Textract — OCR de documents (UC12 : Lecture de bordereaux de livraison)
 
-![Analyse de documents Textract Phase 2](docs/screenshots/masked/textract-analyze-document-phase2.png)
+![Analyse de documents Textract Phase 2](docs/screenshots/masked/phase2/phase2-textract-analyze-document.png)
 
 > Extraction de texte à partir de PDF de bordereaux de livraison dans UC12 (OCR logistique). Exécuté via Cross-Region (us-east-1).
 
 ##### Amazon Comprehend Medical — Détection d'entités médicales (UC7 : Analyse génomique)
 
-![Analyse en temps réel Comprehend Medical Phase 2](docs/screenshots/masked/comprehend-medical-genomics-analysis-phase2.png)
+![Analyse en temps réel Comprehend Medical Phase 2](docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis.png)
 
 > Noms de gènes (GC) extraits des résultats d'analyse VCF à l'aide de l'API DetectEntitiesV2 dans UC7 (Pipeline génomique). Exécuté via Cross-Region (us-east-1).
 
 ##### Fonctions Lambda (Phase 2)
 
-![Fonctions Lambda Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
+![Fonctions Lambda Phase 2](docs/screenshots/masked/phase2/phase2-lambda-phase2-functions.png)
 
 > Toutes les fonctions Lambda Phase 2 (Discovery, Processing, Report, etc.) déployées avec succès.
 
@@ -316,39 +316,39 @@ Voir les documents suivants pour plus de détails :
 
 ##### Exécution E2E Step Functions réussie (UC11)
 
-![Step Functions Phase 3 Succès](docs/screenshots/masked/phase3-step-functions-uc11-succeeded.png)
+![Step Functions Phase 3 Succès](docs/screenshots/masked/phase3/phase3-step-functions-uc11-succeeded.png)
 
 > Exécution E2E du workflow Step Functions UC11 réussie. Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck tous les états réussis (8,974s). Génération de traces X-Ray confirmée.
 
 ##### Kinesis Data Streams (UC11 Mode streaming)
 
-![Kinesis Data Stream](docs/screenshots/masked/phase3-kinesis-stream-active.png)
+![Kinesis Data Stream](docs/screenshots/masked/phase3/phase3-kinesis-stream-active.png)
 
 > UC11 Kinesis Data Stream (1 shard, mode provisionné) en état actif. Métriques de surveillance affichées.
 
 ##### Tables DynamoDB de gestion d'état (UC11 Détection de changements)
 
-![DynamoDB State Tables](docs/screenshots/masked/phase3-dynamodb-state-tables.png)
+![DynamoDB State Tables](docs/screenshots/masked/phase3/phase3-dynamodb-state-tables.png)
 
 > Tables DynamoDB de détection de changements UC11. streaming-state (gestion d'état) et streaming-dead-letter (DLQ).
 
 ##### Stack d'observabilité
 
-![X-Ray Traces](docs/screenshots/masked/phase3-xray-traces.png)
+![X-Ray Traces](docs/screenshots/masked/phase3/phase3-xray-traces.png)
 
 > Traces X-Ray. Traces d'exécution du Lambda Stream Producer à intervalles d'1 minute (tous OK, latence 7-11ms).
 
-![CloudWatch Dashboard](docs/screenshots/masked/phase3-cloudwatch-dashboard.png)
+![CloudWatch Dashboard](docs/screenshots/masked/phase3/phase3-cloudwatch-dashboard.png)
 
 > Tableau de bord CloudWatch centralisé surveillant les 14 cas d'utilisation. Succès/échecs Step Functions, taux d'erreurs Lambda, métriques personnalisées EMF.
 
-![CloudWatch Alarms](docs/screenshots/masked/phase3-cloudwatch-alarms.png)
+![CloudWatch Alarms](docs/screenshots/masked/phase3/phase3-cloudwatch-alarms.png)
 
 > Automatisation des alertes Phase 3. Alarmes basées sur des seuils pour les échecs Step Functions, les taux d'erreurs Lambda et l'âge de l'itérateur Kinesis (tous en état OK).
 
 ##### Vérification S3 Access Point
 
-![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
+![S3 AP Available](docs/screenshots/masked/phase3/phase3-s3ap-available.png)
 
 > FSx for ONTAP S3 Access Point (fsxn-eda-s3ap) en état Available. Confirmé via l'onglet S3 du volume dans la console FSx.
 
@@ -356,37 +356,37 @@ Voir les documents suivants pour plus de détails :
 
 ##### DynamoDB Task Token Store
 
-![DynamoDB Task Token Store](docs/screenshots/masked/phase4-dynamodb-task-token-store.png)
+![DynamoDB Task Token Store](docs/screenshots/masked/phase4/phase4-dynamodb-task-token-store.png)
 
 > Table DynamoDB Task Token Store. Stocke les Task Tokens avec un Correlation ID hex de 8 caractères comme clé de partition. TTL activé, mode PAY_PER_REQUEST, GSI (TransformJobNameIndex) configuré.
 
 ##### SageMaker Real-time Endpoint (Multi-Variant A/B Testing)
 
-![SageMaker Endpoint](docs/screenshots/masked/phase4-sagemaker-realtime-endpoint.png)
+![SageMaker Endpoint](docs/screenshots/masked/phase4/phase4-sagemaker-realtime-endpoint.png)
 
 > SageMaker Real-time Inference Endpoint. Configuration Multi-Variant (model-v1 : 70%, model-v2 : 30%) pour les tests A/B. Auto Scaling configuré.
 
 ##### Workflow Step Functions (Routage Realtime/Batch)
 
-![Step Functions Phase 4](docs/screenshots/masked/phase4-step-functions-routing.png)
+![Step Functions Phase 4](docs/screenshots/masked/phase4/phase4-step-functions-routing.png)
 
 > Workflow Step Functions UC9. Le Choice State route vers le Real-time Endpoint lorsque file_count < threshold, sinon vers Batch Transform.
 
 ##### Event-Driven Prototype — Règle EventBridge
 
-![EventBridge Rule](docs/screenshots/masked/phase4-eventbridge-event-rule.png)
+![EventBridge Rule](docs/screenshots/masked/phase4/phase4-eventbridge-event-rule.png)
 
 > Règle EventBridge du prototype Event-Driven. Filtre les événements S3 ObjectCreated par suffix (.jpg, .png) + prefix (products/) et déclenche Step Functions.
 
 ##### Event-Driven Prototype — Exécution Step Functions réussie
 
-![Event-Driven Step Functions](docs/screenshots/masked/phase4-event-driven-sfn-succeeded.png)
+![Event-Driven Step Functions](docs/screenshots/masked/phase4/phase4-event-driven-sfn-succeeded.png)
 
 > Exécution Step Functions du prototype Event-Driven réussie. S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter tous les états réussis.
 
 ##### Stacks CloudFormation Phase 4
 
-![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
+![CloudFormation Phase 4](docs/screenshots/masked/phase4/phase4-cloudformation-stacks.png)
 
 > Stacks CloudFormation Phase 4. Extension UC9 (Task Token Store + Real-time Endpoint) et prototype Event-Driven CREATE_COMPLETE.
 
@@ -394,23 +394,23 @@ Voir les documents suivants pour plus de détails :
 
 ##### SageMaker Serverless Inference Endpoint
 
-![SageMaker Serverless Endpoint](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+![SageMaker Serverless Endpoint](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-settings.png)
 
 > Configuration du SageMaker Serverless Inference Endpoint. Mémoire 4096 Mo, concurrence max 5.
 
 ##### CloudWatch Billing Alarms (Alertes de coûts à 3 niveaux)
 
-![CloudWatch Billing Alarms](docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+![CloudWatch Billing Alarms](docs/screenshots/masked/phase5/phase5-cloudwatch-billing-alarms.png)
 
 > Alarmes de facturation Warning / Critical / Emergency. Notification SNS en cas de dépassement de seuil.
 
 ##### DynamoDB Global Table (Multi-Region)
 
-![DynamoDB Global Table](docs/screenshots/masked/phase5-dynamodb-global-table.png)
+![DynamoDB Global Table](docs/screenshots/masked/phase5/phase5-dynamodb-global-table.png)
 
 > Configuration DynamoDB Global Table. Réplication Multi-Region activée.
 
-![DynamoDB Global Replicas](docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+![DynamoDB Global Replicas](docs/screenshots/masked/phase5/phase5-dynamodb-global-replicas.png)
 
 > Configuration des réplicas Global Table. Synchronisation des données entre régions.
 

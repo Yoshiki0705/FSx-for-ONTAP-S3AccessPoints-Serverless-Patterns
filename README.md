@@ -263,25 +263,25 @@ Phase 5 の全機能も CloudFormation Conditions でオプトイン制御され
 
 #### Phase 1: 全 5 UC の Step Functions デプロイ・実行確認
 
-![Step Functions 全ワークフロー](docs/screenshots/masked/step-functions-all-succeeded.png)
+![Step Functions 全ワークフロー](docs/screenshots/masked/phase1/phase1-step-functions-all-succeeded.png)
 
 > UC1・UC3 は完全な E2E 検証、UC2・UC4・UC5 は CloudFormation デプロイと主要コンポーネントの動作確認を実施しています。
 
 #### Phase 2: 全 9 UC の CloudFormation デプロイ・Step Functions 実行成功
 
-![CloudFormation Phase 2 スタック](docs/screenshots/masked/cloudformation-phase2-stacks.png)
+![CloudFormation Phase 2 スタック](docs/screenshots/masked/phase2/phase2-cloudformation-phase2-stacks.png)
 
 > 全 9 スタック（UC6–UC14）が CREATE_COMPLETE / UPDATE_COMPLETE。合計 205 リソース。
 
-![Step Functions Phase 2 ワークフロー](docs/screenshots/masked/step-functions-phase2-all-workflows.png)
+![Step Functions Phase 2 ワークフロー](docs/screenshots/masked/phase2/phase2-step-functions-phase2-all-workflows.png)
 
 > 全 9 ワークフローがアクティブ。テストデータ投入後の E2E 実行で全 SUCCEEDED を確認。
 
-![UC6 実行 Graph View](docs/screenshots/masked/step-functions-uc6-execution-graph.png)
+![UC6 実行 Graph View](docs/screenshots/masked/phase2/phase2-step-functions-uc6-execution-graph.png)
 
 > UC6（半導体 EDA）の Step Functions 実行詳細。Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration の全ステートが成功。
 
-![EventBridge Phase 2 スケジュール](docs/screenshots/masked/eventbridge-phase2-schedules.png)
+![EventBridge Phase 2 スケジュール](docs/screenshots/masked/phase2/phase2-eventbridge-phase2-schedules.png)
 
 > 全 9 UC の EventBridge Scheduler スケジュール（rate(1 hour)）が有効。
 
@@ -289,39 +289,39 @@ Phase 5 の全機能も CloudFormation Conditions でオプトイン制御され
 
 ##### Step Functions E2E 実行成功（UC11）
 
-![Step Functions Phase 3 実行成功](docs/screenshots/masked/phase3-step-functions-uc11-succeeded.png)
+![Step Functions Phase 3 実行成功](docs/screenshots/masked/phase3/phase3-step-functions-uc11-succeeded.png)
 
 > UC11 Step Functions ワークフロー E2E 実行成功。Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck 全ステート成功（8.974秒）。X-Ray トレース生成確認。
 
 ##### Kinesis Data Streams（UC11 ストリーミングモード）
 
-![Kinesis Data Stream](docs/screenshots/masked/phase3-kinesis-stream-active.png)
+![Kinesis Data Stream](docs/screenshots/masked/phase3/phase3-kinesis-stream-active.png)
 
 > UC11 Kinesis Data Stream（1 シャード、プロビジョンドモード）がアクティブ状態。モニタリングメトリクス表示。
 
 ##### DynamoDB 状態管理テーブル（UC11 変更検知）
 
-![DynamoDB State Tables](docs/screenshots/masked/phase3-dynamodb-state-tables.png)
+![DynamoDB State Tables](docs/screenshots/masked/phase3/phase3-dynamodb-state-tables.png)
 
 > UC11 変更検知用 DynamoDB テーブル。streaming-state（状態管理）と streaming-dead-letter（DLQ）の2テーブル。
 
 ##### 可観測性スタック
 
-![X-Ray Traces](docs/screenshots/masked/phase3-xray-traces.png)
+![X-Ray Traces](docs/screenshots/masked/phase3/phase3-xray-traces.png)
 
 > X-Ray トレース。Stream Producer Lambda の1分間隔実行トレース（全 OK、レイテンシ 7-11ms）。
 
-![CloudWatch Dashboard](docs/screenshots/masked/phase3-cloudwatch-dashboard.png)
+![CloudWatch Dashboard](docs/screenshots/masked/phase3/phase3-cloudwatch-dashboard.png)
 
 > 全 14 UC 横断 CloudWatch ダッシュボード。Step Functions 成功/失敗、Lambda エラー率、EMF カスタムメトリクス。
 
-![CloudWatch Alarms](docs/screenshots/masked/phase3-cloudwatch-alarms.png)
+![CloudWatch Alarms](docs/screenshots/masked/phase3/phase3-cloudwatch-alarms.png)
 
 > Phase 3 アラート自動化。Step Functions 失敗率、Lambda エラー率、Kinesis Iterator Age の閾値アラーム（全 OK 状態）。
 
 ##### S3 Access Point 確認
 
-![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
+![S3 AP Available](docs/screenshots/masked/phase3/phase3-s3ap-available.png)
 
 > FSx for ONTAP S3 Access Point（fsxn-eda-s3ap）が Available 状態。FSx コンソールのボリューム S3 タブで確認。
 
@@ -329,37 +329,37 @@ Phase 5 の全機能も CloudFormation Conditions でオプトイン制御され
 
 ##### DynamoDB Task Token Store
 
-![DynamoDB Task Token Store](docs/screenshots/masked/phase4-dynamodb-task-token-store.png)
+![DynamoDB Task Token Store](docs/screenshots/masked/phase4/phase4-dynamodb-task-token-store.png)
 
 > DynamoDB Task Token Store テーブル。Correlation ID（8 文字 hex）をパーティションキーとして Task Token を保存。TTL 有効化、PAY_PER_REQUEST モード、GSI（TransformJobNameIndex）設定済み。
 
 ##### SageMaker Real-time Endpoint（Multi-Variant A/B Testing）
 
-![SageMaker Endpoint](docs/screenshots/masked/phase4-sagemaker-realtime-endpoint.png)
+![SageMaker Endpoint](docs/screenshots/masked/phase4/phase4-sagemaker-realtime-endpoint.png)
 
 > SageMaker Real-time Inference Endpoint。Multi-Variant 構成（model-v1: 70%, model-v2: 30%）による A/B テスト。Auto Scaling 設定済み。
 
 ##### Step Functions ワークフロー（Realtime/Batch ルーティング）
 
-![Step Functions Phase 4](docs/screenshots/masked/phase4-step-functions-routing.png)
+![Step Functions Phase 4](docs/screenshots/masked/phase4/phase4-step-functions-routing.png)
 
 > UC9 Step Functions ワークフロー。Choice State により file_count < threshold の場合は Real-time Endpoint、それ以外は Batch Transform にルーティング。
 
 ##### Event-Driven Prototype — EventBridge Rule
 
-![EventBridge Rule](docs/screenshots/masked/phase4-eventbridge-event-rule.png)
+![EventBridge Rule](docs/screenshots/masked/phase4/phase4-eventbridge-event-rule.png)
 
 > Event-Driven Prototype の EventBridge Rule。S3 ObjectCreated イベントを suffix (.jpg, .png) + prefix (products/) でフィルタリングし、Step Functions をトリガー。
 
 ##### Event-Driven Prototype — Step Functions 実行成功
 
-![Event-Driven Step Functions](docs/screenshots/masked/phase4-event-driven-sfn-succeeded.png)
+![Event-Driven Step Functions](docs/screenshots/masked/phase4/phase4-event-driven-sfn-succeeded.png)
 
 > Event-Driven Prototype の Step Functions 実行成功。S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter の全ステート成功。
 
 ##### CloudFormation Phase 4 スタック
 
-![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
+![CloudFormation Phase 4](docs/screenshots/masked/phase4/phase4-cloudformation-stacks.png)
 
 > Phase 4 CloudFormation スタック。UC9 拡張（Task Token Store + Real-time Endpoint）と Event-Driven Prototype が CREATE_COMPLETE。
 
@@ -367,51 +367,51 @@ Phase 5 の全機能も CloudFormation Conditions でオプトイン制御され
 
 ##### Amazon Bedrock — モデルカタログ
 
-![Bedrock モデルカタログ](docs/screenshots/masked/bedrock-model-catalog.png)
+![Bedrock モデルカタログ](docs/screenshots/masked/phase1/phase1-bedrock-model-catalog.png)
 
 ##### Amazon Rekognition — ラベル検出
 
-![Rekognition ラベル検出](docs/screenshots/masked/rekognition-label-detection.png)
+![Rekognition ラベル検出](docs/screenshots/masked/phase1/phase1-rekognition-label-detection.png)
 
 ##### Amazon Comprehend — エンティティ検出
 
-![Comprehend コンソール](docs/screenshots/masked/comprehend-console.png)
+![Comprehend コンソール](docs/screenshots/masked/phase1/phase1-comprehend-console.png)
 
 #### AI/ML サービス画面（Phase 2）
 
 ##### Amazon Bedrock — モデルカタログ（UC6: レポート生成）
 
-![Bedrock モデルカタログ Phase 2](docs/screenshots/masked/bedrock-model-catalog-phase2.png)
+![Bedrock モデルカタログ Phase 2](docs/screenshots/masked/phase2/phase2-bedrock-model-catalog.png)
 
 > UC6（半導体 EDA）で Nova Lite モデルを使用した DRC レポート生成に利用。
 
 ##### Amazon Athena — クエリ実行履歴（UC6: メタデータ集計）
 
-![Athena クエリ履歴 Phase 2](docs/screenshots/masked/athena-query-history-phase2.png)
+![Athena クエリ履歴 Phase 2](docs/screenshots/masked/phase2/phase2-athena-query-history.png)
 
 > UC6 の Step Functions ワークフロー内で Athena クエリ（cell_count, bbox, naming, invalid）を実行。
 
 ##### Amazon Rekognition — ラベル検出（UC11: 商品画像タグ付け）
 
-![Rekognition ラベル検出 Phase 2](docs/screenshots/masked/rekognition-label-detection-phase2.png)
+![Rekognition ラベル検出 Phase 2](docs/screenshots/masked/phase2/phase2-rekognition-label-detection.png)
 
 > UC11（小売カタログ）で商品画像から 15 ラベル（Lighting 98.5%, Light 96.0%, Purple 92.0% 等）を検出。
 
 ##### Amazon Textract — ドキュメント OCR（UC12: 配送伝票読取）
 
-![Textract ドキュメント分析 Phase 2](docs/screenshots/masked/textract-analyze-document-phase2.png)
+![Textract ドキュメント分析 Phase 2](docs/screenshots/masked/phase2/phase2-textract-analyze-document.png)
 
 > UC12（物流 OCR）で配送伝票 PDF からテキスト抽出。Cross-Region（us-east-1）経由で実行。
 
 ##### Amazon Comprehend Medical — 医療エンティティ検出（UC7: ゲノミクス解析）
 
-![Comprehend Medical リアルタイム分析 Phase 2](docs/screenshots/masked/comprehend-medical-genomics-analysis-phase2.png)
+![Comprehend Medical リアルタイム分析 Phase 2](docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis.png)
 
 > UC7（ゲノミクスパイプライン）で VCF 解析結果から遺伝子名（GC）を DetectEntitiesV2 API で抽出。Cross-Region（us-east-1）経由で実行。
 
 ##### Lambda 関数一覧（Phase 2）
 
-![Lambda 関数一覧 Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
+![Lambda 関数一覧 Phase 2](docs/screenshots/masked/phase2/phase2-lambda-phase2-functions.png)
 
 > Phase 2 の全 Lambda 関数（Discovery, Processing, Report 等）が正常にデプロイ済み。
 
@@ -419,31 +419,31 @@ Phase 5 の全機能も CloudFormation Conditions でオプトイン制御され
 
 ##### SageMaker Serverless Inference Endpoint
 
-![SageMaker Serverless Endpoint 設定](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+![SageMaker Serverless Endpoint 設定](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-settings.png)
 
 > SageMaker Serverless Inference Endpoint の設定画面。メモリサイズ 4096 MB、最大同時実行数 5 で構成。
 
-![SageMaker Serverless Endpoint Config](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-config.png)
+![SageMaker Serverless Endpoint Config](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-config.png)
 
 > Serverless Endpoint Configuration の詳細。プロビジョニング不要でリクエスト時のみコンピュートリソースを割り当て。
 
-![SageMaker Serverless Endpoint 作成中](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-creating.png)
+![SageMaker Serverless Endpoint 作成中](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-creating.png)
 
 > Serverless Endpoint の作成プロセス。プロビジョニング済みインスタンスは保持されず、リクエスト時にオンデマンドでコンピュートが割り当てられるため、アイドル後にコールドスタート（6–45 秒）が発生する。
 
 ##### CloudWatch Billing Alarms（3 段階コストアラート）
 
-![CloudWatch Billing Alarms](docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+![CloudWatch Billing Alarms](docs/screenshots/masked/phase5/phase5-cloudwatch-billing-alarms.png)
 
 > Warning / Critical / Emergency の 3 段階 Billing Alarms。閾値超過時に SNS 通知。
 
 ##### DynamoDB Global Table（Multi-Region）
 
-![DynamoDB Global Table](docs/screenshots/masked/phase5-dynamodb-global-table.png)
+![DynamoDB Global Table](docs/screenshots/masked/phase5/phase5-dynamodb-global-table.png)
 
 > DynamoDB Global Table 設定。Multi-Region レプリケーション有効化。
 
-![DynamoDB Global Replicas](docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+![DynamoDB Global Replicas](docs/screenshots/masked/phase5/phase5-dynamodb-global-replicas.png)
 
 > Global Table のレプリカ構成。複数リージョン間でのデータ同期状態。
 

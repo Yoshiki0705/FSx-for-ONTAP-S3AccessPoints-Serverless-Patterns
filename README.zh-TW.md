@@ -238,25 +238,25 @@ Phase 5 的所有功能同樣透過 CloudFormation Conditions 進行可選控制
 
 #### 全部 5 個 UC 的 Step Functions 部署與執行確認
 
-![Step Functions 全部工作流程](docs/screenshots/masked/step-functions-all-succeeded.png)
+![Step Functions 全部工作流程](docs/screenshots/masked/phase1/phase1-step-functions-all-succeeded.png)
 
 > UC1 和 UC3 已完成完整的 E2E 驗證，UC2、UC4 和 UC5 已完成 CloudFormation 部署和主要元件的功能驗證。使用有區域限制的 AI/ML 服務（Textract、Comprehend Medical）時，需要跨區域呼叫至支援區域，請確認資料駐留和合規要求。
 
 #### Phase 2: 全部 9 個 UC CloudFormation 部署・Step Functions 執行成功
 
-![CloudFormation Phase 2 堆疊](docs/screenshots/masked/cloudformation-phase2-stacks.png)
+![CloudFormation Phase 2 堆疊](docs/screenshots/masked/phase2/phase2-cloudformation-phase2-stacks.png)
 
 > 全部 9 個堆疊（UC6–UC14）達到 CREATE_COMPLETE / UPDATE_COMPLETE。共 205 個資源。
 
-![Step Functions Phase 2 工作流程](docs/screenshots/masked/step-functions-phase2-all-workflows.png)
+![Step Functions Phase 2 工作流程](docs/screenshots/masked/phase2/phase2-step-functions-phase2-all-workflows.png)
 
 > 全部 9 個工作流程已啟用。投入測試資料後 E2E 執行全部 SUCCEEDED。
 
-![UC6 執行 Graph View](docs/screenshots/masked/step-functions-uc6-execution-graph.png)
+![UC6 執行 Graph View](docs/screenshots/masked/phase2/phase2-step-functions-uc6-execution-graph.png)
 
 > UC6（半導體 EDA）Step Functions 執行詳情。Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration 全部狀態成功。
 
-![EventBridge Phase 2 排程](docs/screenshots/masked/eventbridge-phase2-schedules.png)
+![EventBridge Phase 2 排程](docs/screenshots/masked/phase2/phase2-eventbridge-phase2-schedules.png)
 
 > 全部 9 個 UC 的 EventBridge Scheduler 排程（rate(1 hour)）已啟用。
 
@@ -264,51 +264,51 @@ Phase 5 的所有功能同樣透過 CloudFormation Conditions 進行可選控制
 
 ##### Amazon Bedrock — 模型目錄
 
-![Bedrock 模型目錄](docs/screenshots/masked/bedrock-model-catalog.png)
+![Bedrock 模型目錄](docs/screenshots/masked/phase1/phase1-bedrock-model-catalog.png)
 
 ##### Amazon Rekognition — 標籤偵測
 
-![Rekognition 標籤偵測](docs/screenshots/masked/rekognition-label-detection.png)
+![Rekognition 標籤偵測](docs/screenshots/masked/phase1/phase1-rekognition-label-detection.png)
 
 ##### Amazon Comprehend — 實體偵測
 
-![Comprehend 主控台](docs/screenshots/masked/comprehend-console.png)
+![Comprehend 主控台](docs/screenshots/masked/phase1/phase1-comprehend-console.png)
 
 #### AI/ML 服務畫面（Phase 2）
 
 ##### Amazon Bedrock — 模型目錄（UC6: 報告產生）
 
-![Bedrock 模型目錄 Phase 2](docs/screenshots/masked/bedrock-model-catalog-phase2.png)
+![Bedrock 模型目錄 Phase 2](docs/screenshots/masked/phase2/phase2-bedrock-model-catalog.png)
 
 > UC6（半導體 EDA）中使用 Nova Lite 模型產生 DRC 報告。
 
 ##### Amazon Athena — 查詢執行歷史（UC6: 中繼資料彙總）
 
-![Athena 查詢歷史 Phase 2](docs/screenshots/masked/athena-query-history-phase2.png)
+![Athena 查詢歷史 Phase 2](docs/screenshots/masked/phase2/phase2-athena-query-history.png)
 
 > UC6 的 Step Functions 工作流程中執行 Athena 查詢（cell_count, bbox, naming, invalid）。
 
 ##### Amazon Rekognition — 標籤偵測（UC11: 商品圖片標記）
 
-![Rekognition 標籤偵測 Phase 2](docs/screenshots/masked/rekognition-label-detection-phase2.png)
+![Rekognition 標籤偵測 Phase 2](docs/screenshots/masked/phase2/phase2-rekognition-label-detection.png)
 
 > UC11（零售目錄）從商品圖片中偵測 15 個標籤（Lighting 98.5%, Light 96.0%, Purple 92.0% 等）。
 
 ##### Amazon Textract — 文件 OCR（UC12: 配送單據讀取）
 
-![Textract 文件分析 Phase 2](docs/screenshots/masked/textract-analyze-document-phase2.png)
+![Textract 文件分析 Phase 2](docs/screenshots/masked/phase2/phase2-textract-analyze-document.png)
 
 > UC12（物流 OCR）從配送單據 PDF 中擷取文字。透過 Cross-Region（us-east-1）執行。
 
 ##### Amazon Comprehend Medical — 醫療實體偵測（UC7: 基因體分析）
 
-![Comprehend Medical 即時分析 Phase 2](docs/screenshots/masked/comprehend-medical-genomics-analysis-phase2.png)
+![Comprehend Medical 即時分析 Phase 2](docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis.png)
 
 > UC7（基因體管線）中使用 DetectEntitiesV2 API 從 VCF 分析結果中擷取基因名（GC）。透過 Cross-Region（us-east-1）執行。
 
 ##### Lambda 函式清單（Phase 2）
 
-![Lambda 函式清單 Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
+![Lambda 函式清單 Phase 2](docs/screenshots/masked/phase2/phase2-lambda-phase2-functions.png)
 
 > Phase 2 的全部 Lambda 函式（Discovery, Processing, Report 等）已成功部署。
 
@@ -316,39 +316,39 @@ Phase 5 的所有功能同樣透過 CloudFormation Conditions 進行可選控制
 
 ##### Step Functions E2E 執行成功（UC11）
 
-![Step Functions Phase 3 執行成功](docs/screenshots/masked/phase3-step-functions-uc11-succeeded.png)
+![Step Functions Phase 3 執行成功](docs/screenshots/masked/phase3/phase3-step-functions-uc11-succeeded.png)
 
 > UC11 Step Functions 工作流程 E2E 執行成功。Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck 全狀態成功（8.974秒）。X-Ray 追蹤生成確認。
 
 ##### Kinesis Data Streams（UC11 串流模式）
 
-![Kinesis Data Stream](docs/screenshots/masked/phase3-kinesis-stream-active.png)
+![Kinesis Data Stream](docs/screenshots/masked/phase3/phase3-kinesis-stream-active.png)
 
 > UC11 Kinesis Data Stream（1 分片，佈建模式）處於活躍狀態。顯示監控指標。
 
 ##### DynamoDB 狀態管理表（UC11 變更偵測）
 
-![DynamoDB State Tables](docs/screenshots/masked/phase3-dynamodb-state-tables.png)
+![DynamoDB State Tables](docs/screenshots/masked/phase3/phase3-dynamodb-state-tables.png)
 
 > UC11 變更偵測用 DynamoDB 表。streaming-state（狀態管理）和 streaming-dead-letter（DLQ）兩張表。
 
 ##### 可觀測性堆疊
 
-![X-Ray Traces](docs/screenshots/masked/phase3-xray-traces.png)
+![X-Ray Traces](docs/screenshots/masked/phase3/phase3-xray-traces.png)
 
 > X-Ray 追蹤。Stream Producer Lambda 1分鐘間隔執行追蹤（全部 OK，延遲 7-11ms）。
 
-![CloudWatch Dashboard](docs/screenshots/masked/phase3-cloudwatch-dashboard.png)
+![CloudWatch Dashboard](docs/screenshots/masked/phase3/phase3-cloudwatch-dashboard.png)
 
 > 全 14 UC 橫跨集中式 CloudWatch 儀表板。Step Functions 成功/失敗、Lambda 錯誤率、EMF 自訂指標。
 
-![CloudWatch Alarms](docs/screenshots/masked/phase3-cloudwatch-alarms.png)
+![CloudWatch Alarms](docs/screenshots/masked/phase3/phase3-cloudwatch-alarms.png)
 
 > Phase 3 警報自動化。Step Functions 失敗率、Lambda 錯誤率、Kinesis Iterator Age 閾值警報（全部 OK 狀態）。
 
 ##### S3 Access Point 驗證
 
-![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
+![S3 AP Available](docs/screenshots/masked/phase3/phase3-s3ap-available.png)
 
 > FSx for ONTAP S3 Access Point（fsxn-eda-s3ap）處於 Available 狀態。透過 FSx 主控台磁碟區 S3 索引標籤確認。
 
@@ -356,37 +356,37 @@ Phase 5 的所有功能同樣透過 CloudFormation Conditions 進行可選控制
 
 ##### DynamoDB Task Token Store
 
-![DynamoDB Task Token Store](docs/screenshots/masked/phase4-dynamodb-task-token-store.png)
+![DynamoDB Task Token Store](docs/screenshots/masked/phase4/phase4-dynamodb-task-token-store.png)
 
 > DynamoDB Task Token Store 資料表。以 8 字元 hex Correlation ID 作為分區鍵儲存 Task Token。TTL 已啟用，PAY_PER_REQUEST 模式，GSI（TransformJobNameIndex）已設定。
 
 ##### SageMaker Real-time Endpoint（Multi-Variant A/B Testing）
 
-![SageMaker Endpoint](docs/screenshots/masked/phase4-sagemaker-realtime-endpoint.png)
+![SageMaker Endpoint](docs/screenshots/masked/phase4/phase4-sagemaker-realtime-endpoint.png)
 
 > SageMaker Real-time Inference Endpoint。Multi-Variant 組態（model-v1: 70%, model-v2: 30%）用於 A/B 測試。Auto Scaling 已設定。
 
 ##### Step Functions 工作流程（Realtime/Batch 路由）
 
-![Step Functions Phase 4](docs/screenshots/masked/phase4-step-functions-routing.png)
+![Step Functions Phase 4](docs/screenshots/masked/phase4/phase4-step-functions-routing.png)
 
 > UC9 Step Functions 工作流程。Choice State 在 file_count < threshold 時路由至 Real-time Endpoint，否則路由至 Batch Transform。
 
 ##### Event-Driven Prototype — EventBridge Rule
 
-![EventBridge Rule](docs/screenshots/masked/phase4-eventbridge-event-rule.png)
+![EventBridge Rule](docs/screenshots/masked/phase4/phase4-eventbridge-event-rule.png)
 
 > Event-Driven Prototype EventBridge Rule。依 suffix (.jpg, .png) + prefix (products/) 篩選 S3 ObjectCreated 事件並觸發 Step Functions。
 
 ##### Event-Driven Prototype — Step Functions 執行成功
 
-![Event-Driven Step Functions](docs/screenshots/masked/phase4-event-driven-sfn-succeeded.png)
+![Event-Driven Step Functions](docs/screenshots/masked/phase4/phase4-event-driven-sfn-succeeded.png)
 
 > Event-Driven Prototype Step Functions 執行成功。S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter 所有狀態成功。
 
 ##### CloudFormation Phase 4 堆疊
 
-![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
+![CloudFormation Phase 4](docs/screenshots/masked/phase4/phase4-cloudformation-stacks.png)
 
 > Phase 4 CloudFormation 堆疊。UC9 擴充（Task Token Store + Real-time Endpoint）及 Event-Driven Prototype CREATE_COMPLETE。
 
@@ -394,23 +394,23 @@ Phase 5 的所有功能同樣透過 CloudFormation Conditions 進行可選控制
 
 ##### SageMaker Serverless Inference Endpoint
 
-![SageMaker Serverless Endpoint 設定](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+![SageMaker Serverless Endpoint 設定](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-settings.png)
 
 > SageMaker Serverless Inference Endpoint 設定。記憶體 4096 MB，最大並行 5。
 
 ##### CloudWatch Billing Alarms（3 級成本警報）
 
-![CloudWatch Billing Alarms](docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+![CloudWatch Billing Alarms](docs/screenshots/masked/phase5/phase5-cloudwatch-billing-alarms.png)
 
 > Warning / Critical / Emergency 3 級 Billing Alarms。超閾值時 SNS 通知。
 
 ##### DynamoDB Global Table（Multi-Region）
 
-![DynamoDB Global Table](docs/screenshots/masked/phase5-dynamodb-global-table.png)
+![DynamoDB Global Table](docs/screenshots/masked/phase5/phase5-dynamodb-global-table.png)
 
 > DynamoDB Global Table 設定。Multi-Region 複製已啟用。
 
-![DynamoDB Global Replicas](docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+![DynamoDB Global Replicas](docs/screenshots/masked/phase5/phase5-dynamodb-global-replicas.png)
 
 > Global Table 副本設定。多區域間資料同步。
 
