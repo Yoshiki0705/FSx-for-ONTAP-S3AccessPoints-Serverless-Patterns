@@ -12,10 +12,12 @@
 
 ### 前提条件
 
-- Python 3.12+
+- Python 3.13+
 - AWS CLI v2
 - ruff（リンター）
 - cfn-lint（CloudFormation テンプレート検証）
+- SAM CLI v1.93.0+（ローカルテスト用、オプション）
+- Docker or Finch（ローカルテスト用、オプション）
 
 ### 開発フロー
 
@@ -74,9 +76,10 @@ git push origin feature/your-feature-name
 
 - [ ] テストが全て通る (`pytest shared/tests/ -v`)
 - [ ] リンターエラーなし (`ruff check .`)
-- [ ] CloudFormation テンプレートが有効 (`cfn-lint */template.yaml`)
+- [ ] CloudFormation テンプレートが有効 (`cfn-lint */template-deploy.yaml`)
 - [ ] 機密情報（アカウント ID、IP アドレス等）が含まれていない
 - [ ] 必要に応じてドキュメントを更新
+- [ ] 新しいパラメータを追加した場合、全 UC の README（8 言語）に反映
 
 ## 新しいユースケースの追加
 
