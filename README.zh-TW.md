@@ -35,60 +35,94 @@
 
 ```mermaid
 graph TB
-    subgraph "排程層"
-        EBS[EventBridge Scheduler<br/>cron/rate 運算式]
+    subgraph "Scheduling Layer"
+        EBS[EventBridge Scheduler<br/>cron/rate expressions]
+        KDS[Kinesis Data Streams<br/>Near-real-time detection<br/>UC11 opt-in]
     end
 
-    subgraph "編排層"
+    subgraph "Orchestration Layer"
         SFN[Step Functions<br/>State Machine]
     end
 
-    subgraph "運算層（VPC 內）"
-        DL[Discovery Lambda<br/>物件偵測]
-        PL[Processing Lambda<br/>AI/ML 處理]
-        RL[Report Lambda<br/>報告產生與通知]
+    subgraph "Compute Layer"
+        DL[Discovery Lambda<br/>Object Detection<br/>Within VPC]
+        PL[Processing Lambda<br/>AI/ML Processing<br/>Map State parallel]
+        RL[Report Lambda<br/>Report Generation & Notification]
     end
 
-    subgraph "資料來源"
-        FSXN[FSx ONTAP Volume]
-        S3AP[S3 Access Point]
-        ONTAP_API[ONTAP REST API]
+    subgraph "Data Sources"
+        FSXN[FSx for NetApp ONTAP<br/>Volume]
+        S3AP[S3 Access Point<br/>ListObjectsV2 / GetObject /<br/>Range / PutObject]
+        ONTAP_API[ONTAP REST API<br/>ACL / Volume Metadata]
     end
 
-    subgraph "AWS 服務"
+    subgraph "AI/ML Services"
+        BEDROCK[Amazon Bedrock<br/>Nova / Claude]
+        TEXTRACT[Amazon Textract<br/>OCR ⚠️ Cross-Region]
+        COMPREHEND[Amazon Comprehend /<br/>Comprehend Medical ⚠️]
+        REKOGNITION[Amazon Rekognition<br/>Image Analysis]
+        SAGEMAKER[Amazon SageMaker<br/>Batch / Real-time /<br/>Serverless Inference<br/>UC9 opt-in]
+    end
+
+    subgraph "Data Analytics"
+        GLUE[AWS Glue<br/>Data Catalog]
+        ATHENA[Amazon Athena<br/>SQL Analytics]
+    end
+
+    subgraph "Storage & State Management"
+        S3OUT[S3 Output Bucket<br/>SSE-KMS Encryption]
+        DDB[DynamoDB<br/>Task Token Store<br/>UC9 opt-in]
         SM[Secrets Manager]
-        S3OUT[S3 Output Bucket<br/>SSE-KMS 加密]
-        BEDROCK[Amazon Bedrock]
-        TEXTRACT[Amazon Textract]
-        COMPREHEND[Amazon Comprehend]
-        REKOGNITION[Amazon Rekognition]
-        ATHENA[Amazon Athena]
-        SNS[SNS Topic]
     end
 
-    subgraph "VPC Endpoints（選用）"
-        VPCE_S3[S3 Gateway EP<br/>免費]
+    subgraph "Notifications"
+        SNS[SNS Topic<br/>Email / Slack]
+    end
+
+    subgraph "Observability (Phase 3+)"
+        XRAY[AWS X-Ray<br/>Distributed Tracing]
+        CW[CloudWatch<br/>EMF Metrics /<br/>Dashboards]
+    end
+
+    subgraph "VPC Endpoints (Optional)"
+        VPCE_S3[S3 Gateway EP<br/>Free]
         VPCE_IF[Interface EPs<br/>Secrets Manager / FSx /<br/>CloudWatch / SNS]
     end
 
-    EBS -->|Trigger| SFN
+    EBS -->|Periodic trigger| SFN
+    KDS -->|Real-time| SFN
     SFN -->|Step 1| DL
     SFN -->|Step 2 Map| PL
     SFN -->|Step 3| RL
 
     DL -->|ListObjectsV2| S3AP
     DL -->|REST API| ONTAP_API
-    PL -->|GetObject| S3AP
+    PL -->|GetObject / Range| S3AP
     PL -->|PutObject| S3OUT
+    PL --> BEDROCK
+    PL --> TEXTRACT
+    PL --> COMPREHEND
+    PL --> REKOGNITION
+    PL --> SAGEMAKER
+    PL --> GLUE
+    PL --> ATHENA
 
     S3AP -.->|Exposes| FSXN
+    GLUE -.-> ATHENA
 
     DL --> VPCE_S3
     DL --> VPCE_IF --> SM
     RL --> SNS
+
+    SFN --> XRAY
+    DL --> CW
+    PL --> CW
+    RL --> CW
+
+    SAGEMAKER -.-> DDB
 ```
 
-> 圖示為面向正式環境的 VPC 內 Lambda 配置。對於 PoC / 展示用途，如果 S3 AP 的 network origin 為 `internet`，也可以選擇 VPC 外 Lambda 配置。詳情請參閱下方「Lambda 部署選擇指南」。
+> 此圖展示了涵蓋所有階段（Phase 1-5）服務的完整架構。SageMaker、Kinesis 和 DynamoDB 透過 CloudFormation Conditions 進行選擇性控制，未啟用時不會產生額外費用。對於 PoC/演示用途，也可以選擇 VPC 外部的 Lambda 配置。
 
 ### 工作流程概述
 
