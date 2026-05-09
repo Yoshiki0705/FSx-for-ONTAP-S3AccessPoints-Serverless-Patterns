@@ -103,14 +103,56 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | Autonomous driving data storage (video & LiDAR) |
+| FSx for NetApp ONTAP | Autonomous driving data storage (video/LiDAR) |
 | S3 Access Points | Serverless access to ONTAP volumes |
 | EventBridge Scheduler | Periodic trigger |
 | Step Functions | Workflow orchestration |
-| Lambda | Compute (Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke) |
+| Lambda (Python 3.13) | Compute (Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke) |
+| Lambda SnapStart | Cold start reduction (opt-in, Phase 6A) |
 | Amazon Rekognition | Object detection (vehicles, pedestrians, traffic signs) |
-| Amazon SageMaker | Batch Transform (point cloud segmentation inference) |
+| Amazon SageMaker | Inference (4-way routing: Batch / Serverless / Provisioned / Components) |
+| SageMaker Inference Components | True scale-to-zero (MinInstanceCount=0, Phase 6B) |
 | Amazon Bedrock | Annotation suggestion generation |
 | SNS | Processing completion notification |
 | Secrets Manager | ONTAP REST API credential management |
 | CloudWatch + X-Ray | Observability |
+| CloudFormation Guard Hooks | Deploy-time policy enforcement (Phase 6B) |
+
+---
+
+## Inference Routing (Phase 4/5/6B)
+
+UC9 supports 4-way inference routing. Select via `InferenceType` parameter:
+
+| Path | Condition | Latency | Idle Cost |
+|------|-----------|---------|-----------|
+| Batch Transform | `InferenceType=none` or `file_count >= threshold` | Minutes–hours | $0 |
+| Serverless Inference | `InferenceType=serverless` | 6–45s (cold) | $0 |
+| Provisioned Endpoint | `InferenceType=provisioned` | Milliseconds | ~$140/mo |
+| **Inference Components** | `InferenceType=components` | 2–5 min (scale-from-zero) | **$0** |
+
+### Inference Components (Phase 6B)
+
+Inference Components achieve true scale-to-zero with `MinInstanceCount=0`:
+
+```
+SageMaker Endpoint (always exists, $0 idle cost)
+  └── Inference Component (MinInstanceCount=0)
+       ├── [Idle] → 0 instances → $0/hour
+       ├── [Request arrives] → Auto Scaling → Instance launches (2–5 min)
+       └── [Idle timeout] → Scale-in → 0 instances
+```
+
+Enable: `EnableInferenceComponents=true` + `InferenceType=components`
+
+---
+
+## Lambda SnapStart (Phase 6A)
+
+All Lambda functions support opt-in SnapStart:
+
+- **Enable**: Stack update with `EnableSnapStart=true` + `scripts/enable-snapstart.sh` for version publishing
+- **Effect**: Cold start 1–3s → 100–500ms
+- **Limitation**: Applies to Published Versions only (not $LATEST)
+
+Details: [SnapStart Guide](../../docs/snapstart-guide.md)

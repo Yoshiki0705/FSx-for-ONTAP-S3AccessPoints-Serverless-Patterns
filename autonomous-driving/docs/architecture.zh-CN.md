@@ -103,14 +103,56 @@ flowchart TB
 
 | 服务 | 角色 |
 |------|------|
-| FSx for NetApp ONTAP | 自动驾驶数据存储（视频和 LiDAR） |
+| FSx for NetApp ONTAP | 自动驾驶数据存储（视频/LiDAR） |
 | S3 Access Points | 对 ONTAP 卷的无服务器访问 |
 | EventBridge Scheduler | 定期触发器 |
 | Step Functions | 工作流编排 |
-| Lambda | 计算（Discovery、Frame Extraction、Point Cloud QC、Annotation Manager、SageMaker Invoke） |
+| Lambda (Python 3.13) | 计算（Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke） |
+| Lambda SnapStart | 冷启动减少（可选启用，Phase 6A） |
 | Amazon Rekognition | 目标检测（车辆、行人、交通标志） |
-| Amazon SageMaker | Batch Transform（点云分割推理） |
+| Amazon SageMaker | 推理（4-way 路由: Batch / Serverless / Provisioned / Components） |
+| SageMaker Inference Components | 真正的 scale-to-zero（MinInstanceCount=0，Phase 6B） |
 | Amazon Bedrock | 标注建议生成 |
 | SNS | 处理完成通知 |
 | Secrets Manager | ONTAP REST API 凭证管理 |
 | CloudWatch + X-Ray | 可观测性 |
+| CloudFormation Guard Hooks | 部署时策略强制（Phase 6B） |
+
+---
+
+## 推理路由 (Phase 4/5/6B)
+
+UC9 支持 4-way 推理路由。通过 `InferenceType` 参数选择：
+
+| 路径 | 条件 | 延迟 | 空闲成本 |
+|------|------|------|----------|
+| Batch Transform | `InferenceType=none` or `file_count >= threshold` | 分钟~小时 | $0 |
+| Serverless Inference | `InferenceType=serverless` | 6–45秒 (cold) | $0 |
+| Provisioned Endpoint | `InferenceType=provisioned` | 毫秒 | ~$140/月 |
+| **Inference Components** | `InferenceType=components` | 2–5分钟 (scale-from-zero) | **$0** |
+
+### Inference Components (Phase 6B)
+
+Inference Components 通过 `MinInstanceCount=0` 实现真正的 scale-to-zero：
+
+```
+SageMaker Endpoint (始终存在，空闲成本 $0)
+  └── Inference Component (MinInstanceCount=0)
+       ├── [空闲] → 0 实例 → $0/小时
+       ├── [请求到达] → Auto Scaling → 实例启动 (2–5分钟)
+       └── [空闲超时] → Scale-in → 0 实例
+```
+
+启用: `EnableInferenceComponents=true` + `InferenceType=components`
+
+---
+
+## Lambda SnapStart (Phase 6A)
+
+所有 Lambda 函数支持可选启用 SnapStart：
+
+- **启用**: 使用 `EnableSnapStart=true` 更新堆栈 + `scripts/enable-snapstart.sh` 发布版本
+- **效果**: 冷启动 1–3秒 → 100–500ms
+- **限制**: 仅适用于 Published Versions（不适用于 $LATEST）
+
+详情: [SnapStart 指南](../../docs/snapstart-guide.md)

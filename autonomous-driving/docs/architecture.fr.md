@@ -103,14 +103,56 @@ flowchart TB
 
 | Service | Rôle |
 |---------|------|
-| FSx for NetApp ONTAP | Stockage de données de conduite autonome (vidéo et LiDAR) |
+| FSx for NetApp ONTAP | Stockage de données de conduite autonome (vidéo/LiDAR) |
 | S3 Access Points | Accès serverless aux volumes ONTAP |
 | EventBridge Scheduler | Déclencheur périodique |
 | Step Functions | Orchestration du workflow |
-| Lambda | Calcul (Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke) |
+| Lambda (Python 3.13) | Calcul (Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke) |
+| Lambda SnapStart | Réduction du démarrage à froid (opt-in, Phase 6A) |
 | Amazon Rekognition | Détection d'objets (véhicules, piétons, panneaux de signalisation) |
-| Amazon SageMaker | Batch Transform (inférence de segmentation du nuage de points) |
+| Amazon SageMaker | Inférence (routage 4 voies : Batch / Serverless / Provisioned / Components) |
+| SageMaker Inference Components | Véritable scale-to-zero (MinInstanceCount=0, Phase 6B) |
 | Amazon Bedrock | Génération de suggestions d'annotation |
 | SNS | Notification de fin de traitement |
 | Secrets Manager | Gestion des identifiants de l'API REST ONTAP |
 | CloudWatch + X-Ray | Observabilité |
+| CloudFormation Guard Hooks | Application des politiques au déploiement (Phase 6B) |
+
+---
+
+## Routage d'inférence (Phase 4/5/6B)
+
+UC9 prend en charge le routage d'inférence à 4 voies. Sélection via le paramètre `InferenceType` :
+
+| Chemin | Condition | Latence | Coût au repos |
+|--------|-----------|---------|---------------|
+| Batch Transform | `InferenceType=none` or `file_count >= threshold` | Minutes–heures | $0 |
+| Serverless Inference | `InferenceType=serverless` | 6–45s (cold) | $0 |
+| Provisioned Endpoint | `InferenceType=provisioned` | Millisecondes | ~$140/mois |
+| **Inference Components** | `InferenceType=components` | 2–5 min (scale-from-zero) | **$0** |
+
+### Inference Components (Phase 6B)
+
+Les Inference Components atteignent un véritable scale-to-zero avec `MinInstanceCount=0` :
+
+```
+SageMaker Endpoint (existe toujours, coût au repos $0)
+  └── Inference Component (MinInstanceCount=0)
+       ├── [Au repos] → 0 instance → $0/heure
+       ├── [Requête arrive] → Auto Scaling → Instance démarre (2–5 min)
+       └── [Délai d'inactivité] → Scale-in → 0 instance
+```
+
+Activation : `EnableInferenceComponents=true` + `InferenceType=components`
+
+---
+
+## Lambda SnapStart (Phase 6A)
+
+Toutes les fonctions Lambda prennent en charge SnapStart en opt-in :
+
+- **Activation** : Mise à jour de la stack avec `EnableSnapStart=true` + `scripts/enable-snapstart.sh` pour la publication de version
+- **Effet** : Démarrage à froid 1–3s → 100–500ms
+- **Limitation** : S'applique uniquement aux Published Versions (pas à $LATEST)
+
+Détails : [Guide SnapStart](../../docs/snapstart-guide.md)

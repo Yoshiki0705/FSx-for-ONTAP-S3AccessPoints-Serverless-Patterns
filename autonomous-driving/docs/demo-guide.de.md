@@ -44,10 +44,24 @@ Sensordatenerfassung → Formatkonvertierung → Frame-Klassifikation → Annota
 | Component | Role |
 |-----------|------|
 | Step Functions | Workflow-Orchestrierung |
-| Lambda (Format Converter) | Sensordaten-Formatkonvertierung |
-| Lambda (Frame Classifier) | KI-gestützte Frame-Klassifikation |
-| Lambda (Annotation Generator) | Automatische Annotation-Generierung |
-| Amazon Athena | Dataset-Statistikanalyse |
+| Lambda (Python 3.13) | Sensordaten-Qualitätsvalidierung, Szenenklassifikation, Kataloggenerierung |
+| Lambda SnapStart | Kaltstart-Reduzierung (`EnableSnapStart=true` Opt-in) |
+| SageMaker (4-way routing) | Inferenz (Batch / Serverless / Provisioned / Inference Components) |
+| SageMaker Inference Components | Echtes Scale-to-Zero (`EnableInferenceComponents=true`) |
+| Amazon Bedrock | Szenenklassifikation / Annotationsvorschläge |
+| Amazon Athena | Metadatensuche und -aggregation |
+| CloudFormation Guard Hooks | Sicherheitsrichtlinien-Durchsetzung bei Bereitstellung |
+
+### Lokaler Test (Phase 6A)
+
+```bash
+# Lokaler Test mit SAM CLI
+sam local invoke \
+  --template autonomous-driving/template-deploy.yaml \
+  --event events/uc09-autonomous-driving/discovery-event.json \
+  --env-vars events/env.json \
+  DiscoveryFunction
+```
 
 ---
 

@@ -139,10 +139,24 @@ Driving Data       Data Validation    Scene Classification   Dataset
 | Component | Role |
 |-----------|------|
 | Step Functions | Workflow orchestration |
-| Lambda (Data Validator) | Sensor data quality verification |
-| Lambda (Scene Classifier) | Scene classification via Bedrock |
-| Lambda (Catalog Builder) | Dataset catalog generation |
-| Amazon Athena | Metadata search/aggregation |
+| Lambda (Python 3.13) | Sensor data quality validation, scene classification, catalog generation |
+| Lambda SnapStart | Cold start reduction (`EnableSnapStart=true` opt-in) |
+| SageMaker (4-way routing) | Inference (Batch / Serverless / Provisioned / Inference Components) |
+| SageMaker Inference Components | True scale-to-zero (`EnableInferenceComponents=true`) |
+| Amazon Bedrock | Scene classification / annotation suggestions |
+| Amazon Athena | Metadata search and aggregation |
+| CloudFormation Guard Hooks | Deploy-time security policy enforcement |
+
+### Local Testing (Phase 6A)
+
+```bash
+# Local test with SAM CLI
+sam local invoke \
+  --template autonomous-driving/template-deploy.yaml \
+  --event events/uc09-autonomous-driving/discovery-event.json \
+  --env-vars events/env.json \
+  DiscoveryFunction
+```
 
 ### Fallback
 

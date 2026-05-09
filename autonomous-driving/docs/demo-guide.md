@@ -139,10 +139,24 @@
 | コンポーネント | 役割 |
 |--------------|------|
 | Step Functions | ワークフローオーケストレーション |
-| Lambda (Data Validator) | センサーデータ品質検証 |
-| Lambda (Scene Classifier) | Bedrock によるシーン分類 |
-| Lambda (Catalog Builder) | データセットカタログ生成 |
+| Lambda (Python 3.13) | センサーデータ品質検証、シーン分類、カタログ生成 |
+| Lambda SnapStart | コールドスタート削減（`EnableSnapStart=true` でオプトイン） |
+| SageMaker (4-way routing) | 推論（Batch / Serverless / Provisioned / Inference Components） |
+| SageMaker Inference Components | 真の scale-to-zero（`EnableInferenceComponents=true`） |
+| Amazon Bedrock | シーン分類・アノテーション提案 |
 | Amazon Athena | メタデータ検索・集計 |
+| CloudFormation Guard Hooks | デプロイ時セキュリティポリシー強制 |
+
+### ローカルテスト (Phase 6A)
+
+```bash
+# SAM CLI でローカルテスト
+sam local invoke \
+  --template autonomous-driving/template-deploy.yaml \
+  --event events/uc09-autonomous-driving/discovery-event.json \
+  --env-vars events/env.json \
+  DiscoveryFunction
+```
 
 ### フォールバック
 

@@ -44,10 +44,24 @@
 | Component | Role |
 |-----------|------|
 | Step Functions | 워크플로우 오케스트레이션 |
-| Lambda (Format Converter) | 센서 데이터 포맷 변환 |
-| Lambda (Frame Classifier) | AI 기반 프레임 분류 |
-| Lambda (Annotation Generator) | 어노테이션 자동 생성 |
-| Amazon Athena | 데이터셋 통계 분석 |
+| Lambda (Python 3.13) | 센서 데이터 품질 검증, 씬 분류, 카탈로그 생성 |
+| Lambda SnapStart | 콜드 스타트 감소 (`EnableSnapStart=true` 옵트인) |
+| SageMaker (4-way routing) | 추론 (Batch / Serverless / Provisioned / Inference Components) |
+| SageMaker Inference Components | 진정한 scale-to-zero (`EnableInferenceComponents=true`) |
+| Amazon Bedrock | 씬 분류 / 어노테이션 제안 |
+| Amazon Athena | 메타데이터 검색 및 집계 |
+| CloudFormation Guard Hooks | 배포 시 보안 정책 적용 |
+
+### 로컬 테스트 (Phase 6A)
+
+```bash
+# SAM CLI로 로컬 테스트
+sam local invoke \
+  --template autonomous-driving/template-deploy.yaml \
+  --event events/uc09-autonomous-driving/discovery-event.json \
+  --env-vars events/env.json \
+  DiscoveryFunction
+```
 
 ---
 

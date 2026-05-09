@@ -103,14 +103,56 @@ flowchart TB
 
 | 服務 | 角色 |
 |------|------|
-| FSx for NetApp ONTAP | 自動駕駛資料儲存（影片和 LiDAR） |
+| FSx for NetApp ONTAP | 自動駕駛資料儲存（影片/LiDAR） |
 | S3 Access Points | 對 ONTAP 磁碟區的無伺服器存取 |
 | EventBridge Scheduler | 定期觸發器 |
 | Step Functions | 工作流程編排 |
-| Lambda | 運算（Discovery、Frame Extraction、Point Cloud QC、Annotation Manager、SageMaker Invoke） |
+| Lambda (Python 3.13) | 運算（Discovery, Frame Extraction, Point Cloud QC, Annotation Manager, SageMaker Invoke） |
+| Lambda SnapStart | 冷啟動減少（可選啟用，Phase 6A） |
 | Amazon Rekognition | 物件偵測（車輛、行人、交通標誌） |
-| Amazon SageMaker | Batch Transform（點雲分割推論） |
+| Amazon SageMaker | 推論（4-way 路由: Batch / Serverless / Provisioned / Components） |
+| SageMaker Inference Components | 真正的 scale-to-zero（MinInstanceCount=0，Phase 6B） |
 | Amazon Bedrock | 標註建議產生 |
 | SNS | 處理完成通知 |
 | Secrets Manager | ONTAP REST API 憑證管理 |
 | CloudWatch + X-Ray | 可觀測性 |
+| CloudFormation Guard Hooks | 部署時策略強制（Phase 6B） |
+
+---
+
+## 推論路由 (Phase 4/5/6B)
+
+UC9 支援 4-way 推論路由。透過 `InferenceType` 參數選擇：
+
+| 路徑 | 條件 | 延遲 | 閒置成本 |
+|------|------|------|----------|
+| Batch Transform | `InferenceType=none` or `file_count >= threshold` | 分鐘~小時 | $0 |
+| Serverless Inference | `InferenceType=serverless` | 6–45秒 (cold) | $0 |
+| Provisioned Endpoint | `InferenceType=provisioned` | 毫秒 | ~$140/月 |
+| **Inference Components** | `InferenceType=components` | 2–5分鐘 (scale-from-zero) | **$0** |
+
+### Inference Components (Phase 6B)
+
+Inference Components 透過 `MinInstanceCount=0` 實現真正的 scale-to-zero：
+
+```
+SageMaker Endpoint (始終存在，閒置成本 $0)
+  └── Inference Component (MinInstanceCount=0)
+       ├── [閒置] → 0 執行個體 → $0/小時
+       ├── [請求到達] → Auto Scaling → 執行個體啟動 (2–5分鐘)
+       └── [閒置逾時] → Scale-in → 0 執行個體
+```
+
+啟用: `EnableInferenceComponents=true` + `InferenceType=components`
+
+---
+
+## Lambda SnapStart (Phase 6A)
+
+所有 Lambda 函數支援可選啟用 SnapStart：
+
+- **啟用**: 使用 `EnableSnapStart=true` 更新堆疊 + `scripts/enable-snapstart.sh` 發佈版本
+- **效果**: 冷啟動 1–3秒 → 100–500ms
+- **限制**: 僅適用於 Published Versions（不適用於 $LATEST）
+
+詳情: [SnapStart 指南](../../docs/snapstart-guide.md)

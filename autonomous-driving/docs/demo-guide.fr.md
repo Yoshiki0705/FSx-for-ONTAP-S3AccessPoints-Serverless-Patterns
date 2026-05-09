@@ -44,10 +44,24 @@ Collecte capteurs → Conversion format → Classification frames → Générati
 | Component | Role |
 |-----------|------|
 | Step Functions | Orchestration du workflow |
-| Lambda (Format Converter) | Conversion format données capteurs |
-| Lambda (Frame Classifier) | Classification IA des frames |
-| Lambda (Annotation Generator) | Génération automatique d'annotations |
-| Amazon Athena | Analyse statistique du dataset |
+| Lambda (Python 3.13) | Validation qualité des données capteurs, classification de scènes, génération de catalogue |
+| Lambda SnapStart | Réduction du démarrage à froid (`EnableSnapStart=true` opt-in) |
+| SageMaker (4-way routing) | Inférence (Batch / Serverless / Provisioned / Inference Components) |
+| SageMaker Inference Components | Véritable scale-to-zero (`EnableInferenceComponents=true`) |
+| Amazon Bedrock | Classification de scènes / suggestions d'annotation |
+| Amazon Athena | Recherche et agrégation de métadonnées |
+| CloudFormation Guard Hooks | Application des politiques de sécurité au déploiement |
+
+### Test local (Phase 6A)
+
+```bash
+# Test local avec SAM CLI
+sam local invoke \
+  --template autonomous-driving/template-deploy.yaml \
+  --event events/uc09-autonomous-driving/discovery-event.json \
+  --env-vars events/env.json \
+  DiscoveryFunction
+```
 
 ---
 

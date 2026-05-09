@@ -44,10 +44,24 @@
 | Component | Role |
 |-----------|------|
 | Step Functions | 工作流编排 |
-| Lambda (Format Converter) | 传感器数据格式转换 |
-| Lambda (Frame Classifier) | AI 驱动帧分类 |
-| Lambda (Annotation Generator) | 标注自动生成 |
-| Amazon Athena | 数据集统计分析 |
+| Lambda (Python 3.13) | 传感器数据质量验证、场景分类、目录生成 |
+| Lambda SnapStart | 冷启动减少（`EnableSnapStart=true` 可选启用） |
+| SageMaker (4-way routing) | 推理（Batch / Serverless / Provisioned / Inference Components） |
+| SageMaker Inference Components | 真正的 scale-to-zero（`EnableInferenceComponents=true`） |
+| Amazon Bedrock | 场景分类 / 标注建议 |
+| Amazon Athena | 元数据搜索与聚合 |
+| CloudFormation Guard Hooks | 部署时安全策略强制 |
+
+### 本地测试 (Phase 6A)
+
+```bash
+# 使用 SAM CLI 进行本地测试
+sam local invoke \
+  --template autonomous-driving/template-deploy.yaml \
+  --event events/uc09-autonomous-driving/discovery-event.json \
+  --env-vars events/env.json \
+  DiscoveryFunction
+```
 
 ---
 
