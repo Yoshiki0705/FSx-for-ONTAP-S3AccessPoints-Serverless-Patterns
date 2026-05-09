@@ -238,25 +238,25 @@ Phase 5의 모든 기능도 CloudFormation Conditions로 옵트인 제어되며,
 
 #### 전체 5 UC의 Step Functions 배포・실행 확인
 
-![Step Functions 전체 워크플로우](docs/screenshots/masked/step-functions-all-succeeded.png)
+![Step Functions 전체 워크플로우](docs/screenshots/masked/phase1/phase1-step-functions-all-succeeded.png)
 
 > UC1・UC3은 완전한 E2E 검증, UC2・UC4・UC5는 CloudFormation 배포와 주요 컴포넌트의 동작 확인을 실시했습니다. 리전 제약이 있는 AI/ML 서비스(Textract, Comprehend Medical)를 사용하는 경우 지원 리전으로의 크로스 리전 호출이 필요하므로, 데이터 레지던시 및 컴플라이언스 요건을 확인하세요.
 
 #### Phase 2: 전체 9 UC CloudFormation 배포・Step Functions 실행 성공
 
-![CloudFormation Phase 2 스택](docs/screenshots/masked/cloudformation-phase2-stacks.png)
+![CloudFormation Phase 2 스택](docs/screenshots/masked/phase2/phase2-cloudformation-phase2-stacks.png)
 
 > 전체 9 스택(UC6–UC14)이 CREATE_COMPLETE / UPDATE_COMPLETE. 총 205 리소스.
 
-![Step Functions Phase 2 워크플로우](docs/screenshots/masked/step-functions-phase2-all-workflows.png)
+![Step Functions Phase 2 워크플로우](docs/screenshots/masked/phase2/phase2-step-functions-phase2-all-workflows.png)
 
 > 전체 9 워크플로우 활성화. 테스트 데이터 투입 후 E2E 실행에서 전체 SUCCEEDED 확인.
 
-![UC6 실행 Graph View](docs/screenshots/masked/step-functions-uc6-execution-graph.png)
+![UC6 실행 Graph View](docs/screenshots/masked/phase2/phase2-step-functions-uc6-execution-graph.png)
 
 > UC6(반도체 EDA) Step Functions 실행 상세. Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration 전체 스테이트 성공.
 
-![EventBridge Phase 2 스케줄](docs/screenshots/masked/eventbridge-phase2-schedules.png)
+![EventBridge Phase 2 스케줄](docs/screenshots/masked/phase2/phase2-eventbridge-phase2-schedules.png)
 
 > 전체 9 UC의 EventBridge Scheduler 스케줄(rate(1 hour))이 활성화.
 
@@ -264,51 +264,51 @@ Phase 5의 모든 기능도 CloudFormation Conditions로 옵트인 제어되며,
 
 ##### Amazon Bedrock — 모델 카탈로그
 
-![Bedrock 모델 카탈로그](docs/screenshots/masked/bedrock-model-catalog.png)
+![Bedrock 모델 카탈로그](docs/screenshots/masked/phase1/phase1-bedrock-model-catalog.png)
 
 ##### Amazon Rekognition — 라벨 검출
 
-![Rekognition 라벨 검출](docs/screenshots/masked/rekognition-label-detection.png)
+![Rekognition 라벨 검출](docs/screenshots/masked/phase1/phase1-rekognition-label-detection.png)
 
 ##### Amazon Comprehend — 엔티티 검출
 
-![Comprehend 콘솔](docs/screenshots/masked/comprehend-console.png)
+![Comprehend 콘솔](docs/screenshots/masked/phase1/phase1-comprehend-console.png)
 
 #### AI/ML 서비스 화면 (Phase 2)
 
 ##### Amazon Bedrock — 모델 카탈로그 (UC6: 리포트 생성)
 
-![Bedrock 모델 카탈로그 Phase 2](docs/screenshots/masked/bedrock-model-catalog-phase2.png)
+![Bedrock 모델 카탈로그 Phase 2](docs/screenshots/masked/phase2/phase2-bedrock-model-catalog.png)
 
 > UC6(반도체 EDA)에서 Nova Lite 모델을 사용한 DRC 리포트 생성에 활용.
 
 ##### Amazon Athena — 쿼리 실행 이력 (UC6: 메타데이터 집계)
 
-![Athena 쿼리 이력 Phase 2](docs/screenshots/masked/athena-query-history-phase2.png)
+![Athena 쿼리 이력 Phase 2](docs/screenshots/masked/phase2/phase2-athena-query-history.png)
 
 > UC6의 Step Functions 워크플로우 내에서 Athena 쿼리(cell_count, bbox, naming, invalid) 실행.
 
 ##### Amazon Rekognition — 라벨 검출 (UC11: 상품 이미지 태깅)
 
-![Rekognition 라벨 검출 Phase 2](docs/screenshots/masked/rekognition-label-detection-phase2.png)
+![Rekognition 라벨 검출 Phase 2](docs/screenshots/masked/phase2/phase2-rekognition-label-detection.png)
 
 > UC11(소매 카탈로그)에서 상품 이미지로부터 15개 라벨(Lighting 98.5%, Light 96.0%, Purple 92.0% 등) 검출.
 
 ##### Amazon Textract — 문서 OCR (UC12: 배송 전표 읽기)
 
-![Textract 문서 분석 Phase 2](docs/screenshots/masked/textract-analyze-document-phase2.png)
+![Textract 문서 분석 Phase 2](docs/screenshots/masked/phase2/phase2-textract-analyze-document.png)
 
 > UC12(물류 OCR)에서 배송 전표 PDF로부터 텍스트 추출. Cross-Region(us-east-1) 경유로 실행.
 
 ##### Amazon Comprehend Medical — 의료 엔티티 검출 (UC7: 게노믹스 분석)
 
-![Comprehend Medical 리얼타임 분석 Phase 2](docs/screenshots/masked/comprehend-medical-genomics-analysis-phase2.png)
+![Comprehend Medical 리얼타임 분석 Phase 2](docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis.png)
 
 > UC7(게노믹스 파이프라인)에서 VCF 분석 결과로부터 유전자명(GC)을 DetectEntitiesV2 API로 추출. Cross-Region(us-east-1) 경유로 실행.
 
 ##### Lambda 함수 목록 (Phase 2)
 
-![Lambda 함수 목록 Phase 2](docs/screenshots/masked/lambda-phase2-functions.png)
+![Lambda 함수 목록 Phase 2](docs/screenshots/masked/phase2/phase2-lambda-phase2-functions.png)
 
 > Phase 2의 전체 Lambda 함수(Discovery, Processing, Report 등)가 정상 배포 완료.
 
@@ -316,39 +316,39 @@ Phase 5의 모든 기능도 CloudFormation Conditions로 옵트인 제어되며,
 
 ##### Step Functions E2E 실행 성공 (UC11)
 
-![Step Functions Phase 3 실행 성공](docs/screenshots/masked/phase3-step-functions-uc11-succeeded.png)
+![Step Functions Phase 3 실행 성공](docs/screenshots/masked/phase3/phase3-step-functions-uc11-succeeded.png)
 
 > UC11 Step Functions 워크플로우 E2E 실행 성공. Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck 전체 스테이트 성공 (8.974초). X-Ray 트레이스 생성 확인.
 
 ##### Kinesis Data Streams (UC11 스트리밍 모드)
 
-![Kinesis Data Stream](docs/screenshots/masked/phase3-kinesis-stream-active.png)
+![Kinesis Data Stream](docs/screenshots/masked/phase3/phase3-kinesis-stream-active.png)
 
 > UC11 Kinesis Data Stream (1 샤드, 프로비저닝 모드) 활성 상태. 모니터링 메트릭 표시.
 
 ##### DynamoDB 상태 관리 테이블 (UC11 변경 감지)
 
-![DynamoDB State Tables](docs/screenshots/masked/phase3-dynamodb-state-tables.png)
+![DynamoDB State Tables](docs/screenshots/masked/phase3/phase3-dynamodb-state-tables.png)
 
 > UC11 변경 감지용 DynamoDB 테이블. streaming-state (상태 관리) 및 streaming-dead-letter (DLQ) 테이블.
 
 ##### 관측 가능성 스택
 
-![X-Ray Traces](docs/screenshots/masked/phase3-xray-traces.png)
+![X-Ray Traces](docs/screenshots/masked/phase3/phase3-xray-traces.png)
 
 > X-Ray 트레이스. Stream Producer Lambda 1분 간격 실행 트레이스 (전체 OK, 레이턴시 7-11ms).
 
-![CloudWatch Dashboard](docs/screenshots/masked/phase3-cloudwatch-dashboard.png)
+![CloudWatch Dashboard](docs/screenshots/masked/phase3/phase3-cloudwatch-dashboard.png)
 
 > 전체 14 UC 횡단 CloudWatch 대시보드. Step Functions 성공/실패, Lambda 에러율, EMF 커스텀 메트릭.
 
-![CloudWatch Alarms](docs/screenshots/masked/phase3-cloudwatch-alarms.png)
+![CloudWatch Alarms](docs/screenshots/masked/phase3/phase3-cloudwatch-alarms.png)
 
 > Phase 3 알림 자동화. Step Functions 실패율, Lambda 에러율, Kinesis Iterator Age 임계값 알람 (전체 OK 상태).
 
 ##### S3 Access Point 확인
 
-![S3 AP Available](docs/screenshots/masked/phase3-s3ap-available.png)
+![S3 AP Available](docs/screenshots/masked/phase3/phase3-s3ap-available.png)
 
 > FSx for ONTAP S3 Access Point (fsxn-eda-s3ap) Available 상태. FSx 콘솔 볼륨 S3 탭에서 확인.
 
@@ -356,37 +356,37 @@ Phase 5의 모든 기능도 CloudFormation Conditions로 옵트인 제어되며,
 
 ##### DynamoDB Task Token Store
 
-![DynamoDB Task Token Store](docs/screenshots/masked/phase4-dynamodb-task-token-store.png)
+![DynamoDB Task Token Store](docs/screenshots/masked/phase4/phase4-dynamodb-task-token-store.png)
 
 > DynamoDB Task Token Store 테이블. 8자리 hex Correlation ID를 파티션 키로 Task Token을 저장. TTL 활성화, PAY_PER_REQUEST 모드, GSI(TransformJobNameIndex) 구성 완료.
 
 ##### SageMaker Real-time Endpoint (Multi-Variant A/B Testing)
 
-![SageMaker Endpoint](docs/screenshots/masked/phase4-sagemaker-realtime-endpoint.png)
+![SageMaker Endpoint](docs/screenshots/masked/phase4/phase4-sagemaker-realtime-endpoint.png)
 
 > SageMaker Real-time Inference Endpoint. Multi-Variant 구성(model-v1: 70%, model-v2: 30%)으로 A/B 테스트. Auto Scaling 구성 완료.
 
 ##### Step Functions 워크플로우 (Realtime/Batch 라우팅)
 
-![Step Functions Phase 4](docs/screenshots/masked/phase4-step-functions-routing.png)
+![Step Functions Phase 4](docs/screenshots/masked/phase4/phase4-step-functions-routing.png)
 
 > UC9 Step Functions 워크플로우. Choice State에서 file_count < threshold인 경우 Real-time Endpoint로, 그 외에는 Batch Transform으로 라우팅.
 
 ##### Event-Driven Prototype — EventBridge Rule
 
-![EventBridge Rule](docs/screenshots/masked/phase4-eventbridge-event-rule.png)
+![EventBridge Rule](docs/screenshots/masked/phase4/phase4-eventbridge-event-rule.png)
 
 > Event-Driven Prototype EventBridge Rule. S3 ObjectCreated 이벤트를 suffix (.jpg, .png) + prefix (products/)로 필터링하여 Step Functions를 트리거.
 
 ##### Event-Driven Prototype — Step Functions 실행 성공
 
-![Event-Driven Step Functions](docs/screenshots/masked/phase4-event-driven-sfn-succeeded.png)
+![Event-Driven Step Functions](docs/screenshots/masked/phase4/phase4-event-driven-sfn-succeeded.png)
 
 > Event-Driven Prototype Step Functions 실행 성공. S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter 모든 상태 성공.
 
 ##### CloudFormation Phase 4 스택
 
-![CloudFormation Phase 4](docs/screenshots/masked/phase4-cloudformation-stacks.png)
+![CloudFormation Phase 4](docs/screenshots/masked/phase4/phase4-cloudformation-stacks.png)
 
 > Phase 4 CloudFormation 스택. UC9 확장(Task Token Store + Real-time Endpoint) 및 Event-Driven Prototype CREATE_COMPLETE.
 
@@ -394,27 +394,27 @@ Phase 5의 모든 기능도 CloudFormation Conditions로 옵트인 제어되며,
 
 ##### SageMaker Serverless Inference Endpoint
 
-![SageMaker Serverless Endpoint 설정](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-settings.png)
+![SageMaker Serverless Endpoint 설정](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-settings.png)
 
 > SageMaker Serverless Inference Endpoint 설정. 메모리 4096 MB, 최대 동시 실행 5.
 
-![SageMaker Serverless Endpoint Config](docs/screenshots/masked/phase5-sagemaker-serverless-endpoint-config.png)
+![SageMaker Serverless Endpoint Config](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-config.png)
 
 > Serverless Endpoint Configuration 상세. 프로비저닝 불필요, 요청 시에만 컴퓨트 리소스 할당.
 
 ##### CloudWatch Billing Alarms (3단계 비용 알림)
 
-![CloudWatch Billing Alarms](docs/screenshots/masked/phase5-cloudwatch-billing-alarms.png)
+![CloudWatch Billing Alarms](docs/screenshots/masked/phase5/phase5-cloudwatch-billing-alarms.png)
 
 > Warning / Critical / Emergency 3단계 Billing Alarms. 임계값 초과 시 SNS 알림.
 
 ##### DynamoDB Global Table (Multi-Region)
 
-![DynamoDB Global Table](docs/screenshots/masked/phase5-dynamodb-global-table.png)
+![DynamoDB Global Table](docs/screenshots/masked/phase5/phase5-dynamodb-global-table.png)
 
 > DynamoDB Global Table 구성. Multi-Region 복제 활성화.
 
-![DynamoDB Global Replicas](docs/screenshots/masked/phase5-dynamodb-global-replicas.png)
+![DynamoDB Global Replicas](docs/screenshots/masked/phase5/phase5-dynamodb-global-replicas.png)
 
 > Global Table 레플리카 구성. 여러 리전 간 데이터 동기화.
 
