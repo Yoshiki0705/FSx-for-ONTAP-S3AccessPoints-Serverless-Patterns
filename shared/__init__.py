@@ -2,7 +2,7 @@
 
 全ユースケースで共有する ONTAP REST API クライアント、FSx API ヘルパー、
 S3 Access Point ヘルパー、クロスリージョンクライアント、ストリーミングヘルパー、
-可観測性ヘルパー、共通例外クラスを提供する。
+可観測性ヘルパー、推論ルーティング、共通例外クラスを提供する。
 
 Usage:
     from shared import OntapClient, OntapClientConfig, OntapClientError
@@ -11,6 +11,7 @@ Usage:
     from shared import CrossRegionClient, CrossRegionConfig, CrossRegionClientError
     from shared import StreamingHelper, StreamingConfig, StreamingError
     from shared import xray_subsegment, EmfMetrics, trace_lambda_handler
+    from shared import InferencePath, determine_inference_path, validate_inference_config
 """
 
 from shared.ontap_client import OntapClient, OntapClientConfig, OntapClientError
@@ -24,6 +25,12 @@ from shared.exceptions import (
     CrossRegionClientError,
     StreamingError,
     lambda_error_handler,
+)
+from shared.routing import (
+    InferencePath,
+    determine_inference_path,
+    validate_serverless_config,
+    validate_inference_config,
 )
 
 __all__ = [
@@ -46,6 +53,11 @@ __all__ = [
     "xray_subsegment",
     "EmfMetrics",
     "trace_lambda_handler",
+    # routing
+    "InferencePath",
+    "determine_inference_path",
+    "validate_serverless_config",
+    "validate_inference_config",
     # exceptions
     "S3ApHelperError",
     "CrossRegionClientError",

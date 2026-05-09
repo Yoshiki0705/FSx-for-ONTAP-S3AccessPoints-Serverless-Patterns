@@ -307,3 +307,119 @@ class TestValidateServerlessConfigInvalid:
         )
         assert is_valid is False
         assert "MemorySizeInMB" in error
+
+
+# ---------------------------------------------------------------------------
+# Tests: determine_inference_path — "components" routing (Phase 6B)
+# ---------------------------------------------------------------------------
+
+
+class TestDetermineInferencePathComponents:
+    """determine_inference_path の "components" ルーティングテスト（Phase 6B）"""
+
+    def test_inference_type_components_returns_inference_components(self):
+        """inference_type='components' は常に INFERENCE_COMPONENTS を返す"""
+        result = determine_inference_path(
+            file_count=5, batch_threshold=10, inference_type="components"
+        )
+        assert result == InferencePath.INFERENCE_COMPONENTS
+
+    def test_inference_type_components_ignores_file_count(self):
+        """inference_type='components' は file_count に関係なく INFERENCE_COMPONENTS"""
+        # file_count >= threshold でも INFERENCE_COMPONENTS
+        result = determine_inference_path(
+            file_count=100, batch_threshold=10, inference_type="components"
+        )
+        assert result == InferencePath.INFERENCE_COMPONENTS
+
+        # file_count=0 でも INFERENCE_COMPONENTS
+        result = determine_inference_path(
+            file_count=0, batch_threshold=10, inference_type="components"
+        )
+        assert result == InferencePath.INFERENCE_COMPONENTS
+
+    def test_components_has_higher_priority_than_batch_threshold(self):
+        """components は batch_threshold より優先される"""
+        # file_count >= threshold でも components が優先
+        result = determine_inference_path(
+            file_count=1000, batch_threshold=10, inference_type="components"
+        )
+        assert result == InferencePath.INFERENCE_COMPONENTS
+
+    def test_inference_components_enum_value(self):
+        """INFERENCE_COMPONENTS の enum 値が正しい"""
+        assert InferencePath.INFERENCE_COMPONENTS.value == "inference_components"
+
+
+# ---------------------------------------------------------------------------
+# Tests: validate_inference_config (Phase 6B)
+# ---------------------------------------------------------------------------
+
+from shared.routing import validate_inference_config
+
+
+class TestValidateInferenceConfig:
+    """validate_inference_config のテスト（Phase 6B）"""
+
+    def test_none_type_requires_no_params(self):
+        """inference_type='none' は追加パラメータ不要"""
+        is_valid, error = validate_inference_config(inference_type="none")
+        assert is_valid is True
+        assert error is None
+
+    def test_provisioned_requires_endpoint_name(self):
+        """inference_type='provisioned' は endpoint_name が必須"""
+        is_valid, error = validate_inference_config(
+            inference_type="provisioned", endpoint_name=""
+        )
+        assert is_valid is False
+        assert "endpoint_name" in error
+
+    def test_provisioned_with_endpoint_name_valid(self):
+        """inference_type='provisioned' + endpoint_name で valid"""
+        is_valid, error = validate_inference_config(
+            inference_type="provisioned", endpoint_name="my-endpoint"
+        )
+        assert is_valid is True
+        assert error is None
+
+    def test_serverless_requires_endpoint_name(self):
+        """inference_type='serverless' は endpoint_name が必須"""
+        is_valid, error = validate_inference_config(
+            inference_type="serverless", endpoint_name=""
+        )
+        assert is_valid is False
+        assert "endpoint_name" in error
+
+    def test_components_requires_endpoint_and_component_name(self):
+        """inference_type='components' は endpoint_name と component_name が必須"""
+        # Both missing
+        is_valid, error = validate_inference_config(
+            inference_type="components", endpoint_name="", component_name=""
+        )
+        assert is_valid is False
+        assert "endpoint_name" in error
+
+        # endpoint_name only
+        is_valid, error = validate_inference_config(
+            inference_type="components",
+            endpoint_name="my-endpoint",
+            component_name="",
+        )
+        assert is_valid is False
+        assert "component_name" in error
+
+        # Both provided
+        is_valid, error = validate_inference_config(
+            inference_type="components",
+            endpoint_name="my-endpoint",
+            component_name="my-component",
+        )
+        assert is_valid is True
+        assert error is None
+
+    def test_invalid_inference_type(self):
+        """無効な inference_type で invalid を返す"""
+        is_valid, error = validate_inference_config(inference_type="invalid")
+        assert is_valid is False
+        assert "Invalid inference_type" in error
