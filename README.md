@@ -106,25 +106,25 @@ EventBridge Scheduler (定期実行)
 
 | # | ディレクトリ | 業界 | パターン | 使用 AI/ML サービス | ap-northeast-1 での確認状況 |
 |---|-------------|------|---------|-------------------|-------------------|
-| UC1 | `legal-compliance/` | 法務・コンプライアンス | ファイルサーバー監査・データガバナンス | Athena, Bedrock | ✅ E2E 成功 |
-| UC2 | `financial-idp/` | 金融・保険 | 契約書・請求書の自動処理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ 東京非対応（対応リージョン利用） |
-| UC3 | `manufacturing-analytics/` | 製造業 | IoT センサーログ・品質検査画像の分析 | Athena, Rekognition | ✅ E2E 成功 |
-| UC4 | `media-vfx/` | メディア | VFX レンダリングパイプライン | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 要設定 |
-| UC5 | `healthcare-dicom/` | 医療 | DICOM 画像の自動分類・匿名化 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 東京非対応（対応リージョン利用） |
+| UC1 | [`legal-compliance/`](legal-compliance/README.md) | 法務・コンプライアンス | ファイルサーバー監査・データガバナンス | Athena, Bedrock | ✅ E2E 成功 |
+| UC2 | [`financial-idp/`](financial-idp/README.md) | 金融・保険 | 契約書・請求書の自動処理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ 東京非対応（対応リージョン利用） |
+| UC3 | [`manufacturing-analytics/`](manufacturing-analytics/README.md) | 製造業 | IoT センサーログ・品質検査画像の分析 | Athena, Rekognition | ✅ E2E 成功 |
+| UC4 | [`media-vfx/`](media-vfx/README.md) | メディア | VFX レンダリングパイプライン | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 要設定 |
+| UC5 | [`healthcare-dicom/`](healthcare-dicom/README.md) | 医療 | DICOM 画像の自動分類・匿名化 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 東京非対応（対応リージョン利用） |
 
 ### Phase 2（UC6–UC14）
 
 | # | ディレクトリ | 業界 | パターン | 使用 AI/ML サービス | ap-northeast-1 での確認状況 |
 |---|-------------|------|---------|-------------------|-------------------|
-| UC6 | `semiconductor-eda/` | 半導体 / EDA | GDS/OASIS バリデーション・メタデータ抽出・DRC 集計 | Athena, Bedrock | ✅ E2E 成功 (Bedrock レポート生成確認) |
-| UC7 | `genomics-pipeline/` | ゲノミクス | FASTQ/VCF 品質チェック・バリアントコール集計 | Athena, Bedrock, Comprehend Medical ⚠️ | ✅ E2E 成功 (Cross-Region us-east-1, entities 検出確認) |
-| UC8 | `energy-seismic/` | エネルギー | SEG-Y メタデータ抽出・坑井ログ異常検知 | Athena, Bedrock, Rekognition | ✅ E2E 成功 |
-| UC9 | `autonomous-driving/` | 自動運転 / ADAS | 映像/LiDAR 前処理・品質チェック・アノテーション | Rekognition, Bedrock, SageMaker | ✅ E2E 成功 (SageMaker は Endpoint 未作成のためスキップ) |
-| UC10 | `construction-bim/` | 建設 / AEC | BIM バージョン管理・図面 OCR・安全コンプライアンス | Textract ⚠️, Bedrock, Rekognition | ✅ E2E 成功 (Cross-Region us-east-1) |
-| UC11 | `retail-catalog/` | 小売 / EC | 商品画像タグ付け・カタログメタデータ生成 | Rekognition, Bedrock | ✅ E2E 成功 (15 labels 検出確認) |
-| UC12 | `logistics-ocr/` | 物流 | 配送伝票 OCR・倉庫在庫画像分析 | Textract ⚠️, Rekognition, Bedrock | ✅ E2E 成功 (Cross-Region us-east-1, テキスト抽出確認) |
-| UC13 | `education-research/` | 教育 / 研究 | 論文 PDF 分類・引用ネットワーク分析 | Textract ⚠️, Comprehend, Bedrock | ✅ E2E 成功 (Cross-Region us-east-1) |
-| UC14 | `insurance-claims/` | 保険 | 事故写真損害評価・見積書 OCR・査定レポート | Rekognition, Textract ⚠️, Bedrock | ✅ E2E 成功 (Rekognition + Textract 両方確認) |
+| UC6 | [`semiconductor-eda/`](semiconductor-eda/README.md) | 半導体 / EDA | GDS/OASIS バリデーション・メタデータ抽出・DRC 集計 | Athena, Bedrock | ✅ E2E 成功 (Bedrock レポート生成確認) |
+| UC7 | [`genomics-pipeline/`](genomics-pipeline/README.md) | ゲノミクス | FASTQ/VCF 品質チェック・バリアントコール集計 | Athena, Bedrock, Comprehend Medical ⚠️ | ✅ E2E 成功 (Cross-Region us-east-1, entities 検出確認) |
+| UC8 | [`energy-seismic/`](energy-seismic/README.md) | エネルギー | SEG-Y メタデータ抽出・坑井ログ異常検知 | Athena, Bedrock, Rekognition | ✅ E2E 成功 |
+| UC9 | [`autonomous-driving/`](autonomous-driving/README.md) | 自動運転 / ADAS | 映像/LiDAR 前処理・品質チェック・アノテーション | Rekognition, Bedrock, SageMaker | ✅ E2E 成功 (SageMaker は Endpoint 未作成のためスキップ) |
+| UC10 | [`construction-bim/`](construction-bim/README.md) | 建設 / AEC | BIM バージョン管理・図面 OCR・安全コンプライアンス | Textract ⚠️, Bedrock, Rekognition | ✅ E2E 成功 (Cross-Region us-east-1) |
+| UC11 | [`retail-catalog/`](retail-catalog/README.md) | 小売 / EC | 商品画像タグ付け・カタログメタデータ生成 | Rekognition, Bedrock | ✅ E2E 成功 (15 labels 検出確認) |
+| UC12 | [`logistics-ocr/`](logistics-ocr/README.md) | 物流 | 配送伝票 OCR・倉庫在庫画像分析 | Textract ⚠️, Rekognition, Bedrock | ✅ E2E 成功 (Cross-Region us-east-1, テキスト抽出確認) |
+| UC13 | [`education-research/`](education-research/README.md) | 教育 / 研究 | 論文 PDF 分類・引用ネットワーク分析 | Textract ⚠️, Comprehend, Bedrock | ✅ E2E 成功 (Cross-Region us-east-1) |
+| UC14 | [`insurance-claims/`](insurance-claims/README.md) | 保険 | 事故写真損害評価・見積書 OCR・査定レポート | Rekognition, Textract ⚠️, Bedrock | ✅ E2E 成功 (Rekognition + Textract 両方確認) |
 
 > **リージョン制約**: Amazon Textract と Amazon Comprehend Medical は ap-northeast-1（東京）で利用できません。UC2, UC10, UC12, UC13, UC14 は Textract、UC5, UC7 は Comprehend Medical を使用するため、Cross_Region_Client 経由で us-east-1 等の対応リージョンへ API コールをルーティングします。Rekognition, Comprehend, Bedrock, Athena は ap-northeast-1 で利用可能です。
 > 

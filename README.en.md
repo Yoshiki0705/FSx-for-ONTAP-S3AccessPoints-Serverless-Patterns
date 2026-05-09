@@ -106,25 +106,25 @@ EventBridge Scheduler (Periodic Execution)
 
 | # | Directory | Industry | Pattern | AI/ML Services Used | ap-northeast-1 Verification Status |
 |---|-----------|----------|---------|---------------------|-----------------------------------|
-| UC1 | `legal-compliance/` | Legal & Compliance | File server audit & data governance | Athena, Bedrock | ✅ E2E Success |
-| UC2 | `financial-idp/` | Finance & Insurance | Contract & invoice automated processing (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Not in Tokyo (use supported region) |
-| UC3 | `manufacturing-analytics/` | Manufacturing | IoT sensor log & quality inspection image analysis | Athena, Rekognition | ✅ E2E Success |
-| UC4 | `media-vfx/` | Media | VFX rendering pipeline | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud Setup Required |
-| UC5 | `healthcare-dicom/` | Healthcare | DICOM image auto-classification & anonymization | Rekognition, Comprehend Medical ⚠️ | ⚠️ Not in Tokyo (use supported region) |
+| UC1 | [`legal-compliance/`](legal-compliance/README.en.md) | Legal & Compliance | File server audit & data governance | Athena, Bedrock | ✅ E2E Success |
+| UC2 | [`financial-idp/`](financial-idp/README.en.md) | Finance & Insurance | Contract & invoice automated processing (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Not in Tokyo (use supported region) |
+| UC3 | [`manufacturing-analytics/`](manufacturing-analytics/README.en.md) | Manufacturing | IoT sensor log & quality inspection image analysis | Athena, Rekognition | ✅ E2E Success |
+| UC4 | [`media-vfx/`](media-vfx/README.en.md) | Media | VFX rendering pipeline | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud Setup Required |
+| UC5 | [`healthcare-dicom/`](healthcare-dicom/README.en.md) | Healthcare | DICOM image auto-classification & anonymization | Rekognition, Comprehend Medical ⚠️ | ⚠️ Not in Tokyo (use supported region) |
 
 ### Phase 2 (UC6–UC14)
 
 | # | Directory | Industry | Pattern | AI/ML Services Used | ap-northeast-1 Verification Status |
 |---|-----------|----------|---------|---------------------|-----------------------------------|
-| UC6 | `semiconductor-eda/` | Semiconductor / EDA | GDS/OASIS validation, metadata extraction, DRC aggregation | Athena, Bedrock | ✅ Tests Passed |
-| UC7 | `genomics-pipeline/` | Genomics | FASTQ/VCF quality check, variant call aggregation | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
-| UC8 | `energy-seismic/` | Energy | SEG-Y metadata extraction, well log anomaly detection | Athena, Bedrock, Rekognition | ✅ Tests Passed |
-| UC9 | `autonomous-driving/` | Autonomous Driving / ADAS | Video/LiDAR preprocessing, QC, annotation | Rekognition, Bedrock, SageMaker | ✅ Tests Passed |
-| UC10 | `construction-bim/` | Construction / AEC | BIM version management, drawing OCR, safety compliance | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
-| UC11 | `retail-catalog/` | Retail / E-Commerce | Product image tagging, catalog metadata generation | Rekognition, Bedrock | ✅ Tests Passed |
-| UC12 | `logistics-ocr/` | Logistics | Shipping slip OCR, warehouse inventory image analysis | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC13 | `education-research/` | Education / Research | Paper PDF classification, citation network analysis | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC14 | `insurance-claims/` | Insurance | Accident photo damage assessment, estimate OCR, claims report | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC6 | [`semiconductor-eda/`](semiconductor-eda/README.en.md) | Semiconductor / EDA | GDS/OASIS validation, metadata extraction, DRC aggregation | Athena, Bedrock | ✅ Tests Passed |
+| UC7 | [`genomics-pipeline/`](genomics-pipeline/README.en.md) | Genomics | FASTQ/VCF quality check, variant call aggregation | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
+| UC8 | [`energy-seismic/`](energy-seismic/README.en.md) | Energy | SEG-Y metadata extraction, well log anomaly detection | Athena, Bedrock, Rekognition | ✅ Tests Passed |
+| UC9 | [`autonomous-driving/`](autonomous-driving/README.en.md) | Autonomous Driving / ADAS | Video/LiDAR preprocessing, QC, annotation | Rekognition, Bedrock, SageMaker | ✅ Tests Passed |
+| UC10 | [`construction-bim/`](construction-bim/README.en.md) | Construction / AEC | BIM version management, drawing OCR, safety compliance | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
+| UC11 | [`retail-catalog/`](retail-catalog/README.en.md) | Retail / E-Commerce | Product image tagging, catalog metadata generation | Rekognition, Bedrock | ✅ Tests Passed |
+| UC12 | [`logistics-ocr/`](logistics-ocr/README.en.md) | Logistics | Shipping slip OCR, warehouse inventory image analysis | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC13 | [`education-research/`](education-research/README.en.md) | Education / Research | Paper PDF classification, citation network analysis | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC14 | [`insurance-claims/`](insurance-claims/README.en.md) | Insurance | Accident photo damage assessment, estimate OCR, claims report | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
 
 > **Region constraints**: Amazon Textract and Amazon Comprehend Medical are not available in ap-northeast-1 (Tokyo). Phase 2 UCs (UC7, UC10, UC12, UC13, UC14) use Cross_Region_Client to route API calls to us-east-1. Rekognition, Comprehend, Bedrock, and Athena are available in ap-northeast-1.
 > 

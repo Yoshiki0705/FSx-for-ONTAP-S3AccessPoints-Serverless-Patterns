@@ -541,7 +541,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: construction-bim/functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -572,7 +572,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-bim-parse"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: construction-bim/functions/bim_parse/handler.handler
       MemorySize: 512
       Timeout: !Ref LambdaTimeout
@@ -595,7 +595,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: construction-bim/functions/ocr/handler.handler
       MemorySize: 512
       Timeout: !Ref LambdaTimeout
@@ -618,7 +618,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-safety-check"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: construction-bim/functions/safety_check/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout

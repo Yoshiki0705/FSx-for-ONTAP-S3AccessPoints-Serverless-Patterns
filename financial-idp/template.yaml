@@ -463,7 +463,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: financial-idp/functions/discovery/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -491,7 +491,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: financial-idp/functions/ocr/handler.handler
       MemorySize: 512
       Timeout: 600
@@ -514,7 +514,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-entity-extraction"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: financial-idp/functions/entity_extraction/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -535,7 +535,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-summary"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: financial-idp/functions/summary/handler.handler
       MemorySize: 256
       Timeout: 300

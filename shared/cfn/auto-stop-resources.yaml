@@ -142,7 +142,7 @@ Resources:
       Description: >-
         アイドル SageMaker エンドポイントを自動検出し、ゼロスケールする。
         EventBridge Schedule（1 時間ごと）でトリガー。
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Role: !GetAtt AutoStopLambdaRole.Arn
       Timeout: 300

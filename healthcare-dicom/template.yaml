@@ -467,7 +467,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: healthcare-dicom/functions/discovery/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -495,7 +495,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-dicom-parse"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: healthcare-dicom/functions/dicom_parse/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -517,7 +517,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-pii-detection"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: healthcare-dicom/functions/pii_detection/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -539,7 +539,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-anonymization"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: healthcare-dicom/functions/anonymization/handler.handler
       MemorySize: 256
       Timeout: 300

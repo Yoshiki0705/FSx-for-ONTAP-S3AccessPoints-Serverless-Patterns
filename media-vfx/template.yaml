@@ -442,7 +442,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: media-vfx/functions/discovery/handler.handler
       MemorySize: 256
       Timeout: 300
@@ -470,7 +470,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-job-submit"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: media-vfx/functions/job_submit/handler.handler
       MemorySize: 512
       Timeout: 300
@@ -494,7 +494,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-quality-check"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: media-vfx/functions/quality_check/handler.handler
       MemorySize: 256
       Timeout: 300

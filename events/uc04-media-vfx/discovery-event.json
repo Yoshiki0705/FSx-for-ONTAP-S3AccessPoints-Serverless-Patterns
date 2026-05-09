@@ -1,0 +1,11 @@
+{
+  "comment": "UC04: メディア・VFX - Discovery Lambda ローカルテスト用イベント",
+  "source": "local-test",
+  "detail": {
+    "description": "Step Functions からの初回呼び出しを模擬。",
+    "override": {
+      "prefix_filter": "renders/",
+      "suffix_filter": ".exr"
+    }
+  }
+}

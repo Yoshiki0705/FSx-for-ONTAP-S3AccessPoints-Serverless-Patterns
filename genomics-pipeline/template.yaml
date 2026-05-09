@@ -640,7 +640,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: genomics-pipeline/functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -671,7 +671,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-qc"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: genomics-pipeline/functions/qc/handler.handler
       # QC Lambda は TB クラスの FASTQ ファイルをストリーミング処理するため、
       # デフォルトメモリを 512 MB に設定
@@ -697,7 +697,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-variant-aggregation"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: genomics-pipeline/functions/variant_aggregation/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -719,7 +719,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-athena-analysis"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: genomics-pipeline/functions/athena_analysis/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
@@ -753,7 +753,7 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-summary"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: genomics-pipeline/functions/summary/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout

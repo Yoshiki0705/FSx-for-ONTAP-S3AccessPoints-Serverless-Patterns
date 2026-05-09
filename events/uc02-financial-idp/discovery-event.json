@@ -1,0 +1,11 @@
+{
+  "comment": "UC02: 金融・保険 IDP - Discovery Lambda ローカルテスト用イベント",
+  "source": "local-test",
+  "detail": {
+    "description": "Step Functions からの初回呼び出しを模擬。",
+    "override": {
+      "prefix_filter": "",
+      "suffix_filter": ".pdf"
+    }
+  }
+}
