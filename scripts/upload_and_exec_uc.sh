@@ -3,7 +3,7 @@
 set -u
 
 REGION="${AWS_REGION:-ap-northeast-1}"
-ACCOUNT_ID="${ACCOUNT_ID:-178625946981}"
+ACCOUNT_ID="${ACCOUNT_ID:-<ACCOUNT_ID>}"
 S3_AP_NAME="${S3_AP_NAME:-eda-demo-s3ap}"
 # For put-object, must use the AP ARN form (can't use alias for uploads)
 S3_AP_ARN_PREFIX="s3://arn:aws:s3:${REGION}:${ACCOUNT_ID}:accesspoint/${S3_AP_NAME}"

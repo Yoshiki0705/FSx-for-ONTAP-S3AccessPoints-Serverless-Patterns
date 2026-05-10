@@ -167,8 +167,17 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 ### このユースケースの検証ステータス
 
 - ✅ **E2E 実行**: Phase 1-6 で確認済み（根 README 参照）
-- 📸 **UI/UX 再撮影**: 未実施（本セッションでは UC6/UC11/UC14 を代表として撮影）
+- 📸 **UI/UX 再撮影**: ✅ 2026-05-10 再デプロイ検証で撮影済み （UC7 Step Functions グラフ、Lambda 実行成功を確認）
 - 🔄 **再現方法**: 本ドキュメント末尾の「撮影ガイド」を参照
+
+### 2026-05-10 再デプロイ検証で撮影（UI/UX 中心）
+
+#### UC7 Step Functions Graph view（SUCCEEDED）
+
+![UC7 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
+
+Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
+色で可視化するエンドユーザー最重要画面。
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 

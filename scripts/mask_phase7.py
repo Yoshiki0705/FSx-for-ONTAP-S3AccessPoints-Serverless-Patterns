@@ -3,7 +3,7 @@
 
 Applies minimal masking:
   1. Top-right user name area (all AWS console screenshots)
-  2. Account ID `178625946981` replaced with [ACCOUNT] via text-based detection
+  2. Account ID replaced with [ACCOUNT] via text-based detection
      (for file names / bucket names / ARN within the image, we rely on OCR-free
      approach: mask known coordinates where the account ID appears)
 

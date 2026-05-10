@@ -16,7 +16,7 @@
 #   → "Stack does not exist" になれば完了。
 set +e
 
-for bucket in fsxn-uc15-demo-output-178625946981 fsxn-uc16-demo-output-178625946981 fsxn-uc17-demo-output-178625946981; do
+for bucket in fsxn-uc15-demo-output-<ACCOUNT_ID> fsxn-uc16-demo-output-<ACCOUNT_ID> fsxn-uc17-demo-output-<ACCOUNT_ID>; do
   echo "=== Emptying $bucket ==="
   aws s3api delete-objects --bucket "$bucket" --region ap-northeast-1 \
     --delete "$(aws s3api list-object-versions --bucket "$bucket" --region ap-northeast-1 --output=json --query='{Objects: Versions[].{Key:Key,VersionId:VersionId}}' 2>/dev/null)" 2>&1 | tail -3
