@@ -175,6 +175,85 @@ EventBridge Scheduler (정기 실행)
 > **공공 부문 적합성**: UC15는 DoD CC SRG / CSfC / FedRAMP High (GovCloud 마이그레이션 시), UC16은 NARA / FOIA 섹션 552 / 섹션 508, UC17은 INSPIRE 지침 / OGC 표준 준수.
 
 
+## AWS 사양상의 제약 및 해결 방법
+
+### 출력 대상 선택 (OutputDestination 파라미터)
+
+각 UC의 CloudFormation 템플릿에는 `OutputDestination` 파라미터가 있어
+AI/ML 아티팩트의 쓰기 대상을 선택할 수 있습니다 (UC9/10/11/12/14에서 구현됨,
+다른 UC는 Pattern A 또는 Pattern C로 커버됨 - 아래의 Pattern 표 참조):
+
+- **`STANDARD_S3`** (기본값): 새 S3 버킷에 쓰기 (기존 동작)
+- **`FSXN_S3AP`**: S3 Access Point를 통해 동일한 FSx for NetApp ONTAP 볼륨에 다시 쓰기
+  (**"no data movement" 패턴**, SMB/NFS 사용자가 기존 디렉토리 구조 내에서
+  AI 아티팩트를 볼 수 있음)
+
+```bash
+# FSXN_S3AP 모드로 배포
+aws cloudformation deploy \
+  --template-file retail-catalog/template-deploy.yaml \
+  --stack-name fsxn-retail-catalog-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    ... (기타 필수 파라미터)
+```
+
+### FSxN S3 Access Points의 AWS 사양 제약
+
+FSxN S3 Access Points는 S3 API의 일부만 지원합니다
+([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) 참조).
+다음 제약 사항으로 인해 일부 기능은 표준 S3 버킷을 사용해야 합니다:
+
+| AWS 사양 제약 | 영향 | 프로젝트 해결 방법 | 기능 개선 요청 (FR) |
+|---|---|---|---|
+| Athena 쿼리 결과 출력 위치에 S3AP 지정 불가<br>(Athena는 S3AP에 write back 불가) | UC6/7/8/13에서 Athena 결과는 표준 S3 필수 | 각 템플릿에서 Athena 결과 전용 S3 버킷 생성 | [FR-1](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-1) |
+| S3AP에서 S3 Event Notifications / EventBridge 이벤트 발행 불가 | 이벤트 기반 워크플로 구현 불가 | EventBridge Scheduler + Discovery Lambda 폴링 방식 | [FR-2](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-2) |
+| S3AP에서 Object Lifecycle 정책 미지원 | 7년 보관(UC1 법무), 영구 보관(UC16 정부 아카이브) 등의 자동화 곤란 | 정기 삭제 Lambda 스위퍼 (미구현, 백로그) | [FR-3](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-3) |
+| S3AP에서 Object Versioning / Presigned URL 미지원 | 문서 버전 관리, 외부 감사인을 위한 시간 제한 공유 불가 | DynamoDB로 버전 관리, 표준 S3 복사 + Presign | [FR-4](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-4) |
+| 5GB 업로드 상한 | 대형 바이너리(4K 비디오, 비압축 GeoTIFF 등) | `shared.s3ap_helper.multipart_upload()`으로 5GB 미만까지 지원 | (AWS 사양으로 수용) |
+| SSE-FSX만 지원 (SSE-KMS 불가) | 커스텀 KMS 키로 암호화 불가 | FSx 볼륨 자체의 KMS 설정으로 암호화 | (AWS 사양으로 수용) |
+
+4가지 기능 개선 요청(FR-1~FR-4)의 자세한 내용과 비즈니스 영향은
+[`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](docs/aws-feature-requests/fsxn-s3ap-improvements.md)
+에 정리되어 있습니다.
+
+3가지 출력 패턴(Pattern A/B/C)의 자세한 비교는
+[`docs/output-destination-patterns.md`](docs/output-destination-patterns.md)를 참조하세요.
+
+### UC별 출력 대상 제약
+
+17개 UC는 3가지 출력 패턴으로 분류됩니다:
+
+- **🟢 UC1-5**: 기존 `S3AccessPointOutputAlias` 파라미터로 FSxN S3AP 출력 지원 (처음부터 이렇게 설계됨)
+- **🟢🆕 UC9/10/11/12/14**: `OutputDestination` 전환 메커니즘 (STANDARD_S3 ⇄ FSXN_S3AP), 2026-05-10 구현. UC11/14는 AWS 실증, UC9/10/12는 단위 테스트만 완료
+- **🟡 UC6/7/8/13**: 현재는 `OUTPUT_BUCKET`만 (표준 S3 고정). Athena 결과는 AWS 사양상 표준 S3 필수이므로 `OutputDestination` 적용은 부분적
+- **🟢 UC15-17**: Pattern A (FSxN S3AP로 write back, Phase 7의 일부)
+
+| UC | 입력 | 출력 | 선택 메커니즘 | 비고 |
+|----|------|------|----------|------|
+| UC1 legal-compliance | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` 파라미터 | 계약 메타데이터 / 감사 로그 |
+| UC2 financial-idp | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` | 청구서 OCR 결과 |
+| UC3 manufacturing-analytics | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` | 검사 결과 / 이상 감지 |
+| UC4 media-vfx | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` | 렌더링 메타데이터 |
+| UC5 healthcare-dicom | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` | DICOM 메타데이터 / 익명화 결과 |
+| UC6 semiconductor-eda | S3AP | **표준 S3** | ⚠️ 미구현 | Bedrock/Athena 결과 (Athena는 사양상 표준 S3 필수) |
+| UC7 genomics-pipeline | S3AP | **표준 S3** | ⚠️ 미구현 | Glue/Athena 결과 (Athena는 사양상 표준 S3 필수) |
+| UC8 energy-seismic | S3AP | **표준 S3** | ⚠️ 미구현 | Glue/Athena 결과 (Athena는 사양상 표준 S3 필수) |
+| UC9 autonomous-driving | S3AP | **선택 가능** 🆕 | ✅ `OutputDestination` | ADAS 분석 결과 |
+| UC10 construction-bim | S3AP | **선택 가능** 🆕 | ✅ `OutputDestination` | BIM 메타데이터 / 안전 컴플라이언스 보고서 |
+| **UC11 retail-catalog** | S3AP | **선택 가능** | ✅ `OutputDestination` | AWS 실증 완료 2026-05-10 |
+| UC12 logistics-ocr | S3AP | **선택 가능** 🆕 | ✅ `OutputDestination` | 배송 화물 OCR |
+| UC13 education-research | S3AP | **표준 S3** | ⚠️ 미구현 | Athena 결과 포함 (Athena는 사양상 표준 S3 필수) |
+| **UC14 insurance-claims** | S3AP | **선택 가능** | ✅ `OutputDestination` | AWS 실증 완료 2026-05-10 |
+| UC15 defense-satellite | S3AP | S3AP | 기존 패턴 | 객체 감지 / 변화 감지 결과 |
+| UC16 government-archives | S3AP | S3AP | 기존 패턴 | FOIA 편집 결과 / 메타데이터 |
+| UC17 smart-city-geospatial | S3AP | S3AP | 기존 패턴 | GIS 분석 결과 / 리스크 맵 |
+
+**로드맵**:
+- ~~Part B: UC1-5의 기존 `S3AccessPointOutputAlias` 패턴 문서화~~ ✅ 완료 (`docs/output-destination-patterns.md`)
+- UC6/7/8/13의 Athena 출력은 사양상 표준 S3 필수이지만, Bedrock 보고서 등 비 Athena 아티팩트는 `OutputDestination=FSXN_S3AP`로 write back할 수 있는 선택지를 추가 가능 (Pattern C → Pattern B 하이브리드, 향후 확장)
+- UC9/10/12의 AWS 실제 배포 검증 (단위 테스트는 완료, 배포는 미실시)
 ## 리전 선택 가이드
 
 본 패턴 컬렉션은 **ap-northeast-1(도쿄)**에서 검증을 실시했지만, 필요한 서비스가 이용 가능한 모든 AWS 리전에 배포할 수 있습니다.

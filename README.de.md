@@ -175,6 +175,86 @@ EventBridge Scheduler (periodische Ausführung)
 > **Konformität mit öffentlicher Hand**: UC15 adressiert DoD CC SRG / CSfC / FedRAMP High (GovCloud-Migration), UC16 adressiert NARA / FOIA Section 552 / Section 508, UC17 adressiert INSPIRE-Richtlinie / OGC-Standards.
 
 
+## AWS-Spezifikationsbeschränkungen und Workarounds
+
+### Auswahl des Ausgabeziels (OutputDestination-Parameter)
+
+Das CloudFormation-Template jedes UC stellt einen `OutputDestination`-Parameter
+bereit, um auszuwählen, wohin AI/ML-Artefakte geschrieben werden (implementiert in
+UC9/10/11/12/14; andere UCs sind durch Pattern A oder Pattern C abgedeckt — siehe
+Pattern-Tabelle unten):
+
+- **`STANDARD_S3`** (Standard): Schreibt in einen neuen S3-Bucket (bestehendes Verhalten)
+- **`FSXN_S3AP`**: Schreibt zurück auf dasselbe FSx for NetApp ONTAP Volume über den
+  S3 Access Point (das **"no data movement"-Pattern**, ermöglicht SMB/NFS-Benutzern,
+  AI-Artefakte innerhalb der bestehenden Verzeichnisstruktur zu sehen)
+
+```bash
+# Deployment im FSXN_S3AP-Modus
+aws cloudformation deploy \
+  --template-file retail-catalog/template-deploy.yaml \
+  --stack-name fsxn-retail-catalog-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    ... (andere erforderliche Parameter)
+```
+
+### AWS-Spezifikationsbeschränkungen der FSxN S3 Access Points
+
+FSxN S3 Access Points unterstützen nur eine Teilmenge der S3-API
+(siehe [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)).
+Die folgenden Beschränkungen zwingen einige Funktionen, Standard-S3-Buckets zu verwenden:
+
+| AWS-Spezifikationsbeschränkung | Auswirkung | Projekt-Workaround | Feature Request (FR) |
+|---|---|---|---|
+| Athena-Abfrageergebnis-Location kann kein S3AP angeben<br>(Athena kann nicht zu S3AP write back) | Athena-Ergebnisse erfordern Standard S3 für UC6/7/8/13 | Jedes Template erstellt einen dedizierten S3-Bucket für Athena-Ergebnisse | [FR-1](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-1) |
+| S3AP sendet keine S3 Event Notifications / EventBridge-Events | Ereignisgesteuerte Workflows unmöglich | EventBridge Scheduler + Discovery Lambda Polling-Pattern | [FR-2](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-2) |
+| S3AP unterstützt keine Object Lifecycle-Richtlinien | 7-Jahres-Aufbewahrung (UC1 juristisch), permanente Aufbewahrung (UC16 Regierungsarchive) usw. können nicht automatisiert werden | Benutzerdefinierter Lambda-Sweeper für periodische Löschung (nicht implementiert, Backlog) | [FR-3](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-3) |
+| S3AP unterstützt kein Object Versioning / Presigned URLs | Dokumenten-Versionshistorie, zeitbegrenztes externes Sharing unmöglich | DynamoDB für Versionstracking, Presign via Standard-S3-Kopie | [FR-4](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-4) |
+| 5-GB-Upload-Größenlimit | Große Binärdateien (4K-Video, unkomprimiertes GeoTIFF) | `shared.s3ap_helper.multipart_upload()` unterstützt bis zu 5 GB | (akzeptierte AWS-Spezifikation) |
+| Nur SSE-FSX (kein SSE-KMS) | Keine Verschlüsselung mit benutzerdefinierten KMS-Schlüsseln möglich | Volume-Level FSx KMS-Konfiguration verschlüsselt ruhende Daten | (akzeptierte AWS-Spezifikation) |
+
+Details und geschäftliche Auswirkungen aller 4 Feature Requests (FR-1 bis FR-4)
+sind in [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](docs/aws-feature-requests/fsxn-s3ap-improvements.md)
+dokumentiert.
+
+Die 3 Ausgabe-Patterns (Pattern A/B/C) werden in
+[`docs/output-destination-patterns.md`](docs/output-destination-patterns.md) verglichen.
+
+### Ausgabeziel-Beschränkungen pro UC
+
+Die 17 UCs teilen sich in 3 Ausgabe-Patterns auf:
+
+- **🟢 UC1-5**: Bestehender `S3AccessPointOutputAlias`-Parameter unterstützt FSxN S3AP-Ausgabe (von Anfang an so konzipiert)
+- **🟢🆕 UC9/10/11/12/14**: `OutputDestination`-Schaltmechanismus (STANDARD_S3 ⇄ FSXN_S3AP), implementiert am 2026-05-10. UC11/14 auf AWS verifiziert, UC9/10/12 nur Unit-Tests
+- **🟡 UC6/7/8/13**: Derzeit nur `OUTPUT_BUCKET` (Standard-S3 fest). Athena-Ergebnisse erfordern Standard-S3 per Spezifikation, daher ist die `OutputDestination`-Übernahme teilweise
+- **🟢 UC15-17**: Pattern A (write back zu FSxN S3AP, Teil von Phase 7)
+
+| UC | Eingabe | Ausgabe | Auswahlmechanismus | Hinweise |
+|----|------|------|----------|------|
+| UC1 legal-compliance | S3AP | S3AP (bestehend) | `S3AccessPointOutputAlias`-Parameter | Vertragsmetadaten / Audit-Logs |
+| UC2 financial-idp | S3AP | S3AP (bestehend) | `S3AccessPointOutputAlias` | Rechnungs-OCR-Ergebnisse |
+| UC3 manufacturing-analytics | S3AP | S3AP (bestehend) | `S3AccessPointOutputAlias` | Inspektionsergebnisse / Anomalieerkennung |
+| UC4 media-vfx | S3AP | S3AP (bestehend) | `S3AccessPointOutputAlias` | Rendering-Metadaten |
+| UC5 healthcare-dicom | S3AP | S3AP (bestehend) | `S3AccessPointOutputAlias` | DICOM-Metadaten / Anonymisierung |
+| UC6 semiconductor-eda | S3AP | **Standard S3** | ⚠️ Nicht implementiert | Bedrock/Athena-Ergebnisse (Athena erfordert Standard-S3 per Spezifikation) |
+| UC7 genomics-pipeline | S3AP | **Standard S3** | ⚠️ Nicht implementiert | Glue/Athena-Ergebnisse (Athena erfordert Standard-S3 per Spezifikation) |
+| UC8 energy-seismic | S3AP | **Standard S3** | ⚠️ Nicht implementiert | Glue/Athena-Ergebnisse (Athena erfordert Standard-S3 per Spezifikation) |
+| UC9 autonomous-driving | S3AP | **Auswählbar** 🆕 | ✅ `OutputDestination` | ADAS-Analyseergebnisse |
+| UC10 construction-bim | S3AP | **Auswählbar** 🆕 | ✅ `OutputDestination` | BIM-Metadaten / Sicherheits-Compliance-Berichte |
+| **UC11 retail-catalog** | S3AP | **Auswählbar** | ✅ `OutputDestination` | AWS-verifiziert 2026-05-10 |
+| UC12 logistics-ocr | S3AP | **Auswählbar** 🆕 | ✅ `OutputDestination` | Lieferschein-OCR |
+| UC13 education-research | S3AP | **Standard S3** | ⚠️ Nicht implementiert | Enthält Athena-Ergebnisse (Athena erfordert Standard-S3 per Spezifikation) |
+| **UC14 insurance-claims** | S3AP | **Auswählbar** | ✅ `OutputDestination` | AWS-verifiziert 2026-05-10 |
+| UC15 defense-satellite | S3AP | S3AP | bestehendes Pattern | Objekterkennung / Änderungserkennung |
+| UC16 government-archives | S3AP | S3AP | bestehendes Pattern | FOIA-Schwärzung / Metadaten |
+| UC17 smart-city-geospatial | S3AP | S3AP | bestehendes Pattern | GIS-Analyse / Risikokarten |
+
+**Roadmap**:
+- ~~Teil B: Dokumentation des bestehenden `S3AccessPointOutputAlias`-Patterns in UC1-5~~ ✅ Abgeschlossen (`docs/output-destination-patterns.md`)
+- Die Athena-Ausgabe von UC6/7/8/13 muss per Spezifikation auf Standard-S3 bleiben, aber Nicht-Athena-Artefakte (z. B. Bedrock-Berichte) könnten als Pattern C → Pattern B-Hybrid mit `OutputDestination=FSXN_S3AP` wählbar werden (zukünftige Erweiterung)
+- AWS-Deployment-Verifizierung für UC9/10/12 (Unit-Tests abgeschlossen, Deployment ausstehend)
 ## Leitfaden zur Regionsauswahl
 
 Diese Mustersammlung wurde in **ap-northeast-1 (Tokyo)** verifiziert, kann aber in jeder AWS-Region bereitgestellt werden, in der die erforderlichen Dienste verfügbar sind.
