@@ -297,7 +297,7 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 - **🟢 UC1-UC5** (Pattern A, 2026-05-11 更新): `S3AccessPointOutputAlias` (legacy、optional) + 新規追加の `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` をサポート。デフォルト `OutputDestination=FSXN_S3AP` で現行動作を維持
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 実装): `OutputDestination` 切替機構 (STANDARD_S3 ⇄ FSXN_S3AP)。デフォルト `OutputDestination=STANDARD_S3`。UC11/14 は AWS 実検証完了、UC9/10/12 は単体テストのみ完了
 - **🟡 UC6/7/8/13** (Pattern C): 現状 `OUTPUT_BUCKET` のみ（標準 S3 固定）、Athena 結果は仕様上標準 S3 必須のため `OutputDestination` 適用は部分的
-- **🟢 UC15/16/17** (Pattern A 変形): Phase 7 の一部で FSxN S3AP への書き戻しに対応
+- **🟠 UC15/16/17** (Pattern A + C ハイブリッド): Discovery 結果は FSxN S3AP 経由で書き込み（`S3_ACCESS_POINT_OUTPUT` env var）、処理結果は標準 S3（`OUTPUT_BUCKET`）。`OutputDestination` 統一はまだ未実装
 
 **🎉 API 統一 (2026-05-11)**: UC1-UC5 にも `OutputDestination` / `OutputS3APAlias` パラメータを追加しました。これにより **Pattern A UC と Pattern B UC で同じパラメータ名** が使えるようになり、10 UC (UC1-5/9/10/11/12/14) で統一された API でデプロイ可能です。既存の `S3AccessPointOutputAlias` パラメータは legacy として optional 化され、後方互換性が保たれています。
 
@@ -317,16 +317,16 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 | UC12 logistics-ocr | S3AP | **選択可** 🆕 | ✅ `OutputDestination` | 配送伝票 OCR |
 | UC13 education-research | S3AP | **標準 S3** | ⚠️ 未実装 | Athena 結果含む（Athena は仕様上標準 S3 必須） |
 | **UC14 insurance-claims** | S3AP | **選択可** | ✅ `OutputDestination` | AWS 実検証済み 2026-05-10 |
-| UC15 defense-satellite | S3AP | S3AP | 既存パターン | 物体検出 / 変化検知結果 |
-| UC16 government-archives | S3AP | S3AP | 既存パターン | FOIA 墨消し結果 / メタデータ |
-| UC17 smart-city-geospatial | S3AP | S3AP | 既存パターン | GIS 分析結果 / リスクマップ |
+| UC15 defense-satellite | S3AP | **ハイブリッド** | ⚠️ 未実装 | Discovery は S3AP、処理結果は標準 S3（物体検出 / 変化検知結果） |
+| UC16 government-archives | S3AP | **ハイブリッド** | ⚠️ 未実装 | Discovery は S3AP、処理結果は標準 S3（FOIA 墨消し結果 / メタデータ） |
+| UC17 smart-city-geospatial | S3AP | **ハイブリッド** | ⚠️ 未実装 | Discovery は S3AP、処理結果は標準 S3（GIS 分析結果 / リスクマップ） |
 
 **次のロードマップ**:
 - ~~Part B: UC1-5 の既存 `S3AccessPointOutputAlias` パターンのドキュメント整備~~ ✅ 完了（`docs/output-destination-patterns.md`）
 - ~~Part C: UC1-5 にも `OutputDestination` 統一 API を追加~~ ✅ 完了（2026-05-11、backward compat 維持）
 - UC6/7/8/13 の Athena 出力は仕様上標準 S3 必須だが、Bedrock レポート等の非 Athena 成果物は `OutputDestination=FSXN_S3AP` で書き戻す選択肢を追加可能（Pattern C → Pattern B ハイブリッド、将来拡張）
 - UC9/10/12 の AWS 実デプロイ検証（単体テストは完了、デプロイは未実施）
-- UC15/16/17 Phase 7 UC でも `OutputDestination` 統一 API を追加（将来拡張）
+- UC15/16/17 に `OutputDestination` 統一 API を追加（現状は処理結果が標準 S3 固定、Discovery のみ S3AP。統一で全出力を選択可能にする）
 
 ## リージョン選択ガイド
 
