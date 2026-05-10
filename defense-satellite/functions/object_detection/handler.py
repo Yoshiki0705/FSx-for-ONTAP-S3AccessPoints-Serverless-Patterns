@@ -48,6 +48,7 @@ def _detect_with_rekognition(
 
     Returns:
         list[dict]: 検出結果 [{"label": str, "confidence": float, "bbox": dict}]
+        画像フォーマット不正等のエラー時は空リストを返す（ワークフロー継続優先）
     """
     rekognition = boto3.client("rekognition")
     try:
@@ -56,9 +57,16 @@ def _detect_with_rekognition(
             MaxLabels=max_labels,
             MinConfidence=min_confidence,
         )
+    except rekognition.exceptions.InvalidImageFormatException as e:
+        logger.warning("Rekognition InvalidImageFormat, returning empty detections: %s", e)
+        return []
+    except rekognition.exceptions.ImageTooLargeException as e:
+        logger.warning("Rekognition ImageTooLarge, returning empty detections: %s", e)
+        return []
     except ClientError as e:
+        # 他のクライアントエラーも空リストで継続（ワークフロー停止を避ける）
         logger.error("Rekognition DetectLabels failed: %s", e)
-        raise
+        return []
 
     results = []
     for label in response.get("Labels", []):
