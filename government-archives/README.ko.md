@@ -36,6 +36,36 @@ Serverless pipeline for government public records (PDF / TIFF / EML / DOCX) auto
 - Section 508 accessibility
 - FedRAMP High in GovCloud
 
+
+### 검증된 UI/UX 스크린샷
+
+> 본 섹션은 **일반 직원이 일상 업무에서 실제로 사용하는 UI/UX 화면**을 게시합니다. Step Functions 그래프와 같은 기술자 화면은 `docs/verification-results-phase7.md` 를 참조하세요.
+
+#### 1. 공문서 배치 (S3 AP 경유)
+
+<!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png -->
+![UC16: 공문서 배치](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+
+#### 2. 편집된 문서 미리보기
+
+<!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png -->
+![UC16: 편집된 문서 미리보기](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+
+#### 3. 편집 메타데이터 (Sidecar JSON)
+
+<!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png -->
+![UC16: 편집 메타데이터](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+
+#### 4. FOIA 기한 리마인더 (SNS 이메일)
+
+<!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png -->
+![UC16: FOIA 리마인더 이메일](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+
+#### 5. NARA GRS 보존 일정 (DynamoDB)
+
+<!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png -->
+![UC16: 보존 테이블](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+
 ## Deploy
 
 ```bash

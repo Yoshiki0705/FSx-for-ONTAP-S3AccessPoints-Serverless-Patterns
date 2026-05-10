@@ -34,6 +34,36 @@ Serverless pipeline for municipal geospatial data (GeoTIFF / Shapefile / GeoJSON
 - OGC standards (WMS / WFS / GeoPackage)
 - Open Data publishing workflow
 
+
+### 已验证的 UI/UX 截图
+
+> 本节展示**一般人员在日常工作中实际使用的 UI/UX 界面**。Step Functions 图形等技术视图另见 `docs/verification-results-phase7.md`。
+
+#### 1. GIS 数据放置（通过 S3 AP）
+
+<!-- SCREENSHOT: phase7-uc17-s3-gis-uploaded.png -->
+![UC17: GIS 数据放置](../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
+
+#### 2. Bedrock 生成的城市规划报告
+
+<!-- SCREENSHOT: phase7-uc17-bedrock-report.png -->
+![UC17: Bedrock 报告](../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
+
+#### 3. 灾害风险地图（JSON）
+
+<!-- SCREENSHOT: phase7-uc17-risk-map-json.png -->
+![UC17: 风险地图](../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
+
+#### 4. 土地利用分布
+
+<!-- SCREENSHOT: phase7-uc17-landuse-distribution.png -->
+![UC17: 土地利用分布](../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
+
+#### 5. 时间序列变化（DynamoDB）
+
+<!-- SCREENSHOT: phase7-uc17-dynamodb-landuse-history.png -->
+![UC17: 土地利用历史](../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
+
 ## Deploy
 
 ```bash

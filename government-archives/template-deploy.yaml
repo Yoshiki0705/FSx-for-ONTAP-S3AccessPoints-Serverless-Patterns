@@ -89,6 +89,17 @@ Parameters:
     MaxValue: 3000
     Description: Textract 同期/非同期 API の切替ページ数
 
+  CrossRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: Textract クロスリージョンターゲット（ap-northeast-1 は未対応）
+
+  UseCrossRegion:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Textract のクロスリージョン呼び出しを使用するか
+
   DefaultRetentionYears:
     Type: Number
     Default: 7
@@ -563,6 +574,8 @@ Resources:
           OUTPUT_BUCKET: !Ref OutputBucket
           S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
           SYNC_PAGE_THRESHOLD: !Ref SyncPageThreshold
+          CROSS_REGION: !Ref CrossRegion
+          USE_CROSS_REGION: !Ref UseCrossRegion
       LoggingConfig:
         LogGroup: !Ref OcrLogGroup
       Tags:

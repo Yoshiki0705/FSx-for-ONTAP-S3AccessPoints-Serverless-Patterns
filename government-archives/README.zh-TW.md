@@ -36,6 +36,36 @@ Serverless pipeline for government public records (PDF / TIFF / EML / DOCX) auto
 - Section 508 accessibility
 - FedRAMP High in GovCloud
 
+
+### 已驗證的 UI/UX 螢幕截圖
+
+> 本節展示**一般職員在日常工作中實際使用的 UI/UX 介面**。Step Functions 圖形等技術視圖另見 `docs/verification-results-phase7.md`。
+
+#### 1. 公文檔案放置（透過 S3 AP）
+
+<!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png -->
+![UC16: 公文檔案放置](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+
+#### 2. 已編輯文件預覽
+
+<!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png -->
+![UC16: 已編輯文件預覽](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+
+#### 3. 編輯中繼資料（Sidecar JSON）
+
+<!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png -->
+![UC16: 編輯中繼資料](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+
+#### 4. FOIA 期限提醒（SNS 電子郵件）
+
+<!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png -->
+![UC16: FOIA 提醒郵件](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+
+#### 5. NARA GRS 保存排程（DynamoDB）
+
+<!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png -->
+![UC16: 保存表](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+
 ## Deploy
 
 ```bash

@@ -36,6 +36,36 @@ Serverless pipeline for government public records (PDF / TIFF / EML / DOCX) auto
 - Section 508 accessibility
 - FedRAMP High in GovCloud
 
+
+### Captures d'écran UI/UX vérifiées
+
+> Cette section présente **les écrans UI/UX utilisés au quotidien par les agents**. Les vues techniques comme les graphes Step Functions sont documentées séparément dans `docs/verification-results-phase7.md`.
+
+#### 1. Placement des archives publiques (via S3 AP)
+
+<!-- SCREENSHOT: phase7-uc16-s3-archives-uploaded.png -->
+![UC16: Placement des archives](../docs/screenshots/masked/phase7/phase7-uc16-s3-archives-uploaded.png)
+
+#### 2. Aperçu du document rédigé
+
+<!-- SCREENSHOT: phase7-uc16-redacted-text-preview.png -->
+![UC16: Document rédigé](../docs/screenshots/masked/phase7/phase7-uc16-redacted-text-preview.png)
+
+#### 3. Métadonnées de rédaction (Sidecar JSON)
+
+<!-- SCREENSHOT: phase7-uc16-redaction-metadata-json.png -->
+![UC16: Métadonnées de rédaction](../docs/screenshots/masked/phase7/phase7-uc16-redaction-metadata-json.png)
+
+#### 4. Rappel d'échéance FOIA (Email SNS)
+
+<!-- SCREENSHOT: phase7-uc16-foia-reminder-email.png -->
+![UC16: Email de rappel FOIA](../docs/screenshots/masked/phase7/phase7-uc16-foia-reminder-email.png)
+
+#### 5. Calendrier de conservation NARA GRS (DynamoDB)
+
+<!-- SCREENSHOT: phase7-uc16-dynamodb-retention.png -->
+![UC16: Table de conservation](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
+
 ## Deploy
 
 ```bash

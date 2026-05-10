@@ -34,6 +34,31 @@ Serverless pipeline for satellite imagery (GeoTIFF / NITF / HDF5) analytics leve
 - FedRAMP High in GovCloud
 - Data sovereignty: data never leaves the target region
 
+
+### 검증된 UI/UX 스크린샷
+
+> 본 섹션은 **일반 직원이 일상 업무에서 실제로 사용하는 UI/UX 화면**을 게시합니다. Step Functions 그래프와 같은 기술자 화면은 `docs/verification-results-phase7.md` 를 참조하세요.
+
+#### 1. 위성 이미지 배치 (FSx ONTAP 의 S3 AP 경유)
+
+<!-- SCREENSHOT: phase7-uc15-s3-satellite-uploaded.png -->
+![UC15: 위성 이미지 배치](../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
+
+#### 2. 분석 결과 (S3 출력 버킷)
+
+<!-- SCREENSHOT: phase7-uc15-s3-output-bucket.png -->
+![UC15: S3 출력 버킷](../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
+
+#### 3. 변화 감지 경보 (SNS 이메일)
+
+<!-- SCREENSHOT: phase7-uc15-sns-alert-email.png -->
+![UC15: SNS 경보 이메일](../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
+
+#### 4. 탐지 결과 (JSON)
+
+<!-- SCREENSHOT: phase7-uc15-detections-json.png -->
+![UC15: 탐지 결과 JSON](../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
+
 ## Deploy
 
 ```bash
