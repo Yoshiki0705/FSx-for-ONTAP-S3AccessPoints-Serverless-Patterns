@@ -8,7 +8,10 @@ us-east-1 にルーティングする。
 
 Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     CROSS_REGION: クロスリージョンターゲット (デフォルト: us-east-1)
 """
 
@@ -24,6 +27,7 @@ import boto3
 
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
@@ -131,7 +135,7 @@ def handler(event, context):
     file_size = event.get("Size", 0)
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     cross_region = os.environ.get("CROSS_REGION", DEFAULT_CROSS_REGION)
 
     logger.info(
@@ -199,13 +203,7 @@ def handler(event, context):
         "extracted_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(result, default=str, ensure_ascii=False).encode("utf-8"),
-        ContentType="application/json; charset=utf-8",
-    )
+    output_writer.put_json(key=output_key, data=result)
 
     logger.info(
         "OCR completed: file_key=%s, text_length=%d, tables=%d",

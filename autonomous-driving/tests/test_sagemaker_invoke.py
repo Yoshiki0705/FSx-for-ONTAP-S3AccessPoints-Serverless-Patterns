@@ -451,9 +451,15 @@ class TestHandler:
             "TASK_TOKEN_TABLE_NAME": TABLE_NAME,
             "TOKEN_TTL_SECONDS": "86400",
         }):
-            with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
+            with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3, \
+                 patch("functions.sagemaker_invoke.handler.OutputWriter") as mock_output_writer_cls:
                 mock_sagemaker = MagicMock()
                 mock_boto3.client.return_value = mock_sagemaker
+
+                mock_writer = MagicMock()
+                mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+                mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+                mock_output_writer_cls.from_env.return_value = mock_writer
 
                 with patch(
                     "functions.sagemaker_invoke.handler.TaskTokenStore"
@@ -483,9 +489,15 @@ class TestHandler:
             "MOCK_MODE": "false",
             "TOKEN_STORAGE_MODE": "direct",
         }):
-            with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
+            with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3, \
+                 patch("functions.sagemaker_invoke.handler.OutputWriter") as mock_output_writer_cls:
                 mock_sagemaker = MagicMock()
                 mock_boto3.client.return_value = mock_sagemaker
+
+                mock_writer = MagicMock()
+                mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+                mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+                mock_output_writer_cls.from_env.return_value = mock_writer
 
                 result = handler(event, context)
 

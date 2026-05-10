@@ -265,10 +265,11 @@ class TestOcrHandler:
         "OUTPUT_BUCKET": "test-output-bucket",
         "CROSS_REGION": "us-east-1",
     })
+    @patch("functions.ocr.handler.OutputWriter")
     @patch("functions.ocr.handler.boto3.client")
     @patch("functions.ocr.handler.CrossRegionClient")
     @patch("functions.ocr.handler.S3ApHelper")
-    def test_ocr_success(self, mock_s3ap_class, mock_cr_class, mock_boto3_client):
+    def test_ocr_success(self, mock_s3ap_class, mock_cr_class, mock_boto3_client, mock_output_writer_cls):
         """正常な PDF で SUCCESS を返す"""
         from functions.ocr.handler import handler
 
@@ -292,6 +293,12 @@ class TestOcrHandler:
         # S3 クライアントモック
         mock_s3 = MagicMock()
         mock_boto3_client.return_value = mock_s3
+
+        # OutputWriter モック
+        mock_writer = MagicMock()
+        mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+        mock_output_writer_cls.from_env.return_value = mock_writer
 
         context = MagicMock()
         context.aws_request_id = "test-request-id"
@@ -342,9 +349,10 @@ class TestBimParseHandler:
         "OUTPUT_BUCKET": "test-output-bucket",
         "PREVIOUS_METADATA_PREFIX": "metadata/history/",
     })
+    @patch("functions.bim_parse.handler.OutputWriter")
     @patch("functions.bim_parse.handler.boto3.client")
     @patch("functions.bim_parse.handler.S3ApHelper")
-    def test_handler_success(self, mock_s3ap_class, mock_boto3_client):
+    def test_handler_success(self, mock_s3ap_class, mock_boto3_client, mock_output_writer_cls):
         """正常な IFC ファイルで SUCCESS を返す"""
         from functions.bim_parse.handler import handler
 
@@ -371,6 +379,12 @@ class TestBimParseHandler:
         mock_s3 = MagicMock()
         mock_boto3_client.return_value = mock_s3
         mock_s3.list_objects_v2.return_value = {"Contents": []}
+
+        # OutputWriter モック
+        mock_writer = MagicMock()
+        mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+        mock_output_writer_cls.from_env.return_value = mock_writer
 
         context = MagicMock()
         context.aws_request_id = "test-request-id"

@@ -264,8 +264,8 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 現行の UC 実装には 3 つの出力パターンがあります:
 
 - **🟢 UC1-UC5**: 既存の `S3AccessPointOutputAlias` パラメータで FSxN S3AP 出力に対応済み（UC 作成当初からの設計）
-- **🟢🆕 UC11/UC14**: 2026-05-10 で `OutputDestination` 切替機構を実装（STANDARD_S3 ⇄ FSXN_S3AP）+ AWS 実検証完了
-- **🟡 UC6/7/8/9/10/12/13**: 現状 `OUTPUT_BUCKET` のみ（標準 S3 固定）、`OutputDestination` 機構は未適用（次のコミット対象）
+- **🟢🆕 UC9/10/11/12/14**: 2026-05-10 で `OutputDestination` 切替機構を実装（STANDARD_S3 ⇄ FSXN_S3AP）。UC11/14 は AWS 実検証完了、UC9/10/12 は単体テストのみ完了
+- **🟡 UC6/7/8/13**: 現状 `OUTPUT_BUCKET` のみ（標準 S3 固定）、Athena 結果は仕様上標準 S3 必須のため `OutputDestination` 適用は部分的
 - **🟢 UC15/16/17**: Phase 7 の一部で FSxN S3AP への書き戻しに対応
 
 | UC | 入力元 | 出力先 | 出力先選択機構 | 備考 |
@@ -278,10 +278,10 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 | UC6 semiconductor-eda | S3AP | **標準 S3** | ⚠️ 未実装 | Bedrock/Athena 結果（Athena は仕様上標準 S3 必須） |
 | UC7 genomics-pipeline | S3AP | **標準 S3** | ⚠️ 未実装 | Glue/Athena 結果（Athena は仕様上標準 S3 必須） |
 | UC8 energy-seismic | S3AP | **標準 S3** | ⚠️ 未実装 | Glue/Athena 結果（Athena は仕様上標準 S3 必須） |
-| UC9 autonomous-driving | S3AP | **標準 S3** | ⚠️ 未実装 | ADAS 分析結果（`OutputDestination` 拡張候補） |
-| UC10 construction-bim | S3AP | **標準 S3** | ⚠️ 未実装 | BIM メタデータ（`OutputDestination` 拡張候補） |
+| UC9 autonomous-driving | S3AP | **選択可** 🆕 | ✅ `OutputDestination` | ADAS 分析結果 |
+| UC10 construction-bim | S3AP | **選択可** 🆕 | ✅ `OutputDestination` | BIM メタデータ / 安全コンプライアンスレポート |
 | **UC11 retail-catalog** | S3AP | **選択可** | ✅ `OutputDestination` | AWS 実検証済み 2026-05-10 |
-| UC12 logistics-ocr | S3AP | **標準 S3** | ⚠️ 未実装 | 配送伝票 OCR（`OutputDestination` 拡張候補） |
+| UC12 logistics-ocr | S3AP | **選択可** 🆕 | ✅ `OutputDestination` | 配送伝票 OCR |
 | UC13 education-research | S3AP | **標準 S3** | ⚠️ 未実装 | Athena 結果含む（Athena は仕様上標準 S3 必須） |
 | **UC14 insurance-claims** | S3AP | **選択可** | ✅ `OutputDestination` | AWS 実検証済み 2026-05-10 |
 | UC15 defense-satellite | S3AP | S3AP | 既存パターン | 物体検出 / 変化検知結果 |
@@ -289,8 +289,9 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 | UC17 smart-city-geospatial | S3AP | S3AP | 既存パターン | GIS 分析結果 / リスクマップ |
 
 **次のロードマップ**:
-- UC9/10/12 に `OutputDestination` 機構を横展開（UC11/14 のパターンをコピー）
-- UC6/7/8/13 の Athena 出力は仕様上標準 S3 必須だが、Bedrock レポート等の非 Athena 成果物は `OutputDestination=FSXN_S3AP` で書き戻す選択肢を追加可能（Phase 2 拡張予定）
+- Part B: UC1-5 の既存 `S3AccessPointOutputAlias` パターンのドキュメント整備
+- UC6/7/8/13 の Athena 出力は仕様上標準 S3 必須だが、Bedrock レポート等の非 Athena 成果物は `OutputDestination=FSXN_S3AP` で書き戻す選択肢を追加可能（将来拡張）
+- UC9/10/12 の AWS 実デプロイ検証（単体テストは完了、デプロイは未実施）
 
 ## リージョン選択ガイド
 
