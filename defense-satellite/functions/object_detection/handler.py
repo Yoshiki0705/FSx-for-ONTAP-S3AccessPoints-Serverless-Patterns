@@ -7,13 +7,16 @@
 - >= 5 MB: SageMaker Batch Transform（大容量対応）
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット名
     S3_ACCESS_POINT_ALIAS: 入力 S3 AP Alias (optional)
     REKOGNITION_MIN_CONFIDENCE: Rekognition 検出最小信頼度 (default: 70.0)
     REKOGNITION_MAX_LABELS: Rekognition 最大検出ラベル数 (default: 100)
     REKOGNITION_PAYLOAD_LIMIT_BYTES: Rekognition ペイロード上限 (default: 5242880 = 5MB)
     INFERENCE_TYPE: "none" | "provisioned" | "serverless" | "components" (default: "none")
     SAGEMAKER_ENDPOINT_NAME: SageMaker Endpoint (INFERENCE_TYPE != none で必須)
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -28,6 +31,7 @@ from botocore.exceptions import ClientError
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 from shared.routing import determine_inference_path, InferencePath
 from shared.s3ap_helper import S3ApHelper
 
@@ -141,7 +145,7 @@ def handler(event, context):
             "detection_count": int
         }
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     s3_access_point = os.environ.get("S3_ACCESS_POINT_ALIAS")
     min_confidence = float(os.environ.get("REKOGNITION_MIN_CONFIDENCE", "70.0"))
     max_labels = int(os.environ.get("REKOGNITION_MAX_LABELS", "100"))
@@ -160,8 +164,10 @@ def handler(event, context):
         s3ap = S3ApHelper(s3_access_point)
         response = s3ap.get_object(tile_key)
     else:
+        # Fallback: s3_client direct（OUTPUT_BUCKET 存在時のみ。テスト互換）
+        fallback_bucket = os.environ.get("OUTPUT_BUCKET", "")
         s3_client = boto3.client("s3")
-        response = s3_client.get_object(Bucket=output_bucket, Key=tile_key)
+        response = s3_client.get_object(Bucket=fallback_bucket, Key=tile_key)
 
     image_bytes = response["Body"].read()
     image_size = len(image_bytes)
@@ -218,25 +224,18 @@ def handler(event, context):
         detection_count,
     )
 
-    # 結果を S3 に書き出し
+    # 結果を出力先（標準 S3 または FSxN S3AP）に書き出し
     result_key = tile_key.replace(".tif", "_detections.json").replace(
         "tiles/", "detections/"
     )
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=result_key,
-        Body=json.dumps(
-            {
-                "tile_key": tile_key,
-                "inference_path": inference_path,
-                "detections": detections,
-                "detection_count": detection_count,
-            },
-            default=str,
-        ),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
+    output_writer.put_json(
+        key=result_key,
+        data={
+            "tile_key": tile_key,
+            "inference_path": inference_path,
+            "detections": detections,
+            "detection_count": detection_count,
+        },
     )
 
     # EMF メトリクス
