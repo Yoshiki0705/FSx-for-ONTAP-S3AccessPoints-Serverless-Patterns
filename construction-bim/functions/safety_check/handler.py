@@ -11,7 +11,10 @@ Bedrock で安全コンプライアンスルール（防火避難要件、構造
     - sanitize_for_logging パターンで安全チェック詳細をマスクする
 
 Environment Variables:
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
     SNS_TOPIC_ARN: SNS トピック ARN
     SAFETY_RULES: 安全ルール JSON (オプション、デフォルトルール使用)
@@ -27,6 +30,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
@@ -328,7 +332,8 @@ def handler(event, context):
     bim_metadata = event.get("bim_metadata", {})
     drawing_images = event.get("drawing_images", [])
 
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
+    output_bucket = os.environ.get("OUTPUT_BUCKET", "")  # legacy fallback for non-put_object usages
     model_id = os.environ.get("BEDROCK_MODEL_ID", DEFAULT_BEDROCK_MODEL_ID)
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
@@ -387,13 +392,7 @@ def handler(event, context):
         "checked_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(result, default=str, ensure_ascii=False).encode("utf-8"),
-        ContentType="application/json; charset=utf-8",
-    )
+    output_writer.put_json(key=output_key, data=result)
 
     # SNS 通知
     if sns_topic_arn:

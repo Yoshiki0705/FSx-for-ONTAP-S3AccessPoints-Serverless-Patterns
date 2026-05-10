@@ -318,10 +318,11 @@ class TestOcrHandler:
         "CROSS_REGION": "us-east-1",
         "CONFIDENCE_THRESHOLD": "80",
     })
+    @patch("functions.ocr.handler.OutputWriter")
     @patch("functions.ocr.handler.boto3")
     @patch("functions.ocr.handler.CrossRegionClient")
     @patch("functions.ocr.handler.S3ApHelper")
-    def test_handler_success(self, mock_s3ap_cls, mock_cr_cls, mock_boto3):
+    def test_handler_success(self, mock_s3ap_cls, mock_cr_cls, mock_boto3, mock_output_writer_cls):
         """正常系: OCR が成功すること"""
         from functions.ocr.handler import handler
 
@@ -342,6 +343,11 @@ class TestOcrHandler:
 
         mock_s3_client = MagicMock()
         mock_boto3.client.return_value = mock_s3_client
+
+        mock_writer = MagicMock()
+        mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+        mock_output_writer_cls.from_env.return_value = mock_writer
 
         event = {"Key": "slips/delivery_001.pdf", "Size": 1048576}
         context = MagicMock()

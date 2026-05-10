@@ -110,6 +110,40 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: Lambda SnapStart を有効化する（コールドスタート削減）
 
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: |
+      AI/ML 成果物の書き込み先。STANDARD_S3（デフォルト）は新しい S3 バケットに書き込み。
+      FSXN_S3AP は FSxN S3 Access Point 経由でオリジナルデータと同一ボリュームに書き込み
+      （"no data movement" パターン）。詳細: docs/aws-feature-requests/fsxn-s3ap-improvements.md
+
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: |
+      OutputDestination=FSXN_S3AP 時の出力先 S3 AP Alias。空なら入力用 S3AccessPointAlias を再利用。
+
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: |
+      OutputDestination=FSXN_S3AP 時、全出力キーに付与するプレフィックス。
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: |
+      入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
+      IAM アクセスを許可する（FSxN S3AP の permission 判定で両形式をサポート）。
+
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: |
+      出力用 S3 AP の名前。空なら S3AccessPointName を再利用。
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -124,6 +158,16 @@ Conditions:
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
   UseAutoOutputBucket:
     !Equals [!Ref OutputBucketName, ""]
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  UseInputApAsOutputAp:
+    !Equals [!Ref OutputS3APAlias, ""]
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
 
   SnapStartEnabled:
     !Equals [!Ref EnableSnapStart, "true"]
@@ -139,6 +183,7 @@ Resources:
   # -----------------------------------------------------------------
   OutputBucket:
     Type: AWS::S3::Bucket
+    Condition: UseStandardS3
     Properties:
       BucketName: !If
         - UseAutoOutputBucket
@@ -394,9 +439,30 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                   - s3:ListBucket
-                Resource:
-                  - !GetAtt OutputBucket.Arn
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !GetAtt OutputBucket.Arn
+                    - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -443,8 +509,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -489,8 +567,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: SNSPublish
                 Effect: Allow
                 Action:
@@ -567,7 +657,14 @@ Resources:
       Environment:
         Variables:
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           PREVIOUS_METADATA_PREFIX: "metadata/history/"
       LoggingConfig:
         LogGroup: !Ref BimParseLogGroup
@@ -595,7 +692,14 @@ Resources:
       Environment:
         Variables:
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           CROSS_REGION: !Ref CrossRegion
       LoggingConfig:
         LogGroup: !Ref OcrLogGroup
@@ -622,7 +726,14 @@ Resources:
       Role: !GetAtt SafetyCheckLambdaRole.Arn
       Environment:
         Variables:
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
           # 安全記録保護: LOG_SAFETY_DATA=false により、SafetyCheck Lambda は

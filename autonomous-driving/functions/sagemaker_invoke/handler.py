@@ -17,7 +17,10 @@ Environment Variables:
     TOKEN_TTL_SECONDS: Token TTL 秒数 (default: "86400")
     SAGEMAKER_MODEL_NAME: SageMaker モデル名
     SAGEMAKER_INSTANCE_TYPE: インスタンスタイプ (default: ml.m5.xlarge)
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     USE_CASE: ユースケース名 (default: "autonomous-driving")
     REGION: AWS リージョン
 """
@@ -34,6 +37,7 @@ import boto3
 
 from shared.exceptions import TokenStorageError, lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 from shared.task_token_store import TaskTokenStore
 
 logger = logging.getLogger(__name__)
@@ -267,7 +271,8 @@ def handler(event, context):
         }
     """
     mock_mode = os.environ.get("MOCK_MODE", "false").lower() == "true"
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
+    output_bucket = os.environ.get("OUTPUT_BUCKET", "")
     task_token = event.get("task_token", "")
     token_storage_mode = os.environ.get("TOKEN_STORAGE_MODE", "direct")
 

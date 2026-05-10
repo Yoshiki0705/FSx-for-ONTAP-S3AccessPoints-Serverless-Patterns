@@ -3,7 +3,10 @@
 Bedrock で配送ルート最適化レポートを生成し、S3 出力、SNS 通知する。
 
 Environment Variables:
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
     SNS_TOPIC_ARN: SNS トピック ARN
 """
@@ -18,6 +21,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
@@ -79,7 +83,8 @@ def handler(event, context):
     structured_records = event.get("structured_records", [])
     inventory_analyses = event.get("inventory_analyses", [])
 
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
+    output_bucket = os.environ.get("OUTPUT_BUCKET", "")  # legacy fallback for non-put_object usages
     model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
@@ -134,13 +139,7 @@ def handler(event, context):
     }
 
     # S3 出力
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(report_data, default=str, ensure_ascii=False).encode("utf-8"),
-        ContentType="application/json; charset=utf-8",
-    )
+    output_writer.put_json(key=output_key, data=report_data)
 
     # SNS 通知
     notification_sent = False

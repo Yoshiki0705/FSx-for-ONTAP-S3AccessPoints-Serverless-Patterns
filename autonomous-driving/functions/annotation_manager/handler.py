@@ -12,7 +12,10 @@ COCO フォーマット:
     }
 
 Environment Variables:
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     BEDROCK_MODEL_ID: Bedrock モデル ID
     SNS_TOPIC_ARN: SNS トピック ARN
     SAGEMAKER_TRANSFORM_JOB_NAME: SageMaker Transform ジョブ名プレフィックス
@@ -28,6 +31,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
@@ -331,7 +335,8 @@ def handler(event, context):
     qc_results = event.get("qc_results", [])
     sagemaker_output = event.get("sagemaker_output", None)
 
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
+    output_bucket = os.environ.get("OUTPUT_BUCKET", "")  # legacy fallback for non-put_object usages
     model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
     transform_job_prefix = os.environ.get(
@@ -386,12 +391,7 @@ def handler(event, context):
         },
     }
 
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(output_data, default=str),
-        ContentType="application/json",
-    )
+    output_writer.put_json(key=output_key, data=output_data)
 
     # SNS 通知
     if sns_topic_arn:

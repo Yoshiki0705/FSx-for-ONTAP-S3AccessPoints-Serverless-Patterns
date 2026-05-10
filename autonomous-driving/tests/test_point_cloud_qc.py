@@ -290,9 +290,10 @@ class TestHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
+    @patch("functions.point_cloud_qc.handler.OutputWriter")
     @patch("functions.point_cloud_qc.handler.boto3.client")
     @patch("functions.point_cloud_qc.handler.S3ApHelper")
-    def test_handler_success(self, mock_s3ap_class, mock_boto3_client):
+    def test_handler_success(self, mock_s3ap_class, mock_boto3_client, mock_output_writer_cls):
         """正常な PCD ファイルで SUCCESS を返す"""
         from functions.point_cloud_qc.handler import handler
 
@@ -324,6 +325,12 @@ class TestHandler:
         # S3 クライアントモック
         mock_s3 = MagicMock()
         mock_boto3_client.return_value = mock_s3
+
+        # OutputWriter モック
+        mock_writer = MagicMock()
+        mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+        mock_output_writer_cls.from_env.return_value = mock_writer
 
         # コンテキストモック
         context = MagicMock()
