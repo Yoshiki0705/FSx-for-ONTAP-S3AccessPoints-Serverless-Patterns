@@ -138,6 +138,22 @@ Parameters:
       OutputDestination=FSXN_S3AP 時、書き込み時に全オブジェクトキーに付与する
       プレフィックス。SMB/NFS ユーザーが AI 成果物を識別しやすくするため。
 
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: |
+      入力用 S3 Access Point の名前（alias ではなく）。指定すると
+      AP ARN 形式でも IAM アクセスを許可する。FSxN S3AP では alias 形式と
+      ARN 形式で permission 判定が異なる場合があるため、両方指定を推奨。
+
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: |
+      出力用 S3 Access Point の名前。OutputDestination=FSXN_S3AP 時、
+      OutputS3APAlias と合わせて指定すると AP ARN 形式でも書き込みを
+      許可する。空の場合は S3AccessPointName を再利用する。
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -158,6 +174,10 @@ Conditions:
     !Equals [!Ref OutputDestination, "FSXN_S3AP"]
   UseInputApAsOutputAp:
     !Equals [!Ref OutputS3APAlias, ""]
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
 
   SnapStartEnabled:
     !Equals [!Ref EnableSnapStart, "true"]
@@ -353,15 +373,23 @@ Resources:
                   - s3:ListBucket
                   - s3:GetObject
                   - s3:GetBucketLocation
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -400,8 +428,11 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:GetObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Sid: RekognitionDetectLabels
                 Effect: Allow
                 Action:
@@ -415,14 +446,27 @@ Resources:
                     - s3:PutObject
                   Resource:
                     - !Sub "${OutputBucket.Arn}/*"
-                - Sid: S3APOutputWrite
-                  Effect: Allow
-                  Action:
-                    - s3:PutObject
-                  Resource:
-                    - !Sub
-                      - "arn:aws:s3:::${Alias}/*"
-                      - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                - !If
+                  - HasS3AccessPointName
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -465,14 +509,27 @@ Resources:
                     - s3:PutObject
                   Resource:
                     - !Sub "${OutputBucket.Arn}/*"
-                - Sid: S3APOutputWrite
-                  Effect: Allow
-                  Action:
-                    - s3:PutObject
-                  Resource:
-                    - !Sub
-                      - "arn:aws:s3:::${Alias}/*"
-                      - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                - !If
+                  - HasS3AccessPointName
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -505,8 +562,11 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:GetObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - !If
                 - UseStandardS3
                 - Sid: S3OutputBucketWrite
@@ -515,14 +575,27 @@ Resources:
                     - s3:PutObject
                   Resource:
                     - !Sub "${OutputBucket.Arn}/*"
-                - Sid: S3APOutputWrite
-                  Effect: Allow
-                  Action:
-                    - s3:PutObject
-                  Resource:
-                    - !Sub
-                      - "arn:aws:s3:::${Alias}/*"
-                      - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                - !If
+                  - HasS3AccessPointName
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
