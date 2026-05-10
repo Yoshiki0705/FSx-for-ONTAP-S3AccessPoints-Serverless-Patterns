@@ -17,6 +17,11 @@ Parameters:
     Description: FSx ONTAP S3 Access Point Alias
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: S3 Access Point Name（ARN ベースのアクセス許可用、空の場合は Alias のみ）
+
   OntapSecretName:
     Type: String
     Default: ""
@@ -133,6 +138,8 @@ Conditions:
     !Equals [!Ref EnableSnapStart, "true"]
   CreateSageMakerResources:
     !Equals [!Ref EnableSageMaker, "true"]
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
 
 # =====================================================================
 # Resources
@@ -294,9 +301,14 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                   - s3:GetBucketLocation
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -329,16 +341,24 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "${OutputBucket.Arn}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "${OutputBucket.Arn}/*"
               - Sid: S3List
                 Effect: Allow
                 Action:
                   - s3:ListBucket
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-                  - !GetAtt OutputBucket.Arn
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !GetAtt OutputBucket.Arn
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !GetAtt OutputBucket.Arn
               - Sid: Rekognition
                 Effect: Allow
                 Action:

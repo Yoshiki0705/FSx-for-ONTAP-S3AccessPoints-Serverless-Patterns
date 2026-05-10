@@ -121,6 +121,12 @@ def handler(event, context):
                 MinConfidence=min_confidence,
             )
             labels = response.get("Labels", [])
+        except rekognition.exceptions.InvalidImageFormatException as e:
+            logger.warning("InvalidImageFormat (continuing with empty labels): %s", e)
+            labels = []
+        except rekognition.exceptions.ImageTooLargeException as e:
+            logger.warning("ImageTooLarge (continuing with empty labels): %s", e)
+            labels = []
         except Exception as e:
             logger.error("Rekognition failed: %s", e)
             labels = []

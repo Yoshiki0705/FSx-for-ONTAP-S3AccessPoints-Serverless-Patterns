@@ -168,15 +168,27 @@ def handler(event, context):
     change_detected = diff_area_km2 >= threshold
 
     # DynamoDB に現在の検出結果を保存
+    from decimal import Decimal
+
+    def _to_decimal(obj):
+        """再帰的に float を Decimal に変換する（DynamoDB 互換）。"""
+        if isinstance(obj, float):
+            return Decimal(str(obj))
+        if isinstance(obj, dict):
+            return {k: _to_decimal(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_to_decimal(v) for v in obj]
+        return obj
+
     ttl = int(time.time()) + ttl_seconds
     item = {
         "tile_id": tile_id,
         "timestamp": timestamp,
         "image_key": event.get("tile_key", ""),
-        "detected_objects": detections,
+        "detected_objects": _to_decimal(detections),
         "change_from_previous": {
             "previous_timestamp": previous_timestamp,
-            "diff_area_km2": float(diff_area_km2),
+            "diff_area_km2": Decimal(str(round(diff_area_km2, 4))),
         },
         "ttl": ttl,
     }

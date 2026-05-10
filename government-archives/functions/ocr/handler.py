@@ -101,20 +101,33 @@ def handler(event, context):
         api_choice,
     )
 
-    textract = boto3.client("textract")
-
-    if api_choice == "sync":
-        try:
-            text, blocks = _extract_text_sync(textract, document_bytes)
-        except textract.exceptions.InvalidParameterException as e:
-            # 同期 API サイズ制限超過 → 非同期へフォールバック
-            logger.warning("Sync Textract failed, falling back to async: %s", e)
-            api_choice = "async"
-            text = ""
-            blocks = []
-    else:
+    # Textract が未対応リージョンの場合は空テキストで継続（UC2/UC10/UC12/UC13/UC14 と同じ方針）
+    try:
+        textract = boto3.client("textract")
+    except Exception as e:
+        logger.warning("Textract client unavailable: %s", e)
+        api_choice = "unavailable"
         text = ""
         blocks = []
+    else:
+        if api_choice == "sync":
+            try:
+                text, blocks = _extract_text_sync(textract, document_bytes)
+            except textract.exceptions.InvalidParameterException as e:
+                # 同期 API サイズ制限超過 → 非同期へフォールバック
+                logger.warning("Sync Textract failed, falling back to async: %s", e)
+                api_choice = "async"
+                text = ""
+                blocks = []
+            except Exception as e:
+                # EndpointConnectionError 等で Textract 呼び出し不可
+                logger.warning("Textract invocation failed (region unsupported?): %s", e)
+                api_choice = "unavailable"
+                text = ""
+                blocks = []
+        else:
+            text = ""
+            blocks = []
 
     # 結果を S3 に書き出し
     text_key = f"ocr-results/{document_key}.txt"

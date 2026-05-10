@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  UC16: 政府機関 — 公文書デジタルアーカイブ・FOIA 対応
+  UC16: 政府機関 — 公文書デジタルアーカイブ・FOIA 対応 (v2)
   FSx for NetApp ONTAP S3 Access Points を活用した PDF/TIFF/EML 文書の OCR、
   分類、PII 検出、墨消し、全文検索インデックス、FOIA 期限トラッキングの
   サーバーレスワークフロー。
@@ -17,6 +17,11 @@ Parameters:
     Type: String
     Description: FSx ONTAP S3 Access Point Alias
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: S3 Access Point Name（ARN ベース、空の場合は Alias のみ）
 
   OntapSecretName:
     Type: String
@@ -148,6 +153,8 @@ Conditions:
     !Equals [!Ref OpenSearchMode, "managed"]
   UseAutoOpenSearchName:
     !Equals [!Ref OpenSearchCollectionName, ""]
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
 
 # =====================================================================
 # Resources
@@ -415,9 +422,14 @@ Resources:
                   - s3:ListBucket
                   - s3:GetObject
                   - s3:PutObject
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
-                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
 
   ProcessingLambdaRole:
     Type: AWS::IAM::Role
@@ -442,16 +454,24 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "${OutputBucket.Arn}/*"
+                    - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "${OutputBucket.Arn}/*"
               - Sid: S3List
                 Effect: Allow
                 Action:
                   - s3:ListBucket
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
-                  - !GetAtt OutputBucket.Arn
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                    - !GetAtt OutputBucket.Arn
+                    - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                    - !GetAtt OutputBucket.Arn
               - Sid: Textract
                 Effect: Allow
                 Action:
@@ -793,8 +813,16 @@ Resources:
                     "Type": "Choice",
                     "Choices": [
                       {
-                        "Variable": "$.opensearch_enabled",
-                        "StringEquals": "true",
+                        "And": [
+                          {
+                            "Variable": "$.opensearch_enabled",
+                            "IsPresent": true
+                          },
+                          {
+                            "Variable": "$.opensearch_enabled",
+                            "StringEquals": "true"
+                          }
+                        ],
                         "Next": "IndexGeneration"
                       }
                     ],
