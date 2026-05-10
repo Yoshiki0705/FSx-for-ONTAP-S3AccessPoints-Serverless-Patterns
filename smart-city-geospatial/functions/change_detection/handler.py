@@ -9,7 +9,6 @@ DynamoDB Schema:
 
 Environment Variables:
     LANDUSE_HISTORY_TABLE: DynamoDB テーブル名
-    OUTPUT_BUCKET: 出力先 S3 バケット
     CHANGE_THRESHOLD: 変化閾値（0-1, 分布差分、default 0.15）
     TTL_SECONDS: DynamoDB TTL (default 1 year)
 """

@@ -75,17 +75,19 @@ def test_handler_generates_report(
             "output": {"message": {"content": [{"text": "都市計画レポート"}]}}
         }).encode())
     }
-    mock_s3 = MagicMock()
 
     def boto3_client(service):
-        if service == "s3":
-            return mock_s3
         if service == "bedrock-runtime":
             return mock_bedrock
         return MagicMock()
 
-    with patch.object(report_generation_handler, "boto3") as mock_boto3:
+    mock_writer = MagicMock()
+
+    with patch.object(report_generation_handler, "boto3") as mock_boto3, patch.object(
+        report_generation_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
         mock_boto3.client.side_effect = boto3_client
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {
             "source_key": "gis/area.tif",
             "landuse_distribution": {"residential": 0.5},
@@ -95,4 +97,4 @@ def test_handler_generates_report(
         result = report_generation_handler.handler(event, lambda_context)
 
     assert "都市計画レポート" in result["report_text"]
-    mock_s3.put_object.assert_called_once()
+    mock_writer.put_text.assert_called_once()

@@ -6,11 +6,14 @@ forest, water, road 等）を推定する。
 画像サイズにより Rekognition / SageMaker を切替。
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット
     S3_ACCESS_POINT_ALIAS: 入力 S3 AP (optional)
     INFERENCE_TYPE: "none" | "provisioned" | "serverless" | "components"
     SAGEMAKER_ENDPOINT_NAME: SageMaker Endpoint 名
     REKOGNITION_MIN_CONFIDENCE: default 60.0
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 from shared.routing import determine_inference_path, InferencePath
 from shared.s3ap_helper import S3ApHelper
 
@@ -77,7 +81,7 @@ def handler(event, context):
     Input: {"source_key": "gis/area.tif", "Size": int}
     Output: {"source_key": str, "landuse_distribution": {...}, "inference_path": str}
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     s3_access_point = os.environ.get("S3_ACCESS_POINT_ALIAS")
     min_confidence = float(os.environ.get("REKOGNITION_MIN_CONFIDENCE", "60.0"))
     inference_type = os.environ.get("INFERENCE_TYPE", "none")
@@ -92,8 +96,10 @@ def handler(event, context):
         s3ap = S3ApHelper(s3_access_point)
         response = s3ap.get_object(source_key)
     else:
+        # Fallback: OUTPUT_BUCKET からの直接読み取り（テスト互換）
+        fallback_bucket = os.environ.get("OUTPUT_BUCKET", "")
         s3_client = boto3.client("s3")
-        response = s3_client.get_object(Bucket=output_bucket, Key=source_key)
+        response = s3_client.get_object(Bucket=fallback_bucket, Key=source_key)
 
     image_bytes = response["Body"].read()
     image_size = len(image_bytes)
@@ -171,20 +177,16 @@ def handler(event, context):
 
     landuse_distribution = map_labels_to_landuse(labels)
 
-    # 結果を S3 に書き出し
+    # 結果を出力先に書き出し
     result_key = f"landuse/{source_key}.json"
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=result_key,
-        Body=json.dumps({
+    output_writer.put_json(
+        key=result_key,
+        data={
             "source_key": source_key,
             "inference_path": inference_path,
             "landuse_distribution": landuse_distribution,
             "label_count": len(labels),
-        }, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
+        },
     )
 
     logger.info(

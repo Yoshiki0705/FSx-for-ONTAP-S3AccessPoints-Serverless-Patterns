@@ -65,9 +65,12 @@ def test_classify_risk_level(risk_mapping_handler):
 def test_handler_computes_all_risks(risk_mapping_handler, lambda_context, monkeypatch):
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
 
-    mock_s3_client = MagicMock()
-    with patch.object(risk_mapping_handler, "boto3") as mock_boto3:
-        mock_boto3.client.return_value = mock_s3_client
+    mock_writer = MagicMock()
+
+    with patch.object(
+        risk_mapping_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {
             "source_key": "gis/area.tif",
             "landuse_distribution": {"residential": 0.5, "road": 0.2},
@@ -88,3 +91,4 @@ def test_handler_computes_all_risks(risk_mapping_handler, lambda_context, monkey
         assert "score" in info
         assert "level" in info
         assert info["level"] in ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    mock_writer.put_json.assert_called_once()

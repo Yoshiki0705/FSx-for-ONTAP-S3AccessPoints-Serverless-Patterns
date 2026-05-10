@@ -59,9 +59,12 @@ def test_handler_records_metadata(preprocessing_handler, lambda_context, monkeyp
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.setenv("TARGET_CRS", "EPSG:4326")
 
-    mock_s3_client = MagicMock()
-    with patch.object(preprocessing_handler, "boto3") as mock_boto3:
-        mock_boto3.client.return_value = mock_s3_client
+    mock_writer = MagicMock()
+
+    with patch.object(
+        preprocessing_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {
             "Key": "gis/area_epsg32654.tif",
             "GeoFormat": "raster",
@@ -71,4 +74,4 @@ def test_handler_records_metadata(preprocessing_handler, lambda_context, monkeyp
     assert result["source_key"] == "gis/area_epsg32654.tif"
     assert result["source_crs"] == "EPSG:32654"
     assert result["target_crs"] == "EPSG:4326"
-    mock_s3_client.put_object.assert_called_once()
+    mock_writer.put_json.assert_called_once()
