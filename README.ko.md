@@ -175,6 +175,52 @@ EventBridge Scheduler (정기 실행)
 > **공공 부문 적합성**: UC15는 DoD CC SRG / CSfC / FedRAMP High (GovCloud 마이그레이션 시), UC16은 NARA / FOIA 섹션 552 / 섹션 508, UC17은 INSPIRE 지침 / OGC 표준 준수.
 
 
+## UI/UX 스크린샷 (엔드유저 / 직원 / 담당자 뷰)
+
+각 UC의 **엔드유저, 직원, 담당자가 일상 업무에서 실제로 보는 UI/UX 화면**을
+각 UC의 README 및 demo-guide에 게재합니다. Step Functions 워크플로 그래프와 같은
+기술자용 뷰는 각 phase의 검증 결과 문서(`docs/verification-results-phase*.md`)에
+정리되어 있습니다.
+
+Public Sector (UC15/16/17)뿐만 아니라 모든 업종의 UC에서 동일한 방침을 채택:
+
+- **담당자 시점**: S3 콘솔에서 결과물 확인, Bedrock 리포트 열람, SNS 메일 수신,
+  DynamoDB로 이력 검색 등의 일상 업무 화면
+- **기술자 시점 제외**: CloudFormation 스택 이벤트, Lambda 로그, Step Functions
+  그래프(워크플로 시각화 목적 제외)는 `verification-results-*.md` 쪽에 분리
+
+| UC | 업종 | 화면 수 | 주요 내용 | 위치 |
+|----|------|---------|----------|------|
+| UC1 | 법무·컴플라이언스 | 1 | Step Functions 그래프 (감사 담당자용 워크플로 시각화) | [`legal-compliance/docs/demo-guide.ko.md`](legal-compliance/docs/demo-guide.ko.md) |
+| UC2 | 금융·IDP | 1 | Step Functions 그래프 (청구서 처리 담당자용 워크플로 시각화) | [`financial-idp/docs/demo-guide.ko.md`](financial-idp/docs/demo-guide.ko.md) |
+| UC3 | 제조·분석 | 1 | Step Functions 그래프 (품질관리 담당자용 워크플로 시각화) | [`manufacturing-analytics/docs/demo-guide.ko.md`](manufacturing-analytics/docs/demo-guide.ko.md) |
+| UC4 | 미디어·VFX | 미게재 | (렌더링 담당자용 화면, 향후 촬영 예정) | [`media-vfx/docs/demo-guide.ko.md`](media-vfx/docs/demo-guide.ko.md) |
+| UC5 | 의료·DICOM | 1 | Step Functions 그래프 (의료정보관리자용 워크플로 시각화) | [`healthcare-dicom/docs/demo-guide.ko.md`](healthcare-dicom/docs/demo-guide.ko.md) |
+| UC6 | 반도체·EDA | 4 | FSx Volumes / S3 출력 버킷 / Athena 쿼리 결과 / Bedrock 설계 리뷰 리포트 | [`semiconductor-eda/docs/demo-guide.ko.md`](semiconductor-eda/docs/demo-guide.ko.md) |
+| UC7 | 유전체학 파이프라인 | 1 | Step Functions 그래프 (연구자용 워크플로 시각화) | [`genomics-pipeline/docs/demo-guide.ko.md`](genomics-pipeline/docs/demo-guide.ko.md) |
+| UC8 | 에너지·지진 탐사 | 1 | Step Functions 그래프 (지질 해석 담당자용 워크플로 시각화) | [`energy-seismic/docs/demo-guide.ko.md`](energy-seismic/docs/demo-guide.ko.md) |
+| UC9 | 자율주행 | 미게재 | (ADAS 분석 담당자용 화면, 향후 촬영 예정) | [`autonomous-driving/docs/demo-guide.ko.md`](autonomous-driving/docs/demo-guide.ko.md) |
+| UC10 | 건설·BIM | 1 | Step Functions 그래프 (BIM 관리자 / 안전 담당자용 워크플로 시각화) | [`construction-bim/docs/demo-guide.ko.md`](construction-bim/docs/demo-guide.ko.md) |
+| UC11 | 소매·카탈로그 | 2 | 상품 태그 결과 / S3 출력 버킷 (EC 담당자용) | [`retail-catalog/docs/demo-guide.ko.md`](retail-catalog/docs/demo-guide.ko.md) |
+| UC12 | 물류·OCR | 1 | Step Functions 그래프 (배송 담당자용 워크플로 시각화) | [`logistics-ocr/docs/demo-guide.ko.md`](logistics-ocr/docs/demo-guide.ko.md) |
+| UC13 | 교육·연구 | 1 | Step Functions 그래프 (연구 사무 담당자용 워크플로 시각화) | [`education-research/docs/demo-guide.ko.md`](education-research/docs/demo-guide.ko.md) |
+| UC14 | 보험 | 2 | 청구 리포트 / S3 출력 버킷 (보험 조정 담당자용) | [`insurance-claims/docs/demo-guide.ko.md`](insurance-claims/docs/demo-guide.ko.md) |
+| UC15 | 방위·위성 이미지 (Public Sector) | 4 | S3 업로드 / 출력 / SNS 이메일 / JSON 결과물 (분석 담당자용) | [`defense-satellite/README.md`](defense-satellite/README.md) |
+| UC16 | 정부·FOIA (Public Sector) | 5 | 업로드 / 편집 프리뷰 / 메타데이터 / FOIA 알림 이메일 / DynamoDB 보존 이력 (공문서 담당자용) | [`government-archives/README.md`](government-archives/README.md) |
+| UC17 | 스마트시티 (Public Sector) | 5 | GIS 업로드 / Bedrock 리포트 / 리스크 맵 / 토지 이용 분포 / 시계열 이력 (도시 계획 담당자용) | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md) |
+
+**공통 스크린샷** (업종 횡단 범용 화면, `docs/screenshots/masked/common/`):
+- `fsx-s3ap-detail.png` — FSxN S3 Access Point 상세 뷰 (업종 무관하게 스토리지 관리자가 참조)
+- `s3ap-list.png` — S3 Access Points 목록 (업종 무관하게 IT 관리자가 참조)
+
+**Phase별 뷰** (`docs/screenshots/masked/phase{1..7}/`):
+- Phase 1-6b: 인프라 구축 / 기능 추가 시 기술자용 화면
+- Phase 7: UC15/16/17 공통 FSx S3 Access Points 뷰 등
+
+산업 매핑 표 (8 언어): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
+추가 워크플로: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
+
+> 모든 문서는 8개 언어(일본어·English·한국어·간체 중국어·번체 중국어·Français·Deutsch·Español)로 제공됩니다.
 ## AWS 사양상의 제약 및 해결 방법
 
 ### 출력 대상 선택 (OutputDestination 파라미터)
@@ -225,18 +271,18 @@ FSxN S3 Access Points는 S3 API의 일부만 지원합니다
 
 17개 UC는 3가지 출력 패턴으로 분류됩니다:
 
-- **🟢 UC1-5**: 기존 `S3AccessPointOutputAlias` 파라미터로 FSxN S3AP 출력 지원 (처음부터 이렇게 설계됨)
-- **🟢🆕 UC9/10/11/12/14**: `OutputDestination` 전환 메커니즘 (STANDARD_S3 ⇄ FSXN_S3AP), 2026-05-10 구현. UC11/14는 AWS 실증, UC9/10/12는 단위 테스트만 완료
+- **🟢 UC1-5** (Pattern A, 2026-05-11 업데이트): `S3AccessPointOutputAlias` (legacy, optional) + 신규 추가된 `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` 지원. 기본값 `OutputDestination=FSXN_S3AP`로 기존 동작 유지
+- **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 구현): `OutputDestination` 전환 메커니즘 (STANDARD_S3 ⇄ FSXN_S3AP). 기본값 `OutputDestination=STANDARD_S3`. UC11/14는 AWS 실증, UC9/10/12는 단위 테스트만 완료
 - **🟡 UC6/7/8/13**: 현재는 `OUTPUT_BUCKET`만 (표준 S3 고정). Athena 결과는 AWS 사양상 표준 S3 필수이므로 `OutputDestination` 적용은 부분적
 - **🟢 UC15-17**: Pattern A (FSxN S3AP로 write back, Phase 7의 일부)
 
 | UC | 입력 | 출력 | 선택 메커니즘 | 비고 |
 |----|------|------|----------|------|
-| UC1 legal-compliance | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` 파라미터 | 계약 메타데이터 / 감사 로그 |
-| UC2 financial-idp | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` | 청구서 OCR 결과 |
-| UC3 manufacturing-analytics | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` | 검사 결과 / 이상 감지 |
-| UC4 media-vfx | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` | 렌더링 메타데이터 |
-| UC5 healthcare-dicom | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` | DICOM 메타데이터 / 익명화 결과 |
+| UC1 legal-compliance | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 계약 메타데이터 / 감사 로그 |
+| UC2 financial-idp | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 청구서 OCR 결과 |
+| UC3 manufacturing-analytics | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 검사 결과 / 이상 감지 |
+| UC4 media-vfx | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 렌더링 메타데이터 |
+| UC5 healthcare-dicom | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | DICOM 메타데이터 / 익명화 결과 |
 | UC6 semiconductor-eda | S3AP | **표준 S3** | ⚠️ 미구현 | Bedrock/Athena 결과 (Athena는 사양상 표준 S3 필수) |
 | UC7 genomics-pipeline | S3AP | **표준 S3** | ⚠️ 미구현 | Glue/Athena 결과 (Athena는 사양상 표준 S3 필수) |
 | UC8 energy-seismic | S3AP | **표준 S3** | ⚠️ 미구현 | Glue/Athena 결과 (Athena는 사양상 표준 S3 필수) |

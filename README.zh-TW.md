@@ -174,6 +174,51 @@ EventBridge Scheduler (定期執行)
 
 > **公共部門合規性**: UC15 針對 DoD CC SRG / CSfC / FedRAMP High（GovCloud 遷移），UC16 針對 NARA / FOIA Section 552 / Section 508，UC17 針對 INSPIRE 指令 / OGC 標準。
 
+## UI/UX 螢幕截圖 (最終使用者 / 員工 / 負責人檢視)
+
+每個 UC 的 **最終使用者、員工、負責人在日常工作中實際看到的 UI/UX 畫面**
+在各 UC 的 README 和 demo-guide 中刊載。Step Functions 工作流程圖等技術人員
+檢視集中在各 phase 的驗證結果文件 (`docs/verification-results-phase*.md`) 中。
+
+不僅限於 Public Sector (UC15/16/17), 所有業種的 UC 採用相同方針:
+
+- **擔當者視角**: 在 S3 控制台確認產物、閱讀 Bedrock 報告、接收 SNS 郵件、
+  在 DynamoDB 檢索歷史等日常業務畫面
+- **技術人員視角除外**: CloudFormation 堆疊事件、Lambda 日誌、Step Functions 圖
+  (工作流程視覺化目的除外) 保留在 `verification-results-*.md` 中
+
+| UC | 業種 | 螢幕截圖數 | 主要內容 | 位置 |
+|----|------|-----------|---------|------|
+| UC1 | 法務·合規 | 1 | Step Functions 圖 (稽核負責人工作流程視覺化) | [`legal-compliance/docs/demo-guide.zh-TW.md`](legal-compliance/docs/demo-guide.zh-TW.md) |
+| UC2 | 金融·IDP | 1 | Step Functions 圖 (發票處理負責人工作流程視覺化) | [`financial-idp/docs/demo-guide.zh-TW.md`](financial-idp/docs/demo-guide.zh-TW.md) |
+| UC3 | 製造·分析 | 1 | Step Functions 圖 (品質管理負責人工作流程視覺化) | [`manufacturing-analytics/docs/demo-guide.zh-TW.md`](manufacturing-analytics/docs/demo-guide.zh-TW.md) |
+| UC4 | 媒體·VFX | 未刊載 | (渲染負責人畫面, 計劃拍攝) | [`media-vfx/docs/demo-guide.zh-TW.md`](media-vfx/docs/demo-guide.zh-TW.md) |
+| UC5 | 醫療·DICOM | 1 | Step Functions 圖 (醫療資訊管理員工作流程視覺化) | [`healthcare-dicom/docs/demo-guide.zh-TW.md`](healthcare-dicom/docs/demo-guide.zh-TW.md) |
+| UC6 | 半導體·EDA | 4 | FSx Volumes / S3 輸出儲存貯體 / Athena 查詢結果 / Bedrock 設計審查報告 | [`semiconductor-eda/docs/demo-guide.zh-TW.md`](semiconductor-eda/docs/demo-guide.zh-TW.md) |
+| UC7 | 基因體學流水線 | 1 | Step Functions 圖 (研究者工作流程視覺化) | [`genomics-pipeline/docs/demo-guide.zh-TW.md`](genomics-pipeline/docs/demo-guide.zh-TW.md) |
+| UC8 | 能源·地震勘探 | 1 | Step Functions 圖 (地質解析負責人工作流程視覺化) | [`energy-seismic/docs/demo-guide.zh-TW.md`](energy-seismic/docs/demo-guide.zh-TW.md) |
+| UC9 | 自動駕駛 | 未刊載 | (ADAS 分析負責人畫面, 計劃拍攝) | [`autonomous-driving/docs/demo-guide.zh-TW.md`](autonomous-driving/docs/demo-guide.zh-TW.md) |
+| UC10 | 建築·BIM | 1 | Step Functions 圖 (BIM 管理員 / 安全負責人工作流程視覺化) | [`construction-bim/docs/demo-guide.zh-TW.md`](construction-bim/docs/demo-guide.zh-TW.md) |
+| UC11 | 零售·目錄 | 2 | 產品標籤結果 / S3 輸出儲存貯體 (EC 負責人用) | [`retail-catalog/docs/demo-guide.zh-TW.md`](retail-catalog/docs/demo-guide.zh-TW.md) |
+| UC12 | 物流·OCR | 1 | Step Functions 圖 (配送負責人工作流程視覺化) | [`logistics-ocr/docs/demo-guide.zh-TW.md`](logistics-ocr/docs/demo-guide.zh-TW.md) |
+| UC13 | 教育·研究 | 1 | Step Functions 圖 (研究事務負責人工作流程視覺化) | [`education-research/docs/demo-guide.zh-TW.md`](education-research/docs/demo-guide.zh-TW.md) |
+| UC14 | 保險 | 2 | 理賠報告 / S3 輸出儲存貯體 (保險理賠員用) | [`insurance-claims/docs/demo-guide.zh-TW.md`](insurance-claims/docs/demo-guide.zh-TW.md) |
+| UC15 | 國防·衛星圖像 (Public Sector) | 4 | S3 上傳 / 輸出 / SNS 郵件 / JSON 產物 (分析負責人用) | [`defense-satellite/README.md`](defense-satellite/README.md) |
+| UC16 | 政府·FOIA (Public Sector) | 5 | 上傳 / 編輯預覽 / 中繼資料 / FOIA 提醒郵件 / DynamoDB 保留歷史 (公文書負責人用) | [`government-archives/README.md`](government-archives/README.md) |
+| UC17 | 智慧城市 (Public Sector) | 5 | GIS 上傳 / Bedrock 報告 / 風險地圖 / 土地利用分布 / 時序歷史 (都市規劃負責人用) | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md) |
+
+**通用螢幕截圖** (業種橫跨通用檢視, `docs/screenshots/masked/common/`):
+- `fsx-s3ap-detail.png` — FSxN S3 Access Point 詳情檢視
+- `s3ap-list.png` — S3 Access Points 清單
+
+**依 Phase 檢視** (`docs/screenshots/masked/phase{1..7}/`):
+- Phase 1-6b: 基礎設施建構 / 功能新增時的技術人員檢視
+- Phase 7: UC15/16/17 共通 FSx S3 Access Points 檢視等
+
+業種對映表 (8 語言): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
+新增工作流程: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
+
+> 所有文件均提供 8 種語言版本。
 ## AWS 規格約束及解決方案
 
 ### 輸出目標選擇 (OutputDestination 參數)
@@ -224,18 +269,18 @@ FSxN S3 Access Points 僅支援 S3 API 的一部分
 
 17 個 UC 分為 3 種輸出模式:
 
-- **🟢 UC1-5**: 現有的 `S3AccessPointOutputAlias` 參數支援 FSxN S3AP 輸出 (從一開始就這樣設計)
-- **🟢🆕 UC9/10/11/12/14**: `OutputDestination` 切換機制 (STANDARD_S3 ⇄ FSXN_S3AP), 2026-05-10 實作。UC11/14 已在 AWS 上驗證, UC9/10/12 僅完成單元測試
+- **🟢 UC1-5** (Pattern A, 2026-05-11 更新): `S3AccessPointOutputAlias` (legacy, optional) + 新增的 `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` 支援。預設 `OutputDestination=FSXN_S3AP` 維持現有行為
+- **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 實作): `OutputDestination` 切換機制 (STANDARD_S3 ⇄ FSXN_S3AP)。預設 `OutputDestination=STANDARD_S3`。UC11/14 已在 AWS 上驗證, UC9/10/12 僅完成單元測試
 - **🟡 UC6/7/8/13**: 目前僅為 `OUTPUT_BUCKET` (固定為標準 S3)。Athena 結果在規格上需要標準 S3, 因此 `OutputDestination` 應用是部分性的
 - **🟢 UC15-17**: Pattern A (write back 到 FSxN S3AP, Phase 7 的一部分)
 
 | UC | 輸入 | 輸出 | 選擇機制 | 備註 |
 |----|------|------|----------|------|
-| UC1 legal-compliance | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` 參數 | 合約中繼資料 / 稽核日誌 |
-| UC2 financial-idp | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` | 發票 OCR 結果 |
-| UC3 manufacturing-analytics | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` | 檢查結果 / 異常偵測 |
-| UC4 media-vfx | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` | 渲染中繼資料 |
-| UC5 healthcare-dicom | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` | DICOM 中繼資料 / 匿名化結果 |
+| UC1 legal-compliance | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 合約中繼資料 / 稽核日誌 |
+| UC2 financial-idp | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 發票 OCR 結果 |
+| UC3 manufacturing-analytics | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 檢查結果 / 異常偵測 |
+| UC4 media-vfx | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 渲染中繼資料 |
+| UC5 healthcare-dicom | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | DICOM 中繼資料 / 匿名化結果 |
 | UC6 semiconductor-eda | S3AP | **標準 S3** | ⚠️ 未實作 | Bedrock/Athena 結果 (Athena 在規格上需要標準 S3) |
 | UC7 genomics-pipeline | S3AP | **標準 S3** | ⚠️ 未實作 | Glue/Athena 結果 (Athena 在規格上需要標準 S3) |
 | UC8 energy-seismic | S3AP | **標準 S3** | ⚠️ 未實作 | Glue/Athena 結果 (Athena 在規格上需要標準 S3) |

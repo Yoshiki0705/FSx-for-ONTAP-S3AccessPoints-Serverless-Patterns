@@ -175,6 +175,56 @@ EventBridge Scheduler (ejecución periódica)
 > **Cumplimiento Sector Público**: UC15 apunta a DoD CC SRG / CSfC / FedRAMP High (migración a GovCloud), UC16 apunta a NARA / FOIA Sección 552 / Sección 508, UC17 apunta a Directiva INSPIRE / estándares OGC.
 
 
+## Capturas de pantalla UI/UX (vistas para usuarios finales / personal / responsables)
+
+Las pantallas UI/UX que **los usuarios finales, el personal y los
+responsables realmente ven en su trabajo diario** se presentan en el README
+y demo-guide de cada UC. Las vistas técnicas como los gráficos de flujo de
+trabajo de Step Functions se consolidan en documentos de verificación por
+fase (`docs/verification-results-phase*.md`).
+
+Se aplica el mismo enfoque a todas las industrias, no solo al Sector
+Público (UC15/16/17):
+
+- **Vista de personal operativo**: verificación de salidas en la consola S3,
+  lectura de informes Bedrock, recepción de notificaciones SNS, búsqueda
+  en historiales DynamoDB, etc.
+- **Vistas técnicas excluidas**: eventos de pila CloudFormation, logs Lambda,
+  gráficos Step Functions (excepto para visualización de flujo de trabajo)
+  se mantienen en `verification-results-*.md`
+
+| UC | Sector | Número de capturas | Contenido principal | Ubicación |
+|----|--------|--------------------|---------------------|-----------|
+| UC1 | Legal y cumplimiento | 1 | Gráfico Step Functions (visualización de flujo para auditores de cumplimiento) | [`legal-compliance/docs/demo-guide.es.md`](legal-compliance/docs/demo-guide.es.md) |
+| UC2 | Financiero IDP | 1 | Gráfico Step Functions (visualización de flujo para personal de procesamiento de facturas) | [`financial-idp/docs/demo-guide.es.md`](financial-idp/docs/demo-guide.es.md) |
+| UC3 | Fabricación y análisis | 1 | Gráfico Step Functions (visualización de flujo para personal de control de calidad) | [`manufacturing-analytics/docs/demo-guide.es.md`](manufacturing-analytics/docs/demo-guide.es.md) |
+| UC4 | Medios y VFX | No capturado | (vistas de técnicos de renderizado, planificado para captura) | [`media-vfx/docs/demo-guide.es.md`](media-vfx/docs/demo-guide.es.md) |
+| UC5 | Sanidad DICOM | 1 | Gráfico Step Functions (visualización de flujo para gestores de historiales médicos) | [`healthcare-dicom/docs/demo-guide.es.md`](healthcare-dicom/docs/demo-guide.es.md) |
+| UC6 | Semiconductores EDA | 4 | FSx Volumes / bucket de salida S3 / resultados de consulta Athena / informe de revisión de diseño Bedrock | [`semiconductor-eda/docs/demo-guide.es.md`](semiconductor-eda/docs/demo-guide.es.md) |
+| UC7 | Pipeline genómica | 1 | Gráfico Step Functions (visualización de flujo para investigadores) | [`genomics-pipeline/docs/demo-guide.es.md`](genomics-pipeline/docs/demo-guide.es.md) |
+| UC8 | Energía y sísmica | 1 | Gráfico Step Functions (visualización de flujo para analistas geológicos) | [`energy-seismic/docs/demo-guide.es.md`](energy-seismic/docs/demo-guide.es.md) |
+| UC9 | Conducción autónoma | No capturado | (vistas de analistas ADAS, planificado para captura) | [`autonomous-driving/docs/demo-guide.es.md`](autonomous-driving/docs/demo-guide.es.md) |
+| UC10 | Construcción BIM | 1 | Gráfico Step Functions (visualización de flujo para gestores BIM / responsables de seguridad) | [`construction-bim/docs/demo-guide.es.md`](construction-bim/docs/demo-guide.es.md) |
+| UC11 | Catálogo minorista | 2 | Resultados de etiquetado de productos / bucket de salida S3 (para operadores de e-commerce) | [`retail-catalog/docs/demo-guide.es.md`](retail-catalog/docs/demo-guide.es.md) |
+| UC12 | Logística OCR | 1 | Gráfico Step Functions (visualización de flujo para operadores de entrega) | [`logistics-ocr/docs/demo-guide.es.md`](logistics-ocr/docs/demo-guide.es.md) |
+| UC13 | Educación e investigación | 1 | Gráfico Step Functions (visualización de flujo para personal administrativo de investigación) | [`education-research/docs/demo-guide.es.md`](education-research/docs/demo-guide.es.md) |
+| UC14 | Seguros | 2 | Informe de reclamaciones / bucket de salida S3 (para ajustadores de seguros) | [`insurance-claims/docs/demo-guide.es.md`](insurance-claims/docs/demo-guide.es.md) |
+| UC15 | Defensa e imágenes satelitales (Public Sector) | 4 | Subida S3 / salida / email SNS / artefactos JSON (para analistas de imágenes satelitales) | [`defense-satellite/README.md`](defense-satellite/README.md) |
+| UC16 | Gobierno FOIA (Public Sector) | 5 | Subida / vista previa redactada / metadatos / email recordatorio FOIA / historial de retención DynamoDB (para responsables de archivos públicos) | [`government-archives/README.md`](government-archives/README.md) |
+| UC17 | Smart City (Public Sector) | 5 | Subida GIS / informe Bedrock / mapa de riesgos / distribución de uso del suelo / historial temporal (para urbanistas) | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md) |
+
+**Capturas de pantalla comunes** (vistas genéricas intersectoriales, en `docs/screenshots/masked/common/`):
+- `fsx-s3ap-detail.png` — vista de detalle del S3 Access Point FSxN
+- `s3ap-list.png` — lista de S3 Access Points
+
+**Vistas por fase** (`docs/screenshots/masked/phase{1..7}/`):
+- Phase 1-6b: vistas técnicas para construcción de infraestructura / adición de características
+- Phase 7: vistas comunes FSx S3 Access Points para UC15/16/17
+
+Tabla de mapeo sectorial (8 idiomas): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
+Flujo de adición: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
+
+> Todos los documentos están disponibles en 8 idiomas.
 ## Restricciones de especificación de AWS y soluciones alternativas
 
 ### Selección de destino de salida (parámetro OutputDestination)
@@ -224,18 +274,18 @@ Los 3 patrones de salida (Pattern A/B/C) se comparan en
 
 Los 17 UC se dividen en 3 patrones de salida:
 
-- **🟢 UC1-5**: el parámetro existente `S3AccessPointOutputAlias` admite salida FSxN S3AP (diseñado así desde el principio)
-- **🟢🆕 UC9/10/11/12/14**: mecanismo de conmutación `OutputDestination` (STANDARD_S3 ⇄ FSXN_S3AP), implementado el 2026-05-10. UC11/14 verificados en AWS, UC9/10/12 solo pruebas unitarias
+- **🟢 UC1-5** (Pattern A, actualizado 2026-05-11): `S3AccessPointOutputAlias` (legacy, opcional) + nuevos parámetros `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` admitidos. Por defecto `OutputDestination=FSXN_S3AP` preserva el comportamiento existente
+- **🟢🆕 UC9/10/11/12/14** (Pattern B, implementado el 2026-05-10): mecanismo de conmutación `OutputDestination` (STANDARD_S3 ⇄ FSXN_S3AP). Por defecto `OutputDestination=STANDARD_S3`. UC11/14 verificados en AWS, UC9/10/12 solo pruebas unitarias
 - **🟡 UC6/7/8/13**: actualmente solo `OUTPUT_BUCKET` (S3 estándar fijo). Los resultados de Athena requieren S3 estándar por especificación, por lo que la adopción de `OutputDestination` es parcial
 - **🟢 UC15-17**: Pattern A (write back a FSxN S3AP, parte de Phase 7)
 
 | UC | Entrada | Salida | Mecanismo de selección | Notas |
 |----|------|------|----------|------|
-| UC1 legal-compliance | S3AP | S3AP (existente) | parámetro `S3AccessPointOutputAlias` | Metadatos de contratos / registros de auditoría |
-| UC2 financial-idp | S3AP | S3AP (existente) | `S3AccessPointOutputAlias` | Resultados OCR de facturas |
-| UC3 manufacturing-analytics | S3AP | S3AP (existente) | `S3AccessPointOutputAlias` | Resultados de inspección / detección de anomalías |
-| UC4 media-vfx | S3AP | S3AP (existente) | `S3AccessPointOutputAlias` | Metadatos de renderizado |
-| UC5 healthcare-dicom | S3AP | S3AP (existente) | `S3AccessPointOutputAlias` | Metadatos DICOM / anonimización |
+| UC1 legal-compliance | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Metadatos de contratos / registros de auditoría |
+| UC2 financial-idp | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Resultados OCR de facturas |
+| UC3 manufacturing-analytics | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Resultados de inspección / detección de anomalías |
+| UC4 media-vfx | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Metadatos de renderizado |
+| UC5 healthcare-dicom | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Metadatos DICOM / anonimización |
 | UC6 semiconductor-eda | S3AP | **S3 estándar** | ⚠️ No implementado | Resultados Bedrock/Athena (Athena requiere S3 estándar por especificación) |
 | UC7 genomics-pipeline | S3AP | **S3 estándar** | ⚠️ No implementado | Resultados Glue/Athena (Athena requiere S3 estándar por especificación) |
 | UC8 energy-seismic | S3AP | **S3 estándar** | ⚠️ No implementado | Resultados Glue/Athena (Athena requiere S3 estándar por especificación) |
