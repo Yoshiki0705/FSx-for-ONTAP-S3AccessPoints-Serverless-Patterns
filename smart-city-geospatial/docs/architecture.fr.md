@@ -1,54 +1,54 @@
-# UC17: スマートシティ — 地理空間データ解析アーキテクチャ
+# UC17: Ville intelligente — Architecture d'analyse de données géospatiales
 
-🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | Français | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | Français | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
 
-> Remarque: Cette traduction est un brouillon généré automatiquement à partir de l'original japonais. Les contributions pour améliorer la qualité de la traduction sont les bienvenues.
+> Note : Cette traduction est produite par Amazon Bedrock Claude. Les contributions pour améliorer la qualité de la traduction sont les bienvenues.
 
-## 概要
+## Vue d'ensemble
 
-FSx ONTAP 上の大容量地理空間データ（GeoTIFF / Shapefile / LAS / GeoPackage）を
-サーバーレスで解析し、土地利用分類・変化検出・インフラ評価・災害リスクマッピング・
-Bedrock によるレポート生成を行う。
+Les données géospatiales volumineuses (GeoTIFF / Shapefile / LAS / GeoPackage) sur FSx ONTAP sont
+analysées de manière serverless pour effectuer la classification de l'utilisation des sols, la détection de changements, l'évaluation des infrastructures, la cartographie des risques de catastrophes et
+la génération de rapports par Bedrock.
 
-## アーキテクチャ図
+## Diagramme d'architecture
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>GIS データ<br/>部署別 ACL] --> S3AP[S3 Access Point]
+    FSx[FSx ONTAP<br/>Données SIG<br/>ACL par département] --> S3AP[S3 Access Point]
     S3AP --> SFN[Step Functions<br/>Smart City Workflow]
     SFN --> L1[Discovery]
-    L1 --> L2[Preprocessing<br/>CRS 正規化 EPSG:4326]
+    L1 --> L2[Preprocessing<br/>Normalisation CRS EPSG:4326]
     L2 --> L3[Land Use Classification<br/>Rekognition / SageMaker]
-    L3 --> L4[Change Detection<br/>DynamoDB 時系列]
-    L4 --> L5[Infra Assessment<br/>LAS 点群解析]
-    L5 --> L6[Risk Mapping<br/>洪水/地震/土砂]
+    L3 --> L4[Change Detection<br/>Séries temporelles DynamoDB]
+    L4 --> L5[Infra Assessment<br/>Analyse nuage de points LAS]
+    L5 --> L6[Risk Mapping<br/>Inondation/séisme/glissement]
     L6 --> L7[Report Generation<br/>Bedrock Nova Lite]
-    L7 --> S3O[S3 Output<br/>都市計画レポート]
+    L7 --> S3O[S3 Output<br/>Rapport d'urbanisme]
 ```
 
-## 災害リスクモデル
+## Modèles de risque de catastrophe
 
-### 洪水リスク（`compute_flood_risk`）
+### Risque d'inondation (`compute_flood_risk`)
 
-- 標高スコア: `max(0, (100 - elevation_m) / 90)` — 低標高ほど高リスク
-- 水系近接スコア: `max(0, (2000 - water_proximity_m) / 1900)` — 水辺近いほど高リスク
-- 不透水率: residential + commercial + industrial + road 土地利用の合計
-- 総合: `0.4 * elevation + 0.3 * proximity + 0.3 * impervious`
+- Score d'altitude : `max(0, (100 - elevation_m) / 90)` — risque plus élevé pour les basses altitudes
+- Score de proximité des cours d'eau : `max(0, (2000 - water_proximity_m) / 1900)` — risque plus élevé près de l'eau
+- Taux d'imperméabilité : somme de l'utilisation des sols résidentielle + commerciale + industrielle + routière
+- Global : `0.4 * elevation + 0.3 * proximity + 0.3 * impervious`
 
-### 地震リスク（`compute_earthquake_risk`）
+### Risque sismique (`compute_earthquake_risk`)
 
-- 地盤スコア: rock=0.2, stiff_soil=0.4, soft_soil=0.7, unknown=0.5
-- 建物密度スコア: 0 - 1
-- 総合: `0.6 * soil + 0.4 * density`
+- Score de sol : rock=0.2, stiff_soil=0.4, soft_soil=0.7, unknown=0.5
+- Score de densité de bâtiments : 0 - 1
+- Global : `0.6 * soil + 0.4 * density`
 
-### 土砂崩れリスク（`compute_landslide_risk`）
+### Risque de glissement de terrain (`compute_landslide_risk`)
 
-- 斜度スコア: `max(0, (slope - 5) / 40)` — 5° 以上で線形増加、45° で飽和
-- 降雨スコア: `min(1, precip / 2000)` — 2000 mm/年で最大
-- 植生スコア: `1 - forest` — 森林が少ないほど高リスク
-- 総合: `0.5 * slope + 0.3 * rain + 0.2 * vegetation`
+- Score de pente : `max(0, (slope - 5) / 40)` — augmentation linéaire au-delà de 5°, saturation à 45°
+- Score de précipitations : `min(1, precip / 2000)` — maximum à 2000 mm/an
+- Score de végétation : `1 - forest` — risque plus élevé avec moins de forêt
+- Global : `0.5 * slope + 0.3 * rain + 0.2 * vegetation`
 
-### リスクレベル分類
+### Classification des niveaux de risque
 
 | Score | Level |
 |-------|-------|
@@ -57,20 +57,20 @@ graph LR
 | ≥ 0.3 | MEDIUM |
 | < 0.3 | LOW |
 
-## 対応 OGC 標準
+## Normes OGC prises en charge
 
-- **WMS** (Web Map Service): GeoTIFF → CloudFront 配信で対応可
-- **WFS** (Web Feature Service): Shapefile / GeoJSON 出力
-- **GeoPackage**: sqlite3 ベースの OGC 標準、Lambda で処理可
-- **LAS/LAZ**: laspy で処理（Lambda Layer 推奨）
+- **WMS** (Web Map Service) : prise en charge possible via distribution CloudFront pour GeoTIFF
+- **WFS** (Web Feature Service) : sortie Shapefile / GeoJSON
+- **GeoPackage** : norme OGC basée sur sqlite3, traitable par Lambda
+- **LAS/LAZ** : traitement avec laspy (Lambda Layer recommandé)
 
-## INSPIRE Directive 準拠（EU 地理空間データ基盤）
+## Conformité à la directive INSPIRE (infrastructure de données géospatiales de l'UE)
 
-- メタデータの標準化（ISO 19115）に対応可能なアウトプット構造
-- CRS 統一（EPSG:4326）
-- ネットワークサービス（Discovery, View, Download）相当の API 提供
+- Structure de sortie compatible avec la normalisation des métadonnées (ISO 19115)
+- Unification CRS (EPSG:4326)
+- Fourniture d'API équivalente aux services réseau (Discovery, View, Download)
 
-## IAM マトリクス
+## Matrice IAM
 
 | Principal | Permission | Resource |
 |-----------|------------|----------|
@@ -80,22 +80,37 @@ graph LR
 | Processing | `bedrock:InvokeModel` | Foundation models + profiles |
 | Processing | `dynamodb:PutItem`, `Query` | LandUseHistoryTable |
 
-## コストモデル
+## Modèle de coûts
 
-| サービス | 月次想定（軽負荷） |
+| Service | Estimation mensuelle (charge légère) |
 |----------|--------------------|
 | Lambda (7 functions) | $20 - $60 |
 | Rekognition | $10 / 10K images |
 | Bedrock Nova Lite | $0.06 per 1K input tokens |
 | DynamoDB (PPR) | $5 - $20 |
 | S3 output | $5 - $30 |
-| **合計** | **$50 - $200** |
+| **Total** | **$50 - $200** |
 
-SageMaker Endpoint はデフォルト無効化。
+SageMaker Endpoint désactivé par défaut.
 
-## Guard Hooks 準拠
+## Conformité Guard Hooks
 
-- ✅ `encryption-required`: S3 SSE-KMS、DynamoDB SSE、SNS KMS
-- ✅ `iam-least-privilege`: Bedrock は foundation-model ARN に制限
-- ✅ `logging-required`: 全 Lambda に LogGroup
-- ✅ `point-in-time-recovery`: DynamoDB PITR 有効
+- ✅ `encryption-required` : S3 SSE-KMS, DynamoDB SSE, SNS KMS
+- ✅ `iam-least-privilege` : Bedrock limité aux ARN foundation-model
+- ✅ `logging-required` : LogGroup pour tous les Lambda
+- ✅ `point-in-time-recovery` : DynamoDB PITR activé
+
+## Destination de sortie (OutputDestination) — Pattern B
+
+UC17 prend en charge le paramètre `OutputDestination` depuis la mise à jour du 2026-05-11.
+
+| Mode | Destination de sortie | Ressources créées | Cas d'usage |
+|-------|-------|-------------------|------------|
+| `STANDARD_S3` (par défaut) | Nouveau bucket S3 | `AWS::S3::Bucket` | Accumulation des résultats IA dans un bucket S3 séparé comme auparavant |
+| `FSXN_S3AP` | FSxN S3 Access Point | Aucune (réécriture vers le volume FSx existant) | Les urbanistes consultent les rapports Bedrock (Markdown) et les cartes de risques dans le même répertoire que les données SIG originales via SMB/NFS |
+
+**Lambda affectés** : Preprocessing, LandUseClassification, InfraAssessment, RiskMapping, ReportGeneration (5 fonctions).  
+**Lambda non affectés** : Discovery (manifest écrit directement sur S3AP), ChangeDetection (DynamoDB uniquement).  
+**Avantage des rapports Bedrock** : écrits en `text/markdown; charset=utf-8`, ils sont directement consultables dans un éditeur de texte via client SMB/NFS.
+
+Voir [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) pour plus de détails.
