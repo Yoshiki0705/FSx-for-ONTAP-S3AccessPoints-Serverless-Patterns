@@ -55,6 +55,7 @@ scripts/_inplace_ocr_mask.py
 scripts/_preview_cleanup.sh
 scripts/_check_cleanup_progress.sh
 scripts/_empty_versioned_bucket.sh
+scripts/_scan_text_for_leaks.py
 # The deploy/cleanup/verify scripts were historically committed with account IDs.
 # Going forward they must read values from environment variables only; keep the
 # local copies gitignored to prevent accidental re-commit with hardcoded values.
@@ -71,8 +72,11 @@ docs/verification-results-phase4.md
 docs/verification-results-phase5.md
 docs/verification-results-shared-phase2.json
 
-# MASK_GUIDE contains environment-specific resource IDs
-docs/screenshots/MASK_GUIDE.md
+# MASK_GUIDE v6 contained environment-specific resource IDs in plain text, so it
+# was previously gitignored. v7 (2026-05-11 onwards) rewrote the guide to use
+# placeholder values only, so it is safe to commit. Keep this comment as
+# historical context. If you need to add env-specific values back to the guide,
+# put them in scripts/_sensitive_strings.py (which remains gitignored) instead.
 
 # Deployment lessons learned (contains environment-specific IPs, IDs)
 docs/guides/deployment-lessons-learned.md
