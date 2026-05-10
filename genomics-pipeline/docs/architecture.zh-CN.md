@@ -1,44 +1,46 @@
-# UC7: 基因组学 — 质量检查与变异调用聚合
+# UC7: 基因组学 / 生物信息学 — 质量检查·变异调用汇总
 
-🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | 简体中文 | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | 简体中文 | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
 
-## 端到端架构（输入 → 输出）
+> 注意：此翻译由 Amazon Bedrock Claude 生成。欢迎对翻译质量提出改进建议。
+
+## End-to-End Architecture (Input → Output)
 
 ---
 
-## 架构图
+## Architecture Diagram
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 输入 — FSx for NetApp ONTAP"]
-        DATA["基因组数据<br/>.fastq/.fastq.gz（序列）<br/>.bam（比对）<br/>.vcf/.vcf.gz（变异）"]
+    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+        DATA["基因组数据<br/>.fastq/.fastq.gz (测序)<br/>.bam (比对)<br/>.vcf/.vcf.gz (变异)"]
     end
 
     subgraph S3AP["🔗 S3 Access Point"]
         ALIAS["S3 AP Alias<br/>ListObjectsV2 / GetObject (Streaming)"]
     end
 
-    subgraph TRIGGER["⏰ 触发器"]
+    subgraph TRIGGER["⏰ Trigger"]
         EB["EventBridge Scheduler<br/>rate(4 hours)"]
     end
 
-    subgraph SFN["⚙️ Step Functions 工作流"]
-        DISC["1️⃣ Discovery Lambda<br/>• 在 VPC 内运行<br/>• S3 AP 文件发现<br/>• .fastq/.bam/.vcf 过滤<br/>• 清单生成"]
-        QC["2️⃣ QC Lambda<br/>• 流式下载<br/>• 读取数<br/>• Q30 分数计算<br/>• GC 含量计算<br/>• 质量指标输出"]
-        VA["3️⃣ Variant Aggregation Lambda<br/>• VCF 文件解析<br/>• total_variants 聚合<br/>• SNP/InDel 计数<br/>• Ti/Tv 比率计算<br/>• 变异统计输出"]
-        ATH["4️⃣ Athena Analysis Lambda<br/>• 更新 Glue Data Catalog<br/>• 执行 Athena SQL 查询<br/>• 识别低于质量阈值的样本<br/>• 统计分析"]
+    subgraph SFN["⚙️ Step Functions Workflow"]
+        DISC["1️⃣ Discovery Lambda<br/>• VPC内执行<br/>• S3 AP 文件检测<br/>• .fastq/.bam/.vcf 过滤<br/>• Manifest 生成"]
+        QC["2️⃣ QC Lambda<br/>• 流式下载<br/>• 读取数计数<br/>• Q30 分数计算<br/>• GC 含量计算<br/>• 质量指标输出"]
+        VA["3️⃣ Variant Aggregation Lambda<br/>• VCF 文件解析<br/>• total_variants 汇总<br/>• SNP/InDel 计数<br/>• Ti/Tv 比计算<br/>• 变异统计输出"]
+        ATH["4️⃣ Athena Analysis Lambda<br/>• Glue Data Catalog 更新<br/>• Athena SQL 查询执行<br/>• 识别低于质量阈值的样本<br/>• 统计分析"]
         SUM["5️⃣ Summary Lambda<br/>• Bedrock InvokeModel<br/>• Comprehend Medical (us-east-1)<br/>• 生物医学实体提取<br/>• 研究摘要生成<br/>• SNS 通知"]
     end
 
-    subgraph OUTPUT["📤 输出 — S3 Bucket"]
+    subgraph OUTPUT["📤 Output — S3 Bucket"]
         QCOUT["qc-metrics/*.json<br/>质量指标"]
         VAROUT["variant-stats/*.json<br/>变异统计"]
-        ATHOUT["athena-results/*.csv<br/>质量阈值分析"]
+        ATHOUT["athena-results/*.csv<br/>质量阈值分析结果"]
         REPORT["reports/*.md<br/>研究摘要报告"]
     end
 
-    subgraph NOTIFY["📧 通知"]
-        SNS["Amazon SNS<br/>Email / Slack<br/>（摘要完成通知）"]
+    subgraph NOTIFY["📧 Notification"]
+        SNS["Amazon SNS<br/>Email / Slack<br/>(摘要完成通知)"]
     end
 
     DATA --> ALIAS
@@ -57,60 +59,60 @@ flowchart TB
 
 ---
 
-## 数据流详细说明
+## Data Flow Detail
 
-### 输入
-| 项目 | 说明 |
-|------|------|
-| **来源** | FSx for NetApp ONTAP 卷 |
-| **文件类型** | .fastq/.fastq.gz（序列）、.bam（比对）、.vcf/.vcf.gz（变异） |
-| **访问方式** | S3 Access Point（ListObjectsV2 + GetObject） |
-| **读取策略** | FASTQ：流式下载（内存高效），VCF：完整获取 |
+### Input
+| Item | Description |
+|------|-------------|
+| **Source** | FSx for NetApp ONTAP volume |
+| **File Types** | .fastq/.fastq.gz (测序), .bam (比对), .vcf/.vcf.gz (变异) |
+| **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
+| **Read Strategy** | FASTQ: 流式下载 (内存高效), VCF: 完整获取 |
 
-### 处理
-| 步骤 | 服务 | 功能 |
-|------|------|------|
-| 发现 | Lambda（VPC） | 通过 S3 AP 发现 FASTQ/BAM/VCF 文件，生成清单 |
-| QC | Lambda | 流式 FASTQ 质量指标提取（读取数、Q30、GC 含量） |
-| 变异聚合 | Lambda | VCF 解析获取变异统计（total_variants、snp_count、indel_count、ti_tv_ratio） |
-| Athena 分析 | Lambda + Glue + Athena | 基于 SQL 识别低于质量阈值的样本，统计分析 |
-| 摘要 | Lambda + Bedrock + Comprehend Medical | 研究摘要生成，生物医学实体提取 |
+### Processing
+| Step | Service | Function |
+|------|---------|----------|
+| Discovery | Lambda (VPC) | 通过 S3 AP 检测 FASTQ/BAM/VCF 文件，生成 Manifest |
+| QC | Lambda | 流式提取 FASTQ 质量指标 (读取数, Q30, GC含量) |
+| Variant Aggregation | Lambda | 通过 VCF 解析汇总变异统计 (total_variants, snp_count, indel_count, ti_tv_ratio) |
+| Athena Analysis | Lambda + Glue + Athena | 使用 SQL 识别低于质量阈值的样本，统计分析 |
+| Summary | Lambda + Bedrock + Comprehend Medical | 生成研究摘要，提取生物医学实体 |
 
-### 输出
-| 产出物 | 格式 | 说明 |
-|--------|------|------|
-| QC 指标 | `qc-metrics/YYYY/MM/DD/{sample}_qc.json` | 质量指标（读取数、Q30、GC 含量、平均质量分数） |
-| 变异统计 | `variant-stats/YYYY/MM/DD/{sample}_variants.json` | 变异统计（total_variants、snp_count、indel_count、ti_tv_ratio） |
-| Athena 结果 | `athena-results/{id}.csv` | 低于质量阈值的样本及统计分析 |
-| 研究摘要 | `reports/YYYY/MM/DD/research_summary.md` | Bedrock 生成的研究摘要报告 |
-| SNS 通知 | Email | 摘要完成通知及质量警报 |
-
----
-
-## 关键设计决策
-
-1. **流式下载** — FASTQ 文件可达数十 GB；流式处理将内存使用保持在 Lambda 10GB 限制内
-2. **轻量 VCF 解析** — 仅提取统计聚合所需的最少字段，非完整 VCF 解析器
-3. **Comprehend Medical 跨区域** — 仅在 us-east-1 可用，因此使用跨区域调用
-4. **Athena 质量阈值分析** — 参数化阈值（Q30 < 80%、异常 GC 含量等）的灵活 SQL 过滤
-5. **顺序管道** — Step Functions 管理顺序依赖：QC → 变异聚合 → 分析 → 摘要
-6. **轮询（非事件驱动）** — S3 AP 不支持事件通知，因此采用定期调度执行
+### Output
+| Artifact | Format | Description |
+|----------|--------|-------------|
+| QC Metrics | `qc-metrics/YYYY/MM/DD/{sample}_qc.json` | 质量指标 (读取数, Q30, GC含量, 平均质量分数) |
+| Variant Stats | `variant-stats/YYYY/MM/DD/{sample}_variants.json` | 变异统计 (total_variants, snp_count, indel_count, ti_tv_ratio) |
+| Athena Results | `athena-results/{id}.csv` | 低于质量阈值的样本列表·统计分析结果 |
+| Research Summary | `reports/YYYY/MM/DD/research_summary.md` | Bedrock 生成的研究摘要报告 |
+| SNS Notification | Email | 摘要完成通知·质量警报 |
 
 ---
 
-## 使用的 AWS 服务
+## Key Design Decisions
 
-| 服务 | 角色 |
-|------|------|
-| FSx for NetApp ONTAP | 基因组数据存储（FASTQ/BAM/VCF） |
-| S3 Access Points | 对 ONTAP 卷的无服务器访问（流式支持） |
-| EventBridge Scheduler | 定期触发 |
-| Step Functions | 工作流编排（顺序） |
-| Lambda | 计算（Discovery、QC、Variant Aggregation、Athena Analysis、Summary） |
-| Glue Data Catalog | 质量指标及变异统计模式管理 |
-| Amazon Athena | 基于 SQL 的质量阈值分析及统计聚合 |
-| Amazon Bedrock | 研究摘要报告生成（Claude / Nova） |
-| Comprehend Medical | 生物医学实体提取（us-east-1 跨区域） |
-| SNS | 摘要完成通知及质量警报 |
+1. **流式下载** — FASTQ 文件可达数十 GB，通过流式处理抑制内存使用量 (Lambda 10GB 限制内)
+2. **VCF 解析的轻量实现** — 不使用完整的 VCF 解析器，仅提取统计汇总所需的最小字段
+3. **Comprehend Medical 跨区域** — 仅在 us-east-1 可用，因此通过跨区域调用实现
+4. **Athena 质量阈值分析** — 将 Q30 < 80%、GC含量异常等阈值参数化，使用 SQL 灵活过滤
+5. **顺序流水线** — 通过 Step Functions 管理 QC → 变异汇总 → 分析 → 摘要的顺序依赖性
+6. **基于轮询** — S3 AP 不支持事件通知，因此采用定期计划执行
+
+---
+
+## AWS Services Used
+
+| Service | Role |
+|---------|------|
+| FSx for NetApp ONTAP | 基因组数据存储 (FASTQ/BAM/VCF) |
+| S3 Access Points | 对 ONTAP 卷的无服务器访问 (支持流式传输) |
+| EventBridge Scheduler | 定期触发器 |
+| Step Functions | 工作流编排 (顺序) |
+| Lambda | 计算 (Discovery, QC, Variant Aggregation, Athena Analysis, Summary) |
+| Glue Data Catalog | 质量指标·变异统计的架构管理 |
+| Amazon Athena | 基于 SQL 的质量阈值分析·统计汇总 |
+| Amazon Bedrock | 研究摘要报告生成 (Claude / Nova) |
+| Comprehend Medical | 生物医学实体提取 (us-east-1 跨区域) |
+| SNS | 摘要完成通知·质量警报 |
 | Secrets Manager | ONTAP REST API 凭证管理 |
 | CloudWatch + X-Ray | 可观测性 |
