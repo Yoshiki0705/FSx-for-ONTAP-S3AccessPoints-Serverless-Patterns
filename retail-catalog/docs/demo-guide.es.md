@@ -12,6 +12,27 @@ Esta demo presenta un pipeline de etiquetado automático de imágenes de product
 
 ---
 
+## Destino de salida: seleccionable mediante OutputDestination (Pattern B)
+
+Este UC admite el parámetro `OutputDestination` (actualización 2026-05-10,
+consulte `docs/output-destination-patterns.md`).
+
+**Dos modos**:
+
+- **STANDARD_S3** (predeterminado): los artefactos de IA van a un nuevo bucket S3
+- **FSXN_S3AP** ("no data movement"): los artefactos de IA regresan al mismo
+  volumen FSx ONTAP mediante S3 Access Point, visibles para usuarios SMB/NFS en
+  la estructura de directorios existente
+
+```bash
+# Modo FSXN_S3AP
+--parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai-outputs/
+```
+
+Para restricciones de especificación de AWS y soluciones alternativas, consulte
+[README.es.md — Restricciones de especificación de AWS](../../README.es.md#restricciones-de-especificación-de-aws-y-soluciones-alternativas).
+
+---
 ## Workflow
 
 ```

@@ -12,6 +12,26 @@
 
 ---
 
+## 输出目标: 通过 OutputDestination 选择 (Pattern B)
+
+该 UC 支持 `OutputDestination` 参数 (2026-05-10 更新,
+参见 `docs/output-destination-patterns.md`)。
+
+**两种模式**:
+
+- **STANDARD_S3** (默认): AI 工件进入新的 S3 存储桶
+- **FSXN_S3AP** ("no data movement"): AI 工件通过 S3 Access Point 返回同一的
+  FSx ONTAP 卷, SMB/NFS 用户可在现有目录结构中查看
+
+```bash
+# FSXN_S3AP 模式
+--parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai-outputs/
+```
+
+AWS 规格约束和解决方案请参阅
+[README.zh-CN.md — AWS 规格约束](../../README.zh-CN.md#aws-规格约束及解决方案)。
+
+---
 ## Workflow
 
 ```

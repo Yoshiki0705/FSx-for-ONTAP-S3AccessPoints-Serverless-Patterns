@@ -12,6 +12,27 @@ Diese Demo zeigt eine Pipeline zur fotobasierten Schadensbewertung und automatis
 
 ---
 
+## Ausgabeziel: auswählbar über OutputDestination (Pattern B)
+
+Dieser UC unterstützt den `OutputDestination`-Parameter (Update vom 2026-05-10,
+siehe `docs/output-destination-patterns.md`).
+
+**Zwei Modi**:
+
+- **STANDARD_S3** (Standard): AI-Artefakte gehen in einen neuen S3-Bucket
+- **FSXN_S3AP** ("no data movement"): AI-Artefakte gehen über den S3 Access Point
+  zurück auf dasselbe FSx ONTAP Volume, sichtbar für SMB/NFS-Benutzer in der
+  bestehenden Verzeichnisstruktur
+
+```bash
+# FSXN_S3AP-Modus
+--parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai-outputs/
+```
+
+AWS-Spezifikationsbeschränkungen und Workarounds siehe
+[README.de.md — AWS-Spezifikationsbeschränkungen](../../README.de.md#aws-spezifikationsbeschränkungen-und-workarounds).
+
+---
 ## Workflow
 
 ```

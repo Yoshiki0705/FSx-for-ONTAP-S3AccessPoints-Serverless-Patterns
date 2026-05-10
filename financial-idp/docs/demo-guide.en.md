@@ -42,6 +42,23 @@ Document Scan     OCR Processing    Entity              Structured Data
 
 ---
 
+## Output Destination: FSxN S3 Access Point (Pattern A)
+
+This UC falls under **Pattern A: Native S3AP Output**
+(see `docs/output-destination-patterns.md`).
+
+**Design**: All AI/ML artifacts are written back to the **same FSx ONTAP
+volume** as the source data via the FSxN S3 Access Point — no separate
+standard S3 bucket is created ("no data movement" pattern).
+
+**CloudFormation parameters**:
+- `S3AccessPointAlias`: Input S3 AP Alias
+- `S3AccessPointOutputAlias`: Output S3 AP Alias (can be same as input)
+
+See [README.en.md — AWS Specification Constraints](../../README.en.md#aws-specification-constraints-and-workarounds)
+for AWS-side limitations and workarounds.
+
+---
 ## Storyboard (5 Sections / 3–5 min)
 
 ### Section 1: Problem Statement (0:00–0:45)

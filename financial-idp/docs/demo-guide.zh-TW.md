@@ -12,6 +12,22 @@
 
 ---
 
+## 輸出目標: FSxN S3 Access Point (Pattern A)
+
+此 UC 屬於 **Pattern A: Native S3AP Output**
+(請參閱 `docs/output-destination-patterns.md`)。
+
+**設計**: 所有 AI/ML 產物透過 FSxN S3 Access Point 寫回與來源資料**相同的 FSx ONTAP 磁碟區**。
+不建立獨立的標準 S3 儲存貯體 ("no data movement" 模式)。
+
+**CloudFormation 參數**:
+- `S3AccessPointAlias`: 輸入用 S3 AP Alias
+- `S3AccessPointOutputAlias`: 輸出用 S3 AP Alias (可以與輸入相同)
+
+AWS 規格約束與解決方案請參閱
+[README.zh-TW.md — AWS 規格約束](../../README.zh-TW.md#aws-規格約束及解決方案)。
+
+---
 ## Workflow
 
 

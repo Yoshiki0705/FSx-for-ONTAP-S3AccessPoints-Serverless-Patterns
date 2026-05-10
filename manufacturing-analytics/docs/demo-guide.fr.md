@@ -12,6 +12,23 @@ Cette démo présente un workflow détectant automatiquement les anomalies des c
 
 ---
 
+## Destination de sortie : FSxN S3 Access Point (Pattern A)
+
+Ce UC relève du **Pattern A : Native S3AP Output**
+(voir `docs/output-destination-patterns.md`).
+
+**Conception** : tous les artefacts IA/ML sont écrits via le FSxN S3 Access Point
+sur le **même volume FSx ONTAP** que les données source. Aucun bucket S3 standard
+séparé n'est créé (pattern "no data movement").
+
+**Paramètres CloudFormation** :
+- `S3AccessPointAlias` : S3 AP Alias d'entrée
+- `S3AccessPointOutputAlias` : S3 AP Alias de sortie (peut être identique à l'entrée)
+
+Pour les contraintes et solutions de contournement AWS, voir
+[README.fr.md — Contraintes de spécification AWS](../../README.fr.md#contraintes-de-spécification-aws-et-solutions-de-contournement).
+
+---
 ## Workflow
 
 ```

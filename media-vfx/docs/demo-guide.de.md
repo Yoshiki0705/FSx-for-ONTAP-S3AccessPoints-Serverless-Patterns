@@ -12,6 +12,23 @@ Diese Demo zeigt eine Qualitätsprüfungs-Pipeline für VFX-Rendering-Ausgaben. 
 
 ---
 
+## Ausgabeziel: FSxN S3 Access Point (Pattern A)
+
+Dieser UC gehört zum **Pattern A: Native S3AP Output**
+(siehe `docs/output-destination-patterns.md`).
+
+**Design**: Alle AI/ML-Artefakte werden über den FSxN S3 Access Point auf
+**dasselbe FSx ONTAP Volume** wie die Quelldaten zurückgeschrieben. Kein separater
+Standard-S3-Bucket wird erstellt ("no data movement"-Pattern).
+
+**CloudFormation-Parameter**:
+- `S3AccessPointAlias`: Eingabe-S3-AP-Alias
+- `S3AccessPointOutputAlias`: Ausgabe-S3-AP-Alias (kann identisch mit Eingabe sein)
+
+AWS-Spezifikationsbeschränkungen und Workarounds siehe
+[README.de.md — AWS-Spezifikationsbeschränkungen](../../README.de.md#aws-spezifikationsbeschränkungen-und-workarounds).
+
+---
 ## Workflow
 
 ```
