@@ -1,30 +1,30 @@
-# UC17 デモスクリプト（30 分枠）
+# UC17 Script de démonstration (créneau de 30 minutes)
 
-🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | Français | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | Français | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
 
-> Remarque: Cette traduction est un brouillon généré automatiquement à partir de l'original japonais. Les contributions pour améliorer la qualité de la traduction sont les bienvenues.
+> Note : Cette traduction est produite par Amazon Bedrock Claude. Les contributions pour améliorer la qualité de la traduction sont les bienvenues.
 
-## 前提
+## Prérequis
 
-- AWS アカウント、ap-northeast-1
+- Compte AWS, ap-northeast-1
 - FSx for NetApp ONTAP + S3 Access Point
-- Bedrock Nova Lite v1:0 モデル利用可能化
+- Modèle Bedrock Nova Lite v1:0 activé
 
-## タイムライン
+## Chronologie
 
-### 0:00 - 0:05 イントロ（5 分）
+### 0:00 - 0:05 Introduction (5 min)
 
-- 自治体の課題: 都市計画、災害対応、インフラ保全で GIS データ活用増加
-- 従来課題: GIS 解析は ArcGIS / QGIS の専門ソフトウェア中心
-- 提案: FSxN S3AP + サーバーレスで自動化
+- Défis des collectivités locales : utilisation croissante des données SIG pour l'urbanisme, la gestion des catastrophes et la maintenance des infrastructures
+- Défis traditionnels : l'analyse SIG est centrée sur des logiciels spécialisés comme ArcGIS / QGIS
+- Proposition : automatisation avec FSxN S3AP + serverless
 
-### 0:05 - 0:10 アーキテクチャ（5 分）
+### 0:05 - 0:10 Architecture (5 min)
 
-- CRS 正規化の重要性（混在するデータソース）
-- Bedrock による都市計画レポート生成
-- リスクモデル（洪水・地震・土砂崩れ）の計算式
+- Importance de la normalisation CRS (sources de données hétérogènes)
+- Génération de rapports d'urbanisme par Bedrock
+- Formules de calcul des modèles de risque (inondation, séisme, glissement de terrain)
 
-### 0:10 - 0:15 デプロイ（5 分）
+### 0:10 - 0:15 Déploiement (5 min)
 
 ```bash
 aws cloudformation deploy \
@@ -40,7 +40,7 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
-### 0:15 - 0:22 処理実行（7 分）
+### 0:15 - 0:22 Exécution du traitement (7 min)
 
 ```bash
 # サンプル航空写真アップロード（仙台市の一画）
@@ -53,28 +53,83 @@ aws stepfunctions start-execution \
   --input '{}'
 ```
 
-結果確認:
-- `s3://<out>/preprocessed/gis/2026/05/sendai.tif.metadata.json`（CRS 情報）
-- `s3://<out>/landuse/gis/2026/05/sendai.tif.json`（土地利用分布）
-- `s3://<out>/risk-maps/gis/2026/05/sendai.tif.json`（災害リスクスコア）
-- `s3://<out>/reports/2026/05/10/gis/2026/05/sendai.tif.md`（Bedrock 生成レポート）
+Vérification des résultats :
+- `s3://<out>/preprocessed/gis/2026/05/sendai.tif.metadata.json` (informations CRS)
+- `s3://<out>/landuse/gis/2026/05/sendai.tif.json` (répartition de l'utilisation des sols)
+- `s3://<out>/risk-maps/gis/2026/05/sendai.tif.json` (scores de risque de catastrophe)
+- `s3://<out>/reports/2026/05/10/gis/2026/05/sendai.tif.md` (rapport généré par Bedrock)
 
-### 0:22 - 0:27 リスクマップ解説（5 分）
+### 0:22 - 0:27 Explication de la carte des risques (5 min)
 
-- DynamoDB `landuse-history` テーブルで時系列変化確認
-- Bedrock 生成レポートのマークダウンを表示
-- 洪水・地震・土砂リスクスコアの可視化
+- Vérification des changements temporels dans la table DynamoDB `landuse-history`
+- Affichage du rapport Markdown généré par Bedrock
+- Visualisation des scores de risque d'inondation, de séisme et de glissement de terrain
 
-### 0:27 - 0:30 Wrap-up（3 分）
+### 0:27 - 0:30 Conclusion (3 min)
 
-- Amazon Location Service との連携可能性
-- 本格運用時の点群処理（LAS Layer デプロイ）
-- 次ステップ: MapServer 連携、市民向けポータル
+- Possibilité d'intégration avec Amazon Location Service
+- Traitement de nuages de points en production (déploiement de LAS Layer)
+- Prochaines étapes : intégration MapServer, portail citoyen
 
-## よくある質問と回答
+## Questions fréquentes et réponses
 
-**Q. CRS 変換は実際に行われる？**  
-A. rasterio / pyproj Layer 配置時のみ。`PYPROJ_AVAILABLE` チェックでフォールバック。
+**Q. La conversion CRS est-elle réellement effectuée ?**  
+R. Uniquement lors du déploiement de la Layer rasterio / pyproj. Repli avec vérification `PYPROJ_AVAILABLE`.
 
-**Q. Bedrock モデルの選択基準？**  
-A. Nova Lite はコスト/精度バランス良好。長文が必要なら Claude Sonnet 推奨。
+**Q. Critères de sélection du modèle Bedrock ?**  
+R. Nova Lite offre un bon équilibre coût/précision. Claude Sonnet recommandé pour les longs textes.
+R. Nova Lite est rentable pour la génération de rapports en japonais. Claude 3 Haiku est une alternative pour privilégier la précision.
+
+---
+
+## À propos de la destination de sortie : sélectionnable avec OutputDestination (Pattern B)
+
+UC17 smart-city-geospatial prend en charge le paramètre `OutputDestination` depuis la mise à jour du 2026-05-11
+(voir `docs/output-destination-patterns.md`).
+
+**Charges de travail concernées** : métadonnées de normalisation CRS / classification de l'utilisation des sols / évaluation des infrastructures / cartes de risque / rapports générés par Bedrock
+
+**2 modes** :
+
+### STANDARD_S3 (par défaut, comportement traditionnel)
+Crée un nouveau bucket S3 (`${AWS::StackName}-output-${AWS::AccountId}`) et
+y écrit les résultats de l'IA. Seul le manifest de la Lambda Discovery est écrit
+dans le S3 Access Point (comme auparavant).
+
+```bash
+aws cloudformation deploy \
+  --template-file smart-city-geospatial/template-deploy.yaml \
+  --stack-name fsxn-smart-city-demo \
+  --parameter-overrides \
+    OutputDestination=STANDARD_S3 \
+    ... (他の必須パラメータ)
+```
+
+### FSXN_S3AP (pattern "no data movement")
+Les métadonnées de normalisation CRS, les résultats de classification de l'utilisation des sols, l'évaluation des infrastructures, les cartes de risque et les
+rapports d'urbanisme (Markdown) générés par Bedrock sont réécrits via le FSxN S3 Access Point dans le
+**même volume FSx ONTAP** que les données SIG d'origine.
+Les responsables de l'urbanisme peuvent référencer directement les résultats de l'IA dans la structure de répertoires SMB/NFS existante.
+Aucun bucket S3 standard n'est créé.
+
+```bash
+aws cloudformation deploy \
+  --template-file smart-city-geospatial/template-deploy.yaml \
+  --stack-name fsxn-smart-city-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    S3AccessPointName=eda-demo-s3ap \
+    ... (他の必須パラメータ)
+```
+
+**Points d'attention** :
+
+- Spécification de `S3AccessPointName` fortement recommandée (autoriser IAM pour les formats Alias et ARN)
+- Les objets de plus de 5 Go ne sont pas pris en charge par FSxN S3AP (spécification AWS), upload multipart obligatoire
+- La Lambda ChangeDetection utilise uniquement DynamoDB et n'est donc pas affectée par `OutputDestination`
+- Les rapports Bedrock sont écrits en Markdown (`text/markdown; charset=utf-8`), donc directement consultables
+  avec un éditeur de texte sur les clients SMB/NFS
+- Pour les contraintes liées aux spécifications AWS, consultez
+  [la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
+  et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
