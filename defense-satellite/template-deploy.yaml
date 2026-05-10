@@ -413,7 +413,7 @@ Resources:
         Variables:
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           PREFIX_FILTER: "satellite/"
-          SUFFIX_FILTER: ".tif,.tiff,.ntf,.nitf,.hdf,.h5"
+          SUFFIX_FILTER: ".tif,.tiff,.ntf,.nitf,.hdf,.h5,.jpg,.jpeg,.png"
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
