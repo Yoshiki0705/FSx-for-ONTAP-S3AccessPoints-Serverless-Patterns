@@ -60,6 +60,8 @@ scripts/_survey_translation_status.py
 scripts/_translate_uc_docs.py
 scripts/_batch_translate_r1.sh
 scripts/_batch_translate_r2.sh
+scripts/_r1_progress.sh
+scripts/_uc9_template_fix_plan.md
 scripts/_deploy_phase7_env.sh
 # The deploy/cleanup/verify scripts were historically committed with account IDs.
 # Going forward they must read values from environment variables only; keep the
