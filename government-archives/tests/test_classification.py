@@ -50,27 +50,27 @@ def test_handler_uses_keyword_fallback(
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.delenv("CLASSIFIER_ENDPOINT_ARN", raising=False)
 
-    mock_s3_client = MagicMock()
-    mock_s3_client.get_object.return_value = {
-        "Body": MagicMock(read=lambda: b"Top Secret government briefing")
-    }
-
     mock_comprehend = MagicMock()
     mock_comprehend.detect_dominant_language.return_value = {
         "Languages": [{"LanguageCode": "en", "Score": 0.99}]
     }
 
     def boto3_client(service):
-        if service == "s3":
-            return mock_s3_client
         if service == "comprehend":
             return mock_comprehend
         return MagicMock()
 
-    with patch.object(classification_handler, "boto3") as mock_boto3:
+    mock_writer = MagicMock()
+    mock_writer.get_text.return_value = "Top Secret government briefing"
+
+    with patch.object(classification_handler, "boto3") as mock_boto3, patch.object(
+        classification_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
         mock_boto3.client.side_effect = boto3_client
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {"document_key": "d.pdf", "text_key": "ocr/d.pdf.txt"}
         result = classification_handler.handler(event, lambda_context)
 
     assert result["clearance_level"] == "confidential"
     assert result["language"] == "en"
+    mock_writer.put_json.assert_called_once()

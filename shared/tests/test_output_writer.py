@@ -309,3 +309,69 @@ class TestBuildS3Uri:
             writer_s3ap.build_s3_uri("report/out.json")
             == "s3://my-volume-ext-s3alias/ai-outputs/report/out.json"
         )
+
+
+# ---------------------------------------------------------------------------
+# get_bytes / get_text / get_json — 書き込み先と対称な読み出し
+# ---------------------------------------------------------------------------
+
+
+class TestGetOperations:
+    def _body(self, data: bytes):
+        mock_body = MagicMock()
+        mock_body.read.return_value = data
+        return mock_body
+
+    def test_get_bytes_standard_s3(self, writer_standard, mock_session):
+        mock_session._s3_client.get_object.return_value = {
+            "Body": self._body(b"\x00\x01")
+        }
+        data = writer_standard.get_bytes("foo/bar.bin")
+        mock_session._s3_client.get_object.assert_called_once_with(
+            Bucket="my-output-bucket", Key="foo/bar.bin"
+        )
+        assert data == b"\x00\x01"
+
+    def test_get_bytes_fsxn_s3ap_applies_prefix(self, writer_s3ap, mock_session):
+        mock_session._s3_client.get_object.return_value = {
+            "Body": self._body(b"payload")
+        }
+        data = writer_s3ap.get_bytes("foo/bar.json")
+        mock_session._s3_client.get_object.assert_called_once_with(
+            Bucket="my-volume-ext-s3alias", Key="ai-outputs/foo/bar.json"
+        )
+        assert data == b"payload"
+
+    def test_get_text_decodes_utf8(self, writer_standard, mock_session):
+        mock_session._s3_client.get_object.return_value = {
+            "Body": self._body("こんにちは".encode("utf-8"))
+        }
+        text = writer_standard.get_text("hello.txt")
+        assert text == "こんにちは"
+
+    def test_get_json_parses(self, writer_standard, mock_session):
+        mock_session._s3_client.get_object.return_value = {
+            "Body": self._body(b'{"foo": "bar", "count": 3}')
+        }
+        result = writer_standard.get_json("data.json")
+        assert result == {"foo": "bar", "count": 3}
+
+    def test_s3ap_get_failure_wrapped_as_s3ap_helper_error(
+        self, writer_s3ap, mock_session
+    ):
+        mock_session._s3_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchKey", "Message": "missing"}},
+            "GetObject",
+        )
+        with pytest.raises(S3ApHelperError, match="FSxN S3 Access Point"):
+            writer_s3ap.get_bytes("missing.json")
+
+    def test_standard_s3_get_failure_raises_client_error(
+        self, writer_standard, mock_session
+    ):
+        mock_session._s3_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchKey", "Message": "missing"}},
+            "GetObject",
+        )
+        with pytest.raises(ClientError):
+            writer_standard.get_bytes("missing.json")

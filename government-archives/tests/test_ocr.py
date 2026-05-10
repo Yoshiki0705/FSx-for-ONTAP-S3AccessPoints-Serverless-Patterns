@@ -69,10 +69,19 @@ def test_handler_routes_to_sync_for_small_doc(
             return mock_textract
         return MagicMock()
 
-    with patch.object(ocr_handler, "boto3") as mock_boto3:
+    mock_writer = MagicMock()
+    mock_writer.target_description = "Standard S3 bucket 'test-bucket'"
+
+    with patch.object(ocr_handler, "boto3") as mock_boto3, patch.object(
+        ocr_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
         mock_boto3.client.side_effect = boto3_client
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {"Key": "archives/small.pdf", "Size": 1000}
         result = ocr_handler.handler(event, lambda_context)
 
     assert result["api_used"] == "sync"
     assert result["text_length"] > 0
+    # Text + blocks を出力先に書き出したことを確認
+    assert mock_writer.put_text.call_count == 1
+    assert mock_writer.put_json.call_count == 1
