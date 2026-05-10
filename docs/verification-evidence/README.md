@@ -28,6 +28,46 @@ serve as machine-readable proof that:
   Bedrock Nova Lite output-format pre-existing issue (unrelated to
   Pattern B work — tracked separately)
 
+### UC15 defense-satellite (`uc15-demo/`) — Phase 7 Theme E verification
+
+- `s3ap-output-listing.txt` — 5 output files under `ai-outputs/uc15/`
+  covering tiling metadata, object-detection results, and geo-enriched
+  detections from the 2026-05-11 FSXN_S3AP verification
+- `sample-tiling-metadata.json` — Tiling Lambda output (image dimensions,
+  tile count) written via `OutputWriter.put_json()`
+- `sample-enriched-output.json` — GeoEnrichment Lambda output (sensor
+  type, coordinates, enriched detections)
+
+### UC16 government-archives (`uc16-demo/`) — Phase 7 Theme E verification
+
+- `s3ap-output-listing.txt` — 6 output files under `ai-outputs/uc16/`
+  covering OCR text/blocks, classification, PII entities, redacted text,
+  and redaction metadata from the 2026-05-11 FSXN_S3AP verification
+- `sample-classification.json` — Comprehend classification output
+  (`clearance_level=public` via keyword fallback since sample PDF had no
+  confidential markers)
+- `sample-redaction-metadata.json` — Redaction sidecar JSON
+  (`redaction_count=0` because minimal test PDF produced no extractable
+  text via Textract; chain-level end-to-end flow is the key proof)
+
+**Chain-read verification**: Each downstream Lambda
+(Classification/EntityExtraction/Redaction) successfully read the OCR
+text via `OutputWriter.get_text()` from the same FSxN S3 Access Point
+the OCR Lambda wrote to, proving the symmetric read-side of the
+OutputWriter works in FSXN_S3AP mode.
+
+### UC17 smart-city-geospatial (`uc17-demo/`) — Phase 7 Theme E verification
+
+- `s3ap-output-listing.txt` — 4 output files under `ai-outputs/uc17/`
+  covering preprocessed metadata, land-use classification, risk map, and
+  Bedrock-generated Markdown report from the 2026-05-11 FSXN_S3AP
+  verification
+- `sample-bedrock-report.md` — Bedrock Nova Lite generated Japanese city
+  planning report (自治体担当者向け所見レポート) saved as Markdown to FSx
+  ONTAP, directly viewable via SMB/NFS with any text editor
+- `sample-risk-map.json` — RiskMapping Lambda output (flood, earthquake,
+  landslide risk scores and levels)
+
 ## Why CLI Evidence?
 
 Browser-based screenshots require console authentication and manual
@@ -42,7 +82,7 @@ capture. CLI evidence is:
 
 Whenever:
 
-- UC11 or UC14 is re-deployed in FSXN_S3AP mode
+- UC11, UC14, UC15, UC16, or UC17 is re-deployed in FSXN_S3AP mode
 - OutputDestination pattern is rolled out to additional UCs (UC9, UC10, etc.)
 - Step Functions generates a new successful execution
 
@@ -62,6 +102,8 @@ These CLI outputs contain:
 - ✅ File sizes and timestamps (safe to publish)
 - ✅ Rekognition label names and confidence scores (safe to publish —
   derived from public sample images)
+- ✅ Bedrock-generated text (safe to publish — derived from project-owned
+  GIS sample data)
 - ❌ NOT included: AWS account IDs, S3 AP ARNs, execution ARNs, or any PII
 
 If any sensitive value appears in future captures, run through
