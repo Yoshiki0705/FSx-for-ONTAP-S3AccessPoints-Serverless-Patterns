@@ -85,10 +85,16 @@ def test_handler_uses_rekognition_for_raster(
             return mock_rekognition
         return MagicMock()
 
-    with patch.object(land_use_classification_handler, "boto3") as mock_boto3:
+    mock_writer = MagicMock()
+
+    with patch.object(land_use_classification_handler, "boto3") as mock_boto3, patch.object(
+        land_use_classification_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
         mock_boto3.client.side_effect = boto3_client
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {"source_key": "gis/area.tif"}
         result = land_use_classification_handler.handler(event, lambda_context)
 
     assert result["inference_path"] == "rekognition"
     assert "residential" in result["landuse_distribution"]
+    mock_writer.put_json.assert_called_once()

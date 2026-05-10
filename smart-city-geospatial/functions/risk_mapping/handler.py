@@ -3,7 +3,10 @@
 土地利用、標高、水系データを元に、洪水・地震・土砂崩れの災害リスクスコアを計算する。
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +115,7 @@ def handler(event, context):
 
     Output: {"source_key": str, "risks": {"flood": {...}, "earthquake": {...}, "landslide": {...}}}
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
 
     source_key = event.get("source_key", "")
     landuse = event.get("landuse_distribution", {})
@@ -161,19 +165,15 @@ def handler(event, context):
         },
     }
 
-    # S3 書き出し
+    # 出力先に書き出し
     result_key = f"risk-maps/{source_key}.json"
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=result_key,
-        Body=json.dumps({
+    output_writer.put_json(
+        key=result_key,
+        data={
             "source_key": source_key,
             "risks": risks,
             "assessed_at": datetime.utcnow().isoformat(),
-        }, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
+        },
     )
 
     logger.info(

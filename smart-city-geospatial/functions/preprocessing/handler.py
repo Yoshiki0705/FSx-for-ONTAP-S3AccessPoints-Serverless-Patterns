@@ -4,8 +4,11 @@
 pyproj が Lambda Layer で利用可能な場合は実変換、利用不可時はメタデータのみ記録。
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット
     TARGET_CRS: 正規化後の CRS (default: "EPSG:4326")
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +82,7 @@ def handler(event, context):
     Input: {"Key": "gis/area1.shp", "Size": 1234, "GeoFormat": "vector_shapefile"}
     Output: {"source_key": str, "target_crs": str, "normalized": bool, "metadata_key": str}
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     target_crs = os.environ.get("TARGET_CRS", "EPSG:4326")
 
     source_key = event.get("Key") or event.get("source_key")
@@ -106,16 +110,9 @@ def handler(event, context):
         "processed_at": datetime.utcnow().isoformat(),
     }
 
-    # メタデータを S3 に書き出し
+    # メタデータを出力先に書き出し
     metadata_key = f"preprocessed/{source_key}.metadata.json"
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=metadata_key,
-        Body=json.dumps(metadata, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
-    )
+    output_writer.put_json(key=metadata_key, data=metadata)
 
     logger.info(
         "UC17 Preprocessing: source=%s, src_crs=%s, target_crs=%s",

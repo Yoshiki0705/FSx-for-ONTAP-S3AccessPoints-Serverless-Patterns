@@ -4,8 +4,11 @@ LAS/LAZ 点群データからインフラ（道路、橋梁、建物）の状態
 laspy Layer が利用可能な場合は実データ解析、利用不可時はメタデータのみ。
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット
     S3_ACCESS_POINT_ALIAS: 入力 S3 AP (optional)
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
@@ -99,7 +103,7 @@ def handler(event, context):
     Input: {"source_key": "gis/bridge.las", "GeoFormat": "pointcloud"}
     Output: {"source_key": str, "condition_score": str, "statistics": {...}}
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     s3_access_point = os.environ.get("S3_ACCESS_POINT_ALIAS")
 
     source_key = event.get("source_key") or event.get("Key")
@@ -121,8 +125,10 @@ def handler(event, context):
         s3ap = S3ApHelper(s3_access_point)
         response = s3ap.get_object(source_key)
     else:
+        # Fallback: OUTPUT_BUCKET からの直接読み取り（テスト互換）
+        fallback_bucket = os.environ.get("OUTPUT_BUCKET", "")
         s3_client = boto3.client("s3")
-        response = s3_client.get_object(Bucket=output_bucket, Key=source_key)
+        response = s3_client.get_object(Bucket=fallback_bucket, Key=source_key)
 
     data = response["Body"].read()
 
@@ -141,7 +147,7 @@ def handler(event, context):
         stats.get("std_elevation", 1.0),
     )
 
-    # 結果を S3 に書き出し
+    # 結果を出力先に書き出し
     result_key = f"infra-assessment/{source_key}.json"
     result = {
         "source_key": source_key,
@@ -149,14 +155,7 @@ def handler(event, context):
         "statistics": stats,
         "assessed_at": datetime.utcnow().isoformat(),
     }
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=result_key,
-        Body=json.dumps(result, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
-    )
+    output_writer.put_json(key=result_key, data=result)
 
     logger.info(
         "UC17 InfraAssessment: source=%s, condition=%s",
