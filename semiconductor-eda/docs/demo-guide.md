@@ -200,6 +200,62 @@ ORDER BY bounding_box_width DESC;
 
 ---
 
+## 検証済みの UI/UX スクリーンショット（2026-05-10 再検証）
+
+Phase 7 UC15/16/17 と同じ方針で、**設計エンジニアが日常業務で実際に目にする UI/UX 画面**を
+撮影。Step Functions グラフのような技術者向けビューは除外（詳細は
+[`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md) 参照）。
+
+### 1. S3 出力バケット — 設計ドキュメント・分析結果の一覧
+
+設計レビュー担当者が、ワークフロー完了後に結果を確認する画面。
+`metadata/` / `athena-results/` / `reports/` の 3 プレフィックスに整理されている。
+
+<!-- SCREENSHOT: uc6-s3-output-bucket.png
+     内容: S3 コンソールで bucket の top-level prefix を確認
+     マスク: アカウント ID、バケット名プレフィックス -->
+![UC6: S3 出力バケット](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+
+### 2. Athena クエリ結果 — EDA メタデータの SQL 分析
+
+設計リードがアドホックに DRC 情報を探索する画面。
+Workgroup は `fsxn-eda-uc6-workgroup`、データベースは `fsxn-eda-uc6-db`。
+
+<!-- SCREENSHOT: uc6-athena-query-result.png
+     内容: EDA メタデータ表の SELECT 結果（file_key、library_name、cell_count、bounding_box）
+     マスク: アカウント ID -->
+![UC6: Athena クエリ結果](../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
+
+### 3. Bedrock 生成の設計レビューレポート
+
+**UC6 の目玉機能**: Athena の DRC 集計結果を元に、Bedrock Nova Lite が
+Physical Design Lead 向けの日本語レビューレポートを生成する。
+
+<!-- SCREENSHOT: uc6-bedrock-design-review.png
+     内容: エグゼクティブサマリー + セル数分析 + 命名規則違反一覧 + リスク評価 (High/Medium/Low)
+     実サンプル内容:
+       ## 設計レビューサマリー
+       ### エグゼクティブサマリー
+       今回のDRC集計結果に基づき、設計品質の全体評価を以下に示します。
+       設計ファイルは合計2件で、セル数分布は安定しており、バウンディングボックス外れ値は確認されませんでした。
+       しかし、命名規則違反が6件見つかりました。
+       ...
+       ### リスク評価
+       - **High**: なし
+       - **Medium**: 命名規則違反が6件確認されました。
+       - **Low**: セル数分布やバウンディングボックス外れ値に問題はありません。
+     マスク: アカウント ID -->
+![UC6: Bedrock 設計レビューレポート](../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
+
+### 実測値（2026-05-10 AWS デプロイ検証）
+
+- **Step Functions 実行時間**: ~30 秒（Discovery + Map(2 files) + DRC + Report）
+- **Bedrock 生成レポート**: 2,093 bytes（マークダウン形式の日本語）
+- **Athena クエリ**: 0.02 KB スキャン、ランタイム 812 ms
+- **実スタック**: `fsxn-eda-uc6`（ap-northeast-1、2026-05-10 時点で稼働中）
+
+---
+
 ## Narration Outline
 
 ### トーン & スタイル
