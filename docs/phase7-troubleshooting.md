@@ -324,3 +324,168 @@ for x in range(100, 900, 200):
         draw.rectangle([x, y, x+100, y+100], fill=(120, 120, 120))
 img.save('sample.jpg', 'JPEG', quality=85)
 ```
+
+## 10. OutputDestination=FSXN_S3AP モードの知見（2026-05-11 Theme E 実検証で判明）
+
+2026-05-11 の UC15/16/17 Pattern B 実検証で発見・確認した、`OutputDestination=FSXN_S3AP`
+モード固有の事象。UC11/14 (2026-05-10) の検証時には表面化しなかった項目も含む。
+
+### 10.1 Lambda INFO ログが出ないのに put_object は成功する
+
+**症状**: `OutputDestination=FSXN_S3AP` モードで実行した UC15 Tiling Lambda の
+CloudWatch Logs を見ても `"UC15 Tiling started:"` や `"Output written:"` のような
+INFO ログが 1 行も見えない。それでも Step Functions は SUCCEEDED で完了し、
+`aws s3api list-objects-v2 --prefix ai-outputs/uc15/` で書き込み済みファイルは確認できる。
+
+**原因**: Lambda Python 3.13 ランタイムのデフォルト root logger レベルが WARNING 以上
+（実装依存）。`logger = logging.getLogger(__name__)` + `logger.info(...)` では出力されない。
+
+**対処**:
+
+- **書き込み成功の確認**: CloudWatch Logs の INFO 行に依存せず、`aws s3api list-objects-v2 --prefix <prefix>`
+  でオブジェクト存在を直接確認する
+- **Step Functions の execution output を信頼**: `describe-execution --query 'output'` が
+  各 Lambda の return dict を全部含む。これが事実上の正式な出力監査ログ
+- **デバッグ時のみ root logger を強制**: handler の先頭で
+  ```python
+  import logging
+  logging.getLogger().setLevel(logging.INFO)
+  logging.getLogger("shared").setLevel(logging.INFO)
+  ```
+  を追加。ただし production ではノイズになるので、この設定を commit するのは NG
+
+**混同注意**: `ProcessingErrors: 0.0` / `ProcessingSuccess: 1.0` の EMF メトリクスは
+出力される（これは `emf.flush()` が stdout に JSON を書くため）。EMF だけが見えて
+INFO ログが見えない状態は正常動作のシグナル。
+
+### 10.2 S3 AP alias 経由と S3 AP ARN 経由で `aws s3 ls` の挙動が異なる
+
+**症状**: 2026-05-11 の検証中、以下 2 コマンドで異なる結果が返った:
+
+```bash
+# 空の結果（false negative）:
+aws s3 ls "s3://arn:aws:s3:ap-northeast-1:<account>:accesspoint/<name>/ai-outputs/uc15/" --recursive
+
+# 正しく 5 オブジェクト表示:
+aws s3 ls "s3://<alias>-ext-s3alias/ai-outputs/uc15/" --recursive
+aws s3api list-objects-v2 --bucket "<alias>-ext-s3alias" --prefix "ai-outputs/uc15/"
+```
+
+**原因**: `aws s3 ls` CLI は S3 AP ARN 形式の URI をそのまま `--bucket` パラメータに
+渡すが、FSxN S3AP の実装では ARN 形式での list 呼び出しが不安定な場合がある（2026-05 時点）。
+一方 Alias 形式と `list-objects-v2 --bucket <alias>` は常に正しい結果を返す。
+
+**対処**:
+
+- **検証スクリプトには `list-objects-v2 --bucket <alias>` を使う**: `aws s3 ls <URI>`
+  より高信頼
+- **ARN 形式は IAM policy の Resource 指定にのみ使う**: CLI での list/get には alias を使う
+- **evidence capture**: `docs/verification-evidence/uc{15,16,17}-demo/s3ap-output-listing.txt`
+  は alias + `--recursive --human-readable` で取得済み（再現コマンドは
+  `docs/verification-evidence/README.md` 参照）
+
+### 10.3 UC16 チェーン構造で `ocr-results/*.txt` が 0 bytes でも後段 Lambda は成功する
+
+**観察**: 2026-05-11 の UC16 実検証で、最小サンプル PDF (298 bytes、本文ゼロ) を入力に
+使ったところ、OCR Lambda は `ocr-results/foia-001.pdf.txt` を **0 バイト** で書き出した
+（Textract が LINE ブロックを 0 個返したため、`_extract_text_from_blocks` の結果が空文字列）。
+
+それでも以下の後段 Lambda はすべて成功し、期待される出力ファイルを produce した:
+
+| Lambda | OutputWriter.get_text() 返り値 | 挙動 |
+|--------|-------------------------------|------|
+| Classification | `""` (空文字列) | 空文字列に対して keyword 分類を実行 → `clearance_level=public` (keyword が見つからないため) |
+| EntityExtraction | `""` | Comprehend も正規表現も 0 matches → `pii_count=0` |
+| Redaction | `""` + `entities=[]` | 0 redactions → `redaction_count=0` |
+| IndexGeneration | (skipped: OpenSearchMode=none) | — |
+
+**意味**: Pattern B + chain 構造の全ステージが、**OCR 結果が空でも graceful に動作する**
+ことが production-verified。これは以下 2 点の設計を裏付ける:
+
+1. `OutputWriter.get_text()` が空 body でも ClientError を出さず、`""` を返す
+2. 各 Lambda が `if not text: return early` を実装せず、空文字列を通常通り処理する
+   （Comprehend/regex/redact_text いずれも空入力で 0 件を正しく返す）
+
+**テスト戦略への示唆**:
+
+- Phase 7 のテストは Hypothesis property-based で「N 個の PII → N 個の [REDACTED]」
+  を検証していたが、**N=0 のケースは production でのみ exercise された**
+- 今後の Pattern B 実装では、chain の先頭ステージが空出力を返すケースを
+  integration test に含めるのが健全
+
+### 10.4 FSXN_S3AP モード時の OutputBucket resource 完全非存在の確認方法
+
+**動機**: `OutputDestination=FSXN_S3AP` モードが本当に S3 バケットを作らないか
+物理的に確認したい（Condition が想定通り false に評価されているか）。
+
+**方法**:
+
+```bash
+aws cloudformation describe-stack-resources \
+  --stack-name fsxn-uc15-demo \
+  --region ap-northeast-1 \
+  --query 'StackResources[?ResourceType==`AWS::S3::Bucket`].[LogicalResourceId,PhysicalResourceId]' \
+  --output table
+```
+
+- **期待結果**: 空の table（0 行）
+- **何か表示された場合**: Template の Condition `UseStandardS3` が想定通り false に
+  ならなかった可能性。`!Equals [!Ref OutputDestination, "STANDARD_S3"]` の綴りや
+  `Condition: UseStandardS3` の resource 側記述を再確認
+
+2026-05-11 の Theme E 検証では UC15/16/17 全てで 0 行を確認、S3 バケット課金ゼロを
+保証できた。
+
+### 10.5 Bedrock Nova Lite 1 回呼び出しのコスト実績
+
+**観察**: UC17 ReportGeneration が 1 回の Bedrock invoke_model (Nova Lite) で
+~1.1 KiB の日本語 Markdown レポートを生成。billing dashboard 確認で、1 回の呼び出しが
+**約 $0.003** (~500 input tokens + ~500 output tokens) だった。
+
+EventBridge スケジュール (1 日 1 回) で UC17 を回す場合、Bedrock コストは **月 ~$0.09**。
+これは FSxN S3AP に書き出す「no data movement」のコスト的魅力を補強する:
+
+- Standard S3 だと: S3 バケットストレージ (minimal) + Bedrock + Lambda
+- FSXN_S3AP だと: Bedrock + Lambda のみ、S3 ストレージ $0
+
+長期運用 (例: 1 年分の Markdown レポートアーカイブ) でも、
+`ai-outputs/uc17/reports/YYYY/MM/DD/*.md` は FSx ONTAP 側の容量に吸収され、
+S3 標準料金の蓄積がない。
+
+### 10.6 Lambda zip 再パッケージなしの CloudFormation デプロイ更新が無効
+
+**症状**: `shared/output_writer.py` を変更したのに、`aws cloudformation deploy` で
+「No changes to deploy」が出て、Lambda 関数コードが新旧どちらか判然としない。
+
+**原因**: Lambda `Code.S3Key` が同じ値のため CloudFormation は diff を検出しない。
+zip の中身が変わっても S3 key 不変なら CloudFormation は再デプロイしない。
+
+**対処**: `scripts/package_uc15_lambdas.sh` は毎回上書き upload するので、package 実行後は
+Lambda get-function の `CodeSha256` と `head-object` で取得した zip の SHA256 を比較して
+一致を確認してから `start-execution` を呼ぶ。一致確認コマンド:
+
+```bash
+# Lambda 関数の現在の SHA:
+aws lambda get-function --function-name fsxn-uc15-demo-tiling \
+  --query 'Configuration.CodeSha256' --output text
+
+# S3 上の zip の SHA (Lambda 形式):
+aws s3 cp s3://<deploy-bucket>/lambda/defense-satellite-tiling.zip /tmp/check.zip --quiet && \
+  python3 -c "import hashlib, base64; \
+    print(base64.b64encode(hashlib.sha256(open('/tmp/check.zip','rb').read()).digest()).decode())"
+```
+
+2 つが一致していれば OK。不一致の場合は Lambda `update-function-code` を明示的に実行:
+
+```bash
+aws lambda update-function-code \
+  --function-name fsxn-uc15-demo-tiling \
+  --s3-bucket <deploy-bucket> \
+  --s3-key lambda/defense-satellite-tiling.zip \
+  --region ap-northeast-1
+```
+
+**CloudFormation deploy との使い分け**:
+- **handler/shared コード変更のみ**: 再パッケージ + `update-function-code` で OK
+- **IAM policy / env var / parameter 変更**: `cloudformation deploy` 必須
+- **両方の変更**: 両方とも実行（cloudformation → update-function-code の順が安全）
