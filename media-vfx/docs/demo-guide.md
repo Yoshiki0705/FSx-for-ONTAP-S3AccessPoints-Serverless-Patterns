@@ -158,6 +158,44 @@
 
 ---
 
+## 出力先について: FSxN S3 Access Point (Pattern A)
+
+UC4 media-vfx は **Pattern A: Native S3AP Output** に分類されます
+（`docs/output-destination-patterns.md` 参照）。
+
+**設計**: レンダリングメタデータ、フレーム品質評価は全て FSxN S3 Access Point 経由で
+オリジナルレンダリングアセットと**同一の FSx ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
+作成されません（"no data movement" パターン）。
+
+**CloudFormation パラメータ**:
+- `S3AccessPointAlias`: 入力データ読み取り用 S3 AP Alias
+- `S3AccessPointOutputAlias`: 出力書き込み用 S3 AP Alias（入力と同じでも可）
+
+**デプロイ例**:
+```bash
+aws cloudformation deploy \
+  --template-file media-vfx/template-deploy.yaml \
+  --stack-name fsxn-media-vfx-demo \
+  --parameter-overrides \
+    S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    S3AccessPointOutputAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    ... (他の必須パラメータ)
+```
+
+**SMB/NFS ユーザーからの見え方**:
+```
+/vol/renders/
+  ├── shot_001/frame_0001.exr         # オリジナルレンダーフレーム
+  └── qc/shot_001/                     # フレーム品質評価（同じボリューム内）
+      └── frame_0001_qc.json
+```
+
+AWS 仕様上の制約については
+[プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
+および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照。
+
+---
+
 ## 検証済みの UI/UX スクリーンショット
 
 Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユーザーが日常業務で実際に

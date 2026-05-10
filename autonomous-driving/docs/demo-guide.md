@@ -171,6 +171,54 @@ sam local invoke \
 
 ---
 
+## 出力先について: OutputDestination で選択可能 (Pattern B)
+
+UC9 autonomous-driving は 2026-05-10 のアップデートで `OutputDestination` パラメータをサポートしました
+（`docs/output-destination-patterns.md` 参照）。
+
+**対象ワークロード**: ADAS / 自動運転データ（フレーム抽出、点群QC、アノテーション、推論）
+
+**2 つのモード**:
+
+### STANDARD_S3（デフォルト、従来どおり）
+新しい S3 バケット（`${AWS::StackName}-output-${AWS::AccountId}`）を作成し、
+AI 成果物をそこに書き込みます。
+
+```bash
+aws cloudformation deploy \
+  --template-file autonomous-driving/template-deploy.yaml \
+  --stack-name fsxn-autonomous-driving-demo \
+  --parameter-overrides \
+    OutputDestination=STANDARD_S3 \
+    ... (他の必須パラメータ)
+```
+
+### FSXN_S3AP（"no data movement" パターン）
+AI 成果物を FSxN S3 Access Point 経由でオリジナルデータと**同一の FSx ONTAP ボリューム**に
+書き戻します。SMB/NFS ユーザーが業務で使用するディレクトリ構造内で AI 成果物を
+直接閲覧できます。標準 S3 バケットは作成されません。
+
+```bash
+aws cloudformation deploy \
+  --template-file autonomous-driving/template-deploy.yaml \
+  --stack-name fsxn-autonomous-driving-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    S3AccessPointName=eda-demo-s3ap \
+    ... (他の必須パラメータ)
+```
+
+**注意事項**:
+
+- `S3AccessPointName` の指定を強く推奨（Alias 形式と ARN 形式の両方で IAM 許可する）
+- 5GB 超のオブジェクトは FSxN S3AP では不可（AWS 仕様）、マルチパートアップロード必須
+- AWS 仕様上の制約は
+  [プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
+  および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照
+
+---
+
 ## 検証済みの UI/UX スクリーンショット
 
 Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユーザーが日常業務で実際に
