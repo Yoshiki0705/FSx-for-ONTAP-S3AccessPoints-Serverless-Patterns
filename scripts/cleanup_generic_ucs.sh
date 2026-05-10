@@ -2,6 +2,15 @@
 # Cleanup generic UC demo stacks
 set +e
 
+# Resolve AWS account ID from environment or STS (override via ACCOUNT_ID env var)
+ACCOUNT_ID="${ACCOUNT_ID:-$(aws sts get-caller-identity --query 'Account' --output text 2>/dev/null)}"
+if [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "<ACCOUNT_ID>" ]; then
+    echo "ERROR: could not resolve AWS account ID. Set ACCOUNT_ID env var or configure AWS credentials." >&2
+    exit 1
+fi
+REGION="${REGION:-ap-northeast-1}"
+echo "Cleanup target account: $ACCOUNT_ID, region: $REGION"
+
 uc_to_dir() {
     case "$1" in
         UC1) echo "legal-compliance" ;;
@@ -26,19 +35,19 @@ for input in "$@"; do
     STACK="fsxn-${UC}-demo"
 
     # Empty output bucket
-    OUT_BUCKET="${STACK}-output-<ACCOUNT_ID>"
+    OUT_BUCKET="${STACK}-output-${ACCOUNT_ID}"
     echo "=== Emptying $OUT_BUCKET ==="
-    aws s3api delete-objects --bucket "$OUT_BUCKET" --region ap-northeast-1 \
-        --delete "$(aws s3api list-object-versions --bucket "$OUT_BUCKET" --region ap-northeast-1 --output=json --query='{Objects: Versions[].{Key:Key,VersionId:VersionId}}' 2>/dev/null)" 2>&1 | tail -2
-    aws s3api delete-objects --bucket "$OUT_BUCKET" --region ap-northeast-1 \
-        --delete "$(aws s3api list-object-versions --bucket "$OUT_BUCKET" --region ap-northeast-1 --output=json --query='{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' 2>/dev/null)" 2>&1 | tail -2
-    aws s3 rb "s3://${OUT_BUCKET}" --region ap-northeast-1 2>&1 | tail -1
+    aws s3api delete-objects --bucket "$OUT_BUCKET" --region "$REGION" \
+        --delete "$(aws s3api list-object-versions --bucket "$OUT_BUCKET" --region "$REGION" --output=json --query='{Objects: Versions[].{Key:Key,VersionId:VersionId}}' 2>/dev/null)" 2>&1 | tail -2
+    aws s3api delete-objects --bucket "$OUT_BUCKET" --region "$REGION" \
+        --delete "$(aws s3api list-object-versions --bucket "$OUT_BUCKET" --region "$REGION" --output=json --query='{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' 2>/dev/null)" 2>&1 | tail -2
+    aws s3 rb "s3://${OUT_BUCKET}" --region "$REGION" 2>&1 | tail -1
 
     # Delete stack
     echo "=== Deleting $STACK ==="
-    aws cloudformation delete-stack --stack-name "$STACK" --region ap-northeast-1
+    aws cloudformation delete-stack --stack-name "$STACK" --region "$REGION"
     echo "  Initiated"
 done
 
 # Also delete UC1 that rolled back
-aws cloudformation delete-stack --stack-name fsxn-legal-compliance-demo --region ap-northeast-1 2>&1 | tail -1
+aws cloudformation delete-stack --stack-name fsxn-legal-compliance-demo --region "$REGION" 2>&1 | tail -1
