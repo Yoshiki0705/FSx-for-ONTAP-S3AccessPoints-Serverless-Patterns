@@ -13,13 +13,21 @@ essential for:
 
 | Pattern | UCs | Output destination |
 |---------|-----|-------------------|
-| **A. Native S3AP output** (original design) | UC1, UC2, UC3, UC4, UC5, UC15, UC16, UC17 | FSxN S3 Access Point (same volume as input) |
-| **B. Selectable via `OutputDestination`** | UC9, UC10, UC11, UC12, UC14 | Standard S3 (default) OR FSxN S3AP |
+| **A. Native S3AP output** (original design, now with unified API) | UC1, UC2, UC3, UC4, UC5 | FSxN S3 Access Point (same volume as input) |
+| **B. Selectable via `OutputDestination`** | UC9, UC10, UC11, UC12, UC14, **UC15, UC16, UC17** | Standard S3 (default) OR FSxN S3AP |
 | **C. Standard S3 only** (partial) | UC6, UC7, UC8, UC13 | Standard S3 (Athena results require this per AWS spec) |
 
 Pattern A and B both deliver the "no data movement" promise for the AI/ML
 outputs; they differ only in whether the choice is a fixed parameter
 (`S3AccessPointOutputAlias`) or a runtime switch (`OutputDestination`).
+
+**Note on UC15-UC17 (as of 2026-05-11)**: Originally designed with a
+hybrid approach (discovery manifests to S3AP, processing results to
+standard S3 only), they are now Pattern B — processing Lambdas read
+`OutputWriter.from_env()` and can write all outputs either to a
+standard S3 bucket (default) or FSxN S3AP (opt-in). Discovery Lambdas
+continue to write manifests directly to S3AP via the existing
+`S3_ACCESS_POINT_OUTPUT` env var (unchanged).
 
 ## Pattern A: Native S3AP Output (UC1-UC5, UC15-UC17)
 
@@ -206,13 +214,13 @@ has no `S3AccessPointOutputAlias` parameter, it's Pattern C.
 |------|-----------|
 | Phase 1 | UC1-UC5 designed with Pattern A from day 1 |
 | Phase 2 | UC6, UC7, UC8, UC9, UC10, UC11, UC12, UC13, UC14 designed with Pattern C |
-| Phase 7 | UC15-UC17 designed with Pattern A (S3AP output) |
+| Phase 7 | UC15-UC17 designed with Pattern A+C hybrid (discovery manifests to S3AP, processing results to standard S3) |
 | 2026-05-10 morning | UC11 + UC14 refactored from Pattern C to Pattern B. AWS verified FSXN_S3AP mode end-to-end |
 | 2026-05-10 afternoon | UC9 + UC10 + UC12 refactored from Pattern C to Pattern B. Unit tests pass, AWS deploy pending |
-| **2026-05-11** | **UC1-UC5 extended to accept Pattern B parameters** (`OutputDestination`, `OutputS3APAlias`, `OutputS3APPrefix`, `S3AccessPointName`, `OutputS3APName`) while keeping `S3AccessPointOutputAlias` as optional legacy. Default `OutputDestination=FSXN_S3AP` preserves existing behavior. Handler code unchanged (still reads `S3_ACCESS_POINT_OUTPUT` env var, which now resolves via the new fallback chain). This unifies the CFN-level API across UC1-5 (Pattern A) and UC9/10/11/12/14 (Pattern B). |
-| TBD | Handler code migration: Pattern A UC handlers could optionally migrate from `S3ApHelper(os.environ["S3_ACCESS_POINT_OUTPUT"]).put_object()` to `OutputWriter.from_env().put_json()` for full consistency with Pattern B handlers |
-| TBD | Consider Pattern C → Pattern B (partial) refactor for UC6, UC7, UC8, UC13 |
-| TBD | Extend Phase 7 UCs (UC15, UC16, UC17) to accept the unified API |
+| 2026-05-11 morning | UC1-UC5 extended to accept Pattern B parameters (`OutputDestination`, `OutputS3APAlias`, `OutputS3APPrefix`, `S3AccessPointName`, `OutputS3APName`) while keeping `S3AccessPointOutputAlias` as optional legacy. Default `OutputDestination=FSXN_S3AP` preserves existing behavior. Handler code unchanged (still reads `S3_ACCESS_POINT_OUTPUT` env var, which now resolves via the new fallback chain). This unifies the CFN-level API across UC1-5 (Pattern A) and UC9/10/11/12/14 (Pattern B). |
+| **2026-05-11 afternoon** | **UC15 + UC16 + UC17 refactored from Pattern A+C hybrid to full Pattern B.** Processing Lambda handlers migrated from direct `s3.put_object(Bucket=OUTPUT_BUCKET, ...)` to `OutputWriter.from_env()`. Added symmetric `get_bytes/get_text/get_json` to `shared/output_writer.py` so UC16's chain (OCR→Classification→EntityExtraction→Redaction→IndexGeneration) reads previous-stage artifacts from the same destination as the producer. Templates gained `OutputDestination`/`OutputS3APAlias`/`OutputS3APPrefix`/`OutputS3APName` params, `UseStandardS3`/`UseFsxnS3AP` conditions, conditional `OutputBucket` resource, and conditional IAM policies. Default remains `STANDARD_S3` (backward compatible). Tests: 148 PASS (34+52+34+28 shared). Discovery Lambdas unchanged (still use S3_ACCESS_POINT_OUTPUT). |
+| TBD | Handler code migration: Pattern A (UC1-5) UC handlers could optionally migrate from `S3ApHelper(os.environ["S3_ACCESS_POINT_OUTPUT"]).put_object()` to `OutputWriter.from_env().put_json()` for full consistency with Pattern B handlers |
+| TBD | Consider Pattern C → Pattern B (partial) refactor for UC6, UC7, UC8, UC13 (non-Athena artifacts could be FSXN_S3AP selectable) |
 
 ## Cross-Reference
 
