@@ -1,7 +1,7 @@
 # UC16: 政府機関 — 公文書デジタルアーカイブ・FOIA 対応
 
 🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **ドキュメント**: [アーキテクチャ](docs/uc16-architecture.md) | [デモスクリプト](docs/uc16-demo-script.md) | [トラブルシューティング](../docs/phase7-troubleshooting.md)
+📚 **ドキュメント**: [アーキテクチャ](docs/architecture.md) | [デモスクリプト](docs/demo-guide.md) | [トラブルシューティング](../docs/phase7-troubleshooting.md)
 
 ## 概要
 

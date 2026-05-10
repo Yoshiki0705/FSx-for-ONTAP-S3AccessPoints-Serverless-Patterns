@@ -1,7 +1,7 @@
 # UC17: Smart City — Geospatial Analytics & Urban Planning
 
 🌐 **Language / 言語**: [日本語](README.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **Documentation**: [Architecture](docs/uc17-architecture.md) | [Demo Script](docs/uc17-demo-script.md)
+📚 **Documentation**: [Architecture](docs/architecture.de.md) | [Demo Script](docs/demo-guide.de.md)
 
 > **Hinweis**: Diese Übersetzung ist ein automatisch generierter Entwurf. Überarbeitungen sind willkommen.
 

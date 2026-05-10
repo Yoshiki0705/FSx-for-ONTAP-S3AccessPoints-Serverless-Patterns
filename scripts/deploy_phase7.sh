@@ -46,14 +46,12 @@ fi
 cd "${PROJECT_ROOT}"
 
 for UC in "${UCS[@]}"; do
-    STACK_NAME="fsxn-uc$(
-        case $UC in
-            defense-satellite) echo 15 ;;
-            government-archives) echo 16 ;;
-            smart-city-geospatial) echo 17 ;;
-            *) echo "unknown-$UC"; exit 1 ;;
-        esac
-    )-demo"
+    case "$UC" in
+        defense-satellite) STACK_NAME="fsxn-uc15-demo" ;;
+        government-archives) STACK_NAME="fsxn-uc16-demo" ;;
+        smart-city-geospatial) STACK_NAME="fsxn-uc17-demo" ;;
+        *) echo "unknown UC: $UC"; exit 1 ;;
+    esac
 
     echo ""
     echo "========================================"

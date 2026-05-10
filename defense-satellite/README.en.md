@@ -1,7 +1,7 @@
 # UC15: Defense / Space — Satellite Imagery Analytics Pipeline
 
 🌐 **Language / 言語**: [日本語](README.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **Documentation**: [Architecture](docs/uc15-architecture.md) | [Demo Script](docs/uc15-demo-script.md)
+📚 **Documentation**: [Architecture](docs/architecture.en.md) | [Demo Script](docs/demo-guide.en.md)
 
 ## Overview
 

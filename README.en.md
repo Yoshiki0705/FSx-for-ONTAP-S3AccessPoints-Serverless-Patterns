@@ -195,9 +195,9 @@ Detailed architecture diagrams and demo guides for each use case are available i
 | UC12 | Logistics | [📐 Architecture](logistics-ocr/docs/architecture.en.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.en.md) |
 | UC13 | Education / Research | [📐 Architecture](education-research/docs/architecture.en.md) | [🎬 Demo Guide](education-research/docs/demo-guide.en.md) |
 | UC14 | Insurance | [📐 Architecture](insurance-claims/docs/architecture.en.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.en.md) |
-| UC15 | Defense/Space (Satellite) | [📐 Architecture](defense-satellite/docs/uc15-architecture.md) | [🎬 Demo Script](defense-satellite/docs/uc15-demo-script.md) |
-| UC16 | Government (FOIA / Archives) | [📐 Architecture](government-archives/docs/uc16-architecture.md) | [🎬 Demo Script](government-archives/docs/uc16-demo-script.md) |
-| UC17 | Smart City | [📐 Architecture](smart-city-geospatial/docs/uc17-architecture.md) | [🎬 Demo Script](smart-city-geospatial/docs/uc17-demo-script.md) |
+| UC15 | Defense/Space (Satellite) | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Script](defense-satellite/docs/demo-guide.md) |
+| UC16 | Government (FOIA / Archives) | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Script](government-archives/docs/demo-guide.md) |
+| UC17 | Smart City | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Script](smart-city-geospatial/docs/demo-guide.md) |
 
 > All documents are available in 8 languages (日本語・English・한국어・简体中文・繁體中文・Français・Deutsch・Español). Use the Language Switcher at the top of each document to switch languages.
 
