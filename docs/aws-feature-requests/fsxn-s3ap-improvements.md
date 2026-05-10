@@ -3,7 +3,7 @@
 **Submitter**: Yoshiki Fujiwara (NetApp Inc.)
 **Date**: 2026-05-10
 **Project**: [fsxn-s3ap-serverless-patterns](https://github.com/Yoshiki0705/fsxn-s3ap-serverless-patterns)
-**Status**: Draft for AWS Support / re:Post submission
+**Status**: **✅ Submitted to AWS Support on 2026-05-10** (3 separate cases for FR-1, FR-2, FR-3; FR-4 previously submitted separately)
 
 ---
 
@@ -262,4 +262,4 @@ FSx for NetApp ONTAP の S3 Access Points (S3AP) 連携により、NAS データ
 
 ---
 
-*Submission targets: AWS Support Case, aws/containers-roadmap GitHub equivalent for FSx (if available), AWS re:Post community feedback, direct outreach to FSx service team via NetApp alliance contact.*
+*Submitted to AWS Support on 2026-05-10 as three separate cases (FR-1, FR-2, FR-3). FR-4 was submitted previously as a separate case. Case numbers tracked privately (see `_submission-tracking.md`, not committed to the repository). Next steps: await AWS FSx service team responses and update status in follow-up commits.*
