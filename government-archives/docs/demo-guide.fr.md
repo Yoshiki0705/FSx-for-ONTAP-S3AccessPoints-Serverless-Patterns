@@ -1,30 +1,30 @@
-# UC16 デモスクリプト（30 分枠）
+# UC16 Script de démonstration (créneau de 30 minutes)
 
-🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | Français | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | Français | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
 
-> Remarque: Cette traduction est un brouillon généré automatiquement à partir de l'original japonais. Les contributions pour améliorer la qualité de la traduction sont les bienvenues.
+> Note : Cette traduction est produite par Amazon Bedrock Claude. Les contributions pour améliorer la qualité de la traduction sont les bienvenues.
 
-## 前提
+## Prérequis
 
-- AWS アカウント、ap-northeast-1
+- Compte AWS, ap-northeast-1
 - FSx for NetApp ONTAP + S3 Access Point
-- `government-archives/template-deploy.yaml` をデプロイ（`OpenSearchMode=none` でコスト抑制）
+- Déployer `government-archives/template-deploy.yaml` (avec `OpenSearchMode=none` pour réduire les coûts)
 
-## タイムライン
+## Chronologie
 
-### 0:00 - 0:05 イントロ（5 分）
+### 0:00 - 0:05 Introduction (5 minutes)
 
-- ユースケース: 自治体・行政の公文書管理デジタル化
-- FOIA / 情報公開請求の法定期限（20 営業日）の負荷
-- 課題: PII 検出・墨消しは手動で数時間かかる
+- Cas d'usage : numérisation de la gestion des archives publiques pour les collectivités locales et l'administration
+- Charge liée aux délais légaux FOIA / demandes d'accès à l'information (20 jours ouvrables)
+- Défi : la détection et la caviardage des PII sont manuels et prennent plusieurs heures
 
-### 0:05 - 0:10 アーキテクチャ（5 分）
+### 0:05 - 0:10 Architecture (5 minutes)
 
-- Textract + Comprehend + Bedrock の組み合わせ
-- OpenSearch の 3 モード（none / serverless / managed）
-- NARA GRS 保存期間の自動管理
+- Combinaison de Textract + Comprehend + Bedrock
+- 3 modes OpenSearch (none / serverless / managed)
+- Gestion automatique des périodes de conservation NARA GRS
 
-### 0:10 - 0:15 デプロイ（5 分）
+### 0:10 - 0:15 Déploiement (5 minutes)
 
 ```bash
 aws cloudformation deploy \
@@ -41,7 +41,7 @@ aws cloudformation deploy \
   --region ap-northeast-1
 ```
 
-### 0:15 - 0:22 処理実行（7 分）
+### 0:15 - 0:22 Exécution du traitement (7 minutes)
 
 ```bash
 # サンプル PDF（機密情報含む）アップロード
@@ -54,14 +54,14 @@ aws stepfunctions start-execution \
   --input '{"opensearch_enabled": "none"}'
 ```
 
-結果を確認:
-- `s3://<output-bucket>/ocr-results/archives/2026/05/req-001.pdf.txt`（生テキスト）
-- `s3://<output-bucket>/classifications/archives/2026/05/req-001.pdf.json`（分類結果）
-- `s3://<output-bucket>/pii-entities/archives/2026/05/req-001.pdf.json`（PII 検出）
-- `s3://<output-bucket>/redacted/archives/2026/05/req-001.pdf.txt`（墨消し版）
-- `s3://<output-bucket>/redaction-metadata/archives/2026/05/req-001.pdf.json`（sidecar）
+Vérifier les résultats :
+- `s3://<output-bucket>/ocr-results/archives/2026/05/req-001.pdf.txt` (texte brut)
+- `s3://<output-bucket>/classifications/archives/2026/05/req-001.pdf.json` (résultats de classification)
+- `s3://<output-bucket>/pii-entities/archives/2026/05/req-001.pdf.json` (détection PII)
+- `s3://<output-bucket>/redacted/archives/2026/05/req-001.pdf.txt` (version caviardée)
+- `s3://<output-bucket>/redaction-metadata/archives/2026/05/req-001.pdf.json` (sidecar)
 
-### 0:22 - 0:27 FOIA 期限トラッキング（5 分）
+### 0:22 - 0:27 Suivi des délais FOIA (5 minutes)
 
 ```bash
 # FOIA 請求登録
@@ -81,21 +81,83 @@ aws lambda invoke \
   response.json && cat response.json
 ```
 
-SNS 通知メールを確認。
+Vérifier l'e-mail de notification SNS.
 
-### 0:27 - 0:30 Wrap-up（3 分）
+### 0:27 - 0:30 Conclusion (3 minutes)
 
-- OpenSearch 有効化（`serverless` で本格検索）のパス
-- GovCloud 移行（FedRAMP High 要件）
-- 次ステップ: Bedrock エージェントで対話型 FOIA 回答生成
+- Chemin d'activation d'OpenSearch (recherche complète avec `serverless`)
+- Migration vers GovCloud (exigences FedRAMP High)
+- Prochaines étapes : génération de réponses FOIA interactives avec les agents Bedrock
 
-## よくある質問と回答
+## Questions fréquentes et réponses
 
-**Q. 日本の情報公開法（30 日）に対応可能？**  
-A. `REMINDER_DAYS_BEFORE` と 20 営業日のハードコードを修正すれば対応可（US 連邦祝日→日本の祝日へ）。
+**Q. Est-il possible de se conformer à la loi japonaise sur l'accès à l'information (30 jours) ?**  
+R. Oui, en modifiant `REMINDER_DAYS_BEFORE` et le codage en dur de 20 jours ouvrables (jours fériés fédéraux US → jours fériés japonais).
 
-**Q. 原文 PII はどこに保存される？**  
-A. どこにも保存しません。`pii-entities/*.json` は SHA-256 hash のみ、`redaction-metadata/*.json` も hash + offset のみ。復元は原文から再実行が必要。
+**Q. Où sont stockées les PII du document original ?**  
+R. Elles ne sont stockées nulle part. `pii-entities/*.json` contient uniquement le hash SHA-256, `redaction-metadata/*.json` contient uniquement hash + offset. La restauration nécessite une réexécution à partir du document original.
 
-**Q. OpenSearch Serverless のコスト削減方法？**  
-A. 最低 2 OCU = 月 $350 ほど。本番以外は停止推奨。
+**Q. Comment réduire les coûts d'OpenSearch Serverless ?**  
+R. Minimum 2 OCU = environ 350 $/mois. Arrêt recommandé hors production.
+R. Ignorer avec `OpenSearchMode=none`, ou réduire à ~25 $/mois avec `OpenSearchMode=managed` + `t3.small.search × 1`.
+
+---
+
+## À propos de la destination de sortie : sélectionnable via OutputDestination (Pattern B)
+
+UC16 government-archives prend en charge le paramètre `OutputDestination` depuis la mise à jour du 11 mai 2026
+(voir `docs/output-destination-patterns.md`).
+
+**Charges de travail concernées** : texte OCR / classification de documents / détection PII / caviardage / documents en amont d'OpenSearch
+
+**2 modes** :
+
+### STANDARD_S3 (par défaut, comportement traditionnel)
+Crée un nouveau bucket S3 (`${AWS::StackName}-output-${AWS::AccountId}`) et
+y écrit les résultats de l'IA. Seul le manifest de la Lambda Discovery est écrit
+dans le S3 Access Point (comme auparavant).
+
+```bash
+aws cloudformation deploy \
+  --template-file government-archives/template-deploy.yaml \
+  --stack-name fsxn-government-archives-demo \
+  --parameter-overrides \
+    OutputDestination=STANDARD_S3 \
+    ... (他の必須パラメータ)
+```
+
+### FSXN_S3AP (pattern "no data movement")
+Écrit le texte OCR, les résultats de classification, les résultats de détection PII, les documents caviardés et les métadonnées de caviardage
+via le FSxN S3 Access Point dans le **même volume FSx ONTAP** que les documents originaux.
+Les responsables des archives publiques peuvent consulter directement les résultats de l'IA dans la structure de répertoires SMB/NFS existante.
+Aucun bucket S3 standard n'est créé.
+
+```bash
+aws cloudformation deploy \
+  --template-file government-archives/template-deploy.yaml \
+  --stack-name fsxn-government-archives-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    S3AccessPointName=eda-demo-s3ap \
+    ... (他の必須パラメータ)
+```
+
+**Relecture dans la structure en chaîne** :
+
+UC16 a une structure en chaîne où les Lambda en aval relisent les résultats des étapes précédentes (OCR → Classification →
+EntityExtraction → Redaction → IndexGeneration), donc `shared/output_writer.py` relit
+via `get_bytes/get_text/get_json` depuis la même destination que celle où les données ont été écrites.
+Cela permet la relecture depuis le FSxN S3 Access Point lorsque `OutputDestination=FSXN_S3AP`,
+et l'ensemble de la chaîne fonctionne avec une destination cohérente.
+
+**Points d'attention** :
+
+- Il est fortement recommandé de spécifier `S3AccessPointName` (autoriser IAM pour les formats Alias et ARN)
+- Les objets de plus de 5 Go ne sont pas pris en charge par FSxN S3AP (spécification AWS), upload multipart obligatoire
+- La Lambda ComplianceCheck utilise uniquement DynamoDB et n'est donc pas affectée par `OutputDestination`
+- La Lambda FoiaDeadlineReminder utilise uniquement DynamoDB + SNS et n'est donc pas affectée
+- L'index OpenSearch est géré séparément par le paramètre `OpenSearchMode` (indépendant de `OutputDestination`)
+- Pour les contraintes liées aux spécifications AWS, consultez
+  [la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
+  et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)

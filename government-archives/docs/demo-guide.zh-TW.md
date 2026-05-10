@@ -1,30 +1,30 @@
-# UC16 デモスクリプト（30 分枠）
+# UC16 示範腳本（30 分鐘場次）
 
-🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | 繁體中文 | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | 繁體中文 | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
 
-> 注意：本翻譯為基於日文原文自動生成的草稿，歡迎提交改進翻譯的貢獻。
+> 注意：此翻譯由 Amazon Bedrock Claude 產生。歡迎對翻譯品質提出改進建議。
 
 ## 前提
 
-- AWS アカウント、ap-northeast-1
+- AWS 帳戶、ap-northeast-1
 - FSx for NetApp ONTAP + S3 Access Point
-- `government-archives/template-deploy.yaml` をデプロイ（`OpenSearchMode=none` でコスト抑制）
+- 部署 `government-archives/template-deploy.yaml`（使用 `OpenSearchMode=none` 以降低成本）
 
-## タイムライン
+## 時間軸
 
-### 0:00 - 0:05 イントロ（5 分）
+### 0:00 - 0:05 簡介（5 分鐘）
 
-- ユースケース: 自治体・行政の公文書管理デジタル化
-- FOIA / 情報公開請求の法定期限（20 営業日）の負荷
-- 課題: PII 検出・墨消しは手動で数時間かかる
+- 使用案例：地方政府・行政的公文書管理數位化
+- FOIA / 資訊公開請求的法定期限（20 個工作日）的負荷
+- 挑戰：PII 檢測・遮蔽需要手動處理數小時
 
-### 0:05 - 0:10 アーキテクチャ（5 分）
+### 0:05 - 0:10 架構（5 分鐘）
 
-- Textract + Comprehend + Bedrock の組み合わせ
-- OpenSearch の 3 モード（none / serverless / managed）
-- NARA GRS 保存期間の自動管理
+- Textract + Comprehend + Bedrock 的組合
+- OpenSearch 的 3 種模式（none / serverless / managed）
+- NARA GRS 保存期限的自動管理
 
-### 0:10 - 0:15 デプロイ（5 分）
+### 0:10 - 0:15 部署（5 分鐘）
 
 ```bash
 aws cloudformation deploy \
@@ -41,7 +41,7 @@ aws cloudformation deploy \
   --region ap-northeast-1
 ```
 
-### 0:15 - 0:22 処理実行（7 分）
+### 0:15 - 0:22 執行處理（7 分鐘）
 
 ```bash
 # サンプル PDF（機密情報含む）アップロード
@@ -54,14 +54,14 @@ aws stepfunctions start-execution \
   --input '{"opensearch_enabled": "none"}'
 ```
 
-結果を確認:
-- `s3://<output-bucket>/ocr-results/archives/2026/05/req-001.pdf.txt`（生テキスト）
+確認結果：
+- `s3://<output-bucket>/ocr-results/archives/2026/05/req-001.pdf.txt`（原始文字）
 - `s3://<output-bucket>/classifications/archives/2026/05/req-001.pdf.json`（分類結果）
-- `s3://<output-bucket>/pii-entities/archives/2026/05/req-001.pdf.json`（PII 検出）
-- `s3://<output-bucket>/redacted/archives/2026/05/req-001.pdf.txt`（墨消し版）
+- `s3://<output-bucket>/pii-entities/archives/2026/05/req-001.pdf.json`（PII 檢測）
+- `s3://<output-bucket>/redacted/archives/2026/05/req-001.pdf.txt`（遮蔽版本）
 - `s3://<output-bucket>/redaction-metadata/archives/2026/05/req-001.pdf.json`（sidecar）
 
-### 0:22 - 0:27 FOIA 期限トラッキング（5 分）
+### 0:22 - 0:27 FOIA 期限追蹤（5 分鐘）
 
 ```bash
 # FOIA 請求登録
@@ -81,21 +81,83 @@ aws lambda invoke \
   response.json && cat response.json
 ```
 
-SNS 通知メールを確認。
+確認 SNS 通知郵件。
 
-### 0:27 - 0:30 Wrap-up（3 分）
+### 0:27 - 0:30 總結（3 分鐘）
 
-- OpenSearch 有効化（`serverless` で本格検索）のパス
-- GovCloud 移行（FedRAMP High 要件）
-- 次ステップ: Bedrock エージェントで対話型 FOIA 回答生成
+- 啟用 OpenSearch（使用 `serverless` 進行正式搜尋）的路徑
+- 遷移至 GovCloud（FedRAMP High 要求）
+- 下一步：使用 Bedrock 代理程式生成互動式 FOIA 回應
 
-## よくある質問と回答
+## 常見問題與解答
 
-**Q. 日本の情報公開法（30 日）に対応可能？**  
-A. `REMINDER_DAYS_BEFORE` と 20 営業日のハードコードを修正すれば対応可（US 連邦祝日→日本の祝日へ）。
+**Q. 能否對應日本的資訊公開法（30 天）？**  
+A. 修改 `REMINDER_DAYS_BEFORE` 和 20 個工作日的硬編碼即可對應（將美國聯邦假日改為日本假日）。
 
-**Q. 原文 PII はどこに保存される？**  
-A. どこにも保存しません。`pii-entities/*.json` は SHA-256 hash のみ、`redaction-metadata/*.json` も hash + offset のみ。復元は原文から再実行が必要。
+**Q. 原文 PII 儲存在哪裡？**  
+A. 不會儲存在任何地方。`pii-entities/*.json` 僅包含 SHA-256 hash，`redaction-metadata/*.json` 也僅包含 hash + offset。還原需要從原文重新執行。
 
-**Q. OpenSearch Serverless のコスト削減方法？**  
-A. 最低 2 OCU = 月 $350 ほど。本番以外は停止推奨。
+**Q. 如何降低 OpenSearch Serverless 的成本？**  
+A. 最低 2 OCU = 每月約 $350。建議在非正式環境中停止。
+A. 使用 `OpenSearchMode=none` 跳過，或使用 `OpenSearchMode=managed` + `t3.small.search × 1` 可降至每月約 $25。
+
+---
+
+## 關於輸出目的地：可透過 OutputDestination 選擇（Pattern B）
+
+UC16 government-archives 在 2026-05-11 的更新中支援了 `OutputDestination` 參數
+（參考 `docs/output-destination-patterns.md`）。
+
+**目標工作負載**：OCR 文字 / 文件分類 / PII 檢測 / 遮蔽 / OpenSearch 前段文件
+
+**2 種模式**：
+
+### STANDARD_S3（預設，與以往相同）
+建立新的 S3 儲存貯體（`${AWS::StackName}-output-${AWS::AccountId}`），
+並將 AI 成果物寫入其中。Discovery Lambda 的 manifest 僅寫入 S3 Access Point
+（與以往相同）。
+
+```bash
+aws cloudformation deploy \
+  --template-file government-archives/template-deploy.yaml \
+  --stack-name fsxn-government-archives-demo \
+  --parameter-overrides \
+    OutputDestination=STANDARD_S3 \
+    ... (他の必須パラメータ)
+```
+
+### FSXN_S3AP（"no data movement" 模式）
+OCR 文字、分類結果、PII 檢測結果、遮蔽後文件、遮蔽中繼資料透過 FSxN S3 Access Point
+寫回與原始文件**相同的 FSx ONTAP 磁碟區**。
+公文書負責人可以在 SMB/NFS 的現有目錄結構中直接參考 AI 成果物。
+不會建立標準 S3 儲存貯體。
+
+```bash
+aws cloudformation deploy \
+  --template-file government-archives/template-deploy.yaml \
+  --stack-name fsxn-government-archives-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    S3AccessPointName=eda-demo-s3ap \
+    ... (他の必須パラメータ)
+```
+
+**鏈式結構的讀取**：
+
+UC16 採用鏈式結構，後段 Lambda 會讀取前段的成果物（OCR → Classification →
+EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_writer.py` 的
+`get_bytes/get_text/get_json` 會從與寫入目的地相同的 destination 讀取。
+這使得在 `OutputDestination=FSXN_S3AP` 時也能從 FSxN S3 Access Point 讀取，
+整個鏈式處理可以在一致的 destination 中運作。
+
+**注意事項**：
+
+- 強烈建議指定 `S3AccessPointName`（同時允許 Alias 格式和 ARN 格式的 IAM 權限）
+- 超過 5GB 的物件無法使用 FSxN S3AP（AWS 規格），必須使用多部分上傳
+- ComplianceCheck Lambda 僅使用 DynamoDB，因此不受 `OutputDestination` 影響
+- FoiaDeadlineReminder Lambda 僅使用 DynamoDB + SNS，因此不受影響
+- OpenSearch 索引由 `OpenSearchMode` 參數另行管理（與 `OutputDestination` 獨立）
+- AWS 規格上的限制請參考
+  [專案 README 的「AWS 規格上的限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
+  以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
