@@ -1,0 +1,62 @@
+{
+    "file_key": "products/2026/05/sample_product.jpg",
+    "status": "SUCCESS",
+    "labels": [
+        {
+            "name": "Oval",
+            "confidence": 99.93
+        },
+        {
+            "name": "Food",
+            "confidence": 60.67
+        },
+        {
+            "name": "Furniture",
+            "confidence": 56.86
+        },
+        {
+            "name": "Table",
+            "confidence": 56.86
+        },
+        {
+            "name": "Sweets",
+            "confidence": 56.82
+        },
+        {
+            "name": "Cocoa",
+            "confidence": 56.82
+        },
+        {
+            "name": "Dessert",
+            "confidence": 56.82
+        },
+        {
+            "name": "Cutlery",
+            "confidence": 56.59
+        },
+        {
+            "name": "Cushion",
+            "confidence": 55.96
+        },
+        {
+            "name": "Home Decor",
+            "confidence": 55.96
+        },
+        {
+            "name": "Pillow",
+            "confidence": 55.96
+        },
+        {
+            "name": "Spoon",
+            "confidence": 55.93
+        },
+        {
+            "name": "Outdoors",
+            "confidence": 55.13
+        }
+    ],
+    "max_confidence": 99.93,
+    "above_threshold": true,
+    "confidence_threshold": 70.0,
+    "tagged_at": "2026-05-10T19:11:42.429936+00:00"
+}

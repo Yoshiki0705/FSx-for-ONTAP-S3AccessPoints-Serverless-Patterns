@@ -328,12 +328,12 @@ Resources:
 
   # -----------------------------------------------------------------
   # S3 Output Bucket (SSE-KMS)
-  # OutputDestination=STANDARD_S3 モード時のみ作成される。
-  # FSXN_S3AP モード時は成果物は FSx ONTAP ボリュームに S3AP 経由で直接書き込まれる。
+  # OutputDestination=STANDARD_S3 モード時は Lambda 成果物の書き込み先。
+  # FSXN_S3AP モード時も SageMaker Model artifact storage 等の用途で
+  # 作成される（SageMaker 機能を使う場合必須）。
   # -----------------------------------------------------------------
   OutputBucket:
     Type: AWS::S3::Bucket
-    Condition: UseStandardS3
     Properties:
       BucketName: !If
         - UseAutoOutputBucket

@@ -1,0 +1,17 @@
+2026-05-11 04:11:50  470 Bytes ai-outputs/uc11/quality/2026/05/10/accident-photo-001_qc.json
+2026-05-11 04:11:50  458 Bytes ai-outputs/uc11/quality/2026/05/10/inspection_qc.json
+2026-05-11 04:11:50  429 Bytes ai-outputs/uc11/quality/2026/05/10/photo_front_qc.json
+2026-05-11 04:11:50  422 Bytes ai-outputs/uc11/quality/2026/05/10/product-001_qc.json
+2026-05-11 04:11:50  418 Bytes ai-outputs/uc11/quality/2026/05/10/sample_product_qc.json
+2026-05-11 04:11:49  412 Bytes ai-outputs/uc11/quality/2026/05/10/sendai_area_qc.json
+2026-05-11 04:11:49  419 Bytes ai-outputs/uc11/quality/2026/05/10/tokyo_aerial_qc.json
+2026-05-11 04:11:42  776 Bytes ai-outputs/uc11/tags/2026/05/10/accident-photo-001.json
+2026-05-11 04:11:43  412 Bytes ai-outputs/uc11/tags/2026/05/10/inspection.json
+2026-05-11 04:11:42  762 Bytes ai-outputs/uc11/tags/2026/05/10/photo_front.json
+2026-05-11 04:11:42  755 Bytes ai-outputs/uc11/tags/2026/05/10/product-001.json
+2026-05-11 04:11:43  751 Bytes ai-outputs/uc11/tags/2026/05/10/sample_product.json
+2026-05-11 04:11:42  740 Bytes ai-outputs/uc11/tags/2026/05/10/sendai_area.json
+2026-05-11 04:11:43  747 Bytes ai-outputs/uc11/tags/2026/05/10/tokyo_aerial.json
+
+Total Objects: 14
+   Total Size: 7.8 KiB

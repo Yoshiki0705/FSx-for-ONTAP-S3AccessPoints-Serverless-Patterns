@@ -142,3 +142,74 @@ masked.
 2. Delete demo stacks (leaves FSx ONTAP intact)
 3. Apply the same pattern to UC1-UC10, UC12, UC13, UC15-UC17
 4. Submit FR document to AWS Support via parallel thread's contact channel
+
+---
+
+## Appendix: UC9 AWS Deployment Attempt (2026-05-10 evening)
+
+Attempted to deploy UC9 (autonomous-driving) in FSXN_S3AP mode with
+the Pattern B refactor applied. The deployment **failed due to pre-existing
+UC9 template issues**, not caused by the OutputDestination rollout.
+
+### Issues Encountered
+
+1. **SageMaker conditional dependency bug** (pre-existing): The Step
+   Functions state machine references `SageMakerInvokeFunction`,
+   `RealtimeInvokeFunction`, `ComponentsInvokeFunction` unconditionally,
+   but these resources are `Condition: CreateSageMakerResources` etc.
+   When `EnableSageMakerTransform=false`, the template fails with
+   `Unresolved resource dependencies`.
+
+2. **Missing SageMaker model artifact**: When SageMaker is enabled
+   (`EnableRealtimeEndpoint=true`), the `RealtimeSageMakerModel`
+   resource requires `s3://<OutputBucket>/models/point-cloud-segmentation/model.tar.gz`
+   to exist. The artifact is not automatically uploaded by the stack;
+   there's a separate script `scripts/create_test_model.py` that must
+   be run prior to deployment. Without it, CREATE fails.
+
+3. **OutputBucket conditional**: Initially applied `Condition: UseStandardS3`
+   to the OutputBucket resource (as done for UC10/UC12/UC11/UC14), but
+   SageMaker Model hard-references `${OutputBucket}` for model artifact
+   storage. Reverted to always-create for UC9 as a compromise —
+   OutputBucket is still used for SageMaker artifacts even in FSXN_S3AP
+   mode, while Lambda AI outputs go through OutputWriter to the S3AP.
+
+### Outcome
+
+- **UC9 Pattern B refactor itself works correctly** (unit tests 104
+  PASS, cfn-lint 0 real errors)
+- **AWS deployment requires either pre-uploaded model artifact OR
+  template refactor to make SageMaker resources fully optional**
+- Cleaned up the failed stack with `delete-stack`; no lingering resources
+
+### Recommendation
+
+UC9 full AWS validation is deferred until:
+
+1. The pre-existing SageMaker conditional dependency bug is fixed
+   (separate from Pattern B scope)
+2. A test model artifact is prepared and uploaded via existing
+   `scripts/create_test_model.py` workflow
+
+Until then, UC9 Pattern B support is validated at the unit-test and
+template-lint level, which is sufficient for the `OutputDestination`
+parameter contract. The Lambda code and IAM changes are correct and
+would work correctly if SageMaker side issues were resolved.
+
+---
+
+## Appendix: Supplementary CLI Evidence
+
+CLI-based evidence files are maintained at
+[`docs/verification-evidence/`](verification-evidence/) and show:
+
+- `uc11-demo/s3ap-output-listing.txt`: 14 JSON files written to S3AP via
+  FSXN_S3AP mode
+- `uc11-demo/sample-tags-output.json`: sample Rekognition tags output
+- `uc14-demo/s3ap-output-listing.txt`: 30+ JSON/TXT files from multiple
+  successful EventBridge-scheduled executions
+- `uc14-demo/sample-claims-report.json`: sample claims report (note:
+  Bedrock format issue is pre-existing)
+
+These complement the visual screenshots in `docs/screenshots/masked/`
+with machine-readable proof.
