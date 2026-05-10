@@ -20,8 +20,49 @@ Parameters:
 
   S3AccessPointOutputAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias (出力書き込み用、入力と同じ AP でも可)
-    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+    Default: ""
+    Description: |
+      (legacy, optional) FSx ONTAP S3 Access Point Alias (出力書き込み用)。
+      空の場合は OutputS3APAlias または S3AccessPointAlias にフォールバック。
+      新規デプロイでは OutputS3APAlias を使用することを推奨。
+    AllowedPattern: "^$|^[a-z0-9-]+-ext-s3alias$"
+
+  OutputDestination:
+    Type: String
+    Default: "FSXN_S3AP"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: |
+      AI/ML 成果物の書き込み先。デフォルトは "FSXN_S3AP" (従来どおり FSxN ボリュームに直接書き込み)。
+      "STANDARD_S3" にすると新規 S3 バケットを作成して書き込む (Pattern C と同等)。
+      Pattern A UC (UC1-5) では FSXN_S3AP がデフォルト値。
+      詳細: docs/output-destination-patterns.md
+
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: |
+      OutputDestination=FSXN_S3AP 時の出力先 S3 Access Point Alias。
+      空の場合は S3AccessPointOutputAlias (legacy) または S3AccessPointAlias (入力 AP) にフォールバック。
+
+  OutputS3APPrefix:
+    Type: String
+    Default: ""
+    Description: |
+      OutputDestination=FSXN_S3AP 時、全出力キーに付与するプレフィックス。
+      UC1-5 では通常空文字 (現行キー構造を維持)。必要に応じて "ai-outputs/" 等を指定可能。
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: |
+      入力用 S3 Access Point の名前 (alias ではなく)。指定すると AP ARN 形式でも
+      IAM アクセスを許可する (FSxN S3AP の permission 判定で両形式をサポート)。
+
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: |
+      出力用 S3 AP の名前。空なら S3AccessPointName を再利用。
 
   OntapSecretName:
     Type: String
@@ -96,6 +137,19 @@ Parameters:
 # Conditions
 # =====================================================================
 Conditions:
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  HasOutputS3APAlias:
+    !Not [!Equals [!Ref OutputS3APAlias, ""]]
+  HasLegacyOutputAlias:
+    !Not [!Equals [!Ref S3AccessPointOutputAlias, ""]]
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
+
   CreateVpcEndpoints:
     !Equals [!Ref EnableVpcEndpoints, "true"]
   CreateCloudWatchAlarms:
@@ -457,7 +511,27 @@ Resources:
       Environment:
         Variables:
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          S3_ACCESS_POINT_OUTPUT:
+            !If
+              - HasOutputS3APAlias
+              - !Ref OutputS3APAlias
+              - !If
+                - HasLegacyOutputAlias
+                - !Ref S3AccessPointOutputAlias
+                - !Ref S3AccessPointAlias
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If
+                - HasOutputS3APAlias
+                - !Ref OutputS3APAlias
+                - !If
+                  - HasLegacyOutputAlias
+                  - !Ref S3AccessPointOutputAlias
+                  - !Ref S3AccessPointAlias
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           PREFIX_FILTER: ""
           SUFFIX_FILTER: ".pdf,.tiff,.tif,.jpeg,.jpg"
       LoggingConfig:
@@ -539,7 +613,27 @@ Resources:
       Role: !GetAtt SummaryLambdaRole.Arn
       Environment:
         Variables:
-          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          S3_ACCESS_POINT_OUTPUT:
+            !If
+              - HasOutputS3APAlias
+              - !Ref OutputS3APAlias
+              - !If
+                - HasLegacyOutputAlias
+                - !Ref S3AccessPointOutputAlias
+                - !Ref S3AccessPointAlias
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If
+                - HasOutputS3APAlias
+                - !Ref OutputS3APAlias
+                - !If
+                  - HasLegacyOutputAlias
+                  - !Ref S3AccessPointOutputAlias
+                  - !Ref S3AccessPointAlias
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
       LoggingConfig:
