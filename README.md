@@ -259,6 +259,9 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](docs/aws-feature-requests/fsxn-s3ap-improvements.md)
 にまとめています（AWS サポート / re:Post 投稿用ドキュメント）。
 
+3 つの出力パターン（Pattern A/B/C）の詳細比較は
+[`docs/output-destination-patterns.md`](docs/output-destination-patterns.md) を参照。
+
 ### UC 別の出力先制約
 
 現行の UC 実装には 3 つの出力パターンがあります:
@@ -289,8 +292,8 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 | UC17 smart-city-geospatial | S3AP | S3AP | 既存パターン | GIS 分析結果 / リスクマップ |
 
 **次のロードマップ**:
-- Part B: UC1-5 の既存 `S3AccessPointOutputAlias` パターンのドキュメント整備
-- UC6/7/8/13 の Athena 出力は仕様上標準 S3 必須だが、Bedrock レポート等の非 Athena 成果物は `OutputDestination=FSXN_S3AP` で書き戻す選択肢を追加可能（将来拡張）
+- ~~Part B: UC1-5 の既存 `S3AccessPointOutputAlias` パターンのドキュメント整備~~ ✅ 完了（`docs/output-destination-patterns.md`）
+- UC6/7/8/13 の Athena 出力は仕様上標準 S3 必須だが、Bedrock レポート等の非 Athena 成果物は `OutputDestination=FSXN_S3AP` で書き戻す選択肢を追加可能（Pattern C → Pattern B ハイブリッド、将来拡張）
 - UC9/10/12 の AWS 実デプロイ検証（単体テストは完了、デプロイは未実施）
 
 ## リージョン選択ガイド

@@ -161,6 +161,44 @@
 
 ---
 
+## 出力先について: FSxN S3 Access Point (Pattern A)
+
+UC1 legal-compliance は **Pattern A: Native S3AP Output** に分類されます
+（`docs/output-destination-patterns.md` 参照）。
+
+**設計**: 契約メタデータ、監査ログ、サマリーレポートは全て FSxN S3 Access Point 経由で
+オリジナル契約データと**同一の FSx ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
+作成されません（"no data movement" パターン）。
+
+**CloudFormation パラメータ**:
+- `S3AccessPointAlias`: 入力契約データ読み取り用 S3 AP Alias
+- `S3AccessPointOutputAlias`: 出力書き込み用 S3 AP Alias（入力と同じでも可）
+
+**デプロイ例**:
+```bash
+aws cloudformation deploy \
+  --template-file legal-compliance/template-deploy.yaml \
+  --stack-name fsxn-legal-compliance-demo \
+  --parameter-overrides \
+    S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    S3AccessPointOutputAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    ... (他の必須パラメータ)
+```
+
+**SMB/NFS ユーザーからの見え方**:
+```
+/vol/contracts/
+  ├── 2026/Q2/contract_ABC.pdf         # オリジナル契約書
+  └── summaries/2026/05/                # AI 生成サマリー（同じボリューム内）
+      └── contract_ABC.json
+```
+
+AWS 仕様上の制約については
+[プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
+および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照。
+
+---
+
 ## 検証済みの UI/UX スクリーンショット
 
 Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユーザーが日常業務で実際に
@@ -170,8 +208,17 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 ### このユースケースの検証ステータス
 
 - ✅ **E2E 実行**: Phase 1-6 で確認済み（根 README 参照）
-- 📸 **UI/UX 再撮影**: 未実施（本セッションでは UC6/UC11/UC14 を代表として撮影）
+- 📸 **UI/UX 再撮影**: ✅ 2026-05-10 再デプロイ検証で撮影済み （UC1 Step Functions グラフ、Lambda 実行成功を確認）
 - 🔄 **再現方法**: 本ドキュメント末尾の「撮影ガイド」を参照
+
+### 2026-05-10 再デプロイ検証で撮影（UI/UX 中心）
+
+#### UC1 Step Functions Graph view（SUCCEEDED）
+
+![UC1 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc1-demo/uc1-stepfunctions-graph.png)
+
+Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
+色で可視化するエンドユーザー最重要画面。
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 

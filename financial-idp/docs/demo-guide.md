@@ -158,6 +158,44 @@
 
 ---
 
+## 出力先について: FSxN S3 Access Point (Pattern A)
+
+UC2 financial-idp は **Pattern A: Native S3AP Output** に分類されます
+（`docs/output-destination-patterns.md` 参照）。
+
+**設計**: 請求書 OCR 結果、構造化メタデータ、BedRock サマリーは全て FSxN S3 Access Point 経由で
+オリジナル請求書 PDFと**同一の FSx ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
+作成されません（"no data movement" パターン）。
+
+**CloudFormation パラメータ**:
+- `S3AccessPointAlias`: 入力データ読み取り用 S3 AP Alias
+- `S3AccessPointOutputAlias`: 出力書き込み用 S3 AP Alias（入力と同じでも可）
+
+**デプロイ例**:
+```bash
+aws cloudformation deploy \
+  --template-file financial-idp/template-deploy.yaml \
+  --stack-name fsxn-financial-idp-demo \
+  --parameter-overrides \
+    S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    S3AccessPointOutputAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    ... (他の必須パラメータ)
+```
+
+**SMB/NFS ユーザーからの見え方**:
+```
+/vol/invoices/
+  ├── 2026/05/invoice_001.pdf          # オリジナル請求書
+  └── summaries/2026/05/                # AI 生成サマリー（同じボリューム内）
+      └── invoice_001.json
+```
+
+AWS 仕様上の制約については
+[プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
+および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照。
+
+---
+
 ## 検証済みの UI/UX スクリーンショット
 
 Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユーザーが日常業務で実際に
@@ -168,6 +206,15 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 - ⚠️ **E2E 検証**: 一部機能のみ（本番環境では追加検証推奨）
 - 📸 **UI/UX 再撮影**: 未実施
+
+### 2026-05-10 再デプロイ検証で撮影（UI/UX 中心）
+
+#### UC2 Step Functions Graph view（SUCCEEDED）
+
+![UC2 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc2-demo/uc2-stepfunctions-graph.png)
+
+Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
+色で可視化するエンドユーザー最重要画面。
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 
