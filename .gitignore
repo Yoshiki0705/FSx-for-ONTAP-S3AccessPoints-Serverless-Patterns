@@ -54,6 +54,7 @@ scripts/_deep_scan.py
 scripts/_inplace_ocr_mask.py
 scripts/_preview_cleanup.sh
 scripts/_check_cleanup_progress.sh
+scripts/_empty_versioned_bucket.sh
 # The deploy/cleanup/verify scripts were historically committed with account IDs.
 # Going forward they must read values from environment variables only; keep the
 # local copies gitignored to prevent accidental re-commit with hardcoded values.
