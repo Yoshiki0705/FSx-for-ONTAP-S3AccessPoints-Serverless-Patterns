@@ -1,16 +1,18 @@
-# UC2: 金融 / 保险 — 合同与发票自动处理 (IDP)
+# UC2: 金融・保险 — 合同书・请求书的自动处理 (IDP)
 
-🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | 简体中文 | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | 简体中文 | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
 
-## 端到端架构 (输入 → 输出)
+> 注意：此翻译由 Amazon Bedrock Claude 生成。欢迎对翻译质量提出改进建议。
+
+## End-to-End Architecture (Input → Output)
 
 ---
 
-## 架构图
+## Architecture Diagram
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 输入 — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
         DOCS["文档文件<br/>.pdf, .tiff, .jpeg"]
     end
 
@@ -18,24 +20,24 @@ flowchart TB
         ALIAS["S3 AP Alias<br/>ListObjectsV2 / GetObject"]
     end
 
-    subgraph TRIGGER["⏰ 触发器"]
+    subgraph TRIGGER["⏰ Trigger"]
         EB["EventBridge Scheduler<br/>rate(1 hour)"]
     end
 
-    subgraph SFN["⚙️ Step Functions 工作流"]
-        DISC["1️⃣ Discovery Lambda<br/>• 在 VPC 内运行<br/>• S3 AP 文件发现<br/>• .pdf/.tiff/.jpeg 过滤<br/>• 清单生成"]
-        OCR["2️⃣ OCR Lambda<br/>• 通过 S3 AP 获取文档<br/>• 页数判定<br/>• Textract sync API (≤1 页)<br/>• Textract async API (>1 页)<br/>• 文本提取并输出到 S3"]
-        ENT["3️⃣ Entity Extraction Lambda<br/>• Amazon Comprehend 调用<br/>• 命名实体识别<br/>• 日期、金额、组织、人物提取<br/>• JSON 输出到 S3"]
-        SUM["4️⃣ Summary Lambda<br/>• Amazon Bedrock (Nova/Claude)<br/>• 结构化摘要生成<br/>• 合同条款、金额、当事方整理<br/>• JSON 输出到 S3"]
+    subgraph SFN["⚙️ Step Functions Workflow"]
+        DISC["1️⃣ Discovery Lambda<br/>• VPC 内执行<br/>• S3 AP 文件检测<br/>• .pdf/.tiff/.jpeg 过滤<br/>• Manifest 生成"]
+        OCR["2️⃣ OCR Lambda<br/>• 通过 S3 AP 获取文档<br/>• 页数判定<br/>• Textract 同步 API (≤1页)<br/>• Textract 异步 API (>1页)<br/>• 文本提取・S3 输出"]
+        ENT["3️⃣ Entity Extraction Lambda<br/>• 调用 Amazon Comprehend<br/>• Named Entity Recognition<br/>• 日期、金额、组织名、人名提取<br/>• JSON 格式 S3 输出"]
+        SUM["4️⃣ Summary Lambda<br/>• Amazon Bedrock (Nova/Claude)<br/>• 结构化摘要生成<br/>• 合同条款・金额・当事方整理<br/>• JSON 格式 S3 输出"]
     end
 
-    subgraph OUTPUT["📤 输出 — S3 Bucket"]
+    subgraph OUTPUT["📤 Output — S3 Bucket"]
         TEXT["ocr-text/*.txt<br/>OCR 提取文本"]
-        ENTITIES["entities/*.json<br/>提取的实体"]
+        ENTITIES["entities/*.json<br/>提取实体"]
         SUMMARY["summaries/*.json<br/>结构化摘要"]
     end
 
-    subgraph NOTIFY["📧 通知"]
+    subgraph NOTIFY["📧 Notification"]
         SNS["Amazon SNS<br/>Email / Slack"]
     end
 
@@ -53,56 +55,56 @@ flowchart TB
 
 ---
 
-## 数据流详情
+## Data Flow Detail
 
-### 输入
-| 项目 | 说明 |
-|------|------|
-| **来源** | FSx for NetApp ONTAP 卷 |
-| **文件类型** | .pdf, .tiff, .tif, .jpeg, .jpg (扫描及电子文档) |
-| **访问方式** | S3 Access Point (ListObjectsV2 + GetObject) |
-| **读取策略** | 全文件获取 (OCR 处理所需) |
+### Input
+| Item | Description |
+|------|-------------|
+| **Source** | FSx for NetApp ONTAP volume |
+| **File Types** | .pdf, .tiff, .tif, .jpeg, .jpg（扫描文档・电子文档） |
+| **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
+| **Read Strategy** | 获取完整文件（OCR 处理所需） |
 
-### 处理
-| 步骤 | 服务 | 功能 |
-|------|------|------|
-| Discovery | Lambda (VPC) | 通过 S3 AP 发现文档文件，生成清单 |
-| OCR | Lambda + Textract | 根据页数自动选择 sync/async API 进行文本提取 |
-| Entity Extraction | Lambda + Comprehend | 命名实体识别 (日期、金额、组织、人物) |
-| Summary | Lambda + Bedrock | 结构化摘要生成 (合同条款、金额、当事方) |
+### Processing
+| Step | Service | Function |
+|------|---------|----------|
+| Discovery | Lambda (VPC) | 通过 S3 AP 检测文档文件，生成 Manifest |
+| OCR | Lambda + Textract | 根据页数使用同步/异步 API 提取文本 |
+| Entity Extraction | Lambda + Comprehend | Named Entity Recognition（日期、金额、组织名、人名） |
+| Summary | Lambda + Bedrock | 结构化摘要生成（合同条款、金额、当事方） |
 
-### 输出
-| 产出物 | 格式 | 说明 |
-|--------|------|------|
-| OCR 文本 | `ocr-text/YYYY/MM/DD/{stem}.txt` | Textract 提取文本 |
-| 实体 | `entities/YYYY/MM/DD/{stem}.json` | Comprehend 提取实体 |
-| 摘要 | `summaries/YYYY/MM/DD/{stem}_summary.json` | Bedrock 结构化摘要 |
-| SNS 通知 | Email | 处理完成通知 (处理数量及错误数量) |
-
----
-
-## 关键设计决策
-
-1. **S3 AP 替代 NFS** — Lambda 无需 NFS 挂载；通过 S3 API 获取文档
-2. **Textract sync/async 自动选择** — 单页使用 sync API (低延迟)，多页文档使用 async API (高容量)
-3. **Comprehend + Bedrock 两阶段方法** — Comprehend 用于结构化实体提取，Bedrock 用于自然语言摘要生成
-4. **JSON 结构化输出** — 便于与下游系统 (RPA、核心业务系统) 集成
-5. **日期分区** — 按处理日期分割目录，便于重新处理和历史管理
-6. **轮询 (非事件驱动)** — S3 AP 不支持事件通知，因此使用定期调度执行
+### Output
+| Artifact | Format | Description |
+|----------|--------|-------------|
+| OCR Text | `ocr-text/YYYY/MM/DD/{stem}.txt` | Textract 提取文本 |
+| Entities | `entities/YYYY/MM/DD/{stem}.json` | Comprehend 提取实体 |
+| Summary | `summaries/YYYY/MM/DD/{stem}_summary.json` | Bedrock 结构化摘要 |
+| SNS Notification | Email | 处理完成通知（处理件数・错误件数） |
 
 ---
 
-## 使用的 AWS 服务
+## Key Design Decisions
 
-| 服务 | 角色 |
-|------|------|
-| FSx for NetApp ONTAP | 企业文件存储 (合同及发票) |
+1. **S3 AP over NFS** — Lambda 无需 NFS 挂载，通过 S3 API 获取文档
+2. **Textract 同步/异步自动选择** — 1页以下使用同步 API（低延迟），多页使用异步 API（大容量支持）
+3. **Comprehend + Bedrock 两阶段架构** — Comprehend 提取结构化实体，Bedrock 生成自然语言摘要
+4. **JSON 格式结构化输出** — 便于与下游系统（RPA、核心系统）集成
+5. **日期分区** — 按处理日期划分目录，便于重新处理・历史管理
+6. **轮询模式** — S3 AP 不支持事件通知，因此采用定期调度执行
+
+---
+
+## AWS Services Used
+
+| Service | Role |
+|---------|------|
+| FSx for NetApp ONTAP | 企业文件存储（合同・发票保管） |
 | S3 Access Points | 对 ONTAP 卷的无服务器访问 |
-| EventBridge Scheduler | 定期触发 |
+| EventBridge Scheduler | 定期触发器 |
 | Step Functions | 工作流编排 |
-| Lambda | 计算 (Discovery, OCR, Entity Extraction, Summary) |
-| Amazon Textract | OCR 文本提取 (sync/async API) |
-| Amazon Comprehend | 命名实体识别 (NER) |
+| Lambda | 计算（Discovery, OCR, Entity Extraction, Summary） |
+| Amazon Textract | OCR 文本提取（同步/异步 API） |
+| Amazon Comprehend | Named Entity Recognition（NER） |
 | Amazon Bedrock | AI 摘要生成 (Nova / Claude) |
 | SNS | 处理完成通知 |
 | Secrets Manager | ONTAP REST API 凭证管理 |
