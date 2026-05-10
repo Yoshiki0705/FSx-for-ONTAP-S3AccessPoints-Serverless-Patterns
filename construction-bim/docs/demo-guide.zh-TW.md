@@ -1,74 +1,264 @@
-# BIM 模型變更偵測與安全合規檢查 -- Demo Guide
+# BIM 模型變更檢測・安全合規性 — Demo Guide
 
-🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | 繁體中文 | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | 繁體中文 | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+
+> 注意：此翻譯由 Amazon Bedrock Claude 產生。歡迎對翻譯品質提出改進建議。
 
 ## Executive Summary
 
-本演示展示 BIM 模型變更偵測與安全合規自動檢查流程。設計變更時自動偵測安全標準違規。
+本示範展示 BIM 模型的變更檢測與安全合規檢查管線。自動偵測設計變更，並驗證是否符合建築標準。
 
-**核心訊息**: BIM 模型變更時自動偵測安全違規，在設計階段提前消除風險。
+**示範的核心訊息**:自動追蹤 BIM 模型的變更,即時偵測安全標準違規。縮短設計審查週期。
 
-**預計時間**: 3–5 min
-
----
-
-## 輸出目標: 透過 OutputDestination 選擇 (Pattern B)
-
-此 UC 支援 `OutputDestination` 參數 (2026-05-10 更新,
-請參閱 `docs/output-destination-patterns.md`)。
-
-**兩種模式**:
-
-- **STANDARD_S3** (預設): AI 產物進入新的 S3 儲存貯體
-- **FSXN_S3AP** ("no data movement"): AI 產物透過 S3 Access Point 返回相同的
-  FSx ONTAP 磁碟區, SMB/NFS 使用者可在現有目錄結構中檢視
-
-```bash
-# FSXN_S3AP 模式
---parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai-outputs/
-```
-
-AWS 規格約束與解決方案請參閱
-[README.zh-TW.md — AWS 規格約束](../../README.zh-TW.md#aws-規格約束及解決方案)。
-
----
-## Workflow
-
-```
-BIM 檔案上傳 → 變更偵測 → 安全規範比對 → 違規檢出 → 合規報告
-```
+**預估時間**:3〜5 分鐘
 
 ---
 
-## Storyboard (5 Sections / 3–5 min)
+## Target Audience & Persona
 
-### Section 1 (0:00–0:45)
-> 問題提出：每次設計變更都手動安全審查效率低下
+| 項目 | 詳細 |
+|------|------|
+| **職位** | BIM 管理員 / 結構設計工程師 |
+| **日常業務** | BIM 模型管理、設計變更審查、合規確認 |
+| **課題** | 追蹤多個團隊的設計變更並確認標準符合性相當困難 |
+| **期待成果** | 變更的自動偵測與安全標準檢查的效率化 |
 
-### Section 2 (0:45–1:30)
-> BIM 上傳：放置變更模型檔案啟動檢查
+### Persona: 木村先生(BIM 管理員)
 
-### Section 3 (1:30–2:30)
-> 變更偵測與規範比對：自動 diff 分析和安全標準對照
+- 大規模建設專案中有 20+ 個設計團隊並行作業
+- 需要確認每日的設計變更是否影響安全標準
+- 「希望有變更時能自動執行安全檢查」
 
-### Section 4 (2:30–3:45)
-> 違規確認：檢出的安全違規清單及嚴重程度
+---
 
-### Section 5 (3:45–5:00)
-> 合規報告：包含改善建議的綜合報告產生
+## Demo Scenario: 設計變更的自動偵測與安全驗證
+
+### 工作流程全貌
+
+```
+BIM 模型更新     變更偵測        合規檢查         審查報告
+(IFC/RVT)    →   差異解析    →   規則比對     →    AI 生成
+                  元素比較        安全標準檢查
+```
+
+---
+
+## Storyboard(5 個章節 / 3〜5 分鐘)
+
+### Section 1: Problem Statement(0:00–0:45)
+
+**旁白要旨**:
+> 大規模專案中有 20 個團隊並行更新 BIM 模型。手動確認變更是否違反安全標準已經無法跟上進度。
+
+**Key Visual**: BIM 模型檔案清單、多個團隊的更新歷程
+
+### Section 2: Change Detection(0:45–1:30)
+
+**旁白要旨**:
+> 偵測模型檔案的更新,自動解析與前版本的差異。識別變更的元素(結構構件、設備配置等)。
+
+**Key Visual**: 變更偵測觸發、差異解析開始
+
+### Section 3: Compliance Check(1:30–2:30)
+
+**旁白要旨**:
+> 針對變更的元素自動比對安全標準規則。驗證耐震標準、防火區劃、避難路徑等的符合性。
+
+**Key Visual**: 規則比對處理中、檢查項目清單
+
+### Section 4: Results Analysis(2:30–3:45)
+
+**旁白要旨**:
+> 確認驗證結果。列表顯示違規項目、影響範圍、重要度。
+
+**Key Visual**: 違規偵測結果表格、依重要度分類
+
+### Section 5: Review Report(3:45–5:00)
+
+**旁白要旨**:
+> AI 生成設計審查報告。提示違規的詳細資訊、修正方案、受影響的其他設計元素。
+
+**Key Visual**: AI 生成審查報告
+
+---
+
+## Screen Capture Plan
+
+| # | 畫面 | 章節 |
+|---|------|-----------|
+| 1 | BIM 模型檔案清單 | Section 1 |
+| 2 | 變更偵測・差異顯示 | Section 2 |
+| 3 | 合規檢查進度 | Section 3 |
+| 4 | 違規偵測結果 | Section 4 |
+| 5 | AI 審查報告 | Section 5 |
+
+---
+
+## Narration Outline
+
+| 章節 | 時間 | 關鍵訊息 |
+|-----------|------|--------------|
+| Problem | 0:00–0:45 | 「並行作業的變更追蹤與安全確認無法跟上進度」 |
+| Detection | 0:45–1:30 | 「自動偵測模型更新並解析差異」 |
+| Compliance | 1:30–2:30 | 「自動比對安全標準規則」 |
+| Results | 2:30–3:45 | 「即時掌握違規項目與影響範圍」 |
+| Report | 3:45–5:00 | 「AI 提示修正方案與影響分析」 |
+
+---
+
+## Sample Data Requirements
+
+| # | 資料 | 用途 |
+|---|--------|------|
+| 1 | 基礎 BIM 模型(IFC 格式) | 比較來源 |
+| 2 | 變更後模型(含結構變更) | 差異偵測示範 |
+| 3 | 安全標準違規模型(3 件) | 合規示範 |
+
+---
+
+## Timeline
+
+### 1 週內可達成
+
+| 任務 | 所需時間 |
+|--------|---------|
+| 準備範例 BIM 資料 | 3 小時 |
+| 確認管線執行 | 2 小時 |
+| 取得畫面截圖 | 2 小時 |
+| 撰寫旁白稿 | 2 小時 |
+| 影片編輯 | 4 小時 |
+
+### Future Enhancements
+
+- 3D 視覺化連動
+- 即時變更通知
+- 與施工階段的一致性檢查
 
 ---
 
 ## Technical Notes
 
-| Component | Role |
-|-----------|------|
+| 元件 | 角色 |
+|--------------|------|
 | Step Functions | 工作流程編排 |
-| Lambda (Change Detector) | BIM 模型變更偵測 |
-| Lambda (Rule Matcher) | 安全規範比對引擎 |
-| Lambda (Report Generator) | 合規報告產生 |
-| Amazon Athena | 違規歷史彙總分析 |
+| Lambda (Change Detector) | BIM 模型差異解析 |
+| Lambda (Compliance Checker) | 安全標準規則比對 |
+| Lambda (Report Generator) | 透過 Bedrock 生成審查報告 |
+| Amazon Athena | 變更歷程・違規資料的彙總 |
+
+### 備援方案
+
+| 情境 | 對應 |
+|---------|------|
+| IFC 解析失敗 | 使用預先解析的資料 |
+| 規則比對延遲 | 顯示預先驗證的結果 |
 
 ---
 
-*本文件是技術演示影片的製作指南。*
+*本文件為技術簡報用示範影片的製作指南。*
+
+---
+
+## 關於輸出目的地: OutputDestination 可選擇 (Pattern B)
+
+UC10 construction-bim 在 2026-05-10 的更新中支援了 `OutputDestination` 參數
+(參照 `docs/output-destination-patterns.md`)。
+
+**對象工作負載**: 建設 BIM / 圖面 OCR / 安全合規檢查
+
+**2 種模式**:
+
+### STANDARD_S3(預設,與以往相同)
+建立新的 S3 儲存貯體(`${AWS::StackName}-output-${AWS::AccountId}`),
+並將 AI 成果物寫入其中。
+
+```bash
+aws cloudformation deploy \
+  --template-file construction-bim/template-deploy.yaml \
+  --stack-name fsxn-construction-bim-demo \
+  --parameter-overrides \
+    OutputDestination=STANDARD_S3 \
+    ... (其他必要參數)
+```
+
+### FSXN_S3AP("no data movement" 模式)
+透過 FSxN S3 Access Point 將 AI 成果物寫回與原始資料**相同的 FSx ONTAP 磁碟區**。
+SMB/NFS 使用者可以在業務使用的目錄結構內直接瀏覽 AI 成果物。
+不會建立標準 S3 儲存貯體。
+
+```bash
+aws cloudformation deploy \
+  --template-file construction-bim/template-deploy.yaml \
+  --stack-name fsxn-construction-bim-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    S3AccessPointName=eda-demo-s3ap \
+    ... (其他必要參數)
+```
+
+**注意事項**:
+
+- 強烈建議指定 `S3AccessPointName`(以 Alias 格式與 ARN 格式兩者進行 IAM 許可)
+- 超過 5GB 的物件無法使用 FSxN S3AP(AWS 規格),必須使用多部分上傳
+- AWS 規格上的限制請參照
+  [專案 README 的「AWS 規格上的限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
+  以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+
+---
+
+## 已驗證的 UI/UX 螢幕截圖
+
+與 Phase 7 UC15/16/17 和 UC6/11/14 的示範相同方針,以**終端使用者在日常業務中實際
+看到的 UI/UX 畫面**為對象。技術人員視圖(Step Functions 圖表、CloudFormation
+堆疊事件等)彙整於 `docs/verification-results-*.md`。
+
+### 此使用案例的驗證狀態
+
+- ✅ **E2E 執行**: Phase 1-6 已確認(參照根目錄 README)
+- 📸 **UI/UX 重新拍攝**: ✅ 2026-05-10 重新部署驗證時已拍攝 (確認 UC10 Step Functions 圖表、Lambda 執行成功)
+- 🔄 **重現方法**: 參照本文件末尾的「拍攝指南」
+
+### 2026-05-10 重新部署驗證時拍攝(以 UI/UX 為中心)
+
+#### UC10 Step Functions Graph view(SUCCEEDED)
+
+![UC10 Step Functions Graph view(SUCCEEDED)](../../docs/screenshots/masked/uc10-demo/uc10-stepfunctions-graph.png)
+
+Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態的執行狀況,
+是終端使用者最重要的畫面。
+
+### 既有螢幕截圖(來自 Phase 1-6 的相關部分)
+
+*(無相關內容。重新驗證時請新拍攝)*
+
+### 重新驗證時的 UI/UX 對象畫面(建議拍攝清單)
+
+- S3 輸出儲存貯體(drawings-ocr/、bim-metadata/、safety-reports/)
+- Textract 圖面 OCR 結果(跨區域)
+- BIM 版本差異報告
+- Bedrock 安全合規檢查
+
+### 拍攝指南
+
+1. **事前準備**:
+   - 以 `bash scripts/verify_phase7_prerequisites.sh` 確認前提(共用 VPC/S3 AP 有無)
+   - 以 `UC=construction-bim bash scripts/package_generic_uc.sh` 打包 Lambda
+   - 以 `bash scripts/deploy_generic_ucs.sh UC10` 部署
+
+2. **配置範例資料**:
+   - 透過 S3 AP Alias 將範例檔案上傳至 `drawings/` 前綴
+   - 啟動 Step Functions `fsxn-construction-bim-demo-workflow`(輸入 `{}`)
+
+3. **拍攝**(關閉 CloudShell・終端機,瀏覽器右上角的使用者名稱塗黑):
+   - S3 輸出儲存貯體 `fsxn-construction-bim-demo-output-<account>` 的俯瞰
+   - AI/ML 輸出 JSON 的預覽(參考 `build/preview_*.html` 的格式)
+   - SNS 電子郵件通知(如適用)
+
+4. **遮罩處理**:
+   - 以 `python3 scripts/mask_uc_demos.py construction-bim-demo` 自動遮罩
+   - 依照 `docs/screenshots/MASK_GUIDE.md` 追加遮罩(視需要)
+
+5. **清理**:
+   - 以 `bash scripts/cleanup_generic_ucs.sh UC10` 刪除
+   - VPC Lambda ENI 釋放需 15-30 分鐘(AWS 規格)

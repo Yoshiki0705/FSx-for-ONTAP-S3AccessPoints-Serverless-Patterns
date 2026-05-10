@@ -56,6 +56,11 @@ scripts/_preview_cleanup.sh
 scripts/_check_cleanup_progress.sh
 scripts/_empty_versioned_bucket.sh
 scripts/_scan_text_for_leaks.py
+scripts/_survey_translation_status.py
+scripts/_translate_uc_docs.py
+scripts/_batch_translate_r1.sh
+scripts/_batch_translate_r2.sh
+scripts/_deploy_phase7_env.sh
 # The deploy/cleanup/verify scripts were historically committed with account IDs.
 # Going forward they must read values from environment variables only; keep the
 # local copies gitignored to prevent accidental re-commit with hardcoded values.
