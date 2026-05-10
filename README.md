@@ -261,25 +261,36 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 
 ### UC 別の出力先制約
 
-| UC | `OutputDestination=FSXN_S3AP` 可否 | 備考 |
-|----|--------------------------------|------|
-| UC1 legal-compliance | ✅ 可 | 契約メタデータ / 監査ログ |
-| UC2 financial-idp | ✅ 可 | 請求書 OCR 結果 |
-| UC3 manufacturing-analytics | ✅ 可 | 検査結果 / 異常検知 |
-| UC4 media-vfx | ✅ 可 | レンダリングメタデータ |
-| UC5 healthcare-dicom | ✅ 可 | DICOM メタデータ / 匿名化結果 |
-| UC6 semiconductor-eda | ⚠️ 部分的 | Bedrock レポートは FSXN_S3AP 可、Athena 結果は標準 S3 必須 |
-| UC7 genomics-pipeline | ⚠️ 部分的 | 解析結果は FSXN_S3AP 可、Glue/Athena 結果は標準 S3 必須 |
-| UC8 energy-seismic | ⚠️ 部分的 | 分析結果は FSXN_S3AP 可、Glue/Athena 結果は標準 S3 必須 |
-| UC9 autonomous-driving | ✅ 可 | ADAS 分析結果 |
-| UC10 construction-bim | ✅ 可 | BIM メタデータ / 安全コンプライアンスレポート |
-| UC11 retail-catalog | ✅ 可（**実装済み**） | タグ / 品質チェック / カタログメタデータ |
-| UC12 logistics-ocr | ✅ 可 | 配送伝票 OCR |
-| UC13 education-research | ⚠️ 部分的 | 論文分析は FSXN_S3AP 可、Athena 結果は標準 S3 必須 |
-| UC14 insurance-claims | ✅ 可（**実装済み**） | 損害評価 / 見積 OCR / 請求レポート |
-| UC15 defense-satellite | ✅ 可 | 物体検出 / 変化検知結果 |
-| UC16 government-archives | ✅ 可 | FOIA 墨消し結果 / メタデータ |
-| UC17 smart-city-geospatial | ✅ 可 | GIS 分析結果 / リスクマップ |
+現行の UC 実装には 3 つの出力パターンがあります:
+
+- **🟢 UC1-UC5**: 既存の `S3AccessPointOutputAlias` パラメータで FSxN S3AP 出力に対応済み（UC 作成当初からの設計）
+- **🟢🆕 UC11/UC14**: 2026-05-10 で `OutputDestination` 切替機構を実装（STANDARD_S3 ⇄ FSXN_S3AP）+ AWS 実検証完了
+- **🟡 UC6/7/8/9/10/12/13**: 現状 `OUTPUT_BUCKET` のみ（標準 S3 固定）、`OutputDestination` 機構は未適用（次のコミット対象）
+- **🟢 UC15/16/17**: Phase 7 の一部で FSxN S3AP への書き戻しに対応
+
+| UC | 入力元 | 出力先 | 出力先選択機構 | 備考 |
+|----|------|------|----------|------|
+| UC1 legal-compliance | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` パラメータ | 契約メタデータ / 監査ログ |
+| UC2 financial-idp | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` | 請求書 OCR 結果 |
+| UC3 manufacturing-analytics | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` | 検査結果 / 異常検知 |
+| UC4 media-vfx | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` | レンダリングメタデータ |
+| UC5 healthcare-dicom | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` | DICOM メタデータ / 匿名化結果 |
+| UC6 semiconductor-eda | S3AP | **標準 S3** | ⚠️ 未実装 | Bedrock/Athena 結果（Athena は仕様上標準 S3 必須） |
+| UC7 genomics-pipeline | S3AP | **標準 S3** | ⚠️ 未実装 | Glue/Athena 結果（Athena は仕様上標準 S3 必須） |
+| UC8 energy-seismic | S3AP | **標準 S3** | ⚠️ 未実装 | Glue/Athena 結果（Athena は仕様上標準 S3 必須） |
+| UC9 autonomous-driving | S3AP | **標準 S3** | ⚠️ 未実装 | ADAS 分析結果（`OutputDestination` 拡張候補） |
+| UC10 construction-bim | S3AP | **標準 S3** | ⚠️ 未実装 | BIM メタデータ（`OutputDestination` 拡張候補） |
+| **UC11 retail-catalog** | S3AP | **選択可** | ✅ `OutputDestination` | AWS 実検証済み 2026-05-10 |
+| UC12 logistics-ocr | S3AP | **標準 S3** | ⚠️ 未実装 | 配送伝票 OCR（`OutputDestination` 拡張候補） |
+| UC13 education-research | S3AP | **標準 S3** | ⚠️ 未実装 | Athena 結果含む（Athena は仕様上標準 S3 必須） |
+| **UC14 insurance-claims** | S3AP | **選択可** | ✅ `OutputDestination` | AWS 実検証済み 2026-05-10 |
+| UC15 defense-satellite | S3AP | S3AP | 既存パターン | 物体検出 / 変化検知結果 |
+| UC16 government-archives | S3AP | S3AP | 既存パターン | FOIA 墨消し結果 / メタデータ |
+| UC17 smart-city-geospatial | S3AP | S3AP | 既存パターン | GIS 分析結果 / リスクマップ |
+
+**次のロードマップ**:
+- UC9/10/12 に `OutputDestination` 機構を横展開（UC11/14 のパターンをコピー）
+- UC6/7/8/13 の Athena 出力は仕様上標準 S3 必須だが、Bedrock レポート等の非 Athena 成果物は `OutputDestination=FSXN_S3AP` で書き戻す選択肢を追加可能（Phase 2 拡張予定）
 
 ## リージョン選択ガイド
 
