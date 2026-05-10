@@ -107,13 +107,21 @@ def test_handler_routes_to_rekognition_for_small_images(
             return mock_rekognition
         return MagicMock()
 
-    with patch.object(object_detection_handler, "boto3") as mock_boto3:
+    mock_writer = MagicMock()
+    mock_writer.target_description = "Standard S3 bucket 'test-bucket'"
+    mock_writer.build_s3_uri.return_value = "s3://test-bucket/out.json"
+
+    with patch.object(object_detection_handler, "boto3") as mock_boto3, patch.object(
+        object_detection_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
         mock_boto3.client.side_effect = boto3_client
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {"tile_key": "tiles/test.tif"}
         result = object_detection_handler.handler(event, lambda_context)
 
     assert result["inference_path"] == "rekognition"
     assert result["detection_count"] >= 1
+    mock_writer.put_json.assert_called_once()
 
 
 def test_handler_requires_tile_key(

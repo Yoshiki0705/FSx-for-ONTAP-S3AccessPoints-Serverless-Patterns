@@ -126,6 +126,39 @@ Parameters:
     Default: 14
     AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90]
 
+  # ---------- OutputDestination 統一 API (Pattern B 相当) ----------
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: |
+      AI/ML 成果物の書き込み先。STANDARD_S3（デフォルト）は従来どおり新しい S3
+      バケットに書き込む。FSXN_S3AP は S3AccessPointAlias（または OutputS3APAlias）
+      で指定した FSxN S3 Access Point 経由でオリジナルデータと同一ボリュームに
+      書き込む（"no data movement" パターン）。
+
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: |
+      OutputDestination=FSXN_S3AP 時の出力先 S3 Access Point Alias または ARN。
+      空の場合は入力用の S3AccessPointAlias を再利用する。
+
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: |
+      OutputDestination=FSXN_S3AP 時、書き込み時に全オブジェクトキーに付与する
+      プレフィックス。SMB/NFS ユーザーが AI 成果物を識別しやすくするため。
+
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: |
+      出力用 S3 Access Point の名前（ARN ベース許可用）。
+      OutputDestination=FSXN_S3AP 時、OutputS3APAlias と合わせて指定すると
+      AP ARN 形式でも書き込みを許可する。空の場合は S3AccessPointName を再利用する。
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -140,6 +173,14 @@ Conditions:
     !Equals [!Ref EnableSageMaker, "true"]
   HasS3AccessPointName:
     !Not [!Equals [!Ref S3AccessPointName, ""]]
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  UseInputApAsOutputAp:
+    !Equals [!Ref OutputS3APAlias, ""]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
 
 # =====================================================================
 # Resources
@@ -148,9 +189,13 @@ Resources:
 
   # -----------------------------------------------------------------
   # S3 Output Bucket (SSE-KMS)
+  # OutputDestination=STANDARD_S3 モード時のみ作成される。
+  # FSXN_S3AP モード時はこのバケットは作成されず、成果物は FSx ONTAP ボリュームに
+  # S3 Access Point 経由で直接書き込まれる（"no data movement" パターン）。
   # -----------------------------------------------------------------
   OutputBucket:
     Type: AWS::S3::Bucket
+    Condition: UseStandardS3
     Properties:
       BucketName: !If
         - UseAutoOutputBucket
@@ -336,29 +381,50 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Sid: S3Access
+              - Sid: S3AccessPointRead
                 Effect: Allow
                 Action:
                   - s3:GetObject
-                  - s3:PutObject
-                Resource: !If
-                  - HasS3AccessPointName
-                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
-                    - !Sub "${OutputBucket.Arn}/*"
-                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
-                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
-                    - !Sub "${OutputBucket.Arn}/*"
-              - Sid: S3List
-                Effect: Allow
-                Action:
                   - s3:ListBucket
                 Resource: !If
                   - HasS3AccessPointName
                   - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-                    - !GetAtt OutputBucket.Arn
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
                     - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
                   - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - !If
+                - UseStandardS3
+                - Sid: S3OutputBucketWrite
+                  Effect: Allow
+                  Action:
+                    - s3:PutObject
+                    - s3:ListBucket
+                  Resource:
                     - !GetAtt OutputBucket.Arn
+                    - !Sub "${OutputBucket.Arn}/*"
+                - !If
+                  - HasS3AccessPointName
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: Rekognition
                 Effect: Allow
                 Action:
@@ -439,9 +505,16 @@ Resources:
       Role: !GetAtt ProcessingLambdaRole.Arn
       Environment:
         Variables:
-          OUTPUT_BUCKET: !Ref OutputBucket
           S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
           TILE_SIZE: !Ref TileSize
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref TilingLogGroup
       Tags:
@@ -467,10 +540,17 @@ Resources:
       Role: !GetAtt ProcessingLambdaRole.Arn
       Environment:
         Variables:
-          OUTPUT_BUCKET: !Ref OutputBucket
           S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
           INFERENCE_TYPE: !Ref InferenceType
           SAGEMAKER_ENDPOINT_NAME: !Ref SageMakerEndpointName
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref ObjectDetectionLogGroup
       Tags:
@@ -496,7 +576,6 @@ Resources:
       Role: !GetAtt ProcessingLambdaRole.Arn
       Environment:
         Variables:
-          OUTPUT_BUCKET: !Ref OutputBucket
           CHANGE_HISTORY_TABLE: !Ref ChangeHistoryTable
           CHANGE_AREA_THRESHOLD_KM2: !Ref ChangeAreaThresholdKm2
       LoggingConfig:
@@ -524,7 +603,14 @@ Resources:
       Role: !GetAtt ProcessingLambdaRole.Arn
       Environment:
         Variables:
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref GeoEnrichmentLogGroup
       Tags:
@@ -799,10 +885,25 @@ Outputs:
       Name: !Sub "${AWS::StackName}-StateMachineArn"
 
   OutputBucketName:
-    Description: S3 Output Bucket Name
+    Description: S3 Output Bucket Name (STANDARD_S3 モード時のみ)
+    Condition: UseStandardS3
     Value: !Ref OutputBucket
     Export:
       Name: !Sub "${AWS::StackName}-OutputBucket"
+
+  OutputDestinationMode:
+    Description: 成果物の出力先モード
+    Value: !Ref OutputDestination
+    Export:
+      Name: !Sub "${AWS::StackName}-OutputDestination"
+
+  OutputS3APAliasResolved:
+    Description: FSXN_S3AP モード時に使用される出力 S3 Access Point Alias
+    Condition: UseFsxnS3AP
+    Value:
+      !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+    Export:
+      Name: !Sub "${AWS::StackName}-OutputS3APAlias"
 
   ChangeHistoryTableName:
     Description: DynamoDB Change History Table

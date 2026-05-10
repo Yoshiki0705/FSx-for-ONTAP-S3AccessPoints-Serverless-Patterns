@@ -1,15 +1,18 @@
 """UC15 Defense/Space Tiling Lambda
 
 衛星画像を Cloud Optimized GeoTIFF (COG) に変換し、タイル分割して
-S3 出力バケットに書き出す。
+出力先（標準 S3 バケット、または FSxN S3 Access Point）に書き出す。
 
 rasterio ライブラリは Lambda Layer で提供される想定。
 Layer が利用できない環境向けに Pure Python fallback を実装（ヘッダ解析のみ）。
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット名
     S3_ACCESS_POINT_ALIAS: 入力 S3 AP Alias
     TILE_SIZE: タイルサイズ (default: 256)
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
@@ -131,7 +135,7 @@ def handler(event, context):
             "metadata": {...}
         }
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     s3_access_point = os.environ.get("S3_ACCESS_POINT_ALIAS")
     tile_size = int(os.environ.get("TILE_SIZE", "256"))
 
@@ -140,10 +144,11 @@ def handler(event, context):
         raise ValueError("Input event must contain 'Key' field")
 
     logger.info(
-        "UC15 Tiling started: source=%s, tile_size=%d, rasterio=%s",
+        "UC15 Tiling started: source=%s, tile_size=%d, rasterio=%s, output=%s",
         source_key,
         tile_size,
         RASTERIO_AVAILABLE,
+        output_writer.target_description,
     )
 
     # S3 AP から画像ダウンロード
@@ -152,8 +157,10 @@ def handler(event, context):
         response = s3ap.get_object(source_key)
         image_bytes = response["Body"].read()
     else:
+        # Fallback: s3_client direct（OUTPUT_BUCKET 存在時のみ。テスト互換）
+        fallback_bucket = os.environ.get("OUTPUT_BUCKET", "")
         s3_client = boto3.client("s3")
-        response = s3_client.get_object(Bucket=output_bucket, Key=source_key)
+        response = s3_client.get_object(Bucket=fallback_bucket, Key=source_key)
         image_bytes = response["Body"].read()
 
     # タイル分割（rasterio 利用可能時は実変換、不可時はメタデータのみ）
@@ -174,23 +181,16 @@ def handler(event, context):
     basename = Path(source_key).stem
     tile_prefix = f"tiles/{date_partition}/{basename}/"
 
-    # メタデータ JSON を書き出し
+    # メタデータ JSON を書き出し（OutputWriter で STANDARD_S3 / FSXN_S3AP 切替）
     import json
-    s3_client = boto3.client("s3")
     metadata_key = f"{tile_prefix}metadata.json"
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=metadata_key,
-        Body=json.dumps(metadata, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
-    )
+    output_writer.put_json(key=metadata_key, data=metadata)
 
     logger.info(
-        "UC15 Tiling completed: source=%s, tile_count=%d, metadata=%s",
+        "UC15 Tiling completed: source=%s, tile_count=%d, metadata_uri=%s",
         source_key,
         tile_count,
-        metadata_key,
+        output_writer.build_s3_uri(metadata_key),
     )
 
     # EMF メトリクス

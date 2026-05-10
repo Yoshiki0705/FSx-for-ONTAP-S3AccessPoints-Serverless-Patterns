@@ -9,7 +9,6 @@ DynamoDB Schema:
 
 Environment Variables:
     CHANGE_HISTORY_TABLE: DynamoDB テーブル名
-    OUTPUT_BUCKET: 出力先 S3 バケット名
     TTL_SECONDS: DynamoDB TTL 秒数 (default: 31536000 = 1年)
     CHANGE_AREA_THRESHOLD_KM2: 変化面積閾値 km² (default: 1.0)
 """
@@ -124,7 +123,6 @@ def handler(event, context):
         }
     """
     table_name = os.environ["CHANGE_HISTORY_TABLE"]
-    output_bucket = os.environ["OUTPUT_BUCKET"]
     ttl_seconds = int(os.environ.get("TTL_SECONDS", str(365 * 24 * 3600)))
     threshold = float(os.environ.get("CHANGE_AREA_THRESHOLD_KM2", "1.0"))
 

@@ -65,8 +65,15 @@ def test_handler_uses_fallback_when_rasterio_unavailable(
         "Body": MagicMock(read=lambda: b"II*\x00" + b"\x00" * 100),
     }
 
-    with patch.object(tiling_handler, "boto3") as mock_boto3:
+    mock_writer = MagicMock()
+    mock_writer.target_description = "Standard S3 bucket 'test-bucket'"
+    mock_writer.build_s3_uri.return_value = "s3://test-bucket/out.json"
+
+    with patch.object(tiling_handler, "boto3") as mock_boto3, patch.object(
+        tiling_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
         mock_boto3.client.return_value = mock_s3_client
+        mock_output_writer_cls.from_env.return_value = mock_writer
         with patch.object(tiling_handler, "RASTERIO_AVAILABLE", False):
             event = {"Key": "satellite/test.tif", "Size": 1000}
             result = tiling_handler.handler(event, lambda_context)
@@ -74,3 +81,4 @@ def test_handler_uses_fallback_when_rasterio_unavailable(
     assert result["source_key"] == "satellite/test.tif"
     assert "tile_count" in result
     assert "metadata" in result
+    mock_writer.put_json.assert_called_once()
