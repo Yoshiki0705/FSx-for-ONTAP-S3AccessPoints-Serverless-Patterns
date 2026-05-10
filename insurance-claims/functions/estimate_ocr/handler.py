@@ -5,7 +5,10 @@ Cross_Region_Client で Amazon Textract に見積書を送信し、
 
 Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     CROSS_REGION: クロスリージョンターゲット (デフォルト: us-east-1)
     LOG_PII_DATA: PII データのログ出力 (デフォルト: false)
 """
@@ -22,6 +25,7 @@ import boto3
 
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
@@ -157,14 +161,15 @@ def handler(event, context):
     file_size = event.get("Size", 0)
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     cross_region = os.environ.get("CROSS_REGION", DEFAULT_CROSS_REGION)
 
     logger.info(
-        "Estimate OCR started: file_key=%s, size=%d, cross_region=%s",
+        "Estimate OCR started: file_key=%s, size=%d, cross_region=%s, output=%s",
         file_key,
         file_size,
         cross_region,
+        output_writer.target_description,
     )
 
     # 見積書取得
@@ -216,7 +221,7 @@ def handler(event, context):
     file_stem = PurePosixPath(file_key).stem
     output_key = f"estimates/{now.strftime('%Y/%m/%d')}/{file_stem}_estimate.json"
 
-    # 結果を S3 出力バケットに書き込み
+    # 結果を出力先（標準 S3 または FSxN S3AP）に書き込み
     result = {
         "status": "SUCCESS",
         "file_key": file_key,
@@ -227,19 +232,14 @@ def handler(event, context):
         "extracted_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(result, default=str, ensure_ascii=False).encode("utf-8"),
-        ContentType="application/json; charset=utf-8",
-    )
+    output_writer.put_json(key=output_key, data=result)
 
     logger.info(
-        "Estimate OCR completed: file_key=%s, items=%d, total=%d",
+        "Estimate OCR completed: file_key=%s, items=%d, total=%d, output_uri=%s",
         file_key,
         len(estimate_data.get("repair_items", [])),
         estimate_data.get("total_estimate", 0),
+        output_writer.build_s3_uri(output_key),
     )
 
 

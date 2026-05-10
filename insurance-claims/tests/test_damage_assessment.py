@@ -219,9 +219,12 @@ class TestDamageAssessmentHandler:
         "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
         "LOG_PII_DATA": "false",
     })
+    @patch("functions.damage_assessment.handler.OutputWriter")
     @patch("functions.damage_assessment.handler.boto3")
     @patch("functions.damage_assessment.handler.S3ApHelper")
-    def test_handler_manual_review(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_manual_review(
+        self, mock_s3ap_cls, mock_boto3, mock_output_writer_cls
+    ):
         """損害未検出で MANUAL_REVIEW が返ること"""
         from functions.damage_assessment.handler import handler
 
@@ -247,6 +250,12 @@ class TestDamageAssessmentHandler:
 
         mock_boto3.client.side_effect = client_factory
 
+        # OutputWriter mock
+        mock_writer = MagicMock()
+        mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+        mock_output_writer_cls.from_env.return_value = mock_writer
+
         event = {"Key": "claims/CLM001/photo.jpg", "Size": 2000000}
         context = MagicMock()
 
@@ -254,3 +263,4 @@ class TestDamageAssessmentHandler:
 
         assert result["status"] == "MANUAL_REVIEW"
         assert result["damage_assessment"]["reason_code"] == "NO_DAMAGE_LABELS_DETECTED"
+        mock_writer.put_json.assert_called_once()

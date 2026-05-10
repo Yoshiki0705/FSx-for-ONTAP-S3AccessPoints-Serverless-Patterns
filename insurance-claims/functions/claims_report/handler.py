@@ -4,7 +4,10 @@ Bedrock で写真ベース損害評価と見積書データを相関させた包
 JSON と人間可読形式で S3 出力し、SNS 通知する。
 
 Environment Variables:
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
     SNS_TOPIC_ARN: SNS トピック ARN
     LOG_PII_DATA: PII データのログ出力 (デフォルト: false)
@@ -20,6 +23,7 @@ from datetime import datetime, timezone
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
@@ -115,14 +119,15 @@ def handler(event, context):
     damage_assessments = event.get("damage_assessments", [])
     estimate_data = event.get("estimate_data", [])
 
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     logger.info(
-        "Claims report generation started: assessments=%d, estimates=%d",
+        "Claims report generation started: assessments=%d, estimates=%d, output=%s",
         len(damage_assessments),
         len(estimate_data),
+        output_writer.target_description,
     )
 
     # Bedrock でレポート生成
@@ -180,23 +185,12 @@ def handler(event, context):
 
     # JSON 出力
     output_key = f"reports/{now.strftime('%Y/%m/%d')}/{claim_id}_claims_report.json"
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(claims_report, default=str, ensure_ascii=False).encode("utf-8"),
-        ContentType="application/json; charset=utf-8",
-    )
+    output_writer.put_json(key=output_key, data=claims_report)
 
     # 人間可読形式出力
     human_readable_key = f"reports/{now.strftime('%Y/%m/%d')}/{claim_id}_claims_report.txt"
     human_readable_text = _generate_human_readable_report(claims_report)
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=human_readable_key,
-        Body=human_readable_text.encode("utf-8"),
-        ContentType="text/plain; charset=utf-8",
-    )
+    output_writer.put_text(key=human_readable_key, text=human_readable_text)
 
     # SNS 通知
     notification_sent = False
@@ -212,7 +206,7 @@ def handler(event, context):
                     f"損害評価数: {len(damage_assessments)}\n"
                     f"見積書数: {len(estimate_data)}\n"
                     f"総損害額: ¥{total_damage:,}\n"
-                    f"出力先: s3://{output_bucket}/{output_key}"
+                    f"出力先: {output_writer.build_s3_uri(output_key)}"
                 ),
             )
             notification_sent = True
@@ -220,9 +214,9 @@ def handler(event, context):
             logger.warning("SNS notification failed: %s", e)
 
     logger.info(
-        "Claims report completed: claim_id=%s, output_key=%s",
+        "Claims report completed: claim_id=%s, output_uri=%s",
         claim_id,
-        output_key,
+        output_writer.build_s3_uri(output_key),
     )
 
 

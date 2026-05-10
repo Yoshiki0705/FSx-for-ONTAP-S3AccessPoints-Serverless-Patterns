@@ -82,6 +82,33 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: Lambda SnapStart を有効化する（コールドスタート削減）
 
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: |
+      AI/ML 成果物の書き込み先。STANDARD_S3（デフォルト）は従来どおり新しい S3
+      バケットに書き込む。FSXN_S3AP は S3AccessPointAlias（または OutputS3APAlias）
+      で指定した FSxN S3 Access Point 経由でオリジナルデータと同一ボリュームに
+      書き込む（"no data movement" パターン）。
+
+      制約: Athena クエリ結果は FSXN_S3AP 不可（標準 S3 必須、AWS 仕様）。
+      詳細: docs/aws-feature-requests/fsxn-s3ap-improvements.md
+
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: |
+      OutputDestination=FSXN_S3AP 時の出力先 S3 Access Point Alias または ARN。
+      空の場合は入力用の S3AccessPointAlias を再利用する。
+
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: |
+      OutputDestination=FSXN_S3AP 時、書き込み時に全オブジェクトキーに付与する
+      プレフィックス。SMB/NFS ユーザーが AI 成果物を識別しやすくするため。
+
 Conditions:
   CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateVpcEndpoints: !Equals [!Ref EnableVpcEndpoints, "true"]
@@ -90,6 +117,9 @@ Conditions:
       - !Condition CreateVpcEndpoints
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
   UseAutoOutputBucket: !Equals [!Ref OutputBucketName, ""]
+  UseStandardS3: !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP: !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  UseInputApAsOutputAp: !Equals [!Ref OutputS3APAlias, ""]
 
   SnapStartEnabled:
     !Equals [!Ref EnableSnapStart, "true"]
@@ -97,6 +127,7 @@ Conditions:
 Resources:
   OutputBucket:
     Type: AWS::S3::Bucket
+    Condition: UseStandardS3
     Properties:
       BucketName: !If
         - UseAutoOutputBucket
@@ -281,9 +312,17 @@ Resources:
               - Effect: Allow
                 Action: [bedrock:InvokeModel]
                 Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
-              - Effect: Allow
-                Action: [s3:PutObject]
-                Resource: !Sub "${OutputBucket.Arn}/*"
+              - !If
+                - UseStandardS3
+                - Effect: Allow
+                  Action: [s3:PutObject]
+                  Resource: !Sub "${OutputBucket.Arn}/*"
+                - Effect: Allow
+                  Action: [s3:PutObject]
+                  Resource:
+                    - !Sub
+                      - "arn:aws:s3:::${Alias}/*"
+                      - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Effect: Allow
                 Action: [logs:CreateLogStream, logs:PutLogEvents]
                 Resource: [!GetAtt DamageAssessmentLogGroup.Arn, !Sub "${DamageAssessmentLogGroup.Arn}:*"]
@@ -312,9 +351,17 @@ Resources:
               - Effect: Allow
                 Action: [textract:AnalyzeDocument]
                 Resource: "*"
-              - Effect: Allow
-                Action: [s3:PutObject]
-                Resource: !Sub "${OutputBucket.Arn}/*"
+              - !If
+                - UseStandardS3
+                - Effect: Allow
+                  Action: [s3:PutObject]
+                  Resource: !Sub "${OutputBucket.Arn}/*"
+                - Effect: Allow
+                  Action: [s3:PutObject]
+                  Resource:
+                    - !Sub
+                      - "arn:aws:s3:::${Alias}/*"
+                      - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Effect: Allow
                 Action: [logs:CreateLogStream, logs:PutLogEvents]
                 Resource: [!GetAtt EstimateOcrLogGroup.Arn, !Sub "${EstimateOcrLogGroup.Arn}:*"]
@@ -340,9 +387,17 @@ Resources:
               - Effect: Allow
                 Action: [bedrock:InvokeModel]
                 Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
-              - Effect: Allow
-                Action: [s3:PutObject]
-                Resource: !Sub "${OutputBucket.Arn}/*"
+              - !If
+                - UseStandardS3
+                - Effect: Allow
+                  Action: [s3:PutObject]
+                  Resource: !Sub "${OutputBucket.Arn}/*"
+                - Effect: Allow
+                  Action: [s3:PutObject]
+                  Resource:
+                    - !Sub
+                      - "arn:aws:s3:::${Alias}/*"
+                      - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Effect: Allow
                 Action: [sns:Publish]
                 Resource: !Ref NotificationTopic
@@ -403,7 +458,14 @@ Resources:
       Environment:
         Variables:
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           LOG_PII_DATA: "false"
       LoggingConfig:
@@ -429,7 +491,14 @@ Resources:
       Environment:
         Variables:
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           CROSS_REGION: !Ref CrossRegion
           LOG_PII_DATA: "false"
       LoggingConfig:
@@ -454,7 +523,14 @@ Resources:
       Role: !GetAtt ClaimsReportLambdaRole.Arn
       Environment:
         Variables:
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
           LOG_PII_DATA: "false"

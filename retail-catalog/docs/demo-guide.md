@@ -163,6 +163,27 @@
 Phase 7 と同じ方針で、**EC 担当者が日常業務で実際に使う UI/UX 画面**を撮影。
 技術者向け画面（Step Functions グラフ等）は除外。
 
+### 出力先の選択: 標準 S3 vs FSxN S3AP
+
+UC11 は 2026-05-10 のアップデートで `OutputDestination` パラメータをサポートしました。
+**同一 FSx ボリュームに AI 成果物を書き戻す** ことで、SMB/NFS ユーザーが
+商品画像のディレクトリ構造内で自動生成タグ JSON を閲覧できます
+（"no data movement" パターン）。
+
+```bash
+# STANDARD_S3 モード（デフォルト、従来どおり）
+--parameter-overrides OutputDestination=STANDARD_S3 ...
+
+# FSXN_S3AP モード（AI 成果物を FSx ONTAP ボリュームに書き戻し）
+--parameter-overrides \
+  OutputDestination=FSXN_S3AP \
+  OutputS3APPrefix=ai-outputs/ \
+  ...
+```
+
+AWS 仕様上の制約と回避策は [プロジェクト README の "AWS 仕様上の制約と回避策"
+セクション](../../README.md#aws-仕様上の制約と回避策) 参照。
+
 ### 1. 商品画像の自動タグ付け結果
 
 EC 管理者が新商品登録時に受け取る AI 分析結果。Rekognition が実画像から 7 ラベルを
