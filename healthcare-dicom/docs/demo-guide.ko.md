@@ -12,6 +12,23 @@
 
 ---
 
+## 출력 대상: FSxN S3 Access Point (Pattern A)
+
+이 UC는 **Pattern A: Native S3AP Output**에 해당합니다
+(`docs/output-destination-patterns.md` 참조).
+
+**설계**: 모든 AI/ML 아티팩트는 FSxN S3 Access Point를 통해 소스 데이터와 **동일한
+FSx ONTAP 볼륨**에 다시 씁니다. 별도의 표준 S3 버킷은 생성되지 않습니다
+("no data movement" 패턴).
+
+**CloudFormation 파라미터**:
+- `S3AccessPointAlias`: 입력용 S3 AP Alias
+- `S3AccessPointOutputAlias`: 출력용 S3 AP Alias (입력과 동일 가능)
+
+AWS 사양 제약과 해결 방법은
+[README.ko.md — AWS 사양상의 제약](../../README.ko.md#aws-사양상의-제약-및-해결-방법) 참조.
+
+---
 ## Workflow
 
 ```

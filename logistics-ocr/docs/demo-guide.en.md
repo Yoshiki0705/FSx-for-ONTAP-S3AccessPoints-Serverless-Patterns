@@ -41,6 +41,27 @@ Shipping Slips     OCR Processing    Data Structuring    Inventory Analysis
 
 ---
 
+## Output Destination: Selectable via OutputDestination (Pattern B)
+
+This UC supports the `OutputDestination` parameter (2026-05-10 update,
+see `docs/output-destination-patterns.md`).
+
+**Two modes**:
+
+- **STANDARD_S3** (default): AI artifacts go to a new S3 bucket
+- **FSXN_S3AP** ("no data movement"): AI artifacts go back to the same
+  FSx ONTAP volume via S3 Access Point — visible to SMB/NFS users in
+  the existing directory structure
+
+```bash
+# FSXN_S3AP mode
+--parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai-outputs/
+```
+
+See [README.en.md — AWS Specification Constraints](../../README.en.md#aws-specification-constraints-and-workarounds)
+for AWS-side limitations and workarounds.
+
+---
 ## Storyboard (5 Sections / 3–5 min)
 
 ### Section 1: Problem Statement (0:00–0:45)

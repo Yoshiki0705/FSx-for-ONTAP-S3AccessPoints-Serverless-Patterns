@@ -12,6 +12,23 @@ Esta demo muestra un pipeline de control de calidad para salidas de renderizado 
 
 ---
 
+## Destino de salida: FSxN S3 Access Point (Pattern A)
+
+Este UC se clasifica como **Pattern A: Native S3AP Output**
+(consulte `docs/output-destination-patterns.md`).
+
+**Diseño**: todos los artefactos de IA/ML se escriben a través del FSxN S3 Access Point
+en el **mismo volumen FSx ONTAP** que los datos fuente. No se crea un bucket S3
+estándar separado (patrón "no data movement").
+
+**Parámetros CloudFormation**:
+- `S3AccessPointAlias`: S3 AP Alias de entrada
+- `S3AccessPointOutputAlias`: S3 AP Alias de salida (puede ser igual a la entrada)
+
+Para restricciones de especificación de AWS y soluciones alternativas, consulte
+[README.es.md — Restricciones de especificación de AWS](../../README.es.md#restricciones-de-especificación-de-aws-y-soluciones-alternativas).
+
+---
 ## Workflow
 
 ```

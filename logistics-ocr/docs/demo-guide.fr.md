@@ -12,6 +12,27 @@ Cette démo présente un pipeline OCR pour bordereaux de livraison et analyse de
 
 ---
 
+## Destination de sortie : sélectionnable via OutputDestination (Pattern B)
+
+Ce UC prend en charge le paramètre `OutputDestination` (mise à jour 2026-05-10,
+voir `docs/output-destination-patterns.md`).
+
+**Deux modes** :
+
+- **STANDARD_S3** (par défaut) : les artefacts IA vont vers un nouveau bucket S3
+- **FSXN_S3AP** ("no data movement") : les artefacts IA retournent sur le même
+  volume FSx ONTAP via S3 Access Point, visibles pour les utilisateurs SMB/NFS
+  dans la structure de répertoires existante
+
+```bash
+# Mode FSXN_S3AP
+--parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai-outputs/
+```
+
+Pour les contraintes et solutions de contournement AWS, voir
+[README.fr.md — Contraintes de spécification AWS](../../README.fr.md#contraintes-de-spécification-aws-et-solutions-de-contournement).
+
+---
 ## Workflow
 
 ```

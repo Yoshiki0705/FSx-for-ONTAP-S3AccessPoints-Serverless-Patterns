@@ -12,6 +12,27 @@
 
 ---
 
+## 출력 대상: OutputDestination으로 선택 가능 (Pattern B)
+
+이 UC는 `OutputDestination` 파라미터를 지원합니다 (2026-05-10 업데이트,
+`docs/output-destination-patterns.md` 참조).
+
+**두 가지 모드**:
+
+- **STANDARD_S3** (기본값): AI 아티팩트가 새 S3 버킷으로 이동
+- **FSXN_S3AP** ("no data movement"): AI 아티팩트가 S3 Access Point를 통해
+  동일한 FSx ONTAP 볼륨으로 돌아가며, SMB/NFS 사용자가 기존 디렉토리 구조 내에서
+  볼 수 있음
+
+```bash
+# FSXN_S3AP 모드
+--parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai-outputs/
+```
+
+AWS 사양 제약과 해결 방법은
+[README.ko.md — AWS 사양상의 제약](../../README.ko.md#aws-사양상의-제약-및-해결-방법) 참조.
+
+---
 ## Workflow
 
 ```
