@@ -1,30 +1,30 @@
-# UC15 デモスクリプト（30 分枠）
+# UC15 示範腳本（30 分鐘場次）
 
-🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | 繁體中文 | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | 繁體中文 | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
 
-> 注意：本翻譯為基於日文原文自動生成的草稿，歡迎提交改進翻譯的貢獻。
+> 注意：此翻譯由 Amazon Bedrock Claude 產生。歡迎對翻譯品質提出改進建議。
 
 ## 前提
 
-- AWS アカウント、ap-northeast-1
+- AWS 帳戶、ap-northeast-1
 - FSx for NetApp ONTAP + S3 Access Point
-- `defense-satellite/template-deploy.yaml` をデプロイ済み（`EnableSageMaker=false`）
+- 已部署 `defense-satellite/template-deploy.yaml`（`EnableSageMaker=false`）
 
-## タイムライン
+## 時間軸
 
-### 0:00 - 0:05 イントロ（5 分）
+### 0:00 - 0:05 簡介（5 分鐘）
 
-- ユースケース背景: 衛星画像データの増加（Sentinel, Landsat, 商用 SAR）
-- 従来型 NAS への課題: コピーベースワークフローで時間・コストがかかる
-- FSxN S3AP のメリット: zero-copy、NTFS ACL 連動、サーバーレス処理
+- 使用案例背景：衛星影像資料的增加（Sentinel、Landsat、商用 SAR）
+- 傳統 NAS 的挑戰：基於複製的工作流程耗時且成本高
+- FSxN S3AP 的優勢：零複製、NTFS ACL 聯動、無伺服器處理
 
-### 0:05 - 0:10 アーキテクチャ解説（5 分）
+### 0:05 - 0:10 架構說明（5 分鐘）
 
-- Mermaid 図で Step Functions ワークフロー紹介
-- 画像サイズでの Rekognition / SageMaker 切替ロジック
-- geohash による変化検出の仕組み
+- 使用 Mermaid 圖介紹 Step Functions 工作流程
+- 根據影像大小切換 Rekognition / SageMaker 的邏輯
+- 基於 geohash 的變化檢測機制
 
-### 0:10 - 0:15 ライブデプロイ（5 分）
+### 0:10 - 0:15 現場部署（5 分鐘）
 
 ```bash
 aws cloudformation deploy \
@@ -40,7 +40,7 @@ aws cloudformation deploy \
   --region ap-northeast-1
 ```
 
-### 0:15 - 0:20 サンプル画像処理（5 分）
+### 0:15 - 0:20 範例影像處理（5 分鐘）
 
 ```bash
 # サンプル GeoTIFF アップロード
@@ -53,32 +53,84 @@ aws stepfunctions start-execution \
   --input '{}'
 ```
 
-- AWS コンソールで Step Functions グラフを見せる（Discovery → Map → Tiling → ObjectDetection → ChangeDetection → GeoEnrichment → AlertGeneration）
-- SUCCEEDED までの実行時間を確認（通常 2-3 分）
+- 在 AWS 主控台展示 Step Functions 圖形（Discovery → Map → Tiling → ObjectDetection → ChangeDetection → GeoEnrichment → AlertGeneration）
+- 確認執行至 SUCCEEDED 的時間（通常 2-3 分鐘）
 
-### 0:20 - 0:25 結果確認（5 分）
+### 0:20 - 0:25 結果確認（5 分鐘）
 
-- S3 出力バケットの階層を見せる:
+- 展示 S3 輸出儲存貯體的階層結構：
   - `tiles/YYYY/MM/DD/<basename>/metadata.json`
   - `detections/<tile_key>_detections.json`
   - `enriched/YYYY/MM/DD/<tile_id>.json`
-- CloudWatch Logs で EMF メトリクス確認
-- DynamoDB `change-history` テーブルで変化検出履歴
+- 在 CloudWatch Logs 確認 EMF 指標
+- 在 DynamoDB `change-history` 資料表查看變化檢測歷史記錄
 
-### 0:25 - 0:30 Q&A + Wrap-up（5 分）
+### 0:25 - 0:30 Q&A + 總結（5 分鐘）
 
-- Public Sector 規制対応（DoD CC SRG, CSfC, FedRAMP）
-- GovCloud 移行パス（同じテンプレートで `ap-northeast-1` → `us-gov-west-1`）
-- コスト最適化（SageMaker Endpoint は実運用時のみ有効化）
-- 次ステップ: 多衛星プロバイダ統合、Sentinel-1/2 Hub 連携
+- 公共部門法規遵循（DoD CC SRG、CSfC、FedRAMP）
+- GovCloud 遷移路徑（使用相同範本從 `ap-northeast-1` → `us-gov-west-1`）
+- 成本最佳化（SageMaker Endpoint 僅在實際營運時啟用）
+- 下一步：多衛星供應商整合、Sentinel-1/2 Hub 連接
 
-## よくある質問と回答
+## 常見問題與解答
 
-**Q. SAR データ（Sentinel-1 の HDF5）はどう扱う？**  
-A. Discovery Lambda で `image_type=sar` に分類、Tiling は HDF5 パーサ実装可（rasterio or h5py）。Object Detection は専用 SAR 解析モデル（SageMaker）必須。
+**Q. SAR 資料（Sentinel-1 的 HDF5）如何處理？**  
+A. Discovery Lambda 會分類為 `image_type=sar`，Tiling 可實作 HDF5 解析器（rasterio 或 h5py）。Object Detection 需要專用的 SAR 分析模型（SageMaker）。
 
-**Q. 画像サイズ閾値（5MB）の根拠？**  
-A. Rekognition DetectLabels API の Bytes パラメータ上限。S3 経由なら 15MB まで可。プロトタイプは Bytes ルートを採用。
+**Q. 影像大小閾值（5MB）的依據？**  
+A. Rekognition DetectLabels API 的 Bytes 參數上限。透過 S3 可達 15MB。原型採用 Bytes 路徑。
 
-**Q. 変化検出の精度は？**  
-A. 現行実装は bbox 面積ベースの簡易比較。本格運用では SageMaker のセマンティックセグメンテーション推奨。
+**Q. 變化檢測的精度如何？**  
+A. 目前實作是基於 bbox 面積的簡易比較。正式營運建議使用 SageMaker 的語義分割。
+
+---
+
+## 關於輸出目的地：可透過 OutputDestination 選擇（Pattern B）
+
+UC15 defense-satellite 在 2026-05-11 的更新中支援了 `OutputDestination` 參數
+（參閱 `docs/output-destination-patterns.md`）。
+
+**目標工作負載**：衛星影像切片 / 物體檢測 / Geo enrichment
+
+**兩種模式**：
+
+### STANDARD_S3（預設，與以往相同）
+建立新的 S3 儲存貯體（`${AWS::StackName}-output-${AWS::AccountId}`），
+並將 AI 成果寫入該處。Discovery Lambda 的 manifest 僅寫入 S3 Access Point
+（與以往相同）。
+
+```bash
+aws cloudformation deploy \
+  --template-file defense-satellite/template-deploy.yaml \
+  --stack-name fsxn-defense-satellite-demo \
+  --parameter-overrides \
+    OutputDestination=STANDARD_S3 \
+    ... (他の必須パラメータ)
+```
+
+### FSXN_S3AP（"no data movement" 模式）
+將切片 metadata、物體檢測 JSON、Geo enrichment 完成的檢測結果，透過 FSxN S3 Access Point
+寫回與原始衛星影像**相同的 FSx ONTAP 磁碟區**。
+分析人員可以在 SMB/NFS 的現有目錄結構中直接參照 AI 成果。
+不會建立標準 S3 儲存貯體。
+
+```bash
+aws cloudformation deploy \
+  --template-file defense-satellite/template-deploy.yaml \
+  --stack-name fsxn-defense-satellite-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    S3AccessPointName=eda-demo-s3ap \
+    ... (他の必須パラメータ)
+```
+
+**注意事項**：
+
+- 強烈建議指定 `S3AccessPointName`（同時以 Alias 格式和 ARN 格式授予 IAM 權限）
+- 超過 5GB 的物件無法透過 FSxN S3AP 處理（AWS 規格限制），必須使用多部分上傳
+- ChangeDetection Lambda 僅使用 DynamoDB，因此不受 `OutputDestination` 影響
+- AlertGeneration Lambda 僅使用 SNS，因此不受 `OutputDestination` 影響
+- AWS 規格限制請參閱
+  [專案 README 的「AWS 規格限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
+  以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)

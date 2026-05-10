@@ -1,22 +1,20 @@
-# UC15: 防衛・宇宙 — 衛星画像解析アーキテクチャ
+# UC15: Defense & Space — Satellite Image Analysis Architecture
 
-🌐 **Language / 言語**: [日本語](architecture.md) | English | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](architecture.md) | English | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
 
-> Note: This translation is an auto-generated draft based on the Japanese original. Contributions to improve translation quality are welcome.
+> Note: This translation is produced by Amazon Bedrock Claude. Contributions to improve translation quality are welcome.
 
-## 概要
+## Overview
 
-FSx for NetApp ONTAP S3 Access Points を活用した衛星画像（GeoTIFF / NITF / HDF5）の
-自動解析パイプライン。防衛・インテリジェンス・宇宙機関が保有する大容量画像から、
-物体検出・時系列変化・アラート生成を実行する。
+An automated analysis pipeline for satellite imagery (GeoTIFF / NITF / HDF5) leveraging FSx for NetApp ONTAP S3 Access Points. Executes object detection, time-series change analysis, and alert generation from large-scale imagery held by defense, intelligence, and space agencies.
 
-## アーキテクチャ図
+## Architecture Diagram
 
 ```mermaid
 graph LR
-    FSx[FSx for NetApp ONTAP<br/>衛星画像ストレージ] --> S3AP[S3 Access Point<br/>NTFS ACL 連動]
+    FSx[FSx for NetApp ONTAP<br/>Satellite Imagery Storage] --> S3AP[S3 Access Point<br/>NTFS ACL Integration]
     S3AP --> EB[EventBridge Scheduler]
-    EB --> SFN[Step Functions<br/>衛星画像処理]
+    EB --> SFN[Step Functions<br/>Satellite Image Processing]
     SFN --> L1[Discovery<br/>Lambda]
     L1 --> L2[Tiling<br/>Lambda + rasterio Layer]
     L2 --> L3{Image Size}
@@ -27,22 +25,22 @@ graph LR
     L4 --> L5[Geo Enrichment<br/>Lambda]
     L5 --> L6[Alert Generation<br/>Lambda]
     L6 --> SNS[SNS Topic]
-    SNS --> Mail[運用チーム メール]
+    SNS --> Mail[Operations Team Email]
     L1 & L2 & L3 & L4 & L5 & L6 --> CW[CloudWatch<br/>Logs + EMF Metrics]
 ```
 
-## データフロー
+## Data Flow
 
-1. **Discovery**: S3 AP で `satellite/` プレフィックスをスキャン、GeoTIFF/NITF/HDF5 を列挙
-2. **Tiling**: 大型画像を COG (Cloud Optimized GeoTIFF) に変換、256x256 タイルに分割
-3. **Object Detection**: 画像サイズで経路選択
-   - `< 5 MB` → Rekognition DetectLabels（車両、建物、船舶）
-   - `≥ 5 MB` → SageMaker Batch Transform（専用モデル）
-4. **Change Detection**: geohash をキーに DynamoDB から前回タイル取得、差分面積計算
-5. **Geo Enrichment**: 画像ヘッダから座標・取得時刻・センサータイプ抽出
-6. **Alert Generation**: 閾値超過で SNS 発行
+1. **Discovery**: Scan `satellite/` prefix via S3 AP, enumerate GeoTIFF/NITF/HDF5
+2. **Tiling**: Convert large images to COG (Cloud Optimized GeoTIFF), split into 256x256 tiles
+3. **Object Detection**: Route selection by image size
+   - `< 5 MB` → Rekognition DetectLabels (vehicles, buildings, ships)
+   - `≥ 5 MB` → SageMaker Batch Transform (custom model)
+4. **Change Detection**: Retrieve previous tile from DynamoDB using geohash as key, calculate difference area
+5. **Geo Enrichment**: Extract coordinates, acquisition time, sensor type from image header
+6. **Alert Generation**: Publish to SNS when threshold exceeded
 
-## IAM マトリクス
+## IAM Matrix
 
 | Principal | Permission | Resource |
 |-----------|------------|----------|
@@ -51,54 +49,68 @@ graph LR
 | Processing Lambdas | `sagemaker:InvokeEndpoint` | Account endpoints |
 | Processing Lambdas | `dynamodb:Query/PutItem` | ChangeHistoryTable |
 | Processing Lambdas | `sns:Publish` | Notification Topic |
-| Step Functions | `lambda:InvokeFunction` | UC15 Lambdas のみ |
+| Step Functions | `lambda:InvokeFunction` | UC15 Lambdas only |
 | EventBridge Scheduler | `states:StartExecution` | State Machine ARN |
 
-## コストモデル（月次、東京リージョン試算）
+## Cost Model (Monthly, Tokyo Region Estimate)
 
-| サービス | 単価想定 | 月額想定 |
+| Service | Unit Price Estimate | Monthly Estimate |
 |----------|----------|----------|
-| Lambda (6 functions, 1 million req/月) | $0.20/1M req + $0.0000166667/GB-s | $15 - $50 |
+| Lambda (6 functions, 1 million req/month) | $0.20/1M req + $0.0000166667/GB-s | $15 - $50 |
 | Rekognition DetectLabels | $1.00 / 1000 img | $10 / 10K images |
 | SageMaker Batch Transform | $0.134/hour (ml.m5.large) | $50 - $200 |
 | DynamoDB (PPR, change history) | $1.25 / 1M WRU, $0.25 / 1M RRU | $5 - $20 |
 | S3 (output bucket) | $0.023/GB-month | $5 - $30 |
 | SNS Email | $0.50 / 1000 notifications | $1 |
 | CloudWatch Logs + Metrics | $0.50/GB + $0.30/metric | $10 - $40 |
-| **合計（軽負荷）** | | **$96 - $391** |
+| **Total (Light Load)** | | **$96 - $391** |
 
-SageMaker Endpoint はデフォルト無効化（`EnableSageMaker=false`）。有料検証時のみ有効化。
+SageMaker Endpoint is disabled by default (`EnableSageMaker=false`). Enable only during paid validation.
 
-## Public Sector 規制対応
+## Public Sector Regulatory Compliance
 
 ### DoD Cloud Computing Security Requirements Guide (CC SRG)
-- **Impact Level 2** (Public, Non-CUI): AWS Commercial で運用可
-- **Impact Level 4** (CUI): AWS GovCloud (US) へ移行
-- **Impact Level 5** (CUI Higher Sensitivity): AWS GovCloud (US) + 追加制御
-- FSx for NetApp ONTAP は上記すべての Impact Level で承認済み
+- **Impact Level 2** (Public, Non-CUI): Operate on AWS Commercial
+- **Impact Level 4** (CUI): Migrate to AWS GovCloud (US)
+- **Impact Level 5** (CUI Higher Sensitivity): AWS GovCloud (US) + additional controls
+- FSx for NetApp ONTAP is approved for all Impact Levels above
 
 ### Commercial Solutions for Classified (CSfC)
-- NetApp ONTAP は NSA CSfC Capability Package 準拠
-- データ暗号化（Data-at-Rest, Data-in-Transit）を 2 層で実装可
+- NetApp ONTAP complies with NSA CSfC Capability Package
+- Data encryption (Data-at-Rest, Data-in-Transit) implemented in 2 layers
 
 ### FedRAMP
-- AWS GovCloud (US) で FedRAMP High 準拠
-- FSx ONTAP、S3 Access Points、Lambda、Step Functions すべてカバー
+- AWS GovCloud (US) complies with FedRAMP High
+- FSx ONTAP, S3 Access Points, Lambda, Step Functions all covered
 
-### データ主権
-- リージョン内データ完結（ap-northeast-1 / us-gov-west-1）
-- cross-region 通信なし（全 AWS 内部 VPC 通信）
+### Data Sovereignty
+- Data remains within region (ap-northeast-1 / us-gov-west-1)
+- No cross-region communication (all AWS internal VPC communication)
 
-## スケーラビリティ
+## Scalability
 
-- Step Functions Map State で並列実行（`MapConcurrency=10` デフォルト）
-- 1 時間あたり 1000 画像処理可（Lambda 並列 + Rekognition ルート）
-- SageMaker ルートは Batch Transform でスケール（バッチジョブ）
+- Parallel execution with Step Functions Map State (`MapConcurrency=10` default)
+- Process 1000 images per hour (Lambda parallel + Rekognition route)
+- SageMaker route scales with Batch Transform (batch jobs)
 
-## Guard Hooks 準拠（Phase 6B）
+## Guard Hooks Compliance (Phase 6B)
 
-- ✅ `encryption-required`: すべての S3 バケットで SSE-KMS
-- ✅ `iam-least-privilege`: ワイルドカード許可なし（Rekognition `*` は API 制約）
-- ✅ `logging-required`: 全 Lambda に LogGroup 設定
-- ✅ `dynamodb-encryption`: すべてのテーブルで SSE 有効化
-- ✅ `sns-encryption`: KmsMasterKeyId 設定済み
+- ✅ `encryption-required`: SSE-KMS on all S3 buckets
+- ✅ `iam-least-privilege`: No wildcard permissions (Rekognition `*` is API constraint)
+- ✅ `logging-required`: LogGroup configured for all Lambdas
+- ✅ `dynamodb-encryption`: SSE enabled on all tables
+- ✅ `sns-encryption`: KmsMasterKeyId configured
+
+## Output Destination (OutputDestination) — Pattern B
+
+UC15 supports the `OutputDestination` parameter as of the 2026-05-11 update.
+
+| Mode | Destination | Resources Created | Use Case |
+|-------|-------|-------------------|------------|
+| `STANDARD_S3` (default) | New S3 bucket | `AWS::S3::Bucket` | Accumulate AI artifacts in isolated S3 bucket as before |
+| `FSXN_S3AP` | FSxN S3 Access Point | None (write back to existing FSx volume) | Analysts view AI artifacts in same directory as original satellite imagery via SMB/NFS |
+
+**Affected Lambdas**: Tiling, ObjectDetection, GeoEnrichment (3 functions).  
+**Unaffected Lambdas**: Discovery (manifest continues to write directly to S3AP), ChangeDetection (DynamoDB only), AlertGeneration (SNS only).
+
+See [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) for details.
