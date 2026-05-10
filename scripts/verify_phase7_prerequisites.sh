@@ -14,11 +14,11 @@
 set -u
 
 REGION="${AWS_REGION:-ap-northeast-1}"
-DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-178625946981}"
-S3_AP_ALIAS="${S3_AP_ALIAS:-eda-demo-s3ap-fnwqydfpmd4gabncr8xqepjrrt131apn1a-ext-s3alias}"
+DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-<ACCOUNT_ID>}"
+S3_AP_ALIAS="${S3_AP_ALIAS:-<S3_AP_ALIAS>}"
 S3_AP_NAME="${S3_AP_NAME:-eda-demo-s3ap}"
-VPC_ID="${VPC_ID:-vpc-0ae01826f906191af}"
-SUBNETS="${SUBNETS:-subnet-0307ebbd55b35c842,subnet-0af86ebd3c65481b8}"
+VPC_ID="${VPC_ID:-<VPC_ID>}"
+SUBNETS="${SUBNETS:-<SUBNET_ID>,<SUBNET_ID>}"
 
 PASS=0
 FAIL=0

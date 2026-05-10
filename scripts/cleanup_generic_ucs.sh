@@ -26,7 +26,7 @@ for input in "$@"; do
     STACK="fsxn-${UC}-demo"
 
     # Empty output bucket
-    OUT_BUCKET="${STACK}-output-178625946981"
+    OUT_BUCKET="${STACK}-output-<ACCOUNT_ID>"
     echo "=== Emptying $OUT_BUCKET ==="
     aws s3api delete-objects --bucket "$OUT_BUCKET" --region ap-northeast-1 \
         --delete "$(aws s3api list-object-versions --bucket "$OUT_BUCKET" --region ap-northeast-1 --output=json --query='{Objects: Versions[].{Key:Key,VersionId:VersionId}}' 2>/dev/null)" 2>&1 | tail -2

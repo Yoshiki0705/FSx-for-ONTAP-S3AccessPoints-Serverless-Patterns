@@ -6,7 +6,7 @@ Description: >-
 Parameters:
   ModelDataUrl:
     Type: String
-    Default: "s3://fsxn-s3ap-guard-rules-178625946981/models/demo/model.tar.gz"
+    Default: "s3://fsxn-s3ap-guard-rules-<ACCOUNT_ID>/models/demo/model.tar.gz"
     Description: S3 path to model artifact
 
 Resources:
@@ -34,8 +34,8 @@ Resources:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource:
-                  - "arn:aws:s3:::fsxn-s3ap-guard-rules-178625946981"
-                  - "arn:aws:s3:::fsxn-s3ap-guard-rules-178625946981/*"
+                  - "arn:aws:s3:::fsxn-s3ap-guard-rules-<ACCOUNT_ID>"
+                  - "arn:aws:s3:::fsxn-s3ap-guard-rules-<ACCOUNT_ID>/*"
 
   # SageMaker Model
   DemoModel:

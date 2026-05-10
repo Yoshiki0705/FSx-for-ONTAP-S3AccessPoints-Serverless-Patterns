@@ -8,16 +8,16 @@ set -u
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${PROJECT_DIR}"
 
-DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-178625946981}"
-S3_AP_ALIAS="${S3_AP_ALIAS:-eda-demo-s3ap-fnwqydfpmd4gabncr8xqepjrrt131apn1a-ext-s3alias}"
-VPC_ID="${VPC_ID:-vpc-0ae01826f906191af}"
-SUBNETS="${SUBNETS:-subnet-0307ebbd55b35c842,subnet-0af86ebd3c65481b8}"
-NOTIFICATION_EMAIL="${NOTIFICATION_EMAIL:-yoshiki.fujiwara@netapp.com}"
+DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-<ACCOUNT_ID>}"
+S3_AP_ALIAS="${S3_AP_ALIAS:-<S3_AP_ALIAS>}"
+VPC_ID="${VPC_ID:-<VPC_ID>}"
+SUBNETS="${SUBNETS:-<SUBNET_ID>,<SUBNET_ID>}"
+NOTIFICATION_EMAIL="${NOTIFICATION_EMAIL:-<NOTIFICATION_EMAIL>}"
 ONTAP_SECRET_NAME="${ONTAP_SECRET_NAME:-fsx-ontap-fsxadmin-credentials}"
-ONTAP_MANAGEMENT_IP="${ONTAP_MANAGEMENT_IP:-10.0.3.72}"
-SVM_UUID="${SVM_UUID:-9ae87e42-068a-11f1-b1ff-ada95e61ee66}"
-VOLUME_UUID="${VOLUME_UUID:-4bc997e8-4b06-11f1-acbd-21ab1e8e6bf5}"
-ROUTE_TABLES="${ROUTE_TABLES:-rtb-0c7c5f7aa89d19592,rtb-0b04b4ff2589e19fe}"
+ONTAP_MANAGEMENT_IP="${ONTAP_MANAGEMENT_IP:-<ONTAP_MGMT_IP>}"
+SVM_UUID="${SVM_UUID:-<SVM_UUID>}"
+VOLUME_UUID="${VOLUME_UUID:-<VOLUME_UUID>}"
+ROUTE_TABLES="${ROUTE_TABLES:-<ROUTE_TABLE_ID>,<ROUTE_TABLE_ID>}"
 REGION="${AWS_REGION:-ap-northeast-1}"
 
 # UC short name → directory mapping
@@ -154,8 +154,8 @@ deploy_one() {
         "s3:GetBucketLocation"
       ],
       "Resource": [
-        "arn:aws:s3:ap-northeast-1:178625946981:accesspoint/eda-demo-s3ap",
-        "arn:aws:s3:ap-northeast-1:178625946981:accesspoint/eda-demo-s3ap/*"
+        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/eda-demo-s3ap",
+        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/eda-demo-s3ap/*"
       ]
     }
   ]

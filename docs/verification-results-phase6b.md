@@ -2,7 +2,7 @@
 
 **検証日**: 2026-05-09
 **リージョン**: ap-northeast-1 (東京)
-**アカウント**: 178625946981
+**アカウント**: <ACCOUNT_ID>
 
 ---
 
@@ -13,7 +13,7 @@
 | リソース | ステータス | 物理 ID |
 |---------|-----------|---------|
 | Guard Hooks スタック | UPDATE_COMPLETE | fsxn-s3ap-guard-hooks |
-| S3 バケット | CREATE_COMPLETE | fsxn-s3ap-guard-rules-178625946981 |
+| S3 バケット | CREATE_COMPLETE | fsxn-s3ap-guard-rules-<ACCOUNT_ID> |
 | IAM ロール | CREATE_COMPLETE | fsxn-s3ap-guard-hooks-hook-execution-role |
 | CloudWatch LogGroup | CREATE_COMPLETE | /aws/cloudformation/hooks/fsxn-s3ap-guard-hooks |
 | GuardHook | CREATE_COMPLETE | FSxNS3AP::Guard::Hook |
@@ -21,7 +21,7 @@
 ### Guard ルールファイル（S3）
 
 ```
-s3://fsxn-s3ap-guard-rules-178625946981/cfn-guard-rules/
+s3://fsxn-s3ap-guard-rules-<ACCOUNT_ID>/cfn-guard-rules/
 ├── encryption-required.guard    (1.5 KB)
 ├── iam-least-privilege.guard    (1.7 KB)
 ├── lambda-limits.guard          (1.4 KB)

@@ -13,7 +13,7 @@ UC15（Defense/Satellite）、UC16（Government Archives/FOIA）、UC17（Smart 
 ```
 User: arn:aws:sts::...:assumed-role/fsxn-uc15-demo-discovery-role/...
 is not authorized to perform: s3:ListBucket
-on resource: "arn:aws:s3:ap-northeast-1:178625946981:accesspoint/eda-demo-s3ap"
+on resource: "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/eda-demo-s3ap"
 ```
 
 **原因**: FSx ONTAP の S3 Access Point を使用する Lambda は、**Alias ARN と Access Point ARN

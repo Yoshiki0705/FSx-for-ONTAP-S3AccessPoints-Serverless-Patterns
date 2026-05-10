@@ -200,5 +200,5 @@ Execution started: arn:aws:states:...:execution:fsxn-eda-uc6-workflow:6c384f06-.
 
 - Phase 6A spec: `.kiro/specs/fsxn-s3ap-serverless-patterns-phase6a/`
 - 実装 commit ログ（git log 参照）
-- 検証時の AWS アカウント: 178625946981
+- 検証時の AWS アカウント: <ACCOUNT_ID>
 - 検証時の IAM ユーザー: yoshiki

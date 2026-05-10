@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROJECT_DIR="/Users/yoshiki/Downloads/fsxn-s3ap-serverless-patterns"
-DEPLOY_BUCKET="fsxn-eda-deploy-178625946981"
+DEPLOY_BUCKET="fsxn-eda-deploy-<ACCOUNT_ID>"
 REGION="ap-northeast-1"
 
 cd "${PROJECT_DIR}"
