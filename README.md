@@ -198,6 +198,23 @@ EventBridge Scheduler (定期実行)
 | UC16 | 政府 (FOIA / 公文書) | [📐 Architecture](government-archives/docs/uc16-architecture.md) | [🎬 Demo Guide](government-archives/docs/uc16-demo-script.md) |
 | UC17 | スマートシティ | [📐 Architecture](smart-city-geospatial/docs/uc17-architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/uc17-demo-script.md) |
 
+### Phase 7 UI/UX スクリーンショット（一般職員向け画面）
+
+Phase 7 では Public Sector の **一般職員が日常業務で実際に見る UI/UX 画面** を
+各 UC の README に掲載しています。Step Functions ワークフローグラフのような
+技術者向けビューは [`docs/verification-results-phase7.md`](docs/verification-results-phase7.md)
+にまとめています。
+
+| UC | 掲載画面数 | 掲載場所 |
+|----|----------|---------|
+| UC15 (Defense/Satellite) | 4 枚（S3 配置 / 出力 / SNS メール / JSON） | [`defense-satellite/README.md`](defense-satellite/README.md#検証済みの画面スクリーンショット) |
+| UC16 (Government/FOIA) | 5 枚（配置 / 墨消しプレビュー / メタデータ / FOIA メール / DynamoDB） | [`government-archives/README.md`](government-archives/README.md#検証済みの画面スクリーンショット) |
+| UC17 (Smart City) | 5 枚（GIS 配置 / Bedrock レポート / リスクマップ / 土地利用 / 時系列） | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md#検証済みの画面スクリーンショット) |
+
+画像ファイル仕様は [`docs/screenshots/masked/phase7/README.md`](docs/screenshots/masked/phase7/README.md) 参照。
+マスク対象のガイドは [`docs/screenshots/MASK_GUIDE.md`](docs/screenshots/MASK_GUIDE.md) の
+「Phase 7 追加項目」セクション参照。
+
 > 各ドキュメントは8言語（日本語・English・한국어・简体中文・繁體中文・Français・Deutsch・Español）で提供されています。ドキュメント上部の Language Switcher から切り替えできます。
 
 ## リージョン選択ガイド

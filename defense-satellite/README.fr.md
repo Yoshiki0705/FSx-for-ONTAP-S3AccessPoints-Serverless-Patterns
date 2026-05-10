@@ -34,6 +34,31 @@ Serverless pipeline for satellite imagery (GeoTIFF / NITF / HDF5) analytics leve
 - FedRAMP High in GovCloud
 - Data sovereignty: data never leaves the target region
 
+
+### Captures d'écran UI/UX vérifiées
+
+> Cette section présente **les écrans UI/UX utilisés au quotidien par les agents**. Les vues techniques comme les graphes Step Functions sont documentées séparément dans `docs/verification-results-phase7.md`.
+
+#### 1. Placement d'imagerie satellite (via S3 AP sur FSx ONTAP)
+
+<!-- SCREENSHOT: phase7-uc15-s3-satellite-uploaded.png -->
+![UC15: Placement d'imagerie satellite](../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
+
+#### 2. Résultats d'analyse (Bucket S3 de sortie)
+
+<!-- SCREENSHOT: phase7-uc15-s3-output-bucket.png -->
+![UC15: Bucket S3 de sortie](../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
+
+#### 3. Alerte de détection de changement (Email SNS)
+
+<!-- SCREENSHOT: phase7-uc15-sns-alert-email.png -->
+![UC15: Email d'alerte SNS](../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
+
+#### 4. Résultats de détection (JSON)
+
+<!-- SCREENSHOT: phase7-uc15-detections-json.png -->
+![UC15: Résultats JSON](../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
+
 ## Deploy
 
 ```bash

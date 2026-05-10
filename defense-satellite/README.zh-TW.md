@@ -34,6 +34,31 @@ Serverless pipeline for satellite imagery (GeoTIFF / NITF / HDF5) analytics leve
 - FedRAMP High in GovCloud
 - Data sovereignty: data never leaves the target region
 
+
+### 已驗證的 UI/UX 螢幕截圖
+
+> 本節展示**一般職員在日常工作中實際使用的 UI/UX 介面**。Step Functions 圖形等技術視圖另見 `docs/verification-results-phase7.md`。
+
+#### 1. 衛星影像放置（透過 FSx ONTAP 的 S3 AP）
+
+<!-- SCREENSHOT: phase7-uc15-s3-satellite-uploaded.png -->
+![UC15: 衛星影像放置](../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)
+
+#### 2. 分析輸出（S3 輸出儲存貯體）
+
+<!-- SCREENSHOT: phase7-uc15-s3-output-bucket.png -->
+![UC15: S3 輸出儲存貯體](../docs/screenshots/masked/phase7/phase7-uc15-s3-output-bucket.png)
+
+#### 3. 變化偵測警報（SNS 電子郵件）
+
+<!-- SCREENSHOT: phase7-uc15-sns-alert-email.png -->
+![UC15: SNS 警報郵件](../docs/screenshots/masked/phase7/phase7-uc15-sns-alert-email.png)
+
+#### 4. 偵測結果（JSON）
+
+<!-- SCREENSHOT: phase7-uc15-detections-json.png -->
+![UC15: 偵測結果 JSON](../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
+
 ## Deploy
 
 ```bash

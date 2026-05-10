@@ -34,6 +34,36 @@ Serverless pipeline for municipal geospatial data (GeoTIFF / Shapefile / GeoJSON
 - OGC standards (WMS / WFS / GeoPackage)
 - Open Data publishing workflow
 
+
+### Capturas de pantalla UI/UX verificadas
+
+> Esta sección muestra **pantallas UI/UX que el personal general utiliza en el día a día**. Las vistas técnicas como gráficos de Step Functions están documentadas en `docs/verification-results-phase7.md`.
+
+#### 1. Colocación de datos GIS (vía S3 AP)
+
+<!-- SCREENSHOT: phase7-uc17-s3-gis-uploaded.png -->
+![UC17: Colocación de GIS](../docs/screenshots/masked/phase7/phase7-uc17-s3-gis-uploaded.png)
+
+#### 2. Informe de planificación urbana generado por Bedrock
+
+<!-- SCREENSHOT: phase7-uc17-bedrock-report.png -->
+![UC17: Informe Bedrock](../docs/screenshots/masked/phase7/phase7-uc17-bedrock-report.png)
+
+#### 3. Mapa de riesgos de desastres (JSON)
+
+<!-- SCREENSHOT: phase7-uc17-risk-map-json.png -->
+![UC17: Mapa de riesgos](../docs/screenshots/masked/phase7/phase7-uc17-risk-map-json.png)
+
+#### 4. Distribución de uso del suelo
+
+<!-- SCREENSHOT: phase7-uc17-landuse-distribution.png -->
+![UC17: Distribución de uso](../docs/screenshots/masked/phase7/phase7-uc17-landuse-distribution.png)
+
+#### 5. Cambio temporal (DynamoDB)
+
+<!-- SCREENSHOT: phase7-uc17-dynamodb-landuse-history.png -->
+![UC17: Historial de uso](../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
+
 ## Deploy
 
 ```bash
