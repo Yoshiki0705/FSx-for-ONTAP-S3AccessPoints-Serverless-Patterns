@@ -68,13 +68,14 @@ def test_handler_writes_redacted_and_metadata(
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
 
     text = "Contact John Doe today"
-    mock_s3_client = MagicMock()
-    mock_s3_client.get_object.return_value = {
-        "Body": MagicMock(read=lambda: text.encode())
-    }
 
-    with patch.object(redaction_handler, "boto3") as mock_boto3:
-        mock_boto3.client.return_value = mock_s3_client
+    mock_writer = MagicMock()
+    mock_writer.get_text.return_value = text
+
+    with patch.object(
+        redaction_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {
             "document_key": "doc.pdf",
             "text_key": "ocr-results/doc.pdf.txt",
@@ -85,5 +86,6 @@ def test_handler_writes_redacted_and_metadata(
         result = redaction_handler.handler(event, lambda_context)
 
     assert result["redaction_count"] == 1
-    # 2 put_object calls: redacted text + metadata
-    assert mock_s3_client.put_object.call_count == 2
+    # 書き出しは put_text (redacted) + put_json (metadata) の 2 回
+    assert mock_writer.put_text.call_count == 1
+    assert mock_writer.put_json.call_count == 1

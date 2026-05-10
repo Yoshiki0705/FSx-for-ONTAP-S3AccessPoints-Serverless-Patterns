@@ -3,9 +3,12 @@
 Amazon Comprehend で文書を分類し、機密レベル（public/sensitive/confidential）を判定する。
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット
     COMPREHEND_LANGUAGE_CODE: 言語コード (default: "en", auto-detect 可)
     CLASSIFIER_ENDPOINT_ARN: Comprehend Custom Classifier Endpoint ARN (optional)
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +90,7 @@ def handler(event, context):
     Output:
         {"document_key": str, "clearance_level": str, "confidence": float, "language": str}
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     classifier_endpoint = os.environ.get("CLASSIFIER_ENDPOINT_ARN", "")
 
     document_key = event.get("document_key", "")
@@ -95,10 +99,8 @@ def handler(event, context):
     if not text_key:
         raise ValueError("Input must contain 'text_key'")
 
-    # OCR テキストを S3 から取得
-    s3_client = boto3.client("s3")
-    response = s3_client.get_object(Bucket=output_bucket, Key=text_key)
-    text = response["Body"].read().decode("utf-8")
+    # OCR テキストを OutputWriter 経由で取得（OCR と同じ destination から読み戻す）
+    text = output_writer.get_text(text_key)
 
     comprehend = boto3.client("comprehend")
 
@@ -126,7 +128,7 @@ def handler(event, context):
     else:
         clearance_level, confidence = classify_by_keywords(text)
 
-    # 結果を S3 に書き出し
+    # 結果を出力先に書き出し
     classification_key = f"classifications/{document_key}.json"
     result = {
         "document_key": document_key,
@@ -135,13 +137,7 @@ def handler(event, context):
         "confidence": float(confidence),
         "language": language,
     }
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=classification_key,
-        Body=json.dumps(result, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
-    )
+    output_writer.put_json(key=classification_key, data=result)
 
     logger.info(
         "UC16 Classification: document=%s, level=%s, confidence=%.2f",

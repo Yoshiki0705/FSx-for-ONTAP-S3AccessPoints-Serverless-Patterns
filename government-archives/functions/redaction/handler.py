@@ -7,8 +7,11 @@ Invariants:
 - 出力に PII 原文が残存してはならない
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット
     REDACTION_MARKER: 墨消しマーカー文字列 (default: "[REDACTED]")
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +94,7 @@ def handler(event, context):
             "redaction_count": int
         }
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     marker = os.environ.get("REDACTION_MARKER", DEFAULT_REDACTION_MARKER)
 
     document_key = event.get("document_key", "")
@@ -100,24 +104,16 @@ def handler(event, context):
     if not text_key:
         raise ValueError("Input must contain 'text_key'")
 
-    # OCR テキストを S3 から取得
-    s3_client = boto3.client("s3")
-    response = s3_client.get_object(Bucket=output_bucket, Key=text_key)
-    text = response["Body"].read().decode("utf-8")
+    # OCR テキストを OutputWriter 経由で取得
+    text = output_writer.get_text(text_key)
 
     redacted_text, redaction_metadata = redact_text(text, entities, marker)
 
-    # 墨消しテキストを S3 に書き出し
+    # 墨消しテキストを出力先に書き出し
     redacted_key = text_key.replace("ocr-results/", "redacted/")
     if redacted_key == text_key:
         redacted_key = f"redacted/{text_key}"
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=redacted_key,
-        Body=redacted_text.encode("utf-8"),
-        ContentType="text/plain",
-        ServerSideEncryption="aws:kms",
-    )
+    output_writer.put_text(key=redacted_key, text=redacted_text)
 
     # 墨消しメタデータ（sidecar JSON）
     metadata_key = f"redaction-metadata/{document_key}.json"
@@ -128,13 +124,7 @@ def handler(event, context):
         "redaction_count": len(redaction_metadata),
         "processed_at": context.aws_request_id,
     }
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=metadata_key,
-        Body=json.dumps(sidecar, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
-    )
+    output_writer.put_json(key=metadata_key, data=sidecar)
 
     logger.info(
         "UC16 Redaction: document=%s, redactions=%d",
