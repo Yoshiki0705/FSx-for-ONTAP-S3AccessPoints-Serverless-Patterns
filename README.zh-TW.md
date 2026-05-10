@@ -164,6 +164,16 @@ EventBridge Scheduler (定期執行)
 > 
 > 參考: [Textract 支援區域](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 支援區域](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
 
+### Phase 7 (UC15–UC17) 公共部門擴展
+
+| # | 目錄 | 產業 | 模式 | AI/ML 服務 | ap-northeast-1 驗證狀態 |
+|---|------|------|------|-----------|-----------------------|
+| UC15 | `defense-satellite/` | 國防/太空 | 衛星影像分析（物件偵測、變化偵測、警報）| Rekognition, SageMaker（可選）, Bedrock | ✅ 程式碼+測試完成，AWS 已驗證 |
+| UC16 | `government-archives/` | 政府 | 公文檔案·FOIA（OCR、分類、編輯、20 天期限追蹤）| Textract ⚠️, Comprehend, Bedrock, OpenSearch（可選）| ✅ 程式碼+測試完成，AWS 已驗證 |
+| UC17 | `smart-city-geospatial/` | 智慧城市 | 地理空間分析（CRS 正規化、土地利用、風險映射、規劃報告）| Rekognition, SageMaker（可選）, Bedrock (Nova Lite) | ✅ 程式碼+測試完成，AWS 已驗證 |
+
+> **公共部門合規性**: UC15 針對 DoD CC SRG / CSfC / FedRAMP High（GovCloud 遷移），UC16 針對 NARA / FOIA Section 552 / Section 508，UC17 針對 INSPIRE 指令 / OGC 標準。
+
 ## 區域選擇指南
 
 本模式集在 **ap-northeast-1（東京）** 進行了驗證，但可以部署到任何所需服務可用的 AWS 區域。

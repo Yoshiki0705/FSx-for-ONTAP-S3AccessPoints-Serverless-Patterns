@@ -164,6 +164,17 @@ EventBridge Scheduler (periodische Ausführung)
 > 
 > Referenz: [Von Textract unterstützte Regionen](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Von Comprehend Medical unterstützte Regionen](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
 
+### Phase 7 (UC15–UC17) Erweiterung für öffentliche Hand
+
+| # | Verzeichnis | Branche | Muster | AI/ML-Services | ap-northeast-1 Status |
+|---|-------------|---------|--------|----------------|----------------------|
+| UC15 | `defense-satellite/` | Verteidigung/Weltraum | Satellitenbildanalyse (Objekterkennung, Veränderungserkennung, Alarme) | Rekognition, SageMaker (optional), Bedrock | ✅ Code + Tests vollständig, AWS verifiziert |
+| UC16 | `government-archives/` | Regierung | Behördenakten / FOIA (OCR, Klassifikation, Schwärzung, 20-Tage-Frist) | Textract ⚠️, Comprehend, Bedrock, OpenSearch (optional) | ✅ Code + Tests vollständig, AWS verifiziert |
+| UC17 | `smart-city-geospatial/` | Smart City | Geospatiale Analyse (CRS-Normalisierung, Landnutzung, Risikokartierung, Planungsbericht) | Rekognition, SageMaker (optional), Bedrock (Nova Lite) | ✅ Code + Tests vollständig, AWS verifiziert |
+
+> **Konformität mit öffentlicher Hand**: UC15 adressiert DoD CC SRG / CSfC / FedRAMP High (GovCloud-Migration), UC16 adressiert NARA / FOIA Section 552 / Section 508, UC17 adressiert INSPIRE-Richtlinie / OGC-Standards.
+
+
 ## Leitfaden zur Regionsauswahl
 
 Diese Mustersammlung wurde in **ap-northeast-1 (Tokyo)** verifiziert, kann aber in jeder AWS-Region bereitgestellt werden, in der die erforderlichen Dienste verfügbar sind.
