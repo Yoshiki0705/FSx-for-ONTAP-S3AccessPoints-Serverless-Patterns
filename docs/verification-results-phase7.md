@@ -19,7 +19,18 @@ Phase 7 で追加した 3 つの Public Sector ユースケース（UC15: 衛星
 
 すべて既存の S3 AP `eda-demo-s3ap-fnwqydfpmd4gabncr8xqepjrrt131apn1a-ext-s3alias` と VPC/サブネット `vpc-0ae01826f906191af` / `subnet-0307ebbd55b35c842, subnet-0af86ebd3c65481b8` を再利用。
 
-## 検証結果サマリー
+## 検証結果サマリー（2026-05-10 第 2 回実行 — 実データ）
+
+初回検証（最小ダミーデータ）に加え、実 JPEG / 実 PDF を用いた 2 回目の検証を実施。
+すべての AI/ML サービスが意図通り動作。
+
+| UC | 入力 | ワークフロー実行結果 | 実行時間 | AI/ML 呼び出し結果 |
+|----|------|-------------------|----------|---------------------|
+| UC15 | 1024x1024 JPEG（建物・道路の合成航空写真）| ✅ SUCCEEDED | ~30 秒 | Rekognition 15+ labels 検出 |
+| UC16 | reportlab 生成 PDF（FOIA 請求書、PII 含む） | ✅ SUCCEEDED | ~35 秒 | Textract cross-region us-east-1 経由、43KB Blocks、Comprehend PII 5 エンティティ検出（99.6-99.9% 信頼度）|
+| UC17 | 1024x1024 JPEG（仙台地域と命名） | ✅ SUCCEEDED | ~45 秒 | Rekognition ラベル検出、Bedrock Nova Lite が「仙台地域」認識して日本語レポート生成 |
+
+## 検証結果サマリー（2026-05-10 第 1 回実行 — 最小ダミーデータ）
 
 | UC | 入力 | ワークフロー実行結果 | 実行時間（概算） | 所要 Lambda 呼び出し |
 |----|------|-------------------|-----------------|---------------------|

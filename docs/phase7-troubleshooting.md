@@ -262,3 +262,65 @@ aws s3 ls s3://<output-bucket>/ --recursive
 # 8. クリーンアップ
 bash scripts/cleanup_phase7.sh
 ```
+
+
+## 9. AWS コンソール操作の注意点（2026-05-10 の UI/UX 検証で判明）
+
+### 9.1 S3 Access Point Alias はブラウザでは直接開けない
+
+**症状**: S3 AP alias を URL の bucket パラメータに指定すると以下エラー:
+```
+You can't view bucket details by using an Access Point alias
+```
+
+**原因**: Alias はバケット名と異なる識別子のため、コンソールがバケット操作に紐付けられない。
+
+**対処**:
+- **Access Points for FSx** 専用ページ (`/s3/fsxap`) を使用
+- または実バケット名でアクセス（FSx 配下のバケットは通常隠匿）
+- プログラムからは boto3/SDK で alias を指定して問題なく動作
+
+### 9.2 VPC Lambda の ENI 解放による削除遅延
+
+**症状**: CloudFormation `DELETE_IN_PROGRESS` で 15-30 分停滞。Lambda 関数だけが削除中のまま。
+
+**原因**: Hyperplane ENI（VPC 配置 Lambda 用）は、最後のリクエストから数十分経過しないと AWS 側が解放しない。
+
+**対処**: 待つのが正解。明示的に ENI を削除しようとしても以下エラーで失敗する:
+```
+AWS Lambda VPC ENI Service is using this ENI
+```
+
+並列で別 UC の作業を進められるので、放置で OK。
+
+### 9.3 Textract を cross-region で呼び出す際のレイテンシ
+
+**実測値 (2026-05-10 検証)**:
+- UC16 OCR Lambda で PDF (1.6KB、1 ページ) を us-east-1 の Textract に投げる
+- Lambda 実行時間: 1,200 ms (うち Textract 往復 ~900 ms)
+- 取得結果: 43KB Blocks JSON（OCR 成功、FORMS + TABLES 構造含む）
+
+ネットワークレイテンシは約 150-200 ms が追加で積み重なる。同期 sync API
+（AnalyzeDocument）は問題なく動作するが、大量処理時は async API（StartDocumentAnalysis）推奨。
+
+### 9.4 Bedrock Nova Lite は文脈情報を活用
+
+**観察**: `sendai_area.jpg` というファイル名をプロンプトに含めただけで、生成レポートで
+「仙台地域」として認識してくれる。ファイル名やメタデータに地域情報を含めると、
+AI が地理的・文化的に適切な提案を行いやすい。
+
+### 9.5 Rekognition は合成画像でも良好な結果
+
+**観察**: 1024x1024 JPEG（green 背景 + grey rectangles for buildings + grey lines for roads）
+で 15 件以上のラベル検出に成功。実衛星画像でなくても、ML テストには十分。
+
+PIL で合成画像を生成して軽量にテストできる:
+```python
+from PIL import Image, ImageDraw
+img = Image.new('RGB', (1024, 1024), (100, 150, 100))
+draw = ImageDraw.Draw(img)
+for x in range(100, 900, 200):
+    for y in range(100, 900, 200):
+        draw.rectangle([x, y, x+100, y+100], fill=(120, 120, 120))
+img.save('sample.jpg', 'JPEG', quality=85)
+```
