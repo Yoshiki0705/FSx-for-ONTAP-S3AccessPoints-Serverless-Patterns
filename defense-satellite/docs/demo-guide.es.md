@@ -1,30 +1,30 @@
-# UC15 デモスクリプト（30 分枠）
+# UC15 Script de demostración (sesión de 30 minutos)
 
-🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | Español
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | Español
 
-> Nota: Esta traducción es un borrador generado automáticamente a partir del original japonés. Se agradecen las contribuciones para mejorar la calidad de la traducción.
+> Nota: Esta traducción ha sido producida por Amazon Bedrock Claude. Las contribuciones para mejorar la calidad de la traducción son bienvenidas.
 
-## 前提
+## Requisitos previos
 
-- AWS アカウント、ap-northeast-1
+- Cuenta de AWS, ap-northeast-1
 - FSx for NetApp ONTAP + S3 Access Point
-- `defense-satellite/template-deploy.yaml` をデプロイ済み（`EnableSageMaker=false`）
+- `defense-satellite/template-deploy.yaml` desplegado (`EnableSageMaker=false`)
 
-## タイムライン
+## Cronograma
 
-### 0:00 - 0:05 イントロ（5 分）
+### 0:00 - 0:05 Introducción (5 minutos)
 
-- ユースケース背景: 衛星画像データの増加（Sentinel, Landsat, 商用 SAR）
-- 従来型 NAS への課題: コピーベースワークフローで時間・コストがかかる
-- FSxN S3AP のメリット: zero-copy、NTFS ACL 連動、サーバーレス処理
+- Contexto del caso de uso: aumento de datos de imágenes satelitales (Sentinel, Landsat, SAR comercial)
+- Desafíos del NAS tradicional: flujos de trabajo basados en copias que consumen tiempo y costos
+- Ventajas de FSxN S3AP: zero-copy, integración con NTFS ACL, procesamiento serverless
 
-### 0:05 - 0:10 アーキテクチャ解説（5 分）
+### 0:05 - 0:10 Explicación de la arquitectura (5 minutos)
 
-- Mermaid 図で Step Functions ワークフロー紹介
-- 画像サイズでの Rekognition / SageMaker 切替ロジック
-- geohash による変化検出の仕組み
+- Presentación del flujo de trabajo de Step Functions con diagrama Mermaid
+- Lógica de conmutación entre Rekognition / SageMaker según el tamaño de imagen
+- Mecanismo de detección de cambios mediante geohash
 
-### 0:10 - 0:15 ライブデプロイ（5 分）
+### 0:10 - 0:15 Despliegue en vivo (5 minutos)
 
 ```bash
 aws cloudformation deploy \
@@ -40,7 +40,7 @@ aws cloudformation deploy \
   --region ap-northeast-1
 ```
 
-### 0:15 - 0:20 サンプル画像処理（5 分）
+### 0:15 - 0:20 Procesamiento de imágenes de muestra (5 minutos)
 
 ```bash
 # サンプル GeoTIFF アップロード
@@ -53,32 +53,84 @@ aws stepfunctions start-execution \
   --input '{}'
 ```
 
-- AWS コンソールで Step Functions グラフを見せる（Discovery → Map → Tiling → ObjectDetection → ChangeDetection → GeoEnrichment → AlertGeneration）
-- SUCCEEDED までの実行時間を確認（通常 2-3 分）
+- Mostrar el gráfico de Step Functions en la consola de AWS (Discovery → Map → Tiling → ObjectDetection → ChangeDetection → GeoEnrichment → AlertGeneration)
+- Verificar el tiempo de ejecución hasta SUCCEEDED (normalmente 2-3 minutos)
 
-### 0:20 - 0:25 結果確認（5 分）
+### 0:20 - 0:25 Verificación de resultados (5 minutos)
 
-- S3 出力バケットの階層を見せる:
+- Mostrar la jerarquía del bucket de salida S3:
   - `tiles/YYYY/MM/DD/<basename>/metadata.json`
   - `detections/<tile_key>_detections.json`
   - `enriched/YYYY/MM/DD/<tile_id>.json`
-- CloudWatch Logs で EMF メトリクス確認
-- DynamoDB `change-history` テーブルで変化検出履歴
+- Verificar métricas EMF en CloudWatch Logs
+- Historial de detección de cambios en la tabla DynamoDB `change-history`
 
-### 0:25 - 0:30 Q&A + Wrap-up（5 分）
+### 0:25 - 0:30 Preguntas y respuestas + Cierre (5 minutos)
 
-- Public Sector 規制対応（DoD CC SRG, CSfC, FedRAMP）
-- GovCloud 移行パス（同じテンプレートで `ap-northeast-1` → `us-gov-west-1`）
-- コスト最適化（SageMaker Endpoint は実運用時のみ有効化）
-- 次ステップ: 多衛星プロバイダ統合、Sentinel-1/2 Hub 連携
+- Cumplimiento normativo del sector público (DoD CC SRG, CSfC, FedRAMP)
+- Ruta de migración a GovCloud (misma plantilla de `ap-northeast-1` → `us-gov-west-1`)
+- Optimización de costos (habilitar SageMaker Endpoint solo en operación real)
+- Próximos pasos: integración de múltiples proveedores de satélites, integración con Sentinel-1/2 Hub
 
-## よくある質問と回答
+## Preguntas frecuentes y respuestas
 
-**Q. SAR データ（Sentinel-1 の HDF5）はどう扱う？**  
-A. Discovery Lambda で `image_type=sar` に分類、Tiling は HDF5 パーサ実装可（rasterio or h5py）。Object Detection は専用 SAR 解析モデル（SageMaker）必須。
+**P. ¿Cómo se manejan los datos SAR (HDF5 de Sentinel-1)?**  
+R. Discovery Lambda los clasifica como `image_type=sar`, Tiling puede implementar un parser HDF5 (rasterio o h5py). Object Detection requiere un modelo de análisis SAR dedicado (SageMaker).
 
-**Q. 画像サイズ閾値（5MB）の根拠？**  
-A. Rekognition DetectLabels API の Bytes パラメータ上限。S3 経由なら 15MB まで可。プロトタイプは Bytes ルートを採用。
+**P. ¿Cuál es la base del umbral de tamaño de imagen (5MB)?**  
+R. El límite superior del parámetro Bytes de la API DetectLabels de Rekognition. Vía S3 permite hasta 15MB. El prototipo adopta la ruta Bytes.
 
-**Q. 変化検出の精度は？**  
-A. 現行実装は bbox 面積ベースの簡易比較。本格運用では SageMaker のセマンティックセグメンテーション推奨。
+**P. ¿Cuál es la precisión de la detección de cambios?**  
+R. La implementación actual es una comparación simple basada en el área del bbox. Para operación formal se recomienda segmentación semántica de SageMaker.
+
+---
+
+## Acerca del destino de salida: seleccionable con OutputDestination (Patrón B)
+
+UC15 defense-satellite soporta el parámetro `OutputDestination` desde la actualización del 2026-05-11
+(consulte `docs/output-destination-patterns.md`).
+
+**Carga de trabajo objetivo**: Tiling de imágenes satelitales / Detección de objetos / Geo enrichment
+
+**2 modos**:
+
+### STANDARD_S3 (predeterminado, como antes)
+Crea un nuevo bucket S3 (`${AWS::StackName}-output-${AWS::AccountId}`) y
+escribe los resultados de IA allí. Solo el manifest de Discovery Lambda se escribe
+en el S3 Access Point (como antes).
+
+```bash
+aws cloudformation deploy \
+  --template-file defense-satellite/template-deploy.yaml \
+  --stack-name fsxn-defense-satellite-demo \
+  --parameter-overrides \
+    OutputDestination=STANDARD_S3 \
+    ... (otros parámetros obligatorios)
+```
+
+### FSXN_S3AP (patrón "no data movement")
+Escribe los metadata de tiling, JSON de detección de objetos y resultados de detección con Geo enrichment
+de vuelta al **mismo volumen FSx ONTAP** que las imágenes satelitales originales a través del FSxN S3 Access Point.
+Los analistas pueden referenciar directamente los resultados de IA dentro de la estructura de directorios SMB/NFS existente.
+No se crea un bucket S3 estándar.
+
+```bash
+aws cloudformation deploy \
+  --template-file defense-satellite/template-deploy.yaml \
+  --stack-name fsxn-defense-satellite-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    S3AccessPointName=eda-demo-s3ap \
+    ... (otros parámetros obligatorios)
+```
+
+**Notas importantes**:
+
+- Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM tanto en formato Alias como ARN)
+- Objetos superiores a 5GB no son posibles con FSxN S3AP (especificación de AWS), se requiere carga multiparte
+- ChangeDetection Lambda solo usa DynamoDB, por lo que no se ve afectado por `OutputDestination`
+- AlertGeneration Lambda solo usa SNS, por lo que no se ve afectado por `OutputDestination`
+- Para las restricciones de especificación de AWS, consulte
+  [la sección "Restricciones de especificación de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
+  y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
