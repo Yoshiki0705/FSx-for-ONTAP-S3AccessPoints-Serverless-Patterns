@@ -46,6 +46,12 @@ scripts/deploy_phase2_batch.sh
 scripts/deploy_phase4.sh
 scripts/cleanup_phase4.sh
 scripts/capture_screenshots.sh
+scripts/_sensitive_strings.py
+scripts/_verify_masks.py
+scripts/_reapply_masks_inplace.py
+# The deploy/cleanup/verify scripts were historically committed with account IDs.
+# Going forward they must read values from environment variables only; keep the
+# local copies gitignored to prevent accidental re-commit with hardcoded values.
 
 # Screenshots — originals contain account info, masked versions are safe to publish
 docs/screenshots/originals/
@@ -76,6 +82,11 @@ docs/remaining-issues-checklist.md
 
 # dev.to article drafts (published separately, not part of the codebase)
 docs/article-*.md
+
+# Private AWS support case tracking (contains AWS support case numbers — must not be committed)
+docs/aws-feature-requests/_submission-tracking.md
+docs/aws-feature-requests/_case-numbers.md
+docs/aws-feature-requests/.private/
 
 # Generated test data
 test-data/
