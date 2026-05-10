@@ -1,0 +1,24 @@
+"""Environment-specific sensitive literals for mask verification.
+
+COPY THIS FILE to `_sensitive_strings.py` and fill in with your actual
+account-specific values. The `_sensitive_strings.py` file is gitignored
+and must NEVER be committed.
+
+Used by `mask_uc_demos.py` to verify PNG metadata does not contain these
+literals after masking.
+"""
+
+# Each string must be an exact substring to search for in PNG binary metadata
+# and in rendered text regions. Fill in with your own environment's values.
+SENSITIVE_STRINGS: tuple[str, ...] = (
+    # AWS account ID
+    # "123456789012",
+    # FSx volume / file system / SVM IDs
+    # "fsvol-xxxxxxxxxxxxxxxxx",
+    # VPC / subnet / security group IDs
+    # "vpc-xxxxxxxxxxxxxxxxx",
+    # ONTAP management IP, EC2 IPs
+    # "10.0.0.1",
+    # Notification email
+    # "you@example.com",
+)
