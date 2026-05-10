@@ -1,27 +1,25 @@
-# UC16: 政府機関 — 公文書デジタルアーカイブ / FOIA 対応アーキテクチャ
+# UC16: Regierungsbehörde — Digitales Archiv für öffentliche Dokumente / FOIA-Compliance-Architektur
 
-🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | Deutsch | [Español](architecture.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | Deutsch | [Español](architecture.es.md)
 
-> Hinweis: Diese Übersetzung ist ein automatisch generierter Entwurf basierend auf dem japanischen Original. Beiträge zur Verbesserung der Übersetzungsqualität sind willkommen.
+> Hinweis: Diese Übersetzung wurde von Amazon Bedrock Claude erstellt. Beiträge zur Verbesserung der Übersetzungsqualität sind willkommen.
 
-## 概要
+## Überblick
 
-FSx for NetApp ONTAP S3 Access Points を活用した公文書（PDF / TIFF / EML / DOCX）の
-OCR、分類、PII 検出、墨消し、全文検索、FOIA 期限トラッキングを自動化する
-サーバーレスパイプライン。
+Ein serverloses Pipeline-System zur Automatisierung von OCR, Klassifizierung, PII-Erkennung, Schwärzung, Volltextsuche und FOIA-Fristenverfolgung für öffentliche Dokumente (PDF / TIFF / EML / DOCX) unter Verwendung von FSx for NetApp ONTAP S3 Access Points.
 
-## アーキテクチャ図
+## Architekturdiagramm
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>公文書ストレージ<br/>部署別 NTFS ACL] --> S3AP[S3 Access Point]
+    FSx[FSx ONTAP<br/>Speicher für öffentliche Dokumente<br/>Abteilungsspezifische NTFS ACL] --> S3AP[S3 Access Point]
     S3AP --> EB[EventBridge Scheduler]
     EB --> SFN[Step Functions<br/>Archive Workflow]
     SFN --> L1[Discovery]
     L1 --> L2[OCR<br/>Textract sync/async]
     L2 --> L3[Classification<br/>Comprehend]
-    L3 --> L4[Entity Extraction<br/>PII 検出]
-    L4 --> L5[Redaction<br/>墨消し + sidecar]
+    L3 --> L4[Entity Extraction<br/>PII-Erkennung]
+    L4 --> L5[Redaction<br/>Schwärzung + sidecar]
     L5 --> C{OpenSearch?}
     C -->|enabled| L6[Index Generation<br/>AOSS / Managed]
     C -->|disabled| L7
@@ -30,39 +28,38 @@ graph LR
 
     FD[EventBridge Schedule<br/>1/day] --> FL[FOIA Deadline Lambda]
     FL --> FDB[DynamoDB<br/>FOIA Requests]
-    FL --> SNS[SNS<br/>期限アラート]
+    FL --> SNS[SNS<br/>Fristenalarm]
 ```
 
-## OpenSearch モード比較
+## OpenSearch-Modus-Vergleich
 
-| モード | 用途 | 月次コスト（試算） |
+| Modus | Verwendungszweck | Monatliche Kosten (geschätzt) |
 |--------|------|-------------------|
-| `none` | 検証・低コスト運用 | $0（インデックス機能なし） |
-| `serverless` | 可変ワークロード、従量課金 | $350 - $700（最低 2 OCU） |
-| `managed` | 固定ワークロード、安価 | $35 - $100（t3.small.search × 1） |
+| `none` | Validierung, kostengünstiger Betrieb | $0 (keine Indexierungsfunktion) |
+| `serverless` | Variable Workloads, nutzungsbasierte Abrechnung | $350 - $700 (mindestens 2 OCU) |
+| `managed` | Feste Workloads, kostengünstig | $35 - $100 (t3.small.search × 1) |
 
-`template-deploy.yaml` の `OpenSearchMode` パラメータで切替。Step Functions
-ワークフローの Choice ステートで IndexGeneration の有無を動的に制御。
+Umschaltung über den `OpenSearchMode`-Parameter in `template-deploy.yaml`. Das Vorhandensein von IndexGeneration wird dynamisch über den Choice-State im Step Functions-Workflow gesteuert.
 
-## NARA / FOIA 準拠
+## NARA / FOIA-Konformität
 
-### NARA General Records Schedule (GRS) 保存期間マッピング
+### NARA General Records Schedule (GRS) Aufbewahrungsfristen-Mapping
 
-実装は `compliance_check/handler.py` の `GRS_RETENTION_MAP`：
+Implementierung in `GRS_RETENTION_MAP` in `compliance_check/handler.py`:
 
-| Clearance Level | GRS Code | 保存年数 |
+| Clearance Level | GRS Code | Aufbewahrungsjahre |
 |-----------------|----------|---------|
-| public | GRS 2.1 | 3 年 |
-| sensitive | GRS 2.2 | 7 年 |
-| confidential | GRS 1.1 | 30 年 |
+| public | GRS 2.1 | 3 Jahre |
+| sensitive | GRS 2.2 | 7 Jahre |
+| confidential | GRS 1.1 | 30 Jahre |
 
-### FOIA 20 営業日規則
+### FOIA 20-Werktage-Regel
 
-- `foia_deadline_reminder/handler.py` は US 連邦祝日を除外した営業日計算を実装
-- 期限 N 日前（`REMINDER_DAYS_BEFORE`、デフォルト 3）に SNS リマインダー
-- 期限超過で severity=HIGH のアラート
+- `foia_deadline_reminder/handler.py` implementiert Werktageberechnung unter Ausschluss von US-Bundesfeiertagen
+- SNS-Erinnerung N Tage vor Fristablauf (`REMINDER_DAYS_BEFORE`, Standard 3)
+- Alarm mit severity=HIGH bei Fristüberschreitung
 
-## IAM マトリクス
+## IAM-Matrix
 
 | Principal | Permission | Resource |
 |-----------|------------|----------|
@@ -72,26 +69,42 @@ graph LR
 | Processing Lambdas | `dynamodb:*Item`, `Query`, `Scan` | RetentionTable, FoiaRequestTable |
 | FOIA Deadline Lambda | `sns:Publish` | Notification Topic |
 
-## Public Sector 規制対応
+## Einhaltung von Public Sector-Vorschriften
 
 ### NARA Electronic Records Management (ERM)
-- FSx ONTAP Snapshot + Backup で WORM 対応可
-- すべての処理に CloudTrail 証跡
-- DynamoDB Point-in-Time Recovery 有効化
+- WORM-Unterstützung durch FSx ONTAP Snapshot + Backup möglich
+- CloudTrail-Protokollierung für alle Verarbeitungsschritte
+- DynamoDB Point-in-Time Recovery aktiviert
 
 ### FOIA Section 552
-- 20 営業日回答期限を自動トラッキング
-- 墨消し処理は sidecar JSON で監査証跡を保持
-- 原文 PII は hash のみ保存（復元不可、プライバシー保護）
+- Automatische Verfolgung der 20-Werktage-Antwortfrist
+- Schwärzungsverarbeitung behält Audit-Trail in sidecar JSON bei
+- Original-PII wird nur als Hash gespeichert (nicht wiederherstellbar, Datenschutz)
 
-### Section 508 アクセシビリティ
-- OCR による全文テキスト化で支援技術対応
-- 墨消し領域も `[REDACTED]` トークン挿入で読み上げ可能
+### Section 508 Barrierefreiheit
+- Volltextkonvertierung durch OCR für Unterstützung assistiver Technologien
+- Geschwärzte Bereiche mit `[REDACTED]`-Token-Einfügung für Vorlesefunktion
 
-## Guard Hooks 準拠
+## Guard Hooks-Konformität
 
 - ✅ `encryption-required`: S3 + DynamoDB + SNS + OpenSearch
-- ✅ `iam-least-privilege`: Textract/Comprehend は API 制約により `*`
-- ✅ `logging-required`: 全 Lambda に LogGroup 設定
-- ✅ `dynamodb-backup`: PITR 有効化
-- ✅ `pii-protection`: 原文 hash のみ保存、redaction metadata 分離
+- ✅ `iam-least-privilege`: Textract/Comprehend verwenden `*` aufgrund von API-Einschränkungen
+- ✅ `logging-required`: LogGroup für alle Lambda-Funktionen konfiguriert
+- ✅ `dynamodb-backup`: PITR aktiviert
+- ✅ `pii-protection`: Nur Original-Hash gespeichert, redaction metadata getrennt
+
+## Ausgabeziel (OutputDestination) — Pattern B
+
+UC16 unterstützt seit dem Update vom 11.05.2026 den `OutputDestination`-Parameter.
+
+| Modus | Ausgabeziel | Erstellte Ressourcen | Anwendungsfall |
+|-------|-------|-------------------|------------|
+| `STANDARD_S3` (Standard) | Neuer S3-Bucket | `AWS::S3::Bucket` | Wie bisher werden AI-Artefakte in einem separaten S3-Bucket gespeichert |
+| `FSXN_S3AP` | FSxN S3 Access Point | Keine (Rückschreiben in bestehendes FSx-Volume) | Mitarbeiter für öffentliche Dokumente können OCR-Text, geschwärzte Dateien und Metadaten über SMB/NFS im selben Verzeichnis wie die Originaldokumente einsehen |
+
+**Betroffene Lambda-Funktionen**: OCR, Classification, EntityExtraction, Redaction, IndexGeneration (5 Funktionen).  
+**Rücklesen in der Verarbeitungskette**: Nachgelagerte Lambda-Funktionen führen symmetrisches Rücklesen zum Schreibziel über `get_*` in `shared/output_writer.py` durch. Im FSXN_S3AP-Modus erfolgt direktes Rücklesen vom S3AP, sodass die gesamte Kette mit einem konsistenten destination arbeitet.  
+**Nicht betroffene Lambda-Funktionen**: Discovery (manifest wird direkt in S3AP geschrieben), ComplianceCheck (nur DynamoDB), FoiaDeadlineReminder (nur DynamoDB + SNS).  
+**Beziehung zu OpenSearch**: Index wird unabhängig über den `OpenSearchMode`-Parameter verwaltet, nicht beeinflusst von `OutputDestination`.
+
+Details siehe [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md).
