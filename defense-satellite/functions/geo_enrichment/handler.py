@@ -4,7 +4,10 @@
 抽出して、検出結果を補強する。
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +105,7 @@ def handler(event, context):
             "enriched_detections": [...]
         }
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
 
     tile_id = event.get("tile_id", "unknown")
     detections = event.get("detections", [])
@@ -118,19 +122,15 @@ def handler(event, context):
             "geo_context": enrichment,
         })
 
-    # S3 に書き出し
+    # 出力先に書き出し
     result_key = f"enriched/{datetime.utcnow().strftime('%Y/%m/%d')}/{tile_id}.json"
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=result_key,
-        Body=json.dumps({
+    output_writer.put_json(
+        key=result_key,
+        data={
             "tile_id": tile_id,
             "enrichment": enrichment,
             "enriched_detections": enriched_detections,
-        }, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
+        },
     )
 
     logger.info(
