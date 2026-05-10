@@ -1,0 +1,13 @@
+{
+    "claim_id": "CLM20260510_deef0265",
+    "generated_at": "2026-05-10T18:16:44.863314+00:00",
+    "damage_summary": "\u30ec\u30dd\u30fc\u30c8\u81ea\u52d5\u751f\u6210\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002\u30a8\u30e9\u30fc: An error occurred (ValidationException) when calling the InvokeModel operation: Malformed input request: #: required key [messages] not found, please reformat your input and try again.",
+    "photo_assessments": [],
+    "estimate_correlation": {
+        "matched_items": 0,
+        "discrepancies": [],
+        "total_assessed_damage": 0
+    },
+    "recommendation": "review",
+    "confidence": 0.75
+}
