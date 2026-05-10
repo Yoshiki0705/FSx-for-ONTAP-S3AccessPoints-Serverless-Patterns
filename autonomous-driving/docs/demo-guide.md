@@ -168,3 +168,51 @@ sam local invoke \
 ---
 
 *本ドキュメントは技術プレゼンテーション用デモ動画の制作ガイドです。*
+
+---
+
+## 検証済みの UI/UX スクリーンショット
+
+Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユーザーが日常業務で実際に
+見る UI/UX 画面**を対象とする。技術者向けビュー（Step Functions グラフ、CloudFormation
+スタックイベント等）は `docs/verification-results-*.md` に集約。
+
+### このユースケースの検証ステータス
+
+- ⚠️ **E2E 検証**: 一部機能のみ（本番環境では追加検証推奨）
+- 📸 **UI/UX 再撮影**: 未実施
+
+### 既存スクリーンショット（Phase 1-6 から該当分）
+
+*(該当なし。再検証時に新規撮影してください)*
+
+### 再検証時の UI/UX 対象画面（推奨撮影リスト）
+
+- S3 出力バケット（keyframes/、annotations/、qc/）
+- Rekognition キーフレーム物体検出結果
+- LiDAR 点群品質チェックサマリー
+- COCO 互換アノテーション JSON
+
+### 撮影ガイド
+
+1. **事前準備**:
+   - `bash scripts/verify_phase7_prerequisites.sh` で前提確認（共通 VPC/S3 AP 有無）
+   - `UC=autonomous-driving bash scripts/package_generic_uc.sh` で Lambda パッケージ
+   - `bash scripts/deploy_generic_ucs.sh UC9` でデプロイ
+
+2. **サンプルデータ配置**:
+   - S3 AP Alias 経由で `footage/` プレフィックスにサンプルファイルをアップロード
+   - Step Functions `fsxn-autonomous-driving-demo-workflow` を起動（入力 `{}`）
+
+3. **撮影**（CloudShell・ターミナルは閉じる、ブラウザ右上のユーザー名は黒塗り）:
+   - S3 出力バケット `fsxn-autonomous-driving-demo-output-<account>` の俯瞰
+   - AI/ML 出力 JSON のプレビュー（`build/preview_*.html` の形式を参考に）
+   - SNS メール通知（該当する場合）
+
+4. **マスク処理**:
+   - `python3 scripts/mask_uc_demos.py autonomous-driving-demo` で自動マスク
+   - `docs/screenshots/MASK_GUIDE.md` に従って追加マスク（必要に応じて）
+
+5. **クリーンアップ**:
+   - `bash scripts/cleanup_generic_ucs.sh UC9` で削除
+   - VPC Lambda ENI 解放に 15-30 分（AWS の仕様）
