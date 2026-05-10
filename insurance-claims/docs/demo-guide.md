@@ -162,6 +162,27 @@
 Phase 7 と同じ方針で、**保険査定担当者が日常業務で実際に使う UI/UX 画面**を撮影。
 技術者向け画面（Step Functions グラフ等）は除外。
 
+### 出力先の選択: 標準 S3 vs FSxN S3AP
+
+UC14 は 2026-05-10 のアップデートで `OutputDestination` パラメータをサポートしました。
+**同一 FSx ボリュームに AI 成果物を書き戻す** ことで、請求処理担当者が
+請求ケースのディレクトリ構造内で損害評価 JSON・OCR 結果・請求レポートを閲覧できます
+（"no data movement" パターン、PII 保護の観点でも有利）。
+
+```bash
+# STANDARD_S3 モード（デフォルト、従来どおり）
+--parameter-overrides OutputDestination=STANDARD_S3 ...
+
+# FSXN_S3AP モード（AI 成果物を FSx ONTAP ボリュームに書き戻し）
+--parameter-overrides \
+  OutputDestination=FSXN_S3AP \
+  OutputS3APPrefix=ai-outputs/ \
+  ...
+```
+
+AWS 仕様上の制約と回避策は [プロジェクト README の "AWS 仕様上の制約と回避策"
+セクション](../../README.md#aws-仕様上の制約と回避策) 参照。
+
 ### 1. 保険金請求レポート — 査定担当者向けサマリー
 
 事故写真 Rekognition 解析 + 見積書 Textract OCR + 査定推奨判定を統合したレポート。

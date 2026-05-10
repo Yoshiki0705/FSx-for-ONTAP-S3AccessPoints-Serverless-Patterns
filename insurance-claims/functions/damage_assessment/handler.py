@@ -6,7 +6,10 @@ Bedrock で構造化損害評価（damage_type, severity_level, affected_compone
 
 Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
     LOG_PII_DATA: PII データのログ出力 (デフォルト: false)
 """
@@ -22,6 +25,7 @@ from pathlib import PurePosixPath
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
@@ -207,13 +211,14 @@ def handler(event, context):
     file_size = event.get("Size", 0)
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
 
     logger.info(
-        "Damage assessment started: file_key=%s, size=%d",
+        "Damage assessment started: file_key=%s, size=%d, output=%s",
         file_key,
         file_size,
+        output_writer.target_description,
     )
 
     # 画像取得
@@ -256,7 +261,7 @@ def handler(event, context):
     file_stem = PurePosixPath(file_key).stem
     output_key = f"assessments/{now.strftime('%Y/%m/%d')}/{file_stem}_assessment.json"
 
-    # 結果を S3 出力バケットに書き込み
+    # 結果を出力先（標準 S3 または FSxN S3AP）に書き込み
     result = {
         "status": status,
         "file_key": file_key,
@@ -265,19 +270,14 @@ def handler(event, context):
         "assessed_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(result, default=str, ensure_ascii=False).encode("utf-8"),
-        ContentType="application/json; charset=utf-8",
-    )
+    output_writer.put_json(key=output_key, data=result)
 
     logger.info(
-        "Damage assessment completed: file_key=%s, status=%s, type=%s",
+        "Damage assessment completed: file_key=%s, status=%s, type=%s, output_uri=%s",
         file_key,
         status,
         damage_assessment.get("damage_type", "unknown"),
+        output_writer.build_s3_uri(output_key),
     )
 
 

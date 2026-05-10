@@ -374,9 +374,12 @@ class TestImageTaggingHandler:
         "OUTPUT_BUCKET": "test-output-bucket",
         "CONFIDENCE_THRESHOLD": "70",
     })
+    @patch("functions.image_tagging.handler.OutputWriter")
     @patch("functions.image_tagging.handler.boto3")
     @patch("functions.image_tagging.handler.S3ApHelper")
-    def test_handler_success_above_threshold(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_success_above_threshold(
+        self, mock_s3ap_cls, mock_boto3, mock_output_writer_cls
+    ):
         """正常系: 閾値以上で SUCCESS ステータスが返ること"""
         from functions.image_tagging.handler import handler
 
@@ -404,6 +407,12 @@ class TestImageTaggingHandler:
 
         mock_boto3.client.side_effect = client_factory
 
+        # OutputWriter mock
+        mock_writer = MagicMock()
+        mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+        mock_output_writer_cls.from_env.return_value = mock_writer
+
         event = {"Key": "products/SKU12345_front.jpg", "Size": 2097152}
         context = MagicMock()
 
@@ -414,15 +423,20 @@ class TestImageTaggingHandler:
         assert result["max_confidence"] == 99.8
         assert result["above_threshold"] is True
         assert len(result["labels"]) == 2
+        # OutputWriter.put_json が呼ばれたことを確認
+        mock_writer.put_json.assert_called_once()
 
     @patch.dict(os.environ, {
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
         "CONFIDENCE_THRESHOLD": "70",
     })
+    @patch("functions.image_tagging.handler.OutputWriter")
     @patch("functions.image_tagging.handler.boto3")
     @patch("functions.image_tagging.handler.S3ApHelper")
-    def test_handler_manual_review(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_manual_review(
+        self, mock_s3ap_cls, mock_boto3, mock_output_writer_cls
+    ):
         """閾値未満で MANUAL_REVIEW ステータスが返ること"""
         from functions.image_tagging.handler import handler
 
@@ -448,6 +462,11 @@ class TestImageTaggingHandler:
 
         mock_boto3.client.side_effect = client_factory
 
+        mock_writer = MagicMock()
+        mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+        mock_output_writer_cls.from_env.return_value = mock_writer
+
         event = {"Key": "products/unclear_image.jpg", "Size": 500000}
         context = MagicMock()
 
@@ -464,8 +483,9 @@ class TestCatalogMetadataHandler:
         "OUTPUT_BUCKET": "test-output-bucket",
         "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
     })
+    @patch("functions.catalog_metadata.handler.OutputWriter")
     @patch("functions.catalog_metadata.handler.boto3")
-    def test_handler_success(self, mock_boto3):
+    def test_handler_success(self, mock_boto3, mock_output_writer_cls):
         """正常系: メタデータ生成が成功すること"""
         from functions.catalog_metadata.handler import handler
 
@@ -493,6 +513,11 @@ class TestCatalogMetadataHandler:
 
         mock_boto3.client.side_effect = client_factory
 
+        mock_writer = MagicMock()
+        mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+        mock_output_writer_cls.from_env.return_value = mock_writer
+
         event = {
             "file_key": "products/SKU12345_front.jpg",
             "labels": [
@@ -515,8 +540,11 @@ class TestCatalogMetadataHandler:
         "OUTPUT_BUCKET": "test-output-bucket",
         "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
     })
+    @patch("functions.catalog_metadata.handler.OutputWriter")
     @patch("functions.catalog_metadata.handler.boto3")
-    def test_handler_bedrock_invalid_json_fallback(self, mock_boto3):
+    def test_handler_bedrock_invalid_json_fallback(
+        self, mock_boto3, mock_output_writer_cls
+    ):
         """Bedrock が無効な JSON を返した場合にフォールバックが使用されること"""
         from functions.catalog_metadata.handler import handler
 
@@ -535,6 +563,11 @@ class TestCatalogMetadataHandler:
             return mock_s3_client
 
         mock_boto3.client.side_effect = client_factory
+
+        mock_writer = MagicMock()
+        mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
+        mock_output_writer_cls.from_env.return_value = mock_writer
 
         event = {
             "file_key": "products/SKU99999.png",

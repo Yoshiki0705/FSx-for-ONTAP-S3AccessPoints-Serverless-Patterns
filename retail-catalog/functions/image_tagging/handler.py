@@ -6,14 +6,16 @@ S3 Access Point 経由で商品画像を取得し、Amazon Rekognition DetectLab
 
 Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     CONFIDENCE_THRESHOLD: 信頼度閾値 (デフォルト: 70)
     SNS_TOPIC_ARN: SNS トピック ARN (手動レビュー通知用)
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -22,6 +24,7 @@ from pathlib import PurePosixPath
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
@@ -93,14 +96,15 @@ def handler(event, context):
         dict: status, file_key, labels, max_confidence, above_threshold, output_key
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     confidence_threshold = float(os.environ.get("CONFIDENCE_THRESHOLD", "70"))
     file_key = event["Key"]
 
     logger.info(
-        "Image tagging started: file_key=%s, threshold=%.1f",
+        "Image tagging started: file_key=%s, threshold=%.1f, output=%s",
         file_key,
         confidence_threshold,
+        output_writer.target_description,
     )
 
     # S3 AP 経由で画像を取得
@@ -122,7 +126,7 @@ def handler(event, context):
     file_stem = PurePosixPath(file_key).stem
     output_key = f"tags/{now.strftime('%Y/%m/%d')}/{file_stem}.json"
 
-    # タグ結果を S3 出力バケットに書き込み
+    # タグ結果を出力先（標準 S3 または FSxN S3AP）に書き込み
     output_data = {
         "file_key": file_key,
         "status": status,
@@ -133,21 +137,16 @@ def handler(event, context):
         "tagged_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(output_data, default=str).encode("utf-8"),
-        ContentType="application/json",
-    )
+    output_writer.put_json(key=output_key, data=output_data)
 
     logger.info(
         "Image tagging completed: file_key=%s, status=%s, "
-        "max_confidence=%.2f, label_count=%d",
+        "max_confidence=%.2f, label_count=%d, output_uri=%s",
         file_key,
         status,
         max_confidence,
         len(labels),
+        output_writer.build_s3_uri(output_key),
     )
 
 

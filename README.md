@@ -217,6 +217,70 @@ Phase 7 では Public Sector の **一般職員が日常業務で実際に見る
 
 > 各ドキュメントは8言語（日本語・English・한국어・简体中文・繁體中文・Français・Deutsch・Español）で提供されています。ドキュメント上部の Language Switcher から切り替えできます。
 
+## AWS 仕様上の制約と回避策
+
+### 出力先の選択（OutputDestination パラメータ）
+
+各 UC の CloudFormation テンプレートは `OutputDestination` パラメータで AI/ML
+成果物の書き込み先を選択できます（UC11/14 で先行実装、他 UC は順次展開予定）:
+
+- **`STANDARD_S3`** (デフォルト): 新しい S3 バケットに書き込み（従来どおり）
+- **`FSXN_S3AP`**: FSx for NetApp ONTAP の S3 Access Point 経由でオリジナルデータと
+  同一ボリュームに書き込み（**"no data movement" パターン**、SMB/NFS ユーザーが
+  AI 成果物をディレクトリ構造内で閲覧可能）
+
+```bash
+# FSxN S3AP モードでデプロイ
+aws cloudformation deploy \
+  --template-file retail-catalog/template-deploy.yaml \
+  --stack-name fsxn-retail-catalog-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    ... (他の必須パラメータ)
+```
+
+### FSxN S3 Access Points の AWS 仕様上の制約
+
+FSxN S3 Access Points は S3 API の一部のみサポートします
+（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）。
+以下の制約により、一部機能は標準 S3 バケットを使う必要があります:
+
+| AWS 仕様上の制約 | 影響 | 本プロジェクトの回避策 | 機能改善要望 (FR) |
+|---|---|---|---|
+| Athena クエリ結果の出力先に S3AP を指定不可<br>（Athena は S3AP に write back できない） | UC6/7/8/13 で Athena 結果は標準 S3 必須 | 各テンプレートで Athena 結果専用の S3 バケットを作成 | [FR-1](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-1) |
+| S3AP で S3 Event Notifications / EventBridge イベント発行不可 | イベント駆動ワークフローは実装不可 | EventBridge Scheduler + Discovery Lambda のポーリング方式 | [FR-2](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-2) |
+| S3AP で Object Lifecycle policy 非対応 | 7年保管（UC1 法務）、永久保管（UC16 政府アーカイブ）等の自動化が困難 | 別 Lambda で定期削除スイーパーを実装（未実装、バックログ） | [FR-3](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-3) |
+| S3AP で Object Versioning / Presigned URL 非対応 | 文書バージョン管理、外部監査人への時限共有が不可 | DynamoDB でバージョン管理、標準 S3 コピー + Presign | [FR-4](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-4) |
+| 5GB アップロード上限 | 大型バイナリ（4K 動画、未圧縮 GeoTIFF 等） | `shared.s3ap_helper.multipart_upload()` で 5GB 未満まで対応 | (AWS 仕様として受容) |
+| SSE-FSX のみサポート（SSE-KMS 不可） | カスタム KMS キーでの暗号化不可 | FSx ボリューム自体の KMS 設定で暗号化 | (AWS 仕様として受容) |
+
+全 4 つの機能改善要望（FR-1〜FR-4）の詳細とビジネスインパクトは
+[`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](docs/aws-feature-requests/fsxn-s3ap-improvements.md)
+にまとめています（AWS サポート / re:Post 投稿用ドキュメント）。
+
+### UC 別の出力先制約
+
+| UC | `OutputDestination=FSXN_S3AP` 可否 | 備考 |
+|----|--------------------------------|------|
+| UC1 legal-compliance | ✅ 可 | 契約メタデータ / 監査ログ |
+| UC2 financial-idp | ✅ 可 | 請求書 OCR 結果 |
+| UC3 manufacturing-analytics | ✅ 可 | 検査結果 / 異常検知 |
+| UC4 media-vfx | ✅ 可 | レンダリングメタデータ |
+| UC5 healthcare-dicom | ✅ 可 | DICOM メタデータ / 匿名化結果 |
+| UC6 semiconductor-eda | ⚠️ 部分的 | Bedrock レポートは FSXN_S3AP 可、Athena 結果は標準 S3 必須 |
+| UC7 genomics-pipeline | ⚠️ 部分的 | 解析結果は FSXN_S3AP 可、Glue/Athena 結果は標準 S3 必須 |
+| UC8 energy-seismic | ⚠️ 部分的 | 分析結果は FSXN_S3AP 可、Glue/Athena 結果は標準 S3 必須 |
+| UC9 autonomous-driving | ✅ 可 | ADAS 分析結果 |
+| UC10 construction-bim | ✅ 可 | BIM メタデータ / 安全コンプライアンスレポート |
+| UC11 retail-catalog | ✅ 可（**実装済み**） | タグ / 品質チェック / カタログメタデータ |
+| UC12 logistics-ocr | ✅ 可 | 配送伝票 OCR |
+| UC13 education-research | ⚠️ 部分的 | 論文分析は FSXN_S3AP 可、Athena 結果は標準 S3 必須 |
+| UC14 insurance-claims | ✅ 可（**実装済み**） | 損害評価 / 見積 OCR / 請求レポート |
+| UC15 defense-satellite | ✅ 可 | 物体検出 / 変化検知結果 |
+| UC16 government-archives | ✅ 可 | FOIA 墨消し結果 / メタデータ |
+| UC17 smart-city-geospatial | ✅ 可 | GIS 分析結果 / リスクマップ |
+
 ## リージョン選択ガイド
 
 本パターン集は **ap-northeast-1（東京）** で検証を実施していますが、必要なサービスが利用可能な任意の AWS リージョンにデプロイ可能です。

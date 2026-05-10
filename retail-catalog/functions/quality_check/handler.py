@@ -10,7 +10,10 @@
 
 Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     MIN_RESOLUTION: 最小解像度 (デフォルト: 800)
     MIN_FILE_SIZE: 最小ファイルサイズ bytes (デフォルト: 102400 = 100KB)
     MAX_FILE_SIZE: 最大ファイルサイズ bytes (デフォルト: 52428800 = 50MB)
@@ -20,7 +23,6 @@ Environment Variables:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import struct
@@ -30,6 +32,7 @@ from pathlib import PurePosixPath
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
@@ -238,7 +241,7 @@ def handler(event, context):
         dict: status, file_key, quality_metrics, issues
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     file_key = event["Key"]
     file_size = event.get("Size", 0)
 
@@ -249,7 +252,12 @@ def handler(event, context):
     min_aspect_ratio = float(os.environ.get("MIN_ASPECT_RATIO", "0.5"))
     max_aspect_ratio = float(os.environ.get("MAX_ASPECT_RATIO", "2.0"))
 
-    logger.info("Quality check started: file_key=%s, file_size=%d", file_key, file_size)
+    logger.info(
+        "Quality check started: file_key=%s, file_size=%d, output=%s",
+        file_key,
+        file_size,
+        output_writer.target_description,
+    )
 
     # 画像ヘッダーを取得して解像度を判定
     # ヘッダーパースには先頭数 KB で十分
@@ -282,7 +290,7 @@ def handler(event, context):
     file_stem = PurePosixPath(file_key).stem
     output_key = f"quality/{now.strftime('%Y/%m/%d')}/{file_stem}_qc.json"
 
-    # 品質チェック結果を S3 出力バケットに書き込み
+    # 品質チェック結果を出力先（標準 S3 または FSxN S3AP）に書き込み
     output_data = {
         "file_key": file_key,
         "status": status,
@@ -298,19 +306,14 @@ def handler(event, context):
         "checked_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(output_data, default=str).encode("utf-8"),
-        ContentType="application/json",
-    )
+    output_writer.put_json(key=output_key, data=output_data)
 
     logger.info(
-        "Quality check completed: file_key=%s, status=%s, issues=%d",
+        "Quality check completed: file_key=%s, status=%s, issues=%d, output_uri=%s",
         file_key,
         status,
         len(issues),
+        output_writer.build_s3_uri(output_key),
     )
 
 
