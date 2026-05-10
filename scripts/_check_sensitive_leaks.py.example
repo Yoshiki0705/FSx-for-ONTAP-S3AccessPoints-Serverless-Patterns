@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""OCR masked screenshots and flag any images where a sensitive substring
+remains detectable.
+
+COPY THIS FILE to `_check_sensitive_leaks.py` to use it locally. The
+runtime copy is gitignored so it is safe to have it coexist with
+`_sensitive_strings.py` (also gitignored).
+
+This is the ground-truth leak detector that complements the masking
+pipeline: after running `python3 scripts/mask_uc_demos.py`, run this
+script to confirm 0 sensitive substrings remain OCR-detectable in any
+image under `docs/screenshots/masked/`.
+
+Requires:
+    brew install tesseract tesseract-lang
+    pip3 install pillow pytesseract
+
+Usage:
+    python3 scripts/_check_sensitive_leaks.py
+
+Output format (per leak detected):
+    <relative/path/to/image.png>
+      leaked='<sensitive-substring>' in OCR word='<ocr-detected-word>'
+
+Exit 0 even on leak detection (by design — caller interprets output).
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+from PIL import Image
+import pytesseract  # type: ignore
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
+from _sensitive_strings import SENSITIVE_STRINGS  # type: ignore
+
+
+def scan_image(path: Path) -> list[tuple[str, str]]:
+    """Return (sensitive_token, matching_word) list for any leak found."""
+    img = Image.open(path).convert("RGB")
+    try:
+        text = pytesseract.image_to_data(
+            img, lang="eng+jpn", output_type=pytesseract.Output.DICT
+        )
+    except Exception as e:
+        return [("OCR_ERROR", str(e))]
+    hits: list[tuple[str, str]] = []
+    for word in text["text"]:
+        if not word:
+            continue
+        for s in SENSITIVE_STRINGS:
+            if s in word:
+                hits.append((s, word))
+    return hits
+
+
+def main() -> None:
+    root = PROJECT_ROOT / "docs" / "screenshots" / "masked"
+    leaks: dict[str, list[tuple[str, str]]] = {}
+    total = 0
+    for p in sorted(root.rglob("*.png")):
+        total += 1
+        hits = scan_image(p)
+        if hits:
+            leaks[str(p.relative_to(PROJECT_ROOT))] = hits
+
+    print(f"Scanned: {total} masked images")
+    print(f"Images with detectable sensitive substrings: {len(leaks)}")
+    for path, hits in leaks.items():
+        print(f"\n{path}")
+        for s, w in hits:
+            print(f"  leaked='{s}' in OCR word='{w}'")
+
+
+if __name__ == "__main__":
+    main()

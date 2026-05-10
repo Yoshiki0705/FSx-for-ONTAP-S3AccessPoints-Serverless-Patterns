@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""Apply v7 OCR-based masking IN-PLACE on masked files that have no originals.
+
+COPY THIS FILE to `_inplace_ocr_mask.py` to use it locally (the runtime
+copy is gitignored).
+
+Useful when an image under `docs/screenshots/masked/` is missing its
+original counterpart under `docs/screenshots/originals/` (e.g. phase5
+legacy files). Idempotent — re-runs only add black rectangles over any
+newly detected sensitive words.
+
+Usage:
+    python3 scripts/_inplace_ocr_mask.py docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png
+    python3 scripts/_inplace_ocr_mask.py docs/screenshots/masked/phase5/*.png
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
+
+from mask_uc_demos import mask_with_ocr, is_html_preview  # type: ignore
+
+
+def main() -> None:
+    targets = sys.argv[1:]
+    if not targets:
+        print("Usage: python3 scripts/_inplace_ocr_mask.py <path1> [<path2> ...]")
+        raise SystemExit(1)
+
+    for t in targets:
+        p = Path(t)
+        if not p.is_absolute():
+            p = PROJECT_ROOT / t
+        if not p.exists():
+            print(f"  MISSING: {t}")
+            continue
+        html = is_html_preview(p)
+        nboxes, passes = mask_with_ocr(p, p, mask_header=not html)
+        tag = "HTML" if html else "AWS "
+        print(f"  {tag} REMASK ({nboxes} boxes, {passes} passes): {t}")
+
+
+if __name__ == "__main__":
+    main()
