@@ -93,3 +93,19 @@ graph LR
 - ✅ `logging-required`: 全 Lambda に LogGroup 設定
 - ✅ `dynamodb-backup`: PITR 有効化
 - ✅ `pii-protection`: 原文 hash のみ保存、redaction metadata 分離
+
+## 出力先 (OutputDestination) — Pattern B
+
+UC16 は 2026-05-11 のアップデートで `OutputDestination` パラメータをサポートしました。
+
+| モード | 出力先 | 作成されるリソース | ユースケース |
+|-------|-------|-------------------|------------|
+| `STANDARD_S3`（デフォルト） | 新規 S3 バケット | `AWS::S3::Bucket` | 従来どおり分離された S3 バケットに AI 成果物を蓄積 |
+| `FSXN_S3AP` | FSxN S3 Access Point | なし（既存 FSx ボリュームへ書き戻し） | 公文書担当者が SMB/NFS 経由でオリジナル文書と同一ディレクトリに OCR テキスト、墨消し済みファイル、メタデータを閲覧 |
+
+**影響を受ける Lambda**: OCR、Classification、EntityExtraction、Redaction、IndexGeneration（5 関数）。  
+**チェーン構造の読み戻し**: 後段 Lambda は `shared/output_writer.py` の `get_*` で書き込み先と対称な読み戻しを行う。FSXN_S3AP モード時も S3AP から直接読み戻すため、チェーン全体が一貫した destination で動作。  
+**影響を受けない Lambda**: Discovery（manifest は S3AP 直書き）、ComplianceCheck（DynamoDB のみ）、FoiaDeadlineReminder（DynamoDB + SNS のみ）。  
+**OpenSearch との関係**: インデックスは `OpenSearchMode` パラメータで独立管理、`OutputDestination` の影響を受けない。
+
+詳細は [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) 参照。
