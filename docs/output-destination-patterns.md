@@ -23,7 +23,48 @@ outputs; they differ only in whether the choice is a fixed parameter
 
 ## Pattern A: Native S3AP Output (UC1-UC5, UC15-UC17)
 
-**CloudFormation parameter**:
+### As of 2026-05-11: UC1-UC5 also accept Pattern B parameters
+
+Starting 2026-05-11, UC1-UC5 templates were extended to **also** accept the
+Pattern B parameter set (`OutputDestination`, `OutputS3APAlias`,
+`OutputS3APPrefix`, `S3AccessPointName`, `OutputS3APName`), providing a
+unified deployment API across all UCs that support FSxN S3AP output.
+
+**Backward compatibility**:
+- `S3AccessPointOutputAlias` (legacy) remains usable and takes effect when
+  `OutputS3APAlias` is empty
+- Default `OutputDestination=FSXN_S3AP` preserves the existing behavior for
+  users who don't specify the new parameter
+- No handler code changes — the `S3_ACCESS_POINT_OUTPUT` env var continues
+  to be read and is now resolved via a fallback chain:
+  `OutputS3APAlias` → `S3AccessPointOutputAlias` → `S3AccessPointAlias`
+
+**Recommended deployment** (new):
+```bash
+aws cloudformation deploy \
+  --template-file legal-compliance/template-deploy.yaml \
+  --stack-name fsxn-legal-compliance-demo \
+  --parameter-overrides \
+    S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    OutputS3APAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    OutputDestination=FSXN_S3AP \
+    ... (other params)
+```
+
+**Legacy deployment** (still works):
+```bash
+aws cloudformation deploy \
+  --template-file legal-compliance/template-deploy.yaml \
+  --stack-name fsxn-legal-compliance-demo \
+  --parameter-overrides \
+    S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    S3AccessPointOutputAlias=eda-demo-s3ap-XYZ-ext-s3alias \
+    ... (other params)
+```
+
+### Original design (Pattern A)
+
+**CloudFormation parameter** (legacy, still supported):
 ```yaml
 S3AccessPointOutputAlias:
   Type: String
@@ -168,8 +209,10 @@ has no `S3AccessPointOutputAlias` parameter, it's Pattern C.
 | Phase 7 | UC15-UC17 designed with Pattern A (S3AP output) |
 | 2026-05-10 morning | UC11 + UC14 refactored from Pattern C to Pattern B. AWS verified FSXN_S3AP mode end-to-end |
 | 2026-05-10 afternoon | UC9 + UC10 + UC12 refactored from Pattern C to Pattern B. Unit tests pass, AWS deploy pending |
-| TBD | Document Pattern A UCs (UC1-UC5) for consistency with Pattern B docs |
+| **2026-05-11** | **UC1-UC5 extended to accept Pattern B parameters** (`OutputDestination`, `OutputS3APAlias`, `OutputS3APPrefix`, `S3AccessPointName`, `OutputS3APName`) while keeping `S3AccessPointOutputAlias` as optional legacy. Default `OutputDestination=FSXN_S3AP` preserves existing behavior. Handler code unchanged (still reads `S3_ACCESS_POINT_OUTPUT` env var, which now resolves via the new fallback chain). This unifies the CFN-level API across UC1-5 (Pattern A) and UC9/10/11/12/14 (Pattern B). |
+| TBD | Handler code migration: Pattern A UC handlers could optionally migrate from `S3ApHelper(os.environ["S3_ACCESS_POINT_OUTPUT"]).put_object()` to `OutputWriter.from_env().put_json()` for full consistency with Pattern B handlers |
 | TBD | Consider Pattern C → Pattern B (partial) refactor for UC6, UC7, UC8, UC13 |
+| TBD | Extend Phase 7 UCs (UC15, UC16, UC17) to accept the unified API |
 
 ## Cross-Reference
 

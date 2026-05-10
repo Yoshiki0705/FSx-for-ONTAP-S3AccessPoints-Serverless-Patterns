@@ -198,22 +198,50 @@ EventBridge Scheduler (定期実行)
 | UC16 | 政府 (FOIA / 公文書) | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Guide](government-archives/docs/demo-guide.md) |
 | UC17 | スマートシティ | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/demo-guide.md) |
 
-### Phase 7 UI/UX スクリーンショット（一般職員向け画面）
+### UI/UX スクリーンショット（エンドユーザー / 職員 / 担当者向け画面）
 
-Phase 7 では Public Sector の **一般職員が日常業務で実際に見る UI/UX 画面** を
-各 UC の README に掲載しています。Step Functions ワークフローグラフのような
-技術者向けビューは [`docs/verification-results-phase7.md`](docs/verification-results-phase7.md)
-にまとめています。
+各 UC の **エンドユーザー・職員・担当者が日常業務で実際に見る UI/UX 画面** を
+各 UC の README および demo-guide に掲載しています。Step Functions
+ワークフローグラフのような技術者向けビューは各 phase 毎の検証結果ドキュメント
+（`docs/verification-results-phase*.md`）にまとめています。
 
-| UC | 掲載画面数 | 掲載場所 |
-|----|----------|---------|
-| UC15 (Defense/Satellite) | 4 枚（S3 配置 / 出力 / SNS メール / JSON） | [`defense-satellite/README.md`](defense-satellite/README.md#検証済みの画面スクリーンショット) |
-| UC16 (Government/FOIA) | 5 枚（配置 / 墨消しプレビュー / メタデータ / FOIA メール / DynamoDB） | [`government-archives/README.md`](government-archives/README.md#検証済みの画面スクリーンショット) |
-| UC17 (Smart City) | 5 枚（GIS 配置 / Bedrock レポート / リスクマップ / 土地利用 / 時系列） | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md#検証済みの画面スクリーンショット) |
+Public Sector (UC15/16/17) だけでなく、全業種の UC で同じ方針を採用:
+- **一般職員 / 担当者視点**: S3 コンソールで成果物を確認する、Bedrock レポート
+  を読む、SNS メールで通知を受ける、DynamoDB で履歴を検索する等の日常業務画面
+- **技術者視点は除外**: CloudFormation スタックイベント、Lambda ログ、Step
+  Functions グラフ（ワークフロー可視化目的のものを除く）は `verification-results-*.md`
+  側に分離
 
-画像ファイル仕様は [`docs/screenshots/masked/phase7/README.md`](docs/screenshots/masked/phase7/README.md) 参照。
-マスク対象のガイドは [`docs/screenshots/MASK_GUIDE.md`](docs/screenshots/MASK_GUIDE.md) の
-「Phase 7 追加項目」セクション参照。
+| UC | 業種 | 掲載画面数 | 主な画面内容 | 掲載場所 |
+|----|------|----------|-------------|----------|
+| UC1 | 法務・コンプライアンス | 1 枚 | Step Functions グラフ（監査担当者向けワークフロー可視化） | [`legal-compliance/docs/demo-guide.md`](legal-compliance/docs/demo-guide.md) |
+| UC2 | 金融・IDP | 1 枚 | Step Functions グラフ（請求書処理担当者向けワークフロー可視化） | [`financial-idp/docs/demo-guide.md`](financial-idp/docs/demo-guide.md) |
+| UC3 | 製造業・分析 | 1 枚 | Step Functions グラフ（品質管理担当者向けワークフロー可視化） | [`manufacturing-analytics/docs/demo-guide.md`](manufacturing-analytics/docs/demo-guide.md) |
+| UC4 | メディア・VFX | 未掲載 | （レンダリング担当者向け画面、今後撮影予定） | [`media-vfx/docs/demo-guide.md`](media-vfx/docs/demo-guide.md) |
+| UC5 | 医療・DICOM | 1 枚 | Step Functions グラフ（医療情報管理者向けワークフロー可視化） | [`healthcare-dicom/docs/demo-guide.md`](healthcare-dicom/docs/demo-guide.md) |
+| UC6 | 半導体・EDA | 4 枚 | FSx Volumes 一覧 / S3 出力バケット / Athena クエリ結果 / Bedrock 設計レビューレポート | [`semiconductor-eda/docs/demo-guide.md`](semiconductor-eda/docs/demo-guide.md) |
+| UC7 | ゲノム解析 | 1 枚 | Step Functions グラフ（研究者向けワークフロー可視化） | [`genomics-pipeline/docs/demo-guide.md`](genomics-pipeline/docs/demo-guide.md) |
+| UC8 | エネルギー・地震探査 | 1 枚 | Step Functions グラフ（地質解析担当者向けワークフロー可視化） | [`energy-seismic/docs/demo-guide.md`](energy-seismic/docs/demo-guide.md) |
+| UC9 | 自動運転 | 未掲載 | （ADAS 分析担当者向け画面、今後撮影予定） | [`autonomous-driving/docs/demo-guide.md`](autonomous-driving/docs/demo-guide.md) |
+| UC10 | 建設・BIM | 1 枚 | Step Functions グラフ（BIM 管理者 / 安全担当者向けワークフロー可視化） | [`construction-bim/docs/demo-guide.md`](construction-bim/docs/demo-guide.md) |
+| UC11 | 小売・カタログ | 2 枚 | 商品タグ付け結果 / S3 出力バケット（EC 担当者向け） | [`retail-catalog/docs/demo-guide.md`](retail-catalog/docs/demo-guide.md) |
+| UC12 | 物流・OCR | 1 枚 | Step Functions グラフ（配送担当者向けワークフロー可視化） | [`logistics-ocr/docs/demo-guide.md`](logistics-ocr/docs/demo-guide.md) |
+| UC13 | 教育・研究 | 1 枚 | Step Functions グラフ（研究事務担当者向けワークフロー可視化） | [`education-research/docs/demo-guide.md`](education-research/docs/demo-guide.md) |
+| UC14 | 保険 | 2 枚 | 請求レポート / S3 出力バケット（査定担当者向け） | [`insurance-claims/docs/demo-guide.md`](insurance-claims/docs/demo-guide.md) |
+| UC15 | 防衛・衛星画像 (Public Sector) | 4 枚 | S3 配置 / 出力 / SNS メール / JSON 成果物（分析担当者向け） | [`defense-satellite/README.md`](defense-satellite/README.md#検証済みの画面スクリーンショット) |
+| UC16 | 政府・FOIA (Public Sector) | 5 枚 | 配置 / 墨消しプレビュー / メタデータ / FOIA リマインダーメール / DynamoDB 保管期間履歴（公文書担当者向け） | [`government-archives/README.md`](government-archives/README.md#検証済みの画面スクリーンショット) |
+| UC17 | スマートシティ (Public Sector) | 5 枚 | GIS 配置 / Bedrock レポート / リスクマップ / 土地利用分布 / 時系列履歴（都市計画担当者向け） | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md#検証済みの画面スクリーンショット) |
+
+**共通スクリーンショット** (業種横断の汎用画面、`docs/screenshots/masked/common/` 配下):
+- `fsx-s3ap-detail.png` — FSxN S3 Access Point 詳細ビュー（業種問わずストレージ管理者が参照）
+- `s3ap-list.png` — S3 Access Points 一覧（業種問わず IT 管理者が参照）
+
+**追加のフェーズ別画面** (`docs/screenshots/masked/phase{1..7}/`):
+- Phase 1-6b: インフラ構築・機能追加時の技術者向け画面（CloudFormation スタック、Lambda 関数一覧、SageMaker Endpoint 等）
+- Phase 7: UC15/16/17 の共通 FSx S3 Access Points ビュー等
+
+画像ファイル仕様は `docs/screenshots/masked/phase{N}/README.md` 配下で管理。
+マスク対象のガイドは [`docs/screenshots/MASK_GUIDE.md`](docs/screenshots/MASK_GUIDE.md) を参照。
 
 > 各ドキュメントは8言語（日本語・English・한국어・简体中文・繁體中文・Français・Deutsch・Español）で提供されています。ドキュメント上部の Language Switcher から切り替えできます。
 
@@ -266,18 +294,20 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 
 現行の UC 実装には 3 つの出力パターンがあります:
 
-- **🟢 UC1-UC5**: 既存の `S3AccessPointOutputAlias` パラメータで FSxN S3AP 出力に対応済み（UC 作成当初からの設計）
-- **🟢🆕 UC9/10/11/12/14**: 2026-05-10 で `OutputDestination` 切替機構を実装（STANDARD_S3 ⇄ FSXN_S3AP）。UC11/14 は AWS 実検証完了、UC9/10/12 は単体テストのみ完了
-- **🟡 UC6/7/8/13**: 現状 `OUTPUT_BUCKET` のみ（標準 S3 固定）、Athena 結果は仕様上標準 S3 必須のため `OutputDestination` 適用は部分的
-- **🟢 UC15/16/17**: Phase 7 の一部で FSxN S3AP への書き戻しに対応
+- **🟢 UC1-UC5** (Pattern A, 2026-05-11 更新): `S3AccessPointOutputAlias` (legacy、optional) + 新規追加の `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` をサポート。デフォルト `OutputDestination=FSXN_S3AP` で現行動作を維持
+- **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 実装): `OutputDestination` 切替機構 (STANDARD_S3 ⇄ FSXN_S3AP)。デフォルト `OutputDestination=STANDARD_S3`。UC11/14 は AWS 実検証完了、UC9/10/12 は単体テストのみ完了
+- **🟡 UC6/7/8/13** (Pattern C): 現状 `OUTPUT_BUCKET` のみ（標準 S3 固定）、Athena 結果は仕様上標準 S3 必須のため `OutputDestination` 適用は部分的
+- **🟢 UC15/16/17** (Pattern A 変形): Phase 7 の一部で FSxN S3AP への書き戻しに対応
+
+**🎉 API 統一 (2026-05-11)**: UC1-UC5 にも `OutputDestination` / `OutputS3APAlias` パラメータを追加しました。これにより **Pattern A UC と Pattern B UC で同じパラメータ名** が使えるようになり、10 UC (UC1-5/9/10/11/12/14) で統一された API でデプロイ可能です。既存の `S3AccessPointOutputAlias` パラメータは legacy として optional 化され、後方互換性が保たれています。
 
 | UC | 入力元 | 出力先 | 出力先選択機構 | 備考 |
 |----|------|------|----------|------|
-| UC1 legal-compliance | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` パラメータ | 契約メタデータ / 監査ログ |
-| UC2 financial-idp | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` | 請求書 OCR 結果 |
-| UC3 manufacturing-analytics | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` | 検査結果 / 異常検知 |
-| UC4 media-vfx | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` | レンダリングメタデータ |
-| UC5 healthcare-dicom | S3AP | S3AP (既存) | `S3AccessPointOutputAlias` | DICOM メタデータ / 匿名化結果 |
+| UC1 legal-compliance | S3AP | S3AP (既存) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 契約メタデータ / 監査ログ |
+| UC2 financial-idp | S3AP | S3AP (既存) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 請求書 OCR 結果 |
+| UC3 manufacturing-analytics | S3AP | S3AP (既存) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 検査結果 / 異常検知 |
+| UC4 media-vfx | S3AP | S3AP (既存) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | レンダリングメタデータ |
+| UC5 healthcare-dicom | S3AP | S3AP (既存) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | DICOM メタデータ / 匿名化結果 |
 | UC6 semiconductor-eda | S3AP | **標準 S3** | ⚠️ 未実装 | Bedrock/Athena 結果（Athena は仕様上標準 S3 必須） |
 | UC7 genomics-pipeline | S3AP | **標準 S3** | ⚠️ 未実装 | Glue/Athena 結果（Athena は仕様上標準 S3 必須） |
 | UC8 energy-seismic | S3AP | **標準 S3** | ⚠️ 未実装 | Glue/Athena 結果（Athena は仕様上標準 S3 必須） |
@@ -293,8 +323,10 @@ FSxN S3 Access Points は S3 API の一部のみサポートします
 
 **次のロードマップ**:
 - ~~Part B: UC1-5 の既存 `S3AccessPointOutputAlias` パターンのドキュメント整備~~ ✅ 完了（`docs/output-destination-patterns.md`）
+- ~~Part C: UC1-5 にも `OutputDestination` 統一 API を追加~~ ✅ 完了（2026-05-11、backward compat 維持）
 - UC6/7/8/13 の Athena 出力は仕様上標準 S3 必須だが、Bedrock レポート等の非 Athena 成果物は `OutputDestination=FSXN_S3AP` で書き戻す選択肢を追加可能（Pattern C → Pattern B ハイブリッド、将来拡張）
 - UC9/10/12 の AWS 実デプロイ検証（単体テストは完了、デプロイは未実施）
+- UC15/16/17 Phase 7 UC でも `OutputDestination` 統一 API を追加（将来拡張）
 
 ## リージョン選択ガイド
 
