@@ -64,10 +64,6 @@ def test_handler_extracts_pii(
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
 
     text = "Contact John Doe at john@example.com or 202-555-1234"
-    mock_s3_client = MagicMock()
-    mock_s3_client.get_object.return_value = {
-        "Body": MagicMock(read=lambda: text.encode())
-    }
 
     mock_comp = MagicMock()
     mock_comp.detect_pii_entities.return_value = {
@@ -77,14 +73,18 @@ def test_handler_extracts_pii(
     }
 
     def boto3_client(service):
-        if service == "s3":
-            return mock_s3_client
         if service == "comprehend":
             return mock_comp
         return MagicMock()
 
-    with patch.object(entity_extraction_handler, "boto3") as mock_boto3:
+    mock_writer = MagicMock()
+    mock_writer.get_text.return_value = text
+
+    with patch.object(entity_extraction_handler, "boto3") as mock_boto3, patch.object(
+        entity_extraction_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
         mock_boto3.client.side_effect = boto3_client
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {
             "document_key": "d.pdf",
             "text_key": "ocr/d.txt",
@@ -96,3 +96,4 @@ def test_handler_extracts_pii(
     # PII text hashed, not raw
     for entity in result["entities"]:
         assert "TextHash" in entity
+    mock_writer.put_json.assert_called_once()

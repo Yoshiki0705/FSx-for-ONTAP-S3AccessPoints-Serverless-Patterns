@@ -9,11 +9,14 @@ Textract は ap-northeast-1 未対応のため、`shared.cross_region_client.Cro
 - > SYNC_PAGE_THRESHOLD ページ: StartDocumentAnalysis (async)
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット
     S3_ACCESS_POINT_ALIAS: 入力 S3 AP Alias
     SYNC_PAGE_THRESHOLD: 同期 API ページ閾値 (default: 10)
     CROSS_REGION: Textract クロスリージョンターゲット (default: us-east-1)
     USE_CROSS_REGION: "true" でクロスリージョン、"false" で同一リージョン (default: "true")
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット（同時に下流 Lambda が読み書きする作業バケット）
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -28,6 +31,7 @@ import boto3
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import CrossRegionClientError, lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
@@ -122,7 +126,7 @@ def handler(event, context):
     Output:
         {"document_key": str, "text_key": str, "page_count": int, "api_used": str}
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     s3_access_point = os.environ.get("S3_ACCESS_POINT_ALIAS", "")
     sync_threshold = int(os.environ.get("SYNC_PAGE_THRESHOLD", "10"))
     use_cross_region = os.environ.get("USE_CROSS_REGION", "true").lower() == "true"
@@ -138,8 +142,10 @@ def handler(event, context):
         response = s3ap.get_object(document_key)
         document_bytes = response["Body"].read()
     else:
+        # Fallback: OUTPUT_BUCKET から直接読み取り（テスト互換）
+        fallback_bucket = os.environ.get("OUTPUT_BUCKET", "")
         s3_client = boto3.client("s3")
-        response = s3_client.get_object(Bucket=output_bucket, Key=document_key)
+        response = s3_client.get_object(Bucket=fallback_bucket, Key=document_key)
         document_bytes = response["Body"].read()
 
     # ページ数推定（PDF のバイト数から概算、画像は 1 ページ）
@@ -168,25 +174,12 @@ def handler(event, context):
         # async 経路は別 Lambda 推奨、ここでは空を返す
         text, blocks, invoke_mode = "", [], "async_not_implemented"
 
-    # 結果を S3 に書き出し
+    # 結果を出力先に書き出し（OutputWriter で STANDARD_S3 / FSXN_S3AP 切替）
     text_key = f"ocr-results/{document_key}.txt"
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=text_key,
-        Body=text.encode("utf-8"),
-        ContentType="text/plain",
-        ServerSideEncryption="aws:kms",
-    )
+    output_writer.put_text(key=text_key, text=text)
 
     blocks_key = f"ocr-results/{document_key}.blocks.json"
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=blocks_key,
-        Body=json.dumps(blocks, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
-    )
+    output_writer.put_json(key=blocks_key, data=blocks)
 
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="ocr")
     metrics.set_dimension("UseCase", "government-archives")

@@ -4,10 +4,13 @@ OpenSearch に墨消し済みテキスト + メタデータをインデックス
 OpenSearchMode により Serverless / Managed / None に対応。
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット
     OPENSEARCH_MODE: "serverless" | "managed" | "none"
     OPENSEARCH_ENDPOINT: OpenSearch Collection/Domain エンドポイント
     OPENSEARCH_INDEX_NAME: インデックス名 (default: "government-archives")
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +110,7 @@ def handler(event, context):
     Output:
         {"document_key": str, "indexed": bool, "index_name": str}
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     opensearch_mode = os.environ.get("OPENSEARCH_MODE", "none")
     opensearch_endpoint = os.environ.get("OPENSEARCH_ENDPOINT", "")
     index_name = os.environ.get("OPENSEARCH_INDEX_NAME", "government-archives")
@@ -128,11 +132,9 @@ def handler(event, context):
             "index_name": index_name,
         }
 
-    # 墨消し済みテキストを取得
-    s3_client = boto3.client("s3")
+    # 墨消し済みテキストを OutputWriter 経由で取得
     try:
-        response = s3_client.get_object(Bucket=output_bucket, Key=redacted_text_key)
-        redacted_text = response["Body"].read().decode("utf-8")
+        redacted_text = output_writer.get_text(redacted_text_key)
     except Exception as e:
         logger.error("Failed to read redacted text: %s", e)
         redacted_text = ""

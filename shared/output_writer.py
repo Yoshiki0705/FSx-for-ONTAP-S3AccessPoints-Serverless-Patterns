@@ -303,3 +303,48 @@ class OutputWriter:
         """
         bucket_param, resolved_key = self._resolve_target(key)
         return f"s3://{bucket_param}/{resolved_key}"
+
+    # -----------------------------------------------------------------
+    # Read helpers (symmetric to put_*): same destination as put_*
+    #
+    # UC16 のように Lambda が前段の成果物を読み戻すパイプラインでは、
+    # 書き出し先と読み出し先が一致していないとチェーンが成立しない。
+    # get_bytes/text/json は put_* と同じ destination / prefix 解決を行うため、
+    # ハンドラは OutputWriter 1 つで全 I/O をまかなえる。
+    # -----------------------------------------------------------------
+    def get_bytes(self, key: str) -> bytes:
+        """書き込み先と同じロケーションからバイナリを取得する。
+
+        Args:
+            key: put_bytes / put_json / put_text で書き込んだ論理キー
+
+        Returns:
+            bytes: オブジェクトの Body
+
+        Raises:
+            S3ApHelperError: FSxN S3AP からの読み取り失敗時
+            ClientError: 標準 S3 からの読み取り失敗時
+        """
+        bucket_param, resolved_key = self._resolve_target(key)
+        try:
+            response = self._s3_client.get_object(
+                Bucket=bucket_param, Key=resolved_key
+            )
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            if self._destination == FSXN_S3AP:
+                raise S3ApHelperError(
+                    f"Failed to get object '{resolved_key}' from "
+                    f"FSxN S3 Access Point '{self._s3ap_alias}': {e}.",
+                    error_code=error_code,
+                ) from e
+            raise
+        return response["Body"].read()
+
+    def get_text(self, key: str, encoding: str = "utf-8") -> str:
+        """書き込み先と同じロケーションからテキストを取得する。"""
+        return self.get_bytes(key).decode(encoding)
+
+    def get_json(self, key: str) -> Any:
+        """書き込み先と同じロケーションから JSON をパースして取得する。"""
+        return json.loads(self.get_bytes(key).decode("utf-8"))

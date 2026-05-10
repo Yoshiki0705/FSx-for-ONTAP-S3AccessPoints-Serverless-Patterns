@@ -125,8 +125,13 @@ def test_handler_reports_invoke_mode(
             return mock_textract
         return MagicMock()
 
-    with patch.object(ocr_handler, "boto3") as mock_boto3:
+    mock_writer = MagicMock()
+
+    with patch.object(ocr_handler, "boto3") as mock_boto3, patch.object(
+        ocr_handler, "OutputWriter"
+    ) as mock_output_writer_cls:
         mock_boto3.client.side_effect = boto3_client
+        mock_output_writer_cls.from_env.return_value = mock_writer
         event = {"Key": "archives/doc.pdf", "Size": 500}
         result = ocr_handler.handler(event, lambda_context)
 

@@ -6,9 +6,12 @@ Amazon Comprehend DetectPiiEntities で PII（個人情報）を検出する。
 - CREDIT_DEBIT_NUMBER, BANK_ACCOUNT_NUMBER など
 
 Environment Variables:
-    OUTPUT_BUCKET: 出力先 S3 バケット
     COMPREHEND_LANGUAGE_CODE: 言語コード (default: "en")
     COMPREHEND_MAX_BYTES: Comprehend API のテキスト最大バイト数 (default: 5000)
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +81,7 @@ def handler(event, context):
     Output:
         {"document_key": str, "pii_count": int, "entities": [...]}
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     max_bytes = int(os.environ.get("COMPREHEND_MAX_BYTES", "5000"))
 
     document_key = event.get("document_key", "")
@@ -87,10 +91,8 @@ def handler(event, context):
     if not text_key:
         raise ValueError("Input must contain 'text_key'")
 
-    # OCR テキストを S3 から取得
-    s3_client = boto3.client("s3")
-    response = s3_client.get_object(Bucket=output_bucket, Key=text_key)
-    text = response["Body"].read().decode("utf-8")
+    # OCR テキストを OutputWriter 経由で取得
+    text = output_writer.get_text(text_key)
 
     comprehend = boto3.client("comprehend")
 
@@ -128,16 +130,13 @@ def handler(event, context):
         })
 
     entities_key = f"pii-entities/{document_key}.json"
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=entities_key,
-        Body=json.dumps({
+    output_writer.put_json(
+        key=entities_key,
+        data={
             "document_key": document_key,
             "pii_count": len(pii_summary),
             "entities": pii_summary,
-        }, default=str),
-        ContentType="application/json",
-        ServerSideEncryption="aws:kms",
+        },
     )
 
     logger.info(
