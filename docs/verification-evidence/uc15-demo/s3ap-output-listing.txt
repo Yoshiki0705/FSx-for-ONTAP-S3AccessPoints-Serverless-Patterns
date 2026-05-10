@@ -1,0 +1,5 @@
+2026-05-11 07:45:45  833 Bytes ai-outputs/uc15/enriched/2026/05/10/s0000.json
+2026-05-11 07:45:42  118 Bytes ai-outputs/uc15/satellite/2026/05/sample1_detections.json
+2026-05-11 07:45:42  253 Bytes ai-outputs/uc15/satellite/2026/05/tokyo_aerial.jpg
+2026-05-11 07:54:23   83 Bytes ai-outputs/uc15/tiles/2026/05/10/sample1/metadata.json
+2026-05-11 07:45:38   72 Bytes ai-outputs/uc15/tiles/2026/05/10/tokyo_aerial/metadata.json
