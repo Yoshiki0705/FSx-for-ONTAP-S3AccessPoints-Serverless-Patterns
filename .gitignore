@@ -49,6 +49,9 @@ scripts/capture_screenshots.sh
 scripts/_sensitive_strings.py
 scripts/_verify_masks.py
 scripts/_reapply_masks_inplace.py
+scripts/_check_sensitive_leaks.py
+scripts/_deep_scan.py
+scripts/_inplace_ocr_mask.py
 # The deploy/cleanup/verify scripts were historically committed with account IDs.
 # Going forward they must read values from environment variables only; keep the
 # local copies gitignored to prevent accidental re-commit with hardcoded values.
