@@ -155,3 +155,37 @@
 ---
 
 *本ドキュメントは技術プレゼンテーション用デモ動画の制作ガイドです。*
+
+---
+
+## 検証済みの UI/UX スクリーンショット（2026-05-10 AWS 検証）
+
+Phase 7 と同じ方針で、**EC 担当者が日常業務で実際に使う UI/UX 画面**を撮影。
+技術者向け画面（Step Functions グラフ等）は除外。
+
+### 1. 商品画像の自動タグ付け結果
+
+EC 管理者が新商品登録時に受け取る AI 分析結果。Rekognition が実画像から 7 ラベルを
+検出（`Oval` 99.93%, `Food`, `Furniture`, `Table`, `Sweets`, `Cocoa`, `Dessert`）。
+
+<!-- SCREENSHOT: uc11-product-tags.png
+     内容: 商品画像 + AI 検出タグ一覧（信頼度つき）
+     マスク: アカウント ID、バケット名 -->
+![UC11: 商品タグ](../../docs/screenshots/masked/uc11-demo/uc11-product-tags.png)
+
+### 2. S3 出力バケット — タグ・品質チェック結果の俯瞰
+
+EC 運用担当者がバッチ処理結果を確認する画面。
+`tags/` と `quality/` の 2 プレフィックスで、商品ごとに JSON が生成される。
+
+<!-- SCREENSHOT: uc11-s3-output-bucket.png
+     内容: S3 コンソールで tags/, quality/ プレフィックス
+     マスク: アカウント ID -->
+![UC11: S3 出力バケット](../../docs/screenshots/masked/uc11-demo/uc11-s3-output-bucket.png)
+
+### 実測値（2026-05-10 AWS デプロイ検証）
+
+- **Step Functions 実行**: SUCCEEDED、4 商品画像を並列処理
+- **Rekognition**: 実画像で 7 ラベル検出（最高信頼度 99.93%）
+- **生成 JSON**: tags/*.json (~750 bytes)、quality/*.json (~420 bytes)
+- **実スタック**: `fsxn-retail-catalog-demo`（ap-northeast-1、2026-05-10 検証時）

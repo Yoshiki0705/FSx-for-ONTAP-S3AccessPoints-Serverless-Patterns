@@ -154,3 +154,39 @@
 ---
 
 *本ドキュメントは技術プレゼンテーション用デモ動画の制作ガイドです。*
+
+---
+
+## 検証済みの UI/UX スクリーンショット（2026-05-10 AWS 検証）
+
+Phase 7 と同じ方針で、**保険査定担当者が日常業務で実際に使う UI/UX 画面**を撮影。
+技術者向け画面（Step Functions グラフ等）は除外。
+
+### 1. 保険金請求レポート — 査定担当者向けサマリー
+
+事故写真 Rekognition 解析 + 見積書 Textract OCR + 査定推奨判定を統合したレポート。
+判定 `MANUAL_REVIEW` + 信頼度 75% で、自動化できない項目を担当者がレビュー。
+
+<!-- SCREENSHOT: uc14-claims-report.png
+     内容: 保険金請求レポート（請求 ID、損害サマリー、見積相関、推奨判定）
+            + Rekognition 検出ラベル一覧 + Textract OCR 結果
+     マスク: アカウント ID、バケット名 -->
+![UC14: 保険金請求レポート](../../docs/screenshots/masked/uc14-demo/uc14-claims-report.png)
+
+### 2. S3 出力バケット — 査定アーティファクトの俯瞰
+
+査定担当者が請求ケースごとのアーティファクトを確認する画面。
+`assessments/` (Rekognition 分析) + `estimates/` (Textract OCR) + `reports/` (統合レポート)。
+
+<!-- SCREENSHOT: uc14-s3-output-bucket.png
+     内容: S3 コンソールで assessments/, estimates/, reports/ プレフィックス
+     マスク: アカウント ID -->
+![UC14: S3 出力バケット](../../docs/screenshots/masked/uc14-demo/uc14-s3-output-bucket.png)
+
+### 実測値（2026-05-10 AWS デプロイ検証）
+
+- **Step Functions 実行**: SUCCEEDED
+- **Rekognition**: 事故写真で `Maroon` 90.79%, `Business Card` 84.51% 等を検出
+- **Textract**: cross-region us-east-1 経由で見積書 PDF から `Total: 1270.00 USD` 等を OCR
+- **生成アーティファクト**: assessments/*.json, estimates/*.json, reports/*.txt
+- **実スタック**: `fsxn-insurance-claims-demo`（ap-northeast-1、2026-05-10 検証時）
