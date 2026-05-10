@@ -1,54 +1,54 @@
-# UC17: スマートシティ — 地理空間データ解析アーキテクチャ
+# UC17: 스마트시티 — 지리공간 데이터 해석 아키텍처
 
-🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | 한국어 | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
+🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](architecture.md) | [English](architecture.en.md) | 한국어 | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
 
-> 참고: 이 번역은 일본어 원문을 바탕으로 자동 생성된 초안입니다. 번역 품질 향상에 대한 기여를 환영합니다.
+> 참고: 이 번역은 Amazon Bedrock Claude로 생성되었습니다. 번역 품질 향상에 대한 기여를 환영합니다.
 
-## 概要
+## 개요
 
-FSx ONTAP 上の大容量地理空間データ（GeoTIFF / Shapefile / LAS / GeoPackage）を
-サーバーレスで解析し、土地利用分類・変化検出・インフラ評価・災害リスクマッピング・
-Bedrock によるレポート生成を行う。
+FSx ONTAP 상의 대용량 지리공간 데이터(GeoTIFF / Shapefile / LAS / GeoPackage)를
+서버리스로 분석하여 토지 이용 분류·변화 감지·인프라 평가·재해 위험 매핑·
+Bedrock을 통한 보고서 생성을 수행한다.
 
-## アーキテクチャ図
+## 아키텍처 다이어그램
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>GIS データ<br/>部署別 ACL] --> S3AP[S3 Access Point]
+    FSx[FSx ONTAP<br/>GIS 데이터<br/>부서별 ACL] --> S3AP[S3 Access Point]
     S3AP --> SFN[Step Functions<br/>Smart City Workflow]
     SFN --> L1[Discovery]
-    L1 --> L2[Preprocessing<br/>CRS 正規化 EPSG:4326]
+    L1 --> L2[Preprocessing<br/>CRS 정규화 EPSG:4326]
     L2 --> L3[Land Use Classification<br/>Rekognition / SageMaker]
-    L3 --> L4[Change Detection<br/>DynamoDB 時系列]
-    L4 --> L5[Infra Assessment<br/>LAS 点群解析]
-    L5 --> L6[Risk Mapping<br/>洪水/地震/土砂]
+    L3 --> L4[Change Detection<br/>DynamoDB 시계열]
+    L4 --> L5[Infra Assessment<br/>LAS 점군 분석]
+    L5 --> L6[Risk Mapping<br/>홍수/지진/토사]
     L6 --> L7[Report Generation<br/>Bedrock Nova Lite]
-    L7 --> S3O[S3 Output<br/>都市計画レポート]
+    L7 --> S3O[S3 Output<br/>도시계획 보고서]
 ```
 
-## 災害リスクモデル
+## 재해 위험 모델
 
-### 洪水リスク（`compute_flood_risk`）
+### 홍수 위험(`compute_flood_risk`)
 
-- 標高スコア: `max(0, (100 - elevation_m) / 90)` — 低標高ほど高リスク
-- 水系近接スコア: `max(0, (2000 - water_proximity_m) / 1900)` — 水辺近いほど高リスク
-- 不透水率: residential + commercial + industrial + road 土地利用の合計
-- 総合: `0.4 * elevation + 0.3 * proximity + 0.3 * impervious`
+- 표고 점수: `max(0, (100 - elevation_m) / 90)` — 저지대일수록 고위험
+- 수계 근접 점수: `max(0, (2000 - water_proximity_m) / 1900)` — 수변에 가까울수록 고위험
+- 불투수율: residential + commercial + industrial + road 토지 이용의 합계
+- 종합: `0.4 * elevation + 0.3 * proximity + 0.3 * impervious`
 
-### 地震リスク（`compute_earthquake_risk`）
+### 지진 위험(`compute_earthquake_risk`)
 
-- 地盤スコア: rock=0.2, stiff_soil=0.4, soft_soil=0.7, unknown=0.5
-- 建物密度スコア: 0 - 1
-- 総合: `0.6 * soil + 0.4 * density`
+- 지반 점수: rock=0.2, stiff_soil=0.4, soft_soil=0.7, unknown=0.5
+- 건물 밀도 점수: 0 - 1
+- 종합: `0.6 * soil + 0.4 * density`
 
-### 土砂崩れリスク（`compute_landslide_risk`）
+### 산사태 위험(`compute_landslide_risk`)
 
-- 斜度スコア: `max(0, (slope - 5) / 40)` — 5° 以上で線形増加、45° で飽和
-- 降雨スコア: `min(1, precip / 2000)` — 2000 mm/年で最大
-- 植生スコア: `1 - forest` — 森林が少ないほど高リスク
-- 総合: `0.5 * slope + 0.3 * rain + 0.2 * vegetation`
+- 경사도 점수: `max(0, (slope - 5) / 40)` — 5° 이상에서 선형 증가, 45°에서 포화
+- 강우 점수: `min(1, precip / 2000)` — 2000 mm/년에서 최대
+- 식생 점수: `1 - forest` — 산림이 적을수록 고위험
+- 종합: `0.5 * slope + 0.3 * rain + 0.2 * vegetation`
 
-### リスクレベル分類
+### 위험 수준 분류
 
 | Score | Level |
 |-------|-------|
@@ -57,20 +57,20 @@ graph LR
 | ≥ 0.3 | MEDIUM |
 | < 0.3 | LOW |
 
-## 対応 OGC 標準
+## 지원 OGC 표준
 
-- **WMS** (Web Map Service): GeoTIFF → CloudFront 配信で対応可
-- **WFS** (Web Feature Service): Shapefile / GeoJSON 出力
-- **GeoPackage**: sqlite3 ベースの OGC 標準、Lambda で処理可
-- **LAS/LAZ**: laspy で処理（Lambda Layer 推奨）
+- **WMS** (Web Map Service): GeoTIFF → CloudFront 배포로 대응 가능
+- **WFS** (Web Feature Service): Shapefile / GeoJSON 출력
+- **GeoPackage**: sqlite3 기반의 OGC 표준, Lambda에서 처리 가능
+- **LAS/LAZ**: laspy로 처리(Lambda Layer 권장)
 
-## INSPIRE Directive 準拠（EU 地理空間データ基盤）
+## INSPIRE Directive 준수(EU 지리공간 데이터 기반)
 
-- メタデータの標準化（ISO 19115）に対応可能なアウトプット構造
-- CRS 統一（EPSG:4326）
-- ネットワークサービス（Discovery, View, Download）相当の API 提供
+- 메타데이터 표준화(ISO 19115)에 대응 가능한 출력 구조
+- CRS 통일(EPSG:4326)
+- 네트워크 서비스(Discovery, View, Download) 상당의 API 제공
 
-## IAM マトリクス
+## IAM 매트릭스
 
 | Principal | Permission | Resource |
 |-----------|------------|----------|
@@ -80,22 +80,37 @@ graph LR
 | Processing | `bedrock:InvokeModel` | Foundation models + profiles |
 | Processing | `dynamodb:PutItem`, `Query` | LandUseHistoryTable |
 
-## コストモデル
+## 비용 모델
 
-| サービス | 月次想定（軽負荷） |
+| 서비스 | 월간 예상(경부하) |
 |----------|--------------------|
 | Lambda (7 functions) | $20 - $60 |
 | Rekognition | $10 / 10K images |
 | Bedrock Nova Lite | $0.06 per 1K input tokens |
 | DynamoDB (PPR) | $5 - $20 |
 | S3 output | $5 - $30 |
-| **合計** | **$50 - $200** |
+| **합계** | **$50 - $200** |
 
-SageMaker Endpoint はデフォルト無効化。
+SageMaker Endpoint는 기본적으로 비활성화.
 
-## Guard Hooks 準拠
+## Guard Hooks 준수
 
-- ✅ `encryption-required`: S3 SSE-KMS、DynamoDB SSE、SNS KMS
-- ✅ `iam-least-privilege`: Bedrock は foundation-model ARN に制限
-- ✅ `logging-required`: 全 Lambda に LogGroup
-- ✅ `point-in-time-recovery`: DynamoDB PITR 有効
+- ✅ `encryption-required`: S3 SSE-KMS, DynamoDB SSE, SNS KMS
+- ✅ `iam-least-privilege`: Bedrock은 foundation-model ARN으로 제한
+- ✅ `logging-required`: 모든 Lambda에 LogGroup
+- ✅ `point-in-time-recovery`: DynamoDB PITR 활성화
+
+## 출력 대상 (OutputDestination) — Pattern B
+
+UC17은 2026-05-11 업데이트에서 `OutputDestination` 파라미터를 지원하게 되었습니다.
+
+| 모드 | 출력 대상 | 생성되는 리소스 | 사용 사례 |
+|-------|-------|-------------------|------------|
+| `STANDARD_S3`(기본값) | 신규 S3 버킷 | `AWS::S3::Bucket` | 기존과 같이 분리된 S3 버킷에 AI 산출물을 축적 |
+| `FSXN_S3AP` | FSxN S3 Access Point | 없음(기존 FSx 볼륨에 재기록) | 도시계획 담당자가 SMB/NFS 경유로 원본 GIS 데이터와 동일 디렉터리에서 Bedrock 보고서(Markdown) 및 위험 지도를 열람 |
+
+**영향을 받는 Lambda**: Preprocessing, LandUseClassification, InfraAssessment, RiskMapping, ReportGeneration(5개 함수).  
+**영향을 받지 않는 Lambda**: Discovery(manifest는 S3AP 직접 기록), ChangeDetection(DynamoDB만 사용).  
+**Bedrock 보고서의 장점**: `text/markdown; charset=utf-8`로 작성되므로 SMB/NFS 클라이언트의 텍스트 에디터에서 직접 열람 가능.
+
+자세한 내용은 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) 참조.
