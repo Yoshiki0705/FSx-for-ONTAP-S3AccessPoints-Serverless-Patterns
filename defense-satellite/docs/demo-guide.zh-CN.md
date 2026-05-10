@@ -1,5 +1,9 @@
 # UC15 デモスクリプト（30 分枠）
 
+🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | 简体中文 | [繁體中文](demo-guide.zh-TW.md) | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+
+> 注意：本翻译为基于日文原文自动生成的草稿，欢迎提交改进翻译的贡献。
+
 ## 前提
 
 - AWS アカウント、ap-northeast-1

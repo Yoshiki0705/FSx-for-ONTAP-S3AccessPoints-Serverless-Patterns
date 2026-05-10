@@ -1,5 +1,9 @@
 # UC16: 政府機関 — 公文書デジタルアーカイブ / FOIA 対応アーキテクチャ
 
+🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | Español
+
+> Nota: Esta traducción es un borrador generado automáticamente a partir del original japonés. Se agradecen las contribuciones para mejorar la calidad de la traducción.
+
 ## 概要
 
 FSx for NetApp ONTAP S3 Access Points を活用した公文書（PDF / TIFF / EML / DOCX）の

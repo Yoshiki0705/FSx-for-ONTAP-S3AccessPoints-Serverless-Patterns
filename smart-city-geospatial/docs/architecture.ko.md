@@ -1,5 +1,9 @@
 # UC17: スマートシティ — 地理空間データ解析アーキテクチャ
 
+🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | 한국어 | [简体中文](architecture.zh-CN.md) | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
+
+> 참고: 이 번역은 일본어 원문을 바탕으로 자동 생성된 초안입니다. 번역 품질 향상에 대한 기여를 환영합니다.
+
 ## 概要
 
 FSx ONTAP 上の大容量地理空間データ（GeoTIFF / Shapefile / LAS / GeoPackage）を

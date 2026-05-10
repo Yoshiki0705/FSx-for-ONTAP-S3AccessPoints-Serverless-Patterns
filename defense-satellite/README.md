@@ -1,7 +1,7 @@
 # UC15: 防衛・宇宙 — 衛星画像解析パイプライン
 
 🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
-📚 **ドキュメント**: [アーキテクチャ](docs/uc15-architecture.md) | [デモスクリプト](docs/uc15-demo-script.md) | [トラブルシューティング](../docs/phase7-troubleshooting.md)
+📚 **ドキュメント**: [アーキテクチャ](docs/architecture.md) | [デモスクリプト](docs/demo-guide.md) | [トラブルシューティング](../docs/phase7-troubleshooting.md)
 
 ## 概要
 

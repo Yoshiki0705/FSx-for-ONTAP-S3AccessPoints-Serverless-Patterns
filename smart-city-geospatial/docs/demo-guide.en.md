@@ -1,5 +1,9 @@
 # UC17 デモスクリプト（30 分枠）
 
+🌐 **Language / 言語**: [日本語](demo-guide.md) | English | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+
+> Note: This translation is an auto-generated draft based on the Japanese original. Contributions to improve translation quality are welcome.
+
 ## 前提
 
 - AWS アカウント、ap-northeast-1

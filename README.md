@@ -194,9 +194,9 @@ EventBridge Scheduler (定期実行)
 | UC12 | 物流 | [📐 Architecture](logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.md) |
 | UC13 | 教育 / 研究 | [📐 Architecture](education-research/docs/architecture.md) | [🎬 Demo Guide](education-research/docs/demo-guide.md) |
 | UC14 | 保険 | [📐 Architecture](insurance-claims/docs/architecture.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.md) |
-| UC15 | 防衛・宇宙 (衛星画像) | [📐 Architecture](defense-satellite/docs/uc15-architecture.md) | [🎬 Demo Guide](defense-satellite/docs/uc15-demo-script.md) |
-| UC16 | 政府 (FOIA / 公文書) | [📐 Architecture](government-archives/docs/uc16-architecture.md) | [🎬 Demo Guide](government-archives/docs/uc16-demo-script.md) |
-| UC17 | スマートシティ | [📐 Architecture](smart-city-geospatial/docs/uc17-architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/uc17-demo-script.md) |
+| UC15 | 防衛・宇宙 (衛星画像) | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Guide](defense-satellite/docs/demo-guide.md) |
+| UC16 | 政府 (FOIA / 公文書) | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Guide](government-archives/docs/demo-guide.md) |
+| UC17 | スマートシティ | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/demo-guide.md) |
 
 ### Phase 7 UI/UX スクリーンショット（一般職員向け画面）
 

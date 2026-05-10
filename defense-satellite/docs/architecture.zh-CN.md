@@ -1,5 +1,9 @@
 # UC15: 防衛・宇宙 — 衛星画像解析アーキテクチャ
 
+🌐 **Language / 言語**: [日本語](architecture.md) | [English](architecture.en.md) | [한국어](architecture.ko.md) | 简体中文 | [繁體中文](architecture.zh-TW.md) | [Français](architecture.fr.md) | [Deutsch](architecture.de.md) | [Español](architecture.es.md)
+
+> 注意：本翻译为基于日文原文自动生成的草稿，欢迎提交改进翻译的贡献。
+
 ## 概要
 
 FSx for NetApp ONTAP S3 Access Points を活用した衛星画像（GeoTIFF / NITF / HDF5）の
