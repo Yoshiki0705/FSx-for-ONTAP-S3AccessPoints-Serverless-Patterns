@@ -174,6 +174,85 @@ EventBridge Scheduler (定期執行)
 
 > **公共部門合規性**: UC15 針對 DoD CC SRG / CSfC / FedRAMP High（GovCloud 遷移），UC16 針對 NARA / FOIA Section 552 / Section 508，UC17 針對 INSPIRE 指令 / OGC 標準。
 
+## AWS 規格約束及解決方案
+
+### 輸出目標選擇 (OutputDestination 參數)
+
+每個 UC 的 CloudFormation 範本都包含 `OutputDestination` 參數來選擇
+AI/ML 產物的寫入目標 (已在 UC9/10/11/12/14 實作,
+其他 UC 由 Pattern A 或 Pattern C 涵蓋 - 請參閱下面的 Pattern 表):
+
+- **`STANDARD_S3`** (預設): 寫入新的 S3 儲存貯體 (現有行為)
+- **`FSXN_S3AP`**: 透過 S3 Access Point 將結果寫回同一個 FSx for NetApp ONTAP 磁碟區
+  (**"no data movement" 模式**, 使 SMB/NFS 使用者能夠在現有目錄結構中
+  檢視 AI 產物)
+
+```bash
+# 以 FSXN_S3AP 模式部署
+aws cloudformation deploy \
+  --template-file retail-catalog/template-deploy.yaml \
+  --stack-name fsxn-retail-catalog-demo \
+  --parameter-overrides \
+    OutputDestination=FSXN_S3AP \
+    OutputS3APPrefix=ai-outputs/ \
+    ... (其他必要參數)
+```
+
+### FSxN S3 Access Points 的 AWS 規格約束
+
+FSxN S3 Access Points 僅支援 S3 API 的一部分
+(請參閱 [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html))。
+由於下列約束, 某些功能需要使用標準 S3 儲存貯體:
+
+| AWS 規格約束 | 影響 | 專案解決方案 | 功能改進需求 (FR) |
+|---|---|---|---|
+| Athena 查詢結果輸出位置無法指定 S3AP<br>(Athena 無法 write back 到 S3AP) | UC6/7/8/13 的 Athena 結果需要標準 S3 | 每個範本建立專用於 Athena 結果的 S3 儲存貯體 | [FR-1](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-1) |
+| S3AP 不發出 S3 Event Notifications / EventBridge 事件 | 無法實現事件驅動的工作流程 | EventBridge Scheduler + Discovery Lambda 輪詢方式 | [FR-2](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-2) |
+| S3AP 不支援 Object Lifecycle 政策 | 7 年保留 (UC1 法務), 永久保留 (UC16 政府檔案) 等自動化困難 | 定期刪除的 Lambda 清理器 (未實作, 待辦事項) | [FR-3](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-3) |
+| S3AP 不支援 Object Versioning / Presigned URL | 文件版本管理, 外部稽核員的限時共享無法實現 | DynamoDB 用於版本管理, 標準 S3 複製 + Presign | [FR-4](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-4) |
+| 5GB 上傳大小限制 | 大型二進位檔案 (4K 影片, 未壓縮 GeoTIFF 等) | `shared.s3ap_helper.multipart_upload()` 支援到 5GB | (接受的 AWS 規格) |
+| 僅支援 SSE-FSX (不支援 SSE-KMS) | 無法使用自訂 KMS 金鑰加密 | 透過 FSx 磁碟區層級的 KMS 設定進行加密 | (接受的 AWS 規格) |
+
+所有 4 個功能改進需求 (FR-1 ~ FR-4) 的詳細內容與業務影響整理在
+[`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](docs/aws-feature-requests/fsxn-s3ap-improvements.md)
+中。
+
+3 種輸出模式 (Pattern A/B/C) 的詳細比較請參閱
+[`docs/output-destination-patterns.md`](docs/output-destination-patterns.md)。
+
+### 每個 UC 的輸出目標約束
+
+17 個 UC 分為 3 種輸出模式:
+
+- **🟢 UC1-5**: 現有的 `S3AccessPointOutputAlias` 參數支援 FSxN S3AP 輸出 (從一開始就這樣設計)
+- **🟢🆕 UC9/10/11/12/14**: `OutputDestination` 切換機制 (STANDARD_S3 ⇄ FSXN_S3AP), 2026-05-10 實作。UC11/14 已在 AWS 上驗證, UC9/10/12 僅完成單元測試
+- **🟡 UC6/7/8/13**: 目前僅為 `OUTPUT_BUCKET` (固定為標準 S3)。Athena 結果在規格上需要標準 S3, 因此 `OutputDestination` 應用是部分性的
+- **🟢 UC15-17**: Pattern A (write back 到 FSxN S3AP, Phase 7 的一部分)
+
+| UC | 輸入 | 輸出 | 選擇機制 | 備註 |
+|----|------|------|----------|------|
+| UC1 legal-compliance | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` 參數 | 合約中繼資料 / 稽核日誌 |
+| UC2 financial-idp | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` | 發票 OCR 結果 |
+| UC3 manufacturing-analytics | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` | 檢查結果 / 異常偵測 |
+| UC4 media-vfx | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` | 渲染中繼資料 |
+| UC5 healthcare-dicom | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` | DICOM 中繼資料 / 匿名化結果 |
+| UC6 semiconductor-eda | S3AP | **標準 S3** | ⚠️ 未實作 | Bedrock/Athena 結果 (Athena 在規格上需要標準 S3) |
+| UC7 genomics-pipeline | S3AP | **標準 S3** | ⚠️ 未實作 | Glue/Athena 結果 (Athena 在規格上需要標準 S3) |
+| UC8 energy-seismic | S3AP | **標準 S3** | ⚠️ 未實作 | Glue/Athena 結果 (Athena 在規格上需要標準 S3) |
+| UC9 autonomous-driving | S3AP | **可選擇** 🆕 | ✅ `OutputDestination` | ADAS 分析結果 |
+| UC10 construction-bim | S3AP | **可選擇** 🆕 | ✅ `OutputDestination` | BIM 中繼資料 / 安全合規報告 |
+| **UC11 retail-catalog** | S3AP | **可選擇** | ✅ `OutputDestination` | AWS 實證完成 2026-05-10 |
+| UC12 logistics-ocr | S3AP | **可選擇** 🆕 | ✅ `OutputDestination` | 配送運單 OCR |
+| UC13 education-research | S3AP | **標準 S3** | ⚠️ 未實作 | 包含 Athena 結果 (Athena 在規格上需要標準 S3) |
+| **UC14 insurance-claims** | S3AP | **可選擇** | ✅ `OutputDestination` | AWS 實證完成 2026-05-10 |
+| UC15 defense-satellite | S3AP | S3AP | 現有模式 | 物件偵測 / 變化偵測結果 |
+| UC16 government-archives | S3AP | S3AP | 現有模式 | FOIA 編輯結果 / 中繼資料 |
+| UC17 smart-city-geospatial | S3AP | S3AP | 現有模式 | GIS 分析結果 / 風險地圖 |
+
+**藍圖**:
+- ~~Part B: UC1-5 現有 `S3AccessPointOutputAlias` 模式的文件整理~~ ✅ 完成 (`docs/output-destination-patterns.md`)
+- UC6/7/8/13 的 Athena 輸出在規格上需要標準 S3, 但 Bedrock 報告等非 Athena 產物可以透過 `OutputDestination=FSXN_S3AP` write back 的選項 (Pattern C → Pattern B 混合, 未來擴充)
+- UC9/10/12 的 AWS 實際部署驗證 (單元測試已完成, 部署未實施)
 ## 區域選擇指南
 
 本模式集在 **ap-northeast-1（東京）** 進行了驗證，但可以部署到任何所需服務可用的 AWS 區域。
