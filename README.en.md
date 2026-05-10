@@ -164,6 +164,17 @@ EventBridge Scheduler (Periodic Execution)
 > 
 > Reference: [Textract Supported Regions](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical Supported Regions](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html) | [Cross-Region Setup Guide](docs/cross-region-guide.md)
 
+### Phase 7 (UC15–UC17) Public Sector Expansion
+
+| # | Directory | Industry | Pattern | AI/ML services | ap-northeast-1 status |
+|---|-----------|----------|---------|----------------|----------------------|
+| UC15 | [`defense-satellite/`](defense-satellite/README.en.md) | Defense/Space | Satellite imagery analytics (object detection, change detection, alerts) | Rekognition, SageMaker (optional), Bedrock | ✅ Code + tests complete, AWS verified |
+| UC16 | [`government-archives/`](government-archives/README.en.md) | Government | Public records / FOIA (OCR, classification, redaction, 20-day deadline tracking) | Textract ⚠️, Comprehend, Bedrock, OpenSearch (optional) | ✅ Code + tests complete, AWS verified |
+| UC17 | [`smart-city-geospatial/`](smart-city-geospatial/README.en.md) | Smart City | Geospatial analytics (CRS normalization, land use, risk mapping, planning report) | Rekognition, SageMaker (optional), Bedrock (Nova Lite) | ✅ Code + tests complete, AWS verified |
+
+> **Public Sector compliance**: UC15 targets DoD CC SRG / CSfC / FedRAMP High (on GovCloud migration), UC16 targets NARA / FOIA Section 552 / Section 508, UC17 targets INSPIRE Directive / OGC standards.
+
+
 ### Documentation (Architecture & Demo Guides)
 
 Detailed architecture diagrams and demo guides for each use case are available in the `docs/` folder in 8 languages.
@@ -184,6 +195,9 @@ Detailed architecture diagrams and demo guides for each use case are available i
 | UC12 | Logistics | [📐 Architecture](logistics-ocr/docs/architecture.en.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.en.md) |
 | UC13 | Education / Research | [📐 Architecture](education-research/docs/architecture.en.md) | [🎬 Demo Guide](education-research/docs/demo-guide.en.md) |
 | UC14 | Insurance | [📐 Architecture](insurance-claims/docs/architecture.en.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.en.md) |
+| UC15 | Defense/Space (Satellite) | [📐 Architecture](defense-satellite/docs/uc15-architecture.md) | [🎬 Demo Script](defense-satellite/docs/uc15-demo-script.md) |
+| UC16 | Government (FOIA / Archives) | [📐 Architecture](government-archives/docs/uc16-architecture.md) | [🎬 Demo Script](government-archives/docs/uc16-demo-script.md) |
+| UC17 | Smart City | [📐 Architecture](smart-city-geospatial/docs/uc17-architecture.md) | [🎬 Demo Script](smart-city-geospatial/docs/uc17-demo-script.md) |
 
 > All documents are available in 8 languages (日本語・English・한국어・简体中文・繁體中文・Français・Deutsch・Español). Use the Language Switcher at the top of each document to switch languages.
 

@@ -17,7 +17,8 @@ docs/screenshots/
 │   ├── phase4/                      Phase 4: Event-Driven Architecture
 │   ├── phase5/                      Phase 5: Cost Optimization & Multi-Region
 │   ├── phase6a/                     Phase 6A: Runtime Modernization
-│   └── phase6b/                     Phase 6B: Production Hardening
+│   ├── phase6b/                     Phase 6B: Production Hardening
+│   └── phase7/                      Phase 7: Public Sector UC Expansion (UC15-17)
 ├── originals/                       ← マスク前の原本（非公開）
 │   ├── phase1/
 │   ├── phase2/
@@ -25,7 +26,8 @@ docs/screenshots/
 │   ├── phase4/
 │   ├── phase5/
 │   ├── phase6a/
-│   └── phase6b/
+│   ├── phase6b/
+│   └── phase7/
 ├── README.md                        ← このファイル
 └── MASK_GUIDE.md                    ← マスク手順ガイド
 ```
@@ -149,13 +151,34 @@ docs/screenshots/
 | `phase6b-sagemaker-endpoint-settings.png` | SageMaker Endpoint 設定 |
 | `phase6b-sagemaker-inference-component.png` | SageMaker Inference Component |
 
+### Phase 7: Public Sector UC Expansion (UC15/UC16/UC17)
+
+UC15 (Defense / Satellite Imagery)、UC16 (Government / FOIA)、UC17 (Smart City Geospatial) の 3 ユースケースの AWS 検証時に撮影予定のスクリーンショット。ブラウザ認証が必要な環境での手動撮影を想定。
+
+| 期待されるファイル名 | 内容 |
+|---------------------|------|
+| `phase7-uc15-cfn-stack.png` | UC15 CloudFormation スタック作成完了 |
+| `phase7-uc15-stepfunctions-graph.png` | UC15 Step Functions グラフ（Discovery → Tiling → ObjectDetection → ChangeDetection → GeoEnrichment → AlertGeneration） |
+| `phase7-uc15-s3-output.png` | UC15 S3 出力バケット（enriched / tiles / detections プレフィックス） |
+| `phase7-uc15-cloudwatch-logs.png` | UC15 CloudWatch Logs（Discovery Lambda の EMF メトリクス） |
+| `phase7-uc16-cfn-stack.png` | UC16 CloudFormation スタック作成完了（OpenSearchMode=none） |
+| `phase7-uc16-stepfunctions-graph.png` | UC16 Step Functions グラフ（8 段 Map 処理 + Choice state） |
+| `phase7-uc16-s3-output.png` | UC16 S3 出力バケット（ocr-results / classifications / pii-entities / redacted / redaction-metadata） |
+| `phase7-uc16-dynamodb-retention.png` | UC16 DynamoDB Retention Table（NARA GRS 保存スケジュール） |
+| `phase7-uc17-cfn-stack.png` | UC17 CloudFormation スタック作成完了 |
+| `phase7-uc17-stepfunctions-graph.png` | UC17 Step Functions グラフ（7 段 Map、Bedrock Nova Lite まで到達） |
+| `phase7-uc17-s3-report.png` | UC17 Bedrock 生成の都市計画レポート（Markdown） |
+| `phase7-uc17-dynamodb-landuse-history.png` | UC17 DynamoDB LandUse History（時系列変化） |
+
+検証実施済み（2026-05-10）: 3 UC すべて Step Functions SUCCEEDED、Bedrock 実呼び出し確認、その後リソース削除。検証結果の詳細は [verification-results-phase7.md](../verification-results-phase7.md) 参照。
+
 ## 命名規則
 
 ```
 {phase}-{service}-{detail}.png
 ```
 
-- `phase`: `phase1`, `phase2`, `phase3`, `phase4`, `phase5`, `phase6a`, `phase6b`
+- `phase`: `phase1`, `phase2`, `phase3`, `phase4`, `phase5`, `phase6a`, `phase6b`, `phase7`
 - `service`: AWS サービス名（小文字ハイフン区切り）
 - `detail`: 画面の具体的内容
 

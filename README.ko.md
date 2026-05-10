@@ -164,6 +164,17 @@ EventBridge Scheduler (정기 실행)
 > 
 > 참고: [Textract 지원 리전](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 지원 리전](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
 
+### Phase 7 (UC15–UC17) 공공 부문 확장
+
+| # | 디렉토리 | 업계 | 패턴 | AI/ML 서비스 | ap-northeast-1 검증 상태 |
+|---|---------|------|------|-------------|------------------------|
+| UC15 | `defense-satellite/` | 국방·우주 | 위성 이미지 분석 (물체 탐지, 변화 탐지, 경고) | Rekognition, SageMaker (선택), Bedrock | ✅ 코드 + 테스트 완료, AWS 검증됨 |
+| UC16 | `government-archives/` | 정부 | 공문서 아카이브·FOIA (OCR, 분류, 삭제, 20일 기한 추적) | Textract ⚠️, Comprehend, Bedrock, OpenSearch (선택) | ✅ 코드 + 테스트 완료, AWS 검증됨 |
+| UC17 | `smart-city-geospatial/` | 스마트 시티 | 지리 공간 분석 (CRS 정규화, 토지 이용, 위험 매핑, 계획 보고서) | Rekognition, SageMaker (선택), Bedrock (Nova Lite) | ✅ 코드 + 테스트 완료, AWS 검증됨 |
+
+> **공공 부문 적합성**: UC15는 DoD CC SRG / CSfC / FedRAMP High (GovCloud 마이그레이션 시), UC16은 NARA / FOIA 섹션 552 / 섹션 508, UC17은 INSPIRE 지침 / OGC 표준 준수.
+
+
 ## 리전 선택 가이드
 
 본 패턴 컬렉션은 **ap-northeast-1(도쿄)**에서 검증을 실시했지만, 필요한 서비스가 이용 가능한 모든 AWS 리전에 배포할 수 있습니다.
