@@ -60,8 +60,32 @@ def check_template(template_path: Path) -> list[str]:
     issues: list[str] = []
     lines = content.split("\n")
 
-    # Find S3-related write Sid blocks
-    pattern = re.compile(
+    def get_line_number(pos: int) -> int:
+        """Get 1-indexed line number for character position."""
+        return content[:pos].count("\n") + 1
+
+    def is_in_if_block(block_line: int) -> bool:
+        """Check if block at `block_line` is inside `!If HasS3AccessPointName`."""
+        if block_line < 2:
+            return False
+        block_text = lines[block_line - 1]
+        block_indent = len(block_text) - len(block_text.lstrip())
+
+        for i in range(block_line - 2, max(0, block_line - 20), -1):
+            line = lines[i]
+            stripped = line.strip()
+            if "HasS3AccessPointName" in stripped and stripped.startswith("-"):
+                line_indent = len(line) - len(line.lstrip())
+                if line_indent <= block_indent:
+                    return True
+            if stripped and (stripped.startswith("- Sid:") or stripped.startswith("- Effect:")):
+                line_indent = len(line) - len(line.lstrip())
+                if line_indent < block_indent:
+                    break
+        return False
+
+    # Pattern 1: Statement blocks with "Sid: S3...Write/Output" containing PutObject
+    pattern_sid = re.compile(
         r'(Sid:\s*(S3(?:AccessPoint|AP\w*)?\w*(?:Write|Output\w*))\s*\n'
         r'(?:[^-]*\n)*?'
         r'\s*Action:\s*\n'
@@ -71,62 +95,60 @@ def check_template(template_path: Path) -> list[str]:
         re.DOTALL,
     )
 
-    def get_line_number(pos: int) -> int:
-        """Get 1-indexed line number for character position."""
-        return content[:pos].count("\n") + 1
+    # Pattern 2: Statement blocks WITHOUT Sid but with "Action: [s3:PutObject]" (inline style)
+    pattern_inline = re.compile(
+        r'(Effect:\s*Allow\s*\n'
+        r'\s*Action:\s*\[(?:[^\]]*s3:PutObject[^\]]*)\]\s*\n'
+        r'\s*Resource:\s*(?:(?!Effect:|Sid:).)*?)'
+        r'(?=\s*-\s*Effect:|\s*-\s*Sid:|\s+PolicyName:|$)',
+        re.DOTALL,
+    )
 
-    def is_in_if_block(block_line: int) -> bool:
-        """Check if block at `block_line` is inside `!If HasS3AccessPointName`.
+    all_matches = []
 
-        Walks backwards looking for `- HasS3AccessPointName` at a shallower
-        indent level than the block.
-        """
-        if block_line < 2:
-            return False
-        # Get the block's leading whitespace to determine its indent level
-        block_text = lines[block_line - 1]
-        block_indent = len(block_text) - len(block_text.lstrip())
-
-        # Walk backwards up to 20 lines
-        for i in range(block_line - 2, max(0, block_line - 20), -1):
-            line = lines[i]
-            stripped = line.strip()
-            if "HasS3AccessPointName" in stripped and stripped.startswith("-"):
-                line_indent = len(line) - len(line.lstrip())
-                # The conditional line is shallower or equal indent
-                if line_indent <= block_indent:
-                    return True
-            # Stop if we hit another major block at shallower indent
-            if stripped and stripped.startswith("- Sid:"):
-                line_indent = len(line) - len(line.lstrip())
-                if line_indent < block_indent:
-                    break
-        return False
-
-    for match in pattern.finditer(content):
+    # Collect Sid-style matches
+    for match in pattern_sid.finditer(content):
         block = match.group(1)
         sid = match.group(2)
         block_line = get_line_number(match.start())
+        all_matches.append((block, sid, block_line, "Sid"))
 
+    # Collect inline-style matches (no Sid)
+    for match in pattern_inline.finditer(content):
+        block = match.group(1)
+        block_line = get_line_number(match.start())
+        # Skip if this block is part of a Sid block already counted
+        is_in_sid = any(
+            sm_line <= block_line <= sm_line + sm_block.count("\n")
+            for sm_block, _, sm_line, _ in all_matches
+        )
+        if not is_in_sid:
+            all_matches.append((block, "(no Sid)", block_line, "inline"))
+
+    for block, sid, block_line, style in all_matches:
         # Check if this block uses HasS3AccessPointName conditional directly
         has_direct_conditional = "HasS3AccessPointName" in block
-        # Check if block has full ARN format
         has_arn_format = "accesspoint/" in block
-        # Check if block references any alias
         has_alias_format = (
             "S3AccessPointAlias" in block or "OutputS3APAlias" in block
         )
 
+        # Skip blocks that reference only OutputBucket (standard S3)
+        only_output_bucket = (
+            "OutputBucket" in block and not has_alias_format
+        )
+        if only_output_bucket:
+            continue
+
         # Skip if this block is inside an !If HasS3AccessPointName wrapper
-        # (it's either the true-branch with full ARN or false-branch alias-only,
-        # both are acceptable within the conditional)
         if is_in_if_block(block_line):
             continue
 
-        # Issue: alias-only without any conditional (direct or parent !If)
+        # Issue: alias-only without any conditional
         if has_alias_format and not has_arn_format and not has_direct_conditional:
             issues.append(
-                f"  {sid} (line {block_line}): Missing ARN format — uses only alias. "
+                f"  {sid} (line {block_line}, style={style}): "
+                f"Missing ARN format — uses only alias. "
                 f"Add !If HasS3AccessPointName block with "
                 f"arn:aws:s3:${{AWS::Region}}:${{AWS::AccountId}}:accesspoint/"
                 f"${{S3AccessPointName}}/object/* resource."
