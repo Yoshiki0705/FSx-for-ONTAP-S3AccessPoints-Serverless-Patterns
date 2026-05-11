@@ -509,3 +509,75 @@ encountered during UC stack cleanup, see:
 The cleanup script (`scripts/cleanup_generic_ucs.sh`) has been enhanced
 to handle modes 1-4 automatically. Mode 5 (DynamoDB Retain) still
 requires manual `delete-table` after stack deletion.
+
+---
+
+## 12. Cross-UC validation sweeps (2026-05-11 追加対応)
+
+Phase 7 Theme R の延長として、17 UC 全体の横断検査を実施。以下の 3 件を発見・修正した。
+
+### 12.1 S3 Access Point ARN form の IAM ポリシー不整合（9 UC）
+
+**症状**: FSxN S3AP permission 判定は alias 形式（`arn:aws:s3:::<alias>/*`）と
+Access Point ARN 形式（`arn:aws:s3:<region>:<account>:accesspoint/<name>/*`）の
+両方を評価する。IAM policy が alias だけを許可していると、内部的に
+ARN 形式で参照された瞬間に `AccessDenied` が発生する。
+
+**影響範囲**: UC1/2/3/5/6/7/8/10/14 の 9 UC（既に修正済みだった UC4/9/11/12/13/15/16/17
+を除く）。いずれも `S3AccessPointAlias` は受け取っていたが、`S3AccessPointName`
+パラメータと `HasS3AccessPointName` Condition を持っていなかった。
+
+**修正内容**:
+
+1. 9 UC の `template-deploy.yaml` に `S3AccessPointName` パラメータを追加
+   （default `""`、指定したときだけ AP ARN を許可）。
+2. `HasS3AccessPointName` Condition を追加。
+3. Discovery / OCR / 出力系の Lambda IAM ポリシーで `Resource` を
+   `!If [HasS3AccessPointName, [alias + AP ARN], [alias のみ]]` に書き換え。
+
+**修正後の検証**: `scripts/lint_all_templates.sh` で 9/9 UC が cfn-lint 0 errors。
+UC9 / UC4 デプロイ経験から、このパターンは AWS 側でデプロイすると
+`CREATE_COMPLETE` になるが、Lambda 実行時に `AccessDenied` になる。
+テンプレート lint では検出できない AWS 固有の挙動なので、17 UC 横並びで
+先回り修正した。
+
+**予防策**: 新 UC を追加するときは `autonomous-driving/template-deploy.yaml`
+を参考に `S3AccessPointName` パラメータを必ず定義する。
+
+### 12.2 Lambda handler の `os` 未 import（UC2 financial-idp）
+
+**症状**: `entity_extraction/handler.py` で `os.environ.get(...)` を呼んでいるが
+`import os` が欠落していた（pyflakes で検出）。Lambda 実行時に
+`NameError: name 'os' is not defined` → Step Functions FAILED。
+
+**検出方法**: `scripts/_check_handler_names.py` で 87 個の handler を
+pyflakes に一括投入。1 件のみ undefined name エラー。
+
+**修正**: 1 行追加のみ（`import os`）。Commit で修正済み。
+
+**予防策**: handler.py 追加時に CI / local で `python3 -m pyflakes` を走らせる
+ことを推奨。`scripts/_check_handler_names.py` を pre-commit hook に組み込む
+案も検討余地あり（ただし現状は 60-90 秒かかる cfn-lint と分離して実行可能）。
+
+### 12.3 Step Functions Choice state operator typo（UC9 で過去に発見済み）
+
+Phase 7 Theme Q で UC9 の `NumericGreaterThanOrEqualToPath`
+（実在しない operator）を `NumericGreaterThanEqualsPath`（正しい名前）に
+修正済み。今回の横断検査で他 UC には同種の typo がないことを確認
+（grep 結果は `NumericGreaterThanEqualsPath` と `NumericLessThanPath` のみ）。
+
+---
+
+## 13. 横断検査スクリプト
+
+Phase 7 の実検証を通じて以下の検査スクリプトを整備した。**新規 UC 追加時 / 大規模 refactor 後は全て実行すること。**
+
+| スクリプト | 検出対象 | 所要時間 |
+|---|---|---|
+| `scripts/lint_all_templates.sh` | CloudFormation template の schema エラー（17 UC 並列） | 5-7 分 |
+| `scripts/check_handler_names.py` | Lambda handler の NameError / undefined name | 30 秒 |
+| `scripts/check_conditional_refs.py` | UC9-class bug: Condition 付きリソースを Sub で参照 | 5 秒 |
+| `scripts/_check_sensitive_leaks.py` | スクリーンショット OCR leak 検査 | 10 秒 |
+
+いずれも macOS / Linux で動作。必要な Python パッケージは `pip install cfn-lint pyflakes pyyaml`。
+

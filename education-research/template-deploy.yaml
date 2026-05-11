@@ -14,6 +14,11 @@ Parameters:
     Type: String
     Description: FSx ONTAP S3 Access Point Alias
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: S3 Access Point Name（ARN ベース、空の場合は Alias のみ）
   OntapSecretName:
     Type: String
     Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
@@ -91,6 +96,8 @@ Parameters:
     Description: Lambda SnapStart を有効化する（コールドスタート削減）
 
 Conditions:
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
   CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateVpcEndpoints: !Equals [!Ref EnableVpcEndpoints, "true"]
   CreateS3GatewayEndpoint:
@@ -259,9 +266,14 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: [s3:ListBucket, s3:GetObject, s3:GetBucketLocation]
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Effect: Allow
                 Action: [s3:PutObject]
                 Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"

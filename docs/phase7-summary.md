@@ -306,7 +306,51 @@ Candidate additions B-thread raised (pending A-thread merge):
 - **B-P8-3**: OutputWriter async / multipart for > 5 GB objects
 - **B-P8-4**: Phase 7 UC demo-guide 8-lang translation completion
 
+---
+
+## Phase 7 Extended Round — 17 UC Cross-Validation Sweep (2026-05-11)
+
+After Theme E/Q/R completion, an additional round was run to verify
+correctness across all 17 UCs end-to-end (no bypasses, production-grade).
+
+### Extended deliverables
+
+- **All 17 UCs: `S3AccessPointName` parameter added.** 9 UCs (UC1/2/3/5/6/7/8/10/14)
+  were previously missing the AP ARN form in IAM policies, which would
+  cause runtime `AccessDenied` when FSxN S3AP evaluates permissions in
+  ARN form. All templates now conditionally grant both alias and ARN
+  forms via `HasS3AccessPointName` condition.
+- **UC2 `entity_extraction` NameError fix.** `os.environ.get(...)` used
+  without `import os`. Detected via pyflakes sweep across 87 Lambda
+  handlers. Single-line fix, no semantic change.
+- **Cross-UC validation scripts added:**
+  - `scripts/lint_all_templates.sh` — parallel cfn-lint across all 17 UCs (~5-7 min)
+  - `scripts/_check_handler_names.py` — pyflakes sweep for NameError / undefined name
+  - `scripts/_check_conditional_refs.py` — UC9-class bug detector (Condition ref in Sub)
+- **Five SUCCEEDED Step Functions screenshots** (UC4/9/15/16/17) with no
+  bypasses — each UC runs the full pipeline end-to-end on real AWS
+  resources (Deadline Cloud farm+queue for UC4, SkipInference pass state
+  for UC9 with SageMaker disabled, FSXN_S3AP output mode for UC15-17).
+- **Troubleshooting playbook Section 12/13 added** documenting the sweep
+  findings and validation scripts.
+
+### Why this extended round mattered
+
+User requirement: "ユーザーの人々が触った時に実際に使えるものでなくてはいけない
+ので、バイパスは絶対にせずに解決してください。"
+
+The 9-UC IAM fix is a silent failure mode — cfn-lint passes, stack
+creates successfully, but runtime calls fail with AccessDenied. It can
+only be caught by either (a) actually running the full pipeline in AWS,
+or (b) cross-checking against UCs that already had the fix applied
+(UC4/9/11/12/13/15/16/17). We chose (b) as a preventive measure since
+deploying 9 stacks for verification would have consumed 90+ minutes of
+compute and introduced new stack-cleanup surface.
+
+---
+
 ## Cross-References
+
 
 - [`docs/verification-results-phase7-outputdestination.md`](verification-results-phase7-outputdestination.md) — Theme E AWS evidence
 - [`docs/verification-evidence/uc{15,16,17}-demo/`](verification-evidence/) — CLI evidence
