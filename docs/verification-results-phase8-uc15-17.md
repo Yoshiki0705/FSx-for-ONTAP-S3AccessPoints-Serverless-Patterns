@@ -172,3 +172,71 @@
 4. ヘッダーコメントに全環境変数の説明追加
 
 全スクリーンショット: v7 OCR マスク適用済み、`_check_sensitive_leaks.py` 0 leaks 確認済み。
+
+---
+
+## Batch 3: UC3/UC5/UC7/UC8 Deployment (2026-05-11)
+
+### 実行結果サマリー
+
+| UC | Duration | Events | Status | 備考 |
+|----|----------|--------|--------|------|
+| UC3 (manufacturing-analytics) | 15.4s | 101 | ✅ SUCCEEDED | Parallel[TransformCSV×2 + AnalyzeImages×8] → AthenaAnalysis |
+| UC5 (healthcare-dicom) | 10.0s | 33 | ✅ SUCCEEDED | Map[DicomParse → PiiDetection → Anonymization] → SNS |
+| UC7 (genomics-pipeline) | 2:47 | 10 | ❌ FAILED | IAM S3AP PutObject 不足 |
+| UC8 (energy-seismic) | 2:44 | 10 | ❌ FAILED | 同上 |
+
+### 🐛 検出バグ: S3AP PutObject IAM 権限の ARN 形式不足
+
+**症状**: Discovery Lambda が FSxN S3AP にマニフェスト JSON を書き込む際に AccessDenied
+
+```
+User: arn:aws:sts::178625946981:assumed-role/fsxn-genomics-pipeline-demo-discovery-role/
+fsxn-genomics-pipeline-demo-discovery is not authorized to perform:
+s3:PutObject on resource: "arn:aws:s3:ap-northeast-1:178625946981:accesspoint/
+eda-demo-s3ap/object/manifests/2026/05/11/xxx.json"
+because no identity-based policy allows the s3:PutObject action
+```
+
+**根本原因**:
+Discovery Lambda ロールの `S3AccessPointWrite` Sid が alias 形式
+（`arn:aws:s3:::<alias>/*`）のみを Resource として指定していた。
+しかし SDK が full ARN 形式（`arn:aws:s3:<region>:<account>:accesspoint/<name>/object/*`）
+でリクエストを発行した際、IAM は両形式をマッチング評価する。alias のみだと AccessDenied。
+
+**修正済みテンプレート** (4 件):
+- `genomics-pipeline/template-deploy.yaml` (UC7)
+- `energy-seismic/template-deploy.yaml` (UC8)
+- `construction-bim/template-deploy.yaml` (UC10) — 未検証だが同パターン
+- `logistics-ocr/template-deploy.yaml` (UC12) — 未検証だが同パターン
+
+**正しいパターン**:
+```yaml
+- Sid: S3AccessPointWrite
+  Effect: Allow
+  Action:
+    - s3:PutObject
+  Resource: !If
+    - HasS3AccessPointName
+    - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+      - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+    - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+```
+
+### 🆕 恒久対策: IAM Pattern Validator
+
+`scripts/check_s3ap_iam_patterns.py` を新規追加:
+- 全 17 UC テンプレートを AST-style ルールでスキャン
+- `S3...Write` / `S3...Output` Sid で PutObject/DeleteObject を含むブロックを抽出
+- alias 形式のみで ARN 形式欠落 + `HasS3AccessPointName` 条件なしの場合エラー
+- `!If HasS3AccessPointName` の else 分岐（alias-only で正しい）は誤検知しない
+- 検証結果: **17/17 templates clean** ✅
+
+このバリデータは CI/CD パイプライン（Theme M）に組み込み予定。
+
+### 残課題
+
+| # | 問題 | 優先度 | 対応方針 |
+|---|------|--------|---------|
+| 5 | UC10/UC12 の IAM 修正を AWS 実機で検証 | Medium | Batch 4 デプロイ時に合わせて検証 |
+| 6 | Discovery Lambda ハンドラが PutObject を使う設計の是非 | Low | マニフェスト書き込みは Discovery の核機能だが、S3AP ではなく標準 S3 bucket に書き込むオプションも検討余地 |
