@@ -221,6 +221,65 @@ aws secretsmanager create-secret \
 
 ---
 
+## Failure Mode 6: Discovery Lambda s3:PutObject AccessDenied on S3AP
+
+### Symptom
+
+Step Functions execution fails at Discovery step with:
+```
+User: arn:aws:sts::<account>:assumed-role/fsxn-<uc>-demo-discovery-role/
+fsxn-<uc>-demo-discovery is not authorized to perform:
+s3:PutObject on resource: "arn:aws:s3:<region>:<account>:accesspoint/
+<name>/object/manifests/..."
+because no identity-based policy allows the s3:PutObject action
+```
+
+### Root Cause
+
+Discovery Lambda role's `S3AccessPointWrite` Sid only specifies the alias
+format of the S3 Access Point resource ARN:
+```yaml
+Resource:
+  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+```
+
+But when the Lambda uses boto3 with the full ARN form (as happens when
+`S3_ACCESS_POINT_NAME` is set), IAM evaluates the request against the
+full ARN format (`arn:aws:s3:<region>:<account>:accesspoint/<name>/object/*`).
+
+Without both formats in the policy, IAM denies the request.
+
+### Resolution
+
+Update the IAM policy to use `!If HasS3AccessPointName` with both formats:
+
+```yaml
+- Sid: S3AccessPointWrite
+  Effect: Allow
+  Action:
+    - s3:PutObject
+  Resource: !If
+    - HasS3AccessPointName
+    - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+      - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+    - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+```
+
+### Prevention
+
+Run the IAM pattern validator before deployment:
+```bash
+python3 scripts/check_s3ap_iam_patterns.py
+```
+
+Fixed in Phase 8 Batch 3 verification (2026-05-11) for:
+- UC7 (genomics-pipeline)
+- UC8 (energy-seismic)
+- UC10 (construction-bim)
+- UC12 (logistics-ocr)
+
+---
+
 ## General debugging tips
 
 1. **Check stack events for the actual error**:
