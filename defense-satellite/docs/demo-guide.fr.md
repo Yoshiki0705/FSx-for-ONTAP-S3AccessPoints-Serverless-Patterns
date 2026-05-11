@@ -147,12 +147,19 @@ sont consolidées dans `docs/verification-results-*.md`.
 ### Statut de vérification pour ce cas d'utilisation
 
 - ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **Capture UI/UX** : ✅ Terminé (Phase 8 Theme D, commit d7ebabd)
 
 ### Captures d'écran existantes
 
-![UC15 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/uc15-stepfunctions-graph.png)
+![Vue graphique Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
+![Bucket S3 de sortie](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+
+![Sortie S3 enrichie](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+
+![Table DynamoDB d'historique des changements](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+
+![Sujets de notification SNS](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 ### Écrans UI/UX cibles pour re-vérification (liste de captures recommandées)
 
 - Bucket S3 de sortie (detections/, geo-enriched/, alerts/)
