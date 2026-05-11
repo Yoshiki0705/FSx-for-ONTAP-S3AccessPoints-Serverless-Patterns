@@ -168,7 +168,7 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 - ✅ **E2E 実行**: Phase 1-6 で確認済み（根 README 参照）
 - 📸 **UI/UX 再撮影**: ✅ 2026-05-10 再デプロイ検証で撮影済み （UC7 Step Functions グラフ、Lambda 実行成功を確認）
-- 📸 **UI/UX 撮影 (Phase 8 Theme D)**: ⚠️ SFN 構造のみ撮影（commit c66084f — IAM S3AP 権限不足により FAILED、Theme I で修正予定）
+- 📸 **UI/UX 撮影 (Phase 8 Theme D)**: ✅ SUCCEEDED 撮影完了（commit 2b958db — IAM S3AP 修正後に再デプロイ、3:03 で全ステップ成功）
 - 🔄 **再現方法**: 本ドキュメント末尾の「撮影ガイド」を参照
 
 ### 2026-05-10 再デプロイ検証で撮影（UI/UX 中心）
@@ -180,12 +180,15 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
 色で可視化するエンドユーザー最重要画面。
 
-#### UC7 Step Functions Graph（ワークフロー構造 — Phase 8 Theme D）
+#### UC7 Step Functions Graph（SUCCEEDED — Phase 8 Theme D 再撮影）
 
-![UC7 Step Functions Graph（ワークフロー構造）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-structure.png)
+![UC7 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
 
-Discovery Lambda が FSxN S3AP にマニフェスト書き込み時に `AccessDenied`。
-テンプレートの Discovery IAM ロールに `s3:PutObject` on S3AP ARN を追加する必要あり（Theme I で対応予定）。
+IAM S3AP 修正後に再デプロイ。全ステップ SUCCEEDED（3:03）。
+
+#### UC7 Step Functions Graph（ズーム表示 — 各ステップ詳細）
+
+![UC7 Step Functions Graph（ズーム表示）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 

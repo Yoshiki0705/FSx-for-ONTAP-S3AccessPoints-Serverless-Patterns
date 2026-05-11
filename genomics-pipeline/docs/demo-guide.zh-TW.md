@@ -181,10 +181,10 @@ Phase 7 UC15/16/17 與 UC6/11/14 的示範採用相同方針，以**終端使用
 
 #### UC7 Step Functions 圖表 (工作流程結構 — Phase 8 Theme D)
 
-![UC7 Step Functions 圖表 (工作流程結構)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-structure.png)
+![UC7 Step Functions 圖表 (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
 
-Discovery Lambda 寫入 FSxN S3AP manifest 時出現 `AccessDenied`。
-需要在範本的 Discovery IAM 角色中加入 `s3:PutObject` on S3AP ARN 權限（Theme I 計劃修復）。
+![UC7 Step Functions Graph (zoomed)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
+
 
 Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態的執行狀況，
 是終端使用者最重要的畫面。
