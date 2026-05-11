@@ -121,3 +121,54 @@
 | UC17 | DynamoDB Landuse History | `uc17-demo/dynamodb-landuse-history-table.png` |
 
 全スクリーンショット: v7 OCR マスク適用済み、`_check_sensitive_leaks.py` 0 leaks 確認済み。
+
+---
+
+## Batch 2: UC2/UC9 Deployment (2026-05-11)
+
+### UC2 (financial-idp) — Execution Details
+
+**State Transitions**: 61 (Discovery → Map[OCR → EntityExtraction → Summary] × 18 parallel iterations)
+**Duration**: 16.398s
+**Events**: 334
+
+**知見**:
+- Discovery Lambda が FSxN S3AP から 18 件の金融文書を検出
+- Map state で 18 並列イテレーション実行（高い並列性を実証）
+- OCR → EntityExtraction → Summary の 3 段パイプラインが全文書で正常完了
+- Catch state (MarkFailed) は未使用（全文書成功）
+
+**デプロイ問題と解決**:
+- **問題**: `S3GatewayEndpoint` リソース作成時に `route table rtb-xxx already has a route with destination-prefix-list-id pl-xxx` エラー
+- **原因**: 同一 VPC に UC6 スタックの S3 Gateway Endpoint が既存
+- **解決**: `EnableS3GatewayEndpoint=false` パラメータを追加してデプロイ
+- **恒久対策**: `deploy_generic_ucs.sh` のデフォルトを `ENABLE_S3_GATEWAY_EP=false` に変更
+
+### UC9 (autonomous-driving) — Execution Details
+
+**State Transitions**: 10 (Discovery → Parallel[ProcessVideoFiles, ProcessLidarFiles] → InferenceRouting(Choice) → SkipInference(Pass) → AnnotationManager)
+**Duration**: 2:42.616s
+**Events**: 35
+
+**知見**:
+- Discovery Lambda の VPC cold start: **2:41** (ENI 作成待ち)
+  - 2 回目以降は数秒に短縮（ENI 再利用）
+  - 本番環境では Provisioned Concurrency で回避可能
+- Parallel state: ProcessVideoFiles (1 iteration) + ProcessLidarFiles (0 items → 即完了)
+- InferenceRouting Choice state: `inference_type == "none"` → Default → SkipInference
+  - Phase 7 Theme Q-1 修正 (`SkipInference` Pass state 追加) が正常動作を確認
+- AnnotationManager: Bedrock annotation 生成が正常完了（COCO JSON 出力）
+
+**S3 Output**:
+- `fsxn-autonomous-driving-demo-output-178625946981` バケットに出力確認
+- frames/, annotations/ フォルダ構造
+
+### デプロイスクリプト改善
+
+`scripts/deploy_generic_ucs.sh` に以下を反映:
+1. UC6/UC15/UC16/UC17 のマッピング追加（全 17 UC 対応）
+2. `ENABLE_S3_GATEWAY_EP` 環境変数追加（デフォルト: `false`）
+3. `EnableVpcEndpoints=false` をデフォルトで渡す（共有 VPC 前提）
+4. ヘッダーコメントに全環境変数の説明追加
+
+全スクリーンショット: v7 OCR マスク適用済み、`_check_sensitive_leaks.py` 0 leaks 確認済み。

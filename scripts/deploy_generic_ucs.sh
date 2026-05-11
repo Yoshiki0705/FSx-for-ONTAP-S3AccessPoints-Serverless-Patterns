@@ -1,10 +1,28 @@
 #!/bin/bash
-# Deploy multiple existing UCs (UC1-UC14) using their template-deploy.yaml files.
+# Deploy multiple UCs (UC1-UC17) using their template-deploy.yaml files.
 # Uses same UC6 infra (VPC, S3 AP, Secrets Manager).
 #
 # Usage:
 #   bash scripts/deploy_generic_ucs.sh UC1 UC11 UC14 UC9
+#   bash scripts/deploy_generic_ucs.sh UC15 UC16 UC17
 #   bash scripts/deploy_generic_ucs.sh legal-compliance retail-catalog insurance-claims
+#
+# Environment Variables:
+#   DEPLOY_BUCKET          - S3 bucket for Lambda packages and CFn templates
+#   S3_AP_ALIAS            - FSxN S3 Access Point alias
+#   S3_AP_NAME             - FSxN S3 Access Point name
+#   VPC_ID                 - VPC ID for Lambda functions
+#   SUBNETS                - Comma-separated private subnet IDs
+#   NOTIFICATION_EMAIL     - Email for SNS notifications
+#   ONTAP_SECRET_NAME      - Secrets Manager secret name for ONTAP credentials
+#   ONTAP_MANAGEMENT_IP    - ONTAP management endpoint IP
+#   SVM_UUID               - ONTAP SVM UUID
+#   ENABLE_S3_GATEWAY_EP   - "true" or "false" (default: "false")
+#                            Set to "false" when S3 Gateway Endpoint already exists in VPC
+#
+# IMPORTANT: If deploying to a VPC that already has a S3 Gateway Endpoint
+# (e.g., from UC6 stack), set ENABLE_S3_GATEWAY_EP=false to avoid
+# "route table already has a route with destination-prefix-list-id" error.
 
 set -u
 
@@ -20,6 +38,8 @@ ONTAP_SECRET_NAME="${ONTAP_SECRET_NAME:-fsx-ontap-fsxadmin-credentials}"
 ONTAP_MANAGEMENT_IP="${ONTAP_MANAGEMENT_IP:-<ONTAP_MGMT_IP>}"
 SVM_UUID="${SVM_UUID:-<SVM_UUID>}"
 REGION="${AWS_REGION:-ap-northeast-1}"
+# Set to "false" when deploying to a VPC that already has a S3 Gateway Endpoint
+ENABLE_S3_GATEWAY_EP="${ENABLE_S3_GATEWAY_EP:-false}"
 
 # Map short names to directories (using case for bash 3.2 compat)
 uc_to_dir() {
@@ -29,6 +49,7 @@ uc_to_dir() {
         UC3) echo "manufacturing-analytics" ;;
         UC4) echo "media-vfx" ;;
         UC5) echo "healthcare-dicom" ;;
+        UC6) echo "semiconductor-eda" ;;
         UC7) echo "genomics-pipeline" ;;
         UC8) echo "energy-seismic" ;;
         UC9) echo "autonomous-driving" ;;
@@ -37,6 +58,9 @@ uc_to_dir() {
         UC12) echo "logistics-ocr" ;;
         UC13) echo "education-research" ;;
         UC14) echo "insurance-claims" ;;
+        UC15) echo "defense-satellite" ;;
+        UC16) echo "government-archives" ;;
+        UC17) echo "smart-city-geospatial" ;;
         *) echo "$1" ;;  # already a directory name
     esac
 }
@@ -72,6 +96,8 @@ deploy_one() {
             VpcId="$VPC_ID" \
             PrivateSubnetIds="$SUBNETS" \
             NotificationEmail="$NOTIFICATION_EMAIL" \
+            EnableS3GatewayEndpoint="$ENABLE_S3_GATEWAY_EP" \
+            EnableVpcEndpoints="false" \
         --capabilities CAPABILITY_NAMED_IAM \
         --no-fail-on-empty-changeset 2>&1 | tail -3
 
@@ -79,7 +105,7 @@ deploy_one() {
 }
 
 if [[ $# -eq 0 ]]; then
-    echo "Usage: $0 <UC1|legal-compliance> [UC11] [UC14] [...]"
+    echo "Usage: $0 <UC1|UC15|legal-compliance> [UC11] [UC14] [...]"
     exit 1
 fi
 
