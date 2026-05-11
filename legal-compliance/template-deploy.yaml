@@ -573,7 +573,7 @@ Resources:
                   - !Sub "${ReportGenerationLogGroup.Arn}:*"
 
   # -----------------------------------------------------------------
-  # Lambda Functions (Python 3.12, 256MB, 300s timeout)
+  # Lambda Functions (Python 3.13, VPC-attached)
   # -----------------------------------------------------------------
   DiscoveryFunction:
     Type: AWS::Lambda::Function
@@ -589,8 +589,8 @@ Resources:
       Code:
         S3Bucket: !Ref DeployBucket
         S3Key: lambda/legal-compliance-discovery.zip
-      MemorySize: 256
-      Timeout: 300
+      MemorySize: 512
+      Timeout: 900
       Role: !GetAtt DiscoveryLambdaRole.Arn
       VpcConfig:
         SecurityGroupIds:
