@@ -1,0 +1,123 @@
+name: Phase 8 DevSecOps Validators
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  s3ap-iam-patterns:
+    name: "S3AP IAM alias+ARN pattern check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Run S3AP IAM validator
+        run: python3 scripts/check_s3ap_iam_patterns.py
+
+  handler-name-check:
+    name: "Handler undefined-name sweep"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install pyflakes
+        run: pip install pyflakes
+      - name: Check handler undefined names
+        run: python3 scripts/check_handler_names.py
+
+  conditional-refs-check:
+    name: "UC9-class conditional resource ref check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Check conditional refs
+        run: python3 scripts/check_conditional_refs.py
+
+  python-quality:
+    name: "Pyflakes quality sweep (CRITICAL only)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install pyflakes
+        run: pip install pyflakes
+      - name: Run quality check
+        run: python3 scripts/check_python_quality.py
+
+  sensitive-leak-check:
+    name: "Screenshot OCR sensitive-leak scan"
+    runs-on: ubuntu-latest
+    # The full leak scanner requires _sensitive_strings.py (gitignored).
+    # On CI we use a CI-oriented mode that sources literals from a
+    # repository secret so PR authors can't exfiltrate the sensitive list.
+    # Skipped on PRs from forks because secrets are unavailable there.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install tesseract + Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-jpn
+          pip install pillow pytesseract
+      - name: Materialise sensitive strings from secret
+        env:
+          SENSITIVE_STRINGS_PY: ${{ secrets.SENSITIVE_STRINGS_PY }}
+        run: |
+          if [ -z "$SENSITIVE_STRINGS_PY" ]; then
+            echo "SENSITIVE_STRINGS_PY secret not configured — using example (no-op) file."
+            cp scripts/_sensitive_strings.py.example scripts/_sensitive_strings.py
+          else
+            printf '%s' "$SENSITIVE_STRINGS_PY" > scripts/_sensitive_strings.py
+          fi
+      - name: Run sensitive-leak scan
+        run: python3 scripts/_check_sensitive_leaks.py
+
+  validators-summary:
+    name: "Phase 8 Validators Summary"
+    runs-on: ubuntu-latest
+    needs:
+      - s3ap-iam-patterns
+      - handler-name-check
+      - conditional-refs-check
+      - python-quality
+      - sensitive-leak-check
+    if: always()
+    steps:
+      - name: Evaluate
+        run: |
+          declare -A results=(
+            ["s3ap-iam-patterns"]="${{ needs.s3ap-iam-patterns.result }}"
+            ["handler-name-check"]="${{ needs.handler-name-check.result }}"
+            ["conditional-refs-check"]="${{ needs.conditional-refs-check.result }}"
+            ["python-quality"]="${{ needs.python-quality.result }}"
+            ["sensitive-leak-check"]="${{ needs.sensitive-leak-check.result }}"
+          )
+          failed=0
+          for name in "${!results[@]}"; do
+            status="${results[$name]}"
+            printf '  %-28s %s\n' "$name" "$status"
+            if [ "$status" = "failure" ]; then failed=$((failed+1)); fi
+          done
+          if [ "$failed" -gt 0 ]; then
+            echo "::error::$failed Phase 8 validator(s) failed"
+            exit 1
+          fi
+          echo "✅ All Phase 8 validators passed"

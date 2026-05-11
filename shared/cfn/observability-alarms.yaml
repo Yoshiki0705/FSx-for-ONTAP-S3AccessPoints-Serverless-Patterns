@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Phase 8 Theme N shared observability infrastructure.
+  Creates a per-region SNS topic + optional email subscription that UC
+  templates can reference via !ImportValue to publish CloudWatch Alarms
+  and Step Functions failure events.
+
+Parameters:
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: >
+      Email address to receive alarm and failure notifications. Leave empty
+      to skip the subscription (useful when subscribing PagerDuty / Opsgenie
+      out-of-band).
+  ExportNamePrefix:
+    Type: String
+    Default: fsxn-observability
+    Description: >
+      Prefix for CloudFormation Export names so multiple observability
+      stacks can coexist in the same region if needed.
+
+Conditions:
+  CreateEmailSubscription: !Not [!Equals [!Ref NotificationEmail, ""]]
+
+Resources:
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: FSxN-S3AP Observability
+      TopicName: !Sub "${ExportNamePrefix}-topic"
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: CreateEmailSubscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+      TopicArn: !Ref NotificationTopic
+
+Outputs:
+  NotificationTopicArn:
+    Description: SNS topic ARN for alarm and failure notifications.
+    Value: !Ref NotificationTopic
+    Export:
+      Name: !Sub "${ExportNamePrefix}-topic-arn"
+  NotificationTopicName:
+    Description: SNS topic name.
+    Value: !GetAtt NotificationTopic.TopicName
+    Export:
+      Name: !Sub "${ExportNamePrefix}-topic-name"
