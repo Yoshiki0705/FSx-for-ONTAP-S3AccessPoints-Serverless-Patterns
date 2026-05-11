@@ -86,11 +86,13 @@ están consolidadas en `docs/verification-results-*.md`.
 ### Estado de verificación para este caso de uso
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **Captura UI/UX**: ✅ SFN Graph completado (Phase 8 Theme D, commit 3c90042)
 
 ### Capturas de pantalla existentes (de Phase 1-6)
 
-*(Ninguna aplicable. Por favor capture durante la re-verificación.)*
+![UC12 Vista de gráfico Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc12-demo/step-functions-graph-succeeded.png)
+
+![UC12 Gráfico Step Functions (ampliado — detalle por paso)](../../docs/screenshots/masked/uc12-demo/step-functions-graph-zoomed.png)
 
 ### Pantallas UI/UX objetivo para re-verificación (lista de capturas recomendadas)
 

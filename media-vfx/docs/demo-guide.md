@@ -205,11 +205,13 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 ### このユースケースの検証ステータス
 
 - ⚠️ **E2E 検証**: 一部機能のみ（本番環境では追加検証推奨）
-- 📸 **UI/UX 再撮影**: 未実施
+- 📸 **UI/UX 撮影**: ✅ SFN Graph 完了（Phase 8 Theme D, commit 3c90042）
 
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 
-*(該当なし。再検証時に新規撮影してください)*
+![UC4 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+
+![UC4 Step Functions Graph（ズーム表示 — 各ステップ詳細）](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
 

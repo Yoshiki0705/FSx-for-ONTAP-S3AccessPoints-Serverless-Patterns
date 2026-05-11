@@ -82,11 +82,13 @@ sind in `docs/verification-results-*.md` zusammengefasst.
 ### Verifizierungsstatus für diesen Anwendungsfall
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **UI/UX-Aufnahme**: ✅ SFN Graph abgeschlossen (Phase 8 Theme D, commit 3c90042)
 
 ### Vorhandene Screenshots (aus Phase 1-6)
 
-*(Keine zutreffend. Bitte bei Re-Verifizierung aufnehmen.)*
+![UC4 Step Functions Graph-Ansicht (SUCCEEDED)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+
+![UC4 Step Functions Graph (gezoomt — Schrittdetails)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX-Zielbildschirme für Re-Verifizierung (empfohlene Aufnahmeliste)
 
