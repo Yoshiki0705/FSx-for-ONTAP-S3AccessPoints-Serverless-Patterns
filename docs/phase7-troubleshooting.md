@@ -489,3 +489,23 @@ aws lambda update-function-code \
 - **handler/shared コード変更のみ**: 再パッケージ + `update-function-code` で OK
 - **IAM policy / env var / parameter 変更**: `cloudformation deploy` 必須
 - **両方の変更**: 両方とも実行（cloudformation → update-function-code の順が安全）
+
+
+---
+
+## 11. Related operational runbooks
+
+For detailed step-by-step resolution of CloudFormation `DELETE_FAILED` states
+encountered during UC stack cleanup, see:
+
+- **[Cleanup Troubleshooting Runbook](operational-runbooks/cleanup-troubleshooting.md)** — covers 6 failure modes:
+  1. Athena WorkGroup non-empty
+  2. S3 versioned bucket not empty
+  3. Security Group dependent object (VPC Endpoint SG reference)
+  4. VPC Lambda ENI release delay
+  5. DynamoDB Retain tables
+  6. ACCOUNT_ID placeholder in cleanup script
+
+The cleanup script (`scripts/cleanup_generic_ucs.sh`) has been enhanced
+to handle modes 1-4 automatically. Mode 5 (DynamoDB Retain) still
+requires manual `delete-table` after stack deletion.
