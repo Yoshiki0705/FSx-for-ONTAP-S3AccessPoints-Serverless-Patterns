@@ -233,7 +233,7 @@ aws cloudformation deploy \
 
 ### 现有截图（来自 Phase 1-6 的相关部分）
 
-*(无相关内容。重新验证时请新拍摄)*
+![UC9 Step Functions 图表视图 (SUCCEEDED)](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
 ### 重新验证时的 UI/UX 目标画面（推荐拍摄列表）
 

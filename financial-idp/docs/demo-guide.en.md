@@ -186,11 +186,11 @@ are consolidated in `docs/verification-results-*.md`.
 ### Verification Status for This Use Case
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **UI/UX Capture**: ✅ SFN Graph complete (Phase 8 Theme D, commit 081cc66)
 
 ### Existing Screenshots (from Phase 1-6)
 
-*(None applicable. Please capture during re-verification.)*
+![UC2 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc2-demo/step-functions-graph-succeeded.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
