@@ -132,3 +132,37 @@ aws cloudformation deploy \
 - Para las restricciones de las especificaciones de AWS, consulte
   [la sección "Restricciones de las especificaciones de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
   y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+
+---
+
+## Capturas de pantalla UI/UX verificadas
+
+Siguiendo el mismo enfoque que las demos de Phase 7 UC15/16/17 y UC6/11/14, dirigido a
+**pantallas UI/UX que los usuarios finales realmente ven en sus operaciones diarias**.
+Las vistas técnicas (gráfico de Step Functions, eventos de pila CloudFormation, etc.)
+están consolidadas en `docs/verification-results-*.md`.
+
+### Estado de verificación para este caso de uso
+
+- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **UI/UX**: Not yet captured
+
+### Capturas de pantalla existentes
+
+![UC17 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/uc17-stepfunctions-graph.png)
+
+### Pantallas UI/UX objetivo para re-verificación (lista de capturas recomendadas)
+
+- Bucket S3 de salida (tiles/, land-use/, change-detection/, risk-maps/, reports/)
+- Informe de planificación urbana generado por Bedrock (vista previa Markdown)
+- Tabla DynamoDB landuse_history (historial de clasificación de uso del suelo)
+- Vista previa JSON del mapa de riesgos (clasificación CRITICAL/HIGH/MEDIUM/LOW)
+- Artefactos AI en volumen FSx ONTAP (modo FSXN_S3AP — informe Markdown visible vía SMB/NFS)
+
+### Guía de captura
+
+1. **Preparación**: Ejecutar `bash scripts/verify_phase7_prerequisites.sh` para verificar prerrequisitos
+2. **Datos de ejemplo**: Subir archivos vía S3 AP Alias, luego iniciar el workflow de Step Functions
+3. **Captura** (cerrar CloudShell/terminal, enmascarar nombre de usuario en la esquina superior derecha del navegador)
+4. **Enmascaramiento**: Ejecutar `python3 scripts/mask_uc_demos.py <uc-dir>` para enmascaramiento OCR automático
+5. **Limpieza**: Ejecutar `bash scripts/cleanup_generic_ucs.sh <UC>` para eliminar la pila
