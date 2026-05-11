@@ -679,3 +679,87 @@ starting work:
 
 If any check fails, resolve before starting implementation work.
 Post `[X] READY — all checks passed` when complete.
+
+---
+
+## Appendix D: v2 improvements (Phase 8 sprint, 2026-05-12)
+
+### Context
+
+Phase 8 ran a sustained dual-session sprint over 2026-05-11 → 2026-05-12
+with the following division:
+- **A**: Demo-guide documentation, screenshot embedding, article drafting,
+  multi-language translation sync
+- **B**: AWS deployment/verification, screenshot capture, code implementation
+  (Theme A-N), CI/CD pipeline, observability
+
+### Lessons learned
+
+1. **VPC Endpoint conflict**: When B deployed UC1 with `EnableVpcEndpoints=true`,
+   it failed because A's UC6 stack already had the same endpoints. Rule: always
+   deploy with `EnableVpcEndpoints=false` in shared VPC environments. Added to
+   `deployment-troubleshooting.md` as Failure Mode 7.
+
+2. **Long-running executions**: UC1 took 2:38 with 549 files. During this time,
+   B continued other work (UC7/UC8 screenshots, test fixes, Theme M/N). Rule:
+   never block on a single UC execution — parallelize with other tasks.
+
+3. **Screenshot file naming**: Phase 7 used `uc*-stepfunctions-graph.png`, Phase 8
+   standardized on `step-functions-graph-{succeeded,zoomed}.png`. Old files became
+   redundant but couldn't be deleted without A confirming demo-guide references.
+   Rule: coordinate file renames via `[X] FILE RENAME PROPOSAL` notification.
+
+4. **Theme L autoflake fallout**: Removing unused imports broke tests that patched
+   the removed module paths. Discovered in UC9, UC10, UC12. Rule: after bulk
+   import removal, run ALL UC tests (not just the modified UC's tests).
+
+5. **S3AP IAM dual-format**: The alias-only IAM bug affected UC7/8/10/12/13 but
+   was only discovered during AWS deployment. The `check_s3ap_iam_patterns.py`
+   validator now catches this statically. Rule: run all validators before
+   deploying any UC to AWS.
+
+### v2 protocol additions
+
+#### D-1: Pre-deployment validator gate
+
+Before any `deploy_generic_ucs.sh` invocation, run:
+```bash
+python3 scripts/check_s3ap_iam_patterns.py
+python3 scripts/check_handler_names.py
+python3 scripts/check_conditional_refs.py
+```
+If any validator fails, fix before deploying. This prevents wasting
+15-30 minutes on a deployment that will fail at runtime.
+
+#### D-2: Shared VPC deployment rules
+
+- Always set `EnableVpcEndpoints=false` and `EnableS3GatewayEndpoint=false`
+  when deploying to a VPC that has existing Interface/Gateway Endpoints.
+- Document which stack "owns" the VPC Endpoints in the sprint chat.
+- Only one stack at a time should have `EnableVpcEndpoints=true`.
+
+#### D-3: Screenshot lifecycle
+
+- New screenshots use `step-functions-graph-{succeeded,zoomed}.png` naming.
+- Old `uc*-stepfunctions-graph.png` files are deprecated.
+- Before deleting old files, post `[X] FILE DELETE PROPOSAL: <path>` and
+  wait for the other session to confirm no demo-guide references remain.
+
+#### D-4: Test regression after bulk changes
+
+After any bulk operation (autoflake, template parameter addition, etc.):
+```bash
+for uc in */; do
+  [ -d "$uc/tests" ] && python3 -m pytest "$uc/tests/" -q --tb=line 2>&1 | tail -1
+done
+```
+This catches cross-UC test breakage that single-UC testing misses.
+
+#### D-5: Context transfer format
+
+When a session's context window is compacted, the transfer summary MUST include:
+- Current git branch + HEAD commit SHA
+- List of uncommitted files (if any)
+- Active AWS resources (running stacks, executing Step Functions)
+- Next immediate action
+- Any pending notifications to the other session
