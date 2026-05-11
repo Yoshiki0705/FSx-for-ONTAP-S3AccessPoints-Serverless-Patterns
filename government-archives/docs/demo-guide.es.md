@@ -174,12 +174,15 @@ están consolidadas en `docs/verification-results-*.md`.
 ### Estado de verificación para este caso de uso
 
 - ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **Captura UI/UX**: ✅ Completado (Phase 8 Theme D, commit d7ebabd)
 
 ### Capturas de pantalla existentes
 
-![UC16 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/uc16-stepfunctions-graph.png)
+![Vista de gráfico Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
+![Bucket S3 de salida](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+
+![Tabla DynamoDB retention](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
 ### Pantallas UI/UX objetivo para re-verificación (lista de capturas recomendadas)
 
 - Bucket S3 de salida (ocr-results/, classified/, redacted/, compliance/)

@@ -147,12 +147,19 @@ aws cloudformation deploy \
 ### 本用例的驗證狀態
 
 - ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **UI/UX 截圖**: ✅ 完成 (Phase 8 Theme D, commit d7ebabd)
 
 ### 現有截圖
 
-![UC15 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/uc15-stepfunctions-graph.png)
+![Step Functions 圖表視圖 (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
+![S3 輸出桶](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+
+![S3 Enriched 輸出](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+
+![DynamoDB 變更歷史表](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+
+![SNS 通知主題](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 ### 重新驗證時的 UI/UX 目標介面（推薦截圖清單）
 
 - S3 輸出桶 (detections/, geo-enriched/, alerts/)

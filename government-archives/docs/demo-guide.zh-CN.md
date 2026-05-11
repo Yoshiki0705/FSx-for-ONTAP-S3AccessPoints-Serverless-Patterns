@@ -174,12 +174,15 @@ EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_wr
 ### 本用例的验证状态
 
 - ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **UI/UX 截图**: ✅ 完成 (Phase 8 Theme D, commit d7ebabd)
 
 ### 现有截图
 
-![UC16 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/uc16-stepfunctions-graph.png)
+![Step Functions 图表视图 (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
+![S3 输出桶](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+
+![DynamoDB retention 表](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
 ### 重新验证时的 UI/UX 目标界面（推荐截图列表）
 
 - S3 输出桶 (ocr-results/, classified/, redacted/, compliance/)

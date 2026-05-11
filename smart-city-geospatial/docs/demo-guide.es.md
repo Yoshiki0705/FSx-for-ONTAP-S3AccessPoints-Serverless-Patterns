@@ -145,12 +145,15 @@ están consolidadas en `docs/verification-results-*.md`.
 ### Estado de verificación para este caso de uso
 
 - ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **Captura UI/UX**: ✅ Completado (Phase 8 Theme D, commit d7ebabd)
 
 ### Capturas de pantalla existentes
 
-![UC17 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/uc17-stepfunctions-graph.png)
+![Vista de gráfico Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
 
+![Bucket S3 de salida](../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
+
+![Tabla DynamoDB landuse_history](../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
 ### Pantallas UI/UX objetivo para re-verificación (lista de capturas recomendadas)
 
 - Bucket S3 de salida (tiles/, land-use/, change-detection/, risk-maps/, reports/)

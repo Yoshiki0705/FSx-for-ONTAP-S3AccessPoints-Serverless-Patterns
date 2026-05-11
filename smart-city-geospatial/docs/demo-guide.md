@@ -143,12 +143,15 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 ### このユースケースの検証ステータス
 
 - ✅ **E2E 検証**: SUCCEEDED（Phase 7 Extended Round, commit b77fc3b）
-- 📸 **UI/UX 再撮影**: 未実施
+- 📸 **UI/UX 撮影**: ✅ 完了（Phase 8 Theme D, commit d7ebabd）
 
 ### 既存スクリーンショット（Phase 7 検証時）
 
-![UC17 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc17-demo/uc17-stepfunctions-graph.png)
+![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
 
+![S3 出力バケット](../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
+
+![DynamoDB landuse_history テーブル](../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
 
 - S3 出力バケット（tiles/、land-use/、change-detection/、risk-maps/、reports/）
