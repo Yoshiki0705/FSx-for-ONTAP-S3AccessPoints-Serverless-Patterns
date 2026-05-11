@@ -377,9 +377,14 @@ Resources:
                   - s3:ListBucket
                   - s3:GetObject
                   - s3:GetBucketLocation
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:

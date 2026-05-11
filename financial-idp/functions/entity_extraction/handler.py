@@ -13,6 +13,7 @@ Named Entity Recognition (NER) を実行する。
 from __future__ import annotations
 
 import logging
+import os
 
 import boto3
 
