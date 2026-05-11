@@ -17,7 +17,6 @@ Environment Variables:
 
 from __future__ import annotations
 
-import io
 import logging
 import os
 from typing import Any
@@ -182,7 +181,6 @@ def handler(event, context):
     tile_prefix = f"tiles/{date_partition}/{basename}/"
 
     # メタデータ JSON を書き出し（OutputWriter で STANDARD_S3 / FSXN_S3AP 切替）
-    import json
     metadata_key = f"{tile_prefix}metadata.json"
     output_writer.put_json(key=metadata_key, data=metadata)
 

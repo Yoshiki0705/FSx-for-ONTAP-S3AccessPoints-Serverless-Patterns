@@ -36,7 +36,6 @@ from functions.realtime_invoke.handler import (
     ServerlessColdStartTimeoutError,
     _check_total_timeout,
     _invoke_endpoint_serverless,
-    _invoke_endpoint_with_retry,
     handler,
 )
 

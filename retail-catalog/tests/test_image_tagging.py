@@ -14,7 +14,6 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 # shared モジュールと UC11 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
@@ -25,16 +24,12 @@ from functions.image_tagging.handler import (
     evaluate_confidence,
 )
 from functions.catalog_metadata.handler import (
-    REQUIRED_METADATA_FIELDS,
     _ensure_required_fields,
     _generate_fallback_metadata,
 )
 from functions.quality_check.handler import (
     get_image_dimensions,
     validate_quality,
-    _get_png_dimensions,
-    _get_jpeg_dimensions,
-    _get_webp_dimensions,
 )
 
 

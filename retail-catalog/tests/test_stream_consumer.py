@@ -15,10 +15,9 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -38,8 +37,6 @@ _spec.loader.exec_module(_module)
 from retail_catalog_functions_stream_consumer import (
     handler,
     _validate_record,
-    _is_already_processed,
-    _write_dead_letter,
 )
 
 

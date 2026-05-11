@@ -13,10 +13,7 @@ DynamoDB (state table) と Kinesis を unittest.mock でモックし、
 
 from __future__ import annotations
 
-import json
-import os
-from unittest.mock import MagicMock, patch, call
-from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
 
 import pytest
 

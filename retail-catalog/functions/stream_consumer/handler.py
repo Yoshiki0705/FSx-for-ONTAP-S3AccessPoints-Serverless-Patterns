@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 
 import boto3
 
-from shared.exceptions import lambda_error_handler, StreamingError
+from shared.exceptions import lambda_error_handler
 from shared.observability import trace_lambda_handler, EmfMetrics, xray_subsegment
 
 logger = logging.getLogger(__name__)

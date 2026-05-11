@@ -18,7 +18,7 @@ from pathlib import PurePosixPath
 import boto3
 
 from shared.exceptions import lambda_error_handler
-from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
+from shared.observability import EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
