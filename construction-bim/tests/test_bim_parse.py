@@ -265,10 +265,9 @@ class TestOcrHandler:
         "CROSS_REGION": "us-east-1",
     })
     @patch("functions.ocr.handler.OutputWriter")
-    @patch("functions.ocr.handler.boto3.client")
     @patch("functions.ocr.handler.CrossRegionClient")
     @patch("functions.ocr.handler.S3ApHelper")
-    def test_ocr_success(self, mock_s3ap_class, mock_cr_class, mock_boto3_client, mock_output_writer_cls):
+    def test_ocr_success(self, mock_s3ap_class, mock_cr_class, mock_output_writer_cls):
         """正常な PDF で SUCCESS を返す"""
         from functions.ocr.handler import handler
 
@@ -288,10 +287,6 @@ class TestOcrHandler:
                 {"BlockType": "LINE", "Text": "Emergency Exit", "Id": "b2"},
             ]
         }
-
-        # S3 クライアントモック
-        mock_s3 = MagicMock()
-        mock_boto3_client.return_value = mock_s3
 
         # OutputWriter モック
         mock_writer = MagicMock()
