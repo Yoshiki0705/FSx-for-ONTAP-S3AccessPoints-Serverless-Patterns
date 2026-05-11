@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  VPC Endpoint Security Group Manager — Custom Resource Lambda.
+  Manages ingress rules on a shared VPC Endpoint SG during UC stack lifecycle.
+  Deploy once per account/region, then reference from UC stacks.
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: Prefix for resource naming
+
+Resources:
+  # ------------------------------------------------------------------
+  # Lambda Execution Role
+  # ------------------------------------------------------------------
+  VpcEndpointSgManagerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-vpce-sg-manager-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: VpcEndpointSgManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:RevokeSecurityGroupIngress
+                  - ec2:DescribeSecurityGroups
+                Resource: "*"
+
+  # ------------------------------------------------------------------
+  # Lambda Function
+  # ------------------------------------------------------------------
+  VpcEndpointSgManagerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ProjectPrefix}-vpce-sg-manager"
+      Description: >-
+        CloudFormation Custom Resource — manages VPC Endpoint SG ingress rules
+        for UC demo stacks automatically on Create/Update/Delete.
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt VpcEndpointSgManagerRole.Arn
+      Timeout: 60
+      MemorySize: 128
+      Code:
+        ZipFile: |
+          """CloudFormation Custom Resource for VPC Endpoint SG management."""
+          import json
+          import logging
+          import urllib.request
+          import boto3
+          from botocore.exceptions import ClientError
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          ec2 = boto3.client("ec2")
+
+          def authorize_ingress(vpce_sg, lambda_sg):
+              try:
+                  ec2.authorize_security_group_ingress(
+                      GroupId=vpce_sg,
+                      IpPermissions=[{
+                          "IpProtocol": "tcp", "FromPort": 443, "ToPort": 443,
+                          "UserIdGroupPairs": [{"GroupId": lambda_sg,
+                              "Description": "Allow HTTPS from Lambda SG (managed by fsxn-s3ap-patterns)"}]
+                      }])
+                  logger.info(f"Authorized: {vpce_sg} <- {lambda_sg}")
+              except ClientError as e:
+                  if e.response["Error"]["Code"] == "InvalidPermission.Duplicate":
+                      logger.info(f"Rule already exists (idempotent): {vpce_sg} <- {lambda_sg}")
+                  else:
+                      raise
+
+          def revoke_ingress(vpce_sg, lambda_sg):
+              try:
+                  ec2.revoke_security_group_ingress(
+                      GroupId=vpce_sg,
+                      IpPermissions=[{
+                          "IpProtocol": "tcp", "FromPort": 443, "ToPort": 443,
+                          "UserIdGroupPairs": [{"GroupId": lambda_sg}]
+                      }])
+                  logger.info(f"Revoked: {vpce_sg} <- {lambda_sg}")
+              except ClientError as e:
+                  if e.response["Error"]["Code"] == "InvalidPermission.NotFound":
+                      logger.info(f"Rule not found (already removed): {vpce_sg} <- {lambda_sg}")
+                  else:
+                      raise
+
+          def send_response(event, context, status, physical_id, reason=""):
+              body = json.dumps({
+                  "Status": status,
+                  "Reason": reason or f"Log: {context.log_stream_name}",
+                  "PhysicalResourceId": physical_id,
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "Data": {}
+              }).encode()
+              req = urllib.request.Request(event["ResponseURL"], data=body,
+                  headers={"Content-Type": "", "Content-Length": str(len(body))}, method="PUT")
+              urllib.request.urlopen(req)
+
+          def handler(event, context):
+              logger.info(json.dumps(event))
+              rt = event["RequestType"]
+              props = event["ResourceProperties"]
+              pid = event.get("PhysicalResourceId", f"vpce-sg-rule-{props.get('LambdaSecurityGroupId','x')}")
+              try:
+                  vpce_sg = props["VpcEndpointSecurityGroupId"]
+                  lambda_sg = props["LambdaSecurityGroupId"]
+                  if rt == "Create":
+                      authorize_ingress(vpce_sg, lambda_sg)
+                      pid = f"vpce-sg-rule-{lambda_sg}"
+                  elif rt == "Update":
+                      old = event.get("OldResourceProperties", {})
+                      old_sg = old.get("LambdaSecurityGroupId")
+                      if old_sg and old_sg != lambda_sg:
+                          revoke_ingress(vpce_sg, old_sg)
+                      authorize_ingress(vpce_sg, lambda_sg)
+                      pid = f"vpce-sg-rule-{lambda_sg}"
+                  elif rt == "Delete":
+                      revoke_ingress(vpce_sg, lambda_sg)
+                  send_response(event, context, "SUCCESS", pid)
+              except Exception as e:
+                  logger.error(f"Error: {e}")
+                  send_response(event, context, "FAILED", pid, str(e))
+      Tags:
+        - Key: ManagedBy
+          Value: fsxn-s3ap-patterns
+        - Key: Purpose
+          Value: vpc-endpoint-sg-automation
+
+Outputs:
+  VpcEndpointSgManagerFunctionArn:
+    Description: ARN of the VPC Endpoint SG Manager Lambda function
+    Value: !GetAtt VpcEndpointSgManagerFunction.Arn
+    Export:
+      Name: !Sub "${ProjectPrefix}-vpce-sg-manager-arn"
+
+  VpcEndpointSgManagerFunctionName:
+    Description: Name of the VPC Endpoint SG Manager Lambda function
+    Value: !Ref VpcEndpointSgManagerFunction
