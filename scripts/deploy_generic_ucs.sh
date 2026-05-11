@@ -65,6 +65,7 @@ deploy_one() {
         --parameter-overrides \
             DeployBucket="$DEPLOY_BUCKET" \
             S3AccessPointAlias="$S3_AP_ALIAS" \
+            S3AccessPointName="${S3_AP_NAME:-}" \
             OntapSecretName="$ONTAP_SECRET_NAME" \
             OntapManagementIp="$ONTAP_MANAGEMENT_IP" \
             SvmUuid="$SVM_UUID" \
