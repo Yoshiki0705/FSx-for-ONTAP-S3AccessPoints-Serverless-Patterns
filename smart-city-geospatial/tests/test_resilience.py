@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 def test_rekognition_invalid_format_returns_empty(
     land_use_classification_handler, lambda_context, monkeypatch
 ):
-    """InvalidImageFormatException でもワークフロー停止せず空の分布を返す。"""
+    """InvalidImageFormatException で GeoTIFF ヘッダー分類にフォールバックする。"""
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.setenv("INFERENCE_TYPE", "none")
 
@@ -45,9 +45,11 @@ def test_rekognition_invalid_format_returns_empty(
         event = {"source_key": "gis/malformed.tif"}
         result = land_use_classification_handler.handler(event, lambda_context)
 
-    assert result["inference_path"] == "rekognition"
-    # empty distribution, no crash
-    assert result["landuse_distribution"] == {}
+    # GeoTIFF header analysis fallback — no crash, produces classification
+    assert result["inference_path"] == "geotiff_header_analysis"
+    # Non-empty distribution from header-based classification
+    assert isinstance(result["landuse_distribution"], dict)
+    assert len(result["landuse_distribution"]) > 0
 
 
 def test_change_detection_float_to_decimal(
