@@ -186,11 +186,15 @@ are consolidated in `docs/verification-results-*.md`.
 ### Verification Status for This Use Case
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **UI/UX Capture**: ✅ SFN Graph complete (Phase 8 Theme D, commit c66084f)
 
 ### Existing Screenshots (from Phase 1-6)
 
-*(None applicable. Please capture during re-verification.)*
+![UC3 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc3-demo/step-functions-graph-succeeded.png)
+
+![UC3 Step Functions Graph (expanded view)](../../docs/screenshots/masked/uc3-demo/step-functions-graph-expanded.png)
+
+![UC3 Step Functions Graph (zoomed — per-step detail)](../../docs/screenshots/masked/uc3-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 

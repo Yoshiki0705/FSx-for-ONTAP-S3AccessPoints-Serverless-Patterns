@@ -82,11 +82,13 @@ sont consolidées dans `docs/verification-results-*.md`.
 ### Statut de vérification pour ce cas d'utilisation
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **Capture UI/UX** : ✅ SFN Graph terminé (Phase 8 Theme D, commit c66084f)
 
 ### Captures d'écran existantes (de Phase 1-6)
 
-*(Aucune applicable. Veuillez capturer lors de la re-vérification.)*
+![UC5 Vue graphique Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc5-demo/step-functions-graph-succeeded.png)
+
+![UC5 Graphique Step Functions (zoom — détail par étape)](../../docs/screenshots/masked/uc5-demo/step-functions-graph-zoomed.png)
 
 ### Écrans UI/UX cibles pour re-vérification (liste de captures recommandées)
 
