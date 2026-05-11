@@ -73,3 +73,36 @@ BIM-Upload → Änderungserkennung → Vorschriftenabgleich → Verstoßerkennun
 ---
 
 *Dieses Dokument dient als Produktionsleitfaden für technische Demonstrationsvideos.*
+
+---
+
+## Verifizierte UI/UX-Screenshots
+
+Nach dem gleichen Ansatz wie die Phase 7 UC15/16/17 und UC6/11/14 Demos, mit Fokus auf
+**UI/UX-Bildschirme, die Endbenutzer tatsächlich im täglichen Betrieb sehen**.
+Technische Ansichten (Step Functions-Graph, CloudFormation-Stack-Ereignisse usw.)
+sind in `docs/verification-results-*.md` zusammengefasst.
+
+### Verifizierungsstatus für diesen Anwendungsfall
+
+- ⚠️ **E2E**: Partial (additional verification recommended)
+- 📸 **UI/UX**: Not yet captured
+
+### Vorhandene Screenshots (aus Phase 1-6)
+
+*(Keine zutreffend. Bitte bei Re-Verifizierung aufnehmen.)*
+
+### UI/UX-Zielbildschirme für Re-Verifizierung (empfohlene Aufnahmeliste)
+
+- S3-Ausgabe-Bucket (drawings-ocr/, bim-metadata/, safety-reports/)
+- Textract Zeichnungs-OCR-Ergebnisse (Cross-Region)
+- BIM-Versionsdiff-Bericht
+- Bedrock Sicherheits-Compliance-Prüfung
+
+### Aufnahmeanleitung
+
+1. **Vorbereitung**: `bash scripts/verify_phase7_prerequisites.sh` ausführen, um Voraussetzungen zu prüfen
+2. **Beispieldaten**: Dateien über S3 AP Alias hochladen, dann Step Functions-Workflow starten
+3. **Aufnahme** (CloudShell/Terminal schließen, Benutzername oben rechts im Browser maskieren)
+4. **Maskierung**: `python3 scripts/mask_uc_demos.py <uc-dir>` für automatische OCR-Maskierung ausführen
+5. **Bereinigung**: `bash scripts/cleanup_generic_ucs.sh <UC>` zum Löschen des Stacks ausführen

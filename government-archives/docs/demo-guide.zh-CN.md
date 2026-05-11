@@ -161,3 +161,39 @@ EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_wr
 - AWS 规范上的限制请参见
   [项目 README 的"AWS 规范上的限制与解决方法"部分](../../README.md#aws-仕様上の制約と回避策)
   以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+
+---
+
+## 已验证的 UI/UX 截图
+
+遵循与 Phase 7 UC15/16/17 和 UC6/11/14 演示相同的方针，以**最终用户在日常工作中
+实际看到的 UI/UX 界面**为对象。
+技术人员视图（Step Functions 图表、CloudFormation 堆栈事件等）
+统一整理在 `docs/verification-results-*.md` 中。
+
+### 本用例的验证状态
+
+- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **UI/UX**: Not yet captured
+
+### 现有截图
+
+![UC16 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/uc16-stepfunctions-graph.png)
+
+### 重新验证时的 UI/UX 目标界面（推荐截图列表）
+
+- S3 输出桶 (ocr-results/, classified/, redacted/, compliance/)
+- Textract OCR 结果 JSON (跨区域 us-east-1)
+- 脱敏文档预览
+- DynamoDB retention 表 (FOIA 截止日期管理)
+- FOIA 提醒 SNS 邮件通知
+- OpenSearch 索引 (OpenSearchMode 启用时)
+- FSx ONTAP 卷 AI 产物 (FSXN_S3AP 模式)
+
+### 截图指南
+
+1. **准备工作**: 运行 `bash scripts/verify_phase7_prerequisites.sh` 确认前提条件
+2. **样本数据**: 通过 S3 AP Alias 上传样本文件，然后启动 Step Functions 工作流
+3. **截图**（关闭 CloudShell/终端，遮盖浏览器右上角用户名）
+4. **遮盖处理**: 运行 `python3 scripts/mask_uc_demos.py <uc-dir>` 进行自动 OCR 遮盖
+5. **清理**: 运行 `bash scripts/cleanup_generic_ucs.sh <UC>` 删除堆栈

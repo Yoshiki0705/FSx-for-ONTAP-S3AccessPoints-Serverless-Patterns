@@ -87,3 +87,36 @@ sam local invoke \
 ---
 
 *Ce document sert de guide de production pour les vidéos de démonstration technique.*
+
+---
+
+## Captures d'écran UI/UX vérifiées
+
+Suivant la même approche que les démos Phase 7 UC15/16/17 et UC6/11/14, ciblant
+**les écrans UI/UX que les utilisateurs finaux voient réellement dans leurs opérations quotidiennes**.
+Les vues techniques (graphe Step Functions, événements de pile CloudFormation, etc.)
+sont consolidées dans `docs/verification-results-*.md`.
+
+### Statut de vérification pour ce cas d'utilisation
+
+- ⚠️ **E2E**: Partial (additional verification recommended)
+- 📸 **UI/UX**: Not yet captured
+
+### Captures d'écran existantes (de Phase 1-6)
+
+*(Aucune applicable. Veuillez capturer lors de la re-vérification.)*
+
+### Écrans UI/UX cibles pour re-vérification (liste de captures recommandées)
+
+- Bucket S3 de sortie (keyframes/, annotations/, qc/)
+- Résultats de détection d'objets Rekognition sur images clés
+- Résumé du contrôle qualité du nuage de points LiDAR
+- JSON d'annotation compatible COCO
+
+### Guide de capture
+
+1. **Préparation** : Exécuter `bash scripts/verify_phase7_prerequisites.sh` pour vérifier les prérequis
+2. **Données d'exemple** : Télécharger les fichiers via S3 AP Alias, puis démarrer le workflow Step Functions
+3. **Capture** (fermer CloudShell/terminal, masquer le nom d'utilisateur en haut à droite du navigateur)
+4. **Masquage** : Exécuter `python3 scripts/mask_uc_demos.py <uc-dir>` pour le masquage OCR automatique
+5. **Nettoyage** : Exécuter `bash scripts/cleanup_generic_ucs.sh <UC>` pour supprimer la pile

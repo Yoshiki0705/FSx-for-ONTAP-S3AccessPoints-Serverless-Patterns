@@ -134,3 +134,37 @@ aws cloudformation deploy \
 - AWS-Spezifikationsbeschränkungen siehe
   [Abschnitt "AWS-Spezifikationsbeschränkungen und Workarounds" im Projekt-README](../../README.md#aws-仕様上の制約と回避策)
   und [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+
+---
+
+## Verifizierte UI/UX-Screenshots
+
+Nach dem gleichen Ansatz wie die Phase 7 UC15/16/17 und UC6/11/14 Demos, mit Fokus auf
+**UI/UX-Bildschirme, die Endbenutzer tatsächlich im täglichen Betrieb sehen**.
+Technische Ansichten (Step Functions-Graph, CloudFormation-Stack-Ereignisse usw.)
+sind in `docs/verification-results-*.md` zusammengefasst.
+
+### Verifizierungsstatus für diesen Anwendungsfall
+
+- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **UI/UX**: Not yet captured
+
+### Vorhandene Screenshots
+
+![UC15 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/uc15-stepfunctions-graph.png)
+
+### UI/UX-Zielbildschirme für Re-Verifizierung (empfohlene Aufnahmeliste)
+
+- S3-Ausgabe-Bucket (detections/, geo-enriched/, alerts/)
+- Rekognition Satellitenbildobjekterkennung Ergebnis-JSON
+- GeoEnrichment koordinatenmarkierte Erkennungsergebnisse
+- SNS-Alarm-Benachrichtigungs-E-Mail
+- AI-Artefakte auf FSx ONTAP-Volume (FSXN_S3AP-Modus)
+
+### Aufnahmeanleitung
+
+1. **Vorbereitung**: `bash scripts/verify_phase7_prerequisites.sh` ausführen, um Voraussetzungen zu prüfen
+2. **Beispieldaten**: Dateien über S3 AP Alias hochladen, dann Step Functions-Workflow starten
+3. **Aufnahme** (CloudShell/Terminal schließen, Benutzername oben rechts im Browser maskieren)
+4. **Maskierung**: `python3 scripts/mask_uc_demos.py <uc-dir>` für automatische OCR-Maskierung ausführen
+5. **Bereinigung**: `bash scripts/cleanup_generic_ucs.sh <UC>` zum Löschen des Stacks ausführen
