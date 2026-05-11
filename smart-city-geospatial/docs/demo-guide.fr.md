@@ -133,3 +133,37 @@ aws cloudformation deploy \
 - Pour les contraintes liées aux spécifications AWS, consultez
   [la section "Contraintes des spécifications AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
   et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+
+---
+
+## Captures d'écran UI/UX vérifiées
+
+Suivant la même approche que les démos Phase 7 UC15/16/17 et UC6/11/14, ciblant
+**les écrans UI/UX que les utilisateurs finaux voient réellement dans leurs opérations quotidiennes**.
+Les vues techniques (graphe Step Functions, événements de pile CloudFormation, etc.)
+sont consolidées dans `docs/verification-results-*.md`.
+
+### Statut de vérification pour ce cas d'utilisation
+
+- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **UI/UX**: Not yet captured
+
+### Captures d'écran existantes
+
+![UC17 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/uc17-stepfunctions-graph.png)
+
+### Écrans UI/UX cibles pour re-vérification (liste de captures recommandées)
+
+- Bucket S3 de sortie (tiles/, land-use/, change-detection/, risk-maps/, reports/)
+- Rapport d'urbanisme généré par Bedrock (aperçu Markdown)
+- Table DynamoDB landuse_history (historique de classification d'utilisation des sols)
+- Aperçu JSON de la carte des risques (classification CRITICAL/HIGH/MEDIUM/LOW)
+- Artefacts AI sur volume FSx ONTAP (mode FSXN_S3AP — rapport Markdown consultable via SMB/NFS)
+
+### Guide de capture
+
+1. **Préparation** : Exécuter `bash scripts/verify_phase7_prerequisites.sh` pour vérifier les prérequis
+2. **Données d'exemple** : Télécharger les fichiers via S3 AP Alias, puis démarrer le workflow Step Functions
+3. **Capture** (fermer CloudShell/terminal, masquer le nom d'utilisateur en haut à droite du navigateur)
+4. **Masquage** : Exécuter `python3 scripts/mask_uc_demos.py <uc-dir>` pour le masquage OCR automatique
+5. **Nettoyage** : Exécuter `bash scripts/cleanup_generic_ucs.sh <UC>` pour supprimer la pile

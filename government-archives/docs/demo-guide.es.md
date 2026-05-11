@@ -161,3 +161,39 @@ y toda la cadena opera con un destination consistente.
 - Para restricciones de especificación de AWS, consulte
   [la sección "Restricciones de especificación de AWS y soluciones" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
   y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+
+---
+
+## Capturas de pantalla UI/UX verificadas
+
+Siguiendo el mismo enfoque que las demos de Phase 7 UC15/16/17 y UC6/11/14, dirigido a
+**pantallas UI/UX que los usuarios finales realmente ven en sus operaciones diarias**.
+Las vistas técnicas (gráfico de Step Functions, eventos de pila CloudFormation, etc.)
+están consolidadas en `docs/verification-results-*.md`.
+
+### Estado de verificación para este caso de uso
+
+- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **UI/UX**: Not yet captured
+
+### Capturas de pantalla existentes
+
+![UC16 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/uc16-stepfunctions-graph.png)
+
+### Pantallas UI/UX objetivo para re-verificación (lista de capturas recomendadas)
+
+- Bucket S3 de salida (ocr-results/, classified/, redacted/, compliance/)
+- Resultados JSON de Textract OCR (Cross-Region us-east-1)
+- Vista previa del documento redactado
+- Tabla DynamoDB retention (gestión de plazos FOIA)
+- Email de recordatorio FOIA vía SNS
+- Índice OpenSearch (cuando OpenSearchMode habilitado)
+- Artefactos AI en volumen FSx ONTAP (modo FSXN_S3AP)
+
+### Guía de captura
+
+1. **Preparación**: Ejecutar `bash scripts/verify_phase7_prerequisites.sh` para verificar prerrequisitos
+2. **Datos de ejemplo**: Subir archivos vía S3 AP Alias, luego iniciar el workflow de Step Functions
+3. **Captura** (cerrar CloudShell/terminal, enmascarar nombre de usuario en la esquina superior derecha del navegador)
+4. **Enmascaramiento**: Ejecutar `python3 scripts/mask_uc_demos.py <uc-dir>` para enmascaramiento OCR automático
+5. **Limpieza**: Ejecutar `bash scripts/cleanup_generic_ucs.sh <UC>` para eliminar la pila

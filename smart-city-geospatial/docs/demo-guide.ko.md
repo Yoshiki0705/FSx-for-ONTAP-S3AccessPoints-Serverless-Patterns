@@ -133,3 +133,37 @@ aws cloudformation deploy \
 - AWS 사양상의 제약은
   [프로젝트 README의 "AWS 사양상의 제약과 회피 방법" 섹션](../../README.md#aws-仕様上の制約と回避策)
   및 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)를 참조
+
+---
+
+## 검증된 UI/UX 스크린샷
+
+Phase 7 UC15/16/17 및 UC6/11/14 데모와 동일한 방침으로, **최종 사용자가 일상 업무에서
+실제로 보는 UI/UX 화면**을 대상으로 합니다.
+기술자용 뷰(Step Functions 그래프, CloudFormation 스택 이벤트 등)는
+`docs/verification-results-*.md`에 통합되어 있습니다.
+
+### 이 유스케이스의 검증 상태
+
+- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **UI/UX**: Not yet captured
+
+### 기존 스크린샷
+
+![UC17 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/uc17-stepfunctions-graph.png)
+
+### 재검증 시 UI/UX 대상 화면 (권장 촬영 목록)
+
+- S3 출력 버킷 (tiles/, land-use/, change-detection/, risk-maps/, reports/)
+- Bedrock 생성 도시 계획 보고서 (Markdown 미리보기)
+- DynamoDB landuse_history 테이블 (토지 이용 분류 이력)
+- 리스크 맵 JSON 미리보기 (CRITICAL/HIGH/MEDIUM/LOW 분류)
+- FSx ONTAP 볼륨 AI 산출물 (FSXN_S3AP 모드 — SMB/NFS로 열람 가능한 Markdown 보고서)
+
+### 촬영 가이드
+
+1. **사전 준비**: `bash scripts/verify_phase7_prerequisites.sh`로 전제 조건 확인
+2. **샘플 데이터**: S3 AP Alias를 통해 샘플 파일 업로드 후 Step Functions 워크플로우 시작
+3. **촬영** (CloudShell/터미널 닫기, 브라우저 우측 상단 사용자 이름 마스킹)
+4. **마스크**: `python3 scripts/mask_uc_demos.py <uc-dir>`로 자동 OCR 마스킹
+5. **정리**: `bash scripts/cleanup_generic_ucs.sh <UC>`로 스택 삭제

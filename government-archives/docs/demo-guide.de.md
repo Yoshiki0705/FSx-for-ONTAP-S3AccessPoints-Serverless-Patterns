@@ -161,3 +161,39 @@ und die gesamte Kette arbeitet mit einem konsistenten Ziel.
 - AWS-spezifikationsbedingte Einschränkungen finden Sie im
   [Abschnitt "AWS-spezifikationsbedingte Einschränkungen und Workarounds" der Projekt-README](../../README.md#aws-仕様上の制約と回避策)
   sowie in [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+
+---
+
+## Verifizierte UI/UX-Screenshots
+
+Nach dem gleichen Ansatz wie die Phase 7 UC15/16/17 und UC6/11/14 Demos, mit Fokus auf
+**UI/UX-Bildschirme, die Endbenutzer tatsächlich im täglichen Betrieb sehen**.
+Technische Ansichten (Step Functions-Graph, CloudFormation-Stack-Ereignisse usw.)
+sind in `docs/verification-results-*.md` zusammengefasst.
+
+### Verifizierungsstatus für diesen Anwendungsfall
+
+- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **UI/UX**: Not yet captured
+
+### Vorhandene Screenshots
+
+![UC16 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/uc16-stepfunctions-graph.png)
+
+### UI/UX-Zielbildschirme für Re-Verifizierung (empfohlene Aufnahmeliste)
+
+- S3-Ausgabe-Bucket (ocr-results/, classified/, redacted/, compliance/)
+- Textract OCR-Ergebnis-JSON (Cross-Region us-east-1)
+- Geschwärzte Dokumentvorschau
+- DynamoDB-Retention-Tabelle (FOIA-Fristenverwaltung)
+- FOIA-Erinnerungs-E-Mail via SNS
+- OpenSearch-Index (wenn OpenSearchMode aktiviert)
+- AI-Artefakte auf FSx ONTAP-Volume (FSXN_S3AP-Modus)
+
+### Aufnahmeanleitung
+
+1. **Vorbereitung**: `bash scripts/verify_phase7_prerequisites.sh` ausführen, um Voraussetzungen zu prüfen
+2. **Beispieldaten**: Dateien über S3 AP Alias hochladen, dann Step Functions-Workflow starten
+3. **Aufnahme** (CloudShell/Terminal schließen, Benutzername oben rechts im Browser maskieren)
+4. **Maskierung**: `python3 scripts/mask_uc_demos.py <uc-dir>` für automatische OCR-Maskierung ausführen
+5. **Bereinigung**: `bash scripts/cleanup_generic_ucs.sh <UC>` zum Löschen des Stacks ausführen

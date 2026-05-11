@@ -172,3 +172,35 @@ for AWS-side limitations and workarounds.
 ---
 
 *This document serves as a production guide for technical presentation demo videos.*
+
+---
+
+## Verified UI/UX Screenshots
+
+Following the same approach as Phase 7 UC15/16/17 and UC6/11/14 demos, targeting
+**UI/UX screens that end users actually see in daily operations**.
+Technical views (Step Functions graph, CloudFormation stack events, etc.)
+are consolidated in `docs/verification-results-*.md`.
+
+### Verification Status for This Use Case
+
+- ⚠️ **E2E**: Partial (additional verification recommended)
+- 📸 **UI/UX**: Not yet captured
+
+### Existing Screenshots (from Phase 1-6)
+
+*(None applicable. Please capture during re-verification.)*
+
+### UI/UX Target Screens for Re-verification (Recommended Capture List)
+
+- S3 output bucket (dicom-metadata/, deid-reports/, diagnoses/)
+- Comprehend Medical entity detection results (Cross-Region)
+- De-identified DICOM metadata JSON
+
+### Capture Guide
+
+1. **Preparation**: Run `bash scripts/verify_phase7_prerequisites.sh` to check prerequisites
+2. **Sample Data**: Upload sample files via S3 AP Alias, then start Step Functions workflow
+3. **Capture** (close CloudShell/terminal, mask username in browser top-right)
+4. **Mask**: Run `python3 scripts/mask_uc_demos.py <uc-dir>` for automated OCR masking
+5. **Cleanup**: Run `bash scripts/cleanup_generic_ucs.sh <UC>` to delete stack

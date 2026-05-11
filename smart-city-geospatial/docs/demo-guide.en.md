@@ -132,3 +132,37 @@ aws cloudformation deploy \
 - For AWS specification constraints, see
   [the "AWS Specification Constraints and Workarounds" section in the project README](../../README.md#aws-仕様上の制約と回避策)
   and [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
+
+---
+
+## Verified UI/UX Screenshots
+
+Following the same approach as Phase 7 UC15/16/17 and UC6/11/14 demos, targeting
+**UI/UX screens that end users actually see in daily operations**.
+Technical views (Step Functions graph, CloudFormation stack events, etc.)
+are consolidated in `docs/verification-results-*.md`.
+
+### Verification Status for This Use Case
+
+- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **UI/UX**: Not yet captured
+
+### Existing Screenshots
+
+![UC17 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/uc17-stepfunctions-graph.png)
+
+### UI/UX Target Screens for Re-verification (Recommended Capture List)
+
+- S3 output bucket (tiles/, land-use/, change-detection/, risk-maps/, reports/)
+- Bedrock-generated urban planning report (Markdown preview)
+- DynamoDB landuse_history table (land-use classification history)
+- Risk map JSON preview (CRITICAL/HIGH/MEDIUM/LOW classification)
+- FSx ONTAP volume AI artifacts (FSXN_S3AP mode — Markdown report viewable via SMB/NFS)
+
+### Capture Guide
+
+1. **Preparation**: Run `bash scripts/verify_phase7_prerequisites.sh` to check prerequisites
+2. **Sample Data**: Upload sample files via S3 AP Alias, then start Step Functions workflow
+3. **Capture** (close CloudShell/terminal, mask username in browser top-right)
+4. **Mask**: Run `python3 scripts/mask_uc_demos.py <uc-dir>` for automated OCR masking
+5. **Cleanup**: Run `bash scripts/cleanup_generic_ucs.sh <UC>` to delete stack
