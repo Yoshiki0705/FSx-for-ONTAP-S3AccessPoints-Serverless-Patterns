@@ -126,7 +126,7 @@ def handler(event, context):
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="discovery")
     metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "media-vfx"))
-    metrics.put_metric("FilesProcessed", float(len(objects)), "Count")
+    metrics.put_metric("FilesProcessed", float(len(render_assets)), "Count")
     metrics.flush()
 
     return {
