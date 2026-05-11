@@ -100,11 +100,11 @@ sont consolidées dans `docs/verification-results-*.md`.
 ### Statut de vérification pour ce cas d'utilisation
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **Capture UI/UX** : ✅ SFN Graph terminé (Phase 8 Theme D, commit 081cc66)
 
 ### Captures d'écran existantes (de Phase 1-6)
 
-*(Aucune applicable. Veuillez capturer lors de la re-vérification.)*
+![UC9 Vue graphique Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
 ### Écrans UI/UX cibles pour re-vérification (liste de captures recommandées)
 
