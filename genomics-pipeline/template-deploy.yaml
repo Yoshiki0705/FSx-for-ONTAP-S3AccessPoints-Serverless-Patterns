@@ -19,6 +19,14 @@ Parameters:
     Description: FSx ONTAP S3 Access Point Alias (入力読み取り用)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: |
+      入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
+      IAM アクセスを許可する（FSxN S3AP の permission 判定で両形式をサポート）。
+      空文字列の場合は alias 形式のみ許可。
+
   OntapSecretName:
     Type: String
     Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
@@ -143,6 +151,8 @@ Parameters:
 # Conditions
 # =====================================================================
 Conditions:
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
   CreateCloudWatchAlarms:
     !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateVpcEndpoints:
@@ -375,9 +385,14 @@ Resources:
                   - s3:ListBucket
                   - s3:GetObject
                   - s3:GetBucketLocation
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:
