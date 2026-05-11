@@ -65,11 +65,15 @@ sind in `docs/verification-results-*.md` zusammengefasst.
 ### Verifizierungsstatus für diesen Anwendungsfall
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **UI/UX-Aufnahme**: ✅ SFN Graph abgeschlossen (Phase 8 Theme D, commit 3c90042)
 
 ### Vorhandene Screenshots (aus Phase 1-6)
 
-*(Keine zutreffend. Bitte bei Re-Verifizierung aufnehmen.)*
+![UC13 Step Functions Graph-Ansicht (SUCCEEDED)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-succeeded.png)
+
+![UC13 Step Functions Graph (Gesamtüberblick)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-overview.png)
+
+![UC13 Step Functions Graph (gezoomt — Schrittdetails)](../../docs/screenshots/masked/uc13-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX-Zielbildschirme für Re-Verifizierung (empfohlene Aufnahmeliste)
 
