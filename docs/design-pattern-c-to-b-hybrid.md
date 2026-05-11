@@ -1,6 +1,6 @@
 # Design: Pattern C → Pattern B Hybrid for UC6/7/8/13
 
-**Status**: Draft (B-thread proposal, 2026-05-11)
+**Status**: APPROVED (A-thread reviewed, 2026-05-12)
 **Target Phase**: Phase 8 (B-P8-2 candidate)
 **Scope**: UC6 semiconductor-eda, UC7 genomics-pipeline, UC8 energy-seismic, UC13 education-research
 **Prerequisites**:
