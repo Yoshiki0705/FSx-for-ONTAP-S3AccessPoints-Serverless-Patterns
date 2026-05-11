@@ -5,21 +5,22 @@
 JSON で S3 出力する。
 
 Environment Variables:
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import re
 from datetime import datetime, timezone
 
-import boto3
-
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -243,7 +244,6 @@ def handler(event, context):
         }
     """
     papers_input = event.get("papers", [])
-    output_bucket = os.environ["OUTPUT_BUCKET"]
 
     logger.info("Citation analysis started: papers=%d", len(papers_input))
 
@@ -275,13 +275,8 @@ def handler(event, context):
         "analyzed_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(result, default=str, ensure_ascii=False).encode("utf-8"),
-        ContentType="application/json; charset=utf-8",
-    )
+    output_writer = OutputWriter.from_env()
+    output_writer.put_json(key=output_key, data=result)
 
     logger.info(
         "Citation analysis completed: nodes=%d, edges=%d",
