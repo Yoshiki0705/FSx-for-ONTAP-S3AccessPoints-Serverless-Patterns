@@ -190,7 +190,7 @@ def handler(event, context):
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
     output_writer = OutputWriter.from_env()
-    output_bucket = os.environ.get("OUTPUT_BUCKET", "")  # legacy fallback for non-put_object usages
+
     frame_interval_ms = int(os.environ.get("FRAME_INTERVAL", "1000"))
 
     logger.info(

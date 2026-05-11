@@ -122,7 +122,6 @@ def build_coco_annotations(
 
     for result in detection_results:
         file_key = result.get("file_key", f"unknown_{image_id}")
-        frames_extracted = result.get("frames_extracted", 0)
         detections = result.get("detections", [])
 
         # 各フレームを画像として登録
@@ -336,7 +335,6 @@ def handler(event, context):
     sagemaker_output = event.get("sagemaker_output", None)
 
     output_writer = OutputWriter.from_env()
-    output_bucket = os.environ.get("OUTPUT_BUCKET", "")  # legacy fallback for non-put_object usages
     model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
     transform_job_prefix = os.environ.get(
@@ -371,7 +369,6 @@ def handler(event, context):
     output_key = f"annotations/{now.strftime('%Y/%m/%d')}/coco_annotations.json"
 
     # 結果を S3 出力バケットに書き込み
-    s3_client = boto3.client("s3")
     output_data = {
         "status": "SUCCESS",
         "annotations": coco_annotations,
