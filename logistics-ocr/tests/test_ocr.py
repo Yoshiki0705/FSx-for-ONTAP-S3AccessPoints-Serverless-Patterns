@@ -14,7 +14,6 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 # shared モジュールと UC12 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
@@ -28,7 +27,6 @@ from functions.ocr.handler import (
 from functions.data_structuring.handler import (
     _ensure_required_fields,
     _parse_bedrock_response,
-    REQUIRED_FIELDS,
 )
 from functions.inventory_analysis.handler import (
     detect_inventory_objects,

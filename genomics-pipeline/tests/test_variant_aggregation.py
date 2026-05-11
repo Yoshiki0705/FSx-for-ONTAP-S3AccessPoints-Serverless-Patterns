@@ -9,7 +9,6 @@ Requirements: 13.1, 13.2
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import sys
@@ -459,7 +458,6 @@ class TestCrossRegionComprehendMedical:
     ):
         """Cross-Region Comprehend Medical が正しく呼び出されること"""
         from functions.summary.handler import _extract_biomedical_entities
-        from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 
         # CrossRegionClient のモック
         mock_cr_client = MagicMock()

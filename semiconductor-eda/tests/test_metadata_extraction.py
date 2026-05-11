@@ -13,7 +13,6 @@ import json
 import os
 import struct
 import sys
-from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest

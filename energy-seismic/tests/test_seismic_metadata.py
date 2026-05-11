@@ -8,7 +8,6 @@ Requirements: 13.1, 13.2
 
 from __future__ import annotations
 
-import json
 import os
 import struct
 import sys
@@ -21,9 +20,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from functions.seismic_metadata.handler import (
-    BINARY_HEADER_SIZE,
-    TEXTUAL_HEADER_SIZE,
-    TOTAL_HEADER_SIZE,
     _decode_textual_header,
     _extract_coordinate_system,
     _extract_survey_name,

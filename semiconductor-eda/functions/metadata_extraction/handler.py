@@ -34,7 +34,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
-from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
+from shared.observability import EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +55,10 @@ OASIS_MAGIC = b"%SEMI-OASIS\r\n"
 
 class GdsiiParseError(Exception):
     """GDSII パースエラー"""
-    pass
 
 
 class OasisParseError(Exception):
     """OASIS パースエラー"""
-    pass
 
 
 def _read_gdsii_record(data: bytes, offset: int) -> tuple[int, int, bytes]:

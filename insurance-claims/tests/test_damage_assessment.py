@@ -7,12 +7,10 @@ Requirements: 13.1, 13.2
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -24,7 +22,6 @@ from functions.damage_assessment.handler import (
 )
 from functions.estimate_ocr.handler import (
     _extract_text_from_blocks,
-    _extract_tables_from_blocks,
     _parse_estimate_data,
 )
 from functions.claims_report.handler import (

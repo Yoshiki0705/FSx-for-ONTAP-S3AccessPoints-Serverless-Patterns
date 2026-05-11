@@ -17,12 +17,9 @@ Environment Variables:
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import os
-from typing import Any
 
-import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler

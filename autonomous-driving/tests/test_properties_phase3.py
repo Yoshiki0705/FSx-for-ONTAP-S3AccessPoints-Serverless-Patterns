@@ -38,7 +38,6 @@ from functions.sagemaker_invoke.handler import (
 )
 from functions.sagemaker_callback.handler import (
     handle_job_failure,
-    handle_job_success,
 )
 
 
