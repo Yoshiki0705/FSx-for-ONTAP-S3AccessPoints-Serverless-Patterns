@@ -207,11 +207,13 @@ aws cloudformation deploy \
 ### 此使用案例的驗證狀態
 
 - ⚠️ **E2E 驗證**：僅部分功能（正式環境建議追加驗證）
-- 📸 **UI/UX 重新拍攝**：未實施
+- 📸 **UI/UX 截圖**: ✅ SFN Graph 完成 (Phase 8 Theme D, commit 3c90042)
 
 ### 既有截圖（Phase 1-6 的相關部分）
 
-*（無相關內容。重新驗證時請新拍攝）*
+![UC4 Step Functions 圖表視圖 (SUCCEEDED)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+
+![UC4 Step Functions 圖表 (縮放 — 各步驟詳細)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### 重新驗證時的 UI/UX 目標畫面（建議拍攝清單）
 
