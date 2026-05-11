@@ -65,11 +65,11 @@ sind in `docs/verification-results-*.md` zusammengefasst.
 ### Verifizierungsstatus für diesen Anwendungsfall
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **UI/UX-Aufnahme**: ⚠️ Nur SFN-Struktur (Phase 8 Theme D, commit c66084f — FAILED aufgrund fehlender IAM S3AP-Berechtigung, Behebung in Theme I geplant)
 
 ### Vorhandene Screenshots (aus Phase 1-6)
 
-*(Keine zutreffend. Bitte bei Re-Verifizierung aufnehmen.)*
+![UC7 Step Functions Graph (Workflow-Struktur)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-structure.png)
 
 ### UI/UX-Zielbildschirme für Re-Verifizierung (empfohlene Aufnahmeliste)
 
