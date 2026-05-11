@@ -125,6 +125,7 @@ deploy_one() {
         --parameter-overrides \
             DeployBucket="$DEPLOY_BUCKET" \
             S3AccessPointAlias="$S3_AP_ALIAS" \
+            S3AccessPointName="${S3_AP_NAME:-}" \
             OntapSecretName="$ONTAP_SECRET_NAME" \
             OntapManagementIp="$ONTAP_MANAGEMENT_IP" \
             SvmUuid="$SVM_UUID" \
@@ -135,39 +136,11 @@ deploy_one() {
         --capabilities CAPABILITY_NAMED_IAM \
         --no-fail-on-empty-changeset 2>&1 | tail -3
 
-    # Post-deploy: add S3 AP ARN inline policy to all discovery/processing roles
-    echo "[$UC] Adding S3 AP ARN inline policy..."
-    local POLICY_FILE="${PROJECT_DIR}/build/s3ap_inline_policy.json"
-    if [[ ! -f "$POLICY_FILE" ]]; then
-        mkdir -p "${PROJECT_DIR}/build"
-        cat > "$POLICY_FILE" <<'POLICY_EOF'
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "S3APExtraAccess",
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket",
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:GetBucketLocation"
-      ],
-      "Resource": [
-        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/eda-demo-s3ap",
-        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/eda-demo-s3ap/*"
-      ]
-    }
-  ]
-}
-POLICY_EOF
-    fi
-
-    # Find all roles for this stack and attach policy
-    for role in $(aws iam list-roles --region "$REGION" --query "Roles[?contains(RoleName, '${STACK}') && !contains(RoleName, 'sfn-role') && !contains(RoleName, 'scheduler-role')].RoleName" --output text 2>&1); do
-        aws iam put-role-policy --role-name "$role" --policy-name S3APExtraAccess --policy-document "file://${POLICY_FILE}" 2>&1 | tail -1
-    done
-
+    # Note (2026-05-11): Post-deploy S3 AP ARN inline policy step removed.
+    # All 17 UC templates now natively support S3AccessPointName parameter
+    # and grant both alias + AP ARN IAM permissions via HasS3AccessPointName
+    # condition. The old post-deploy hack was a workaround for when templates
+    # only supported alias form. See commit 848b64e.
     echo "[$UC] ✅ Done"
 }
 

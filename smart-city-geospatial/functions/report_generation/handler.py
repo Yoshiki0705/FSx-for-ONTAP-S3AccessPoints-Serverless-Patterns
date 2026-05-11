@@ -48,7 +48,7 @@ def build_prompt(
     for k, v in sorted(landuse.items(), key=lambda x: -x[1]):
         lines.append(f"- {k}: {v * 100:.1f}%")
     lines.append("")
-    lines.append(f"### 変化検出")
+    lines.append("### 変化検出")
     lines.append(f"- 変化規模: {change_magnitude:.3f}")
     if dominant_change.get("max_increase"):
         inc = dominant_change["max_increase"]

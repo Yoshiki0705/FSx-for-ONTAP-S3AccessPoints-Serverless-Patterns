@@ -116,6 +116,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_NAMED_IAM \
     --parameter-overrides \
         S3AccessPointAlias="$S3_ACCESS_POINT_ALIAS" \
+        S3AccessPointName="${S3_AP_NAME:-}" \
         OntapSecretName="$ONTAP_SECRET_NAME" \
         OntapManagementIp="$ONTAP_MANAGEMENT_IP" \
         SvmUuid="$SVM_UUID" \
@@ -139,6 +140,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_NAMED_IAM \
     --parameter-overrides \
         S3AccessPointAlias="$S3_ACCESS_POINT_ALIAS" \
+        S3AccessPointName="${S3_AP_NAME:-}" \
         OntapSecretName="$ONTAP_SECRET_NAME" \
         OntapManagementIp="$ONTAP_MANAGEMENT_IP" \
         SvmUuid="$SVM_UUID" \
