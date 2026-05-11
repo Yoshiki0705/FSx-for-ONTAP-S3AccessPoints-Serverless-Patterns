@@ -276,7 +276,11 @@ Resources:
                     - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Effect: Allow
                 Action: [s3:PutObject]
-                Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Effect: Allow
                 Action: [secretsmanager:GetSecretValue]
                 Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
