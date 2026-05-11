@@ -234,7 +234,7 @@ aws cloudformation deploy \
 
 ### 現有螢幕截圖（Phase 1-6 相關部分）
 
-*（無相關內容。重新驗證時請新拍攝）*
+![UC9 Step Functions 圖表視圖 (SUCCEEDED)](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
 ### 重新驗證時的 UI/UX 目標畫面（建議拍攝清單）
 
