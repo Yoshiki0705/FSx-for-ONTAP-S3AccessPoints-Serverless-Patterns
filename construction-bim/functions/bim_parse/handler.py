@@ -40,7 +40,6 @@ logger = logging.getLogger(__name__)
 class IfcParseError(Exception):
     """IFC ファイルパースエラー"""
 
-    pass
 
 
 def parse_ifc_metadata(content: str) -> dict:

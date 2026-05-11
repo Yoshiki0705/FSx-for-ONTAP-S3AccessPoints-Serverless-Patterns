@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 def test_classify_image_type_optical(discovery_handler):

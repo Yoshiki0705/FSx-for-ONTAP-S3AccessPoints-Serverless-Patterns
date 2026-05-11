@@ -12,7 +12,6 @@ Testing Strategy:
 from __future__ import annotations
 
 import json
-import math
 import os
 import sys
 
@@ -28,7 +27,6 @@ from functions.point_cloud_qc.handler import (
 )
 from functions.annotation_manager.handler import (
     build_coco_annotations,
-    COCO_CATEGORIES,
 )
 
 

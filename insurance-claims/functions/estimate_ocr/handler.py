@@ -15,19 +15,17 @@ Environment Variables:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-import boto3
 
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import lambda_error_handler
 from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
-from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
+from shared.observability import EmfMetrics, trace_lambda_handler
 
 logger = logging.getLogger(__name__)
 

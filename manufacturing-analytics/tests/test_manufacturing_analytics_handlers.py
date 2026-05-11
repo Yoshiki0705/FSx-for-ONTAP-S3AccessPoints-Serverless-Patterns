@@ -5,12 +5,9 @@
 AWS サービス呼び出しは unittest.mock でモック化。
 """
 
-import json
 import os
 import sys
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 # shared モジュールのパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))

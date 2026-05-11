@@ -64,7 +64,6 @@ class ServerlessColdStartTimeoutError(Exception):
     Step Functions の Catch ブロックで捕捉し、Batch Transform にフォールバックする。
     """
 
-    pass
 
 
 def _download_from_s3ap(

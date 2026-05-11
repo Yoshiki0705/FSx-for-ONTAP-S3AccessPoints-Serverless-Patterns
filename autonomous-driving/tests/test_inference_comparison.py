@@ -17,7 +17,6 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import boto3
-import pytest
 from moto import mock_aws
 
 # パス設定
@@ -37,7 +36,6 @@ from functions.inference_comparison.handler import (
     aggregate_by_variant,
     _emit_variant_metrics,
     _write_aggregation_to_dynamodb,
-    _query_recent_results,
     handler,
 )
 

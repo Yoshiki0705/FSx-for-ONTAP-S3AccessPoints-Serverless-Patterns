@@ -16,9 +16,6 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-import boto3
-import pytest
-from moto import mock_aws
 
 # shared モジュールと UC9 関数のパスを追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
@@ -32,9 +29,6 @@ os.environ["ENABLE_XRAY"] = "false"
 from functions.sagemaker_callback.handler import (
     _get_tags_from_job,
     _detect_token_mode,
-    _retrieve_token_from_dynamodb,
-    _delete_token_from_dynamodb,
-    _emit_orphaned_callback_metric,
     handle_job_success,
     handle_job_failure,
     handler,
