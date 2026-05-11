@@ -41,7 +41,7 @@
 | `check_handler_names.py` | 87 handlers, 0 undefined-name ✅ |
 | `check_conditional_refs.py` | 17 templates, 0 UC9-class issues ✅ |
 | `check_python_quality.py` | 0 critical, 0 unused-variable ✅ |
-| `_check_sensitive_leaks.py` | 158 images, 1 pre-existing leak (UC4 Phase 7) ✅ |
+| `_check_sensitive_leaks.py` | 157 images, 0 leaks ✅ |
 
 ## 3. AWS Deployment Verification
 
@@ -90,11 +90,11 @@
 
 ## 5. Known Issues
 
-1. **UC4 pre-existing screenshot leak**: `uc4-stepfunctions-graph.png` contains account ID from Phase 7 capture. Not caused by Phase 8 work. Will be resolved when UC4 is re-captured with Theme O (Deadline Cloud).
+1. **UC1 processing time**: 2:38 for 549 files is proportional to ONTAP volume file count. Production optimization: increase Map state `MaxConcurrency` from default (40) to 100+, or batch files in Discovery Lambda.
 
-2. **UC1 processing time**: 2:38 for 549 files is proportional to ONTAP volume file count. Production optimization: increase Map state `MaxConcurrency` from default (40) to 100+, or batch files in Discovery Lambda.
+2. **Python 3.9 deprecation warnings**: boto3 emits PythonDeprecationWarning for Python 3.9. Lambda runtime is Python 3.13; local test environment uses system Python 3.9. No functional impact.
 
-3. **Python 3.9 deprecation warnings**: boto3 emits PythonDeprecationWarning for Python 3.9. Lambda runtime is Python 3.13; local test environment uses system Python 3.9. No functional impact.
+3. **Event-driven trigger (Theme E)**: EventBridge rule is created and verified, but FSxN S3AP does not yet emit S3 Event Notifications natively. The rule will activate automatically when AWS adds this capability. Manual trigger via `aws stepfunctions start-execution` remains the primary invocation path.
 
 ## 6. CI/CD Pipeline Validation
 
