@@ -220,6 +220,25 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 Step Functions Graph view は各 Lambda / Parallel / Map ステートの実行状況を
 色で可視化するエンドユーザー最重要画面。
 
+#### UC1 Step Functions Graph（SUCCEEDED — Phase 8 Theme D/E/N 検証、2:38:20）
+
+![UC1 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc1-demo/step-functions-graph-succeeded.png)
+
+Phase 8 Theme E (event-driven) + Theme N (observability) 有効状態で実行。
+549 ACL iterations、3871 events、2:38:20 で全ステップ SUCCEEDED。
+
+#### UC1 Step Functions Graph（ズーム表示 — 各ステップ詳細）
+
+![UC1 Step Functions Graph（ズーム表示）](../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
+
+#### UC1 S3 Access Points for FSx ONTAP（コンソール表示）
+
+![UC1 S3 Access Points for FSx ONTAP](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
+
+#### UC1 S3 Access Point 詳細（概要ビュー）
+
+![UC1 S3 Access Point 詳細](../../docs/screenshots/masked/uc1-demo/s3ap-detail-overview.png)
+
 ### 既存スクリーンショット（Phase 1-6 から該当分）
 
 #### UC1 CloudFormation スタックデプロイ完了（2026-05-02 検証時）
