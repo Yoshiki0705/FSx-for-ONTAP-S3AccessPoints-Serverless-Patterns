@@ -323,7 +323,7 @@ def handler(event, context):
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
     output_writer = OutputWriter.from_env()
-    output_bucket = os.environ.get("OUTPUT_BUCKET", "")  # legacy fallback for non-put_object usages
+
 
     logger.info(
         "Point Cloud QC started: file_key=%s, size=%d",

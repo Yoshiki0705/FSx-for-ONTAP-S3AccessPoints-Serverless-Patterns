@@ -273,8 +273,9 @@ def handler(event, context):
         except (KeyError, json.JSONDecodeError, Exception) as e:
             # Requirement 14.6: 不正レコードは破棄 + 警告ログ（シーケンス番号のみ）
             logger.warning(
-                "Invalid record format at sequence_number=%s, discarding",
+                "Invalid record format at sequence_number=%s, discarding: %s",
                 sequence_number,
+                e,
             )
             invalid += 1
             continue
