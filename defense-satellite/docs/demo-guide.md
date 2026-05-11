@@ -144,12 +144,19 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 ### このユースケースの検証ステータス
 
 - ✅ **E2E 検証**: SUCCEEDED（Phase 7 Extended Round, commit b77fc3b）
-- 📸 **UI/UX 再撮影**: 未実施
+- 📸 **UI/UX 撮影**: ✅ 完了（Phase 8 Theme D, commit d7ebabd）
 
 ### 既存スクリーンショット（Phase 7 検証時）
 
-![UC15 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc15-demo/uc15-stepfunctions-graph.png)
+![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
+![S3 出力バケット](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+
+![S3 Enriched 出力](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+
+![DynamoDB 変更履歴テーブル](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+
+![SNS 通知トピック](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 ### 再検証時の UI/UX 対象画面（推奨撮影リスト）
 
 - S3 出力バケット（detections/、geo-enriched/、alerts/）

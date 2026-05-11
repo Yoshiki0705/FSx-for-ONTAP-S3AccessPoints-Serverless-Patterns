@@ -146,12 +146,15 @@ aws cloudformation deploy \
 ### 本用例的验证状态
 
 - ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX**: Not yet captured
+- 📸 **UI/UX 截图**: ✅ 完成 (Phase 8 Theme D, commit d7ebabd)
 
 ### 现有截图
 
-![UC17 Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/uc17-stepfunctions-graph.png)
+![Step Functions 图表视图 (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
 
+![S3 输出桶](../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
+
+![DynamoDB landuse_history 表](../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
 ### 重新验证时的 UI/UX 目标界面（推荐截图列表）
 
 - S3 输出桶 (tiles/, land-use/, change-detection/, risk-maps/, reports/)
