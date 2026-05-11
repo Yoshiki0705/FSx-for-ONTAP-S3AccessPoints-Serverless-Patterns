@@ -1089,6 +1089,16 @@ Resources:
               ],
               "Default": "${!DefaultInferenceNext}"
             },
+            "SkipInference": {
+              "Type": "Pass",
+              "Comment": "Inference disabled — inject empty inference_result so AnnotationManager Parameters resolve correctly",
+              "Result": {
+                "status": "SKIPPED",
+                "reason": "No inference backend enabled"
+              },
+              "ResultPath": "$.inference_result",
+              "Next": "AnnotationManager"
+            },
             "ServerlessInference": {
               "Type": "Task",
               "Resource": "${!RealtimeInvokeArn}",
@@ -1225,7 +1235,7 @@ Resources:
         DefaultInferenceNext: !If
           - AnyInferenceEnabled
           - "BatchTransform"
-          - "AnnotationManager"
+          - "SkipInference"
         RealtimeInvokeArn: !If
           - CreateRealtimeEndpoint
           - !GetAtt RealtimeInvokeFunction.Arn
