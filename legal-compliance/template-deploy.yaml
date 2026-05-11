@@ -136,6 +136,15 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: Lambda SnapStart を有効化する（コールドスタート削減）
 
+  EnableEventDriven:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: |
+      S3 Event Notification → EventBridge → Step Functions の自動起動を有効化する。
+      有効化すると、S3 AP へのファイル追加時に自動的にワークフローが起動する。
+      既存の EventBridge Scheduler (polling) と共存可能。
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -164,6 +173,9 @@ Conditions:
 
   SnapStartEnabled:
     !Equals [!Ref EnableSnapStart, "true"]
+
+  EventDrivenEnabled:
+    !Equals [!Ref EnableEventDriven, "true"]
 
 # =====================================================================
 # Resources
@@ -1101,6 +1113,95 @@ Resources:
       Topics:
         - !Ref NotificationTopic
 
+  # -----------------------------------------------------------------
+  # Event-Driven Trigger (conditional on EventDrivenEnabled)
+  # S3 Event Notification → EventBridge → Step Functions
+  # -----------------------------------------------------------------
+
+  # DynamoDB table for idempotency (deduplication of S3 events)
+  EventIdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    Condition: EventDrivenEnabled
+    Properties:
+      TableName: !Sub "${AWS::StackName}-event-idempotency"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: event_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: event_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: UseCase
+          Value: legal-compliance
+        - Key: Component
+          Value: event-driven
+
+  # EventBridge rule: S3 Object Created → Start Step Functions execution
+  S3EventTriggerRule:
+    Type: AWS::Events::Rule
+    Condition: EventDrivenEnabled
+    Properties:
+      Description: !Sub "Trigger ${AWS::StackName} workflow on S3 object creation"
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - "Object Created"
+        detail:
+          bucket:
+            name:
+              - !Ref S3AccessPointAlias
+          reason:
+            - PutObject
+            - CompleteMultipartUpload
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ComplianceStateMachine.Arn
+          Id: StepFunctionsTarget
+          RoleArn: !GetAtt EventBridgeToSfnRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              objectKey: $.detail.object.key
+              objectSize: $.detail.object.size
+              objectEtag: $.detail.object.etag
+              eventTime: $.time
+              eventId: $.id
+            InputTemplate: |
+              {
+                "trigger": "event-driven",
+                "event_id": "<eventId>",
+                "object_key": "<objectKey>",
+                "object_size": "<objectSize>",
+                "object_etag": "<objectEtag>",
+                "event_time": "<eventTime>"
+              }
+
+  # IAM role for EventBridge to start Step Functions execution
+  EventBridgeToSfnRole:
+    Type: AWS::IAM::Role
+    Condition: EventDrivenEnabled
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-eb-to-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartExecution
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt ComplianceStateMachine.Arn
+
 # =====================================================================
 # Outputs
 # =====================================================================
@@ -1132,3 +1233,13 @@ Outputs:
   ReportGenerationFunctionArn:
     Description: Report Generation Lambda Function ARN
     Value: !GetAtt ReportGenerationFunction.Arn
+
+  EventDrivenRuleArn:
+    Description: EventBridge S3 event trigger rule ARN (event-driven mode)
+    Condition: EventDrivenEnabled
+    Value: !GetAtt S3EventTriggerRule.Arn
+
+  EventIdempotencyTableName:
+    Description: DynamoDB idempotency table name (event-driven mode)
+    Condition: EventDrivenEnabled
+    Value: !Ref EventIdempotencyTable
