@@ -1,8 +1,8 @@
 """半導体 / EDA レポート生成 Lambda ハンドラ
 
 DRC 集計結果を受け取り、Amazon Bedrock を使用して自然言語の
-設計レビューサマリーを生成する。レポートを S3 に書き出し、
-SNS 通知を発行する。
+設計レビューサマリーを生成する。レポートを OutputWriter 経由で
+出力先に書き出し、SNS 通知を発行する。
 
 生成内容:
     - 設計ファイル全体の品質サマリー
@@ -12,7 +12,10 @@ SNS 通知を発行する。
     - 無効ファイルの対応推奨
 
 Environment Variables:
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: STANDARD_S3 or FSXN_S3AP (デフォルト: STANDARD_S3)
+    OUTPUT_BUCKET: STANDARD_S3 モード時の出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モード時の S3AP Alias
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モード時のプレフィックス (デフォルト: ai-outputs/)
     BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
     SNS_TOPIC_ARN: SNS トピック ARN
 """
@@ -28,6 +31,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +153,6 @@ def handler(event, context):
     Returns:
         dict: report_key, sns_message_id, total_designs
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
     sns_topic_arn = os.environ["SNS_TOPIC_ARN"]
     model_id = os.environ.get("BEDROCK_MODEL_ID", DEFAULT_BEDROCK_MODEL_ID)
 
@@ -169,22 +172,22 @@ def handler(event, context):
     bedrock_client = boto3.client("bedrock-runtime")
     report_text = _invoke_bedrock(bedrock_client, model_id, prompt)
 
-    # レポートを S3 に書き出し
+    # レポートを OutputWriter 経由で出力先に書き出し
     now = datetime.now(timezone.utc)
     report_key = (
         f"reports/{now.strftime('%Y/%m/%d')}"
         f"/eda-design-review-{context.aws_request_id}.md"
     )
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=report_key,
-        Body=report_text.encode("utf-8"),
-        ContentType="text/markdown; charset=utf-8",
+    writer = OutputWriter.from_env()
+    writer.put_text(
+        key=report_key,
+        text=report_text,
+        content_type="text/markdown; charset=utf-8",
     )
 
-    logger.info("Report written to S3: s3://%s/%s", output_bucket, report_key)
+    report_uri = writer.build_s3_uri(report_key)
+    logger.info("Report written: %s", report_uri)
 
     # SNS 通知発行
     total_designs = statistics.get("total_designs", 0)
@@ -199,7 +202,8 @@ def handler(event, context):
         f"無効ファイル数: {invalid_files}\n"
         f"バウンディングボックス外れ値: {outlier_count} 件\n"
         f"命名規則違反: {violation_count} 件\n"
-        f"レポート: s3://{output_bucket}/{report_key}\n"
+        f"レポート: {report_uri}\n"
+        f"出力先: {writer.target_description}\n"
         f"生成日時: {now.isoformat()}"
     )
 
