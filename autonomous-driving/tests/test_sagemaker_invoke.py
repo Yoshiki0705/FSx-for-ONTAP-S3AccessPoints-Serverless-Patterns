@@ -108,33 +108,33 @@ class TestHandleMockMode:
     """_handle_mock_mode のテスト"""
 
     def test_mock_mode_writes_to_s3_and_sends_task_success(self):
-        """MOCK_MODE=true: S3 に出力を書き込み、SendTaskSuccess を呼ぶ"""
+        """MOCK_MODE=true: OutputWriter 経由で出力を書き込み、SendTaskSuccess を呼ぶ"""
         event = {
             "task_token": "test-token-123",
             "input_s3_path": "s3://input-bucket/data/",
             "point_count": 500,
         }
 
+        mock_writer = MagicMock()
+        mock_writer.build_s3_uri.return_value = (
+            "s3://test-output-bucket/sagemaker-output/2026/05/12/mock_segmentation.json"
+        )
+
         with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
-            mock_s3 = MagicMock()
             mock_sfn = MagicMock()
-            mock_boto3.client.side_effect = lambda service, **kwargs: {
-                "s3": mock_s3,
-                "stepfunctions": mock_sfn,
-            }[service]
+            mock_boto3.client.return_value = mock_sfn
 
-            result = _handle_mock_mode(event, "test-token-123", "test-output-bucket")
+            result = _handle_mock_mode(event, "test-token-123", mock_writer)
 
-            # S3 に書き込まれたことを確認
-            mock_s3.put_object.assert_called_once()
-            s3_call = mock_s3.put_object.call_args[1]
-            assert s3_call["Bucket"] == "test-output-bucket"
-            assert "sagemaker-output/" in s3_call["Key"]
+            # OutputWriter.put_json が呼ばれたことを確認
+            mock_writer.put_json.assert_called_once()
+            call_kwargs = mock_writer.put_json.call_args.kwargs
+            assert "sagemaker-output/" in call_kwargs["key"]
 
-            # S3 に書き込まれたデータの検証
-            body = json.loads(s3_call["Body"])
-            assert body["point_count"] == 500
-            assert len(body["labels"]) == 500
+            # 書き込まれたデータの検証
+            payload = call_kwargs["data"]
+            assert payload["point_count"] == 500
+            assert len(payload["labels"]) == 500
 
             # SendTaskSuccess が呼ばれたことを確認
             mock_sfn.send_task_success.assert_called_once()
@@ -144,6 +144,7 @@ class TestHandleMockMode:
             output = json.loads(sfn_call["output"])
             assert output["status"] == "COMPLETED"
             assert output["point_count"] == 500
+            assert "s3://" in output["output_s3_path"]
 
     def test_mock_mode_task_token_propagation(self):
         """MOCK_MODE=true: Task_Token が正確に伝播される"""
@@ -154,15 +155,14 @@ class TestHandleMockMode:
             "point_count": 10,
         }
 
-        with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
-            mock_s3 = MagicMock()
-            mock_sfn = MagicMock()
-            mock_boto3.client.side_effect = lambda service, **kwargs: {
-                "s3": mock_s3,
-                "stepfunctions": mock_sfn,
-            }[service]
+        mock_writer = MagicMock()
+        mock_writer.build_s3_uri.return_value = "s3://bucket/path/out.json"
 
-            _handle_mock_mode(event, token, "bucket")
+        with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
+            mock_sfn = MagicMock()
+            mock_boto3.client.return_value = mock_sfn
+
+            _handle_mock_mode(event, token, mock_writer)
 
             sfn_call = mock_sfn.send_task_success.call_args[1]
             assert sfn_call["taskToken"] == token
@@ -381,20 +381,19 @@ class TestTaskTokenNotInLogs:
             "point_count": 10,
         }
 
+        mock_writer = MagicMock()
+        mock_writer.build_s3_uri.return_value = "s3://bucket/out.json"
+
         with caplog.at_level(logging.DEBUG):
             with patch.dict(os.environ, {
                 "MOCK_MODE": "true",
                 "TOKEN_STORAGE_MODE": "direct",
             }):
                 with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
-                    mock_s3 = MagicMock()
                     mock_sfn = MagicMock()
-                    mock_boto3.client.side_effect = lambda service, **kwargs: {
-                        "s3": mock_s3,
-                        "stepfunctions": mock_sfn,
-                    }[service]
+                    mock_boto3.client.return_value = mock_sfn
 
-                    _handle_mock_mode(event, secret_token, "bucket")
+                    _handle_mock_mode(event, secret_token, mock_writer)
 
         # ログ出力に secret_token が含まれていないことを確認
         all_logs = " ".join(record.message for record in caplog.records)
@@ -421,18 +420,22 @@ class TestHandler:
         context.function_name = "test-function"
 
         with patch.dict(os.environ, {"MOCK_MODE": "true"}):
-            with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
-                mock_s3 = MagicMock()
+            with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3, \
+                 patch("functions.sagemaker_invoke.handler.OutputWriter") as mock_output_writer_cls:
                 mock_sfn = MagicMock()
-                mock_boto3.client.side_effect = lambda service, **kwargs: {
-                    "s3": mock_s3,
-                    "stepfunctions": mock_sfn,
-                }[service]
+                mock_boto3.client.return_value = mock_sfn
+
+                mock_writer = MagicMock()
+                mock_writer.build_s3_uri.return_value = (
+                    "s3://test-output-bucket/sagemaker-output/out.json"
+                )
+                mock_output_writer_cls.from_env.return_value = mock_writer
 
                 result = handler(event, context)
 
                 assert result["status"] == "COMPLETED"
                 mock_sfn.send_task_success.assert_called_once()
+                mock_writer.put_json.assert_called_once()
 
     def test_handler_dynamodb_mode(self):
         """handler: TOKEN_STORAGE_MODE=dynamodb で正常動作"""
