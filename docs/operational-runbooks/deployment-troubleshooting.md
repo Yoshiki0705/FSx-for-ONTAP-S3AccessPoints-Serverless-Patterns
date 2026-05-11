@@ -109,10 +109,22 @@ Or use Lambda SnapStart (Python 3.12+ with `SnapStart: ApplyOn: PublishedVersion
 
 | UC | First invocation | Subsequent |
 |----|-----------------|------------|
+| UC1 | 8:02 (Discovery, 512MB) | <1s |
+| UC1 | TIMEOUT at 300s (256MB) | — |
 | UC9 | 2:41 (Discovery) | <1s |
 | UC15 | ~3s (already warm from UC6) | <1s |
 | UC16 | ~3s | <1s |
 | UC17 | ~4s | <1s |
+
+**UC1 specific note**: Discovery Lambda calls ONTAP REST API to list all
+files in the volume (549 files in test environment). With 256MB/300s the
+function consistently timed out. Increasing to 512MB/900s resolved the
+issue. The 8-minute duration includes ENI attach + Secrets Manager fetch +
+ONTAP API pagination over 549 files.
+
+**Recommendation**: For UCs with large ONTAP volumes (>100 files), set
+Discovery Lambda to at least 512MB/900s. Consider 1024MB for volumes
+with >1000 files.
 
 ---
 
@@ -304,3 +316,92 @@ aws cloudformation wait stack-delete-complete --stack-name <stack-name>
 # Retry deploy
 bash scripts/deploy_generic_ucs.sh <UC>
 ```
+
+---
+
+## Failure Mode 7: VPC Endpoint private-dns conflict
+
+### Symptom
+
+```
+Resource handler returned message: "private-dns-enabled cannot be set
+because there is already a conflicting DNS domain for
+<service>.ap-northeast-1.amazonaws.com in the VPC vpc-XXXXX"
+```
+
+Stack update fails with `UPDATE_ROLLBACK_COMPLETE`.
+
+### Root Cause
+
+Another CloudFormation stack (or manual creation) already created a VPC
+Interface Endpoint for the same service in the same VPC with
+`PrivateDnsEnabled: true`. Only one endpoint per service per VPC can have
+private DNS enabled.
+
+### Resolution
+
+1. **Preferred**: Set `EnableVpcEndpoints=false` in the deploy parameters.
+   The existing VPC Endpoints from the other stack will be shared.
+
+2. **Alternative**: If you need per-stack endpoints, disable private DNS
+   on the new endpoint:
+   ```yaml
+   Properties:
+     PrivateDnsEnabled: false
+   ```
+   But this requires explicit endpoint URL configuration in Lambda env vars.
+
+### Observed services affected (Phase 8 UC1 verification)
+
+- `secretsmanager.ap-northeast-1.amazonaws.com`
+- `monitoring.ap-northeast-1.amazonaws.com`
+- `logs.ap-northeast-1.amazonaws.com`
+- `fsx.ap-northeast-1.amazonaws.com`
+- `sns.ap-northeast-1.amazonaws.com`
+
+### Prevention
+
+Always deploy with `EnableVpcEndpoints=false` when using a shared VPC
+that already has Interface Endpoints from another stack (e.g., UC6's
+long-running stack provides endpoints for all UCs).
+
+---
+
+## Failure Mode 8: Step Functions large execution data popup
+
+### Symptom
+
+When viewing a Step Functions execution with >1000 events in the AWS
+Console, a modal dialog appears:
+
+> "Continue to load with execution data — This execution contains a large
+> amount of execution data (input or output of a history event) that will
+> take longer to load."
+
+### Root Cause
+
+UC1 with 549 files generates 3871 events (7 events per file × 549 +
+overhead). The console warns about loading all event payloads.
+
+### Resolution
+
+Click **"Load without execution data"** to view the Graph view without
+loading individual event payloads. The graph still shows execution status
+(Succeeded/Failed) for all states.
+
+For programmatic access to execution history:
+```bash
+aws stepfunctions get-execution-history \
+  --execution-arn <ARN> \
+  --max-results 5 --reverse-order \
+  --query 'events[].[type,stateEnteredEventDetails.name,timestamp]'
+```
+
+### Performance note for demo guide
+
+UC1 processing time is proportional to ONTAP volume file count:
+- 549 files → 2:38:20 (3871 events)
+- Estimated: 100 files → ~30 min, 1000 files → ~5 hours
+
+To reduce demo time, limit the ONTAP volume to 10-50 files for
+quick demonstrations (~5-15 min total).

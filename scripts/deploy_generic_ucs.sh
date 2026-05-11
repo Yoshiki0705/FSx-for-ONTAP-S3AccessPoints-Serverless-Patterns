@@ -10,7 +10,7 @@
 # Environment Variables:
 #   DEPLOY_BUCKET          - S3 bucket for Lambda packages and CFn templates
 #   S3_AP_ALIAS            - FSxN S3 Access Point alias
-#   S3_AP_NAME             - FSxN S3 Access Point name
+#   S3_AP_NAME             - FSxN S3 Access Point name (for IAM dual-format)
 #   VPC_ID                 - VPC ID for Lambda functions
 #   SUBNETS                - Comma-separated private subnet IDs
 #   NOTIFICATION_EMAIL     - Email for SNS notifications
@@ -20,9 +20,23 @@
 #   ENABLE_S3_GATEWAY_EP   - "true" or "false" (default: "false")
 #                            Set to "false" when S3 Gateway Endpoint already exists in VPC
 #
+# UC1-specific parameters (optional):
+#   ENABLE_EVENT_DRIVEN    - "true" or "false" (default: "false")
+#                            Enables S3 → EventBridge → Step Functions auto-trigger
+#   ENABLE_CLOUDWATCH_ALARMS - "true" or "false" (default: "false")
+#                            Enables CloudWatch Alarms + EventBridge failure notifications
+#
 # IMPORTANT: If deploying to a VPC that already has a S3 Gateway Endpoint
 # (e.g., from UC6 stack), set ENABLE_S3_GATEWAY_EP=false to avoid
 # "route table already has a route with destination-prefix-list-id" error.
+#
+# IMPORTANT: Do NOT set EnableVpcEndpoints=true if the VPC already has
+# Interface Endpoints from another stack. This causes "private-dns-enabled
+# cannot be set" errors. See docs/operational-runbooks/deployment-troubleshooting.md
+# Failure Mode 7.
+#
+# Performance note (UC1): Discovery Lambda requires 512MB/900s for large
+# ONTAP volumes (>100 files). See Failure Mode 2 in deployment-troubleshooting.md.
 
 set -u
 
