@@ -213,8 +213,12 @@ def handler(event, context):
     return {
         "manifest_key": manifest_key,
         "total_objects": len(unique_objects),
+        "file_count": len(unique_objects),
         "video_files": classified["video_files"],
         "lidar_files": classified["lidar_files"],
         "annotation_files": classified["annotation_files"],
         "metadata": metadata,
+        "inference_type": os.environ.get("INFERENCE_TYPE", "none"),
+        "batch_threshold": int(os.environ.get("BATCH_THRESHOLD", "10")),
+        "model_input_uri": f"s3://{os.environ['S3_ACCESS_POINT']}/{manifest_key}",
     }
