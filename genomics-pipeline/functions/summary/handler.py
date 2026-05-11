@@ -5,14 +5,17 @@ QC 結果、バリアント統計、Athena 分析結果を統合し、Amazon Bed
 DetectEntitiesV2 を実行し、バイオメディカルエンティティ（遺伝子名、
 疾患、薬剤）を抽出する。
 
-構造化出力を JSON で S3 に書き出し、SNS 通知を発行する。
+構造化出力を JSON で OutputWriter 経由で出力先に書き出し、SNS 通知を発行する。
 
 セキュリティ:
     - PHI（保護対象医療情報）はログに出力しない
     - sanitize_for_logging パターンで機密データをマスクする
 
 Environment Variables:
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: STANDARD_S3 or FSXN_S3AP (デフォルト: STANDARD_S3)
+    OUTPUT_BUCKET: STANDARD_S3 モード時の出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モード時の S3AP Alias
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モード時のプレフィックス (デフォルト: ai-outputs/)
     BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
     SNS_TOPIC_ARN: SNS トピック ARN
     CROSS_REGION: クロスリージョンターゲット (デフォルト: us-east-1)
@@ -30,6 +33,7 @@ import boto3
 from shared.cross_region_client import CrossRegionClient, CrossRegionConfig
 from shared.exceptions import lambda_error_handler
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -283,7 +287,6 @@ def handler(event, context):
     Returns:
         dict: status, summary, output_key
     """
-    output_bucket = os.environ["OUTPUT_BUCKET"]
     sns_topic_arn = os.environ["SNS_TOPIC_ARN"]
     model_id = os.environ.get("BEDROCK_MODEL_ID", DEFAULT_BEDROCK_MODEL_ID)
     cross_region = os.environ.get("CROSS_REGION", DEFAULT_CROSS_REGION)
@@ -349,22 +352,21 @@ def handler(event, context):
         f"/research_summary_{context.aws_request_id}.json"
     )
 
-    # 構造化出力を S3 に書き出し
+    # 構造化出力を OutputWriter 経由で出力先に書き出し
     output_data = {
         "execution_id": context.aws_request_id,
         "summary": summary,
         "generated_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(output_data, default=str, ensure_ascii=False).encode(
-            "utf-8"
-        ),
-        ContentType="application/json; charset=utf-8",
+    writer = OutputWriter.from_env()
+    writer.put_json(
+        key=output_key,
+        data=output_data,
     )
+
+    output_uri = writer.build_s3_uri(output_key)
+    logger.info("Output written: %s", output_uri)
 
     # PHI をマスクしてログ出力
     sanitized = sanitize_for_logging(summary)
@@ -383,7 +385,8 @@ def handler(event, context):
         f"検出エンティティ: 遺伝子 {len(biomedical_entities['genes'])} 件, "
         f"疾患 {len(biomedical_entities['diseases'])} 件, "
         f"薬剤 {len(biomedical_entities['medications'])} 件\n"
-        f"レポート: s3://{output_bucket}/{output_key}\n"
+        f"レポート: {output_uri}\n"
+        f"出力先: {writer.target_description}\n"
         f"生成日時: {now.isoformat()}"
     )
 
