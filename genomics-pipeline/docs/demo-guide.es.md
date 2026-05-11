@@ -65,11 +65,13 @@ están consolidadas en `docs/verification-results-*.md`.
 ### Estado de verificación para este caso de uso
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **Captura UI/UX**: ⚠️ Solo estructura SFN (Phase 8 Theme D, commit c66084f — FAILED por falta de permiso IAM S3AP, corrección planificada en Theme I)
+- 📸 **Captura UI/UX**: ✅ SUCCEEDED (Phase 8 Theme D, commit 2b958db — redesplegado tras corrección IAM S3AP, 3:03 todos los pasos exitosos)
 
 ### Capturas de pantalla existentes (de Phase 1-6)
 
-![UC7 Gráfico Step Functions (estructura del workflow)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-structure.png)
+![UC7 Gráfico Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+
+![UC7 Step Functions Graph (zoomed)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### Pantallas UI/UX objetivo para re-verificación (lista de capturas recomendadas)
 

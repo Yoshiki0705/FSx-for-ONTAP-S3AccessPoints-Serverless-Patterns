@@ -168,11 +168,13 @@ are consolidated in `docs/verification-results-*.md`.
 ### Verification Status for This Use Case
 
 - ⚠️ **E2E**: Partial (additional verification recommended)
-- 📸 **UI/UX Capture**: ⚠️ SFN structure only (Phase 8 Theme D, commit c66084f — FAILED due to IAM S3AP permission gap, fix planned in Theme I)
+- 📸 **UI/UX Capture**: ✅ SUCCEEDED (Phase 8 Theme D, commit 2b958db — re-deployed after IAM S3AP fix, 3:03 all steps green)
 
 ### Existing Screenshots (from Phase 1-6)
 
-![UC7 Step Functions Graph (workflow structure)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-structure.png)
+![UC7 Step Functions Graph (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+
+![UC7 Step Functions Graph (zoomed)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
 
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
