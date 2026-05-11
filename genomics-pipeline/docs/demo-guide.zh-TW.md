@@ -170,6 +170,7 @@ Phase 7 UC15/16/17 與 UC6/11/14 的示範採用相同方針，以**終端使用
 
 - ✅ **E2E 執行**：Phase 1-6 已確認（參考根目錄 README）
 - 📸 **UI/UX 重新拍攝**：✅ 2026-05-10 重新部署驗證時已拍攝（確認 UC7 Step Functions 圖表、Lambda 執行成功）
+- 📸 **UI/UX 截圖 (Phase 8 Theme D)**: ⚠️ 僅 SFN 結構 (commit c66084f — 因 IAM S3AP 權限不足 FAILED, 計劃在 Theme I 修復)
 - 🔄 **重現方法**：參考本文件末尾的「拍攝指南」
 
 ### 2026-05-10 重新部署驗證時拍攝（以 UI/UX 為中心）
@@ -177,6 +178,13 @@ Phase 7 UC15/16/17 與 UC6/11/14 的示範採用相同方針，以**終端使用
 #### UC7 Step Functions Graph view（SUCCEEDED）
 
 ![UC7 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
+
+#### UC7 Step Functions 圖表 (工作流程結構 — Phase 8 Theme D)
+
+![UC7 Step Functions 圖表 (工作流程結構)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-structure.png)
+
+Discovery Lambda 寫入 FSxN S3AP manifest 時出現 `AccessDenied`。
+需要在範本的 Discovery IAM 角色中加入 `s3:PutObject` on S3AP ARN 權限（Theme I 計劃修復）。
 
 Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態的執行狀況，
 是終端使用者最重要的畫面。
