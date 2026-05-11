@@ -321,6 +321,16 @@ Conditions:
       - !Equals [!Ref EnableInferenceComponents, "true"]
       - !Equals [!Ref InferenceType, "components"]
 
+  # InferenceRoutingEnabled: true if ANY inference path (batch / realtime /
+  # components) is enabled at template level. Used as a Step Functions
+  # DefinitionSubstitution to flip the workflow router between
+  # "run inference" and "skip inference entirely" modes.
+  AnyInferenceEnabled:
+    !Or
+      - !Equals [!Ref EnableSageMakerTransform, "true"]
+      - !Equals [!Ref EnableRealtimeEndpoint, "true"]
+      - !Equals [!Ref EnableInferenceComponents, "true"]
+
 # =====================================================================
 # Resources
 # =====================================================================
@@ -511,15 +521,23 @@ Resources:
                   - s3:ListBucket
                   - s3:GetObject
                   - s3:GetBucketLocation
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Sid: S3AccessPointWrite
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                  - - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
               - Sid: SecretsManager
                 Effect: Allow
                 Action:
@@ -742,7 +760,7 @@ Resources:
       Environment:
         Variables:
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          PREFIX_FILTER: ""
+          PREFIX_FILTER: "driving/"
           SUFFIX_FILTER: ".mp4,.avi,.mkv,.pcd,.las,.laz,.ply,.json"
           ONTAP_SECRET_NAME: !Ref OntapSecretName
           ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
@@ -1052,7 +1070,7 @@ Resources:
                 },
                 {
                   "Variable": "$.discovery.file_count",
-                  "NumericGreaterThanOrEqualToPath": "$.discovery.batch_threshold",
+                  "NumericGreaterThanEqualsPath": "$.discovery.batch_threshold",
                   "Next": "BatchTransform"
                 },
                 {
@@ -1069,11 +1087,11 @@ Resources:
                   "Next": "RealtimeInference"
                 }
               ],
-              "Default": "BatchTransform"
+              "Default": "${!DefaultInferenceNext}"
             },
             "ServerlessInference": {
               "Type": "Task",
-              "Resource": "${RealtimeInvokeFunction.Arn}",
+              "Resource": "${!RealtimeInvokeArn}",
               "Parameters": {
                 "s3_uri.$": "$.discovery.model_input_uri",
                 "inference_type": "serverless"
@@ -1104,7 +1122,7 @@ Resources:
             },
             "RealtimeInference": {
               "Type": "Task",
-              "Resource": "${RealtimeInvokeFunction.Arn}",
+              "Resource": "${!RealtimeInvokeArn}",
               "Parameters": {
                 "s3_uri.$": "$.discovery.model_input_uri",
                 "inference_type": "provisioned"
@@ -1122,7 +1140,7 @@ Resources:
             },
             "ComponentsInference": {
               "Type": "Task",
-              "Resource": "${ComponentsInvokeFunction.Arn}",
+              "Resource": "${!ComponentsInvokeArn}",
               "Parameters": {
                 "s3_uri.$": "$.discovery.model_input_uri",
                 "inference_type": "components"
@@ -1153,7 +1171,7 @@ Resources:
             },
             "BatchTransform": {
               "Type": "Task",
-              "Resource": "${SageMakerInvokeFunction.Arn}",
+              "Resource": "${!SageMakerInvokeArn}",
               "Parameters": {
                 "input_uri.$": "$.discovery.model_input_uri",
                 "file_count.$": "$.discovery.file_count"
@@ -1190,6 +1208,36 @@ Resources:
             }
           }
         }
+      # DefinitionSubstitutions: conditional Lambda ARN placeholders
+      # The DefinitionString above uses ${!RealtimeInvokeArn},
+      # ${!SageMakerInvokeArn}, ${!ComponentsInvokeArn} to reference
+      # conditional Lambda resources. CloudFormation's !Sub cannot resolve
+      # ${X.Arn} for resources with unmet Condition (resource does not
+      # exist), so we use DefinitionSubstitutions to inject the real ARN
+      # when the resource exists, or a harmless placeholder ARN when it
+      # doesn't.
+      #
+      # InferenceEntryPoint: workflow short-circuits inference entirely
+      # when no inference backend is enabled at template level. Skips
+      # straight to AnnotationManager, preserving the overall workflow
+      # shape while avoiding invocation of non-existent Lambdas.
+      DefinitionSubstitutions:
+        DefaultInferenceNext: !If
+          - AnyInferenceEnabled
+          - "BatchTransform"
+          - "AnnotationManager"
+        RealtimeInvokeArn: !If
+          - CreateRealtimeEndpoint
+          - !GetAtt RealtimeInvokeFunction.Arn
+          - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-realtime-disabled"
+        SageMakerInvokeArn: !If
+          - CreateSageMakerResources
+          - !GetAtt SageMakerInvokeFunction.Arn
+          - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-sagemaker-disabled"
+        ComponentsInvokeArn: !If
+          - CreateInferenceComponents
+          - !GetAtt ComponentsInvokeFunction.Arn
+          - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-components-disabled"
 
   # -----------------------------------------------------------------
   # EventBridge Scheduler
