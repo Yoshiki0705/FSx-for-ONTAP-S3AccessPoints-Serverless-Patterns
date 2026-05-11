@@ -317,10 +317,9 @@ class TestOcrHandler:
         "CONFIDENCE_THRESHOLD": "80",
     })
     @patch("functions.ocr.handler.OutputWriter")
-    @patch("functions.ocr.handler.boto3")
     @patch("functions.ocr.handler.CrossRegionClient")
     @patch("functions.ocr.handler.S3ApHelper")
-    def test_handler_success(self, mock_s3ap_cls, mock_cr_cls, mock_boto3, mock_output_writer_cls):
+    def test_handler_success(self, mock_s3ap_cls, mock_cr_cls, mock_output_writer_cls):
         """正常系: OCR が成功すること"""
         from functions.ocr.handler import handler
 
@@ -338,9 +337,6 @@ class TestOcrHandler:
                 {"BlockType": "LINE", "Text": "配送伝票"},
             ]
         }
-
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
 
         mock_writer = MagicMock()
         mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
