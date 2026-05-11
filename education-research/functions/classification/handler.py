@@ -4,7 +4,10 @@ Comprehend でトピック検出・エンティティ抽出（著者、機関、
 Bedrock で研究ドメイン分類と構造化アブストラクトサマリーを生成する。
 
 Environment Variables:
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
 """
 
@@ -20,6 +23,7 @@ import boto3
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
+from shared.output_writer import OutputWriter
 
 logger = logging.getLogger(__name__)
 
@@ -207,7 +211,6 @@ def handler(event, context):
     file_key = event.get("file_key", "")
     extracted_text = event.get("extracted_text", "")
 
-    output_bucket = os.environ["OUTPUT_BUCKET"]
     model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
 
     logger.info(
@@ -243,13 +246,8 @@ def handler(event, context):
         "classified_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(result, default=str, ensure_ascii=False).encode("utf-8"),
-        ContentType="application/json; charset=utf-8",
-    )
+    output_writer = OutputWriter.from_env()
+    output_writer.put_json(key=output_key, data=result)
 
     logger.info(
         "Classification completed: file_key=%s, domain=%s, entities=%d",

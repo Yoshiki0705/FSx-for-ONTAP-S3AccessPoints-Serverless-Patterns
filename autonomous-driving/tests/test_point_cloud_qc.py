@@ -290,9 +290,8 @@ class TestHandler:
         "OUTPUT_BUCKET": "test-output-bucket",
     })
     @patch("functions.point_cloud_qc.handler.OutputWriter")
-    @patch("functions.point_cloud_qc.handler.boto3.client")
     @patch("functions.point_cloud_qc.handler.S3ApHelper")
-    def test_handler_success(self, mock_s3ap_class, mock_boto3_client, mock_output_writer_cls):
+    def test_handler_success(self, mock_s3ap_class, mock_output_writer_cls):
         """正常な PCD ファイルで SUCCESS を返す"""
         from functions.point_cloud_qc.handler import handler
 
@@ -321,10 +320,6 @@ class TestHandler:
         mock_body.read.return_value = pcd_content
         mock_s3ap.get_object.return_value = {"Body": mock_body}
 
-        # S3 クライアントモック
-        mock_s3 = MagicMock()
-        mock_boto3_client.return_value = mock_s3
-
         # OutputWriter モック
         mock_writer = MagicMock()
         mock_writer.target_description = "Standard S3 bucket 'test-output-bucket'"
@@ -347,9 +342,8 @@ class TestHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.point_cloud_qc.handler.boto3.client")
     @patch("functions.point_cloud_qc.handler.S3ApHelper")
-    def test_handler_file_read_error(self, mock_s3ap_class, mock_boto3_client):
+    def test_handler_file_read_error(self, mock_s3ap_class):
         """ファイル読み取りエラー時に FAIL を返す"""
         from functions.point_cloud_qc.handler import handler
 
@@ -370,9 +364,8 @@ class TestHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.point_cloud_qc.handler.boto3.client")
     @patch("functions.point_cloud_qc.handler.S3ApHelper")
-    def test_handler_invalid_pcd(self, mock_s3ap_class, mock_boto3_client):
+    def test_handler_invalid_pcd(self, mock_s3ap_class):
         """無効な PCD ファイルで FAIL を返す"""
         from functions.point_cloud_qc.handler import handler
 
