@@ -91,14 +91,15 @@ def test_task_token_round_trip(task_token, point_count):
     }
 
     with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
-        mock_s3 = MagicMock()
         mock_sfn = MagicMock()
-        mock_boto3.client.side_effect = lambda service, **kwargs: {
-            "s3": mock_s3,
-            "stepfunctions": mock_sfn,
-        }[service]
+        mock_boto3.client.return_value = mock_sfn
 
-        result = _handle_mock_mode(event, task_token, "test-output-bucket")
+        mock_writer = MagicMock()
+        mock_writer.build_s3_uri.return_value = (
+            "s3://test-output-bucket/sagemaker-output/out.json"
+        )
+
+        result = _handle_mock_mode(event, task_token, mock_writer)
 
         # SendTaskSuccess が呼ばれたことを確認
         mock_sfn.send_task_success.assert_called_once()

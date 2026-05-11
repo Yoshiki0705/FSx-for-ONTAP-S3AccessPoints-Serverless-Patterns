@@ -57,16 +57,20 @@ def generate_mock_segmentation(point_count: int) -> list[int]:
     return [random.randint(0, 9) for _ in range(point_count)]
 
 
-def _handle_mock_mode(event: dict, task_token: str, output_bucket: str) -> dict:
+def _handle_mock_mode(
+    event: dict,
+    task_token: str,
+    output_writer: OutputWriter,
+) -> dict:
     """MOCK_MODE=true 時の処理
 
-    モックセグメンテーション出力を S3 に書き込み、
+    モックセグメンテーション出力を OutputWriter 経由で書き込み、
     直接 SendTaskSuccess を呼び出す。
 
     Args:
         event: Lambda イベント
         task_token: Step Functions Task Token
-        output_bucket: S3 出力バケット名
+        output_writer: OutputWriter instance (STANDARD_S3 or FSXN_S3AP)
 
     Returns:
         dict: 処理結果メタデータ
@@ -78,7 +82,7 @@ def _handle_mock_mode(event: dict, task_token: str, output_bucket: str) -> dict:
     # モックセグメンテーション出力生成
     labels = generate_mock_segmentation(point_count)
 
-    # S3 に出力
+    # OutputWriter 経由で書き込み（STANDARD_S3 / FSXN_S3AP 切替対応）
     now = datetime.now(timezone.utc)
     output_key = f"sagemaker-output/{now.strftime('%Y/%m/%d')}/mock_segmentation.json"
     output_data = {
@@ -89,19 +93,14 @@ def _handle_mock_mode(event: dict, task_token: str, output_bucket: str) -> dict:
         "timestamp": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3", region_name=region)
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(output_data),
-        ContentType="application/json",
-    )
+    output_writer.put_json(key=output_key, data=output_data)
+    output_uri = output_writer.build_s3_uri(output_key)
 
     # SendTaskSuccess を直接呼び出す
     sfn_client = boto3.client("stepfunctions", region_name=region)
     output_metadata = {
         "status": "COMPLETED",
-        "output_s3_path": f"s3://{output_bucket}/{output_key}",
+        "output_s3_path": output_uri,
         "point_count": point_count,
         "labels_count": len(labels),
     }
@@ -292,7 +291,7 @@ def handler(event, context):
     metrics.set_dimension("UseCase", "autonomous-driving")
 
     if mock_mode:
-        result = _handle_mock_mode(event, task_token, output_bucket)
+        result = _handle_mock_mode(event, task_token, output_writer)
         metrics.put_metric("MockInvocations", 1.0, "Count")
     else:
         result = _handle_real_mode(event, task_token, output_bucket)
