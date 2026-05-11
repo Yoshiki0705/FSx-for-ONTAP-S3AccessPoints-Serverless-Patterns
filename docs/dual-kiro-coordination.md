@@ -504,3 +504,178 @@ Notable coordination incidents resolved during that sprint:
 
 All incidents recovered without data loss. This protocol codifies the
 lessons so future sprints avoid the same classes of error.
+
+---
+
+## Appendix B: v1.1 improvements (2026-05-11 extended session)
+
+The following patterns emerged during the continued Phase 7 Extended
+Work session (Theme R localization, Theme Q UC fixes, article writing,
+and full-UC screenshot campaign). They supplement the core rules above.
+
+### B-1. Article writing as a non-competing parallel track
+
+When one session writes documentation (articles, runbooks, guides) that
+is **gitignored** (e.g., `docs/article-*.md`), it operates in a
+zero-conflict mode:
+
+- No git commits are produced by the article work
+- No `git pull` / `push` coordination is needed
+- The other session can freely commit to main without worrying about
+  merge conflicts with the article
+
+**Pattern**: assign article writing to the session that has finished
+its implementation tasks, while the other session continues with
+AWS deploy / fix / screenshot work. This maximizes parallelism.
+
+### B-2. "Publish blocker" communication pattern
+
+When a deliverable (e.g., a blog article) depends on work from both
+sessions, use the following pattern:
+
+```
+[A] PUBLISH BLOCKER: <deliverable>
+blocked by: <list of missing items>
+owner per item:
+  - <item 1>: B
+  - <item 2>: A
+  - <item 3>: B
+unblock ETA: <estimate>
+```
+
+The other session responds with:
+
+```
+[B] ACK PUBLISH BLOCKER
+ETA for my items: <estimate>
+proceeding with: <item list>
+```
+
+This prevents the "I thought you were doing it" ambiguity that can
+delay publish by hours.
+
+### B-3. Full-UC verification sweep protocol
+
+When a deliverable requires **all UCs** to pass a check (e.g., "all 17
+UC screenshots present", "all Step Functions SUCCEEDED"), use a sweep:
+
+1. One session runs the sweep and produces a matrix:
+   ```
+   UC1  ✅ SUCCEEDED
+   UC2  ✅ SUCCEEDED
+   ...
+   UC9  ❌ FAILED (template bug)
+   UC4  ❌ NOT DEPLOYED (Deadline Cloud dependency)
+   ```
+
+2. Failed items are assigned to sessions based on exclusive regions
+
+3. Each session fixes their items and reports:
+   ```
+   [X] SWEEP FIX: UC9 — template bug resolved, SFN SUCCEEDED
+   ```
+
+4. When all items are ✅, the sweep owner declares:
+   ```
+   [X] SWEEP COMPLETE: all 17 UCs SUCCEEDED
+   ```
+
+This pattern was used for the screenshot campaign (UC4/9/15/16/17 were
+missing → assigned → fixed → completed).
+
+### B-4. Template bug discovery during verification
+
+When a session discovers a template bug during AWS deploy verification:
+
+1. **Do not silently fix and move on**. Document the bug in chat:
+   ```
+   [X] BUG FOUND: <UC> template-deploy.yaml
+   symptom: <what failed>
+   root cause: <analysis>
+   fix: <proposed approach>
+   ```
+
+2. If the fix touches the other session's exclusive region, request
+   a lock (§7). If it's in your own region, proceed and report.
+
+3. After fixing, include the bug in the article's "Lessons learned"
+   section — these are high-value content for readers.
+
+UC9's three bugs (DefinitionSubstitutions, NumericGreaterThanEqualsPath
+typo, Discovery handler missing fields) were discovered this way and
+became Lessons #10-12 in the Phase 7 article.
+
+### B-5. Localization batch as a parallel track
+
+Large-scale translation batches (97 files in Theme R) can run as a
+background process while the other session works on implementation:
+
+- The batch script runs for 30-75 minutes unattended
+- Progress is monitored via a helper script (e.g., `_r1_progress.sh`)
+- The implementing session can commit/push freely during the batch
+  (the batch only writes to `<uc>/docs/*.{lang}.md` files)
+- After the batch completes, the translating session commits in
+  logical units (per-UC or per-language-group)
+
+**Caution**: Do NOT pipe batch output through `| tail -N` — this
+buffers all output until completion, making progress invisible. Use
+`| tee /tmp/batch.log` or run as a background process with periodic
+`get_process_output` checks.
+
+### B-6. Gitignored article files and the "preview escape" problem
+
+Article files (`docs/article-*.md`) are gitignored and live only
+locally. When sharing article content for review:
+
+- **Do NOT paste through chat UI** — many chat tools HTML-escape
+  `<`, `>`, `&` characters, breaking Mermaid diagrams and code blocks
+- **Use terminal-to-editor direct copy**: `cat docs/article-*.md | pbcopy`
+  (macOS) then paste into dev.to editor
+- **For review**: share the file via a temporary gist, or read it
+  directly from the local filesystem
+
+This was discovered when Mermaid `-->` appeared as `--&gt;` in review
+feedback — the file was correct, but the review tool had escaped it.
+
+### B-7. Phase-separation policy for blog articles
+
+Each Phase gets its own blog article. The boundary between phases is:
+
+- **Same Phase**: completing existing UCs, fixing bugs in existing
+  templates, adding screenshots for existing UCs, translating existing
+  docs, cleanup of existing stacks
+- **New Phase**: new architectural patterns (event-driven trigger),
+  new shared infrastructure (VPC Endpoint SG automation), new API
+  additions (OutputWriter.put_stream), new UC patterns (Pattern C→B
+  hybrid migration)
+
+UC4/UC9 residual completion is Phase 7 (existing UC, existing pattern).
+Pattern C→B hybrid for UC6/7/8/13 is Phase 8 (new pattern application).
+
+This policy ensures each article has a clear thesis and doesn't become
+a grab-bag of unrelated changes.
+
+---
+
+## Appendix C: Coordination checklist (quick reference)
+
+For sessions joining an ongoing sprint, verify the following before
+starting work:
+
+```
+□ Read this document in full
+□ Claim a session label ([X] JOINING — claimed label X)
+□ Declare exclusive region ([X] REGION CLAIM: ...)
+□ Verify git branch (git branch --show-current)
+□ Verify working tree is clean (git status --short)
+□ Pull latest main (git pull --ff-only origin main)
+□ Check for active publish blockers in chat history
+□ Check for active file locks in chat history
+□ Confirm _sensitive_strings.py is present locally
+□ Run _check_sensitive_leaks.py to verify baseline (0 leaks)
+□ Confirm tesseract + tesseract-lang installed (for screenshot work)
+□ Confirm AWS credentials valid (aws sts get-caller-identity)
+```
+
+If any check fails, resolve before starting implementation work.
+Post `[X] READY — all checks passed` when complete.
