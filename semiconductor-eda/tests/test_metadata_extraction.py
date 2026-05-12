@@ -336,9 +336,9 @@ class TestMetadataExtractionHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.metadata_extraction.handler.boto3")
+    @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
-    def test_handler_success_gdsii(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_success_gdsii(self, mock_s3ap_cls, mock_output_writer_class):
         """正常系: GDSII ファイルのメタデータ抽出が成功すること"""
         from functions.metadata_extraction.handler import handler
 
@@ -349,8 +349,8 @@ class TestMetadataExtractionHandler:
         header = build_gds_header(library_name="HANDLER_TEST", cell_count=10)
         mock_s3ap.streaming_download_range.return_value = header
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "designs/chip_v2.gds", "Size": 1073741824}
         context = MagicMock()
@@ -366,16 +366,16 @@ class TestMetadataExtractionHandler:
         assert "metadata/" in result["output_key"]
         assert result["output_key"].endswith(".json")
 
-        # Verify S3 put_object was called
-        mock_s3_client.put_object.assert_called_once()
+        # Verify OutputWriter put_json was called
+        mock_writer.put_json.assert_called_once()
 
     @patch.dict(os.environ, {
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.metadata_extraction.handler.boto3")
+    @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
-    def test_handler_invalid_gdsii(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_invalid_gdsii(self, mock_s3ap_cls, mock_output_writer_class):
         """異常系: 破損 GDSII ファイルで INVALID ステータスが返ること"""
         from functions.metadata_extraction.handler import handler
 
@@ -397,9 +397,9 @@ class TestMetadataExtractionHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.metadata_extraction.handler.boto3")
+    @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
-    def test_handler_oasis_success(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_oasis_success(self, mock_s3ap_cls, mock_output_writer_class):
         """正常系: OASIS ファイルのメタデータ抽出が成功すること"""
         from functions.metadata_extraction.handler import handler
 
@@ -410,8 +410,8 @@ class TestMetadataExtractionHandler:
         oasis_data = b"%SEMI-OASIS\r\n" + bytes([1, len(version_str)]) + version_str
         mock_s3ap.streaming_download_range.return_value = oasis_data
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "designs/layout.oas", "Size": 5000}
         context = MagicMock()
@@ -427,9 +427,9 @@ class TestMetadataExtractionHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.metadata_extraction.handler.boto3")
+    @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
-    def test_handler_unknown_format(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_unknown_format(self, mock_s3ap_cls, mock_output_writer_class):
         """異常系: 不明なファイル形式で INVALID ステータスが返ること"""
         from functions.metadata_extraction.handler import handler
 
@@ -450,9 +450,9 @@ class TestMetadataExtractionHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.metadata_extraction.handler.boto3")
+    @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
-    def test_handler_s3_download_error(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_s3_download_error(self, mock_s3ap_cls, mock_output_writer_class):
         """異常系: S3 ダウンロードエラーで INVALID ステータスが返ること"""
         from functions.metadata_extraction.handler import handler
 
@@ -473,9 +473,9 @@ class TestMetadataExtractionHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.metadata_extraction.handler.boto3")
+    @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
-    def test_handler_output_key_has_date_partition(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_output_key_has_date_partition(self, mock_s3ap_cls, mock_output_writer_class):
         """出力キーに日付パーティションが含まれること"""
         from functions.metadata_extraction.handler import handler
 
@@ -485,8 +485,8 @@ class TestMetadataExtractionHandler:
         header = build_gds_header(library_name="DATE_TEST", cell_count=1)
         mock_s3ap.streaming_download_range.return_value = header
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "designs/chip.gds", "Size": 100}
         context = MagicMock()
@@ -502,9 +502,9 @@ class TestMetadataExtractionHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.metadata_extraction.handler.boto3")
+    @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
-    def test_handler_output_json_written_to_s3(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_output_json_written_to_s3(self, mock_s3ap_cls, mock_output_writer_class):
         """メタデータ JSON が S3 に書き込まれること"""
         from functions.metadata_extraction.handler import handler
 
@@ -514,8 +514,8 @@ class TestMetadataExtractionHandler:
         header = build_gds_header(library_name="S3_WRITE_TEST", cell_count=2)
         mock_s3ap.streaming_download_range.return_value = header
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "designs/chip.gds", "Size": 100}
         context = MagicMock()
@@ -524,13 +524,11 @@ class TestMetadataExtractionHandler:
 
         assert result["status"] == "SUCCESS"
 
-        # Verify put_object was called with correct parameters
-        call_kwargs = mock_s3_client.put_object.call_args[1]
-        assert call_kwargs["Bucket"] == "test-output-bucket"
-        assert call_kwargs["ContentType"] == "application/json"
-
-        # Verify the body is valid JSON
-        body_json = json.loads(call_kwargs["Body"].decode("utf-8"))
-        assert body_json["file_key"] == "designs/chip.gds"
-        assert body_json["library_name"] == "S3_WRITE_TEST"
-        assert "extracted_at" in body_json
+        # Verify put_json was called with correct parameters
+        mock_writer.put_json.assert_called_once()
+        call_kwargs = mock_writer.put_json.call_args[1]
+        assert call_kwargs["key"].endswith(".json")
+        assert "file_key" in call_kwargs["data"]
+        assert call_kwargs["data"]["file_key"] == "designs/chip.gds"
+        assert call_kwargs["data"]["library_name"] == "S3_WRITE_TEST"
+        assert "extracted_at" in call_kwargs["data"]
