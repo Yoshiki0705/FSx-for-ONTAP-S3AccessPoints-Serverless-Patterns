@@ -147,6 +147,29 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: Lambda SnapStart を有効化する（コールドスタート削減）
 
+  # --- OutputDestination パラメータ (Phase 9) ---
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: |
+      AI/ML 成果物の書き込み先。"STANDARD_S3" は既存 S3 バケットに書き込み。
+      "FSXN_S3AP" にすると FSxN S3AP 経由で ONTAP ボリュームに書き込む。
+      Athena 出力は常に STANDARD_S3 (AWS 制約)。AI/ML 出力のみ切替可能。
+
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: |
+      OutputDestination=FSXN_S3AP 時の出力先 S3 Access Point Alias。
+      空の場合は S3AccessPointOutputAlias (legacy) または S3AccessPointAlias にフォールバック。
+
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: |
+      OutputDestination=FSXN_S3AP 時、全出力キーに付与するプレフィックス。
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -172,6 +195,14 @@ Conditions:
 
   SnapStartEnabled:
     !Equals [!Ref EnableSnapStart, "true"]
+
+  # --- OutputDestination Conditions (Phase 9) ---
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  HasOutputS3APAlias:
+    !Not [!Equals [!Ref OutputS3APAlias, ""]]
 
 # =====================================================================
 # Resources
@@ -683,6 +714,16 @@ Resources:
           OUTPUT_BUCKET: !Ref OutputBucket
           QC_SAMPLE_SIZE: !Ref QcSampleSize
           QUALITY_THRESHOLD: !Ref QualityThreshold
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If
+                - HasOutputS3APAlias
+                - !Ref OutputS3APAlias
+                - !Ref S3AccessPointAlias
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref QcLogGroup
       Tags:
@@ -710,6 +751,16 @@ Resources:
         Variables:
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If
+                - HasOutputS3APAlias
+                - !Ref OutputS3APAlias
+                - !Ref S3AccessPointAlias
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref VariantAggregationLogGroup
       Tags:
@@ -782,6 +833,16 @@ Resources:
           # Comprehend Medical の検出結果（遺伝子名、疾患名等）を
           # CloudWatch Logs に出力しない
           LOG_PHI_DATA: "false"
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If
+                - HasOutputS3APAlias
+                - !Ref OutputS3APAlias
+                - !Ref S3AccessPointAlias
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref SummaryLogGroup
       Tags:
@@ -1210,6 +1271,55 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
       AlarmActions:
+        - !Ref NotificationTopic
+
+
+  # EventBridge rule: notify on Step Functions execution failure/timeout/abort
+  StepFunctionsFailureEventRule:
+    Type: AWS::Events::Rule
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      Description: !Sub "Notify on ${AWS::StackName} Step Functions execution failures"
+      EventPattern:
+        source:
+          - aws.states
+        detail-type:
+          - "Step Functions Execution Status Change"
+        detail:
+          status:
+            - FAILED
+            - TIMED_OUT
+            - ABORTED
+          stateMachineArn:
+            - !Ref GenomicsStateMachine
+      Targets:
+        - Arn: !Ref NotificationTopic
+          Id: SnsFailureTarget
+          InputTransformer:
+            InputPathsMap:
+              execName: $.detail.name
+              execStatus: $.detail.status
+              execArn: $.detail.executionArn
+            InputTemplate: '"Step Functions execution <execName> finished with status <execStatus>. ARN: <execArn>"'
+
+  # Allow EventBridge to publish to SNS topic
+  EventBridgeToSnsPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref NotificationTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt StepFunctionsFailureEventRule.Arn
+      Topics:
         - !Ref NotificationTopic
 
 # =====================================================================
