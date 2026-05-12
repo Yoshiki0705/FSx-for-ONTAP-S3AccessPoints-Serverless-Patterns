@@ -71,14 +71,14 @@ Parameters:
 
   LambdaMemorySize:
     Type: Number
-    Default: 256
+    Default: 512
     MinValue: 128
     MaxValue: 10240
     Description: Lambda 関数のメモリサイズ (MB)
 
   LambdaTimeout:
     Type: Number
-    Default: 300
+    Default: 900
     MinValue: 30
     MaxValue: 900
     Description: Lambda 関数のタイムアウト (秒)
