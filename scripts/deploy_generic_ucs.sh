@@ -17,8 +17,12 @@
 #   ONTAP_SECRET_NAME      - Secrets Manager secret name for ONTAP credentials
 #   ONTAP_MANAGEMENT_IP    - ONTAP management endpoint IP
 #   SVM_UUID               - ONTAP SVM UUID
-#   ENABLE_S3_GATEWAY_EP   - "true" or "false" (default: "false")
-#                            Set to "false" when S3 Gateway Endpoint already exists in VPC
+#   ENABLE_S3_GATEWAY_EP   - "true", "false", or "auto" (default: "auto")
+#                            "auto" checks VPC and creates if missing.
+#                            Set to "false" when S3 Gateway Endpoint already exists in VPC.
+#   ENABLE_VPC_ENDPOINTS   - "true", "false", or "auto" (default: "auto")
+#                            "auto" checks VPC and creates Interface Endpoints if none exist.
+#                            Set to "false" when Interface Endpoints already exist.
 #
 # UC1-specific parameters (optional):
 #   ENABLE_EVENT_DRIVEN    - "true" or "false" (default: "false")
@@ -58,7 +62,43 @@ ONTAP_MANAGEMENT_IP="${ONTAP_MANAGEMENT_IP:-<ONTAP_MGMT_IP>}"
 SVM_UUID="${SVM_UUID:-<SVM_UUID>}"
 REGION="${AWS_REGION:-ap-northeast-1}"
 # Set to "false" when deploying to a VPC that already has a S3 Gateway Endpoint
-ENABLE_S3_GATEWAY_EP="${ENABLE_S3_GATEWAY_EP:-false}"
+ENABLE_S3_GATEWAY_EP="${ENABLE_S3_GATEWAY_EP:-auto}"
+# Set to "true" to create Interface VPC Endpoints (Secrets Manager, FSx, etc.)
+ENABLE_VPC_ENDPOINTS="${ENABLE_VPC_ENDPOINTS:-auto}"
+
+# --- Auto-detect VPC Endpoint status ---
+# If ENABLE_S3_GATEWAY_EP or ENABLE_VPC_ENDPOINTS is "auto", check the VPC
+# and set appropriately. This prevents the Connect timeout failure when
+# VPC Endpoints were deleted with a previous stack.
+if [[ "$ENABLE_S3_GATEWAY_EP" == "auto" ]] || [[ "$ENABLE_VPC_ENDPOINTS" == "auto" ]]; then
+    echo "[pre-flight] Checking VPC Endpoints in ${VPC_ID}..."
+    EXISTING_ENDPOINTS=$(aws ec2 describe-vpc-endpoints \
+        --region "$REGION" \
+        --filters "Name=vpc-id,Values=${VPC_ID}" "Name=state,Values=available" \
+        --query 'length(VpcEndpoints)' --output text 2>/dev/null || echo "0")
+
+    if [[ "$EXISTING_ENDPOINTS" == "0" ]] || [[ -z "$EXISTING_ENDPOINTS" ]]; then
+        echo "[pre-flight] ⚠️  No VPC Endpoints found in ${VPC_ID}."
+        echo "[pre-flight]    Setting EnableS3GatewayEndpoint=true and EnableVpcEndpoints=true"
+        echo "[pre-flight]    (VPC Lambda requires endpoints to reach AWS services)"
+        ENABLE_S3_GATEWAY_EP="true"
+        ENABLE_VPC_ENDPOINTS="true"
+    else
+        echo "[pre-flight] ✅ Found ${EXISTING_ENDPOINTS} VPC Endpoint(s) — using existing."
+        # Check specifically for S3 Gateway
+        S3_GW_COUNT=$(aws ec2 describe-vpc-endpoints \
+            --region "$REGION" \
+            --filters "Name=vpc-id,Values=${VPC_ID}" "Name=service-name,Values=com.amazonaws.${REGION}.s3" "Name=vpc-endpoint-type,Values=Gateway" \
+            --query 'length(VpcEndpoints)' --output text 2>/dev/null || echo "0")
+        if [[ "$S3_GW_COUNT" == "0" ]]; then
+            echo "[pre-flight]    No S3 Gateway Endpoint — enabling creation."
+            ENABLE_S3_GATEWAY_EP="true"
+        else
+            ENABLE_S3_GATEWAY_EP="false"
+        fi
+        ENABLE_VPC_ENDPOINTS="false"
+    fi
+fi
 
 # Map short names to directories (using case for bash 3.2 compat)
 uc_to_dir() {
@@ -116,7 +156,7 @@ deploy_one() {
             PrivateSubnetIds="$SUBNETS" \
             NotificationEmail="$NOTIFICATION_EMAIL" \
             EnableS3GatewayEndpoint="$ENABLE_S3_GATEWAY_EP" \
-            EnableVpcEndpoints="false" \
+            EnableVpcEndpoints="$ENABLE_VPC_ENDPOINTS" \
         --capabilities CAPABILITY_NAMED_IAM \
         --no-fail-on-empty-changeset 2>&1 | tail -3
 

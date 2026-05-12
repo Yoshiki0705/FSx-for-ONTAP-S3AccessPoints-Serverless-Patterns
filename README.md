@@ -773,6 +773,8 @@ python3 scripts/generate_test_data.py all --upload
 
 > **VPC Endpoints の共有**: 最初の UC デプロイ時に `EnableVpcEndpoints=true` を指定すると VPC Endpoints が作成されます。2 番目以降の UC は同じ VPC 内であれば `EnableVpcEndpoints=false` で VPC Endpoints を共有できます。
 >
+> **自動検出 (Phase 9)**: `deploy_generic_ucs.sh` は VPC Endpoints の存在を自動検出します（`ENABLE_S3_GATEWAY_EP=auto`, `ENABLE_VPC_ENDPOINTS=auto` がデフォルト）。VPC に Endpoints が無い場合は自動的に `true` に切り替わり、既に存在する場合は `false` で競合を回避します。手動で `true`/`false` を指定して上書きすることも可能です。
+>
 > **クロスリージョン UC**: UC7, UC10, UC12, UC13, UC14 は `CrossRegion=us-east-1` パラメータが必要です。deploy_phase2_batch.sh が自動的に設定します。
 >
 > 詳細は [デプロイ知見集](docs/guides/deployment-lessons-learned.md) を参照してください。
