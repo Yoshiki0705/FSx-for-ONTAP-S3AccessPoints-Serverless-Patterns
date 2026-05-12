@@ -265,9 +265,9 @@ class TestQcHandler:
         "OUTPUT_BUCKET": "test-output-bucket",
         "QC_SAMPLE_SIZE": "100",
     })
-    @patch("functions.qc.handler.boto3")
+    @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
-    def test_handler_success(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_success(self, mock_s3ap_cls, mock_output_writer_class):
         """正常系: FASTQ ファイルの QC が成功すること"""
         from functions.qc.handler import handler
 
@@ -278,8 +278,8 @@ class TestQcHandler:
         fastq_data = b"@READ_001\nATGCATGC\n+\nIIIIIIII\n@READ_002\nGGCCAAGG\n+\nIIIIIIII\n"
         mock_s3ap.streaming_download.return_value = iter([fastq_data])
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "samples/sample_001.fastq", "Size": 5000}
         context = MagicMock()
@@ -293,16 +293,16 @@ class TestQcHandler:
         assert "output_key" in result
         assert result["output_key"].endswith(".json")
 
-        # S3 に書き込まれたことを確認
-        mock_s3_client.put_object.assert_called_once()
+        # OutputWriter に書き込まれたことを確認
+        mock_writer.put_json.assert_called_once()
 
     @patch.dict(os.environ, {
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.qc.handler.boto3")
+    @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
-    def test_handler_empty_file_error(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_empty_file_error(self, mock_s3ap_cls, mock_output_writer_class):
         """異常系: 空ファイルで ERROR ステータスが返ること"""
         from functions.qc.handler import handler
 
@@ -324,9 +324,9 @@ class TestQcHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.qc.handler.boto3")
+    @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
-    def test_handler_s3_download_error(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_s3_download_error(self, mock_s3ap_cls, mock_output_writer_class):
         """異常系: S3 ダウンロードエラーで ERROR ステータスが返ること"""
         from functions.qc.handler import handler
 
@@ -347,9 +347,9 @@ class TestQcHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.qc.handler.boto3")
+    @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
-    def test_handler_output_key_has_date_partition(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_output_key_has_date_partition(self, mock_s3ap_cls, mock_output_writer_class):
         """出力キーに日付パーティションが含まれること"""
         from functions.qc.handler import handler
 
@@ -359,8 +359,8 @@ class TestQcHandler:
         fastq_data = b"@READ_001\nATGC\n+\nIIII\n"
         mock_s3ap.streaming_download.return_value = iter([fastq_data])
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "samples/sample_001.fastq", "Size": 100}
         context = MagicMock()
@@ -376,9 +376,9 @@ class TestQcHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.qc.handler.boto3")
+    @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
-    def test_handler_gz_file_stem(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_gz_file_stem(self, mock_s3ap_cls, mock_output_writer_class):
         """.fastq.gz ファイルのステムが正しく処理されること"""
         import gzip
 
@@ -392,8 +392,8 @@ class TestQcHandler:
         fastq_gz_data = gzip.compress(fastq_text)
         mock_s3ap.streaming_download.return_value = iter([fastq_gz_data])
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "samples/sample_001.fastq.gz", "Size": 100}
         context = MagicMock()

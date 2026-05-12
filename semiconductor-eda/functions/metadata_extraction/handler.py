@@ -18,21 +18,22 @@ OASIS フォーマット:
 
 Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
-    OUTPUT_BUCKET: S3 出力バケット名
+    OUTPUT_DESTINATION: 出力先タイプ (STANDARD_S3 / FSXN_S3AP)
+    OUTPUT_BUCKET: STANDARD_S3 モード時の出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モード時の S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モード時のプレフィックス
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import struct
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-import boto3
-
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import EmfMetrics, trace_lambda_handler
 
@@ -358,7 +359,7 @@ def handler(event, context):
               または status: "INVALID", file_key, error, error_type
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    output_bucket = os.environ["OUTPUT_BUCKET"]
+    output_writer = OutputWriter.from_env()
     file_key = event["Key"]
 
     logger.info("Metadata extraction started: file_key=%s", file_key)
@@ -412,13 +413,7 @@ def handler(event, context):
         "extracted_at": now.isoformat(),
     }
 
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=output_bucket,
-        Key=output_key,
-        Body=json.dumps(output_data, default=str).encode("utf-8"),
-        ContentType="application/json",
-    )
+    output_writer.put_json(key=output_key, data=output_data)
 
     logger.info(
         "Metadata extraction completed: file_key=%s, output_key=%s, "
