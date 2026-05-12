@@ -288,9 +288,9 @@ class TestVariantAggregationHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.variant_aggregation.handler.boto3")
+    @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
-    def test_handler_success(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_success(self, mock_s3ap_cls, mock_output_writer_class):
         """正常系: VCF ファイルのバリアント集計が成功すること"""
         from functions.variant_aggregation.handler import handler
 
@@ -305,8 +305,8 @@ class TestVariantAggregationHandler:
         )
         mock_s3ap.streaming_download.return_value = iter([vcf_data])
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "variants/sample_001.vcf", "Size": 1000}
         context = MagicMock()
@@ -321,15 +321,15 @@ class TestVariantAggregationHandler:
         assert result["variant_statistics"]["indel_count"] == 1
         assert "output_key" in result
 
-        mock_s3_client.put_object.assert_called_once()
+        mock_writer.put_json.assert_called_once()
 
     @patch.dict(os.environ, {
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.variant_aggregation.handler.boto3")
+    @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
-    def test_handler_empty_vcf_error(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_empty_vcf_error(self, mock_s3ap_cls, mock_output_writer_class):
         """異常系: 有効なレコードがない VCF で ERROR ステータスが返ること"""
         from functions.variant_aggregation.handler import handler
 
@@ -352,9 +352,9 @@ class TestVariantAggregationHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.variant_aggregation.handler.boto3")
+    @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
-    def test_handler_s3_error(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_s3_error(self, mock_s3ap_cls, mock_output_writer_class):
         """異常系: S3 ダウンロードエラーで ERROR ステータスが返ること"""
         from functions.variant_aggregation.handler import handler
 
@@ -375,9 +375,9 @@ class TestVariantAggregationHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.variant_aggregation.handler.boto3")
+    @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
-    def test_handler_output_key_date_partition(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_output_key_date_partition(self, mock_s3ap_cls, mock_output_writer_class):
         """出力キーに日付パーティションが含まれること"""
         from functions.variant_aggregation.handler import handler
 
@@ -390,8 +390,8 @@ class TestVariantAggregationHandler:
         )
         mock_s3ap.streaming_download.return_value = iter([vcf_data])
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "variants/sample_001.vcf", "Size": 100}
         context = MagicMock()
@@ -406,9 +406,9 @@ class TestVariantAggregationHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.variant_aggregation.handler.boto3")
+    @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
-    def test_handler_vcf_gz_file_stem(self, mock_s3ap_cls, mock_boto3):
+    def test_handler_vcf_gz_file_stem(self, mock_s3ap_cls, mock_output_writer_class):
         """.vcf.gz ファイルのステムが正しく処理されること"""
         import gzip
 
@@ -424,8 +424,8 @@ class TestVariantAggregationHandler:
         vcf_gz_data = gzip.compress(vcf_text)
         mock_s3ap.streaming_download.return_value = iter([vcf_gz_data])
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "variants/sample_001.vcf.gz", "Size": 100}
         context = MagicMock()

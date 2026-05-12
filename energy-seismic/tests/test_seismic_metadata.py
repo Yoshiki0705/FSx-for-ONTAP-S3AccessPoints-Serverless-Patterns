@@ -238,9 +238,9 @@ class TestHandler:
         "S3_ACCESS_POINT": "test-ap-ext-s3alias",
         "OUTPUT_BUCKET": "test-output-bucket",
     })
-    @patch("functions.seismic_metadata.handler.boto3")
+    @patch("functions.seismic_metadata.handler.OutputWriter")
     @patch("functions.seismic_metadata.handler.S3ApHelper")
-    def test_handler_success(self, mock_s3ap_class, mock_boto3):
+    def test_handler_success(self, mock_s3ap_class, mock_output_writer_class):
         """正常系: SEG-Y ヘッダーを正しくパースしてメタデータを返す"""
         from functions.seismic_metadata.handler import handler
 
@@ -261,8 +261,8 @@ class TestHandler:
         mock_s3ap.streaming_download_range.return_value = header_data
         mock_s3ap_class.return_value = mock_s3ap
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "surveys/test_survey.segy", "Size": 1073741824}
         context = MagicMock()
