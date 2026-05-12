@@ -35,6 +35,11 @@
 # cannot be set" errors. See docs/operational-runbooks/deployment-troubleshooting.md
 # Failure Mode 7.
 #
+# IMPORTANT (Phase 9): If the "owner" stack of VPC Endpoints was deleted
+# (e.g., fsxn-eda-uc6 cleanup), you MUST set EnableVpcEndpoints=true and
+# EnableS3GatewayEndpoint=true on the NEXT deployment. Without VPC Endpoints,
+# VPC Lambda cannot reach S3/Secrets Manager/FSx APIs (Connect timeout).
+#
 # Performance note (UC1): Discovery Lambda requires 512MB/900s for large
 # ONTAP volumes (>100 files). See Failure Mode 2 in deployment-troubleshooting.md.
 

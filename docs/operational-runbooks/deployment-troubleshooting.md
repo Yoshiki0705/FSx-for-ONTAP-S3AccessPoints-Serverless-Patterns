@@ -365,6 +365,14 @@ Always deploy with `EnableVpcEndpoints=false` when using a shared VPC
 that already has Interface Endpoints from another stack (e.g., UC6's
 long-running stack provides endpoints for all UCs).
 
+**IMPORTANT (Phase 9 finding)**: If the "owner" stack of VPC Endpoints
+is deleted (e.g., `fsxn-eda-uc6` cleanup), ALL subsequent UC deployments
+will fail with Connect timeout errors because VPC Lambda cannot reach
+AWS services. In this case, the NEXT UC deployed must include
+`EnableVpcEndpoints=true` and `EnableS3GatewayEndpoint=true` to recreate
+the endpoints. Document which stack owns the VPC Endpoints in the sprint
+chat or in a coordination file.
+
 ---
 
 ## Failure Mode 8: Step Functions large execution data popup
