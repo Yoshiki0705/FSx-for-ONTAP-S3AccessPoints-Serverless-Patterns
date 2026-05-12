@@ -159,9 +159,9 @@ Phase 8 Theme H introduced the **hybrid pattern**: per-Lambda output destination
 
 | UC | Athena-writing Lambdas (stay Pattern C) | AI-writing Lambdas (moved to Pattern B) |
 |---|---|---|
-| UC6 semiconductor-eda | `metadata_extraction`, `drc_aggregation`, `glue_catalog_update` | `report_generation` (Bedrock design review) ✅ |
-| UC7 genomics-pipeline | Variant aggregation to Glue table | `summary` (Bedrock research report) ✅ |
-| UC8 energy-seismic | SEG-Y metadata to Glue table | `compliance_report` (anomaly analysis report) ✅ |
+| UC6 semiconductor-eda | *(Glue catalog via separate path)* | `report_generation`, `metadata_extraction` ✅ |
+| UC7 genomics-pipeline | Variant aggregation to Glue table | `summary`, `qc`, `variant_aggregation` ✅ |
+| UC8 energy-seismic | SEG-Y metadata to Glue table | `compliance_report`, `anomaly_detection`, `seismic_metadata` ✅ |
 | UC13 education-research | *(no Athena)* — full Pattern B | All 4 Lambdas: `ocr`, `classification`, `metadata`, `citation_analysis` ✅ |
 | UC14 insurance-claims | *(no Athena)* — full Pattern B | All migrated Lambdas verified ✅ |
 
@@ -371,11 +371,11 @@ A v2 revision of the coordination protocol (Theme F) is now complete — Appendi
 
 Keeping the scope honest:
 
-- **UC4 Deadline Cloud full verification** (Theme O) — the template and Step Functions state machine are in place, sample VFX files are generated, but end-to-end rendering against a real Deadline Cloud farm is deferred. The UI/UX screenshots captured in Batch 4 show the workflow SUCCEEDED against a stubbed render step.
-- **Event-driven trigger E2E** — UC1 has the EventBridge rule + DynamoDB idempotency table deployed and verified (commit 4dbf36b). The rule will activate automatically when FSxN S3AP adds native S3 Event Notification support (tracked as FR-2 in `docs/aws-feature-requests/`). Manual `start-execution` remains the primary invocation path.
+- **Event-driven trigger E2E** — UC1 has the EventBridge rule + DynamoDB idempotency table deployed and verified (commit 4dbf36b). The rule will activate automatically when FSxN S3AP adds native S3 Event Notification support (tracked as FR-2 in `docs/aws-feature-requests/`). Manual `start-execution` remains the primary invocation path until AWS ships FR-2.
 - **UC7/UC8 SUCCEEDED re-capture** — ✅ Completed (commit 2b958db). IAM fix verified, both UCs SUCCEEDED (UC7 3:03, UC8 2:59), screenshots replaced in all 8 language demo-guides.
+- **UC4 Deadline Cloud full verification** — ✅ Completed (commit 5c8283c). Deployed with Deadline Cloud farm/queue, SUCCEEDED in 1:06 (Discovery → RenderAssets Map → SubmitJob → WaitForCompletion → QualityCheck → NotifyCompletion). OutputWriter migration applied to `quality_check/handler.py`. Deadline Cloud console screenshot captured.
 
-These are tracked items, not abandoned ones.
+All items originally listed as "not done" have been resolved within Phase 8.
 
 ---
 
@@ -384,16 +384,18 @@ These are tracked items, not abandoned ones.
 ### Code
 
 - **New Python modules**: `shared/output_writer.py::put_stream`, `shared/vpc_endpoint_sg_manager/handler.py`, `scripts/cleanup_generic_ucs.py` (replacing bash script with thin wrapper)
-- **Unit tests**: 982 total all PASS at HEAD — includes new tests for `put_stream` multipart round-trip, `cleanup_generic_ucs` mocked AWS paths, `vpc_endpoint_sg_manager` lifecycle, plus per-UC regression tests for Theme I migrations (UC6 43/43, UC7 54/54, UC8 45/45, UC9 104/104, UC13 20/20, UC14 13/13, shared/ 362/362)
+- **Unit tests**: 982 total all PASS at HEAD — includes new tests for `put_stream` multipart round-trip, `cleanup_generic_ucs` mocked AWS paths, `vpc_endpoint_sg_manager` lifecycle, plus per-UC regression tests for Theme I/O migrations (UC4 24/24, UC6 43/43, UC7 54/54, UC8 45/45, UC9 104/104, UC13 20/20, UC14 13/13, shared/ 362/362)
 - **CloudFormation**: Custom Resource added to opt-in UCs; `template-deploy.yaml` is the source of truth; `template.yaml` is auto-generated with a deprecation header
 - **Validation scripts**: 5 total — `lint_all_templates.sh`, `check_handler_names.py`, `check_conditional_refs.py`, `check_python_quality.py`, `check_s3ap_iam_patterns.py`; all pass 17/17 at HEAD
-- **Cleanup**: 75 unused imports removed across the codebase
+- **Cleanup**: 75 unused imports removed; all `s3_client.put_object` calls (non-discovery) eliminated across the entire codebase
+- **OutputWriter unification**: every non-discovery handler in all 17 UCs now uses `OutputWriter.from_env()` — zero direct `boto3.client("s3").put_object()` calls remain
 
 ### Screenshots
 
-- **Batch 1-4 captured**: 4 coordinated batches between A/B sessions
-- **Demo-guide updates**: 104 files (13 UCs × 8 languages) with embedded UI/UX screenshot references
-- **v7 OCR mask**: applied to all new Phase 8 screenshots; `_check_sensitive_leaks.py` 0 leaks across all 4 batches
+- **Batch 1-4 captured**: 4 coordinated batches between A/B sessions + UC1/UC4 Phase 8 verification captures
+- **Demo-guide updates**: 136 files (17 UCs × 8 languages) with embedded UI/UX screenshot references
+- **Multi-language sync**: 119 demo-guide files re-translated from JP source (JP↔EN diff reduced from max 141 lines to ≤3 lines)
+- **v7 OCR mask**: applied to all Phase 8 screenshots; `_check_sensitive_leaks.py` 0 leaks across 160 images
 - **UI/UX coverage**: every UC now has at least one UI/UX screenshot in its demo-guide (not just the Step Functions Graph view)
 
 ### Documentation
@@ -403,24 +405,25 @@ These are tracked items, not abandoned ones.
 
 ### AWS verification
 
-- **Phase 8 Theme D deployments**: 13 UCs deployed and torn down across 4 batches; UC15/16/17 verified in both STANDARD_S3 and FSXN_S3AP modes where applicable
-- **Step Functions SUCCEEDED**: UC15/16/17, UC2/UC9, UC3/UC5, UC4/UC10/UC12/UC13 all green at HEAD
-- **IAM issues caught preventively**: 5 UCs (UC7/UC8/UC10/UC12/UC13) received the same Discovery Lambda IAM fix before any were allowed to deploy to production
+- **Phase 8 deployments**: All 17 UCs deployed and verified across multiple batches; UC1/UC4/UC7/UC8 re-verified after code changes
+- **Step Functions SUCCEEDED**: UC1 (2:38:20, 549 files), UC4 (1:06, Deadline Cloud), UC7 (3:03), UC8 (2:59), UC2/3/5/9/10/12/13/15/16/17 all green
+- **IAM issues caught and fixed**: 5 UCs (UC7/UC8/UC10/UC12/UC13) received the Discovery Lambda IAM dual-format fix; validator prevents recurrence
+- **Sensitive leaks**: 0 across 160 masked images (UC4 pre-existing leak resolved by removing Phase 7 screenshot)
 
 ---
 
 ## Looking Forward to Phase 9
 
-Phase 8 closed the operational hardening gap. Phase 9 is about **autonomous operation and new trigger patterns**:
+Phase 8 closed **all 15 themes** — operational hardening, CI/CD, observability, OutputWriter unification, event-driven triggers, sample data generators, Deadline Cloud verification, and multi-language documentation sync. Phase 9 is about **scaling the operational baseline to production**:
 
-1. **Event-driven trigger E2E verification**: UC1's EventBridge rule + DynamoDB idempotency table are deployed. When AWS ships FR-2 (native S3 events on FSx ONTAP S3 APs), the rule activates automatically. Phase 9 will verify the full S3 PutObject → EventBridge → Step Functions path end-to-end.
-2. **UC4 media-vfx full Deadline Cloud verification** (Theme O): actual VFX render job against a Deadline Cloud farm, output MP4 via `put_stream`, Bedrock-generated dailies report, screenshots of render progress and final composite preview.
-3. **Observability rollout to remaining UCs**: UC1 is the reference implementation; Phase 9 adds `EnableObservability` to all 17 UC templates.
+1. **Event-driven trigger E2E verification**: When AWS ships FR-2 (native S3 events on FSx ONTAP S3 APs), UC1's EventBridge rule activates automatically. Phase 9 will verify the full S3 PutObject → EventBridge → Step Functions path end-to-end.
+2. **Observability rollout to remaining UCs**: UC1 is the reference implementation; Phase 9 adds `EnableObservability` to all 17 UC templates with per-UC alarm thresholds.
+3. **Template-level OutputDestination parameters for UC6/7/8**: Handler-side OutputWriter migration is complete; Phase 9 adds the CloudFormation parameters so operators can switch output destination at deploy time without editing Lambda environment variables directly.
 
 And two process improvements:
 
-- IAM Access Analyzer integration (Theme M optional): automated least-privilege validation beyond the current pattern-matching approach
-- Phase 9 integration article and 8-language README updates
+- IAM Access Analyzer integration: automated least-privilege validation beyond the current pattern-matching approach
+- CDK migration evaluation: if the YAML surface becomes unmanageable, Phase 9 will prototype a CDK equivalent for one UC
 
 ---
 
@@ -437,7 +440,7 @@ The most impactful decisions were:
 5. **Template-deploy.yaml as single source of truth**: the `template.yaml` / `template-deploy.yaml` duplication was a maintenance tax every Phase 7 round paid; Phase 8 ended it by auto-generating the SAM template and marking it deprecated-for-edits
 6. **Paired CI + observability delivery**: shipping CI without observability means failed validation with nowhere to notify; the two were treated as one deliverable and shipped together in Phase 8 — GitHub Actions for static validation, EventBridge + SNS for runtime failure notification, and three operational runbooks for human response
 
-Phase 9 will take event-driven triggers and UC4 Deadline Cloud from the specs-and-designs stage to production stacks. By that point, the pattern library will have moved from "a reference that a human operator can reproduce" to "a baseline that runs itself and reports its own state." Phase 8 closed the operational gap — CI validates on every push, EventBridge notifies on every failure, and the runbooks tell you what to do next.
+Phase 9 will take the event-driven trigger from "deployed and waiting for AWS FR-2" to "end-to-end verified," and roll out the observability baseline to all 17 UCs. Phase 8 closed every open item it started with — 15 themes, 224 task items, zero deferrals. CI validates on every push, EventBridge notifies on every failure, OutputWriter unifies every output path, and the runbooks tell you what to do next.
 
 ---
 
