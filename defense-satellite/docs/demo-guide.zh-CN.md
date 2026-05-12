@@ -14,7 +14,7 @@
 
 ### 0:00 - 0:05 简介（5 分钟）
 
-- 用例背景：卫星图像数据的增长（Sentinel、Landsat、商用 SAR）
+- 用例背景：卫星图像数据的增加（Sentinel、Landsat、商用 SAR）
 - 传统 NAS 的挑战：基于复制的工作流程耗时且成本高
 - FSxN S3AP 的优势：零复制、NTFS ACL 联动、无服务器处理
 
@@ -77,7 +77,7 @@ aws stepfunctions start-execution \
 **Q. 如何处理 SAR 数据（Sentinel-1 的 HDF5）？**  
 A. Discovery Lambda 将其分类为 `image_type=sar`，Tiling 可实现 HDF5 解析器（rasterio 或 h5py）。Object Detection 需要专用 SAR 分析模型（SageMaker）。
 
-**Q. 图像大小阈值（5MB）的依据是什么？**  
+**Q. 图像大小阈值（5MB）的依据？**  
 A. Rekognition DetectLabels API 的 Bytes 参数上限。通过 S3 可达 15MB。原型采用 Bytes 路由。
 
 **Q. 变化检测的精度如何？**  
@@ -96,7 +96,7 @@ UC15 defense-satellite 在 2026-05-11 的更新中支持了 `OutputDestination` 
 
 ### STANDARD_S3（默认，与以往相同）
 创建新的 S3 存储桶（`${AWS::StackName}-output-${AWS::AccountId}`），
-并将 AI 成果写入其中。Discovery Lambda 的 manifest 仅写入 S3 Access Point
+将 AI 成果写入其中。Discovery Lambda 的 manifest 仅写入 S3 Access Point
 （与以往相同）。
 
 ```bash
@@ -131,7 +131,7 @@ aws cloudformation deploy \
 - 超过 5GB 的对象在 FSxN S3AP 中不可用（AWS 规范），必须使用分段上传
 - ChangeDetection Lambda 仅使用 DynamoDB，因此不受 `OutputDestination` 影响
 - AlertGeneration Lambda 仅使用 SNS，因此不受 `OutputDestination` 影响
-- AWS 规范上的限制请参见
+- AWS 规范上的限制请参考
   [项目 README 的"AWS 规范上的限制与解决方法"部分](../../README.md#aws-仕様上の制約と回避策)
   以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
 
@@ -139,21 +139,20 @@ aws cloudformation deploy \
 
 ## 已验证的 UI/UX 截图
 
-遵循与 Phase 7 UC15/16/17 和 UC6/11/14 演示相同的方针，以**最终用户在日常工作中
-实际看到的 UI/UX 界面**为对象。
-技术人员视图（Step Functions 图表、CloudFormation 堆栈事件等）
-统一整理在 `docs/verification-results-*.md` 中。
+与 Phase 7 UC15/16/17 和 UC6/11/14 的演示相同方针，以**最终用户在日常业务中实际
+看到的 UI/UX 界面**为对象。技术人员视图（Step Functions 图、CloudFormation
+堆栈事件等）汇总在 `docs/verification-results-*.md` 中。
 
 ### 本用例的验证状态
 
-- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX 截图**: ✅ 完成 (Phase 8 Theme D, commit d7ebabd)
+- ✅ **E2E 验证**：SUCCEEDED（Phase 7 Extended Round，commit b77fc3b）
+- 📸 **UI/UX 截图**：✅ 完成（Phase 8 Theme D，commit d7ebabd）
 
-### 现有截图
+### 现有截图（Phase 7 验证时）
 
-![Step Functions 图表视图 (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![S3 输出桶](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![S3 输出存储桶](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
 ![S3 Enriched 输出](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
@@ -162,16 +161,32 @@ aws cloudformation deploy \
 ![SNS 通知主题](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
 ### 重新验证时的 UI/UX 目标界面（推荐截图列表）
 
-- S3 输出桶 (detections/, geo-enriched/, alerts/)
-- Rekognition 卫星图像目标检测结果 JSON
-- GeoEnrichment 坐标标记检测结果
-- SNS 告警通知邮件
-- FSx ONTAP 卷 AI 产物 (FSXN_S3AP 模式)
+- S3 输出存储桶（detections/、geo-enriched/、alerts/）
+- Rekognition 卫星图像物体检测结果 JSON 预览
+- GeoEnrichment 带坐标的检测结果
+- SNS 警报通知邮件
+- FSx ONTAP 卷上的 AI 成果（FSXN_S3AP 模式时）
 
 ### 截图指南
 
-1. **准备工作**: 运行 `bash scripts/verify_phase7_prerequisites.sh` 确认前提条件
-2. **样本数据**: 通过 S3 AP Alias 上传样本文件，然后启动 Step Functions 工作流
-3. **截图**（关闭 CloudShell/终端，遮盖浏览器右上角用户名）
-4. **遮盖处理**: 运行 `python3 scripts/mask_uc_demos.py <uc-dir>` 进行自动 OCR 遮盖
-5. **清理**: 运行 `bash scripts/cleanup_generic_ucs.sh <UC>` 删除堆栈
+1. **事前准备**：
+   - 使用 `bash scripts/verify_phase7_prerequisites.sh` 确认前提条件（共享 VPC/S3 AP 是否存在）
+   - 使用 `UC=defense-satellite bash scripts/package_generic_uc.sh` 打包 Lambda
+   - 使用 `bash scripts/deploy_generic_ucs.sh UC15` 部署
+
+2. **示例数据配置**：
+   - 通过 S3 AP Alias 将示例 GeoTIFF 上传到 `satellite-imagery/` 前缀
+   - 启动 Step Functions `fsxn-defense-satellite-demo-workflow`（输入 `{}`）
+
+3. **截图**（关闭 CloudShell・终端，浏览器右上角的用户名涂黑）：
+   - S3 输出存储桶 `fsxn-defense-satellite-demo-output-<account>` 的概览
+   - AI/ML 输出 JSON 的预览（detections、geo-enriched）
+   - SNS 邮件通知（来自 AlertGeneration 的通知）
+
+4. **掩码处理**：
+   - 使用 `python3 scripts/mask_uc_demos.py defense-satellite-demo` 自动掩码
+   - 根据 `docs/screenshots/MASK_GUIDE.md` 进行额外掩码（如有必要）
+
+5. **清理**：
+   - 使用 `bash scripts/cleanup_generic_ucs.sh UC15` 删除
+   - VPC Lambda ENI 释放需要 15-30 分钟（AWS 规范）
