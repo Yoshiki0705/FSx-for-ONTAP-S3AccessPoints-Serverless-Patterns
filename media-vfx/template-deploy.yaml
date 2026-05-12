@@ -492,8 +492,8 @@ Resources:
       Code:
         S3Bucket: !Ref DeployBucket
         S3Key: lambda/media-vfx-discovery.zip
-      MemorySize: 256
-      Timeout: 300
+      MemorySize: 512
+      Timeout: 900
       Role: !GetAtt DiscoveryLambdaRole.Arn
       VpcConfig:
         SecurityGroupIds:
@@ -929,6 +929,55 @@ Resources:
       Tags:
         - Key: UseCase
           Value: media-vfx
+
+
+  # EventBridge rule: notify on Step Functions execution failure/timeout/abort
+  StepFunctionsFailureEventRule:
+    Type: AWS::Events::Rule
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      Description: !Sub "Notify on ${AWS::StackName} Step Functions execution failures"
+      EventPattern:
+        source:
+          - aws.states
+        detail-type:
+          - "Step Functions Execution Status Change"
+        detail:
+          status:
+            - FAILED
+            - TIMED_OUT
+            - ABORTED
+          stateMachineArn:
+            - !Ref VfxStateMachine
+      Targets:
+        - Arn: !Ref NotificationTopic
+          Id: SnsFailureTarget
+          InputTransformer:
+            InputPathsMap:
+              execName: $.detail.name
+              execStatus: $.detail.status
+              execArn: $.detail.executionArn
+            InputTemplate: '"Step Functions execution <execName> finished with status <execStatus>. ARN: <execArn>"'
+
+  # Allow EventBridge to publish to SNS topic
+  EventBridgeToSnsPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref NotificationTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt StepFunctionsFailureEventRule.Arn
+      Topics:
+        - !Ref NotificationTopic
 
 # =====================================================================
 # Outputs

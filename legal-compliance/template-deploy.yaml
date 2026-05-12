@@ -145,6 +145,16 @@ Parameters:
       有効化すると、S3 AP へのファイル追加時に自動的にワークフローが起動する。
       既存の EventBridge Scheduler (polling) と共存可能。
 
+  AclCollectionMaxConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 1000
+    Description: |
+      AclCollection Map state の並列度。デフォルト 10。
+      ONTAP ボリュームのファイル数が多い場合は 40-100 に上げると処理時間を短縮可能。
+      ONTAP REST API の rate limit (100 req/s) を超えないよう注意。
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -896,7 +906,7 @@ Resources:
             "AclCollection": {
               "Type": "Map",
               "ItemsPath": "$.discovery.objects",
-              "MaxConcurrency": 10,
+              "MaxConcurrency": ${AclCollectionMaxConcurrency},
               "ResultPath": "$.acl_results",
               "Next": "AthenaAnalysis",
               "ItemProcessor": {
