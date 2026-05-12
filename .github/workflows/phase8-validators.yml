@@ -90,6 +90,22 @@ jobs:
       - name: Run sensitive-leak scan
         run: python3 scripts/_check_sensitive_leaks.py
 
+  cfn-guard-security:
+    name: "cfn-guard IAM security rules"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cfn-guard
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/aws-cloudformation/cloudformation-guard/main/install-guard.sh | sh
+          echo "$HOME/.guard/bin" >> $GITHUB_PATH
+      - name: Run cfn-guard validation
+        run: |
+          cfn-guard validate \
+            --rules security/cfn-guard-rules/ \
+            --data */template-deploy.yaml \
+            --show-summary fail || true
+
   validators-summary:
     name: "Phase 8 Validators Summary"
     runs-on: ubuntu-latest
@@ -99,6 +115,7 @@ jobs:
       - conditional-refs-check
       - python-quality
       - sensitive-leak-check
+      - cfn-guard-security
     if: always()
     steps:
       - name: Evaluate
