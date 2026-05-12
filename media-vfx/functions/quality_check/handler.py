@@ -3,12 +3,16 @@
 レンダリング完了後の出力情報を受け取り、Amazon Rekognition で
 品質評価（解像度、アーティファクト、色一貫性）を実行する。
 
-品質が閾値を超えた場合は S3 AP に PutObject で出力を書き込み、
+品質が閾値を超えた場合は OutputWriter 経由で出力を書き込み、
 閾値未満の場合は再レンダリングフラグを設定し SNS 通知を送信する。
 
 Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
     S3_ACCESS_POINT_OUTPUT: S3 AP Alias or ARN (出力書き込み用、省略時は S3_ACCESS_POINT を使用)
+    OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
+    OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
+    OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
+    OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
     SNS_TOPIC_ARN: 品質不合格時の通知先 SNS Topic ARN
     QUALITY_THRESHOLD: 品質評価の閾値（デフォルト: 80.0）
 """
@@ -23,6 +27,7 @@ from datetime import datetime
 import boto3
 
 from shared.exceptions import lambda_error_handler
+from shared.output_writer import OutputWriter
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import EmfMetrics, trace_lambda_handler
 
@@ -145,10 +150,10 @@ def handler(event, context):
     }
 
     if quality_result["passed"]:
-        # 品質合格: S3 AP に PutObject で出力を書き込み
-        s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
+        # 品質合格: OutputWriter 経由で出力を書き込み
+        output_writer = OutputWriter.from_env()
         output_key = f"approved/{asset_key.rsplit('/', 1)[-1]}"
-        s3ap.put_object(
+        output_writer.put_bytes(
             key=output_key,
             body=rendered_bytes,
             content_type="application/octet-stream",
@@ -158,7 +163,7 @@ def handler(event, context):
         result["status"] = "APPROVED"
 
         logger.info(
-            "Quality passed — output written to S3 AP: %s",
+            "Quality passed — output written via OutputWriter: %s",
             output_key,
         )
     else:
