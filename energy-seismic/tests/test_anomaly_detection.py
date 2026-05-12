@@ -351,9 +351,9 @@ class TestHandler:
         "OUTPUT_BUCKET": "test-output-bucket",
         "ANOMALY_THRESHOLD_STD": "3.0",
     })
-    @patch("functions.anomaly_detection.handler.boto3")
+    @patch("functions.anomaly_detection.handler.OutputWriter")
     @patch("functions.anomaly_detection.handler.S3ApHelper")
-    def test_handler_las_success(self, mock_s3ap_class, mock_boto3):
+    def test_handler_las_success(self, mock_s3ap_class, mock_output_writer_class):
         """正常系: LAS ファイルの異常検知が成功する"""
         from functions.anomaly_detection.handler import handler
 
@@ -390,8 +390,8 @@ GR   .GAPI : Gamma Ray
         mock_s3ap.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=las_content.encode("utf-8")))}
         mock_s3ap_class.return_value = mock_s3ap
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "wells/well_A1.las", "Size": 5242880}
         context = MagicMock()
@@ -409,9 +409,9 @@ GR   .GAPI : Gamma Ray
         "OUTPUT_BUCKET": "test-output-bucket",
         "ANOMALY_THRESHOLD_STD": "3.0",
     })
-    @patch("functions.anomaly_detection.handler.boto3")
+    @patch("functions.anomaly_detection.handler.OutputWriter")
     @patch("functions.anomaly_detection.handler.S3ApHelper")
-    def test_handler_csv_success(self, mock_s3ap_class, mock_boto3):
+    def test_handler_csv_success(self, mock_s3ap_class, mock_output_writer_class):
         """正常系: CSV ファイルの異常検知が成功する"""
         from functions.anomaly_detection.handler import handler
 
@@ -441,8 +441,8 @@ GR   .GAPI : Gamma Ray
         mock_s3ap.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=csv_content.encode("utf-8")))}
         mock_s3ap_class.return_value = mock_s3ap
 
-        mock_s3_client = MagicMock()
-        mock_boto3.client.return_value = mock_s3_client
+        mock_writer = MagicMock()
+        mock_output_writer_class.from_env.return_value = mock_writer
 
         event = {"Key": "wells/well_B2.csv", "Size": 1048576}
         context = MagicMock()
