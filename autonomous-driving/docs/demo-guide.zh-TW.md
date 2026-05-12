@@ -1,4 +1,4 @@
-# 行駛數據前處理・標註 — Demo Guide
+# 行駛數據預處理・標註 — Demo Guide
 
 🌐 **Language / 언어 / 语言 / 語言 / Langue / Sprache / Idioma**: [日本語](demo-guide.md) | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | 繁體中文 | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
 
@@ -6,11 +6,11 @@
 
 ## Executive Summary
 
-本示範展示了自動駕駛開發中行駛數據的前處理與標註流程。自動分類大量感測器數據、進行品質檢查，並高效建構訓練資料集。
+本示範展示了自動駕駛開發中行駛數據的前處理與標註流程。自動分類大量感測器數據、進行品質檢查，並高效構建訓練數據集。
 
-**示範核心訊息**：自動化行駛數據的品質驗證與元數據附加，加速 AI 訓練用資料集的建構。
+**示範核心訊息**：自動化行駛數據的品質驗證與元數據附加，加速 AI 訓練用數據集的構建。
 
-**預估時間**：3〜5 分鐘
+**預計時間**：3〜5 分鐘
 
 ---
 
@@ -18,16 +18,16 @@
 
 | 項目 | 詳細 |
 |------|------|
-| **職位** | 資料工程師 / ML 工程師 |
-| **日常業務** | 行駛數據管理、標註、訓練資料集建構 |
-| **課題** | 無法從大量行駛數據中有效率地提取有用場景 |
-| **期待成果** | 自動化數據品質驗證與場景分類的效率化 |
+| **職位** | 數據工程師 / ML 工程師 |
+| **日常業務** | 行駛數據管理、標註、訓練數據集構建 |
+| **課題** | 無法從大量行駛數據中高效提取有用場景 |
+| **期待成果** | 數據品質自動驗證與場景分類的效率化 |
 
-### Persona：伊藤先生（資料工程師）
+### Persona：伊藤先生（數據工程師）
 
-- 每天累積 TB 級的行駛數據
-- 相機・LiDAR・雷達的同步確認需手動進行
-- 「希望能自動將高品質數據送入訓練流程」
+- 每天累積 TB 級行駛數據
+- 相機・LiDAR・雷達的同步確認為手動作業
+- 「希望只將品質良好的數據自動傳送到訓練流程」
 
 ---
 
@@ -36,7 +36,7 @@
 ### 工作流程全貌
 
 ```
-行駛數據        數據驗證       場景分類        資料集
+行駛數據        數據驗證       場景分類        數據集
 (ROS bag等)  →   品質檢查  →  元數據     →   目錄生成
                   同步確認        附加 (AI)
 ```
@@ -62,7 +62,7 @@
 ### Section 3: Quality Validation（1:30–2:30）
 
 **旁白要旨**：
-> 感測器數據的完整性檢查：自動偵測影格缺失、時間戳記同步、數據損壞。
+> 感測器數據的完整性檢查：自動偵測影格缺失、時間戳同步、數據損壞。
 
 **Key Visual**：品質檢查結果 — 各感測器的健全性分數
 
@@ -76,9 +76,9 @@
 ### Section 5: Dataset Catalog（3:45–5:00）
 
 **旁白要旨**：
-> 自動生成品質驗證完成數據的目錄。可作為依場景條件搜尋的資料集使用。
+> 自動生成品質驗證完成數據的目錄。可作為依場景條件搜尋的數據集使用。
 
-**Key Visual**：資料集目錄、搜尋介面
+**Key Visual**：數據集目錄、搜尋介面
 
 ---
 
@@ -90,7 +90,7 @@
 | 2 | 流程啟動畫面 | Section 2 |
 | 3 | 品質檢查結果 | Section 3 |
 | 4 | 場景分類結果 | Section 4 |
-| 5 | 資料集目錄 | Section 5 |
+| 5 | 數據集目錄 | Section 5 |
 
 ---
 
@@ -102,7 +102,7 @@
 | Trigger | 0:45–1:30 | 「上傳後自動開始前處理」 |
 | Validation | 1:30–2:30 | 「自動偵測感測器缺失・同步偏移」 |
 | Classification | 2:30–3:45 | 「AI 自動分類場景並附加元數據」 |
-| Catalog | 3:45–5:00 | 「自動生成可搜尋的資料集目錄」 |
+| Catalog | 3:45–5:00 | 「自動生成可搜尋的數據集目錄」 |
 
 ---
 
@@ -152,7 +152,7 @@
 ### 本機測試 (Phase 6A)
 
 ```bash
-# SAM CLI 本機測試
+# SAM CLI でローカルテスト
 sam local invoke \
   --template autonomous-driving/template-deploy.yaml \
   --event events/uc09-autonomous-driving/discovery-event.json \
@@ -176,9 +176,9 @@ sam local invoke \
 ## 關於輸出目的地：可透過 OutputDestination 選擇 (Pattern B)
 
 UC9 autonomous-driving 在 2026-05-10 的更新中支援了 `OutputDestination` 參數
-（參考 `docs/output-destination-patterns.md`）。
+（參照 `docs/output-destination-patterns.md`）。
 
-**目標工作負載**：ADAS / 自動駕駛數據（影格提取、點雲 QC、標註、推論）
+**對象工作負載**：ADAS / 自動駕駛數據（影格提取、點雲 QC、標註、推論）
 
 **2 種模式**：
 
@@ -192,7 +192,7 @@ aws cloudformation deploy \
   --stack-name fsxn-autonomous-driving-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
-    ... (其他必要參數)
+    ... (他の必須パラメータ)
 ```
 
 ### FSXN_S3AP（"no data movement" 模式）
@@ -208,20 +208,20 @@ aws cloudformation deploy \
     OutputDestination=FSXN_S3AP \
     OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
-    ... (其他必要參數)
+    ... (他の必須パラメータ)
 ```
 
 **注意事項**：
 
-- 強烈建議指定 `S3AccessPointName`（同時以 Alias 格式和 ARN 格式授予 IAM 權限）
+- 強烈建議指定 `S3AccessPointName`（以 Alias 格式和 ARN 格式兩者進行 IAM 許可）
 - 超過 5GB 的物件無法透過 FSxN S3AP 處理（AWS 規格），必須使用多部分上傳
-- AWS 規格上的限制請參考
+- AWS 規格上的限制請參照
   [專案 README 的「AWS 規格上的限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
   以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
 
 ---
 
-## 已驗證的 UI/UX 螢幕截圖
+## 已驗證的 UI/UX 截圖
 
 與 Phase 7 UC15/16/17 和 UC6/11/14 的示範相同方針，以**終端使用者在日常業務中實際
 看到的 UI/UX 畫面**為對象。技術人員視圖（Step Functions 圖表、CloudFormation
@@ -229,17 +229,17 @@ aws cloudformation deploy \
 
 ### 此使用案例的驗證狀態
 
-- ⚠️ **E2E 驗證**：僅部分功能（生產環境建議進行額外驗證）
-- 📸 **UI/UX 重新截圖**：未實施
+- ⚠️ **E2E 驗證**：僅部分功能（生產環境建議追加驗證）
+- 📸 **UI/UX 拍攝**：✅ SFN Graph 完成（Phase 8 Theme D, commit 081cc66）
 
-### 現有螢幕截圖（Phase 1-6 相關部分）
+### 現有截圖（來自 Phase 1-6 的相關部分）
 
-![UC9 Step Functions 圖表視圖 (SUCCEEDED)](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
+![UC9 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
-### 重新驗證時的 UI/UX 目標畫面（建議拍攝清單）
+### 重新驗證時的 UI/UX 對象畫面（建議拍攝清單）
 
 - S3 輸出儲存貯體（keyframes/、annotations/、qc/）
-- Rekognition 關鍵影格物件偵測結果
+- Rekognition 關鍵影格物體偵測結果
 - LiDAR 點雲品質檢查摘要
 - COCO 相容標註 JSON
 
@@ -254,9 +254,9 @@ aws cloudformation deploy \
    - 透過 S3 AP Alias 將範例檔案上傳至 `footage/` 前綴
    - 啟動 Step Functions `fsxn-autonomous-driving-demo-workflow`（輸入 `{}`）
 
-3. **拍攝**（關閉 CloudShell・終端機，瀏覽器右上角的使用者名稱需遮蔽）：
+3. **拍攝**（關閉 CloudShell・終端機，將瀏覽器右上角的使用者名稱塗黑）：
    - S3 輸出儲存貯體 `fsxn-autonomous-driving-demo-output-<account>` 的概覽
-   - AI/ML 輸出 JSON 的預覽（參考 `build/preview_*.html` 格式）
+   - AI/ML 輸出 JSON 的預覽（參考 `build/preview_*.html` 的格式）
    - SNS 電子郵件通知（如適用）
 
 4. **遮罩處理**：

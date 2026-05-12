@@ -24,7 +24,7 @@
 - 根據影像大小切換 Rekognition / SageMaker 的邏輯
 - 基於 geohash 的變化檢測機制
 
-### 0:10 - 0:15 現場部署（5 分鐘）
+### 0:10 - 0:15 即時部署（5 分鐘）
 
 ```bash
 aws cloudformation deploy \
@@ -53,7 +53,7 @@ aws stepfunctions start-execution \
   --input '{}'
 ```
 
-- 在 AWS 主控台展示 Step Functions 圖形（Discovery → Map → Tiling → ObjectDetection → ChangeDetection → GeoEnrichment → AlertGeneration）
+- 在 AWS 主控台展示 Step Functions 圖表（Discovery → Map → Tiling → ObjectDetection → ChangeDetection → GeoEnrichment → AlertGeneration）
 - 確認執行至 SUCCEEDED 的時間（通常 2-3 分鐘）
 
 ### 0:20 - 0:25 結果確認（5 分鐘）
@@ -80,7 +80,7 @@ A. Discovery Lambda 會分類為 `image_type=sar`，Tiling 可實作 HDF5 解析
 **Q. 影像大小閾值（5MB）的依據？**  
 A. Rekognition DetectLabels API 的 Bytes 參數上限。透過 S3 可達 15MB。原型採用 Bytes 路徑。
 
-**Q. 變化檢測的精度如何？**  
+**Q. 變化檢測的精確度？**  
 A. 目前實作是基於 bbox 面積的簡易比較。正式營運建議使用 SageMaker 的語義分割。
 
 ---
@@ -88,15 +88,15 @@ A. 目前實作是基於 bbox 面積的簡易比較。正式營運建議使用 S
 ## 關於輸出目的地：可透過 OutputDestination 選擇（Pattern B）
 
 UC15 defense-satellite 在 2026-05-11 的更新中支援了 `OutputDestination` 參數
-（參閱 `docs/output-destination-patterns.md`）。
+（參考 `docs/output-destination-patterns.md`）。
 
-**目標工作負載**：衛星影像切片 / 物體檢測 / Geo enrichment
+**目標工作負載**：衛星影像分割 / 物體檢測 / Geo enrichment
 
 **兩種模式**：
 
 ### STANDARD_S3（預設，與以往相同）
 建立新的 S3 儲存貯體（`${AWS::StackName}-output-${AWS::AccountId}`），
-並將 AI 成果寫入該處。Discovery Lambda 的 manifest 僅寫入 S3 Access Point
+並將 AI 成果寫入其中。Discovery Lambda 的 manifest 僅寫入 S3 Access Point
 （與以往相同）。
 
 ```bash
@@ -109,9 +109,9 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP（"no data movement" 模式）
-將切片 metadata、物體檢測 JSON、Geo enrichment 完成的檢測結果，透過 FSxN S3 Access Point
+將分割 metadata、物體檢測 JSON、Geo enrichment 完成的檢測結果，透過 FSxN S3 Access Point
 寫回與原始衛星影像**相同的 FSx ONTAP 磁碟區**。
-分析人員可以在 SMB/NFS 的現有目錄結構中直接參照 AI 成果。
+分析人員可以在 SMB/NFS 的現有目錄結構中直接參考 AI 成果。
 不會建立標準 S3 儲存貯體。
 
 ```bash
@@ -128,50 +128,65 @@ aws cloudformation deploy \
 **注意事項**：
 
 - 強烈建議指定 `S3AccessPointName`（同時以 Alias 格式和 ARN 格式授予 IAM 權限）
-- 超過 5GB 的物件無法透過 FSxN S3AP 處理（AWS 規格限制），必須使用多部分上傳
+- 超過 5GB 的物件無法透過 FSxN S3AP 處理（AWS 規格），必須使用多部分上傳
 - ChangeDetection Lambda 僅使用 DynamoDB，因此不受 `OutputDestination` 影響
 - AlertGeneration Lambda 僅使用 SNS，因此不受 `OutputDestination` 影響
-- AWS 規格限制請參閱
-  [專案 README 的「AWS 規格限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
+- AWS 規格限制請參考
+  [專案 README 的「AWS 規格限制與因應措施」章節](../../README.md#aws-仕様上の制約と回避策)
   以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
 
 ---
 
-## 已驗證的 UI/UX 截圖
+## 已驗證的 UI/UX 螢幕截圖
 
-遵循與 Phase 7 UC15/16/17 和 UC6/11/14 演示相同的方針，以**最終使用者在日常工作中
-實際看到的 UI/UX 介面**為對象。
-技術人員視圖（Step Functions 圖表、CloudFormation 堆疊事件等）
-統一整理在 `docs/verification-results-*.md` 中。
+與 Phase 7 UC15/16/17 和 UC6/11/14 的示範相同方針，以**終端使用者在日常業務中實際
+看到的 UI/UX 畫面**為對象。技術人員視圖（Step Functions 圖表、CloudFormation
+堆疊事件等）彙整於 `docs/verification-results-*.md`。
 
-### 本用例的驗證狀態
+### 此使用案例的驗證狀態
 
-- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX 截圖**: ✅ 完成 (Phase 8 Theme D, commit d7ebabd)
+- ✅ **E2E 驗證**：SUCCEEDED（Phase 7 Extended Round，commit b77fc3b）
+- 📸 **UI/UX 截圖**：✅ 完成（Phase 8 Theme D，commit d7ebabd）
 
-### 現有截圖
+### 現有螢幕截圖（Phase 7 驗證時）
 
-![Step Functions 圖表視圖 (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![S3 輸出桶](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![S3 輸出儲存貯體](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
 ![S3 Enriched 輸出](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
-![DynamoDB 變更歷史表](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+![DynamoDB 變更歷史記錄資料表](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
 
 ![SNS 通知主題](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
-### 重新驗證時的 UI/UX 目標介面（推薦截圖清單）
+### 重新驗證時的 UI/UX 目標畫面（建議截圖清單）
 
-- S3 輸出桶 (detections/, geo-enriched/, alerts/)
-- Rekognition 衛星影像目標偵測結果 JSON
-- GeoEnrichment 座標標記偵測結果
-- SNS 告警通知郵件
-- FSx ONTAP 卷 AI 產物 (FSXN_S3AP 模式)
+- S3 輸出儲存貯體（detections/、geo-enriched/、alerts/）
+- Rekognition 衛星影像物體檢測結果 JSON 預覽
+- GeoEnrichment 附座標的檢測結果
+- SNS 警示通知郵件
+- FSx ONTAP 磁碟區上的 AI 成果（FSXN_S3AP 模式時）
 
 ### 截圖指南
 
-1. **準備工作**: 執行 `bash scripts/verify_phase7_prerequisites.sh` 確認前提條件
-2. **樣本資料**: 透過 S3 AP Alias 上傳樣本檔案，然後啟動 Step Functions 工作流程
-3. **截圖**（關閉 CloudShell/終端，遮蓋瀏覽器右上角使用者名稱）
-4. **遮蓋處理**: 執行 `python3 scripts/mask_uc_demos.py <uc-dir>` 進行自動 OCR 遮蓋
-5. **清理**: 執行 `bash scripts/cleanup_generic_ucs.sh <UC>` 刪除堆疊
+1. **事前準備**：
+   - 使用 `bash scripts/verify_phase7_prerequisites.sh` 確認前提（共用 VPC/S3 AP 是否存在）
+   - 使用 `UC=defense-satellite bash scripts/package_generic_uc.sh` 打包 Lambda
+   - 使用 `bash scripts/deploy_generic_ucs.sh UC15` 部署
+
+2. **範例資料配置**：
+   - 透過 S3 AP Alias 將範例 GeoTIFF 上傳至 `satellite-imagery/` 前綴
+   - 啟動 Step Functions `fsxn-defense-satellite-demo-workflow`（輸入 `{}`）
+
+3. **截圖**（關閉 CloudShell・終端機，將瀏覽器右上角的使用者名稱塗黑）：
+   - S3 輸出儲存貯體 `fsxn-defense-satellite-demo-output-<account>` 的總覽
+   - AI/ML 輸出 JSON 的預覽（detections、geo-enriched）
+   - SNS 郵件通知（來自 AlertGeneration 的通知）
+
+4. **遮罩處理**：
+   - 使用 `python3 scripts/mask_uc_demos.py defense-satellite-demo` 自動遮罩
+   - 依照 `docs/screenshots/MASK_GUIDE.md` 進行額外遮罩（如有需要）
+
+5. **清理**：
+   - 使用 `bash scripts/cleanup_generic_ucs.sh UC15` 刪除
+   - VPC Lambda ENI 釋放需要 15-30 分鐘（AWS 規格）

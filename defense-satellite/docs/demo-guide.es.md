@@ -43,11 +43,11 @@ aws cloudformation deploy \
 ### 0:15 - 0:20 Procesamiento de imágenes de muestra (5 minutos)
 
 ```bash
-# サンプル GeoTIFF アップロード
+# Subir GeoTIFF de muestra
 aws s3 cp sample-satellite.tif \
   s3://<s3-ap-arn>/satellite/2026/05/tokyo_bay.tif
 
-# Step Functions 実行
+# Ejecutar Step Functions
 aws stepfunctions start-execution \
   --state-machine-arn <uc15-StateMachineArn> \
   --input '{}'
@@ -67,10 +67,10 @@ aws stepfunctions start-execution \
 
 ### 0:25 - 0:30 Preguntas y respuestas + Cierre (5 minutos)
 
-- Cumplimiento normativo del sector público (DoD CC SRG, CSfC, FedRAMP)
+- Cumplimiento regulatorio del sector público (DoD CC SRG, CSfC, FedRAMP)
 - Ruta de migración a GovCloud (misma plantilla de `ap-northeast-1` → `us-gov-west-1`)
 - Optimización de costos (habilitar SageMaker Endpoint solo en operación real)
-- Próximos pasos: integración de múltiples proveedores de satélites, integración con Sentinel-1/2 Hub
+- Próximos pasos: integración de múltiples proveedores satelitales, integración con Sentinel-1/2 Hub
 
 ## Preguntas frecuentes y respuestas
 
@@ -109,10 +109,10 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP (patrón "no data movement")
-Escribe los metadata de tiling, JSON de detección de objetos y resultados de detección con Geo enrichment
+Escribe los metadatos de tiling, JSON de detección de objetos y resultados de detección con Geo enrichment
 de vuelta al **mismo volumen FSx ONTAP** que las imágenes satelitales originales a través del FSxN S3 Access Point.
-Los analistas pueden referenciar directamente los resultados de IA dentro de la estructura de directorios SMB/NFS existente.
-No se crea un bucket S3 estándar.
+Los analistas pueden referenciar directamente los resultados de IA dentro de la estructura de directorios
+SMB/NFS existente. No se crea un bucket S3 estándar.
 
 ```bash
 aws cloudformation deploy \
@@ -128,50 +128,65 @@ aws cloudformation deploy \
 **Notas importantes**:
 
 - Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM tanto en formato Alias como ARN)
-- Objetos superiores a 5GB no son posibles con FSxN S3AP (especificación de AWS), se requiere carga multiparte
+- Objetos superiores a 5GB no son posibles con FSxN S3AP (especificación de AWS), se requiere multipart upload
 - ChangeDetection Lambda solo usa DynamoDB, por lo que no se ve afectado por `OutputDestination`
 - AlertGeneration Lambda solo usa SNS, por lo que no se ve afectado por `OutputDestination`
-- Para las restricciones de especificación de AWS, consulte
+- Para restricciones de especificación de AWS, consulte
   [la sección "Restricciones de especificación de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
   y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
 
 ---
 
-## Capturas de pantalla UI/UX verificadas
+## Capturas de pantalla de UI/UX verificadas
 
-Siguiendo el mismo enfoque que las demos de Phase 7 UC15/16/17 y UC6/11/14, dirigido a
-**pantallas UI/UX que los usuarios finales realmente ven en sus operaciones diarias**.
-Las vistas técnicas (gráfico de Step Functions, eventos de pila CloudFormation, etc.)
-están consolidadas en `docs/verification-results-*.md`.
+Siguiendo la misma política que las demos de Phase 7 UC15/16/17 y UC6/11/14, se enfocan en **las pantallas
+de UI/UX que los usuarios finales ven realmente en su trabajo diario**. Las vistas para técnicos (gráfico
+de Step Functions, eventos de stack de CloudFormation, etc.) se consolidan en `docs/verification-results-*.md`.
 
-### Estado de verificación para este caso de uso
+### Estado de verificación de este caso de uso
 
-- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **Captura UI/UX**: ✅ Completado (Phase 8 Theme D, commit d7ebabd)
+- ✅ **Verificación E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **Captura UI/UX**: ✅ Completada (Phase 8 Theme D, commit d7ebabd)
 
-### Capturas de pantalla existentes
+### Capturas de pantalla existentes (verificación Phase 7)
 
-![Vista de gráfico Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
+![Vista de gráfico de Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![Bucket S3 de salida](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![Bucket de salida S3](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
-![Salida S3 enriquecida](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+![Salida Enriched de S3](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
-![Tabla DynamoDB de historial de cambios](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+![Tabla de historial de cambios de DynamoDB](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
 
-![Temas de notificación SNS](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
-### Pantallas UI/UX objetivo para re-verificación (lista de capturas recomendadas)
+![Tópico de notificación SNS](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
+### Pantallas UI/UX objetivo para reverificación (lista de captura recomendada)
 
-- Bucket S3 de salida (detections/, geo-enriched/, alerts/)
-- Resultados JSON de detección de objetos Rekognition en imágenes satelitales
-- Resultados de detección GeoEnrichment con coordenadas
-- Email de notificación de alerta SNS
-- Artefactos AI en volumen FSx ONTAP (modo FSXN_S3AP)
+- Bucket de salida S3 (detections/, geo-enriched/, alerts/)
+- Vista previa JSON de resultados de detección de objetos en imágenes satelitales de Rekognition
+- Resultados de detección con coordenadas de GeoEnrichment
+- Correo electrónico de notificación de alerta SNS
+- Resultados de IA en volumen FSx ONTAP (modo FSXN_S3AP)
 
 ### Guía de captura
 
-1. **Preparación**: Ejecutar `bash scripts/verify_phase7_prerequisites.sh` para verificar prerrequisitos
-2. **Datos de ejemplo**: Subir archivos vía S3 AP Alias, luego iniciar el workflow de Step Functions
-3. **Captura** (cerrar CloudShell/terminal, enmascarar nombre de usuario en la esquina superior derecha del navegador)
-4. **Enmascaramiento**: Ejecutar `python3 scripts/mask_uc_demos.py <uc-dir>` para enmascaramiento OCR automático
-5. **Limpieza**: Ejecutar `bash scripts/cleanup_generic_ucs.sh <UC>` para eliminar la pila
+1. **Preparación previa**:
+   - Verificar requisitos previos con `bash scripts/verify_phase7_prerequisites.sh` (existencia de VPC/S3 AP común)
+   - Empaquetar Lambda con `UC=defense-satellite bash scripts/package_generic_uc.sh`
+   - Desplegar con `bash scripts/deploy_generic_ucs.sh UC15`
+
+2. **Colocación de datos de muestra**:
+   - Subir GeoTIFF de muestra al prefijo `satellite-imagery/` vía S3 AP Alias
+   - Iniciar Step Functions `fsxn-defense-satellite-demo-workflow` (entrada `{}`)
+
+3. **Captura** (cerrar CloudShell/terminal, enmascarar nombre de usuario en la parte superior derecha del navegador):
+   - Vista general del bucket de salida S3 `fsxn-defense-satellite-demo-output-<account>`
+   - Vista previa de JSON de salida AI/ML (detections, geo-enriched)
+   - Notificación por correo electrónico SNS (notificación de AlertGeneration)
+
+4. **Procesamiento de enmascaramiento**:
+   - Enmascaramiento automático con `python3 scripts/mask_uc_demos.py defense-satellite-demo`
+   - Enmascaramiento adicional según `docs/screenshots/MASK_GUIDE.md` (si es necesario)
+
+5. **Limpieza**:
+   - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC15`
+   - Liberación de ENI de Lambda VPC en 15-30 minutos (especificación de AWS)

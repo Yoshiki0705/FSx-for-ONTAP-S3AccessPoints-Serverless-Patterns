@@ -14,8 +14,8 @@
 
 ### 0:00 - 0:05 Intro (5 min)
 
-- Use case: digitization of government/public records management
-- Load from FOIA / information disclosure request statutory deadlines (20 business days)
+- Use case: Digitization of public records management for local governments and administrations
+- Load of statutory deadlines for FOIA / information disclosure requests (20 business days)
 - Challenge: PII detection and redaction takes several hours manually
 
 ### 0:05 - 0:10 Architecture (5 min)
@@ -41,7 +41,7 @@ aws cloudformation deploy \
   --region ap-northeast-1
 ```
 
-### 0:15 - 0:22 Execution (7 min)
+### 0:15 - 0:22 Processing Execution (7 min)
 
 ```bash
 # サンプル PDF（機密情報含む）アップロード
@@ -85,11 +85,11 @@ Check SNS notification email.
 
 ### 0:27 - 0:30 Wrap-up (3 min)
 
-- Path to enabling OpenSearch (full-scale search with `serverless`)
+- Path to enable OpenSearch (full-scale search with `serverless`)
 - GovCloud migration (FedRAMP High requirements)
-- Next steps: interactive FOIA response generation with Bedrock agents
+- Next steps: Interactive FOIA response generation with Bedrock agents
 
-## FAQ
+## Frequently Asked Questions
 
 **Q. Can it support Japan's Information Disclosure Act (30 days)?**  
 A. Yes, by modifying `REMINDER_DAYS_BEFORE` and the hardcoded 20 business days (US federal holidays → Japanese holidays).
@@ -146,8 +146,8 @@ aws cloudformation deploy \
 **Read-back in chain structure**:
 
 UC16 has a chain structure where downstream Lambdas read back artifacts from upstream stages (OCR → Classification →
-EntityExtraction → Redaction → IndexGeneration), so `get_bytes/get_text/get_json` in `shared/output_writer.py`
-read back from the same destination as the write destination.
+EntityExtraction → Redaction → IndexGeneration), so `shared/output_writer.py`'s
+`get_bytes/get_text/get_json` reads back from the same destination as the write destination.
 This enables read-back from the FSxN S3 Access Point when `OutputDestination=FSXN_S3AP`,
 allowing the entire chain to operate with a consistent destination.
 
@@ -166,37 +166,53 @@ allowing the entire chain to operate with a consistent destination.
 
 ## Verified UI/UX Screenshots
 
-Following the same approach as Phase 7 UC15/16/17 and UC6/11/14 demos, targeting
-**UI/UX screens that end users actually see in daily operations**.
-Technical views (Step Functions graph, CloudFormation stack events, etc.)
-are consolidated in `docs/verification-results-*.md`.
+Following the same policy as Phase 7 UC15/16/17 and UC6/11/14 demos, targeting **UI/UX screens that end users
+actually see in daily operations**. Technical views (Step Functions graph, CloudFormation
+stack events, etc.) are consolidated in `docs/verification-results-*.md`.
 
 ### Verification Status for This Use Case
 
-- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- ✅ **E2E Verification**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
 - 📸 **UI/UX Capture**: ✅ Complete (Phase 8 Theme D, commit d7ebabd)
 
-### Existing Screenshots
+### Existing Screenshots (Phase 7 verification)
 
 ![Step Functions Graph view (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
-![S3 Output Bucket](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+![S3 output bucket](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
 
-![DynamoDB Retention Table](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
+![DynamoDB retention table](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
 ### UI/UX Target Screens for Re-verification (Recommended Capture List)
 
 - S3 output bucket (ocr-results/, classified/, redacted/, compliance/)
-- Textract OCR results JSON (Cross-Region us-east-1)
+- Textract OCR result JSON preview (Cross-Region us-east-1)
 - Redacted document preview
 - DynamoDB retention table (FOIA deadline management)
 - FOIA reminder SNS email notification
-- OpenSearch index (when OpenSearchMode enabled)
-- FSx ONTAP volume AI artifacts (FSXN_S3AP mode)
+- OpenSearch index (IndexGeneration results, when OpenSearchMode is enabled)
+- AI artifacts on FSx ONTAP volume (when in FSXN_S3AP mode)
 
 ### Capture Guide
 
-1. **Preparation**: Run `bash scripts/verify_phase7_prerequisites.sh` to check prerequisites
-2. **Sample Data**: Upload sample files via S3 AP Alias, then start Step Functions workflow
-3. **Capture** (close CloudShell/terminal, mask username in browser top-right)
-4. **Mask**: Run `python3 scripts/mask_uc_demos.py <uc-dir>` for automated OCR masking
-5. **Cleanup**: Run `bash scripts/cleanup_generic_ucs.sh <UC>` to delete stack
+1. **Preparation**:
+   - Verify prerequisites with `bash scripts/verify_phase7_prerequisites.sh` (check for shared VPC/S3 AP)
+   - Package Lambda with `UC=government-archives bash scripts/package_generic_uc.sh`
+   - Deploy with `bash scripts/deploy_generic_ucs.sh UC16`
+
+2. **Place sample data**:
+   - Upload sample PDF/images to `archives/` prefix via S3 AP Alias
+   - Start Step Functions `fsxn-government-archives-demo-workflow` (input `{}`)
+
+3. **Capture** (close CloudShell/terminal, redact username in browser top-right):
+   - Overview of S3 output bucket `fsxn-government-archives-demo-output-<account>`
+   - Output JSON preview for each stage: OCR / Classification / Redaction
+   - DynamoDB retention table item list
+   - SNS FOIA reminder email
+
+4. **Masking**:
+   - Auto-mask with `python3 scripts/mask_uc_demos.py government-archives-demo`
+   - Apply additional masking as needed following `docs/screenshots/MASK_GUIDE.md`
+
+5. **Cleanup**:
+   - Delete with `bash scripts/cleanup_generic_ucs.sh UC16`
+   - VPC Lambda ENI release takes 15-30 min (AWS specification)

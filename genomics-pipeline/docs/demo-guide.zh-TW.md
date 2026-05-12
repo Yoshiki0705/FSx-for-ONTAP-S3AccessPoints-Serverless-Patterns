@@ -48,7 +48,7 @@ FASTQ/BAM 檔案    QC 分析        品質判定         變異統計
 ### Section 1: Problem Statement（0:00–0:45）
 
 **旁白要旨**：
-> 每週 100 個以上的定序資料樣本。品質不良的樣本混入下游分析時，會降低整體結果的可靠性。
+> 每週 100 個以上的定序資料樣本。品質不良的樣本若混入下游分析，會降低整體結果的可靠性。
 
 **Key Visual**：定序資料檔案清單
 
@@ -169,8 +169,8 @@ Phase 7 UC15/16/17 與 UC6/11/14 的示範採用相同方針，以**終端使用
 ### 此使用案例的驗證狀態
 
 - ✅ **E2E 執行**：Phase 1-6 已確認（參考根目錄 README）
-- 📸 **UI/UX 重新拍攝**：✅ 2026-05-10 重新部署驗證時已拍攝（確認 UC7 Step Functions 圖表、Lambda 執行成功）
-- 📸 **UI/UX 截圖 (Phase 8 Theme D)**: ⚠️ 僅 SFN 結構 (commit c66084f — 因 IAM S3AP 權限不足 FAILED, 計劃在 Theme I 修復)
+- 📸 **UI/UX 重新拍攝**：✅ 2026-05-10 重新部署驗證時已拍攝（UC7 Step Functions 圖表、Lambda 執行成功已確認）
+- 📸 **UI/UX 拍攝 (Phase 8 Theme D)**：✅ SUCCEEDED 拍攝完成（commit 2b958db — IAM S3AP 修正後重新部署，3:03 所有步驟成功）
 - 🔄 **重現方法**：參考本文件末尾的「拍攝指南」
 
 ### 2026-05-10 重新部署驗證時拍攝（以 UI/UX 為中心）
@@ -179,50 +179,53 @@ Phase 7 UC15/16/17 與 UC6/11/14 的示範採用相同方針，以**終端使用
 
 ![UC7 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/uc7-stepfunctions-graph.png)
 
-#### UC7 Step Functions 圖表 (工作流程結構 — Phase 8 Theme D)
-
-![UC7 Step Functions 圖表 (SUCCEEDED)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
-
-![UC7 Step Functions Graph (zoomed)](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
-
-
 Step Functions Graph view 以顏色視覺化各 Lambda / Parallel / Map 狀態的執行狀況，
 是終端使用者最重要的畫面。
 
+#### UC7 Step Functions Graph（SUCCEEDED — Phase 8 Theme D 重新拍攝）
+
+![UC7 Step Functions Graph（SUCCEEDED）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-succeeded.png)
+
+IAM S3AP 修正後重新部署。所有步驟 SUCCEEDED（3:03）。
+
+#### UC7 Step Functions Graph（放大顯示 — 各步驟詳細）
+
+![UC7 Step Functions Graph（放大顯示）](../../docs/screenshots/masked/uc7-demo/step-functions-graph-zoomed.png)
+
 ### 既有螢幕截圖（來自 Phase 1-6 的相關部分）
 
-#### UC7 Comprehend Medical 基因體分析結果（跨區域 us-east-1）
+#### UC7 Comprehend Medical 基因體分析結果（Cross-Region us-east-1）
 
-![UC7 Comprehend Medical 基因體分析結果（跨區域 us-east-1）](../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
+![UC7 Comprehend Medical 基因體分析結果（Cross-Region us-east-1）](../../docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png)
 
 
 ### 重新驗證時的 UI/UX 目標畫面（建議拍攝清單）
 
 - S3 輸出儲存貯體（fastq-qc/、variant-summary/、entities/）
 - Athena 查詢結果（變異頻率統計）
-- Comprehend Medical 醫學實體（Genes、Diseases、Mutations）
+- Comprehend Medical 醫學實體（Genes, Diseases, Mutations）
 - Bedrock 生成的研究報告
 
 ### 拍攝指南
 
 1. **事前準備**：
    - `bash scripts/verify_phase7_prerequisites.sh` 確認前提（共用 VPC/S3 AP 是否存在）
-   - `UC=genomics-pipeline bash scripts/package_generic_uc.sh` 打包 Lambda 套件
-   - `bash scripts/deploy_generic_ucs.sh UC7` 進行部署
+   - `UC=genomics-pipeline bash scripts/package_generic_uc.sh` 打包 Lambda
+   - `bash scripts/deploy_generic_ucs.sh UC7` 部署
 
 2. **樣本資料配置**：
    - 透過 S3 AP Alias 將樣本檔案上傳至 `fastq/` 前綴
    - 啟動 Step Functions `fsxn-genomics-pipeline-demo-workflow`（輸入 `{}`）
 
-3. **拍攝**（關閉 CloudShell・終端機，將瀏覽器右上角的使用者名稱塗黑）：
-   - S3 輸出儲存貯體 `fsxn-genomics-pipeline-demo-output-<account>` 的概覽
-   - AI/ML 輸出 JSON 的預覽（參考 `build/preview_*.html` 的格式）
+3. **拍攝**（關閉 CloudShell・終端機，瀏覽器右上角的使用者名稱塗黑）：
+   - S3 輸出儲存貯體 `fsxn-genomics-pipeline-demo-output-<account>` 的俯瞰
+   - AI/ML 輸出 JSON 的預覽（參考 `build/preview_*.html` 格式）
    - SNS 電子郵件通知（如適用）
 
 4. **遮罩處理**：
-   - `python3 scripts/mask_uc_demos.py genomics-pipeline-demo` 進行自動遮罩
-   - 依照 `docs/screenshots/MASK_GUIDE.md` 進行額外遮罩（如有需要）
+   - `python3 scripts/mask_uc_demos.py genomics-pipeline-demo` 自動遮罩
+   - 依照 `docs/screenshots/MASK_GUIDE.md` 進行額外遮罩（如需要）
 
 5. **清理**：
-   - `bash scripts/cleanup_generic_ucs.sh UC7` 進行刪除
+   - `bash scripts/cleanup_generic_ucs.sh UC7` 刪除
    - VPC Lambda ENI 釋放需 15-30 分鐘（AWS 規格）
