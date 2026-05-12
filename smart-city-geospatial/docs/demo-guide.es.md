@@ -63,7 +63,7 @@ Verificación de resultados:
 
 - Verificar cambios en series temporales en la tabla DynamoDB `landuse-history`
 - Mostrar el markdown del informe generado por Bedrock
-- Visualización de las puntuaciones de riesgo de inundación, terremoto y deslizamiento de tierra
+- Visualización de puntuaciones de riesgo de inundación, terremoto y deslizamiento de tierra
 
 ### 0:27 - 0:30 Cierre (3 minutos)
 
@@ -74,7 +74,7 @@ Verificación de resultados:
 ## Preguntas frecuentes y respuestas
 
 **P. ¿Se realiza realmente la conversión CRS?**  
-R. Solo al implementar rasterio / pyproj Layer. Fallback con verificación `PYPROJ_AVAILABLE`.
+R. Solo al desplegar rasterio / pyproj Layer. Fallback con verificación `PYPROJ_AVAILABLE`.
 
 **P. ¿Criterios de selección del modelo Bedrock?**  
 R. Nova Lite tiene buen equilibrio costo/precisión. Para textos largos se recomienda Claude Sonnet.
@@ -106,8 +106,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP (patrón "no data movement")
-Los metadatos de normalización CRS, resultados de clasificación de uso del suelo, evaluación de infraestructura, mapas de riesgo e informes de planificación urbana (Markdown) generados por Bedrock se escriben de vuelta al
-**mismo volumen FSx ONTAP** que los datos GIS originales a través del FSxN S3 Access Point.
+Los metadatos de normalización CRS, resultados de clasificación de uso del suelo, evaluación de infraestructura, mapas de riesgo e informes de planificación urbana (Markdown) generados por Bedrock se escriben de vuelta al **mismo volumen FSx ONTAP** que los datos GIS originales a través del FSxN S3 Access Point.
 Los responsables de planificación urbana pueden consultar directamente los resultados de IA dentro de la estructura de directorios existente de SMB/NFS.
 No se crea un bucket S3 estándar.
 
@@ -129,43 +128,57 @@ aws cloudformation deploy \
 - ChangeDetection Lambda solo usa DynamoDB, por lo que no se ve afectado por `OutputDestination`
 - Los informes de Bedrock se escriben como Markdown (`text/markdown; charset=utf-8`), por lo que pueden
   visualizarse directamente con editores de texto de clientes SMB/NFS
-- Para las restricciones de las especificaciones de AWS, consulte
-  [la sección "Restricciones de las especificaciones de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
+- Para las restricciones de especificación de AWS, consulte
+  [la sección "Restricciones de especificación de AWS y soluciones alternativas" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
   y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
 
 ---
 
-## Capturas de pantalla UI/UX verificadas
+## Capturas de pantalla de UI/UX verificadas
 
-Siguiendo el mismo enfoque que las demos de Phase 7 UC15/16/17 y UC6/11/14, dirigido a
-**pantallas UI/UX que los usuarios finales realmente ven en sus operaciones diarias**.
-Las vistas técnicas (gráfico de Step Functions, eventos de pila CloudFormation, etc.)
-están consolidadas en `docs/verification-results-*.md`.
+Siguiendo la misma política que las demos de Phase 7 UC15/16/17 y UC6/11/14, se enfocan en **pantallas de UI/UX que los usuarios finales ven realmente en sus operaciones diarias**. Las vistas técnicas (gráfico de Step Functions, eventos de stack de CloudFormation, etc.) se consolidan en `docs/verification-results-*.md`.
 
-### Estado de verificación para este caso de uso
+### Estado de verificación de este caso de uso
 
-- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **Captura UI/UX**: ✅ Completado (Phase 8 Theme D, commit d7ebabd)
+- ✅ **Verificación E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **Captura UI/UX**: ✅ Completada (Phase 8 Theme D, commit d7ebabd)
 
-### Capturas de pantalla existentes
+### Capturas de pantalla existentes (verificación Phase 7)
 
-![Vista de gráfico Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
+![Vista de gráfico de Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
 
-![Bucket S3 de salida](../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
+![Bucket de salida S3](../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
 
 ![Tabla DynamoDB landuse_history](../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
-### Pantallas UI/UX objetivo para re-verificación (lista de capturas recomendadas)
+### Pantallas UI/UX objetivo en reverificación (lista de captura recomendada)
 
-- Bucket S3 de salida (tiles/, land-use/, change-detection/, risk-maps/, reports/)
-- Informe de planificación urbana generado por Bedrock (vista previa Markdown)
+- Bucket de salida S3 (tiles/, land-use/, change-detection/, risk-maps/, reports/)
+- Informe de planificación urbana generado por Bedrock (vista previa de Markdown)
 - Tabla DynamoDB landuse_history (historial de clasificación de uso del suelo)
 - Vista previa JSON del mapa de riesgos (clasificación CRITICAL/HIGH/MEDIUM/LOW)
-- Artefactos AI en volumen FSx ONTAP (modo FSXN_S3AP — informe Markdown visible vía SMB/NFS)
+- Resultados de IA en volumen FSx ONTAP (modo FSXN_S3AP — informe Markdown visible mediante SMB/NFS)
 
 ### Guía de captura
 
-1. **Preparación**: Ejecutar `bash scripts/verify_phase7_prerequisites.sh` para verificar prerrequisitos
-2. **Datos de ejemplo**: Subir archivos vía S3 AP Alias, luego iniciar el workflow de Step Functions
-3. **Captura** (cerrar CloudShell/terminal, enmascarar nombre de usuario en la esquina superior derecha del navegador)
-4. **Enmascaramiento**: Ejecutar `python3 scripts/mask_uc_demos.py <uc-dir>` para enmascaramiento OCR automático
-5. **Limpieza**: Ejecutar `bash scripts/cleanup_generic_ucs.sh <UC>` para eliminar la pila
+1. **Preparación previa**:
+   - Verificar requisitos previos con `bash scripts/verify_phase7_prerequisites.sh` (existencia de VPC/S3 AP común)
+   - Empaquetar Lambda con `UC=smart-city-geospatial bash scripts/package_generic_uc.sh`
+   - Desplegar con `bash scripts/deploy_generic_ucs.sh UC17`
+
+2. **Colocación de datos de muestra**:
+   - Subir GeoTIFF de muestra al prefijo `gis/` a través del S3 AP Alias
+   - Iniciar Step Functions `fsxn-smart-city-geospatial-demo-workflow` (entrada `{}`)
+
+3. **Captura** (cerrar CloudShell/terminal, enmascarar nombre de usuario en la esquina superior derecha del navegador):
+   - Vista general del bucket de salida S3 `fsxn-smart-city-geospatial-demo-output-<account>`
+   - Vista previa del informe Markdown de Bedrock en el navegador
+   - Lista de elementos de la tabla DynamoDB landuse_history
+   - Verificación de estructura JSON del mapa de riesgos
+
+4. **Procesamiento de enmascaramiento**:
+   - Enmascaramiento automático con `python3 scripts/mask_uc_demos.py smart-city-geospatial-demo`
+   - Enmascaramiento adicional según `docs/screenshots/MASK_GUIDE.md` (si es necesario)
+
+5. **Limpieza**:
+   - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC17`
+   - Liberación de ENI de Lambda VPC en 15-30 minutos (especificación de AWS)

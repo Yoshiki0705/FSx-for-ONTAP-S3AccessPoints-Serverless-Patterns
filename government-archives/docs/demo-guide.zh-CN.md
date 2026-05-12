@@ -4,7 +4,7 @@
 
 > 注意：此翻译由 Amazon Bedrock Claude 生成。欢迎对翻译质量提出改进建议。
 
-## 前提
+## 前提条件
 
 - AWS 账户，ap-northeast-1
 - FSx for NetApp ONTAP + S3 Access Point
@@ -14,9 +14,9 @@
 
 ### 0:00 - 0:05 简介（5 分钟）
 
-- 用例：地方政府和行政机构的公共文档管理数字化
+- 用例：地方政府和行政机构的公文档管理数字化
 - FOIA / 信息公开请求的法定期限（20 个工作日）的负担
-- 挑战：PII 检测和编辑需要手动操作数小时
+- 挑战：PII 检测和编辑需要手动处理数小时
 
 ### 0:05 - 0:10 架构（5 分钟）
 
@@ -44,11 +44,11 @@ aws cloudformation deploy \
 ### 0:15 - 0:22 执行处理（7 分钟）
 
 ```bash
-# 上传示例 PDF（包含机密信息）
+# サンプル PDF（機密情報含む）アップロード
 aws s3 cp sample-foia-request.pdf \
   s3://<s3-ap-arn>/archives/2026/05/req-001.pdf
 
-# 执行 Step Functions
+# Step Functions 実行
 aws stepfunctions start-execution \
   --state-machine-arn <uc16-StateMachineArn> \
   --input '{"opensearch_enabled": "none"}'
@@ -64,7 +64,7 @@ aws stepfunctions start-execution \
 ### 0:22 - 0:27 FOIA 期限跟踪（5 分钟）
 
 ```bash
-# 注册 FOIA 请求
+# FOIA 請求登録
 aws dynamodb put-item \
   --table-name <fsxn-uc16-demo>-foia-requests \
   --item '{
@@ -74,7 +74,7 @@ aws dynamodb put-item \
     "requester": {"S": "jane@example.com"}
   }'
 
-# 手动执行 FOIA Deadline Lambda
+# FOIA Deadline Lambda 手動実行
 aws lambda invoke \
   --function-name <fsxn-uc16-demo>-foia-deadline \
   --payload '{}' \
@@ -91,8 +91,8 @@ aws lambda invoke \
 
 ## 常见问题与解答
 
-**Q. 能否支持日本的信息公开法（30 天）？**  
-A. 修改 `REMINDER_DAYS_BEFORE` 和 20 个工作日的硬编码即可支持（将美国联邦假日改为日本假日）。
+**Q. 能否适应日本的信息公开法（30 天）？**  
+A. 修改 `REMINDER_DAYS_BEFORE` 和 20 个工作日的硬编码即可适应（将美国联邦假日改为日本假日）。
 
 **Q. 原始 PII 存储在哪里？**  
 A. 不存储在任何地方。`pii-entities/*.json` 仅包含 SHA-256 哈希，`redaction-metadata/*.json` 也仅包含哈希 + 偏移量。恢复需要从原始文档重新执行。
@@ -123,13 +123,13 @@ aws cloudformation deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
-    ... (其他必需参数)
+    ... (他の必須パラメータ)
 ```
 
 ### FSXN_S3AP（"无数据移动"模式）
 通过 FSxN S3 Access Point 将 OCR 文本、分类结果、PII 检测结果、编辑后的文档、编辑元数据
 写回到与原始文档**相同的 FSx ONTAP 卷**。
-公共文档管理人员可以在 SMB/NFS 的现有目录结构中直接引用 AI 成果物。
+公文档管理人员可以在 SMB/NFS 的现有目录结构中直接引用 AI 成果物。
 不会创建标准 S3 存储桶。
 
 ```bash
@@ -140,7 +140,7 @@ aws cloudformation deploy \
     OutputDestination=FSXN_S3AP \
     OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
-    ... (其他必需参数)
+    ... (他の必須パラメータ)
 ```
 
 **链式结构的读回**：
@@ -148,12 +148,12 @@ aws cloudformation deploy \
 UC16 采用链式结构，后续 Lambda 读回前一阶段的成果物（OCR → Classification →
 EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_writer.py` 的
 `get_bytes/get_text/get_json` 从与写入目标相同的 destination 读回。
-这样，即使在 `OutputDestination=FSXN_S3AP` 时，也能从 FSxN S3 Access Point
-读回，整个链条在一致的 destination 下运行。
+这样，在 `OutputDestination=FSXN_S3AP` 时也能从 FSxN S3 Access Point 读回，
+整个链条在一致的 destination 上运行。
 
 **注意事项**：
 
-- 强烈建议指定 `S3AccessPointName`（同时授予 Alias 格式和 ARN 格式的 IAM 权限）
+- 强烈建议指定 `S3AccessPointName`（同时为 Alias 格式和 ARN 格式授予 IAM 权限）
 - 超过 5GB 的对象在 FSxN S3AP 中不可用（AWS 规范），必须使用分段上传
 - ComplianceCheck Lambda 仅使用 DynamoDB，因此不受 `OutputDestination` 影响
 - FoiaDeadlineReminder Lambda 仅使用 DynamoDB + SNS，因此不受影响
@@ -166,37 +166,53 @@ EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_wr
 
 ## 已验证的 UI/UX 截图
 
-遵循与 Phase 7 UC15/16/17 和 UC6/11/14 演示相同的方针，以**最终用户在日常工作中
-实际看到的 UI/UX 界面**为对象。
-技术人员视图（Step Functions 图表、CloudFormation 堆栈事件等）
-统一整理在 `docs/verification-results-*.md` 中。
+与 Phase 7 UC15/16/17 和 UC6/11/14 的演示采用相同方针，**以最终用户在日常业务中实际
+看到的 UI/UX 界面**为对象。面向技术人员的视图（Step Functions 图、CloudFormation
+堆栈事件等）汇总在 `docs/verification-results-*.md` 中。
 
-### 本用例的验证状态
+### 此用例的验证状态
 
-- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX 截图**: ✅ 完成 (Phase 8 Theme D, commit d7ebabd)
+- ✅ **E2E 验证**：SUCCEEDED（Phase 7 Extended Round，commit b77fc3b）
+- 📸 **UI/UX 拍摄**：✅ 完成（Phase 8 Theme D，commit d7ebabd）
 
-### 现有截图
+### 现有截图（Phase 7 验证时）
 
-![Step Functions 图表视图 (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
+![Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
-![S3 输出桶](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+![S3 输出存储桶](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
 
 ![DynamoDB retention 表](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
-### 重新验证时的 UI/UX 目标界面（推荐截图列表）
+### 重新验证时的 UI/UX 目标界面（推荐拍摄列表）
 
-- S3 输出桶 (ocr-results/, classified/, redacted/, compliance/)
-- Textract OCR 结果 JSON (跨区域 us-east-1)
-- 脱敏文档预览
-- DynamoDB retention 表 (FOIA 截止日期管理)
+- S3 输出存储桶（ocr-results/、classified/、redacted/、compliance/）
+- Textract OCR 结果 JSON 预览（跨区域 us-east-1）
+- 编辑（Redaction）后的文档预览
+- DynamoDB retention 表（FOIA 期限管理）
 - FOIA 提醒 SNS 邮件通知
-- OpenSearch 索引 (OpenSearchMode 启用时)
-- FSx ONTAP 卷 AI 产物 (FSXN_S3AP 模式)
+- OpenSearch 索引（IndexGeneration 结果，OpenSearchMode 启用时）
+- FSx ONTAP 卷上的 AI 成果物（FSXN_S3AP 模式时）
 
-### 截图指南
+### 拍摄指南
 
-1. **准备工作**: 运行 `bash scripts/verify_phase7_prerequisites.sh` 确认前提条件
-2. **样本数据**: 通过 S3 AP Alias 上传样本文件，然后启动 Step Functions 工作流
-3. **截图**（关闭 CloudShell/终端，遮盖浏览器右上角用户名）
-4. **遮盖处理**: 运行 `python3 scripts/mask_uc_demos.py <uc-dir>` 进行自动 OCR 遮盖
-5. **清理**: 运行 `bash scripts/cleanup_generic_ucs.sh <UC>` 删除堆栈
+1. **事前准备**：
+   - 使用 `bash scripts/verify_phase7_prerequisites.sh` 确认前提条件（共享 VPC/S3 AP 是否存在）
+   - 使用 `UC=government-archives bash scripts/package_generic_uc.sh` 打包 Lambda
+   - 使用 `bash scripts/deploy_generic_ucs.sh UC16` 部署
+
+2. **放置示例数据**：
+   - 通过 S3 AP Alias 将示例 PDF/图像上传到 `archives/` 前缀
+   - 启动 Step Functions `fsxn-government-archives-demo-workflow`（输入 `{}`）
+
+3. **拍摄**（关闭 CloudShell・终端，对浏览器右上角的用户名进行黑色遮盖）：
+   - S3 输出存储桶 `fsxn-government-archives-demo-output-<account>` 的概览
+   - OCR / Classification / Redaction 各阶段的输出 JSON 预览
+   - DynamoDB retention 表的项目列表
+   - SNS FOIA 提醒邮件
+
+4. **遮盖处理**：
+   - 使用 `python3 scripts/mask_uc_demos.py government-archives-demo` 自动遮盖
+   - 根据 `docs/screenshots/MASK_GUIDE.md` 进行额外遮盖（如有必要）
+
+5. **清理**：
+   - 使用 `bash scripts/cleanup_generic_ucs.sh UC16` 删除
+   - VPC Lambda ENI 释放需要 15-30 分钟（AWS 规范）

@@ -24,7 +24,7 @@
 - Generierung von Stadtplanungsberichten durch Bedrock
 - Berechnungsformeln für Risikomodelle (Hochwasser, Erdbeben, Erdrutsche)
 
-### 0:10 - 0:15 Bereitstellung (5 Minuten)
+### 0:10 - 0:15 Deployment (5 Minuten)
 
 ```bash
 aws cloudformation deploy \
@@ -73,16 +73,16 @@ Ergebnisüberprüfung:
 
 ## Häufig gestellte Fragen und Antworten
 
-**F. Wird die CRS-Transformation tatsächlich durchgeführt?**  
+**F. Wird die CRS-Konvertierung tatsächlich durchgeführt?**  
 A. Nur bei Bereitstellung des rasterio / pyproj Layers. Fallback durch `PYPROJ_AVAILABLE`-Prüfung.
 
-**F. Auswahlkriterien für das Bedrock-Modell?**  
+**F. Auswahlkriterien für Bedrock-Modelle?**  
 A. Nova Lite bietet ein gutes Kosten-/Genauigkeitsverhältnis. Für lange Texte wird Claude Sonnet empfohlen.
-A. Nova Lite ist kosteneffizient für die Generierung japanischsprachiger Berichte. Claude 3 Haiku ist eine Alternative bei Priorisierung der Genauigkeit.
+A. Nova Lite ist kosteneffizient für die Generierung japanischer Berichte. Claude 3 Haiku ist eine Alternative bei Priorisierung der Genauigkeit.
 
 ---
 
-## Über das Ausgabeziel: Auswählbar mit OutputDestination (Pattern B)
+## Über Ausgabeziele: Auswählbar mit OutputDestination (Pattern B)
 
 UC17 smart-city-geospatial unterstützt seit dem Update vom 11.05.2026 den Parameter `OutputDestination`
 (siehe `docs/output-destination-patterns.md`).
@@ -107,7 +107,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement"-Muster)
 CRS-Normalisierungsmetadaten, Landnutzungsklassifizierungsergebnisse, Infrastrukturbewertung, Risikokarten und von Bedrock generierte
-Stadtplanungsberichte (Markdown) werden über den FSxN S3 Access Point zurück in **dasselbe FSx ONTAP Volume** wie die ursprünglichen GIS-Daten geschrieben.
+Stadtplanungsberichte (Markdown) werden über den FSxN S3 Access Point zurück auf **dasselbe FSx ONTAP-Volume** wie die ursprünglichen GIS-Daten geschrieben.
 Stadtplaner können KI-Ergebnisse direkt innerhalb der bestehenden SMB/NFS-Verzeichnisstruktur einsehen.
 Es wird kein Standard-S3-Bucket erstellt.
 
@@ -126,45 +126,61 @@ aws cloudformation deploy \
 
 - Angabe von `S3AccessPointName` wird dringend empfohlen (IAM-Berechtigung sowohl für Alias- als auch ARN-Format)
 - Objekte über 5 GB sind mit FSxN S3AP nicht möglich (AWS-Spezifikation), Multipart-Upload erforderlich
-- Die ChangeDetection Lambda verwendet nur DynamoDB und wird daher nicht von `OutputDestination` beeinflusst
-- Bedrock-Berichte werden als Markdown (`text/markdown; charset=utf-8`) ausgegeben und können daher direkt mit einem Texteditor auf SMB/NFS-Clients angezeigt werden
+- ChangeDetection Lambda verwendet nur DynamoDB und wird daher nicht von `OutputDestination` beeinflusst
+- Bedrock-Berichte werden als Markdown (`text/markdown; charset=utf-8`) ausgegeben und können daher direkt mit Texteditoren auf SMB/NFS-Clients angezeigt werden
 - AWS-Spezifikationsbeschränkungen siehe
-  [Abschnitt "AWS-Spezifikationsbeschränkungen und Workarounds" in der Projekt-README](../../README.md#aws-仕様上の制約と回避策)
+  [Abschnitt "AWS-Spezifikationsbeschränkungen und Workarounds" im Projekt-README](../../README.md#aws-仕様上の制約と回避策)
   sowie [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
 
 ---
 
 ## Verifizierte UI/UX-Screenshots
 
-Nach dem gleichen Ansatz wie die Phase 7 UC15/16/17 und UC6/11/14 Demos, mit Fokus auf
-**UI/UX-Bildschirme, die Endbenutzer tatsächlich im täglichen Betrieb sehen**.
-Technische Ansichten (Step Functions-Graph, CloudFormation-Stack-Ereignisse usw.)
-sind in `docs/verification-results-*.md` zusammengefasst.
+Gleiche Richtlinie wie bei Phase 7 UC15/16/17 und UC6/11/14 Demos: **UI/UX-Bildschirme, die Endbenutzer tatsächlich
+in ihrer täglichen Arbeit sehen**. Technische Ansichten (Step Functions Graph, CloudFormation
+Stack-Events usw.) werden in `docs/verification-results-*.md` konsolidiert.
 
-### Verifizierungsstatus für diesen Anwendungsfall
+### Verifizierungsstatus für diesen Use Case
 
-- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **UI/UX-Aufnahme**: ✅ Abgeschlossen (Phase 8 Theme D, commit d7ebabd)
+- ✅ **E2E-Verifizierung**: SUCCEEDED (Phase 7 Extended Round, Commit b77fc3b)
+- 📸 **UI/UX-Aufnahme**: ✅ Abgeschlossen (Phase 8 Theme D, Commit d7ebabd)
 
-### Vorhandene Screenshots
+### Vorhandene Screenshots (Phase 7 Verifizierung)
 
 ![Step Functions Graph-Ansicht (SUCCEEDED)](../../docs/screenshots/masked/uc17-demo/step-functions-graph-succeeded.png)
 
 ![S3-Ausgabe-Bucket](../../docs/screenshots/masked/uc17-demo/s3-output-bucket.png)
 
-![DynamoDB landuse_history-Tabelle](../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
-### UI/UX-Zielbildschirme für Re-Verifizierung (empfohlene Aufnahmeliste)
+![DynamoDB landuse_history Tabelle](../../docs/screenshots/masked/uc17-demo/dynamodb-landuse-history-table.png)
+### UI/UX-Zielbildschirme bei erneuter Verifizierung (empfohlene Aufnahmeliste)
 
 - S3-Ausgabe-Bucket (tiles/, land-use/, change-detection/, risk-maps/, reports/)
-- Bedrock-generierter Stadtplanungsbericht (Markdown-Vorschau)
-- DynamoDB landuse_history-Tabelle (Landnutzungsklassifizierungshistorie)
-- Risikokarte JSON-Vorschau (CRITICAL/HIGH/MEDIUM/LOW-Klassifizierung)
-- AI-Artefakte auf FSx ONTAP-Volume (FSXN_S3AP-Modus — Markdown-Bericht über SMB/NFS einsehbar)
+- Von Bedrock generierter Stadtplanungsbericht (Markdown-Vorschau)
+- DynamoDB landuse_history Tabelle (Landnutzungsklassifizierungsverlauf)
+- Risikokarten-JSON-Vorschau (CRITICAL/HIGH/MEDIUM/LOW-Klassifizierung)
+- KI-Ergebnisse auf FSx ONTAP-Volume (FSXN_S3AP-Modus — über SMB/NFS einsehbare Markdown-Berichte)
 
-### Aufnahmeanleitung
+### Aufnahmeleitfaden
 
-1. **Vorbereitung**: `bash scripts/verify_phase7_prerequisites.sh` ausführen, um Voraussetzungen zu prüfen
-2. **Beispieldaten**: Dateien über S3 AP Alias hochladen, dann Step Functions-Workflow starten
-3. **Aufnahme** (CloudShell/Terminal schließen, Benutzername oben rechts im Browser maskieren)
-4. **Maskierung**: `python3 scripts/mask_uc_demos.py <uc-dir>` für automatische OCR-Maskierung ausführen
-5. **Bereinigung**: `bash scripts/cleanup_generic_ucs.sh <UC>` zum Löschen des Stacks ausführen
+1. **Vorbereitung**:
+   - Voraussetzungen mit `bash scripts/verify_phase7_prerequisites.sh` prüfen (gemeinsame VPC/S3 AP vorhanden)
+   - Lambda-Pakete mit `UC=smart-city-geospatial bash scripts/package_generic_uc.sh` erstellen
+   - Deployment mit `bash scripts/deploy_generic_ucs.sh UC17`
+
+2. **Beispieldaten platzieren**:
+   - Beispiel-GeoTIFF über S3 AP Alias mit Präfix `gis/` hochladen
+   - Step Functions `fsxn-smart-city-geospatial-demo-workflow` starten (Eingabe `{}`)
+
+3. **Aufnahme** (CloudShell/Terminal schließen, Benutzername oben rechts im Browser schwärzen):
+   - Übersicht des S3-Ausgabe-Buckets `fsxn-smart-city-geospatial-demo-output-<account>`
+   - Browser-Vorschau des Bedrock-Berichts-Markdown
+   - Item-Liste der DynamoDB landuse_history Tabelle
+   - Strukturüberprüfung des Risikokarten-JSON
+
+4. **Maskierung**:
+   - Automatische Maskierung mit `python3 scripts/mask_uc_demos.py smart-city-geospatial-demo`
+   - Zusätzliche Maskierung gemäß `docs/screenshots/MASK_GUIDE.md` (bei Bedarf)
+
+5. **Bereinigung**:
+   - Löschen mit `bash scripts/cleanup_generic_ucs.sh UC17`
+   - VPC Lambda ENI-Freigabe dauert 15-30 Minuten (AWS-Spezifikation)

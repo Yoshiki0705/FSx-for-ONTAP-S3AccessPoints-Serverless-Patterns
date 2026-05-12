@@ -14,13 +14,13 @@
 
 ### 0:00 - 0:05 Introduction (5 minutes)
 
-- Contexte du cas d'usage : augmentation des données d'images satellites (Sentinel, Landsat, SAR commercial)
-- Défis des NAS traditionnels : workflows basés sur la copie, coûteux en temps et en argent
+- Contexte du cas d'usage : augmentation des données d'imagerie satellite (Sentinel, Landsat, SAR commercial)
+- Défis du NAS traditionnel : workflows basés sur la copie, coûteux en temps et en ressources
 - Avantages de FSxN S3AP : zero-copy, synchronisation NTFS ACL, traitement serverless
 
 ### 0:05 - 0:10 Explication de l'architecture (5 minutes)
 
-- Présentation du workflow Step Functions avec diagramme Mermaid
+- Présentation du workflow Step Functions via diagramme Mermaid
 - Logique de basculement Rekognition / SageMaker selon la taille de l'image
 - Mécanisme de détection de changement par geohash
 
@@ -43,11 +43,11 @@ aws cloudformation deploy \
 ### 0:15 - 0:20 Traitement d'images échantillons (5 minutes)
 
 ```bash
-# サンプル GeoTIFF アップロード
+# Téléchargement d'un GeoTIFF échantillon
 aws s3 cp sample-satellite.tif \
   s3://<s3-ap-arn>/satellite/2026/05/tokyo_bay.tif
 
-# Step Functions 実行
+# Exécution Step Functions
 aws stepfunctions start-execution \
   --state-machine-arn <uc15-StateMachineArn> \
   --input '{}'
@@ -70,12 +70,12 @@ aws stepfunctions start-execution \
 - Conformité réglementaire du secteur public (DoD CC SRG, CSfC, FedRAMP)
 - Chemin de migration GovCloud (même template `ap-northeast-1` → `us-gov-west-1`)
 - Optimisation des coûts (SageMaker Endpoint activé uniquement en production)
-- Prochaines étapes : intégration multi-fournisseurs satellites, connexion Sentinel-1/2 Hub
+- Prochaines étapes : intégration multi-fournisseurs satellite, connexion Sentinel-1/2 Hub
 
 ## Questions fréquentes et réponses
 
 **Q. Comment traiter les données SAR (HDF5 de Sentinel-1) ?**  
-R. La Lambda Discovery les classe en `image_type=sar`, le Tiling peut implémenter un parseur HDF5 (rasterio ou h5py). L'Object Detection nécessite un modèle d'analyse SAR dédié (SageMaker).
+R. La Lambda Discovery classifie en `image_type=sar`, le Tiling peut implémenter un parseur HDF5 (rasterio ou h5py). L'Object Detection nécessite un modèle d'analyse SAR dédié (SageMaker).
 
 **Q. Quelle est la justification du seuil de taille d'image (5MB) ?**  
 R. Limite supérieure du paramètre Bytes de l'API Rekognition DetectLabels. Via S3, jusqu'à 15MB possible. Le prototype adopte la route Bytes.
@@ -90,13 +90,13 @@ R. L'implémentation actuelle est une comparaison simple basée sur la surface b
 UC15 defense-satellite prend en charge le paramètre `OutputDestination` depuis la mise à jour du 2026-05-11
 (voir `docs/output-destination-patterns.md`).
 
-**Charge de travail concernée** : tuilage d'images satellites / détection d'objets / Geo enrichment
+**Charge de travail cible** : Tuilage d'imagerie satellite / Détection d'objets / Geo enrichment
 
 **2 modes** :
 
 ### STANDARD_S3 (par défaut, comportement traditionnel)
 Crée un nouveau bucket S3 (`${AWS::StackName}-output-${AWS::AccountId}`) et
-y écrit les résultats de l'IA. Seul le manifest de la Lambda Discovery est écrit
+y écrit les résultats AI. Seul le manifest de la Lambda Discovery est écrit
 dans le S3 Access Point (comme auparavant).
 
 ```bash
@@ -105,13 +105,13 @@ aws cloudformation deploy \
   --stack-name fsxn-defense-satellite-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
-    ... (他の必須パラメータ)
+    ... (autres paramètres obligatoires)
 ```
 
 ### FSXN_S3AP (pattern "no data movement")
-Les métadonnées de tuilage, les JSON de détection d'objets et les résultats de détection enrichis Geo sont réécrits
-via le FSxN S3 Access Point dans le **même volume FSx ONTAP** que les images satellites originales.
-Les analystes peuvent référencer directement les résultats de l'IA dans la structure de répertoires SMB/NFS existante.
+Réécrit les métadonnées de tuilage, les JSON de détection d'objets et les résultats de détection enrichis Geo
+dans le **même volume FSx ONTAP** que les images satellite originales, via le FSxN S3 Access Point.
+Les analystes peuvent référencer directement les résultats AI dans la structure de répertoires SMB/NFS existante.
 Aucun bucket S3 standard n'est créé.
 
 ```bash
@@ -122,15 +122,15 @@ aws cloudformation deploy \
     OutputDestination=FSXN_S3AP \
     OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
-    ... (他の必須パラメータ)
+    ... (autres paramètres obligatoires)
 ```
 
 **Points d'attention** :
 
 - Spécification de `S3AccessPointName` fortement recommandée (autoriser IAM pour les formats Alias et ARN)
-- Les objets de plus de 5GB ne sont pas possibles avec FSxN S3AP (spécification AWS), multipart upload obligatoire
-- La Lambda ChangeDetection utilise uniquement DynamoDB et n'est donc pas affectée par `OutputDestination`
-- La Lambda AlertGeneration utilise uniquement SNS et n'est donc pas affectée par `OutputDestination`
+- Objets supérieurs à 5GB non supportés par FSxN S3AP (spécification AWS), multipart upload obligatoire
+- La Lambda ChangeDetection utilise uniquement DynamoDB, donc non affectée par `OutputDestination`
+- La Lambda AlertGeneration utilise uniquement SNS, donc non affectée par `OutputDestination`
 - Pour les contraintes de spécification AWS, voir
   [la section "Contraintes de spécification AWS et solutions de contournement" du README du projet](../../README.md#aws-仕様上の制約と回避策)
   et [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)
@@ -139,39 +139,54 @@ aws cloudformation deploy \
 
 ## Captures d'écran UI/UX vérifiées
 
-Suivant la même approche que les démos Phase 7 UC15/16/17 et UC6/11/14, ciblant
-**les écrans UI/UX que les utilisateurs finaux voient réellement dans leurs opérations quotidiennes**.
-Les vues techniques (graphe Step Functions, événements de pile CloudFormation, etc.)
-sont consolidées dans `docs/verification-results-*.md`.
+Même approche que les démos Phase 7 UC15/16/17 et UC6/11/14, ciblant **les écrans UI/UX que les utilisateurs finaux
+voient réellement dans leur travail quotidien**. Les vues techniques (graphe Step Functions, événements de stack CloudFormation,
+etc.) sont consolidées dans `docs/verification-results-*.md`.
 
-### Statut de vérification pour ce cas d'utilisation
+### Statut de vérification de ce cas d'usage
 
-- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **Capture UI/UX** : ✅ Terminé (Phase 8 Theme D, commit d7ebabd)
+- ✅ **Vérification E2E** : SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **Capture UI/UX** : ✅ Terminée (Phase 8 Theme D, commit d7ebabd)
 
-### Captures d'écran existantes
+### Captures d'écran existantes (vérification Phase 7)
 
 ![Vue graphique Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc15-demo/step-functions-graph-succeeded.png)
 
-![Bucket S3 de sortie](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
+![Bucket de sortie S3](../../docs/screenshots/masked/uc15-demo/s3-output-bucket.png)
 
-![Sortie S3 enrichie](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
+![Sortie S3 Enriched](../../docs/screenshots/masked/uc15-demo/s3-enriched-output.png)
 
-![Table DynamoDB d'historique des changements](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
+![Table d'historique de changements DynamoDB](../../docs/screenshots/masked/uc15-demo/dynamodb-change-history-table.png)
 
-![Sujets de notification SNS](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
-### Écrans UI/UX cibles pour re-vérification (liste de captures recommandées)
+![Topics de notification SNS](../../docs/screenshots/masked/uc15-demo/sns-notification-topics.png)
+### Écrans UI/UX cibles lors de la revérification (liste de capture recommandée)
 
-- Bucket S3 de sortie (detections/, geo-enriched/, alerts/)
-- Résultats JSON de détection d'objets Rekognition sur images satellite
-- Résultats de détection GeoEnrichment avec coordonnées
-- Email de notification d'alerte SNS
-- Artefacts AI sur volume FSx ONTAP (mode FSXN_S3AP)
+- Bucket de sortie S3 (detections/, geo-enriched/, alerts/)
+- Aperçu JSON des résultats de détection d'objets d'imagerie satellite Rekognition
+- Résultats de détection avec coordonnées GeoEnrichment
+- E-mail de notification d'alerte SNS
+- Résultats AI sur le volume FSx ONTAP (mode FSXN_S3AP)
 
 ### Guide de capture
 
-1. **Préparation** : Exécuter `bash scripts/verify_phase7_prerequisites.sh` pour vérifier les prérequis
-2. **Données d'exemple** : Télécharger les fichiers via S3 AP Alias, puis démarrer le workflow Step Functions
-3. **Capture** (fermer CloudShell/terminal, masquer le nom d'utilisateur en haut à droite du navigateur)
-4. **Masquage** : Exécuter `python3 scripts/mask_uc_demos.py <uc-dir>` pour le masquage OCR automatique
-5. **Nettoyage** : Exécuter `bash scripts/cleanup_generic_ucs.sh <UC>` pour supprimer la pile
+1. **Préparation** :
+   - Vérifier les prérequis avec `bash scripts/verify_phase7_prerequisites.sh` (présence VPC/S3 AP communs)
+   - Packager Lambda avec `UC=defense-satellite bash scripts/package_generic_uc.sh`
+   - Déployer avec `bash scripts/deploy_generic_ucs.sh UC15`
+
+2. **Placement des données échantillons** :
+   - Télécharger un GeoTIFF échantillon via S3 AP Alias vers le préfixe `satellite-imagery/`
+   - Démarrer Step Functions `fsxn-defense-satellite-demo-workflow` (entrée `{}`)
+
+3. **Capture** (fermer CloudShell/terminal, masquer le nom d'utilisateur en haut à droite du navigateur) :
+   - Vue d'ensemble du bucket de sortie S3 `fsxn-defense-satellite-demo-output-<account>`
+   - Aperçu des JSON de sortie AI/ML (detections, geo-enriched)
+   - Notification e-mail SNS (notification depuis AlertGeneration)
+
+4. **Traitement de masquage** :
+   - Masquage automatique avec `python3 scripts/mask_uc_demos.py defense-satellite-demo`
+   - Masquage supplémentaire selon `docs/screenshots/MASK_GUIDE.md` (si nécessaire)
+
+5. **Nettoyage** :
+   - Supprimer avec `bash scripts/cleanup_generic_ucs.sh UC15`
+   - Libération ENI Lambda VPC en 15-30 minutes (spécification AWS)

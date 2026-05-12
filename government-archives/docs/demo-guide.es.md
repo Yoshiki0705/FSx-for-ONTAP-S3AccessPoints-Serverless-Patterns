@@ -16,7 +16,7 @@
 
 - Caso de uso: digitalización de la gestión de documentos públicos de gobiernos locales y administraciones
 - Carga de los plazos legales (20 días hábiles) para solicitudes FOIA / divulgación de información
-- Desafío: la detección de PII y la redacción manual toman varias horas
+- Desafío: la detección de PII y redacción manual toma varias horas
 
 ### 0:05 - 0:10 Arquitectura (5 minutos)
 
@@ -44,11 +44,11 @@ aws cloudformation deploy \
 ### 0:15 - 0:22 Ejecución del procesamiento (7 minutos)
 
 ```bash
-# サンプル PDF（機密情報含む）アップロード
+# Cargar PDF de muestra (contiene información confidencial)
 aws s3 cp sample-foia-request.pdf \
   s3://<s3-ap-arn>/archives/2026/05/req-001.pdf
 
-# Step Functions 実行
+# Ejecutar Step Functions
 aws stepfunctions start-execution \
   --state-machine-arn <uc16-StateMachineArn> \
   --input '{"opensearch_enabled": "none"}'
@@ -64,7 +64,7 @@ Verificar resultados:
 ### 0:22 - 0:27 Seguimiento de plazos FOIA (5 minutos)
 
 ```bash
-# FOIA 請求登録
+# Registrar solicitud FOIA
 aws dynamodb put-item \
   --table-name <fsxn-uc16-demo>-foia-requests \
   --item '{
@@ -74,14 +74,14 @@ aws dynamodb put-item \
     "requester": {"S": "jane@example.com"}
   }'
 
-# FOIA Deadline Lambda 手動実行
+# Ejecutar manualmente Lambda de FOIA Deadline
 aws lambda invoke \
   --function-name <fsxn-uc16-demo>-foia-deadline \
   --payload '{}' \
   response.json && cat response.json
 ```
 
-Verificar el correo electrónico de notificación SNS.
+Verificar correo de notificación SNS.
 
 ### 0:27 - 0:30 Cierre (3 minutos)
 
@@ -92,10 +92,10 @@ Verificar el correo electrónico de notificación SNS.
 ## Preguntas frecuentes y respuestas
 
 **P. ¿Es posible adaptarlo a la Ley de Divulgación de Información de Japón (30 días)?**  
-R. Sí, modificando `REMINDER_DAYS_BEFORE` y el código fijo de 20 días hábiles (cambiando días festivos federales de EE.UU. → días festivos de Japón).
+R. Sí, modificando `REMINDER_DAYS_BEFORE` y el hardcoding de 20 días hábiles (cambiar días festivos federales de EE.UU. → días festivos de Japón).
 
 **P. ¿Dónde se almacena el PII del documento original?**  
-R. No se almacena en ningún lugar. `pii-entities/*.json` solo contiene hash SHA-256, y `redaction-metadata/*.json` solo contiene hash + offset. La restauración requiere volver a ejecutar desde el documento original.
+R. No se almacena en ningún lugar. `pii-entities/*.json` solo contiene hash SHA-256, `redaction-metadata/*.json` también solo hash + offset. La restauración requiere re-ejecutar desde el documento original.
 
 **P. ¿Cómo reducir costos de OpenSearch Serverless?**  
 R. Mínimo 2 OCU = aproximadamente $350/mes. Se recomienda detener fuera de producción.
@@ -123,14 +123,14 @@ aws cloudformation deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
-    ... (他の必須パラメータ)
+    ... (otros parámetros obligatorios)
 ```
 
 ### FSXN_S3AP (patrón "no data movement")
 Escribe texto OCR, resultados de clasificación, resultados de detección de PII, documentos redactados y metadatos de redacción
 de vuelta al **mismo volumen FSx ONTAP** que los documentos originales a través del FSxN S3 Access Point.
-Los responsables de documentos públicos pueden consultar directamente los resultados de IA dentro de la estructura de directorios SMB/NFS existente.
-No se crea un bucket S3 estándar.
+Los responsables de documentos públicos pueden consultar directamente los resultados de IA dentro de la estructura de directorios
+SMB/NFS existente. No se crea bucket S3 estándar.
 
 ```bash
 aws cloudformation deploy \
@@ -140,21 +140,21 @@ aws cloudformation deploy \
     OutputDestination=FSXN_S3AP \
     OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
-    ... (他の必須パラメータ)
+    ... (otros parámetros obligatorios)
 ```
 
 **Lectura en estructura de cadena**:
 
-UC16 tiene una estructura de cadena donde las Lambdas posteriores leen los resultados de las etapas anteriores (OCR → Classification →
-EntityExtraction → Redaction → IndexGeneration), por lo que `shared/output_writer.py` con
-`get_bytes/get_text/get_json` lee desde el mismo destination donde se escribió.
+UC16 tiene una estructura de cadena donde las Lambdas posteriores leen los resultados de las anteriores (OCR → Classification →
+EntityExtraction → Redaction → IndexGeneration), por lo que `get_bytes/get_text/get_json` en
+`shared/output_writer.py` lee desde el mismo destination donde se escribió.
 Esto permite que la lectura desde FSxN S3 Access Point funcione cuando `OutputDestination=FSXN_S3AP`,
 y toda la cadena opera con un destination consistente.
 
 **Notas importantes**:
 
 - Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM tanto en formato Alias como ARN)
-- Objetos mayores de 5GB no son compatibles con FSxN S3AP (especificación de AWS), se requiere carga multiparte
+- Objetos mayores de 5GB no son posibles con FSxN S3AP (especificación de AWS), se requiere carga multiparte
 - ComplianceCheck Lambda solo usa DynamoDB, por lo que no se ve afectada por `OutputDestination`
 - FoiaDeadlineReminder Lambda solo usa DynamoDB + SNS, por lo que no se ve afectada
 - El índice de OpenSearch se gestiona por separado con el parámetro `OpenSearchMode` (independiente de `OutputDestination`)
@@ -164,39 +164,55 @@ y toda la cadena opera con un destination consistente.
 
 ---
 
-## Capturas de pantalla UI/UX verificadas
+## Capturas de pantalla de UI/UX verificadas
 
-Siguiendo el mismo enfoque que las demos de Phase 7 UC15/16/17 y UC6/11/14, dirigido a
-**pantallas UI/UX que los usuarios finales realmente ven en sus operaciones diarias**.
-Las vistas técnicas (gráfico de Step Functions, eventos de pila CloudFormation, etc.)
-están consolidadas en `docs/verification-results-*.md`.
+Siguiendo la misma política que las demos de Phase 7 UC15/16/17 y UC6/11/14, se enfocan en **pantallas de UI/UX
+que los usuarios finales ven realmente en sus operaciones diarias**. Las vistas para técnicos (gráfico de Step Functions, eventos
+de stack de CloudFormation, etc.) se consolidan en `docs/verification-results-*.md`.
 
-### Estado de verificación para este caso de uso
+### Estado de verificación de este caso de uso
 
-- ✅ **E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
-- 📸 **Captura UI/UX**: ✅ Completado (Phase 8 Theme D, commit d7ebabd)
+- ✅ **Verificación E2E**: SUCCEEDED (Phase 7 Extended Round, commit b77fc3b)
+- 📸 **Captura UI/UX**: ✅ Completada (Phase 8 Theme D, commit d7ebabd)
 
-### Capturas de pantalla existentes
+### Capturas de pantalla existentes (verificación Phase 7)
 
-![Vista de gráfico Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
+![Vista de gráfico de Step Functions (SUCCEEDED)](../../docs/screenshots/masked/uc16-demo/step-functions-graph-succeeded.png)
 
-![Bucket S3 de salida](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
+![Bucket de salida S3](../../docs/screenshots/masked/uc16-demo/s3-output-bucket.png)
 
-![Tabla DynamoDB retention](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
-### Pantallas UI/UX objetivo para re-verificación (lista de capturas recomendadas)
+![Tabla de retención DynamoDB](../../docs/screenshots/masked/uc16-demo/dynamodb-retention-table.png)
+### Pantallas UI/UX objetivo para re-verificación (lista de captura recomendada)
 
-- Bucket S3 de salida (ocr-results/, classified/, redacted/, compliance/)
-- Resultados JSON de Textract OCR (Cross-Region us-east-1)
-- Vista previa del documento redactado
-- Tabla DynamoDB retention (gestión de plazos FOIA)
-- Email de recordatorio FOIA vía SNS
-- Índice OpenSearch (cuando OpenSearchMode habilitado)
-- Artefactos AI en volumen FSx ONTAP (modo FSXN_S3AP)
+- Bucket de salida S3 (ocr-results/, classified/, redacted/, compliance/)
+- Vista previa JSON de resultados OCR de Textract (Cross-Region us-east-1)
+- Vista previa de documento redactado (Redaction)
+- Tabla de retención DynamoDB (gestión de plazos FOIA)
+- Notificación por correo SNS de recordatorio FOIA
+- Índice de OpenSearch (resultado de IndexGeneration, cuando OpenSearchMode está habilitado)
+- Resultados de IA en volumen FSx ONTAP (modo FSXN_S3AP)
 
 ### Guía de captura
 
-1. **Preparación**: Ejecutar `bash scripts/verify_phase7_prerequisites.sh` para verificar prerrequisitos
-2. **Datos de ejemplo**: Subir archivos vía S3 AP Alias, luego iniciar el workflow de Step Functions
-3. **Captura** (cerrar CloudShell/terminal, enmascarar nombre de usuario en la esquina superior derecha del navegador)
-4. **Enmascaramiento**: Ejecutar `python3 scripts/mask_uc_demos.py <uc-dir>` para enmascaramiento OCR automático
-5. **Limpieza**: Ejecutar `bash scripts/cleanup_generic_ucs.sh <UC>` para eliminar la pila
+1. **Preparación previa**:
+   - Verificar requisitos previos con `bash scripts/verify_phase7_prerequisites.sh` (existencia de VPC/S3 AP común)
+   - Empaquetar Lambda con `UC=government-archives bash scripts/package_generic_uc.sh`
+   - Desplegar con `bash scripts/deploy_generic_ucs.sh UC16`
+
+2. **Colocar datos de muestra**:
+   - Cargar PDF/imágenes de muestra al prefijo `archives/` a través de S3 AP Alias
+   - Iniciar Step Functions `fsxn-government-archives-demo-workflow` (entrada `{}`)
+
+3. **Captura** (cerrar CloudShell/terminal, enmascarar nombre de usuario en la esquina superior derecha del navegador):
+   - Vista general del bucket de salida S3 `fsxn-government-archives-demo-output-<account>`
+   - Vista previa JSON de salida de cada etapa OCR / Classification / Redaction
+   - Lista de ítems de tabla de retención DynamoDB
+   - Correo de recordatorio FOIA de SNS
+
+4. **Procesamiento de enmascaramiento**:
+   - Enmascaramiento automático con `python3 scripts/mask_uc_demos.py government-archives-demo`
+   - Enmascaramiento adicional según `docs/screenshots/MASK_GUIDE.md` (si es necesario)
+
+5. **Limpieza**:
+   - Eliminar con `bash scripts/cleanup_generic_ucs.sh UC16`
+   - Liberación de ENI de Lambda VPC toma 15-30 minutos (especificación de AWS)

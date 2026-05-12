@@ -26,8 +26,8 @@
 ### Persona: 伊藤先生（数据工程师）
 
 - 每天积累 TB 级别的行驶数据
-- 相机・LiDAR・雷达的同步确认需要手动操作
-- "希望只将高质量数据自动发送到训练流水线"
+- 相机・LiDAR・雷达的同步确认为手动操作
+- "希望自动将高质量数据发送到训练流水线"
 
 ---
 
@@ -55,7 +55,7 @@
 ### Section 2: Pipeline Trigger（0:45–1:30）
 
 **解说要点**:
-> 上传新的行驶数据后，预处理流水线自动启动。
+> 上传新行驶数据后，预处理流水线自动启动。
 
 **Key Visual**: 数据上传 → 工作流自动启动
 
@@ -64,14 +64,14 @@
 **解说要点**:
 > 传感器数据完整性检查：自动检测帧缺失、时间戳同步、数据损坏。
 
-**Key Visual**: 质量检查结果 — 按传感器分类的健康度评分
+**Key Visual**: 质量检查结果 — 各传感器的健康度评分
 
 ### Section 4: Scene Classification（2:30–3:45）
 
 **解说要点**:
 > AI 自动分类场景：交叉路口、高速公路、恶劣天气、夜间等。作为元数据添加。
 
-**Key Visual**: 场景分类结果表、按类别分布
+**Key Visual**: 场景分类结果表、各类别分布
 
 ### Section 5: Dataset Catalog（3:45–5:00）
 
@@ -98,7 +98,7 @@
 
 | 部分 | 时间 | 关键信息 |
 |-----------|------|--------------|
-| Problem | 0:00–0:45 | "从 TB 级别数据中手动筛选有用场景是不可能的" |
+| Problem | 0:00–0:45 | "从 TB 级别数据中手动筛选有用场景不可能" |
 | Trigger | 0:45–1:30 | "上传后自动开始预处理" |
 | Validation | 1:30–2:30 | "自动检测传感器缺失・同步偏差" |
 | Classification | 2:30–3:45 | "AI 自动分类场景并添加元数据" |
@@ -212,7 +212,7 @@ aws cloudformation deploy \
 
 **注意事项**：
 
-- 强烈建议指定 `S3AccessPointName`（同时使用 Alias 格式和 ARN 格式进行 IAM 授权）
+- 强烈建议指定 `S3AccessPointName`（同时授予 Alias 格式和 ARN 格式的 IAM 权限）
 - 超过 5GB 的对象在 FSxN S3AP 中不可用（AWS 规范），必须使用分段上传
 - AWS 规范上的限制请参考
   [项目 README 的 "AWS 规范上的限制与规避方法" 部分](../../README.md#aws-仕様上の制約と回避策)
@@ -223,17 +223,17 @@ aws cloudformation deploy \
 ## 已验证的 UI/UX 截图
 
 与 Phase 7 UC15/16/17 和 UC6/11/14 的演示相同方针，以**最终用户在日常业务中实际
-看到的 UI/UX 画面**为对象。技术人员视图（Step Functions 图表、CloudFormation
+看到的 UI/UX 画面**为对象。技术人员视图（Step Functions 图、CloudFormation
 堆栈事件等）汇总在 `docs/verification-results-*.md` 中。
 
 ### 本用例的验证状态
 
 - ⚠️ **E2E 验证**：仅部分功能（生产环境建议追加验证）
-- 📸 **UI/UX 重新拍摄**：未实施
+- 📸 **UI/UX 拍摄**：✅ SFN Graph 完成（Phase 8 Theme D, commit 081cc66）
 
 ### 现有截图（来自 Phase 1-6 的相关部分）
 
-![UC9 Step Functions 图表视图 (SUCCEEDED)](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
+![UC9 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc9-demo/step-functions-graph-succeeded.png)
 
 ### 重新验证时的 UI/UX 目标画面（推荐拍摄列表）
 
@@ -245,7 +245,7 @@ aws cloudformation deploy \
 ### 拍摄指南
 
 1. **事前准备**：
-   - 使用 `bash scripts/verify_phase7_prerequisites.sh` 确认前提条件（共用 VPC/S3 AP 是否存在）
+   - 使用 `bash scripts/verify_phase7_prerequisites.sh` 确认前提（共用 VPC/S3 AP 是否存在）
    - 使用 `UC=autonomous-driving bash scripts/package_generic_uc.sh` 打包 Lambda
    - 使用 `bash scripts/deploy_generic_ucs.sh UC9` 部署
 

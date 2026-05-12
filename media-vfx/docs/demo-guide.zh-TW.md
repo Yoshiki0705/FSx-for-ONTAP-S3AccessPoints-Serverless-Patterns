@@ -20,8 +20,8 @@
 |------|------|
 | **職位** | VFX 總監 / 渲染 TD |
 | **日常業務** | 渲染作業管理、品質確認、鏡頭審批 |
-| **挑戰** | 目視確認數千幀需要耗費大量時間 |
-| **期望成果** | 自動偵測問題幀並加速重新渲染決策 |
+| **課題** | 目視確認數千幀需要耗費大量時間 |
+| **期待成果** | 自動偵測問題幀並加速重新渲染決策 |
 
 ### Persona：中村先生（VFX 總監）
 
@@ -43,7 +43,7 @@
 
 ---
 
-## Storyboard（5 個段落 / 3〜5 分鐘）
+## Storyboard（5 個區段 / 3〜5 分鐘）
 
 ### Section 1: Problem Statement（0:00–0:45）
 
@@ -62,7 +62,7 @@
 ### Section 3: Frame Analysis（1:30–2:30）
 
 **旁白要旨**：
-> 計算每幀的像素統計（平均亮度、變異數、直方圖）。同時檢查幀間的一致性。
+> 計算每幀的像素統計（平均亮度、變異數、直方圖）。也檢查幀間的一致性。
 
 **Key Visual**：幀分析處理中、像素統計圖表
 
@@ -84,7 +84,7 @@
 
 ## Screen Capture Plan
 
-| # | 畫面 | 段落 |
+| # | 畫面 | 區段 |
 |---|------|-----------|
 | 1 | 渲染輸出資料夾 | Section 1 |
 | 2 | 流程啟動畫面 | Section 2 |
@@ -96,7 +96,7 @@
 
 ## Narration Outline
 
-| 段落 | 時間 | 關鍵訊息 |
+| 區段 | 時間 | 關鍵訊息 |
 |-----------|------|--------------|
 | Problem | 0:00–0:45 | 「目視確認數千幀並不實際」 |
 | Trigger | 0:45–1:30 | 「渲染完成後自動開始 QC」 |
@@ -162,7 +162,7 @@
 
 ## 關於輸出目的地：FSxN S3 Access Point (Pattern A)
 
-UC4 media-vfx 歸類為 **Pattern A: Native S3AP Output**
+UC4 media-vfx 分類為 **Pattern A: Native S3AP Output**
 （參照 `docs/output-destination-patterns.md`）。
 
 **設計**：渲染中繼資料、幀品質評估全部透過 FSxN S3 Access Point
@@ -193,7 +193,7 @@ aws cloudformation deploy \
 ```
 
 關於 AWS 規格限制，請參照
-[專案 README 的「AWS 規格限制與因應對策」段落](../../README.md#aws-仕様上の制約と回避策)
+[專案 README 的「AWS 規格限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
 以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)。
 
 ---
@@ -207,13 +207,13 @@ aws cloudformation deploy \
 ### 此使用案例的驗證狀態
 
 - ⚠️ **E2E 驗證**：僅部分功能（正式環境建議追加驗證）
-- 📸 **UI/UX 截圖**: ✅ SFN Graph 完成 (Phase 8 Theme D, commit 3c90042)
+- 📸 **UI/UX 拍攝**：✅ SFN Graph 完成（Phase 8 Theme D, commit 3c90042）
 
-### 既有截圖（Phase 1-6 的相關部分）
+### 既有截圖（來自 Phase 1-6 的相關部分）
 
-![UC4 Step Functions 圖表視圖 (SUCCEEDED)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
+![UC4 Step Functions Graph view（SUCCEEDED）](../../docs/screenshots/masked/uc4-demo/step-functions-graph-succeeded.png)
 
-![UC4 Step Functions 圖表 (縮放 — 各步驟詳細)](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
+![UC4 Step Functions Graph（放大顯示 — 各步驟詳細）](../../docs/screenshots/masked/uc4-demo/step-functions-graph-zoomed.png)
 
 ### 重新驗證時的 UI/UX 目標畫面（建議拍攝清單）
 
@@ -224,21 +224,21 @@ aws cloudformation deploy \
 1. **事前準備**：
    - 執行 `bash scripts/verify_phase7_prerequisites.sh` 確認前提（共用 VPC/S3 AP 是否存在）
    - 執行 `UC=media-vfx bash scripts/package_generic_uc.sh` 打包 Lambda
-   - 執行 `bash scripts/deploy_generic_ucs.sh UC4` 部署
+   - 執行 `bash scripts/deploy_generic_ucs.sh UC4` 進行部署
 
 2. **配置樣本資料**：
    - 透過 S3 AP Alias 將樣本檔案上傳至 `renders/` 前綴
    - 啟動 Step Functions `fsxn-media-vfx-demo-workflow`（輸入 `{}`）
 
-3. **拍攝**（關閉 CloudShell・終端機，瀏覽器右上角的使用者名稱塗黑）：
-   - S3 輸出儲存貯體 `fsxn-media-vfx-demo-output-<account>` 的俯瞰圖
+3. **拍攝**（關閉 CloudShell・終端機，將瀏覽器右上角的使用者名稱塗黑）：
+   - S3 輸出儲存貯體 `fsxn-media-vfx-demo-output-<account>` 的概覽
    - AI/ML 輸出 JSON 的預覽（參考 `build/preview_*.html` 格式）
    - SNS 電子郵件通知（如適用）
 
 4. **遮罩處理**：
-   - 執行 `python3 scripts/mask_uc_demos.py media-vfx-demo` 自動遮罩
-   - 依照 `docs/screenshots/MASK_GUIDE.md` 追加遮罩（如有需要）
+   - 執行 `python3 scripts/mask_uc_demos.py media-vfx-demo` 進行自動遮罩
+   - 依照 `docs/screenshots/MASK_GUIDE.md` 進行額外遮罩（如需要）
 
 5. **清理**：
-   - 執行 `bash scripts/cleanup_generic_ucs.sh UC4` 刪除
+   - 執行 `bash scripts/cleanup_generic_ucs.sh UC4` 進行刪除
    - VPC Lambda ENI 釋放需 15-30 分鐘（AWS 規格）
