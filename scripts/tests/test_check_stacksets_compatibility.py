@@ -102,11 +102,11 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       VpcConfig:
-        VpcId: vpc-0ae01826f906191af
+        VpcId: vpc-0abc1234def56789a
 """
         results = check_vpc_parameterization(content, {}, "test.yaml")
         assert len(results) == 1
-        assert "vpc-0ae01826f906191af" in results[0].message
+        assert "vpc-0abc1234def56789a" in results[0].message
 
     def test_detects_hardcoded_subnet_id(self) -> None:
         """ハードコード Subnet ID を検出する."""
