@@ -1,4 +1,4 @@
-name: Phase 8 DevSecOps Validators
+name: DevSecOps Validators
 on:
   push:
     branches: [main]
@@ -107,7 +107,7 @@ jobs:
             --show-summary fail || true
 
   validators-summary:
-    name: "Phase 8 Validators Summary"
+    name: "Validators Summary"
     runs-on: ubuntu-latest
     needs:
       - s3ap-iam-patterns
