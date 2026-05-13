@@ -15,12 +15,12 @@ flowchart TB
     end
 
     subgraph FARGATE["🐳 ECS Fargate"]
-        SERVER["FPolicy Server<br/>TCP :9898<br/>• XML Parsing<br/>• Path Normalization<br/>• JSON Conversion"]
+        SERVER["FPolicy Server<br/>TCP :9898<br/>• XML Parse<br/>• Path Normalization<br/>• JSON Conversion"]
     end
 
     subgraph PIPELINE["⚡ Event Pipeline"]
         SQS["SQS Queue<br/>Ingestion + DLQ"]
-        BRIDGE["Bridge Lambda<br/>SQS → EventBridge<br/>Batch Processing (10/call)"]
+        BRIDGE["Bridge Lambda<br/>SQS → EventBridge<br/>Batch Processing (10 msgs/batch)"]
         EB["EventBridge<br/>Custom Bus<br/>fsxn-fpolicy-events"]
     end
 
@@ -36,7 +36,7 @@ flowchart TB
         LAMBDA["IP Updater Lambda<br/>ONTAP REST API"]
     end
 
-    NFS -->|"File Operation"| FPOLICY
+    NFS -->|"File Operations"| FPOLICY
     FPOLICY -->|"TCP Notification<br/>(Async)"| SERVER
     SERVER -->|"SendMessage"| SQS
     SQS -->|"Event Source Mapping"| BRIDGE
@@ -57,13 +57,13 @@ flowchart TB
 
 | Item | Details |
 |------|---------|
-| Runtime | ECS Fargate (ARM64, 0.25 vCPU / 512 MB) |
-| Protocol | TCP :9898 (ONTAP FPolicy binary framing) |
-| Mode | Asynchronous — no response needed for NOTI_REQ |
-| Processing | XML parse → Path normalization → JSON conversion → SQS send |
-| Health Check | NLB TCP health check (30s interval) |
+| Runtime Environment | ECS Fargate (ARM64, 0.25 vCPU / 512 MB) |
+| Protocol | TCP :9898 (ONTAP FPolicy Binary Framing) |
+| Operation Mode | Asynchronous — No response required for NOTI_REQ |
+| Main Processing | XML Parse → Path Normalization → JSON Conversion → SQS Send |
+| Health Check | NLB TCP Health Check (30-second interval) |
 
-**Important**: ONTAP FPolicy does not work through NLB TCP passthrough (binary framing incompatibility). Specify the Fargate task's direct Private IP in the ONTAP external-engine.
+**Important**: ONTAP FPolicy does not work through NLB TCP passthrough (binary framing incompatibility). Specify the Fargate task's direct Private IP for the ONTAP external-engine.
 
 ### 2. SQS Ingestion Queue
 
@@ -71,16 +71,16 @@ flowchart TB
 |------|---------|
 | Message Retention | 4 days (345,600 seconds) |
 | Visibility Timeout | 300 seconds |
-| DLQ | Moves to DLQ after 3 retries |
-| Encryption | SQS managed SSE |
+| DLQ | Moved to DLQ after max 3 retries |
+| Encryption | SQS Managed SSE |
 
 ### 3. Bridge Lambda (SQS → EventBridge)
 
 | Item | Details |
 |------|---------|
-| Trigger | SQS Event Source Mapping (batch size 10) |
-| Processing | JSON parse → EventBridge PutEvents |
-| Error Handling | ReportBatchItemFailures (partial failure support) |
+| Trigger | SQS Event Source Mapping (Batch Size 10) |
+| Processing | JSON Parse → EventBridge PutEvents |
+| Error Handling | ReportBatchItemFailures (Partial failure support) |
 | Metrics | EventBridgeRoutingLatency (CloudWatch) |
 
 ### 4. EventBridge Custom Bus
@@ -90,15 +90,15 @@ flowchart TB
 | Bus Name | `fsxn-fpolicy-events` |
 | Source | `fsxn.fpolicy` |
 | DetailType | `FPolicy File Operation` |
-| Routing | EventBridge Rules specify targets per UC |
+| Routing | Target specification per UC via EventBridge Rules |
 
 ### 5. IP Updater Lambda
 
 | Item | Details |
 |------|---------|
 | Trigger | EventBridge Rule (ECS Task State Change → RUNNING) |
-| Processing | 1. Disable policy → 2. Update engine IP → 3. Re-enable policy |
-| Auth | Retrieves ONTAP credentials from Secrets Manager |
+| Processing | 1. Disable Policy → 2. Update Engine IP → 3. Re-enable Policy |
+| Authentication | Retrieve ONTAP credentials from Secrets Manager |
 | VPC Placement | Same VPC as FSxN SVM (for REST API access) |
 
 ## Data Flow
@@ -118,41 +118,60 @@ flowchart TB
 }
 ```
 
+### EventBridge Event Format
+
+```json
+{
+  "source": "fsxn.fpolicy",
+  "detail-type": "FPolicy File Operation",
+  "detail": {
+    "event_id": "550e8400-e29b-41d4-a716-446655440000",
+    "operation_type": "create",
+    "file_path": "documents/report.pdf",
+    "volume_name": "vol1",
+    "svm_name": "FSxN_OnPre",
+    "timestamp": "2026-01-15T10:30:00+00:00",
+    "file_size": 0,
+    "client_ip": "10.0.1.100"
+  }
+}
+```
+
 ## Security Considerations
 
 ### Network
 
-- FPolicy Server placed in Private Subnet (no public access)
-- ONTAP → FPolicy Server communication is VPC-internal
-- AWS service access via VPC Endpoints (no internet transit)
+- FPolicy Server is placed in a Private Subnet (no public access)
+- Communication between ONTAP and FPolicy Server is internal VPC traffic (no encryption needed)
+- Access to AWS services is via VPC Endpoints (no internet transit)
 - Security Group allows TCP 9898 only from VPC CIDR (10.0.0.0/8)
 
 ### Authentication & Authorization
 
-- ONTAP admin credentials managed in Secrets Manager
+- ONTAP admin credentials are managed in Secrets Manager
 - ECS task role has least privilege (SQS SendMessage + CloudWatch PutMetricData only)
-- IP Updater Lambda placed in VPC + Secrets Manager access
+- IP Updater Lambda is placed in VPC + has Secrets Manager access permissions
 
 ### Data Protection
 
-- SQS messages encrypted with SSE
-- CloudWatch Logs auto-deleted after 30 days retention
-- DLQ messages auto-deleted after 14 days
+- SQS messages are encrypted with SSE
+- CloudWatch Logs are automatically deleted after 30-day retention
+- DLQ messages are automatically deleted after 14 days
 
 ## IP Auto-Update Mechanism
 
-Fargate tasks receive a new Private IP on every restart. Since ONTAP FPolicy external-engine references a fixed IP, automatic IP updates are required.
+Fargate tasks are assigned a new Private IP each time they restart. Since the ONTAP FPolicy external-engine references a fixed IP, automatic IP updates are required.
 
 ### Update Flow
 
 1. ECS task transitions to RUNNING state
-2. EventBridge Rule detects ECS Task State Change event
+2. EventBridge Rule detects the ECS Task State Change event
 3. IP Updater Lambda is triggered
-4. Lambda extracts new task IP from ECS event
-5. ONTAP REST API: temporarily disable FPolicy Policy
-6. ONTAP REST API: update Engine primary_servers
-7. ONTAP REST API: re-enable FPolicy Policy
+4. Lambda extracts the new task IP from the ECS event
+5. Temporarily disables the FPolicy Policy via ONTAP REST API
+6. Updates the Engine's primary_servers via ONTAP REST API
+7. Re-enables the FPolicy Policy via ONTAP REST API
 
-### Difference from EC2 Version
+### Differences from EC2 Version
 
-The EC2 version (`template-ec2.yaml`) has a fixed Private IP, so IP auto-update is unnecessary. Use the EC2 version when cost optimization or fixed IP is required.
+In the EC2 version (`template-ec2.yaml`), the Private IP is fixed, so IP auto-update is not needed. Use the EC2 version when cost optimization or a fixed IP is required.
