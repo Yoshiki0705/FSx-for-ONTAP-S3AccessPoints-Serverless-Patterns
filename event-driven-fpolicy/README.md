@@ -132,11 +132,14 @@ docker buildx build --platform linux/arm64 \
 
 ### 2. CloudFormation デプロイ
 
+#### Fargate モード（デフォルト）
+
 ```bash
 aws cloudformation deploy \
   --template-file event-driven-fpolicy/template.yaml \
   --stack-name fsxn-fpolicy-event-driven \
   --parameter-overrides \
+    ComputeType=fargate \
     VpcId=<your-vpc-id> \
     SubnetIds=<subnet-1>,<subnet-2> \
     FsxnSvmSecurityGroupId=<fsxn-sg-id> \
@@ -147,6 +150,30 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM \
   --region ap-northeast-1
 ```
+
+#### EC2 モード（固定 IP、低コスト）
+
+```bash
+aws cloudformation deploy \
+  --template-file event-driven-fpolicy/template.yaml \
+  --stack-name fsxn-fpolicy-event-driven \
+  --parameter-overrides \
+    ComputeType=ec2 \
+    VpcId=<your-vpc-id> \
+    SubnetIds=<subnet-1> \
+    FsxnSvmSecurityGroupId=<fsxn-sg-id> \
+    ContainerImage=<ACCOUNT_ID>.dkr.ecr.ap-northeast-1.amazonaws.com/fsxn-fpolicy-server:latest \
+    InstanceType=t4g.micro \
+    FsxnMgmtIp=<svm-mgmt-ip> \
+    FsxnSvmUuid=<svm-uuid> \
+    FsxnCredentialsSecret=<secret-name> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region ap-northeast-1
+```
+
+> **Fargate vs EC2 の選択基準**:
+> - **Fargate**: スケーラビリティ重視、マネージド運用、IP 自動更新あり
+> - **EC2**: コスト最適化（~$3/月 vs ~$54/月）、固定 IP（ONTAP engine 更新不要）、SSM 対応
 
 ### 3. ONTAP FPolicy 設定
 
@@ -193,16 +220,19 @@ vserver fpolicy enable \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
+| `ComputeType` | 実行環境の選択 (fargate/ec2) | `fargate` | |
 | `VpcId` | FSxN と同一 VPC の ID | — | ✅ |
-| `SubnetIds` | Fargate タスク配置先 Private Subnet | — | ✅ |
+| `SubnetIds` | Fargate タスクまたは EC2 配置先 Private Subnet | — | ✅ |
 | `FsxnSvmSecurityGroupId` | FSxN SVM の Security Group ID | — | ✅ |
 | `ContainerImage` | FPolicy Server コンテナイメージ URI | — | ✅ |
 | `FPolicyPort` | TCP リスニングポート | `9898` | |
 | `WriteCompleteDelaySec` | NFSv3 write-complete 待機秒数 | `5` | |
 | `Mode` | 動作モード (realtime/batch) | `realtime` | |
-| `DesiredCount` | Fargate タスク数 | `1` | |
-| `Cpu` | Fargate タスク CPU | `256` | |
-| `Memory` | Fargate タスクメモリ (MB) | `512` | |
+| `DesiredCount` | Fargate タスク数（Fargate 時のみ） | `1` | |
+| `Cpu` | Fargate タスク CPU（Fargate 時のみ） | `256` | |
+| `Memory` | Fargate タスクメモリ MB（Fargate 時のみ） | `512` | |
+| `InstanceType` | EC2 インスタンスタイプ（EC2 時のみ） | `t4g.micro` | |
+| `KeyPairName` | SSH キーペア名（EC2 時のみ、省略可） | `""` | |
 | `EventBusName` | EventBridge カスタムバス名 | `fsxn-fpolicy-events` | |
 | `FsxnMgmtIp` | FSxN SVM 管理 IP | — | ✅ |
 | `FsxnSvmUuid` | FSxN SVM UUID | — | ✅ |
