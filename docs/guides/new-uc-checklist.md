@@ -16,12 +16,24 @@ checklist when adding a new UC to the pattern library.
 - [ ] `LambdaMemorySize` (default: 512)
 - [ ] `LambdaTimeout` (default: 900)
 - [ ] `NotificationEmail`
+- [ ] `TriggerMode` (POLLING / EVENT_DRIVEN / HYBRID, default: POLLING) — Phase 10
+- [ ] `AlarmProfile` (BATCH / REALTIME / HIGH_VOLUME / CUSTOM, default: UC 別) — Phase 10
+- [ ] `CustomFailureThreshold` (default: 10) — Phase 10
+- [ ] `CustomErrorThreshold` (default: 3) — Phase 10
+- [ ] `MaxConcurrencyUpperBound` (default: 40) — Phase 10
+- [ ] `OntapApiRateLimit` (default: 100) — Phase 10
+- [ ] `EnableCostScheduling` (default: "false") — Phase 10
+- [ ] `BusinessHoursStart` (default: 9) — Phase 10
+- [ ] `BusinessHoursEnd` (default: 18) — Phase 10
 
 ## Conditions (required)
 
 - [ ] `UseStandardS3` / `UseFsxnS3AP` / `HasOutputS3APAlias`
 - [ ] `CreateCloudWatchAlarms`
 - [ ] `HasS3AccessPointName`
+- [ ] `EnablePolling` / `EnableEventDriven` / `EnableIdempotency` — Phase 10
+- [ ] `UseCustomProfile` — Phase 10
+- [ ] `EnableCostSchedulingCondition` — Phase 10
 
 ## Lambda Functions
 

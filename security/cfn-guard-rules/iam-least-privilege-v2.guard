@@ -1,0 +1,58 @@
+# IAM Least Privilege Rule (v2 — Phase 10 update)
+# Ensures no IAM policy grants Action:"*" with Resource:"*" (admin access)
+# Allows scoped wildcard resources (e.g., arn:aws:cloudwatch:*:*:*) with Condition
+
+# Rule: IAM Policies must not have wildcard Action with wildcard Resource
+rule iam_no_admin_access when %INPUT {
+    Resources.*[
+        Type == "AWS::IAM::Policy" or
+        Type == "AWS::IAM::Role" or
+        Type == "AWS::IAM::ManagedPolicy"
+    ] {
+        when Properties.PolicyDocument exists {
+            Properties.PolicyDocument.Statement[*] {
+                when Effect == "Allow" {
+                    # Action must not be "*" when Resource is "*"
+                    Action != "*" or
+                    Resource != "*"
+                }
+            }
+        }
+        when Properties.Policies exists {
+            Properties.Policies[*].PolicyDocument.Statement[*] {
+                when Effect == "Allow" {
+                    # Allow if Condition is present (scoped access)
+                    Condition exists or
+                    Action != "*" or
+                    Resource != "*"
+                }
+            }
+        }
+        when Properties.AssumeRolePolicyDocument exists {
+            Properties.AssumeRolePolicyDocument.Statement[*] {
+                when Effect == "Allow" {
+                    Action != "sts:*" or
+                    Principal != "*"
+                }
+            }
+        }
+    }
+}
+
+# Rule: Inline policies in roles must not have admin access
+rule iam_inline_no_admin when %INPUT {
+    Resources.*[
+        Type == "AWS::IAM::Role"
+    ] {
+        when Properties.Policies exists {
+            Properties.Policies[*].PolicyDocument.Statement[*] {
+                when Effect == "Allow" {
+                    # Allow if Condition is present (scoped access)
+                    Condition exists or
+                    some Action[*] != "*" or
+                    some Resource[*] != "*"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  FPolicy Ingestion Infrastructure — ONTAP FPolicy イベント受信基盤.
+  FPolicy Engine Lambda + SQS Ingestion Queue + Dead Letter Queue.
+
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: Lambda デプロイパッケージ格納 S3 バケット名
+
+  DeployPrefix:
+    Type: String
+    Default: "fpolicy-engine"
+    Description: Lambda パッケージの S3 プレフィックス
+
+  MaxRetries:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    MaxValue: 10
+    Description: SQS 送信リトライ回数
+
+  MessageRetentionPeriod:
+    Type: Number
+    Default: 345600
+    Description: SQS メッセージ保持期間（秒）。デフォルト 4 日
+
+  DlqMessageRetentionPeriod:
+    Type: Number
+    Default: 1209600
+    Description: DLQ メッセージ保持期間（秒）。デフォルト 14 日
+
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: DLQ アラーム通知先メールアドレス
+
+  EnableAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch アラームの有効化
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, ""]]
+  CreateAlarms: !Equals [!Ref EnableAlarms, "true"]
+
+Resources:
+  # --- SQS ---
+  IngestionDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "fsxn-fpolicy-ingestion-dlq-${AWS::StackName}"
+      MessageRetentionPeriod: !Ref DlqMessageRetentionPeriod
+      SqsManagedSseEnabled: true
+
+  IngestionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "fsxn-fpolicy-ingestion-${AWS::StackName}"
+      MessageRetentionPeriod: !Ref MessageRetentionPeriod
+      VisibilityTimeout: 300
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt IngestionDLQ.Arn
+        maxReceiveCount: 3
+
+  # --- Lambda Execution Role ---
+  FPolicyEngineLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-engine-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: FPolicyEngineSQSAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - !GetAtt IngestionQueue.Arn
+                  - !GetAtt IngestionDLQ.Arn
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource:
+                  - !Sub "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: "FSxN-S3AP-Patterns"
+
+  # --- Lambda Function ---
+  FPolicyEngineLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "fsxn-fpolicy-engine-${AWS::StackName}"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: !Sub "${DeployPrefix}/fpolicy_engine.zip"
+      MemorySize: 256
+      Timeout: 30
+      Role: !GetAtt FPolicyEngineLambdaRole.Arn
+      Environment:
+        Variables:
+          SQS_QUEUE_URL: !Ref IngestionQueue
+          DLQ_URL: !Ref IngestionDLQ
+          MAX_RETRIES: !Ref MaxRetries
+      Architectures:
+        - arm64
+
+  # --- Observability ---
+  DlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateAlarms
+    Properties:
+      AlarmName: !Sub "fsxn-fpolicy-dlq-messages-${AWS::StackName}"
+      AlarmDescription: FPolicy Ingestion DLQ にメッセージが到着
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt IngestionDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !If [HasNotificationEmail, !Ref AlertTopic, !Ref "AWS::NoValue"]
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasNotificationEmail
+    Properties:
+      TopicName: !Sub "fsxn-fpolicy-alerts-${AWS::StackName}"
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+Outputs:
+  IngestionQueueUrl:
+    Description: FPolicy Ingestion Queue URL
+    Value: !Ref IngestionQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-IngestionQueueUrl"
+
+  IngestionQueueArn:
+    Description: FPolicy Ingestion Queue ARN
+    Value: !GetAtt IngestionQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-IngestionQueueArn"
+
+  DlqUrl:
+    Description: Dead Letter Queue URL
+    Value: !Ref IngestionDLQ
+
+  FPolicyEngineLambdaArn:
+    Description: FPolicy Engine Lambda ARN
+    Value: !GetAtt FPolicyEngineLambda.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-FPolicyEngineLambdaArn"
