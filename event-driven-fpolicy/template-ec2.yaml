@@ -1,0 +1,303 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Event-Driven FPolicy (EC2 版) — FPolicy Server を EC2 インスタンスで実行する代替テンプレート.
+  固定 IP が必要な場合やコスト最適化が必要な場合に使用。
+  IP 自動更新が不要（EC2 の Private IP は固定）。
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: FSxN と同一 VPC の ID
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: EC2 インスタンスを配置する Private Subnet（単一 AZ）
+
+  FsxnSvmSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: FSxN SVM の Security Group ID
+
+  ContainerImage:
+    Type: String
+    Description: FPolicy Server コンテナイメージ URI（ECR）
+
+  FPolicyPort:
+    Type: Number
+    Default: 9898
+    Description: FPolicy TCP リスニングポート
+
+  InstanceType:
+    Type: String
+    Default: "t4g.micro"
+    AllowedValues: ["t4g.micro", "t4g.small", "t4g.medium"]
+    Description: EC2 インスタンスタイプ（ARM64 Graviton）
+
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: SSH キーペア名（デバッグ用、省略可）
+
+  WriteCompleteDelaySec:
+    Type: Number
+    Default: 5
+    MinValue: 0
+    MaxValue: 60
+    Description: NFSv3 write-complete 待機秒数
+
+  SvmName:
+    Type: String
+    Default: "FSxN_OnPre"
+    Description: SVM 名
+
+  VolumeName:
+    Type: String
+    Default: "vol1"
+    Description: ボリューム名
+
+  EventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+    Description: EventBridge カスタムイベントバス名
+
+  MessageRetentionPeriod:
+    Type: Number
+    Default: 345600
+    Description: SQS メッセージ保持期間（秒）
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+
+Resources:
+  # --- SQS ---
+  IngestionDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "fsxn-fpolicy-dlq-${AWS::StackName}"
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  IngestionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "fsxn-fpolicy-ingestion-${AWS::StackName}"
+      MessageRetentionPeriod: !Ref MessageRetentionPeriod
+      VisibilityTimeout: 300
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt IngestionDLQ.Arn
+        maxReceiveCount: 3
+
+  # --- EventBridge ---
+  FPolicyEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Ref EventBusName
+
+  # --- Security Group ---
+  FPolicyServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: FPolicy Server EC2 - TCP from VPC
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref FPolicyPort
+          ToPort: !Ref FPolicyPort
+          CidrIp: "10.0.0.0/8"
+          Description: FPolicy TCP from FSxN SVM
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS to AWS services
+      Tags:
+        - Key: Name
+          Value: !Sub "fsxn-fpolicy-ec2-sg-${AWS::StackName}"
+
+  # --- IAM ---
+  Ec2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-ec2-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      Policies:
+        - PolicyName: FPolicyServerAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - !GetAtt IngestionQueue.Arn
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: "FSxN-S3AP-Patterns"
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref Ec2InstanceRole
+
+  # --- EC2 Instance ---
+  FPolicyServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id}}"
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref FPolicyServerSecurityGroup
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
+      Tags:
+        - Key: Name
+          Value: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euo pipefail
+          yum install -y docker
+          systemctl enable docker
+          systemctl start docker
+          aws ecr get-login-password --region ${AWS::Region} | \
+            docker login --username AWS --password-stdin \
+            ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+          docker pull ${ContainerImage}
+          docker run -d \
+            --name fpolicy-server \
+            --restart always \
+            -p ${FPolicyPort}:${FPolicyPort} \
+            -e FPOLICY_PORT=${FPolicyPort} \
+            -e SQS_QUEUE_URL=${IngestionQueue} \
+            -e AWS_REGION=${AWS::Region} \
+            -e MODE=realtime \
+            -e WRITE_COMPLETE_DELAY_SEC=${WriteCompleteDelaySec} \
+            -e SVM_NAME=${SvmName} \
+            -e VOLUME_NAME=${VolumeName} \
+            ${ContainerImage}
+
+  # --- Bridge Lambda ---
+  BridgeLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-bridge-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BridgeLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt IngestionQueue.Arn
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: !GetAtt FPolicyEventBus.Arn
+
+  BridgeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "fsxn-fpolicy-bridge-${AWS::StackName}"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        ZipFile: |
+          import json, os, logging, boto3
+          logger = logging.getLogger(__name__)
+          logger.setLevel(logging.INFO)
+          def handler(event, context):
+              eb = boto3.client("events")
+              bus = os.environ["EVENT_BUS_NAME"]
+              records = event.get("Records", [])
+              failures = []
+              entries = []
+              rmap = {}
+              for r in records:
+                  try:
+                      body = json.loads(r["body"])
+                      entries.append({"Source":"fsxn.fpolicy","DetailType":"FPolicy File Operation","Detail":json.dumps(body),"EventBusName":bus})
+                      rmap[len(entries)-1] = r["messageId"]
+                  except Exception as e:
+                      failures.append({"itemIdentifier": r["messageId"]})
+              for i in range(0, len(entries), 10):
+                  batch = entries[i:i+10]
+                  try:
+                      resp = eb.put_events(Entries=batch)
+                      for j, e in enumerate(resp.get("Entries",[])):
+                          if "ErrorCode" in e:
+                              mid = rmap.get(i+j)
+                              if mid: failures.append({"itemIdentifier": mid})
+                  except Exception:
+                      for j in range(len(batch)):
+                          mid = rmap.get(i+j)
+                          if mid: failures.append({"itemIdentifier": mid})
+              return {"batchItemFailures": failures}
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt BridgeLambdaRole.Arn
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: !Ref EventBusName
+      Architectures:
+        - arm64
+
+  BridgeEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt IngestionQueue.Arn
+      FunctionName: !GetAtt BridgeLambda.Arn
+      BatchSize: 10
+      MaximumBatchingWindowInSeconds: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+Outputs:
+  InstancePrivateIp:
+    Description: EC2 Private IP — ONTAP external-engine の primary_servers に指定
+    Value: !GetAtt FPolicyServerInstance.PrivateIp
+
+  IngestionQueueUrl:
+    Description: SQS Ingestion Queue URL
+    Value: !Ref IngestionQueue
+
+  EventBusArn:
+    Description: EventBridge Custom Bus ARN
+    Value: !GetAtt FPolicyEventBus.Arn
+
+  OntapExternalEngineCommand:
+    Description: ONTAP FPolicy external-engine 作成コマンド
+    Value: !Sub |
+      vserver fpolicy policy external-engine create \
+        -vserver <SVM_NAME> \
+        -engine-name fpolicy_aws_engine \
+        -primary-servers ${FPolicyServerInstance.PrivateIp} \
+        -port ${FPolicyPort} \
+        -extern-engine-type asynchronous
