@@ -87,3 +87,14 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 - [FPolicy E2E Verification Report](../event-driven/fpolicy-e2e-verification-report.md)
 - [FPolicy Server Deployment Architecture](../event-driven/fpolicy-server-deployment-architecture.md)
 - [NetApp ONTAP FPolicy Docs](https://docs.netapp.com/us-en/ontap/nas-audit/fpolicy-config-types-concept.html)
+
+## SMB (CIFS) 設定（需要 Active Directory）
+
+### 前提條件
+- AWS Managed Microsoft AD 或 Self-Managed AD
+- 建立時包含 AD 加入設定的 FSxN SVM
+- 磁碟區上已建立 CIFS 共用
+
+### 重要說明
+- SVM 必須在建立時包含 AD 設定 — FSxN 上無法向現有僅 NFS 的 SVM 新增 CIFS
+- AWS Managed AD 使用 `OU=Computers,OU=<domain>,DC=<domain>,DC=local`
