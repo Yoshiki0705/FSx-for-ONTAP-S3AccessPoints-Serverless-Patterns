@@ -1,12 +1,16 @@
-"""FPolicy Engine — ONTAP FPolicy イベント受信 + SQS 転送.
+"""FPolicy Engine IP Updater — ECS タスク IP 変更時に ONTAP external-engine を自動更新.
 
-ONTAP FPolicy の外部サーバーとして動作し、ファイル操作イベントを
-SQS Ingestion Queue に転送する。
+EventBridge ECS Task State Change イベントをトリガーとして、
+新しい Fargate タスクの Private IP を ONTAP FPolicy external-engine に反映する。
 
 Environment Variables:
-    SQS_QUEUE_URL: Ingestion Queue の URL
-    DLQ_URL: Dead Letter Queue の URL（バリデーション失敗時）
-    MAX_RETRIES: SQS 送信リトライ回数 (default: 3)
+    FSXN_MGMT_IP: FSxN SVM 管理 IP (e.g., 10.0.3.72)
+    FSXN_SVM_UUID: FSxN SVM UUID
+    FSXN_ENGINE_NAME: FPolicy external-engine 名 (default: fpolicy_aws_engine)
+    FSXN_POLICY_NAME: FPolicy ポリシー名 (default: fpolicy_aws)
+    FSXN_CREDENTIALS_SECRET: Secrets Manager シークレット名
+    ECS_CLUSTER_NAME: 監視対象 ECS クラスター名
+    ECS_SERVICE_NAME: 監視対象 ECS サービス名
 """
 
 from __future__ import annotations
@@ -18,247 +22,125 @@ import time
 from typing import Any
 
 import boto3
-import jsonschema
+import urllib3
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Lazy-loaded schema
-_schema: dict | None = None
-
-SCHEMA_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "fpolicy-event-schema.json",
-)
-
-# Fallback: try shared/schemas/ path for local development/testing
-_SCHEMA_PATH_FALLBACK = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "schemas",
-    "fpolicy-event-schema.json",
-)
-
-
-class SchemaValidationError(Exception):
-    """FPolicy イベントの JSON Schema バリデーション失敗."""
-
-    def __init__(self, message: str, errors: list[str] | None = None):
-        super().__init__(message)
-        self.errors = errors or []
-
-
-class SqsIngestionError(Exception):
-    """SQS 送信の全リトライ失敗."""
-
-    def __init__(self, message: str, last_error: Exception | None = None):
-        super().__init__(message)
-        self.last_error = last_error
-
-
-def _load_schema() -> dict:
-    """JSON Schema をファイルから読み込む（キャッシュ付き）."""
-    global _schema
-    if _schema is None:
-        schema_path = os.environ.get("SCHEMA_PATH", SCHEMA_PATH)
-        # Try primary path first, then fallback for local dev/testing
-        if not os.path.exists(schema_path):
-            schema_path = _SCHEMA_PATH_FALLBACK
-        with open(schema_path) as f:
-            _schema = json.load(f)
-    return _schema
-
-
-def validate_fpolicy_event(event: dict[str, Any], schema: dict | None = None) -> bool:
-    """FPolicy イベントを JSON Schema に対してバリデーションする.
-
-    Args:
-        event: バリデーション対象のイベント
-        schema: JSON Schema 定義（None の場合はデフォルトスキーマを使用）
-
-    Returns:
-        bool: バリデーション成功時 True
-
-    Raises:
-        SchemaValidationError: バリデーション失敗時
-    """
-    if schema is None:
-        schema = _load_schema()
-
-    validator = jsonschema.Draft7Validator(schema)
-    errors = list(validator.iter_errors(event))
-
-    if errors:
-        error_messages = [f"{e.json_path}: {e.message}" for e in errors]
-        raise SchemaValidationError(
-            f"FPolicy event validation failed with {len(errors)} error(s)",
-            errors=error_messages,
-        )
-
-    return True
-
-
-def send_to_sqs_with_retry(
-    queue_url: str,
-    message_body: str,
-    max_retries: int = 3,
-    base_delay: float = 1.0,
-    sqs_client: Any | None = None,
-) -> str:
-    """エクスポネンシャルバックオフリトライ付き SQS 送信.
-
-    Args:
-        queue_url: SQS キュー URL
-        message_body: メッセージ本文（JSON 文字列）
-        max_retries: 最大リトライ回数
-        base_delay: 初回リトライ待機秒数
-        sqs_client: SQS クライアント（テスト用 DI）
-
-    Returns:
-        str: SQS MessageId
-
-    Raises:
-        SqsIngestionError: 全リトライ失敗時
-    """
-    if sqs_client is None:
-        sqs_client = boto3.client("sqs")
-
-    last_error: Exception | None = None
-
-    for attempt in range(max_retries):
-        try:
-            response = sqs_client.send_message(
-                QueueUrl=queue_url,
-                MessageBody=message_body,
-            )
-            return response["MessageId"]
-        except Exception as e:
-            last_error = e
-            if attempt < max_retries - 1:
-                delay = base_delay * (2**attempt)
-                logger.warning(
-                    "SQS send failed (attempt %d/%d), retrying in %.1fs: %s",
-                    attempt + 1,
-                    max_retries,
-                    delay,
-                    str(e),
-                )
-                time.sleep(delay)
-
-    raise SqsIngestionError(
-        f"All {max_retries} SQS send attempts failed",
-        last_error=last_error,
-    )
-
-
-def _emit_metric(metric_name: str, value: float = 1.0) -> None:
-    """CloudWatch メトリクスを出力する."""
-    try:
-        cw_client = boto3.client("cloudwatch")
-        cw_client.put_metric_data(
-            Namespace="FSxN-S3AP-Patterns",
-            MetricData=[
-                {
-                    "MetricName": metric_name,
-                    "Value": value,
-                    "Unit": "Count",
-                }
-            ],
-        )
-    except Exception as e:
-        logger.error("Failed to emit metric %s: %s", metric_name, str(e))
+# Disable SSL warnings for ONTAP self-signed cert
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """FPolicy イベントを受信し、バリデーション後に SQS に送信する.
+    """ECS Task State Change イベントを処理し、ONTAP engine IP を更新する.
 
-    Args:
-        event: FPolicy イベント（ONTAP から HTTP POST で受信）
-        context: Lambda コンテキスト
-
-    Returns:
-        dict: 処理結果 (status, event_id, queue_message_id)
+    トリガー条件:
+    - ECS Task State Change (RUNNING)
+    - 対象クラスター・サービスのタスクのみ
     """
-    queue_url = os.environ["SQS_QUEUE_URL"]
-    dlq_url = os.environ.get("DLQ_URL", "")
-    max_retries = int(os.environ.get("MAX_RETRIES", "3"))
+    logger.info("Event received: %s", json.dumps(event, default=str))
 
-    # Handle batch events (multiple FPolicy events in one invocation)
-    events = event.get("events", [event]) if "events" in event else [event]
-    results = []
+    # Extract task details from event
+    detail = event.get("detail", {})
+    last_status = detail.get("lastStatus", "")
+    desired_status = detail.get("desiredStatus", "")
+    cluster_arn = detail.get("clusterArn", "")
+    group = detail.get("group", "")  # "service:<service-name>"
 
-    for fpolicy_event in events:
-        event_id = fpolicy_event.get("event_id", "unknown")
+    # Only process RUNNING tasks
+    if last_status != "RUNNING" or desired_status != "RUNNING":
+        logger.info("Skipping: lastStatus=%s, desiredStatus=%s", last_status, desired_status)
+        return {"statusCode": 200, "body": "Skipped: not a RUNNING task"}
 
-        try:
-            # Step 1: Validate against JSON Schema
-            validate_fpolicy_event(fpolicy_event)
-            logger.info("Event %s validated successfully", event_id)
+    # Verify cluster and service match
+    expected_cluster = os.environ.get("ECS_CLUSTER_NAME", "")
+    expected_service = os.environ.get("ECS_SERVICE_NAME", "")
 
-            # Step 2: Send to SQS with retry
-            message_body = json.dumps(fpolicy_event, ensure_ascii=False)
-            message_id = send_to_sqs_with_retry(
-                queue_url=queue_url,
-                message_body=message_body,
-                max_retries=max_retries,
-            )
+    if expected_cluster and expected_cluster not in cluster_arn:
+        logger.info("Skipping: cluster %s doesn't match %s", cluster_arn, expected_cluster)
+        return {"statusCode": 200, "body": "Skipped: wrong cluster"}
 
-            logger.info(
-                "Event %s sent to SQS (MessageId: %s)", event_id, message_id
-            )
-            results.append(
-                {
-                    "status": "success",
-                    "event_id": event_id,
-                    "queue_message_id": message_id,
-                }
-            )
+    if expected_service and f"service:{expected_service}" != group:
+        logger.info("Skipping: group %s doesn't match service:%s", group, expected_service)
+        return {"statusCode": 200, "body": "Skipped: wrong service"}
 
-        except SchemaValidationError as e:
-            logger.error(
-                "Schema validation failed for event %s: %s", event_id, str(e)
-            )
-            _emit_metric("SchemaValidationFailures")
+    # Extract task private IP from attachments
+    attachments = detail.get("attachments", [])
+    task_ip = None
+    for attachment in attachments:
+        if attachment.get("type") == "ElasticNetworkInterface":
+            for kv in attachment.get("details", []):
+                if kv.get("name") == "privateIPv4Address":
+                    task_ip = kv.get("value")
+                    break
+        if task_ip:
+            break
 
-            # Send to DLQ if available
-            if dlq_url:
-                try:
-                    sqs_client = boto3.client("sqs")
-                    sqs_client.send_message(
-                        QueueUrl=dlq_url,
-                        MessageBody=json.dumps(
-                            {
-                                "original_event": fpolicy_event,
-                                "error": str(e),
-                                "validation_errors": e.errors,
-                            },
-                            ensure_ascii=False,
-                        ),
-                    )
-                except Exception as dlq_err:
-                    logger.error("Failed to send to DLQ: %s", str(dlq_err))
+    if not task_ip:
+        logger.error("Could not extract task IP from event")
+        return {"statusCode": 500, "body": "Failed: no task IP found"}
 
-            results.append(
-                {
-                    "status": "validation_failed",
-                    "event_id": event_id,
-                    "error": str(e),
-                }
-            )
+    logger.info("New task IP: %s", task_ip)
 
-        except SqsIngestionError as e:
-            logger.error(
-                "SQS ingestion failed for event %s: %s", event_id, str(e)
-            )
-            _emit_metric("FPolicyIngestionFailures")
-            results.append(
-                {
-                    "status": "ingestion_failed",
-                    "event_id": event_id,
-                    "error": str(e),
-                }
-            )
+    # Get ONTAP credentials from Secrets Manager
+    secret_name = os.environ["FSXN_CREDENTIALS_SECRET"]
+    sm_client = boto3.client("secretsmanager")
+    secret_value = sm_client.get_secret_value(SecretId=secret_name)
+    creds = json.loads(secret_value["SecretString"])
+    username = creds["username"]
+    password = creds["password"]
 
+    # Update ONTAP FPolicy external-engine
+    mgmt_ip = os.environ["FSXN_MGMT_IP"]
+    svm_uuid = os.environ["FSXN_SVM_UUID"]
+    engine_name = os.environ.get("FSXN_ENGINE_NAME", "fpolicy_aws_engine")
+    policy_name = os.environ.get("FSXN_POLICY_NAME", "fpolicy_aws")
+
+    http = urllib3.PoolManager(cert_reqs="CERT_NONE")
+    base_url = f"https://{mgmt_ip}/api/protocols/fpolicy/{svm_uuid}"
+    headers = urllib3.make_headers(basic_auth=f"{username}:{password}")
+    headers["Content-Type"] = "application/json"
+
+    # Step 1: Disable policy
+    logger.info("Disabling FPolicy policy: %s", policy_name)
+    resp = http.request(
+        "PATCH",
+        f"{base_url}/policies/{policy_name}",
+        headers=headers,
+        body=json.dumps({"enabled": False}).encode(),
+    )
+    if resp.status not in (200, 202):
+        logger.warning("Policy disable response: %d %s", resp.status, resp.data.decode())
+
+    # Brief wait for policy to fully disable
+    time.sleep(2)
+
+    # Step 2: Update engine primary_servers
+    logger.info("Updating engine %s primary_servers to %s", engine_name, task_ip)
+    resp = http.request(
+        "PATCH",
+        f"{base_url}/engines/{engine_name}",
+        headers=headers,
+        body=json.dumps({"primary_servers": [task_ip]}).encode(),
+    )
+    if resp.status not in (200, 202):
+        error_msg = resp.data.decode()
+        logger.error("Engine update failed: %d %s", resp.status, error_msg)
+        return {"statusCode": 500, "body": f"Engine update failed: {error_msg}"}
+
+    # Step 3: Re-enable policy
+    logger.info("Re-enabling FPolicy policy: %s", policy_name)
+    resp = http.request(
+        "PATCH",
+        f"{base_url}/policies/{policy_name}",
+        headers=headers,
+        body=json.dumps({"enabled": True, "priority": 1}).encode(),
+    )
+    if resp.status not in (200, 202):
+        logger.warning("Policy enable response: %d %s", resp.status, resp.data.decode())
+
+    logger.info("Successfully updated ONTAP engine IP to %s", task_ip)
     return {
         "statusCode": 200,
-        "body": {"processed": len(results), "results": results},
+        "body": f"Updated engine {engine_name} to {task_ip}",
     }

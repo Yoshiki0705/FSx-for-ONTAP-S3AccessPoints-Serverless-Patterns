@@ -1,0 +1,207 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  FPolicy External Server on ECS (EC2 Launch Type).
+  Fargate 版と同等の機能を EC2 インスタンス上で実行する。
+  固定 IP が必要な場合や、コスト最適化が必要な場合に使用。
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: FPolicy Server を配置する VPC ID（FSxN と同一 VPC）
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: EC2 インスタンスを配置する Private Subnet（単一 AZ）
+
+  FsxnSvmSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: FSxN SVM の Security Group ID
+
+  SqsQueueUrl:
+    Type: String
+    Description: FPolicy イベント送信先 SQS Queue URL
+
+  ContainerImage:
+    Type: String
+    Description: FPolicy Server コンテナイメージ URI（ECR）
+
+  FPolicyPort:
+    Type: Number
+    Default: 9898
+    Description: FPolicy TCP リスニングポート
+
+  InstanceType:
+    Type: String
+    Default: "t4g.micro"
+    AllowedValues: ["t4g.micro", "t4g.small", "t4g.medium"]
+    Description: EC2 インスタンスタイプ（ARM64 Graviton）
+
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: SSH キーペア名（デバッグ用、省略可）
+
+  WriteCompleteDelaySec:
+    Type: Number
+    Default: 5
+    MinValue: 0
+    MaxValue: 60
+    Description: NFSv3 write-complete 待機秒数
+
+  SvmName:
+    Type: String
+    Default: "FSxN_OnPre"
+    Description: SVM 名（FPolicy イベントに含める）
+
+  VolumeName:
+    Type: String
+    Default: "vol1"
+    Description: ボリューム名（FPolicy イベントに含める）
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+
+Resources:
+  # --- Security Group ---
+  FPolicyServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: FPolicy Server EC2 - TCP from VPC
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref FPolicyPort
+          ToPort: !Ref FPolicyPort
+          CidrIp: "10.0.0.0/8"
+          Description: FPolicy TCP from FSxN SVM
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS to AWS services
+      Tags:
+        - Key: Name
+          Value: !Sub "fsxn-fpolicy-ec2-sg-${AWS::StackName}"
+
+  # --- IAM Role for EC2 ---
+  Ec2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-ec2-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      Policies:
+        - PolicyName: FPolicyServerAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - !Sub "arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:fsxn-fpolicy-*"
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: "FSxN-S3AP-Patterns"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ec2/fsxn-fpolicy-*"
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref Ec2InstanceRole
+
+  # --- EC2 Instance ---
+  FPolicyServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id}}"
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref FPolicyServerSecurityGroup
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
+      Tags:
+        - Key: Name
+          Value: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euo pipefail
+
+          # Install Docker
+          yum install -y docker
+          systemctl enable docker
+          systemctl start docker
+
+          # ECR Login
+          aws ecr get-login-password --region ${AWS::Region} | \
+            docker login --username AWS --password-stdin \
+            ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+
+          # Pull and run FPolicy server container
+          docker pull ${ContainerImage}
+          docker run -d \
+            --name fpolicy-server \
+            --restart always \
+            -p ${FPolicyPort}:${FPolicyPort} \
+            -e FPOLICY_PORT=${FPolicyPort} \
+            -e SQS_QUEUE_URL=${SqsQueueUrl} \
+            -e AWS_REGION=${AWS::Region} \
+            -e MODE=realtime \
+            -e WRITE_COMPLETE_DELAY_SEC=${WriteCompleteDelaySec} \
+            -e SVM_NAME=${SvmName} \
+            -e VOLUME_NAME=${VolumeName} \
+            ${ContainerImage}
+
+          echo "FPolicy server started on port ${FPolicyPort}"
+
+  # --- CloudWatch Log Group ---
+  FPolicyLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ec2/fsxn-fpolicy-server-${AWS::StackName}"
+      RetentionInDays: 30
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref FPolicyServerInstance
+
+  PrivateIp:
+    Description: >
+      EC2 Instance Private IP — ONTAP external-engine の primary_servers に指定する。
+      EC2 の場合は IP が固定されるため、Fargate のような IP 自動更新は不要。
+    Value: !GetAtt FPolicyServerInstance.PrivateIp
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateIp"
+
+  OntapExternalEngineCommand:
+    Description: ONTAP FPolicy external-engine 作成コマンド
+    Value: !Sub |
+      vserver fpolicy policy external-engine create \
+        -vserver <SVM_NAME> \
+        -engine-name fpolicy_aws_engine \
+        -primary-servers ${FPolicyServerInstance.PrivateIp} \
+        -port ${FPolicyPort} \
+        -extern-engine-type asynchronous

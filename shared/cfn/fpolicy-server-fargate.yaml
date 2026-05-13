@@ -191,6 +191,10 @@ Resources:
               Value: !Ref Mode
             - Name: WRITE_COMPLETE_DELAY_SEC
               Value: !Sub "${WriteCompleteDelaySec}"
+            - Name: SVM_NAME
+              Value: "FSxN_OnPre"
+            - Name: VOLUME_NAME
+              Value: "vol1"
           LogConfiguration:
             LogDriver: awslogs
             Options:
