@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+set timeout 90
+set ontap_pass [lindex $argv 0]
+set ad_user "Admin"
+set ad_pass "FPolicy2026!"
+
+spawn sshpass -p $ontap_pass ssh -o StrictHostKeyChecking=no -o PubkeyAcceptedAlgorithms=+ssh-rsa -o HostKeyAlgorithms=+ssh-rsa fsxadmin@10.0.3.72 "vserver cifs create -vserver FSxN_OnPre -cifs-server FSXNFPOLICY -domain fpolicy.local -ou OU=Computers,OU=fpolicy,DC=fpolicy,DC=local"
+
+expect "user name:"
+send "$ad_user\r"
+
+expect "password:"
+send "$ad_pass\r"
+
+expect {
+    "::>" { puts "\nCIFS server created successfully" }
+    timeout { puts "\nTimeout waiting for completion" }
+    eof { puts "\nConnection closed" }
+}
