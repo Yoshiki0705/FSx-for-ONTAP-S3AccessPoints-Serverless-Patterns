@@ -6,7 +6,7 @@
 
 This guide explains how to configure ONTAP FPolicy to forward file operation events to AWS services (SQS → EventBridge → Step Functions).
 
-> ⚠️ **IMPORTANT: Mount with NFSv3. NFSv4 blocks NFS operations with FPolicy external server mode.**
+> ⚠️ **IMPORTANT: Mount with NFSv4.1 or NFSv3. Do NOT use vers=4 (negotiates to NFSv4.2 which is not supported by FPolicy).**
 
 > ⚠️ **IMPORTANT: ONTAP FPolicy protocol does NOT work via NLB TCP passthrough. Use Fargate task direct Private IP.**
 
@@ -73,7 +73,7 @@ curl -sk -u fsxadmin:<PASS> -X POST 'https://<MGMT_IP>/api/protocols/fpolicy/<SV
   -d '{"name":"fpolicy_aws","mandatory":false,"engine":{"name":"fpolicy_aws_engine"},"events":[{"name":"nfsv3_file_events"}],"scope":{"include_volumes":["<VOLUME>"]},"priority":1}'
 
 # 5. Test (from bastion, NFSv3 mount)
-mount -t nfs -o vers=3 <SVM_IP>:/<VOL_PATH> /mnt/fsxn
+mount -t nfs -o vers=4.1 <SVM_IP>:/<VOL_PATH> /mnt/fsxn
 echo "test" | sudo tee /mnt/fsxn/fpolicy-test.txt
 
 # 6. Verify SQS
