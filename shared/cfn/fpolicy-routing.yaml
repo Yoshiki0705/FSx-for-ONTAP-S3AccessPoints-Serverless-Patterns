@@ -1,0 +1,159 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  FPolicy Routing Infrastructure — EventBridge カスタムバス + UC 別ルーティング.
+  SQS → EventBridge Bridge Lambda + Idempotency Store.
+
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: Lambda デプロイパッケージ格納 S3 バケット名
+
+  DeployPrefix:
+    Type: String
+    Default: "fpolicy-routing"
+    Description: Lambda パッケージの S3 プレフィックス
+
+  IngestionQueueArn:
+    Type: String
+    Description: FPolicy Ingestion Queue ARN（fpolicy-ingestion スタックの出力）
+
+  IngestionQueueUrl:
+    Type: String
+    Description: FPolicy Ingestion Queue URL
+
+  EventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+    Description: EventBridge カスタムイベントバス名
+
+  IdempotencyTtlSeconds:
+    Type: Number
+    Default: 86400
+    Description: Idempotency Store の TTL（秒）。デフォルト 24 時間
+
+Resources:
+  # --- EventBridge Custom Bus ---
+  FPolicyEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Ref EventBusName
+
+  # --- DynamoDB Idempotency Store ---
+  IdempotencyStore:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "fsxn-fpolicy-idempotency-${AWS::StackName}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # --- SQS → EventBridge Bridge Lambda ---
+  BridgeLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-bridge-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BridgeLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !Ref IngestionQueueArn
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: !GetAtt FPolicyEventBus.Arn
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource:
+                  - !Sub "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: "FSxN-S3AP-Patterns"
+
+  BridgeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "fsxn-fpolicy-bridge-${AWS::StackName}"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: !Sub "${DeployPrefix}/sqs_to_eventbridge.zip"
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt BridgeLambdaRole.Arn
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: !Ref EventBusName
+          DETAIL_TYPE: "FPolicy File Operation"
+          SOURCE: "fsxn.fpolicy"
+      Architectures:
+        - arm64
+
+  # --- SQS Event Source Mapping ---
+  BridgeEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !Ref IngestionQueueArn
+      FunctionName: !GetAtt BridgeLambda.Arn
+      BatchSize: 10
+      MaximumBatchingWindowInSeconds: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+  # --- EventBridge Archive (for replay — deployed separately if needed) ---
+  # Note: Archive requires the event bus to exist first.
+  # Deploy via a separate update after initial stack creation if needed.
+
+Outputs:
+  EventBusArn:
+    Description: FPolicy EventBridge Custom Bus ARN
+    Value: !GetAtt FPolicyEventBus.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-EventBusArn"
+
+  EventBusName:
+    Description: FPolicy EventBridge Custom Bus Name
+    Value: !Ref EventBusName
+    Export:
+      Name: !Sub "${AWS::StackName}-EventBusName"
+
+  IdempotencyStoreArn:
+    Description: Idempotency DynamoDB Table ARN
+    Value: !GetAtt IdempotencyStore.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-IdempotencyStoreArn"
+
+  IdempotencyStoreName:
+    Description: Idempotency DynamoDB Table Name
+    Value: !Ref IdempotencyStore
+    Export:
+      Name: !Sub "${AWS::StackName}-IdempotencyStoreName"
+
+  BridgeLambdaArn:
+    Description: SQS → EventBridge Bridge Lambda ARN
+    Value: !GetAtt BridgeLambda.Arn
