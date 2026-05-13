@@ -74,9 +74,11 @@ Resources:
           #!/bin/bash
           yum install -y nfs-utils samba-client
           mkdir -p /mnt/fsxn
-          # NFSv3 でマウント（重要: NFSv4 は FPolicy でブロックされる）
-          mount -t nfs -o vers=3 ${FsxnSvmIp}:${FsxnVolumePath} /mnt/fsxn
-          echo "${FsxnSvmIp}:${FsxnVolumePath} /mnt/fsxn nfs vers=3,defaults 0 0" >> /etc/fstab
+          # NFSv4.1 でマウント（推奨）
+          # 重要: vers=4 は NFSv4.2 にネゴシエートされ FPolicy 非サポート
+          # 必ず vers=4.1 または vers=3 を明示指定すること
+          mount -t nfs -o vers=4.1 ${FsxnSvmIp}:${FsxnVolumePath} /mnt/fsxn
+          echo "${FsxnSvmIp}:${FsxnVolumePath} /mnt/fsxn nfs vers=4.1,defaults 0 0" >> /etc/fstab
 
   # --- SQS VPC Endpoint (FPolicy Server → SQS 送信に必須) ---
   SqsVpcEndpoint:
@@ -104,8 +106,8 @@ Outputs:
     Value: !Ref SqsVpcEndpoint
 
   NfsMountCommand:
-    Description: NFSv3 マウントコマンド（踏み台 EC2 で自動実行済み）
-    Value: !Sub "mount -t nfs -o vers=3 ${FsxnSvmIp}:${FsxnVolumePath} /mnt/fsxn"
+    Description: NFS マウントコマンド（踏み台 EC2 で自動実行済み）
+    Value: !Sub "mount -t nfs -o vers=4.1 ${FsxnSvmIp}:${FsxnVolumePath} /mnt/fsxn"
 
   TestCommand:
     Description: FPolicy E2E テストコマンド
@@ -123,8 +125,8 @@ Outputs:
     Description: >
       ONTAP FPolicy 設定手順（手動実行が必要）:
       1. Engine: asynchronous, primary-servers=<FARGATE_TASK_IP>, port=9898
-      2. Event: protocol=nfsv3, file-operations=create,write,delete,rename
+      2. Event: protocol=nfsv4 (NFSv4.0/4.1対応), file-operations=create,write,delete,rename
       3. Policy: mandatory=false, priority=1
       4. Scope: include-volumes=<VOLUME_NAME>
-      重要: NFSv4 は使用不可（NFS 操作がブロックされる）
-    Value: "See docs/event-driven/fpolicy-configuration-reference.md"
+      重要: mount -o vers=4.1 を使用（vers=4 は NFSv4.2 にネゴシエートされ FPolicy 非サポート）
+    Value: "See docs/event-driven/README.md"

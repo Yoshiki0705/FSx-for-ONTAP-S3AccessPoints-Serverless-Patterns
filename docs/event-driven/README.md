@@ -59,10 +59,16 @@ TASK_IP=$(aws ecs describe-tasks --cluster <CLUSTER> --tasks $TASK_ARN --query '
 # 詳細: docs/event-driven/fpolicy-configuration-reference.md Section 3
 ```
 
-**重要**: NFSv3 でマウントすること。NFSv4 は FPolicy でブロックされる。
+**重要**: NFSv4.1 または NFSv3 でマウントすること。`vers=4` は NFSv4.2 にネゴシエートされ FPolicy 非サポート。
 
 ```bash
+# 推奨: NFSv4.1
+mount -t nfs -o vers=4.1 <SVM_IP>:/vol1 /mnt/fsxn
+
+# または NFSv3
 mount -t nfs -o vers=3 <SVM_IP>:/vol1 /mnt/fsxn
+
+# NG: vers=4 は使用禁止（NFSv4.2 にネゴシエートされる）
 ```
 
 ### Step 4: テスト

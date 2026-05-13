@@ -46,8 +46,10 @@ Parameters:
   # ★ SQS VPC Endpoint がないと FPolicy イベントは受信できるが SQS 送信がタイムアウトする
   #
   # NFS マウント要件:
-  # - NFSv3 でマウントすること (mount -o vers=3)
-  # - NFSv4 は FPolicy 外部サーバーモードで NFS 操作がブロックされる（ONTAP の制約）
+  # - NFSv4.1 でマウント推奨 (mount -o vers=4.1)
+  # - NFSv3 も動作する (mount -o vers=3)
+  # - vers=4 は使用禁止（NFSv4.2 にネゴシエートされ FPolicy 非サポート）
+  # - NFSv4.2 は ONTAP FPolicy monitoring 非サポート（NetApp KB 明記）
 
   WriteCompleteDelaySec:
     Type: Number
