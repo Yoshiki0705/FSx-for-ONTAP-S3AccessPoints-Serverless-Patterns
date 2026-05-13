@@ -27,6 +27,7 @@ Cada caso de uso es un template de CloudFormation independiente, con módulos co
 
 - **Arquitectura basada en sondeo**: Dado que S3 AP no soporta `GetBucketNotificationConfiguration`, ejecución periódica mediante EventBridge Scheduler + Step Functions
 - **Ruta basada en eventos (Phase 10)**: Detección de eventos de archivos NFSv3 mediante ONTAP FPolicy → ECS Fargate → SQS → EventBridge ([Inicio rápido](docs/event-driven/README.md))
+- **Soporte SMB (CIFS) verificado**: FPolicy E2E probado con protocolos NFSv3 y SMB — SVM unida a AD requerida para SMB ([Configuración SMB](docs/event-driven/README.md#smb-cifs-テスト手順))
 - **Separación de módulos compartidos**: OntapClient / FsxHelper / S3ApHelper reutilizados en todos los casos de uso
 - **CloudFormation / SAM Transform**: Cada caso de uso es un template de CloudFormation independiente con SAM Transform
 - **Seguridad primero**: Verificación TLS habilitada por defecto, IAM de mínimo privilegio, cifrado KMS

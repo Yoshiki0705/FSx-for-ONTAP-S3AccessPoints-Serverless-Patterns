@@ -87,3 +87,14 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 - [FPolicy E2E Verification Report](../event-driven/fpolicy-e2e-verification-report.md)
 - [FPolicy Server Deployment Architecture](../event-driven/fpolicy-server-deployment-architecture.md)
 - [NetApp ONTAP FPolicy Docs](https://docs.netapp.com/us-en/ontap/nas-audit/fpolicy-config-types-concept.html)
+
+## SMB (CIFS) Einrichtung (Active Directory erforderlich)
+
+### Voraussetzungen
+- AWS Managed Microsoft AD oder Self-Managed AD
+- FSxN SVM mit AD-Beitrittskonfiguration erstellt
+- CIFS-Freigabe auf dem Volume erstellt
+
+### Wichtige Hinweise
+- SVM muss MIT AD-Konfiguration erstellt werden — CIFS kann nicht nachträglich zu einer reinen NFS-SVM auf FSxN hinzugefügt werden
+- Für AWS Managed AD: `OU=Computers,OU=<domain>,DC=<domain>,DC=local` verwenden

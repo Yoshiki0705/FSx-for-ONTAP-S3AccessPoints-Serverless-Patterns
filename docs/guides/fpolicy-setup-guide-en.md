@@ -80,6 +80,57 @@ echo "test" | sudo tee /mnt/fsxn/fpolicy-test.txt
 aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 ```
 
+
+## SMB (CIFS) Setup (requires Active Directory)
+
+### Prerequisites
+- AWS Managed Microsoft AD or Self-Managed AD
+- FSxN SVM created with AD join configuration
+- CIFS share created on the volume
+
+### Steps
+
+```bash
+# 1. Create AWS Managed Microsoft AD
+aws ds create-microsoft-ad \
+  --name fpolicy.local --short-name FPOLICY \
+  --password '<AD_PASSWORD>' \
+  --vpc-settings VpcId=<VPC>,SubnetIds=<SUBNET1>,<SUBNET2> \
+  --edition Standard
+
+# 2. Create FSxN SVM with AD join (IMPORTANT: must include AD at creation time)
+aws fsx create-storage-virtual-machine \
+  --file-system-id <FS_ID> --name FPolicySMB \
+  --active-directory-configuration \
+    'NetBiosName=FPOLSMB,SelfManagedActiveDirectoryConfiguration={DomainName=fpolicy.local,UserName=Admin,Password=<AD_PASSWORD>,DnsIps=[<DNS1>,<DNS2>],OrganizationalUnitDistinguishedName="OU=Computers,OU=fpolicy,DC=fpolicy,DC=local"}' \
+  --root-volume-security-style NTFS
+
+# 3. Create volume (NTFS security style)
+aws fsx create-volume --volume-type ONTAP --name smb_test_vol \
+  --ontap-configuration '{"JunctionPath":"/smb_test","StorageVirtualMachineId":"<SVM_ID>","SizeInMegabytes":1024,"SecurityStyle":"NTFS"}'
+
+# 4. Create CIFS share (via ONTAP REST API from bastion)
+curl -sk -u fsxadmin:<PASS> -X POST 'https://<MGMT_IP>/api/protocols/cifs/shares' \
+  -H 'Content-Type: application/json' \
+  -d '{"svm":{"uuid":"<SVM_UUID>"},"name":"smb_test","path":"/smb_test"}'
+
+# 5. Configure FPolicy (same as NFSv3 but with cifs event)
+# Event: protocol=cifs, file_operations=create,write,delete,rename
+
+# 6. Test SMB file creation
+smbclient //<SVM_IP>/smb_test -U 'DOMAIN\Admin%<PASSWORD>' \
+  --option='client min protocol=SMB2' \
+  -c 'put /tmp/test.txt SMB-TEST.txt'
+
+# 7. Verify SQS
+aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
+```
+
+### Important Notes
+- SVM must be created WITH AD configuration — cannot add CIFS protocol to existing NFS-only SVM on FSxN
+- Use `OU=Computers,OU=<domain>,DC=<domain>,DC=local` for OrganizationalUnit (AWS Managed AD)
+- SMB port 445 is only available when SVM has CIFS protocol enabled at creation
+
 ## Related Documentation
 
 - [Event-Driven README (Quickstart)](../event-driven/README.md)
