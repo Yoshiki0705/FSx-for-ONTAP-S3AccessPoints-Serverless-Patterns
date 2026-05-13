@@ -275,7 +275,11 @@ vserver fpolicy policy event create \
 
 ## 関連ドキュメント
 
+- [イベント駆動 README（クイックスタート）](../event-driven/README.md)
 - [イベント駆動アーキテクチャ設計](../event-driven/architecture-design.md)
+- [FPolicy 設定リファレンス](../event-driven/fpolicy-configuration-reference.md)
+- [FPolicy E2E 検証レポート](../event-driven/fpolicy-e2e-verification-report.md)
+- [FPolicy Server デプロイアーキテクチャ](../event-driven/fpolicy-server-deployment-architecture.md)
 - [移行ガイド](../event-driven/migration-guide.md)
 - [ONTAP FPolicy ドキュメント](https://docs.netapp.com/us-en/ontap/nas-audit/fpolicy-config-types-concept.html)
 - [FSx for ONTAP FPolicy](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/file-access-auditing.html)
