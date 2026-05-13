@@ -26,6 +26,7 @@ Each use case is self-contained in an independent CloudFormation template, with 
 ### Key Features
 
 - **Polling-based architecture**: Since S3 AP does not support `GetBucketNotificationConfiguration`, periodic execution via EventBridge Scheduler + Step Functions
+- **Event-driven path (Phase 10)**: NFSv3 file event detection via ONTAP FPolicy → ECS Fargate → SQS → EventBridge ([Quickstart](docs/event-driven/README.md))
 - **Shared module separation**: OntapClient / FsxHelper / S3ApHelper reused across all use cases
 - **CloudFormation / SAM Transform based**: Each use case is self-contained in an independent CloudFormation template (using SAM Transform)
 - **Security first**: TLS verification enabled by default, least-privilege IAM, KMS encryption
