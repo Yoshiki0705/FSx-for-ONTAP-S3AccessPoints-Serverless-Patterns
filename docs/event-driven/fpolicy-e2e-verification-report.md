@@ -343,13 +343,28 @@ vserver fpolicy enable \
   -sequence-number 1
 ```
 
-### 10.3 NFSv4 の致命的問題
+### 10.3 NFSv4 の問題（未解決 — NetApp サポート報告推奨）
 
-**NFSv4 では `create`/`write`/`delete`/`rename` のいずれのイベントでも NFS 操作がブロックされる。**
-`mandatory: false` + 非同期モードでも同様。これは ONTAP の FPolicy 実装が NFSv4 に対して
-事実上同期的に動作していることを意味する。
+**事象**: NFSv4 プロトコルでファイル操作を行っても NOTI_REQ が送信されない。
 
-**対策**: NFSv3 でマウントする（`mount -t nfs -o vers=3`）
+**決定的テスト（2026-05-14）**:
+- 同一ポリシーに NFSv3 + NFSv4 イベントを含めた状態
+- 同一ボリューム、同一 FPolicy 接続（connected + KEEP_ALIVE 受信中）
+- NFSv3 マウント → ファイル作成 → **即座に NOTI_REQ 受信 + SQS 到達** ✅
+- NFSv4 マウント → ファイル作成 → **NOTI_REQ 送信されない** ❌
+- NFSv3 に戻す → ファイル作成 → **即座に NOTI_REQ 受信** ✅
+
+**排除した仮説**:
+- ❌ 接続不安定 → KEEP_ALIVE 正常受信
+- ❌ NFSv4 イベント未設定 → REST API で確認済み
+- ❌ Scope 不一致 → 同じボリュームで NFSv3 は動作
+- ❌ FPolicy Server 実装問題 → NFSv3 + SMB で動作確認済み
+- ❌ Data LIF 問題 → 同じ LIF で NFSv3/v4 テスト
+
+**結論**: 設定ミスではない。FSxN (ONTAP 9.17.1P6) が NFSv4 の FPolicy 非同期通知を送信しない。
+ドキュメント上はサポートされているため、FSxN 固有の制約か ONTAP のバグの可能性。
+
+**報告書**: `docs/event-driven/nfsv4-fpolicy-issue-report.md` に NetApp サポート向けの詳細報告書を作成済み。
 
 ### 10.4 SQS VPC Endpoint の必要性
 
