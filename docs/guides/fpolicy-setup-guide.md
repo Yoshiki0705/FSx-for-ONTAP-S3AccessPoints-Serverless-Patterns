@@ -219,3 +219,106 @@ Archive が必要な場合は、メインスタックとは別に手動作成す
 - [移行ガイド](../event-driven/migration-guide.md)
 - [ONTAP FPolicy ドキュメント](https://docs.netapp.com/us-en/ontap/nas-audit/fpolicy-config-types-concept.html)
 - [FSx for ONTAP FPolicy](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/file-access-auditing.html)
+
+---
+
+## E2E 検証手順（VPC 内アクセス必要）
+
+以下の手順は VPC 内の EC2 インスタンスから実行する必要がある。
+
+### 前提条件
+
+- VPC 内の EC2 に SSH アクセス可能
+- FSxN SVM 管理エンドポイント（10.0.3.133）に SSH 可能
+- fsxadmin パスワードを把握
+
+### Step 1: NLB Private IP の確認
+
+```bash
+aws ec2 describe-network-interfaces \
+  --filters "Name=description,Values=ELB net/fp-nlb-fsxn-fp-srv/*" \
+  --query 'NetworkInterfaces[*].PrivateIpAddress' --output text
+```
+
+### Step 2: ONTAP FPolicy 設定（SVM 管理 CLI）
+
+```bash
+# EC2 から FSxN SVM に SSH
+ssh fsxadmin@10.0.3.133
+
+# 外部エンジン作成
+vserver fpolicy policy external-engine create \
+  -vserver FSxN_OnPre \
+  -engine-name fpolicy_aws_engine \
+  -primary-servers <NLB_PRIVATE_IP> \
+  -port 9898 \
+  -extern-engine-type asynchronous
+
+# イベント定義
+vserver fpolicy policy event create \
+  -vserver FSxN_OnPre \
+  -event-name fpolicy_file_events \
+  -protocol cifs \
+  -file-operations create,write,delete,rename
+
+# ポリシー作成
+vserver fpolicy policy create \
+  -vserver FSxN_OnPre \
+  -policy-name fpolicy_aws \
+  -events fpolicy_file_events \
+  -engine fpolicy_aws_engine \
+  -is-mandatory false
+
+# スコープ設定
+vserver fpolicy policy scope create \
+  -vserver FSxN_OnPre \
+  -policy-name fpolicy_aws \
+  -volumes-to-include "*"
+
+# 有効化
+vserver fpolicy enable \
+  -vserver FSxN_OnPre \
+  -policy-name fpolicy_aws \
+  -sequence-number 1
+
+# 接続確認
+vserver fpolicy show-engine -vserver FSxN_OnPre
+```
+
+### Step 3: テストファイル作成
+
+```bash
+# NFS マウント経由でファイル作成
+echo "fpolicy e2e test $(date)" > /mnt/fsxn/vol1/test-fpolicy-event.txt
+```
+
+### Step 4: FPolicy Server ログ確認
+
+```bash
+aws logs filter-log-events \
+  --log-group-name "/ecs/fsxn-fpolicy-server-fsxn-fp-srv" \
+  --start-time $(python3 -c "import time; print(int((time.time()-60)*1000))") \
+  --region ap-northeast-1 \
+  --query 'events[*].message' --output text
+```
+
+期待されるログ:
+```
+[Handshake] Policy=fpolicy_aws | Session=...
+[Event] /vol1/test-fpolicy-event.txt
+[SQS] Sent: /vol1/test-fpolicy-event.txt (create)
+```
+
+### Step 5: SQS メッセージ確認
+
+```bash
+aws sqs receive-message \
+  --queue-url "https://sqs.ap-northeast-1.amazonaws.com/178625946981/fsxn-fpolicy-ingestion-fsxn-fpolicy-ingestion" \
+  --max-number-of-messages 5 \
+  --region ap-northeast-1
+```
+
+### Step 6: EventBridge イベント確認
+
+EventBridge カスタムバス `fsxn-fpolicy-events` にイベントが到着していることを確認。
+テスト用 CloudWatch Logs ルールを作成して確認する。

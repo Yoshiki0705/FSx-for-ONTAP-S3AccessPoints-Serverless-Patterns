@@ -114,10 +114,24 @@
 | EventBridge Archive が PropertyValidation 失敗 | 初回デプロイから除外 | fpolicy-routing.yaml |
 | Lambda パッケージングの再現性 | 専用スクリプト作成 | package_fpolicy_lambdas.sh |
 
-## 8. 残課題なし
+## 8. 残課題なし（インフラ層）/ FPolicy E2E 未検証（ONTAP 層）
 
-全タスク完了。Phase 11 に繰り越す項目:
-- FPolicy TCP Server の ECS Fargate デプロイ + FSxN 接続 E2E テスト
+### インフラ層（検証完了）
+全タスク完了。
+
+### ONTAP 層（未検証 — VPC 内アクセス必要）
+
+| 検証項目 | 状態 | 理由 |
+|----------|------|------|
+| ONTAP FPolicy external-engine 設定 | ❌ 未実施 | VPC 内 EC2 アクセス不可 |
+| FSxN SVM → NLB → FPolicy Server TCP 接続 | ❌ 未確認 | 上記に依存 |
+| ファイル操作 → FPolicy 通知 → SQS → EventBridge | ❌ 未確認 | 上記に依存 |
+
+**E2E 検証手順**: `docs/guides/fpolicy-setup-guide.md` の「E2E 検証手順」セクションに記載。
+VPC 内の EC2 にアクセスできる環境で手動実行が必要。
+
+### Phase 11 に繰り越す項目
+- FPolicy E2E 検証（ONTAP CLI 設定 + ファイル操作テスト）
 - Cross-Account Observability 実環境検証
 - shared-services-observability.yaml の Cross-Account Sink 拡張
 
