@@ -40,8 +40,14 @@ Parameters:
   # 3. com.amazonaws.<region>.s3 (Gateway) — ECR イメージレイヤー取得
   # 4. com.amazonaws.<region>.logs (Interface) — CloudWatch Logs
   # 5. com.amazonaws.<region>.sts (Interface) — IAM ロール認証
-  # 6. com.amazonaws.<region>.sqs (Interface) — SQS メッセージ送信（realtime モード時）
+  # 6. com.amazonaws.<region>.sqs (Interface) — SQS メッセージ送信（realtime モード時）★必須
   # deploy_generic_ucs.sh の VPC Endpoint auto-detect が利用可能
+  #
+  # ★ SQS VPC Endpoint がないと FPolicy イベントは受信できるが SQS 送信がタイムアウトする
+  #
+  # NFS マウント要件:
+  # - NFSv3 でマウントすること (mount -o vers=3)
+  # - NFSv4 は FPolicy 外部サーバーモードで NFS 操作がブロックされる（ONTAP の制約）
 
   WriteCompleteDelaySec:
     Type: Number

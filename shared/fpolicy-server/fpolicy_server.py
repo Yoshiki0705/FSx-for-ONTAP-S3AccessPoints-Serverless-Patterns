@@ -268,20 +268,24 @@ class FPolicyServer:
 
         非同期モード: レスポンス不要。
         """
-        # Extract file path from XML
-        path_match = re.search(r"<Path>(.*?)</Path>", body_str)
+        # Extract file path from XML — handle both <Path> and <PathName> tags
+        path_match = re.search(r"<PathName>(.*?)</PathName>", body_str)
         if not path_match:
-            # Try PathName (SCREEN_REQ format)
-            path_match = re.search(r"<PathName>(.*?)</PathName>", body_str)
+            path_match = re.search(r"<Path>(.*?)</Path>", body_str)
 
         if not path_match:
             logger.warning("[NOTI_REQ] No path found in body")
             return
 
         ontap_path = path_match.group(1)
+        # Clean Windows path separators
+        ontap_path = ontap_path.replace("\\", "/").lstrip("/")
 
-        # Extract operation type
+        # Extract operation type from XML
         op_match = re.search(r"<FileOp>(.*?)</FileOp>", body_str)
+        if not op_match:
+            # Try NotfType in header context passed via body
+            op_match = re.search(r"<NotfType>(.*?)</NotfType>", body_str)
         operation = op_match.group(1).lower() if op_match else "create"
 
         # Extract volume name

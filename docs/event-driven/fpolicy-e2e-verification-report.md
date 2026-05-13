@@ -273,3 +273,97 @@ vserver fpolicy policy event modify \
 | CloudFormation Stack | fsxn-fpolicy-ingestion | SQS + Lambda |
 | 踏み台 EC2 | i-01238b758ee7a28e2 | VPC 内アクセス |
 | VPC Endpoints | 5 個 (ECR, S3, Logs, STS) | Fargate 通信 |
+
+---
+
+## 10. E2E 成功検証結果（2026-05-13 最終）
+
+### 10.1 NFSv3 E2E 成功
+
+**完全な E2E パイプラインが動作確認済み:**
+
+```
+NFSv3 ファイル作成 (tee /mnt/fsxn/file.txt)
+  → ONTAP FPolicy NOTI_REQ 送信
+    → Fargate FPolicy Server 受信 [Event] create \file.txt
+      → SQS SendMessage 成功 [SQS] Sent
+        → SQS メッセージ到達確認
+```
+
+**SQS に到達したメッセージ:**
+```json
+{
+  "event_id": "1fc1fb7b-c89b-480b-8c61-92a9e912b0ba",
+  "operation_type": "create",
+  "file_path": "\\NFSV3-FPOLICY-FINAL.txt",
+  "volume_name": "unknown",
+  "svm_name": "unknown",
+  "timestamp": "2026-05-13T13:53:09.871584+00:00",
+  "file_size": 0,
+  "client_ip": "10.0.10.67"
+}
+```
+
+### 10.2 動作確認済み ONTAP 設定
+
+```bash
+# Engine
+vserver fpolicy policy external-engine create \
+  -vserver FSxN_OnPre \
+  -engine-name fpolicy_aws_engine \
+  -primary-servers 10.0.15.111 \
+  -port 9898 \
+  -extern-engine-type asynchronous
+
+# Event (NFSv3 — create/write/delete/rename のみ)
+vserver fpolicy policy event create \
+  -vserver FSxN_OnPre \
+  -event-name nfsv3_file_events \
+  -protocol nfsv3 \
+  -file-operations create,write,delete,rename
+
+# Policy
+vserver fpolicy policy create \
+  -vserver FSxN_OnPre \
+  -policy-name fpolicy_aws \
+  -events nfsv3_file_events \
+  -engine fpolicy_aws_engine \
+  -is-mandatory false
+
+# Scope
+vserver fpolicy policy scope create \
+  -vserver FSxN_OnPre \
+  -policy-name fpolicy_aws \
+  -volumes-to-include kodera_snowflake_testap
+
+# Enable
+vserver fpolicy enable \
+  -vserver FSxN_OnPre \
+  -policy-name fpolicy_aws \
+  -sequence-number 1
+```
+
+### 10.3 NFSv4 の致命的問題
+
+**NFSv4 では `create`/`write`/`delete`/`rename` のいずれのイベントでも NFS 操作がブロックされる。**
+`mandatory: false` + 非同期モードでも同様。これは ONTAP の FPolicy 実装が NFSv4 に対して
+事実上同期的に動作していることを意味する。
+
+**対策**: NFSv3 でマウントする（`mount -t nfs -o vers=3`）
+
+### 10.4 SQS VPC Endpoint の必要性
+
+FPolicy Server (Fargate) から SQS にメッセージを送信するには、SQS VPC Endpoint が必須。
+これがないと SQS 送信がタイムアウトし、イベントは受信できるが転送できない。
+
+追加した VPC Endpoint: `vpce-01e38c584a1766f3b` (com.amazonaws.ap-northeast-1.sqs)
+
+### 10.5 パス抽出のバグ（軽微）
+
+ONTAP からの NOTI_REQ の body に含まれるパス情報が XML タグ付きで送信される:
+```xml
+<PathNameType>WIN_NAME</PathNameType><PathName>\NFSV3-FPOLICY-FINAL.txt</PathName>
+```
+
+現在の `handle_noti_req` は `<Path>` または `<PathName>` タグを正規表現で抽出するが、
+`<PathNameType>` タグも含まれるため、抽出結果に XML が残る。修正が必要。
