@@ -91,6 +91,11 @@ class FPolicyServer:
         self._sqs_client: Any = None
         self._cw_client: Any = None
         self._running = False
+        # Session context: store SVM/policy info from NEGO_REQ per connection
+        self._session_context: dict[str, dict[str, str]] = {}
+        # Default SVM/volume from environment (fallback)
+        self._default_svm_name = os.environ.get("SVM_NAME", "")
+        self._default_volume_name = os.environ.get("VOLUME_NAME", "")
 
     @property
     def sqs_client(self) -> Any:
@@ -149,6 +154,9 @@ class FPolicyServer:
         # Set to 300s to safely receive KEEP_ALIVE before timeout
         conn.settimeout(300.0)
 
+        # Per-connection session context (populated by NEGO_REQ)
+        conn_ctx: dict[str, str] = {}
+
         try:
             while self._running:
                 raw_msg = self.read_fpolicy_message(conn)
@@ -157,7 +165,7 @@ class FPolicyServer:
                     break
 
                 header_str, body_str = self.parse_header_and_body(raw_msg)
-                self._dispatch_message(conn, header_str, body_str)
+                self._dispatch_message(conn, header_str, body_str, conn_ctx)
 
         except socket.timeout:
             logger.warning("[-] Timeout: %s", addr)
@@ -263,42 +271,65 @@ class FPolicyServer:
             policy_name,
         )
 
-    def handle_noti_req(self, body_str: str) -> None:
+    def handle_noti_req(self, body_str: str, conn_ctx: dict[str, str] = None) -> None:
         """NOTI_REQ（ファイルイベント通知）を処理する.
 
         非同期モード: レスポンス不要。
         """
-        # Extract file path from XML — handle both <Path> and <PathName> tags
-        path_match = re.search(r"<PathName>(.*?)</PathName>", body_str)
-        if not path_match:
-            path_match = re.search(r"<Path>(.*?)</Path>", body_str)
+        if conn_ctx is None:
+            conn_ctx = {}
 
-        if not path_match:
+        # Debug: log raw body for troubleshooting (first 500 chars)
+        logger.debug("[NOTI_REQ] Raw body (500): %s", body_str[:500])
+
+        # Extract file path from XML — multiple fallback patterns
+        ontap_path = self._extract_xml_value(
+            body_str,
+            ["PathName", "Path", "FileName", "Name"],
+        )
+
+        if not ontap_path:
             logger.warning("[NOTI_REQ] No path found in body")
             return
 
-        ontap_path = path_match.group(1)
+        # Strip any residual XML tags from extracted path
+        ontap_path = re.sub(r"<[^>]+>", "", ontap_path).strip()
         # Clean Windows path separators
         ontap_path = ontap_path.replace("\\", "/").lstrip("/")
 
         # Extract operation type from XML
-        op_match = re.search(r"<FileOp>(.*?)</FileOp>", body_str)
-        if not op_match:
-            # Try NotfType in header context passed via body
-            op_match = re.search(r"<NotfType>(.*?)</NotfType>", body_str)
-        operation = op_match.group(1).lower() if op_match else "create"
+        operation = self._extract_xml_value(
+            body_str,
+            ["FileOp", "NotfType", "OpType", "Operation"],
+        )
+        operation = operation.lower() if operation else "create"
 
-        # Extract volume name
-        vol_match = re.search(r"<VolName>(.*?)</VolName>", body_str)
-        volume_name = vol_match.group(1) if vol_match else "unknown"
+        # Extract volume name — ONTAP uses various tag names
+        volume_name = self._extract_xml_value(
+            body_str,
+            ["VolName", "VolumeName", "Volume", "Vol"],
+        )
+        if not volume_name:
+            volume_name = self._default_volume_name or "vol1"
 
-        # Extract SVM name
-        svm_match = re.search(r"<VsName>(.*?)</VsName>", body_str)
-        svm_name = svm_match.group(1) if svm_match else "unknown"
+        # Extract SVM name — ONTAP uses various tag names
+        svm_name = self._extract_xml_value(
+            body_str,
+            ["VsName", "VserverName", "Vserver", "SvmName"],
+        )
+        if not svm_name:
+            # Fallback: use session context from NEGO_REQ, then env var
+            svm_name = (
+                conn_ctx.get("svm_name")
+                or self._default_svm_name
+                or "unknown"
+            )
 
         # Extract client IP
-        ip_match = re.search(r"<ClientIp>(.*?)</ClientIp>", body_str)
-        client_ip = ip_match.group(1) if ip_match else None
+        client_ip = self._extract_xml_value(
+            body_str,
+            ["ClientIp", "ClientIP", "SourceIp", "SourceIP"],
+        )
 
         logger.info("[Event] %s %s", operation, ontap_path)
 
@@ -346,11 +377,12 @@ class FPolicyServer:
     # --- Private methods ---
 
     def _dispatch_message(
-        self, conn: socket.socket, header_str: str, body_str: str
+        self, conn: socket.socket, header_str: str, body_str: str,
+        conn_ctx: dict[str, str],
     ) -> None:
         """メッセージタイプに応じて処理を振り分ける."""
         if "<NotfType>NEGO_REQ</NotfType>" in header_str:
-            self._handle_nego_req(conn, body_str)
+            self._handle_nego_req(conn, body_str, conn_ctx)
         elif (
             "<NotfType>KEEP_ALIVE_REQ</NotfType>" in header_str
             or "<NotfType>KEEP_ALIVE</NotfType>" in header_str
@@ -365,9 +397,9 @@ class FPolicyServer:
                 alert_match.group(1) if alert_match else "No message",
             )
         elif "<NotfType>NOTI_REQ</NotfType>" in header_str:
-            self.handle_noti_req(body_str)
+            self.handle_noti_req(body_str, conn_ctx)
         elif "<NotfType>SCREEN_REQ</NotfType>" in header_str:
-            self.handle_noti_req(body_str)  # Same processing as NOTI_REQ
+            self.handle_noti_req(body_str, conn_ctx)
         elif "<NotfType>STATUS_REQ</NotfType>" in header_str:
             logger.debug("[StatusReq] Received (no response needed for async)")
         else:
@@ -380,7 +412,9 @@ class FPolicyServer:
                 header_str[:100],
             )
 
-    def _handle_nego_req(self, conn: socket.socket, body_str: str) -> None:
+    def _handle_nego_req(
+        self, conn: socket.socket, body_str: str, conn_ctx: dict[str, str]
+    ) -> None:
         """NEGO_REQ ハンドシェイクを処理する."""
         session_match = re.search(r"<SessionId>(.*?)</SessionId>", body_str)
         policy_match = re.search(r"<PolicyName>(.*?)</PolicyName>", body_str)
@@ -389,6 +423,13 @@ class FPolicyServer:
         session_id = session_match.group(1) if session_match else ""
         policy_name = policy_match.group(1) if policy_match else ""
         vs_uuid = vs_uuid_match.group(1) if vs_uuid_match else ""
+
+        # Extract SVM name from NEGO_REQ body (if available)
+        svm_match = re.search(r"<VsName>(.*?)</VsName>", body_str)
+        if svm_match:
+            conn_ctx["svm_name"] = svm_match.group(1)
+        conn_ctx["vs_uuid"] = vs_uuid
+        conn_ctx["policy_name"] = policy_name
 
         # Version negotiation
         vers_matches = re.findall(r"<Vers>(.*?)</Vers>", body_str)
@@ -399,7 +440,8 @@ class FPolicyServer:
                 break
 
         logger.info(
-            "[Handshake] Policy=%s | Session=%s", policy_name, session_id
+            "[Handshake] Policy=%s | Session=%s | VsUUID=%s",
+            policy_name, session_id, vs_uuid,
         )
         self.send_nego_resp(
             conn, session_id, selected_version, vs_uuid, policy_name
@@ -455,6 +497,33 @@ class FPolicyServer:
             )
         except Exception as e:
             logger.warning("Failed to emit metric %s: %s", metric_name, str(e))
+
+    @staticmethod
+    def _extract_xml_value(xml_str: str, tag_names: list[str]) -> Optional[str]:
+        """XML 文字列から指定タグの値を抽出する（複数タグ名フォールバック対応）.
+
+        Args:
+            xml_str: XML を含む文字列
+            tag_names: 試行するタグ名のリスト（優先順）
+
+        Returns:
+            最初にマッチしたタグの内容。残留 XML タグは除去済み。
+            マッチなしの場合は None。
+        """
+        for tag in tag_names:
+            # Case-insensitive search for the tag
+            match = re.search(
+                rf"<{tag}>(.*?)</{tag}>",
+                xml_str,
+                re.IGNORECASE | re.DOTALL,
+            )
+            if match:
+                value = match.group(1).strip()
+                # Strip any nested/residual XML tags from the value
+                value = re.sub(r"<[^>]+>", "", value).strip()
+                if value:
+                    return value
+        return None
 
     @staticmethod
     def _normalize_operation(operation: str) -> str:
