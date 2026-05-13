@@ -1,9 +1,22 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
   Event-Driven FPolicy — ファイル操作リアルタイム検知パターン.
-  ECS Fargate (FPolicy Server) + SQS + EventBridge + IP Auto-Updater 統合テンプレート.
+  ComputeType パラメータで Fargate / EC2 を選択可能。
+  共通: SQS + EventBridge + Bridge Lambda.
+  Fargate 選択時: ECS Fargate + NLB + IP Auto-Updater.
+  EC2 選択時: EC2 インスタンス（固定 IP、IP 自動更新不要）.
 
 Parameters:
+  # --- Compute Type Selection ---
+  ComputeType:
+    Type: String
+    Default: "fargate"
+    AllowedValues: ["fargate", "ec2"]
+    Description: >
+      FPolicy Server の実行環境を選択。
+      fargate: ECS Fargate（スケーラブル、IP 自動更新あり）。
+      ec2: EC2 インスタンス（固定 IP、低コスト、IP 自動更新不要）。
+
   # --- Network ---
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -11,7 +24,7 @@ Parameters:
 
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-    Description: Fargate タスク配置先 Private Subnet（FSxN SVM data LIF と同一サブネット推奨）
+    Description: Fargate タスクまたは EC2 インスタンス配置先 Private Subnet
 
   FsxnSvmSecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
@@ -105,6 +118,25 @@ Parameters:
     Default: "vol1"
     Description: ボリューム名（FPolicy イベントに含める）
 
+  # --- EC2 Only ---
+  InstanceType:
+    Type: String
+    Default: "t4g.micro"
+    AllowedValues: ["t4g.micro", "t4g.small", "t4g.medium"]
+    Description: EC2 インスタンスタイプ（ComputeType=ec2 時のみ使用）
+
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: SSH キーペア名（ComputeType=ec2 時のデバッグ用、省略可）
+
+Conditions:
+  IsFargate: !Equals [!Ref ComputeType, "fargate"]
+  IsEC2: !Equals [!Ref ComputeType, "ec2"]
+  HasKeyPair: !And
+    - !Condition IsEC2
+    - !Not [!Equals [!Ref KeyPairName, ""]]
+
 Resources:
   # ============================================================
   # SQS — Ingestion Queue + DLQ
@@ -161,6 +193,7 @@ Resources:
 
   FPolicyNLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Condition: IsFargate
     Properties:
       Name: !Sub "fp-nlb-${AWS::StackName}"
       Scheme: internal
@@ -169,6 +202,7 @@ Resources:
 
   FPolicyTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Condition: IsFargate
     Properties:
       Name: !Sub "fp-tg-${AWS::StackName}"
       Port: !Ref FPolicyPort
@@ -183,6 +217,7 @@ Resources:
 
   FPolicyListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: IsFargate
     Properties:
       LoadBalancerArn: !Ref FPolicyNLB
       Port: !Ref FPolicyPort
@@ -193,6 +228,7 @@ Resources:
 
   FPolicyCluster:
     Type: AWS::ECS::Cluster
+    Condition: IsFargate
     Properties:
       ClusterName: !Sub "fsxn-fpolicy-${AWS::StackName}"
       ClusterSettings:
@@ -201,6 +237,7 @@ Resources:
 
   TaskExecutionRole:
     Type: AWS::IAM::Role
+    Condition: IsFargate
     Properties:
       RoleName: !Sub "fsxn-fpolicy-exec-${AWS::StackName}"
       AssumeRolePolicyDocument:
@@ -215,6 +252,7 @@ Resources:
 
   TaskRole:
     Type: AWS::IAM::Role
+    Condition: IsFargate
     Properties:
       RoleName: !Sub "fsxn-fpolicy-task-${AWS::StackName}"
       AssumeRolePolicyDocument:
@@ -244,6 +282,7 @@ Resources:
 
   FPolicyTaskDefinition:
     Type: AWS::ECS::TaskDefinition
+    Condition: IsFargate
     Properties:
       Family: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
       NetworkMode: awsvpc
@@ -295,6 +334,7 @@ Resources:
 
   FPolicyService:
     Type: AWS::ECS::Service
+    Condition: IsFargate
     DependsOn: FPolicyListener
     Properties:
       ServiceName: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
@@ -319,6 +359,7 @@ Resources:
 
   FPolicyLogGroup:
     Type: AWS::Logs::LogGroup
+    Condition: IsFargate
     Properties:
       LogGroupName: !Sub "/ecs/fsxn-fpolicy-server-${AWS::StackName}"
       RetentionInDays: 30
@@ -431,10 +472,11 @@ Resources:
         - ReportBatchItemFailures
 
   # ============================================================
-  # Lambda — IP Updater
+  # Lambda — IP Updater (Fargate のみ — EC2 は固定 IP のため不要)
   # ============================================================
   IpUpdaterRole:
     Type: AWS::IAM::Role
+    Condition: IsFargate
     Properties:
       RoleName: !Sub "fsxn-fpolicy-ip-updater-role-${AWS::StackName}"
       AssumeRolePolicyDocument:
@@ -467,6 +509,7 @@ Resources:
 
   IpUpdaterFunction:
     Type: AWS::Lambda::Function
+    Condition: IsFargate
     Properties:
       FunctionName: !Sub "fsxn-fpolicy-ip-updater-${AWS::StackName}"
       Runtime: python3.12
@@ -529,6 +572,7 @@ Resources:
 
   EcsTaskStateChangeRule:
     Type: AWS::Events::Rule
+    Condition: IsFargate
     Properties:
       Name: !Sub "fsxn-fpolicy-ip-update-${AWS::StackName}"
       Description: "ECS Fargate タスク RUNNING 時に ONTAP engine IP を更新"
@@ -551,6 +595,7 @@ Resources:
 
   IpUpdaterInvokePermission:
     Type: AWS::Lambda::Permission
+    Condition: IsFargate
     Properties:
       FunctionName: !Ref IpUpdaterFunction
       Action: lambda:InvokeFunction
@@ -595,7 +640,92 @@ Resources:
           }]
         }
 
+  # ============================================================
+  # EC2 — FPolicy Server Instance (ComputeType=ec2 時のみ)
+  # ============================================================
+  Ec2InstanceRole:
+    Type: AWS::IAM::Role
+    Condition: IsEC2
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-ec2-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      Policies:
+        - PolicyName: FPolicyServerAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - !GetAtt IngestionQueue.Arn
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: "FSxN-S3AP-Patterns"
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Condition: IsEC2
+    Properties:
+      Roles:
+        - !Ref Ec2InstanceRole
+
+  FPolicyServerInstance:
+    Type: AWS::EC2::Instance
+    Condition: IsEC2
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id}}"
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      SubnetId: !Select [0, !Ref SubnetIds]
+      SecurityGroupIds:
+        - !Ref FPolicyServerSecurityGroup
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
+      Tags:
+        - Key: Name
+          Value: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euo pipefail
+          yum install -y docker
+          systemctl enable docker
+          systemctl start docker
+          aws ecr get-login-password --region ${AWS::Region} | \
+            docker login --username AWS --password-stdin \
+            ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+          docker pull ${ContainerImage}
+          docker run -d \
+            --name fpolicy-server \
+            --restart always \
+            -p ${FPolicyPort}:${FPolicyPort} \
+            -e FPOLICY_PORT=${FPolicyPort} \
+            -e SQS_QUEUE_URL=${IngestionQueue} \
+            -e AWS_REGION=${AWS::Region} \
+            -e MODE=${Mode} \
+            -e WRITE_COMPLETE_DELAY_SEC=${WriteCompleteDelaySec} \
+            -e SVM_NAME=${SvmName} \
+            -e VOLUME_NAME=${VolumeName} \
+            ${ContainerImage}
+
 Outputs:
+  ComputeType:
+    Description: 選択されたコンピュートタイプ
+    Value: !Ref ComputeType
+
   IngestionQueueUrl:
     Description: FPolicy Ingestion Queue URL
     Value: !Ref IngestionQueue
@@ -605,14 +735,17 @@ Outputs:
     Value: !GetAtt FPolicyEventBus.Arn
 
   ClusterName:
-    Description: ECS Cluster Name
+    Condition: IsFargate
+    Description: ECS Cluster Name (Fargate モード時のみ)
     Value: !Sub "fsxn-fpolicy-${AWS::StackName}"
 
   ServiceName:
-    Description: ECS Service Name
+    Condition: IsFargate
+    Description: ECS Service Name (Fargate モード時のみ)
     Value: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
 
   NLBDnsName:
+    Condition: IsFargate
     Description: NLB DNS 名（ヘルスチェック用のみ。ONTAP には Fargate タスク直接 IP を使用）
     Value: !GetAtt FPolicyNLB.DNSName
 
@@ -621,7 +754,20 @@ Outputs:
     Value: !Ref FPolicyServerSecurityGroup
 
   GetTaskIpCommand:
+    Condition: IsFargate
     Description: Fargate タスク IP 取得コマンド
     Value: !Sub |
       TASK_ARN=$(aws ecs list-tasks --cluster fsxn-fpolicy-${AWS::StackName} --desired-status RUNNING --query 'taskArns[0]' --output text)
       aws ecs describe-tasks --cluster fsxn-fpolicy-${AWS::StackName} --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`privateIPv4Address`].value' --output text
+
+  Ec2InstanceId:
+    Condition: IsEC2
+    Description: EC2 Instance ID (EC2 モード時のみ)
+    Value: !Ref FPolicyServerInstance
+
+  Ec2PrivateIp:
+    Condition: IsEC2
+    Description: >
+      EC2 Instance Private IP — ONTAP external-engine の primary_servers に指定。
+      EC2 は IP 固定のため IP 自動更新不要。
+    Value: !GetAtt FPolicyServerInstance.PrivateIp
