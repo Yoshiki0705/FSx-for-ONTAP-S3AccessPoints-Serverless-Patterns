@@ -204,16 +204,17 @@ vserver fpolicy policy event create \
 ### 4.3 NFSv4 固有の考慮点
 
 - **`open`/`close` がサポートされる**: NFSv4 はステートフルプロトコル
-- **⚠️ 重要**: `open`/`close` を FPolicy イベントに含めると、`mandatory: false` + 非同期モードでも **NFS 操作がブロックされる場合がある**（Phase 10 検証で確認）
-- **⚠️⚠️ 未解決**: Phase 10 検証で判明した事象（ONTAP 9.17.1P6, FSxN）:
-  - 同一ポリシーに NFSv3 + NFSv4 イベントを含めた状態で:
-    - NFSv3 マウント → ファイル作成 → **NOTI_REQ 受信 + SQS 到達** ✅
-    - NFSv4 マウント → ファイル作成 → **NOTI_REQ 送信されない** ❌
-  - 接続は安定（KEEP_ALIVE 受信）、ポリシーに NFSv4 イベント確認済み
-  - NetApp ドキュメント上は NFSv4 `create`/`write`/`delete`/`rename` はサポートされている
-  - **FSxN 固有の制約か、ONTAP 9.17.1 のバグの可能性** — NetApp サポートへの報告推奨
-- **現時点の推奨**: NFSv3 でマウントする（`mount -t nfs -o vers=3`）で確実に動作
-- **SMB (CIFS)**: 動作確認済み ✅
+- **⚠️ 重要: NFSv4.2 は FPolicy 非サポート**
+  - ONTAP FPolicy がサポートする NFSv4 系: **NFSv4.0** と **NFSv4.1**（ONTAP 9.15.1 以降）
+  - **NFSv4.2 は FPolicy monitoring 非サポート**（NetApp KB + ONTAP NFS 管理ドキュメントに明記）
+  - `mount -o vers=4` は Linux クライアントが NFSv4.2 にネゴシエートするため、FPolicy イベントが発火しない
+  - **必ず `vers=4.1` または `vers=4.0` を明示指定すること**
+- **Phase 10 検証結果**:
+  - `vers=4.2`: ❌ NOTI_REQ 送信されない（非サポート、期待動作）
+  - `vers=4.1`: ✅ NOTI_REQ 正常受信
+  - `vers=4.0`: ✅ NOTI_REQ 正常受信
+- **推奨マウントオプション**: `mount -t nfs -o vers=4.1 <SVM_IP>:/<path> /mnt`
+- **SVM 側対策**: FPolicy 使用時は `vserver nfs modify -v4.2 disabled` で NFSv4.2 を無効化
 
 ---
 
@@ -336,17 +337,15 @@ vserver fpolicy engine-disconnect -vserver <SVM_NAME> -policy-name fpolicy_aws -
 
 ## 8. プロトコル別推奨設定まとめ
 
-| 項目 | SMB (CIFS) | NFSv3 | NFSv4 |
-|------|-----------|-------|-------|
-| 推奨 file-operations | create, write, delete, rename, close | create, write, delete, rename | **使用不可** |
-| 推奨 filters | first-write, close-with-modification | first-write | **使用不可** |
-| open/close 使用 | ✅ 安全 | ❌ 非サポート | ❌ NFS ブロック |
-| create/write 使用 | ✅ 安全 | ✅ 動作確認済み | ❌ NFS ブロック |
-| Write-complete 保証 | ✅ close イベントで検知可能 | ❌ 保証なし | N/A |
-| E2E 検証結果 | 未検証（AD 必要） | ✅ **SQS 到達確認済み** | ❌ ブロック発生 |
-| 推奨エンジンタイプ | asynchronous | asynchronous | **使用不可** |
-| mandatory 設定 | false | false | N/A |
-| NFS マウントオプション | N/A | `mount -o vers=3` | **使用禁止** |
+| 項目 | SMB (CIFS) | NFSv3 | NFSv4.0/4.1 | NFSv4.2 |
+|------|-----------|-------|-------------|---------|
+| FPolicy サポート | ✅ | ✅ | ✅ | ❌ **非サポート** |
+| 推奨 file-operations | create, write, delete, rename, close | create, write, delete, rename | create, write, delete, rename | N/A |
+| 推奨 filters | first-write, close-with-modification | first-write | first-write | N/A |
+| open/close 使用 | ✅ 安全 | ❌ 非サポート | ⚠️ 要検証 | N/A |
+| E2E 検証結果 | ✅ SQS 到達確認済み | ✅ SQS 到達確認済み | ✅ SQS 到達確認済み | ❌ 通知なし（期待動作） |
+| マウントオプション | N/A | `vers=3` | **`vers=4.1`** or `vers=4.0` | **使用禁止** |
+| 推奨エンジンタイプ | asynchronous | asynchronous | asynchronous | N/A |
 
 ---
 

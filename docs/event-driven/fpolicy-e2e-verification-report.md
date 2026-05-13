@@ -343,28 +343,24 @@ vserver fpolicy enable \
   -sequence-number 1
 ```
 
-### 10.3 NFSv4 の問題（未解決 — NetApp サポート報告推奨）
+### 10.3 NFSv4 バージョン別検証結果（解決済み）
 
-**事象**: NFSv4 プロトコルでファイル操作を行っても NOTI_REQ が送信されない。
+**根本原因**: `mount -o vers=4` で Linux クライアントが NFSv4.2 にネゴシエートしていた。
+FPolicy は NFSv4.2 を非サポート（NetApp KB + ONTAP NFS 管理ドキュメントに明記）。
 
 **決定的テスト（2026-05-14）**:
-- 同一ポリシーに NFSv3 + NFSv4 イベントを含めた状態
-- 同一ボリューム、同一 FPolicy 接続（connected + KEEP_ALIVE 受信中）
-- NFSv3 マウント → ファイル作成 → **即座に NOTI_REQ 受信 + SQS 到達** ✅
-- NFSv4 マウント → ファイル作成 → **NOTI_REQ 送信されない** ❌
-- NFSv3 に戻す → ファイル作成 → **即座に NOTI_REQ 受信** ✅
 
-**排除した仮説**:
-- ❌ 接続不安定 → KEEP_ALIVE 正常受信
-- ❌ NFSv4 イベント未設定 → REST API で確認済み
-- ❌ Scope 不一致 → 同じボリュームで NFSv3 は動作
-- ❌ FPolicy Server 実装問題 → NFSv3 + SMB で動作確認済み
-- ❌ Data LIF 問題 → 同じ LIF で NFSv3/v4 テスト
+| NFS バージョン | マウントオプション | NOTI_REQ | 結果 |
+|---|---|---|---|
+| NFSv3 | `vers=3` | ✅ 即座に受信 | 動作する |
+| NFSv4.0 | `vers=4.0` | ✅ 即座に受信 | **動作する** |
+| NFSv4.1 | `vers=4.1` | ✅ 即座に受信 | **動作する** |
+| NFSv4.2 | `vers=4.2` | ❌ 送信されない | **非サポート（期待動作）** |
+| NFSv4 (auto) | `vers=4` | ❌ 送信されない | 4.2 にネゴシエート |
 
-**結論**: 設定ミスではない。FSxN (ONTAP 9.17.1P6) が NFSv4 の FPolicy 非同期通知を送信しない。
-ドキュメント上はサポートされているため、FSxN 固有の制約か ONTAP のバグの可能性。
+**推奨**: `mount -o vers=4.1` を明示指定。`vers=4` は使用しない。
 
-**報告書**: `docs/event-driven/nfsv4-fpolicy-issue-report.md` に NetApp サポート向けの詳細報告書を作成済み。
+**参考**: [NetApp KB: FPolicy Auditing FAQ](https://kb.netapp.com/onprem/ontap/da/NAS/FAQ:_FPolicy:_Auditing)
 
 ### 10.4 SQS VPC Endpoint の必要性
 
