@@ -205,13 +205,15 @@ vserver fpolicy policy event create \
 
 - **`open`/`close` がサポートされる**: NFSv4 はステートフルプロトコル
 - **⚠️ 重要**: `open`/`close` を FPolicy イベントに含めると、`mandatory: false` + 非同期モードでも **NFS 操作がブロックされる場合がある**（Phase 10 検証で確認）
-- **⚠️⚠️ 致命的**: Phase 10 最終検証で判明:
-  - 接続不安定時: NFSv4 ファイル操作がブロック（タイムアウト待ち）
-  - 接続安定時: ファイル操作はブロックされないが、**NOTI_REQ が送信されない**（イベント通知なし）
-  - いずれの場合も NFSv4 では FPolicy イベント駆動パイプラインが機能しない
-- **結論**: **NFSv4 は FPolicy 外部サーバーモードではイベント通知を受信できない**（ONTAP 9.17.1 で確認）
-- **原因推定**: NFSv4 の `create` は内部的に OPEN compound の一部として処理されるため、FPolicy の非同期通知パスに乗らない
-- **推奨**: NFSv3 でマウントする（`mount -t nfs -o vers=3`）
+- **⚠️⚠️ 未解決**: Phase 10 検証で判明した事象（ONTAP 9.17.1P6, FSxN）:
+  - 同一ポリシーに NFSv3 + NFSv4 イベントを含めた状態で:
+    - NFSv3 マウント → ファイル作成 → **NOTI_REQ 受信 + SQS 到達** ✅
+    - NFSv4 マウント → ファイル作成 → **NOTI_REQ 送信されない** ❌
+  - 接続は安定（KEEP_ALIVE 受信）、ポリシーに NFSv4 イベント確認済み
+  - NetApp ドキュメント上は NFSv4 `create`/`write`/`delete`/`rename` はサポートされている
+  - **FSxN 固有の制約か、ONTAP 9.17.1 のバグの可能性** — NetApp サポートへの報告推奨
+- **現時点の推奨**: NFSv3 でマウントする（`mount -t nfs -o vers=3`）で確実に動作
+- **SMB (CIFS)**: 動作確認済み ✅
 
 ---
 
