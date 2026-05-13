@@ -145,7 +145,9 @@ class FPolicyServer:
     def handle_client(self, conn: socket.socket, addr: tuple) -> None:
         """クライアント接続を処理する（スレッド単位）."""
         logger.info("[+] Connection from %s", addr)
-        conn.settimeout(120.0)
+        # Timeout must exceed ONTAP keep_alive_interval (default 2min=120s)
+        # Set to 300s to safely receive KEEP_ALIVE before timeout
+        conn.settimeout(300.0)
 
         try:
             while self._running:
@@ -168,14 +170,27 @@ class FPolicyServer:
         """FPolicy メッセージを TCP フレーミングに従って読み取る.
 
         Frame format: b'"' + 4-byte big-endian length + b'"' + payload
+
+        Note: After handshake, ONTAP may send KEEP_ALIVE or STATUS_REQ
+        before any NOTI_REQ. The server must stay connected and keep reading.
         """
-        # Read opening quote
+        # Read opening quote — may receive non-quote bytes (e.g. NUL padding)
+        attempts = 0
         while True:
             b = self._recvall(conn, 1)
             if b is None:
                 return None
             if b == b'"':
                 break
+            # Log unexpected bytes for debugging
+            attempts += 1
+            if attempts <= 5:
+                logger.debug(
+                    "[Proto] Skipping unexpected byte: 0x%02x", b[0]
+                )
+            if attempts > 1024:
+                logger.warning("[Proto] Too many unexpected bytes, closing")
+                return None
 
         # Read 4-byte length
         len_bytes = self._recvall(conn, 4)
@@ -336,7 +351,7 @@ class FPolicyServer:
             "<NotfType>KEEP_ALIVE_REQ</NotfType>" in header_str
             or "<NotfType>KEEP_ALIVE</NotfType>" in header_str
         ):
-            logger.debug("[KeepAlive] Received")
+            logger.info("[KeepAlive] Received — connection healthy")
         elif "<NotfType>ALERT_MSG</NotfType>" in header_str:
             alert_match = re.search(
                 r"<AlertMsg>(.*?)</AlertMsg>", header_str + body_str
@@ -349,8 +364,17 @@ class FPolicyServer:
             self.handle_noti_req(body_str)
         elif "<NotfType>SCREEN_REQ</NotfType>" in header_str:
             self.handle_noti_req(body_str)  # Same processing as NOTI_REQ
+        elif "<NotfType>STATUS_REQ</NotfType>" in header_str:
+            logger.debug("[StatusReq] Received (no response needed for async)")
         else:
-            logger.debug("[Unknown] %s", header_str[:100])
+            # Log unknown message types for debugging
+            notf_match = re.search(r"<NotfType>(.*?)</NotfType>", header_str)
+            notf_type = notf_match.group(1) if notf_match else "UNKNOWN"
+            logger.info(
+                "[Message] Type=%s | Header(100)=%s",
+                notf_type,
+                header_str[:100],
+            )
 
     def _handle_nego_req(self, conn: socket.socket, body_str: str) -> None:
         """NEGO_REQ ハンドシェイクを処理する."""

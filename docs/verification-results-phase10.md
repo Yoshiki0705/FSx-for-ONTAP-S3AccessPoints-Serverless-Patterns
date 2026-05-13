@@ -114,26 +114,51 @@
 | EventBridge Archive が PropertyValidation 失敗 | 初回デプロイから除外 | fpolicy-routing.yaml |
 | Lambda パッケージングの再現性 | 専用スクリプト作成 | package_fpolicy_lambdas.sh |
 
-## 8. 残課題なし（インフラ層）/ FPolicy E2E 未検証（ONTAP 層）
+## 8. FPolicy E2E 検証結果（ONTAP 層）
 
-### インフラ層（検証完了）
-全タスク完了。
+### 検証環境
 
-### ONTAP 層（未検証 — VPC 内アクセス必要）
+| 項目 | 値 |
+|------|-----|
+| ONTAP バージョン | 9.17.1P6 |
+| SVM | FSxN_OnPre |
+| FPolicy Engine format | xml |
+| FPolicy Engine type | asynchronous |
+| keep_alive_interval | PT2M (120s) |
+| status_request_interval | PT10S |
+| Fargate Task IP | 10.0.4.234 |
+| FSxN data LIFs | 10.0.9.32, 10.0.2.18 |
 
-| 検証項目 | 状態 | 理由 |
-|----------|------|------|
-| ONTAP FPolicy external-engine 設定 | ❌ 未実施 | VPC 内 EC2 アクセス不可 |
-| FSxN SVM → NLB → FPolicy Server TCP 接続 | ❌ 未確認 | 上記に依存 |
-| ファイル操作 → FPolicy 通知 → SQS → EventBridge | ❌ 未確認 | 上記に依存 |
+### 検証結果
 
-**E2E 検証手順**: `docs/guides/fpolicy-setup-guide.md` の「E2E 検証手順」セクションに記載。
-VPC 内の EC2 にアクセスできる環境で手動実行が必要。
+| 項目 | 結果 | 詳細 |
+|------|------|------|
+| FPolicy Engine 作成 (REST API) | ✅ | HTTP 201 |
+| FPolicy Event 作成 (cifs + nfsv3) | ✅ | HTTP 201 |
+| FPolicy Policy 作成 + 有効化 | ✅ | HTTP 201 + 200 |
+| ONTAP → Fargate 直接 TCP 接続 | ✅ | state: connected (2 nodes) |
+| NEGO_REQ 受信 | ✅ | 2 ノードから受信 |
+| NEGO_RESP 送信 | ✅ | Version 1.2 |
+| NLB 経由接続 | ❌ 非互換 | FPolicy バイナリフレーミング非互換 |
+| KEEP_ALIVE 受信 | ⚠️ | タイムアウト競合（修正済み: 120s→300s） |
+| NOTI_REQ 受信 | ⚠️ | コンテナ再デプロイ後に再検証必要 |
 
-### Phase 11 に繰り越す項目
-- FPolicy E2E 検証（ONTAP CLI 設定 + ファイル操作テスト）
-- Cross-Account Observability 実環境検証
-- shared-services-observability.yaml の Cross-Account Sink 拡張
+### 発見した問題と対策
+
+| 問題 | 根本原因 | 対策 | 状態 |
+|------|----------|------|------|
+| NLB 経由で FPolicy 動作しない | バイナリフレーミング非互換 | Fargate 直接 IP 接続 | ✅ 解決 |
+| ECR プル失敗 | VPC Endpoint 不足 | ECR/STS/S3/Logs Endpoint 追加 | ✅ 解決 |
+| NLB ヘルスチェック失敗 | SG が SVM SG のみ許可 | VPC CIDR 全体に開放 | ✅ 解決 |
+| KEEP_ALIVE 受信前にタイムアウト | settimeout(120s) = keep_alive_interval | 300s に変更 | ✅ コード修正済み |
+| NFSv3 イベント未発火 | protocol: cifs のみ設定 | nfsv3 イベント追加 | ✅ 設定修正済み |
+
+### Phase 11 に繰り越す検証項目
+
+- コンテナ再ビルド・再デプロイ後の KEEP_ALIVE + NOTI_REQ 受信確認
+- ファイル作成 → FPolicy 通知 → SQS → EventBridge の完全 E2E フロー
+- Persistent Store（ONTAP 9.14.1+）の活用検討
+- protobuf フォーマット（ONTAP 9.15.1+）の性能比較
 
 ---
 

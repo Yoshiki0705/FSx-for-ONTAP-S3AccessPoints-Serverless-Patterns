@@ -213,6 +213,66 @@ aws logs filter-log-events \
 EventBridge Archive リソースは CloudFormation の PropertyValidation で失敗する場合がある。
 Archive が必要な場合は、メインスタックとは別に手動作成するか、スタック更新で追加する。
 
+### FPolicy Server (ECS Fargate) デプロイ知見
+
+#### NLB 非互換（重要）
+
+**ONTAP FPolicy プロトコルは NLB TCP パススルー経由では動作しない。**
+
+- ONTAP FPolicy はバイナリフレーミング（`"` + 4バイト長 + `"` + payload）を使用
+- NLB がこのフレーミングを正しく中継できない（接続確立後にデータが届かない）
+- ONTAP external-engine には **Fargate タスクの直接 Private IP** を指定すること
+- NLB はヘルスチェック + サービスディスカバリ用途のみ
+
+#### タイムアウト設定
+
+- サーバーの `conn.settimeout` は **300 秒以上** に設定すること
+- ONTAP の `keep_alive_interval` デフォルトは 2 分（120 秒）
+- タイムアウトが keep_alive_interval 以下だと、KEEP_ALIVE 受信前に切断される
+
+#### VPC Endpoints 要件
+
+ECS Fargate (Private Subnet) には以下の VPC Endpoints が必須:
+
+| Endpoint | Type | 用途 |
+|----------|------|------|
+| `com.amazonaws.<region>.ecr.dkr` | Interface | コンテナイメージプル |
+| `com.amazonaws.<region>.ecr.api` | Interface | ECR 認証トークン取得 |
+| `com.amazonaws.<region>.s3` | Gateway | ECR イメージレイヤー（S3 経由） |
+| `com.amazonaws.<region>.logs` | Interface | CloudWatch Logs 出力 |
+| `com.amazonaws.<region>.sts` | Interface | IAM ロール認証 |
+| `com.amazonaws.<region>.sqs` | Interface | SQS メッセージ送信（realtime モード） |
+
+#### Security Group 設定
+
+```
+FPolicy Server SG:
+  Inbound: TCP 9898 from 10.0.0.0/8 (VPC CIDR — NLB health check + ONTAP data LIF)
+  Outbound: TCP 443 to 0.0.0.0/0 (VPC Endpoints 経由)
+
+VPC Endpoint SG (default SG):
+  Inbound: TCP 443 from 10.0.0.0/16 (VPC CIDR 全体)
+```
+
+#### NFSv3 イベント設定
+
+FPolicy イベントはプロトコル別に作成する必要がある:
+
+```bash
+# CIFS (SMB) 用
+vserver fpolicy policy event create \
+  -vserver SVM_NAME -event-name fpolicy_cifs_events \
+  -protocol cifs -file-operations create,write,delete,rename
+
+# NFSv3 用（別イベントとして作成）
+vserver fpolicy policy event create \
+  -vserver SVM_NAME -event-name fpolicy_nfs_events \
+  -protocol nfsv3 -file-operations create,write,delete,rename
+
+# ポリシーに両方のイベントを紐付け
+# REST API: {"events": [{"name": "fpolicy_cifs_events"}, {"name": "fpolicy_nfs_events"}]}
+```
+
 ## 関連ドキュメント
 
 - [イベント駆動アーキテクチャ設計](../event-driven/architecture-design.md)
