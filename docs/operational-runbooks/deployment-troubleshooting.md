@@ -373,6 +373,19 @@ AWS services. In this case, the NEXT UC deployed must include
 the endpoints. Document which stack owns the VPC Endpoints in the sprint
 chat or in a coordination file.
 
+**Auto-detection (Phase 9)**: `deploy_generic_ucs.sh` now defaults to
+`ENABLE_VPC_ENDPOINTS=auto` and `ENABLE_S3_GATEWAY_EP=auto`. The script
+checks VPC Endpoint status before deploying:
+- 0 endpoints → creates all (S3 Gateway + Interface)
+- 1+ endpoints → skips creation (avoids private-dns conflict)
+- S3 Gateway checked separately (different semantics, no DNS conflict)
+
+**Partial drift**: If some Interface Endpoints are missing but others
+remain (e.g., Secrets Manager deleted but FSx still exists), the auto-
+detection will NOT recreate the missing ones (it sees "1+ endpoints exist"
+and skips). In this case, explicitly set `ENABLE_VPC_ENDPOINTS=true` or
+repair the missing endpoints manually via the EC2 console.
+
 ---
 
 ## Failure Mode 8: Step Functions large execution data popup
