@@ -159,16 +159,46 @@ SQS Ingestion Queue
 | スケーラビリティ | 10% | 9/10 | 6/10 | 2/10 |
 | **加重スコア** | | **8.25** | **7.05** | **5.30** |
 
-## 決定: Option A（ECS Fargate + NLB）
+## 決定: Option A（ECS Fargate + NLB）→ 修正: Option A'（ECS Fargate 直接接続）
 
-**理由:**
-1. 本プロジェクトはサーバーレスパターンライブラリであり、サーバーレス運用が設計原則
-2. NLB の静的 IP により ONTAP external-engine 設定が安定
-3. ヘルスチェック + Auto Scaling で高可用性を実現
-4. $26/月のコストは本番環境では許容範囲
-5. CloudFormation テンプレートとして再現可能
+**AWS 検証結果に基づく修正（2026-05-13）:**
 
-**ただし、PoC/検証環境では Option C（EC2 単体）も有効。** Shengyu 氏の実装がこのパターンであり、最小コストで動作確認が可能。
+NLB 経由では ONTAP FPolicy プロトコルのハンドシェイクが完了しない問題が判明。
+NLB が TCP 接続を中継する際に、FPolicy プロトコルのバイナリフレーミング
+（`"` + 4バイト長 + `"` + payload）が正しく転送されない。
+
+**修正アーキテクチャ: Fargate タスク直接接続**
+
+```
+FSxN SVM (data LIF: 10.0.9.32, 10.0.2.18)
+  │
+  │ TCP connect to Fargate Task IP (port 9898)
+  ▼
+ECS Fargate Task (10.0.4.234)
+  │ awsvpc network mode
+  │ Security Group: TCP 9898 from VPC CIDR
+  ▼
+fpolicy-server container
+  │
+  │ boto3 → SQS SendMessage
+  ▼
+SQS Ingestion Queue
+```
+
+**NLB の役割変更:**
+- ~~ONTAP → NLB → Fargate~~ ❌（FPolicy プロトコル非互換）
+- NLB はヘルスチェック + サービスディスカバリ用途のみ
+- ONTAP external-engine には Fargate タスクの直接 Private IP を指定
+
+**IP 安定性の対策:**
+- ECS Service Discovery（AWS Cloud Map）で DNS 名を登録
+- タスク再起動時は ONTAP external-engine の primary_servers を更新
+- 自動化: EventBridge ECS Task State Change → Lambda → ONTAP REST API で IP 更新
+
+**検証結果:**
+- ONTAP → Fargate 直接接続: `state: "connected"` ✅
+- NEGO_REQ/RESP ハンドシェイク: Version 1.2 で成功 ✅
+- 2 ノードからの接続確立: 両方 connected ✅
 
 ## ONTAP FPolicy 設定時の注意事項
 
