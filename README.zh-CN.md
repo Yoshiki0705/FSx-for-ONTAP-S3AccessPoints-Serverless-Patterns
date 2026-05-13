@@ -27,6 +27,7 @@
 
 - **轮询架构**: 由于 S3 AP 不支持 `GetBucketNotificationConfiguration`，采用 EventBridge Scheduler + Step Functions 定期执行
 - **事件驱动路径（Phase 10）**: 通过 ONTAP FPolicy → ECS Fargate → SQS → EventBridge 实现 NFSv3 文件事件检测（[快速入门](docs/event-driven/README.md)）
+- **SMB (CIFS) 支持已验证**: FPolicy E2E 已通过 NFSv3 和 SMB 协议测试 — SMB 需要加入 AD 的 SVM（[SMB 设置](docs/event-driven/README.md#smb-cifs-テスト手順)）
 - **共享模块分离**: OntapClient / FsxHelper / S3ApHelper 在所有用例中复用
 - **CloudFormation / SAM Transform 架构**: 每个用例都是独立的 CloudFormation 模板（使用 SAM Transform）
 - **安全优先**: 默认启用 TLS 验证、最小权限 IAM、KMS 加密

@@ -273,6 +273,70 @@ vserver fpolicy policy event create \
 # REST API: {"events": [{"name": "fpolicy_cifs_events"}, {"name": "fpolicy_nfs_events"}]}
 ```
 
+## SMB (CIFS) テスト手順（Active Directory 必須）
+
+### 前提条件（SMB 追加）
+
+- AWS Managed Microsoft AD（または Self-Managed AD）
+- FSxN SVM が AD ドメインに参加済み（**SVM 作成時に AD 設定を含める必要あり**）
+- CIFS 共有が作成済み
+
+### SMB 環境構築手順
+
+```bash
+# 1. AWS Managed Microsoft AD 作成（20-30 分）
+aws ds create-microsoft-ad \
+  --name fpolicy.local --short-name FPOLICY \
+  --password '<AD_PASSWORD>' \
+  --vpc-settings VpcId=<VPC>,SubnetIds=<SUBNET1>,<SUBNET2> \
+  --edition Standard --region ap-northeast-1
+
+# 2. FSxN SVM 作成（AD 参加付き）
+# 重要: 既存の NFS 専用 SVM に後から CIFS を追加することはできない（FSxN の制約）
+aws fsx create-storage-virtual-machine \
+  --file-system-id <FS_ID> --name FPolicySMB \
+  --active-directory-configuration \
+    'NetBiosName=FPOLSMB,SelfManagedActiveDirectoryConfiguration={DomainName=fpolicy.local,UserName=Admin,Password=<AD_PASSWORD>,DnsIps=[<AD_DNS1>,<AD_DNS2>],OrganizationalUnitDistinguishedName="OU=Computers,OU=fpolicy,DC=fpolicy,DC=local"}' \
+  --root-volume-security-style NTFS
+
+# 3. ボリューム作成（NTFS セキュリティスタイル）
+aws fsx create-volume --volume-type ONTAP --name smb_test_vol \
+  --ontap-configuration '{
+    "JunctionPath": "/smb_test",
+    "StorageVirtualMachineId": "<SVM_ID>",
+    "SizeInMegabytes": 1024,
+    "SecurityStyle": "NTFS"
+  }'
+
+# 4. CIFS 共有作成（ONTAP REST API）
+curl -sk -u fsxadmin:<PASS> -X POST \
+  'https://<MGMT_IP>/api/protocols/cifs/shares' \
+  -H 'Content-Type: application/json' \
+  -d '{"svm":{"uuid":"<SVM_UUID>"},"name":"smb_test","path":"/smb_test"}'
+
+# 5. FPolicy 設定（CIFS イベント）
+# Engine: 同じ fpolicy_aws_engine を使用
+# Event: protocol=cifs, file_operations=create,write,delete,rename
+# Policy: 同じ構成
+
+# 6. SMB テスト
+smbclient //<SVM_IP>/smb_test -U 'FPOLICY\Admin%<AD_PASSWORD>' \
+  --option='client min protocol=SMB2' \
+  -c 'put /tmp/test.txt SMB-FPOLICY-TEST.txt'
+
+# 7. SQS 確認
+aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
+```
+
+### SMB 固有の注意事項
+
+- **SVM 作成時に AD 設定必須**: FSxN では既存 NFS 専用 SVM に後から CIFS プロトコルを追加できない
+- **OU 指定**: AWS Managed AD では `OU=Computers,OU=<domain>,DC=<domain>,DC=local` を使用
+- **SMB ポート 445**: SVM に CIFS プロトコルが含まれている場合のみ開放される
+- **認証**: AD ユーザー（`DOMAIN\username`）で認証。`fsxadmin` では SMB 認証不可
+
+---
+
 ## 関連ドキュメント
 
 - [イベント駆動 README（クイックスタート）](../event-driven/README.md)

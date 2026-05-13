@@ -87,3 +87,29 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 - [FPolicy E2E Verification Report](../event-driven/fpolicy-e2e-verification-report.md)
 - [FPolicy Server Deployment Architecture](../event-driven/fpolicy-server-deployment-architecture.md)
 - [NetApp ONTAP FPolicy Docs](https://docs.netapp.com/us-en/ontap/nas-audit/fpolicy-config-types-concept.html)
+
+## SMB (CIFS) 设置（需要 Active Directory）
+
+### 前提条件
+- AWS Managed Microsoft AD 或 Self-Managed AD
+- 创建时包含 AD 加入配置的 FSxN SVM
+- 卷上已创建 CIFS 共享
+
+### 步骤
+
+```bash
+# 1. 创建 AWS Managed Microsoft AD
+aws ds create-microsoft-ad --name fpolicy.local --short-name FPOLICY \
+  --password '<AD_PASSWORD>' --vpc-settings VpcId=<VPC>,SubnetIds=<SUBNET1>,<SUBNET2> --edition Standard
+
+# 2. 创建包含 AD 加入的 FSxN SVM（重要：必须在创建时包含 AD 配置）
+aws fsx create-storage-virtual-machine --file-system-id <FS_ID> --name FPolicySMB \
+  --active-directory-configuration 'NetBiosName=FPOLSMB,SelfManagedActiveDirectoryConfiguration={...}' \
+  --root-volume-security-style NTFS
+
+# 3-7. 与 NFSv3 相同的步骤（将事件协议更改为 cifs）
+```
+
+### 重要说明
+- SVM 必须在创建时包含 AD 配置 — FSxN 上无法向现有仅 NFS 的 SVM 添加 CIFS
+- AWS Managed AD 使用 `OU=Computers,OU=<domain>,DC=<domain>,DC=local`
