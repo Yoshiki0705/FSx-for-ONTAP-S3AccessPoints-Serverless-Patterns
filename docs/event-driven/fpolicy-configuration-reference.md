@@ -205,10 +205,13 @@ vserver fpolicy policy event create \
 
 - **`open`/`close` がサポートされる**: NFSv4 はステートフルプロトコル
 - **⚠️ 重要**: `open`/`close` を FPolicy イベントに含めると、`mandatory: false` + 非同期モードでも **NFS 操作がブロックされる場合がある**（Phase 10 検証で確認）
-- **⚠️⚠️ 致命的**: Phase 10 最終検証で判明 — NFSv4 では `create`/`write`/`delete`/`rename` のみの設定でも **NFS 操作がブロックされる**。`open`/`close` を除外しても解決しない
-- **結論**: **NFSv4 は FPolicy 外部サーバーモードでは使用不可**（少なくとも ONTAP 9.17.1 + 非同期モードの組み合わせでは）
+- **⚠️⚠️ 致命的**: Phase 10 最終検証で判明:
+  - 接続不安定時: NFSv4 ファイル操作がブロック（タイムアウト待ち）
+  - 接続安定時: ファイル操作はブロックされないが、**NOTI_REQ が送信されない**（イベント通知なし）
+  - いずれの場合も NFSv4 では FPolicy イベント駆動パイプラインが機能しない
+- **結論**: **NFSv4 は FPolicy 外部サーバーモードではイベント通知を受信できない**（ONTAP 9.17.1 で確認）
+- **原因推定**: NFSv4 の `create` は内部的に OPEN compound の一部として処理されるため、FPolicy の非同期通知パスに乗らない
 - **推奨**: NFSv3 でマウントする（`mount -t nfs -o vers=3`）
-- **`close-with-modification` フィルタ**: close 時に変更があった場合のみ通知（使用する場合）
 
 ---
 
