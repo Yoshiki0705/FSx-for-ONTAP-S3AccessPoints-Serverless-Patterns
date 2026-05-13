@@ -77,6 +77,22 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 ---
 
+## 検証エビデンス
+
+### SQS キュー詳細（FPolicy イベント受信確認）
+
+![SQS Queue Detail](../screenshots/fpolicy-sqs-queue-detail.png)
+
+*FPolicy Server から送信されたメッセージが SQS キューに到達（Messages available: 4）*
+
+### CloudWatch Logs（FPolicy Server イベント受信ログ）
+
+![CloudWatch Logs](../screenshots/fpolicy-cloudwatch-logs.png)
+
+*ECS Fargate 上の FPolicy Server が ONTAP からの NOTI_REQ を受信し、SQS に送信したログ*
+
+---
+
 ## ドキュメント一覧
 
 | ファイル | 内容 |
@@ -105,3 +121,62 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 | **SMB は AD 必須** | CIFS サーバーが Active Directory に参加している必要がある |
 | **SQS VPC Endpoint 必須** | Fargate (Private Subnet) から SQS への通信に必要 |
 | **直接 IP 接続** | ONTAP external-engine には Fargate タスクの直接 Private IP を指定 |
+
+## SMB (CIFS) テスト手順
+
+SMB でのテストには Active Directory が必要です。
+
+### 前提条件（SMB 追加）
+
+- AWS Managed Microsoft AD（または Self-Managed AD）
+- FSxN SVM が AD ドメインに参加済み（SVM 作成時に AD 設定を含める）
+- CIFS 共有が作成済み
+
+### SMB 環境構築
+
+```bash
+# 1. AWS Managed Microsoft AD 作成
+aws ds create-microsoft-ad \
+  --name fpolicy.local --short-name FPOLICY \
+  --password '<AD_PASSWORD>' \
+  --vpc-settings VpcId=<VPC>,SubnetIds=<SUBNET1>,<SUBNET2> \
+  --edition Standard --region ap-northeast-1
+
+# 2. FSxN SVM 作成（AD 参加付き）
+aws fsx create-storage-virtual-machine \
+  --file-system-id <FS_ID> --name FPolicySMB \
+  --active-directory-configuration \
+    'NetBiosName=FPOLSMB,SelfManagedActiveDirectoryConfiguration={DomainName=fpolicy.local,UserName=Admin,Password=<AD_PASSWORD>,DnsIps=[<AD_DNS1>,<AD_DNS2>],OrganizationalUnitDistinguishedName="OU=Computers,OU=fpolicy,DC=fpolicy,DC=local"}' \
+  --root-volume-security-style NTFS
+
+# 3. ボリューム作成（NTFS セキュリティスタイル）
+aws fsx create-volume --volume-type ONTAP --name smb_test_vol \
+  --ontap-configuration '{
+    "JunctionPath": "/smb_test",
+    "StorageVirtualMachineId": "<SVM_ID>",
+    "SizeInMegabytes": 1024,
+    "SecurityStyle": "NTFS"
+  }'
+
+# 4. CIFS 共有作成（ONTAP REST API）
+curl -sk -u fsxadmin:<PASS> -X POST \
+  'https://<MGMT_IP>/api/protocols/cifs/shares' \
+  -H 'Content-Type: application/json' \
+  -d '{"svm":{"uuid":"<SVM_UUID>"},"name":"smb_test","path":"/smb_test"}'
+
+# 5. SMB テスト
+smbclient //<SVM_IP>/smb_test -U 'DOMAIN\Admin%<AD_PASSWORD>' \
+  --option='client min protocol=SMB2' \
+  -c 'put /tmp/test.txt SMB-TEST.txt'
+```
+
+### SMB テスト結果
+
+```
+putting file /tmp/smb-e2e.txt as \SMB-FPOLICY-E2E.txt (2.2 kb/s)
+```
+
+FPolicy Server ログ:
+```
+[SQS] Sent: \SMB-FPOLICY-E2E.txt (create)
+```
