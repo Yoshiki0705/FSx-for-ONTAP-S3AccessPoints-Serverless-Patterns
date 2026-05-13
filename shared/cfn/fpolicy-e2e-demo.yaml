@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  FPolicy E2E Demo — NFSv3 イベント駆動パイプラインの再現可能なデモ環境.
+  踏み台 EC2 + VPC Endpoints (SQS) を含む完全な検証環境を構築する.
+  前提: fpolicy-server-fargate.yaml + fpolicy-ingestion.yaml が既にデプロイ済み.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: FSxN と同一 VPC
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: 踏み台 EC2 を配置するサブネット（IGW ルートあり）
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: VPC Endpoint を配置する Private Subnet
+
+  VpcEndpointSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: VPC Endpoint 用 Security Group（TCP 443 from VPC CIDR を許可済み）
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: 踏み台 EC2 の SSH キーペア
+
+  FsxnSvmIp:
+    Type: String
+    Default: "10.0.3.133"
+    Description: FSxN SVM の NFS data LIF IP
+
+  FsxnVolumePath:
+    Type: String
+    Default: "/vol1"
+    Description: NFS マウント対象のボリュームパス
+
+Resources:
+  # --- 踏み台 EC2 ---
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: FPolicy E2E Bastion - SSH access
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: SSH from anywhere (demo only)
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "fpolicy-e2e-bastion-sg-${AWS::StackName}"
+
+  BastionInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t4g.nano
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64}}"
+      KeyName: !Ref KeyPairName
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+        - !Ref VpcEndpointSecurityGroupId
+      AssociatePublicIpAddress: true
+      Tags:
+        - Key: Name
+          Value: !Sub "fpolicy-e2e-bastion-${AWS::StackName}"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum install -y nfs-utils samba-client
+          mkdir -p /mnt/fsxn
+          # NFSv3 でマウント（重要: NFSv4 は FPolicy でブロックされる）
+          mount -t nfs -o vers=3 ${FsxnSvmIp}:${FsxnVolumePath} /mnt/fsxn
+          echo "${FsxnSvmIp}:${FsxnVolumePath} /mnt/fsxn nfs vers=3,defaults 0 0" >> /etc/fstab
+
+  # --- SQS VPC Endpoint (FPolicy Server → SQS 送信に必須) ---
+  SqsVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.sqs"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroupId
+      PrivateDnsEnabled: true
+
+Outputs:
+  BastionPublicIp:
+    Description: 踏み台 EC2 の Public IP（SSH 接続用）
+    Value: !GetAtt BastionInstance.PublicIp
+
+  BastionInstanceId:
+    Description: 踏み台 EC2 Instance ID
+    Value: !Ref BastionInstance
+
+  SqsVpcEndpointId:
+    Description: SQS VPC Endpoint ID
+    Value: !Ref SqsVpcEndpoint
+
+  NfsMountCommand:
+    Description: NFSv3 マウントコマンド（踏み台 EC2 で自動実行済み）
+    Value: !Sub "mount -t nfs -o vers=3 ${FsxnSvmIp}:${FsxnVolumePath} /mnt/fsxn"
+
+  TestCommand:
+    Description: FPolicy E2E テストコマンド
+    Value: "echo 'test' | sudo tee /mnt/fsxn/fpolicy-test.txt"
+
+  VerifyCommand:
+    Description: SQS メッセージ確認コマンド
+    Value: !Sub >
+      aws sqs receive-message
+      --queue-url <INGESTION_QUEUE_URL>
+      --max-number-of-messages 5
+      --region ${AWS::Region}
+
+  OntapSetupNotes:
+    Description: >
+      ONTAP FPolicy 設定手順（手動実行が必要）:
+      1. Engine: asynchronous, primary-servers=<FARGATE_TASK_IP>, port=9898
+      2. Event: protocol=nfsv3, file-operations=create,write,delete,rename
+      3. Policy: mandatory=false, priority=1
+      4. Scope: include-volumes=<VOLUME_NAME>
+      重要: NFSv4 は使用不可（NFS 操作がブロックされる）
+    Value: "See docs/event-driven/fpolicy-configuration-reference.md"

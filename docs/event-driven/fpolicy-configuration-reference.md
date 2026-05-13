@@ -78,6 +78,37 @@ vserver fpolicy policy event create \
 - **`first-read`/`first-write` フィルタ**: CIFS セッション内の最初の read/write のみ通知（通知量削減）
 - **`monitor-ads`**: Alternate Data Stream の監視（NTFS 固有機能）
 - **Shengyu 氏の検証**: SMB で動作確認済み。`create` イベントでファイル作成を検知
+- **AD 必須**: SMB 認証には Active Directory が必要。`fsxadmin` ユーザーでは SMB 認証不可
+- **AWS Managed Microsoft AD**: FSxN SVM を AD に参加させる必要がある
+
+#### SMB テスト環境構築手順
+
+```bash
+# 1. AWS Managed Microsoft AD 作成
+aws ds create-microsoft-ad \
+  --name corp.example.com \
+  --short-name CORP \
+  --password <AD_ADMIN_PASSWORD> \
+  --vpc-settings VpcId=vpc-xxx,SubnetIds=subnet-aaa,subnet-bbb \
+  --edition Standard \
+  --region ap-northeast-1
+
+# 2. FSxN SVM を AD に参加
+vserver cifs create \
+  -vserver <SVM_NAME> \
+  -cifs-server <CIFS_SERVER_NAME> \
+  -domain corp.example.com \
+  -ou "OU=Computers,DC=corp,DC=example,DC=com"
+
+# 3. SMB 共有作成
+vserver cifs share create \
+  -vserver <SVM_NAME> \
+  -share-name vol1 \
+  -path /vol1
+
+# 4. テスト（AD ユーザーで認証）
+smbclient //SVM_IP/vol1 -U 'CORP\admin%password' -c 'put test.txt'
+```
 
 ---
 
@@ -174,7 +205,9 @@ vserver fpolicy policy event create \
 
 - **`open`/`close` がサポートされる**: NFSv4 はステートフルプロトコル
 - **⚠️ 重要**: `open`/`close` を FPolicy イベントに含めると、`mandatory: false` + 非同期モードでも **NFS 操作がブロックされる場合がある**（Phase 10 検証で確認）
-- **推奨**: イベント駆動パイプラインでは `open`/`close` を**除外**し、`create`/`write`/`delete`/`rename` のみ使用
+- **⚠️⚠️ 致命的**: Phase 10 最終検証で判明 — NFSv4 では `create`/`write`/`delete`/`rename` のみの設定でも **NFS 操作がブロックされる**。`open`/`close` を除外しても解決しない
+- **結論**: **NFSv4 は FPolicy 外部サーバーモードでは使用不可**（少なくとも ONTAP 9.17.1 + 非同期モードの組み合わせでは）
+- **推奨**: NFSv3 でマウントする（`mount -t nfs -o vers=3`）
 - **`close-with-modification` フィルタ**: close 時に変更があった場合のみ通知（使用する場合）
 
 ---
@@ -300,13 +333,15 @@ vserver fpolicy engine-disconnect -vserver <SVM_NAME> -policy-name fpolicy_aws -
 
 | 項目 | SMB (CIFS) | NFSv3 | NFSv4 |
 |------|-----------|-------|-------|
-| 推奨 file-operations | create, write, delete, rename, close | create, write, delete, rename | create, write, delete, rename |
-| 推奨 filters | first-write, close-with-modification | first-write | first-write |
-| open/close 使用 | ✅ 安全 | ❌ 非サポート | ⚠️ NFS ブロックの危険あり |
-| Write-complete 保証 | ✅ close イベントで検知可能 | ❌ 保証なし | ⚠️ close 使用時のみ（ブロック注意） |
-| Shengyu 氏検証 | ✅ 動作確認済み | 未検証 | 未検証（Phase 10 で部分検証） |
-| 推奨エンジンタイプ | asynchronous | asynchronous | asynchronous |
-| mandatory 設定 | false | false | false |
+| 推奨 file-operations | create, write, delete, rename, close | create, write, delete, rename | **使用不可** |
+| 推奨 filters | first-write, close-with-modification | first-write | **使用不可** |
+| open/close 使用 | ✅ 安全 | ❌ 非サポート | ❌ NFS ブロック |
+| create/write 使用 | ✅ 安全 | ✅ 動作確認済み | ❌ NFS ブロック |
+| Write-complete 保証 | ✅ close イベントで検知可能 | ❌ 保証なし | N/A |
+| E2E 検証結果 | 未検証（AD 必要） | ✅ **SQS 到達確認済み** | ❌ ブロック発生 |
+| 推奨エンジンタイプ | asynchronous | asynchronous | **使用不可** |
+| mandatory 設定 | false | false | N/A |
+| NFS マウントオプション | N/A | `mount -o vers=3` | **使用禁止** |
 
 ---
 
