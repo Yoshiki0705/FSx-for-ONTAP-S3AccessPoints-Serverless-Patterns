@@ -116,7 +116,7 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 | 制約 | 詳細 |
 |------|------|
-| **NFSv4 使用不可** | FPolicy 外部サーバーモードで NFS 操作がブロックされる（ONTAP 9.17.1 で確認） |
+| **NFSv4 未動作** | FPolicy 非同期通知が送信されない（ONTAP 9.17.1P6/FSxN で確認）。ドキュメント上はサポートされているが実際には動作しない。[詳細報告書](./nfsv4-fpolicy-issue-report.md) |
 | **NLB 非互換** | FPolicy バイナリフレーミングが NLB TCP パススルーで動作しない |
 | **SMB は AD 必須** | CIFS サーバーが Active Directory に参加している必要がある |
 | **SQS VPC Endpoint 必須** | Fargate (Private Subnet) から SQS への通信に必要 |
