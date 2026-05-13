@@ -70,20 +70,20 @@ Resources:
   FPolicyServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: FPolicy External Server - allows TCP from FSxN SVM
+      GroupDescription: FPolicy External Server - allows TCP from VPC (NLB health check + FSxN SVM)
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: !Ref FPolicyPort
           ToPort: !Ref FPolicyPort
-          SourceSecurityGroupId: !Ref FsxnSvmSecurityGroupId
-          Description: FPolicy TCP from FSxN SVM data LIFs
+          CidrIp: "10.0.0.0/8"
+          Description: FPolicy TCP from VPC (NLB health checks + FSxN SVM data LIFs)
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
-          Description: HTTPS to SQS/CloudWatch (via VPC Endpoint or NAT)
+          Description: HTTPS to SQS/CloudWatch/ECR (via VPC Endpoint or NAT)
       Tags:
         - Key: Name
           Value: !Sub "fsxn-fpolicy-server-sg-${AWS::StackName}"
@@ -113,6 +113,9 @@ Resources:
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
       HealthCheckIntervalSeconds: 30
+      TargetGroupAttributes:
+        - Key: preserve_client_ip.enabled
+          Value: "false"
 
   FPolicyListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
