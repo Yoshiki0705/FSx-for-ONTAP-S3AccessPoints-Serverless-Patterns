@@ -1,0 +1,627 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Event-Driven FPolicy — ファイル操作リアルタイム検知パターン.
+  ECS Fargate (FPolicy Server) + SQS + EventBridge + IP Auto-Updater 統合テンプレート.
+
+Parameters:
+  # --- Network ---
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: FSxN と同一 VPC の ID
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Fargate タスク配置先 Private Subnet（FSxN SVM data LIF と同一サブネット推奨）
+
+  FsxnSvmSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: FSxN SVM の Security Group ID
+
+  # --- Container ---
+  ContainerImage:
+    Type: String
+    Description: FPolicy Server コンテナイメージ URI（ECR）
+
+  FPolicyPort:
+    Type: Number
+    Default: 9898
+    Description: FPolicy TCP リスニングポート
+
+  WriteCompleteDelaySec:
+    Type: Number
+    Default: 5
+    MinValue: 0
+    MaxValue: 60
+    Description: NFSv3 write-complete 待機秒数
+
+  Mode:
+    Type: String
+    Default: "realtime"
+    AllowedValues: ["realtime", "batch"]
+    Description: 動作モード
+
+  DesiredCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 3
+    Description: Fargate タスク数
+
+  Cpu:
+    Type: String
+    Default: "256"
+    AllowedValues: ["256", "512", "1024"]
+    Description: Fargate タスク CPU
+
+  Memory:
+    Type: String
+    Default: "512"
+    AllowedValues: ["512", "1024", "2048"]
+    Description: Fargate タスクメモリ (MB)
+
+  # --- EventBridge ---
+  EventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+    Description: EventBridge カスタムイベントバス名
+
+  # --- SQS ---
+  MessageRetentionPeriod:
+    Type: Number
+    Default: 345600
+    Description: SQS メッセージ保持期間（秒）。デフォルト 4 日
+
+  # --- IP Updater ---
+  FsxnMgmtIp:
+    Type: String
+    Description: FSxN SVM 管理 IP アドレス
+
+  FsxnSvmUuid:
+    Type: String
+    Description: FSxN SVM UUID
+
+  FsxnEngineName:
+    Type: String
+    Default: "fpolicy_aws_engine"
+    Description: FPolicy external-engine 名
+
+  FsxnPolicyName:
+    Type: String
+    Default: "fpolicy_aws"
+    Description: FPolicy ポリシー名
+
+  FsxnCredentialsSecret:
+    Type: String
+    Description: Secrets Manager シークレット名（FSxN 管理者認証情報）
+
+  # --- Optional ---
+  SvmName:
+    Type: String
+    Default: "FSxN_OnPre"
+    Description: SVM 名（FPolicy イベントに含める）
+
+  VolumeName:
+    Type: String
+    Default: "vol1"
+    Description: ボリューム名（FPolicy イベントに含める）
+
+Resources:
+  # ============================================================
+  # SQS — Ingestion Queue + DLQ
+  # ============================================================
+  IngestionDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "fsxn-fpolicy-dlq-${AWS::StackName}"
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  IngestionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "fsxn-fpolicy-ingestion-${AWS::StackName}"
+      MessageRetentionPeriod: !Ref MessageRetentionPeriod
+      VisibilityTimeout: 300
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt IngestionDLQ.Arn
+        maxReceiveCount: 3
+
+  # ============================================================
+  # EventBridge — Custom Bus
+  # ============================================================
+  FPolicyEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Ref EventBusName
+
+  # ============================================================
+  # ECS — Cluster + Fargate Service
+  # ============================================================
+  FPolicyServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: FPolicy External Server - TCP from VPC
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref FPolicyPort
+          ToPort: !Ref FPolicyPort
+          CidrIp: "10.0.0.0/8"
+          Description: FPolicy TCP from FSxN SVM data LIFs
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS to AWS services (via VPC Endpoint)
+      Tags:
+        - Key: Name
+          Value: !Sub "fsxn-fpolicy-server-sg-${AWS::StackName}"
+
+  FPolicyNLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "fp-nlb-${AWS::StackName}"
+      Scheme: internal
+      Type: network
+      Subnets: !Ref SubnetIds
+
+  FPolicyTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "fp-tg-${AWS::StackName}"
+      Port: !Ref FPolicyPort
+      Protocol: TCP
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckProtocol: TCP
+      HealthCheckPort: !Sub "${FPolicyPort}"
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      HealthCheckIntervalSeconds: 30
+
+  FPolicyListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref FPolicyNLB
+      Port: !Ref FPolicyPort
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref FPolicyTargetGroup
+
+  FPolicyCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "fsxn-fpolicy-${AWS::StackName}"
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-exec-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-task-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FPolicyServerAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - !GetAtt IngestionQueue.Arn
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: "FSxN-S3AP-Patterns"
+
+  FPolicyTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref Cpu
+      Memory: !Ref Memory
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: fpolicy-server
+          Image: !Ref ContainerImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref FPolicyPort
+              Protocol: tcp
+          Environment:
+            - Name: FPOLICY_PORT
+              Value: !Sub "${FPolicyPort}"
+            - Name: SQS_QUEUE_URL
+              Value: !Ref IngestionQueue
+            - Name: AWS_REGION
+              Value: !Ref "AWS::Region"
+            - Name: MODE
+              Value: !Ref Mode
+            - Name: WRITE_COMPLETE_DELAY_SEC
+              Value: !Sub "${WriteCompleteDelaySec}"
+            - Name: SVM_NAME
+              Value: !Ref SvmName
+            - Name: VOLUME_NAME
+              Value: !Ref VolumeName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref FPolicyLogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: fpolicy-server
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - !Sub "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', ${FPolicyPort})); s.close()\""
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 10
+
+  FPolicyService:
+    Type: AWS::ECS::Service
+    DependsOn: FPolicyListener
+    Properties:
+      ServiceName: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
+      Cluster: !Ref FPolicyCluster
+      TaskDefinition: !Ref FPolicyTaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref FPolicyServerSecurityGroup
+          Subnets: !Ref SubnetIds
+      LoadBalancers:
+        - ContainerName: fpolicy-server
+          ContainerPort: !Ref FPolicyPort
+          TargetGroupArn: !Ref FPolicyTargetGroup
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+      EnableExecuteCommand: true
+
+  FPolicyLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/fsxn-fpolicy-server-${AWS::StackName}"
+      RetentionInDays: 30
+
+  # ============================================================
+  # Lambda — SQS → EventBridge Bridge
+  # ============================================================
+  BridgeLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-bridge-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BridgeLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt IngestionQueue.Arn
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: !GetAtt FPolicyEventBus.Arn
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: "FSxN-S3AP-Patterns"
+
+  BridgeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "fsxn-fpolicy-bridge-${AWS::StackName}"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        ZipFile: |
+          # Inline placeholder — replace with packaged deployment
+          # See functions/sqs_to_eventbridge/handler.py
+          import json, os, logging, time, boto3
+          logger = logging.getLogger(__name__)
+          logger.setLevel(logging.INFO)
+          def handler(event, context):
+              event_bus_name = os.environ["EVENT_BUS_NAME"]
+              detail_type = os.environ.get("DETAIL_TYPE", "FPolicy File Operation")
+              source = os.environ.get("SOURCE", "fsxn.fpolicy")
+              eb_client = boto3.client("events")
+              records = event.get("Records", [])
+              batch_item_failures = []
+              entries = []
+              record_map = {}
+              for record in records:
+                  message_id = record["messageId"]
+                  try:
+                      body = json.loads(record["body"])
+                      entries.append({"Source": source, "DetailType": detail_type, "Detail": json.dumps(body), "EventBusName": event_bus_name})
+                      record_map[len(entries)-1] = message_id
+                  except Exception as e:
+                      logger.error("Parse error %s: %s", message_id, e)
+                      batch_item_failures.append({"itemIdentifier": message_id})
+              if entries:
+                  for i in range(0, len(entries), 10):
+                      batch = entries[i:i+10]
+                      try:
+                          resp = eb_client.put_events(Entries=batch)
+                          for j, r in enumerate(resp.get("Entries", [])):
+                              if "ErrorCode" in r:
+                                  mid = record_map.get(i+j)
+                                  if mid: batch_item_failures.append({"itemIdentifier": mid})
+                      except Exception as e:
+                          logger.error("PutEvents failed: %s", e)
+                          for j in range(len(batch)):
+                              mid = record_map.get(i+j)
+                              if mid: batch_item_failures.append({"itemIdentifier": mid})
+              logger.info("Processed %d records, %d failures", len(records), len(batch_item_failures))
+              return {"batchItemFailures": batch_item_failures}
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt BridgeLambdaRole.Arn
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: !Ref EventBusName
+          DETAIL_TYPE: "FPolicy File Operation"
+          SOURCE: "fsxn.fpolicy"
+      Architectures:
+        - arm64
+
+  BridgeEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt IngestionQueue.Arn
+      FunctionName: !GetAtt BridgeLambda.Arn
+      BatchSize: 10
+      MaximumBatchingWindowInSeconds: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+
+  # ============================================================
+  # Lambda — IP Updater
+  # ============================================================
+  IpUpdaterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-ip-updater-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: IpUpdaterPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${FsxnCredentialsSecret}*"
+              - Effect: Allow
+                Action:
+                  - ecs:DescribeTasks
+                  - ecs:ListTasks
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    ecs:cluster: !GetAtt FPolicyCluster.Arn
+
+  IpUpdaterFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "fsxn-fpolicy-ip-updater-${AWS::StackName}"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        ZipFile: |
+          # Inline placeholder — replace with packaged deployment
+          # See functions/ip_updater/handler.py
+          import json, os, logging, time, boto3, urllib3
+          logger = logging.getLogger(__name__)
+          logger.setLevel(logging.INFO)
+          urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+          def handler(event, context):
+              detail = event.get("detail", {})
+              if detail.get("lastStatus") != "RUNNING" or detail.get("desiredStatus") != "RUNNING":
+                  return {"statusCode": 200, "body": "Skipped"}
+              attachments = detail.get("attachments", [])
+              task_ip = None
+              for a in attachments:
+                  if a.get("type") == "ElasticNetworkInterface":
+                      for kv in a.get("details", []):
+                          if kv.get("name") == "privateIPv4Address":
+                              task_ip = kv.get("value")
+                              break
+                  if task_ip: break
+              if not task_ip:
+                  return {"statusCode": 500, "body": "No IP found"}
+              sm = boto3.client("secretsmanager")
+              secret = sm.get_secret_value(SecretId=os.environ["FSXN_CREDENTIALS_SECRET"])
+              creds = json.loads(secret["SecretString"])
+              http = urllib3.PoolManager(cert_reqs="CERT_NONE")
+              base = f"https://{os.environ['FSXN_MGMT_IP']}/api/protocols/fpolicy/{os.environ['FSXN_SVM_UUID']}"
+              headers = urllib3.make_headers(basic_auth=f"{creds['username']}:{creds['password']}")
+              headers["Content-Type"] = "application/json"
+              engine = os.environ.get("FSXN_ENGINE_NAME", "fpolicy_aws_engine")
+              policy = os.environ.get("FSXN_POLICY_NAME", "fpolicy_aws")
+              http.request("PATCH", f"{base}/policies/{policy}", headers=headers, body=json.dumps({"enabled": False}).encode())
+              time.sleep(2)
+              http.request("PATCH", f"{base}/engines/{engine}", headers=headers, body=json.dumps({"primary_servers": [task_ip]}).encode())
+              http.request("PATCH", f"{base}/policies/{policy}", headers=headers, body=json.dumps({"enabled": True, "priority": 1}).encode())
+              return {"statusCode": 200, "body": f"Updated to {task_ip}"}
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt IpUpdaterRole.Arn
+      Architectures:
+        - arm64
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref FPolicyServerSecurityGroup
+        SubnetIds: !Ref SubnetIds
+      Environment:
+        Variables:
+          FSXN_MGMT_IP: !Ref FsxnMgmtIp
+          FSXN_SVM_UUID: !Ref FsxnSvmUuid
+          FSXN_ENGINE_NAME: !Ref FsxnEngineName
+          FSXN_POLICY_NAME: !Ref FsxnPolicyName
+          FSXN_CREDENTIALS_SECRET: !Ref FsxnCredentialsSecret
+          ECS_CLUSTER_NAME: !Sub "fsxn-fpolicy-${AWS::StackName}"
+          ECS_SERVICE_NAME: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
+
+  EcsTaskStateChangeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "fsxn-fpolicy-ip-update-${AWS::StackName}"
+      Description: "ECS Fargate タスク RUNNING 時に ONTAP engine IP を更新"
+      EventPattern:
+        source:
+          - "aws.ecs"
+        detail-type:
+          - "ECS Task State Change"
+        detail:
+          clusterArn:
+            - !GetAtt FPolicyCluster.Arn
+          lastStatus:
+            - "RUNNING"
+          desiredStatus:
+            - "RUNNING"
+      State: ENABLED
+      Targets:
+        - Id: ip-updater-lambda
+          Arn: !GetAtt IpUpdaterFunction.Arn
+
+  IpUpdaterInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref IpUpdaterFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EcsTaskStateChangeRule.Arn
+
+  # ============================================================
+  # CloudWatch — EventBridge Log Rule (デバッグ用)
+  # ============================================================
+  EventLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/events/fsxn-fpolicy-${AWS::StackName}"
+      RetentionInDays: 14
+
+  EventLogRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "fsxn-fpolicy-log-${AWS::StackName}"
+      Description: "FPolicy イベントを CloudWatch Logs に記録（デバッグ用）"
+      EventBusName: !Ref FPolicyEventBus
+      EventPattern:
+        source:
+          - "fsxn.fpolicy"
+      State: ENABLED
+      Targets:
+        - Id: cloudwatch-logs
+          Arn: !GetAtt EventLogGroup.Arn
+
+  EventLogGroupPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: !Sub "fsxn-fpolicy-eventbridge-logs-${AWS::StackName}"
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "events.amazonaws.com"},
+            "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+            "Resource": "${EventLogGroup.Arn}"
+          }]
+        }
+
+Outputs:
+  IngestionQueueUrl:
+    Description: FPolicy Ingestion Queue URL
+    Value: !Ref IngestionQueue
+
+  EventBusArn:
+    Description: FPolicy EventBridge Custom Bus ARN
+    Value: !GetAtt FPolicyEventBus.Arn
+
+  ClusterName:
+    Description: ECS Cluster Name
+    Value: !Sub "fsxn-fpolicy-${AWS::StackName}"
+
+  ServiceName:
+    Description: ECS Service Name
+    Value: !Sub "fsxn-fpolicy-server-${AWS::StackName}"
+
+  NLBDnsName:
+    Description: NLB DNS 名（ヘルスチェック用のみ。ONTAP には Fargate タスク直接 IP を使用）
+    Value: !GetAtt FPolicyNLB.DNSName
+
+  FPolicyServerSecurityGroupId:
+    Description: FPolicy Server Security Group ID
+    Value: !Ref FPolicyServerSecurityGroup
+
+  GetTaskIpCommand:
+    Description: Fargate タスク IP 取得コマンド
+    Value: !Sub |
+      TASK_ARN=$(aws ecs list-tasks --cluster fsxn-fpolicy-${AWS::StackName} --desired-status RUNNING --query 'taskArns[0]' --output text)
+      aws ecs describe-tasks --cluster fsxn-fpolicy-${AWS::StackName} --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`privateIPv4Address`].value' --output text
