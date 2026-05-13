@@ -1,7 +1,10 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  FPolicy External Server on ECS Fargate + NLB.
-  ONTAP FPolicy TCP サーバーを Fargate で稼働させ、NLB 経由で FSxN SVM から接続を受ける。
+  FPolicy External Server on ECS Fargate + NLB (health check only).
+  ONTAP FPolicy TCP サーバーを Fargate で稼働させる。
+  重要: ONTAP FPolicy は NLB TCP パススルー経由では動作しない（バイナリフレーミング非互換）。
+  ONTAP external-engine には Fargate タスクの直接 Private IP を指定すること。
+  NLB はヘルスチェック + サービスディスカバリ用途のみ。
 
 Parameters:
   VpcId:
@@ -29,6 +32,16 @@ Parameters:
     Type: Number
     Default: 9898
     Description: FPolicy TCP リスニングポート
+
+  # --- VPC Endpoints 要件 ---
+  # ECS Fargate (Private Subnet) が正常動作するには以下の VPC Endpoints が必要:
+  # 1. com.amazonaws.<region>.ecr.dkr (Interface) — コンテナイメージプル
+  # 2. com.amazonaws.<region>.ecr.api (Interface) — ECR 認証
+  # 3. com.amazonaws.<region>.s3 (Gateway) — ECR イメージレイヤー取得
+  # 4. com.amazonaws.<region>.logs (Interface) — CloudWatch Logs
+  # 5. com.amazonaws.<region>.sts (Interface) — IAM ロール認証
+  # 6. com.amazonaws.<region>.sqs (Interface) — SQS メッセージ送信（realtime モード時）
+  # deploy_generic_ucs.sh の VPC Endpoint auto-detect が利用可能
 
   WriteCompleteDelaySec:
     Type: Number
@@ -266,7 +279,11 @@ Resources:
 
 Outputs:
   NLBDnsName:
-    Description: NLB DNS 名（ONTAP external-engine の primary-servers に使用可能）
+    Description: >
+      NLB DNS 名（ヘルスチェック用のみ）。
+      重要: ONTAP external-engine には NLB IP ではなく Fargate タスクの直接 IP を使用すること。
+      タスク IP 取得: aws ecs describe-tasks --cluster <cluster> --tasks <task_arn>
+      --query 'tasks[0].attachments[0].details[?name==`privateIPv4Address`].value'
     Value: !GetAtt FPolicyNLB.DNSName
     Export:
       Name: !Sub "${AWS::StackName}-NLBDnsName"
@@ -292,11 +309,16 @@ Outputs:
     Value: "See description for CLI command"
 
   OntapExternalEngineCommand:
-    Description: ONTAP FPolicy external-engine 作成コマンド（NLB IP を取得後に実行）
+    Description: >
+      ONTAP FPolicy external-engine 作成コマンド。
+      重要: <FARGATE_TASK_IP> には Fargate タスクの直接 Private IP を指定すること（NLB IP は不可）。
+      タスク IP 取得コマンド:
+        TASK_ARN=$(aws ecs list-tasks --cluster <cluster> --desired-status RUNNING --query 'taskArns[0]' --output text)
+        aws ecs describe-tasks --cluster <cluster> --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`privateIPv4Address`].value' --output text
     Value: !Sub |
       vserver fpolicy policy external-engine create \
         -vserver <SVM_NAME> \
         -engine-name fpolicy_aws_engine \
-        -primary-servers <NLB_PRIVATE_IP> \
+        -primary-servers <FARGATE_TASK_IP> \
         -port ${FPolicyPort} \
         -extern-engine-type asynchronous
