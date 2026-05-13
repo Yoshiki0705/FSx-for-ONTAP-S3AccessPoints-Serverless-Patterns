@@ -3,12 +3,14 @@ FROM python:3.12-slim AS base
 WORKDIR /app
 
 # Install dependencies
-COPY requirements.txt .
+COPY fpolicy-server/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application and schema
-COPY fpolicy_server.py .
-COPY ../schemas/fpolicy-event-schema.json /app/schemas/
+# Copy application
+COPY fpolicy-server/fpolicy_server.py .
+
+# Copy schema
+COPY schemas/fpolicy-event-schema.json /app/schemas/fpolicy-event-schema.json
 
 # Health check: verify TCP port is listening
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

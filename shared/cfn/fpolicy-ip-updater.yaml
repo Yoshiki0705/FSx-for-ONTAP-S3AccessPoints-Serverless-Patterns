@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  FPolicy Engine IP Auto-Updater — ECS タスク再起動時に ONTAP external-engine の
+  primary_servers を自動更新する Lambda + EventBridge ルール。
+
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: Lambda デプロイパッケージ格納 S3 バケット名
+
+  DeployPrefix:
+    Type: String
+    Default: "fpolicy-ip-updater"
+    Description: Lambda パッケージの S3 プレフィックス
+
+  FsxnMgmtIp:
+    Type: String
+    Description: FSxN SVM 管理 IP アドレス
+
+  FsxnSvmUuid:
+    Type: String
+    Description: FSxN SVM UUID
+
+  FsxnEngineName:
+    Type: String
+    Default: "fpolicy_aws_engine"
+    Description: FPolicy external-engine 名
+
+  FsxnPolicyName:
+    Type: String
+    Default: "fpolicy_aws"
+    Description: FPolicy ポリシー名
+
+  FsxnCredentialsSecret:
+    Type: String
+    Description: Secrets Manager シークレット名（FSxN 管理者認証情報）
+
+  EcsClusterName:
+    Type: String
+    Description: 監視対象 ECS クラスター名
+
+  EcsServiceName:
+    Type: String
+    Description: 監視対象 ECS サービス名
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Lambda を配置する VPC ID（FSxN と同一 VPC）
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Lambda を配置する Private Subnet
+
+  SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Lambda 用 Security Group（FSxN mgmt へのアクセス許可）
+
+Resources:
+  # --- Lambda Function ---
+  IpUpdaterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fpolicy-ip-updater-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: IpUpdaterPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${FsxnCredentialsSecret}*"
+              - Effect: Allow
+                Action:
+                  - ecs:DescribeTasks
+                  - ecs:ListTasks
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    ecs:cluster: !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${EcsClusterName}"
+
+  IpUpdaterFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "fsxn-fpolicy-ip-updater-${AWS::StackName}"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: !Sub "${DeployPrefix}/fpolicy_engine.zip"
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt IpUpdaterRole.Arn
+      Architectures:
+        - arm64
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref SecurityGroupId
+        SubnetIds: !Ref SubnetIds
+      Environment:
+        Variables:
+          FSXN_MGMT_IP: !Ref FsxnMgmtIp
+          FSXN_SVM_UUID: !Ref FsxnSvmUuid
+          FSXN_ENGINE_NAME: !Ref FsxnEngineName
+          FSXN_POLICY_NAME: !Ref FsxnPolicyName
+          FSXN_CREDENTIALS_SECRET: !Ref FsxnCredentialsSecret
+          ECS_CLUSTER_NAME: !Ref EcsClusterName
+          ECS_SERVICE_NAME: !Ref EcsServiceName
+
+  # --- EventBridge Rule: ECS Task State Change ---
+  EcsTaskStateChangeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "fsxn-fpolicy-task-ip-update-${AWS::StackName}"
+      Description: "ECS Fargate タスク RUNNING 時に ONTAP engine IP を更新"
+      EventPattern:
+        source:
+          - "aws.ecs"
+        detail-type:
+          - "ECS Task State Change"
+        detail:
+          clusterArn:
+            - !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${EcsClusterName}"
+          lastStatus:
+            - "RUNNING"
+          desiredStatus:
+            - "RUNNING"
+      State: ENABLED
+      Targets:
+        - Id: ip-updater-lambda
+          Arn: !GetAtt IpUpdaterFunction.Arn
+
+  # --- Lambda Permission for EventBridge ---
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref IpUpdaterFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EcsTaskStateChangeRule.Arn
+
+  # --- CloudWatch Log Group ---
+  IpUpdaterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/fsxn-fpolicy-ip-updater-${AWS::StackName}"
+      RetentionInDays: 14
+
+Outputs:
+  IpUpdaterFunctionArn:
+    Description: IP Updater Lambda ARN
+    Value: !GetAtt IpUpdaterFunction.Arn
+
+  EventRuleArn:
+    Description: ECS Task State Change EventBridge Rule ARN
+    Value: !GetAtt EcsTaskStateChangeRule.Arn
