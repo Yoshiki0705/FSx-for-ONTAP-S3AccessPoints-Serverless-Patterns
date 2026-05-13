@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fsxn-s3ap-patterns.example.com/fpolicy-event.schema.json",
+  "title": "FPolicy Event",
+  "description": "ONTAP FPolicy ファイル操作イベントスキーマ",
+  "type": "object",
+  "required": [
+    "event_id",
+    "operation_type",
+    "file_path",
+    "volume_name",
+    "svm_name",
+    "timestamp",
+    "file_size"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "イベント一意識別子（UUID v4）"
+    },
+    "operation_type": {
+      "type": "string",
+      "enum": ["create", "write", "delete", "rename"],
+      "description": "ファイル操作種別"
+    },
+    "file_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "description": "ファイルの絶対パス（ボリュームルートからの相対）"
+    },
+    "volume_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "ONTAP ボリューム名"
+    },
+    "svm_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Storage Virtual Machine 名"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "イベント発生タイムスタンプ（ISO 8601）"
+    },
+    "file_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "ファイルサイズ（バイト）"
+    },
+    "client_ip": {
+      "type": "string",
+      "description": "クライアント IP アドレス（IPv4/IPv6）"
+    },
+    "previous_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "description": "rename 操作時の変更前パス"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "追加メタデータ（拡張用）",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "if": {
+    "properties": {
+      "operation_type": { "const": "rename" }
+    }
+  },
+  "then": {
+    "required": ["previous_path"]
+  }
+}
