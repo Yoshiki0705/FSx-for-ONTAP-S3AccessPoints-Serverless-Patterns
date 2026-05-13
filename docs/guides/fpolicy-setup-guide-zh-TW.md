@@ -6,7 +6,7 @@
 
 本指南說明如何設定 ONTAP FPolicy 將檔案操作事件轉發到 AWS 服務（SQS → EventBridge → Step Functions）。
 
-> ⚠️ **重要：使用 NFSv3 掛載。NFSv4 在 FPolicy 外部伺服器模式下會阻塞 NFS 操作。**
+> ⚠️ **重要：使用 vers=4.1 或 vers=3 掛載。不要使用 vers=4（會協商為 NFSv4.2，FPolicy 不支援）。**
 
 > ⚠️ **重要：ONTAP FPolicy 協議無法透過 NLB TCP 直通工作。請使用 Fargate 任務的直接 Private IP。**
 
@@ -73,7 +73,7 @@ curl -sk -u fsxadmin:<PASS> -X POST 'https://<MGMT_IP>/api/protocols/fpolicy/<SV
   -d '{"name":"fpolicy_aws","mandatory":false,"engine":{"name":"fpolicy_aws_engine"},"events":[{"name":"nfsv3_file_events"}],"scope":{"include_volumes":["<VOLUME>"]},"priority":1}'
 
 # 5. Test (from bastion, NFSv3 mount)
-mount -t nfs -o vers=3 <SVM_IP>:/<VOL_PATH> /mnt/fsxn
+mount -t nfs -o vers=4.1 <SVM_IP>:/<VOL_PATH> /mnt/fsxn
 echo "test" | sudo tee /mnt/fsxn/fpolicy-test.txt
 
 # 6. Verify SQS

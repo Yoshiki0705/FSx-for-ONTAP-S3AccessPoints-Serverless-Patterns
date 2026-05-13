@@ -416,8 +416,12 @@ vserver fpolicy show-engine -vserver FSxN_OnPre
 ### Step 3: テストファイル作成
 
 ```bash
-# NFS マウント経由でファイル作成
-echo "fpolicy e2e test $(date)" > /mnt/fsxn/vol1/test-fpolicy-event.txt
+# NFSv4.1 でマウント（推奨）
+# 重要: vers=4 は NFSv4.2 にネゴシエートされ FPolicy 非サポート
+sudo mount -t nfs -o vers=4.1 <SVM_IP>:/vol1 /mnt/fsxn
+
+# テストファイル作成
+echo "fpolicy e2e test $(date)" > /mnt/fsxn/test-fpolicy-event.txt
 ```
 
 ### Step 4: FPolicy Server ログ確認
