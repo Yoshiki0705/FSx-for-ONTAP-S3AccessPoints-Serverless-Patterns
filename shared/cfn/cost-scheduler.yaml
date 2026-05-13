@@ -1,0 +1,183 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Cost Scheduler — 営業時間ベースのスケジュール動的変更.
+  EventBridge Scheduler の ScheduleExpression を営業時間帯/非営業時間帯で切り替え。
+
+Parameters:
+  DeployBucket:
+    Type: String
+    Description: Lambda デプロイパッケージ格納 S3 バケット名
+
+  DeployPrefix:
+    Type: String
+    Default: "cost-scheduler"
+    Description: Lambda パッケージの S3 プレフィックス
+
+  SchedulerGroupName:
+    Type: String
+    Description: 対象の EventBridge Scheduler グループ名
+
+  BusinessHoursRate:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: 営業時間帯のスケジュールレート
+
+  OffHoursRate:
+    Type: String
+    Default: "rate(6 hours)"
+    Description: 非営業時間帯のスケジュールレート
+
+  BusinessHoursStart:
+    Type: Number
+    Default: 9
+    MinValue: 0
+    MaxValue: 23
+    Description: 営業時間開始（時、JST）
+
+  BusinessHoursEnd:
+    Type: Number
+    Default: 18
+    MinValue: 0
+    MaxValue: 23
+    Description: 営業時間終了（時、JST）
+
+  Timezone:
+    Type: String
+    Default: "Asia/Tokyo"
+    Description: スケジュールのタイムゾーン
+
+Resources:
+  # --- Lambda Execution Role ---
+  CostSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-cost-scheduler-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CostSchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - scheduler:GetSchedule
+                  - scheduler:UpdateSchedule
+                  - scheduler:ListSchedules
+                Resource: !Sub "arn:aws:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/${SchedulerGroupName}/*"
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: "FSxN-S3AP-Patterns"
+
+  # --- Lambda Function ---
+  CostSchedulerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "fsxn-cost-scheduler-${AWS::StackName}"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: !Sub "${DeployPrefix}/cost_scheduler.zip"
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt CostSchedulerRole.Arn
+      Environment:
+        Variables:
+          SCHEDULER_GROUP_NAME: !Ref SchedulerGroupName
+          BUSINESS_HOURS_RATE: !Ref BusinessHoursRate
+          OFF_HOURS_RATE: !Ref OffHoursRate
+      Architectures:
+        - arm64
+
+  # --- EventBridge Scheduler: Business Hours Start ---
+  BusinessHoursStartScheduler:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "fsxn-cost-business-start-${AWS::StackName}"
+      ScheduleExpression: !Sub "cron(0 ${BusinessHoursStart} ? * MON-FRI *)"
+      ScheduleExpressionTimezone: !Ref Timezone
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt CostSchedulerLambda.Arn
+        RoleArn: !GetAtt SchedulerInvokeRole.Arn
+        Input: '{"action": "business_hours_start"}'
+      State: ENABLED
+
+  # --- EventBridge Scheduler: Business Hours End ---
+  BusinessHoursEndScheduler:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "fsxn-cost-business-end-${AWS::StackName}"
+      ScheduleExpression: !Sub "cron(0 ${BusinessHoursEnd} ? * MON-FRI *)"
+      ScheduleExpressionTimezone: !Ref Timezone
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt CostSchedulerLambda.Arn
+        RoleArn: !GetAtt SchedulerInvokeRole.Arn
+        Input: '{"action": "business_hours_end"}'
+      State: ENABLED
+
+  # --- Scheduler Invoke Role ---
+  SchedulerInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-cost-scheduler-invoke-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt CostSchedulerLambda.Arn
+
+  # --- Lambda Permission for Scheduler ---
+  CostSchedulerPermissionStart:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CostSchedulerLambda
+      Action: lambda:InvokeFunction
+      Principal: scheduler.amazonaws.com
+      SourceArn: !GetAtt BusinessHoursStartScheduler.Arn
+
+  CostSchedulerPermissionEnd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CostSchedulerLambda
+      Action: lambda:InvokeFunction
+      Principal: scheduler.amazonaws.com
+      SourceArn: !GetAtt BusinessHoursEndScheduler.Arn
+
+Outputs:
+  CostSchedulerLambdaArn:
+    Description: Cost Scheduler Lambda ARN
+    Value: !GetAtt CostSchedulerLambda.Arn
+
+  BusinessHoursStartSchedulerArn:
+    Description: Business Hours Start Scheduler ARN
+    Value: !GetAtt BusinessHoursStartScheduler.Arn
+
+  BusinessHoursEndSchedulerArn:
+    Description: Business Hours End Scheduler ARN
+    Value: !GetAtt BusinessHoursEndScheduler.Arn
