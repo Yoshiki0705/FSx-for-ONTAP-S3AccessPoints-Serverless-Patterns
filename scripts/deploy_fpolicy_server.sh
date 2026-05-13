@@ -13,10 +13,10 @@ set -euo pipefail
 #
 # Example:
 #   ./scripts/deploy_fpolicy_server.sh \
-#     vpc-0ae01826f906191af \
+#     vpc-0123456789abcdef0 \
 #     "subnet-aaa,subnet-bbb" \
 #     sg-0123456789abcdef0 \
-#     "https://sqs.ap-northeast-1.amazonaws.com/178625946981/fsxn-fpolicy-ingestion-..."
+#     "https://sqs.<REGION>.amazonaws.com/<ACCOUNT_ID>/fsxn-fpolicy-ingestion-..."
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

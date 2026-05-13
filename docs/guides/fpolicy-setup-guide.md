@@ -357,7 +357,7 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 ### 前提条件
 
 - VPC 内の EC2 に SSH アクセス可能
-- FSxN SVM 管理エンドポイント（10.0.3.133）に SSH 可能
+- FSxN SVM 管理エンドポイント（<SVM_MGMT_IP>）に SSH 可能
 - fsxadmin パスワードを把握
 
 ### Step 1: NLB Private IP の確認
@@ -372,7 +372,7 @@ aws ec2 describe-network-interfaces \
 
 ```bash
 # EC2 から FSxN SVM に SSH
-ssh fsxadmin@10.0.3.133
+ssh fsxadmin@<SVM_MGMT_IP>
 
 # 外部エンジン作成
 vserver fpolicy policy external-engine create \
@@ -445,9 +445,9 @@ aws logs filter-log-events \
 
 ```bash
 aws sqs receive-message \
-  --queue-url "https://sqs.ap-northeast-1.amazonaws.com/178625946981/fsxn-fpolicy-ingestion-fsxn-fpolicy-ingestion" \
+  --queue-url "https://sqs.${AWS_REGION}.amazonaws.com/${AWS_ACCOUNT_ID}/fsxn-fpolicy-ingestion-<STACK_NAME>" \
   --max-number-of-messages 5 \
-  --region ap-northeast-1
+  --region ${AWS_REGION}
 ```
 
 ### Step 6: EventBridge イベント確認

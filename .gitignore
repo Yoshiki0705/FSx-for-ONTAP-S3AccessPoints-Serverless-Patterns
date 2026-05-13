@@ -69,6 +69,9 @@ scripts/_deploy_phase7_env.sh
 
 # Screenshots — originals contain account info, masked versions are safe to publish
 docs/screenshots/originals/
+# Unmasked screenshots in docs/screenshots/ root (may contain account info)
+docs/screenshots/fpolicy-*.png
+docs/screenshots/sqs-*.png
 # docs/screenshots/masked/ is tracked (safe to publish)
 
 # Verification results (contain environment-specific details)
@@ -77,6 +80,16 @@ docs/verification-results-phase2.md
 docs/verification-results-phase3.md
 docs/verification-results-phase4.md
 docs/verification-results-phase5.md
+docs/verification-results-phase6a.md
+docs/verification-results-phase6b.md
+docs/verification-results-phase7.md
+docs/verification-results-phase7-outputdestination.md
+docs/verification-results-phase8.md
+docs/verification-results-phase8-uc15-17.md
+docs/verification-results-phase9.md
+docs/verification-results-phase10.md
+docs/verification-results-2026-05-10-9ucs.md
+docs/verification-results-output-destination.md
 docs/verification-results-shared-phase2.json
 
 # MASK_GUIDE v6 contained environment-specific resource IDs in plain text, so it
@@ -87,6 +100,13 @@ docs/verification-results-shared-phase2.json
 
 # Deployment lessons learned (contains environment-specific IPs, IDs)
 docs/guides/deployment-lessons-learned.md
+
+# FPolicy E2E verification report (contains environment-specific IPs, resource IDs)
+docs/event-driven/fpolicy-e2e-verification-report.md
+
+# FPolicy configuration scripts (contain environment-specific IPs, UUIDs)
+scripts/_configure_fpolicy_e2e.sh
+scripts/_create_cifs_server.exp
 
 # Remaining issues checklist (contains environment-specific values)
 docs/remaining-issues-checklist.md

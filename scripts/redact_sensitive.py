@@ -11,6 +11,11 @@ Strategy:
 
 Usage:
     python3 scripts/redact_sensitive.py [--dry-run]
+
+Note:
+    Sensitive strings are loaded from scripts/_sensitive_strings.py
+    (which is gitignored). See scripts/_sensitive_strings.py.example
+    for the expected format.
 """
 from __future__ import annotations
 
@@ -21,39 +26,25 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# (pattern_in_file, replacement_in_scripts, replacement_in_docs)
-REDACTIONS = [
-    (r"178625946981",
-     r"<ACCOUNT_ID>",
-     r"<ACCOUNT_ID>"),
-    (r"fsvol-0f7ab3a0723676e7c",
-     r"<FSX_VOLUME_ID>",
-     r"<FSX_VOLUME_ID>"),
-    (r"fsvol-0ac1d08a1709b97ba", r"<FSX_VOLUME_ID>", r"<FSX_VOLUME_ID>"),
-    (r"fsvol-0647183905872652c", r"<FSX_VOLUME_ID>", r"<FSX_VOLUME_ID>"),
-    (r"fsvol-0c583905429e614d7", r"<FSX_VOLUME_ID>", r"<FSX_VOLUME_ID>"),
-    (r"fs-09ffe72a3b2b7dbbd", r"<FSX_FILE_SYSTEM_ID>", r"<FSX_FILE_SYSTEM_ID>"),
-    (r"svm-0d5f81cd0146af242", r"<SVM_ID>", r"<SVM_ID>"),
-    (r"9ae87e42-068a-11f1-b1ff-ada95e61ee66", r"<SVM_UUID>", r"<SVM_UUID>"),
-    (r"4bc997e8-4b06-11f1-acbd-21ab1e8e6bf5", r"<VOLUME_UUID>", r"<VOLUME_UUID>"),
-    (r"vpc-0ae01826f906191af", r"<VPC_ID>", r"<VPC_ID>"),
-    (r"sg-07be65398316491d8", r"<SG_ID>", r"<SG_ID>"),
-    (r"sg-026b3207d8324b5e4", r"<SG_ID>", r"<SG_ID>"),
-    (r"sg-0e199c3aab717888c", r"<SG_ID>", r"<SG_ID>"),
-    (r"sg-0567bc078bfd6ef70", r"<SG_ID>", r"<SG_ID>"),
-    (r"subnet-0307ebbd55b35c842", r"<SUBNET_ID>", r"<SUBNET_ID>"),
-    (r"subnet-0af86ebd3c65481b8", r"<SUBNET_ID>", r"<SUBNET_ID>"),
-    (r"rtb-0c7c5f7aa89d19592", r"<ROUTE_TABLE_ID>", r"<ROUTE_TABLE_ID>"),
-    (r"rtb-0b04b4ff2589e19fe", r"<ROUTE_TABLE_ID>", r"<ROUTE_TABLE_ID>"),
-    (r"10\.0\.3\.72", r"<ONTAP_MGMT_IP>", r"<ONTAP_MGMT_IP>"),
-    (r"3\.112\.208\.171", r"<EC2_PUBLIC_IP>", r"<EC2_PUBLIC_IP>"),
-    (r"i-009b81a634ffa9099", r"<EC2_INSTANCE_ID>", r"<EC2_INSTANCE_ID>"),
-    (r"yoshiki\.fujiwara@netapp\.com", r"<NOTIFICATION_EMAIL>", r"<NOTIFICATION_EMAIL>"),
-    # S3 AP alias contains the account info bucket name
-    (r"eda-demo-s3ap-fnwqydfpmd4gabncr8xqepjrrt131apn1a-ext-s3alias",
-     r"<S3_AP_ALIAS>", r"<S3_AP_ALIAS>"),
-    (r"fsvol-0f7ab3a",   r"<FSX_VOLUME_ID>", r"<FSX_VOLUME_ID>"),  # catch partial
-]
+# Load sensitive strings from gitignored file
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _sensitive_strings import SENSITIVE_STRINGS  # noqa: E402
+except ImportError:
+    print("ERROR: scripts/_sensitive_strings.py not found.")
+    print("Copy scripts/_sensitive_strings.py.example and fill in your values.")
+    sys.exit(1)
+
+# Build REDACTIONS from SENSITIVE_STRINGS
+# Format: (pattern, replacement_in_scripts, replacement_in_docs)
+# The _sensitive_strings.py should export REDACTION_RULES as a list of tuples
+# or we build generic rules from SENSITIVE_STRINGS
+try:
+    from _sensitive_strings import REDACTION_RULES  # noqa: E402
+    REDACTIONS = REDACTION_RULES
+except ImportError:
+    # Fallback: build generic redaction rules from SENSITIVE_STRINGS tuple
+    REDACTIONS = [(s, "<REDACTED>", "<REDACTED>") for s in SENSITIVE_STRINGS]
 
 # Files matched by this pattern are considered docs (different replacement style)
 DOC_PATTERNS = ("*.md", "*.txt")

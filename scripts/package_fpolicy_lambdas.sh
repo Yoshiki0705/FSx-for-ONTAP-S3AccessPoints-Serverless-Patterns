@@ -15,7 +15,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_DIR="/tmp/fpolicy-lambda-build"
-DEPLOY_BUCKET="${1:-fsxn-eda-deploy-178625946981}"
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "UNKNOWN")
+DEPLOY_BUCKET="${1:-fsxn-eda-deploy-${ACCOUNT_ID}}"
 REGION="${AWS_DEFAULT_REGION:-ap-northeast-1}"
 
 echo "=== Phase 10: FPolicy Lambda Packaging ==="

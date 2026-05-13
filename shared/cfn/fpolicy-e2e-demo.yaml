@@ -27,8 +27,7 @@ Parameters:
 
   FsxnSvmIp:
     Type: String
-    Default: "10.0.3.133"
-    Description: FSxN SVM の NFS data LIF IP
+    Description: FSxN SVM の NFS data LIF IP（例: 10.0.x.x）
 
   FsxnVolumePath:
     Type: String
