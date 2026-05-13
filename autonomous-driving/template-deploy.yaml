@@ -267,6 +267,76 @@ Parameters:
 # =====================================================================
 # Conditions
 # =====================================================================
+
+  # --- Phase 10: TriggerMode ---
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: |
+      トリガーモード。POLLING=既存のEventBridge Scheduler+Discovery Lambda、
+      EVENT_DRIVEN=FPolicy イベント駆動のみ、HYBRID=両方（冪等性ストアで重複排除）。
+
+  # --- Phase 10: AlarmProfile ---
+  AlarmProfile:
+    Type: String
+    Default: "REALTIME"
+    AllowedValues: ["BATCH", "REALTIME", "HIGH_VOLUME", "CUSTOM"]
+    Description: |
+      アラーム閾値プロファイル。BATCH=定期バッチ向け（緩い閾値）、
+      REALTIME=リアルタイム向け（厳しい閾値）、HIGH_VOLUME=大量処理向け、
+      CUSTOM=CustomFailureThreshold/CustomErrorThreshold で個別指定。
+
+  CustomFailureThreshold:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 100
+    Description: CUSTOM プロファイル時の Step Functions 失敗率閾値（%）
+
+  CustomErrorThreshold:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    MaxValue: 100
+    Description: CUSTOM プロファイル時の Discovery Lambda エラー閾値（回/時間）
+
+  # --- Phase 10: MaxConcurrency ---
+  MaxConcurrencyUpperBound:
+    Type: Number
+    Default: 40
+    MinValue: 1
+    MaxValue: 1000
+    Description: Step Functions Map State の MaxConcurrency 上限値
+
+  OntapApiRateLimit:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 10000
+    Description: ONTAP API の秒間リクエスト上限（MaxConcurrency 算出に使用）
+
+  # --- Phase 10: CostScheduling ---
+  EnableCostScheduling:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: 営業時間ベースのスケジュール動的変更を有効化
+
+  BusinessHoursStart:
+    Type: Number
+    Default: 9
+    MinValue: 0
+    MaxValue: 23
+    Description: 営業時間開始（時、JST）
+
+  BusinessHoursEnd:
+    Type: Number
+    Default: 18
+    MinValue: 0
+    MaxValue: 23
+    Description: 営業時間終了（時、JST）
+
 Conditions:
   CreateCloudWatchAlarms:
     !Equals [!Ref EnableCloudWatchAlarms, "true"]
@@ -334,6 +404,39 @@ Conditions:
 # =====================================================================
 # Resources
 # =====================================================================
+
+  # --- Phase 10 Conditions ---
+  EnablePolling: !Or
+    - !Equals [!Ref TriggerMode, "POLLING"]
+    - !Equals [!Ref TriggerMode, "HYBRID"]
+  EnableEventDriven: !Or
+    - !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+    - !Equals [!Ref TriggerMode, "HYBRID"]
+  EnableIdempotency: !Equals [!Ref TriggerMode, "HYBRID"]
+  UseCustomProfile: !Equals [!Ref AlarmProfile, "CUSTOM"]
+  EnableCostSchedulingCondition: !Equals [!Ref EnableCostScheduling, "true"]
+
+
+# --- Phase 10 Mappings ---
+Mappings:
+  AlarmProfileConfig:
+    BATCH:
+      FailureThreshold: "10"
+      ErrorThreshold: "3"
+      EvaluationPeriods: "3"
+    REALTIME:
+      FailureThreshold: "5"
+      ErrorThreshold: "1"
+      EvaluationPeriods: "1"
+    HIGH_VOLUME:
+      FailureThreshold: "15"
+      ErrorThreshold: "5"
+      EvaluationPeriods: "5"
+    CUSTOM:
+      FailureThreshold: "10"
+      ErrorThreshold: "3"
+      EvaluationPeriods: "3"
+
 Resources:
 
   # -----------------------------------------------------------------
@@ -2339,3 +2442,52 @@ Resources:
           Value: "6B"
         - Key: Component
           Value: inference-components
+
+  # EventBridge rule: notify on Step Functions execution failure/timeout/abort
+  StepFunctionsFailureEventRule:
+    Type: AWS::Events::Rule
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      Description: !Sub "Notify on ${AWS::StackName} Step Functions execution failures"
+      EventPattern:
+        source:
+          - aws.states
+        detail-type:
+          - "Step Functions Execution Status Change"
+        detail:
+          status:
+            - FAILED
+            - TIMED_OUT
+            - ABORTED
+          stateMachineArn:
+            - !Ref AutonomousDrivingStateMachine
+      Targets:
+        - Arn: !Ref NotificationTopic
+          Id: SnsFailureTarget
+          InputTransformer:
+            InputPathsMap:
+              execName: $.detail.name
+              execStatus: $.detail.status
+              execArn: $.detail.executionArn
+            InputTemplate: '"Step Functions execution <execName> finished with status <execStatus>. ARN: <execArn>"'
+
+  # Allow EventBridge to publish to SNS topic
+  EventBridgeToSnsPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref NotificationTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt StepFunctionsFailureEventRule.Arn
+      Topics:
+        - !Ref NotificationTopic
+
