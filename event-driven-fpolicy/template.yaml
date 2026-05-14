@@ -170,17 +170,25 @@ Resources:
   # ============================================================
   # ECS — Cluster + Fargate Service
   # ============================================================
+  # 運用前提:
+  # - DesiredCount=1 を前提とした設計（IP Updater は単一タスク IP を ONTAP に登録）
+  # - ONTAP が TCP 接続を開始するため、SG で inbound TCP 9898 を許可する必要あり
+  # - mandatory=false 設定時、サーバー切断中はイベントがドロップされる（ファイル操作は継続）
+  # - イベントロスゼロが必要な場合は ONTAP Persistent Store (9.14.1+) を検討
+  # ============================================================
   FPolicyServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: FPolicy External Server - TCP from VPC
+      GroupDescription: >
+        FPolicy External Server - allows ONTAP-initiated inbound TCP connections
+        from FSxN SVM data LIFs on the FPolicy port.
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: !Ref FPolicyPort
           ToPort: !Ref FPolicyPort
           CidrIp: "10.0.0.0/8"
-          Description: FPolicy TCP from FSxN SVM data LIFs
+          Description: ONTAP-initiated inbound TCP from FSxN SVM data LIFs
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443
