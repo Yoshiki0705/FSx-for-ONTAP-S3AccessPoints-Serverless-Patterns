@@ -311,11 +311,13 @@ Dieses Muster verwendet die folgenden Dienste:
 |-----------|:--------------------:|----------|
 | NFSv3 | ✅ | Write-Complete-Wartezeit erforderlich (Standard 5 Sekunden) |
 | NFSv4.0 | ✅ | Empfohlen |
-| NFSv4.1 | ✅ | Empfohlen (`vers=4.1` beim Mounten angeben) |
+| NFSv4.1 | ✅ | Empfohlen (`vers=4.1` beim Mounten angeben). **ONTAP 9.15.1 und höher** |
 | NFSv4.2 | ❌ | Nicht unterstützt durch ONTAP FPolicy Monitoring |
 | SMB | ✅ | Wird als CIFS-Protokoll erkannt |
 
 > **Wichtig**: `mount -o vers=4` kann zu NFSv4.2 ausgehandelt werden, geben Sie daher explizit `vers=4.1` an.
+
+> **ONTAP-Versionshinweis**: Die NFSv4.1 FPolicy Monitoring-Unterstützung wurde in ONTAP 9.15.1 eingeführt. Frühere Versionen unterstützen nur SMB, NFSv3 und NFSv4.0. Siehe [NetApp FPolicy-Ereigniskonfigurationsdokumentation](https://docs.netapp.com/us-en/ontap/nas-audit/plan-fpolicy-event-config-concept.html) für die vollständige Protokoll-Support-Matrix.
 
 ## Referenzen
 

@@ -215,14 +215,23 @@ Archive が必要な場合は、メインスタックとは別に手動作成す
 
 ### FPolicy Server (ECS Fargate) デプロイ知見
 
-#### NLB 非互換（重要）
+#### NLB 経由の FPolicy 接続問題（重要）
 
-**ONTAP FPolicy プロトコルは NLB TCP パススルー経由では動作しない。**
+**検証結果: ONTAP FPolicy は NLB TCP パススルー経由でハンドシェイクが完了しなかった。**
 
-- ONTAP FPolicy はバイナリフレーミング（`"` + 4バイト長 + `"` + payload）を使用
-- NLB がこのフレーミングを正しく中継できない（接続確立後にデータが届かない）
+- NLB は TCP 接続を確立するが、FPolicy NEGO_REQ/RESP ハンドシェイクが完了しない
+- 原因は ONTAP FPolicy の external-engine セッション管理と NLB/Fargate ターゲットパスの相互作用と推定される（ソース IP 保持、ヘルスチェック干渉、接続再利用セマンティクスなど）
+- これは本検証環境での観測結果であり、NLB の一般的な制限として断言するものではない
 - ONTAP external-engine には **Fargate タスクの直接 Private IP** を指定すること
 - NLB はヘルスチェック + サービスディスカバリ用途のみ
+
+#### Fargate Direct IP の運用前提
+
+- `DesiredCount=1` を前提とした設計（IP Updater Lambda は単一タスク IP を ONTAP に登録）
+- ONTAP が TCP 接続を開始するため、Security Group で **inbound TCP 9898** を許可する必要あり
+- `is-mandatory: false` 設定時、サーバー切断中はイベントがドロップされる（ファイル操作は継続）
+- イベントロスゼロが必要な場合は ONTAP Persistent Store (9.14.1+) を検討
+- IP Updater Lambda が ECS Task State Change を検知し、ONTAP REST API で自動更新する
 
 #### タイムアウト設定
 

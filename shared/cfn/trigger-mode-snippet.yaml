@@ -1,6 +1,16 @@
 # =====================================================================
 # TriggerMode パラメータ + Conditions スニペット
 # 各 UC テンプレートの Parameters / Conditions セクションに追加する。
+#
+# Phase 10 スコープ:
+#   - shared FPolicy → SQS → EventBridge パイプラインの E2E 検証完了
+#   - TriggerMode パラメータの scaffolding（legal-compliance に参照実装）
+#   - UC-specific Step Functions dispatch rules は Phase 11 で実装
+#
+# Phase 11 スコープ:
+#   - 全 17 UC テンプレートへの TriggerMode 統合
+#   - UC 別 EventBridge Rule（ファイルパスプレフィックス/拡張子フィルタ）
+#   - Idempotency Store による HYBRID モード重複排除
 # =====================================================================
 #
 # 使い方:

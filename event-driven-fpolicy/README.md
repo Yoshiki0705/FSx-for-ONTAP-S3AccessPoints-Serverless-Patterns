@@ -311,11 +311,13 @@ aws ecr delete-repository \
 |-----------|:-----------:|------|
 | NFSv3 | ✅ | write-complete 待機が必要（デフォルト 5 秒） |
 | NFSv4.0 | ✅ | 推奨 |
-| NFSv4.1 | ✅ | 推奨（マウント時 `vers=4.1` を明示） |
+| NFSv4.1 | ✅ | 推奨（マウント時 `vers=4.1` を明示）。**ONTAP 9.15.1 以降で対応** |
 | NFSv4.2 | ❌ | ONTAP FPolicy monitoring 非サポート |
 | SMB | ✅ | CIFS プロトコルとして検知 |
 
 > **重要**: `mount -o vers=4` は NFSv4.2 にネゴシエートされる可能性があるため、`vers=4.1` を明示的に指定してください。
+
+> **ONTAP バージョン注記**: NFSv4.1 の FPolicy monitoring は ONTAP 9.15.1 で導入されました。それ以前のバージョンでは SMB、NFSv3、NFSv4.0 のみ対応です。詳細は [NetApp FPolicy イベント設定ドキュメント](https://docs.netapp.com/us-en/ontap/nas-audit/plan-fpolicy-event-config-concept.html) を参照してください。
 
 ## 参考リンク
 
