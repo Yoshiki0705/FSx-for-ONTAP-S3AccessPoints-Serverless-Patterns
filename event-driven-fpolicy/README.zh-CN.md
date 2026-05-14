@@ -311,11 +311,13 @@ aws ecr delete-repository \
 |-----------|:-----------:|------|
 | NFSv3 | ✅ | 需要 write-complete 等待（默认 5 秒） |
 | NFSv4.0 | ✅ | 推荐 |
-| NFSv4.1 | ✅ | 推荐（挂载时明确指定 `vers=4.1`） |
+| NFSv4.1 | ✅ | 推荐（挂载时明确指定 `vers=4.1`）。**ONTAP 9.15.1 及以上版本支持** |
 | NFSv4.2 | ❌ | ONTAP FPolicy monitoring 不支持 |
 | SMB | ✅ | 作为 CIFS 协议检测 |
 
 > **重要**：`mount -o vers=4` 可能会协商为 NFSv4.2，请明确指定 `vers=4.1`。
+
+> **ONTAP 版本说明**：NFSv4.1 FPolicy monitoring 支持在 ONTAP 9.15.1 中引入。更早版本仅支持 SMB、NFSv3 和 NFSv4.0。详情请参阅 [NetApp FPolicy 事件配置文档](https://docs.netapp.com/us-en/ontap/nas-audit/plan-fpolicy-event-config-concept.html)。
 
 ## 参考链接
 
