@@ -51,12 +51,22 @@ ONTAP FPolicy External Server を ECS Fargate 上に実装し、FSx for NetApp O
 
 ## 4. 発見した問題と対策
 
-### 4.1 NLB 非互換（解決済み）
+### 4.1 NLB 経由の FPolicy 接続問題（解決済み）
 
-**問題**: ONTAP FPolicy プロトコルは NLB TCP パススルー経由で動作しない。
+**問題**: ONTAP FPolicy プロトコルは NLB TCP パススルー経由でハンドシェイクが完了しなかった。
 
-**原因**: FPolicy はバイナリフレーミング（`"` + 4バイト big-endian 長 + `"` + payload）を使用。
-NLB が TCP 接続を確立した後、このフレーミングデータを正しく中継できない。
+**観測結果**: NLB は TCP 接続を確立するが、FPolicy NEGO_REQ/RESP ハンドシェイクが完了しない。
+
+**推定原因**: ONTAP FPolicy の external-engine セッション管理と NLB/Fargate ターゲットパスの相互作用。
+ソース IP 保持設定、ヘルスチェック干渉、接続再利用セマンティクスなどが影響している可能性がある。
+これは本検証環境での観測結果であり、NLB の一般的な制限として断言するものではない。
+
+**追加検証（2026-05-14）**: `preserve_client_ip.enabled=true` と `false` の両方でテスト。
+いずれの設定でも ONTAP は NLB IP に FPolicy 接続を確立できなかった。
+NLB IP からの接続は全てヘルスチェック（TCP 接続→即切断）のみ。
+ONTAP data LIF からの FPolicy ハンドシェイクは NLB 経由では発生しなかった。
+推定原因: ONTAP FPolicy が primary-servers IP への直接 TCP 接続を前提としており、
+NLB のターゲットグループ経由のルーティングでは FPolicy セッション確立条件を満たさない。
 
 **対策**: Fargate タスクの直接 Private IP を ONTAP external-engine に指定。NLB はヘルスチェック用途のみ。
 
