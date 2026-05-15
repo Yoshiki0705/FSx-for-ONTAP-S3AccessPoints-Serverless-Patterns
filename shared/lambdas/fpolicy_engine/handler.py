@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any
 
 import boto3
@@ -31,15 +32,122 @@ logger.setLevel(logging.INFO)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
+# --- Schema Validation (used by tests and SQS ingestion) ---
+
+class SchemaValidationError(Exception):
+    """Raised when an FPolicy event fails schema validation."""
+
+    def __init__(self, message: str, errors: list | None = None):
+        super().__init__(message)
+        self.errors = errors or [message]
+
+
+class SqsIngestionError(Exception):
+    """Raised when SQS message send fails after retries."""
+    pass
+
+
+def validate_fpolicy_event(event: dict[str, Any], schema: dict | None = None) -> bool:
+    """Validate an FPolicy event against the JSON schema.
+
+    Args:
+        event: FPolicy event dict to validate.
+        schema: Optional JSON schema dict. If None, loads from default path.
+
+    Returns:
+        True if valid.
+
+    Raises:
+        SchemaValidationError: If validation fails.
+    """
+    import jsonschema
+
+    if schema is None:
+        schema_path = os.environ.get(
+            "SCHEMA_PATH",
+            str(Path(__file__).parent.parent.parent / "schemas" / "fpolicy-event-schema.json"),
+        )
+        with open(schema_path) as f:
+            schema = json.load(f)
+
+    try:
+        jsonschema.validate(instance=event, schema=schema)
+        return True
+    except jsonschema.ValidationError as e:
+        raise SchemaValidationError(
+            f"Schema validation failed: {e.message}",
+            errors=[e.message],
+        ) from e
+
+
+def send_to_sqs_with_retry(
+    queue_url: str,
+    message_body: str,
+    max_retries: int = 3,
+    region: str = "ap-northeast-1",
+    base_delay: float = 1.0,
+    sqs_client: Any = None,
+) -> str:
+    """Send a message to SQS with exponential backoff retry.
+
+    Args:
+        queue_url: SQS queue URL.
+        message_body: JSON string to send.
+        max_retries: Maximum retry attempts.
+        region: AWS region.
+        base_delay: Base delay between retries (seconds).
+        sqs_client: Optional pre-configured SQS client.
+
+    Returns:
+        SQS MessageId string.
+
+    Raises:
+        SqsIngestionError: If all retries fail.
+    """
+    if sqs_client is None:
+        sqs_client = boto3.client("sqs", region_name=region)
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            response = sqs_client.send_message(
+                QueueUrl=queue_url,
+                MessageBody=message_body,
+            )
+            return response["MessageId"]
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                time.sleep(base_delay * (2 ** attempt))
+
+    raise SqsIngestionError(
+        f"All {max_retries} SQS send attempts failed: {last_error}"
+    )
+
+
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """ECS Task State Change イベントを処理し、ONTAP engine IP を更新する.
 
     トリガー条件:
     - ECS Task State Change (RUNNING)
     - 対象クラスター・サービスのタスクのみ
+
+    拡張機能:
+    - action: "ontap_api" — 汎用 ONTAP REST API 呼び出し
+    - action: "get_status" — ステータス確認
     """
     logger.info("Event received: %s", json.dumps(event, default=str))
 
+    # --- Extension: Generic ONTAP API access ---
+    action = event.get("action", "")
+
+    if action == "get_status":
+        return {"statusCode": 200, "body": "IP Updater Lambda is running"}
+
+    if action == "ontap_api":
+        return _handle_ontap_api(event)
+
+    # --- Original: ECS Task State Change handling ---
     # Extract task details from event
     detail = event.get("detail", {})
     last_status = detail.get("lastStatus", "")
@@ -143,4 +251,89 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     return {
         "statusCode": 200,
         "body": f"Updated engine {engine_name} to {task_ip}",
+    }
+
+
+def _handle_ontap_api(event: dict[str, Any]) -> dict[str, Any]:
+    """汎用 ONTAP REST API 呼び出しハンドラ.
+
+    Persistent Store 設定やステータス確認に使用する。
+    セキュリティガードレール: パス許可リスト + メソッド制限を適用。
+
+    Event format:
+        {
+            "action": "ontap_api",
+            "method": "GET" | "POST" | "PATCH" | "DELETE",
+            "path": "/api/protocols/fpolicy/{svm_uuid}/persistent-stores",
+            "body": {...}  // optional
+        }
+    """
+    method = event.get("method", "GET").upper()
+    api_path = event.get("path", "")
+    api_body = event.get("body")
+
+    if not api_path:
+        return {"statusCode": 400, "body": "Missing 'path' in event"}
+
+    # --- Security guardrails ---
+    # Path allowlist: only FPolicy-related and storage volume operations
+    ALLOWED_PATH_PREFIXES = [
+        "/api/protocols/fpolicy/",
+        "/api/storage/volumes",
+        "/api/storage/aggregates",
+        "/api/cluster/jobs/",
+    ]
+    if not any(api_path.startswith(prefix) for prefix in ALLOWED_PATH_PREFIXES):
+        logger.warning("[ONTAP API] DENIED: path %s not in allowlist", api_path)
+        return {
+            "statusCode": 403,
+            "body": f"Path not allowed: {api_path}. Allowed prefixes: {ALLOWED_PATH_PREFIXES}",
+        }
+
+    # Method restriction: DELETE requires explicit opt-in via environment variable
+    ALLOW_DELETE = os.environ.get("ONTAP_API_ALLOW_DELETE", "false").lower() == "true"
+    if method == "DELETE" and not ALLOW_DELETE:
+        logger.warning("[ONTAP API] DENIED: DELETE method not enabled")
+        return {
+            "statusCode": 403,
+            "body": "DELETE method not allowed. Set ONTAP_API_ALLOW_DELETE=true to enable.",
+        }
+
+    # --- Credential retrieval ---
+    secret_name = os.environ["FSXN_CREDENTIALS_SECRET"]
+    sm_client = boto3.client("secretsmanager")
+    secret_value = sm_client.get_secret_value(SecretId=secret_name)
+    creds = json.loads(secret_value["SecretString"])
+    username = creds["username"]
+    password = creds["password"]
+
+    mgmt_ip = os.environ["FSXN_MGMT_IP"]
+    url = f"https://{mgmt_ip}{api_path}"
+
+    http = urllib3.PoolManager(cert_reqs="CERT_NONE")
+    headers = urllib3.make_headers(basic_auth=f"{username}:{password}")
+    headers["Content-Type"] = "application/json"
+
+    body = json.dumps(api_body).encode() if api_body else None
+
+    # Log path and method only — never log credentials or full request body
+    logger.info("[ONTAP API] %s %s", method, api_path)
+    resp = http.request(method, url, headers=headers, body=body)
+
+    try:
+        resp_body = json.loads(resp.data.decode()) if resp.data else {}
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        resp_body = resp.data.decode(errors="replace")
+
+    # Structured audit log — caller identity from context, no sensitive data
+    logger.info(
+        "[ONTAP API] Audit: method=%s path=%s status=%d correlation_id=%s",
+        method,
+        api_path,
+        resp.status,
+        event.get("correlation_id", "none"),
+    )
+    return {
+        "statusCode": resp.status,
+        "body": resp_body,
     }
