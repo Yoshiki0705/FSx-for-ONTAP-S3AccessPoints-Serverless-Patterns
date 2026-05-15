@@ -258,6 +258,7 @@ def _handle_ontap_api(event: dict[str, Any]) -> dict[str, Any]:
     """汎用 ONTAP REST API 呼び出しハンドラ.
 
     Persistent Store 設定やステータス確認に使用する。
+    セキュリティガードレール: パス許可リスト + メソッド制限を適用。
 
     Event format:
         {
@@ -274,7 +275,31 @@ def _handle_ontap_api(event: dict[str, Any]) -> dict[str, Any]:
     if not api_path:
         return {"statusCode": 400, "body": "Missing 'path' in event"}
 
-    # Get ONTAP credentials
+    # --- Security guardrails ---
+    # Path allowlist: only FPolicy-related and storage volume operations
+    ALLOWED_PATH_PREFIXES = [
+        "/api/protocols/fpolicy/",
+        "/api/storage/volumes",
+        "/api/storage/aggregates",
+        "/api/cluster/jobs/",
+    ]
+    if not any(api_path.startswith(prefix) for prefix in ALLOWED_PATH_PREFIXES):
+        logger.warning("[ONTAP API] DENIED: path %s not in allowlist", api_path)
+        return {
+            "statusCode": 403,
+            "body": f"Path not allowed: {api_path}. Allowed prefixes: {ALLOWED_PATH_PREFIXES}",
+        }
+
+    # Method restriction: DELETE requires explicit opt-in via environment variable
+    ALLOW_DELETE = os.environ.get("ONTAP_API_ALLOW_DELETE", "false").lower() == "true"
+    if method == "DELETE" and not ALLOW_DELETE:
+        logger.warning("[ONTAP API] DENIED: DELETE method not enabled")
+        return {
+            "statusCode": 403,
+            "body": "DELETE method not allowed. Set ONTAP_API_ALLOW_DELETE=true to enable.",
+        }
+
+    # --- Credential retrieval ---
     secret_name = os.environ["FSXN_CREDENTIALS_SECRET"]
     sm_client = boto3.client("secretsmanager")
     secret_value = sm_client.get_secret_value(SecretId=secret_name)
@@ -291,6 +316,7 @@ def _handle_ontap_api(event: dict[str, Any]) -> dict[str, Any]:
 
     body = json.dumps(api_body).encode() if api_body else None
 
+    # Log path and method only — never log credentials or full request body
     logger.info("[ONTAP API] %s %s", method, api_path)
     resp = http.request(method, url, headers=headers, body=body)
 
@@ -299,7 +325,14 @@ def _handle_ontap_api(event: dict[str, Any]) -> dict[str, Any]:
     except (json.JSONDecodeError, UnicodeDecodeError):
         resp_body = resp.data.decode(errors="replace")
 
-    logger.info("[ONTAP API] Response: %d", resp.status)
+    # Structured audit log — caller identity from context, no sensitive data
+    logger.info(
+        "[ONTAP API] Audit: method=%s path=%s status=%d correlation_id=%s",
+        method,
+        api_path,
+        resp.status,
+        event.get("correlation_id", "none"),
+    )
     return {
         "statusCode": resp.status,
         "body": resp_body,
