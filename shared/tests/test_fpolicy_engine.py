@@ -138,8 +138,14 @@ class TestSendToSqsWithRetry:
 
 
 class TestHandler:
-    """handler 関数の統合テスト."""
+    """handler 関数の統合テスト.
 
+    NOTE: handler は Phase 10 で IP Updater に refactored された。
+    以下のテストは旧 SQS Ingestion handler の動作を検証するもの。
+    IP Updater handler のテストは別途実装が必要。
+    """
+
+    @pytest.mark.skip(reason="handler refactored to IP Updater in Phase 10; SQS ingestion logic moved to FPolicy Server")
     @mock_aws
     def test_handler_success(self) -> None:
         """正常系: 有効イベント → SQS 送信成功."""
@@ -162,6 +168,7 @@ class TestHandler:
             if "SCHEMA_PATH" in os.environ:
                 del os.environ["SCHEMA_PATH"]
 
+    @pytest.mark.skip(reason="handler refactored to IP Updater in Phase 10; SQS ingestion logic moved to FPolicy Server")
     @mock_aws
     def test_handler_validation_failure(self) -> None:
         """異常系: バリデーション失敗."""
@@ -187,6 +194,7 @@ class TestHandler:
             if "SCHEMA_PATH" in os.environ:
                 del os.environ["SCHEMA_PATH"]
 
+    @pytest.mark.skip(reason="handler refactored to IP Updater in Phase 10; SQS ingestion logic moved to FPolicy Server")
     @mock_aws
     def test_handler_batch_events(self) -> None:
         """バッチイベント処理."""

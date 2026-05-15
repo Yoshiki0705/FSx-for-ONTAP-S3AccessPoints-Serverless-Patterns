@@ -865,6 +865,7 @@ Resources:
   # -----------------------------------------------------------------
   SchedulerRole:
     Type: AWS::IAM::Role
+    Condition: IsPollingOrHybrid
     Properties:
       RoleName: !Sub "${AWS::StackName}-scheduler-role"
       AssumeRolePolicyDocument:
@@ -960,6 +961,64 @@ Resources:
       TreatMissingData: notBreaching
       AlarmActions:
         - !Ref NotificationTopic
+
+
+
+  # -----------------------------------------------------------------
+  # FPolicy EventBridge Rule (EVENT_DRIVEN / HYBRID)
+  # -----------------------------------------------------------------
+  FPolicyEventRuleRole:
+    Type: AWS::IAM::Role
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-fpolicy-rule-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeStepFunctions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref ComplianceStateMachine
+
+  FPolicyComplianceRule:
+    Type: AWS::Events::Rule
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-fpolicy-trigger"
+      EventBusName: !Ref FPolicyEventBusName
+      EventPattern:
+        source:
+          - "fsxn.fpolicy"
+        detail-type:
+          - "FPolicy File Operation"
+        detail:
+          operation_type:
+              - "create"
+              - "write"
+              - "rename"
+              - "delete"
+          file_path:
+              - prefix: "/legal/"
+              - prefix: "/compliance/"
+              - prefix: "/audit/"
+              - suffix: ".pdf"
+              - suffix: ".docx"
+              - suffix: ".xlsx"
+      State: ENABLED
+      Targets:
+        - Id: step-functions-target
+          Arn: !Ref ComplianceStateMachine
+          RoleArn: !GetAtt FPolicyEventRuleRole.Arn
 
 # =====================================================================
 # Outputs
