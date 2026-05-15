@@ -24,6 +24,41 @@ Parameters:
     Type: String
     Default: "test-output-bucket"
 
+  # --- TriggerMode (Phase 11 Req 1) ---
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: >
+      トリガーモードの選択。
+      POLLING: 既存の EventBridge Scheduler + Discovery Lambda（デフォルト）。
+      EVENT_DRIVEN: FPolicy イベント駆動のみ（Scheduler 無効化）。
+      HYBRID: 両方有効（Idempotency Store で重複排除）。
+  FPolicyEventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+    Description: FPolicy EventBridge カスタムバス名（EVENT_DRIVEN / HYBRID 時に使用）
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  # TriggerMode Conditions
+  IsPolling:
+    !Equals [!Ref TriggerMode, "POLLING"]
+  IsEventDriven:
+    !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+  IsHybrid:
+    !Equals [!Ref TriggerMode, "HYBRID"]
+  IsPollingOrHybrid:
+    !Or
+      - !Condition IsPolling
+      - !Condition IsHybrid
+  IsEventDrivenOrHybrid:
+    !Or
+      - !Condition IsEventDriven
+      - !Condition IsHybrid
+
 Resources:
   DiscoveryFunction:
     Type: AWS::Serverless::Function
@@ -74,3 +109,66 @@ Resources:
       Handler: handler.handler
       MemorySize: 256
       Timeout: 60
+
+  # -----------------------------------------------------------------
+  # FPolicy EventBridge Rule (EVENT_DRIVEN / HYBRID)
+  # -----------------------------------------------------------------
+  FPolicyEventRuleRole:
+    Type: AWS::IAM::Role
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-fpolicy-rule-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+
+  FPolicySatelliteRule:
+    Type: AWS::Events::Rule
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-fpolicy-trigger"
+      EventBusName: !Ref FPolicyEventBusName
+      EventPattern:
+        source:
+          - "fsxn.fpolicy"
+        detail-type:
+          - "FPolicy File Operation"
+        detail:
+          operation_type:
+              - "create"
+              - "write"
+          file_path:
+              - prefix: "/defense/"
+              - prefix: "/satellite/"
+              - prefix: "/imagery/"
+              - suffix: ".tiff"
+              - suffix: ".nitf"
+              - suffix: ".jp2"
+              - suffix: ".geotiff"
+      State: ENABLED
+      Targets:
+        - Id: lambda-target
+          Arn: !GetAtt DiscoveryFunction.Arn
+
+  FPolicyLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      FunctionName: !Ref DiscoveryFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt FPolicySatelliteRule.Arn

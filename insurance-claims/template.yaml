@@ -91,6 +91,23 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: X-Ray トレーシングを有効化する
 
+
+  # --- TriggerMode (Phase 11 Req 1) ---
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: >
+      トリガーモードの選択。
+      POLLING: 既存の EventBridge Scheduler + Discovery Lambda（デフォルト）。
+      EVENT_DRIVEN: FPolicy イベント駆動のみ（Scheduler 無効化）。
+      HYBRID: 両方有効（Idempotency Store で重複排除）。
+
+  FPolicyEventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+    Description: FPolicy EventBridge カスタムバス名（EVENT_DRIVEN / HYBRID 時に使用）
+
 Conditions:
   HasS3AccessPointName:
     !Not [!Equals [!Ref S3AccessPointName, ""]]
@@ -105,6 +122,21 @@ Conditions:
   EnableXRay:
     !Equals [!Ref EnableXRayTracing, "true"]
 
+  # TriggerMode Conditions
+  IsPolling:
+    !Equals [!Ref TriggerMode, "POLLING"]
+  IsEventDriven:
+    !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+  IsHybrid:
+    !Equals [!Ref TriggerMode, "HYBRID"]
+  IsPollingOrHybrid:
+    !Or
+      - !Condition IsPolling
+      - !Condition IsHybrid
+  IsEventDrivenOrHybrid:
+    !Or
+      - !Condition IsEventDriven
+      - !Condition IsHybrid
 Resources:
   OutputBucket:
     Type: AWS::S3::Bucket
@@ -596,6 +628,7 @@ Resources:
   # EventBridge Scheduler
   SchedulerRole:
     Type: AWS::IAM::Role
+    Condition: IsPollingOrHybrid
     Properties:
       RoleName: !Sub "${AWS::StackName}-scheduler-role"
       AssumeRolePolicyDocument:
@@ -616,6 +649,7 @@ Resources:
 
   InsuranceClaimsSchedule:
     Type: AWS::Scheduler::Schedule
+    Condition: IsPollingOrHybrid
     Properties:
       Name: !Sub "${AWS::StackName}-schedule"
       ScheduleExpression: !Ref ScheduleExpression
@@ -644,3 +678,57 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
       AlarmActions: [!Ref NotificationTopic]
+
+  # -----------------------------------------------------------------
+  # FPolicy EventBridge Rule (EVENT_DRIVEN / HYBRID)
+  # -----------------------------------------------------------------
+  FPolicyEventRuleRole:
+    Type: AWS::IAM::Role
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-fpolicy-rule-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeStepFunctions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref InsuranceClaimsStateMachine
+
+  FPolicyInsuranceRule:
+    Type: AWS::Events::Rule
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-fpolicy-trigger"
+      EventBusName: !Ref FPolicyEventBusName
+      EventPattern:
+        source:
+          - "fsxn.fpolicy"
+        detail-type:
+          - "FPolicy File Operation"
+        detail:
+          operation_type:
+              - "create"
+              - "write"
+          file_path:
+              - prefix: "/insurance/"
+              - prefix: "/claims/"
+              - suffix: ".pdf"
+              - suffix: ".jpg"
+              - suffix: ".png"
+              - suffix: ".tiff"
+      State: ENABLED
+      Targets:
+        - Id: step-functions-target
+          Arn: !Ref InsuranceClaimsStateMachine
+          RoleArn: !GetAtt FPolicyEventRuleRole.Arn

@@ -44,6 +44,22 @@ from typing import Any, Optional
 
 import boto3
 
+# Protobuf parser (lazy import to avoid dependency when using XML mode)
+try:
+    from .protobuf_parser import (
+        ProtobufParser,
+        is_protobuf_format,
+    )
+
+    PROTOBUF_AVAILABLE = True
+except ImportError:
+    try:
+        from protobuf_parser import ProtobufParser, is_protobuf_format
+
+        PROTOBUF_AVAILABLE = True
+    except ImportError:
+        PROTOBUF_AVAILABLE = False
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -61,6 +77,7 @@ SCHEMA_PATH = os.environ.get(
     "SCHEMA_PATH",
     str(Path(__file__).parent.parent / "schemas" / "fpolicy-event-schema.json"),
 )
+FPOLICY_FORMAT = os.environ.get("FPOLICY_FORMAT", "xml")  # xml or protobuf
 
 # Protocol constants
 XML_DECL = b'<?xml version="1.0"?>'
@@ -82,12 +99,14 @@ class FPolicyServer:
         aws_region: str = AWS_REGION,
         mode: str = MODE,
         write_complete_delay_sec: int = WRITE_COMPLETE_DELAY_SEC,
+        fpolicy_format: str = FPOLICY_FORMAT,
     ) -> None:
         self.port = port
         self.sqs_queue_url = sqs_queue_url
         self.aws_region = aws_region
         self.mode = mode
         self.write_complete_delay_sec = write_complete_delay_sec
+        self.fpolicy_format = fpolicy_format
         self._sqs_client: Any = None
         self._cw_client: Any = None
         self._running = False
@@ -96,6 +115,17 @@ class FPolicyServer:
         # Default SVM/volume from environment (fallback)
         self._default_svm_name = os.environ.get("SVM_NAME", "")
         self._default_volume_name = os.environ.get("VOLUME_NAME", "")
+        # Protobuf parser (initialized if format is protobuf)
+        self._protobuf_parser: Optional[Any] = None
+        if self.fpolicy_format == "protobuf":
+            if PROTOBUF_AVAILABLE:
+                self._protobuf_parser = ProtobufParser()
+                logger.info("Protobuf parser initialized (format=protobuf)")
+            else:
+                logger.warning(
+                    "FPOLICY_FORMAT=protobuf but protobuf_parser not available, "
+                    "falling back to auto-detect mode"
+                )
 
     @property
     def sqs_client(self) -> Any:
@@ -120,10 +150,11 @@ class FPolicyServer:
         self._running = True
 
         logger.info(
-            "FPolicy Server started on port %d (mode=%s, delay=%ds)",
+            "FPolicy Server started on port %d (mode=%s, delay=%ds, format=%s)",
             self.port,
             self.mode,
             self.write_complete_delay_sec,
+            self.fpolicy_format,
         )
         if self.sqs_queue_url:
             logger.info("SQS Queue: %s", self.sqs_queue_url)
@@ -164,6 +195,13 @@ class FPolicyServer:
                     logger.info("[-] Connection closed: %s", addr)
                     break
 
+                # Auto-detect format or use configured format
+                if self._protobuf_parser and PROTOBUF_AVAILABLE:
+                    if is_protobuf_format(raw_msg):
+                        self._dispatch_protobuf_message(conn, raw_msg, conn_ctx)
+                        continue
+
+                # Default: XML format
                 header_str, body_str = self.parse_header_and_body(raw_msg)
                 self._dispatch_message(conn, header_str, body_str, conn_ctx)
 
@@ -334,6 +372,9 @@ class FPolicyServer:
         logger.info("[Event] %s %s", operation, ontap_path)
 
         # NFSv3 write-complete delay
+        # NOTE: This fixed delay is a fallback, not a correctness guarantee.
+        # For multi-GB files, use rename-based commit, marker files, or
+        # size-stability checks at the UC level instead.
         if self.write_complete_delay_sec > 0:
             time.sleep(self.write_complete_delay_sec)
 
@@ -411,6 +452,116 @@ class FPolicyServer:
                 notf_type,
                 header_str[:100],
             )
+
+    def _dispatch_protobuf_message(
+        self, conn: socket.socket, raw_msg: bytes, conn_ctx: dict[str, str]
+    ) -> None:
+        """protobuf フォーマットのメッセージを処理する.
+
+        protobuf メッセージは header + body の 2 部構成。
+        header/body の区切りは XML と同じ b'\\n\\n' を使用する。
+        """
+        assert self._protobuf_parser is not None
+
+        # Split header and body (same framing as XML)
+        parts = raw_msg.split(b"\n\n", 1)
+        header_bytes = parts[0]
+        body_bytes = parts[1] if len(parts) > 1 else b""
+
+        # Parse header to determine message type
+        header = self._protobuf_parser.parse_header(header_bytes)
+        notf_type = header.get("notf_type", "")
+
+        if notf_type == "NEGO_REQ":
+            # Parse handshake and respond (still XML response for compatibility)
+            handshake = self._protobuf_parser.parse_handshake_request(body_bytes)
+            session_id = handshake.get("session_id", "")
+            policy_name = handshake.get("policy_name", "")
+            vs_uuid = handshake.get("vs_uuid", "")
+            vs_name = handshake.get("vs_name", "")
+
+            if vs_name:
+                conn_ctx["svm_name"] = vs_name
+            conn_ctx["vs_uuid"] = vs_uuid
+            conn_ctx["policy_name"] = policy_name
+
+            versions = handshake.get("versions", [])
+            selected_version = "1.0"
+            for v in PREFERRED_VERSIONS:
+                if v in versions:
+                    selected_version = v
+                    break
+
+            logger.info(
+                "[Handshake/PB] Policy=%s | Session=%s | VsUUID=%s",
+                policy_name, session_id, vs_uuid,
+            )
+            self.send_nego_resp(
+                conn, session_id, selected_version, vs_uuid, policy_name
+            )
+
+        elif notf_type in ("NOTI_REQ", "SCREEN_REQ"):
+            self._handle_protobuf_notification(body_bytes, conn_ctx)
+
+        elif notf_type in ("KEEP_ALIVE_REQ", "KEEP_ALIVE"):
+            logger.info("[KeepAlive/PB] Received — connection healthy")
+
+        else:
+            logger.info("[Message/PB] Type=%s", notf_type)
+
+    def _handle_protobuf_notification(
+        self, body_bytes: bytes, conn_ctx: dict[str, str]
+    ) -> None:
+        """protobuf NOTI_REQ を処理する."""
+        assert self._protobuf_parser is not None
+
+        notification = self._protobuf_parser.parse_notification(body_bytes)
+
+        ontap_path = notification.get("file_path", "")
+        if not ontap_path:
+            logger.warning("[NOTI_REQ/PB] No file_path in notification")
+            return
+
+        # Clean path
+        ontap_path = ontap_path.replace("\\", "/").lstrip("/")
+
+        operation = notification.get("operation_type", "create")
+        volume_name = notification.get("volume_name", self._default_volume_name or "vol1")
+        svm_name = notification.get(
+            "svm_name",
+            conn_ctx.get("svm_name") or self._default_svm_name or "unknown",
+        )
+        client_ip = notification.get("client_ip", "")
+
+        logger.info("[Event/PB] %s %s", operation, ontap_path)
+
+        # NFSv3 write-complete delay
+        if self.write_complete_delay_sec > 0:
+            time.sleep(self.write_complete_delay_sec)
+
+        # Build FPolicy event (same format as XML path)
+        fpolicy_event = {
+            "event_id": str(uuid.uuid4()),
+            "operation_type": self._normalize_operation(operation),
+            "file_path": ontap_path,
+            "volume_name": volume_name,
+            "svm_name": svm_name,
+            "timestamp": notification.get(
+                "timestamp", datetime.now(timezone.utc).isoformat()
+            ),
+            "file_size": notification.get("file_size", 0),
+        }
+        if client_ip:
+            fpolicy_event["client_ip"] = client_ip
+        if notification.get("user_name"):
+            fpolicy_event["user_name"] = notification["user_name"]
+        if notification.get("protocol"):
+            fpolicy_event["protocol"] = notification["protocol"]
+
+        if self.mode == "realtime":
+            self._send_to_sqs(fpolicy_event)
+        else:
+            self._write_to_log(fpolicy_event)
 
     def _handle_nego_req(
         self, conn: socket.socket, body_str: str, conn_ctx: dict[str, str]
