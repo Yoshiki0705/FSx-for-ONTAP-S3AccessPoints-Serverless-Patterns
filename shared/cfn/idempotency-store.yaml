@@ -1,0 +1,121 @@
+# =============================================================================
+# Idempotency Store — HYBRID モード重複排除用 DynamoDB テーブル
+# =============================================================================
+#
+# HYBRID モードでは、EventBridge Scheduler (POLLING) と FPolicy EventBridge Rule
+# (EVENT_DRIVEN) の両方が同一ファイルに対してワークフローを起動する可能性がある。
+# Idempotency Store は処理済みイベントを記録し、重複実行を防止する。
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/idempotency-store.yaml \
+#     --stack-name fsxn-idempotency-store \
+#     --parameter-overrides ProjectPrefix=fsxn-s3ap
+#
+# Step Functions の最初のステップで Idempotency Check を実行:
+#   1. file_path + operation_type + timestamp_bucket をキーとして検索
+#   2. 既存レコードがあれば SKIP (重複)
+#   3. なければ INSERT して処理続行
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Idempotency Store.
+  HYBRID モードでの重複排除用 DynamoDB テーブル。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  TtlDays:
+    Type: Number
+    Default: 7
+    Description: レコードの TTL（日数）。期限切れレコードは自動削除される。
+
+  EnablePointInTimeRecovery:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Point-in-Time Recovery を有効化する
+
+Conditions:
+  EnablePITR:
+    !Equals [!Ref EnablePointInTimeRecovery, "true"]
+
+Resources:
+  IdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ProjectPrefix}-idempotency-store"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      Tags:
+        - Key: Component
+          Value: idempotency-store
+        - Key: Phase
+          Value: "11"
+        - Key: UseCase
+          Value: hybrid-mode-deduplication
+
+  # IAM Policy for Lambda/Step Functions to access the table
+  IdempotencyAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${ProjectPrefix}-idempotency-access"
+      Description: Allow Lambda functions to read/write the Idempotency Store
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DynamoDBAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:DeleteItem
+              - dynamodb:Query
+            Resource:
+              - !GetAtt IdempotencyTable.Arn
+
+Outputs:
+  TableName:
+    Description: Idempotency Store テーブル名
+    Value: !Ref IdempotencyTable
+    Export:
+      Name: !Sub "${AWS::StackName}-TableName"
+
+  TableArn:
+    Description: Idempotency Store テーブル ARN
+    Value: !GetAtt IdempotencyTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-TableArn"
+
+  AccessPolicyArn:
+    Description: Idempotency Store アクセスポリシー ARN
+    Value: !Ref IdempotencyAccessPolicy
+    Export:
+      Name: !Sub "${AWS::StackName}-AccessPolicyArn"
+
+  KeySchema:
+    Description: |
+      キースキーマ:
+        pk = "{uc_name}#{file_path}" (パーティションキー)
+        sk = "{operation_type}#{timestamp_bucket}" (ソートキー)
+      timestamp_bucket は 5 分単位に丸めた値（同一ファイルの近接イベントを重複とみなす）
+    Value: "pk=uc#path, sk=op#ts_bucket"
