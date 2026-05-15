@@ -76,6 +76,8 @@ EventBridge のコンテンツフィルタリングは **OR** ロジックで動
 複数の UC ルールが同一イベントに一致した場合、EventBridge は一致した全ルールのターゲットを実行する。
 例: `/manufacturing/sensors/data.json` は UC3 (manufacturing) と他の `.json` を監視する UC の両方にマッチする可能性がある。
 
+**推奨**: プレフィックスを主フィルタ（所有権境界）として使用し、サフィックスは補助フィルタとして扱う。`.pdf`, `.json`, `.csv` のような汎用拡張子は複数 UC にまたがる fan-out を引き起こす。厳密な単一 UC ルーティングが必要な場合はプレフィックスのみに依存すること。
+
 プレフィックスを適切に設計することで、意図しない fan-out を防止できる。
 
 ## TriggerMode との連携
@@ -117,3 +119,38 @@ EventPattern:
 2. **パフォーマンス**: EventBridge ルールの評価はミリ秒単位で行われるため、ルール数が増えてもレイテンシへの影響は最小限。
 3. **コスト**: EventBridge カスタムバスのイベント配信は $1.00/100万イベント。ルール評価自体は無料。
 4. **HYBRID モード**: 重複排除のため、Step Functions の最初のステップで Idempotency Store (DynamoDB) を参照する設計を推奨。
+
+
+## Routing Drift Detection
+
+UC 数が増えると、EventBridge ルールの重複や意図しない fan-out を人手で管理するのは困難になる。
+
+### 推奨アプローチ
+
+UC ルーティング定義を単一の設定ソース（`scripts/add_eventbridge_rules.py` 内の `UC_ROUTING` 辞書）に集約し、以下を自動生成する:
+
+1. **EventBridge Rules**: CloudFormation テンプレートへの自動挿入
+2. **ルーティングドキュメント**: 本ドキュメントの自動更新
+3. **Overlap 検出レポート**: prefix/suffix の重複を検出
+4. **put-events テストケース**: 各 UC のルーティングを検証するテストイベント
+5. **Fan-out expectation テスト**: 意図的な fan-out と意図しない fan-out を区別
+
+### Overlap 検出の例
+
+```python
+# scripts/check_routing_overlap.py (Phase 12 候補)
+from itertools import combinations
+
+for (uc1, cfg1), (uc2, cfg2) in combinations(UC_ROUTING.items(), 2):
+    suffix_overlap = set(cfg1["suffixes"]) & set(cfg2["suffixes"])
+    if suffix_overlap:
+        print(f"  ⚠️ {uc1} ↔ {uc2}: shared suffixes {suffix_overlap}")
+```
+
+### 変更時のチェックリスト
+
+- [ ] `scripts/add_eventbridge_rules.py` の `UC_ROUTING` を更新
+- [ ] スクリプトを再実行してテンプレートを更新
+- [ ] 本ドキュメントのルーティングテーブルを更新
+- [ ] overlap 検出を実行して意図しない fan-out がないか確認
+- [ ] `aws events put-events` でテストイベントを送信して検証

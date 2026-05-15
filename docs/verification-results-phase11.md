@@ -165,10 +165,11 @@ $ python3 -m pytest -q
 - CloudWatch Logs でイベント配信を確認
 
 ### 7. Idempotency Store 重複検出 E2E 検証（実環境）
-- DynamoDB conditional write で重複検出を確認
+- DynamoDB conditional write でテーブルレベルの重複拒否メカニズムを確認
 - 1 回目: PutItem 成功（新規レコード）
 - 2 回目: `ConditionalCheckFailedException`（重複検出 ✅）
-- HYBRID モードでの重複排除が正しく動作することを実証
+- Step Functions の最初のタスクとして Idempotency Checker を配置することで、
+  2 番目の実行がダウンストリーム処理開始前に拒否される設計を実証
 
 ## デプロイ済みリソース
 

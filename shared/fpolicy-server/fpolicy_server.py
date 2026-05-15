@@ -372,6 +372,9 @@ class FPolicyServer:
         logger.info("[Event] %s %s", operation, ontap_path)
 
         # NFSv3 write-complete delay
+        # NOTE: This fixed delay is a fallback, not a correctness guarantee.
+        # For multi-GB files, use rename-based commit, marker files, or
+        # size-stability checks at the UC level instead.
         if self.write_complete_delay_sec > 0:
             time.sleep(self.write_complete_delay_sec)
 
