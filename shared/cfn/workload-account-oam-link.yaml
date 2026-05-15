@@ -1,0 +1,94 @@
+# =============================================================================
+# Workload Account OAM Link テンプレート
+# =============================================================================
+#
+# ワークロードアカウントにデプロイし、共有サービスアカウントの
+# Observability Sink にメトリクス/ログ/トレースを共有する。
+#
+# 前提条件:
+# - 共有サービスアカウントに fsxn-shared-observability スタックがデプロイ済み
+# - Sink ARN を取得済み
+#
+# デプロイ例:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/workload-account-oam-link.yaml \
+#     --stack-name fsxn-oam-link \
+#     --parameter-overrides \
+#       SinkArn=arn:aws:oam:ap-northeast-1:SHARED_ACCOUNT:sink/SINK_ID \
+#       LabelTemplate=workload-production
+#
+# NOTE: 同一アカウントでは OAM Link を作成できない（AWS 仕様）。
+# マルチアカウント環境でのみ使用可能。
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Workload Account OAM Link.
+  共有サービスアカウントの Observability Sink にリンクする。
+
+Parameters:
+  SinkArn:
+    Type: String
+    Description: >-
+      共有サービスアカウントの Observability Sink ARN。
+      fsxn-shared-observability スタックの ObservabilitySinkArn 出力値。
+    AllowedPattern: "^arn:aws:oam:[a-z0-9-]+:\\d{12}:sink/[a-f0-9-]+$"
+
+  LabelTemplate:
+    Type: String
+    Default: "workload-account"
+    Description: >-
+      OAM Link のラベル。ダッシュボードでアカウントを識別するために使用。
+
+  ShareMetrics:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch メトリクスを共有する
+
+  ShareLogs:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch Logs を共有する
+
+  ShareTraces:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレースを共有する
+
+Conditions:
+  IncludeMetrics:
+    !Equals [!Ref ShareMetrics, "true"]
+  IncludeLogs:
+    !Equals [!Ref ShareLogs, "true"]
+  IncludeTraces:
+    !Equals [!Ref ShareTraces, "true"]
+
+Resources:
+  ObservabilityLink:
+    Type: AWS::Oam::Link
+    Properties:
+      LabelTemplate: !Ref LabelTemplate
+      ResourceTypes:
+        - !If [IncludeMetrics, "AWS::CloudWatch::Metric", !Ref "AWS::NoValue"]
+        - !If [IncludeLogs, "AWS::Logs::LogGroup", !Ref "AWS::NoValue"]
+        - !If [IncludeTraces, "AWS::XRay::Trace", !Ref "AWS::NoValue"]
+      SinkIdentifier: !Ref SinkArn
+      Tags:
+        Phase: "11"
+        Component: observability-link
+
+Outputs:
+  LinkArn:
+    Description: OAM Link ARN
+    Value: !GetAtt ObservabilityLink.Arn
+
+  LinkId:
+    Description: OAM Link ID
+    Value: !Ref ObservabilityLink
+
+  SharedResourceTypes:
+    Description: 共有リソースタイプ
+    Value: !Sub "Metrics=${ShareMetrics}, Logs=${ShareLogs}, Traces=${ShareTraces}"
