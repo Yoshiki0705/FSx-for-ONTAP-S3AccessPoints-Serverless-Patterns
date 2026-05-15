@@ -1,0 +1,186 @@
+# =============================================================================
+# 推奨運用アラーム — FPolicy イベント駆動パイプライン
+# =============================================================================
+#
+# Phase 11 で推奨する運用アラーム定義。
+# UC テンプレートの EnableCloudWatchAlarms=true 時に追加するか、
+# 共有 Observability スタックに含める。
+#
+# 使用方法:
+#   各 UC テンプレートの CloudWatch Alarms セクションに追加するか、
+#   独立したモニタリングスタックとしてデプロイする。
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Recommended Operational Alarms.
+  FPolicy イベント駆動パイプラインの運用監視アラーム。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+
+  SQSQueueName:
+    Type: String
+    Description: Ingestion SQS Queue 名
+
+  DLQQueueName:
+    Type: String
+    Description: Dead Letter Queue 名
+
+  StateMachineName:
+    Type: String
+    Default: ""
+    Description: 監視対象 Step Functions State Machine 名（空の場合はスキップ）
+
+  ECSClusterName:
+    Type: String
+    Description: FPolicy Server ECS クラスター名
+
+  ECSServiceName:
+    Type: String
+    Description: FPolicy Server ECS サービス名
+
+  AlertTopicArn:
+    Type: String
+    Description: アラート送信先 SNS Topic ARN
+
+Conditions:
+  HasStateMachine:
+    !Not [!Equals [!Ref StateMachineName, ""]]
+
+Resources:
+  # -----------------------------------------------------------------
+  # SEV2: SQS バックログ滞留
+  # -----------------------------------------------------------------
+  SQSBacklogAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-sqs-backlog-age"
+      AlarmDescription: >-
+        SQS Ingestion Queue のメッセージ滞留時間が 300 秒を超過。
+        FPolicy イベントの処理が遅延している可能性。
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+        - Name: QueueName
+          Value: !Ref SQSQueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: 300
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopicArn
+
+  # -----------------------------------------------------------------
+  # SEV2: DLQ にメッセージ到達
+  # -----------------------------------------------------------------
+  DLQMessageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-dlq-messages"
+      AlarmDescription: >-
+        Dead Letter Queue にメッセージが到達。
+        処理失敗イベントの調査が必要。
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !Ref DLQQueueName
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopicArn
+
+  # -----------------------------------------------------------------
+  # SEV2: Step Functions 実行失敗
+  # NOTE: 高頻度バッチ UC では、絶対数ではなく失敗率ベースの
+  # アラームの方がノイズが少ない場合がある。
+  # -----------------------------------------------------------------
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasStateMachine
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-sfn-failures"
+      AlarmDescription: >-
+        Step Functions の実行が失敗。
+        UC ワークフローの処理エラーを調査。
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${StateMachineName}"
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopicArn
+
+  # -----------------------------------------------------------------
+  # SEV1: ECS タスク数不足
+  # NOTE: RunningTaskCount メトリクスは Container Insights 有効化、
+  # metric math、またはカスタムメトリクスが必要な場合がある。
+  # ECS サービスのメトリクス出力方法に依存する。
+  # -----------------------------------------------------------------
+  ECSTaskCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-ecs-task-count"
+      AlarmDescription: >-
+        FPolicy Server の実行タスク数が desired count を下回っている。
+        ONTAP からのイベント受信が停止している可能性。SEV1。
+      Namespace: AWS/ECS
+      MetricName: RunningTaskCount
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSClusterName
+        - Name: ServiceName
+          Value: !Ref ECSServiceName
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref AlertTopicArn
+
+  # -----------------------------------------------------------------
+  # SEV3: DynamoDB スロットリング
+  # -----------------------------------------------------------------
+  DynamoDBThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-dynamodb-throttle"
+      AlarmDescription: >-
+        Idempotency Store DynamoDB テーブルでスロットリングが発生。
+        PAY_PER_REQUEST モードでは通常発生しないため、異常な負荷の可能性。
+      Namespace: AWS/DynamoDB
+      MetricName: ThrottledRequests
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopicArn
+
+Outputs:
+  SQSBacklogAlarmArn:
+    Value: !GetAtt SQSBacklogAlarm.Arn
+  DLQMessageAlarmArn:
+    Value: !GetAtt DLQMessageAlarm.Arn
+  ECSTaskCountAlarmArn:
+    Value: !GetAtt ECSTaskCountAlarm.Arn

@@ -207,6 +207,27 @@ fi
 | autoflush_enabled | true | 自動フラッシュ有効 |
 | autoflush_interval | PT120S (2分) | フラッシュ間隔 |
 
+## 容量見積もり
+
+Persistent Store のボリュームサイズは以下の式で見積もる:
+
+```
+required_size = event_rate_per_sec × max_outage_duration_sec × avg_event_size_bytes × safety_factor
+```
+
+### 見積もり例
+
+| シナリオ | イベント/秒 | 停止時間 | イベントサイズ | 安全係数 | 必要容量 |
+|---------|-----------|---------|-------------|---------|---------|
+| 低負荷（開発） | 10 | 300s | 500B | 2.0 | 3 MB |
+| 中負荷（本番） | 100 | 300s | 500B | 2.0 | 30 MB |
+| 高負荷（大規模） | 1000 | 600s | 500B | 2.0 | 600 MB |
+| 極高負荷 | 5000 | 600s | 500B | 2.0 | 3 GB |
+
+Phase 11 で設定した 1 GB は中〜高負荷環境に対応（約 200 万イベントバッファ可能）。
+
+> **注意**: 上記の 200 万は raw 容量。safety_factor=2.0 を適用した場合の実用計画容量は約 100 万イベントとして設計すること。
+
 ## 注意事項
 
 1. **ボリュームサイズ**: Persistent Store のボリュームサイズは、タスク停止中に蓄積されるイベント量に応じて設定する。1GB で約 200 万イベントをバッファ可能。
@@ -256,3 +277,48 @@ GET /api/protocols/fpolicy/{svm}/policies/fpolicy_aws?fields=persistent_store,en
 - [ONTAP 9.14.1: FPolicy Persistent Store](https://docs.netapp.com/us-en/ontap/nas-audit/persistent-stores.html)
 - [ONTAP REST API: Persistent Stores](https://docs.netapp.com/us-en/ontap-restapi/ontap/protocols_fpolicy_svm.uuid_persistent-stores_endpoint_overview.html)
 - [FPolicy Asynchronous Mode](https://docs.netapp.com/us-en/ontap/nas-audit/synchronous-asynchronous-notifications-concept.html)
+
+
+## Replay Throughput Sizing
+
+容量だけでなく、「再接続後に何分で追いつくか」を設計する必要がある。
+
+### 計算式
+
+```
+replay_recovery_time = buffered_events / sustainable_processing_rate
+```
+
+### 見積もり例
+
+| バッファ済みイベント | 処理レート | リカバリ時間 |
+|-------------------|-----------|------------|
+| 10,000 | 100 events/sec | 100 秒 (< 2 分) |
+| 100,000 | 100 events/sec | 1,000 秒 (≈ 17 分) |
+| 1,000,000 | 100 events/sec | 10,000 秒 (≈ 2.8 時間) |
+| 100,000 | 500 events/sec | 200 秒 (≈ 3 分) |
+
+### Sustainable Processing Rate の制約要因
+
+replay 時のスループットは以下のボトルネックで決まる:
+
+1. **FPolicy Server**: TCP 受信 + SQS 送信の処理能力
+2. **SQS**: SendMessage レート（リージョン制限: 3,000 msg/sec per queue）
+3. **Bridge Lambda**: SQS → EventBridge の変換レート
+4. **EventBridge**: PutEvents レート（10,000 entries/sec per account）
+5. **Step Functions**: StartExecution レート（デフォルト 2,000/sec）
+6. **DynamoDB**: Idempotency Store の書き込みキャパシティ
+7. **Downstream Lambda**: 各 UC の処理能力
+
+### Phase 12 Replay Storm Test メトリクス
+
+| メトリクス | 測定方法 |
+|-----------|---------|
+| Buffered event count | ONTAP REST API: Persistent Store status |
+| Replay duration | FPolicy Server ログ: 最初のreplayイベント〜最後のreplayイベント |
+| Replay events/sec | SQS SendMessage count / replay duration |
+| SQS backlog age | CloudWatch: ApproximateAgeOfOldestMessage |
+| Step Functions concurrency | CloudWatch: ExecutionsStarted per minute |
+| DynamoDB conditional write failures | CloudWatch: ConditionalCheckFailedRequests |
+| ECS CPU/Memory | Container Insights |
+| Downstream throttling | Lambda Throttles metric |
