@@ -21,3 +21,53 @@ jobs:
         run: pytest shared/tests/ --cov=shared --cov-report=xml --cov-fail-under=80 -v
       - name: Run property-based tests
         run: pytest shared/tests/test_properties.py -v
+
+  cfn-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install cfn-lint
+        run: pip install cfn-lint
+      - name: Validate all UC templates (YAML parse)
+        run: |
+          python3 -c "
+          from cfnlint.decode import cfn_yaml
+          import sys, glob
+          errors = []
+          for tpl in sorted(glob.glob('*/template.yaml')):
+              try:
+                  cfn_yaml.load(tpl)
+              except Exception as e:
+                  errors.append(f'{tpl}: {e}')
+          if errors:
+              for e in errors:
+                  print(f'ERROR: {e}')
+              sys.exit(1)
+          print(f'All {len(glob.glob(\"*/template.yaml\"))} templates parsed successfully')
+          "
+      - name: Verify TriggerMode integration
+        run: |
+          python3 -c "
+          from cfnlint.decode import cfn_yaml
+          import sys, glob
+          errors = []
+          for tpl in sorted(glob.glob('*/template.yaml')):
+              if 'event-driven' in tpl or 'build' in tpl or 'security' in tpl:
+                  continue
+              template = cfn_yaml.load(tpl)
+              params = template.get('Parameters', {})
+              conditions = template.get('Conditions', {})
+              if 'TriggerMode' not in params:
+                  errors.append(f'{tpl}: missing TriggerMode')
+              for c in ['IsPolling','IsEventDriven','IsHybrid','IsPollingOrHybrid','IsEventDrivenOrHybrid']:
+                  if c not in conditions:
+                      errors.append(f'{tpl}: missing condition {c}')
+          if errors:
+              for e in errors:
+                  print(f'ERROR: {e}')
+              sys.exit(1)
+          print('TriggerMode integration verified')
+          "
