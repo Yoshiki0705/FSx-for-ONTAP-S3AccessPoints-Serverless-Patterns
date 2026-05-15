@@ -1,0 +1,64 @@
+// FPolicy Notification protobuf schema
+// Based on ONTAP 9.15.1+ FPolicy external engine protobuf format.
+//
+// NOTE: This schema is reverse-engineered from observed ONTAP protobuf messages.
+// ONTAP does not publish an official .proto file. Field numbers are inferred
+// from binary message analysis.
+//
+// Reference: NetApp ONTAP 9.15.1 Release Notes — FPolicy protobuf support
+// https://docs.netapp.com/us-en/ontap/nas-audit/fpolicy-config-types-concept.html
+
+syntax = "proto3";
+
+package fpolicy;
+
+option python_package = "fpolicy_pb2";
+
+// FPolicy notification header
+message FPolicyHeader {
+  string notf_type = 1;       // NEGO_REQ, NOTI_REQ, KEEP_ALIVE_REQ, etc.
+  int32 content_len = 2;      // Body length in bytes
+  string data_format = 3;     // "protobuf"
+  string session_id = 4;      // Session identifier
+}
+
+// FPolicy handshake request (NEGO_REQ)
+message HandshakeRequest {
+  string vs_uuid = 1;         // Vserver UUID
+  string policy_name = 2;     // FPolicy policy name
+  string session_id = 3;      // Session ID
+  repeated string versions = 4; // Supported protocol versions
+  string vs_name = 5;         // Vserver (SVM) name
+}
+
+// FPolicy handshake response (NEGO_RESP)
+message HandshakeResponse {
+  string vs_uuid = 1;
+  string policy_name = 2;
+  string session_id = 3;
+  string prot_version = 4;    // Selected protocol version
+}
+
+// FPolicy file operation notification (NOTI_REQ)
+message FileOperationNotification {
+  string file_path = 1;       // Full file path (ONTAP internal format)
+  string volume_name = 2;     // Volume name
+  string svm_name = 3;        // SVM (Vserver) name
+  string operation_type = 4;  // create, write, delete, rename, open, close, setattr
+  string client_ip = 5;       // Client IP address
+  int64 file_size = 6;        // File size in bytes (0 if not available)
+  string timestamp = 7;       // ISO 8601 timestamp
+  string user_name = 8;       // User performing the operation (domain\user)
+  string protocol = 9;        // Access protocol: nfsv3, nfsv4, smb
+  string vs_uuid = 10;        // Vserver UUID
+  string session_id = 11;     // Session ID
+  string volume_uuid = 12;    // Volume UUID
+  string parent_path = 13;    // Parent directory path
+  string new_path = 14;       // New path (for rename operations)
+}
+
+// Keep-alive message
+message KeepAlive {
+  string session_id = 1;
+  string timestamp = 2;
+}

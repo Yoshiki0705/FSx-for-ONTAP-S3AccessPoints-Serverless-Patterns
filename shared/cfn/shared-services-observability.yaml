@@ -338,7 +338,15 @@ Resources:
           Value: shared-services-observability
 
   # -------------------------------------------------------------------
-  # Log Aggregation — CloudWatch Logs Destination
+  # Log Aggregation — CloudWatch Subscription Filter approach
+  # -------------------------------------------------------------------
+  # NOTE: AWS::Logs::Destination requires a Kinesis Data Stream or
+  # Kinesis Data Firehose as target (not a Log Group directly).
+  # For single-account or simple setups, use CloudWatch Logs Insights
+  # cross-account queries instead.
+  #
+  # For production multi-account log aggregation, deploy a Kinesis Data
+  # Firehose delivery stream and update TargetArn accordingly.
   # -------------------------------------------------------------------
   LogAggregationLogGroup:
     Type: AWS::Logs::LogGroup
@@ -381,31 +389,6 @@ Resources:
           Value: "4"
         - Key: Component
           Value: shared-services-observability
-
-  LogDestination:
-    Type: AWS::Logs::Destination
-    Condition: EnableLogs
-    Properties:
-      DestinationName: !Sub "${ProjectPrefix}-cross-account-logs"
-      RoleArn: !GetAtt LogDestinationRole.Arn
-      TargetArn: !GetAtt LogAggregationLogGroup.Arn
-      DestinationPolicy: !Sub
-        - |
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Sid": "AllowWorkloadAccountsToSendLogs",
-                "Effect": "Allow",
-                "Principal": {
-                  "AWS": "${WorkloadAccountList}"
-                },
-                "Action": "logs:PutSubscriptionFilter",
-                "Resource": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:destination:${ProjectPrefix}-cross-account-logs"
-              }
-            ]
-          }
-        - WorkloadAccountList: !Join ["\",\"", !Ref WorkloadAccountIds]
 
   # -------------------------------------------------------------------
   # IAM Role: Workload Account → Shared Services (Metric/Log Delivery)
@@ -592,12 +575,12 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-TroubleshootingRoleArn"
 
-  LogDestinationArn:
-    Description: ログ集約先 Destination ARN
+  LogAggregationLogGroupArn:
+    Description: ログ集約先 Log Group ARN
     Condition: EnableLogs
-    Value: !GetAtt LogDestination.Arn
+    Value: !GetAtt LogAggregationLogGroup.Arn
     Export:
-      Name: !Sub "${AWS::StackName}-LogDestinationArn"
+      Name: !Sub "${AWS::StackName}-LogGroupArn"
 
   XRayGroupArn:
     Description: X-Ray グループ ARN
