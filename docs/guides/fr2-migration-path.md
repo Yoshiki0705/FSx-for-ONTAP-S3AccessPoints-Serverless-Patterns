@@ -78,14 +78,14 @@ Parameters:
 
 **ONTAP 側**:
 ```bash
-# FPolicy ポリシーを無効化
-vserver fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
+# FPolicy ポリシーを無効化（ONTAP 9.11+ 推奨形式）
+fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
 ```
 
 **ロールバック手順**:
 ```bash
 # 問題発生時: FPolicy を再有効化 + TriggerMode=HYBRID に戻す
-vserver fpolicy enable -vserver FSxN_OnPre -policy-name fpolicy_aws -sequence-number 1
+fpolicy enable -vserver FSxN_OnPre -policy-name fpolicy_aws -sequence-number 1
 # CloudFormation: TriggerMode=HYBRID にスタック更新
 ```
 
