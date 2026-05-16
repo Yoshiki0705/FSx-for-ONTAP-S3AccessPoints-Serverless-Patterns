@@ -244,7 +244,7 @@ Persistent Store が有効な場合、サーバー接続時にバッファされ
 
 ```bash
 # Persistent Store 作成
-vserver fpolicy persistent-store create \
+fpolicy persistent-store create \
   -vserver FSxN_OnPre \
   -persistent-store fpolicy_store \
   -volume <dedicated_volume>
@@ -254,7 +254,7 @@ vserver fpolicy persistent-store create \
 
 ```bash
 # イベントの volume_monitoring を true に設定
-vserver fpolicy policy event modify \
+fpolicy policy event modify \
   -vserver FSxN_OnPre \
   -event-name fpolicy_nfsv4_events \
   -volume-monitoring true
@@ -316,9 +316,11 @@ NFSv3 ファイル作成 (tee /mnt/fsxn/file.txt)
 
 ### 10.2 動作確認済み ONTAP 設定
 
+> **Note**: 以下は検証時に使用したコマンド。ONTAP 9.11+ では `vserver` プレフィックスなしの形式を推奨。
+
 ```bash
 # Engine
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver FSxN_OnPre \
   -engine-name fpolicy_aws_engine \
   -primary-servers 10.0.15.111 \
@@ -326,14 +328,14 @@ vserver fpolicy policy external-engine create \
   -extern-engine-type asynchronous
 
 # Event (NFSv3 — create/write/delete/rename のみ)
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver FSxN_OnPre \
   -event-name nfsv3_file_events \
   -protocol nfsv3 \
   -file-operations create,write,delete,rename
 
 # Policy
-vserver fpolicy policy create \
+fpolicy policy create \
   -vserver FSxN_OnPre \
   -policy-name fpolicy_aws \
   -events nfsv3_file_events \
@@ -341,13 +343,13 @@ vserver fpolicy policy create \
   -is-mandatory false
 
 # Scope
-vserver fpolicy policy scope create \
+fpolicy policy scope create \
   -vserver FSxN_OnPre \
   -policy-name fpolicy_aws \
   -volumes-to-include kodera_snowflake_testap
 
 # Enable
-vserver fpolicy enable \
+fpolicy enable \
   -vserver FSxN_OnPre \
   -policy-name fpolicy_aws \
   -sequence-number 1
