@@ -71,6 +71,12 @@ Parameters:
     MaxValue: 3
     Description: Fargate タスク数
 
+  # --- Cpu/Memory パラメータが String 型である理由 ---
+  # Fargate は特定の CPU/Memory 組み合わせのみサポートする（例: 256 CPU → 512/1024/2048 Memory）。
+  # String 型 + AllowedValues を使用することで:
+  #   1. 無効な組み合わせを CloudFormation デプロイ前にバリデーションできる
+  #   2. Number 型では AllowedValues による列挙制約が直感的でない
+  #   3. cfn-lint の警告は意図的に無視している（設計上の選択）
   Cpu:
     Type: String
     Default: "256"
@@ -88,17 +94,29 @@ Conditions:
 
 Resources:
   # --- Security Group ---
+  # セキュリティ改善: CIDR ベースから Security Group ベースに変更
+  # SourceSecurityGroupId を使用することで、FSxN SVM の Security Group に属する
+  # リソースからのみアクセスを許可する（VPC 全体の 10.0.0.0/8 より厳密）
   FPolicyServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: FPolicy External Server - allows TCP from VPC (NLB health check + FSxN SVM)
+      GroupDescription: FPolicy External Server - allows TCP from FSxN SVM Security Group
       VpcId: !Ref VpcId
       SecurityGroupIngress:
+        # Primary: FSxN SVM Security Group からのアクセスのみ許可（推奨）
         - IpProtocol: tcp
           FromPort: !Ref FPolicyPort
           ToPort: !Ref FPolicyPort
-          CidrIp: "10.0.0.0/8"
-          Description: FPolicy TCP from VPC (NLB health checks + FSxN SVM data LIFs)
+          SourceSecurityGroupId: !Ref FsxnSvmSecurityGroupId
+          Description: FPolicy TCP from FSxN SVM Security Group (primary-servers connection)
+        # Legacy (参考): 以前は CIDR ベースで許可していた
+        # NLB ヘルスチェックは NLB 自体の IP から来るため、NLB を使用する場合は
+        # 別途 NLB サブネットの CIDR を追加するか、以下のルールを有効化する
+        # - IpProtocol: tcp
+        #   FromPort: !Ref FPolicyPort
+        #   ToPort: !Ref FPolicyPort
+        #   CidrIp: "10.0.0.0/8"
+        #   Description: FPolicy TCP from VPC (NLB health checks + FSxN SVM data LIFs)
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443
@@ -266,6 +284,16 @@ Resources:
   #     マッチせず AccessDenied が発生した
   #   - 修正: ワイルドカード `*` を使用して全 SQS キューへの送信を許可
   #   - より厳密にする場合は SqsQueueArn パラメータを追加して正確な ARN を渡す
+  #
+  # KMS Decrypt 権限について:
+  #   - SQS が `SqsManagedSseEnabled: true`（AWS マネージド SSE-SQS）を使用する場合:
+  #     → kms:Decrypt は不要（暗号化/復号は SQS サービスが透過的に処理）
+  #   - SQS が `KmsMasterKeyId: alias/aws/sqs`（CMK）を使用する場合:
+  #     → kms:Decrypt が必要（送信側は kms:GenerateDataKey も必要）
+  #   - 現在の構成: SqsQueueUrl パラメータで外部キューを参照。
+  #     キューの暗号化設定に応じて kms:Decrypt の追加を検討すること。
+  #     event-driven-fpolicy/template*.yaml では SqsManagedSseEnabled: true を
+  #     使用しているため、kms:Decrypt は不要。
   # =========================================================================
   TaskRole:
     Type: AWS::IAM::Role
@@ -337,13 +365,14 @@ Outputs:
 
   OntapExternalEngineCommand:
     Description: >
-      ONTAP FPolicy external-engine 作成コマンド。
+      ONTAP FPolicy external-engine 作成コマンド（ONTAP 9.11+ 推奨形式）。
       重要: <FARGATE_TASK_IP> には Fargate タスクの直接 Private IP を指定すること（NLB IP は不可）。
       タスク IP 取得コマンド:
         TASK_ARN=$(aws ecs list-tasks --cluster <cluster> --desired-status RUNNING --query 'taskArns[0]' --output text)
         aws ecs describe-tasks --cluster <cluster> --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`privateIPv4Address`].value' --output text
+      注: `vserver` プレフィックスは ONTAP 9.11+ で非推奨だが後方互換性のため引き続き動作する。
     Value: !Sub |
-      vserver fpolicy policy external-engine create \
+      fpolicy policy external-engine create \
         -vserver <SVM_NAME> \
         -engine-name fpolicy_aws_engine \
         -primary-servers <FARGATE_TASK_IP> \

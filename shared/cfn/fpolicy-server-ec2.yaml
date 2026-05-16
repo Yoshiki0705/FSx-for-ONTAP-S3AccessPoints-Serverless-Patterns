@@ -63,17 +63,25 @@ Conditions:
 
 Resources:
   # --- Security Group ---
+  # セキュリティ改善: CIDR ベースから Security Group ベースに変更
+  # SourceSecurityGroupId を使用することで、FSxN SVM からのアクセスのみ許可
   FPolicyServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: FPolicy Server EC2 - TCP from VPC
+      GroupDescription: FPolicy Server EC2 - TCP from FSxN SVM Security Group
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: !Ref FPolicyPort
           ToPort: !Ref FPolicyPort
-          CidrIp: "10.0.0.0/8"
-          Description: FPolicy TCP from FSxN SVM
+          SourceSecurityGroupId: !Ref FsxnSvmSecurityGroupId
+          Description: FPolicy TCP from FSxN SVM Security Group
+        # Legacy (参考): 以前は CIDR ベースで許可していた
+        # - IpProtocol: tcp
+        #   FromPort: !Ref FPolicyPort
+        #   ToPort: !Ref FPolicyPort
+        #   CidrIp: "10.0.0.0/8"
+        #   Description: FPolicy TCP from FSxN SVM
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443
@@ -149,8 +157,9 @@ Resources:
           #!/bin/bash
           set -euo pipefail
 
-          # Install Docker
-          yum install -y docker
+          # Note: ECS-optimized AMI (amazon-linux-2023) には Docker が事前インストール済み。
+          # `yum install -y docker` は不要（AMI に含まれている）。
+          # 参照: {{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id}}
           systemctl enable docker
           systemctl start docker
 
@@ -197,9 +206,9 @@ Outputs:
       Name: !Sub "${AWS::StackName}-PrivateIp"
 
   OntapExternalEngineCommand:
-    Description: ONTAP FPolicy external-engine 作成コマンド
+    Description: ONTAP FPolicy external-engine 作成コマンド（ONTAP 9.11+ 推奨形式。`vserver` プレフィックスは非推奨だが後方互換性あり）
     Value: !Sub |
-      vserver fpolicy policy external-engine create \
+      fpolicy policy external-engine create \
         -vserver <SVM_NAME> \
         -engine-name fpolicy_aws_engine \
         -primary-servers ${FPolicyServerInstance.PrivateIp} \

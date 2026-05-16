@@ -176,19 +176,27 @@ Resources:
   # - mandatory=false 設定時、サーバー切断中はイベントがドロップされる（ファイル操作は継続）
   # - イベントロスゼロが必要な場合は ONTAP Persistent Store (9.14.1+) を検討
   # ============================================================
+  # セキュリティ改善: CIDR ベースから Security Group ベースに変更
+  # SourceSecurityGroupId を使用することで、FSxN SVM からのアクセスのみ許可
   FPolicyServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: >
         FPolicy External Server - allows ONTAP-initiated inbound TCP connections
-        from FSxN SVM data LIFs on the FPolicy port.
+        from FSxN SVM Security Group on the FPolicy port.
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: !Ref FPolicyPort
           ToPort: !Ref FPolicyPort
-          CidrIp: "10.0.0.0/8"
-          Description: ONTAP-initiated inbound TCP from FSxN SVM data LIFs
+          SourceSecurityGroupId: !Ref FsxnSvmSecurityGroupId
+          Description: ONTAP-initiated inbound TCP from FSxN SVM Security Group
+        # Legacy (参考): 以前は CIDR ベースで許可していた
+        # - IpProtocol: tcp
+        #   FromPort: !Ref FPolicyPort
+        #   ToPort: !Ref FPolicyPort
+        #   CidrIp: "10.0.0.0/8"
+        #   Description: ONTAP-initiated inbound TCP from FSxN SVM data LIFs
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443

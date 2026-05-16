@@ -88,18 +88,20 @@ curl -sk -u fsxadmin:<PASSWORD> -X PATCH \
 FPolicy events must be created per protocol. To support both SMB and NFS:
 
 ```bash
+# Note: ONTAP 9.11+ では `vserver` プレフィックスは非推奨（後方互換性あり）
+
 # CIFS (SMB) events
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> -event-name fpolicy_cifs_events \
   -protocol cifs -file-operations create,write,delete,rename
 
 # NFSv3 events
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> -event-name fpolicy_nfsv3_events \
   -protocol nfsv3 -file-operations create,write,delete,rename
 
 # NFSv4 events (covers NFSv4.0 and NFSv4.1)
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> -event-name fpolicy_nfsv4_events \
   -protocol nfsv4 -file-operations create,write,delete,rename
 ```

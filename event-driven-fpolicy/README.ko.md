@@ -181,7 +181,7 @@ aws cloudformation deploy \
 # SSH로 FSxN SVM에 접속 후 다음을 실행
 
 # 1. External Engine 생성
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver <SVM_NAME> \
   -engine-name fpolicy_aws_engine \
   -primary-servers <FARGATE_TASK_IP> \
@@ -189,14 +189,14 @@ vserver fpolicy policy external-engine create \
   -extern-engine-type asynchronous
 
 # 2. Event 생성
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> \
   -event-name fpolicy_aws_event \
   -protocol cifs,nfsv3,nfsv4 \
   -file-operations create,write,delete,rename
 
 # 3. Policy 생성
-vserver fpolicy policy create \
+fpolicy policy create \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -events fpolicy_aws_event \
@@ -204,13 +204,13 @@ vserver fpolicy policy create \
   -is-mandatory false
 
 # 4. Scope 설정(옵션)
-vserver fpolicy policy scope create \
+fpolicy policy scope create \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -volumes-to-include "*"
 
 # 5. Policy 활성화
-vserver fpolicy enable \
+fpolicy enable \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -sequence-number 1
@@ -266,7 +266,7 @@ vserver fpolicy enable \
 ```bash
 # 1. ONTAP FPolicy 비활성화
 # SSH로 FSxN SVM에 접속
-vserver fpolicy disable -vserver <SVM_NAME> -policy-name fpolicy_aws
+fpolicy disable -vserver <SVM_NAME> -policy-name fpolicy_aws
 
 # 2. CloudFormation 스택 삭제
 aws cloudformation delete-stack \

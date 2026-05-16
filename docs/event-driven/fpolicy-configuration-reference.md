@@ -2,13 +2,16 @@
 
 **出典**: [NetApp ONTAP CLI Reference — vserver fpolicy policy event create](https://docs.netapp.com/us-en/ontap-cli-991/vserver-fpolicy-policy-event-create.html)
 
+> **ONTAP 9.11+ CLI 形式について**: 本ドキュメントのコマンドは ONTAP 9.11+ 推奨形式（`vserver` プレフィックスなし）で記載。
+> 旧形式（`vserver fpolicy ...`）も後方互換性のため引き続き動作する。
+
 ---
 
 ## 1. 外部エンジン作成（全プロトコル共通）
 
 ```bash
 # 非同期モード（推奨: イベント駆動パイプライン用）
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver <SVM_NAME> \
   -engine-name fpolicy_aws_engine \
   -primary-servers <FPOLICY_SERVER_IP> \
@@ -17,7 +20,7 @@ vserver fpolicy policy external-engine create \
   -ssl-option no-auth
 
 # 同期モード（ファイルブロッキング/スクリーニング用）
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver <SVM_NAME> \
   -engine-name fpolicy_sync_engine \
   -primary-servers <FPOLICY_SERVER_IP> \
@@ -40,14 +43,14 @@ vserver fpolicy policy external-engine create \
 
 ```bash
 # ファイル作成・変更・削除の監視（最小構成）
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> \
   -event-name cifs_basic_events \
   -protocol cifs \
   -file-operations create,write,delete,rename
 
 # 全操作監視（監査用）
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> \
   -event-name cifs_audit_events \
   -protocol cifs \
@@ -118,14 +121,14 @@ smbclient //SVM_IP/vol1 -U 'CORP\admin%password' -c 'put test.txt'
 
 ```bash
 # ファイル作成・変更・削除の監視
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> \
   -event-name nfsv3_basic_events \
   -protocol nfsv3 \
   -file-operations create,write,delete,rename
 
 # first-write フィルタ付き（通知量削減）
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> \
   -event-name nfsv3_filtered_events \
   -protocol nfsv3 \
@@ -165,7 +168,7 @@ vserver fpolicy policy event create \
 
 ```bash
 # ファイル作成・変更・削除の監視（open/close なし — 推奨）
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> \
   -event-name nfsv4_basic_events \
   -protocol nfsv4 \
@@ -173,7 +176,7 @@ vserver fpolicy policy event create \
 
 # close イベント付き（ファイル完了検知用）
 # 注意: 非同期モードでも NFS 操作がブロックされる場合がある
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> \
   -event-name nfsv4_with_close_events \
   -protocol nfsv4 \
@@ -224,7 +227,7 @@ vserver fpolicy policy event create \
 
 ```bash
 # 非同期・非必須ポリシー（イベント駆動パイプライン用）
-vserver fpolicy policy create \
+fpolicy policy create \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -events <EVENT_NAME_1>,<EVENT_NAME_2> \
@@ -232,7 +235,7 @@ vserver fpolicy policy create \
   -is-mandatory false
 
 # 複数プロトコルのイベントを 1 ポリシーに紐付け
-vserver fpolicy policy create \
+fpolicy policy create \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_multiprotocol \
   -events cifs_basic_events,nfsv3_basic_events,nfsv4_basic_events \
@@ -244,20 +247,20 @@ vserver fpolicy policy create \
 
 ```bash
 # 特定ボリュームのみ監視
-vserver fpolicy policy scope create \
+fpolicy policy scope create \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -volumes-to-include vol1,vol2
 
 # 特定拡張子のみ監視
-vserver fpolicy policy scope create \
+fpolicy policy scope create \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -volumes-to-include "*" \
   -file-extensions-to-include jpg,png,pdf,docx
 
 # 特定拡張子を除外
-vserver fpolicy policy scope create \
+fpolicy policy scope create \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -volumes-to-include "*" \
@@ -268,7 +271,7 @@ vserver fpolicy policy scope create \
 
 ```bash
 # 有効化（sequence-number = 優先度、小さいほど高優先）
-vserver fpolicy enable \
+fpolicy enable \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -sequence-number 1
@@ -289,13 +292,13 @@ volume create \
   -junction-path /fpolicy_store
 
 # Persistent Store 作成
-vserver fpolicy persistent-store create \
+fpolicy persistent-store create \
   -vserver <SVM_NAME> \
   -persistent-store fpolicy_ps \
   -volume fpolicy_store_vol
 
 # ポリシーに Persistent Store を紐付け
-vserver fpolicy policy modify \
+fpolicy policy modify \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -persistent-store fpolicy_ps
@@ -312,25 +315,25 @@ vserver fpolicy policy modify \
 
 ```bash
 # FPolicy 全体の状態確認
-vserver fpolicy show -vserver <SVM_NAME>
+fpolicy show -vserver <SVM_NAME>
 
 # エンジン接続状態
-vserver fpolicy show-engine -vserver <SVM_NAME>
+fpolicy show-engine -vserver <SVM_NAME>
 
 # ポリシー詳細
-vserver fpolicy policy show -vserver <SVM_NAME> -policy-name fpolicy_aws -instance
+fpolicy policy show -vserver <SVM_NAME> -policy-name fpolicy_aws -instance
 
 # イベント詳細
-vserver fpolicy policy event show -vserver <SVM_NAME> -event-name <EVENT_NAME> -instance
+fpolicy policy event show -vserver <SVM_NAME> -event-name <EVENT_NAME> -instance
 
 # スコープ詳細
-vserver fpolicy policy scope show -vserver <SVM_NAME> -policy-name fpolicy_aws -instance
+fpolicy policy scope show -vserver <SVM_NAME> -policy-name fpolicy_aws -instance
 
 # 手動接続テスト
-vserver fpolicy engine-connect -vserver <SVM_NAME> -policy-name fpolicy_aws -node <NODE_NAME> -server <SERVER_IP>
+fpolicy engine-connect -vserver <SVM_NAME> -policy-name fpolicy_aws -node <NODE_NAME> -server <SERVER_IP>
 
 # 手動切断
-vserver fpolicy engine-disconnect -vserver <SVM_NAME> -policy-name fpolicy_aws -node <NODE_NAME> -server <SERVER_IP>
+fpolicy engine-disconnect -vserver <SVM_NAME> -policy-name fpolicy_aws -node <NODE_NAME> -server <SERVER_IP>
 ```
 
 ---
