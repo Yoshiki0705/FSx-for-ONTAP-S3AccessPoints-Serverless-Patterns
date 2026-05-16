@@ -1,0 +1,135 @@
+# =============================================================================
+# Data Lineage Tracking — DynamoDB テーブル + GSI + IAM Policy
+# =============================================================================
+#
+# ファイル処理履歴を追跡する DynamoDB テーブル。
+# PK: source_file_key, SK: processing_timestamp で時系列管理。
+# GSI: uc_id-timestamp-index で UC 別クエリをサポート。
+# TTL: 365 日で自動削除。
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/lineage-table.yaml \
+#     --stack-name fsxn-lineage-table \
+#     --parameter-overrides EnableDataLineage=true
+#
+# オプトイン制御:
+#   EnableDataLineage=false (デフォルト) でリソースは作成されない。
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Data Lineage Tracking Table.
+  ファイル処理履歴追跡用 DynamoDB テーブル（GSI + TTL）。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  EnableDataLineage:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Data Lineage Tracking 機能を有効化する
+
+  # Note: TTL 値（365 日）はアプリケーション層（shared/lineage.py）で
+  # レコード書き込み時に current_time + 365*86400 として計算される。
+  # DynamoDB の TimeToLiveSpecification は ttl 属性を有効化するのみ。
+
+Conditions:
+  IsDataLineageEnabled:
+    !Equals [!Ref EnableDataLineage, "true"]
+
+Resources:
+  LineageTable:
+    Type: AWS::DynamoDB::Table
+    Condition: IsDataLineageEnabled
+    Properties:
+      TableName: !Sub "${ProjectPrefix}-data-lineage"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: source_file_key
+          AttributeType: S
+        - AttributeName: processing_timestamp
+          AttributeType: S
+        - AttributeName: uc_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: source_file_key
+          KeyType: HASH
+        - AttributeName: processing_timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: uc_id-timestamp-index
+          KeySchema:
+            - AttributeName: uc_id
+              KeyType: HASH
+            - AttributeName: processing_timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Component
+          Value: data-lineage
+        - Key: Phase
+          Value: "12"
+
+  LineageAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: IsDataLineageEnabled
+    Properties:
+      ManagedPolicyName: !Sub "${ProjectPrefix}-lineage-access"
+      Description: Allow UC Lambda functions to read/write the Data Lineage table
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DynamoDBTableAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:BatchWriteItem
+            Resource:
+              - !GetAtt LineageTable.Arn
+          - Sid: DynamoDBGSIAccess
+            Effect: Allow
+            Action:
+              - dynamodb:Query
+            Resource:
+              - !Sub "${LineageTable.Arn}/index/uc_id-timestamp-index"
+
+Outputs:
+  TableName:
+    Condition: IsDataLineageEnabled
+    Description: Data Lineage テーブル名
+    Value: !Ref LineageTable
+    Export:
+      Name: !Sub "${AWS::StackName}-TableName"
+
+  TableArn:
+    Condition: IsDataLineageEnabled
+    Description: Data Lineage テーブル ARN
+    Value: !GetAtt LineageTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-TableArn"
+
+  GSIArn:
+    Condition: IsDataLineageEnabled
+    Description: UC ID GSI ARN
+    Value: !Sub "${LineageTable.Arn}/index/uc_id-timestamp-index"
+    Export:
+      Name: !Sub "${AWS::StackName}-GSIArn"
+
+  AccessPolicyArn:
+    Condition: IsDataLineageEnabled
+    Description: Data Lineage アクセスポリシー ARN
+    Value: !Ref LineageAccessPolicy
+    Export:
+      Name: !Sub "${AWS::StackName}-AccessPolicyArn"
