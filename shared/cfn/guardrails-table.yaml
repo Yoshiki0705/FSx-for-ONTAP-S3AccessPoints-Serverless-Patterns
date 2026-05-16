@@ -1,0 +1,106 @@
+# =============================================================================
+# Capacity Guardrails — DynamoDB テーブル + IAM Policy
+# =============================================================================
+#
+# FSx ONTAP 自動拡張操作に対するレート制限・日次上限・クールダウン制御を
+# 追跡するための DynamoDB テーブルと、UC Lambda からのアクセスポリシー。
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/guardrails-table.yaml \
+#     --stack-name fsxn-guardrails-table \
+#     --parameter-overrides EnableGuardrails=true
+#
+# オプトイン制御:
+#   EnableGuardrails=false (デフォルト) でリソースは作成されない。
+#   既存 UC テンプレートに影響を与えない。
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Capacity Guardrails Tracking Table.
+  自動拡張操作のレート制限・日次上限・クールダウン追跡用 DynamoDB テーブル。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  EnableGuardrails:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Capacity Guardrails 機能を有効化する
+
+Conditions:
+  IsGuardrailsEnabled:
+    !Equals [!Ref EnableGuardrails, "true"]
+
+Resources:
+  GuardrailsTrackingTable:
+    Type: AWS::DynamoDB::Table
+    Condition: IsGuardrailsEnabled
+    Properties:
+      TableName: !Sub "${ProjectPrefix}-guardrails-tracking"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Component
+          Value: capacity-guardrails
+        - Key: Phase
+          Value: "12"
+
+  GuardrailsAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: IsGuardrailsEnabled
+    Properties:
+      ManagedPolicyName: !Sub "${ProjectPrefix}-guardrails-access"
+      Description: Allow UC Lambda functions to read/write the Guardrails Tracking table
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DynamoDBAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:Query
+            Resource:
+              - !GetAtt GuardrailsTrackingTable.Arn
+
+Outputs:
+  TableName:
+    Condition: IsGuardrailsEnabled
+    Description: Guardrails Tracking テーブル名
+    Value: !Ref GuardrailsTrackingTable
+    Export:
+      Name: !Sub "${AWS::StackName}-TableName"
+
+  TableArn:
+    Condition: IsGuardrailsEnabled
+    Description: Guardrails Tracking テーブル ARN
+    Value: !GetAtt GuardrailsTrackingTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-TableArn"
+
+  AccessPolicyArn:
+    Condition: IsGuardrailsEnabled
+    Description: Guardrails アクセスポリシー ARN
+    Value: !Ref GuardrailsAccessPolicy
+    Export:
+      Name: !Sub "${AWS::StackName}-AccessPolicyArn"

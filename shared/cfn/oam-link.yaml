@@ -1,0 +1,89 @@
+# =============================================================================
+# Multi-Account OAM Link — CloudWatch Observability Access Manager
+# =============================================================================
+#
+# ワークロードアカウントから監視アカウントへの CloudWatch OAM リンク。
+# メトリクス、ログ、X-Ray トレースのクロスアカウント共有を実現。
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/oam-link.yaml \
+#     --stack-name fsxn-oam-link \
+#     --parameter-overrides \
+#       MonitoringAccountSinkArn=arn:aws:oam:ap-northeast-1:MONITORING_ACCOUNT:sink/SINK_ID
+#
+# オプトイン制御:
+#   MonitoringAccountSinkArn が空の場合、OAM Link リソースは作成されない。
+#
+# NOTE: 既存の workload-account-oam-link.yaml (Phase 11) との違い:
+#   - Phase 12 版は EnableOAMLink Condition による明示的オプトイン制御を追加
+#   - ResourceTypes をパラメータ化（カンマ区切りリスト）
+#   - Phase 12 タグ付け
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Multi-Account OAM Link (Phase 12).
+  ワークロードアカウントから監視アカウントへの CloudWatch OAM リンク。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  MonitoringAccountSinkArn:
+    Type: String
+    Default: ""
+    Description: >-
+      監視アカウントの OAM Sink ARN。
+      空の場合、OAM Link リソースは作成されない。
+
+  ResourceTypes:
+    Type: CommaDelimitedList
+    Default: "AWS::CloudWatch::Metric,AWS::Logs::LogGroup,AWS::XRay::Trace"
+    Description: OAM Link で共有するリソースタイプ
+
+  LabelTemplate:
+    Type: String
+    Default: "$AccountName"
+    Description: OAM Link のラベルテンプレート
+
+Conditions:
+  EnableOAMLink:
+    !Not [!Equals [!Ref MonitoringAccountSinkArn, ""]]
+
+Resources:
+  OAMLink:
+    Type: AWS::Oam::Link
+    Condition: EnableOAMLink
+    Properties:
+      SinkIdentifier: !Ref MonitoringAccountSinkArn
+      ResourceTypes: !Ref ResourceTypes
+      LabelTemplate: !Ref LabelTemplate
+      Tags:
+        Component: oam-link
+        Phase: "12"
+
+Outputs:
+  LinkArn:
+    Condition: EnableOAMLink
+    Description: OAM Link ARN
+    Value: !GetAtt OAMLink.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LinkArn"
+
+  LinkId:
+    Condition: EnableOAMLink
+    Description: OAM Link ID
+    Value: !Ref OAMLink
+    Export:
+      Name: !Sub "${AWS::StackName}-LinkId"
+
+  SharedResourceTypes:
+    Condition: EnableOAMLink
+    Description: 共有リソースタイプ
+    Value: !Join [",", !Ref ResourceTypes]
+    Export:
+      Name: !Sub "${AWS::StackName}-SharedResourceTypes"
