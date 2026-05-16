@@ -1,0 +1,333 @@
+# =============================================================================
+# SLO Dashboard — CloudWatch Dashboard + Alarms
+# =============================================================================
+#
+# イベント駆動パイプラインの SLO（Service Level Objectives）を定義し、
+# CloudWatch ダッシュボードと SLO アラームで可視化する。
+#
+# SLO ターゲット:
+#   1. EventIngestionLatency — P99 < 5 seconds
+#   2. ProcessingSuccessRate — > 99.5%
+#   3. ReconnectTime — < 30 seconds
+#   4. ReplayCompletionTime — < 5 minutes
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/slo-dashboard.yaml \
+#     --stack-name fsxn-slo-dashboard \
+#     --parameter-overrides EnableSLODashboard=true
+#
+# オプトイン制御:
+#   EnableSLODashboard=false (デフォルト) でリソースは作成されない。
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — SLO Dashboard.
+  イベント駆動パイプラインの SLO 可視化ダッシュボードとアラーム。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  EnableSLODashboard:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: SLO Dashboard 機能を有効化する
+
+  MetricNamespace:
+    Type: String
+    Default: "FSxN-S3AP-Patterns"
+    Description: CloudWatch メトリクス名前空間
+
+  SnsTopicArn:
+    Type: String
+    Default: ""
+    Description: SLO 違反通知用 SNS Topic ARN
+
+  IngestionLatencyThresholdMs:
+    Type: Number
+    Default: 5000
+    Description: EventIngestionLatency SLO 閾値（ミリ秒、P99）
+
+  SuccessRateThresholdPct:
+    Type: Number
+    Default: 99.5
+    Description: ProcessingSuccessRate SLO 閾値（%）
+
+  ReconnectTimeThresholdSec:
+    Type: Number
+    Default: 30
+    Description: ReconnectTime SLO 閾値（秒）
+
+  ReplayCompletionThresholdSec:
+    Type: Number
+    Default: 300
+    Description: ReplayCompletionTime SLO 閾値（秒）
+
+Conditions:
+  IsSLODashboardEnabled:
+    !Equals [!Ref EnableSLODashboard, "true"]
+
+Resources:
+  # --- CloudWatch Alarms ---
+  EventIngestionLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsSLODashboardEnabled
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-slo-ingestion-latency"
+      AlarmDescription: "SLO Violation: EventIngestionLatency P99 > 5s"
+      Namespace: !Ref MetricNamespace
+      MetricName: EventIngestionLatency_ms
+      ExtendedStatistic: p99
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: !Ref IngestionLatencyThresholdMs
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SnsTopicArn
+
+  ProcessingSuccessRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsSLODashboardEnabled
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-slo-success-rate"
+      AlarmDescription: "SLO Violation: ProcessingSuccessRate < 99.5%"
+      Namespace: !Ref MetricNamespace
+      MetricName: ProcessingSuccessRate_pct
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: !Ref SuccessRateThresholdPct
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SnsTopicArn
+
+  ReconnectTimeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsSLODashboardEnabled
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-slo-reconnect-time"
+      AlarmDescription: "SLO Violation: FPolicyReconnectTime > 30s"
+      Namespace: !Ref MetricNamespace
+      MetricName: FPolicyReconnectTime_sec
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: !Ref ReconnectTimeThresholdSec
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SnsTopicArn
+
+  ReplayCompletionTimeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsSLODashboardEnabled
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-slo-replay-completion"
+      AlarmDescription: "SLO Violation: ReplayCompletionTime > 5min"
+      Namespace: !Ref MetricNamespace
+      MetricName: ReplayCompletionTime_sec
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: !Ref ReplayCompletionThresholdSec
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SnsTopicArn
+
+  # --- CloudWatch Dashboard ---
+  SLODashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Condition: IsSLODashboardEnabled
+    Properties:
+      DashboardName: !Sub "${ProjectPrefix}-slo-dashboard"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Event Ingestion Latency (P99) — SLO < ${IngestionLatencyThresholdMs}ms",
+                "metrics": [
+                  ["${MetricNamespace}", "EventIngestionLatency_ms", {"stat": "p99"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "annotations": {
+                  "horizontal": [
+                    {"value": ${IngestionLatencyThresholdMs}, "label": "SLO Threshold", "color": "#d62728"}
+                  ]
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Processing Success Rate — SLO > ${SuccessRateThresholdPct}%",
+                "metrics": [
+                  ["${MetricNamespace}", "ProcessingSuccessRate_pct", {"stat": "Average"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "annotations": {
+                  "horizontal": [
+                    {"value": ${SuccessRateThresholdPct}, "label": "SLO Threshold", "color": "#d62728"}
+                  ]
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "FPolicy Reconnect Time — SLO < ${ReconnectTimeThresholdSec}s",
+                "metrics": [
+                  ["${MetricNamespace}", "FPolicyReconnectTime_sec", {"stat": "Maximum"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "annotations": {
+                  "horizontal": [
+                    {"value": ${ReconnectTimeThresholdSec}, "label": "SLO Threshold", "color": "#d62728"}
+                  ]
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Replay Completion Time — SLO < ${ReplayCompletionThresholdSec}s",
+                "metrics": [
+                  ["${MetricNamespace}", "ReplayCompletionTime_sec", {"stat": "Maximum"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "annotations": {
+                  "horizontal": [
+                    {"value": ${ReplayCompletionThresholdSec}, "label": "SLO Threshold", "color": "#d62728"}
+                  ]
+                }
+              }
+            },
+            {
+              "type": "text",
+              "x": 0,
+              "y": 12,
+              "width": 24,
+              "height": 1,
+              "properties": {
+                "markdown": "## Synthetic Monitoring — S3AP & ONTAP Health (Feature 3 Integration)"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 13,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "S3AP Latency (Synthetic Canary)",
+                "metrics": [
+                  ["FSxN-S3AP-Patterns/Canary", "S3AP_ListLatency_ms", {"stat": "Average", "label": "List Latency"}],
+                  ["FSxN-S3AP-Patterns/Canary", "S3AP_GetLatency_ms", {"stat": "Average", "label": "Get Latency"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 13,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "ONTAP Health Check (Synthetic Canary)",
+                "metrics": [
+                  ["FSxN-S3AP-Patterns/Canary", "ONTAP_HealthCheck", {"stat": "Minimum", "label": "Health (1=OK, 0=Fail)"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "alarm",
+              "x": 0,
+              "y": 19,
+              "width": 24,
+              "height": 3,
+              "properties": {
+                "title": "SLO Alarm Status",
+                "alarms": [
+                  "${EventIngestionLatencyAlarm.Arn}",
+                  "${ProcessingSuccessRateAlarm.Arn}",
+                  "${ReconnectTimeAlarm.Arn}",
+                  "${ReplayCompletionTimeAlarm.Arn}"
+                ]
+              }
+            }
+          ]
+        }
+
+Outputs:
+  DashboardName:
+    Condition: IsSLODashboardEnabled
+    Description: SLO Dashboard 名
+    Value: !Sub "${ProjectPrefix}-slo-dashboard"
+    Export:
+      Name: !Sub "${AWS::StackName}-DashboardName"
+
+  IngestionLatencyAlarmArn:
+    Condition: IsSLODashboardEnabled
+    Description: EventIngestionLatency Alarm ARN
+    Value: !GetAtt EventIngestionLatencyAlarm.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-IngestionLatencyAlarmArn"
+
+  SuccessRateAlarmArn:
+    Condition: IsSLODashboardEnabled
+    Description: ProcessingSuccessRate Alarm ARN
+    Value: !GetAtt ProcessingSuccessRateAlarm.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-SuccessRateAlarmArn"
+
+  ReconnectTimeAlarmArn:
+    Condition: IsSLODashboardEnabled
+    Description: ReconnectTime Alarm ARN
+    Value: !GetAtt ReconnectTimeAlarm.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ReconnectTimeAlarmArn"
+
+  ReplayCompletionAlarmArn:
+    Condition: IsSLODashboardEnabled
+    Description: ReplayCompletionTime Alarm ARN
+    Value: !GetAtt ReplayCompletionTimeAlarm.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ReplayCompletionAlarmArn"

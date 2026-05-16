@@ -1,0 +1,244 @@
+# =============================================================================
+# Synthetic Monitoring — CloudWatch Synthetics Canary + Alarm + SNS
+# =============================================================================
+#
+# S3 Access Point と ONTAP のエンドツーエンドヘルスチェックを
+# CloudWatch Synthetics Canary で 5 分間隔実行。
+# 失敗時に CloudWatch Alarm → SNS 通知。
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/synthetic-monitoring.yaml \
+#     --stack-name fsxn-synthetic-monitoring \
+#     --parameter-overrides \
+#       EnableSyntheticMonitoring=true \
+#       S3AccessPointAlias=my-ap-xxx.s3-accesspoint.ap-northeast-1.amazonaws.com \
+#       OntapMgmtIp=10.0.1.100 \
+#       OntapCredentialsSecret=fsxn-admin-credentials \
+#     --capabilities CAPABILITY_NAMED_IAM
+#
+# オプトイン制御:
+#   EnableSyntheticMonitoring=false (デフォルト) でリソースは作成されない。
+#
+# NOTE: CloudWatch Synthetics ランタイムは頻繁に廃止される。
+# 利用可能なバージョンを確認するコマンド:
+#   aws synthetics describe-runtime-versions --region ap-northeast-1 \
+#     --query 'RuntimeVersions[?starts_with(VersionName, `syn-python`)].[VersionName]' --output text
+# 2026-05-16 時点の最新: syn-python-selenium-11.0
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Synthetic Monitoring.
+  S3AP + ONTAP エンドツーエンドヘルスチェック Canary（5分間隔）。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  EnableSyntheticMonitoring:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Synthetic Monitoring 機能を有効化する
+
+  S3AccessPointAlias:
+    Type: String
+    Default: ""
+    Description: 監視対象の S3 Access Point エイリアス
+
+  HealthCheckPrefix:
+    Type: String
+    Default: "_health/"
+    Description: ヘルスチェック用 S3 プレフィックス
+
+  HealthMarkerKey:
+    Type: String
+    Default: "_health/marker.txt"
+    Description: ヘルスマーカーファイルの S3 キー
+
+  OntapMgmtIp:
+    Type: String
+    Default: ""
+    Description: ONTAP SVM 管理 IP アドレス
+
+  OntapCredentialsSecret:
+    Type: String
+    Default: ""
+    Description: ONTAP 認証情報の Secrets Manager シークレット名
+
+  CanaryScheduleExpression:
+    Type: String
+    Default: "rate(5 minutes)"
+    Description: Canary 実行スケジュール
+
+  SnsTopicArn:
+    Type: String
+    Default: ""
+    Description: アラート通知用 SNS Topic ARN
+
+  ArtifactBucket:
+    Type: String
+    Default: ""
+    Description: Canary アーティファクト格納 S3 バケット名
+
+  VpcId:
+    Type: String
+    Default: ""
+    Description: Canary Lambda を配置する VPC ID（ONTAP 管理 IP へのアクセスに必要）
+
+  SubnetIds:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: Canary Lambda を配置する Private Subnet IDs
+
+  SecurityGroupId:
+    Type: String
+    Default: ""
+    Description: Canary Lambda 用 Security Group ID
+
+Conditions:
+  IsSyntheticMonitoringEnabled:
+    !Equals [!Ref EnableSyntheticMonitoring, "true"]
+  HasVpcConfig:
+    !Not [!Equals [!Ref VpcId, ""]]
+
+Resources:
+  CanaryExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: IsSyntheticMonitoringEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-canary-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CanaryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  # S3 Access Point ARN for ListBucket (no /object/ suffix)
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+              - Sid: S3AccessPointGetObject
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  # S3 Access Point ARN for GetObject (with /object/ suffix)
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+              - Sid: SecretsManagerRead
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapCredentialsSecret}*"
+              - Sid: CloudWatchMetrics
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+              - Sid: CanaryArtifacts
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactBucket}"
+                  - !Sub "arn:aws:s3:::${ArtifactBucket}/*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+              - Sid: VpcAccess
+                Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                Resource: "*"
+
+  S3APHealthCanary:
+    Type: AWS::Synthetics::Canary
+    Condition: IsSyntheticMonitoringEnabled
+    Properties:
+      Name: !Sub "${ProjectPrefix}-s3ap-health"
+      RuntimeVersion: syn-python-selenium-11.0
+      ArtifactS3Location: !Sub "s3://${ArtifactBucket}/canary-artifacts/"
+      ExecutionRoleArn: !GetAtt CanaryExecutionRole.Arn
+      Schedule:
+        Expression: !Ref CanaryScheduleExpression
+      RunConfig:
+        TimeoutInSeconds: 120
+        EnvironmentVariables:
+          S3AP_ALIAS: !Ref S3AccessPointAlias
+          HEALTH_PREFIX: !Ref HealthCheckPrefix
+          HEALTH_MARKER_KEY: !Ref HealthMarkerKey
+          ONTAP_MGMT_IP: !Ref OntapMgmtIp
+          ONTAP_CREDENTIALS_SECRET: !Ref OntapCredentialsSecret
+      Code:
+        Handler: s3ap_health_check.handler
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: canary-code/s3ap_health_check.zip
+      VpcConfig: !If
+        - HasVpcConfig
+        - VpcId: !Ref VpcId
+          SubnetIds: !Ref SubnetIds
+          SecurityGroupIds:
+            - !Ref SecurityGroupId
+        - !Ref "AWS::NoValue"
+      StartCanaryAfterCreation: true
+      Tags:
+        - Key: Component
+          Value: synthetic-monitoring
+        - Key: Phase
+          Value: "12"
+
+  CanaryFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsSyntheticMonitoringEnabled
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-canary-failed"
+      AlarmDescription: S3AP Health Canary が失敗した場合にアラート
+      Namespace: CloudWatchSynthetics
+      MetricName: Failed
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref S3APHealthCanary
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref SnsTopicArn
+
+Outputs:
+  CanaryName:
+    Condition: IsSyntheticMonitoringEnabled
+    Description: Synthetics Canary 名
+    Value: !Ref S3APHealthCanary
+    Export:
+      Name: !Sub "${AWS::StackName}-CanaryName"
+
+  CanaryAlarmArn:
+    Condition: IsSyntheticMonitoringEnabled
+    Description: Canary Failed Alarm ARN
+    Value: !GetAtt CanaryFailedAlarm.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CanaryAlarmArn"

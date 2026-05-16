@@ -41,6 +41,18 @@ checklist when adding a new UC to the pattern library.
 - [ ] AI/ML output Lambdas: use `OutputWriter.from_env()` (not direct s3_client)
 - [ ] All Lambdas: `OUTPUT_DESTINATION`, `OUTPUT_S3AP_ALIAS`, `OUTPUT_S3AP_PREFIX` env vars
 
+## S3 Access Point（全 UC 共通 — 必読）
+
+⚠️ **FSx ONTAP S3 AP の制約** — 詳細: `docs/guides/s3ap-fsxn-specification.md`
+
+- [ ] S3 AP は**読み取り専用**。PutObject は使用不可（書き込みは NFS/SMB のみ）
+- [ ] IAM ポリシーの Resource ARN: `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用（エイリアスではない）
+- [ ] GetObject の Resource: `arn:aws:s3:{region}:{account}:accesspoint/{name}/object/*`
+- [ ] `s3:GetBucketLocation` は S3 AP では無効（使用しないこと）
+- [ ] VPC 内 Lambda から S3 AP にアクセスする場合: **タイムアウトする**（S3 Gateway EP 経由不可）
+- [ ] S3 AP アクセスが必要な Lambda は VPC 外実行 or NAT Gateway 経由にする
+- [ ] S3 AP リソースポリシーが未設定の場合、IAM ポリシーだけでは AccessDenied になる場合がある
+
 ## Observability (gated by CreateCloudWatchAlarms)
 
 - [ ] `StepFunctionsFailureAlarm` (AWS::CloudWatch::Alarm)

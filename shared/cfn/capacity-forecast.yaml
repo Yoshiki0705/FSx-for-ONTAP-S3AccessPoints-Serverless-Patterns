@@ -1,0 +1,187 @@
+# =============================================================================
+# Capacity Forecasting — Lambda + EventBridge Scheduler + Alarm
+# =============================================================================
+#
+# FSx ストレージ使用量の線形回帰による容量枯渇予測。
+# EventBridge Scheduler で日次実行し、DaysUntilFull メトリクスを発行。
+# 閾値以下で SNS アラート送信。
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/capacity-forecast.yaml \
+#     --stack-name fsxn-capacity-forecast \
+#     --parameter-overrides \
+#       EnableCapacityForecast=true \
+#       FileSystemId=fs-xxx \
+#     --capabilities CAPABILITY_NAMED_IAM
+#
+# オプトイン制御:
+#   EnableCapacityForecast=false (デフォルト) でリソースは作成されない。
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  FSxN S3AP Serverless Patterns — Capacity Forecasting.
+  線形回帰による FSx ストレージ容量枯渇予測（日次実行）。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  EnableCapacityForecast:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Capacity Forecasting 機能を有効化する
+
+  FileSystemId:
+    Type: String
+    Default: ""
+    Description: 監視対象の FSx for ONTAP ファイルシステム ID
+
+  ForecastLookbackDays:
+    Type: Number
+    Default: 30
+    Description: 線形回帰に使用する過去データの日数
+
+  AlertThresholdDays:
+    Type: Number
+    Default: 30
+    Description: DaysUntilFull がこの値以下でアラート送信
+
+  TotalCapacityGb:
+    Type: Number
+    Default: 1024
+    Description: FSx ファイルシステムの総容量（GB）
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 day)"
+    Description: 予測実行スケジュール
+
+  SnsTopicArn:
+    Type: String
+    Default: ""
+    Description: アラート通知用 SNS Topic ARN
+
+Conditions:
+  IsCapacityForecastEnabled:
+    !Equals [!Ref EnableCapacityForecast, "true"]
+
+Resources:
+  ForecastLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: IsCapacityForecastEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-capacity-forecast-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CapacityForecastPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CloudWatchRead
+                Effect: Allow
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                Resource: "*"
+              - Sid: CloudWatchWrite
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+              - Sid: FSxDescribe
+                Effect: Allow
+                Action:
+                  - fsx:DescribeFileSystems
+                  - fsx:DescribeVolumes
+                Resource: "*"
+              - Sid: SNSPublish
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref SnsTopicArn
+
+  ForecastLambdaFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsCapacityForecastEnabled
+    Properties:
+      FunctionName: !Sub "${ProjectPrefix}-capacity-forecast"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: ../lambdas/capacity_forecast/
+      MemorySize: 256
+      Timeout: 120
+      Architectures:
+        - arm64
+      Role: !GetAtt ForecastLambdaRole.Arn
+      Environment:
+        Variables:
+          FILE_SYSTEM_ID: !Ref FileSystemId
+          LOOKBACK_DAYS: !Ref ForecastLookbackDays
+          THRESHOLD_DAYS: !Ref AlertThresholdDays
+          TOTAL_CAPACITY_GB: !Ref TotalCapacityGb
+          SNS_TOPIC_ARN: !Ref SnsTopicArn
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ScheduleExpression
+            Description: 日次容量予測実行
+            Enabled: true
+      Tags:
+        Component: capacity-forecast
+        Phase: "12"
+
+  DaysUntilFullAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsCapacityForecastEnabled
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-days-until-full"
+      AlarmDescription: FSx ストレージ容量枯渇予測が閾値以下
+      Namespace: FSxN-S3AP-Patterns
+      MetricName: DaysUntilFull
+      Statistic: Minimum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: !Ref AlertThresholdDays
+      ComparisonOperator: LessThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SnsTopicArn
+
+Outputs:
+  ForecastLambdaArn:
+    Condition: IsCapacityForecastEnabled
+    Description: Capacity Forecast Lambda ARN
+    Value: !GetAtt ForecastLambdaFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ForecastLambdaArn"
+
+  ForecastRoleArn:
+    Condition: IsCapacityForecastEnabled
+    Description: Capacity Forecast IAM Role ARN
+    Value: !GetAtt ForecastLambdaRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ForecastRoleArn"
+
+  DaysUntilFullAlarmArn:
+    Condition: IsCapacityForecastEnabled
+    Description: DaysUntilFull Alarm ARN
+    Value: !GetAtt DaysUntilFullAlarm.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-DaysUntilFullAlarmArn"
