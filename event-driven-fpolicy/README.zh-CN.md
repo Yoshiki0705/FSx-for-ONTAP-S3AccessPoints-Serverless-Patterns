@@ -181,7 +181,7 @@ aws cloudformation deploy \
 # 通过 SSH 连接到 FSxN SVM 后执行以下命令
 
 # 1. 创建 External Engine
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver <SVM_NAME> \
   -engine-name fpolicy_aws_engine \
   -primary-servers <FARGATE_TASK_IP> \
@@ -189,14 +189,14 @@ vserver fpolicy policy external-engine create \
   -extern-engine-type asynchronous
 
 # 2. 创建 Event
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <SVM_NAME> \
   -event-name fpolicy_aws_event \
   -protocol cifs,nfsv3,nfsv4 \
   -file-operations create,write,delete,rename
 
 # 3. 创建 Policy
-vserver fpolicy policy create \
+fpolicy policy create \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -events fpolicy_aws_event \
@@ -204,13 +204,13 @@ vserver fpolicy policy create \
   -is-mandatory false
 
 # 4. 配置 Scope（可选）
-vserver fpolicy policy scope create \
+fpolicy policy scope create \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -volumes-to-include "*"
 
 # 5. 启用 Policy
-vserver fpolicy enable \
+fpolicy enable \
   -vserver <SVM_NAME> \
   -policy-name fpolicy_aws \
   -sequence-number 1
@@ -266,7 +266,7 @@ vserver fpolicy enable \
 ```bash
 # 1. 禁用 ONTAP FPolicy
 # 通过 SSH 连接到 FSxN SVM
-vserver fpolicy disable -vserver <SVM_NAME> -policy-name fpolicy_aws
+fpolicy disable -vserver <SVM_NAME> -policy-name fpolicy_aws
 
 # 2. 删除 CloudFormation 堆栈
 aws cloudformation delete-stack \

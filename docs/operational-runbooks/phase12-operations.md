@@ -157,18 +157,22 @@ curl -sk -u fsxadmin:<PASSWORD> \
 ```
 
 **代替: ONTAP CLI (SSH 経由)**:
+
+> **Note**: ONTAP 9.11+ では `vserver` プレフィックスは非推奨。以下は推奨形式。
+> 旧形式（`vserver fpolicy ...`）も後方互換性のため引き続き動作する。
+
 ```
 # Step 1: ポリシー無効化
-vserver fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
+fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
 
 # Step 2: エンジン IP 更新
-vserver fpolicy policy external-engine modify \
+fpolicy policy external-engine modify \
   -vserver FSxN_OnPre \
   -engine-name fpolicy_aws_engine \
   -primary-servers <NEW_IP>
 
 # Step 3: ポリシー再有効化
-vserver fpolicy enable -vserver FSxN_OnPre -policy-name fpolicy_aws -sequence-number 1
+fpolicy enable -vserver FSxN_OnPre -policy-name fpolicy_aws -sequence-number 1
 ```
 
 ### 2.3 接続確認
@@ -408,15 +412,18 @@ aws logs filter-log-events \
 - [ ] NLB 経由ではなく直接 IP で接続しているか（NLB TCP パススルーは非互換）
 
 **ONTAP 側の確認コマンド**:
+
+> **Note**: ONTAP 9.11+ では `vserver` プレフィックスは非推奨。以下は推奨形式。
+
 ```
 # FPolicy 接続状態
-vserver fpolicy show-engine -vserver FSxN_OnPre
+fpolicy show-engine -vserver FSxN_OnPre
 
 # FPolicy ポリシー状態
-vserver fpolicy show -vserver FSxN_OnPre
+fpolicy show -vserver FSxN_OnPre
 
 # FPolicy スコープ確認
-vserver fpolicy policy scope show -vserver FSxN_OnPre
+fpolicy policy scope show -vserver FSxN_OnPre
 ```
 
 ---

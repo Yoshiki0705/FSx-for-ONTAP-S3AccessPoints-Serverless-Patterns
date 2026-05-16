@@ -38,10 +38,11 @@ ONTAP SVM (ファイル操作)
 ### Step 1: FPolicy 外部エンジンの登録
 
 ```bash
-# ONTAP CLI で外部エンジンを登録
+# ONTAP CLI で外部エンジンを登録（ONTAP 9.11+ 推奨形式）
+# Note: `vserver` プレフィックスは非推奨だが後方互換性あり
 # FPolicy Engine Lambda の Function URL または ALB エンドポイントを指定
 
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver <svm_name> \
   -engine-name fpolicy-aws-engine \
   -primary-servers <fpolicy_engine_endpoint_ip> \
@@ -62,7 +63,7 @@ vserver fpolicy policy external-engine create \
 
 ```bash
 # 監視対象のファイル操作を定義
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver <svm_name> \
   -event-name fpolicy-file-events \
   -protocol cifs \
@@ -80,7 +81,7 @@ vserver fpolicy policy event create \
 
 ```bash
 # FPolicy ポリシーを作成
-vserver fpolicy policy create \
+fpolicy policy create \
   -vserver <svm_name> \
   -policy-name fpolicy-aws-notify \
   -events fpolicy-file-events \
@@ -98,7 +99,7 @@ vserver fpolicy policy create \
 
 ```bash
 # ポリシーを有効化（優先度 1 = 最高優先度）
-vserver fpolicy enable \
+fpolicy enable \
   -vserver <svm_name> \
   -policy-name fpolicy-aws-notify \
   -sequence-number 1
@@ -108,7 +109,7 @@ vserver fpolicy enable \
 
 ```bash
 # 特定のボリューム/ディレクトリのみ監視する場合
-vserver fpolicy policy scope create \
+fpolicy policy scope create \
   -vserver <svm_name> \
   -policy-name fpolicy-aws-notify \
   -volumes-to-include vol1,vol2 \
@@ -121,12 +122,12 @@ vserver fpolicy policy scope create \
 
 ```bash
 # FPolicy エンジンの接続状態を確認
-vserver fpolicy show-engine \
+fpolicy show-engine \
   -vserver <svm_name> \
   -engine-name fpolicy-aws-engine
 
 # FPolicy ポリシーの状態を確認
-vserver fpolicy show \
+fpolicy show \
   -vserver <svm_name>
 ```
 
@@ -155,7 +156,7 @@ aws logs filter-log-events \
 
 ### 問題 1: FPolicy エンジンが接続されない
 
-**症状**: `vserver fpolicy show-engine` で `disconnected` 状態
+**症状**: `fpolicy show-engine` で `disconnected` 状態
 
 **原因と対処:**
 1. Security Group でポート 9898 のインバウンドが許可されているか確認
@@ -167,7 +168,7 @@ aws logs filter-log-events \
 **症状**: ファイル操作後も SQS キューが空
 
 **原因と対処:**
-1. FPolicy ポリシーが有効化されているか確認（`vserver fpolicy show`）
+1. FPolicy ポリシーが有効化されているか確認（`fpolicy show`）
 2. スコープ設定で対象ボリュームが含まれているか確認
 3. FPolicy Engine Lambda の CloudWatch Logs でエラーを確認
 4. `-is-mandatory false` が設定されているか確認（true の場合、接続失敗でファイル操作がブロックされる）
@@ -269,12 +270,12 @@ FPolicy イベントはプロトコル別に作成する必要がある:
 
 ```bash
 # CIFS (SMB) 用
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver SVM_NAME -event-name fpolicy_cifs_events \
   -protocol cifs -file-operations create,write,delete,rename
 
 # NFSv3 用（別イベントとして作成）
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver SVM_NAME -event-name fpolicy_nfs_events \
   -protocol nfsv3 -file-operations create,write,delete,rename
 
@@ -384,7 +385,7 @@ aws ec2 describe-network-interfaces \
 ssh fsxadmin@<SVM_MGMT_IP>
 
 # 外部エンジン作成
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver FSxN_OnPre \
   -engine-name fpolicy_aws_engine \
   -primary-servers <NLB_PRIVATE_IP> \
@@ -392,14 +393,14 @@ vserver fpolicy policy external-engine create \
   -extern-engine-type asynchronous
 
 # イベント定義
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver FSxN_OnPre \
   -event-name fpolicy_file_events \
   -protocol cifs \
   -file-operations create,write,delete,rename
 
 # ポリシー作成
-vserver fpolicy policy create \
+fpolicy policy create \
   -vserver FSxN_OnPre \
   -policy-name fpolicy_aws \
   -events fpolicy_file_events \
@@ -407,19 +408,19 @@ vserver fpolicy policy create \
   -is-mandatory false
 
 # スコープ設定
-vserver fpolicy policy scope create \
+fpolicy policy scope create \
   -vserver FSxN_OnPre \
   -policy-name fpolicy_aws \
   -volumes-to-include "*"
 
 # 有効化
-vserver fpolicy enable \
+fpolicy enable \
   -vserver FSxN_OnPre \
   -policy-name fpolicy_aws \
   -sequence-number 1
 
 # 接続確認
-vserver fpolicy show-engine -vserver FSxN_OnPre
+fpolicy show-engine -vserver FSxN_OnPre
 ```
 
 ### Step 3: テストファイル作成

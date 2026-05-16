@@ -205,8 +205,10 @@ SQS Ingestion Queue
 ### IP アドレス指定
 
 ```bash
+# Note: ONTAP 9.11+ では `vserver` プレフィックスは非推奨（後方互換性あり）
+
 # Option A: NLB の静的 IP を指定
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver SVM_NAME \
   -engine-name fpolicy_aws_engine \
   -primary-servers <NLB_PRIVATE_IP> \
@@ -214,7 +216,7 @@ vserver fpolicy policy external-engine create \
   -extern-engine-type asynchronous
 
 # Option B/C: EC2 の固定 Private IP を指定
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver SVM_NAME \
   -engine-name fpolicy_aws_engine \
   -primary-servers <EC2_PRIVATE_IP> \

@@ -78,7 +78,7 @@ Verbinden Sie sich per SSH mit der FSxN SVM und führen Sie die folgenden Befehl
 ### 2.1 External Engine erstellen
 
 ```bash
-vserver fpolicy policy external-engine create \
+fpolicy policy external-engine create \
   -vserver FSxN_OnPre \
   -engine-name fpolicy_aws_engine \
   -primary-servers <TASK_IP> \
@@ -89,7 +89,7 @@ vserver fpolicy policy external-engine create \
 ### 2.2 Event erstellen
 
 ```bash
-vserver fpolicy policy event create \
+fpolicy policy event create \
   -vserver FSxN_OnPre \
   -event-name fpolicy_aws_event \
   -protocol cifs,nfsv3,nfsv4 \
@@ -99,7 +99,7 @@ vserver fpolicy policy event create \
 ### 2.3 Policy erstellen
 
 ```bash
-vserver fpolicy policy create \
+fpolicy policy create \
   -vserver FSxN_OnPre \
   -policy-name fpolicy_aws \
   -events fpolicy_aws_event \
@@ -110,7 +110,7 @@ vserver fpolicy policy create \
 ### 2.4 Scope konfigurieren
 
 ```bash
-vserver fpolicy policy scope create \
+fpolicy policy scope create \
   -vserver FSxN_OnPre \
   -policy-name fpolicy_aws \
   -volumes-to-include "*"
@@ -119,7 +119,7 @@ vserver fpolicy policy scope create \
 ### 2.5 Policy aktivieren
 
 ```bash
-vserver fpolicy enable \
+fpolicy enable \
   -vserver FSxN_OnPre \
   -policy-name fpolicy_aws \
   -sequence-number 1
@@ -128,7 +128,7 @@ vserver fpolicy enable \
 ### 2.6 Verbindung überprüfen
 
 ```bash
-vserver fpolicy show-engine -vserver FSxN_OnPre
+fpolicy show-engine -vserver FSxN_OnPre
 # Status: connected bestätigen
 ```
 
@@ -239,7 +239,7 @@ echo "New Task IP: $NEW_IP"
 
 # Überprüfen, dass die ONTAP-Engine-IP aktualisiert wurde
 # Per SSH mit FSxN SVM verbinden
-vserver fpolicy show-engine -vserver FSxN_OnPre
+fpolicy show-engine -vserver FSxN_OnPre
 ```
 
 ---
@@ -249,11 +249,11 @@ vserver fpolicy show-engine -vserver FSxN_OnPre
 ```bash
 # 1. ONTAP FPolicy deaktivieren
 # Per SSH mit FSxN SVM verbinden
-vserver fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
-vserver fpolicy policy scope delete -vserver FSxN_OnPre -policy-name fpolicy_aws
-vserver fpolicy policy delete -vserver FSxN_OnPre -policy-name fpolicy_aws
-vserver fpolicy policy event delete -vserver FSxN_OnPre -event-name fpolicy_aws_event
-vserver fpolicy policy external-engine delete -vserver FSxN_OnPre -engine-name fpolicy_aws_engine
+fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
+fpolicy policy scope delete -vserver FSxN_OnPre -policy-name fpolicy_aws
+fpolicy policy delete -vserver FSxN_OnPre -policy-name fpolicy_aws
+fpolicy policy event delete -vserver FSxN_OnPre -event-name fpolicy_aws_event
+fpolicy policy external-engine delete -vserver FSxN_OnPre -engine-name fpolicy_aws_engine
 
 # 2. CloudFormation-Stack löschen
 aws cloudformation delete-stack \
