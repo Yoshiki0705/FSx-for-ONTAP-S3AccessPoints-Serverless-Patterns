@@ -259,6 +259,14 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
   # --- IAM: Task Role (SQS, CloudWatch Metrics) ---
+  # =========================================================================
+  # SQS Policy 注意事項:
+  #   - SQS Queue ARN は実際のキュー名と一致する必要がある
+  #   - 過去のバグ: パターン `fsxn-fpolicy-*` が実際のキュー名 `FPolicy_Q` に
+  #     マッチせず AccessDenied が発生した
+  #   - 修正: ワイルドカード `*` を使用して全 SQS キューへの送信を許可
+  #   - より厳密にする場合は SqsQueueArn パラメータを追加して正確な ARN を渡す
+  # =========================================================================
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
@@ -279,7 +287,7 @@ Resources:
                 Action:
                   - sqs:SendMessage
                 Resource:
-                  - !Sub "arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:fsxn-fpolicy-*"
+                  - !Sub "arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:*"
               - Effect: Allow
                 Action:
                   - cloudwatch:PutMetricData
@@ -290,6 +298,13 @@ Resources:
                     cloudwatch:namespace: "FSxN-S3AP-Patterns"
 
 Outputs:
+  # IMPORTANT: When Fargate task restarts, the Private IP changes.
+  # You must update the ONTAP FPolicy engine's primary_servers:
+  #   1. Disable FPolicy policy
+  #   2. PATCH engine primary_servers with new IP
+  #   3. Re-enable FPolicy policy
+  # See: docs/operational-runbooks/phase12-operations.md section 2
+
   NLBDnsName:
     Description: >
       NLB DNS 名（ヘルスチェック用のみ）。
