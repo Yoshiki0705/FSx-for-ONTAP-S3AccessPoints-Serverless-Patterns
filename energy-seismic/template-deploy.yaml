@@ -994,9 +994,11 @@ Resources:
         - !Ref AthenaWorkgroupName
       State: ENABLED
       WorkGroupConfiguration:
+        RecursiveDeleteOption: true
         ResultConfiguration:
           OutputLocation: !Sub "s3://${OutputBucket}/athena-results/"
-        EnforceWorkGroupConfiguration: true
+        EnforceWorkGroupConfiguration:
+        RecursiveDeleteOption: true true
         PublishCloudWatchMetricsEnabled: true
 
   # -----------------------------------------------------------------
