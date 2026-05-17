@@ -728,9 +728,11 @@ Resources:
       Name: !Sub "${AWS::StackName}-workgroup"
       State: ENABLED
       WorkGroupConfiguration:
+        RecursiveDeleteOption: true
         ResultConfiguration:
           OutputLocation: !Sub "s3://${AthenaResultsBucket}/athena-results/"
-        EnforceWorkGroupConfiguration: true
+        EnforceWorkGroupConfiguration:
+        RecursiveDeleteOption: true true
         PublishCloudWatchMetricsEnabled: true
 
   # -----------------------------------------------------------------
