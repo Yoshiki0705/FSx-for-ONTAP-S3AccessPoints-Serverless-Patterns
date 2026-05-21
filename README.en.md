@@ -70,6 +70,9 @@ Each use case is self-contained in an independent CloudFormation template, with 
 | [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | Throughput design, Lambda sizing, concurrency calculation |
 | [Native S3AP Notifications Evidence](docs/aws-feature-requests/native-s3ap-notifications-evidence.md) | Why native event notifications matter — FPolicy workaround analysis |
 | [Partner/SI Delivery Checklist](docs/partner-si-delivery-checklist.md) | Partner/SI proposal, design, and delivery checklist |
+| [Governance Checklist](docs/governance-checklist.md) | Governance checklist for regulated/public sector/healthcare workloads |
+| [Production Readiness](docs/production-readiness.md) | 4-level Maturity Model from PoC to production |
+| [Customer Discovery Template](docs/customer-discovery-template.md) | Customer interview template for applicability assessment |
 
 ### S3 Access Points — Authorization Model Overview
 
