@@ -6,6 +6,8 @@ Amazon FSx for NetApp ONTAP의 S3 Access Points를 활용한 업종별 서버리
 
 > **본 리포지토리의 위치**: 이것은 「설계 판단을 배우기 위한 레퍼런스 구현」입니다. 일부 유스케이스는 AWS 환경에서 E2E 검증을 완료했으며, 나머지 유스케이스도 CloudFormation 배포, 공통 Discovery Lambda, 주요 컴포넌트의 동작 확인을 실시했습니다. PoC에서 프로덕션 환경으로의 단계적 적용을 상정하여, 비용 최적화, 보안, 에러 핸들링의 설계 판단을 구체적인 코드로 보여주는 것을 목적으로 합니다.
 
+**테스트**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
+
 ## 관련 기사
 
 본 리포지토리는 다음 기사에서 해설한 아키텍처의 구현 예시입니다:
@@ -17,7 +19,7 @@ Amazon FSx for NetApp ONTAP의 S3 Access Points를 활용한 업종별 서버리
 
 ## 개요
 
-이 리포지토리는 FSx for NetApp ONTAP에 저장된 엔터프라이즈 데이터를 **S3 Access Points**를 통해 서버리스로 처리하는 **5가지 업종별 패턴**을 제공합니다.
+이 리포지토리는 FSx for NetApp ONTAP에 저장된 엔터프라이즈 데이터를 **S3 Access Points**를 통해 서버리스로 처리하는 **17개의 산업별 패턴 (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)**을 제공합니다.
 
 > 이하에서는 FSx for ONTAP S3 Access Points를 간략히 **S3 AP**로 표기합니다.
 
@@ -32,6 +34,16 @@ Amazon FSx for NetApp ONTAP의 S3 Access Points를 활용한 업종별 서버리
 - **CloudFormation / SAM Transform 기반**: 각 유스케이스가 독립적인 CloudFormation 템플릿(SAM Transform 사용)으로 완결
 - **보안 우선**: TLS 검증 기본 활성화, 최소 권한 IAM, KMS 암호화
 - **비용 최적화**: 고비용 상시 가동 리소스(Interface VPC Endpoints 등)를 옵셔널화
+
+### 설계 가이드 및 운영 문서
+
+| 문서 | 내용 |
+|------|------|
+| [S3AP 이중 레이어 인가 모델](docs/s3ap-authorization-model.md) | AWS IAM + 파일 시스템 권한의 듀얼 레이어 인가 설계 |
+| [Deployment Profiles](docs/deployment-profiles.md) | PoC / Production / Compliance-sensitive 3가지 프로파일 정의 |
+| [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md) | POLLING / EVENT_DRIVEN / HYBRID 선택 기준 |
+| [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | SAP・EDI・감사・배치 출력 등 엔터프라이즈 적용 예시 |
+| [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | 처리량 설계・Lambda 사이징・동시성 계산 |
 
 ## 아키텍처
 
@@ -175,6 +187,19 @@ EventBridge Scheduler (정기 실행)
 | UC17 | `smart-city-geospatial/` | 스마트 시티 | 지리 공간 분석 (CRS 정규화, 토지 이용, 위험 매핑, 계획 보고서) | Rekognition, SageMaker (선택), Bedrock (Nova Lite) | ✅ 코드 + 테스트 완료, AWS 검증됨 |
 
 > **공공 부문 적합성**: UC15는 DoD CC SRG / CSfC / FedRAMP High (GovCloud 마이그레이션 시), UC16은 NARA / FOIA 섹션 552 / 섹션 508, UC17은 INSPIRE 지침 / OGC 표준 준수.
+
+### Phase 13: FlexCache × S3 AP × Serverless 확장 패턴
+
+| # | 디렉토리 | 패턴 | 개요 | 상태 |
+|---|---------|------|------|------|
+| FC1 | [`flexcache-anycast-dr/`](flexcache-anycast-dr/README.md) | FlexCache AnyCast / DR | 헬스 체크·라우트 판정·페일오버 시뮬레이션 | ✅ 코드·문서 완료 |
+| FC2 | [`dynamic-flexcache-render-workflow/`](dynamic-flexcache-render-workflow/README.md) | Dynamic FlexCache Render/EDA | 작업 단위 FlexCache 동적 생성·삭제 워크플로 | ✅ 코드·테스트 완료 |
+| FC3 | [`genai-rag-enterprise-files/`](genai-rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | 권한 기반 RAG (S3 AP 경유, 데이터 복사 불필요) | ✅ 코드·테스트 완료 |
+| FC4 | [`automotive-cae/`](automotive-cae/README.md) | Automotive CAE Analytics | CAE 시뮬레이션 결과 자동 분석 | ✅ 코드·테스트 완료 |
+| FC5 | [`life-sciences-research/`](life-sciences-research/README.md) | Life Sciences Research | 연구 데이터 자동 분석 | ✅ 템플릿 완료 |
+| FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/README.md) | Gaming Build Pipeline | 게임 에셋 품질 체크·로그 분석 | ✅ 템플릿 완료 |
+
+> **중요**: FlexCache 볼륨에 S3 Access Point를 연결할 수 있는지는 ONTAP 버전 및 FSx for ONTAP 서비스 사양에 따라 다릅니다. PoC 시 반드시 실제 환경에서 검증하세요.
 
 
 ## UI/UX 스크린샷 (엔드유저 / 직원 / 담당자 뷰)
