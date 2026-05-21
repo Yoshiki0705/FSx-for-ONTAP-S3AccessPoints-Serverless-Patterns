@@ -173,6 +173,38 @@ A: POLLING モード（1 時間間隔、1,000 ファイル/日）で月額 $6-21
 
 ---
 
+## PoC 提案書への転記例
+
+UC1 (Legal Compliance) を例にした PoC 提案書テンプレート:
+
+```markdown
+### PoC Objective
+Automate document discovery and audit report generation for legal file shares stored on FSx for ONTAP.
+
+### Success Criteria
+- Process 10,000+ files within the agreed batch window (1 hour)
+- Generate a standardized audit report after each scheduled run
+- Route files requiring manual review to the Human Review queue (target: < 10%)
+- Keep processing cost within the agreed PoC budget (< $100/month)
+- Achieve > 50% reduction in manual audit preparation effort
+
+### Measurement Method
+- Step Functions execution history (file count, duration, success/failure)
+- CloudWatch Metrics (FilesProcessed, Duration, ErrorRate)
+- Generated report metadata in S3 output bucket
+- Human Review queue records in DynamoDB
+
+### PoC Duration
+2-4 weeks (Level 1 Sandbox → Level 2 Scheduled)
+
+### Next Phase Criteria
+See [Production Readiness Exit Criteria](production-readiness.md#exit-criteria各レベル完了条件)
+```
+
+> 上記は UC1 の例です。各 UC の Success Metrics を参照し、顧客の業務要件に合わせてカスタマイズしてください。
+
+---
+
 ## UC 別 Success Metrics 一覧
 
 各 UC の Success Metrics（Outcome / Metrics / Measurement Method）へのリンク:
