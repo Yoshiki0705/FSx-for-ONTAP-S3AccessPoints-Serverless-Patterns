@@ -6,6 +6,8 @@
 
 > **本仓库的定位**: 这是一个「用于学习设计决策的参考实现」。部分用例已在 AWS 环境中完成 E2E 验证，其他用例也已完成 CloudFormation 部署、共享 Discovery Lambda 及关键组件的功能验证。本仓库以从 PoC 到生产环境的渐进式应用为目标，通过具体代码展示成本优化、安全性和错误处理的设计决策。
 
+**测试**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
+
 ## 相关文章
 
 本仓库是以下文章中所述架构的实现示例：
@@ -17,7 +19,7 @@
 
 ## 概述
 
-本仓库提供 **5 种行业专属模式**，通过 **S3 Access Points** 对存储在 FSx for NetApp ONTAP 上的企业数据进行无服务器处理。
+本仓库提供 **17 种行业专属模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）**，通过 **S3 Access Points** 对存储在 FSx for NetApp ONTAP 上的企业数据进行无服务器处理。
 
 > 以下将 FSx for ONTAP S3 Access Points 简称为 **S3 AP**。
 
@@ -32,6 +34,16 @@
 - **CloudFormation / SAM Transform 架构**: 每个用例都是独立的 CloudFormation 模板（使用 SAM Transform）
 - **安全优先**: 默认启用 TLS 验证、最小权限 IAM、KMS 加密
 - **成本优化**: 高成本常驻资源（Interface VPC Endpoints 等）为可选项
+
+### 设计指南与运维文档
+
+| 文档 | 内容 |
+|------|------|
+| [S3AP 双层授权模型](docs/s3ap-authorization-model.md) | AWS IAM + 文件系统权限的双层授权设计 |
+| [Deployment Profiles](docs/deployment-profiles.md) | PoC / Production / Compliance-sensitive 三种配置定义 |
+| [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md) | POLLING / EVENT_DRIVEN / HYBRID 选择标准 |
+| [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | SAP・EDI・审计・批处理输出等企业应用示例 |
+| [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | 吞吐量设计・Lambda 规格选择・并发度计算 |
 
 ## 架构
 
@@ -175,6 +187,19 @@ EventBridge Scheduler (定期执行)
 | UC17 | `smart-city-geospatial/` | 智慧城市 | 地理空间分析（CRS 归一化、土地利用、风险映射、规划报告）| Rekognition, SageMaker（可选）, Bedrock (Nova Lite) | ✅ 代码+测试完成，AWS 已验证 |
 
 > **公共部门合规性**: UC15 针对 DoD CC SRG / CSfC / FedRAMP High（GovCloud 迁移），UC16 针对 NARA / FOIA Section 552 / Section 508，UC17 针对 INSPIRE 指令 / OGC 标准。
+
+### Phase 13: FlexCache × S3 AP × Serverless 扩展模式
+
+| # | 目录 | 模式 | 概述 | 状态 |
+|---|------|------|------|------|
+| FC1 | [`flexcache-anycast-dr/`](flexcache-anycast-dr/README.md) | FlexCache AnyCast / DR | 健康检查·路由决策·故障转移模拟 | ✅ 代码·文档完成 |
+| FC2 | [`dynamic-flexcache-render-workflow/`](dynamic-flexcache-render-workflow/README.md) | Dynamic FlexCache Render/EDA | 按作业动态创建·删除 FlexCache 工作流 | ✅ 代码·测试完成 |
+| FC3 | [`genai-rag-enterprise-files/`](genai-rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | 基于权限的 RAG（通过 S3 AP，无需数据复制）| ✅ 代码·测试完成 |
+| FC4 | [`automotive-cae/`](automotive-cae/README.md) | Automotive CAE Analytics | CAE 仿真结果自动分析 | ✅ 代码·测试完成 |
+| FC5 | [`life-sciences-research/`](life-sciences-research/README.md) | Life Sciences Research | 研究数据自动分析 | ✅ 模板完成 |
+| FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/README.md) | Gaming Build Pipeline | 游戏资产质量检查·日志分析 | ✅ 模板完成 |
+
+> **重要**: FlexCache 卷是否可以附加 S3 Access Point 取决于 ONTAP 版本和 FSx for ONTAP 服务规格。PoC 时务必在实际环境中验证。
 
 ## UI/UX 截图 (最终用户 / 员工 / 负责人视图)
 

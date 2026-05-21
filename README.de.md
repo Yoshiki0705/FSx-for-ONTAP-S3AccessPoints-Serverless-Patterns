@@ -6,6 +6,8 @@ Sammlung branchenspezifischer serverloser Automatisierungsmuster auf Basis von A
 
 > **Positionierung dieses Repositories**: Dies ist eine „Referenzimplementierung zum Erlernen von Designentscheidungen". Einige Anwendungsfälle wurden in einer AWS-Umgebung vollständig E2E-verifiziert, während andere durch CloudFormation-Deployment, gemeinsames Discovery Lambda und Tests der Hauptkomponenten validiert wurden. Ziel ist es, Designentscheidungen zu Kostenoptimierung, Sicherheit und Fehlerbehandlung durch konkreten Code zu demonstrieren — mit einem Pfad vom PoC zur Produktion.
 
+**Tests**: 1.499+ Unit-/Property-Tests | 126 Testdateien | cfn-lint + ruff Validierung
+
 ## Verwandter Artikel
 
 Dieses Repository liefert die Implementierungsbeispiele für die im folgenden Artikel beschriebene Architektur:
@@ -17,7 +19,7 @@ Der Artikel erklärt die architektonischen Überlegungen und Kompromisse. Dieses
 
 ## Überblick
 
-Dieses Repository bietet **5 branchenspezifische Muster** für die serverlose Verarbeitung von Unternehmensdaten, die auf FSx for NetApp ONTAP über **S3 Access Points** gespeichert sind.
+Dieses Repository bietet **17 branchenspezifische Muster (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)** für die serverlose Verarbeitung von Unternehmensdaten, die auf FSx for NetApp ONTAP über **S3 Access Points** gespeichert sind.
 
 > Im Folgenden wird FSx for ONTAP S3 Access Points als **S3 AP** abgekürzt.
 
@@ -32,6 +34,16 @@ Jeder Anwendungsfall ist als eigenständiges CloudFormation-Template umgesetzt. 
 - **CloudFormation / SAM Transform basiert**: Jeder Anwendungsfall ist ein eigenständiges CloudFormation-Template mit SAM Transform
 - **Sicherheit zuerst**: TLS-Verifizierung standardmäßig aktiviert, IAM mit minimalen Berechtigungen, KMS-Verschlüsselung
 - **Kostenoptimiert**: Kostenintensive Dauerressourcen (Interface VPC Endpoints usw.) sind optional
+
+### Design-Leitfäden und Betriebsdokumentation
+
+| Dokument | Inhalt |
+|----------|--------|
+| [S3AP Zwei-Schichten-Autorisierungsmodell](docs/s3ap-authorization-model.md) | AWS IAM + Dateisystemberechtigungen Dual-Layer-Autorisierungsdesign |
+| [Deployment Profiles](docs/deployment-profiles.md) | PoC / Production / Compliance-sensitive — 3 Profildefinitionen |
+| [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md) | POLLING / EVENT_DRIVEN / HYBRID Auswahlkriterien |
+| [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | SAP, EDI, Audit, Batch-Ausgabe — Unternehmensanwendungsbeispiele |
+| [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | Durchsatzdesign, Lambda-Dimensionierung, Parallelitätsberechnung |
 
 ## Architektur
 
@@ -176,6 +188,18 @@ EventBridge Scheduler (periodische Ausführung)
 
 > **Konformität mit öffentlicher Hand**: UC15 adressiert DoD CC SRG / CSfC / FedRAMP High (GovCloud-Migration), UC16 adressiert NARA / FOIA Section 552 / Section 508, UC17 adressiert INSPIRE-Richtlinie / OGC-Standards.
 
+### Phase 13: FlexCache × S3 AP × Serverless Erweiterungsmuster
+
+| # | Verzeichnis | Muster | Beschreibung | Status |
+|---|------------|--------|--------------|--------|
+| FC1 | [`flexcache-anycast-dr/`](flexcache-anycast-dr/README.md) | FlexCache AnyCast / DR | Health-Check, Routing-Entscheidung, Failover-Simulation | ✅ Code + Doku fertig |
+| FC2 | [`dynamic-flexcache-render-workflow/`](dynamic-flexcache-render-workflow/README.md) | Dynamic FlexCache Render/EDA | Dynamische FlexCache-Erstellung/-Löschung pro Job | ✅ Code + Tests fertig |
+| FC3 | [`genai-rag-enterprise-files/`](genai-rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | Berechtigungsbasiertes RAG (über S3 AP, ohne Datenkopie) | ✅ Code + Tests fertig |
+| FC4 | [`automotive-cae/`](automotive-cae/README.md) | Automotive CAE Analytics | Automatische Analyse von CAE-Simulationsergebnissen | ✅ Code + Tests fertig |
+| FC5 | [`life-sciences-research/`](life-sciences-research/README.md) | Life Sciences Research | Automatische Analyse von Forschungsdaten | ✅ Template fertig |
+| FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/README.md) | Gaming Build Pipeline | Qualitätsprüfung von Spiel-Assets und Log-Analyse | ✅ Template fertig |
+
+> **Wichtig**: Ob ein S3 Access Point an ein FlexCache-Volume angehängt werden kann, hängt von der ONTAP-Version und den FSx for ONTAP-Servicespezifikationen ab. Überprüfen Sie dies immer in Ihrer tatsächlichen Umgebung während des PoC.
 
 ## UI/UX-Screenshots (Endnutzer / Mitarbeiter / Zuständige-Ansichten)
 

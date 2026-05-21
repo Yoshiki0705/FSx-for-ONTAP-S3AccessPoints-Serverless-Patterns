@@ -6,6 +6,8 @@ A collection of industry-specific serverless automation patterns leveraging S3 A
 
 > **Purpose of this repository**: This is a "reference implementation for learning design decisions." Some use cases have been E2E verified in an AWS environment, while others have undergone CloudFormation deployment, shared Discovery Lambda, and operational verification of key components. It is designed for gradual adoption from PoC to production, demonstrating design decisions for cost optimization, security, and error handling through concrete code.
 
+**Tests**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
+
 ## Related Articles
 
 This repository provides the implementation examples for the architecture described in the following article:
@@ -17,7 +19,7 @@ The article explains the architectural design philosophy and trade-offs, while t
 
 ## Overview
 
-This repository provides **5 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for NetApp ONTAP via **S3 Access Points**.
+This repository provides **17 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for NetApp ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **6 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6).
 
 > Hereafter, FSx for ONTAP S3 Access Points will be abbreviated as **S3 AP**.
 
@@ -32,6 +34,26 @@ Each use case is self-contained in an independent CloudFormation template, with 
 - **CloudFormation / SAM Transform based**: Each use case is self-contained in an independent CloudFormation template (using SAM Transform)
 - **Security first**: TLS verification enabled by default, least-privilege IAM, KMS encryption
 - **Cost optimization**: High-cost always-on resources (Interface VPC Endpoints, etc.) made optional
+
+### Design Guides & Operational Documentation
+
+| Document | Description |
+|----------|-------------|
+| [S3AP Dual-Layer Authorization Model](docs/s3ap-authorization-model.md) | AWS IAM + file system permissions dual-layer authorization design |
+| [Deployment Profiles](docs/deployment-profiles.md) | PoC / Production / Compliance-sensitive — 3 profile definitions |
+| [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md) | POLLING / EVENT_DRIVEN / HYBRID selection criteria |
+| [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | SAP, EDI, audit, batch output enterprise use cases |
+| [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | Throughput design, Lambda sizing, concurrency calculation |
+| [Native S3AP Notifications Evidence](docs/aws-feature-requests/native-s3ap-notifications-evidence.md) | Why native event notifications matter — FPolicy workaround analysis |
+
+### S3 Access Points — Authorization Model Overview
+
+S3 Access Points for FSx for ONTAP uses a **dual-layer authorization** model. For an S3 API request to succeed, **both** of the following must permit the request:
+
+1. **AWS-side authorization**: IAM identity-based policy, S3 AP resource policy, VPC endpoint policy, SCP
+2. **File-system-side authorization**: UNIX/Windows user permissions associated with the access point's file system identity
+
+> The S3 API does not remove file-system semantics. See [S3AP Dual-Layer Authorization Model](docs/s3ap-authorization-model.md) for details.
 
 ## Architecture
 
@@ -175,6 +197,33 @@ EventBridge Scheduler (Periodic Execution)
 | UC17 | [`smart-city-geospatial/`](smart-city-geospatial/README.en.md) | Smart City | Geospatial analytics (CRS normalization, land use, risk mapping, planning report) | Rekognition, SageMaker (optional), Bedrock (Nova Lite) | ✅ Code + tests complete, AWS verified |
 
 > **Public Sector compliance**: UC15 targets DoD CC SRG / CSfC / FedRAMP High (on GovCloud migration), UC16 targets NARA / FOIA Section 552 / Section 508, UC17 targets INSPIRE Directive / OGC standards.
+
+### Phase 13: FlexCache × S3 AP × Serverless Extension Patterns
+
+| # | Directory | Pattern | Description | Status |
+|---|-----------|---------|-------------|--------|
+| FC1 | [`flexcache-anycast-dr/`](flexcache-anycast-dr/README.md) | FlexCache AnyCast / DR | Health check, route decision, failover simulation | ✅ Code + docs complete |
+| FC2 | [`dynamic-flexcache-render-workflow/`](dynamic-flexcache-render-workflow/README.md) | Dynamic FlexCache Render/EDA | Per-job FlexCache create/delete workflow | ✅ Code + tests complete |
+| FC3 | [`genai-rag-enterprise-files/`](genai-rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | Permission-aware RAG (via S3 AP, no data copy) | ✅ Design docs complete |
+| FC4 | [`automotive-cae/`](automotive-cae/README.md) | Automotive CAE Analytics | CAE simulation result auto-analysis | ✅ Design docs complete |
+
+#### FlexCache / S3 Access Points / Serverless Combined Value
+
+- **Dynamic FlexCache Automation**: Create/delete FlexCache per job for cost optimization
+- **AnyCast / DR Design Patterns**: Read continuity during geo-distribution/DR via Route 53/Lambda
+- **Industry Workload Mapping**: 7 configuration patterns mapped to industries
+
+#### Related Documentation
+
+| Document | Content |
+|----------|---------|
+| [Industry Workload Mapping](docs/industry-workload-mapping.md) | FlexCache × S3 AP × Serverless industry patterns |
+| [Support Matrix](docs/support-matrix-fsx-ontap-flexcache-s3ap.md) | Feature availability by platform (FSx/On-prem/CVO/Lab) |
+| [FlexCache AnyCast Design Guide](docs/flexcache-anycast-design-guide.md) | AnyCast alternative pattern design |
+| [Dynamic FlexCache Workflow Guide](docs/dynamic-flexcache-workflow-guide.md) | Per-job FlexCache design & implementation |
+| [FlexCache PoC Checklist](docs/flexcache-poc-checklist.md) | Common PoC checklist items |
+
+> **Important**: Whether S3 Access Points can be attached to FlexCache volumes depends on the ONTAP version and FSx for ONTAP service specifications. Always verify in your actual environment during PoC.
 
 
 ### Documentation (Architecture & Demo Guides)
@@ -875,6 +924,7 @@ Detailed guides and screenshots are stored in the `docs/` directory.
 | [docs/guides/deployment-guide.md](docs/guides/deployment-guide.md) | Deployment guide (prerequisites check → parameter preparation → deployment → verification) |
 | [docs/guides/operations-guide.md](docs/guides/operations-guide.md) | Operations guide (schedule changes, manual execution, log review, alarm response) |
 | [docs/guides/troubleshooting-guide.md](docs/guides/troubleshooting-guide.md) | Troubleshooting (AccessDenied, VPC Endpoint, ONTAP timeout, Athena) |
+| [docs/guides/flexclone-serverless-patterns-en.md](docs/guides/flexclone-serverless-patterns-en.md) | FlexClone Serverless Patterns (industry use cases, multi-protocol mount, Step Functions integration) |
 | [docs/cost-analysis.md](docs/cost-analysis.md) | Cost structure analysis |
 | [docs/references.md](docs/references.md) | Reference links |
 | [docs/extension-patterns.md](docs/extension-patterns.md) | Extension patterns guide |
