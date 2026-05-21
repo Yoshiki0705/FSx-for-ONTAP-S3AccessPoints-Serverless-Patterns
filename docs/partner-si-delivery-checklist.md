@@ -94,6 +94,16 @@
 
 ### 各ステップの成果物テンプレート
 
+#### デリバリーフロー全体像
+
+```
+Discover → Design → Deploy → Validate → Govern → Operate → Optimize
+   │          │        │         │         │        │         │
+   ▼          ▼        ▼         ▼         ▼        ▼         ▼
+Discovery  Architecture  CFn    PoC      Security  Runbook   Cost
+  Note      Diagram    Deploy  Results   Review    Handover  Review
+```
+
 | Step | 成果物 | 形式 |
 |------|--------|------|
 | 1. データ特性 | Discovery Note（データ分類・プロトコル・ファイルプロファイル） | Markdown / Word |
