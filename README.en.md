@@ -2,6 +2,12 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+## Current Status
+
+This repository now contains **17 industry use cases** + **event-driven FPolicy pattern** + **6 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for NetApp ONTAP S3 Access Points.
+
+The original 5 patterns (Phase 1) have been expanded across Phases 2–13. Phase 10 introduced the shared FPolicy event-ingestion pipeline, Phase 11 wired dispatch across all 17 UCs, Phase 12 hardened the pipeline with Persistent Store replay validation, SLO observability, capacity guardrails, and secrets rotation, and Phase 13 added FlexClone/FlexCache serverless automation.
+
 A collection of industry-specific serverless automation patterns leveraging S3 Access Points for Amazon FSx for NetApp ONTAP.
 
 > **Purpose of this repository**: This is a "reference implementation for learning design decisions." Some use cases have been E2E verified in an AWS environment, while others have undergone CloudFormation deployment, shared Discovery Lambda, and operational verification of key components. It is designed for gradual adoption from PoC to production, demonstrating design decisions for cost optimization, security, and error handling through concrete code.
