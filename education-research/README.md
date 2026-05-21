@@ -35,13 +35,21 @@ FSx for NetApp ONTAP の S3 Access Points を活用し、論文 PDF の自動分
 
 ## Success Metrics
 
-| メトリクス | 測定方法 |
-|-----------|--------|
-| 論文 PDF 処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
-| 分類精度 | CloudWatch Metrics / Step Functions 実行結果 |
-| 引用ネットワーク分析時間 | CloudWatch Metrics / Step Functions 実行結果 |
-| Bedrock 要約品質スコア | CloudWatch Metrics / Step Functions 実行結果 |
-| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+### Outcome
+論文 PDF 分類・引用ネットワーク分析の自動化により、研究データ管理と教材整理を効率化する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| 処理済み文書数 / 実行 | > 200 documents |
+| 分類精度 | > 85% |
+| 引用抽出成功率 | > 90% |
+| 処理時間 / 文書 | < 30 秒 |
+| コスト / 実行 | < $8 |
+| Human Review 対象率 | < 20%（分類不確実な文書） |
+
+### Measurement Method
+Step Functions 実行履歴、Comprehend 分類結果、Textract テキスト抽出、CloudWatch Metrics。
 
 ## アーキテクチャ
 

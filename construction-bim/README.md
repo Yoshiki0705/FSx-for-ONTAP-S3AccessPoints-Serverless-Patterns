@@ -35,13 +35,21 @@ FSx for NetApp ONTAP の S3 Access Points を活用し、BIM モデル（IFC/Rev
 
 ## Success Metrics
 
-| メトリクス | 測定方法 |
-|-----------|--------|
-| BIM ファイル処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
-| OCR テキスト抽出精度 | CloudWatch Metrics / Step Functions 実行結果 |
-| 安全コンプライアンスチェック時間 | CloudWatch Metrics / Step Functions 実行結果 |
-| バージョン管理メタデータ生成時間 | CloudWatch Metrics / Step Functions 実行結果 |
-| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+### Outcome
+BIM バージョン管理・図面 OCR・安全コンプライアンスチェックの自動化により、建設プロジェクト管理を効率化する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| 処理済み図面数 / 実行 | > 100 files |
+| OCR テキスト抽出成功率 | > 90% |
+| 安全コンプライアンス違反検出率 | 100%（既知パターン） |
+| 処理時間 / ファイル | < 45 秒 |
+| コスト / 実行 | < $10 |
+| Human Review 対象率 | < 15%（安全違反検出時） |
+
+### Measurement Method
+Step Functions 実行履歴、Textract confidence score、Bedrock 安全レポート、CloudWatch Metrics。
 
 ## アーキテクチャ
 

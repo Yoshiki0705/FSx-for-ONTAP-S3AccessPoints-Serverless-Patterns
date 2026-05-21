@@ -16,6 +16,16 @@ PoC・検証      →    限定本番        →    庁内/組織展開
 (2-4 週間)          (1-3 ヶ月)           (3-6 ヶ月)
 ```
 
+### Production Readiness Level との対応
+
+| Public Sector Phase | Production Readiness Level | 説明 |
+|--------------------|--------------------------|------|
+| Phase A: PoC・検証 | Level 1 (Sandbox) → Level 2 (Scheduled) | 手動実行で動作確認 → 定期実行で安定性確認 |
+| Phase B: 限定本番 | Level 3 (Monitored) | Dashboard + Alarm + Runbook で可観測性確立 |
+| Phase C: 庁内展開 | Level 4 (Production) | StackSets + CI/CD + SLO + DR + 監査対応 |
+
+詳細: [Production Readiness Maturity Model](production-readiness.md)
+
 ---
 
 ## Phase A: PoC・検証（2-4 週間）

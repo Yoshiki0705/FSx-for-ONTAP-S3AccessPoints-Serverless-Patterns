@@ -133,13 +133,21 @@ residential / commercial / forest / water / road 等の比率。
 
 ## Success Metrics
 
-| メトリクス | 測定方法 |
-|-----------|--------|
-| 地理空間データ処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
-| CRS 正規化成功率 | CloudWatch Metrics / Step Functions 実行結果 |
-| 土地利用分類精度 | CloudWatch Metrics / Step Functions 実行結果 |
-| リスクマップ生成時間 | CloudWatch Metrics / Step Functions 実行結果 |
-| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+### Outcome
+地理空間解析（CRS 正規化・土地利用分類・災害リスクマッピング）の自動化により、都市計画の意思決定を支援する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| 処理済みデータセット数 / 実行 | > 100 files |
+| CRS 正規化成功率 | > 95% |
+| 土地利用分類精度 | > 80% |
+| リスクマップ生成時間 | < 10 分 |
+| コスト / 実行 | < $10 |
+| Human Review 対象率 | < 20%（分類不確実エリア） |
+
+### Measurement Method
+Step Functions 実行履歴、Bedrock 分析レポート、Rekognition 検出結果、S3 出力 GeoJSON、CloudWatch Metrics。
 
 ## デプロイ
 
