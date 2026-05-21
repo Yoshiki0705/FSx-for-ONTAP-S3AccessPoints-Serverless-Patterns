@@ -2,6 +2,12 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+## Current Status
+
+本儲存庫現包含 **17 個產業用例** + **事件驅動 FPolicy 模式** + **6 個 FlexCache/FlexClone 模式**，構成完整的無伺服器模式庫。
+
+從最初的 5 個模式（Phase 1）經 Phase 2–13 擴展而來。Phase 10 引入共用 FPolicy 事件擷取管線，Phase 11 將調度擴展至全部 17 UC，Phase 12 透過 Persistent Store 重播驗證、SLO 可觀測性、容量護欄和密鑰輪換進行維運強化，Phase 13 實現 FlexClone/FlexCache 無伺服器自動化。
+
 基於 Amazon FSx for NetApp ONTAP S3 Access Points 的產業專屬無伺服器自動化模式集合。
 
 > **本儲存庫的定位**: 這是一個「用於學習設計決策的參考實作」。部分使用案例已在 AWS 環境中完成 E2E 驗證，其他使用案例也已完成 CloudFormation 部署、共用 Discovery Lambda 及關鍵元件的功能驗證。本儲存庫以從 PoC 到正式環境的漸進式應用為目標，透過具體程式碼展示成本最佳化、安全性和錯誤處理的設計決策。
