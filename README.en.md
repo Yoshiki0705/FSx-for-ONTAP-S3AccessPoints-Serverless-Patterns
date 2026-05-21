@@ -14,6 +14,24 @@ A collection of industry-specific serverless automation patterns leveraging S3 A
 
 **Tests**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
 
+## Choose Your Path
+
+### 30-minute path: understand the pattern
+- Review Current Status and [architecture diagram](#architecture)
+- Compare POLLING / EVENT_DRIVEN / HYBRID in the [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md)
+- Understand the [S3AP dual-layer authorization model](docs/s3ap-authorization-model.md)
+
+### 60-minute path: run a PoC
+- Deploy one UC template (e.g., [UC1 legal-compliance](legal-compliance/README.md))
+- Configure an S3 Access Point and verify ListObjectsV2 / GetObject
+- Review CloudWatch metrics for execution results
+
+### 1-day path: partner/customer workshop
+- Deploy the FPolicy pipeline ([event-driven-fpolicy/](event-driven-fpolicy/README.md))
+- Validate NFS/SMB file event E2E flow
+- Test failure and replay behavior
+- Review security and operations with the [Partner/SI Delivery Checklist](docs/partner-si-delivery-checklist.md)
+
 ## Related Articles
 
 This repository provides the implementation examples for the architecture described in the following article:
