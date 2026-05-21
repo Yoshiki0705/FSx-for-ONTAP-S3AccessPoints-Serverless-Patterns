@@ -32,6 +32,17 @@ FSx for NetApp ONTAP の S3 Access Points を活用し、論文 PDF の自動分
 - 参考文献セクションからの引用関係解析と引用隣接リスト構築
 - 各論文の構造化メタデータ（title, authors, classification, keywords, citation_count）出力
 
+
+## Success Metrics
+
+| メトリクス | 測定方法 |
+|-----------|--------|
+| 論文 PDF 処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
+| 分類精度 | CloudWatch Metrics / Step Functions 実行結果 |
+| 引用ネットワーク分析時間 | CloudWatch Metrics / Step Functions 実行結果 |
+| Bedrock 要約品質スコア | CloudWatch Metrics / Step Functions 実行結果 |
+| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+
 ## アーキテクチャ
 
 ```mermaid

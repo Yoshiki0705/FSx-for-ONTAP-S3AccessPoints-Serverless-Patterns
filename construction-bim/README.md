@@ -32,6 +32,17 @@ FSx for NetApp ONTAP の S3 Access Points を活用し、BIM モデル（IFC/Rev
 - Bedrock による安全コンプライアンスルールチェック
 - Rekognition による図面画像の安全関連視覚要素検出（非常口、消火器、危険区域）
 
+
+## Success Metrics
+
+| メトリクス | 測定方法 |
+|-----------|--------|
+| BIM ファイル処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
+| OCR テキスト抽出精度 | CloudWatch Metrics / Step Functions 実行結果 |
+| 安全コンプライアンスチェック時間 | CloudWatch Metrics / Step Functions 実行結果 |
+| バージョン管理メタデータ生成時間 | CloudWatch Metrics / Step Functions 実行結果 |
+| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+
 ## アーキテクチャ
 
 ```mermaid
