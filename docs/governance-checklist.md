@@ -114,6 +114,37 @@ AI 処理結果
 | 外部共有前のレビュー | UC16 | FOIA 開示文書の最終確認 | 情報公開担当 |
 | バリアント分類の確認 | UC7 | 臨床的意義のある変異の確認 | 研究者 / 臨床医 |
 
+### 監査証跡レコードの項目例
+
+DynamoDB（または組織の監査ログ基盤）に記録する項目の例:
+
+| 項目 | 説明 | 例 |
+|------|------|-----|
+| review_id | レビュー一意 ID | `rev-2026-05-22-001` |
+| use_case_id | 対象 UC | `UC16` |
+| object_key | 処理対象ファイル | `archives/2026/doc-001.pdf` |
+| ai_output_id | AI 処理結果 ID | `step-exec-abc123` |
+| reviewer_id | 確認者 ID | `user@example.com` |
+| review_timestamp | 確認日時 | `2026-05-22T10:30:00Z` |
+| review_decision | 判定 | `approved` / `rejected` / `escalated` |
+| review_comment | コメント | 「墨消し範囲を修正」 |
+| confidence_score | AI 信頼度スコア | `0.72` |
+| escalation_required | エスカレーション要否 | `false` |
+| retention_period | 保持期間 | `7 years` |
+
+### 監査証跡の設計考慮事項
+
+| 項目 | 検討内容 |
+|------|---------|
+| 保存先 | DynamoDB（サンプル実装）。実案件では組織の SIEM、ログ基盤、文書管理基盤に合わせて選択 |
+| 保持期間 | 組織のポリシーに依存（例: FISC 7年、HIPAA 6年、NARA 永久） |
+| アクセス権限 | 監査担当者のみ参照可能。運用チームは書き込みのみ |
+| 削除方針 | 保持期間経過後の自動削除 or アーカイブ |
+| 改ざん防止 | S3 Object Lock への定期エクスポート推奨 |
+| 既存基盤連携 | CloudWatch Logs → S3 → 既存 SIEM、または EventBridge → 既存監査基盤 |
+
+> **注意**: 本リポジトリのサンプル実装では DynamoDB を使用していますが、これは一例です。実案件では組織の既存監査ログ基盤（SIEM、Splunk、CloudTrail Lake 等）に合わせて保存先を選択してください。
+
 ---
 
 ## 6. 責任ある AI (Responsible AI) ガードレール
