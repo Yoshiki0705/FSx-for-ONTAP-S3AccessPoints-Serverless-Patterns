@@ -142,8 +142,10 @@ FOIA 担当者が期限 3 営業日前に受信するリマインダーメール
 | FOIA 対応時間の短縮 | > 50% |
 | Human Review 必須率 | 100%（墨消し結果は全件人間確認必須） |
 
+> **100% Human Review の理由**: 墨消し漏れが情報公開・個人情報保護に直接影響するため、全件の人間確認を必須とします。
+
 ### Measurement Method
-Step Functions 実行履歴、Comprehend PII 検出結果、墨消し前後 diff、DynamoDB 保管期限履歴、CloudWatch Metrics。
+Step Functions 実行履歴、Comprehend PII 検出結果、墨消し前後 diff、DynamoDB 保管期限履歴、CloudWatch Metrics。レビュー結果は DynamoDB に記録し、監査時に「誰が・いつ・何を確認・承認したか」を追跡可能にする。
 
 ## デプロイ
 
