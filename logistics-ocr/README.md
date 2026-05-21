@@ -32,6 +32,17 @@ FSx for NetApp ONTAP の S3 Access Points を活用し、配送伝票の OCR テ
 - Rekognition による倉庫在庫画像の物体検出・カウント
 - Bedrock による配送ルート最適化レポート生成
 
+
+## Success Metrics
+
+| メトリクス | 測定方法 |
+|-----------|--------|
+| 配送伝票処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
+| OCR テキスト抽出精度 | CloudWatch Metrics / Step Functions 実行結果 |
+| 倉庫在庫画像分析スループット | CloudWatch Metrics / Step Functions 実行結果 |
+| Cross-Region API 成功率 | CloudWatch Metrics / Step Functions 実行結果 |
+| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+
 ## アーキテクチャ
 
 ```mermaid

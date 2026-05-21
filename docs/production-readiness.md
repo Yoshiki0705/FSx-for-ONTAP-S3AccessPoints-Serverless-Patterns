@@ -159,6 +159,15 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ## Level 別チェックマトリクス
 
+### CI/CD バッジとの対応
+
+| Level | 対応するバッジ / 検証状態 |
+|-------|------------------------|
+| Level 1 (Sandbox) | `sam build` 成功、`sam deploy` 成功 |
+| Level 2 (Scheduled) | ![tests](https://img.shields.io/badge/tests-passed-brightgreen) pytest 全テスト PASS |
+| Level 3 (Monitored) | ![cfn-lint](https://img.shields.io/badge/cfn--lint-0%20errors-brightgreen) cfn-lint + ruff 0 errors |
+| Level 4 (Production) | ![region](https://img.shields.io/badge/verified-ap--northeast--1-blue) AWS 実環境検証済み + セキュリティチェック PASS |
+
 | 項目 | L1 | L2 | L3 | L4 |
 |------|:--:|:--:|:--:|:--:|
 | CloudFormation デプロイ | ✅ | ✅ | ✅ | ✅ |
