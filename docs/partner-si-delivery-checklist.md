@@ -92,6 +92,18 @@
 | リカバリ時間 | Time to recover from Fargate task restart | < 5 min |
 | 監査対応 | Event lineage completeness | 100% (Compliance profile) |
 
+### 各ステップの成果物テンプレート
+
+| Step | 成果物 | 形式 |
+|------|--------|------|
+| 1. データ特性 | Discovery Note（データ分類・プロトコル・ファイルプロファイル） | Markdown / Word |
+| 2. トリガーモード | Current-state data flow + Target architecture diagram | Draw.io / Mermaid |
+| 3. Deployment Profile | Security review checklist（認可モデル確認結果） | Checklist |
+| 4. アクセスモデル | IAM + ONTAP permission design document | Markdown |
+| 5. ネットワーク | Network architecture diagram + VPC Endpoint decision | Draw.io |
+| 6. 運用モデル | Operations handover checklist | Checklist |
+| 7. 成功基準 | PoC success criteria + Cost estimate | Spreadsheet |
+
 ---
 
 ## PoC 実施ガイド

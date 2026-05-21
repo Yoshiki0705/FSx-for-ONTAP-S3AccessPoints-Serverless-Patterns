@@ -23,6 +23,18 @@
 | 15:45-16:30 | Session 5 | 本番化計画 + 次ステップ | 全員 |
 | 16:30-17:00 | クロージング | Q&A、アクションアイテム整理 | パートナー |
 
+### 推奨参加者ロール
+
+| ロール | 参加セッション | 役割 |
+|--------|-------------|------|
+| Storage / Infrastructure Owner | Session 1-3 | FSx 環境・ネットワーク確認 |
+| Application Owner | Session 1-2, 5 | 業務要件・対象データ確認 |
+| Security / Compliance Reviewer | Session 1, 4 | 認可モデル・ガバナンス確認 |
+| Data / Analytics Owner | Session 2-3 | AI/ML 処理要件・出力先確認 |
+| Operations Team | Session 3, 5 | 運用設計・障害対応確認 |
+| Partner Delivery Lead | 全セッション | ファシリテーション・次ステップ整理 |
+| Business Sponsor | Session 1, 5 | ビジネス価値・予算・優先度判断 |
+
 ---
 
 ## Session 1: アーキテクチャ概要（60 分）

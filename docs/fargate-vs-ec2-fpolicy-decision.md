@@ -24,6 +24,18 @@ FPolicy External Server のコンピュート選択肢として Fargate と EC2 
 | **セキュリティグループ** | タスク ENI に設定 | インスタンス ENI に設定 |
 | **ログ** | CloudWatch Logs (awslogs driver) | CloudWatch Agent or rsyslog |
 
+## 運用責任の比較
+
+| 運用項目 | Fargate | EC2 |
+|---------|---------|-----|
+| OS パッチ管理 | 不要（AWS マネージド） | 必要（AMI 更新 or SSM Patch Manager） |
+| キャパシティ管理 | 自動（ECS Service） | ASG 設定が必要 |
+| 起動レイテンシ | 30-60 秒 | 1-3 分（AMI 起動） |
+| 長時間接続の維持 | ECS Service auto-recovery | プロセス監視 + systemd |
+| HA 設計 | ECS Service (desiredCount=1, auto-restart) | ASG (min=1, max=1) + health check |
+| ログ収集 | awslogs driver（自動） | CloudWatch Agent 設定が必要 |
+| 運用オーナーシップ | アプリケーションコードのみ | アプリ + OS + ネットワーク |
+
 ## 選択フローチャート
 
 ```
