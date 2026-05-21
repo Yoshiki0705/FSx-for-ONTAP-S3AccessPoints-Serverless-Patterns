@@ -129,13 +129,21 @@ FOIA 担当者が期限 3 営業日前に受信するリマインダーメール
 
 ## Success Metrics
 
-| メトリクス | 測定方法 |
-|-----------|--------|
-| 公文書処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
-| PII 検出精度 | CloudWatch Metrics / Step Functions 実行結果 |
-| 墨消し完全性（漏れ率） | CloudWatch Metrics / Step Functions 実行結果 |
-| FOIA 対応時間の短縮率 | CloudWatch Metrics / Step Functions 実行結果 |
-| Human Review 必要件数の割合 | CloudWatch Metrics / Step Functions 実行結果 |
+### Outcome
+公文書アーカイブ・FOIA 対応（OCR・分類・墨消し・保管期限管理）の自動化により、情報公開請求対応を迅速化する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| 処理済み文書数 / 実行 | > 500 documents |
+| OCR テキスト抽出成功率 | > 95% |
+| PII 検出精度 | > 95% |
+| 墨消し処理時間 / 文書 | < 30 秒 |
+| FOIA 対応時間の短縮 | > 50% |
+| Human Review 必須率 | 100%（墨消し結果は全件人間確認必須） |
+
+### Measurement Method
+Step Functions 実行履歴、Comprehend PII 検出結果、墨消し前後 diff、DynamoDB 保管期限履歴、CloudWatch Metrics。
 
 ## デプロイ
 

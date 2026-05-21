@@ -35,13 +35,21 @@ FSx for NetApp ONTAP の S3 Access Points を活用し、FASTQ/BAM/VCF ゲノム
 
 ## Success Metrics
 
-| メトリクス | 測定方法 |
-|-----------|--------|
-| FASTQ/VCF ファイル処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
-| バリアントコール集計精度 | CloudWatch Metrics / Step Functions 実行結果 |
-| Cross-Region API 呼び出し成功率 | CloudWatch Metrics / Step Functions 実行結果 |
-| 処理スループット (GB/hour) | CloudWatch Metrics / Step Functions 実行結果 |
-| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+### Outcome
+FASTQ/VCF 品質チェック・バリアントコール集計の自動化により、研究データ分析の迅速化を実現する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| 処理済みサンプル数 / 実行 | > 50 samples |
+| 品質チェック通過率 | > 95% |
+| バリアント検出精度 | 既知バリアント DB との一致率 > 90% |
+| 処理時間 / サンプル | < 2 分 |
+| コスト / 実行 | < $10 |
+| Human Review 必須率 | 100%（臨床的意義のあるバリアント） |
+
+### Measurement Method
+Step Functions 実行履歴、Comprehend Medical entity count、Athena 集計結果、CloudWatch Metrics。
 
 ## アーキテクチャ
 
