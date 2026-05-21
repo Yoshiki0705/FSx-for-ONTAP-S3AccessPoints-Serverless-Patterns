@@ -2,6 +2,12 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+## Current Status
+
+Este repositorio contiene ahora **17 casos de uso sectoriales** + **un patrón FPolicy basado en eventos** + **6 patrones FlexCache/FlexClone**, formando una biblioteca completa de patrones serverless.
+
+Los 5 patrones originales (Phase 1) se han expandido a través de las Fases 2–13. Phase 10 introdujo el pipeline compartido de ingesta de eventos FPolicy, Phase 11 extendió el dispatch a los 17 UCs, Phase 12 endureció el pipeline con validación de replay de Persistent Store, observabilidad SLO, guardarraíles de capacidad y rotación de secretos, y Phase 13 añadió automatización serverless FlexClone/FlexCache.
+
 Colección de patrones de automatización serverless por sector, basados en los S3 Access Points de Amazon FSx for NetApp ONTAP.
 
 > **Posicionamiento de este repositorio**: Esta es una «implementación de referencia para aprender decisiones de diseño». Algunos casos de uso han sido verificados E2E en un entorno AWS, mientras que otros han sido validados mediante despliegue de CloudFormation, Lambda Discovery compartido y pruebas de componentes principales. El objetivo es demostrar decisiones de diseño sobre optimización de costos, seguridad y manejo de errores a través de código concreto, con un camino desde PoC hasta producción.

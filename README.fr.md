@@ -2,6 +2,12 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+## Current Status
+
+Ce dépôt contient désormais **17 cas d'usage sectoriels** + **un modèle FPolicy événementiel** + **6 modèles FlexCache/FlexClone**, formant une bibliothèque complète de modèles serverless.
+
+Les 5 modèles initiaux (Phase 1) ont été étendus à travers les Phases 2–13. Phase 10 a introduit le pipeline partagé d'ingestion d'événements FPolicy, Phase 11 a étendu le dispatch aux 17 UC, Phase 12 a renforcé le pipeline avec la validation du replay Persistent Store, l'observabilité SLO, les garde-fous de capacité et la rotation des secrets, et Phase 13 a ajouté l'automatisation serverless FlexClone/FlexCache.
+
 Collection de modèles d'automatisation serverless par secteur d'activité, exploitant les S3 Access Points d'Amazon FSx for NetApp ONTAP.
 
 > **Positionnement de ce dépôt** : Il s'agit d'une « implémentation de référence pour apprendre les décisions de conception ». Certains cas d'usage ont été entièrement vérifiés E2E dans un environnement AWS, tandis que les autres ont été validés par le déploiement CloudFormation, le Lambda Discovery partagé et les tests des composants principaux. L'objectif est de démontrer les décisions de conception en matière d'optimisation des coûts, de sécurité et de gestion des erreurs à travers du code concret, avec un chemin du PoC à la production.

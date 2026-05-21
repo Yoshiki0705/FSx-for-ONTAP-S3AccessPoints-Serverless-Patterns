@@ -2,6 +2,12 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+## Current Status
+
+本リポジトリは **17 の業界別ユースケース** + **イベント駆動 FPolicy パターン** + **6 つの FlexCache/FlexClone パターン** を含むサーバーレスパターンライブラリです。
+
+当初の 5 パターン（Phase 1）から、Phase 2–13 を通じて拡張されました。Phase 10 で共有 FPolicy イベント取り込みパイプラインを導入、Phase 11 で全 17 UC にディスパッチを展開、Phase 12 で Persistent Store リプレイ検証・SLO 可観測性・容量ガードレール・シークレットローテーションによる運用強化、Phase 13 で FlexClone/FlexCache サーバーレス自動化を実装しました。
+
 Amazon FSx for NetApp ONTAP の S3 Access Points を活用した、業界別サーバーレス自動化パターン集です。
 
 > **本リポジトリの位置づけ**: これは「設計判断を学ぶためのリファレンス実装」です。一部ユースケースは AWS 環境で E2E 検証済みであり、その他のユースケースも CloudFormation デプロイ、共通 Discovery Lambda、主要コンポーネントの動作確認を実施しています。PoC から本番環境への段階的な適用を想定し、コスト最適化、セキュリティ、エラーハンドリングの設計判断を具体的なコードで示すことを目的としています。

@@ -2,6 +2,12 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+## Current Status
+
+Dieses Repository enthält jetzt **17 branchenspezifische Anwendungsfälle** + **ein ereignisgesteuertes FPolicy-Muster** + **6 FlexCache/FlexClone-Muster** als vollständige serverlose Musterbibliothek.
+
+Die ursprünglichen 5 Muster (Phase 1) wurden über die Phasen 2–13 erweitert. Phase 10 führte die gemeinsame FPolicy-Ereignisaufnahme-Pipeline ein, Phase 11 erweiterte den Dispatch auf alle 17 UCs, Phase 12 härtete die Pipeline mit Persistent Store Replay-Validierung, SLO-Observability, Kapazitäts-Guardrails und Secrets-Rotation, und Phase 13 fügte FlexClone/FlexCache-Serverless-Automatisierung hinzu.
+
 Sammlung branchenspezifischer serverloser Automatisierungsmuster auf Basis von Amazon FSx for NetApp ONTAP S3 Access Points.
 
 > **Positionierung dieses Repositories**: Dies ist eine „Referenzimplementierung zum Erlernen von Designentscheidungen". Einige Anwendungsfälle wurden in einer AWS-Umgebung vollständig E2E-verifiziert, während andere durch CloudFormation-Deployment, gemeinsames Discovery Lambda und Tests der Hauptkomponenten validiert wurden. Ziel ist es, Designentscheidungen zu Kostenoptimierung, Sicherheit und Fehlerbehandlung durch konkreten Code zu demonstrieren — mit einem Pfad vom PoC zur Produktion.
