@@ -1,0 +1,248 @@
+# =============================================================================
+# Lineage Retention — S3 Object Lock + Daily Export
+# =============================================================================
+#
+# DynamoDB の LineageRecord を S3 に日次エクスポートし、
+# Object Lock (Compliance mode) で 7 年間の不変保存を実現する。
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/lineage-retention.yaml \
+#     --stack-name fsxn-phase13-lineage-retention \
+#     --parameter-overrides \
+#       EnableLineageRetention=true \
+#       ProjectPrefix=fsxn-s3ap \
+#     --capabilities CAPABILITY_NAMED_IAM
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  FSxN S3AP Serverless Patterns — Lineage Retention.
+  DynamoDB → S3 日次エクスポート + Object Lock (7 年保存)。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  EnableLineageRetention:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Lineage Retention 機能を有効化する
+
+  LineageTableName:
+    Type: String
+    Default: "fsxn-s3ap-data-lineage"
+    Description: エクスポート元 DynamoDB テーブル名
+
+  RetentionDays:
+    Type: Number
+    Default: 2555
+    Description: Object Lock 保持期間（日数、デフォルト 7 年）
+
+  ExportSchedule:
+    Type: String
+    Default: "rate(1 day)"
+    Description: エクスポート実行スケジュール
+
+  StorageClass:
+    Type: String
+    Default: "STANDARD"
+    AllowedValues: ["STANDARD", "GLACIER_IR"]
+    Description: S3 ストレージクラス（STANDARD=即時アクセス、GLACIER_IR=低コスト）
+
+  MetricNamespace:
+    Type: String
+    Default: "FSxN-S3AP-Patterns"
+    Description: CloudWatch メトリクス名前空間
+
+  SnsTopicArn:
+    Type: String
+    Default: ""
+    Description: エクスポート失敗アラーム通知先 SNS Topic ARN
+
+Conditions:
+  IsLineageRetentionEnabled:
+    !Equals [!Ref EnableLineageRetention, "true"]
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # S3 Bucket (Object Lock + Versioning)
+  # ---------------------------------------------------------------------------
+  LineageRetentionBucket:
+    Type: AWS::S3::Bucket
+    Condition: IsLineageRetentionEnabled
+    Properties:
+      BucketName: !Sub "${ProjectPrefix}-lineage-retention-${AWS::AccountId}"
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: COMPLIANCE
+            Days: !Ref RetentionDays
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToGlacierIR
+            Status: Enabled
+            Transitions:
+              - StorageClass: GLACIER_IR
+                TransitionInDays: 90
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Component
+          Value: lineage-retention
+        - Key: Phase
+          Value: "13"
+
+  # ---------------------------------------------------------------------------
+  # IAM Role
+  # ---------------------------------------------------------------------------
+  LineageExportRole:
+    Type: AWS::IAM::Role
+    Condition: IsLineageRetentionEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-lineage-export-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LineageExportPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: DynamoDBRead
+                Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${LineageTableName}"
+              - Sid: S3Write
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub "${LineageRetentionBucket.Arn}/*"
+              - Sid: CloudWatchMetrics
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: !Ref MetricNamespace
+
+  # ---------------------------------------------------------------------------
+  # Lambda Function
+  # ---------------------------------------------------------------------------
+  LineageExportFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsLineageRetentionEnabled
+    Properties:
+      FunctionName: !Sub "${ProjectPrefix}-lineage-export"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: ../lambdas/lineage_export/
+      MemorySize: 512
+      Timeout: 300
+      Architectures:
+        - arm64
+      Role: !GetAtt LineageExportRole.Arn
+      Environment:
+        Variables:
+          LINEAGE_TABLE_NAME: !Ref LineageTableName
+          RETENTION_BUCKET: !Ref LineageRetentionBucket
+          METRIC_NAMESPACE: !Ref MetricNamespace
+      Tags:
+        Component: lineage-retention
+        Phase: "13"
+
+  # ---------------------------------------------------------------------------
+  # EventBridge Schedule
+  # ---------------------------------------------------------------------------
+  LineageExportSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsLineageRetentionEnabled
+    Properties:
+      Name: !Sub "${ProjectPrefix}-lineage-export-schedule"
+      Description: Lineage DynamoDB → S3 日次エクスポート
+      ScheduleExpression: !Ref ExportSchedule
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: ENABLED
+      Target:
+        Arn: !GetAtt LineageExportFunction.Arn
+        RoleArn: !GetAtt ExportSchedulerRole.Arn
+
+  ExportSchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsLineageRetentionEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-lineage-export-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt LineageExportFunction.Arn
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Alarm (Export Failure)
+  # ---------------------------------------------------------------------------
+  LineageExportFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsLineageRetentionEnabled
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-lineage-export-failure"
+      AlarmDescription: Lineage export Lambda が 3 回連続失敗
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref LineageExportFunction
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref SnsTopicArn
+
+Outputs:
+  RetentionBucketName:
+    Condition: IsLineageRetentionEnabled
+    Description: Lineage Retention S3 Bucket Name
+    Value: !Ref LineageRetentionBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketName"
+
+  ExportFunctionArn:
+    Condition: IsLineageRetentionEnabled
+    Description: Lineage Export Lambda ARN
+    Value: !GetAtt LineageExportFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ExportFunctionArn"

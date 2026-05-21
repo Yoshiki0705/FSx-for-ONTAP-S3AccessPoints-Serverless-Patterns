@@ -3,7 +3,7 @@
 
 import os
 
-BASE = "/Users/yoshiki/Downloads/fsxn-s3ap-serverless-patterns"
+BASE = os.environ.get("PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # UC configurations: (dir_name, title_ja, title_en, title_ko, title_zhCN, title_zhTW, title_fr, title_de, title_es, workflow_desc)
 UCS = [

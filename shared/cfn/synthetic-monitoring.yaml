@@ -74,6 +74,14 @@ Parameters:
     Default: "rate(5 minutes)"
     Description: Canary 実行スケジュール
 
+  CanaryRuntimeVersion:
+    Type: String
+    Default: "syn-python-selenium-11.0"
+    Description: >-
+      CloudWatch Synthetics ランタイムバージョン。
+      利用可能なバージョン確認:
+      aws synthetics describe-runtime-versions --query 'RuntimeVersions[?starts_with(VersionName, `syn-python`)]'
+
   SnsTopicArn:
     Type: String
     Default: ""
@@ -177,7 +185,7 @@ Resources:
     Condition: IsSyntheticMonitoringEnabled
     Properties:
       Name: !Sub "${ProjectPrefix}-s3ap-health"
-      RuntimeVersion: syn-python-selenium-11.0
+      RuntimeVersion: !Ref CanaryRuntimeVersion
       ArtifactS3Location: !Sub "s3://${ArtifactBucket}/canary-artifacts/"
       ExecutionRoleArn: !GetAtt CanaryExecutionRole.Arn
       Schedule:

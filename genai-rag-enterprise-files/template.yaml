@@ -1,0 +1,299 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  GenAI RAG over Enterprise Files — Permission-aware RAG パターン
+  FSx for ONTAP S3 AP 経由でファイルを読み取り、権限ベースの RAG を実現
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: S3 Access Point エイリアス（xxx-ext-s3alias 形式）
+
+  S3AccessPointName:
+    Type: String
+    Description: S3 Access Point 名（IAM ARN 用）
+
+  OntapManagementIp:
+    Type: String
+    Default: ''
+    Description: ONTAP 管理 IP（ACL 取得用）
+
+  OntapSecretName:
+    Type: String
+    Default: fsxn/ontap-credentials
+    Description: Secrets Manager シークレット名
+
+  BedrockModelId:
+    Type: String
+    Default: amazon.titan-embed-text-v2:0
+    Description: Bedrock Embedding モデル ID
+
+  BedrockLlmModelId:
+    Type: String
+    Default: amazon.nova-pro-v1:0
+    Description: Bedrock LLM モデル ID（回答生成用）
+
+  ScheduleExpression:
+    Type: String
+    Default: rate(1 hour)
+    Description: インデックス更新スケジュール
+
+  NotificationEmail:
+    Type: String
+    Default: ''
+    Description: 通知先メールアドレス
+
+  OutputDestination:
+    Type: String
+    Default: STANDARD_S3
+    AllowedValues: [STANDARD_S3, FSXN_S3AP]
+    Description: 出力先の選択
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+  UseFsxnOutput: !Equals [!Ref OutputDestination, FSXN_S3AP]
+
+Resources:
+  # --- S3 出力バケット ---
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+
+  # --- SNS Topic ---
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # --- IAM Role ---
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GenAIRagPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource: !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub '${OutputBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+
+  # --- Lambda Functions ---
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/discovery/
+      Timeout: 120
+      MemorySize: 512
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+
+  ChunkingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/chunking/
+      Timeout: 300
+      MemorySize: 1024
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          CHUNK_SIZE: '1000'
+          CHUNK_OVERLAP: '200'
+
+  EmbeddingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/embedding/
+      Timeout: 300
+      MemorySize: 512
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          OUTPUT_BUCKET: !Ref OutputBucket
+
+  AclExtractionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/acl_extraction/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/report/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
+
+  # --- Step Functions ---
+  RagIndexingWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: genai-rag-enterprise-indexing
+      Definition:
+        Comment: GenAI RAG Indexing Workflow
+        StartAt: Discovery
+        States:
+          Discovery:
+            Type: Task
+            Resource: !GetAtt DiscoveryFunction.Arn
+            ResultPath: $.discovery
+            Next: ProcessDocuments
+          ProcessDocuments:
+            Type: Map
+            ItemsPath: $.discovery.objects
+            MaxConcurrency: 5
+            Iterator:
+              StartAt: Chunking
+              States:
+                Chunking:
+                  Type: Task
+                  Resource: !GetAtt ChunkingFunction.Arn
+                  ResultPath: $.chunks
+                  Next: Embedding
+                Embedding:
+                  Type: Task
+                  Resource: !GetAtt EmbeddingFunction.Arn
+                  ResultPath: $.embeddings
+                  Next: AclExtraction
+                AclExtraction:
+                  Type: Task
+                  Resource: !GetAtt AclExtractionFunction.Arn
+                  ResultPath: $.acl
+                  End: true
+            ResultPath: $.processed
+            Next: GenerateReport
+          GenerateReport:
+            Type: Task
+            Resource: !GetAtt ReportFunction.Arn
+            End: true
+      Role: !GetAtt StepFunctionsRole.Arn
+
+  StepFunctionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt ChunkingFunction.Arn
+                  - !GetAtt EmbeddingFunction.Arn
+                  - !GetAtt AclExtractionFunction.Arn
+                  - !GetAtt ReportFunction.Arn
+
+  # --- EventBridge Scheduler ---
+  IndexingSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !GetAtt RagIndexingWorkflow.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: '{}'
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt RagIndexingWorkflow.Arn
+
+Outputs:
+  StateMachineArn:
+    Value: !GetAtt RagIndexingWorkflow.Arn
+  OutputBucketName:
+    Value: !Ref OutputBucket

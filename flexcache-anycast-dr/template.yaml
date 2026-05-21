@@ -1,0 +1,385 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  FlexCache AnyCast / DR Pattern - Health Check, Route Decision, Discovery, Report
+  シミュレーションモードで BGP/VIP なしでも AnyCast ルーティングをデモ可能
+
+Parameters:
+  # --- 基本設定 ---
+  Environment:
+    Type: String
+    Default: demo
+    AllowedValues: [demo, staging, production]
+    Description: デプロイ環境
+
+  SimulationMode:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: シミュレーションモード（true=ONTAP API を呼ばずモックデータ使用）
+
+  # --- FlexCache 設定 ---
+  CacheEndpoints:
+    Type: CommaDelimitedList
+    Default: 'cache-a.example.com,cache-b.example.com'
+    Description: FlexCache エンドポイント（カンマ区切り）
+
+  S3AccessPointAlias:
+    Type: String
+    Default: ''
+    Description: S3 Access Point エイリアス（xxx-ext-s3alias 形式）
+
+  # --- ONTAP 設定 ---
+  OntapSecretName:
+    Type: String
+    Default: fsxn/ontap-credentials
+    Description: Secrets Manager シークレット名（ONTAP 認証情報）
+
+  # --- 通知設定 ---
+  NotificationEmail:
+    Type: String
+    Default: ''
+    Description: 通知先メールアドレス（空の場合 SNS Topic のみ作成）
+
+  # --- スケジュール設定 ---
+  HealthCheckIntervalMinutes:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 60
+    Description: ヘルスチェック間隔（分）
+
+  # --- オプション ---
+  EnableVpcEndpoints:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: VPC Endpoints を作成するか
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: CloudWatch Alarms を作成するか
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+  HasS3AccessPoint: !Not [!Equals [!Ref S3AccessPointAlias, '']]
+  CreateVpcEndpoints: !Equals [!Ref EnableVpcEndpoints, 'true']
+  CreateAlarms: !Equals [!Ref EnableCloudWatchAlarms, 'true']
+
+Resources:
+  # --- DynamoDB ルーティングテーブル ---
+  RoutingTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'FlexCacheRoutingTable-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: cache_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cache_id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: fsxn-s3ap-serverless-patterns
+        - Key: Pattern
+          Value: flexcache-anycast-dr
+
+  # --- S3 出力バケット ---
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'flexcache-anycast-reports-${AWS::AccountId}-${AWS::Region}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldReports
+            Status: Enabled
+            ExpirationInDays: 90
+      Tags:
+        - Key: Project
+          Value: fsxn-s3ap-serverless-patterns
+
+  # --- SNS Topic ---
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub 'flexcache-anycast-alerts-${Environment}'
+      KmsMasterKeyId: alias/aws/sns
+      Tags:
+        - Key: Project
+          Value: fsxn-s3ap-serverless-patterns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # --- IAM Role ---
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: FlexCacheAnyCastPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt RoutingTable.Arn
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource:
+                  - !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*'
+                  - !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub '${OutputBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*'
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:flexcache-anycast-*'
+
+  # --- Lambda Functions ---
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'flexcache-anycast-HealthCheck-${Environment}'
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: src/health_check/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          SIMULATION_MODE: !Ref SimulationMode
+          CACHE_ENDPOINTS: !Join [',', !Ref CacheEndpoints]
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+      Tags:
+        Project: fsxn-s3ap-serverless-patterns
+        Pattern: flexcache-anycast-dr
+
+  RouteDecisionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'flexcache-anycast-RouteDecision-${Environment}'
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: src/route_decision/
+      Timeout: 30
+      MemorySize: 256
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          ROUTING_TABLE_NAME: !Ref RoutingTable
+          CACHE_ENDPOINTS: !Join [',', !Ref CacheEndpoints]
+      Tags:
+        Project: fsxn-s3ap-serverless-patterns
+        Pattern: flexcache-anycast-dr
+
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'flexcache-anycast-Discovery-${Environment}'
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: src/discovery/
+      Timeout: 120
+      MemorySize: 512
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          ROUTE_DECISION_FUNCTION: !Ref RouteDecisionFunction
+          DEFAULT_PREFIX: ''
+      Tags:
+        Project: fsxn-s3ap-serverless-patterns
+        Pattern: flexcache-anycast-dr
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'flexcache-anycast-Report-${Environment}'
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: src/report/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
+      Tags:
+        Project: fsxn-s3ap-serverless-patterns
+        Pattern: flexcache-anycast-dr
+
+  # --- Step Functions ---
+  FlexCacheAnyCastStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub 'flexcache-anycast-workflow-${Environment}'
+      Definition:
+        Comment: FlexCache AnyCast Health Check and Route Decision Workflow
+        StartAt: HealthCheck
+        States:
+          HealthCheck:
+            Type: Task
+            Resource: !GetAtt HealthCheckFunction.Arn
+            Parameters:
+              cache_endpoints.$: $.cache_endpoints
+              check_type.$: $.check_type
+            ResultPath: $.health_check_result
+            Retry:
+              - ErrorEquals: ['States.TaskFailed', 'States.Timeout']
+                IntervalSeconds: 10
+                MaxAttempts: 2
+                BackoffRate: 2.0
+            Next: RouteDecision
+          RouteDecision:
+            Type: Task
+            Resource: !GetAtt RouteDecisionFunction.Arn
+            Parameters:
+              client_region.$: $.client_region
+              strategy.$: $.strategy
+            ResultPath: $.route_decision_result
+            Retry:
+              - ErrorEquals: ['States.TaskFailed']
+                IntervalSeconds: 5
+                MaxAttempts: 2
+                BackoffRate: 2.0
+            Next: GenerateReport
+          GenerateReport:
+            Type: Task
+            Resource: !GetAtt ReportFunction.Arn
+            Parameters:
+              health_check_result.$: $.health_check_result
+              route_decision_result.$: $.route_decision_result
+              report_type: summary
+            ResultPath: $.report_result
+            End: true
+      Role: !GetAtt StepFunctionsRole.Arn
+      Tags:
+        Project: fsxn-s3ap-serverless-patterns
+        Pattern: flexcache-anycast-dr
+
+  StepFunctionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt HealthCheckFunction.Arn
+                  - !GetAtt RouteDecisionFunction.Arn
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt ReportFunction.Arn
+
+  # --- EventBridge Scheduler ---
+  HealthCheckSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub 'flexcache-anycast-health-check-${Environment}'
+      ScheduleExpression: !Sub 'rate(${HealthCheckIntervalMinutes} minutes)'
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !GetAtt FlexCacheAnyCastStateMachine.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: !Sub
+          - |
+            {
+              "cache_endpoints": ["${Endpoints}"],
+              "check_type": "basic",
+              "client_region": "${AWS::Region}",
+              "strategy": "latency_based"
+            }
+          - Endpoints: !Join ['","', !Ref CacheEndpoints]
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt FlexCacheAnyCastStateMachine.Arn
+
+Outputs:
+  StateMachineArn:
+    Description: FlexCache AnyCast State Machine ARN
+    Value: !GetAtt FlexCacheAnyCastStateMachine.Arn
+
+  HealthCheckFunctionArn:
+    Description: Health Check Lambda ARN
+    Value: !GetAtt HealthCheckFunction.Arn
+
+  RouteDecisionFunctionArn:
+    Description: Route Decision Lambda ARN
+    Value: !GetAtt RouteDecisionFunction.Arn
+
+  RoutingTableName:
+    Description: DynamoDB Routing Table Name
+    Value: !Ref RoutingTable
+
+  OutputBucketName:
+    Description: Report Output Bucket
+    Value: !Ref OutputBucket
+
+  NotificationTopicArn:
+    Description: SNS Notification Topic ARN
+    Value: !Ref NotificationTopic

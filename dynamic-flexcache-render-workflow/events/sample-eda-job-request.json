@@ -1,0 +1,22 @@
+{
+  "job_id": "eda-regression-042",
+  "job_type": "eda",
+  "project": "chip-alpha",
+  "origin_volume": "eda_tools_libs",
+  "origin_svm": "svm1",
+  "cache_svm": "svm1",
+  "size_gb": 500,
+  "prepopulate_dirs": ["/tools/cadence/2024/", "/libs/tsmc_n5/", "/pdk/"],
+  "parameters": {
+    "tool": "innovus",
+    "design": "top_block",
+    "stage": "place_and_route",
+    "simulate_failure": false,
+    "simulate_duration_seconds": 60
+  },
+  "metadata": {
+    "submitted_by": "engineer-03",
+    "priority": "normal",
+    "license_server": "lic01.example.com"
+  }
+}

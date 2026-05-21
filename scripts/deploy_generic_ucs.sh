@@ -51,7 +51,13 @@ set -u
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-<ACCOUNT_ID>}"
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo '')}"
+if [[ -z "$AWS_ACCOUNT_ID" ]]; then
+    echo "ERROR: Cannot determine AWS Account ID. Set AWS_ACCOUNT_ID or configure AWS CLI." >&2
+    exit 1
+fi
+
+DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-${AWS_ACCOUNT_ID}}"
 S3_AP_ALIAS="${S3_AP_ALIAS:-<S3_AP_ALIAS>}"
 S3_AP_NAME="${S3_AP_NAME:-eda-demo-s3ap}"
 VPC_ID="${VPC_ID:-<VPC_ID>}"
