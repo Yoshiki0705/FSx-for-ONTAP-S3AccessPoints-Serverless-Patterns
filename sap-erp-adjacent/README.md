@@ -4,6 +4,8 @@ Serverless pattern for processing SAP IDoc exports, HULFT landing files, EDI lan
 
 ## Use Cases
 
+> **Scope note**: This pattern is intended for SAP/ERP-adjacent file landing zones such as IDoc exports, EDI files, HULFT transfers, audit extracts, and batch outputs. It is not intended to replace certified SAP integration mechanisms or transactional ERP interfaces. For SAP-certified storage integration, refer to [AWS SAP on FSx for ONTAP documentation](https://docs.aws.amazon.com/sap/latest/sap-hana/sap-hana-amazon-fsx.html).
+
 - **SAP IDoc Export Processing**: Parse and summarize IDoc flat files (ORDERS, INVOIC, DESADV)
 - **HULFT File Landing**: Process files transferred by HULFT/DataSpider to FSx for ONTAP
 - **EDI Inbound Processing**: Handle EDI X12/EDIFACT documents in landing zones

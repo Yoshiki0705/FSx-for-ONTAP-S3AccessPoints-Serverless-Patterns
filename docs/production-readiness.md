@@ -136,6 +136,27 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ---
 
+## Exit Criteria（各レベル完了条件）
+
+### Level 1 → Level 2 への移行条件
+- [ ] CloudFormation デプロイが成功し、手動実行で期待結果が得られた
+- [ ] S3 AP 経由の ListObjectsV2 / GetObject が正常動作した
+- [ ] AI/ML 処理結果の品質が業務要件を満たすことを確認した
+
+### Level 2 → Level 3 への移行条件
+- [ ] EventBridge Scheduler による定期実行が 1 週間以上安定動作した
+- [ ] エラー時の SNS 通知が正しく届くことを確認した
+- [ ] 対象データセットでの処理時間が測定・記録された
+- [ ] DLQ にメッセージが蓄積されていないことを確認した
+
+### Level 3 → Level 4 への移行条件
+- [ ] CloudWatch Dashboard でメトリクスが可視化されている
+- [ ] Alarm Profile が設定され、閾値超過時に通知が届く
+- [ ] X-Ray トレーシングで実行パスが確認可能
+- [ ] 運用 Runbook が作成され、障害対応訓練が実施された
+- [ ] コスト可視化が有効で、月次レビューが実施されている
+- [ ] セキュリティレビューが完了している
+
 ## Level 別チェックマトリクス
 
 | 項目 | L1 | L2 | L3 | L4 |

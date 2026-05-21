@@ -139,6 +139,17 @@ S3 Access Point 作成時に指定するファイルシステム ID が、すべ
 | Processing Lambda | GetObject のみ（入力読み取り） | 同上 |
 | Output Lambda (FSXN_S3AP mode) | PutObject 追加 | 出力ディレクトリへの書き込み権限を持つユーザー |
 
+## トラブルシューティング
+
+| 症状 | 可能性のある原因 | 確認ポイント |
+|------|----------------|------------|
+| IAM で許可しているのに AccessDenied | ファイルシステム ID の権限不足 | S3 AP に紐づく UNIX/Windows ID のファイル/ディレクトリ権限を確認 |
+| ListBucket は成功するが GetObject で AccessDenied | ファイル ACL / export policy / security style の不一致 | 対象ファイルの実効権限を `ls -la` (UNIX) or `icacls` (NTFS) で確認 |
+| PutObject が失敗する | ディレクトリ書き込み権限不足 | 親ディレクトリの書き込み権限を確認。ファイルシステム ID が read-only の場合は書き込み不可 |
+| VPC 内 Lambda からタイムアウト | Internet Origin AP に S3 Gateway EP 経由でアクセス | Lambda を VPC 外に配置、または NAT Gateway 経由に変更 |
+| MISCONFIGURED 状態 | ファイルシステム ID が解決不能 | UNIX UID が存在するか、Windows ユーザーが AD で有効か確認 |
+| 特定ディレクトリのみ AccessDenied | ONTAP export policy の制限 | SVM の export policy rules を確認（NFS export と S3 AP は別経路だが同じ volume permission） |
+
 ## 参考リンク
 
 - [Managing access point access — Amazon FSx for NetApp ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
