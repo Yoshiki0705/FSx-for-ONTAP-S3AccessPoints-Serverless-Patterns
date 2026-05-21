@@ -121,8 +121,10 @@ FSx ONTAP (衛星画像格納)
 | コスト / 実行 | < $15 |
 | Human Review 必須率 | 100%（アラート発報前に人間承認必須） |
 
+> **100% Human Review の理由**: アラート誤発報・見逃しの業務影響が極めて大きいため、全件の人間承認を必須とします。
+
 ### Measurement Method
-Step Functions 実行履歴、Rekognition 検出結果、Bedrock 分析レポート、SNS 通知ログ、CloudWatch Metrics。
+Step Functions 実行履歴、Rekognition 検出結果、Bedrock 分析レポート、SNS 通知ログ、CloudWatch Metrics。承認記録は DynamoDB に保存し、監査時に「誰が・いつ・何を承認したか」を追跡可能にする。
 
 ## デプロイ
 
