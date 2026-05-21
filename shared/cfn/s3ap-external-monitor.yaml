@@ -1,0 +1,239 @@
+# =============================================================================
+# VPC-External S3AP Health Monitor — Lambda + EventBridge + CloudWatch Alarm
+# =============================================================================
+#
+# Internet-origin S3 Access Point のヘルスチェックを VPC 外 Lambda で実行する。
+# Phase 12 で発見された VPC 内タイムアウト問題を回避するための分離モニタリング。
+#
+# 重要な前提条件（Phase 13 デプロイ時に発見）:
+#   1. S3AP リソースポリシーに Lambda 実行ロールを明示的に Allow する必要がある
+#      → 未設定の場合、AccessDenied ではなく ConnectionClosedError が返る
+#   2. S3AP attachment の Lifecycle が AVAILABLE であること
+#      → CREATED 状態ではデータプレーンが応答しない
+#   3. デプロイ後に以下のコマンドで S3AP ポリシーを設定すること:
+#      aws s3control put-access-point-policy \
+#        --account-id <ACCOUNT_ID> \
+#        --name <S3AP_NAME> \
+#        --policy '{"Version":"2012-10-17","Statement":[{"Effect":"Allow",
+#          "Principal":{"AWS":"arn:aws:iam::<ACCOUNT_ID>:role/<PROJECT_PREFIX>-s3ap-ext-monitor-role"},
+#          "Action":["s3:ListBucket","s3:GetObject"],
+#          "Resource":["arn:aws:s3:<REGION>:<ACCOUNT_ID>:accesspoint/<S3AP_NAME>",
+#                      "arn:aws:s3:<REGION>:<ACCOUNT_ID>:accesspoint/<S3AP_NAME>/object/*"]}]}'
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/s3ap-external-monitor.yaml \
+#     --stack-name fsxn-phase13-s3ap-external-monitor \
+#     --parameter-overrides \
+#       EnableS3APExternalMonitor=true \
+#       S3APAlias=fsxn-s3ap-xxx-ext-s3alias \
+#       S3AccessPointName=fsxn-s3ap \
+#       AlarmSNSTopic=arn:aws:sns:ap-northeast-1:123456789012:alerts \
+#     --capabilities CAPABILITY_NAMED_IAM
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  FSxN S3AP Serverless Patterns — VPC-External S3AP Health Monitor.
+  Internet-origin S3AP の可用性を VPC 外 Lambda で監視する。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  EnableS3APExternalMonitor:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: S3AP External Monitor 機能を有効化する
+
+  S3APAlias:
+    Type: String
+    Default: ""
+    Description: S3 Access Point エイリアス（xxx-ext-s3alias 形式）
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: S3 Access Point 名（IAM ポリシーの ARN に使用）
+
+  HealthPrefix:
+    Type: String
+    Default: "_health/"
+    Description: ヘルスチェック用 S3 プレフィックス
+
+  ScheduleInterval:
+    Type: String
+    Default: "rate(5 minutes)"
+    Description: ヘルスチェック実行間隔
+
+  AlarmSNSTopic:
+    Type: String
+    Default: ""
+    Description: アラーム通知先 SNS Topic ARN
+
+  MetricNamespace:
+    Type: String
+    Default: "FSxN-S3AP-Patterns/Canary"
+    Description: CloudWatch メトリクス名前空間
+
+  TimeoutSeconds:
+    Type: Number
+    Default: 10
+    Description: S3 API 呼び出しタイムアウト（秒）
+
+  AlarmEvaluationPeriods:
+    Type: Number
+    Default: 3
+    Description: アラーム発報に必要な連続失敗回数
+
+Conditions:
+  IsS3APExternalMonitorEnabled:
+    !Equals [!Ref EnableS3APExternalMonitor, "true"]
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # IAM Role
+  # ---------------------------------------------------------------------------
+  S3APHealthCheckRole:
+    Type: AWS::IAM::Role
+    Condition: IsS3APExternalMonitorEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-s3ap-ext-monitor-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3APHealthCheckPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3APListAccess
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+              - Sid: CloudWatchMetrics
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: !Ref MetricNamespace
+
+  # ---------------------------------------------------------------------------
+  # Lambda Function (VPC 外 — Internet-origin S3AP アクセス用)
+  # ---------------------------------------------------------------------------
+  S3APHealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsS3APExternalMonitorEnabled
+    Properties:
+      FunctionName: !Sub "${ProjectPrefix}-s3ap-ext-monitor"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: ../lambdas/s3ap_external_monitor/
+      MemorySize: 128
+      Timeout: 30
+      Architectures:
+        - arm64
+      Role: !GetAtt S3APHealthCheckRole.Arn
+      # NOTE: VpcConfig なし — Internet-origin S3AP にアクセスするため VPC 外実行
+      Environment:
+        Variables:
+          S3AP_ALIAS: !Ref S3APAlias
+          HEALTH_PREFIX: !Ref HealthPrefix
+          METRIC_NAMESPACE: !Ref MetricNamespace
+          TIMEOUT_SECONDS: !Ref TimeoutSeconds
+      Tags:
+        Component: s3ap-external-monitor
+        Phase: "13"
+
+  # ---------------------------------------------------------------------------
+  # EventBridge Schedule
+  # ---------------------------------------------------------------------------
+  S3APHealthCheckSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsS3APExternalMonitorEnabled
+    Properties:
+      Name: !Sub "${ProjectPrefix}-s3ap-ext-monitor-schedule"
+      Description: S3AP ヘルスチェック定期実行（VPC 外）
+      ScheduleExpression: !Ref ScheduleInterval
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: ENABLED
+      Target:
+        Arn: !GetAtt S3APHealthCheckFunction.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsS3APExternalMonitorEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-s3ap-ext-monitor-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt S3APHealthCheckFunction.Arn
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Alarm
+  # ---------------------------------------------------------------------------
+  S3APHealthCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsS3APExternalMonitorEnabled
+    Properties:
+      AlarmName: !Sub "${ProjectPrefix}-s3ap-health-external"
+      AlarmDescription: >-
+        S3 Access Point health check failed (VPC-external monitor).
+        3 consecutive failures indicate S3AP unavailability.
+      Namespace: !Ref MetricNamespace
+      MetricName: S3APHealthCheck
+      Dimensions:
+        - Name: CheckType
+          Value: VPC-External
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: !Ref AlarmEvaluationPeriods
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref AlarmSNSTopic
+
+Outputs:
+  S3APHealthCheckFunctionArn:
+    Condition: IsS3APExternalMonitorEnabled
+    Description: S3AP External Monitor Lambda ARN
+    Value: !GetAtt S3APHealthCheckFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-FunctionArn"
+
+  S3APHealthCheckAlarmArn:
+    Condition: IsS3APExternalMonitorEnabled
+    Description: S3AP Health Check Alarm ARN
+    Value: !GetAtt S3APHealthCheckAlarm.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-AlarmArn"

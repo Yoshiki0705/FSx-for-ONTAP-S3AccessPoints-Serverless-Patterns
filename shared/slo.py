@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -295,7 +296,7 @@ def _compare_threshold(value: float, threshold: float, comparison: str) -> bool:
 
 
 def generate_dashboard_widgets(
-    region: str = "ap-northeast-1",
+    region: str | None = None,
     targets: list[SLOTarget] | None = None,
     include_synthetic_monitoring: bool = True,
 ) -> list[dict[str, Any]]:
@@ -305,13 +306,15 @@ def generate_dashboard_widgets(
     統合したダッシュボードウィジェット定義を返す。
 
     Args:
-        region: AWS リージョン
+        region: AWS リージョン（None の場合は AWS_REGION 環境変数を使用）
         targets: SLO ターゲットリスト（None の場合は SLO_TARGETS を使用）
         include_synthetic_monitoring: Feature 3 メトリクスを含めるか
 
     Returns:
         CloudWatch ダッシュボードウィジェット定義のリスト
     """
+    if region is None:
+        region = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1"))
     if targets is None:
         targets = SLO_TARGETS
 

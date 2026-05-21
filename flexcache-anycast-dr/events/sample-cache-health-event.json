@@ -1,0 +1,10 @@
+{
+  "action": "health_check",
+  "cache_endpoints": [
+    "fsxn-cache-a.example.com",
+    "fsxn-cache-b.example.com",
+    "fsxn-cache-c.example.com"
+  ],
+  "check_type": "detailed",
+  "notify_on_failure": true
+}

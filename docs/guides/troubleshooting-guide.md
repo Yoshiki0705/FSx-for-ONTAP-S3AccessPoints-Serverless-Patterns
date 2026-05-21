@@ -507,3 +507,265 @@ aws ec2 describe-vpc-endpoints \
   --filters "Name=vpc-id,Values=<your-vpc-id>" \
   --region ap-northeast-1
 ```
+
+---
+
+## FlexCache 関連のトラブルシューティング
+
+### FlexCache 作成失敗
+
+| 症状 | 原因 | 解決策 |
+|------|------|--------|
+| ONTAP REST API 404 | Origin volume/SVM が存在しない | volume 名、SVM 名を確認 |
+| ONTAP REST API 409 | 同名の FlexCache が既に存在 | 冪等性チェックが正常動作しているか確認 |
+| ONTAP REST API 500 | アグリゲート容量不足 | `storage aggregate show` で空き容量確認 |
+| Lambda タイムアウト | ONTAP 管理 IP に到達不可 | VPC/SG/ルートテーブル確認 |
+| Job state: failure | FlexCache 作成ジョブ失敗 | `GET /api/cluster/jobs/{uuid}` で message 確認 |
+
+### FlexCache 削除失敗
+
+| 症状 | 原因 | 解決策 |
+|------|------|--------|
+| ONTAP REST API 409 | Volume busy（クライアントがマウント中） | クライアントのアンマウントを確認 |
+| ONTAP REST API 404 | 既に削除済み | 冪等性により成功扱い（正常） |
+| Lambda タイムアウト | 削除ジョブが長時間実行中 | タイムアウト値を延長（300秒推奨） |
+
+### Orphan FlexCache の検出
+
+```bash
+# ONTAP CLI で dynamic FlexCache を確認
+ssh admin@<MGMT_IP> "volume flexcache show -vserver svm1 -volume dyn_cache_*"
+
+# Lambda で orphan 検出
+aws lambda invoke \
+  --function-name dynamic-flexcache-OrphanDetector \
+  --payload '{}' \
+  response.json
+```
+
+### FlexCache + S3 AP アクセス問題
+
+| 症状 | 原因 | 解決策 |
+|------|------|--------|
+| S3 AP から FlexCache データが見えない | FlexCache volume に S3 AP が attach されていない | FSx コンソールで S3 AP の attach 先を確認 |
+| S3 AP AccessDenied | IAM ARN 形式エラー | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用 |
+| S3 AP タイムアウト | NetworkOrigin 設定の不一致 | VPC 内 Lambda → VPC Origin AP、VPC 外 → Internet Origin AP |
+
+### FlexCache ヘルスチェック失敗
+
+```bash
+# ヘルスチェック Lambda のログ確認
+aws logs filter-log-events \
+  --log-group-name "/aws/lambda/flexcache-anycast-HealthCheck-demo" \
+  --filter-pattern "health_status" \
+  --start-time $(date -d '30 minutes ago' +%s000) \
+  --region ap-northeast-1
+
+# DynamoDB ルーティングテーブル確認
+aws dynamodb scan \
+  --table-name FlexCacheRoutingTable-demo \
+  --region ap-northeast-1
+```
+
+### Dynamic FlexCache Workflow の Step Functions 失敗
+
+```bash
+# 失敗した実行の詳細確認
+aws stepfunctions describe-execution \
+  --execution-arn <EXECUTION_ARN> \
+  --region ap-northeast-1
+
+# 失敗ステートの入出力確認
+aws stepfunctions get-execution-history \
+  --execution-arn <EXECUTION_ARN> \
+  --region ap-northeast-1 \
+  --query "events[?type=='TaskFailed']"
+```
+
+### CloudWatch Logs Insights クエリ
+
+```sql
+-- FlexCache 操作のエラー検出
+fields @timestamp, @message
+| filter @message like /FlexCache/ and @message like /ERROR/
+| sort @timestamp desc
+| limit 50
+
+-- ONTAP REST API レスポンス時間
+fields @timestamp, @message
+| filter @message like /ONTAP API/
+| parse @message '"latency_ms": *' as latency
+| stats avg(latency), max(latency), p95(latency) by bin(5m)
+```
+
+---
+
+## 7. S3AP ConnectionClosedError（Phase 13 発見）
+
+### 症状
+
+VPC 外 Lambda から Internet-origin S3 Access Point に `ListObjectsV2` を実行すると、`AccessDenied` ではなく `ConnectionClosedError` が返る。
+
+```
+ConnectionClosedError: Connection was closed before we received a valid response from endpoint URL:
+"https://xxx-ext-s3alias.s3.ap-northeast-1.amazonaws.com/?list-type=2&prefix=_health%2F&max-keys=1"
+```
+
+または `ReadTimeoutError`（20秒以上応答なし）。
+
+### 原因
+
+以下のいずれか（または複合）:
+
+1. **S3AP リソースポリシー未設定**: Lambda 実行ロールが S3AP リソースポリシーで Allow されていない
+2. **S3AP attachment Lifecycle が AVAILABLE でない**: `CREATED` 状態ではデータプレーンが応答しない
+3. **ONTAP ボリュームがオフライン**: S3AP が紐づくボリュームが offline/restricted 状態
+
+### 確認手順
+
+```bash
+# 1. S3AP リソースポリシー確認
+aws s3control get-access-point-policy \
+  --account-id <ACCOUNT_ID> \
+  --name <S3AP_NAME> \
+  --region ap-northeast-1
+
+# 2. S3AP attachment Lifecycle 確認
+aws fsx describe-s3-access-point-attachments \
+  --region ap-northeast-1 \
+  --query 'S3AccessPointAttachments[?Name==`<S3AP_NAME>`].Lifecycle'
+
+# 3. ボリューム状態確認
+aws fsx describe-volumes \
+  --volume-ids <VOLUME_ID> \
+  --region ap-northeast-1 \
+  --query 'Volumes[0].Lifecycle'
+```
+
+### 解決策
+
+```bash
+# S3AP リソースポリシーに Lambda ロールを追加
+aws s3control put-access-point-policy \
+  --account-id <ACCOUNT_ID> \
+  --name <S3AP_NAME> \
+  --region ap-northeast-1 \
+  --policy '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": {"AWS": "arn:aws:iam::<ACCOUNT_ID>:role/<LAMBDA_ROLE_NAME>"},
+      "Action": ["s3:ListBucket", "s3:GetObject"],
+      "Resource": [
+        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/<S3AP_NAME>",
+        "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/<S3AP_NAME>/object/*"
+      ]
+    }]
+  }'
+```
+
+### 重要な注意点
+
+- FSx ONTAP S3AP は通常の S3 とは異なるデータプレーンを使用する
+- 認証/認可エラーが `AccessDenied` ではなく `ConnectionClosedError` として表面化する場合がある
+- IAM identity-based policy だけでなく、S3AP resource policy の両方が必要
+- S3AP attachment の Lifecycle が `AVAILABLE` であることを必ず確認する
+
+
+---
+
+## 8. FPolicy Protobuf モード切り替え（Phase 13 発見）
+
+### 症状
+
+ONTAP CLI で FPolicy external engine の format を protobuf に変更しようとすると `invalid argument "-format"` エラーが発生する。
+
+```
+FsxId01234567890abc:> fpolicy policy external-engine modify -vserver FSxN_OnPre -engine-name my_engine -format protobuf
+Error: invalid argument "-format"
+```
+
+### 原因
+
+ONTAP 9.17.1 では、FPolicy external engine の `format` フィールドは **REST API でのみ変更可能**。CLI には `-format` パラメータが実装されていない。
+
+### 解決策
+
+REST API の PATCH メソッドを使用する：
+
+```bash
+# 1. FPolicy ポリシーを無効化
+fpolicy disable -vserver <SVM_NAME> -policy-name <POLICY_NAME>
+
+# 2. REST API で format を変更
+curl -sk -X PATCH \
+  -u "fsxadmin:<PASSWORD>" \
+  -H "Content-Type: application/json" \
+  -d '{"format": "protobuf"}' \
+  "https://<FS_MGMT_IP>/api/protocols/fpolicy/<SVM_UUID>/engines/<ENGINE_NAME>"
+
+# 3. FPolicy ポリシーを再有効化
+fpolicy enable -vserver <SVM_NAME> -policy-name <POLICY_NAME> -sequence-number 1
+```
+
+### 重要な注意点
+
+- `<FS_MGMT_IP>` はファイルシステム管理 IP（SVM 管理 IP ではない）
+- format 変更は FPolicy disable 中にのみ可能
+- Keep-alive interval (PT2M) は XML/protobuf 共通
+- Buffer サイズ: recv=256KB, send=1MB（ProtobufFrameReader の max_message_size は 1MB 以上に設定）
+
+---
+
+## 9. fsxadmin 認証エラー "User is not authorized"（Phase 13 発見）
+
+### 症状
+
+ONTAP REST API に fsxadmin で認証すると `6691623: User is not authorized` エラーが返る。
+
+### 原因
+
+以下のいずれか：
+1. **SVM 管理 IP に接続している** — fsxadmin はファイルシステム管理 IP でのみ認証可能
+2. **パスワードが不正** — Secrets Manager のパスワードと ONTAP 側が不一致
+3. **パスワードに特殊文字** — シェル経由で渡す際にエスケープ問題
+
+### 確認手順
+
+```bash
+# ファイルシステム管理 IP を確認（これを使う）
+aws fsx describe-file-systems --file-system-ids <FS_ID> \
+  --query 'FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]'
+
+# SVM 管理 IP（これは fsxadmin では使えない）
+aws fsx describe-storage-virtual-machines \
+  --query 'StorageVirtualMachines[0].Endpoints.Management.IpAddresses[0]'
+```
+
+### 解決策
+
+```python
+# Python で安全にパスワードリセット + Secrets Manager 更新
+import boto3, json, secrets, string
+
+chars = string.ascii_letters + string.digits + "!@"
+new_password = "".join(secrets.choice(chars) for _ in range(20))
+
+fsx = boto3.client("fsx", region_name="ap-northeast-1")
+fsx.update_file_system(
+    FileSystemId="fs-xxx",
+    OntapConfiguration={"FsxAdminPassword": new_password}
+)
+
+sm = boto3.client("secretsmanager", region_name="ap-northeast-1")
+sm.put_secret_value(
+    SecretId="fsx-ontap-fsxadmin-credentials",
+    SecretString=json.dumps({"username": "fsxadmin", "password": new_password})
+)
+```
+
+### 重要な注意点
+
+- シェルスクリプトでパスワードを扱う場合、特殊文字のエスケープ問題が発生しやすい
+- Python boto3 で直接操作するのが最も安全
+- パスワードリセット後、反映に 30-60 秒かかる場合がある

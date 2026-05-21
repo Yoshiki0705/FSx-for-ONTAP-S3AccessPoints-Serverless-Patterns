@@ -1,0 +1,80 @@
+name: Security & Privacy Check
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  sensitive-data-check:
+    name: "Sensitive Data Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check .kiro/ not tracked
+        run: |
+          result=$(git ls-files .kiro/ 2>/dev/null || true)
+          if [ -n "$result" ]; then
+            echo "::error::.kiro/ directory is tracked by git"
+            exit 1
+          fi
+          echo "✅ .kiro/ not tracked"
+
+      - name: Check .env files not tracked
+        run: |
+          result=$(git ls-files .env .env.local '.env.*' 2>/dev/null || true)
+          if [ -n "$result" ]; then
+            echo "::error::.env files are tracked by git: $result"
+            exit 1
+          fi
+          echo "✅ .env files not tracked"
+
+      - name: Check .pem files not tracked
+        run: |
+          result=$(git ls-files '*.pem' 2>/dev/null || true)
+          if [ -n "$result" ]; then
+            echo "::error::.pem files are tracked by git: $result"
+            exit 1
+          fi
+          echo "✅ .pem files not tracked"
+
+      - name: Check no personal file paths with secrets
+        run: |
+          # Check for personal paths referencing .pem files
+          result=$(git ls-files | xargs grep -rln '/Users/.*\.pem' 2>/dev/null || true)
+          if [ -n "$result" ]; then
+            echo "::error::Personal .pem paths found in: $result"
+            exit 1
+          fi
+          echo "✅ No personal .pem paths"
+
+      - name: Check no real AWS account ID
+        env:
+          SECURITY_CHECK_ACCOUNT_ID: ${{ secrets.SECURITY_CHECK_ACCOUNT_ID }}
+        run: |
+          if [ -z "$SECURITY_CHECK_ACCOUNT_ID" ]; then
+            echo "⚠️ SECURITY_CHECK_ACCOUNT_ID secret not set — skipping account ID check"
+            exit 0
+          fi
+          result=$(git ls-files | xargs grep -rl "$SECURITY_CHECK_ACCOUNT_ID" 2>/dev/null || true)
+          if [ -n "$result" ]; then
+            echo "::error::Real AWS account ID found in: $result"
+            exit 1
+          fi
+          echo "✅ No real AWS account ID in tracked files"
+
+      - name: Check no hardcoded EC2 IPs
+        run: |
+          # Common patterns for real public IPs (non-placeholder)
+          # Skip 10.x.x.x, 172.16-31.x.x, 192.168.x.x (RFC1918)
+          # Check for known problematic patterns
+          result=$(git ls-files | xargs grep -rln '3\.112\.208\.171\|13\.113\.190\.197' 2>/dev/null || true)
+          if [ -n "$result" ]; then
+            echo "::error::Real EC2 IP addresses found in: $result"
+            exit 1
+          fi
+          echo "✅ No known real EC2 IPs in tracked files"

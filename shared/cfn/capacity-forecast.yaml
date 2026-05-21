@@ -68,6 +68,11 @@ Parameters:
     Default: ""
     Description: アラート通知用 SNS Topic ARN
 
+  MetricNamespace:
+    Type: String
+    Default: "FSxN-S3AP-Patterns"
+    Description: CloudWatch カスタムメトリクスの名前空間
+
 Conditions:
   IsCapacityForecastEnabled:
     !Equals [!Ref EnableCapacityForecast, "true"]
@@ -153,7 +158,7 @@ Resources:
     Properties:
       AlarmName: !Sub "${ProjectPrefix}-days-until-full"
       AlarmDescription: FSx ストレージ容量枯渇予測が閾値以下
-      Namespace: FSxN-S3AP-Patterns
+      Namespace: !Ref MetricNamespace
       MetricName: DaysUntilFull
       Statistic: Minimum
       Period: 86400

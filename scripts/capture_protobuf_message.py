@@ -23,9 +23,9 @@ import time
 
 import boto3
 
-REGION = "ap-northeast-1"
+REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
 LAMBDA_FUNCTION = "fsxn-fpolicy-ip-updater"
-SVM_UUID = "9ae87e42-068a-11f1-b1ff-ada95e61ee66"
+SVM_UUID = "<SVM_UUID>"
 ENGINE_NAME = "fpolicy_aws_engine"
 POLICY_NAME = "fpolicy_aws"
 

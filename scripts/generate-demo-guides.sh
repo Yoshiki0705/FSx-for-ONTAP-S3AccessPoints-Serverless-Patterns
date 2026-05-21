@@ -2,7 +2,7 @@
 # Script to generate multilingual demo-guide files for all UCs
 # This script creates ko, zh-CN, zh-TW, fr, de, es versions
 
-BASE="/Users/yoshiki/Downloads/fsxn-s3ap-serverless-patterns"
+BASE="${PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || dirname "$(dirname "$(realpath "$0")")")}"
 
 # UC definitions: directory|title_ko|title_zhCN|title_zhTW|title_fr|title_de|title_es
 # We'll generate each file individually below
