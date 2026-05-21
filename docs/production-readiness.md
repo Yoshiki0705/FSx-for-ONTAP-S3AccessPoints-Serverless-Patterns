@@ -1,0 +1,167 @@
+# Production Readiness — Maturity Model
+
+🌐 **Language / 言語**: [日本語](production-readiness.md) | [English](production-readiness.en.md)
+
+## 概要
+
+本ドキュメントは、PoC から本番環境への段階的な成熟度モデルを定義します。各レベルで必要な成果物、設計項目、運用項目を明確にし、「今どこにいて、次に何をすべきか」を判断できるようにします。
+
+---
+
+## Maturity Model
+
+```
+Level 1          Level 2          Level 3          Level 4
+Sandbox    →    Scheduled    →    Monitored    →    Production
+(手動実行)      (定期実行)        (可観測性付き)     (本番運用)
+```
+
+---
+
+## Level 1: Sandbox（手動実行）
+
+### 目的
+- パターンの動作確認
+- S3 AP 経由のファイルアクセス検証
+- AI/ML サービスの出力品質確認
+
+### 必要な成果物
+- [ ] CloudFormation テンプレートのデプロイ成功
+- [ ] S3 AP 経由の ListObjectsV2 / GetObject 動作確認
+- [ ] サンプルファイルでの AI/ML 処理結果確認
+- [ ] Step Functions 手動実行の成功
+
+### 設計項目
+| 項目 | Level 1 の状態 |
+|------|--------------|
+| トリガー | 手動実行（コンソール or CLI） |
+| データ | サンプルデータ（test-data/ 配下） |
+| エラー処理 | Lambda デフォルト retry のみ |
+| 監視 | CloudWatch Logs 目視確認 |
+| セキュリティ | デフォルト IAM（テンプレート付属） |
+| コスト | 実行時のみ課金 |
+
+### 所要時間: 1-2 時間
+
+---
+
+## Level 2: Scheduled（定期実行）
+
+### 目的
+- EventBridge Scheduler による自動実行
+- 実データでの継続的な処理
+- 基本的なエラー検知
+
+### 必要な成果物
+- [ ] EventBridge Scheduler 設定（rate or cron）
+- [ ] 実データでの処理成功確認（最低 1 週間）
+- [ ] DLQ (Dead Letter Queue) 設定
+- [ ] 基本アラーム（Step Functions 失敗時 SNS 通知）
+
+### 設計項目
+| 項目 | Level 2 の状態 |
+|------|--------------|
+| トリガー | EventBridge Scheduler (rate(1h) 等) |
+| データ | 実データ（FSx for ONTAP Volume） |
+| エラー処理 | DLQ + SNS 通知 |
+| 監視 | CloudWatch Alarm (エラー率) |
+| セキュリティ | 最小権限 IAM + S3 AP Policy |
+| コスト | 月額 $6-21（POLLING モード） |
+
+### 所要時間: 1-2 日
+
+---
+
+## Level 3: Monitored（可観測性付き）
+
+### 目的
+- 包括的な可観測性の確立
+- パフォーマンス・コストの可視化
+- 障害の早期検知と対応
+
+### 必要な成果物
+- [ ] CloudWatch Dashboard（処理件数、レイテンシ、エラー率）
+- [ ] X-Ray トレーシング有効化
+- [ ] EMF メトリクス出力（FilesProcessed, Duration, Errors）
+- [ ] Alarm Profile 設定（BATCH / REALTIME / HIGH_VOLUME）
+- [ ] コスト可視化（Cost Scheduling メトリクス）
+- [ ] 運用 Runbook（障害対応手順）
+
+### 設計項目
+| 項目 | Level 3 の状態 |
+|------|--------------|
+| トリガー | Scheduler + Business Hours 最適化 |
+| データ | 実データ + 差分検出（LastModified 比較） |
+| エラー処理 | DLQ + Retry + SNS + Runbook |
+| 監視 | Dashboard + Alarm + X-Ray + EMF |
+| セキュリティ | IAM + AP Policy + VPC Endpoint Policy |
+| コスト | 月額 $20-60 + 可視化 |
+
+### 所要時間: 3-5 日
+
+---
+
+## Level 4: Production（本番運用）
+
+### 目的
+- マルチアカウント対応
+- CI/CD パイプライン
+- DR / 障害復旧
+- コンプライアンス・監査対応
+- SLO 定義と運用
+
+### 必要な成果物
+- [ ] StackSets によるマルチアカウントデプロイ
+- [ ] CI/CD パイプライン（cfn-lint + pytest + デプロイ自動化）
+- [ ] データリネージ（DynamoDB + S3 Object Lock）
+- [ ] SLO 定義と違反時 Runbook
+- [ ] DR 設計（SnapMirror + Cross-Region）
+- [ ] セキュリティレビュー完了
+- [ ] 運用引き継ぎドキュメント
+- [ ] 定期的な AI 出力品質レビュー体制
+
+### 設計項目
+| 項目 | Level 4 の状態 |
+|------|--------------|
+| トリガー | POLLING + EVENT_DRIVEN (HYBRID) |
+| データ | 実データ + 冪等性保証 + リネージ |
+| エラー処理 | Full retry + DLQ + Runbook + 自動復旧 |
+| 監視 | SLO + Dashboard + Alarm + X-Ray + Lineage |
+| セキュリティ | Full dual-layer + SCP + VPC EP + 監査ログ |
+| コスト | 月額 $50-200 + コスト異常検知 |
+| DR | SnapMirror + Cross-Region backup |
+| CI/CD | StackSets + GitHub Actions + cfn-lint |
+
+### 所要時間: 2-4 週間
+
+---
+
+## Level 別チェックマトリクス
+
+| 項目 | L1 | L2 | L3 | L4 |
+|------|:--:|:--:|:--:|:--:|
+| CloudFormation デプロイ | ✅ | ✅ | ✅ | ✅ |
+| EventBridge Scheduler | — | ✅ | ✅ | ✅ |
+| DLQ | — | ✅ | ✅ | ✅ |
+| SNS 通知 | — | ✅ | ✅ | ✅ |
+| CloudWatch Dashboard | — | — | ✅ | ✅ |
+| X-Ray | — | — | ✅ | ✅ |
+| Alarm Profile | — | — | ✅ | ✅ |
+| Business Hours Scheduling | — | — | ✅ | ✅ |
+| Runbook | — | — | ✅ | ✅ |
+| StackSets | — | — | — | ✅ |
+| CI/CD | — | — | — | ✅ |
+| Data Lineage | — | — | — | ✅ |
+| SLO | — | — | — | ✅ |
+| DR | — | — | — | ✅ |
+| Governance Checklist | — | — | — | ✅ |
+| Human-in-the-loop | — | — | — | ✅ (規制対象) |
+
+---
+
+## 参考リンク
+
+- [Deployment Profiles](deployment-profiles.md) — FPolicy 固有の PoC/Prod/Compliance 分類
+- [Governance Checklist](governance-checklist.md) — 規制・公共セクター向け
+- [Partner/SI Delivery Checklist](partner-si-delivery-checklist.md) — 提案・構築チェック
+- [Trigger Mode Decision Guide](trigger-mode-decision-guide.md) — モード選択
