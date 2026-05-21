@@ -11,8 +11,26 @@
 #   ./scripts/deploy_phase12.sh
 #
 # 前提条件:
-#   - AWS CLI が設定済み（ap-northeast-1 リージョン）
+#   - AWS CLI が設定済み
 #   - 以下の環境変数が設定済み（または下記のデフォルト値を使用）
+#
+# 必須環境変数:
+#   FSX_FILE_SYSTEM_ID  - FSx for ONTAP ファイルシステム ID
+#   ONTAP_MGMT_IP       - ONTAP SVM 管理 IP アドレス
+#   VPC_ID              - VPC ID
+#   PRIVATE_SUBNET      - Private Subnet ID
+#   SECURITY_GROUP      - Security Group ID
+#   S3AP_ALIAS          - S3 Access Point エイリアス (xxx-ext-s3alias)
+#
+# オプション環境変数:
+#   AWS_DEFAULT_REGION   - デプロイリージョン (default: ap-northeast-1)
+#   PROJECT_PREFIX       - リソース命名プレフィックス (default: fsxn-s3ap)
+#   DEPLOY_BUCKET        - SAM パッケージ用 S3 バケット
+#   SECRET_NAME          - Secrets Manager シークレット名
+#   SNS_TOPIC_ARN        - SNS Topic ARN
+#   TOTAL_CAPACITY_GB    - FSx 総容量 GB (default: 1024)
+#   METRIC_NAMESPACE     - CloudWatch メトリクス名前空間 (default: FSxN-S3AP-Patterns)
+#   OAM_SINK_ARN         - Cross-account OAM Sink ARN (空=無効)
 #
 # =============================================================================
 
@@ -21,19 +39,22 @@ set -euo pipefail
 # --- Configuration ---
 REGION="${AWS_DEFAULT_REGION:-ap-northeast-1}"
 PROJECT_PREFIX="${PROJECT_PREFIX:-fsxn-s3ap}"
-DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-178625946981}"
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo 'ACCOUNT_ID_NOT_SET')}"
+DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-${AWS_ACCOUNT_ID}}"
 
 # Infrastructure references (from existing deployment)
-FSX_FILE_SYSTEM_ID="${FSX_FILE_SYSTEM_ID:-fs-09ffe72a3b2b7dbbd}"
-ONTAP_MGMT_IP="${ONTAP_MGMT_IP:-10.0.3.72}"
-VPC_ID="${VPC_ID:-vpc-0ae01826f906191af}"
-PRIVATE_SUBNET="${PRIVATE_SUBNET:-subnet-0307ebbd55b35c842}"
-SECURITY_GROUP="${SECURITY_GROUP:-sg-04b2fedb571860818}"
-SECRET_ARN="${SECRET_ARN:-arn:aws:secretsmanager:ap-northeast-1:178625946981:secret:fsx-ontap-fsxadmin-credentials-P9Ibbi}"
+FSX_FILE_SYSTEM_ID="${FSX_FILE_SYSTEM_ID:?'Set FSX_FILE_SYSTEM_ID env var'}"
+ONTAP_MGMT_IP="${ONTAP_MGMT_IP:?'Set ONTAP_MGMT_IP env var'}"
+VPC_ID="${VPC_ID:?'Set VPC_ID env var'}"
+PRIVATE_SUBNET="${PRIVATE_SUBNET:?'Set PRIVATE_SUBNET env var'}"
+SECURITY_GROUP="${SECURITY_GROUP:?'Set SECURITY_GROUP env var'}"
+SECRET_ARN="${SECRET_ARN:-arn:aws:secretsmanager:${REGION}:${AWS_ACCOUNT_ID}:secret:${SECRET_NAME}}"
 SECRET_NAME="${SECRET_NAME:-fsx-ontap-fsxadmin-credentials}"
-SNS_TOPIC_ARN="${SNS_TOPIC_ARN:-arn:aws:sns:ap-northeast-1:178625946981:fsxn-s3ap-aggregated-alerts}"
-S3AP_ALIAS="${S3AP_ALIAS:-fsxn-eda-s3ap-fhyst3uaibf46uywh5xka84pnz8jaapn1a-ext-s3alias}"
+SNS_TOPIC_ARN="${SNS_TOPIC_ARN:-arn:aws:sns:${REGION}:${AWS_ACCOUNT_ID}:${PROJECT_PREFIX}-aggregated-alerts}"
+S3AP_ALIAS="${S3AP_ALIAS:?'Set S3AP_ALIAS env var (e.g., xxx-ext-s3alias)'}"
 OAM_SINK_ARN="${OAM_SINK_ARN:-}"  # Empty = OAM Link disabled (single account)
+TOTAL_CAPACITY_GB="${TOTAL_CAPACITY_GB:-1024}"
+METRIC_NAMESPACE="${METRIC_NAMESPACE:-FSxN-S3AP-Patterns}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -45,6 +66,9 @@ echo "Region: $REGION"
 echo "Project Prefix: $PROJECT_PREFIX"
 echo "Deploy Bucket: $DEPLOY_BUCKET"
 echo "FSx File System: $FSX_FILE_SYSTEM_ID"
+echo "S3AP Alias: $S3AP_ALIAS"
+echo "Total Capacity: ${TOTAL_CAPACITY_GB} GB"
+echo "Metric Namespace: $METRIC_NAMESPACE"
 echo "============================================================"
 echo ""
 
@@ -129,7 +153,7 @@ package_and_deploy "fsxn-phase12-capacity-forecast" \
     "EnableCapacityForecast=true" \
     "ProjectPrefix=$PROJECT_PREFIX" \
     "FileSystemId=$FSX_FILE_SYSTEM_ID" \
-    "TotalCapacityGb=1024" \
+    "TotalCapacityGb=$TOTAL_CAPACITY_GB" \
     "SnsTopicArn=$SNS_TOPIC_ARN"
 
 # --- 6. Secrets Rotation (SAM) ---

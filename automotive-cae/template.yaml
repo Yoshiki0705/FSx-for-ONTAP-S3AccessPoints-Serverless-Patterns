@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Automotive CAE Analytics — シミュレーション結果の自動分析パターン
+  FSx for ONTAP S3 AP 経由で solver output を読み取り、品質分析・レポート生成
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: S3 Access Point エイリアス
+
+  S3AccessPointName:
+    Type: String
+    Description: S3 Access Point 名（IAM ARN 用）
+
+  OntapSecretName:
+    Type: String
+    Default: fsxn/ontap-credentials
+
+  BedrockModelId:
+    Type: String
+    Default: amazon.nova-pro-v1:0
+
+  ScheduleExpression:
+    Type: String
+    Default: rate(1 hour)
+
+  NotificationEmail:
+    Type: String
+    Default: ''
+
+  OutputDestination:
+    Type: String
+    Default: STANDARD_S3
+    AllowedValues: [STANDARD_S3, FSXN_S3AP]
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+
+Resources:
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CaeAnalyticsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [s3:ListBucket, s3:GetBucketLocation]
+                Resource: !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}'
+              - Effect: Allow
+                Action: [s3:GetObject]
+                Resource: !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*'
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub '${OutputBucket.Arn}/*'
+              - Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: '*'
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*'
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref NotificationTopic
+
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/discovery/
+      Timeout: 120
+      MemorySize: 512
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+
+  SolverOutputParserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/solver_output_parser/
+      Timeout: 300
+      MemorySize: 1024
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          OUTPUT_BUCKET: !Ref OutputBucket
+
+  QualityCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/quality_check/
+      Timeout: 120
+      MemorySize: 512
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/report_generation/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+
+  CaeAnalyticsWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: automotive-cae-analytics
+      Definition:
+        Comment: Automotive CAE Analytics Workflow
+        StartAt: Discovery
+        States:
+          Discovery:
+            Type: Task
+            Resource: !GetAtt DiscoveryFunction.Arn
+            ResultPath: $.discovery
+            Next: ProcessSimulations
+          ProcessSimulations:
+            Type: Map
+            ItemsPath: $.discovery.objects
+            MaxConcurrency: 5
+            Iterator:
+              StartAt: ParseSolverOutput
+              States:
+                ParseSolverOutput:
+                  Type: Task
+                  Resource: !GetAtt SolverOutputParserFunction.Arn
+                  ResultPath: $.parsed
+                  Next: QualityCheck
+                QualityCheck:
+                  Type: Task
+                  Resource: !GetAtt QualityCheckFunction.Arn
+                  ResultPath: $.quality
+                  End: true
+            ResultPath: $.processed
+            Next: GenerateReport
+          GenerateReport:
+            Type: Task
+            Resource: !GetAtt ReportFunction.Arn
+            End: true
+      Role: !GetAtt StepFunctionsRole.Arn
+
+  StepFunctionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt SolverOutputParserFunction.Arn
+                  - !GetAtt QualityCheckFunction.Arn
+                  - !GetAtt ReportFunction.Arn
+
+  AnalyticsSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !GetAtt CaeAnalyticsWorkflow.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: '{}'
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt CaeAnalyticsWorkflow.Arn
+
+Outputs:
+  StateMachineArn:
+    Value: !GetAtt CaeAnalyticsWorkflow.Arn
+  OutputBucketName:
+    Value: !Ref OutputBucket

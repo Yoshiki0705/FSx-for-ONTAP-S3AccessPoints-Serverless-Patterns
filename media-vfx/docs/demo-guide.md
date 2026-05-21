@@ -240,3 +240,145 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 5. **クリーンアップ**:
    - `bash scripts/cleanup_generic_ucs.sh UC4` で削除
    - VPC Lambda ENI 解放に 15-30 分（AWS の仕様）
+
+
+---
+
+## FlexClone シナリオ: レンダリング連番フレームの FlexClone + サーバーレス QC
+
+### 概要
+
+レンダーファームが NFS ボリュームに書き込んだ連番 EXR フレームに対して、
+FlexClone を使用してレンダリング中の I/O 競合なしに品質チェック（QC）を実行する。
+FPolicy がレンダリング完了マーカーを検出し、Step Functions パイプラインを自動起動する。
+
+**FlexClone の価値**:
+- レンダリング中のボリュームに影響を与えずに QC 処理を実行
+- 数千フレーム（数 TB）のデータを瞬時にコピー（< 1 秒、メタデータのみ）
+- アーティスト別の独立レビュー環境を即座に提供
+
+### アーキテクチャ
+
+```
+Render Farm (NFS) → FSx ONTAP Volume → FPolicy → SQS → Step Functions
+                                                            ├── Lambda: Snapshot
+                                                            ├── Lambda: FlexClone
+                                                            ├── Lambda: Process Frames (S3AP)
+                                                            └── SNS → Artist Notification
+```
+
+### 前提条件
+
+```bash
+# 環境変数の設定
+export STACK_NAME="fsxn-flexclone-pipeline"
+export ONTAP_MGMT_IP="10.0.1.100"
+export ONTAP_SECRET="fsxn/ontap-credentials"
+export SVM_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export PARENT_VOLUME_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export S3AP_ALIAS="fsxn-render-s3ap-xxx-ext-s3alias"
+export S3AP_NAME="fsxn-render-s3ap"
+export SNS_TOPIC_ARN="arn:aws:sns:ap-northeast-1:123456789012:render-notifications"
+export VPC_ID="vpc-xxx"
+export SUBNET_IDS="subnet-aaa,subnet-bbb"
+export SG_ID="sg-xxx"
+```
+
+### Step 1: パイプラインのデプロイ
+
+```bash
+aws cloudformation deploy \
+  --template-file shared/cfn/flexclone-serverless-pipeline.yaml \
+  --stack-name "${STACK_NAME}" \
+  --parameter-overrides \
+    EnableFlexClonePipeline=true \
+    OntapMgmtIp="${ONTAP_MGMT_IP}" \
+    OntapCredentialsSecret="${ONTAP_SECRET}" \
+    SvmUuid="${SVM_UUID}" \
+    ParentVolumeUuid="${PARENT_VOLUME_UUID}" \
+    S3AccessPointAlias="${S3AP_ALIAS}" \
+    S3AccessPointName="${S3AP_NAME}" \
+    NotificationTopicArn="${SNS_TOPIC_ARN}" \
+    VpcId="${VPC_ID}" \
+    SubnetIds="${SUBNET_IDS}" \
+    SecurityGroupId="${SG_ID}" \
+  --capabilities CAPABILITY_NAMED_IAM
+```
+
+### Step 2: Step Functions の手動実行（デモ用）
+
+```bash
+# レンダリング完了後のパイプライン実行
+aws stepfunctions start-execution \
+  --state-machine-arn "arn:aws:states:ap-northeast-1:123456789012:stateMachine:fsxn-s3ap-flexclone-pipeline" \
+  --input '{
+    "volume_uuid": "'"${PARENT_VOLUME_UUID}"'",
+    "snapshot_name": "render_complete_shot001_'"$(date +%Y%m%d_%H%M%S)"'",
+    "clone_name": "render_qc_shot001",
+    "junction_path": "/render_qc/shot001",
+    "security_style": "unix",
+    "s3ap_alias": "'"${S3AP_ALIAS}"'",
+    "file_prefix": "shots/shot_001/",
+    "output_prefix": "shots/shot_001/_qc/",
+    "operation": "thumbnail",
+    "process_files": true,
+    "create_cifs_share": false
+  }'
+```
+
+### Step 3: 実行結果の確認
+
+```bash
+# Step Functions 実行状態の確認
+aws stepfunctions describe-execution \
+  --execution-arn "arn:aws:states:ap-northeast-1:123456789012:execution:fsxn-s3ap-flexclone-pipeline:xxxxx"
+
+# FlexClone ボリュームの確認（NFS マウント）
+sudo mount -t nfs -o vers=3,hard,rsize=1048576,wsize=1048576,nconnect=16 \
+  "${ONTAP_MGMT_IP}:/render_qc/shot001" /mnt/render_qc
+
+ls /mnt/render_qc/
+# → shot_001.0001.exr ... shot_001.2400.exr
+
+# S3AP 経由で QC メタデータを確認
+aws s3 ls "s3://${S3AP_ALIAS}/shots/shot_001/_qc/"
+```
+
+### 期待される出力
+
+```json
+{
+  "snapshot_result": {
+    "snapshot_name": "render_complete_shot001_20260518_143022",
+    "snapshot_uuid": "abc12345-...",
+    "status": "created"
+  },
+  "clone_result": {
+    "clone_name": "render_qc_shot001",
+    "clone_uuid": "def67890-...",
+    "junction_path": "/render_qc/shot001",
+    "status": "created"
+  },
+  "process_result": {
+    "file_count": 2400,
+    "processed": 2400,
+    "output_key": "shots/shot_001/_qc/"
+  }
+}
+```
+
+### クリーンアップ
+
+```bash
+# FlexClone ボリュームの削除（ONTAP CLI or REST API）
+# ※ FlexClone はデータコピーなしのため、削除も瞬時
+
+# スタックの削除
+aws cloudformation delete-stack --stack-name "${STACK_NAME}"
+aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}"
+```
+
+### 参考
+
+- [FlexClone Serverless Patterns ガイド](../../docs/guides/flexclone-serverless-patterns.md)
+- [AWS Blog: Accelerate development refresh cycles with FSx for ONTAP cloning](https://aws.amazon.com/blogs/storage/accelerate-development-refresh-cycles-and-optimize-cost-with-amazon-fsx-for-netapp-ontap-cloning/)

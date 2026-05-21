@@ -1,9 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT_DIR="/Users/yoshiki/Downloads/fsxn-s3ap-serverless-patterns"
-DEPLOY_BUCKET="fsxn-eda-deploy-<ACCOUNT_ID>"
-REGION="ap-northeast-1"
+PROJECT_DIR="${PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || dirname "$(dirname "$(realpath "$0")")")}"
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}"
+DEPLOY_BUCKET="fsxn-eda-deploy-${AWS_ACCOUNT_ID}"
+REGION="${AWS_REGION:-ap-northeast-1}"
 
 cd "${PROJECT_DIR}"
 

@@ -53,7 +53,7 @@ aws cloudformation deploy \
     SubnetIds=subnet-aaa,subnet-bbb \
     FsxnSvmSecurityGroupId=sg-xxxxxxxxx \
     ContainerImage=<ACCOUNT_ID>.dkr.ecr.ap-northeast-1.amazonaws.com/fsxn-fpolicy-server:latest \
-    FsxnMgmtIp=10.0.3.72 \
+    FsxnMgmtIp=<ONTAP_MGMT_IP> \
     FsxnSvmUuid=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
     FsxnCredentialsSecret=fsxn-admin-credentials \
   --capabilities CAPABILITY_NAMED_IAM \

@@ -227,3 +227,159 @@ IAM S3AP 修正後に再デプロイ。全ステップ SUCCEEDED（3:03）。
 5. **クリーンアップ**:
    - `bash scripts/cleanup_generic_ucs.sh UC7` で削除
    - VPC Lambda ENI 解放に 15-30 分（AWS の仕様）
+
+
+---
+
+## FlexClone シナリオ: リファレンスデータセットの研究者別 FlexClone 分岐
+
+### 概要
+
+大規模リファレンスゲノムデータセット（数百 GB）を各研究者に独立した書き込み可能コピーとして提供する。
+FlexClone により、物理的には 1 コピーのみ保持しつつ、各研究者が独立した環境で解析を実行できる。
+
+**FlexClone の価値**:
+- 数百 GB のリファレンスデータセットを瞬時に研究者別コピーとして提供
+- 各研究者が独立して書き込み可能（解析結果の競合なし）
+- NFSv4.1 で安全なアクセス制御（研究者ごとの UID/GID マッピング）
+- データリネージ追跡による研究再現性の確保
+
+### アーキテクチャ
+
+```
+Reference Genome Dataset (Parent Volume, 500GB)
+    │
+    ├── Snapshot: reference_v3.2
+    │
+    ├── FlexClone: genomics_study_a → NFSv4.1 Mount → Researcher A
+    ├── FlexClone: genomics_study_b → NFSv4.1 Mount → Researcher B
+    └── FlexClone: genomics_study_c → NFSv4.1 Mount → Researcher C
+                                              │
+                                              └── S3AP → Lambda → Lineage Tracking
+```
+
+### 前提条件
+
+```bash
+# 環境変数の設定
+export STACK_NAME="fsxn-flexclone-pipeline"
+export ONTAP_MGMT_IP="10.0.1.100"
+export ONTAP_SECRET="fsxn/ontap-credentials"
+export SVM_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export REFERENCE_VOLUME_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export S3AP_ALIAS="fsxn-genomics-s3ap-xxx-ext-s3alias"
+export S3AP_NAME="fsxn-genomics-s3ap"
+export SNS_TOPIC_ARN="arn:aws:sns:ap-northeast-1:123456789012:genomics-notifications"
+export VPC_ID="vpc-xxx"
+export SUBNET_IDS="subnet-aaa,subnet-bbb"
+export SG_ID="sg-xxx"
+```
+
+### Step 1: パイプラインのデプロイ
+
+```bash
+aws cloudformation deploy \
+  --template-file shared/cfn/flexclone-serverless-pipeline.yaml \
+  --stack-name "${STACK_NAME}" \
+  --parameter-overrides \
+    EnableFlexClonePipeline=true \
+    OntapMgmtIp="${ONTAP_MGMT_IP}" \
+    OntapCredentialsSecret="${ONTAP_SECRET}" \
+    SvmUuid="${SVM_UUID}" \
+    ParentVolumeUuid="${REFERENCE_VOLUME_UUID}" \
+    S3AccessPointAlias="${S3AP_ALIAS}" \
+    S3AccessPointName="${S3AP_NAME}" \
+    NotificationTopicArn="${SNS_TOPIC_ARN}" \
+    VpcId="${VPC_ID}" \
+    SubnetIds="${SUBNET_IDS}" \
+    SecurityGroupId="${SG_ID}" \
+  --capabilities CAPABILITY_NAMED_IAM
+```
+
+### Step 2: 研究者別 FlexClone の作成
+
+```bash
+# 研究者リスト
+RESEARCHERS=("researcher_a" "researcher_b" "researcher_c")
+SNAPSHOT_NAME="reference_v3.2_$(date +%Y%m%d)"
+
+# 各研究者に対して FlexClone を作成
+for RESEARCHER in "${RESEARCHERS[@]}"; do
+  aws stepfunctions start-execution \
+    --state-machine-arn "arn:aws:states:ap-northeast-1:123456789012:stateMachine:fsxn-s3ap-flexclone-pipeline" \
+    --input '{
+      "volume_uuid": "'"${REFERENCE_VOLUME_UUID}"'",
+      "snapshot_name": "'"${SNAPSHOT_NAME}"'",
+      "clone_name": "genomics_'"${RESEARCHER}"'",
+      "junction_path": "/genomics/'"${RESEARCHER}"'",
+      "security_style": "unix",
+      "s3ap_alias": "'"${S3AP_ALIAS}"'",
+      "file_prefix": "genomics/'"${RESEARCHER}"'/",
+      "output_prefix": "genomics/'"${RESEARCHER}"'/_lineage/",
+      "operation": "list_and_metadata",
+      "process_files": true,
+      "create_cifs_share": false
+    }' &
+done
+wait
+echo "All researcher FlexClones created"
+```
+
+### Step 3: 研究者からの NFSv4.1 マウント
+
+```bash
+# NFSv4.1 マウント（研究者ワークステーションから）
+sudo mount -t nfs -o vers=4.1,hard,timeo=600,retrans=2 \
+  "${ONTAP_MGMT_IP}:/genomics/researcher_a" /mnt/genomics_data
+
+# リファレンスデータの確認
+ls /mnt/genomics_data/
+# → hg38.fa  hg38.fa.fai  dbsnp_146.vcf  ...
+
+# 研究者固有の解析結果を書き込み（親ボリュームに影響なし）
+mkdir -p /mnt/genomics_data/results/
+# bwa mem hg38.fa sample.fastq > /mnt/genomics_data/results/aligned.sam
+```
+
+### Step 4: データリネージの確認
+
+```bash
+# S3AP 経由でリネージメタデータを確認
+aws s3 cp "s3://${S3AP_ALIAS}/genomics/researcher_a/_lineage/manifest.json" - | python3 -m json.tool
+```
+
+### 期待される出力
+
+```json
+{
+  "clone_result": {
+    "clone_name": "genomics_researcher_a",
+    "clone_uuid": "abc12345-...",
+    "junction_path": "/genomics/researcher_a",
+    "status": "created"
+  },
+  "process_result": {
+    "file_count": 47,
+    "processed": 47,
+    "output_key": "genomics/researcher_a/_lineage/manifest.json"
+  }
+}
+```
+
+### クリーンアップ
+
+```bash
+# 研究完了後の FlexClone 削除
+for RESEARCHER in "${RESEARCHERS[@]}"; do
+  echo "Deleting FlexClone: genomics_${RESEARCHER}"
+done
+
+# スタックの削除
+aws cloudformation delete-stack --stack-name "${STACK_NAME}"
+aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}"
+```
+
+### 参考
+
+- [FlexClone Serverless Patterns ガイド](../../docs/guides/flexclone-serverless-patterns.md)
+- [AWS Docs: Process files serverlessly using Lambda](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)

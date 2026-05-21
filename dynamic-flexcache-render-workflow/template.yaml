@@ -1,0 +1,371 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Dynamic FlexCache Render/EDA Workflow
+  ジョブ投入時に FlexCache を動的作成し、完了後に自動削除する Step Functions ワークフロー
+
+Parameters:
+  # --- ONTAP 設定 ---
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP クラスタ管理 IP アドレス
+
+  OntapSecretName:
+    Type: String
+    Default: fsxn/ontap-credentials
+    Description: Secrets Manager シークレット名
+
+  OriginSvmName:
+    Type: String
+    Default: svm1
+    Description: オリジン SVM 名
+
+  OriginVolumeName:
+    Type: String
+    Default: render_assets
+    Description: オリジンボリューム名
+
+  CacheSvmName:
+    Type: String
+    Default: svm1
+    Description: キャッシュ SVM 名
+
+  CacheAggregateName:
+    Type: String
+    Default: ''
+    Description: キャッシュアグリゲート名（空の場合は自動選択）
+
+  CacheVolumePrefix:
+    Type: String
+    Default: dyn_cache
+    Description: FlexCache ボリューム名プレフィックス
+
+  JunctionPathPrefix:
+    Type: String
+    Default: /cache
+    Description: ジャンクションパスプレフィックス
+
+  # --- ジョブ設定 ---
+  EnablePrepopulate:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: FlexCache 作成後に Prepopulate を実行するか
+
+  SimulationMode:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: シミュレーションモード
+
+  # --- 通知設定 ---
+  NotificationEmail:
+    Type: String
+    Default: ''
+    Description: 通知先メールアドレス
+
+  # --- オプション ---
+  CleanupOnFailure:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: ジョブ失敗時も FlexCache を削除するか
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+  HasAggregateName: !Not [!Equals [!Ref CacheAggregateName, '']]
+
+Resources:
+  # --- S3 出力バケット ---
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'dynamic-flexcache-reports-${AWS::AccountId}-${AWS::Region}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldReports
+            Status: Enabled
+            ExpirationInDays: 30
+      Tags:
+        - Key: Project
+          Value: fsxn-s3ap-serverless-patterns
+        - Key: Pattern
+          Value: dynamic-flexcache-render-workflow
+
+  # --- SNS Topic ---
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub 'dynamic-flexcache-workflow-alerts'
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # --- IAM Role ---
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamicFlexCachePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub '${OutputBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+
+  # --- Lambda Functions ---
+  CreateFlexCacheFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: dynamic-flexcache-CreateFlexCache
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: src/create_flexcache/
+      Timeout: 300
+      MemorySize: 256
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          SIMULATION_MODE: !Ref SimulationMode
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+          ORIGIN_SVM_NAME: !Ref OriginSvmName
+          ORIGIN_VOLUME_NAME: !Ref OriginVolumeName
+          CACHE_SVM_NAME: !Ref CacheSvmName
+          CACHE_AGGREGATE_NAME: !Ref CacheAggregateName
+          CACHE_VOLUME_PREFIX: !Ref CacheVolumePrefix
+          JUNCTION_PATH_PREFIX: !Ref JunctionPathPrefix
+          ENABLE_PREPOPULATE: !Ref EnablePrepopulate
+
+  SubmitJobFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: dynamic-flexcache-SubmitJob
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: src/submit_job/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  MonitorJobFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: dynamic-flexcache-MonitorJob
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: src/monitor_job/
+      Timeout: 30
+      MemorySize: 128
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  CleanupFlexCacheFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: dynamic-flexcache-CleanupFlexCache
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: src/cleanup_flexcache/
+      Timeout: 300
+      MemorySize: 256
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          SIMULATION_MODE: !Ref SimulationMode
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+          CACHE_SVM_NAME: !Ref CacheSvmName
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: dynamic-flexcache-Report
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: src/report/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
+
+  # --- Step Functions ---
+  DynamicFlexCacheWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: dynamic-flexcache-render-workflow
+      Definition:
+        Comment: Dynamic FlexCache Render/EDA Workflow
+        StartAt: CreateFlexCache
+        States:
+          CreateFlexCache:
+            Type: Task
+            Resource: !GetAtt CreateFlexCacheFunction.Arn
+            ResultPath: $.flexcache_status
+            Retry:
+              - ErrorEquals: ['States.TaskFailed']
+                IntervalSeconds: 15
+                MaxAttempts: 2
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: ['States.ALL']
+                ResultPath: $.error
+                Next: FailureHandler
+            Next: SubmitJob
+          SubmitJob:
+            Type: Task
+            Resource: !GetAtt SubmitJobFunction.Arn
+            Parameters:
+              job_id.$: $.job_id
+              job_type.$: $.job_type
+              project.$: $.project
+              cache_name.$: $.flexcache_status.cache_name
+              junction_path.$: $.flexcache_status.junction_path
+              parameters.$: $.parameters
+            ResultPath: $.job_status
+            Catch:
+              - ErrorEquals: ['States.ALL']
+                ResultPath: $.error
+                Next: FailureHandler
+            Next: WaitBeforeMonitor
+          WaitBeforeMonitor:
+            Type: Wait
+            Seconds: 10
+            Next: MonitorJob
+          MonitorJob:
+            Type: Task
+            Resource: !GetAtt MonitorJobFunction.Arn
+            Parameters:
+              mock_job_id.$: $.job_status.mock_job_id
+              job_id.$: $.job_id
+              submitted_at.$: $.job_status.submitted_at
+              expected_completion_at.$: $.job_status.expected_completion_at
+              simulate_failure.$: $.job_status.simulate_failure
+              poll_count.$: $.job_status.poll_count
+              cache_name.$: $.flexcache_status.cache_name
+              cache_uuid.$: $.flexcache_status.cache_uuid
+              project.$: $.project
+            ResultPath: $.monitor_result
+            Retry:
+              - ErrorEquals: ['States.TaskFailed']
+                IntervalSeconds: 5
+                MaxAttempts: 3
+                BackoffRate: 1.5
+            Next: CheckJobStatus
+          CheckJobStatus:
+            Type: Choice
+            Choices:
+              - Variable: $.monitor_result.is_terminal
+                BooleanEquals: true
+                Next: CleanupFlexCache
+            Default: WaitBeforeMonitor
+          CleanupFlexCache:
+            Type: Task
+            Resource: !GetAtt CleanupFlexCacheFunction.Arn
+            Parameters:
+              cache_name.$: $.flexcache_status.cache_name
+              cache_uuid.$: $.flexcache_status.cache_uuid
+              job_id.$: $.job_id
+            ResultPath: $.cleanup_status
+            Retry:
+              - ErrorEquals: ['States.TaskFailed']
+                IntervalSeconds: 10
+                MaxAttempts: 3
+                BackoffRate: 2.0
+            Next: GenerateReport
+          GenerateReport:
+            Type: Task
+            Resource: !GetAtt ReportFunction.Arn
+            ResultPath: $.report_result
+            End: true
+          FailureHandler:
+            Type: Task
+            Resource: !GetAtt CleanupFlexCacheFunction.Arn
+            Parameters:
+              cache_name.$: $.flexcache_status.cache_name
+              cache_uuid.$: $.flexcache_status.cache_uuid
+              job_id.$: $.job_id
+              force: true
+            ResultPath: $.failure_cleanup
+            Next: FailureReport
+          FailureReport:
+            Type: Task
+            Resource: !GetAtt ReportFunction.Arn
+            ResultPath: $.report_result
+            End: true
+      Role: !GetAtt StepFunctionsRole.Arn
+      Tags:
+        Project: fsxn-s3ap-serverless-patterns
+        Pattern: dynamic-flexcache-render-workflow
+
+  StepFunctionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt CreateFlexCacheFunction.Arn
+                  - !GetAtt SubmitJobFunction.Arn
+                  - !GetAtt MonitorJobFunction.Arn
+                  - !GetAtt CleanupFlexCacheFunction.Arn
+                  - !GetAtt ReportFunction.Arn
+
+Outputs:
+  StateMachineArn:
+    Description: Dynamic FlexCache Workflow State Machine ARN
+    Value: !GetAtt DynamicFlexCacheWorkflow.Arn
+
+  CreateFlexCacheFunctionArn:
+    Description: Create FlexCache Lambda ARN
+    Value: !GetAtt CreateFlexCacheFunction.Arn
+
+  CleanupFlexCacheFunctionArn:
+    Description: Cleanup FlexCache Lambda ARN
+    Value: !GetAtt CleanupFlexCacheFunction.Arn
+
+  OutputBucketName:
+    Description: Report Output Bucket
+    Value: !Ref OutputBucket

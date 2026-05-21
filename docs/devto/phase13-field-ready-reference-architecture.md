@@ -205,14 +205,14 @@ The progression from "GitHub link" to "customer workshop" is now a documented pa
 
 ## What's Next
 
-Phase 13 completes the adoption layer. Possible next steps include:
+Phase 13 completes the field-readiness adoption layer. The remaining items that require live environment measurement:
 
-- **Measured benchmark results** across representative file counts and object sizes
-- **Well-Architected mappings** for Security, Reliability, Operational Excellence, Cost Optimization, Performance Efficiency, and Sustainability
-- **Customer scenario walkthroughs** with end-to-end deployment evidence
-- **Additional service capability tracking** as FSx for ONTAP S3AP evolves
-- **Keeping the Dev.to series aligned** with GitHub Current Status
-- **More production runbooks** and example scorecards for partner delivery
+- **S3AP throughput benchmark results** — measured across representative file counts and object sizes against actual FSx provisioned throughput
+- **Customer scenario walkthroughs** — end-to-end deployment evidence with real workload data
+- **SAP / ERP adjacent file workflow template** — CloudFormation template for IDoc/HULFT landing zone processing
+- **HULFT / EDI landing zone sample** — concrete implementation for EDI file validation and routing
+
+All design-level documents are now in place. The next phase focuses on measured evidence and customer-specific templates.
 
 ---
 
