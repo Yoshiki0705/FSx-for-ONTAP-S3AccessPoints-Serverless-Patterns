@@ -108,13 +108,21 @@ FSx ONTAP (衛星画像格納)
 
 ## Success Metrics
 
-| メトリクス | 測定方法 |
-|-----------|--------|
-| 衛星画像処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
-| 物体検出精度 | CloudWatch Metrics / Step Functions 実行結果 |
-| 変化検出アラート精度 | CloudWatch Metrics / Step Functions 実行結果 |
-| タイリング処理スループット | CloudWatch Metrics / Step Functions 実行結果 |
-| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+### Outcome
+衛星画像解析（物体検出・変化検出・アラート）の自動化により、情報分析の迅速化を実現する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| 処理済み画像数 / 実行 | > 50 images |
+| 物体検出精度 | > 80% |
+| 変化検出成功率 | > 85% |
+| アラート生成時間 | < 5 分 |
+| コスト / 実行 | < $15 |
+| Human Review 必須率 | 100%（アラート発報前に人間承認必須） |
+
+### Measurement Method
+Step Functions 実行履歴、Rekognition 検出結果、Bedrock 分析レポート、SNS 通知ログ、CloudWatch Metrics。
 
 ## デプロイ
 
