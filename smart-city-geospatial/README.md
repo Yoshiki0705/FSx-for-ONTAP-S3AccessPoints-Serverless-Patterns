@@ -130,6 +130,17 @@ residential / commercial / forest / water / road 等の比率。
      マスク: アカウント ID、area_id -->
 ![UC17: 時系列変化テーブル](../docs/screenshots/masked/phase7/phase7-uc17-dynamodb-landuse-history.png)
 
+
+## Success Metrics
+
+| メトリクス | 測定方法 |
+|-----------|--------|
+| 地理空間データ処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
+| CRS 正規化成功率 | CloudWatch Metrics / Step Functions 実行結果 |
+| 土地利用分類精度 | CloudWatch Metrics / Step Functions 実行結果 |
+| リスクマップ生成時間 | CloudWatch Metrics / Step Functions 実行結果 |
+| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+
 ## デプロイ
 
 ### 事前検証
