@@ -2,6 +2,12 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+## Current Status
+
+本仓库现包含 **17 个行业用例** + **事件驱动 FPolicy 模式** + **6 个 FlexCache/FlexClone 模式**，构成完整的无服务器模式库。
+
+从最初的 5 个模式（Phase 1）经 Phase 2–13 扩展而来。Phase 10 引入共享 FPolicy 事件摄取管道，Phase 11 将调度扩展至全部 17 UC，Phase 12 通过 Persistent Store 重放验证、SLO 可观测性、容量护栏和密钥轮换进行运维强化，Phase 13 实现 FlexClone/FlexCache 无服务器自动化。
+
 基于 Amazon FSx for NetApp ONTAP S3 Access Points 的行业专属无服务器自动化模式集合。
 
 > **本仓库的定位**: 这是一个「用于学习设计决策的参考实现」。部分用例已在 AWS 环境中完成 E2E 验证，其他用例也已完成 CloudFormation 部署、共享 Discovery Lambda 及关键组件的功能验证。本仓库以从 PoC 到生产环境的渐进式应用为目标，通过具体代码展示成本优化、安全性和错误处理的设计决策。

@@ -2,6 +2,12 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+## Current Status
+
+본 리포지토리는 **17개의 산업별 유스케이스** + **이벤트 기반 FPolicy 패턴** + **6개의 FlexCache/FlexClone 패턴**을 포함하는 서버리스 패턴 라이브러리입니다.
+
+초기 5개 패턴(Phase 1)에서 Phase 2–13을 통해 확장되었습니다. Phase 10에서 공유 FPolicy 이벤트 수집 파이프라인 도입, Phase 11에서 전체 17 UC에 디스패치 전개, Phase 12에서 Persistent Store 리플레이 검증·SLO 관측성·용량 가드레일·시크릿 로테이션으로 운영 강화, Phase 13에서 FlexClone/FlexCache 서버리스 자동화를 구현했습니다.
+
 Amazon FSx for NetApp ONTAP의 S3 Access Points를 활용한 업종별 서버리스 자동화 패턴 모음집입니다.
 
 > **본 리포지토리의 위치**: 이것은 「설계 판단을 배우기 위한 레퍼런스 구현」입니다. 일부 유스케이스는 AWS 환경에서 E2E 검증을 완료했으며, 나머지 유스케이스도 CloudFormation 배포, 공통 Discovery Lambda, 주요 컴포넌트의 동작 확인을 실시했습니다. PoC에서 프로덕션 환경으로의 단계적 적용을 상정하여, 비용 최적화, 보안, 에러 핸들링의 설계 판단을 구체적인 코드로 보여주는 것을 목적으로 합니다.
