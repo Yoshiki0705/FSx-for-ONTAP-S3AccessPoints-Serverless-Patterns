@@ -82,6 +82,20 @@
 
 ---
 
+## Trade-offs（設計上のトレードオフ）
+
+| 設計判断 | メリット | トレードオフ |
+|---------|---------|------------|
+| VPC Endpoint 有効化 | セキュリティ向上（プライベート通信） | コスト増（Interface EP ~$30-50/月） |
+| POLLING モード | 予測可能、冪等、イベントロスなし | リアルタイム性なし（スケジュール間隔依存） |
+| EVENT_DRIVEN モード | サブ秒検知 | 運用複雑性増（FPolicy + Fargate/EC2） |
+| FSxN S3AP 出力 (OutputDestination=FSXN_S3AP) | One-copy 体験、NFS/SMB ユーザーが結果閲覧可能 | S3 ネイティブ機能（Lifecycle, Versioning）非対応 |
+| EC2 FPolicy Server | Static IP、低コスト | OS パッチ管理、運用責任増 |
+| Fargate FPolicy Server | OS 管理不要 | IP 変動、VPC EP コスト、起動レイテンシ |
+| ARM64 (Graviton) | ~20% コスト削減、エネルギー効率 | 一部ネイティブ依存ライブラリの互換性確認が必要 |
+| Business Hours Scheduling | コスト削減（オフピーク時の実行頻度低下） | オフピーク時の検知遅延増加 |
+| Persistent Store | イベントロスゼロ（再接続時リプレイ） | ONTAP 9.14.1+ 必須、ボリューム容量管理が必要 |
+
 ## 参考リンク
 
 - [AWS Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html)
