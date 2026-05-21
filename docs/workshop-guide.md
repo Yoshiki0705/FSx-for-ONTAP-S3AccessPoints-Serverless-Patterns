@@ -137,6 +137,21 @@
 
 ## 事前準備チェックリスト（パートナー向け）
 
+### 参加者への事前依頼事項
+
+ワークショップ実施 1 週間前に、顧客参加者に以下の情報を準備いただくよう依頼してください:
+
+| # | 準備物 | 担当ロール | 用途 |
+|---|--------|-----------|------|
+| 1 | 既存ファイルサーバー / NAS 構成図 | Storage / Infra Owner | Session 1-2 で現状把握 |
+| 2 | 対象データセットのサンプル（10-50 ファイル） | Application Owner | Session 2 でデプロイテスト |
+| 3 | データ分類方針（個人情報・機密情報の有無） | Security / Compliance | Session 4 でガバナンス確認 |
+| 4 | 既存バッチ / HULFT / EDI フロー図 | Application Owner | Session 1 でユースケース選択 |
+| 5 | ネットワーク制約（VPC 構成、インターネット接続可否） | Storage / Infra Owner | Session 2-3 で環境設計 |
+| 6 | IAM / AD / 認可モデルの前提 | Security / Compliance | Session 4 で認可設計 |
+| 7 | PoC の成功条件（レイテンシ、コスト、処理件数） | Business Sponsor | Session 5 で合意 |
+| 8 | 想定コスト上限（月額） | Business Sponsor | Session 5 でコスト設計 |
+
 ### 1 週間前
 - [ ] 顧客の AWS アカウント確認
 - [ ] FSx for ONTAP ファイルシステムの準備

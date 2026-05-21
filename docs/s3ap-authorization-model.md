@@ -150,6 +150,40 @@ S3 Access Point 作成時に指定するファイルシステム ID が、すべ
 | MISCONFIGURED 状態 | ファイルシステム ID が解決不能 | UNIX UID が存在するか、Windows ユーザーが AD で有効か確認 |
 | 特定ディレクトリのみ AccessDenied | ONTAP export policy の制限 | SVM の export policy rules を確認（NFS export と S3 AP は別経路だが同じ volume permission） |
 
+### 確認コマンド例
+
+```bash
+# 1. S3 AP resource policy の確認
+aws s3control get-access-point-policy \
+  --account-id <ACCOUNT_ID> \
+  --name <AP_NAME>
+
+# 2. IAM Policy Simulator で権限確認
+aws iam simulate-principal-policy \
+  --policy-source-arn arn:aws:iam::<ACCOUNT_ID>:role/<LAMBDA_ROLE> \
+  --action-names s3:GetObject s3:ListBucket \
+  --resource-arns "arn:aws:s3:<REGION>:<ACCOUNT_ID>:accesspoint/<AP_NAME>/object/*"
+
+# 3. CloudTrail で AccessDenied イベント確認
+aws cloudtrail lookup-events \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=GetObject \
+  --start-time $(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ) \
+  --query 'Events[?contains(CloudTrailEvent, `AccessDenied`)]'
+
+# 4. S3 AP に紐づく filesystem identity 確認
+aws fsx describe-data-repository-associations \
+  --query 'Associations[?AssociationType==`S3_ACCESS_POINT`].{Name:ResourceARN,Identity:S3}'
+
+# 5. ONTAP 側: 対象パスの ACL / permission 確認 (UNIX)
+# SSH or ONTAP CLI 経由
+vserver security file-directory show -vserver <SVM_NAME> -path <PATH>
+
+# 6. VPC Endpoint policy 確認
+aws ec2 describe-vpc-endpoints \
+  --filters Name=service-name,Values=com.amazonaws.<REGION>.s3 \
+  --query 'VpcEndpoints[*].{Id:VpcEndpointId,Policy:PolicyDocument}'
+```
+
 ## 参考リンク
 
 - [Managing access point access — Amazon FSx for NetApp ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
