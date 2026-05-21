@@ -1,0 +1,593 @@
+# =============================================================================
+# FlexClone Serverless Pipeline — Step Functions + Lambda + EventBridge
+# =============================================================================
+#
+# FlexClone の作成からマルチプロトコルマウント、サーバーレスファイル処理までの
+# 統合パイプライン。Snapshot → FlexClone → WaitForOnline → ProcessFiles →
+# CreateCIFSShare → Notify の 6 ステップ。
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/flexclone-serverless-pipeline.yaml \
+#     --stack-name fsxn-flexclone-pipeline \
+#     --parameter-overrides \
+#       EnableFlexClonePipeline=true \
+#       OntapMgmtIp=10.0.1.100 \
+#       OntapCredentialsSecret=fsxn/ontap-credentials \
+#       SvmUuid=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+#       ParentVolumeUuid=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+#       S3AccessPointAlias=fsxn-s3ap-xxx-ext-s3alias \
+#       NotificationTopicArn=arn:aws:sns:ap-northeast-1:123456789012:topic \
+#       VpcId=vpc-xxx \
+#       SubnetIds=subnet-aaa,subnet-bbb \
+#       SecurityGroupId=sg-xxx \
+#     --capabilities CAPABILITY_NAMED_IAM
+#
+# オプトイン制御:
+#   EnableFlexClonePipeline=false (デフォルト) でリソースは作成されない。
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  FSxN S3AP Serverless Patterns — FlexClone Serverless Pipeline.
+  Snapshot → FlexClone → WaitForOnline → ProcessFiles → CreateCIFSShare → Notify.
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  EnableFlexClonePipeline:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: FlexClone Pipeline 機能を有効化する
+
+  OntapMgmtIp:
+    Type: String
+    Default: ""
+    Description: >-
+      ONTAP ファイルシステム管理 IP アドレス（SVM 管理 IP ではない）。
+      aws fsx describe-file-systems --query 'FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]'
+      で取得可能。fsxadmin は FS レベルの管理 IP でのみ認証される。
+
+  OntapCredentialsSecret:
+    Type: String
+    Default: ""
+    Description: Secrets Manager シークレット名（ONTAP 認証情報）
+
+  SvmUuid:
+    Type: String
+    Default: ""
+    Description: SVM UUID
+
+  ParentVolumeUuid:
+    Type: String
+    Default: ""
+    Description: クローン元ボリューム UUID
+
+  S3AccessPointAlias:
+    Type: String
+    Default: ""
+    Description: S3 Access Point エイリアス（xxx-ext-s3alias 形式）
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: S3 Access Point 名（IAM ポリシーの ARN に使用）
+
+  NotificationTopicArn:
+    Type: String
+    Default: ""
+    Description: 完了通知 SNS Topic ARN
+
+  VpcId:
+    Type: String
+    Default: ""
+    Description: ONTAP REST API アクセス用 VPC ID
+
+  SubnetIds:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: Private Subnet IDs（ONTAP 管理 LIF 到達可能）
+
+  SecurityGroupId:
+    Type: String
+    Default: ""
+    Description: Lambda 用 Security Group ID
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 day)"
+    Description: EventBridge スケジュール式
+
+  EnableSchedule:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: EventBridge スケジュールを有効化する（デフォルト無効）
+
+Conditions:
+  IsFlexClonePipelineEnabled:
+    !Equals [!Ref EnableFlexClonePipeline, "true"]
+
+  IsScheduleEnabled:
+    !And
+      - !Condition IsFlexClonePipelineEnabled
+      - !Equals [!Ref EnableSchedule, "true"]
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # IAM Roles
+  # ---------------------------------------------------------------------------
+
+  CreateSnapshotRole:
+    Type: AWS::IAM::Role
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-flexclone-snapshot-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: OntapSnapshotPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SecretsManagerRead
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapCredentialsSecret}*"
+
+  CreateFlexCloneRole:
+    Type: AWS::IAM::Role
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-flexclone-create-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: OntapClonePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SecretsManagerRead
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapCredentialsSecret}*"
+
+  ProcessFilesRole:
+    Type: AWS::IAM::Role
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-flexclone-process-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3APAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3APListBucket
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+              - Sid: S3APReadWrite
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+
+  CreateCIFSShareRole:
+    Type: AWS::IAM::Role
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-flexclone-cifs-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: OntapCIFSPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: SecretsManagerRead
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapCredentialsSecret}*"
+
+  StepFunctionsRole:
+    Type: AWS::IAM::Role
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-flexclone-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt CreateSnapshotFunction.Arn
+                  - !GetAtt CreateFlexCloneFunction.Arn
+                  - !GetAtt ProcessFilesFunction.Arn
+                  - !GetAtt CreateCIFSShareFunction.Arn
+              - Sid: SNSPublish
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopicArn
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsScheduleEnabled
+    Properties:
+      RoleName: !Sub "${ProjectPrefix}-flexclone-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartStateMachine
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !GetAtt FlexCloneStateMachine.Arn
+
+  # ---------------------------------------------------------------------------
+  # Lambda Functions
+  # ---------------------------------------------------------------------------
+
+  CreateSnapshotFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      FunctionName: !Sub "${ProjectPrefix}-flexclone-snapshot"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: ../lambdas/flexclone_create_snapshot/
+      MemorySize: 256
+      Timeout: 60
+      Architectures:
+        - arm64
+      Role: !GetAtt CreateSnapshotRole.Arn
+      VpcConfig:
+        SubnetIds: !Ref SubnetIds
+        SecurityGroupIds:
+          - !Ref SecurityGroupId
+      Environment:
+        Variables:
+          ONTAP_MGMT_IP: !Ref OntapMgmtIp
+          ONTAP_CREDENTIALS_SECRET: !Ref OntapCredentialsSecret
+      Tags:
+        Component: flexclone-pipeline
+        Phase: "14"
+
+  CreateFlexCloneFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      FunctionName: !Sub "${ProjectPrefix}-flexclone-create"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: ../lambdas/flexclone_create_clone/
+      MemorySize: 256
+      Timeout: 60
+      Architectures:
+        - arm64
+      Role: !GetAtt CreateFlexCloneRole.Arn
+      VpcConfig:
+        SubnetIds: !Ref SubnetIds
+        SecurityGroupIds:
+          - !Ref SecurityGroupId
+      Environment:
+        Variables:
+          ONTAP_MGMT_IP: !Ref OntapMgmtIp
+          ONTAP_CREDENTIALS_SECRET: !Ref OntapCredentialsSecret
+          SVM_UUID: !Ref SvmUuid
+      Tags:
+        Component: flexclone-pipeline
+        Phase: "14"
+
+  ProcessFilesFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      FunctionName: !Sub "${ProjectPrefix}-flexclone-process"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: ../lambdas/flexclone_process_files/
+      MemorySize: 512
+      Timeout: 300
+      Architectures:
+        - arm64
+      Role: !GetAtt ProcessFilesRole.Arn
+      # NOTE: VpcConfig なし — Internet Origin S3AP にアクセスするため VPC 外実行
+      Environment:
+        Variables:
+          S3AP_ALIAS: !Ref S3AccessPointAlias
+      Tags:
+        Component: flexclone-pipeline
+        Phase: "14"
+
+  CreateCIFSShareFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      FunctionName: !Sub "${ProjectPrefix}-flexclone-cifs-share"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: ../lambdas/flexclone_create_cifs_share/
+      MemorySize: 256
+      Timeout: 60
+      Architectures:
+        - arm64
+      Role: !GetAtt CreateCIFSShareRole.Arn
+      VpcConfig:
+        SubnetIds: !Ref SubnetIds
+        SecurityGroupIds:
+          - !Ref SecurityGroupId
+      Environment:
+        Variables:
+          ONTAP_MGMT_IP: !Ref OntapMgmtIp
+          ONTAP_CREDENTIALS_SECRET: !Ref OntapCredentialsSecret
+      Tags:
+        Component: flexclone-pipeline
+        Phase: "14"
+
+  # ---------------------------------------------------------------------------
+  # Step Functions State Machine
+  # ---------------------------------------------------------------------------
+
+  FlexCloneStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Condition: IsFlexClonePipelineEnabled
+    Properties:
+      StateMachineName: !Sub "${ProjectPrefix}-flexclone-pipeline"
+      RoleArn: !GetAtt StepFunctionsRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "FlexClone Serverless Pipeline — Snapshot → Clone → Wait → Process → CIFS Share → Notify",
+          "StartAt": "CreateSnapshot",
+          "States": {
+            "CreateSnapshot": {
+              "Type": "Task",
+              "Resource": "${CreateSnapshotFunction.Arn}",
+              "Parameters": {
+                "volume_uuid.$": "$.volume_uuid",
+                "snapshot_name.$": "$.snapshot_name"
+              },
+              "ResultPath": "$.snapshot_result",
+              "Next": "CreateFlexClone",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "CreateFlexClone": {
+              "Type": "Task",
+              "Resource": "${CreateFlexCloneFunction.Arn}",
+              "Parameters": {
+                "parent_volume_uuid.$": "$.volume_uuid",
+                "snapshot_name.$": "$.snapshot_result.snapshot_name",
+                "clone_name.$": "$.clone_name",
+                "junction_path.$": "$.junction_path",
+                "security_style.$": "$.security_style"
+              },
+              "ResultPath": "$.clone_result",
+              "Next": "WaitForOnline",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "WaitForOnline": {
+              "Type": "Wait",
+              "Seconds": 5,
+              "Next": "ShouldProcessFiles"
+            },
+            "ShouldProcessFiles": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.process_files",
+                  "BooleanEquals": true,
+                  "Next": "ProcessFiles"
+                }
+              ],
+              "Default": "ShouldCreateCIFSShare"
+            },
+            "ProcessFiles": {
+              "Type": "Task",
+              "Resource": "${ProcessFilesFunction.Arn}",
+              "Parameters": {
+                "s3ap_alias.$": "$.s3ap_alias",
+                "prefix.$": "$.file_prefix",
+                "output_prefix.$": "$.output_prefix",
+                "operation.$": "$.operation"
+              },
+              "ResultPath": "$.process_result",
+              "Next": "ShouldCreateCIFSShare",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 10,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "ShouldCreateCIFSShare": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.create_cifs_share",
+                  "BooleanEquals": true,
+                  "Next": "CreateCIFSShare"
+                }
+              ],
+              "Default": "NotifyCompletion"
+            },
+            "CreateCIFSShare": {
+              "Type": "Task",
+              "Resource": "${CreateCIFSShareFunction.Arn}",
+              "Parameters": {
+                "svm_name.$": "$.svm_name",
+                "share_name.$": "$.share_name",
+                "junction_path.$": "$.clone_result.junction_path",
+                "comment.$": "$.share_comment"
+              },
+              "ResultPath": "$.cifs_result",
+              "Next": "NotifyCompletion",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "NotifyCompletion": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "${NotificationTopicArn}",
+                "Subject": "FlexClone Pipeline Complete",
+                "Message.$": "States.Format('FlexClone pipeline completed. Clone: {}, Junction: {}', $.clone_name, $.clone_result.junction_path)"
+              },
+              "End": true
+            }
+          }
+        }
+      Tags:
+        - Key: Component
+          Value: flexclone-pipeline
+        - Key: Phase
+          Value: "14"
+
+  # ---------------------------------------------------------------------------
+  # EventBridge Schedule (default disabled)
+  # ---------------------------------------------------------------------------
+
+  FlexCloneSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsScheduleEnabled
+    Properties:
+      Name: !Sub "${ProjectPrefix}-flexclone-schedule"
+      Description: FlexClone パイプライン定期実行スケジュール
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: ENABLED
+      Target:
+        Arn: !GetAtt FlexCloneStateMachine.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: !Sub |
+          {
+            "volume_uuid": "${ParentVolumeUuid}",
+            "snapshot_name": "scheduled_clone",
+            "clone_name": "scheduled_clone",
+            "junction_path": "/scheduled_clone",
+            "security_style": "unix",
+            "s3ap_alias": "${S3AccessPointAlias}",
+            "process_files": false,
+            "create_cifs_share": false
+          }
+
+Outputs:
+  StateMachineArn:
+    Condition: IsFlexClonePipelineEnabled
+    Description: FlexClone Pipeline State Machine ARN
+    Value: !GetAtt FlexCloneStateMachine.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-StateMachineArn"
+
+  CreateSnapshotFunctionArn:
+    Condition: IsFlexClonePipelineEnabled
+    Description: CreateSnapshot Lambda ARN
+    Value: !GetAtt CreateSnapshotFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CreateSnapshotFunctionArn"
+
+  CreateFlexCloneFunctionArn:
+    Condition: IsFlexClonePipelineEnabled
+    Description: CreateFlexClone Lambda ARN
+    Value: !GetAtt CreateFlexCloneFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CreateFlexCloneFunctionArn"
+
+  ProcessFilesFunctionArn:
+    Condition: IsFlexClonePipelineEnabled
+    Description: ProcessFiles Lambda ARN
+    Value: !GetAtt ProcessFilesFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProcessFilesFunctionArn"
+
+  CreateCIFSShareFunctionArn:
+    Condition: IsFlexClonePipelineEnabled
+    Description: CreateCIFSShare Lambda ARN
+    Value: !GetAtt CreateCIFSShareFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CreateCIFSShareFunctionArn"

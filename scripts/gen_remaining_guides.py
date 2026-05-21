@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-BASE_DIR = Path('/Users/yoshiki/Downloads/fsxn-s3ap-serverless-patterns')
+BASE_DIR = Path(os.environ.get("PROJECT_DIR", Path(__file__).resolve().parent.parent))
 LANGUAGES = ['ko', 'zh-CN', 'zh-TW', 'fr', 'de', 'es']
 
 LANG_SWITCHERS = {

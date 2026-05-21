@@ -166,7 +166,7 @@ class TestProtobufParser:
         parts = []
         # Field 1: vs_uuid
         tag = (1 << 3) | WIRE_LENGTH_DELIMITED
-        val = b"9ae87e42-068a-11f1-b1ff-ada95e61ee66"
+        val = b"<SVM_UUID>"
         parts.append(_encode_varint(tag) + _encode_varint(len(val)) + val)
         # Field 2: policy_name
         tag = (2 << 3) | WIRE_LENGTH_DELIMITED
@@ -188,7 +188,7 @@ class TestProtobufParser:
         encoded = b"".join(parts)
         decoded = self.parser.parse_handshake_request(encoded)
 
-        assert decoded["vs_uuid"] == "9ae87e42-068a-11f1-b1ff-ada95e61ee66"
+        assert decoded["vs_uuid"] == "<SVM_UUID>"
         assert decoded["policy_name"] == "fpolicy_aws"
         assert decoded["session_id"] == "session-123"
         assert decoded["versions"] == ["1.0", "1.1", "1.2", "2.0"]

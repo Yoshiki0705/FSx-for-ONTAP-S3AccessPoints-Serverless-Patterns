@@ -333,3 +333,57 @@
 - [Amazon VPC 料金](https://aws.amazon.com/vpc/pricing/)
 - [Amazon CloudWatch 料金](https://aws.amazon.com/cloudwatch/pricing/)
 - [Amazon EventBridge 料金](https://aws.amazon.com/eventbridge/pricing/)
+
+---
+
+## 7. FlexCache パターンのコスト分析
+
+### FlexCache ストレージコスト
+
+| 構成 | サイズ | 月額概算 | 備考 |
+|------|--------|---------|------|
+| Static FlexCache (常時) | 100GB | $13/月 | 常時稼働キャッシュ |
+| Static FlexCache (常時) | 500GB | $65/月 | EDA Tools/Libraries 用 |
+| Static FlexCache (常時) | 1TB | $130/月 | 大規模データセット |
+| Dynamic FlexCache (ジョブ単位) | 200GB × 2時間/日 | $0.72/月 | レンダリングジョブ |
+| Dynamic FlexCache (ジョブ単位) | 500GB × 8時間/日 | $7.22/月 | EDA regression |
+
+> FSx for ONTAP ストレージ料金: $0.13/GB/月（SSD）、$0.025/GB/月（Capacity Pool）
+
+### Dynamic FlexCache Workflow のコスト
+
+| コスト項目 | 50 ジョブ/月 | 500 ジョブ/月 | 5000 ジョブ/月 |
+|-----------|:---:|:---:|:---:|
+| FlexCache ストレージ (200GB×2h) | $3.61 | $36.11 | $361.11 |
+| Lambda (6回/ジョブ) | $0.05 | $0.50 | $5.00 |
+| Step Functions (15遷移/ジョブ) | $0.02 | $0.19 | $1.88 |
+| S3 (レポート) | $0.00 | $0.01 | $0.10 |
+| SNS (通知) | $0.00 | $0.00 | $0.03 |
+| **合計** | **~$4** | **~$37** | **~$368** |
+
+### FlexCache AnyCast / DR のコスト
+
+| コスト項目 | 月額概算 | 備考 |
+|-----------|---------|------|
+| DynamoDB (ルーティングテーブル) | $0.25 | PAY_PER_REQUEST |
+| Lambda (ヘルスチェック 5分間隔) | $0.50 | 8,640回/月 |
+| Step Functions | $0.22 | 8,640遷移/月 |
+| Route 53 (Failover) | $0.50 | ホストゾーン |
+| S3 (レポート) | $0.01 | |
+| **合計** | **~$1.50** | ヘルスチェックのみ |
+
+### コスト比較: Static vs Dynamic FlexCache
+
+| シナリオ | Static (常時 500GB) | Dynamic (500GB × 必要時のみ) | 削減率 |
+|---------|:---:|:---:|:---:|
+| 1日2時間利用 | $65/月 | $6/月 | 91% |
+| 1日8時間利用 | $65/月 | $24/月 | 63% |
+| 1日16時間利用 | $65/月 | $47/月 | 28% |
+| 24時間利用 | $65/月 | $65/月 | 0% |
+
+**結論**: 利用時間が 16 時間/日未満であれば Dynamic FlexCache がコスト効率的。
+
+### 参考リンク（FlexCache 関連）
+
+- [FSx for ONTAP 料金](https://aws.amazon.com/fsx/netapp-ontap/pricing/)
+- [Dynamic FlexCache コスト最適化ガイド](../dynamic-flexcache-render-workflow/docs/cost-optimization.md)

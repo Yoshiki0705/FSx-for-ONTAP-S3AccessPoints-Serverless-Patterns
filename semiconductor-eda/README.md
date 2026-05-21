@@ -297,3 +297,57 @@ UC6 は以下のサービスを使用します:
 - [Amazon Athena ユーザーガイド](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Bedrock API リファレンス](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [GDSII フォーマット仕様](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+
+## FlexCache クラウドバースト拡張
+
+### 概要
+
+EDA ワークロードでは、Tools/Libraries/PDK は読み取り中心であり、FlexCache の最適な適用対象です。オンプレミスの ONTAP Origin に格納された EDA ツールチェーンを、AWS 上の FSx for ONTAP FlexCache にキャッシュすることで、クラウドバースト時のデータアクセス性能を大幅に改善できます。
+
+### EDA ボリューム分類と FlexCache 適用
+
+| ボリューム種別 | アクセスパターン | FlexCache 適用 | S3 AP 利用 |
+|--------------|---------------|:---:|:---:|
+| Tools (Cadence/Synopsys/Siemens) | 読み取り専用 | ✅ 最適 | ⚠️ バイナリ |
+| Libraries | 読み取り専用 | ✅ 最適 | ⚠️ バイナリ |
+| PDK (Process Design Kit) | 読み取り専用 | ✅ 最適 | ⚠️ バイナリ |
+| RCS (Revision Control) | 読み書き | ❌ | ❌ |
+| Home | 読み書き | ❌ | ❌ |
+| Scratch | 書き込み中心 | ❌ | ❌ |
+| Results | 書き込み → 読み取り | ❌ | ✅ 分析用 |
+
+### クラウドバースト構成
+
+```mermaid
+graph TB
+    subgraph "オンプレミス DC"
+        ORIGIN[ONTAP Cluster<br/>Tools + Libraries + PDK]
+        LIC[License Server]
+    end
+    subgraph "AWS (ap-northeast-1)"
+        FSX_CACHE[FSx for ONTAP<br/>FlexCache<br/>Tools/Libs/PDK]
+        EC2[EC2 Spot Instances<br/>EDA Compute]
+        S3AP[S3 Access Point<br/>Results 分析用]
+        SFN[Step Functions<br/>UC6 ワークフロー]
+    end
+    ORIGIN -->|Cluster Peering<br/>Direct Connect| FSX_CACHE
+    FSX_CACHE -->|NFS Mount| EC2
+    EC2 -->|ジョブ結果| FSX_CACHE
+    FSX_CACHE --> S3AP --> SFN
+    EC2 -.->|ライセンスチェック| LIC
+```
+
+### KPI
+
+| KPI | FlexCache なし | FlexCache あり | 改善率 |
+|-----|--------------|---------------|--------|
+| EDA ジョブ開始待ち時間 | 15-30分 (WAN) | 1-3分 (cache hit) | 80-90% |
+| Regression 完了時間 | 8時間 | 3時間 | 62% |
+| WAN 転送量/日 | 500GB | 50GB | 90% |
+| ライセンス利用効率 | 60% | 85% | +25pt |
+
+### 関連パターン
+
+- [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — ジョブ単位の FlexCache 動的作成・削除
+- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — マルチリージョンクラウドバースト
+- [業界・ワークロード マッピング](../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst

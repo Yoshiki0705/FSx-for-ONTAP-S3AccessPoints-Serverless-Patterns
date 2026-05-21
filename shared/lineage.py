@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -42,11 +43,17 @@ logger = logging.getLogger(__name__)
 # 有効なステータス値
 VALID_STATUSES = frozenset({"success", "failed", "partial"})
 
+# v2 バリデーション定数
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+VALID_GUARDRAIL_MODES = frozenset({"DRY_RUN", "ENFORCE", "BREAK_GLASS", ""})
+VALID_RETENTION_PROFILES = frozenset({"standard-365d", "compliance-7y", "custom", ""})
+
 
 @dataclass
 class LineageRecord:
-    """ファイル処理履歴レコード。"""
+    """ファイル処理履歴レコード（v2 拡張）。"""
 
+    # --- 既存フィールド（v1） ---
     source_file_key: str
     processing_timestamp: str
     step_functions_execution_arn: str
@@ -55,6 +62,51 @@ class LineageRecord:
     status: str  # "success" | "failed" | "partial"
     duration_ms: int
     metadata: dict[str, Any] | None = None
+
+    # --- v2 拡張フィールド（全てオプション、デフォルト値あり） ---
+    input_checksum: str = ""  # SHA-256 hex (64 chars) or ""
+    output_checksum: str = ""  # SHA-256 hex (64 chars) or ""
+    fpolicy_sequence_number: int = 0
+    policy_version: str = ""
+    uc_template_version: str = ""
+    guardrail_mode: str = ""  # "DRY_RUN" | "ENFORCE" | "BREAK_GLASS" | ""
+    retention_profile: str = ""  # "standard-365d" | "compliance-7y" | "custom" | ""
+
+
+def validate_checksum(value: str) -> bool:
+    """SHA-256 hex string (64 chars) or empty string を検証する。
+
+    Args:
+        value: 検証する文字列
+
+    Returns:
+        True if valid, False otherwise
+    """
+    return value == "" or bool(SHA256_PATTERN.match(value))
+
+
+def validate_guardrail_mode(value: str) -> bool:
+    """guardrail_mode の値を検証する。
+
+    Args:
+        value: 検証する文字列
+
+    Returns:
+        True if valid, False otherwise
+    """
+    return value in VALID_GUARDRAIL_MODES
+
+
+def validate_retention_profile(value: str) -> bool:
+    """retention_profile の値を検証する。
+
+    Args:
+        value: 検証する文字列
+
+    Returns:
+        True if valid, False otherwise
+    """
+    return value in VALID_RETENTION_PROFILES
 
 
 class LineageTracker:
@@ -89,8 +141,43 @@ class LineageTracker:
                 f"Invalid status '{status}'. Must be one of: {sorted(VALID_STATUSES)}"
             )
 
+    def _validate_v2_fields(self, record: LineageRecord) -> None:
+        """v2 フィールドを検証する。
+
+        Raises:
+            ValueError: 無効なチェックサム、guardrail_mode、または retention_profile の場合
+        """
+        if not validate_checksum(record.input_checksum):
+            raise ValueError(
+                f"Invalid input_checksum: '{record.input_checksum}'. "
+                "Must be empty string or 64-char lowercase hex."
+            )
+        if not validate_checksum(record.output_checksum):
+            raise ValueError(
+                f"Invalid output_checksum: '{record.output_checksum}'. "
+                "Must be empty string or 64-char lowercase hex."
+            )
+        if not validate_guardrail_mode(record.guardrail_mode):
+            raise ValueError(
+                f"Invalid guardrail_mode: '{record.guardrail_mode}'. "
+                f"Must be one of: {sorted(VALID_GUARDRAIL_MODES)}"
+            )
+        if not validate_retention_profile(record.retention_profile):
+            raise ValueError(
+                f"Invalid retention_profile: '{record.retention_profile}'. "
+                f"Must be one of: {sorted(VALID_RETENTION_PROFILES)}"
+            )
+        if record.fpolicy_sequence_number < 0:
+            raise ValueError(
+                f"Invalid fpolicy_sequence_number: {record.fpolicy_sequence_number}. "
+                "Must be non-negative."
+            )
+
     def _item_to_record(self, item: dict[str, Any]) -> LineageRecord:
-        """DynamoDB アイテムを LineageRecord に変換する。"""
+        """DynamoDB アイテムを LineageRecord に変換する。
+
+        v1 レコード（v2 フィールドなし）はデフォルト値にフォールバックする。
+        """
         return LineageRecord(
             source_file_key=item["source_file_key"],
             processing_timestamp=item["processing_timestamp"],
@@ -100,6 +187,14 @@ class LineageTracker:
             status=item.get("status", ""),
             duration_ms=int(item.get("duration_ms", 0)),
             metadata=item.get("metadata"),
+            # v2 fields with defaults for backward compatibility
+            input_checksum=item.get("input_checksum", ""),
+            output_checksum=item.get("output_checksum", ""),
+            fpolicy_sequence_number=int(item.get("fpolicy_sequence_number", 0)),
+            policy_version=item.get("policy_version", ""),
+            uc_template_version=item.get("uc_template_version", ""),
+            guardrail_mode=item.get("guardrail_mode", ""),
+            retention_profile=item.get("retention_profile", ""),
         )
 
     def record(self, record: LineageRecord) -> str:
@@ -111,10 +206,15 @@ class LineageTracker:
         Returns:
             lineage_id: 生成されたレコード ID
 
+        Raises:
+            ValueError: 無効なステータス値、チェックサム、guardrail_mode、
+                        または retention_profile の場合
+
         Note:
             書き込み失敗時は警告ログを出力するがメイン処理を中断しない。
         """
         self._validate_status(record.status)
+        self._validate_v2_fields(record)
 
         table = self._dynamodb.Table(self._table_name)
 
@@ -130,6 +230,22 @@ class LineageTracker:
 
         if record.metadata:
             item["metadata"] = record.metadata
+
+        # v2 fields: only write non-default values to save storage
+        if record.input_checksum:
+            item["input_checksum"] = record.input_checksum
+        if record.output_checksum:
+            item["output_checksum"] = record.output_checksum
+        if record.fpolicy_sequence_number:
+            item["fpolicy_sequence_number"] = record.fpolicy_sequence_number
+        if record.policy_version:
+            item["policy_version"] = record.policy_version
+        if record.uc_template_version:
+            item["uc_template_version"] = record.uc_template_version
+        if record.guardrail_mode:
+            item["guardrail_mode"] = record.guardrail_mode
+        if record.retention_profile:
+            item["retention_profile"] = record.retention_profile
 
         # TTL: 365 days from now
         item["ttl"] = int(time.time()) + (self.DEFAULT_TTL_DAYS * 86400)

@@ -24,8 +24,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# --- Defaults (UC6 既存インフラ) ---
-DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-<ACCOUNT_ID>}"
+# --- Defaults (resolve account ID dynamically) ---
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo '')}"
+if [[ -z "$AWS_ACCOUNT_ID" ]]; then
+    echo "ERROR: Cannot determine AWS Account ID. Set AWS_ACCOUNT_ID or configure AWS CLI." >&2
+    exit 1
+fi
+
+DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-${AWS_ACCOUNT_ID}}"
 S3_AP_ALIAS="${S3_AP_ALIAS:-<S3_AP_ALIAS>}"
 S3_AP_NAME="${S3_AP_NAME:-eda-demo-s3ap}"
 VPC_ID="${VPC_ID:-<VPC_ID>}"
@@ -66,7 +72,7 @@ for UC in "${UCS[@]}"; do
     echo "[2/3] Deploying CloudFormation stack..."
     EXTRA_PARAMS=""
     if [[ "$UC" == "government-archives" ]]; then
-        EXTRA_PARAMS="OpenSearchMode=none CrossRegion=us-east-1 UseCrossRegion=true"
+        EXTRA_PARAMS="OpenSearchMode=none CrossRegion=${CROSS_REGION:-us-east-1} UseCrossRegion=true"
     elif [[ "$UC" == "smart-city-geospatial" ]]; then
         EXTRA_PARAMS="BedrockModelId=amazon.nova-lite-v1:0"
     fi

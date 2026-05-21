@@ -143,10 +143,103 @@ Before submitting changes, run:
 - Documentation, comments, README: Japanese (primary) + English
 - Commit messages: English
 
-## Security
+## Security & Privacy (Public Repository)
+
+This is a **public repository**. All committed content is visible to the world.
+
+### Placeholder Rules
+
+| Real Data | Placeholder |
+|-----------|-------------|
+| AWS Account ID (12-digit) | `123456789012` or `111111111111` / `222222222222` (multi-account) |
+| Secret ARN suffix | `-XXXXXX` |
+| VPC ID | `vpc-0123456789abcdef0` |
+| Subnet ID | `subnet-0123456789abcdef0` |
+| Security Group ID | `sg-0123456789abcdef0` |
+| File System ID | `fs-0123456789abcdef0` |
+| Real IP addresses | `10.0.x.x` or `<management-ip>` |
+| SSH key paths | `<your-ssh-key.pem>` |
+| Personal file paths (`/Users/...`) | Relative paths or `${PROJECT_DIR}` |
+| S3 AP Alias (real) | `fsxn-{uc}-s3ap-{hash}-ext-s3alias` (use parameter reference) |
+| ECR Registry | `${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com` |
+
+### Coding Rules
 
 - Never hardcode AWS account IDs in templates (use `${AWS::AccountId}`)
 - Never commit secrets, credentials, or `.env` files
 - ONTAP credentials: always via Secrets Manager
 - IAM policies: least-privilege, scoped to specific resources
+- Scripts: use environment variables (`${VAR:-default}`) instead of hardcoded paths
 - Screenshots: mask account IDs, resource IDs, IP addresses before committing
+
+### 🚫 Never
+
+- Commit real AWS account IDs, resource IDs, or IP addresses (use placeholders)
+- Commit screenshots without masking personal information
+- Commit `.pem` files or SSH keys
+- Commit `.env`, `.env.local`, or any environment-specific config
+- Commit personal file paths (`/Users/<username>/...`)
+- Reference real S3 AP aliases in documentation without parameterization
+
+### Pre-Commit Checklist
+
+1. Run `bash scripts/pre-push-security-check.sh` — all checks PASS
+2. Run `python3 scripts/_check_sensitive_leaks.py` — 0 leaks (if screenshots modified)
+3. Verify `git ls-files .kiro/ .env '*.pem'` returns empty
+4. Verify no `/Users/` paths in staged files: `git diff --cached | grep '/Users/'`
+
+### Screenshot Masking
+
+Before committing any screenshot:
+1. Run `python3 scripts/mask_uc_demos.py <directory>`
+2. Run `python3 scripts/_check_sensitive_leaks.py` — confirm 0 leaks
+3. Only commit files from `docs/screenshots/masked/`
+
+## Phase 13 Operational Knowledge (Lessons Learned)
+
+### ONTAP REST API Access
+
+- **fsxadmin authenticates on the filesystem management IP only** — NOT the SVM management IP
+  - Filesystem mgmt IP: `aws fsx describe-file-systems --query 'FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]'`
+  - SVM mgmt IP (different): `aws fsx describe-storage-virtual-machines --query 'StorageVirtualMachines[0].Endpoints.Management.IpAddresses[0]'`
+- **Password reset**: Use `aws fsx update-file-system --ontap-configuration '{"FsxAdminPassword": "..."}'` then update Secrets Manager
+- **SSH to ONTAP CLI**: `ssh fsxadmin@<FS_MGMT_IP>` (requires VPC-internal access via Bastion)
+
+### FPolicy Protobuf Mode
+
+- **Format switch is REST API only** — ONTAP 9.17.1 CLI does not support `-format` parameter
+  - `PATCH /api/protocols/fpolicy/{svm_uuid}/engines/{name}` with `{"format": "protobuf"}`
+- **Procedure**: disable policy → PATCH format → re-enable policy
+- **Keep-alive interval is the same** in both XML and protobuf modes (PT2M)
+- **Buffer sizes**: recv=262144 (256KB), send=1048576 (1MB)
+- **ProtobufFrameReader max_message_size** should be ≥ 1MB to match ONTAP send_buffer
+
+### S3 Access Point Data Plane
+
+- **ConnectionClosedError ≠ AccessDenied** — FSx S3AP returns connection close (not 403) when:
+  1. S3AP resource policy does not Allow the caller
+  2. S3AP attachment lifecycle is not AVAILABLE
+  3. ONTAP data plane is not serving (node health issue)
+- **Diagnostic sequence**: Check policy → Check lifecycle → Check ONTAP REST API → Check volume state
+- **S3AP resource policy is separate from IAM identity policy** — both must Allow
+- **Internet-origin S3AP cannot be accessed from VPC Lambda via S3 Gateway Endpoint** — use VPC-external Lambda or NAT Gateway
+
+### FlexClone via REST API
+
+- **`nas.security_style` cannot be specified** during FlexClone creation — inherited from parent volume
+- **Use filesystem management IP** (not SVM IP) for fsxadmin authentication
+- **FlexClone is instant** (< 1 second) regardless of parent volume size
+
+### CloudFormation / Lambda Patterns
+
+- **VPC-internal Lambda**: For ONTAP REST API access (management LIF is private)
+- **VPC-external Lambda**: For Internet-origin S3AP access (no VpcConfig)
+- **Never mix**: A single Lambda cannot access both ONTAP mgmt LIF and Internet-origin S3AP
+- **Timeout**: S3AP calls need 30s+ timeout (FSx data plane can be slow)
+- **Deploy script must set S3AP resource policy** after stack creation (not manageable via CloudFormation)
+
+### Testing
+
+- **Hypothesis property tests**: Use `deadline=None` for tests involving moto DynamoDB (mock is slow)
+- **108 tests total**: 91 unit + 17 property (Phase 12 + 13)
+- **moto `@mock_aws`**: Use context manager (`with mock_aws():`) inside Hypothesis tests, not decorator

@@ -1,0 +1,22 @@
+{
+  "job_id": "render-001",
+  "job_type": "render",
+  "project": "movie-xyz",
+  "origin_volume": "render_assets",
+  "origin_svm": "svm1",
+  "cache_svm": "svm1",
+  "size_gb": 200,
+  "prepopulate_dirs": ["/scene01/textures/", "/scene01/plates/", "/scene01/geo/"],
+  "parameters": {
+    "frame_range": "1-100",
+    "resolution": "4K",
+    "renderer": "arnold",
+    "simulate_failure": false,
+    "simulate_duration_seconds": 30
+  },
+  "metadata": {
+    "submitted_by": "artist-01",
+    "priority": "high",
+    "deadline": "2026-05-20T18:00:00Z"
+  }
+}

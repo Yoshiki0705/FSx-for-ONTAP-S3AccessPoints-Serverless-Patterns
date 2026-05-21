@@ -204,6 +204,11 @@ UC4 は以下のサービスを使用します:
 - [aws-samples/dotnet-serverless-imagerecognition](https://github.com/aws-samples/dotnet-serverless-imagerecognition) — Step Functions + Rekognition
 - [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — サーバーレスパターン集
 
+### プロジェクト内ガイド
+
+- [FlexClone サーバーレスパターン（日本語）](../docs/guides/flexclone-serverless-patterns.md) — FlexClone + Step Functions + S3AP による連番フレーム処理パイプライン、マルチプロトコルマウント、業界別ユースケース
+- [FlexClone Serverless Patterns (English)](../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
+
 
 ## 検証済み環境
 
@@ -228,3 +233,37 @@ UC4 は以下のサービスを使用します:
 > **理由**: VPC 内 Lambda から AWS マネージドサービス API（Athena, Bedrock, Textract 等）にアクセスするには Interface VPC Endpoint が必要（各 $7.20/月）。VPC 外 Lambda はインターネット経由で直接 AWS API にアクセスでき、追加コストなしで動作します。
 
 > **注意**: ONTAP REST API を使用する UC（UC1 法務・コンプライアンス）では `EnableVpcEndpoints=true` が必須です。Secrets Manager VPC Endpoint 経由で ONTAP 認証情報を取得するためです。
+
+## FlexCache レンダリング高速化拡張
+
+### 概要
+
+VFX レンダリングワークフローでは、render input assets（テクスチャ、ジオメトリ、プレート）は読み取り中心であり、FlexCache の最適な適用対象です。ジョブ開始時に FlexCache を動的に作成し、レンダリング完了後に自動削除することで、コスト最適化と性能改善を両立できます。
+
+### レンダリングデータ分類
+
+| データ種別 | アクセスパターン | FlexCache 適用 | S3 AP 利用 |
+|-----------|---------------|:---:|:---:|
+| Textures | 読み取り専用 | ✅ | ⚠️ バイナリ |
+| Geometry/Plates | 読み取り専用 | ✅ | ⚠️ バイナリ |
+| Scene Files | 読み取り専用 | ✅ | ❌ |
+| Render Output (EXR/PNG) | 書き込み | ❌ | ✅ QC/メタデータ |
+| Logs | 書き込み → 読み取り | ❌ | ✅ 分析 |
+| Cache (sim/fluid) | 読み書き | ❌ | ❌ |
+
+### Dynamic FlexCache Render Workflow
+
+ジョブ単位で FlexCache を作成・削除するワークフローの詳細は以下を参照:
+
+- **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Step Functions による自動化
+- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — マルチリージョンレンダーファーム
+- [業界・ワークロード マッピング](../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
+
+### 期待される効果
+
+| KPI | FlexCache なし | FlexCache あり | 改善率 |
+|-----|--------------|---------------|--------|
+| レンダリング開始待ち | 10-20分 | 2-5分 | 75% |
+| フレームあたり時間 | 15分 | 10分 | 33% |
+| WAN 転送量/ジョブ | 500GB | 50GB | 90% |
+| コスト/フレーム | $0.50 | $0.35 | 30% |

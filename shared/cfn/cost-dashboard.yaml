@@ -1,0 +1,227 @@
+# =============================================================================
+# Cost Optimization Dashboard — CloudWatch Metrics Math
+# =============================================================================
+#
+# UC ごとのサービスカテゴリ別コスト内訳を CloudWatch ダッシュボードで可視化する。
+# Metrics Math を使用してリアルタイムコスト推定を表示。
+#
+# 使用方法:
+#   aws cloudformation deploy \
+#     --template-file shared/cfn/cost-dashboard.yaml \
+#     --stack-name fsxn-phase13-cost-dashboard \
+#     --parameter-overrides \
+#       EnableCostDashboard=true \
+#       ProjectPrefix=fsxn-s3ap \
+#     --capabilities CAPABILITY_NAMED_IAM
+#
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSxN S3AP Serverless Patterns — Cost Optimization Dashboard.
+  Metrics Math によるサービスカテゴリ別コスト推定ダッシュボード。
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: "fsxn-s3ap"
+    Description: リソース命名プレフィックス
+
+  EnableCostDashboard:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Cost Dashboard 機能を有効化する
+
+  DashboardName:
+    Type: String
+    Default: ""
+    Description: ダッシュボード名（空の場合は ProjectPrefix から生成）
+
+  FPolicyClusterName:
+    Type: String
+    Default: ""
+    Description: ECS クラスター名（Fargate コスト計算用）
+
+  FPolicyServiceName:
+    Type: String
+    Default: ""
+    Description: ECS サービス名（Fargate コスト計算用）
+
+  NatGatewayId:
+    Type: String
+    Default: ""
+    Description: NAT Gateway ID（コスト計算用、空の場合はウィジェット非表示）
+
+Conditions:
+  IsCostDashboardEnabled:
+    !Equals [!Ref EnableCostDashboard, "true"]
+
+  HasNatGateway:
+    !Not [!Equals [!Ref NatGatewayId, ""]]
+
+  HasDashboardName:
+    !Not [!Equals [!Ref DashboardName, ""]]
+
+Resources:
+  CostDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Condition: IsCostDashboardEnabled
+    Properties:
+      DashboardName: !If
+        - HasDashboardName
+        - !Ref DashboardName
+        - !Sub "${ProjectPrefix}-cost-optimization"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 2,
+              "properties": {
+                "markdown": "# Cost Optimization Dashboard — FSxN S3AP Serverless Patterns\nPer-service cost estimation using CloudWatch Metrics Math. Prices based on ap-northeast-1 (Tokyo)."
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 2,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Fargate FPolicy Server — Estimated Cost ($/hour)",
+                "metrics": [
+                  [{"expression": "m1 / 100 * 0.25 * 0.04048", "label": "vCPU Cost", "id": "e1"}],
+                  [{"expression": "m2 / 100 * 0.5 * 0.004445", "label": "Memory Cost", "id": "e2"}],
+                  [{"expression": "e1 + e2", "label": "Total Fargate $/hr", "id": "e3"}],
+                  ["AWS/ECS", "CPUUtilization", "ClusterName", "${FPolicyClusterName}", "ServiceName", "${FPolicyServiceName}", {"id": "m1", "visible": false}],
+                  ["AWS/ECS", "MemoryUtilization", "ClusterName", "${FPolicyClusterName}", "ServiceName", "${FPolicyServiceName}", {"id": "m2", "visible": false}]
+                ],
+                "period": 3600,
+                "region": "${AWS::Region}",
+                "stat": "Average",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 2,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "DynamoDB — Consumed Capacity (RCU/WCU)",
+                "metrics": [
+                  ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${ProjectPrefix}-guardrails-tracking", {"label": "Guardrails RCU"}],
+                  ["AWS/DynamoDB", "ConsumedWriteCapacityUnits", "TableName", "${ProjectPrefix}-guardrails-tracking", {"label": "Guardrails WCU"}],
+                  ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${ProjectPrefix}-data-lineage", {"label": "Lineage RCU"}],
+                  ["AWS/DynamoDB", "ConsumedWriteCapacityUnits", "TableName", "${ProjectPrefix}-data-lineage", {"label": "Lineage WCU"}]
+                ],
+                "period": 3600,
+                "region": "${AWS::Region}",
+                "stat": "Sum",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 8,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "SQS — Messages Sent/Received",
+                "metrics": [
+                  ["AWS/SQS", "NumberOfMessagesSent", "QueueName", "${ProjectPrefix}-fpolicy-events", {"label": "FPolicy Events Sent"}],
+                  ["AWS/SQS", "NumberOfMessagesReceived", "QueueName", "${ProjectPrefix}-fpolicy-events", {"label": "FPolicy Events Received"}],
+                  ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "${ProjectPrefix}-fpolicy-events", {"label": "Backlog"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "stat": "Sum",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 8,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Lambda — Invocations & Duration",
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", "FunctionName", "${ProjectPrefix}-capacity-forecast", {"label": "Capacity Forecast"}],
+                  ["AWS/Lambda", "Invocations", "FunctionName", "${ProjectPrefix}-s3ap-ext-monitor", {"label": "S3AP Monitor"}],
+                  ["AWS/Lambda", "Invocations", "FunctionName", "${ProjectPrefix}-flexclone-snapshot", {"label": "FlexClone Snapshot"}],
+                  ["AWS/Lambda", "Invocations", "FunctionName", "${ProjectPrefix}-flexclone-create", {"label": "FlexClone Create"}]
+                ],
+                "period": 3600,
+                "region": "${AWS::Region}",
+                "stat": "Sum",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 14,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "CloudWatch Synthetics — Canary Runs",
+                "metrics": [
+                  ["CloudWatchSynthetics", "SuccessPercent", "CanaryName", "${ProjectPrefix}-s3ap-health", {"label": "S3AP Canary Success %"}]
+                ],
+                "period": 3600,
+                "region": "${AWS::Region}",
+                "stat": "Average",
+                "view": "timeSeries",
+                "annotations": {
+                  "horizontal": [
+                    {"value": 100, "label": "Target", "color": "#2ca02c"}
+                  ]
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 14,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "CloudWatch Logs — Ingestion (Bytes)",
+                "metrics": [
+                  ["AWS/Logs", "IncomingBytes", "LogGroupName", "/aws/ecs/${ProjectPrefix}-fpolicy-server", {"label": "FPolicy Server Logs"}],
+                  ["AWS/Logs", "IncomingBytes", "LogGroupName", "/aws/lambda/${ProjectPrefix}-capacity-forecast", {"label": "Forecast Lambda Logs"}]
+                ],
+                "period": 3600,
+                "region": "${AWS::Region}",
+                "stat": "Sum",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "text",
+              "x": 0,
+              "y": 20,
+              "width": 24,
+              "height": 3,
+              "properties": {
+                "markdown": "## Cost Reference (ap-northeast-1)\n| Service | Unit | Price |\n|---------|------|-------|\n| Fargate vCPU | per hour | $0.04048 |\n| Fargate Memory | per GB-hour | $0.004445 |\n| NAT Gateway | per hour + per GB | $0.045 + $0.045/GB |\n| Synthetics | per canary run | $0.0012 |\n| DynamoDB RCU | per unit | $0.000000285 |\n| DynamoDB WCU | per unit | $0.000001425 |\n| SQS | per million requests | $0.40 |\n| CloudWatch Logs | per GB ingested | $0.76 |\n| Persistent Store | per GB/month | $0.125 |"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  DashboardUrl:
+    Condition: IsCostDashboardEnabled
+    Description: Cost Dashboard URL
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards/dashboard/${ProjectPrefix}-cost-optimization"
+    Export:
+      Name: !Sub "${AWS::StackName}-DashboardUrl"

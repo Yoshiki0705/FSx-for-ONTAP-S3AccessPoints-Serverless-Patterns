@@ -21,11 +21,11 @@ import sys
 import boto3
 
 # Configuration
-REGION = "ap-northeast-1"
+REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
 LAMBDA_FUNCTION = "fsxn-fpolicy-ip-updater"
-SVM_UUID = "9ae87e42-068a-11f1-b1ff-ada95e61ee66"
-MGMT_IP = "10.0.3.72"
-SECRET_NAME = "fsx-ontap-fsxadmin-credentials"
+SVM_UUID = "<SVM_UUID>"
+MGMT_IP = os.environ.get("ONTAP_MGMT_IP", "<ONTAP_MGMT_IP>")
+SECRET_NAME = os.environ.get("ONTAP_SECRET_NAME", "fsx-ontap-fsxadmin-credentials")
 
 # Persistent Store settings
 PERSISTENT_STORE_VOLUME = "fpolicy_persistent_store"
