@@ -1,5 +1,7 @@
 # FSx for ONTAP S3 Access Points Serverless Patterns
 
+![tests](https://img.shields.io/badge/tests-1%2C499%2B%20passed-brightgreen) ![cfn-lint](https://img.shields.io/badge/cfn--lint-0%20errors-brightgreen) ![ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen) ![region](https://img.shields.io/badge/verified-ap--northeast--1-blue)
+
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Current Status
@@ -73,6 +75,11 @@ Each use case is self-contained in an independent CloudFormation template, with 
 | [Governance Checklist](docs/governance-checklist.md) | Governance checklist for regulated/public sector/healthcare workloads |
 | [Production Readiness](docs/production-readiness.md) | 4-level Maturity Model from PoC to production |
 | [Customer Discovery Template](docs/customer-discovery-template.md) | Customer interview template for applicability assessment |
+| [Fargate vs EC2 Decision Matrix](docs/fargate-vs-ec2-fpolicy-decision.md) | FPolicy server compute selection guide |
+| [Persistent Store Sizing Calculator](docs/persistent-store-sizing-calculator.md) | Persistent Store volume sizing calculation |
+| [Well-Architected Mapping](docs/well-architected-mapping.md) | AWS Well-Architected 6-pillar mapping |
+| [Public Sector Adoption Roadmap](docs/public-sector-adoption-roadmap.md) | 3-phase adoption roadmap for government, education, healthcare |
+| [Workshop Guide](docs/workshop-guide.md) | 1-day partner workshop guide |
 
 ### S3 Access Points — Authorization Model Overview
 
