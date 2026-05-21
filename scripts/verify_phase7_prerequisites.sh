@@ -14,7 +14,8 @@
 set -u
 
 REGION="${AWS_REGION:-ap-northeast-1}"
-DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-<ACCOUNT_ID>}"
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo '')}"
+DEPLOY_BUCKET="${DEPLOY_BUCKET:-fsxn-eda-deploy-${AWS_ACCOUNT_ID}}"
 S3_AP_ALIAS="${S3_AP_ALIAS:-<S3_AP_ALIAS>}"
 S3_AP_NAME="${S3_AP_NAME:-eda-demo-s3ap}"
 VPC_ID="${VPC_ID:-<VPC_ID>}"

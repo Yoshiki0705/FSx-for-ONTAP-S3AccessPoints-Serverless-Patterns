@@ -50,7 +50,7 @@ FPolicy Bridge Lambda が EventBridge に送信するイベントの形式:
   "detail": {
     "operation_type": "create",
     "file_path": "/legal/contracts/2026/agreement-001.pdf",
-    "volume_uuid": "9ae87e42-068a-11f1-b1ff-ada95e61ee66",
+    "volume_uuid": "<SVM_UUID>",
     "svm_uuid": "...",
     "client_ip": "10.0.1.100",
     "user_name": "domain\\user",

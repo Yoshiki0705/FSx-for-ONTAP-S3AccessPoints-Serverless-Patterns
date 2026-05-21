@@ -1,19 +1,20 @@
 # FSx for ONTAP S3 Access Points — 仕様・制約・トラブルシューティング
 
 **作成日**: 2026-05-16
-**最終更新**: 2026-05-16
+**最終更新**: 2026-05-18
 **対象**: 全 UC テンプレート、shared モジュール、Canary/Lambda 実装者
 
 ---
 
 ## 概要
 
-FSx for ONTAP S3 Access Point（以下 S3 AP）は、ONTAP ボリューム上のファイルを Amazon S3 API 経由で**読み取り専用**アクセスするためのブリッジ機能。本プロジェクトの全 17 UC で S3 AP 経由のファイル読み取りを使用する。
+FSx for ONTAP S3 Access Point（以下 S3 AP）は、ONTAP ボリューム上のファイルを Amazon S3 API 経由でアクセスするためのブリッジ機能。本プロジェクトの全 17 UC で S3 AP 経由のファイルアクセスを使用する。
 
 **重要な前提**:
-- S3 AP は**読み取り専用**。`PutObject` は使用不可
-- 書き込みは NFS/SMB プロトコル経由でのみ可能
-- 通常の S3 バケットとは異なるデータプレーンを使用する
+- S3 AP は `GetObject`、`PutObject`、`DeleteObject`、マルチパートアップロードをサポート（[互換性テーブル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)参照）
+- 最大アップロードサイズ: 5 GB、ストレージクラス: `FSX_ONTAP` のみ、暗号化: SSE-FSX のみ
+- ACL（`bucket-owner-full-control` のみ）、Object Versioning、Object Lock、署名付き URL は非サポート
+- NetworkOrigin（Internet/VPC）により VPC からのアクセス経路が異なる（本環境は Internet Origin）
 
 ---
 
@@ -57,11 +58,8 @@ arn:aws:s3:{region}:{account-id}:accesspoint/{access-point-name}/object/*
 # ❌ S3 AP エイリアスをバケット ARN として使用
 arn:aws:s3:::fsxn-eda-s3ap-xxx-ext-s3alias
 
-# ❌ GetBucketLocation を S3 AP に対して使用
-Action: s3:GetBucketLocation  ← S3 AP では無効
-
-# ❌ PutObject を FSx ONTAP S3 AP に対して使用
-Action: s3:PutObject  ← 読み取り専用のため使用不可
+# ❌ GetBucketLocation を S3 AP リソースポリシーで使用（MalformedPolicy エラー）
+Action: s3:GetBucketLocation  ← リソースポリシーでは無効（IAM identity policy では使用可）
 ```
 
 ### CloudFormation テンプレートでの正しい記述
@@ -77,18 +75,23 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       Policies:
-        - PolicyName: S3APReadAccess
+        - PolicyName: S3APAccess
           PolicyDocument:
             Statement:
               - Sid: ListBucket
                 Effect: Allow
                 Action: s3:ListBucket
                 Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
-              - Sid: GetObject
+              - Sid: ReadWriteObjects
                 Effect: Allow
-                Action: s3:GetObject
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
                 Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
 ```
+
+> **Note**: PutObject の最大サイズは 5 GB。それ以上のファイルはマルチパートアップロード（CreateMultipartUpload + UploadPart + CompleteMultipartUpload）を使用。
 
 ---
 
@@ -120,38 +123,47 @@ aws s3control put-access-point-policy \
 
 ### 無効なアクション（MalformedPolicy エラー）
 
-以下のアクションは S3 AP リソースポリシーで使用不可:
-- `s3:GetBucketLocation`
+以下のアクションは S3 AP **リソースポリシー**で使用不可:
+- `s3:GetBucketLocation`（IAM identity policy では使用可）
 - `s3:PutBucketPolicy`
-- `s3:PutObject`（FSx ONTAP S3 AP の場合）
 
 ---
 
 ## 4. ネットワークアクセスの制約
 
-### 最重要: FSx ONTAP S3 AP は通常の S3 Gateway VPC Endpoint では到達不可
+### NetworkOrigin による動作の違い
 
-| アクセス元 | 結果 | 理由 |
-|-----------|------|------|
-| VPC 外（Internet） | ✅ 動作 | NetworkOrigin=Internet の場合 |
-| VPC 内 + S3 Gateway EP | ❌ タイムアウト | FSx データプレーンは S3 EP 経由でルーティングされない |
-| VPC 内 + NAT Gateway | ✅ 動作 | インターネット経由で S3 AP エンドポイントに到達 |
+本環境の S3 AP は **NetworkOrigin=Internet** で作成されている（`aws s3control get-access-point` で確認済み）。
+NetworkOrigin は作成後に変更不可。
 
-### 根本原因
+| アクセス元 | Internet Origin AP | VPC Origin AP |
+|-----------|-------------------|---------------|
+| VPC 内 + S3 Gateway EP | ❌ タイムアウト | ✅ 動作（バインド VPC 内の EP 経由） |
+| VPC 外（Internet） | ✅ 動作 | ❌ 拒否 |
+| VPC 内 + NAT Gateway | ✅ 動作 | N/A |
+| VPC 内 + Interface EP | 要検証 | ✅ 動作 |
 
-FSx ONTAP S3 AP は S3 サービスのデータプレーンではなく、**FSx ONTAP 固有のデータプレーン**を経由する。
-S3 Gateway VPC Endpoint は通常の S3 バケットへのトラフィックのみルーティングし、FSx S3 AP のトラフィックは対象外。
+### 本環境での根本原因（Internet Origin）
+
+Internet Origin の S3 AP は、S3 Gateway VPC Endpoint 経由ではルーティングされない。
+Gateway EP は VPC 内から発信される S3 トラフィックを S3 サービスエンドポイントにルーティングするが、
+Internet Origin AP へのリクエストはインターネット経由のパスが必要。
+
+**参考**: [Configuring network access for Amazon S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/configuring-network-access-for-s3-access-points.html)
 
 ### Lambda/Canary の推奨構成
 
 | チェック対象 | VPC 設定 | 理由 |
 |------------|---------|------|
 | ONTAP REST API (/api/cluster) | VPC 内 | 管理 IP はプライベート |
-| S3 AP (ListObjectsV2, GetObject) | VPC 外 or NAT Gateway 経由 | S3 AP データプレーンの制約 |
+| S3 AP (ListObjectsV2, GetObject, PutObject) | VPC 外 or NAT Gateway 経由 | Internet Origin AP の制約 |
 
 **推奨**: 2 つの Lambda/Canary に分離する
 - Lambda A (VPC 内): ONTAP ヘルスチェック
 - Lambda B (VPC 外): S3 AP ヘルスチェック
+
+**代替案**: VPC Origin で S3 AP を再作成すれば、VPC 内 Lambda から Gateway EP 経由でアクセス可能。
+ただし既存の S3 AP を削除して再作成する必要がある（NetworkOrigin は変更不可）。
 
 ---
 
@@ -188,10 +200,11 @@ response["Body"].close()
 |------|------|--------|
 | `AccessDenied` on ListObjectsV2 | IAM Resource ARN が間違い | `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用 |
 | `AccessDenied` (IAM 正しいのに) | S3 AP リソースポリシー未設定 | `s3control put-access-point-policy` で追加 |
-| `ServiceUnavailable` | VPC 内からのアクセス | VPC 外実行 or NAT Gateway 経由 |
-| `Connection timed out` (120s) | S3 Gateway EP 経由で FSx S3 AP に到達不可 | Lambda の VPC 設定を外す |
-| `MalformedPolicy` | 無効なアクション使用 | ListBucket + GetObject のみ使用 |
-| `PutObject` 失敗 | FSx ONTAP S3 AP は読み取り専用 | NFS/SMB 経由で書き込み |
+| `AccessDenied` on PutObject | file system identity に書き込み権限なし | ONTAP ボリュームの UNIX/NTFS 権限を確認 |
+| `ServiceUnavailable` | VPC 内からの Internet Origin AP アクセス | VPC 外実行 or NAT Gateway 経由 |
+| `Connection timed out` (120s) | Internet Origin AP に S3 Gateway EP 経由でアクセス | Lambda の VPC 設定を外す or NAT Gateway 追加 |
+| `MalformedPolicy` | リソースポリシーに無効なアクション使用 | ListBucket + GetObject + PutObject のみ使用 |
+| `EntityTooLarge` | 5 GB 超のアップロード | マルチパートアップロードを使用 |
 | `MISCONFIGURED` 状態 | file system identity が解決不可 | ボリュームのマウント状態を確認 |
 
 ---
@@ -205,10 +218,11 @@ response["Body"].close()
 ### 統合テスト（実環境）
 - NetworkOrigin（Internet/VPC）を事前に確認: `aws s3control get-access-point`
 - ヘルスマーカーファイルは NFS 経由で事前作成が必要
-- VPC 内 Lambda のテストでは S3 AP アクセスがタイムアウトすることを想定
+- Internet Origin AP の場合、VPC 内 Lambda のテストでは S3 AP アクセスがタイムアウトすることを想定
+- PutObject テストでは file system identity の書き込み権限を事前確認
 
 ### Property-Based テスト
-- S3 AP の読み取り専用制約をプロパティとして検証可能
+- S3 AP の API 互換性制約をプロパティとして検証可能
 - ファイル内容がレスポンスに漏洩しないことを検証（Property 16）
 
 ---

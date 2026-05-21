@@ -44,6 +44,11 @@ Parameters:
     Default: "FSxN-S3AP-Patterns"
     Description: CloudWatch メトリクス名前空間
 
+  CanaryMetricNamespace:
+    Type: String
+    Default: "FSxN-S3AP-Patterns/Canary"
+    Description: Synthetic Monitoring Canary メトリクス名前空間
+
   SnsTopicArn:
     Type: String
     Default: ""
@@ -251,8 +256,8 @@ Resources:
               "properties": {
                 "title": "S3AP Latency (Synthetic Canary)",
                 "metrics": [
-                  ["FSxN-S3AP-Patterns/Canary", "S3AP_ListLatency_ms", {"stat": "Average", "label": "List Latency"}],
-                  ["FSxN-S3AP-Patterns/Canary", "S3AP_GetLatency_ms", {"stat": "Average", "label": "Get Latency"}]
+                  ["${CanaryMetricNamespace}", "S3AP_ListLatency_ms", {"stat": "Average", "label": "List Latency"}],
+                  ["${CanaryMetricNamespace}", "S3AP_GetLatency_ms", {"stat": "Average", "label": "Get Latency"}]
                 ],
                 "period": 300,
                 "region": "${AWS::Region}",
@@ -269,7 +274,7 @@ Resources:
               "properties": {
                 "title": "ONTAP Health Check (Synthetic Canary)",
                 "metrics": [
-                  ["FSxN-S3AP-Patterns/Canary", "ONTAP_HealthCheck", {"stat": "Minimum", "label": "Health (1=OK, 0=Fail)"}]
+                  ["${CanaryMetricNamespace}", "ONTAP_HealthCheck", {"stat": "Minimum", "label": "Health (1=OK, 0=Fail)"}]
                 ],
                 "period": 300,
                 "region": "${AWS::Region}",

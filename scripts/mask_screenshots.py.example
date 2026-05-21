@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""Screenshot masking script — example template.
+
+Copy this file to `mask_screenshots.py` and customize the SENSITIVE_PATTERNS
+list with your environment-specific values.
+
+Masks personal information from AWS console screenshots:
+- AWS Account IDs
+- User names, email addresses, organization names
+- Resource IDs (VPC, subnet, security group, etc.)
+- IP addresses
+- Trial/billing information
+
+Usage:
+    python3 scripts/mask_screenshots.py docs/screenshots/originals/
+    python3 scripts/mask_screenshots.py docs/screenshots/originals/my-screenshot.png
+
+Dependencies:
+    pip install Pillow pytesseract
+    # Also requires tesseract-ocr system package:
+    # macOS: brew install tesseract tesseract-lang
+    # Ubuntu: apt-get install tesseract-ocr tesseract-ocr-jpn
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+try:
+    from PIL import Image, ImageDraw
+except ImportError:
+    print("ERROR: Pillow not installed. Run: pip install Pillow")
+    sys.exit(1)
+
+# --- Configuration ---
+# Background color for masking (matches AWS console dark theme)
+MASK_COLOR = (41, 46, 57)  # #292E39
+
+# Patterns to detect and mask (customize with your real values)
+SENSITIVE_PATTERNS: list[str] = [
+    # "your-account-id-here",
+    # "your-username@example.com",
+    # "your-organization-name",
+]
+
+# Regions to always mask (x, y, width, height) — relative to image size
+# Example: top-right corner where account info appears in AWS console
+ALWAYS_MASK_REGIONS: list[tuple[float, float, float, float]] = [
+    # (0.75, 0.0, 0.25, 0.04),  # Top-right 25% width, 4% height
+]
+
+
+def mask_region(img: Image.Image, box: tuple[int, int, int, int], color: tuple[int, int, int] = MASK_COLOR) -> None:
+    """Mask a specific region with a solid color fill."""
+    draw = ImageDraw.Draw(img)
+    draw.rectangle(box, fill=color)
+
+
+def mask_relative_regions(img: Image.Image) -> int:
+    """Mask predefined relative regions. Returns count of regions masked."""
+    w, h = img.size
+    count = 0
+    for rx, ry, rw, rh in ALWAYS_MASK_REGIONS:
+        x1 = int(rx * w)
+        y1 = int(ry * h)
+        x2 = int((rx + rw) * w)
+        y2 = int((ry + rh) * h)
+        mask_region(img, (x1, y1, x2, y2))
+        count += 1
+    return count
+
+
+def process_image(src: Path, dst: Path) -> None:
+    """Process a single image: apply masks and save."""
+    img = Image.open(src)
+    regions_masked = mask_relative_regions(img)
+    img.save(dst)
+    print(f"  ✅ Masked ({regions_masked} regions): {dst.name}")
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("Usage: python3 scripts/mask_screenshots.py <path>")
+        print("  <path> can be a directory or individual image file")
+        sys.exit(1)
+
+    target = Path(sys.argv[1])
+    if not target.exists():
+        print(f"ERROR: {target} does not exist")
+        sys.exit(1)
+
+    if target.is_file():
+        files = [target]
+    else:
+        files = sorted(target.glob("*.png")) + sorted(target.glob("*.jpg"))
+
+    if not files:
+        print(f"No image files found in {target}")
+        sys.exit(0)
+
+    output_dir = Path("docs/screenshots/masked")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"🖼️  Processing {len(files)} image(s)...")
+    for f in files:
+        dst = output_dir / f.name
+        process_image(f, dst)
+
+    print(f"\n✅ Done. Masked images saved to {output_dir}/")
+    print("   Next: run `python3 scripts/_check_sensitive_leaks.py` to verify")
+
+
+if __name__ == "__main__":
+    main()

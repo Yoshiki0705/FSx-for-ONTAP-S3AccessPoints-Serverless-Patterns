@@ -4,11 +4,17 @@ __pycache__/
 *$py.class
 *.pyc
 
-# Virtual environments
+# Virtual environments & environment files
 .env
+.env.local
+.env.*
 .venv/
 venv/
 ENV/
+
+# Private / sensitive files
+*.pem
+.private/
 
 # Distribution / packaging
 dist/
@@ -88,6 +94,9 @@ docs/verification-results-phase8.md
 docs/verification-results-phase8-uc15-17.md
 docs/verification-results-phase9.md
 docs/verification-results-phase10.md
+docs/verification-results-phase11.md
+docs/verification-results-phase12.md
+docs/verification-results-phase13.md
 docs/verification-results-2026-05-10-9ucs.md
 docs/verification-results-output-destination.md
 docs/verification-results-shared-phase2.json
@@ -101,8 +110,18 @@ docs/verification-results-shared-phase2.json
 # Deployment lessons learned (contains environment-specific IPs, IDs)
 docs/guides/deployment-lessons-learned.md
 
+# Operational runbooks (contain environment-specific IPs, resource IDs, console URLs)
+docs/operational-runbooks/phase12-operations.md
+docs/operational-runbooks/deployment-troubleshooting.md
+
+# Console guides (contain environment-specific console URLs)
+docs/guides/phase11-console-guide.md
+
 # FPolicy E2E verification report (contains environment-specific IPs, resource IDs)
 docs/event-driven/fpolicy-e2e-verification-report.md
+
+# FPolicy persistent store doc (contains environment-specific UUIDs, IPs)
+docs/event-driven/fpolicy-persistent-store.md
 
 # FPolicy configuration scripts (contain environment-specific IPs, UUIDs)
 scripts/_configure_fpolicy_e2e.sh

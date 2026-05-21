@@ -400,3 +400,190 @@ class OntapClient:
         return self.get(
             f"/protocols/file-security/permissions/{svm_uuid}/{volume_uuid}/{path}",
         )
+
+    # --- FlexCache 操作メソッド ---
+
+    def list_flexcaches(
+        self,
+        name: str | None = None,
+        svm_name: str | None = None,
+    ) -> list[dict]:
+        """FlexCache ボリューム一覧取得
+
+        Args:
+            name: FlexCache 名でフィルタ (オプション)
+            svm_name: SVM 名でフィルタ (オプション)
+
+        Returns:
+            list[dict]: FlexCache ボリューム情報のリスト
+        """
+        params: dict[str, str] = {
+            "fields": "name,uuid,svm,size,path,origins,state",
+        }
+        if name:
+            params["name"] = name
+        if svm_name:
+            params["svm.name"] = svm_name
+        result = self.get("/storage/flexcache/flexcaches", params=params)
+        return result.get("records", [])
+
+    def get_flexcache(self, uuid: str) -> dict:
+        """FlexCache ボリューム詳細取得
+
+        Args:
+            uuid: FlexCache UUID
+
+        Returns:
+            dict: FlexCache 詳細情報
+        """
+        return self.get(
+            f"/storage/flexcache/flexcaches/{uuid}",
+            params={"fields": "name,uuid,svm,size,path,origins,state,prepopulate"},
+        )
+
+    def create_flexcache(
+        self,
+        name: str,
+        svm_name: str,
+        origin_volume: str,
+        origin_svm: str,
+        size_gb: int,
+        junction_path: str | None = None,
+        aggregate_name: str | None = None,
+        prepopulate_dir_paths: list[str] | None = None,
+    ) -> dict:
+        """FlexCache ボリューム作成
+
+        Args:
+            name: FlexCache ボリューム名
+            svm_name: キャッシュ SVM 名
+            origin_volume: オリジンボリューム名
+            origin_svm: オリジン SVM 名
+            size_gb: サイズ (GB)
+            junction_path: ジャンクションパス (デフォルト: /{name})
+            aggregate_name: アグリゲート名 (オプション)
+            prepopulate_dir_paths: Prepopulate 対象ディレクトリ (オプション)
+
+        Returns:
+            dict: 作成結果（job UUID 含む）
+
+        Raises:
+            OntapClientError: 作成失敗時
+        """
+        body: dict[str, Any] = {
+            "name": name,
+            "svm": {"name": svm_name},
+            "origins": [
+                {
+                    "volume": {"name": origin_volume},
+                    "svm": {"name": origin_svm},
+                }
+            ],
+            "size": size_gb * 1024 * 1024 * 1024,  # GB → bytes
+        }
+
+        if junction_path:
+            body["path"] = junction_path
+        else:
+            body["path"] = f"/{name}"
+
+        if aggregate_name:
+            body["aggregates"] = [{"name": aggregate_name}]
+
+        if prepopulate_dir_paths:
+            body["prepopulate"] = {"dir_paths": prepopulate_dir_paths}
+
+        logger.info("Creating FlexCache: %s (origin: %s/%s)", name, origin_svm, origin_volume)
+        return self.post("/storage/flexcache/flexcaches", body=body)
+
+    def delete_flexcache(self, uuid: str) -> dict:
+        """FlexCache ボリューム削除
+
+        Args:
+            uuid: FlexCache UUID
+
+        Returns:
+            dict: 削除結果（job UUID 含む）
+
+        Raises:
+            OntapClientError: 削除失敗時
+        """
+        logger.info("Deleting FlexCache: %s", uuid)
+        return self.delete(f"/storage/flexcache/flexcaches/{uuid}")
+
+    def prepopulate_flexcache(
+        self,
+        uuid: str,
+        dir_paths: list[str],
+        exclude_dir_paths: list[str] | None = None,
+    ) -> dict:
+        """FlexCache Prepopulate 実行
+
+        指定ディレクトリのデータを事前にキャッシュにフェッチする。
+        ONTAP 9.13.1+ が必要。
+
+        Args:
+            uuid: FlexCache UUID
+            dir_paths: Prepopulate 対象ディレクトリパスのリスト
+            exclude_dir_paths: 除外ディレクトリパスのリスト (オプション)
+
+        Returns:
+            dict: Prepopulate ジョブ結果
+        """
+        body: dict[str, Any] = {"dir_paths": dir_paths}
+        if exclude_dir_paths:
+            body["exclude_dir_paths"] = exclude_dir_paths
+
+        logger.info("Prepopulating FlexCache %s: %s", uuid, dir_paths)
+        return self.patch(
+            f"/storage/flexcache/flexcaches/{uuid}",
+            body={"prepopulate": body},
+        )
+
+    def wait_ontap_job(
+        self,
+        job_uuid: str,
+        timeout_seconds: int = 300,
+        poll_interval: int = 5,
+    ) -> dict:
+        """ONTAP 非同期ジョブの完了を待機
+
+        Args:
+            job_uuid: ジョブ UUID
+            timeout_seconds: タイムアウト秒数 (デフォルト: 300)
+            poll_interval: ポーリング間隔秒数 (デフォルト: 5)
+
+        Returns:
+            dict: ジョブ最終状態
+
+        Raises:
+            OntapClientError: タイムアウトまたはジョブ失敗時
+        """
+        import time
+
+        start_time = time.time()
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                raise OntapClientError(
+                    f"ONTAP job {job_uuid} timed out after {timeout_seconds}s"
+                )
+
+            job = self.get(f"/cluster/jobs/{job_uuid}")
+            state = job.get("state", "unknown")
+
+            if state == "success":
+                logger.info("ONTAP job %s completed successfully", job_uuid)
+                return job
+            elif state in ("failure", "error"):
+                error_msg = job.get("message", "Unknown error")
+                raise OntapClientError(
+                    f"ONTAP job {job_uuid} failed: {error_msg}",
+                    response_body=json.dumps(job),
+                )
+
+            logger.debug(
+                "ONTAP job %s state: %s (%.0fs elapsed)",
+                job_uuid, state, elapsed,
+            )
+            time.sleep(poll_interval)

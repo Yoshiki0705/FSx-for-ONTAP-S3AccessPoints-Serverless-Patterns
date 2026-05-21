@@ -1,0 +1,17 @@
+{
+  "action": "simulate_failover",
+  "scenario": "origin_unreachable",
+  "origin_endpoint": "fsxn-origin.example.com",
+  "cache_endpoints": [
+    "fsxn-cache-a.example.com",
+    "fsxn-cache-b.example.com"
+  ],
+  "affected_caches": ["cache-a"],
+  "failover_strategy": "dns_failover",
+  "notify": true,
+  "metadata": {
+    "triggered_by": "health_check_lambda",
+    "detection_time": "2026-05-18T10:00:00Z",
+    "origin_last_healthy": "2026-05-18T09:55:00Z"
+  }
+}
