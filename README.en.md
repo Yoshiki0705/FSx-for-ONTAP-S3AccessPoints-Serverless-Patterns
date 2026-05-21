@@ -51,6 +51,7 @@ Each use case is self-contained in an independent CloudFormation template, with 
 | [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | SAP, EDI, audit, batch output enterprise use cases |
 | [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | Throughput design, Lambda sizing, concurrency calculation |
 | [Native S3AP Notifications Evidence](docs/aws-feature-requests/native-s3ap-notifications-evidence.md) | Why native event notifications matter — FPolicy workaround analysis |
+| [Partner/SI Delivery Checklist](docs/partner-si-delivery-checklist.md) | Partner/SI proposal, design, and delivery checklist |
 
 ### S3 Access Points — Authorization Model Overview
 
