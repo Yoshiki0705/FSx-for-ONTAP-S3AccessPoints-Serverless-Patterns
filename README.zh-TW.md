@@ -50,6 +50,13 @@
 | [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md) | POLLING / EVENT_DRIVEN / HYBRID 選擇標準 |
 | [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | SAP・EDI・稽核・批次輸出等企業應用範例 |
 | [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | 吞吐量設計・Lambda 規格選擇・並行度計算 |
+| [S3AP Benchmark Results](docs/s3ap-benchmark-results.md) | 實測值: PutObject/GetObject/Range GET/ListObjectsV2 延遲 |
+| [Partner/SI Delivery Checklist](docs/partner-si-delivery-checklist.md) | 合作夥伴・SI 提案・設計・交付清單 |
+| [Governance Checklist](docs/governance-checklist.md) | 監管・公共・醫療工作負載治理檢查項 |
+| [Production Readiness](docs/production-readiness.md) | PoC → 正式環境的 4 級成熟度模型 |
+| [Customer Discovery Template](docs/customer-discovery-template.md) | 客戶訪談範本 |
+| [Well-Architected Mapping](docs/well-architected-mapping.md) | AWS Well-Architected 6 支柱對應表 |
+| [Quick Start Guide](docs/quick-start.md) | 30 分鐘內首次部署指南 |
 
 ## 架構
 

@@ -1,0 +1,298 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  FSx for ONTAP + S3 Access Point Quickstart Infrastructure
+  
+  Creates an FSx for ONTAP file system with a single SVM and volume,
+  ready for S3 Access Point attachment.
+  
+  NOTE: S3 Access Point creation for FSx for ONTAP is NOT yet supported
+  in CloudFormation (as of 2026-05). After this stack deploys, create the
+  S3 Access Point via AWS CLI or Console:
+  
+    aws s3control create-access-point \
+      --account-id <ACCOUNT_ID> \
+      --name <AP_NAME> \
+      --bucket "arn:aws:fsx:<REGION>:<ACCOUNT_ID>:file-system/<FS_ID>"
+  
+  See: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/fsxn-creating-access-points.html
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VpcId
+          - SubnetIds
+          - PreferredSubnetId
+      - Label:
+          default: FSx for ONTAP Configuration
+        Parameters:
+          - FileSystemName
+          - SvmName
+          - VolumeName
+          - FsxAdminPassword
+          - StorageCapacityGiB
+          - ThroughputCapacity
+      - Label:
+          default: Volume Configuration
+        Parameters:
+          - VolumeSizeInMegabytes
+          - JunctionPath
+          - SecurityStyle
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC where the FSx file system will be deployed
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >
+      Subnet(s) for the file system. For Single-AZ, provide at least one subnet.
+      For Multi-AZ, provide two subnets in different AZs.
+
+  PreferredSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Preferred subnet for the active file server (must be one of SubnetIds)
+
+  FileSystemName:
+    Type: String
+    Default: fsxn-s3ap-quickstart
+    Description: Name tag for the FSx for ONTAP file system
+
+  SvmName:
+    Type: String
+    Default: svm1
+    Description: Name of the Storage Virtual Machine (SVM)
+    AllowedPattern: ^[a-zA-Z][a-zA-Z0-9_-]*$
+    ConstraintDescription: Must start with a letter, alphanumeric, hyphens, underscores
+
+  VolumeName:
+    Type: String
+    Default: vol1
+    Description: Name of the ONTAP volume
+    AllowedPattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+    ConstraintDescription: Must start with a letter, alphanumeric and underscores only
+
+  FsxAdminPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 50
+    Description: >
+      Password for the fsxadmin user. Must be 8-50 characters.
+      Used for ONTAP CLI/REST API access.
+
+  StorageCapacityGiB:
+    Type: Number
+    Default: 1024
+    MinValue: 1024
+    MaxValue: 196608
+    Description: SSD storage capacity in GiB (minimum 1024 GiB)
+
+  ThroughputCapacity:
+    Type: Number
+    Default: 128
+    AllowedValues:
+      - 128
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
+    Description: Throughput capacity in MBps
+
+  VolumeSizeInMegabytes:
+    Type: Number
+    Default: 1048576
+    MinValue: 20480
+    Description: Volume size in megabytes (default 1 TB = 1048576 MB)
+
+  JunctionPath:
+    Type: String
+    Default: /vol1
+    Description: Junction path for the volume (NFS mount path under SVM root)
+    AllowedPattern: ^/[a-zA-Z0-9_/-]*$
+
+  SecurityStyle:
+    Type: String
+    Default: UNIX
+    AllowedValues:
+      - UNIX
+      - NTFS
+      - MIXED
+    Description: Security style for the volume
+
+Resources:
+  # Security Group for FSx for ONTAP
+  FsxSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for FSx for ONTAP file system
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: Name
+          Value: !Sub ${FileSystemName}-sg
+
+  # Allow NFS (TCP 2049) from within VPC
+  FsxNfsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      CidrIp: 0.0.0.0/0
+      Description: NFS access
+
+  # Allow SMB (TCP 445) from within VPC
+  FsxSmbIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 445
+      ToPort: 445
+      CidrIp: 0.0.0.0/0
+      Description: SMB access
+
+  # Allow ONTAP REST API (TCP 443) from within VPC
+  FsxApiIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 0.0.0.0/0
+      Description: ONTAP REST API access
+
+  # Allow iSCSI (TCP 3260) from within VPC
+  FsxIscsiIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3260
+      ToPort: 3260
+      CidrIp: 0.0.0.0/0
+      Description: iSCSI access
+
+  # FSx for ONTAP File System (Single-AZ)
+  OntapFileSystem:
+    Type: AWS::FSx::FileSystem
+    Properties:
+      FileSystemType: ONTAP
+      StorageCapacity: !Ref StorageCapacityGiB
+      StorageType: SSD
+      SubnetIds: !Ref SubnetIds
+      SecurityGroupIds:
+        - !Ref FsxSecurityGroup
+      OntapConfiguration:
+        DeploymentType: SINGLE_AZ_1
+        PreferredSubnetId: !Ref PreferredSubnetId
+        ThroughputCapacity: !Ref ThroughputCapacity
+        FsxAdminPassword: !Ref FsxAdminPassword
+        # Automatic backups disabled for quickstart (enable for production)
+        AutomaticBackupRetentionDays: 0
+      Tags:
+        - Key: Name
+          Value: !Ref FileSystemName
+        - Key: Purpose
+          Value: fsxn-s3ap-serverless-patterns-quickstart
+
+  # Storage Virtual Machine (SVM)
+  StorageVirtualMachine:
+    Type: AWS::FSx::StorageVirtualMachine
+    Properties:
+      FileSystemId: !Ref OntapFileSystem
+      Name: !Ref SvmName
+      RootVolumeSecurityStyle: !Ref SecurityStyle
+      Tags:
+        - Key: Name
+          Value: !Sub ${FileSystemName}-${SvmName}
+
+  # Volume
+  OntapVolume:
+    Type: AWS::FSx::Volume
+    Properties:
+      Name: !Ref VolumeName
+      VolumeType: ONTAP
+      OntapConfiguration:
+        JunctionPath: !Ref JunctionPath
+        SizeInMegabytes: !Ref VolumeSizeInMegabytes
+        StorageVirtualMachineId: !Ref StorageVirtualMachine
+        StorageEfficiencyEnabled: true
+        SecurityStyle: !Ref SecurityStyle
+        TieringPolicy:
+          CoolingPeriod: 31
+          Name: AUTO
+        # Snapshot policy - default
+        SnapshotPolicy: default
+      Tags:
+        - Key: Name
+          Value: !Sub ${FileSystemName}-${VolumeName}
+
+  # Secrets Manager secret for ONTAP admin credentials
+  OntapAdminSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${FileSystemName}/ontap-admin
+      Description: FSx for ONTAP admin credentials for S3 AP serverless patterns
+      SecretString: !Sub |
+        {
+          "username": "fsxadmin",
+          "password": "${FsxAdminPassword}",
+          "endpoint": "management.${OntapFileSystem}.fsx.${AWS::Region}.amazonaws.com"
+        }
+      Tags:
+        - Key: Purpose
+          Value: fsxn-s3ap-serverless-patterns
+
+Outputs:
+  FileSystemId:
+    Description: FSx for ONTAP File System ID
+    Value: !Ref OntapFileSystem
+    Export:
+      Name: !Sub ${AWS::StackName}-FileSystemId
+
+  FileSystemDnsName:
+    Description: File system DNS name (for management)
+    Value: !Sub management.${OntapFileSystem}.fsx.${AWS::Region}.amazonaws.com
+
+  StorageVirtualMachineId:
+    Description: Storage Virtual Machine ID
+    Value: !Ref StorageVirtualMachine
+    Export:
+      Name: !Sub ${AWS::StackName}-SvmId
+
+  VolumeId:
+    Description: Volume ID
+    Value: !Ref OntapVolume
+    Export:
+      Name: !Sub ${AWS::StackName}-VolumeId
+
+  OntapSecretArn:
+    Description: Secrets Manager ARN for ONTAP credentials (use in UC deployments)
+    Value: !Ref OntapAdminSecret
+    Export:
+      Name: !Sub ${AWS::StackName}-OntapSecretArn
+
+  SecurityGroupId:
+    Description: Security Group ID for the file system
+    Value: !Ref FsxSecurityGroup
+
+  NfsMountCommand:
+    Description: Example NFS mount command (replace <SVM_DNS> with actual SVM DNS)
+    Value: !Sub "sudo mount -t nfs -o nfsvers=4.1 <SVM_DNS>:${JunctionPath} /mnt/fsxn"
+
+  NextSteps:
+    Description: Next steps after stack creation
+    Value: >
+      1. Note the FileSystemId from outputs.
+      2. Create an S3 Access Point via CLI:
+         aws s3control create-access-point --account-id <ACCOUNT> --name <NAME> --bucket "arn:aws:fsx:<REGION>:<ACCOUNT>:file-system/<FS_ID>"
+      3. Mount the volume via NFS and place test files.
+      4. Deploy a UC template using the S3AP alias and OntapSecretArn from outputs.

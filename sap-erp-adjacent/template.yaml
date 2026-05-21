@@ -1,0 +1,342 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAP/ERP Adjacent File Workflow Pattern
+  
+  Processes SAP IDoc exports, HULFT landing files, EDI landing zone files,
+  and batch job outputs from FSx for ONTAP via S3 Access Points.
+  
+  Architecture: EventBridge Scheduler → Step Functions → Discovery Lambda
+  → Processing Lambda (Bedrock) → Report Lambda (SNS)
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: fsxn-s3ap-sap-erp-adjacent
+    Description: SAP/ERP adjacent file workflow using FSx for ONTAP S3 Access Points
+    Author: FSxN S3AP Serverless Patterns
+    Labels: ['fsxn', 's3ap', 'sap', 'erp', 'idoc', 'hulft']
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: S3 Access Point alias or ARN for FSx for ONTAP volume
+
+  OntapSecretArn:
+    Type: String
+    Description: Secrets Manager ARN containing ONTAP admin credentials
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge schedule expression (e.g., "rate(1 hour)", "cron(0 9 * * ? *)")
+
+  OutputBucketName:
+    Type: String
+    Description: S3 bucket for processed results and reports
+
+  NotificationEmail:
+    Type: String
+    Description: Email address for SNS notifications
+    AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+
+  FilePrefix:
+    Type: String
+    Default: "idoc-export/"
+    Description: >
+      S3 prefix to scan for files (e.g., "idoc-export/", "hulft-landing/", "edi-inbound/")
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-pro-v1:0"
+    Description: Bedrock model ID for document summarization
+
+  MaxFilesPerExecution:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 1000
+    Description: Maximum number of files to process per execution
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 120
+    MemorySize: 256
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+        ONTAP_SECRET_ARN: !Ref OntapSecretArn
+        OUTPUT_BUCKET: !Ref OutputBucketName
+        FILE_PREFIX: !Ref FilePrefix
+        POWERTOOLS_SERVICE_NAME: sap-erp-adjacent
+
+Resources:
+  # ============================================================
+  # SNS Topic for notifications
+  # ============================================================
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${AWS::StackName}-notifications
+      DisplayName: SAP/ERP File Processing Notifications
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # ============================================================
+  # Output Bucket
+  # ============================================================
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldResults
+            Status: Enabled
+            ExpirationInDays: 90
+
+  # ============================================================
+  # Lambda Functions
+  # ============================================================
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-discovery
+      Handler: index.handler
+      CodeUri: functions/discovery/
+      Description: >
+        Discovers new/modified files on FSx for ONTAP via S3 Access Point
+        using ListObjectsV2. Filters by prefix and returns file manifest.
+      Timeout: 300
+      Environment:
+        Variables:
+          MAX_FILES: !Ref MaxFilesPerExecution
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref S3AccessPointAlias
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref OntapSecretArn
+
+  ProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-processing
+      Handler: index.handler
+      CodeUri: functions/processing/
+      Description: >
+        Processes each discovered file: reads content via S3 AP,
+        sends to Bedrock for summarization/classification, writes results to S3.
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref S3AccessPointAlias
+        - S3CrudPolicy:
+            BucketName: !Ref OutputBucketName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-report
+      Handler: index.handler
+      CodeUri: functions/report/
+      Description: >
+        Generates execution summary report and sends SNS notification
+        with processing results, file counts, and any errors.
+      Timeout: 60
+      MemorySize: 128
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref OutputBucketName
+        - SNSPublishMessagePolicy:
+            TopicArn: !Ref NotificationTopic
+
+  # ============================================================
+  # Step Functions State Machine
+  # ============================================================
+  ProcessingStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub ${AWS::StackName}-workflow
+      DefinitionBody:
+        Comment: SAP/ERP Adjacent File Processing Workflow
+        StartAt: DiscoverFiles
+        States:
+          DiscoverFiles:
+            Type: Task
+            Resource: !GetAtt DiscoveryFunction.Arn
+            ResultPath: $.discovery
+            Next: CheckFilesFound
+            Retry:
+              - ErrorEquals: ["States.TaskFailed"]
+                IntervalSeconds: 30
+                MaxAttempts: 2
+                BackoffRate: 2
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: ReportError
+                ResultPath: $.error
+
+          CheckFilesFound:
+            Type: Choice
+            Choices:
+              - Variable: $.discovery.file_count
+                NumericGreaterThan: 0
+                Next: ProcessFiles
+            Default: NoFilesFound
+
+          NoFilesFound:
+            Type: Pass
+            Result:
+              status: "NO_FILES"
+              message: "No new files found matching prefix"
+            ResultPath: $.processing
+            Next: GenerateReport
+
+          ProcessFiles:
+            Type: Map
+            ItemsPath: $.discovery.files
+            MaxConcurrency: 5
+            ResultPath: $.processing
+            Iterator:
+              StartAt: ProcessSingleFile
+              States:
+                ProcessSingleFile:
+                  Type: Task
+                  Resource: !GetAtt ProcessingFunction.Arn
+                  End: true
+                  Retry:
+                    - ErrorEquals: ["States.TaskFailed"]
+                      IntervalSeconds: 10
+                      MaxAttempts: 2
+                      BackoffRate: 2
+            Next: GenerateReport
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: ReportError
+                ResultPath: $.error
+
+          GenerateReport:
+            Type: Task
+            Resource: !GetAtt ReportFunction.Arn
+            ResultPath: $.report
+            End: true
+            Retry:
+              - ErrorEquals: ["States.TaskFailed"]
+                IntervalSeconds: 5
+                MaxAttempts: 2
+
+          ReportError:
+            Type: Task
+            Resource: !GetAtt ReportFunction.Arn
+            Parameters:
+              error.$: $.error
+              status: "ERROR"
+            End: true
+
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref DiscoveryFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessingFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportFunction
+
+  # ============================================================
+  # EventBridge Scheduler
+  # ============================================================
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Ref ProcessingStateMachine
+
+  ProcessingSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub ${AWS::StackName}-schedule
+      Description: Triggers SAP/ERP file processing workflow
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "FLEXIBLE"
+        MaximumWindowInMinutes: 15
+      Target:
+        Arn: !Ref ProcessingStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref ProcessingStateMachine
+
+  StateMachineConsoleUrl:
+    Description: Step Functions console URL
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/states/home?region=${AWS::Region}#/statemachines/view/${ProcessingStateMachine}
+
+  DiscoveryFunctionArn:
+    Description: Discovery Lambda function ARN
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  ProcessingFunctionArn:
+    Description: Processing Lambda function ARN
+    Value: !GetAtt ProcessingFunction.Arn
+
+  ReportFunctionArn:
+    Description: Report Lambda function ARN
+    Value: !GetAtt ReportFunction.Arn
+
+  NotificationTopicArn:
+    Description: SNS Topic ARN for notifications
+    Value: !Ref NotificationTopic
+
+  OutputBucketArn:
+    Description: Output S3 bucket ARN
+    Value: !GetAtt OutputBucket.Arn
+
+  ManualTriggerCommand:
+    Description: CLI command to manually trigger the workflow
+    Value: !Sub >
+      aws stepfunctions start-execution
+      --state-machine-arn ${ProcessingStateMachine}
+      --input '{}'
