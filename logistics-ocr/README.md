@@ -35,13 +35,21 @@ FSx for NetApp ONTAP の S3 Access Points を活用し、配送伝票の OCR テ
 
 ## Success Metrics
 
-| メトリクス | 測定方法 |
-|-----------|--------|
-| 配送伝票処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
-| OCR テキスト抽出精度 | CloudWatch Metrics / Step Functions 実行結果 |
-| 倉庫在庫画像分析スループット | CloudWatch Metrics / Step Functions 実行結果 |
-| Cross-Region API 成功率 | CloudWatch Metrics / Step Functions 実行結果 |
-| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+### Outcome
+配送伝票 OCR・倉庫在庫画像分析の自動化により、物流オペレーション効率を向上する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| 処理済み伝票数 / 実行 | > 300 documents |
+| OCR 精度 | > 95% |
+| データ抽出成功率 | > 90% |
+| 処理時間 / 伝票 | < 20 秒 |
+| コスト / 実行 | < $5 |
+| Human Review 対象率 | < 15%（読取不能・低信頼度） |
+
+### Measurement Method
+Step Functions 実行履歴、Textract confidence score、Rekognition 検出結果、CloudWatch Metrics。
 
 ## アーキテクチャ
 
