@@ -171,6 +171,32 @@ A: POLLING モード（1 時間間隔、1,000 ファイル/日）で月額 $6-21
 
 ---
 
+---
+
+## UC 別 Success Metrics 一覧
+
+各 UC の Success Metrics（Outcome / Metrics / Measurement Method）へのリンク:
+
+| UC | 業界 | Success Metrics |
+|----|------|----------------|
+| UC1 | 法務・コンプライアンス | [legal-compliance/README.md](../legal-compliance/README.md#success-metrics) |
+| UC2 | 金融・保険 (IDP) | [financial-idp/README.md](../financial-idp/README.md#success-metrics) |
+| UC3 | 製造業 | [manufacturing-analytics/README.md](../manufacturing-analytics/README.md#success-metrics) |
+| UC4 | メディア (VFX) | [media-vfx/README.md](../media-vfx/README.md#success-metrics) |
+| UC5 | 医療 (DICOM) | [healthcare-dicom/README.md](../healthcare-dicom/README.md#success-metrics) |
+| UC6 | 半導体 / EDA | [semiconductor-eda/README.md](../semiconductor-eda/README.md#success-metrics) |
+| UC7 | ゲノミクス | [genomics-pipeline/README.md](../genomics-pipeline/README.md#success-metrics) |
+| UC8 | エネルギー | [energy-seismic/README.md](../energy-seismic/README.md#success-metrics) |
+| UC9 | 自動運転 / ADAS | [autonomous-driving/README.md](../autonomous-driving/README.md#success-metrics) |
+| UC10 | 建設 / BIM | [construction-bim/README.md](../construction-bim/README.md#success-metrics) |
+| UC11 | 小売 / EC | [retail-catalog/README.md](../retail-catalog/README.md#success-metrics) |
+| UC12 | 物流 | [logistics-ocr/README.md](../logistics-ocr/README.md#success-metrics) |
+| UC13 | 教育 / 研究 | [education-research/README.md](../education-research/README.md#success-metrics) |
+| UC14 | 保険 | [insurance-claims/README.md](../insurance-claims/README.md#success-metrics) |
+| UC15 | 防衛・宇宙 | [defense-satellite/README.md](../defense-satellite/README.md#success-metrics) |
+| UC16 | 政府 (FOIA) | [government-archives/README.md](../government-archives/README.md#success-metrics) |
+| UC17 | スマートシティ | [smart-city-geospatial/README.md](../smart-city-geospatial/README.md#success-metrics) |
+
 ## 参考リンク
 
 - [Trigger Mode Decision Guide](trigger-mode-decision-guide.md)
