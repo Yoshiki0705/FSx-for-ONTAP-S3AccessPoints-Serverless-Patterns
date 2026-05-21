@@ -50,6 +50,13 @@ Chaque cas d'usage est autonome sous forme de template CloudFormation indépenda
 | [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md) | Critères de sélection POLLING / EVENT_DRIVEN / HYBRID |
 | [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | Exemples d'application entreprise : SAP, EDI, audit, sorties batch |
 | [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | Conception du débit, dimensionnement Lambda, calcul de concurrence |
+| [S3AP Benchmark Results](docs/s3ap-benchmark-results.md) | Mesures : latence PutObject/GetObject/Range GET/ListObjectsV2 |
+| [Partner/SI Delivery Checklist](docs/partner-si-delivery-checklist.md) | Checklist de livraison partenaire/SI |
+| [Governance Checklist](docs/governance-checklist.md) | Checklist de gouvernance pour charges réglementées |
+| [Production Readiness](docs/production-readiness.md) | Modèle de maturité en 4 niveaux |
+| [Customer Discovery Template](docs/customer-discovery-template.md) | Modèle d'entretien client |
+| [Well-Architected Mapping](docs/well-architected-mapping.md) | Correspondance AWS Well-Architected 6 piliers |
+| [Quick Start Guide](docs/quick-start.md) | Guide de premier déploiement en 30 minutes |
 
 ## Architecture
 
