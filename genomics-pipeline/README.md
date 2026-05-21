@@ -32,6 +32,17 @@ FSx for NetApp ONTAP の S3 Access Points を活用し、FASTQ/BAM/VCF ゲノム
 - Comprehend Medical（クロスリージョン）によるバイオメディカルエンティティ抽出
 - Amazon Bedrock による研究サマリー生成
 
+
+## Success Metrics
+
+| メトリクス | 測定方法 |
+|-----------|--------|
+| FASTQ/VCF ファイル処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
+| バリアントコール集計精度 | CloudWatch Metrics / Step Functions 実行結果 |
+| Cross-Region API 呼び出し成功率 | CloudWatch Metrics / Step Functions 実行結果 |
+| 処理スループット (GB/hour) | CloudWatch Metrics / Step Functions 実行結果 |
+| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+
 ## アーキテクチャ
 
 ```mermaid

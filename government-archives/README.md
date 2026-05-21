@@ -126,6 +126,17 @@ FOIA 担当者が期限 3 営業日前に受信するリマインダーメール
      マスク: アカウント ID、document_key（サンプル名のみ） -->
 ![UC16: 保存スケジュールテーブル](../docs/screenshots/masked/phase7/phase7-uc16-dynamodb-retention.png)
 
+
+## Success Metrics
+
+| メトリクス | 測定方法 |
+|-----------|--------|
+| 公文書処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
+| PII 検出精度 | CloudWatch Metrics / Step Functions 実行結果 |
+| 墨消し完全性（漏れ率） | CloudWatch Metrics / Step Functions 実行結果 |
+| FOIA 対応時間の短縮率 | CloudWatch Metrics / Step Functions 実行結果 |
+| Human Review 必要件数の割合 | CloudWatch Metrics / Step Functions 実行結果 |
+
 ## デプロイ
 
 ### 事前検証

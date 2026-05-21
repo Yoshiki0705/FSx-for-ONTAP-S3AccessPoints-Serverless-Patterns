@@ -105,6 +105,17 @@ FSx ONTAP (衛星画像格納)
      マスク: アカウント ID -->
 ![UC15: 検出結果 JSON](../docs/screenshots/masked/phase7/phase7-uc15-detections-json.png)
 
+
+## Success Metrics
+
+| メトリクス | 測定方法 |
+|-----------|--------|
+| 衛星画像処理件数 / 実行 | CloudWatch Metrics / Step Functions 実行結果 |
+| 物体検出精度 | CloudWatch Metrics / Step Functions 実行結果 |
+| 変化検出アラート精度 | CloudWatch Metrics / Step Functions 実行結果 |
+| タイリング処理スループット | CloudWatch Metrics / Step Functions 実行結果 |
+| 処理あたりのコスト | CloudWatch Metrics / Step Functions 実行結果 |
+
 ## デプロイ
 
 ### 事前検証
