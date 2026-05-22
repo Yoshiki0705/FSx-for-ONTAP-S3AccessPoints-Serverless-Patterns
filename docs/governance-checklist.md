@@ -8,6 +8,13 @@
 
 > **重要**: 本リポジトリの AI/ML 処理出力は **意思決定支援** であり、最終判断は人間が行うことを前提としています。医療診断、行政処分、法的判断など、業務影響の大きい領域では **Human-in-the-loop** を推奨します。
 
+### Responsible AI Review Principle
+
+These patterns treat AI outputs as assistive signals, not final decisions. The goal is to make AI-assisted processing:
+- **Reviewable** — outputs can be inspected before action
+- **Attributable** — processing lineage traces input to output
+- **Auditable** — review decisions are recorded with who/when/what
+
 ### Executive Summary（意思決定者向け）
 
 本チェックリストは、以下の観点が設計に組み込まれていることを確認するためのものです:
