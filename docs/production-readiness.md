@@ -6,6 +6,14 @@
 
 本ドキュメントは、PoC から本番環境への段階的な成熟度モデルを定義します。各レベルで必要な成果物、設計項目、運用項目を明確にし、「今どこにいて、次に何をすべきか」を判断できるようにします。
 
+### Field-Ready Baseline
+
+Phase 13 は最終到達点ではなく、以下のための実用的なベースラインです:
+- **Informed evaluation** — 評価に必要な情報が揃っている
+- **Governed experimentation** — 統制された試行錯誤が可能
+- **Structured delivery** — 構造化されたデリバリーパスがある
+- **Production-readiness planning** — 本番化計画の材料が揃っている
+
 ---
 
 ## Maturity Model
