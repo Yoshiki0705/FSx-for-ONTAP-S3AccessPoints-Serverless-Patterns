@@ -196,6 +196,43 @@ aws stepfunctions start-execution \
 | [ネットワーク設計](docs/network-design-bgp-vip.md) | BGP/VIP/DNS 設計 |
 | [FAQ](docs/flexcache-anycast-faq.md) | よくある質問 |
 
+## Anycast Terminology
+
+In this sample, "Anycast" refers to application-level routing decisions based on cache health and availability. It is not intended to replace network-layer anycast design.
+
+## DR Scope
+
+This pattern focuses on read-path resilience and cache-aware routing. It does not replace a full DR strategy such as backup, replication, RPO/RTO design, and operational recovery planning.
+
+## Suggested Validation Metrics
+
+- Route decision latency
+- Cache health detection time
+- Origin unavailable detection time
+- Time to switch active read path
+- Read-path recovery behavior
+- False positive / false negative health check behavior
+- DynamoDB routing table update latency
+- Audit event completeness for route changes
+
+## Success Metrics
+
+### Outcome
+Provide faster and more resilient read access for distributed teams without requiring a full independent copy of the dataset.
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| Route decision latency | < 500 ms |
+| Cache health detection time | < 30 seconds |
+| Read-path recovery time | < 60 seconds |
+| Successful reads from healthy cache path | > 99% |
+| Audit event completeness | 100% |
+| Human Review 対象率 | Route changes require approval in regulated environments |
+
+### Measurement Method
+DynamoDB routing table updates, CloudWatch Logs, ONTAP REST API health check results, Step Functions execution history, generated audit records.
+
 ## 関連リンク
 
 - [サポートマトリックス](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
