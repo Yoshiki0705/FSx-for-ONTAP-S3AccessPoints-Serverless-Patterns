@@ -143,6 +143,30 @@ DynamoDB（または組織の監査ログ基盤）に記録する項目の例:
 | 改ざん防止 | S3 Object Lock への定期エクスポート推奨 |
 | 既存基盤連携 | CloudWatch Logs → S3 → 既存 SIEM、または EventBridge → 既存監査基盤 |
 
+### 改ざん防止の実装オプション
+
+| オプション | 説明 | 適用シナリオ |
+|-----------|------|------------|
+| S3 Object Lock (Governance/Compliance) | DynamoDB → Export → S3 (Object Lock) | 長期保管・改ざん防止が必須 |
+| CloudTrail Lake | API 呼び出し履歴の不変ストア | AWS API レベルの監査 |
+| DynamoDB Streams → Kinesis → S3 | リアルタイムアーカイブ | 高頻度レビューの即時保全 |
+| SIEM 連携 (Splunk, Datadog 等) | 既存監査基盤への転送 | 組織の統合ログ管理 |
+| CloudWatch Logs → S3 (Lifecycle) | ログの長期保管 | コスト効率重視 |
+
+### 職務分掌（Separation of Duties）
+
+監査証跡のアクセス権限は、以下の職務分掌を前提に設計してください:
+
+| ロール | 権限 | 説明 |
+|--------|------|------|
+| AI 処理実行者 | Write (レコード作成) | Lambda / Step Functions が自動記録 |
+| レビュー担当者 | Write (判定記録) | Human Review の結果を記録 |
+| 承認担当者 | Write (承認記録) | エスカレーション案件の最終承認 |
+| 監査担当者 | Read-only | 監査時の参照・レポート生成 |
+| システム運用担当 | 管理 (テーブル設定) | DynamoDB 設定・バックアップ管理 |
+
+> **原則**: レビューする人と承認する人は同一であってはならない。監査する人は処理・レビュー・承認のいずれも行わない。
+
 > **注意**: 本リポジトリのサンプル実装では DynamoDB を使用していますが、これは一例です。実案件では組織の既存監査ログ基盤（SIEM、Splunk、CloudTrail Lake 等）に合わせて保存先を選択してください。
 
 ---
