@@ -161,6 +161,8 @@ Step Functions 実行履歴、Comprehend PII 検出結果、墨消し前後 diff
 | 監査証跡 | 個人記録 | DynamoDB (who/when/what) + S3 Object Lock |
 | 保管期限管理 | 手動 | 自動追跡 + アラート |
 
+> **注記**: UC16 の sample run は合成または非機微のサンプル文書を用いた検証であり、実際の行政文書や本番データを表すものではありません。本 sample run は処理パスの検証のみです。墨消し品質、Human Review の完全性、監査証跡の評価は、顧客固有の PoC で別途実施してください。
+
 ## デプロイ
 
 ### 事前検証
