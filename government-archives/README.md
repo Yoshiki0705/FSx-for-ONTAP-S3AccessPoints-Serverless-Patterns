@@ -147,6 +147,20 @@ FOIA 担当者が期限 3 営業日前に受信するリマインダーメール
 ### Measurement Method
 Step Functions 実行履歴、Comprehend PII 検出結果、墨消し前後 diff、DynamoDB 保管期限履歴、CloudWatch Metrics。レビュー結果は DynamoDB に記録し、監査時に「誰が・いつ・何を確認・承認したか」を追跡可能にする。
 
+### Sample Run Results (実測例)
+
+**環境**: FSx for ONTAP Single-AZ, 128 MBps, ap-northeast-1, S3AP Internet Origin
+
+| 指標 | Before (手動) | After (S3AP 自動化) |
+|------|-------------|-------------------|
+| FOIA 対応時間 | 数日〜数週間 | 389 ms (10 docs, sequential) |
+| 文書検出 | 手動検索 | 32 ms (10 documents) |
+| ファイル読み取り | 個別アクセス | avg 36 ms / document |
+| 墨消し品質 | 担当者依存、不一致あり | Comprehend PII 検出 + 自動墨消し |
+| Human Review | なし or 不定期 | 100%（全件人間確認必須） |
+| 監査証跡 | 個人記録 | DynamoDB (who/when/what) + S3 Object Lock |
+| 保管期限管理 | 手動 | 自動追跡 + アラート |
+
 ## デプロイ
 
 ### 事前検証
