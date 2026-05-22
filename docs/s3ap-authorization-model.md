@@ -153,6 +153,8 @@ S3 Access Point 作成時に指定するファイルシステム ID が、すべ
 ### 確認コマンド例
 
 ```bash
+# === AWS CLI ===
+
 # 1. S3 AP resource policy の確認
 aws s3control get-access-point-policy \
   --account-id <ACCOUNT_ID> \
@@ -174,9 +176,13 @@ aws cloudtrail lookup-events \
 aws fsx describe-data-repository-associations \
   --query 'Associations[?AssociationType==`S3_ACCESS_POINT`].{Name:ResourceARN,Identity:S3}'
 
+# === ONTAP CLI ===
+
 # 5. ONTAP 側: 対象パスの ACL / permission 確認 (UNIX)
 # SSH or ONTAP CLI 経由
 vserver security file-directory show -vserver <SVM_NAME> -path <PATH>
+
+# === VPC / Network ===
 
 # 6. VPC Endpoint policy 確認
 aws ec2 describe-vpc-endpoints \
