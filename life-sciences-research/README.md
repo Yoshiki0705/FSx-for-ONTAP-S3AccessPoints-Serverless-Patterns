@@ -101,3 +101,21 @@ life-sciences-research/
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
 - [業界・ワークロード マッピング](../docs/industry-workload-mapping.md)
 - [サポートマトリックス](../docs/support-matrix-fsx-ontap-flexcache-s3ap.md)
+
+
+## Success Metrics
+
+### Outcome
+研究データ（画像・シーケンス・論文）の自動分類・メタデータ抽出により、研究データ利活用を促進する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| 分類処理ファイル数 / 実行 | > 100 files |
+| 分類精度 | > 85% |
+| メタデータ抽出成功率 | > 90% |
+| 処理時間 / ファイル | < 30 秒 |
+| Human Review 対象率 | < 20%（分類不確実なデータ） |
+
+### Measurement Method
+Step Functions 実行履歴、分類結果メタデータ、CloudWatch Metrics。

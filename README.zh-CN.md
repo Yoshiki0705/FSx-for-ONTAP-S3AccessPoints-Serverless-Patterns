@@ -14,6 +14,10 @@
 
 **测试**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
 
+## Governance Disclaimer
+
+本仓库的治理文档旨在支持架构和运维审查，不能替代法务判断、合规评估、隐私评估或监管应对。
+
 ## 相关文章
 
 本仓库是以下文章中所述架构的实现示例：
