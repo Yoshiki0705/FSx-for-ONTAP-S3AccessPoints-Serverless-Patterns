@@ -14,6 +14,10 @@
 
 **測試**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
 
+## Governance Disclaimer
+
+本儲存庫的治理文件旨在支援架構和維運審查，不能替代法務判斷、合規評估、隱私評估或監管應對。
+
 ## 相關文章
 
 本儲存庫是以下文章中所述架構的實作範例：
