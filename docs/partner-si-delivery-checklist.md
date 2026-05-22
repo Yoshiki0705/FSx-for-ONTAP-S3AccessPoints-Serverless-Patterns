@@ -220,6 +220,83 @@ See [Production Readiness Exit Criteria](production-readiness.md#exit-criteria�
 
 ---
 
+---
+
+## FlexCache / FlexClone Pattern Mapping
+
+### By Industry
+
+| Industry | Pattern | Customer Question |
+|----------|---------|-------------------|
+| Cross-industry DR / distributed read | FC1 FlexCache Anycast/DR | "Do you need faster distributed read access without a full independent copy?" |
+| Media / VFX | FC2 Dynamic FlexCache Render | "Do you need per-job isolated cache for render workflows?" |
+| Enterprise Knowledge / GenAI | FC3 GenAI RAG | "Do you need permission-aware RAG over enterprise files?" |
+| Automotive / Manufacturing | FC4 Automotive CAE | "Do you need automated solver output analysis?" |
+| Life Sciences / Research | FC5 Life Sciences Research | "Do you need research data classification with controlled collaboration?" |
+| Gaming / Build Pipeline | FC6 Gaming Build Pipeline | "Do you need build asset QC and pipeline acceleration?" |
+
+### By Business Outcome
+
+| Outcome | Pattern |
+|---------|---------|
+| Faster distributed read access | FC1 |
+| Per-job isolated cache lifecycle | FC2 |
+| Permission-aware enterprise RAG preprocessing | FC3 |
+| Engineering workflow acceleration | FC4 |
+| Research data classification and controlled collaboration | FC5 |
+| Build asset quality control and pipeline acceleration | FC6 |
+
+> FlexCache/FlexClone patterns are optional extensions for customers who need distributed read access, dataset branching, cache lifecycle automation, or workload-specific acceleration. Not all customers need these patterns.
+
+---
+
+## Customer-Ready PoC Plan Template
+
+```markdown
+### Selected Use Case
+- UC:
+- Business context:
+- Stakeholders:
+  - Business sponsor:
+  - Technical owner:
+  - Security reviewer:
+  - Operations owner:
+  - Partner/SI delivery lead:
+
+### Architecture Option
+- Trigger mode:
+- Deployment profile:
+- Output destination:
+- FlexCache/FlexClone extension (if applicable):
+
+### Success Metrics
+- Outcome:
+- Metrics:
+- Measurement method:
+
+### Governance Considerations
+- Data classification:
+- Human review:
+- Audit evidence:
+- Approval owner:
+
+### Estimated Effort and Cost Assumptions
+- PoC duration:
+- Required roles:
+- AWS cost assumptions:
+- Partner/SI effort:
+
+### Next-Phase Criteria
+- Go criteria:
+- No-Go criteria:
+- Open risks:
+- Business sponsor approval:
+```
+
+> 上記テンプレートを顧客の業務要件に合わせてカスタマイズし、PoC 合意資料として使用してください。
+
+---
+
 ## UC 別 Success Metrics 一覧
 
 各 UC の Success Metrics（Outcome / Metrics / Measurement Method）へのリンク:

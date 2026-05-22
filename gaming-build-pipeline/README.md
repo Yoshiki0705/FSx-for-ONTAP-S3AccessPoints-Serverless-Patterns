@@ -114,3 +114,21 @@ gaming-build-pipeline/
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
 - [業界・ワークロード マッピング](../docs/industry-workload-mapping.md)
+
+
+## Success Metrics
+
+### Outcome
+ゲームアセット品質チェック・ログ分析の自動化により、ビルドパイプラインの品質管理を効率化する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| QC 処理アセット数 / 実行 | > 500 assets |
+| 品質チェック通過率 | > 95% |
+| ログ分析処理時間 | < 5 分 |
+| ビルド品質問題の早期検出率 | > 80% |
+| Human Review 対象率 | < 10%（品質不合格アセット） |
+
+### Measurement Method
+Step Functions 実行履歴、QC 結果メタデータ、ログ分析レポート、CloudWatch Metrics。

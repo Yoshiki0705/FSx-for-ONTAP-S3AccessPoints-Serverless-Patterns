@@ -14,6 +14,10 @@ Sammlung branchenspezifischer serverloser Automatisierungsmuster auf Basis von A
 
 **Tests**: 1.499+ Unit-/Property-Tests | 126 Testdateien | cfn-lint + ruff Validierung
 
+## Governance Disclaimer
+
+Die Governance-Dokumente in diesem Repository dienen der Unterstützung von Architektur- und Betriebsreviews. Sie ersetzen keine rechtlichen, Compliance-, Datenschutz- oder regulatorischen Bewertungen.
+
 ## Verwandter Artikel
 
 Dieses Repository liefert die Implementierungsbeispiele für die im folgenden Artikel beschriebene Architektur:
