@@ -136,6 +136,19 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 
 ---
 
+## Maturity Level と Success Metrics の対応
+
+| Level | 対応する Success Metrics | 測定の焦点 |
+|-------|------------------------|-----------|
+| Level 1 (Sandbox) | デプロイ成功、手動実行成功 | 動作確認 |
+| Level 2 (Scheduled) | 処理件数/実行、処理時間、エラー率 | 安定性確認 |
+| Level 3 (Monitored) | レイテンシ P90/P99、コスト/実行、アラート応答時間 | 性能・コスト可視化 |
+| Level 4 (Production) | SLO 達成率、Human Review 率、監査証跡完全性、コスト目標達成 | 運用品質 |
+
+> 各 UC の Success Metrics（Outcome / Metric / Measurement Method）は、上記の Level に応じて段階的に測定・評価してください。Level 1 では動作確認のみ、Level 4 では全指標の継続的モニタリングが必要です。
+
+---
+
 ## Exit Criteria（各レベル完了条件）
 
 ### Level 1 → Level 2 への移行条件
