@@ -6,6 +6,14 @@
 
 本チェックリストは、パートナーおよび SI が顧客に FSx for ONTAP S3 Access Points サーバーレスパターンを提案・設計・構築する際の確認項目を整理したものです。
 
+## How to Use This Checklist
+
+1. 最も近いユースケースまたは FlexCache/FlexClone パターンを特定する
+2. 関連する Success Metrics を確認する
+3. Customer-Ready PoC Plan Template をコピーする
+4. Sample Baseline を顧客固有の測定値に置き換える
+5. Go / No-Go 基準と次フェーズのオーナーシップを合意する
+
 ## 顧客ワークロード分類
 
 ### Step 1: データ特性の確認
