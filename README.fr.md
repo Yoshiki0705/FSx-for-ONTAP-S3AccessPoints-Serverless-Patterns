@@ -14,6 +14,10 @@ Collection de modèles d'automatisation serverless par secteur d'activité, expl
 
 **Tests** : 1 499+ tests unitaires/property | 126 fichiers de test | cfn-lint + ruff validation
 
+## Governance Disclaimer
+
+Les documents de gouvernance de ce dépôt sont destinés à soutenir la revue architecturale et opérationnelle. Ils ne remplacent pas les évaluations juridiques, de conformité, de confidentialité ou réglementaires.
+
 ## Article associé
 
 Ce dépôt fournit les exemples d'implémentation de l'architecture décrite dans l'article suivant :

@@ -14,6 +14,10 @@ Amazon FSx for NetApp ONTAP의 S3 Access Points를 활용한 업종별 서버리
 
 **테스트**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
 
+## Governance Disclaimer
+
+본 리포지토리의 거버넌스 문서는 아키텍처 및 운영 리뷰를 지원하기 위한 것입니다. 법무 판단, 컴플라이언스 평가, 프라이버시 평가, 규제 대응을 대체하지 않습니다.
+
 ## 관련 기사
 
 본 리포지토리는 다음 기사에서 해설한 아키텍처의 구현 예시입니다:

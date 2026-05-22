@@ -134,3 +134,21 @@ genai-rag-enterprise-files/
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md)
 - [業界・ワークロード マッピング](../docs/industry-workload-mapping.md)
+
+
+## Success Metrics
+
+### Outcome
+権限ベースの RAG 前処理により、データコピーなしでエンタープライズファイルを AI/ML に接続する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| チャンキング処理ファイル数 / 実行 | > 200 files |
+| ACL 抽出成功率 | > 95% |
+| Embedding 生成時間 | < 5 分 / 100 files |
+| Permission-aware フィルタリング精度 | > 99% |
+| Human Review 対象率 | < 10%（低信頼度チャンク） |
+
+### Measurement Method
+Step Functions 実行履歴、Bedrock Embedding レスポンス、ACL 抽出ログ、CloudWatch Metrics。
