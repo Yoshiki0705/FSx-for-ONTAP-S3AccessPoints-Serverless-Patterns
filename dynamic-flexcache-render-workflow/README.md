@@ -159,3 +159,21 @@ aws stepfunctions start-execution \
 - [業界・ワークロード マッピング](../docs/industry-workload-mapping.md)
 - [media-vfx/](../media-vfx/README.md)
 - [semiconductor-eda/](../semiconductor-eda/README.md)
+
+
+## Success Metrics
+
+### Outcome
+ジョブ単位の FlexCache 動的作成・削除により、レンダリング/EDA ワークフローの I/O 競合を回避し、コスト最適化を実現する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| FlexCache 作成時間 | < 30 seconds |
+| ジョブ完了時間の短縮 | > 20% |
+| FlexCache 削除成功率 | 100% |
+| コスト / ジョブ | 従来比 30% 削減 |
+| Human Review 対象率 | N/A（自動化パターン） |
+
+### Measurement Method
+Step Functions 実行履歴、ONTAP REST API レスポンス、CloudWatch Metrics、コスト比較。

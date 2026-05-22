@@ -14,6 +14,10 @@ Colección de patrones de automatización serverless por sector, basados en los 
 
 **Tests**: 1.499+ tests unitarios/property | 126 archivos de test | cfn-lint + ruff validation
 
+## Governance Disclaimer
+
+Los documentos de gobernanza de este repositorio están destinados a apoyar la revisión arquitectónica y operativa. No reemplazan las evaluaciones legales, de cumplimiento, de privacidad o regulatorias.
+
 ## Artículo relacionado
 
 Este repositorio proporciona los ejemplos de implementación de la arquitectura descrita en el siguiente artículo:

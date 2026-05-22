@@ -111,3 +111,21 @@ automotive-cae/
 - [semiconductor-eda/](../semiconductor-eda/README.md)
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
 - [業界・ワークロード マッピング](../docs/industry-workload-mapping.md)
+
+
+## Success Metrics
+
+### Outcome
+CAE シミュレーション結果の自動分析により、設計レビュー準備工数を削減する。
+
+### Metrics
+| メトリクス | 目標値（例） |
+|-----------|------------|
+| Solver output 解析ファイル数 / 実行 | > 50 files |
+| 品質チェック通過率 | > 90% |
+| Bedrock レポート生成時間 | < 3 分 |
+| 設計レビュー準備工数の削減 | > 40% |
+| Human Review 対象率 | < 15%（品質不合格ケース） |
+
+### Measurement Method
+Step Functions 実行履歴、Bedrock レポートメタデータ、CloudWatch Metrics。
