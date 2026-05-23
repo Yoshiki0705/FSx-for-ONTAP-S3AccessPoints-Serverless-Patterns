@@ -196,3 +196,10 @@ UC11 は以下のサービスを使用します:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 
 > Kinesis ストリーミングモードを有効化する場合、シャード料金がリージョンにより異なる点に注意してください。詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
+
+
+---
+
+## S3AP Compatibility
+
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。

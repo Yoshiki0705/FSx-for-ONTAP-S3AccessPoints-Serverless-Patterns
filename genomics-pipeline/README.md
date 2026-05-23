@@ -178,3 +178,10 @@ UC7 は以下のサービスを使用します:
 - [Amazon Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/what-is.html)
 - [FASTQ フォーマット仕様](https://en.wikipedia.org/wiki/FASTQ_format)
 - [VCF フォーマット仕様](https://samtools.github.io/hts-specs/VCFv4.3.pdf)
+
+
+---
+
+## S3AP Compatibility
+
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。

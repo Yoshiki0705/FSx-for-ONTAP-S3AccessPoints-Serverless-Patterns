@@ -370,3 +370,10 @@ graph TB
 - [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — ジョブ単位の FlexCache 動的作成・削除
 - [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — マルチリージョンクラウドバースト
 - [業界・ワークロード マッピング](../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
+
+
+---
+
+## S3AP Compatibility
+
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
