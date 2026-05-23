@@ -245,6 +245,126 @@ FSx CloudWatch metrics: DataReadBytes, NetworkThroughput (同時取得)
 
 > **重要**: 本ドキュメントの結果はサービス上限値ではありません。特定のテスト環境における sizing reference です。
 
+---
+
+## Operational Note: S3 AP Availability During Throughput Capacity Change
+
+**観測日**: 2026-05-23
+**環境**: fs-09ffe72a3b2b7dbbd (SINGLE_AZ_1, ap-northeast-1)
+
+### 観測事象
+
+FSx throughput capacity を 128 MBps → 256 MBps に変更した際、以下の挙動を観測:
+
+| タイムライン | 事象 |
+|------------|------|
+| T+0 min | `update-file-system` 実行、Status: IN_PROGRESS |
+| T+25 min | ThroughputCapacity が 256 MBps に変更完了 |
+| T+25-60 min | S3 AP が `ServiceUnavailable` または `ConnectionClosedError` を返す |
+| T+60 min+ | 128 MBps への revert を開始 |
+
+**追加観測** (revert 後):
+
+| タイムライン | 事象 |
+|------------|------|
+| revert 完了後 +5 min | S3 AP は依然として `ServiceUnavailable` |
+| revert 完了後 +10 min | 同上 — throughput 変更前から問題が存在していた可能性 |
+
+**結論**: S3 AP の `ServiceUnavailable` は throughput 変更との因果関係が不明。CloudWatch メトリクスに monitor Lambda の成功記録がないため、変更前の正常動作を確認できない。AWS サポートへの報告を推奨。
+
+### 影響範囲
+
+- **全 SVM の全 S3 AP** が影響を受けた（FSxN_OnPre SVM、verification-svm の両方）
+- NetworkOrigin (Internet/VPC) に関係なく発生
+- ファイルシステム自体は `AVAILABLE` 状態のまま
+- NFS/SMB アクセスへの影響は未確認（EC2 接続不可のため）
+
+### 推奨事項
+
+- Throughput capacity 変更時は **S3 AP 経由のワークロードに影響が出る** ことを想定する
+- 変更はメンテナンスウィンドウ中に実施することを推奨
+- S3 AP の復旧には throughput 変更完了後さらに時間が必要な場合がある
+- ベンチマーク実施時は、throughput 変更後に S3 AP の正常動作を確認してから測定を開始する
+
+> **注意**: この観測は 1 回の変更操作に基づくものであり、再現性は未確認です。AWS ドキュメントには throughput 変更時の S3 AP への影響について明示的な記載はありません（2026-05-23 時点）。
+
+---
+
+## Benchmark Run ID Convention
+
+### 命名規則
+
+```
+s3ap-bench-{YYYY-MM-DD}-{seq}
+```
+
+- `YYYY-MM-DD`: 計測実施日
+- `seq`: 同日内の連番（001, 002, ...）
+- 例: `s3ap-bench-2026-05-23-001`
+
+### 固定条件テンプレート
+
+各ベンチマーク実行時に以下を記録する:
+
+```
+benchmark_run_id: s3ap-bench-YYYY-MM-DD-NNN
+Region: ap-northeast-1
+Lambda memory: 1769 MB (1 vCPU)
+Lambda architecture: arm64
+VPC path: [VPC 内 Lambda / VPC 外 Lambda]
+FSx Throughput Capacity: [128 / 256 / 512] MBps
+Object size: [1 KB / 1 MB / 5 MB / etc.]
+Iterations per data point: 50
+Statistics: p50, p90, p95, p99, min, max
+FSx CloudWatch metrics: DataReadBytes, NetworkThroughput (同時取得)
+```
+
+### 結果表との紐づけルール
+
+- 各結果テーブルの直下に `**benchmark_run_id**: s3ap-bench-YYYY-MM-DD-NNN` を記載する
+- 複数 run_id を比較する場合は、比較表に `run_id` 列を追加する
+- 同一 run_id 内の測定は同一条件で実施されたことを保証する
+
+---
+
+## Hypothesis: FSx Throughput Capacity と Practical Concurrency Point の関係
+
+### 仮説（検証前）
+
+**Statement**: Practical concurrency point（P99 が急激に悪化する前の実用的上限）は、FSx throughput capacity の増加に比例してシフトする。
+
+**根拠**: 128 MBps 構成では concurrency=10 が practical upper limit として観測された（`s3ap-bench-2026-05-23-001`）。1 MB × 10 concurrent = 10 MB/s の sustained read が 128 MBps の ~78% に相当する。この比率が一定であれば、throughput capacity の増加に伴い practical concurrency point も比例して増加するはずである。
+
+**予測**:
+
+| FSx Capacity | Predicted Practical Concurrency | Predicted P99 at Limit | Rationale |
+|-------------|-------------------------------|----------------------|-----------|
+| 128 MBps | 10 (observed) | ~420 ms (observed) | Baseline measurement |
+| 256 MBps | ~20 | ~400-500 ms | 2x capacity → 2x concurrency |
+| 512 MBps | ~40 | ~400-500 ms | 4x capacity → 4x concurrency |
+
+**検証方法**:
+- 各 capacity で concurrency=10/25/50 を測定
+- P99 の急激な悪化点（inflection point）を特定
+- FSx CloudWatch metrics (DataReadBytes, NetworkThroughput) との時系列相関を確認
+
+### 検証結果（検証後に追記）
+
+> TBD: 256/512 MBps 実測後に記入
+
+**Conclusion**: [仮説は支持された / 部分的に支持された / 棄却された]
+
+**Observed practical concurrency points**:
+
+| FSx Capacity | Observed Practical Concurrency | Observed P99 at Limit | Deviation from Prediction |
+|-------------|-------------------------------|----------------------|--------------------------|
+| 256 MBps | TBD | TBD | TBD |
+| 512 MBps | TBD | TBD | TBD |
+
+**Analysis**: TBD
+
+---
+
 ## 参考リンク
 
 - [S3AP Performance Considerations](s3ap-performance-considerations.md)
