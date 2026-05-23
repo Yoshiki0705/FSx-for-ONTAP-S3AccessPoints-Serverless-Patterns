@@ -21,9 +21,12 @@
 
 - ✅ FSx for ONTAP にファイルデータを保有している
 - ✅ ファイルデータに対するサーバーレス自動処理が必要
+- ✅ S3 API 経由の読み書き（GetObject, PutObject, ListObjectsV2 等）が必要
 - ✅ NTFS ACL / AD SID によるアクセス制御が必要（権限考慮型処理）
 - ✅ AI/ML（Bedrock, Textract, Comprehend, Rekognition）を活用したい
 - ✅ イベント駆動またはスケジュール実行でファイル処理を自動化したい
+
+> **Note**: S3 Access Points は読み取り専用ではありません。PutObject（最大 5 GB）、DeleteObject、MultipartUpload もサポートされています。ただし FSX_ONTAP ストレージクラスのみ、SSE-FSX 暗号化のみ等の制約があります。詳細は [S3AP Compatibility Notes](s3ap-compatibility-notes.md) を参照。
 
 ## How — PoC の進め方
 
