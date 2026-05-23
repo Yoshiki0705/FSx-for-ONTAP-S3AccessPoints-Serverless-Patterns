@@ -220,3 +220,10 @@ government-archives/
 ├── tests/                            # 52 pytest (Hypothesis 含む)
 └── README.md
 ```
+
+
+---
+
+## S3AP Compatibility
+
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。

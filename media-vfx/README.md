@@ -286,3 +286,10 @@ VFX レンダリングワークフローでは、render input assets（テクス
 | フレームあたり時間 | 15分 | 10分 | 33% |
 | WAN 転送量/ジョブ | 500GB | 50GB | 90% |
 | コスト/フレーム | $0.50 | $0.35 | 30% |
+
+
+---
+
+## S3AP Compatibility
+
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
