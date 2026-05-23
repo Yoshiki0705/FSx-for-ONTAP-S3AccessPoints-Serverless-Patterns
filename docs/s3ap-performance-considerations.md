@@ -6,6 +6,8 @@
 
 S3 Access Points for FSx for ONTAP 経由のデータアクセスは、FSx ファイルシステムのプロビジョンドスループットに依存します。本ドキュメントでは、パフォーマンス設計時に考慮すべき要素を整理します。
 
+> **重要**: 本ドキュメントの数値はサービス上限値ではありません。特定のテスト環境における sizing reference です。実案件では顧客固有のワークロード特性、ファイルサイズ分布、並列度、FSx throughput 構成で測定値を取得してください。
+
 > **AWS ドキュメント引用**: "Amazon S3 access points for FSx for ONTAP file systems deliver latency in the tens of milliseconds range, consistent with S3 bucket access. The throughput and requests per second you can drive to an Amazon FSx file system via the S3 API depends on the file system's provisioned throughput."
 > — [Accessing your data via Amazon S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 
