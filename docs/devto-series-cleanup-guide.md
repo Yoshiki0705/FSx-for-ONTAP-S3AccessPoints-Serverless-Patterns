@@ -27,6 +27,7 @@ This series covers the serverless patterns repository phases.
 | 6 | Phase 11 | Observability & Cost Optimization |
 | 7 | Phase 12 | Partner/SI Delivery Checklist |
 | 8 | Phase 13 | Field-Ready Reference Architecture |
+| 8 | Phase 13 | Field-Ready Reference Architecture |
 
 ### Series 2: "Permission-Aware RAG"
 
