@@ -180,6 +180,25 @@ Sandbox    →    Scheduled    →    Monitored    →    Production
 - [ ] コスト可視化が有効で、月次レビューが実施されている
 - [ ] セキュリティレビューが完了している
 
+### 運用上の注意事項（Level 3 以上）
+
+#### FSx Throughput Capacity 変更時の S3 AP 影響
+
+FSx for ONTAP の throughput capacity を変更すると、**S3 Access Points が一時的に利用不可**になる場合があります（Phase 14 で観測）。
+
+| 項目 | 詳細 |
+|------|------|
+| 影響範囲 | 同一ファイルシステム上の全 SVM の全 S3 AP |
+| エラー | `ServiceUnavailable` または `ConnectionClosedError` |
+| 復旧時間 | 不明（AWS サポートに確認中） |
+| NFS/SMB への影響 | 未確認（別途検証が必要） |
+
+**推奨事項**:
+- Throughput capacity 変更はメンテナンスウィンドウ中に実施する
+- S3 AP 経由のワークロードが停止しても許容できるタイミングで実施する
+- 変更後に S3 AP の正常動作を確認してからワークロードを再開する
+- CloudWatch Alarm で S3 AP ヘルスチェックを設定し、復旧を検知する
+
 ## Level 別チェックマトリクス
 
 ### CI/CD バッジとの対応
