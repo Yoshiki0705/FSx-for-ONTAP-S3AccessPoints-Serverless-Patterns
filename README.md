@@ -12,6 +12,21 @@
 
 Amazon FSx for NetApp ONTAP の S3 Access Points を活用した、業界別サーバーレス自動化パターン集です。
 
+## クイック選択: あなたのワークロードに合うパターンは？
+
+| ファイル特性 | 小ファイル多数<br/>(<1MB, 1000+/日) | 中ファイル<br/>(1-100MB) | 大ファイル少数<br/>(100MB-5GB) |
+|-------------|:---:|:---:|:---:|
+| **テキスト/PDF** | [UC1 法務](legal-compliance/) / [UC13 教育](education-research/) | [UC2 金融IDP](financial-idp/) / [UC16 政府](government-archives/) | [UC1 法務](legal-compliance/) |
+| **画像** | [UC11 小売](retail-catalog/) / [UC14 保険](insurance-claims/) | [UC5 医療DICOM](healthcare-dicom/) / [UC3 製造](manufacturing-analytics/) | [UC15 衛星](defense-satellite/) |
+| **構造化データ (CSV/JSON)** | [SAP](sap-erp-adjacent/) / [UC12 物流](logistics-ocr/) | [UC3 製造](manufacturing-analytics/) / [UC8 エネルギー](energy-seismic/) | [UC7 ゲノミクス](genomics-pipeline/) |
+| **CAD/EDA/BIM** | — | [UC10 建設BIM](construction-bim/) | [UC6 半導体EDA](semiconductor-eda/) / [FC4 CAE](automotive-cae/) |
+| **映像/LiDAR** | — | [UC4 メディアVFX](media-vfx/) | [UC9 自動運転](autonomous-driving/) |
+| **GIS/地理空間** | — | [UC17 スマートシティ](smart-city-geospatial/) | [UC17 スマートシティ](smart-city-geospatial/) |
+
+**FlexCache が必要な場合**: [FC1 AnyCast/DR](flexcache-anycast-dr/) | [FC2 動的レンダリング](dynamic-flexcache-render-workflow/) | [FC3 RAG](genai-rag-enterprise-files/)
+
+**デモモード（FSx ONTAP なし）で試す**: [デモモードガイド](docs/demo-mode-guide.md) | [カスタマイズガイド](docs/customization-guide.md) | [コスト試算](docs/cost-calculator.md)
+
 > **本リポジトリの位置づけ**: これは「設計判断を学ぶためのリファレンス実装」です。一部ユースケースは AWS 環境で E2E 検証済みであり、その他のユースケースも CloudFormation デプロイ、共通 Discovery Lambda、主要コンポーネントの動作確認を実施しています。PoC から本番環境への段階的な適用を想定し、コスト最適化、セキュリティ、エラーハンドリングの設計判断を具体的なコードで示すことを目的としています。
 
 **テスト**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation

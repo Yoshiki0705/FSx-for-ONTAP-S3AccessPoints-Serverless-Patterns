@@ -1,5 +1,50 @@
 # ローカルテスト クイックスタート
 
+## shared/ モジュールの解決方法
+
+本リポジトリの Lambda 関数は `shared/` ディレクトリの共通モジュールを使用しています。
+ローカルでテストする際は以下の方法で解決します。
+
+### ユニットテスト実行時
+
+```bash
+# リポジトリルートから実行（PYTHONPATH に自動追加される）
+python3 -m pytest semiconductor-eda/tests/ -v
+
+# または明示的に PYTHONPATH を設定
+PYTHONPATH=. python3 -m pytest sap-erp-adjacent/tests/ -v
+```
+
+### sam build 時
+
+SAM CLI は `CodeUri` で指定されたディレクトリを Lambda パッケージとしてビルドします。
+`shared/` モジュールは以下のいずれかの方法で解決されます:
+
+1. **Lambda Layer（推奨）**: `shared/` を Layer としてデプロイし、各関数から参照
+2. **requirements.txt 内の相対パス**: `../shared` を editable install
+3. **コピー方式**: `sam build` 前に `shared/` を各関数ディレクトリにコピー
+
+現在の実装では **conftest.py の sys.path 操作** でテスト時に解決し、
+**SAM build 時は Layer または CodeUri の親ディレクトリ指定** で解決しています。
+
+```python
+# conftest.py（各パターンの tests/ に配置）
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # リポジトリルート
+sys.path.insert(0, str(Path(__file__).parent.parent / "functions" / "discovery"))
+```
+
+### IDE 設定（VS Code / PyCharm）
+
+```json
+// .vscode/settings.json
+{
+  "python.analysis.extraPaths": [".", "./shared"],
+  "python.autoComplete.extraPaths": [".", "./shared"]
+}
+```
+
 ## Prerequisites チェック
 
 以下のコマンドで前提条件を確認してください:

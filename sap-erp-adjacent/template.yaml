@@ -19,11 +19,23 @@ Metadata:
 Parameters:
   S3AccessPointAlias:
     Type: String
-    Description: S3 Access Point alias or ARN for FSx for ONTAP volume
+    Description: >
+      S3 Access Point alias for FSx for ONTAP volume.
+      In DemoMode, this can be a regular S3 bucket name.
+
+  DemoMode:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Enable demo mode (no FSx ONTAP required).
+      When true, S3AccessPointAlias accepts a regular S3 bucket name,
+      and OntapSecretArn is not required.
 
   OntapSecretArn:
     Type: String
-    Description: Secrets Manager ARN containing ONTAP admin credentials
+    Default: ""
+    Description: Secrets Manager ARN containing ONTAP admin credentials (not required in DemoMode)
 
   ScheduleExpression:
     Type: String
@@ -56,6 +68,12 @@ Parameters:
     MinValue: 1
     MaxValue: 1000
     Description: Maximum number of files to process per execution
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]
+    Description: CloudWatch Logs retention period in days (default 90, compliance-sensitive use 2557 = 7 years)
 
 Globals:
   Function:
