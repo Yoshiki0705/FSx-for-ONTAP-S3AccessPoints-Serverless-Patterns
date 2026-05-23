@@ -173,3 +173,10 @@ defense-satellite/
 ├── tests/                     # 31 pytest + 3 resilience tests
 └── README.md
 ```
+
+
+---
+
+## S3AP Compatibility
+
+S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
