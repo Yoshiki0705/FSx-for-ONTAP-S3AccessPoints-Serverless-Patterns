@@ -132,3 +132,64 @@ gaming-build-pipeline/
 
 ### Measurement Method
 Step Functions 実行履歴、QC 結果メタデータ、ログ分析レポート、CloudWatch Metrics。
+
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+ゲームビルドパイプライン品質チェックの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 30,
+    "categories": {"texture": 15, "model": 8, "build_log": 7}
+  },
+  "texture_qc": [
+    {
+      "key": "builds/v2.1/textures/character_hero.dds",
+      "resolution": "4096x4096",
+      "format": "BC7",
+      "mip_levels": 12,
+      "quality_score": 0.95,
+      "issues": []
+    }
+  ],
+  "build_log_analysis": {
+    "total_warnings": 23,
+    "total_errors": 0,
+    "critical_issues": [],
+    "build_time_sec": 1847,
+    "asset_count": 1234
+  },
+  "report": {
+    "build_version": "v2.1",
+    "overall_quality": "PASS",
+    "textures_passed": 14,
+    "textures_failed": 1,
+    "recommendation": "1 texture below minimum resolution - review before release"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Performance Considerations
+
+- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
+- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
+- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
+- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

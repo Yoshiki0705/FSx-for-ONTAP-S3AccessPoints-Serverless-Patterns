@@ -222,6 +222,48 @@ UC11 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、Kinesis On-Demand モード |
 | 持続可能性 | 差分処理（変更画像のみ）、DynamoDB 状態管理 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+商品画像タグ付けパイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 50,
+    "prefix": "product-images/"
+  },
+  "tagging_results": [
+    {
+      "key": "product-images/SKU-12345.jpg",
+      "labels": [
+        {"name": "Dress", "confidence": 0.98},
+        {"name": "Red", "confidence": 0.95},
+        {"name": "Summer", "confidence": 0.87}
+      ],
+      "category": "Apparel/Dresses",
+      "catalog_metadata": {
+        "color": "red",
+        "season": "summer",
+        "style": "casual"
+      }
+    }
+  ],
+  "report": {
+    "total_processed": 50,
+    "auto_tagged": 47,
+    "requires_review": 3,
+    "output_prefix": "s3://output-bucket/catalog-metadata/"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

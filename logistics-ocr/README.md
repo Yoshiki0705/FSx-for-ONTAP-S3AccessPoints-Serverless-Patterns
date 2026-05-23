@@ -198,6 +198,48 @@ UC12 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、Textract ページ単位課金 |
 | 持続可能性 | オンデマンド実行、差分処理 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+配送伝票 OCR + 在庫画像分析の出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 30,
+    "categories": {"shipping_label": 20, "inventory_image": 10}
+  },
+  "ocr_results": [
+    {
+      "key": "labels/waybill-2026-001.pdf",
+      "tracking_number": "1Z999AA10123456784",
+      "sender": "東京倉庫",
+      "recipient": "大阪支店",
+      "weight_kg": 12.5,
+      "confidence": 0.96
+    }
+  ],
+  "inventory_analysis": [
+    {
+      "key": "inventory/shelf-A3.jpg",
+      "item_count": 24,
+      "occupancy_pct": 75,
+      "anomalies": ["misplaced_item_detected"]
+    }
+  ],
+  "route_optimization": {
+    "suggested_route": "Tokyo → Nagoya → Osaka",
+    "estimated_savings_pct": 12
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

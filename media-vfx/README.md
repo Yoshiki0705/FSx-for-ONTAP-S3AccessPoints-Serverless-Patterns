@@ -311,6 +311,42 @@ VFX レンダリングワークフローでは、render input assets（テクス
 | コスト最適化 | サーバーレス、CloudFront キャッシュ活用 |
 | 持続可能性 | オンデマンド実行、CDN によるオリジン負荷軽減 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+VFX レンダリング品質チェックの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 48,
+    "prefix": "renders/shot-042/"
+  },
+  "quality_check": [
+    {
+      "key": "renders/shot-042/frame-0001.exr",
+      "resolution": "4096x2160",
+      "color_space": "ACEScg",
+      "quality_score": 0.94,
+      "issues": [],
+      "cloudfront_url": "https://d1234.cloudfront.net/delivery/shot-042/frame-0001.exr"
+    }
+  ],
+  "delivery": {
+    "total_frames": 48,
+    "passed_qc": 46,
+    "failed_qc": 2,
+    "cloudfront_distribution": "d1234.cloudfront.net"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

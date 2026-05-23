@@ -195,6 +195,46 @@ UC10 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、Textract ページ単位課金 |
 | 持続可能性 | オンデマンド実行、差分処理 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+BIM モデル管理パイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 8,
+    "prefix": "bim-models/"
+  },
+  "ifc_metadata": [
+    {
+      "key": "bim-models/building-A-rev3.ifc",
+      "schema_version": "IFC4",
+      "element_count": 4521,
+      "building_storeys": 5,
+      "last_modified_by": "architect-team"
+    }
+  ],
+  "version_diff": {
+    "compared": "rev2 → rev3",
+    "added_elements": 45,
+    "modified_elements": 12,
+    "deleted_elements": 3
+  },
+  "safety_compliance": {
+    "checks_passed": 28,
+    "checks_failed": 2,
+    "issues": ["fire_exit_width_insufficient", "handrail_height_below_standard"]
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

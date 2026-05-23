@@ -299,6 +299,45 @@ UC1 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス（使用時のみ課金）、条件付き VPC Endpoint |
 | 持続可能性 | オンデマンド実行、不要リソースの自動停止 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+Step Functions 実行完了時の最終出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 549,
+    "prefix": "legal-docs/",
+    "timestamp": 1716480000
+  },
+  "acl_collection": {
+    "processed": 549,
+    "acl_records_written": 2847,
+    "output_prefix": "s3://output-bucket/acl-data/"
+  },
+  "athena_analysis": {
+    "findings": {
+      "excessive_permissions": 12,
+      "stale_access": 34,
+      "policy_violations": 3
+    },
+    "query_execution_id": "a1b2c3d4-..."
+  },
+  "report_generation": {
+    "report_key": "reports/compliance-2026-05-23T09:00:00.md",
+    "total_findings": 49,
+    "sns_message_id": "msg-12345..."
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

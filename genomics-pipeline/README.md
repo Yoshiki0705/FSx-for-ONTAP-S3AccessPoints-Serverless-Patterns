@@ -204,6 +204,46 @@ UC7 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス（使用時のみ課金）、Lambda メモリ最適化 |
 | 持続可能性 | オンデマンド実行、差分処理 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+ゲノミクスバリアント解析パイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 8,
+    "prefix": "genomics/samples/"
+  },
+  "qc_results": [
+    {
+      "key": "genomics/samples/sample-001.fastq.gz",
+      "total_reads": 25000000,
+      "q30_pct": 92.5,
+      "gc_content_pct": 48.2,
+      "pass_qc": true
+    }
+  ],
+  "variant_aggregation": {
+    "total_variants": 4523,
+    "snps": 3891,
+    "indels": 632,
+    "novel_variants": 127
+  },
+  "athena_analysis": {
+    "clinvar_matches": 15,
+    "high_impact_variants": 3,
+    "query_execution_id": "qe-xyz789..."
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

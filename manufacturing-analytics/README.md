@@ -274,6 +274,45 @@ UC3 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、Glue DPU 自動スケーリング |
 | 持続可能性 | オンデマンド実行、データライフサイクル管理 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+センサーデータ ETL + 画像分析の出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 150,
+    "categories": {"csv_sensor": 120, "image_inspection": 30}
+  },
+  "etl_results": {
+    "records_processed": 45000,
+    "anomalies_detected": 7,
+    "output_table": "manufacturing_metrics"
+  },
+  "image_analysis": [
+    {
+      "key": "inspection/line-A/frame-001.jpg",
+      "defect_detected": true,
+      "defect_type": "scratch",
+      "confidence": 0.92,
+      "bounding_box": {"x": 120, "y": 80, "w": 45, "h": 30}
+    }
+  ],
+  "athena_summary": {
+    "oee_score": 0.87,
+    "defect_rate_pct": 2.3,
+    "query_execution_id": "qe-abc123..."
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

@@ -196,6 +196,50 @@ UC14 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、Textract ページ単位課金 |
 | 持続可能性 | オンデマンド実行、差分処理 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+損害査定パイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 8,
+    "categories": {"damage_photo": 5, "estimate_doc": 3}
+  },
+  "damage_assessment": [
+    {
+      "key": "claims/CLM-2026-001/photo-front.jpg",
+      "damage_severity": "moderate",
+      "damage_type": "dent",
+      "affected_area": "front_bumper",
+      "confidence": 0.91,
+      "estimated_repair_cost_jpy": 150000
+    }
+  ],
+  "estimate_ocr": [
+    {
+      "key": "claims/CLM-2026-001/repair-estimate.pdf",
+      "total_amount": 180000,
+      "parts_cost": 120000,
+      "labor_cost": 60000,
+      "vendor": "オートリペア東京"
+    }
+  ],
+  "correlation_report": {
+    "claim_id": "CLM-2026-001",
+    "ai_estimate_vs_vendor": {"difference_pct": 16.7, "status": "WITHIN_THRESHOLD"},
+    "recommendation": "approve_with_standard_review"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

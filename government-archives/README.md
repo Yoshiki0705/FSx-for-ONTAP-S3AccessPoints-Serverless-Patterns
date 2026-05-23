@@ -247,6 +247,51 @@ government-archives/
 | コスト最適化 | サーバーレス、OpenSearch Serverless、条件付きインデックス |
 | 持続可能性 | NARA GRS 準拠、保存期間管理、自動廃棄スケジュール |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+公文書アーカイブ・FOIA 処理の出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 25,
+    "prefix": "archives/incoming/"
+  },
+  "classification": [
+    {
+      "key": "archives/incoming/memo-2026-001.pdf",
+      "record_type": "memorandum",
+      "retention_schedule": "GRS 5.2 - 7 years",
+      "sensitivity": "CUI",
+      "pii_detected": true
+    }
+  ],
+  "redaction": {
+    "total_redacted": 25,
+    "pii_fields_removed": 89,
+    "redaction_types": {"name": 34, "ssn": 12, "address": 28, "phone": 15},
+    "audit_hash": "sha256:d4e5f6..."
+  },
+  "foia_tracking": {
+    "request_id": "FOIA-2026-0042",
+    "deadline_date": "2026-06-12",
+    "business_days_remaining": 15,
+    "status": "IN_PROCESSING"
+  },
+  "search_index": {
+    "documents_indexed": 25,
+    "opensearch_collection": "gov-archives-collection"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

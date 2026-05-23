@@ -199,6 +199,46 @@ defense-satellite/
 | コスト最適化 | サーバーレス、SageMaker スポット、タイル単位処理 |
 | 持続可能性 | オンデマンド実行、差分変化検出 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+衛星画像解析パイプラインの出力例 (Human Review 必須):
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 4,
+    "prefix": "satellite/imagery/"
+  },
+  "tiling": {
+    "input_key": "satellite/imagery/scene-2026-05-23.nitf",
+    "tiles_generated": 64,
+    "tile_size_px": 512,
+    "cog_output": "s3://output-bucket/tiles/scene-2026-05-23/"
+  },
+  "object_detection": {
+    "objects_detected": 12,
+    "categories": {"vehicle": 8, "structure": 3, "vessel": 1},
+    "confidence_threshold": 0.85,
+    "requires_human_review": true
+  },
+  "change_detection": {
+    "baseline_date": "2026-05-16",
+    "comparison_date": "2026-05-23",
+    "changes_detected": 3,
+    "change_areas_km2": [0.02, 0.05, 0.01]
+  },
+  "human_review_status": "PENDING",
+  "classification_level": "UNCLASSIFIED_SAMPLE"
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

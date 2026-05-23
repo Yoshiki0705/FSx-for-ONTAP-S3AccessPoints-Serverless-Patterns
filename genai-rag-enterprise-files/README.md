@@ -152,3 +152,54 @@ genai-rag-enterprise-files/
 
 ### Measurement Method
 Step Functions 実行履歴、Bedrock Embedding レスポンス、ACL 抽出ログ、CloudWatch Metrics。
+
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+Permission-aware RAG パイプラインの出力例:
+
+```json
+{
+  "embedding_pipeline": {
+    "files_processed": 50,
+    "chunks_generated": 320,
+    "embeddings_stored": 320,
+    "vector_db": "opensearch_serverless"
+  },
+  "query_result": {
+    "query": "2026年度の予算計画について教えてください",
+    "user_id": "user-001",
+    "permitted_files": 35,
+    "filtered_files": 15,
+    "relevant_chunks": 5,
+    "answer": "2026年度の予算計画では、IT投資として前年比15%増の...",
+    "sources": [
+      {"file": "budget/2026-plan.pdf", "chunk_id": 12, "score": 0.94},
+      {"file": "budget/2026-summary.docx", "chunk_id": 3, "score": 0.89}
+    ],
+    "confidence": 0.91
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Performance Considerations
+
+- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
+- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
+- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
+- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

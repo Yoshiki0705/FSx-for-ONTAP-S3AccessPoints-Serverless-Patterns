@@ -280,6 +280,41 @@ UC5 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、Comprehend Medical ページ単位課金 |
 | 持続可能性 | オンデマンド実行、匿名化済みデータの再利用 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+DICOM 匿名化パイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 12,
+    "prefix": "dicom-inbox/"
+  },
+  "anonymization": [
+    {
+      "key": "dicom-inbox/study-001/series-001.dcm",
+      "pii_detected": ["PatientName", "PatientID", "InstitutionName"],
+      "pii_removed": 3,
+      "anonymized_key": "anonymized/study-001/series-001.dcm",
+      "integrity_hash": "sha256:a1b2c3..."
+    }
+  ],
+  "report": {
+    "total_files": 12,
+    "anonymized": 12,
+    "pii_fields_removed": 36,
+    "compliance_status": "HIPAA_SAFE_HARBOR_COMPLIANT"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

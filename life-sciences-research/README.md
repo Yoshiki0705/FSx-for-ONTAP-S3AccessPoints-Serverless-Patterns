@@ -119,3 +119,60 @@ life-sciences-research/
 
 ### Measurement Method
 Step Functions 実行履歴、分類結果メタデータ、CloudWatch Metrics。
+
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+ライフサイエンス研究データ分類パイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 20,
+    "categories": {"microscopy": 8, "sequence": 7, "research_pdf": 5}
+  },
+  "classification": [
+    {
+      "key": "research/experiment-001/image-confocal.tiff",
+      "data_type": "confocal_microscopy",
+      "resolution": "2048x2048",
+      "channels": 4,
+      "metadata_extracted": true
+    },
+    {
+      "key": "research/experiment-001/reads.fastq.gz",
+      "data_type": "rna_seq",
+      "read_count": 15000000,
+      "quality_score_avg": 35.2
+    }
+  ],
+  "report": {
+    "total_classified": 20,
+    "categories_found": 3,
+    "storage_recommendation": "archive microscopy raw data after 90 days"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Performance Considerations
+
+- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
+- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
+- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
+- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

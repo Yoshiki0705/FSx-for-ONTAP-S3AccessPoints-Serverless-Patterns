@@ -96,6 +96,45 @@ Edit `functions/processing/index.py` to customize the summarization prompt for y
 - [Deployment Profiles](../docs/deployment-profiles.md) — Production configuration options
 
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+SAP/ERP ファイル処理ワークフローの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 15,
+    "prefix": "idoc-export/",
+    "categories": {"sap_idoc": 8, "hulft_transfer": 4, "data_extract": 3}
+  },
+  "processing": [
+    {
+      "key": "idoc-export/ORDERS_20260523_001.idoc",
+      "status": "completed",
+      "category": "sap_idoc",
+      "summary": "受注 IDoc (ORDERS05)。取引先: 株式会社サンプル、注文番号: PO-2026-001、金額: 2,500,000 JPY",
+      "document_type": "ORDERS05",
+      "key_fields": ["BELNR", "KUNNR", "NETWR", "WAERK"]
+    }
+  ],
+  "report": {
+    "total_files": 15,
+    "succeeded": 14,
+    "failed": 1,
+    "success_rate_pct": 93.3,
+    "category_breakdown": {"sap_idoc": 8, "hulft_transfer": 4, "data_extract": 3},
+    "report_key": "reports/sap-erp-summary-1716480000.json"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note
@@ -107,3 +146,13 @@ Edit `functions/processing/index.py` to customize the summarization prompt for y
 ## S3AP Compatibility
 
 S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+---
+
+## Performance Considerations
+
+- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
+- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
+- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
+- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。

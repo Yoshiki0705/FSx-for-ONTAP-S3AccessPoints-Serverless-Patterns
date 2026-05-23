@@ -223,6 +223,48 @@ smart-city-geospatial/
 | コスト最適化 | サーバーレス、SageMaker スポット、DynamoDB 時系列 |
 | 持続可能性 | 差分変化検出、OGC 標準準拠 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+地理空間データ解析パイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 10,
+    "formats": {"geotiff": 4, "shapefile": 3, "geojson": 2, "geopackage": 1}
+  },
+  "crs_normalization": {
+    "converted": 7,
+    "target_crs": "EPSG:4326",
+    "already_correct": 3
+  },
+  "land_use_classification": {
+    "total_area_km2": 45.2,
+    "categories": {
+      "residential": 18.5,
+      "commercial": 8.2,
+      "industrial": 5.1,
+      "green_space": 10.4,
+      "water": 3.0
+    }
+  },
+  "risk_mapping": {
+    "flood_risk_zones": 3,
+    "earthquake_risk_zones": 2,
+    "landslide_risk_zones": 1,
+    "output_geojson": "s3://output-bucket/risk-maps/combined-2026-05-23.geojson"
+  },
+  "inspire_compliance": true
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

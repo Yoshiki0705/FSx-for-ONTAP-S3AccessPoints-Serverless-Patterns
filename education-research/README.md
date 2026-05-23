@@ -197,6 +197,47 @@ UC13 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、Comprehend バッチ処理 |
 | 持続可能性 | オンデマンド実行、差分処理（新規論文のみ） |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+論文 PDF 分類 + 引用ネットワーク分析の出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 15,
+    "prefix": "papers/"
+  },
+  "classification": [
+    {
+      "key": "papers/deep-learning-survey-2026.pdf",
+      "category": "Computer Science / Machine Learning",
+      "keywords": ["deep learning", "transformer", "attention"],
+      "language": "en",
+      "confidence": 0.94
+    }
+  ],
+  "citation_network": {
+    "nodes": 15,
+    "edges": 42,
+    "most_cited": "papers/attention-is-all-you-need.pdf",
+    "clusters": 3,
+    "adjacency_list_key": "s3://output-bucket/citations/network.json"
+  },
+  "summary": {
+    "report_key": "reports/research-summary-2026-05-23.md",
+    "total_classified": 15,
+    "categories_found": 4
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

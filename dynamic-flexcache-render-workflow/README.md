@@ -177,3 +177,57 @@ aws stepfunctions start-execution \
 
 ### Measurement Method
 Step Functions 実行履歴、ONTAP REST API レスポンス、CloudWatch Metrics、コスト比較。
+
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+FlexCache 動的プロビジョニング + レンダリングジョブの出力例:
+
+```json
+{
+  "flexcache_provision": {
+    "cache_name": "render-job-2026-0523-001",
+    "origin_volume": "vfx-assets-vol1",
+    "cache_size_gb": 100,
+    "status": "online",
+    "provision_time_sec": 45
+  },
+  "job_execution": {
+    "job_id": "render-2026-0523-001",
+    "frames_total": 240,
+    "frames_completed": 240,
+    "status": "completed",
+    "duration_sec": 1800
+  },
+  "cleanup": {
+    "cache_deleted": true,
+    "cleanup_time_sec": 12
+  },
+  "cost_estimate": {
+    "cache_hours": 0.5,
+    "estimated_cost_usd": 0.15
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Performance Considerations
+
+- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
+- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
+- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
+- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

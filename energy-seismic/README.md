@@ -191,6 +191,45 @@ UC8 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス（使用時のみ課金）、部分読み取りで転送量削減 |
 | 持続可能性 | オンデマンド実行、差分処理 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+地震探査データ解析の出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 3,
+    "prefix": "seismic/surveys/"
+  },
+  "seismic_metadata": [
+    {
+      "key": "seismic/surveys/line-2026-A.segy",
+      "format": "SEG-Y Rev 1",
+      "trace_count": 12000,
+      "sample_interval_us": 2000,
+      "coordinate_system": "WGS84/UTM Zone 54N"
+    }
+  ],
+  "anomaly_detection": {
+    "anomalies_found": 2,
+    "types": ["amplitude_spike", "trace_gap"],
+    "severity": "medium"
+  },
+  "compliance_report": {
+    "report_key": "reports/seismic-compliance-2026-05-23.json",
+    "regulatory_status": "COMPLIANT",
+    "data_retention_days": 2555
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

@@ -288,6 +288,49 @@ UC2 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス（使用時のみ課金）、Textract ページ単位課金 |
 | 持続可能性 | オンデマンド実行、不要リソースの自動停止 |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+帳票 OCR → エンティティ抽出の出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 25,
+    "prefix": "invoices/"
+  },
+  "processing": [
+    {
+      "key": "invoices/INV-2026-001.pdf",
+      "ocr_result": {
+        "document_type": "invoice",
+        "confidence": 0.97
+      },
+      "entities": {
+        "vendor_name": "株式会社サンプル",
+        "invoice_number": "INV-2026-001",
+        "amount": "1,234,567",
+        "currency": "JPY",
+        "due_date": "2026-06-30"
+      },
+      "summary": "サンプル社からの請求書。金額 1,234,567 円、支払期限 2026/6/30。"
+    }
+  ],
+  "report": {
+    "total_processed": 25,
+    "succeeded": 24,
+    "failed": 1,
+    "output_prefix": "s3://output-bucket/extracted/"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

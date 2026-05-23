@@ -118,7 +118,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${AWS::StackName}-discovery
-      Handler: index.handler
+      Handler: handler.handler
       CodeUri: functions/discovery/
       Description: >
         Discovers new/modified files on FSx for ONTAP via S3 Access Point
@@ -137,7 +137,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${AWS::StackName}-processing
-      Handler: index.handler
+      Handler: handler.handler
       CodeUri: functions/processing/
       Description: >
         Processes each discovered file: reads content via S3 AP,
@@ -162,7 +162,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${AWS::StackName}-report
-      Handler: index.handler
+      Handler: handler.handler
       CodeUri: functions/report/
       Description: >
         Generates execution summary report and sends SNS notification
@@ -176,7 +176,7 @@ Resources:
         - S3CrudPolicy:
             BucketName: !Ref OutputBucketName
         - SNSPublishMessagePolicy:
-            TopicArn: !Ref NotificationTopic
+            TopicName: !GetAtt NotificationTopic.TopicName
 
   # ============================================================
   # Step Functions State Machine
@@ -185,82 +185,11 @@ Resources:
     Type: AWS::Serverless::StateMachine
     Properties:
       Name: !Sub ${AWS::StackName}-workflow
-      DefinitionBody:
-        Comment: SAP/ERP Adjacent File Processing Workflow
-        StartAt: DiscoverFiles
-        States:
-          DiscoverFiles:
-            Type: Task
-            Resource: !GetAtt DiscoveryFunction.Arn
-            ResultPath: $.discovery
-            Next: CheckFilesFound
-            Retry:
-              - ErrorEquals: ["States.TaskFailed"]
-                IntervalSeconds: 30
-                MaxAttempts: 2
-                BackoffRate: 2
-            Catch:
-              - ErrorEquals: ["States.ALL"]
-                Next: ReportError
-                ResultPath: $.error
-
-          CheckFilesFound:
-            Type: Choice
-            Choices:
-              - Variable: $.discovery.file_count
-                NumericGreaterThan: 0
-                Next: ProcessFiles
-            Default: NoFilesFound
-
-          NoFilesFound:
-            Type: Pass
-            Result:
-              status: "NO_FILES"
-              message: "No new files found matching prefix"
-            ResultPath: $.processing
-            Next: GenerateReport
-
-          ProcessFiles:
-            Type: Map
-            ItemsPath: $.discovery.files
-            MaxConcurrency: 5
-            ResultPath: $.processing
-            Iterator:
-              StartAt: ProcessSingleFile
-              States:
-                ProcessSingleFile:
-                  Type: Task
-                  Resource: !GetAtt ProcessingFunction.Arn
-                  End: true
-                  Retry:
-                    - ErrorEquals: ["States.TaskFailed"]
-                      IntervalSeconds: 10
-                      MaxAttempts: 2
-                      BackoffRate: 2
-            Next: GenerateReport
-            Catch:
-              - ErrorEquals: ["States.ALL"]
-                Next: ReportError
-                ResultPath: $.error
-
-          GenerateReport:
-            Type: Task
-            Resource: !GetAtt ReportFunction.Arn
-            ResultPath: $.report
-            End: true
-            Retry:
-              - ErrorEquals: ["States.TaskFailed"]
-                IntervalSeconds: 5
-                MaxAttempts: 2
-
-          ReportError:
-            Type: Task
-            Resource: !GetAtt ReportFunction.Arn
-            Parameters:
-              error.$: $.error
-              status: "ERROR"
-            End: true
-
+      DefinitionUri: statemachine/workflow.asl.json
+      DefinitionSubstitutions:
+        DiscoveryFunctionArn: !GetAtt DiscoveryFunction.Arn
+        ProcessingFunctionArn: !GetAtt ProcessingFunction.Arn
+        ReportFunctionArn: !GetAtt ReportFunction.Arn
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref DiscoveryFunction

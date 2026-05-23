@@ -235,6 +235,46 @@ UC9 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、SageMaker スポットインスタンス対応 |
 | 持続可能性 | オンデマンド実行、差分処理（新規フレームのみ） |
 
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+自動運転データ前処理パイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 200,
+    "categories": {"video": 50, "lidar": 100, "radar": 50}
+  },
+  "frame_extraction": {
+    "total_frames": 1500,
+    "extracted_from": 50,
+    "fps": 30
+  },
+  "object_detection": [
+    {
+      "frame_id": "frame-0001",
+      "objects": [
+        {"class": "car", "confidence": 0.96, "bbox": [120, 80, 200, 150]},
+        {"class": "pedestrian", "confidence": 0.89, "bbox": [400, 200, 50, 120]}
+      ],
+      "format": "COCO"
+    }
+  ],
+  "lidar_qc": {
+    "point_clouds_processed": 100,
+    "avg_point_density": 64000,
+    "quality_pass_rate_pct": 98.0
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
 ---
 
 ## Governance Note

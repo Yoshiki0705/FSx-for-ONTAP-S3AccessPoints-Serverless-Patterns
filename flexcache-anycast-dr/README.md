@@ -240,3 +240,55 @@ DynamoDB routing table updates, CloudWatch Logs, ONTAP REST API health check res
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
 - [NetApp FlexCache ドキュメント](https://docs.netapp.com/us-en/ontap/flexcache/index.html)
 - [FSx for ONTAP ドキュメント](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/)
+
+
+
+---
+
+## 出力サンプル (Output Sample)
+
+FlexCache ヘルスチェック + ルーティング決定の出力例:
+
+```json
+{
+  "health_check": {
+    "primary": {
+      "region": "ap-northeast-1",
+      "status": "healthy",
+      "latency_ms": 12,
+      "cache_hit_rate_pct": 87.5
+    },
+    "secondary": {
+      "region": "ap-southeast-1",
+      "status": "healthy",
+      "latency_ms": 45,
+      "cache_hit_rate_pct": 72.3
+    }
+  },
+  "routing_decision": {
+    "active_region": "ap-northeast-1",
+    "failover_triggered": false,
+    "decision_reason": "primary_healthy",
+    "timestamp": "2026-05-23T09:00:00Z"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Performance Considerations
+
+- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
+- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
+- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
+- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
