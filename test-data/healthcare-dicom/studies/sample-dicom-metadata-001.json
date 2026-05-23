@@ -1,0 +1,32 @@
+{
+  "file_path": "/vol/medical/studies/2026/05/patient-anon-001/CT-001.dcm",
+  "file_size": 524288,
+  "last_modified": "2026-05-15T11:30:00Z",
+  "dicom_metadata": {
+    "study_instance_uid": "1.2.840.113619.2.55.3.604688119.969.1234567890.123",
+    "series_instance_uid": "1.2.840.113619.2.55.3.604688119.969.1234567890.456",
+    "modality": "CT",
+    "body_part_examined": "CHEST",
+    "study_date": "20260515",
+    "institution_name": "[REDACTED]",
+    "manufacturer": "GE Medical Systems",
+    "slice_thickness": "1.25",
+    "pixel_spacing": ["0.703125", "0.703125"],
+    "rows": 512,
+    "columns": 512
+  },
+  "pii_detection": {
+    "patient_name_found": true,
+    "patient_id_found": true,
+    "institution_found": true,
+    "referring_physician_found": true,
+    "tags_to_redact": [
+      "(0010,0010)",
+      "(0010,0020)",
+      "(0008,0080)",
+      "(0008,0090)"
+    ]
+  },
+  "anonymization_status": "pending",
+  "hipaa_safe_harbor_compliant": false
+}
