@@ -21,9 +21,12 @@ Propose to customers who match the following criteria:
 
 - ✅ Have file data on FSx for ONTAP
 - ✅ Need serverless automation over file data
+- ✅ Need S3 API read/write access (GetObject, PutObject, ListObjectsV2, etc.)
 - ✅ Require permission-aware processing (NTFS ACL / AD SIDs)
 - ✅ Want to leverage AI/ML (Bedrock, Textract, Comprehend, Rekognition)
 - ✅ Need event-driven or scheduled file processing automation
+
+> **Note**: S3 Access Points are NOT read-only. PutObject (max 5 GB), DeleteObject, and MultipartUpload are supported. Constraints: FSX_ONTAP storage class only, SSE-FSX encryption only. See [S3AP Compatibility Notes](s3ap-compatibility-notes.md) for details.
 
 ## How — How to Run a PoC
 
