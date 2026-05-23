@@ -38,6 +38,8 @@ Not all bucket-level features or integration patterns apply directly:
 
 ## Presigned URL Support
 
+> ⚠️ **Production Warning**: AWS Support explicitly states that operations marked "Not supported" should NOT be relied upon for production workloads, even when they return success today. Design alternatives for any workflow that requires presigned URL access to FSx ONTAP S3 Access Points.
+
 ### Status: Listed as "Not supported" — but observed working
 
 AWS ドキュメントの互換性テーブルでは `Presign — Not supported` と記載されていますが、AWS サポートからの回答により、実態が明確になりました。
