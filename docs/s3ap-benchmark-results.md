@@ -317,6 +317,7 @@ Object size: [1 KB / 1 MB / 5 MB / etc.]
 Iterations per data point: 50
 Statistics: p50, p90, p95, p99, min, max
 FSx CloudWatch metrics: DataReadBytes, NetworkThroughput (同時取得)
+Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スループットへの影響)
 ```
 
 ### 結果表との紐づけルール
@@ -347,6 +348,7 @@ FSx CloudWatch metrics: DataReadBytes, NetworkThroughput (同時取得)
 - 各 capacity で concurrency=10/25/50 を測定
 - P99 の急激な悪化点（inflection point）を特定
 - FSx CloudWatch metrics (DataReadBytes, NetworkThroughput) との時系列相関を確認
+- Range GET (1KB, 100KB, 1MB from 5MB file) を各 capacity で測定し、部分読み取りのスケール特性を確認
 
 ### 検証結果（検証後に追記）
 
