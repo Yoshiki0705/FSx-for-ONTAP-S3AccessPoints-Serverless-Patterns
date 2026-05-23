@@ -1,3 +1,10 @@
+---
+title: "Evidence Expansion, Presigned URL Discovery, and Operational Surprises — FSx for ONTAP S3 Access Points, Phase 14"
+published: false
+series: "FSx for ONTAP S3 Access Points"
+tags: aws, serverless, amazonfsxfornetappontap, s3accesspoints
+---
+
 # Evidence Expansion, Presigned URL Discovery, and Operational Surprises — FSx for ONTAP S3 Access Points, Phase 14
 
 ## TL;DR
