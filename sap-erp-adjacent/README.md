@@ -98,6 +98,12 @@ Edit `functions/processing/index.py` to customize the summarization prompt for y
 
 ---
 
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
+
+---
+
 ## S3AP Compatibility
 
 S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
