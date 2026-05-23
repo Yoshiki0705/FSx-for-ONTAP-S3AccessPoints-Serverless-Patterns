@@ -177,6 +177,30 @@ defense-satellite/
 
 ---
 
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for NetApp ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Rekognition | [開発者ガイド](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |
+| Amazon SageMaker | [開発者ガイド](https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html) |
+| AWS GovCloud | [ユーザーガイド](https://docs.aws.amazon.com/govcloud-us/latest/UserGuide/welcome.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray、EMF、アラート生成、100% Human Review |
+| セキュリティ | DoD CC SRG、FedRAMP、最小権限 IAM、KMS、VPC 分離 |
+| 信頼性 | Step Functions Retry/Catch、resilience テスト、フォールバック |
+| パフォーマンス効率 | COG タイリング、並列物体検出、SageMaker Batch |
+| コスト最適化 | サーバーレス、SageMaker スポット、タイル単位処理 |
+| 持続可能性 | オンデマンド実行、差分変化検出 |
+
+---
+
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

@@ -374,6 +374,29 @@ graph TB
 
 ---
 
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for NetApp ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Athena | [ユーザーガイド](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
+| Amazon Bedrock | [ユーザーガイド](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、DRC 統計ダッシュボード |
+| セキュリティ | 最小権限 IAM、KMS 暗号化、設計データアクセス制御 |
+| 信頼性 | Step Functions Retry/Catch、メタデータ抽出リトライ |
+| パフォーマンス効率 | GDS ヘッダー部分読み取り、Athena パーティション |
+| コスト最適化 | サーバーレス（使用時のみ課金）、Athena スキャン最適化 |
+| 持続可能性 | オンデマンド実行、差分処理（変更ファイルのみ） |
+
+---
+
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

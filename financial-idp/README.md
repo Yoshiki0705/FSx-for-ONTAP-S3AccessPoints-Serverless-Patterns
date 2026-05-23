@@ -266,6 +266,30 @@ UC2 は以下のサービスを使用します:
 
 ---
 
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for NetApp ONTAP | [FSx for NetApp ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Textract | [Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |
+| Amazon Comprehend | [Amazon Comprehend](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html) |
+| Amazon Bedrock | [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、構造化ログ |
+| セキュリティ | 最小権限 IAM、KMS 暗号化、PII 検出 |
+| 信頼性 | Step Functions Retry/Catch、クロスリージョンフォールバック |
+| パフォーマンス効率 | Lambda メモリ最適化、並列 OCR 処理 |
+| コスト最適化 | サーバーレス（使用時のみ課金）、Textract ページ単位課金 |
+| 持続可能性 | オンデマンド実行、不要リソースの自動停止 |
+
+---
+
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

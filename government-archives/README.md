@@ -224,6 +224,31 @@ government-archives/
 
 ---
 
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for NetApp ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Textract | [開発者ガイド](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |
+| Amazon Comprehend | [開発者ガイド](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html) |
+| Amazon Macie | [ユーザーガイド](https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html) |
+| Amazon OpenSearch | [開発者ガイド](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray、EMF、FOIA デッドライン追跡、52+ テスト |
+| セキュリティ | PII リダクション、SHA-256 監査サイドカー、Macie、100% Human Review |
+| 信頼性 | Step Functions Retry/Catch、クロスリージョン OCR、resilience テスト |
+| パフォーマンス効率 | 並列 PII 検出、OpenSearch インデックス、バッチ処理 |
+| コスト最適化 | サーバーレス、OpenSearch Serverless、条件付きインデックス |
+| 持続可能性 | NARA GRS 準拠、保存期間管理、自動廃棄スケジュール |
+
+---
+
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

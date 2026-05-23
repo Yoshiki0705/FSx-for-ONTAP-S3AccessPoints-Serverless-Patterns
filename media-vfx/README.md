@@ -290,6 +290,29 @@ VFX レンダリングワークフローでは、render input assets（テクス
 
 ---
 
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for NetApp ONTAP | [FSx for NetApp ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon CloudFront | [Amazon CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html) |
+| Amazon Bedrock | [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、ジョブ状態監視 |
+| セキュリティ | 最小権限 IAM、CloudFront OAC、KMS 暗号化 |
+| 信頼性 | Step Functions Retry/Catch、品質チェックゲート |
+| パフォーマンス効率 | CloudFront CDN 配信、Lambda 並列処理 |
+| コスト最適化 | サーバーレス、CloudFront キャッシュ活用 |
+| 持続可能性 | オンデマンド実行、CDN によるオリジン負荷軽減 |
+
+---
+
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

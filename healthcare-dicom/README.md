@@ -258,6 +258,30 @@ UC5 は以下のサービスを使用します:
 
 ---
 
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for NetApp ONTAP | [FSx for NetApp ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Comprehend Medical | [Amazon Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/comprehendmedical-welcome.html) |
+| Amazon Bedrock | [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+| AWS HIPAA 対応サービス | [AWS HIPAA 対応サービス](https://aws.amazon.com/compliance/hipaa-eligible-services-reference/) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、匿名化監査ログ |
+| セキュリティ | 最小権限 IAM、KMS 暗号化、PII 検出・匿名化、HIPAA 考慮 |
+| 信頼性 | Step Functions Retry/Catch、クロスリージョンフォールバック |
+| パフォーマンス効率 | Lambda メモリ最適化、DICOM ストリーミング処理 |
+| コスト最適化 | サーバーレス、Comprehend Medical ページ単位課金 |
+| 持続可能性 | オンデマンド実行、匿名化済みデータの再利用 |
+
+---
+
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
