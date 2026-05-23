@@ -225,6 +225,81 @@ smart-city-geospatial/
 
 
 
+
+
+---
+
+## コスト見積もり（月額概算）
+
+> **注記**: 以下は ap-northeast-1 リージョンの概算であり、実際のコストは使用量により異なります。最新の料金は [AWS Pricing Calculator](https://calculator.aws/) で確認してください。
+
+### サーバーレスコンポーネント（従量課金）
+
+| サービス | 単価 | 想定使用量 | 月額概算 |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 7 関数 × 20 datasets/日 | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/日 | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/日 | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~40K tokens/実行 | ~$3-10 |
+| Athena | $5/TB scanned | ~30 MB/クエリ | ~$0.5-2 |
+| SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
+
+### 固定コスト（FSx for ONTAP — 既存環境前提）
+
+| コンポーネント | 月額 |
+|--------------|------|
+| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| S3 Access Point | 追加料金なし（S3 API 料金のみ） |
+
+### 合計概算
+
+| 構成 | 月額概算 |
+|------|---------|
+| 最小構成（日次 1 回実行） | ~$5-15 |
+| 標準構成（時次実行） | ~$15-50 |
+| 大規模構成（高頻度 + アラーム） | ~$50-150 |
+
+> **Governance Caveat**: コスト見積もりは概算であり、保証値ではありません。実際の請求額は使用パターン、データ量、リージョンにより異なります。
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
 ---
 
 ## 出力サンプル (Output Sample)

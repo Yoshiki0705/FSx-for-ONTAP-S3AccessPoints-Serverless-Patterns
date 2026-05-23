@@ -132,6 +132,114 @@ Step Functions 実行履歴、Bedrock レポートメタデータ、CloudWatch M
 
 
 
+
+---
+
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for NetApp ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points for FSx ONTAP | [S3 AP ガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| AWS Batch | [ユーザーガイド](https://docs.aws.amazon.com/batch/latest/userguide/what-is-batch.html) |
+| AWS ParallelCluster | [ユーザーガイド](https://docs.aws.amazon.com/parallelcluster/latest/ug/what-is-aws-parallelcluster.html) |
+| Amazon Athena | [ユーザーガイド](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
+| AWS Glue | [開発者ガイド](https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html) |
+| Amazon Bedrock | [ユーザーガイド](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+| Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | 構造化ログ、CloudWatch Metrics、Bedrock レポート自動生成 |
+| セキュリティ | IAM 最小権限、KMS 暗号化、VPC 分離 |
+| 信頼性 | Step Functions Retry/Catch、Map state 並列処理 |
+| パフォーマンス効率 | Lambda ARM64、Range GET（ヘッダー部分読み取り） |
+| コスト最適化 | サーバーレス、Athena スキャン量最適化 |
+| 持続可能性 | オンデマンド実行、不要リソースの自動停止 |
+
+### 関連 AWS ソリューション
+
+- [AWS HPC ソリューション](https://aws.amazon.com/hpc/)
+- [Automotive Industry on AWS](https://aws.amazon.com/automotive/)
+- [NICE DCV](https://aws.amazon.com/hpc/dcv/) — リモート可視化
+
+
+
+---
+
+## コスト見積もり（月額概算）
+
+> **注記**: 以下は ap-northeast-1 リージョンの概算であり、実際のコストは使用量により異なります。最新の料金は [AWS Pricing Calculator](https://calculator.aws/) で確認してください。
+
+### サーバーレスコンポーネント（従量課金）
+
+| サービス | 単価 | 想定使用量 | 月額概算 |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 4 関数 × 20 simulations/日 | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/日 | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/日 | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~30K tokens/実行 | ~$3-10 |
+| Athena | $5/TB scanned | ~20 MB/クエリ | ~$0.5-2 |
+| SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
+
+### 固定コスト（FSx for ONTAP — 既存環境前提）
+
+| コンポーネント | 月額 |
+|--------------|------|
+| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| S3 Access Point | 追加料金なし（S3 API 料金のみ） |
+
+### 合計概算
+
+| 構成 | 月額概算 |
+|------|---------|
+| 最小構成（日次 1 回実行） | ~$5-15 |
+| 標準構成（時次実行） | ~$15-50 |
+| 大規模構成（高頻度 + アラーム） | ~$50-150 |
+
+> **Governance Caveat**: コスト見積もりは概算であり、保証値ではありません。実際の請求額は使用パターン、データ量、リージョンにより異なります。
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
 ---
 
 ## 出力サンプル (Output Sample)
