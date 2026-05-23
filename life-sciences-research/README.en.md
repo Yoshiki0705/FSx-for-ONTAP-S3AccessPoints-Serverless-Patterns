@@ -1,6 +1,6 @@
 # Life Sciences Research — Data Classification & Metadata Extraction
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md)
 
 ## Overview
 
