@@ -4,78 +4,113 @@
 
 ## Project Overview
 
-FSx for ONTAP S3 Access Points Serverless Patterns — a library of 17 industry-specific serverless automation patterns using Amazon FSx for NetApp ONTAP S3 Access Points. Each use case (UC) is an independent CloudFormation/SAM template with shared Python modules.
+FSx for ONTAP S3 Access Points Serverless Patterns — a library of **17 industry-specific use cases (UC1-UC17)** + **1 SAP/ERP pattern** + **6 FlexCache/FlexClone patterns (FC1-FC6)** + **1 event-driven FPolicy pipeline** using Amazon FSx for NetApp ONTAP S3 Access Points. Each pattern is an independent CloudFormation/SAM template with shared Python modules.
+
+**Test coverage**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
 
 ## Core Commands
 
 ```bash
-# Run all tests (from repo root)
-pytest shared/tests/ -v
+# Quick test (key patterns)
+make test-quick
 
-# Run tests with coverage
-pytest shared/tests/ --cov=shared --cov-report=term --cov-fail-under=80
+# Full test suite
+make test
 
-# Lint (ruff)
-ruff check .
+# Lint
+make lint
 
-# Validate all CloudFormation templates (Python)
-python3 -c "
-from cfnlint.decode import cfn_yaml
-import glob, sys
-for t in sorted(glob.glob('*/template.yaml')):
-    try: cfn_yaml.load(t)
-    except Exception as e: print(f'FAIL: {t}: {e}'); sys.exit(1)
-print('All templates valid')
-"
+# Single pattern test
+make test-uc1    # UC1 legal-compliance
+make test-uc6    # UC6 semiconductor-eda
+make test-sap    # SAP/ERP adjacent
+make test-fc1    # FC1 flexcache-anycast-dr
+
+# Build & deploy (requires samconfig.toml)
+make build-uc1
+make deploy-uc1
+
+# Security scan
+make security
+
+# Clean build artifacts
+make clean
+
+# Manual pytest (specific pattern)
+python3 -m pytest semiconductor-eda/tests/ -v
+python3 -m pytest shared/tests/ -q
+
+# cfn-lint validation
+cfn-lint legal-compliance/template.yaml sap-erp-adjacent/template.yaml
 ```
 
 ## Project Layout
 
 ```
-├── {uc-name}/              # 17 UC directories (independent CloudFormation templates)
+├── {uc-name}/              # 17 UC + SAP + 6 FC directories
 │   ├── template.yaml       # SAM/CloudFormation template
 │   ├── functions/          # Lambda function handlers
 │   │   └── {func}/handler.py
-│   ├── tests/              # UC-specific tests
-│   └── README.md
-├── shared/                 # Shared Python modules (imported by all UCs)
+│   ├── tests/              # UC-specific tests (pytest + hypothesis)
+│   ├── docs/               # Architecture, demo guide (8 languages)
+│   ├── samconfig.toml.example  # SAM deploy config template
+│   └── README.md           # 8 languages (ja/en/ko/zh-CN/zh-TW/fr/de/es)
+├── shared/                 # Shared Python modules (imported by all patterns)
+│   ├── s3ap_helper.py      # S3 Access Point helper (core abstraction)
 │   ├── ontap_client.py     # ONTAP REST API client
 │   ├── fsx_helper.py       # AWS FSx API helper
-│   ├── s3ap_helper.py      # S3 Access Point helper
-│   ├── exceptions.py       # Common exceptions + error handler
+│   ├── exceptions.py       # Common exceptions + error handler decorator
+│   ├── observability.py    # EMF metrics + structured logging
+│   ├── data_classification.py  # Data classification labels (INTERNAL/CUI/etc.)
+│   ├── human_review.py     # Confidence-based Human Review decisions
 │   ├── idempotency_checker.py  # HYBRID mode deduplication
+│   ├── lineage.py          # Compliance-grade data lineage
+│   ├── guardrails.py       # Capacity guardrails
+│   ├── slo.py              # SLO monitoring
+│   ├── schemas/            # TypedDict event/response schemas
+│   │   ├── events.py       # DiscoveryOutput, ProcessingOutput, etc.
+│   │   └── fpolicy-event-schema.json
+│   ├── fpolicy/            # FPolicy protobuf/XML parsers
 │   ├── fpolicy-server/     # FPolicy TCP server (ECS Fargate)
 │   ├── cfn/                # Shared CloudFormation snippets
 │   ├── lambdas/            # Shared Lambda functions
-│   ├── schemas/            # JSON schemas
 │   └── tests/              # Shared module tests
 ├── event-driven-fpolicy/   # FPolicy event-driven infrastructure
+├── test-data/              # Sample data per UC (gitignore override)
 ├── scripts/                # Automation scripts
-├── docs/                   # Documentation and guides
-└── .github/workflows/      # CI/CD
+├── docs/                   # Documentation and guides (40+ docs)
+├── security/               # cfn-guard rules
+├── Makefile                # Developer workflow commands
+└── .github/workflows/      # CI/CD (lint → test → security → deploy)
 ```
 
 ## Architecture Patterns
 
 - **Trigger**: EventBridge Scheduler (polling) OR FPolicy EventBridge Rule (event-driven)
 - **Orchestration**: Step Functions state machine per UC
-- **Compute**: Lambda functions (Python 3.13, 256MB, 300s timeout)
-- **Storage access**: FSx ONTAP S3 Access Points (read) + S3 AP (write)
+- **Compute**: Lambda functions (Python 3.12, ARM64, 256-1024MB)
+- **Storage access**: FSx ONTAP S3 Access Points (read/write via S3ApHelper)
+- **AI/ML**: Bedrock (Nova/Claude), Textract, Comprehend, Rekognition, SageMaker
+- **Analytics**: Athena + Glue Data Catalog
 - **Secrets**: Secrets Manager for ONTAP credentials
-- **Networking**: Lambda in VPC with private subnets
+- **Networking**: VPC-internal (ONTAP API) + VPC-external (S3 AP Internet Origin)
 - **TriggerMode**: POLLING / EVENT_DRIVEN / HYBRID (per-UC parameter)
+- **DemoMode**: `true` allows running without FSx ONTAP (regular S3 bucket)
 
 ## Coding Conventions
 
 ### Python
 
-- Python 3.13 target (3.9+ compatible syntax for local dev)
-- Type hints on all function signatures
+- Python 3.12 target (ARM64 Lambda)
+- Type hints on all function signatures (use `shared/schemas/events.py` TypedDicts)
 - Docstrings on all public functions (Google style)
 - `from __future__ import annotations` at top of every module
 - No wildcard imports
 - Use `logging` module, never `print()` in Lambda handlers
 - Error handling: raise domain exceptions from `shared/exceptions.py`
+- Use `shared/observability.py` EmfMetrics for CloudWatch metrics
+- Use `shared/human_review.py` for confidence-based review decisions
+- Use `shared/data_classification.py` for output data labeling
 
 ### CloudFormation / SAM
 
@@ -85,7 +120,11 @@ print('All templates valid')
 - TriggerMode Conditions: `IsPollingOrHybrid`, `IsEventDrivenOrHybrid`
 - Tags on all resources: `UseCase`, `Phase`
 - IAM: least-privilege, per-function roles
-- Log retention: 14 days
+- Log retention: `LogRetentionInDays` parameter (default 90, compliance: 2557)
+- Step Functions: always include Retry/Catch on Task states
+- Step Functions ASL: prefer `DefinitionUri` over inline `DefinitionBody` (cfn-lint compat)
+- `RecursiveDeleteOption: true` on Athena WorkGroups (single key, no duplicates)
+- `SNSPublishMessagePolicy` requires `TopicName` (not `TopicArn`)
 
 ### Naming
 
@@ -94,6 +133,8 @@ print('All templates valid')
 - Python modules: snake_case
 - CloudFormation resources: PascalCase
 - Environment variables: UPPER_SNAKE_CASE
+- Handler files: `handler.py` (not `index.py`)
+- Handler entry: `handler.handler` (not `index.handler`)
 
 ## Testing
 
@@ -101,47 +142,127 @@ print('All templates valid')
 - Mocking: moto (AWS services)
 - Coverage threshold: 80%
 - Test location: `shared/tests/` (shared) + `{uc}/tests/` (UC-specific)
-- Run before every commit: `pytest shared/tests/ -q`
+- Run before every commit: `make test-quick`
+- conftest.py in each test dir for sys.path + fixtures
+
+### shared/ Module Resolution
+
+```python
+# In conftest.py (each pattern's tests/)
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # repo root
+sys.path.insert(0, str(Path(__file__).parent.parent / "functions" / "discovery"))
+```
+
+```bash
+# Run from repo root (PYTHONPATH auto-resolved)
+python3 -m pytest sap-erp-adjacent/tests/ -v
+```
 
 ### Known test exclusions
 
-- `shared/tests/test_fpolicy_engine.py`: 3 tests skipped (handler refactored to IP Updater)
+- `tests/e2e/` — requires deployed AWS stacks
+- `tests/load/` — requires deployed infrastructure
+- `shared/tests/test_canary_properties.py` — requires live S3 AP
 
 ## Verification Checklist
 
 Before submitting changes, run:
 
-1. `pytest shared/tests/ -q` — all tests pass
-2. `ruff check .` — no lint errors
-3. Validate modified templates with `cfn_yaml.load()`
+1. `make test-quick` — key tests pass
+2. `make lint` — no lint errors
+3. `cfn-lint` on modified templates
 4. If modifying UC templates: verify TriggerMode params + conditions present
 5. If adding new shared module: add tests in `shared/tests/`
+6. If modifying README: ensure Governance Note + Performance Considerations present
+7. If adding output: include `data_classification` field
+
+## Key Design Decisions
+
+### S3ApHelper is the Core Abstraction
+
+All S3 AP access goes through `shared/s3ap_helper.py`. It accepts both S3 AP aliases and regular S3 bucket names (enabling DemoMode). Never call `boto3.client('s3')` directly in Lambda handlers.
+
+### VPC Split Architecture
+
+- **VPC-internal Lambda**: For ONTAP REST API access (management LIF is private)
+- **VPC-external Lambda**: For Internet-origin S3AP access (no VpcConfig)
+- **Never mix**: A single Lambda cannot access both ONTAP mgmt LIF and Internet-origin S3AP
+
+### Output Destination Pattern
+
+- `OutputDestination=STANDARD_S3` — write to new S3 bucket (default)
+- `OutputDestination=FSXN_S3AP` — write back to FSx ONTAP via S3 AP (NFS/SMB users see results)
+
+### Human Review Pattern
+
+```python
+from shared.human_review import evaluate_confidence
+decision = evaluate_confidence(confidence=0.72)
+# decision.action: "AUTO_APPROVE" | "HUMAN_REVIEW" | "REJECT"
+```
 
 ## Common Pitfalls
 
 | Pitfall | Solution |
 |---------|----------|
+| `RecursiveDeleteOption` duplicate key in YAML | Single key only: `RecursiveDeleteOption: true` |
+| `SNSPublishMessagePolicy` with TopicArn | Use `TopicName: !GetAtt Topic.TopicName` |
+| `Handler: index.handler` but file is `handler.py` | Use `Handler: handler.handler` |
+| `DefinitionBody` inline in SAM StateMachine | Use `DefinitionUri: statemachine/workflow.asl.json` |
 | CloudFormation `validate-template` fails for large templates | Use S3 URL upload for templates >51KB |
-| `jsonschema` 4.18+ breaks on ARM64 Lambda | Pin to `>=4.17.0,<4.18.0` |
-| EventBridge prefix/suffix in same array = OR logic | Use prefix as primary filter to avoid fan-out |
-| ONTAP FPolicy protobuf uses different TCP framing | Keep XML format; protobuf framing TBD |
-| `AWS::Logs::Destination` requires Kinesis target | Use Log Group directly, not Destination |
-| Modifying enabled FPolicy policy fails | Disable → modify → re-enable sequence |
-| `mount -o vers=4` negotiates to NFSv4.2 (unsupported) | Always use explicit `vers=4.1` |
-| SchedulerRole without Condition wastes resources | Always pair with `Condition: IsPollingOrHybrid` |
+| Internet-origin S3AP from VPC Lambda | Use VPC-external Lambda or NAT Gateway |
+| S3 Gateway VPC Endpoint + Internet-origin S3AP | Does NOT work — use NAT or VPC-external |
+| ONTAP REST API auth on SVM IP | Use filesystem management IP, not SVM IP |
+| FlexClone `nas.security_style` | Cannot specify — inherited from parent volume |
+| Modifying enabled FPolicy policy | Disable → modify → re-enable sequence |
+| `mount -o vers=4` negotiates NFSv4.2 | Always use explicit `vers=4.1` |
+| Hypothesis + moto DynamoDB slow | Use `deadline=None` in `@given()` settings |
+| Test file name collision across patterns | Use unique test file names or run per-directory |
+
+## S3 Access Point Critical Knowledge
+
+### IAM ARN Format (Most Common Error)
+
+```yaml
+# ✅ Correct
+Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+
+# ❌ Wrong (bucket-style ARN does not work for S3 AP)
+Resource: !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+```
+
+### Dual-Layer Authorization
+
+Both must Allow:
+1. **AWS-side**: IAM identity policy + S3 AP resource policy
+2. **ONTAP-side**: File system identity (UNIX UID or Windows AD user)
+
+### Supported Operations
+
+PutObject (max 5GB), GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
+NOT supported: GetBucketNotificationConfiguration, Presigned URLs (documented as unsupported).
+
+### NetworkOrigin (Immutable After Creation)
+
+- `Internet`: Accessible from anywhere with valid credentials. NOT via S3 Gateway VPC Endpoint.
+- `VPC`: Accessible only from bound VPC via S3 Gateway/Interface Endpoint.
 
 ## External Dependencies
 
 - **AWS Region**: ap-northeast-1 (Tokyo) — primary deployment target
 - **ONTAP version**: 9.17.1P6 (supports FPolicy, Persistent Store, protobuf)
-- **Python packages**: boto3, urllib3, jsonschema (<4.18)
-- **Dev packages**: pytest, hypothesis, moto, ruff, cfn-lint
+- **Python packages**: boto3, urllib3
+- **Dev packages**: pytest, hypothesis, moto, ruff, cfn-lint, bandit
 
 ## Documentation Language
 
 - Code, variable names, CloudFormation resources: English
-- Documentation, comments, README: Japanese (primary) + English
-- Commit messages: English
+- Documentation, comments, README: Japanese (primary) + English + 6 other languages
+- Commit messages: English (conventional commits: `feat:`, `fix:`, `docs:`, `chore:`)
+- No persona names in git content (use role-based descriptions)
 
 ## Security & Privacy (Public Repository)
 
@@ -151,128 +272,74 @@ This is a **public repository**. All committed content is visible to the world.
 
 | Real Data | Placeholder |
 |-----------|-------------|
-| AWS Account ID (12-digit) | `123456789012` or `111111111111` / `222222222222` (multi-account) |
+| AWS Account ID | `123456789012` |
 | Secret ARN suffix | `-XXXXXX` |
-| VPC ID | `vpc-0123456789abcdef0` |
-| Subnet ID | `subnet-0123456789abcdef0` |
-| Security Group ID | `sg-0123456789abcdef0` |
+| VPC/Subnet/SG IDs | `vpc-0123456789abcdef0` |
 | File System ID | `fs-0123456789abcdef0` |
 | Real IP addresses | `10.0.x.x` or `<management-ip>` |
 | SSH key paths | `<your-ssh-key.pem>` |
-| Personal file paths (`/Users/...`) | Relative paths or `${PROJECT_DIR}` |
-| S3 AP Alias (real) | `fsxn-{uc}-s3ap-{hash}-ext-s3alias` (use parameter reference) |
-| ECR Registry | `${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com` |
+| Personal file paths | Relative paths or `${PROJECT_DIR}` |
+| S3 AP Alias | Use parameter reference `!Ref S3AccessPointAlias` |
 
-### Coding Rules
+### 🚫 Never Commit
 
-- Never hardcode AWS account IDs in templates (use `${AWS::AccountId}`)
-- Never commit secrets, credentials, or `.env` files
-- ONTAP credentials: always via Secrets Manager
-- IAM policies: least-privilege, scoped to specific resources
-- Scripts: use environment variables (`${VAR:-default}`) instead of hardcoded paths
-- Screenshots: mask account IDs, resource IDs, IP addresses before committing
+- Real AWS account IDs, resource IDs, or IP addresses
+- Screenshots without masking (use `scripts/mask_uc_demos.py`)
+- `.pem` files, SSH keys, `.env` files
+- Personal file paths (`/Users/<username>/...`)
+- Persona names (use role descriptions: "Storage Specialist lens")
+- AWS Support case numbers or internal references
 
-### 🚫 Never
-
-- Commit real AWS account IDs, resource IDs, or IP addresses (use placeholders)
-- Commit screenshots without masking personal information
-- Commit `.pem` files or SSH keys
-- Commit `.env`, `.env.local`, or any environment-specific config
-- Commit personal file paths (`/Users/<username>/...`)
-- Reference real S3 AP aliases in documentation without parameterization
-
-### Pre-Commit Checklist
-
-1. Run `bash scripts/pre-push-security-check.sh` — all checks PASS
-2. Run `python3 scripts/_check_sensitive_leaks.py` — 0 leaks (if screenshots modified)
-3. Verify `git ls-files .kiro/ .env '*.pem'` returns empty
-4. Verify no `/Users/` paths in staged files: `git diff --cached | grep '/Users/'`
-
-### Screenshot Masking
-
-Before committing any screenshot:
-1. Run `python3 scripts/mask_uc_demos.py <directory>`
-2. Run `python3 scripts/_check_sensitive_leaks.py` — confirm 0 leaks
-3. Only commit files from `docs/screenshots/masked/`
-
-## Phase 13 Operational Knowledge (Lessons Learned)
-
-### ONTAP REST API Access
-
-- **fsxadmin authenticates on the filesystem management IP only** — NOT the SVM management IP
-  - Filesystem mgmt IP: `aws fsx describe-file-systems --query 'FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]'`
-  - SVM mgmt IP (different): `aws fsx describe-storage-virtual-machines --query 'StorageVirtualMachines[0].Endpoints.Management.IpAddresses[0]'`
-- **Password reset**: Use `aws fsx update-file-system --ontap-configuration '{"FsxAdminPassword": "..."}'` then update Secrets Manager
-- **SSH to ONTAP CLI**: `ssh fsxadmin@<FS_MGMT_IP>` (requires VPC-internal access via Bastion)
-
-### FPolicy Protobuf Mode
-
-- **Format switch is REST API only** — ONTAP 9.17.1 CLI does not support `-format` parameter
-  - `PATCH /api/protocols/fpolicy/{svm_uuid}/engines/{name}` with `{"format": "protobuf"}`
-- **Procedure**: disable policy → PATCH format → re-enable policy
-- **Keep-alive interval is the same** in both XML and protobuf modes (PT2M)
-- **Buffer sizes**: recv=262144 (256KB), send=1048576 (1MB)
-- **ProtobufFrameReader max_message_size** should be ≥ 1MB to match ONTAP send_buffer
-
-### S3 Access Point Data Plane
-
-- **ConnectionClosedError ≠ AccessDenied** — FSx S3AP returns connection close (not 403) when:
-  1. S3AP resource policy does not Allow the caller
-  2. S3AP attachment lifecycle is not AVAILABLE
-  3. ONTAP data plane is not serving (node health issue)
-- **Diagnostic sequence**: Check policy → Check lifecycle → Check ONTAP REST API → Check volume state
-- **S3AP resource policy is separate from IAM identity policy** — both must Allow
-- **Internet-origin S3AP cannot be accessed from VPC Lambda via S3 Gateway Endpoint** — use VPC-external Lambda or NAT Gateway
-
-### FlexClone via REST API
-
-- **`nas.security_style` cannot be specified** during FlexClone creation — inherited from parent volume
-- **Use filesystem management IP** (not SVM IP) for fsxadmin authentication
-- **FlexClone is instant** (< 1 second) regardless of parent volume size
-
-### CloudFormation / Lambda Patterns
-
-- **VPC-internal Lambda**: For ONTAP REST API access (management LIF is private)
-- **VPC-external Lambda**: For Internet-origin S3AP access (no VpcConfig)
-- **Never mix**: A single Lambda cannot access both ONTAP mgmt LIF and Internet-origin S3AP
-- **Timeout**: S3AP calls need 30s+ timeout (FSx data plane can be slow)
-- **Deploy script must set S3AP resource policy** after stack creation (not manageable via CloudFormation)
-
-### Testing
-
-- **Hypothesis property tests**: Use `deadline=None` for tests involving moto DynamoDB (mock is slow)
-- **108 tests total**: 91 unit + 17 property (Phase 12 + 13)
-- **moto `@mock_aws`**: Use context manager (`with mock_aws():`) inside Hypothesis tests, not decorator
-
-## Supply-Chain Security
-
-### Automated Security Workflows
-
-| Workflow | File | Purpose |
-|----------|------|---------|
-| zizmor | `.github/workflows/zizmor.yml` | GitHub Actions security linting (SHA-pinning, credential persistence, injection) |
-| gitleaks | `.github/workflows/gitleaks.yml` | Secret detection — custom rules in `.gitleaks.toml` |
-| OpenSSF Scorecard | `.github/workflows/scorecard.yml` | Automated security health scoring |
-
-### Local Security Checks
+### Pre-Commit
 
 ```bash
-# Pre-commit hook runs automatically on commit (via .githooks/pre-commit):
-#   1. Author email verification
-#   2. gitleaks secret scanning (staged files)
-#   3. zizmor lint (if workflow files changed)
-
-# Manual verification
-gitleaks detect --config .gitleaks.toml --no-git --source .
-zizmor .github/workflows/
+make lint
+make test-quick
+git diff --cached | grep -i '/Users/' && echo "LEAK DETECTED" || echo "OK"
 ```
 
-### Actions Pinning Policy
+## Cost Awareness
 
-- All third-party Actions MUST be pinned to SHA hashes: `uses: owner/action@<sha> # vX.Y.Z`
-- `actions/checkout` must set `persist-credentials: false`
-- Verify with `zizmor .github/workflows/` before committing workflow changes
+### High-Cost Resources (monitor actively)
 
-### Custom Secret Detection (.gitleaks.toml)
+| Resource | Monthly Cost | Notes |
+|----------|-------------|-------|
+| FSx ONTAP (128 MBps) | ~$194 | Core infrastructure, always running |
+| NAT Gateway | ~$32 each | Needed for VPC Lambda → Internet |
+| Interface VPC Endpoints | ~$7.20 each | ECR, Logs, STS, SQS, SecretsManager |
+| ECS Fargate (FPolicy) | ~$35 | Set desiredCount=0 when not testing |
+| Transfer Family | ~$82 | Delete when not needed |
 
-Detects: internal IPs (10.x/172.16-31.x/192.168.x), AWS Account IDs, internal hostnames (`.internal.`/`.corp.`), VPN configs, NetApp internal references
+### Cost Optimization Patterns
+
+- Use `EnableVpcEndpoints=false` for PoC (saves ~$43/month)
+- Use `DemoMode=true` to test without FSx ONTAP
+- Disable EventBridge Schedules when not actively testing
+- Set ECS desiredCount=0 for FPolicy server when idle
+- Use `amazon.nova-lite-v1:0` (cheapest Bedrock model) for testing
+
+## Persona Review Lenses
+
+When reviewing changes, consider these perspectives:
+
+| Persona | Focus Areas |
+|---------|-------------|
+| Storage Specialist | Throughput design, shared bandwidth (NFS/SMB/S3AP), tail latency, FlexCache hit rate, Range GET patterns |
+| Partner/SI | PoC ease (30-min deploy), cost estimation, customer-facing docs, DemoMode |
+| Public Sector / Governance | Data classification, audit trails, Human Review, FISC/HIPAA/NARA compliance, incident response |
+| Application Developer | Code readability, TypedDict schemas, shared/ module reuse, Makefile, local testing |
+
+## Key Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [Demo Mode Guide](docs/demo-mode-guide.md) | Run without FSx ONTAP |
+| [Customization Guide](docs/customization-guide.md) | Adapt patterns to your workload |
+| [Cost Calculator](docs/cost-calculator.md) | Estimate monthly costs |
+| [Comparison Alternatives](docs/comparison-alternatives.md) | S3 AP vs EFS vs NFS vs DataSync |
+| [PoC Go/No-Go Template](docs/poc-go-nogo-template.md) | PoC success criteria |
+| [Incident Response Playbook](docs/incident-response-playbook.md) | Security incident handling |
+| [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md) | Known constraints + workarounds |
+| [S3AP Performance](docs/s3ap-performance-considerations.md) | Throughput design guidance |
+| [Local Testing](docs/local-testing-quick-start.md) | sam local + pytest setup |
+| [Partner/SI Checklist](docs/partner-si-delivery-checklist.md) | Customer delivery workflow |
