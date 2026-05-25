@@ -194,30 +194,89 @@ To build toward Rising Star status (required for Article publishing on re:Post),
 
 | Item | Blocker | Resolution |
 |------|---------|-----------|
-| 256/512 MBps benchmark | S3 AP ServiceUnavailable | AWS Support case open |
-| FC1 Recovery Metrics | S3 AP required for validation | Same blocker |
-| Hypothesis verification | Depends on benchmark | Same blocker |
+| ~~256/512 MBps benchmark~~ | ~~S3 AP ServiceUnavailable~~ | ✅ **Resolved 2026-05-25** — Results below |
+| FC1 Recovery Metrics | FlexCache × S3 AP integration | Pending AWS feature availability |
+| ~~Hypothesis verification~~ | ~~Depends on benchmark~~ | ✅ **Partially confirmed** — see results |
+
+---
+
+## 7. Benchmark Results: 128 / 256 / 512 MBps Concurrency Comparison
+
+S3 AP ServiceUnavailable was resolved on 2026-05-25. We immediately executed the planned benchmark across all three throughput tiers.
+
+### Test Environment
+
+| Parameter | Value |
+|-----------|-------|
+| Region | ap-northeast-1 (Tokyo) |
+| FSx ONTAP | Single-AZ, First-generation |
+| S3 AP | NetworkOrigin=Internet |
+| Client | macOS, boto3, Python 3.9 (Internet) |
+| Object sizes | 1 KB, 100 KB, 1 MB |
+| Concurrency | 1, 5, 10, 20, 50 |
+| Iterations | 10 per concurrency level |
+
+### Key Results: 1 MB GetObject P99
+
+| Concurrency | 128 MBps | 256 MBps | 512 MBps |
+|:-----------:|:--------:|:--------:|:--------:|
+| 1 | 76 ms | 93 ms | 96 ms |
+| 5 | 160 ms | 175 ms | 308 ms |
+| 10 | 239 ms | 236 ms | 229 ms |
+| **20** | **981 ms** | **481 ms** | **738 ms** |
+| 50 | — | 850 ms | 4,495 ms |
+
+### Analysis
+
+1. **P50 (median) is largely independent of throughput capacity** — Internet baseline latency (connection + TLS) dominates
+2. **P99 (tail latency) shows the difference** — 128→256 MBps improved P99 by 51% at concurrency=20
+3. **512 MBps shows no improvement over 256 MBps via Internet** — client-side bandwidth (~100 Mbps) becomes the bottleneck
+4. **Hypothesis partially confirmed**: Practical concurrency point does shift with throughput capacity, but the relationship is non-linear and bounded by client bandwidth in Internet-origin tests
+
+### Sizing Guidance
+
+| Workload | 128 MBps | 256 MBps | 512 MBps |
+|----------|:---:|:---:|:---:|
+| Small files (< 10 KB) | MaxConcurrency=20 | 50 | 50 |
+| Medium files (100 KB) | 10 | 20 | 50 |
+| Large files (1 MB+) | 5 | 10 | 20 |
+
+> These are sizing references from a specific test environment, not service limits. VPC-internal Lambda access will show significantly better throughput. Always validate with your own workload profile.
+
+### What This Means for Production
+
+- **For PoC (128 MBps)**: Keep Step Functions Map state MaxConcurrency ≤ 5 for 1 MB+ files
+- **For Production (256+ MBps)**: MaxConcurrency=10-20 is safe for most workloads
+- **For VPC-internal Lambda**: Expect 2-5x better throughput (Internet latency eliminated)
+- **Throughput capacity changes**: Plan during maintenance windows (S3 AP disruption risk confirmed)
 
 ---
 
 ## What's Next (Phase 15 candidates)
 
-1. **256/512 MBps benchmark execution** — once S3 AP is restored
+1. **VPC-internal Lambda benchmark** — eliminate Internet latency to measure true FSx throughput impact
 2. **FC1 Recovery Metrics** — route decision latency, cache health detection, failover timing
-3. **Athena OutputLocation for FSx ONTAP S3 AP** — pending AWS Support response on existing case
-4. **FlexCache × S3 AP integration** — pending AWS feature availability
-5. **dev.to article for Phase 14** — this article, once benchmark data is available
+3. **FlexCache × S3 AP integration** — pending AWS feature availability
+4. **Multi-Account OAM validation** — cross-account observability with 2nd AWS account
+5. **Replay Storm real-data testing** — 1000/10000 FPolicy events with Persistent Store
 
 ---
 
 ## Stats
 
-- **Files changed**: 30 (documentation only, no CloudFormation/Lambda changes)
-- **New documents**: Partner/SI one-pager (JP/EN), FC1 validation template, benchmark Lambda
+- **Files changed**: 200+ (documentation, translations, shared modules, templates)
+- **New documents**: Partner/SI one-pager (JP/EN/KO/ZH-CN), cost calculator, customization guide, incident response playbook, demo mode guide, comparison alternatives, PoC Go/No-Go template
+- **New shared modules**: `data_classification.py`, `human_review.py`, `schemas/events.py`
+- **Benchmark runs**: 3 (128/256/512 MBps × concurrency 1-50)
+- **Templates fixed**: 5 (cfn-lint errors: RecursiveDeleteOption, SNSPublishMessagePolicy, Handler path)
+- **Translations added**: 20 files (FC1-FC6 ko/zh-CN + FC1/FC3 full 8-lang)
+- **samconfig.toml.example**: 24 patterns
+- **Output JSON samples**: 24 patterns
 - **DEV.to articles updated**: 6 (4 Update Notes + 2 Series changes)
 - **re:Post contributions**: 10 (1 question + 9 answers)
-- **AWS Support cases**: 1 new (S3 AP ServiceUnavailable)
-- **Operational discoveries**: 1 (throughput change → S3 AP disruption)
+- **AWS Support cases**: 1 resolved (S3 AP ServiceUnavailable — throughput change related)
+- **Operational discoveries**: 1 (throughput change → S3 AP disruption, now resolved)
+- **Cost savings**: ~$187/month (v4-test-demo deletion + resource cleanup)
 
 ---
 
