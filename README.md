@@ -91,6 +91,45 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 
 記事ではアーキテクチャの設計思想とトレードオフを解説し、本リポジトリでは具体的な再利用可能な実装パターンを提供します。
 
+## 関連リポジトリ（同一著者）
+
+| リポジトリ | 概要 | 関連性 |
+|-----------|------|--------|
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | FSx ONTAP + Bedrock による権限考慮型 RAG チャットボット（CDK v2, Next.js, ECS） | 本リポジトリの FC3 (GenAI RAG) パターンの完全実装版。S3 AP 経由のドキュメント読み取り + NTFS ACL ベースのフィルタリングを Web UI 付きで提供 |
+| [FSx-ONTAP-S3AP-Benchmark](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | 本リポジトリ内 `docs/s3ap-benchmark-results.md` | 128/256/512 MBps × concurrency 1-50 のベンチマーク結果 |
+
+### リポジトリ間の関係
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Permission-aware-RAG-FSxN-CDK (CDK v2)                             │
+│  ・完全な RAG アプリケーション（Next.js + Bedrock + OpenSearch）     │
+│  ・FSx ONTAP S3 AP 経由のドキュメント読み取り                       │
+│  ・NTFS ACL ベースの権限フィルタリング                              │
+│  ・本番デプロイ可能な Web UI                                        │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ 共通技術: S3 AP, ONTAP REST API, Bedrock
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│  FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns (本リポジトリ)    │
+│  ・17 業界別サーバーレスパターン + 6 FlexCache パターン             │
+│  ・CloudFormation/SAM テンプレート（独立デプロイ可能）              │
+│  ・shared/ モジュール（S3ApHelper, OntapClient, 可観測性）          │
+│  ・ベンチマーク、ガバナンス、Partner/SI 資料                        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 使い分けガイド
+
+| ユースケース | 推奨リポジトリ |
+|-------------|---------------|
+| 権限考慮型 RAG チャットボットを構築したい | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) |
+| S3 AP の設計パターンを学びたい | 本リポジトリ |
+| 業界別のサーバーレス自動化を PoC したい | 本リポジトリ |
+| FPolicy イベント駆動パイプラインを構築したい | 本リポジトリ |
+| FlexCache × サーバーレスの設計を検討したい | 本リポジトリ |
+| S3 AP のベンチマーク結果を参照したい | 本リポジトリ `docs/s3ap-benchmark-results.md` |
+
 ## 概要
 
 本リポジトリは、FSx for NetApp ONTAP に保存されたエンタープライズデータを **S3 Access Points** 経由でサーバーレスに処理する **17 の業界別パターン** を提供します（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）。
