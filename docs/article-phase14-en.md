@@ -318,10 +318,11 @@ We validated the FPolicy replay storm handling by injecting 1,000 and 10,000 eve
 ## What's Next (Phase 15 candidates)
 
 1. **FlexCache × S3 AP integration** — pending AWS feature availability (not yet supported)
-2. **FC1 Recovery Metrics** — route decision latency, cache health detection, failover timing
-3. **Multi-Account OAM validation** — cross-account observability with 2nd AWS account
-4. **Replay Storm with real FPolicy server** — TCP-level replay characteristics
-5. **VPC-internal Lambda with VPC Origin S3 AP** — true VPC-internal path (requires NAT Gateway or VPC Origin AP)
+2. **FC1 Recovery Metrics** — route decision latency, cache health detection, failover timing (depends on #1)
+3. **Replay Storm with real FPolicy server** — TCP-level replay characteristics (requires ECS re-deploy)
+4. **VPC-internal Lambda with VPC Origin S3 AP** — true VPC-internal path (requires new AP with NetworkOrigin=VPC)
+
+> Multi-Account OAM validation completed 2026-05-25 — cross-account CloudWatch Metrics, Logs, and X-Ray Traces confirmed working.
 
 ---
 
