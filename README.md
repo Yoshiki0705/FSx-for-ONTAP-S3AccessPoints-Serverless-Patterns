@@ -4,6 +4,73 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+---
+
+<details>
+<summary><strong>📂 ディレクトリ ナビゲーション（クリックで展開）</strong></summary>
+
+### 業界別ユースケース (UC1-UC17 + SAP)
+
+| # | ディレクトリ | 業界 | 概要 |
+|---|:---|:---|:---|
+| UC1 | [`legal-compliance/`](legal-compliance/) | 法務 | NTFS ACL 監査・コンプライアンスレポート |
+| UC2 | [`financial-idp/`](financial-idp/) | 金融 | 帳票 OCR・エンティティ抽出 |
+| UC3 | [`manufacturing-analytics/`](manufacturing-analytics/) | 製造 | IoT センサー・品質検査画像分析 |
+| UC4 | [`media-vfx/`](media-vfx/) | メディア | VFX レンダリング品質チェック |
+| UC5 | [`healthcare-dicom/`](healthcare-dicom/) | 医療 | DICOM 匿名化 |
+| UC6 | [`semiconductor-eda/`](semiconductor-eda/) | 半導体 | GDS/OASIS バリデーション |
+| UC7 | [`genomics-pipeline/`](genomics-pipeline/) | ゲノミクス | FASTQ/VCF 品質チェック |
+| UC8 | [`energy-seismic/`](energy-seismic/) | エネルギー | SEG-Y 地震探査データ解析 |
+| UC9 | [`autonomous-driving/`](autonomous-driving/) | 自動運転 | 映像/LiDAR 前処理 |
+| UC10 | [`construction-bim/`](construction-bim/) | 建設 | BIM モデル管理 |
+| UC11 | [`retail-catalog/`](retail-catalog/) | 小売 | 商品画像タグ付け |
+| UC12 | [`logistics-ocr/`](logistics-ocr/) | 物流 | 配送伝票 OCR |
+| UC13 | [`education-research/`](education-research/) | 教育 | 論文分類・引用分析 |
+| UC14 | [`insurance-claims/`](insurance-claims/) | 保険 | 損害査定 |
+| UC15 | [`defense-satellite/`](defense-satellite/) | 防衛 | 衛星画像解析 |
+| UC16 | [`government-archives/`](government-archives/) | 政府 | 公文書・FOIA |
+| UC17 | [`smart-city-geospatial/`](smart-city-geospatial/) | スマートシティ | 地理空間データ |
+| SAP | [`sap-erp-adjacent/`](sap-erp-adjacent/) | SAP/ERP | IDoc・HULFT・EDI 処理 |
+
+### FlexCache / FlexClone パターン (FC1-FC6)
+
+| # | ディレクトリ | パターン |
+|---|:---|:---|
+| FC1 | [`flexcache-anycast-dr/`](flexcache-anycast-dr/) | AnyCast / DR フェイルオーバー |
+| FC2 | [`dynamic-flexcache-render-workflow/`](dynamic-flexcache-render-workflow/) | ジョブ単位 FlexCache 動的管理 |
+| FC3 | [`genai-rag-enterprise-files/`](genai-rag-enterprise-files/) | Permission-aware RAG |
+| FC4 | [`automotive-cae/`](automotive-cae/) | CAE シミュレーション結果分析 |
+| FC5 | [`life-sciences-research/`](life-sciences-research/) | 研究データ分類 |
+| FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/) | ゲームアセット品質チェック |
+
+### インフラ・共通
+
+| ディレクトリ | 内容 |
+|:---|:---|
+| [`shared/`](shared/) | 共通 Python モジュール（S3ApHelper, OntapClient, 可観測性） |
+| [`event-driven-fpolicy/`](event-driven-fpolicy/) | FPolicy イベント駆動パイプライン |
+| [`docs/`](docs/) | 設計ガイド・ベンチマーク・Partner 資料（40+ ドキュメント） |
+| [`scripts/`](scripts/) | デプロイ・ベンチマーク・ユーティリティ |
+| [`tests/`](tests/) | E2E・負荷テスト |
+| [`security/`](security/) | cfn-guard ルール |
+| [`.github/workflows/`](.github/workflows/) | CI/CD（lint → test → security → deploy） |
+
+### クイックスタート
+
+| 目的 | リンク |
+|:---|:---|
+| 🚀 デモモード（FSx なしで試す） | [`docs/demo-mode-guide.md`](docs/demo-mode-guide.md) |
+| 💰 コスト試算 | [`docs/cost-calculator.md`](docs/cost-calculator.md) |
+| 🔧 カスタマイズ | [`docs/customization-guide.md`](docs/customization-guide.md) |
+| 📊 ベンチマーク結果 | [`docs/s3ap-benchmark-results.md`](docs/s3ap-benchmark-results.md) |
+| 🤝 Partner/SI 向け | [`docs/partner-si-one-pager.md`](docs/partner-si-one-pager.md) |
+| 🏛️ ガバナンス | [`docs/governance-checklist.md`](docs/governance-checklist.md) |
+| ⚡ ローカルテスト | [`docs/local-testing-quick-start.md`](docs/local-testing-quick-start.md) |
+
+</details>
+
+---
+
 ## Current Status
 
 本リポジトリは **17 の業界別ユースケース** + **イベント駆動 FPolicy パターン** + **6 つの FlexCache/FlexClone パターン** を含むサーバーレスパターンライブラリです。
