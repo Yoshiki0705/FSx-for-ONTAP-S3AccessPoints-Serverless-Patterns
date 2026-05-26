@@ -1,0 +1,35 @@
+# pre-commit hooks configuration
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+# https://pre-commit.com/
+
+repos:
+  # gitleaks: シークレット検出
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # zizmor: GitHub Actions セキュリティリント
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.4.1
+    hooks:
+      - id: zizmor
+
+  # 基本的なファイルチェック
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
+      - id: detect-private-key
+      - id: end-of-file-fixer
+        exclude: '\.md$'
+      - id: trailing-whitespace
+        exclude: '\.md$'
+      - id: no-commit-to-branch
+        args: ['--branch', 'main']
