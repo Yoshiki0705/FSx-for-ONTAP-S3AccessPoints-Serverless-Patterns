@@ -1,0 +1,58 @@
+#!/bin/bash
+# Pre-commit hook: author email check + gitleaks secret scanning
+# Setup: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+# === 1. Author email check ===
+ALLOWED_EMAIL="40357845+Yoshiki0705@users.noreply.github.com"
+CURRENT_EMAIL=$(git config user.email)
+
+if [ "$CURRENT_EMAIL" != "$ALLOWED_EMAIL" ]; then
+  echo "❌ ERROR: Git user.email is '$CURRENT_EMAIL'"
+  echo "   Expected: '$ALLOWED_EMAIL'"
+  echo ""
+  echo "   Fix with: git config user.email '$ALLOWED_EMAIL'"
+  exit 1
+fi
+
+# === 2. gitleaks secret scanning ===
+if command -v gitleaks &> /dev/null; then
+  echo "🔍 gitleaks: シークレットスキャン実行中..."
+  if ! gitleaks protect --staged --config .gitleaks.toml --verbose 2>/dev/null; then
+    echo ""
+    echo "❌ ERROR: gitleaks がシークレットを検出しました"
+    echo "   詳細: gitleaks protect --staged --config .gitleaks.toml --verbose"
+    echo "   除外: .gitleaks.toml の allowlist を更新してください"
+    exit 1
+  fi
+  echo "✅ gitleaks: シークレット未検出"
+elif command -v pre-commit &> /dev/null; then
+  # pre-commit がインストールされている場合はそちらに委譲
+  echo "🔍 pre-commit 経由でチェック実行中..."
+  pre-commit run gitleaks --hook-stage commit 2>/dev/null || {
+    echo "⚠️  pre-commit gitleaks hook failed"
+    exit 1
+  }
+else
+  echo "⚠️  gitleaks が未インストールです"
+  echo "   Install: brew install gitleaks"
+  echo "   Or: pip install pre-commit && pre-commit install"
+  # 警告のみ（CI で捕捉するため）
+fi
+
+# === 3. zizmor check (GitHub Actions files only) ===
+STAGED_WORKFLOWS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.github/(workflows|actions)/' || true)
+
+if [ -n "$STAGED_WORKFLOWS" ] && command -v zizmor &> /dev/null; then
+  echo "🔍 zizmor: GitHub Actions セキュリティリント実行中..."
+  if ! echo "$STAGED_WORKFLOWS" | xargs zizmor 2>/dev/null; then
+    echo ""
+    echo "⚠️  zizmor: セキュリティ警告が検出されました"
+    echo "   詳細を確認してください（コミットはブロックしません）"
+  else
+    echo "✅ zizmor: 問題なし"
+  fi
+fi
+
+echo "✅ pre-commit checks passed"
