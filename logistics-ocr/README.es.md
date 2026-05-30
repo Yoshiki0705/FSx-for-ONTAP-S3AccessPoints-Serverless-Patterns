@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
 ## Resumen
-Es un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for NetApp ONTAP para automatizar la extracción de texto OCR de las etiquetas de envío, la detección y conteo de objetos en imágenes de inventario de almacén y la generación de informes de optimización de rutas de entrega.
+Es un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para automatizar la extracción de texto OCR de las etiquetas de envío, la detección y conteo de objetos en imágenes de inventario de almacén y la generación de informes de optimización de rutas de entrega.
 ### Casos en los que este patrón es adecuado
 - Las imágenes de los albaranes de envío y las imágenes del inventario del almacén se están acumulando en FSx ONTAP
 - Queremos automatizar el OCR ( remitente, destinatario, número de seguimiento, artículos ) de los albaranes de envío con Textract
@@ -57,7 +57,7 @@ graph LR
 5. **Informe**: Generar informe de optimización de rutas de entrega con Bedrock, salida a S3 + notificación SNS
 ## Requisitos previos
 - Cuenta de AWS y los permisos de IAM apropiados
-- Sistema de archivos FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 o superior)
+- Sistema de archivos FSx for ONTAP (ONTAP 9.17.1P4D3 o superior)
 - Punto de Acceso S3 habilitado para volúmenes (almacenar boleta de envío e imágenes de inventario)
 - VPC, subredes privadas
 - Acceso a modelos de Amazon Bedrock habilitado (Claude / Nova)

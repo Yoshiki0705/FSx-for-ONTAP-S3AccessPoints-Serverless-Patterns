@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Aperçu
-FSx for NetApp ONTAP utilise les points d'accès S3 pour automatiser les workflows sans serveur de prétraitrage, de vérification de la qualité et de gestion des annotations des vidéos dashcam et des données LiDAR.
+FSx for ONTAP utilise les points d'accès S3 pour automatiser les workflows sans serveur de prétraitrage, de vérification de la qualité et de gestion des annotations des vidéos dashcam et des données LiDAR.
 ### Cas où ce modèle est approprié
 - Des vidéos de dashcam et des données de nuages de points LiDAR sont stockées en masse sur FSx ONTAP
 - Nous souhaitons automatiser l'extraction des images clés et la détection d'objets (véhicules, piétons, panneaux de signalisation) à partir des vidéos
@@ -55,7 +55,7 @@ graph LR
 4. **Gestionnaire d'annotations** : Génération de suggestions d'annotation avec Bedrock, segmentation du nuage de points avec SageMaker
 ## Conditions préalables
 - Compte AWS et permissions IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
 - Point d'accès S3 activé pour les volumes (stockage des images et données LiDAR)
 - VPC, sous-réseaux privés
 - Accès aux modèles Amazon Bedrock activé (Claude / Nova)

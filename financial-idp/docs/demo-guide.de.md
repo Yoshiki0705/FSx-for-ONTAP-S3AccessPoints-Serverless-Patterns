@@ -161,12 +161,12 @@ Dokumentenscan      OCR-Verarbeitung    Entity-           Strukturierte Daten
 
 ---
 
-## Über das Ausgabeziel: FSxN S3 Access Point (Pattern A)
+## Über das Ausgabeziel: FSx for ONTAP S3 Access Point (Pattern A)
 
 UC2 financial-idp ist als **Pattern A: Native S3AP Output** klassifiziert
 (siehe `docs/output-destination-patterns.md`).
 
-**Design**: OCR-Ergebnisse von Rechnungen, strukturierte Metadaten und BedRock-Zusammenfassungen werden alle über den FSxN S3 Access Point
+**Design**: OCR-Ergebnisse von Rechnungen, strukturierte Metadaten und BedRock-Zusammenfassungen werden alle über den FSx for ONTAP S3 Access Point
 auf **dasselbe FSx ONTAP Volume** wie die Original-Rechnungs-PDFs zurückgeschrieben. Standard-S3-Buckets werden
 nicht erstellt („no data movement"-Pattern).
 

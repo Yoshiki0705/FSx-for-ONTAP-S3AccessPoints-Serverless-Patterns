@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Entrée — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Entrée — FSx for ONTAP"]
         DOCS["Fichiers de documents<br/>.pdf, .tiff, .jpeg"]
     end
 
@@ -58,7 +58,7 @@ flowchart TB
 ### Entrée
 | Élément | Description |
 |---------|-------------|
-| **Source** | Volume FSx for NetApp ONTAP |
+| **Source** | Volume FSx for ONTAP |
 | **Types de fichiers** | .pdf, .tiff, .tif, .jpeg, .jpg (documents numérisés et électroniques) |
 | **Méthode d'accès** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Stratégie de lecture** | Récupération complète du fichier (nécessaire pour le traitement OCR) |
@@ -96,7 +96,7 @@ flowchart TB
 
 | Service | Rôle |
 |---------|------|
-| FSx for NetApp ONTAP | Stockage de fichiers d'entreprise (contrats et factures) |
+| FSx for ONTAP | Stockage de fichiers d'entreprise (contrats et factures) |
 | S3 Access Points | Accès serverless aux volumes ONTAP |
 | EventBridge Scheduler | Déclencheur périodique |
 | Step Functions | Orchestration de workflow |

@@ -2,7 +2,7 @@
 
 ## Overview
 
-本ランブックは、FSxN S3AP Serverless Patterns の 4 つの SLO アラームが発報した際の初動対応手順を定義する。各アラームに対して AWS 側診断と ONTAP 側診断の両方を含む。
+本ランブックは、FSx for ONTAP S3 AP Serverless Patterns の 4 つの SLO アラームが発報した際の初動対応手順を定義する。各アラームに対して AWS 側診断と ONTAP 側診断の両方を含む。
 
 **対象アラーム**:
 1. `fsxn-s3ap-slo-ingestion-latency` — Event Ingestion Latency (P99 > 5,000ms)

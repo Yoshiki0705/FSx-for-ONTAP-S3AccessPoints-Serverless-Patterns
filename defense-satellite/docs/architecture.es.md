@@ -6,13 +6,13 @@
 
 ## Descripción general
 
-Pipeline de análisis automático de imágenes satelitales (GeoTIFF / NITF / HDF5) que aprovecha FSx for NetApp ONTAP S3 Access Points. Ejecuta detección de objetos, cambios en series temporales y generación de alertas a partir de imágenes de gran capacidad en posesión de agencias de defensa, inteligencia y espaciales.
+Pipeline de análisis automático de imágenes satelitales (GeoTIFF / NITF / HDF5) que aprovecha FSx for ONTAP S3 Access Points. Ejecuta detección de objetos, cambios en series temporales y generación de alertas a partir de imágenes de gran capacidad en posesión de agencias de defensa, inteligencia y espaciales.
 
 ## Diagrama de arquitectura
 
 ```mermaid
 graph LR
-    FSx[FSx for NetApp ONTAP<br/>Almacenamiento de imágenes satelitales] --> S3AP[S3 Access Point<br/>Vinculado con NTFS ACL]
+    FSx[FSx for ONTAP<br/>Almacenamiento de imágenes satelitales] --> S3AP[S3 Access Point<br/>Vinculado con NTFS ACL]
     S3AP --> EB[EventBridge Scheduler]
     EB --> SFN[Step Functions<br/>Procesamiento de imágenes satelitales]
     SFN --> L1[Discovery<br/>Lambda]
@@ -73,7 +73,7 @@ SageMaker Endpoint deshabilitado por defecto (`EnableSageMaker=false`). Habilita
 - **Impact Level 2** (Public, Non-CUI): Operación en AWS Commercial
 - **Impact Level 4** (CUI): Migración a AWS GovCloud (US)
 - **Impact Level 5** (CUI Higher Sensitivity): AWS GovCloud (US) + controles adicionales
-- FSx for NetApp ONTAP está aprobado para todos los Impact Levels mencionados
+- FSx for ONTAP está aprobado para todos los Impact Levels mencionados
 
 ### Commercial Solutions for Classified (CSfC)
 - NetApp ONTAP cumple con NSA CSfC Capability Package
@@ -108,7 +108,7 @@ UC15 soporta el parámetro `OutputDestination` desde la actualización del 2026-
 | Modo | Destino de salida | Recursos creados | Caso de uso |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3` (predeterminado) | Nuevo bucket S3 | `AWS::S3::Bucket` | Acumulación de resultados de IA en bucket S3 aislado como tradicionalmente |
-| `FSXN_S3AP` | FSxN S3 Access Point | Ninguno (escritura en volumen FSx existente) | Analistas visualizan resultados de IA en el mismo directorio que las imágenes satelitales originales vía SMB/NFS |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | Ninguno (escritura en volumen FSx existente) | Analistas visualizan resultados de IA en el mismo directorio que las imágenes satelitales originales vía SMB/NFS |
 
 **Lambda afectadas**: Tiling, ObjectDetection, GeoEnrichment (3 funciones).  
 **Lambda no afectadas**: Discovery (manifest continúa escribiéndose directamente en S3AP), ChangeDetection (solo DynamoDB), AlertGeneration (solo SNS).

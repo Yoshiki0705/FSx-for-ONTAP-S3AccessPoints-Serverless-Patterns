@@ -1,6 +1,6 @@
 # Phase 7 — Completion Summary
 
-**Phase**: FSxN S3AP Serverless Patterns, Phase 7 (Public Sector UC Expansion
+**Phase**: FSx for ONTAP S3 AP Serverless Patterns, Phase 7 (Public Sector UC Expansion
 + OutputDestination Unification + AWS Verification)
 **Period**: 2026-04 (scope freeze) → 2026-05-11 (completion)
 **Outcome**: ✅ Core scope **COMPLETE**. Residual items tracked in Phase 7
@@ -317,7 +317,7 @@ correctness across all 17 UCs end-to-end (no bypasses, production-grade).
 
 - **All 17 UCs: `S3AccessPointName` parameter added.** 9 UCs (UC1/2/3/5/6/7/8/10/14)
   were previously missing the AP ARN form in IAM policies, which would
-  cause runtime `AccessDenied` when FSxN S3AP evaluates permissions in
+  cause runtime `AccessDenied` when FSx for ONTAP S3 AP evaluates permissions in
   ARN form. All templates now conditionally grant both alias and ARN
   forms via `HasS3AccessPointName` condition.
 - **UC2 `entity_extraction` NameError fix.** `os.environ.get(...)` used

@@ -98,4 +98,4 @@
 
 ---
 
-*本文档是 FSxN S3AP Serverless Patterns 的现有环境影响评估指南。*
+*本文档是 FSx for ONTAP S3 AP Serverless Patterns 的现有环境影响评估指南。*

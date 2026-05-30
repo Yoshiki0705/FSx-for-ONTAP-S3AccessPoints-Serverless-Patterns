@@ -1,4 +1,4 @@
-# Feature Requests: FSx for NetApp ONTAP S3 Access Points Improvements
+# Feature Requests: FSx for ONTAP S3 Access Points Improvements
 
 **Submitter**: Yoshiki Fujiwara (NetApp Inc.)
 **Date**: 2026-05-10
@@ -9,9 +9,9 @@
 
 ## Executive Summary
 
-Amazon FSx for NetApp ONTAP (FSxN) integration with Amazon S3 Access Points (AP) enables enterprise file data to be consumed by AWS AI/ML and analytics services without data movement. This is a breakthrough integration for use cases spanning 17 industries (EDA, DICOM imaging, VFX rendering, FOIA archives, satellite imagery, etc.).
+Amazon FSx for ONTAP (FSxN) integration with Amazon S3 Access Points (AP) enables enterprise file data to be consumed by AWS AI/ML and analytics services without data movement. This is a breakthrough integration for use cases spanning 17 industries (EDA, DICOM imaging, VFX rendering, FOIA archives, satellite imagery, etc.).
 
-However, during production implementation of 17 serverless use cases (UC1–UC17) against FSxN S3AP in `ap-northeast-1`, we identified **four critical gaps** that force customers to fall back to standard S3 buckets for output and orchestration — undermining the core value proposition of "one copy of data, accessed everywhere".
+However, during production implementation of 17 serverless use cases (UC1–UC17) against FSx for ONTAP S3 AP in `ap-northeast-1`, we identified **four critical gaps** that force customers to fall back to standard S3 buckets for output and orchestration — undermining the core value proposition of "one copy of data, accessed everywhere".
 
 This document captures the gaps, their business impact, and requested improvements, with direct references to the current AWS documentation.
 
@@ -19,19 +19,19 @@ This document captures the gaps, their business impact, and requested improvemen
 
 ## Background: Why This Matters
 
-The tagline of the FSxN S3AP integration is that **"Data continues to reside on the FSx for ONTAP file system and remains accessible via NFS and SMB protocols alongside the S3 API"** ([Accessing your data via Amazon S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)). For the customer, this means:
+The tagline of the FSx for ONTAP S3 AP integration is that **"Data continues to reside on the FSx for ONTAP file system and remains accessible via NFS and SMB protocols alongside the S3 API"** ([Accessing your data via Amazon S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)). For the customer, this means:
 
 - Design engineers keep editing GDS/OASIS files via SMB
 - Data scientists query the same files in place via Athena
 - ML pipelines write enrichment data back so the SMB user sees the AI output alongside the source file
 
-The third bullet is where the current gaps bite. AI/ML pipelines built on Rekognition, Textract, Comprehend, Bedrock, and Athena today must write their outputs to **a separate standard S3 bucket** because either the output API path is unsupported on FSxN S3AP, or the event-driven orchestration primitives don't exist.
+The third bullet is where the current gaps bite. AI/ML pipelines built on Rekognition, Textract, Comprehend, Bedrock, and Athena today must write their outputs to **a separate standard S3 bucket** because either the output API path is unsupported on FSx for ONTAP S3 AP, or the event-driven orchestration primitives don't exist.
 
 This breaks the "one copy" story: SMB/NFS users cannot see the AI enrichment without a separate sync step. Customers we've talked with (semiconductor EDA, government archives, insurance) explicitly requested this capability.
 
 ---
 
-## FR-1: Enable Athena to Write Query Results to FSxN S3 Access Points
+## FR-1: Enable Athena to Write Query Results to FSx for ONTAP S3 Access Points
 
 ### Current State (verbatim-limited citation)
 
@@ -43,34 +43,34 @@ From [Query files with SQL using Amazon Athena (FSx ONTAP User Guide)](https://d
 
 *Content was rephrased for compliance with licensing restrictions; see linked page for the authoritative wording.*
 
-This means Athena Workgroup `ResultConfiguration.OutputLocation` must point to a regular `s3://bucket/...` URI. A customer who wants the query output to live alongside the source data on FSxN has to run a post-processing job to copy results from the Athena S3 bucket back into FSxN via the S3AP.
+This means Athena Workgroup `ResultConfiguration.OutputLocation` must point to a regular `s3://bucket/...` URI. A customer who wants the query output to live alongside the source data on FSxN has to run a post-processing job to copy results from the Athena S3 bucket back into FSx for ONTAP via the S3AP.
 
 ### Impact on Our Patterns
 
 | UC | Impact |
 |----|--------|
-| UC6 semiconductor-eda | DRC aggregation Athena results cannot be written to `athena-results/` on FSxN S3AP |
+| UC6 semiconductor-eda | DRC aggregation Athena results cannot be written to `athena-results/` on FSx for ONTAP S3 AP |
 | UC7 genomics-pipeline | FASTQ analysis summary tables forced to separate S3 |
 | UC8 energy-seismic | Seismic survey statistics cannot be colocated with `.segy` files |
 | UC13 education-research | Research paper metadata queries forced to separate S3 |
 
 ### Requested Behavior
 
-Allow Athena Workgroup `ResultConfiguration.OutputLocation` to accept an FSxN S3AP alias or ARN (e.g., `s3://my-ap-alias-ext-s3alias/athena-results/` or the equivalent ARN form). The service must honor SSE-FSX as the encryption mode and the 5 GB object size limit automatically.
+Allow Athena Workgroup `ResultConfiguration.OutputLocation` to accept an FSx for ONTAP S3 AP alias or ARN (e.g., `s3://my-ap-alias-ext-s3alias/athena-results/` or the equivalent ARN form). The service must honor SSE-FSX as the encryption mode and the 5 GB object size limit automatically.
 
 ### Workaround in this Project
 
-Standard S3 bucket (`AWS::S3::Bucket` resource) provisioned per stack for Athena results only; all other output is on FSxN S3AP.
+Standard S3 bucket (`AWS::S3::Bucket` resource) provisioned per stack for Athena results only; all other output is on FSx for ONTAP S3 AP.
 
 ---
 
-## FR-2: S3 Event Notifications / EventBridge Events for FSxN S3 Access Points
+## FR-2: S3 Event Notifications / EventBridge Events for FSx for ONTAP S3 Access Points
 
 ### Current State
 
 From [Access point compatibility (FSx ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) — partial operation compatibility table:
 
-| Operation | FSxN S3AP status |
+| Operation | FSx for ONTAP S3 AP status |
 |-----------|------------------|
 | `GetBucketNotificationConfiguration` | Not supported |
 | `PutBucketNotificationConfiguration` | *(not listed; equivalent to not supported)* |
@@ -97,7 +97,7 @@ Option B would also help non-S3AP consumers that use NFS/SMB for writes.
 
 ---
 
-## FR-3: S3 Object Lifecycle Policies for FSxN S3 Access Points
+## FR-3: S3 Object Lifecycle Policies for FSx for ONTAP S3 Access Points
 
 ### Current State
 
@@ -153,7 +153,7 @@ Object Versioning is also listed in the Limitations section.
 ### Requested Behavior
 
 - **Versioning**: Expose ONTAP Snapshots as S3 object versions, similar to how SnapMirror exposes NetApp volume history. Customers would opt in per S3AP.
-- **Presign**: Support `CreatePresignedUrl` with SigV4 against the S3AP alias or ARN, so applications can share time-limited access to FSxN objects without a copy step.
+- **Presign**: Support `CreatePresignedUrl` with SigV4 against the S3AP alias or ARN, so applications can share time-limited access to FSx for ONTAP objects without a copy step.
 
 ### Workaround in this Project
 
@@ -199,8 +199,8 @@ All references are to AWS-authored documentation or AWS-authored blog posts, acc
 1. [Access point compatibility — FSx for ONTAP User Guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
 2. [Query files with SQL using Amazon Athena — FSx for ONTAP User Guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
 3. [Accessing your data via Amazon S3 access points — FSx for ONTAP User Guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
-4. [Amazon FSx for NetApp ONTAP now integrates with Amazon S3 for seamless data access — AWS News Blog](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
-5. [Enabling AI-powered analytics on enterprise file data: Configuring S3 Access Points for Amazon FSx for NetApp ONTAP with Active Directory — AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
+4. [Amazon FSx for ONTAP now integrates with Amazon S3 for seamless data access — AWS News Blog](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
+5. [Enabling AI-powered analytics on enterprise file data: Configuring S3 Access Points for Amazon FSx for ONTAP with Active Directory — AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
 6. [Troubleshooting S3 access point issues — FSx for ONTAP User Guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html)
 7. [Using access points — FSx for ONTAP User Guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-usage-examples.html)
 
@@ -245,11 +245,11 @@ The `PutObject OUTPUT` line with the two options is what our `OutputDestination`
 
 ### 要望の背景
 
-FSx for NetApp ONTAP の S3 Access Points (S3AP) 連携により、NAS データに S3 API でアクセスでき、Athena / Bedrock / Rekognition 等から直接ファイルを読めるようになった。業界横断で 17 ユースケース（半導体 EDA、医療 DICOM、VFX、FOIA、衛星画像 等）の本番実装を行ったところ、以下 4 点の機能不足により、パイプラインの出力先に標準 S3 バケットを併用せざるを得ず、「データをコピーしない」というインテグレーションの価値が損なわれている。
+FSx for ONTAP の S3 Access Points (S3AP) 連携により、NAS データに S3 API でアクセスでき、Athena / Bedrock / Rekognition 等から直接ファイルを読めるようになった。業界横断で 17 ユースケース（半導体 EDA、医療 DICOM、VFX、FOIA、衛星画像 等）の本番実装を行ったところ、以下 4 点の機能不足により、パイプラインの出力先に標準 S3 バケットを併用せざるを得ず、「データをコピーしない」というインテグレーションの価値が損なわれている。
 
 ### 改善要望
 
-1. **FR-1**: Athena の Workgroup で Query Result Output Location に FSxN S3AP を指定できるようにする（現状は標準 S3 必須）
+1. **FR-1**: Athena の Workgroup で Query Result Output Location に FSx for ONTAP S3 AP を指定できるようにする（現状は標準 S3 必須）
 2. **FR-2**: S3AP で S3 Event Notifications / EventBridge イベントを発行できるようにする（現状は全 UC がポーリング実装）
 3. **FR-3**: S3AP で Object Lifecycle Policy をサポートする（金融・医療・政府機関の保管義務対応に必須）
 4. **FR-4**: S3AP で Object Versioning と Presigned URL をサポートする

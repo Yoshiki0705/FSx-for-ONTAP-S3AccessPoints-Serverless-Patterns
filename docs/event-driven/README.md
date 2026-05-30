@@ -8,7 +8,7 @@
 
 ### 前提条件
 
-- FSx for NetApp ONTAP ファイルシステムが稼働中
+- FSx for ONTAP ファイルシステムが稼働中
 - 同一 VPC 内に Private Subnet が存在
 - AWS CLI 設定済み
 - Docker 環境（コンテナビルド用）
@@ -135,7 +135,7 @@ SMB でのテストには Active Directory が必要です。
 ### 前提条件（SMB 追加）
 
 - AWS Managed Microsoft AD（または Self-Managed AD）
-- FSxN SVM が AD ドメインに参加済み（SVM 作成時に AD 設定を含める）
+- FSx for ONTAP SVM が AD ドメインに参加済み（SVM 作成時に AD 設定を含める）
 - CIFS 共有が作成済み
 
 ### SMB 環境構築
@@ -148,7 +148,7 @@ aws ds create-microsoft-ad \
   --vpc-settings VpcId=<VPC>,SubnetIds=<SUBNET1>,<SUBNET2> \
   --edition Standard --region ap-northeast-1
 
-# 2. FSxN SVM 作成（AD 参加付き）
+# 2. FSx for ONTAP SVM 作成（AD 参加付き）
 aws fsx create-storage-virtual-machine \
   --file-system-id <FS_ID> --name FPolicySMB \
   --active-directory-configuration \

@@ -164,7 +164,7 @@ Unfallfotos      Bildanalyse     Schadensbewertung    Anspruchsbericht
 Gleiche Richtlinie wie Phase 7: Aufnahme von **UI/UX-Bildschirmen, die Versicherungsregulierer tatsächlich in ihrer täglichen Arbeit verwenden**.
 Bildschirme für technische Benutzer (Step Functions-Grafiken usw.) sind ausgeschlossen.
 
-### Auswahl des Ausgabeziels: Standard-S3 vs. FSxN S3AP
+### Auswahl des Ausgabeziels: Standard-S3 vs. FSx for ONTAP S3 AP
 
 UC14 unterstützt seit dem Update vom 2026-05-10 den Parameter `OutputDestination`.
 Durch **Zurückschreiben der KI-Ergebnisse auf dasselbe FSx-Volume** können Anspruchsbearbeiter

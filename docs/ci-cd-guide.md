@@ -1,6 +1,6 @@
 # CI/CD パイプラインガイド
 
-FSxN S3 Access Points Serverless Patterns プロジェクトの CI/CD パイプライン設計・運用ガイド。
+FSx for ONTAP S3 Access Points Serverless Patterns プロジェクトの CI/CD パイプライン設計・運用ガイド。
 
 ## パイプラインアーキテクチャ概要
 

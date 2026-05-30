@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，自動化物聯網感測器日誌的異常檢測和品質檢查影像缺陷檢測的無伺服器工作流程。
+利用 FSx for ONTAP 的 S3 Access Points，自動化物聯網感測器日誌的異常檢測和品質檢查影像缺陷檢測的無伺服器工作流程。
 ### 此模式適用於以下情況
 - 希望定期分析工廠文件伺服器上累積的 CSV 感測器日誌
 - 希望透過 AI 自動化並提高品質檢測影像的目視確認效率
@@ -53,7 +53,7 @@ graph LR
 4. **影像分析**：使用 Rekognition 進行缺陷檢測，若信賴度低於閾值則設置手動審查標誌
 ## 前提條件
 - AWS 帳號和適當的 IAM 權限
-- FSx for NetApp ONTAP 檔案系統（ONTAP 9.17.1P4D3 或以上）
+- FSx for ONTAP 檔案系統（ONTAP 9.17.1P4D3 或以上）
 - 已啟用 S3 Access Point 的卷
 - ONTAP REST API 認證信息已在 Secrets Manager 中註冊
 - VPC、私有子網

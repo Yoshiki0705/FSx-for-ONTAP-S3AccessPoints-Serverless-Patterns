@@ -164,7 +164,7 @@ Photos d'accident    Analyse d'images    Évaluation         Rapport de
 Même approche que Phase 7 : capture des **écrans UI/UX réellement utilisés par les experts en évaluation d'assurance dans leur travail quotidien**.
 Écrans techniques (graphes Step Functions, etc.) exclus.
 
-### Choix de la destination de sortie : S3 standard vs FSxN S3AP
+### Choix de la destination de sortie : S3 standard vs FSx for ONTAP S3 AP
 
 UC14 prend en charge le paramètre `OutputDestination` depuis la mise à jour du 2026-05-10.
 **Réécrire les résultats IA dans le même volume FSx** permet aux responsables du traitement des réclamations

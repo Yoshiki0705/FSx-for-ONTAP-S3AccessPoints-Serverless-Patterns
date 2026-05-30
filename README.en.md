@@ -4,13 +4,80 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
+---
+
+<details>
+<summary><strong>📂 Directory Navigation (click to expand)</strong></summary>
+
+### Industry Use Cases (UC1-UC17 + SAP)
+
+| # | Directory | Industry | Summary |
+|---|:---|:---|:---|
+| UC1 | [`legal-compliance/`](legal-compliance/) | Legal | NTFS ACL audit & compliance reports |
+| UC2 | [`financial-idp/`](financial-idp/) | Finance | Invoice OCR & entity extraction |
+| UC3 | [`manufacturing-analytics/`](manufacturing-analytics/) | Manufacturing | IoT sensor & quality inspection |
+| UC4 | [`media-vfx/`](media-vfx/) | Media | VFX render quality check |
+| UC5 | [`healthcare-dicom/`](healthcare-dicom/) | Healthcare | DICOM anonymization |
+| UC6 | [`semiconductor-eda/`](semiconductor-eda/) | Semiconductor | GDS/OASIS validation |
+| UC7 | [`genomics-pipeline/`](genomics-pipeline/) | Genomics | FASTQ/VCF quality check |
+| UC8 | [`energy-seismic/`](energy-seismic/) | Energy | SEG-Y seismic data analysis |
+| UC9 | [`autonomous-driving/`](autonomous-driving/) | Automotive | Video/LiDAR preprocessing |
+| UC10 | [`construction-bim/`](construction-bim/) | Construction | BIM model management |
+| UC11 | [`retail-catalog/`](retail-catalog/) | Retail | Product image tagging |
+| UC12 | [`logistics-ocr/`](logistics-ocr/) | Logistics | Shipping label OCR |
+| UC13 | [`education-research/`](education-research/) | Education | Paper classification & citation |
+| UC14 | [`insurance-claims/`](insurance-claims/) | Insurance | Damage assessment |
+| UC15 | [`defense-satellite/`](defense-satellite/) | Defense | Satellite imagery analysis |
+| UC16 | [`government-archives/`](government-archives/) | Government | Archives & FOIA |
+| UC17 | [`smart-city-geospatial/`](smart-city-geospatial/) | Smart City | Geospatial data |
+| SAP | [`sap-erp-adjacent/`](sap-erp-adjacent/) | SAP/ERP | IDoc, HULFT, EDI processing |
+
+### FlexCache / FlexClone Patterns (FC1-FC6)
+
+| # | Directory | Pattern |
+|---|:---|:---|
+| FC1 | [`flexcache-anycast-dr/`](flexcache-anycast-dr/) | AnyCast / DR failover |
+| FC2 | [`dynamic-flexcache-render-workflow/`](dynamic-flexcache-render-workflow/) | Per-job dynamic FlexCache |
+| FC3 | [`genai-rag-enterprise-files/`](genai-rag-enterprise-files/) | Permission-aware RAG |
+| FC4 | [`automotive-cae/`](automotive-cae/) | CAE simulation analysis |
+| FC5 | [`life-sciences-research/`](life-sciences-research/) | Research data classification |
+| FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/) | Game asset quality check |
+
+### Infrastructure & Shared
+
+| Directory | Contents |
+|:---|:---|
+| [`shared/`](shared/) | Common Python modules (S3ApHelper, OntapClient, observability) |
+| [`event-driven-fpolicy/`](event-driven-fpolicy/) | FPolicy event-driven pipeline |
+| [`docs/`](docs/) | Design guides, benchmarks, Partner assets (40+ documents) |
+| [`scripts/`](scripts/) | Deploy, benchmark, utilities |
+| [`tests/`](tests/) | E2E & load tests |
+| [`security/`](security/) | cfn-guard rules |
+| [`.github/workflows/`](.github/workflows/) | CI/CD (lint → test → security → deploy) |
+
+### Quick Start
+
+| Goal | Link |
+|:---|:---|
+| 🚀 Demo mode (no FSx required) | [`docs/demo-mode-guide.md`](docs/demo-mode-guide.md) |
+| 💰 Cost estimation | [`docs/cost-calculator.md`](docs/cost-calculator.md) |
+| 🔧 Customization | [`docs/customization-guide.md`](docs/customization-guide.md) |
+| 📊 Benchmark results | [`docs/s3ap-benchmark-results.md`](docs/s3ap-benchmark-results.md) |
+| 🤝 Partner/SI | [`docs/partner-si-one-pager.en.md`](docs/partner-si-one-pager.en.md) |
+| 🏛️ Governance | [`docs/governance-checklist.md`](docs/governance-checklist.md) |
+| ⚡ Local testing | [`docs/local-testing-quick-start.md`](docs/local-testing-quick-start.md) |
+
+</details>
+
+---
+
 ## Current Status
 
-This repository now contains **17 industry use cases** + **event-driven FPolicy pattern** + **6 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for NetApp ONTAP S3 Access Points.
+This repository now contains **17 industry use cases** + **event-driven FPolicy pattern** + **6 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for ONTAP S3 Access Points.
 
 The original 5 patterns (Phase 1) have been expanded across Phases 2–13. Phase 10 introduced the shared FPolicy event-ingestion pipeline, Phase 11 wired dispatch across all 17 UCs, Phase 12 hardened the pipeline with Persistent Store replay validation, SLO observability, capacity guardrails, and secrets rotation, and Phase 13 added FlexClone/FlexCache serverless automation.
 
-A collection of industry-specific serverless automation patterns leveraging S3 Access Points for Amazon FSx for NetApp ONTAP.
+A collection of industry-specific serverless automation patterns leveraging S3 Access Points for Amazon FSx for ONTAP.
 
 > **Purpose of this repository**: This is a "reference implementation for learning design decisions." Some use cases have been E2E verified in an AWS environment, while others have undergone CloudFormation deployment, shared Discovery Lambda, and operational verification of key components. It is designed for gradual adoption from PoC to production, demonstrating design decisions for cost optimization, security, and error handling through concrete code.
 
@@ -43,9 +110,37 @@ This repository provides the implementation examples for the architecture descri
 
 The article explains the architectural design philosophy and trade-offs, while this repository provides concrete, reusable implementation patterns.
 
+## Related Repositories (Same Author)
+
+| Repository | Summary | Relationship |
+|-----------|---------|--------------|
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Permission-aware RAG chatbot with FSx for ONTAP + Bedrock (CDK v2, Next.js, ECS) | Full implementation of this repo's FC3 (GenAI RAG) pattern with Web UI |
+| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × Lakehouse platform integrations (Databricks, Snowflake, Athena, Glue, EMR) | S3 AP compatibility matrix, platform-specific validation, DataSync patterns |
+
+## FSx for ONTAP S3 Access Points — Constraints & Validated Patterns
+
+S3 Access Points for FSx for ONTAP provide an S3 access boundary to file data — not a full replacement for S3 bucket semantics. This repository uses POLLING by default, with FPolicy-based EVENT_DRIVEN and HYBRID options available.
+
+📋 **[FSx for ONTAP S3 AP Compatibility Matrix](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md)** — Confirmed with AWS Support (May 2026)
+
+| Constraint | Impact | Workaround |
+|-----------|--------|-----------|
+| No conditional writes (If-None-Match) | Delta Lake/Iceberg/Hudi transactional writes blocked | Read-only analytics or DataSync → S3 for write workloads |
+| No S3 Event Notifications | Snowpipe auto-ingest, Auto Loader file notification mode unavailable | FPolicy → Lambda, scheduled polling, or Snowpipe REST API |
+| No SnapMirror S3 | Cannot replicate ONTAP S3 bucket to AWS S3 | Use DataSync (NFS → S3) as validated sync mechanism |
+| ListObjectsV2 higher latency | 30-80x slower than native S3 for small directories | Pre-generate file lists, use larger file sizes, or cache results |
+| SSE-FSX encryption only | SSE-S3, SSE-KMS, SSE-C not supported | Use default SSE-FSX (transparent, AWS KMS managed) |
+| No Object Versioning | S3 versioning not available | Use ONTAP Snapshot for point-in-time recovery |
+| Presigned URLs: Not officially supported | Works in practice but not guaranteed | Use for non-critical paths only; prefer IAM-based access |
+| ONTAP 9.17.1+ required | Minimum version for S3 Access Points | Verify FSx file system ONTAP version before deployment |
+
+For the full matrix including platform-specific compatibility (Athena, Glue, EMR, Databricks, Snowflake, Bedrock), see the [complete document](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md).
+
+Local details: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md)
+
 ## Overview
 
-This repository provides **17 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for NetApp ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **6 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6).
+This repository provides **17 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **6 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6).
 
 > Hereafter, FSx for ONTAP S3 Access Points will be abbreviated as **S3 AP**.
 
@@ -111,7 +206,7 @@ graph TB
     end
 
     subgraph "Data Sources"
-        FSXN[FSx for NetApp ONTAP<br/>Volume]
+        FSXN[FSx for ONTAP<br/>Volume]
         S3AP[S3 Access Point<br/>ListObjectsV2 / GetObject /<br/>Range / PutObject]
         ONTAP_API[ONTAP REST API<br/>ACL / Volume Metadata]
     end
@@ -326,7 +421,7 @@ The same approach is applied across all industries, not just Public Sector
 | UC17 | Smart City (Public Sector) | 5 | GIS upload / Bedrock report / risk map / land use distribution / time-series history (for urban planners) | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md) |
 
 **Common screenshots** (cross-industry generic views, under `docs/screenshots/masked/common/`):
-- `fsx-s3ap-detail.png` — FSxN S3 Access Point detail view (referenced by storage administrators regardless of industry)
+- `fsx-s3ap-detail.png` — FSx for ONTAP S3 Access Point detail view (referenced by storage administrators regardless of industry)
 - `s3ap-list.png` — S3 Access Points list (referenced by IT administrators regardless of industry)
 
 **Phase-specific views** (`docs/screenshots/masked/phase{1..7}/`):
@@ -348,7 +443,7 @@ to choose where AI/ML artifacts are written (implemented in UC9/10/11/12/14;
 other UCs are covered by Pattern A or Pattern C — see the Pattern table below):
 
 - **`STANDARD_S3`** (default): Writes to a new S3 bucket (existing behavior)
-- **`FSXN_S3AP`**: Writes back to the same FSx for NetApp ONTAP volume via the
+- **`FSXN_S3AP`**: Writes back to the same FSx for ONTAP volume via the
   S3 Access Point (the **"no data movement" pattern**, enabling SMB/NFS users
   to view AI artifacts inside the existing directory structure)
 
@@ -363,9 +458,9 @@ aws cloudformation deploy \
     ... (other required parameters)
 ```
 
-### FSxN S3 Access Points AWS Specification Constraints
+### FSx for ONTAP S3 Access Points AWS Specification Constraints
 
-FSxN S3 Access Points support only a subset of the S3 API (see
+FSx for ONTAP S3 Access Points support only a subset of the S3 API (see
 [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)).
 The following constraints force some features to use standard S3 buckets:
 
@@ -391,7 +486,7 @@ The 17 UCs fall into three output patterns:
 - **🟢 UC1-5** (Pattern A, updated 2026-05-11): `S3AccessPointOutputAlias` (legacy, optional) + newly-added `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` are supported. Default `OutputDestination=FSXN_S3AP` preserves existing behavior
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, implemented 2026-05-10): `OutputDestination` switch (STANDARD_S3 ⇄ FSXN_S3AP). Default `OutputDestination=STANDARD_S3`. UC11/14 verified on AWS, UC9/10/12 unit-tested only
 - **🟡 UC6/7/8/13**: currently `OUTPUT_BUCKET` only (standard S3 fixed). Athena results require standard S3 per AWS spec, so `OutputDestination` adoption is partial
-- **🟢 UC15-17**: Pattern A (write back to FSxN S3AP, part of Phase 7)
+- **🟢 UC15-17**: Pattern A (write back to FSx for ONTAP S3 AP, part of Phase 7)
 
 | UC | Input | Output | Selection Mechanism | Notes |
 |----|------|------|----------|------|
@@ -694,7 +789,7 @@ See the following documents for details:
 ## Prerequisites
 
 - **AWS Account**: A valid AWS account with appropriate IAM permissions
-- **FSx for NetApp ONTAP**: A deployed file system
+- **FSx for ONTAP**: A deployed file system
   - ONTAP version: A version that supports S3 Access Points (verified with 9.17.1P4D3)
   - An FSx for ONTAP volume with an associated S3 Access Point (network origin depends on use case; `internet` recommended when using Athena / Glue)
 - **Network**: VPC, private subnets, route tables

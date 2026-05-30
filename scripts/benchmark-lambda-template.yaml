@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  S3 AP Benchmark Lambda — measures GetObject/ListObjectsV2 latency
+  from AWS Lambda network (VPC-external, Internet Origin S3 AP)
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: S3 Access Point alias
+
+Resources:
+  BenchmarkFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: fsxn-s3ap-benchmark
+      Runtime: python3.12
+      Handler: benchmark_lambda.lambda_handler
+      CodeUri: .
+      MemorySize: 1769
+      Timeout: 900
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          S3AP_ALIAS: !Ref S3AccessPointAlias
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+                - s3:PutObject
+                - s3:DeleteObject
+              Resource:
+                - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+
+Outputs:
+  BenchmarkFunctionArn:
+    Value: !GetAtt BenchmarkFunction.Arn
+  BenchmarkFunctionName:
+    Value: !Ref BenchmarkFunction

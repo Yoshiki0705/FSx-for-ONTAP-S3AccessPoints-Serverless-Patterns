@@ -159,12 +159,12 @@ DICOM 檔案     標籤解析        匿名化處理        品質驗證
 
 ---
 
-## 關於輸出目的地：FSxN S3 Access Point (Pattern A)
+## 關於輸出目的地：FSx for ONTAP S3 Access Point (Pattern A)
 
 UC5 healthcare-dicom 分類為 **Pattern A: Native S3AP Output**
 （參照 `docs/output-destination-patterns.md`）。
 
-**設計**：DICOM 中繼資料、匿名化結果、PII 偵測日誌全部透過 FSxN S3 Access Point
+**設計**：DICOM 中繼資料、匿名化結果、PII 偵測日誌全部透過 FSx for ONTAP S3 Access Point
 寫回至與原始 DICOM 醫用影像**相同的 FSx ONTAP 磁碟區**。不會建立標準 S3 儲存貯體
 （"no data movement" 模式）。
 

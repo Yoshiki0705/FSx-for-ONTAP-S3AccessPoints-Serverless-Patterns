@@ -105,7 +105,7 @@ UC17 は 2026-05-11 のアップデートで `OutputDestination` パラメータ
 | モード | 出力先 | 作成されるリソース | ユースケース |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3`（デフォルト） | 新規 S3 バケット | `AWS::S3::Bucket` | 従来どおり分離された S3 バケットに AI 成果物を蓄積 |
-| `FSXN_S3AP` | FSxN S3 Access Point | なし（既存 FSx ボリュームへ書き戻し） | 都市計画担当者が SMB/NFS 経由でオリジナル GIS データと同一ディレクトリに Bedrock レポート（Markdown）やリスクマップを閲覧 |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | なし（既存 FSx ボリュームへ書き戻し） | 都市計画担当者が SMB/NFS 経由でオリジナル GIS データと同一ディレクトリに Bedrock レポート（Markdown）やリスクマップを閲覧 |
 
 **影響を受ける Lambda**: Preprocessing、LandUseClassification、InfraAssessment、RiskMapping、ReportGeneration（5 関数）。  
 **影響を受けない Lambda**: Discovery（manifest は S3AP 直書き）、ChangeDetection（DynamoDB のみ）。  

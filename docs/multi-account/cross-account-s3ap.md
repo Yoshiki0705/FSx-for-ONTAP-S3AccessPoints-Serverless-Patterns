@@ -1,6 +1,6 @@
 # クロスアカウント S3 Access Point アクセスパターン
 
-> FSx for NetApp ONTAP S3 Access Points を活用したマルチアカウントアクセス設計
+> FSx for ONTAP S3 Access Points を活用したマルチアカウントアクセス設計
 
 ## 概要
 
@@ -15,7 +15,7 @@
 ### 前提条件
 
 - AWS Organizations によるマルチアカウント構成
-- FSx for NetApp ONTAP ファイルシステムがストレージアカウントにデプロイ済み
+- FSx for ONTAP ファイルシステムがストレージアカウントにデプロイ済み
 - S3 Access Point が FSx ONTAP ボリュームに対して作成済み
 
 ---
@@ -47,7 +47,7 @@
 │  └──────────────────┘                        │                     │
 │                                              ▼                     │
 │                              ┌──────────────────────────────┐      │
-│                              │ FSx for NetApp ONTAP         │      │
+│                              │ FSx for ONTAP         │      │
 │                              │ Volume                        │      │
 │                              └──────────────────────────────┘      │
 └─────────────────────────────────────────────────────────────────────┘

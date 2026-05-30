@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Aperçu
-FSx for NetApp ONTAP utilise les points d'accès S3 pour mettre en place un workflow sans serveur d'indexation et d'anonymisation automatique des images médicales DICOM. Cela assure la protection de la confidentialité des patients et une gestion efficace des images.
+FSx for ONTAP utilise les points d'accès S3 pour mettre en place un workflow sans serveur d'indexation et d'anonymisation automatique des images médicales DICOM. Cela assure la protection de la confidentialité des patients et une gestion efficace des images.
 ### Cas où ce motif est approprié
 - Je souhaite anonymiser périodiquement les fichiers DICOM stockés dans FSx ONTAP à partir de PACS / VNA
 - Je souhaite supprimer automatiquement les IHP (informations de santé protégées) pour la création de jeux de données de recherche
@@ -50,7 +50,7 @@ graph LR
 4. **Anonymisation** : Identifier et supprimer les PHI avec Comprehend Medical, et sortir les DICOM anonymisés avec les métadonnées de classification dans S3
 ## Prérequis
 - Compte AWS et autorisations IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 ou version ultérieure)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou version ultérieure)
 - Volumes avec Point d'accès S3 activé
 - Informations d'identification de l'API REST ONTAP enregistrées dans Secrets Manager
 - VPC, sous-réseaux privés

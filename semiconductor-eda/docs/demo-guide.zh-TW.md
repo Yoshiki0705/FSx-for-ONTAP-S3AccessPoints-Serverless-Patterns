@@ -208,7 +208,7 @@ ORDER BY bounding_box_width DESC;
 排除 Step Functions 圖表等技術人員視圖（詳情請參閱
 [`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md)）。
 
-### 1. FSx for NetApp ONTAP Volumes — 設計檔案用磁碟區
+### 1. FSx for ONTAP Volumes — 設計檔案用磁碟區
 
 從設計工程師角度看到的 ONTAP 磁碟區清單。在 `eda_demo_vol` 中以 NTFS ACL 管理的狀態配置 GDS/OASIS 檔案。
 

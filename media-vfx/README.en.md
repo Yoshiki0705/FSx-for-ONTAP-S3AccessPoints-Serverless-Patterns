@@ -5,9 +5,9 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-Leveraging S3 Access Points in FSx for NetApp ONTAP, this serverless workflow automates the submission of VFX rendering jobs, quality checks, and the write-back of approved outputs.
+Leveraging S3 Access Points in FSx for ONTAP, this serverless workflow automates the submission of VFX rendering jobs, quality checks, and the write-back of approved outputs.
 ### When this pattern is suitable
-- Using FSx for NetApp ONTAP as rendering storage for VFX / animation production
+- Using FSx for ONTAP as rendering storage for VFX / animation production
 - We want to automate quality checks after rendering and reduce the burden of manual review
 - We want to automatically write back the assets that passed quality checks to the file server (S3 AP PutObject)
 - We want to build a pipeline that integrates Deadline Cloud with existing NAS storage
@@ -48,7 +48,7 @@ graph LR
 3. **Quality Check**: Evaluate the quality of rendering results with Rekognition. If passed, PutObject to S3 AP, and if failed, flag for re-rendering with an SNS notification
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file system (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
 - Volumes with S3 Access Point enabled
 - ONTAP REST API credentials registered in Secrets Manager
 - VPC, private subnets
@@ -157,7 +157,7 @@ UC4 uses the following services:
 ## References
 
 ### AWS Official Documentation
-- [FSx for NetApp ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Streaming with CloudFront (Official Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html)
 - [Serverless processing with Lambda (Official Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Deadline Cloud API Reference](https://docs.aws.amazon.com/deadline-cloud/latest/APIReference/Welcome.html)

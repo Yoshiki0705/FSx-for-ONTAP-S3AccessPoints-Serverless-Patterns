@@ -161,12 +161,12 @@ Rendering-Ausgabe    Frame-Analyse     Qualitätsbeurteilung    QC-Bericht
 
 ---
 
-## Über das Ausgabeziel: FSxN S3 Access Point (Pattern A)
+## Über das Ausgabeziel: FSx for ONTAP S3 Access Point (Pattern A)
 
 UC4 media-vfx ist als **Pattern A: Native S3AP Output** klassifiziert
 (siehe `docs/output-destination-patterns.md`).
 
-**Design**: Rendering-Metadaten und Frame-Qualitätsbewertungen werden alle über FSxN S3 Access Point
+**Design**: Rendering-Metadaten und Frame-Qualitätsbewertungen werden alle über FSx for ONTAP S3 Access Point
 auf **dasselbe FSx ONTAP Volume** wie die Original-Rendering-Assets zurückgeschrieben. Standard-S3-Buckets werden
 nicht erstellt („no data movement"-Pattern).
 

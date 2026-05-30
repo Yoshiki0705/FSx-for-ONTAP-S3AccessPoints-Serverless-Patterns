@@ -2,7 +2,7 @@
 
 ## 概要
 
-本ドキュメントは、FSx for NetApp ONTAP S3 Access Points（以下 FSx ONTAP S3 AP）における
+本ドキュメントは、FSx for ONTAP S3 Access Points（以下 FSx ONTAP S3 AP）における
 イベント駆動アーキテクチャの設計を定義する。現在のポーリングベースアーキテクチャから、
 将来の FSx ONTAP S3 AP ネイティブ通知機能を活用したイベント駆動アーキテクチャへの
 移行を見据えた設計である。
@@ -363,4 +363,4 @@ Phase A → Phase B → Phase C の 3 段階移行により、
 - [Amazon S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventNotifications.html)
 - [Amazon EventBridge Event Patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html)
 - [AWS Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html)
-- [FSx for NetApp ONTAP S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html)
+- [FSx for ONTAP S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html)

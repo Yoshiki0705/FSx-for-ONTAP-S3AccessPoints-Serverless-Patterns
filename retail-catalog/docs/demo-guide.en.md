@@ -165,7 +165,7 @@ Product Images    Image Analysis    Attribute Extraction    Catalog Update
 Following the same approach as Phase 7, capturing **UI/UX screens that e-commerce staff actually use in daily operations**.
 Technical screens (Step Functions graphs, etc.) are excluded.
 
-### Output Destination Selection: Standard S3 vs FSxN S3AP
+### Output Destination Selection: Standard S3 vs FSx for ONTAP S3 AP
 
 UC11 supports the `OutputDestination` parameter as of the 2026-05-10 update.
 **Writing AI outputs back to the same FSx volume** allows SMB/NFS users to

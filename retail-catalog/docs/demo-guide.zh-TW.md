@@ -165,7 +165,7 @@
 與 Phase 7 相同方針，拍攝 **電商負責人在日常業務中實際使用的 UI/UX 畫面**。
 排除技術人員用畫面（Step Functions 圖表等）。
 
-### 輸出目的地選擇：標準 S3 vs FSxN S3AP
+### 輸出目的地選擇：標準 S3 vs FSx for ONTAP S3 AP
 
 UC11 在 2026-05-10 的更新中支援 `OutputDestination` 參數。
 **將 AI 成果寫回同一 FSx 磁碟區**，讓 SMB/NFS 使用者能在

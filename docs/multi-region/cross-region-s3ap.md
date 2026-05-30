@@ -2,7 +2,7 @@
 
 ## 概要
 
-本ドキュメントでは、FSx for NetApp ONTAP の S3 Access Points を複数リージョンから利用する際のアーキテクチャパターン、レイテンシ特性、データ整合性、フェイルオーバー動作について解説する。
+本ドキュメントでは、FSx for ONTAP の S3 Access Points を複数リージョンから利用する際のアーキテクチャパターン、レイテンシ特性、データ整合性、フェイルオーバー動作について解説する。
 
 主なユースケース:
 - **ap-northeast-1（東京）→ us-east-1（バージニア北部）** のクロスリージョンアクセス
@@ -18,13 +18,13 @@ graph TB
     subgraph "ap-northeast-1 (Primary)"
         LAMBDA_P[Lambda Functions]
         S3AP_P[S3 Access Point<br/>FSx ONTAP Volume]
-        FSXN_P[FSx for NetApp ONTAP<br/>Primary]
+        FSXN_P[FSx for ONTAP<br/>Primary]
     end
 
     subgraph "us-east-1 (Secondary)"
         LAMBDA_S[Lambda Functions]
         S3AP_S[S3 Access Point<br/>FSx ONTAP Volume]
-        FSXN_S[FSx for NetApp ONTAP<br/>Secondary / SnapMirror]
+        FSXN_S[FSx for ONTAP<br/>Secondary / SnapMirror]
     end
 
     subgraph "Network Layer"

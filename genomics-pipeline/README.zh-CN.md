@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，自动化无服务器工作流程，用于对 FASTQ/BAM/VCF 基因组数据进行质量检查、变异调用统计汇总和研究摘要生成。
+利用 FSx for ONTAP 的 S3 Access Points，自动化无服务器工作流程，用于对 FASTQ/BAM/VCF 基因组数据进行质量检查、变异调用统计汇总和研究摘要生成。
 ### 适用场景
 
 适用以下情况：
@@ -21,7 +21,7 @@
 - Amazon Athena
 - Amazon S3
 - AWS Lambda
-- Amazon FSx for NetApp ONTAP
+- Amazon FSx for ONTAP
 - Amazon CloudWatch
 - AWS CloudFormation
 
@@ -66,7 +66,7 @@ graph LR
 
 ### 工作流程步骤
 
-在工作流程步骤中，您可以使用Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch和AWS CloudFormation等服务。请确保保留GDSII、DRC、OASIS、GDS、Lambda、tapeout等技术术语不变。同时，请保持内联代码（`...`）、文件路径和URL不变。
+在工作流程步骤中，您可以使用Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch和AWS CloudFormation等服务。请确保保留GDSII、DRC、OASIS、GDS、Lambda、tapeout等技术术语不变。同时，请保持内联代码（`...`）、文件路径和URL不变。
 1. **发现**：从 S3 AP 检测.fastq,.fastq.gz,.bam,.vcf,.vcf.gz 文件
 2. **质量控制**：通过流式下载获取 FASTQ 头部，提取质量指标
 3. **变体聚合**：汇总 VCF 文件的变体统计
@@ -74,7 +74,7 @@ graph LR
 5. **摘要**：在 Bedrock 中生成研究摘要，使用 Comprehend Medical 提取实体
 ## 前提条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
 - 启用了 S3 Access Point 的卷（存储基因数据）
 - VPC、私有子网
 - Amazon Bedrock 模型访问已启用（Claude / Nova）

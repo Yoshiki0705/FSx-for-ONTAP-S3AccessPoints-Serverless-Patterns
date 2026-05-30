@@ -6,7 +6,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP の S3 Access Points を活用し、契約書・請求書などのドキュメントを自動で OCR 処理、エンティティ抽出、サマリー生成するサーバーレスワークフローです。
+FSx for ONTAP の S3 Access Points を活用し、契約書・請求書などのドキュメントを自動で OCR 処理、エンティティ抽出、サマリー生成するサーバーレスワークフローです。
 
 ### このパターンが適しているケース
 
@@ -81,7 +81,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム
 - ONTAP REST API 認証情報が Secrets Manager に登録済み
 - VPC、プライベートサブネット
@@ -263,6 +263,140 @@ UC2 は以下のサービスを使用します:
 
 > **注意**: ONTAP REST API を使用する UC（UC1 法務・コンプライアンス）では `EnableVpcEndpoints=true` が必須です。Secrets Manager VPC Endpoint 経由で ONTAP 認証情報を取得するためです。
 
+
+---
+
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Textract | [Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |
+| Amazon Comprehend | [Amazon Comprehend](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html) |
+| Amazon Bedrock | [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、構造化ログ |
+| セキュリティ | 最小権限 IAM、KMS 暗号化、PII 検出 |
+| 信頼性 | Step Functions Retry/Catch、クロスリージョンフォールバック |
+| パフォーマンス効率 | Lambda メモリ最適化、並列 OCR 処理 |
+| コスト最適化 | サーバーレス（使用時のみ課金）、Textract ページ単位課金 |
+| 持続可能性 | オンデマンド実行、不要リソースの自動停止 |
+
+
+
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+帳票 OCR → エンティティ抽出の出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 25,
+    "prefix": "invoices/"
+  },
+  "processing": [
+    {
+      "key": "invoices/INV-2026-001.pdf",
+      "ocr_result": {
+        "document_type": "invoice",
+        "confidence": 0.97
+      },
+      "entities": {
+        "vendor_name": "株式会社サンプル",
+        "invoice_number": "INV-2026-001",
+        "amount": "1,234,567",
+        "currency": "JPY",
+        "due_date": "2026-06-30"
+      },
+      "summary": "サンプル社からの請求書。金額 1,234,567 円、支払期限 2026/6/30。"
+    }
+  ],
+  "report": {
+    "total_processed": 25,
+    "succeeded": 24,
+    "failed": 1,
+    "output_prefix": "s3://output-bucket/extracted/"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
+
+### FISC 安全対策基準への対応
+
+日本の金融機関向けに、本パターンの設計要素と FISC（金融情報システムセンター）安全対策基準との対応を示します。
+
+> **重要**: 本セクションは FISC 準拠を保証するものではありません。FISC 準拠の最終判断は金融機関の情報セキュリティ部門および監査法人が行ってください。
+
+| FISC 対策基準カテゴリ | 本パターンの対応設計要素 |
+|---------------------|----------------------|
+| アクセス管理 | IAM 最小権限、S3 AP リソースポリシー、ONTAP デュアルレイヤー認可 |
+| 暗号化 | SSE-FSX（保存時）、TLS 1.2+（転送時）、KMS（出力バケット） |
+| 監査証跡 | CloudTrail（全 API コール）、CloudWatch Logs（Lambda 実行ログ）、X-Ray トレーシング |
+| データ保護 | VPC 内実行（オプション）、Secrets Manager（認証情報管理）、データ分類ラベル |
+| 可用性 | Step Functions Retry/Catch、Lambda 自動スケーリング、Multi-AZ FSx ONTAP（オプション） |
+| 変更管理 | CloudFormation（IaC）、Git 管理、CI/CD パイプライン |
+| 障害対応 | CloudWatch Alarms、SNS 通知、インシデント対応 Playbook |
+
+**追加で検討すべき事項**:
+- 金融データの国内保管要件（ap-northeast-1 リージョン使用で対応）
+- Textract クロスリージョン呼び出し時のデータ経路（us-east-1 経由）の許容可否
+- 外部委託先（AWS）に対する監督義務の整理
+- 定期的な脆弱性診断・ペネトレーションテストの実施計画
 
 ---
 

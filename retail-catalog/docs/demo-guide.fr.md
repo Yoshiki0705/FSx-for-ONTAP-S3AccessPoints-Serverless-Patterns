@@ -166,7 +166,7 @@ Image produit      Analyse image    Extraction        Mise à jour
 Même approche que Phase 7 : capture des **écrans UI/UX réellement utilisés par les responsables e-commerce dans leurs tâches quotidiennes**.
 Les écrans destinés aux techniciens (graphes Step Functions, etc.) sont exclus.
 
-### Choix de la destination de sortie : S3 standard vs FSxN S3AP
+### Choix de la destination de sortie : S3 standard vs FSx for ONTAP S3 AP
 
 UC11 prend en charge le paramètre `OutputDestination` depuis la mise à jour du 2026-05-10.
 **En réécrivant les résultats IA sur le même volume FSx**, les utilisateurs SMB/NFS peuvent

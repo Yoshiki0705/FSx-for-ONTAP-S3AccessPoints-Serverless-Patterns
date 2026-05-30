@@ -7,7 +7,7 @@
 ## Prérequis
 
 - Compte AWS, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - Déployer `government-archives/template-deploy.yaml` (avec `OpenSearchMode=none` pour réduire les coûts)
 
 ## Chronologie
@@ -128,7 +128,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP (pattern "no data movement")
 Écrit le texte OCR, les résultats de classification, les résultats de détection PII, les documents caviardés et les métadonnées de rédaction
-dans le **même volume FSx ONTAP** que les documents originaux, via le FSxN S3 Access Point.
+dans le **même volume FSx ONTAP** que les documents originaux, via le FSx for ONTAP S3 Access Point.
 Les responsables des archives publiques peuvent consulter directement les résultats de l'IA dans la structure de répertoires SMB/NFS existante.
 Aucun bucket S3 standard n'est créé.
 
@@ -148,13 +148,13 @@ aws cloudformation deploy \
 UC16 a une structure en chaîne où les Lambdas en aval relisent les résultats des étapes précédentes (OCR → Classification →
 EntityExtraction → Redaction → IndexGeneration), donc `get_bytes/get_text/get_json` dans `shared/output_writer.py`
 relit depuis la même destination que celle où les données ont été écrites.
-Cela permet à la relecture depuis le FSxN S3 Access Point de fonctionner également avec `OutputDestination=FSXN_S3AP`,
+Cela permet à la relecture depuis le FSx for ONTAP S3 Access Point de fonctionner également avec `OutputDestination=FSXN_S3AP`,
 et l'ensemble de la chaîne fonctionne avec une destination cohérente.
 
 **Points d'attention** :
 
 - Spécification de `S3AccessPointName` fortement recommandée (autoriser IAM pour les formats Alias et ARN)
-- Les objets de plus de 5 Go ne sont pas pris en charge par FSxN S3AP (spécification AWS), téléchargement multipart obligatoire
+- Les objets de plus de 5 Go ne sont pas pris en charge par FSx for ONTAP S3 AP (spécification AWS), téléchargement multipart obligatoire
 - Le Lambda ComplianceCheck utilise uniquement DynamoDB et n'est donc pas affecté par `OutputDestination`
 - Le Lambda FoiaDeadlineReminder utilise uniquement DynamoDB + SNS et n'est donc pas affecté
 - L'index OpenSearch est géré séparément par le paramètre `OpenSearchMode` (indépendant de `OutputDestination`)

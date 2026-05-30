@@ -159,12 +159,12 @@ DICOM Files        Tag Analysis     De-identification   Quality Verification
 
 ---
 
-## About Output Destination: FSxN S3 Access Point (Pattern A)
+## About Output Destination: FSx for ONTAP S3 Access Point (Pattern A)
 
 UC5 healthcare-dicom is classified as **Pattern A: Native S3AP Output**
 (see `docs/output-destination-patterns.md`).
 
-**Design**: DICOM metadata, de-identification results, and PII detection logs are all written back via FSxN S3 Access Point to the **same FSx ONTAP volume** as the original DICOM medical images. No standard S3 bucket is created ("no data movement" pattern).
+**Design**: DICOM metadata, de-identification results, and PII detection logs are all written back via FSx for ONTAP S3 Access Point to the **same FSx ONTAP volume** as the original DICOM medical images. No standard S3 bucket is created ("no data movement" pattern).
 
 **CloudFormation Parameters**:
 - `S3AccessPointAlias`: S3 AP Alias for reading input data

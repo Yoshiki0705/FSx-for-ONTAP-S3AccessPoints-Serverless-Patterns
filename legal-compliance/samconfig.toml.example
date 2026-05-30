@@ -1,0 +1,46 @@
+# samconfig.toml.example — legal-compliance
+#
+# 使用方法:
+#   1. このファイルを samconfig.toml にコピー
+#   2. <PLACEHOLDER> を実際の値に置き換え
+#   3. sam deploy を実行
+#
+# 注意: samconfig.toml は .gitignore に含まれています
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-legal-compliance"
+resolve_s3 = true
+s3_prefix = "fsxn-s3ap-legal-compliance"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "S3AccessPointAlias=<YOUR_S3AP_ALIAS>-ext-s3alias",
+    "S3AccessPointName=",
+    "S3AccessPointOutputAlias=<YOUR_OUTPUT_S3AP_ALIAS>-ext-s3alias",
+    "OntapSecretName=<YOUR_ONTAP_SECRET_NAME>",
+    "OntapManagementIp=<YOUR_ONTAP_MGMT_IP>",
+    "SvmUuid=<YOUR_SVM_UUID>",
+    "VolumeUuid=<YOUR_VOLUME_UUID>",
+    "ScheduleExpression=rate(1 hour)",
+    "VpcId=<YOUR_VPC_ID>",
+    "PrivateSubnetIds=<SUBNET_1>,<SUBNET_2>",
+    "PrivateRouteTableIds=<RTB_1>,<RTB_2>",
+    "NotificationEmail=<YOUR_EMAIL>",
+    "EnableVpcEndpoints=false",
+    "EnableCloudWatchAlarms=false",
+    "EnableS3GatewayEndpoint=true",
+    "EnableAthenaWorkgroup=true",
+    "BedrockModelId=amazon.nova-lite-v1:0",
+    "EnableXRayTracing=true",
+    "TriggerMode=POLLING",
+    "FPolicyEventBusName=fsxn-fpolicy-events",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true

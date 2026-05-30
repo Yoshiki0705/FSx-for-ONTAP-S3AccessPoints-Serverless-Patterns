@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Entrée — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Entrée — FSx for ONTAP"]
         DATA["Données logistiques<br/>.jpg/.jpeg/.png/.tiff/.pdf (bordereaux d'expédition)<br/>.jpg/.jpeg/.png (photos d'inventaire d'entrepôt)"]
     end
 
@@ -63,7 +63,7 @@ flowchart TB
 ### Entrée
 | Élément | Description |
 |---------|-------------|
-| **Source** | Volume FSx for NetApp ONTAP |
+| **Source** | Volume FSx for ONTAP |
 | **Types de fichiers** | .jpg/.jpeg/.png/.tiff/.pdf (bordereaux d'expédition), .jpg/.jpeg/.png (photos d'inventaire d'entrepôt) |
 | **Méthode d'accès** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Stratégie de lecture** | Récupération complète d'images/PDF (requis pour Textract / Rekognition) |
@@ -103,7 +103,7 @@ flowchart TB
 
 | Service | Rôle |
 |---------|------|
-| FSx for NetApp ONTAP | Stockage des bordereaux d'expédition et images d'inventaire |
+| FSx for ONTAP | Stockage des bordereaux d'expédition et images d'inventaire |
 | S3 Access Points | Accès serverless aux volumes ONTAP |
 | EventBridge Scheduler | Déclencheur périodique |
 | Step Functions | Orchestration du flux de travail (prise en charge des chemins parallèles) |

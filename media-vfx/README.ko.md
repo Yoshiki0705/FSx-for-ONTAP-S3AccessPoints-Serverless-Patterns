@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 개요
-FSx for NetApp ONTAP의 S3 Access Points를 활용하여 VFX 렌더링 작업의 자동 제출, 품질 검사 및 승인된 출력의 반환을 수행하는 서버리스 워크플로입니다.
+FSx for ONTAP의 S3 Access Points를 활용하여 VFX 렌더링 작업의 자동 제출, 품질 검사 및 승인된 출력의 반환을 수행하는 서버리스 워크플로입니다.
 ### 이 패턴이 적합한 경우
 - VFX / 애니메이션 제작에서 FSx ONTAP를 렌더링 스토리지로 사용하고 있습니다
 - 렌더링 완료 후 품질 검사를 자동화하여 수동 검토의 부담을 줄이고 싶습니다
@@ -144,7 +144,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 > **주의**: S3 버킷에 객체가 남아 있으면 스택 삭제가 실패할 수 있습니다. 미리 버킷을 비워주세요.
 ## 지원되는 리전
-UC4는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation 등.
+UC4는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation 등.
 | サービス | リージョン制約 |
 |---------|-------------|
 | Amazon Rekognition | ほぼ全リージョンで利用可能 |

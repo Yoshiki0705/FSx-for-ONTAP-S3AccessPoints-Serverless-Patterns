@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，实现一个用于自动化 SEG-Y 地震勘探数据元数据提取、井日志异常检测和合规性报告生成的无服务器工作流。
+利用 FSx for ONTAP 的 S3 Access Points，实现一个用于自动化 SEG-Y 地震勘探数据元数据提取、井日志异常检测和合规性报告生成的无服务器工作流。
 ### 适用场景
 - SEG-Y 地震探测数据和井日志大量积累在 FSx ONTAP 上
 - 希望自动目录化地震探测数据的元数据（测量名称、坐标系、采样间隔、迹数）
@@ -19,7 +19,7 @@
 - 无法确保对 ONTAP REST API 的网络访问环境
 ### 主要功能
 
-- 保持AWS服务名称用英语（Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch、AWS CloudFormation等）
+- 保持AWS服务名称用英语（Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation等）
 - 保持技术术语不翻译（GDSII、DRC、OASIS、GDS、Lambda、tapeout等）
 - 保持内联代码（`...`）不翻译
 - 保持文件路径和URL不翻译
@@ -60,7 +60,7 @@ graph LR
 
 ### 工作流程步骤
 
-在使用 Amazon Bedrock 和 AWS Step Functions 时，可以创建复杂的工作流程。Amazon Athena 用于查询 Amazon S3 中的数据，而 AWS Lambda 可以执行自定义代码。确保使用 Amazon FSx for NetApp ONTAP 来管理文件系统。使用 Amazon CloudWatch 监控系统日志，并通过 AWS CloudFormation 模板来管理基础设施即代码。
+在使用 Amazon Bedrock 和 AWS Step Functions 时，可以创建复杂的工作流程。Amazon Athena 用于查询 Amazon S3 中的数据，而 AWS Lambda 可以执行自定义代码。确保使用 Amazon FSx for ONTAP 来管理文件系统。使用 Amazon CloudWatch 监控系统日志，并通过 AWS CloudFormation 模板来管理基础设施即代码。
 
 注意：请确保 GDSII 文件符合 DRC 规范，并在 tapeout 阶段进行最终验证。以下是一些示例代码：
 
@@ -83,7 +83,7 @@ print("存储桶列表：", response['Buckets'])
 5. **合规报告**：使用 Bedrock 生成合规报告，使用 Rekognition 识别图像模式
 ## 前提条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
 - 已启用 S3 Access Point 的卷（存储地震勘探数据和井日志）
 - VPC、私有子网
 - 已启用 Amazon Bedrock 模型访问（Claude / Nova）

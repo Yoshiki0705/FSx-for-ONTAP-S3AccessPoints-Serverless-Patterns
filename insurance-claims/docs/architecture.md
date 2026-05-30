@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         DATA["保険請求データ<br/>.jpg/.jpeg/.png (事故写真)<br/>.pdf/.tiff (修理見積書)"]
     end
 
@@ -59,7 +59,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | .jpg/.jpeg/.png (事故写真), .pdf/.tiff (修理見積書) |
 | **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Read Strategy** | 画像・PDF 全体を取得 (Rekognition / Textract に必要) |
@@ -98,7 +98,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | 事故写真・見積書ストレージ |
+| FSx for ONTAP | 事故写真・見積書ストレージ |
 | S3 Access Points | ONTAP ボリュームへのサーバーレスアクセス |
 | EventBridge Scheduler | 定期トリガー |
 | Step Functions | ワークフローオーケストレーション (並列パス対応) |

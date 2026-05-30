@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 Amazon FSx for NetApp ONTAP 的 S3 Access Points，建立一個無伺服器工作流程，自動提交 VFX 渲染任務、進行質量檢查，並寫回已獲批准的輸出。
+利用 Amazon FSx for ONTAP 的 S3 Access Points，建立一個無伺服器工作流程，自動提交 VFX 渲染任務、進行質量檢查，並寫回已獲批准的輸出。
 ### 適用這種模式的情況
 - 使用 FSx ONTAP 作為 VFX / 動畫製作的渲染儲存
 - 自動化渲染完成後的品質檢查，減輕手動審查的負擔
@@ -46,7 +46,7 @@ graph LR
 3. **品質檢查**：使用 Rekognition 評估渲染結果的品質。如果合格，則將物件放入 S3 AP，不合格則使用 SNS 通知標記重新渲染
 ## 先決條件
 - AWS 帳戶及適當的 IAM 權限
-- FSx for NetApp ONTAP 文件系統（ONTAP 9.17.1P4D3 及以上）
+- FSx for ONTAP 文件系統（ONTAP 9.17.1P4D3 及以上）
 - 已啟用 S3 Access Point 的卷
 - ONTAP REST API 認證信息已在 Secrets Manager 中註冊
 - VPC、私有子網

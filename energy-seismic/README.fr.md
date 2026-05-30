@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Aperçu
-Il s'agit d'un flux de travail sans serveur automatisé pour l'extraction de métadonnées de données sismiques SEG-Y, la détection d'anomalies de journaux de puits et la génération de rapports de conformité en utilisant les Points d'accès S3 de FSx for NetApp ONTAP.
+Il s'agit d'un flux de travail sans serveur automatisé pour l'extraction de métadonnées de données sismiques SEG-Y, la détection d'anomalies de journaux de puits et la génération de rapports de conformité en utilisant les Points d'accès S3 de FSx for ONTAP.
 ### Cas où ce modèle est approprié
 - Les données sismiques SEG-Y et les journaux de puits sont massivement stockés sur FSx ONTAP
 - On souhaite cataloguer automatiquement les métadonnées des données sismiques (nom du levé, système de coordonnées, intervalle d'échantillonnage, nombre de traces)
@@ -57,7 +57,7 @@ graph LR
 5. **Rapport de conformité** : Générer un rapport de conformité avec Bedrock, reconnaissance de motifs d'image avec Rekognition
 ## Conditions préalables
 - Compte AWS et autorisations IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 et supérieur)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 et supérieur)
 - Point d'accès S3 activé pour les volumes (stockage des données de prospection sismique et des journaux de puits)
 - VPC, sous-réseaux privés
 - Accès aux modèles Amazon Bedrock activé (Claude / Nova)

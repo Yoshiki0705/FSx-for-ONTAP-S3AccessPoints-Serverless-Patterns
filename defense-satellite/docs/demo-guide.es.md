@@ -7,7 +7,7 @@
 ## Requisitos previos
 
 - Cuenta de AWS, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - `defense-satellite/template-deploy.yaml` desplegado (`EnableSageMaker=false`)
 
 ## Cronograma
@@ -16,7 +16,7 @@
 
 - Contexto del caso de uso: aumento de datos de imágenes satelitales (Sentinel, Landsat, SAR comercial)
 - Desafíos del NAS tradicional: flujos de trabajo basados en copias que consumen tiempo y costos
-- Ventajas de FSxN S3AP: zero-copy, integración con NTFS ACL, procesamiento serverless
+- Ventajas de FSx for ONTAP S3 AP: zero-copy, integración con NTFS ACL, procesamiento serverless
 
 ### 0:05 - 0:10 Explicación de la arquitectura (5 minutos)
 
@@ -110,7 +110,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP (patrón "no data movement")
 Escribe los metadatos de tiling, JSON de detección de objetos y resultados de detección con Geo enrichment
-de vuelta al **mismo volumen FSx ONTAP** que las imágenes satelitales originales a través del FSxN S3 Access Point.
+de vuelta al **mismo volumen FSx ONTAP** que las imágenes satelitales originales a través del FSx for ONTAP S3 Access Point.
 Los analistas pueden referenciar directamente los resultados de IA dentro de la estructura de directorios
 SMB/NFS existente. No se crea un bucket S3 estándar.
 
@@ -128,7 +128,7 @@ aws cloudformation deploy \
 **Notas importantes**:
 
 - Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM tanto en formato Alias como ARN)
-- Objetos superiores a 5GB no son posibles con FSxN S3AP (especificación de AWS), se requiere multipart upload
+- Objetos superiores a 5GB no son posibles con FSx for ONTAP S3 AP (especificación de AWS), se requiere multipart upload
 - ChangeDetection Lambda solo usa DynamoDB, por lo que no se ve afectado por `OutputDestination`
 - AlertGeneration Lambda solo usa SNS, por lo que no se ve afectado por `OutputDestination`
 - Para restricciones de especificación de AWS, consulte

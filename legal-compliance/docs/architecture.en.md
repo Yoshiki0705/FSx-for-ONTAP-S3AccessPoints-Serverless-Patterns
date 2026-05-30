@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         FILES["File server data<br/>Files with NTFS ACLs"]
     end
 
@@ -58,7 +58,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | All files (with NTFS ACLs) |
 | **Access Method** | S3 Access Point (file listing) + ONTAP REST API (ACL info) |
 | **Read Strategy** | Metadata only (file contents are not read) |
@@ -96,7 +96,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | Enterprise file storage (with NTFS ACLs) |
+| FSx for ONTAP | Enterprise file storage (with NTFS ACLs) |
 | S3 Access Points | Serverless access to ONTAP volumes |
 | EventBridge Scheduler | Periodic trigger (daily audit) |
 | Step Functions | Workflow orchestration |

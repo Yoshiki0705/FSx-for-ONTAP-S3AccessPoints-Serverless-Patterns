@@ -6,7 +6,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP の S3 Access Points を活用し、IoT センサーログの異常検出と品質検査画像の欠陥検出を自動化するサーバーレスワークフローです。
+FSx for ONTAP の S3 Access Points を活用し、IoT センサーログの異常検出と品質検査画像の欠陥検出を自動化するサーバーレスワークフローです。
 
 ### このパターンが適しているケース
 
@@ -83,7 +83,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム
 - ONTAP REST API 認証情報が Secrets Manager に登録済み
 - VPC、プライベートサブネット
@@ -249,6 +249,114 @@ UC3 は以下のサービスを使用します:
 
 > **注意**: ONTAP REST API を使用する UC（UC1 法務・コンプライアンス）では `EnableVpcEndpoints=true` が必須です。Secrets Manager VPC Endpoint 経由で ONTAP 認証情報を取得するためです。
 
+
+---
+
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| AWS Glue | [AWS Glue](https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html) |
+| Amazon Athena | [Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
+| Amazon Rekognition | [Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、Glue ジョブ監視 |
+| セキュリティ | 最小権限 IAM、KMS 暗号化、VPC 分離 |
+| 信頼性 | Step Functions Retry/Catch、Glue ジョブリトライ |
+| パフォーマンス効率 | Glue ETL 並列処理、Athena パーティション |
+| コスト最適化 | サーバーレス、Glue DPU 自動スケーリング |
+| 持続可能性 | オンデマンド実行、データライフサイクル管理 |
+
+
+
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+センサーデータ ETL + 画像分析の出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 150,
+    "categories": {"csv_sensor": 120, "image_inspection": 30}
+  },
+  "etl_results": {
+    "records_processed": 45000,
+    "anomalies_detected": 7,
+    "output_table": "manufacturing_metrics"
+  },
+  "image_analysis": [
+    {
+      "key": "inspection/line-A/frame-001.jpg",
+      "defect_detected": true,
+      "defect_type": "scratch",
+      "confidence": 0.92,
+      "bounding_box": {"x": 120, "y": 80, "w": 45, "h": 30}
+    }
+  ],
+  "athena_summary": {
+    "oee_score": 0.87,
+    "defect_rate_pct": 2.3,
+    "query_execution_id": "qe-abc123..."
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
 
 ---
 

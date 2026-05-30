@@ -1,0 +1,33 @@
+{
+  "file_path": "/vol/finance/invoices/2026/05/INV-2026-001234.pdf",
+  "file_size": 156000,
+  "last_modified": "2026-05-10T14:22:00Z",
+  "ocr_result": {
+    "invoice_number": "INV-2026-001234",
+    "vendor_name": "Sample Corp.",
+    "invoice_date": "2026-05-01",
+    "due_date": "2026-06-01",
+    "total_amount": 1250000,
+    "currency": "JPY",
+    "line_items": [
+      {
+        "description": "クラウドインフラ利用料（5月分）",
+        "quantity": 1,
+        "unit_price": 1000000,
+        "amount": 1000000
+      },
+      {
+        "description": "サポート費用",
+        "quantity": 1,
+        "unit_price": 250000,
+        "amount": 250000
+      }
+    ]
+  },
+  "entities": {
+    "organization": ["Sample Corp."],
+    "date": ["2026-05-01", "2026-06-01"],
+    "amount": ["1,250,000 JPY"]
+  },
+  "confidence_score": 0.94
+}

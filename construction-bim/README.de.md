@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Übersicht
-Serverlose Workflows zur Automatisierung der Versionskontrolle von BIM-Modellen (IFC/Revit), der OCR-Textextraktion aus Zeichnungs-PDFs und der Sicherheits-Compliance-Prüfung unter Verwendung der S3 Access Points von FSx for NetApp ONTAP.
+Serverlose Workflows zur Automatisierung der Versionskontrolle von BIM-Modellen (IFC/Revit), der OCR-Textextraktion aus Zeichnungs-PDFs und der Sicherheits-Compliance-Prüfung unter Verwendung der S3 Access Points von FSx for ONTAP.
 ### Fälle, in denen dieses Muster geeignet ist
 - BIM-Modelle (IFC/Revit) und Zeichnungen in PDF-Format sind auf FSx ONTAP gespeichert
 - Die Metadaten von IFC-Dateien (Projektname, Anzahl der Bauelemente, Stockwerke) sollen automatisch katalogisiert werden
@@ -54,7 +54,7 @@ graph LR
 4. **Safety Check**: Sicherheits-Compliance-Regelprüfung mit Bedrock, visuelle Elementerkennung mit Rekognition
 ## Voraussetzungen
 - AWS-Konto und geeignete IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisysteme (ONTAP 9.17.1P4D3 oder höher)
+- FSx for ONTAP-Dateisysteme (ONTAP 9.17.1P4D3 oder höher)
 - S3 Access Point aktivierter Volume (BIM-Modelle/Zeichnungen speichern)
 - VPC, private Subnetz
 - Amazon Bedrock-Modellzugriff aktiviert (Claude / Nova)

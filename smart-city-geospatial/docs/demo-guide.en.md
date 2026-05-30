@@ -7,7 +7,7 @@
 ## Prerequisites
 
 - AWS account, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - Bedrock Nova Lite v1:0 model enabled
 
 ## Timeline
@@ -16,7 +16,7 @@
 
 - Municipal challenges: increasing use of GIS data for urban planning, disaster response, infrastructure maintenance
 - Traditional challenges: GIS analysis centered on specialized software like ArcGIS / QGIS
-- Proposal: automation with FSxN S3AP + serverless
+- Proposal: automation with FSx for ONTAP S3 AP + serverless
 
 ### 0:05 - 0:10 Architecture (5 min)
 
@@ -107,7 +107,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement" pattern)
 Writes CRS normalization metadata, land use classification results, infrastructure assessments, risk maps, and Bedrock-generated
-urban planning reports (Markdown) back to the **same FSx ONTAP volume** as the original GIS data via FSxN S3 Access Point.
+urban planning reports (Markdown) back to the **same FSx ONTAP volume** as the original GIS data via FSx for ONTAP S3 Access Point.
 Urban planning staff can directly reference AI outputs within the existing SMB/NFS directory structure.
 No standard S3 bucket is created.
 
@@ -125,7 +125,7 @@ aws cloudformation deploy \
 **Notes**:
 
 - Strongly recommend specifying `S3AccessPointName` (IAM permissions for both Alias and ARN formats)
-- Objects over 5GB not supported by FSxN S3AP (AWS specification), multipart upload required
+- Objects over 5GB not supported by FSx for ONTAP S3 AP (AWS specification), multipart upload required
 - ChangeDetection Lambda uses DynamoDB only, so not affected by `OutputDestination`
 - Bedrock reports are written as Markdown (`text/markdown; charset=utf-8`), directly viewable
   in text editors on SMB/NFS clients

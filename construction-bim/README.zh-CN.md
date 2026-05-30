@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，实现无服务器工作流程，用于 BIM 模型（IFC/Revit）的版本管理、图纸 PDF 的 OCR 文本提取以及安全合规性检查的自动化。
+利用 FSx for ONTAP 的 S3 Access Points，实现无服务器工作流程，用于 BIM 模型（IFC/Revit）的版本管理、图纸 PDF 的 OCR 文本提取以及安全合规性检查的自动化。
 ### 适用于这种模式的情况
 - BIM 模型（IFC/Revit）和图纸 PDF 已经存储在 FSx ONTAP 上
 - 希望自动编目 IFC 文件的元数据（项目名称、建筑元素数量、楼层数）
@@ -49,14 +49,14 @@ graph LR
 
 ### 工作流程步骤
 
-使用 Amazon Bedrock 和 AWS Step Functions 来创建自定义工作流。确保在 Amazon S3 中存储输入数据，并使用 AWS Lambda 处理数据。为了监控整个流程，可以使用 Amazon CloudWatch。所有资源可以通过 AWS CloudFormation 进行管理。使用 Amazon FSx for NetApp ONTAP 来处理文件存储需求，并利用 Amazon Athena 进行数据分析。
+使用 Amazon Bedrock 和 AWS Step Functions 来创建自定义工作流。确保在 Amazon S3 中存储输入数据，并使用 AWS Lambda 处理数据。为了监控整个流程，可以使用 Amazon CloudWatch。所有资源可以通过 AWS CloudFormation 进行管理。使用 Amazon FSx for ONTAP 来处理文件存储需求，并利用 Amazon Athena 进行数据分析。
 1. **发现**：从 S3 AP 检测.ifc、.rvt、.pdf 文件
 2. **BIM 解析**：IFC 文件元数据提取和版本差异检测
 3. **OCR**：使用 Textract（跨区域）从图纸 PDF 中提取文本和表格
 4. **安全检查**：使用 Bedrock 检查安全合规性规则，使用 Rekognition 检测视觉元素
 ## 前提条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
 - 已启用 S3 Access Point 的卷（存储 BIM 模型和图纸）
 - VPC、私有子网
 - Amazon Bedrock 模型访问已启用（Claude / Nova）

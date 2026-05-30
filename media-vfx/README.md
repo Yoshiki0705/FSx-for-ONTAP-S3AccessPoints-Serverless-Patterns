@@ -6,7 +6,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP の S3 Access Points を活用し、VFX レンダリングジョブの自動送信、品質チェック、承認済み出力の書き戻しを行うサーバーレスワークフローです。
+FSx for ONTAP の S3 Access Points を活用し、VFX レンダリングジョブの自動送信、品質チェック、承認済み出力の書き戻しを行うサーバーレスワークフローです。
 
 ### このパターンが適しているケース
 
@@ -78,7 +78,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム
 - ONTAP REST API 認証情報が Secrets Manager に登録済み
 - VPC、プライベートサブネット
@@ -287,6 +287,110 @@ VFX レンダリングワークフローでは、render input assets（テクス
 | WAN 転送量/ジョブ | 500GB | 50GB | 90% |
 | コスト/フレーム | $0.50 | $0.35 | 30% |
 
+
+---
+
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon CloudFront | [Amazon CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html) |
+| Amazon Bedrock | [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、ジョブ状態監視 |
+| セキュリティ | 最小権限 IAM、CloudFront OAC、KMS 暗号化 |
+| 信頼性 | Step Functions Retry/Catch、品質チェックゲート |
+| パフォーマンス効率 | CloudFront CDN 配信、Lambda 並列処理 |
+| コスト最適化 | サーバーレス、CloudFront キャッシュ活用 |
+| 持続可能性 | オンデマンド実行、CDN によるオリジン負荷軽減 |
+
+
+
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+VFX レンダリング品質チェックの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 48,
+    "prefix": "renders/shot-042/"
+  },
+  "quality_check": [
+    {
+      "key": "renders/shot-042/frame-0001.exr",
+      "resolution": "4096x2160",
+      "color_space": "ACEScg",
+      "quality_score": 0.94,
+      "issues": [],
+      "cloudfront_url": "https://d1234.cloudfront.net/delivery/shot-042/frame-0001.exr"
+    }
+  ],
+  "delivery": {
+    "total_frames": 48,
+    "passed_qc": 46,
+    "failed_qc": 2,
+    "cloudfront_distribution": "d1234.cloudfront.net"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
 
 ---
 

@@ -5,9 +5,9 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-Leveraging S3 Access Points in Amazon FSx for NetApp ONTAP, this serverless workflow enables damage assessment of accident photos, OCR text extraction from estimates, and automatic generation of insurance claim reports.
+Leveraging S3 Access Points in Amazon FSx for ONTAP, this serverless workflow enables damage assessment of accident photos, OCR text extraction from estimates, and automatic generation of insurance claim reports.
 ### Cases where this pattern is suitable
-- Accident photos and estimates are stored on Amazon FSx for NetApp ONTAP
+- Accident photos and estimates are stored on Amazon FSx for ONTAP
 - We want to automate damage detection on accident photos (vehicle damage labels, severity index, affected areas) using Rekognition
 - We want to implement OCR on estimates (repair items, costs, labor hours, parts) using Textract
 - We need a comprehensive claim report that correlates photo-based damage assessment and estimate data
@@ -57,7 +57,7 @@ graph LR
 4. **Claims Report**: Generate a comprehensive report correlating damage assessment and estimate data with Bedrock
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file systems (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file systems (ONTAP 9.17.1P4D3 or later)
 - S3 Access Point enabled volumes (for storing accident photos and estimates)
 - VPC, private subnets
 - Amazon Bedrock model access enabled (Claude / Nova)
@@ -128,7 +128,7 @@ UC14 uses the following services:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Call the Textract API via the Cross-Region Client. Please check the data residency requirements. For more details, refer to the [Region Compatibility Matrix](../docs/region-compatibility.md).
 ## References
-- [FSx for NetApp ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition Label Detection](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon Textract Documentation](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Bedrock API Reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

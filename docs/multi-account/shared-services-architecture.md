@@ -241,7 +241,7 @@ AlarmActions:
 | Step Functions | Started, Failed, Succeeded | ワークフロー実行状況 |
 | Duration | P90, Average | パフォーマンス監視 |
 | S3 Objects | NumberOfObjects | ストレージ使用量 |
-| Custom Metrics | ProcessingLatencyMs | FSxN S3AP 固有メトリクス |
+| Custom Metrics | ProcessingLatencyMs | FSx for ONTAP S3 AP 固有メトリクス |
 
 ### カスタムダッシュボードの追加
 

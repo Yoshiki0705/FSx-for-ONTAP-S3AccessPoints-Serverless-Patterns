@@ -4,7 +4,7 @@
 
 ## Overview
 
-This document provides cost optimization best practices across all Phases (1–5) of FSxN S3AP Serverless Patterns. It includes monthly cost estimates by deployment profile, a cost reduction checklist, and CloudFormation parameter recommendations.
+This document provides cost optimization best practices across all Phases (1–5) of FSx for ONTAP S3 AP Serverless Patterns. It includes monthly cost estimates by deployment profile, a cost reduction checklist, and CloudFormation parameter recommendations.
 
 ---
 
@@ -355,4 +355,4 @@ EmergencyThreshold: 500  # Emergency notify when monthly exceeds $500
 
 ---
 
-*This document is part of FSxN S3AP Serverless Patterns Phase 5.*
+*This document is part of FSx for ONTAP S3 AP Serverless Patterns Phase 5.*

@@ -6,7 +6,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP の S3 Access Points を活用し、DICOM 医用画像の自動分類と匿名化を行うサーバーレスワークフローです。患者プライバシーの保護と効率的な画像管理を実現します。
+FSx for ONTAP の S3 Access Points を活用し、DICOM 医用画像の自動分類と匿名化を行うサーバーレスワークフローです。患者プライバシーの保護と効率的な画像管理を実現します。
 
 ### このパターンが適しているケース
 
@@ -84,7 +84,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム
 - ONTAP REST API 認証情報が Secrets Manager に登録済み
 - VPC、プライベートサブネット
@@ -255,6 +255,110 @@ UC5 は以下のサービスを使用します:
 
 > **注意**: ONTAP REST API を使用する UC（UC1 法務・コンプライアンス）では `EnableVpcEndpoints=true` が必須です。Secrets Manager VPC Endpoint 経由で ONTAP 認証情報を取得するためです。
 
+
+---
+
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Comprehend Medical | [Amazon Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/comprehendmedical-welcome.html) |
+| Amazon Bedrock | [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+| AWS HIPAA 対応サービス | [AWS HIPAA 対応サービス](https://aws.amazon.com/compliance/hipaa-eligible-services-reference/) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、匿名化監査ログ |
+| セキュリティ | 最小権限 IAM、KMS 暗号化、PII 検出・匿名化、HIPAA 考慮 |
+| 信頼性 | Step Functions Retry/Catch、クロスリージョンフォールバック |
+| パフォーマンス効率 | Lambda メモリ最適化、DICOM ストリーミング処理 |
+| コスト最適化 | サーバーレス、Comprehend Medical ページ単位課金 |
+| 持続可能性 | オンデマンド実行、匿名化済みデータの再利用 |
+
+
+
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+DICOM 匿名化パイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 12,
+    "prefix": "dicom-inbox/"
+  },
+  "anonymization": [
+    {
+      "key": "dicom-inbox/study-001/series-001.dcm",
+      "pii_detected": ["PatientName", "PatientID", "InstitutionName"],
+      "pii_removed": 3,
+      "anonymized_key": "anonymized/study-001/series-001.dcm",
+      "integrity_hash": "sha256:a1b2c3..."
+    }
+  ],
+  "report": {
+    "total_files": 12,
+    "anonymized": 12,
+    "pii_fields_removed": 36,
+    "compliance_status": "HIPAA_SAFE_HARBOR_COMPLIANT"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
 
 ---
 

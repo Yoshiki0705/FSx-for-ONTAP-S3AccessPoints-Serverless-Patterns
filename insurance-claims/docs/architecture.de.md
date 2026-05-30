@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Eingabe — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Eingabe — FSx for ONTAP"]
         DATA["Versicherungsschadendaten<br/>.jpg/.jpeg/.png (Unfallfotos)<br/>.pdf/.tiff (Kostenvoranschläge)"]
     end
 
@@ -59,7 +59,7 @@ flowchart TB
 ### Eingabe
 | Element | Beschreibung |
 |---------|--------------|
-| **Quelle** | FSx for NetApp ONTAP Volume |
+| **Quelle** | FSx for ONTAP Volume |
 | **Dateitypen** | .jpg/.jpeg/.png (Unfallfotos), .pdf/.tiff (Kostenvoranschläge) |
 | **Zugriffsmethode** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Lesestrategie** | Vollständiger Bild-/PDF-Abruf (erforderlich für Rekognition / Textract) |
@@ -98,7 +98,7 @@ flowchart TB
 
 | Service | Rolle |
 |---------|-------|
-| FSx for NetApp ONTAP | Speicherung von Unfallfotos und Kostenvoranschlägen |
+| FSx for ONTAP | Speicherung von Unfallfotos und Kostenvoranschlägen |
 | S3 Access Points | Serverloser Zugriff auf ONTAP-Volumes |
 | EventBridge Scheduler | Periodischer Auslöser |
 | Step Functions | Workflow-Orchestrierung (Unterstützung paralleler Pfade) |

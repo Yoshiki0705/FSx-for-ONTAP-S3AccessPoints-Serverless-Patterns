@@ -13,8 +13,8 @@ essential for:
 
 | Pattern | UCs | Output destination |
 |---------|-----|-------------------|
-| **A. Native S3AP output** (original design, now with unified API) | UC1, UC2, UC3, UC4, UC5 | FSxN S3 Access Point (same volume as input) |
-| **B. Selectable via `OutputDestination`** | UC9, UC10, UC11, UC12, UC14, **UC15, UC16, UC17** | Standard S3 (default) OR FSxN S3AP |
+| **A. Native S3AP output** (original design, now with unified API) | UC1, UC2, UC3, UC4, UC5 | FSx for ONTAP S3 Access Point (same volume as input) |
+| **B. Selectable via `OutputDestination`** | UC9, UC10, UC11, UC12, UC14, **UC15, UC16, UC17** | Standard S3 (default) OR FSx for ONTAP S3 AP |
 | **C. Standard S3 only** (partial) | UC6, UC7, UC8, UC13 | Standard S3 (Athena results require this per AWS spec) |
 
 Pattern A and B both deliver the "no data movement" promise for the AI/ML
@@ -25,7 +25,7 @@ outputs; they differ only in whether the choice is a fixed parameter
 hybrid approach (discovery manifests to S3AP, processing results to
 standard S3 only), they are now Pattern B — processing Lambdas read
 `OutputWriter.from_env()` and can write all outputs either to a
-standard S3 bucket (default) or FSxN S3AP (opt-in). Discovery Lambdas
+standard S3 bucket (default) or FSx for ONTAP S3 AP (opt-in). Discovery Lambdas
 continue to write manifests directly to S3AP via the existing
 `S3_ACCESS_POINT_OUTPUT` env var (unchanged).
 
@@ -36,7 +36,7 @@ continue to write manifests directly to S3AP via the existing
 Starting 2026-05-11, UC1-UC5 templates were extended to **also** accept the
 Pattern B parameter set (`OutputDestination`, `OutputS3APAlias`,
 `OutputS3APPrefix`, `S3AccessPointName`, `OutputS3APName`), providing a
-unified deployment API across all UCs that support FSxN S3AP output.
+unified deployment API across all UCs that support FSx for ONTAP S3 AP output.
 
 **Backward compatibility**:
 - `S3AccessPointOutputAlias` (legacy) remains usable and takes effect when
@@ -137,7 +137,7 @@ OutputS3APName:
 from shared.output_writer import OutputWriter
 
 output_writer = OutputWriter.from_env()
-# Resolves to Standard S3 or FSxN S3AP based on OUTPUT_DESTINATION env var
+# Resolves to Standard S3 or FSx for ONTAP S3 AP based on OUTPUT_DESTINATION env var
 output_writer.put_json(
     key="tags/2026/05/sku001.json",
     data={"status": "SUCCESS", "labels": [...]},
@@ -166,7 +166,7 @@ aws cloudformation deploy \
   standard S3 footprint
 - IAM policies are dual-form: they grant `s3:PutObject` on either the
   standard bucket ARN OR the S3AP alias + ARN, driven by `!If` conditions
-- Gracefully handles FSxN S3AP permission quirks by supporting both alias
+- Gracefully handles FSx for ONTAP S3 AP permission quirks by supporting both alias
   form (`arn:aws:s3:::<alias>/*`) and ARN form
   (`arn:aws:s3:<region>:<account>:accesspoint/<name>/object/*`) — the Phase 7
   learning is baked in
@@ -176,7 +176,7 @@ aws cloudformation deploy \
 ## Pattern C: Standard S3 Only (UC6, UC7, UC8, UC13)
 
 These UCs use Amazon Athena to query metadata written by the pipeline. AWS
-explicitly states that Athena query results cannot be written to an FSxN
+explicitly states that Athena query results cannot be written to an FSx for ONTAP
 S3 Access Point:
 
 > "Athena writes query results to an Amazon S3 bucket, not to the FSx for ONTAP volume."
@@ -191,7 +191,7 @@ for the requested AWS enhancement.
 
 **Future enhancement**: Split the outputs of Pattern C UCs into two:
 - `athena-results/` → standard S3 (required)
-- `metadata/` + `reports/` → FSxN S3AP (optional via `OutputDestination=FSXN_S3AP`)
+- `metadata/` + `reports/` → FSx for ONTAP S3 AP (optional via `OutputDestination=FSXN_S3AP`)
 
 This would require refactoring to use `OutputWriter` for non-Athena outputs
 while keeping the Athena Workgroup's `ResultConfiguration.OutputLocation`

@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Übersicht
-Dies ist ein serverloser Workflow, der S3 Access Points von FSx for NetApp ONTAP nutzt, um die automatische Klassifizierung von Zeitschriften-PDFs, die Analyse von Zitationsnetzwerken und die Extraktion von Forschungsdaten-Metadaten zu automatisieren.
+Dies ist ein serverloser Workflow, der S3 Access Points von FSx for ONTAP nutzt, um die automatische Klassifizierung von Zeitschriften-PDFs, die Analyse von Zitationsnetzwerken und die Extraktion von Forschungsdaten-Metadaten zu automatisieren.
 ### Fälle, in denen dieses Muster geeignet ist
 - Zahlreiche Forschungsdaten und PDFs von wissenschaftlichen Arbeiten sind auf FSx ONTAP gespeichert.
 - Die Textextraktion von wissenschaftlichen PDFs mit Textract soll automatisiert werden.
@@ -56,7 +56,7 @@ graph LR
 5. **Metadata**: Strukturierte Metadaten für jede Publikation in JSON an S3 ausgeben
 ## Voraussetzungen
 - AWS-Konto und geeignete IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisysteme (ONTAP 9.17.1P4D3 oder höher)
+- FSx for ONTAP-Dateisysteme (ONTAP 9.17.1P4D3 oder höher)
 - S3-Zugriffspunkt aktivierte Volumes (zum Speichern von Artikel-PDFs und Forschungsdaten)
 - VPC, private Subnetze
 - Amazon Bedrock-Modellzugriff aktiviert (Claude / Nova)

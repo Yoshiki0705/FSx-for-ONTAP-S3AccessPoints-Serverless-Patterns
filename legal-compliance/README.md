@@ -6,7 +6,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP の S3 Access Points を活用し、ファイルサーバーの NTFS ACL 情報を自動収集・分析して、コンプライアンスレポートを生成するサーバーレスワークフローです。
+FSx for ONTAP の S3 Access Points を活用し、ファイルサーバーの NTFS ACL 情報を自動収集・分析して、コンプライアンスレポートを生成するサーバーレスワークフローです。
 
 ### このパターンが適しているケース
 
@@ -97,7 +97,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム
 - ONTAP REST API 認証情報が Secrets Manager に登録済み
 - VPC、プライベートサブネット
@@ -274,6 +274,114 @@ UC1 は以下のサービスを使用します:
 
 > **注意**: ONTAP REST API を使用する UC（UC1 法務・コンプライアンス）では `EnableVpcEndpoints=true` が必須です。Secrets Manager VPC Endpoint 経由で ONTAP 認証情報を取得するためです。
 
+
+---
+
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Athena | [ユーザーガイド](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
+| Amazon Bedrock | [ユーザーガイド](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+| ONTAP REST API | [NetApp ONTAP REST API リファレンス](https://docs.netapp.com/us-en/ontap-automation/) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、CloudWatch Alarms |
+| セキュリティ | 最小権限 IAM、KMS 暗号化、VPC 分離、Secrets Manager |
+| 信頼性 | Step Functions Retry/Catch、Map state 並列処理 |
+| パフォーマンス効率 | Lambda メモリ最適化、並列 ACL 収集 |
+| コスト最適化 | サーバーレス（使用時のみ課金）、条件付き VPC Endpoint |
+| 持続可能性 | オンデマンド実行、不要リソースの自動停止 |
+
+
+
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+Step Functions 実行完了時の最終出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 549,
+    "prefix": "legal-docs/",
+    "timestamp": 1716480000
+  },
+  "acl_collection": {
+    "processed": 549,
+    "acl_records_written": 2847,
+    "output_prefix": "s3://output-bucket/acl-data/"
+  },
+  "athena_analysis": {
+    "findings": {
+      "excessive_permissions": 12,
+      "stale_access": 34,
+      "policy_violations": 3
+    },
+    "query_execution_id": "a1b2c3d4-..."
+  },
+  "report_generation": {
+    "report_key": "reports/compliance-2026-05-23T09:00:00.md",
+    "total_findings": 49,
+    "sns_message_id": "msg-12345..."
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
 
 ---
 

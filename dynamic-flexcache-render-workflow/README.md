@@ -1,6 +1,6 @@
 # Dynamic FlexCache Render / EDA Workflow
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md)
 
 ## 概要
 
@@ -177,3 +177,134 @@ aws stepfunctions start-execution \
 
 ### Measurement Method
 Step Functions 実行履歴、ONTAP REST API レスポンス、CloudWatch Metrics、コスト比較。
+
+
+
+
+
+---
+
+## コスト見積もり（月額概算）
+
+> **注記**: 以下は ap-northeast-1 リージョンの概算であり、実際のコストは使用量により異なります。最新の料金は [AWS Pricing Calculator](https://calculator.aws/) で確認してください。
+
+### サーバーレスコンポーネント（従量課金）
+
+| サービス | 単価 | 想定使用量 | 月額概算 |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 4 関数 × 10 jobs/日 | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/日 | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/日 | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | N/A | ~$3-10 |
+| Athena | $5/TB scanned | N/A | ~$0.5-2 |
+| SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
+| FlexCache ボリューム | FSx ONTAP ストレージ料金に含む |
+
+
+### 固定コスト（FSx for ONTAP — 既存環境前提）
+
+| コンポーネント | 月額 |
+|--------------|------|
+| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| S3 Access Point | 追加料金なし（S3 API 料金のみ） |
+
+### 合計概算
+
+| 構成 | 月額概算 |
+|------|---------|
+| 最小構成（日次 1 回実行） | ~$5-15 |
+| 標準構成（時次実行） | ~$15-50 |
+| 大規模構成（高頻度 + アラーム） | ~$50-150 |
+
+> **Governance Caveat**: コスト見積もりは概算であり、保証値ではありません。実際の請求額は使用パターン、データ量、リージョンにより異なります。
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+FlexCache 動的プロビジョニング + レンダリングジョブの出力例:
+
+```json
+{
+  "flexcache_provision": {
+    "cache_name": "render-job-2026-0523-001",
+    "origin_volume": "vfx-assets-vol1",
+    "cache_size_gb": 100,
+    "status": "online",
+    "provision_time_sec": 45
+  },
+  "job_execution": {
+    "job_id": "render-2026-0523-001",
+    "frames_total": 240,
+    "frames_completed": 240,
+    "status": "completed",
+    "duration_sec": 1800
+  },
+  "cleanup": {
+    "cache_deleted": true,
+    "cleanup_time_sec": 12
+  },
+  "cost_estimate": {
+    "cache_hours": 0.5,
+    "estimated_cost_usd": 0.15
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Performance Considerations
+
+- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
+- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
+- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
+- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

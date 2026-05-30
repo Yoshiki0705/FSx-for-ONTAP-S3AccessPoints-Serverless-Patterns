@@ -160,12 +160,12 @@
 
 ---
 
-## 출력 대상에 대해: FSxN S3 Access Point (Pattern A)
+## 출력 대상에 대해: FSx for ONTAP S3 Access Point (Pattern A)
 
 UC2 financial-idp는 **Pattern A: Native S3AP Output**으로 분류됩니다
 (`docs/output-destination-patterns.md` 참조).
 
-**설계**: 청구서 OCR 결과, 구조화 메타데이터, BedRock 요약은 모두 FSxN S3 Access Point 경유로
+**설계**: 청구서 OCR 결과, 구조화 메타데이터, BedRock 요약은 모두 FSx for ONTAP S3 Access Point 경유로
 원본 청구서 PDF와 **동일한 FSx ONTAP 볼륨**에 기록됩니다. 표준 S3 버킷은
 생성되지 않습니다("no data movement" 패턴).
 
