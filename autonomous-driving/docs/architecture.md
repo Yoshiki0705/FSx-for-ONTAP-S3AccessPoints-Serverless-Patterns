@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         DATA["映像 / LiDAR データ<br/>.bag, .pcd, .mp4, .h264"]
     end
 
@@ -63,7 +63,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | .bag, .pcd, .mp4, .h264 (ROS bag, LiDAR 点群, ダッシュカム映像) |
 | **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Read Strategy** | ファイル全体を取得（フレーム抽出・点群解析に必要） |
@@ -103,7 +103,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | 自動運転データストレージ（映像・LiDAR 保管） |
+| FSx for ONTAP | 自動運転データストレージ（映像・LiDAR 保管） |
 | S3 Access Points | ONTAP ボリュームへのサーバーレスアクセス |
 | EventBridge Scheduler | 定期トリガー |
 | Step Functions | ワークフローオーケストレーション |

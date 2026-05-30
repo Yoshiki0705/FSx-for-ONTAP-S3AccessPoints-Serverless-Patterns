@@ -5,9 +5,9 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-Leveraging S3 Access Points in FSx for NetApp ONTAP, this serverless workflow automates metadata extraction for SEG-Y seismic survey data, anomaly detection in well logs, and generation of compliance reports.
+Leveraging S3 Access Points in FSx for ONTAP, this serverless workflow automates metadata extraction for SEG-Y seismic survey data, anomaly detection in well logs, and generation of compliance reports.
 ### Cases where this pattern is suitable
-- SEG-Y seismic exploration data and well logs are stored in large quantities on FSx for NetApp ONTAP
+- SEG-Y seismic exploration data and well logs are stored in large quantities on FSx for ONTAP
 - We want to automatically catalog metadata of seismic exploration data (survey name, coordinate system, sample interval, trace count)
 - We want to automatically detect anomalies from well log sensor readings
 - We need anomaly correlation analysis between wells and over time using Athena SQL
@@ -59,7 +59,7 @@ graph LR
 5. **Compliance Report**: Generate compliance reports with Bedrock and recognize image patterns with Rekognition
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file system (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
 - S3 Access Point-enabled volume (for storing seismic survey data and well logs)
 - VPC, private subnets
 - Amazon Bedrock model access enabled (Claude / Nova)
@@ -126,7 +126,7 @@ UC8 uses the following services:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > See the [Region Compatibility Matrix](../docs/region-compatibility.md) for more details.
 ## References
-- [FSx for NetApp ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [SEG-Y Format Specification (Rev 2.0)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev2_0-mar2017.pdf)
 - [Amazon Athena User Guide](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Rekognition Label Detection](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

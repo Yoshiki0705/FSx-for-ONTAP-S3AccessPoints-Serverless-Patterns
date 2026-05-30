@@ -7,7 +7,7 @@
 ## 전제
 
 - AWS 계정, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - `defense-satellite/template-deploy.yaml` 배포 완료(`EnableSageMaker=false`)
 
 ## 타임라인
@@ -16,7 +16,7 @@
 
 - 유스케이스 배경: 위성 이미지 데이터 증가(Sentinel, Landsat, 상용 SAR)
 - 기존 NAS의 과제: 복사 기반 워크플로로 시간·비용 소요
-- FSxN S3AP의 장점: zero-copy, NTFS ACL 연동, 서버리스 처리
+- FSx for ONTAP S3 AP의 장점: zero-copy, NTFS ACL 연동, 서버리스 처리
 
 ### 0:05 - 0:10 아키텍처 설명(5분)
 
@@ -109,7 +109,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP("no data movement" 패턴)
-타일링 metadata, 객체 감지 JSON, Geo enrichment 완료 감지 결과를 FSxN S3 Access Point
+타일링 metadata, 객체 감지 JSON, Geo enrichment 완료 감지 결과를 FSx for ONTAP S3 Access Point
 경유로 원본 위성 이미지와 **동일한 FSx ONTAP 볼륨**에 다시 작성합니다.
 분석 담당자가 SMB/NFS의 기존 디렉터리 구조 내에서 AI 산출물을 직접 참조할 수 있습니다.
 표준 S3 버킷은 생성되지 않습니다.
@@ -128,7 +128,7 @@ aws cloudformation deploy \
 **주의사항**:
 
 - `S3AccessPointName` 지정을 강력히 권장(Alias 형식과 ARN 형식 모두 IAM 허가)
-- 5GB 초과 객체는 FSxN S3AP에서 불가(AWS 사양), 멀티파트 업로드 필수
+- 5GB 초과 객체는 FSx for ONTAP S3 AP에서 불가(AWS 사양), 멀티파트 업로드 필수
 - ChangeDetection Lambda는 DynamoDB만 사용하므로 `OutputDestination`의 영향을 받지 않습니다
 - AlertGeneration Lambda는 SNS만 사용하므로 `OutputDestination`의 영향을 받지 않습니다
 - AWS 사양상의 제약은

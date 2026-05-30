@@ -139,7 +139,7 @@ Step Functions 実行履歴、Bedrock レポートメタデータ、CloudWatch M
 
 | サービス | ドキュメント |
 |---------|------------|
-| FSx for NetApp ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
 | S3 Access Points for FSx ONTAP | [S3 AP ガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | AWS Batch | [ユーザーガイド](https://docs.aws.amazon.com/batch/latest/userguide/what-is-batch.html) |
 | AWS ParallelCluster | [ユーザーガイド](https://docs.aws.amazon.com/parallelcluster/latest/ug/what-is-aws-parallelcluster.html) |

@@ -2,7 +2,7 @@
 
 ## 概要
 
-本ドキュメントでは、FSxN S3AP Serverless Patterns の Disaster Recovery (DR) 設計を定義する。RPO/RTO 要件に基づく 3 段階の DR Tier、コンポーネント別復旧戦略、フェイルオーバーランブック、コスト分析、テスト戦略を解説する。
+本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns の Disaster Recovery (DR) 設計を定義する。RPO/RTO 要件に基づく 3 段階の DR Tier、コンポーネント別復旧戦略、フェイルオーバーランブック、コスト分析、テスト戦略を解説する。
 
 ---
 
@@ -115,7 +115,7 @@ Resources:
 3. CrossRegionClient のエンドポイントを更新
 4. アプリケーションが Secondary S3 AP を使用開始
 
-### FSx for NetApp ONTAP (SnapMirror)
+### FSx for ONTAP (SnapMirror)
 
 | レプリケーションモード | RPO | スループット | 適用 Tier |
 |---------------------|-----|------------|----------|

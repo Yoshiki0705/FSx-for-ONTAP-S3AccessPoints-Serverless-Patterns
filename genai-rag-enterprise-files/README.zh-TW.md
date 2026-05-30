@@ -4,7 +4,7 @@
 
 ## 概述
 
-透過 S3 Access Points 將企業檔案伺服器（FSx for NetApp ONTAP）上的機密文件安全地提供給 Amazon Bedrock / RAG 管線，**無需複製到 S3**。在保持檔案權限（ACL/NTFS）的同時實現 Permission-aware RAG。
+透過 S3 Access Points 將企業檔案伺服器（FSx for ONTAP）上的機密文件安全地提供給 Amazon Bedrock / RAG 管線，**無需複製到 S3**。在保持檔案權限（ACL/NTFS）的同時實現 Permission-aware RAG。
 
 ## 解決的問題
 

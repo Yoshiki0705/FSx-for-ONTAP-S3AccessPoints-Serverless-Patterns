@@ -2,7 +2,7 @@
 
 ## 概要
 
-Amazon Textract と Amazon Comprehend Medical は ap-northeast-1（東京）リージョンで利用できません。本ガイドでは、東京リージョンにデプロイした FSxN S3AP パターンからこれらのサービスをクロスリージョンで利用する方法を説明します。
+Amazon Textract と Amazon Comprehend Medical は ap-northeast-1（東京）リージョンで利用できません。本ガイドでは、東京リージョンにデプロイした FSx for ONTAP S3 AP パターンからこれらのサービスをクロスリージョンで利用する方法を説明します。
 
 ## 対象ユースケース
 

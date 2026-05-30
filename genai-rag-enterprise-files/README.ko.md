@@ -4,7 +4,7 @@
 
 ## 개요
 
-엔터프라이즈 파일 서버(FSx for NetApp ONTAP)의 기밀 문서를 S3 Access Points를 통해 Amazon Bedrock / RAG 파이프라인에 **S3로 복사하지 않고** 안전하게 제공하는 패턴입니다. 파일 권한(ACL/NTFS)을 유지하면서 Permission-aware RAG를 구현합니다.
+엔터프라이즈 파일 서버(FSx for ONTAP)의 기밀 문서를 S3 Access Points를 통해 Amazon Bedrock / RAG 파이프라인에 **S3로 복사하지 않고** 안전하게 제공하는 패턴입니다. 파일 권한(ACL/NTFS)을 유지하면서 Permission-aware RAG를 구현합니다.
 
 ## 해결하는 문제
 

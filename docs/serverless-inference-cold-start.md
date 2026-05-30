@@ -6,7 +6,7 @@
 
 SageMaker Serverless Inference は、リクエストベースの課金モデルを提供する推論オプションです。常時稼働のインスタンスが不要なため、低頻度・不定期なワークロードに最適ですが、**コールドスタート**（初回リクエスト時のレイテンシ増加）を考慮した設計が必要です。
 
-本ドキュメントでは、FSxN S3AP Serverless Patterns における Serverless Inference のコールドスタート特性、構成比較、および推奨設定を解説します。
+本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns における Serverless Inference のコールドスタート特性、構成比較、および推奨設定を解説します。
 
 ---
 
@@ -302,4 +302,4 @@ sklearn 公式コンテナは依存ライブラリが多く、イメージサイ
 
 ---
 
-*本ドキュメントは FSxN S3AP Serverless Patterns Phase 5 の一部です。*
+*本ドキュメントは FSx for ONTAP S3 AP Serverless Patterns Phase 5 の一部です。*

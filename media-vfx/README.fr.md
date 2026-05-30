@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Aperçu
-Voici un workflow sans serveur qui utilise les points d'accès S3 de FSx for NetApp ONTAP pour l'envoi automatique de travaux de rendu VFX, les contrôles de qualité et l'écriture des sorties approuvées.
+Voici un workflow sans serveur qui utilise les points d'accès S3 de FSx for ONTAP pour l'envoi automatique de travaux de rendu VFX, les contrôles de qualité et l'écriture des sorties approuvées.
 ### Cas où ce modèle est approprié
 - VFX / アニメーション制作で FSx ONTAP をレンダリングストレージとして使用している
 - レンダリング完了後の品質チェックを自動化し、手動レビューの負荷を軽減したい
@@ -46,7 +46,7 @@ graph LR
 3. **Vérification de qualité** : Évaluer la qualité des résultats de rendu avec Rekognition. En cas de réussite, utiliser PutObject sur S3 AP, sinon déclencher une notification SNS pour un nouveau rendu
 ## Prérequis
 - Compte AWS et permissions IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 et supérieur)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 et supérieur)
 - Volumes avec S3 Access Point activé
 - Informations d'identification de l'API REST ONTAP enregistrées dans Secrets Manager
 - VPC, sous-réseaux privés

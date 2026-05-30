@@ -164,7 +164,7 @@ Accident Photos    Image Analysis    Damage Evaluation    Claims Report
 Following the same approach as Phase 7, capturing **UI/UX screens that insurance assessors actually use in daily operations**.
 Technical screens (Step Functions graphs, etc.) are excluded.
 
-### Output Destination Selection: Standard S3 vs FSxN S3AP
+### Output Destination Selection: Standard S3 vs FSx for ONTAP S3 AP
 
 UC14 supports the `OutputDestination` parameter as of the 2026-05-10 update.
 **Writing AI artifacts back to the same FSx volume** allows claims processing staff to

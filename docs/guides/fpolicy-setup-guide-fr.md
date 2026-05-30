@@ -19,7 +19,7 @@ Ce guide explique comment configurer ONTAP FPolicy pour transmettre les événem
 
 ## Prérequis ONTAP
 
-- FSx for NetApp ONTAP file system running
+- FSx for ONTAP file system running
 - SVM configured with NFS enabled
 - Admin access to ONTAP REST API or CLI
 
@@ -92,9 +92,9 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 ### Prérequis
 - AWS Managed Microsoft AD ou AD auto-géré
-- SVM FSxN créé avec configuration de jonction AD
+- SVM (FSx for ONTAP) créé avec configuration de jonction AD
 - Partage CIFS créé sur le volume
 
 ### Notes importantes
-- Le SVM doit être créé AVEC la configuration AD — impossible d'ajouter CIFS à un SVM NFS existant sur FSxN
+- Le SVM doit être créé AVEC la configuration AD — impossible d'ajouter CIFS à un SVM NFS existant sur FSx for ONTAP
 - Pour AWS Managed AD, utiliser `OU=Computers,OU=<domain>,DC=<domain>,DC=local`

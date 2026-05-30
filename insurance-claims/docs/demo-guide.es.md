@@ -167,7 +167,7 @@ de accidente    →   imágenes      →    de daños       →    reclamación
 Siguiendo la misma política que Phase 7, se capturan **pantallas UI/UX que los responsables de evaluación de seguros utilizan realmente en sus tareas diarias**.
 Se excluyen pantallas orientadas a técnicos (gráficos de Step Functions, etc.).
 
-### Selección de destino de salida: S3 estándar vs FSxN S3AP
+### Selección de destino de salida: S3 estándar vs FSx for ONTAP S3 AP
 
 UC14 soporta el parámetro `OutputDestination` desde la actualización del 2026-05-10.
 **Al escribir los resultados de IA de vuelta al mismo volumen FSx**, los responsables de procesamiento de reclamaciones

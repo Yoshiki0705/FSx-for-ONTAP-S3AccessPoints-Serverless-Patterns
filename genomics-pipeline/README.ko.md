@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 개요
-FSx for NetApp ONTAP의 S3 액세스 포인트를 활용하여 FASTQ/BAM/VCF 게놈 데이터의 품질 검사, 변이체 호출 통계 수집, 연구 요약 생성을 자동화하는 서버리스 워크플로우입니다.
+FSx for ONTAP의 S3 액세스 포인트를 활용하여 FASTQ/BAM/VCF 게놈 데이터의 품질 검사, 변이체 호출 통계 수집, 연구 요약 생성을 자동화하는 서버리스 워크플로우입니다.
 ### 이 패턴이 적합한 경우
 - 차세대 시퀀서의 출력 데이터(FASTQ/BAM/VCF)가 FSx ONTAP에 축적되어 있습니다
 - 시퀀싱 데이터의 품질 메트릭(리드 수, 품질 점수, GC 함량)을 정기적으로 모니터링하고 싶습니다
@@ -55,7 +55,7 @@ graph LR
 5. **Summary**: Bedrock에서 연구 요약 생성, Comprehend Medical로 엔티티 추출
 ## 사전 요구 사항
 - AWS 계정 및 적절한 IAM 권한
-- FSx for NetApp ONTAP 파일 시스템 (ONTAP 9.17.1P4D3 이상)
+- FSx for ONTAP 파일 시스템 (ONTAP 9.17.1P4D3 이상)
 - S3 Access Point가 활성화된 볼륨 (게놈 데이터 저장)
 - VPC, 프라이빗 서브넷
 - Amazon Bedrock 모델 액세스 활성화 (Claude / Nova)

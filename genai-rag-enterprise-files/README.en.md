@@ -4,7 +4,7 @@
 
 ## Overview
 
-A pattern that securely provides confidential documents on enterprise file servers (FSx for NetApp ONTAP) to Amazon Bedrock / RAG pipelines via S3 Access Points **without copying to S3**. Achieves Permission-aware RAG while maintaining file permissions (ACL/NTFS).
+A pattern that securely provides confidential documents on enterprise file servers (FSx for ONTAP) to Amazon Bedrock / RAG pipelines via S3 Access Points **without copying to S3**. Achieves Permission-aware RAG while maintaining file permissions (ACL/NTFS).
 
 ## Problems Solved
 

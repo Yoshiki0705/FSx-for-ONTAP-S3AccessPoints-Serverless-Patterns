@@ -14,9 +14,9 @@
 
 | 項目 | 要件 |
 |------|------|
-| FSx for NetApp ONTAP | ONTAP 9.17.1 以上、FPolicy 対応 |
-| VPC | FSxN と同一 VPC にプライベートサブネット |
-| NFS マウント | クライアントから FSxN ボリュームに NFS マウント済み |
+| FSx for ONTAP | ONTAP 9.17.1 以上、FPolicy 対応 |
+| VPC | FSx for ONTAP と同一 VPC にプライベートサブネット |
+| NFS マウント | クライアントから FSx for ONTAP ボリュームに NFS マウント済み |
 | AWS CLI | v2 以上、適切な IAM 権限 |
 | Docker | コンテナイメージビルド用 |
 | ECR | リポジトリ作成済み |
@@ -73,7 +73,7 @@ echo "Fargate Task IP: $TASK_IP"
 
 ## Step 2: ONTAP FPolicy 設定
 
-FSxN SVM に SSH 接続し、以下のコマンドを実行します。
+FSx for ONTAP SVM に SSH 接続し、以下のコマンドを実行します。
 
 ### 2.1 External Engine 作成
 
@@ -238,7 +238,7 @@ NEW_IP=$(aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ARN --query 'ta
 echo "New Task IP: $NEW_IP"
 
 # ONTAP engine の IP が更新されていることを確認
-# SSH で FSxN SVM に接続
+# SSH で FSx for ONTAP SVM に接続
 fpolicy show-engine -vserver FSxN_OnPre
 ```
 
@@ -248,7 +248,7 @@ fpolicy show-engine -vserver FSxN_OnPre
 
 ```bash
 # 1. ONTAP FPolicy 無効化
-# SSH で FSxN SVM に接続
+# SSH で FSx for ONTAP SVM に接続
 fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy scope delete -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy delete -vserver FSxN_OnPre -policy-name fpolicy_aws

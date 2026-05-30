@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，自动化无服务器工作流，实现运输单 OCR 文本提取、仓库库存图像的物体检测与计数、以及生成配送路线优化报告。
+利用 FSx for ONTAP 的 S3 Access Points，自动化无服务器工作流，实现运输单 OCR 文本提取、仓库库存图像的物体检测与计数、以及生成配送路线优化报告。
 ### 此模式适用的情况
 - 配送传票图像和仓库库存图像被积累在 FSx ONTAP 上
 - 希望通过 Textract 自动化配送传票的 OCR（发件人、收件人、追踪号、物品）
@@ -12,7 +12,7 @@
 - 希望自动生成配送路线优化报告
 ### 不适用的情况
 
-在某些情况下，这种模式可能不适用。例如，如果您正在使用 Amazon Bedrock 或 AWS Step Functions，您可能需要采用不同的方法。此外，如果您在 Amazon Athena 或 Amazon S3 中处理大量数据，AWS Lambda 函数可能无法处理所有请求。在这些情况下，您可能需要使用其他 AWS 服务，例如 Amazon FSx for NetApp ONTAP 或 Amazon CloudWatch，以确保系统的可靠性和性能。同时，在使用 AWS CloudFormation 时，您可能需要考虑特定的技术术语，例如 GDSII、DRC、OASIS、GDS、Lambda 和 tapeout。在处理文件路径和 URL 时，请确保保持其不变。
+在某些情况下，这种模式可能不适用。例如，如果您正在使用 Amazon Bedrock 或 AWS Step Functions，您可能需要采用不同的方法。此外，如果您在 Amazon Athena 或 Amazon S3 中处理大量数据，AWS Lambda 函数可能无法处理所有请求。在这些情况下，您可能需要使用其他 AWS 服务，例如 Amazon FSx for ONTAP 或 Amazon CloudWatch，以确保系统的可靠性和性能。同时，在使用 AWS CloudFormation 时，您可能需要考虑特定的技术术语，例如 GDSII、DRC、OASIS、GDS、Lambda 和 tapeout。在处理文件路径和 URL 时，请确保保持其不变。
 - 需要实时配送跟踪系统
 - 需要与大型 WMS（仓库管理系统）直接集成
 - 完整的配送路线优化引擎（专用软件最合适）
@@ -53,7 +53,7 @@ graph LR
 
 ### 工作流程步骤
 
-在此工作流程步骤中，我们将使用Amazon Bedrock来创建和管理设计。确保在使用前已经配置好AWS Step Functions和Amazon Athena。您可以通过Amazon S3存储和检索设计文件。AWS Lambda将用于自动化特定任务，如验证和优化。Amazon FSx for NetApp ONTAP提供了高性能的文件存储，适合存储大型设计文件。使用Amazon CloudWatch监控工作流程的性能和状态，并使用AWS CloudFormation来管理基础设施即代码（IaC）。确保所有设计文件符合GDSII和DRC标准，并且已经完成tapeout过程。在使用OASIS和GDS时，请注意相关的Lambda函数和其他技术术语。
+在此工作流程步骤中，我们将使用Amazon Bedrock来创建和管理设计。确保在使用前已经配置好AWS Step Functions和Amazon Athena。您可以通过Amazon S3存储和检索设计文件。AWS Lambda将用于自动化特定任务，如验证和优化。Amazon FSx for ONTAP提供了高性能的文件存储，适合存储大型设计文件。使用Amazon CloudWatch监控工作流程的性能和状态，并使用AWS CloudFormation来管理基础设施即代码（IaC）。确保所有设计文件符合GDSII和DRC标准，并且已经完成tapeout过程。在使用OASIS和GDS时，请注意相关的Lambda函数和其他技术术语。
 1. **发现**：从 S3 AP 检测出货单图像和仓库库存图像
 2. **OCR**：使用 Textract（跨区域）从出货单中提取文本和表单
 3. **数据结构化**：使用 Bedrock 规范化提取字段，生成结构化的配送记录
@@ -61,7 +61,7 @@ graph LR
 5. **报告**：使用 Bedrock 生成配送路径优化报告，S3 输出 + SNS 通知
 ## 前提条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
 - 已启用 S3 Access Point 的卷（用于存储运输单和库存图片）
 - VPC、私有子网
 - Amazon Bedrock 模型访问已启用（Claude / Nova）

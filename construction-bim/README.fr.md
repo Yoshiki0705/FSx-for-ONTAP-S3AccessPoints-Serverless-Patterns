@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Aperçu
-FSx for NetApp ONTAP utilise les points d'accès S3 pour automatiser les flux de travail sans serveur de gestion des versions des modèles BIM (IFC/Revit), d'extraction de texte OCR des PDF de plans et de vérification de conformité sécurité.
+FSx for ONTAP utilise les points d'accès S3 pour automatiser les flux de travail sans serveur de gestion des versions des modèles BIM (IFC/Revit), d'extraction de texte OCR des PDF de plans et de vérification de conformité sécurité.
 ### Cas où ce schéma est approprié
 - Les modèles BIM (IFC/Revit) et les PDF de plans sont stockés sur FSx ONTAP
 - Je souhaite cataloguer automatiquement les métadonnées des fichiers IFC (nom du projet, nombre d'éléments architecturaux, nombre d'étages)
@@ -54,7 +54,7 @@ graph LR
 4. **Vérification de sécurité** : Vérification des règles de conformité sécurité avec Bedrock, détection des éléments visuels avec Rekognition
 ## Prérequis
 - Compte AWS et permissions IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
 - Point d'accès S3 activé pour le volume (stockage des modèles BIM et des dessins)
 - VPC, sous-réseaux privés
 - Accès au modèle Amazon Bedrock activé (Claude / Nova)

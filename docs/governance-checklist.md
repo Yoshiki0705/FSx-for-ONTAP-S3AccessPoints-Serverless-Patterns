@@ -50,7 +50,7 @@ These patterns treat AI outputs as assistive signals, not final decisions. The g
 | データ | 保存場所 | 暗号化 | アクセス制御 |
 |--------|---------|--------|------------|
 | 入力ファイル（原本） | FSx for ONTAP Volume | SSE-FSX (KMS managed) | NTFS ACL / UNIX permissions + S3 AP dual-layer |
-| AI/ML 処理結果 | S3 Output Bucket or FSxN S3AP | SSE-KMS or SSE-FSX | IAM + Bucket/AP Policy |
+| AI/ML 処理結果 | S3 Output Bucket or FSx for ONTAP S3 AP | SSE-KMS or SSE-FSX | IAM + Bucket/AP Policy |
 | 実行ログ | CloudWatch Logs | SSE (default) | IAM + Log Group Policy |
 | 実行履歴 | Step Functions | SSE (default) | IAM |
 | メトリクス | CloudWatch Metrics | — | IAM |

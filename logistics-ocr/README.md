@@ -6,7 +6,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP の S3 Access Points を活用し、配送伝票の OCR テキスト抽出、倉庫在庫画像の物体検出・カウント、配送ルート最適化レポート生成を自動化するサーバーレスワークフローです。
+FSx for ONTAP の S3 Access Points を活用し、配送伝票の OCR テキスト抽出、倉庫在庫画像の物体検出・カウント、配送ルート最適化レポート生成を自動化するサーバーレスワークフローです。
 
 ### このパターンが適しているケース
 
@@ -89,7 +89,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム（配送伝票・在庫画像を格納）
 - VPC、プライベートサブネット
 - Amazon Bedrock モデルアクセスが有効（Claude / Nova）
@@ -180,7 +180,7 @@ UC12 は以下のサービスを使用します:
 
 | サービス | ドキュメント |
 |---------|------------|
-| FSx for NetApp ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
 | S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Textract | [開発者ガイド](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |

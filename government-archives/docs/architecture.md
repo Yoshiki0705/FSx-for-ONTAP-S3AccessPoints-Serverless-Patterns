@@ -4,7 +4,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP S3 Access Points を活用した公文書（PDF / TIFF / EML / DOCX）の
+FSx for ONTAP S3 Access Points を活用した公文書（PDF / TIFF / EML / DOCX）の
 OCR、分類、PII 検出、墨消し、全文検索、FOIA 期限トラッキングを自動化する
 サーバーレスパイプライン。
 
@@ -101,7 +101,7 @@ UC16 は 2026-05-11 のアップデートで `OutputDestination` パラメータ
 | モード | 出力先 | 作成されるリソース | ユースケース |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3`（デフォルト） | 新規 S3 バケット | `AWS::S3::Bucket` | 従来どおり分離された S3 バケットに AI 成果物を蓄積 |
-| `FSXN_S3AP` | FSxN S3 Access Point | なし（既存 FSx ボリュームへ書き戻し） | 公文書担当者が SMB/NFS 経由でオリジナル文書と同一ディレクトリに OCR テキスト、墨消し済みファイル、メタデータを閲覧 |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | なし（既存 FSx ボリュームへ書き戻し） | 公文書担当者が SMB/NFS 経由でオリジナル文書と同一ディレクトリに OCR テキスト、墨消し済みファイル、メタデータを閲覧 |
 
 **影響を受ける Lambda**: OCR、Classification、EntityExtraction、Redaction、IndexGeneration（5 関数）。  
 **チェーン構造の読み戻し**: 後段 Lambda は `shared/output_writer.py` の `get_*` で書き込み先と対称な読み戻しを行う。FSXN_S3AP モード時も S3AP から直接読み戻すため、チェーン全体が一貫した destination で動作。  

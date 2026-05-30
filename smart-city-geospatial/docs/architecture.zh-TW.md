@@ -107,7 +107,7 @@ UC17 在 2026-05-11 的更新中新增了 `OutputDestination` 參數支援。
 | 模式 | 輸出目的地 | 建立的資源 | 使用案例 |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3`（預設） | 新建 S3 儲存貯體 | `AWS::S3::Bucket` | 如同以往將 AI 成果物累積在獨立的 S3 儲存貯體中 |
-| `FSXN_S3AP` | FSxN S3 Access Point | 無（寫回既有 FSx 磁碟區） | 都市計畫負責人可透過 SMB/NFS 在與原始 GIS 資料相同的目錄中檢視 Bedrock 報告（Markdown）和風險地圖 |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | 無（寫回既有 FSx 磁碟區） | 都市計畫負責人可透過 SMB/NFS 在與原始 GIS 資料相同的目錄中檢視 Bedrock 報告（Markdown）和風險地圖 |
 
 **受影響的 Lambda**：Preprocessing、LandUseClassification、InfraAssessment、RiskMapping、ReportGeneration（5 個函式）。  
 **不受影響的 Lambda**：Discovery（manifest 直接寫入 S3AP）、ChangeDetection（僅 DynamoDB）。  

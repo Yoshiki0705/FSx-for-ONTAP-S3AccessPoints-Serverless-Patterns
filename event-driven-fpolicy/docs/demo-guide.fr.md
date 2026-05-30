@@ -14,8 +14,8 @@ Cette démonstration montre comment les opérations de création de fichiers via
 
 | Élément | Exigence |
 |---------|----------|
-| FSx for NetApp ONTAP | ONTAP 9.17.1 ou supérieur, FPolicy pris en charge |
-| VPC | Sous-réseau privé dans le même VPC que FSxN |
+| FSx for ONTAP | ONTAP 9.17.1 ou supérieur, FPolicy pris en charge |
+| VPC | Sous-réseau privé dans le même VPC que FSx for ONTAP |
 | Montage NFS | Montage NFS du client vers le volume FSxN effectué |
 | AWS CLI | v2 ou supérieur, permissions IAM appropriées |
 | Docker | Pour la construction d'images de conteneurs |
@@ -73,7 +73,7 @@ echo "Fargate Task IP: $TASK_IP"
 
 ## Step 2 : Configuration ONTAP FPolicy
 
-Connectez-vous au FSxN SVM via SSH et exécutez les commandes suivantes.
+Connectez-vous au FSx for ONTAP SVM via SSH et exécutez les commandes suivantes.
 
 ### 2.1 Créer l'External Engine
 
@@ -238,7 +238,7 @@ NEW_IP=$(aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ARN --query 'ta
 echo "New Task IP: $NEW_IP"
 
 # Vérifier que l'IP de l'engine ONTAP a été mise à jour
-# Se connecter au FSxN SVM via SSH
+# Se connecter au FSx for ONTAP SVM via SSH
 fpolicy show-engine -vserver FSxN_OnPre
 ```
 
@@ -248,7 +248,7 @@ fpolicy show-engine -vserver FSxN_OnPre
 
 ```bash
 # 1. Désactiver ONTAP FPolicy
-# Se connecter au FSxN SVM via SSH
+# Se connecter au FSx for ONTAP SVM via SSH
 fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy scope delete -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy delete -vserver FSxN_OnPre -policy-name fpolicy_aws

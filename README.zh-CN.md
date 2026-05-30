@@ -8,7 +8,7 @@
 
 从最初的 5 个模式（Phase 1）经 Phase 2–13 扩展而来。Phase 10 引入共享 FPolicy 事件摄取管道，Phase 11 将调度扩展至全部 17 UC，Phase 12 通过 Persistent Store 重放验证、SLO 可观测性、容量护栏和密钥轮换进行运维强化，Phase 13 实现 FlexClone/FlexCache 无服务器自动化。
 
-基于 Amazon FSx for NetApp ONTAP S3 Access Points 的行业专属无服务器自动化模式集合。
+基于 Amazon FSx for ONTAP S3 Access Points 的行业专属无服务器自动化模式集合。
 
 > **本仓库的定位**: 这是一个「用于学习设计决策的参考实现」。部分用例已在 AWS 环境中完成 E2E 验证，其他用例也已完成 CloudFormation 部署、共享 Discovery Lambda 及关键组件的功能验证。本仓库以从 PoC 到生产环境的渐进式应用为目标，通过具体代码展示成本优化、安全性和错误处理的设计决策。
 
@@ -29,7 +29,7 @@
 
 ## 概述
 
-本仓库提供 **17 种行业专属模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）**，通过 **S3 Access Points** 对存储在 FSx for NetApp ONTAP 上的企业数据进行无服务器处理。
+本仓库提供 **17 种行业专属模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）**，通过 **S3 Access Points** 对存储在 FSx for ONTAP 上的企业数据进行无服务器处理。
 
 > 以下将 FSx for ONTAP S3 Access Points 简称为 **S3 AP**。
 
@@ -82,7 +82,7 @@ graph TB
     end
 
     subgraph "Data Sources"
-        FSXN[FSx for NetApp ONTAP<br/>Volume]
+        FSXN[FSx for ONTAP<br/>Volume]
         S3AP[S3 Access Point<br/>ListObjectsV2 / GetObject /<br/>Range / PutObject]
         ONTAP_API[ONTAP REST API<br/>ACL / Volume Metadata]
     end
@@ -252,7 +252,7 @@ EventBridge Scheduler (定期执行)
 | UC17 | 智慧城市 (Public Sector) | 5 | GIS 上传 / Bedrock 报告 / 风险地图 / 土地利用分布 / 时序历史 (城市规划负责人用) | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md) |
 
 **通用截图** (跨行业通用视图, `docs/screenshots/masked/common/`):
-- `fsx-s3ap-detail.png` — FSxN S3 Access Point 详情视图 (存储管理员参考)
+- `fsx-s3ap-detail.png` — FSx for ONTAP S3 Access Point 详情视图 (存储管理员参考)
 - `s3ap-list.png` — S3 Access Points 列表 (IT 管理员参考)
 
 **按 Phase 视图** (`docs/screenshots/masked/phase{1..7}/`):
@@ -272,7 +272,7 @@ AI/ML 工件的写入目标（已在 UC9/10/11/12/14 实现,
 其他 UC 由 Pattern A 或 Pattern C 覆盖 - 参见下面的 Pattern 表):
 
 - **`STANDARD_S3`** (默认): 写入新的 S3 存储桶 (现有行为)
-- **`FSXN_S3AP`**: 通过 S3 Access Point 将结果写回同一个 FSx for NetApp ONTAP 卷
+- **`FSXN_S3AP`**: 通过 S3 Access Point 将结果写回同一个 FSx for ONTAP 卷
   (**"no data movement" 模式**, 使 SMB/NFS 用户能够在现有目录结构中
   查看 AI 工件)
 
@@ -287,9 +287,9 @@ aws cloudformation deploy \
     ... (其他必需参数)
 ```
 
-### FSxN S3 Access Points 的 AWS 规格约束
+### FSx for ONTAP S3 Access Points 的 AWS 规格约束
 
-FSxN S3 Access Points 仅支持 S3 API 的一部分
+FSx for ONTAP S3 Access Points 仅支持 S3 API 的一部分
 (参见 [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html))。
 由于以下约束,某些功能需要使用标准 S3 存储桶:
 
@@ -316,7 +316,7 @@ FSxN S3 Access Points 仅支持 S3 API 的一部分
 - **🟢 UC1-5** (Pattern A, 2026-05-11 更新): `S3AccessPointOutputAlias` (legacy, optional) + 新增的 `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` 支持。默认 `OutputDestination=FSXN_S3AP` 保持现有行为
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 实现): `OutputDestination` 切换机制 (STANDARD_S3 ⇄ FSXN_S3AP)。默认 `OutputDestination=STANDARD_S3`。UC11/14 已在 AWS 上验证, UC9/10/12 仅完成单元测试
 - **🟡 UC6/7/8/13**: 当前仅为 `OUTPUT_BUCKET` (固定为标准 S3)。Athena 结果在规格上需要标准 S3, 因此 `OutputDestination` 应用是部分性的
-- **🟢 UC15-17**: Pattern A (write back 到 FSxN S3AP, Phase 7 的一部分)
+- **🟢 UC15-17**: Pattern A (write back 到 FSx for ONTAP S3 AP, Phase 7 的一部分)
 
 | UC | 输入 | 输出 | 选择机制 | 备注 |
 |----|------|------|----------|------|
@@ -615,7 +615,7 @@ Phase 5 的所有功能同样通过 CloudFormation Conditions 进行可选控制
 ## 前提条件
 
 - **AWS 账户**: 有效的 AWS 账户和适当的 IAM 权限
-- **FSx for NetApp ONTAP**: 已部署的文件系统
+- **FSx for ONTAP**: 已部署的文件系统
   - ONTAP 版本: 支持 S3 Access Points 的版本（已在 9.17.1P4D3 上验证）
   - 已关联 S3 Access Point 的 FSx for ONTAP 卷（network origin 根据用例选择。使用 Athena / Glue 时推荐 `internet`）
 - **网络**: VPC、私有子网、路由表

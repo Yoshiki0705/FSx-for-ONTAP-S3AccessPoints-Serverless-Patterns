@@ -2,7 +2,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP 上のエンタープライズファイルに対して、NTFS ACL ベースの
+FSx for ONTAP 上のエンタープライズファイルに対して、NTFS ACL ベースの
 権限フィルタリングを適用した RAG（Retrieval-Augmented Generation）パイプライン。
 
 ## アーキテクチャ図

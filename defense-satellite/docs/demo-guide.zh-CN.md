@@ -7,7 +7,7 @@
 ## 前提条件
 
 - AWS 账户，ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - 已部署 `defense-satellite/template-deploy.yaml`（`EnableSageMaker=false`）
 
 ## 时间线
@@ -16,7 +16,7 @@
 
 - 用例背景：卫星图像数据的增加（Sentinel、Landsat、商用 SAR）
 - 传统 NAS 的挑战：基于复制的工作流程耗时且成本高
-- FSxN S3AP 的优势：零复制、NTFS ACL 联动、无服务器处理
+- FSx for ONTAP S3 AP 的优势：零复制、NTFS ACL 联动、无服务器处理
 
 ### 0:05 - 0:10 架构说明（5 分钟）
 
@@ -109,7 +109,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP（"无数据移动"模式）
-将切片 metadata、物体检测 JSON、Geo enrichment 后的检测结果通过 FSxN S3 Access Point
+将切片 metadata、物体检测 JSON、Geo enrichment 后的检测结果通过 FSx for ONTAP S3 Access Point
 写回到与原始卫星图像**相同的 FSx ONTAP 卷**。
 分析人员可以在 SMB/NFS 的现有目录结构中直接引用 AI 成果。
 不会创建标准 S3 存储桶。
@@ -128,7 +128,7 @@ aws cloudformation deploy \
 **注意事项**：
 
 - 强烈建议指定 `S3AccessPointName`（同时为 Alias 格式和 ARN 格式授予 IAM 权限）
-- 超过 5GB 的对象在 FSxN S3AP 中不可用（AWS 规范），必须使用分段上传
+- 超过 5GB 的对象在 FSx for ONTAP S3 AP 中不可用（AWS 规范），必须使用分段上传
 - ChangeDetection Lambda 仅使用 DynamoDB，因此不受 `OutputDestination` 影响
 - AlertGeneration Lambda 仅使用 SNS，因此不受 `OutputDestination` 影响
 - AWS 规范上的限制请参考

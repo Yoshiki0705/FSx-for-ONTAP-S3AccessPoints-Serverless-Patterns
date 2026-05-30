@@ -3,11 +3,11 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，实现 VFX 渲染作业的自动提交、质量检查和已批准输出的写回的无服务器工作流。
+利用 FSx for ONTAP 的 S3 Access Points，实现 VFX 渲染作业的自动提交、质量检查和已批准输出的写回的无服务器工作流。
 ### 适用情况
 
 1. このパターンは、複数のAWSサービスを連携して使用する必要がある場合に適しています。
-2. 特に、Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch、AWS CloudFormationなどを使用している場合。
+2. 特に、Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormationなどを使用している場合。
 3. GDSII、DRC、OASIS、GDS、Lambda、tapeoutなどの技術术语也适用于该模式。
 - 在VFX / 动画制作中，使用FSx ONTAP作为渲染存储
 - 希望自动化完成渲染后的质量检查，减少手动审核的负担
@@ -46,9 +46,9 @@ graph LR
 
 ### 工作流程步骤
 
-使用Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch、AWS CloudFormation等AWS服务时，请遵守以下规则：
+使用Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation等AWS服务时，请遵守以下规则：
 
-- 保持AWS服务名称为英文（例如Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch、AWS CloudFormation等）。
+- 保持AWS服务名称为英文（例如Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation等）。
 - 技术术语保持不变（例如GDSII、DRC、OASIS、GDS、Lambda、tapeout等）。
 - 内联代码（例如`...`）保持不变。
 - 文件路径和URL保持不变。
@@ -58,7 +58,7 @@ graph LR
 3. **质量检查**：使用 Rekognition 评估渲染结果的质量。如果通过则将对象放入 S3 AP，如果不通过则通过 SNS 通知标记重新渲染
 ## 前提条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上）
 - 已启用 S3 访问点的卷
 - ONTAP REST API 凭证已在 Secrets Manager 中注册
 - VPC、私有子网
@@ -125,7 +125,7 @@ aws cloudformation deploy \
 ## 成本结构
 
 规则：
-- 保持AWS服务名称为英文（Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch、AWS CloudFormation等）。
+- 保持AWS服务名称为英文（Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation等）。
 - 技术术语保持不变（GDSII、DRC、OASIS、GDS、Lambda、tapeout等）。
 - 保持内联代码（`...`）不变
 - 保持文件路径和URL不变

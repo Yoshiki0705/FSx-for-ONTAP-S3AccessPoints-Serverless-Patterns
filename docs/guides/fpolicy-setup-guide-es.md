@@ -19,7 +19,7 @@ Esta guía explica cómo configurar ONTAP FPolicy para reenviar eventos de opera
 
 ## Requisitos previos de ONTAP
 
-- FSx for NetApp ONTAP file system running
+- FSx for ONTAP file system running
 - SVM configured with NFS enabled
 - Admin access to ONTAP REST API or CLI
 
@@ -92,9 +92,9 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 ### Requisitos previos
 - AWS Managed Microsoft AD o AD autogestionado
-- SVM FSxN creado con configuración de unión a AD
+- SVM (FSx for ONTAP) creado con configuración de unión a AD
 - Recurso compartido CIFS creado en el volumen
 
 ### Notas importantes
-- El SVM debe crearse CON la configuración de AD — no se puede agregar CIFS a un SVM solo NFS existente en FSxN
+- El SVM debe crearse CON la configuración de AD — no se puede agregar CIFS a un SVM solo NFS existente en FSx for ONTAP
 - Para AWS Managed AD, usar `OU=Computers,OU=<domain>,DC=<domain>,DC=local`

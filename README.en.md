@@ -6,11 +6,11 @@
 
 ## Current Status
 
-This repository now contains **17 industry use cases** + **event-driven FPolicy pattern** + **6 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for NetApp ONTAP S3 Access Points.
+This repository now contains **17 industry use cases** + **event-driven FPolicy pattern** + **6 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for ONTAP S3 Access Points.
 
 The original 5 patterns (Phase 1) have been expanded across Phases 2–13. Phase 10 introduced the shared FPolicy event-ingestion pipeline, Phase 11 wired dispatch across all 17 UCs, Phase 12 hardened the pipeline with Persistent Store replay validation, SLO observability, capacity guardrails, and secrets rotation, and Phase 13 added FlexClone/FlexCache serverless automation.
 
-A collection of industry-specific serverless automation patterns leveraging S3 Access Points for Amazon FSx for NetApp ONTAP.
+A collection of industry-specific serverless automation patterns leveraging S3 Access Points for Amazon FSx for ONTAP.
 
 > **Purpose of this repository**: This is a "reference implementation for learning design decisions." Some use cases have been E2E verified in an AWS environment, while others have undergone CloudFormation deployment, shared Discovery Lambda, and operational verification of key components. It is designed for gradual adoption from PoC to production, demonstrating design decisions for cost optimization, security, and error handling through concrete code.
 
@@ -45,7 +45,7 @@ The article explains the architectural design philosophy and trade-offs, while t
 
 ## Overview
 
-This repository provides **17 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for NetApp ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **6 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6).
+This repository provides **17 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **6 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6).
 
 > Hereafter, FSx for ONTAP S3 Access Points will be abbreviated as **S3 AP**.
 
@@ -111,7 +111,7 @@ graph TB
     end
 
     subgraph "Data Sources"
-        FSXN[FSx for NetApp ONTAP<br/>Volume]
+        FSXN[FSx for ONTAP<br/>Volume]
         S3AP[S3 Access Point<br/>ListObjectsV2 / GetObject /<br/>Range / PutObject]
         ONTAP_API[ONTAP REST API<br/>ACL / Volume Metadata]
     end
@@ -326,7 +326,7 @@ The same approach is applied across all industries, not just Public Sector
 | UC17 | Smart City (Public Sector) | 5 | GIS upload / Bedrock report / risk map / land use distribution / time-series history (for urban planners) | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md) |
 
 **Common screenshots** (cross-industry generic views, under `docs/screenshots/masked/common/`):
-- `fsx-s3ap-detail.png` — FSxN S3 Access Point detail view (referenced by storage administrators regardless of industry)
+- `fsx-s3ap-detail.png` — FSx for ONTAP S3 Access Point detail view (referenced by storage administrators regardless of industry)
 - `s3ap-list.png` — S3 Access Points list (referenced by IT administrators regardless of industry)
 
 **Phase-specific views** (`docs/screenshots/masked/phase{1..7}/`):
@@ -348,7 +348,7 @@ to choose where AI/ML artifacts are written (implemented in UC9/10/11/12/14;
 other UCs are covered by Pattern A or Pattern C — see the Pattern table below):
 
 - **`STANDARD_S3`** (default): Writes to a new S3 bucket (existing behavior)
-- **`FSXN_S3AP`**: Writes back to the same FSx for NetApp ONTAP volume via the
+- **`FSXN_S3AP`**: Writes back to the same FSx for ONTAP volume via the
   S3 Access Point (the **"no data movement" pattern**, enabling SMB/NFS users
   to view AI artifacts inside the existing directory structure)
 
@@ -363,9 +363,9 @@ aws cloudformation deploy \
     ... (other required parameters)
 ```
 
-### FSxN S3 Access Points AWS Specification Constraints
+### FSx for ONTAP S3 Access Points AWS Specification Constraints
 
-FSxN S3 Access Points support only a subset of the S3 API (see
+FSx for ONTAP S3 Access Points support only a subset of the S3 API (see
 [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)).
 The following constraints force some features to use standard S3 buckets:
 
@@ -391,7 +391,7 @@ The 17 UCs fall into three output patterns:
 - **🟢 UC1-5** (Pattern A, updated 2026-05-11): `S3AccessPointOutputAlias` (legacy, optional) + newly-added `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` are supported. Default `OutputDestination=FSXN_S3AP` preserves existing behavior
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, implemented 2026-05-10): `OutputDestination` switch (STANDARD_S3 ⇄ FSXN_S3AP). Default `OutputDestination=STANDARD_S3`. UC11/14 verified on AWS, UC9/10/12 unit-tested only
 - **🟡 UC6/7/8/13**: currently `OUTPUT_BUCKET` only (standard S3 fixed). Athena results require standard S3 per AWS spec, so `OutputDestination` adoption is partial
-- **🟢 UC15-17**: Pattern A (write back to FSxN S3AP, part of Phase 7)
+- **🟢 UC15-17**: Pattern A (write back to FSx for ONTAP S3 AP, part of Phase 7)
 
 | UC | Input | Output | Selection Mechanism | Notes |
 |----|------|------|----------|------|
@@ -694,7 +694,7 @@ See the following documents for details:
 ## Prerequisites
 
 - **AWS Account**: A valid AWS account with appropriate IAM permissions
-- **FSx for NetApp ONTAP**: A deployed file system
+- **FSx for ONTAP**: A deployed file system
   - ONTAP version: A version that supports S3 Access Points (verified with 9.17.1P4D3)
   - An FSx for ONTAP volume with an associated S3 Access Point (network origin depends on use case; `internet` recommended when using Athena / Glue)
 - **Network**: VPC, private subnets, route tables

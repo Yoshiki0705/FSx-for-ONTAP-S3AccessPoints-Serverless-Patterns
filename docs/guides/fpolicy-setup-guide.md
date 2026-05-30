@@ -4,7 +4,7 @@
 
 ## 概要
 
-本ガイドでは、FSx for NetApp ONTAP の FPolicy 機能を使用して、
+本ガイドでは、FSx for ONTAP の FPolicy 機能を使用して、
 ファイル操作イベントを AWS サービス（SQS → EventBridge → Step Functions）に
 転送するための設定手順を説明する。
 
@@ -17,7 +17,7 @@
 - FPolicy Engine Lambda ARN が取得済み
 
 ### ONTAP 側
-- FSx for NetApp ONTAP ファイルシステムが作成済み
+- FSx for ONTAP ファイルシステムが作成済み
 - SVM（Storage Virtual Machine）が設定済み
 - 管理者権限でのアクセスが可能
 
@@ -288,7 +288,7 @@ fpolicy policy event create \
 ### 前提条件（SMB 追加）
 
 - AWS Managed Microsoft AD（または Self-Managed AD）
-- FSxN SVM が AD ドメインに参加済み（**SVM 作成時に AD 設定を含める必要あり**）
+- FSx for ONTAP SVM が AD ドメインに参加済み（**SVM 作成時に AD 設定を含める必要あり**）
 - CIFS 共有が作成済み
 
 ### SMB 環境構築手順
@@ -301,8 +301,8 @@ aws ds create-microsoft-ad \
   --vpc-settings VpcId=<VPC>,SubnetIds=<SUBNET1>,<SUBNET2> \
   --edition Standard --region ap-northeast-1
 
-# 2. FSxN SVM 作成（AD 参加付き）
-# 重要: 既存の NFS 専用 SVM に後から CIFS を追加することはできない（FSxN の制約）
+# 2. FSx for ONTAP SVM 作成（AD 参加付き）
+# 重要: 既存の NFS 専用 SVM に後から CIFS を追加することはできない（FSx for ONTAP の制約）
 aws fsx create-storage-virtual-machine \
   --file-system-id <FS_ID> --name FPolicySMB \
   --active-directory-configuration \
@@ -340,7 +340,7 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 ### SMB 固有の注意事項
 
-- **SVM 作成時に AD 設定必須**: FSxN では既存 NFS 専用 SVM に後から CIFS プロトコルを追加できない
+- **SVM 作成時に AD 設定必須**: FSx for ONTAP では既存 NFS 専用 SVM に後から CIFS プロトコルを追加できない
 - **OU 指定**: AWS Managed AD では `OU=Computers,OU=<domain>,DC=<domain>,DC=local` を使用
 - **SMB ポート 445**: SVM に CIFS プロトコルが含まれている場合のみ開放される
 - **認証**: AD ユーザー（`DOMAIN\username`）で認証。`fsxadmin` では SMB 認証不可
@@ -367,7 +367,7 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 ### 前提条件
 
 - VPC 内の EC2 に SSH アクセス可能
-- FSxN SVM 管理エンドポイント（<SVM_MGMT_IP>）に SSH 可能
+- FSx for ONTAP SVM 管理エンドポイント（<SVM_MGMT_IP>）に SSH 可能
 - fsxadmin パスワードを把握
 
 ### Step 1: NLB Private IP の確認
@@ -381,7 +381,7 @@ aws ec2 describe-network-interfaces \
 ### Step 2: ONTAP FPolicy 設定（SVM 管理 CLI）
 
 ```bash
-# EC2 から FSxN SVM に SSH
+# EC2 から FSx for ONTAP SVM に SSH
 ssh fsxadmin@<SVM_MGMT_IP>
 
 # 外部エンジン作成

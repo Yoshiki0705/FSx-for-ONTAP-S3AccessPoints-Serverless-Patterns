@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Übersicht
-FSx for NetApp ONTAP nutzt S3 Access Points für einen serverlosen Workflow, der die Metadatenextraktion von SEG-Y-Seismikdaten, die Anomalieerkennung in Bohrlochlogs und die Generierung von Compliance-Berichten automatisiert.
+FSx for ONTAP nutzt S3 Access Points für einen serverlosen Workflow, der die Metadatenextraktion von SEG-Y-Seismikdaten, die Anomalieerkennung in Bohrlochlogs und die Generierung von Compliance-Berichten automatisiert.
 ### Fälle, für die dieses Muster geeignet ist
 - SEG-Y-Seismikdaten und Bohrlochlogs sind in großen Mengen auf FSx ONTAP gespeichert
 - Die Metadaten der Seismikdaten (Survey-Name, Koordinatensystem, Abtastintervall, Anzahl der Traces) sollen automatisch katalogisiert werden
@@ -57,7 +57,7 @@ graph LR
 5. **Compliance Report**: Compliance-Berichte mit Bedrock erstellen, Bildmustererkennung mit Rekognition
 ## Voraussetzungen
 - AWS-Konto und entsprechende IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisysteme (ONTAP 9.17.1P4D3 oder höher)
+- FSx for ONTAP-Dateisysteme (ONTAP 9.17.1P4D3 oder höher)
 - S3 Access Point-aktivierte Volumes (zur Speicherung von Seismikdaten und Bohrlochprotokollen)
 - VPC, private Subnetz
 - Amazon Bedrock-Modellzugriff aktiviert (Claude / Nova)

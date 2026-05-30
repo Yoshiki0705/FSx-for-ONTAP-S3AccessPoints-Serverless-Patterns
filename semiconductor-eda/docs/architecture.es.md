@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Entrada — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Entrada — FSx for ONTAP"]
         GDS["Archivos de diseño GDS/OASIS<br/>.gds, .gds2, .oas, .oasis"]
     end
 
@@ -58,7 +58,7 @@ flowchart TB
 ### Entrada
 | Elemento | Descripción |
 |----------|-------------|
-| **Origen** | Volumen FSx for NetApp ONTAP |
+| **Origen** | Volumen FSx for ONTAP |
 | **Tipos de archivo** | .gds, .gds2 (GDSII), .oas, .oasis (OASIS) |
 | **Método de acceso** | S3 Access Point (sin montaje NFS) |
 | **Estrategia de lectura** | Solicitud Range — solo primeros 64KB (análisis de encabezado) |
@@ -96,7 +96,7 @@ flowchart TB
 
 | Servicio | Rol |
 |----------|-----|
-| FSx for NetApp ONTAP | Almacenamiento de archivos empresarial (archivos GDS/OASIS) |
+| FSx for ONTAP | Almacenamiento de archivos empresarial (archivos GDS/OASIS) |
 | S3 Access Points | Acceso serverless a datos en volúmenes ONTAP |
 | EventBridge Scheduler | Disparador periódico |
 | Step Functions | Orquestación de flujo de trabajo con estado Map |

@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Übersicht
-FSx for NetApp ONTAP nutzt S3 Access Points, um serverlose Workflows zur Automatisierung der Qualitätskontrolle von FASTQ/BAM/VCF-Genomdaten, der Aggregation von Variantenaufrufsstatistiken und der Erstellung von Forschungszusammenfassungen zu implementieren.
+FSx for ONTAP nutzt S3 Access Points, um serverlose Workflows zur Automatisierung der Qualitätskontrolle von FASTQ/BAM/VCF-Genomdaten, der Aggregation von Variantenaufrufsstatistiken und der Erstellung von Forschungszusammenfassungen zu implementieren.
 ### Fälle, in denen dieses Muster geeignet ist
 - Die Ausgabedaten des nächsten Generation Sequenzers (FASTQ/BAM/VCF) werden auf FSx ONTAP gespeichert.
 - Die Qualitätsmetriken der Sequenzdaten (Anzahl der Reads, Qualitätsscores, GC-Gehalt) sollen regelmäßig überwacht werden.
@@ -55,7 +55,7 @@ graph LR
 5. **Summary**: Generierung der Forschungszusammenfassung mit Bedrock, Extraktion von Entitäten mit Comprehend Medical
 ## Voraussetzungen
 - AWS-Konto und geeignete IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
+- FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
 - S3 Access Point aktivierte Volumes (zur Speicherung von Genomdaten)
 - VPC, private Subnetz
 - Amazon Bedrock-Modellzugriff aktiviert (Claude / Nova)

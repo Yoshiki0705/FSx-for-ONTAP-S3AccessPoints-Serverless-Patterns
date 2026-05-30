@@ -5,7 +5,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP S3 Access Points を活用した衛星画像（SAR / 光学）の
+FSx for ONTAP S3 Access Points を活用した衛星画像（SAR / 光学）の
 自動解析パイプライン。大容量の衛星画像データを FSx ONTAP に格納し、
 S3 Access Points 経由でサーバーレス処理を実行する。
 
@@ -41,7 +41,7 @@ FSx ONTAP (衛星画像格納)
 
 | サービス | 用途 |
 |---------|------|
-| FSx for NetApp ONTAP | 衛星画像の永続ストレージ（NTFS ACL でアクセス制御） |
+| FSx for ONTAP | 衛星画像の永続ストレージ（NTFS ACL でアクセス制御） |
 | S3 Access Points | サーバーレスからの画像アクセス |
 | Step Functions | ワークフローオーケストレーション |
 | Lambda | タイル分割、メタデータ抽出、アラート生成 |
@@ -181,7 +181,7 @@ defense-satellite/
 
 | サービス | ドキュメント |
 |---------|------------|
-| FSx for NetApp ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
 | S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Rekognition | [開発者ガイド](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |

@@ -4,7 +4,7 @@
 
 ## 概要
 
-本ドキュメントは、FSxN S3AP Serverless Patterns の全 Phase（1–5）を横断したコスト最適化のベストプラクティスを提供します。デプロイプロファイル別の月額見積もり、コスト削減チェックリスト、および CloudFormation パラメータ推奨を含みます。
+本ドキュメントは、FSx for ONTAP S3 AP Serverless Patterns の全 Phase（1–5）を横断したコスト最適化のベストプラクティスを提供します。デプロイプロファイル別の月額見積もり、コスト削減チェックリスト、および CloudFormation パラメータ推奨を含みます。
 
 ---
 
@@ -355,4 +355,4 @@ EmergencyThreshold: 500  # 月額 $500 超過で緊急通知
 
 ---
 
-*本ドキュメントは FSxN S3AP Serverless Patterns Phase 5 の一部です。*
+*本ドキュメントは FSx for ONTAP S3 AP Serverless Patterns Phase 5 の一部です。*

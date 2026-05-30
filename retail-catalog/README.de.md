@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Übersicht
-Dies ist ein serverloser Workflow, der S3 Access Points von FSx for NetApp ONTAP nutzt, um die automatische Bildkennzeichnung, die Generierung von Katalogmetadaten und die Bildqualitätsüberprüfung zu automatisieren.
+Dies ist ein serverloser Workflow, der S3 Access Points von FSx for ONTAP nutzt, um die automatische Bildkennzeichnung, die Generierung von Katalogmetadaten und die Bildqualitätsüberprüfung zu automatisieren.
 ### Fälle, in denen dieses Muster geeignet ist
 - Produktbilder werden massiv auf FSx ONTAP gespeichert
 - Ich möchte die automatische Kennzeichnung von Produktbildern (Kategorie, Farbe, Material) mit Rekognition durchführen
@@ -51,7 +51,7 @@ graph LR
 4. **Qualitätsprüfung**: Bildqualitätsmetriken überprüfen und Bilder unter Schwelle flaggen
 ## Voraussetzungen
 - AWS-Konto und geeignete IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
+- FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
 - S3 Access Point aktivierte Volumes (zur Speicherung von Produktbildern)
 - VPC, private Subnetz
 - Amazon Bedrock Modellzugriff aktiviert (Claude / Nova)

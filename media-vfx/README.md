@@ -6,7 +6,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP の S3 Access Points を活用し、VFX レンダリングジョブの自動送信、品質チェック、承認済み出力の書き戻しを行うサーバーレスワークフローです。
+FSx for ONTAP の S3 Access Points を活用し、VFX レンダリングジョブの自動送信、品質チェック、承認済み出力の書き戻しを行うサーバーレスワークフローです。
 
 ### このパターンが適しているケース
 
@@ -78,7 +78,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム
 - ONTAP REST API 認証情報が Secrets Manager に登録済み
 - VPC、プライベートサブネット
@@ -294,7 +294,7 @@ VFX レンダリングワークフローでは、render input assets（テクス
 
 | サービス | ドキュメント |
 |---------|------------|
-| FSx for NetApp ONTAP | [FSx for NetApp ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
 | S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon CloudFront | [Amazon CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html) |

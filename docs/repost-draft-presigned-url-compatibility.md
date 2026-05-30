@@ -1,7 +1,7 @@
 # re:Post Draft: FSx for ONTAP S3 Access Points — Presigned URL Behavior Clarification
 
 > **投稿先**: https://repost.aws (Article or Question)
-> **カテゴリ**: Amazon FSx for NetApp ONTAP, Amazon S3
+> **カテゴリ**: Amazon FSx for ONTAP, Amazon S3
 > **タグ**: FSx for ONTAP, S3 Access Points, Presigned URLs
 
 ---

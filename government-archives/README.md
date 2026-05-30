@@ -5,7 +5,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP S3 Access Points を活用した政府機関の公文書
+FSx for ONTAP S3 Access Points を活用した政府機関の公文書
 デジタルアーカイブおよび情報公開請求（FOIA: Freedom of Information Act）
 対応の自動化パイプライン。
 
@@ -43,7 +43,7 @@ FSx ONTAP (公文書格納 — 部署別 NTFS ACL)
 
 | サービス | 用途 |
 |---------|------|
-| FSx for NetApp ONTAP | 公文書の永続ストレージ（部署別 NTFS ACL） |
+| FSx for ONTAP | 公文書の永続ストレージ（部署別 NTFS ACL） |
 | S3 Access Points | サーバーレスからの文書アクセス |
 | Step Functions | ワークフローオーケストレーション |
 | Lambda | 文書分類、PII 検出、墨消し処理 |
@@ -228,7 +228,7 @@ government-archives/
 
 | サービス | ドキュメント |
 |---------|------------|
-| FSx for NetApp ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
 | S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Textract | [開発者ガイド](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |

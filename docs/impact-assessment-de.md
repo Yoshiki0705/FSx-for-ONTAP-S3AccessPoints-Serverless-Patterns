@@ -65,4 +65,4 @@ Designprinzipien:
 
 ---
 
-*Dieses Dokument ist der Leitfaden zur Bewertung der Auswirkungen auf bestehende Umgebungen für FSxN S3AP Serverless Patterns.*
+*Dieses Dokument ist der Leitfaden zur Bewertung der Auswirkungen auf bestehende Umgebungen für FSx for ONTAP S3 AP Serverless Patterns.*

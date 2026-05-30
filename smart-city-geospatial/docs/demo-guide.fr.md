@@ -7,7 +7,7 @@
 ## Prérequis
 
 - Compte AWS, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - Modèle Bedrock Nova Lite v1:0 activé
 
 ## Chronologie
@@ -16,7 +16,7 @@
 
 - Défis des collectivités locales : utilisation croissante des données SIG pour l'urbanisme, la gestion des catastrophes et la maintenance des infrastructures
 - Défis traditionnels : l'analyse SIG repose principalement sur des logiciels spécialisés comme ArcGIS / QGIS
-- Proposition : automatisation avec FSxN S3AP + serverless
+- Proposition : automatisation avec FSx for ONTAP S3 AP + serverless
 
 ### 0:05 - 0:10 Architecture (5 min)
 
@@ -107,7 +107,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP (pattern "no data movement")
 Les métadonnées de normalisation CRS, les résultats de classification de l'occupation des sols, l'évaluation des infrastructures, les cartes de risque et les
-rapports d'urbanisme (Markdown) générés par Bedrock sont réécrits via le FSxN S3 Access Point dans le
+rapports d'urbanisme (Markdown) générés par Bedrock sont réécrits via le FSx for ONTAP S3 Access Point dans le
 **même volume FSx ONTAP** que les données SIG d'origine.
 Les responsables de l'urbanisme peuvent consulter directement les résultats de l'IA dans la structure de répertoires SMB/NFS existante.
 Aucun bucket S3 standard n'est créé.
@@ -126,7 +126,7 @@ aws cloudformation deploy \
 **Points d'attention** :
 
 - Spécification de `S3AccessPointName` fortement recommandée (autorisation IAM pour les formats Alias et ARN)
-- Les objets de plus de 5 Go ne sont pas pris en charge par FSxN S3AP (spécification AWS), téléchargement multipart obligatoire
+- Les objets de plus de 5 Go ne sont pas pris en charge par FSx for ONTAP S3 AP (spécification AWS), téléchargement multipart obligatoire
 - Le Lambda ChangeDetection utilise uniquement DynamoDB et n'est donc pas affecté par `OutputDestination`
 - Les rapports Bedrock sont écrits en Markdown (`text/markdown; charset=utf-8`), donc directement consultables
   avec un éditeur de texte sur les clients SMB/NFS

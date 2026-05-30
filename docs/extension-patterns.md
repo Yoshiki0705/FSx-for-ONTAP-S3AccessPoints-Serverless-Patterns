@@ -8,7 +8,7 @@
 
 ### 概要
 
-Amazon Bedrock Knowledge Bases を使用して、FSx for NetApp ONTAP 上のエンタープライズドキュメントから RAG（Retrieval-Augmented Generation）アプリケーションを構築するパターンです。S3 Access Points をデータソースとして Bedrock Knowledge Bases に接続し、自然言語による文書検索と回答生成を実現します。
+Amazon Bedrock Knowledge Bases を使用して、FSx for ONTAP 上のエンタープライズドキュメントから RAG（Retrieval-Augmented Generation）アプリケーションを構築するパターンです。S3 Access Points をデータソースとして Bedrock Knowledge Bases に接続し、自然言語による文書検索と回答生成を実現します。
 
 ### アーキテクチャ
 
@@ -36,7 +36,7 @@ graph LR
 
 ### 前提条件
 
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム（**internet** network origin 必須）
 - Amazon Bedrock モデルアクセスが有効（Claude / Nova）
 - Amazon OpenSearch Serverless または Aurora pgvector（ベクトルストア用）
@@ -64,7 +64,7 @@ graph LR
 
 本プロジェクト（fsxn-s3ap-serverless-patterns）の共通モジュール（OntapClient、FsxHelper）は、**FSx-for-ONTAP-Agentic-Access-Aware-RAG** プロジェクトの検証済みパターンを継承・進化させたものです。
 
-元プロジェクトは、FSx for NetApp ONTAP + Amazon Bedrock を組み合わせた **権限ベース RAG（Permission-aware RAG）** システムで、以下の特徴を持ちます:
+元プロジェクトは、FSx for ONTAP + Amazon Bedrock を組み合わせた **権限ベース RAG（Permission-aware RAG）** システムで、以下の特徴を持ちます:
 
 - **NTFS ACL / Active Directory SID に基づくアクセス制御**: ユーザーごとにアクセス可能なドキュメントのみを検索対象とする
 - **Bedrock Agents によるエージェント型 RAG**: 多段階推論、自動文書検索、コンテキスト最適化
@@ -90,7 +90,7 @@ ap-northeast-1 環境で以下を検証済み:
 
 ### 概要
 
-AWS Transfer Family を使用して、外部パートナーとの SFTP ベースのファイル交換を FSx for NetApp ONTAP S3 Access Points 経由で実現するパターンです。パートナーが SFTP でアップロードしたファイルを、本プロジェクトのサーバーレスワークフローで自動処理できます。
+AWS Transfer Family を使用して、外部パートナーとの SFTP ベースのファイル交換を FSx for ONTAP S3 Access Points 経由で実現するパターンです。パートナーが SFTP でアップロードしたファイルを、本プロジェクトのサーバーレスワークフローで自動処理できます。
 
 ### アーキテクチャ
 
@@ -121,7 +121,7 @@ graph LR
 
 ### 前提条件
 
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム
 - AWS Transfer Family が利用可能なリージョン
 - 外部パートナーの SFTP クライアント設定
@@ -169,7 +169,7 @@ ap-northeast-1 環境で以下を検証済み:
 
 ### 概要
 
-Amazon EMR Serverless を使用して、FSx for NetApp ONTAP S3 Access Points 上の大規模データセットを Apache Spark で処理するパターンです。本プロジェクトの Lambda ベースの処理では対応が難しい TB 規模のデータ処理に適しています。
+Amazon EMR Serverless を使用して、FSx for ONTAP S3 Access Points 上の大規模データセットを Apache Spark で処理するパターンです。本プロジェクトの Lambda ベースの処理では対応が難しい TB 規模のデータ処理に適しています。
 
 ### アーキテクチャ
 
@@ -193,7 +193,7 @@ graph LR
 
 ### 前提条件
 
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム（**internet** network origin 必須）
 - Amazon EMR Serverless が利用可能なリージョン
 

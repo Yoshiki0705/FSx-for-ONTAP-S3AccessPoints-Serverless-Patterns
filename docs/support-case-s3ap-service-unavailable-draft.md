@@ -10,7 +10,7 @@ General guidance (non-production impact — benchmark testing environment)
 
 ## Service
 
-Amazon FSx for NetApp ONTAP
+Amazon FSx for ONTAP
 
 ## Category
 

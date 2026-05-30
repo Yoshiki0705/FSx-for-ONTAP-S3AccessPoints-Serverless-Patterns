@@ -7,7 +7,7 @@
 ## Voraussetzungen
 
 - AWS-Konto, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - Bedrock Nova Lite v1:0 Modell aktiviert
 
 ## Zeitplan
@@ -16,7 +16,7 @@
 
 - Herausforderungen für Kommunalverwaltungen: Zunehmende Nutzung von GIS-Daten für Stadtplanung, Katastrophenschutz und Infrastrukturerhaltung
 - Bisherige Herausforderungen: GIS-Analysen konzentrieren sich auf spezialisierte Software wie ArcGIS / QGIS
-- Vorschlag: Automatisierung mit FSxN S3AP + Serverless
+- Vorschlag: Automatisierung mit FSx for ONTAP S3 AP + Serverless
 
 ### 0:05 - 0:10 Architektur (5 Minuten)
 
@@ -107,7 +107,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement"-Muster)
 CRS-Normalisierungsmetadaten, Landnutzungsklassifizierungsergebnisse, Infrastrukturbewertung, Risikokarten und von Bedrock generierte
-Stadtplanungsberichte (Markdown) werden über den FSxN S3 Access Point zurück auf **dasselbe FSx ONTAP-Volume** wie die ursprünglichen GIS-Daten geschrieben.
+Stadtplanungsberichte (Markdown) werden über den FSx for ONTAP S3 Access Point zurück auf **dasselbe FSx ONTAP-Volume** wie die ursprünglichen GIS-Daten geschrieben.
 Stadtplaner können KI-Ergebnisse direkt innerhalb der bestehenden SMB/NFS-Verzeichnisstruktur einsehen.
 Es wird kein Standard-S3-Bucket erstellt.
 
@@ -125,7 +125,7 @@ aws cloudformation deploy \
 **Hinweise**:
 
 - Angabe von `S3AccessPointName` wird dringend empfohlen (IAM-Berechtigung sowohl für Alias- als auch ARN-Format)
-- Objekte über 5 GB sind mit FSxN S3AP nicht möglich (AWS-Spezifikation), Multipart-Upload erforderlich
+- Objekte über 5 GB sind mit FSx for ONTAP S3 AP nicht möglich (AWS-Spezifikation), Multipart-Upload erforderlich
 - ChangeDetection Lambda verwendet nur DynamoDB und wird daher nicht von `OutputDestination` beeinflusst
 - Bedrock-Berichte werden als Markdown (`text/markdown; charset=utf-8`) ausgegeben und können daher direkt mit Texteditoren auf SMB/NFS-Clients angezeigt werden
 - AWS-Spezifikationsbeschränkungen siehe

@@ -160,12 +160,12 @@
 
 ---
 
-## 關於輸出目的地：FSxN S3 Access Point (Pattern A)
+## 關於輸出目的地：FSx for ONTAP S3 Access Point (Pattern A)
 
 UC2 financial-idp 歸類為 **Pattern A: Native S3AP Output**
 （參照 `docs/output-destination-patterns.md`）。
 
-**設計**：請求書 OCR 結果、結構化詮釋資料、BedRock 摘要全部透過 FSxN S3 Access Point
+**設計**：請求書 OCR 結果、結構化詮釋資料、BedRock 摘要全部透過 FSx for ONTAP S3 Access Point
 寫回至與原始請求書 PDF **相同的 FSx ONTAP 磁碟區**。不會建立標準 S3 儲存貯體
 （"no data movement" 模式）。
 

@@ -65,4 +65,4 @@ Principes de conception :
 
 ---
 
-*Ce document est le guide d'évaluation de l'impact sur l'environnement existant pour FSxN S3AP Serverless Patterns.*
+*Ce document est le guide d'évaluation de l'impact sur l'environnement existant pour FSx for ONTAP S3 AP Serverless Patterns.*

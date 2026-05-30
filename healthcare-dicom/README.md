@@ -6,7 +6,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP の S3 Access Points を活用し、DICOM 医用画像の自動分類と匿名化を行うサーバーレスワークフローです。患者プライバシーの保護と効率的な画像管理を実現します。
+FSx for ONTAP の S3 Access Points を活用し、DICOM 医用画像の自動分類と匿名化を行うサーバーレスワークフローです。患者プライバシーの保護と効率的な画像管理を実現します。
 
 ### このパターンが適しているケース
 
@@ -84,7 +84,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム
 - ONTAP REST API 認証情報が Secrets Manager に登録済み
 - VPC、プライベートサブネット
@@ -262,7 +262,7 @@ UC5 は以下のサービスを使用します:
 
 | サービス | ドキュメント |
 |---------|------------|
-| FSx for NetApp ONTAP | [FSx for NetApp ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
 | S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Comprehend Medical | [Amazon Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/comprehendmedical-welcome.html) |

@@ -5,9 +5,9 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-Leveraging S3 Access Points for Amazon FSx for NetApp ONTAP, this is a serverless workflow that automates the classification of paper PDFs, citation network analysis, and extraction of research data metadata.
+Leveraging S3 Access Points for Amazon FSx for ONTAP, this is a serverless workflow that automates the classification of paper PDFs, citation network analysis, and extraction of research data metadata.
 ### When this pattern is suitable
-- Numerous research papers in PDF format and research data are stored on FSx for NetApp ONTAP.
+- Numerous research papers in PDF format and research data are stored on FSx for ONTAP.
 - We want to automate the text extraction of research paper PDFs using Textract.
 - Topic detection and entity extraction (authors, institutions, keywords) are needed using Comprehend.
 - Citation relationship analysis and automatic construction of a citation network (adjacency list) are necessary.
@@ -58,7 +58,7 @@ graph LR
 5. **Metadata**: Output structured metadata for each paper in JSON to S3
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file system (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
 - S3 Access Point-enabled volume (to store paper PDFs and research data)
 - VPC, private subnets
 - Amazon Bedrock model access enabled (Claude / Nova)
@@ -129,7 +129,7 @@ UC13 uses the following services:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Call the Textract API via the Cross-Region Client. Ensure data residency requirements are met. For more details, refer to the [Region Compatibility Matrix](../docs/region-compatibility.md).
 ## References
-- [FSx for NetApp ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract Documentation](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Comprehend Documentation](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html)
 - [Amazon Bedrock API Reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

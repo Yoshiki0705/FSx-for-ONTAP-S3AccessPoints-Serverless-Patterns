@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，建立無伺服器工作流程，自動化 FASTQ/BAM/VCF 基因組數據的質量檢查、變體呼叫統計彙總及研究摘要生成。
+利用 FSx for ONTAP 的 S3 Access Points，建立無伺服器工作流程，自動化 FASTQ/BAM/VCF 基因組數據的質量檢查、變體呼叫統計彙總及研究摘要生成。
 ### 適合此模式的情況
 - 次世代測序儀的輸出數據（FASTQ/BAM/VCF）已儲存於 FSx ONTAP 上
 - 希望定期監控測序數據的品質指標（讀數、品質分數、GC 含量）
@@ -55,7 +55,7 @@ graph LR
 5. **摘要**：使用 Bedrock 生成研究摘要，使用 Comprehend Medical 提取實體
 ## 先決條件
 - AWS 帳戶和適當的 IAM 權限
-- FSx for NetApp ONTAP 文件系統（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP 文件系統（ONTAP 9.17.1P4D3 以上）
 - 已啟用 S3 Access Point 的卷（存儲基因數據）
 - VPC、私有子網
 - Amazon Bedrock 模型訪問已啟用（Claude / Nova）

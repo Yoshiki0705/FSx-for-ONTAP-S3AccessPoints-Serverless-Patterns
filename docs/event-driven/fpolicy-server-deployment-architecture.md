@@ -4,7 +4,7 @@
 
 ## 背景
 
-ONTAP FPolicy External Server は、FSxN SVM からの TCP 接続を受け付ける長時間稼働サーバーである。
+ONTAP FPolicy External Server は、FSx for ONTAP SVM からの TCP 接続を受け付ける長時間稼働サーバーである。
 ONTAP が接続を**開始する側**であり、FPolicy Server は TCP ポートでリッスンするだけ。
 NFS/SMB マウントは一切不要。
 
@@ -17,7 +17,7 @@ NFS/SMB マウントは一切不要。
 > — [Node-to-external ONTAP FPolicy server communication process](https://docs.netapp.com/us-en/ontap/nas-audit/node-fpolicy-server-communication-process-concept.html)
 
 ```
-FSxN SVM (data LIF, Private Subnet)
+FSx for ONTAP SVM (data LIF, Private Subnet)
   │
   │ TCP connect (port 9898, async mode)
   ▼
@@ -33,7 +33,7 @@ SQS Ingestion Queue → EventBridge → Step Functions
 | 要件 | 説明 | 重要度 |
 |------|------|--------|
 | TCP リッスン | ポート 9898 で ONTAP からの接続を受け付ける | 必須 |
-| 同一 VPC | FSxN SVM data LIF と同一 VPC 内に配置 | 必須 |
+| 同一 VPC | FSx for ONTAP SVM data LIF と同一 VPC 内に配置 | 必須 |
 | IP 安定性 | ONTAP external-engine の `-primary-servers` に指定する IP が安定 | 必須 |
 | 高可用性 | サーバー障害時に自動復旧 | 推奨 |
 | スケーラビリティ | 複数 SVM / 大量イベント対応 | 推奨 |
@@ -46,7 +46,7 @@ SQS Ingestion Queue → EventBridge → Step Functions
 ### Option A: ECS Fargate + NLB（推奨）
 
 ```
-FSxN SVM (data LIF)
+FSx for ONTAP SVM (data LIF)
   │
   │ TCP connect to NLB static IP (port 9898)
   ▼
@@ -56,7 +56,7 @@ NLB (Network Load Balancer)
   ▼
 ECS Fargate Service (desired_count=1, min=1, max=3)
   │ awsvpc network mode
-  │ Private Subnet (same as FSxN)
+  │ Private Subnet (same as FSx for ONTAP)
   ▼
 fpolicy-server container (port 9898)
   │
@@ -88,7 +88,7 @@ SQS Ingestion Queue
 ### Option B: ECS on EC2 + Static Private IP
 
 ```
-FSxN SVM (data LIF)
+FSx for ONTAP SVM (data LIF)
   │
   │ TCP connect to EC2 ENI static IP (port 9898)
   ▼
@@ -124,7 +124,7 @@ SQS Ingestion Queue
 ### Option C: EC2 単体（ECS なし）
 
 ```
-FSxN SVM (data LIF)
+FSx for ONTAP SVM (data LIF)
   │
   │ TCP connect to EC2 static IP (port 9898)
   ▼
@@ -170,7 +170,7 @@ NLB が TCP 接続を中継する際に、FPolicy プロトコルのバイナリ
 **修正アーキテクチャ: Fargate タスク直接接続**
 
 ```
-FSxN SVM (data LIF: 10.0.9.32, 10.0.2.18)
+FSx for ONTAP SVM (data LIF: 10.0.9.32, 10.0.2.18)
   │
   │ TCP connect to Fargate Task IP (port 9898)
   ▼
@@ -235,10 +235,10 @@ fpolicy policy external-engine create \
 
 ```
 FPolicy Server SG:
-  Inbound: TCP 9898 from FSxN SVM Security Group
+  Inbound: TCP 9898 from FSx for ONTAP SVM Security Group
   Outbound: TCP 443 to SQS VPC Endpoint (or NAT Gateway)
 
-FSxN SVM SG:
+FSx for ONTAP SVM SG:
   Outbound: TCP 9898 to FPolicy Server SG
 ```
 

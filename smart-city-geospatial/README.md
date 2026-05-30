@@ -5,7 +5,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP S3 Access Points を活用した地理空間データ（GIS）の
+FSx for ONTAP S3 Access Points を活用した地理空間データ（GIS）の
 自動解析パイプライン。都市計画、インフラ監視、災害対応のための
 衛星画像・LiDAR・IoT センサーデータを統合処理する。
 
@@ -43,7 +43,7 @@ FSx ONTAP (GIS データ格納 — 部署別アクセス制御)
 
 | サービス | 用途 |
 |---------|------|
-| FSx for NetApp ONTAP | GIS データの永続ストレージ（部署別 NTFS ACL） |
+| FSx for ONTAP | GIS データの永続ストレージ（部署別 NTFS ACL） |
 | S3 Access Points | サーバーレスからのデータアクセス |
 | Step Functions | ワークフローオーケストレーション |
 | Lambda | 前処理、座標変換、メタデータ抽出 |
@@ -205,7 +205,7 @@ smart-city-geospatial/
 
 | サービス | ドキュメント |
 |---------|------------|
-| FSx for NetApp ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
 | S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon SageMaker | [開発者ガイド](https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html) |

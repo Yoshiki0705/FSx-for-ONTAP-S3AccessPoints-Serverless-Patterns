@@ -4,7 +4,7 @@
 
 ## Descripción general
 
-Un patrón que proporciona de forma segura documentos confidenciales en servidores de archivos empresariales (FSx for NetApp ONTAP) a pipelines de Amazon Bedrock / RAG a través de S3 Access Points **sin copiar a S3**. Logra RAG consciente de permisos manteniendo los permisos de archivos (ACL/NTFS).
+Un patrón que proporciona de forma segura documentos confidenciales en servidores de archivos empresariales (FSx for ONTAP) a pipelines de Amazon Bedrock / RAG a través de S3 Access Points **sin copiar a S3**. Logra RAG consciente de permisos manteniendo los permisos de archivos (ACL/NTFS).
 
 ## Problemas resueltos
 
