@@ -2,7 +2,7 @@
 
 ## Overview
 
-本ドキュメントは、FSxN S3AP Serverless Patterns の主要な設計判断を構造化したデシジョンツリーを提供する。各判断は不可逆または高コストな変更を伴うため、設計段階での正しい選択が重要。
+本ドキュメントは、FSx for ONTAP S3 AP Serverless Patterns の主要な設計判断を構造化したデシジョンツリーを提供する。各判断は不可逆または高コストな変更を伴うため、設計段階での正しい選択が重要。
 
 ## Decision Summary
 

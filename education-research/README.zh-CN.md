@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，实现论文 PDF 的自动分类、引用网络分析和研究数据元数据抽取的无服务器工作流。
+利用 FSx for ONTAP 的 S3 Access Points，实现论文 PDF 的自动分类、引用网络分析和研究数据元数据抽取的无服务器工作流。
 ### 适用场景
 - 论文 PDF 和研究数据大量积累在 FSx ONTAP 上
 - 希望自动化使用 Textract 从论文 PDF 提取文本
@@ -14,7 +14,7 @@
 
 对于这种模式，不适用的情况包括：
 
-- 使用 Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch 和 AWS CloudFormation 等 AWS 服务时。
+- 使用 Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch 和 AWS CloudFormation 等 AWS 服务时。
 - 涉及 GDSII、DRC、OASIS、GDS、Lambda、tapeout 等技术术语时。
 - 代码（`...`）和文件路径、URL 不进行翻译时。
 - 需要一个实时论文搜索引擎（OpenSearch / Elasticsearch 最合适）
@@ -56,7 +56,7 @@ graph LR
 
 ### 工作流程步骤
 
-在这个工作流程步骤中，您将使用 Amazon Bedrock 来创建和管理模型。AWS Step Functions 将用于协调各个步骤，Amazon Athena 可以用于查询数据，而 Amazon S3 则存储数据。AWS Lambda 函数可以自动执行任务，而 Amazon FSx for NetApp ONTAP 提供了高性能文件系统。Amazon CloudWatch 用于监控资源，AWS CloudFormation 则用于创建和管理基础设施。确保所有技术术语如 GDSII、DRC、OASIS、GDS、Lambda 和 tapeout 都保持不变。所有的内联代码 (`...`)、文件路径和 URL 也不需要翻译。
+在这个工作流程步骤中，您将使用 Amazon Bedrock 来创建和管理模型。AWS Step Functions 将用于协调各个步骤，Amazon Athena 可以用于查询数据，而 Amazon S3 则存储数据。AWS Lambda 函数可以自动执行任务，而 Amazon FSx for ONTAP 提供了高性能文件系统。Amazon CloudWatch 用于监控资源，AWS CloudFormation 则用于创建和管理基础设施。确保所有技术术语如 GDSII、DRC、OASIS、GDS、Lambda 和 tapeout 都保持不变。所有的内联代码 (`...`)、文件路径和 URL 也不需要翻译。
 1. **发现**: 从 S3 AP 检测.pdf,.csv,.json,.xml 文件
 2. **OCR**: 使用 Textract（跨区域）从 PDF 提取文本
 3. **分类**: 使用 Comprehend 提取实体，使用 Bedrock 进行研究领域分类
@@ -64,7 +64,7 @@ graph LR
 5. **元数据**: 将每篇论文的结构化元数据以 JSON 格式输出到 S3
 ## 前提条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 以上）
 - 已启用 S3 Access Point 的卷（存储论文 PDF 和研究数据）
 - VPC、私有子网
 - 启用了 Amazon Bedrock 模型访问（Claude / Nova）

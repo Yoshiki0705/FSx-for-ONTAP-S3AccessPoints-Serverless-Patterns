@@ -7,7 +7,7 @@
 ## Voraussetzungen
 
 - AWS-Konto, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - `government-archives/template-deploy.yaml` bereitstellen (`OpenSearchMode=none` zur Kostensenkung)
 
 ## Zeitplan
@@ -128,7 +128,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement"-Pattern)
 OCR-Text, Klassifizierungsergebnisse, PII-Erkennungsergebnisse, geschwärzte Dokumente und Schwärzungsmetadaten werden
-über den FSxN S3 Access Point auf **dasselbe FSx ONTAP-Volume** wie die Originaldokumente zurückgeschrieben.
+über den FSx for ONTAP S3 Access Point auf **dasselbe FSx ONTAP-Volume** wie die Originaldokumente zurückgeschrieben.
 Mitarbeiter der öffentlichen Dokumentenverwaltung können AI-Ergebnisse direkt innerhalb der bestehenden SMB/NFS-Verzeichnisstruktur einsehen.
 Es wird kein Standard-S3-Bucket erstellt.
 
@@ -148,13 +148,13 @@ aws cloudformation deploy \
 UC16 hat eine Kettenstruktur, bei der nachfolgende Lambdas die Ergebnisse vorheriger Stufen zurücklesen (OCR → Classification →
 EntityExtraction → Redaction → IndexGeneration). Daher lesen `get_bytes/get_text/get_json` in `shared/output_writer.py`
 vom selben Destination zurück, in das geschrieben wurde.
-Dadurch funktioniert das Rücklesen vom FSxN S3 Access Point auch bei `OutputDestination=FSXN_S3AP`,
+Dadurch funktioniert das Rücklesen vom FSx for ONTAP S3 Access Point auch bei `OutputDestination=FSXN_S3AP`,
 und die gesamte Kette arbeitet mit einem konsistenten Destination.
 
 **Hinweise**:
 
 - Angabe von `S3AccessPointName` wird dringend empfohlen (IAM-Berechtigung sowohl für Alias- als auch ARN-Format)
-- Objekte über 5 GB sind mit FSxN S3AP nicht möglich (AWS-Spezifikation), Multipart-Upload erforderlich
+- Objekte über 5 GB sind mit FSx for ONTAP S3 AP nicht möglich (AWS-Spezifikation), Multipart-Upload erforderlich
 - ComplianceCheck Lambda verwendet nur DynamoDB und wird daher nicht von `OutputDestination` beeinflusst
 - FoiaDeadlineReminder Lambda verwendet nur DynamoDB + SNS und wird nicht beeinflusst
 - OpenSearch-Index wird separat über den Parameter `OpenSearchMode` verwaltet (unabhängig von `OutputDestination`)

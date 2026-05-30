@@ -100,4 +100,4 @@
 
 ---
 
-*본 문서는 FSxN S3AP Serverless Patterns의 기존 환경 영향 평가 가이드입니다.*
+*본 문서는 FSx for ONTAP S3 AP Serverless Patterns의 기존 환경 영향 평가 가이드입니다.*

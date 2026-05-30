@@ -278,4 +278,4 @@ aws sagemaker delete-endpoint --endpoint-name <serverless-endpoint>
 
 ---
 
-*This document is the Existing Environment Impact Assessment Guide for FSxN S3AP Serverless Patterns.*
+*This document is the Existing Environment Impact Assessment Guide for FSx for ONTAP S3 AP Serverless Patterns.*

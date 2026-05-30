@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         DATA["地震探勘・井孔資料<br/>.segy (地震探勘)<br/>.las (井孔日誌)<br/>.csv (感測器資料)"]
     end
 
@@ -64,7 +64,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | .segy (SEG-Y 地震探勘), .las (井孔日誌), .csv (感測器資料) |
 | **Access Method** | S3 Access Point (ListObjectsV2 + GetObject + Range Request) |
 | **Read Strategy** | SEG-Y: 僅前 3600 位元組 (Range Request), LAS/CSV: 完整取得 |
@@ -104,7 +104,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | 地震探勘資料・井孔日誌儲存 |
+| FSx for ONTAP | 地震探勘資料・井孔日誌儲存 |
 | S3 Access Points | 對 ONTAP 磁碟區的無伺服器存取 (支援 Range Request) |
 | EventBridge Scheduler | 定期觸發 |
 | Step Functions | 工作流程編排 (循序) |

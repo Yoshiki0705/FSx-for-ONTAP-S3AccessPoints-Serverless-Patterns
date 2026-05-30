@@ -6,7 +6,7 @@
 
 SageMaker Serverless Inference is an inference option that provides a request-based billing model. Since always-on instances are not required, it is ideal for low-frequency and irregular workloads. However, designs must account for **cold starts** (increased latency on initial requests).
 
-This document explains the cold start characteristics, configuration comparisons, and recommended settings for Serverless Inference in FSxN S3AP Serverless Patterns.
+This document explains the cold start characteristics, configuration comparisons, and recommended settings for Serverless Inference in FSx for ONTAP S3 AP Serverless Patterns.
 
 ---
 
@@ -302,4 +302,4 @@ The sklearn official container has many dependencies, resulting in an image size
 
 ---
 
-*This document is part of FSxN S3AP Serverless Patterns Phase 5.*
+*This document is part of FSx for ONTAP S3 AP Serverless Patterns Phase 5.*

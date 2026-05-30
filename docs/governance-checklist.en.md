@@ -50,7 +50,7 @@ This checklist confirms that the following aspects are incorporated into the des
 | Data | Storage Location | Encryption | Access Control |
 |------|-----------------|------------|----------------|
 | Input files (originals) | FSx for ONTAP Volume | SSE-FSX (KMS managed) | NTFS ACL / UNIX permissions + S3 AP dual-layer |
-| AI/ML processing results | S3 Output Bucket or FSxN S3AP | SSE-KMS or SSE-FSX | IAM + Bucket/AP Policy |
+| AI/ML processing results | S3 Output Bucket or FSx for ONTAP S3 AP | SSE-KMS or SSE-FSX | IAM + Bucket/AP Policy |
 | Execution logs | CloudWatch Logs | SSE (default) | IAM + Log Group Policy |
 | Execution history | Step Functions | SSE (default) | IAM |
 | Metrics | CloudWatch Metrics | — | IAM |

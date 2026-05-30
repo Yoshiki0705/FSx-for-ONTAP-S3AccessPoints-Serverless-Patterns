@@ -5,9 +5,9 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-Leveraging S3 Access Points in FSx for NetApp ONTAP, this is a serverless workflow to automate tagging of product images, generation of catalog metadata, and image quality checks.
+Leveraging S3 Access Points in FSx for ONTAP, this is a serverless workflow to automate tagging of product images, generation of catalog metadata, and image quality checks.
 ### When this pattern is suitable
-- A large number of product images are accumulated on FSx for NetApp ONTAP
+- A large number of product images are accumulated on FSx for ONTAP
 - We want to implement automatic labeling of product images (category, color, material) with Rekognition
 - We want to automatically generate structured catalog metadata (product_category, color, material, style_attributes)
 - Automatic verification of image quality metrics (resolution, file size, aspect ratio) is required
@@ -53,7 +53,7 @@ graph LR
 4. **Quality Check**: Validate image quality metrics and flag images below the threshold
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file systems (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file systems (ONTAP 9.17.1P4D3 or later)
 - S3 Access Point-enabled volume (to store product images)
 - VPC, private subnets
 - Amazon Bedrock model access enabled (Claude / Nova)
@@ -110,7 +110,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 
 ## References
-- [FSx for NetApp ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Amazon Bedrock API Reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [Streaming vs Polling Selection Guide](../docs/streaming-vs-polling-guide.md)

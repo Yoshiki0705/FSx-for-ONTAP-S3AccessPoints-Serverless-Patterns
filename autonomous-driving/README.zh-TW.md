@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 Amazon FSx for NetApp ONTAP 的 S3 Access Points，自動化一個無伺服器工作流程，用於行車記錄儀影像和 LiDAR 點雲數據的預處理、質量檢查和註釋管理。
+利用 Amazon FSx for ONTAP 的 S3 Access Points，自動化一個無伺服器工作流程，用於行車記錄儀影像和 LiDAR 點雲數據的預處理、質量檢查和註釋管理。
 ### 此種模式適用的情況
 - 行車攝像機影像和 LiDAR 點雲數據大量儲存在 FSx ONTAP 上
 - 希望自動化影像中的關鍵幀提取和物體檢測（車輛、行人、交通標誌）
@@ -55,7 +55,7 @@ graph LR
 4. **註釋管理器**：在 Bedrock 中生成註釋建議，在 SageMaker 中進行點雲分割
 ## 前提條件
 - AWS 帳戶和適當的 IAM 權限
-- FSx for NetApp ONTAP 文件系統（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP 文件系統（ONTAP 9.17.1P4D3 以上）
 - 已啟用 S3 存取點的卷（用於儲存影像和 LiDAR 數據）
 - VPC、私有子網
 - Amazon Bedrock 模型存取已啟用（Claude / Nova）

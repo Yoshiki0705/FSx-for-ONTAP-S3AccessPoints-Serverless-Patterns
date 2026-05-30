@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Überblick
-FSx for NetApp ONTAP nutzt S3 Access Points, um serverlose Workflows für Schadenbewertungen anhand von Unfallfotos, OCR-Textextraktion aus Angeboten und automatische Generierung von Versicherungsberichten zu ermöglichen.
+FSx for ONTAP nutzt S3 Access Points, um serverlose Workflows für Schadenbewertungen anhand von Unfallfotos, OCR-Textextraktion aus Angeboten und automatische Generierung von Versicherungsberichten zu ermöglichen.
 ### Fälle, in denen dieses Muster geeignet ist
 - Unfallfotos und Kostenvoranschläge werden in FSx ONTAP gespeichert
 - Die Schadensermittlung von Unfallfotos mittels Rekognition (Fahrzeugschadenslabel, Schweregrad, betroffene Bereiche) soll automatisiert werden
@@ -55,7 +55,7 @@ graph LR
 4. **Anspruchsbericht**: Erstellung eines umfassenden Berichts mit Bedrock durch Korrelation der Schadensbewertung und Kostenvoranschlagsdaten
 ## Voraussetzungen
 - AWS-Konto und entsprechende IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisystem (ONTAP 9.17.1P4D3 und höher)
+- FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 und höher)
 - S3 Access Point aktivierter Volume (zur Speicherung von Unfallfotos und Angeboten)
 - VPC, private Subnetz
 - Amazon Bedrock-Modellzugriff aktiviert (Claude / Nova)

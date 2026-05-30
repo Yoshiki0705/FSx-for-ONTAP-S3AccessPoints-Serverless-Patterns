@@ -6,7 +6,7 @@
 
 ## 개요
 
-FSx for NetApp ONTAP S3 Access Points를 활용한 공문서(PDF / TIFF / EML / DOCX)의
+FSx for ONTAP S3 Access Points를 활용한 공문서(PDF / TIFF / EML / DOCX)의
 OCR, 분류, PII 탐지, 편집, 전문 검색, FOIA 기한 추적을 자동화하는
 서버리스 파이프라인.
 
@@ -103,7 +103,7 @@ UC16은 2026-05-11 업데이트에서 `OutputDestination` 파라미터를 지원
 | 모드 | 출력 대상 | 생성되는 리소스 | 사용 사례 |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3`(기본값) | 신규 S3 버킷 | `AWS::S3::Bucket` | 기존과 동일하게 분리된 S3 버킷에 AI 산출물 축적 |
-| `FSXN_S3AP` | FSxN S3 Access Point | 없음(기존 FSx 볼륨에 쓰기) | 공문서 담당자가 SMB/NFS를 통해 원본 문서와 동일 디렉터리에서 OCR 텍스트, 편집 완료 파일, 메타데이터 열람 |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | 없음(기존 FSx 볼륨에 쓰기) | 공문서 담당자가 SMB/NFS를 통해 원본 문서와 동일 디렉터리에서 OCR 텍스트, 편집 완료 파일, 메타데이터 열람 |
 
 **영향을 받는 Lambda**: OCR, Classification, EntityExtraction, Redaction, IndexGeneration(5개 함수).  
 **체인 구조의 읽기**: 후속 Lambda는 `shared/output_writer.py`의 `get_*`로 쓰기 대상과 대칭적인 읽기를 수행. FSXN_S3AP 모드에서도 S3AP에서 직접 읽기 때문에 체인 전체가 일관된 destination으로 동작.  

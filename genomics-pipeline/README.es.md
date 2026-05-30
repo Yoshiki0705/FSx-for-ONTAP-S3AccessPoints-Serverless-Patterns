@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
 ## Resumen
-Se trata de un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for NetApp ONTAP para automatizar la verificación de calidad de datos genómicos FASTQ/BAM/VCF, la agregación de estadísticas de llamada de variantes y la generación de resúmenes de investigación.
+Se trata de un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para automatizar la verificación de calidad de datos genómicos FASTQ/BAM/VCF, la agregación de estadísticas de llamada de variantes y la generación de resúmenes de investigación.
 ### Casos en los que este patrón es apropiado
 - Los datos de salida del secuenciador de próxima generación (FASTQ/BAM/VCF) están almacenados en FSx ONTAP
 - Desea monitorear periódicamente las métricas de calidad de los datos de secuenciación (número de lecturas, puntuación de calidad, contenido de GC)
@@ -55,7 +55,7 @@ graph LR
 5. **Summary**: Generar resumen de investigación con Bedrock, extraer entidades con Comprehend Medical
 ## Requisitos previos
 - Cuenta de AWS y permisos de IAM adecuados
-- Sistema de archivos FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 o superior)
+- Sistema de archivos FSx for ONTAP (ONTAP 9.17.1P4D3 o superior)
 - Punto de acceso S3 habilitado en volúmenes (almacenamiento de datos genómicos)
 - VPC, subredes privadas
 - Acceso a modelos de Amazon Bedrock habilitado (Claude / Nova)

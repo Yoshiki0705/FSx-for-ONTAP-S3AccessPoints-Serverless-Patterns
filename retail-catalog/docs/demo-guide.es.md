@@ -165,7 +165,7 @@ Imagen de producto    Análisis de imagen    Extracción de atributos    Actuali
 Con la misma política que Phase 7, se capturan **pantallas de UI/UX que los responsables de comercio electrónico utilizan realmente en sus tareas diarias**.
 Se excluyen las pantallas orientadas a técnicos (gráficos de Step Functions, etc.).
 
-### Selección de destino de salida: S3 estándar vs FSxN S3AP
+### Selección de destino de salida: S3 estándar vs FSx for ONTAP S3 AP
 
 UC11 soporta el parámetro `OutputDestination` desde la actualización del 2026-05-10.
 Al **escribir los resultados de IA de vuelta al mismo volumen FSx**, los usuarios de SMB/NFS pueden

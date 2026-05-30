@@ -6,7 +6,7 @@
 
 ## Overview
 
-A serverless workflow that leverages S3 Access Points for FSx for NetApp ONTAP to automate validation, metadata extraction, and DRC (Design Rule Check) statistical aggregation of GDS/OASIS semiconductor design files.
+A serverless workflow that leverages S3 Access Points for FSx for ONTAP to automate validation, metadata extraction, and DRC (Design Rule Check) statistical aggregation of GDS/OASIS semiconductor design files.
 
 ### When This Pattern Is a Good Fit
 
@@ -64,7 +64,7 @@ graph LR
 ## Prerequisites
 
 - AWS account with appropriate IAM permissions
-- FSx for NetApp ONTAP file system (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
 - A volume with S3 Access Point enabled (containing GDS/OASIS files)
 - VPC with private subnets
 - **NAT Gateway or VPC Endpoints** (required for Discovery Lambda to access AWS services from within the VPC)

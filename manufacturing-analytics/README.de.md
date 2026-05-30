@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Übersicht
-Dies ist ein serverloser Workflow, der S3 Access Points von FSx for NetApp ONTAP nutzt, um Anomalien in IoT-Sensorprotokollen und Defekte in Qualitätsinspektionsbildern automatisch zu erkennen.
+Dies ist ein serverloser Workflow, der S3 Access Points von FSx for ONTAP nutzt, um Anomalien in IoT-Sensorprotokollen und Defekte in Qualitätsinspektionsbildern automatisch zu erkennen.
 ### Fälle, in denen dieses Muster geeignet ist
 - Die CSV-Sensorprotokolle, die auf dem Dateiserver der Fabrik gespeichert werden, regelmäßig analysieren zu wollen
 - Die visuelle Überprüfung von Qualitätskontrollbildern durch KI automatisieren und effizienter gestalten zu wollen
@@ -51,7 +51,7 @@ graph LR
 4. **Image Analysis**: Defekterkennung mit Rekognition; bei einer Zuverlässigkeit unter dem Schwellenwert manuelle Überprüfungsflag setzen
 ## Voraussetzungen
 - AWS-Konto und geeignete IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
+- FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
 - S3 Access Point aktivierter Volume
 - ONTAP REST API-Anmeldeinformationen in Secrets Manager registriert
 - VPC, private Subnetz

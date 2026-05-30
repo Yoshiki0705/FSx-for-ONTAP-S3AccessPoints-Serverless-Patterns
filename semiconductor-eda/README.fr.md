@@ -9,7 +9,7 @@ Voici le processus recommandé pour valider les fichiers de conception et extrai
 3. Stockez les fichiers de conception validés dans Amazon S3.
 4. Utilisez AWS Step Functions pour orchestrer le workflow de validation et d'extraction des métadonnées.
 5. Appelez AWS Lambda pour extraire les métadonnées des fichiers de conception.
-6. Stockez les métadonnées extraites dans Amazon FSx for NetApp ONTAP.
+6. Stockez les métadonnées extraites dans Amazon FSx for ONTAP.
 7. Configurez Amazon CloudWatch pour surveiller les erreurs et les anomalies.
 8. Utilisez AWS CloudFormation pour déployer et gérer l'infrastructure.
 
@@ -27,7 +27,7 @@ Voici les cas où ce modèle est approprié :
 
 - Lorsque vous avez besoin d'exécuter des charges de travail de manière fiable et évolutive, vous pouvez utiliser des services gérés comme Amazon Bedrock, AWS Step Functions, Amazon Athena et AWS Lambda.
 - Lorsque vous devez stocker et accéder à de grandes quantités de données, Amazon S3 peut être une bonne solution.
-- Si vous avez besoin d'un stockage de fichiers hautement disponible et évolutif, Amazon FSx for NetApp ONTAP peut être envisagé.
+- Si vous avez besoin d'un stockage de fichiers hautement disponible et évolutif, Amazon FSx for ONTAP peut être envisagé.
 - Pour surveiller les performances de vos applications et services, Amazon CloudWatch peut vous aider.
 - Lorsque vous devez déployer et gérer votre infrastructure de manière déclarative, AWS CloudFormation peut être utile.
 - Les fichiers de conception GDS/OASIS s'accumulent en masse sur FSx ONTAP.
@@ -37,14 +37,14 @@ Voici les cas où ce modèle est approprié :
 - Je souhaite générer automatiquement des résumés de revue de conception en langage naturel.
 ### Les cas où ce modèle n'est pas adapté
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, etc.
+Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, etc.
 - Exécution du DRC en temps réel nécessaire (intégration avec les outils EDA est un prérequis)
 - Validation physique des fichiers de conception (vérification complète de la conformité aux règles de fabrication) est nécessaire
 - La chaîne d'outils EDA basée sur EC2 est déjà opérationnelle, et les coûts de migration ne s'y prêtent pas
 - Impossibilité de garantir l'accessibilité réseau à l'API REST ONTAP
 ### Principales fonctionnalités 
 
-Amazon Bedrock vous permet de concevoir et de développer facilement des circuits intégrés complexes. Avec AWS Step Functions, vous pouvez automatiser les workflows de conception de circuits. Amazon Athena vous permet d'interroger et d'analyser efficacement vos données stockées dans Amazon S3. Utilisez AWS Lambda pour exécuter du code sans avoir à gérer les serveurs. Amazon FSx for NetApp ONTAP vous offre un stockage de fichiers haute performance. Amazon CloudWatch vous aide à surveiller et à diagnostiquer vos applications. AWS CloudFormation vous permet de provisonner et de gérer vos ressources AWS de manière déclarative.
+Amazon Bedrock vous permet de concevoir et de développer facilement des circuits intégrés complexes. Avec AWS Step Functions, vous pouvez automatiser les workflows de conception de circuits. Amazon Athena vous permet d'interroger et d'analyser efficacement vos données stockées dans Amazon S3. Utilisez AWS Lambda pour exécuter du code sans avoir à gérer les serveurs. Amazon FSx for ONTAP vous offre un stockage de fichiers haute performance. Amazon CloudWatch vous aide à surveiller et à diagnostiquer vos applications. AWS CloudFormation vous permet de provisonner et de gérer vos ressources AWS de manière déclarative.
 - Détection automatique des fichiers GDS/OASIS (`.gds`, `.gds2`, `.oas`, `.oasis`) via Amazon S3
 - Extraction des métadonnées d'en-tête (nom de la bibliothèque, unités, nombre de cellules, boîte englobante, date de création)
 - Statistiques DRC agrégées via Amazon Athena SQL (distribution du nombre de cellules, valeurs aberrantes de la boîte englobante, violation des conventions d'affectation des noms)
@@ -82,7 +82,7 @@ graph LR
 - Interrogez des données avec Amazon Athena.
 - Stockez des fichiers avec Amazon S3.
 - Exécutez du code avec AWS Lambda.
-- Utilisez Amazon FSx for NetApp ONTAP pour accéder à vos données.
+- Utilisez Amazon FSx for ONTAP pour accéder à vos données.
 - Surveillez votre infrastructure avec Amazon CloudWatch.
 - Automatisez le déploiement avec AWS CloudFormation.
 1. **Découverte** : Détecter les fichiers .gds, .gds2, .oas, .oasis à partir d'Amazon S3 et générer un manifeste.
@@ -93,7 +93,7 @@ Voici la traduction en français :
 
 ## Prérequis
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, `...`
+Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, `...`
 - Compte AWS et autorisations IAM appropriées
 - Système de fichiers FSx pour NetApp ONTAP (version 9.17.1P4D3 ou ultérieure)
 - Volume avec point d'accès S3 activé (pour stocker les fichiers GDS/OASIS)
@@ -103,7 +103,7 @@ Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon
 - Informations d'authentification à l'API REST ONTAP stockées dans Secrets Manager
 ## Procédure de déploiement
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout
+Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout
 
 ### 1. Création d'un point d'accès Amazon S3
 
@@ -258,7 +258,7 @@ Cette commande fournit des informations détaillées sur l'abonnement, comme le 
 Après le déploiement, un e-mail de confirmation sera envoyé à l'adresse électronique spécifiée. Veuillez cliquer sur le lien pour confirmer.
 ### 6. Vérification du fonctionnement
 
-Amazon Bedrock を使用して新しいチップの設計を作成し、AWS Step Functions を利用してツールチェーンを自動化します。Amazon Athena とAmazon S3 を使用して GDSII ファイルの検証と DRC を実行し、AWS Lambda で RTL コードを合成します。Amazon FSx for NetApp ONTAP を使用して設計データを保存し、Amazon CloudWatch で進捗状況をモニタリングします。最後に AWS CloudFormation を使用してエンドツーエンドのデプロイメントを実行し、OASIS ファイルを生成してテープアウトします。
+Amazon Bedrock を使用して新しいチップの設計を作成し、AWS Step Functions を利用してツールチェーンを自動化します。Amazon Athena とAmazon S3 を使用して GDSII ファイルの検証と DRC を実行し、AWS Lambda で RTL コードを合成します。Amazon FSx for ONTAP を使用して設計データを保存し、Amazon CloudWatch で進捗状況をモニタリングします。最後に AWS CloudFormation を使用してエンドツーエンドのデプロイメントを実行し、OASIS ファイルを生成してテープアウトします。
 Vérifier le fonctionnement en exécutant manuellement AWS Step Functions :
 ```bash
 aws stepfunctions start-execution \
@@ -276,7 +276,7 @@ Voici quelques exemples d'utilisation de modèles dans différents services AWS 
 - Interrogez et analysez vos données avec Amazon Athena.
 - Stockez et gérez vos fichiers avec Amazon S3.
 - Exécutez du code serverless avec AWS Lambda.
-- Utilisez Amazon FSx for NetApp ONTAP pour accéder à des systèmes de fichiers haute performance.
+- Utilisez Amazon FSx for ONTAP pour accéder à des systèmes de fichiers haute performance.
 - Surveillez vos ressources avec Amazon CloudWatch.
 - Automatisez le provisionnement de vos infrastructures avec AWS CloudFormation.
 
@@ -333,7 +333,7 @@ Voici la traduction en français :
 3. Si les données peuvent être lues mais l'agrégation donne 0 enregistrement, vérifier la cohérence entre la valeur `file_key` et le filtre `prefix`
 ## Nettoyage
 
-Vous pouvez utiliser Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch et AWS CloudFormation pour automatiser le nettoyage de vos ressources. Voici quelques étapes à suivre :
+Vous pouvez utiliser Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch et AWS CloudFormation pour automatiser le nettoyage de vos ressources. Voici quelques étapes à suivre :
 
 1. Utilisez `aws_cleanup.py` pour identifier les ressources inutilisées.
 2. Définissez des règles dans AWS CloudFormation pour supprimer automatiquement les ressources identifiées.
@@ -372,7 +372,7 @@ Amazon S3 est disponible dans toutes les régions AWS. Consultez la [documentati
 
 AWS Lambda est disponible dans la plupart des régions AWS. Consultez la [documentation AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/lambda-services.html) pour obtenir la liste complète des régions prises en charge.
 
-Amazon FSx for NetApp ONTAP est actuellement disponible dans les régions AWS suivantes :
+Amazon FSx for ONTAP est actuellement disponible dans les régions AWS suivantes :
 - US East (N. Virginia)
 - US West (Oregon)
 - Europe (Ireland)
@@ -387,7 +387,7 @@ UC6 utilise les services suivants :
 - Amazon Athena
 - Amazon S3
 - AWS Lambda
-- Amazon FSx for NetApp ONTAP
+- Amazon FSx for ONTAP
 - Amazon CloudWatch
 - AWS CloudFormation
 - GDSII
@@ -405,7 +405,7 @@ UC6 utilise les services suivants :
 Veuillez consulter la [matrice de compatibilité des régions](../docs/region-compatibility.md) pour plus de détails.
 ## Liens de référence
 
-AWS Step Functions permet de créer des workflows d'application complexes à l'aide d'une interface visuelle. Amazon Athena est un service d'analyse de données sans serveur qui vous permet d'interroger facilement des données dans Amazon S3 en utilisant du SQL standard. AWS Lambda vous permet d'exécuter du code sans avoir à gérer des serveurs. Amazon FSx for NetApp ONTAP fournit un stockage de fichiers hautement performant et hautement disponible. Amazon CloudWatch vous permet de surveiller vos ressources AWS et vos applications. AWS CloudFormation vous aide à modéliser et configurer vos ressources AWS.
+AWS Step Functions permet de créer des workflows d'application complexes à l'aide d'une interface visuelle. Amazon Athena est un service d'analyse de données sans serveur qui vous permet d'interroger facilement des données dans Amazon S3 en utilisant du SQL standard. AWS Lambda vous permet d'exécuter du code sans avoir à gérer des serveurs. Amazon FSx for ONTAP fournit un stockage de fichiers hautement performant et hautement disponible. Amazon CloudWatch vous permet de surveiller vos ressources AWS et vos applications. AWS CloudFormation vous aide à modéliser et configurer vos ressources AWS.
 - [Présentation des points d'accès S3 pour FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Création et attachement de points d'accès S3](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html)
 - [Gestion de l'accès aux points d'accès S3](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)

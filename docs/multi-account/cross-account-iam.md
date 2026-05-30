@@ -4,7 +4,7 @@
 
 ## 概要
 
-本ドキュメントでは、FSxN S3AP Serverless Patterns のマルチアカウント環境における IAM ロール設計を定義する。全クロスアカウントロールに External ID 条件と Permission Boundary を適用し、最小権限原則と完全な監査証跡を実現する。
+本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns のマルチアカウント環境における IAM ロール設計を定義する。全クロスアカウントロールに External ID 条件と Permission Boundary を適用し、最小権限原則と完全な監査証跡を実現する。
 
 ### ロール引き受けチェーン
 

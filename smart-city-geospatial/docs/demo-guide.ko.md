@@ -7,7 +7,7 @@
 ## 전제 조건
 
 - AWS 계정, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - Bedrock Nova Lite v1:0 모델 활성화
 
 ## 타임라인
@@ -16,7 +16,7 @@
 
 - 지자체의 과제: 도시 계획, 재해 대응, 인프라 보전에서 GIS 데이터 활용 증가
 - 기존 과제: GIS 분석은 ArcGIS / QGIS의 전문 소프트웨어 중심
-- 제안: FSxN S3AP + 서버리스로 자동화
+- 제안: FSx for ONTAP S3 AP + 서버리스로 자동화
 
 ### 0:05 - 0:10 아키텍처 (5분)
 
@@ -107,7 +107,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement" 패턴)
 CRS 정규화 메타데이터, 토지 이용 분류 결과, 인프라 평가, 리스크 맵, Bedrock이 생성하는
-도시 계획 보고서 (Markdown)를 FSxN S3 Access Point 경유로 원본 GIS 데이터와
+도시 계획 보고서 (Markdown)를 FSx for ONTAP S3 Access Point 경유로 원본 GIS 데이터와
 **동일한 FSx ONTAP 볼륨**에 다시 기록합니다.
 도시 계획 담당자가 SMB/NFS의 기존 디렉터리 구조 내에서 AI 산출물을 직접 참조할 수 있습니다.
 표준 S3 버킷은 생성되지 않습니다.
@@ -126,7 +126,7 @@ aws cloudformation deploy \
 **주의사항**:
 
 - `S3AccessPointName` 지정을 강력히 권장 (Alias 형식과 ARN 형식 모두 IAM 허가)
-- 5GB 초과 객체는 FSxN S3AP에서 불가 (AWS 사양), 멀티파트 업로드 필수
+- 5GB 초과 객체는 FSx for ONTAP S3 AP에서 불가 (AWS 사양), 멀티파트 업로드 필수
 - ChangeDetection Lambda는 DynamoDB만 사용하므로 `OutputDestination`의 영향을 받지 않음
 - Bedrock 보고서는 Markdown (`text/markdown; charset=utf-8`)으로 기록되므로 SMB/NFS
   클라이언트의 텍스트 에디터에서 직접 열람 가능

@@ -159,12 +159,12 @@ DICOM 파일     태그 분석        익명화 처리        품질 검증
 
 ---
 
-## 출력 대상에 대하여: FSxN S3 Access Point (Pattern A)
+## 출력 대상에 대하여: FSx for ONTAP S3 Access Point (Pattern A)
 
 UC5 healthcare-dicom은 **Pattern A: Native S3AP Output**으로 분류됩니다
 (`docs/output-destination-patterns.md` 참조).
 
-**설계**: DICOM 메타데이터, 익명화 결과, PII 검출 로그는 모두 FSxN S3 Access Point 경유로
+**설계**: DICOM 메타데이터, 익명화 결과, PII 검출 로그는 모두 FSx for ONTAP S3 Access Point 경유로
 원본 DICOM 의료 영상과 **동일한 FSx ONTAP 볼륨**에 기록됩니다. 표준 S3 버킷은
 생성되지 않습니다("no data movement" 패턴).
 

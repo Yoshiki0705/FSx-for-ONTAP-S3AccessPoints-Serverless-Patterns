@@ -163,7 +163,7 @@
 Phase 7 と同じ方針で、**EC 担当者が日常業務で実際に使う UI/UX 画面**を撮影。
 技術者向け画面（Step Functions グラフ等）は除外。
 
-### 出力先の選択: 標準 S3 vs FSxN S3AP
+### 出力先の選択: 標準 S3 vs FSx for ONTAP S3 AP
 
 UC11 は 2026-05-10 のアップデートで `OutputDestination` パラメータをサポートしました。
 **同一 FSx ボリュームに AI 成果物を書き戻す** ことで、SMB/NFS ユーザーが

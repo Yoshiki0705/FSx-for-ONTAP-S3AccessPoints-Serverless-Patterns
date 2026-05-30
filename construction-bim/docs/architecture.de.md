@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Eingabe — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Eingabe — FSx for ONTAP"]
         BIM["BIM / CAD-Dateien<br/>.ifc, .rvt, .dwg, .pdf"]
     end
 
@@ -59,7 +59,7 @@ flowchart TB
 ### Eingabe
 | Element | Beschreibung |
 |---------|--------------|
-| **Quelle** | FSx for NetApp ONTAP Volume |
+| **Quelle** | FSx for ONTAP Volume |
 | **Dateitypen** | .ifc, .rvt, .dwg, .pdf (BIM-Modelle, CAD-Zeichnungen, Zeichnungs-PDFs) |
 | **Zugriffsmethode** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Lesestrategie** | Vollständiger Dateiabruf (erforderlich für Metadaten-Extraktion und OCR) |
@@ -97,7 +97,7 @@ flowchart TB
 
 | Service | Rolle |
 |---------|-------|
-| FSx for NetApp ONTAP | BIM/CAD-Projektspeicher |
+| FSx for ONTAP | BIM/CAD-Projektspeicher |
 | S3 Access Points | Serverloser Zugriff auf ONTAP-Volumes |
 | EventBridge Scheduler | Periodischer Auslöser |
 | Step Functions | Workflow-Orchestrierung |

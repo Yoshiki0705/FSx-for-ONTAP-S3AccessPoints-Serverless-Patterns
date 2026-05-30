@@ -1,10 +1,10 @@
 # GenAI RAG over Enterprise Files
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概要
 
-エンタープライズファイルサーバー（FSx for NetApp ONTAP）上の機密ドキュメントを **S3 にコピーせず**、S3 Access Points 経由で Amazon Bedrock / RAG パイプラインに安全に提供するパターン。ファイル権限（ACL/NTFS）を維持したまま、権限ベースの RAG（Permission-aware RAG）を実現する。
+エンタープライズファイルサーバー（FSx for ONTAP）上の機密ドキュメントを **S3 にコピーせず**、S3 Access Points 経由で Amazon Bedrock / RAG パイプラインに安全に提供するパターン。ファイル権限（ACL/NTFS）を維持したまま、権限ベースの RAG（Permission-aware RAG）を実現する。
 
 ## 解決する課題
 
@@ -152,3 +152,162 @@ genai-rag-enterprise-files/
 
 ### Measurement Method
 Step Functions 実行履歴、Bedrock Embedding レスポンス、ACL 抽出ログ、CloudWatch Metrics。
+
+
+
+
+---
+
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points for FSx ONTAP | [S3 AP ガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Amazon Bedrock | [ユーザーガイド](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+| Amazon Bedrock Knowledge Bases | [ナレッジベース](https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html) |
+| Amazon OpenSearch Serverless | [開発者ガイド](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/serverless.html) |
+| Amazon Titan Embeddings | [Titan モデル](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html) |
+| Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | 構造化ログ、CloudWatch Metrics、エンベディング進捗追跡 |
+| セキュリティ | Permission-aware フィルタリング、IAM 最小権限、KMS 暗号化 |
+| 信頼性 | Step Functions Retry/Catch、チャンク単位リトライ |
+| パフォーマンス効率 | バッチエンベディング、並列チャンキング、Lambda メモリ最適化 |
+| コスト最適化 | サーバーレス、差分エンベディング（変更ファイルのみ再処理） |
+| 持続可能性 | オンデマンド実行、OpenSearch Serverless OCU 自動スケーリング |
+
+### 関連 AWS ブログ・サンプル
+
+- [RAG with Amazon Bedrock](https://aws.amazon.com/blogs/machine-learning/question-answering-using-retrieval-augmented-generation-with-foundation-models-in-amazon-sagemaker-jumpstart/)
+- [aws-samples/amazon-bedrock-rag-workshop](https://github.com/aws-samples/amazon-bedrock-rag-workshop)
+
+
+
+---
+
+## コスト見積もり（月額概算）
+
+> **注記**: 以下は ap-northeast-1 リージョンの概算であり、実際のコストは使用量により異なります。最新の料金は [AWS Pricing Calculator](https://calculator.aws/) で確認してください。
+
+### サーバーレスコンポーネント（従量課金）
+
+| サービス | 単価 | 想定使用量 | 月額概算 |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 5 関数 × 50 docs/日 | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/日 | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/日 | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~200K tokens/実行 (embedding + query) | ~$3-10 |
+| Athena | $5/TB scanned | N/A | ~$0.5-2 |
+| SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
+| OpenSearch Serverless | $0.24/OCU-hour |
+
+
+### 固定コスト（FSx for ONTAP — 既存環境前提）
+
+| コンポーネント | 月額 |
+|--------------|------|
+| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| S3 Access Point | 追加料金なし（S3 API 料金のみ） |
+
+### 合計概算
+
+| 構成 | 月額概算 |
+|------|---------|
+| 最小構成（日次 1 回実行） | ~$5-15 |
+| 標準構成（時次実行） | ~$15-50 |
+| 大規模構成（高頻度 + アラーム） | ~$50-150 |
+
+> **Governance Caveat**: コスト見積もりは概算であり、保証値ではありません。実際の請求額は使用パターン、データ量、リージョンにより異なります。
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+Permission-aware RAG パイプラインの出力例:
+
+```json
+{
+  "embedding_pipeline": {
+    "files_processed": 50,
+    "chunks_generated": 320,
+    "embeddings_stored": 320,
+    "vector_db": "opensearch_serverless"
+  },
+  "query_result": {
+    "query": "2026年度の予算計画について教えてください",
+    "user_id": "user-001",
+    "permitted_files": 35,
+    "filtered_files": 15,
+    "relevant_chunks": 5,
+    "answer": "2026年度の予算計画では、IT投資として前年比15%増の...",
+    "sources": [
+      {"file": "budget/2026-plan.pdf", "chunk_id": 12, "score": 0.94},
+      {"file": "budget/2026-summary.docx", "chunk_id": 3, "score": 0.89}
+    ],
+    "confidence": 0.91
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Performance Considerations
+
+- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
+- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
+- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
+- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

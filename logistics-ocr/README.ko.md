@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 개요
-FSx for NetApp ONTAP의 S3 액세스 포인트를 활용하여 배송 전표의 OCR 텍스트 추출, 창고 재고 이미지의 물체 감지 및 카운트, 배송 경로 최적화 보고서 생성을 자동화하는 서버리스 워크플로우입니다.
+FSx for ONTAP의 S3 액세스 포인트를 활용하여 배송 전표의 OCR 텍스트 추출, 창고 재고 이미지의 물체 감지 및 카운트, 배송 경로 최적화 보고서 생성을 자동화하는 서버리스 워크플로우입니다.
 ### 이 패턴이 적합한 경우
 - 배송 전표 이미지와 창고 재고 이미지가 FSx ONTAP에 축적되어 있습니다.
 - Textract를 사용하여 배송 전표의 OCR(발송인, 수령인, 추적 번호, 품목)를 자동화하고 싶습니다.

@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         DICOM["DICOM 医学影像<br/>.dcm, .dicom"]
     end
 
@@ -60,7 +60,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | .dcm, .dicom (DICOM 医学影像) |
 | **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Read Strategy** | 获取完整 DICOM 文件（头部 + 像素数据） |
@@ -98,7 +98,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | PACS/VNA 医学影像存储 |
+| FSx for ONTAP | PACS/VNA 医学影像存储 |
 | S3 Access Points | 对 ONTAP 卷的无服务器访问 |
 | EventBridge Scheduler | 定期触发器 |
 | Step Functions | 工作流编排 |

@@ -791,8 +791,7 @@ Resources:
         RecursiveDeleteOption: true
         ResultConfiguration:
           OutputLocation: !Sub "s3://${OutputBucket}/athena-results/"
-        EnforceWorkGroupConfiguration:
-        RecursiveDeleteOption: true true
+        EnforceWorkGroupConfiguration: true
         PublishCloudWatchMetricsEnabled: true
 
   # -----------------------------------------------------------------

@@ -209,7 +209,7 @@ Following the same approach as Phase 7 UC15/16/17, capturing **UI/UX screens tha
 Technical views like Step Functions graphs are excluded (details in
 [`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md)).
 
-### 1. FSx for NetApp ONTAP Volumes — Design File Volumes
+### 1. FSx for ONTAP Volumes — Design File Volumes
 
 ONTAP volume list as seen by design engineers. GDS/OASIS files are placed in `eda_demo_vol`
 managed with NTFS ACLs.

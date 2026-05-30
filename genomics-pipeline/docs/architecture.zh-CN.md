@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         DATA["基因组数据<br/>.fastq/.fastq.gz (测序)<br/>.bam (比对)<br/>.vcf/.vcf.gz (变异)"]
     end
 
@@ -64,7 +64,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | .fastq/.fastq.gz (测序), .bam (比对), .vcf/.vcf.gz (变异) |
 | **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Read Strategy** | FASTQ: 流式下载 (内存高效), VCF: 完整获取 |
@@ -104,7 +104,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | 基因组数据存储 (FASTQ/BAM/VCF) |
+| FSx for ONTAP | 基因组数据存储 (FASTQ/BAM/VCF) |
 | S3 Access Points | 对 ONTAP 卷的无服务器访问 (支持流式传输) |
 | EventBridge Scheduler | 定期触发器 |
 | Step Functions | 工作流编排 (顺序) |

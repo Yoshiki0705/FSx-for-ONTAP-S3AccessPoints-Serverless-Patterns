@@ -41,7 +41,7 @@ NFS/SMB 経由のファイル作成・書き込み・削除・リネーム操作
 
 ```mermaid
 graph LR
-    subgraph "FSx for NetApp ONTAP"
+    subgraph "FSx for ONTAP"
         NFS["NFS/SMB クライアント"]
         ONTAP["ONTAP FPolicy Engine"]
     end
@@ -89,8 +89,8 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1 以上）
-- VPC、プライベートサブネット（FSxN SVM と同一 VPC）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1 以上）
+- VPC、プライベートサブネット（FSx for ONTAP SVM と同一 VPC）
 - ONTAP 管理者認証情報が Secrets Manager に登録済み
 - ECR リポジトリ（FPolicy Server コンテナイメージ用）
 - VPC Endpoints（ECR, SQS, CloudWatch Logs, STS）
@@ -180,7 +180,7 @@ aws cloudformation deploy \
 > **Note**: ONTAP 9.11+ では `vserver` プレフィックスは非推奨（後方互換性あり）。
 
 ```bash
-# SSH で FSxN SVM に接続後、以下を実行
+# SSH で FSx for ONTAP SVM に接続後、以下を実行
 
 # 1. External Engine 作成
 fpolicy policy external-engine create \
@@ -223,9 +223,9 @@ fpolicy enable \
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
 | `ComputeType` | 実行環境の選択 (fargate/ec2) | `fargate` | |
-| `VpcId` | FSxN と同一 VPC の ID | — | ✅ |
+| `VpcId` | FSx for ONTAP と同一 VPC の ID | — | ✅ |
 | `SubnetIds` | Fargate タスクまたは EC2 配置先 Private Subnet | — | ✅ |
-| `FsxnSvmSecurityGroupId` | FSxN SVM の Security Group ID | — | ✅ |
+| `FsxnSvmSecurityGroupId` | FSx for ONTAP SVM の Security Group ID | — | ✅ |
 | `ContainerImage` | FPolicy Server コンテナイメージ URI | — | ✅ |
 | `FPolicyPort` | TCP リスニングポート | `9898` | |
 | `WriteCompleteDelaySec` | NFSv3 write-complete 待機秒数 | `5` | |
@@ -236,8 +236,8 @@ fpolicy enable \
 | `InstanceType` | EC2 インスタンスタイプ（EC2 時のみ） | `t4g.micro` | |
 | `KeyPairName` | SSH キーペア名（EC2 時のみ、省略可） | `""` | |
 | `EventBusName` | EventBridge カスタムバス名 | `fsxn-fpolicy-events` | |
-| `FsxnMgmtIp` | FSxN SVM 管理 IP | — | ✅ |
-| `FsxnSvmUuid` | FSxN SVM UUID | — | ✅ |
+| `FsxnMgmtIp` | FSx for ONTAP SVM 管理 IP | — | ✅ |
+| `FsxnSvmUuid` | FSx for ONTAP SVM UUID | — | ✅ |
 | `FsxnEngineName` | FPolicy external-engine 名 | `fpolicy_aws_engine` | |
 | `FsxnPolicyName` | FPolicy ポリシー名 | `fpolicy_aws` | |
 | `FsxnCredentialsSecret` | Secrets Manager シークレット名 | — | ✅ |
@@ -267,7 +267,7 @@ fpolicy enable \
 
 ```bash
 # 1. ONTAP FPolicy を無効化
-# SSH で FSxN SVM に接続
+# SSH で FSx for ONTAP SVM に接続
 fpolicy disable -vserver <SVM_NAME> -policy-name fpolicy_aws
 
 # 2. CloudFormation スタック削除
@@ -292,7 +292,7 @@ aws ecr delete-repository \
 
 | サービス | リージョン制約 |
 |---------|-------------|
-| FSx for NetApp ONTAP | [対応リージョン一覧](https://docs.aws.amazon.com/general/latest/gr/fsxn.html) |
+| FSx for ONTAP | [対応リージョン一覧](https://docs.aws.amazon.com/general/latest/gr/fsxn.html) |
 | ECS Fargate | ほぼ全リージョンで利用可能 |
 | EventBridge | 全リージョンで利用可能 |
 | SQS | 全リージョンで利用可能 |

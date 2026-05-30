@@ -1,0 +1,25 @@
+{
+  "file_path": "/vol/contracts/2026/Q2/contract_ABC.pdf",
+  "file_size": 245760,
+  "last_modified": "2026-04-15T09:30:00Z",
+  "security_style": "ntfs",
+  "acls": [
+    {
+      "sid": "S-1-5-21-1234567890-1234567890-1234567890-1001",
+      "type": "allow",
+      "permissions": "read,execute",
+      "principal": "DOMAIN\\LegalTeam"
+    },
+    {
+      "sid": "S-1-5-21-1234567890-1234567890-1234567890-513",
+      "type": "allow",
+      "permissions": "full_control",
+      "principal": "DOMAIN\\Domain Users"
+    }
+  ],
+  "compliance_flags": {
+    "everyone_full_control": true,
+    "stale_account": false,
+    "excessive_inheritance": false
+  }
+}

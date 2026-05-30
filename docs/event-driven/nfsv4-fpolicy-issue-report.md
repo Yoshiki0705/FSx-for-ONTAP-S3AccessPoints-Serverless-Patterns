@@ -1,14 +1,14 @@
 # NFSv4.2 FPolicy External Server Mode — Event Notification Not Sent
 
 **Date**: 2026-05-14
-**Environment**: Amazon FSx for NetApp ONTAP (ONTAP 9.17.1P6)
+**Environment**: Amazon FSx for ONTAP (ONTAP 9.17.1P6)
 **Status**: Resolved — Expected behavior (NFSv4.2 not supported by FPolicy)
 
 ---
 
 ## Summary
 
-When using FPolicy external engine in asynchronous mode on FSx for NetApp ONTAP 9.17.1,
+When using FPolicy external engine in asynchronous mode on FSx for ONTAP 9.17.1,
 NOTI_REQ (file event notifications) are **not sent** for NFSv4.2 client access.
 
 The root cause is that `mount -o vers=4` on Linux clients negotiates to NFSv4.2,

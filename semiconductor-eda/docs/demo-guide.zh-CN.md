@@ -208,7 +208,7 @@ ORDER BY bounding_box_width DESC;
 排除 Step Functions 图表等面向技术人员的视图（详情参见
 [`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md)）。
 
-### 1. FSx for NetApp ONTAP Volumes — 设计文件用卷
+### 1. FSx for ONTAP Volumes — 设计文件用卷
 
 从设计工程师角度看到的 ONTAP 卷列表。在 `eda_demo_vol` 中以 NTFS ACL 管理的状态放置 GDS/OASIS 文件。
 

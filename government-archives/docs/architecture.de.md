@@ -6,7 +6,7 @@
 
 ## Überblick
 
-Ein serverloses Pipeline-System zur Automatisierung von OCR, Klassifizierung, PII-Erkennung, Schwärzung, Volltextsuche und FOIA-Fristenverfolgung für öffentliche Dokumente (PDF / TIFF / EML / DOCX) unter Verwendung von FSx for NetApp ONTAP S3 Access Points.
+Ein serverloses Pipeline-System zur Automatisierung von OCR, Klassifizierung, PII-Erkennung, Schwärzung, Volltextsuche und FOIA-Fristenverfolgung für öffentliche Dokumente (PDF / TIFF / EML / DOCX) unter Verwendung von FSx for ONTAP S3 Access Points.
 
 ## Architekturdiagramm
 
@@ -100,7 +100,7 @@ UC16 unterstützt seit dem Update vom 11.05.2026 den `OutputDestination`-Paramet
 | Modus | Ausgabeziel | Erstellte Ressourcen | Anwendungsfall |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3` (Standard) | Neuer S3-Bucket | `AWS::S3::Bucket` | Wie bisher werden AI-Artefakte in einem separaten S3-Bucket gespeichert |
-| `FSXN_S3AP` | FSxN S3 Access Point | Keine (Rückschreiben in bestehendes FSx-Volume) | Mitarbeiter für öffentliche Dokumente können OCR-Text, geschwärzte Dateien und Metadaten über SMB/NFS im selben Verzeichnis wie die Originaldokumente einsehen |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | Keine (Rückschreiben in bestehendes FSx-Volume) | Mitarbeiter für öffentliche Dokumente können OCR-Text, geschwärzte Dateien und Metadaten über SMB/NFS im selben Verzeichnis wie die Originaldokumente einsehen |
 
 **Betroffene Lambda-Funktionen**: OCR, Classification, EntityExtraction, Redaction, IndexGeneration (5 Funktionen).  
 **Rücklesen in der Verarbeitungskette**: Nachgelagerte Lambda-Funktionen führen symmetrisches Rücklesen zum Schreibziel über `get_*` in `shared/output_writer.py` durch. Im FSXN_S3AP-Modus erfolgt direktes Rücklesen vom S3AP, sodass die gesamte Kette mit einem konsistenten destination arbeitet.  

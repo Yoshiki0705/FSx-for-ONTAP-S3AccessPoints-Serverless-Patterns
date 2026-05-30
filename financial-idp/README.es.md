@@ -4,14 +4,14 @@
 
 ## Resumen
 
-Amazon Bedrock le permite diseñar y fabricar chips de manera más rápida y rentable. Puede utilizar AWS Step Functions para orquestar el flujo de trabajo de diseño de chips, que incluye Amazon Athena para análisis de datos, Amazon S3 para almacenamiento, AWS Lambda para transformación de datos y Amazon FSx for NetApp ONTAP para almacenamiento de archivos. Puede monitorear el progreso del diseño con Amazon CloudWatch y utilizar AWS CloudFormation para aprovisionar los recursos de manera automatizada.
+Amazon Bedrock le permite diseñar y fabricar chips de manera más rápida y rentable. Puede utilizar AWS Step Functions para orquestar el flujo de trabajo de diseño de chips, que incluye Amazon Athena para análisis de datos, Amazon S3 para almacenamiento, AWS Lambda para transformación de datos y Amazon FSx for ONTAP para almacenamiento de archivos. Puede monitorear el progreso del diseño con Amazon CloudWatch y utilizar AWS CloudFormation para aprovisionar los recursos de manera automatizada.
 
 Los procesos clave incluyen la creación de archivos GDSII, la verificación de reglas de diseño (DRC) y la conversión a formato OASIS. Después de la aprobación, el diseño final se envía al tapeout.
 La utilización de los puntos de acceso S3 de FSx para NetApp ONTAP permite automatizar el procesamiento de OCR, la extracción de entidades y la generación de resúmenes de documentos como contratos y facturas a través de un flujo de trabajo sin servidor.
 ### Este patrón es adecuado para los siguientes casos:
 
 - Necesitas crear una solución de automatización de inicio a fin sin necesidad de administrar la infraestructura.
-- Quieres utilizar servicios AWS administrados como Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch y AWS CloudFormation.
+- Quieres utilizar servicios AWS administrados como Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch y AWS CloudFormation.
 - Tu flujo de trabajo involucra a varios equipos con diferentes especialidades, como diseño, verificación y fabricación.
 - Necesitas realizar una migración a la nube o modernizar tu flujo de trabajo de diseño y verificación de circuitos integrados.
 - Tu flujo de trabajo incluye procesos como GDSII, DRC, OASIS, GDS, Lambda, tapeout y otros términos técnicos.
@@ -21,7 +21,7 @@ La utilización de los puntos de acceso S3 de FSx para NetApp ONTAP permite auto
 - Me interesa probar la canalización de IDP de Textract + Comprehend + Bedrock con el menor costo posible.
 ### Esta no es una buena aplicación para este patrón
 
-El uso de servicios de AWS como Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation, etc. no es apropiado en todos los casos. Algunos ejemplos de situaciones donde este patrón no es adecuado incluyen:
+El uso de servicios de AWS como Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, etc. no es apropiado en todos los casos. Algunos ejemplos de situaciones donde este patrón no es adecuado incluyen:
 
 - Si tienes requisitos específicos de rendimiento, latencia o escalabilidad que los servicios de AWS no puedan cumplir
 - Si necesitas un mayor control o personalización de la infraestructura de lo que los servicios de AWS permiten
@@ -35,7 +35,7 @@ En estos casos, puede ser mejor utilizar una solución en las instalaciones o un
 - Los documentos ya existen en un bucket estándar de Amazon S3 y se pueden procesar mediante notificaciones de eventos de Amazon S3
 ### Principales funcionalidades
 
-Amazon Bedrock permite el diseño de chips utilizando herramientas de diseño asistido por computadora (CAD) compatibles con formatos como GDSII, OASIS y DRC. AWS Step Functions se puede usar para orquestar flujos de trabajo complejos que involucren múltiples servicios de AWS, como Amazon Athena, Amazon S3 y AWS Lambda. Amazon FSx for NetApp ONTAP proporciona sistemas de archivos de alto rendimiento con total compatibilidad con ONTAP. Amazon CloudWatch monitorea los recursos de AWS y las aplicaciones en ejecución. AWS CloudFormation permite definir la infraestructura como código.
+Amazon Bedrock permite el diseño de chips utilizando herramientas de diseño asistido por computadora (CAD) compatibles con formatos como GDSII, OASIS y DRC. AWS Step Functions se puede usar para orquestar flujos de trabajo complejos que involucren múltiples servicios de AWS, como Amazon Athena, Amazon S3 y AWS Lambda. Amazon FSx for ONTAP proporciona sistemas de archivos de alto rendimiento con total compatibilidad con ONTAP. Amazon CloudWatch monitorea los recursos de AWS y las aplicaciones en ejecución. AWS CloudFormation permite definir la infraestructura como código.
 - Detección automática de documentos PDF, TIFF y JPEG a través de Amazon S3 AP
 - Extracción de texto OCR mediante Amazon Textract (selección automática de API síncrona/asíncrona)
 - Extracción de entidades con nombre mediante Amazon Comprehend (fechas, cantidades, nombres de organizaciones, nombres de personas)
@@ -49,7 +49,7 @@ Amazon Bedrock es una plataforma de desarrollo de modelos de IA que simplifica e
 3. Implementación del modelo
 4. Monitoreo y mejora del modelo
 
-AWS Step Functions facilita la coordinación de estos pasos mediante la definición de flujos de trabajo sin código. Amazon Athena se puede usar para analizar datos de Amazon S3, mientras que AWS Lambda se puede usar para ejecutar código personalizado. Amazon FSx for NetApp ONTAP permite integrar almacenamiento de alto rendimiento en sus flujos de trabajo de IA. Amazon CloudWatch y AWS CloudFormation se pueden utilizar para supervisar y administrar la infraestructura.
+AWS Step Functions facilita la coordinación de estos pasos mediante la definición de flujos de trabajo sin código. Amazon Athena se puede usar para analizar datos de Amazon S3, mientras que AWS Lambda se puede usar para ejecutar código personalizado. Amazon FSx for ONTAP permite integrar almacenamiento de alto rendimiento en sus flujos de trabajo de IA. Amazon CloudWatch y AWS CloudFormation se pueden utilizar para supervisar y administrar la infraestructura.
 
 Algunos términos técnicos clave en el desarrollo de chips incluyen GDSII, DRC, OASIS y GDS. El proceso de `tapeout` es una etapa crucial en la fabricación de chips.
 
@@ -83,7 +83,7 @@ Para crear un flujo de trabajo automatizado, puede usar los siguientes servicios
 - Amazon Athena para analizar datos
 - Amazon S3 para almacenar archivos
 - AWS Lambda para ejecutar código sin servidor
-- Amazon FSx for NetApp ONTAP para almacenamiento de archivos
+- Amazon FSx for ONTAP para almacenamiento de archivos
 - Amazon CloudWatch para monitorizar el flujo de trabajo
 - AWS CloudFormation para implementar la infraestructura
 
@@ -94,7 +94,7 @@ Puede integrar herramientas como `GDSII`, `DRC`, `OASIS`, `GDS` y realizar `tape
 4. **Resumen**: Generar un resumen estructurado en formato JSON y almacenarlo en S3 utilizando Bedrock
 ## Requisitos previos
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout.
+Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout.
 - Cuenta de AWS y permisos de IAM apropiados
 - Sistema de archivos FSx para NetApp ONTAP (ONTAP 9.17.1P4D3 o superior)
 - Volumen con punto de acceso S3 habilitado
@@ -104,7 +104,7 @@ Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon
 - Regiones con Amazon Textract y Amazon Comprehend disponibles
 ## Proceso de implementación
 
-Amazon Bedrock を使用して GDSII ファイルをデザインし、Amazon Athena を使用してデータを分析し、AWS Step Functions を使用してワークフローをオーケストレーションします。Amazon S3 にデータを保存し、AWS Lambda でデータを処理し、Amazon FSx for NetApp ONTAP を使用してファイルを管理します。Amazon CloudWatch でシステムを監視し、AWS CloudFormation を使用してスタックを管理します。OASIS ファイルを `design.oasis` という名前で保存し、DRC を実行して検証します。最後に、Amazon Bedrock でテープアウトを実行してデバイスを製造します。
+Amazon Bedrock を使用して GDSII ファイルをデザインし、Amazon Athena を使用してデータを分析し、AWS Step Functions を使用してワークフローをオーケストレーションします。Amazon S3 にデータを保存し、AWS Lambda でデータを処理し、Amazon FSx for ONTAP を使用してファイルを管理します。Amazon CloudWatch でシステムを監視し、AWS CloudFormation を使用してスタックを管理します。OASIS ファイルを `design.oasis` という名前で保存し、DRC を実行して検証します。最後に、Amazon Bedrock でテープアウトを実行してデバイスを製造します。
 
 ### 1. Preparación de parámetros
 
@@ -147,7 +147,7 @@ Tras el despliegue, se enviará un correo electrónico de confirmación de suscr
 
 Amazon Bedrock を使用して GDSII ファイルをシミュレーションする際のパラメータ設定について説明します。DRC 検査、OASIS ファイルの生成、GDS ファイルのタペアウトなどの設定も含まれます。
 
-AWS Step Functions を使用して、一連のタスクを自動化します。Amazon Athena を使用して Amazon S3 のデータを分析し、AWS Lambda 関数を呼び出すこともできます。Amazon FSx for NetApp ONTAP を使用してファイルシステムを管理し、Amazon CloudWatch でリソース使用率を監視します。
+AWS Step Functions を使用して、一連のタスクを自動化します。Amazon Athena を使用して Amazon S3 のデータを分析し、AWS Lambda 関数を呼び出すこともできます。Amazon FSx for ONTAP を使用してファイルシステムを管理し、Amazon CloudWatch でリソース使用率を監視します。
 
 設定ファイルは AWS CloudFormation テンプレートで管理します。
 
@@ -167,11 +167,11 @@ AWS Step Functions を使用して、一連のタスクを自動化します。A
 
 ## Estructura de costos
 
-Amazon Bedrock puede ayudarte a reducir los costos de desarrollo de chips al automatizar el diseño y la verificación. AWS Step Functions te permite crear flujos de trabajo complejos sin tener que administrar la infraestructura. Amazon Athena te permite consultar datos almacenados en Amazon S3 sin necesidad de configurar ni administrar servidores. AWS Lambda te permite ejecutar código sin provisionar ni administrar servidores. Amazon FSx for NetApp ONTAP te permite aprovechar la infraestructura de almacenamiento de NetApp en la nube de AWS. Amazon CloudWatch te ayuda a monitorear y analizar el rendimiento de tus recursos de AWS. AWS CloudFormation te permite aprovisionar e implementar rápidamente tus recursos de AWS mediante código.
+Amazon Bedrock puede ayudarte a reducir los costos de desarrollo de chips al automatizar el diseño y la verificación. AWS Step Functions te permite crear flujos de trabajo complejos sin tener que administrar la infraestructura. Amazon Athena te permite consultar datos almacenados en Amazon S3 sin necesidad de configurar ni administrar servidores. AWS Lambda te permite ejecutar código sin provisionar ni administrar servidores. Amazon FSx for ONTAP te permite aprovechar la infraestructura de almacenamiento de NetApp en la nube de AWS. Amazon CloudWatch te ayuda a monitorear y analizar el rendimiento de tus recursos de AWS. AWS CloudFormation te permite aprovisionar e implementar rápidamente tus recursos de AWS mediante código.
 
 ### Basado en solicitudes (facturación por consumo)
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout
+Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout
 
 | サービス | 課金単位 | 概算（100 ドキュメント/月） |
 |---------|---------|--------------------------|
@@ -186,7 +186,7 @@ Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon
 
 Amazon Bedrock ofrece una opción de "Funcionamiento continuo" que mantiene tu aplicación en ejecución las 24 horas del día, los 7 días de la semana. Cuando se habilita, AWS Step Functions lanzará automáticamente una nueva instancia de tu aplicación si la actual deja de funcionar. Esto garantiza que tu aplicación esté siempre disponible.
 
-Con Amazon Athena y Amazon S3, puedes analizar fácilmente los registros de tu aplicación en AWS Lambda para detectar posibles problemas. Amazon FSx for NetApp ONTAP proporciona almacenamiento de alta disponibilidad para tus datos. Amazon CloudWatch supervisa el rendimiento y Amazon CloudFormation te ayuda a implementar y administrar todo el entorno.
+Con Amazon Athena y Amazon S3, puedes analizar fácilmente los registros de tu aplicación en AWS Lambda para detectar posibles problemas. Amazon FSx for ONTAP proporciona almacenamiento de alta disponibilidad para tus datos. Amazon CloudWatch supervisa el rendimiento y Amazon CloudFormation te ayuda a implementar y administrar todo el entorno.
 
 | サービス | パラメータ | 月額 |
 |---------|-----------|------|
@@ -213,7 +213,7 @@ Resumen de la salida JSON de Lambda:
 
 Amazon Bedrock le permite iniciar y utilizar fácilmente nuevos modelos de lenguaje de IA en sus aplicaciones. Puede usar AWS Step Functions para coordinar y organizar sus flujos de trabajo, mientras que Amazon Athena le permite consultar datos almacenados en Amazon S3 sin necesidad de administrar la infraestructura.
 
-Utilice AWS Lambda para ejecutar código sin tener que aprovisionar o administrar servidores. Amazon FSx for NetApp ONTAP le ofrece un almacenamiento de archivos empresarial gestionado. Utilice Amazon CloudWatch para monitorear sus recursos de AWS y AWS CloudFormation para aprovisionar rápidamente la infraestructura que necesita.
+Utilice AWS Lambda para ejecutar código sin tener que aprovisionar o administrar servidores. Amazon FSx for ONTAP le ofrece un almacenamiento de archivos empresarial gestionado. Utilice Amazon CloudWatch para monitorear sus recursos de AWS y AWS CloudFormation para aprovisionar rápidamente la infraestructura que necesita.
 
 ```bash
 # CloudFormation スタックの削除
@@ -246,12 +246,12 @@ Amazon Bedrock admite las siguientes regiones de AWS:
 - Oriente Medio (Baréin)
 - África (Ciudad del Cabo)
 
-AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP y Amazon CloudWatch también se encuentran disponibles en estas regiones.
+AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP y Amazon CloudWatch también se encuentran disponibles en estas regiones.
 
 Puedes crear una pila de AWS CloudFormation que implemente estos servicios en cualquiera de estas regiones.
 UC2 utiliza los siguientes servicios:
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation
+Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation
 | サービス | リージョン制約 |
 |---------|-------------|
 | Amazon Textract | ap-northeast-1 非対応。`TEXTRACT_REGION` パラメータで対応リージョン（us-east-1 等）を指定 |
@@ -262,7 +262,7 @@ Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon
 > Para invocar la API de Textract a través del cliente de varias regiones. Asegúrese de verificar los requisitos de residencia de datos. Consulte la [Matriz de compatibilidad de regiones](../docs/region-compatibility.md) para obtener más detalles.
 ## Enlaces de referencia
 
-Amazon Bedrock le permite diseñar y fabricar chips de manera rápida y eficiente. AWS Step Functions le permite crear flujos de trabajo de aplicaciones complejas de manera visual. Amazon Athena es un servicio de consulta interactiva para analizar datos almacenados en Amazon S3. AWS Lambda le permite ejecutar código sin aprovisionar ni administrar servidores. Amazon FSx for NetApp ONTAP le brinda almacenamiento de archivos empresarial altamente compatible y de alto rendimiento. Amazon CloudWatch le permite monitorear y optimizar la infraestructura en la nube. AWS CloudFormation le permite modelar y aprovisionar recursos de AWS de forma declarativa.
+Amazon Bedrock le permite diseñar y fabricar chips de manera rápida y eficiente. AWS Step Functions le permite crear flujos de trabajo de aplicaciones complejas de manera visual. Amazon Athena es un servicio de consulta interactiva para analizar datos almacenados en Amazon S3. AWS Lambda le permite ejecutar código sin aprovisionar ni administrar servidores. Amazon FSx for ONTAP le brinda almacenamiento de archivos empresarial altamente compatible y de alto rendimiento. Amazon CloudWatch le permite monitorear y optimizar la infraestructura en la nube. AWS CloudFormation le permite modelar y aprovisionar recursos de AWS de forma declarativa.
 
 ### Documentación oficial de AWS
 - [Resumen de los puntos de acceso a S3 de FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
@@ -272,7 +272,7 @@ Amazon Bedrock le permite diseñar y fabricar chips de manera rápida y eficient
 - [Referencia de la API InvokeModel de Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 ### Artículos del blog y guías de AWS
 
-El diseño de circuitos integrados (ICs) a menudo implica varios pasos complejos, como el diseño de esquemas, la verificación de circuitos, el diseño de diseño y el enrutamiento. AWS proporciona servicios como Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda y Amazon FSx for NetApp ONTAP para simplificar este proceso.
+El diseño de circuitos integrados (ICs) a menudo implica varios pasos complejos, como el diseño de esquemas, la verificación de circuitos, el diseño de diseño y el enrutamiento. AWS proporciona servicios como Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda y Amazon FSx for ONTAP para simplificar este proceso.
 
 El flujo de trabajo típico podría ser:
 
@@ -288,7 +288,7 @@ El flujo de trabajo típico podría ser:
 - [Guía de IDP (Procesamiento Inteligente de Documentos en AWS)](https://aws.amazon.com/solutions/guidance/intelligent-document-processing-on-aws3/)
 ### Muestra de GitHub
 
-Amazon Bedrock permite a los desarrolladores crear y desplegar rápidamente modelos de lenguaje grandes y personalizados para aplicaciones de IA generativa. AWS Step Functions simplifica la orquestación de servicios de AWS con estados visuales y flujos de trabajo sin servidor. Amazon Athena es un servicio de consulta de datos sin servidor que permite analizar datos en Amazon S3 usando SQL estándar. Amazon S3 es un servicio de almacenamiento de objetos que ofrece durabilidad, disponibilidad y rendimiento líderes en la industria. AWS Lambda es un servicio informático sin servidor que ejecuta código en respuesta a eventos o solicitudes HTTP sin necesidad de administrar servidores. Amazon FSx for NetApp ONTAP proporciona sistemas de archivos de alto rendimiento y administrados de manera sencilla. Amazon CloudWatch es un servicio de monitorización y observabilidad que recopila y rastrea métricas, registros e eventos, y permite realizar acciones en función de esos datos. AWS CloudFormation es un servicio que ayuda a modelar y configurar sus recursos de AWS de manera declarativa, reduciendo la complejidad de la gestión de infraestructura.
+Amazon Bedrock permite a los desarrolladores crear y desplegar rápidamente modelos de lenguaje grandes y personalizados para aplicaciones de IA generativa. AWS Step Functions simplifica la orquestación de servicios de AWS con estados visuales y flujos de trabajo sin servidor. Amazon Athena es un servicio de consulta de datos sin servidor que permite analizar datos en Amazon S3 usando SQL estándar. Amazon S3 es un servicio de almacenamiento de objetos que ofrece durabilidad, disponibilidad y rendimiento líderes en la industria. AWS Lambda es un servicio informático sin servidor que ejecuta código en respuesta a eventos o solicitudes HTTP sin necesidad de administrar servidores. Amazon FSx for ONTAP proporciona sistemas de archivos de alto rendimiento y administrados de manera sencilla. Amazon CloudWatch es un servicio de monitorización y observabilidad que recopila y rastrea métricas, registros e eventos, y permite realizar acciones en función de esos datos. AWS CloudFormation es un servicio que ayuda a modelar y configurar sus recursos de AWS de manera declarativa, reduciendo la complejidad de la gestión de infraestructura.
 - [aws-samples/amazon-textract-serverless-large-scale-document-processing](https://github.com/aws-samples/amazon-textract-serverless-large-scale-document-processing) — Procesamiento a gran escala con Amazon Textract
 - [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — Colección de patrones serverless
 - [aws-samples/aws-stepfunctions-examples](https://github.com/aws-samples/aws-stepfunctions-examples) — Ejemplos de AWS Step Functions
@@ -308,7 +308,7 @@ Amazon Bedrock es una plataforma de desarrollo de chips personalizados que ayuda
 
 Amazon Bedrock proporciona un servicio de inferencia de IA que se puede integrar con AWS Step Functions para crear flujos de trabajo de aprendizaje automático sin servidor. Además, Amazon Athena y Amazon S3 se pueden utilizar para analizar y almacenar los datos de entrenamiento y los resultados de la inferencia.
 
-En este diseño, las cargas de trabajo de Lambda se ejecutan dentro de una VPC privada. Esta configuración permite que Lambda acceda a recursos como Amazon FSx for NetApp ONTAP y Amazon CloudWatch para monitorear y registrar la actividad. AWS CloudFormation se utiliza para aprovisionar y administrar la infraestructura de la VPC y los recursos relacionados.
+En este diseño, las cargas de trabajo de Lambda se ejecutan dentro de una VPC privada. Esta configuración permite que Lambda acceda a recursos como Amazon FSx for ONTAP y Amazon CloudWatch para monitorear y registrar la actividad. AWS CloudFormation se utiliza para aprovisionar y administrar la infraestructura de la VPC y los recursos relacionados.
 Basándose en los conocimientos adquiridos durante las pruebas, las funciones Lambda se han implementado de forma aislada dentro y fuera de la VPC.
 
 **Lambda dentro de la VPC** (solo para funciones que requieren acceso a la API REST de ONTAP):

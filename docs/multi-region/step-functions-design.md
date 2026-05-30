@@ -2,7 +2,7 @@
 
 ## 概要
 
-本ドキュメントでは、FSxN S3AP Serverless Patterns を複数リージョンで運用するための Step Functions 設計パターンを定義する。Active-Active / Active-Passive の 2 つのデプロイモデルを比較し、データフロー、整合性モデル、リファレンスアーキテクチャを解説する。
+本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns を複数リージョンで運用するための Step Functions 設計パターンを定義する。Active-Active / Active-Passive の 2 つのデプロイモデルを比較し、データフロー、整合性モデル、リファレンスアーキテクチャを解説する。
 
 ---
 

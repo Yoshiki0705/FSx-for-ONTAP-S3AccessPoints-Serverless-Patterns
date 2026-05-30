@@ -5,7 +5,7 @@ screenshots in `docs/screenshots/masked/`. These text-based artifacts are
 extracted directly from the AWS environment during verification runs and
 serve as machine-readable proof that:
 
-- FSxN S3 Access Point received AI/ML pipeline outputs correctly
+- FSx for ONTAP S3 Access Point received AI/ML pipeline outputs correctly
 - The "no data movement" pattern produces visible results on the same volume
 - Output format matches what handlers are designed to write
 
@@ -14,7 +14,7 @@ serve as machine-readable proof that:
 ### UC11 retail-catalog (`uc11-demo/`)
 
 - `s3ap-output-listing.txt` — `aws s3 ls` output showing 14 JSON files
-  written to `ai-outputs/uc11/{tags,quality}/2026/05/10/` via the FSxN
+  written to `ai-outputs/uc11/{tags,quality}/2026/05/10/` via the FSx for ONTAP
   S3 Access Point
 - `sample-tags-output.json` — one sample Rekognition tags JSON
   demonstrating successful label detection (top label `Oval` at 99.93%
@@ -52,7 +52,7 @@ serve as machine-readable proof that:
 
 **Chain-read verification**: Each downstream Lambda
 (Classification/EntityExtraction/Redaction) successfully read the OCR
-text via `OutputWriter.get_text()` from the same FSxN S3 Access Point
+text via `OutputWriter.get_text()` from the same FSx for ONTAP S3 Access Point
 the OCR Lambda wrote to, proving the symmetric read-side of the
 OutputWriter works in FSXN_S3AP mode.
 

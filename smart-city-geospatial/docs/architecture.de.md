@@ -107,7 +107,7 @@ UC17 unterstützt seit dem Update vom 11.05.2026 den Parameter `OutputDestinatio
 | Modus | Ausgabeziel | Erstellte Ressourcen | Anwendungsfall |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3` (Standard) | Neuer S3-Bucket | `AWS::S3::Bucket` | Wie bisher werden KI-Ergebnisse in einem separaten S3-Bucket gespeichert |
-| `FSXN_S3AP` | FSxN S3 Access Point | Keine (Rückschreiben in bestehendes FSx-Volume) | Stadtplaner können Bedrock-Berichte (Markdown) und Risikokarten im selben Verzeichnis wie die ursprünglichen GIS-Daten über SMB/NFS einsehen |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | Keine (Rückschreiben in bestehendes FSx-Volume) | Stadtplaner können Bedrock-Berichte (Markdown) und Risikokarten im selben Verzeichnis wie die ursprünglichen GIS-Daten über SMB/NFS einsehen |
 
 **Betroffene Lambda**: Preprocessing, LandUseClassification, InfraAssessment, RiskMapping, ReportGeneration (5 Funktionen).  
 **Nicht betroffene Lambda**: Discovery (Manifest wird direkt in S3AP geschrieben), ChangeDetection (nur DynamoDB).  

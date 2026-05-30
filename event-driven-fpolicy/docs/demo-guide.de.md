@@ -14,9 +14,9 @@ Diese Demo zeigt, wie Dateierstellungsoperationen über NFS in Echtzeit über de
 
 | Element | Anforderung |
 |---------|-------------|
-| FSx for NetApp ONTAP | ONTAP 9.17.1 oder höher, FPolicy unterstützt |
-| VPC | Privates Subnetz im gleichen VPC wie FSxN |
-| NFS-Mount | NFS-Mount vom Client zum FSxN-Volume durchgeführt |
+| FSx for ONTAP | ONTAP 9.17.1 oder höher, FPolicy unterstützt |
+| VPC | Privates Subnetz im gleichen VPC wie FSx for ONTAP |
+| NFS-Mount | NFS-Mount vom Client zum FSx for ONTAP Volume durchgeführt |
 | AWS CLI | v2 oder höher, entsprechende IAM-Berechtigungen |
 | Docker | Zum Erstellen von Container-Images |
 | ECR | Repository erstellt |
@@ -73,7 +73,7 @@ echo "Fargate Task IP: $TASK_IP"
 
 ## Step 2: ONTAP FPolicy-Konfiguration
 
-Verbinden Sie sich per SSH mit der FSxN SVM und führen Sie die folgenden Befehle aus.
+Verbinden Sie sich per SSH mit der FSx for ONTAP SVM und führen Sie die folgenden Befehle aus.
 
 ### 2.1 External Engine erstellen
 
@@ -238,7 +238,7 @@ NEW_IP=$(aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ARN --query 'ta
 echo "New Task IP: $NEW_IP"
 
 # Überprüfen, dass die ONTAP-Engine-IP aktualisiert wurde
-# Per SSH mit FSxN SVM verbinden
+# Per SSH mit FSx for ONTAP SVM verbinden
 fpolicy show-engine -vserver FSxN_OnPre
 ```
 
@@ -248,7 +248,7 @@ fpolicy show-engine -vserver FSxN_OnPre
 
 ```bash
 # 1. ONTAP FPolicy deaktivieren
-# Per SSH mit FSxN SVM verbinden
+# Per SSH mit FSx for ONTAP SVM verbinden
 fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy scope delete -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy delete -vserver FSxN_OnPre -policy-name fpolicy_aws

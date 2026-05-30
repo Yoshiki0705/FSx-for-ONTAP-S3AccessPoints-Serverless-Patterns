@@ -208,7 +208,7 @@ ORDER BY bounding_box_width DESC;
 Nach derselben Richtlinie wie Phase 7 UC15/16/17 wurden **UI/UX-Bildschirme aufgenommen, die Design-Ingenieure in ihrer täglichen Arbeit tatsächlich sehen**. Technische Ansichten wie Step Functions-Graphen wurden ausgeschlossen (Details siehe
 [`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md)).
 
-### 1. FSx for NetApp ONTAP Volumes — Volume für Design-Dateien
+### 1. FSx for ONTAP Volumes — Volume für Design-Dateien
 
 Volume-Liste von ONTAP aus Sicht des Design-Ingenieurs. GDS/OASIS-Dateien werden in `eda_demo_vol` mit NTFS ACL-Verwaltung platziert.
 

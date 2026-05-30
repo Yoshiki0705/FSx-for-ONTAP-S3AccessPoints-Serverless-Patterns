@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概觀
-利用 FSx for NetApp ONTAP 的 S3 Access Points，構建一個自動化的無伺服器工作流程，以自動標記產品圖片、生成目錄中繼數據和執行圖片質量檢查。
+利用 FSx for ONTAP 的 S3 Access Points，構建一個自動化的無伺服器工作流程，以自動標記產品圖片、生成目錄中繼數據和執行圖片質量檢查。
 ### 適用此模式的情況
 - 商品圖像大量儲存於 FSx ONTAP 上
 - 希望使用 Rekognition 自動標註商品圖像（類別、顏色、材質）
@@ -51,7 +51,7 @@ graph LR
 4. **品質檢查**：檢查影像品質指標，並標記低於閾值的影像
 ## 前提條件
 - AWS帳戶和適當的IAM權限
-- FSx for NetApp ONTAP文件系統（ONTAP 9.17.1P4D3以上）
+- FSx for ONTAP文件系統（ONTAP 9.17.1P4D3以上）
 - 已啟用S3存取點的卷（用於存儲商品圖片）
 - VPC、私人子網
 - 已啟用Amazon Bedrock模型存取（Claude / Nova）
@@ -108,7 +108,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 
 ## 參考連結
-- [FSx for NetApp ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Amazon Bedrock API 參考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [串流 vs 輪詢選擇指南](../docs/streaming-vs-polling-guide.md)

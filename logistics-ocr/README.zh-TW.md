@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概覽
-利用 FSx for NetApp ONTAP 的 S3 Access Points，自動化無伺服器工作流程，用於運輸票據的 OCR 文字提取、倉庫庫存圖像的物體檢測與計數、以及運輸路線優化報告生成。
+利用 FSx for ONTAP 的 S3 Access Points，自動化無伺服器工作流程，用於運輸票據的 OCR 文字提取、倉庫庫存圖像的物體檢測與計數、以及運輸路線優化報告生成。
 ### 此模式適用的情況
 - 配送傳票影像和倉庫庫存影像已在 FSx ONTAP 上累積
 - 希望自動化 Textract 對配送傳票的 OCR（寄件人、收件人、跟踪號碼、物品）
@@ -57,7 +57,7 @@ graph LR
 5. **報告**：使用 Bedrock 生成發貨路由最佳化報告，S3 輸出 + SNS 通知
 ## 前提條件
 - AWS 帳戶和適當的 IAM 權限
-- FSx for NetApp ONTAP 文件系統（ONTAP 9.17.1P4D3 或更高版本）
+- FSx for ONTAP 文件系統（ONTAP 9.17.1P4D3 或更高版本）
 - 已啟用 S3 訪問點的卷（用於存儲運單和庫存圖像）
 - VPC、私有子網
 - Amazon Bedrock 模型訪問已啟用（Claude / Nova）
@@ -128,7 +128,7 @@ UC12 使用以下服務：
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > 透過跨區域用戶端呼叫 Textract API。請確認資料常駐要求。詳細資訊請參閱 [區域相容性矩陣](../docs/region-compatibility.md)。
 ## 參考連結
-- [FSx for NetApp ONTAP S3 存取點概觀](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 存取點概觀](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract 文件](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Rekognition 標籤檢測](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon Bedrock API 參考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
