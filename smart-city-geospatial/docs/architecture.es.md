@@ -105,7 +105,7 @@ UC17 soporta el parámetro `OutputDestination` desde la actualización del 2026-
 | Modo | Destino de salida | Recursos creados | Caso de uso |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3` (predeterminado) | Nuevo bucket S3 | `AWS::S3::Bucket` | Acumulación de resultados de IA en bucket S3 separado como tradicionalmente |
-| `FSXN_S3AP` | FSxN S3 Access Point | Ninguno (escritura en volumen FSx existente) | Responsables de planificación urbana visualizan informes Bedrock (Markdown) y mapas de riesgo en el mismo directorio que los datos GIS originales vía SMB/NFS |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | Ninguno (escritura en volumen FSx existente) | Responsables de planificación urbana visualizan informes Bedrock (Markdown) y mapas de riesgo en el mismo directorio que los datos GIS originales vía SMB/NFS |
 
 **Lambdas afectadas**: Preprocessing, LandUseClassification, InfraAssessment, RiskMapping, ReportGeneration (5 funciones).  
 **Lambdas no afectadas**: Discovery (manifest escrito directamente en S3AP), ChangeDetection (solo DynamoDB).  

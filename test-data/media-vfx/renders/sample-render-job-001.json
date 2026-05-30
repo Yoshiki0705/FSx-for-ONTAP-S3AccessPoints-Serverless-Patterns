@@ -1,0 +1,24 @@
+{
+  "file_path": "/vol/renders/project-alpha/shot-042/frame-0001.exr",
+  "file_size": 8388608,
+  "last_modified": "2026-05-18T22:15:00Z",
+  "render_metadata": {
+    "project": "Project Alpha",
+    "shot": "shot-042",
+    "frame_number": 1,
+    "total_frames": 240,
+    "resolution": "3840x2160",
+    "format": "OpenEXR",
+    "color_space": "ACEScg",
+    "render_engine": "Arnold 7.2",
+    "render_time_seconds": 1847
+  },
+  "quality_check": {
+    "black_frame": false,
+    "fireflies_detected": 2,
+    "noise_level": 0.003,
+    "color_clipping": false,
+    "resolution_match": true,
+    "overall_pass": true
+  }
+}

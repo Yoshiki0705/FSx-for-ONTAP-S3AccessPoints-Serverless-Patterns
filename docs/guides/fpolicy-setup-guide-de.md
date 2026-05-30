@@ -19,7 +19,7 @@ Diese Anleitung erklärt, wie ONTAP FPolicy konfiguriert wird, um Dateioperation
 
 ## ONTAP-Voraussetzungen
 
-- FSx for NetApp ONTAP file system running
+- FSx for ONTAP file system running
 - SVM configured with NFS enabled
 - Admin access to ONTAP REST API or CLI
 
@@ -92,9 +92,9 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 ### Voraussetzungen
 - AWS Managed Microsoft AD oder Self-Managed AD
-- FSxN SVM mit AD-Beitrittskonfiguration erstellt
+- FSx for ONTAP SVM mit AD-Beitrittskonfiguration erstellt
 - CIFS-Freigabe auf dem Volume erstellt
 
 ### Wichtige Hinweise
-- SVM muss MIT AD-Konfiguration erstellt werden — CIFS kann nicht nachträglich zu einer reinen NFS-SVM auf FSxN hinzugefügt werden
+- SVM muss MIT AD-Konfiguration erstellt werden — CIFS kann nicht nachträglich zu einer reinen NFS-SVM auf FSx for ONTAP hinzugefügt werden
 - Für AWS Managed AD: `OU=Computers,OU=<domain>,DC=<domain>,DC=local` verwenden

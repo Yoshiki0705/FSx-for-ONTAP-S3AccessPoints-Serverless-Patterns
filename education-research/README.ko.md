@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 개요
-FSx for NetApp ONTAP의 S3 액세스 포인트를 활용하여 논문 PDF의 자동 분류, 인용 네트워크 분석, 연구 데이터 메타데이터 추출을 자동화하는 서버리스 워크플로우입니다.
+FSx for ONTAP의 S3 액세스 포인트를 활용하여 논문 PDF의 자동 분류, 인용 네트워크 분석, 연구 데이터 메타데이터 추출을 자동화하는 서버리스 워크플로우입니다.
 ### 이 패턴이 적합한 경우
 - 논문 PDF와 연구 데이터가 FSx ONTAP에 대량으로 축적되어 있습니다
 - Textract를 사용하여 논문 PDF의 텍스트 추출을 자동화하고 싶습니다

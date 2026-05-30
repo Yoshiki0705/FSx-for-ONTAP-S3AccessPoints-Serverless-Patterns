@@ -1,6 +1,6 @@
 # FlexCache AnyCast / DR パターン
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概要
 
@@ -240,3 +240,132 @@ DynamoDB routing table updates, CloudWatch Logs, ONTAP REST API health check res
 - [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
 - [NetApp FlexCache ドキュメント](https://docs.netapp.com/us-en/ontap/flexcache/index.html)
 - [FSx for ONTAP ドキュメント](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/)
+
+
+
+
+
+---
+
+## コスト見積もり（月額概算）
+
+> **注記**: 以下は ap-northeast-1 リージョンの概算であり、実際のコストは使用量により異なります。最新の料金は [AWS Pricing Calculator](https://calculator.aws/) で確認してください。
+
+### サーバーレスコンポーネント（従量課金）
+
+| サービス | 単価 | 想定使用量 | 月額概算 |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 2 関数 × 24 checks/日 | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/日 | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/日 | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | N/A | ~$3-10 |
+| Athena | $5/TB scanned | N/A | ~$0.5-2 |
+| SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
+| Route 53 Health Check | $0.50/check/月 |
+
+
+### 固定コスト（FSx for ONTAP — 既存環境前提）
+
+| コンポーネント | 月額 |
+|--------------|------|
+| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| S3 Access Point | 追加料金なし（S3 API 料金のみ） |
+
+### 合計概算
+
+| 構成 | 月額概算 |
+|------|---------|
+| 最小構成（日次 1 回実行） | ~$5-15 |
+| 標準構成（時次実行） | ~$15-50 |
+| 大規模構成（高頻度 + アラーム） | ~$50-150 |
+
+> **Governance Caveat**: コスト見積もりは概算であり、保証値ではありません。実際の請求額は使用パターン、データ量、リージョンにより異なります。
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+FlexCache ヘルスチェック + ルーティング決定の出力例:
+
+```json
+{
+  "health_check": {
+    "primary": {
+      "region": "ap-northeast-1",
+      "status": "healthy",
+      "latency_ms": 12,
+      "cache_hit_rate_pct": 87.5
+    },
+    "secondary": {
+      "region": "ap-southeast-1",
+      "status": "healthy",
+      "latency_ms": 45,
+      "cache_hit_rate_pct": 72.3
+    }
+  },
+  "routing_decision": {
+    "active_region": "ap-northeast-1",
+    "failover_triggered": false,
+    "decision_reason": "primary_healthy",
+    "timestamp": "2026-05-23T09:00:00Z"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Performance Considerations
+
+- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
+- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
+- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
+- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

@@ -65,4 +65,4 @@ Principios de diseño:
 
 ---
 
-*Este documento es la guía de evaluación de impacto en entornos existentes para FSxN S3AP Serverless Patterns.*
+*Este documento es la guía de evaluación de impacto en entornos existentes para FSx for ONTAP S3 AP Serverless Patterns.*

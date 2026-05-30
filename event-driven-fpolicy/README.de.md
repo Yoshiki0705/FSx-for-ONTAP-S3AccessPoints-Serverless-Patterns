@@ -41,7 +41,7 @@ Es erkennt sofort Dateierstellungs-, Schreib-, Lösch- und Umbenennungsoperation
 
 ```mermaid
 graph LR
-    subgraph "FSx for NetApp ONTAP"
+    subgraph "FSx for ONTAP"
         NFS["NFS/SMB-Client"]
         ONTAP["ONTAP FPolicy Engine"]
     end
@@ -89,8 +89,8 @@ graph LR
 ## Voraussetzungen
 
 - AWS-Konto mit entsprechenden IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisystem (ONTAP 9.17.1 oder höher)
-- VPC, private Subnetze (gleiche VPC wie FSxN SVM)
+- FSx for ONTAP-Dateisystem (ONTAP 9.17.1 oder höher)
+- VPC, private Subnetze (gleiche VPC wie FSx for ONTAP SVM)
 - ONTAP-Administratoranmeldedaten in Secrets Manager registriert
 - ECR-Repository (für das FPolicy Server-Container-Image)
 - VPC Endpoints (ECR, SQS, CloudWatch Logs, STS)
@@ -178,7 +178,7 @@ aws cloudformation deploy \
 ### 3. ONTAP FPolicy-Konfiguration
 
 ```bash
-# Per SSH mit dem FSxN SVM verbinden und Folgendes ausführen
+# Per SSH mit dem FSx for ONTAP SVM verbinden und Folgendes ausführen
 
 # 1. External Engine erstellen
 fpolicy policy external-engine create \
@@ -223,7 +223,7 @@ fpolicy enable \
 | `ComputeType` | Auswahl der Ausführungsumgebung (fargate/ec2) | `fargate` | |
 | `VpcId` | VPC-ID (gleiche VPC wie FSxN) | — | ✅ |
 | `SubnetIds` | Private Subnet für Fargate-Task oder EC2-Platzierung | — | ✅ |
-| `FsxnSvmSecurityGroupId` | Security Group ID des FSxN SVM | — | ✅ |
+| `FsxnSvmSecurityGroupId` | Security Group ID des FSx for ONTAP SVM | — | ✅ |
 | `ContainerImage` | FPolicy Server Container-Image-URI | — | ✅ |
 | `FPolicyPort` | TCP-Listening-Port | `9898` | |
 | `WriteCompleteDelaySec` | NFSv3 Write-Complete-Wartezeit in Sekunden | `5` | |
@@ -234,8 +234,8 @@ fpolicy enable \
 | `InstanceType` | EC2-Instanztyp (nur EC2) | `t4g.micro` | |
 | `KeyPairName` | SSH-Schlüsselpaarname (nur EC2, optional) | `""` | |
 | `EventBusName` | Name des benutzerdefinierten EventBridge-Bus | `fsxn-fpolicy-events` | |
-| `FsxnMgmtIp` | FSxN SVM Management-IP | — | ✅ |
-| `FsxnSvmUuid` | FSxN SVM UUID | — | ✅ |
+| `FsxnMgmtIp` | FSx for ONTAP SVM Management-IP | — | ✅ |
+| `FsxnSvmUuid` | FSx for ONTAP SVM UUID | — | ✅ |
 | `FsxnEngineName` | FPolicy External-Engine-Name | `fpolicy_aws_engine` | |
 | `FsxnPolicyName` | FPolicy-Richtlinienname | `fpolicy_aws` | |
 | `FsxnCredentialsSecret` | Secrets Manager Secret-Name | — | ✅ |
@@ -265,7 +265,7 @@ fpolicy enable \
 
 ```bash
 # 1. ONTAP FPolicy deaktivieren
-# Per SSH mit dem FSxN SVM verbinden
+# Per SSH mit dem FSx for ONTAP SVM verbinden
 fpolicy disable -vserver <SVM_NAME> -policy-name fpolicy_aws
 
 # 2. CloudFormation-Stack löschen
@@ -290,7 +290,7 @@ Dieses Muster verwendet die folgenden Dienste:
 
 | Dienst | Regionale Einschränkungen |
 |--------|--------------------------|
-| FSx for NetApp ONTAP | [Liste unterstützter Regionen](https://docs.aws.amazon.com/general/latest/gr/fsxn.html) |
+| FSx for ONTAP | [Liste unterstützter Regionen](https://docs.aws.amazon.com/general/latest/gr/fsxn.html) |
 | ECS Fargate | In fast allen Regionen verfügbar |
 | EventBridge | In allen Regionen verfügbar |
 | SQS | In allen Regionen verfügbar |

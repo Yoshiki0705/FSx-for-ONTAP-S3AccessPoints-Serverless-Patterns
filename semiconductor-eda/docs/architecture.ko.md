@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 입력 — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 입력 — FSx for ONTAP"]
         GDS["GDS/OASIS 설계 파일<br/>.gds, .gds2, .oas, .oasis"]
     end
 
@@ -58,7 +58,7 @@ flowchart TB
 ### 입력
 | 항목 | 설명 |
 |------|------|
-| **소스** | FSx for NetApp ONTAP 볼륨 |
+| **소스** | FSx for ONTAP 볼륨 |
 | **파일 유형** | .gds, .gds2 (GDSII), .oas, .oasis (OASIS) |
 | **접근 방식** | S3 Access Point (NFS 마운트 불필요) |
 | **읽기 전략** | Range 요청 — 처음 64KB만 (헤더 파싱) |
@@ -96,7 +96,7 @@ flowchart TB
 
 | 서비스 | 역할 |
 |--------|------|
-| FSx for NetApp ONTAP | 엔터프라이즈 파일 스토리지 (GDS/OASIS 파일) |
+| FSx for ONTAP | 엔터프라이즈 파일 스토리지 (GDS/OASIS 파일) |
 | S3 Access Points | ONTAP 볼륨에 대한 서버리스 데이터 접근 |
 | EventBridge Scheduler | 주기적 트리거 |
 | Step Functions | Map 상태를 활용한 워크플로 오케스트레이션 |

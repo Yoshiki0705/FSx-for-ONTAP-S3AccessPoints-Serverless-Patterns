@@ -82,7 +82,7 @@ fpolicy policy event create \
 - **`monitor-ads`**: Alternate Data Stream の監視（NTFS 固有機能）
 - **Shengyu 氏の検証**: SMB で動作確認済み。`create` イベントでファイル作成を検知
 - **AD 必須**: SMB 認証には Active Directory が必要。`fsxadmin` ユーザーでは SMB 認証不可
-- **AWS Managed Microsoft AD**: FSxN SVM を AD に参加させる必要がある
+- **AWS Managed Microsoft AD**: FSx for ONTAP SVM を AD に参加させる必要がある
 
 #### SMB テスト環境構築手順
 
@@ -96,7 +96,7 @@ aws ds create-microsoft-ad \
   --edition Standard \
   --region ap-northeast-1
 
-# 2. FSxN SVM を AD に参加
+# 2. FSx for ONTAP SVM を AD に参加
 vserver cifs create \
   -vserver <SVM_NAME> \
   -cifs-server <CIFS_SERVER_NAME> \

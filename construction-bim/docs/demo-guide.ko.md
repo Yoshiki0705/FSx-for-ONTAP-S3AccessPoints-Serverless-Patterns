@@ -182,7 +182,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP("no data movement" 패턴)
-AI 산출물을 FSxN S3 Access Point 경유로 원본 데이터와 **동일한 FSx ONTAP 볼륨**에
+AI 산출물을 FSx for ONTAP S3 Access Point 경유로 원본 데이터와 **동일한 FSx ONTAP 볼륨**에
 다시 기록합니다. SMB/NFS 사용자가 업무에서 사용하는 디렉터리 구조 내에서 AI 산출물을
 직접 열람할 수 있습니다. 표준 S3 버킷은 생성되지 않습니다.
 
@@ -200,7 +200,7 @@ aws cloudformation deploy \
 **주의사항**:
 
 - `S3AccessPointName` 지정을 강력히 권장(Alias 형식과 ARN 형식 모두 IAM 허가)
-- 5GB 초과 객체는 FSxN S3AP에서 불가(AWS 사양), 멀티파트 업로드 필수
+- 5GB 초과 객체는 FSx for ONTAP S3 AP에서 불가(AWS 사양), 멀티파트 업로드 필수
 - AWS 사양상의 제약은
   [프로젝트 README의 "AWS 사양상의 제약과 회피책" 섹션](../../README.md#aws-仕様上の制約と回避策)
   및 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)를 참조

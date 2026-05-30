@@ -41,7 +41,7 @@ NFS/SMB를 통한 파일 생성·쓰기·삭제·이름 변경 작업을 즉시 
 
 ```mermaid
 graph LR
-    subgraph "FSx for NetApp ONTAP"
+    subgraph "FSx for ONTAP"
         NFS["NFS/SMB 클라이언트"]
         ONTAP["ONTAP FPolicy Engine"]
     end
@@ -89,8 +89,8 @@ graph LR
 ## 사전 요구 사항
 
 - AWS 계정 및 적절한 IAM 권한
-- FSx for NetApp ONTAP 파일 시스템(ONTAP 9.17.1 이상)
-- VPC, 프라이빗 서브넷(FSxN SVM과 동일 VPC)
+- FSx for ONTAP 파일 시스템(ONTAP 9.17.1 이상)
+- VPC, 프라이빗 서브넷(FSx for ONTAP SVM과 동일 VPC)
 - ONTAP 관리자 자격 증명이 Secrets Manager에 등록 완료
 - ECR 리포지토리(FPolicy Server 컨테이너 이미지용)
 - VPC Endpoints(ECR, SQS, CloudWatch Logs, STS)
@@ -178,7 +178,7 @@ aws cloudformation deploy \
 ### 3. ONTAP FPolicy 설정
 
 ```bash
-# SSH로 FSxN SVM에 접속 후 다음을 실행
+# SSH로 FSx for ONTAP SVM에 접속 후 다음을 실행
 
 # 1. External Engine 생성
 fpolicy policy external-engine create \
@@ -223,7 +223,7 @@ fpolicy enable \
 | `ComputeType` | 실행 환경 선택 (fargate/ec2) | `fargate` | |
 | `VpcId` | FSxN과 동일 VPC의 ID | — | ✅ |
 | `SubnetIds` | Fargate 태스크 또는 EC2 배치 대상 Private Subnet | — | ✅ |
-| `FsxnSvmSecurityGroupId` | FSxN SVM의 Security Group ID | — | ✅ |
+| `FsxnSvmSecurityGroupId` | FSx for ONTAP SVM의 Security Group ID | — | ✅ |
 | `ContainerImage` | FPolicy Server 컨테이너 이미지 URI | — | ✅ |
 | `FPolicyPort` | TCP 리스닝 포트 | `9898` | |
 | `WriteCompleteDelaySec` | NFSv3 write-complete 대기 초 | `5` | |
@@ -234,8 +234,8 @@ fpolicy enable \
 | `InstanceType` | EC2 인스턴스 타입(EC2 시에만) | `t4g.micro` | |
 | `KeyPairName` | SSH 키 페어 이름(EC2 시에만, 생략 가능) | `""` | |
 | `EventBusName` | EventBridge 커스텀 버스 이름 | `fsxn-fpolicy-events` | |
-| `FsxnMgmtIp` | FSxN SVM 관리 IP | — | ✅ |
-| `FsxnSvmUuid` | FSxN SVM UUID | — | ✅ |
+| `FsxnMgmtIp` | FSx for ONTAP SVM 관리 IP | — | ✅ |
+| `FsxnSvmUuid` | FSx for ONTAP SVM UUID | — | ✅ |
 | `FsxnEngineName` | FPolicy external-engine 이름 | `fpolicy_aws_engine` | |
 | `FsxnPolicyName` | FPolicy 정책 이름 | `fpolicy_aws` | |
 | `FsxnCredentialsSecret` | Secrets Manager 시크릿 이름 | — | ✅ |
@@ -265,7 +265,7 @@ fpolicy enable \
 
 ```bash
 # 1. ONTAP FPolicy 비활성화
-# SSH로 FSxN SVM에 접속
+# SSH로 FSx for ONTAP SVM에 접속
 fpolicy disable -vserver <SVM_NAME> -policy-name fpolicy_aws
 
 # 2. CloudFormation 스택 삭제
@@ -290,7 +290,7 @@ aws ecr delete-repository \
 
 | 서비스 | 리전 제약 |
 |---------|-------------|
-| FSx for NetApp ONTAP | [지원 리전 목록](https://docs.aws.amazon.com/general/latest/gr/fsxn.html) |
+| FSx for ONTAP | [지원 리전 목록](https://docs.aws.amazon.com/general/latest/gr/fsxn.html) |
 | ECS Fargate | 거의 모든 리전에서 이용 가능 |
 | EventBridge | 모든 리전에서 이용 가능 |
 | SQS | 모든 리전에서 이용 가능 |

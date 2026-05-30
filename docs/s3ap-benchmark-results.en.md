@@ -117,7 +117,7 @@ Partial reads from a 5 MB file:
 | bytes=0-1048575 | 1 MB | 54.5 ms | 55.5 ms | 45.3 ms | 64.2 ms |
 
 **Observations**:
-- ✅ **Range GET is supported** (confirmed working on FSxN S3AP)
+- ✅ **Range GET is supported** (confirmed working on FSx for ONTAP S3 AP)
 - Partial read latency is comparable to full reads (connection overhead dominant)
 - Effective for reading only headers of large files (DICOM, GDS, SEG-Y, etc.)
 
@@ -194,7 +194,7 @@ Partial reads from a 5 MB file:
 
 | Approach | Monthly Estimate | Notes |
 |----------|-----------------|-------|
-| FSxN S3AP (POLLING, rate(1h)) | ~$8-15 | Lambda execution + Scheduler |
+| FSx for ONTAP S3 AP (POLLING, rate(1h)) | ~$8-15 | Lambda execution + Scheduler |
 | S3 copy approach (DataSync + S3) | ~$20-40 | DataSync + S3 storage + Lambda |
 | NFS mount Lambda (in VPC) | ~$15-25 | Including VPC Endpoint cost |
 

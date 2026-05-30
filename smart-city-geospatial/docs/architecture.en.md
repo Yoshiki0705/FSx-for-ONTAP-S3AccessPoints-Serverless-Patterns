@@ -107,7 +107,7 @@ UC17 supports the `OutputDestination` parameter as of the 2026-05-11 update.
 | Mode | Destination | Resources Created | Use Case |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3` (default) | New S3 bucket | `AWS::S3::Bucket` | Accumulate AI artifacts in a separate S3 bucket as before |
-| `FSXN_S3AP` | FSxN S3 Access Point | None (write back to existing FSx volume) | Urban planning staff can view Bedrock reports (Markdown) and risk maps in the same directory as original GIS data via SMB/NFS |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | None (write back to existing FSx volume) | Urban planning staff can view Bedrock reports (Markdown) and risk maps in the same directory as original GIS data via SMB/NFS |
 
 **Affected Lambda functions**: Preprocessing, LandUseClassification, InfraAssessment, RiskMapping, ReportGeneration (5 functions).  
 **Unaffected Lambda functions**: Discovery (manifest written directly to S3AP), ChangeDetection (DynamoDB only).  

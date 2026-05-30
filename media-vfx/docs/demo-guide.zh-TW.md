@@ -160,12 +160,12 @@
 
 ---
 
-## 關於輸出目的地：FSxN S3 Access Point (Pattern A)
+## 關於輸出目的地：FSx for ONTAP S3 Access Point (Pattern A)
 
 UC4 media-vfx 分類為 **Pattern A: Native S3AP Output**
 （參照 `docs/output-destination-patterns.md`）。
 
-**設計**：渲染中繼資料、幀品質評估全部透過 FSxN S3 Access Point
+**設計**：渲染中繼資料、幀品質評估全部透過 FSx for ONTAP S3 Access Point
 寫回至與原始渲染資產**相同的 FSx ONTAP 磁碟區**。不會建立標準 S3 儲存貯體
 （"no data movement" 模式）。
 

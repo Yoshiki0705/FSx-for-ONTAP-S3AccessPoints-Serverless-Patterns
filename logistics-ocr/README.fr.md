@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Aperçu
-FSx for NetApp ONTAP utilise les points d'accès S3 pour automatiser les workflows sans serveur, notamment l'extraction de texte OCR des bons de livraison, la détection et le comptage d'objets sur les images de stock de l'entrepôt, et la génération de rapports d'optimisation des itinéraires de livraison.
+FSx for ONTAP utilise les points d'accès S3 pour automatiser les workflows sans serveur, notamment l'extraction de texte OCR des bons de livraison, la détection et le comptage d'objets sur les images de stock de l'entrepôt, et la génération de rapports d'optimisation des itinéraires de livraison.
 ### Cas où ce modèle est approprié
 - Les images des bons de livraison et des inventaires de l'entrepôt sont stockées sur FSx ONTAP
 - Nous souhaitons automatiser la reconnaissance optique de caractères (OCR) des bons de livraison avec Textract (expéditeur, destinataire, numéro de suivi, articles)
@@ -57,7 +57,7 @@ graph LR
 5. **Rapport** : Génération d'un rapport d'optimisation d'itinéraire de livraison avec Bedrock, sortie S3 + notification SNS
 ## Prérequis
 - Compte AWS et permissions IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 et versions ultérieures)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 et versions ultérieures)
 - Point d'accès S3 activé pour les volumes (pour stocker les bons de livraison et les images de stock)
 - VPC, sous-réseaux privés
 - Accès aux modèles Amazon Bedrock activé (Claude / Nova)

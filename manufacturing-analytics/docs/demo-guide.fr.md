@@ -160,12 +160,12 @@ Données capteurs    Collecte données    Détection anomalies    Rapport qualit
 
 ---
 
-## À propos de la destination de sortie : FSxN S3 Access Point (Pattern A)
+## À propos de la destination de sortie : FSx for ONTAP S3 Access Point (Pattern A)
 
 UC3 manufacturing-analytics est classé dans **Pattern A: Native S3AP Output**
 (voir `docs/output-destination-patterns.md`).
 
-**Conception** : Les résultats d'analyse des données de capteurs, les rapports de détection d'anomalies et les résultats d'inspection d'images sont tous écrits via FSxN S3 Access Point dans le **même volume FSx ONTAP** que les CSV de capteurs originaux et les images d'inspection. Aucun bucket S3 standard n'est créé (pattern "no data movement").
+**Conception** : Les résultats d'analyse des données de capteurs, les rapports de détection d'anomalies et les résultats d'inspection d'images sont tous écrits via FSx for ONTAP S3 Access Point dans le **même volume FSx ONTAP** que les CSV de capteurs originaux et les images d'inspection. Aucun bucket S3 standard n'est créé (pattern "no data movement").
 
 **Paramètres CloudFormation** :
 - `S3AccessPointAlias` : S3 AP Alias pour la lecture des données d'entrée

@@ -6,7 +6,7 @@
 
 ## Descripción general
 
-Pipeline serverless que automatiza OCR, clasificación, detección de PII, redacción, búsqueda de texto completo y seguimiento de plazos FOIA para documentos públicos (PDF / TIFF / EML / DOCX) utilizando FSx for NetApp ONTAP S3 Access Points.
+Pipeline serverless que automatiza OCR, clasificación, detección de PII, redacción, búsqueda de texto completo y seguimiento de plazos FOIA para documentos públicos (PDF / TIFF / EML / DOCX) utilizando FSx for ONTAP S3 Access Points.
 
 ## Diagrama de arquitectura
 
@@ -100,7 +100,7 @@ UC16 soporta el parámetro `OutputDestination` desde la actualización del 2026-
 | Modo | Destino de salida | Recursos creados | Caso de uso |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3` (predeterminado) | Nuevo bucket S3 | `AWS::S3::Bucket` | Acumular resultados de IA en bucket S3 separado como tradicionalmente |
-| `FSXN_S3AP` | FSxN S3 Access Point | Ninguno (escritura de vuelta al volumen FSx existente) | Los responsables de documentos públicos pueden ver texto OCR, archivos redactados y metadatos en el mismo directorio que los documentos originales a través de SMB/NFS |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | Ninguno (escritura de vuelta al volumen FSx existente) | Los responsables de documentos públicos pueden ver texto OCR, archivos redactados y metadatos en el mismo directorio que los documentos originales a través de SMB/NFS |
 
 **Lambdas afectadas**: OCR, Classification, EntityExtraction, Redaction, IndexGeneration (5 funciones).  
 **Lectura de vuelta en estructura de cadena**: Las Lambdas posteriores realizan lectura de vuelta simétrica al destino de escritura mediante `get_*` de `shared/output_writer.py`. En modo FSXN_S3AP también se lee directamente desde S3AP, por lo que toda la cadena opera con un destination consistente.  

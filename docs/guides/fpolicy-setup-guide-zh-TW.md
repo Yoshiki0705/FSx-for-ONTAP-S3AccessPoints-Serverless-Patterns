@@ -19,7 +19,7 @@
 
 ## ONTAP 前提條件
 
-- FSx for NetApp ONTAP file system running
+- FSx for ONTAP file system running
 - SVM configured with NFS enabled
 - Admin access to ONTAP REST API or CLI
 
@@ -92,9 +92,9 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 ### 前提條件
 - AWS Managed Microsoft AD 或 Self-Managed AD
-- 建立時包含 AD 加入設定的 FSxN SVM
+- 建立時包含 AD 加入設定的 FSx for ONTAP SVM
 - 磁碟區上已建立 CIFS 共用
 
 ### 重要說明
-- SVM 必須在建立時包含 AD 設定 — FSxN 上無法向現有僅 NFS 的 SVM 新增 CIFS
+- SVM 必須在建立時包含 AD 設定 — FSx for ONTAP 上無法向現有僅 NFS 的 SVM 新增 CIFS
 - AWS Managed AD 使用 `OU=Computers,OU=<domain>,DC=<domain>,DC=local`

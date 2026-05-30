@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Entrada — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Entrada — FSx for ONTAP"]
         DATA["Datos genómicos<br/>.fastq/.fastq.gz (secuencias)<br/>.bam (alineamientos)<br/>.vcf/.vcf.gz (variantes)"]
     end
 
@@ -62,7 +62,7 @@ flowchart TB
 ### Entrada
 | Elemento | Descripción |
 |----------|-------------|
-| **Origen** | Volumen FSx for NetApp ONTAP |
+| **Origen** | Volumen FSx for ONTAP |
 | **Tipos de archivo** | .fastq/.fastq.gz (secuencias), .bam (alineamientos), .vcf/.vcf.gz (variantes) |
 | **Método de acceso** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Estrategia de lectura** | FASTQ: descarga en streaming (eficiente en memoria), VCF: recuperación completa |
@@ -102,7 +102,7 @@ flowchart TB
 
 | Servicio | Rol |
 |----------|-----|
-| FSx for NetApp ONTAP | Almacenamiento de datos genómicos (FASTQ/BAM/VCF) |
+| FSx for ONTAP | Almacenamiento de datos genómicos (FASTQ/BAM/VCF) |
 | S3 Access Points | Acceso serverless a volúmenes ONTAP (soporte de streaming) |
 | EventBridge Scheduler | Activación periódica |
 | Step Functions | Orquestación del flujo de trabajo (secuencial) |

@@ -6,7 +6,7 @@
 
 ## Overview
 
-A serverless pipeline that automates OCR, classification, PII detection, redaction, full-text search, and FOIA deadline tracking for public records (PDF / TIFF / EML / DOCX) using FSx for NetApp ONTAP S3 Access Points.
+A serverless pipeline that automates OCR, classification, PII detection, redaction, full-text search, and FOIA deadline tracking for public records (PDF / TIFF / EML / DOCX) using FSx for ONTAP S3 Access Points.
 
 ## Architecture Diagram
 
@@ -100,7 +100,7 @@ UC16 supports the `OutputDestination` parameter as of the 2026-05-11 update.
 | Mode | Output Destination | Resources Created | Use Case |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3` (default) | New S3 bucket | `AWS::S3::Bucket` | Accumulate AI artifacts in a separate S3 bucket as before |
-| `FSXN_S3AP` | FSxN S3 Access Point | None (write back to existing FSx volume) | Public records staff can view OCR text, redacted files, and metadata in the same directory as original documents via SMB/NFS |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | None (write back to existing FSx volume) | Public records staff can view OCR text, redacted files, and metadata in the same directory as original documents via SMB/NFS |
 
 **Affected Lambdas**: OCR, Classification, EntityExtraction, Redaction, IndexGeneration (5 functions).  
 **Chain read-back**: Downstream Lambdas perform symmetric read-back via `get_*` in `shared/output_writer.py`. In FSXN_S3AP mode, direct read-back from S3AP ensures the entire chain operates with a consistent destination.  

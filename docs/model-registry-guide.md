@@ -4,7 +4,7 @@
 
 ## 概要
 
-本ドキュメントでは、FSxN S3AP Serverless Patterns Phase 4 における SageMaker Model Registry の活用方法とモデルライフサイクル管理について説明します。
+本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns Phase 4 における SageMaker Model Registry の活用方法とモデルライフサイクル管理について説明します。
 
 ## モデルライフサイクル
 

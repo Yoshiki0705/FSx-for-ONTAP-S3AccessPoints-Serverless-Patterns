@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，建立一個無伺服器工作流程，實現事故照片的損害評估、報價單的 OCR 文字提取以及保險索賠報告的自動生成。
+利用 FSx for ONTAP 的 S3 Access Points，建立一個無伺服器工作流程，實現事故照片的損害評估、報價單的 OCR 文字提取以及保險索賠報告的自動生成。
 ### 此模式適用的情況
 - 事故写真和見積書已儲存在 FSx ONTAP 上
 - 希望自動化 Rekognition 對事故照片進行損害檢測（車輛損害標籤、嚴重程度指標、影響範圍）
@@ -55,7 +55,7 @@ graph LR
 4. **索賠報告**：使用 Bedrock 生成損害評估和報價單數據相關聯的綜合報告
 ## 先決條件
 - AWS 帳戶及適當的 IAM 權限
-- FSx for NetApp ONTAP 文件系統（ONTAP 9.17.1P4D3 或更高版本）
+- FSx for ONTAP 文件系統（ONTAP 9.17.1P4D3 或更高版本）
 - 已啟用 S3 Access Point 的卷（用於存儲事故照片和報價單）
 - VPC、私有子網
 - 已啟用 Amazon Bedrock 模型訪問（Claude / Nova）
@@ -126,7 +126,7 @@ UC14 使用以下服務：
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > 透過 Cross-Region Client 呼叫 Textract API。請確認資料常駐要求。詳細請參閱 [區域相容性矩陣](../docs/region-compatibility.md)。
 ## 參考連結
-- [FSx for NetApp ONTAP S3 存取點概觀](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 存取點概觀](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition 標籤偵測](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon Textract 文件](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Bedrock API 參考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

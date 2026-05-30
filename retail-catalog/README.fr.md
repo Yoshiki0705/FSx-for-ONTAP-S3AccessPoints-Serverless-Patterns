@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Aperçu
-Voici un workflow sans serveur qui utilise les Amazon S3 Access Points de FSx for NetApp ONTAP pour automatiser le tagging des images de produits, la génération des métadonnées de catalogue et les vérifications de qualité d'image.
+Voici un workflow sans serveur qui utilise les Amazon S3 Access Points de FSx for ONTAP pour automatiser le tagging des images de produits, la génération des métadonnées de catalogue et les vérifications de qualité d'image.
 ### Cas où ce motif est approprié
 - Les images de produits s'accumulent en grand nombre sur FSx ONTAP
 - Je souhaite effectuer l'étiquetage automatique des images de produits (catégorie, couleur, matériau) avec Rekognition
@@ -51,7 +51,7 @@ graph LR
 4. **Vérification de qualité** : Vérification des métriques de qualité d'image, images en dessous du seuil marquées
 ## Conditions préalables
 - Compte AWS et permissions IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
 - Point d'accès S3 activé pour les volumes (stockage des images de produits)
 - VPC, sous-réseaux privés
 - Accès aux modèles Amazon Bedrock activé (Claude / Nova)

@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
 ## Resumen
-Utilizando los Amazon S3 Access Points de FSx for NetApp ONTAP, es un flujo de trabajo sin servidor que automatiza la gestión de versiones de modelos BIM (IFC/Revit), la extracción de texto OCR de PDFs de planos y la comprobación de cumplimiento de seguridad.
+Utilizando los Amazon S3 Access Points de FSx for ONTAP, es un flujo de trabajo sin servidor que automatiza la gestión de versiones de modelos BIM (IFC/Revit), la extracción de texto OCR de PDFs de planos y la comprobación de cumplimiento de seguridad.
 ### Casos en los que este patrón es adecuado
 - Los modelos BIM (IFC/Revit) y los PDF de planos se están acumulando en FSx ONTAP
 - Desea catalogar automáticamente los metadatos de los archivos IFC (nombre del proyecto, número de elementos arquitectónicos, número de pisos)
@@ -54,7 +54,7 @@ graph LR
 4. **Revisión de seguridad**: Comprobación de reglas de cumplimiento de seguridad con Bedrock, detección de elementos visuales con Rekognition
 ## Requisitos previos
 - Cuenta de AWS y permisos IAM adecuados
-- Sistema de archivos FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 o superior)
+- Sistema de archivos FSx for ONTAP (ONTAP 9.17.1P4D3 o superior)
 - Puntos de acceso S3 habilitados en volúmenes (almacenamiento de modelos BIM y planos)
 - VPC, subredes privadas
 - Acceso a modelos de Amazon Bedrock habilitado (Claude / Nova)

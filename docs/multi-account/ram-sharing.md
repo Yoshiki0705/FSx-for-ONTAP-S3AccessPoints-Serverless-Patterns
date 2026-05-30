@@ -4,11 +4,11 @@
 
 ## 概要
 
-本ドキュメントでは、AWS RAM (Resource Access Manager) を使用して FSx for NetApp ONTAP 関連リソースを複数アカウントで共有するパターンを定義する。
+本ドキュメントでは、AWS RAM (Resource Access Manager) を使用して FSx for ONTAP 関連リソースを複数アカウントで共有するパターンを定義する。
 
 ### 重要な制限事項
 
-> **注意**: FSx for NetApp ONTAP の S3 Access Points は、現時点で AWS RAM による直接共有をサポートしていません。本ドキュメントでは、RAM で共有可能なリソース（VPC サブネット等）と、代替パターン（クロスアカウント IAM）を組み合わせたアプローチを説明します。
+> **注意**: FSx for ONTAP の S3 Access Points は、現時点で AWS RAM による直接共有をサポートしていません。本ドキュメントでは、RAM で共有可能なリソース（VPC サブネット等）と、代替パターン（クロスアカウント IAM）を組み合わせたアプローチを説明します。
 
 ---
 

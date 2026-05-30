@@ -164,7 +164,7 @@
 Phase 7과 동일한 방침으로 **보험 사정 담당자가 일상 업무에서 실제로 사용하는 UI/UX 화면**을 촬영.
 기술자용 화면(Step Functions 그래프 등)은 제외.
 
-### 출력 대상 선택: 표준 S3 vs FSxN S3AP
+### 출력 대상 선택: 표준 S3 vs FSx for ONTAP S3 AP
 
 UC14는 2026-05-10 업데이트에서 `OutputDestination` 파라미터를 지원합니다.
 **동일 FSx 볼륨에 AI 산출물을 다시 쓰기**함으로써 청구 처리 담당자가

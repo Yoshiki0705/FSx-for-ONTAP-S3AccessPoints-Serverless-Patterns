@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         FILES["文件服务器数据<br/>带 NTFS ACL 的文件群"]
     end
 
@@ -60,7 +60,7 @@ flowchart TB
 ### Input
 | 项目 | 说明 |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | 所有文件（带 NTFS ACL） |
 | **Access Method** | S3 Access Point（文件列表）+ ONTAP REST API（ACL 信息） |
 | **Read Strategy** | 仅获取元数据（不读取文件本体） |
@@ -98,7 +98,7 @@ flowchart TB
 
 | 服务 | 角色 |
 |---------|------|
-| FSx for NetApp ONTAP | 企业文件存储（带 NTFS ACL） |
+| FSx for ONTAP | 企业文件存储（带 NTFS ACL） |
 | S3 Access Points | 对 ONTAP 卷的无服务器访问 |
 | EventBridge Scheduler | 定期触发器（每日审计） |
 | Step Functions | 工作流编排 |

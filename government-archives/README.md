@@ -5,7 +5,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP S3 Access Points を活用した政府機関の公文書
+FSx for ONTAP S3 Access Points を活用した政府機関の公文書
 デジタルアーカイブおよび情報公開請求（FOIA: Freedom of Information Act）
 対応の自動化パイプライン。
 
@@ -43,7 +43,7 @@ FSx ONTAP (公文書格納 — 部署別 NTFS ACL)
 
 | サービス | 用途 |
 |---------|------|
-| FSx for NetApp ONTAP | 公文書の永続ストレージ（部署別 NTFS ACL） |
+| FSx for ONTAP | 公文書の永続ストレージ（部署別 NTFS ACL） |
 | S3 Access Points | サーバーレスからの文書アクセス |
 | Step Functions | ワークフローオーケストレーション |
 | Lambda | 文書分類、PII 検出、墨消し処理 |
@@ -221,6 +221,159 @@ government-archives/
 └── README.md
 ```
 
+
+---
+
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Textract | [開発者ガイド](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |
+| Amazon Comprehend | [開発者ガイド](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html) |
+| Amazon Macie | [ユーザーガイド](https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html) |
+| Amazon OpenSearch | [開発者ガイド](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray、EMF、FOIA デッドライン追跡、52+ テスト |
+| セキュリティ | PII リダクション、SHA-256 監査サイドカー、Macie、100% Human Review |
+| 信頼性 | Step Functions Retry/Catch、クロスリージョン OCR、resilience テスト |
+| パフォーマンス効率 | 並列 PII 検出、OpenSearch インデックス、バッチ処理 |
+| コスト最適化 | サーバーレス、OpenSearch Serverless、条件付きインデックス |
+| 持続可能性 | NARA GRS 準拠、保存期間管理、自動廃棄スケジュール |
+
+
+
+
+
+---
+
+## コスト見積もり（月額概算）
+
+> **注記**: 以下は ap-northeast-1 リージョンの概算であり、実際のコストは使用量により異なります。最新の料金は [AWS Pricing Calculator](https://calculator.aws/) で確認してください。
+
+### サーバーレスコンポーネント（従量課金）
+
+| サービス | 単価 | 想定使用量 | 月額概算 |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 8 関数 × 100 docs/日 | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/日 | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/日 | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~80K tokens/実行 | ~$3-10 |
+| Athena | $5/TB scanned | ~50 MB/クエリ | ~$0.5-2 |
+| SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
+| OpenSearch Serverless | $0.24/OCU-hour |
+
+
+### 固定コスト（FSx for ONTAP — 既存環境前提）
+
+| コンポーネント | 月額 |
+|--------------|------|
+| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| S3 Access Point | 追加料金なし（S3 API 料金のみ） |
+
+### 合計概算
+
+| 構成 | 月額概算 |
+|------|---------|
+| 最小構成（日次 1 回実行） | ~$5-15 |
+| 標準構成（時次実行） | ~$15-50 |
+| 大規模構成（高頻度 + アラーム） | ~$50-150 |
+
+> **Governance Caveat**: コスト見積もりは概算であり、保証値ではありません。実際の請求額は使用パターン、データ量、リージョンにより異なります。
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+公文書アーカイブ・FOIA 処理の出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 25,
+    "prefix": "archives/incoming/"
+  },
+  "classification": [
+    {
+      "key": "archives/incoming/memo-2026-001.pdf",
+      "record_type": "memorandum",
+      "retention_schedule": "GRS 5.2 - 7 years",
+      "sensitivity": "CUI",
+      "pii_detected": true
+    }
+  ],
+  "redaction": {
+    "total_redacted": 25,
+    "pii_fields_removed": 89,
+    "redaction_types": {"name": 34, "ssn": 12, "address": 28, "phone": 15},
+    "audit_hash": "sha256:d4e5f6..."
+  },
+  "foia_tracking": {
+    "request_id": "FOIA-2026-0042",
+    "deadline_date": "2026-06-12",
+    "business_days_remaining": 15,
+    "status": "IN_PROCESSING"
+  },
+  "search_index": {
+    "documents_indexed": 25,
+    "opensearch_collection": "gov-archives-collection"
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
 
 ---
 

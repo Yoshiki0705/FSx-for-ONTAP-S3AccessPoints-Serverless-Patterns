@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 访问点，实现 IoT 传感器日志异常检测和质量检测图像缺陷检测的自动化无服务器工作流。
+利用 FSx for ONTAP 的 S3 访问点，实现 IoT 传感器日志异常检测和质量检测图像缺陷检测的自动化无服务器工作流。
 ### 适用场景
 - 希望定期分析工厂文件服务器上存储的CSV传感器日志
 - 希望用AI自动化和高效化质量检测图像的目视确认
@@ -13,7 +13,7 @@
 ### 不适合此模式的情况
 
 规则：
-- 保持AWS服务名称为英文（Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch、AWS CloudFormation等）
+- 保持AWS服务名称为英文（Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation等）
 - 保持技术术语不翻译（GDSII、DRC、OASIS、GDS、Lambda、tapeout等）
 - 保持内联代码（`...`）不翻译
 - 保持文件路径和URL不翻译
@@ -59,7 +59,7 @@ graph LR
 4. **图像分析**: 使用 Rekognition 进行缺陷检测，如果信任度低于阈值则设置手动审查标记
 ## 前提条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上版本）
 - 已启用 S3 Access Point 的卷
 - ONTAP REST API 凭证已在 Secrets Manager 中注册
 - VPC、私有子网

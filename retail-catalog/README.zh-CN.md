@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，实现商品图片的自动标记、目录元数据生成和图片质量检查的无服务器工作流。
+利用 FSx for ONTAP 的 S3 Access Points，实现商品图片的自动标记、目录元数据生成和图片质量检查的无服务器工作流。
 ### 适用场景
 - 商品画像在 FSx ONTAP 上大量累积
 - 希望通过 Rekognition 实现商品图像的自动标签（类别、颜色、材质）
@@ -19,7 +19,7 @@
 - 使用 Amazon Athena 时
 - 使用 Amazon S3 时
 - 使用 AWS Lambda 时
-- 使用 Amazon FSx for NetApp ONTAP 时
+- 使用 Amazon FSx for ONTAP 时
 - 使用 Amazon CloudWatch 时
 - 使用 AWS CloudFormation 时
 
@@ -68,14 +68,14 @@ graph LR
 
 ### 工作流程步骤
 
-在工作流程中，使用 Amazon Bedrock 和 AWS Step Functions 可以创建和管理复杂的工作流程。Amazon Athena 可以用于查询数据，而 Amazon S3 提供存储。AWS Lambda 用于无服务器计算，Amazon FSx for NetApp ONTAP 提供企业级存储解决方案。通过 Amazon CloudWatch 和 AWS CloudFormation，可以监控和管理资源。确保所有技术术语如 GDSII、DRC、OASIS、GDS、Lambda、tapeout 等保持不变。行内代码 (`...`)、文件路径和 URL 也保持不变。
+在工作流程中，使用 Amazon Bedrock 和 AWS Step Functions 可以创建和管理复杂的工作流程。Amazon Athena 可以用于查询数据，而 Amazon S3 提供存储。AWS Lambda 用于无服务器计算，Amazon FSx for ONTAP 提供企业级存储解决方案。通过 Amazon CloudWatch 和 AWS CloudFormation，可以监控和管理资源。确保所有技术术语如 GDSII、DRC、OASIS、GDS、Lambda、tapeout 等保持不变。行内代码 (`...`)、文件路径和 URL 也保持不变。
 1. **发现**：从 S3 AP 中检测.jpg、.jpeg、.png、.webp 文件
 2. **图像标签**：使用 Rekognition 进行标签检测，置信度低于阈值的设置手动审核标记
 3. **目录元数据**：使用 Bedrock 生成结构化目录元数据
 4. **质量检查**：验证图像质量指标，低于阈值的图像标记
 ## 前提条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 以上）
 - 已启用 S3 Access Point 的卷（存储商品图片）
 - VPC、私有子网
 - 已启用 Amazon Bedrock 模型访问（Claude / Nova）

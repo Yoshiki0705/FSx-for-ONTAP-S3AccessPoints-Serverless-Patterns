@@ -7,7 +7,7 @@
 ## 전제 조건
 
 - AWS 계정, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - `government-archives/template-deploy.yaml` 배포 (`OpenSearchMode=none`으로 비용 절감)
 
 ## 타임라인
@@ -127,7 +127,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP ("no data movement" 패턴)
-OCR 텍스트, 분류 결과, PII 탐지 결과, 편집된 문서, 편집 메타데이터를 FSxN S3 Access Point
+OCR 텍스트, 분류 결과, PII 탐지 결과, 편집된 문서, 편집 메타데이터를 FSx for ONTAP S3 Access Point
 경유로 원본 문서와 **동일한 FSx ONTAP 볼륨**에 다시 작성합니다.
 공문서 담당자가 SMB/NFS의 기존 디렉터리 구조 내에서 AI 산출물을 직접 참조할 수 있습니다.
 표준 S3 버킷은 생성되지 않습니다.
@@ -148,13 +148,13 @@ aws cloudformation deploy \
 UC16은 전단의 산출물을 후단 Lambda가 읽어오는 체인 구조 (OCR → Classification →
 EntityExtraction → Redaction → IndexGeneration)이므로, `shared/output_writer.py`의
 `get_bytes/get_text/get_json`에서 작성 대상과 동일한 destination에서 읽어옵니다.
-이를 통해 `OutputDestination=FSXN_S3AP` 시에도 FSxN S3 Access Point에서의
+이를 통해 `OutputDestination=FSXN_S3AP` 시에도 FSx for ONTAP S3 Access Point에서의
 읽기가 성립하며, 체인 전체가 일관된 destination으로 동작합니다.
 
 **주의사항**:
 
 - `S3AccessPointName` 지정을 강력히 권장 (Alias 형식과 ARN 형식 모두 IAM 허용)
-- 5GB 초과 객체는 FSxN S3AP에서 불가 (AWS 사양), 멀티파트 업로드 필수
+- 5GB 초과 객체는 FSx for ONTAP S3 AP에서 불가 (AWS 사양), 멀티파트 업로드 필수
 - ComplianceCheck Lambda는 DynamoDB만 사용하므로 `OutputDestination`의 영향을 받지 않습니다
 - FoiaDeadlineReminder Lambda는 DynamoDB + SNS만 사용하므로 영향을 받지 않습니다
 - OpenSearch 인덱스는 `OpenSearchMode` 파라미터로 별도 관리됩니다 (`OutputDestination`과 독립적)

@@ -14,7 +14,7 @@
 
 | 项目 | 要求 |
 |------|------|
-| FSx for NetApp ONTAP | ONTAP 9.17.1 以上，支持 FPolicy |
+| FSx for ONTAP | ONTAP 9.17.1 以上，支持 FPolicy |
 | VPC | 与 FSxN 相同 VPC 中的私有子网 |
 | NFS 挂载 | 客户端已 NFS 挂载到 FSxN 卷 |
 | AWS CLI | v2 以上，适当的 IAM 权限 |
@@ -73,7 +73,7 @@ echo "Fargate Task IP: $TASK_IP"
 
 ## Step 2: ONTAP FPolicy 配置
 
-通过 SSH 连接到 FSxN SVM，执行以下命令。
+通过 SSH 连接到 FSx for ONTAP SVM，执行以下命令。
 
 ### 2.1 创建 External Engine
 
@@ -238,7 +238,7 @@ NEW_IP=$(aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ARN --query 'ta
 echo "New Task IP: $NEW_IP"
 
 # 确认 ONTAP engine 的 IP 已更新
-# 通过 SSH 连接到 FSxN SVM
+# 通过 SSH 连接到 FSx for ONTAP SVM
 fpolicy show-engine -vserver FSxN_OnPre
 ```
 
@@ -248,7 +248,7 @@ fpolicy show-engine -vserver FSxN_OnPre
 
 ```bash
 # 1. 禁用 ONTAP FPolicy
-# 通过 SSH 连接到 FSxN SVM
+# 通过 SSH 连接到 FSx for ONTAP SVM
 fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy scope delete -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy delete -vserver FSxN_OnPre -policy-name fpolicy_aws

@@ -164,12 +164,12 @@ Servidor de archivos     Recopilación ACL    Análisis de permisos    Generaci�
 
 ---
 
-## Acerca del destino de salida: FSxN S3 Access Point (Pattern A)
+## Acerca del destino de salida: FSx for ONTAP S3 Access Point (Pattern A)
 
 UC1 legal-compliance está clasificado como **Pattern A: Native S3AP Output**
 (consulte `docs/output-destination-patterns.md`).
 
-**Diseño**: Los metadatos de contratos, registros de auditoría e informes de resumen se escriben todos de vuelta al **mismo volumen de FSx ONTAP** que los datos de contratos originales a través de FSxN S3 Access Point. No se crea un bucket S3 estándar (patrón "no data movement").
+**Diseño**: Los metadatos de contratos, registros de auditoría e informes de resumen se escriben todos de vuelta al **mismo volumen de FSx ONTAP** que los datos de contratos originales a través de FSx for ONTAP S3 Access Point. No se crea un bucket S3 estándar (patrón "no data movement").
 
 **Parámetros de CloudFormation**:
 - `S3AccessPointAlias`: S3 AP Alias para lectura de datos de contratos de entrada

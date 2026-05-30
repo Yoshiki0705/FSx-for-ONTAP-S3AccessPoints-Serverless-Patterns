@@ -2,7 +2,7 @@
 
 ## 概要
 
-Amazon FSx for NetApp ONTAP の S3 Access Points が将来的にネイティブイベント通知（S3 Event Notifications 相当）をサポートした場合の、FPolicy からの段階的移行パスを設計する。
+Amazon FSx for ONTAP の S3 Access Points が将来的にネイティブイベント通知（S3 Event Notifications 相当）をサポートした場合の、FPolicy からの段階的移行パスを設計する。
 
 ## 前提条件
 

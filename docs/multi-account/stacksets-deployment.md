@@ -4,7 +4,7 @@
 
 ## 概要
 
-本ドキュメントでは、CloudFormation StackSets を使用して FSxN S3AP Serverless Patterns の UC テンプレートを複数アカウント・複数リージョンに一括デプロイする手順を説明する。
+本ドキュメントでは、CloudFormation StackSets を使用して FSx for ONTAP S3 AP Serverless Patterns の UC テンプレートを複数アカウント・複数リージョンに一括デプロイする手順を説明する。
 
 ### StackSets の利点
 
@@ -108,7 +108,7 @@ aws s3 cp use-cases/uc09-autonomous-driving/template-deploy.yaml \
 aws cloudformation create-stack-set \
   --stack-set-name fsxn-s3ap-uc09 \
   --template-url https://s3.amazonaws.com/fsxn-s3ap-templates-123456789012/uc09/template-deploy.yaml \
-  --description "FSxN S3AP UC09 - Autonomous Driving Point Cloud Processing" \
+  --description "FSx for ONTAP S3 AP UC09 - Autonomous Driving Point Cloud Processing" \
   --administration-role-arn arn:aws:iam::123456789012:role/fsxn-s3ap-stacksets-admin-role \
   --execution-role-name fsxn-s3ap-stacksets-execution-role \
   --permission-model SELF_MANAGED \

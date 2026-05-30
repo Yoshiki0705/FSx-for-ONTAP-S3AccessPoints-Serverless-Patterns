@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 개요
-FSx for NetApp ONTAP의 S3 액세스 포인트를 활용하여 사고 사진의 손해 평가, 견적서의 OCR 텍스트 추출, 보험금 청구 보고서의 자동 생성을 가능하게 하는 서버리스 워크플로입니다.
+FSx for ONTAP의 S3 액세스 포인트를 활용하여 사고 사진의 손해 평가, 견적서의 OCR 텍스트 추출, 보험금 청구 보고서의 자동 생성을 가능하게 하는 서버리스 워크플로입니다.
 ### 이 패턴이 적합한 경우
 - 사고 사진과 견적서가 FSx ONTAP에 저장되어 있습니다.
 - Rekognition을 사용하여 사고 사진의 손상 감지(차량 손상 라벨, 심각도 지표, 영향 부위)를 자동화하고 싶습니다.
@@ -122,7 +122,7 @@ UC14는 다음 서비스를 사용합니다:
 - Amazon Athena  
 - Amazon S3  
 - AWS Lambda  
-- Amazon FSx for NetApp ONTAP  
+- Amazon FSx for ONTAP  
 - Amazon CloudWatch  
 - AWS CloudFormation
 | サービス | リージョン制約 |

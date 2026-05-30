@@ -7,7 +7,7 @@
 ## Requisitos previos
 
 - Cuenta de AWS, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - Modelo Bedrock Nova Lite v1:0 habilitado
 
 ## Cronograma
@@ -16,7 +16,7 @@
 
 - Desafíos de los gobiernos locales: aumento del uso de datos GIS en planificación urbana, respuesta a desastres y conservación de infraestructura
 - Desafíos tradicionales: el análisis GIS se centra en software especializado como ArcGIS / QGIS
-- Propuesta: automatización con FSxN S3AP + serverless
+- Propuesta: automatización con FSx for ONTAP S3 AP + serverless
 
 ### 0:05 - 0:10 Arquitectura (5 minutos)
 
@@ -106,7 +106,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP (patrón "no data movement")
-Los metadatos de normalización CRS, resultados de clasificación de uso del suelo, evaluación de infraestructura, mapas de riesgo e informes de planificación urbana (Markdown) generados por Bedrock se escriben de vuelta al **mismo volumen FSx ONTAP** que los datos GIS originales a través del FSxN S3 Access Point.
+Los metadatos de normalización CRS, resultados de clasificación de uso del suelo, evaluación de infraestructura, mapas de riesgo e informes de planificación urbana (Markdown) generados por Bedrock se escriben de vuelta al **mismo volumen FSx ONTAP** que los datos GIS originales a través del FSx for ONTAP S3 Access Point.
 Los responsables de planificación urbana pueden consultar directamente los resultados de IA dentro de la estructura de directorios existente de SMB/NFS.
 No se crea un bucket S3 estándar.
 
@@ -124,7 +124,7 @@ aws cloudformation deploy \
 **Notas importantes**:
 
 - Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM tanto en formato Alias como ARN)
-- Objetos superiores a 5GB no son posibles con FSxN S3AP (especificación de AWS), se requiere carga multiparte
+- Objetos superiores a 5GB no son posibles con FSx for ONTAP S3 AP (especificación de AWS), se requiere carga multiparte
 - ChangeDetection Lambda solo usa DynamoDB, por lo que no se ve afectado por `OutputDestination`
 - Los informes de Bedrock se escriben como Markdown (`text/markdown; charset=utf-8`), por lo que pueden
   visualizarse directamente con editores de texto de clientes SMB/NFS

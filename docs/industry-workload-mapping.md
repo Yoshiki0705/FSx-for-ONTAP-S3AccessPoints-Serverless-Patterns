@@ -2,7 +2,7 @@
 
 ## 概要
 
-本ドキュメントは、FSx for NetApp ONTAP の FlexCache、S3 Access Points、AWS Serverless サービスの組み合わせによる業界別ワークロードパターンを整理する。
+本ドキュメントは、FSx for ONTAP の FlexCache、S3 Access Points、AWS Serverless サービスの組み合わせによる業界別ワークロードパターンを整理する。
 
 ## マッピング表
 

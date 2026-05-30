@@ -89,7 +89,7 @@ This document maps the architecture design decisions of this repository to the 6
 | VPC Endpoint Enabled | Improved security (private communication) | Increased cost (Interface EP ~$30-50/month) |
 | POLLING Mode | Predictable, idempotent, no event loss | No real-time capability (depends on schedule interval) |
 | EVENT_DRIVEN Mode | Sub-second detection | Increased operational complexity (FPolicy + Fargate/EC2) |
-| FSxN S3AP Output (OutputDestination=FSXN_S3AP) | One-copy experience, NFS/SMB users can view results | S3 native features (Lifecycle, Versioning) not supported |
+| FSx for ONTAP S3 AP Output (OutputDestination=FSXN_S3AP) | One-copy experience, NFS/SMB users can view results | S3 native features (Lifecycle, Versioning) not supported |
 | EC2 FPolicy Server | Static IP, low cost | OS patch management, increased operational responsibility |
 | Fargate FPolicy Server | No OS management required | IP variability, VPC EP cost, startup latency |
 | ARM64 (Graviton) | ~20% cost reduction, energy efficiency | Compatibility verification needed for some native-dependent libraries |

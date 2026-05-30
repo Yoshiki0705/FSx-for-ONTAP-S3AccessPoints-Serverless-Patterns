@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         DOCS["文件檔案<br/>.pdf, .tiff, .jpeg"]
     end
 
@@ -60,7 +60,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | .pdf, .tiff, .tif, .jpeg, .jpg (掃描文件・電子文件) |
 | **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Read Strategy** | 取得完整檔案(OCR 處理所需) |
@@ -98,7 +98,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | 企業檔案儲存(合約書・發票保管) |
+| FSx for ONTAP | 企業檔案儲存(合約書・發票保管) |
 | S3 Access Points | ONTAP volume 的無伺服器存取 |
 | EventBridge Scheduler | 定期觸發器 |
 | Step Functions | 工作流程編排 |

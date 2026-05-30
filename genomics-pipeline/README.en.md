@@ -5,7 +5,7 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-It is a serverless workflow that utilizes S3 Access Points of FSx for NetApp ONTAP to automate quality checks of FASTQ/BAM/VCF genome data, variant calling statistics aggregation, and research summary generation.
+It is a serverless workflow that utilizes S3 Access Points of FSx for ONTAP to automate quality checks of FASTQ/BAM/VCF genome data, variant calling statistics aggregation, and research summary generation.
 ### Cases where this pattern is suitable
 - The output data (FASTQ/BAM/VCF) from the next-generation sequencer is being stored on FSx ONTAP
 - We want to regularly monitor the quality metrics (read count, quality score, GC content) of the sequencing data
@@ -57,7 +57,7 @@ graph LR
 5. **Summary**: Generate study summaries with Bedrock, extract entities with Comprehend Medical
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file system (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
 - S3 Access Point enabled volume (to store genomic data)
 - VPC, private subnets
 - Amazon Bedrock model access enabled (Claude / Nova)
@@ -132,7 +132,7 @@ UC7 uses the following services:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Call the Comprehend Medical API via the Cross-Region Client. Please verify the data residency requirements. For more details, refer to the [Region Compatibility Matrix](../docs/region-compatibility.md).
 ## References
-- [FSx for NetApp ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/what-is.html)
 - [FASTQ Format Specification](https://en.wikipedia.org/wiki/FASTQ_format)
 - [VCF Format Specification](https://samtools.github.io/hts-specs/VCFv4.3.pdf)

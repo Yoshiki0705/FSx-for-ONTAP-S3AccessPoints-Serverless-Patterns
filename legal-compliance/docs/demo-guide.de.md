@@ -163,12 +163,12 @@ Dateiserver     ACL-Erfassung    Berechtigungsanalyse    Berichtserstellung
 
 ---
 
-## Über das Ausgabeziel: FSxN S3 Access Point (Pattern A)
+## Über das Ausgabeziel: FSx for ONTAP S3 Access Point (Pattern A)
 
 UC1 legal-compliance wird als **Pattern A: Native S3AP Output** klassifiziert
 (siehe `docs/output-destination-patterns.md`).
 
-**Design**: Vertragsmetadaten, Audit-Logs und Zusammenfassungsberichte werden alle über den FSxN S3 Access Point
+**Design**: Vertragsmetadaten, Audit-Logs und Zusammenfassungsberichte werden alle über den FSx for ONTAP S3 Access Point
 auf **dasselbe FSx ONTAP-Volume** wie die ursprünglichen Vertragsdaten zurückgeschrieben. Standard-S3-Buckets werden
 nicht erstellt („no data movement"-Muster).
 

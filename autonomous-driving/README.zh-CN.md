@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，自动化处理行车记录仪视频和 LiDAR 点云数据的前处理、质量检查和注释管理的无服务器工作流。
+利用 FSx for ONTAP 的 S3 Access Points，自动化处理行车记录仪视频和 LiDAR 点云数据的前处理、质量检查和注释管理的无服务器工作流。
 ### 适用场景
 - 仪表板摄像头视频和 LiDAR 点云数据大量积累在 FSx ONTAP 上
 - 希望自动从视频中提取关键帧并检测物体（车辆、行人、交通标志）
@@ -14,7 +14,7 @@
 
 当这个模式不合适时：
 
-- 对于需要高度定制化的AWS服务（如Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch、AWS CloudFormation等）。
+- 对于需要高度定制化的AWS服务（如Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation等）。
 - 对于特定技术术语（如GDSII、DRC、OASIS、GDS、Lambda、tapeout等）。
 - 对于内联代码（`...`）。
 - 对于文件路径和URL。
@@ -62,7 +62,7 @@ graph LR
 3. 使用 Amazon Athena 查询数据。
 4. 将数据存储在 Amazon S3 中。
 5. 使用 AWS Lambda 执行代码。
-6. 使用 Amazon FSx for NetApp ONTAP 管理文件系统。
+6. 使用 Amazon FSx for ONTAP 管理文件系统。
 7. 使用 Amazon CloudWatch 监控资源。
 8. 使用 AWS CloudFormation 管理基础设施即代码。
 
@@ -73,7 +73,7 @@ graph LR
 4. **注释管理器**：使用Bedrock生成注释建议，使用SageMaker进行点云分割
 ## 前提条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上）
 - 已启用 S3 Access Point 的卷（存储图像和 LiDAR 数据）
 - VPC，私有子网
 - 启用 Amazon Bedrock 模型访问（Claude / Nova）

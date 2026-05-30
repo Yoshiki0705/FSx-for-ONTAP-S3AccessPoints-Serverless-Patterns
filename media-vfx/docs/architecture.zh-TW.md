@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         VFX["VFX 專案檔案<br/>.exr, .dpx, .mov, .abc"]
     end
 
@@ -54,7 +54,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | .exr, .dpx, .mov, .abc (VFX 專案檔案) |
 | **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Read Strategy** | 取得渲染目標資產全體 |
@@ -90,7 +90,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | VFX 專案儲存（EXR/DPX/MOV/ABC 保管） |
+| FSx for ONTAP | VFX 專案儲存（EXR/DPX/MOV/ABC 保管） |
 | S3 Access Points | 對 ONTAP 磁碟區的無伺服器存取（雙向） |
 | EventBridge Scheduler | 定期觸發器 |
 | Step Functions | 工作流程編排 |

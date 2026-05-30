@@ -6,7 +6,7 @@
 
 ## 概要
 
-FSx for NetApp ONTAP の S3 Access Points を活用し、ダッシュカム映像と LiDAR 点群データの前処理、品質チェック、アノテーション管理を自動化するサーバーレスワークフローです。
+FSx for ONTAP の S3 Access Points を活用し、ダッシュカム映像と LiDAR 点群データの前処理、品質チェック、アノテーション管理を自動化するサーバーレスワークフローです。
 
 ### このパターンが適しているケース
 
@@ -87,7 +87,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム（映像・LiDAR データを格納）
 - VPC、プライベートサブネット
 - Amazon Bedrock モデルアクセスが有効（Claude / Nova）
@@ -210,6 +210,153 @@ UC9 は以下のサービスを使用します:
 
 > SageMaker Batch Transform を有効化する場合、デプロイ前に [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) でターゲットリージョンのインスタンスタイプ可用性を確認してください。詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
 
+
+---
+
+## AWS ドキュメントリンク
+
+| サービス | ドキュメント |
+|---------|------------|
+| FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Rekognition | [開発者ガイド](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |
+| Amazon SageMaker | [開発者ガイド](https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html) |
+| Amazon Bedrock | [ユーザーガイド](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Well-Architected Framework 対応
+
+| 柱 | 対応 |
+|----|------|
+| 運用上の優秀性 | X-Ray トレーシング、EMF メトリクス、SageMaker ジョブ監視 |
+| セキュリティ | 最小権限 IAM、KMS 暗号化、映像/LiDAR データアクセス制御 |
+| 信頼性 | Step Functions Retry/Catch、SageMaker callback リトライ |
+| パフォーマンス効率 | フレーム並列処理、SageMaker Batch Transform |
+| コスト最適化 | サーバーレス、SageMaker スポットインスタンス対応 |
+| 持続可能性 | オンデマンド実行、差分処理（新規フレームのみ） |
+
+
+
+
+
+---
+
+## コスト見積もり（月額概算）
+
+> **注記**: 以下は ap-northeast-1 リージョンの概算であり、実際のコストは使用量により異なります。最新の料金は [AWS Pricing Calculator](https://calculator.aws/) で確認してください。
+
+### サーバーレスコンポーネント（従量課金）
+
+| サービス | 単価 | 想定使用量 | 月額概算 |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 9 関数 × 200 frames/日 | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/日 | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/日 | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~100K tokens/実行 | ~$3-10 |
+| Athena | $5/TB scanned | ~100 MB/クエリ | ~$0.5-2 |
+| SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
+| SageMaker Inference | $0.046/hour (ml.m5.large) |
+
+
+### 固定コスト（FSx for ONTAP — 既存環境前提）
+
+| コンポーネント | 月額 |
+|--------------|------|
+| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| S3 Access Point | 追加料金なし（S3 API 料金のみ） |
+
+### 合計概算
+
+| 構成 | 月額概算 |
+|------|---------|
+| 最小構成（日次 1 回実行） | ~$5-15 |
+| 標準構成（時次実行） | ~$15-50 |
+| 大規模構成（高頻度 + アラーム） | ~$50-150 |
+
+> **Governance Caveat**: コスト見積もりは概算であり、保証値ではありません。実際の請求額は使用パターン、データ量、リージョンにより異なります。
+
+---
+
+## ローカルテスト
+
+### Prerequisites チェック
+
+```bash
+# 前提条件の確認
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 認証情報
+```
+
+### sam local invoke
+
+```bash
+# ビルド
+sam build
+
+# Discovery Lambda のローカル実行
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 環境変数オーバーライド付き
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### ユニットテスト
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+
+---
+
+## 出力サンプル (Output Sample)
+
+自動運転データ前処理パイプラインの出力例:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 200,
+    "categories": {"video": 50, "lidar": 100, "radar": 50}
+  },
+  "frame_extraction": {
+    "total_frames": 1500,
+    "extracted_from": 50,
+    "fps": 30
+  },
+  "object_detection": [
+    {
+      "frame_id": "frame-0001",
+      "objects": [
+        {"class": "car", "confidence": 0.96, "bbox": [120, 80, 200, 150]},
+        {"class": "pedestrian", "confidence": 0.89, "bbox": [400, 200, 50, 120]}
+      ],
+      "format": "COCO"
+    }
+  ],
+  "lidar_qc": {
+    "point_clouds_processed": 100,
+    "avg_point_density": 64000,
+    "quality_pass_rate_pct": 98.0
+  }
+}
+```
+
+> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+
+---
+
+## Governance Note
+
+> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
 
 ---
 

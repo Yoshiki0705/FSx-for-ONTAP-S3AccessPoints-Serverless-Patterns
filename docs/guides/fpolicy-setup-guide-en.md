@@ -19,7 +19,7 @@ This guide explains how to configure ONTAP FPolicy to forward file operation eve
 
 ## ONTAP Prerequisites
 
-- FSx for NetApp ONTAP file system running
+- FSx for ONTAP file system running
 - SVM configured with NFS enabled
 - Admin access to ONTAP REST API or CLI
 
@@ -85,7 +85,7 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 ### Prerequisites
 - AWS Managed Microsoft AD or Self-Managed AD
-- FSxN SVM created with AD join configuration
+- FSx for ONTAP SVM created with AD join configuration
 - CIFS share created on the volume
 
 ### Steps
@@ -98,7 +98,7 @@ aws ds create-microsoft-ad \
   --vpc-settings VpcId=<VPC>,SubnetIds=<SUBNET1>,<SUBNET2> \
   --edition Standard
 
-# 2. Create FSxN SVM with AD join (IMPORTANT: must include AD at creation time)
+# 2. Create FSx for ONTAP SVM with AD join (IMPORTANT: must include AD at creation time)
 aws fsx create-storage-virtual-machine \
   --file-system-id <FS_ID> --name FPolicySMB \
   --active-directory-configuration \
@@ -127,7 +127,7 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 ```
 
 ### Important Notes
-- SVM must be created WITH AD configuration — cannot add CIFS protocol to existing NFS-only SVM on FSxN
+- SVM must be created WITH AD configuration — cannot add CIFS protocol to existing NFS-only SVM on FSx for ONTAP
 - Use `OU=Computers,OU=<domain>,DC=<domain>,DC=local` for OrganizationalUnit (AWS Managed AD)
 - SMB port 445 is only available when SVM has CIFS protocol enabled at creation
 

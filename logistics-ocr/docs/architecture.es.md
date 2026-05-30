@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Entrada — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Entrada — FSx for ONTAP"]
         DATA["Datos logísticos<br/>.jpg/.jpeg/.png/.tiff/.pdf (albaranes de envío)<br/>.jpg/.jpeg/.png (fotos de inventario de almacén)"]
     end
 
@@ -63,7 +63,7 @@ flowchart TB
 ### Entrada
 | Elemento | Descripción |
 |----------|-------------|
-| **Origen** | Volumen FSx for NetApp ONTAP |
+| **Origen** | Volumen FSx for ONTAP |
 | **Tipos de archivo** | .jpg/.jpeg/.png/.tiff/.pdf (albaranes de envío), .jpg/.jpeg/.png (fotos de inventario de almacén) |
 | **Método de acceso** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Estrategia de lectura** | Obtención completa de imágenes/PDF (requerido para Textract / Rekognition) |
@@ -103,7 +103,7 @@ flowchart TB
 
 | Servicio | Rol |
 |----------|-----|
-| FSx for NetApp ONTAP | Almacenamiento de albaranes e imágenes de inventario |
+| FSx for ONTAP | Almacenamiento de albaranes e imágenes de inventario |
 | S3 Access Points | Acceso serverless a volúmenes ONTAP |
 | EventBridge Scheduler | Disparador periódico |
 | Step Functions | Orquestación del flujo de trabajo (soporte de rutas paralelas) |

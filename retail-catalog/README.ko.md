@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 개요
-FSx for NetApp ONTAP의 S3 액세스 포인트를 활용하여 제품 이미지의 자동 태깅, 카탈로그 메타데이터 생성, 이미지 품질 검사를 자동화하는 서버리스 워크플로입니다.
+FSx for ONTAP의 S3 액세스 포인트를 활용하여 제품 이미지의 자동 태깅, 카탈로그 메타데이터 생성, 이미지 품질 검사를 자동화하는 서버리스 워크플로입니다.
 ### 이 패턴이 적합한 경우
 - 상품 이미지가 FSx ONTAP에 대량으로 저장되어 있습니다.
 - Rekognition을 사용하여 상품 이미지에 대한 자동 라벨링(카테고리, 색상, 소재)을 구현하고 싶습니다.
@@ -60,7 +60,7 @@ graph LR
 ### 1. CloudFormation 배포
 
 규칙:
-- AWS 서비스 이름은 영어로 유지(Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation 등)
+- AWS 서비스 이름은 영어로 유지(Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation 등)
 - 기술 용어는 번역하지 않음(GDSII, DRC, OASIS, GDS, Lambda, tapeout 등)
 - 인라인 코드(`...`)는 번역하지 않음
 - 파일 경로 및 URL은 번역하지 않음

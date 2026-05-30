@@ -19,7 +19,7 @@
 
 ## ONTAP 前提条件
 
-- FSx for NetApp ONTAP file system running
+- FSx for ONTAP file system running
 - SVM configured with NFS enabled
 - Admin access to ONTAP REST API or CLI
 
@@ -92,7 +92,7 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 
 ### 前提条件
 - AWS Managed Microsoft AD 或 Self-Managed AD
-- 创建时包含 AD 加入配置的 FSxN SVM
+- 创建时包含 AD 加入配置的 FSx for ONTAP SVM
 - 卷上已创建 CIFS 共享
 
 ### 步骤
@@ -102,7 +102,7 @@ aws sqs receive-message --queue-url <QUEUE_URL> --max-number-of-messages 5
 aws ds create-microsoft-ad --name fpolicy.local --short-name FPOLICY \
   --password '<AD_PASSWORD>' --vpc-settings VpcId=<VPC>,SubnetIds=<SUBNET1>,<SUBNET2> --edition Standard
 
-# 2. 创建包含 AD 加入的 FSxN SVM（重要：必须在创建时包含 AD 配置）
+# 2. 创建包含 AD 加入的 FSx for ONTAP SVM（重要：必须在创建时包含 AD 配置）
 aws fsx create-storage-virtual-machine --file-system-id <FS_ID> --name FPolicySMB \
   --active-directory-configuration 'NetBiosName=FPOLSMB,SelfManagedActiveDirectoryConfiguration={...}' \
   --root-volume-security-style NTFS
@@ -111,5 +111,5 @@ aws fsx create-storage-virtual-machine --file-system-id <FS_ID> --name FPolicySM
 ```
 
 ### 重要说明
-- SVM 必须在创建时包含 AD 配置 — FSxN 上无法向现有仅 NFS 的 SVM 添加 CIFS
+- SVM 必须在创建时包含 AD 配置 — FSx for ONTAP 上无法向现有仅 NFS 的 SVM 添加 CIFS
 - AWS Managed AD 使用 `OU=Computers,OU=<domain>,DC=<domain>,DC=local`

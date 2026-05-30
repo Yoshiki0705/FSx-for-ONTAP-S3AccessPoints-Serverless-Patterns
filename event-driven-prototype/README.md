@@ -2,7 +2,7 @@
 
 ## 概要
 
-本プロトタイプは、FSx for NetApp ONTAP S3 Access Points（FSx ONTAP S3 AP）の
+本プロトタイプは、FSx for ONTAP S3 Access Points（FSx ONTAP S3 AP）の
 将来のネイティブ通知機能を見据えた、イベント駆動ファイル処理パイプラインの
 リファレンス実装である。
 

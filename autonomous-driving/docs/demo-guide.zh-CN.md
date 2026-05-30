@@ -196,7 +196,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP（"no data movement" 模式）
-通过 FSxN S3 Access Point 将 AI 成果物写回到与原始数据**相同的 FSx ONTAP 卷**。
+通过 FSx for ONTAP S3 Access Point 将 AI 成果物写回到与原始数据**相同的 FSx ONTAP 卷**。
 SMB/NFS 用户可以在业务使用的目录结构内直接查看 AI 成果物。不创建标准 S3 存储桶。
 
 ```bash
@@ -213,7 +213,7 @@ aws cloudformation deploy \
 **注意事项**：
 
 - 强烈建议指定 `S3AccessPointName`（同时授予 Alias 格式和 ARN 格式的 IAM 权限）
-- 超过 5GB 的对象在 FSxN S3AP 中不可用（AWS 规范），必须使用分段上传
+- 超过 5GB 的对象在 FSx for ONTAP S3 AP 中不可用（AWS 规范），必须使用分段上传
 - AWS 规范上的限制请参考
   [项目 README 的 "AWS 规范上的限制与规避方法" 部分](../../README.md#aws-仕様上の制約と回避策)
   以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)

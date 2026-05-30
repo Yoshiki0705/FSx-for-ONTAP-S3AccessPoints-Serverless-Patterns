@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
 ## Resumen
-Un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for NetApp ONTAP para automatizar el etiquetado automático de imágenes de productos, la generación de metadatos de catálogo y la verificación de calidad de imagen.
+Un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para automatizar el etiquetado automático de imágenes de productos, la generación de metadatos de catálogo y la verificación de calidad de imagen.
 ### Casos en los que este patrón es adecuado
 - Las imágenes de productos se están acumulando en gran cantidad en FSx ONTAP
 - Quiero realizar el etiquetado automático de imágenes de productos (categoría, color, material) mediante Rekognition
@@ -51,7 +51,7 @@ graph LR
 4. **Control de calidad**: Verificar métricas de calidad de imagen, marcar imágenes por debajo del umbral
 ## Requisitos previos
 - Cuenta de AWS y permisos IAM adecuados
-- Sistema de archivos FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 o superior)
+- Sistema de archivos FSx for ONTAP (ONTAP 9.17.1P4D3 o superior)
 - Punto de acceso S3 habilitado para volúmenes (almacenamiento de imágenes de productos)
 - VPC, subredes privadas
 - Acceso a modelos de Amazon Bedrock habilitado (Claude / Nova)
