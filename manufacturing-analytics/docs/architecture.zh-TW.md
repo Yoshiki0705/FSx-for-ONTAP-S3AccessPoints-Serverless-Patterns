@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         DATA["工廠資料<br/>.csv (感測器日誌)<br/>.jpeg/.png (檢查影像)"]
     end
 
@@ -61,7 +61,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | .csv (感測器日誌), .jpeg/.jpg/.png (品質檢查影像) |
 | **Access Method** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Read Strategy** | 取得完整檔案（轉換・分析所需） |
@@ -99,7 +99,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | 工廠檔案儲存（感測器日誌・檢查影像保管） |
+| FSx for ONTAP | 工廠檔案儲存（感測器日誌・檢查影像保管） |
 | S3 Access Points | 對 ONTAP 磁碟區的無伺服器存取 |
 | EventBridge Scheduler | 定期觸發器 |
 | Step Functions | 工作流程編排（支援並行路徑） |

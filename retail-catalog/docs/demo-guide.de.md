@@ -165,7 +165,7 @@ Produktbild       Bildanalyse      Attributextraktion    Katalogaktualisierung
 Gleiche Richtlinie wie Phase 7: Aufnahme von **UI/UX-Bildschirmen, die E-Commerce-Mitarbeiter tatsächlich in ihrer täglichen Arbeit verwenden**.
 Bildschirme für technische Benutzer (Step Functions-Grafiken usw.) sind ausgeschlossen.
 
-### Auswahl des Ausgabeziels: Standard-S3 vs. FSxN S3AP
+### Auswahl des Ausgabeziels: Standard-S3 vs. FSx for ONTAP S3 AP
 
 UC11 unterstützt seit dem Update vom 2026-05-10 den Parameter `OutputDestination`.
 Durch **Zurückschreiben von KI-Ergebnissen auf dasselbe FSx-Volume** können SMB/NFS-Benutzer

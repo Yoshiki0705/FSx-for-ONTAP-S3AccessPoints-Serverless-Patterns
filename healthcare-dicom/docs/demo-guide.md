@@ -157,12 +157,12 @@ DICOM ファイル     タグ解析        匿名化処理        品質検証
 
 ---
 
-## 出力先について: FSxN S3 Access Point (Pattern A)
+## 出力先について: FSx for ONTAP S3 Access Point (Pattern A)
 
 UC5 healthcare-dicom は **Pattern A: Native S3AP Output** に分類されます
 （`docs/output-destination-patterns.md` 参照）。
 
-**設計**: DICOM メタデータ、匿名化結果、PII 検出ログは全て FSxN S3 Access Point 経由で
+**設計**: DICOM メタデータ、匿名化結果、PII 検出ログは全て FSx for ONTAP S3 Access Point 経由で
 オリジナル DICOM 医用画像と**同一の FSx ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
 作成されません（"no data movement" パターン）。
 

@@ -1,0 +1,43 @@
+# samconfig.toml.example — healthcare-dicom
+#
+# 使用方法:
+#   1. このファイルを samconfig.toml にコピー
+#   2. <PLACEHOLDER> を実際の値に置き換え
+#   3. sam deploy を実行
+#
+# 注意: samconfig.toml は .gitignore に含まれています
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-healthcare-dicom"
+resolve_s3 = true
+s3_prefix = "fsxn-s3ap-healthcare-dicom"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "S3AccessPointAlias=<YOUR_S3AP_ALIAS>-ext-s3alias",
+    "S3AccessPointName=",
+    "S3AccessPointOutputAlias=<YOUR_OUTPUT_S3AP_ALIAS>-ext-s3alias",
+    "OntapSecretName=<YOUR_ONTAP_SECRET_NAME>",
+    "OntapManagementIp=<YOUR_ONTAP_MGMT_IP>",
+    "ScheduleExpression=rate(1 hour)",
+    "VpcId=<YOUR_VPC_ID>",
+    "PrivateSubnetIds=<SUBNET_1>,<SUBNET_2>",
+    "PrivateRouteTableIds=<RTB_1>,<RTB_2>",
+    "NotificationEmail=<YOUR_EMAIL>",
+    "EnableVpcEndpoints=false",
+    "EnableCloudWatchAlarms=false",
+    "EnableS3GatewayEndpoint=true",
+    "ComprehendMedicalRegion=us-east-1",
+    "EnableXRayTracing=true",
+    "TriggerMode=POLLING",
+    "FPolicyEventBusName=fsxn-fpolicy-events",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true

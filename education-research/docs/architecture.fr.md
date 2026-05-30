@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Entrée — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Entrée — FSx for ONTAP"]
         PAPERS["PDF d'articles / Données de recherche<br/>.pdf, .csv, .json, .xml"]
     end
 
@@ -62,7 +62,7 @@ flowchart TB
 ### Entrée
 | Élément | Description |
 |---------|-------------|
-| **Source** | Volume FSx for NetApp ONTAP |
+| **Source** | Volume FSx for ONTAP |
 | **Types de fichiers** | .pdf (PDF d'articles), .csv, .json, .xml (données de recherche) |
 | **Méthode d'accès** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Stratégie de lecture** | Récupération complète du PDF (nécessaire pour l'OCR et l'extraction de métadonnées) |
@@ -102,7 +102,7 @@ flowchart TB
 
 | Service | Rôle |
 |---------|------|
-| FSx for NetApp ONTAP | Stockage des articles et données de recherche |
+| FSx for ONTAP | Stockage des articles et données de recherche |
 | S3 Access Points | Accès serverless aux volumes ONTAP |
 | EventBridge Scheduler | Déclenchement périodique |
 | Step Functions | Orchestration du workflow |

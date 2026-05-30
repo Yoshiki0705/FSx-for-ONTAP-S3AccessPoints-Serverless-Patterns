@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 개요
-FSx for NetApp ONTAP의 S3 Access Points를 활용하여 SEG-Y 지진 탐사 데이터의 메타데이터 추출, 웰 로그의 이상 탐지, 규정 준수 보고서 생성을 자동화하는 서버리스 워크플로입니다.
+FSx for ONTAP의 S3 Access Points를 활용하여 SEG-Y 지진 탐사 데이터의 메타데이터 추출, 웰 로그의 이상 탐지, 규정 준수 보고서 생성을 자동화하는 서버리스 워크플로입니다.
 ### 이 패턴이 적합한 경우
 - SEG-Y 지진 탐사 데이터와 우물 로그가 FSx ONTAP에 대량으로 저장되어 있습니다.
 - 지진 탐사 데이터의 메타데이터(측량명, 좌표계, 샘플 간격, 트레이스 수)를 자동으로 카탈로그화하고 싶습니다.
@@ -114,7 +114,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 
 ## 지원되는 리전
-UC8은 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation 등.
+UC8은 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation 등.
 | サービス | リージョン制約 |
 |---------|-------------|
 | Amazon Athena | ほぼ全リージョンで利用可能 |

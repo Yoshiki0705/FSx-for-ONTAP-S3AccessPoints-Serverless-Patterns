@@ -14,7 +14,7 @@ Esta demostración muestra cómo las operaciones de creación de archivos a trav
 
 | Elemento | Requisito |
 |----------|-----------|
-| FSx for NetApp ONTAP | ONTAP 9.17.1 o superior, FPolicy compatible |
+| FSx for ONTAP | ONTAP 9.17.1 o superior, FPolicy compatible |
 | VPC | Subred privada en el mismo VPC que FSxN |
 | Montaje NFS | Montaje NFS del cliente al volumen FSxN realizado |
 | AWS CLI | v2 o superior, permisos IAM apropiados |
@@ -73,7 +73,7 @@ echo "Fargate Task IP: $TASK_IP"
 
 ## Step 2: Configuración de ONTAP FPolicy
 
-Conéctese al FSxN SVM mediante SSH y ejecute los siguientes comandos.
+Conéctese al FSx for ONTAP SVM mediante SSH y ejecute los siguientes comandos.
 
 ### 2.1 Crear External Engine
 
@@ -238,7 +238,7 @@ NEW_IP=$(aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ARN --query 'ta
 echo "New Task IP: $NEW_IP"
 
 # Verificar que la IP del engine ONTAP se ha actualizado
-# Conectar al FSxN SVM mediante SSH
+# Conectar al FSx for ONTAP SVM mediante SSH
 fpolicy show-engine -vserver FSxN_OnPre
 ```
 
@@ -248,7 +248,7 @@ fpolicy show-engine -vserver FSxN_OnPre
 
 ```bash
 # 1. Deshabilitar ONTAP FPolicy
-# Conectar al FSxN SVM mediante SSH
+# Conectar al FSx for ONTAP SVM mediante SSH
 fpolicy disable -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy scope delete -vserver FSxN_OnPre -policy-name fpolicy_aws
 fpolicy policy delete -vserver FSxN_OnPre -policy-name fpolicy_aws

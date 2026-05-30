@@ -201,7 +201,7 @@ aws cloudformation deploy \
 **Notas importantes**:
 
 - Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM tanto en formato Alias como ARN)
-- Objetos mayores a 5GB no son posibles con FSxN S3AP (especificación AWS), se requiere carga multiparte
+- Objetos mayores a 5GB no son posibles con FSx for ONTAP S3 AP (especificación AWS), se requiere carga multiparte
 - Las restricciones de especificación AWS se encuentran en
   [la sección "Restricciones de especificación AWS y soluciones" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
   y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)

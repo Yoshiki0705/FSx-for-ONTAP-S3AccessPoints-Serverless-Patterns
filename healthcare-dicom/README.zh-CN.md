@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，实现 DICOM 医用图像的自动分类和匿名化的无服务器工作流。保护患者隐私并实现高效的图像管理。
+利用 FSx for ONTAP 的 S3 Access Points，实现 DICOM 医用图像的自动分类和匿名化的无服务器工作流。保护患者隐私并实现高效的图像管理。
 ### 适用情况
 - 希望定期从 PACS / VNA 匿名化并存储到 FSx ONTAP 的 DICOM 文件
 - 希望自动移除研究数据集中的 PHI（个人健康信息）
@@ -19,7 +19,7 @@
 - 使用 Amazon Athena 时
 - 使用 Amazon S3 时
 - 使用 AWS Lambda 时
-- 使用 Amazon FSx for NetApp ONTAP 时
+- 使用 Amazon FSx for ONTAP 时
 - 使用 Amazon CloudWatch 时
 - 使用 AWS CloudFormation 时
 
@@ -68,7 +68,7 @@ graph LR
 4. **匿名化**：使用 Comprehend Medical 识别并删除 PHI，并将匿名化 DICOM 输出至 S3，附带分类元数据
 ## 先决条件
 - AWS 账户和适当的 IAM 权限
-- FSx for NetApp ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上）
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上）
 - 已启用 S3 Access Point 的卷
 - ONTAP REST API 认证信息已注册到 Secrets Manager
 - VPC、私有子网
@@ -138,7 +138,7 @@ aws cloudformation deploy \
 ## 成本结构
 
 规则：
-- 保持AWS服务名称用英语（Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for NetApp ONTAP、Amazon CloudWatch、AWS CloudFormation等）
+- 保持AWS服务名称用英语（Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation等）
 - 保持技术术语不翻译（GDSII、DRC、OASIS、GDS、Lambda、tapeout等）
 - 保持内联代码（`...`）不翻译
 - 保持文件路径和URL不翻译

@@ -22,7 +22,7 @@
 - [ ] AWS CLI v2 がインストール済み
 - [ ] デプロイ先リージョン: 全 AI/ML サービス利用時は `us-east-1` / `us-west-2` 推奨。詳細は [リージョン互換性マトリックス](../region-compatibility.md) を参照
 
-### FSx for NetApp ONTAP
+### FSx for ONTAP
 
 - [ ] FSx ONTAP ファイルシステムがデプロイ済み
 - [ ] ONTAP バージョン: S3 Access Points をサポートするバージョン（9.17.1P4D3 で検証済み）

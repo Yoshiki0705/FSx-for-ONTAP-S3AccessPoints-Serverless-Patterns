@@ -5,7 +5,7 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-It is a serverless workflow that utilizes S3 Access Points in Amazon FSx for NetApp ONTAP for automatic anomaly detection in IoT sensor logs and defect detection in quality inspection images.
+It is a serverless workflow that utilizes S3 Access Points in Amazon FSx for ONTAP for automatic anomaly detection in IoT sensor logs and defect detection in quality inspection images.
 ### When this pattern is appropriate
 - We want to regularly analyze the CSV sensor logs accumulated on the factory file server
 - We want to automate and streamline the visual verification of quality inspection images with AI
@@ -53,7 +53,7 @@ graph LR
 4. **Image Analysis**: Use Rekognition to detect defects; set a manual review flag if confidence is below the threshold
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file system (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
 - S3 Access Point enabled volume
 - ONTAP REST API credentials registered in Secrets Manager
 - VPC, private subnets
@@ -160,13 +160,13 @@ UC3 uses the following services:
 ## References
 
 ### AWS Official Documentation
-- [FSx for NetApp ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [SQL Queries with Athena (Official Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
 - [ETL Pipelines with Glue (Official Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html)
 - [Serverless Processing with Lambda (Official Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Rekognition DetectLabels API](https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectLabels.html)
 ### AWS Blog Post
-- [Amazon FSx for NetApp ONTAP now integrates with Amazon S3 for seamless data access blog announcement](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
+- [Amazon FSx for ONTAP now integrates with Amazon S3 for seamless data access blog announcement](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
 - [Three serverless architecture patterns](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/)
 ### GitHub Samples
 - [aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing](https://github.com/aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing) — Large-Scale Image and Video Processing with Amazon Rekognition

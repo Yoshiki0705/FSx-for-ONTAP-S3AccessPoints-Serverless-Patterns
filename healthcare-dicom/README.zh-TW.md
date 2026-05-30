@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 Amazon FSx for NetApp ONTAP 的 S3 Access Points，實現 DICOM 醫用影像的自動分類和匿名化的無伺服器工作流程。保護患者隱私並實現高效的影像管理。
+利用 Amazon FSx for ONTAP 的 S3 Access Points，實現 DICOM 醫用影像的自動分類和匿名化的無伺服器工作流程。保護患者隱私並實現高效的影像管理。
 ### 此模式適用的情況
 - 定期從 PACS / VNA 將儲存在 FSx ONTAP 中的 DICOM 檔案匿名化
 - 為了建立研究數據集，我們希望自動移除 PHI（受保護健康資訊）
@@ -52,7 +52,7 @@ graph LR
 4. **匿名化**：使用 Comprehend Medical 識別並移除 PHI，將匿名化的 DICOM 和分類的元數據一起輸出到 S3
 ## 前提條件
 - AWS帳戶和適當的IAM權限
-- FSx for NetApp ONTAP文件系統（ONTAP 9.17.1P4D3以上）
+- FSx for ONTAP文件系統（ONTAP 9.17.1P4D3以上）
 - 已啟用S3 Access Point的卷
 - ONTAP REST API認證信息已在Secrets Manager中註冊
 - VPC、私有子網
@@ -163,7 +163,7 @@ UC5 使用以下服務：
 ## 參考連結
 
 ### AWS 官方文件
-- [FSx for NetApp ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [使用 Lambda 進行無伺服器處理（官方教學）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Comprehend Medical DetectPHI API](https://docs.aws.amazon.com/comprehend-medical/latest/dev/API_DetectPHI.html)
 - [Rekognition DetectText API](https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectText.html)

@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Übersicht
-Mithilfe der S3 Access Points von Amazon FSx for NetApp ONTAP wird ein serverloser Workflow für die automatische Klassifizierung und Anonymisierung von DICOM-Medizinbildern bereitgestellt. Dies gewährleistet den Schutz der Patientenprivatsphäre und eine effiziente Bildverwaltung.
+Mithilfe der S3 Access Points von Amazon FSx for ONTAP wird ein serverloser Workflow für die automatische Klassifizierung und Anonymisierung von DICOM-Medizinbildern bereitgestellt. Dies gewährleistet den Schutz der Patientenprivatsphäre und eine effiziente Bildverwaltung.
 ### Fälle, für die dieses Muster geeignet ist
 - DICOM-Dateien, die von PACS/VNA in FSx ONTAP gespeichert wurden, regelmäßig anonymisieren zu wollen
 - PHI (Protected Health Information) für die Erstellung von Forschungsdatensätzen automatisch entfernen zu wollen
@@ -50,7 +50,7 @@ graph LR
 4. **Anonymisierung**: Mit Comprehend Medical PHI identifizieren und entfernen, anonymisierte DICOM mit Klassifizierungsmetadaten in S3 ausgeben
 ## Voraussetzungen
 - AWS-Konto und angemessene IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisysteme (ONTAP 9.17.1P4D3 oder höher)
+- FSx for ONTAP-Dateisysteme (ONTAP 9.17.1P4D3 oder höher)
 - S3 Access Point aktivierte Volumes
 - ONTAP REST API-Anmeldeinformationen, die im Secrets Manager registriert sind
 - VPC, private Subnetz

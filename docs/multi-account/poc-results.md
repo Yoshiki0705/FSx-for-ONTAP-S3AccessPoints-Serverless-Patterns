@@ -4,7 +4,7 @@
 
 ## 概要
 
-本ドキュメントでは、FSxN S3AP Serverless Patterns Phase 4 のマルチアカウントデプロイパターンについて、2 アカウント構成での検証結果を記録します。
+本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns Phase 4 のマルチアカウントデプロイパターンについて、2 アカウント構成での検証結果を記録します。
 
 ## 検証構成
 

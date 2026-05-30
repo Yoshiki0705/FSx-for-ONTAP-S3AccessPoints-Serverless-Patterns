@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Entrée — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Entrée — FSx for ONTAP"]
         DATA["Données d'usine<br/>.csv (journaux de capteurs)<br/>.jpeg/.png (images d'inspection)"]
     end
 
@@ -59,7 +59,7 @@ flowchart TB
 ### Entrée
 | Élément | Description |
 |---------|-------------|
-| **Source** | Volume FSx for NetApp ONTAP |
+| **Source** | Volume FSx for ONTAP |
 | **Types de fichiers** | .csv (journaux de capteurs), .jpeg/.jpg/.png (images d'inspection qualité) |
 | **Méthode d'accès** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Stratégie de lecture** | Récupération complète du fichier (nécessaire pour la transformation et l'analyse) |
@@ -97,7 +97,7 @@ flowchart TB
 
 | Service | Rôle |
 |---------|------|
-| FSx for NetApp ONTAP | Stockage de fichiers d'usine (journaux de capteurs et images d'inspection) |
+| FSx for ONTAP | Stockage de fichiers d'usine (journaux de capteurs et images d'inspection) |
 | S3 Access Points | Accès serverless aux volumes ONTAP |
 | EventBridge Scheduler | Déclencheur périodique |
 | Step Functions | Orchestration de workflow (support de chemins parallèles) |

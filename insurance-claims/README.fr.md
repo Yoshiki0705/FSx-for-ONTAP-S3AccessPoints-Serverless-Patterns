@@ -55,7 +55,7 @@ graph LR
 4. **Rapport de réclamation** : Génération d'un rapport complet corrélant l'évaluation des dommages et les données du devis avec Bedrock
 ## Conditions préalables
 - Compte AWS et permissions IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
 - Point d'accès S3 activé pour le volume (stockage des photos d'accidents et des devis)
 - VPC, sous-réseaux privés
 - Accès aux modèles Amazon Bedrock activé (Claude / Nova)

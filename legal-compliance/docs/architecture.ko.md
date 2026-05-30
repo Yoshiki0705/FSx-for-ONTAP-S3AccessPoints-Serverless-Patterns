@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 입력 — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 입력 — FSx for ONTAP"]
         FILES["파일 서버 데이터<br/>NTFS ACL이 설정된 파일"]
     end
 
@@ -58,7 +58,7 @@ flowchart TB
 ### 입력
 | 항목 | 설명 |
 |------|------|
-| **소스** | FSx for NetApp ONTAP 볼륨 |
+| **소스** | FSx for ONTAP 볼륨 |
 | **파일 유형** | 모든 파일 (NTFS ACL 포함) |
 | **접근 방식** | S3 Access Point (파일 목록) + ONTAP REST API (ACL 정보) |
 | **읽기 전략** | 메타데이터만 (파일 내용은 읽지 않음) |
@@ -96,7 +96,7 @@ flowchart TB
 
 | 서비스 | 역할 |
 |--------|------|
-| FSx for NetApp ONTAP | 엔터프라이즈 파일 스토리지 (NTFS ACL 포함) |
+| FSx for ONTAP | 엔터프라이즈 파일 스토리지 (NTFS ACL 포함) |
 | S3 Access Points | ONTAP 볼륨에 대한 서버리스 접근 |
 | EventBridge Scheduler | 정기 트리거 (일일 감사) |
 | Step Functions | 워크플로 오케스트레이션 |

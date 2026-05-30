@@ -7,7 +7,7 @@
 ## Requisitos previos
 
 - Cuenta de AWS, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - Desplegar `government-archives/template-deploy.yaml` (con `OpenSearchMode=none` para reducir costos)
 
 ## Cronograma
@@ -128,7 +128,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP (patrón "no data movement")
 Escribe texto OCR, resultados de clasificación, resultados de detección de PII, documentos redactados y metadatos de redacción
-de vuelta al **mismo volumen FSx ONTAP** que los documentos originales a través del FSxN S3 Access Point.
+de vuelta al **mismo volumen FSx ONTAP** que los documentos originales a través del FSx for ONTAP S3 Access Point.
 Los responsables de documentos públicos pueden consultar directamente los resultados de IA dentro de la estructura de directorios
 SMB/NFS existente. No se crea bucket S3 estándar.
 
@@ -148,13 +148,13 @@ aws cloudformation deploy \
 UC16 tiene una estructura de cadena donde las Lambdas posteriores leen los resultados de las anteriores (OCR → Classification →
 EntityExtraction → Redaction → IndexGeneration), por lo que `get_bytes/get_text/get_json` en
 `shared/output_writer.py` lee desde el mismo destination donde se escribió.
-Esto permite que la lectura desde FSxN S3 Access Point funcione cuando `OutputDestination=FSXN_S3AP`,
+Esto permite que la lectura desde FSx for ONTAP S3 Access Point funcione cuando `OutputDestination=FSXN_S3AP`,
 y toda la cadena opera con un destination consistente.
 
 **Notas importantes**:
 
 - Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM tanto en formato Alias como ARN)
-- Objetos mayores de 5GB no son posibles con FSxN S3AP (especificación de AWS), se requiere carga multiparte
+- Objetos mayores de 5GB no son posibles con FSx for ONTAP S3 AP (especificación de AWS), se requiere carga multiparte
 - ComplianceCheck Lambda solo usa DynamoDB, por lo que no se ve afectada por `OutputDestination`
 - FoiaDeadlineReminder Lambda solo usa DynamoDB + SNS, por lo que no se ve afectada
 - El índice de OpenSearch se gestiona por separado con el parámetro `OpenSearchMode` (independiente de `OutputDestination`)

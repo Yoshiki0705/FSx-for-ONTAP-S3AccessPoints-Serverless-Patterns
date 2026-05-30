@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 입력 — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 입력 — FSx for ONTAP"]
         DATA["유전체 데이터<br/>.fastq/.fastq.gz (시퀀스)<br/>.bam (정렬)<br/>.vcf/.vcf.gz (변이)"]
     end
 
@@ -62,7 +62,7 @@ flowchart TB
 ### 입력
 | 항목 | 설명 |
 |------|------|
-| **소스** | FSx for NetApp ONTAP 볼륨 |
+| **소스** | FSx for ONTAP 볼륨 |
 | **파일 유형** | .fastq/.fastq.gz (시퀀스), .bam (정렬), .vcf/.vcf.gz (변이) |
 | **접근 방식** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **읽기 전략** | FASTQ: 스트리밍 다운로드 (메모리 효율적), VCF: 전체 취득 |
@@ -102,7 +102,7 @@ flowchart TB
 
 | 서비스 | 역할 |
 |--------|------|
-| FSx for NetApp ONTAP | 유전체 데이터 저장소 (FASTQ/BAM/VCF) |
+| FSx for ONTAP | 유전체 데이터 저장소 (FASTQ/BAM/VCF) |
 | S3 Access Points | ONTAP 볼륨에 대한 서버리스 접근 (스트리밍 지원) |
 | EventBridge Scheduler | 정기 트리거 |
 | Step Functions | 워크플로 오케스트레이션 (순차) |

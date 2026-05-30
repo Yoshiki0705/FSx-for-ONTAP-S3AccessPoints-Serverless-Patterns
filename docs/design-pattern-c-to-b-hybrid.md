@@ -23,13 +23,13 @@ Four UCs are currently classified as Pattern C in
 
 The Pattern C classification was pragmatic: Athena's
 `StartQueryExecution.ResultConfiguration.OutputLocation` requires a
-standard S3 bucket — FSxN S3 Access Points are not supported as query
+standard S3 bucket — FSx for ONTAP S3 Access Points are not supported as query
 result destinations per AWS spec
 ([FR-2](aws-feature-requests/fsxn-s3ap-improvements.md) requests this).
 
 However, the AI/ML artifacts each UC produces (Bedrock-generated
 reports, metadata JSONs, Rekognition outputs) are **not constrained by
-Athena's limitations**. These artifacts can go to FSxN S3AP just like
+Athena's limitations**. These artifacts can go to FSx for ONTAP S3 AP just like
 UC1-5 / UC9-12 / UC14-17.
 
 ### 1.2 Why Now?
@@ -54,7 +54,7 @@ retention policies are tightly regulated.
 
 How to support `OutputDestination=FSXN_S3AP` in UC6/7/8/13 while keeping
 Athena query execution fully functional, given that Athena cannot write
-to FSxN S3AP?
+to FSx for ONTAP S3 AP?
 
 ### 2.1 Constraints
 
@@ -78,7 +78,7 @@ to FSxN S3AP?
 
 ### 2.2 Non-goals
 
-- Extending FSxN S3AP to support Athena query results (this is FR-2,
+- Extending FSx for ONTAP S3 AP to support Athena query results (this is FR-2,
   an AWS-side feature request; out of scope for us)
 - Eliminating the standard S3 bucket entirely for UC6/7/8 (we keep a
   minimal bucket for Athena/Glue; only AI artifacts move)
@@ -94,7 +94,7 @@ Introduce a third classification beyond pure Pattern A / B / C:
 > remain on a **standard S3 metadata bucket** (always created). AI/ML
 > artifacts (Bedrock reports, processing JSONs, classification outputs)
 > go to a **configurable destination** — standard S3 (default) or
-> FSxN S3AP (opt-in via `OutputDestination=FSXN_S3AP`).
+> FSx for ONTAP S3 AP (opt-in via `OutputDestination=FSXN_S3AP`).
 
 Two physical buckets / destinations per UC:
 
@@ -109,7 +109,7 @@ When `OutputDestination=STANDARD_S3` (default, backward-compatible):
 metadata/athena-results. The net layout is identical to today.
 
 When `OutputDestination=FSXN_S3AP`: `<ai-destination>` resolves to the
-FSxN S3 Access Point; the metadata bucket still exists for Athena but
+FSx for ONTAP S3 Access Point; the metadata bucket still exists for Athena but
 carries only Glue tables and Athena temp results.
 
 ### 3.2 Two-Bucket Template Structure
@@ -278,7 +278,7 @@ After migration:
 ```markdown
 | Pattern | UCs | Output destination |
 |---------|-----|-------------------|
-| A. Native S3AP (legacy params) | UC1, UC2, UC3, UC4, UC5 | FSxN S3 AP |
+| A. Native S3AP (legacy params) | UC1, UC2, UC3, UC4, UC5 | FSx for ONTAP S3 AP |
 | B. Selectable via OutputDestination | UC9, UC10, UC11, UC12, UC13 ✨, UC14, UC15, UC16, UC17 | STANDARD_S3 (default) or FSXN_S3AP |
 | B+C hybrid (AI artifacts movable, Athena fixed) | UC6 ✨, UC7 ✨, UC8 ✨ | AI artifacts: STANDARD_S3 or FSXN_S3AP; Athena: STANDARD_S3 only |
 ```

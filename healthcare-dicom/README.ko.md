@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 개요
-FSx for NetApp ONTAP의 S3 액세스 포인트를 활용하여 DICOM 의료 이미지의 자동 분류 및 익명화를 수행하는 서버리스 워크플로입니다. 이를 통해 환자 프라이버시를 보호하고 효율적인 이미지 관리가 가능합니다.
+FSx for ONTAP의 S3 액세스 포인트를 활용하여 DICOM 의료 이미지의 자동 분류 및 익명화를 수행하는 서버리스 워크플로입니다. 이를 통해 환자 프라이버시를 보호하고 효율적인 이미지 관리가 가능합니다.
 ### 이 패턴이 적합한 경우
 - PACS / VNA에서 저장된 DICOM 파일을 FSx ONTAP에 정기적으로 익명화하고 싶습니다
 - 연구용 데이터 세트를 작성하기 위해 PHI(보호 대상 의료 정보)를 자동으로 제거하고 싶습니다
@@ -150,7 +150,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 > **주의**: S3 버킷에 객체가 남아있을 경우 스택 삭제가 실패할 수 있습니다. 사전에 버킷을 비워두세요.
 ## 지원되는 리전
-UC5는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation 등.
+UC5는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation 등.
 | サービス | リージョン制約 |
 |---------|-------------|
 | Amazon Rekognition | ほぼ全リージョンで利用可能 |

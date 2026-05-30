@@ -7,7 +7,7 @@
 ## Prerequisites
 
 - AWS account, ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - Deploy `government-archives/template-deploy.yaml` (with `OpenSearchMode=none` for cost reduction)
 
 ## Timeline
@@ -128,7 +128,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement" pattern)
 Writes OCR text, classification results, PII detection results, redacted documents, and redaction metadata
-back to the **same FSx ONTAP volume** as the original documents via the FSxN S3 Access Point.
+back to the **same FSx ONTAP volume** as the original documents via the FSx for ONTAP S3 Access Point.
 Public records staff can directly reference AI artifacts within the existing SMB/NFS directory structure.
 No standard S3 bucket is created.
 
@@ -148,13 +148,13 @@ aws cloudformation deploy \
 UC16 has a chain structure where downstream Lambdas read back artifacts from upstream stages (OCR → Classification →
 EntityExtraction → Redaction → IndexGeneration), so `shared/output_writer.py`'s
 `get_bytes/get_text/get_json` reads back from the same destination as the write destination.
-This enables read-back from the FSxN S3 Access Point when `OutputDestination=FSXN_S3AP`,
+This enables read-back from the FSx for ONTAP S3 Access Point when `OutputDestination=FSXN_S3AP`,
 allowing the entire chain to operate with a consistent destination.
 
 **Notes**:
 
 - Strongly recommend specifying `S3AccessPointName` (grant IAM permissions for both Alias and ARN formats)
-- Objects over 5GB are not supported by FSxN S3AP (AWS specification), multipart upload required
+- Objects over 5GB are not supported by FSx for ONTAP S3 AP (AWS specification), multipart upload required
 - ComplianceCheck Lambda uses only DynamoDB and is not affected by `OutputDestination`
 - FoiaDeadlineReminder Lambda uses only DynamoDB + SNS and is not affected
 - OpenSearch index is managed separately by the `OpenSearchMode` parameter (independent of `OutputDestination`)

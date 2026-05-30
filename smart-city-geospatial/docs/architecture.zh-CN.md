@@ -107,7 +107,7 @@ UC17 在 2026-05-11 的更新中支持了 `OutputDestination` 参数。
 | 模式 | 输出目标 | 创建的资源 | 使用场景 |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3`（默认） | 新建 S3 存储桶 | `AWS::S3::Bucket` | 按传统方式将 AI 成果物存储在独立的 S3 存储桶中 |
-| `FSXN_S3AP` | FSxN S3 Access Point | 无（写回现有 FSx 卷） | 城市规划人员通过 SMB/NFS 在与原始 GIS 数据相同的目录中查看 Bedrock 报告（Markdown）和风险地图 |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | 无（写回现有 FSx 卷） | 城市规划人员通过 SMB/NFS 在与原始 GIS 数据相同的目录中查看 Bedrock 报告（Markdown）和风险地图 |
 
 **受影响的 Lambda**：Preprocessing、LandUseClassification、InfraAssessment、RiskMapping、ReportGeneration（5 个函数）。  
 **不受影响的 Lambda**：Discovery（manifest 直接写入 S3AP）、ChangeDetection（仅 DynamoDB）。  

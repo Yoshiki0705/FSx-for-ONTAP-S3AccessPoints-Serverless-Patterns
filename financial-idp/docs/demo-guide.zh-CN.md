@@ -160,12 +160,12 @@
 
 ---
 
-## 关于输出目标：FSxN S3 Access Point (Pattern A)
+## 关于输出目标：FSx for ONTAP S3 Access Point (Pattern A)
 
 UC2 financial-idp 归类为 **Pattern A: Native S3AP Output**
 （参见 `docs/output-destination-patterns.md`）。
 
-**设计**：发票 OCR 结果、结构化元数据、BedRock 摘要全部通过 FSxN S3 Access Point
+**设计**：发票 OCR 结果、结构化元数据、BedRock 摘要全部通过 FSx for ONTAP S3 Access Point
 写回到与原始发票 PDF **相同的 FSx ONTAP 卷**。不创建标准 S3 存储桶
 （"no data movement" 模式）。
 

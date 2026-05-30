@@ -197,7 +197,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP (patrón "no data movement")
 Escribe los artefactos de IA de vuelta al **mismo volumen FSx ONTAP** que los datos originales
-a través del FSxN S3 Access Point. Los usuarios de SMB/NFS pueden ver directamente los artefactos de IA
+a través del FSx for ONTAP S3 Access Point. Los usuarios de SMB/NFS pueden ver directamente los artefactos de IA
 dentro de la estructura de directorios que usan en su trabajo diario. No se crea un bucket S3 estándar.
 
 ```bash
@@ -214,7 +214,7 @@ aws cloudformation deploy \
 **Notas**:
 
 - Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM en formato Alias y ARN)
-- Objetos superiores a 5GB no son posibles con FSxN S3AP (especificación de AWS), se requiere carga multiparte
+- Objetos superiores a 5GB no son posibles con FSx for ONTAP S3 AP (especificación de AWS), se requiere carga multiparte
 - Para restricciones de especificación de AWS, consulte
   [la sección "AWS 仕様上の制約と回避策" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
   y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)

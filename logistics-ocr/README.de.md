@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Übersicht
-Dies ist ein serverloser Workflow, der S3 Access Points für Amazon FSx for NetApp ONTAP nutzt, um die OCR-Textextraktion von Lieferscheinen, Objekterkennung und Zählung von Lagerbestandsbildern sowie die Erstellung von Berichten zur Optimierung von Lieferrouten zu automatisieren.
+Dies ist ein serverloser Workflow, der S3 Access Points für Amazon FSx for ONTAP nutzt, um die OCR-Textextraktion von Lieferscheinen, Objekterkennung und Zählung von Lagerbestandsbildern sowie die Erstellung von Berichten zur Optimierung von Lieferrouten zu automatisieren.
 ### Fälle, in denen dieses Muster geeignet ist
 - Lieferscheinbilder und Lagerbestandsbilder werden in FSx ONTAP gespeichert.
 - Die OCR (Absender, Empfänger, Tracking-Nummer, Artikel) für Lieferscheine mittels Textract soll automatisiert werden.
@@ -57,7 +57,7 @@ graph LR
 5. **Bericht**: Generierung eines optimierten Versandroutenberichts in Bedrock, S3-Ausgabe + SNS-Benachrichtigung
 ## Voraussetzungen
 - AWS-Konto und geeignete IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
+- FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
 - S3 Access Point aktivierter Volume (zur Speicherung von Lieferscheinen und Bestandsbildern)
 - VPC, private Subnetz
 - Amazon Bedrock-Modellzugriff aktiviert (Claude / Nova)

@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Aperçu
-Un workflow sans serveur qui utilise les Amazon S3 Access Points de FSx for NetApp ONTAP pour automatiser la classification automatique des PDF de documents, l'analyse des réseaux de citations et l'extraction des métadonnées des données de recherche.
+Un workflow sans serveur qui utilise les Amazon S3 Access Points de FSx for ONTAP pour automatiser la classification automatique des PDF de documents, l'analyse des réseaux de citations et l'extraction des métadonnées des données de recherche.
 ### Cas où ce schéma est approprié
 - De nombreux PDF de recherches et données de recherche sont stockés sur FSx ONTAP
 - Je souhaite automatiser l'extraction de texte des PDF de recherches avec Textract
@@ -56,7 +56,7 @@ graph LR
 5. **Métadonnées** : Sortie S3 en JSON des métadonnées structurées de chaque article
 ## Conditions préalables
 - Compte AWS et permissions IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
 - Point d'accès S3 activé pour le volume (stockage des PDF de documents et des données de recherche)
 - VPC, sous-réseaux privés
 - Accès aux modèles Amazon Bedrock activé (Claude / Nova)

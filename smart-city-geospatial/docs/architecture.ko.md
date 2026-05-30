@@ -107,7 +107,7 @@ UC17은 2026-05-11 업데이트에서 `OutputDestination` 파라미터를 지원
 | 모드 | 출력 대상 | 생성되는 리소스 | 사용 사례 |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3`(기본값) | 신규 S3 버킷 | `AWS::S3::Bucket` | 기존과 같이 분리된 S3 버킷에 AI 산출물을 축적 |
-| `FSXN_S3AP` | FSxN S3 Access Point | 없음(기존 FSx 볼륨에 재기록) | 도시계획 담당자가 SMB/NFS 경유로 원본 GIS 데이터와 동일 디렉터리에서 Bedrock 보고서(Markdown) 및 위험 지도를 열람 |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | 없음(기존 FSx 볼륨에 재기록) | 도시계획 담당자가 SMB/NFS 경유로 원본 GIS 데이터와 동일 디렉터리에서 Bedrock 보고서(Markdown) 및 위험 지도를 열람 |
 
 **영향을 받는 Lambda**: Preprocessing, LandUseClassification, InfraAssessment, RiskMapping, ReportGeneration(5개 함수).  
 **영향을 받지 않는 Lambda**: Discovery(manifest는 S3AP 직접 기록), ChangeDetection(DynamoDB만 사용).  

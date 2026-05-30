@@ -1,0 +1,38 @@
+# samconfig.toml.example — dynamic-flexcache-render-workflow
+#
+# 使用方法:
+#   1. このファイルを samconfig.toml にコピー
+#   2. <PLACEHOLDER> を実際の値に置き換え
+#   3. sam deploy を実行
+#
+# 注意: samconfig.toml は .gitignore に含まれています
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-dynamic-flexcache-render-workflow"
+resolve_s3 = true
+s3_prefix = "fsxn-s3ap-dynamic-flexcache-render-workflow"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "OntapManagementIp=<YOUR_ONTAP_MGMT_IP>",
+    "OntapSecretName=fsxn/ontap-credentials",
+    "OriginSvmName=svm1",
+    "OriginVolumeName=render_assets",
+    "CacheSvmName=svm1",
+    "CacheAggregateName=",
+    "CacheVolumePrefix=dyn_cache",
+    "JunctionPathPrefix=/cache",
+    "EnablePrepopulate=true",
+    "SimulationMode=true",
+    "NotificationEmail=",
+    "CleanupOnFailure=true",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true

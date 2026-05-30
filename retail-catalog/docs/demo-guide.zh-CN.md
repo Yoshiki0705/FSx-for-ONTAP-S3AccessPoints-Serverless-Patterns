@@ -165,7 +165,7 @@
 与 Phase 7 相同方针，拍摄 **电商负责人在日常业务中实际使用的 UI/UX 界面**。
 排除面向技术人员的界面（Step Functions 图表等）。
 
-### 输出目标选择：标准 S3 vs FSxN S3AP
+### 输出目标选择：标准 S3 vs FSx for ONTAP S3 AP
 
 UC11 在 2026-05-10 的更新中支持了 `OutputDestination` 参数。
 通过 **将 AI 成果物写回同一 FSx 卷**，SMB/NFS 用户可以

@@ -12,7 +12,7 @@
 
 ### Press Release（想定）
 
-> 「Amazon FSx for NetApp ONTAP の S3 Access Points が Amazon EventBridge へのネイティブイベント通知をサポートしました。これにより、お客様は FPolicy サーバーの運用なしに、ファイル変更をリアルタイムで検知し、サーバーレスワークフローを起動できます。」
+> 「Amazon FSx for ONTAP の S3 Access Points が Amazon EventBridge へのネイティブイベント通知をサポートしました。これにより、お客様は FPolicy サーバーの運用なしに、ファイル変更をリアルタイムで検知し、サーバーレスワークフローを起動できます。」
 
 ### Customer Problem Statement
 
@@ -177,7 +177,7 @@ FSx ONTAP Volume (via S3 AP)
 
 ## 参考リンク
 
-- [FSxN S3AP Improvements Feature Requests](fsxn-s3ap-improvements.md)
+- [FSx for ONTAP S3 AP Improvements Feature Requests](fsxn-s3ap-improvements.md)
 - [Trigger Mode Decision Guide](../trigger-mode-decision-guide.md)
 - [Deployment Profiles](../deployment-profiles.md)
 - [FPolicy Event-Driven パターン](../../event-driven-fpolicy/README.md)

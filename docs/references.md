@@ -63,7 +63,7 @@ AWS は FSx ONTAP S3 Access Points を活用した 7 つの公式チュートリ
 | 項目 | 内容 |
 |------|------|
 | プロジェクト名 | FSx-for-ONTAP-Agentic-Access-Aware-RAG |
-| 概要 | FSx for NetApp ONTAP + Amazon Bedrock による権限ベース RAG システム |
+| 概要 | FSx for ONTAP + Amazon Bedrock による権限ベース RAG システム |
 | 主な機能 | NTFS ACL / AD SID に基づくアクセス制御付き RAG、Bedrock Agents によるエージェント型推論、Bedrock Knowledge Bases によるドキュメントインデックス |
 | 技術スタック | CDK v2 (TypeScript)、Next.js 15、Python Lambda、Aurora pgvector / OpenSearch Serverless |
 | 継承パターン | OntapClient（Secrets Manager 認証、urllib3、TLS 検証、リトライ）、FsxHelper（FSx API + CloudWatch メトリクス）、S3 AP ARN を Bucket パラメータとして使用するパターン |

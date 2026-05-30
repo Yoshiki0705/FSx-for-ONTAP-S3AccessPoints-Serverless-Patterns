@@ -2,7 +2,7 @@
 
 ## 概要
 
-AWS CloudFront を使用して、FSx for NetApp ONTAP S3 Access Points 上のレンダリング済みメディアコンテンツを低レイテンシーで配信するパターンです。VFX レンダリングパイプライン（UC4）の拡張として、品質チェック合格後のコンテンツを CloudFront 経由でストリーミング配信します。
+AWS CloudFront を使用して、FSx for ONTAP S3 Access Points 上のレンダリング済みメディアコンテンツを低レイテンシーで配信するパターンです。VFX レンダリングパイプライン（UC4）の拡張として、品質チェック合格後のコンテンツを CloudFront 経由でストリーミング配信します。
 
 本パターンは AWS 公式チュートリアル「[Stream video using CloudFront](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html)」に準拠しています。
 
@@ -44,7 +44,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム（**internet** network origin 必須）
 - UC4 VFX パイプラインがデプロイ済み
 

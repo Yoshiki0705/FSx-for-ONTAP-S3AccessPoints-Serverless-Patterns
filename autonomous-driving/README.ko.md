@@ -3,9 +3,9 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 개요
-FSx for NetApp ONTAP의 S3 액세스 포인트를 활용하여 다시캠 영상과 LiDAR 포인트 클라우드 데이터의 전처리, 품질 검사, 어노테이션 관리를 자동화하는 서버리스 워크플로입니다.
+FSx for ONTAP의 S3 액세스 포인트를 활용하여 다시캠 영상과 LiDAR 포인트 클라우드 데이터의 전처리, 품질 검사, 어노테이션 관리를 자동화하는 서버리스 워크플로입니다.
 ### 이 패턴이 적합한 경우
-- 다시 카메라 영상 및 LiDAR 포인트 클라우드 데이터가 Amazon FSx for NetApp ONTAP에 대량으로 저장되어 있습니다.
+- 다시 카메라 영상 및 LiDAR 포인트 클라우드 데이터가 Amazon FSx for ONTAP에 대량으로 저장되어 있습니다.
 - 영상에서 키프레임 추출 및 물체 감지(차량, 보행자, 교통 표지판)를 자동화하고 싶습니다.
 - LiDAR 포인트 클라우드의 품질 검사(포인트 밀도, 좌표 일관성)를 정기적으로 실시하고 싶습니다.
 - COCO 호환 형식으로 어노테이션 메타데이터를 관리하고 싶습니다.
@@ -65,7 +65,7 @@ graph LR
 ### 1. CloudFormation 배포
 
 규칙:
-- AWS 서비스 이름은 영어로 유지(Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation 등)
+- AWS 서비스 이름은 영어로 유지(Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation 등)
 - 기술 용어는 미번역(GDSII, DRC, OASIS, GDS, Lambda, tapeout 등)
 - 인라인 코드(`...`)는 미번역
 - 파일 경로 및 URL은 미번역
@@ -166,7 +166,7 @@ Discovery → Frame Extraction → Point Cloud QC
 | `SageMakerInstanceType` | Batch Transform インスタンスタイプ | `ml.m5.xlarge` |
 
 ## 지원되는 리전
-UC9는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation 등.
+UC9는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation 등.
 | サービス | リージョン制約 |
 |---------|-------------|
 | Amazon Rekognition | ほぼ全リージョンで利用可能 |

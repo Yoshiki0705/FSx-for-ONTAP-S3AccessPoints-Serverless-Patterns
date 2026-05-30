@@ -10,7 +10,7 @@ flowchart TB
         NFS["파일 작업<br/>create / write / delete / rename"]
     end
 
-    subgraph ONTAP["🗄️ FSx for NetApp ONTAP"]
+    subgraph ONTAP["🗄️ FSx for ONTAP"]
         FPOLICY["FPolicy Engine<br/>비동기 모드"]
     end
 
@@ -99,7 +99,7 @@ flowchart TB
 | 트리거 | EventBridge Rule (ECS Task State Change → RUNNING) |
 | 처리 | 1. Policy 비활성화 → 2. Engine IP 업데이트 → 3. Policy 재활성화 |
 | 인증 | Secrets Manager에서 ONTAP 인증 정보 취득 |
-| VPC 배치 | FSxN SVM과 동일 VPC 내 (REST API 액세스용) |
+| VPC 배치 | FSx for ONTAP SVM과 동일 VPC 내 (REST API 액세스용) |
 
 ## 데이터 플로우
 

@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Input — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Input — FSx for ONTAP"]
         DATA["Seismic & well data<br/>.segy (seismic survey)<br/>.las (well logs)<br/>.csv (sensor data)"]
     end
 
@@ -62,7 +62,7 @@ flowchart TB
 ### Input
 | Item | Description |
 |------|-------------|
-| **Source** | FSx for NetApp ONTAP volume |
+| **Source** | FSx for ONTAP volume |
 | **File Types** | .segy (SEG-Y seismic), .las (well logs), .csv (sensor data) |
 | **Access Method** | S3 Access Point (ListObjectsV2 + GetObject + Range Request) |
 | **Read Strategy** | SEG-Y: first 3600 bytes only (Range Request), LAS/CSV: full retrieval |
@@ -102,7 +102,7 @@ flowchart TB
 
 | Service | Role |
 |---------|------|
-| FSx for NetApp ONTAP | Seismic data & well log storage |
+| FSx for ONTAP | Seismic data & well log storage |
 | S3 Access Points | Serverless access to ONTAP volumes (Range Request support) |
 | EventBridge Scheduler | Periodic trigger |
 | Step Functions | Workflow orchestration (sequential) |

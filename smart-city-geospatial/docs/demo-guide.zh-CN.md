@@ -7,7 +7,7 @@
 ## 前提条件
 
 - AWS 账户，ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - Bedrock Nova Lite v1:0 模型已启用
 
 ## 时间线
@@ -16,7 +16,7 @@
 
 - 地方政府的挑战：城市规划、灾害应对、基础设施维护中 GIS 数据应用增加
 - 传统挑战：GIS 分析以 ArcGIS / QGIS 等专业软件为中心
-- 提案：FSxN S3AP + 无服务器实现自动化
+- 提案：FSx for ONTAP S3 AP + 无服务器实现自动化
 
 ### 0:05 - 0:10 架构（5 分钟）
 
@@ -107,7 +107,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP（"no data movement" 模式）
 将 CRS 标准化元数据、土地利用分类结果、基础设施评估、风险地图、Bedrock 生成的
-城市规划报告（Markdown）通过 FSxN S3 Access Point 写回到与原始 GIS 数据
+城市规划报告（Markdown）通过 FSx for ONTAP S3 Access Point 写回到与原始 GIS 数据
 **相同的 FSx ONTAP 卷**中。
 城市规划负责人可以在 SMB/NFS 的现有目录结构中直接引用 AI 成果。
 不会创建标准 S3 存储桶。
@@ -126,7 +126,7 @@ aws cloudformation deploy \
 **注意事项**：
 
 - 强烈建议指定 `S3AccessPointName`（同时为 Alias 格式和 ARN 格式授予 IAM 权限）
-- 超过 5GB 的对象在 FSxN S3AP 中不可用（AWS 规范），必须使用分段上传
+- 超过 5GB 的对象在 FSx for ONTAP S3 AP 中不可用（AWS 规范），必须使用分段上传
 - ChangeDetection Lambda 仅使用 DynamoDB，因此不受 `OutputDestination` 影响
 - Bedrock 报告以 Markdown（`text/markdown; charset=utf-8`）形式写出，因此可通过 SMB/NFS
   客户端的文本编辑器直接查看

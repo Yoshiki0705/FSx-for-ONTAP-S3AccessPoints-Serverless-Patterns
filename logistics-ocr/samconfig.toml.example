@@ -1,0 +1,48 @@
+# samconfig.toml.example — logistics-ocr
+#
+# 使用方法:
+#   1. このファイルを samconfig.toml にコピー
+#   2. <PLACEHOLDER> を実際の値に置き換え
+#   3. sam deploy を実行
+#
+# 注意: samconfig.toml は .gitignore に含まれています
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-logistics-ocr"
+resolve_s3 = true
+s3_prefix = "fsxn-s3ap-logistics-ocr"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "S3AccessPointAlias=<YOUR_S3AP_ALIAS>-ext-s3alias",
+    "S3AccessPointName=",
+    "OntapSecretName=<YOUR_ONTAP_SECRET_NAME>",
+    "OntapManagementIp=<YOUR_ONTAP_MGMT_IP>",
+    "SvmUuid=<YOUR_SVM_UUID>",
+    "ScheduleExpression=rate(1 hour)",
+    "VpcId=<YOUR_VPC_ID>",
+    "PrivateSubnetIds=<SUBNET_1>,<SUBNET_2>",
+    "OutputBucketName=",
+    "NotificationEmail=<YOUR_EMAIL>",
+    "CrossRegion=us-east-1",
+    "MapConcurrency=10",
+    "LambdaMemorySize=256",
+    "LambdaTimeout=300",
+    "EnableCloudWatchAlarms=false",
+    "EnableVpcEndpoints=false",
+    "PrivateRouteTableIds=",
+    "BedrockModelId=amazon.nova-lite-v1:0",
+    "ConfidenceThreshold=80",
+    "EnableXRayTracing=true",
+    "TriggerMode=POLLING",
+    "FPolicyEventBusName=fsxn-fpolicy-events",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true

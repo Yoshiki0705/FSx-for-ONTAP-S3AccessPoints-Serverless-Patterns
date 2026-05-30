@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
 ## Übersicht
-Serverlose Workflows zur Automatisierung der Vorverarbeitung, Qualitätsprüfung und Verwaltung von Anmerkungen für Dashcam-Videos und LiDAR-Punktwolkendaten unter Nutzung von S3 Access Points in FSx for NetApp ONTAP.
+Serverlose Workflows zur Automatisierung der Vorverarbeitung, Qualitätsprüfung und Verwaltung von Anmerkungen für Dashcam-Videos und LiDAR-Punktwolkendaten unter Nutzung von S3 Access Points in FSx for ONTAP.
 ### Fälle, in denen dieses Muster geeignet ist
 - Dashcam-Videos und LiDAR-Punktwolkendaten werden in großer Menge auf FSx ONTAP gespeichert.
 - Wir möchten die Extraktion von Schlüsselbildern aus Videos und die Objekterkennung (Fahrzeuge, Fußgänger, Verkehrszeichen) automatisieren.
@@ -55,7 +55,7 @@ graph LR
 4. **Annotation Manager**: Generierung von Annotation-Vorschlägen mit Bedrock und Segmentierung von Punktwolken mit SageMaker
 ## Voraussetzungen
 - AWS-Konto und angemessene IAM-Berechtigungen
-- FSx for NetApp ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
+- FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
 - S3 Access Point aktivierte Volumes (zur Speicherung von Bildern und LiDAR-Daten)
 - VPC, private Subnetz
 - Amazon Bedrock-Modellzugriff aktiviert (Claude / Nova)

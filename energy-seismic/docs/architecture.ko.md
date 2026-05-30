@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 입력 — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 입력 — FSx for ONTAP"]
         DATA["탄성파 및 유정 데이터<br/>.segy (탄성파 탐사)<br/>.las (유정 로그)<br/>.csv (센서 데이터)"]
     end
 
@@ -62,7 +62,7 @@ flowchart TB
 ### 입력
 | 항목 | 설명 |
 |------|------|
-| **소스** | FSx for NetApp ONTAP 볼륨 |
+| **소스** | FSx for ONTAP 볼륨 |
 | **파일 유형** | .segy (SEG-Y 탄성파), .las (유정 로그), .csv (센서 데이터) |
 | **접근 방식** | S3 Access Point (ListObjectsV2 + GetObject + Range Request) |
 | **읽기 전략** | SEG-Y: 처음 3600바이트만 (Range Request), LAS/CSV: 전체 취득 |
@@ -102,7 +102,7 @@ flowchart TB
 
 | 서비스 | 역할 |
 |--------|------|
-| FSx for NetApp ONTAP | 탄성파 데이터 및 유정 로그 저장소 |
+| FSx for ONTAP | 탄성파 데이터 및 유정 로그 저장소 |
 | S3 Access Points | ONTAP 볼륨에 대한 서버리스 접근 (Range Request 지원) |
 | EventBridge Scheduler | 정기 트리거 |
 | Step Functions | 워크플로 오케스트레이션 (순차) |

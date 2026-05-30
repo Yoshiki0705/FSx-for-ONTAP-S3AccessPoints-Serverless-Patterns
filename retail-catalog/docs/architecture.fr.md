@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Entrée — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Entrée — FSx for ONTAP"]
         DATA["Images produits<br/>.jpg/.jpeg/.png/.webp"]
     end
 
@@ -62,7 +62,7 @@ flowchart TB
 ### Entrée
 | Élément | Description |
 |---------|-------------|
-| **Source** | Volume FSx for NetApp ONTAP |
+| **Source** | Volume FSx for ONTAP |
 | **Types de fichiers** | .jpg/.jpeg/.png/.webp (images produits) |
 | **Méthode d'accès** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Stratégie de lecture** | Récupération complète de l'image (requise pour Rekognition / contrôle qualité) |
@@ -102,7 +102,7 @@ flowchart TB
 
 | Service | Rôle |
 |---------|------|
-| FSx for NetApp ONTAP | Stockage des images produits |
+| FSx for ONTAP | Stockage des images produits |
 | S3 Access Points | Accès serverless aux volumes ONTAP |
 | EventBridge Scheduler | Déclencheur périodique (intervalle de 30 minutes) |
 | Step Functions | Orchestration du workflow (séquentiel) |

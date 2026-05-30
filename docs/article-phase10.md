@@ -25,7 +25,7 @@ series: "FSx for ONTAP S3 Access Points"
 
 ### 背景: なぜ FPolicy か
 
-Phase 9 で確認した通り、FSxN S3AP の `GetBucketNotificationConfiguration` は依然 "Not supported"（FR-2 未解決）。全 17 UC がポーリングモデル（EventBridge Scheduler → Discovery Lambda → ListObjectsV2）で動作している。
+Phase 9 で確認した通り、FSx for ONTAP S3 AP の `GetBucketNotificationConfiguration` は依然 "Not supported"（FR-2 未解決）。全 17 UC がポーリングモデル（EventBridge Scheduler → Discovery Lambda → ListObjectsV2）で動作している。
 
 ONTAP FPolicy は NFS/SMB のファイル操作を検知・通知するフレームワーク。外部サーバーモードで AWS サービスと連携することで、S3AP ネイティブ通知の代替パスを実現できる。
 
@@ -46,7 +46,7 @@ FPolicy External Server (ECS Fargate)
   │                                                                    │
   │                                                          Step Functions (per-UC)
   │
-  └─ [Batch] → JSON Lines ログ (FSxN S3AP) → Log Query Lambda → SQS → ...
+  └─ [Batch] → JSON Lines ログ (FSx for ONTAP S3 AP) → Log Query Lambda → SQS → ...
 ```
 
 ### TriggerMode パラメータ
@@ -131,7 +131,7 @@ result = max(optimal, 1)
 
 ## 6. 次フェーズ展望
 
-- **Phase 11 候補**: FPolicy E2E AWS 検証（ECS Fargate デプロイ + FSxN 接続テスト）
+- **Phase 11 候補**: FPolicy E2E AWS 検証（ECS Fargate デプロイ + FSx for ONTAP 接続テスト）
 - FR-2 が解決された場合の S3AP ネイティブ通知への移行
 - Cross-Account Observability の実環境検証
-- Athena 結果の FSxN S3AP 書き込み（FR-1 解決待ち）
+- Athena 結果の FSx for ONTAP S3 AP 書き込み（FR-1 解決待ち）

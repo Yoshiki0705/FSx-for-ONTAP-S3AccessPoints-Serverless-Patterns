@@ -54,7 +54,7 @@ graph LR
 4. **安全檢查**：使用 Bedrock 檢查安全合規規則，使用 Rekognition 檢測視覺元素
 ## 前提條件
 - AWS 帳戶和適當的 IAM 權限
-- FSx for NetApp ONTAP 文件系統（ONTAP 9.17.1P4D3 及以上版本）
+- FSx for ONTAP 文件系統（ONTAP 9.17.1P4D3 及以上版本）
 - 已啟用的 S3 Access Point 的卷（用於存儲 BIM 模型和圖紙）
 - VPC、私有子網
 - Amazon Bedrock 模型訪問已啟用（Claude / Nova）

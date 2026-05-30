@@ -2,7 +2,7 @@
 
 ## 概要
 
-AWS Glue を使用して FSx for NetApp ONTAP S3 Access Points 経由で CSV センサーログを Parquet 形式に変換する ETL パターンです。Lambda ベースの変換（`functions/transform/`）の代替として、大規模データセットに適した Glue ETL ジョブを提供します。
+AWS Glue を使用して FSx for ONTAP S3 Access Points 経由で CSV センサーログを Parquet 形式に変換する ETL パターンです。Lambda ベースの変換（`functions/transform/`）の代替として、大規模データセットに適した Glue ETL ジョブを提供します。
 
 本パターンは AWS 公式チュートリアル「[Build ETL pipelines using AWS Glue](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html)」に準拠しています。
 
@@ -40,7 +40,7 @@ graph LR
 ## 前提条件
 
 - AWS アカウントと適切な IAM 権限
-- FSx for NetApp ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP ファイルシステム（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point が有効化されたボリューム（**internet** network origin 必須）
 - VPC、プライベートサブネット
 

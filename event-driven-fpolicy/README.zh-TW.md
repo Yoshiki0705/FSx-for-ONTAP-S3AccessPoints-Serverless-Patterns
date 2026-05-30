@@ -41,7 +41,7 @@
 
 ```mermaid
 graph LR
-    subgraph "FSx for NetApp ONTAP"
+    subgraph "FSx for ONTAP"
         NFS["NFS/SMB 用戶端"]
         ONTAP["ONTAP FPolicy Engine"]
     end
@@ -89,8 +89,8 @@ graph LR
 ## 前提條件
 
 - AWS 帳戶及適當的 IAM 權限
-- FSx for NetApp ONTAP 檔案系統（ONTAP 9.17.1 以上）
-- VPC、私有子網路（與 FSxN SVM 相同的 VPC）
+- FSx for ONTAP 檔案系統（ONTAP 9.17.1 以上）
+- VPC、私有子網路（與 FSx for ONTAP SVM 相同的 VPC）
 - ONTAP 管理員憑證已註冊到 Secrets Manager
 - ECR 儲存庫（用於 FPolicy Server 容器映像）
 - VPC Endpoints（ECR、SQS、CloudWatch Logs、STS）
@@ -178,7 +178,7 @@ aws cloudformation deploy \
 ### 3. ONTAP FPolicy 設定
 
 ```bash
-# 透過 SSH 連線到 FSxN SVM 後執行以下命令
+# 透過 SSH 連線到 FSx for ONTAP SVM 後執行以下命令
 
 # 1. 建立 External Engine
 fpolicy policy external-engine create \
@@ -223,7 +223,7 @@ fpolicy enable \
 | `ComputeType` | 執行環境選擇 (fargate/ec2) | `fargate` | |
 | `VpcId` | 與 FSxN 相同 VPC 的 ID | — | ✅ |
 | `SubnetIds` | Fargate 任務或 EC2 放置的 Private Subnet | — | ✅ |
-| `FsxnSvmSecurityGroupId` | FSxN SVM 的 Security Group ID | — | ✅ |
+| `FsxnSvmSecurityGroupId` | FSx for ONTAP SVM 的 Security Group ID | — | ✅ |
 | `ContainerImage` | FPolicy Server 容器映像 URI | — | ✅ |
 | `FPolicyPort` | TCP 監聽連接埠 | `9898` | |
 | `WriteCompleteDelaySec` | NFSv3 write-complete 等待秒數 | `5` | |
@@ -234,8 +234,8 @@ fpolicy enable \
 | `InstanceType` | EC2 執行個體類型（僅 EC2 時） | `t4g.micro` | |
 | `KeyPairName` | SSH 金鑰對名稱（僅 EC2 時，可省略） | `""` | |
 | `EventBusName` | EventBridge 自訂匯流排名稱 | `fsxn-fpolicy-events` | |
-| `FsxnMgmtIp` | FSxN SVM 管理 IP | — | ✅ |
-| `FsxnSvmUuid` | FSxN SVM UUID | — | ✅ |
+| `FsxnMgmtIp` | FSx for ONTAP SVM 管理 IP | — | ✅ |
+| `FsxnSvmUuid` | FSx for ONTAP SVM UUID | — | ✅ |
 | `FsxnEngineName` | FPolicy external-engine 名稱 | `fpolicy_aws_engine` | |
 | `FsxnPolicyName` | FPolicy 原則名稱 | `fpolicy_aws` | |
 | `FsxnCredentialsSecret` | Secrets Manager 密鑰名稱 | — | ✅ |
@@ -265,7 +265,7 @@ fpolicy enable \
 
 ```bash
 # 1. 停用 ONTAP FPolicy
-# 透過 SSH 連線到 FSxN SVM
+# 透過 SSH 連線到 FSx for ONTAP SVM
 fpolicy disable -vserver <SVM_NAME> -policy-name fpolicy_aws
 
 # 2. 刪除 CloudFormation 堆疊
@@ -290,7 +290,7 @@ aws ecr delete-repository \
 
 | 服務 | 區域限制 |
 |---------|-------------|
-| FSx for NetApp ONTAP | [支援區域列表](https://docs.aws.amazon.com/general/latest/gr/fsxn.html) |
+| FSx for ONTAP | [支援區域列表](https://docs.aws.amazon.com/general/latest/gr/fsxn.html) |
 | ECS Fargate | 幾乎所有區域可用 |
 | EventBridge | 所有區域可用 |
 | SQS | 所有區域可用 |

@@ -6,7 +6,7 @@
 
 ## 概述
 
-利用 FSx for NetApp ONTAP S3 Access Points 实现公文档（PDF / TIFF / EML / DOCX）的
+利用 FSx for ONTAP S3 Access Points 实现公文档（PDF / TIFF / EML / DOCX）的
 OCR、分类、PII 检测、编辑、全文检索、FOIA 期限跟踪自动化的
 无服务器流水线。
 
@@ -103,7 +103,7 @@ UC16 在 2026-05-11 的更新中支持了 `OutputDestination` 参数。
 | 模式 | 输出目标 | 创建的资源 | 使用场景 |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3`（默认） | 新建 S3 存储桶 | `AWS::S3::Bucket` | 按传统方式将 AI 成果物存储到独立的 S3 存储桶 |
-| `FSXN_S3AP` | FSxN S3 Access Point | 无（写回现有 FSx 卷） | 公文档负责人通过 SMB/NFS 在与原始文档相同的目录中查看 OCR 文本、编辑后文件、元数据 |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | 无（写回现有 FSx 卷） | 公文档负责人通过 SMB/NFS 在与原始文档相同的目录中查看 OCR 文本、编辑后文件、元数据 |
 
 **受影响的 Lambda**: OCR、Classification、EntityExtraction、Redaction、IndexGeneration（5 个函数）。  
 **链式结构的读回**: 后续 Lambda 通过 `shared/output_writer.py` 的 `get_*` 进行与写入目标对称的读回。FSXN_S3AP 模式时也直接从 S3AP 读回，因此整个链以一致的 destination 运行。  

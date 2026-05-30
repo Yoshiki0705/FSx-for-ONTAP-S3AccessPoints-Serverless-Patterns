@@ -107,7 +107,7 @@ UC17 prend en charge le paramètre `OutputDestination` depuis la mise à jour du
 | Mode | Destination de sortie | Ressources créées | Cas d'usage |
 |-------|-------|-------------------|------------|
 | `STANDARD_S3` (par défaut) | Nouveau bucket S3 | `AWS::S3::Bucket` | Accumulation des résultats IA dans un bucket S3 séparé comme auparavant |
-| `FSXN_S3AP` | FSxN S3 Access Point | Aucune (réécriture vers le volume FSx existant) | Les urbanistes consultent les rapports Bedrock (Markdown) et les cartes de risques dans le même répertoire que les données SIG originales via SMB/NFS |
+| `FSXN_S3AP` | FSx for ONTAP S3 Access Point | Aucune (réécriture vers le volume FSx existant) | Les urbanistes consultent les rapports Bedrock (Markdown) et les cartes de risques dans le même répertoire que les données SIG originales via SMB/NFS |
 
 **Lambda affectés** : Preprocessing, LandUseClassification, InfraAssessment, RiskMapping, ReportGeneration (5 fonctions).  
 **Lambda non affectés** : Discovery (manifest écrit directement sur S3AP), ChangeDetection (DynamoDB uniquement).  

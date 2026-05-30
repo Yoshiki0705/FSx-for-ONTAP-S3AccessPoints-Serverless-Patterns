@@ -1,0 +1,30 @@
+# samconfig.toml.example — smart-city-geospatial
+#
+# 使用方法:
+#   1. このファイルを samconfig.toml にコピー
+#   2. <PLACEHOLDER> を実際の値に置き換え
+#   3. sam deploy を実行
+#
+# 注意: samconfig.toml は .gitignore に含まれています
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-smart-city-geospatial"
+resolve_s3 = true
+s3_prefix = "fsxn-s3ap-smart-city-geospatial"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "S3AccessPoint=test-ap-ext-s3alias",
+    "OutputBucket=test-output-bucket",
+    "TriggerMode=POLLING",
+    "FPolicyEventBusName=fsxn-fpolicy-events",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true

@@ -14,7 +14,7 @@
 `s3.put_object` unconditionally. This works for AI artifact sizes typical
 today (metadata JSONs, Bedrock reports — all well under 1 MB). But:
 
-1. **FSxN S3AP PutObject hard limit is 5 GB**. Objects ≥ 5 GB must use
+1. **FSx for ONTAP S3 AP PutObject hard limit is 5 GB**. Objects ≥ 5 GB must use
    multipart upload. This is AWS-enforced; FR-1/FR-2/FR-3 do not address it
    (accepted as fundamental per
    [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](aws-feature-requests/fsxn-s3ap-improvements.md)).
@@ -358,7 +358,7 @@ transformation. **Option A works.**
 - **MagicMock**: For FSXN_S3AP delegation path, mock
   `shared.s3ap_helper.S3ApHelper.multipart_upload` and verify it was
   called with correct `(resolved_key, iterator, content_type, part_size)`
-  arguments. Don't try to fully moto-simulate FSxN S3AP semantics
+  arguments. Don't try to fully moto-simulate FSx for ONTAP S3 AP semantics
 - **Property-based (Hypothesis)**: For `_chunk_bytes` helper, verify
   `sum(len(c) for c in _chunk_bytes(data, n)) == len(data)` for random
   byte sequences and part sizes
@@ -455,10 +455,10 @@ hybrid work (UC7/UC8) may adopt it.
 - Phase 7 UC templates' OutputBucket doesn't restrict multipart
   (verified via template inspection)
 
-### 8.5 Risk: FSxN S3AP part_size constraints
+### 8.5 Risk: FSx for ONTAP S3 AP part_size constraints
 
 **Mitigation**:
-- FSxN S3AP multipart follows standard S3 constraints: 5 MB minimum
+- FSx for ONTAP S3 AP multipart follows standard S3 constraints: 5 MB minimum
   part size (except last), 5 GB maximum part size, 10,000 parts max
   per upload
 - `OutputWriter` default `part_size=100 MB` is well within these

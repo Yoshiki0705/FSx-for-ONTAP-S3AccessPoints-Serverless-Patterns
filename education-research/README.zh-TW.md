@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 Amazon FSx for NetApp ONTAP 的 S3 Access Points，建立一個無伺服器工作流程，以自動分類論文 PDF、進行引用網路分析和自動化研究數據元數據的提取。
+利用 Amazon FSx for ONTAP 的 S3 Access Points，建立一個無伺服器工作流程，以自動分類論文 PDF、進行引用網路分析和自動化研究數據元數據的提取。
 ### 此模式適用於何種情況
 - 論文 PDF 和研究數據大量儲存於 FSx ONTAP 上
 - 希望自動化 Textract 提取論文 PDF 的文字
@@ -56,7 +56,7 @@ graph LR
 5. **元數據**：將每篇論文的結構化元數據以 JSON 格式輸出到 S3
 ## 先決條件
 - AWS 帳戶和適當的 IAM 權限
-- FSx for NetApp ONTAP 文件系統（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP 文件系統（ONTAP 9.17.1P4D3 以上）
 - 已啟用 S3 Access Point 的卷（用於存儲論文 PDF 和研究數據）
 - VPC，私有子網
 - Amazon Bedrock 模型訪問已啟用（Claude / Nova）

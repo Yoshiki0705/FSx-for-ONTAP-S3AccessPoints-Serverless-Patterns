@@ -65,4 +65,4 @@
 
 ---
 
-*本文件是 FSxN S3AP Serverless Patterns 的現有環境影響評估指南。*
+*本文件是 FSx for ONTAP S3 AP Serverless Patterns 的現有環境影響評估指南。*

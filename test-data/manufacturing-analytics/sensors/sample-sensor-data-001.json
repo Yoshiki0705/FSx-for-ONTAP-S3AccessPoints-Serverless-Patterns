@@ -1,0 +1,26 @@
+{
+  "file_path": "/vol/factory/sensors/line-A/2026/05/sensor-temp-001.csv",
+  "file_size": 52000,
+  "last_modified": "2026-05-20T08:00:00Z",
+  "sensor_metadata": {
+    "sensor_id": "TEMP-LINE-A-001",
+    "sensor_type": "temperature",
+    "location": "Assembly Line A - Station 3",
+    "unit": "celsius",
+    "sampling_rate_hz": 1
+  },
+  "sample_readings": [
+    {"timestamp": "2026-05-20T08:00:00Z", "value": 72.3, "status": "normal"},
+    {"timestamp": "2026-05-20T08:00:01Z", "value": 72.5, "status": "normal"},
+    {"timestamp": "2026-05-20T08:00:02Z", "value": 85.1, "status": "warning"},
+    {"timestamp": "2026-05-20T08:00:03Z", "value": 91.7, "status": "critical"},
+    {"timestamp": "2026-05-20T08:00:04Z", "value": 73.2, "status": "normal"}
+  ],
+  "statistics": {
+    "mean": 78.96,
+    "max": 91.7,
+    "min": 72.3,
+    "std_dev": 8.42,
+    "anomaly_count": 2
+  }
+}

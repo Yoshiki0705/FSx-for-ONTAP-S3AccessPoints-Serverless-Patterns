@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Entrée — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Entrée — FSx for ONTAP"]
         VFX["Fichiers de projet VFX<br/>.exr, .dpx, .mov, .abc"]
     end
 
@@ -52,7 +52,7 @@ flowchart TB
 ### Entrée
 | Élément | Description |
 |---------|-------------|
-| **Source** | Volume FSx for NetApp ONTAP |
+| **Source** | Volume FSx for ONTAP |
 | **Types de fichiers** | .exr, .dpx, .mov, .abc (fichiers de projet VFX) |
 | **Méthode d'accès** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Stratégie de lecture** | Récupération complète des assets pour les cibles de rendu |
@@ -88,7 +88,7 @@ flowchart TB
 
 | Service | Rôle |
 |---------|------|
-| FSx for NetApp ONTAP | Stockage de projets VFX (EXR/DPX/MOV/ABC) |
+| FSx for ONTAP | Stockage de projets VFX (EXR/DPX/MOV/ABC) |
 | S3 Access Points | Accès serverless bidirectionnel aux volumes ONTAP |
 | EventBridge Scheduler | Déclencheur périodique |
 | Step Functions | Orchestration de workflow |

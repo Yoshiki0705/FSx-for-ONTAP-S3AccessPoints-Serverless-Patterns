@@ -5,7 +5,7 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-Leveraging S3 Access Points in FSx for NetApp ONTAP, this serverless workflow automatically classifies and anonymizes DICOM medical images, ensuring patient privacy and efficient image management.
+Leveraging S3 Access Points in FSx for ONTAP, this serverless workflow automatically classifies and anonymizes DICOM medical images, ensuring patient privacy and efficient image management.
 ### When this pattern is appropriate
 - I want to regularly anonymize DICOM files stored in FSx ONTAP from PACS / VNA
 - I want to automatically remove PHI (Protected Health Information) for research dataset creation
@@ -52,7 +52,7 @@ graph LR
 4. **Anonymization**: Identify and remove PHI using Comprehend Medical, output anonymized DICOM with classified metadata to S3
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file system (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
 - Volumes with S3 Access Point enabled
 - ONTAP REST API credentials registered in Secrets Manager
 - VPC, private subnets
@@ -163,7 +163,7 @@ UC5 uses the following services:
 ## References
 
 ### AWS Official Documentation
-- [FSx for NetApp ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Serverless Processing with Lambda (Official Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Comprehend Medical DetectPHI API](https://docs.aws.amazon.com/comprehend-medical/latest/dev/API_DetectPHI.html)
 - [Rekognition DetectText API](https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectText.html)

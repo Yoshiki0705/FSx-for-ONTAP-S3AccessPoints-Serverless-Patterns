@@ -5,9 +5,9 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-Leveraging S3 Access Points in Amazon FSx for NetApp ONTAP, this is a serverless workflow to automate the pre-processing, quality checks, and annotation management of dashcam footage and LiDAR point cloud data.
+Leveraging S3 Access Points in Amazon FSx for ONTAP, this is a serverless workflow to automate the pre-processing, quality checks, and annotation management of dashcam footage and LiDAR point cloud data.
 ### When this pattern is suitable
-- A large amount of dashcam footage and LiDAR point cloud data is being stored on FSx for NetApp ONTAP
+- A large amount of dashcam footage and LiDAR point cloud data is being stored on FSx for ONTAP
 - We want to automate keyframe extraction from the footage and object detection (vehicles, pedestrians, traffic signs)
 - We want to regularly perform quality checks on the LiDAR point cloud (point density, coordinate consistency)
 - We want to manage annotation metadata in COCO-compatible format
@@ -57,7 +57,7 @@ graph LR
 4. **Annotation Manager**: Generate annotation suggestions with Bedrock, perform point cloud segmentation with SageMaker
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file system (ONTAP 9.17.1P4D3 or later)
+- FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
 - S3 Access Point enabled volume (to store imagery and LiDAR data)
 - VPC, private subnets
 - Amazon Bedrock model access enabled (Claude / Nova)
@@ -115,7 +115,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 
 ## References
-- [FSx for NetApp ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition Label Detection](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon SageMaker Batch Transform](https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform.html)
 - [COCO Dataset Format](https://cocodataset.org/#format-data)

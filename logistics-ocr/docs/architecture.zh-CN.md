@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 输入 — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 输入 — FSx for ONTAP"]
         DATA["物流数据<br/>.jpg/.jpeg/.png/.tiff/.pdf (配送单据)<br/>.jpg/.jpeg/.png (仓库库存照片)"]
     end
 
@@ -65,7 +65,7 @@ flowchart TB
 ### 输入
 | 项目 | 说明 |
 |------|-------------|
-| **来源** | FSx for NetApp ONTAP 卷 |
+| **来源** | FSx for ONTAP 卷 |
 | **文件类型** | .jpg/.jpeg/.png/.tiff/.pdf (配送单据), .jpg/.jpeg/.png (仓库库存照片) |
 | **访问方法** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **读取策略** | 获取完整图像·PDF（Textract / Rekognition 所需） |
@@ -105,7 +105,7 @@ flowchart TB
 
 | 服务 | 角色 |
 |---------|------|
-| FSx for NetApp ONTAP | 配送单据·仓库库存图像存储 |
+| FSx for ONTAP | 配送单据·仓库库存图像存储 |
 | S3 Access Points | 对 ONTAP 卷的无服务器访问 |
 | EventBridge Scheduler | 定期触发器 |
 | Step Functions | 工作流编排（支持并行路径） |

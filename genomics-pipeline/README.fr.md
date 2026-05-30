@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## Aperçu
-Utilisation des points d'accès S3 de FSx for NetApp ONTAP pour automatiser les workflows sans serveur de contrôle qualité des données génomiques FASTQ/BAM/VCF, l'agrégation des statistiques d'appel de variantes et la génération de résumés de recherche.
+Utilisation des points d'accès S3 de FSx for ONTAP pour automatiser les workflows sans serveur de contrôle qualité des données génomiques FASTQ/BAM/VCF, l'agrégation des statistiques d'appel de variantes et la génération de résumés de recherche.
 ### Cas où ce schéma est approprié
 - Les données de sortie des séquenceurs de nouvelle génération (FASTQ/BAM/VCF) sont stockées sur FSx ONTAP
 - Nous souhaitons surveiller périodiquement les métriques de qualité des données de séquençage (nombre de lectures, scores de qualité, teneur en GC)
@@ -55,7 +55,7 @@ graph LR
 5. **Résumé** : Génération du résumé de l'étude avec Bedrock, extraction des entités avec Comprehend Medical
 ## Conditions préalables
 - Compte AWS et permissions IAM appropriées
-- Système de fichiers FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou supérieur)
 - Point d'accès S3 activé pour le volume (stockage des données génomiques)
 - VPC, sous-réseaux privés
 - Accès au modèle Amazon Bedrock activé (Claude / Nova)

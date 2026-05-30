@@ -10,7 +10,7 @@ flowchart TB
         NFS["Opérations fichier<br/>create / write / delete / rename"]
     end
 
-    subgraph ONTAP["🗄️ FSx for NetApp ONTAP"]
+    subgraph ONTAP["🗄️ FSx for ONTAP"]
         FPOLICY["FPolicy Engine<br/>Mode asynchrone"]
     end
 
@@ -99,7 +99,7 @@ flowchart TB
 | Déclencheur | EventBridge Rule (ECS Task State Change → RUNNING) |
 | Traitement | 1. Désactiver Policy → 2. Mettre à jour IP Engine → 3. Réactiver Policy |
 | Authentification | Récupération des identifiants ONTAP depuis Secrets Manager |
-| Placement VPC | Même VPC que FSxN SVM (pour l'accès REST API) |
+| Placement VPC | Même VPC que FSx for ONTAP SVM (pour l'accès REST API) |
 
 ## Flux de données
 

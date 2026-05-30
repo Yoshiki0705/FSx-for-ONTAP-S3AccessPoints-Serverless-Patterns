@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 Eingabe — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 Eingabe — FSx for ONTAP"]
         DATA["Video- / LiDAR-Daten<br/>.bag, .pcd, .mp4, .h264"]
     end
 
@@ -63,7 +63,7 @@ flowchart TB
 ### Eingabe
 | Element | Beschreibung |
 |---------|--------------|
-| **Quelle** | FSx for NetApp ONTAP Volume |
+| **Quelle** | FSx for ONTAP Volume |
 | **Dateitypen** | .bag, .pcd, .mp4, .h264 (ROS bag, LiDAR-Punktwolke, Dashcam-Video) |
 | **Zugriffsmethode** | S3 Access Point (ListObjectsV2 + GetObject) |
 | **Lesestrategie** | Vollständiger Dateiabruf (erforderlich für Frame-Extraktion und Punktwolkenanalyse) |
@@ -103,7 +103,7 @@ flowchart TB
 
 | Service | Rolle |
 |---------|-------|
-| FSx for NetApp ONTAP | Speicherung autonomer Fahrdaten (Video/LiDAR) |
+| FSx for ONTAP | Speicherung autonomer Fahrdaten (Video/LiDAR) |
 | S3 Access Points | Serverloser Zugriff auf ONTAP-Volumes |
 | EventBridge Scheduler | Periodischer Auslöser |
 | Step Functions | Workflow-Orchestrierung |

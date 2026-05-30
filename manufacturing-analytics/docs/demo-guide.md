@@ -158,12 +158,12 @@
 
 ---
 
-## 出力先について: FSxN S3 Access Point (Pattern A)
+## 出力先について: FSx for ONTAP S3 Access Point (Pattern A)
 
 UC3 manufacturing-analytics は **Pattern A: Native S3AP Output** に分類されます
 （`docs/output-destination-patterns.md` 参照）。
 
-**設計**: センサーデータ解析結果、異常検知レポート、画像検査結果は全て FSxN S3 Access Point 経由で
+**設計**: センサーデータ解析結果、異常検知レポート、画像検査結果は全て FSx for ONTAP S3 Access Point 経由で
 オリジナルセンサー CSV と検査画像と**同一の FSx ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
 作成されません（"no data movement" パターン）。
 

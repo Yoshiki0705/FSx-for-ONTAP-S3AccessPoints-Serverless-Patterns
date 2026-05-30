@@ -164,7 +164,7 @@
 與 Phase 7 相同方針,拍攝**保險評估人員日常業務實際使用的 UI/UX 畫面**。
 排除技術人員畫面(Step Functions 圖表等)。
 
-### 輸出目的地選擇:標準 S3 vs FSxN S3AP
+### 輸出目的地選擇:標準 S3 vs FSx for ONTAP S3 AP
 
 UC14 在 2026-05-10 的更新中支援了 `OutputDestination` 參數。
 **將 AI 成果寫回同一 FSx 磁碟區**,讓理賠處理人員能在

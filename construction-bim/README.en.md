@@ -5,9 +5,9 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-Utilizing S3 Access Points of FSx for NetApp ONTAP, this is a serverless workflow to automate version control of BIM models (IFC/Revit), OCR text extraction from drawing PDFs, and safety compliance checks.
+Utilizing S3 Access Points of FSx for ONTAP, this is a serverless workflow to automate version control of BIM models (IFC/Revit), OCR text extraction from drawing PDFs, and safety compliance checks.
 ### When this pattern is suitable
-- BIM models (IFC/Revit) and drawing PDFs are stored on FSx for NetApp ONTAP
+- BIM models (IFC/Revit) and drawing PDFs are stored on FSx for ONTAP
 - We want to automatically catalog the metadata of IFC files (project name, number of architectural elements, number of floors)
 - We want to automatically detect differences between versions of the BIM model (addition, deletion, or modification of elements)
 - We want to extract text and tables from the drawing PDFs using Textract
@@ -56,7 +56,7 @@ graph LR
 4. **Safety Check**: Check safety compliance rules with Bedrock, detect visual elements with Rekognition
 ## Prerequisites
 - AWS account and appropriate IAM permissions
-- FSx for NetApp ONTAP file systems (ONTAP 9.17.1P4D3 or higher)
+- FSx for ONTAP file systems (ONTAP 9.17.1P4D3 or higher)
 - S3 Access Point enabled volumes (to store BIM models and drawings)
 - VPC, private subnets
 - Amazon Bedrock model access enabled (Claude / Nova)

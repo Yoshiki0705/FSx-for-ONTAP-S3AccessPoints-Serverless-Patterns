@@ -7,7 +7,7 @@
 ## 前提
 
 - AWS 帳戶、ap-northeast-1
-- FSx for NetApp ONTAP + S3 Access Point
+- FSx for ONTAP + S3 Access Point
 - 部署 `government-archives/template-deploy.yaml`（使用 `OpenSearchMode=none` 以降低成本）
 
 ## 時間軸
@@ -127,7 +127,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP（"no data movement" 模式）
-OCR 文字、分類結果、PII 檢測結果、遮蔽後文件、遮蔽中繼資料，透過 FSxN S3 Access Point
+OCR 文字、分類結果、PII 檢測結果、遮蔽後文件、遮蔽中繼資料，透過 FSx for ONTAP S3 Access Point
 寫回與原始文件**相同的 FSx ONTAP 磁碟區**。
 公文書負責人可以在 SMB/NFS 的現有目錄結構內直接參考 AI 成果物。
 不會建立標準 S3 儲存貯體。
@@ -148,13 +148,13 @@ aws cloudformation deploy \
 UC16 採用前段成果物由後段 Lambda 讀取的鏈式結構（OCR → Classification →
 EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_writer.py` 的
 `get_bytes/get_text/get_json` 會從與寫入目的地相同的 destination 讀取。
-這使得 `OutputDestination=FSXN_S3AP` 時也能從 FSxN S3 Access Point
+這使得 `OutputDestination=FSXN_S3AP` 時也能從 FSx for ONTAP S3 Access Point
 讀取，整個鏈式處理可以在一致的 destination 上運作。
 
 **注意事項**：
 
 - 強烈建議指定 `S3AccessPointName`（同時允許 Alias 格式和 ARN 格式的 IAM 權限）
-- 超過 5GB 的物件無法使用 FSxN S3AP（AWS 規格），必須使用多部分上傳
+- 超過 5GB 的物件無法使用 FSx for ONTAP S3 AP（AWS 規格），必須使用多部分上傳
 - ComplianceCheck Lambda 僅使用 DynamoDB，因此不受 `OutputDestination` 影響
 - FoiaDeadlineReminder Lambda 僅使用 DynamoDB + SNS，因此不受影響
 - OpenSearch 索引由 `OpenSearchMode` 參數另行管理（與 `OutputDestination` 獨立）

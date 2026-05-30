@@ -4,7 +4,7 @@
 
 ## 概要
 
-本ドキュメントでは、FSxN S3AP Serverless Patterns Phase 4 で提供する 3 つの SageMaker 推論パターンのコスト比較と選択指針を提供します。
+本ドキュメントでは、FSx for ONTAP S3 AP Serverless Patterns Phase 4 で提供する 3 つの SageMaker 推論パターンのコスト比較と選択指針を提供します。
 
 対象リージョン: **ap-northeast-1（東京）**
 

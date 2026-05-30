@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph INPUT["📥 输入 — FSx for NetApp ONTAP"]
+    subgraph INPUT["📥 输入 — FSx for ONTAP"]
         GDS["GDS/OASIS 设计文件<br/>.gds, .gds2, .oas, .oasis"]
     end
 
@@ -60,7 +60,7 @@ flowchart TB
 ### 输入
 | 项目 | 说明 |
 |------|-------------|
-| **来源** | FSx for NetApp ONTAP 卷 |
+| **来源** | FSx for ONTAP 卷 |
 | **文件类型** | .gds, .gds2 (GDSII), .oas, .oasis (OASIS) |
 | **访问方法** | S3 Access Point（无需 NFS 挂载）|
 | **读取策略** | Range 请求 — 仅前 64KB（头部解析）|
@@ -98,7 +98,7 @@ flowchart TB
 
 | 服务 | 角色 |
 |---------|------|
-| FSx for NetApp ONTAP | 企业文件存储（GDS/OASIS 文件）|
+| FSx for ONTAP | 企业文件存储（GDS/OASIS 文件）|
 | S3 Access Points | 对 ONTAP 卷的无服务器数据访问 |
 | EventBridge Scheduler | 定期触发器 |
 | Step Functions | 带 Map 状态的工作流编排 |

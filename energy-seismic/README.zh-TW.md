@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 ## 概述
-利用 FSx for NetApp ONTAP 的 S3 Access Points，自動化以伺服器端作業形式提取 SEG-Y 地震勘探數據的中繼資料、井日誌異常檢測和產生合規報告。
+利用 FSx for ONTAP 的 S3 Access Points，自動化以伺服器端作業形式提取 SEG-Y 地震勘探數據的中繼資料、井日誌異常檢測和產生合規報告。
 ### 適用此模式的情況
 - SEG-Y 地震探査資料和井日誌大量存儲在 FSx ONTAP 上
 - 想要自動編目地震探測資料的元數據（測量名稱、坐標系、樣本間隔、道數）
@@ -59,7 +59,7 @@ graph LR
 5. **合規報告**：使用 Bedrock 生成合規報告，使用 Rekognition 識別圖像模式
 ## 前提條件
 - AWS 帳戶和適當的 IAM 權限
-- FSx for NetApp ONTAP 文件系統（ONTAP 9.17.1P4D3 以上）
+- FSx for ONTAP 文件系統（ONTAP 9.17.1P4D3 以上）
 - S3 Access Point 已啟用的卷（存儲地震勘探數據和井日誌）
 - VPC、私有子網
 - Amazon Bedrock 模型訪問已啟用（Claude / Nova）

@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
 ## Descripción general
-Un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for NetApp ONTAP para automatizar el preprocesamiento, la verificación de calidad y la gestión de anotaciones de imágenes de dashcam y datos de nube de puntos LiDAR.
+Un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para automatizar el preprocesamiento, la verificación de calidad y la gestión de anotaciones de imágenes de dashcam y datos de nube de puntos LiDAR.
 ### Casos en los que este patrón es adecuado
 - Las imágenes de la dashcam y los datos de nubes de puntos LiDAR están almacenados en grandes cantidades en FSx ONTAP
 - Quiero automatizar la extracción de fotogramas clave y la detección de objetos (vehículos, peatones, señales de tráfico) de las imágenes
@@ -55,7 +55,7 @@ graph LR
 4. **Administrador de anotaciones**: Generar propuestas de anotaciones con Bedrock y segmentar nubes de puntos con SageMaker
 ## Requisitos previos
 - Cuenta de AWS y permisos de IAM adecuados
-- Sistema de archivos FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 o superior)
+- Sistema de archivos FSx for ONTAP (ONTAP 9.17.1P4D3 o superior)
 - Punto de acceso S3 habilitado en el volumen (para almacenar imágenes y datos LiDAR)
 - VPC, subredes privadas
 - Acceso a modelos de Amazon Bedrock habilitado (Claude / Nova)

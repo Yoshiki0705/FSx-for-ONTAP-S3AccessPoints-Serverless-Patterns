@@ -3,7 +3,7 @@
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
 ## Resumen
-Este es un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for NetApp ONTAP para la evaluación de daños en fotografías de accidentes, la extracción de texto OCR de presupuestos y la generación automática de informes de reclamaciones de seguros.
+Este es un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para la evaluación de daños en fotografías de accidentes, la extracción de texto OCR de presupuestos y la generación automática de informes de reclamaciones de seguros.
 ### Casos en los que este patrón es apropiado
 - Las fotografías de accidentes y las facturas se están almacenando en FSx ONTAP
 - Desea automatizar la detección de daños en fotografías de accidentes (etiquetas de daños en vehículos, índice de gravedad, áreas afectadas) con Rekognition
@@ -55,7 +55,7 @@ graph LR
 4. **Informe de reclamaciones**: Generar un informe completo correlacionando la evaluación de daños y los datos del presupuesto con Bedrock
 ## Requisitos previos
 - Cuenta de AWS y permisos IAM adecuados
-- Sistema de archivos FSx for NetApp ONTAP (ONTAP 9.17.1P4D3 o superior)
+- Sistema de archivos FSx for ONTAP (ONTAP 9.17.1P4D3 o superior)
 - Punto de acceso de S3 habilitado para volúmenes (almacenamiento de fotografías de accidentes y presupuestos)
 - VPC, subredes privadas
 - Acceso al modelo de Amazon Bedrock habilitado (Claude / Nova)
