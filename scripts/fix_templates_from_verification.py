@@ -124,9 +124,9 @@ def process_template(uc_name: str) -> None:
     if content != original:
         with open(template_path, "w") as f:
             f.write(content)
-        print(f"    💾 保存完了")
+        print("    💾 保存完了")
     else:
-        print(f"    ℹ️  変更なし")
+        print("    ℹ️  変更なし")
 
 
 def main():

@@ -124,7 +124,7 @@ class TestHandleMockMode:
             mock_sfn = MagicMock()
             mock_boto3.client.return_value = mock_sfn
 
-            result = _handle_mock_mode(event, "test-token-123", mock_writer)
+            _handle_mock_mode(event, "test-token-123", mock_writer)
 
             # OutputWriter.put_json が呼ばれたことを確認
             mock_writer.put_json.assert_called_once()
@@ -312,7 +312,7 @@ class TestHandleRealModeDynamoDBMode:
                 mock_sagemaker = MagicMock()
                 mock_boto3.client.return_value = mock_sagemaker
 
-                result = _handle_real_mode(event, "direct-mode-token", "output-bucket")
+                _handle_real_mode(event, "direct-mode-token", "output-bucket")
 
                 call_kwargs = mock_sagemaker.create_transform_job.call_args[1]
                 tags = call_kwargs["Tags"]

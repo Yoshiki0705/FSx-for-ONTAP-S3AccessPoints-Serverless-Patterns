@@ -179,7 +179,7 @@ class HighLoadTester:
         start = time.time()
 
         for second in range(total_duration):
-            elapsed = time.time() - start
+            time.time() - start
 
             # Calculate target rate for this second
             if second < self.config.ramp_up_sec:

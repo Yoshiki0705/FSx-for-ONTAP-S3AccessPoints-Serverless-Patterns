@@ -32,7 +32,6 @@ import os
 from typing import Union
 
 from shared.fpolicy.protobuf_reader import (
-    FramingError,
     FramingMode,
     ProtobufFrameReader,
 )

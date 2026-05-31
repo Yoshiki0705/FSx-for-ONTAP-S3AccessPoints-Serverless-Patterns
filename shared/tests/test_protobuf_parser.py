@@ -7,10 +7,8 @@ between XML regex parsing and protobuf parsing.
 import re
 import sys
 import time
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -20,7 +18,6 @@ sys.path.insert(
 )
 
 from protobuf_parser import (
-    ProtobufDecodeError,
     ProtobufParser,
     encode_notification,
     is_protobuf_format,
@@ -125,12 +122,6 @@ class TestProtobufParser:
 
     def test_parse_header(self):
         """Parse a protobuf header message."""
-        header_event = {
-            "notf_type": "NOTI_REQ",
-            "content_len": 256,
-            "data_format": "protobuf",
-            "session_id": "sess-001",
-        }
         # Manually encode header fields
         from protobuf_parser import _encode_varint, WIRE_LENGTH_DELIMITED, WIRE_VARINT
 
@@ -301,7 +292,7 @@ class TestPerformanceComparison:
 
         # Log results
         print(f"\n{'='*60}")
-        print(f"Performance Comparison (1000 events)")
+        print("Performance Comparison (1000 events)")
         print(f"{'='*60}")
         print(f"  XML regex parse:    {xml_time*1000:.2f} ms ({xml_time/1000*1000:.4f} ms/event)")
         print(f"  Protobuf parse:     {pb_time*1000:.2f} ms ({pb_time/1000*1000:.4f} ms/event)")
@@ -324,7 +315,7 @@ class TestPerformanceComparison:
         reduction = (1 - pb_total / xml_total) * 100
 
         print(f"\n{'='*60}")
-        print(f"Message Size Comparison (1000 events)")
+        print("Message Size Comparison (1000 events)")
         print(f"{'='*60}")
         print(f"  XML total:          {xml_total:,} bytes ({xml_total/1000:.0f} bytes/event avg)")
         print(f"  Protobuf total:     {pb_total:,} bytes ({pb_total/1000:.0f} bytes/event avg)")

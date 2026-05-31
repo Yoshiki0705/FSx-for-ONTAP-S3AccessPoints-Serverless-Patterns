@@ -192,10 +192,10 @@ class TestSecretsNotLogged:
 
         all_logs = "\n".join(log_records)
         assert password not in all_logs, (
-            f"Current password was found in log output during setSecret"
+            "Current password was found in log output during setSecret"
         )
         assert new_password not in all_logs, (
-            f"New password was found in log output during setSecret"
+            "New password was found in log output during setSecret"
         )
 
     @pytest.mark.property
@@ -257,7 +257,7 @@ class TestSecretsNotLogged:
 
         all_logs = "\n".join(log_records)
         assert password not in all_logs, (
-            f"Password was found in log output during testSecret"
+            "Password was found in log output during testSecret"
         )
 
     @pytest.mark.property

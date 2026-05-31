@@ -338,7 +338,7 @@ class FPolicyServer:
             time.sleep(self.write_complete_delay_sec)
 
         # Convert ONTAP path to S3 key
-        s3_key = self.convert_ontap_path_to_s3_key(ontap_path)
+        self.convert_ontap_path_to_s3_key(ontap_path)
 
         # Build FPolicy event
         fpolicy_event = {

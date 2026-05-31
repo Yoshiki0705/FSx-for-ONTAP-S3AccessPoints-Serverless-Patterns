@@ -4,8 +4,6 @@ Batch translation generator for UC architecture documents.
 This script generates translation files for all UCs in all languages.
 """
 import os
-import re
-import sys
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

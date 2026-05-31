@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,7 +19,6 @@ from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 
 from shared.lambdas.canary.s3ap_health_check import (
-    CheckResult,
     handler,
 )
 
@@ -315,5 +313,5 @@ class TestCanaryNoSensitiveDataInResults:
         # Binary content should not appear in result (neither raw nor hex-encoded)
         if len(content_hex) > 6:
             assert content_hex not in result_str, (
-                f"Binary content (hex) leaked into canary result"
+                "Binary content (hex) leaked into canary result"
             )

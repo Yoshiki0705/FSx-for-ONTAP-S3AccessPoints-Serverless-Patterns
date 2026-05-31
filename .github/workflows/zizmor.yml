@@ -39,7 +39,7 @@ jobs:
       - name: Run zizmor scan
         run: |
           echo "🔍 GitHub Actions セキュリティリント実行中..."
-          zizmor --format sarif . > zizmor-results.sarif 2>&1 || true
+          zizmor --format sarif . > zizmor-results.sarif || true
 
       - name: Upload SARIF results
         if: always()

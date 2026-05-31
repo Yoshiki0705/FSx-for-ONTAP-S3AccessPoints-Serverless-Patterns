@@ -14,7 +14,6 @@ from botocore.exceptions import ClientError
 
 from shared.exceptions import S3ApHelperError
 from shared.output_writer import (
-    DEFAULT_S3AP_PREFIX,
     FSXN_S3AP,
     STANDARD_S3,
     OutputWriter,

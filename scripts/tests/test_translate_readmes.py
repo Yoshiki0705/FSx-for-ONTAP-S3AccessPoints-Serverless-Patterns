@@ -15,28 +15,22 @@ Test coverage:
 
 from __future__ import annotations
 
-import os
 import re
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-from hypothesis import given, settings, assume
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 # Add scripts directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from translate_readmes import (
-    BlockType,
-    ContentBlock,
     LanguageSwitcherInjector,
     MarkdownTranslator,
     ReadmeGenerator,
     TranslationConfig,
-    TranslationResult,
 )
 
 
@@ -546,7 +540,7 @@ class TestProperty4UntranslatableContentPreservation:
         reassembled = translator.reassemble(blocks)
 
         assert code_block_str in reassembled, (
-            f"Code block with AWS service name not preserved"
+            "Code block with AWS service name not preserved"
         )
 
     @given(content=mermaid_block())
@@ -626,7 +620,7 @@ class TestReadmeGeneratorUnit:
         config = TranslationConfig()
         config.uc_folders = ["test-uc"]
 
-        with patch("translate_readmes.boto3.client") as mock_boto:
+        with patch("translate_readmes.boto3.client"):
             generator = ReadmeGenerator(
                 config=config, project_root=str(tmp_path)
             )
@@ -687,7 +681,7 @@ class TestReadmeGeneratorUnit:
         existing_en.write_text(existing_content, encoding="utf-8")
 
         generator = self._create_generator(tmp_path)
-        results = generator.generate_for_folder("test-uc")
+        generator.generate_for_folder("test-uc")
 
         # English file should have switcher added but content preserved
         updated_en = existing_en.read_text(encoding="utf-8")

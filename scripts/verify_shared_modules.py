@@ -19,7 +19,6 @@ OntapClient, FsxHelper, S3ApHelper の AWS 環境での動作を検証する。
 """
 import os
 import sys
-import json
 import logging
 
 # Add parent dir to path

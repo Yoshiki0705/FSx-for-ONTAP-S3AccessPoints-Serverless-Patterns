@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 # パス設定
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

@@ -7,12 +7,11 @@ Property 3: FPolicy Event スキーマバリデーション正確性
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
 import pytest
-from hypothesis import given, settings, assume
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 # Add shared to path

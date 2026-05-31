@@ -19,7 +19,6 @@ import re
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 import boto3
 from botocore.config import Config as BotoConfig

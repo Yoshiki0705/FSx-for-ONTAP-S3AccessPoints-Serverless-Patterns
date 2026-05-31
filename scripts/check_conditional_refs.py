@@ -13,7 +13,6 @@ NOT conditionally wrapped).
 """
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -110,7 +109,7 @@ def main() -> int:
             issues += 1
             rel = tpl.relative_to(repo)
             print(f"=== POTENTIAL UC9-CLASS BUG: {rel} ===")
-            print(f"  DefinitionSubstitutions NOT used, but these conditional Lambdas are referenced in DefinitionString:")
+            print("  DefinitionSubstitutions NOT used, but these conditional Lambdas are referenced in DefinitionString:")
             for lid in referenced:
                 cond = cond_lambdas[lid]
                 print(f"    - {lid} (Condition: {cond})")

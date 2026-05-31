@@ -14,10 +14,6 @@ import pytest
 
 from shared.routing import (
     InferencePath,
-    MAX_CONCURRENCY_MAX,
-    MAX_CONCURRENCY_MIN,
-    VALID_INFERENCE_TYPES,
-    VALID_MEMORY_SIZES_MB,
     determine_inference_path,
     validate_serverless_config,
 )

@@ -116,7 +116,6 @@ def test_record_batching_preserves_count_and_content(n_records, data):
 
 import json
 import os
-from io import StringIO
 from unittest.mock import patch
 
 from shared.observability import EmfMetrics

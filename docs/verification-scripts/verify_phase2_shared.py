@@ -40,7 +40,7 @@ def verify_cross_region_client(target_region: str) -> dict:
 
     # 1. Textract クライアント作成
     try:
-        textract = boto3.client("textract", region_name=target_region)
+        boto3.client("textract", region_name=target_region)
         # AnalyzeDocument は実データが必要なので、クライアント作成のみ確認
         results["checks"].append({
             "name": "textract_client_creation",

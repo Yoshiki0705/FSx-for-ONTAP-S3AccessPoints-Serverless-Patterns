@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import boto3
 import pytest
@@ -95,7 +95,7 @@ def test_chunk_bytes_empty():
 
 def test_put_bytes_rejects_over_5gb(s3_bucket):
     """put_bytes raises OutputWriterError for body > 5 GB."""
-    writer = OutputWriter(
+    OutputWriter(
         destination=STANDARD_S3,
         bucket=TEST_BUCKET,
         session=s3_bucket,

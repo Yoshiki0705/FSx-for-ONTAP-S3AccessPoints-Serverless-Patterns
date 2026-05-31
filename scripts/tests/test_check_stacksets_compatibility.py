@@ -9,7 +9,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -17,7 +16,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from check_stacksets_compatibility import (
-    ValidationResult,
     check_export_collision,
     check_hardcoded_account_ids,
     check_resource_name_uniqueness,
