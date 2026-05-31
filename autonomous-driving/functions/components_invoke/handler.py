@@ -62,7 +62,6 @@ class ComponentsColdStartTimeoutError(Exception):
     """
 
 
-
 def _download_from_s3ap(
     s3_client: Any,
     s3_uri: str,
@@ -136,9 +135,7 @@ def _is_scale_from_zero_error(error: ClientError) -> bool:
         return True
 
     if error_code == _VALIDATION_ERROR and (
-        "not ready" in error_message
-        or "no instance" in error_message
-        or "model" in error_message
+        "not ready" in error_message or "no instance" in error_message or "model" in error_message
     ):
         return True
 
@@ -225,8 +222,7 @@ def _invoke_with_components_retry(
                         model_not_ready_max_delay,
                     )
                     logger.warning(
-                        "Scale-from-zero: %s on attempt %d/%d, "
-                        "waiting %ds before retry (component=%s)",
+                        "Scale-from-zero: %s on attempt %d/%d, waiting %ds before retry (component=%s)",
                         error_code,
                         scale_from_zero_attempts,
                         model_not_ready_max_retries,
@@ -240,8 +236,7 @@ def _invoke_with_components_retry(
                 if error_code in _RETRYABLE_ERRORS and attempt < max_retries:
                     wait_time = 2**attempt
                     logger.warning(
-                        "Retryable error '%s' on attempt %d/%d, "
-                        "waiting %ds before retry: %s",
+                        "Retryable error '%s' on attempt %d/%d, waiting %ds before retry: %s",
                         error_code,
                         attempt + 1,
                         max_retries + 1,
@@ -251,8 +246,7 @@ def _invoke_with_components_retry(
                     time.sleep(wait_time)
                 else:
                     logger.error(
-                        "Non-retryable error or max retries exceeded: "
-                        "error_code=%s, attempt=%d/%d",
+                        "Non-retryable error or max retries exceeded: error_code=%s, attempt=%d/%d",
                         error_code,
                         attempt + 1,
                         max_retries + 1,
@@ -328,18 +322,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     use_case = os.environ.get("USE_CASE", "autonomous-driving")
 
     # scale-from-zero 固有の設定
-    model_not_ready_retry_delay = int(
-        os.environ.get("MODEL_NOT_READY_RETRY_DELAY", "5")
-    )
-    model_not_ready_max_retries = int(
-        os.environ.get("MODEL_NOT_READY_MAX_RETRIES", "10")
-    )
-    model_not_ready_max_delay = int(
-        os.environ.get("MODEL_NOT_READY_MAX_DELAY", "30")
-    )
-    step_functions_task_timeout = int(
-        os.environ.get("STEP_FUNCTIONS_TASK_TIMEOUT", "300")
-    )
+    model_not_ready_retry_delay = int(os.environ.get("MODEL_NOT_READY_RETRY_DELAY", "5"))
+    model_not_ready_max_retries = int(os.environ.get("MODEL_NOT_READY_MAX_RETRIES", "10"))
+    model_not_ready_max_delay = int(os.environ.get("MODEL_NOT_READY_MAX_DELAY", "30"))
+    step_functions_task_timeout = int(os.environ.get("STEP_FUNCTIONS_TASK_TIMEOUT", "300"))
 
     # 入力パラメータ取得
     s3_uri = event.get("s3_uri", "")
@@ -418,8 +404,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     total_ms = (time.time() - start_time) * 1000
 
     logger.info(
-        "Inference completed: variant=%s, invoke_latency=%.1fms, "
-        "total_latency=%.1fms, component=%s",
+        "Inference completed: variant=%s, invoke_latency=%.1fms, total_latency=%.1fms, component=%s",
         parsed["variant_name"],
         invoke_ms,
         total_ms,

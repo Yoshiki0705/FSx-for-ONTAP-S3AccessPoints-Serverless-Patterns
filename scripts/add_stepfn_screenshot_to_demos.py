@@ -3,20 +3,21 @@
 
 Replaces the placeholder status line and adds the screenshot reference.
 """
+
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 UCS = {
-    "UC1":  ("legal-compliance",        "uc1"),
-    "UC2":  ("financial-idp",           "uc2"),
-    "UC3":  ("manufacturing-analytics", "uc3"),
-    "UC5":  ("healthcare-dicom",        "uc5"),
-    "UC7":  ("genomics-pipeline",       "uc7"),
-    "UC8":  ("energy-seismic",          "uc8"),
-    "UC10": ("construction-bim",        "uc10"),
-    "UC12": ("logistics-ocr",           "uc12"),
-    "UC13": ("education-research",      "uc13"),
+    "UC1": ("legal-compliance", "uc1"),
+    "UC2": ("financial-idp", "uc2"),
+    "UC3": ("manufacturing-analytics", "uc3"),
+    "UC5": ("healthcare-dicom", "uc5"),
+    "UC7": ("genomics-pipeline", "uc7"),
+    "UC8": ("energy-seismic", "uc8"),
+    "UC10": ("construction-bim", "uc10"),
+    "UC12": ("logistics-ocr", "uc12"),
+    "UC13": ("education-research", "uc13"),
 }
 
 

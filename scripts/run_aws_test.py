@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """AWS 実環境テスト — S3ApHelper + FsxHelper"""
+
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("AWS_DEFAULT_REGION", "ap-northeast-1")
 
@@ -34,7 +36,7 @@ print("\n=== Test 4: FsxHelper describe_volumes ===")
 volumes = fsx.describe_volumes(filters=[{"Name": "file-system-id", "Values": [FS_ID]}])
 print(f"describe_volumes: {len(volumes)} volume(s)")
 for vol in volumes:
-    print(f"  ID={vol['VolumeId']}, Name={vol.get('Name','N/A')}, Lifecycle={vol['Lifecycle']}")
+    print(f"  ID={vol['VolumeId']}, Name={vol.get('Name', 'N/A')}, Lifecycle={vol['Lifecycle']}")
 
 print("\n=== Test 5: S3ApHelper PutObject + GetObject round-trip ===")
 test_key = "_test/verification_test.txt"

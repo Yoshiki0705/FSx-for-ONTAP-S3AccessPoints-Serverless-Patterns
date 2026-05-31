@@ -106,8 +106,7 @@ def _retrieve_token_from_dynamodb(correlation_id: str) -> str | None:
     table_name = os.environ.get("TASK_TOKEN_TABLE_NAME")
     if not table_name:
         logger.error(
-            "TASK_TOKEN_TABLE_NAME not set; cannot retrieve token "
-            "for correlation_id=%s",
+            "TASK_TOKEN_TABLE_NAME not set; cannot retrieve token for correlation_id=%s",
             correlation_id,
         )
         return None
@@ -125,8 +124,7 @@ def _delete_token_from_dynamodb(correlation_id: str) -> None:
     table_name = os.environ.get("TASK_TOKEN_TABLE_NAME")
     if not table_name:
         logger.warning(
-            "TASK_TOKEN_TABLE_NAME not set; cannot delete token "
-            "for correlation_id=%s",
+            "TASK_TOKEN_TABLE_NAME not set; cannot delete token for correlation_id=%s",
             correlation_id,
         )
         return
@@ -155,9 +153,7 @@ def _emit_orphaned_callback_metric(job_name: str, correlation_id: str) -> None:
     metrics.flush()
 
 
-def handle_job_success(
-    sfn_client, task_token: str, job_name: str, output_s3_path: str
-) -> dict:
+def handle_job_success(sfn_client, task_token: str, job_name: str, output_s3_path: str) -> dict:
     """ジョブ成功時の処理
 
     SendTaskSuccess を呼び出す。
@@ -187,9 +183,7 @@ def handle_job_success(
     return {"action": "SendTaskSuccess", "job_name": job_name}
 
 
-def handle_job_failure(
-    sfn_client, task_token: str, job_name: str, error_message: str
-) -> dict:
+def handle_job_failure(sfn_client, task_token: str, job_name: str, error_message: str) -> dict:
     """ジョブ失敗/タイムアウト時の処理
 
     SendTaskFailure を呼び出す。
@@ -298,8 +292,7 @@ def handler(event, context):
         if not task_token:
             # Token 未発見（TTL 期限切れ等）
             logger.error(
-                "Token not found in DynamoDB: correlation_id=%s, "
-                "job_name=%s (possibly TTL expired)",
+                "Token not found in DynamoDB: correlation_id=%s, job_name=%s (possibly TTL expired)",
                 correlation_id,
                 job_name,
             )
@@ -334,9 +327,7 @@ def handler(event, context):
         error_msg = failure_reason or f"Job {job_status}: {job_name}"
         result = handle_job_failure(sfn_client, task_token, job_name, error_msg)
     else:
-        logger.warning(
-            "Unexpected job status: %s for job: %s", job_status, job_name
-        )
+        logger.warning("Unexpected job status: %s for job: %s", job_status, job_name)
         return {"action": "IGNORED", "job_name": job_name, "status": job_status}
 
     # DynamoDB モード: コールバック成功後にレコード削除

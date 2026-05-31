@@ -63,6 +63,7 @@ MEASUREMENT_SYSTEMS = {
 EBCDIC_TO_ASCII = bytes(range(256))
 try:
     import codecs
+
     _ebcdic_codec = codecs.lookup("cp500")
 except LookupError:
     _ebcdic_codec = None
@@ -106,7 +107,7 @@ def _extract_survey_name(textual_header: str) -> str:
     lines = textual_header.split("\n")
     if len(lines) <= 1:
         # 改行がない場合は 80 文字ごとに分割（SEG-Y 標準: 40 行 × 80 文字）
-        lines = [textual_header[i:i + 80] for i in range(0, len(textual_header), 80)]
+        lines = [textual_header[i : i + 80] for i in range(0, len(textual_header), 80)]
 
     for line in lines:
         line_upper = line.upper()
@@ -114,7 +115,7 @@ def _extract_survey_name(textual_header: str) -> str:
             if keyword in line_upper:
                 # キーワードの後の値を抽出
                 idx = line_upper.find(keyword)
-                remainder = line[idx + len(keyword):].strip()
+                remainder = line[idx + len(keyword) :].strip()
                 # コロンや等号の後の値を取得
                 for sep in (":", "=", " "):
                     if sep in remainder:
@@ -144,14 +145,14 @@ def _extract_coordinate_system(textual_header: str) -> str:
     """
     lines = textual_header.split("\n")
     if len(lines) <= 1:
-        lines = [textual_header[i:i + 80] for i in range(0, len(textual_header), 80)]
+        lines = [textual_header[i : i + 80] for i in range(0, len(textual_header), 80)]
 
     for line in lines:
         line_upper = line.upper()
         for keyword in ("COORDINATE", "DATUM", "CRS", "PROJECTION"):
             if keyword in line_upper:
                 idx = line_upper.find(keyword)
-                remainder = line[idx + len(keyword):].strip()
+                remainder = line[idx + len(keyword) :].strip()
                 for sep in (":", "=", " "):
                     if sep in remainder:
                         value = remainder.split(sep, 1)[1].strip().rstrip()
@@ -176,10 +177,7 @@ def _parse_binary_header(binary_header: bytes) -> dict:
         ValueError: バイナリヘッダーのサイズが不正な場合
     """
     if len(binary_header) < BINARY_HEADER_SIZE:
-        raise ValueError(
-            f"Binary header too short: {len(binary_header)} bytes "
-            f"(expected {BINARY_HEADER_SIZE})"
-        )
+        raise ValueError(f"Binary header too short: {len(binary_header)} bytes (expected {BINARY_HEADER_SIZE})")
 
     # ビッグエンディアンで各フィールドを抽出
     # Offset 12-13: Number of data traces per ensemble (int16)
@@ -200,9 +198,7 @@ def _parse_binary_header(binary_header: bytes) -> dict:
     # トレース数の推定（traces_per_ensemble が 0 の場合はファイルサイズから推定不可）
     trace_count = traces_per_ensemble if traces_per_ensemble > 0 else 0
 
-    measurement_system = MEASUREMENT_SYSTEMS.get(
-        measurement_system_code, "unknown"
-    )
+    measurement_system = MEASUREMENT_SYSTEMS.get(measurement_system_code, "unknown")
 
     return {
         "sample_interval": sample_interval,
@@ -243,22 +239,18 @@ def handler(event, context):
 
     # ファイルサイズがヘッダーサイズ未満の場合は INVALID
     if file_size < TOTAL_HEADER_SIZE:
-        logger.warning(
-            "File too small for SEG-Y header: key=%s, size=%d", file_key, file_size
-        )
+        logger.warning("File too small for SEG-Y header: key=%s, size=%d", file_key, file_size)
         return {
             "status": "INVALID",
             "file_key": file_key,
             "error": f"File size ({file_size} bytes) is smaller than "
-                     f"minimum SEG-Y header size ({TOTAL_HEADER_SIZE} bytes)",
+            f"minimum SEG-Y header size ({TOTAL_HEADER_SIZE} bytes)",
             "error_type": "FileTooSmall",
         }
 
     try:
         # 先頭 3600 バイトを Range リクエストで取得
-        header_data = s3ap.streaming_download_range(
-            key=file_key, start=0, end=TOTAL_HEADER_SIZE - 1
-        )
+        header_data = s3ap.streaming_download_range(key=file_key, start=0, end=TOTAL_HEADER_SIZE - 1)
     except Exception as e:
         logger.error("Failed to download header for %s: %s", file_key, e)
         return {
@@ -308,9 +300,7 @@ def handler(event, context):
     # 日付パーティション付き出力キー生成
     now = datetime.now(timezone.utc)
     file_stem = PurePosixPath(file_key).stem
-    output_key = (
-        f"metadata/{now.strftime('%Y/%m/%d')}/{file_stem}.json"
-    )
+    output_key = f"metadata/{now.strftime('%Y/%m/%d')}/{file_stem}.json"
 
     # メタデータを S3 に書き出し
     output_data = {
@@ -329,7 +319,6 @@ def handler(event, context):
         survey_name,
         output_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="seismic_metadata")

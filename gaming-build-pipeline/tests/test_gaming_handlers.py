@@ -9,12 +9,8 @@ from unittest.mock import MagicMock, patch
 
 def _load_handler(function_name: str):
     """指定した関数のハンドラーモジュールをロード"""
-    handler_path = os.path.join(
-        os.path.dirname(__file__), "..", "functions", function_name, "handler.py"
-    )
-    spec = importlib.util.spec_from_file_location(
-        f"gaming_{function_name}_handler", handler_path
-    )
+    handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", function_name, "handler.py")
+    spec = importlib.util.spec_from_file_location(f"gaming_{function_name}_handler", handler_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module, spec
@@ -93,7 +89,7 @@ class TestQualityCheck:
         module, _ = _load_handler("quality_check")
 
         mock_body = MagicMock()
-        mock_body.read.return_value = b"#pragma once\n#include \"common.hlsl\"\nvoid main() {}"
+        mock_body.read.return_value = b'#pragma once\n#include "common.hlsl"\nvoid main() {}'
         mock_body.close = MagicMock()
         mock_response = {"Body": mock_body}
 

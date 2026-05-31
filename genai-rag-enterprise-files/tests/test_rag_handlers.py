@@ -7,12 +7,9 @@ import os
 from unittest.mock import MagicMock, patch
 
 
-
 def _load_handler(function_name: str):
     """指定した関数のハンドラーモジュールをロード"""
-    handler_path = os.path.join(
-        os.path.dirname(__file__), "..", "functions", function_name, "handler.py"
-    )
+    handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", function_name, "handler.py")
     spec = importlib.util.spec_from_file_location(f"{function_name}_handler", handler_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -30,10 +27,26 @@ class TestDiscovery:
 
         mock_response = {
             "Contents": [
-                {"Key": "docs/report.pdf", "Size": 1024, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
-                {"Key": "docs/data.xlsx", "Size": 2048, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
-                {"Key": "images/photo.jpg", "Size": 4096, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
-                {"Key": "docs/notes.txt", "Size": 512, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
+                {
+                    "Key": "docs/report.pdf",
+                    "Size": 1024,
+                    "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00"),
+                },
+                {
+                    "Key": "docs/data.xlsx",
+                    "Size": 2048,
+                    "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00"),
+                },
+                {
+                    "Key": "images/photo.jpg",
+                    "Size": 4096,
+                    "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00"),
+                },
+                {
+                    "Key": "docs/notes.txt",
+                    "Size": 512,
+                    "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00"),
+                },
             ],
             "IsTruncated": False,
         }
@@ -68,11 +81,14 @@ class TestDiscovery:
 class TestChunking:
     """Chunking Lambda のテスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT_ALIAS": "test-s3ap-alias",
-        "CHUNK_SIZE": "100",
-        "CHUNK_OVERLAP": "20",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT_ALIAS": "test-s3ap-alias",
+            "CHUNK_SIZE": "100",
+            "CHUNK_OVERLAP": "20",
+        },
+    )
     def test_chunking_splits_text(self):
         """テキストが正しくチャンク分割される"""
         module, spec = _load_handler("chunking")

@@ -1,4 +1,5 @@
 import os
+
 #!/usr/bin/env python3
 """Bedrock Knowledge Base を作成するスクリプト"""
 import time
@@ -55,7 +56,7 @@ print("Waiting for KB to become ACTIVE...")
 for i in range(30):
     kb = client.get_knowledge_base(knowledgeBaseId=kb_id)
     status = kb["knowledgeBase"]["status"]
-    print(f"  Attempt {i+1}: {status}")
+    print(f"  Attempt {i + 1}: {status}")
     if status == "ACTIVE":
         break
     time.sleep(10)
@@ -89,7 +90,7 @@ try:
     )
     job_id = sync_resp["ingestionJob"]["ingestionJobId"]
     print(f"Sync job started: {job_id}")
-    
+
     # 同期完了を待機
     for i in range(30):
         job = client.get_ingestion_job(
@@ -98,7 +99,7 @@ try:
             ingestionJobId=job_id,
         )
         status = job["ingestionJob"]["status"]
-        print(f"  Attempt {i+1}: {status}")
+        print(f"  Attempt {i + 1}: {status}")
         if status in ("COMPLETE", "FAILED"):
             if status == "COMPLETE":
                 stats = job["ingestionJob"].get("statistics", {})

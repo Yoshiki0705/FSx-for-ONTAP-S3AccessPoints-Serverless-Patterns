@@ -303,6 +303,7 @@ class TestXraySubsegmentNoop:
                 # Remove cached import if any
                 import importlib
                 import shared.observability
+
                 importlib.reload(shared.observability)
                 from shared.observability import xray_subsegment as xray_sub_reloaded
 

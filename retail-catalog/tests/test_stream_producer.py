@@ -151,9 +151,7 @@ class TestHandlerIntegration:
         # DynamoDB モック: 同じファイルが state テーブルにある
         mock_table = MagicMock()
         mock_table.scan.return_value = {
-            "Items": [
-                {"file_key": "images/001.jpg", "etag": '"abc"', "last_modified": "2024-01-01T00:00:00Z"}
-            ]
+            "Items": [{"file_key": "images/001.jpg", "etag": '"abc"', "last_modified": "2024-01-01T00:00:00Z"}]
         }
         mock_dynamodb = MagicMock()
         mock_dynamodb.Table.return_value = mock_table

@@ -346,11 +346,14 @@ class TestDetectAnomalies:
 class TestHandler:
     """ハンドラの正常系・異常系テスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "ANOMALY_THRESHOLD_STD": "3.0",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "ANOMALY_THRESHOLD_STD": "3.0",
+        },
+    )
     @patch("functions.anomaly_detection.handler.OutputWriter")
     @patch("functions.anomaly_detection.handler.S3ApHelper")
     def test_handler_las_success(self, mock_s3ap_class, mock_output_writer_class):
@@ -384,10 +387,12 @@ GR   .GAPI : Gamma Ray
 """
         mock_s3ap = MagicMock()
         mock_response = MagicMock()
-        mock_response.__getitem__ = lambda self, key: MagicMock(
-            read=MagicMock(return_value=las_content.encode("utf-8"))
-        ) if key == "Body" else None
-        mock_s3ap.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=las_content.encode("utf-8")))}
+        mock_response.__getitem__ = lambda self, key: (
+            MagicMock(read=MagicMock(return_value=las_content.encode("utf-8"))) if key == "Body" else None
+        )
+        mock_s3ap.get_object.return_value = {
+            "Body": MagicMock(read=MagicMock(return_value=las_content.encode("utf-8")))
+        }
         mock_s3ap_class.return_value = mock_s3ap
 
         mock_writer = MagicMock()
@@ -404,11 +409,14 @@ GR   .GAPI : Gamma Ray
         assert result["total_anomalies"] >= 1
         assert "output_key" in result
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "ANOMALY_THRESHOLD_STD": "3.0",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "ANOMALY_THRESHOLD_STD": "3.0",
+        },
+    )
     @patch("functions.anomaly_detection.handler.OutputWriter")
     @patch("functions.anomaly_detection.handler.S3ApHelper")
     def test_handler_csv_success(self, mock_s3ap_class, mock_output_writer_class):
@@ -438,7 +446,9 @@ GR   .GAPI : Gamma Ray
 1009.5,50.0,0.25
 """
         mock_s3ap = MagicMock()
-        mock_s3ap.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=csv_content.encode("utf-8")))}
+        mock_s3ap.get_object.return_value = {
+            "Body": MagicMock(read=MagicMock(return_value=csv_content.encode("utf-8")))
+        }
         mock_s3ap_class.return_value = mock_s3ap
 
         mock_writer = MagicMock()
@@ -454,11 +464,14 @@ GR   .GAPI : Gamma Ray
         assert result["file_key"] == "wells/well_B2.csv"
         assert result["total_anomalies"] >= 1
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "ANOMALY_THRESHOLD_STD": "3.0",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "ANOMALY_THRESHOLD_STD": "3.0",
+        },
+    )
     @patch("functions.anomaly_detection.handler.S3ApHelper")
     def test_handler_unsupported_format(self, mock_s3ap_class):
         """異常系: 非対応ファイル形式は INVALID を返す"""
@@ -477,11 +490,14 @@ GR   .GAPI : Gamma Ray
         assert result["status"] == "INVALID"
         assert result["error_type"] == "UnsupportedFormat"
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "ANOMALY_THRESHOLD_STD": "3.0",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "ANOMALY_THRESHOLD_STD": "3.0",
+        },
+    )
     @patch("functions.anomaly_detection.handler.S3ApHelper")
     def test_handler_download_error(self, mock_s3ap_class):
         """異常系: ダウンロードエラー時は INVALID を返す"""

@@ -49,7 +49,6 @@ class PcdParseError(Exception):
     """PCD ファイルパースエラー"""
 
 
-
 def parse_pcd_header(data: str | bytes) -> dict:
     """PCD ファイルヘッダーをパースする
 
@@ -175,9 +174,7 @@ def parse_pcd_header(data: str | bytes) -> dict:
     return header
 
 
-def validate_point_cloud(
-    header: dict, data_lines: list[str]
-) -> dict:
+def validate_point_cloud(header: dict, data_lines: list[str]) -> dict:
     """点群データの品質検証を実行する
 
     Args:
@@ -279,9 +276,7 @@ def validate_point_cloud(
     # PASS/FAIL 判定
     failure_reasons = []
     if not header_point_count_match:
-        failure_reasons.append(
-            f"Point count mismatch: header={declared_points}, actual={actual_point_count}"
-        )
+        failure_reasons.append(f"Point count mismatch: header={declared_points}, actual={actual_point_count}")
     if nan_count > 0:
         failure_reasons.append(f"NaN coordinates found: {nan_count}")
     if point_density <= 0 and actual_point_count > 0:
@@ -323,7 +318,6 @@ def handler(event, context):
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
     output_writer = OutputWriter.from_env()
-
 
     logger.info(
         "Point Cloud QC started: file_key=%s, size=%d",
@@ -401,7 +395,6 @@ def handler(event, context):
         status,
         metrics.get("point_count", 0),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="point_cloud_qc")

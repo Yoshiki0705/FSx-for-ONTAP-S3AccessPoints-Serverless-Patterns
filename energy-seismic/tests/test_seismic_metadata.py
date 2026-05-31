@@ -234,10 +234,13 @@ class TestParseBinaryHeader:
 class TestHandler:
     """ハンドラの正常系・異常系テスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.seismic_metadata.handler.OutputWriter")
     @patch("functions.seismic_metadata.handler.S3ApHelper")
     def test_handler_success(self, mock_s3ap_class, mock_output_writer_class):
@@ -277,10 +280,13 @@ class TestHandler:
         assert result["metadata"]["data_format_code"] == 1
         assert "output_key" in result
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     def test_handler_file_too_small(self):
         """異常系: ファイルサイズがヘッダーサイズ未満の場合は INVALID を返す"""
         from functions.seismic_metadata.handler import handler
@@ -296,10 +302,13 @@ class TestHandler:
         assert "error_type" in result
         assert result["error_type"] == "FileTooSmall"
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.seismic_metadata.handler.S3ApHelper")
     def test_handler_download_error(self, mock_s3ap_class):
         """異常系: ダウンロードエラー時は INVALID を返す"""

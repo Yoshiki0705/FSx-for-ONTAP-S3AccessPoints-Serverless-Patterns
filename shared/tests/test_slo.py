@@ -112,18 +112,10 @@ class TestEvaluateSLOs:
         """全 SLO が達成されている場合。"""
         now = datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
         datapoints = {
-            "EventIngestionLatency_ms": [
-                {"Timestamp": now, "Maximum": 3000.0}
-            ],
-            "ProcessingSuccessRate_pct": [
-                {"Timestamp": now, "Minimum": 99.8}
-            ],
-            "FPolicyReconnectTime_sec": [
-                {"Timestamp": now, "Maximum": 15.0}
-            ],
-            "ReplayCompletionTime_sec": [
-                {"Timestamp": now, "Maximum": 120.0}
-            ],
+            "EventIngestionLatency_ms": [{"Timestamp": now, "Maximum": 3000.0}],
+            "ProcessingSuccessRate_pct": [{"Timestamp": now, "Minimum": 99.8}],
+            "FPolicyReconnectTime_sec": [{"Timestamp": now, "Maximum": 15.0}],
+            "ReplayCompletionTime_sec": [{"Timestamp": now, "Maximum": 120.0}],
         }
         cw = self._make_cw_client(datapoints)
 
@@ -140,15 +132,9 @@ class TestEvaluateSLOs:
             "EventIngestionLatency_ms": [
                 {"Timestamp": now, "Maximum": 8000.0}  # > 5000 → violated
             ],
-            "ProcessingSuccessRate_pct": [
-                {"Timestamp": now, "Minimum": 99.8}
-            ],
-            "FPolicyReconnectTime_sec": [
-                {"Timestamp": now, "Maximum": 15.0}
-            ],
-            "ReplayCompletionTime_sec": [
-                {"Timestamp": now, "Maximum": 120.0}
-            ],
+            "ProcessingSuccessRate_pct": [{"Timestamp": now, "Minimum": 99.8}],
+            "FPolicyReconnectTime_sec": [{"Timestamp": now, "Maximum": 15.0}],
+            "ReplayCompletionTime_sec": [{"Timestamp": now, "Maximum": 120.0}],
         }
         cw = self._make_cw_client(datapoints)
 
@@ -191,9 +177,7 @@ class TestEvaluateSLOs:
             threshold=100.0,
             comparison="LessThanThreshold",
         )
-        cw = self._make_cw_client(
-            {"CustomMetric": [{"Timestamp": now, "Maximum": 50.0}]}
-        )
+        cw = self._make_cw_client({"CustomMetric": [{"Timestamp": now, "Maximum": 50.0}]})
 
         results = evaluate_slos(cw, targets=[custom_target])
 
@@ -205,9 +189,7 @@ class TestEvaluateSLOs:
     def test_custom_period(self):
         """カスタム期間で評価する。"""
         now = datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
-        cw = self._make_cw_client(
-            {"EventIngestionLatency_ms": [{"Timestamp": now, "Maximum": 3000.0}]}
-        )
+        cw = self._make_cw_client({"EventIngestionLatency_ms": [{"Timestamp": now, "Maximum": 3000.0}]})
 
         evaluate_slos(cw, period_sec=600)
 
@@ -218,9 +200,7 @@ class TestEvaluateSLOs:
     def test_evaluation_result_has_evaluated_at(self):
         """評価結果に evaluated_at が含まれる。"""
         now = datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
-        cw = self._make_cw_client(
-            {"EventIngestionLatency_ms": [{"Timestamp": now, "Maximum": 3000.0}]}
-        )
+        cw = self._make_cw_client({"EventIngestionLatency_ms": [{"Timestamp": now, "Maximum": 3000.0}]})
 
         results = evaluate_slos(cw, targets=[SLO_TARGETS[0]])
 
@@ -262,19 +242,13 @@ class TestGenerateDashboardWidgets:
         widgets = generate_dashboard_widgets(include_synthetic_monitoring=True)
         # Find the Synthetic Monitoring text header
         text_widgets = [w for w in widgets if w["type"] == "text"]
-        sm_headers = [
-            w for w in text_widgets
-            if "Synthetic Monitoring" in w["properties"]["markdown"]
-        ]
+        sm_headers = [w for w in text_widgets if "Synthetic Monitoring" in w["properties"]["markdown"]]
         assert len(sm_headers) == 1
 
     def test_excludes_synthetic_monitoring_when_disabled(self):
         widgets = generate_dashboard_widgets(include_synthetic_monitoring=False)
         text_widgets = [w for w in widgets if w["type"] == "text"]
-        sm_headers = [
-            w for w in text_widgets
-            if "Synthetic Monitoring" in w["properties"]["markdown"]
-        ]
+        sm_headers = [w for w in text_widgets if "Synthetic Monitoring" in w["properties"]["markdown"]]
         assert len(sm_headers) == 0
 
     def test_widget_region_is_set(self):

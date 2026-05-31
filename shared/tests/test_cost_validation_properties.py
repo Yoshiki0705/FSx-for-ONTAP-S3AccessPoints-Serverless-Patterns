@@ -49,17 +49,11 @@ def test_scheduled_scaling_time_ordering_valid_when_start_lt_end(
     )
 
     if start < end:
-        assert is_valid is True, (
-            f"Expected valid for start={start} < end={end}, "
-            f"but got error: {error}"
-        )
+        assert is_valid is True, f"Expected valid for start={start} < end={end}, but got error: {error}"
         assert error is None
     else:
         # start >= end should be rejected
-        assert is_valid is False, (
-            f"Expected invalid for start={start} >= end={end}, "
-            f"but got valid"
-        )
+        assert is_valid is False, f"Expected invalid for start={start} >= end={end}, but got valid"
         assert error is not None
 
 
@@ -90,17 +84,11 @@ def test_scheduled_scaling_time_ordering_rejected_when_start_gte_end(
     )
 
     if start >= end:
-        assert is_valid is False, (
-            f"Expected invalid for start={start} >= end={end}, "
-            f"but got valid"
-        )
+        assert is_valid is False, f"Expected invalid for start={start} >= end={end}, but got valid"
         assert error is not None
     else:
         # start < end should be accepted
-        assert is_valid is True, (
-            f"Expected valid for start={start} < end={end}, "
-            f"but got error: {error}"
-        )
+        assert is_valid is True, f"Expected valid for start={start} < end={end}, but got error: {error}"
         assert error is None
 
 
@@ -143,14 +131,12 @@ def test_cost_reduction_guarantee_valid_when_off_max_lte_business_min(
 
     if off_hours_max <= business_min:
         assert is_valid is True, (
-            f"Expected valid for off_hours_max={off_hours_max} <= "
-            f"business_min={business_min}, but got error: {error}"
+            f"Expected valid for off_hours_max={off_hours_max} <= business_min={business_min}, but got error: {error}"
         )
         assert error is None
     else:
         assert is_valid is False, (
-            f"Expected invalid for off_hours_max={off_hours_max} > "
-            f"business_min={business_min}, but got valid"
+            f"Expected invalid for off_hours_max={off_hours_max} > business_min={business_min}, but got valid"
         )
         assert error is not None
 
@@ -187,14 +173,12 @@ def test_cost_reduction_guarantee_rejected_when_off_max_gt_business_min(
 
     if off_hours_max > business_min:
         assert is_valid is False, (
-            f"Expected invalid for off_hours_max={off_hours_max} > "
-            f"business_min={business_min}, but got valid"
+            f"Expected invalid for off_hours_max={off_hours_max} > business_min={business_min}, but got valid"
         )
         assert error is not None
     else:
         assert is_valid is True, (
-            f"Expected valid for off_hours_max={off_hours_max} <= "
-            f"business_min={business_min}, but got error: {error}"
+            f"Expected valid for off_hours_max={off_hours_max} <= business_min={business_min}, but got error: {error}"
         )
         assert error is None
 

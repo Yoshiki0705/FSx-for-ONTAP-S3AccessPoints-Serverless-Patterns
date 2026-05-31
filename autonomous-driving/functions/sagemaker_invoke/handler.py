@@ -146,8 +146,7 @@ def _build_job_tags(
         table_name = os.environ.get("TASK_TOKEN_TABLE_NAME")
         if not table_name:
             raise TokenStorageError(
-                "TASK_TOKEN_TABLE_NAME environment variable is required "
-                "when TOKEN_STORAGE_MODE is 'dynamodb'"
+                "TASK_TOKEN_TABLE_NAME environment variable is required when TOKEN_STORAGE_MODE is 'dynamodb'"
             )
         ttl_seconds = int(os.environ.get("TOKEN_TTL_SECONDS", "86400"))
 
@@ -159,8 +158,7 @@ def _build_job_tags(
 
         # セキュリティ: task_token の値はログに出力しない
         logger.info(
-            "DynamoDB mode: stored token with correlation_id=%s, "
-            "transform_job_name=%s",
+            "DynamoDB mode: stored token with correlation_id=%s, transform_job_name=%s",
             correlation_id,
             job_name,
         )
@@ -225,8 +223,7 @@ def _handle_real_mode(event: dict, task_token: str, output_bucket: str) -> dict:
     )
 
     logger.info(
-        "SageMaker Transform job created: job_name=%s, model=%s, "
-        "instance=%s, token_storage_mode=%s",
+        "SageMaker Transform job created: job_name=%s, model=%s, instance=%s, token_storage_mode=%s",
         job_name,
         model_name,
         instance_type,
@@ -277,8 +274,7 @@ def handler(event, context):
 
     # セキュリティ: task_token の値はログに出力しない
     logger.info(
-        "SageMaker Invoke started: mock_mode=%s, token_storage_mode=%s, "
-        "task_token_present=%s",
+        "SageMaker Invoke started: mock_mode=%s, token_storage_mode=%s, task_token_present=%s",
         mock_mode,
         token_storage_mode,
         bool(task_token),

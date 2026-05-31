@@ -3,6 +3,7 @@
 Uses moto to mock AWS services (S3, Athena, EC2, STS).
 Uses unittest.mock for CloudFormation (moto CFn requires openapi_spec_validator).
 """
+
 from __future__ import annotations
 
 import sys
@@ -68,9 +69,7 @@ def test_delete_athena_workgroup_not_exists(aws_env):
     """Non-existent workgroup returns None (no error)."""
     session = boto3.Session(region_name=REGION)
     athena = session.client("athena", region_name=REGION)
-    result = cleanup.delete_athena_workgroup(
-        athena, "nonexistent-workgroup", REGION, dry_run=False
-    )
+    result = cleanup.delete_athena_workgroup(athena, "nonexistent-workgroup", REGION, dry_run=False)
     assert result is None
 
 
@@ -86,9 +85,7 @@ def test_delete_athena_workgroup_exists(aws_env):
         Configuration={"ResultConfiguration": {"OutputLocation": "s3://test-bucket/"}},
     )
 
-    result = cleanup.delete_athena_workgroup(
-        athena, "test-workgroup", REGION, dry_run=False
-    )
+    result = cleanup.delete_athena_workgroup(athena, "test-workgroup", REGION, dry_run=False)
     assert result is None
 
     # Verify it's gone
@@ -108,9 +105,7 @@ def test_delete_athena_workgroup_dry_run(aws_env, capsys):
         Configuration={"ResultConfiguration": {"OutputLocation": "s3://test-bucket/"}},
     )
 
-    result = cleanup.delete_athena_workgroup(
-        athena, "test-workgroup", REGION, dry_run=True
-    )
+    result = cleanup.delete_athena_workgroup(athena, "test-workgroup", REGION, dry_run=True)
     assert result is None
 
     captured = capsys.readouterr()
@@ -132,9 +127,7 @@ def test_empty_versioned_bucket_not_exists(aws_env):
     """Non-existent bucket returns None (no error)."""
     session = boto3.Session(region_name=REGION)
     s3 = session.client("s3", region_name=REGION)
-    result = cleanup.empty_versioned_bucket(
-        s3, "nonexistent-bucket-xyz", REGION, dry_run=False
-    )
+    result = cleanup.empty_versioned_bucket(s3, "nonexistent-bucket-xyz", REGION, dry_run=False)
     assert result is None
 
 
@@ -150,9 +143,7 @@ def test_empty_versioned_bucket_with_objects(aws_env):
         CreateBucketConfiguration={"LocationConstraint": REGION},
     )
     # Enable versioning
-    s3.put_bucket_versioning(
-        Bucket=bucket, VersioningConfiguration={"Status": "Enabled"}
-    )
+    s3.put_bucket_versioning(Bucket=bucket, VersioningConfiguration={"Status": "Enabled"})
     # Put some objects (creates versions)
     s3.put_object(Bucket=bucket, Key="file1.txt", Body=b"v1")
     s3.put_object(Bucket=bucket, Key="file1.txt", Body=b"v2")
@@ -179,9 +170,7 @@ def test_empty_versioned_bucket_dry_run(aws_env, capsys):
         Bucket=bucket,
         CreateBucketConfiguration={"LocationConstraint": REGION},
     )
-    s3.put_bucket_versioning(
-        Bucket=bucket, VersioningConfiguration={"Status": "Enabled"}
-    )
+    s3.put_bucket_versioning(Bucket=bucket, VersioningConfiguration={"Status": "Enabled"})
     s3.put_object(Bucket=bucket, Key="file1.txt", Body=b"data")
 
     result = cleanup.empty_versioned_bucket(s3, bucket, REGION, dry_run=True)
@@ -212,14 +201,10 @@ def test_revoke_vpc_endpoint_sg_rule_success(aws_env):
     vpc_id = vpc["Vpc"]["VpcId"]
 
     # Create security groups
-    vpce_sg = ec2.create_security_group(
-        GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id
-    )
+    vpce_sg = ec2.create_security_group(GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id)
     vpce_sg_id = vpce_sg["GroupId"]
 
-    lambda_sg = ec2.create_security_group(
-        GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id
-    )
+    lambda_sg = ec2.create_security_group(GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id)
     lambda_sg_id = lambda_sg["GroupId"]
 
     # Add the rule we want to revoke
@@ -235,9 +220,7 @@ def test_revoke_vpc_endpoint_sg_rule_success(aws_env):
         ],
     )
 
-    result = cleanup.revoke_vpc_endpoint_sg_rule(
-        ec2, vpce_sg_id, lambda_sg_id, REGION, dry_run=False
-    )
+    result = cleanup.revoke_vpc_endpoint_sg_rule(ec2, vpce_sg_id, lambda_sg_id, REGION, dry_run=False)
     assert result is None
 
 
@@ -247,9 +230,7 @@ def test_revoke_vpc_endpoint_sg_rule_dry_run(aws_env, capsys):
     session = boto3.Session(region_name=REGION)
     ec2 = session.client("ec2", region_name=REGION)
 
-    result = cleanup.revoke_vpc_endpoint_sg_rule(
-        ec2, "sg-12345", "sg-67890", REGION, dry_run=True
-    )
+    result = cleanup.revoke_vpc_endpoint_sg_rule(ec2, "sg-12345", "sg-67890", REGION, dry_run=True)
     assert result is None
 
     captured = capsys.readouterr()
@@ -344,9 +325,7 @@ def test_cleanup_stack_full_flow(aws_env, capsys):
 
     # Patch boto3.Session to return real S3/Athena but mock CFn
     mock_cfn = MagicMock()
-    mock_cfn.describe_stacks.return_value = {
-        "Stacks": [{"StackStatus": "CREATE_COMPLETE"}]
-    }
+    mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_COMPLETE"}]}
     mock_cfn.delete_stack.return_value = {}
     mock_cfn.describe_stack_resource.side_effect = ClientError(
         {"Error": {"Code": "ValidationError", "Message": "Resource not found"}},
@@ -387,9 +366,7 @@ def test_main_dry_run(aws_env, capsys):
     """Main with --dry-run outputs preview without errors."""
     # Mock boto3.Session to return mock clients
     mock_cfn = MagicMock()
-    mock_cfn.describe_stacks.return_value = {
-        "Stacks": [{"StackStatus": "CREATE_COMPLETE"}]
-    }
+    mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_COMPLETE"}]}
     mock_cfn.describe_stack_resource.side_effect = ClientError(
         {"Error": {"Code": "ValidationError", "Message": "not found"}},
         "DescribeStackResource",
@@ -402,9 +379,7 @@ def test_main_dry_run(aws_env, capsys):
     )
 
     mock_s3 = MagicMock()
-    mock_s3.head_bucket.side_effect = ClientError(
-        {"Error": {"Code": "404", "Message": "Not Found"}}, "HeadBucket"
-    )
+    mock_s3.head_bucket.side_effect = ClientError({"Error": {"Code": "404", "Message": "Not Found"}}, "HeadBucket")
 
     mock_ec2 = MagicMock()
     mock_sts = MagicMock()
@@ -511,16 +486,12 @@ def test_dry_run_output_snapshot(aws_env, capsys):
         Bucket=out_bucket,
         CreateBucketConfiguration={"LocationConstraint": REGION},
     )
-    s3.put_bucket_versioning(
-        Bucket=out_bucket, VersioningConfiguration={"Status": "Enabled"}
-    )
+    s3.put_bucket_versioning(Bucket=out_bucket, VersioningConfiguration={"Status": "Enabled"})
     s3.put_object(Bucket=out_bucket, Key="report.pdf", Body=b"pdf-content")
 
     # Mock CFn to return existing stack
     mock_cfn = MagicMock()
-    mock_cfn.describe_stacks.return_value = {
-        "Stacks": [{"StackStatus": "CREATE_COMPLETE"}]
-    }
+    mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_COMPLETE"}]}
     mock_cfn.describe_stack_resource.side_effect = ClientError(
         {"Error": {"Code": "ValidationError", "Message": "not found"}},
         "DescribeStackResource",

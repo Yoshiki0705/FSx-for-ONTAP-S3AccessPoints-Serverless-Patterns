@@ -53,10 +53,12 @@ def detect_labels(rekognition_client, image_bytes: bytes, max_labels: int = 20) 
 
     labels = []
     for label in response.get("Labels", []):
-        labels.append({
-            "name": label["Name"],
-            "confidence": round(label["Confidence"], 2),
-        })
+        labels.append(
+            {
+                "name": label["Name"],
+                "confidence": round(label["Confidence"], 2),
+            }
+        )
 
     return labels
 
@@ -80,9 +82,7 @@ def evaluate_confidence(labels: list[dict], threshold: float) -> tuple[float, bo
     return max_confidence, above_threshold
 
 
-def generate_catalog_metadata(
-    bedrock_client, model_id: str, file_key: str, labels: list[dict]
-) -> dict:
+def generate_catalog_metadata(bedrock_client, model_id: str, file_key: str, labels: list[dict]) -> dict:
     """Bedrock を使用してカタログメタデータを生成する。
 
     Args:
@@ -102,13 +102,15 @@ def generate_catalog_metadata(
         f"Return a JSON object with fields: title, description, category, tags."
     )
 
-    body = json.dumps({
-        "inputText": prompt,
-        "textGenerationConfig": {
-            "maxTokenCount": 512,
-            "temperature": 0.3,
-        },
-    })
+    body = json.dumps(
+        {
+            "inputText": prompt,
+            "textGenerationConfig": {
+                "maxTokenCount": 512,
+                "temperature": 0.3,
+            },
+        }
+    )
 
     try:
         response = bedrock_client.invoke_model(
@@ -190,9 +192,7 @@ def process_image(
     status = "SUCCESS" if above_threshold else "MANUAL_REVIEW"
 
     # 4. Bedrock でカタログメタデータ生成
-    catalog_metadata = generate_catalog_metadata(
-        bedrock_client, bedrock_model_id, file_key, labels
-    )
+    catalog_metadata = generate_catalog_metadata(bedrock_client, bedrock_model_id, file_key, labels)
 
     # 5. 出力キー生成（日付パーティション付き）
     now = datetime.now(timezone.utc)
@@ -329,8 +329,7 @@ def handler(event, context):
     )
 
     logger.info(
-        "Event processing completed: file_key=%s, status=%s, "
-        "processing_duration_ms=%.2f",
+        "Event processing completed: file_key=%s, status=%s, processing_duration_ms=%.2f",
         file_key,
         result["status"],
         result["processing_duration_ms"],

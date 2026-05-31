@@ -29,9 +29,7 @@ def test_classify_geo_format_unknown(discovery_handler):
     assert discovery_handler._classify_geo_format("gis/random.pdf") == "unknown"
 
 
-def test_handler_filters_and_counts(
-    discovery_handler, lambda_context, monkeypatch
-):
+def test_handler_filters_and_counts(discovery_handler, lambda_context, monkeypatch):
     monkeypatch.setenv("S3_ACCESS_POINT", "test-ap-ext-s3alias")
     monkeypatch.setenv("PREFIX_FILTER", "gis/")
     monkeypatch.setenv("SUFFIX_FILTER", ".tif,.las")

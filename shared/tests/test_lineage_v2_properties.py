@@ -30,16 +30,12 @@ valid_checksum = st.one_of(st.just(""), sha256_hex)
 
 valid_guardrail_mode = st.sampled_from(["", "DRY_RUN", "ENFORCE", "BREAK_GLASS"])
 
-valid_retention_profile = st.sampled_from(
-    ["", "standard-365d", "compliance-7y", "custom"]
-)
+valid_retention_profile = st.sampled_from(["", "standard-365d", "compliance-7y", "custom"])
 
 valid_lineage_record_v2 = st.builds(
     LineageRecord,
     source_file_key=st.text(min_size=1, max_size=100).map(lambda s: f"/vol1/{s}"),
-    processing_timestamp=st.text(min_size=20, max_size=30).map(
-        lambda _: "2026-05-19T10:00:00.000Z"
-    ),
+    processing_timestamp=st.text(min_size=20, max_size=30).map(lambda _: "2026-05-19T10:00:00.000Z"),
     step_functions_execution_arn=st.just("arn:aws:states:ap-northeast-1:123:execution:test:run1"),
     uc_id=st.sampled_from(["legal-compliance", "financial-idp", "media-vfx"]),
     output_keys=st.lists(st.text(min_size=5, max_size=50), min_size=0, max_size=3),
@@ -145,9 +141,7 @@ class TestLineageV2BackwardCompatibility:
                 }
             )
 
-            tracker = LineageTracker(
-                table_name="test-lineage-compat", dynamodb_resource=dynamodb
-            )
+            tracker = LineageTracker(table_name="test-lineage-compat", dynamodb_resource=dynamodb)
             history = tracker.get_history(source_key)
             assert len(history) == 1
 
@@ -182,11 +176,7 @@ class TestSHA256Validation:
         """Empty string is accepted."""
         assert validate_checksum("") is True
 
-    @given(
-        value=st.text(min_size=1, max_size=100).filter(
-            lambda s: s != "" and not re.match(r"^[0-9a-f]{64}$", s)
-        )
-    )
+    @given(value=st.text(min_size=1, max_size=100).filter(lambda s: s != "" and not re.match(r"^[0-9a-f]{64}$", s)))
     @settings(max_examples=100)
     def test_invalid_strings_rejected(self, value: str):
         """Non-empty strings that aren't 64-char lowercase hex are rejected."""

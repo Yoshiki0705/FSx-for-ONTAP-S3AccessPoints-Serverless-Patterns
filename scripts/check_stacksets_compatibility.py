@@ -41,10 +41,24 @@ def _get_cfn_loader() -> type:
     loader = type("CfnLoader", (yaml.SafeLoader,), {})
 
     cfn_tags = [
-        "Ref", "Sub", "GetAtt", "Join", "Select", "Split",
-        "If", "Equals", "And", "Or", "Not", "Condition",
-        "FindInMap", "GetAZs", "ImportValue", "Base64",
-        "Cidr", "Transform",
+        "Ref",
+        "Sub",
+        "GetAtt",
+        "Join",
+        "Select",
+        "Split",
+        "If",
+        "Equals",
+        "And",
+        "Or",
+        "Not",
+        "Condition",
+        "FindInMap",
+        "GetAZs",
+        "ImportValue",
+        "Base64",
+        "Cidr",
+        "Transform",
     ]
 
     for tag in cfn_tags:
@@ -108,9 +122,7 @@ UC_DIRS = [
 ]
 
 
-def check_hardcoded_account_ids(
-    template_content: str, path: str
-) -> list[ValidationResult]:
+def check_hardcoded_account_ids(template_content: str, path: str) -> list[ValidationResult]:
     """12 桁数字列のハードコード Account ID を検出する."""
     results: list[ValidationResult] = []
 
@@ -147,9 +159,7 @@ def check_hardcoded_account_ids(
     return results
 
 
-def check_resource_name_uniqueness(
-    template: dict, path: str
-) -> list[ValidationResult]:
+def check_resource_name_uniqueness(template: dict, path: str) -> list[ValidationResult]:
     """リソース名に AccountId/StackName が含まれているか検証する."""
     results: list[ValidationResult] = []
     resources = template.get("Resources", {})
@@ -177,10 +187,7 @@ def check_resource_name_uniqueness(
             # If it's a plain string (not !Sub), it might collide
             if isinstance(value, str) and not value.startswith("!"):
                 # Check if it contains dynamic elements
-                if (
-                    "${AWS::AccountId}" not in value
-                    and "${AWS::StackName}" not in value
-                ):
+                if "${AWS::AccountId}" not in value and "${AWS::StackName}" not in value:
                     results.append(
                         ValidationResult(
                             template_path=path,
@@ -201,9 +208,7 @@ def check_resource_name_uniqueness(
     return results
 
 
-def check_export_collision(
-    template: dict, path: str
-) -> list[ValidationResult]:
+def check_export_collision(template: dict, path: str) -> list[ValidationResult]:
     """Export 名の衝突可能性を検証する."""
     results: list[ValidationResult] = []
     outputs = template.get("Outputs", {})
@@ -217,33 +222,24 @@ def check_export_collision(
 
         # Check if export name includes stack-specific identifier
         if isinstance(export_name, str):
-            if (
-                "${AWS::StackName}" not in export_name
-                and "${AWS::AccountId}" not in export_name
-            ):
+            if "${AWS::StackName}" not in export_name and "${AWS::AccountId}" not in export_name:
                 results.append(
                     ValidationResult(
                         template_path=path,
                         rule="export-collision",
                         severity="warning",
                         message=(
-                            f"Export '{export_name}' in output '{output_name}' "
-                            f"may collide across accounts/stacks"
+                            f"Export '{export_name}' in output '{output_name}' may collide across accounts/stacks"
                         ),
                         line_number=None,
-                        fix_suggestion=(
-                            f"Use !Sub '${{AWS::StackName}}-{export_name}' "
-                            f"to ensure uniqueness"
-                        ),
+                        fix_suggestion=(f"Use !Sub '${{AWS::StackName}}-{export_name}' to ensure uniqueness"),
                     )
                 )
 
     return results
 
 
-def check_vpc_parameterization(
-    template_content: str, template: dict, path: str
-) -> list[ValidationResult]:
+def check_vpc_parameterization(template_content: str, template: dict, path: str) -> list[ValidationResult]:
     """VPC/Subnet/SecurityGroup がパラメータ化されているか検証する."""
     results: list[ValidationResult] = []
 
@@ -263,9 +259,7 @@ def check_vpc_parameterization(
                         template_path=path,
                         rule="vpc-parameterization",
                         severity="error",
-                        message=(
-                            f"Hardcoded {resource_type} found: {match}"
-                        ),
+                        message=(f"Hardcoded {resource_type} found: {match}"),
                         line_number=line_num,
                         fix_suggestion=(
                             f"Replace '{match}' with a Parameter reference "
@@ -344,9 +338,7 @@ def find_all_templates(project_root: Path) -> list[Path]:
 
 def main() -> int:
     """メインエントリポイント."""
-    parser = argparse.ArgumentParser(
-        description="StackSets Compatibility Validator"
-    )
+    parser = argparse.ArgumentParser(description="StackSets Compatibility Validator")
     parser.add_argument(
         "--template",
         type=str,
@@ -378,9 +370,9 @@ def main() -> int:
     warnings = [r for r in all_results if r.severity == "warning"]
 
     if errors:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"ERRORS ({len(errors)}):")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         for r in errors:
             line_info = f":{r.line_number}" if r.line_number else ""
             print(f"  [{r.rule}] {r.template_path}{line_info}")
@@ -389,9 +381,9 @@ def main() -> int:
             print()
 
     if warnings:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"WARNINGS ({len(warnings)}):")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         for r in warnings:
             line_info = f":{r.line_number}" if r.line_number else ""
             print(f"  [{r.rule}] {r.template_path}{line_info}")
@@ -400,11 +392,11 @@ def main() -> int:
             print()
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"SUMMARY: {len(templates)} templates checked")
     print(f"  Errors:   {len(errors)}")
     print(f"  Warnings: {len(warnings)}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     return 1 if errors else 0
 

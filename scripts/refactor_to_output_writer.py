@@ -91,12 +91,12 @@ def refactor_handler(path: Path, dry_run: bool = False) -> bool:
 
     pattern_json = re.compile(
         r'(\s+)s3_client\s*=\s*boto3\.client\(["\']s3["\']\)\s*\n'
-        r'\s+s3_client\.put_object\(\s*\n'
-        r'\s+Bucket=output_bucket,\s*\n'
-        r'\s+Key=(\w+),\s*\n'
+        r"\s+s3_client\.put_object\(\s*\n"
+        r"\s+Bucket=output_bucket,\s*\n"
+        r"\s+Key=(\w+),\s*\n"
         r'\s+Body=json\.dumps\(([^)]+?)\)\.encode\(["\']utf-8["\']\),\s*\n'
         r'\s+ContentType=["\']application/json(?:; charset=utf-8)?["\'],\s*\n'
-        r'\s+\)',
+        r"\s+\)",
         re.MULTILINE,
     )
 
@@ -118,12 +118,12 @@ def refactor_handler(path: Path, dry_run: bool = False) -> bool:
     #         ContentType="text/plain; charset=utf-8",
     #     )
     pattern_text = re.compile(
-        r'(\s+)s3_client\.put_object\(\s*\n'
-        r'\s+Bucket=output_bucket,\s*\n'
-        r'\s+Key=(\w+),\s*\n'
+        r"(\s+)s3_client\.put_object\(\s*\n"
+        r"\s+Bucket=output_bucket,\s*\n"
+        r"\s+Key=(\w+),\s*\n"
         r'\s+Body=(\w+)\.encode\(["\']utf-8["\']\),\s*\n'
         r'\s+ContentType=["\']text/plain(?:; charset=utf-8)?["\'],\s*\n'
-        r'\s+\)',
+        r"\s+\)",
         re.MULTILINE,
     )
 

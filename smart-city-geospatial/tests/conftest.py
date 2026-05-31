@@ -11,12 +11,7 @@ import pytest
 
 def _load_handler(function_name: str):
     module_name = f"uc17_{function_name}_handler"
-    handler_path = (
-        Path(__file__).resolve().parent.parent
-        / "functions"
-        / function_name
-        / "handler.py"
-    )
+    handler_path = Path(__file__).resolve().parent.parent / "functions" / function_name / "handler.py"
     spec = importlib.util.spec_from_file_location(module_name, handler_path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
@@ -62,6 +57,7 @@ def report_generation_handler():
 @pytest.fixture
 def lambda_context():
     from unittest.mock import MagicMock
+
     ctx = MagicMock()
     ctx.aws_request_id = "test-request-id-uc17"
     ctx.function_name = "test-function"

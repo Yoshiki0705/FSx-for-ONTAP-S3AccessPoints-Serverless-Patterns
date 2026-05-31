@@ -33,24 +33,19 @@ logger = logging.getLogger(__name__)
 def _derive_area_id(source_key: str) -> str:
     """ソースキーから area_id を導出する（パスを正規化）。"""
     import hashlib
+
     return hashlib.sha256(source_key.encode()).hexdigest()[:16]
 
 
-def compute_change_magnitude(
-    current: dict[str, float], previous: dict[str, float]
-) -> float:
+def compute_change_magnitude(current: dict[str, float], previous: dict[str, float]) -> float:
     """土地利用分布の L1 差分（変化量 0-2）を計算する。"""
     all_keys = set(current.keys()) | set(previous.keys())
     if not all_keys:
         return 0.0
-    return sum(
-        abs(current.get(k, 0.0) - previous.get(k, 0.0)) for k in all_keys
-    )
+    return sum(abs(current.get(k, 0.0) - previous.get(k, 0.0)) for k in all_keys)
 
 
-def detect_dominant_change(
-    current: dict[str, float], previous: dict[str, float]
-) -> dict[str, Any]:
+def detect_dominant_change(current: dict[str, float], previous: dict[str, float]) -> dict[str, Any]:
     """どの分類が最も変化したかを返す。"""
     all_keys = set(current.keys()) | set(previous.keys())
     changes = []
@@ -60,12 +55,8 @@ def detect_dominant_change(
     changes.sort(key=lambda c: abs(c["delta"]), reverse=True)
     return {
         "dominant_class_changes": changes[:3],
-        "max_increase": max(
-            (c for c in changes if c["delta"] > 0), key=lambda c: c["delta"], default=None
-        ),
-        "max_decrease": min(
-            (c for c in changes if c["delta"] < 0), key=lambda c: c["delta"], default=None
-        ),
+        "max_increase": max((c for c in changes if c["delta"] > 0), key=lambda c: c["delta"], default=None),
+        "max_decrease": min((c for c in changes if c["delta"] < 0), key=lambda c: c["delta"], default=None),
     }
 
 
@@ -119,14 +110,13 @@ def handler(event, context):
 
     # DynamoDB に現在の分布を保存
     from decimal import Decimal
+
     ttl = int(time.time()) + ttl_seconds
     item = {
         "area_id": area_id,
         "timestamp": timestamp,
         "source_key": source_key,
-        "landuse_distribution": {
-            k: Decimal(str(round(v, 4))) for k, v in current_dist.items()
-        },
+        "landuse_distribution": {k: Decimal(str(round(v, 4))) for k, v in current_dist.items()},
         "change_magnitude": Decimal(str(round(magnitude, 4))),
         "ttl": ttl,
     }

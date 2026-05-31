@@ -48,10 +48,11 @@ def mock_boto3_clients():
             return mock_sts
         return MagicMock()
 
-    with patch("shared.lambdas.auto_stop.handler.sagemaker_client", mock_sm), \
-         patch("shared.lambdas.auto_stop.handler.cloudwatch_client", mock_cw), \
-         patch("shared.lambdas.auto_stop.handler.boto3") as mock_boto3:
-
+    with (
+        patch("shared.lambdas.auto_stop.handler.sagemaker_client", mock_sm),
+        patch("shared.lambdas.auto_stop.handler.cloudwatch_client", mock_cw),
+        patch("shared.lambdas.auto_stop.handler.boto3") as mock_boto3,
+    ):
         mock_boto3.client.side_effect = fake_client
 
         yield {
@@ -88,11 +89,7 @@ class TestIdleDetection:
         from shared.lambdas.auto_stop.handler import _is_endpoint_idle
 
         mock_cw = mock_boto3_clients["cloudwatch"]
-        mock_cw.get_metric_data.return_value = {
-            "MetricDataResults": [
-                {"Id": "invocations", "Values": [0.0, 0.0, 0.0]}
-            ]
-        }
+        mock_cw.get_metric_data.return_value = {"MetricDataResults": [{"Id": "invocations", "Values": [0.0, 0.0, 0.0]}]}
 
         result = _is_endpoint_idle("test-endpoint")
         assert result is True
@@ -102,11 +99,7 @@ class TestIdleDetection:
         from shared.lambdas.auto_stop.handler import _is_endpoint_idle
 
         mock_cw = mock_boto3_clients["cloudwatch"]
-        mock_cw.get_metric_data.return_value = {
-            "MetricDataResults": [
-                {"Id": "invocations", "Values": [5.0, 3.0, 2.0]}
-            ]
-        }
+        mock_cw.get_metric_data.return_value = {"MetricDataResults": [{"Id": "invocations", "Values": [5.0, 3.0, 2.0]}]}
 
         result = _is_endpoint_idle("test-endpoint")
         assert result is False
@@ -116,11 +109,7 @@ class TestIdleDetection:
         from shared.lambdas.auto_stop.handler import _is_endpoint_idle
 
         mock_cw = mock_boto3_clients["cloudwatch"]
-        mock_cw.get_metric_data.return_value = {
-            "MetricDataResults": [
-                {"Id": "invocations", "Values": []}
-            ]
-        }
+        mock_cw.get_metric_data.return_value = {"MetricDataResults": [{"Id": "invocations", "Values": []}]}
 
         result = _is_endpoint_idle("test-endpoint")
         assert result is True
@@ -130,9 +119,7 @@ class TestIdleDetection:
         from shared.lambdas.auto_stop.handler import _is_endpoint_idle
 
         mock_cw = mock_boto3_clients["cloudwatch"]
-        mock_cw.get_metric_data.return_value = {
-            "MetricDataResults": []
-        }
+        mock_cw.get_metric_data.return_value = {"MetricDataResults": []}
 
         result = _is_endpoint_idle("test-endpoint")
         assert result is True
@@ -161,9 +148,7 @@ class TestDoNotAutoStopTagProtection:
         from shared.lambdas.auto_stop.handler import _has_do_not_auto_stop_tag
 
         mock_sm = mock_boto3_clients["sagemaker"]
-        mock_sm.list_tags.return_value = {
-            "Tags": _make_tags({"DoNotAutoStop": "true", "Project": "fsxn-s3ap"})
-        }
+        mock_sm.list_tags.return_value = {"Tags": _make_tags({"DoNotAutoStop": "true", "Project": "fsxn-s3ap"})}
 
         result = _has_do_not_auto_stop_tag("protected-endpoint")
         assert result is True
@@ -173,9 +158,7 @@ class TestDoNotAutoStopTagProtection:
         from shared.lambdas.auto_stop.handler import _has_do_not_auto_stop_tag
 
         mock_sm = mock_boto3_clients["sagemaker"]
-        mock_sm.list_tags.return_value = {
-            "Tags": _make_tags({"DoNotAutoStop": "false", "Project": "fsxn-s3ap"})
-        }
+        mock_sm.list_tags.return_value = {"Tags": _make_tags({"DoNotAutoStop": "false", "Project": "fsxn-s3ap"})}
 
         result = _has_do_not_auto_stop_tag("unprotected-endpoint")
         assert result is False
@@ -185,9 +168,7 @@ class TestDoNotAutoStopTagProtection:
         from shared.lambdas.auto_stop.handler import _has_do_not_auto_stop_tag
 
         mock_sm = mock_boto3_clients["sagemaker"]
-        mock_sm.list_tags.return_value = {
-            "Tags": _make_tags({"Project": "fsxn-s3ap"})
-        }
+        mock_sm.list_tags.return_value = {"Tags": _make_tags({"Project": "fsxn-s3ap"})}
 
         result = _has_do_not_auto_stop_tag("no-tag-endpoint")
         assert result is False
@@ -207,9 +188,7 @@ class TestDoNotAutoStopTagProtection:
         from shared.lambdas.auto_stop.handler import _has_do_not_auto_stop_tag
 
         mock_sm = mock_boto3_clients["sagemaker"]
-        mock_sm.list_tags.return_value = {
-            "Tags": _make_tags({"DoNotAutoStop": "TRUE"})
-        }
+        mock_sm.list_tags.return_value = {"Tags": _make_tags({"DoNotAutoStop": "TRUE"})}
 
         result = _has_do_not_auto_stop_tag("case-endpoint")
         assert result is True
@@ -234,26 +213,16 @@ class TestDryRunMode:
 
         # Setup: one idle endpoint
         paginator_mock = MagicMock()
-        paginator_mock.paginate.return_value = [
-            {"Endpoints": [_make_endpoint("idle-ep")]}
-        ]
+        paginator_mock.paginate.return_value = [{"Endpoints": [_make_endpoint("idle-ep")]}]
         mock_sm.get_paginator.return_value = paginator_mock
-        mock_sm.list_tags.return_value = {
-            "Tags": _make_tags({"Project": "fsxn-s3ap"})
-        }
-        mock_sm.describe_endpoint.return_value = {
-            "EndpointConfigName": "config-1"
-        }
+        mock_sm.list_tags.return_value = {"Tags": _make_tags({"Project": "fsxn-s3ap"})}
+        mock_sm.describe_endpoint.return_value = {"EndpointConfigName": "config-1"}
         mock_sm.describe_endpoint_config.return_value = {
-            "ProductionVariants": [
-                {"InstanceType": "ml.m5.large", "InitialInstanceCount": 1}
-            ]
+            "ProductionVariants": [{"InstanceType": "ml.m5.large", "InitialInstanceCount": 1}]
         }
 
         mock_cw = mock_boto3_clients["cloudwatch"]
-        mock_cw.get_metric_data.return_value = {
-            "MetricDataResults": [{"Id": "invocations", "Values": [0.0]}]
-        }
+        mock_cw.get_metric_data.return_value = {"MetricDataResults": [{"Id": "invocations", "Values": [0.0]}]}
 
         result = handler_module.handler({}, None)
 
@@ -273,26 +242,16 @@ class TestDryRunMode:
 
         # Setup: one idle endpoint
         paginator_mock = MagicMock()
-        paginator_mock.paginate.return_value = [
-            {"Endpoints": [_make_endpoint("idle-ep")]}
-        ]
+        paginator_mock.paginate.return_value = [{"Endpoints": [_make_endpoint("idle-ep")]}]
         mock_sm.get_paginator.return_value = paginator_mock
-        mock_sm.list_tags.return_value = {
-            "Tags": _make_tags({"Project": "fsxn-s3ap"})
-        }
-        mock_sm.describe_endpoint.return_value = {
-            "EndpointConfigName": "config-1"
-        }
+        mock_sm.list_tags.return_value = {"Tags": _make_tags({"Project": "fsxn-s3ap"})}
+        mock_sm.describe_endpoint.return_value = {"EndpointConfigName": "config-1"}
         mock_sm.describe_endpoint_config.return_value = {
-            "ProductionVariants": [
-                {"InstanceType": "ml.m5.large", "InitialInstanceCount": 1}
-            ]
+            "ProductionVariants": [{"InstanceType": "ml.m5.large", "InitialInstanceCount": 1}]
         }
 
         mock_cw = mock_boto3_clients["cloudwatch"]
-        mock_cw.get_metric_data.return_value = {
-            "MetricDataResults": [{"Id": "invocations", "Values": [0.0]}]
-        }
+        mock_cw.get_metric_data.return_value = {"MetricDataResults": [{"Id": "invocations", "Values": [0.0]}]}
 
         result = handler_module.handler({}, None)
 
@@ -335,9 +294,7 @@ class TestScaleToZeroAction:
         from shared.lambdas.auto_stop.handler import _scale_to_zero
 
         mock_sm = mock_boto3_clients["sagemaker"]
-        mock_sm.update_endpoint_weights_and_capacities.side_effect = Exception(
-            "API error"
-        )
+        mock_sm.update_endpoint_weights_and_capacities.side_effect = Exception("API error")
 
         with pytest.raises(Exception, match="API error"):
             _scale_to_zero("failing-endpoint")
@@ -417,15 +374,11 @@ class TestHandlerIntegration:
 
         # Setup: one protected endpoint
         paginator_mock = MagicMock()
-        paginator_mock.paginate.return_value = [
-            {"Endpoints": [_make_endpoint("protected-ep")]}
-        ]
+        paginator_mock.paginate.return_value = [{"Endpoints": [_make_endpoint("protected-ep")]}]
         mock_sm.get_paginator.return_value = paginator_mock
 
         # First list_tags call for project prefix check, second for DoNotAutoStop check
-        mock_sm.list_tags.return_value = {
-            "Tags": _make_tags({"Project": "fsxn-s3ap", "DoNotAutoStop": "true"})
-        }
+        mock_sm.list_tags.return_value = {"Tags": _make_tags({"Project": "fsxn-s3ap", "DoNotAutoStop": "true"})}
 
         result = handler_module.handler({}, None)
 
@@ -443,18 +396,12 @@ class TestHandlerIntegration:
 
         # Setup: one active endpoint
         paginator_mock = MagicMock()
-        paginator_mock.paginate.return_value = [
-            {"Endpoints": [_make_endpoint("active-ep")]}
-        ]
+        paginator_mock.paginate.return_value = [{"Endpoints": [_make_endpoint("active-ep")]}]
         mock_sm.get_paginator.return_value = paginator_mock
-        mock_sm.list_tags.return_value = {
-            "Tags": _make_tags({"Project": "fsxn-s3ap"})
-        }
+        mock_sm.list_tags.return_value = {"Tags": _make_tags({"Project": "fsxn-s3ap"})}
 
         mock_cw = mock_boto3_clients["cloudwatch"]
-        mock_cw.get_metric_data.return_value = {
-            "MetricDataResults": [{"Id": "invocations", "Values": [10.0, 5.0]}]
-        }
+        mock_cw.get_metric_data.return_value = {"MetricDataResults": [{"Id": "invocations", "Values": [10.0, 5.0]}]}
 
         result = handler_module.handler({}, None)
 
@@ -472,26 +419,16 @@ class TestHandlerIntegration:
 
         # Setup: two endpoints
         paginator_mock = MagicMock()
-        paginator_mock.paginate.return_value = [
-            {"Endpoints": [_make_endpoint("ep-1"), _make_endpoint("ep-2")]}
-        ]
+        paginator_mock.paginate.return_value = [{"Endpoints": [_make_endpoint("ep-1"), _make_endpoint("ep-2")]}]
         mock_sm.get_paginator.return_value = paginator_mock
-        mock_sm.list_tags.return_value = {
-            "Tags": _make_tags({"Project": "fsxn-s3ap"})
-        }
-        mock_sm.describe_endpoint.return_value = {
-            "EndpointConfigName": "config-1"
-        }
+        mock_sm.list_tags.return_value = {"Tags": _make_tags({"Project": "fsxn-s3ap"})}
+        mock_sm.describe_endpoint.return_value = {"EndpointConfigName": "config-1"}
         mock_sm.describe_endpoint_config.return_value = {
-            "ProductionVariants": [
-                {"InstanceType": "ml.m5.large", "InitialInstanceCount": 1}
-            ]
+            "ProductionVariants": [{"InstanceType": "ml.m5.large", "InitialInstanceCount": 1}]
         }
 
         mock_cw = mock_boto3_clients["cloudwatch"]
-        mock_cw.get_metric_data.return_value = {
-            "MetricDataResults": [{"Id": "invocations", "Values": [0.0]}]
-        }
+        mock_cw.get_metric_data.return_value = {"MetricDataResults": [{"Id": "invocations", "Values": [0.0]}]}
 
         result = handler_module.handler({}, None)
 

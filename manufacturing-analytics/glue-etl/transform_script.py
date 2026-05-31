@@ -163,9 +163,5 @@ except Exception as e:
 # =====================================================================
 # ジョブ完了
 # =====================================================================
-logger.info(
-    f"Glue ETL job completed. "
-    f"Input records: {record_count}, "
-    f"Output records: {transformed_count}"
-)
+logger.info(f"Glue ETL job completed. Input records: {record_count}, Output records: {transformed_count}")
 job.commit()

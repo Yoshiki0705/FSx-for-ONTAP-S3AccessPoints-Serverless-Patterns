@@ -76,9 +76,7 @@ class TestIdempotencyStoreUnit:
         client = boto3.client("dynamodb", region_name="ap-northeast-1")
         _create_table(client)
 
-        is_dup = _check_duplicate(
-            client, "/vol1/test.txt", "event-001"
-        )
+        is_dup = _check_duplicate(client, "/vol1/test.txt", "event-001")
         assert is_dup is False
 
     @mock_aws
@@ -97,9 +95,7 @@ class TestIdempotencyStoreUnit:
         )
 
         # Check duplicate
-        is_dup = _check_duplicate(
-            client, "/vol1/test.txt", "event-001"
-        )
+        is_dup = _check_duplicate(client, "/vol1/test.txt", "event-001")
         assert is_dup is True
 
     @mock_aws
@@ -108,13 +104,9 @@ class TestIdempotencyStoreUnit:
         client = boto3.client("dynamodb", region_name="ap-northeast-1")
         _create_table(client)
 
-        _record_processed(
-            client, "/vol1/test.txt", "event-001", "create"
-        )
+        _record_processed(client, "/vol1/test.txt", "event-001", "create")
 
-        is_dup = _check_duplicate(
-            client, "/vol1/test.txt", "event-002"
-        )
+        is_dup = _check_duplicate(client, "/vol1/test.txt", "event-002")
         assert is_dup is False
 
     @mock_aws
@@ -123,13 +115,9 @@ class TestIdempotencyStoreUnit:
         client = boto3.client("dynamodb", region_name="ap-northeast-1")
         _create_table(client)
 
-        _record_processed(
-            client, "/vol1/file-a.txt", "event-001", "create"
-        )
+        _record_processed(client, "/vol1/file-a.txt", "event-001", "create")
 
-        is_dup = _check_duplicate(
-            client, "/vol1/file-b.txt", "event-001"
-        )
+        is_dup = _check_duplicate(client, "/vol1/file-b.txt", "event-001")
         assert is_dup is False
 
     @mock_aws
@@ -139,9 +127,7 @@ class TestIdempotencyStoreUnit:
         _create_table(client)
 
         before = int(time.time())
-        _record_processed(
-            client, "/vol1/test.txt", "event-001", "write", ttl_seconds=86400
-        )
+        _record_processed(client, "/vol1/test.txt", "event-001", "write", ttl_seconds=86400)
         after = int(time.time())
 
         # Retrieve and check TTL
@@ -161,9 +147,7 @@ class TestIdempotencyStoreUnit:
         client = boto3.client("dynamodb", region_name="ap-northeast-1")
         _create_table(client)
 
-        _record_processed(
-            client, "/vol1/test.txt", "event-001", "rename"
-        )
+        _record_processed(client, "/vol1/test.txt", "event-001", "rename")
 
         response = client.get_item(
             TableName=TABLE_NAME,

@@ -58,21 +58,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             - forecast_date: 予測枯渇日（ISO format）
     """
     # Resolve configuration from event or environment variables
-    file_system_id = event.get("file_system_id") or os.environ.get(
-        "FILE_SYSTEM_ID", ""
-    )
-    total_capacity_gb = float(
-        event.get("total_capacity_gb")
-        or os.environ.get("TOTAL_CAPACITY_GB", "1024")
-    )
-    threshold_days = int(
-        event.get("threshold_days")
-        or os.environ.get("THRESHOLD_DAYS", str(DEFAULT_THRESHOLD_DAYS))
-    )
-    lookback_days = int(
-        event.get("lookback_days")
-        or os.environ.get("LOOKBACK_DAYS", str(DEFAULT_LOOKBACK_DAYS))
-    )
+    file_system_id = event.get("file_system_id") or os.environ.get("FILE_SYSTEM_ID", "")
+    total_capacity_gb = float(event.get("total_capacity_gb") or os.environ.get("TOTAL_CAPACITY_GB", "1024"))
+    threshold_days = int(event.get("threshold_days") or os.environ.get("THRESHOLD_DAYS", str(DEFAULT_THRESHOLD_DAYS)))
+    lookback_days = int(event.get("lookback_days") or os.environ.get("LOOKBACK_DAYS", str(DEFAULT_LOOKBACK_DAYS)))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     if not file_system_id:
@@ -80,8 +69,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         raise ValueError("FILE_SYSTEM_ID must be provided via event or environment variable.")
 
     logger.info(
-        "Starting capacity forecast for file_system_id=%s, "
-        "total_capacity_gb=%.1f, threshold_days=%d, lookback_days=%d",
+        "Starting capacity forecast for file_system_id=%s, total_capacity_gb=%.1f, threshold_days=%d, lookback_days=%d",
         file_system_id,
         total_capacity_gb,
         threshold_days,
@@ -95,8 +83,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Handle insufficient data points
     if len(data_points) < 2:
         logger.warning(
-            "Insufficient data points (%d) for regression. "
-            "Publishing DaysUntilFull = -1.",
+            "Insufficient data points (%d) for regression. Publishing DaysUntilFull = -1.",
             len(data_points),
         )
         days_until_full = -1
@@ -118,17 +105,11 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     slope, intercept = linear_regression(data_points)
 
     # Predict days until full
-    days_until_full = predict_days_until_full(
-        slope, intercept, total_capacity_gb, current_time
-    )
+    days_until_full = predict_days_until_full(slope, intercept, total_capacity_gb, current_time)
 
     # Calculate current usage and growth rate
     current_usage_gb = slope * current_time + intercept
-    current_usage_pct = (
-        (current_usage_gb / total_capacity_gb) * 100.0
-        if total_capacity_gb > 0
-        else 0.0
-    )
+    current_usage_pct = (current_usage_gb / total_capacity_gb) * 100.0 if total_capacity_gb > 0 else 0.0
     # Convert slope from GB/second to GB/day
     growth_rate_gb_per_day = slope * SECONDS_PER_DAY
 
@@ -140,8 +121,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         forecast_date = ""
 
     logger.info(
-        "Forecast result: days_until_full=%d, current_usage_pct=%.1f%%, "
-        "growth_rate=%.4f GB/day, forecast_date=%s",
+        "Forecast result: days_until_full=%d, current_usage_pct=%.1f%%, growth_rate=%.4f GB/day, forecast_date=%s",
         days_until_full,
         current_usage_pct,
         growth_rate_gb_per_day,
@@ -393,10 +373,7 @@ def _send_alert(
         sns_client = boto3.client("sns")
         sns_client.publish(
             TopicArn=sns_topic_arn,
-            Subject=(
-                f"[Capacity Forecast] Storage exhaustion in {days_until_full} days "
-                f"- {file_system_id}"
-            ),
+            Subject=(f"[Capacity Forecast] Storage exhaustion in {days_until_full} days - {file_system_id}"),
             Message=(
                 f"FSx Storage Capacity Forecast Alert\n"
                 f"{'=' * 50}\n\n"

@@ -284,10 +284,13 @@ class TestStreamingTextLines:
 class TestVariantAggregationHandler:
     """バリアント集計 Lambda ハンドラーのテスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
     def test_handler_success(self, mock_s3ap_cls, mock_output_writer_class):
@@ -323,10 +326,13 @@ class TestVariantAggregationHandler:
 
         mock_writer.put_json.assert_called_once()
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
     def test_handler_empty_vcf_error(self, mock_s3ap_cls, mock_output_writer_class):
@@ -348,10 +354,13 @@ class TestVariantAggregationHandler:
         assert result["file_key"] == "variants/empty.vcf"
         assert result["error_type"] == "VcfParseError"
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
     def test_handler_s3_error(self, mock_s3ap_cls, mock_output_writer_class):
@@ -371,10 +380,13 @@ class TestVariantAggregationHandler:
         assert result["file_key"] == "variants/sample.vcf"
         assert "Network error" in result["error"]
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
     def test_handler_output_key_date_partition(self, mock_s3ap_cls, mock_output_writer_class):
@@ -384,10 +396,7 @@ class TestVariantAggregationHandler:
         mock_s3ap = MagicMock()
         mock_s3ap_cls.return_value = mock_s3ap
 
-        vcf_data = (
-            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n"
-            b"chr1\t100\t.\tA\tG\t30\tPASS\t.\n"
-        )
+        vcf_data = b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\nchr1\t100\t.\tA\tG\t30\tPASS\t.\n"
         mock_s3ap.streaming_download.return_value = iter([vcf_data])
 
         mock_writer = MagicMock()
@@ -402,10 +411,13 @@ class TestVariantAggregationHandler:
         assert re.search(r"\d{4}/\d{2}/\d{2}", result["output_key"])
         assert result["output_key"].startswith("variants/")
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.variant_aggregation.handler.OutputWriter")
     @patch("functions.variant_aggregation.handler.S3ApHelper")
     def test_handler_vcf_gz_file_stem(self, mock_s3ap_cls, mock_output_writer_class):
@@ -417,10 +429,7 @@ class TestVariantAggregationHandler:
         mock_s3ap = MagicMock()
         mock_s3ap_cls.return_value = mock_s3ap
 
-        vcf_text = (
-            b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n"
-            b"chr1\t100\t.\tA\tG\t30\tPASS\t.\n"
-        )
+        vcf_text = b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\nchr1\t100\t.\tA\tG\t30\tPASS\t.\n"
         vcf_gz_data = gzip.compress(vcf_text)
         mock_s3ap.streaming_download.return_value = iter([vcf_gz_data])
 
@@ -445,17 +454,18 @@ class TestVariantAggregationHandler:
 class TestCrossRegionComprehendMedical:
     """Cross-Region Comprehend Medical 呼び出しのテスト"""
 
-    @patch.dict(os.environ, {
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "SNS_TOPIC_ARN": "arn:aws:sns:ap-northeast-1:123456789012:test-topic",
-        "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
-        "CROSS_REGION": "us-east-1",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "SNS_TOPIC_ARN": "arn:aws:sns:ap-northeast-1:123456789012:test-topic",
+            "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
+            "CROSS_REGION": "us-east-1",
+        },
+    )
     @patch("functions.summary.handler.boto3")
     @patch("functions.summary.handler.CrossRegionClient")
-    def test_comprehend_medical_cross_region_call(
-        self, mock_cr_client_cls, mock_boto3
-    ):
+    def test_comprehend_medical_cross_region_call(self, mock_cr_client_cls, mock_boto3):
         """Cross-Region Comprehend Medical が正しく呼び出されること"""
         from functions.summary.handler import _extract_biomedical_entities
 
@@ -484,9 +494,7 @@ class TestCrossRegionComprehendMedical:
             ]
         }
 
-        result = _extract_biomedical_entities(
-            mock_cr_client, "BRCA1 gene mutation associated with breast cancer"
-        )
+        result = _extract_biomedical_entities(mock_cr_client, "BRCA1 gene mutation associated with breast cancer")
 
         assert "breast cancer" in result["diseases"]
         assert "BRCA1" in result["genes"]
@@ -525,9 +533,7 @@ class TestCrossRegionComprehendMedical:
         from functions.summary.handler import _extract_biomedical_entities
 
         mock_cr_client = MagicMock()
-        mock_cr_client.detect_entities_v2.side_effect = Exception(
-            "Service unavailable"
-        )
+        mock_cr_client.detect_entities_v2.side_effect = Exception("Service unavailable")
 
         # エラーが発生してもワークフローは停止しない
         result = _extract_biomedical_entities(mock_cr_client, "test text")

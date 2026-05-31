@@ -117,9 +117,7 @@ def handler(event, context):
         SUFFIX_FILTER: サフィックスフィルタ (optional)
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "")
     suffix = os.environ.get("SUFFIX_FILTER", "")
 
@@ -134,10 +132,7 @@ def handler(event, context):
 
     manifest = generate_manifest(objects, context.aws_request_id)
 
-    manifest_key = (
-        f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

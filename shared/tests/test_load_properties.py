@@ -73,9 +73,7 @@ class TestSetDifferenceEventLoss:
         """lost_events = expected_set - received_set, count が一致する."""
         # Simulate received events by dropping some from expected
         valid_drop_indices = {i % len(expected_events) for i in drop_indices}
-        received_events = [
-            e for i, e in enumerate(expected_events) if i not in valid_drop_indices
-        ]
+        received_events = [e for i, e in enumerate(expected_events) if i not in valid_drop_indices]
 
         expected_set = set(expected_events)
         received_set = set(received_events)
@@ -86,8 +84,7 @@ class TestSetDifferenceEventLoss:
 
         # Property: lost_events count matches
         assert lost_count == len(expected_set) - len(received_set & expected_set), (
-            f"Lost count mismatch: {lost_count} != "
-            f"{len(expected_set)} - {len(received_set & expected_set)}"
+            f"Lost count mismatch: {lost_count} != {len(expected_set)} - {len(received_set & expected_set)}"
         )
 
         # Property: every lost event was in expected but not in received
@@ -144,18 +141,13 @@ class TestLoadRampUpLinearity:
         ramp_up_sec=ramp_up_sec_strategy,
     )
     @settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_ramp_up_is_monotonically_non_decreasing(
-        self, target_rate: int, ramp_up_sec: int
-    ):
+    def test_ramp_up_is_monotonically_non_decreasing(self, target_rate: int, ramp_up_sec: int):
         """ramp-up フェーズのレートが単調非減少."""
-        rates = [
-            calculate_ramp_rate(t, ramp_up_sec, target_rate)
-            for t in range(1, ramp_up_sec + 1)
-        ]
+        rates = [calculate_ramp_rate(t, ramp_up_sec, target_rate) for t in range(1, ramp_up_sec + 1)]
 
         for i in range(1, len(rates)):
             assert rates[i] >= rates[i - 1], (
-                f"Rate decreased at t={i+1}: {rates[i]} < {rates[i-1]} "
+                f"Rate decreased at t={i + 1}: {rates[i]} < {rates[i - 1]} "
                 f"(target={target_rate}, ramp_up={ramp_up_sec})"
             )
 
@@ -165,14 +157,10 @@ class TestLoadRampUpLinearity:
         ramp_up_sec=ramp_up_sec_strategy,
     )
     @settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_ramp_up_reaches_target_at_end(
-        self, target_rate: int, ramp_up_sec: int
-    ):
+    def test_ramp_up_reaches_target_at_end(self, target_rate: int, ramp_up_sec: int):
         """ramp-up 完了時に目標レートに到達する."""
         rate_at_end = calculate_ramp_rate(ramp_up_sec, ramp_up_sec, target_rate)
-        assert rate_at_end == target_rate, (
-            f"Rate at ramp-up end: {rate_at_end} != target {target_rate}"
-        )
+        assert rate_at_end == target_rate, f"Rate at ramp-up end: {rate_at_end} != target {target_rate}"
 
     @pytest.mark.property
     @given(
@@ -180,14 +168,10 @@ class TestLoadRampUpLinearity:
         ramp_up_sec=ramp_up_sec_strategy,
     )
     @settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_ramp_up_starts_at_zero(
-        self, target_rate: int, ramp_up_sec: int
-    ):
+    def test_ramp_up_starts_at_zero(self, target_rate: int, ramp_up_sec: int):
         """ramp-up 開始時（t=0）のレートは 0."""
         rate_at_start = calculate_ramp_rate(0, ramp_up_sec, target_rate)
-        assert rate_at_start == 0, (
-            f"Rate at t=0: {rate_at_start} != 0"
-        )
+        assert rate_at_start == 0, f"Rate at t=0: {rate_at_start} != 0"
 
     @pytest.mark.property
     @given(
@@ -196,14 +180,10 @@ class TestLoadRampUpLinearity:
         elapsed_sec=st.floats(min_value=0.0, max_value=2000.0, allow_nan=False, allow_infinity=False),
     )
     @settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_ramp_up_never_exceeds_target(
-        self, target_rate: int, ramp_up_sec: int, elapsed_sec: float
-    ):
+    def test_ramp_up_never_exceeds_target(self, target_rate: int, ramp_up_sec: int, elapsed_sec: float):
         """任意の時点でレートが target_rate を超えない."""
         rate = calculate_ramp_rate(elapsed_sec, ramp_up_sec, target_rate)
-        assert rate <= target_rate, (
-            f"Rate {rate} exceeds target {target_rate} at t={elapsed_sec}"
-        )
+        assert rate <= target_rate, f"Rate {rate} exceeds target {target_rate} at t={elapsed_sec}"
 
     @pytest.mark.property
     @given(
@@ -211,9 +191,7 @@ class TestLoadRampUpLinearity:
         ramp_up_sec=ramp_up_sec_strategy,
     )
     @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_ramp_up_midpoint_approximately_half(
-        self, target_rate: int, ramp_up_sec: int
-    ):
+    def test_ramp_up_midpoint_approximately_half(self, target_rate: int, ramp_up_sec: int):
         """ramp-up 中間点でレートが目標の約半分."""
         midpoint = ramp_up_sec / 2.0
         rate_at_mid = calculate_ramp_rate(midpoint, ramp_up_sec, target_rate)
@@ -221,8 +199,7 @@ class TestLoadRampUpLinearity:
 
         # Allow ±1 for integer truncation
         assert abs(rate_at_mid - expected_mid) <= 1, (
-            f"Rate at midpoint ({midpoint}s): {rate_at_mid}, "
-            f"expected ~{expected_mid} (target={target_rate})"
+            f"Rate at midpoint ({midpoint}s): {rate_at_mid}, expected ~{expected_mid} (target={target_rate})"
         )
 
 
@@ -246,12 +223,8 @@ class TestPercentileCalculationCorrectness:
         p95 = calculate_percentile(values, 95)
         p99 = calculate_percentile(values, 99)
 
-        assert p50 <= p95, (
-            f"P50 ({p50}) > P95 ({p95}) for values of length {len(values)}"
-        )
-        assert p95 <= p99, (
-            f"P95 ({p95}) > P99 ({p99}) for values of length {len(values)}"
-        )
+        assert p50 <= p95, f"P50 ({p50}) > P95 ({p95}) for values of length {len(values)}"
+        assert p95 <= p99, f"P95 ({p95}) > P99 ({p99}) for values of length {len(values)}"
 
     @pytest.mark.property
     @given(values=latency_values_strategy)
@@ -261,9 +234,7 @@ class TestPercentileCalculationCorrectness:
         p99 = calculate_percentile(values, 99)
         max_val = max(values)
 
-        assert p99 <= max_val + 1e-9, (
-            f"P99 ({p99}) > max ({max_val}) for values of length {len(values)}"
-        )
+        assert p99 <= max_val + 1e-9, f"P99 ({p99}) > max ({max_val}) for values of length {len(values)}"
 
     @pytest.mark.property
     @given(values=latency_values_strategy)
@@ -274,9 +245,7 @@ class TestPercentileCalculationCorrectness:
         min_val = min(values)
         max_val = max(values)
 
-        assert min_val - 1e-9 <= p50 <= max_val + 1e-9, (
-            f"P50 ({p50}) not in [{min_val}, {max_val}]"
-        )
+        assert min_val - 1e-9 <= p50 <= max_val + 1e-9, f"P50 ({p50}) not in [{min_val}, {max_val}]"
 
     @pytest.mark.property
     @given(
@@ -304,9 +273,7 @@ class TestPercentileCalculationCorrectness:
         p0 = calculate_percentile(values, 0)
         min_val = min(values)
 
-        assert abs(p0 - min_val) < 1e-9, (
-            f"P0 ({p0}) != min ({min_val})"
-        )
+        assert abs(p0 - min_val) < 1e-9, f"P0 ({p0}) != min ({min_val})"
 
     @pytest.mark.property
     @given(values=latency_values_strategy)
@@ -316,6 +283,4 @@ class TestPercentileCalculationCorrectness:
         p100 = calculate_percentile(values, 100)
         max_val = max(values)
 
-        assert abs(p100 - max_val) < 1e-9, (
-            f"P100 ({p100}) != max ({max_val})"
-        )
+        assert abs(p100 - max_val) < 1e-9, f"P100 ({p100}) != max ({max_val})"

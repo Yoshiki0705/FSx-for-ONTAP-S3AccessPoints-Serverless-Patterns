@@ -49,16 +49,18 @@ def check_iam_policy_no_admin(statement: dict) -> bool:
 
 @settings(max_examples=100)
 @given(
-    statement=st.fixed_dictionaries({
-        "Action": st.one_of(
-            st.just("*"),
-            st.sampled_from(["s3:GetObject", "lambda:InvokeFunction"]),
-        ),
-        "Resource": st.one_of(
-            st.just("*"),
-            st.text(min_size=10, max_size=50),
-        ),
-    }),
+    statement=st.fixed_dictionaries(
+        {
+            "Action": st.one_of(
+                st.just("*"),
+                st.sampled_from(["s3:GetObject", "lambda:InvokeFunction"]),
+            ),
+            "Resource": st.one_of(
+                st.just("*"),
+                st.text(min_size=10, max_size=50),
+            ),
+        }
+    ),
 )
 def test_iam_policy_no_admin_detects_wildcard_violation(
     statement: dict,
@@ -79,23 +81,19 @@ def test_iam_policy_no_admin_detects_wildcard_violation(
     resource = statement["Resource"]
 
     if action == "*" and resource == "*":
-        assert result is False, (
-            f"Expected violation (False) for Action='*' + Resource='*', "
-            f"but got {result}"
-        )
+        assert result is False, f"Expected violation (False) for Action='*' + Resource='*', but got {result}"
     else:
-        assert result is True, (
-            f"Expected safe (True) for Action='{action}' + Resource='{resource}', "
-            f"but got {result}"
-        )
+        assert result is True, f"Expected safe (True) for Action='{action}' + Resource='{resource}', but got {result}"
 
 
 @settings(max_examples=100)
 @given(
-    statement=st.fixed_dictionaries({
-        "Action": st.just("*"),
-        "Resource": st.just("*"),
-    }),
+    statement=st.fixed_dictionaries(
+        {
+            "Action": st.just("*"),
+            "Resource": st.just("*"),
+        }
+    ),
 )
 def test_iam_policy_no_admin_always_rejects_full_wildcard(
     statement: dict,
@@ -109,21 +107,20 @@ def test_iam_policy_no_admin_always_rejects_full_wildcard(
     """
     # Feature: fsxn-s3ap-serverless-patterns-phase5, Property 12: No Admin Access in IAM Policies
     result = check_iam_policy_no_admin(statement)
-    assert result is False, (
-        f"Expected violation for full wildcard statement {statement}, "
-        f"but got {result}"
-    )
+    assert result is False, f"Expected violation for full wildcard statement {statement}, but got {result}"
 
 
 @settings(max_examples=100)
 @given(
-    statement=st.fixed_dictionaries({
-        "Action": st.sampled_from(["s3:GetObject", "lambda:InvokeFunction"]),
-        "Resource": st.one_of(
-            st.just("*"),
-            st.text(min_size=10, max_size=50),
-        ),
-    }),
+    statement=st.fixed_dictionaries(
+        {
+            "Action": st.sampled_from(["s3:GetObject", "lambda:InvokeFunction"]),
+            "Resource": st.one_of(
+                st.just("*"),
+                st.text(min_size=10, max_size=50),
+            ),
+        }
+    ),
 )
 def test_iam_policy_no_admin_allows_specific_actions(
     statement: dict,
@@ -137,7 +134,4 @@ def test_iam_policy_no_admin_allows_specific_actions(
     """
     # Feature: fsxn-s3ap-serverless-patterns-phase5, Property 12: No Admin Access in IAM Policies
     result = check_iam_policy_no_admin(statement)
-    assert result is True, (
-        f"Expected safe (True) for specific action '{statement['Action']}', "
-        f"but got {result}"
-    )
+    assert result is True, f"Expected safe (True) for specific action '{statement['Action']}', but got {result}"

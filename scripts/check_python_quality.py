@@ -11,6 +11,7 @@ Reports all warnings categorized:
 
 Exit code 1 only if CRITICAL issues found (undefined name / syntax error).
 """
+
 from __future__ import annotations
 
 import os
@@ -22,7 +23,8 @@ from pathlib import Path
 def run_pyflakes(path: Path) -> list[str]:
     result = subprocess.run(
         ["python3", "-m", "pyflakes", str(path)],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     return result.stdout.splitlines()
 

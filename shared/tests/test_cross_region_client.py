@@ -144,9 +144,7 @@ class TestCrossRegionClient:
         assert client1 is client2
         assert mock_session.client.call_count == 1
 
-    def test_get_client_creates_separate_clients_per_service(
-        self, client: CrossRegionClient, mock_session
-    ):
+    def test_get_client_creates_separate_clients_per_service(self, client: CrossRegionClient, mock_session):
         """異なるサービスで別々のクライアントが作成されることを検証する"""
         mock_session.client.side_effect = [MagicMock(), MagicMock()]
 
@@ -223,9 +221,7 @@ class TestCrossRegionClient:
             FeatureTypes=["TABLES", "FORMS"],
         )
 
-    def test_analyze_document_default_feature_types(
-        self, client: CrossRegionClient, mock_session
-    ):
+    def test_analyze_document_default_feature_types(self, client: CrossRegionClient, mock_session):
         """analyze_document が feature_types 未指定時にデフォルト値を使用することを検証する"""
         mock_textract = mock_session.client.return_value
         mock_textract.analyze_document.return_value = {"Blocks": []}
@@ -235,9 +231,7 @@ class TestCrossRegionClient:
         call_kwargs = mock_textract.analyze_document.call_args.kwargs
         assert call_kwargs["FeatureTypes"] == ["TABLES", "FORMS"]
 
-    def test_analyze_document_api_failure_raises_error(
-        self, client: CrossRegionClient, mock_session
-    ):
+    def test_analyze_document_api_failure_raises_error(self, client: CrossRegionClient, mock_session):
         """analyze_document の API 呼び出し失敗時に CrossRegionClientError が発生することを検証する"""
         mock_textract = mock_session.client.return_value
         mock_textract.analyze_document.side_effect = Exception("Throttling")
@@ -263,13 +257,9 @@ class TestCrossRegionClient:
         result = client.detect_entities_v2(text="Patient takes aspirin daily.")
 
         assert result["Entities"][0]["Text"] == "aspirin"
-        mock_comprehend.detect_entities_v2.assert_called_once_with(
-            Text="Patient takes aspirin daily."
-        )
+        mock_comprehend.detect_entities_v2.assert_called_once_with(Text="Patient takes aspirin daily.")
 
-    def test_detect_entities_v2_api_failure_raises_error(
-        self, client: CrossRegionClient, mock_session
-    ):
+    def test_detect_entities_v2_api_failure_raises_error(self, client: CrossRegionClient, mock_session):
         """detect_entities_v2 の API 呼び出し失敗時に CrossRegionClientError が発生することを検証する"""
         mock_comprehend = mock_session.client.return_value
         mock_comprehend.detect_entities_v2.side_effect = Exception("Service unavailable")
@@ -312,9 +302,7 @@ class TestCrossRegionClient:
 
         assert cr_client._session is not None
 
-    def test_analyze_document_error_preserves_chain(
-        self, client: CrossRegionClient, mock_session
-    ):
+    def test_analyze_document_error_preserves_chain(self, client: CrossRegionClient, mock_session):
         """analyze_document のエラーが元の例外を保持することを検証する"""
         original = ValueError("Invalid document format")
         mock_textract = mock_session.client.return_value
@@ -325,9 +313,7 @@ class TestCrossRegionClient:
 
         assert exc_info.value.original_error is original
 
-    def test_detect_entities_v2_error_preserves_chain(
-        self, client: CrossRegionClient, mock_session
-    ):
+    def test_detect_entities_v2_error_preserves_chain(self, client: CrossRegionClient, mock_session):
         """detect_entities_v2 のエラーが元の例外を保持することを検証する"""
         original = RuntimeError("Network timeout")
         mock_comprehend = mock_session.client.return_value
@@ -337,7 +323,6 @@ class TestCrossRegionClient:
             client.detect_entities_v2(text="test")
 
         assert exc_info.value.original_error is original
-
 
 
 # ---------------------------------------------------------------------------
@@ -397,6 +382,7 @@ class TestDiscoverRegionalEndpoints:
         with patch.dict("os.environ", {}, clear=True):
             # Ensure no S3AP_ARN env vars are set
             import os
+
             for key in list(os.environ.keys()):
                 if key.startswith("S3AP_ARN_"):
                     del os.environ[key]
@@ -425,6 +411,7 @@ class TestDiscoverRegionalEndpoints:
 
         with patch.dict("os.environ", {}, clear=True):
             import os
+
             for key in list(os.environ.keys()):
                 if key.startswith("S3AP_ARN_"):
                     del os.environ[key]
@@ -461,9 +448,7 @@ class TestAccessWithFailover:
             mock_emf = MagicMock()
             mock_emf_cls.return_value = mock_emf
 
-            result = cr_client.access_with_failover(
-                "get_object", Bucket="test-bucket", Key="test-key"
-            )
+            result = cr_client.access_with_failover("get_object", Bucket="test-bucket", Key="test-key")
 
         assert result["region_served"] == "ap-northeast-1"
         assert result["is_failover"] is False
@@ -484,7 +469,9 @@ class TestAccessWithFailover:
 
         # Primary は timeout、Secondary は成功
         mock_s3_primary = MagicMock()
-        mock_s3_primary.get_object.side_effect = ConnectTimeoutError(endpoint_url="https://s3.ap-northeast-1.amazonaws.com")
+        mock_s3_primary.get_object.side_effect = ConnectTimeoutError(
+            endpoint_url="https://s3.ap-northeast-1.amazonaws.com"
+        )
 
         mock_s3_secondary = MagicMock()
         mock_s3_secondary.get_object.return_value = {"Body": b"data", "ContentLength": 4}
@@ -501,9 +488,7 @@ class TestAccessWithFailover:
             mock_emf = MagicMock()
             mock_emf_cls.return_value = mock_emf
 
-            result = cr_client.access_with_failover(
-                "get_object", Bucket="test-bucket", Key="test-key"
-            )
+            result = cr_client.access_with_failover("get_object", Bucket="test-bucket", Key="test-key")
 
         assert result["region_served"] == "us-east-1"
         assert result["is_failover"] is True
@@ -522,7 +507,9 @@ class TestAccessWithFailover:
 
         # 両方 timeout
         mock_s3_primary = MagicMock()
-        mock_s3_primary.get_object.side_effect = ConnectTimeoutError(endpoint_url="https://s3.ap-northeast-1.amazonaws.com")
+        mock_s3_primary.get_object.side_effect = ConnectTimeoutError(
+            endpoint_url="https://s3.ap-northeast-1.amazonaws.com"
+        )
 
         mock_s3_secondary = MagicMock()
         mock_s3_secondary.get_object.side_effect = ReadTimeoutError(endpoint_url="https://s3.us-east-1.amazonaws.com")
@@ -539,9 +526,7 @@ class TestAccessWithFailover:
             mock_emf_cls.return_value = mock_emf
 
             with pytest.raises(CrossRegionClientError) as exc_info:
-                cr_client.access_with_failover(
-                    "get_object", Bucket="test-bucket", Key="test-key"
-                )
+                cr_client.access_with_failover("get_object", Bucket="test-bucket", Key="test-key")
 
             assert "failed in both" in str(exc_info.value)
 
@@ -571,9 +556,7 @@ class TestAccessWithFailover:
             mock_emf_cls.return_value = mock_emf
 
             with pytest.raises(CrossRegionClientError) as exc_info:
-                cr_client.access_with_failover(
-                    "get_object", Bucket="test-bucket", Key="test-key"
-                )
+                cr_client.access_with_failover("get_object", Bucket="test-bucket", Key="test-key")
 
             # Should NOT mention failover — it's a client error
             assert "HTTP 403" in str(exc_info.value)
@@ -613,9 +596,7 @@ class TestAccessWithFailover:
             mock_emf = MagicMock()
             mock_emf_cls.return_value = mock_emf
 
-            result = cr_client.access_with_failover(
-                "get_object", Bucket="test-bucket", Key="test-key"
-            )
+            result = cr_client.access_with_failover("get_object", Bucket="test-bucket", Key="test-key")
 
         assert result["region_served"] == "us-east-1"
         assert result["is_failover"] is True
@@ -642,7 +623,9 @@ class TestFailoverMetrics:
         )
 
         mock_s3_primary = MagicMock()
-        mock_s3_primary.get_object.side_effect = ConnectTimeoutError(endpoint_url="https://s3.ap-northeast-1.amazonaws.com")
+        mock_s3_primary.get_object.side_effect = ConnectTimeoutError(
+            endpoint_url="https://s3.ap-northeast-1.amazonaws.com"
+        )
 
         mock_s3_secondary = MagicMock()
         mock_s3_secondary.get_object.return_value = {"Body": b"data"}
@@ -658,14 +641,11 @@ class TestFailoverMetrics:
             mock_emf = MagicMock()
             mock_emf_cls.return_value = mock_emf
 
-            cr_client.access_with_failover(
-                "get_object", Bucket="test-bucket", Key="test-key"
-            )
+            cr_client.access_with_failover("get_object", Bucket="test-bucket", Key="test-key")
 
         # Verify CrossRegionFailoverCount was emitted
         failover_calls = [
-            call for call in mock_emf.put_metric.call_args_list
-            if call.args[0] == "CrossRegionFailoverCount"
+            call for call in mock_emf.put_metric.call_args_list if call.args[0] == "CrossRegionFailoverCount"
         ]
         assert len(failover_calls) == 1
         assert failover_calls[0].args[1] == 1.0
@@ -689,15 +669,10 @@ class TestFailoverMetrics:
             mock_emf = MagicMock()
             mock_emf_cls.return_value = mock_emf
 
-            cr_client.access_with_failover(
-                "get_object", Bucket="test-bucket", Key="test-key"
-            )
+            cr_client.access_with_failover("get_object", Bucket="test-bucket", Key="test-key")
 
         # Verify CrossRegionLatency was emitted
-        latency_calls = [
-            call for call in mock_emf.put_metric.call_args_list
-            if call.args[0] == "CrossRegionLatency"
-        ]
+        latency_calls = [call for call in mock_emf.put_metric.call_args_list if call.args[0] == "CrossRegionLatency"]
         assert len(latency_calls) == 1
         assert latency_calls[0].args[2] == "Milliseconds"
 
@@ -719,14 +694,11 @@ class TestFailoverMetrics:
             mock_emf = MagicMock()
             mock_emf_cls.return_value = mock_emf
 
-            cr_client.access_with_failover(
-                "get_object", Bucket="test-bucket", Key="test-key"
-            )
+            cr_client.access_with_failover("get_object", Bucket="test-bucket", Key="test-key")
 
         # Verify CrossRegionRequestCount was emitted
         request_calls = [
-            call for call in mock_emf.put_metric.call_args_list
-            if call.args[0] == "CrossRegionRequestCount"
+            call for call in mock_emf.put_metric.call_args_list if call.args[0] == "CrossRegionRequestCount"
         ]
         assert len(request_calls) == 1
         assert request_calls[0].args[1] == 1.0
@@ -749,8 +721,6 @@ class TestFailoverMetrics:
             mock_emf = MagicMock()
             mock_emf_cls.return_value = mock_emf
 
-            cr_client.access_with_failover(
-                "get_object", Bucket="test-bucket", Key="test-key"
-            )
+            cr_client.access_with_failover("get_object", Bucket="test-bucket", Key="test-key")
 
         mock_emf.flush.assert_called_once()

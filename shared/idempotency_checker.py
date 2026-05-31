@@ -97,7 +97,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if "Item" in response:
             logger.info(
                 "[Idempotency] DUPLICATE: pk=%s sk=%s (processed at %s)",
-                pk, sk, response["Item"].get("processed_at", "unknown"),
+                pk,
+                sk,
+                response["Item"].get("processed_at", "unknown"),
             )
             return {
                 "is_duplicate": True,
@@ -147,6 +149,7 @@ def _bucket_timestamp(timestamp: str, window_minutes: int) -> str:
     if not timestamp:
         # Use current time
         import datetime
+
         now = datetime.datetime.now(datetime.timezone.utc)
         minute_bucket = (now.minute // window_minutes) * window_minutes
         return now.strftime(f"%Y-%m-%dT%H:{minute_bucket:02d}")

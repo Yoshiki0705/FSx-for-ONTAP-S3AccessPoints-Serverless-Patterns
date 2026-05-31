@@ -219,11 +219,14 @@ class TestHandleRealModeDirectMode:
             "input_s3_path": "s3://bucket/data/",
         }
 
-        with patch.dict(os.environ, {
-            "SAGEMAKER_MODEL_NAME": "custom-model",
-            "SAGEMAKER_INSTANCE_TYPE": "ml.p3.2xlarge",
-            "TOKEN_STORAGE_MODE": "direct",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "SAGEMAKER_MODEL_NAME": "custom-model",
+                "SAGEMAKER_INSTANCE_TYPE": "ml.p3.2xlarge",
+                "TOKEN_STORAGE_MODE": "direct",
+            },
+        ):
             with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
                 mock_sagemaker = MagicMock()
                 mock_boto3.client.return_value = mock_sagemaker
@@ -256,11 +259,14 @@ class TestHandleRealModeDynamoDBMode:
             "point_count": 1000,
         }
 
-        with patch.dict(os.environ, {
-            "TOKEN_STORAGE_MODE": "dynamodb",
-            "TASK_TOKEN_TABLE_NAME": TABLE_NAME,
-            "TOKEN_TTL_SECONDS": "86400",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "TOKEN_STORAGE_MODE": "dynamodb",
+                "TASK_TOKEN_TABLE_NAME": TABLE_NAME,
+                "TOKEN_TTL_SECONDS": "86400",
+            },
+        ):
             with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
                 mock_sagemaker = MagicMock()
                 mock_boto3.client.return_value = mock_sagemaker
@@ -268,9 +274,7 @@ class TestHandleRealModeDynamoDBMode:
                 mock_boto3.resource.return_value = dynamodb
 
                 # Patch TaskTokenStore to use moto DynamoDB
-                with patch(
-                    "functions.sagemaker_invoke.handler.TaskTokenStore"
-                ) as MockStore:
+                with patch("functions.sagemaker_invoke.handler.TaskTokenStore") as MockStore:
                     mock_store_instance = MagicMock()
                     mock_store_instance.store_token.return_value = "abcd1234"
                     MockStore.return_value = mock_store_instance
@@ -345,13 +349,14 @@ class TestBuildJobTags:
         dynamodb = boto3.resource("dynamodb", region_name=REGION)
         _create_token_table(dynamodb)
 
-        with patch.dict(os.environ, {
-            "TASK_TOKEN_TABLE_NAME": TABLE_NAME,
-            "TOKEN_TTL_SECONDS": "86400",
-        }):
-            tags, correlation_id = _build_job_tags(
-                "dynamodb", "my-long-token", "job-1"
-            )
+        with patch.dict(
+            os.environ,
+            {
+                "TASK_TOKEN_TABLE_NAME": TABLE_NAME,
+                "TOKEN_TTL_SECONDS": "86400",
+            },
+        ):
+            tags, correlation_id = _build_job_tags("dynamodb", "my-long-token", "job-1")
 
             assert correlation_id is not None
             assert len(correlation_id) == 8
@@ -385,10 +390,13 @@ class TestTaskTokenNotInLogs:
         mock_writer.build_s3_uri.return_value = "s3://bucket/out.json"
 
         with caplog.at_level(logging.DEBUG):
-            with patch.dict(os.environ, {
-                "MOCK_MODE": "true",
-                "TOKEN_STORAGE_MODE": "direct",
-            }):
+            with patch.dict(
+                os.environ,
+                {
+                    "MOCK_MODE": "true",
+                    "TOKEN_STORAGE_MODE": "direct",
+                },
+            ):
                 with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3:
                     mock_sfn = MagicMock()
                     mock_boto3.client.return_value = mock_sfn
@@ -420,15 +428,15 @@ class TestHandler:
         context.function_name = "test-function"
 
         with patch.dict(os.environ, {"MOCK_MODE": "true"}):
-            with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3, \
-                 patch("functions.sagemaker_invoke.handler.OutputWriter") as mock_output_writer_cls:
+            with (
+                patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3,
+                patch("functions.sagemaker_invoke.handler.OutputWriter") as mock_output_writer_cls,
+            ):
                 mock_sfn = MagicMock()
                 mock_boto3.client.return_value = mock_sfn
 
                 mock_writer = MagicMock()
-                mock_writer.build_s3_uri.return_value = (
-                    "s3://test-output-bucket/sagemaker-output/out.json"
-                )
+                mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/sagemaker-output/out.json"
                 mock_output_writer_cls.from_env.return_value = mock_writer
 
                 result = handler(event, context)
@@ -448,14 +456,19 @@ class TestHandler:
         context.aws_request_id = "test-request-id"
         context.function_name = "test-function"
 
-        with patch.dict(os.environ, {
-            "MOCK_MODE": "false",
-            "TOKEN_STORAGE_MODE": "dynamodb",
-            "TASK_TOKEN_TABLE_NAME": TABLE_NAME,
-            "TOKEN_TTL_SECONDS": "86400",
-        }):
-            with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3, \
-                 patch("functions.sagemaker_invoke.handler.OutputWriter") as mock_output_writer_cls:
+        with patch.dict(
+            os.environ,
+            {
+                "MOCK_MODE": "false",
+                "TOKEN_STORAGE_MODE": "dynamodb",
+                "TASK_TOKEN_TABLE_NAME": TABLE_NAME,
+                "TOKEN_TTL_SECONDS": "86400",
+            },
+        ):
+            with (
+                patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3,
+                patch("functions.sagemaker_invoke.handler.OutputWriter") as mock_output_writer_cls,
+            ):
                 mock_sagemaker = MagicMock()
                 mock_boto3.client.return_value = mock_sagemaker
 
@@ -464,9 +477,7 @@ class TestHandler:
                 mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/out.json"
                 mock_output_writer_cls.from_env.return_value = mock_writer
 
-                with patch(
-                    "functions.sagemaker_invoke.handler.TaskTokenStore"
-                ) as MockStore:
+                with patch("functions.sagemaker_invoke.handler.TaskTokenStore") as MockStore:
                     mock_store_instance = MagicMock()
                     mock_store_instance.store_token.return_value = "ef012345"
                     MockStore.return_value = mock_store_instance
@@ -488,12 +499,17 @@ class TestHandler:
         context.aws_request_id = "test-request-id"
         context.function_name = "test-function"
 
-        with patch.dict(os.environ, {
-            "MOCK_MODE": "false",
-            "TOKEN_STORAGE_MODE": "direct",
-        }):
-            with patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3, \
-                 patch("functions.sagemaker_invoke.handler.OutputWriter") as mock_output_writer_cls:
+        with patch.dict(
+            os.environ,
+            {
+                "MOCK_MODE": "false",
+                "TOKEN_STORAGE_MODE": "direct",
+            },
+        ):
+            with (
+                patch("functions.sagemaker_invoke.handler.boto3") as mock_boto3,
+                patch("functions.sagemaker_invoke.handler.OutputWriter") as mock_output_writer_cls,
+            ):
                 mock_sagemaker = MagicMock()
                 mock_boto3.client.return_value = mock_sagemaker
 

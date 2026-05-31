@@ -24,7 +24,7 @@ UC_STATE_MACHINES = {
     "smart-city-geospatial": "SmartCityStateMachine",
 }
 
-BLOCK_TEMPLATE = '''
+BLOCK_TEMPLATE = """
   # EventBridge rule: notify on Step Functions execution failure/timeout/abort
   StepFunctionsFailureEventRule:
     Type: AWS::Events::Rule
@@ -72,7 +72,7 @@ BLOCK_TEMPLATE = '''
                 aws:SourceArn: !GetAtt StepFunctionsFailureEventRule.Arn
       Topics:
         - !Ref NotificationTopic
-'''
+"""
 
 
 def add_eventbridge_block(uc_dir: str, state_machine: str) -> None:
@@ -92,7 +92,7 @@ def add_eventbridge_block(uc_dir: str, state_machine: str) -> None:
 
     # Find the Outputs section to insert before it
     # Look for patterns like "Outputs:" or "# Outputs" followed by "Outputs:"
-    outputs_pattern = re.compile(r'^(# =+\n# Outputs\n# =+\n)?Outputs:', re.MULTILINE)
+    outputs_pattern = re.compile(r"^(# =+\n# Outputs\n# =+\n)?Outputs:", re.MULTILINE)
     match = outputs_pattern.search(content)
 
     if match:

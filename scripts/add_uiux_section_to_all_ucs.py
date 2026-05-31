@@ -9,6 +9,7 @@ For UCs requiring Textract/Comprehend Medical (UC2, UC5), we note cross-region s
 
 UC4 (media-vfx) depends on Deadline Cloud; skip detailed UI/UX for now.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -39,15 +40,18 @@ E2E_VERIFIED = {"UC1", "UC3", "UC7", "UC8", "UC10", "UC11", "UC12", "UC13", "UC1
 # Relevant existing phase1-6 screenshots for each UC
 EXISTING_SCREENSHOTS = {
     "UC1": [
-        ("phase1/phase1-cloudformation-uc1-deployed.png",
-         "UC1 CloudFormation スタックデプロイ完了（2026-05-02 検証時）"),
-        ("phase1/phase1-step-functions-uc1-succeeded.png",
-         "UC1 Step Functions SUCCEEDED（E2E 実行成功）"),
+        (
+            "phase1/phase1-cloudformation-uc1-deployed.png",
+            "UC1 CloudFormation スタックデプロイ完了（2026-05-02 検証時）",
+        ),
+        ("phase1/phase1-step-functions-uc1-succeeded.png", "UC1 Step Functions SUCCEEDED（E2E 実行成功）"),
     ],
     "UC3": [],
     "UC7": [
-        ("phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png",
-         "UC7 Comprehend Medical ゲノミクス解析結果（Cross-Region us-east-1）"),
+        (
+            "phase2/phase2-comprehend-medical-genomics-analysis-fullpage.png",
+            "UC7 Comprehend Medical ゲノミクス解析結果（Cross-Region us-east-1）",
+        ),
     ],
     "UC8": [],
     "UC10": [],

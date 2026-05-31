@@ -76,10 +76,7 @@ class TestS3ApHelper:
 
     def test_arn_bucket_param(self, arn_helper: S3ApHelper):
         """ARN 形式が bucket_param としてそのまま使用されることを検証する"""
-        assert (
-            arn_helper.bucket_param
-            == "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/my-ap"
-        )
+        assert arn_helper.bucket_param == "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/my-ap"
 
     # --- list_objects ---
 
@@ -231,9 +228,7 @@ class TestS3ApHelper:
         """put_object が bytes ボディで正しく動作することを検証する"""
         alias_helper._s3_client.put_object.return_value = {"ETag": '"xyz"'}
 
-        result = alias_helper.put_object(
-            "output/result.bin", b"binary-data", content_type="application/octet-stream"
-        )
+        result = alias_helper.put_object("output/result.bin", b"binary-data", content_type="application/octet-stream")
 
         assert result == {"ETag": '"xyz"'}
         alias_helper._s3_client.put_object.assert_called_once_with(

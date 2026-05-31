@@ -42,9 +42,7 @@ RESEARCH_DOMAINS = [
 ]
 
 
-def extract_entities_with_comprehend(
-    comprehend_client, text: str, language_code: str = "en"
-) -> list[dict]:
+def extract_entities_with_comprehend(comprehend_client, text: str, language_code: str = "en") -> list[dict]:
     """Comprehend でエンティティ抽出を実行する
 
     Args:
@@ -65,18 +63,18 @@ def extract_entities_with_comprehend(
 
     entities = []
     for entity in response.get("Entities", []):
-        entities.append({
-            "text": entity["Text"],
-            "type": entity["Type"],
-            "score": round(entity["Score"], 3),
-        })
+        entities.append(
+            {
+                "text": entity["Text"],
+                "type": entity["Type"],
+                "score": round(entity["Score"], 3),
+            }
+        )
 
     return entities
 
 
-def detect_key_phrases(
-    comprehend_client, text: str, language_code: str = "en"
-) -> list[str]:
+def detect_key_phrases(comprehend_client, text: str, language_code: str = "en") -> list[str]:
     """Comprehend でキーフレーズ検出を実行する
 
     Args:
@@ -102,9 +100,7 @@ def detect_key_phrases(
     return phrases[:20]  # 上位20件
 
 
-def _classify_domain_with_bedrock(
-    bedrock_client, text: str, model_id: str
-) -> dict:
+def _classify_domain_with_bedrock(bedrock_client, text: str, model_id: str) -> dict:
     """Bedrock で研究ドメイン分類を実行する
 
     Args:
@@ -121,7 +117,7 @@ def _classify_domain_with_bedrock(
 {text[:2000]}
 
 ## 分類カテゴリ:
-{', '.join(RESEARCH_DOMAINS)}
+{", ".join(RESEARCH_DOMAINS)}
 
 ## 出力 JSON フォーマット:
 {{
@@ -135,25 +131,23 @@ JSON のみを出力してください。"""
 
     try:
         with xray_subsegment(
-
             name="bedrock_invokemodel",
-
             annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "education-research"},
-
         ):
-
             response = bedrock_client.invoke_model(
-            modelId=model_id,
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps({
-                "inputText": prompt,
-                "textGenerationConfig": {
-                    "maxTokenCount": 1024,
-                    "temperature": 0.1,
-                },
-            }),
-        )
+                modelId=model_id,
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps(
+                    {
+                        "inputText": prompt,
+                        "textGenerationConfig": {
+                            "maxTokenCount": 1024,
+                            "temperature": 0.1,
+                        },
+                    }
+                ),
+            )
         response_json = json.loads(response["body"].read())
 
         if "results" in response_json:
@@ -226,9 +220,7 @@ def handler(event, context):
 
     # Bedrock で研究ドメイン分類
     bedrock_client = boto3.client("bedrock-runtime")
-    classification = _classify_domain_with_bedrock(
-        bedrock_client, extracted_text, model_id
-    )
+    classification = _classify_domain_with_bedrock(bedrock_client, extracted_text, model_id)
 
     # 出力キー生成
     now = datetime.now(timezone.utc)
@@ -255,7 +247,6 @@ def handler(event, context):
         classification.get("domain", "Unknown"),
         len(entities),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="classification")

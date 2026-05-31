@@ -29,16 +29,12 @@ VALID_SERVICES = ["textract", "comprehendmedical", "comprehend", "rekognition"]
 @settings(max_examples=100)
 @given(
     target_region=st.sampled_from(VALID_REGIONS),
-    services=st.lists(
-        st.sampled_from(VALID_SERVICES), min_size=1, max_size=4, unique=True
-    ),
+    services=st.lists(st.sampled_from(VALID_SERVICES), min_size=1, max_size=4, unique=True),
     verify_ssl=st.booleans(),
     connect_timeout=st.integers(min_value=1, max_value=120),
     read_timeout=st.integers(min_value=1, max_value=300),
 )
-def test_cross_region_config_round_trip(
-    target_region, services, verify_ssl, connect_timeout, read_timeout
-):
+def test_cross_region_config_round_trip(target_region, services, verify_ssl, connect_timeout, read_timeout):
     """Feature: fsxn-s3ap-serverless-patterns-phase2, Property 1: CrossRegionConfig round-trip
 
     For any valid CrossRegionConfig object with arbitrary target_region,
@@ -84,10 +80,7 @@ def test_cross_region_error_attributes(target_region, service_name, error_messag
     original = ValueError(error_message)
     # Construct message matching actual CrossRegionClient usage pattern:
     # real code always includes service_name and target_region in the message
-    message = (
-        f"Service '{service_name}' failed in region "
-        f"'{target_region}': {error_message}"
-    )
+    message = f"Service '{service_name}' failed in region '{target_region}': {error_message}"
     error = CrossRegionClientError(
         message=message,
         target_region=target_region,

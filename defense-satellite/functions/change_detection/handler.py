@@ -71,9 +71,7 @@ def _compute_geohash(lat: float, lon: float, precision: int = 5) -> str:
     return "".join(geohash)
 
 
-def _compute_diff_area_km2(
-    current_detections: list[dict], previous_detections: list[dict]
-) -> float:
+def _compute_diff_area_km2(current_detections: list[dict], previous_detections: list[dict]) -> float:
     """現在と過去の検出結果から変化面積を概算する。
 
     簡易実装: bbox 面積の差分絶対値を km² で概算（1度 ≒ 111 km として）。
@@ -85,6 +83,7 @@ def _compute_diff_area_km2(
     Returns:
         float: 変化面積 km²
     """
+
     def total_area(detections: list[dict]) -> float:
         area = 0.0
         for d in detections:

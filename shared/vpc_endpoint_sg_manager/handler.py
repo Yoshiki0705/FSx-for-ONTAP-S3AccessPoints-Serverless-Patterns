@@ -10,6 +10,7 @@ This handler:
 
 All operations are idempotent — duplicate rules and missing rules are handled gracefully.
 """
+
 from __future__ import annotations
 
 import json
@@ -53,15 +54,11 @@ def authorize_ingress(vpc_endpoint_sg_id: str, lambda_sg_id: str) -> None:
                 }
             ],
         )
-        logger.info(
-            f"Authorized ingress: {vpc_endpoint_sg_id} ← {lambda_sg_id} (TCP 443)"
-        )
+        logger.info(f"Authorized ingress: {vpc_endpoint_sg_id} ← {lambda_sg_id} (TCP 443)")
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code == "InvalidPermission.Duplicate":
-            logger.info(
-                f"Rule already exists: {vpc_endpoint_sg_id} ← {lambda_sg_id} (idempotent)"
-            )
+            logger.info(f"Rule already exists: {vpc_endpoint_sg_id} ← {lambda_sg_id} (idempotent)")
         else:
             raise
 
@@ -83,15 +80,11 @@ def revoke_ingress(vpc_endpoint_sg_id: str, lambda_sg_id: str) -> None:
                 }
             ],
         )
-        logger.info(
-            f"Revoked ingress: {vpc_endpoint_sg_id} ← {lambda_sg_id} (TCP 443)"
-        )
+        logger.info(f"Revoked ingress: {vpc_endpoint_sg_id} ← {lambda_sg_id} (TCP 443)")
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code == "InvalidPermission.NotFound":
-            logger.info(
-                f"Rule not found: {vpc_endpoint_sg_id} ← {lambda_sg_id} (already removed)"
-            )
+            logger.info(f"Rule not found: {vpc_endpoint_sg_id} ← {lambda_sg_id} (already removed)")
         else:
             raise
 
@@ -139,9 +132,7 @@ def handler(event: dict[str, Any], context: Any) -> None:
 
     except Exception as e:
         logger.error(f"Error handling {request_type}: {e}")
-        send_response(
-            event, context, "FAILED", physical_resource_id, reason=str(e)
-        )
+        send_response(event, context, "FAILED", physical_resource_id, reason=str(e))
 
 
 # ---------------------------------------------------------------------------

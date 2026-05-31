@@ -53,9 +53,7 @@ def test_handler_missing_key_raises(tiling_handler, lambda_context, monkeypatch)
     assert result["statusCode"] >= 500
 
 
-def test_handler_uses_fallback_when_rasterio_unavailable(
-    tiling_handler, lambda_context, monkeypatch
-):
+def test_handler_uses_fallback_when_rasterio_unavailable(tiling_handler, lambda_context, monkeypatch):
     """Handler falls back to simple metadata when rasterio is unavailable."""
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.setenv("TILE_SIZE", "256")
@@ -69,9 +67,10 @@ def test_handler_uses_fallback_when_rasterio_unavailable(
     mock_writer.target_description = "Standard S3 bucket 'test-bucket'"
     mock_writer.build_s3_uri.return_value = "s3://test-bucket/out.json"
 
-    with patch.object(tiling_handler, "boto3") as mock_boto3, patch.object(
-        tiling_handler, "OutputWriter"
-    ) as mock_output_writer_cls:
+    with (
+        patch.object(tiling_handler, "boto3") as mock_boto3,
+        patch.object(tiling_handler, "OutputWriter") as mock_output_writer_cls,
+    ):
         mock_boto3.client.return_value = mock_s3_client
         mock_output_writer_cls.from_env.return_value = mock_writer
         with patch.object(tiling_handler, "RASTERIO_AVAILABLE", False):

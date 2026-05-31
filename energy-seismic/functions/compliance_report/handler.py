@@ -69,10 +69,7 @@ def _build_compliance_prompt(
     # 異常サマリー構築
     anomaly_lines = []
     for ar in anomaly_results[:10]:
-        anomaly_lines.append(
-            f"- {ar.get('file_key', 'unknown')}: "
-            f"anomalies={ar.get('total_anomalies', 0)}"
-        )
+        anomaly_lines.append(f"- {ar.get('file_key', 'unknown')}: anomalies={ar.get('total_anomalies', 0)}")
 
     # 坑井別異常
     well_anomaly_lines = []
@@ -97,21 +94,15 @@ def _build_compliance_prompt(
         "You are a petroleum engineering compliance specialist. Based on the "
         "following seismic survey and well log analysis results, generate a "
         "comprehensive compliance report in Japanese.\n\n"
-        "## 調査メタデータ\n\n"
-        + "\n".join(metadata_lines)
-        + "\n\n"
+        "## 調査メタデータ\n\n" + "\n".join(metadata_lines) + "\n\n"
         "## 異常検知サマリー\n\n"
         f"- 総坑井数: {anomaly_summary.get('total_wells', 0)}\n"
         f"- 異常検出坑井数: {anomaly_summary.get('wells_with_anomalies', 0)}\n"
         f"- 総異常数: {anomaly_summary.get('total_anomalies_all', 0)}\n"
         f"- 坑井あたり平均異常数: {anomaly_summary.get('avg_anomalies_per_well', 0)}\n"
         f"- 坑井あたり最大異常数: {anomaly_summary.get('max_anomalies_per_well', 0)}\n\n"
-        "## 坑井別異常\n\n"
-        + "\n".join(well_anomaly_lines)
-        + "\n\n"
-        "## センサー別異常\n\n"
-        + "\n".join(sensor_anomaly_lines)
-        + "\n\n"
+        "## 坑井別異常\n\n" + "\n".join(well_anomaly_lines) + "\n\n"
+        "## センサー別異常\n\n" + "\n".join(sensor_anomaly_lines) + "\n\n"
         "## レポート要件\n"
         "1. エグゼクティブサマリー（調査データの全体評価）\n"
         "2. 地震探査データの品質評価と問題点の指摘\n"
@@ -134,34 +125,28 @@ def _invoke_bedrock(bedrock_client, model_id: str, prompt: str) -> str:
     Returns:
         str: 生成されたレポートテキスト
     """
-    body = json.dumps({
-        "messages": [
-            {"role": "user", "content": [{"text": prompt}]},
-        ],
-        "inferenceConfig": {
-            "maxTokens": 4096,
-            "temperature": 0.3,
-        },
-    })
+    body = json.dumps(
+        {
+            "messages": [
+                {"role": "user", "content": [{"text": prompt}]},
+            ],
+            "inferenceConfig": {
+                "maxTokens": 4096,
+                "temperature": 0.3,
+            },
+        }
+    )
 
     with xray_subsegment(
-
-
         name="bedrock_invokemodel",
-
-
         annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "energy-seismic"},
-
-
     ):
-
-
         response = bedrock_client.invoke_model(
-        modelId=model_id,
-        contentType="application/json",
-        accept="application/json",
-        body=body,
-    )
+            modelId=model_id,
+            contentType="application/json",
+            accept="application/json",
+            body=body,
+        )
 
     response_body = json.loads(response["body"].read())
     output = response_body.get("output", {})
@@ -214,22 +199,24 @@ def _analyze_well_log_images(
                 for label in rekog_response.get("Labels", [])
             ]
 
-            results.append({
-                "image_key": image_key,
-                "labels": labels,
-                "label_count": len(labels),
-            })
+            results.append(
+                {
+                    "image_key": image_key,
+                    "labels": labels,
+                    "label_count": len(labels),
+                }
+            )
 
         except Exception as e:
-            logger.warning(
-                "Failed to analyze image %s: %s", image_key, str(e)
+            logger.warning("Failed to analyze image %s: %s", image_key, str(e))
+            results.append(
+                {
+                    "image_key": image_key,
+                    "error": str(e),
+                    "labels": [],
+                    "label_count": 0,
+                }
             )
-            results.append({
-                "image_key": image_key,
-                "error": str(e),
-                "labels": [],
-                "label_count": 0,
-            })
 
     return results
 
@@ -265,8 +252,7 @@ def handler(event, context):
     image_keys = event.get("image_keys", [])
 
     logger.info(
-        "Compliance Report generation started: model=%s, "
-        "metadata_count=%d, anomaly_count=%d, image_count=%d",
+        "Compliance Report generation started: model=%s, metadata_count=%d, anomaly_count=%d, image_count=%d",
         model_id,
         len(metadata_results),
         len(anomaly_results),
@@ -274,9 +260,7 @@ def handler(event, context):
     )
 
     # Bedrock でコンプライアンスレポート生成
-    prompt = _build_compliance_prompt(
-        metadata_results, anomaly_results, athena_results
-    )
+    prompt = _build_compliance_prompt(metadata_results, anomaly_results, athena_results)
     bedrock_client = boto3.client("bedrock-runtime")
     compliance_report = _invoke_bedrock(bedrock_client, model_id, prompt)
 
@@ -287,9 +271,7 @@ def handler(event, context):
 
         s3ap = S3ApHelper(s3_access_point)
         rekognition_client = boto3.client("rekognition")
-        image_analysis = _analyze_well_log_images(
-            rekognition_client, s3ap, image_keys
-        )
+        image_analysis = _analyze_well_log_images(rekognition_client, s3ap, image_keys)
 
     # 構造化出力の構築
     report = {
@@ -310,10 +292,7 @@ def handler(event, context):
 
     # 日付パーティション付き出力キー生成
     now = datetime.now(timezone.utc)
-    output_key = (
-        f"reports/{now.strftime('%Y/%m/%d')}"
-        f"/compliance_report_{context.aws_request_id}.json"
-    )
+    output_key = f"reports/{now.strftime('%Y/%m/%d')}/compliance_report_{context.aws_request_id}.json"
 
     # 構造化出力を OutputWriter 経由で出力先に書き出し
     output_data = {
@@ -354,14 +333,12 @@ def handler(event, context):
     )
 
     logger.info(
-        "Compliance Report generation completed: output_key=%s, "
-        "metadata_count=%d, anomaly_count=%d, image_count=%d",
+        "Compliance Report generation completed: output_key=%s, metadata_count=%d, anomaly_count=%d, image_count=%d",
         output_key,
         len(metadata_results),
         len(anomaly_results),
         len(image_analysis),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="compliance_report")

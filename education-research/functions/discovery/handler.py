@@ -65,9 +65,7 @@ def handler(event, context):
         dict: manifest_key, total_objects, pdf_objects, data_objects, metadata
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "")
     suffix_env = os.environ.get("SUFFIX_FILTER", "")
 
@@ -87,13 +85,9 @@ def handler(event, context):
     all_objects: list[dict] = []
     for suffix in suffixes:
         with xray_subsegment(
-
             name="s3ap_list_objects",
-
             annotations={"service_name": "s3", "operation": "ListObjectsV2", "use_case": "education-research"},
-
         ):
-
             objects = s3ap.list_objects(prefix=prefix, suffix=suffix)
         all_objects.extend(objects)
 
@@ -106,14 +100,8 @@ def handler(event, context):
             unique_objects.append(obj)
 
     # 論文 PDF と研究データを分類
-    pdf_objects = [
-        obj for obj in unique_objects
-        if obj["Key"].lower().endswith(".pdf")
-    ]
-    data_objects = [
-        obj for obj in unique_objects
-        if obj["Key"].lower().endswith((".csv", ".json", ".xml"))
-    ]
+    pdf_objects = [obj for obj in unique_objects if obj["Key"].lower().endswith(".pdf")]
+    data_objects = [obj for obj in unique_objects if obj["Key"].lower().endswith((".csv", ".json", ".xml"))]
 
     # ONTAP メタデータ収集
     verify_ssl = os.environ.get("VERIFY_SSL", "true").lower() != "false"
@@ -138,10 +126,7 @@ def handler(event, context):
         "metadata": metadata,
     }
 
-    manifest_key = (
-        f"manifests/{now.strftime('%Y/%m/%d')}"
-        f"/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{now.strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,
@@ -156,7 +141,6 @@ def handler(event, context):
         len(data_objects),
         manifest_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="discovery")

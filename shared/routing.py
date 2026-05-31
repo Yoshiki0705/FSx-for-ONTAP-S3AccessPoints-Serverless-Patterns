@@ -87,8 +87,7 @@ def determine_inference_path(
     """
     if inference_type not in VALID_INFERENCE_TYPES:
         raise ValueError(
-            f"Invalid inference_type '{inference_type}'. "
-            f"Must be one of: {', '.join(sorted(VALID_INFERENCE_TYPES))}"
+            f"Invalid inference_type '{inference_type}'. Must be one of: {', '.join(sorted(VALID_INFERENCE_TYPES))}"
         )
 
     # Rule 1: No endpoint created → always batch
@@ -140,8 +139,7 @@ def validate_serverless_config(
     if memory_size_mb not in VALID_MEMORY_SIZES_MB:
         return (
             False,
-            f"Invalid MemorySizeInMB: {memory_size_mb}. "
-            f"Must be one of: {sorted(VALID_MEMORY_SIZES_MB)}",
+            f"Invalid MemorySizeInMB: {memory_size_mb}. Must be one of: {sorted(VALID_MEMORY_SIZES_MB)}",
         )
 
     # Validate MaxConcurrency
@@ -156,8 +154,7 @@ def validate_serverless_config(
     if provisioned_concurrency < 0:
         return (
             False,
-            f"Invalid ProvisionedConcurrency: {provisioned_concurrency}. "
-            "Must be >= 0",
+            f"Invalid ProvisionedConcurrency: {provisioned_concurrency}. Must be >= 0",
         )
 
     return (True, None)
@@ -192,8 +189,7 @@ def validate_inference_config(
     if inference_type not in VALID_INFERENCE_TYPES:
         return (
             False,
-            f"Invalid inference_type '{inference_type}'. "
-            f"Must be one of: {', '.join(sorted(VALID_INFERENCE_TYPES))}",
+            f"Invalid inference_type '{inference_type}'. Must be one of: {', '.join(sorted(VALID_INFERENCE_TYPES))}",
         )
 
     # "none" requires no additional parameters

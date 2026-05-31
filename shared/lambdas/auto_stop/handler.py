@@ -171,16 +171,12 @@ def _list_project_endpoints() -> list[dict]:
             endpoint_name = endpoint["EndpointName"]
             # Check if endpoint has project prefix tag
             try:
-                tags_response = sagemaker_client.list_tags(
-                    ResourceArn=_get_endpoint_arn(endpoint_name)
-                )
+                tags_response = sagemaker_client.list_tags(ResourceArn=_get_endpoint_arn(endpoint_name))
                 tags = {t["Key"]: t["Value"] for t in tags_response.get("Tags", [])}
                 if tags.get("Project", "").startswith(PROJECT_PREFIX):
                     endpoints.append(endpoint)
             except Exception as e:
-                logger.warning(
-                    "Failed to get tags for endpoint %s: %s", endpoint_name, str(e)
-                )
+                logger.warning("Failed to get tags for endpoint %s: %s", endpoint_name, str(e))
 
     return endpoints
 
@@ -195,15 +191,11 @@ def _has_do_not_auto_stop_tag(endpoint_name: str) -> bool:
         bool: DoNotAutoStop=true の場合 True
     """
     try:
-        tags_response = sagemaker_client.list_tags(
-            ResourceArn=_get_endpoint_arn(endpoint_name)
-        )
+        tags_response = sagemaker_client.list_tags(ResourceArn=_get_endpoint_arn(endpoint_name))
         tags = {t["Key"]: t["Value"] for t in tags_response.get("Tags", [])}
         return tags.get("DoNotAutoStop", "false").lower() == "true"
     except Exception as e:
-        logger.warning(
-            "Failed to check DoNotAutoStop tag for %s: %s", endpoint_name, str(e)
-        )
+        logger.warning("Failed to check DoNotAutoStop tag for %s: %s", endpoint_name, str(e))
         return False
 
 
@@ -265,9 +257,7 @@ def _is_endpoint_idle(endpoint_name: str) -> bool:
         return total_invocations == 0
 
     except Exception as e:
-        logger.warning(
-            "Failed to get metrics for endpoint %s: %s", endpoint_name, str(e)
-        )
+        logger.warning("Failed to get metrics for endpoint %s: %s", endpoint_name, str(e))
         # If we can't determine, don't stop the endpoint
         return False
 
@@ -285,9 +275,7 @@ def _get_endpoint_details(endpoint_name: str) -> dict:
         response = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
         endpoint_config_name = response.get("EndpointConfigName", "")
 
-        config_response = sagemaker_client.describe_endpoint_config(
-            EndpointConfigName=endpoint_config_name
-        )
+        config_response = sagemaker_client.describe_endpoint_config(EndpointConfigName=endpoint_config_name)
         variants = config_response.get("ProductionVariants", [])
         if variants:
             variant = variants[0]
@@ -296,9 +284,7 @@ def _get_endpoint_details(endpoint_name: str) -> dict:
                 "instance_count": variant.get("InitialInstanceCount", 0),
             }
     except Exception as e:
-        logger.warning(
-            "Failed to get endpoint details for %s: %s", endpoint_name, str(e)
-        )
+        logger.warning("Failed to get endpoint details for %s: %s", endpoint_name, str(e))
 
     return {"instance_type": "unknown", "instance_count": 0}
 

@@ -6,6 +6,7 @@ functions/ dir, report any undefined names. This catches the class of bugs
 we saw in UC9 Discovery (inference_type not returned) and UC4 Discovery
 (NameError on undefined `objects`).
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -14,10 +15,7 @@ from pathlib import Path
 
 
 def run_pyflakes(path: Path) -> list[str]:
-    result = subprocess.run(
-        ["python3", "-m", "pyflakes", str(path)],
-        capture_output=True, text=True
-    )
+    result = subprocess.run(["python3", "-m", "pyflakes", str(path)], capture_output=True, text=True)
     # pyflakes emits on stdout, nothing on stderr normally
     lines = result.stdout.splitlines()
     # Filter to undefined-name complaints only (ignore unused imports etc)

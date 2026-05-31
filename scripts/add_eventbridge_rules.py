@@ -197,9 +197,7 @@ def generate_event_pattern(prefixes, suffixes, operations):
 
 def generate_sfn_rule_resources(uc):
     """Generate EventBridge Rule + IAM Role for Step Functions target."""
-    event_pattern = generate_event_pattern(
-        uc["prefixes"], uc["suffixes"], uc["operations"]
-    )
+    event_pattern = generate_event_pattern(uc["prefixes"], uc["suffixes"], uc["operations"])
     state_machine = uc["state_machine"]
 
     return f"""
@@ -247,9 +245,7 @@ def generate_sfn_rule_resources(uc):
 
 def generate_lambda_rule_resources(uc):
     """Generate EventBridge Rule + IAM Role for Lambda target (simplified templates)."""
-    event_pattern = generate_event_pattern(
-        uc["prefixes"], uc["suffixes"], uc["operations"]
-    )
+    event_pattern = generate_event_pattern(uc["prefixes"], uc["suffixes"], uc["operations"])
     target_function = uc["target_function"]
 
     return f"""
@@ -335,12 +331,16 @@ def add_eventbridge_rule(uc):
         content = content.rstrip() + "\n" + resources
 
     template_path.write_text(content)
-    return {"path": str(template_path), "status": "updated", "changes": [
-        f"added {uc['rule_name']} (EventBridge Rule)",
-        f"added {uc['role_name']} (IAM Role for EventBridge)",
-        f"filters: prefixes={uc['prefixes']}, suffixes={uc['suffixes']}",
-        f"operations: {uc['operations']}",
-    ]}
+    return {
+        "path": str(template_path),
+        "status": "updated",
+        "changes": [
+            f"added {uc['rule_name']} (EventBridge Rule)",
+            f"added {uc['role_name']} (IAM Role for EventBridge)",
+            f"filters: prefixes={uc['prefixes']}, suffixes={uc['suffixes']}",
+            f"operations: {uc['operations']}",
+        ],
+    }
 
 
 def main():

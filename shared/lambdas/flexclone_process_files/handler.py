@@ -114,12 +114,14 @@ def _list_files(s3ap_alias: str, prefix: str) -> list[dict[str, Any]]:
 
     for page in paginator.paginate(Bucket=s3ap_alias, Prefix=prefix):
         for obj in page.get("Contents", []):
-            files.append({
-                "key": obj["Key"],
-                "size": obj["Size"],
-                "last_modified": obj["LastModified"].isoformat(),
-                "etag": obj.get("ETag", ""),
-            })
+            files.append(
+                {
+                    "key": obj["Key"],
+                    "size": obj["Size"],
+                    "last_modified": obj["LastModified"].isoformat(),
+                    "etag": obj.get("ETag", ""),
+                }
+            )
 
     return files
 
@@ -147,9 +149,7 @@ def _count_files(s3ap_alias: str, prefix: str) -> dict[str, Any]:
     }
 
 
-def _list_and_metadata(
-    s3ap_alias: str, prefix: str, output_prefix: str
-) -> dict[str, Any]:
+def _list_and_metadata(s3ap_alias: str, prefix: str, output_prefix: str) -> dict[str, Any]:
     """ファイル一覧を取得し、メタデータ JSON を生成する。
 
     Args:
@@ -195,9 +195,7 @@ def _list_and_metadata(
     }
 
 
-def _generate_thumbnails(
-    s3ap_alias: str, prefix: str, output_prefix: str
-) -> dict[str, Any]:
+def _generate_thumbnails(s3ap_alias: str, prefix: str, output_prefix: str) -> dict[str, Any]:
     """画像ファイルのサムネイルを生成する。
 
     サムネイル生成は軽量実装（ファイルサイズとハッシュベースのメタデータ）。

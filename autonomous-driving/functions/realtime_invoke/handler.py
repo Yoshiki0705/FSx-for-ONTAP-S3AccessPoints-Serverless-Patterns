@@ -65,7 +65,6 @@ class ServerlessColdStartTimeoutError(Exception):
     """
 
 
-
 def _download_from_s3ap(
     s3_client: Any,
     s3_uri: str,
@@ -120,8 +119,7 @@ def _check_total_timeout(start_time: float, task_timeout: int) -> None:
     elapsed = time.time() - start_time
     if elapsed > task_timeout:
         raise ServerlessColdStartTimeoutError(
-            f"Total elapsed time ({elapsed:.1f}s) exceeds "
-            f"Step Functions task timeout ({task_timeout}s). Aborting."
+            f"Total elapsed time ({elapsed:.1f}s) exceeds Step Functions task timeout ({task_timeout}s). Aborting."
         )
 
 
@@ -196,8 +194,7 @@ def _invoke_endpoint_serverless(
                             f"Endpoint '{endpoint_name}' cold start timeout."
                         )
                     logger.warning(
-                        "ModelNotReadyException on attempt %d/%d, "
-                        "waiting %ds before retry",
+                        "ModelNotReadyException on attempt %d/%d, waiting %ds before retry",
                         model_not_ready_attempts,
                         model_not_ready_max_retries,
                         model_not_ready_retry_delay,
@@ -210,8 +207,7 @@ def _invoke_endpoint_serverless(
                 if error_code in _RETRYABLE_ERRORS and attempt < max_retries:
                     wait_time = 2**attempt
                     logger.warning(
-                        "Retryable error '%s' on attempt %d/%d, "
-                        "waiting %ds before retry: %s",
+                        "Retryable error '%s' on attempt %d/%d, waiting %ds before retry: %s",
                         error_code,
                         attempt + 1,
                         max_retries + 1,
@@ -222,8 +218,7 @@ def _invoke_endpoint_serverless(
                 else:
                     # リトライ不可能なエラーまたはリトライ上限到達
                     logger.error(
-                        "Non-retryable error or max retries exceeded: "
-                        "error_code=%s, attempt=%d/%d",
+                        "Non-retryable error or max retries exceeded: error_code=%s, attempt=%d/%d",
                         error_code,
                         attempt + 1,
                         max_retries + 1,
@@ -282,8 +277,7 @@ def _invoke_endpoint_with_retry(
                 # Exponential backoff: 2^attempt 秒（0, 2, 4 秒）
                 wait_time = 2**attempt
                 logger.warning(
-                    "Retryable error '%s' on attempt %d/%d, "
-                    "waiting %ds before retry: %s",
+                    "Retryable error '%s' on attempt %d/%d, waiting %ds before retry: %s",
                     error_code,
                     attempt + 1,
                     max_retries + 1,
@@ -294,8 +288,7 @@ def _invoke_endpoint_with_retry(
             else:
                 # リトライ不可能なエラーまたはリトライ上限到達
                 logger.error(
-                    "Non-retryable error or max retries exceeded: "
-                    "error_code=%s, attempt=%d/%d",
+                    "Non-retryable error or max retries exceeded: error_code=%s, attempt=%d/%d",
                     error_code,
                     attempt + 1,
                     max_retries + 1,
@@ -382,21 +375,11 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     use_case = os.environ.get("USE_CASE", "autonomous-driving")
 
     # Serverless Inference 固有の設定
-    serverless_initial_timeout = int(
-        os.environ.get("SERVERLESS_INITIAL_TIMEOUT", "60")
-    )
-    cold_start_threshold_ms = int(
-        os.environ.get("COLD_START_THRESHOLD_MS", "5000")
-    )
-    model_not_ready_retry_delay = int(
-        os.environ.get("MODEL_NOT_READY_RETRY_DELAY", "3")
-    )
-    model_not_ready_max_retries = int(
-        os.environ.get("MODEL_NOT_READY_MAX_RETRIES", "2")
-    )
-    step_functions_task_timeout = int(
-        os.environ.get("STEP_FUNCTIONS_TASK_TIMEOUT", "120")
-    )
+    serverless_initial_timeout = int(os.environ.get("SERVERLESS_INITIAL_TIMEOUT", "60"))
+    cold_start_threshold_ms = int(os.environ.get("COLD_START_THRESHOLD_MS", "5000"))
+    model_not_ready_retry_delay = int(os.environ.get("MODEL_NOT_READY_RETRY_DELAY", "3"))
+    model_not_ready_max_retries = int(os.environ.get("MODEL_NOT_READY_MAX_RETRIES", "2"))
+    step_functions_task_timeout = int(os.environ.get("STEP_FUNCTIONS_TASK_TIMEOUT", "120"))
 
     # 入力パラメータ取得
     s3_uri = event.get("s3_uri", "")
@@ -411,8 +394,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     is_serverless = inference_type == "serverless"
 
     logger.info(
-        "Realtime invoke started: endpoint=%s, s3_uri=%s, "
-        "inference_type=%s, content_type=%s, max_retries=%d",
+        "Realtime invoke started: endpoint=%s, s3_uri=%s, inference_type=%s, content_type=%s, max_retries=%d",
         endpoint_name,
         s3_uri,
         inference_type,
@@ -486,8 +468,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     total_ms = (time.time() - start_time) * 1000
 
     logger.info(
-        "Inference completed: variant=%s, invoke_latency=%.1fms, "
-        "total_latency=%.1fms, inference_type=%s",
+        "Inference completed: variant=%s, invoke_latency=%.1fms, total_latency=%.1fms, inference_type=%s",
         parsed["variant_name"],
         invoke_ms,
         total_ms,
@@ -514,9 +495,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 cold_start_threshold_ms,
             )
             metrics.put_metric("ColdStartDetected", 1.0, "Count")
-            metrics.put_metric(
-                "ServerlessColdStartLatency", invoke_ms, "Milliseconds"
-            )
+            metrics.put_metric("ServerlessColdStartLatency", invoke_ms, "Milliseconds")
 
     metrics.set_property("VariantName", parsed["variant_name"])
     metrics.set_property("EndpointName", endpoint_name)

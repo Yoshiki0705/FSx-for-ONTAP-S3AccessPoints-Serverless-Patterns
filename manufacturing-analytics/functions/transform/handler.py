@@ -89,9 +89,7 @@ def handler(event, context):
     output_key = csv_key.rsplit(".", 1)[0] + ".jsonl"
     output_key = f"transformed/{output_key}"
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     s3ap_output.put_object(
         key=output_key,
         body=jsonlines_str,
@@ -104,7 +102,6 @@ def handler(event, context):
         output_key,
         record_count,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="transform")

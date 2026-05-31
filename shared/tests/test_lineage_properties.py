@@ -26,13 +26,15 @@ from shared.lineage import LineageRecord, LineageTracker
 
 TABLE_NAME = "test-lineage-pbt"
 
-uc_id_strategy = st.sampled_from([
-    "legal-compliance",
-    "financial-reporting",
-    "media-transcoding",
-    "data-archival",
-    "log-analysis",
-])
+uc_id_strategy = st.sampled_from(
+    [
+        "legal-compliance",
+        "financial-reporting",
+        "media-transcoding",
+        "data-archival",
+        "log-analysis",
+    ]
+)
 
 status_strategy = st.sampled_from(["success", "failed", "partial"])
 
@@ -118,10 +120,14 @@ class TestLineageRecordRoundTrip:
         duration_ms=duration_ms_strategy,
         execution_arn=execution_arn_strategy,
     )
-    @settings(max_examples=50, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-        HealthCheck.too_slow,
-    ])
+    @settings(
+        max_examples=50,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
     def test_record_retrievable_via_get_history(
         self,
         source_file_key: str,
@@ -155,9 +161,7 @@ class TestLineageRecordRoundTrip:
             # Verify via get_history
             history = tracker.get_history(source_file_key)
 
-            assert len(history) >= 1, (
-                f"Expected at least 1 record in history, got {len(history)}"
-            )
+            assert len(history) >= 1, f"Expected at least 1 record in history, got {len(history)}"
 
             # Find our record
             found = False
@@ -172,9 +176,7 @@ class TestLineageRecordRoundTrip:
                     found = True
                     break
 
-            assert found, (
-                f"Record with timestamp {timestamp} not found in history"
-            )
+            assert found, f"Record with timestamp {timestamp} not found in history"
 
     @pytest.mark.property
     @given(
@@ -184,10 +186,14 @@ class TestLineageRecordRoundTrip:
         duration_ms=duration_ms_strategy,
         execution_arn=execution_arn_strategy,
     )
-    @settings(max_examples=50, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-        HealthCheck.too_slow,
-    ])
+    @settings(
+        max_examples=50,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
     def test_record_retrievable_via_get_by_uc(
         self,
         source_file_key: str,
@@ -220,19 +226,11 @@ class TestLineageRecordRoundTrip:
             # Verify via get_by_uc
             results = tracker.get_by_uc(uc_id)
 
-            assert len(results) >= 1, (
-                f"Expected at least 1 record for uc_id={uc_id}, got {len(results)}"
-            )
+            assert len(results) >= 1, f"Expected at least 1 record for uc_id={uc_id}, got {len(results)}"
 
             # Find our record
-            found = any(
-                r.source_file_key == source_file_key
-                and r.processing_timestamp == timestamp
-                for r in results
-            )
-            assert found, (
-                f"Record not found via get_by_uc('{uc_id}')"
-            )
+            found = any(r.source_file_key == source_file_key and r.processing_timestamp == timestamp for r in results)
+            assert found, f"Record not found via get_by_uc('{uc_id}')"
 
 
 # --- Property 6: Lineage History Ordering ---
@@ -252,10 +250,14 @@ class TestLineageHistoryOrdering:
         num_records=num_records_strategy,
         status=status_strategy,
     )
-    @settings(max_examples=30, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-        HealthCheck.too_slow,
-    ])
+    @settings(
+        max_examples=30,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
     def test_history_sorted_descending(
         self,
         uc_id: str,
@@ -297,16 +299,14 @@ class TestLineageHistoryOrdering:
             # Retrieve history
             history = tracker.get_history(source_file_key, limit=num_records + 10)
 
-            assert len(history) == num_records, (
-                f"Expected {num_records} records, got {len(history)}"
-            )
+            assert len(history) == num_records, f"Expected {num_records} records, got {len(history)}"
 
             # Verify descending order
             timestamps = [r.processing_timestamp for r in history]
             for i in range(len(timestamps) - 1):
                 assert timestamps[i] >= timestamps[i + 1], (
                     f"History not in descending order: "
-                    f"timestamps[{i}]={timestamps[i]} < timestamps[{i+1}]={timestamps[i+1]}"
+                    f"timestamps[{i}]={timestamps[i]} < timestamps[{i + 1}]={timestamps[i + 1]}"
                 )
 
     @pytest.mark.property
@@ -318,10 +318,14 @@ class TestLineageHistoryOrdering:
             max_size=7,
         ),
     )
-    @settings(max_examples=30, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-        HealthCheck.too_slow,
-    ])
+    @settings(
+        max_examples=30,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
     def test_history_ordering_with_variable_gaps(
         self,
         num_records: int,
@@ -372,6 +376,5 @@ class TestLineageHistoryOrdering:
             result_timestamps = [r.processing_timestamp for r in history]
             for i in range(len(result_timestamps) - 1):
                 assert result_timestamps[i] >= result_timestamps[i + 1], (
-                    f"Not descending at index {i}: "
-                    f"{result_timestamps[i]} vs {result_timestamps[i+1]}"
+                    f"Not descending at index {i}: {result_timestamps[i]} vs {result_timestamps[i + 1]}"
                 )

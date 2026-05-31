@@ -91,10 +91,7 @@ def _simulate_polling_path(
     """
     # Simulate Rekognition response (deterministic based on content)
     rek_response = _make_mock_rekognition_response(image_bytes)
-    labels = [
-        {"name": l["Name"], "confidence": round(l["Confidence"], 2)}
-        for l in rek_response["Labels"]
-    ]
+    labels = [{"name": l["Name"], "confidence": round(l["Confidence"], 2)} for l in rek_response["Labels"]]
 
     # Evaluate confidence
     max_confidence, above_threshold = evaluate_confidence(labels, confidence_threshold)
@@ -126,10 +123,7 @@ def _simulate_event_driven_path(
     """
     # Same Rekognition simulation (deterministic based on content)
     rek_response = _make_mock_rekognition_response(image_bytes)
-    labels = [
-        {"name": l["Name"], "confidence": round(l["Confidence"], 2)}
-        for l in rek_response["Labels"]
-    ]
+    labels = [{"name": l["Name"], "confidence": round(l["Confidence"], 2)} for l in rek_response["Labels"]]
 
     # Same confidence evaluation
     max_confidence, above_threshold = evaluate_confidence(labels, confidence_threshold)
@@ -209,8 +203,7 @@ class TestProcessingEquivalence:
 
         # Assert processing equivalence
         assert polling_result["status"] == event_driven_result["status"], (
-            f"Status mismatch: polling={polling_result['status']}, "
-            f"event_driven={event_driven_result['status']}"
+            f"Status mismatch: polling={polling_result['status']}, event_driven={event_driven_result['status']}"
         )
         assert polling_result["labels"] == event_driven_result["labels"], (
             "Labels mismatch between polling and event-driven paths"
@@ -219,9 +212,7 @@ class TestProcessingEquivalence:
             f"Max confidence mismatch: polling={polling_result['max_confidence']}, "
             f"event_driven={event_driven_result['max_confidence']}"
         )
-        assert polling_result["above_threshold"] == event_driven_result["above_threshold"], (
-            "Above threshold mismatch"
-        )
+        assert polling_result["above_threshold"] == event_driven_result["above_threshold"], "Above threshold mismatch"
         assert polling_result["catalog_metadata"] == event_driven_result["catalog_metadata"], (
             "Catalog metadata mismatch between polling and event-driven paths"
         )
@@ -229,9 +220,7 @@ class TestProcessingEquivalence:
         # Verify byte-for-byte identical JSON serialization
         polling_json = json.dumps(polling_result, sort_keys=True)
         event_driven_json = json.dumps(event_driven_result, sort_keys=True)
-        assert polling_json == event_driven_json, (
-            "JSON serialization mismatch: outputs are not byte-for-byte identical"
-        )
+        assert polling_json == event_driven_json, "JSON serialization mismatch: outputs are not byte-for-byte identical"
 
     @given(
         file_content=file_content_strategy,
@@ -258,9 +247,7 @@ class TestProcessingEquivalence:
         result1 = _simulate_event_driven_path(file_content, file_key, threshold)
         result2 = _simulate_event_driven_path(file_content, file_key, threshold)
 
-        assert result1 == result2, (
-            "Non-deterministic processing: same input produced different outputs"
-        )
+        assert result1 == result2, "Non-deterministic processing: same input produced different outputs"
 
     @given(file_content=file_content_strategy)
     @settings(

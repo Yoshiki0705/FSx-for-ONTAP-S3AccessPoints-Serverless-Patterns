@@ -23,16 +23,33 @@ def mock_dynamodb():
 class TestRouteDecisionStrategies:
     """ルーティング戦略のテスト"""
 
-    @patch.dict(os.environ, {
-        "ROUTING_TABLE_NAME": "TestRoutingTable",
-        "CACHE_ENDPOINTS": "a.example.com,b.example.com",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "ROUTING_TABLE_NAME": "TestRoutingTable",
+            "CACHE_ENDPOINTS": "a.example.com,b.example.com",
+        },
+    )
     def test_latency_based_selects_lowest(self, mock_dynamodb):
         """レイテンシベースで最小レイテンシを選択"""
         mock_dynamodb.scan.return_value = {
             "Items": [
-                {"cache_id": "cache-a", "endpoint": "a.example.com", "latency_ms": "50", "weight": "50", "health": "healthy", "region": "ap-northeast-1"},
-                {"cache_id": "cache-b", "endpoint": "b.example.com", "latency_ms": "10", "weight": "50", "health": "healthy", "region": "us-west-2"},
+                {
+                    "cache_id": "cache-a",
+                    "endpoint": "a.example.com",
+                    "latency_ms": "50",
+                    "weight": "50",
+                    "health": "healthy",
+                    "region": "ap-northeast-1",
+                },
+                {
+                    "cache_id": "cache-b",
+                    "endpoint": "b.example.com",
+                    "latency_ms": "10",
+                    "weight": "50",
+                    "health": "healthy",
+                    "region": "us-west-2",
+                },
             ]
         }
 
@@ -47,16 +64,33 @@ class TestRouteDecisionStrategies:
         assert result["status"] == "selected"
         assert result["selected_cache"] == "cache-b"  # 低レイテンシ
 
-    @patch.dict(os.environ, {
-        "ROUTING_TABLE_NAME": "TestRoutingTable",
-        "CACHE_ENDPOINTS": "",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "ROUTING_TABLE_NAME": "TestRoutingTable",
+            "CACHE_ENDPOINTS": "",
+        },
+    )
     def test_region_affinity_prefers_same_region(self, mock_dynamodb):
         """リージョンアフィニティで同一リージョンを優先"""
         mock_dynamodb.scan.return_value = {
             "Items": [
-                {"cache_id": "cache-a", "endpoint": "a.example.com", "latency_ms": "50", "weight": "50", "health": "healthy", "region": "ap-northeast-1"},
-                {"cache_id": "cache-b", "endpoint": "b.example.com", "latency_ms": "10", "weight": "50", "health": "healthy", "region": "us-west-2"},
+                {
+                    "cache_id": "cache-a",
+                    "endpoint": "a.example.com",
+                    "latency_ms": "50",
+                    "weight": "50",
+                    "health": "healthy",
+                    "region": "ap-northeast-1",
+                },
+                {
+                    "cache_id": "cache-b",
+                    "endpoint": "b.example.com",
+                    "latency_ms": "10",
+                    "weight": "50",
+                    "health": "healthy",
+                    "region": "us-west-2",
+                },
             ]
         }
 
@@ -70,16 +104,31 @@ class TestRouteDecisionStrategies:
 
         assert result["selected_cache"] == "cache-a"  # 同一リージョン
 
-    @patch.dict(os.environ, {
-        "ROUTING_TABLE_NAME": "TestRoutingTable",
-        "CACHE_ENDPOINTS": "",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "ROUTING_TABLE_NAME": "TestRoutingTable",
+            "CACHE_ENDPOINTS": "",
+        },
+    )
     def test_failover_selects_by_priority(self, mock_dynamodb):
         """フェイルオーバーで優先度順に選択"""
         mock_dynamodb.scan.return_value = {
             "Items": [
-                {"cache_id": "cache-a", "endpoint": "a.example.com", "latency_ms": "50", "priority": "2", "health": "healthy"},
-                {"cache_id": "cache-b", "endpoint": "b.example.com", "latency_ms": "10", "priority": "1", "health": "healthy"},
+                {
+                    "cache_id": "cache-a",
+                    "endpoint": "a.example.com",
+                    "latency_ms": "50",
+                    "priority": "2",
+                    "health": "healthy",
+                },
+                {
+                    "cache_id": "cache-b",
+                    "endpoint": "b.example.com",
+                    "latency_ms": "10",
+                    "priority": "1",
+                    "health": "healthy",
+                },
             ]
         }
 
@@ -93,10 +142,13 @@ class TestRouteDecisionStrategies:
 
         assert result["selected_cache"] == "cache-b"  # 低 priority = 高優先度
 
-    @patch.dict(os.environ, {
-        "ROUTING_TABLE_NAME": "TestRoutingTable",
-        "CACHE_ENDPOINTS": "",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "ROUTING_TABLE_NAME": "TestRoutingTable",
+            "CACHE_ENDPOINTS": "",
+        },
+    )
     def test_no_candidates_returns_error(self, mock_dynamodb):
         """候補なしの場合はエラー"""
         mock_dynamodb.scan.return_value = {"Items": []}
@@ -112,10 +164,13 @@ class TestRouteDecisionStrategies:
         assert result["status"] == "no_candidates"
         assert "error" in result
 
-    @patch.dict(os.environ, {
-        "ROUTING_TABLE_NAME": "TestRoutingTable",
-        "CACHE_ENDPOINTS": "",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "ROUTING_TABLE_NAME": "TestRoutingTable",
+            "CACHE_ENDPOINTS": "",
+        },
+    )
     def test_exclude_caches(self, mock_dynamodb):
         """除外リストが適用される"""
         mock_dynamodb.scan.return_value = {
@@ -140,10 +195,13 @@ class TestRouteDecisionStrategies:
 class TestRouteDecisionFallback:
     """フォールバックのテスト"""
 
-    @patch.dict(os.environ, {
-        "ROUTING_TABLE_NAME": "TestRoutingTable",
-        "CACHE_ENDPOINTS": "fallback-a.example.com,fallback-b.example.com",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "ROUTING_TABLE_NAME": "TestRoutingTable",
+            "CACHE_ENDPOINTS": "fallback-a.example.com,fallback-b.example.com",
+        },
+    )
     def test_dynamodb_failure_uses_static_candidates(self, mock_dynamodb):
         """DynamoDB 障害時は静的候補を使用"""
         mock_dynamodb.scan.side_effect = Exception("DynamoDB unavailable")

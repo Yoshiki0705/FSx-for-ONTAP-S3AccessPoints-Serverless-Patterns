@@ -259,11 +259,14 @@ class TestSafetyCheckLogic:
 class TestOcrHandler:
     """OCR Lambda ハンドラのテスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "CROSS_REGION": "us-east-1",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "CROSS_REGION": "us-east-1",
+        },
+    )
     @patch("functions.ocr.handler.OutputWriter")
     @patch("functions.ocr.handler.CrossRegionClient")
     @patch("functions.ocr.handler.S3ApHelper")
@@ -305,11 +308,14 @@ class TestOcrHandler:
         assert "Floor Plan" in result["extracted_text"]
         assert "Emergency Exit" in result["extracted_text"]
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "CROSS_REGION": "us-east-1",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "CROSS_REGION": "us-east-1",
+        },
+    )
     @patch("functions.ocr.handler.CrossRegionClient")
     @patch("functions.ocr.handler.S3ApHelper")
     def test_ocr_file_read_error(self, mock_s3ap_class, mock_cr_class):
@@ -338,11 +344,14 @@ class TestOcrHandler:
 class TestBimParseHandler:
     """BIM パース Lambda ハンドラのテスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "PREVIOUS_METADATA_PREFIX": "metadata/history/",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "PREVIOUS_METADATA_PREFIX": "metadata/history/",
+        },
+    )
     @patch("functions.bim_parse.handler.OutputWriter")
     @patch("functions.bim_parse.handler.boto3.client")
     @patch("functions.bim_parse.handler.S3ApHelper")
@@ -392,10 +401,13 @@ class TestBimParseHandler:
         assert result["metadata"]["ifc_schema_version"] == "IFC4"
         assert result["metadata"]["floor_count"] == 1
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.bim_parse.handler.boto3.client")
     @patch("functions.bim_parse.handler.S3ApHelper")
     def test_handler_invalid_file(self, mock_s3ap_class, mock_boto3_client):

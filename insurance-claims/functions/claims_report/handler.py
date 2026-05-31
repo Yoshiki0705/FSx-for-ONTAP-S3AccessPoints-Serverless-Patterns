@@ -139,13 +139,15 @@ def handler(event, context):
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "inputText": prompt,
-                "textGenerationConfig": {
-                    "maxTokenCount": 4096,
-                    "temperature": 0.2,
-                },
-            }),
+            body=json.dumps(
+                {
+                    "inputText": prompt,
+                    "textGenerationConfig": {
+                        "maxTokenCount": 4096,
+                        "temperature": 0.2,
+                    },
+                }
+            ),
         )
         response_json = json.loads(bedrock_response["body"].read())
         if "results" in response_json:
@@ -164,9 +166,7 @@ def handler(event, context):
 
     # 見積相関分析
     total_damage = sum(
-        e.get("estimate_data", {}).get("total_estimate", 0)
-        for e in estimate_data
-        if isinstance(e, dict)
+        e.get("estimate_data", {}).get("total_estimate", 0) for e in estimate_data if isinstance(e, dict)
     )
 
     claims_report = {
@@ -218,7 +218,6 @@ def handler(event, context):
         claim_id,
         output_writer.build_s3_uri(output_key),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="claims_report")

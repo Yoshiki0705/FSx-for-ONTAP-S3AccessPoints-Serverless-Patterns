@@ -2,6 +2,7 @@
 
 Uses moto to mock EC2 security group operations.
 """
+
 from __future__ import annotations
 
 import json
@@ -45,12 +46,8 @@ def vpc_and_sgs(aws_env):
         vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
         vpc_id = vpc["Vpc"]["VpcId"]
 
-        vpce_sg = ec2.create_security_group(
-            GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id
-        )
-        lambda_sg = ec2.create_security_group(
-            GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id
-        )
+        vpce_sg = ec2.create_security_group(GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id)
+        lambda_sg = ec2.create_security_group(GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id)
 
         yield {
             "ec2": ec2,
@@ -72,12 +69,8 @@ def test_authorize_ingress_success(aws_env):
     vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
     vpc_id = vpc["Vpc"]["VpcId"]
 
-    vpce_sg = ec2.create_security_group(
-        GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id
-    )
-    lambda_sg = ec2.create_security_group(
-        GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id
-    )
+    vpce_sg = ec2.create_security_group(GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id)
+    lambda_sg = ec2.create_security_group(GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id)
 
     with patch("shared.vpc_endpoint_sg_manager.handler.ec2_client", ec2):
         authorize_ingress(vpce_sg["GroupId"], lambda_sg["GroupId"])
@@ -98,12 +91,8 @@ def test_authorize_ingress_duplicate_idempotent(aws_env):
     vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
     vpc_id = vpc["Vpc"]["VpcId"]
 
-    vpce_sg = ec2.create_security_group(
-        GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id
-    )
-    lambda_sg = ec2.create_security_group(
-        GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id
-    )
+    vpce_sg = ec2.create_security_group(GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id)
+    lambda_sg = ec2.create_security_group(GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id)
 
     with patch("shared.vpc_endpoint_sg_manager.handler.ec2_client", ec2):
         authorize_ingress(vpce_sg["GroupId"], lambda_sg["GroupId"])
@@ -123,12 +112,8 @@ def test_revoke_ingress_success(aws_env):
     vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
     vpc_id = vpc["Vpc"]["VpcId"]
 
-    vpce_sg = ec2.create_security_group(
-        GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id
-    )
-    lambda_sg = ec2.create_security_group(
-        GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id
-    )
+    vpce_sg = ec2.create_security_group(GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id)
+    lambda_sg = ec2.create_security_group(GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id)
 
     # Add rule first
     ec2.authorize_security_group_ingress(
@@ -159,12 +144,8 @@ def test_revoke_ingress_not_found_idempotent(aws_env):
     vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
     vpc_id = vpc["Vpc"]["VpcId"]
 
-    vpce_sg = ec2.create_security_group(
-        GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id
-    )
-    lambda_sg = ec2.create_security_group(
-        GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id
-    )
+    vpce_sg = ec2.create_security_group(GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id)
+    lambda_sg = ec2.create_security_group(GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id)
 
     with patch("shared.vpc_endpoint_sg_manager.handler.ec2_client", ec2):
         # Should not raise even though rule doesn't exist
@@ -206,12 +187,8 @@ def test_handler_create(aws_env):
     vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
     vpc_id = vpc["Vpc"]["VpcId"]
 
-    vpce_sg = ec2.create_security_group(
-        GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id
-    )
-    lambda_sg = ec2.create_security_group(
-        GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id
-    )
+    vpce_sg = ec2.create_security_group(GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id)
+    lambda_sg = ec2.create_security_group(GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id)
 
     event = _make_cfn_event("Create", vpce_sg["GroupId"], lambda_sg["GroupId"])
     context = MagicMock()
@@ -235,12 +212,8 @@ def test_handler_delete(aws_env):
     vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
     vpc_id = vpc["Vpc"]["VpcId"]
 
-    vpce_sg = ec2.create_security_group(
-        GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id
-    )
-    lambda_sg = ec2.create_security_group(
-        GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id
-    )
+    vpce_sg = ec2.create_security_group(GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id)
+    lambda_sg = ec2.create_security_group(GroupName="lambda-sg", Description="Lambda SG", VpcId=vpc_id)
 
     # Add rule first
     ec2.authorize_security_group_ingress(
@@ -279,15 +252,9 @@ def test_handler_update_sg_changed(aws_env):
     vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
     vpc_id = vpc["Vpc"]["VpcId"]
 
-    vpce_sg = ec2.create_security_group(
-        GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id
-    )
-    old_lambda_sg = ec2.create_security_group(
-        GroupName="old-lambda-sg", Description="Old Lambda SG", VpcId=vpc_id
-    )
-    new_lambda_sg = ec2.create_security_group(
-        GroupName="new-lambda-sg", Description="New Lambda SG", VpcId=vpc_id
-    )
+    vpce_sg = ec2.create_security_group(GroupName="vpce-sg", Description="VPC Endpoint SG", VpcId=vpc_id)
+    old_lambda_sg = ec2.create_security_group(GroupName="old-lambda-sg", Description="Old Lambda SG", VpcId=vpc_id)
+    new_lambda_sg = ec2.create_security_group(GroupName="new-lambda-sg", Description="New Lambda SG", VpcId=vpc_id)
 
     # Add old rule
     ec2.authorize_security_group_ingress(

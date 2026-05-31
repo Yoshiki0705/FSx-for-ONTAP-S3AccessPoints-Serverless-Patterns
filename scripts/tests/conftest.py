@@ -1,4 +1,5 @@
 """conftest.py for scripts/tests — pytest path resolution."""
+
 import sys
 from pathlib import Path
 

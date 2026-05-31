@@ -40,9 +40,7 @@ logger = logging.getLogger(__name__)
 REKOGNITION_PAYLOAD_LIMIT_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
-def _detect_with_rekognition(
-    image_bytes: bytes, min_confidence: float, max_labels: int
-) -> list[dict[str, Any]]:
+def _detect_with_rekognition(image_bytes: bytes, min_confidence: float, max_labels: int) -> list[dict[str, Any]]:
     """Rekognition DetectLabels で物体検出する。
 
     Args:
@@ -78,23 +76,25 @@ def _detect_with_rekognition(
         instances = label.get("Instances", [])
         if instances:
             for instance in instances:
-                results.append({
-                    "label": label["Name"],
-                    "confidence": instance.get("Confidence", label["Confidence"]),
-                    "bbox": instance.get("BoundingBox", {}),
-                })
+                results.append(
+                    {
+                        "label": label["Name"],
+                        "confidence": instance.get("Confidence", label["Confidence"]),
+                        "bbox": instance.get("BoundingBox", {}),
+                    }
+                )
         else:
-            results.append({
-                "label": label["Name"],
-                "confidence": label["Confidence"],
-                "bbox": {},
-            })
+            results.append(
+                {
+                    "label": label["Name"],
+                    "confidence": label["Confidence"],
+                    "bbox": {},
+                }
+            )
     return results
 
 
-def _detect_with_sagemaker(
-    endpoint_name: str, image_bytes: bytes
-) -> list[dict[str, Any]]:
+def _detect_with_sagemaker(endpoint_name: str, image_bytes: bytes) -> list[dict[str, Any]]:
     """SageMaker Endpoint で物体検出する（大容量画像用）。
 
     Args:
@@ -149,9 +149,7 @@ def handler(event, context):
     s3_access_point = os.environ.get("S3_ACCESS_POINT_ALIAS")
     min_confidence = float(os.environ.get("REKOGNITION_MIN_CONFIDENCE", "70.0"))
     max_labels = int(os.environ.get("REKOGNITION_MAX_LABELS", "100"))
-    payload_limit = int(
-        os.environ.get("REKOGNITION_PAYLOAD_LIMIT_BYTES", REKOGNITION_PAYLOAD_LIMIT_BYTES)
-    )
+    payload_limit = int(os.environ.get("REKOGNITION_PAYLOAD_LIMIT_BYTES", REKOGNITION_PAYLOAD_LIMIT_BYTES))
     inference_type = os.environ.get("INFERENCE_TYPE", "none")
     endpoint_name = os.environ.get("SAGEMAKER_ENDPOINT_NAME", "")
 
@@ -198,9 +196,7 @@ def handler(event, context):
         except ValueError as e:
             logger.error("Invalid inference_type: %s", e)
             inference_path = "rekognition"
-            detections = _detect_with_rekognition(
-                image_bytes[:payload_limit], min_confidence, max_labels
-            )
+            detections = _detect_with_rekognition(image_bytes[:payload_limit], min_confidence, max_labels)
             detection_count = len(detections)
             return {
                 "tile_key": tile_key,
@@ -210,9 +206,7 @@ def handler(event, context):
             }
 
         if not endpoint_name:
-            raise ValueError(
-                f"SAGEMAKER_ENDPOINT_NAME required for INFERENCE_TYPE={inference_type}"
-            )
+            raise ValueError(f"SAGEMAKER_ENDPOINT_NAME required for INFERENCE_TYPE={inference_type}")
         detections = _detect_with_sagemaker(endpoint_name, image_bytes)
 
     detection_count = len(detections)
@@ -225,9 +219,7 @@ def handler(event, context):
     )
 
     # 結果を出力先（標準 S3 または FSxN S3AP）に書き出し
-    result_key = tile_key.replace(".tif", "_detections.json").replace(
-        "tiles/", "detections/"
-    )
+    result_key = tile_key.replace(".tif", "_detections.json").replace("tiles/", "detections/")
     output_writer.put_json(
         key=result_key,
         data={

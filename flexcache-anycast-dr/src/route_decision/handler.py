@@ -105,14 +105,16 @@ def _get_static_candidates() -> list[dict]:
     for i, endpoint in enumerate(endpoints_str.split(",")):
         endpoint = endpoint.strip()
         if endpoint:
-            candidates.append({
-                "cache_id": f"static-cache-{i}",
-                "endpoint": endpoint,
-                "region": os.environ.get("AWS_REGION", "ap-northeast-1"),
-                "weight": "50",
-                "latency_ms": "10",
-                "health": "healthy",
-            })
+            candidates.append(
+                {
+                    "cache_id": f"static-cache-{i}",
+                    "endpoint": endpoint,
+                    "region": os.environ.get("AWS_REGION", "ap-northeast-1"),
+                    "weight": "50",
+                    "latency_ms": "10",
+                    "health": "healthy",
+                }
+            )
     return candidates
 
 

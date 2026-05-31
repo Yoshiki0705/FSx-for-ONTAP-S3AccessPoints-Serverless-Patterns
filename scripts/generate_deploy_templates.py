@@ -37,13 +37,13 @@ def transform_template(uc_name: str) -> str:
         content = f.read()
 
     # 1. Remove Transform line
-    content = re.sub(r'^Transform: AWS::Serverless-2016-10-31\n', '', content, flags=re.MULTILINE)
+    content = re.sub(r"^Transform: AWS::Serverless-2016-10-31\n", "", content, flags=re.MULTILINE)
 
     # 2. Add DeployBucket parameter after Parameters: line
     # Find the first "Parameters:" line and add DeployBucket right after
     content = re.sub(
-        r'^(Parameters:\n)',
-        r'\1' + DEPLOY_BUCKET_PARAM,
+        r"^(Parameters:\n)",
+        r"\1" + DEPLOY_BUCKET_PARAM,
         content,
         count=1,
         flags=re.MULTILINE,
@@ -53,7 +53,7 @@ def transform_template(uc_name: str) -> str:
     # Pattern: "      Handler: UC_NAME/functions/FUNC_NAME/handler.handler"
     # The handler line indentation is typically 6 spaces (under Properties of Lambda)
     pattern = re.compile(
-        r'^(\s+)Handler: ' + re.escape(uc_name) + r'/functions/([^/]+)/handler\.handler$',
+        r"^(\s+)Handler: " + re.escape(uc_name) + r"/functions/([^/]+)/handler\.handler$",
         re.MULTILINE,
     )
 

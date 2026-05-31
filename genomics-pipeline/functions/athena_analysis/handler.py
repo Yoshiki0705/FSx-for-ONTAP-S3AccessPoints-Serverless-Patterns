@@ -135,19 +135,15 @@ def _execute_athena_query(
         dict: クエリ結果 (status, rows, query_execution_id)
     """
     with xray_subsegment(
-
         name="athena_startqueryexecution",
-
         annotations={"service_name": "athena", "operation": "StartQueryExecution", "use_case": "genomics-pipeline"},
-
     ):
-
         response = athena_client.start_query_execution(
-        QueryString=query,
-        QueryExecutionContext={"Database": database},
-        WorkGroup=workgroup,
-        ResultConfiguration={"OutputLocation": output_location},
-    )
+            QueryString=query,
+            QueryExecutionContext={"Database": database},
+            WorkGroup=workgroup,
+            ResultConfiguration={"OutputLocation": output_location},
+        )
     query_execution_id = response["QueryExecutionId"]
 
     # クエリ完了を待機（最大 5 分）
@@ -164,9 +160,7 @@ def _execute_athena_query(
         elapsed += 2
 
     if state != "SUCCEEDED":
-        reason = status["QueryExecution"]["Status"].get(
-            "StateChangeReason", "Unknown"
-        )
+        reason = status["QueryExecution"]["Status"].get("StateChangeReason", "Unknown")
         logger.error("Athena query failed: %s - %s", state, reason)
         return {
             "status": state,
@@ -182,9 +176,7 @@ def _execute_athena_query(
 
     rows = []
     result_set = results.get("ResultSet", {})
-    column_info = result_set.get("ResultSetMetadata", {}).get(
-        "ColumnInfo", []
-    )
+    column_info = result_set.get("ResultSetMetadata", {}).get("ColumnInfo", [])
     data_rows = result_set.get("Rows", [])
 
     # 最初の行はヘッダー
@@ -242,9 +234,7 @@ def handler(event, context):
     table = os.environ["GLUE_TABLE"]
     workgroup = os.environ["ATHENA_WORKGROUP"]
     output_bucket = os.environ["OUTPUT_BUCKET"]
-    quality_threshold = float(
-        os.environ.get("QUALITY_THRESHOLD", DEFAULT_QUALITY_THRESHOLD)
-    )
+    quality_threshold = float(os.environ.get("QUALITY_THRESHOLD", DEFAULT_QUALITY_THRESHOLD))
 
     # Glue テーブルの S3 ロケーション
     s3_location = f"s3://{output_bucket}/qc/"
@@ -286,9 +276,7 @@ def handler(event, context):
             workgroup=workgroup,
             output_location=output_location,
         )
-        last_query_execution_id = result.get(
-            "query_execution_id", last_query_execution_id
-        )
+        last_query_execution_id = result.get("query_execution_id", last_query_execution_id)
 
         if result["status"] != "SUCCEEDED":
             logger.warning(
@@ -304,12 +292,8 @@ def handler(event, context):
             analysis_results["below_threshold_samples"] = [
                 {
                     "file_key": row.get("file_key", ""),
-                    "average_quality_score": _safe_float(
-                        row.get("avg_quality", "0")
-                    ),
-                    "gc_content_percentage": _safe_float(
-                        row.get("gc_content", "0")
-                    ),
+                    "average_quality_score": _safe_float(row.get("avg_quality", "0")),
+                    "gc_content_percentage": _safe_float(row.get("gc_content", "0")),
                     "total_reads": _safe_int(row.get("total_reads", "0")),
                 }
                 for row in rows
@@ -319,39 +303,26 @@ def handler(event, context):
             row = rows[0]
             analysis_results["quality_summary"] = {
                 "total_samples": _safe_int(row.get("total_samples", "0")),
-                "average_quality_score": round(
-                    _safe_float(row.get("avg_quality", "0")), 1
-                ),
-                "min_quality_score": round(
-                    _safe_float(row.get("min_quality", "0")), 1
-                ),
-                "max_quality_score": round(
-                    _safe_float(row.get("max_quality", "0")), 1
-                ),
-                "average_gc_content": round(
-                    _safe_float(row.get("avg_gc_content", "0")), 1
-                ),
+                "average_quality_score": round(_safe_float(row.get("avg_quality", "0")), 1),
+                "min_quality_score": round(_safe_float(row.get("min_quality", "0")), 1),
+                "max_quality_score": round(_safe_float(row.get("max_quality", "0")), 1),
+                "average_gc_content": round(_safe_float(row.get("avg_gc_content", "0")), 1),
             }
 
         elif query_name == "gc_content_outliers":
             analysis_results["gc_content_outliers"] = [
                 {
                     "file_key": row.get("file_key", ""),
-                    "gc_content_percentage": _safe_float(
-                        row.get("gc_content", "0")
-                    ),
+                    "gc_content_percentage": _safe_float(row.get("gc_content", "0")),
                 }
                 for row in rows
             ]
 
-        logger.info(
-            "Query %s completed: %d rows", query_name, len(rows)
-        )
+        logger.info("Query %s completed: %d rows", query_name, len(rows))
 
     # 閾値未満サンプル名の抽出（サマリー用）
     below_threshold_sample_names = [
-        PurePosixPath(s["file_key"]).stem
-        for s in analysis_results["below_threshold_samples"]
+        PurePosixPath(s["file_key"]).stem for s in analysis_results["below_threshold_samples"]
     ]
 
     logger.info(
@@ -359,7 +330,6 @@ def handler(event, context):
         len(analysis_results["below_threshold_samples"]),
         len(analysis_results["gc_content_outliers"]),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="athena_analysis")

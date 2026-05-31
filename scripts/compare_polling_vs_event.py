@@ -96,13 +96,15 @@ def upload_test_files(
         )
         upload_end = time.time()
 
-        uploads.append({
-            "key": key,
-            "size": file_size,
-            "upload_time": datetime.now(timezone.utc).isoformat(),
-            "upload_timestamp": upload_start,
-            "upload_duration_ms": (upload_end - upload_start) * 1000,
-        })
+        uploads.append(
+            {
+                "key": key,
+                "size": file_size,
+                "upload_time": datetime.now(timezone.utc).isoformat(),
+                "upload_timestamp": upload_start,
+                "upload_duration_ms": (upload_end - upload_start) * 1000,
+            }
+        )
 
         logger.info("Uploaded: %s (%.1f ms)", key, (upload_end - upload_start) * 1000)
 
@@ -214,19 +216,12 @@ def run_comparison(
 
     # --- Phase 1: Event-Driven パス ---
     logger.info("\n--- Event-Driven Path ---")
-    event_uploads = upload_test_files(
-        s3_client, event_bucket, prefix, num_files, file_size
-    )
+    event_uploads = upload_test_files(s3_client, event_bucket, prefix, num_files, file_size)
 
     # 期待する出力キー
-    event_expected_keys = [
-        f"tags/{date_prefix}/test_image_{i:04d}.json"
-        for i in range(num_files)
-    ]
+    event_expected_keys = [f"tags/{date_prefix}/test_image_{i:04d}.json" for i in range(num_files)]
 
-    event_detected = wait_for_processing(
-        s3_client, output_bucket, event_expected_keys, timeout
-    )
+    event_detected = wait_for_processing(s3_client, output_bucket, event_expected_keys, timeout)
 
     # Event-Driven レイテンシ計算
     event_latencies = []
@@ -241,18 +236,11 @@ def run_comparison(
     logger.info("Note: Polling latency depends on schedule interval.")
     logger.info("Uploading files and waiting for next scheduled execution...")
 
-    polling_uploads = upload_test_files(
-        s3_client, polling_bucket, prefix, num_files, file_size
-    )
+    polling_uploads = upload_test_files(s3_client, polling_bucket, prefix, num_files, file_size)
 
-    polling_expected_keys = [
-        f"tags/{date_prefix}/test_image_{i:04d}.json"
-        for i in range(num_files)
-    ]
+    polling_expected_keys = [f"tags/{date_prefix}/test_image_{i:04d}.json" for i in range(num_files)]
 
-    polling_detected = wait_for_processing(
-        s3_client, output_bucket, polling_expected_keys, timeout
-    )
+    polling_detected = wait_for_processing(s3_client, output_bucket, polling_expected_keys, timeout)
 
     # Polling レイテンシ計算
     polling_latencies = []
@@ -333,9 +321,7 @@ def run_comparison(
 
 def main():
     """メインエントリポイント。"""
-    parser = argparse.ArgumentParser(
-        description="Polling vs Event-Driven レイテンシ比較スクリプト"
-    )
+    parser = argparse.ArgumentParser(description="Polling vs Event-Driven レイテンシ比較スクリプト")
     parser.add_argument(
         "--polling-bucket",
         required=True,

@@ -81,9 +81,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             },
         }
 
-        logger.info(
-            "Processed: found=%d, sent=%d", len(records), sent_count
-        )
+        logger.info("Processed: found=%d, sent=%d", len(records), sent_count)
 
         # API Gateway response format
         if "httpMethod" in event or "requestContext" in event:
@@ -167,9 +165,7 @@ def query_fpolicy_logs(
     return matching_records[:limit]
 
 
-def convert_ontap_path_to_s3_key(
-    ontap_path: str, volume_prefix: str = ""
-) -> str:
+def convert_ontap_path_to_s3_key(ontap_path: str, volume_prefix: str = "") -> str:
     """ONTAP パスを S3 キーに変換する.
 
     Args:
@@ -182,7 +178,7 @@ def convert_ontap_path_to_s3_key(
     path = ontap_path.replace("\\", "/")
 
     if volume_prefix and path.startswith(volume_prefix):
-        path = path[len(volume_prefix):]
+        path = path[len(volume_prefix) :]
     else:
         # Remove first path component (volume name)
         parts = path.strip("/").split("/", 1)

@@ -63,9 +63,7 @@ def evaluate_quality(labels: list[dict], threshold: float) -> dict:
         "quality_score": round(avg_confidence, 2),
         "passed": passed,
         "details": (
-            "Quality check passed"
-            if passed
-            else f"Quality score {avg_confidence:.1f} below threshold {threshold:.1f}"
+            "Quality check passed" if passed else f"Quality score {avg_confidence:.1f} below threshold {threshold:.1f}"
         ),
     }
 
@@ -105,9 +103,7 @@ def handler(event, context):
     )
 
     # レンダリング出力を S3 AP から取得
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     rendered_key = f"rendered/{asset_key.rsplit('/', 1)[-1]}"
 
     rendered_response = s3ap_output.get_object(rendered_key)
@@ -195,7 +191,6 @@ def handler(event, context):
             job_id,
             quality_result["quality_score"],
         )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="quality_check")

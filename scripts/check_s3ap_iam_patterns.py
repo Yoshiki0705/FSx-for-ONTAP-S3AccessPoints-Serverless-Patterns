@@ -20,6 +20,7 @@ Correct pattern:
 
 This script exits with non-zero if any template has the bug pattern.
 """
+
 from __future__ import annotations
 
 import re
@@ -86,21 +87,21 @@ def check_template(template_path: Path) -> list[str]:
 
     # Pattern 1: Statement blocks with "Sid: S3...Write/Output" containing PutObject
     pattern_sid = re.compile(
-        r'(Sid:\s*(S3(?:AccessPoint|AP\w*)?\w*(?:Write|Output\w*))\s*\n'
-        r'(?:[^-]*\n)*?'
-        r'\s*Action:\s*\n'
-        r'(?:\s*-\s*s3:(?:PutObject|DeleteObject|AbortMultipartUpload|CompleteMultipartUpload)\w*\s*\n)+'
-        r'\s*Resource:\s*(?:(?!Sid:).)*?)'
-        r'(?=\s*-\s*Sid:|\nResources:|$)',
+        r"(Sid:\s*(S3(?:AccessPoint|AP\w*)?\w*(?:Write|Output\w*))\s*\n"
+        r"(?:[^-]*\n)*?"
+        r"\s*Action:\s*\n"
+        r"(?:\s*-\s*s3:(?:PutObject|DeleteObject|AbortMultipartUpload|CompleteMultipartUpload)\w*\s*\n)+"
+        r"\s*Resource:\s*(?:(?!Sid:).)*?)"
+        r"(?=\s*-\s*Sid:|\nResources:|$)",
         re.DOTALL,
     )
 
     # Pattern 2: Statement blocks WITHOUT Sid but with "Action: [s3:PutObject]" (inline style)
     pattern_inline = re.compile(
-        r'(Effect:\s*Allow\s*\n'
-        r'\s*Action:\s*\[(?:[^\]]*s3:PutObject[^\]]*)\]\s*\n'
-        r'\s*Resource:\s*(?:(?!Effect:|Sid:).)*?)'
-        r'(?=\s*-\s*Effect:|\s*-\s*Sid:|\s+PolicyName:|$)',
+        r"(Effect:\s*Allow\s*\n"
+        r"\s*Action:\s*\[(?:[^\]]*s3:PutObject[^\]]*)\]\s*\n"
+        r"\s*Resource:\s*(?:(?!Effect:|Sid:).)*?)"
+        r"(?=\s*-\s*Effect:|\s*-\s*Sid:|\s+PolicyName:|$)",
         re.DOTALL,
     )
 
@@ -119,8 +120,7 @@ def check_template(template_path: Path) -> list[str]:
         block_line = get_line_number(match.start())
         # Skip if this block is part of a Sid block already counted
         is_in_sid = any(
-            sm_line <= block_line <= sm_line + sm_block.count("\n")
-            for sm_block, _, sm_line, _ in all_matches
+            sm_line <= block_line <= sm_line + sm_block.count("\n") for sm_block, _, sm_line, _ in all_matches
         )
         if not is_in_sid:
             all_matches.append((block, "(no Sid)", block_line, "inline"))
@@ -129,14 +129,10 @@ def check_template(template_path: Path) -> list[str]:
         # Check if this block uses HasS3AccessPointName conditional directly
         has_direct_conditional = "HasS3AccessPointName" in block
         has_arn_format = "accesspoint/" in block
-        has_alias_format = (
-            "S3AccessPointAlias" in block or "OutputS3APAlias" in block
-        )
+        has_alias_format = "S3AccessPointAlias" in block or "OutputS3APAlias" in block
 
         # Skip blocks that reference only OutputBucket (standard S3)
-        only_output_bucket = (
-            "OutputBucket" in block and not has_alias_format
-        )
+        only_output_bucket = "OutputBucket" in block and not has_alias_format
         if only_output_bucket:
             continue
 

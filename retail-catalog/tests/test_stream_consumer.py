@@ -142,11 +142,13 @@ class TestHandlerIntegration:
 
         event = {
             "Records": [
-                _make_kinesis_record({
-                    "key": "images/product/001.jpg",
-                    "event_type": "created",
-                    "timestamp": "2024-01-01T00:00:00Z",
-                })
+                _make_kinesis_record(
+                    {
+                        "key": "images/product/001.jpg",
+                        "event_type": "created",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                    }
+                )
             ]
         }
 
@@ -165,11 +167,13 @@ class TestHandlerIntegration:
 
         event = {
             "Records": [
-                _make_kinesis_record({
-                    "event_type": "created",
-                    "timestamp": "2024-01-01T00:00:00Z",
-                    # "key" フィールドが欠落
-                })
+                _make_kinesis_record(
+                    {
+                        "event_type": "created",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                        # "key" フィールドが欠落
+                    }
+                )
             ]
         }
 
@@ -196,11 +200,13 @@ class TestHandlerIntegration:
 
         event = {
             "Records": [
-                _make_kinesis_record({
-                    "key": "images/001.jpg",
-                    "event_type": "modified",
-                    "timestamp": "2024-01-01T00:00:00Z",
-                })
+                _make_kinesis_record(
+                    {
+                        "key": "images/001.jpg",
+                        "event_type": "modified",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                    }
+                )
             ]
         }
 
@@ -227,11 +233,13 @@ class TestHandlerIntegration:
 
         event = {
             "Records": [
-                _make_kinesis_record({
-                    "key": "images/error-file.jpg",
-                    "event_type": "created",
-                    "timestamp": "2024-01-01T00:00:00Z",
-                })
+                _make_kinesis_record(
+                    {
+                        "key": "images/error-file.jpg",
+                        "event_type": "created",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                    }
+                )
             ]
         }
 
@@ -287,6 +295,6 @@ class TestHandlerIntegration:
 
         assert result["total"] == 4
         assert result["processed"] == 1  # valid.jpg のみ
-        assert result["invalid"] == 2    # key 欠落 + 不正 JSON
-        assert result["skipped"] == 1    # deleted イベント
+        assert result["invalid"] == 2  # key 欠落 + 不正 JSON
+        assert result["skipped"] == 1  # deleted イベント
         assert result["failed"] == 0

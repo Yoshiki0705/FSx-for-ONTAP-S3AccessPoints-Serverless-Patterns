@@ -70,10 +70,12 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "messages": [{"role": "user", "content": [{"text": prompt}]}],
-                "inferenceConfig": {"maxTokens": 1024, "temperature": 0.1},
-            }),
+            body=json.dumps(
+                {
+                    "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                    "inferenceConfig": {"maxTokens": 1024, "temperature": 0.1},
+                }
+            ),
         )
         response_body = json.loads(bedrock_response["body"].read())
         summary = response_body["output"]["message"]["content"][0]["text"]
@@ -125,12 +127,10 @@ def _build_prompt(content: str, category: str, key: str) -> str:
             "トランザクションセットタイプを特定し、取引内容を要約してください。"
         ),
         "batch_output": (
-            "以下はバッチジョブ出力ファイルの内容です。"
-            "処理結果（成功/失敗）、処理件数、エラー内容を要約してください。"
+            "以下はバッチジョブ出力ファイルの内容です。処理結果（成功/失敗）、処理件数、エラー内容を要約してください。"
         ),
         "data_extract": (
-            "以下は ERP データ抽出ファイルの内容です。"
-            "データ構造、レコード数、主要フィールドを要約してください。"
+            "以下は ERP データ抽出ファイルの内容です。データ構造、レコード数、主要フィールドを要約してください。"
         ),
     }
 

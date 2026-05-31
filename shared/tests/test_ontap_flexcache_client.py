@@ -142,7 +142,8 @@ class TestDeleteFlexcache:
     def test_delete_not_found(self, mock_client):
         """存在しない FlexCache の削除"""
         with patch.object(
-            mock_client, "delete",
+            mock_client,
+            "delete",
             side_effect=OntapClientError("Not found", status_code=404),
         ):
             with pytest.raises(OntapClientError) as exc_info:

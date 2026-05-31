@@ -28,19 +28,21 @@ logger = logging.getLogger(__name__)
 
 
 # US 連邦祝日（2026 年の例、実運用では holidays ライブラリ推奨）
-US_FEDERAL_HOLIDAYS_2026 = frozenset({
-    date(2026, 1, 1),    # New Year's Day
-    date(2026, 1, 19),   # MLK Day
-    date(2026, 2, 16),   # Presidents Day
-    date(2026, 5, 25),   # Memorial Day
-    date(2026, 6, 19),   # Juneteenth
-    date(2026, 7, 4),    # Independence Day
-    date(2026, 9, 7),    # Labor Day
-    date(2026, 10, 12),  # Columbus Day
-    date(2026, 11, 11),  # Veterans Day
-    date(2026, 11, 26),  # Thanksgiving
-    date(2026, 12, 25),  # Christmas
-})
+US_FEDERAL_HOLIDAYS_2026 = frozenset(
+    {
+        date(2026, 1, 1),  # New Year's Day
+        date(2026, 1, 19),  # MLK Day
+        date(2026, 2, 16),  # Presidents Day
+        date(2026, 5, 25),  # Memorial Day
+        date(2026, 6, 19),  # Juneteenth
+        date(2026, 7, 4),  # Independence Day
+        date(2026, 9, 7),  # Labor Day
+        date(2026, 10, 12),  # Columbus Day
+        date(2026, 11, 11),  # Veterans Day
+        date(2026, 11, 26),  # Thanksgiving
+        date(2026, 12, 25),  # Christmas
+    }
+)
 
 
 def is_business_day(d: date, holidays: frozenset[date] = US_FEDERAL_HOLIDAYS_2026) -> bool:
@@ -52,9 +54,7 @@ def is_business_day(d: date, holidays: frozenset[date] = US_FEDERAL_HOLIDAYS_202
     return True
 
 
-def add_business_days(
-    start: date, days: int, holidays: frozenset[date] = US_FEDERAL_HOLIDAYS_2026
-) -> date:
+def add_business_days(start: date, days: int, holidays: frozenset[date] = US_FEDERAL_HOLIDAYS_2026) -> date:
     """開始日から指定営業日数後の日付を返す。"""
     current = start
     added = 0
@@ -140,12 +140,15 @@ def handler(event, context):
             sns.publish(
                 TopicArn=sns_topic_arn,
                 Subject=f"[UC16 OVERDUE] FOIA Request {request_id}",
-                Message=json.dumps({
-                    "alert_type": "FOIA_OVERDUE",
-                    "request_id": request_id,
-                    "deadline": deadline,
-                    "status": "OVERDUE",
-                }, default=str),
+                Message=json.dumps(
+                    {
+                        "alert_type": "FOIA_OVERDUE",
+                        "request_id": request_id,
+                        "deadline": deadline,
+                        "status": "OVERDUE",
+                    },
+                    default=str,
+                ),
                 MessageAttributes={
                     "severity": {"DataType": "String", "StringValue": "HIGH"},
                 },
@@ -160,13 +163,16 @@ def handler(event, context):
             sns.publish(
                 TopicArn=sns_topic_arn,
                 Subject=f"[UC16 Reminder] FOIA Request {request_id} due in {days_left} business days",
-                Message=json.dumps({
-                    "alert_type": "FOIA_DEADLINE_APPROACHING",
-                    "request_id": request_id,
-                    "deadline": deadline,
-                    "days_left": days_left,
-                    "status": "PENDING",
-                }, default=str),
+                Message=json.dumps(
+                    {
+                        "alert_type": "FOIA_DEADLINE_APPROACHING",
+                        "request_id": request_id,
+                        "deadline": deadline,
+                        "days_left": days_left,
+                        "status": "PENDING",
+                    },
+                    default=str,
+                ),
                 MessageAttributes={
                     "severity": {"DataType": "String", "StringValue": "MEDIUM"},
                 },

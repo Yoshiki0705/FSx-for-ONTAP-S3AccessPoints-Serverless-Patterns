@@ -81,11 +81,10 @@ def _get_jpeg_dimensions(data: bytes) -> tuple[int, int] | None:
         offset += 2
 
         # SOF markers (Start of Frame)
-        if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
-                      0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+        if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
             if offset + 7 <= len(data):
-                height = struct.unpack(">H", data[offset + 3:offset + 5])[0]
-                width = struct.unpack(">H", data[offset + 5:offset + 7])[0]
+                height = struct.unpack(">H", data[offset + 3 : offset + 5])[0]
+                width = struct.unpack(">H", data[offset + 5 : offset + 7])[0]
                 return (width, height)
             return None
 
@@ -96,7 +95,7 @@ def _get_jpeg_dimensions(data: bytes) -> tuple[int, int] | None:
             continue
 
         if offset + 2 <= len(data):
-            segment_length = struct.unpack(">H", data[offset:offset + 2])[0]
+            segment_length = struct.unpack(">H", data[offset : offset + 2])[0]
             offset += segment_length
         else:
             return None
@@ -185,24 +184,16 @@ def validate_quality(
 
     # ファイルサイズチェック
     if file_size < min_file_size:
-        issues.append(
-            f"File size {file_size} bytes is below minimum {min_file_size} bytes"
-        )
+        issues.append(f"File size {file_size} bytes is below minimum {min_file_size} bytes")
     if file_size > max_file_size:
-        issues.append(
-            f"File size {file_size} bytes exceeds maximum {max_file_size} bytes"
-        )
+        issues.append(f"File size {file_size} bytes exceeds maximum {max_file_size} bytes")
 
     # 解像度チェック
     if width is not None and height is not None:
         if width < min_resolution:
-            issues.append(
-                f"Width {width}px is below minimum {min_resolution}px"
-            )
+            issues.append(f"Width {width}px is below minimum {min_resolution}px")
         if height < min_resolution:
-            issues.append(
-                f"Height {height}px is below minimum {min_resolution}px"
-            )
+            issues.append(f"Height {height}px is below minimum {min_resolution}px")
 
         # アスペクト比チェック
         if height > 0:
@@ -210,13 +201,9 @@ def validate_quality(
             quality_metrics["aspect_ratio"] = aspect_ratio
 
             if aspect_ratio < min_aspect_ratio:
-                issues.append(
-                    f"Aspect ratio {aspect_ratio} is below minimum {min_aspect_ratio}"
-                )
+                issues.append(f"Aspect ratio {aspect_ratio} is below minimum {min_aspect_ratio}")
             if aspect_ratio > max_aspect_ratio:
-                issues.append(
-                    f"Aspect ratio {aspect_ratio} exceeds maximum {max_aspect_ratio}"
-                )
+                issues.append(f"Aspect ratio {aspect_ratio} exceeds maximum {max_aspect_ratio}")
     else:
         issues.append("Unable to determine image dimensions")
 
@@ -314,7 +301,6 @@ def handler(event, context):
         len(issues),
         output_writer.build_s3_uri(output_key),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="quality_check")

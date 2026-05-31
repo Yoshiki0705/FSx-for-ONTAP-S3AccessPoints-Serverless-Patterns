@@ -51,10 +51,12 @@ confidence_strategy = st.floats(min_value=0.0, max_value=100.0, allow_nan=False)
 threshold_strategy = st.floats(min_value=0.0, max_value=100.0, allow_nan=False)
 
 # ラベルリストの戦略
-label_strategy = st.fixed_dictionaries({
-    "name": label_name_strategy,
-    "confidence": confidence_strategy,
-})
+label_strategy = st.fixed_dictionaries(
+    {
+        "name": label_name_strategy,
+        "confidence": confidence_strategy,
+    }
+)
 
 labels_list_strategy = st.lists(label_strategy, min_size=0, max_size=30)
 
@@ -67,10 +69,12 @@ labels_list_strategy = st.lists(label_strategy, min_size=0, max_size=30)
 @settings(max_examples=100)
 @given(
     labels=st.lists(
-        st.fixed_dictionaries({
-            "name": label_name_strategy,
-            "confidence": confidence_strategy,
-        }),
+        st.fixed_dictionaries(
+            {
+                "name": label_name_strategy,
+                "confidence": confidence_strategy,
+            }
+        ),
         min_size=1,
         max_size=20,
     ),
@@ -93,20 +97,16 @@ def test_confidence_threshold_flagging(labels, threshold):
 
     # Verify max_confidence is the actual maximum
     expected_max = max(label["confidence"] for label in labels)
-    assert abs(max_confidence - expected_max) < 1e-9, (
-        f"max_confidence {max_confidence} != expected max {expected_max}"
-    )
+    assert abs(max_confidence - expected_max) < 1e-9, f"max_confidence {max_confidence} != expected max {expected_max}"
 
     # Core property: flagging logic
     if max_confidence >= threshold:
         assert above_threshold is True, (
-            f"max_confidence={max_confidence} >= threshold={threshold}, "
-            f"but above_threshold={above_threshold}"
+            f"max_confidence={max_confidence} >= threshold={threshold}, but above_threshold={above_threshold}"
         )
     else:
         assert above_threshold is False, (
-            f"max_confidence={max_confidence} < threshold={threshold}, "
-            f"but above_threshold={above_threshold}"
+            f"max_confidence={max_confidence} < threshold={threshold}, but above_threshold={above_threshold}"
         )
 
 
@@ -134,22 +134,26 @@ def test_confidence_threshold_empty_labels(threshold):
 @settings(max_examples=100)
 @given(
     labels=st.lists(
-        st.fixed_dictionaries({
-            "name": label_name_strategy,
-            "confidence": confidence_strategy,
-        }),
+        st.fixed_dictionaries(
+            {
+                "name": label_name_strategy,
+                "confidence": confidence_strategy,
+            }
+        ),
         min_size=0,
         max_size=20,
     ),
-    metadata=st.fixed_dictionaries({
-        "product_category": st.one_of(st.none(), st.text(min_size=0, max_size=100)),
-        "color": st.one_of(st.none(), st.text(min_size=0, max_size=50)),
-        "material": st.one_of(st.none(), st.text(min_size=0, max_size=50)),
-        "style_attributes": st.one_of(
-            st.none(),
-            st.lists(st.text(min_size=1, max_size=30), min_size=0, max_size=10),
-        ),
-    }),
+    metadata=st.fixed_dictionaries(
+        {
+            "product_category": st.one_of(st.none(), st.text(min_size=0, max_size=100)),
+            "color": st.one_of(st.none(), st.text(min_size=0, max_size=50)),
+            "material": st.one_of(st.none(), st.text(min_size=0, max_size=50)),
+            "style_attributes": st.one_of(
+                st.none(),
+                st.lists(st.text(min_size=1, max_size=30), min_size=0, max_size=10),
+            ),
+        }
+    ),
 )
 def test_structured_output_required_fields(labels, metadata):
     """Feature: fsxn-s3ap-serverless-patterns-phase2, Property 18: Structured output contains all required fields
@@ -173,9 +177,7 @@ def test_structured_output_required_fields(labels, metadata):
     assert result["product_category"] is not None and result["product_category"] != "", (
         f"product_category is None or empty: {result['product_category']}"
     )
-    assert result["color"] is not None and result["color"] != "", (
-        f"color is None or empty: {result['color']}"
-    )
+    assert result["color"] is not None and result["color"] != "", f"color is None or empty: {result['color']}"
 
     # material must not be None or empty
     assert result["material"] is not None and result["material"] != "", (
@@ -191,10 +193,12 @@ def test_structured_output_required_fields(labels, metadata):
 @settings(max_examples=100)
 @given(
     labels=st.lists(
-        st.fixed_dictionaries({
-            "name": label_name_strategy,
-            "confidence": confidence_strategy,
-        }),
+        st.fixed_dictionaries(
+            {
+                "name": label_name_strategy,
+                "confidence": confidence_strategy,
+            }
+        ),
         min_size=0,
         max_size=20,
     ),

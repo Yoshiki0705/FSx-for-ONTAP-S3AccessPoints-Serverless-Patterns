@@ -141,8 +141,7 @@ class OntapClient:
             return self._credentials
         except Exception as e:
             raise OntapClientError(
-                f"Failed to retrieve credentials from Secrets Manager "
-                f"(secret: {self._config.secret_name}): {e}"
+                f"Failed to retrieve credentials from Secrets Manager (secret: {self._config.secret_name}): {e}"
             ) from e
 
     def _get_pool(self) -> urllib3.PoolManager:
@@ -253,17 +252,11 @@ class OntapClient:
         try:
             response = pool.request(**kwargs)
         except urllib3.exceptions.MaxRetryError as e:
-            raise OntapClientError(
-                f"Max retries exceeded for {method} {path}: {e}"
-            ) from e
+            raise OntapClientError(f"Max retries exceeded for {method} {path}: {e}") from e
         except urllib3.exceptions.TimeoutError as e:
-            raise OntapClientError(
-                f"Request timeout for {method} {path}: {e}"
-            ) from e
+            raise OntapClientError(f"Request timeout for {method} {path}: {e}") from e
         except Exception as e:
-            raise OntapClientError(
-                f"Request failed for {method} {path}: {e}"
-            ) from e
+            raise OntapClientError(f"Request failed for {method} {path}: {e}") from e
 
         response_body = response.data.decode("utf-8")
 
@@ -565,9 +558,7 @@ class OntapClient:
         while True:
             elapsed = time.time() - start_time
             if elapsed > timeout_seconds:
-                raise OntapClientError(
-                    f"ONTAP job {job_uuid} timed out after {timeout_seconds}s"
-                )
+                raise OntapClientError(f"ONTAP job {job_uuid} timed out after {timeout_seconds}s")
 
             job = self.get(f"/cluster/jobs/{job_uuid}")
             state = job.get("state", "unknown")
@@ -584,6 +575,8 @@ class OntapClient:
 
             logger.debug(
                 "ONTAP job %s state: %s (%.0fs elapsed)",
-                job_uuid, state, elapsed,
+                job_uuid,
+                state,
+                elapsed,
             )
             time.sleep(poll_interval)
