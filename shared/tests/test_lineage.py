@@ -3,7 +3,6 @@
 DynamoDB への処理履歴レコード書き込み・検索ロジックを検証する。
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -13,7 +12,7 @@ from moto import mock_aws
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from shared.lineage import LineageRecord, LineageTracker, VALID_STATUSES
+from shared.lineage import LineageRecord, LineageTracker
 
 
 @pytest.fixture

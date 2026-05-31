@@ -26,7 +26,7 @@ def main():
     print(f"Reading CSV from: {input_path}")
     df = spark.read.option("header", "true").option("inferSchema", "true").csv(input_path)
 
-    print(f"Schema:")
+    print("Schema:")
     df.printSchema()
     print(f"Row count: {df.count()}")
 

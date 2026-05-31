@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """AWS 実環境テスト — S3ApHelper + FsxHelper"""
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("AWS_DEFAULT_REGION", "ap-northeast-1")
 
@@ -43,7 +44,7 @@ print(f"PutObject: {test_key}")
 get_resp = helper.get_object(test_key)
 retrieved = get_resp["Body"].read().decode("utf-8")
 assert retrieved == test_body, f"Round-trip failed: expected '{test_body}', got '{retrieved}'"
-print(f"GetObject: verified content matches")
+print("GetObject: verified content matches")
 helper.delete_object(test_key)
 print(f"DeleteObject: {test_key} cleaned up")
 

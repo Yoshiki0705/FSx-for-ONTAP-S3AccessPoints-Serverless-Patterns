@@ -177,7 +177,7 @@ def test_multipart_upload_round_trip(data, part_size, num_chunks):
 
     **Validates: Requirements 2.3**
     """
-    from unittest.mock import MagicMock, call
+    from unittest.mock import MagicMock
 
     from shared.s3ap_helper import S3ApHelper
 

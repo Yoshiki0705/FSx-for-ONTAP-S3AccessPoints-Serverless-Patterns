@@ -105,8 +105,8 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 
 def build_status_block(uc: str) -> str:
     if uc in E2E_VERIFIED:
-        return f"- ✅ **E2E 実行**: Phase 1-6 で確認済み（根 README 参照）\n- 📸 **UI/UX 再撮影**: 未実施（本セッションでは UC6/UC11/UC14 を代表として撮影）\n- 🔄 **再現方法**: 本ドキュメント末尾の「撮影ガイド」を参照"
-    return f"- ⚠️ **E2E 検証**: 一部機能のみ（本番環境では追加検証推奨）\n- 📸 **UI/UX 再撮影**: 未実施"
+        return "- ✅ **E2E 実行**: Phase 1-6 で確認済み（根 README 参照）\n- 📸 **UI/UX 再撮影**: 未実施（本セッションでは UC6/UC11/UC14 を代表として撮影）\n- 🔄 **再現方法**: 本ドキュメント末尾の「撮影ガイド」を参照"
+    return "- ⚠️ **E2E 検証**: 一部機能のみ（本番環境では追加検証推奨）\n- 📸 **UI/UX 再撮影**: 未実施"
 
 
 def build_existing_block(uc: str) -> str:

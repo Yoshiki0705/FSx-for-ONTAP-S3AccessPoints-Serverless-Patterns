@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """OpenSearch Serverless にベクトルインデックスを作成するスクリプト"""
 import json

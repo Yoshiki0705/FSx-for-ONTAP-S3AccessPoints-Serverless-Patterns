@@ -59,7 +59,7 @@ def build_ifc_content(
         "ISO-10303-21;",
         "HEADER;",
         "FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');",
-        f"FILE_NAME('test.ifc','2026-01-15T10:00:00',('Author'),('Org'),'','','');",
+        "FILE_NAME('test.ifc','2026-01-15T10:00:00',('Author'),('Org'),'','','');",
         f"FILE_SCHEMA(('{ifc_schema_version}'));",
         "ENDSEC;",
         "DATA;",

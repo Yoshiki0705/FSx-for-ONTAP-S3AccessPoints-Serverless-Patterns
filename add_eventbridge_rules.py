@@ -108,7 +108,7 @@ def add_eventbridge_block(uc_dir: str, state_machine: str) -> None:
 
 
 def main():
-    base = Path(".")
+    Path(".")
     for uc_dir, state_machine in UC_STATE_MACHINES.items():
         print(f"Processing {uc_dir}...")
         add_eventbridge_block(uc_dir, state_machine)

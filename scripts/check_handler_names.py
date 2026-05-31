@@ -8,7 +8,6 @@ we saw in UC9 Discovery (inference_type not returned) and UC4 Discovery
 """
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path

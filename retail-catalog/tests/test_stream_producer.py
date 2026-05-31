@@ -51,7 +51,6 @@ class TestDetectChanges:
 
     def test_new_file_detection(self):
         """S3 AP にあるが DynamoDB にないファイル → created イベント"""
-        from retail_catalog_functions_stream_producer import _detect_changes
 
         s3_objects = [
             {"Key": "images/product/001.jpg", "ETag": '"abc123"', "LastModified": "2024-01-01T00:00:00Z"},
@@ -69,7 +68,6 @@ class TestDetectChanges:
 
     def test_modified_file_detection(self):
         """S3 AP の ETag が DynamoDB と異なる → modified イベント"""
-        from retail_catalog_functions_stream_producer import _detect_changes
 
         s3_objects = [
             {"Key": "images/product/001.jpg", "ETag": '"new-etag"', "LastModified": "2024-01-02T00:00:00Z"},
@@ -93,7 +91,6 @@ class TestDetectChanges:
 
     def test_deleted_file_detection(self):
         """DynamoDB にあるが S3 AP にないファイル → deleted イベント"""
-        from retail_catalog_functions_stream_producer import _detect_changes
 
         s3_objects = []  # S3 AP は空
         state_items = {
@@ -114,7 +111,6 @@ class TestDetectChanges:
 
     def test_no_changes_detected(self):
         """変更なし → 全リスト空"""
-        from retail_catalog_functions_stream_producer import _detect_changes
 
         s3_objects = [
             {"Key": "images/product/001.jpg", "ETag": '"abc123"', "LastModified": "2024-01-01T00:00:00Z"},

@@ -7,8 +7,6 @@ translations from English sources.
 Usage: python3 scripts/batch_translate.py
 """
 import os
-import re
-import json
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

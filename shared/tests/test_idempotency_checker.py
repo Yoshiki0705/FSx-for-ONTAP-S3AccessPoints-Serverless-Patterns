@@ -6,7 +6,6 @@ HYBRID モードの重複排除ロジックを検証する。
 import os
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import boto3
 import pytest
