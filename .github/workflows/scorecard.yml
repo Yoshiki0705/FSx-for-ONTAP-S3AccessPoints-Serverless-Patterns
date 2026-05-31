@@ -35,7 +35,7 @@ jobs:
 
       - name: Upload Scorecard SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@fee9466b8957867761f2d78f922ab084e3e2dd17 # v3
+        uses: github/codeql-action/upload-sarif@03e4368ac7daa2bd82b3e85262f3bf87ee112f57 # v3
         with:
           sarif_file: scorecard-results.sarif
           category: scorecard

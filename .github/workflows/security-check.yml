@@ -70,9 +70,8 @@ jobs:
       - name: Check no hardcoded EC2 IPs
         run: |
           # Common patterns for real public IPs (non-placeholder)
-          # Skip 10.x.x.x, 172.16-31.x.x, 192.168.x.x (RFC1918)
-          # Check for known problematic patterns
-          result=$(git ls-files | xargs grep -rln '3\.112\.208\.171\|13\.113\.190\.197' 2>/dev/null || true)
+          # Skip security check scripts themselves (they contain patterns to search for)
+          result=$(git ls-files | grep -v 'scripts/pre-push' | grep -v 'scripts/_check' | grep -v '.github/workflows/' | xargs grep -rln '3\.112\.208\.171\|13\.113\.190\.197' 2>/dev/null || true)
           if [ -n "$result" ]; then
             echo "::error::Real EC2 IP addresses found in: $result"
             exit 1
