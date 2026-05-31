@@ -41,9 +41,7 @@ def dynamodb_table(guardrail_table_name):
             ],
             BillingMode="PAY_PER_REQUEST",
         )
-        table.meta.client.get_waiter("table_exists").wait(
-            TableName=guardrail_table_name
-        )
+        table.meta.client.get_waiter("table_exists").wait(TableName=guardrail_table_name)
         yield table
 
 
@@ -101,9 +99,7 @@ class TestGuardrailResult:
         assert result.action_id is None
 
     def test_denied_result(self):
-        result = GuardrailResult(
-            allowed=False, mode=GuardrailMode.ENFORCE, reason="rate_limit_exceeded"
-        )
+        result = GuardrailResult(allowed=False, mode=GuardrailMode.ENFORCE, reason="rate_limit_exceeded")
         assert result.allowed is False
         assert result.reason == "rate_limit_exceeded"
 
@@ -319,9 +315,7 @@ class TestCapacityGuardrailDryRun:
                 "sk": today,
                 "daily_total_gb": 490,
                 "action_count": 10,
-                "last_action_ts": datetime.now(timezone.utc)
-                .isoformat()
-                .replace("+00:00", "Z"),
+                "last_action_ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "actions": [],
             }
         )
@@ -418,9 +412,7 @@ class TestCapacityGuardrailFailClosed:
     """DynamoDB 障害時の fail-closed テスト."""
 
     @mock_aws
-    def test_enforce_fail_closed_on_dynamodb_error(
-        self, env_vars, guardrail_table_name
-    ):
+    def test_enforce_fail_closed_on_dynamodb_error(self, env_vars, guardrail_table_name):
         """ENFORCE モードでDynamoDB障害時はfail-closed."""
         # Table doesn't exist
         guardrail = CapacityGuardrail(
@@ -458,9 +450,7 @@ class TestCapacityGuardrailExecuteFn:
             table_name=guardrail_table_name,
             mode=GuardrailMode.ENFORCE,
         )
-        result = guardrail.check_and_execute(
-            "volume_grow", 50.0, execute_fn=mock_fn, volume_id="vol-123"
-        )
+        result = guardrail.check_and_execute("volume_grow", 50.0, execute_fn=mock_fn, volume_id="vol-123")
 
         assert result.allowed is True
         mock_fn.assert_called_once_with(volume_id="vol-123")
@@ -501,9 +491,7 @@ class TestCapacityGuardrailExecuteFn:
             table_name=guardrail_table_name,
             mode=GuardrailMode.ENFORCE,
         )
-        result = guardrail.check_and_execute(
-            "volume_grow", 10.0, execute_fn=mock_fn
-        )
+        result = guardrail.check_and_execute("volume_grow", 10.0, execute_fn=mock_fn)
 
         assert result.allowed is False
         mock_fn.assert_not_called()

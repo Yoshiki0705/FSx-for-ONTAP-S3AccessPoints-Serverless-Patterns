@@ -41,9 +41,7 @@ def _build_alert_message(
     Returns:
         dict: SNS メッセージ
     """
-    top_labels = sorted(
-        {d.get("label", "unknown") for d in detections}
-    )[:10]
+    top_labels = sorted({d.get("label", "unknown") for d in detections})[:10]
 
     return {
         "alert_type": "SATELLITE_CHANGE_DETECTED",
@@ -105,9 +103,7 @@ def handler(event, context):
     enrichment = event.get("enrichment", {})
     detections = event.get("enriched_detections", event.get("detections", []))
 
-    alert_message = _build_alert_message(
-        tile_id, timestamp, diff_area_km2, enrichment, detections
-    )
+    alert_message = _build_alert_message(tile_id, timestamp, diff_area_km2, enrichment, detections)
 
     sns = boto3.client("sns")
     response = sns.publish(

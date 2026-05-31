@@ -81,9 +81,7 @@ def _extract_image_dimensions_fallback(image_bytes: bytes) -> dict[str, Any]:
     return {"width": 10000, "height": 10000, "bands": 1}
 
 
-def _tile_with_rasterio(
-    image_bytes: bytes, tile_size: int
-) -> tuple[int, dict[str, Any]]:
+def _tile_with_rasterio(image_bytes: bytes, tile_size: int) -> tuple[int, dict[str, Any]]:
     """rasterio を使って画像をタイル分割する。
 
     Args:
@@ -168,14 +166,13 @@ def handler(event, context):
     else:
         logger.warning("rasterio not available, using fallback metadata only")
         dims = _extract_image_dimensions_fallback(image_bytes)
-        tile_count = _compute_tile_count(
-            dims["width"], dims["height"], tile_size
-        )
+        tile_count = _compute_tile_count(dims["width"], dims["height"], tile_size)
         metadata = {**dims, "tile_size": tile_size, "tile_count": tile_count}
 
     # タイル出力用のプレフィックス（実際のタイル書き出しは rasterio 環境でのみ実施）
     from datetime import datetime
     from pathlib import Path
+
     date_partition = datetime.utcnow().strftime("%Y/%m/%d")
     basename = Path(source_key).stem
     tile_prefix = f"tiles/{date_partition}/{basename}/"

@@ -68,42 +68,32 @@ def build_ifc_content(
     entity_id = 1
 
     # IFCPROJECT
-    lines.append(
-        f"#{entity_id}=IFCPROJECT('proj_guid',#2,$,'{project_name}',$,$,$,(#3),#4);"
-    )
+    lines.append(f"#{entity_id}=IFCPROJECT('proj_guid',#2,$,'{project_name}',$,$,$,(#3),#4);")
     entity_id += 1
 
     # IFCSITE
-    lines.append(
-        f"#{entity_id}=IFCSITE('site_guid',#{entity_id+1},$,'Site',$,$,$,$,.ELEMENT.,$,$,$,$,$);"
-    )
+    lines.append(f"#{entity_id}=IFCSITE('site_guid',#{entity_id + 1},$,'Site',$,$,$,$,.ELEMENT.,$,$,$,$,$);")
     entity_id += 1
 
     # IFCBUILDING
-    lines.append(
-        f"#{entity_id}=IFCBUILDING('bldg_guid',#{entity_id+1},$,'{project_name}',$,$,$,$,.ELEMENT.,$,$,$);"
-    )
+    lines.append(f"#{entity_id}=IFCBUILDING('bldg_guid',#{entity_id + 1},$,'{project_name}',$,$,$,$,.ELEMENT.,$,$,$);")
     entity_id += 1
 
     # IFCGEOMETRICREPRESENTATIONCONTEXT
-    lines.append(
-        f"#{entity_id}=IFCGEOMETRICREPRESENTATIONCONTEXT('{coordinate_system}',$,3,$,$,$);"
-    )
+    lines.append(f"#{entity_id}=IFCGEOMETRICREPRESENTATIONCONTEXT('{coordinate_system}',$,3,$,$,$);")
     entity_id += 1
 
     # IFCBUILDINGSTOREY (floor_count 個)
     for i in range(floor_count):
         elevation = i * 3000.0
         lines.append(
-            f"#{entity_id}=IFCBUILDINGSTOREY('storey_guid_{i}',#{entity_id+1},$,'Floor {i+1}',$,$,$,$,.ELEMENT.,{elevation});"
+            f"#{entity_id}=IFCBUILDINGSTOREY('storey_guid_{i}',#{entity_id + 1},$,'Floor {i + 1}',$,$,$,$,.ELEMENT.,{elevation});"
         )
         entity_id += 1
 
     # 追加エンティティ
     for i in range(extra_elements):
-        lines.append(
-            f"#{entity_id}=IFCWALL('wall_guid_{i}',#{entity_id+1},$,'Wall {i+1}',$,$,$,$,$);"
-        )
+        lines.append(f"#{entity_id}=IFCWALL('wall_guid_{i}',#{entity_id + 1},$,'Wall {i + 1}',$,$,$,$,$);")
         entity_id += 1
 
     lines.append("ENDSEC;")
@@ -120,19 +110,28 @@ def build_ifc_content(
 @settings(max_examples=100)
 @given(
     project_name=st.text(
-        alphabet=st.characters(whitelist_categories=("L", "N", "Zs"),
-                               whitelist_characters="_-"),
+        alphabet=st.characters(whitelist_categories=("L", "N", "Zs"), whitelist_characters="_-"),
         min_size=1,
         max_size=50,
     ),
     floor_count=st.integers(min_value=1, max_value=100),
     extra_elements=st.integers(min_value=0, max_value=50),
-    coordinate_system=st.sampled_from([
-        "EPSG:4326", "EPSG:32654", "Model", "World Coordinate System",
-    ]),
-    ifc_schema_version=st.sampled_from([
-        "IFC4", "IFC2X3", "IFC4X1", "IFC4X3",
-    ]),
+    coordinate_system=st.sampled_from(
+        [
+            "EPSG:4326",
+            "EPSG:32654",
+            "Model",
+            "World Coordinate System",
+        ]
+    ),
+    ifc_schema_version=st.sampled_from(
+        [
+            "IFC4",
+            "IFC2X3",
+            "IFC4X1",
+            "IFC4X3",
+        ]
+    ),
 )
 def test_ifc_metadata_extraction_completeness(
     project_name, floor_count, extra_elements, coordinate_system, ifc_schema_version
@@ -171,16 +170,12 @@ def test_ifc_metadata_extraction_completeness(
     assert metadata["project_name"] == project_name, (
         f"Expected project_name='{project_name}', got '{metadata['project_name']}'"
     )
-    assert metadata["floor_count"] == floor_count, (
-        f"Expected floor_count={floor_count}, got {metadata['floor_count']}"
-    )
+    assert metadata["floor_count"] == floor_count, f"Expected floor_count={floor_count}, got {metadata['floor_count']}"
     assert metadata["ifc_schema_version"] == ifc_schema_version, (
-        f"Expected ifc_schema_version='{ifc_schema_version}', "
-        f"got '{metadata['ifc_schema_version']}'"
+        f"Expected ifc_schema_version='{ifc_schema_version}', got '{metadata['ifc_schema_version']}'"
     )
     assert metadata["coordinate_system"] == coordinate_system, (
-        f"Expected coordinate_system='{coordinate_system}', "
-        f"got '{metadata['coordinate_system']}'"
+        f"Expected coordinate_system='{coordinate_system}', got '{metadata['coordinate_system']}'"
     )
 
     # building_elements_count は全エンティティ数
@@ -188,8 +183,7 @@ def test_ifc_metadata_extraction_completeness(
     # + IFCBUILDINGSTOREY(floor_count) + IFCWALL(extra_elements)
     expected_elements = 4 + floor_count + extra_elements
     assert metadata["building_elements_count"] == expected_elements, (
-        f"Expected building_elements_count={expected_elements}, "
-        f"got {metadata['building_elements_count']}"
+        f"Expected building_elements_count={expected_elements}, got {metadata['building_elements_count']}"
     )
 
 
@@ -259,15 +253,9 @@ def test_bim_version_diff_detection(
     assert "elements_modified" in diff, "Missing 'elements_modified' field"
 
     # 非負値の検証
-    assert diff["elements_added"] >= 0, (
-        f"elements_added must be >= 0, got {diff['elements_added']}"
-    )
-    assert diff["elements_deleted"] >= 0, (
-        f"elements_deleted must be >= 0, got {diff['elements_deleted']}"
-    )
-    assert diff["elements_modified"] >= 0, (
-        f"elements_modified must be >= 0, got {diff['elements_modified']}"
-    )
+    assert diff["elements_added"] >= 0, f"elements_added must be >= 0, got {diff['elements_added']}"
+    assert diff["elements_deleted"] >= 0, f"elements_deleted must be >= 0, got {diff['elements_deleted']}"
+    assert diff["elements_modified"] >= 0, f"elements_modified must be >= 0, got {diff['elements_modified']}"
 
     # 要素数差分の検証
     element_diff = current_elements - previous_elements
@@ -294,8 +282,7 @@ def test_bim_version_diff_detection(
     # coordinate_system は同じなので変更なし
 
     assert diff["elements_modified"] == expected_modifications, (
-        f"Expected elements_modified={expected_modifications}, "
-        f"got {diff['elements_modified']}"
+        f"Expected elements_modified={expected_modifications}, got {diff['elements_modified']}"
     )
 
 
@@ -361,44 +348,36 @@ def test_safety_compliance_output_structure(num_rules, fail_indices):
     compliance_results = []
     for i in range(num_rules):
         status = "FAIL" if i in fail_indices else "PASS"
-        compliance_results.append({
-            "rule_id": f"RULE_{i:03d}",
-            "rule_name": f"Test Rule {i}",
-            "status": status,
-            "details": f"Details for rule {i}",
-            "remediation": f"Fix for rule {i}" if status == "FAIL" else "",
-        })
+        compliance_results.append(
+            {
+                "rule_id": f"RULE_{i:03d}",
+                "rule_name": f"Test Rule {i}",
+                "status": status,
+                "details": f"Details for rule {i}",
+                "remediation": f"Fix for rule {i}" if status == "FAIL" else "",
+            }
+        )
 
     # 構造検証: 各エントリに必須フィールドが存在する
     for result in compliance_results:
         assert "rule_id" in result, "Missing 'rule_id' in compliance result"
         assert "rule_name" in result, "Missing 'rule_name' in compliance result"
         assert "status" in result, "Missing 'status' in compliance result"
-        assert result["status"] in ("PASS", "FAIL"), (
-            f"Invalid status: {result['status']}"
-        )
+        assert result["status"] in ("PASS", "FAIL"), f"Invalid status: {result['status']}"
 
     # overall_compliance の検証
     overall = determine_overall_compliance(compliance_results)
 
     # いずれかが FAIL なら全体は FAIL
-    has_failure = any(
-        i in fail_indices for i in range(num_rules)
-    )
+    has_failure = any(i in fail_indices for i in range(num_rules))
 
     if has_failure:
-        assert overall == "FAIL", (
-            f"Expected overall_compliance='FAIL' when failures exist, got '{overall}'"
-        )
+        assert overall == "FAIL", f"Expected overall_compliance='FAIL' when failures exist, got '{overall}'"
     else:
-        assert overall == "PASS", (
-            f"Expected overall_compliance='PASS' when no failures, got '{overall}'"
-        )
+        assert overall == "PASS", f"Expected overall_compliance='PASS' when no failures, got '{overall}'"
 
     # エントリ数の検証
-    assert len(compliance_results) == num_rules, (
-        f"Expected {num_rules} results, got {len(compliance_results)}"
-    )
+    assert len(compliance_results) == num_rules, f"Expected {num_rules} results, got {len(compliance_results)}"
 
     # JSON シリアライズ可能であることを確認
     json_str = json.dumps(compliance_results, default=str)

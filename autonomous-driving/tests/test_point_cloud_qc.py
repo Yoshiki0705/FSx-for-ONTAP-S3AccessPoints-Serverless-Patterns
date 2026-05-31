@@ -103,16 +103,7 @@ class TestParsePcdHeader:
 
     def test_missing_fields_raises_error(self):
         """FIELDS が欠落している場合にエラーを発生させる"""
-        pcd_data = (
-            "VERSION 0.7\n"
-            "SIZE 4 4 4\n"
-            "TYPE F F F\n"
-            "COUNT 1 1 1\n"
-            "WIDTH 100\n"
-            "HEIGHT 1\n"
-            "POINTS 100\n"
-            "DATA ascii\n"
-        )
+        pcd_data = "VERSION 0.7\nSIZE 4 4 4\nTYPE F F F\nCOUNT 1 1 1\nWIDTH 100\nHEIGHT 1\nPOINTS 100\nDATA ascii\n"
         with pytest.raises(PcdParseError):
             parse_pcd_header(pcd_data)
 
@@ -285,10 +276,13 @@ class TestValidatePointCloud:
 class TestHandler:
     """ハンドラの正常系・異常系テスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.point_cloud_qc.handler.OutputWriter")
     @patch("functions.point_cloud_qc.handler.S3ApHelper")
     def test_handler_success(self, mock_s3ap_class, mock_output_writer_cls):
@@ -338,10 +332,13 @@ class TestHandler:
         assert result["metrics"]["point_count"] == 3
         assert result["metrics"]["nan_coordinates"] == 0
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.point_cloud_qc.handler.S3ApHelper")
     def test_handler_file_read_error(self, mock_s3ap_class):
         """ファイル読み取りエラー時に FAIL を返す"""
@@ -360,10 +357,13 @@ class TestHandler:
         assert result["status"] == "FAIL"
         assert "Access denied" in result["error"]
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.point_cloud_qc.handler.S3ApHelper")
     def test_handler_invalid_pcd(self, mock_s3ap_class):
         """無効な PCD ファイルで FAIL を返す"""

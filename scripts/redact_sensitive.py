@@ -17,6 +17,7 @@ Note:
     (which is gitignored). See scripts/_sensitive_strings.py.example
     for the expected format.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,6 +42,7 @@ except ImportError:
 # or we build generic rules from SENSITIVE_STRINGS
 try:
     from _sensitive_strings import REDACTION_RULES  # noqa: E402
+
     REDACTIONS = REDACTION_RULES
 except ImportError:
     # Fallback: build generic redaction rules from SENSITIVE_STRINGS tuple
@@ -87,15 +89,17 @@ def main() -> None:
 
     # Enumerate all tracked files (via git ls-files equivalent)
     import subprocess
+
     result = subprocess.run(
         ["git", "-C", str(PROJECT_ROOT), "ls-files"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     files = [PROJECT_ROOT / f for f in result.stdout.splitlines() if f]
 
     # Exclude binary/PNG/ZIP files
-    skip_suffixes = {".png", ".jpg", ".jpeg", ".zip", ".gz", ".pdf", ".segy",
-                     ".dcm", ".fastq", ".gds", ".gds2", ".tif"}
+    skip_suffixes = {".png", ".jpg", ".jpeg", ".zip", ".gz", ".pdf", ".segy", ".dcm", ".fastq", ".gds", ".gds2", ".tif"}
     # Also exclude the redact script itself and known infrastructure scripts
     skip_files = {
         "scripts/redact_sensitive.py",  # this script itself

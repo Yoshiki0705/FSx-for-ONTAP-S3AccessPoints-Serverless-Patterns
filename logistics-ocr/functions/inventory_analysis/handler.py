@@ -29,14 +29,19 @@ logger = logging.getLogger(__name__)
 
 # 在庫関連のラベルカテゴリ
 INVENTORY_LABELS = [
-    "Box", "Package", "Carton", "Pallet", "Shelf",
-    "Warehouse", "Container", "Crate", "Rack",
+    "Box",
+    "Package",
+    "Carton",
+    "Pallet",
+    "Shelf",
+    "Warehouse",
+    "Container",
+    "Crate",
+    "Rack",
 ]
 
 
-def detect_inventory_objects(
-    rekognition_client, image_bytes: bytes, max_labels: int = 50
-) -> list[dict]:
+def detect_inventory_objects(rekognition_client, image_bytes: bytes, max_labels: int = 50) -> list[dict]:
     """Rekognition DetectLabels で在庫関連オブジェクトを検出する
 
     Args:
@@ -48,26 +53,24 @@ def detect_inventory_objects(
         list[dict]: 検出されたラベルのリスト
     """
     with xray_subsegment(
-
         name="rekognition_detectlabels",
-
         annotations={"service_name": "rekognition", "operation": "DetectLabels", "use_case": "logistics-ocr"},
-
     ):
-
         response = rekognition_client.detect_labels(
-        Image={"Bytes": image_bytes},
-        MaxLabels=max_labels,
-    )
+            Image={"Bytes": image_bytes},
+            MaxLabels=max_labels,
+        )
 
     labels = []
     for label in response.get("Labels", []):
-        labels.append({
-            "name": label["Name"],
-            "confidence": round(label["Confidence"], 2),
-            "instances": len(label.get("Instances", [])),
-            "parents": [p["Name"] for p in label.get("Parents", [])],
-        })
+        labels.append(
+            {
+                "name": label["Name"],
+                "confidence": round(label["Confidence"], 2),
+                "instances": len(label.get("Instances", [])),
+                "parents": [p["Name"] for p in label.get("Parents", [])],
+            }
+        )
 
     return labels
 
@@ -88,9 +91,7 @@ def count_inventory_items(labels: list[dict], threshold: float) -> dict:
     for label in labels:
         if label["confidence"] < threshold:
             continue
-        if label["name"] in INVENTORY_LABELS or any(
-            parent in INVENTORY_LABELS for parent in label.get("parents", [])
-        ):
+        if label["name"] in INVENTORY_LABELS or any(parent in INVENTORY_LABELS for parent in label.get("parents", [])):
             count = max(label.get("instances", 0), 1)
             inventory_counts[label["name"]] = {
                 "count": count,
@@ -114,19 +115,12 @@ def estimate_shelf_occupancy(labels: list[dict]) -> float:
     Returns:
         float: 推定占有率 (0.0 - 1.0)
     """
-    shelf_detected = any(
-        l["name"] in ("Shelf", "Rack") for l in labels
-    )
+    shelf_detected = any(l["name"] in ("Shelf", "Rack") for l in labels)
     if not shelf_detected:
         return 0.0
 
-    item_labels = [
-        l for l in labels
-        if l["name"] in ("Box", "Package", "Carton", "Container", "Crate")
-    ]
-    total_instances = sum(
-        max(l.get("instances", 0), 1) for l in item_labels
-    )
+    item_labels = [l for l in labels if l["name"] in ("Box", "Package", "Carton", "Container", "Crate")]
+    total_instances = sum(max(l.get("instances", 0), 1) for l in item_labels)
 
     # 簡易推定: インスタンス数に基づく占有率
     occupancy = min(total_instances / 20.0, 1.0)
@@ -206,7 +200,6 @@ def handler(event, context):
         inventory_result["total_items"],
         shelf_occupancy,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="inventory_analysis")

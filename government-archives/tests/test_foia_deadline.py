@@ -75,9 +75,7 @@ def test_days_until_deadline_past(foia_deadline_handler):
     assert days == 0
 
 
-def test_handler_checks_and_sends_reminders(
-    foia_deadline_handler, lambda_context, monkeypatch
-):
+def test_handler_checks_and_sends_reminders(foia_deadline_handler, lambda_context, monkeypatch):
     monkeypatch.setenv("FOIA_TABLE", "test-foia-table")
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123:foia")
     monkeypatch.setenv("REMINDER_DAYS_BEFORE", "3")

@@ -20,15 +20,34 @@ s3_client = boto3.client("s3")
 
 RESEARCH_EXTENSIONS = {
     # 顕微鏡画像
-    ".tiff", ".tif", ".nd2", ".czi", ".lif", ".oib",
+    ".tiff",
+    ".tif",
+    ".nd2",
+    ".czi",
+    ".lif",
+    ".oib",
     # シーケンス結果
-    ".fastq", ".fq", ".bam", ".sam", ".vcf", ".bed",
+    ".fastq",
+    ".fq",
+    ".bam",
+    ".sam",
+    ".vcf",
+    ".bed",
     # 論文・ドキュメント
-    ".pdf", ".docx", ".doc", ".md", ".txt",
+    ".pdf",
+    ".docx",
+    ".doc",
+    ".md",
+    ".txt",
     # 実験ログ・データ
-    ".csv", ".xlsx", ".xls", ".json", ".tsv",
+    ".csv",
+    ".xlsx",
+    ".xls",
+    ".json",
+    ".tsv",
     # プロトコル
-    ".html", ".htm",
+    ".html",
+    ".htm",
 }
 
 
@@ -59,13 +78,15 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 key = obj["Key"]
                 ext = os.path.splitext(key)[1].lower()
                 if ext in RESEARCH_EXTENSIONS:
-                    objects.append({
-                        "key": key,
-                        "size": obj["Size"],
-                        "last_modified": obj["LastModified"].isoformat(),
-                        "extension": ext,
-                        "category": _categorize(ext),
-                    })
+                    objects.append(
+                        {
+                            "key": key,
+                            "size": obj["Size"],
+                            "last_modified": obj["LastModified"].isoformat(),
+                            "extension": ext,
+                            "category": _categorize(ext),
+                        }
+                    )
 
             if not response.get("IsTruncated"):
                 break

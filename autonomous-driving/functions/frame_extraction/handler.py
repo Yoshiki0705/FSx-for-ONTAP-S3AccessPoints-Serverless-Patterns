@@ -37,10 +37,21 @@ logger = logging.getLogger(__name__)
 
 # Rekognition で検出する自動運転関連ラベル
 DRIVING_LABELS = {
-    "Car", "Vehicle", "Automobile", "Truck", "Bus", "Motorcycle",
-    "Pedestrian", "Person", "Human",
-    "Traffic Sign", "Traffic Light", "Stop Sign",
-    "Lane", "Road", "Highway",
+    "Car",
+    "Vehicle",
+    "Automobile",
+    "Truck",
+    "Bus",
+    "Motorcycle",
+    "Pedestrian",
+    "Person",
+    "Human",
+    "Traffic Sign",
+    "Traffic Light",
+    "Stop Sign",
+    "Lane",
+    "Road",
+    "Highway",
 }
 
 # 動画ファイルのマジックバイト（ファイルタイプ検証用）
@@ -103,9 +114,7 @@ def _estimate_frame_count(file_size: int, frame_interval_ms: int) -> int:
     return max(1, frame_count)
 
 
-def _run_rekognition_detection(
-    rekognition_client, image_bytes: bytes
-) -> list[dict]:
+def _run_rekognition_detection(rekognition_client, image_bytes: bytes) -> list[dict]:
     """Rekognition DetectLabels を実行し、自動運転関連ラベルを抽出する
 
     Args:
@@ -117,18 +126,14 @@ def _run_rekognition_detection(
     """
     try:
         with xray_subsegment(
-
             name="rekognition_detectlabels",
-
             annotations={"service_name": "rekognition", "operation": "DetectLabels", "use_case": "autonomous-driving"},
-
         ):
-
             response = rekognition_client.detect_labels(
-            Image={"Bytes": image_bytes},
-            MaxLabels=20,
-            MinConfidence=50.0,
-        )
+                Image={"Bytes": image_bytes},
+                MaxLabels=20,
+                MinConfidence=50.0,
+            )
     except Exception as e:
         logger.warning("Rekognition DetectLabels failed: %s", e)
         return []
@@ -142,24 +147,28 @@ def _run_rekognition_detection(
         instances = label.get("Instances", [])
         for instance in instances:
             bbox = instance.get("BoundingBox", {})
-            detections.append({
-                "label": label_name,
-                "confidence": round(confidence, 1),
-                "bounding_box": {
-                    "left": bbox.get("Left", 0.0),
-                    "top": bbox.get("Top", 0.0),
-                    "width": bbox.get("Width", 0.0),
-                    "height": bbox.get("Height", 0.0),
-                },
-            })
+            detections.append(
+                {
+                    "label": label_name,
+                    "confidence": round(confidence, 1),
+                    "bounding_box": {
+                        "left": bbox.get("Left", 0.0),
+                        "top": bbox.get("Top", 0.0),
+                        "width": bbox.get("Width", 0.0),
+                        "height": bbox.get("Height", 0.0),
+                    },
+                }
+            )
 
         # インスタンスがない場合もラベルとして記録
         if not instances:
-            detections.append({
-                "label": label_name,
-                "confidence": round(confidence, 1),
-                "bounding_box": None,
-            })
+            detections.append(
+                {
+                    "label": label_name,
+                    "confidence": round(confidence, 1),
+                    "bounding_box": None,
+                }
+            )
 
     return detections
 
@@ -220,9 +229,7 @@ def handler(event, context):
     # フォーマット検証
     video_format = _detect_video_format(header_bytes)
     if video_format is None:
-        logger.warning(
-            "Unsupported or corrupted video format: %s", file_key
-        )
+        logger.warning("Unsupported or corrupted video format: %s", file_key)
         return {
             "status": "ERROR",
             "file_key": file_key,
@@ -241,15 +248,15 @@ def handler(event, context):
     detections = []
 
     # 先頭フレームの検出をシミュレート
-    frame_detections = _run_rekognition_detection(
-        rekognition_client, header_bytes[:4096]
-    )
+    frame_detections = _run_rekognition_detection(rekognition_client, header_bytes[:4096])
     if frame_detections:
-        detections.append({
-            "frame_index": 0,
-            "timestamp_ms": 0,
-            "objects": frame_detections,
-        })
+        detections.append(
+            {
+                "frame_index": 0,
+                "timestamp_ms": 0,
+                "objects": frame_detections,
+            }
+        )
 
     # 出力キー生成
     now = datetime.now(timezone.utc)
@@ -274,7 +281,6 @@ def handler(event, context):
         frames_extracted,
         len(detections),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="frame_extraction")

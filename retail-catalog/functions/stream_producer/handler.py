@@ -82,29 +82,35 @@ def _detect_changes(
 
         if key not in state_items:
             # 新規ファイル
-            created.append({
-                "key": key,
-                "etag": etag,
-                "last_modified": last_modified,
-            })
+            created.append(
+                {
+                    "key": key,
+                    "etag": etag,
+                    "last_modified": last_modified,
+                }
+            )
         else:
             # 既存ファイル — ETag で変更検出
             state_etag = state_items[key].get("etag", "")
             if etag != state_etag:
-                modified.append({
-                    "key": key,
-                    "etag": etag,
-                    "last_modified": last_modified,
-                })
+                modified.append(
+                    {
+                        "key": key,
+                        "etag": etag,
+                        "last_modified": last_modified,
+                    }
+                )
 
     # 削除検出: state にあるが S3 AP にないファイル
     for key in state_items:
         if key not in current_keys:
-            deleted.append({
-                "key": key,
-                "etag": state_items[key].get("etag", ""),
-                "last_modified": state_items[key].get("last_modified", ""),
-            })
+            deleted.append(
+                {
+                    "key": key,
+                    "etag": state_items[key].get("etag", ""),
+                    "last_modified": state_items[key].get("last_modified", ""),
+                }
+            )
 
     return created, modified, deleted
 
@@ -131,13 +137,15 @@ def _update_state_table(
 
     # 新規・変更ファイルを upsert
     for item in created + modified:
-        table.put_item(Item={
-            "file_key": item["key"],
-            "etag": item["etag"],
-            "last_modified": item["last_modified"],
-            "processing_status": "pending",
-            "updated_at": timestamp,
-        })
+        table.put_item(
+            Item={
+                "file_key": item["key"],
+                "etag": item["etag"],
+                "last_modified": item["last_modified"],
+                "processing_status": "pending",
+                "updated_at": timestamp,
+            }
+        )
 
     # 削除ファイルを state テーブルから削除
     for item in deleted:

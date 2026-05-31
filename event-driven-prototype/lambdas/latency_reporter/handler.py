@@ -136,16 +136,12 @@ def handler(event, context):
     processing_result = event.get("processing_result", {})
     error_info = event.get("error")
 
-    event_time = (
-        processing_result.get("event_time")
-        or event.get("time")
-    )
+    event_time = processing_result.get("event_time") or event.get("time")
     processing_duration_ms = processing_result.get("processing_duration_ms")
     event_to_processing_ms = processing_result.get("event_to_processing_ms")
 
     logger.info(
-        "Latency reporting: event_time=%s, processing_duration_ms=%s, "
-        "event_to_processing_ms=%s, has_error=%s",
+        "Latency reporting: event_time=%s, processing_duration_ms=%s, event_to_processing_ms=%s, has_error=%s",
         event_time,
         processing_duration_ms,
         event_to_processing_ms,

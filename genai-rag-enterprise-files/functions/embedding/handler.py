@@ -33,11 +33,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     for chunk in chunks[:50]:  # 最大50チャンク
         try:
             embedding = _get_embedding(chunk["text"], model_id)
-            embeddings.append({
-                "chunk_id": chunk["chunk_id"],
-                "embedding_dim": len(embedding),
-                "text_preview": chunk["text"][:100],
-            })
+            embeddings.append(
+                {
+                    "chunk_id": chunk["chunk_id"],
+                    "embedding_dim": len(embedding),
+                    "text_preview": chunk["text"][:100],
+                }
+            )
         except Exception as e:
             logger.warning("Embedding failed for chunk %d: %s", chunk["chunk_id"], str(e))
             errors += 1
@@ -54,9 +56,11 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 def _get_embedding(text: str, model_id: str) -> list[float]:
     """Bedrock Titan Embeddings でベクトル化"""
-    body = json.dumps({
-        "inputText": text[:8000],  # Titan の入力制限
-    })
+    body = json.dumps(
+        {
+            "inputText": text[:8000],  # Titan の入力制限
+        }
+    )
 
     response = bedrock_client.invoke_model(
         modelId=model_id,

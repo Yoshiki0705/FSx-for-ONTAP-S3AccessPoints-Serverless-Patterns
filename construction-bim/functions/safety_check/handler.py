@@ -98,10 +98,7 @@ def check_compliance_with_bedrock(
     Returns:
         list[dict]: ルールごとのコンプライアンス結果
     """
-    rules_description = "\n".join(
-        f"- {r['rule_id']}: {r['rule_name']} - {r['description']}"
-        for r in rules
-    )
+    rules_description = "\n".join(f"- {r['rule_id']}: {r['rule_name']} - {r['description']}" for r in rules)
 
     prompt = (
         "You are a construction safety compliance expert. "
@@ -120,15 +117,17 @@ def check_compliance_with_bedrock(
     )
 
     try:
-        body = json.dumps({
-            "messages": [
-                {"role": "user", "content": [{"text": prompt}]},
-            ],
-            "inferenceConfig": {
-                "maxTokens": 2048,
-                "temperature": 0.1,
-            },
-        })
+        body = json.dumps(
+            {
+                "messages": [
+                    {"role": "user", "content": [{"text": prompt}]},
+                ],
+                "inferenceConfig": {
+                    "maxTokens": 2048,
+                    "temperature": 0.1,
+                },
+            }
+        )
 
         response = bedrock_client.invoke_model(
             modelId=model_id,
@@ -154,7 +153,8 @@ def check_compliance_with_bedrock(
         except json.JSONDecodeError:
             # JSON 抽出を試行
             import re
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+
+            json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
             if json_match:
                 parsed = json.loads(json_match.group(0))
                 return parsed.get("results", [])
@@ -166,9 +166,7 @@ def check_compliance_with_bedrock(
     return _keyword_based_check(extracted_text, bim_metadata, rules)
 
 
-def _keyword_based_check(
-    extracted_text: str, bim_metadata: dict, rules: list[dict]
-) -> list[dict]:
+def _keyword_based_check(extracted_text: str, bim_metadata: dict, rules: list[dict]) -> list[dict]:
     """キーワードベースのフォールバックコンプライアンスチェック
 
     Bedrock が利用できない場合のフォールバック。
@@ -198,20 +196,20 @@ def _keyword_based_check(
             details = f"No evidence found for rule: {rule['rule_name']}"
             remediation = f"Review documentation for {rule['rule_name']} compliance"
 
-        results.append({
-            "rule_id": rule["rule_id"],
-            "rule_name": rule["rule_name"],
-            "status": status,
-            "details": details,
-            "remediation": remediation,
-        })
+        results.append(
+            {
+                "rule_id": rule["rule_id"],
+                "rule_name": rule["rule_name"],
+                "status": status,
+                "details": details,
+                "remediation": remediation,
+            }
+        )
 
     return results
 
 
-def detect_visual_safety_elements(
-    rekognition_client, drawing_images: list[dict]
-) -> dict:
+def detect_visual_safety_elements(rekognition_client, drawing_images: list[dict]) -> dict:
     """Rekognition で図面画像の安全関連視覚要素を検出する
 
     Args:
@@ -230,16 +228,27 @@ def detect_visual_safety_elements(
     # 安全関連ラベルのマッピング
     safety_label_map = {
         "emergency_exits": [
-            "Exit Sign", "Door", "Emergency", "Arrow",
-            "Exit", "Escape Route",
+            "Exit Sign",
+            "Door",
+            "Emergency",
+            "Arrow",
+            "Exit",
+            "Escape Route",
         ],
         "fire_extinguishers": [
-            "Fire Extinguisher", "Fire Hydrant", "Sprinkler",
-            "Fire Safety", "Extinguisher",
+            "Fire Extinguisher",
+            "Fire Hydrant",
+            "Sprinkler",
+            "Fire Safety",
+            "Extinguisher",
         ],
         "hazard_zones": [
-            "Warning Sign", "Hazard", "Danger", "Caution",
-            "Restricted Area", "Warning",
+            "Warning Sign",
+            "Hazard",
+            "Danger",
+            "Caution",
+            "Restricted Area",
+            "Warning",
         ],
     }
 
@@ -248,23 +257,23 @@ def detect_visual_safety_elements(
             # S3 から画像を指定して Rekognition に送信
             if "bucket" in image_info and "key" in image_info:
                 with xray_subsegment(
-
                     name="rekognition_detectlabels",
-
-                    annotations={"service_name": "rekognition", "operation": "DetectLabels", "use_case": "construction-bim"},
-
-                ):
-
-                    response = rekognition_client.detect_labels(
-                    Image={
-                        "S3Object": {
-                            "Bucket": image_info["bucket"],
-                            "Name": image_info["key"],
-                        }
+                    annotations={
+                        "service_name": "rekognition",
+                        "operation": "DetectLabels",
+                        "use_case": "construction-bim",
                     },
-                    MaxLabels=30,
-                    MinConfidence=50.0,
-                )
+                ):
+                    response = rekognition_client.detect_labels(
+                        Image={
+                            "S3Object": {
+                                "Bucket": image_info["bucket"],
+                                "Name": image_info["key"],
+                            }
+                        },
+                        MaxLabels=30,
+                        MinConfidence=50.0,
+                    )
             elif "bytes" in image_info:
                 response = rekognition_client.detect_labels(
                     Image={"Bytes": image_info["bytes"]},
@@ -283,9 +292,7 @@ def detect_visual_safety_elements(
                         break
 
         except Exception as e:
-            logger.warning(
-                "Rekognition detection failed for image: %s", e
-            )
+            logger.warning("Rekognition detection failed for image: %s", e)
 
     return visual_elements
 
@@ -349,27 +356,25 @@ def handler(event, context):
 
     # Bedrock でコンプライアンスチェック
     bedrock_client = boto3.client("bedrock-runtime")
-    compliance_results = check_compliance_with_bedrock(
-        bedrock_client, model_id, extracted_text, bim_metadata, rules
-    )
+    compliance_results = check_compliance_with_bedrock(bedrock_client, model_id, extracted_text, bim_metadata, rules)
 
     # 結果にルール情報を補完
     rule_ids_in_results = {r.get("rule_id") for r in compliance_results}
     for rule in rules:
         if rule["rule_id"] not in rule_ids_in_results:
-            compliance_results.append({
-                "rule_id": rule["rule_id"],
-                "rule_name": rule["rule_name"],
-                "status": "FAIL",
-                "details": "Rule not evaluated",
-                "remediation": "Manual review required",
-            })
+            compliance_results.append(
+                {
+                    "rule_id": rule["rule_id"],
+                    "rule_name": rule["rule_name"],
+                    "status": "FAIL",
+                    "details": "Rule not evaluated",
+                    "remediation": "Manual review required",
+                }
+            )
 
     # Rekognition で視覚要素検出
     rekognition_client = boto3.client("rekognition")
-    visual_elements = detect_visual_safety_elements(
-        rekognition_client, drawing_images
-    )
+    visual_elements = detect_visual_safety_elements(rekognition_client, drawing_images)
 
     # 全体コンプライアンス判定
     overall_compliance = determine_overall_compliance(compliance_results)
@@ -377,10 +382,7 @@ def handler(event, context):
     # 出力キー生成
     now = datetime.now(timezone.utc)
     project_name = bim_metadata.get("project_name", "unknown")
-    output_key = (
-        f"compliance/{now.strftime('%Y/%m/%d')}"
-        f"/{project_name}_safety.json"
-    )
+    output_key = f"compliance/{now.strftime('%Y/%m/%d')}/{project_name}_safety.json"
 
     # 結果を S3 出力バケットに書き込み
     result = {
@@ -422,7 +424,6 @@ def handler(event, context):
         len(compliance_results),
         visual_elements,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="safety_check")

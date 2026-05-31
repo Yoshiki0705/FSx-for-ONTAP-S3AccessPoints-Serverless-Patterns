@@ -142,19 +142,15 @@ def _execute_athena_query(
         dict: クエリ結果 (status, rows, query_execution_id)
     """
     with xray_subsegment(
-
         name="athena_startqueryexecution",
-
         annotations={"service_name": "athena", "operation": "StartQueryExecution", "use_case": "energy-seismic"},
-
     ):
-
         response = athena_client.start_query_execution(
-        QueryString=query,
-        QueryExecutionContext={"Database": database},
-        WorkGroup=workgroup,
-        ResultConfiguration={"OutputLocation": output_location},
-    )
+            QueryString=query,
+            QueryExecutionContext={"Database": database},
+            WorkGroup=workgroup,
+            ResultConfiguration={"OutputLocation": output_location},
+        )
     query_execution_id = response["QueryExecutionId"]
 
     # クエリ完了を待機（最大 5 分）
@@ -171,9 +167,7 @@ def _execute_athena_query(
         elapsed += 2
 
     if state != "SUCCEEDED":
-        reason = status["QueryExecution"]["Status"].get(
-            "StateChangeReason", "Unknown"
-        )
+        reason = status["QueryExecution"]["Status"].get("StateChangeReason", "Unknown")
         logger.error("Athena query failed: %s - %s", state, reason)
         return {
             "status": state,
@@ -189,9 +183,7 @@ def _execute_athena_query(
 
     rows = []
     result_set = results.get("ResultSet", {})
-    column_info = result_set.get("ResultSetMetadata", {}).get(
-        "ColumnInfo", []
-    )
+    column_info = result_set.get("ResultSetMetadata", {}).get("ColumnInfo", [])
     data_rows = result_set.get("Rows", [])
 
     # 最初の行はヘッダー
@@ -288,9 +280,7 @@ def handler(event, context):
             workgroup=workgroup,
             output_location=output_location,
         )
-        last_query_execution_id = result.get(
-            "query_execution_id", last_query_execution_id
-        )
+        last_query_execution_id = result.get("query_execution_id", last_query_execution_id)
 
         if result["status"] != "SUCCEEDED":
             logger.warning(
@@ -318,12 +308,8 @@ def handler(event, context):
                 {
                     "sensor": row.get("sensor", ""),
                     "occurrence_count": _safe_int(row.get("occurrence_count", "0")),
-                    "avg_std_deviations": round(
-                        _safe_float(row.get("avg_std_deviations", "0")), 2
-                    ),
-                    "max_std_deviations": round(
-                        _safe_float(row.get("max_std_deviations", "0")), 2
-                    ),
+                    "avg_std_deviations": round(_safe_float(row.get("avg_std_deviations", "0")), 2),
+                    "max_std_deviations": round(_safe_float(row.get("max_std_deviations", "0")), 2),
                 }
                 for row in rows
             ]
@@ -332,30 +318,19 @@ def handler(event, context):
             row = rows[0]
             analysis_results["anomaly_summary"] = {
                 "total_wells": _safe_int(row.get("total_wells", "0")),
-                "total_anomalies_all": _safe_int(
-                    row.get("total_anomalies_all", "0")
-                ),
-                "avg_anomalies_per_well": round(
-                    _safe_float(row.get("avg_anomalies_per_well", "0")), 1
-                ),
-                "max_anomalies_per_well": _safe_int(
-                    row.get("max_anomalies_per_well", "0")
-                ),
-                "wells_with_anomalies": _safe_int(
-                    row.get("wells_with_anomalies", "0")
-                ),
+                "total_anomalies_all": _safe_int(row.get("total_anomalies_all", "0")),
+                "avg_anomalies_per_well": round(_safe_float(row.get("avg_anomalies_per_well", "0")), 1),
+                "max_anomalies_per_well": _safe_int(row.get("max_anomalies_per_well", "0")),
+                "wells_with_anomalies": _safe_int(row.get("wells_with_anomalies", "0")),
             }
 
-        logger.info(
-            "Query %s completed: %d rows", query_name, len(rows)
-        )
+        logger.info("Query %s completed: %d rows", query_name, len(rows))
 
     logger.info(
         "Athena Analysis completed: wells_with_anomalies=%d, total_anomalies=%d",
         analysis_results["anomaly_summary"].get("wells_with_anomalies", 0),
         analysis_results["anomaly_summary"].get("total_anomalies_all", 0),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="athena_analysis")

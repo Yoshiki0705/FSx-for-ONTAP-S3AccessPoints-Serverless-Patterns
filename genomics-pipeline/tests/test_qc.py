@@ -79,12 +79,14 @@ class TestParseFastqRecords:
         """max_records で読み取りレコード数が制限されること"""
         lines = []
         for i in range(10):
-            lines.extend([
-                f"@READ_{i:03d}",
-                "ATGC",
-                "+",
-                "IIII",
-            ])
+            lines.extend(
+                [
+                    f"@READ_{i:03d}",
+                    "ATGC",
+                    "+",
+                    "IIII",
+                ]
+            )
         result = _parse_fastq_records(iter(lines), max_records=5)
 
         assert result["total_reads"] == 5
@@ -260,11 +262,14 @@ class TestStreamingTextLines:
 class TestQcHandler:
     """QC Lambda ハンドラーのテスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "QC_SAMPLE_SIZE": "100",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "QC_SAMPLE_SIZE": "100",
+        },
+    )
     @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
     def test_handler_success(self, mock_s3ap_cls, mock_output_writer_class):
@@ -296,10 +301,13 @@ class TestQcHandler:
         # OutputWriter に書き込まれたことを確認
         mock_writer.put_json.assert_called_once()
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
     def test_handler_empty_file_error(self, mock_s3ap_cls, mock_output_writer_class):
@@ -320,10 +328,13 @@ class TestQcHandler:
         assert "error" in result
         assert result["error_type"] == "FastqParseError"
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
     def test_handler_s3_download_error(self, mock_s3ap_cls, mock_output_writer_class):
@@ -343,10 +354,13 @@ class TestQcHandler:
         assert result["file_key"] == "samples/sample.fastq"
         assert "Connection timeout" in result["error"]
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
     def test_handler_output_key_has_date_partition(self, mock_s3ap_cls, mock_output_writer_class):
@@ -372,10 +386,13 @@ class TestQcHandler:
         assert re.search(r"\d{4}/\d{2}/\d{2}", result["output_key"])
         assert result["output_key"].startswith("qc/")
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.qc.handler.OutputWriter")
     @patch("functions.qc.handler.S3ApHelper")
     def test_handler_gz_file_stem(self, mock_s3ap_cls, mock_output_writer_class):

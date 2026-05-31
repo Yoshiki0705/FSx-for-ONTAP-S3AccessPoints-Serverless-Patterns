@@ -103,9 +103,7 @@ class ProductionUCValidator:
         self._cw_client = boto3.client("cloudwatch", region_name=self._region)
 
         # NFS マウントパス
-        self._nfs_mount_path = config.nfs_mount_path or os.environ.get(
-            "NFS_MOUNT_PATH", "/mnt/fsxn"
-        )
+        self._nfs_mount_path = config.nfs_mount_path or os.environ.get("NFS_MOUNT_PATH", "/mnt/fsxn")
 
         # テスト識別子
         self._test_id = f"prod-uc-{uuid.uuid4().hex[:8]}"
@@ -143,8 +141,7 @@ class ProductionUCValidator:
             )
             if not await self._verify_stack_trigger_mode():
                 result.error = (
-                    f"UC stack '{self.config.stack_name}' is not deployed "
-                    f"with TriggerMode={self.config.trigger_mode}"
+                    f"UC stack '{self.config.stack_name}' is not deployed with TriggerMode={self.config.trigger_mode}"
                 )
                 return result
 
@@ -156,9 +153,7 @@ class ProductionUCValidator:
 
             # Step 3: SQS メッセージ配信を待機 (Requirement 12.2)
             logger.info("Step 3: Waiting for SQS message delivery...")
-            sqs_received = await self._wait_for_sqs_message(
-                test_file_path, timeout_sec=60
-            )
+            sqs_received = await self._wait_for_sqs_message(test_file_path, timeout_sec=60)
             result.sqs_message_delivered = sqs_received
             if sqs_received:
                 result.fpolicy_event_received = True
@@ -177,9 +172,7 @@ class ProductionUCValidator:
             # Step 5: Data Lineage レコード確認 (Requirement 12.4)
             if result.execution_arn:
                 logger.info("Step 5: Verifying Data Lineage record...")
-                result.lineage_recorded = await self.verify_lineage(
-                    result.execution_arn
-                )
+                result.lineage_recorded = await self.verify_lineage(result.execution_arn)
 
             # Step 6: 出力ファイル確認
             if result.step_functions_succeeded:
@@ -193,9 +186,7 @@ class ProductionUCValidator:
 
             # Requirement 12.6: E2E レイテンシ計測
             result.e2e_latency_sec = time.time() - start_time
-            logger.info(
-                "E2E validation completed in %.2f seconds", result.e2e_latency_sec
-            )
+            logger.info("E2E validation completed in %.2f seconds", result.e2e_latency_sec)
 
         except Exception as e:
             logger.error("Production UC validation failed: %s", e)
@@ -220,9 +211,7 @@ class ProductionUCValidator:
         if self.config.test_file_path:
             file_path = self.config.test_file_path
         else:
-            uc_dir = os.path.join(
-                self._nfs_mount_path, self.config.uc_id, self._test_id
-            )
+            uc_dir = os.path.join(self._nfs_mount_path, self.config.uc_id, self._test_id)
             os.makedirs(uc_dir, exist_ok=True)
             file_path = os.path.join(uc_dir, f"test-{self._test_id}.txt")
 
@@ -271,9 +260,7 @@ class ProductionUCValidator:
                 # テスト ID に関連する実行を検索
                 for execution in executions:
                     exec_arn = execution["executionArn"]
-                    exec_detail = self._sfn_client.describe_execution(
-                        executionArn=exec_arn
-                    )
+                    exec_detail = self._sfn_client.describe_execution(executionArn=exec_arn)
                     input_data = exec_detail.get("input", "{}")
                     if self._test_id in input_data:
                         status = exec_detail.get("status")
@@ -287,12 +274,8 @@ class ProductionUCValidator:
                                 "executionArn": exec_arn,
                                 "status": status,
                                 "output": exec_detail.get("output"),
-                                "startDate": str(
-                                    exec_detail.get("startDate", "")
-                                ),
-                                "stopDate": str(
-                                    exec_detail.get("stopDate", "")
-                                ),
+                                "startDate": str(exec_detail.get("startDate", "")),
+                                "stopDate": str(exec_detail.get("stopDate", "")),
                             }
                         # まだ実行中 — 待機を続ける
                         break
@@ -305,21 +288,15 @@ class ProductionUCValidator:
                 )
                 for execution in succeeded_response.get("executions", []):
                     exec_arn = execution["executionArn"]
-                    exec_detail = self._sfn_client.describe_execution(
-                        executionArn=exec_arn
-                    )
+                    exec_detail = self._sfn_client.describe_execution(executionArn=exec_arn)
                     input_data = exec_detail.get("input", "{}")
                     if self._test_id in input_data:
                         return {
                             "executionArn": exec_arn,
                             "status": "SUCCEEDED",
                             "output": exec_detail.get("output"),
-                            "startDate": str(
-                                exec_detail.get("startDate", "")
-                            ),
-                            "stopDate": str(
-                                exec_detail.get("stopDate", "")
-                            ),
+                            "startDate": str(exec_detail.get("startDate", "")),
+                            "stopDate": str(exec_detail.get("stopDate", "")),
                         }
 
             except Exception as e:
@@ -327,9 +304,7 @@ class ProductionUCValidator:
 
             await asyncio.sleep(poll_interval)
 
-        logger.warning(
-            "Step Functions execution not found within %d seconds", timeout_sec
-        )
+        logger.warning("Step Functions execution not found within %d seconds", timeout_sec)
         return None
 
     async def verify_lineage(self, execution_arn: str) -> bool:
@@ -343,18 +318,14 @@ class ProductionUCValidator:
         Returns:
             Lineage レコードが存在する場合 True
         """
-        lineage_table = self.config.lineage_table_name or os.environ.get(
-            "LINEAGE_TABLE", "fsxn-s3ap-data-lineage"
-        )
+        lineage_table = self.config.lineage_table_name or os.environ.get("LINEAGE_TABLE", "fsxn-s3ap-data-lineage")
 
         try:
             table = self._dynamodb.Table(lineage_table)
 
             # execution_arn で検索（スキャン + フィルタ）
             response = table.scan(
-                FilterExpression=Attr("step_functions_execution_arn").eq(
-                    execution_arn
-                ),
+                FilterExpression=Attr("step_functions_execution_arn").eq(execution_arn),
                 Limit=10,
             )
 
@@ -370,9 +341,7 @@ class ProductionUCValidator:
             # リトライ — レコード書き込みに遅延がある場合
             await asyncio.sleep(5)
             response = table.scan(
-                FilterExpression=Attr("step_functions_execution_arn").eq(
-                    execution_arn
-                ),
+                FilterExpression=Attr("step_functions_execution_arn").eq(execution_arn),
                 Limit=10,
             )
             items = response.get("Items", [])
@@ -383,9 +352,7 @@ class ProductionUCValidator:
                 )
                 return True
 
-            logger.warning(
-                "No lineage record found for execution %s", execution_arn
-            )
+            logger.warning("No lineage record found for execution %s", execution_arn)
             return False
 
         except Exception as e:
@@ -434,9 +401,7 @@ class ProductionUCValidator:
                     logger.warning("Output not found: %s", output_key)
                     missing_outputs.append(output_key)
                 else:
-                    logger.error(
-                        "Error checking output '%s': %s", output_key, e
-                    )
+                    logger.error("Error checking output '%s': %s", output_key, e)
                     missing_outputs.append(output_key)
             except Exception as e:
                 logger.error("Error verifying output '%s': %s", output_key, e)
@@ -446,9 +411,7 @@ class ProductionUCValidator:
             logger.warning("Missing outputs: %s", missing_outputs)
             return False
 
-        logger.info(
-            "All %d expected outputs verified", len(self.config.expected_outputs)
-        )
+        logger.info("All %d expected outputs verified", len(self.config.expected_outputs))
         return True
 
     # -----------------------------------------------------------------------
@@ -506,8 +469,7 @@ class ProductionUCValidator:
                         return True
                     else:
                         logger.error(
-                            "Stack '%s' TriggerMode mismatch: "
-                            "expected=%s, actual=%s",
+                            "Stack '%s' TriggerMode mismatch: expected=%s, actual=%s",
                             stack_name,
                             self.config.trigger_mode,
                             actual_mode,
@@ -515,18 +477,14 @@ class ProductionUCValidator:
                         return False
 
             # TriggerMode パラメータが見つからない場合
-            logger.warning(
-                "TriggerMode parameter not found in stack '%s'", stack_name
-            )
+            logger.warning("TriggerMode parameter not found in stack '%s'", stack_name)
             return False
 
         except Exception as e:
             logger.error("Error verifying stack '%s': %s", stack_name, e)
             return False
 
-    async def _wait_for_sqs_message(
-        self, test_file_path: str, timeout_sec: int = 60
-    ) -> bool:
+    async def _wait_for_sqs_message(self, test_file_path: str, timeout_sec: int = 60) -> bool:
         """SQS メッセージの配信を待機する.
 
         Requirement 12.2: FPolicy イベント → SQS の配信確認
@@ -632,12 +590,8 @@ class ProductionUCValidator:
                         },
                     },
                 ],
-                StartTime=time.strftime(
-                    "%Y-%m-%dT%H:%M:%SZ", time.gmtime(start_time_cw)
-                ),
-                EndTime=time.strftime(
-                    "%Y-%m-%dT%H:%M:%SZ", time.gmtime(end_time)
-                ),
+                StartTime=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(start_time_cw)),
+                EndTime=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(end_time)),
             )
 
             # いずれかのメトリクスにデータポイントがあれば統合確認 OK
@@ -654,9 +608,7 @@ class ProductionUCValidator:
             if self.config.guardrails_table_name:
                 table = self._dynamodb.Table(self.config.guardrails_table_name)
                 today = time.strftime("%Y-%m-%d")
-                response = table.get_item(
-                    Key={"pk": "volume_grow", "sk": today}
-                )
+                response = table.get_item(Key={"pk": "volume_grow", "sk": today})
                 if "Item" in response:
                     logger.info("Guardrail tracking record found in DynamoDB")
                     return True
@@ -686,16 +638,12 @@ class ProductionUCValidator:
 
         # テストディレクトリの削除
         if not self.config.test_file_path:
-            test_dir = os.path.join(
-                self._nfs_mount_path, self.config.uc_id, self._test_id
-            )
+            test_dir = os.path.join(self._nfs_mount_path, self.config.uc_id, self._test_id)
             try:
                 if os.path.isdir(test_dir):
                     os.rmdir(test_dir)
             except OSError as e:
-                logger.warning(
-                    "Failed to remove test directory %s: %s", test_dir, e
-                )
+                logger.warning("Failed to remove test directory %s: %s", test_dir, e)
 
 
 # ---------------------------------------------------------------------------
@@ -723,14 +671,9 @@ class TestProductionUCDeployment:
             sqs_queue_url=os.environ.get("SQS_QUEUE_URL", ""),
             state_machine_arn=os.environ.get("STATE_MACHINE_ARN", ""),
             nfs_mount_path=os.environ.get("NFS_MOUNT_PATH", "/mnt/fsxn"),
-            lineage_table_name=os.environ.get(
-                "LINEAGE_TABLE", "fsxn-s3ap-data-lineage"
-            ),
-            guardrails_table_name=os.environ.get(
-                "GUARDRAILS_TABLE", "fsxn-s3ap-guardrails-tracking"
-            ),
-            has_auto_expand=os.environ.get("HAS_AUTO_EXPAND", "false").lower()
-            == "true",
+            lineage_table_name=os.environ.get("LINEAGE_TABLE", "fsxn-s3ap-data-lineage"),
+            guardrails_table_name=os.environ.get("GUARDRAILS_TABLE", "fsxn-s3ap-guardrails-tracking"),
+            has_auto_expand=os.environ.get("HAS_AUTO_EXPAND", "false").lower() == "true",
             timeout_sec=int(os.environ.get("E2E_TIMEOUT_SEC", "300")),
         )
 
@@ -740,9 +683,7 @@ class TestProductionUCDeployment:
         return ProductionUCValidator(config=config)
 
     @pytest.mark.asyncio
-    async def test_full_e2e_validation(
-        self, validator: ProductionUCValidator
-    ):
+    async def test_full_e2e_validation(self, validator: ProductionUCValidator):
         """フル E2E 検証を実行する.
 
         Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.6
@@ -759,40 +700,26 @@ class TestProductionUCDeployment:
         assert result.sqs_message_delivered, "SQS message was not delivered"
 
         # Step Functions 実行の確認 (Requirement 12.3)
-        assert result.step_functions_started, (
-            "Step Functions execution was not started"
-        )
-        assert result.step_functions_succeeded, (
-            f"Step Functions execution did not succeed. "
-            f"ARN: {result.execution_arn}"
-        )
+        assert result.step_functions_started, "Step Functions execution was not started"
+        assert result.step_functions_succeeded, f"Step Functions execution did not succeed. ARN: {result.execution_arn}"
 
         # Data Lineage の確認 (Requirement 12.4)
-        assert result.lineage_recorded, (
-            "Data Lineage record was not written"
-        )
+        assert result.lineage_recorded, "Data Lineage record was not written"
 
         # E2E レイテンシの確認 (Requirement 12.6)
         assert result.e2e_latency_sec > 0, "E2E latency was not measured"
 
     @pytest.mark.asyncio
-    async def test_trigger_mode_verification(
-        self, validator: ProductionUCValidator
-    ):
+    async def test_trigger_mode_verification(self, validator: ProductionUCValidator):
         """TriggerMode=EVENT_DRIVEN の確認のみ実行する.
 
         Validates: Requirement 12.1
         """
         is_valid = await validator._verify_stack_trigger_mode()
-        assert is_valid, (
-            f"Stack is not deployed with TriggerMode="
-            f"{validator.config.trigger_mode}"
-        )
+        assert is_valid, f"Stack is not deployed with TriggerMode={validator.config.trigger_mode}"
 
     @pytest.mark.asyncio
-    async def test_guardrails_integration(
-        self, validator: ProductionUCValidator, config: ProductionUCConfig
-    ):
+    async def test_guardrails_integration(self, validator: ProductionUCValidator, config: ProductionUCConfig):
         """Guardrails 統合の確認.
 
         Validates: Requirement 12.5

@@ -5,6 +5,7 @@
 Also updates README references in each locale to point to the locale-specific doc
 file (e.g., README.ko.md links to docs/architecture.ko.md instead of docs/architecture.md).
 """
+
 from __future__ import annotations
 
 import re

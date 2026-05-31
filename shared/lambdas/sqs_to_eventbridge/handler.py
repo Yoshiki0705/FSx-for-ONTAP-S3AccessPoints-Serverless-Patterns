@@ -69,9 +69,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             _emit_latency_metric(cw_client, latency_ms)
 
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error(
-                "Failed to parse SQS message %s: %s", message_id, str(e)
-            )
+            logger.error("Failed to parse SQS message %s: %s", message_id, str(e))
             batch_item_failures.append({"itemIdentifier": message_id})
 
     # Send entries in batches of 10
@@ -82,9 +80,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 response = eb_client.put_events(Entries=batch)
 
                 # Check for individual entry failures
-                for i, result_entry in enumerate(
-                    response.get("Entries", [])
-                ):
+                for i, result_entry in enumerate(response.get("Entries", [])):
                     if "ErrorCode" in result_entry:
                         entry_idx = batch_start + i
                         failed_message_id = record_map.get(entry_idx)
@@ -95,22 +91,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                                 result_entry.get("ErrorCode"),
                                 result_entry.get("ErrorMessage"),
                             )
-                            batch_item_failures.append(
-                                {"itemIdentifier": failed_message_id}
-                            )
+                            batch_item_failures.append({"itemIdentifier": failed_message_id})
 
             except Exception as e:
-                logger.error(
-                    "EventBridge PutEvents batch failed: %s", str(e)
-                )
+                logger.error("EventBridge PutEvents batch failed: %s", str(e))
                 # Mark all entries in this batch as failed
                 for i in range(len(batch)):
                     entry_idx = batch_start + i
                     failed_message_id = record_map.get(entry_idx)
                     if failed_message_id:
-                        batch_item_failures.append(
-                            {"itemIdentifier": failed_message_id}
-                        )
+                        batch_item_failures.append({"itemIdentifier": failed_message_id})
 
     logger.info(
         "Processed %d records, %d failures",

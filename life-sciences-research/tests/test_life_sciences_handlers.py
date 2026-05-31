@@ -9,12 +9,8 @@ from unittest.mock import patch
 
 def _load_handler(function_name: str):
     """指定した関数のハンドラーモジュールをロード"""
-    handler_path = os.path.join(
-        os.path.dirname(__file__), "..", "functions", function_name, "handler.py"
-    )
-    spec = importlib.util.spec_from_file_location(
-        f"lifesci_{function_name}_handler", handler_path
-    )
+    handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", function_name, "handler.py")
+    spec = importlib.util.spec_from_file_location(f"lifesci_{function_name}_handler", handler_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module, spec

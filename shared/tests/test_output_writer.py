@@ -77,9 +77,7 @@ class TestConstruction:
             OutputWriter(destination="INVALID", bucket="foo")
 
     def test_standard_s3_constructed_ok(self, mock_session):
-        w = OutputWriter(
-            destination=STANDARD_S3, bucket="b", session=mock_session
-        )
+        w = OutputWriter(destination=STANDARD_S3, bucket="b", session=mock_session)
         assert w.destination == STANDARD_S3
         assert "Standard S3 bucket 'b'" in w.target_description
 
@@ -243,9 +241,7 @@ class TestPutOperations:
 
 
 class TestSSEFSXCompliance:
-    def test_no_server_side_encryption_param_for_fsxn(
-        self, writer_s3ap, mock_session
-    ):
+    def test_no_server_side_encryption_param_for_fsxn(self, writer_s3ap, mock_session):
         """FSxN S3AP は SSE-FSX が自動適用されるため、
         アプリからは ServerSideEncryption を指定してはならない。"""
         writer_s3ap.put_bytes(key="x.bin", body=b"abc")
@@ -253,9 +249,7 @@ class TestSSEFSXCompliance:
         assert "ServerSideEncryption" not in call_kwargs
         assert "SSEKMSKeyId" not in call_kwargs
 
-    def test_no_server_side_encryption_param_for_standard_s3(
-        self, writer_standard, mock_session
-    ):
+    def test_no_server_side_encryption_param_for_standard_s3(self, writer_standard, mock_session):
         """STANDARD_S3 モードでも本ヘルパーは SSE パラメータを渡さない。
         標準 S3 側の bucket 設定（SSE-KMS 等）に委ねる。"""
         writer_standard.put_bytes(key="x.bin", body=b"abc")
@@ -275,16 +269,12 @@ class TestErrorHandling:
             operation,
         )
 
-    def test_s3ap_put_failure_wrapped_as_s3ap_helper_error(
-        self, writer_s3ap, mock_session
-    ):
+    def test_s3ap_put_failure_wrapped_as_s3ap_helper_error(self, writer_s3ap, mock_session):
         mock_session._s3_client.put_object.side_effect = self._client_error()
         with pytest.raises(S3ApHelperError, match="FSxN S3 Access Point"):
             writer_s3ap.put_bytes(key="x.bin", body=b"abc")
 
-    def test_standard_s3_put_failure_raises_client_error(
-        self, writer_standard, mock_session
-    ):
+    def test_standard_s3_put_failure_raises_client_error(self, writer_standard, mock_session):
         """STANDARD_S3 モードの失敗は ClientError をそのまま伝播"""
         mock_session._s3_client.put_object.side_effect = self._client_error()
         with pytest.raises(ClientError):
@@ -298,16 +288,10 @@ class TestErrorHandling:
 
 class TestBuildS3Uri:
     def test_standard_s3_uri(self, writer_standard):
-        assert (
-            writer_standard.build_s3_uri("report/out.json")
-            == "s3://my-output-bucket/report/out.json"
-        )
+        assert writer_standard.build_s3_uri("report/out.json") == "s3://my-output-bucket/report/out.json"
 
     def test_fsxn_s3ap_uri_with_prefix(self, writer_s3ap):
-        assert (
-            writer_s3ap.build_s3_uri("report/out.json")
-            == "s3://my-volume-ext-s3alias/ai-outputs/report/out.json"
-        )
+        assert writer_s3ap.build_s3_uri("report/out.json") == "s3://my-volume-ext-s3alias/ai-outputs/report/out.json"
 
 
 # ---------------------------------------------------------------------------
@@ -322,19 +306,13 @@ class TestGetOperations:
         return mock_body
 
     def test_get_bytes_standard_s3(self, writer_standard, mock_session):
-        mock_session._s3_client.get_object.return_value = {
-            "Body": self._body(b"\x00\x01")
-        }
+        mock_session._s3_client.get_object.return_value = {"Body": self._body(b"\x00\x01")}
         data = writer_standard.get_bytes("foo/bar.bin")
-        mock_session._s3_client.get_object.assert_called_once_with(
-            Bucket="my-output-bucket", Key="foo/bar.bin"
-        )
+        mock_session._s3_client.get_object.assert_called_once_with(Bucket="my-output-bucket", Key="foo/bar.bin")
         assert data == b"\x00\x01"
 
     def test_get_bytes_fsxn_s3ap_applies_prefix(self, writer_s3ap, mock_session):
-        mock_session._s3_client.get_object.return_value = {
-            "Body": self._body(b"payload")
-        }
+        mock_session._s3_client.get_object.return_value = {"Body": self._body(b"payload")}
         data = writer_s3ap.get_bytes("foo/bar.json")
         mock_session._s3_client.get_object.assert_called_once_with(
             Bucket="my-volume-ext-s3alias", Key="ai-outputs/foo/bar.json"
@@ -342,22 +320,16 @@ class TestGetOperations:
         assert data == b"payload"
 
     def test_get_text_decodes_utf8(self, writer_standard, mock_session):
-        mock_session._s3_client.get_object.return_value = {
-            "Body": self._body("こんにちは".encode("utf-8"))
-        }
+        mock_session._s3_client.get_object.return_value = {"Body": self._body("こんにちは".encode("utf-8"))}
         text = writer_standard.get_text("hello.txt")
         assert text == "こんにちは"
 
     def test_get_json_parses(self, writer_standard, mock_session):
-        mock_session._s3_client.get_object.return_value = {
-            "Body": self._body(b'{"foo": "bar", "count": 3}')
-        }
+        mock_session._s3_client.get_object.return_value = {"Body": self._body(b'{"foo": "bar", "count": 3}')}
         result = writer_standard.get_json("data.json")
         assert result == {"foo": "bar", "count": 3}
 
-    def test_s3ap_get_failure_wrapped_as_s3ap_helper_error(
-        self, writer_s3ap, mock_session
-    ):
+    def test_s3ap_get_failure_wrapped_as_s3ap_helper_error(self, writer_s3ap, mock_session):
         mock_session._s3_client.get_object.side_effect = ClientError(
             {"Error": {"Code": "NoSuchKey", "Message": "missing"}},
             "GetObject",
@@ -365,9 +337,7 @@ class TestGetOperations:
         with pytest.raises(S3ApHelperError, match="FSxN S3 Access Point"):
             writer_s3ap.get_bytes("missing.json")
 
-    def test_standard_s3_get_failure_raises_client_error(
-        self, writer_standard, mock_session
-    ):
+    def test_standard_s3_get_failure_raises_client_error(self, writer_standard, mock_session):
         mock_session._s3_client.get_object.side_effect = ClientError(
             {"Error": {"Code": "NoSuchKey", "Message": "missing"}},
             "GetObject",

@@ -110,10 +110,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     if not junction_path:
         raise ValueError("junction_path is required")
     if security_style not in ("unix", "ntfs", "mixed"):
-        raise ValueError(
-            f"Invalid security_style: {security_style}. "
-            "Must be 'unix', 'ntfs', or 'mixed'."
-        )
+        raise ValueError(f"Invalid security_style: {security_style}. Must be 'unix', 'ntfs', or 'mixed'.")
 
     mgmt_ip = os.environ["ONTAP_MGMT_IP"]
     svm_uuid = os.environ["SVM_UUID"]
@@ -128,9 +125,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
 
     # ONTAP REST API: POST /api/storage/volumes
-    headers = urllib3.make_headers(
-        basic_auth=f"{creds['username']}:{creds['password']}"
-    )
+    headers = urllib3.make_headers(basic_auth=f"{creds['username']}:{creds['password']}")
     headers["Content-Type"] = "application/json"
     headers["Accept"] = "application/json"
 
@@ -163,9 +158,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             resp.status,
             error_detail,
         )
-        raise RuntimeError(
-            f"ONTAP API error (status {resp.status}): {error_detail}"
-        )
+        raise RuntimeError(f"ONTAP API error (status {resp.status}): {error_detail}")
 
     result = json.loads(resp.data.decode("utf-8"))
     clone_uuid = result.get("uuid", "")

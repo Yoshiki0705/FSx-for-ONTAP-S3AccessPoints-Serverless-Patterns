@@ -218,9 +218,7 @@ class TestWriteAggregationToDynamoDB:
         )
 
         # 書き込まれたアイテムを確認
-        response = table.get_item(
-            Key={"test_id": "test-endpoint-aggregation", "timestamp": now}
-        )
+        response = table.get_item(Key={"test_id": "test-endpoint-aggregation", "timestamp": now})
         item = response["Item"]
 
         assert item["record_type"] == "aggregation"
@@ -262,13 +260,16 @@ class TestHandlerIntegration:
         context.aws_request_id = "req-123"
         context.function_name = "inference-comparison"
 
-        with patch.dict(os.environ, {
-            "AB_TEST_TABLE_NAME": TABLE_NAME,
-            "ENDPOINT_NAME": "test-endpoint",
-            "AGGREGATION_WINDOW_SECONDS": "300",
-            "RESULT_TTL_DAYS": "30",
-            "REGION": REGION,
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "AB_TEST_TABLE_NAME": TABLE_NAME,
+                "ENDPOINT_NAME": "test-endpoint",
+                "AGGREGATION_WINDOW_SECONDS": "300",
+                "RESULT_TTL_DAYS": "30",
+                "REGION": REGION,
+            },
+        ):
             with patch("functions.inference_comparison.handler.boto3") as mock_boto3:
                 mock_boto3.resource.return_value = dynamodb
 
@@ -290,12 +291,15 @@ class TestHandlerIntegration:
         context.aws_request_id = "req-456"
         context.function_name = "inference-comparison"
 
-        with patch.dict(os.environ, {
-            "AB_TEST_TABLE_NAME": TABLE_NAME,
-            "ENDPOINT_NAME": "test-endpoint",
-            "AGGREGATION_WINDOW_SECONDS": "300",
-            "REGION": REGION,
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "AB_TEST_TABLE_NAME": TABLE_NAME,
+                "ENDPOINT_NAME": "test-endpoint",
+                "AGGREGATION_WINDOW_SECONDS": "300",
+                "REGION": REGION,
+            },
+        ):
             with patch("functions.inference_comparison.handler.boto3") as mock_boto3:
                 mock_boto3.resource.return_value = dynamodb
 

@@ -102,9 +102,7 @@ class TestLengthPrefixedMode:
         stream_data = _make_length_prefixed_stream([payload])
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.LENGTH_PREFIXED
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.LENGTH_PREFIXED)
         result = await frame_reader.read_message()
 
         assert result == payload
@@ -117,9 +115,7 @@ class TestLengthPrefixedMode:
         stream_data = _make_length_prefixed_stream(messages)
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.LENGTH_PREFIXED
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.LENGTH_PREFIXED)
 
         results = []
         async for msg in frame_reader.read_messages():
@@ -131,9 +127,7 @@ class TestLengthPrefixedMode:
     @pytest.mark.asyncio
     async def test_eof_returns_none(self):
         reader = _make_stream_reader(b"")
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.LENGTH_PREFIXED
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.LENGTH_PREFIXED)
         result = await frame_reader.read_message()
         assert result is None
 
@@ -161,9 +155,7 @@ class TestLengthPrefixedMode:
         stream_data = header + b"x" * 10
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.LENGTH_PREFIXED
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.LENGTH_PREFIXED)
         result = await frame_reader.read_message()
         assert result is None
 
@@ -173,9 +165,7 @@ class TestLengthPrefixedMode:
         stream_data = _make_length_prefixed_stream(messages)
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.LENGTH_PREFIXED
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.LENGTH_PREFIXED)
 
         await frame_reader.read_message()
         assert frame_reader.bytes_read == 4 + 3
@@ -196,9 +186,7 @@ class TestFramelessMode:
         stream_data = _make_varint_delimited_stream([payload])
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.FRAMELESS
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.FRAMELESS)
         result = await frame_reader.read_message()
 
         assert result == payload
@@ -210,9 +198,7 @@ class TestFramelessMode:
         stream_data = _make_varint_delimited_stream(messages)
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.FRAMELESS
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.FRAMELESS)
 
         results = []
         async for msg in frame_reader.read_messages():
@@ -228,9 +214,7 @@ class TestFramelessMode:
         stream_data = _make_varint_delimited_stream([payload])
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.FRAMELESS
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.FRAMELESS)
         result = await frame_reader.read_message()
 
         assert result == payload
@@ -239,9 +223,7 @@ class TestFramelessMode:
     @pytest.mark.asyncio
     async def test_eof_returns_none(self):
         reader = _make_stream_reader(b"")
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.FRAMELESS
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.FRAMELESS)
         result = await frame_reader.read_message()
         assert result is None
 
@@ -267,9 +249,7 @@ class TestFramelessMode:
         stream_data = _make_varint_delimited_stream(messages)
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.FRAMELESS
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.FRAMELESS)
 
         await frame_reader.read_message()
         # varint(3) = 1 byte + payload 3 bytes = 4
@@ -293,9 +273,7 @@ class TestAutoDetectMode:
         stream_data = _make_length_prefixed_stream([payload])
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.AUTO_DETECT
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.AUTO_DETECT)
         result = await frame_reader.read_message()
 
         assert result == payload
@@ -331,9 +309,7 @@ class TestAutoDetectMode:
     async def test_auto_detect_eof(self):
         """EOF during auto-detect returns None."""
         reader = _make_stream_reader(b"")
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.AUTO_DETECT
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.AUTO_DETECT)
         result = await frame_reader.read_message()
         assert result is None
 
@@ -344,9 +320,7 @@ class TestAutoDetectMode:
         stream_data = _make_length_prefixed_stream(messages)
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.AUTO_DETECT
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.AUTO_DETECT)
 
         results = []
         async for msg in frame_reader.read_messages():
@@ -366,9 +340,7 @@ class TestReadMessages:
     @pytest.mark.asyncio
     async def test_empty_stream(self):
         reader = _make_stream_reader(b"")
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.LENGTH_PREFIXED
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.LENGTH_PREFIXED)
 
         results = []
         async for msg in frame_reader.read_messages():
@@ -382,9 +354,7 @@ class TestReadMessages:
         stream_data = _make_length_prefixed_stream(messages)
         reader = _make_stream_reader(stream_data)
 
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.LENGTH_PREFIXED
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.LENGTH_PREFIXED)
 
         results = []
         async for msg in frame_reader.read_messages():
@@ -402,18 +372,14 @@ class TestProperties:
     @pytest.mark.asyncio
     async def test_detected_mode_before_read(self):
         reader = _make_stream_reader(b"")
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.AUTO_DETECT
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.AUTO_DETECT)
         # Before any read, detected_mode returns AUTO_DETECT
         assert frame_reader.detected_mode == FramingMode.AUTO_DETECT
 
     @pytest.mark.asyncio
     async def test_detected_mode_explicit(self):
         reader = _make_stream_reader(b"")
-        frame_reader = ProtobufFrameReader(
-            reader=reader, mode=FramingMode.LENGTH_PREFIXED
-        )
+        frame_reader = ProtobufFrameReader(reader=reader, mode=FramingMode.LENGTH_PREFIXED)
         assert frame_reader.detected_mode == FramingMode.LENGTH_PREFIXED
 
     @pytest.mark.asyncio

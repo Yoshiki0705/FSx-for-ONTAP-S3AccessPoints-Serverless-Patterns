@@ -191,17 +191,24 @@ def test_point_cloud_qc_validation(point_count, inject_nan, mismatch_header):
     num_results=st.integers(min_value=0, max_value=5),
     num_detections_per_frame=st.integers(min_value=0, max_value=10),
     labels=st.lists(
-        st.sampled_from([
-            "Car", "Pedestrian", "Traffic Sign", "Lane",
-            "Truck", "Bicycle", "Building", "Tree", "Unknown",
-        ]),
+        st.sampled_from(
+            [
+                "Car",
+                "Pedestrian",
+                "Traffic Sign",
+                "Lane",
+                "Truck",
+                "Bicycle",
+                "Building",
+                "Tree",
+                "Unknown",
+            ]
+        ),
         min_size=1,
         max_size=5,
     ),
 )
-def test_coco_compatible_annotation_output(
-    num_results, num_detections_per_frame, labels
-):
+def test_coco_compatible_annotation_output(num_results, num_detections_per_frame, labels):
     """Feature: fsxn-s3ap-serverless-patterns-phase2, Property 13: COCO-compatible annotation output
 
     For any set of detection results, the output SHALL contain "images",
@@ -220,27 +227,33 @@ def test_coco_compatible_annotation_output(
         for frame_idx in range(min(2, num_detections_per_frame)):
             objects = []
             for label in labels[:num_detections_per_frame]:
-                objects.append({
-                    "label": label,
-                    "confidence": 85.0,
-                    "bounding_box": {
-                        "left": 0.1,
-                        "top": 0.2,
-                        "width": 0.3,
-                        "height": 0.4,
-                    },
-                })
-            detections.append({
-                "frame_index": frame_idx,
-                "timestamp_ms": frame_idx * 1000,
-                "objects": objects,
-            })
+                objects.append(
+                    {
+                        "label": label,
+                        "confidence": 85.0,
+                        "bounding_box": {
+                            "left": 0.1,
+                            "top": 0.2,
+                            "width": 0.3,
+                            "height": 0.4,
+                        },
+                    }
+                )
+            detections.append(
+                {
+                    "frame_index": frame_idx,
+                    "timestamp_ms": frame_idx * 1000,
+                    "objects": objects,
+                }
+            )
 
-        detection_results.append({
-            "file_key": f"video_{i}.mp4",
-            "frames_extracted": 10,
-            "detections": detections,
-        })
+        detection_results.append(
+            {
+                "file_key": f"video_{i}.mp4",
+                "frames_extracted": 10,
+                "detections": detections,
+            }
+        )
 
     # COCO アノテーション構築
     coco = build_coco_annotations(detection_results)
@@ -272,12 +285,10 @@ def test_coco_compatible_annotation_output(
         assert "bbox" in ann, "Annotation missing 'bbox'"
 
         assert ann["image_id"] in valid_image_ids, (
-            f"Annotation references invalid image_id: {ann['image_id']}, "
-            f"valid: {valid_image_ids}"
+            f"Annotation references invalid image_id: {ann['image_id']}, valid: {valid_image_ids}"
         )
         assert ann["category_id"] in valid_category_ids, (
-            f"Annotation references invalid category_id: {ann['category_id']}, "
-            f"valid: {valid_category_ids}"
+            f"Annotation references invalid category_id: {ann['category_id']}, valid: {valid_category_ids}"
         )
 
         # bbox は [x, y, width, height] 形式

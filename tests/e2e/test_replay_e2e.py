@@ -92,9 +92,7 @@ class ReplayE2EValidator:
         self.sqs_queue_url = sqs_queue_url
         self.ecs_cluster = ecs_cluster
         self.ecs_service = ecs_service
-        self.nfs_mount_path = nfs_mount_path or os.environ.get(
-            "NFS_MOUNT_PATH", "/mnt/fsxn"
-        )
+        self.nfs_mount_path = nfs_mount_path or os.environ.get("NFS_MOUNT_PATH", "/mnt/fsxn")
         self._region = region or os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1")
 
         self._ecs_client = boto3.client("ecs", region_name=self._region)
@@ -127,9 +125,7 @@ class ReplayE2EValidator:
             await self._stop_fargate_task()
 
             # Step 2: 停止中にテストファイルを作成 (Requirement 7.2)
-            logger.info(
-                "Step 2: Creating %d test files during restart...", num_test_files
-            )
+            logger.info("Step 2: Creating %d test files during restart...", num_test_files)
             volume_path = os.path.join(self.nfs_mount_path, self._test_prefix)
             created_files = await self.create_test_files_during_restart(
                 volume_path=volume_path,
@@ -137,9 +133,7 @@ class ReplayE2EValidator:
             )
 
             # Step 3: Fargate 再起動を待機
-            logger.info(
-                "Step 3: Waiting %d seconds for Fargate restart...", restart_delay_sec
-            )
+            logger.info("Step 3: Waiting %d seconds for Fargate restart...", restart_delay_sec)
             await asyncio.sleep(restart_delay_sec)
             await self._wait_for_task_running(timeout_sec=120)
 
@@ -164,9 +158,7 @@ class ReplayE2EValidator:
             )
 
             if delivery_result.missing_files:
-                logger.warning(
-                    "Missing events detected: %s", delivery_result.missing_files
-                )
+                logger.warning("Missing events detected: %s", delivery_result.missing_files)
 
             return result
 
@@ -307,10 +299,7 @@ class ReplayE2EValidator:
 
         task_arns = list_response.get("taskArns", [])
         if not task_arns:
-            raise RuntimeError(
-                f"No running tasks found for service {self.ecs_service} "
-                f"in cluster {self.ecs_cluster}"
-            )
+            raise RuntimeError(f"No running tasks found for service {self.ecs_service} in cluster {self.ecs_cluster}")
 
         # 最初のタスクを停止
         task_arn = task_arns[0]
@@ -325,9 +314,7 @@ class ReplayE2EValidator:
         # タスクが停止するまで待機
         await self._wait_for_task_stopped(task_arn, timeout_sec=60)
 
-    async def _wait_for_task_stopped(
-        self, task_arn: str, timeout_sec: int = 60
-    ) -> None:
+    async def _wait_for_task_stopped(self, task_arn: str, timeout_sec: int = 60) -> None:
         """タスクが停止するまで待機する."""
         start_time = time.time()
 
@@ -344,9 +331,7 @@ class ReplayE2EValidator:
 
             await asyncio.sleep(2)
 
-        raise TimeoutError(
-            f"Task {task_arn} did not stop within {timeout_sec} seconds"
-        )
+        raise TimeoutError(f"Task {task_arn} did not stop within {timeout_sec} seconds")
 
     async def _wait_for_task_running(self, timeout_sec: int = 120) -> None:
         """新しいタスクが RUNNING 状態になるまで待機する."""
@@ -366,21 +351,14 @@ class ReplayE2EValidator:
                     tasks=task_arns,
                 )
                 tasks = response.get("tasks", [])
-                running_tasks = [
-                    t for t in tasks if t.get("lastStatus") == "RUNNING"
-                ]
+                running_tasks = [t for t in tasks if t.get("lastStatus") == "RUNNING"]
                 if running_tasks:
-                    logger.info(
-                        "New task running: %s", running_tasks[0].get("taskArn")
-                    )
+                    logger.info("New task running: %s", running_tasks[0].get("taskArn"))
                     return
 
             await asyncio.sleep(5)
 
-        raise TimeoutError(
-            f"No running task found within {timeout_sec} seconds "
-            f"for service {self.ecs_service}"
-        )
+        raise TimeoutError(f"No running task found within {timeout_sec} seconds for service {self.ecs_service}")
 
     def _extract_file_key_from_message(self, message: dict[str, Any]) -> str | None:
         """SQS メッセージからファイルキーを抽出する.
@@ -515,9 +493,7 @@ class TestReplayE2EValidation:
         )
 
         # 欠損イベントのレポート (Requirement 7.5)
-        assert len(result.files_lost) == 0, (
-            f"Lost {len(result.files_lost)} events: {result.files_lost}"
-        )
+        assert len(result.files_lost) == 0, f"Lost {len(result.files_lost)} events: {result.files_lost}"
 
     @pytest.mark.asyncio
     async def test_replay_with_larger_batch(self, validator: ReplayE2EValidator):
@@ -532,9 +508,7 @@ class TestReplayE2EValidation:
         )
 
         assert result.total_files_created == 50
-        assert result.all_delivered, (
-            f"Lost {len(result.files_lost)} of 50 events"
-        )
+        assert result.all_delivered, f"Lost {len(result.files_lost)} of 50 events"
 
 
 @pytest.mark.e2e
@@ -604,9 +578,7 @@ class TestReplayE2EValidatorUnit:
         )
 
         message = {
-            "Body": json.dumps(
-                {"detail": {"file_path": "/mnt/fsxn/test/file.txt"}}
-            ),
+            "Body": json.dumps({"detail": {"file_path": "/mnt/fsxn/test/file.txt"}}),
             "ReceiptHandle": "test-handle",
         }
 
@@ -623,13 +595,7 @@ class TestReplayE2EValidatorUnit:
         )
 
         message = {
-            "Body": json.dumps(
-                {
-                    "Records": [
-                        {"s3": {"object": {"key": "test-prefix/file.txt"}}}
-                    ]
-                }
-            ),
+            "Body": json.dumps({"Records": [{"s3": {"object": {"key": "test-prefix/file.txt"}}}]}),
             "ReceiptHandle": "test-handle",
         }
 

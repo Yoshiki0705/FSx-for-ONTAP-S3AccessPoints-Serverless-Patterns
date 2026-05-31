@@ -129,15 +129,11 @@ def _build_research_prompt(
         f"- 最小品質スコア: {quality_summary.get('min_quality_score', 0)}\n"
         f"- 最大品質スコア: {quality_summary.get('max_quality_score', 0)}\n"
         f"- 平均 GC 含有率: {quality_summary.get('average_gc_content', 0)}%\n\n"
-        f"### サンプル別 QC\n"
-        + "\n".join(qc_summary_lines)
-        + "\n\n"
+        f"### サンプル別 QC\n" + "\n".join(qc_summary_lines) + "\n\n"
         f"### 品質閾値未満サンプル ({len(below_threshold)} 件)\n"
         + (", ".join(below_threshold) if below_threshold else "なし")
         + "\n\n"
-        "## バリアント統計\n\n"
-        + "\n".join(variant_summary_lines)
-        + "\n\n"
+        "## バリアント統計\n\n" + "\n".join(variant_summary_lines) + "\n\n"
         "## レポート要件\n"
         "1. エグゼクティブサマリー（データ品質の全体評価）\n"
         "2. シーケンシング品質の分析と問題サンプルの指摘\n"
@@ -160,34 +156,28 @@ def _invoke_bedrock(bedrock_client, model_id: str, prompt: str) -> str:
     Returns:
         str: 生成されたレポートテキスト
     """
-    body = json.dumps({
-        "messages": [
-            {"role": "user", "content": [{"text": prompt}]},
-        ],
-        "inferenceConfig": {
-            "maxTokens": 4096,
-            "temperature": 0.3,
-        },
-    })
+    body = json.dumps(
+        {
+            "messages": [
+                {"role": "user", "content": [{"text": prompt}]},
+            ],
+            "inferenceConfig": {
+                "maxTokens": 4096,
+                "temperature": 0.3,
+            },
+        }
+    )
 
     with xray_subsegment(
-
-
         name="bedrock_invokemodel",
-
-
         annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "genomics-pipeline"},
-
-
     ):
-
-
         response = bedrock_client.invoke_model(
-        modelId=model_id,
-        contentType="application/json",
-        accept="application/json",
-        body=body,
-    )
+            modelId=model_id,
+            contentType="application/json",
+            accept="application/json",
+            body=body,
+        )
 
     response_body = json.loads(response["body"].read())
     output = response_body.get("output", {})
@@ -258,9 +248,7 @@ def _extract_biomedical_entities(
                     entities["genes"].append(entity_text)
 
     except Exception as e:
-        logger.warning(
-            "Comprehend Medical entity extraction failed: %s", str(e)
-        )
+        logger.warning("Comprehend Medical entity extraction failed: %s", str(e))
         # エンティティ抽出失敗はワークフローを停止しない
 
     return entities
@@ -296,8 +284,7 @@ def handler(event, context):
     athena_results = event.get("athena_results", {})
 
     logger.info(
-        "Summary Generation started: model=%s, cross_region=%s, "
-        "qc_count=%d, variant_count=%d",
+        "Summary Generation started: model=%s, cross_region=%s, qc_count=%d, variant_count=%d",
         model_id,
         cross_region,
         len(qc_results),
@@ -315,14 +302,10 @@ def handler(event, context):
         services=["comprehendmedical"],
     )
     cross_region_client = CrossRegionClient(cross_region_config)
-    biomedical_entities = _extract_biomedical_entities(
-        cross_region_client, research_summary
-    )
+    biomedical_entities = _extract_biomedical_entities(cross_region_client, research_summary)
 
     # 閾値未満サンプル名の取得
-    below_threshold_samples = athena_results.get(
-        "below_threshold_sample_names", []
-    )
+    below_threshold_samples = athena_results.get("below_threshold_sample_names", [])
 
     # 構造化出力の構築
     summary = {
@@ -347,10 +330,7 @@ def handler(event, context):
 
     # 日付パーティション付き出力キー生成
     now = datetime.now(timezone.utc)
-    output_key = (
-        f"summaries/{now.strftime('%Y/%m/%d')}"
-        f"/research_summary_{context.aws_request_id}.json"
-    )
+    output_key = f"summaries/{now.strftime('%Y/%m/%d')}/research_summary_{context.aws_request_id}.json"
 
     # 構造化出力を OutputWriter 経由で出力先に書き出し
     output_data = {
@@ -398,16 +378,13 @@ def handler(event, context):
     )
 
     logger.info(
-        "Summary Generation completed: output_key=%s, "
-        "qc_count=%d, variant_count=%d, "
-        "below_threshold=%d, entities=%d",
+        "Summary Generation completed: output_key=%s, qc_count=%d, variant_count=%d, below_threshold=%d, entities=%d",
         output_key,
         len(qc_results),
         len(variant_stats),
         len(below_threshold_samples),
         sum(len(v) for v in biomedical_entities.values()),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="summary")

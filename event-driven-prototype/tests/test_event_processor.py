@@ -85,9 +85,7 @@ class TestDetectLabels:
     def test_confidence_rounded_to_two_decimals(self):
         """信頼度は小数点以下2桁に丸められる"""
         mock_client = MagicMock()
-        mock_client.detect_labels.return_value = {
-            "Labels": [{"Name": "Test", "Confidence": 87.6789}]
-        }
+        mock_client.detect_labels.return_value = {"Labels": [{"Name": "Test", "Confidence": 87.6789}]}
 
         result = detect_labels(mock_client, b"fake_image_data")
 
@@ -144,20 +142,27 @@ class TestGenerateCatalogMetadata:
     def test_successful_bedrock_invocation(self):
         """Bedrock 呼び出し成功時にメタデータを返す"""
         mock_client = MagicMock()
-        response_body = json.dumps({
-            "results": [{"outputText": json.dumps({
-                "title": "Test Product",
-                "description": "A test product",
-                "category": "electronics",
-                "tags": ["product", "electronics"],
-            })}]
-        }).encode()
-        mock_client.invoke_model.return_value = {
-            "body": MagicMock(read=MagicMock(return_value=response_body))
-        }
+        response_body = json.dumps(
+            {
+                "results": [
+                    {
+                        "outputText": json.dumps(
+                            {
+                                "title": "Test Product",
+                                "description": "A test product",
+                                "category": "electronics",
+                                "tags": ["product", "electronics"],
+                            }
+                        )
+                    }
+                ]
+            }
+        ).encode()
+        mock_client.invoke_model.return_value = {"body": MagicMock(read=MagicMock(return_value=response_body))}
 
         result = generate_catalog_metadata(
-            mock_client, "amazon.nova-lite-v1:0",
+            mock_client,
+            "amazon.nova-lite-v1:0",
             "products/test.jpg",
             [{"name": "Product", "confidence": 95.0}],
         )
@@ -176,7 +181,8 @@ class TestGenerateCatalogMetadata:
         ]
 
         result = generate_catalog_metadata(
-            mock_client, "amazon.nova-lite-v1:0",
+            mock_client,
+            "amazon.nova-lite-v1:0",
             "products/test_item.jpg",
             labels,
         )
@@ -188,15 +194,12 @@ class TestGenerateCatalogMetadata:
     def test_non_json_bedrock_response(self):
         """Bedrock が非 JSON テキストを返した場合"""
         mock_client = MagicMock()
-        response_body = json.dumps({
-            "results": [{"outputText": "This is not valid JSON"}]
-        }).encode()
-        mock_client.invoke_model.return_value = {
-            "body": MagicMock(read=MagicMock(return_value=response_body))
-        }
+        response_body = json.dumps({"results": [{"outputText": "This is not valid JSON"}]}).encode()
+        mock_client.invoke_model.return_value = {"body": MagicMock(read=MagicMock(return_value=response_body))}
 
         result = generate_catalog_metadata(
-            mock_client, "amazon.nova-lite-v1:0",
+            mock_client,
+            "amazon.nova-lite-v1:0",
             "products/item.jpg",
             [{"name": "Product", "confidence": 90.0}],
         )
@@ -211,9 +214,7 @@ class TestProcessImage:
     def test_successful_processing(self):
         """正常な画像処理フロー"""
         mock_s3 = MagicMock()
-        mock_s3.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=b"fake_image_bytes"))
-        }
+        mock_s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"fake_image_bytes"))}
 
         mock_rek = MagicMock()
         mock_rek.detect_labels.return_value = {
@@ -224,17 +225,23 @@ class TestProcessImage:
         }
 
         mock_bedrock = MagicMock()
-        response_body = json.dumps({
-            "results": [{"outputText": json.dumps({
-                "title": "Running Shoe",
-                "description": "Athletic footwear",
-                "category": "shoes",
-                "tags": ["shoe", "athletic"],
-            })}]
-        }).encode()
-        mock_bedrock.invoke_model.return_value = {
-            "body": MagicMock(read=MagicMock(return_value=response_body))
-        }
+        response_body = json.dumps(
+            {
+                "results": [
+                    {
+                        "outputText": json.dumps(
+                            {
+                                "title": "Running Shoe",
+                                "description": "Athletic footwear",
+                                "category": "shoes",
+                                "tags": ["shoe", "athletic"],
+                            }
+                        )
+                    }
+                ]
+            }
+        ).encode()
+        mock_bedrock.invoke_model.return_value = {"body": MagicMock(read=MagicMock(return_value=response_body))}
 
         result = process_image(
             s3_client=mock_s3,
@@ -263,14 +270,10 @@ class TestProcessImage:
     def test_below_threshold_returns_manual_review(self):
         """信頼度が閾値未満の場合 MANUAL_REVIEW を返す"""
         mock_s3 = MagicMock()
-        mock_s3.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=b"blurry_image"))
-        }
+        mock_s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"blurry_image"))}
 
         mock_rek = MagicMock()
-        mock_rek.detect_labels.return_value = {
-            "Labels": [{"Name": "Unknown", "Confidence": 30.0}]
-        }
+        mock_rek.detect_labels.return_value = {"Labels": [{"Name": "Unknown", "Confidence": 30.0}]}
 
         mock_bedrock = MagicMock()
         mock_bedrock.invoke_model.side_effect = Exception("skip")
@@ -292,9 +295,7 @@ class TestProcessImage:
     def test_event_to_processing_latency_calculated(self):
         """event_time が指定された場合にレイテンシが計算される"""
         mock_s3 = MagicMock()
-        mock_s3.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=b"image"))
-        }
+        mock_s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"image"))}
 
         mock_rek = MagicMock()
         mock_rek.detect_labels.return_value = {"Labels": []}
@@ -322,24 +323,23 @@ class TestProcessImage:
 class TestHandler:
     """handler 関数のテスト"""
 
-    @patch.dict(os.environ, {
-        "SOURCE_BUCKET": "test-source",
-        "OUTPUT_BUCKET": "test-output",
-        "CONFIDENCE_THRESHOLD": "70",
-        "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
-        "USE_CASE": "event-driven-prototype",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "SOURCE_BUCKET": "test-source",
+            "OUTPUT_BUCKET": "test-output",
+            "CONFIDENCE_THRESHOLD": "70",
+            "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
+            "USE_CASE": "event-driven-prototype",
+        },
+    )
     @patch("event_processor_handler.boto3")
     def test_eventbridge_event_format(self, mock_boto3):
         """EventBridge イベント形式からファイル情報を正しく抽出する"""
         mock_s3 = MagicMock()
-        mock_s3.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=b"image_data"))
-        }
+        mock_s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"image_data"))}
         mock_rek = MagicMock()
-        mock_rek.detect_labels.return_value = {
-            "Labels": [{"Name": "Product", "Confidence": 90.0}]
-        }
+        mock_rek.detect_labels.return_value = {"Labels": [{"Name": "Product", "Confidence": 90.0}]}
         mock_bedrock = MagicMock()
         mock_bedrock.invoke_model.side_effect = Exception("skip")
 
@@ -365,24 +365,23 @@ class TestHandler:
         assert result["file_key"] == "products/item.jpg"
         assert result["status"] in ("SUCCESS", "MANUAL_REVIEW")
 
-    @patch.dict(os.environ, {
-        "SOURCE_BUCKET": "test-source",
-        "OUTPUT_BUCKET": "test-output",
-        "CONFIDENCE_THRESHOLD": "70",
-        "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
-        "USE_CASE": "event-driven-prototype",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "SOURCE_BUCKET": "test-source",
+            "OUTPUT_BUCKET": "test-output",
+            "CONFIDENCE_THRESHOLD": "70",
+            "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
+            "USE_CASE": "event-driven-prototype",
+        },
+    )
     @patch("event_processor_handler.boto3")
     def test_step_functions_direct_input(self, mock_boto3):
         """Step Functions 直接呼び出し形式を処理する"""
         mock_s3 = MagicMock()
-        mock_s3.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=b"image_data"))
-        }
+        mock_s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"image_data"))}
         mock_rek = MagicMock()
-        mock_rek.detect_labels.return_value = {
-            "Labels": [{"Name": "Shoe", "Confidence": 85.0}]
-        }
+        mock_rek.detect_labels.return_value = {"Labels": [{"Name": "Shoe", "Confidence": 85.0}]}
         mock_bedrock = MagicMock()
         mock_bedrock.invoke_model.side_effect = Exception("skip")
 
@@ -401,11 +400,14 @@ class TestHandler:
 
         assert result["file_key"] == "products/shoe.jpg"
 
-    @patch.dict(os.environ, {
-        "SOURCE_BUCKET": "test-source",
-        "OUTPUT_BUCKET": "test-output",
-        "USE_CASE": "event-driven-prototype",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "SOURCE_BUCKET": "test-source",
+            "OUTPUT_BUCKET": "test-output",
+            "USE_CASE": "event-driven-prototype",
+        },
+    )
     def test_missing_file_key_raises_error(self):
         """ファイルキーが見つからない場合はエラーレスポンスを返す"""
         event = {"detail": {}}

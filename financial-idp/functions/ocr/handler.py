@@ -54,17 +54,13 @@ def _extract_text_sync(textract_client, document_bytes: bytes) -> str:
         str: 抽出されたテキスト
     """
     with xray_subsegment(
-
         name="textract_analyzedocument",
-
         annotations={"service_name": "textract", "operation": "AnalyzeDocument", "use_case": "financial-idp"},
-
     ):
-
         response = textract_client.analyze_document(
-        Document={"Bytes": document_bytes},
-        FeatureTypes=["TABLES", "FORMS"],
-    )
+            Document={"Bytes": document_bytes},
+            FeatureTypes=["TABLES", "FORMS"],
+        )
 
     lines = []
     for block in response.get("Blocks", []):
@@ -74,9 +70,7 @@ def _extract_text_sync(textract_client, document_bytes: bytes) -> str:
     return "\n".join(lines)
 
 
-def _extract_text_async(
-    textract_client, s3_bucket: str, s3_key: str
-) -> str:
+def _extract_text_async(textract_client, s3_bucket: str, s3_key: str) -> str:
     """非同期 Textract API (StartDocumentAnalysis) でテキスト抽出
 
     Args:
@@ -108,10 +102,7 @@ def _extract_text_async(
         if status == "SUCCEEDED":
             break
         elif status == "FAILED":
-            raise RuntimeError(
-                f"Textract job {job_id} failed: "
-                f"{result.get('StatusMessage', 'Unknown error')}"
-            )
+            raise RuntimeError(f"Textract job {job_id} failed: {result.get('StatusMessage', 'Unknown error')}")
 
         time.sleep(5)
 
@@ -124,9 +115,7 @@ def _extract_text_async(
     # ページネーション対応
     next_token = result.get("NextToken")
     while next_token:
-        result = textract_client.get_document_analysis(
-            JobId=job_id, NextToken=next_token
-        )
+        result = textract_client.get_document_analysis(JobId=job_id, NextToken=next_token)
         for block in result.get("Blocks", []):
             if block["BlockType"] == "LINE":
                 lines.append(block.get("Text", ""))
@@ -185,14 +174,10 @@ def handler(event, context):
             # 非同期 API: S3 ロケーションを渡す
             # 非同期 API は S3 バケット/キーを直接参照する
             s3_bucket = os.environ["S3_ACCESS_POINT"]
-            extracted_text = _extract_text_async(
-                textract_client, s3_bucket, document_key
-            )
+            extracted_text = _extract_text_async(textract_client, s3_bucket, document_key)
 
     except Exception as e:
-        logger.error(
-            "Textract error for document %s: %s", document_key, str(e)
-        )
+        logger.error("Textract error for document %s: %s", document_key, str(e))
         # エラー時はログ出力して空テキストで続行（ワークフロー全体を停止しない）
         return {
             "document_key": document_key,
@@ -201,7 +186,6 @@ def handler(event, context):
             "api_mode": api_mode,
             "error": str(e),
         }
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="ocr")

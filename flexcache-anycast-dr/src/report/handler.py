@@ -114,8 +114,7 @@ def _generate_health_recommendation(health_result: dict) -> str:
         )
     else:
         return (
-            "ALL caches unhealthy. CRITICAL: Immediate investigation required. "
-            "Consider failover to origin or DR site."
+            "ALL caches unhealthy. CRITICAL: Immediate investigation required. Consider failover to origin or DR site."
         )
 
 

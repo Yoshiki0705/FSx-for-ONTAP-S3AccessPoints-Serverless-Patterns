@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import pyproj
+
     PYPROJ_AVAILABLE = True
 except ImportError:
     pyproj = None
@@ -39,9 +40,7 @@ def normalize_crs(
     if not PYPROJ_AVAILABLE or source_crs == target_crs:
         return coordinates
     try:
-        transformer = pyproj.Transformer.from_crs(
-            source_crs, target_crs, always_xy=True
-        )
+        transformer = pyproj.Transformer.from_crs(source_crs, target_crs, always_xy=True)
         return [transformer.transform(x, y) for x, y in coordinates]
     except Exception as e:
         logger.warning("CRS transform failed: %s", e)

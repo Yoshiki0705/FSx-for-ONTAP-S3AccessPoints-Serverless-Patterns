@@ -13,9 +13,7 @@ from pathlib import Path
 import pytest
 
 # Add fpolicy-server to path
-sys.path.insert(
-    0, str(Path(__file__).parent.parent / "fpolicy-server")
-)
+sys.path.insert(0, str(Path(__file__).parent.parent / "fpolicy-server"))
 
 from protobuf_parser import (
     ProtobufParser,
@@ -52,7 +50,7 @@ class TestIsProtobufFormat:
     """Test format auto-detection."""
 
     def test_xml_detected(self):
-        assert is_protobuf_format(b"<?xml version=\"1.0\"?>") is False
+        assert is_protobuf_format(b'<?xml version="1.0"?>') is False
 
     def test_xml_with_header_tag(self):
         assert is_protobuf_format(b"<Header><NotfType>") is False
@@ -201,9 +199,7 @@ class TestEncodeNotification:
         pb_size = len(encoded)
 
         # Protobuf should be at least 30% smaller
-        assert pb_size < xml_size * 0.7, (
-            f"Protobuf ({pb_size}B) not significantly smaller than XML ({xml_size}B)"
-        )
+        assert pb_size < xml_size * 0.7, f"Protobuf ({pb_size}B) not significantly smaller than XML ({xml_size}B)"
 
     def test_encode_unknown_fields_ignored(self):
         """Unknown field names should be silently ignored."""
@@ -223,17 +219,19 @@ class TestPerformanceComparison:
         """Generate 1000 sample events for benchmarking."""
         events = []
         for i in range(1000):
-            events.append({
-                "file_path": f"/vol1/legal/contracts/2026/agreement-{i:04d}.pdf",
-                "volume_name": "vol1",
-                "svm_name": "FSxN_OnPre",
-                "operation_type": "create",
-                "client_ip": f"10.0.1.{i % 256}",
-                "file_size": 1048576 + i * 100,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "user_name": f"DOMAIN\\user{i:03d}",
-                "protocol": "smb",
-            })
+            events.append(
+                {
+                    "file_path": f"/vol1/legal/contracts/2026/agreement-{i:04d}.pdf",
+                    "volume_name": "vol1",
+                    "svm_name": "FSxN_OnPre",
+                    "operation_type": "create",
+                    "client_ip": f"10.0.1.{i % 256}",
+                    "file_size": 1048576 + i * 100,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "user_name": f"DOMAIN\\user{i:03d}",
+                    "protocol": "smb",
+                }
+            )
         return events
 
     @pytest.fixture
@@ -291,21 +289,19 @@ class TestPerformanceComparison:
         pb_time = time.perf_counter() - start
 
         # Log results
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("Performance Comparison (1000 events)")
-        print(f"{'='*60}")
-        print(f"  XML regex parse:    {xml_time*1000:.2f} ms ({xml_time/1000*1000:.4f} ms/event)")
-        print(f"  Protobuf parse:     {pb_time*1000:.2f} ms ({pb_time/1000*1000:.4f} ms/event)")
-        print(f"  Speedup:            {xml_time/pb_time:.2f}x")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
+        print(f"  XML regex parse:    {xml_time * 1000:.2f} ms ({xml_time / 1000 * 1000:.4f} ms/event)")
+        print(f"  Protobuf parse:     {pb_time * 1000:.2f} ms ({pb_time / 1000 * 1000:.4f} ms/event)")
+        print(f"  Speedup:            {xml_time / pb_time:.2f}x")
+        print(f"{'=' * 60}")
 
         # Protobuf should be at least as fast (may vary on different hardware)
         # We don't assert strict speedup since Python protobuf parsing
         # without compiled C extensions may not always be faster than regex
         # The real benefit is in message size reduction
-        assert pb_time < xml_time * 3, (
-            f"Protobuf ({pb_time:.4f}s) unexpectedly much slower than XML ({xml_time:.4f}s)"
-        )
+        assert pb_time < xml_time * 3, f"Protobuf ({pb_time:.4f}s) unexpectedly much slower than XML ({xml_time:.4f}s)"
 
     def test_message_size_comparison(self, xml_messages, protobuf_messages):
         """Protobuf messages should be significantly smaller."""
@@ -314,13 +310,13 @@ class TestPerformanceComparison:
 
         reduction = (1 - pb_total / xml_total) * 100
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("Message Size Comparison (1000 events)")
-        print(f"{'='*60}")
-        print(f"  XML total:          {xml_total:,} bytes ({xml_total/1000:.0f} bytes/event avg)")
-        print(f"  Protobuf total:     {pb_total:,} bytes ({pb_total/1000:.0f} bytes/event avg)")
+        print(f"{'=' * 60}")
+        print(f"  XML total:          {xml_total:,} bytes ({xml_total / 1000:.0f} bytes/event avg)")
+        print(f"  Protobuf total:     {pb_total:,} bytes ({pb_total / 1000:.0f} bytes/event avg)")
         print(f"  Size reduction:     {reduction:.1f}%")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Protobuf should be at least 30% smaller
         assert reduction > 30, f"Size reduction only {reduction:.1f}% (expected >30%)"

@@ -189,23 +189,27 @@ class TestParsBedrockResponse:
 
     def test_parse_nova_response(self):
         """Nova モデルレスポンスが正しく解析されること"""
-        response_body = json.dumps({
-            "results": [{
-                "outputText": json.dumps({
-                    "sender_name": "テスト送り主",
-                    "tracking_number": "ABC-123",
-                })
-            }]
-        }).encode()
+        response_body = json.dumps(
+            {
+                "results": [
+                    {
+                        "outputText": json.dumps(
+                            {
+                                "sender_name": "テスト送り主",
+                                "tracking_number": "ABC-123",
+                            }
+                        )
+                    }
+                ]
+            }
+        ).encode()
         result = _parse_bedrock_response(response_body)
         assert result["sender_name"] == "テスト送り主"
         assert result["tracking_number"] == "ABC-123"
 
     def test_parse_invalid_json_returns_empty(self):
         """無効な JSON で空辞書が返ること"""
-        response_body = json.dumps({
-            "results": [{"outputText": "This is not JSON"}]
-        }).encode()
+        response_body = json.dumps({"results": [{"outputText": "This is not JSON"}]}).encode()
         result = _parse_bedrock_response(response_body)
         assert result == {}
 
@@ -310,12 +314,15 @@ class TestEstimateShelfOccupancy:
 class TestOcrHandler:
     """OCR Lambda ハンドラーのテスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "CROSS_REGION": "us-east-1",
-        "CONFIDENCE_THRESHOLD": "80",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "CROSS_REGION": "us-east-1",
+            "CONFIDENCE_THRESHOLD": "80",
+        },
+    )
     @patch("functions.ocr.handler.OutputWriter")
     @patch("functions.ocr.handler.CrossRegionClient")
     @patch("functions.ocr.handler.S3ApHelper")

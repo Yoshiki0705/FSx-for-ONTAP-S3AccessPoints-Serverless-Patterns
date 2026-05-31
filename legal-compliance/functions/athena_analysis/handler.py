@@ -124,19 +124,15 @@ def _execute_athena_query(
         dict: クエリ結果 (rows, column_info)
     """
     with xray_subsegment(
-
         name="athena_startqueryexecution",
-
         annotations={"service_name": "athena", "operation": "StartQueryExecution", "use_case": "legal-compliance"},
-
     ):
-
         response = athena_client.start_query_execution(
-        QueryString=query,
-        QueryExecutionContext={"Database": database},
-        WorkGroup=workgroup,
-        ResultConfiguration={"OutputLocation": output_location},
-    )
+            QueryString=query,
+            QueryExecutionContext={"Database": database},
+            WorkGroup=workgroup,
+            ResultConfiguration={"OutputLocation": output_location},
+        )
     query_execution_id = response["QueryExecutionId"]
 
     # クエリ完了を待機
@@ -233,7 +229,6 @@ def handler(event, context):
         )
 
     logger.info("Athena Analysis completed: %d queries executed", len(query_results))
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="athena_analysis")

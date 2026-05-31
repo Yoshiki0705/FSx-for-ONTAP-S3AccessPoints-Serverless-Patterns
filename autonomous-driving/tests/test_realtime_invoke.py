@@ -96,9 +96,7 @@ class TestInvokeEndpointWithRetry:
     def test_invoked_production_variant_extraction(self):
         """InvokedProductionVariant ヘッダーが正しく抽出される"""
         mock_client = MagicMock()
-        mock_client.invoke_endpoint.return_value = _make_invoke_response(
-            variant_name="model-v2-canary"
-        )
+        mock_client.invoke_endpoint.return_value = _make_invoke_response(variant_name="model-v2-canary")
 
         result = _invoke_endpoint_with_retry(
             runtime_client=mock_client,
@@ -161,9 +159,7 @@ class TestInvokeEndpointWithRetry:
     def test_non_retryable_error_raises_immediately(self):
         """リトライ不可能なエラーは即座に raise する"""
         mock_client = MagicMock()
-        mock_client.invoke_endpoint.side_effect = _make_client_error(
-            "ValidationError", "Invalid input"
-        )
+        mock_client.invoke_endpoint.side_effect = _make_client_error("ValidationError", "Invalid input")
 
         with pytest.raises(ClientError) as exc_info:
             _invoke_endpoint_with_retry(
@@ -183,9 +179,7 @@ class TestInvokeEndpointWithRetry:
     def test_max_retries_exceeded_raises_client_error(self, mock_sleep):
         """最大リトライ回数超過後に ClientError を raise する"""
         mock_client = MagicMock()
-        mock_client.invoke_endpoint.side_effect = _make_client_error(
-            "ThrottlingException"
-        )
+        mock_client.invoke_endpoint.side_effect = _make_client_error("ThrottlingException")
 
         with pytest.raises(ClientError) as exc_info:
             _invoke_endpoint_with_retry(
@@ -220,9 +214,7 @@ class TestDownloadFromS3AP:
         result = _download_from_s3ap(mock_s3, "s3://my-bucket/data/file.bin")
 
         assert result == b"point-cloud-data"
-        mock_s3.get_object.assert_called_once_with(
-            Bucket="my-bucket", Key="data/file.bin"
-        )
+        mock_s3.get_object.assert_called_once_with(Bucket="my-bucket", Key="data/file.bin")
 
     def test_download_with_s3_access_point_alias(self):
         """S3 AP エイリアス指定時はバケット名を置換する"""
@@ -231,14 +223,10 @@ class TestDownloadFromS3AP:
         mock_body.read.return_value = b"data"
         mock_s3.get_object.return_value = {"Body": mock_body}
 
-        result = _download_from_s3ap(
-            mock_s3, "s3://original-bucket/key.bin", "my-ap-alias-s3alias"
-        )
+        result = _download_from_s3ap(mock_s3, "s3://original-bucket/key.bin", "my-ap-alias-s3alias")
 
         assert result == b"data"
-        mock_s3.get_object.assert_called_once_with(
-            Bucket="my-ap-alias-s3alias", Key="key.bin"
-        )
+        mock_s3.get_object.assert_called_once_with(Bucket="my-ap-alias-s3alias", Key="key.bin")
 
     def test_download_without_key(self):
         """キーなしの S3 URI（バケットのみ）"""
@@ -262,9 +250,7 @@ class TestParseInferenceResponse:
 
     def test_extracts_variant_name(self):
         """InvokedProductionVariant ヘッダーからバリアント名を抽出する"""
-        response = _make_invoke_response(
-            body=b'{"result": "ok"}', variant_name="model-v2"
-        )
+        response = _make_invoke_response(body=b'{"result": "ok"}', variant_name="model-v2")
         parsed = _parse_inference_response(response)
 
         assert parsed["variant_name"] == "model-v2"

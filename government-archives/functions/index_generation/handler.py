@@ -46,9 +46,7 @@ def _build_index_document(
     }
 
 
-def _index_to_opensearch(
-    endpoint: str, index_name: str, doc_id: str, document: dict[str, Any]
-) -> bool:
+def _index_to_opensearch(endpoint: str, index_name: str, doc_id: str, document: dict[str, Any]) -> bool:
     """OpenSearch に index API でドキュメントを保存する。
 
     opensearch-py ライブラリが利用可能な場合に使用（Lambda Layer で提供）。

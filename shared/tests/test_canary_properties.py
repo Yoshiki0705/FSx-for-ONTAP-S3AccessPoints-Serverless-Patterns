@@ -108,9 +108,13 @@ class TestCanaryFailIndependence:
 
     @pytest.mark.property
     @given(failures=check_failure_strategy)
-    @settings(max_examples=50, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-    ])
+    @settings(
+        max_examples=50,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     def test_all_checks_always_executed(self, failures: tuple[bool, bool, bool]):
         """任意の失敗組み合わせで全 3 チェックが実行される."""
         list_fails, get_fails, ontap_fails = failures
@@ -143,8 +147,7 @@ class TestCanaryFailIndependence:
         # Property: All 3 checks are always present in results
         checks = result["checks"]
         assert len(checks) == 3, (
-            f"Expected 3 checks, got {len(checks)}. "
-            f"Failures: list={list_fails}, get={get_fails}, ontap={ontap_fails}"
+            f"Expected 3 checks, got {len(checks)}. Failures: list={list_fails}, get={get_fails}, ontap={ontap_fails}"
         )
 
         # Verify each check has the expected structure
@@ -162,9 +165,13 @@ class TestCanaryFailIndependence:
 
     @pytest.mark.property
     @given(failures=check_failure_strategy)
-    @settings(max_examples=50, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-    ])
+    @settings(
+        max_examples=50,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     def test_failure_isolation(self, failures: tuple[bool, bool, bool]):
         """1 つのチェック失敗が他のチェック結果に影響しない."""
         list_fails, get_fails, ontap_fails = failures
@@ -221,9 +228,13 @@ class TestCanaryNoSensitiveDataInResults:
 
     @pytest.mark.property
     @given(content=s3_content_strategy)
-    @settings(max_examples=100, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-    ])
+    @settings(
+        max_examples=100,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     def test_s3_content_not_in_result(self, content: str):
         """任意の S3 オブジェクト内容が結果に含まれない."""
         env_vars = {
@@ -257,8 +268,7 @@ class TestCanaryNoSensitiveDataInResults:
         # The S3 object content must NOT appear in the result
         # (content is guaranteed to be > 3 chars due to min_size=4 in strategy)
         assert content not in result_str, (
-            f"S3 object content leaked into canary result. "
-            f"Content (first 50 chars): {content[:50]!r}"
+            f"S3 object content leaked into canary result. Content (first 50 chars): {content[:50]!r}"
         )
 
         # Verify result only contains expected fields (status, latency, error messages)
@@ -270,9 +280,13 @@ class TestCanaryNoSensitiveDataInResults:
 
     @pytest.mark.property
     @given(content=st.binary(min_size=10, max_size=1000))
-    @settings(max_examples=50, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-    ])
+    @settings(
+        max_examples=50,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     def test_binary_content_not_in_result(self, content: bytes):
         """任意のバイナリ S3 オブジェクト内容が結果に含まれない."""
         env_vars = {
@@ -312,6 +326,4 @@ class TestCanaryNoSensitiveDataInResults:
 
         # Binary content should not appear in result (neither raw nor hex-encoded)
         if len(content_hex) > 6:
-            assert content_hex not in result_str, (
-                "Binary content (hex) leaked into canary result"
-            )
+            assert content_hex not in result_str, "Binary content (hex) leaked into canary result"

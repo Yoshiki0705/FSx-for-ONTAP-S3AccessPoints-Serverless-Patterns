@@ -31,9 +31,7 @@ from register_model import (
 MODEL_PACKAGE_GROUP = "test-point-cloud-segmentation"
 MODEL_URL = "s3://test-bucket/models/model.tar.gz"
 IMAGE_URI = "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/pytorch-inference:2.0-cpu-py310"
-MODEL_PACKAGE_ARN = (
-    "arn:aws:sagemaker:ap-northeast-1:123456789012:model-package/test-group/1"
-)
+MODEL_PACKAGE_ARN = "arn:aws:sagemaker:ap-northeast-1:123456789012:model-package/test-group/1"
 
 
 # ---------------------------------------------------------------------------
@@ -279,9 +277,7 @@ class TestListModelVersions:
     def test_list_empty_results(self):
         """バージョンが存在しない場合は空リストを返す"""
         mock_client = MagicMock()
-        mock_client.list_model_packages.return_value = {
-            "ModelPackageSummaryList": []
-        }
+        mock_client.list_model_packages.return_value = {"ModelPackageSummaryList": []}
 
         result = list_model_versions(
             sagemaker_client=mock_client,

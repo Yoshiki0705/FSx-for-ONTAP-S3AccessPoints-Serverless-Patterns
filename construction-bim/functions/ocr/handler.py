@@ -91,10 +91,7 @@ def _extract_tables_from_blocks(blocks: list[dict]) -> list[dict]:
                 for col_idx in range(1, max_col + 1):
                     cell_text = ""
                     for cell in cells:
-                        if (
-                            cell.get("RowIndex") == row_idx
-                            and cell.get("ColumnIndex") == col_idx
-                        ):
+                        if cell.get("RowIndex") == row_idx and cell.get("ColumnIndex") == col_idx:
                             # セルのテキストを取得
                             cell_rels = cell.get("Relationships", [])
                             for cell_rel in cell_rels:
@@ -209,7 +206,6 @@ def handler(event, context):
         len(extracted_text),
         len(tables),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="ocr")

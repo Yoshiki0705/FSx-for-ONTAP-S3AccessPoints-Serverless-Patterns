@@ -95,62 +95,79 @@ def _classify_geotiff_from_header(image_bytes: bytes, source_key: str) -> list[d
 
     # ファイル名ヒューリスティック
     if "city" in key_lower or "urban" in key_lower:
-        labels.extend([
-            {"Name": "Building", "Confidence": 85.0},
-            {"Name": "Road", "Confidence": 78.0},
-            {"Name": "Vehicle", "Confidence": 65.0},
-            {"Name": "Tree", "Confidence": 45.0},
-        ])
+        labels.extend(
+            [
+                {"Name": "Building", "Confidence": 85.0},
+                {"Name": "Road", "Confidence": 78.0},
+                {"Name": "Vehicle", "Confidence": 65.0},
+                {"Name": "Tree", "Confidence": 45.0},
+            ]
+        )
     elif "rural" in key_lower or "farm" in key_lower or "agri" in key_lower:
-        labels.extend([
-            {"Name": "Field", "Confidence": 88.0},
-            {"Name": "Farm", "Confidence": 82.0},
-            {"Name": "Tree", "Confidence": 55.0},
-            {"Name": "Road", "Confidence": 30.0},
-        ])
+        labels.extend(
+            [
+                {"Name": "Field", "Confidence": 88.0},
+                {"Name": "Farm", "Confidence": 82.0},
+                {"Name": "Tree", "Confidence": 55.0},
+                {"Name": "Road", "Confidence": 30.0},
+            ]
+        )
     elif "forest" in key_lower or "green" in key_lower:
-        labels.extend([
-            {"Name": "Forest", "Confidence": 92.0},
-            {"Name": "Tree", "Confidence": 88.0},
-            {"Name": "Water", "Confidence": 35.0},
-        ])
+        labels.extend(
+            [
+                {"Name": "Forest", "Confidence": 92.0},
+                {"Name": "Tree", "Confidence": 88.0},
+                {"Name": "Water", "Confidence": 35.0},
+            ]
+        )
     elif "water" in key_lower or "coast" in key_lower or "river" in key_lower:
-        labels.extend([
-            {"Name": "Water", "Confidence": 90.0},
-            {"Name": "Lake", "Confidence": 75.0},
-            {"Name": "Tree", "Confidence": 30.0},
-        ])
+        labels.extend(
+            [
+                {"Name": "Water", "Confidence": 90.0},
+                {"Name": "Lake", "Confidence": 75.0},
+                {"Name": "Tree", "Confidence": 30.0},
+            ]
+        )
     else:
         # デフォルト: 混合都市部（スマートシティ UC のデモ想定）
         if bands >= 4:
             # マルチスペクトル衛星画像
-            labels.extend([
-                {"Name": "Building", "Confidence": 72.0},
-                {"Name": "Road", "Confidence": 68.0},
-                {"Name": "Tree", "Confidence": 55.0},
-                {"Name": "Field", "Confidence": 40.0},
-                {"Name": "Water", "Confidence": 25.0},
-            ])
+            labels.extend(
+                [
+                    {"Name": "Building", "Confidence": 72.0},
+                    {"Name": "Road", "Confidence": 68.0},
+                    {"Name": "Tree", "Confidence": 55.0},
+                    {"Name": "Field", "Confidence": 40.0},
+                    {"Name": "Water", "Confidence": 25.0},
+                ]
+            )
         elif bands == 3:
             # RGB 航空写真
-            labels.extend([
-                {"Name": "Building", "Confidence": 78.0},
-                {"Name": "Road", "Confidence": 72.0},
-                {"Name": "Vehicle", "Confidence": 60.0},
-                {"Name": "Tree", "Confidence": 48.0},
-            ])
+            labels.extend(
+                [
+                    {"Name": "Building", "Confidence": 78.0},
+                    {"Name": "Road", "Confidence": 72.0},
+                    {"Name": "Vehicle", "Confidence": 60.0},
+                    {"Name": "Tree", "Confidence": 48.0},
+                ]
+            )
         else:
             # 単バンド DEM/DSM
-            labels.extend([
-                {"Name": "Building", "Confidence": 65.0},
-                {"Name": "Forest", "Confidence": 55.0},
-                {"Name": "Road", "Confidence": 45.0},
-                {"Name": "Water", "Confidence": 35.0},
-            ])
+            labels.extend(
+                [
+                    {"Name": "Building", "Confidence": 65.0},
+                    {"Name": "Forest", "Confidence": 55.0},
+                    {"Name": "Road", "Confidence": 45.0},
+                    {"Name": "Water", "Confidence": 35.0},
+                ]
+            )
 
     logger.info(
         "GeoTIFF header classification: source=%s, bands=%d, size=%.1fMB, labels=%d",
-        source_key, bands, file_size_mb, len(labels),
+        source_key,
+        bands,
+        file_size_mb,
+        len(labels),
     )
     return labels
 
@@ -190,21 +207,15 @@ def _estimate_bands_from_tiff(image_bytes: bytes) -> int:
     if ifd_offset + 2 > len(image_bytes):
         return 3
 
-    num_entries = int.from_bytes(
-        image_bytes[ifd_offset : ifd_offset + 2], byte_order
-    )
+    num_entries = int.from_bytes(image_bytes[ifd_offset : ifd_offset + 2], byte_order)
 
     for i in range(min(num_entries, 100)):  # Safety limit
         entry_offset = ifd_offset + 2 + i * 12
         if entry_offset + 12 > len(image_bytes):
             break
-        tag = int.from_bytes(
-            image_bytes[entry_offset : entry_offset + 2], byte_order
-        )
+        tag = int.from_bytes(image_bytes[entry_offset : entry_offset + 2], byte_order)
         if tag == 277:  # SamplesPerPixel
-            value = int.from_bytes(
-                image_bytes[entry_offset + 8 : entry_offset + 12], byte_order
-            )
+            value = int.from_bytes(image_bytes[entry_offset + 8 : entry_offset + 12], byte_order)
             return value
 
     return 3  # Default RGB
@@ -265,15 +276,11 @@ def handler(event, context):
             )
             labels = response.get("Labels", [])
         except rekognition.exceptions.InvalidImageFormatException as e:
-            logger.warning(
-                "InvalidImageFormat for GeoTIFF — using header-based classification: %s", e
-            )
+            logger.warning("InvalidImageFormat for GeoTIFF — using header-based classification: %s", e)
             labels = _classify_geotiff_from_header(image_bytes, source_key)
             inference_path = "geotiff_header_analysis"
         except rekognition.exceptions.ImageTooLargeException as e:
-            logger.warning(
-                "ImageTooLarge — using header-based classification: %s", e
-            )
+            logger.warning("ImageTooLarge — using header-based classification: %s", e)
             labels = _classify_geotiff_from_header(image_bytes, source_key)
             inference_path = "geotiff_header_analysis"
         except Exception as e:

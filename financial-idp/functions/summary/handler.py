@@ -109,27 +109,24 @@ def handler(event, context):
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [{"text": prompt}],
-                    }
-                ],
-                "inferenceConfig": {
-                    "maxTokens": 2048,
-                    "temperature": 0.3,
-                },
-            }),
+            body=json.dumps(
+                {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [{"text": prompt}],
+                        }
+                    ],
+                    "inferenceConfig": {
+                        "maxTokens": 2048,
+                        "temperature": 0.3,
+                    },
+                }
+            ),
         )
 
         response_body = json.loads(bedrock_response["body"].read())
-        summary_text = (
-            response_body.get("output", {})
-            .get("message", {})
-            .get("content", [{}])[0]
-            .get("text", "")
-        )
+        summary_text = response_body.get("output", {}).get("message", {}).get("content", [{}])[0].get("text", "")
     except Exception as e:
         logger.error("Bedrock InvokeModel failed: %s", e)
         summary_text = f"サマリー生成に失敗しました: {str(e)[:200]}"
@@ -144,10 +141,7 @@ def handler(event, context):
 
     # S3 AP に書き出し
     s3ap_output = S3ApHelper(os.environ["S3_ACCESS_POINT_OUTPUT"])
-    output_key = (
-        f"summaries/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{document_key.replace('/', '_')}.json"
-    )
+    output_key = f"summaries/{datetime.utcnow().strftime('%Y/%m/%d')}/{document_key.replace('/', '_')}.json"
 
     s3ap_output.put_object(
         key=output_key,
@@ -160,7 +154,6 @@ def handler(event, context):
         document_key,
         output_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="summary")

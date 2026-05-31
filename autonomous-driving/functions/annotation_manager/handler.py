@@ -53,16 +53,28 @@ COCO_CATEGORIES = [
 
 # ラベル名から COCO カテゴリ ID へのマッピング
 LABEL_TO_CATEGORY = {
-    "car": 1, "vehicle": 1, "automobile": 1, "truck": 1, "bus": 1,
+    "car": 1,
+    "vehicle": 1,
+    "automobile": 1,
+    "truck": 1,
+    "bus": 1,
     "motorcycle": 1,
-    "pedestrian": 2, "person": 2, "human": 2,
-    "cyclist": 3, "bicycle": 3,
-    "traffic sign": 4, "stop sign": 4, "sign": 4,
+    "pedestrian": 2,
+    "person": 2,
+    "human": 2,
+    "cyclist": 3,
+    "bicycle": 3,
+    "traffic sign": 4,
+    "stop sign": 4,
+    "sign": 4,
     "traffic light": 5,
-    "lane": 6, "lane marking": 6,
-    "road": 7, "highway": 7,
+    "lane": 6,
+    "lane marking": 6,
+    "road": 7,
+    "highway": 7,
     "building": 8,
-    "tree": 9, "vegetation": 9,
+    "tree": 9,
+    "vegetation": 9,
 }
 
 
@@ -235,9 +247,7 @@ def _calculate_area(bbox: dict | None) -> float:
     return round(w * h, 1)
 
 
-def _invoke_bedrock_annotation_suggestions(
-    bedrock_client, model_id: str, detection_results: list[dict]
-) -> str:
+def _invoke_bedrock_annotation_suggestions(bedrock_client, model_id: str, detection_results: list[dict]) -> str:
     """Bedrock でアノテーション提案を生成する
 
     Args:
@@ -259,37 +269,31 @@ def _invoke_bedrock_annotation_suggestions(
 
     try:
         with xray_subsegment(
-
             name="bedrock_invokemodel",
-
             annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "autonomous-driving"},
-
         ):
-
             response = bedrock_client.invoke_model(
-            modelId=model_id,
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps({
-                "inputText": prompt,
-                "textGenerationConfig": {
-                    "maxTokenCount": 1024,
-                    "temperature": 0.3,
-                },
-            }),
-        )
+                modelId=model_id,
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps(
+                    {
+                        "inputText": prompt,
+                        "textGenerationConfig": {
+                            "maxTokenCount": 1024,
+                            "temperature": 0.3,
+                        },
+                    }
+                ),
+            )
         response_body = json.loads(response["body"].read())
-        return response_body.get("results", [{}])[0].get(
-            "outputText", "No suggestions generated"
-        )
+        return response_body.get("results", [{}])[0].get("outputText", "No suggestions generated")
     except Exception as e:
         logger.warning("Bedrock annotation suggestion failed: %s", e)
         return f"Annotation suggestion generation failed: {e}"
 
 
-def _start_sagemaker_transform(
-    sagemaker_client, job_name_prefix: str, qc_results: list[dict]
-) -> dict:
+def _start_sagemaker_transform(sagemaker_client, job_name_prefix: str, qc_results: list[dict]) -> dict:
     """SageMaker Batch Transform ジョブを開始する（点群セグメンテーション）
 
     Args:
@@ -337,9 +341,7 @@ def handler(event, context):
     output_writer = OutputWriter.from_env()
     model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
-    transform_job_prefix = os.environ.get(
-        "SAGEMAKER_TRANSFORM_JOB_NAME", "ad-segmentation"
-    )
+    transform_job_prefix = os.environ.get("SAGEMAKER_TRANSFORM_JOB_NAME", "ad-segmentation")
 
     logger.info(
         "Annotation Manager started: detection_results=%d, qc_results=%d",
@@ -348,21 +350,15 @@ def handler(event, context):
     )
 
     # COCO 互換アノテーション構築
-    coco_annotations = build_coco_annotations(
-        detection_results, qc_results, sagemaker_output
-    )
+    coco_annotations = build_coco_annotations(detection_results, qc_results, sagemaker_output)
 
     # Bedrock でアノテーション提案生成
     bedrock_client = boto3.client("bedrock-runtime")
-    suggestions = _invoke_bedrock_annotation_suggestions(
-        bedrock_client, model_id, detection_results
-    )
+    suggestions = _invoke_bedrock_annotation_suggestions(bedrock_client, model_id, detection_results)
 
     # SageMaker Batch Transform（点群セグメンテーション）
     sagemaker_client = boto3.client("sagemaker")
-    transform_info = _start_sagemaker_transform(
-        sagemaker_client, transform_job_prefix, qc_results
-    )
+    transform_info = _start_sagemaker_transform(sagemaker_client, transform_job_prefix, qc_results)
 
     # 出力キー生成
     now = datetime.now(timezone.utc)
@@ -379,12 +375,8 @@ def handler(event, context):
             "total_images": len(coco_annotations["images"]),
             "total_annotations": len(coco_annotations["annotations"]),
             "total_categories": len(coco_annotations["categories"]),
-            "qc_passed_files": len(
-                [r for r in qc_results if r.get("status") == "PASS"]
-            ),
-            "qc_failed_files": len(
-                [r for r in qc_results if r.get("status") == "FAIL"]
-            ),
+            "qc_passed_files": len([r for r in qc_results if r.get("status") == "PASS"]),
+            "qc_failed_files": len([r for r in qc_results if r.get("status") == "FAIL"]),
         },
     }
 
@@ -397,11 +389,14 @@ def handler(event, context):
             sns_client.publish(
                 TopicArn=sns_topic_arn,
                 Subject="Autonomous Driving Annotation Complete",
-                Message=json.dumps({
-                    "status": "SUCCESS",
-                    "total_annotations": len(coco_annotations["annotations"]),
-                    "output_key": output_key,
-                }, indent=2),
+                Message=json.dumps(
+                    {
+                        "status": "SUCCESS",
+                        "total_annotations": len(coco_annotations["annotations"]),
+                        "output_key": output_key,
+                    },
+                    indent=2,
+                ),
             )
         except Exception as e:
             logger.warning("SNS notification failed: %s", e)
@@ -411,7 +406,6 @@ def handler(event, context):
         len(coco_annotations["images"]),
         len(coco_annotations["annotations"]),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="annotation_manager")

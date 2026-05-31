@@ -18,9 +18,7 @@ from shared.ontap_client import OntapClientConfig
 
 @settings(max_examples=100)
 @given(
-    management_ip=st.from_regex(
-        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", fullmatch=True
-    ),
+    management_ip=st.from_regex(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", fullmatch=True),
     secret_name=st.text(
         min_size=1,
         max_size=100,
@@ -35,16 +33,10 @@ from shared.ontap_client import OntapClientConfig
             alphabet=st.characters(whitelist_categories=("L", "N", "P")),
         ),
     ),
-    connect_timeout=st.floats(
-        min_value=1.0, max_value=60.0, allow_nan=False, allow_infinity=False
-    ),
-    read_timeout=st.floats(
-        min_value=1.0, max_value=120.0, allow_nan=False, allow_infinity=False
-    ),
+    connect_timeout=st.floats(min_value=1.0, max_value=60.0, allow_nan=False, allow_infinity=False),
+    read_timeout=st.floats(min_value=1.0, max_value=120.0, allow_nan=False, allow_infinity=False),
     retry_total=st.integers(min_value=0, max_value=10),
-    backoff_factor=st.floats(
-        min_value=0.0, max_value=5.0, allow_nan=False, allow_infinity=False
-    ),
+    backoff_factor=st.floats(min_value=0.0, max_value=5.0, allow_nan=False, allow_infinity=False),
 )
 def test_config_round_trip(
     management_ip,
@@ -454,9 +446,7 @@ def test_ontap_client_non_2xx_error_propagation(status_code, response_body):
     # Build a mock Secrets Manager that returns valid credentials
     mock_session = MagicMock()
     mock_sm_client = MagicMock()
-    mock_sm_client.get_secret_value.return_value = {
-        "SecretString": '{"username": "admin", "password": "secret"}'
-    }
+    mock_sm_client.get_secret_value.return_value = {"SecretString": '{"username": "admin", "password": "secret"}'}
     mock_session.client.return_value = mock_sm_client
 
     config = OntapClientConfig(
@@ -622,9 +612,7 @@ build_s3_key = _acl_module.build_s3_key
     security_style=st.sampled_from(["ntfs", "unix", "mixed"]),
     n_acls=st.integers(min_value=0, max_value=10),
 )
-def test_acl_collection_json_lines_and_date_partition(
-    object_key, volume_uuid, security_style, n_acls
-):
+def test_acl_collection_json_lines_and_date_partition(object_key, volume_uuid, security_style, n_acls):
     """Feature: fsxn-s3ap-serverless-patterns, Property 9: ACL Collection writes valid JSON Lines with date partitioning
 
     For any ACL data collected for an object, the output SHALL be a valid
@@ -672,14 +660,10 @@ def test_acl_collection_json_lines_and_date_partition(
 
     # S3 key must contain a date partition in YYYY/MM/DD format
     date_pattern = _re.compile(r"\d{4}/\d{2}/\d{2}")
-    assert date_pattern.search(s3_key), (
-        f"S3 key must contain date partition YYYY/MM/DD, got: {s3_key}"
-    )
+    assert date_pattern.search(s3_key), f"S3 key must contain date partition YYYY/MM/DD, got: {s3_key}"
 
     # S3 key must end with .jsonl extension
-    assert s3_key.endswith(".jsonl"), (
-        f"S3 key must end with .jsonl extension, got: {s3_key}"
-    )
+    assert s3_key.endswith(".jsonl"), f"S3 key must end with .jsonl extension, got: {s3_key}"
 
 
 # ---------------------------------------------------------------------------
@@ -692,11 +676,7 @@ import importlib.util as _ocr_importlib_util
 _ocr_spec = _ocr_importlib_util.spec_from_file_location(
     "ocr_handler",
     str(
-        __import__("pathlib").Path(__file__).resolve().parents[2]
-        / "financial-idp"
-        / "functions"
-        / "ocr"
-        / "handler.py"
+        __import__("pathlib").Path(__file__).resolve().parents[2] / "financial-idp" / "functions" / "ocr" / "handler.py"
     ),
 )
 _ocr_module = _ocr_importlib_util.module_from_spec(_ocr_spec)
@@ -721,14 +701,10 @@ def test_ocr_textract_api_selection(page_count, threshold):
     result = select_textract_api(page_count, threshold)
 
     if page_count <= threshold:
-        assert result == "sync", (
-            f"Expected 'sync' for page_count={page_count} <= threshold={threshold}, "
-            f"got '{result}'"
-        )
+        assert result == "sync", f"Expected 'sync' for page_count={page_count} <= threshold={threshold}, got '{result}'"
     else:
         assert result == "async", (
-            f"Expected 'async' for page_count={page_count} > threshold={threshold}, "
-            f"got '{result}'"
+            f"Expected 'async' for page_count={page_count} > threshold={threshold}, got '{result}'"
         )
 
 
@@ -758,12 +734,14 @@ build_summary_output = _summary_module.build_summary_output
         max_size=500,
         alphabet=st.characters(whitelist_categories=("L", "N", "P", "Z")),
     ),
-    entities=st.fixed_dictionaries({
-        "dates": st.lists(st.text(min_size=1, max_size=20), max_size=5),
-        "amounts": st.lists(st.text(min_size=1, max_size=20), max_size=5),
-        "organizations": st.lists(st.text(min_size=1, max_size=20), max_size=5),
-        "persons": st.lists(st.text(min_size=1, max_size=20), max_size=5),
-    }),
+    entities=st.fixed_dictionaries(
+        {
+            "dates": st.lists(st.text(min_size=1, max_size=20), max_size=5),
+            "amounts": st.lists(st.text(min_size=1, max_size=20), max_size=5),
+            "organizations": st.lists(st.text(min_size=1, max_size=20), max_size=5),
+            "persons": st.lists(st.text(min_size=1, max_size=20), max_size=5),
+        }
+    ),
     summary_text=st.text(
         min_size=0,
         max_size=500,
@@ -775,9 +753,7 @@ build_summary_output = _summary_module.build_summary_output
         alphabet=st.characters(whitelist_categories=("L", "N", "P"), whitelist_characters="/"),
     ),
 )
-def test_summary_structured_output_completeness(
-    extracted_text, entities, summary_text, document_key
-):
+def test_summary_structured_output_completeness(extracted_text, entities, summary_text, document_key):
     """Feature: fsxn-s3ap-serverless-patterns, Property 11: Summary Lambda structured output completeness
 
     For any extracted_text, entities, summary_text, and document_key, the output
@@ -795,9 +771,7 @@ def test_summary_structured_output_completeness(
 
     # All required fields must be present
     required_fields = {"extracted_text", "entities", "summary", "document_key", "processed_at"}
-    assert required_fields.issubset(output.keys()), (
-        f"Missing fields: {required_fields - output.keys()}"
-    )
+    assert required_fields.issubset(output.keys()), f"Missing fields: {required_fields - output.keys()}"
 
     # Field values must match inputs
     assert output["extracted_text"] == extracted_text
@@ -864,17 +838,13 @@ def test_csv_to_parquet_preserves_data(n_rows, n_cols, data):
 
     jsonlines_str, record_count = csv_to_jsonlines(csv_bytes)
 
-    assert record_count == n_rows, (
-        f"Expected {n_rows} records, got {record_count}"
-    )
+    assert record_count == n_rows, f"Expected {n_rows} records, got {record_count}"
 
     parsed_lines = [_json.loads(line) for line in jsonlines_str.strip().split("\n")]
     assert len(parsed_lines) == n_rows
 
     for col_name in col_names:
-        assert col_name in parsed_lines[0], (
-            f"Column {col_name} not found in JSON output"
-        )
+        assert col_name in parsed_lines[0], f"Column {col_name} not found in JSON output"
 
     for row_idx in range(n_rows):
         for col_idx, col_name in enumerate(col_names):
@@ -922,13 +892,11 @@ def test_image_threshold_flagging(confidence, threshold):
 
     if confidence < threshold:
         assert result is True, (
-            f"Expected flagged=True for confidence={confidence} < threshold={threshold}, "
-            f"got {result}"
+            f"Expected flagged=True for confidence={confidence} < threshold={threshold}, got {result}"
         )
     else:
         assert result is False, (
-            f"Expected flagged=False for confidence={confidence} >= threshold={threshold}, "
-            f"got {result}"
+            f"Expected flagged=False for confidence={confidence} >= threshold={threshold}, got {result}"
         )
 
 
@@ -972,15 +940,28 @@ redact_phi_fields = _anon_module.redact_phi_fields
         alphabet=st.characters(whitelist_categories=("N",), whitelist_characters="-"),
     ),
     modality=st.sampled_from(["CT", "MR", "US", "XR", "CR", "MG", "NM", "PT", "DX", "OT"]),
-    body_part=st.sampled_from([
-        "CHEST", "HEAD", "ABDOMEN", "SPINE", "PELVIS",
-        "EXTREMITY", "KNEE", "SHOULDER", "UNKNOWN",
-    ]),
+    body_part=st.sampled_from(
+        [
+            "CHEST",
+            "HEAD",
+            "ABDOMEN",
+            "SPINE",
+            "PELVIS",
+            "EXTREMITY",
+            "KNEE",
+            "SHOULDER",
+            "UNKNOWN",
+        ]
+    ),
     n_phi_entities=st.integers(min_value=0, max_value=5),
 )
 def test_dicom_anonymization_removes_pii(
-    patient_name, patient_id, patient_birth_date,
-    modality, body_part, n_phi_entities,
+    patient_name,
+    patient_id,
+    patient_birth_date,
+    modality,
+    body_part,
+    n_phi_entities,
 ):
     """Feature: fsxn-s3ap-serverless-patterns, Property 14: DICOM anonymization removes PII
 
@@ -1011,11 +992,13 @@ def test_dicom_anonymization_removes_pii(
     ]
     # 追加の PHI エンティティを生成
     for i in range(n_phi_entities):
-        phi_entities.append({
-            "Text": f"phi-entity-{i}",
-            "Type": "ID",
-            "Score": 0.95,
-        })
+        phi_entities.append(
+            {
+                "Text": f"phi-entity-{i}",
+                "Type": "ID",
+                "Score": 0.95,
+            }
+        )
 
     # 匿名化を実行
     result = redact_phi_fields(metadata, phi_entities)
@@ -1025,20 +1008,10 @@ def test_dicom_anonymization_removes_pii(
         if key in ("modality", "body_part", "study_date", "classification"):
             continue
         # 元の PHI 値がそのまま残っていないことを検証
-        assert value != patient_name, (
-            f"Original patient_name '{patient_name}' found in field '{key}'"
-        )
-        assert value != patient_id, (
-            f"Original patient_id '{patient_id}' found in field '{key}'"
-        )
-        assert value != patient_birth_date, (
-            f"Original patient_birth_date '{patient_birth_date}' found in field '{key}'"
-        )
+        assert value != patient_name, f"Original patient_name '{patient_name}' found in field '{key}'"
+        assert value != patient_id, f"Original patient_id '{patient_id}' found in field '{key}'"
+        assert value != patient_birth_date, f"Original patient_birth_date '{patient_birth_date}' found in field '{key}'"
 
     # modality と body_part は保持されること
-    assert result.get("modality") == modality, (
-        f"Expected modality '{modality}', got '{result.get('modality')}'"
-    )
-    assert result.get("body_part") == body_part, (
-        f"Expected body_part '{body_part}', got '{result.get('body_part')}'"
-    )
+    assert result.get("modality") == modality, f"Expected modality '{modality}', got '{result.get('modality')}'"
+    assert result.get("body_part") == body_part, f"Expected body_part '{body_part}', got '{result.get('body_part')}'"

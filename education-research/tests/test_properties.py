@@ -31,30 +31,32 @@ from functions.citation_analysis.handler import build_citation_network
 # =========================================================================
 
 # 参考文献のストラテジー
-reference_strategy = st.fixed_dictionaries({
-    "ref_id": st.text(
-        alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_"),
-        min_size=3,
-        max_size=20,
-    ),
-    "title": st.text(min_size=1, max_size=100),
-})
+reference_strategy = st.fixed_dictionaries(
+    {
+        "ref_id": st.text(
+            alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_"),
+            min_size=3,
+            max_size=20,
+        ),
+        "title": st.text(min_size=1, max_size=100),
+    }
+)
 
 # 論文のストラテジー
-paper_strategy = st.fixed_dictionaries({
-    "paper_id": st.text(
-        alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_"),
-        min_size=3,
-        max_size=20,
-    ),
-    "title": st.text(min_size=1, max_size=100),
-    "references": st.lists(reference_strategy, min_size=0, max_size=10),
-})
+paper_strategy = st.fixed_dictionaries(
+    {
+        "paper_id": st.text(
+            alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_"),
+            min_size=3,
+            max_size=20,
+        ),
+        "title": st.text(min_size=1, max_size=100),
+        "references": st.lists(reference_strategy, min_size=0, max_size=10),
+    }
+)
 
 # 論文リストのストラテジー（ユニークな paper_id を保証）
-papers_strategy = st.lists(paper_strategy, min_size=0, max_size=20).map(
-    lambda papers: _deduplicate_paper_ids(papers)
-)
+papers_strategy = st.lists(paper_strategy, min_size=0, max_size=20).map(lambda papers: _deduplicate_paper_ids(papers))
 
 
 def _deduplicate_paper_ids(papers: list[dict]) -> list[dict]:
@@ -101,9 +103,7 @@ class TestCitationNetworkConsistency:
         result = build_citation_network(papers)
         node_ids = {node["id"] for node in result["nodes"]}
         for edge in result["edges"]:
-            assert edge["source"] in node_ids, (
-                f"Edge source '{edge['source']}' not in nodes: {node_ids}"
-            )
+            assert edge["source"] in node_ids, f"Edge source '{edge['source']}' not in nodes: {node_ids}"
 
     @settings(max_examples=100)
     @given(papers=papers_strategy)
@@ -112,18 +112,12 @@ class TestCitationNetworkConsistency:
         result = build_citation_network(papers)
         node_ids = {node["id"] for node in result["nodes"]}
         for edge in result["edges"]:
-            assert edge["target"] in node_ids, (
-                f"Edge target '{edge['target']}' not in nodes: {node_ids}"
-            )
+            assert edge["target"] in node_ids, f"Edge target '{edge['target']}' not in nodes: {node_ids}"
 
     @settings(max_examples=100)
     @given(papers=papers_strategy)
     def test_no_duplicate_edges(self, papers):
         """重複エッジが存在しないこと"""
         result = build_citation_network(papers)
-        edge_keys = [
-            (edge["source"], edge["target"]) for edge in result["edges"]
-        ]
-        assert len(edge_keys) == len(set(edge_keys)), (
-            f"Duplicate edges found: {edge_keys}"
-        )
+        edge_keys = [(edge["source"], edge["target"]) for edge in result["edges"]]
+        assert len(edge_keys) == len(set(edge_keys)), f"Duplicate edges found: {edge_keys}"

@@ -125,9 +125,7 @@ class LineageTracker:
         table_name: str | None = None,
         dynamodb_resource: Any | None = None,
     ) -> None:
-        self._table_name = table_name or os.environ.get(
-            "LINEAGE_TABLE", "fsxn-s3ap-data-lineage"
-        )
+        self._table_name = table_name or os.environ.get("LINEAGE_TABLE", "fsxn-s3ap-data-lineage")
         self._dynamodb = dynamodb_resource or boto3.resource("dynamodb")
 
     def _validate_status(self, status: str) -> None:
@@ -137,9 +135,7 @@ class LineageTracker:
             ValueError: 無効なステータス値の場合
         """
         if status not in VALID_STATUSES:
-            raise ValueError(
-                f"Invalid status '{status}'. Must be one of: {sorted(VALID_STATUSES)}"
-            )
+            raise ValueError(f"Invalid status '{status}'. Must be one of: {sorted(VALID_STATUSES)}")
 
     def _validate_v2_fields(self, record: LineageRecord) -> None:
         """v2 フィールドを検証する。
@@ -149,18 +145,15 @@ class LineageTracker:
         """
         if not validate_checksum(record.input_checksum):
             raise ValueError(
-                f"Invalid input_checksum: '{record.input_checksum}'. "
-                "Must be empty string or 64-char lowercase hex."
+                f"Invalid input_checksum: '{record.input_checksum}'. Must be empty string or 64-char lowercase hex."
             )
         if not validate_checksum(record.output_checksum):
             raise ValueError(
-                f"Invalid output_checksum: '{record.output_checksum}'. "
-                "Must be empty string or 64-char lowercase hex."
+                f"Invalid output_checksum: '{record.output_checksum}'. Must be empty string or 64-char lowercase hex."
             )
         if not validate_guardrail_mode(record.guardrail_mode):
             raise ValueError(
-                f"Invalid guardrail_mode: '{record.guardrail_mode}'. "
-                f"Must be one of: {sorted(VALID_GUARDRAIL_MODES)}"
+                f"Invalid guardrail_mode: '{record.guardrail_mode}'. Must be one of: {sorted(VALID_GUARDRAIL_MODES)}"
             )
         if not validate_retention_profile(record.retention_profile):
             raise ValueError(
@@ -169,8 +162,7 @@ class LineageTracker:
             )
         if record.fpolicy_sequence_number < 0:
             raise ValueError(
-                f"Invalid fpolicy_sequence_number: {record.fpolicy_sequence_number}. "
-                "Must be non-negative."
+                f"Invalid fpolicy_sequence_number: {record.fpolicy_sequence_number}. Must be non-negative."
             )
 
     def _item_to_record(self, item: dict[str, Any]) -> LineageRecord:
@@ -256,8 +248,7 @@ class LineageTracker:
             table.put_item(Item=item)
         except Exception as exc:
             logger.warning(
-                "[Lineage] Failed to write record: %s (source=%s, uc=%s). "
-                "Main processing will continue.",
+                "[Lineage] Failed to write record: %s (source=%s, uc=%s). Main processing will continue.",
                 exc,
                 record.source_file_key,
                 record.uc_id,
@@ -329,9 +320,7 @@ class LineageTracker:
         key_condition = Key("uc_id").eq(uc_id)
 
         if start_time and end_time:
-            key_condition = key_condition & Key("processing_timestamp").between(
-                start_time, end_time
-            )
+            key_condition = key_condition & Key("processing_timestamp").between(start_time, end_time)
         elif start_time:
             key_condition = key_condition & Key("processing_timestamp").gte(start_time)
         elif end_time:
@@ -379,9 +368,7 @@ class LineageTracker:
             # Handle pagination for large tables
             while "LastEvaluatedKey" in response:
                 response = table.scan(
-                    FilterExpression=Attr("step_functions_execution_arn").eq(
-                        execution_arn
-                    ),
+                    FilterExpression=Attr("step_functions_execution_arn").eq(execution_arn),
                     ExclusiveStartKey=response["LastEvaluatedKey"],
                 )
                 items.extend(response.get("Items", []))

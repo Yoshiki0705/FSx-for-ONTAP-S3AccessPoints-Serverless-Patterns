@@ -96,9 +96,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
 
     # ONTAP REST API: POST /api/storage/volumes/{uuid}/snapshots
-    headers = urllib3.make_headers(
-        basic_auth=f"{creds['username']}:{creds['password']}"
-    )
+    headers = urllib3.make_headers(basic_auth=f"{creds['username']}:{creds['password']}")
     headers["Content-Type"] = "application/json"
     headers["Accept"] = "application/json"
 
@@ -120,9 +118,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             resp.status,
             error_detail,
         )
-        raise RuntimeError(
-            f"ONTAP API error (status {resp.status}): {error_detail}"
-        )
+        raise RuntimeError(f"ONTAP API error (status {resp.status}): {error_detail}")
 
     result = json.loads(resp.data.decode("utf-8"))
     snapshot_uuid = result.get("uuid", "")

@@ -78,21 +78,13 @@ def handler(event, context):
         )
 
     with xray_subsegment(
-
-
         name="comprehend_detectentities",
-
-
         annotations={"service_name": "comprehend", "operation": "DetectEntities", "use_case": "financial-idp"},
-
-
     ):
-
-
         response = comprehend_client.detect_entities(
-        Text=text_for_comprehend,
-        LanguageCode="ja",
-    )
+            Text=text_for_comprehend,
+            LanguageCode="ja",
+        )
 
     # エンティティをタイプ別に分類
     entities = {
@@ -121,15 +113,13 @@ def handler(event, context):
             entities["persons"].append(entity_data)
 
     logger.info(
-        "Entity extraction completed: key=%s, dates=%d, amounts=%d, "
-        "organizations=%d, persons=%d",
+        "Entity extraction completed: key=%s, dates=%d, amounts=%d, organizations=%d, persons=%d",
         document_key,
         len(entities["dates"]),
         len(entities["amounts"]),
         len(entities["organizations"]),
         len(entities["persons"]),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="entity_extraction")

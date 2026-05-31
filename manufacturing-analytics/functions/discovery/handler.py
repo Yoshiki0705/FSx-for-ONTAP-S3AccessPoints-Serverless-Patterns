@@ -46,9 +46,7 @@ def handler(event, context):
               csv_files (CSV ファイルリスト), image_files (画像ファイルリスト)
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "")
 
     logger.info(
@@ -61,13 +59,9 @@ def handler(event, context):
     all_objects: list[dict] = []
     for suffix in ALL_SUFFIXES:
         with xray_subsegment(
-
             name="s3ap_list_objects",
-
             annotations={"service_name": "s3", "operation": "ListObjectsV2", "use_case": "manufacturing-analytics"},
-
         ):
-
             objects = s3ap.list_objects(prefix=prefix, suffix=suffix)
         all_objects.extend(objects)
 
@@ -100,10 +94,7 @@ def handler(event, context):
     }
 
     # Manifest を S3 AP に書き出し
-    manifest_key = (
-        f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,
@@ -112,14 +103,12 @@ def handler(event, context):
     )
 
     logger.info(
-        "Manufacturing Analytics Discovery completed: "
-        "total=%d, csv=%d, images=%d, manifest=%s",
+        "Manufacturing Analytics Discovery completed: total=%d, csv=%d, images=%d, manifest=%s",
         len(unique_objects),
         len(csv_files),
         len(image_files),
         manifest_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="discovery")

@@ -112,9 +112,7 @@ def test_correlation_id_format_invariant(_iteration):
     correlation_id = TaskTokenStore.generate_correlation_id()
 
     # Must be exactly 8 characters
-    assert len(correlation_id) == 8, (
-        f"Correlation ID must be 8 chars, got {len(correlation_id)}: '{correlation_id}'"
-    )
+    assert len(correlation_id) == 8, f"Correlation ID must be 8 chars, got {len(correlation_id)}: '{correlation_id}'"
 
     # Must match hex pattern
     assert re.match(r"^[0-9a-f]{8}$", correlation_id), (
@@ -205,9 +203,7 @@ def test_ttl_calculation_correctness(current_timestamp, retention_seconds):
         expected_ttl = current_timestamp + retention_seconds
 
         # TTL must equal current_timestamp + retention_seconds
-        assert int(item["ttl"]) == expected_ttl, (
-            f"TTL mismatch: expected {expected_ttl}, got {item['ttl']}"
-        )
+        assert int(item["ttl"]) == expected_ttl, f"TTL mismatch: expected {expected_ttl}, got {item['ttl']}"
 
         # TTL must always be greater than current_timestamp
         assert int(item["ttl"]) > current_timestamp, (
@@ -223,15 +219,11 @@ def test_ttl_calculation_correctness(current_timestamp, retention_seconds):
 
 @settings(max_examples=100, deadline=None)
 @given(
-    correlation_id=st.text(
-        alphabet="0123456789abcdef", min_size=8, max_size=8
-    ),
+    correlation_id=st.text(alphabet="0123456789abcdef", min_size=8, max_size=8),
     task_token_1=st.text(min_size=100, max_size=500),
     task_token_2=st.text(min_size=100, max_size=500),
 )
-def test_conditional_write_prevents_collision(
-    correlation_id, task_token_1, task_token_2
-):
+def test_conditional_write_prevents_collision(correlation_id, task_token_1, task_token_2):
     """Feature: fsxn-s3ap-serverless-patterns-phase4, Property 4: Conditional Write Prevents Collision
 
     For any two store operations with the same correlation ID, exactly one
@@ -273,12 +265,8 @@ def test_conditional_write_prevents_collision(
                 ConditionExpression="attribute_not_exists(correlation_id)",
             )
 
-        assert (
-            exc_info.value.response["Error"]["Code"]
-            == "ConditionalCheckFailedException"
-        ), (
-            f"Expected ConditionalCheckFailedException, "
-            f"got: {exc_info.value.response['Error']['Code']}"
+        assert exc_info.value.response["Error"]["Code"] == "ConditionalCheckFailedException", (
+            f"Expected ConditionalCheckFailedException, got: {exc_info.value.response['Error']['Code']}"
         )
 
         # Verify original token is preserved (not overwritten)
@@ -294,9 +282,7 @@ def test_conditional_write_prevents_collision(
 
 @settings(max_examples=100, deadline=None)
 @given(
-    correlation_id_value=st.text(
-        alphabet="0123456789abcdef", min_size=8, max_size=8
-    ),
+    correlation_id_value=st.text(alphabet="0123456789abcdef", min_size=8, max_size=8),
     task_token_value=st.text(min_size=100, max_size=500),
 )
 def test_mode_detection_by_tag_presence(correlation_id_value, task_token_value):
@@ -311,15 +297,11 @@ def test_mode_detection_by_tag_presence(correlation_id_value, task_token_value):
     """
     # Case 1: CorrelationId tag present → DynamoDB mode
     tags_dynamodb = {"CorrelationId": correlation_id_value, "OtherTag": "value"}
-    assert detect_token_mode(tags_dynamodb) == "dynamodb", (
-        "CorrelationId tag present should result in 'dynamodb' mode"
-    )
+    assert detect_token_mode(tags_dynamodb) == "dynamodb", "CorrelationId tag present should result in 'dynamodb' mode"
 
     # Case 2: TaskToken tag present → direct mode
     tags_direct = {"TaskToken": task_token_value, "OtherTag": "value"}
-    assert detect_token_mode(tags_direct) == "direct", (
-        "TaskToken tag present should result in 'direct' mode"
-    )
+    assert detect_token_mode(tags_direct) == "direct", "TaskToken tag present should result in 'direct' mode"
 
     # Case 3: Modes are mutually exclusive — CorrelationId takes priority
     # (In production, both tags should never be present simultaneously,
@@ -440,6 +422,5 @@ def test_cleanup_after_successful_callback(task_token, job_name):
         # After deletion, retrieve must return None
         retrieved_after_delete = store.retrieve_token(correlation_id)
         assert retrieved_after_delete is None, (
-            f"After deletion, retrieve should return None, "
-            f"got: {type(retrieved_after_delete)}"
+            f"After deletion, retrieve should return None, got: {type(retrieved_after_delete)}"
         )

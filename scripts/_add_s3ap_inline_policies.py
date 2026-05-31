@@ -71,9 +71,9 @@ def patch(path: Path) -> int:
         print(f"WARNING: UseStandardS3 condition not found in {path}, skipping")
         return 0
     # Check if already patched (look for the new pattern)
-    if 'Resource: !If\n                  - UseStandardS3' in text:
+    if "Resource: !If\n                  - UseStandardS3" in text:
         # Count only occurrences that haven't been replaced
-        already = text.count('Resource: !If\n                  - UseStandardS3')
+        already = text.count("Resource: !If\n                  - UseStandardS3")
         print(f"ALREADY PARTIALLY PATCHED: {path} ({already} instances already patched, {count} remaining)")
 
     text = text.replace(PUT_OBJECT_RESOURCE_OLD, PUT_OBJECT_RESOURCE_NEW)

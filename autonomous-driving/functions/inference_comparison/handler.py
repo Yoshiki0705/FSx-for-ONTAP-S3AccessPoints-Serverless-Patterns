@@ -54,10 +54,7 @@ def _query_recent_results(
 
     while True:
         query_params: dict[str, Any] = {
-            "KeyConditionExpression": (
-                Key("test_id").eq(test_id)
-                & Key("timestamp").between(window_start, window_end)
-            ),
+            "KeyConditionExpression": (Key("test_id").eq(test_id) & Key("timestamp").between(window_start, window_end)),
         }
         if last_evaluated_key:
             query_params["ExclusiveStartKey"] = last_evaluated_key
@@ -124,12 +121,8 @@ def aggregate_by_variant(items: list[dict[str, Any]]) -> dict[str, dict[str, Any
     result: dict[str, dict[str, Any]] = {}
     for variant_name, data in variant_data.items():
         request_count = data["request_count"]
-        avg_latency = (
-            data["total_latency_ms"] / request_count if request_count > 0 else 0.0
-        )
-        error_rate = (
-            data["error_count"] / request_count if request_count > 0 else 0.0
-        )
+        avg_latency = data["total_latency_ms"] / request_count if request_count > 0 else 0.0
+        error_rate = data["error_count"] / request_count if request_count > 0 else 0.0
 
         result[variant_name] = {
             "avg_latency_ms": round(avg_latency, 2),
@@ -164,16 +157,10 @@ def _emit_variant_metrics(
         metrics.set_dimension("UseCase", use_case)
         metrics.set_dimension("VariantName", variant_name)
 
-        metrics.put_metric(
-            "AvgLatency", metrics_data["avg_latency_ms"], "Milliseconds"
-        )
+        metrics.put_metric("AvgLatency", metrics_data["avg_latency_ms"], "Milliseconds")
         metrics.put_metric("ErrorRate", metrics_data["error_rate"], "None")
-        metrics.put_metric(
-            "RequestCount", float(metrics_data["request_count"]), "Count"
-        )
-        metrics.put_metric(
-            "ErrorCount", float(metrics_data["error_count"]), "Count"
-        )
+        metrics.put_metric("RequestCount", float(metrics_data["request_count"]), "Count")
+        metrics.put_metric("ErrorCount", float(metrics_data["error_count"]), "Count")
 
         metrics.set_property("EndpointName", endpoint_name)
         metrics.set_property("VariantName", variant_name)
@@ -223,8 +210,7 @@ def _write_aggregation_to_dynamodb(
     table.put_item(Item=item)
 
     logger.info(
-        "Aggregation written to DynamoDB: test_id=%s-aggregation, "
-        "timestamp=%d, variants=%d",
+        "Aggregation written to DynamoDB: test_id=%s-aggregation, timestamp=%d, variants=%d",
         test_id,
         timestamp,
         len(variant_metrics),
@@ -265,8 +251,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         raise ValueError("ENDPOINT_NAME environment variable is required")
 
     logger.info(
-        "Inference comparison started: endpoint=%s, table=%s, "
-        "window=%ds",
+        "Inference comparison started: endpoint=%s, table=%s, window=%ds",
         endpoint_name,
         table_name,
         window_seconds,

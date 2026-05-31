@@ -26,13 +26,15 @@ from shared.guardrails import CapacityGuardrail, GuardrailMode
 
 # --- Hypothesis Strategies ---
 
-action_type_strategy = st.sampled_from([
-    "volume_grow",
-    "volume_shrink",
-    "tier_change",
-    "snapshot_create",
-    "flexclone_create",
-])
+action_type_strategy = st.sampled_from(
+    [
+        "volume_grow",
+        "volume_shrink",
+        "tier_change",
+        "snapshot_create",
+        "flexclone_create",
+    ]
+)
 
 requested_gb_strategy = st.floats(min_value=0.1, max_value=200.0, allow_nan=False, allow_infinity=False)
 
@@ -89,9 +91,13 @@ class TestGuardrailModeConsistency:
         action_type=action_type_strategy,
         requested_gb=requested_gb_strategy,
     )
-    @settings(max_examples=50, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-    ])
+    @settings(
+        max_examples=50,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     def test_break_glass_always_allows(self, action_type: str, requested_gb: float):
         """BREAK_GLASS モードでは任意のアクション・GB量で常に allowed=True."""
         os.environ["AWS_DEFAULT_REGION"] = "ap-northeast-1"
@@ -114,9 +120,13 @@ class TestGuardrailModeConsistency:
         pre_daily_total=st.floats(min_value=0.0, max_value=1000.0, allow_nan=False, allow_infinity=False),
         pre_action_count=st.integers(min_value=0, max_value=100),
     )
-    @settings(max_examples=50, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-    ])
+    @settings(
+        max_examples=50,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     def test_dry_run_always_allows(
         self,
         action_type: str,
@@ -163,12 +173,14 @@ class TestGuardrailModeConsistency:
         action_type=action_type_strategy,
         requested_gb=requested_gb_strategy,
     )
-    @settings(max_examples=30, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-    ])
-    def test_dry_run_fail_open_on_dynamodb_error(
-        self, action_type: str, requested_gb: float
-    ):
+    @settings(
+        max_examples=30,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
+    def test_dry_run_fail_open_on_dynamodb_error(self, action_type: str, requested_gb: float):
         """DRY_RUN モードで DynamoDB アクセス失敗時も allowed=True (fail-open)."""
         os.environ["AWS_DEFAULT_REGION"] = "ap-northeast-1"
         with mock_aws():
@@ -200,9 +212,13 @@ class TestEnforceDailyCapInvariant:
         action_sequence=action_sequence_strategy,
         daily_cap_gb=daily_cap_strategy,
     )
-    @settings(max_examples=30, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-    ])
+    @settings(
+        max_examples=30,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     def test_daily_total_never_exceeds_cap(
         self,
         action_type: str,
@@ -243,9 +259,13 @@ class TestEnforceDailyCapInvariant:
         daily_cap_gb=daily_cap_strategy,
         rate_limit=rate_limit_strategy,
     )
-    @settings(max_examples=30, deadline=None, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-    ])
+    @settings(
+        max_examples=30,
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     def test_action_count_never_exceeds_rate_limit(
         self,
         action_type: str,

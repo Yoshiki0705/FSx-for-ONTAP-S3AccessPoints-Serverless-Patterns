@@ -133,9 +133,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     )
 
     # HTTP ヘッダー設定
-    headers = urllib3.make_headers(
-        basic_auth=f"{creds['username']}:{creds['password']}"
-    )
+    headers = urllib3.make_headers(basic_auth=f"{creds['username']}:{creds['password']}")
     headers["Content-Type"] = "application/json"
     headers["Accept"] = "application/json"
 
@@ -168,9 +166,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             resp.status,
             error_detail,
         )
-        raise RuntimeError(
-            f"ONTAP API error (status {resp.status}): {error_detail}"
-        )
+        raise RuntimeError(f"ONTAP API error (status {resp.status}): {error_detail}")
 
     logger.info("CIFS share created: %s → %s", share_name, junction_path)
 

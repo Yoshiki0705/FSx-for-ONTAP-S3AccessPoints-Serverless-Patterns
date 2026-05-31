@@ -22,6 +22,7 @@ Requires:
     brew install tesseract tesseract-lang
     pip3 install pillow pytesseract
 """
+
 from __future__ import annotations
 
 import sys
@@ -64,9 +65,7 @@ def find_sensitive_words(img: Image.Image) -> list[tuple[int, int, int, int]]:
     # image_to_data returns dict with keys: level, page_num, block_num,
     # par_num, line_num, word_num, left, top, width, height, conf, text
     try:
-        data = pytesseract.image_to_data(
-            img, lang="eng+jpn", output_type=pytesseract.Output.DICT
-        )
+        data = pytesseract.image_to_data(img, lang="eng+jpn", output_type=pytesseract.Output.DICT)
     except Exception as e:
         print(f"  OCR failed: {e}")
         return []
@@ -91,9 +90,7 @@ def find_sensitive_words(img: Image.Image) -> list[tuple[int, int, int, int]]:
 MAX_OCR_PASSES = 4
 
 
-def mask_with_ocr(
-    img_path: Path, out_path: Path, mask_header: bool = True
-) -> tuple[int, int]:
+def mask_with_ocr(img_path: Path, out_path: Path, mask_header: bool = True) -> tuple[int, int]:
     """Mask sensitive words detected by OCR.
 
     Runs multiple OCR passes because tesseract is non-deterministic at word

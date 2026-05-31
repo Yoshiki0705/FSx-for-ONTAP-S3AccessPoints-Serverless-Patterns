@@ -1,4 +1,5 @@
 import os
+
 #!/usr/bin/env python3
 """
 Persistent Store 設定スクリプト
@@ -129,7 +130,7 @@ def generate_lambda_extension():
     print()
     print("以下のコードを handler.py の handler() 関数に追加:")
     print()
-    code = '''
+    code = """
     # --- Persistent Store / ONTAP API extension ---
     action = event.get("action", "")
 
@@ -162,7 +163,7 @@ def generate_lambda_extension():
         # Full automated Persistent Store setup
         # ... (implement steps 1-3 from create_persistent_store)
         pass
-'''
+"""
     print(code)
 
 

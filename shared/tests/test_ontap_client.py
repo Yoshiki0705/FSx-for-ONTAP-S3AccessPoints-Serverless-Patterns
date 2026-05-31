@@ -21,6 +21,7 @@ from shared.ontap_client import OntapClient, OntapClientConfig, OntapClientError
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def default_config() -> OntapClientConfig:
     """デフォルト設定の OntapClientConfig を返す"""
@@ -67,6 +68,7 @@ def client(default_config, mock_session) -> OntapClient:
 # TestOntapClientConfig
 # ---------------------------------------------------------------------------
 
+
 class TestOntapClientConfig:
     """OntapClientConfig のテスト"""
 
@@ -103,6 +105,7 @@ class TestOntapClientConfig:
 # TestOntapClient
 # ---------------------------------------------------------------------------
 
+
 class TestOntapClient:
     """OntapClient のテスト"""
 
@@ -122,10 +125,9 @@ class TestOntapClient:
         with caplog.at_level(logging.WARNING, logger="shared.ontap_client"):
             ontap_client._get_pool()
 
-        assert any(
-            "TLS verification is disabled" in record.message
-            for record in caplog.records
-        ), "Expected warning about TLS verification being disabled"
+        assert any("TLS verification is disabled" in record.message for record in caplog.records), (
+            "Expected warning about TLS verification being disabled"
+        )
 
     def test_secrets_manager_failure_raises_descriptive_error(self, default_config):
         """Secrets Manager 失敗時に secret 名を含む OntapClientError が発生することを検証する"""

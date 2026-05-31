@@ -19,8 +19,10 @@ from typing import Literal, TypedDict
 # Discovery Lambda
 # ============================================================
 
+
 class DiscoveredObject(TypedDict):
     """Discovery Lambda が検出した個別オブジェクト"""
+
     Key: str
     Size: int
     LastModified: str
@@ -29,6 +31,7 @@ class DiscoveredObject(TypedDict):
 
 class DiscoveryOutput(TypedDict):
     """Discovery Lambda の出力"""
+
     status: Literal["completed", "error"]
     object_count: int
     objects: list[DiscoveredObject]
@@ -38,6 +41,7 @@ class DiscoveryOutput(TypedDict):
 
 class DiscoveryError(TypedDict):
     """Discovery Lambda のエラー出力"""
+
     status: Literal["error"]
     error: str
     object_count: int
@@ -47,8 +51,10 @@ class DiscoveryError(TypedDict):
 # Processing Lambda
 # ============================================================
 
+
 class ProcessingInput(TypedDict):
     """Processing Lambda の入力（Map state から渡される）"""
+
     Key: str
     Size: int
     LastModified: str
@@ -57,6 +63,7 @@ class ProcessingInput(TypedDict):
 
 class HumanReviewInfo(TypedDict):
     """Human Review 判定情報"""
+
     confidence_score: float
     requires_review: bool
     action: Literal["AUTO_APPROVE", "HUMAN_REVIEW", "REJECT"]
@@ -65,6 +72,7 @@ class HumanReviewInfo(TypedDict):
 
 class ProcessingOutput(TypedDict, total=False):
     """Processing Lambda の出力"""
+
     key: str
     status: Literal["completed", "error", "skipped"]
     output_key: str
@@ -79,14 +87,17 @@ class ProcessingOutput(TypedDict, total=False):
 # Report Lambda
 # ============================================================
 
+
 class ReportInput(TypedDict):
     """Report Lambda の入力"""
+
     discovery: DiscoveryOutput
     processing: list[ProcessingOutput]
 
 
 class ReportSummary(TypedDict):
     """レポートサマリー"""
+
     total_files: int
     succeeded: int
     failed: int
@@ -97,6 +108,7 @@ class ReportSummary(TypedDict):
 
 class ReportOutput(TypedDict):
     """Report Lambda の出力"""
+
     status: Literal["completed", "error"]
     report_key: str
     summary: ReportSummary
@@ -109,8 +121,10 @@ class ReportOutput(TypedDict):
 # Step Functions 全体出力
 # ============================================================
 
+
 class WorkflowOutput(TypedDict):
     """Step Functions ワークフロー全体の出力"""
+
     discovery: DiscoveryOutput
     processing: list[ProcessingOutput]
     report: ReportOutput
@@ -120,8 +134,10 @@ class WorkflowOutput(TypedDict):
 # EventBridge Scheduler イベント
 # ============================================================
 
+
 class SchedulerEvent(TypedDict, total=False):
     """EventBridge Scheduler からの入力イベント"""
+
     source: str
     detail_type: str
     time: str
@@ -132,8 +148,10 @@ class SchedulerEvent(TypedDict, total=False):
 # FPolicy イベント (Phase 10+)
 # ============================================================
 
+
 class FPolicyEvent(TypedDict):
     """FPolicy イベント（SQS 経由）"""
+
     event_type: Literal["create", "write", "rename", "delete", "close"]
     protocol: Literal["nfsv3", "nfsv4", "cifs"]
     path: str
@@ -148,19 +166,21 @@ class FPolicyEvent(TypedDict):
 # SAP/ERP パターン固有
 # ============================================================
 
+
 class SapDiscoveredFile(TypedDict):
     """SAP Discovery Lambda が検出したファイル"""
+
     key: str
     size: int
     last_modified: str
     category: Literal[
-        "sap_idoc", "hulft_transfer", "edi_document",
-        "batch_output", "sap_xml", "data_extract", "general_erp"
+        "sap_idoc", "hulft_transfer", "edi_document", "batch_output", "sap_xml", "data_extract", "general_erp"
     ]
 
 
 class SapProcessingOutput(TypedDict, total=False):
     """SAP Processing Lambda の出力"""
+
     key: str
     status: Literal["completed", "error"]
     category: str

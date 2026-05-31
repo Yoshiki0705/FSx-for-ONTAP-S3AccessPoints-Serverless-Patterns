@@ -20,13 +20,28 @@ s3_client = boto3.client("s3")
 
 # CAE 関連ファイル拡張子
 CAE_EXTENSIONS = {
-    ".d3plot", ".binout", ".k", ".key",  # LS-DYNA
-    ".op2", ".f06", ".bdf", ".dat",      # Nastran
-    ".odb", ".inp",                       # Abaqus
-    ".cas", ".dat", ".msh",              # Fluent
-    ".sim", ".star",                      # STAR-CCM+
-    ".csv", ".json", ".log", ".txt",     # 汎用
-    ".vtu", ".vtk", ".stl",             # メッシュ
+    ".d3plot",
+    ".binout",
+    ".k",
+    ".key",  # LS-DYNA
+    ".op2",
+    ".f06",
+    ".bdf",
+    ".dat",  # Nastran
+    ".odb",
+    ".inp",  # Abaqus
+    ".cas",
+    ".dat",
+    ".msh",  # Fluent
+    ".sim",
+    ".star",  # STAR-CCM+
+    ".csv",
+    ".json",
+    ".log",
+    ".txt",  # 汎用
+    ".vtu",
+    ".vtk",
+    ".stl",  # メッシュ
 }
 
 
@@ -57,13 +72,15 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 key = obj["Key"]
                 ext = os.path.splitext(key)[1].lower()
                 if ext in CAE_EXTENSIONS:
-                    objects.append({
-                        "key": key,
-                        "size": obj["Size"],
-                        "last_modified": obj["LastModified"].isoformat(),
-                        "extension": ext,
-                        "category": _categorize_file(ext),
-                    })
+                    objects.append(
+                        {
+                            "key": key,
+                            "size": obj["Size"],
+                            "last_modified": obj["LastModified"].isoformat(),
+                            "extension": ext,
+                            "category": _categorize_file(ext),
+                        }
+                    )
 
             if not response.get("IsTruncated"):
                 break

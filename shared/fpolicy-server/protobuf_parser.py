@@ -153,27 +153,19 @@ class ProtobufParser:
                     if field_name == "versions":
                         if field_name not in result:
                             result[field_name] = []
-                        result[field_name].append(
-                            value.decode("utf-8", errors="replace")
-                        )
+                        result[field_name].append(value.decode("utf-8", errors="replace"))
                     else:
-                        result[field_name] = value.decode(
-                            "utf-8", errors="replace"
-                        )
+                        result[field_name] = value.decode("utf-8", errors="replace")
             elif wire_type == WIRE_64BIT:
                 offset += 8
             elif wire_type == WIRE_32BIT:
                 offset += 4
             else:
-                raise ProtobufDecodeError(
-                    f"Unknown wire type {wire_type} at offset {offset}"
-                )
+                raise ProtobufDecodeError(f"Unknown wire type {wire_type} at offset {offset}")
 
         return result
 
-    def _decode_message(
-        self, data: bytes, field_map: dict[int, str]
-    ) -> dict[str, Any]:
+    def _decode_message(self, data: bytes, field_map: dict[int, str]) -> dict[str, Any]:
         """Generic protobuf message decoder.
 
         Args:
@@ -205,9 +197,7 @@ class ProtobufParser:
                 elif wire_type == WIRE_LENGTH_DELIMITED:
                     value, offset = self._read_length_delimited(data, offset)
                     if field_name:
-                        result[field_name] = value.decode(
-                            "utf-8", errors="replace"
-                        )
+                        result[field_name] = value.decode("utf-8", errors="replace")
                 elif wire_type == WIRE_64BIT:
                     if offset + 8 <= len(data):
                         value = struct.unpack_from("<q", data, offset)[0]

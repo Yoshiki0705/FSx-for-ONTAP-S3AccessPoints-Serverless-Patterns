@@ -115,9 +115,7 @@ class TestSecretsNotLogged:
 
         # Verify password is not in any log record
         all_logs = "\n".join(log_records)
-        assert password not in all_logs, (
-            f"Password '{password[:4]}...' was found in log output during createSecret"
-        )
+        assert password not in all_logs, f"Password '{password[:4]}...' was found in log output during createSecret"
 
     @pytest.mark.property
     @given(
@@ -191,12 +189,8 @@ class TestSecretsNotLogged:
                 logger.removeHandler(handler)
 
         all_logs = "\n".join(log_records)
-        assert password not in all_logs, (
-            "Current password was found in log output during setSecret"
-        )
-        assert new_password not in all_logs, (
-            "New password was found in log output during setSecret"
-        )
+        assert password not in all_logs, "Current password was found in log output during setSecret"
+        assert new_password not in all_logs, "New password was found in log output during setSecret"
 
     @pytest.mark.property
     @given(
@@ -256,9 +250,7 @@ class TestSecretsNotLogged:
                 logger.removeHandler(handler)
 
         all_logs = "\n".join(log_records)
-        assert password not in all_logs, (
-            "Password was found in log output during testSecret"
-        )
+        assert password not in all_logs, "Password was found in log output during testSecret"
 
     @pytest.mark.property
     @given(
@@ -276,14 +268,11 @@ class TestSecretsNotLogged:
 
         # Simulate a failure error message that might accidentally include password
         error_message = (
-            f"ONTAP connection test failed: HTTP 401 - "
-            f"Authentication failed for user fsxadmin at {management_ip}"
+            f"ONTAP connection test failed: HTTP 401 - Authentication failed for user fsxadmin at {management_ip}"
         )
 
         # Verify the error message construction doesn't include password
-        assert password not in error_message, (
-            "Password leaked into error message"
-        )
+        assert password not in error_message, "Password leaked into error message"
 
         # Also verify _notify_failure doesn't log the password
         log_records: list[str] = []
@@ -311,6 +300,4 @@ class TestSecretsNotLogged:
                 logger.removeHandler(handler)
 
         all_logs = "\n".join(log_records)
-        assert password not in all_logs, (
-            "Password was found in failure notification logs"
-        )
+        assert password not in all_logs, "Password was found in failure notification logs"
