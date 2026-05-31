@@ -12,6 +12,7 @@ Usage:
 
 GITIGNORED.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -48,9 +49,7 @@ def scan_image(path: Path) -> list[tuple[str, str]]:
 
     img = Image.open(path).convert("RGB")
     try:
-        text = pytesseract.image_to_data(
-            img, lang="eng+jpn", output_type=pytesseract.Output.DICT
-        )
+        text = pytesseract.image_to_data(img, lang="eng+jpn", output_type=pytesseract.Output.DICT)
     except Exception as e:
         return [("OCR_ERROR", str(e))]
     hits: list[tuple[str, str]] = []
@@ -66,10 +65,7 @@ def scan_image(path: Path) -> list[tuple[str, str]]:
 def get_tracked_files() -> list[Path]:
     """Get list of git-tracked files."""
     try:
-        result = subprocess.run(
-            ["git", "ls-files"],
-            capture_output=True, text=True, cwd=PROJECT_ROOT
-        )
+        result = subprocess.run(["git", "ls-files"], capture_output=True, text=True, cwd=PROJECT_ROOT)
         if result.returncode != 0:
             return []
         return [PROJECT_ROOT / f for f in result.stdout.strip().split("\n") if f]
@@ -164,7 +160,7 @@ def main() -> None:
         total_leaks += len(txt_leaks)
         print()
 
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"Total files with leaks: {total_leaks}")
     if total_leaks > 0:
         print("❌ LEAKS DETECTED — fix before committing")
