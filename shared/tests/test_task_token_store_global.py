@@ -222,19 +222,17 @@ class TestBackwardCompatibility:
 
     def test_no_region_param_defaults_to_ap_northeast_1(self, dynamodb_primary):
         """region パラメータなし + AWS_REGION 未設定の場合、ap-northeast-1 をデフォルト使用"""
-        with patch.dict("os.environ", {}, clear=True):
-            # AWS_REGION を削除
-            env_copy = os.environ.copy()
-            if "AWS_REGION" in env_copy:
-                del env_copy["AWS_REGION"]
+        with patch.dict(
+            "os.environ",
+            {"AWS_ACCESS_KEY_ID": "testing", "AWS_SECRET_ACCESS_KEY": "testing"},
+            clear=True,
+        ):
+            store = TaskTokenStore(
+                table_name=TABLE_NAME,
+                ttl_seconds=86400,
+            )
 
-            with patch.dict("os.environ", env_copy, clear=True):
-                store = TaskTokenStore(
-                    table_name=TABLE_NAME,
-                    ttl_seconds=86400,
-                )
-
-                assert store.region == "ap-northeast-1"
+            assert store.region == "ap-northeast-1"
 
     def test_existing_store_token_api_unchanged(self, dynamodb_primary):
         """既存の store_token API が変更なく動作する"""
