@@ -44,8 +44,8 @@ jobs:
 
       - name: Check no personal file paths with secrets
         run: |
-          # Check for personal paths referencing .pem files
-          result=$(git ls-files | xargs grep -rln '/Users/.*\.pem' 2>/dev/null || true)
+          # Check for personal paths referencing .pem files (exclude workflow files themselves)
+          result=$(git ls-files | grep -v '.github/workflows/' | xargs grep -rln '/Users/.*\.pem' 2>/dev/null || true)
           if [ -n "$result" ]; then
             echo "::error::Personal .pem paths found in: $result"
             exit 1
