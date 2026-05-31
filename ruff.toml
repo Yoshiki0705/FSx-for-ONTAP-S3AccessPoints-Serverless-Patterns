@@ -1,0 +1,17 @@
+# Ruff configuration for FSx for ONTAP S3AP Serverless Patterns
+target-version = "py39"
+line-length = 120
+
+[lint]
+select = ["F", "E4", "E7", "E9"]
+ignore = [
+    "E402",  # Module level import not at top of file (conftest.py, scripts with sys.path)
+    "E741",  # Ambiguous variable name (l, O, I)
+]
+
+[lint.per-file-ignores]
+"conftest.py" = ["E402", "F401", "F811"]
+"**/tests/**" = ["F401", "F811"]
+"shared/__init__.py" = ["F401"]
+"shared/schemas/__init__.py" = ["F401"]
+"shared/routing.py" = ["F401"]

@@ -8,7 +8,6 @@ Validates: Requirements 13.7, 14.7, 14.4, 14.5, 14.6
 
 from __future__ import annotations
 
-import logging
 from unittest.mock import MagicMock, patch
 
 import pytest

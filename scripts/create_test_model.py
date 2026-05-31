@@ -24,8 +24,6 @@ SageMaker sklearn コンテナが要求するディレクトリ構造で model.t
 """
 
 import argparse
-import io
-import os
 import subprocess
 import sys
 import tarfile
@@ -138,18 +136,18 @@ def create_model_tarball(output_dir: Path) -> Path:
         print(f"  inference.py 作成完了: {inference_path}")
 
         # tar.gz にパッケージング
-        print(f"  model.tar.gz を作成中...")
+        print("  model.tar.gz を作成中...")
         with tarfile.open(tarball_path, "w:gz") as tar:
             tar.add(model_path, arcname="model.joblib")
             tar.add(inference_path, arcname="code/inference.py")
 
     size_kb = tarball_path.stat().st_size / 1024
     print(f"\n✅ model.tar.gz 作成完了: {tarball_path} ({size_kb:.1f} KB)")
-    print(f"\n構造:")
-    print(f"  model.tar.gz")
-    print(f"  ├── model.joblib")
-    print(f"  └── code/")
-    print(f"      └── inference.py")
+    print("\n構造:")
+    print("  model.tar.gz")
+    print("  ├── model.joblib")
+    print("  └── code/")
+    print("      └── inference.py")
     return tarball_path
 
 
@@ -201,10 +199,10 @@ def main():
         upload_to_s3(tarball_path, args.upload)
 
     print("\n使用例:")
-    print(f"  # S3 にアップロード")
+    print("  # S3 にアップロード")
     print(f"  aws s3 cp {tarball_path} s3://your-bucket/models/")
-    print(f"\n  # SageMaker Model 作成時に ModelDataUrl として指定")
-    print(f"  ModelDataUrl: s3://your-bucket/models/model.tar.gz")
+    print("\n  # SageMaker Model 作成時に ModelDataUrl として指定")
+    print("  ModelDataUrl: s3://your-bucket/models/model.tar.gz")
 
 
 if __name__ == "__main__":

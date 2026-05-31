@@ -11,7 +11,6 @@ Property 4: Capacity Prediction Consistency
 from __future__ import annotations
 
 import math
-import time
 
 import pytest
 from hypothesis import given, settings, assume, HealthCheck

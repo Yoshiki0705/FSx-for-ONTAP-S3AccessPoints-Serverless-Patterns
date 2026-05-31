@@ -13,7 +13,7 @@ Property 14: Percentile Calculation Correctness
 from __future__ import annotations
 
 import pytest
-from hypothesis import given, settings, assume, HealthCheck
+from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 
 from tests.load.test_high_load import calculate_percentile, calculate_ramp_rate

@@ -3,7 +3,6 @@
 VPC 内から ONTAP REST API に接続してボリューム情報を取得するテスト。
 S3 AP アクセスは行わない（VPC 内 S3 アクセスの問題を切り分けるため）。
 """
-import json
 import logging
 import os
 

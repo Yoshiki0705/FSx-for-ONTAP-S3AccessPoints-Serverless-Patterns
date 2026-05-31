@@ -29,7 +29,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from translate_readmes import (
     BlockType,
-    ContentBlock,
     LanguageSwitcherInjector,
     MarkdownTranslator,
 )

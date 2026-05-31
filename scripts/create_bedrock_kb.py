@@ -1,6 +1,6 @@
+import os
 #!/usr/bin/env python3
 """Bedrock Knowledge Base を作成するスクリプト"""
-import json
 import time
 import boto3
 

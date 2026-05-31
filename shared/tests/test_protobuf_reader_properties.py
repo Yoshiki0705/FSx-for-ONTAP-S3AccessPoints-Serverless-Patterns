@@ -18,7 +18,7 @@ import asyncio
 import struct
 
 import pytest
-from hypothesis import given, settings, assume, HealthCheck
+from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 
 from shared.fpolicy.protobuf_reader import (

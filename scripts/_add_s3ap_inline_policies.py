@@ -9,7 +9,6 @@ This runs ONCE per template. Subsequent runs detect the added policy and skip.
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 

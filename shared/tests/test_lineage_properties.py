@@ -150,7 +150,7 @@ class TestLineageRecordRoundTrip:
             _ensure_lineage_table()
 
             tracker = LineageTracker(table_name=TABLE_NAME)
-            lineage_id = tracker.record(record)
+            tracker.record(record)
 
             # Verify via get_history
             history = tracker.get_history(source_file_key)

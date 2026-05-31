@@ -99,7 +99,7 @@ def test_task_token_round_trip(task_token, point_count):
             "s3://test-output-bucket/sagemaker-output/out.json"
         )
 
-        result = _handle_mock_mode(event, task_token, mock_writer)
+        _handle_mock_mode(event, task_token, mock_writer)
 
         # SendTaskSuccess が呼ばれたことを確認
         mock_sfn.send_task_success.assert_called_once()

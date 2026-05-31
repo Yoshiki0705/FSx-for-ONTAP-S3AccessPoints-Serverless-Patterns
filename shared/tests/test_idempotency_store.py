@@ -11,7 +11,6 @@ import time
 from pathlib import Path
 
 import boto3
-import pytest
 from moto import mock_aws
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))

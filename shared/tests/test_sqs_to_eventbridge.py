@@ -11,7 +11,6 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -87,7 +86,6 @@ class TestSqsToEventBridgeProperty:
         """
         sqs_event = _make_sqs_event([event])
 
-        captured_entries: list[dict] = []
 
         mock_eb = MagicMock()
         mock_eb.put_events.return_value = {"Entries": [{"EventId": "evt-1"}]}

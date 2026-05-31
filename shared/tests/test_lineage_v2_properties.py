@@ -8,7 +8,6 @@ from __future__ import annotations
 import re
 import string
 
-import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from moto import mock_aws
@@ -17,8 +16,6 @@ from shared.lineage import (
     LineageRecord,
     LineageTracker,
     validate_checksum,
-    validate_guardrail_mode,
-    validate_retention_profile,
 )
 
 # --- Strategies ---
@@ -74,7 +71,7 @@ class TestLineageV2RoundTrip:
         with mock_aws():
             # Create DynamoDB table
             dynamodb = boto3.resource("dynamodb", region_name="ap-northeast-1")
-            table = dynamodb.create_table(
+            dynamodb.create_table(
                 TableName="test-lineage-rt",
                 KeySchema=[
                     {"AttributeName": "source_file_key", "KeyType": "HASH"},

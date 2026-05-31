@@ -420,7 +420,7 @@ def test_s3ap_helper_list_then_get_consistency(n_objects):
 
 import pytest
 
-from shared.ontap_client import OntapClient, OntapClientConfig, OntapClientError
+from shared.ontap_client import OntapClient, OntapClientError
 
 
 @settings(max_examples=100)
@@ -814,7 +814,6 @@ def test_summary_structured_output_completeness(
 # ---------------------------------------------------------------------------
 
 import importlib.util as _transform_importlib_util
-import io as _io
 
 # manufacturing-analytics ディレクトリはハイフンを含むため importlib で読み込む
 _transform_spec = _transform_importlib_util.spec_from_file_location(

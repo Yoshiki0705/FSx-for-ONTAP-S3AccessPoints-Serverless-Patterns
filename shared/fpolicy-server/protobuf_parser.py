@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import logging
 import struct
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger("fpolicy-server.protobuf")
 

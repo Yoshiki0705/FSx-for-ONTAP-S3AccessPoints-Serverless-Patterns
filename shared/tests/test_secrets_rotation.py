@@ -9,7 +9,7 @@ Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.8
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 
 def _load_handler(function_name: str):

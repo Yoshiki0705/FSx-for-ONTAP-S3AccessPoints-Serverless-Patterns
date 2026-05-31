@@ -17,11 +17,9 @@ import importlib.util
 import json
 import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 # Add project root to path for shared module imports
 _project_root = Path(__file__).resolve().parent.parent.parent

@@ -9,8 +9,7 @@ Validates: Requirements 13.7
 
 from __future__ import annotations
 
-import io
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError
@@ -273,7 +272,7 @@ class TestMultipartUpload:
 
         # part_size=5 で 15 バイトのデータ → 3 パート
         data_chunks = [b"AAAAA", b"BBBBB", b"CCCCC"]
-        result = helper.multipart_upload(
+        helper.multipart_upload(
             "output/multi.bin",
             iter(data_chunks),
             part_size=5,
@@ -303,7 +302,7 @@ class TestMultipartUpload:
 
         # part_size=10 で 15 バイト → 1 フルパート + 1 残りパート
         data_chunks = [b"A" * 10, b"B" * 5]
-        result = helper.multipart_upload(
+        helper.multipart_upload(
             "output/remainder.bin",
             iter(data_chunks),
             part_size=10,

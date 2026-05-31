@@ -37,10 +37,9 @@ import functools
 import logging
 import os
 import time
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Generator
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 

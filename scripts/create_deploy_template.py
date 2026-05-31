@@ -8,7 +8,6 @@ Code: S3Bucket/S3Key を追加する。
 import os
 import re
 import sys
-import yaml
 
 
 def convert_template(uc_name: str) -> None:
