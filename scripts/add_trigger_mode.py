@@ -151,7 +151,6 @@ def add_trigger_mode_to_template(template_path: Path) -> dict:
     Returns dict with status info.
     """
     content = template_path.read_text()
-    original = content
     changes = []
 
     # 1. Check if already has TriggerMode

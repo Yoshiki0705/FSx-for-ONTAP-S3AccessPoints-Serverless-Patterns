@@ -12,17 +12,16 @@ Property 2: ENFORCE Daily Cap Invariant
 from __future__ import annotations
 
 import os
-import time
 from datetime import datetime, timezone
 from decimal import Decimal
 
 import boto3
 import pytest
-from hypothesis import given, settings, assume, HealthCheck
+from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 from moto import mock_aws
 
-from shared.guardrails import CapacityGuardrail, GuardrailMode, GuardrailResult
+from shared.guardrails import CapacityGuardrail, GuardrailMode
 
 
 # --- Hypothesis Strategies ---

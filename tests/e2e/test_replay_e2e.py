@@ -12,11 +12,9 @@ import asyncio
 import json
 import logging
 import os
-import subprocess
 import time
 import uuid
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Any
 
 import boto3

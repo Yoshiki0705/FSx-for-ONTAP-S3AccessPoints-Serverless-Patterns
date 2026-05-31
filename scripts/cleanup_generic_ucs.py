@@ -208,7 +208,7 @@ def revoke_vpc_endpoint_sg_rule(
         error_code = e.response["Error"]["Code"]
         if error_code == "InvalidPermission.NotFound":
             # Rule already removed — not an error
-            print(f"  Rule already removed (not found).")
+            print("  Rule already removed (not found).")
             return None
         return f"VPC Endpoint SG revoke failed: {e}"
     return None
@@ -312,13 +312,13 @@ def cleanup_stack(
         resp = cfn_client.describe_stacks(StackName=stack_name)
         stacks = resp.get("Stacks", [])
         if not stacks:
-            print(f"  Stack not found (already deleted). Skipping.")
+            print("  Stack not found (already deleted). Skipping.")
             result.steps_completed.append("skip:not_found")
             return result
         stack_status = stacks[0]["StackStatus"]
     except ClientError as e:
         if "does not exist" in str(e):
-            print(f"  Stack not found (already deleted). Skipping.")
+            print("  Stack not found (already deleted). Skipping.")
             result.steps_completed.append("skip:not_found")
             return result
         result.success = False
@@ -375,7 +375,7 @@ def cleanup_stack(
 
     # Step 6 (optional): Poll for completion
     if wait and not dry_run and not err:
-        print(f"  Waiting for DELETE_COMPLETE...")
+        print("  Waiting for DELETE_COMPLETE...")
         err = poll_stack_deletion(cfn_client, stack_name)
         if err:
             result.errors.append(err)
@@ -523,7 +523,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     if not args.dry_run:
         print("  Post-cleanup checklist:")
         print("    □ Wait for DELETE_COMPLETE (15-30 min for VPC Lambda ENIs)")
-        print(f"    □ Check retained DynamoDB tables:")
+        print("    □ Check retained DynamoDB tables:")
         print(
             f"      aws dynamodb list-tables --region {region} "
             f"--query 'TableNames[?contains(@, `fsxn-`)]'"

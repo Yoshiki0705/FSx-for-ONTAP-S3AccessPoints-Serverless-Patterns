@@ -13,7 +13,6 @@ is needed since those are already anonymized.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
 
 try:
     from PIL import Image, ImageDraw

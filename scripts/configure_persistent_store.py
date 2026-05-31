@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """
 Persistent Store 設定スクリプト
@@ -16,9 +17,7 @@ VPC 内の Lambda (IP Updater) 経由で ONTAP API を呼び出す。
 
 import argparse
 import json
-import sys
 
-import boto3
 
 # Configuration
 REGION = os.environ.get("AWS_REGION", "ap-northeast-1")

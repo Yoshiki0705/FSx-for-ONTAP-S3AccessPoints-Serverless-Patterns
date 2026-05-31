@@ -20,7 +20,7 @@ from unittest.mock import patch
 
 import boto3
 import pytest
-from hypothesis import given, settings, strategies as st, HealthCheck
+from hypothesis import given, settings, strategies as st
 from moto import mock_aws
 
 from shared.task_token_store import TaskTokenStore
@@ -359,7 +359,7 @@ def test_task_token_never_logged_in_plaintext(task_token):
         store = TaskTokenStore(table_name=TABLE_NAME, ttl_seconds=86400)
 
         # Set up log capture
-        log_handler = logging.handlers.MemoryHandler(capacity=1000)
+        logging.handlers.MemoryHandler(capacity=1000)
         log_records: list[logging.LogRecord] = []
 
         class RecordCollector(logging.Handler):

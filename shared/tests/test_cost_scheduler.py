@@ -8,7 +8,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 

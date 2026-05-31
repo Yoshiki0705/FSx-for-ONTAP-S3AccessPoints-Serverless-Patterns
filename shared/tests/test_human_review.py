@@ -3,7 +3,6 @@
 import os
 from unittest.mock import patch
 
-import pytest
 
 from shared.human_review import (
     HumanReviewDecision,

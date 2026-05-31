@@ -171,7 +171,7 @@ def test_cross_region_failover_secondary_only_after_primary_fails(
             f"but got region_served={result['region_served']}"
         )
         assert result["is_failover"] is False, (
-            f"Failover should not occur when primary succeeds."
+            "Failover should not occur when primary succeeds."
         )
     else:
         assert result["secondary_attempted"] is True, (

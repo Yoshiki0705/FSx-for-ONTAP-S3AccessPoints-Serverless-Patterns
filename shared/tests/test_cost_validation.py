@@ -8,7 +8,6 @@ Coverage target: 100% for cost_validation.py
 
 from __future__ import annotations
 
-import pytest
 
 from shared.cost_validation import validate_scaling_schedule, validate_billing_thresholds
 

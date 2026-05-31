@@ -16,15 +16,13 @@ byte-for-byte 同一であることを検証する。
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 
 import importlib.util
 import sys
-import os
 from pathlib import Path
 
 # Add project root to path for shared module imports
