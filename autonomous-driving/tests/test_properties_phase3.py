@@ -95,9 +95,7 @@ def test_task_token_round_trip(task_token, point_count):
         mock_boto3.client.return_value = mock_sfn
 
         mock_writer = MagicMock()
-        mock_writer.build_s3_uri.return_value = (
-            "s3://test-output-bucket/sagemaker-output/out.json"
-        )
+        mock_writer.build_s3_uri.return_value = "s3://test-output-bucket/sagemaker-output/out.json"
 
         _handle_mock_mode(event, task_token, mock_writer)
 
@@ -107,8 +105,7 @@ def test_task_token_round_trip(task_token, point_count):
 
         # Task Token が正確に伝播されていることを確認
         assert call_kwargs["taskToken"] == task_token, (
-            f"Task token mismatch: expected '{task_token}', "
-            f"got '{call_kwargs['taskToken']}'"
+            f"Task token mismatch: expected '{task_token}', got '{call_kwargs['taskToken']}'"
         )
 
         # 出力に正しいメタデータが含まれることを確認
@@ -139,8 +136,7 @@ def test_point_count_invariant(point_count):
 
     # ラベル数が入力ポイント数と一致することを確認
     assert len(labels) == point_count, (
-        f"Point count invariant violated: input={point_count}, "
-        f"output_labels={len(labels)}"
+        f"Point count invariant violated: input={point_count}, output_labels={len(labels)}"
     )
 
     # 各ラベルが有効な範囲内であることを確認
@@ -182,8 +178,7 @@ def test_error_state_propagation(task_token, job_status, error_message):
 
     # Task Token が正確に伝播されていることを確認
     assert call_kwargs["taskToken"] == task_token, (
-        f"Task token mismatch: expected '{task_token}', "
-        f"got '{call_kwargs['taskToken']}'"
+        f"Task token mismatch: expected '{task_token}', got '{call_kwargs['taskToken']}'"
     )
 
     # エラーメッセージが非空であることを確認

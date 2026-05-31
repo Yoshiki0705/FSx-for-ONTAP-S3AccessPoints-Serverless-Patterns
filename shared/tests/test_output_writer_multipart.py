@@ -3,6 +3,7 @@
 Tests put_stream, put_file, get_stream, and the 5 GB pre-check on put_bytes.
 Uses moto for Standard S3 multipart and MagicMock for FSxN S3AP delegation.
 """
+
 from __future__ import annotations
 
 import os
@@ -168,7 +169,8 @@ def test_put_stream_small_iterator_uses_put_object(aws_env):
     chunks = iter([data[:200], data[200:]])
 
     result = writer.put_stream(
-        "test/small_iter.bin", chunks,
+        "test/small_iter.bin",
+        chunks,
         part_size=1024,  # 1 KB parts, threshold = 2 KB
     )
 
@@ -204,7 +206,8 @@ def test_put_stream_large_bytes_promotes_to_multipart(aws_env):
     data = b"M" * (part_size * 2 + 1000)  # ~10 MB + 1000 bytes
 
     result = writer.put_stream(
-        "test/large.bin", data,
+        "test/large.bin",
+        data,
         part_size=part_size,
     )
 
@@ -243,10 +246,11 @@ def test_put_stream_iterator_promotes_to_multipart(aws_env):
 
     def data_gen():
         for i in range(0, len(data), chunk_size):
-            yield data[i:i + chunk_size]
+            yield data[i : i + chunk_size]
 
     result = writer.put_stream(
-        "test/iter_large.bin", data_gen(),
+        "test/iter_large.bin",
+        data_gen(),
         part_size=part_size,
     )
 
@@ -275,7 +279,8 @@ def test_put_stream_hint_below_threshold_skips_multipart(aws_env):
 
     data = b"H" * 100
     result = writer.put_stream(
-        "test/hinted.bin", iter([data]),
+        "test/hinted.bin",
+        iter([data]),
         part_size=200,
         content_length_hint=100,  # < 400 (2 * 200)
     )
@@ -315,7 +320,8 @@ def test_put_stream_aborts_multipart_on_failure(aws_env):
 
     with pytest.raises(RuntimeError, match="Simulated upload failure"):
         writer.put_stream(
-            "test/fail.bin", failing_iterator(),
+            "test/fail.bin",
+            failing_iterator(),
             part_size=part_size,
         )
 
@@ -481,7 +487,8 @@ def test_put_stream_progress_callback(aws_env):
 
     data = b"P" * 100
     writer.put_stream(
-        "test/progress.bin", data,
+        "test/progress.bin",
+        data,
         part_size=1024,
         progress_callback=on_progress,
     )

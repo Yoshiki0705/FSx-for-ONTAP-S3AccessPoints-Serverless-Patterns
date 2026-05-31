@@ -12,12 +12,7 @@ import pytest
 def _load_handler(function_name: str):
     """Load UC16 handler module from government-archives/functions/{function_name}/handler.py."""
     module_name = f"uc16_{function_name}_handler"
-    handler_path = (
-        Path(__file__).resolve().parent.parent
-        / "functions"
-        / function_name
-        / "handler.py"
-    )
+    handler_path = Path(__file__).resolve().parent.parent / "functions" / function_name / "handler.py"
     spec = importlib.util.spec_from_file_location(module_name, handler_path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module

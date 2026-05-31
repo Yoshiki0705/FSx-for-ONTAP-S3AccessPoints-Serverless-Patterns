@@ -169,9 +169,7 @@ class TestHandlerServerlessMode:
         mock_s3.get_object.return_value = {"Body": mock_body}
 
         mock_runtime = MagicMock()
-        mock_runtime.invoke_endpoint.return_value = _make_invoke_response(
-            variant_name="provisioned-v1"
-        )
+        mock_runtime.invoke_endpoint.return_value = _make_invoke_response(variant_name="provisioned-v1")
 
         env_vars = {
             "ENDPOINT_NAME": "provisioned-endpoint",
@@ -230,9 +228,7 @@ class TestModelNotReadyExceptionRetry:
     def test_model_not_ready_max_retries_exceeded(self, mock_sleep):
         """ModelNotReadyException が最大リトライ回数を超過すると ServerlessColdStartTimeoutError"""
         mock_client = MagicMock()
-        mock_client.invoke_endpoint.side_effect = _make_client_error(
-            "ModelNotReadyException"
-        )
+        mock_client.invoke_endpoint.side_effect = _make_client_error("ModelNotReadyException")
 
         with pytest.raises(ServerlessColdStartTimeoutError, match="ModelNotReadyException"):
             _invoke_endpoint_serverless(
@@ -389,9 +385,7 @@ class TestTotalTimeoutGuard:
     def test_timeout_guard_during_serverless_invoke(self, mock_sleep):
         """Serverless invoke 中にタイムアウトガードが発動する"""
         mock_client = MagicMock()
-        mock_client.invoke_endpoint.side_effect = _make_client_error(
-            "ModelNotReadyException"
-        )
+        mock_client.invoke_endpoint.side_effect = _make_client_error("ModelNotReadyException")
 
         # handler_start_time を過去に設定してタイムアウトをシミュレート
         handler_start_time = time.time() - 200
@@ -424,9 +418,7 @@ class TestTotalTimeoutGuard:
         mock_s3.get_object.return_value = {"Body": mock_body}
 
         mock_runtime = MagicMock()
-        mock_runtime.invoke_endpoint.side_effect = _make_client_error(
-            "ModelNotReadyException"
-        )
+        mock_runtime.invoke_endpoint.side_effect = _make_client_error("ModelNotReadyException")
 
         env_vars = {
             "ENDPOINT_NAME": "ep",

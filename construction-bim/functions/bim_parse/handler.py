@@ -41,7 +41,6 @@ class IfcParseError(Exception):
     """IFC ファイルパースエラー"""
 
 
-
 def parse_ifc_metadata(content: str) -> dict:
     """IFC ファイルからメタデータを抽出する
 
@@ -77,9 +76,7 @@ def parse_ifc_metadata(content: str) -> dict:
     }
 
     # FILE_SCHEMA からバージョン抽出
-    schema_match = re.search(
-        r"FILE_SCHEMA\s*\(\s*\(\s*'([^']+)'", content, re.IGNORECASE
-    )
+    schema_match = re.search(r"FILE_SCHEMA\s*\(\s*\(\s*'([^']+)'", content, re.IGNORECASE)
     if schema_match:
         metadata["ifc_schema_version"] = schema_match.group(1)
 
@@ -184,9 +181,7 @@ def compute_version_diff(current_metadata: dict, previous_metadata: dict | None)
     }
 
 
-def _get_previous_metadata(
-    s3_client, output_bucket: str, file_key: str, prefix: str
-) -> dict | None:
+def _get_previous_metadata(s3_client, output_bucket: str, file_key: str, prefix: str) -> dict | None:
     """前バージョンのメタデータを S3 から取得する
 
     Args:
@@ -214,13 +209,9 @@ def _get_previous_metadata(
         # 最新のメタデータを取得
         latest = sorted(contents, key=lambda x: x["LastModified"], reverse=True)[0]
         with xray_subsegment(
-
             name="s3_getobject",
-
             annotations={"service_name": "s3", "operation": "GetObject", "use_case": "construction-bim"},
-
         ):
-
             obj = s3_client.get_object(Bucket=output_bucket, Key=latest["Key"])
         data = json.loads(obj["Body"].read().decode("utf-8"))
         return data.get("metadata", None)
@@ -292,9 +283,7 @@ def handler(event, context):
 
     # 前バージョンとの差分検出
     s3_client = boto3.client("s3")
-    previous_metadata = _get_previous_metadata(
-        s3_client, output_bucket, file_key, prev_prefix
-    )
+    previous_metadata = _get_previous_metadata(s3_client, output_bucket, file_key, prev_prefix)
     version_diff = compute_version_diff(metadata, previous_metadata)
 
     # 出力キー生成
@@ -321,7 +310,6 @@ def handler(event, context):
         metadata["floor_count"],
         version_diff,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="bim_parse")

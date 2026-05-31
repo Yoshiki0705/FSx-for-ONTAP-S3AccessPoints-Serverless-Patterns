@@ -115,13 +115,10 @@ class TestLengthPrefixedRoundTrip:
             max_message_size=len(message) + 1,
         )
 
-        result = asyncio.get_event_loop().run_until_complete(
-            frame_reader.read_message()
-        )
+        result = asyncio.get_event_loop().run_until_complete(frame_reader.read_message())
 
         assert result == message, (
-            f"Round-trip failed: sent {len(message)} bytes, "
-            f"got {len(result) if result else 'None'} bytes"
+            f"Round-trip failed: sent {len(message)} bytes, got {len(result) if result else 'None'} bytes"
         )
 
     @pytest.mark.property
@@ -139,14 +136,9 @@ class TestLengthPrefixedRoundTrip:
             max_message_size=max_size,
         )
 
-        results = asyncio.get_event_loop().run_until_complete(
-            _read_all_messages(frame_reader)
-        )
+        results = asyncio.get_event_loop().run_until_complete(_read_all_messages(frame_reader))
 
-        assert results == messages, (
-            f"Round-trip failed: sent {len(messages)} messages, "
-            f"got {len(results)} messages"
-        )
+        assert results == messages, f"Round-trip failed: sent {len(messages)} messages, got {len(results)} messages"
         assert frame_reader.messages_read == len(messages)
 
     @pytest.mark.property
@@ -164,9 +156,7 @@ class TestLengthPrefixedRoundTrip:
             max_message_size=max_size,
         )
 
-        asyncio.get_event_loop().run_until_complete(
-            _read_all_messages(frame_reader)
-        )
+        asyncio.get_event_loop().run_until_complete(_read_all_messages(frame_reader))
 
         expected_bytes = sum(4 + len(m) for m in messages)
         assert frame_reader.bytes_read == expected_bytes, (
@@ -190,9 +180,7 @@ class TestLengthPrefixedRoundTrip:
             max_message_size=max_size,
         )
 
-        asyncio.get_event_loop().run_until_complete(
-            _read_all_messages(frame_reader)
-        )
+        asyncio.get_event_loop().run_until_complete(_read_all_messages(frame_reader))
 
         assert frame_reader.messages_read == 3
 
@@ -223,13 +211,10 @@ class TestFramelessRoundTrip:
             max_message_size=len(message) + 1,
         )
 
-        result = asyncio.get_event_loop().run_until_complete(
-            frame_reader.read_message()
-        )
+        result = asyncio.get_event_loop().run_until_complete(frame_reader.read_message())
 
         assert result == message, (
-            f"Round-trip failed: sent {len(message)} bytes, "
-            f"got {len(result) if result else 'None'} bytes"
+            f"Round-trip failed: sent {len(message)} bytes, got {len(result) if result else 'None'} bytes"
         )
 
     @pytest.mark.property
@@ -247,14 +232,9 @@ class TestFramelessRoundTrip:
             max_message_size=max_size,
         )
 
-        results = asyncio.get_event_loop().run_until_complete(
-            _read_all_messages(frame_reader)
-        )
+        results = asyncio.get_event_loop().run_until_complete(_read_all_messages(frame_reader))
 
-        assert results == messages, (
-            f"Round-trip failed: sent {len(messages)} messages, "
-            f"got {len(results)} messages"
-        )
+        assert results == messages, f"Round-trip failed: sent {len(messages)} messages, got {len(results)} messages"
         assert frame_reader.messages_read == len(messages)
 
     @pytest.mark.property
@@ -272,9 +252,7 @@ class TestFramelessRoundTrip:
             max_message_size=max_size,
         )
 
-        asyncio.get_event_loop().run_until_complete(
-            _read_all_messages(frame_reader)
-        )
+        asyncio.get_event_loop().run_until_complete(_read_all_messages(frame_reader))
 
         expected_bytes = sum(len(_encode_varint(len(m))) + len(m) for m in messages)
         assert frame_reader.bytes_read == expected_bytes, (
@@ -298,17 +276,12 @@ class TestFramelessRoundTrip:
             max_message_size=len(message) + 1,
         )
 
-        result = asyncio.get_event_loop().run_until_complete(
-            frame_reader.read_message()
-        )
+        result = asyncio.get_event_loop().run_until_complete(frame_reader.read_message())
 
         assert result == message
         # Verify varint was multi-byte
         varint_len = len(_encode_varint(len(message)))
-        assert varint_len >= 2, (
-            f"Expected multi-byte varint for {len(message)} bytes, "
-            f"got {varint_len}-byte varint"
-        )
+        assert varint_len >= 2, f"Expected multi-byte varint for {len(message)} bytes, got {varint_len}-byte varint"
 
     @pytest.mark.property
     @given(
@@ -331,16 +304,10 @@ class TestFramelessRoundTrip:
             max_message_size=max_size,
         )
 
-        results = asyncio.get_event_loop().run_until_complete(
-            _read_all_messages(frame_reader)
-        )
+        results = asyncio.get_event_loop().run_until_complete(_read_all_messages(frame_reader))
 
         for i, (expected, actual) in enumerate(zip(messages, results)):
-            assert expected == actual, (
-                f"Message {i} mismatch: expected {len(expected)} bytes, "
-                f"got {len(actual)} bytes"
-            )
-
+            assert expected == actual, f"Message {i} mismatch: expected {len(expected)} bytes, got {len(actual)} bytes"
 
 
 # --- Property 9: Max Size Enforcement ---
@@ -361,9 +328,7 @@ class TestMaxSizeEnforcement:
         excess=st.integers(min_value=1, max_value=500),
     )
     @settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_length_prefixed_oversized_raises_framing_error(
-        self, max_size: int, excess: int
-    ):
+    def test_length_prefixed_oversized_raises_framing_error(self, max_size: int, excess: int):
         """LENGTH_PREFIXED: max_message_size 超過で FramingError が raise される."""
         message_size = max_size + excess
         # Create a stream with a length header indicating oversized message
@@ -377,9 +342,7 @@ class TestMaxSizeEnforcement:
         )
 
         with pytest.raises(FramingError) as exc_info:
-            asyncio.get_event_loop().run_until_complete(
-                frame_reader.read_message()
-            )
+            asyncio.get_event_loop().run_until_complete(frame_reader.read_message())
 
         assert "exceeds max" in str(exc_info.value).lower() or "exceeds" in str(exc_info.value)
 
@@ -389,9 +352,7 @@ class TestMaxSizeEnforcement:
         excess=st.integers(min_value=1, max_value=500),
     )
     @settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_frameless_oversized_raises_framing_error(
-        self, max_size: int, excess: int
-    ):
+    def test_frameless_oversized_raises_framing_error(self, max_size: int, excess: int):
         """FRAMELESS: max_message_size 超過で FramingError が raise される."""
         message_size = max_size + excess
         # Create a varint-delimited stream with oversized message length
@@ -405,9 +366,7 @@ class TestMaxSizeEnforcement:
         )
 
         with pytest.raises(FramingError) as exc_info:
-            asyncio.get_event_loop().run_until_complete(
-                frame_reader.read_message()
-            )
+            asyncio.get_event_loop().run_until_complete(frame_reader.read_message())
 
         assert "exceeds max" in str(exc_info.value).lower() or "exceeds" in str(exc_info.value)
 
@@ -428,9 +387,7 @@ class TestMaxSizeEnforcement:
             max_message_size=max_size,
         )
 
-        result = asyncio.get_event_loop().run_until_complete(
-            frame_reader.read_message()
-        )
+        result = asyncio.get_event_loop().run_until_complete(frame_reader.read_message())
 
         assert result == message  # No error, message read successfully
 
@@ -462,9 +419,7 @@ class TestCounterAccuracy:
             max_message_size=max_size,
         )
 
-        asyncio.get_event_loop().run_until_complete(
-            _read_all_messages(frame_reader)
-        )
+        asyncio.get_event_loop().run_until_complete(_read_all_messages(frame_reader))
 
         # messages_read must equal message count
         assert frame_reader.messages_read == len(messages), (
@@ -492,9 +447,7 @@ class TestCounterAccuracy:
             max_message_size=max_size,
         )
 
-        asyncio.get_event_loop().run_until_complete(
-            _read_all_messages(frame_reader)
-        )
+        asyncio.get_event_loop().run_until_complete(_read_all_messages(frame_reader))
 
         # messages_read must equal message count
         assert frame_reader.messages_read == len(messages), (
@@ -533,9 +486,7 @@ class TestCounterAccuracy:
         assert frame_reader.bytes_read == 0
 
         # Read one message
-        asyncio.get_event_loop().run_until_complete(
-            frame_reader.read_message()
-        )
+        asyncio.get_event_loop().run_until_complete(frame_reader.read_message())
 
         # After reading one message
         assert frame_reader.messages_read == 1

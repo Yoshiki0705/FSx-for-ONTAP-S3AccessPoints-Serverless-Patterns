@@ -92,34 +92,28 @@ def _invoke_bedrock(bedrock_client, model_id: str, prompt: str) -> str:
     Returns:
         str: 生成されたレポートテキスト
     """
-    body = json.dumps({
-        "messages": [
-            {"role": "user", "content": [{"text": prompt}]},
-        ],
-        "inferenceConfig": {
-            "maxTokens": 4096,
-            "temperature": 0.3,
-        },
-    })
+    body = json.dumps(
+        {
+            "messages": [
+                {"role": "user", "content": [{"text": prompt}]},
+            ],
+            "inferenceConfig": {
+                "maxTokens": 4096,
+                "temperature": 0.3,
+            },
+        }
+    )
 
     with xray_subsegment(
-
-
         name="bedrock_invokemodel",
-
-
         annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "semiconductor-eda"},
-
-
     ):
-
-
         response = bedrock_client.invoke_model(
-        modelId=model_id,
-        contentType="application/json",
-        accept="application/json",
-        body=body,
-    )
+            modelId=model_id,
+            contentType="application/json",
+            accept="application/json",
+            body=body,
+        )
 
     response_body = json.loads(response["body"].read())
     output = response_body.get("output", {})
@@ -157,9 +151,7 @@ def handler(event, context):
     model_id = os.environ.get("BEDROCK_MODEL_ID", DEFAULT_BEDROCK_MODEL_ID)
 
     statistics = event.get("statistics", {})
-    query_execution_id = event.get(
-        "query_execution_id", context.aws_request_id
-    )
+    query_execution_id = event.get("query_execution_id", context.aws_request_id)
 
     logger.info(
         "Report Generation started: model=%s, query_execution_id=%s",
@@ -174,10 +166,7 @@ def handler(event, context):
 
     # レポートを OutputWriter 経由で出力先に書き出し
     now = datetime.now(timezone.utc)
-    report_key = (
-        f"reports/{now.strftime('%Y/%m/%d')}"
-        f"/eda-design-review-{context.aws_request_id}.md"
-    )
+    report_key = f"reports/{now.strftime('%Y/%m/%d')}/eda-design-review-{context.aws_request_id}.md"
 
     writer = OutputWriter.from_env()
     writer.put_text(
@@ -215,15 +204,13 @@ def handler(event, context):
     )
 
     logger.info(
-        "Report Generation completed: report=%s, total_designs=%d, "
-        "invalid=%d, outliers=%d, violations=%d",
+        "Report Generation completed: report=%s, total_designs=%d, invalid=%d, outliers=%d, violations=%d",
         report_key,
         total_designs,
         invalid_files,
         outlier_count,
         violation_count,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="report_generation")

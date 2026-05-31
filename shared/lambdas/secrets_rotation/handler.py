@@ -80,9 +80,7 @@ def handler(event: dict[str, Any], context: Any) -> None:
             token,
             arn,
         )
-        raise ValueError(
-            f"Secret version {token} has no stage for rotation of secret {arn}."
-        )
+        raise ValueError(f"Secret version {token} has no stage for rotation of secret {arn}.")
 
     # Route to the appropriate step
     if step == "createSecret":
@@ -112,22 +110,17 @@ def _create_secret(service_client: Any, arn: str, token: str) -> None:
         # Verify the AWSPENDING version actually has a SecretString
         # (it may exist in stages but have no value if a previous attempt failed)
         try:
-            service_client.get_secret_value(
-                SecretId=arn, VersionId=token, VersionStage="AWSPENDING"
-            )
+            service_client.get_secret_value(SecretId=arn, VersionId=token, VersionStage="AWSPENDING")
             logger.info("createSecret: AWSPENDING already exists for version %s.", token)
             return
         except service_client.exceptions.ResourceNotFoundException:
             logger.warning(
-                "createSecret: AWSPENDING stage exists for version %s but has no value. "
-                "Re-creating.",
+                "createSecret: AWSPENDING stage exists for version %s but has no value. Re-creating.",
                 token,
             )
 
     # Get the current secret value to preserve non-password fields
-    current = service_client.get_secret_value(
-        SecretId=arn, VersionStage="AWSCURRENT"
-    )
+    current = service_client.get_secret_value(SecretId=arn, VersionStage="AWSCURRENT")
     current_dict = json.loads(current["SecretString"])
 
     # Generate a new password using cryptographically secure random
@@ -144,9 +137,7 @@ def _create_secret(service_client: Any, arn: str, token: str) -> None:
         SecretString=json.dumps(new_secret_dict),
         VersionStages=["AWSPENDING"],
     )
-    logger.info(
-        "createSecret: Successfully created AWSPENDING for secret %s.", arn
-    )
+    logger.info("createSecret: Successfully created AWSPENDING for secret %s.", arn)
 
 
 def _set_secret(service_client: Any, arn: str, token: str) -> None:
@@ -161,9 +152,7 @@ def _set_secret(service_client: Any, arn: str, token: str) -> None:
         token: クライアントリクエストトークン（バージョン ID）
     """
     # Retrieve pending secret (new password)
-    pending = service_client.get_secret_value(
-        SecretId=arn, VersionId=token, VersionStage="AWSPENDING"
-    )
+    pending = service_client.get_secret_value(SecretId=arn, VersionId=token, VersionStage="AWSPENDING")
     secret_dict = json.loads(pending["SecretString"])
     new_password = secret_dict["password"]
     management_ip = secret_dict.get("management_ip") or os.environ.get("ONTAP_MGMT_IP", "")
@@ -171,9 +160,7 @@ def _set_secret(service_client: Any, arn: str, token: str) -> None:
     svm_uuid = secret_dict.get("svm_uuid") or os.environ.get("CLUSTER_UUID") or os.environ.get("SVM_UUID", "")
 
     # Retrieve current secret for authentication
-    current = service_client.get_secret_value(
-        SecretId=arn, VersionStage="AWSCURRENT"
-    )
+    current = service_client.get_secret_value(SecretId=arn, VersionStage="AWSCURRENT")
     current_dict = json.loads(current["SecretString"])
     current_password = current_dict["password"]
 
@@ -184,9 +171,7 @@ def _set_secret(service_client: Any, arn: str, token: str) -> None:
     # The cluster UUID can be obtained from /api/cluster or from the account's self link.
     # We use the owner UUID from the account listing, falling back to SVM UUID.
     owner_uuid = svm_uuid  # This should be the cluster UUID for fsxadmin
-    ontap_url = (
-        f"https://{management_ip}/api/security/accounts/{owner_uuid}/{username}"
-    )
+    ontap_url = f"https://{management_ip}/api/security/accounts/{owner_uuid}/{username}"
 
     # Apply new password via ONTAP REST API
     headers = urllib3.make_headers(
@@ -209,8 +194,7 @@ def _set_secret(service_client: Any, arn: str, token: str) -> None:
 
     if response.status not in (200, 202):
         error_msg = (
-            f"ONTAP password change failed: HTTP {response.status} - "
-            f"{response.data.decode('utf-8', errors='replace')}"
+            f"ONTAP password change failed: HTTP {response.status} - {response.data.decode('utf-8', errors='replace')}"
         )
         logger.error("setSecret: %s", error_msg)
         _notify_failure(arn, "setSecret", error_msg)
@@ -234,9 +218,7 @@ def _test_secret(service_client: Any, arn: str, token: str) -> None:
         token: クライアントリクエストトークン（バージョン ID）
     """
     # Retrieve pending secret (new credentials)
-    pending = service_client.get_secret_value(
-        SecretId=arn, VersionId=token, VersionStage="AWSPENDING"
-    )
+    pending = service_client.get_secret_value(SecretId=arn, VersionId=token, VersionStage="AWSPENDING")
     secret_dict = json.loads(pending["SecretString"])
     new_password = secret_dict["password"]
     management_ip = secret_dict.get("management_ip") or os.environ.get("ONTAP_MGMT_IP", "")
@@ -269,8 +251,7 @@ def _test_secret(service_client: Any, arn: str, token: str) -> None:
 
     if response.status != 200:
         error_msg = (
-            f"ONTAP connection test failed: HTTP {response.status} - "
-            f"{response.data.decode('utf-8', errors='replace')}"
+            f"ONTAP connection test failed: HTTP {response.status} - {response.data.decode('utf-8', errors='replace')}"
         )
         logger.error("testSecret: %s", error_msg)
         _notify_failure(arn, "testSecret", error_msg)
@@ -334,9 +315,7 @@ def _notify_failure(secret_arn: str, step: str, error_message: str) -> None:
     """
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN")
     if not sns_topic_arn:
-        logger.warning(
-            "SNS_TOPIC_ARN not configured. Skipping failure notification."
-        )
+        logger.warning("SNS_TOPIC_ARN not configured. Skipping failure notification.")
         return
 
     try:
@@ -355,6 +334,4 @@ def _notify_failure(secret_arn: str, step: str, error_message: str) -> None:
         )
         logger.info("Failure notification sent to SNS topic.")
     except Exception as e:
-        logger.error(
-            "Failed to send SNS notification: %s", str(e)
-        )
+        logger.error("Failed to send SNS notification: %s", str(e))

@@ -95,9 +95,7 @@ def test_record_batching_preserves_count_and_content(n_records, data):
 
     # Property 1: sum of batch sizes == original list length
     total_in_batches = sum(len(batch) for batch in batches)
-    assert total_in_batches == n_records, (
-        f"Expected {n_records} records in batches, got {total_in_batches}"
-    )
+    assert total_in_batches == n_records, f"Expected {n_records} records in batches, got {total_in_batches}"
 
     # Property 2: flattened batches == original records (order preserved)
     flattened = [record for batch in batches for record in batch]
@@ -105,9 +103,7 @@ def test_record_batching_preserves_count_and_content(n_records, data):
 
     # Additional invariant: each batch respects the 500 record limit
     for batch in batches:
-        assert len(batch) <= 500, (
-            f"Batch exceeds 500 record limit: {len(batch)}"
-        )
+        assert len(batch) <= 500, f"Batch exceeds 500 record limit: {len(batch)}"
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +140,9 @@ valid_units = st.sampled_from(["Count", "Milliseconds", "Bytes", "None"])
     metric_name=valid_metric_names,
     metric_value=valid_metric_values,
     unit=valid_units,
-    namespace=st.text(min_size=1, max_size=64, alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="-_")),
+    namespace=st.text(
+        min_size=1, max_size=64, alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="-_")
+    ),
 )
 def test_emf_json_round_trip_validity(metric_name, metric_value, unit, namespace):
     """Feature: fsxn-s3ap-serverless-patterns-phase3, Property 3: EMF JSON round-trip validity
@@ -205,12 +203,16 @@ from shared.observability import xray_subsegment
 @given(
     name=st.text(min_size=1, max_size=128),
     annotations=st.dictionaries(
-        keys=st.text(min_size=1, max_size=32, alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_")),
+        keys=st.text(
+            min_size=1, max_size=32, alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_")
+        ),
         values=st.text(min_size=0, max_size=64),
         max_size=5,
     ),
     metadata=st.dictionaries(
-        keys=st.text(min_size=1, max_size=32, alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_")),
+        keys=st.text(
+            min_size=1, max_size=32, alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_")
+        ),
         values=st.text(min_size=0, max_size=64),
         max_size=5,
     ),
@@ -230,6 +232,4 @@ def test_xray_subsegment_noop_when_disabled(name, annotations, metadata, return_
         with xray_subsegment(name=name, annotations=annotations, metadata=metadata):
             result = return_value
 
-        assert result == return_value, (
-            f"Wrapped code must execute normally. Expected {return_value}, got {result}"
-        )
+        assert result == return_value, f"Wrapped code must execute normally. Expected {return_value}, got {result}"

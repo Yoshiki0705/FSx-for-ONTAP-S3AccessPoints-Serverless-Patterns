@@ -53,10 +53,12 @@ def detect_labels(rekognition_client, image_bytes: bytes, max_labels: int = 20) 
 
     labels = []
     for label in response.get("Labels", []):
-        labels.append({
-            "name": label["Name"],
-            "confidence": round(label["Confidence"], 2),
-        })
+        labels.append(
+            {
+                "name": label["Name"],
+                "confidence": round(label["Confidence"], 2),
+            }
+        )
 
     return labels
 
@@ -140,15 +142,13 @@ def handler(event, context):
     output_writer.put_json(key=output_key, data=output_data)
 
     logger.info(
-        "Image tagging completed: file_key=%s, status=%s, "
-        "max_confidence=%.2f, label_count=%d, output_uri=%s",
+        "Image tagging completed: file_key=%s, status=%s, max_confidence=%.2f, label_count=%d, output_uri=%s",
         file_key,
         status,
         max_confidence,
         len(labels),
         output_writer.build_s3_uri(output_key),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="image_tagging")

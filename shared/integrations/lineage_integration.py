@@ -66,8 +66,7 @@ def _get_lineage_tracker():
         return LineageTracker(table_name=table_name)
     except Exception as exc:
         logger.warning(
-            "[LineageIntegration] Failed to create LineageTracker: %s. "
-            "Lineage recording will be skipped.",
+            "[LineageIntegration] Failed to create LineageTracker: %s. Lineage recording will be skipped.",
             exc,
         )
         return None
@@ -134,13 +133,10 @@ class LineageContext:
                 metadata=self.metadata,
             )
             self._lineage_id = tracker.record(record)
-            logger.debug(
-                "[LineageIntegration] Recorded lineage: %s", self._lineage_id
-            )
+            logger.debug("[LineageIntegration] Recorded lineage: %s", self._lineage_id)
         except Exception as exc:
             logger.warning(
-                "[LineageIntegration] Failed to record lineage for uc=%s, "
-                "source=%s: %s. Main processing continues.",
+                "[LineageIntegration] Failed to record lineage for uc=%s, source=%s: %s. Main processing continues.",
                 self.uc_id,
                 self.source_file_key,
                 exc,
@@ -297,8 +293,7 @@ def _record_from_result(
         tracker.record(record)
     except Exception as exc:
         logger.warning(
-            "[LineageIntegration] Failed to record lineage from result for uc=%s: %s. "
-            "Main processing continues.",
+            "[LineageIntegration] Failed to record lineage from result for uc=%s: %s. Main processing continues.",
             uc_id,
             exc,
         )

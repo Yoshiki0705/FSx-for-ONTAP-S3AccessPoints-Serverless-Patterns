@@ -5,6 +5,7 @@
 - Copy JA content as a stub for each locale with a notice to review the translation.
 - Mirror the pattern used by UC6/UC9 etc.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

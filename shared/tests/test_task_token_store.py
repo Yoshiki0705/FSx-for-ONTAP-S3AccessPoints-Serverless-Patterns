@@ -262,7 +262,8 @@ class TestCollisionRetry:
 
         # Patch generate_correlation_id to return colliding ID first, then unique
         with patch.object(
-            TaskTokenStore, "generate_correlation_id",
+            TaskTokenStore,
+            "generate_correlation_id",
             side_effect=["aaaaaaaa", "bbbbbbbb"],
         ):
             cid = store.store_token(
@@ -292,7 +293,8 @@ class TestCollisionRetry:
 
         # Patch generate_correlation_id to always return colliding IDs
         with patch.object(
-            TaskTokenStore, "generate_correlation_id",
+            TaskTokenStore,
+            "generate_correlation_id",
             side_effect=["aaaaaaaa", "bbbbbbbb", "cccccccc"],
         ):
             with pytest.raises(TokenStorageError) as exc_info:

@@ -131,8 +131,7 @@ def handler(event, context):
             phi_entities = detect_response.get("Entities", [])
         except Exception as e:
             logger.warning(
-                "Comprehend Medical DetectPHI failed for %s: %s. "
-                "Proceeding with field-name-based redaction only.",
+                "Comprehend Medical DetectPHI failed for %s: %s. Proceeding with field-name-based redaction only.",
                 dicom_key,
                 str(e),
             )
@@ -146,10 +145,7 @@ def handler(event, context):
 
     # 匿名化結果を S3 AP に書き出し
     s3ap_output = S3ApHelper(os.environ["S3_ACCESS_POINT_OUTPUT"])
-    output_key = (
-        f"anonymized/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{dicom_key.rsplit('/', 1)[-1]}.json"
-    )
+    output_key = f"anonymized/{datetime.utcnow().strftime('%Y/%m/%d')}/{dicom_key.rsplit('/', 1)[-1]}.json"
 
     result = {
         "dicom_key": dicom_key,
@@ -172,7 +168,6 @@ def handler(event, context):
         len(phi_entities),
         output_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="anonymization")

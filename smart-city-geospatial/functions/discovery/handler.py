@@ -23,10 +23,18 @@ from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_FORMATS = frozenset({
-    ".tif", ".tiff", ".shp", ".geojson", ".json",
-    ".las", ".laz", ".gpkg",
-})
+SUPPORTED_FORMATS = frozenset(
+    {
+        ".tif",
+        ".tiff",
+        ".shp",
+        ".geojson",
+        ".json",
+        ".las",
+        ".laz",
+        ".gpkg",
+    }
+)
 
 
 def _classify_geo_format(key: str) -> str:
@@ -50,13 +58,9 @@ def _classify_geo_format(key: str) -> str:
 def handler(event, context):
     """UC17 Discovery Lambda ハンドラ。"""
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "gis/")
-    suffix_filter = os.environ.get(
-        "SUFFIX_FILTER", ",".join(sorted(SUPPORTED_FORMATS))
-    )
+    suffix_filter = os.environ.get("SUFFIX_FILTER", ",".join(sorted(SUPPORTED_FORMATS)))
 
     logger.info(
         "UC17 Discovery started: ap=%s, prefix=%r",
@@ -76,15 +80,17 @@ def handler(event, context):
         for single_suffix in suffix_filter.split(","):
             single_suffix = single_suffix.strip()
             if single_suffix:
-                all_objects.extend(
-                    s3ap.list_objects(prefix=prefix, suffix=single_suffix)
-                )
+                all_objects.extend(s3ap.list_objects(prefix=prefix, suffix=single_suffix))
 
     seen_keys = set()
     objects = []
     geo_types = {
-        "raster": 0, "vector_shapefile": 0, "vector_geojson": 0,
-        "pointcloud": 0, "geopackage": 0, "unknown": 0,
+        "raster": 0,
+        "vector_shapefile": 0,
+        "vector_geojson": 0,
+        "pointcloud": 0,
+        "geopackage": 0,
+        "unknown": 0,
     }
     for obj in all_objects:
         if obj["Key"] not in seen_keys:
@@ -101,10 +107,7 @@ def handler(event, context):
         "geo_formats": geo_types,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
     s3ap_output.put_object(
         key=manifest_key,
         body=json.dumps(manifest, default=str),

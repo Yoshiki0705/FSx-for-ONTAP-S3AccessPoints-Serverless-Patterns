@@ -33,14 +33,30 @@ logger = logging.getLogger(__name__)
 
 # 損害関連ラベル
 DAMAGE_LABELS = [
-    "Damage", "Dent", "Scratch", "Crack", "Broken",
-    "Collision", "Accident", "Wreck",
+    "Damage",
+    "Dent",
+    "Scratch",
+    "Crack",
+    "Broken",
+    "Collision",
+    "Accident",
+    "Wreck",
 ]
 
 # 車両コンポーネントラベル
 VEHICLE_COMPONENT_LABELS = [
-    "Bumper", "Hood", "Fender", "Door", "Window", "Windshield",
-    "Headlight", "Taillight", "Mirror", "Wheel", "Tire", "Roof",
+    "Bumper",
+    "Hood",
+    "Fender",
+    "Door",
+    "Window",
+    "Windshield",
+    "Headlight",
+    "Taillight",
+    "Mirror",
+    "Wheel",
+    "Tire",
+    "Roof",
 ]
 
 
@@ -59,9 +75,7 @@ def sanitize_for_logging(data: dict) -> dict:
     return sanitized
 
 
-def detect_damage_labels(
-    rekognition_client, image_bytes: bytes, max_labels: int = 50
-) -> list[dict]:
+def detect_damage_labels(rekognition_client, image_bytes: bytes, max_labels: int = 50) -> list[dict]:
     """Rekognition DetectLabels で損害関連ラベルを検出する
 
     Args:
@@ -73,25 +87,23 @@ def detect_damage_labels(
         list[dict]: 検出されたラベルのリスト
     """
     with xray_subsegment(
-
         name="rekognition_detectlabels",
-
         annotations={"service_name": "rekognition", "operation": "DetectLabels", "use_case": "insurance-claims"},
-
     ):
-
         response = rekognition_client.detect_labels(
-        Image={"Bytes": image_bytes},
-        MaxLabels=max_labels,
-    )
+            Image={"Bytes": image_bytes},
+            MaxLabels=max_labels,
+        )
 
     labels = []
     for label in response.get("Labels", []):
-        labels.append({
-            "name": label["Name"],
-            "confidence": round(label["Confidence"], 2),
-            "instances": len(label.get("Instances", [])),
-        })
+        labels.append(
+            {
+                "name": label["Name"],
+                "confidence": round(label["Confidence"], 2),
+                "instances": len(label.get("Instances", [])),
+            }
+        )
 
     return labels
 
@@ -105,14 +117,8 @@ def classify_damage(labels: list[dict]) -> dict:
     Returns:
         dict: 損害分類結果
     """
-    damage_detected = [
-        l for l in labels
-        if l["name"] in DAMAGE_LABELS and l["confidence"] >= 50.0
-    ]
-    components_detected = [
-        l for l in labels
-        if l["name"] in VEHICLE_COMPONENT_LABELS and l["confidence"] >= 60.0
-    ]
+    damage_detected = [l for l in labels if l["name"] in DAMAGE_LABELS and l["confidence"] >= 50.0]
+    components_detected = [l for l in labels if l["name"] in VEHICLE_COMPONENT_LABELS and l["confidence"] >= 60.0]
 
     has_damage = len(damage_detected) > 0
 
@@ -132,9 +138,7 @@ def classify_damage(labels: list[dict]) -> dict:
     }
 
 
-def _assess_with_bedrock(
-    bedrock_client, labels: list[dict], model_id: str
-) -> dict:
+def _assess_with_bedrock(bedrock_client, labels: list[dict], model_id: str) -> dict:
     """Bedrock で構造化損害評価を生成する"""
     labels_text = json.dumps(labels[:20], ensure_ascii=False)
     prompt = f"""以下の画像認識結果から、車両損害の構造化評価を生成してください。
@@ -157,13 +161,15 @@ JSON のみを出力してください。"""
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "inputText": prompt,
-                "textGenerationConfig": {
-                    "maxTokenCount": 512,
-                    "temperature": 0.1,
-                },
-            }),
+            body=json.dumps(
+                {
+                    "inputText": prompt,
+                    "textGenerationConfig": {
+                        "maxTokenCount": 512,
+                        "temperature": 0.1,
+                    },
+                }
+            ),
         )
         response_json = json.loads(response["body"].read())
         if "results" in response_json:
@@ -279,7 +285,6 @@ def handler(event, context):
         damage_assessment.get("damage_type", "unknown"),
         output_writer.build_s3_uri(output_key),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="damage_assessment")

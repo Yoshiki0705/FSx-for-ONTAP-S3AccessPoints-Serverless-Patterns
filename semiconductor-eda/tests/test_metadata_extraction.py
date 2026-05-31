@@ -331,10 +331,13 @@ class TestMetadataExtractionHandler:
             "OUTPUT_BUCKET": "test-output-bucket",
         }
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
     def test_handler_success_gdsii(self, mock_s3ap_cls, mock_output_writer_class):
@@ -368,10 +371,13 @@ class TestMetadataExtractionHandler:
         # Verify OutputWriter put_json was called
         mock_writer.put_json.assert_called_once()
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
     def test_handler_invalid_gdsii(self, mock_s3ap_cls, mock_output_writer_class):
@@ -392,10 +398,13 @@ class TestMetadataExtractionHandler:
         assert "error" in result
         assert "error_type" in result
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
     def test_handler_oasis_success(self, mock_s3ap_cls, mock_output_writer_class):
@@ -422,10 +431,13 @@ class TestMetadataExtractionHandler:
         assert result["metadata"]["file_format"] == "OASIS"
         assert result["metadata"]["file_version"] == "1.0"
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
     def test_handler_unknown_format(self, mock_s3ap_cls, mock_output_writer_class):
@@ -445,10 +457,13 @@ class TestMetadataExtractionHandler:
         assert result["file_key"] == "designs/unknown.txt"
         assert "Unknown file format" in result["error"]
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
     def test_handler_s3_download_error(self, mock_s3ap_cls, mock_output_writer_class):
@@ -468,10 +483,13 @@ class TestMetadataExtractionHandler:
         assert result["file_key"] == "designs/chip.gds"
         assert "S3 error" in result["error"]
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
     def test_handler_output_key_has_date_partition(self, mock_s3ap_cls, mock_output_writer_class):
@@ -495,12 +513,16 @@ class TestMetadataExtractionHandler:
         assert result["status"] == "SUCCESS"
         # Verify date partition format YYYY/MM/DD
         import re
+
         assert re.search(r"\d{4}/\d{2}/\d{2}", result["output_key"])
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     @patch("functions.metadata_extraction.handler.OutputWriter")
     @patch("functions.metadata_extraction.handler.S3ApHelper")
     def test_handler_output_json_written_to_s3(self, mock_s3ap_cls, mock_output_writer_class):

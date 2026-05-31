@@ -73,10 +73,7 @@ class TestLinearRegressionCorrectness:
         # Generate perfectly linear data: y = slope_per_step/time_step * x + intercept
         # Using x values starting from 0 to avoid large-number precision issues
         slope = slope_per_step / time_step  # Convert to per-second slope
-        data_points = [
-            (i * time_step, slope * (i * time_step) + intercept)
-            for i in range(num_points)
-        ]
+        data_points = [(i * time_step, slope * (i * time_step) + intercept) for i in range(num_points)]
 
         recovered_slope, recovered_intercept = linear_regression(data_points)
 
@@ -110,10 +107,7 @@ class TestLinearRegressionCorrectness:
     ):
         """負の slope を含む線形データでも正確に復元する."""
         slope = slope_per_step / time_step
-        data_points = [
-            (i * time_step, slope * (i * time_step) + intercept)
-            for i in range(num_points)
-        ]
+        data_points = [(i * time_step, slope * (i * time_step) + intercept) for i in range(num_points)]
 
         # Ensure all y values are non-negative
         for _, y in data_points:
@@ -141,16 +135,11 @@ class TestLinearRegressionCorrectness:
         time_step: float,
     ):
         """一定値のデータに対して slope≈0 を返す."""
-        data_points = [
-            (i * time_step, constant_y)
-            for i in range(num_points)
-        ]
+        data_points = [(i * time_step, constant_y) for i in range(num_points)]
 
         recovered_slope, recovered_intercept = linear_regression(data_points)
 
-        assert abs(recovered_slope) < 1e-10, (
-            f"Expected zero slope for flat data, got {recovered_slope}"
-        )
+        assert abs(recovered_slope) < 1e-10, f"Expected zero slope for flat data, got {recovered_slope}"
         assert abs(recovered_intercept - constant_y) < max(abs(constant_y) * 1e-10, 1e-10), (
             f"Expected intercept={constant_y}, got {recovered_intercept}"
         )
@@ -175,10 +164,13 @@ class TestCapacityPredictionConsistency:
         current_usage_pct=st.floats(min_value=0.01, max_value=0.95, allow_nan=False, allow_infinity=False),
         total_capacity=st.floats(min_value=100.0, max_value=10000.0, allow_nan=False, allow_infinity=False),
     )
-    @settings(max_examples=200, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-        HealthCheck.filter_too_much,
-    ])
+    @settings(
+        max_examples=200,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.filter_too_much,
+        ],
+    )
     def test_positive_slope_returns_non_negative_days(
         self,
         slope: float,
@@ -203,9 +195,7 @@ class TestCapacityPredictionConsistency:
             f"got days={days}"
         )
         # Verify it's NOT -1 (which would mean "never fills up")
-        assert days != -1, (
-            f"Got -1 (never fills) despite positive slope={slope}"
-        )
+        assert days != -1, f"Got -1 (never fills) despite positive slope={slope}"
 
     @pytest.mark.property
     @given(
@@ -213,10 +203,13 @@ class TestCapacityPredictionConsistency:
         current_usage_pct=st.floats(min_value=0.01, max_value=0.95, allow_nan=False, allow_infinity=False),
         total_capacity=st.floats(min_value=100.0, max_value=10000.0, allow_nan=False, allow_infinity=False),
     )
-    @settings(max_examples=200, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-        HealthCheck.filter_too_much,
-    ])
+    @settings(
+        max_examples=200,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.filter_too_much,
+        ],
+    )
     def test_non_positive_slope_returns_minus_one(
         self,
         slope: float,
@@ -235,9 +228,7 @@ class TestCapacityPredictionConsistency:
 
         days = predict_days_until_full(slope, intercept, total_capacity, current_time)
 
-        assert days == -1, (
-            f"Expected -1 for non-positive slope={slope}, got days={days}"
-        )
+        assert days == -1, f"Expected -1 for non-positive slope={slope}, got days={days}"
 
     @pytest.mark.property
     @given(
@@ -245,10 +236,13 @@ class TestCapacityPredictionConsistency:
         excess_pct=st.floats(min_value=0.01, max_value=0.5, allow_nan=False, allow_infinity=False),
         total_capacity=st.floats(min_value=100.0, max_value=10000.0, allow_nan=False, allow_infinity=False),
     )
-    @settings(max_examples=100, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-        HealthCheck.filter_too_much,
-    ])
+    @settings(
+        max_examples=100,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.filter_too_much,
+        ],
+    )
     def test_at_capacity_returns_zero(
         self,
         slope: float,
@@ -274,10 +268,13 @@ class TestCapacityPredictionConsistency:
         intercept=st.floats(min_value=-500.0, max_value=1000.0, allow_nan=False, allow_infinity=False),
         total_capacity=st.floats(min_value=100.0, max_value=10000.0, allow_nan=False, allow_infinity=False),
     )
-    @settings(max_examples=100, suppress_health_check=[
-        HealthCheck.function_scoped_fixture,
-        HealthCheck.filter_too_much,
-    ])
+    @settings(
+        max_examples=100,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.filter_too_much,
+        ],
+    )
     def test_days_until_full_is_non_negative_or_minus_one(
         self,
         slope: float,

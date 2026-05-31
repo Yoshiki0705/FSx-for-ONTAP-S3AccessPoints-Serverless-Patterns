@@ -104,9 +104,7 @@ def test_serverless_invocation_timeout_bound(
     **Validates: Requirements 3.2, 3.5**
     """
     total_timeout = initial_timeout + (retry_delay * max_retries)
-    is_valid = validate_timeout_bound(
-        initial_timeout, retry_delay, max_retries, step_functions_task_timeout
-    )
+    is_valid = validate_timeout_bound(initial_timeout, retry_delay, max_retries, step_functions_task_timeout)
 
     if total_timeout <= step_functions_task_timeout:
         assert is_valid is True, (
@@ -174,13 +172,11 @@ def test_inference_type_response_transparency(
     provisioned_keys = set(provisioned_response.keys())
 
     assert serverless_keys == REQUIRED_RESPONSE_KEYS, (
-        f"Serverless response keys {serverless_keys} do not match "
-        f"required keys {REQUIRED_RESPONSE_KEYS}"
+        f"Serverless response keys {serverless_keys} do not match required keys {REQUIRED_RESPONSE_KEYS}"
     )
 
     assert provisioned_keys == REQUIRED_RESPONSE_KEYS, (
-        f"Provisioned response keys {provisioned_keys} do not match "
-        f"required keys {REQUIRED_RESPONSE_KEYS}"
+        f"Provisioned response keys {provisioned_keys} do not match required keys {REQUIRED_RESPONSE_KEYS}"
     )
 
     # Key sets must be identical between both types
@@ -191,10 +187,8 @@ def test_inference_type_response_transparency(
 
     # Verify inference_type field is correctly set
     assert serverless_response["inference_type"] == "serverless", (
-        f"Serverless response inference_type should be 'serverless', "
-        f"got '{serverless_response['inference_type']}'"
+        f"Serverless response inference_type should be 'serverless', got '{serverless_response['inference_type']}'"
     )
     assert provisioned_response["inference_type"] == "provisioned", (
-        f"Provisioned response inference_type should be 'provisioned', "
-        f"got '{provisioned_response['inference_type']}'"
+        f"Provisioned response inference_type should be 'provisioned', got '{provisioned_response['inference_type']}'"
     )

@@ -46,12 +46,8 @@ Resources:
 """
         results = check_hardcoded_account_ids(content, "test.yaml")
         # Should detect the account ID
-        account_ids_found = [
-            r for r in results if account_id in r.message
-        ]
-        assert len(account_ids_found) > 0, (
-            f"Failed to detect account ID {account_id}"
-        )
+        account_ids_found = [r for r in results if account_id in r.message]
+        assert len(account_ids_found) > 0, f"Failed to detect account ID {account_id}"
 
     def test_ignores_sub_with_account_id(self) -> None:
         """${AWS::AccountId} を含む行は無視する."""
@@ -179,9 +175,7 @@ class TestResourceNameUniqueness:
                 "MyLambda": {
                     "Type": "AWS::Lambda::Function",
                     "Properties": {
-                        "FunctionName": {
-                            "Fn::Sub": "my-function-${AWS::StackName}"
-                        },
+                        "FunctionName": {"Fn::Sub": "my-function-${AWS::StackName}"},
                     },
                 }
             }
@@ -212,9 +206,7 @@ class TestExportCollision:
             "Outputs": {
                 "QueueUrl": {
                     "Value": "https://sqs...",
-                    "Export": {
-                        "Name": {"Fn::Sub": "${AWS::StackName}-QueueUrl"}
-                    },
+                    "Export": {"Name": {"Fn::Sub": "${AWS::StackName}-QueueUrl"}},
                 }
             }
         }
@@ -255,9 +247,7 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-LambdaArn"
 """
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(content)
             f.flush()
             results = validate_template(f.name)

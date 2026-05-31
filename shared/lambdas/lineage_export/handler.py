@@ -87,10 +87,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return {"record_count": 0, "date": date_prefix, "status": "empty"}
 
     # JSON Lines 形式でフォーマット
-    jsonl_content = "\n".join(
-        json.dumps(record, cls=DecimalEncoder, ensure_ascii=False)
-        for record in records
-    )
+    jsonl_content = "\n".join(json.dumps(record, cls=DecimalEncoder, ensure_ascii=False) for record in records)
 
     # S3 に書き込み
     timestamp = now.strftime("%Y%m%dT%H%M%SZ")
@@ -124,9 +121,7 @@ def _scan_records_with_retry(table_name: str, date_prefix: str) -> list[dict]:
         try:
             items: list[dict] = []
             scan_kwargs: dict[str, Any] = {
-                "FilterExpression": boto3.dynamodb.conditions.Attr(
-                    "processing_timestamp"
-                ).begins_with(date_prefix),
+                "FilterExpression": boto3.dynamodb.conditions.Attr("processing_timestamp").begins_with(date_prefix),
             }
 
             while True:
@@ -142,7 +137,7 @@ def _scan_records_with_retry(table_name: str, date_prefix: str) -> list[dict]:
 
         except Exception as e:
             if attempt < MAX_RETRIES - 1:
-                wait = BACKOFF_BASE ** attempt
+                wait = BACKOFF_BASE**attempt
                 logger.warning(
                     "DynamoDB scan failed (attempt %d/%d): %s. Retrying in %.1fs",
                     attempt + 1,
@@ -170,7 +165,7 @@ def _put_object_with_retry(bucket: str, key: str, content: str) -> None:
 
         except Exception as e:
             if attempt < MAX_RETRIES - 1:
-                wait = BACKOFF_BASE ** attempt
+                wait = BACKOFF_BASE**attempt
                 logger.warning(
                     "S3 PutObject failed (attempt %d/%d): %s. Retrying in %.1fs",
                     attempt + 1,

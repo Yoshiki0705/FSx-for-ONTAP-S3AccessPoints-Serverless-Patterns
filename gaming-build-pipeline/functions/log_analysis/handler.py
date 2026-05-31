@@ -112,10 +112,12 @@ def _bedrock_log_analysis(content: str, model_id: str) -> str:
             f"Log content (first 2000 chars):\n{content[:2000]}"
         )
 
-        body = json.dumps({
-            "messages": [{"role": "user", "content": [{"text": prompt}]}],
-            "inferenceConfig": {"maxTokens": 300, "temperature": 0.3},
-        })
+        body = json.dumps(
+            {
+                "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                "inferenceConfig": {"maxTokens": 300, "temperature": 0.3},
+            }
+        )
 
         response = bedrock_client.invoke_model(
             modelId=model_id,

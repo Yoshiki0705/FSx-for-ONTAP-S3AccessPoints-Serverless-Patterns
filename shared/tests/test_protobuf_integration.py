@@ -103,9 +103,7 @@ class TestReadFpolicyMessageV2:
         # LENGTH_PREFIXED フォーマット: 4バイト長さ + ペイロード
         data = struct.pack(">I", len(payload)) + payload
         stream = _make_stream_reader(data)
-        reader = ProtobufFrameReader(
-            reader=stream, mode=FramingMode.LENGTH_PREFIXED
-        )
+        reader = ProtobufFrameReader(reader=stream, mode=FramingMode.LENGTH_PREFIXED)
         result = await read_fpolicy_message_v2(reader)
         assert result == payload
 
@@ -116,9 +114,7 @@ class TestReadFpolicyMessageV2:
         data = struct.pack(">I", len(payload)) + payload
         stream = _make_stream_reader(data)
 
-        with patch.dict(
-            os.environ, {ENV_PROTOBUF_FRAMING_MODE: "LENGTH_PREFIXED"}
-        ):
+        with patch.dict(os.environ, {ENV_PROTOBUF_FRAMING_MODE: "LENGTH_PREFIXED"}):
             result = await read_fpolicy_message_v2(stream)
             assert result == payload
 

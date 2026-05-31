@@ -44,22 +44,13 @@ def _build_paper_metadata(
         dict: 構造化メタデータ
     """
     # 著者抽出（PERSON エンティティ）
-    authors = [
-        e["text"] for e in entities
-        if e.get("type") == "PERSON" and e.get("score", 0) >= 0.7
-    ]
+    authors = [e["text"] for e in entities if e.get("type") == "PERSON" and e.get("score", 0) >= 0.7]
 
     # 機関抽出（ORGANIZATION エンティティ）
-    organizations = [
-        e["text"] for e in entities
-        if e.get("type") == "ORGANIZATION" and e.get("score", 0) >= 0.7
-    ]
+    organizations = [e["text"] for e in entities if e.get("type") == "ORGANIZATION" and e.get("score", 0) >= 0.7]
 
     # 日付抽出（DATE エンティティ）
-    dates = [
-        e["text"] for e in entities
-        if e.get("type") == "DATE" and e.get("score", 0) >= 0.7
-    ]
+    dates = [e["text"] for e in entities if e.get("type") == "DATE" and e.get("score", 0) >= 0.7]
 
     return {
         "file_key": file_key,
@@ -136,7 +127,6 @@ def handler(event, context):
         file_key,
         paper_metadata.get("domain", "Unknown"),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="metadata")

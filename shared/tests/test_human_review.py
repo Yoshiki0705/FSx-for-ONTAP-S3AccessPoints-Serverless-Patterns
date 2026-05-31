@@ -39,10 +39,13 @@ class TestEvaluateConfidence:
         assert decision.action == "HUMAN_REVIEW"
 
     def test_env_variable_thresholds(self):
-        with patch.dict(os.environ, {
-            "HUMAN_REVIEW_AUTO_APPROVE_THRESHOLD": "0.90",
-            "HUMAN_REVIEW_REJECT_THRESHOLD": "0.50",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "HUMAN_REVIEW_AUTO_APPROVE_THRESHOLD": "0.90",
+                "HUMAN_REVIEW_REJECT_THRESHOLD": "0.50",
+            },
+        ):
             decision = evaluate_confidence(0.88)
             assert decision.action == "HUMAN_REVIEW"
 
@@ -60,8 +63,7 @@ class TestFormatSnsSubject:
 
     def test_auto_approve_no_prefix(self):
         decision = HumanReviewDecision(
-            confidence=0.95, requires_review=False,
-            action="AUTO_APPROVE", reason="High confidence"
+            confidence=0.95, requires_review=False, action="AUTO_APPROVE", reason="High confidence"
         )
         subject = format_sns_subject("UC1 Legal", decision, file_count=10)
         assert "[REVIEW REQUIRED]" not in subject
@@ -70,16 +72,14 @@ class TestFormatSnsSubject:
 
     def test_human_review_has_prefix(self):
         decision = HumanReviewDecision(
-            confidence=0.70, requires_review=True,
-            action="HUMAN_REVIEW", reason="Low confidence"
+            confidence=0.70, requires_review=True, action="HUMAN_REVIEW", reason="Low confidence"
         )
         subject = format_sns_subject("UC1 Legal", decision, file_count=5)
         assert "[REVIEW REQUIRED]" in subject
 
     def test_reject_has_escalation_prefix(self):
         decision = HumanReviewDecision(
-            confidence=0.20, requires_review=True,
-            action="REJECT", reason="Very low confidence"
+            confidence=0.20, requires_review=True, action="REJECT", reason="Very low confidence"
         )
         subject = format_sns_subject("UC15 Defense", decision, file_count=2)
         assert "[ESCALATION]" in subject

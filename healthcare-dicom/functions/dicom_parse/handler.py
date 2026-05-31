@@ -163,9 +163,7 @@ def handler(event, context):
             # DICOM ヘッダーを簡易パース
             header_info = _parse_dicom_header(dicom_data)
             if header_info is None:
-                logger.error(
-                    "Invalid DICOM file: key=%s", dicom_key
-                )
+                logger.error("Invalid DICOM file: key=%s", dicom_key)
                 return {
                     "dicom_key": dicom_key,
                     "status": "INVALID",
@@ -199,13 +197,8 @@ def handler(event, context):
     anonymized = anonymize_metadata(metadata)
 
     # 結果を S3 AP に書き出し
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
-    output_key = (
-        f"dicom-metadata/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{dicom_key.rsplit('/', 1)[-1]}.json"
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
+    output_key = f"dicom-metadata/{datetime.utcnow().strftime('%Y/%m/%d')}/{dicom_key.rsplit('/', 1)[-1]}.json"
 
     result = {
         "dicom_key": dicom_key,
@@ -227,7 +220,6 @@ def handler(event, context):
         anonymized.get("modality", "OT"),
         anonymized.get("body_part", "UNKNOWN"),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="dicom_parse")

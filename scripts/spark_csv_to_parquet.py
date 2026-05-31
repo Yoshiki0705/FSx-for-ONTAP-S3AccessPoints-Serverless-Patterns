@@ -10,8 +10,10 @@ Parquet 形式に変換して書き戻す。
 Usage:
     spark-submit spark_csv_to_parquet.py <s3_ap_alias> <input_prefix> <output_prefix>
 """
+
 import sys
 from pyspark.sql import SparkSession
+
 
 def main():
     s3_ap = sys.argv[1] if len(sys.argv) > 1 else ""
@@ -35,6 +37,7 @@ def main():
 
     print("CSV to Parquet conversion complete")
     spark.stop()
+
 
 if __name__ == "__main__":
     main()

@@ -81,24 +81,19 @@ def _read_gdsii_record(data: bytes, offset: int) -> tuple[int, int, bytes]:
         GdsiiParseError: レコード読み取りに失敗した場合
     """
     if offset + 4 > len(data):
-        raise GdsiiParseError(
-            f"Insufficient data for record header at offset {offset}"
-        )
+        raise GdsiiParseError(f"Insufficient data for record header at offset {offset}")
 
-    record_length = struct.unpack(">H", data[offset:offset + 2])[0]
-    record_type = struct.unpack(">H", data[offset + 2:offset + 4])[0]
+    record_length = struct.unpack(">H", data[offset : offset + 2])[0]
+    record_type = struct.unpack(">H", data[offset + 2 : offset + 4])[0]
 
     if record_length < 4:
-        raise GdsiiParseError(
-            f"Invalid record length {record_length} at offset {offset}"
-        )
+        raise GdsiiParseError(f"Invalid record length {record_length} at offset {offset}")
 
     data_start = offset + 4
     data_end = offset + record_length
     if data_end > len(data):
         raise GdsiiParseError(
-            f"Record data extends beyond buffer at offset {offset}: "
-            f"need {data_end}, have {len(data)}"
+            f"Record data extends beyond buffer at offset {offset}: need {data_end}, have {len(data)}"
         )
 
     record_data = data[data_start:data_end]
@@ -136,9 +131,7 @@ def _parse_gdsii_header(data: bytes) -> dict:
     # HEADER レコード読み取り
     record_type, offset, record_data = _read_gdsii_record(data, offset)
     if record_type != GDSII_HEADER:
-        raise GdsiiParseError(
-            f"Expected HEADER record (0x0002), got 0x{record_type:04X}"
-        )
+        raise GdsiiParseError(f"Expected HEADER record (0x0002), got 0x{record_type:04X}")
 
     if len(record_data) >= 2:
         version = struct.unpack(">H", record_data[:2])[0]
@@ -151,9 +144,7 @@ def _parse_gdsii_header(data: bytes) -> dict:
     cell_count = 0
     while offset < len(data):
         try:
-            record_type, next_offset, record_data = _read_gdsii_record(
-                data, offset
-            )
+            record_type, next_offset, record_data = _read_gdsii_record(data, offset)
         except GdsiiParseError:
             # データ末尾に到達した場合は終了
             break
@@ -168,21 +159,29 @@ def _parse_gdsii_header(data: bytes) -> dict:
                     year += 1900
                 try:
                     creation_dt = datetime(
-                        year, month, day, hour, minute, second,
+                        year,
+                        month,
+                        day,
+                        hour,
+                        minute,
+                        second,
                         tzinfo=timezone.utc,
                     )
                     metadata["creation_date"] = creation_dt.isoformat()
                 except (ValueError, OverflowError):
                     logger.warning(
                         "Invalid BGNLIB date: %d-%d-%d %d:%d:%d",
-                        year, month, day, hour, minute, second,
+                        year,
+                        month,
+                        day,
+                        hour,
+                        minute,
+                        second,
                     )
 
         elif record_type == GDSII_LIBNAME:
             # LIBNAME: ライブラリ名（ASCII 文字列、NULL パディング）
-            metadata["library_name"] = (
-                record_data.rstrip(b"\x00").decode("ascii", errors="replace")
-            )
+            metadata["library_name"] = record_data.rstrip(b"\x00").decode("ascii", errors="replace")
 
         elif record_type == GDSII_UNITS:
             # UNITS: 2 つの 8 バイト浮動小数点数 (user_unit, db_unit)
@@ -237,9 +236,9 @@ def _gdsii_real8_to_float(data: bytes) -> float:
         return 0.0
 
     # 仮数部を [0, 1) の範囲に正規化
-    mantissa_float = mantissa / (2.0 ** 56)
+    mantissa_float = mantissa / (2.0**56)
 
-    return sign * mantissa_float * (16.0 ** exponent)
+    return sign * mantissa_float * (16.0**exponent)
 
 
 def _parse_oasis_header(data: bytes) -> dict:
@@ -260,9 +259,7 @@ def _parse_oasis_header(data: bytes) -> dict:
     """
     # マジックバイト検証
     if not data.startswith(OASIS_MAGIC):
-        raise OasisParseError(
-            "Invalid OASIS magic bytes: expected '%SEMI-OASIS\\r\\n'"
-        )
+        raise OasisParseError("Invalid OASIS magic bytes: expected '%SEMI-OASIS\\r\\n'")
 
     metadata = {
         "file_format": "OASIS",
@@ -286,9 +283,7 @@ def _parse_oasis_header(data: bytes) -> dict:
                 version_len = data[offset]
                 offset += 1
                 if offset + version_len <= len(data):
-                    version_str = data[offset:offset + version_len].decode(
-                        "ascii", errors="replace"
-                    )
+                    version_str = data[offset : offset + version_len].decode("ascii", errors="replace")
                     metadata["file_version"] = version_str
                     offset += version_len
 
@@ -379,9 +374,7 @@ def handler(event, context):
         metadata = _extract_metadata(header_data, file_key)
 
     except (GdsiiParseError, OasisParseError, ValueError) as e:
-        logger.warning(
-            "Failed to parse file %s: %s", file_key, str(e)
-        )
+        logger.warning("Failed to parse file %s: %s", file_key, str(e))
         return {
             "status": "INVALID",
             "file_key": file_key,
@@ -389,9 +382,7 @@ def handler(event, context):
             "error_type": type(e).__name__,
         }
     except Exception as e:
-        logger.error(
-            "Unexpected error processing file %s: %s", file_key, str(e)
-        )
+        logger.error("Unexpected error processing file %s: %s", file_key, str(e))
         return {
             "status": "INVALID",
             "file_key": file_key,
@@ -402,9 +393,7 @@ def handler(event, context):
     # 日付パーティション付き出力キー生成
     now = datetime.now(timezone.utc)
     file_stem = PurePosixPath(file_key).stem
-    output_key = (
-        f"metadata/{now.strftime('%Y/%m/%d')}/{file_stem}.json"
-    )
+    output_key = f"metadata/{now.strftime('%Y/%m/%d')}/{file_stem}.json"
 
     # メタデータ JSON を S3 出力バケットに書き込み
     output_data = {
@@ -416,14 +405,12 @@ def handler(event, context):
     output_writer.put_json(key=output_key, data=output_data)
 
     logger.info(
-        "Metadata extraction completed: file_key=%s, output_key=%s, "
-        "cell_count=%d, format=%s",
+        "Metadata extraction completed: file_key=%s, output_key=%s, cell_count=%d, format=%s",
         file_key,
         output_key,
         metadata.get("cell_count", 0),
         metadata.get("file_format", "UNKNOWN"),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="metadata_extraction")

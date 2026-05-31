@@ -53,7 +53,6 @@ class FastqParseError(Exception):
     """FASTQ パースエラー"""
 
 
-
 def _parse_fastq_records(
     data_stream,
     max_records: int,
@@ -127,9 +126,7 @@ def _parse_fastq_records(
         # フィルタ通過判定（レコード平均品質が閾値以上）
         if seq_len > 0:
             record_avg_quality = record_quality_sum / seq_len
-            threshold = float(
-                os.environ.get("QUALITY_THRESHOLD", DEFAULT_QUALITY_THRESHOLD)
-            )
+            threshold = float(os.environ.get("QUALITY_THRESHOLD", DEFAULT_QUALITY_THRESHOLD))
             if record_avg_quality >= threshold:
                 pass_filter_count += 1
 
@@ -236,9 +233,7 @@ def handler(event, context):
         quality_metrics = _parse_fastq_records(text_lines, sample_size)
 
     except (FastqParseError, UnicodeDecodeError, gzip.BadGzipFile) as e:
-        logger.warning(
-            "Failed to parse FASTQ file %s: %s", file_key, str(e)
-        )
+        logger.warning("Failed to parse FASTQ file %s: %s", file_key, str(e))
         return {
             "status": "ERROR",
             "file_key": file_key,
@@ -277,15 +272,13 @@ def handler(event, context):
     output_writer.put_json(key=output_key, data=output_data)
 
     logger.info(
-        "QC completed: file_key=%s, output_key=%s, "
-        "total_reads=%d, avg_quality=%.1f, gc_content=%.1f%%",
+        "QC completed: file_key=%s, output_key=%s, total_reads=%d, avg_quality=%.1f, gc_content=%.1f%%",
         file_key,
         output_key,
         quality_metrics["total_reads"],
         quality_metrics["average_quality_score"],
         quality_metrics["gc_content_percentage"],
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="qc")

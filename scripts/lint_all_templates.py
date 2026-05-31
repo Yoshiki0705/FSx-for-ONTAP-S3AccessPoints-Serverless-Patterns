@@ -24,6 +24,7 @@ Usage:
   python3 scripts/lint_all_templates.py                # all 17 UCs
   python3 scripts/lint_all_templates.py uc-slug1 ...   # subset by UC dir name
 """
+
 from __future__ import annotations
 
 import os
@@ -36,23 +37,23 @@ from cfnlint import api
 
 # All 17 UC directories (each contains template-deploy.yaml).
 ALL_UC_SLUGS = [
-    "legal-compliance",          # UC1
-    "financial-idp",             # UC2
-    "manufacturing-analytics",   # UC3
-    "media-vfx",                 # UC4
-    "healthcare-dicom",          # UC5
-    "construction-bim",          # UC6
-    "genomics-pipeline",         # UC7
-    "energy-seismic",            # UC8
-    "autonomous-driving",        # UC9
-    "logistics-ocr",             # UC10
-    "insurance-claims",          # UC11
-    "retail-catalog",            # UC12
-    "semiconductor-eda",         # UC13
-    "education-research",        # UC14
-    "defense-satellite",         # UC15
-    "government-archives",       # UC16
-    "smart-city-geospatial",     # UC17
+    "legal-compliance",  # UC1
+    "financial-idp",  # UC2
+    "manufacturing-analytics",  # UC3
+    "media-vfx",  # UC4
+    "healthcare-dicom",  # UC5
+    "construction-bim",  # UC6
+    "genomics-pipeline",  # UC7
+    "energy-seismic",  # UC8
+    "autonomous-driving",  # UC9
+    "logistics-ocr",  # UC10
+    "insurance-claims",  # UC11
+    "retail-catalog",  # UC12
+    "semiconductor-eda",  # UC13
+    "education-research",  # UC14
+    "defense-satellite",  # UC15
+    "government-archives",  # UC16
+    "smart-city-geospatial",  # UC17
 ]
 
 BENIGN_CODES = ("E2530", "E3030", "E3006")

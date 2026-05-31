@@ -145,7 +145,6 @@ def handler(event, context):
         page_count,
     )
 
-
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="ocr")
     metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "education-research"))

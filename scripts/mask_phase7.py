@@ -10,6 +10,7 @@ Applies minimal masking:
 For screenshots from file:// previews (our UC15/16/17 HTML mockups), no masking
 is needed since those are already anonymized.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -67,6 +68,7 @@ def main() -> None:
         if is_file_url_preview(img_path):
             # HTML previews are already anonymized; just copy
             import shutil
+
             shutil.copy2(img_path, out_path)
             print(f"  COPY (HTML preview): {img_path.name}")
         else:

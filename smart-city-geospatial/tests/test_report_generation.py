@@ -31,22 +31,18 @@ def test_build_prompt_includes_sections(report_generation_handler):
 def test_invoke_bedrock_nova_format(report_generation_handler):
     mock_bedrock = MagicMock()
     mock_bedrock.invoke_model.return_value = {
-        "body": MagicMock(read=lambda: json.dumps({
-            "output": {"message": {"content": [{"text": "Generated report text"}]}}
-        }).encode())
+        "body": MagicMock(
+            read=lambda: json.dumps({"output": {"message": {"content": [{"text": "Generated report text"}]}}}).encode()
+        )
     }
-    result = report_generation_handler.invoke_bedrock(
-        mock_bedrock, "amazon.nova-lite-v1:0", "test prompt", 1024
-    )
+    result = report_generation_handler.invoke_bedrock(mock_bedrock, "amazon.nova-lite-v1:0", "test prompt", 1024)
     assert result == "Generated report text"
 
 
 def test_invoke_bedrock_anthropic_format(report_generation_handler):
     mock_bedrock = MagicMock()
     mock_bedrock.invoke_model.return_value = {
-        "body": MagicMock(read=lambda: json.dumps({
-            "content": [{"text": "Claude response"}]
-        }).encode())
+        "body": MagicMock(read=lambda: json.dumps({"content": [{"text": "Claude response"}]}).encode())
     }
     result = report_generation_handler.invoke_bedrock(
         mock_bedrock, "anthropic.claude-3-haiku-20240307-v1:0", "test prompt", 1024
@@ -57,23 +53,19 @@ def test_invoke_bedrock_anthropic_format(report_generation_handler):
 def test_invoke_bedrock_error(report_generation_handler):
     mock_bedrock = MagicMock()
     mock_bedrock.invoke_model.side_effect = Exception("Bedrock error")
-    result = report_generation_handler.invoke_bedrock(
-        mock_bedrock, "amazon.nova-lite-v1:0", "test", 1024
-    )
+    result = report_generation_handler.invoke_bedrock(mock_bedrock, "amazon.nova-lite-v1:0", "test", 1024)
     assert "failed" in result.lower()
 
 
-def test_handler_generates_report(
-    report_generation_handler, lambda_context, monkeypatch
-):
+def test_handler_generates_report(report_generation_handler, lambda_context, monkeypatch):
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.setenv("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
 
     mock_bedrock = MagicMock()
     mock_bedrock.invoke_model.return_value = {
-        "body": MagicMock(read=lambda: json.dumps({
-            "output": {"message": {"content": [{"text": "都市計画レポート"}]}}
-        }).encode())
+        "body": MagicMock(
+            read=lambda: json.dumps({"output": {"message": {"content": [{"text": "都市計画レポート"}]}}}).encode()
+        )
     }
 
     def boto3_client(service):
@@ -83,9 +75,10 @@ def test_handler_generates_report(
 
     mock_writer = MagicMock()
 
-    with patch.object(report_generation_handler, "boto3") as mock_boto3, patch.object(
-        report_generation_handler, "OutputWriter"
-    ) as mock_output_writer_cls:
+    with (
+        patch.object(report_generation_handler, "boto3") as mock_boto3,
+        patch.object(report_generation_handler, "OutputWriter") as mock_output_writer_cls,
+    ):
         mock_boto3.client.side_effect = boto3_client
         mock_output_writer_cls.from_env.return_value = mock_writer
         event = {

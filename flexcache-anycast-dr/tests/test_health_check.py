@@ -7,9 +7,7 @@ import os
 from unittest.mock import patch
 
 
-_handler_path = os.path.join(
-    os.path.dirname(__file__), "..", "src", "health_check", "handler.py"
-)
+_handler_path = os.path.join(os.path.dirname(__file__), "..", "src", "health_check", "handler.py")
 _spec = importlib.util.spec_from_file_location("health_check_handler", _handler_path)
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
@@ -18,10 +16,13 @@ _spec.loader.exec_module(_module)
 class TestHealthCheckSimulation:
     """シミュレーションモードのテスト"""
 
-    @patch.dict(os.environ, {
-        "SIMULATION_MODE": "true",
-        "CACHE_ENDPOINTS": "cache-a.example.com,cache-b.example.com",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "SIMULATION_MODE": "true",
+            "CACHE_ENDPOINTS": "cache-a.example.com,cache-b.example.com",
+        },
+    )
     def test_basic_health_check(self):
         """基本的なヘルスチェック"""
         _spec.loader.exec_module(_module)
@@ -37,10 +38,13 @@ class TestHealthCheckSimulation:
         assert len(result["results"]) == 2
         assert result["summary"]["total_caches"] == 2
 
-    @patch.dict(os.environ, {
-        "SIMULATION_MODE": "true",
-        "CACHE_ENDPOINTS": "cache-a.example.com",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "SIMULATION_MODE": "true",
+            "CACHE_ENDPOINTS": "cache-a.example.com",
+        },
+    )
     def test_detailed_health_check(self):
         """詳細ヘルスチェック"""
         _spec.loader.exec_module(_module)
@@ -56,10 +60,13 @@ class TestHealthCheckSimulation:
         assert "endpoint" in cache_result
         assert "healthy" in cache_result
 
-    @patch.dict(os.environ, {
-        "SIMULATION_MODE": "true",
-        "CACHE_ENDPOINTS": "",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "SIMULATION_MODE": "true",
+            "CACHE_ENDPOINTS": "",
+        },
+    )
     def test_empty_endpoints(self):
         """エンドポイントなしの場合"""
         _spec.loader.exec_module(_module)
@@ -74,10 +81,13 @@ class TestHealthCheckSimulation:
         assert len(result["results"]) == 0
         assert result["summary"]["total_caches"] == 0
 
-    @patch.dict(os.environ, {
-        "SIMULATION_MODE": "true",
-        "CACHE_ENDPOINTS": "a.example.com,b.example.com,c.example.com",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "SIMULATION_MODE": "true",
+            "CACHE_ENDPOINTS": "a.example.com,b.example.com,c.example.com",
+        },
+    )
     def test_uses_env_endpoints_when_not_in_event(self):
         """イベントにエンドポイントがない場合は環境変数を使用"""
         _spec.loader.exec_module(_module)

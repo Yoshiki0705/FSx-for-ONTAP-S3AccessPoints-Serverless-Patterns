@@ -62,9 +62,7 @@ def test_redact_text_metadata_contains_hash(redaction_handler):
     assert "John" not in metadata[0]["original_text_hash"]
 
 
-def test_handler_writes_redacted_and_metadata(
-    redaction_handler, lambda_context, monkeypatch
-):
+def test_handler_writes_redacted_and_metadata(redaction_handler, lambda_context, monkeypatch):
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
 
     text = "Contact John Doe today"
@@ -72,16 +70,12 @@ def test_handler_writes_redacted_and_metadata(
     mock_writer = MagicMock()
     mock_writer.get_text.return_value = text
 
-    with patch.object(
-        redaction_handler, "OutputWriter"
-    ) as mock_output_writer_cls:
+    with patch.object(redaction_handler, "OutputWriter") as mock_output_writer_cls:
         mock_output_writer_cls.from_env.return_value = mock_writer
         event = {
             "document_key": "doc.pdf",
             "text_key": "ocr-results/doc.pdf.txt",
-            "entities": [
-                {"Type": "NAME", "BeginOffset": 8, "EndOffset": 16, "Score": 0.99}
-            ],
+            "entities": [{"Type": "NAME", "BeginOffset": 8, "EndOffset": 16, "Score": 0.99}],
         }
         result = redaction_handler.handler(event, lambda_context)
 

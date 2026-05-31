@@ -20,6 +20,7 @@ from shared.lambdas.secrets_rotation import handler as rotation_handler
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def secret_arn():
     return "arn:aws:secretsmanager:us-east-1:123456789012:secret:ontap-creds"
@@ -58,6 +59,7 @@ def mock_sm_client(secret_arn, token, current_secret_dict, pending_secret_dict):
             "old-version-id": ["AWSCURRENT"],
         },
     }
+
     # get_secret_value behavior depends on VersionStage
     def get_secret_value_side_effect(**kwargs):
         if kwargs.get("VersionStage") == "AWSCURRENT":
@@ -73,6 +75,7 @@ def mock_sm_client(secret_arn, token, current_secret_dict, pending_secret_dict):
 # ---------------------------------------------------------------------------
 # Test handler routing
 # ---------------------------------------------------------------------------
+
 
 class TestHandlerRouting:
     """handler() のステップルーティングを検証する。"""
@@ -129,6 +132,7 @@ class TestHandlerRouting:
 # ---------------------------------------------------------------------------
 # Test _create_secret
 # ---------------------------------------------------------------------------
+
 
 class TestCreateSecret:
     """_create_secret() の動作を検証する。"""
@@ -195,6 +199,7 @@ class TestCreateSecret:
 # Test _set_secret
 # ---------------------------------------------------------------------------
 
+
 class TestSetSecret:
     """_set_secret() の動作を検証する。"""
 
@@ -245,6 +250,7 @@ class TestSetSecret:
 # Test _test_secret
 # ---------------------------------------------------------------------------
 
+
 class TestTestSecret:
     """_test_secret() の動作を検証する。"""
 
@@ -294,6 +300,7 @@ class TestTestSecret:
 # Test _finish_secret
 # ---------------------------------------------------------------------------
 
+
 class TestFinishSecret:
     """_finish_secret() の動作を検証する。"""
 
@@ -322,6 +329,7 @@ class TestFinishSecret:
 # ---------------------------------------------------------------------------
 # Test _notify_failure
 # ---------------------------------------------------------------------------
+
 
 class TestNotifyFailure:
     """_notify_failure() の動作を検証する。"""
@@ -363,6 +371,7 @@ class TestNotifyFailure:
 # Test password not logged (Requirement 2.8)
 # ---------------------------------------------------------------------------
 
+
 class TestPasswordNotLogged:
     """パスワードがログに出力されないことを検証する。"""
 
@@ -375,6 +384,7 @@ class TestPasswordNotLogged:
         mock_http.request.return_value = mock_response
 
         import logging
+
         with caplog.at_level(logging.DEBUG):
             rotation_handler._set_secret(mock_sm_client, secret_arn, token)
 
@@ -392,6 +402,7 @@ class TestPasswordNotLogged:
         mock_http.request.return_value = mock_response
 
         import logging
+
         with caplog.at_level(logging.DEBUG):
             rotation_handler._test_secret(mock_sm_client, secret_arn, token)
 

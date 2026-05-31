@@ -33,9 +33,7 @@ def dynamodb_table():
             ],
             BillingMode="PAY_PER_REQUEST",
         )
-        table.meta.client.get_waiter("table_exists").wait(
-            TableName="fsxn-s3ap-idempotency-store"
-        )
+        table.meta.client.get_waiter("table_exists").wait(TableName="fsxn-s3ap-idempotency-store")
         yield table
 
 
@@ -90,6 +88,7 @@ class TestIdempotencyHandler:
         try:
             # Patch module-level USE_CASE
             import shared.idempotency_checker as ic
+
             ic.USE_CASE = "legal-compliance"
 
             event = {

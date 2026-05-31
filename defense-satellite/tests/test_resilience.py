@@ -17,9 +17,7 @@ def test_rekognition_invalid_format_returns_empty(object_detection_handler):
 
     mock_rek.exceptions.InvalidImageFormatException = _InvalidImageFormatException
     mock_rek.exceptions.ImageTooLargeException = _ImageTooLargeException
-    mock_rek.detect_labels.side_effect = _InvalidImageFormatException(
-        "Request has invalid image format"
-    )
+    mock_rek.detect_labels.side_effect = _InvalidImageFormatException("Request has invalid image format")
 
     with patch.object(object_detection_handler, "boto3") as mock_boto3:
         mock_boto3.client.return_value = mock_rek
@@ -100,6 +98,4 @@ def test_change_detection_float_to_decimal_conversion(change_detection_handler):
     assert isinstance(detected[0]["bbox"]["Width"], Decimal)
 
     # diff_area_km2 も Decimal
-    assert isinstance(
-        item["change_from_previous"]["diff_area_km2"], Decimal
-    )
+    assert isinstance(item["change_from_previous"]["diff_area_km2"], Decimal)

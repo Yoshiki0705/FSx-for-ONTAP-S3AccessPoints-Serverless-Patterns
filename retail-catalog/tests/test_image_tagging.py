@@ -246,9 +246,7 @@ class TestValidateQuality:
 
     def test_pass_all_checks(self):
         """全チェック通過で PASS が返ること"""
-        status, metrics, issues = validate_quality(
-            width=1200, height=1200, file_size=500000
-        )
+        status, metrics, issues = validate_quality(width=1200, height=1200, file_size=500000)
         assert status == "PASS"
         assert issues == []
         assert metrics["width"] == 1200
@@ -256,33 +254,29 @@ class TestValidateQuality:
 
     def test_fail_low_resolution(self):
         """解像度不足で FAIL が返ること"""
-        status, metrics, issues = validate_quality(
-            width=400, height=400, file_size=500000
-        )
+        status, metrics, issues = validate_quality(width=400, height=400, file_size=500000)
         assert status == "FAIL"
         assert any("Width" in i for i in issues)
         assert any("Height" in i for i in issues)
 
     def test_fail_file_too_small(self):
         """ファイルサイズ不足で FAIL が返ること"""
-        status, metrics, issues = validate_quality(
-            width=1000, height=1000, file_size=50000
-        )
+        status, metrics, issues = validate_quality(width=1000, height=1000, file_size=50000)
         assert status == "FAIL"
         assert any("below minimum" in i for i in issues)
 
     def test_fail_file_too_large(self):
         """ファイルサイズ超過で FAIL が返ること"""
-        status, metrics, issues = validate_quality(
-            width=1000, height=1000, file_size=60000000
-        )
+        status, metrics, issues = validate_quality(width=1000, height=1000, file_size=60000000)
         assert status == "FAIL"
         assert any("exceeds maximum" in i for i in issues)
 
     def test_fail_aspect_ratio_too_low(self):
         """アスペクト比が低すぎる場合に FAIL が返ること"""
         status, metrics, issues = validate_quality(
-            width=400, height=1000, file_size=500000,
+            width=400,
+            height=1000,
+            file_size=500000,
             min_resolution=100,
         )
         assert status == "FAIL"
@@ -291,7 +285,9 @@ class TestValidateQuality:
     def test_fail_aspect_ratio_too_high(self):
         """アスペクト比が高すぎる場合に FAIL が返ること"""
         status, metrics, issues = validate_quality(
-            width=2500, height=1000, file_size=500000,
+            width=2500,
+            height=1000,
+            file_size=500000,
             min_resolution=100,
         )
         assert status == "FAIL"
@@ -299,16 +295,16 @@ class TestValidateQuality:
 
     def test_none_dimensions(self):
         """解像度が None の場合に FAIL が返ること"""
-        status, metrics, issues = validate_quality(
-            width=None, height=None, file_size=500000
-        )
+        status, metrics, issues = validate_quality(width=None, height=None, file_size=500000)
         assert status == "FAIL"
         assert any("Unable to determine" in i for i in issues)
 
     def test_custom_thresholds(self):
         """カスタム閾値が正しく適用されること"""
         status, metrics, issues = validate_quality(
-            width=500, height=500, file_size=200000,
+            width=500,
+            height=500,
+            file_size=200000,
             min_resolution=400,
             min_file_size=100000,
             max_file_size=1000000,
@@ -328,6 +324,7 @@ class TestGetImageDimensions:
     def test_png_dimensions(self):
         """PNG ヘッダーから正しいサイズが取得されること"""
         import struct
+
         # PNG signature + IHDR chunk
         png_data = b"\x89PNG\r\n\x1a\n"
         # IHDR chunk: length(4) + "IHDR"(4) + width(4) + height(4)
@@ -364,17 +361,18 @@ class TestGetImageDimensions:
 class TestImageTaggingHandler:
     """画像タグ付け Lambda ハンドラーのテスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "CONFIDENCE_THRESHOLD": "70",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "CONFIDENCE_THRESHOLD": "70",
+        },
+    )
     @patch("functions.image_tagging.handler.OutputWriter")
     @patch("functions.image_tagging.handler.boto3")
     @patch("functions.image_tagging.handler.S3ApHelper")
-    def test_handler_success_above_threshold(
-        self, mock_s3ap_cls, mock_boto3, mock_output_writer_cls
-    ):
+    def test_handler_success_above_threshold(self, mock_s3ap_cls, mock_boto3, mock_output_writer_cls):
         """正常系: 閾値以上で SUCCESS ステータスが返ること"""
         from functions.image_tagging.handler import handler
 
@@ -421,17 +419,18 @@ class TestImageTaggingHandler:
         # OutputWriter.put_json が呼ばれたことを確認
         mock_writer.put_json.assert_called_once()
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "CONFIDENCE_THRESHOLD": "70",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "CONFIDENCE_THRESHOLD": "70",
+        },
+    )
     @patch("functions.image_tagging.handler.OutputWriter")
     @patch("functions.image_tagging.handler.boto3")
     @patch("functions.image_tagging.handler.S3ApHelper")
-    def test_handler_manual_review(
-        self, mock_s3ap_cls, mock_boto3, mock_output_writer_cls
-    ):
+    def test_handler_manual_review(self, mock_s3ap_cls, mock_boto3, mock_output_writer_cls):
         """閾値未満で MANUAL_REVIEW ステータスが返ること"""
         from functions.image_tagging.handler import handler
 
@@ -474,10 +473,13 @@ class TestImageTaggingHandler:
 class TestCatalogMetadataHandler:
     """カタログメタデータ生成 Lambda ハンドラーのテスト"""
 
-    @patch.dict(os.environ, {
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
+        },
+    )
     @patch("functions.catalog_metadata.handler.OutputWriter")
     @patch("functions.catalog_metadata.handler.boto3")
     def test_handler_success(self, mock_boto3, mock_output_writer_cls):
@@ -486,17 +488,23 @@ class TestCatalogMetadataHandler:
 
         mock_bedrock = MagicMock()
         mock_body = MagicMock()
-        mock_body.read.return_value = json.dumps({
-            "results": [{
-                "outputText": json.dumps({
-                    "product_category": "Apparel > Tops > Shirts",
-                    "color": "Blue",
-                    "material": "Cotton",
-                    "style_attributes": ["casual", "short-sleeve"],
-                    "suggested_tags": ["summer", "everyday"],
-                })
-            }]
-        }).encode()
+        mock_body.read.return_value = json.dumps(
+            {
+                "results": [
+                    {
+                        "outputText": json.dumps(
+                            {
+                                "product_category": "Apparel > Tops > Shirts",
+                                "color": "Blue",
+                                "material": "Cotton",
+                                "style_attributes": ["casual", "short-sleeve"],
+                                "suggested_tags": ["summer", "everyday"],
+                            }
+                        )
+                    }
+                ]
+            }
+        ).encode()
         mock_bedrock.invoke_model.return_value = {"body": mock_body}
 
         mock_s3_client = MagicMock()
@@ -531,23 +539,24 @@ class TestCatalogMetadataHandler:
         assert result["catalog_metadata"]["color"] == "Blue"
         assert "output_key" in result
 
-    @patch.dict(os.environ, {
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
+        },
+    )
     @patch("functions.catalog_metadata.handler.OutputWriter")
     @patch("functions.catalog_metadata.handler.boto3")
-    def test_handler_bedrock_invalid_json_fallback(
-        self, mock_boto3, mock_output_writer_cls
-    ):
+    def test_handler_bedrock_invalid_json_fallback(self, mock_boto3, mock_output_writer_cls):
         """Bedrock が無効な JSON を返した場合にフォールバックが使用されること"""
         from functions.catalog_metadata.handler import handler
 
         mock_bedrock = MagicMock()
         mock_body = MagicMock()
-        mock_body.read.return_value = json.dumps({
-            "results": [{"outputText": "This is not valid JSON at all"}]
-        }).encode()
+        mock_body.read.return_value = json.dumps(
+            {"results": [{"outputText": "This is not valid JSON at all"}]}
+        ).encode()
         mock_bedrock.invoke_model.return_value = {"body": mock_body}
 
         mock_s3_client = MagicMock()

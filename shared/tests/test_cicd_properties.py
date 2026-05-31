@@ -85,14 +85,10 @@ def test_ci_strict_gating_failure_when_any_fail(
 
     if has_failure:
         assert status == "failure", (
-            f"Expected 'failure' when stage_results contains 'fail': "
-            f"{stage_results}, but got '{status}'"
+            f"Expected 'failure' when stage_results contains 'fail': {stage_results}, but got '{status}'"
         )
     else:
-        assert status == "success", (
-            f"Expected 'success' when all stages pass: "
-            f"{stage_results}, but got '{status}'"
-        )
+        assert status == "success", f"Expected 'success' when all stages pass: {stage_results}, but got '{status}'"
 
 
 @settings(max_examples=100)
@@ -119,15 +115,9 @@ def test_ci_strict_gating_success_only_when_all_pass(
     all_pass = all(r == "pass" for r in stage_results)
 
     if status == "success":
-        assert all_pass, (
-            f"CI status is 'success' but not all stages passed: "
-            f"{stage_results}"
-        )
+        assert all_pass, f"CI status is 'success' but not all stages passed: {stage_results}"
     if all_pass:
-        assert status == "success", (
-            f"All stages passed but CI status is '{status}': "
-            f"{stage_results}"
-        )
+        assert status == "success", f"All stages passed but CI status is '{status}': {stage_results}"
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +181,4 @@ def test_deployment_stage_ordering_blocked_on_any_failure(
             f"or smoke={smoke_result} is failure, but got {allowed}"
         )
     else:
-        assert allowed is True, (
-            f"Expected production deployment allowed when both succeed, "
-            f"but got {allowed}"
-        )
+        assert allowed is True, f"Expected production deployment allowed when both succeed, but got {allowed}"

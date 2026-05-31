@@ -61,9 +61,7 @@ def _extract_text_from_blocks(blocks: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _extract_text_sync(
-    textract, document_bytes: bytes
-) -> tuple[str, list[dict]]:
+def _extract_text_sync(textract, document_bytes: bytes) -> tuple[str, list[dict]]:
     """同期 Textract API でテキスト抽出（直接 boto3 client 経由、UT 互換）。"""
     response = textract.analyze_document(
         Document={"Bytes": document_bytes},
@@ -83,9 +81,7 @@ def _invoke_textract(
     """
     if use_cross_region:
         try:
-            client = CrossRegionClient(
-                config=CrossRegionConfig(target_region=cross_region_target)
-            )
+            client = CrossRegionClient(config=CrossRegionConfig(target_region=cross_region_target))
             response = client.analyze_document(
                 document_bytes=document_bytes,
                 feature_types=["FORMS", "TABLES"],
@@ -93,13 +89,9 @@ def _invoke_textract(
             blocks = response.get("Blocks", [])
             return _extract_text_from_blocks(blocks), blocks, "cross_region"
         except CrossRegionClientError as e:
-            logger.warning(
-                "Cross-region Textract failed, trying same region: %s", e
-            )
+            logger.warning("Cross-region Textract failed, trying same region: %s", e)
         except Exception as e:
-            logger.warning(
-                "Cross-region Textract client init failed: %s", e
-            )
+            logger.warning("Cross-region Textract client init failed: %s", e)
 
     # same-region fallback
     try:
@@ -107,9 +99,7 @@ def _invoke_textract(
         text, blocks = _extract_text_sync(textract, document_bytes)
         return text, blocks, "same_region"
     except Exception as e:
-        logger.warning(
-            "Same-region Textract invocation failed (region unsupported?): %s", e
-        )
+        logger.warning("Same-region Textract invocation failed (region unsupported?): %s", e)
         return "", [], "unavailable"
 
 
@@ -163,9 +153,7 @@ def handler(event, context):
 
     # Textract 呼び出し
     if api_choice == "sync":
-        text, blocks, invoke_mode = _invoke_textract(
-            document_bytes, use_cross_region, cross_region_target
-        )
+        text, blocks, invoke_mode = _invoke_textract(document_bytes, use_cross_region, cross_region_target)
         if invoke_mode == "unavailable":
             api_choice = "unavailable"
     else:

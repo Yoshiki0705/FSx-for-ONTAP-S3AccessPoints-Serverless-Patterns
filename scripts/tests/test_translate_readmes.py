@@ -38,6 +38,7 @@ from translate_readmes import (
 # Hypothesis Strategies
 # =============================================================================
 
+
 def markdown_word():
     """Generate a single markdown-safe word."""
     return st.text(
@@ -80,11 +81,7 @@ def h1_heading():
 def markdown_with_h1():
     """Generate markdown content that contains at least one H1 heading."""
     return st.builds(
-        lambda before, h1, after: "\n".join(
-            [line for line in before if line.strip() != ""]
-            + [h1]
-            + list(after)
-        ),
+        lambda before, h1, after: "\n".join([line for line in before if line.strip() != ""] + [h1] + list(after)),
         st.lists(markdown_line(), min_size=0, max_size=3),
         h1_heading(),
         st.lists(markdown_line(), min_size=0, max_size=5),
@@ -130,10 +127,7 @@ def table_block():
                 "| " + " | ".join(f"Col{i}" for i in range(cols)) + " |",
                 "| " + " | ".join("---" for _ in range(cols)) + " |",
             ]
-            + [
-                "| " + " | ".join(f"r{r}c{c}" for c in range(cols)) + " |"
-                for r in range(rows)
-            ]
+            + ["| " + " | ".join(f"r{r}c{c}" for c in range(cols)) + " |" for r in range(rows)]
         ),
         st.integers(min_value=2, max_value=4),
         st.integers(min_value=1, max_value=3),
@@ -240,8 +234,7 @@ class TestProperty1SwitcherPlacementAfterH1:
         for i in range(h1_index + 1, len(lines)):
             if lines[i].strip() != "":
                 assert lines[i].strip().startswith("🌐"), (
-                    f"First non-empty line after H1 should be switcher, "
-                    f"got: {lines[i]!r}"
+                    f"First non-empty line after H1 should be switcher, got: {lines[i]!r}"
                 )
                 switcher_found = True
                 break
@@ -275,26 +268,17 @@ class TestProperty2CurrentLanguagePlainText:
 
         # Count markdown links [text](url)
         links = re.findall(r"\[([^\]]+)\]\([^)]+\)", switcher)
-        assert len(links) == 7, (
-            f"Expected 7 links for lang={lang}, got {len(links)}: {links}"
-        )
+        assert len(links) == 7, f"Expected 7 links for lang={lang}, got {len(links)}: {links}"
 
         # Verify current language label is NOT a link
         current_label = injector.LANG_LABELS[lang]
         # The current label should appear as plain text (not inside [...](...)
         # Check it appears in the switcher but not as a link
-        assert current_label in switcher, (
-            f"Current language label '{current_label}' not found in switcher"
-        )
+        assert current_label in switcher, f"Current language label '{current_label}' not found in switcher"
 
         # Verify it's not wrapped in a link
-        link_pattern = re.compile(
-            r"\[" + re.escape(current_label) + r"\]\([^)]+\)"
-        )
-        assert not link_pattern.search(switcher), (
-            f"Current language '{current_label}' should be plain text, "
-            f"not a link"
-        )
+        link_pattern = re.compile(r"\[" + re.escape(current_label) + r"\]\([^)]+\)")
+        assert not link_pattern.search(switcher), f"Current language '{current_label}' should be plain text, not a link"
 
 
 # =============================================================================
@@ -317,26 +301,16 @@ class TestProperty6ContentPreservation:
 
     @given(content=markdown_with_h1(), lang=st.sampled_from(ALL_LANG_CODES))
     @settings(max_examples=100)
-    def test_original_content_preserved_after_injection(
-        self, content: str, lang: str
-    ):
+    def test_original_content_preserved_after_injection(self, content: str, lang: str):
         """All original non-switcher lines are preserved after injection."""
         injector = LanguageSwitcherInjector()
         result = injector.inject_into_markdown(content, lang)
 
         # Get original lines excluding any existing switcher
-        original_lines = [
-            line
-            for line in content.split("\n")
-            if not line.strip().startswith("🌐")
-        ]
+        original_lines = [line for line in content.split("\n") if not line.strip().startswith("🌐")]
 
         # Get result lines excluding the new switcher
-        result_lines = [
-            line
-            for line in result.split("\n")
-            if not line.strip().startswith("🌐")
-        ]
+        result_lines = [line for line in result.split("\n") if not line.strip().startswith("🌐")]
 
         # All original non-empty lines should appear in result (order preserved)
         original_non_empty = [l for l in original_lines if l.strip()]
@@ -350,8 +324,7 @@ class TestProperty6ContentPreservation:
                     orig_idx += 1
 
         assert orig_idx == len(original_non_empty), (
-            f"Not all original lines preserved. "
-            f"Found {orig_idx}/{len(original_non_empty)} lines."
+            f"Not all original lines preserved. Found {orig_idx}/{len(original_non_empty)} lines."
         )
 
     @given(
@@ -360,9 +333,7 @@ class TestProperty6ContentPreservation:
         lang2=st.sampled_from(ALL_LANG_CODES),
     )
     @settings(max_examples=100)
-    def test_double_injection_preserves_content(
-        self, content: str, lang1: str, lang2: str
-    ):
+    def test_double_injection_preserves_content(self, content: str, lang1: str, lang2: str):
         """Injecting twice (simulating existing switcher) preserves content."""
         injector = LanguageSwitcherInjector()
 
@@ -372,16 +343,8 @@ class TestProperty6ContentPreservation:
         result2 = injector.inject_into_markdown(result1, lang2)
 
         # Original non-switcher content should still be present
-        original_lines = [
-            line
-            for line in content.split("\n")
-            if not line.strip().startswith("🌐")
-        ]
-        result_lines = [
-            line
-            for line in result2.split("\n")
-            if not line.strip().startswith("🌐")
-        ]
+        original_lines = [line for line in content.split("\n") if not line.strip().startswith("🌐")]
+        result_lines = [line for line in result2.split("\n") if not line.strip().startswith("🌐")]
 
         original_non_empty = [l for l in original_lines if l.strip()]
         result_non_empty = [l for l in result_lines if l.strip()]
@@ -393,8 +356,7 @@ class TestProperty6ContentPreservation:
                     orig_idx += 1
 
         assert orig_idx == len(original_non_empty), (
-            f"Double injection lost content. "
-            f"Found {orig_idx}/{len(original_non_empty)} lines."
+            f"Double injection lost content. Found {orig_idx}/{len(original_non_empty)} lines."
         )
 
 
@@ -428,44 +390,25 @@ class TestProperty3DocumentStructureInvariant:
         reassembled = translator.reassemble(blocks)
 
         # Count headings
-        original_headings = len(
-            re.findall(r"^#{1,6}\s", content, re.MULTILINE)
-        )
-        result_headings = len(
-            re.findall(r"^#{1,6}\s", reassembled, re.MULTILINE)
-        )
-        assert original_headings == result_headings, (
-            f"Heading count mismatch: {original_headings} vs {result_headings}"
-        )
+        original_headings = len(re.findall(r"^#{1,6}\s", content, re.MULTILINE))
+        result_headings = len(re.findall(r"^#{1,6}\s", reassembled, re.MULTILINE))
+        assert original_headings == result_headings, f"Heading count mismatch: {original_headings} vs {result_headings}"
 
         # Count code blocks (``` fences)
         original_code = content.count("```")
         result_code = reassembled.count("```")
-        assert original_code == result_code, (
-            f"Code fence count mismatch: {original_code} vs {result_code}"
-        )
+        assert original_code == result_code, f"Code fence count mismatch: {original_code} vs {result_code}"
 
         # Count mermaid blocks
-        original_mermaid = len(
-            re.findall(r"^```mermaid", content, re.MULTILINE | re.IGNORECASE)
-        )
-        result_mermaid = len(
-            re.findall(r"^```mermaid", reassembled, re.MULTILINE | re.IGNORECASE)
-        )
-        assert original_mermaid == result_mermaid, (
-            f"Mermaid count mismatch: {original_mermaid} vs {result_mermaid}"
-        )
+        original_mermaid = len(re.findall(r"^```mermaid", content, re.MULTILINE | re.IGNORECASE))
+        result_mermaid = len(re.findall(r"^```mermaid", reassembled, re.MULTILINE | re.IGNORECASE))
+        assert original_mermaid == result_mermaid, f"Mermaid count mismatch: {original_mermaid} vs {result_mermaid}"
 
         # Count table rows (lines starting with |)
-        original_table_rows = len(
-            re.findall(r"^\|", content, re.MULTILINE)
-        )
-        result_table_rows = len(
-            re.findall(r"^\|", reassembled, re.MULTILINE)
-        )
+        original_table_rows = len(re.findall(r"^\|", content, re.MULTILINE))
+        result_table_rows = len(re.findall(r"^\|", reassembled, re.MULTILINE))
         assert original_table_rows == result_table_rows, (
-            f"Table row count mismatch: "
-            f"{original_table_rows} vs {result_table_rows}"
+            f"Table row count mismatch: {original_table_rows} vs {result_table_rows}"
         )
 
 
@@ -510,22 +453,22 @@ class TestProperty4UntranslatableContentPreservation:
         reassembled = translator.reassemble(blocks)
 
         assert code_block_str in reassembled, (
-            f"Code block not preserved.\n"
-            f"Expected: {code_block_str!r}\n"
-            f"In result: {reassembled!r}"
+            f"Code block not preserved.\nExpected: {code_block_str!r}\nIn result: {reassembled!r}"
         )
 
     @given(
-        aws_service=st.sampled_from([
-            "Amazon Bedrock",
-            "AWS Step Functions",
-            "Amazon Athena",
-            "Amazon S3",
-            "AWS Lambda",
-            "Amazon FSx for NetApp ONTAP",
-            "Amazon CloudWatch",
-            "AWS CloudFormation",
-        ]),
+        aws_service=st.sampled_from(
+            [
+                "Amazon Bedrock",
+                "AWS Step Functions",
+                "Amazon Athena",
+                "Amazon S3",
+                "AWS Lambda",
+                "Amazon FSx for NetApp ONTAP",
+                "Amazon CloudWatch",
+                "AWS CloudFormation",
+            ]
+        ),
     )
     @settings(max_examples=100)
     def test_aws_service_names_in_code_preserved(self, aws_service: str):
@@ -539,9 +482,7 @@ class TestProperty4UntranslatableContentPreservation:
         blocks = translator.split_translatable(markdown)
         reassembled = translator.reassemble(blocks)
 
-        assert code_block_str in reassembled, (
-            "Code block with AWS service name not preserved"
-        )
+        assert code_block_str in reassembled, "Code block with AWS service name not preserved"
 
     @given(content=mermaid_block())
     @settings(max_examples=100)
@@ -594,11 +535,7 @@ class TestProperty5HyperlinkTargetPreservation:
         original_urls = sorted([t[1] for t in original_targets])
         result_urls = sorted([t[1] for t in result_targets])
 
-        assert original_urls == result_urls, (
-            f"Link targets changed.\n"
-            f"Original: {original_urls}\n"
-            f"Result: {result_urls}"
-        )
+        assert original_urls == result_urls, f"Link targets changed.\nOriginal: {original_urls}\nResult: {result_urls}"
 
 
 # =============================================================================
@@ -621,9 +558,7 @@ class TestReadmeGeneratorUnit:
         config.uc_folders = ["test-uc"]
 
         with patch("translate_readmes.boto3.client"):
-            generator = ReadmeGenerator(
-                config=config, project_root=str(tmp_path)
-            )
+            generator = ReadmeGenerator(config=config, project_root=str(tmp_path))
 
         # Mock the translator's bedrock_client
         mock_client = MagicMock()
@@ -661,9 +596,7 @@ class TestReadmeGeneratorUnit:
             filepath = uc_folder / filename
             assert filepath.exists(), f"File not created: {filepath}"
 
-    def test_generate_for_folder_updates_existing_switcher(
-        self, tmp_path: Path
-    ):
+    def test_generate_for_folder_updates_existing_switcher(self, tmp_path: Path):
         """Existing files get their Language Switcher updated, not overwritten."""
         uc_folder = tmp_path / "test-uc"
         uc_folder.mkdir()
@@ -686,9 +619,7 @@ class TestReadmeGeneratorUnit:
         # English file should have switcher added but content preserved
         updated_en = existing_en.read_text(encoding="utf-8")
         assert "🌐" in updated_en, "Switcher should be injected"
-        assert "This is existing content." in updated_en, (
-            "Original content should be preserved"
-        )
+        assert "This is existing content." in updated_en, "Original content should be preserved"
 
     def test_generate_for_folder_missing_source(self, tmp_path: Path):
         """Missing source README returns empty results."""
@@ -706,16 +637,12 @@ class TestReadmeGeneratorUnit:
         uc_folder = tmp_path / "test-uc"
         uc_folder.mkdir()
         source_readme = uc_folder / "README.md"
-        source_readme.write_text(
-            "# テスト\n\nコンテンツ\n", encoding="utf-8"
-        )
+        source_readme.write_text("# テスト\n\nコンテンツ\n", encoding="utf-8")
 
         generator = self._create_generator(tmp_path)
 
         # Make bedrock client raise an error
-        generator.translator.bedrock_client.invoke_model.side_effect = (
-            RuntimeError("API Error")
-        )
+        generator.translator.bedrock_client.invoke_model.side_effect = RuntimeError("API Error")
 
         results = generator.generate_for_folder("test-uc")
 
@@ -739,9 +666,7 @@ class TestReadmeGeneratorUnit:
 
         # Source README should now have switcher
         updated_source = source_readme.read_text(encoding="utf-8")
-        assert "🌐" in updated_source, (
-            "Source README should have switcher injected"
-        )
+        assert "🌐" in updated_source, "Source README should have switcher injected"
         # Current lang for source should be "ja" (plain text)
         assert "日本語" in updated_source
         # "日本語" should NOT be a link in the source
@@ -752,9 +677,7 @@ class TestReadmeGeneratorUnit:
         uc_folder = tmp_path / "test-uc"
         uc_folder.mkdir()
         source_readme = uc_folder / "README.md"
-        source_readme.write_text(
-            "# テスト\n\nコンテンツ\n", encoding="utf-8"
-        )
+        source_readme.write_text("# テスト\n\nコンテンツ\n", encoding="utf-8")
 
         generator = self._create_generator(tmp_path)
         results = generator.generate_for_folder("test-uc")

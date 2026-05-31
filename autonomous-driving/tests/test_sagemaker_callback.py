@@ -293,14 +293,10 @@ class TestHandlerDynamoDBMode:
                     "stepfunctions": mock_sfn,
                 }[service]
 
-                with patch(
-                    "functions.sagemaker_callback.handler._retrieve_token_from_dynamodb"
-                ) as mock_retrieve:
+                with patch("functions.sagemaker_callback.handler._retrieve_token_from_dynamodb") as mock_retrieve:
                     mock_retrieve.return_value = "retrieved-task-token-from-ddb"
 
-                    with patch(
-                        "functions.sagemaker_callback.handler._delete_token_from_dynamodb"
-                    ) as mock_delete:
+                    with patch("functions.sagemaker_callback.handler._delete_token_from_dynamodb") as mock_delete:
                         result = handler(event, context)
 
                         assert result["action"] == "SendTaskSuccess"
@@ -337,23 +333,17 @@ class TestHandlerDynamoDBMode:
                 mock_sagemaker.describe_transform_job.return_value = {
                     "TransformJobArn": "arn:aws:sagemaker:ap-northeast-1:123:transform-job/test-job",
                 }
-                mock_sagemaker.list_tags.return_value = {
-                    "Tags": [{"Key": "CorrelationId", "Value": "ef567890"}]
-                }
+                mock_sagemaker.list_tags.return_value = {"Tags": [{"Key": "CorrelationId", "Value": "ef567890"}]}
 
                 mock_boto3.client.side_effect = lambda service, **kwargs: {
                     "sagemaker": mock_sagemaker,
                     "stepfunctions": mock_sfn,
                 }[service]
 
-                with patch(
-                    "functions.sagemaker_callback.handler._retrieve_token_from_dynamodb"
-                ) as mock_retrieve:
+                with patch("functions.sagemaker_callback.handler._retrieve_token_from_dynamodb") as mock_retrieve:
                     mock_retrieve.return_value = "failure-token-from-ddb"
 
-                    with patch(
-                        "functions.sagemaker_callback.handler._delete_token_from_dynamodb"
-                    ) as mock_delete:
+                    with patch("functions.sagemaker_callback.handler._delete_token_from_dynamodb") as mock_delete:
                         result = handler(event, context)
 
                         assert result["action"] == "SendTaskFailure"
@@ -391,9 +381,7 @@ class TestHandlerDirectMode:
             mock_sagemaker.describe_transform_job.return_value = {
                 "TransformJobArn": "arn:aws:sagemaker:ap-northeast-1:123:transform-job/test-job",
             }
-            mock_sagemaker.list_tags.return_value = {
-                "Tags": [{"Key": "TaskToken", "Value": "direct-callback-token"}]
-            }
+            mock_sagemaker.list_tags.return_value = {"Tags": [{"Key": "TaskToken", "Value": "direct-callback-token"}]}
 
             mock_boto3.client.side_effect = lambda service, **kwargs: {
                 "sagemaker": mock_sagemaker,
@@ -429,9 +417,7 @@ class TestHandlerDirectMode:
             mock_sagemaker.describe_transform_job.return_value = {
                 "TransformJobArn": "arn:aws:sagemaker:ap-northeast-1:123:transform-job/test-job",
             }
-            mock_sagemaker.list_tags.return_value = {
-                "Tags": [{"Key": "TaskToken", "Value": "fail-token"}]
-            }
+            mock_sagemaker.list_tags.return_value = {"Tags": [{"Key": "TaskToken", "Value": "fail-token"}]}
 
             mock_boto3.client.side_effect = lambda service, **kwargs: {
                 "sagemaker": mock_sagemaker,
@@ -472,32 +458,24 @@ class TestHandlerOrphanedCallback:
                 mock_sagemaker.describe_transform_job.return_value = {
                     "TransformJobArn": "arn:aws:sagemaker:ap-northeast-1:123:transform-job/test-job",
                 }
-                mock_sagemaker.list_tags.return_value = {
-                    "Tags": [{"Key": "CorrelationId", "Value": "expired01"}]
-                }
+                mock_sagemaker.list_tags.return_value = {"Tags": [{"Key": "CorrelationId", "Value": "expired01"}]}
 
                 mock_boto3.client.side_effect = lambda service, **kwargs: {
                     "sagemaker": mock_sagemaker,
                     "stepfunctions": mock_sfn,
                 }[service]
 
-                with patch(
-                    "functions.sagemaker_callback.handler._retrieve_token_from_dynamodb"
-                ) as mock_retrieve:
+                with patch("functions.sagemaker_callback.handler._retrieve_token_from_dynamodb") as mock_retrieve:
                     mock_retrieve.return_value = None  # Token not found
 
-                    with patch(
-                        "functions.sagemaker_callback.handler._emit_orphaned_callback_metric"
-                    ) as mock_metric:
+                    with patch("functions.sagemaker_callback.handler._emit_orphaned_callback_metric") as mock_metric:
                         result = handler(event, context)
 
                         assert result["action"] == "ERROR"
                         assert "Token not found" in result["error"]
 
                         # OrphanedCallback メトリクスが出力された
-                        mock_metric.assert_called_once_with(
-                            "test-job-orphaned", "expired01"
-                        )
+                        mock_metric.assert_called_once_with("test-job-orphaned", "expired01")
 
 
 class TestHandlerDynamoDBRecordDeletion:
@@ -524,23 +502,17 @@ class TestHandlerDynamoDBRecordDeletion:
                 mock_sagemaker.describe_transform_job.return_value = {
                     "TransformJobArn": "arn:aws:sagemaker:ap-northeast-1:123:transform-job/test-job",
                 }
-                mock_sagemaker.list_tags.return_value = {
-                    "Tags": [{"Key": "CorrelationId", "Value": "cleanup1"}]
-                }
+                mock_sagemaker.list_tags.return_value = {"Tags": [{"Key": "CorrelationId", "Value": "cleanup1"}]}
 
                 mock_boto3.client.side_effect = lambda service, **kwargs: {
                     "sagemaker": mock_sagemaker,
                     "stepfunctions": mock_sfn,
                 }[service]
 
-                with patch(
-                    "functions.sagemaker_callback.handler._retrieve_token_from_dynamodb"
-                ) as mock_retrieve:
+                with patch("functions.sagemaker_callback.handler._retrieve_token_from_dynamodb") as mock_retrieve:
                     mock_retrieve.return_value = "token-to-cleanup"
 
-                    with patch(
-                        "functions.sagemaker_callback.handler._delete_token_from_dynamodb"
-                    ) as mock_delete:
+                    with patch("functions.sagemaker_callback.handler._delete_token_from_dynamodb") as mock_delete:
                         result = handler(event, context)
 
                         assert result["action"] == "SendTaskSuccess"

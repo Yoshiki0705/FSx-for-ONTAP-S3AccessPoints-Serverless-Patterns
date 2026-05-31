@@ -131,11 +131,13 @@ def lambda_error_handler(func):
             )
             return {
                 "statusCode": 500,
-                "body": json.dumps({
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                    "request_id": context.aws_request_id,
-                }),
+                "body": json.dumps(
+                    {
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "request_id": context.aws_request_id,
+                    }
+                ),
             }
 
     return wrapper

@@ -71,15 +71,13 @@ def validate_scaling_schedule(
     if business_hours_start < HOURS_MIN or business_hours_start > HOURS_MAX:
         return (
             False,
-            f"Invalid business_hours_start: {business_hours_start}. "
-            f"Must be in range [{HOURS_MIN}, {HOURS_MAX}]",
+            f"Invalid business_hours_start: {business_hours_start}. Must be in range [{HOURS_MIN}, {HOURS_MAX}]",
         )
 
     if business_hours_end < HOURS_MIN or business_hours_end > HOURS_MAX:
         return (
             False,
-            f"Invalid business_hours_end: {business_hours_end}. "
-            f"Must be in range [{HOURS_MIN}, {HOURS_MAX}]",
+            f"Invalid business_hours_end: {business_hours_end}. Must be in range [{HOURS_MIN}, {HOURS_MAX}]",
         )
 
     # Validate time ordering (same day)
@@ -94,29 +92,25 @@ def validate_scaling_schedule(
     if business_min_capacity < CAPACITY_MIN:
         return (
             False,
-            f"Invalid business_min_capacity: {business_min_capacity}. "
-            f"Must be >= {CAPACITY_MIN}",
+            f"Invalid business_min_capacity: {business_min_capacity}. Must be >= {CAPACITY_MIN}",
         )
 
     if business_max_capacity < CAPACITY_MIN:
         return (
             False,
-            f"Invalid business_max_capacity: {business_max_capacity}. "
-            f"Must be >= {CAPACITY_MIN}",
+            f"Invalid business_max_capacity: {business_max_capacity}. Must be >= {CAPACITY_MIN}",
         )
 
     if off_hours_min_capacity < CAPACITY_MIN:
         return (
             False,
-            f"Invalid off_hours_min_capacity: {off_hours_min_capacity}. "
-            f"Must be >= {CAPACITY_MIN}",
+            f"Invalid off_hours_min_capacity: {off_hours_min_capacity}. Must be >= {CAPACITY_MIN}",
         )
 
     if off_hours_max_capacity < CAPACITY_MIN:
         return (
             False,
-            f"Invalid off_hours_max_capacity: {off_hours_max_capacity}. "
-            f"Must be >= {CAPACITY_MIN}",
+            f"Invalid off_hours_max_capacity: {off_hours_max_capacity}. Must be >= {CAPACITY_MIN}",
         )
 
     # Validate business capacity ordering

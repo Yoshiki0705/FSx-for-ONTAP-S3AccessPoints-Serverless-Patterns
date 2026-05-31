@@ -25,9 +25,7 @@ from shared.lambdas.fpolicy_engine.handler import (
 )
 
 
-SCHEMA_PATH = str(
-    Path(__file__).parent.parent / "schemas" / "fpolicy-event-schema.json"
-)
+SCHEMA_PATH = str(Path(__file__).parent.parent / "schemas" / "fpolicy-event-schema.json")
 
 
 def _valid_event() -> dict:
@@ -144,7 +142,9 @@ class TestHandler:
     IP Updater handler のテストは別途実装が必要。
     """
 
-    @pytest.mark.skip(reason="handler refactored to IP Updater in Phase 10; SQS ingestion logic moved to FPolicy Server")
+    @pytest.mark.skip(
+        reason="handler refactored to IP Updater in Phase 10; SQS ingestion logic moved to FPolicy Server"
+    )
     @mock_aws
     def test_handler_success(self) -> None:
         """正常系: 有効イベント → SQS 送信成功."""
@@ -167,7 +167,9 @@ class TestHandler:
             if "SCHEMA_PATH" in os.environ:
                 del os.environ["SCHEMA_PATH"]
 
-    @pytest.mark.skip(reason="handler refactored to IP Updater in Phase 10; SQS ingestion logic moved to FPolicy Server")
+    @pytest.mark.skip(
+        reason="handler refactored to IP Updater in Phase 10; SQS ingestion logic moved to FPolicy Server"
+    )
     @mock_aws
     def test_handler_validation_failure(self) -> None:
         """異常系: バリデーション失敗."""
@@ -193,7 +195,9 @@ class TestHandler:
             if "SCHEMA_PATH" in os.environ:
                 del os.environ["SCHEMA_PATH"]
 
-    @pytest.mark.skip(reason="handler refactored to IP Updater in Phase 10; SQS ingestion logic moved to FPolicy Server")
+    @pytest.mark.skip(
+        reason="handler refactored to IP Updater in Phase 10; SQS ingestion logic moved to FPolicy Server"
+    )
     @mock_aws
     def test_handler_batch_events(self) -> None:
         """バッチイベント処理."""
@@ -215,9 +219,7 @@ class TestHandler:
 
             assert result["statusCode"] == 200
             assert result["body"]["processed"] == 2
-            assert all(
-                r["status"] == "success" for r in result["body"]["results"]
-            )
+            assert all(r["status"] == "success" for r in result["body"]["results"])
         finally:
             del os.environ["SQS_QUEUE_URL"]
             if "SCHEMA_PATH" in os.environ:

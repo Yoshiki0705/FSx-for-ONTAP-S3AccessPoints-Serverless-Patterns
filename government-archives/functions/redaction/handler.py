@@ -30,9 +30,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_REDACTION_MARKER = "[REDACTED]"
 
 
-def redact_text(
-    text: str, entities: list[dict], marker: str = DEFAULT_REDACTION_MARKER
-) -> tuple[str, list[dict]]:
+def redact_text(text: str, entities: list[dict], marker: str = DEFAULT_REDACTION_MARKER) -> tuple[str, list[dict]]:
     """テキスト中の PII エンティティを marker に置換する。
 
     Args:
@@ -47,9 +45,7 @@ def redact_text(
         return text, []
 
     # オフセット順にソート（末尾から置換すると前のオフセットが変わらない）
-    sorted_entities = sorted(
-        entities, key=lambda e: e.get("BeginOffset", 0), reverse=True
-    )
+    sorted_entities = sorted(entities, key=lambda e: e.get("BeginOffset", 0), reverse=True)
 
     redacted = text
     metadata = []
@@ -61,14 +57,14 @@ def redact_text(
             continue
         original = redacted[begin:end]
         redacted = redacted[:begin] + marker + redacted[end:]
-        metadata.append({
-            "entity_type": ent.get("Type", "UNKNOWN"),
-            "original_offset": [begin, end],
-            "original_text_hash": "sha256:" + hashlib.sha256(
-                original.encode()
-            ).hexdigest(),
-            "confidence": float(ent.get("Score", 0.0)),
-        })
+        metadata.append(
+            {
+                "entity_type": ent.get("Type", "UNKNOWN"),
+                "original_offset": [begin, end],
+                "original_text_hash": "sha256:" + hashlib.sha256(original.encode()).hexdigest(),
+                "confidence": float(ent.get("Score", 0.0)),
+            }
+        )
 
     # メタデータを元の順序に戻す
     metadata.reverse()

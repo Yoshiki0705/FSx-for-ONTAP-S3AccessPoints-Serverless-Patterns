@@ -68,17 +68,13 @@ def build_prompt(
     return "\n".join(lines)
 
 
-def invoke_bedrock(
-    bedrock, model_id: str, prompt: str, max_tokens: int
-) -> str:
+def invoke_bedrock(bedrock, model_id: str, prompt: str, max_tokens: int) -> str:
     """Bedrock を呼び出してレポートを生成する。"""
     try:
         # Nova / Claude 共通の messages format
         if "nova" in model_id.lower():
             body = {
-                "messages": [
-                    {"role": "user", "content": [{"text": prompt}]}
-                ],
+                "messages": [{"role": "user", "content": [{"text": prompt}]}],
                 "inferenceConfig": {
                     "maxTokens": max_tokens,
                     "temperature": 0.3,
@@ -150,9 +146,7 @@ def handler(event, context):
 
     # 結果を出力先に書き出し
     report_key = f"reports/{datetime.utcnow().strftime('%Y/%m/%d')}/{source_key}.md"
-    output_writer.put_text(
-        key=report_key, text=report_text, content_type="text/markdown; charset=utf-8"
-    )
+    output_writer.put_text(key=report_key, text=report_text, content_type="text/markdown; charset=utf-8")
 
     logger.info(
         "UC17 ReportGeneration: source=%s, report=%s, length=%d",

@@ -50,21 +50,13 @@ def calculate_max_concurrency(
         ValueError: 入力パラメータが不正な場合
     """
     if detected_file_count < 0:
-        raise ValueError(
-            f"detected_file_count must be >= 0, got {detected_file_count}"
-        )
+        raise ValueError(f"detected_file_count must be >= 0, got {detected_file_count}")
     if ontap_rate_limit <= 0:
-        raise ValueError(
-            f"ontap_rate_limit must be > 0, got {ontap_rate_limit}"
-        )
+        raise ValueError(f"ontap_rate_limit must be > 0, got {ontap_rate_limit}")
     if api_calls_per_file <= 0:
-        raise ValueError(
-            f"api_calls_per_file must be > 0, got {api_calls_per_file}"
-        )
+        raise ValueError(f"api_calls_per_file must be > 0, got {api_calls_per_file}")
     if max_concurrency_upper_bound <= 0:
-        raise ValueError(
-            f"max_concurrency_upper_bound must be > 0, got {max_concurrency_upper_bound}"
-        )
+        raise ValueError(f"max_concurrency_upper_bound must be > 0, got {max_concurrency_upper_bound}")
 
     # Calculate rate-limited concurrency
     rate_limited = ontap_rate_limit // api_calls_per_file
@@ -76,8 +68,7 @@ def calculate_max_concurrency(
     result = max(optimal, 1)
 
     logger.info(
-        "MaxConcurrency calculated: %d (files=%d, rate_limit=%d, "
-        "calls_per_file=%d, upper_bound=%d)",
+        "MaxConcurrency calculated: %d (files=%d, rate_limit=%d, calls_per_file=%d, upper_bound=%d)",
         result,
         detected_file_count,
         ontap_rate_limit,

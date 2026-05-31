@@ -7,6 +7,7 @@ encourages contributions for proper translations.
 
 This is intentionally a stub: full manual translations are preferred but expensive.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

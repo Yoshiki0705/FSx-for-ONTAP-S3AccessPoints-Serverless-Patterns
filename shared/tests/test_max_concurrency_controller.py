@@ -177,20 +177,14 @@ class TestMaxConcurrencyUnit:
     def test_zero_rate_limit_raises(self) -> None:
         """レートリミット 0 で ValueError."""
         with pytest.raises(ValueError, match="ontap_rate_limit"):
-            calculate_max_concurrency(
-                detected_file_count=10, ontap_rate_limit=0
-            )
+            calculate_max_concurrency(detected_file_count=10, ontap_rate_limit=0)
 
     def test_zero_api_calls_raises(self) -> None:
         """API 呼び出し回数 0 で ValueError."""
         with pytest.raises(ValueError, match="api_calls_per_file"):
-            calculate_max_concurrency(
-                detected_file_count=10, api_calls_per_file=0
-            )
+            calculate_max_concurrency(detected_file_count=10, api_calls_per_file=0)
 
     def test_zero_upper_bound_raises(self) -> None:
         """上限値 0 で ValueError."""
         with pytest.raises(ValueError, match="max_concurrency_upper_bound"):
-            calculate_max_concurrency(
-                detected_file_count=10, max_concurrency_upper_bound=0
-            )
+            calculate_max_concurrency(detected_file_count=10, max_concurrency_upper_bound=0)

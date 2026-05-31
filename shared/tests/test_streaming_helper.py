@@ -31,30 +31,21 @@ class TestBatchRecordsSplitting:
 
     def test_under_500_records_single_batch(self):
         """500 件未満は 1 バッチ"""
-        records = [
-            {"Data": b"data", "PartitionKey": f"pk-{i}"}
-            for i in range(100)
-        ]
+        records = [{"Data": b"data", "PartitionKey": f"pk-{i}"} for i in range(100)]
         batches = StreamingHelper._batch_records(records)
         assert len(batches) == 1
         assert len(batches[0]) == 100
 
     def test_exactly_500_records_single_batch(self):
         """ちょうど 500 件は 1 バッチ"""
-        records = [
-            {"Data": b"data", "PartitionKey": f"pk-{i}"}
-            for i in range(500)
-        ]
+        records = [{"Data": b"data", "PartitionKey": f"pk-{i}"} for i in range(500)]
         batches = StreamingHelper._batch_records(records)
         assert len(batches) == 1
         assert len(batches[0]) == 500
 
     def test_501_records_two_batches(self):
         """501 件は 2 バッチに分割"""
-        records = [
-            {"Data": b"data", "PartitionKey": f"pk-{i}"}
-            for i in range(501)
-        ]
+        records = [{"Data": b"data", "PartitionKey": f"pk-{i}"} for i in range(501)]
         batches = StreamingHelper._batch_records(records)
         assert len(batches) == 2
         assert len(batches[0]) == 500
@@ -62,10 +53,7 @@ class TestBatchRecordsSplitting:
 
     def test_1000_records_two_batches(self):
         """1000 件は 2 バッチに分割"""
-        records = [
-            {"Data": b"data", "PartitionKey": f"pk-{i}"}
-            for i in range(1000)
-        ]
+        records = [{"Data": b"data", "PartitionKey": f"pk-{i}"} for i in range(1000)]
         batches = StreamingHelper._batch_records(records)
         assert len(batches) == 2
         assert len(batches[0]) == 500
@@ -75,18 +63,12 @@ class TestBatchRecordsSplitting:
         """5 MB 制限でバッチが分割される"""
         # 各レコード約 1 MB → 5 レコードで 5 MB 超
         large_data = b"x" * (1024 * 1024)  # 1 MB
-        records = [
-            {"Data": large_data, "PartitionKey": f"pk-{i}"}
-            for i in range(6)
-        ]
+        records = [{"Data": large_data, "PartitionKey": f"pk-{i}"} for i in range(6)]
         batches = StreamingHelper._batch_records(records)
         # 5 MB 制限により 5 レコード以下でバッチが分割される
         assert len(batches) >= 2
         for batch in batches:
-            total_size = sum(
-                len(r["Data"]) + len(r["PartitionKey"].encode("utf-8"))
-                for r in batch
-            )
+            total_size = sum(len(r["Data"]) + len(r["PartitionKey"].encode("utf-8")) for r in batch)
             assert total_size <= 5 * 1024 * 1024
 
 
@@ -347,9 +329,7 @@ class TestDescribeStream:
 
         result = helper.describe_stream()
         assert result == expected_response
-        mock_client.describe_stream.assert_called_once_with(
-            StreamName="test-stream"
-        )
+        mock_client.describe_stream.assert_called_once_with(StreamName="test-stream")
 
     def test_describe_stream_raises_streaming_error(self):
         """異常系: API エラー時に StreamingError が raise される"""
@@ -362,9 +342,7 @@ class TestDescribeStream:
         mock_session.client.return_value = mock_client
         helper = StreamingHelper(config, session=mock_session)
 
-        mock_client.describe_stream.side_effect = Exception(
-            "ResourceNotFoundException"
-        )
+        mock_client.describe_stream.side_effect = Exception("ResourceNotFoundException")
 
         with pytest.raises(StreamingError) as exc_info:
             helper.describe_stream()

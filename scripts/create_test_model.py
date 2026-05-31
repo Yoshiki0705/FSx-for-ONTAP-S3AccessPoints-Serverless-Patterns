@@ -170,9 +170,7 @@ def upload_to_s3(tarball_path: Path, s3_uri: str) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="SageMaker Serverless Inference テスト用モデルアーティファクト作成"
-    )
+    parser = argparse.ArgumentParser(description="SageMaker Serverless Inference テスト用モデルアーティファクト作成")
     parser.add_argument(
         "--output-dir",
         type=str,

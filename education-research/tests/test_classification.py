@@ -79,10 +79,7 @@ class TestDetectKeyPhrases:
         """最大20件に制限されること"""
         mock_client = MagicMock()
         mock_client.detect_key_phrases.return_value = {
-            "KeyPhrases": [
-                {"Text": f"phrase_{i}", "Score": 0.9}
-                for i in range(30)
-            ]
+            "KeyPhrases": [{"Text": f"phrase_{i}", "Score": 0.9} for i in range(30)]
         }
         result = detect_key_phrases(mock_client, "text")
         assert len(result) <= 20

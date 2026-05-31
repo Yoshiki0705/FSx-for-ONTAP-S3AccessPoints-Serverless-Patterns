@@ -261,9 +261,7 @@ def translate_doc(
             # Translate prose and heading blocks
             for block in blocks:
                 if block.block_type in (BlockType.PROSE, BlockType.HEADING):
-                    block.translated = translator.translate_prose(
-                        block.content, target_lang
-                    )
+                    block.translated = translator.translate_prose(block.content, target_lang)
                 elif block.block_type == BlockType.SWITCHER:
                     block.translated = injector.generate_switcher(target_lang)
 
@@ -271,9 +269,7 @@ def translate_doc(
             translated_content = translator.reassemble(blocks)
 
             # Inject language switcher for this language
-            final_content = injector.inject_into_markdown(
-                translated_content, target_lang
-            )
+            final_content = injector.inject_into_markdown(translated_content, target_lang)
 
             # Write output file
             with open(output_path, "w", encoding="utf-8") as f:
@@ -284,14 +280,13 @@ def translate_doc(
         except Exception as e:
             logger.error(f"  ❌ Failed {output_filename}: {e}")
             import traceback
+
             traceback.print_exc()
 
 
 def main():
     """CLI entry point."""
-    parser = argparse.ArgumentParser(
-        description="docs/ フォルダ内ドキュメントの多言語翻訳"
-    )
+    parser = argparse.ArgumentParser(description="docs/ フォルダ内ドキュメントの多言語翻訳")
     parser.add_argument(
         "--source",
         required=True,

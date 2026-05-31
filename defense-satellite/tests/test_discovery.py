@@ -6,7 +6,6 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 
-
 def test_classify_image_type_optical(discovery_handler):
     """Optical image extensions map to 'optical'."""
     _classify = discovery_handler._classify_image_type
@@ -32,9 +31,7 @@ def test_classify_image_type_unknown(discovery_handler):
     assert _classify("data/noext") == "unknown"
 
 
-def test_handler_filters_and_classifies(
-    discovery_handler, lambda_context, monkeypatch
-):
+def test_handler_filters_and_classifies(discovery_handler, lambda_context, monkeypatch):
     """Handler lists objects, classifies them, and writes manifest."""
     monkeypatch.setenv("S3_ACCESS_POINT", "test-ap-ext-s3alias")
     monkeypatch.setenv("PREFIX_FILTER", "satellite/")
@@ -70,9 +67,7 @@ def test_handler_filters_and_classifies(
     mock_s3ap_output.put_object.assert_called_once()
 
 
-def test_handler_deduplicates_keys(
-    discovery_handler, lambda_context, monkeypatch
-):
+def test_handler_deduplicates_keys(discovery_handler, lambda_context, monkeypatch):
     """Handler deduplicates keys that match multiple suffixes."""
     monkeypatch.setenv("S3_ACCESS_POINT", "test-ap-ext-s3alias")
     monkeypatch.setenv("SUFFIX_FILTER", ".tif,.tiff")
@@ -94,9 +89,7 @@ def test_handler_deduplicates_keys(
     assert result["total_objects"] == 1
 
 
-def test_handler_empty_results(
-    discovery_handler, lambda_context, monkeypatch
-):
+def test_handler_empty_results(discovery_handler, lambda_context, monkeypatch):
     """Handler handles empty results gracefully."""
     monkeypatch.setenv("S3_ACCESS_POINT", "test-ap-ext-s3alias")
     monkeypatch.setenv("SUFFIX_FILTER", ".tif")

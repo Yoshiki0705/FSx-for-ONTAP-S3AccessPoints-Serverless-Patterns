@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Add Phase 7 (UC15/UC16/UC17) section to all language READMEs."""
+
 from __future__ import annotations
 
 from pathlib import Path

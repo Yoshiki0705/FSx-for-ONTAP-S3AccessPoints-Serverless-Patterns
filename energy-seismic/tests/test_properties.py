@@ -125,9 +125,7 @@ def test_segy_binary_header_parsing(sample_interval, trace_count, data_format_co
     assert result["sample_interval"] == sample_interval, (
         f"Expected sample_interval={sample_interval}, got {result['sample_interval']}"
     )
-    assert result["trace_count"] == trace_count, (
-        f"Expected trace_count={trace_count}, got {result['trace_count']}"
-    )
+    assert result["trace_count"] == trace_count, f"Expected trace_count={trace_count}, got {result['trace_count']}"
     assert result["data_format_code"] == data_format_code, (
         f"Expected data_format_code={data_format_code}, got {result['data_format_code']}"
     )

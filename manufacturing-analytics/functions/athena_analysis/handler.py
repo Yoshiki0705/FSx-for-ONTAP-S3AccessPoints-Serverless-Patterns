@@ -64,9 +64,7 @@ QUERIES = {
 }
 
 
-def _ensure_glue_table(
-    glue_client, database: str, table: str, s3_location: str
-) -> None:
+def _ensure_glue_table(glue_client, database: str, table: str, s3_location: str) -> None:
     """Glue Data Catalog テーブルを作成/更新する
 
     Args:
@@ -129,19 +127,19 @@ def _execute_athena_query(
         dict: クエリ結果 (status, rows, column_info)
     """
     with xray_subsegment(
-
         name="athena_startqueryexecution",
-
-        annotations={"service_name": "athena", "operation": "StartQueryExecution", "use_case": "manufacturing-analytics"},
-
+        annotations={
+            "service_name": "athena",
+            "operation": "StartQueryExecution",
+            "use_case": "manufacturing-analytics",
+        },
     ):
-
         response = athena_client.start_query_execution(
-        QueryString=query,
-        QueryExecutionContext={"Database": database},
-        WorkGroup=workgroup,
-        ResultConfiguration={"OutputLocation": output_location},
-    )
+            QueryString=query,
+            QueryExecutionContext={"Database": database},
+            WorkGroup=workgroup,
+            ResultConfiguration={"OutputLocation": output_location},
+        )
     query_execution_id = response["QueryExecutionId"]
 
     # クエリ完了を待機
@@ -155,9 +153,7 @@ def _execute_athena_query(
         time.sleep(2)
 
     if state != "SUCCEEDED":
-        reason = status["QueryExecution"]["Status"].get(
-            "StateChangeReason", "Unknown"
-        )
+        reason = status["QueryExecution"]["Status"].get("StateChangeReason", "Unknown")
         logger.error("Athena query failed: %s - %s", state, reason)
         return {"status": state, "reason": reason, "rows": []}
 
@@ -206,8 +202,7 @@ def handler(event, context):
     output_location = f"s3://{athena_results_bucket}/athena-results/"
 
     logger.info(
-        "Manufacturing Athena Analysis started: "
-        "database=%s, table=%s, workgroup=%s, threshold=%.1f",
+        "Manufacturing Athena Analysis started: database=%s, table=%s, workgroup=%s, threshold=%.1f",
         database,
         table,
         workgroup,
@@ -250,7 +245,6 @@ def handler(event, context):
         "Manufacturing Athena Analysis completed: %d queries executed",
         len(query_results),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="athena_analysis")

@@ -75,9 +75,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     )
 
                     updated_schedules.append(schedule_name)
-                    logger.info(
-                        "Updated schedule %s to %s", schedule_name, new_rate
-                    )
+                    logger.info("Updated schedule %s to %s", schedule_name, new_rate)
 
                 except Exception as e:
                     logger.error(
@@ -146,19 +144,13 @@ def estimate_monthly_savings(
     invocations_without = total_hours_per_month * 60 / business_hours_rate_minutes
 
     # Invocations with cost scheduling
-    invocations_business = (
-        business_hours_per_month * 60 / business_hours_rate_minutes
-    )
+    invocations_business = business_hours_per_month * 60 / business_hours_rate_minutes
     invocations_off = off_hours_per_month * 60 / off_hours_rate_minutes
     invocations_with = invocations_business + invocations_off
 
     # Cost per invocation (request + duration)
     # Duration cost: $0.0000166667 per GB-second
-    duration_cost = (
-        (lambda_duration_ms / 1000)
-        * (lambda_memory_mb / 1024)
-        * 0.0000166667
-    )
+    duration_cost = (lambda_duration_ms / 1000) * (lambda_memory_mb / 1024) * 0.0000166667
     cost_per_invocation = lambda_cost_per_invocation + duration_cost
 
     # Savings

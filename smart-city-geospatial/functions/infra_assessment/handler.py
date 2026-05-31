@@ -29,15 +29,14 @@ logger = logging.getLogger(__name__)
 
 try:
     import laspy
+
     LASPY_AVAILABLE = True
 except ImportError:
     laspy = None
     LASPY_AVAILABLE = False
 
 
-def assess_condition_score(
-    point_density: float, std_elevation: float
-) -> str:
+def assess_condition_score(point_density: float, std_elevation: float) -> str:
     """点群統計から状態スコアを判定する。
 
     - GOOD: 高密度、低分散（均一な表面）
@@ -67,6 +66,7 @@ def analyze_pointcloud_fallback(data_size: int) -> dict[str, Any]:
 def analyze_pointcloud_laspy(data: bytes) -> dict[str, Any]:
     """laspy を使った点群解析。"""
     import io
+
     with laspy.open(io.BytesIO(data)) as f:
         header = f.header
         point_count = header.point_count
@@ -74,6 +74,7 @@ def analyze_pointcloud_laspy(data: bytes) -> dict[str, Any]:
         for points in f.chunk_iterator(10000):
             xyz_array.extend(points.z[:100].tolist())
         import statistics
+
         std_elev = statistics.stdev(xyz_array) if len(xyz_array) > 1 else 0.0
 
         # 面積 (m²) = (x_max - x_min) * (y_max - y_min)

@@ -49,9 +49,7 @@ def _build_prompt(extracted_text: str, forms: list[dict]) -> str:
     Returns:
         str: Bedrock プロンプト
     """
-    forms_text = "\n".join(
-        f"  {f['key']}: {f['value']}" for f in forms
-    )
+    forms_text = "\n".join(f"  {f['key']}: {f['value']}" for f in forms)
 
     return f"""以下の配送伝票 OCR 結果から、構造化された配送レコードを JSON 形式で生成してください。
 
@@ -182,17 +180,17 @@ def handler(event, context):
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "inputText": prompt,
-                "textGenerationConfig": {
-                    "maxTokenCount": 2048,
-                    "temperature": 0.1,
-                },
-            }),
+            body=json.dumps(
+                {
+                    "inputText": prompt,
+                    "textGenerationConfig": {
+                        "maxTokenCount": 2048,
+                        "temperature": 0.1,
+                    },
+                }
+            ),
         )
-        structured_record = _parse_bedrock_response(
-            bedrock_response["body"].read()
-        )
+        structured_record = _parse_bedrock_response(bedrock_response["body"].read())
     except Exception as e:
         logger.warning("Bedrock invocation failed: %s, using fallback", e)
         structured_record = {}
@@ -221,7 +219,6 @@ def handler(event, context):
         file_key,
         output_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="data_structuring")

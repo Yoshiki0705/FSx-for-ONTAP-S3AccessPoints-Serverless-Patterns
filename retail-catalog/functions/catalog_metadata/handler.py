@@ -44,10 +44,7 @@ def generate_catalog_metadata(bedrock_client, model_id: str, file_key: str, labe
     Returns:
         dict: 構造化カタログメタデータ
     """
-    labels_text = ", ".join(
-        f"{label['name']} ({label['confidence']}%)"
-        for label in labels
-    )
+    labels_text = ", ".join(f"{label['name']} ({label['confidence']}%)" for label in labels)
 
     prompt = (
         f"Based on the following image labels detected from a product image, "
@@ -63,33 +60,27 @@ def generate_catalog_metadata(bedrock_client, model_id: str, file_key: str, labe
         f"Return ONLY the JSON object, no additional text."
     )
 
-    body = json.dumps({
-        "inputText": prompt,
-        "textGenerationConfig": {
-            "maxTokenCount": 1024,
-            "temperature": 0.3,
-            "topP": 0.9,
-        },
-    })
+    body = json.dumps(
+        {
+            "inputText": prompt,
+            "textGenerationConfig": {
+                "maxTokenCount": 1024,
+                "temperature": 0.3,
+                "topP": 0.9,
+            },
+        }
+    )
 
     with xray_subsegment(
-
-
         name="bedrock_invokemodel",
-
-
         annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "retail-catalog"},
-
-
     ):
-
-
         response = bedrock_client.invoke_model(
-        modelId=model_id,
-        body=body,
-        contentType="application/json",
-        accept="application/json",
-    )
+            modelId=model_id,
+            body=body,
+            contentType="application/json",
+            accept="application/json",
+        )
 
     response_body = json.loads(response["body"].read())
 
@@ -117,9 +108,7 @@ def generate_catalog_metadata(bedrock_client, model_id: str, file_key: str, labe
         metadata = json.loads(generated_text)
     except (json.JSONDecodeError, ValueError):
         # パース失敗時はラベルからデフォルトメタデータを生成
-        logger.warning(
-            "Failed to parse Bedrock response as JSON, using fallback metadata"
-        )
+        logger.warning("Failed to parse Bedrock response as JSON, using fallback metadata")
         metadata = _generate_fallback_metadata(labels)
 
     # 必須フィールドの補完
@@ -207,9 +196,7 @@ def handler(event, context):
 
     # Bedrock でカタログメタデータ生成
     bedrock_client = boto3.client("bedrock-runtime")
-    catalog_metadata = generate_catalog_metadata(
-        bedrock_client, model_id, file_key, labels
-    )
+    catalog_metadata = generate_catalog_metadata(bedrock_client, model_id, file_key, labels)
 
     # 出力キー生成（日付パーティション付き）
     now = datetime.now(timezone.utc)
@@ -228,13 +215,11 @@ def handler(event, context):
     output_writer.put_json(key=output_key, data=output_data)
 
     logger.info(
-        "Catalog metadata generation completed: file_key=%s, output_uri=%s, "
-        "category=%s",
+        "Catalog metadata generation completed: file_key=%s, output_uri=%s, category=%s",
         file_key,
         output_writer.build_s3_uri(output_key),
         catalog_metadata.get("product_category", "Unknown"),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="catalog_metadata")

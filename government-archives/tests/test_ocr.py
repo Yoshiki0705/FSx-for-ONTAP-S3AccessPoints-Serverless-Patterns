@@ -41,9 +41,7 @@ def test_extract_text_sync_returns_lines(ocr_handler):
     assert len(blocks) == 3
 
 
-def test_handler_routes_to_sync_for_small_doc(
-    ocr_handler, lambda_context, monkeypatch
-):
+def test_handler_routes_to_sync_for_small_doc(ocr_handler, lambda_context, monkeypatch):
     """Small document uses sync Textract."""
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.setenv("SYNC_PAGE_THRESHOLD", "10")
@@ -54,13 +52,9 @@ def test_handler_routes_to_sync_for_small_doc(
     mock_s3_client.get_object.return_value = {"Body": MagicMock(read=lambda: small_pdf)}
 
     mock_textract = MagicMock()
-    mock_textract.analyze_document.return_value = {
-        "Blocks": [{"BlockType": "LINE", "Text": "Test text"}]
-    }
+    mock_textract.analyze_document.return_value = {"Blocks": [{"BlockType": "LINE", "Text": "Test text"}]}
     mock_textract.exceptions = MagicMock()
-    mock_textract.exceptions.InvalidParameterException = type(
-        "InvalidParameterException", (Exception,), {}
-    )
+    mock_textract.exceptions.InvalidParameterException = type("InvalidParameterException", (Exception,), {})
 
     def boto3_client(service):
         if service == "s3":
@@ -72,9 +66,10 @@ def test_handler_routes_to_sync_for_small_doc(
     mock_writer = MagicMock()
     mock_writer.target_description = "Standard S3 bucket 'test-bucket'"
 
-    with patch.object(ocr_handler, "boto3") as mock_boto3, patch.object(
-        ocr_handler, "OutputWriter"
-    ) as mock_output_writer_cls:
+    with (
+        patch.object(ocr_handler, "boto3") as mock_boto3,
+        patch.object(ocr_handler, "OutputWriter") as mock_output_writer_cls,
+    ):
         mock_boto3.client.side_effect = boto3_client
         mock_output_writer_cls.from_env.return_value = mock_writer
         event = {"Key": "archives/small.pdf", "Size": 1000}

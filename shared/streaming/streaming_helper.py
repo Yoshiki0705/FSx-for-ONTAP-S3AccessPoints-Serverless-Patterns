@@ -55,9 +55,7 @@ class StreamingConfig:
 
         未知のキーは無視し、dataclass フィールドに一致するキーのみ使用する。
         """
-        return cls(
-            **{k: v for k, v in data.items() if k in cls.__dataclass_fields__}
-        )
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
 class StreamingHelper:
@@ -149,8 +147,7 @@ class StreamingHelper:
 
         if total_failed:
             raise StreamingError(
-                f"PutRecords failed for {len(total_failed)} records after "
-                f"{self._config.max_retries} retries",
+                f"PutRecords failed for {len(total_failed)} records after {self._config.max_retries} retries",
                 failed_records=total_failed,
                 error_codes=error_codes,
             )
@@ -176,8 +173,7 @@ class StreamingHelper:
             return response
         except Exception as e:
             raise StreamingError(
-                f"DescribeStream failed for stream "
-                f"'{self._config.stream_name}': {e}",
+                f"DescribeStream failed for stream '{self._config.stream_name}': {e}",
             ) from e
 
     @staticmethod
@@ -236,9 +232,7 @@ class StreamingHelper:
         current_size = 0
 
         for record in records:
-            record_size = len(record.get("Data", b"")) + len(
-                record.get("PartitionKey", "").encode("utf-8")
-            )
+            record_size = len(record.get("Data", b"")) + len(record.get("PartitionKey", "").encode("utf-8"))
 
             # 現在のバッチに追加するとサイズ制約を超える場合、新バッチを開始
             would_exceed_count = len(current_batch) >= MAX_RECORDS_PER_BATCH
@@ -278,15 +272,13 @@ class StreamingHelper:
             except Exception as e:
                 if attempt == self._config.max_retries:
                     raise StreamingError(
-                        f"PutRecords API call failed after "
-                        f"{self._config.max_retries} retries: {e}",
+                        f"PutRecords API call failed after {self._config.max_retries} retries: {e}",
                         failed_records=current_records,
                     ) from e
                 # 指数バックオフ
                 wait_time = (2**attempt) * 0.1
                 logger.warning(
-                    "PutRecords API error (attempt %d/%d): %s. "
-                    "Retrying in %.2fs",
+                    "PutRecords API error (attempt %d/%d): %s. Retrying in %.2fs",
                     attempt + 1,
                     self._config.max_retries,
                     str(e),
@@ -301,13 +293,10 @@ class StreamingHelper:
 
             # 部分失敗: 失敗レコードのみ抽出してリトライ
             if attempt < self._config.max_retries:
-                current_records, error_codes = self._retry_failed(
-                    current_records, last_response
-                )
+                current_records, error_codes = self._retry_failed(current_records, last_response)
                 wait_time = (2**attempt) * 0.1
                 logger.warning(
-                    "PutRecords partial failure: %d/%d failed (attempt %d/%d). "
-                    "Retrying in %.2fs",
+                    "PutRecords partial failure: %d/%d failed (attempt %d/%d). Retrying in %.2fs",
                     failed_count,
                     len(records),
                     attempt + 1,
@@ -317,18 +306,14 @@ class StreamingHelper:
                 time.sleep(wait_time)
             else:
                 # 最終リトライ後も失敗が残っている
-                failed_records, error_codes = self._retry_failed(
-                    current_records, last_response
-                )
+                failed_records, error_codes = self._retry_failed(current_records, last_response)
                 last_response["_remaining_failures"] = failed_records
                 last_response["_error_codes"] = error_codes
 
         return last_response
 
     @staticmethod
-    def _retry_failed(
-        records: list[dict], response: dict
-    ) -> tuple[list[dict], list[str]]:
+    def _retry_failed(records: list[dict], response: dict) -> tuple[list[dict], list[str]]:
         """PutRecords レスポンスから失敗レコードを抽出する
 
         Args:

@@ -114,7 +114,6 @@ def handler(event, context):
         asset_key,
     )
 
-
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="job_submit")
     metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "media-vfx"))

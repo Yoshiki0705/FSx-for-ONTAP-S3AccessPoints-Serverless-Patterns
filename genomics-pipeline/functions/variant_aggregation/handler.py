@@ -45,7 +45,6 @@ class VcfParseError(Exception):
     """VCF パースエラー"""
 
 
-
 def _is_snp(ref: str, alt: str) -> bool:
     """SNP かどうかを判定する
 
@@ -151,16 +150,10 @@ def _parse_vcf_records(data_stream) -> dict:
         raise VcfParseError("No valid variant records found in VCF file")
 
     # Ti/Tv ratio の計算
-    ti_tv_ratio = (
-        round(transition_count / transversion_count, 2)
-        if transversion_count > 0
-        else 0.0
-    )
+    ti_tv_ratio = round(transition_count / transversion_count, 2) if transversion_count > 0 else 0.0
 
     # Het/Hom ratio の計算
-    het_hom_ratio = (
-        round(het_count / hom_count, 2) if hom_count > 0 else 0.0
-    )
+    het_hom_ratio = round(het_count / hom_count, 2) if hom_count > 0 else 0.0
 
     return {
         "total_variants": total_variants,
@@ -233,9 +226,7 @@ def handler(event, context):
         variant_statistics = _parse_vcf_records(text_lines)
 
     except (VcfParseError, UnicodeDecodeError, gzip.BadGzipFile) as e:
-        logger.warning(
-            "Failed to parse VCF file %s: %s", file_key, str(e)
-        )
+        logger.warning("Failed to parse VCF file %s: %s", file_key, str(e))
         return {
             "status": "ERROR",
             "file_key": file_key,
@@ -273,8 +264,7 @@ def handler(event, context):
     output_writer.put_json(key=output_key, data=output_data)
 
     logger.info(
-        "Variant Aggregation completed: file_key=%s, output_key=%s, "
-        "total_variants=%d, snp=%d, indel=%d, ti_tv=%.2f",
+        "Variant Aggregation completed: file_key=%s, output_key=%s, total_variants=%d, snp=%d, indel=%d, ti_tv=%.2f",
         file_key,
         output_key,
         variant_statistics["total_variants"],
@@ -282,7 +272,6 @@ def handler(event, context):
         variant_statistics["indel_count"],
         variant_statistics["ti_tv_ratio"],
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="variant_aggregation")

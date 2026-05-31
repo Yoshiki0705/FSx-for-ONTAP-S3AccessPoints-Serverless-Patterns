@@ -16,9 +16,7 @@ from shared.s3ap_helper import S3ApHelper
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_FORMATS = frozenset({
-    ".pdf", ".tif", ".tiff", ".eml", ".msg", ".docx", ".xlsx"
-})
+SUPPORTED_FORMATS = frozenset({".pdf", ".tif", ".tiff", ".eml", ".msg", ".docx", ".xlsx"})
 
 
 def _classify_document_type(key: str) -> str:
@@ -40,13 +38,9 @@ def _classify_document_type(key: str) -> str:
 @lambda_error_handler
 def handler(event, context):
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "archives/")
-    suffix_filter = os.environ.get(
-        "SUFFIX_FILTER", ",".join(sorted(SUPPORTED_FORMATS))
-    )
+    suffix_filter = os.environ.get("SUFFIX_FILTER", ",".join(sorted(SUPPORTED_FORMATS)))
 
     logger.info(
         "UC16 Discovery started: access_point=%s, prefix=%r",
@@ -66,9 +60,7 @@ def handler(event, context):
         for single_suffix in suffix_filter.split(","):
             single_suffix = single_suffix.strip()
             if single_suffix:
-                all_objects.extend(
-                    s3ap.list_objects(prefix=prefix, suffix=single_suffix)
-                )
+                all_objects.extend(s3ap.list_objects(prefix=prefix, suffix=single_suffix))
 
     seen_keys = set()
     objects = []
@@ -88,10 +80,7 @@ def handler(event, context):
         "document_types": doc_types,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
     s3ap_output.put_object(
         key=manifest_key,
         body=json.dumps(manifest, default=str),

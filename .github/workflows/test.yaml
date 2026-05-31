@@ -18,8 +18,16 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
       - name: Run unit tests with coverage
+        env:
+          AWS_DEFAULT_REGION: ap-northeast-1
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
         run: pytest shared/tests/ --cov=shared --cov-report=xml --cov-fail-under=80 -v
       - name: Run property-based tests
+        env:
+          AWS_DEFAULT_REGION: ap-northeast-1
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
         run: pytest shared/tests/test_properties.py -v
 
   cfn-validate:

@@ -18,6 +18,7 @@ Environment variables:
     REGION      - AWS region (default: ap-northeast-1)
     VPC_ENDPOINT_SG - VPC Endpoint Security Group ID (optional, for auto-revoke)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -81,9 +82,7 @@ def resolve_account_id(sts_client) -> str:
     return resp["Account"]
 
 
-def delete_athena_workgroup(
-    athena_client, workgroup: str, region: str, *, dry_run: bool = False
-) -> Optional[str]:
+def delete_athena_workgroup(athena_client, workgroup: str, region: str, *, dry_run: bool = False) -> Optional[str]:
     """Delete Athena WorkGroup with --recursive-delete-option.
 
     Returns error message on failure, None on success.
@@ -101,17 +100,13 @@ def delete_athena_workgroup(
 
     print(f"  Deleting Athena WorkGroup: {workgroup} (recursive)")
     try:
-        athena_client.delete_work_group(
-            WorkGroup=workgroup, RecursiveDeleteOption=True
-        )
+        athena_client.delete_work_group(WorkGroup=workgroup, RecursiveDeleteOption=True)
     except ClientError as e:
         return f"Athena WorkGroup delete failed: {e}"
     return None
 
 
-def empty_versioned_bucket(
-    s3_client, bucket: str, region: str, *, dry_run: bool = False
-) -> Optional[str]:
+def empty_versioned_bucket(s3_client, bucket: str, region: str, *, dry_run: bool = False) -> Optional[str]:
     """Empty a versioned S3 bucket (objects + versions + delete markers) then remove it.
 
     Returns error message on failure, None on success.
@@ -132,8 +127,7 @@ def empty_versioned_bucket(
                 total_versions += len(page.get("Versions", []))
                 total_markers += len(page.get("DeleteMarkers", []))
             print(
-                f"  [DRY-RUN] Would empty bucket: {bucket} "
-                f"({total_versions} versions, {total_markers} delete markers)"
+                f"  [DRY-RUN] Would empty bucket: {bucket} ({total_versions} versions, {total_markers} delete markers)"
             )
         except ClientError as e:
             print(f"  [DRY-RUN] Would empty bucket: {bucket} (count failed: {e})")
@@ -147,22 +141,14 @@ def empty_versioned_bucket(
             # Delete versions
             versions = page.get("Versions", [])
             if versions:
-                delete_objects = [
-                    {"Key": v["Key"], "VersionId": v["VersionId"]} for v in versions
-                ]
-                s3_client.delete_objects(
-                    Bucket=bucket, Delete={"Objects": delete_objects, "Quiet": True}
-                )
+                delete_objects = [{"Key": v["Key"], "VersionId": v["VersionId"]} for v in versions]
+                s3_client.delete_objects(Bucket=bucket, Delete={"Objects": delete_objects, "Quiet": True})
 
             # Delete markers
             markers = page.get("DeleteMarkers", [])
             if markers:
-                delete_objects = [
-                    {"Key": m["Key"], "VersionId": m["VersionId"]} for m in markers
-                ]
-                s3_client.delete_objects(
-                    Bucket=bucket, Delete={"Objects": delete_objects, "Quiet": True}
-                )
+                delete_objects = [{"Key": m["Key"], "VersionId": m["VersionId"]} for m in markers]
+                s3_client.delete_objects(Bucket=bucket, Delete={"Objects": delete_objects, "Quiet": True})
 
         # Remove the bucket itself
         s3_client.delete_bucket(Bucket=bucket)
@@ -185,10 +171,7 @@ def revoke_vpc_endpoint_sg_rule(
     Returns error message on failure, None on success.
     """
     if dry_run:
-        print(
-            f"  [DRY-RUN] Would revoke VPC Endpoint SG rule: "
-            f"{vpc_endpoint_sg} ← {lambda_sg}"
-        )
+        print(f"  [DRY-RUN] Would revoke VPC Endpoint SG rule: {vpc_endpoint_sg} ← {lambda_sg}")
         return None
 
     print(f"  Revoking VPC Endpoint SG rule for Lambda SG: {lambda_sg}")
@@ -214,23 +197,17 @@ def revoke_vpc_endpoint_sg_rule(
     return None
 
 
-def get_lambda_sg_from_stack(
-    cfn_client, stack_name: str
-) -> Optional[str]:
+def get_lambda_sg_from_stack(cfn_client, stack_name: str) -> Optional[str]:
     """Get Lambda Security Group physical ID from a CloudFormation stack."""
     try:
-        resp = cfn_client.describe_stack_resource(
-            StackName=stack_name, LogicalResourceId="LambdaSecurityGroup"
-        )
+        resp = cfn_client.describe_stack_resource(StackName=stack_name, LogicalResourceId="LambdaSecurityGroup")
         physical_id = resp["StackResourceDetail"]["PhysicalResourceId"]
         return physical_id if physical_id and physical_id != "None" else None
     except ClientError:
         return None
 
 
-def delete_cfn_stack(
-    cfn_client, stack_name: str, *, dry_run: bool = False
-) -> Optional[str]:
+def delete_cfn_stack(cfn_client, stack_name: str, *, dry_run: bool = False) -> Optional[str]:
     """Initiate CloudFormation stack deletion.
 
     Returns error message on failure, None on success.
@@ -355,9 +332,7 @@ def cleanup_stack(
     if vpc_endpoint_sg:
         lambda_sg = get_lambda_sg_from_stack(cfn_client, stack_name)
         if lambda_sg:
-            err = revoke_vpc_endpoint_sg_rule(
-                ec2_client, vpc_endpoint_sg, lambda_sg, region, dry_run=dry_run
-            )
+            err = revoke_vpc_endpoint_sg_rule(ec2_client, vpc_endpoint_sg, lambda_sg, region, dry_run=dry_run)
             if err:
                 result.errors.append(err)
             else:
@@ -460,8 +435,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             account_id = resolve_account_id(sts_client)
         except (ClientError, Exception) as e:
             print(
-                f"ERROR: Could not resolve AWS account ID. "
-                f"Set ACCOUNT_ID env var or configure AWS credentials.\n{e}",
+                f"ERROR: Could not resolve AWS account ID. Set ACCOUNT_ID env var or configure AWS credentials.\n{e}",
                 file=sys.stderr,
             )
             return 1
@@ -524,13 +498,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         print("  Post-cleanup checklist:")
         print("    □ Wait for DELETE_COMPLETE (15-30 min for VPC Lambda ENIs)")
         print("    □ Check retained DynamoDB tables:")
-        print(
-            f"      aws dynamodb list-tables --region {region} "
-            f"--query 'TableNames[?contains(@, `fsxn-`)]'"
-        )
-        print(
-            "    □ If DELETE_FAILED, see: docs/operational-runbooks/cleanup-troubleshooting.md"
-        )
+        print(f"      aws dynamodb list-tables --region {region} --query 'TableNames[?contains(@, `fsxn-`)]'")
+        print("    □ If DELETE_FAILED, see: docs/operational-runbooks/cleanup-troubleshooting.md")
 
     return 1 if failed else 0
 

@@ -165,16 +165,23 @@ def _generate_vcf_lines(snp_count: int, indel_count: int) -> list[str]:
     pos = 1
 
     # SNP レコード生成 (REF と ALT が共に 1 塩基)
-    snp_pairs = [("A", "G"), ("C", "T"), ("G", "A"), ("T", "C"),
-                 ("A", "C"), ("A", "T"), ("G", "C"), ("G", "T")]
+    snp_pairs = [("A", "G"), ("C", "T"), ("G", "A"), ("T", "C"), ("A", "C"), ("A", "T"), ("G", "C"), ("G", "T")]
     for i in range(snp_count):
         ref, alt = snp_pairs[i % len(snp_pairs)]
         lines.append(f"chr1\t{pos}\t.\t{ref}\t{alt}\t30\tPASS\t.")
         pos += 1
 
     # Indel レコード生成 (REF と ALT の長さが異なる)
-    indel_pairs = [("A", "AT"), ("AT", "A"), ("G", "GCC"), ("TCC", "T"),
-                   ("C", "CA"), ("GA", "G"), ("T", "TAA"), ("AAG", "A")]
+    indel_pairs = [
+        ("A", "AT"),
+        ("AT", "A"),
+        ("G", "GCC"),
+        ("TCC", "T"),
+        ("C", "CA"),
+        ("GA", "G"),
+        ("T", "TAA"),
+        ("AAG", "A"),
+    ]
     for i in range(indel_count):
         ref, alt = indel_pairs[i % len(indel_pairs)]
         lines.append(f"chr1\t{pos}\t.\t{ref}\t{alt}\t30\tPASS\t.")

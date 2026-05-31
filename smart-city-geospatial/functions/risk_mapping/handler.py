@@ -49,9 +49,7 @@ def compute_flood_risk(
     )
 
 
-def compute_earthquake_risk(
-    soil_type: str, building_density: float
-) -> float:
+def compute_earthquake_risk(soil_type: str, building_density: float) -> float:
     """地震リスクスコア (0.0-1.0)。"""
     soil_factors = {
         "rock": 0.2,
@@ -134,10 +132,7 @@ def handler(event, context):
                 "elevation_m": elevation_m,
                 "water_proximity_m": water_proximity_m,
                 "impervious_rate": round(
-                    sum(
-                        landuse.get(k, 0.0)
-                        for k in ("residential", "commercial", "industrial", "road")
-                    ),
+                    sum(landuse.get(k, 0.0) for k in ("residential", "commercial", "industrial", "road")),
                     4,
                 ),
             },
@@ -175,9 +170,12 @@ def handler(event, context):
     logger.info(
         "UC17 RiskMapping: source=%s, flood=%.2f (%s), quake=%.2f (%s), landslide=%.2f (%s)",
         source_key,
-        flood_score, risks["flood"]["level"],
-        quake_score, risks["earthquake"]["level"],
-        landslide_score, risks["landslide"]["level"],
+        flood_score,
+        risks["flood"]["level"],
+        quake_score,
+        risks["earthquake"]["level"],
+        landslide_score,
+        risks["landslide"]["level"],
     )
 
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="risk_mapping")

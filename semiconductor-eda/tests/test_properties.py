@@ -276,16 +276,16 @@ def test_eda_metadata_extraction_completeness(library_name, cell_count):
             max_codepoint=127,
         ),
     ).filter(lambda x: "/" in x and not x.startswith("/") and not x.endswith("/")),
-    library_name=st.text(min_size=1, max_size=30, alphabet=st.characters(whitelist_categories=("L", "N"), max_codepoint=127)),
+    library_name=st.text(
+        min_size=1, max_size=30, alphabet=st.characters(whitelist_categories=("L", "N"), max_codepoint=127)
+    ),
     cell_count=st.integers(min_value=0, max_value=10000),
     file_format=st.sampled_from(["GDSII", "OASIS"]),
     year=st.integers(min_value=2020, max_value=2030),
     month=st.integers(min_value=1, max_value=12),
     day=st.integers(min_value=1, max_value=28),
 )
-def test_metadata_output_json_with_date_partition(
-    file_key, library_name, cell_count, file_format, year, month, day
-):
+def test_metadata_output_json_with_date_partition(file_key, library_name, cell_count, file_format, year, month, day):
     """Feature: fsxn-s3ap-serverless-patterns-phase2, Property 6: Metadata output JSON with date partition
 
     For any extracted metadata, the output SHALL be valid JSON and the S3
@@ -329,14 +329,10 @@ def test_metadata_output_json_with_date_partition(
 
     # Verify the output key contains a date partition in YYYY/MM/DD format
     date_pattern = r"\d{4}/\d{2}/\d{2}"
-    assert re.search(date_pattern, output_key), (
-        f"Output key '{output_key}' does not contain date partition YYYY/MM/DD"
-    )
+    assert re.search(date_pattern, output_key), f"Output key '{output_key}' does not contain date partition YYYY/MM/DD"
 
     # Verify the output key ends with .json
-    assert output_key.endswith(".json"), (
-        f"Output key '{output_key}' does not end with .json"
-    )
+    assert output_key.endswith(".json"), f"Output key '{output_key}' does not end with .json"
 
     # Verify the date partition matches the input date
     expected_date_part = f"{year:04d}/{month:02d}/{day:02d}"
@@ -383,10 +379,7 @@ def test_invalid_file_graceful_handling(random_data, file_extension):
         pass
     except Exception as e:
         # Unexpected: any other exception type would be an unhandled error
-        raise AssertionError(
-            f"_extract_metadata raised unexpected exception type "
-            f"{type(e).__name__}: {e}"
-        ) from e
+        raise AssertionError(f"_extract_metadata raised unexpected exception type {type(e).__name__}: {e}") from e
 
     # Simulate the handler's error handling to verify the structured response
     try:
@@ -405,7 +398,4 @@ def test_invalid_file_graceful_handling(random_data, file_extension):
         assert len(response["error"]) > 0
         assert isinstance(response["error_type"], str)
     except Exception as e:
-        raise AssertionError(
-            f"_extract_metadata raised unexpected exception type "
-            f"{type(e).__name__}: {e}"
-        ) from e
+        raise AssertionError(f"_extract_metadata raised unexpected exception type {type(e).__name__}: {e}") from e

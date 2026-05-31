@@ -59,12 +59,14 @@ def detect_pii_regex(text: str) -> list[dict]:
     results = []
     for pii_type, pattern in PII_PATTERNS.items():
         for match in pattern.finditer(text):
-            results.append({
-                "Type": pii_type,
-                "BeginOffset": match.start(),
-                "EndOffset": match.end(),
-                "Score": 0.80,  # fallback confidence
-            })
+            results.append(
+                {
+                    "Type": pii_type,
+                    "BeginOffset": match.start(),
+                    "EndOffset": match.end(),
+                    "Score": 0.80,  # fallback confidence
+                }
+            )
     return results
 
 
@@ -98,7 +100,7 @@ def handler(event, context):
 
     # テキストを Comprehend 制限以内のチャンクに分割して処理
     for i in range(0, len(text), max_bytes):
-        chunk = text[i:i + max_bytes]
+        chunk = text[i : i + max_bytes]
         # Comprehend 対応言語なら API 使用、それ以外は regex
         if language in ("en", "es", "fr", "de", "it", "pt"):
             entities = detect_pii_comprehend(comprehend, chunk, language)
@@ -114,18 +116,21 @@ def handler(event, context):
 
     # 結果を S3 に書き出し（hash のみ、原文保存しない）
     import hashlib
+
     pii_summary = []
     for ent in all_entities:
         begin = ent.get("BeginOffset", 0)
         end = ent.get("EndOffset", 0)
         original_text = text[begin:end] if end > begin else ""
-        pii_summary.append({
-            "Type": ent.get("Type", "UNKNOWN"),
-            "BeginOffset": begin,
-            "EndOffset": end,
-            "Score": float(ent.get("Score", 0.0)),
-            "TextHash": hashlib.sha256(original_text.encode()).hexdigest()[:16],
-        })
+        pii_summary.append(
+            {
+                "Type": ent.get("Type", "UNKNOWN"),
+                "BeginOffset": begin,
+                "EndOffset": end,
+                "Score": float(ent.get("Score", 0.0)),
+                "TextHash": hashlib.sha256(original_text.encode()).hexdigest()[:16],
+            }
+        )
 
     entities_key = f"pii-entities/{document_key}.json"
     output_writer.put_json(

@@ -137,8 +137,7 @@ def test_cross_region_failover_primary_always_attempted_first(
     result = simulate_failover(primary_status, secondary_status)
 
     assert result["primary_attempted"] is True, (
-        f"Primary region was not attempted first. "
-        f"primary_status={primary_status}, secondary_status={secondary_status}"
+        f"Primary region was not attempted first. primary_status={primary_status}, secondary_status={secondary_status}"
     )
 
 
@@ -163,24 +162,18 @@ def test_cross_region_failover_secondary_only_after_primary_fails(
 
     if primary_status == "success":
         assert result["secondary_attempted"] is False, (
-            f"Secondary was attempted even though primary succeeded. "
-            f"primary_status={primary_status}"
+            f"Secondary was attempted even though primary succeeded. primary_status={primary_status}"
         )
         assert result["region_served"] == "primary", (
-            f"Expected primary to serve when it succeeds, "
-            f"but got region_served={result['region_served']}"
+            f"Expected primary to serve when it succeeds, but got region_served={result['region_served']}"
         )
-        assert result["is_failover"] is False, (
-            "Failover should not occur when primary succeeds."
-        )
+        assert result["is_failover"] is False, "Failover should not occur when primary succeeds."
     else:
         assert result["secondary_attempted"] is True, (
-            f"Secondary was NOT attempted after primary failed. "
-            f"primary_status={primary_status}"
+            f"Secondary was NOT attempted after primary failed. primary_status={primary_status}"
         )
         assert result["is_failover"] is True, (
-            f"is_failover should be True when primary fails. "
-            f"primary_status={primary_status}"
+            f"is_failover should be True when primary fails. primary_status={primary_status}"
         )
 
 

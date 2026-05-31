@@ -17,6 +17,7 @@ OntapClient, FsxHelper, S3ApHelper の AWS 環境での動作を検証する。
     export FSX_FILESYSTEM_ID=<your-fs-id>
     python3 scripts/verify_shared_modules.py
 """
+
 import os
 import sys
 import logging
@@ -41,10 +42,7 @@ def verify_s3ap_helper():
         logger.info(f"  Key={obj['Key']}, Size={obj['Size']}")
     if objects:
         head = helper.head_object(objects[0]["Key"])
-        logger.info(
-            f"HeadObject: ContentLength={head.get('ContentLength')}, "
-            f"ContentType={head.get('ContentType')}"
-        )
+        logger.info(f"HeadObject: ContentLength={head.get('ContentLength')}, ContentType={head.get('ContentType')}")
     logger.info("S3ApHelper: PASSED")
 
 
@@ -56,9 +54,7 @@ def verify_fsx_helper():
     if fs_id:
         filesystems = helper.describe_file_systems(filesystem_ids=[fs_id])
         logger.info(f"describe_file_systems: {len(filesystems)} filesystem(s)")
-        volumes = helper.describe_volumes(
-            filters=[{"Name": "file-system-id", "Values": [fs_id]}]
-        )
+        volumes = helper.describe_volumes(filters=[{"Name": "file-system-id", "Values": [fs_id]}])
         logger.info(f"describe_volumes: {len(volumes)} volume(s)")
     else:
         filesystems = helper.describe_file_systems()

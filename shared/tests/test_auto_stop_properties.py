@@ -90,16 +90,18 @@ endpoint_tags_strategy = st.fixed_dictionaries(
 )
 
 # Strategy for generating a single endpoint
-endpoint_strategy = st.fixed_dictionaries({
-    "endpoint_name": st.text(
-        alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="-_"),
-        min_size=1,
-        max_size=30,
-    ),
-    "tags": endpoint_tags_strategy,
-    "invocations": st.integers(min_value=0, max_value=100),
-    "instance_count": st.integers(min_value=0, max_value=10),
-})
+endpoint_strategy = st.fixed_dictionaries(
+    {
+        "endpoint_name": st.text(
+            alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="-_"),
+            min_size=1,
+            max_size=30,
+        ),
+        "tags": endpoint_tags_strategy,
+        "invocations": st.integers(min_value=0, max_value=100),
+        "instance_count": st.integers(min_value=0, max_value=10),
+    }
+)
 
 # Strategy for generating a list of endpoints
 endpoints_list_strategy = st.lists(endpoint_strategy, min_size=0, max_size=20)
@@ -131,8 +133,7 @@ def test_auto_stop_tag_protection_never_stops_protected_endpoints(
         tags = ep.get("tags", {})
         do_not_stop = tags.get("DoNotAutoStop", "false").lower()
         assert do_not_stop != "true", (
-            f"Endpoint '{ep['endpoint_name']}' has DoNotAutoStop=true "
-            f"but was included in the stop list. Tags: {tags}"
+            f"Endpoint '{ep['endpoint_name']}' has DoNotAutoStop=true but was included in the stop list. Tags: {tags}"
         )
 
 
@@ -150,10 +151,7 @@ def test_auto_stop_tag_protection_protected_count_preserved(
     **Validates: Requirements 8.6**
     """
     # Feature: fsxn-s3ap-serverless-patterns-phase5, Property 8: Auto-Stop Tag Protection
-    protected_endpoints = [
-        ep for ep in endpoints
-        if ep.get("tags", {}).get("DoNotAutoStop", "false").lower() == "true"
-    ]
+    protected_endpoints = [ep for ep in endpoints if ep.get("tags", {}).get("DoNotAutoStop", "false").lower() == "true"]
 
     stoppable = filter_stoppable_endpoints(endpoints)
 
@@ -191,8 +189,7 @@ def test_auto_stop_tag_protection_single_protected_endpoint(
 
     stoppable = filter_stoppable_endpoints([endpoint])
     assert len(stoppable) == 0, (
-        f"Protected endpoint was included in stop list with "
-        f"invocations={invocations}, instance_count={instance_count}"
+        f"Protected endpoint was included in stop list with invocations={invocations}, instance_count={instance_count}"
     )
 
 
@@ -233,9 +230,7 @@ def test_non_destructive_stop_action_is_always_scale_to_zero(
     )
     assert action["endpoint_name"] == endpoint_name
     # Explicitly verify it's NOT a delete action
-    assert action["action"] != "DeleteEndpoint", (
-        "Stop action must never be DeleteEndpoint"
-    )
+    assert action["action"] != "DeleteEndpoint", "Stop action must never be DeleteEndpoint"
 
 
 @settings(max_examples=100)
@@ -291,9 +286,7 @@ def test_non_destructive_stop_endpoint_remains_restartable(
     restartable_actions = {"UpdateEndpointWeightsAndCapacities"}
     destructive_actions = {"DeleteEndpoint", "DeleteModel", "DeleteEndpointConfig"}
 
-    assert action["action"] in restartable_actions, (
-        f"Action '{action['action']}' is not a restartable action"
-    )
+    assert action["action"] in restartable_actions, f"Action '{action['action']}' is not a restartable action"
     assert action["action"] not in destructive_actions, (
         f"Action '{action['action']}' is destructive and would prevent restart"
     )

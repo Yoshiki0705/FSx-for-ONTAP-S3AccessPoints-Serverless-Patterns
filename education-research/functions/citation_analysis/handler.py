@@ -45,7 +45,7 @@ def extract_references_section(text: str) -> str:
     for pattern in patterns:
         match = re.search(pattern, text)
         if match:
-            return text[match.end():]
+            return text[match.end() :]
 
     return ""
 
@@ -169,11 +169,13 @@ def build_citation_network(
         paper_id = paper.get("paper_id", "")
         if paper_id and paper_id not in paper_ids:
             paper_ids.add(paper_id)
-            nodes.append({
-                "id": paper_id,
-                "title": paper.get("title", ""),
-                "type": "paper",
-            })
+            nodes.append(
+                {
+                    "id": paper_id,
+                    "title": paper.get("title", ""),
+                    "type": "paper",
+                }
+            )
 
     # エッジ生成（引用関係）
     for paper in papers:
@@ -189,21 +191,25 @@ def build_citation_network(
             # ターゲットノードが存在しない場合は追加
             if target_id not in paper_ids:
                 paper_ids.add(target_id)
-                nodes.append({
-                    "id": target_id,
-                    "title": ref.get("title", ""),
-                    "type": "reference",
-                })
+                nodes.append(
+                    {
+                        "id": target_id,
+                        "title": ref.get("title", ""),
+                        "type": "reference",
+                    }
+                )
 
             # 重複エッジ防止
             edge_key = (source_id, target_id)
             if edge_key not in seen_edges:
                 seen_edges.add(edge_key)
-                edges.append({
-                    "source": source_id,
-                    "target": target_id,
-                    "type": "cites",
-                })
+                edges.append(
+                    {
+                        "source": source_id,
+                        "target": target_id,
+                        "type": "cites",
+                    }
+                )
 
     return {
         "nodes": nodes,
@@ -254,11 +260,13 @@ def handler(event, context):
         references_section = extract_references_section(extracted_text)
         references = parse_references(references_section)
 
-        papers_with_refs.append({
-            "paper_id": paper.get("paper_id", paper.get("file_key", "")),
-            "title": paper.get("title", ""),
-            "references": references,
-        })
+        papers_with_refs.append(
+            {
+                "paper_id": paper.get("paper_id", paper.get("file_key", "")),
+                "title": paper.get("title", ""),
+                "references": references,
+            }
+        )
 
     # 引用ネットワーク構築
     citation_network = build_citation_network(papers_with_refs)
@@ -283,7 +291,6 @@ def handler(event, context):
         citation_network["total_papers"],
         citation_network["total_citations"],
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="citation_analysis")

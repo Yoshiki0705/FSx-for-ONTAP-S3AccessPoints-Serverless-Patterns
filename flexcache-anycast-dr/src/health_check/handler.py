@@ -89,12 +89,14 @@ def _simulate_health_check(endpoint: str, check_type: str) -> dict[str, Any]:
     }
 
     if check_type == "detailed":
-        result.update({
-            "storage_used_percent": rng.randint(30, 85),
-            "origin_reachable": rng.random() > 0.05,
-            "peer_state": "available" if is_healthy else "unavailable",
-            "last_data_fetch_seconds_ago": rng.randint(1, 3600),
-        })
+        result.update(
+            {
+                "storage_used_percent": rng.randint(30, 85),
+                "origin_reachable": rng.random() > 0.05,
+                "peer_state": "available" if is_healthy else "unavailable",
+                "last_data_fetch_seconds_ago": rng.randint(1, 3600),
+            }
+        )
 
     return result
 
@@ -102,6 +104,7 @@ def _simulate_health_check(endpoint: str, check_type: str) -> dict[str, Any]:
 def _real_health_check(endpoint: str, check_type: str) -> dict[str, Any]:
     """実環境のヘルスチェック（ONTAP REST API 経由）"""
     import sys
+
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
 
     try:
@@ -134,15 +137,14 @@ def _real_health_check(endpoint: str, check_type: str) -> dict[str, Any]:
             # クラスタピア状態確認
             peers = client.get("/cluster/peers")
             peer_records = peers.get("records", [])
-            all_peers_available = all(
-                p.get("status", {}).get("state") == "available"
-                for p in peer_records
+            all_peers_available = all(p.get("status", {}).get("state") == "available" for p in peer_records)
+            result.update(
+                {
+                    "origin_reachable": all_peers_available,
+                    "peer_state": "available" if all_peers_available else "degraded",
+                    "peer_count": len(peer_records),
+                }
             )
-            result.update({
-                "origin_reachable": all_peers_available,
-                "peer_state": "available" if all_peers_available else "degraded",
-                "peer_count": len(peer_records),
-            })
 
         return result
 

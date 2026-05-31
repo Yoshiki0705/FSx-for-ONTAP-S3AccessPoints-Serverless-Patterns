@@ -19,17 +19,37 @@ s3_client = boto3.client("s3")
 
 GAMING_EXTENSIONS = {
     # テクスチャ
-    ".png", ".tga", ".dds", ".exr", ".hdr", ".psd",
+    ".png",
+    ".tga",
+    ".dds",
+    ".exr",
+    ".hdr",
+    ".psd",
     # 3D モデル
-    ".fbx", ".obj", ".usd", ".usda", ".usdz", ".gltf", ".glb",
+    ".fbx",
+    ".obj",
+    ".usd",
+    ".usda",
+    ".usdz",
+    ".gltf",
+    ".glb",
     # シェーダー
-    ".hlsl", ".glsl", ".shader", ".cginc",
+    ".hlsl",
+    ".glsl",
+    ".shader",
+    ".cginc",
     # ビルド成果物
-    ".pak", ".bundle", ".asset",
+    ".pak",
+    ".bundle",
+    ".asset",
     # ログ
-    ".log", ".json", ".csv", ".txt",
+    ".log",
+    ".json",
+    ".csv",
+    ".txt",
     # アニメーション
-    ".anim", ".clip",
+    ".anim",
+    ".clip",
 }
 
 
@@ -60,13 +80,15 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 key = obj["Key"]
                 ext = os.path.splitext(key)[1].lower()
                 if ext in GAMING_EXTENSIONS:
-                    objects.append({
-                        "key": key,
-                        "size": obj["Size"],
-                        "last_modified": obj["LastModified"].isoformat(),
-                        "extension": ext,
-                        "category": _categorize(ext),
-                    })
+                    objects.append(
+                        {
+                            "key": key,
+                            "size": obj["Size"],
+                            "last_modified": obj["LastModified"].isoformat(),
+                            "extension": ext,
+                            "category": _categorize(ext),
+                        }
+                    )
 
             if not response.get("IsTruncated"):
                 break

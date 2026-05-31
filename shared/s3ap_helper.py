@@ -167,8 +167,7 @@ class S3ApHelper:
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
-                f"Failed to list objects from S3 Access Point "
-                f"'{self._access_point}' (prefix='{prefix}'): {e}",
+                f"Failed to list objects from S3 Access Point '{self._access_point}' (prefix='{prefix}'): {e}",
                 error_code=error_code,
             ) from e
 
@@ -206,8 +205,7 @@ class S3ApHelper:
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
-                f"Failed to get object '{key}' from S3 Access Point "
-                f"'{self._access_point}': {e}",
+                f"Failed to get object '{key}' from S3 Access Point '{self._access_point}': {e}",
                 error_code=error_code,
             ) from e
 
@@ -257,8 +255,7 @@ class S3ApHelper:
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
-                f"Failed to put object '{key}' to S3 Access Point "
-                f"'{self._access_point}': {e}",
+                f"Failed to put object '{key}' to S3 Access Point '{self._access_point}': {e}",
                 error_code=error_code,
             ) from e
 
@@ -294,8 +291,7 @@ class S3ApHelper:
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
-                f"Failed to head object '{key}' from S3 Access Point "
-                f"'{self._access_point}': {e}",
+                f"Failed to head object '{key}' from S3 Access Point '{self._access_point}': {e}",
                 error_code=error_code,
             ) from e
 
@@ -327,8 +323,7 @@ class S3ApHelper:
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
-                f"Failed to delete object '{key}' from S3 Access Point "
-                f"'{self._access_point}': {e}",
+                f"Failed to delete object '{key}' from S3 Access Point '{self._access_point}': {e}",
                 error_code=error_code,
             ) from e
 
@@ -372,8 +367,7 @@ class S3ApHelper:
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
-                f"Failed to stream object '{key}' from S3 Access Point "
-                f"'{self._access_point}': {e}",
+                f"Failed to stream object '{key}' from S3 Access Point '{self._access_point}': {e}",
                 error_code=error_code,
             ) from e
 
@@ -426,8 +420,7 @@ class S3ApHelper:
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
-                f"Failed to download range of object '{key}' from "
-                f"S3 Access Point '{self._access_point}': {e}",
+                f"Failed to download range of object '{key}' from S3 Access Point '{self._access_point}': {e}",
                 error_code=error_code,
             ) from e
 
@@ -464,8 +457,7 @@ class S3ApHelper:
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             raise S3ApHelperError(
-                f"Failed to create multipart upload for key '{key}' on "
-                f"S3 Access Point '{self._access_point}': {e}",
+                f"Failed to create multipart upload for key '{key}' on S3 Access Point '{self._access_point}': {e}",
                 error_code=error_code,
             ) from e
 
@@ -488,10 +480,12 @@ class S3ApHelper:
                         PartNumber=part_number,
                         Body=part_data,
                     )
-                    parts.append({
-                        "PartNumber": part_number,
-                        "ETag": upload_resp["ETag"],
-                    })
+                    parts.append(
+                        {
+                            "PartNumber": part_number,
+                            "ETag": upload_resp["ETag"],
+                        }
+                    )
                     part_number += 1
 
             # 残りのバッファをアップロード
@@ -503,10 +497,12 @@ class S3ApHelper:
                     PartNumber=part_number,
                     Body=buffer,
                 )
-                parts.append({
-                    "PartNumber": part_number,
-                    "ETag": upload_resp["ETag"],
-                })
+                parts.append(
+                    {
+                        "PartNumber": part_number,
+                        "ETag": upload_resp["ETag"],
+                    }
+                )
 
             # CompleteMultipartUpload
             return self._s3_client.complete_multipart_upload(

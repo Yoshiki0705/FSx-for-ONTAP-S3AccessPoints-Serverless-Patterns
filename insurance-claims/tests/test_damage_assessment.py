@@ -155,13 +155,15 @@ class TestParseEstimateData:
 
     def test_parse_with_tables(self):
         """テーブルから修理項目が解析されること"""
-        tables = [{
-            "rows": [
-                ["項目", "費用", "工数"],
-                ["バンパー交換", "85000", "3.0"],
-                ["フード修理", "45000", "2.5"],
-            ]
-        }]
+        tables = [
+            {
+                "rows": [
+                    ["項目", "費用", "工数"],
+                    ["バンパー交換", "85000", "3.0"],
+                    ["フード修理", "45000", "2.5"],
+                ]
+            }
+        ]
         result = _parse_estimate_data("", tables)
         assert len(result["repair_items"]) == 2
         assert result["repair_items"][0]["item"] == "バンパー交換"
@@ -210,18 +212,19 @@ class TestGenerateHumanReadableReport:
 class TestDamageAssessmentHandler:
     """損害評価 Lambda ハンドラーのテスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-ext-s3alias",
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
-        "LOG_PII_DATA": "false",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-ext-s3alias",
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "BEDROCK_MODEL_ID": "amazon.nova-lite-v1:0",
+            "LOG_PII_DATA": "false",
+        },
+    )
     @patch("functions.damage_assessment.handler.OutputWriter")
     @patch("functions.damage_assessment.handler.boto3")
     @patch("functions.damage_assessment.handler.S3ApHelper")
-    def test_handler_manual_review(
-        self, mock_s3ap_cls, mock_boto3, mock_output_writer_cls
-    ):
+    def test_handler_manual_review(self, mock_s3ap_cls, mock_boto3, mock_output_writer_cls):
         """損害未検出で MANUAL_REVIEW が返ること"""
         from functions.damage_assessment.handler import handler
 

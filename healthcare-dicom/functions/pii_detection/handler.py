@@ -75,10 +75,7 @@ def handler(event, context):
         # DICOM でない場合はそのまま画像として使用（JPEG/PNG の可能性）
         image_bytes = raw_bytes
     else:
-        logger.info(
-            "DICOM format detected — using metadata-based PII detection "
-            "(Rekognition requires JPEG/PNG format)"
-        )
+        logger.info("DICOM format detected — using metadata-based PII detection (Rekognition requires JPEG/PNG format)")
 
     # Rekognition DetectText で焼き込みテキストを検出
     rekognition_client = boto3.client("rekognition")
@@ -92,23 +89,23 @@ def handler(event, context):
             text_detections = detect_response.get("TextDetections", [])
         except Exception as e:
             logger.warning(
-                "Rekognition DetectText failed for %s: %s. "
-                "Proceeding with metadata-based PII detection.",
+                "Rekognition DetectText failed for %s: %s. Proceeding with metadata-based PII detection.",
                 dicom_key,
                 str(e),
             )
     else:
         # DICOM フォーマット: メタデータから PII フィールドを検出
-        phi_fields = ["patient_name", "patient_id", "patient_birth_date",
-                      "referring_physician", "institution_name"]
+        phi_fields = ["patient_name", "patient_id", "patient_birth_date", "referring_physician", "institution_name"]
         for field in phi_fields:
             value = metadata.get(field, "")
             if value:
-                text_detections.append({
-                    "DetectedText": f"{field}: {value}",
-                    "Confidence": 100.0,
-                    "Type": "LINE",
-                })
+                text_detections.append(
+                    {
+                        "DetectedText": f"{field}: {value}",
+                        "Confidence": 100.0,
+                        "Type": "LINE",
+                    }
+                )
 
     # LINE タイプのテキスト検出のみ抽出（WORD は重複するため除外）
     detected_texts = [
@@ -124,13 +121,8 @@ def handler(event, context):
     has_pii = len(detected_texts) > 0
 
     # 結果を S3 AP に書き出し
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
-    output_key = (
-        f"pii-detection/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{dicom_key.rsplit('/', 1)[-1]}.json"
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
+    output_key = f"pii-detection/{datetime.utcnow().strftime('%Y/%m/%d')}/{dicom_key.rsplit('/', 1)[-1]}.json"
 
     pii_result = {
         "dicom_key": dicom_key,
@@ -152,7 +144,6 @@ def handler(event, context):
         len(detected_texts),
         has_pii,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="pii_detection")

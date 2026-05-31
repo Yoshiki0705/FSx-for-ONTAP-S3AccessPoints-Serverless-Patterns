@@ -129,9 +129,7 @@ class EmfMetrics:
         """
         self._validate_metric_name(name)
         if unit not in _VALID_UNITS:
-            raise ValueError(
-                f"Invalid unit '{unit}'. Must be one of: {', '.join(sorted(_VALID_UNITS))}"
-            )
+            raise ValueError(f"Invalid unit '{unit}'. Must be one of: {', '.join(sorted(_VALID_UNITS))}")
         self._metrics.append({"Name": name, "Unit": unit, "Value": value})
 
     def set_dimension(self, name: str, value: str) -> None:
@@ -177,9 +175,7 @@ class EmfMetrics:
         timestamp_ms = int(time.time() * 1000)
 
         # Build metrics definitions (without Value)
-        metric_definitions = [
-            {"Name": m["Name"], "Unit": m["Unit"]} for m in self._metrics
-        ]
+        metric_definitions = [{"Name": m["Name"], "Unit": m["Unit"]} for m in self._metrics]
 
         # Build EMF structure
         emf_dict: dict[str, Any] = {
@@ -227,13 +223,11 @@ class EmfMetrics:
             raise ValueError("Metric name must not be empty")
         if len(name) > _METRIC_NAME_MAX_LENGTH:
             raise ValueError(
-                f"Metric name exceeds {_METRIC_NAME_MAX_LENGTH} characters: "
-                f"'{name[:50]}...' ({len(name)} chars)"
+                f"Metric name exceeds {_METRIC_NAME_MAX_LENGTH} characters: '{name[:50]}...' ({len(name)} chars)"
             )
         if not _METRIC_NAME_PATTERN.match(name):
             raise ValueError(
-                f"Metric name contains invalid characters: '{name}'. "
-                "Only alphanumeric and underscore allowed."
+                f"Metric name contains invalid characters: '{name}'. Only alphanumeric and underscore allowed."
             )
 
 

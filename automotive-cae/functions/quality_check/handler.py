@@ -93,10 +93,12 @@ def _bedrock_analysis(metadata: dict, model_id: str) -> str:
             f"Provide 2-3 sentences about data quality and completeness."
         )
 
-        body = json.dumps({
-            "messages": [{"role": "user", "content": [{"text": prompt}]}],
-            "inferenceConfig": {"maxTokens": 200, "temperature": 0.3},
-        })
+        body = json.dumps(
+            {
+                "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                "inferenceConfig": {"maxTokens": 200, "temperature": 0.3},
+            }
+        )
 
         response = bedrock_client.invoke_model(
             modelId=model_id,

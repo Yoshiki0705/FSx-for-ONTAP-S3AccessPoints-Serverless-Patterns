@@ -84,8 +84,7 @@ class FsxHelper:
             return filesystems
         except ClientError as e:
             raise FsxHelperError(
-                f"Failed to describe file systems "
-                f"(ids={filesystem_ids}): {e}",
+                f"Failed to describe file systems (ids={filesystem_ids}): {e}",
                 original_error=e,
             ) from e
 
@@ -122,8 +121,7 @@ class FsxHelper:
             return volumes
         except ClientError as e:
             raise FsxHelperError(
-                f"Failed to describe volumes "
-                f"(ids={volume_ids}, filters={filters}): {e}",
+                f"Failed to describe volumes (ids={volume_ids}, filters={filters}): {e}",
                 original_error=e,
             ) from e
 
@@ -149,17 +147,14 @@ class FsxHelper:
                 kwargs["StorageVirtualMachineIds"] = svm_ids
 
             svms = []
-            paginator = self._fsx_client.get_paginator(
-                "describe_storage_virtual_machines"
-            )
+            paginator = self._fsx_client.get_paginator("describe_storage_virtual_machines")
             for page in paginator.paginate(**kwargs):
                 svms.extend(page.get("StorageVirtualMachines", []))
 
             return svms
         except ClientError as e:
             raise FsxHelperError(
-                f"Failed to describe storage virtual machines "
-                f"(ids={svm_ids}): {e}",
+                f"Failed to describe storage virtual machines (ids={svm_ids}): {e}",
                 original_error=e,
             ) from e
 
@@ -219,8 +214,7 @@ class FsxHelper:
                 results[metric_name] = response.get("Datapoints", [])
             except ClientError as e:
                 raise FsxHelperError(
-                    f"Failed to get CloudWatch metric {metric_name} "
-                    f"for filesystem {filesystem_id}: {e}",
+                    f"Failed to get CloudWatch metric {metric_name} for filesystem {filesystem_id}: {e}",
                     original_error=e,
                 ) from e
 

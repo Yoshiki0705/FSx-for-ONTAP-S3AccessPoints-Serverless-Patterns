@@ -66,13 +66,9 @@ def evaluate_confidence(
         confidence < reject        → REJECT（自動拒否、要エスカレーション）
     """
     if threshold_auto_approve is None:
-        threshold_auto_approve = float(
-            os.environ.get("HUMAN_REVIEW_AUTO_APPROVE_THRESHOLD", "0.85")
-        )
+        threshold_auto_approve = float(os.environ.get("HUMAN_REVIEW_AUTO_APPROVE_THRESHOLD", "0.85"))
     if threshold_reject is None:
-        threshold_reject = float(
-            os.environ.get("HUMAN_REVIEW_REJECT_THRESHOLD", "0.30")
-        )
+        threshold_reject = float(os.environ.get("HUMAN_REVIEW_REJECT_THRESHOLD", "0.30"))
 
     if confidence >= threshold_auto_approve:
         return HumanReviewDecision(

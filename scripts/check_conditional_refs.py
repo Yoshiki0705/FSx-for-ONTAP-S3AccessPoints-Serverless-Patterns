@@ -11,12 +11,14 @@ resources, then checks whether their ARN is referenced in DefinitionString.
 It flags cases where DefinitionSubstitutions is NOT used (so references are
 NOT conditionally wrapped).
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
 import yaml
+
 
 # Custom YAML loader that ignores CloudFormation intrinsic functions.
 class CfnLoader(yaml.SafeLoader):
@@ -109,7 +111,9 @@ def main() -> int:
             issues += 1
             rel = tpl.relative_to(repo)
             print(f"=== POTENTIAL UC9-CLASS BUG: {rel} ===")
-            print("  DefinitionSubstitutions NOT used, but these conditional Lambdas are referenced in DefinitionString:")
+            print(
+                "  DefinitionSubstitutions NOT used, but these conditional Lambdas are referenced in DefinitionString:"
+            )
             for lid in referenced:
                 cond = cond_lambdas[lid]
                 print(f"    - {lid} (Condition: {cond})")

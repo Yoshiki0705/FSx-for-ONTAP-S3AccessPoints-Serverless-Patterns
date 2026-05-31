@@ -360,14 +360,8 @@ class ReplayStormTester:
                 break
 
         # Calculate ingestion rate
-        ingestion_duration = (
-            (last_receive_time - ingestion_start) if ingestion_start else 1.0
-        )
-        ingestion_rate = (
-            len(received_keys) / ingestion_duration
-            if ingestion_duration > 0
-            else 0.0
-        )
+        ingestion_duration = (last_receive_time - ingestion_start) if ingestion_start else 1.0
+        ingestion_rate = len(received_keys) / ingestion_duration if ingestion_duration > 0 else 0.0
 
         # Determine lost events
         expected_keys = set(self._generated_file_keys)
@@ -466,9 +460,7 @@ class ReplayStormTester:
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
 
-        logger.warning(
-            "FPolicy server did not restart within %ds", max_wait
-        )
+        logger.warning("FPolicy server did not restart within %ds", max_wait)
 
     async def _get_sf_concurrent_executions(self) -> int:
         """Get current number of concurrent Step Functions executions."""
@@ -574,7 +566,7 @@ class ReplayStormTester:
             start = message_body.index(prefix)
             # Extract until whitespace or quote
             end = start
-            while end < len(message_body) and message_body[end] not in (' ', '"', "'", '}', ','):
+            while end < len(message_body) and message_body[end] not in (" ", '"', "'", "}", ","):
                 end += 1
             return message_body[start:end]
 

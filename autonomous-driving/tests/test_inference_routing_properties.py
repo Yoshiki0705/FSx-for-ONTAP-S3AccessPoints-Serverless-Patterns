@@ -90,13 +90,11 @@ def test_file_count_threshold_routing(file_count: int, threshold: int):
 
     if file_count < threshold:
         assert result == "realtime", (
-            f"Expected 'realtime' for file_count={file_count} < threshold={threshold}, "
-            f"but got '{result}'"
+            f"Expected 'realtime' for file_count={file_count} < threshold={threshold}, but got '{result}'"
         )
     else:
         assert result == "batch_transform", (
-            f"Expected 'batch_transform' for file_count={file_count} >= threshold={threshold}, "
-            f"but got '{result}'"
+            f"Expected 'batch_transform' for file_count={file_count} >= threshold={threshold}, but got '{result}'"
         )
 
     # Determinism: same inputs always produce same output
@@ -135,15 +133,10 @@ def test_variant_weight_normalization(weights: list[float]):
 
     # Each normalized weight must be positive
     for i, w in enumerate(normalized):
-        assert w > 0, (
-            f"Normalized weight at index {i} is not positive: {w}. "
-            f"Input weights: {weights}"
-        )
+        assert w > 0, f"Normalized weight at index {i} is not positive: {w}. Input weights: {weights}"
 
     # Number of weights must be preserved
-    assert len(normalized) == len(weights), (
-        f"Normalization changed list length: {len(weights)} -> {len(normalized)}"
-    )
+    assert len(normalized) == len(weights), f"Normalization changed list length: {len(weights)} -> {len(normalized)}"
 
     # Proportionality: relative ordering is preserved
     for i in range(len(weights) - 1):
@@ -170,13 +163,15 @@ def test_variant_weight_normalization(weights: list[float]):
 @settings(max_examples=100, deadline=None)
 @given(
     items=st.lists(
-        st.fixed_dictionaries({
-            "test_id": st.just("test-endpoint"),
-            "timestamp": st.integers(min_value=1000000000, max_value=2000000000),
-            "variant_name": st.sampled_from(["model-v1", "model-v2", "model-v3"]),
-            "latency_ms": st.floats(min_value=1.0, max_value=5000.0),
-            "is_error": st.booleans(),
-        }),
+        st.fixed_dictionaries(
+            {
+                "test_id": st.just("test-endpoint"),
+                "timestamp": st.integers(min_value=1000000000, max_value=2000000000),
+                "variant_name": st.sampled_from(["model-v1", "model-v2", "model-v3"]),
+                "latency_ms": st.floats(min_value=1.0, max_value=5000.0),
+                "is_error": st.booleans(),
+            }
+        ),
         min_size=1,
         max_size=100,
     ),
@@ -213,8 +208,7 @@ def test_inference_comparison_aggregation_correctness(
 
     # Verify all variants are present in result
     assert set(result.keys()) == set(expected.keys()), (
-        f"Variant mismatch: result has {set(result.keys())}, "
-        f"expected {set(expected.keys())}"
+        f"Variant mismatch: result has {set(result.keys())}, expected {set(expected.keys())}"
     )
 
     for variant_name, exp_data in expected.items():
@@ -234,9 +228,7 @@ def test_inference_comparison_aggregation_correctness(
         )
 
         # error_rate must equal errors / total
-        expected_error_rate = (
-            exp_data["error_count"] / exp_data["request_count"]
-        )
+        expected_error_rate = exp_data["error_count"] / exp_data["request_count"]
         assert abs(res["error_rate"] - round(expected_error_rate, 4)) <= 0.0001, (
             f"Variant '{variant_name}': error_rate mismatch. "
             f"Expected ~{expected_error_rate:.4f}, got {res['error_rate']}"
