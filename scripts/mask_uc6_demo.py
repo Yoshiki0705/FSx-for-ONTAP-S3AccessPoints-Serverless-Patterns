@@ -4,6 +4,7 @@
 Same approach as mask_phase7.py: detect AWS console vs HTML preview and
 apply minimal masking only to AWS console images.
 """
+
 from __future__ import annotations
 
 import shutil

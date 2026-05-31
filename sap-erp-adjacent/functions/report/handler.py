@@ -57,9 +57,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         },
         "category_breakdown": category_counts,
         "errors": [
-            {"key": r.get("key"), "error": r.get("error")}
-            for r in processed_results
-            if r.get("status") == "error"
+            {"key": r.get("key"), "error": r.get("error")} for r in processed_results if r.get("status") == "error"
         ],
     }
 

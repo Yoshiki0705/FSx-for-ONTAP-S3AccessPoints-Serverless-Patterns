@@ -46,9 +46,7 @@ def test_map_labels_to_landuse_unknown_labels_ignored(land_use_classification_ha
     assert len(result) == 1
 
 
-def test_handler_skips_non_raster(
-    land_use_classification_handler, lambda_context, monkeypatch
-):
+def test_handler_skips_non_raster(land_use_classification_handler, lambda_context, monkeypatch):
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.setenv("INFERENCE_TYPE", "none")
 
@@ -63,20 +61,14 @@ def test_handler_skips_non_raster(
     assert result["inference_path"] == "skipped"
 
 
-def test_handler_uses_rekognition_for_raster(
-    land_use_classification_handler, lambda_context, monkeypatch
-):
+def test_handler_uses_rekognition_for_raster(land_use_classification_handler, lambda_context, monkeypatch):
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.setenv("INFERENCE_TYPE", "none")
 
     mock_s3_client = MagicMock()
-    mock_s3_client.get_object.return_value = {
-        "Body": MagicMock(read=lambda: b"II*\x00" + b"\x00" * 100)
-    }
+    mock_s3_client.get_object.return_value = {"Body": MagicMock(read=lambda: b"II*\x00" + b"\x00" * 100)}
     mock_rekognition = MagicMock()
-    mock_rekognition.detect_labels.return_value = {
-        "Labels": [{"Name": "Building", "Confidence": 85.0}]
-    }
+    mock_rekognition.detect_labels.return_value = {"Labels": [{"Name": "Building", "Confidence": 85.0}]}
 
     def boto3_client(service):
         if service == "s3":
@@ -87,9 +79,10 @@ def test_handler_uses_rekognition_for_raster(
 
     mock_writer = MagicMock()
 
-    with patch.object(land_use_classification_handler, "boto3") as mock_boto3, patch.object(
-        land_use_classification_handler, "OutputWriter"
-    ) as mock_output_writer_cls:
+    with (
+        patch.object(land_use_classification_handler, "boto3") as mock_boto3,
+        patch.object(land_use_classification_handler, "OutputWriter") as mock_output_writer_cls,
+    ):
         mock_boto3.client.side_effect = boto3_client
         mock_output_writer_cls.from_env.return_value = mock_writer
         event = {"source_key": "gis/area.tif"}

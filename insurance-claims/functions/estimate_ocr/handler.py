@@ -72,10 +72,7 @@ def _extract_tables_from_blocks(blocks: list[dict]) -> list[dict]:
                 for col_idx in range(1, max_col + 1):
                     cell_text = ""
                     for cell in cells:
-                        if (
-                            cell.get("RowIndex") == row_idx
-                            and cell.get("ColumnIndex") == col_idx
-                        ):
+                        if cell.get("RowIndex") == row_idx and cell.get("ColumnIndex") == col_idx:
                             cell_rels = cell.get("Relationships", [])
                             for cell_rel in cell_rels:
                                 if cell_rel.get("Type") == "CHILD":
@@ -115,6 +112,7 @@ def _parse_estimate_data(text: str, tables: list[dict]) -> dict:
 
                 # 数値抽出
                 import re
+
                 cost_match = re.search(r"[\d,]+", cost_str.replace(",", ""))
                 cost = int(cost_match.group().replace(",", "")) if cost_match else 0
 
@@ -123,11 +121,13 @@ def _parse_estimate_data(text: str, tables: list[dict]) -> dict:
                 labor_hours = float(labor_match.group()) if labor_match else 0.0
 
                 if item_name:
-                    repair_items.append({
-                        "item": item_name,
-                        "cost": cost,
-                        "labor_hours": labor_hours,
-                    })
+                    repair_items.append(
+                        {
+                            "item": item_name,
+                            "cost": cost,
+                            "labor_hours": labor_hours,
+                        }
+                    )
                     total_parts_cost += cost
 
     return {
@@ -239,7 +239,6 @@ def handler(event, context):
         estimate_data.get("total_estimate", 0),
         output_writer.build_s3_uri(output_key),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="estimate_ocr")

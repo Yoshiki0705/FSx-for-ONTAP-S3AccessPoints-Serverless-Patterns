@@ -6,6 +6,7 @@ the S3AccessPointName parameter and HasS3AccessPointName condition are preserved
 
 Idempotent: skips UCs that already have S3AccessPointName in template.yaml.
 """
+
 from __future__ import annotations
 
 import re
@@ -56,7 +57,7 @@ def add_param_to_template(path: Path) -> bool:
 
     # Insert after S3AccessPointAlias block (find the end of its AllowedPattern line)
     # Pattern: S3AccessPointAlias: ... AllowedPattern: "..." \n\n
-    pattern = r'(  S3AccessPointAlias:\n(?:.*\n)*?    AllowedPattern:.*\n)'
+    pattern = r"(  S3AccessPointAlias:\n(?:.*\n)*?    AllowedPattern:.*\n)"
     match = re.search(pattern, content)
     if match:
         insert_pos = match.end()
@@ -69,7 +70,7 @@ def add_param_to_template(path: Path) -> bool:
             print(f"  WARN: No S3AccessPointAlias found in {path}")
             return False
         # Find next parameter (next line starting with "  " + capital letter after a blank line)
-        next_param = re.search(r'\n\n  [A-Z]', content[alias_idx + 20:])
+        next_param = re.search(r"\n\n  [A-Z]", content[alias_idx + 20 :])
         if next_param:
             insert_pos = alias_idx + 20 + next_param.start() + 1  # after the \n\n
             content = content[:insert_pos] + PARAM_BLOCK + content[insert_pos:]
@@ -80,13 +81,13 @@ def add_param_to_template(path: Path) -> bool:
     # Add condition if not present
     if "HasS3AccessPointName:" not in content:
         # Find Conditions section
-        cond_match = re.search(r'^Conditions:\s*\n', content, re.MULTILINE)
+        cond_match = re.search(r"^Conditions:\s*\n", content, re.MULTILINE)
         if cond_match:
             insert_pos = cond_match.end()
             content = content[:insert_pos] + CONDITION_LINE + content[insert_pos:]
         else:
             # No Conditions section — add one before Resources
-            res_match = re.search(r'^Resources:\s*\n', content, re.MULTILINE)
+            res_match = re.search(r"^Resources:\s*\n", content, re.MULTILINE)
             if res_match:
                 insert_pos = res_match.start()
                 content = content[:insert_pos] + "Conditions:\n" + CONDITION_LINE + "\n" + content[insert_pos:]

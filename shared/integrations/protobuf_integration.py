@@ -74,16 +74,11 @@ def create_fpolicy_reader(
     mode_str = os.environ.get(ENV_PROTOBUF_FRAMING_MODE, "").strip().upper()
 
     if not mode_str:
-        logger.debug(
-            "PROTOBUF_FRAMING_MODE not set; using legacy read_fpolicy_message()"
-        )
+        logger.debug("PROTOBUF_FRAMING_MODE not set; using legacy read_fpolicy_message()")
         return None
 
     if mode_str not in _MODE_MAP:
-        raise ValueError(
-            f"Invalid PROTOBUF_FRAMING_MODE: '{mode_str}'. "
-            f"Valid values: {', '.join(_MODE_MAP.keys())}"
-        )
+        raise ValueError(f"Invalid PROTOBUF_FRAMING_MODE: '{mode_str}'. Valid values: {', '.join(_MODE_MAP.keys())}")
 
     mode = _MODE_MAP[mode_str]
     logger.info("Creating ProtobufFrameReader with mode=%s", mode.value)

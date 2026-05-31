@@ -29,9 +29,7 @@ def test_classify_document_type_unknown(discovery_handler):
     assert discovery_handler._classify_document_type("archives/file.jpg") == "unknown"
 
 
-def test_handler_filters_and_classifies(
-    discovery_handler, lambda_context, monkeypatch
-):
+def test_handler_filters_and_classifies(discovery_handler, lambda_context, monkeypatch):
     monkeypatch.setenv("S3_ACCESS_POINT", "test-ap-ext-s3alias")
     monkeypatch.setenv("PREFIX_FILTER", "archives/")
     monkeypatch.setenv("SUFFIX_FILTER", ".pdf,.eml")
@@ -52,9 +50,7 @@ def test_handler_filters_and_classifies(
     mock_output.put_object.assert_called_once()
 
 
-def test_handler_empty_results(
-    discovery_handler, lambda_context, monkeypatch
-):
+def test_handler_empty_results(discovery_handler, lambda_context, monkeypatch):
     monkeypatch.setenv("S3_ACCESS_POINT", "test-ap-ext-s3alias")
     monkeypatch.setenv("SUFFIX_FILTER", ".pdf")
 

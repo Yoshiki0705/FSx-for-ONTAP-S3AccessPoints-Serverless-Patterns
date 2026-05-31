@@ -42,9 +42,7 @@ def _build_prompt(query_results: dict) -> str:
     for query_name, result in query_results.items():
         rows = result.get("rows", [])
         status = result.get("status", "UNKNOWN")
-        findings_summary.append(
-            f"- {query_name}: {len(rows)} findings (status: {status})"
-        )
+        findings_summary.append(f"- {query_name}: {len(rows)} findings (status: {status})")
 
     findings_text = "\n".join(findings_summary)
 
@@ -76,34 +74,28 @@ def _invoke_bedrock(bedrock_client, model_id: str, prompt: str) -> str:
     Returns:
         str: 生成されたレポートテキスト
     """
-    body = json.dumps({
-        "messages": [
-            {"role": "user", "content": [{"text": prompt}]},
-        ],
-        "inferenceConfig": {
-            "maxTokens": 4096,
-            "temperature": 0.3,
-        },
-    })
+    body = json.dumps(
+        {
+            "messages": [
+                {"role": "user", "content": [{"text": prompt}]},
+            ],
+            "inferenceConfig": {
+                "maxTokens": 4096,
+                "temperature": 0.3,
+            },
+        }
+    )
 
     with xray_subsegment(
-
-
         name="bedrock_invokemodel",
-
-
         annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "legal-compliance"},
-
-
     ):
-
-
         response = bedrock_client.invoke_model(
-        modelId=model_id,
-        contentType="application/json",
-        accept="application/json",
-        body=body,
-    )
+            modelId=model_id,
+            contentType="application/json",
+            accept="application/json",
+            body=body,
+        )
 
     response_body = json.loads(response["body"].read())
     # Extract text from Bedrock response
@@ -155,10 +147,7 @@ def handler(event, context):
 
     # レポートを S3 に書き出し
     now = datetime.now(timezone.utc)
-    report_key = (
-        f"reports/{now.strftime('%Y/%m/%d')}"
-        f"/compliance-report-{execution_id}.md"
-    )
+    report_key = f"reports/{now.strftime('%Y/%m/%d')}/compliance-report-{execution_id}.md"
 
     s3ap_output.put_object(
         key=report_key,
@@ -169,9 +158,7 @@ def handler(event, context):
     logger.info("Report written to S3 AP: %s", report_key)
 
     # SNS 通知発行
-    total_findings = sum(
-        len(r.get("rows", [])) for r in query_results.values()
-    )
+    total_findings = sum(len(r.get("rows", [])) for r in query_results.values())
     sns_message = (
         f"コンプライアンスレポートが生成されました。\n\n"
         f"実行 ID: {execution_id}\n"
@@ -192,7 +179,6 @@ def handler(event, context):
         report_key,
         total_findings,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="report_generation")

@@ -131,9 +131,7 @@ def check_s3ap_list(bucket_alias: str, prefix: str) -> CheckResult:
         latency_ms = (time.time() - start) * 1000
         error_msg = f"{type(e).__name__}: {e}"
         logger.error("S3AP ListObjectsV2 failed: %s", error_msg)
-        return CheckResult(
-            name=name, passed=False, latency_ms=latency_ms, error=error_msg
-        )
+        return CheckResult(name=name, passed=False, latency_ms=latency_ms, error=error_msg)
 
 
 def check_s3ap_get(bucket_alias: str, key: str) -> CheckResult:
@@ -164,9 +162,7 @@ def check_s3ap_get(bucket_alias: str, key: str) -> CheckResult:
         latency_ms = (time.time() - start) * 1000
         error_msg = f"{type(e).__name__}: {e}"
         logger.error("S3AP GetObject failed: %s", error_msg)
-        return CheckResult(
-            name=name, passed=False, latency_ms=latency_ms, error=error_msg
-        )
+        return CheckResult(name=name, passed=False, latency_ms=latency_ms, error=error_msg)
 
 
 def check_ontap_health(management_ip: str) -> CheckResult:
@@ -211,16 +207,12 @@ def check_ontap_health(management_ip: str) -> CheckResult:
         else:
             error_msg = f"HTTP {response.status}"
             logger.error("ONTAP health check failed: %s", error_msg)
-            return CheckResult(
-                name=name, passed=False, latency_ms=latency_ms, error=error_msg
-            )
+            return CheckResult(name=name, passed=False, latency_ms=latency_ms, error=error_msg)
     except Exception as e:
         latency_ms = (time.time() - start) * 1000
         error_msg = f"{type(e).__name__}: {e}"
         logger.error("ONTAP health check failed: %s", error_msg)
-        return CheckResult(
-            name=name, passed=False, latency_ms=latency_ms, error=error_msg
-        )
+        return CheckResult(name=name, passed=False, latency_ms=latency_ms, error=error_msg)
 
 
 def _get_ontap_credentials(secret_arn: str) -> dict[str, str]:

@@ -155,16 +155,10 @@ def test_serverless_config_memory_size_accepted_iff_valid(
     )
 
     if memory_size_mb in VALID_MEMORY_SIZES_MB:
-        assert is_valid is True, (
-            f"Expected valid for memory_size_mb={memory_size_mb}, "
-            f"but got error: {error}"
-        )
+        assert is_valid is True, f"Expected valid for memory_size_mb={memory_size_mb}, but got error: {error}"
         assert error is None
     else:
-        assert is_valid is False, (
-            f"Expected invalid for memory_size_mb={memory_size_mb}, "
-            f"but got valid"
-        )
+        assert is_valid is False, f"Expected invalid for memory_size_mb={memory_size_mb}, but got valid"
         assert error is not None
 
 
@@ -189,16 +183,10 @@ def test_serverless_config_max_concurrency_accepted_iff_in_range(
     )
 
     if 1 <= max_concurrency <= 200:
-        assert is_valid is True, (
-            f"Expected valid for max_concurrency={max_concurrency}, "
-            f"but got error: {error}"
-        )
+        assert is_valid is True, f"Expected valid for max_concurrency={max_concurrency}, but got error: {error}"
         assert error is None
     else:
-        assert is_valid is False, (
-            f"Expected invalid for max_concurrency={max_concurrency}, "
-            f"but got valid"
-        )
+        assert is_valid is False, f"Expected invalid for max_concurrency={max_concurrency}, but got valid"
         assert error is not None
 
 
@@ -224,17 +212,14 @@ def test_serverless_config_provisioned_concurrency_non_negative(
 
     if provisioned_concurrency >= 0:
         assert is_valid is True, (
-            f"Expected valid for provisioned_concurrency={provisioned_concurrency}, "
-            f"but got error: {error}"
+            f"Expected valid for provisioned_concurrency={provisioned_concurrency}, but got error: {error}"
         )
         assert error is None
     else:
         assert is_valid is False, (
-            f"Expected invalid for provisioned_concurrency={provisioned_concurrency}, "
-            f"but got valid"
+            f"Expected invalid for provisioned_concurrency={provisioned_concurrency}, but got valid"
         )
         assert error is not None
-
 
 
 # ---------------------------------------------------------------------------

@@ -73,9 +73,7 @@ class ProtobufFrameReader:
     ) -> None:
         self._reader = reader
         self._mode = mode
-        self._detected_mode: FramingMode | None = (
-            mode if mode != FramingMode.AUTO_DETECT else None
-        )
+        self._detected_mode: FramingMode | None = mode if mode != FramingMode.AUTO_DETECT else None
         self._max_message_size = max_message_size
         self._messages_read: int = 0
         self._bytes_read: int = 0

@@ -56,13 +56,9 @@ def handler(event, context):
         dict: manifest_key, total_objects, objects, image_types (分類別カウント)
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "satellite/")
-    suffix_filter = os.environ.get(
-        "SUFFIX_FILTER", ",".join(sorted(SUPPORTED_FORMATS))
-    )
+    suffix_filter = os.environ.get("SUFFIX_FILTER", ",".join(sorted(SUPPORTED_FORMATS)))
 
     logger.info(
         "UC15 Discovery started: access_point=%s, prefix=%r, suffix=%r",
@@ -84,9 +80,7 @@ def handler(event, context):
         for single_suffix in suffix_filter.split(","):
             single_suffix = single_suffix.strip()
             if single_suffix:
-                all_objects.extend(
-                    s3ap.list_objects(prefix=prefix, suffix=single_suffix)
-                )
+                all_objects.extend(s3ap.list_objects(prefix=prefix, suffix=single_suffix))
 
     # 重複除外（同じキーが複数回マッチする場合のため）
     seen_keys = set()
@@ -112,10 +106,7 @@ def handler(event, context):
     }
 
     # S3 AP に書き出し
-    manifest_key = (
-        f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
     s3ap_output.put_object(
         key=manifest_key,
         body=json.dumps(manifest, default=str),

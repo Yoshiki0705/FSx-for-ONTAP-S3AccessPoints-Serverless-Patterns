@@ -285,33 +285,25 @@ class TestValidateBillingThresholdsValid:
 
     def test_valid_default_thresholds(self):
         """Default thresholds (50, 100, 500) are valid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=50.0, critical=100.0, emergency=500.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=50.0, critical=100.0, emergency=500.0)
         assert is_valid is True
         assert error is None
 
     def test_valid_small_thresholds(self):
         """Small thresholds (0.01, 0.02, 0.03) are valid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=0.01, critical=0.02, emergency=0.03
-        )
+        is_valid, error = validate_billing_thresholds(warning=0.01, critical=0.02, emergency=0.03)
         assert is_valid is True
         assert error is None
 
     def test_valid_large_thresholds(self):
         """Large thresholds (1000, 5000, 10000) are valid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=1000.0, critical=5000.0, emergency=10000.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=1000.0, critical=5000.0, emergency=10000.0)
         assert is_valid is True
         assert error is None
 
     def test_valid_close_thresholds(self):
         """Close but strictly ordered thresholds are valid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=99.99, critical=100.0, emergency=100.01
-        )
+        is_valid, error = validate_billing_thresholds(warning=99.99, critical=100.0, emergency=100.01)
         assert is_valid is True
         assert error is None
 
@@ -321,91 +313,69 @@ class TestValidateBillingThresholdsInvalid:
 
     def test_invalid_equal_warning_critical(self):
         """warning == critical is invalid (not strictly ordered)."""
-        is_valid, error = validate_billing_thresholds(
-            warning=100.0, critical=100.0, emergency=500.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=100.0, critical=100.0, emergency=500.0)
         assert is_valid is False
         assert error is not None
         assert "warning" in error
 
     def test_invalid_equal_critical_emergency(self):
         """critical == emergency is invalid (not strictly ordered)."""
-        is_valid, error = validate_billing_thresholds(
-            warning=50.0, critical=500.0, emergency=500.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=50.0, critical=500.0, emergency=500.0)
         assert is_valid is False
         assert error is not None
         assert "critical" in error
 
     def test_invalid_reversed_warning_critical(self):
         """warning > critical is invalid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=200.0, critical=100.0, emergency=500.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=200.0, critical=100.0, emergency=500.0)
         assert is_valid is False
         assert error is not None
 
     def test_invalid_reversed_critical_emergency(self):
         """critical > emergency is invalid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=50.0, critical=600.0, emergency=500.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=50.0, critical=600.0, emergency=500.0)
         assert is_valid is False
         assert error is not None
 
     def test_invalid_all_equal(self):
         """All thresholds equal is invalid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=100.0, critical=100.0, emergency=100.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=100.0, critical=100.0, emergency=100.0)
         assert is_valid is False
         assert error is not None
 
     def test_invalid_zero_warning(self):
         """Zero warning threshold is invalid (must be > 0)."""
-        is_valid, error = validate_billing_thresholds(
-            warning=0.0, critical=100.0, emergency=500.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=0.0, critical=100.0, emergency=500.0)
         assert is_valid is False
         assert error is not None
         assert "warning" in error.lower() or "Invalid" in error
 
     def test_invalid_negative_warning(self):
         """Negative warning threshold is invalid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=-10.0, critical=100.0, emergency=500.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=-10.0, critical=100.0, emergency=500.0)
         assert is_valid is False
         assert error is not None
 
     def test_invalid_zero_critical(self):
         """Zero critical threshold is invalid (must be > 0)."""
-        is_valid, error = validate_billing_thresholds(
-            warning=0.01, critical=0.0, emergency=500.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=0.01, critical=0.0, emergency=500.0)
         assert is_valid is False
         assert error is not None
 
     def test_invalid_negative_critical(self):
         """Negative critical threshold is invalid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=0.01, critical=-5.0, emergency=500.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=0.01, critical=-5.0, emergency=500.0)
         assert is_valid is False
         assert error is not None
 
     def test_invalid_zero_emergency(self):
         """Zero emergency threshold is invalid (must be > 0)."""
-        is_valid, error = validate_billing_thresholds(
-            warning=50.0, critical=100.0, emergency=0.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=50.0, critical=100.0, emergency=0.0)
         assert is_valid is False
         assert error is not None
 
     def test_invalid_negative_emergency(self):
         """Negative emergency threshold is invalid."""
-        is_valid, error = validate_billing_thresholds(
-            warning=50.0, critical=100.0, emergency=-1.0
-        )
+        is_valid, error = validate_billing_thresholds(warning=50.0, critical=100.0, emergency=-1.0)
         assert is_valid is False
         assert error is not None

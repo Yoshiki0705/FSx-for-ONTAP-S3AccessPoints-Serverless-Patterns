@@ -87,23 +87,11 @@ class CapacityGuardrail:
         table_name: str | None = None,
         mode: GuardrailMode | None = None,
     ) -> None:
-        self._table_name = table_name or os.environ.get(
-            "GUARDRAIL_TABLE", "fsxn-s3ap-guardrails-tracking"
-        )
-        self._mode = mode or GuardrailMode(
-            os.environ.get("GUARDRAIL_MODE", "DRY_RUN")
-        )
-        self._rate_limit = int(
-            os.environ.get("GUARDRAIL_RATE_LIMIT", str(self.DEFAULT_RATE_LIMIT))
-        )
-        self._daily_cap_gb = float(
-            os.environ.get("GUARDRAIL_DAILY_CAP_GB", str(self.DEFAULT_DAILY_CAP_GB))
-        )
-        self._cooldown_seconds = int(
-            os.environ.get(
-                "GUARDRAIL_COOLDOWN_SECONDS", str(self.DEFAULT_COOLDOWN_SECONDS)
-            )
-        )
+        self._table_name = table_name or os.environ.get("GUARDRAIL_TABLE", "fsxn-s3ap-guardrails-tracking")
+        self._mode = mode or GuardrailMode(os.environ.get("GUARDRAIL_MODE", "DRY_RUN"))
+        self._rate_limit = int(os.environ.get("GUARDRAIL_RATE_LIMIT", str(self.DEFAULT_RATE_LIMIT)))
+        self._daily_cap_gb = float(os.environ.get("GUARDRAIL_DAILY_CAP_GB", str(self.DEFAULT_DAILY_CAP_GB)))
+        self._cooldown_seconds = int(os.environ.get("GUARDRAIL_COOLDOWN_SECONDS", str(self.DEFAULT_COOLDOWN_SECONDS)))
         self._sns_topic_arn = os.environ.get("GUARDRAIL_SNS_TOPIC_ARN", "")
         self._dynamodb = boto3.resource("dynamodb")
         self._sns_client = boto3.client("sns")
@@ -148,17 +136,13 @@ class CapacityGuardrail:
                 requested_gb,
                 action_id,
             )
-            return GuardrailResult(
-                allowed=True, mode=self._mode, action_id=action_id
-            )
+            return GuardrailResult(allowed=True, mode=self._mode, action_id=action_id)
 
         # Load current daily state (with fail-closed/fail-open handling)
         try:
             daily_state = self._get_daily_state(action_type)
         except Exception as e:
-            logger.error(
-                "[Guardrail] DynamoDB access failed: %s", str(e)
-            )
+            logger.error("[Guardrail] DynamoDB access failed: %s", str(e))
             return self._handle_dynamodb_failure(metrics, action_type, e)
 
         # Check 1: Per-action rate limit
@@ -200,9 +184,7 @@ class CapacityGuardrail:
             requested_gb,
             action_id,
         )
-        return GuardrailResult(
-            allowed=True, mode=self._mode, action_id=action_id
-        )
+        return GuardrailResult(allowed=True, mode=self._mode, action_id=action_id)
 
     def get_daily_usage(self, action_type: str) -> dict[str, Any]:
         """指定アクション種別の日次使用状況を取得する。
@@ -279,9 +261,7 @@ class CapacityGuardrail:
         # Parse last_action_ts to epoch
         last_action_ts_str = item.get("last_action_ts", "1970-01-01T00:00:00Z")
         try:
-            last_action_ts = datetime.fromisoformat(
-                last_action_ts_str.replace("Z", "+00:00")
-            ).timestamp()
+            last_action_ts = datetime.fromisoformat(last_action_ts_str.replace("Z", "+00:00")).timestamp()
         except (ValueError, AttributeError):
             last_action_ts = 0.0
 
@@ -334,9 +314,7 @@ class CapacityGuardrail:
                 },
             )
         except ClientError as e:
-            logger.error(
-                "[Guardrail] Failed to update DynamoDB tracking: %s", str(e)
-            )
+            logger.error("[Guardrail] Failed to update DynamoDB tracking: %s", str(e))
             raise
 
     def _safe_update_tracking(self, action_type: str, requested_gb: float) -> None:
@@ -352,9 +330,7 @@ class CapacityGuardrail:
                 str(e),
             )
 
-    def _execute_action(
-        self, execute_fn: callable | None, **kwargs: Any
-    ) -> str | None:
+    def _execute_action(self, execute_fn: callable | None, **kwargs: Any) -> str | None:
         """アクション関数を実行し、action_id を返す。
 
         Args:
@@ -369,9 +345,7 @@ class CapacityGuardrail:
             try:
                 execute_fn(**kwargs)
             except Exception as e:
-                logger.error(
-                    "[Guardrail] Action execution failed: %s", str(e)
-                )
+                logger.error("[Guardrail] Action execution failed: %s", str(e))
                 raise
         return action_id
 
@@ -404,9 +378,7 @@ class CapacityGuardrail:
                 action_type,
                 reason,
             )
-            return GuardrailResult(
-                allowed=True, mode=self._mode, reason=reason
-            )
+            return GuardrailResult(allowed=True, mode=self._mode, reason=reason)
 
         # ENFORCE mode: deny the action
         logger.warning(
@@ -414,9 +386,7 @@ class CapacityGuardrail:
             action_type,
             reason,
         )
-        return GuardrailResult(
-            allowed=False, mode=self._mode, reason=reason
-        )
+        return GuardrailResult(allowed=False, mode=self._mode, reason=reason)
 
     def _handle_dynamodb_failure(
         self,
@@ -477,21 +447,15 @@ class CapacityGuardrail:
             **kwargs: 追加コンテキスト情報
         """
         if not self._sns_topic_arn:
-            logger.warning(
-                "[Guardrail] BREAK_GLASS alert skipped: no SNS topic ARN configured"
-            )
+            logger.warning("[Guardrail] BREAK_GLASS alert skipped: no SNS topic ARN configured")
             return
 
         message = {
             "alert_type": "BREAK_GLASS_ACTIVATED",
             "action_type": action_type,
             "requested_gb": requested_gb,
-            "timestamp": datetime.now(timezone.utc).isoformat().replace(
-                "+00:00", "Z"
-            ),
-            "context": {
-                k: str(v) for k, v in kwargs.items()
-            },
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "context": {k: str(v) for k, v in kwargs.items()},
         }
 
         try:

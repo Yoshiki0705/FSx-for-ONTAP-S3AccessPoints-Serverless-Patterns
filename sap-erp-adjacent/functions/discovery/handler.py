@@ -25,8 +25,18 @@ s3_client = boto3.client("s3")
 
 # SAP/ERP 関連ファイル拡張子
 SAP_EXTENSIONS = {
-    ".txt", ".dat", ".csv", ".xml", ".json", ".edi", ".idoc",
-    ".x12", ".edifact", ".flat", ".tsv", ".xlsx",
+    ".txt",
+    ".dat",
+    ".csv",
+    ".xml",
+    ".json",
+    ".edi",
+    ".idoc",
+    ".x12",
+    ".edifact",
+    ".flat",
+    ".tsv",
+    ".xlsx",
 }
 
 
@@ -60,14 +70,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 key = obj["Key"]
                 ext = os.path.splitext(key)[1].lower()
                 if ext in SAP_EXTENSIONS or not ext:
-                    objects.append({
-                        "key": key,
-                        "size": obj["Size"],
-                        "last_modified": obj["LastModified"].isoformat()
-                        if hasattr(obj["LastModified"], "isoformat")
-                        else str(obj["LastModified"]),
-                        "category": _categorize_file(key),
-                    })
+                    objects.append(
+                        {
+                            "key": key,
+                            "size": obj["Size"],
+                            "last_modified": obj["LastModified"].isoformat()
+                            if hasattr(obj["LastModified"], "isoformat")
+                            else str(obj["LastModified"]),
+                            "category": _categorize_file(key),
+                        }
+                    )
 
                 if len(objects) >= max_files:
                     break

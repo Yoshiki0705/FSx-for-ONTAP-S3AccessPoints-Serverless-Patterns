@@ -52,9 +52,7 @@ def test_build_alert_message_deduplicates_labels(alert_generation_handler):
     assert set(labels) == {"Vehicle", "Ship"}
 
 
-def test_handler_skips_alert_below_threshold(
-    alert_generation_handler, lambda_context, monkeypatch
-):
+def test_handler_skips_alert_below_threshold(alert_generation_handler, lambda_context, monkeypatch):
     """Handler does not send alert when change_detected is False."""
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123:test")
 
@@ -68,9 +66,7 @@ def test_handler_skips_alert_below_threshold(
     assert result["message_id"] is None
 
 
-def test_handler_sends_alert_above_threshold(
-    alert_generation_handler, lambda_context, monkeypatch
-):
+def test_handler_sends_alert_above_threshold(alert_generation_handler, lambda_context, monkeypatch):
     """Handler sends SNS alert when threshold exceeded."""
     monkeypatch.setenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123:test")
     monkeypatch.setenv("CHANGE_AREA_THRESHOLD_KM2", "1.0")

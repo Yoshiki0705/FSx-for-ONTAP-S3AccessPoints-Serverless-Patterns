@@ -54,11 +54,7 @@ def _filter_render_assets(objects: list[dict]) -> list[dict]:
     Returns:
         list[dict]: レンダリング対象拡張子に一致するオブジェクトのみ
     """
-    return [
-        obj
-        for obj in objects
-        if any(obj["Key"].lower().endswith(ext) for ext in RENDER_ASSET_EXTENSIONS)
-    ]
+    return [obj for obj in objects if any(obj["Key"].lower().endswith(ext) for ext in RENDER_ASSET_EXTENSIONS)]
 
 
 @trace_lambda_handler
@@ -73,9 +69,7 @@ def handler(event, context):
         dict: manifest_bucket, manifest_key, total_objects, objects
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "")
 
     logger.info(
@@ -105,10 +99,7 @@ def handler(event, context):
     }
 
     # Manifest を S3 AP に書き出し
-    manifest_key = (
-        f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,
@@ -121,7 +112,6 @@ def handler(event, context):
         len(render_assets),
         manifest_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="discovery")

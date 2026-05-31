@@ -140,7 +140,7 @@ def patch_template(path: Path) -> bool:
     match = cond_header_pattern.search(text)
     if match:
         insert_at = match.end()
-        text = text[: insert_at] + "\n" + NEW_CONDITIONS + text[insert_at:]
+        text = text[:insert_at] + "\n" + NEW_CONDITIONS + text[insert_at:]
     else:
         # Look for "# Conditions" comment style
         cond_banner_pattern = re.compile(
@@ -150,7 +150,7 @@ def patch_template(path: Path) -> bool:
         match = cond_banner_pattern.search(text)
         if match:
             insert_at = match.end()
-            text = text[: insert_at] + "\n" + NEW_CONDITIONS + text[insert_at:]
+            text = text[:insert_at] + "\n" + NEW_CONDITIONS + text[insert_at:]
         else:
             print(f"WARNING: could not find Conditions: section in {path}")
             return False

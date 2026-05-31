@@ -43,9 +43,7 @@ def lineage_table():
             ],
             BillingMode="PAY_PER_REQUEST",
         )
-        table.meta.client.get_waiter("table_exists").wait(
-            TableName="fsxn-s3ap-data-lineage"
-        )
+        table.meta.client.get_waiter("table_exists").wait(TableName="fsxn-s3ap-data-lineage")
         yield dynamodb
 
 
@@ -224,9 +222,7 @@ class TestLineageTrackerGetHistory:
             dynamodb_resource=lineage_table,
         )
         # Write multiple records for same source
-        for i, ts in enumerate(
-            ["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z", "2026-06-15T14:00:00Z"]
-        ):
+        for i, ts in enumerate(["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z", "2026-06-15T14:00:00Z"]):
             record = _make_record(processing_timestamp=ts, duration_ms=100 * (i + 1))
             tracker.record(record)
 
@@ -263,9 +259,7 @@ class TestLineageTrackerGetHistory:
             dynamodb_resource=lineage_table,
         )
         for i in range(5):
-            tracker.record(
-                _make_record(processing_timestamp=f"2026-06-15T{10+i:02d}:00:00Z")
-            )
+            tracker.record(_make_record(processing_timestamp=f"2026-06-15T{10 + i:02d}:00:00Z"))
 
         history = tracker.get_history("/vol1/legal/contract.pdf", limit=2)
         assert len(history) == 2

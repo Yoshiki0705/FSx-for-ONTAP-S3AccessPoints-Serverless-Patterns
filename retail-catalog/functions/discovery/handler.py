@@ -75,9 +75,7 @@ def handler(event, context):
         dict: manifest_key, total_objects, objects, metadata
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "")
     suffix_env = os.environ.get("SUFFIX_FILTER", "")
 
@@ -98,13 +96,9 @@ def handler(event, context):
     all_objects: list[dict] = []
     for suffix in suffixes:
         with xray_subsegment(
-
             name="s3ap_list_objects",
-
             annotations={"service_name": "s3", "operation": "ListObjectsV2", "use_case": "retail-catalog"},
-
         ):
-
             objects = s3ap.list_objects(prefix=prefix, suffix=suffix)
         all_objects.extend(objects)
 
@@ -138,10 +132,7 @@ def handler(event, context):
     }
 
     # Manifest を S3 AP に書き出し
-    manifest_key = (
-        f"manifests/{now.strftime('%Y/%m/%d')}"
-        f"/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{now.strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,
@@ -154,7 +145,6 @@ def handler(event, context):
         len(unique_objects),
         manifest_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="discovery")

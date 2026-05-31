@@ -136,8 +136,7 @@ class HighLoadTester:
             HighLoadResult: テスト結果
         """
         logger.info(
-            "Starting high-load test: target=%d events/sec, "
-            "duration=%ds, ramp_up=%ds",
+            "Starting high-load test: target=%d events/sec, duration=%ds, ramp_up=%ds",
             self.config.target_events_per_sec,
             self.config.duration_sec,
             self.config.ramp_up_sec,
@@ -159,8 +158,7 @@ class HighLoadTester:
         result = self._build_result(metrics)
 
         logger.info(
-            "High-load test complete: sent=%d, processed=%d, "
-            "dropped=%d, scaled_to=%d tasks",
+            "High-load test complete: sent=%d, processed=%d, dropped=%d, scaled_to=%d tasks",
             result.total_events_sent,
             result.total_events_processed,
             result.events_dropped,
@@ -239,10 +237,7 @@ class HighLoadTester:
                 self._scale_observations.append(observation)
 
                 # Detect first scale-out event
-                if (
-                    task_count > self._initial_task_count
-                    and scale_out_detected_at is None
-                ):
+                if task_count > self._initial_task_count and scale_out_detected_at is None:
                     scale_out_detected_at = time.time() - start
                     logger.info(
                         "Scale-out detected at %.1fs: %d → %d tasks",
@@ -285,9 +280,7 @@ class HighLoadTester:
 
         # Error rate
         total_attempts = self._events_sent + len(self._errors)
-        error_rate = (
-            (len(self._errors) / total_attempts * 100.0) if total_attempts > 0 else 0.0
-        )
+        error_rate = (len(self._errors) / total_attempts * 100.0) if total_attempts > 0 else 0.0
 
         # Get processed count from SQS (approximate)
         total_processed = await self._get_processed_count()
@@ -362,9 +355,7 @@ class HighLoadTester:
         try:
             # Create a small test file to trigger FPolicy event
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None, self._write_test_file, str(file_path)
-            )
+            await loop.run_in_executor(None, self._write_test_file, str(file_path))
             latency_ms = (time.time() - start) * 1000.0
             return latency_ms
         except Exception as e:
@@ -457,9 +448,7 @@ class TestHighLoadTester:
     def config(self) -> HighLoadConfig:
         """テスト用設定を環境変数から構築する."""
         return HighLoadConfig(
-            target_events_per_sec=int(
-                os.environ.get("LOAD_TEST_TARGET_RATE", "1000")
-            ),
+            target_events_per_sec=int(os.environ.get("LOAD_TEST_TARGET_RATE", "1000")),
             duration_sec=int(os.environ.get("LOAD_TEST_DURATION_SEC", "300")),
             ramp_up_sec=int(os.environ.get("LOAD_TEST_RAMP_UP_SEC", "60")),
             ecs_cluster=os.environ.get("ECS_CLUSTER", "fpolicy-cluster"),

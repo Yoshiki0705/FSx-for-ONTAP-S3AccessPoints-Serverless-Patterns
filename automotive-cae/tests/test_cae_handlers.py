@@ -7,12 +7,9 @@ import os
 from unittest.mock import MagicMock, patch
 
 
-
 def _load_handler(function_name: str):
     """指定した関数のハンドラーモジュールをロード"""
-    handler_path = os.path.join(
-        os.path.dirname(__file__), "..", "functions", function_name, "handler.py"
-    )
+    handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", function_name, "handler.py")
     spec = importlib.util.spec_from_file_location(f"cae_{function_name}_handler", handler_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -30,10 +27,26 @@ class TestDiscovery:
 
         mock_response = {
             "Contents": [
-                {"Key": "sim/crash.d3plot", "Size": 1048576, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
-                {"Key": "sim/mesh.bdf", "Size": 524288, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
-                {"Key": "sim/results.csv", "Size": 4096, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
-                {"Key": "sim/readme.md", "Size": 1024, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
+                {
+                    "Key": "sim/crash.d3plot",
+                    "Size": 1048576,
+                    "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00"),
+                },
+                {
+                    "Key": "sim/mesh.bdf",
+                    "Size": 524288,
+                    "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00"),
+                },
+                {
+                    "Key": "sim/results.csv",
+                    "Size": 4096,
+                    "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00"),
+                },
+                {
+                    "Key": "sim/readme.md",
+                    "Size": 1024,
+                    "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00"),
+                },
             ],
             "IsTruncated": False,
         }
@@ -56,7 +69,11 @@ class TestDiscovery:
 
         mock_response = {
             "Contents": [
-                {"Key": "output.d3plot", "Size": 100, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
+                {
+                    "Key": "output.d3plot",
+                    "Size": 100,
+                    "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00"),
+                },
                 {"Key": "input.k", "Size": 100, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
                 {"Key": "log.csv", "Size": 100, "LastModified": MagicMock(isoformat=lambda: "2026-01-01T00:00:00")},
             ],
@@ -75,10 +92,13 @@ class TestDiscovery:
 class TestSolverOutputParser:
     """Solver Output Parser Lambda のテスト"""
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT_ALIAS": "test-cae-s3ap",
-        "OUTPUT_BUCKET": "test-output-bucket",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT_ALIAS": "test-cae-s3ap",
+            "OUTPUT_BUCKET": "test-output-bucket",
+        },
+    )
     def test_parser_extracts_metadata(self):
         """メタデータが正しく抽出される"""
         module, spec = _load_handler("solver_output_parser")
@@ -90,12 +110,15 @@ class TestSolverOutputParser:
 
         with patch.object(module.s3_client, "get_object", return_value=mock_response):
             with patch.object(module.s3_client, "put_object"):
-                result = module.handler({
-                    "key": "sim/crash.d3plot",
-                    "extension": ".d3plot",
-                    "category": "solver_output",
-                    "size": 1048576,
-                }, None)
+                result = module.handler(
+                    {
+                        "key": "sim/crash.d3plot",
+                        "extension": ".d3plot",
+                        "category": "solver_output",
+                        "size": 1048576,
+                    },
+                    None,
+                )
 
         assert result["status"] == "completed"
         assert result["metadata"]["solver_type"] == "LS-DYNA"
@@ -119,7 +142,7 @@ class TestQualityCheck:
                     "category": "solver_output",
                     "solver_type": "LS-DYNA",
                 }
-            }
+            },
         }
 
         # Bedrock をモック
@@ -148,7 +171,7 @@ class TestQualityCheck:
                     "category": "solver_output",
                     "solver_type": "unknown",
                 }
-            }
+            },
         }
 
         result = module.handler(event, None)

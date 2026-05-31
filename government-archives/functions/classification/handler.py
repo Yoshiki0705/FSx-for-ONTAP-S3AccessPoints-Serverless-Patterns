@@ -27,15 +27,28 @@ logger = logging.getLogger(__name__)
 
 # 機密キーワード（Public = low, Sensitive = medium, Confidential = high）
 # 注意: 「社外秘」のような部分一致を避けるため、SENSITIVE を先にチェックする
-CONFIDENTIAL_KEYWORDS = frozenset({
-    "top secret", "classified", "confidential", "national security",
-    "極秘", "機密",
-})
+CONFIDENTIAL_KEYWORDS = frozenset(
+    {
+        "top secret",
+        "classified",
+        "confidential",
+        "national security",
+        "極秘",
+        "機密",
+    }
+)
 
-SENSITIVE_KEYWORDS = frozenset({
-    "internal", "restricted", "proprietary", "sensitive",
-    "社外秘", "限定", "内部",
-})
+SENSITIVE_KEYWORDS = frozenset(
+    {
+        "internal",
+        "restricted",
+        "proprietary",
+        "sensitive",
+        "社外秘",
+        "限定",
+        "内部",
+    }
+)
 
 
 def classify_by_keywords(text: str) -> tuple[str, float]:

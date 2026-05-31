@@ -42,17 +42,21 @@ def verify_cross_region_client(target_region: str) -> dict:
     try:
         boto3.client("textract", region_name=target_region)
         # AnalyzeDocument は実データが必要なので、クライアント作成のみ確認
-        results["checks"].append({
-            "name": "textract_client_creation",
-            "status": "PASSED",
-            "detail": f"boto3.client('textract', region_name='{target_region}') OK",
-        })
+        results["checks"].append(
+            {
+                "name": "textract_client_creation",
+                "status": "PASSED",
+                "detail": f"boto3.client('textract', region_name='{target_region}') OK",
+            }
+        )
     except Exception as e:
-        results["checks"].append({
-            "name": "textract_client_creation",
-            "status": "FAILED",
-            "detail": str(e),
-        })
+        results["checks"].append(
+            {
+                "name": "textract_client_creation",
+                "status": "FAILED",
+                "detail": str(e),
+            }
+        )
 
     # 2. Comprehend Medical クライアント作成
     try:
@@ -60,18 +64,22 @@ def verify_cross_region_client(target_region: str) -> dict:
         # DetectEntitiesV2 テスト（最小テキスト）
         response = cm.detect_entities_v2(Text="Patient has diabetes mellitus type 2.")
         entities = response.get("Entities", [])
-        results["checks"].append({
-            "name": "comprehend_medical_detect_entities",
-            "status": "PASSED",
-            "detail": f"Detected {len(entities)} entities from test text",
-            "entities": [e.get("Text", "") for e in entities[:5]],
-        })
+        results["checks"].append(
+            {
+                "name": "comprehend_medical_detect_entities",
+                "status": "PASSED",
+                "detail": f"Detected {len(entities)} entities from test text",
+                "entities": [e.get("Text", "") for e in entities[:5]],
+            }
+        )
     except Exception as e:
-        results["checks"].append({
-            "name": "comprehend_medical_detect_entities",
-            "status": "FAILED",
-            "detail": str(e),
-        })
+        results["checks"].append(
+            {
+                "name": "comprehend_medical_detect_entities",
+                "status": "FAILED",
+                "detail": str(e),
+            }
+        )
 
     # 3. 許可リスト外サービス（期待: エラー）
     try:
@@ -86,23 +94,29 @@ def verify_cross_region_client(target_region: str) -> dict:
 
         try:
             client.get_client("dynamodb")  # 許可リスト外
-            results["checks"].append({
-                "name": "disallowed_service_error",
-                "status": "FAILED",
-                "detail": "Expected CrossRegionClientError but got no error",
-            })
+            results["checks"].append(
+                {
+                    "name": "disallowed_service_error",
+                    "status": "FAILED",
+                    "detail": "Expected CrossRegionClientError but got no error",
+                }
+            )
         except CrossRegionClientError:
-            results["checks"].append({
-                "name": "disallowed_service_error",
-                "status": "PASSED",
-                "detail": "CrossRegionClientError raised for disallowed service",
-            })
+            results["checks"].append(
+                {
+                    "name": "disallowed_service_error",
+                    "status": "PASSED",
+                    "detail": "CrossRegionClientError raised for disallowed service",
+                }
+            )
     except ImportError:
-        results["checks"].append({
-            "name": "disallowed_service_error",
-            "status": "SKIPPED",
-            "detail": "shared module not importable (run from project root)",
-        })
+        results["checks"].append(
+            {
+                "name": "disallowed_service_error",
+                "status": "SKIPPED",
+                "detail": "shared module not importable (run from project root)",
+            }
+        )
 
     return results
 
@@ -123,17 +137,21 @@ def verify_streaming_download(s3_ap_alias: str, output_bucket: str) -> dict:
     # 1. テストファイルアップロード
     try:
         s3.put_object(Bucket=s3_ap_alias, Key=test_key, Body=test_data)
-        results["checks"].append({
-            "name": "upload_test_file",
-            "status": "PASSED",
-            "detail": f"Uploaded {len(test_data)} bytes to {test_key}",
-        })
+        results["checks"].append(
+            {
+                "name": "upload_test_file",
+                "status": "PASSED",
+                "detail": f"Uploaded {len(test_data)} bytes to {test_key}",
+            }
+        )
     except Exception as e:
-        results["checks"].append({
-            "name": "upload_test_file",
-            "status": "FAILED",
-            "detail": str(e),
-        })
+        results["checks"].append(
+            {
+                "name": "upload_test_file",
+                "status": "FAILED",
+                "detail": str(e),
+            }
+        )
         return results
 
     # 2. streaming_download テスト
@@ -148,53 +166,63 @@ def verify_streaming_download(s3_ap_alias: str, output_bucket: str) -> dict:
         downloaded_data = b"".join(downloaded_chunks)
         assert downloaded_data == test_data, "Downloaded data mismatch"
 
-        results["checks"].append({
-            "name": "streaming_download_roundtrip",
-            "status": "PASSED",
-            "detail": f"Downloaded {len(downloaded_data)} bytes in {len(downloaded_chunks)} chunks",
-        })
+        results["checks"].append(
+            {
+                "name": "streaming_download_roundtrip",
+                "status": "PASSED",
+                "detail": f"Downloaded {len(downloaded_data)} bytes in {len(downloaded_chunks)} chunks",
+            }
+        )
     except ImportError:
         # shared module が import できない場合は boto3 で直接テスト
         try:
             response = s3.get_object(Bucket=s3_ap_alias, Key=test_key)
             body = response["Body"].read()
             assert body == test_data
-            results["checks"].append({
-                "name": "streaming_download_roundtrip",
-                "status": "PASSED (fallback)",
-                "detail": f"Direct S3 GetObject OK: {len(body)} bytes",
-            })
+            results["checks"].append(
+                {
+                    "name": "streaming_download_roundtrip",
+                    "status": "PASSED (fallback)",
+                    "detail": f"Direct S3 GetObject OK: {len(body)} bytes",
+                }
+            )
         except Exception as e:
-            results["checks"].append({
+            results["checks"].append(
+                {
+                    "name": "streaming_download_roundtrip",
+                    "status": "FAILED",
+                    "detail": str(e),
+                }
+            )
+    except Exception as e:
+        results["checks"].append(
+            {
                 "name": "streaming_download_roundtrip",
                 "status": "FAILED",
                 "detail": str(e),
-            })
-    except Exception as e:
-        results["checks"].append({
-            "name": "streaming_download_roundtrip",
-            "status": "FAILED",
-            "detail": str(e),
-        })
+            }
+        )
 
     # 3. Range ダウンロードテスト
     try:
-        response = s3.get_object(
-            Bucket=s3_ap_alias, Key=test_key, Range="bytes=0-3599"
-        )
+        response = s3.get_object(Bucket=s3_ap_alias, Key=test_key, Range="bytes=0-3599")
         range_data = response["Body"].read()
         assert range_data == test_data[:3600]
-        results["checks"].append({
-            "name": "range_download",
-            "status": "PASSED",
-            "detail": f"Range download OK: {len(range_data)} bytes (first 3600)",
-        })
+        results["checks"].append(
+            {
+                "name": "range_download",
+                "status": "PASSED",
+                "detail": f"Range download OK: {len(range_data)} bytes (first 3600)",
+            }
+        )
     except Exception as e:
-        results["checks"].append({
-            "name": "range_download",
-            "status": "FAILED",
-            "detail": str(e),
-        })
+        results["checks"].append(
+            {
+                "name": "range_download",
+                "status": "FAILED",
+                "detail": str(e),
+            }
+        )
 
     # クリーンアップ
     try:
@@ -230,7 +258,7 @@ def verify_multipart_upload(s3_ap_alias: str, output_bucket: str) -> dict:
         parts = []
         for i in range(0, len(test_data), part_size):
             part_num = (i // part_size) + 1
-            part_data = test_data[i:i + part_size]
+            part_data = test_data[i : i + part_size]
             response = s3.upload_part(
                 Bucket=output_bucket,
                 Key=test_key,
@@ -248,39 +276,45 @@ def verify_multipart_upload(s3_ap_alias: str, output_bucket: str) -> dict:
             MultipartUpload={"Parts": parts},
         )
 
-        results["checks"].append({
-            "name": "multipart_upload_complete",
-            "status": "PASSED",
-            "detail": f"Uploaded {len(test_data)} bytes in {len(parts)} parts",
-        })
+        results["checks"].append(
+            {
+                "name": "multipart_upload_complete",
+                "status": "PASSED",
+                "detail": f"Uploaded {len(test_data)} bytes in {len(parts)} parts",
+            }
+        )
 
         # ダウンロードして検証
         response = s3.get_object(Bucket=output_bucket, Key=test_key)
         downloaded = response["Body"].read()
         assert downloaded == test_data, "Multipart upload data mismatch"
 
-        results["checks"].append({
-            "name": "multipart_upload_verify",
-            "status": "PASSED",
-            "detail": f"Downloaded and verified {len(downloaded)} bytes",
-        })
+        results["checks"].append(
+            {
+                "name": "multipart_upload_verify",
+                "status": "PASSED",
+                "detail": f"Downloaded and verified {len(downloaded)} bytes",
+            }
+        )
 
     except Exception as e:
-        results["checks"].append({
-            "name": "multipart_upload",
-            "status": "FAILED",
-            "detail": str(e),
-        })
+        results["checks"].append(
+            {
+                "name": "multipart_upload",
+                "status": "FAILED",
+                "detail": str(e),
+            }
+        )
         # Abort if upload_id exists
         try:
-            s3.abort_multipart_upload(
-                Bucket=output_bucket, Key=test_key, UploadId=upload_id
+            s3.abort_multipart_upload(Bucket=output_bucket, Key=test_key, UploadId=upload_id)
+            results["checks"].append(
+                {
+                    "name": "multipart_abort_on_failure",
+                    "status": "PASSED",
+                    "detail": "AbortMultipartUpload executed on failure",
+                }
             )
-            results["checks"].append({
-                "name": "multipart_abort_on_failure",
-                "status": "PASSED",
-                "detail": "AbortMultipartUpload executed on failure",
-            })
         except Exception:
             pass
 
@@ -345,12 +379,8 @@ def main():
 
     # サマリー
     total_checks = sum(len(r["checks"]) for r in all_results)
-    passed = sum(
-        1 for r in all_results for c in r["checks"] if "PASSED" in c["status"]
-    )
-    failed = sum(
-        1 for r in all_results for c in r["checks"] if c["status"] == "FAILED"
-    )
+    passed = sum(1 for r in all_results for c in r["checks"] if "PASSED" in c["status"])
+    failed = sum(1 for r in all_results for c in r["checks"] if c["status"] == "FAILED")
 
     print("=" * 60)
     print(f"検証結果: {passed}/{total_checks} PASSED, {failed} FAILED")

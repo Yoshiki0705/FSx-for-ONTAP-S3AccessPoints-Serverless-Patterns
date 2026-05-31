@@ -8,15 +8,11 @@ from hypothesis import HealthCheck, given, settings, strategies as st
 
 
 def test_detect_source_crs_from_filename(preprocessing_handler):
-    assert preprocessing_handler.detect_source_crs(
-        "gis/tokyo_epsg32654.tif", {}
-    ) == "EPSG:32654"
+    assert preprocessing_handler.detect_source_crs("gis/tokyo_epsg32654.tif", {}) == "EPSG:32654"
 
 
 def test_detect_source_crs_from_metadata(preprocessing_handler):
-    assert preprocessing_handler.detect_source_crs(
-        "gis/file.tif", {"crs": "EPSG:3857"}
-    ) == "EPSG:3857"
+    assert preprocessing_handler.detect_source_crs("gis/file.tif", {"crs": "EPSG:3857"}) == "EPSG:3857"
 
 
 def test_detect_source_crs_default(preprocessing_handler):
@@ -49,9 +45,7 @@ def test_normalize_crs_no_pyproj_fallback(preprocessing_handler):
 )
 def test_normalize_crs_roundtrip_identity(preprocessing_handler, lon, lat):
     """Identity CRS transform is stable (Property test)."""
-    result = preprocessing_handler.normalize_crs(
-        "EPSG:4326", "EPSG:4326", [(lon, lat)]
-    )
+    result = preprocessing_handler.normalize_crs("EPSG:4326", "EPSG:4326", [(lon, lat)])
     assert result == [(lon, lat)]
 
 
@@ -61,9 +55,7 @@ def test_handler_records_metadata(preprocessing_handler, lambda_context, monkeyp
 
     mock_writer = MagicMock()
 
-    with patch.object(
-        preprocessing_handler, "OutputWriter"
-    ) as mock_output_writer_cls:
+    with patch.object(preprocessing_handler, "OutputWriter") as mock_output_writer_cls:
         mock_output_writer_cls.from_env.return_value = mock_writer
         event = {
             "Key": "gis/area_epsg32654.tif",

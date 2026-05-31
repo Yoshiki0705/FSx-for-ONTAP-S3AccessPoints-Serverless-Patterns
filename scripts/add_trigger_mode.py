@@ -199,7 +199,9 @@ def add_trigger_mode_to_template(template_path: Path) -> dict:
         # Insert conditions just before Resources section
         insert_pos = match.start()
         content = content[:insert_pos] + TRIGGER_MODE_CONDITIONS + content[insert_pos:]
-        changes.append("added TriggerMode conditions (IsPolling, IsEventDriven, IsHybrid, IsPollingOrHybrid, IsEventDrivenOrHybrid)")
+        changes.append(
+            "added TriggerMode conditions (IsPolling, IsEventDriven, IsHybrid, IsPollingOrHybrid, IsEventDrivenOrHybrid)"
+        )
     else:
         return {"path": str(template_path), "status": "error", "reason": "could not find Resources section"}
 
@@ -213,7 +215,7 @@ def add_trigger_mode_to_template(template_path: Path) -> dict:
     if scheduler_match:
         # Insert Condition line between Type and Properties
         replacement = scheduler_match.group(1) + "    Condition: IsPollingOrHybrid\n" + scheduler_match.group(2)
-        content = content[:scheduler_match.start()] + replacement + content[scheduler_match.end():]
+        content = content[: scheduler_match.start()] + replacement + content[scheduler_match.end() :]
         changes.append("added Condition: IsPollingOrHybrid to EventBridge Scheduler")
     else:
         # Try alternate pattern where resource name varies
@@ -224,7 +226,7 @@ def add_trigger_mode_to_template(template_path: Path) -> dict:
         scheduler_match2 = scheduler_pattern2.search(content)
         if scheduler_match2:
             replacement = scheduler_match2.group(1) + "    Condition: IsPollingOrHybrid\n" + scheduler_match2.group(2)
-            content = content[:scheduler_match2.start()] + replacement + content[scheduler_match2.end():]
+            content = content[: scheduler_match2.start()] + replacement + content[scheduler_match2.end() :]
             changes.append("added Condition: IsPollingOrHybrid to EventBridge Scheduler")
         else:
             changes.append("WARNING: no EventBridge Scheduler found (may be expected for some UCs)")

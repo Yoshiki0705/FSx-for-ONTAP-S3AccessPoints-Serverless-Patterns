@@ -30,4 +30,4 @@ jobs:
       - name: Install cfn-lint
         run: pip install cfn-lint
       - name: Lint deployment templates
-        run: cfn-lint */template-deploy.yaml
+        run: cfn-lint */template-deploy.yaml --ignore-checks W

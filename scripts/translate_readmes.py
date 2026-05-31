@@ -72,9 +72,7 @@ class TranslationConfig:
     """翻訳システム全体の設定."""
 
     source_lang: str = "ja"
-    target_languages: list[str] = field(
-        default_factory=lambda: ["en", "ko", "zh-CN", "zh-TW", "fr", "de", "es"]
-    )
+    target_languages: list[str] = field(default_factory=lambda: ["en", "ko", "zh-CN", "zh-TW", "fr", "de", "es"])
     uc_folders: list[str] = field(
         default_factory=lambda: [
             "semiconductor-eda",
@@ -268,27 +266,33 @@ class MarkdownTranslator:
                         i += 1
                         break
                     i += 1
-                blocks.append(ContentBlock(
-                    block_type=block_type,
-                    content="\n".join(block_lines),
-                ))
+                blocks.append(
+                    ContentBlock(
+                        block_type=block_type,
+                        content="\n".join(block_lines),
+                    )
+                )
                 continue
 
             # HEADING blocks: lines starting with #
             if re.match(r"^#{1,6}\s", line):
-                blocks.append(ContentBlock(
-                    block_type=BlockType.HEADING,
-                    content=line,
-                ))
+                blocks.append(
+                    ContentBlock(
+                        block_type=BlockType.HEADING,
+                        content=line,
+                    )
+                )
                 i += 1
                 continue
 
             # SWITCHER blocks: lines starting with 🌐
             if line.startswith("🌐"):
-                blocks.append(ContentBlock(
-                    block_type=BlockType.SWITCHER,
-                    content=line,
-                ))
+                blocks.append(
+                    ContentBlock(
+                        block_type=BlockType.SWITCHER,
+                        content=line,
+                    )
+                )
                 i += 1
                 continue
 
@@ -298,10 +302,12 @@ class MarkdownTranslator:
                 while i < len(lines) and lines[i].startswith("|"):
                     table_lines.append(lines[i])
                     i += 1
-                blocks.append(ContentBlock(
-                    block_type=BlockType.TABLE,
-                    content="\n".join(table_lines),
-                ))
+                blocks.append(
+                    ContentBlock(
+                        block_type=BlockType.TABLE,
+                        content="\n".join(table_lines),
+                    )
+                )
                 continue
 
             # PROSE blocks: everything else (paragraphs, list items, blockquotes, empty lines)
@@ -320,10 +326,12 @@ class MarkdownTranslator:
                 prose_lines.append(current)
                 i += 1
             if prose_lines:
-                blocks.append(ContentBlock(
-                    block_type=BlockType.PROSE,
-                    content="\n".join(prose_lines),
-                ))
+                blocks.append(
+                    ContentBlock(
+                        block_type=BlockType.PROSE,
+                        content="\n".join(prose_lines),
+                    )
+                )
             continue
 
         return blocks
@@ -363,23 +371,27 @@ class MarkdownTranslator:
         """
         if self._is_nova_model():
             # Amazon Nova models use Converse-style format via InvokeModel
-            return json.dumps({
-                "messages": [
-                    {"role": "user", "content": [{"text": prompt}]},
-                ],
-                "inferenceConfig": {
-                    "max_new_tokens": 4096,
-                },
-            })
+            return json.dumps(
+                {
+                    "messages": [
+                        {"role": "user", "content": [{"text": prompt}]},
+                    ],
+                    "inferenceConfig": {
+                        "max_new_tokens": 4096,
+                    },
+                }
+            )
         else:
             # Anthropic Claude models
-            return json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 4096,
-                "messages": [
-                    {"role": "user", "content": prompt},
-                ],
-            })
+            return json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 4096,
+                    "messages": [
+                        {"role": "user", "content": prompt},
+                    ],
+                }
+            )
 
     def _parse_response(self, response_body: dict) -> str:
         """Parse the response body based on model type.
@@ -438,7 +450,7 @@ class MarkdownTranslator:
                 return translated.strip()
             except self.bedrock_client.exceptions.ThrottlingException:
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt
+                    wait_time = 2**attempt
                     time.sleep(wait_time)
                 else:
                     raise
@@ -488,9 +500,7 @@ class ReadmeGenerator:
                     # Only update language switcher for existing files
                     with open(output_path, "r", encoding="utf-8") as f:
                         existing_content = f.read()
-                    updated = self.injector.inject_into_markdown(
-                        existing_content, target_lang
-                    )
+                    updated = self.injector.inject_into_markdown(existing_content, target_lang)
                     with open(output_path, "w", encoding="utf-8") as f:
                         f.write(updated)
                     logger.info(f"Updated switcher: {output_path}")
@@ -499,19 +509,13 @@ class ReadmeGenerator:
                     blocks = self.translator.split_translatable(source_content)
                     for block in blocks:
                         if block.block_type in (BlockType.PROSE, BlockType.HEADING):
-                            block.translated = self.translator.translate_prose(
-                                block.content, target_lang
-                            )
+                            block.translated = self.translator.translate_prose(block.content, target_lang)
                         elif block.block_type == BlockType.SWITCHER:
-                            block.translated = self.injector.generate_switcher(
-                                target_lang
-                            )
+                            block.translated = self.injector.generate_switcher(target_lang)
 
                     translated_content = self.translator.reassemble(blocks)
                     # Inject language switcher
-                    final_content = self.injector.inject_into_markdown(
-                        translated_content, target_lang
-                    )
+                    final_content = self.injector.inject_into_markdown(translated_content, target_lang)
 
                     with open(output_path, "w", encoding="utf-8") as f:
                         f.write(final_content)
@@ -561,19 +565,11 @@ class ReadmeGenerator:
 
 def main():
     """CLI エントリーポイント."""
-    parser = argparse.ArgumentParser(
-        description="UC フォルダ多言語 README 翻訳システム"
-    )
-    parser.add_argument(
-        "--folders", nargs="+", help="対象フォルダ名（スペース区切り）"
-    )
+    parser = argparse.ArgumentParser(description="UC フォルダ多言語 README 翻訳システム")
+    parser.add_argument("--folders", nargs="+", help="対象フォルダ名（スペース区切り）")
     parser.add_argument("--all", action="store_true", help="全14フォルダを処理")
-    parser.add_argument(
-        "--dry-run", action="store_true", help="ファイル書き出しをスキップ"
-    )
-    parser.add_argument(
-        "--project-root", default=".", help="プロジェクトルートパス"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="ファイル書き出しをスキップ")
+    parser.add_argument("--project-root", default=".", help="プロジェクトルートパス")
     parser.add_argument(
         "--model-id",
         default="anthropic.claude-3-haiku-20240307-v1:0",

@@ -123,8 +123,7 @@ class FPolicyServer:
                 logger.info("Protobuf parser initialized (format=protobuf)")
             else:
                 logger.warning(
-                    "FPOLICY_FORMAT=protobuf but protobuf_parser not available, "
-                    "falling back to auto-detect mode"
+                    "FPOLICY_FORMAT=protobuf but protobuf_parser not available, falling back to auto-detect mode"
                 )
 
     @property
@@ -136,9 +135,7 @@ class FPolicyServer:
     @property
     def cw_client(self) -> Any:
         if self._cw_client is None:
-            self._cw_client = boto3.client(
-                "cloudwatch", region_name=self.aws_region
-            )
+            self._cw_client = boto3.client("cloudwatch", region_name=self.aws_region)
         return self._cw_client
 
     def start(self) -> None:
@@ -231,9 +228,7 @@ class FPolicyServer:
             # Log unexpected bytes for debugging
             attempts += 1
             if attempts <= 5:
-                logger.debug(
-                    "[Proto] Skipping unexpected byte: 0x%02x", b[0]
-                )
+                logger.debug("[Proto] Skipping unexpected byte: 0x%02x", b[0])
             if attempts > 1024:
                 logger.warning("[Proto] Too many unexpected bytes, closing")
                 return None
@@ -264,11 +259,7 @@ class FPolicyServer:
         """
         parts = raw_bytes.split(b"\n\n", 1)
         header_str = parts[0].strip().decode("utf-8", errors="ignore")
-        body_str = (
-            parts[1].strip(b"\x00\n\r").decode("utf-8", errors="ignore")
-            if len(parts) > 1
-            else ""
-        )
+        body_str = parts[1].strip(b"\x00\n\r").decode("utf-8", errors="ignore") if len(parts) > 1 else ""
         return header_str, body_str
 
     def send_nego_resp(
@@ -357,11 +348,7 @@ class FPolicyServer:
         )
         if not svm_name:
             # Fallback: use session context from NEGO_REQ, then env var
-            svm_name = (
-                conn_ctx.get("svm_name")
-                or self._default_svm_name
-                or "unknown"
-            )
+            svm_name = conn_ctx.get("svm_name") or self._default_svm_name or "unknown"
 
         # Extract client IP
         client_ip = self._extract_xml_value(
@@ -418,21 +405,19 @@ class FPolicyServer:
     # --- Private methods ---
 
     def _dispatch_message(
-        self, conn: socket.socket, header_str: str, body_str: str,
+        self,
+        conn: socket.socket,
+        header_str: str,
+        body_str: str,
         conn_ctx: dict[str, str],
     ) -> None:
         """メッセージタイプに応じて処理を振り分ける."""
         if "<NotfType>NEGO_REQ</NotfType>" in header_str:
             self._handle_nego_req(conn, body_str, conn_ctx)
-        elif (
-            "<NotfType>KEEP_ALIVE_REQ</NotfType>" in header_str
-            or "<NotfType>KEEP_ALIVE</NotfType>" in header_str
-        ):
+        elif "<NotfType>KEEP_ALIVE_REQ</NotfType>" in header_str or "<NotfType>KEEP_ALIVE</NotfType>" in header_str:
             logger.info("[KeepAlive] Received — connection healthy")
         elif "<NotfType>ALERT_MSG</NotfType>" in header_str:
-            alert_match = re.search(
-                r"<AlertMsg>(.*?)</AlertMsg>", header_str + body_str
-            )
+            alert_match = re.search(r"<AlertMsg>(.*?)</AlertMsg>", header_str + body_str)
             logger.warning(
                 "[ALERT] %s",
                 alert_match.group(1) if alert_match else "No message",
@@ -453,9 +438,7 @@ class FPolicyServer:
                 header_str[:100],
             )
 
-    def _dispatch_protobuf_message(
-        self, conn: socket.socket, raw_msg: bytes, conn_ctx: dict[str, str]
-    ) -> None:
+    def _dispatch_protobuf_message(self, conn: socket.socket, raw_msg: bytes, conn_ctx: dict[str, str]) -> None:
         """protobuf フォーマットのメッセージを処理する.
 
         protobuf メッセージは header + body の 2 部構成。
@@ -494,11 +477,11 @@ class FPolicyServer:
 
             logger.info(
                 "[Handshake/PB] Policy=%s | Session=%s | VsUUID=%s",
-                policy_name, session_id, vs_uuid,
+                policy_name,
+                session_id,
+                vs_uuid,
             )
-            self.send_nego_resp(
-                conn, session_id, selected_version, vs_uuid, policy_name
-            )
+            self.send_nego_resp(conn, session_id, selected_version, vs_uuid, policy_name)
 
         elif notf_type in ("NOTI_REQ", "SCREEN_REQ"):
             self._handle_protobuf_notification(body_bytes, conn_ctx)
@@ -509,9 +492,7 @@ class FPolicyServer:
         else:
             logger.info("[Message/PB] Type=%s", notf_type)
 
-    def _handle_protobuf_notification(
-        self, body_bytes: bytes, conn_ctx: dict[str, str]
-    ) -> None:
+    def _handle_protobuf_notification(self, body_bytes: bytes, conn_ctx: dict[str, str]) -> None:
         """protobuf NOTI_REQ を処理する."""
         assert self._protobuf_parser is not None
 
@@ -546,9 +527,7 @@ class FPolicyServer:
             "file_path": ontap_path,
             "volume_name": volume_name,
             "svm_name": svm_name,
-            "timestamp": notification.get(
-                "timestamp", datetime.now(timezone.utc).isoformat()
-            ),
+            "timestamp": notification.get("timestamp", datetime.now(timezone.utc).isoformat()),
             "file_size": notification.get("file_size", 0),
         }
         if client_ip:
@@ -563,9 +542,7 @@ class FPolicyServer:
         else:
             self._write_to_log(fpolicy_event)
 
-    def _handle_nego_req(
-        self, conn: socket.socket, body_str: str, conn_ctx: dict[str, str]
-    ) -> None:
+    def _handle_nego_req(self, conn: socket.socket, body_str: str, conn_ctx: dict[str, str]) -> None:
         """NEGO_REQ ハンドシェイクを処理する."""
         session_match = re.search(r"<SessionId>(.*?)</SessionId>", body_str)
         policy_match = re.search(r"<PolicyName>(.*?)</PolicyName>", body_str)
@@ -592,11 +569,11 @@ class FPolicyServer:
 
         logger.info(
             "[Handshake] Policy=%s | Session=%s | VsUUID=%s",
-            policy_name, session_id, vs_uuid,
+            policy_name,
+            session_id,
+            vs_uuid,
         )
-        self.send_nego_resp(
-            conn, session_id, selected_version, vs_uuid, policy_name
-        )
+        self.send_nego_resp(conn, session_id, selected_version, vs_uuid, policy_name)
 
     def _send_to_sqs(self, fpolicy_event: dict) -> None:
         """FPolicy イベントを SQS に送信する."""

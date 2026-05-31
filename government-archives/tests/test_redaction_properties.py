@@ -29,12 +29,14 @@ def _generate_non_overlapping_entities(text: str, count: int) -> list[dict]:
         begin = i * slot
         end = min(begin + 3, len(text))
         if end > begin:
-            entities.append({
-                "Type": "NAME",
-                "BeginOffset": begin,
-                "EndOffset": end,
-                "Score": 0.9,
-            })
+            entities.append(
+                {
+                    "Type": "NAME",
+                    "BeginOffset": begin,
+                    "EndOffset": end,
+                    "Score": 0.9,
+                }
+            )
     return entities
 
 
@@ -64,7 +66,7 @@ def test_redact_no_pii_remaining(redaction_handler, text, count):
     entities = _generate_non_overlapping_entities(text, count)
     if not entities:
         return
-    originals = [text[e["BeginOffset"]:e["EndOffset"]] for e in entities]
+    originals = [text[e["BeginOffset"] : e["EndOffset"]] for e in entities]
     # Skip empty originals
     if any(not o.strip() for o in originals):
         return

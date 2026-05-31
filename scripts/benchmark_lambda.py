@@ -2,12 +2,14 @@
 S3 AP Concurrent GetObject Benchmark Lambda
 Measures latency for concurrent GetObject operations against FSx ONTAP S3 Access Point.
 """
+
 import time
 import statistics
 import concurrent.futures
 import boto3
 
 s3 = boto3.client("s3")
+
 
 def get_object_latency(bucket_alias, key):
     """Measure single GetObject latency in ms."""
@@ -19,20 +21,21 @@ def get_object_latency(bucket_alias, key):
     elapsed_ms = (time.perf_counter() - start) * 1000
     return elapsed_ms, len(data)
 
+
 def run_benchmark(bucket_alias, key, concurrency, iterations):
     """Run concurrent GetObject benchmark."""
     all_latencies = []
-    
+
     for i in range(iterations):
         with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
             futures = [executor.submit(get_object_latency, bucket_alias, key) for _ in range(concurrency)]
             for f in concurrent.futures.as_completed(futures):
                 latency, size = f.result()
                 all_latencies.append(latency)
-    
+
     all_latencies.sort()
     n = len(all_latencies)
-    
+
     return {
         "concurrency": concurrency,
         "total_requests": n,
@@ -46,19 +49,20 @@ def run_benchmark(bucket_alias, key, concurrency, iterations):
         "object_size_bytes": size if all_latencies else 0,
     }
 
+
 def lambda_handler(event, context):
     bucket_alias = event.get("bucket_alias", "fsxn-eda-s3ap-fhyst3uaibf46uywh5xka84pnz8jaapn1a-ext-s3alias")
     key = event.get("key", "_health/marker.txt")
     concurrencies = event.get("concurrencies", [1, 5, 10, 25, 50])
     iterations_per_concurrency = event.get("iterations", 10)
-    
+
     # First, verify access
     try:
         response = s3.list_objects_v2(Bucket=bucket_alias, MaxKeys=5)
         objects = response.get("Contents", [])
         if not objects:
             return {"error": "No objects found in S3 AP"}
-        
+
         # Use the first ~1MB object if no key specified
         if key == "_health/marker.txt":
             # Find a suitable test object
@@ -70,7 +74,7 @@ def lambda_handler(event, context):
                 key = objects[0]["Key"]
     except Exception as e:
         return {"error": f"Cannot access S3 AP: {str(e)}"}
-    
+
     results = []
     for c in concurrencies:
         try:
@@ -78,7 +82,7 @@ def lambda_handler(event, context):
             results.append(result)
         except Exception as e:
             results.append({"concurrency": c, "error": str(e)})
-    
+
     return {
         "benchmark_run_id": f"s3ap-bench-{time.strftime('%Y-%m-%d')}-002",
         "fsx_throughput_mbps": event.get("fsx_throughput_mbps", "unknown"),

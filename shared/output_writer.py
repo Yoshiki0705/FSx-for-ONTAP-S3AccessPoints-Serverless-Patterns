@@ -116,20 +116,15 @@ class OutputWriter:
         """
         if destination not in VALID_DESTINATIONS:
             raise OutputWriterError(
-                f"Invalid OUTPUT_DESTINATION '{destination}'. "
-                f"Must be one of: {sorted(VALID_DESTINATIONS)}"
+                f"Invalid OUTPUT_DESTINATION '{destination}'. Must be one of: {sorted(VALID_DESTINATIONS)}"
             )
 
         if destination == STANDARD_S3:
             if not bucket:
-                raise OutputWriterError(
-                    "OUTPUT_BUCKET is required when OUTPUT_DESTINATION=STANDARD_S3"
-                )
+                raise OutputWriterError("OUTPUT_BUCKET is required when OUTPUT_DESTINATION=STANDARD_S3")
         elif destination == FSXN_S3AP:
             if not s3ap_alias:
-                raise OutputWriterError(
-                    "OUTPUT_S3AP_ALIAS is required when OUTPUT_DESTINATION=FSXN_S3AP"
-                )
+                raise OutputWriterError("OUTPUT_S3AP_ALIAS is required when OUTPUT_DESTINATION=FSXN_S3AP")
 
         self._destination = destination
         self._bucket = bucket
@@ -396,12 +391,21 @@ class OutputWriter:
 
         if self._destination == FSXN_S3AP:
             return self._put_multipart_fsxn_s3ap(
-                resolved_key, merged_iterator(), content_type, part_size,
-                progress_callback, content_length_hint,
+                resolved_key,
+                merged_iterator(),
+                content_type,
+                part_size,
+                progress_callback,
+                content_length_hint,
             )
         return self._put_multipart_standard_s3(
-            bucket_param, resolved_key, merged_iterator(), content_type, part_size,
-            progress_callback, content_length_hint,
+            bucket_param,
+            resolved_key,
+            merged_iterator(),
+            content_type,
+            part_size,
+            progress_callback,
+            content_length_hint,
         )
 
     def put_file(
@@ -469,15 +473,12 @@ class OutputWriter:
         """
         bucket_param, resolved_key = self._resolve_target(key)
         try:
-            response = self._s3_client.get_object(
-                Bucket=bucket_param, Key=resolved_key
-            )
+            response = self._s3_client.get_object(Bucket=bucket_param, Key=resolved_key)
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if self._destination == FSXN_S3AP:
                 raise S3ApHelperError(
-                    f"Failed to get object '{resolved_key}' from "
-                    f"FSxN S3 Access Point '{self._s3ap_alias}': {e}.",
+                    f"Failed to get object '{resolved_key}' from FSxN S3 Access Point '{self._s3ap_alias}': {e}.",
                     error_code=error_code,
                 ) from e
             raise
@@ -501,9 +502,7 @@ class OutputWriter:
     ) -> dict[str, Any]:
         """Standard S3 multipart upload implementation."""
         try:
-            create_resp = self._s3_client.create_multipart_upload(
-                Bucket=bucket, Key=key, ContentType=content_type
-            )
+            create_resp = self._s3_client.create_multipart_upload(Bucket=bucket, Key=key, ContentType=content_type)
         except ClientError:
             raise
 
@@ -527,10 +526,12 @@ class OutputWriter:
                         PartNumber=part_number,
                         Body=part_data,
                     )
-                    parts.append({
-                        "PartNumber": part_number,
-                        "ETag": upload_resp["ETag"],
-                    })
+                    parts.append(
+                        {
+                            "PartNumber": part_number,
+                            "ETag": upload_resp["ETag"],
+                        }
+                    )
                     total_uploaded += len(part_data)
                     part_number += 1
 
@@ -546,10 +547,12 @@ class OutputWriter:
                     PartNumber=part_number,
                     Body=buffer,
                 )
-                parts.append({
-                    "PartNumber": part_number,
-                    "ETag": upload_resp["ETag"],
-                })
+                parts.append(
+                    {
+                        "PartNumber": part_number,
+                        "ETag": upload_resp["ETag"],
+                    }
+                )
                 total_uploaded += len(buffer)
 
                 if progress_callback:
@@ -564,10 +567,13 @@ class OutputWriter:
             )
 
             logger.info(
-                "Multipart upload complete: destination=%s, bucket=%s, key=%s, "
-                "size=%d, parts=%d, etag=%s",
-                self._destination, bucket, key, total_uploaded,
-                len(parts), complete_resp.get("ETag", ""),
+                "Multipart upload complete: destination=%s, bucket=%s, key=%s, size=%d, parts=%d, etag=%s",
+                self._destination,
+                bucket,
+                key,
+                total_uploaded,
+                len(parts),
+                complete_resp.get("ETag", ""),
             )
 
             return {
@@ -581,16 +587,14 @@ class OutputWriter:
         except Exception as e:
             logger.error(
                 "Multipart upload failed for key '%s', aborting upload_id '%s': %s",
-                key, upload_id, str(e),
+                key,
+                upload_id,
+                str(e),
             )
             try:
-                self._s3_client.abort_multipart_upload(
-                    Bucket=bucket, Key=key, UploadId=upload_id
-                )
+                self._s3_client.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
             except ClientError as abort_err:
-                logger.warning(
-                    "Failed to abort multipart upload '%s': %s", upload_id, str(abort_err)
-                )
+                logger.warning("Failed to abort multipart upload '%s': %s", upload_id, str(abort_err))
             raise
 
     def _put_multipart_fsxn_s3ap(
@@ -659,15 +663,12 @@ class OutputWriter:
         """
         bucket_param, resolved_key = self._resolve_target(key)
         try:
-            response = self._s3_client.get_object(
-                Bucket=bucket_param, Key=resolved_key
-            )
+            response = self._s3_client.get_object(Bucket=bucket_param, Key=resolved_key)
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if self._destination == FSXN_S3AP:
                 raise S3ApHelperError(
-                    f"Failed to get object '{resolved_key}' from "
-                    f"FSxN S3 Access Point '{self._s3ap_alias}': {e}.",
+                    f"Failed to get object '{resolved_key}' from FSxN S3 Access Point '{self._s3ap_alias}': {e}.",
                     error_code=error_code,
                 ) from e
             raise

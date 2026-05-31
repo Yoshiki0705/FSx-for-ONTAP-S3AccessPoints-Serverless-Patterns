@@ -103,13 +103,15 @@ def handler(event, context):
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "inputText": prompt,
-                "textGenerationConfig": {
-                    "maxTokenCount": 4096,
-                    "temperature": 0.3,
-                },
-            }),
+            body=json.dumps(
+                {
+                    "inputText": prompt,
+                    "textGenerationConfig": {
+                        "maxTokenCount": 4096,
+                        "temperature": 0.3,
+                    },
+                }
+            ),
         )
         response_json = json.loads(bedrock_response["body"].read())
 
@@ -165,7 +167,6 @@ def handler(event, context):
         output_key,
         notification_sent,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="report")

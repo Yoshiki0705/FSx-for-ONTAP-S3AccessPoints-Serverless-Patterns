@@ -82,17 +82,17 @@ def _extract_forms_from_blocks(blocks: list[dict]) -> list[dict]:
             if rel.get("Type") == "VALUE":
                 for value_id in rel.get("Ids", []):
                     value_block = block_map.get(value_id, {})
-                    value_text = _get_text_from_relationships(
-                        value_block, block_map
-                    )
+                    value_text = _get_text_from_relationships(value_block, block_map)
 
         confidence = block.get("Confidence", 0.0)
         if key_text:
-            forms.append({
-                "key": key_text,
-                "value": value_text,
-                "confidence": round(confidence, 2),
-            })
+            forms.append(
+                {
+                    "key": key_text,
+                    "value": value_text,
+                    "confidence": round(confidence, 2),
+                }
+            )
 
     return forms
 
@@ -127,9 +127,7 @@ def _evaluate_confidence(forms: list[dict], threshold: float) -> tuple[bool, lis
     Returns:
         tuple: (all_above_threshold, low_confidence_fields)
     """
-    low_confidence_fields = [
-        f for f in forms if f.get("confidence", 0.0) < threshold
-    ]
+    low_confidence_fields = [f for f in forms if f.get("confidence", 0.0) < threshold]
     all_above = len(low_confidence_fields) == 0
     return all_above, low_confidence_fields
 
@@ -158,9 +156,7 @@ def handler(event, context):
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
     output_writer = OutputWriter.from_env()
     cross_region = os.environ.get("CROSS_REGION", DEFAULT_CROSS_REGION)
-    confidence_threshold = float(
-        os.environ.get("CONFIDENCE_THRESHOLD", str(DEFAULT_CONFIDENCE_THRESHOLD))
-    )
+    confidence_threshold = float(os.environ.get("CONFIDENCE_THRESHOLD", str(DEFAULT_CONFIDENCE_THRESHOLD)))
 
     logger.info(
         "Logistics OCR started: file_key=%s, size=%d, cross_region=%s",
@@ -213,9 +209,7 @@ def handler(event, context):
     forms = _extract_forms_from_blocks(blocks)
 
     # 信頼度評価
-    all_above, low_confidence_fields = _evaluate_confidence(
-        forms, confidence_threshold
-    )
+    all_above, low_confidence_fields = _evaluate_confidence(forms, confidence_threshold)
     status = "SUCCESS" if all_above else "MANUAL_VERIFICATION"
 
     # 出力キー生成
@@ -243,7 +237,6 @@ def handler(event, context):
         len(forms),
         len(low_confidence_fields),
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="ocr")

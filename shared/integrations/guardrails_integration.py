@@ -73,9 +73,7 @@ def guardrail_check(
         (or None if execute_fn is None).
     """
     if not _is_guardrail_enabled():
-        logger.debug(
-            "[GuardrailIntegration] GUARDRAIL_MODE not set, skipping guardrail check"
-        )
+        logger.debug("[GuardrailIntegration] GUARDRAIL_MODE not set, skipping guardrail check")
         if execute_fn is not None:
             return execute_fn(**kwargs)
         return None
@@ -125,8 +123,7 @@ def with_guardrail_check(
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             if not _is_guardrail_enabled():
                 logger.debug(
-                    "[GuardrailIntegration] GUARDRAIL_MODE not set, "
-                    "executing %s directly",
+                    "[GuardrailIntegration] GUARDRAIL_MODE not set, executing %s directly",
                     func.__name__,
                 )
                 return func(*args, **kwargs)
@@ -162,8 +159,7 @@ def with_guardrail_check(
             if isinstance(result, GuardrailResult):
                 if not result.allowed:
                     logger.warning(
-                        "[GuardrailIntegration] Action denied by guardrail: "
-                        "action=%s reason=%s",
+                        "[GuardrailIntegration] Action denied by guardrail: action=%s reason=%s",
                         action_type,
                         result.reason,
                     )

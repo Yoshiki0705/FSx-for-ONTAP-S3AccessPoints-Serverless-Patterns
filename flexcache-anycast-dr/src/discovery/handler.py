@@ -86,10 +86,12 @@ def _get_s3ap_from_route_decision(event: dict) -> str | None:
         response = lambda_client.invoke(
             FunctionName=route_function,
             InvocationType="RequestResponse",
-            Payload=json.dumps({
-                "client_region": os.environ.get("AWS_REGION", "ap-northeast-1"),
-                "strategy": event.get("routing_strategy", "latency_based"),
-            }),
+            Payload=json.dumps(
+                {
+                    "client_region": os.environ.get("AWS_REGION", "ap-northeast-1"),
+                    "strategy": event.get("routing_strategy", "latency_based"),
+                }
+            ),
         )
         payload = json.loads(response["Payload"].read())
         s3ap_alias = payload.get("s3ap_alias")
@@ -120,11 +122,13 @@ def _list_objects(s3ap_alias: str, prefix: str, max_keys: int) -> list[dict]:
             response = s3_client.list_objects_v2(**kwargs)
 
             for obj in response.get("Contents", []):
-                objects.append({
-                    "key": obj["Key"],
-                    "size": obj["Size"],
-                    "last_modified": obj["LastModified"].isoformat(),
-                })
+                objects.append(
+                    {
+                        "key": obj["Key"],
+                        "size": obj["Size"],
+                        "last_modified": obj["LastModified"].isoformat(),
+                    }
+                )
 
             if not response.get("IsTruncated"):
                 break

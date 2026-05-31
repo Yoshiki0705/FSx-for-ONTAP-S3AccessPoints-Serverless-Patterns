@@ -86,12 +86,14 @@ def _split_into_chunks(text: str, chunk_size: int, overlap: int) -> list[dict]:
         chunk_text = text[start:end]
 
         if chunk_text.strip():
-            chunks.append({
-                "chunk_id": chunk_id,
-                "text": chunk_text,
-                "start_char": start,
-                "end_char": min(end, len(text)),
-            })
+            chunks.append(
+                {
+                    "chunk_id": chunk_id,
+                    "text": chunk_text,
+                    "start_char": start,
+                    "end_char": min(end, len(text)),
+                }
+            )
             chunk_id += 1
 
         start += chunk_size - overlap

@@ -3,6 +3,7 @@
 Adds the project root to sys.path so that 'shared' module imports work
 correctly when running tests from any directory.
 """
+
 import sys
 from pathlib import Path
 

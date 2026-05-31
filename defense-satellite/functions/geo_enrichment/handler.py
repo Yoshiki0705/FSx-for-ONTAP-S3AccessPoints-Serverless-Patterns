@@ -24,9 +24,7 @@ from shared.output_writer import OutputWriter
 logger = logging.getLogger(__name__)
 
 
-def _build_enrichment(
-    tile_metadata: dict[str, Any], source_key: str
-) -> dict[str, Any]:
+def _build_enrichment(tile_metadata: dict[str, Any], source_key: str) -> dict[str, Any]:
     """タイルメタデータから geo enrichment 情報を構築する。
 
     Args:
@@ -114,10 +112,12 @@ def handler(event, context):
     # 検出結果に enrichment を付与
     enriched_detections = []
     for det in detections:
-        enriched_detections.append({
-            **det,
-            "geo_context": enrichment,
-        })
+        enriched_detections.append(
+            {
+                **det,
+                "geo_context": enrichment,
+            }
+        )
 
     # 出力先に書き出し
     result_key = f"enriched/{datetime.utcnow().strftime('%Y/%m/%d')}/{tile_id}.json"

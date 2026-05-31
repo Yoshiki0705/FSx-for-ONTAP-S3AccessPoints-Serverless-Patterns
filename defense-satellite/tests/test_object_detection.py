@@ -35,9 +35,7 @@ def test_detect_with_rekognition_returns_labels(object_detection_handler):
 
     with patch.object(object_detection_handler, "boto3") as mock_boto3:
         mock_boto3.client.return_value = mock_rekognition
-        results = object_detection_handler._detect_with_rekognition(
-            b"image-bytes", min_confidence=70.0, max_labels=100
-        )
+        results = object_detection_handler._detect_with_rekognition(b"image-bytes", min_confidence=70.0, max_labels=100)
 
     assert len(results) == 2
     assert any(r["label"] == "Vehicle" for r in results)
@@ -51,16 +49,12 @@ def test_detect_with_sagemaker_parses_json(object_detection_handler):
     """SageMaker detection parses JSON response."""
     mock_runtime = MagicMock()
     mock_runtime.invoke_endpoint.return_value = {
-        "Body": MagicMock(
-            read=lambda: b'[{"label": "airplane", "confidence": 0.9}]'
-        ),
+        "Body": MagicMock(read=lambda: b'[{"label": "airplane", "confidence": 0.9}]'),
     }
 
     with patch.object(object_detection_handler, "boto3") as mock_boto3:
         mock_boto3.client.return_value = mock_runtime
-        results = object_detection_handler._detect_with_sagemaker(
-            "test-endpoint", b"image-bytes"
-        )
+        results = object_detection_handler._detect_with_sagemaker("test-endpoint", b"image-bytes")
 
     assert len(results) == 1
     assert results[0]["label"] == "airplane"
@@ -75,16 +69,12 @@ def test_detect_with_sagemaker_handles_invalid_json(object_detection_handler):
 
     with patch.object(object_detection_handler, "boto3") as mock_boto3:
         mock_boto3.client.return_value = mock_runtime
-        results = object_detection_handler._detect_with_sagemaker(
-            "test-endpoint", b"image-bytes"
-        )
+        results = object_detection_handler._detect_with_sagemaker("test-endpoint", b"image-bytes")
 
     assert results == []
 
 
-def test_handler_routes_to_rekognition_for_small_images(
-    object_detection_handler, lambda_context, monkeypatch
-):
+def test_handler_routes_to_rekognition_for_small_images(object_detection_handler, lambda_context, monkeypatch):
     """Handler uses Rekognition for images below payload limit."""
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.setenv("INFERENCE_TYPE", "none")
@@ -96,9 +86,7 @@ def test_handler_routes_to_rekognition_for_small_images(
         "Body": MagicMock(read=lambda: small_image),
     }
     mock_rekognition = MagicMock()
-    mock_rekognition.detect_labels.return_value = {
-        "Labels": [{"Name": "Ship", "Confidence": 85.0, "Instances": []}]
-    }
+    mock_rekognition.detect_labels.return_value = {"Labels": [{"Name": "Ship", "Confidence": 85.0, "Instances": []}]}
 
     def boto3_client(service):
         if service == "s3":
@@ -111,9 +99,10 @@ def test_handler_routes_to_rekognition_for_small_images(
     mock_writer.target_description = "Standard S3 bucket 'test-bucket'"
     mock_writer.build_s3_uri.return_value = "s3://test-bucket/out.json"
 
-    with patch.object(object_detection_handler, "boto3") as mock_boto3, patch.object(
-        object_detection_handler, "OutputWriter"
-    ) as mock_output_writer_cls:
+    with (
+        patch.object(object_detection_handler, "boto3") as mock_boto3,
+        patch.object(object_detection_handler, "OutputWriter") as mock_output_writer_cls,
+    ):
         mock_boto3.client.side_effect = boto3_client
         mock_output_writer_cls.from_env.return_value = mock_writer
         event = {"tile_key": "tiles/test.tif"}
@@ -124,9 +113,7 @@ def test_handler_routes_to_rekognition_for_small_images(
     mock_writer.put_json.assert_called_once()
 
 
-def test_handler_requires_tile_key(
-    object_detection_handler, lambda_context, monkeypatch
-):
+def test_handler_requires_tile_key(object_detection_handler, lambda_context, monkeypatch):
     """Handler raises ValueError when tile_key missing."""
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
 

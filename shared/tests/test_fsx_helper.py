@@ -47,7 +47,9 @@ def helper(mock_session) -> FsxHelper:
     return FsxHelper(session=mock_session)
 
 
-def _make_client_error(code: str = "FileSystemNotFound", message: str = "Not found", operation: str = "DescribeFileSystems") -> ClientError:
+def _make_client_error(
+    code: str = "FileSystemNotFound", message: str = "Not found", operation: str = "DescribeFileSystems"
+) -> ClientError:
     """テスト用 ClientError を生成する"""
     return ClientError(
         {"Error": {"Code": code, "Message": message}},
@@ -141,9 +143,7 @@ class TestFsxHelper:
         assert len(result) == 2
         assert result[0]["StorageVirtualMachineId"] == "svm-001"
         assert result[1]["StorageVirtualMachineId"] == "svm-002"
-        helper._fsx_client.get_paginator.assert_called_once_with(
-            "describe_storage_virtual_machines"
-        )
+        helper._fsx_client.get_paginator.assert_called_once_with("describe_storage_virtual_machines")
 
     def test_fsx_api_error_wraps_client_error(self, helper: FsxHelper):
         """FSx API の ClientError が FsxHelperError にラップされ、original_error 属性を持つことを検証する"""

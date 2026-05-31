@@ -148,10 +148,12 @@ def _invoke_pipeline(
     tagging_result = json.loads(tagging_response["Payload"].read())
 
     # CatalogMetadata 呼び出し
-    metadata_payload = json.dumps({
-        "Key": file_key,
-        "tagging_result": tagging_result,
-    }).encode("utf-8")
+    metadata_payload = json.dumps(
+        {
+            "Key": file_key,
+            "tagging_result": tagging_result,
+        }
+    ).encode("utf-8")
 
     metadata_response = lambda_client.invoke(
         FunctionName=catalog_metadata_function,
@@ -186,13 +188,15 @@ def _write_dead_letter(
     record_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    table.put_item(Item={
-        "record_id": record_id,
-        "file_key": file_key,
-        "error": error,
-        "timestamp": timestamp,
-        "retry_count": retry_count,
-    })
+    table.put_item(
+        Item={
+            "record_id": record_id,
+            "file_key": file_key,
+            "error": error,
+            "timestamp": timestamp,
+            "retry_count": retry_count,
+        }
+    )
 
     logger.error(
         "Dead-letter record written: record_id=%s, file_key=%s",

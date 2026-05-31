@@ -86,16 +86,13 @@ class TestSqsToEventBridgeProperty:
         """
         sqs_event = _make_sqs_event([event])
 
-
         mock_eb = MagicMock()
         mock_eb.put_events.return_value = {"Entries": [{"EventId": "evt-1"}]}
 
         mock_cw = MagicMock()
 
         with patch("shared.lambdas.sqs_to_eventbridge.handler.boto3") as mock_boto3:
-            mock_boto3.client.side_effect = lambda service, **kwargs: (
-                mock_eb if service == "events" else mock_cw
-            )
+            mock_boto3.client.side_effect = lambda service, **kwargs: mock_eb if service == "events" else mock_cw
 
             os.environ["EVENT_BUS_NAME"] = "test-bus"
             try:
@@ -108,7 +105,13 @@ class TestSqsToEventBridgeProperty:
 
         # Verify the detail field preserves all original fields
         call_args = mock_eb.put_events.call_args
-        entries = call_args[1]["Entries"] if "Entries" in (call_args[1] or {}) else call_args[0][0] if call_args[0] else call_args[1].get("Entries", [])
+        entries = (
+            call_args[1]["Entries"]
+            if "Entries" in (call_args[1] or {})
+            else call_args[0][0]
+            if call_args[0]
+            else call_args[1].get("Entries", [])
+        )
 
         # Get entries from kwargs
         if call_args.kwargs:
@@ -141,9 +144,7 @@ class TestSqsToEventBridgeUnit:
         mock_cw = MagicMock()
 
         with patch("shared.lambdas.sqs_to_eventbridge.handler.boto3") as mock_boto3:
-            mock_boto3.client.side_effect = lambda service, **kwargs: (
-                mock_eb if service == "events" else mock_cw
-            )
+            mock_boto3.client.side_effect = lambda service, **kwargs: mock_eb if service == "events" else mock_cw
 
             os.environ["EVENT_BUS_NAME"] = "test-bus"
             try:
@@ -170,9 +171,7 @@ class TestSqsToEventBridgeUnit:
         mock_cw = MagicMock()
 
         with patch("shared.lambdas.sqs_to_eventbridge.handler.boto3") as mock_boto3:
-            mock_boto3.client.side_effect = lambda service, **kwargs: (
-                mock_eb if service == "events" else mock_cw
-            )
+            mock_boto3.client.side_effect = lambda service, **kwargs: mock_eb if service == "events" else mock_cw
 
             os.environ["EVENT_BUS_NAME"] = "test-bus"
             try:
@@ -197,9 +196,7 @@ class TestSqsToEventBridgeUnit:
         mock_cw = MagicMock()
 
         with patch("shared.lambdas.sqs_to_eventbridge.handler.boto3") as mock_boto3:
-            mock_boto3.client.side_effect = lambda service, **kwargs: (
-                mock_eb if service == "events" else mock_cw
-            )
+            mock_boto3.client.side_effect = lambda service, **kwargs: mock_eb if service == "events" else mock_cw
 
             os.environ["EVENT_BUS_NAME"] = "test-bus"
             try:

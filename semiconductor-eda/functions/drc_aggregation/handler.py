@@ -91,9 +91,7 @@ QUERIES = {
 }
 
 
-def _ensure_glue_table(
-    glue_client, database: str, table: str, s3_location: str
-) -> None:
+def _ensure_glue_table(glue_client, database: str, table: str, s3_location: str) -> None:
     """Glue Data Catalog テーブルを作成/更新する
 
     EDA メタデータ JSON のスキーマに対応するテーブル定義を作成する。
@@ -126,9 +124,7 @@ def _ensure_glue_table(
             ],
             "Location": s3_location,
             "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
-            "OutputFormat": (
-                "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
-            ),
+            "OutputFormat": ("org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"),
             "SerdeInfo": {
                 "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe",
             },
@@ -170,19 +166,15 @@ def _execute_athena_query(
         dict: クエリ結果 (status, rows, query_execution_id)
     """
     with xray_subsegment(
-
         name="athena_startqueryexecution",
-
         annotations={"service_name": "athena", "operation": "StartQueryExecution", "use_case": "semiconductor-eda"},
-
     ):
-
         response = athena_client.start_query_execution(
-        QueryString=query,
-        QueryExecutionContext={"Database": database},
-        WorkGroup=workgroup,
-        ResultConfiguration={"OutputLocation": output_location},
-    )
+            QueryString=query,
+            QueryExecutionContext={"Database": database},
+            WorkGroup=workgroup,
+            ResultConfiguration={"OutputLocation": output_location},
+        )
     query_execution_id = response["QueryExecutionId"]
 
     # クエリ完了を待機（最大 5 分）
@@ -199,9 +191,7 @@ def _execute_athena_query(
         elapsed += 2
 
     if state != "SUCCEEDED":
-        reason = status["QueryExecution"]["Status"].get(
-            "StateChangeReason", "Unknown"
-        )
+        reason = status["QueryExecution"]["Status"].get("StateChangeReason", "Unknown")
         logger.error("Athena query failed: %s - %s", state, reason)
         return {
             "status": state,
@@ -217,9 +207,7 @@ def _execute_athena_query(
 
     rows = []
     result_set = results.get("ResultSet", {})
-    column_info = result_set.get("ResultSetMetadata", {}).get(
-        "ColumnInfo", []
-    )
+    column_info = result_set.get("ResultSetMetadata", {}).get("ColumnInfo", [])
     data_rows = result_set.get("Rows", [])
 
     # 最初の行はヘッダー
@@ -267,8 +255,7 @@ def handler(event, context):
     output_location = f"s3://{output_bucket}/athena-results/"
 
     logger.info(
-        "DRC Aggregation started: database=%s, table=%s, "
-        "metadata_prefix=%s, total_files=%d",
+        "DRC Aggregation started: database=%s, table=%s, metadata_prefix=%s, total_files=%d",
         database,
         table,
         metadata_prefix,
@@ -305,9 +292,7 @@ def handler(event, context):
             workgroup=workgroup,
             output_location=output_location,
         )
-        last_query_execution_id = result.get(
-            "query_execution_id", last_query_execution_id
-        )
+        last_query_execution_id = result.get("query_execution_id", last_query_execution_id)
 
         if result["status"] != "SUCCEEDED":
             logger.warning(
@@ -329,30 +314,21 @@ def handler(event, context):
             }
 
         elif query_name == "bounding_box_outliers":
-            statistics["bounding_box_outliers"] = [
-                row.get("file_key", "") for row in rows
-            ]
+            statistics["bounding_box_outliers"] = [row.get("file_key", "") for row in rows]
 
         elif query_name == "naming_violations":
-            statistics["naming_violations"] = [
-                row.get("file_key", "") for row in rows
-            ]
+            statistics["naming_violations"] = [row.get("file_key", "") for row in rows]
 
         elif query_name == "invalid_files_count" and rows:
-            statistics["invalid_files"] = _safe_int(
-                rows[0].get("invalid_count", "0")
-            )
+            statistics["invalid_files"] = _safe_int(rows[0].get("invalid_count", "0"))
 
-        logger.info(
-            "Query %s completed: %d rows", query_name, len(rows)
-        )
+        logger.info("Query %s completed: %d rows", query_name, len(rows))
 
     logger.info(
         "DRC Aggregation completed: total_designs=%d, invalid=%d",
         statistics["total_designs"],
         statistics["invalid_files"],
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="drc_aggregation")

@@ -51,9 +51,7 @@ def test_compute_diff_area_empty_bbox(change_detection_handler):
     assert diff == 0.0
 
 
-def test_handler_writes_to_dynamodb(
-    change_detection_handler, lambda_context, monkeypatch
-):
+def test_handler_writes_to_dynamodb(change_detection_handler, lambda_context, monkeypatch):
     """Handler writes current detection to DynamoDB."""
     monkeypatch.setenv("CHANGE_HISTORY_TABLE", "test-table")
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
@@ -68,9 +66,7 @@ def test_handler_writes_to_dynamodb(
         mock_boto3.resource.return_value = mock_resource
         event = {
             "tile_key": "tiles/test.tif",
-            "detections": [
-                {"label": "Vehicle", "bbox": {"Width": 0.1, "Height": 0.1}}
-            ],
+            "detections": [{"label": "Vehicle", "bbox": {"Width": 0.1, "Height": 0.1}}],
             "image_metadata": {"bounds": [139.0, 35.0, 140.0, 36.0]},
         }
         result = change_detection_handler.handler(event, lambda_context)
@@ -80,9 +76,7 @@ def test_handler_writes_to_dynamodb(
     mock_table.put_item.assert_called_once()
 
 
-def test_handler_detects_no_change_for_first_detection(
-    change_detection_handler, lambda_context, monkeypatch
-):
+def test_handler_detects_no_change_for_first_detection(change_detection_handler, lambda_context, monkeypatch):
     """First-time detection has no previous, so change_detected depends on threshold."""
     monkeypatch.setenv("CHANGE_HISTORY_TABLE", "test-table")
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")

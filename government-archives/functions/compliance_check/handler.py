@@ -32,9 +32,7 @@ GRS_RETENTION_MAP = {
 }
 
 
-def compute_disposal_date(
-    creation_date: str, retention_years: int
-) -> str:
+def compute_disposal_date(creation_date: str, retention_years: int) -> str:
     """廃棄予定日を計算する（ISO 8601 形式）。"""
     try:
         created = datetime.fromisoformat(creation_date.replace("Z", ""))
@@ -87,19 +85,23 @@ def handler(event, context):
         dynamodb = boto3.resource("dynamodb")
         table = dynamodb.Table(table_name)
         # 廃棄予定日 + 90日を TTL に（自動削除通知用）
-        ttl = int(time.time()) + int(
-            (datetime.fromisoformat(disposal_date) - datetime.utcnow()).total_seconds()
-        ) + 90 * 24 * 3600
+        ttl = (
+            int(time.time())
+            + int((datetime.fromisoformat(disposal_date) - datetime.utcnow()).total_seconds())
+            + 90 * 24 * 3600
+        )
 
-        table.put_item(Item={
-            "document_key": document_key,
-            "clearance_level": clearance_level,
-            "grs_code": grs_code,
-            "retention_years": retention_years,
-            "creation_date": creation_date,
-            "disposal_date": disposal_date,
-            "ttl": ttl,
-        })
+        table.put_item(
+            Item={
+                "document_key": document_key,
+                "clearance_level": clearance_level,
+                "grs_code": grs_code,
+                "retention_years": retention_years,
+                "creation_date": creation_date,
+                "disposal_date": disposal_date,
+                "ttl": ttl,
+            }
+        )
 
     logger.info(
         "UC16 ComplianceCheck: document=%s, grs=%s, retention=%dy, disposal=%s",

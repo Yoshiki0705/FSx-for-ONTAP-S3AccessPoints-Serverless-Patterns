@@ -356,9 +356,7 @@ def generate_dashboard_widgets(
                 "y": y_offset,
                 "width": 24,
                 "height": 1,
-                "properties": {
-                    "markdown": "## Synthetic Monitoring — S3AP & ONTAP Health"
-                },
+                "properties": {"markdown": "## Synthetic Monitoring — S3AP & ONTAP Health"},
             }
         )
         y_offset += 1

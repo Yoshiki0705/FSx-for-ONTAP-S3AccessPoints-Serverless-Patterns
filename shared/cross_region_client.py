@@ -65,9 +65,7 @@ class CrossRegionConfig:
     """
 
     target_region: str = "us-east-1"
-    services: list[str] = field(
-        default_factory=lambda: ["textract", "comprehendmedical"]
-    )
+    services: list[str] = field(default_factory=lambda: ["textract", "comprehendmedical"])
     verify_ssl: bool = True
     connect_timeout: int = 10
     read_timeout: int = 60
@@ -82,9 +80,7 @@ class CrossRegionConfig:
 
         未知のキーは無視し、dataclass フィールドに一致するキーのみ使用する。
         """
-        return cls(
-            **{k: v for k, v in data.items() if k in cls.__dataclass_fields__}
-        )
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
 class CrossRegionClient:
@@ -131,8 +127,7 @@ class CrossRegionClient:
         """
         if service_name not in self._config.services:
             raise CrossRegionClientError(
-                f"Service '{service_name}' is not in allowed services: "
-                f"{self._config.services}",
+                f"Service '{service_name}' is not in allowed services: {self._config.services}",
                 target_region=self._config.target_region,
                 service_name=service_name,
             )
@@ -156,8 +151,7 @@ class CrossRegionClient:
                 )
             except Exception as e:
                 raise CrossRegionClientError(
-                    f"Failed to create client for '{service_name}' in region "
-                    f"'{self._config.target_region}': {e}",
+                    f"Failed to create client for '{service_name}' in region '{self._config.target_region}': {e}",
                     target_region=self._config.target_region,
                     service_name=service_name,
                     original_error=e,
@@ -195,8 +189,7 @@ class CrossRegionClient:
             raise
         except Exception as e:
             raise CrossRegionClientError(
-                f"Textract AnalyzeDocument failed in region "
-                f"'{self._config.target_region}': {e}",
+                f"Textract AnalyzeDocument failed in region '{self._config.target_region}': {e}",
                 target_region=self._config.target_region,
                 service_name="textract",
                 original_error=e,
@@ -222,8 +215,7 @@ class CrossRegionClient:
             raise
         except Exception as e:
             raise CrossRegionClientError(
-                f"Comprehend Medical DetectEntitiesV2 failed in region "
-                f"'{self._config.target_region}': {e}",
+                f"Comprehend Medical DetectEntitiesV2 failed in region '{self._config.target_region}': {e}",
                 target_region=self._config.target_region,
                 service_name="comprehendmedical",
                 original_error=e,
@@ -269,9 +261,7 @@ class CrossRegionClient:
 
         # DynamoDB 設定テーブルからのフォールバック
         if not endpoints:
-            config_table_name = os.environ.get(
-                "REGIONAL_CONFIG_TABLE", "fsxn-s3ap-regional-config"
-            )
+            config_table_name = os.environ.get("REGIONAL_CONFIG_TABLE", "fsxn-s3ap-regional-config")
             try:
                 dynamodb = self._session.resource("dynamodb")
                 table = dynamodb.Table(config_table_name)
@@ -285,8 +275,7 @@ class CrossRegionClient:
                         endpoints[region] = arn
             except Exception as e:
                 logger.warning(
-                    "Failed to discover endpoints from DynamoDB config table "
-                    "'%s': %s",
+                    "Failed to discover endpoints from DynamoDB config table '%s': %s",
                     config_table_name,
                     str(e),
                 )
@@ -297,9 +286,7 @@ class CrossRegionClient:
         )
         return endpoints
 
-    def access_with_failover(
-        self, operation: str, **kwargs: Any
-    ) -> dict[str, Any]:
+    def access_with_failover(self, operation: str, **kwargs: Any) -> dict[str, Any]:
         """S3 AP オペレーションを自動フェイルオーバー付きで実行する。
 
         フロー:
@@ -334,9 +321,7 @@ class CrossRegionClient:
         # プライマリリージョンで試行
         start_time = time.time()
         try:
-            response = self._execute_s3_operation(
-                self._primary_region, operation, **kwargs
-            )
+            response = self._execute_s3_operation(self._primary_region, operation, **kwargs)
             latency_ms = (time.time() - start_time) * 1000
 
             metrics.put_metric("CrossRegionLatency", latency_ms, "Milliseconds")
@@ -353,8 +338,7 @@ class CrossRegionClient:
 
         except _FAILOVER_EXCEPTIONS as primary_error:
             logger.warning(
-                "Primary region '%s' failed for operation '%s': %s. "
-                "Attempting failover to '%s'.",
+                "Primary region '%s' failed for operation '%s': %s. Attempting failover to '%s'.",
                 self._primary_region,
                 operation,
                 str(primary_error),
@@ -362,17 +346,14 @@ class CrossRegionClient:
             )
             if not self._failover_enabled:
                 raise CrossRegionClientError(
-                    f"Primary region '{self._primary_region}' failed and "
-                    f"failover is disabled: {primary_error}",
+                    f"Primary region '{self._primary_region}' failed and failover is disabled: {primary_error}",
                     target_region=self._primary_region,
                     service_name="s3",
                     original_error=primary_error,
                 ) from primary_error
 
         except ClientError as primary_error:
-            http_code = primary_error.response.get("ResponseMetadata", {}).get(
-                "HTTPStatusCode", 0
-            )
+            http_code = primary_error.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
             if http_code not in _FAILOVER_HTTP_CODES:
                 # 4xx エラーはフェイルオーバー対象外（クライアントエラー）
                 raise CrossRegionClientError(
@@ -385,8 +366,7 @@ class CrossRegionClient:
                 ) from primary_error
 
             logger.warning(
-                "Primary region '%s' returned HTTP %d for operation '%s'. "
-                "Attempting failover to '%s'.",
+                "Primary region '%s' returned HTTP %d for operation '%s'. Attempting failover to '%s'.",
                 self._primary_region,
                 http_code,
                 operation,
@@ -404,9 +384,7 @@ class CrossRegionClient:
         # セカンダリリージョンで試行（フェイルオーバー）
         start_time = time.time()
         try:
-            response = self._execute_s3_operation(
-                self._secondary_region, operation, **kwargs
-            )
+            response = self._execute_s3_operation(self._secondary_region, operation, **kwargs)
             latency_ms = (time.time() - start_time) * 1000
 
             metrics.put_metric("CrossRegionLatency", latency_ms, "Milliseconds")
@@ -459,9 +437,7 @@ class CrossRegionClient:
             )
         return self._s3_clients[region]
 
-    def _execute_s3_operation(
-        self, region: str, operation: str, **kwargs: Any
-    ) -> dict:
+    def _execute_s3_operation(self, region: str, operation: str, **kwargs: Any) -> dict:
         """指定リージョンで S3 オペレーションを実行する。
 
         Args:

@@ -90,9 +90,7 @@ def handler(event, context):
     labels = detect_response.get("Labels", [])
 
     # 最低信頼度スコアを取得（ラベルがない場合は 0.0）
-    min_confidence = (
-        min(label["Confidence"] for label in labels) if labels else 0.0
-    )
+    min_confidence = min(label["Confidence"] for label in labels) if labels else 0.0
 
     # 手動レビューフラグ判定
     flagged = should_flag_for_review(min_confidence, threshold)
@@ -121,13 +119,8 @@ def handler(event, context):
     }
 
     # 結果 JSON を S3 AP に書き出し
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
-    output_key = (
-        f"image-analysis/{datetime.utcnow().strftime('%Y/%m/%d')}"
-        f"/{image_key.rsplit('/', 1)[-1]}.json"
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
+    output_key = f"image-analysis/{datetime.utcnow().strftime('%Y/%m/%d')}/{image_key.rsplit('/', 1)[-1]}.json"
 
     s3ap_output.put_object(
         key=output_key,
@@ -136,15 +129,13 @@ def handler(event, context):
     )
 
     logger.info(
-        "Image Analysis completed: key=%s, labels=%d, "
-        "min_confidence=%.1f, flagged=%s, output=%s",
+        "Image Analysis completed: key=%s, labels=%d, min_confidence=%.1f, flagged=%s, output=%s",
         image_key,
         len(labels),
         min_confidence,
         flagged,
         output_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="image_analysis")

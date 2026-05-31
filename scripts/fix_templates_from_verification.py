@@ -8,6 +8,7 @@
 
 対象: 全 UC の template.yaml
 """
+
 import os
 import re
 import sys

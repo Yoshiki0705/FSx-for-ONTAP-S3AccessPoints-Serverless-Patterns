@@ -29,9 +29,18 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # サポートするファイル拡張子
     supported_extensions = {
-        ".pdf", ".docx", ".doc", ".txt", ".md",
-        ".pptx", ".xlsx", ".csv", ".json",
-        ".html", ".htm", ".rtf",
+        ".pdf",
+        ".docx",
+        ".doc",
+        ".txt",
+        ".md",
+        ".pptx",
+        ".xlsx",
+        ".csv",
+        ".json",
+        ".html",
+        ".htm",
+        ".rtf",
     }
 
     objects = []
@@ -53,12 +62,14 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 key = obj["Key"]
                 ext = os.path.splitext(key)[1].lower()
                 if ext in supported_extensions:
-                    objects.append({
-                        "key": key,
-                        "size": obj["Size"],
-                        "last_modified": obj["LastModified"].isoformat(),
-                        "extension": ext,
-                    })
+                    objects.append(
+                        {
+                            "key": key,
+                            "size": obj["Size"],
+                            "last_modified": obj["LastModified"].isoformat(),
+                            "extension": ext,
+                        }
+                    )
 
             if not response.get("IsTruncated"):
                 break

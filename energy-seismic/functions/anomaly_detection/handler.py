@@ -217,13 +217,15 @@ def _detect_anomalies(
                 depth = row[depth_col_idx] if depth_col_idx < len(row) else 0.0
 
                 std_deviations = round(deviation / std_dev, 1)
-                anomalies.append({
-                    "depth": depth,
-                    "sensor": sensor_name,
-                    "value": round(value, 1),
-                    "threshold": round(mean + threshold_value, 1),
-                    "std_deviations": std_deviations,
-                })
+                anomalies.append(
+                    {
+                        "depth": depth,
+                        "sensor": sensor_name,
+                        "value": round(value, 1),
+                        "threshold": round(mean + threshold_value, 1),
+                        "std_deviations": std_deviations,
+                    }
+                )
 
     return anomalies
 
@@ -254,9 +256,7 @@ def handler(event, context):
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
     output_writer = OutputWriter.from_env()
-    threshold_std = float(
-        os.environ.get("ANOMALY_THRESHOLD_STD", DEFAULT_ANOMALY_THRESHOLD_STD)
-    )
+    threshold_std = float(os.environ.get("ANOMALY_THRESHOLD_STD", DEFAULT_ANOMALY_THRESHOLD_STD))
 
     # ファイル取得
     try:
@@ -301,9 +301,7 @@ def handler(event, context):
     # 日付パーティション付き出力キー生成
     now = datetime.now(timezone.utc)
     file_stem = PurePosixPath(file_key).stem
-    output_key = (
-        f"anomalies/{now.strftime('%Y/%m/%d')}/{file_stem}.json"
-    )
+    output_key = f"anomalies/{now.strftime('%Y/%m/%d')}/{file_stem}.json"
 
     # 結果を S3 に書き出し
     output_data = {
@@ -326,7 +324,6 @@ def handler(event, context):
         len(anomalies),
         output_key,
     )
-
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="anomaly_detection")

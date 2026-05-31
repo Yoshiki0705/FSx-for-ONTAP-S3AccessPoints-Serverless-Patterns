@@ -67,13 +67,9 @@ def handler(event, context):
     if ontap_ip and secret_name:
         try:
             sm = boto3.client("secretsmanager")
-            secret = json.loads(
-                sm.get_secret_value(SecretId=secret_name)["SecretString"]
-            )
+            secret = json.loads(sm.get_secret_value(SecretId=secret_name)["SecretString"])
             http = urllib3.PoolManager(cert_reqs="CERT_NONE")
-            headers = urllib3.make_headers(
-                basic_auth=f"{secret.get('username', 'fsxadmin')}:{secret['password']}"
-            )
+            headers = urllib3.make_headers(basic_auth=f"{secret.get('username', 'fsxadmin')}:{secret['password']}")
             start = time.time()
             resp = http.request(
                 "GET",
@@ -111,14 +107,12 @@ def handler(event, context):
         pass
 
     # Summary
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"Overall: {'PASSED' if all_passed else 'FAILED'}")
     for r in results:
         print(f"  {r}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     # Raise exception if any check failed — this marks the Canary as FAILED
     if not all_passed:
-        raise Exception(
-            f"Health check failed: {[r for r in results if 'FAILED' in r]}"
-        )
+        raise Exception(f"Health check failed: {[r for r in results if 'FAILED' in r]}")

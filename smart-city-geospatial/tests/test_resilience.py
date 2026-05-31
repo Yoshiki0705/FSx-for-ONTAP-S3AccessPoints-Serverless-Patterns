@@ -5,9 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 
-def test_rekognition_invalid_format_returns_empty(
-    land_use_classification_handler, lambda_context, monkeypatch
-):
+def test_rekognition_invalid_format_returns_empty(land_use_classification_handler, lambda_context, monkeypatch):
     """InvalidImageFormatException で GeoTIFF ヘッダー分類にフォールバックする。"""
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
     monkeypatch.setenv("INFERENCE_TYPE", "none")
@@ -19,9 +17,7 @@ def test_rekognition_invalid_format_returns_empty(
         pass
 
     mock_s3 = MagicMock()
-    mock_s3.get_object.return_value = {
-        "Body": MagicMock(read=lambda: b"II*\x00" + b"\x00" * 100)
-    }
+    mock_s3.get_object.return_value = {"Body": MagicMock(read=lambda: b"II*\x00" + b"\x00" * 100)}
 
     mock_rek = MagicMock()
     mock_rek.exceptions.InvalidImageFormatException = _InvalidImageFormatException
@@ -37,9 +33,10 @@ def test_rekognition_invalid_format_returns_empty(
 
     mock_writer = MagicMock()
 
-    with patch.object(land_use_classification_handler, "boto3") as mock_boto3, patch.object(
-        land_use_classification_handler, "OutputWriter"
-    ) as mock_output_writer_cls:
+    with (
+        patch.object(land_use_classification_handler, "boto3") as mock_boto3,
+        patch.object(land_use_classification_handler, "OutputWriter") as mock_output_writer_cls,
+    ):
         mock_boto3.client.side_effect = boto3_client
         mock_output_writer_cls.from_env.return_value = mock_writer
         event = {"source_key": "gis/malformed.tif"}
@@ -52,9 +49,7 @@ def test_rekognition_invalid_format_returns_empty(
     assert len(result["landuse_distribution"]) > 0
 
 
-def test_change_detection_float_to_decimal(
-    change_detection_handler, lambda_context, monkeypatch
-):
+def test_change_detection_float_to_decimal(change_detection_handler, lambda_context, monkeypatch):
     """DynamoDB 保存時に float が Decimal 変換されていること。"""
     from decimal import Decimal
 

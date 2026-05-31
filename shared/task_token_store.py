@@ -120,8 +120,7 @@ class TaskTokenStore:
 
                 # セキュリティ: task_token の値はログに出力しない
                 logger.info(
-                    "Stored task token: correlation_id=%s, "
-                    "transform_job_name=%s, ttl=%d",
+                    "Stored task token: correlation_id=%s, transform_job_name=%s, ttl=%d",
                     correlation_id,
                     transform_job_name,
                     ttl_value,
@@ -129,21 +128,16 @@ class TaskTokenStore:
                 return correlation_id
 
             except ClientError as e:
-                if (
-                    e.response["Error"]["Code"]
-                    == "ConditionalCheckFailedException"
-                ):
+                if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                     logger.warning(
-                        "Correlation ID collision: correlation_id=%s, "
-                        "attempt=%d/%d",
+                        "Correlation ID collision: correlation_id=%s, attempt=%d/%d",
                         correlation_id,
                         attempt,
                         _MAX_RETRIES,
                     )
                     if attempt == _MAX_RETRIES:
                         raise TokenStorageError(
-                            f"Failed to store task token after {_MAX_RETRIES} "
-                            f"retries due to correlation ID collisions",
+                            f"Failed to store task token after {_MAX_RETRIES} retries due to correlation ID collisions",
                             correlation_id=correlation_id,
                             retry_count=_MAX_RETRIES,
                         ) from e
@@ -202,9 +196,7 @@ class TaskTokenStore:
         )
         return item.get("task_token")
 
-    def retrieve_token_by_job_name(
-        self, transform_job_name: str
-    ) -> Optional[str]:
+    def retrieve_token_by_job_name(self, transform_job_name: str) -> Optional[str]:
         """Retrieve task token by SageMaker job name (GSI query).
 
         GSI（TransformJobNameIndex）を使用してジョブ名から Task Token を取得する。
@@ -224,8 +216,7 @@ class TaskTokenStore:
             )
         except ClientError as e:
             logger.error(
-                "DynamoDB error querying by job name: "
-                "transform_job_name=%s, error=%s",
+                "DynamoDB error querying by job name: transform_job_name=%s, error=%s",
                 transform_job_name,
                 str(e),
             )
@@ -241,8 +232,7 @@ class TaskTokenStore:
 
         # セキュリティ: task_token の値はログに出力しない
         logger.info(
-            "Retrieved task token by job name: transform_job_name=%s, "
-            "correlation_id=%s",
+            "Retrieved task token by job name: transform_job_name=%s, correlation_id=%s",
             transform_job_name,
             items[0].get("correlation_id"),
         )

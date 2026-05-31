@@ -34,6 +34,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- Schema Validation (used by tests and SQS ingestion) ---
 
+
 class SchemaValidationError(Exception):
     """Raised when an FPolicy event fails schema validation."""
 
@@ -44,6 +45,7 @@ class SchemaValidationError(Exception):
 
 class SqsIngestionError(Exception):
     """Raised when SQS message send fails after retries."""
+
     pass
 
 
@@ -118,11 +120,9 @@ def send_to_sqs_with_retry(
         except Exception as e:
             last_error = e
             if attempt < max_retries - 1:
-                time.sleep(base_delay * (2 ** attempt))
+                time.sleep(base_delay * (2**attempt))
 
-    raise SqsIngestionError(
-        f"All {max_retries} SQS send attempts failed: {last_error}"
-    )
+    raise SqsIngestionError(f"All {max_retries} SQS send attempts failed: {last_error}")
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
