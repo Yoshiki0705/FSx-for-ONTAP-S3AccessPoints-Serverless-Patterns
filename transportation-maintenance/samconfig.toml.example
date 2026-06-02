@@ -1,0 +1,31 @@
+# UC22: Transportation Maintenance — SAM Configuration Example
+# Copy this file to samconfig.toml and update values for your environment.
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-transportation"
+resolve_s3 = true
+s3_prefix = "transportation-maintenance"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+
+parameter_overrides = [
+  "S3AccessPointAlias=your-s3ap-alias-ext-s3alias",
+  "S3AccessPointName=your-s3ap-name",
+  "S3AccessPointOutputAlias=your-output-s3ap-alias-ext-s3alias",
+  "OntapSecretName=your-ontap-secret",
+  "OntapManagementIp=10.0.1.100",
+  "SvmUuid=your-svm-uuid",
+  "VpcId=vpc-xxxxxxxxx",
+  "PrivateSubnetIds=subnet-aaaaa,subnet-bbbbb",
+  "PrivateRouteTableIds=rtb-xxxxx,rtb-yyyyy",
+  "NotificationEmail=your-email@example.com",
+  "StandardConfidenceThreshold=80",
+  "SafetyCriticalConfidenceThreshold=60",
+  "HumanReviewThreshold=90",
+  "MinImageWidth=1024",
+  "MinImageHeight=768",
+  "SafetyCriticalCategories=bridges,signaling,rail-joints",
+]

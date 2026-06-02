@@ -1,0 +1,839 @@
+# ⚠️ NOTE: This file is for SAM local testing only.
+# The authoritative deployment template is template-deploy.yaml.
+# Edit template-deploy.yaml for production changes.
+#
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  UC21: 農業・食品業界 — 農地航空画像分析/食品トレーサビリティ
+  FSx for NetApp ONTAP S3 Access Points を活用した植生指数分析、
+  異常検出、トレーサビリティ文書管理のサーバーレスワークフロー。
+
+# =====================================================================
+# Parameters — Layer 1 (共通) + Layer 2 (拡張) + Layer 3 (TriggerMode) + Layer 4 (UC固有)
+# =====================================================================
+Parameters:
+  # --- Layer 1: Phase 1 共通 ---
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias (入力読み取り用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: 入力用 S3 Access Point の名前（IAM ARN 用）
+
+  S3AccessPointOutputAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias (出力書き込み用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  OntapSecretName:
+    Type: String
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
+
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  SvmUuid:
+    Type: String
+    Description: ONTAP SVM UUID
+
+  ScheduleExpression:
+    Type: String
+    Default: "cron(0 0 * * ? *)"
+    Description: "EventBridge Scheduler スケジュール式"
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: プライベートサブネット ID リスト
+
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+    Description: プライベートサブネットのルートテーブル ID リスト
+
+  OutputBucketName:
+    Type: String
+    Default: ""
+    Description: 出力バケット名（空の場合は自動作成）
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+
+  # --- Layer 2: Phase 2 拡張 ---
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 100
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 512
+    AllowedValues: [128, 256, 512, 1024, 2048]
+
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 900
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+  EnableS3GatewayEndpoint:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+  BedrockModelId:
+    Type: String
+    Default: "anthropic.claude-3-haiku-20240307-v1:0"
+    Description: Bedrock モデル ID（異常分類用）
+
+  # --- Layer 3: TriggerMode ---
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+
+  FPolicyEventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+
+  # --- Layer 4: UC21 固有 ---
+  CrossRegionTextractRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: Textract を実行するリージョン (Cross-Region)
+
+  CropAnomalyConfidenceThreshold:
+    Type: String
+    Default: "0.70"
+    Description: 作物異常検出の信頼度閾値 (0.0-1.0)
+
+  TraceabilityConfidenceThreshold:
+    Type: String
+    Default: "0.80"
+    Description: トレーサビリティ分類の信頼度閾値 (0.0-1.0)
+
+  MaxImageSizeMB:
+    Type: Number
+    Default: 500
+    Description: 処理対象画像の最大サイズ (MB)
+    MinValue: 1
+    MaxValue: 5000
+
+  ImagePrefix:
+    Type: String
+    Default: "aerial-images/"
+    Description: 航空画像の S3 プレフィックス
+
+  TraceabilityPrefix:
+    Type: String
+    Default: "traceability/"
+    Description: トレーサビリティ文書の S3 プレフィックス
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
+  HasOutputBucketName:
+    !Not [!Equals [!Ref OutputBucketName, ""]]
+  CreateVpcEndpoints:
+    !Equals [!Ref EnableVpcEndpoints, "true"]
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  CreateS3GatewayEndpoint:
+    !Equals [!Ref EnableS3GatewayEndpoint, "true"]
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
+  IsPolling:
+    !Equals [!Ref TriggerMode, "POLLING"]
+  IsEventDriven:
+    !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+  IsHybrid:
+    !Equals [!Ref TriggerMode, "HYBRID"]
+  IsPollingOrHybrid:
+    !Or
+      - !Condition IsPolling
+      - !Condition IsHybrid
+  IsEventDrivenOrHybrid:
+    !Or
+      - !Condition IsEventDriven
+      - !Condition IsHybrid
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # Output Bucket (conditional)
+  # -----------------------------------------------------------------
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Condition: HasOutputBucketName
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: agri-food-traceability
+
+  # -----------------------------------------------------------------
+  # SNS Topic + Email Subscription
+  # -----------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -----------------------------------------------------------------
+  # Lambda Security Group
+  # -----------------------------------------------------------------
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Lambda functions security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  # -----------------------------------------------------------------
+  # S3 Gateway Endpoint (conditional)
+  # -----------------------------------------------------------------
+  S3GatewayEndpoint:
+    Condition: CreateS3GatewayEndpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref PrivateRouteTableIds
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups
+  # -----------------------------------------------------------------
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: 14
+
+  CropAnalyzerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-crop-analyzer"
+      RetentionInDays: 14
+
+  TraceabilityExtractorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-traceability-extractor"
+      RetentionInDays: 14
+
+  ReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-report"
+      RetentionInDays: 14
+
+  # -----------------------------------------------------------------
+  # IAM Roles — least-privilege per Lambda
+  # -----------------------------------------------------------------
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Ref AWS::NoValue
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: SecretsManager
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt DiscoveryLogGroup.Arn
+                  - !Sub "${DiscoveryLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  CropAnalyzerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-crop-analyzer-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CropAnalyzerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
+              # Rekognition does not support resource-level IAM policies (Resource: "*" is required)
+              # See: https://docs.aws.amazon.com/rekognition/latest/dg/security_iam_service-with-iam.html
+              - Sid: Rekognition
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: "*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt CropAnalyzerLogGroup.Arn
+                  - !Sub "${CropAnalyzerLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  TraceabilityExtractorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-traceability-extractor-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: TraceabilityExtractorPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
+              - Sid: TextractCrossRegion
+                Effect: Allow
+                Action:
+                  - textract:AnalyzeDocument
+                  - textract:DetectDocumentText
+                Resource: "*"
+              - Sid: Comprehend
+                Effect: Allow
+                Action:
+                  - comprehend:DetectEntities
+                  - comprehend:DetectKeyPhrases
+                  - comprehend:DetectDominantLanguage
+                Resource: "*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt TraceabilityExtractorLogGroup.Arn
+                  - !Sub "${TraceabilityExtractorLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  ReportLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-report-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReportPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Output
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: SNS
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ReportLogGroup.Arn
+                  - !Sub "${ReportLogGroup.Arn}:*"
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  # -----------------------------------------------------------------
+  # Lambda Functions
+  # -----------------------------------------------------------------
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.13
+      Handler: agri-food-traceability/functions/discovery/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          USE_CASE: "agri-food-traceability"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          IMAGE_PREFIX: !Ref ImagePrefix
+          TRACEABILITY_PREFIX: !Ref TraceabilityPrefix
+          MAX_IMAGE_SIZE_MB: !Ref MaxImageSizeMB
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          SVM_UUID: !Ref SvmUuid
+          VERIFY_SSL: "false"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+      Tags:
+        - Key: UseCase
+          Value: agri-food-traceability
+
+  CropAnalyzerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      FunctionName: !Sub "${AWS::StackName}-crop-analyzer"
+      Runtime: python3.13
+      Handler: agri-food-traceability/functions/crop_analyzer/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      EphemeralStorage:
+        Size: 1024
+      Role: !GetAtt CropAnalyzerLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "agri-food-traceability"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          CROP_ANOMALY_CONFIDENCE_THRESHOLD: !Ref CropAnomalyConfidenceThreshold
+      LoggingConfig:
+        LogGroup: !Ref CropAnalyzerLogGroup
+      Tags:
+        - Key: UseCase
+          Value: agri-food-traceability
+
+  TraceabilityExtractorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      FunctionName: !Sub "${AWS::StackName}-traceability-extractor"
+      Runtime: python3.13
+      Handler: agri-food-traceability/functions/traceability_extractor/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt TraceabilityExtractorLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "agri-food-traceability"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          CROSS_REGION_TEXTRACT_REGION: !Ref CrossRegionTextractRegion
+          TRACEABILITY_CONFIDENCE_THRESHOLD: !Ref TraceabilityConfidenceThreshold
+      LoggingConfig:
+        LogGroup: !Ref TraceabilityExtractorLogGroup
+      Tags:
+        - Key: UseCase
+          Value: agri-food-traceability
+
+  ReportFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Runtime: python3.13
+      Handler: agri-food-traceability/functions/report/handler.handler
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ReportLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "agri-food-traceability"
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      LoggingConfig:
+        LogGroup: !Ref ReportLogGroup
+      Tags:
+        - Key: UseCase
+          Value: agri-food-traceability
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # Discovery → CropAnalyzerMap → TraceabilityExtractorMap → Report
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt CropAnalyzerFunction.Arn
+                  - !GetAtt TraceabilityExtractorFunction.Arn
+                  - !GetAtt ReportFunction.Arn
+
+  AgriStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "UC21: Agri-Food Traceability - Discovery → CropAnalyzerMap → TraceabilityExtractorMap → Report",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "CropAnalyzerMap",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ]
+            },
+            "CropAnalyzerMap": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.aerial_images",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.crop_results",
+              "Next": "TraceabilityExtractorMap",
+              "ItemProcessor": {
+                "ProcessorConfig": { "Mode": "INLINE" },
+                "StartAt": "AnalyzeCrop",
+                "States": {
+                  "AnalyzeCrop": {
+                    "Type": "Task",
+                    "Resource": "${CropAnalyzerFunction.Arn}",
+                    "Retry": [
+                      {
+                        "ErrorEquals": ["States.TaskFailed"],
+                        "IntervalSeconds": 10,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2.0
+                      }
+                    ],
+                    "Catch": [
+                      {
+                        "ErrorEquals": ["States.ALL"],
+                        "ResultPath": "$.error",
+                        "Next": "MarkCropFailed"
+                      }
+                    ],
+                    "End": true
+                  },
+                  "MarkCropFailed": {
+                    "Type": "Pass",
+                    "Result": {"status": "FAILED"},
+                    "End": true
+                  }
+                }
+              }
+            },
+            "TraceabilityExtractorMap": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.traceability_docs",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.traceability_results",
+              "Next": "GenerateReport",
+              "ItemProcessor": {
+                "ProcessorConfig": { "Mode": "INLINE" },
+                "StartAt": "ExtractTraceability",
+                "States": {
+                  "ExtractTraceability": {
+                    "Type": "Task",
+                    "Resource": "${TraceabilityExtractorFunction.Arn}",
+                    "Retry": [
+                      {
+                        "ErrorEquals": ["States.TaskFailed"],
+                        "IntervalSeconds": 10,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2.0
+                      }
+                    ],
+                    "Catch": [
+                      {
+                        "ErrorEquals": ["States.ALL"],
+                        "ResultPath": "$.error",
+                        "Next": "MarkTraceabilityFailed"
+                      }
+                    ],
+                    "End": true
+                  },
+                  "MarkTraceabilityFailed": {
+                    "Type": "Pass",
+                    "Result": {"status": "FAILED"},
+                    "End": true
+                  }
+                }
+              }
+            },
+            "GenerateReport": {
+              "Type": "Task",
+              "Resource": "${ReportFunction.Arn}",
+              "End": true
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler (conditional — POLLING or HYBRID)
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsPollingOrHybrid
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartExecution
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt AgriStateMachine.Arn
+
+  WorkflowSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsPollingOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt AgriStateMachine.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional)
+  # -----------------------------------------------------------------
+  StateMachineFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !GetAtt AgriStateMachine.Arn
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  StateMachineArn:
+    Value: !GetAtt AgriStateMachine.Arn
+    Description: Step Functions State Machine ARN
+
+  DiscoveryFunctionArn:
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  CropAnalyzerFunctionArn:
+    Value: !GetAtt CropAnalyzerFunction.Arn
+
+  TraceabilityExtractorFunctionArn:
+    Value: !GetAtt TraceabilityExtractorFunction.Arn
+
+  ReportFunctionArn:
+    Value: !GetAtt ReportFunction.Arn
+
+  NotificationTopicArn:
+    Value: !Ref NotificationTopic
