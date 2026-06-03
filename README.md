@@ -477,6 +477,17 @@ EventBridge Scheduler (定期実行)
 | UC15 | 防衛・宇宙 (衛星画像) | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Guide](defense-satellite/docs/demo-guide.md) |
 | UC16 | 政府 (FOIA / 公文書) | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Guide](government-archives/docs/demo-guide.md) |
 | UC17 | スマートシティ | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/demo-guide.md) |
+| UC18 | 通信 (CDR/ネットワーク) | [📐 Architecture](telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](telecom-network-analytics/docs/demo-guide.md) |
+| UC19 | 広告 (クリエイティブ) | [📐 Architecture](adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](adtech-creative-management/docs/demo-guide.md) |
+| UC20 | 旅行 (予約文書) | [📐 Architecture](travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](travel-document-processing/docs/demo-guide.md) |
+| UC21 | 農業・食品 (トレーサビリティ) | [📐 Architecture](agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](agri-food-traceability/docs/demo-guide.md) |
+| UC22 | 運輸・鉄道 (保守点検) | [📐 Architecture](transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](transportation-maintenance/docs/demo-guide.md) |
+| UC23 | サステナビリティ (ESG) | [📐 Architecture](sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](sustainability-esg-reporting/docs/demo-guide.md) |
+| UC24 | NPO (助成金) | [📐 Architecture](nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](nonprofit-grant-management/docs/demo-guide.md) |
+| UC25 | 電力 (設備点検) | [📐 Architecture](utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](utilities-asset-inspection/docs/demo-guide.md) |
+| UC26 | 不動産 (ポートフォリオ) | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
+| UC27 | 人材・HR (履歴書) | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
+| UC28 | 化学・素材 (SDS) | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
 
 ### UI/UX スクリーンショット（エンドユーザー / 職員 / 担当者向け画面）
 
