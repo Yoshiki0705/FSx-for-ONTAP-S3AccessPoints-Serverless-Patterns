@@ -1,0 +1,43 @@
+# samconfig.toml.example — hr-document-screening (UC27)
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-hr"
+resolve_s3 = true
+s3_prefix = "fsxn-s3ap-hr"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "S3AccessPointAlias=<YOUR_S3AP_ALIAS>-ext-s3alias",
+    "S3AccessPointName=",
+    "S3AccessPointOutputAlias=<YOUR_OUTPUT_S3AP_ALIAS>-ext-s3alias",
+    "OntapSecretName=<YOUR_ONTAP_SECRET_NAME>",
+    "OntapManagementIp=<YOUR_ONTAP_MGMT_IP>",
+    "SvmUuid=<YOUR_SVM_UUID>",
+    "ScheduleExpression=cron(0 0 * * ? *)",
+    "VpcId=<YOUR_VPC_ID>",
+    "PrivateSubnetIds=<SUBNET_1>,<SUBNET_2>",
+    "PrivateRouteTableIds=<RTB_1>,<RTB_2>",
+    "NotificationEmail=<YOUR_EMAIL>",
+    "MapConcurrency=10",
+    "LambdaMemorySize=256",
+    "LambdaTimeout=300",
+    "EnableCloudWatchAlarms=false",
+    "EnableVpcEndpoints=false",
+    "EnableS3GatewayEndpoint=true",
+    "EnableXRayTracing=true",
+    "BedrockModelId=anthropic.claude-3-haiku-20240307-v1:0",
+    "TriggerMode=POLLING",
+    "FPolicyEventBusName=fsxn-fpolicy-events",
+    "ResumePrefix=hr/resumes/",
+    "PiiMode=strict",
+    "TextractRegion=us-east-1",
+    "KmsKeyArn=",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true
