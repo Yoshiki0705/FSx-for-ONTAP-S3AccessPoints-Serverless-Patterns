@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import boto3
@@ -153,7 +153,7 @@ def handler(event, context):
         "source_key": source_key,
         "condition_score": condition,
         "statistics": stats,
-        "assessed_at": datetime.utcnow().isoformat(),
+        "assessed_at": datetime.now(timezone.utc).isoformat(),
     }
     output_writer.put_json(key=result_key, data=result)
 

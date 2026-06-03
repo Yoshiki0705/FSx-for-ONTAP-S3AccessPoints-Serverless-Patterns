@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
@@ -198,13 +198,13 @@ def handler(event, context):
 
     # 結果を S3 AP に書き出し
     s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
-    output_key = f"dicom-metadata/{datetime.utcnow().strftime('%Y/%m/%d')}/{dicom_key.rsplit('/', 1)[-1]}.json"
+    output_key = f"dicom-metadata/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{dicom_key.rsplit('/', 1)[-1]}.json"
 
     result = {
         "dicom_key": dicom_key,
         "metadata": anonymized,
         "classification": anonymized.get("classification", {}),
-        "parsed_at": datetime.utcnow().isoformat(),
+        "parsed_at": datetime.now(timezone.utc).isoformat(),
         "status": "SUCCESS",
     }
 

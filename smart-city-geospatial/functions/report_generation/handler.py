@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import boto3
@@ -145,7 +145,7 @@ def handler(event, context):
     report_text = invoke_bedrock(bedrock, model_id, prompt, max_tokens)
 
     # 結果を出力先に書き出し
-    report_key = f"reports/{datetime.utcnow().strftime('%Y/%m/%d')}/{source_key}.md"
+    report_key = f"reports/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{source_key}.md"
     output_writer.put_text(key=report_key, text=report_text, content_type="text/markdown; charset=utf-8")
 
     logger.info(

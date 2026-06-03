@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
@@ -93,13 +93,13 @@ def handler(event, context):
     # Manifest 生成
     manifest = {
         "execution_id": context.aws_request_id,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "total_objects": len(render_assets),
         "objects": render_assets,
     }
 
     # Manifest を S3 AP に書き出し
-    manifest_key = f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

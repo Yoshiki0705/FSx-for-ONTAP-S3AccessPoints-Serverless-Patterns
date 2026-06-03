@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 
@@ -62,7 +62,7 @@ def build_summary_output(
         "entities": entities,
         "summary": summary_text,
         "document_key": document_key,
-        "processed_at": datetime.utcnow().isoformat(),
+        "processed_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -141,7 +141,7 @@ def handler(event, context):
 
     # S3 AP に書き出し
     s3ap_output = S3ApHelper(os.environ["S3_ACCESS_POINT_OUTPUT"])
-    output_key = f"summaries/{datetime.utcnow().strftime('%Y/%m/%d')}/{document_key.replace('/', '_')}.json"
+    output_key = f"summaries/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{document_key.replace('/', '_')}.json"
 
     s3ap_output.put_object(
         key=output_key,

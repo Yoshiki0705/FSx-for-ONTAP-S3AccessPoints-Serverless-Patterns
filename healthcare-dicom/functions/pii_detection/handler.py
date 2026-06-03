@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 
@@ -122,14 +122,14 @@ def handler(event, context):
 
     # 結果を S3 AP に書き出し
     s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
-    output_key = f"pii-detection/{datetime.utcnow().strftime('%Y/%m/%d')}/{dicom_key.rsplit('/', 1)[-1]}.json"
+    output_key = f"pii-detection/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{dicom_key.rsplit('/', 1)[-1]}.json"
 
     pii_result = {
         "dicom_key": dicom_key,
         "detected_texts": detected_texts,
         "total_detections": len(detected_texts),
         "has_pii": has_pii,
-        "detected_at": datetime.utcnow().isoformat(),
+        "detected_at": datetime.now(timezone.utc).isoformat(),
     }
 
     s3ap_output.put_object(
