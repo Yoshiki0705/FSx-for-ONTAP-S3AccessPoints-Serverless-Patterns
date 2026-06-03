@@ -11,7 +11,7 @@ updating a UI/UX table row, refer to this file for the correct language
 label. If a new UC is added or an industry label needs adjustment, update
 this file first and then propagate to all README / demo-guide versions.
 
-## 17 UC Matrix
+## 28 UC Matrix
 
 | UC | 日本語 | English | 한국어 | 简体中文 | 繁體中文 | Français | Deutsch | Español |
 |----|--------|---------|--------|----------|----------|----------|---------|---------|
@@ -76,4 +76,4 @@ column:
 
 ## Change Log
 
-- 2026-05-11: Initial version, 17 UCs × 8 languages matrix
+- 2026-05-11: Initial version, 28 UCs × 8 languages matrix

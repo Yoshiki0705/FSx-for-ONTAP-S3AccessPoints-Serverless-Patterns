@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-FSx for ONTAP S3 Access Points Serverless Patterns — a library of **17 industry-specific use cases (UC1-UC17)** + **1 SAP/ERP pattern** + **6 FlexCache/FlexClone patterns (FC1-FC6)** + **1 event-driven FPolicy pipeline** using Amazon FSx for ONTAP S3 Access Points. Each pattern is an independent CloudFormation/SAM template with shared Python modules.
+FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use cases (UC1-UC28)** + **1 SAP/ERP pattern** + **6 FlexCache/FlexClone patterns (FC1-FC6)** + **1 event-driven FPolicy pipeline** using Amazon FSx for ONTAP S3 Access Points. Each pattern is an independent CloudFormation/SAM template with shared Python modules.
 
 **Test coverage**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
 
@@ -47,7 +47,7 @@ cfn-lint legal-compliance/template.yaml sap-erp-adjacent/template.yaml
 ## Project Layout
 
 ```
-├── {uc-name}/              # 17 UC + SAP + 6 FC directories
+├── {uc-name}/              # 28 UC + SAP + 6 FC directories
 │   ├── template.yaml       # SAM/CloudFormation template
 │   ├── functions/          # Lambda function handlers
 │   │   └── {func}/handler.py

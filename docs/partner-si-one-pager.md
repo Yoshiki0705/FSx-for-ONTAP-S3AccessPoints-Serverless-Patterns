@@ -8,7 +8,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| 業界別ユースケース | 17 UC（Legal, Healthcare, Manufacturing, Public Sector 等） |
+| 業界別ユースケース | 28 UC（Legal, Healthcare, Manufacturing, Public Sector 等） |
 | FlexCache/FlexClone パターン | 6 FC（DR, Render, RAG, CAE, Life Sciences, Gaming） |
 | テンプレート形式 | CloudFormation (SAM Transform) — 独立デプロイ可能 |
 | トリガーモード | POLLING (default) / EVENT_DRIVEN (FPolicy) / HYBRID |

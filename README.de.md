@@ -4,7 +4,7 @@
 
 ## Current Status
 
-Dieses Repository enthält jetzt **17 branchenspezifische Anwendungsfälle** + **ein ereignisgesteuertes FPolicy-Muster** + **6 FlexCache/FlexClone-Muster** als vollständige serverlose Musterbibliothek.
+Dieses Repository enthält jetzt **28 branchenspezifische Anwendungsfälle** + **ein ereignisgesteuertes FPolicy-Muster** + **6 FlexCache/FlexClone-Muster** als vollständige serverlose Musterbibliothek.
 
 Die ursprünglichen 5 Muster (Phase 1) wurden über die Phasen 2–13 erweitert. Phase 10 führte die gemeinsame FPolicy-Ereignisaufnahme-Pipeline ein, Phase 11 erweiterte den Dispatch auf alle 17 UCs, Phase 12 härtete die Pipeline mit Persistent Store Replay-Validierung, SLO-Observability, Kapazitäts-Guardrails und Secrets-Rotation, und Phase 13 fügte FlexClone/FlexCache-Serverless-Automatisierung hinzu.
 
@@ -29,7 +29,7 @@ Der Artikel erklärt die architektonischen Überlegungen und Kompromisse. Dieses
 
 ## Überblick
 
-Dieses Repository bietet **17 branchenspezifische Muster (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)** für die serverlose Verarbeitung von Unternehmensdaten, die auf FSx for ONTAP über **S3 Access Points** gespeichert sind.
+Dieses Repository bietet **28 branchenspezifische Muster (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)** für die serverlose Verarbeitung von Unternehmensdaten, die auf FSx for ONTAP über **S3 Access Points** gespeichert sind.
 
 > Im Folgenden wird FSx for ONTAP S3 Access Points als **S3 AP** abgekürzt.
 
@@ -317,7 +317,7 @@ Die 3 Ausgabe-Patterns (Pattern A/B/C) werden in
 
 ### Ausgabeziel-Beschränkungen pro UC
 
-Die 17 UCs teilen sich in 3 Ausgabe-Patterns auf:
+Die 28 UCs teilen sich in 3 Ausgabe-Patterns auf:
 
 - **🟢 UC1-5** (Pattern A, aktualisiert 2026-05-11): `S3AccessPointOutputAlias` (legacy, optional) + neu hinzugefügte `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` unterstützt. Standard `OutputDestination=FSXN_S3AP` bewahrt bestehendes Verhalten
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, implementiert am 2026-05-10): `OutputDestination`-Schaltmechanismus (STANDARD_S3 ⇄ FSXN_S3AP). Standard `OutputDestination=STANDARD_S3`. UC11/14 auf AWS verifiziert, UC9/10/12 nur Unit-Tests
