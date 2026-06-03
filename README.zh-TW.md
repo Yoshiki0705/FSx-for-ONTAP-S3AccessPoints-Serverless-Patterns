@@ -202,6 +202,17 @@ EventBridge Scheduler (定期執行)
 | UC15 | `defense-satellite/` | 國防/太空 | 衛星影像分析（物件偵測、變化偵測、警報）| Rekognition, SageMaker（可選）, Bedrock | ✅ 程式碼+測試完成，AWS 已驗證 |
 | UC16 | `government-archives/` | 政府 | 公文檔案·FOIA（OCR、分類、編輯、20 天期限追蹤）| Textract ⚠️, Comprehend, Bedrock, OpenSearch（可選）| ✅ 程式碼+測試完成，AWS 已驗證 |
 | UC17 | `smart-city-geospatial/` | 智慧城市 | 地理空間分析（CRS 正規化、土地利用、風險映射、規劃報告）| Rekognition, SageMaker（可選）, Bedrock (Nova Lite) | ✅ 程式碼+測試完成，AWS 已驗證 |
+| UC18 | [`telecom-network-analytics/`](telecom-network-analytics/) | 通訊 | CDR/網路日誌分析・異常偵測 |
+| UC19 | [`adtech-creative-management/`](adtech-creative-management/) | 廣告 | 創意資產管理・品牌合規 |
+| UC20 | [`travel-document-processing/`](travel-document-processing/) | 旅遊 | 預訂文件處理・設施檢查影像分析 |
+| UC21 | [`agri-food-traceability/`](agri-food-traceability/) | 農業・食品 | 農地航拍影像・追溯文件管理 |
+| UC22 | [`transportation-maintenance/`](transportation-maintenance/) | 運輸・鐵道 | 設備檢查影像・維護報告分析 |
+| UC23 | [`sustainability-esg-reporting/`](sustainability-esg-reporting/) | 永續發展 | ESG 指標擷取・報告 |
+| UC24 | [`nonprofit-grant-management/`](nonprofit-grant-management/) | NPO | 補助金申請分類・成果配對 |
+| UC25 | [`utilities-asset-inspection/`](utilities-asset-inspection/) | 電力 | 無人機影像・SCADA 日誌分析 |
+| UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | 不動產 | 物件影像分析・合約資料擷取 |
+| UC27 | [`hr-document-screening/`](hr-document-screening/) | 人才・HR | 履歷篩選・候選人評估 |
+| UC28 | [`chemical-sds-management/`](chemical-sds-management/) | 化學・材料 | SDS 管理・實驗筆記分析 |
 
 > **公共部門合規性**: UC15 針對 DoD CC SRG / CSfC / FedRAMP High（GovCloud 遷移），UC16 針對 NARA / FOIA Section 552 / Section 508，UC17 針對 INSPIRE 指令 / OGC 標準。
 

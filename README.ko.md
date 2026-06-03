@@ -202,6 +202,17 @@ EventBridge Scheduler (정기 실행)
 | UC15 | `defense-satellite/` | 국방·우주 | 위성 이미지 분석 (물체 탐지, 변화 탐지, 경고) | Rekognition, SageMaker (선택), Bedrock | ✅ 코드 + 테스트 완료, AWS 검증됨 |
 | UC16 | `government-archives/` | 정부 | 공문서 아카이브·FOIA (OCR, 분류, 삭제, 20일 기한 추적) | Textract ⚠️, Comprehend, Bedrock, OpenSearch (선택) | ✅ 코드 + 테스트 완료, AWS 검증됨 |
 | UC17 | `smart-city-geospatial/` | 스마트 시티 | 지리 공간 분석 (CRS 정규화, 토지 이용, 위험 매핑, 계획 보고서) | Rekognition, SageMaker (선택), Bedrock (Nova Lite) | ✅ 코드 + 테스트 완료, AWS 검증됨 |
+| UC18 | [`telecom-network-analytics/`](telecom-network-analytics/) | 통신 | CDR/네트워크 로그 분석・이상 감지 |
+| UC19 | [`adtech-creative-management/`](adtech-creative-management/) | 광고 | 크리에이티브 자산 관리・브랜드 컴플라이언스 |
+| UC20 | [`travel-document-processing/`](travel-document-processing/) | 여행 | 예약 문서 처리・시설 점검 이미지 분석 |
+| UC21 | [`agri-food-traceability/`](agri-food-traceability/) | 농업・식품 | 농지 항공 이미지・추적성 문서 관리 |
+| UC22 | [`transportation-maintenance/`](transportation-maintenance/) | 운수・철도 | 설비 점검 이미지・보수 보고서 분석 |
+| UC23 | [`sustainability-esg-reporting/`](sustainability-esg-reporting/) | 지속가능성 | ESG 메트릭스 추출・리포팅 |
+| UC24 | [`nonprofit-grant-management/`](nonprofit-grant-management/) | NPO | 보조금 신청 분류・성과 매칭 |
+| UC25 | [`utilities-asset-inspection/`](utilities-asset-inspection/) | 전력 | 드론 이미지・SCADA 로그 분석 |
+| UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | 부동산 | 물건 이미지 분석・계약서 데이터 추출 |
+| UC27 | [`hr-document-screening/`](hr-document-screening/) | 인사・HR | 이력서 스크리닝・후보자 평가 |
+| UC28 | [`chemical-sds-management/`](chemical-sds-management/) | 화학・소재 | SDS 관리・실험 노트 분석 |
 
 > **공공 부문 적합성**: UC15는 DoD CC SRG / CSfC / FedRAMP High (GovCloud 마이그레이션 시), UC16은 NARA / FOIA 섹션 552 / 섹션 508, UC17은 INSPIRE 지침 / OGC 표준 준수.
 
