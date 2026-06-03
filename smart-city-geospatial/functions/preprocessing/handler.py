@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 from shared.exceptions import lambda_error_handler
@@ -104,7 +104,7 @@ def handler(event, context):
         "normalized": PYPROJ_AVAILABLE and source_crs != target_crs,
         "sample_coordinates_normalized": list(normalized_coords),
         "pyproj_available": PYPROJ_AVAILABLE,
-        "processed_at": datetime.utcnow().isoformat(),
+        "processed_at": datetime.now(timezone.utc).isoformat(),
     }
 
     # メタデータを出力先に書き出し

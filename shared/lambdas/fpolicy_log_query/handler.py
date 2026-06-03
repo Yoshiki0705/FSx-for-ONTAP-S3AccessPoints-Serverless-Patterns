@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import boto3
@@ -206,7 +206,7 @@ def _parse_parameters(event: dict) -> dict:
         body = event
 
     # Default: last 1 hour
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     start_time_str = body.get("start_time")
     end_time_str = body.get("end_time")
 

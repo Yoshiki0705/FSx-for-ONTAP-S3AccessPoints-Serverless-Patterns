@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from shared.exceptions import lambda_error_handler
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
@@ -101,13 +101,13 @@ def handler(event, context):
 
     manifest = {
         "execution_id": context.aws_request_id,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "total_objects": len(objects),
         "objects": objects,
         "geo_formats": geo_types,
     }
 
-    manifest_key = f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
     s3ap_output.put_object(
         key=manifest_key,
         body=json.dumps(manifest, default=str),

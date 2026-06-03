@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import boto3
@@ -37,7 +37,7 @@ def compute_disposal_date(creation_date: str, retention_years: int) -> str:
     try:
         created = datetime.fromisoformat(creation_date.replace("Z", ""))
     except ValueError:
-        created = datetime.utcnow()
+        created = datetime.now(timezone.utc)
     disposal = created + timedelta(days=365 * retention_years)
     return disposal.isoformat()
 
@@ -73,7 +73,7 @@ def handler(event, context):
 
     document_key = event.get("document_key", "")
     clearance_level = event.get("clearance_level", "public")
-    creation_date = event.get("creation_date", datetime.utcnow().isoformat())
+    creation_date = event.get("creation_date", datetime.now(timezone.utc).isoformat())
 
     schedule = get_retention_schedule(clearance_level)
     retention_years = schedule.get("retention_years", default_years)
@@ -87,7 +87,7 @@ def handler(event, context):
         # 廃棄予定日 + 90日を TTL に（自動削除通知用）
         ttl = (
             int(time.time())
-            + int((datetime.fromisoformat(disposal_date) - datetime.utcnow()).total_seconds())
+            + int((datetime.fromisoformat(disposal_date) - datetime.now(timezone.utc)).total_seconds())
             + 90 * 24 * 3600
         )
 

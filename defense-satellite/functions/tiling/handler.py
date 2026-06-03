@@ -170,10 +170,10 @@ def handler(event, context):
         metadata = {**dims, "tile_size": tile_size, "tile_count": tile_count}
 
     # タイル出力用のプレフィックス（実際のタイル書き出しは rasterio 環境でのみ実施）
-    from datetime import datetime
+    from datetime import datetime, timezone
     from pathlib import Path
 
-    date_partition = datetime.utcnow().strftime("%Y/%m/%d")
+    date_partition = datetime.now(timezone.utc).strftime("%Y/%m/%d")
     basename = Path(source_key).stem
     tile_prefix = f"tiles/{date_partition}/{basename}/"
 
