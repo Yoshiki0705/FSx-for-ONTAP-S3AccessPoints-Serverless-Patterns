@@ -8,7 +8,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 업종별 유스케이스 | 17 UC (법무, 의료, 제조, 공공 부문 등) |
+| 업종별 유스케이스 | 28 UC (법무, 의료, 제조, 공공 부문 등) |
 | FlexCache/FlexClone 패턴 | 6 FC (DR, 렌더링, RAG, CAE, 생명과학, 게임) |
 | 템플릿 형식 | CloudFormation (SAM Transform) — 독립 배포 가능 |
 | 트리거 모드 | POLLING (기본) / EVENT_DRIVEN (FPolicy) / HYBRID |

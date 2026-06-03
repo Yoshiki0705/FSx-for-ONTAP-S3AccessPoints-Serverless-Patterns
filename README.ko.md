@@ -4,7 +4,7 @@
 
 ## Current Status
 
-본 리포지토리는 **17개의 산업별 유스케이스** + **이벤트 기반 FPolicy 패턴** + **6개의 FlexCache/FlexClone 패턴**을 포함하는 서버리스 패턴 라이브러리입니다.
+본 리포지토리는 **28개의 산업별 유스케이스** + **이벤트 기반 FPolicy 패턴** + **6개의 FlexCache/FlexClone 패턴**을 포함하는 서버리스 패턴 라이브러리입니다.
 
 초기 5개 패턴(Phase 1)에서 Phase 2–13을 통해 확장되었습니다. Phase 10에서 공유 FPolicy 이벤트 수집 파이프라인 도입, Phase 11에서 전체 17 UC에 디스패치 전개, Phase 12에서 Persistent Store 리플레이 검증·SLO 관측성·용량 가드레일·시크릿 로테이션으로 운영 강화, Phase 13에서 FlexClone/FlexCache 서버리스 자동화를 구현했습니다.
 
@@ -29,7 +29,7 @@ Amazon FSx for ONTAP의 S3 Access Points를 활용한 업종별 서버리스 자
 
 ## 개요
 
-이 리포지토리는 FSx for ONTAP에 저장된 엔터프라이즈 데이터를 **S3 Access Points**를 통해 서버리스로 처리하는 **17개의 산업별 패턴 (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)**을 제공합니다.
+이 리포지토리는 FSx for ONTAP에 저장된 엔터프라이즈 데이터를 **S3 Access Points**를 통해 서버리스로 처리하는 **28개의 산업별 패턴 (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)**을 제공합니다.
 
 > 이하에서는 FSx for ONTAP S3 Access Points를 간략히 **S3 AP**로 표기합니다.
 
@@ -313,7 +313,7 @@ FSx for ONTAP S3 Access Points는 S3 API의 일부만 지원합니다
 
 ### UC별 출력 대상 제약
 
-17개 UC는 3가지 출력 패턴으로 분류됩니다:
+28개 UC는 3가지 출력 패턴으로 분류됩니다:
 
 - **🟢 UC1-5** (Pattern A, 2026-05-11 업데이트): `S3AccessPointOutputAlias` (legacy, optional) + 신규 추가된 `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` 지원. 기본값 `OutputDestination=FSXN_S3AP`로 기존 동작 유지
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 구현): `OutputDestination` 전환 메커니즘 (STANDARD_S3 ⇄ FSXN_S3AP). 기본값 `OutputDestination=STANDARD_S3`. UC11/14는 AWS 실증, UC9/10/12는 단위 테스트만 완료
