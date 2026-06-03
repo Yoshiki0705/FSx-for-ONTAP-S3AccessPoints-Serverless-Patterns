@@ -229,6 +229,41 @@ EventBridge Scheduler (定期執行)
 
 > **重要**: FlexCache 磁碟區是否可以附加 S3 Access Point 取決於 ONTAP 版本和 FSx for ONTAP 服務規格。PoC 時務必在實際環境中驗證。
 
+### 文件（架構・展示指南）
+
+各 UC 的詳細架構圖和展示指南在 docs/ 資料夾中以 8 種語言提供。
+
+| # | 用例 | 架構 | 展示指南 |
+|---|------|------|----------|
+| UC1 | 法務 | [📐 Architecture](legal-compliance/docs/architecture.md) | [🎬 Demo Guide](legal-compliance/docs/demo-guide.md) |
+| UC2 | 金融 | [📐 Architecture](financial-idp/docs/architecture.md) | [🎬 Demo Guide](financial-idp/docs/demo-guide.md) |
+| UC3 | 製造 | [📐 Architecture](manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](manufacturing-analytics/docs/demo-guide.md) |
+| UC4 | 媒體 | [📐 Architecture](media-vfx/docs/architecture.md) | [🎬 Demo Guide](media-vfx/docs/demo-guide.md) |
+| UC5 | 醫療 | [📐 Architecture](healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](healthcare-dicom/docs/demo-guide.md) |
+| UC6 | 半導體 | [📐 Architecture](semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](semiconductor-eda/docs/demo-guide.md) |
+| UC7 | 基因組 | [📐 Architecture](genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](genomics-pipeline/docs/demo-guide.md) |
+| UC8 | 能源 | [📐 Architecture](energy-seismic/docs/architecture.md) | [🎬 Demo Guide](energy-seismic/docs/demo-guide.md) |
+| UC9 | 自動駕駛 | [📐 Architecture](autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](autonomous-driving/docs/demo-guide.md) |
+| UC10 | 建築 | [📐 Architecture](construction-bim/docs/architecture.md) | [🎬 Demo Guide](construction-bim/docs/demo-guide.md) |
+| UC11 | 零售 | [📐 Architecture](retail-catalog/docs/architecture.md) | [🎬 Demo Guide](retail-catalog/docs/demo-guide.md) |
+| UC12 | 物流 | [📐 Architecture](logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.md) |
+| UC13 | 教育 | [📐 Architecture](education-research/docs/architecture.md) | [🎬 Demo Guide](education-research/docs/demo-guide.md) |
+| UC14 | 保險 | [📐 Architecture](insurance-claims/docs/architecture.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.md) |
+| UC15 | 國防 | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Guide](defense-satellite/docs/demo-guide.md) |
+| UC16 | 政府 | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Guide](government-archives/docs/demo-guide.md) |
+| UC17 | 智慧城市 | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/demo-guide.md) |
+| UC18 | 通訊 | [📐 Architecture](telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](telecom-network-analytics/docs/demo-guide.md) |
+| UC19 | 廣告 | [📐 Architecture](adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](adtech-creative-management/docs/demo-guide.md) |
+| UC20 | 旅遊 | [📐 Architecture](travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](travel-document-processing/docs/demo-guide.md) |
+| UC21 | 農業 | [📐 Architecture](agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](agri-food-traceability/docs/demo-guide.md) |
+| UC22 | 運輸 | [📐 Architecture](transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](transportation-maintenance/docs/demo-guide.md) |
+| UC23 | 永續發展 | [📐 Architecture](sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](sustainability-esg-reporting/docs/demo-guide.md) |
+| UC24 | NPO | [📐 Architecture](nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](nonprofit-grant-management/docs/demo-guide.md) |
+| UC25 | 電力 | [📐 Architecture](utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](utilities-asset-inspection/docs/demo-guide.md) |
+| UC26 | 不動產 | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
+| UC27 | 人才HR | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
+| UC28 | 化學 | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
+
 ## UI/UX 螢幕截圖 (最終使用者 / 員工 / 負責人檢視)
 
 每個 UC 的 **最終使用者、員工、負責人在日常工作中實際看到的 UI/UX 畫面**

@@ -229,6 +229,41 @@ EventBridge Scheduler (定期执行)
 
 > **重要**: FlexCache 卷是否可以附加 S3 Access Point 取决于 ONTAP 版本和 FSx for ONTAP 服务规格。PoC 时务必在实际环境中验证。
 
+### 文档（架构・演示指南）
+
+各 UC 的详细架构图和演示指南在 docs/ 文件夹中以 8 种语言提供。
+
+| # | 用例 | 架构 | 演示指南 |
+|---|------|------|----------|
+| UC1 | 法务 | [📐 Architecture](legal-compliance/docs/architecture.md) | [🎬 Demo Guide](legal-compliance/docs/demo-guide.md) |
+| UC2 | 金融 | [📐 Architecture](financial-idp/docs/architecture.md) | [🎬 Demo Guide](financial-idp/docs/demo-guide.md) |
+| UC3 | 制造 | [📐 Architecture](manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](manufacturing-analytics/docs/demo-guide.md) |
+| UC4 | 媒体 | [📐 Architecture](media-vfx/docs/architecture.md) | [🎬 Demo Guide](media-vfx/docs/demo-guide.md) |
+| UC5 | 医疗 | [📐 Architecture](healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](healthcare-dicom/docs/demo-guide.md) |
+| UC6 | 半导体 | [📐 Architecture](semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](semiconductor-eda/docs/demo-guide.md) |
+| UC7 | 基因组 | [📐 Architecture](genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](genomics-pipeline/docs/demo-guide.md) |
+| UC8 | 能源 | [📐 Architecture](energy-seismic/docs/architecture.md) | [🎬 Demo Guide](energy-seismic/docs/demo-guide.md) |
+| UC9 | 自动驾驶 | [📐 Architecture](autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](autonomous-driving/docs/demo-guide.md) |
+| UC10 | 建筑 | [📐 Architecture](construction-bim/docs/architecture.md) | [🎬 Demo Guide](construction-bim/docs/demo-guide.md) |
+| UC11 | 零售 | [📐 Architecture](retail-catalog/docs/architecture.md) | [🎬 Demo Guide](retail-catalog/docs/demo-guide.md) |
+| UC12 | 物流 | [📐 Architecture](logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.md) |
+| UC13 | 教育 | [📐 Architecture](education-research/docs/architecture.md) | [🎬 Demo Guide](education-research/docs/demo-guide.md) |
+| UC14 | 保险 | [📐 Architecture](insurance-claims/docs/architecture.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.md) |
+| UC15 | 国防 | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Guide](defense-satellite/docs/demo-guide.md) |
+| UC16 | 政府 | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Guide](government-archives/docs/demo-guide.md) |
+| UC17 | 智慧城市 | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/demo-guide.md) |
+| UC18 | 通信 | [📐 Architecture](telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](telecom-network-analytics/docs/demo-guide.md) |
+| UC19 | 广告 | [📐 Architecture](adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](adtech-creative-management/docs/demo-guide.md) |
+| UC20 | 旅行 | [📐 Architecture](travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](travel-document-processing/docs/demo-guide.md) |
+| UC21 | 农业 | [📐 Architecture](agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](agri-food-traceability/docs/demo-guide.md) |
+| UC22 | 运输 | [📐 Architecture](transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](transportation-maintenance/docs/demo-guide.md) |
+| UC23 | 可持续发展 | [📐 Architecture](sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](sustainability-esg-reporting/docs/demo-guide.md) |
+| UC24 | NPO | [📐 Architecture](nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](nonprofit-grant-management/docs/demo-guide.md) |
+| UC25 | 电力 | [📐 Architecture](utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](utilities-asset-inspection/docs/demo-guide.md) |
+| UC26 | 不动产 | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
+| UC27 | 人才HR | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
+| UC28 | 化学 | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
+
 ## UI/UX 截图 (最终用户 / 员工 / 负责人视图)
 
 每个 UC 的 **最终用户、员工、负责人在日常工作中实际看到的 UI/UX 界面**

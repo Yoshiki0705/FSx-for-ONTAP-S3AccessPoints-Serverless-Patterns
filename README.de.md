@@ -229,6 +229,41 @@ EventBridge Scheduler (periodische Ausführung)
 
 > **Wichtig**: Ob ein S3 Access Point an ein FlexCache-Volume angehängt werden kann, hängt von der ONTAP-Version und den FSx for ONTAP-Servicespezifikationen ab. Überprüfen Sie dies immer in Ihrer tatsächlichen Umgebung während des PoC.
 
+### Dokumentation (Architektur・Demo-Leitfaden)
+
+Detaillierte Architekturdiagramme und Demo-Leitfäden für jeden UC sind im docs/-Ordner in 8 Sprachen verfügbar.
+
+| # | Anwendungsfall | Architektur | Demo-Leitfaden |
+|---|----------------|-------------|----------------|
+| UC1 | Recht | [📐 Architecture](legal-compliance/docs/architecture.md) | [🎬 Demo Guide](legal-compliance/docs/demo-guide.md) |
+| UC2 | Finanzen | [📐 Architecture](financial-idp/docs/architecture.md) | [🎬 Demo Guide](financial-idp/docs/demo-guide.md) |
+| UC3 | Fertigung | [📐 Architecture](manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](manufacturing-analytics/docs/demo-guide.md) |
+| UC4 | Medien | [📐 Architecture](media-vfx/docs/architecture.md) | [🎬 Demo Guide](media-vfx/docs/demo-guide.md) |
+| UC5 | Gesundheit | [📐 Architecture](healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](healthcare-dicom/docs/demo-guide.md) |
+| UC6 | Halbleiter | [📐 Architecture](semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](semiconductor-eda/docs/demo-guide.md) |
+| UC7 | Genomik | [📐 Architecture](genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](genomics-pipeline/docs/demo-guide.md) |
+| UC8 | Energie | [📐 Architecture](energy-seismic/docs/architecture.md) | [🎬 Demo Guide](energy-seismic/docs/demo-guide.md) |
+| UC9 | Autonomes Fahren | [📐 Architecture](autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](autonomous-driving/docs/demo-guide.md) |
+| UC10 | Bau | [📐 Architecture](construction-bim/docs/architecture.md) | [🎬 Demo Guide](construction-bim/docs/demo-guide.md) |
+| UC11 | Einzelhandel | [📐 Architecture](retail-catalog/docs/architecture.md) | [🎬 Demo Guide](retail-catalog/docs/demo-guide.md) |
+| UC12 | Logistik | [📐 Architecture](logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.md) |
+| UC13 | Bildung | [📐 Architecture](education-research/docs/architecture.md) | [🎬 Demo Guide](education-research/docs/demo-guide.md) |
+| UC14 | Versicherung | [📐 Architecture](insurance-claims/docs/architecture.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.md) |
+| UC15 | Verteidigung | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Guide](defense-satellite/docs/demo-guide.md) |
+| UC16 | Regierung | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Guide](government-archives/docs/demo-guide.md) |
+| UC17 | Smart City | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/demo-guide.md) |
+| UC18 | Telekom | [📐 Architecture](telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](telecom-network-analytics/docs/demo-guide.md) |
+| UC19 | Werbung | [📐 Architecture](adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](adtech-creative-management/docs/demo-guide.md) |
+| UC20 | Reise | [📐 Architecture](travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](travel-document-processing/docs/demo-guide.md) |
+| UC21 | Landwirtschaft | [📐 Architecture](agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](agri-food-traceability/docs/demo-guide.md) |
+| UC22 | Transport | [📐 Architecture](transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](transportation-maintenance/docs/demo-guide.md) |
+| UC23 | Nachhaltigkeit | [📐 Architecture](sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](sustainability-esg-reporting/docs/demo-guide.md) |
+| UC24 | NPO | [📐 Architecture](nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](nonprofit-grant-management/docs/demo-guide.md) |
+| UC25 | Versorgung | [📐 Architecture](utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](utilities-asset-inspection/docs/demo-guide.md) |
+| UC26 | Immobilien | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
+| UC27 | Personal | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
+| UC28 | Chemie | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
+
 ## UI/UX-Screenshots (Endnutzer / Mitarbeiter / Zuständige-Ansichten)
 
 UI/UX-Bildschirme, die **Endnutzer, Mitarbeiter und Zuständige tatsächlich

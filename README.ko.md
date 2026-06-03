@@ -230,6 +230,41 @@ EventBridge Scheduler (정기 실행)
 > **중요**: FlexCache 볼륨에 S3 Access Point를 연결할 수 있는지는 ONTAP 버전 및 FSx for ONTAP 서비스 사양에 따라 다릅니다. PoC 시 반드시 실제 환경에서 검증하세요.
 
 
+### 문서 (아키텍처·데모 가이드)
+
+각 UC의 상세 아키텍처 다이어그램과 데모 가이드는 docs/ 폴더에 8개 언어로 제공됩니다.
+
+| # | 유스케이스 | 아키텍처 | 데모 가이드 |
+|---|-----------|----------|------------|
+| UC1 | 법무·컴플라이언스 | [📐 Architecture](legal-compliance/docs/architecture.md) | [🎬 Demo Guide](legal-compliance/docs/demo-guide.md) |
+| UC2 | 금융·IDP | [📐 Architecture](financial-idp/docs/architecture.md) | [🎬 Demo Guide](financial-idp/docs/demo-guide.md) |
+| UC3 | 제조업 | [📐 Architecture](manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](manufacturing-analytics/docs/demo-guide.md) |
+| UC4 | 미디어 (VFX) | [📐 Architecture](media-vfx/docs/architecture.md) | [🎬 Demo Guide](media-vfx/docs/demo-guide.md) |
+| UC5 | 의료 (DICOM) | [📐 Architecture](healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](healthcare-dicom/docs/demo-guide.md) |
+| UC6 | 반도체 / EDA | [📐 Architecture](semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](semiconductor-eda/docs/demo-guide.md) |
+| UC7 | 게노믹스 | [📐 Architecture](genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](genomics-pipeline/docs/demo-guide.md) |
+| UC8 | 에너지 | [📐 Architecture](energy-seismic/docs/architecture.md) | [🎬 Demo Guide](energy-seismic/docs/demo-guide.md) |
+| UC9 | 자율 주행 / ADAS | [📐 Architecture](autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](autonomous-driving/docs/demo-guide.md) |
+| UC10 | 건설 / BIM | [📐 Architecture](construction-bim/docs/architecture.md) | [🎬 Demo Guide](construction-bim/docs/demo-guide.md) |
+| UC11 | 소매 / EC | [📐 Architecture](retail-catalog/docs/architecture.md) | [🎬 Demo Guide](retail-catalog/docs/demo-guide.md) |
+| UC12 | 물류 | [📐 Architecture](logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.md) |
+| UC13 | 교육 / 연구 | [📐 Architecture](education-research/docs/architecture.md) | [🎬 Demo Guide](education-research/docs/demo-guide.md) |
+| UC14 | 보험 | [📐 Architecture](insurance-claims/docs/architecture.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.md) |
+| UC15 | 국방·위성 | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Guide](defense-satellite/docs/demo-guide.md) |
+| UC16 | 정부 (FOIA) | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Guide](government-archives/docs/demo-guide.md) |
+| UC17 | 스마트 시티 | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/demo-guide.md) |
+| UC18 | 통신 | [📐 Architecture](telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](telecom-network-analytics/docs/demo-guide.md) |
+| UC19 | 광고 | [📐 Architecture](adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](adtech-creative-management/docs/demo-guide.md) |
+| UC20 | 여행 | [📐 Architecture](travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](travel-document-processing/docs/demo-guide.md) |
+| UC21 | 농업·식품 | [📐 Architecture](agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](agri-food-traceability/docs/demo-guide.md) |
+| UC22 | 운수·철도 | [📐 Architecture](transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](transportation-maintenance/docs/demo-guide.md) |
+| UC23 | 지속가능성 | [📐 Architecture](sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](sustainability-esg-reporting/docs/demo-guide.md) |
+| UC24 | NPO | [📐 Architecture](nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](nonprofit-grant-management/docs/demo-guide.md) |
+| UC25 | 전력 | [📐 Architecture](utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](utilities-asset-inspection/docs/demo-guide.md) |
+| UC26 | 부동산 | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
+| UC27 | 인사·HR | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
+| UC28 | 화학·소재 | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
+
 ## UI/UX 스크린샷 (엔드유저 / 직원 / 담당자 뷰)
 
 각 UC의 **엔드유저, 직원, 담당자가 일상 업무에서 실제로 보는 UI/UX 화면**을
