@@ -1,0 +1,236 @@
+# UC22: 運輸・鉄道業界 — 本番デプロイ用テンプレート
+# template.yaml から SAM Transform を除外し、パッケージ済み Lambda コードパスを使用
+# cfn-lint 対象: ゼロエラーを維持すること
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  UC22: Transportation Maintenance — Production deployment template.
+  Railway infrastructure deterioration detection with safety-critical thresholds.
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+  S3AccessPointName:
+    Type: String
+    Default: ""
+  S3AccessPointOutputAlias:
+    Type: String
+  OntapSecretName:
+    Type: String
+  OntapManagementIp:
+    Type: String
+  SvmUuid:
+    Type: String
+  ScheduleExpression:
+    Type: String
+    Default: "cron(0 0 * * ? *)"
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+  OutputBucketName:
+    Type: String
+    Default: ""
+  NotificationEmail:
+    Type: String
+  MapConcurrency:
+    Type: Number
+    Default: 10
+  LambdaMemorySize:
+    Type: Number
+    Default: 512
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+  BedrockModelId:
+    Type: String
+    Default: "anthropic.claude-3-haiku-20240307-v1:0"
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+  FPolicyEventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+  CrossRegionTextractRegion:
+    Type: String
+    Default: "us-east-1"
+  StandardConfidenceThreshold:
+    Type: Number
+    Default: 80
+  SafetyCriticalConfidenceThreshold:
+    Type: Number
+    Default: 60
+  HumanReviewThreshold:
+    Type: Number
+    Default: 90
+  MinImageWidth:
+    Type: Number
+    Default: 1024
+  MinImageHeight:
+    Type: Number
+    Default: 768
+  SafetyCriticalCategories:
+    Type: String
+    Default: "bridges,signaling,rail-joints"
+  InspectionPrefix:
+    Type: String
+    Default: "inspections/"
+  MaintenancePrefix:
+    Type: String
+    Default: "maintenance-reports/"
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing packaged Lambda code
+  LambdaCodePrefix:
+    Type: String
+    Default: "transportation-maintenance/lambda/"
+    Description: S3 prefix for Lambda code packages
+
+Conditions:
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
+  HasOutputBucketName:
+    !Not [!Equals [!Ref OutputBucketName, ""]]
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  EnableXRay:
+    !Equals [!Ref EnableXRayTracing, "true"]
+  IsPolling:
+    !Equals [!Ref TriggerMode, "POLLING"]
+  IsHybrid:
+    !Equals [!Ref TriggerMode, "HYBRID"]
+  IsPollingOrHybrid:
+    !Or
+      - !Condition IsPolling
+      - !Condition IsHybrid
+
+Resources:
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Lambda security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: 14
+
+  DeteriorationDetectorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-deterioration-detector"
+      RetentionInDays: 14
+
+  MaintenanceExtractorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-maintenance-extractor"
+      RetentionInDays: 14
+
+  ReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-report"
+      RetentionInDays: 14
+
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  DiscoveryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.13
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Sub "${LambdaCodePrefix}discovery.zip"
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          USE_CASE: "transportation-maintenance"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          INSPECTION_PREFIX: !Ref InspectionPrefix
+          MAINTENANCE_PREFIX: !Ref MaintenancePrefix
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+
+Outputs:
+  DiscoveryFunctionArn:
+    Value: !GetAtt DiscoveryFunction.Arn
+  NotificationTopicArn:
+    Value: !Ref NotificationTopic
