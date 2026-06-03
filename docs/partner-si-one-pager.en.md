@@ -8,7 +8,7 @@
 
 | Item | Details |
 |------|---------|
-| Industry Use Cases | 17 UCs (Legal, Healthcare, Manufacturing, Public Sector, etc.) |
+| Industry Use Cases | 28 UCs (Legal, Healthcare, Manufacturing, Public Sector, etc.) |
 | FlexCache/FlexClone Patterns | 6 FCs (DR, Render, RAG, CAE, Life Sciences, Gaming) |
 | Template Format | CloudFormation (SAM Transform) — independently deployable |
 | Trigger Modes | POLLING (default) / EVENT_DRIVEN (FPolicy) / HYBRID |

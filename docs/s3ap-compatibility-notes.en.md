@@ -131,7 +131,7 @@ Reference points from each UC to this document:
 
 | UC / Pattern | Relevant Compatibility Note |
 |-------------|---------------------------|
-| UC1-UC17 (All) | Trigger patterns — POLLING is default, S3 Event Notification is not supported |
+| UC1-UC28 (All) | Trigger patterns — POLLING is default, S3 Event Notification is not supported |
 | UC2, UC14 (Financial) | Cross-region invocation — Textract not available in ap-northeast-1 |
 | UC5, UC7 (Healthcare/Genomics) | Range GET — Effective for partial reads of DICOM/genomics headers |
 | UC3, UC11 (Real-time) | EVENT_DRIVEN — FPolicy-based, not native S3 notifications |

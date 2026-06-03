@@ -9,7 +9,7 @@
 <details>
 <summary><strong>📂 Directory Navigation (click to expand)</strong></summary>
 
-### Industry Use Cases (UC1-UC17 + SAP)
+### Industry Use Cases (UC1-UC28 + SAP)
 
 | # | Directory | Industry | Summary |
 |---|:---|:---|:---|
@@ -30,6 +30,17 @@
 | UC15 | [`defense-satellite/`](defense-satellite/) | Defense | Satellite imagery analysis |
 | UC16 | [`government-archives/`](government-archives/) | Government | Archives & FOIA |
 | UC17 | [`smart-city-geospatial/`](smart-city-geospatial/) | Smart City | Geospatial data |
+| UC18 | [`telecom-network-analytics/`](telecom-network-analytics/) | Telecom | CDR/network log analysis |
+| UC19 | [`adtech-creative-management/`](adtech-creative-management/) | Advertising | Creative asset management |
+| UC20 | [`travel-document-processing/`](travel-document-processing/) | Travel | Reservation document processing |
+| UC21 | [`agri-food-traceability/`](agri-food-traceability/) | Agriculture | Farmland imagery + traceability |
+| UC22 | [`transportation-maintenance/`](transportation-maintenance/) | Transportation | Equipment inspection |
+| UC23 | [`sustainability-esg-reporting/`](sustainability-esg-reporting/) | Sustainability | ESG metrics extraction |
+| UC24 | [`nonprofit-grant-management/`](nonprofit-grant-management/) | Nonprofit | Grant application management |
+| UC25 | [`utilities-asset-inspection/`](utilities-asset-inspection/) | Power/Utilities | Drone + SCADA analysis |
+| UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | Real Estate | Property image + contract extraction |
+| UC27 | [`hr-document-screening/`](hr-document-screening/) | HR | Resume screening |
+| UC28 | [`chemical-sds-management/`](chemical-sds-management/) | Chemicals | SDS management + lab notebook |
 | SAP | [`sap-erp-adjacent/`](sap-erp-adjacent/) | SAP/ERP | IDoc, HULFT, EDI processing |
 
 ### FlexCache / FlexClone Patterns (FC1-FC6)
@@ -73,7 +84,7 @@
 
 ## Current Status
 
-This repository now contains **17 industry use cases** + **event-driven FPolicy pattern** + **6 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for ONTAP S3 Access Points.
+This repository now contains **28 industry use cases** + **event-driven FPolicy pattern** + **6 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for ONTAP S3 Access Points.
 
 The original 5 patterns (Phase 1) have been expanded across Phases 2–13. Phase 10 introduced the shared FPolicy event-ingestion pipeline, Phase 11 wired dispatch across all 17 UCs, Phase 12 hardened the pipeline with Persistent Store replay validation, SLO observability, capacity guardrails, and secrets rotation, and Phase 13 added FlexClone/FlexCache serverless automation.
 
@@ -140,7 +151,7 @@ Local details: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md)
 
 ## Overview
 
-This repository provides **17 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **6 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6).
+This repository provides **28 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **6 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6).
 
 > Hereafter, FSx for ONTAP S3 Access Points will be abbreviated as **S3 AP**.
 
@@ -481,7 +492,7 @@ The 3 output patterns (Pattern A/B/C) are compared in
 
 ### Per-UC Output Destination Constraints
 
-The 17 UCs fall into three output patterns:
+The 28 UCs fall into three output patterns:
 
 - **🟢 UC1-5** (Pattern A, updated 2026-05-11): `S3AccessPointOutputAlias` (legacy, optional) + newly-added `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` are supported. Default `OutputDestination=FSXN_S3AP` preserves existing behavior
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, implemented 2026-05-10): `OutputDestination` switch (STANDARD_S3 ⇄ FSXN_S3AP). Default `OutputDestination=STANDARD_S3`. UC11/14 verified on AWS, UC9/10/12 unit-tested only

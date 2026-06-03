@@ -7,7 +7,7 @@
 
 ## 1. Current State
 
-- 17 UC templates in raw CloudFormation YAML (`template-deploy.yaml`)
+- 28 UC templates in raw CloudFormation YAML (`template-deploy.yaml`)
 - Average template size: ~800-1100 lines
 - Shared patterns: Parameters, Conditions, Lambda functions, Step Functions ASL, IAM roles
 - Tooling: cfn-lint, cfn-guard, 5 custom Python validators
@@ -37,7 +37,7 @@
 | Cost | Impact |
 |------|--------|
 | Learning curve | Team must learn CDK + TypeScript |
-| Migration effort | 17 templates × ~2 hours = ~34 hours |
+| Migration effort | 28 templates × ~2 hours = ~56 hours |
 | Dual maintenance during migration | Both YAML and CDK must work |
 | CI/CD pipeline changes | New synth + deploy workflow |
 | Loss of template portability | CDK output is synthesized CFn (less readable) |
