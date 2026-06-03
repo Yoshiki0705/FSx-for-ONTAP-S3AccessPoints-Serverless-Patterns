@@ -391,6 +391,17 @@ Detailed architecture diagrams and demo guides for each use case are available i
 | UC15 | Defense/Space (Satellite) | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Script](defense-satellite/docs/demo-guide.md) |
 | UC16 | Government (FOIA / Archives) | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Script](government-archives/docs/demo-guide.md) |
 | UC17 | Smart City | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Script](smart-city-geospatial/docs/demo-guide.md) |
+| UC18 | Telecom (CDR/Network) | [📐 Architecture](telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](telecom-network-analytics/docs/demo-guide.md) |
+| UC19 | Advertising (Creative) | [📐 Architecture](adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](adtech-creative-management/docs/demo-guide.md) |
+| UC20 | Travel (Reservations) | [📐 Architecture](travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](travel-document-processing/docs/demo-guide.md) |
+| UC21 | Agriculture (Traceability) | [📐 Architecture](agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](agri-food-traceability/docs/demo-guide.md) |
+| UC22 | Transportation (Maintenance) | [📐 Architecture](transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](transportation-maintenance/docs/demo-guide.md) |
+| UC23 | Sustainability (ESG) | [📐 Architecture](sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](sustainability-esg-reporting/docs/demo-guide.md) |
+| UC24 | Nonprofit (Grants) | [📐 Architecture](nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](nonprofit-grant-management/docs/demo-guide.md) |
+| UC25 | Utilities (Inspection) | [📐 Architecture](utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](utilities-asset-inspection/docs/demo-guide.md) |
+| UC26 | Real Estate (Portfolio) | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
+| UC27 | HR (Resume Screening) | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
+| UC28 | Chemical (SDS) | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
 
 > All documents are available in 8 languages (日本語・English・한국어・简体中文・繁體中文・Français・Deutsch・Español). Use the Language Switcher at the top of each document to switch languages.
 
