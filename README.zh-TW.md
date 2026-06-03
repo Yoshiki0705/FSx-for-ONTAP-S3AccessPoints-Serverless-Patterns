@@ -4,7 +4,7 @@
 
 ## Current Status
 
-本儲存庫現包含 **17 個產業用例** + **事件驅動 FPolicy 模式** + **6 個 FlexCache/FlexClone 模式**，構成完整的無伺服器模式庫。
+本儲存庫現包含 **28 個產業用例** + **事件驅動 FPolicy 模式** + **6 個 FlexCache/FlexClone 模式**，構成完整的無伺服器模式庫。
 
 從最初的 5 個模式（Phase 1）經 Phase 2–13 擴展而來。Phase 10 引入共用 FPolicy 事件擷取管線，Phase 11 將調度擴展至全部 17 UC，Phase 12 透過 Persistent Store 重播驗證、SLO 可觀測性、容量護欄和密鑰輪換進行維運強化，Phase 13 實現 FlexClone/FlexCache 無伺服器自動化。
 
@@ -29,7 +29,7 @@
 
 ## 概述
 
-本儲存庫提供 **17 種產業專屬模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）**，透過 **S3 Access Points** 對儲存在 FSx for ONTAP 上的企業資料進行無伺服器處理。
+本儲存庫提供 **28 種產業專屬模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）**，透過 **S3 Access Points** 對儲存在 FSx for ONTAP 上的企業資料進行無伺服器處理。
 
 > 以下將 FSx for ONTAP S3 Access Points 簡稱為 **S3 AP**。
 
@@ -311,7 +311,7 @@ FSx for ONTAP S3 Access Points 僅支援 S3 API 的一部分
 
 ### 每個 UC 的輸出目標約束
 
-17 個 UC 分為 3 種輸出模式:
+28 個 UC 分為 3 種輸出模式:
 
 - **🟢 UC1-5** (Pattern A, 2026-05-11 更新): `S3AccessPointOutputAlias` (legacy, optional) + 新增的 `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` 支援。預設 `OutputDestination=FSXN_S3AP` 維持現有行為
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 實作): `OutputDestination` 切換機制 (STANDARD_S3 ⇄ FSXN_S3AP)。預設 `OutputDestination=STANDARD_S3`。UC11/14 已在 AWS 上驗證, UC9/10/12 僅完成單元測試

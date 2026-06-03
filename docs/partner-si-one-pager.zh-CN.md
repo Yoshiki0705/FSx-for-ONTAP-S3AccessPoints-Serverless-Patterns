@@ -8,7 +8,7 @@
 
 | 项目 | 内容 |
 |------|------|
-| 行业用例 | 17 UC（法务、医疗、制造、公共部门等） |
+| 行业用例 | 28 UC（法务、医疗、制造、公共部门等） |
 | FlexCache/FlexClone 模式 | 6 FC（DR、渲染、RAG、CAE、生命科学、游戏） |
 | 模板格式 | CloudFormation (SAM Transform) — 独立部署 |
 | 触发模式 | POLLING（默认）/ EVENT_DRIVEN (FPolicy) / HYBRID |

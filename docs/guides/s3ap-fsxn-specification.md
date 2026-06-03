@@ -8,7 +8,7 @@
 
 ## 概要
 
-FSx for ONTAP S3 Access Point（以下 S3 AP）は、ONTAP ボリューム上のファイルを Amazon S3 API 経由でアクセスするためのブリッジ機能。本プロジェクトの全 17 UC で S3 AP 経由のファイルアクセスを使用する。
+FSx for ONTAP S3 Access Point（以下 S3 AP）は、ONTAP ボリューム上のファイルを Amazon S3 API 経由でアクセスするためのブリッジ機能。本プロジェクトの全 28 UC で S3 AP 経由のファイルアクセスを使用する。
 
 **重要な前提**:
 - S3 AP は `GetObject`、`PutObject`、`DeleteObject`、マルチパートアップロードをサポート（[互換性テーブル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)参照）

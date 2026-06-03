@@ -4,7 +4,7 @@
 
 ## Current Status
 
-本仓库现包含 **17 个行业用例** + **事件驱动 FPolicy 模式** + **6 个 FlexCache/FlexClone 模式**，构成完整的无服务器模式库。
+本仓库现包含 **28 个行业用例** + **事件驱动 FPolicy 模式** + **6 个 FlexCache/FlexClone 模式**，构成完整的无服务器模式库。
 
 从最初的 5 个模式（Phase 1）经 Phase 2–13 扩展而来。Phase 10 引入共享 FPolicy 事件摄取管道，Phase 11 将调度扩展至全部 17 UC，Phase 12 通过 Persistent Store 重放验证、SLO 可观测性、容量护栏和密钥轮换进行运维强化，Phase 13 实现 FlexClone/FlexCache 无服务器自动化。
 
@@ -29,7 +29,7 @@
 
 ## 概述
 
-本仓库提供 **17 种行业专属模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）**，通过 **S3 Access Points** 对存储在 FSx for ONTAP 上的企业数据进行无服务器处理。
+本仓库提供 **28 种行业专属模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）**，通过 **S3 Access Points** 对存储在 FSx for ONTAP 上的企业数据进行无服务器处理。
 
 > 以下将 FSx for ONTAP S3 Access Points 简称为 **S3 AP**。
 
@@ -311,7 +311,7 @@ FSx for ONTAP S3 Access Points 仅支持 S3 API 的一部分
 
 ### 每个 UC 的输出目标约束
 
-17 个 UC 分为 3 种输出模式:
+28 个 UC 分为 3 种输出模式:
 
 - **🟢 UC1-5** (Pattern A, 2026-05-11 更新): `S3AccessPointOutputAlias` (legacy, optional) + 新增的 `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` 支持。默认 `OutputDestination=FSXN_S3AP` 保持现有行为
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 实现): `OutputDestination` 切换机制 (STANDARD_S3 ⇄ FSXN_S3AP)。默认 `OutputDestination=STANDARD_S3`。UC11/14 已在 AWS 上验证, UC9/10/12 仅完成单元测试
