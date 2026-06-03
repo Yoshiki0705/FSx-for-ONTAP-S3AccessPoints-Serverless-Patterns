@@ -202,6 +202,17 @@ EventBridge Scheduler (ejecución periódica)
 | UC15 | `defense-satellite/` | Defensa/Espacio | Análisis de imágenes satelitales (detección de objetos, detección de cambios, alertas) | Rekognition, SageMaker (opcional), Bedrock | ✅ Código + pruebas completos, AWS verificado |
 | UC16 | `government-archives/` | Gobierno | Archivos públicos / FOIA (OCR, clasificación, redacción, seguimiento de plazo 20 días) | Textract ⚠️, Comprehend, Bedrock, OpenSearch (opcional) | ✅ Código + pruebas completos, AWS verificado |
 | UC17 | `smart-city-geospatial/` | Ciudad Inteligente | Análisis geoespacial (normalización CRS, uso del suelo, mapeo de riesgos, informe de planificación) | Rekognition, SageMaker (opcional), Bedrock (Nova Lite) | ✅ Código + pruebas completos, AWS verificado |
+| UC18 | [`telecom-network-analytics/`](telecom-network-analytics/) | Telecom | Análisis CDR/logs de red |
+| UC19 | [`adtech-creative-management/`](adtech-creative-management/) | Publicidad | Gestión de creativos・cumplimiento de marca |
+| UC20 | [`travel-document-processing/`](travel-document-processing/) | Viajes | Procesamiento de reservas |
+| UC21 | [`agri-food-traceability/`](agri-food-traceability/) | Agricultura | Imágenes aéreas・trazabilidad |
+| UC22 | [`transportation-maintenance/`](transportation-maintenance/) | Transporte | Inspección de equipos・mantenimiento |
+| UC23 | [`sustainability-esg-reporting/`](sustainability-esg-reporting/) | Sostenibilidad | Extracción métricas ESG |
+| UC24 | [`nonprofit-grant-management/`](nonprofit-grant-management/) | ONG | Clasificación de subvenciones |
+| UC25 | [`utilities-asset-inspection/`](utilities-asset-inspection/) | Energía | Imágenes dron・SCADA |
+| UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | Inmobiliaria | Análisis de imágenes・contratos |
+| UC27 | [`hr-document-screening/`](hr-document-screening/) | RRHH | Screening de CV・evaluación |
+| UC28 | [`chemical-sds-management/`](chemical-sds-management/) | Química | Gestión SDS・notas de laboratorio |
 
 > **Cumplimiento Sector Público**: UC15 apunta a DoD CC SRG / CSfC / FedRAMP High (migración a GovCloud), UC16 apunta a NARA / FOIA Sección 552 / Sección 508, UC17 apunta a Directiva INSPIRE / estándares OGC.
 
