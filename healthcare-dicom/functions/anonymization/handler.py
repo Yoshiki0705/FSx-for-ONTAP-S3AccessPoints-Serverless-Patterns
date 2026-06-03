@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 
@@ -145,7 +145,7 @@ def handler(event, context):
 
     # 匿名化結果を S3 AP に書き出し
     s3ap_output = S3ApHelper(os.environ["S3_ACCESS_POINT_OUTPUT"])
-    output_key = f"anonymized/{datetime.utcnow().strftime('%Y/%m/%d')}/{dicom_key.rsplit('/', 1)[-1]}.json"
+    output_key = f"anonymized/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{dicom_key.rsplit('/', 1)[-1]}.json"
 
     result = {
         "dicom_key": dicom_key,
@@ -153,7 +153,7 @@ def handler(event, context):
         "classification": anonymized.get("classification", {}),
         "phi_entities_detected": len(phi_entities),
         "burned_in_pii_detected": pii_detection.get("has_pii", False),
-        "anonymized_at": datetime.utcnow().isoformat(),
+        "anonymized_at": datetime.now(timezone.utc).isoformat(),
     }
 
     s3ap_output.put_object(

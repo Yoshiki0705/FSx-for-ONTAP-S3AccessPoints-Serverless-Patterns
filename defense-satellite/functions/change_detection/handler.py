@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -139,7 +139,7 @@ def handler(event, context):
         center_lat = 0.0
 
     tile_id = _compute_geohash(center_lat, center_lon)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     timestamp = now.isoformat() + "Z"
 
     # 過去の検出結果を DynamoDB から取得

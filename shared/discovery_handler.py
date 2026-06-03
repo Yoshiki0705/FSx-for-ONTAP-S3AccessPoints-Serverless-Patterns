@@ -26,7 +26,7 @@ import json
 import logging
 import math
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
@@ -100,7 +100,7 @@ def generate_manifest(objects: list[dict], execution_id: str) -> dict:
     """
     return {
         "execution_id": execution_id,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "total_objects": len(objects),
         "objects": objects,
     }
@@ -132,7 +132,7 @@ def handler(event, context):
 
     manifest = generate_manifest(objects, context.aws_request_id)
 
-    manifest_key = f"manifests/{datetime.utcnow().strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

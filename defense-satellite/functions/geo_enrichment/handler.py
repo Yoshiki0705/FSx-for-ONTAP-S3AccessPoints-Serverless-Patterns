@@ -13,7 +13,7 @@ Environment Variables:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -120,7 +120,7 @@ def handler(event, context):
         )
 
     # 出力先に書き出し
-    result_key = f"enriched/{datetime.utcnow().strftime('%Y/%m/%d')}/{tile_id}.json"
+    result_key = f"enriched/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{tile_id}.json"
     output_writer.put_json(
         key=result_key,
         data={
