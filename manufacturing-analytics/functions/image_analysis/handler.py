@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 
@@ -98,7 +98,7 @@ def handler(event, context):
     # 結果 JSON を構築
     result = {
         "image_key": image_key,
-        "analyzed_at": datetime.utcnow().isoformat(),
+        "analyzed_at": datetime.now(timezone.utc).isoformat(),
         "labels": [
             {
                 "name": label["Name"],
@@ -120,7 +120,7 @@ def handler(event, context):
 
     # 結果 JSON を S3 AP に書き出し
     s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
-    output_key = f"image-analysis/{datetime.utcnow().strftime('%Y/%m/%d')}/{image_key.rsplit('/', 1)[-1]}.json"
+    output_key = f"image-analysis/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{image_key.rsplit('/', 1)[-1]}.json"
 
     s3ap_output.put_object(
         key=output_key,

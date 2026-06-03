@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import boto3
@@ -82,7 +82,7 @@ def handler(event, context):
     table = dynamodb.Table(table_name)
 
     area_id = _derive_area_id(source_key)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     timestamp = now.isoformat() + "Z"
 
     # 過去の分布取得
