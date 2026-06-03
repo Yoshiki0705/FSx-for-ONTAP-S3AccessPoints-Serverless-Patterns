@@ -133,7 +133,7 @@ To apply the principle of least privilege, access must be restricted at **both l
 
 ## Application in This Project
 
-The 17 UC + 6 FC patterns in this repository adopt the following design:
+The 28 UC + 6 FC patterns in this repository adopt the following design:
 
 | Component | Layer 1 Design | Layer 2 Design |
 |-----------|---------------|---------------|

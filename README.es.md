@@ -4,7 +4,7 @@
 
 ## Current Status
 
-Este repositorio contiene ahora **17 casos de uso sectoriales** + **un patrón FPolicy basado en eventos** + **6 patrones FlexCache/FlexClone**, formando una biblioteca completa de patrones serverless.
+Este repositorio contiene ahora **28 casos de uso sectoriales** + **un patrón FPolicy basado en eventos** + **6 patrones FlexCache/FlexClone**, formando una biblioteca completa de patrones serverless.
 
 Los 5 patrones originales (Phase 1) se han expandido a través de las Fases 2–13. Phase 10 introdujo el pipeline compartido de ingesta de eventos FPolicy, Phase 11 extendió el dispatch a los 17 UCs, Phase 12 endureció el pipeline con validación de replay de Persistent Store, observabilidad SLO, guardarraíles de capacidad y rotación de secretos, y Phase 13 añadió automatización serverless FlexClone/FlexCache.
 
@@ -29,7 +29,7 @@ El artículo explica el razonamiento arquitectónico y las compensaciones. Este 
 
 ## Descripción general
 
-Este repositorio proporciona **17 patrones sectoriales (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)** para el procesamiento serverless de datos empresariales almacenados en FSx for ONTAP a través de **S3 Access Points**.
+Este repositorio proporciona **28 patrones sectoriales (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)** para el procesamiento serverless de datos empresariales almacenados en FSx for ONTAP a través de **S3 Access Points**.
 
 > En adelante, FSx for ONTAP S3 Access Points se abrevia como **S3 AP**.
 
@@ -315,7 +315,7 @@ Los 3 patrones de salida (Pattern A/B/C) se comparan en
 
 ### Restricciones de destino de salida por UC
 
-Los 17 UC se dividen en 3 patrones de salida:
+Los 28 UC se dividen en 3 patrones de salida:
 
 - **🟢 UC1-5** (Pattern A, actualizado 2026-05-11): `S3AccessPointOutputAlias` (legacy, opcional) + nuevos parámetros `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` admitidos. Por defecto `OutputDestination=FSXN_S3AP` preserva el comportamiento existente
 - **🟢🆕 UC9/10/11/12/14** (Pattern B, implementado el 2026-05-10): mecanismo de conmutación `OutputDestination` (STANDARD_S3 ⇄ FSXN_S3AP). Por defecto `OutputDestination=STANDARD_S3`. UC11/14 verificados en AWS, UC9/10/12 solo pruebas unitarias
