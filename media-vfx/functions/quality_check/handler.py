@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 
@@ -142,7 +142,7 @@ def handler(event, context):
         "passed": quality_result["passed"],
         "details": quality_result["details"],
         "labels_count": len(labels),
-        "evaluated_at": datetime.utcnow().isoformat(),
+        "evaluated_at": datetime.now(timezone.utc).isoformat(),
     }
 
     if quality_result["passed"]:

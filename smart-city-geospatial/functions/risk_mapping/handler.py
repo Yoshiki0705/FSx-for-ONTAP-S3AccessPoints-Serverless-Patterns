@@ -12,7 +12,7 @@ Environment Variables:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 from shared.exceptions import lambda_error_handler
@@ -163,7 +163,7 @@ def handler(event, context):
         data={
             "source_key": source_key,
             "risks": risks,
-            "assessed_at": datetime.utcnow().isoformat(),
+            "assessed_at": datetime.now(timezone.utc).isoformat(),
         },
     )
 

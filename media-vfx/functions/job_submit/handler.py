@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 
@@ -38,7 +38,7 @@ def _build_job_template(asset_key: str, output_bucket: str) -> dict:
         dict: Deadline Cloud CreateJob API 用のテンプレート
     """
     asset_name = asset_key.rsplit("/", 1)[-1]
-    job_name = f"render-{asset_name}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+    job_name = f"render-{asset_name}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
     return {
         "name": job_name,
@@ -127,6 +127,6 @@ def handler(event, context):
         "output_ap": output_ap,
         "farm_id": farm_id,
         "queue_id": queue_id,
-        "submitted_at": datetime.utcnow().isoformat(),
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
         "status": "SUBMITTED",
     }
