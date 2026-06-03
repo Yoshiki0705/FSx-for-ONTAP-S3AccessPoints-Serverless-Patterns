@@ -1,0 +1,227 @@
+# ⚠️ NOTE: This file is for SAM local testing only.
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  UC27: HR ドキュメントスクリーニング
+  FSx for NetApp ONTAP S3 Access Points を活用した履歴書分析、
+  候補者スコアリング、パイプラインレポート生成のサーバーレスワークフロー。
+
+Parameters:
+  # --- Layer 1: Phase 1 共通 ---
+  S3AccessPointAlias:
+    Type: String
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+  S3AccessPointName:
+    Type: String
+    Default: ""
+  S3AccessPointOutputAlias:
+    Type: String
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+  OntapSecretName:
+    Type: String
+  OntapManagementIp:
+    Type: String
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+  SvmUuid:
+    Type: String
+  ScheduleExpression:
+    Type: String
+    Default: "cron(0 0 * * ? *)"
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+  OutputBucketName:
+    Type: String
+    Default: ""
+  NotificationEmail:
+    Type: String
+
+  # --- Layer 2: Phase 2 拡張 ---
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 100
+  LambdaMemorySize:
+    Type: Number
+    Default: 256
+    AllowedValues: [128, 256, 512, 1024, 2048]
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 900
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+  EnableS3GatewayEndpoint:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+  BedrockModelId:
+    Type: String
+    Default: "anthropic.claude-3-haiku-20240307-v1:0"
+
+  # --- Layer 3: TriggerMode ---
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN"]
+  FPolicyEventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+
+  # --- Layer 4: UC27 固有 ---
+  ResumePrefix:
+    Type: String
+    Default: "hr/resumes/"
+    Description: 履歴書ファイルのプレフィックス
+  PiiMode:
+    Type: String
+    Default: "strict"
+    AllowedValues: ["strict", "standard"]
+    Description: PII 保護モード (strict = ログ出力禁止)
+  TextractRegion:
+    Type: String
+    Default: "us-east-1"
+  KmsKeyArn:
+    Type: String
+    Default: ""
+    Description: 出力暗号化用 KMS キー ARN
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: !Ref LambdaMemorySize
+    Timeout: !Ref LambdaTimeout
+    Environment:
+      Variables:
+        S3_ACCESS_POINT: !Ref S3AccessPointAlias
+        S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+        PII_MODE: !Ref PiiMode
+        POWERTOOLS_SERVICE_NAME: hr-document-screening
+
+Resources:
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Handler: functions.discovery.handler.handler
+      Environment:
+        Variables:
+          RESUME_PREFIX: !Ref ResumePrefix
+
+  ResumeExtractorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-resume-extractor"
+      Handler: functions.resume_extractor.handler.handler
+      Environment:
+        Variables:
+          TEXTRACT_REGION: !Ref TextractRegion
+          KMS_KEY_ARN: !Ref KmsKeyArn
+
+  CandidateScorerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-candidate-scorer"
+      Handler: functions.candidate_scorer.handler.handler
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Handler: functions.report.handler.handler
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  WorkflowStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-workflow"
+      DefinitionBody:
+        Comment: "UC27 HR Document Screening Workflow"
+        StartAt: Discovery
+        States:
+          Discovery:
+            Type: Task
+            Resource: !GetAtt DiscoveryFunction.Arn
+            Next: ResumeExtractorMap
+          ResumeExtractorMap:
+            Type: Map
+            ItemsPath: "$.resumes"
+            MaxConcurrency: !Ref MapConcurrency
+            Iterator:
+              StartAt: ExtractResume
+              States:
+                ExtractResume:
+                  Type: Task
+                  Resource: !GetAtt ResumeExtractorFunction.Arn
+                  End: true
+            ResultPath: "$.extraction_results"
+            Next: CandidateScorerMap
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                ResultPath: "$.extraction_error"
+                Next: CandidateScorerMap
+          CandidateScorerMap:
+            Type: Map
+            ItemsPath: "$.extraction_results"
+            MaxConcurrency: !Ref MapConcurrency
+            Iterator:
+              StartAt: ScoreCandidate
+              States:
+                ScoreCandidate:
+                  Type: Task
+                  Resource: !GetAtt CandidateScorerFunction.Arn
+                  End: true
+            ResultPath: "$.scored_results"
+            Next: Report
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                ResultPath: "$.scoring_error"
+                Next: Report
+          Report:
+            Type: Task
+            Resource: !GetAtt ReportFunction.Arn
+            End: true
+
+Outputs:
+  StateMachineArn:
+    Value: !Ref WorkflowStateMachine
+  DiscoveryFunctionArn:
+    Value: !GetAtt DiscoveryFunction.Arn
+  ResumeExtractorFunctionArn:
+    Value: !GetAtt ResumeExtractorFunction.Arn
+  CandidateScorerFunctionArn:
+    Value: !GetAtt CandidateScorerFunction.Arn
+  ReportFunctionArn:
+    Value: !GetAtt ReportFunction.Arn

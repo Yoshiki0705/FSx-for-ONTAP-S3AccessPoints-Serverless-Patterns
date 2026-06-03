@@ -9,7 +9,7 @@
 <details>
 <summary><strong>📂 ディレクトリ ナビゲーション（クリックで展開）</strong></summary>
 
-### 業界別ユースケース (UC1-UC17 + SAP)
+### 業界別ユースケース (UC1-UC28 + SAP)
 
 | # | ディレクトリ | 業界 | 概要 |
 |---|:---|:---|:---|
@@ -31,6 +31,17 @@
 | UC16 | [`government-archives/`](government-archives/) | 政府 | 公文書・FOIA |
 | UC17 | [`smart-city-geospatial/`](smart-city-geospatial/) | スマートシティ | 地理空間データ |
 | SAP | [`sap-erp-adjacent/`](sap-erp-adjacent/) | SAP/ERP | IDoc・HULFT・EDI 処理 |
+| UC18 | [`telecom-network-analytics/`](telecom-network-analytics/) | 通信 | CDR/ネットワークログ分析・異常検知 |
+| UC19 | [`adtech-creative-management/`](adtech-creative-management/) | 広告 | クリエイティブアセット管理・ブランドコンプライアンス |
+| UC20 | [`travel-document-processing/`](travel-document-processing/) | 旅行 | 予約文書処理・施設点検画像分析 |
+| UC21 | [`agri-food-traceability/`](agri-food-traceability/) | 農業・食品 | 農地航空画像・トレーサビリティ文書管理 |
+| UC22 | [`transportation-maintenance/`](transportation-maintenance/) | 運輸・鉄道 | 設備点検画像・保守レポート分析 |
+| UC23 | [`sustainability-esg-reporting/`](sustainability-esg-reporting/) | サステナビリティ | ESG メトリクス抽出・レポーティング |
+| UC24 | [`nonprofit-grant-management/`](nonprofit-grant-management/) | NPO | 助成金申請分類・成果マッチング |
+| UC25 | [`utilities-asset-inspection/`](utilities-asset-inspection/) | 電力 | ドローン画像・SCADA ログ分析 |
+| UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | 不動産 | 物件画像分析・契約書データ抽出 |
+| UC27 | [`hr-document-screening/`](hr-document-screening/) | 人材・HR | 履歴書スクリーニング・候補者評価 |
+| UC28 | [`chemical-sds-management/`](chemical-sds-management/) | 化学・素材 | SDS 管理・ラボノート分析 |
 
 ### FlexCache / FlexClone パターン (FC1-FC6)
 
@@ -73,7 +84,7 @@
 
 ## Current Status
 
-本リポジトリは **17 の業界別ユースケース** + **イベント駆動 FPolicy パターン** + **6 つの FlexCache/FlexClone パターン** を含むサーバーレスパターンライブラリです。
+本リポジトリは **28 の業界別ユースケース** + **イベント駆動 FPolicy パターン** + **6 つの FlexCache/FlexClone パターン** を含むサーバーレスパターンライブラリです。
 
 当初の 5 パターン（Phase 1）から、Phase 2–13 を通じて拡張されました。Phase 10 で共有 FPolicy イベント取り込みパイプラインを導入、Phase 11 で全 17 UC にディスパッチを展開、Phase 12 で Persistent Store リプレイ検証・SLO 可観測性・容量ガードレール・シークレットローテーションによる運用強化、Phase 13 で FlexClone/FlexCache サーバーレス自動化を実装しました。
 
@@ -217,7 +228,7 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 
 ## 概要
 
-本リポジトリは、FSx for ONTAP に保存されたエンタープライズデータを **S3 Access Points** 経由でサーバーレスに処理する **17 の業界別パターン** を提供します（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）。
+本リポジトリは、FSx for ONTAP に保存されたエンタープライズデータを **S3 Access Points** 経由でサーバーレスに処理する **28 の業界別パターン** を提供します（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17、Phase 14: UC18–UC19、Phase 15: UC20–UC22、Phase 16: UC23–UC28）。
 
 > 以降では、FSx for ONTAP S3 Access Points を簡潔に **S3 AP** と表記します。
 
