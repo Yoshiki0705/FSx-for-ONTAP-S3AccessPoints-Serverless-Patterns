@@ -8,6 +8,17 @@
 
 | 業界 | ワークロード | FlexCache 役割 | S3 AP 役割 | Serverless 処理 | 対応 UC |
 |------|-------------|---------------|-----------|----------------|---------|
+| 通信 | CDR/ネットワークログ分析・異常検知 | CDR/ログファイルの拠点間キャッシュ | CDR・syslog データの S3 API 読み取り | Lambda + Athena + Bedrock | UC18 |
+| 広告・マーケティング | クリエイティブアセット管理・ブランドコンプライアンス | クリエイティブアセットの拠点間キャッシュ | 画像/動画メタデータの読み取り | Lambda + Rekognition + Textract + Bedrock | UC19 |
+| 旅行・ホスピタリティ | 予約文書処理・施設点検画像分析 | 施設写真・予約文書の拠点間キャッシュ | 予約文書・点検画像の S3 API 読み取り | Lambda + Textract + Comprehend + Rekognition + Bedrock | UC20 |
+| 農業・食品 | 農地航空画像・トレーサビリティ文書管理 | 農地画像・出荷記録の拠点間キャッシュ | GeoTIFF/JPEG・トレーサビリティ文書の S3 API 読み取り | Lambda + Rekognition + Textract + Comprehend + Bedrock | UC21 |
+| 運輸・鉄道 | 設備点検画像・保守レポート分析 | 点検画像・保守報告書の拠点間キャッシュ | 点検画像・保守報告書の S3 API 読み取り | Lambda + Rekognition + Textract + Comprehend + Bedrock | UC22 |
+| サステナビリティ・ESG | ESG メトリクス抽出・レポーティング | ESG レポート・環境データの拠点間キャッシュ | サステナビリティレポート・エネルギー記録の S3 API 読み取り | Lambda + Textract + Bedrock | UC23 |
+| NPO・非営利団体 | 助成金申請分類・成果マッチング | 助成金申請書・活動報告書の拠点間キャッシュ | 申請書・報告書の S3 API 読み取り | Lambda + Textract + Comprehend + Bedrock | UC24 |
+| 電力・ユーティリティ | ドローン画像・SCADA ログ分析 | 点検画像・SCADA データの拠点間キャッシュ | ドローン画像・SCADA ログの S3 API 読み取り | Lambda + Rekognition + Athena + Bedrock | UC25 |
+| 不動産 | 物件画像分析・契約書データ抽出 | 物件画像・契約書の拠点間キャッシュ | 物件画像・契約書の S3 API 読み取り | Lambda + Rekognition + Textract + Comprehend + Bedrock | UC26 |
+| 人材・HR | 履歴書スクリーニング・候補者評価 | 応募書類・人事文書の拠点間キャッシュ | 履歴書・職務経歴書の S3 API 読み取り | Lambda + Textract + Comprehend + Bedrock | UC27 |
+| 化学・素材 | SDS 管理・ラボノート分析 | SDS・実験ノートの拠点間キャッシュ | SDS (PDF/XML)・ラボノート画像の S3 API 読み取り | Lambda + Textract + Rekognition + Bedrock | UC28 |
 | 半導体 / EDA | GDS/OASIS バリデーション、DRC 集計 | Tools/Libraries/PDK の読み取りキャッシュ、クラウドバースト | ログ・結果・レポートの S3 API 読み取り | Lambda + Athena + Bedrock | UC6, UC18 |
 | メディア / VFX | レンダリングパイプライン | render input assets のジョブ単位キャッシュ | フレーム・ログ・メタデータの読み取り | Lambda + Rekognition + Deadline Cloud | UC4, UC19 |
 | 自動車 / CAE | シミュレーション解析 | mesh/input deck の拠点間キャッシュ | solver output の分析 | Lambda + Athena + Glue + QuickSight | UC20 |
