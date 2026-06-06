@@ -518,8 +518,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.13
-      Handler: agri-food-traceability/functions/discovery/handler.handler
+      Runtime: python3.12
+      Handler: functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -551,8 +551,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-crop-analyzer"
-      Runtime: python3.13
-      Handler: agri-food-traceability/functions/crop_analyzer/handler.handler
+      Runtime: python3.12
+      Handler: functions/crop_analyzer/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       EphemeralStorage:
@@ -577,8 +577,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-traceability-extractor"
-      Runtime: python3.13
-      Handler: agri-food-traceability/functions/traceability_extractor/handler.handler
+      Runtime: python3.12
+      Handler: functions/traceability_extractor/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt TraceabilityExtractorLambdaRole.Arn
@@ -601,8 +601,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.13
-      Handler: agri-food-traceability/functions/report/handler.handler
+      Runtime: python3.12
+      Handler: functions/report/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt ReportLambdaRole.Arn
