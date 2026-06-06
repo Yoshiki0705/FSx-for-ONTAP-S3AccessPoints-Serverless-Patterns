@@ -279,6 +279,7 @@ def handler(event, context):
     return {
         "manifest_key": manifest_key,
         "total_objects": len(all_objects),
+        "objects": all_objects,
         "inspection_images": inspection_images,
         "maintenance_reports": maintenance_reports,
     }
