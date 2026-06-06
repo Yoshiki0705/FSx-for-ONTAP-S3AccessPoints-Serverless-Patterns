@@ -376,6 +376,7 @@ def handler(event, context):
     return {
         "manifest_key": manifest_key,
         "total_objects": len(all_objects),
+        "objects": all_objects,
         "drone_images": drone_images,
         "thermal_images": thermal_images,
         "scada_logs": scada_logs,
