@@ -88,13 +88,9 @@ Parameters:
   MaintenancePrefix:
     Type: String
     Default: "maintenance-reports/"
-  LambdaCodeBucket:
+  DeployBucket:
     Type: String
-    Description: S3 bucket containing packaged Lambda code
-  LambdaCodePrefix:
-    Type: String
-    Default: "transportation-maintenance/lambda/"
-    Description: S3 prefix for Lambda code packages
+    Description: S3 bucket containing Lambda deployment packages
 
 Conditions:
   HasS3AccessPointName:
@@ -205,11 +201,11 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.13
+      Runtime: python3.12
       Handler: handler.handler
       Code:
-        S3Bucket: !Ref LambdaCodeBucket
-        S3Key: !Sub "${LambdaCodePrefix}discovery.zip"
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/transportation-maintenance-discovery.zip
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -229,8 +225,369 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
 
+  DeteriorationDetectorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DeteriorationDetectorPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: Rekognition
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                  - rekognition:DetectModerationLabels
+                Resource: "*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt DeteriorationDetectorLogGroup.Arn
+                  - !Sub "${DeteriorationDetectorLogGroup.Arn}:*"
+
+  MaintenanceExtractorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: MaintenanceExtractorPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: Textract
+                Effect: Allow
+                Action:
+                  - textract:AnalyzeDocument
+                  - textract:DetectDocumentText
+                Resource: "*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt MaintenanceExtractorLogGroup.Arn
+                  - !Sub "${MaintenanceExtractorLogGroup.Arn}:*"
+
+  ReportLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReportPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Output
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: SNS
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ReportLogGroup.Arn
+                  - !Sub "${ReportLogGroup.Arn}:*"
+
+  DeteriorationDetectorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-deterioration-detector"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/transportation-maintenance-deterioration-detector.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DeteriorationDetectorLambdaRole.Arn
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Environment:
+        Variables:
+          USE_CASE: "transportation-maintenance"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          STANDARD_CONFIDENCE_THRESHOLD: !Ref StandardConfidenceThreshold
+          SAFETY_CRITICAL_CONFIDENCE_THRESHOLD: !Ref SafetyCriticalConfidenceThreshold
+          SAFETY_CRITICAL_CATEGORIES: !Ref SafetyCriticalCategories
+          MIN_IMAGE_WIDTH: !Ref MinImageWidth
+          MIN_IMAGE_HEIGHT: !Ref MinImageHeight
+      LoggingConfig:
+        LogGroup: !Ref DeteriorationDetectorLogGroup
+
+  MaintenanceExtractorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-maintenance-extractor"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/transportation-maintenance-maintenance-extractor.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt MaintenanceExtractorLambdaRole.Arn
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Environment:
+        Variables:
+          USE_CASE: "transportation-maintenance"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          CROSS_REGION_TEXTRACT_REGION: !Ref CrossRegionTextractRegion
+      LoggingConfig:
+        LogGroup: !Ref MaintenanceExtractorLogGroup
+
+  ReportFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Runtime: python3.12
+      Handler: handler.handler
+      Code:
+        S3Bucket: !Ref DeployBucket
+        S3Key: lambda/transportation-maintenance-report.zip
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ReportLambdaRole.Arn
+      TracingConfig:
+        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Environment:
+        Variables:
+          USE_CASE: "transportation-maintenance"
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      LoggingConfig:
+        LogGroup: !Ref ReportLogGroup
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt DeteriorationDetectorFunction.Arn
+                  - !GetAtt MaintenanceExtractorFunction.Arn
+                  - !GetAtt ReportFunction.Arn
+
+  MaintenanceStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "UC22: Transportation Maintenance - Discovery → Deterioration Map → Maintenance Map → Report",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "CheckObjectsFound",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            },
+            "CheckObjectsFound": {
+              "Type": "Choice",
+              "Choices": [{"Variable": "$.discovery.total_objects", "NumericGreaterThan": 0, "Next": "DeteriorationDetectorMap"}],
+              "Default": "ReportGeneration"
+            },
+            "DeteriorationDetectorMap": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.inspection_images",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.deterioration_results",
+              "Next": "MaintenanceExtractorMap",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "DetectDeterioration",
+                "States": {
+                  "DetectDeterioration": {
+                    "Type": "Task",
+                    "Resource": "${DeteriorationDetectorFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkDeteriorationFailed"}],
+                    "End": true
+                  },
+                  "MarkDeteriorationFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
+                }
+              }
+            },
+            "MaintenanceExtractorMap": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.maintenance_reports",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.maintenance_results",
+              "Next": "ReportGeneration",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "ExtractMaintenance",
+                "States": {
+                  "ExtractMaintenance": {
+                    "Type": "Task",
+                    "Resource": "${MaintenanceExtractorFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkMaintenanceFailed"}],
+                    "End": true
+                  },
+                  "MarkMaintenanceFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
+                }
+              }
+            },
+            "ReportGeneration": {
+              "Type": "Task",
+              "Resource": "${ReportFunction.Arn}",
+              "ResultPath": "$.report",
+              "End": true,
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler (conditional)
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsPollingOrHybrid
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref MaintenanceStateMachine
+
+  MaintenanceSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsPollingOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref MaintenanceStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
 Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref MaintenanceStateMachine
   DiscoveryFunctionArn:
     Value: !GetAtt DiscoveryFunction.Arn
+  DeteriorationDetectorFunctionArn:
+    Value: !GetAtt DeteriorationDetectorFunction.Arn
+  MaintenanceExtractorFunctionArn:
+    Value: !GetAtt MaintenanceExtractorFunction.Arn
+  ReportFunctionArn:
+    Value: !GetAtt ReportFunction.Arn
   NotificationTopicArn:
     Value: !Ref NotificationTopic

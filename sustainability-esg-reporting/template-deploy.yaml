@@ -579,7 +579,7 @@ Resources:
             "CheckObjectsFound": {
               "Type": "Choice",
               "Choices": [{"Variable": "$.discovery.total_objects", "NumericGreaterThan": 0, "Next": "MetricsExtractorMap"}],
-              "Default": "Report"
+              "Default": "ReportGeneration"
             },
             "MetricsExtractorMap": {
               "Type": "Map",
