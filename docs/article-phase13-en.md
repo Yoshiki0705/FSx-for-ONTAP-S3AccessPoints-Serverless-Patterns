@@ -1,6 +1,6 @@
 ---
 title: "From Serverless Patterns to Field-Ready Reference Architecture — FSx for ONTAP S3 Access Points, Phase 13"
-published: false
+published: true
 description: "Phase 13 turns the FSx for ONTAP S3 Access Points pattern library into a field-ready reference package — combining success metrics, governance, production readiness, benchmark-backed sizing guidance, customer discovery, and partner delivery assets."
 tags: aws, serverless, amazonfsxfornetappontap, s3accesspoints
 series: "FSx for ONTAP S3 Access Points"
