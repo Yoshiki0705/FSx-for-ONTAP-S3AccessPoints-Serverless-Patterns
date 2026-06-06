@@ -672,8 +672,13 @@ Resources:
               "Type": "Task",
               "Resource": "${DiscoveryFunction.Arn}",
               "ResultPath": "$.discovery",
-              "Next": "DefectDetectorMap",
+              "Next": "CheckObjectsFound",
               "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            },
+            "CheckObjectsFound": {
+              "Type": "Choice",
+              "Choices": [{"Variable": "$.discovery.total_objects", "NumericGreaterThan": 0, "Next": "DefectDetectorMap"}],
+              "Default": "ReportGeneration"
             },
             "DefectDetectorMap": {
               "Type": "Map",
@@ -698,7 +703,7 @@ Resources:
             },
             "ScadaAnalyzerMap": {
               "Type": "Map",
-              "ItemsPath": "$.discovery.scada_files",
+              "ItemsPath": "$.discovery.scada_logs",
               "MaxConcurrency": ${MapConcurrency},
               "ResultPath": "$.scada_results",
               "Next": "ThermalAnalyzerMap",
