@@ -269,6 +269,7 @@ def handler(event, context):
     return {
         "manifest_key": manifest_key,
         "total_objects": len(all_objects),
+        "objects": all_objects,
         "environmental_docs": environmental_docs,
         "social_docs": social_docs,
         "governance_docs": governance_docs,

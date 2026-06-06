@@ -572,8 +572,13 @@ Resources:
               "Type": "Task",
               "Resource": "${DiscoveryFunction.Arn}",
               "ResultPath": "$.discovery",
-              "Next": "GrantExtractorMap",
+              "Next": "CheckObjectsFound",
               "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            },
+            "CheckObjectsFound": {
+              "Type": "Choice",
+              "Choices": [{"Variable": "$.discovery.total_objects", "NumericGreaterThan": 0, "Next": "GrantExtractorMap"}],
+              "Default": "ReportGeneration"
             },
             "GrantExtractorMap": {
               "Type": "Map",
