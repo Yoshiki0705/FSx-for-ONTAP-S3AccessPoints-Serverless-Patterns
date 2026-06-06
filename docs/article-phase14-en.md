@@ -1,6 +1,6 @@
 ---
 title: "Evidence Expansion, Presigned URL Discovery, and Operational Surprises — FSx for ONTAP S3 Access Points, Phase 14"
-published: false
+published: true
 series: "FSx for ONTAP S3 Access Points"
 tags: aws, serverless, amazonfsxfornetappontap, s3accesspoints
 ---
@@ -34,7 +34,7 @@ Partners and SIs told us the existing 7-step delivery checklist was comprehensiv
 
 | Section | Content |
 |---------|---------|
-| **What** | 17 UCs + 6 FC patterns, CloudFormation templates, 4-level maturity model |
+| **What** | 28 UCs + 6 FC patterns, CloudFormation templates, 4-level maturity model |
 | **When** | Customer has FSx ONTAP + needs serverless file processing + permission-aware access |
 | **How** | Identify UC → Deploy template → Measure baseline → Evaluate Go/No-Go |
 | **Where** | Links to Success Metrics, Governance, Production Readiness, Benchmarks |
@@ -249,6 +249,7 @@ S3 AP ServiceUnavailable was resolved on 2026-05-25. We immediately executed the
 - **For Production (256+ MBps)**: MaxConcurrency=10-20 is safe for most workloads
 - **For VPC-internal Lambda**: Expect 2-5x better throughput (Internet latency eliminated)
 - **Throughput capacity changes**: Plan during maintenance windows (S3 AP disruption risk confirmed)
+- **Small files (< 1 KB)**: Throughput capacity increase has no effect — bottleneck is connection overhead, not bandwidth. Save costs by staying at 128 MBps for metadata-heavy workloads
 
 ---
 
@@ -331,7 +332,7 @@ We validated the FPolicy replay storm handling by injecting 1,000 and 10,000 eve
 - **Files changed**: 200+ (documentation, translations, shared modules, templates)
 - **New documents**: Partner/SI one-pager (JP/EN/KO/ZH-CN), cost calculator, customization guide, incident response playbook, demo mode guide, comparison alternatives, PoC Go/No-Go template
 - **New shared modules**: `data_classification.py`, `human_review.py`, `schemas/events.py`
-- **Benchmark runs**: 5 (128/256/512 MBps Internet + Lambda + Replay Storm)
+- **Benchmark runs**: 7 (128/256/512 MBps Internet × 2 file sizes + Lambda + Replay Storm)
 - **Templates fixed**: 5 (cfn-lint errors: RecursiveDeleteOption, SNSPublishMessagePolicy, Handler path)
 - **Translations added**: 20 files (FC1-FC6 ko/zh-CN + FC1/FC3 full 8-lang)
 - **samconfig.toml.example**: 24 patterns
