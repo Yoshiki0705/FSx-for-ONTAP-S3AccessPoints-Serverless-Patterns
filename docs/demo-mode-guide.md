@@ -115,4 +115,16 @@ aws s3 ls s3://${DEMO_BUCKET}/reports/ --recursive
 3. `DemoMode=false` に変更し、本番パラメータを設定
 4. `sam deploy` で再デプロイ
 
-> **Governance Caveat**: デモモードは技術検証用です。本番環境では必ず FSx ONTAP S3 Access Points を使用し、適切な IAM ポリシーとネットワーク設計を適用してください。
+### DemoMode → Production の差分
+
+| 領域 | DemoMode（評価用） | Production（FSx ONTAP） |
+|------|-------------------|------------------------|
+| 入力ソース | 通常 S3 バケット | FSx ONTAP S3 Access Point |
+| 権限モデル | S3 IAM のみ | IAM + S3 AP ポリシー + ONTAP ファイル ID |
+| ネットワーク | パブリック AWS サービスパス | Internet-origin or VPC-origin 設計判断 |
+| データ | サンプル / 合成データ | 顧客管理 NAS データ |
+| ガバナンス | デモラベルのみ | データ分類 + リネージ + 保持ポリシー |
+| コスト | ~$0.10/実行 | + FSx ONTAP インフラ (~$194/月 基本) |
+| AI 評価 | テストデータでの動作確認 | ドメインバリデーションセットでの精度評価 |
+
+> **Governance Caveat**: デモモードは技術検証用です。本番環境では必ず FSx ONTAP S3 Access Points を使用し、適切な IAM ポリシー、ネットワーク設計、データ分類、人間レビュー閾値を定義してください。各国・地域の規制要件への適合は顧客の責任で検証する必要があります。
