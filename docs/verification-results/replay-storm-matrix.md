@@ -84,7 +84,7 @@
 | 10000 events / 30 min | ~500 bytes | ~5 MB | < 10 MB |
 | 100000 events / 2 hours | ~500 bytes | ~50 MB | < 100 MB |
 
-> Persistent Store ボリュームは最低 2 GB を推奨（ONTAP 要件）。上記シナリオでは十分な余裕があります。
+> Persistent Store ボリュームは最低 2 GB を推奨（ONTAP 要件）。上記シナリオでは推定上十分な余裕がありますが、実際の Persistent Store 使用量は live FPolicy replay で検証が必要です。
 
 ## Analysis
 
@@ -108,7 +108,7 @@
 
 1. **SQS は Replay Storm に対して十分な耐性を持つ**: 10,000 イベントの一括投入でもメッセージロスなし
 2. **Lambda auto-scaling により drain 時間は短縮可能**: 単一コンシューマーで 341 msgs/sec、10 並列で ~3,400 msgs/sec
-3. **Persistent Store サイジングは保守的に 2 GB で十分**: 30 分ダウンタイムで ~5 MB、2 時間でも ~50 MB
+3. **Persistent Store サイジングは推定値**: シミュレーションイベントのペイロードサイズに基づく推定。30 分ダウンタイムで ~5 MB、2 時間でも ~50 MB。実際の ONTAP Persistent Store サイジングは live FPolicy replay で検証が必要
 4. **SLO 閾値は妥当**: 全メトリクスが閾値を大幅にクリア
 
 ## Limitations
