@@ -1,0 +1,96 @@
+{
+  "benchmark_run_id": "s3ap-bench-2026-06-06-256mbps",
+  "timestamp": "2026-06-06T11:40:00Z",
+  "test_environment": {
+    "region": "ap-northeast-1",
+    "s3ap_alias": "fsxn-eda-s3ap-fhyst3uaibf46uywh5xka84pnz8jaapn1a-ext-s3alias",
+    "s3ap_name": "fsxn-eda-s3ap",
+    "fsxn_throughput_capacity_mbps": 256,
+    "fsxn_storage_capacity_gb": 1024,
+    "network_origin": "Internet",
+    "caller": "local_machine_macos",
+    "note": "Sizing reference, not service limit"
+  },
+  "test_parameters": {
+    "object_key": "manifests/2026/05/05/d063b7fc-dadf-4080-9536-8ac800ab12f6.json",
+    "object_size_bytes": 202,
+    "iterations_per_config": 50,
+    "warm_up_runs": 3,
+    "concurrency_levels": [
+      1,
+      5,
+      10,
+      20,
+      25,
+      50
+    ]
+  },
+  "results": [
+    {
+      "conc": 1,
+      "mean": 59.4,
+      "p50": 56.9,
+      "p90": 65.8,
+      "p95": 72.8,
+      "p99": 100.8,
+      "max": 100.8,
+      "std": 8.1,
+      "errors": 0
+    },
+    {
+      "conc": 5,
+      "mean": 83.1,
+      "p50": 56.3,
+      "p90": 126.8,
+      "p95": 283.7,
+      "p99": 536.8,
+      "max": 536.8,
+      "std": 99.0,
+      "errors": 0
+    },
+    {
+      "conc": 10,
+      "mean": 98.5,
+      "p50": 56.5,
+      "p90": 317.8,
+      "p95": 498.1,
+      "p99": 508.7,
+      "max": 508.7,
+      "std": 123.8,
+      "errors": 0
+    },
+    {
+      "conc": 20,
+      "mean": 111.6,
+      "p50": 57.8,
+      "p90": 333.9,
+      "p95": 401.6,
+      "p99": 552.5,
+      "max": 552.5,
+      "std": 123.2,
+      "errors": 0
+    },
+    {
+      "conc": 25,
+      "mean": 134.8,
+      "p50": 60.3,
+      "p90": 355.5,
+      "p95": 380.4,
+      "p99": 468.3,
+      "max": 468.3,
+      "std": 122.8,
+      "errors": 0
+    },
+    {
+      "conc": 50,
+      "mean": 255.5,
+      "p50": 257.9,
+      "p90": 492.6,
+      "p95": 500.6,
+      "p99": 614.5,
+      "max": 614.5,
+      "std": 142.3,
+      "errors": 0
+    }
+  ]
+}
