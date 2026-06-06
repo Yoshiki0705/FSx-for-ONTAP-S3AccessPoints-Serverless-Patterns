@@ -512,8 +512,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.13
-      Handler: travel-document-processing/functions/discovery/handler.handler
+      Runtime: python3.12
+      Handler: functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -544,8 +544,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-reservation-extractor"
-      Runtime: python3.13
-      Handler: travel-document-processing/functions/reservation_extractor/handler.handler
+      Runtime: python3.12
+      Handler: functions/reservation_extractor/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt ReservationExtractorLambdaRole.Arn
@@ -567,8 +567,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-facility-inspector"
-      Runtime: python3.13
-      Handler: travel-document-processing/functions/facility_inspector/handler.handler
+      Runtime: python3.12
+      Handler: functions/facility_inspector/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt FacilityInspectorLambdaRole.Arn
@@ -590,8 +590,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.13
-      Handler: travel-document-processing/functions/report/handler.handler
+      Runtime: python3.12
+      Handler: functions/report/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt ReportLambdaRole.Arn
