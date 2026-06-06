@@ -541,8 +541,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.13
-      Handler: transportation-maintenance/functions/discovery/handler.handler
+      Runtime: python3.12
+      Handler: functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -573,8 +573,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-deterioration-detector"
-      Runtime: python3.13
-      Handler: transportation-maintenance/functions/deterioration_detector/handler.handler
+      Runtime: python3.12
+      Handler: functions/deterioration_detector/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DeteriorationDetectorLambdaRole.Arn
@@ -602,8 +602,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-maintenance-extractor"
-      Runtime: python3.13
-      Handler: transportation-maintenance/functions/maintenance_extractor/handler.handler
+      Runtime: python3.12
+      Handler: functions/maintenance_extractor/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt MaintenanceExtractorLambdaRole.Arn
@@ -625,8 +625,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.13
-      Handler: transportation-maintenance/functions/report/handler.handler
+      Runtime: python3.12
+      Handler: functions/report/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt ReportLambdaRole.Arn

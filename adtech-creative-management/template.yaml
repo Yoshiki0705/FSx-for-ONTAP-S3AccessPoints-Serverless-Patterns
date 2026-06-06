@@ -588,8 +588,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.13
-      Handler: adtech-creative-management/functions/discovery/handler.handler
+      Runtime: python3.12
+      Handler: functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -619,8 +619,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-visual-analyzer"
-      Runtime: python3.13
-      Handler: adtech-creative-management/functions/visual_analyzer/handler.handler
+      Runtime: python3.12
+      Handler: functions/visual_analyzer/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt VisualAnalyzerLambdaRole.Arn
@@ -644,8 +644,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-text-compliance"
-      Runtime: python3.13
-      Handler: adtech-creative-management/functions/text_compliance/handler.handler
+      Runtime: python3.12
+      Handler: functions/text_compliance/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt TextComplianceLambdaRole.Arn
@@ -668,8 +668,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.13
-      Handler: adtech-creative-management/functions/report/handler.handler
+      Runtime: python3.12
+      Handler: functions/report/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt ReportLambdaRole.Arn
