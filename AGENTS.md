@@ -178,6 +178,20 @@ Before submitting changes, run:
 6. If modifying README: ensure Governance Note + Performance Considerations present
 7. If adding output: include `data_classification` field
 
+## New Pattern: Field-Shareable Definition of Done
+
+A new industry pattern is considered field-shareable (ready for Partner/SI customer conversations) only when ALL of the following are met:
+
+- [ ] CloudFormation template passes `cfn-lint` with zero errors
+- [ ] DemoMode=true execution succeeds (no FSx ONTAP dependency)
+- [ ] Unit tests + property-based tests pass
+- [ ] Success Metrics defined (Business Outcome / Technical KPI / Quality KPI / Cost KPI / Go-No-Go)
+- [ ] Data classification labels documented
+- [ ] Human review thresholds defined and documented
+- [ ] README in JP + EN at minimum
+- [ ] `samconfig.toml.example` included
+- [ ] Governance Note present (for regulated/safety-critical domains)
+
 ## Key Design Decisions
 
 ### S3ApHelper is the Core Abstraction

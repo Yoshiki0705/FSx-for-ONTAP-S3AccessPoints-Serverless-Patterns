@@ -28,6 +28,8 @@ FSx for ONTAP の S3 Access Points を活用し、鉄道インフラの点検画
 - Rekognition による劣化指標検出（デュアル閾値: 標準 80%、安全重要 60%）
 - Bedrock による重大度分類（critical / major / minor / observation）
 - 安全重要インフラ: 90% 未満の検出はすべて `human_review_required: true`
+
+> **安全設計の意図**: 60% 閾値は自動承認閾値ではなく、**エスカレーション閾値**（false negative 削減のためにレビュー対象を広げる設計）です。本パターンは安全判断を自動化するものではなく、専門家レビューのための候補検出を行います。
 - Textract + Comprehend による保守報告書の修理履歴・ライフサイクルデータ抽出
 - 12ヶ月劣化トレンド分析 + 重大度×部品年齢による保守優先度ランキング
 - 低解像度画像（< 1024×768）は `requires-reinspection` 自動マーク
