@@ -635,8 +635,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.13
-      Handler: telecom-network-analytics/functions/discovery/handler.handler
+      Runtime: python3.12
+      Handler: functions/discovery/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -667,8 +667,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-cdr-analyzer"
-      Runtime: python3.13
-      Handler: telecom-network-analytics/functions/cdr_analyzer/handler.handler
+      Runtime: python3.12
+      Handler: functions/cdr_analyzer/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt CdrAnalyzerLambdaRole.Arn
@@ -691,8 +691,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-log-analyzer"
-      Runtime: python3.13
-      Handler: telecom-network-analytics/functions/log_analyzer/handler.handler
+      Runtime: python3.12
+      Handler: functions/log_analyzer/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt LogAnalyzerLambdaRole.Arn
@@ -715,8 +715,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-anomaly-detector"
-      Runtime: python3.13
-      Handler: telecom-network-analytics/functions/anomaly_detector/handler.handler
+      Runtime: python3.12
+      Handler: functions/anomaly_detector/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt AnomalyDetectorLambdaRole.Arn
@@ -741,8 +741,8 @@ Resources:
       TracingConfig:
         Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.13
-      Handler: telecom-network-analytics/functions/report/handler.handler
+      Runtime: python3.12
+      Handler: functions/report/handler.handler
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt ReportLambdaRole.Arn
