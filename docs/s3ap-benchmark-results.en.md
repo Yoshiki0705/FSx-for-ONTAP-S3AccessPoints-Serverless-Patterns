@@ -26,7 +26,9 @@ Measured latency and throughput results for each S3 API operation via FSx for ON
 
 > **Important**: These benchmark results are measured values from a test environment and do not constitute a service-level guarantee. Throughput and latency depend on FSx for ONTAP sizing, workload profile, network path, object size, and concurrency. Validate in your own AWS account, region, FSx configuration, and workload profile before production adoption.
 
-> **Note**: These measurements were taken via the Internet (client → S3AP). Access from a VPC-internal Lambda significantly reduces network latency and improves throughput.
+> **Environment constraint**: All results are from Single-AZ, First-generation FSx for ONTAP. Multi-AZ or Second-generation file systems may produce different results. Validate separately.
+
+> **Note**: These measurements were taken via the Internet (client → S3AP). Access from a VPC-external Lambda (AWS-managed egress) reduces latency, but a true VPC-internal Lambda + VPC-origin S3 AP path remains untested.
 
 ---
 
