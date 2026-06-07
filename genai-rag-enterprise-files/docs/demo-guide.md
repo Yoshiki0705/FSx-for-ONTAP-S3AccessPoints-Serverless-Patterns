@@ -106,3 +106,9 @@
   "filtered_count": 3
 }
 ```
+
+
+## スクリーンショット
+
+![Phase 13 — CloudFormation Stacks](../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
+![Phase 13 — Lambda Functions](../../docs/screenshots/masked/phase13-lambda-functions.png)

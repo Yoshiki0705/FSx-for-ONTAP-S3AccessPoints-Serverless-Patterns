@@ -112,3 +112,9 @@ cat report.json | python3 -m json.tool
 | 100 files | ~6 分 |
 
 > **注記**: 上記は sizing reference であり、service limit ではありません。実際の実行時間は Bedrock レスポンスタイム、ファイルサイズ、ネットワーク条件により異なります。
+
+
+## スクリーンショット
+
+![Phase 13 — CloudFormation Stacks](../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
+![Phase 13 — Lambda Functions](../../docs/screenshots/masked/phase13-lambda-functions.png)
