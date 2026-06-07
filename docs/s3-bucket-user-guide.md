@@ -30,13 +30,27 @@ S3 Object Lock が使えない場合、FSx for ONTAP は以下の代替機能を
 |---|---|---|
 | Compliance mode (WORM) | **SnapLock Compliance** | SEC 17a-4(f), FINRA 4511 対応。保持期間中は誰も削除不可（管理者含む） |
 | Governance mode | **SnapLock Enterprise** | 内部コンプライアンス用。Privileged delete 可能 |
-| Object Lock + Versioning | **Tamperproof Snapshot** (ARP) | AI ドリブンのランサムウェア検知 + 自動保護 Snapshot 作成 |
+| Object Lock + Versioning | **Tamperproof Snapshot** | SnapLock Compliance clock で Snapshot にロック期間を設定。管理者を含む誰も保持期間内に削除不可 |
 
-> **出典**: [How SnapLock works — FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/how-snaplock-works.html), [Autonomous Ransomware Protection — FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/ARP.html)
+さらに、ランサムウェア対策として:
+
+| 目的 | ONTAP 機能 | 特徴 |
+|---|---|---|
+| 異常検知 + 自動保護 | **Autonomous Ransomware Protection (ARP)** | AI でボリュームの異常パターン（エントロピー、拡張子変更、IOPS）を監視し、脅威検知時に自動 Snapshot 作成 |
+| Snapshot 削除防止 | **Tamperproof Snapshot** | SnapLock 技術で Snapshot をロックし、ランサムウェアによる Snapshot 削除攻撃を防止 |
+
+> **Tamperproof Snapshot と ARP は別機能です**:
+> - **Tamperproof Snapshot**: Snapshot のロック保護（誰も削除不可にする仕組み）
+> - **ARP**: 脅威の検知と自動対応（異常検知時に Snapshot を自動作成する仕組み）
+>
+> 両者を組み合わせることで「ARP が脅威検知 → Snapshot 自動作成 → Tamperproof で削除防止」の多層防御が可能。
+
+> **出典**: [How SnapLock works — FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/how-snaplock-works.html), [Snapshot locking — NetApp ONTAP](https://docs.netapp.com/us-en/ontap/snaplock/snapshot-lock-concept.html), [ARP — FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/ARP.html)
 
 **推奨設計**:
 - 規制対応 WORM が必要な監査成果物 → SnapLock Compliance volume に出力、または標準 S3 バケット（Object Lock 有効）にコピー
-- ランサムウェア対策 → ARP を volume レベルで有効化（追加コスト無し）
+- Snapshot の改ざん防止 → Tamperproof Snapshot を有効化
+- ランサムウェア検知・自動対応 → ARP を volume レベルで有効化（追加コスト無し）
 - point-in-time recovery → ONTAP Snapshot（S3 Versioning の代替）
 
 ## Versioning の代替
