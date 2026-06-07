@@ -54,3 +54,16 @@
 | 公共 (UC16) | NARA 準拠、情報公開法対応、データ所在地要件 |
 
 > **重要**: これらのパターンは reference implementation（参照実装）であり、顧客の規制・監査・運用・データ分類要件を自動的に満たすものではありません。本番利用前に顧客自身のポリシーと規制要件への適合を検証してください。
+
+## NetworkOrigin 設計判断
+
+| 要件 | 推奨 NetworkOrigin |
+|---|---|
+| 全コンシューマーが同一 VPC 内 | VPC-origin |
+| 外部 / オンプレミスクライアントがアクセス | Internet-origin |
+| 厳格なプライベートアクセス制限 | VPC-origin |
+| 複数 VPC からアクセス | TGW/peering 評価、または Internet-origin |
+| Lambda (VPC 外) からアクセス | Internet-origin |
+| Lambda (VPC 内) からアクセス | VPC-origin + S3 Gateway EP |
+
+> **注意**: NetworkOrigin は作成後に変更できません。設計時に慎重に選択してください。
