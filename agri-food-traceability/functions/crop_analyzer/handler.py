@@ -256,7 +256,7 @@ def handler(event, context):
     start_time = time.time()
 
     s3_access_point = os.environ["S3_ACCESS_POINT"]
-    bedrock_model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+    bedrock_model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0")
     confidence_threshold = float(os.environ.get("CROP_ANOMALY_CONFIDENCE_THRESHOLD", str(DEFAULT_CONFIDENCE_THRESHOLD)))
 
     object_key = event.get("Key", "")

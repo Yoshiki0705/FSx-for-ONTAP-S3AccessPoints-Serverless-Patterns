@@ -18,7 +18,7 @@ Environment Variables:
     OUTPUT_BUCKET: 出力バケット名
     ANOMALY_THRESHOLD_STDDEV: 異常検出閾値 (σ数, default: 3)
     BASELINE_WINDOW_DAYS: ベースライン計算期間 (日数, default: 7)
-    BEDROCK_MODEL_ID: Bedrock モデル ID (default: anthropic.claude-3-haiku-20240307-v1:0)
+    BEDROCK_MODEL_ID: Bedrock モデル ID (default: anthropic.claude-haiku-4-5-20251001-v1:0)
     SNS_TOPIC_ARN: 通知先 SNS トピック ARN
 """
 
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 # デフォルト設定
 DEFAULT_ANOMALY_THRESHOLD_STDDEV = 3.0
 DEFAULT_BASELINE_WINDOW_DAYS = 7
-DEFAULT_BEDROCK_MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0"
+DEFAULT_BEDROCK_MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
 # Bedrock リトライ設定
 BEDROCK_RETRY_CONFIG = RetryConfig(

@@ -24,7 +24,7 @@ Environment Variables:
     OUTPUT_BUCKET: 出力バケット名
     BRAND_GUIDELINES_S3_KEY: ブランドガイドライン JSON の S3 キー
     COMPLIANCE_RULES_S3_KEY: コンプライアンスルール JSON の S3 キー
-    BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: anthropic.claude-3-haiku-20240307-v1:0)
+    BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: anthropic.claude-haiku-4-5-20251001-v1:0)
     TEXTRACT_REGION: Textract クライアントリージョン (デフォルト: us-east-1)
     MODERATION_CONFIDENCE_THRESHOLD: モデレーション確信度閾値 (デフォルト: 80)
 """
@@ -576,7 +576,7 @@ def handler(event, context):
     output_bucket = os.environ.get("OUTPUT_BUCKET", "")
     brand_guidelines_key = os.environ.get("BRAND_GUIDELINES_S3_KEY", "")
     compliance_rules_key = os.environ.get("COMPLIANCE_RULES_S3_KEY", "")
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0")
 
     s3_client = boto3.client("s3")
 
