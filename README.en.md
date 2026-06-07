@@ -70,16 +70,16 @@
 
 | Goal | Link |
 |:---|:---|
-| 🚀 Demo mode (no FSx required) | [`docs/demo-mode-guide.md`](docs/demo-mode-guide.md) |
+| 🚀 Demo mode (no FSx required) | [`docs/demo-mode-guide.en.md`](docs/demo-mode-guide.en.md) |
 | 💰 Cost estimation | [`docs/cost-calculator.md`](docs/cost-calculator.md) |
 | 🔧 Customization | [`docs/customization-guide.md`](docs/customization-guide.md) |
 | 📊 Benchmark results | [`docs/s3ap-benchmark-results.md`](docs/s3ap-benchmark-results.md) |
 | 🤝 Partner/SI | [`docs/partner-si-one-pager.en.md`](docs/partner-si-one-pager.en.md) |
 | 🏛️ Governance | [`docs/governance-checklist.md`](docs/governance-checklist.md) |
 | ⚡ Local testing | [`docs/local-testing-quick-start.md`](docs/local-testing-quick-start.md) |
-| 🪣 For S3 bucket users | [`docs/s3-bucket-user-guide.md`](docs/s3-bucket-user-guide.md) |
-| 🔌 For ONTAP admins | [`docs/ontap-integration-notes.md`](docs/ontap-integration-notes.md) |
-| 🎯 Pattern selection guide | [`docs/pattern-selection-guide.md`](docs/pattern-selection-guide.md) |
+| 🪣 For S3 bucket users | [`docs/s3-bucket-user-guide.en.md`](docs/s3-bucket-user-guide.en.md) |
+| 🔌 For ONTAP admins | [`docs/ontap-integration-notes.en.md`](docs/ontap-integration-notes.en.md) |
+| 🎯 Pattern selection guide | [`docs/pattern-selection-guide.en.md`](docs/pattern-selection-guide.en.md) |
 
 </details>
 

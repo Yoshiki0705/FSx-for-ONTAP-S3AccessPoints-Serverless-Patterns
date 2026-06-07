@@ -1,5 +1,7 @@
 # ONTAP Integration Notes — S3 AP と既存 NAS 運用の共存ガイド
 
+🌐 **Language / 言語**: [日本語](ontap-integration-notes.md) | [English](ontap-integration-notes.en.md)
+
 ## 概要
 
 FSx for ONTAP S3 Access Points を使用する場合、既存の NFS/SMB 運用への影響を理解し設計することが重要です。本ドキュメントは ONTAP 管理者・NAS アーキテクト向けのガイダンスです。
