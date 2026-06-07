@@ -93,6 +93,8 @@ The original 5 patterns (Phase 1) have been expanded across Phases 2–13. Phase
 
 A collection of industry-specific serverless automation patterns leveraging S3 Access Points for Amazon FSx for ONTAP.
 
+> **Serverless boundary**: Compute (Lambda, Step Functions, EventBridge, Bedrock) is serverless; storage (FSx for ONTAP) is fully managed but has provisioned capacity. For greenfield object-native workloads, prefer standard S3 + serverless-native architecture. This library is for **applying serverless processing to existing enterprise NAS data without migration**.
+
 > **Purpose of this repository**: This is a "reference implementation for learning design decisions." Some use cases have been E2E verified in an AWS environment, while others have undergone CloudFormation deployment, shared Discovery Lambda, and operational verification of key components. It is designed for gradual adoption from PoC to production, demonstrating design decisions for cost optimization, security, and error handling through concrete code.
 
 **Tests**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
