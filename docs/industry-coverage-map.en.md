@@ -37,7 +37,7 @@ This document provides a comprehensive view of FSx for ONTAP S3 Access Points se
 | 15 | Power & Utilities | 電力・ユーティリティ | UC25 | Covered | 2026-06-03 |
 | 16 | Retail | 小売 | UC11 | Covered | 2026-03-20 |
 | 17 | Semiconductor | 半導体 | UC6 | Covered | 2026-03-20 |
-| 18 | Software & Internet | ソフトウェア・インターネット | UC29 | Covered | 2026-06-07 |
+| 18 | Software & Internet | ソフトウェア・インターネット | FC7 | Covered | 2026-06-07 |
 | 19 | Sustainability | サステナビリティ | UC23 | Covered | 2026-06-03 |
 | 20 | Telecommunications | 通信 | UC18 | Covered | 2026-06-02 |
 | 21 | Travel & Hospitality | 旅行・ホスピタリティ | UC20 | Covered | 2026-06-03 |

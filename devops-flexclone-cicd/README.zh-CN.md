@@ -1,4 +1,4 @@
-# UC29: DevOps FlexClone + S3AP — 开发/测试数据刷新与 CI/CD 管道集成
+# FC7: DevOps FlexClone + S3AP — 开发/测试数据刷新与 CI/CD 管道集成
 
 🌐 **Language / 语言**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
