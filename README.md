@@ -93,7 +93,7 @@
 
 Amazon FSx for ONTAP の S3 Access Points を活用した、業界別サーバーレス自動化パターン集です。
 
-> **サーバーレス境界**: 処理面（Lambda, Step Functions, EventBridge, Bedrock）はサーバーレス、ストレージ面（FSx for ONTAP）はフルマネージドだが provisioned capacity を持つハイブリッド構成です。新規でオブジェクトネイティブなワークロードには標準 S3 + サーバーレス構成を推奨します。本パターンは **既存 NAS データを移動せずサーバーレス処理を適用する** ためのものです。
+> **サーバーレス境界**: 処理面（Lambda, Step Functions, EventBridge, Bedrock）はサーバーレス、ストレージ面（FSx for ONTAP）はフルマネージドだが provisioned capacity を持つハイブリッド構成です。新規でオブジェクトネイティブなワークロードには標準 S3 + サーバーレス構成を推奨します。本パターンは **既存エンタープライズ NAS データに対するサーバーレス処理パターン** です。
 
 ## クイック選択: あなたのワークロードに合うパターンは？
 
