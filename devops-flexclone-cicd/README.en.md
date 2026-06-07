@@ -1,6 +1,6 @@
 # UC29: DevOps FlexClone + S3AP — Dev/Test Data Refresh & CI/CD Pipeline Integration
 
-[English](README.en.md) | [日本語](README.md) | [한국어](README.ko.md) | [中文(简)](README.zh-CN.md) | [中文(繁)](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+**English** | [日本語](README.md)
 
 ## Overview
 

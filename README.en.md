@@ -43,7 +43,7 @@
 | UC28 | [`chemical-sds-management/`](chemical-sds-management/) | Chemicals | SDS management + lab notebook |
 | SAP | [`sap-erp-adjacent/`](sap-erp-adjacent/) | SAP/ERP | IDoc, HULFT, EDI processing |
 
-### FlexCache / FlexClone Patterns (FC1-FC6)
+### FlexCache / FlexClone Patterns (FC1-FC7)
 
 | # | Directory | Pattern |
 |---|:---|:---|
@@ -53,6 +53,7 @@
 | FC4 | [`automotive-cae/`](automotive-cae/) | CAE simulation analysis |
 | FC5 | [`life-sciences-research/`](life-sciences-research/) | Research data classification |
 | FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/) | Game asset quality check |
+| FC7 | [`devops-flexclone-cicd/`](devops-flexclone-cicd/) | FlexClone Dev/Test refresh & CI/CD |
 
 ### Infrastructure & Shared
 
@@ -87,7 +88,7 @@
 
 ## Current Status
 
-This repository now contains **28 industry use cases** + **event-driven FPolicy pattern** + **6 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for ONTAP S3 Access Points.
+This repository now contains **28 industry use cases** + **event-driven FPolicy pattern** + **7 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for ONTAP S3 Access Points.
 
 The original 5 patterns (Phase 1) have been expanded across Phases 2–13. Phase 10 introduced the shared FPolicy event-ingestion pipeline, Phase 11 wired dispatch across all 17 UCs, Phase 12 hardened the pipeline with Persistent Store replay validation, SLO observability, capacity guardrails, and secrets rotation, and Phase 13 added FlexClone/FlexCache serverless automation.
 
@@ -156,7 +157,7 @@ Local details: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md)
 
 ## Overview
 
-This repository provides **28 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **6 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6).
+This repository provides **28 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **7 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6, Phase 15: FC7).
 
 > Hereafter, FSx for ONTAP S3 Access Points will be abbreviated as **S3 AP**.
 
