@@ -142,3 +142,9 @@ aws cloudformation deploy \
 | MonitorJob が終わらない | `expected_completion_at` が未来すぎないか確認 |
 | Cleanup 失敗 | ONTAP REST API エラーログ確認、volume busy でないか確認 |
 | レポートが S3 にない | OUTPUT_BUCKET 環境変数、IAM ポリシー確認 |
+
+
+## スクリーンショット
+
+![Phase 13 — FlexClone Step Functions (SUCCEEDED)](../../docs/screenshots/masked/phase13-flexclone-step-functions.png)
+![Phase 13 — FlexClone Execution Result](../../docs/screenshots/masked/phase13-flexclone-execution-result.png)
