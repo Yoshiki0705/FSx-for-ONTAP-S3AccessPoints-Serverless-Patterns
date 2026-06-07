@@ -4,6 +4,21 @@
 
 FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file data stored in FSx for ONTAP. Data remains on FSx for ONTAP and can continue to be accessed through NFS and SMB.
 
+## S3 AP vs NFS/SMB: When to Use Which
+
+| 要件 | S3 AP 推奨 | NFS/SMB 推奨 |
+|------|:---:|:---:|
+| サーバーレス連携 (Lambda, Step Functions) | ✅ | — |
+| POSIX セマンティクス必須 (lock, rename, symlink) | — | ✅ |
+| 大容量ファイルの逐次処理 | △ (5GB 上限あり) | ✅ |
+| 権限ベースのファイルアクセス制御 | ✅ (dual-layer auth) | ✅ (NTFS/UNIX ACL) |
+| 低レイテンシ metadata 操作 (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
+| 既存アプリケーション互換性 | — | ✅ |
+| AWS サービス統合 (Athena, Bedrock, Textract) | ✅ | — |
+| イベント駆動ファイル処理 | ✅ (FPolicy + S3 AP) | △ (FPolicy + NFS mount) |
+
+> **注**: S3 AP は NFS/SMB の置き換えではなく、AWS サービス統合のための補完的アクセスパスです。同じボリュームに NFS/SMB と S3 AP の両方からアクセスできます。
+
 ## Tested Operations
 
 | Operation | Status |
@@ -79,6 +94,17 @@ AWS サポートの明確な指針:
 | Conditional writes (If-None-Match) | **Blocked** | 使用不可（NotImplemented を返す） |
 | Presigned URLs | **Not supported (doc)** | 依存しない。代替手段を設計すること |
 | ListObjectVersions | **Not supported (doc)** | ListObjectsV2 を使用すること |
+
+### Presigned URL 代替手段
+
+Presigned URL に依存せずに時間制限付きファイルアクセスを実現する方法:
+
+| 代替手段 | 概要 | ユースケース |
+|---------|------|-------------|
+| API Gateway + Lambda proxy | IAM/JWT 認証付きの Lambda 経由ダウンロード | Web アプリ、モバイル |
+| CloudFront signed URLs | Lambda@Edge で制御されたオリジン | 大規模配信 |
+| 一時 STS 認証情報 | スコープされた IAM (時間制限、プレフィックス制限) | バッチ処理、パートナー連携 |
+| アプリケーション層ブローカー | 監査ログ + アクセス取消機能付き | 規制産業 |
 
 ### ドキュメント改善の見通し
 
