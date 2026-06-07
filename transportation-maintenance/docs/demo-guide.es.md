@@ -50,6 +50,13 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 
 ---
 
+---
+
+## Capturas de pantalla
+
+![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc22-demo/step-functions-graph-view.png)
+
+
 ## Cleanup
 
 ```bash

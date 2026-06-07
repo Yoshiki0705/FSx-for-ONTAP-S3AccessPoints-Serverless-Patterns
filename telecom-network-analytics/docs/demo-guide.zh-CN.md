@@ -104,6 +104,13 @@ aws s3 ls s3://${OUTPUT_BUCKET}/reports/daily/${TODAY}/ --region ap-northeast-1
 
 ---
 
+---
+
+## 截图
+
+![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc18-demo/step-functions-graph-view.png)
+
+
 ## 清理 (Cleanup)
 
 ```bash

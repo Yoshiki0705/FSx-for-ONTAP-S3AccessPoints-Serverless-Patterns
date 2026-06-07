@@ -49,6 +49,13 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 
 ---
 
+---
+
+## Captures d'écran
+
+![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
+
+
 ## Nettoyage
 
 ```bash

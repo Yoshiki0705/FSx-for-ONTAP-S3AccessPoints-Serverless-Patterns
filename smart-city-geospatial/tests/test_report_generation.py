@@ -45,7 +45,7 @@ def test_invoke_bedrock_anthropic_format(report_generation_handler):
         "body": MagicMock(read=lambda: json.dumps({"content": [{"text": "Claude response"}]}).encode())
     }
     result = report_generation_handler.invoke_bedrock(
-        mock_bedrock, "anthropic.claude-3-haiku-20240307-v1:0", "test prompt", 1024
+        mock_bedrock, "anthropic.claude-haiku-4-5-20251001-v1:0", "test prompt", 1024
     )
     assert result == "Claude response"
 
