@@ -37,7 +37,7 @@
 | 15 | 電力・ユーティリティ | Power & Utilities | UC25 | Covered | 2026-06-03 |
 | 16 | 小売 | Retail | UC11 | Covered | 2026-03-20 |
 | 17 | 半導体 | Semiconductor | UC6 | Covered | 2026-03-20 |
-| 18 | ソフトウェア・インターネット | Software & Internet | — | Not Covered | 2026-06-02 |
+| 18 | ソフトウェア・インターネット | Software & Internet | UC29 | Covered | 2026-06-07 |
 | 19 | サステナビリティ | Sustainability | UC23 | Covered | 2026-06-03 |
 | 20 | 通信 | Telecommunications | UC18 | Covered | 2026-06-02 |
 | 21 | 旅行・ホスピタリティ | Travel & Hospitality | UC20 | Covered | 2026-06-03 |
