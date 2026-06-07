@@ -1,6 +1,6 @@
 # デモモード ガイド — FSx ONTAP なしでパターンを体験する
 
-🌐 **Language / 言語**: 日本語
+🌐 **Language / 言語**: [日本語](demo-mode-guide.md) | [English](demo-mode-guide.en.md)
 
 ## 概要
 
