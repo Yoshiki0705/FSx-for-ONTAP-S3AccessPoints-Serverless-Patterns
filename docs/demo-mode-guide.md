@@ -121,7 +121,7 @@ aws s3 ls s3://${DEMO_BUCKET}/reports/ --recursive
 |------|-------------------|------------------------|
 | 入力ソース | 通常 S3 バケット | FSx ONTAP S3 Access Point |
 | 権限モデル | S3 IAM のみ | IAM + S3 AP ポリシー + ONTAP ファイル ID |
-| ネットワーク | パブリック AWS サービスパス | Internet-origin or VPC-origin 設計判断 |
+| ネットワーク | パブリック AWS サービスパス | Internet-origin or VPC-origin 設計判断（**作成後変更不可 — AP 再作成が必要**） |
 | データ | サンプル / 合成データ | 顧客管理 NAS データ |
 | ガバナンス | デモラベルのみ | データ分類 + リネージ + 保持ポリシー |
 | コスト | ~$0.10/実行 | + FSx ONTAP インフラ (~$194/月 基本) |
