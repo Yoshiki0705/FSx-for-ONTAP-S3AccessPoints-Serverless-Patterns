@@ -1,4 +1,4 @@
-# UC29 デモガイド: DevOps FlexClone + S3AP
+# FC7 デモガイド: DevOps FlexClone + S3AP
 
 ## 前提条件
 

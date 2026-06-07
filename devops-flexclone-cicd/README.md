@@ -1,4 +1,4 @@
-# UC29: DevOps FlexClone + S3AP — Dev/Test データリフレッシュ & CI/CD パイプライン統合
+# FC7: DevOps FlexClone + S3AP — Dev/Test データリフレッシュ & CI/CD パイプライン統合
 
 🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 

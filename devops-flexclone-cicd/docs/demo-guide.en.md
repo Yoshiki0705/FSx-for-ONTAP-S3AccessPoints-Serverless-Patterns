@@ -1,4 +1,4 @@
-# UC29 Demo Guide: DevOps FlexClone + S3AP
+# FC7 Demo Guide: DevOps FlexClone + S3AP
 
 ## Prerequisites
 
