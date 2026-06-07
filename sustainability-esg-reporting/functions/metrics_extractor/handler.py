@@ -153,11 +153,13 @@ def extract_metrics_with_bedrock(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 4096,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 4096,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     response = _call_bedrock()
@@ -242,57 +244,63 @@ def normalize_metrics(
 
         # カテゴリが有効かチェック
         if category not in valid_categories:
-            normalized_records.append({
-                "metric_name": metric_name,
-                "value": numeric_value,
-                "unit": unit,
-                "normalized_value": None,
-                "normalized_unit": None,
-                "source_key": source_key,
-                "period": period,
-                "category": category,
-                "esg_category": esg_category,
-                "confidence": confidence,
-                "status": "requires-validation",
-                "validation_reason": "unknown_category",
-            })
+            normalized_records.append(
+                {
+                    "metric_name": metric_name,
+                    "value": numeric_value,
+                    "unit": unit,
+                    "normalized_value": None,
+                    "normalized_unit": None,
+                    "source_key": source_key,
+                    "period": period,
+                    "category": category,
+                    "esg_category": esg_category,
+                    "confidence": confidence,
+                    "status": "requires-validation",
+                    "validation_reason": "unknown_category",
+                }
+            )
             continue
 
         # 値がない場合
         if numeric_value is None:
-            normalized_records.append({
-                "metric_name": metric_name,
-                "value": None,
-                "unit": unit,
-                "normalized_value": None,
-                "normalized_unit": UNIT_NORMALIZATION[category]["target"],
-                "source_key": source_key,
-                "period": period,
-                "category": category,
-                "esg_category": esg_category,
-                "confidence": confidence,
-                "status": "requires-validation",
-                "validation_reason": "non_numeric_value",
-            })
+            normalized_records.append(
+                {
+                    "metric_name": metric_name,
+                    "value": None,
+                    "unit": unit,
+                    "normalized_value": None,
+                    "normalized_unit": UNIT_NORMALIZATION[category]["target"],
+                    "source_key": source_key,
+                    "period": period,
+                    "category": category,
+                    "esg_category": esg_category,
+                    "confidence": confidence,
+                    "status": "requires-validation",
+                    "validation_reason": "non_numeric_value",
+                }
+            )
             continue
 
         # 正規化実行
         result = normalize_value(numeric_value, unit, category)
 
-        normalized_records.append({
-            "metric_name": metric_name,
-            "value": numeric_value,
-            "unit": unit,
-            "normalized_value": result.value,
-            "normalized_unit": result.unit,
-            "source_key": source_key,
-            "period": period,
-            "category": category,
-            "esg_category": esg_category,
-            "confidence": confidence,
-            "status": result.status,
-            "validation_reason": result.reason,
-        })
+        normalized_records.append(
+            {
+                "metric_name": metric_name,
+                "value": numeric_value,
+                "unit": unit,
+                "normalized_value": result.value,
+                "normalized_unit": result.unit,
+                "source_key": source_key,
+                "period": period,
+                "category": category,
+                "esg_category": esg_category,
+                "confidence": confidence,
+                "status": result.status,
+                "validation_reason": result.reason,
+            }
+        )
 
     return normalized_records
 
@@ -318,13 +326,9 @@ def handler(event, context):
     logger.info("Processing ESG document: key=%s, category=%s", key, esg_category)
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     textract_region = os.environ.get("CROSS_REGION_TEXTRACT_REGION", "us-east-1")
-    model_id = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-    )
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
     # クライアント初期化
     textract_client = boto3.client("textract", region_name=textract_region)
@@ -364,18 +368,14 @@ def handler(event, context):
                 "use_case": "sustainability-esg-reporting",
             },
         ):
-            raw_metrics = extract_metrics_with_bedrock(
-                extracted_text, bedrock_client, model_id
-            )
+            raw_metrics = extract_metrics_with_bedrock(extracted_text, bedrock_client, model_id)
 
         # Step 4: 単位正規化
         normalized_metrics = normalize_metrics(raw_metrics, key, esg_category)
 
         # 結果統計
         success_metrics = [m for m in normalized_metrics if m["status"] == "success"]
-        validation_metrics = [
-            m for m in normalized_metrics if m["status"] == "requires-validation"
-        ]
+        validation_metrics = [m for m in normalized_metrics if m["status"] == "requires-validation"]
 
         logger.info(
             "Metrics extraction completed: key=%s, total=%d, success=%d, requires_validation=%d",
@@ -386,10 +386,7 @@ def handler(event, context):
         )
 
         # 結果を S3 に出力
-        result_key = (
-            f"results/metrics/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-            f"{os.path.basename(key)}.json"
-        )
+        result_key = f"results/metrics/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
         s3ap_output.put_object(
             key=result_key,
             body=json.dumps(
@@ -441,10 +438,7 @@ def handler(event, context):
         logger.error("Metrics extraction failed: key=%s, error=%s", key, str(e))
 
         # エラーを出力バケットに記録
-        error_key = (
-            f"errors/metrics/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-            f"{os.path.basename(key)}.json"
-        )
+        error_key = f"errors/metrics/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
         try:
             s3ap_output.put_object(
                 key=error_key,

@@ -48,13 +48,9 @@ def compute_compliance_status(grant_results: list[dict]) -> dict:
         if result.get("status") == "success":
             info = result.get("extracted_info", {})
             # 必須フィールドの充足チェック
-            has_applicant = bool(
-                info.get("applicant_info", {}).get("organization_name")
-            )
+            has_applicant = bool(info.get("applicant_info", {}).get("organization_name"))
             has_budget = info.get("budget", {}).get("total_amount") is not None
-            has_project = bool(
-                info.get("project_description", {}).get("title")
-            )
+            has_project = bool(info.get("project_description", {}).get("title"))
 
             if has_applicant and has_budget and has_project:
                 compliant += 1
@@ -119,11 +115,7 @@ def compute_achievement_rates(outcome_results: list[dict]) -> dict:
             elif status == "not_achieved":
                 not_achieved += 1
 
-    avg_achievement = (
-        round(sum(achievement_scores) / len(achievement_scores), 1)
-        if achievement_scores
-        else 0.0
-    )
+    avg_achievement = round(sum(achievement_scores) / len(achievement_scores), 1) if achievement_scores else 0.0
 
     return {
         "total_reports": total,
@@ -210,9 +202,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     grant_results = event.get("grant_results", [])
@@ -232,21 +222,13 @@ def handler(event, context):
     achievement_rates = compute_achievement_rates(outcome_results)
 
     # プログラムエリア別集計
-    program_area_breakdown = aggregate_by_program_area(
-        grant_results, outcome_results
-    )
+    program_area_breakdown = aggregate_by_program_area(grant_results, outcome_results)
 
     # エラー・スキップ集計
     total_processed = len(grant_results) + len(outcome_results)
-    success_count = sum(
-        1 for r in grant_results + outcome_results if r.get("status") == "success"
-    )
-    error_count = sum(
-        1 for r in grant_results + outcome_results if r.get("status") == "error"
-    )
-    skipped_count = sum(
-        1 for r in grant_results + outcome_results if r.get("status") == "skipped"
-    )
+    success_count = sum(1 for r in grant_results + outcome_results if r.get("status") == "success")
+    error_count = sum(1 for r in grant_results + outcome_results if r.get("status") == "error")
+    skipped_count = sum(1 for r in grant_results + outcome_results if r.get("status") == "skipped")
 
     processing_duration_ms = int((time.time() - start_time) * 1000)
 
@@ -269,12 +251,8 @@ def handler(event, context):
         "discovery_metadata": {
             "execution_id": discovery_info.get("execution_id"),
             "total_objects": discovery_info.get("total_objects", 0),
-            "grant_application_count": discovery_info.get(
-                "grant_application_count", 0
-            ),
-            "activity_report_count": discovery_info.get(
-                "activity_report_count", 0
-            ),
+            "grant_application_count": discovery_info.get("grant_application_count", 0),
+            "activity_report_count": discovery_info.get("activity_report_count", 0),
         },
     }
 
@@ -290,8 +268,7 @@ def handler(event, context):
     )
 
     logger.info(
-        "Grant Report generated: key=%s, compliance_rate=%.1f%%, "
-        "avg_achievement=%.1f%%, errors=%d, skipped=%d",
+        "Grant Report generated: key=%s, compliance_rate=%.1f%%, avg_achievement=%.1f%%, errors=%d, skipped=%d",
         report_key,
         compliance_status["compliance_rate"],
         achievement_rates["average_achievement_rate"],
@@ -300,9 +277,7 @@ def handler(event, context):
     )
 
     # SNS 通知（エラーまたは低達成率がある場合）
-    if sns_topic_arn and (
-        error_count > 0 or achievement_rates["average_achievement_rate"] < 50
-    ):
+    if sns_topic_arn and (error_count > 0 or achievement_rates["average_achievement_rate"] < 50):
         try:
             sns_client = boto3.client("sns")
             sns_client.publish(

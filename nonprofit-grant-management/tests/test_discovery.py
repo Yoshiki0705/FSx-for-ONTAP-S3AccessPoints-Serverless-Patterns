@@ -157,33 +157,23 @@ class TestExtractSubmissionDate:
     """提出日抽出のテスト"""
 
     def test_hyphenated_date(self):
-        result = extract_submission_date(
-            "grant-applications/education/2025-03-15/proposal.pdf"
-        )
+        result = extract_submission_date("grant-applications/education/2025-03-15/proposal.pdf")
         assert result == "2025-03-15"
 
     def test_slash_date(self):
-        result = extract_submission_date(
-            "grant-applications/2025/03/15/proposal.pdf"
-        )
+        result = extract_submission_date("grant-applications/2025/03/15/proposal.pdf")
         assert result == "2025-03-15"
 
     def test_compact_date(self):
-        result = extract_submission_date(
-            "grant-applications/education/20250315_proposal.pdf"
-        )
+        result = extract_submission_date("grant-applications/education/20250315_proposal.pdf")
         assert result == "2025-03-15"
 
     def test_no_date(self):
-        result = extract_submission_date(
-            "grant-applications/education/proposal.pdf"
-        )
+        result = extract_submission_date("grant-applications/education/proposal.pdf")
         assert result is None
 
     def test_invalid_date(self):
-        result = extract_submission_date(
-            "grant-applications/education/2025-13-45/proposal.pdf"
-        )
+        result = extract_submission_date("grant-applications/education/2025-13-45/proposal.pdf")
         assert result is None
 
 
@@ -201,9 +191,7 @@ class TestValidateS3ApConnectivity:
 
         mock_s3ap = MagicMock()
         mock_s3ap.bucket_param = "test-ap"
-        mock_s3ap.list_objects.side_effect = S3ApHelperError(
-            "Connection failed", error_code="ServiceUnavailable"
-        )
+        mock_s3ap.list_objects.side_effect = S3ApHelperError("Connection failed", error_code="ServiceUnavailable")
         result = validate_s3ap_connectivity(mock_s3ap)
         assert result is not None
         assert result["statusCode"] == 503

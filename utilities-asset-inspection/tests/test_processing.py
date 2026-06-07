@@ -73,9 +73,7 @@ class TestDetectDefectsRekognition:
                 {"Name": "Metal Structure", "Confidence": 92.0},
             ]
         }
-        result = detect_defects_rekognition(
-            "test-ap", "test.jpg", 70.0, rekognition_client=mock_client
-        )
+        result = detect_defects_rekognition("test-ap", "test.jpg", 70.0, rekognition_client=mock_client)
         assert len(result) == 1
         assert result[0]["defect_type"] == "insulator_damage"
         assert result[0]["confidence"] == 85.0
@@ -87,9 +85,7 @@ class TestDetectDefectsRekognition:
                 {"Name": "Tree branch near wire", "Confidence": 78.0},
             ]
         }
-        result = detect_defects_rekognition(
-            "test-ap", "test.jpg", 70.0, rekognition_client=mock_client
-        )
+        result = detect_defects_rekognition("test-ap", "test.jpg", 70.0, rekognition_client=mock_client)
         assert len(result) == 1
         assert result[0]["defect_type"] == "vegetation_encroachment"
 
@@ -101,17 +97,13 @@ class TestDetectDefectsRekognition:
                 {"Name": "Power Line", "Confidence": 95.0},
             ]
         }
-        result = detect_defects_rekognition(
-            "test-ap", "test.jpg", 70.0, rekognition_client=mock_client
-        )
+        result = detect_defects_rekognition("test-ap", "test.jpg", 70.0, rekognition_client=mock_client)
         assert len(result) == 0
 
     def test_confidence_threshold_applied(self):
         mock_client = MagicMock()
         mock_client.detect_labels.return_value = {"Labels": []}
-        detect_defects_rekognition(
-            "test-ap", "test.jpg", 70.0, rekognition_client=mock_client
-        )
+        detect_defects_rekognition("test-ap", "test.jpg", 70.0, rekognition_client=mock_client)
         call_kwargs = mock_client.detect_labels.call_args[1]
         assert call_kwargs["MinConfidence"] == 70.0
 
@@ -122,15 +114,13 @@ class TestAssessSeverityBedrock:
     def test_severity_assignment(self):
         mock_client = MagicMock()
         mock_response_body = MagicMock()
-        mock_response_body.read.return_value = json.dumps({
-            "content": [{"text": '[{"defect_type": "insulator_damage", "severity": "critical", "reason": "test"}]'}]
-        }).encode()
+        mock_response_body.read.return_value = json.dumps(
+            {"content": [{"text": '[{"defect_type": "insulator_damage", "severity": "critical", "reason": "test"}]'}]}
+        ).encode()
         mock_client.invoke_model.return_value = {"body": mock_response_body}
 
         defects = [{"defect_type": "insulator_damage", "confidence": 85.0, "label": "Crack"}]
-        result = assess_severity_bedrock(
-            defects, "EQ-001", bedrock_client=mock_client
-        )
+        result = assess_severity_bedrock(defects, "EQ-001", bedrock_client=mock_client)
         assert result[0]["severity"] == "critical"
 
     def test_fallback_to_minor_on_failure(self):
@@ -138,9 +128,7 @@ class TestAssessSeverityBedrock:
         mock_client.invoke_model.side_effect = RuntimeError("API error")
 
         defects = [{"defect_type": "insulator_damage", "confidence": 85.0, "label": "Crack"}]
-        result = assess_severity_bedrock(
-            defects, "EQ-001", bedrock_client=mock_client
-        )
+        result = assess_severity_bedrock(defects, "EQ-001", bedrock_client=mock_client)
         assert result[0]["severity"] == "minor"
 
     def test_empty_defects_returns_empty(self):
@@ -389,11 +377,7 @@ class TestExtractThermalData:
         assert result == []
 
     def test_missing_temperatures(self):
-        metadata = {
-            "measurements": [
-                {"component_id": "unknown"}
-            ]
-        }
+        metadata = {"measurements": [{"component_id": "unknown"}]}
         result = extract_thermal_data(metadata)
         assert result == []
 

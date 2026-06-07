@@ -163,9 +163,7 @@ class TestGenerateHumanReadableReport:
                 "damage_types": {"Crack": 1, "Stain": 1},
             },
         }
-        report = generate_human_readable_report(
-            reservation_summary, facility_summary, "2026-06-15"
-        )
+        report = generate_human_readable_report(reservation_summary, facility_summary, "2026-06-15")
         assert "予約文書処理サマリ" in report
         assert "施設状態トレンド" in report
         assert "処理件数: 5" in report

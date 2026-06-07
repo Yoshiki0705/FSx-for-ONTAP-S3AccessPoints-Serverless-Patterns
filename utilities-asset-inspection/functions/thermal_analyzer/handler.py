@@ -87,23 +87,27 @@ def extract_thermal_data(
 
         if max_temp is not None and baseline_temp is not None:
             differential = float(max_temp) - float(baseline_temp)
-            components.append({
-                "component_id": component_id,
-                "max_temperature": float(max_temp),
-                "baseline_temperature": float(baseline_temp),
-                "ambient_temperature": float(ambient_temp) if ambient_temp else None,
-                "temperature_differential": round(differential, 1),
-            })
+            components.append(
+                {
+                    "component_id": component_id,
+                    "max_temperature": float(max_temp),
+                    "baseline_temperature": float(baseline_temp),
+                    "ambient_temperature": float(ambient_temp) if ambient_temp else None,
+                    "temperature_differential": round(differential, 1),
+                }
+            )
         elif max_temp is not None and ambient_temp is not None:
             # ベースラインがない場合は環境温度をベースラインとする
             differential = float(max_temp) - float(ambient_temp)
-            components.append({
-                "component_id": component_id,
-                "max_temperature": float(max_temp),
-                "baseline_temperature": float(ambient_temp),
-                "ambient_temperature": float(ambient_temp),
-                "temperature_differential": round(differential, 1),
-            })
+            components.append(
+                {
+                    "component_id": component_id,
+                    "max_temperature": float(max_temp),
+                    "baseline_temperature": float(ambient_temp),
+                    "ambient_temperature": float(ambient_temp),
+                    "temperature_differential": round(differential, 1),
+                }
+            )
 
     return components
 
@@ -152,11 +156,13 @@ def analyze_thermal_with_bedrock(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 1024,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     try:
@@ -173,9 +179,7 @@ def analyze_thermal_with_bedrock(
                 hot_spot["interpretation"] = interpretations[i]
 
     except Exception as e:
-        logger.warning(
-            "Bedrock thermal interpretation failed: %s", str(e)
-        )
+        logger.warning("Bedrock thermal interpretation failed: %s", str(e))
 
     return hot_spots
 
@@ -186,7 +190,7 @@ def _parse_json_array(text: str) -> list[dict]:
     end = text.rfind("]")
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(text[start:end + 1])
+            return json.loads(text[start : end + 1])
         except json.JSONDecodeError:
             pass
     return []
@@ -207,9 +211,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    thermal_threshold = float(
-        os.environ.get("THERMAL_DIFFERENTIAL_THRESHOLD", "10.0")
-    )
+    thermal_threshold = float(os.environ.get("THERMAL_DIFFERENTIAL_THRESHOLD", "10.0"))
 
     objects = event.get("objects", [])
     logger.info(
@@ -241,28 +243,26 @@ def handler(event, context):
             hot_spots: list[dict] = []
             for component in components:
                 differential = component["temperature_differential"]
-                classification = classify_thermal_differential(
-                    differential, thermal_threshold
-                )
+                classification = classify_thermal_differential(differential, thermal_threshold)
                 component["classification"] = classification
                 if classification != CLASSIFICATION_NORMAL:
                     hot_spots.append(component)
 
             # Bedrock でホットスポット解釈
             if hot_spots:
-                hot_spots = analyze_thermal_with_bedrock(
-                    hot_spots, equipment_id
-                )
+                hot_spots = analyze_thermal_with_bedrock(hot_spots, equipment_id)
 
-            results.append({
-                "key": key,
-                "equipment_id": equipment_id,
-                "inspection_date": inspection_date,
-                "status": "success",
-                "component_count": len(components),
-                "hot_spot_count": len(hot_spots),
-                "hot_spots": hot_spots,
-            })
+            results.append(
+                {
+                    "key": key,
+                    "equipment_id": equipment_id,
+                    "inspection_date": inspection_date,
+                    "status": "success",
+                    "component_count": len(components),
+                    "hot_spot_count": len(hot_spots),
+                    "hot_spots": hot_spots,
+                }
+            )
             all_hot_spots.extend(hot_spots)
             success_count += 1
 
@@ -277,21 +277,22 @@ def handler(event, context):
             )
 
             # Requirement 9.6: skip, record equipment ID + failure reason, continue
-            results.append({
-                "key": key,
-                "equipment_id": equipment_id,
-                "inspection_date": inspection_date,
-                "status": "error",
-                "error_type": error_category.value,
-                "error_message": str(e),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "equipment_id": equipment_id,
+                    "inspection_date": inspection_date,
+                    "status": "error",
+                    "error_type": error_category.value,
+                    "error_message": str(e),
+                }
+            )
             error_count += 1
 
     processing_duration_ms = int((time.time() - start_time) * 1000)
 
     logger.info(
-        "Thermal analysis completed: success=%d, errors=%d, "
-        "hot_spots=%d, duration=%dms",
+        "Thermal analysis completed: success=%d, errors=%d, hot_spots=%d, duration=%dms",
         success_count,
         error_count,
         len(all_hot_spots),

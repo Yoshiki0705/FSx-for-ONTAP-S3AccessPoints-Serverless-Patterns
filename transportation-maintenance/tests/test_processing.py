@@ -19,9 +19,7 @@ _det_handler_path = os.path.join(
     "deterioration_detector",
     "handler.py",
 )
-_det_spec = importlib.util.spec_from_file_location(
-    "uc22_deterioration_handler", _det_handler_path
-)
+_det_spec = importlib.util.spec_from_file_location("uc22_deterioration_handler", _det_handler_path)
 _det_module = importlib.util.module_from_spec(_det_spec)
 sys.modules["uc22_deterioration_handler"] = _det_module
 _det_spec.loader.exec_module(_det_module)
@@ -39,9 +37,7 @@ _maint_handler_path = os.path.join(
     "maintenance_extractor",
     "handler.py",
 )
-_maint_spec = importlib.util.spec_from_file_location(
-    "uc22_maintenance_handler", _maint_handler_path
-)
+_maint_spec = importlib.util.spec_from_file_location("uc22_maintenance_handler", _maint_handler_path)
 _maint_module = importlib.util.module_from_spec(_maint_spec)
 sys.modules["uc22_maintenance_handler"] = _maint_module
 _maint_spec.loader.exec_module(_maint_module)

@@ -132,9 +132,7 @@ def map_metrics_with_bedrock(
         # 成功メトリクスがない場合はフォールバック
         return _apply_fallback_mappings(metrics)
 
-    prompt = FRAMEWORK_MAPPING_PROMPT.format(
-        metrics_json=json.dumps(metrics_summary, ensure_ascii=False)
-    )
+    prompt = FRAMEWORK_MAPPING_PROMPT.format(metrics_json=json.dumps(metrics_summary, ensure_ascii=False))
 
     try:
 
@@ -144,11 +142,13 @@ def map_metrics_with_bedrock(
                 modelId=model_id,
                 contentType="application/json",
                 accept="application/json",
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 4096,
-                    "messages": [{"role": "user", "content": prompt}],
-                }),
+                body=json.dumps(
+                    {
+                        "anthropic_version": "bedrock-2023-05-31",
+                        "max_tokens": 4096,
+                        "messages": [{"role": "user", "content": prompt}],
+                    }
+                ),
             )
 
         response = _call_bedrock()
@@ -165,9 +165,7 @@ def map_metrics_with_bedrock(
             return _merge_mappings_with_metrics(metrics, mappings)
 
     except Exception as e:
-        logger.warning(
-            "Bedrock framework mapping failed, using fallback: %s", str(e)
-        )
+        logger.warning("Bedrock framework mapping failed, using fallback: %s", str(e))
 
     # フォールバック
     return _apply_fallback_mappings(metrics)
@@ -193,9 +191,7 @@ def _parse_mappings_json(text: str) -> list[dict]:
     return []
 
 
-def _merge_mappings_with_metrics(
-    metrics: list[dict], mappings: list[dict]
-) -> list[dict]:
+def _merge_mappings_with_metrics(metrics: list[dict], mappings: list[dict]) -> list[dict]:
     """Bedrock マッピング結果をメトリクスに統合する。"""
     # マッピングを名前でインデックス
     mapping_index: dict[str, dict] = {}
@@ -215,10 +211,12 @@ def _merge_mappings_with_metrics(
             # フォールバック
             fw_mappings = get_fallback_mapping(category)
 
-        result.append({
-            **metric,
-            "framework_mappings": fw_mappings,
-        })
+        result.append(
+            {
+                **metric,
+                "framework_mappings": fw_mappings,
+            }
+        )
 
     return result
 
@@ -229,10 +227,12 @@ def _apply_fallback_mappings(metrics: list[dict]) -> list[dict]:
     for metric in metrics:
         category = metric.get("category", "")
         fw_mappings = get_fallback_mapping(category)
-        result.append({
-            **metric,
-            "framework_mappings": fw_mappings,
-        })
+        result.append(
+            {
+                **metric,
+                "framework_mappings": fw_mappings,
+            }
+        )
     return result
 
 
@@ -268,12 +268,8 @@ def handler(event, context):
     if input_status == "error":
         return event
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
-    model_id = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
     bedrock_client = boto3.client("bedrock-runtime")
 
@@ -289,9 +285,7 @@ def handler(event, context):
                 "use_case": "sustainability-esg-reporting",
             },
         ):
-            mapped_metrics = map_metrics_with_bedrock(
-                input_metrics, bedrock_client, model_id
-            )
+            mapped_metrics = map_metrics_with_bedrock(input_metrics, bedrock_client, model_id)
 
         logger.info(
             "Framework mapping completed: key=%s, mapped_count=%d",
@@ -301,8 +295,7 @@ def handler(event, context):
 
         # 結果を S3 に出力
         result_key = (
-            f"results/framework-mapped/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-            f"{os.path.basename(key)}.json"
+            f"results/framework-mapped/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
         )
         s3ap_output.put_object(
             key=result_key,

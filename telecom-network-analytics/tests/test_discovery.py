@@ -111,9 +111,7 @@ class TestValidateS3apConnectivity:
 
         mock_s3ap = MagicMock()
         mock_s3ap.bucket_param = "test-ap-alias-ext-s3alias"
-        mock_s3ap.list_objects.side_effect = S3ApHelperError(
-            "Access denied", error_code="AccessDenied"
-        )
+        mock_s3ap.list_objects.side_effect = S3ApHelperError("Access denied", error_code="AccessDenied")
 
         result = validate_s3ap_connectivity(mock_s3ap)
         assert result is not None
@@ -143,9 +141,7 @@ class TestValidateS3apConnectivity:
 
         mock_s3ap = MagicMock()
         mock_s3ap.bucket_param = "test-ap-alias-ext-s3alias"
-        mock_s3ap.list_objects.side_effect = S3ApHelperError(
-            "Service unavailable", error_code="ServiceUnavailable"
-        )
+        mock_s3ap.list_objects.side_effect = S3ApHelperError("Service unavailable", error_code="ServiceUnavailable")
 
         result = validate_s3ap_connectivity(mock_s3ap)
         assert result is not None
@@ -169,22 +165,45 @@ class TestDiscoveryHandler:
         ctx.function_name = "telecom-discovery"
         return ctx
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-alias-ext-s3alias",
-        "CDR_SUFFIX_FILTER": ".csv,.asn1,.parquet",
-        "PREFIX_FILTER": "cdr/",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-alias-ext-s3alias",
+            "CDR_SUFFIX_FILTER": ".csv,.asn1,.parquet",
+            "PREFIX_FILTER": "cdr/",
+        },
+    )
     def test_handler_success(self):
         """正常系: CDR ファイルを検出してマニフェストを返す"""
-        with patch.object(_module, "S3ApHelper") as mock_s3ap_cls, \
-             patch.object(_module, "EmfMetrics") as mock_emf_cls:
+        with patch.object(_module, "S3ApHelper") as mock_s3ap_cls, patch.object(_module, "EmfMetrics") as mock_emf_cls:
             mock_s3ap = MagicMock()
             mock_s3ap_cls.return_value = mock_s3ap
             mock_s3ap.list_objects.side_effect = [
                 [],  # connectivity check (max_keys=1)
-                [{"Key": "cdr/2026/06/02/morning.csv", "Size": 1048576, "LastModified": "2026-06-02T00:15:00Z", "ETag": '"abc"'}],
-                [{"Key": "cdr/2026/06/02/data.asn1", "Size": 524288, "LastModified": "2026-06-02T01:00:00Z", "ETag": '"def"'}],
-                [{"Key": "cdr/2026/06/02/summary.parquet", "Size": 2097152, "LastModified": "2026-06-02T02:00:00Z", "ETag": '"ghi"'}],
+                [
+                    {
+                        "Key": "cdr/2026/06/02/morning.csv",
+                        "Size": 1048576,
+                        "LastModified": "2026-06-02T00:15:00Z",
+                        "ETag": '"abc"',
+                    }
+                ],
+                [
+                    {
+                        "Key": "cdr/2026/06/02/data.asn1",
+                        "Size": 524288,
+                        "LastModified": "2026-06-02T01:00:00Z",
+                        "ETag": '"def"',
+                    }
+                ],
+                [
+                    {
+                        "Key": "cdr/2026/06/02/summary.parquet",
+                        "Size": 2097152,
+                        "LastModified": "2026-06-02T02:00:00Z",
+                        "ETag": '"ghi"',
+                    }
+                ],
             ]
 
             mock_emf = MagicMock()
@@ -197,10 +216,13 @@ class TestDiscoveryHandler:
             assert len(result["objects"]) == 3
             assert result["suffix_patterns_used"] == [".csv", ".asn1", ".parquet"]
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-alias-ext-s3alias",
-        "CDR_SUFFIX_FILTER": ".csv,.asn1,.parquet",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-alias-ext-s3alias",
+            "CDR_SUFFIX_FILTER": ".csv,.asn1,.parquet",
+        },
+    )
     def test_handler_connectivity_failure(self):
         """異常系: S3 AP 接続失敗で 503 エラーを返す"""
         from shared.exceptions import S3ApHelperError
@@ -209,9 +231,7 @@ class TestDiscoveryHandler:
             mock_s3ap = MagicMock()
             mock_s3ap_cls.return_value = mock_s3ap
             mock_s3ap.bucket_param = "test-ap-alias-ext-s3alias"
-            mock_s3ap.list_objects.side_effect = S3ApHelperError(
-                "Access denied to S3 AP", error_code="AccessDenied"
-            )
+            mock_s3ap.list_objects.side_effect = S3ApHelperError("Access denied to S3 AP", error_code="AccessDenied")
 
             result = handler({}, self._make_context())
 
@@ -219,15 +239,17 @@ class TestDiscoveryHandler:
             body = json.loads(result["body"])
             assert body["error"] == "S3 Access Point unreachable"
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-alias-ext-s3alias",
-        "CDR_SUFFIX_FILTER": ".csv",
-        "PREFIX_FILTER": "data/",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-alias-ext-s3alias",
+            "CDR_SUFFIX_FILTER": ".csv",
+            "PREFIX_FILTER": "data/",
+        },
+    )
     def test_handler_deduplication(self):
         """重複キーが排除されることを確認"""
-        with patch.object(_module, "S3ApHelper") as mock_s3ap_cls, \
-             patch.object(_module, "EmfMetrics") as mock_emf_cls:
+        with patch.object(_module, "S3ApHelper") as mock_s3ap_cls, patch.object(_module, "EmfMetrics") as mock_emf_cls:
             mock_s3ap = MagicMock()
             mock_s3ap_cls.return_value = mock_s3ap
             # Connectivity check succeeds, then same key returned by suffix filter
@@ -246,13 +268,15 @@ class TestDiscoveryHandler:
 
             assert result["total_objects"] == 1
 
-    @patch.dict(os.environ, {
-        "S3_ACCESS_POINT": "test-ap-alias-ext-s3alias",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "S3_ACCESS_POINT": "test-ap-alias-ext-s3alias",
+        },
+    )
     def test_handler_uses_default_suffix_when_env_not_set(self):
         """CDR_SUFFIX_FILTER 未設定時にデフォルトが使用される"""
-        with patch.object(_module, "S3ApHelper") as mock_s3ap_cls, \
-             patch.object(_module, "EmfMetrics") as mock_emf_cls:
+        with patch.object(_module, "S3ApHelper") as mock_s3ap_cls, patch.object(_module, "EmfMetrics") as mock_emf_cls:
             mock_s3ap = MagicMock()
             mock_s3ap_cls.return_value = mock_s3ap
             mock_s3ap.list_objects.return_value = []
@@ -275,70 +299,54 @@ class TestHandlerStructure:
 
     def test_handler_file_exists(self):
         """handler.py が存在する"""
-        handler_path = os.path.join(
-            os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-        )
+        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
         assert os.path.exists(handler_path)
 
     def test_handler_has_entry_point(self):
         """handler 関数が定義されている"""
-        handler_path = os.path.join(
-            os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-        )
+        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
         with open(handler_path) as f:
             content = f.read()
         assert "def handler(event, context):" in content
 
     def test_handler_uses_s3ap_helper(self):
         """S3ApHelper を使用している"""
-        handler_path = os.path.join(
-            os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-        )
+        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
         with open(handler_path) as f:
             content = f.read()
         assert "from shared.s3ap_helper import S3ApHelper" in content
 
     def test_handler_uses_lambda_error_handler(self):
         """lambda_error_handler デコレータを使用している"""
-        handler_path = os.path.join(
-            os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-        )
+        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
         with open(handler_path) as f:
             content = f.read()
         assert "@lambda_error_handler" in content
 
     def test_handler_has_connectivity_validation(self):
         """S3 AP 接続性バリデーション関数が定義されている"""
-        handler_path = os.path.join(
-            os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-        )
+        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
         with open(handler_path) as f:
             content = f.read()
         assert "def validate_s3ap_connectivity(" in content
 
     def test_handler_has_configurable_suffix(self):
         """CDR_SUFFIX_FILTER 環境変数を使用している"""
-        handler_path = os.path.join(
-            os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-        )
+        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
         with open(handler_path) as f:
             content = f.read()
         assert "CDR_SUFFIX_FILTER" in content
 
     def test_handler_default_suffix_value(self):
         """デフォルトサフィックスが .csv,.asn1,.parquet である"""
-        handler_path = os.path.join(
-            os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-        )
+        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
         with open(handler_path) as f:
             content = f.read()
         assert ".csv,.asn1,.parquet" in content
 
     def test_handler_max_patterns_enforced(self):
         """最大 20 パターン制限が実装されている"""
-        handler_path = os.path.join(
-            os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-        )
+        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
         with open(handler_path) as f:
             content = f.read()
         assert "MAX_SUFFIX_PATTERNS" in content
@@ -346,9 +354,7 @@ class TestHandlerStructure:
 
     def test_handler_generates_manifest_key(self):
         """manifests/ プレフィックスのキーを生成する"""
-        handler_path = os.path.join(
-            os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-        )
+        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
         with open(handler_path) as f:
             content = f.read()
         assert "manifests/" in content

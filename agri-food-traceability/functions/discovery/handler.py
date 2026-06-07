@@ -34,14 +34,10 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 # 航空画像の対応拡張子 (GeoTIFF / JPEG with potential EXIF GPS)
-AERIAL_IMAGE_EXTENSIONS: frozenset[str] = frozenset(
-    {".tif", ".tiff", ".geotiff", ".jpg", ".jpeg"}
-)
+AERIAL_IMAGE_EXTENSIONS: frozenset[str] = frozenset({".tif", ".tiff", ".geotiff", ".jpg", ".jpeg"})
 
 # トレーサビリティ文書の対応拡張子
-TRACEABILITY_DOC_EXTENSIONS: frozenset[str] = frozenset(
-    {".pdf", ".xlsx", ".xls", ".csv", ".docx"}
-)
+TRACEABILITY_DOC_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".xlsx", ".xls", ".csv", ".docx"})
 
 # デフォルト最大画像サイズ (バイト)
 DEFAULT_MAX_IMAGE_SIZE_MB: int = 500
@@ -118,13 +114,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error(
@@ -133,13 +131,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -163,17 +163,14 @@ def handler(event, context):
         dict: manifest_key, total_objects, aerial_images, traceability_docs
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     image_prefix = os.environ.get("IMAGE_PREFIX", "aerial-images/")
     traceability_prefix = os.environ.get("TRACEABILITY_PREFIX", "traceability/")
     max_image_size_mb = int(os.environ.get("MAX_IMAGE_SIZE_MB", str(DEFAULT_MAX_IMAGE_SIZE_MB)))
     max_image_size_bytes = max_image_size_mb * 1024 * 1024
 
     logger.info(
-        "Agri-Food Discovery started: access_point=%s, "
-        "image_prefix=%r, traceability_prefix=%r, max_image_size_mb=%d",
+        "Agri-Food Discovery started: access_point=%s, image_prefix=%r, traceability_prefix=%r, max_image_size_mb=%d",
         os.environ["S3_ACCESS_POINT"],
         image_prefix,
         traceability_prefix,
@@ -269,9 +266,7 @@ def handler(event, context):
         "objects": all_objects,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

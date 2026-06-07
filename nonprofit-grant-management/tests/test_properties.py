@@ -23,12 +23,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Discovery handler
-_discovery_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-)
-_discovery_spec = importlib.util.spec_from_file_location(
-    "uc24_discovery_pbt", _discovery_path
-)
+_discovery_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
+_discovery_spec = importlib.util.spec_from_file_location("uc24_discovery_pbt", _discovery_path)
 _discovery_module = importlib.util.module_from_spec(_discovery_spec)
 _discovery_spec.loader.exec_module(_discovery_module)
 
@@ -48,8 +44,17 @@ VALID_EXTENSIONS = [".pdf", ".docx", ".doc"]
 
 # 無効な拡張子
 INVALID_EXTENSIONS = [
-    ".txt", ".csv", ".xlsx", ".jpg", ".png", ".mp4",
-    ".html", ".xml", ".json", ".pptx", ".zip",
+    ".txt",
+    ".csv",
+    ".xlsx",
+    ".jpg",
+    ".png",
+    ".mp4",
+    ".html",
+    ".xml",
+    ".json",
+    ".pptx",
+    ".zip",
 ]
 
 
@@ -121,9 +126,7 @@ def test_classify_file_returns_valid_type(key: str):
     extension=st.sampled_from(INVALID_EXTENSIONS),
     prefix=st.sampled_from([GRANT_PREFIX, REPORT_PREFIX, "other/"]),
 )
-def test_unrecognized_format_returns_none(
-    filename: str, extension: str, prefix: str
-):
+def test_unrecognized_format_returns_none(filename: str, extension: str, prefix: str):
     """未対応拡張子のファイルは常に None を返す。
 
     **Validates: Requirements 13.3**

@@ -24,12 +24,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # unit_normalizer モジュールの読み込み
-_normalizer_path = os.path.join(
-    os.path.dirname(__file__), "..", "shared", "unit_normalizer.py"
-)
-_normalizer_spec = importlib.util.spec_from_file_location(
-    "unit_normalizer_pbt", _normalizer_path
-)
+_normalizer_path = os.path.join(os.path.dirname(__file__), "..", "shared", "unit_normalizer.py")
+_normalizer_spec = importlib.util.spec_from_file_location("unit_normalizer_pbt", _normalizer_path)
 _normalizer_module = importlib.util.module_from_spec(_normalizer_spec)
 sys.modules["unit_normalizer_pbt"] = _normalizer_module
 _normalizer_spec.loader.exec_module(_normalizer_module)
@@ -84,9 +80,7 @@ def test_target_unit_in_defined_set(category: str, value: float):
         st.text(min_size=0, max_size=10),
     ),
 )
-def test_normalize_result_unit_always_valid_or_unknown(
-    category: str, value: float, unit: str | None
-):
+def test_normalize_result_unit_always_valid_or_unknown(category: str, value: float, unit: str | None):
     """normalize_value の返却 unit は常に定義済み or "unknown"。
 
     **Validates: Requirements 13.3**
@@ -114,9 +108,7 @@ def test_normalize_result_unit_always_valid_or_unknown(
         st.text(min_size=1, max_size=10),
     ),
 )
-def test_normalize_always_returns_normalization_result(
-    category: str, value: float, unit: str | None
-):
+def test_normalize_always_returns_normalization_result(category: str, value: float, unit: str | None):
     """normalize_value は常に NormalizationResult を返す。
 
     **Validates: Requirements 13.3**
@@ -136,9 +128,7 @@ def test_normalize_always_returns_normalization_result(
     unit=st.text(min_size=0, max_size=10),
     category=st.text(min_size=1, max_size=20),
 )
-def test_normalize_unknown_category_returns_requires_validation(
-    value: float, unit: str, category: str
-):
+def test_normalize_unknown_category_returns_requires_validation(value: float, unit: str, category: str):
     """未知のカテゴリに対しては status="requires-validation" を返す。
 
     **Validates: Requirements 13.3**
@@ -191,9 +181,7 @@ def test_normalize_valid_unit_returns_success(category: str, value: float):
     unit=st.one_of(st.none(), st.text(min_size=0, max_size=10)),
     category=st.one_of(st.none(), st.sampled_from(ALL_CATEGORIES)),
 )
-def test_metric_record_always_has_normalization_fields(
-    value, unit, category
-):
+def test_metric_record_always_has_normalization_fields(value, unit, category):
     """normalize_metric_record は常に正規化フィールドを持つ辞書を返す。
 
     **Validates: Requirements 13.3**

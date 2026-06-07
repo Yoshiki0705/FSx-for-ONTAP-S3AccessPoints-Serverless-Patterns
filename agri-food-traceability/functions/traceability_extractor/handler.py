@@ -195,10 +195,7 @@ def classify_document_by_lot(
     key_phrases = key_phrases_response.get("KeyPhrases", [])
 
     # ロット関連エンティティの検出
-    lot_entities = [
-        e for e in entities
-        if e.get("Type") in ("QUANTITY", "OTHER", "ORGANIZATION")
-    ]
+    lot_entities = [e for e in entities if e.get("Type") in ("QUANTITY", "OTHER", "ORGANIZATION")]
 
     # 全体の信頼度スコアを計算
     if lot_entities:
@@ -218,9 +215,9 @@ def classify_document_by_lot(
         "status": status,
         "entities_count": len(entities),
         "key_phrases_count": len(key_phrases),
-        "reason": None if status == "classified" else (
-            f"Classification confidence {avg_confidence:.2f} below threshold {confidence_threshold}"
-        ),
+        "reason": None
+        if status == "classified"
+        else (f"Classification confidence {avg_confidence:.2f} below threshold {confidence_threshold}"),
     }
 
 
@@ -262,9 +259,7 @@ def handler(event, context):
         textract_client = boto3.client("textract", region_name=cross_region)
 
         # Textract で文書解析
-        document_data = extract_document_data_with_textract(
-            textract_client, s3_access_point, object_key
-        )
+        document_data = extract_document_data_with_textract(textract_client, s3_access_point, object_key)
 
         # トレーサビリティフィールド抽出
         extracted_fields = extract_traceability_fields(

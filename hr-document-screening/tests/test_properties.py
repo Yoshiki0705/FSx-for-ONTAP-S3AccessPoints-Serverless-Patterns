@@ -38,9 +38,18 @@ PROTECTED_KEYS_NORMALIZED = list(PROTECTED_CHARACTERISTICS)
 
 # テスト用の非保護キー
 NON_PROTECTED_KEYS = [
-    "skills", "experience_years", "education", "certifications",
-    "languages", "projects", "references", "summary",
-    "job_title", "company", "department", "email",
+    "skills",
+    "experience_years",
+    "education",
+    "certifications",
+    "languages",
+    "projects",
+    "references",
+    "summary",
+    "job_title",
+    "company",
+    "department",
+    "email",
 ]
 
 
@@ -61,9 +70,7 @@ NON_PROTECTED_KEYS = [
         max_size=5,
     ),
 )
-def test_protected_characteristics_always_removed(
-    protected_key: str, protected_value: str, extra_data: dict
-):
+def test_protected_characteristics_always_removed(protected_key: str, protected_value: str, extra_data: dict):
     """保護特性キーは出力から常に除外される。
 
     **Validates: Requirements 13.3**

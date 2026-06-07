@@ -11,18 +11,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Dynamic import — reservation_extractor
-_re_path = (
-    Path(__file__).parent.parent / "functions" / "reservation_extractor" / "handler.py"
-)
+_re_path = Path(__file__).parent.parent / "functions" / "reservation_extractor" / "handler.py"
 _re_spec = importlib.util.spec_from_file_location("travel_reservation_handler", _re_path)
 _re_module = importlib.util.module_from_spec(_re_spec)
 sys.modules["travel_reservation_handler"] = _re_module
 _re_spec.loader.exec_module(_re_module)
 
 # Dynamic import — facility_inspector
-_fi_path = (
-    Path(__file__).parent.parent / "functions" / "facility_inspector" / "handler.py"
-)
+_fi_path = Path(__file__).parent.parent / "functions" / "facility_inspector" / "handler.py"
 _fi_spec = importlib.util.spec_from_file_location("travel_facility_handler", _fi_path)
 _fi_module = importlib.util.module_from_spec(_fi_spec)
 sys.modules["travel_facility_handler"] = _fi_module
@@ -34,20 +30,14 @@ class TestReservationExtractor:
 
     def test_detect_language_japanese(self):
         mock_client = MagicMock()
-        mock_client.detect_dominant_language.return_value = {
-            "Languages": [{"LanguageCode": "ja", "Score": 0.99}]
-        }
+        mock_client.detect_dominant_language.return_value = {"Languages": [{"LanguageCode": "ja", "Score": 0.99}]}
         result = _re_module.detect_language("日本語のテキストサンプルです。テストデータ。", mock_client)
         assert result == "ja"
 
     def test_detect_language_english(self):
         mock_client = MagicMock()
-        mock_client.detect_dominant_language.return_value = {
-            "Languages": [{"LanguageCode": "en", "Score": 0.95}]
-        }
-        result = _re_module.detect_language(
-            "This is an English document sample text.", mock_client
-        )
+        mock_client.detect_dominant_language.return_value = {"Languages": [{"LanguageCode": "en", "Score": 0.95}]}
+        result = _re_module.detect_language("This is an English document sample text.", mock_client)
         assert result == "en"
 
     def test_detect_language_short_text_defaults_ja(self):
@@ -142,8 +132,7 @@ class TestFacilityInspector:
         # Maximum negative: many damage + dirt labels at 100% confidence
         labels = [
             {"Name": name, "Confidence": 100.0}
-            for name in ["Stain", "Mold", "Dirt", "Crack", "Rust", "Corrosion",
-                         "Debris", "Garbage", "Grime", "Damage"]
+            for name in ["Stain", "Mold", "Dirt", "Crack", "Rust", "Corrosion", "Debris", "Garbage", "Grime", "Damage"]
         ]
         score = _fi_module.calculate_cleanliness_score(labels)
         assert 0 <= score <= 100

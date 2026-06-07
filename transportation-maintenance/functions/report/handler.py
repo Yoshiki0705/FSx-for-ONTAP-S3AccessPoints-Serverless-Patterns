@@ -49,10 +49,7 @@ def aggregate_deterioration_results(results: list[dict]) -> dict:
         dict: 劣化トレンドサマリ
     """
     total = len(results)
-    success_count = sum(
-        1 for r in results
-        if r.get("status") in ("success", "requires-reinspection")
-    )
+    success_count = sum(1 for r in results if r.get("status") in ("success", "requires-reinspection"))
     error_count = total - success_count
 
     # 重大度集計
@@ -69,14 +66,16 @@ def aggregate_deterioration_results(results: list[dict]) -> dict:
 
         if status == "requires-reinspection":
             reinspection_count += 1
-            priority_items.append({
-                "key": result.get("key", ""),
-                "status": "requires-reinspection",
-                "severity": "unknown",
-                "priority_score": 0,  # 再点検が必要 — 最高優先度
-                "is_safety_critical": result.get("is_safety_critical", False),
-                "reason": result.get("reason", "Low resolution"),
-            })
+            priority_items.append(
+                {
+                    "key": result.get("key", ""),
+                    "status": "requires-reinspection",
+                    "severity": "unknown",
+                    "priority_score": 0,  # 再点検が必要 — 最高優先度
+                    "is_safety_critical": result.get("is_safety_critical", False),
+                    "reason": result.get("reason", "Low resolution"),
+                }
+            )
             continue
 
         if status != "success":
@@ -104,17 +103,17 @@ def aggregate_deterioration_results(results: list[dict]) -> dict:
             if SEVERITY_PRIORITY.get(sev, 4) < SEVERITY_PRIORITY.get(max_severity, 4):
                 max_severity = sev
 
-        priority_items.append({
-            "key": result.get("key", ""),
-            "status": "analyzed",
-            "severity": max_severity,
-            "priority_score": SEVERITY_PRIORITY.get(max_severity, 4),
-            "is_safety_critical": result.get("is_safety_critical", False),
-            "human_review_required": result.get("human_review_required", False),
-            "deterioration_count": result.get("detection_summary", {}).get(
-                "deterioration_labels_count", 0
-            ),
-        })
+        priority_items.append(
+            {
+                "key": result.get("key", ""),
+                "status": "analyzed",
+                "severity": max_severity,
+                "priority_score": SEVERITY_PRIORITY.get(max_severity, 4),
+                "is_safety_critical": result.get("is_safety_critical", False),
+                "human_review_required": result.get("human_review_required", False),
+                "deterioration_count": result.get("detection_summary", {}).get("deterioration_labels_count", 0),
+            }
+        )
 
     # 優先度ランキングソート (Requirement 6.4):
     # 1. priority_score (重大度: 低い値 = 高い重大度)
@@ -159,15 +158,17 @@ def aggregate_maintenance_results(results: list[dict]) -> dict:
             continue
 
         lifecycle = result.get("lifecycle_data", {})
-        equipment_data.append({
-            "key": result.get("key", ""),
-            "equipment_id": lifecycle.get("equipment_id"),
-            "installation_date": lifecycle.get("installation_date"),
-            "last_repair_date": lifecycle.get("last_repair_date"),
-            "component_age_days": lifecycle.get("component_age_days"),
-            "replacement_schedule": lifecycle.get("replacement_schedule"),
-            "repair_history_count": len(lifecycle.get("repair_history", [])),
-        })
+        equipment_data.append(
+            {
+                "key": result.get("key", ""),
+                "equipment_id": lifecycle.get("equipment_id"),
+                "installation_date": lifecycle.get("installation_date"),
+                "last_repair_date": lifecycle.get("last_repair_date"),
+                "component_age_days": lifecycle.get("component_age_days"),
+                "replacement_schedule": lifecycle.get("replacement_schedule"),
+                "repair_history_count": len(lifecycle.get("repair_history", [])),
+            }
+        )
 
     return {
         "total_documents_processed": total,
@@ -202,25 +203,17 @@ def generate_deterioration_trend(
         "current_snapshot": {
             "period": current_period,
             "severity_distribution": deterioration_summary.get("severity_summary", {}),
-            "total_defects_detected": sum(
-                deterioration_summary.get("severity_summary", {}).values()
-            ),
+            "total_defects_detected": sum(deterioration_summary.get("severity_summary", {}).values()),
             "safety_critical_items": deterioration_summary.get("safety_critical_count", 0),
         },
         "trend_indicators": {
             "note": "Full 12-month trend requires historical data accumulation",
-            "current_critical_count": deterioration_summary.get(
-                "severity_summary", {}
-            ).get("critical", 0),
-            "current_major_count": deterioration_summary.get(
-                "severity_summary", {}
-            ).get("major", 0),
+            "current_critical_count": deterioration_summary.get("severity_summary", {}).get("critical", 0),
+            "current_major_count": deterioration_summary.get("severity_summary", {}).get("major", 0),
         },
         "maintenance_correlation": {
             "documents_with_lifecycle_data": maintenance_summary.get("equipment_count", 0),
-            "total_maintenance_records": maintenance_summary.get(
-                "total_documents_processed", 0
-            ),
+            "total_maintenance_records": maintenance_summary.get("total_documents_processed", 0),
         },
     }
 
@@ -245,9 +238,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     deterioration_results = event.get("deterioration_results", [])
@@ -265,21 +256,12 @@ def handler(event, context):
     maintenance_summary = aggregate_maintenance_results(maintenance_results)
 
     # 12ヶ月劣化トレンド生成
-    trend_analysis = generate_deterioration_trend(
-        deterioration_summary, maintenance_summary
-    )
+    trend_analysis = generate_deterioration_trend(deterioration_summary, maintenance_summary)
 
     # 全体サマリ
-    total_processed = (
-        deterioration_summary["total_images_analyzed"]
-        + maintenance_summary["total_documents_processed"]
-    )
-    total_success = (
-        deterioration_summary["success_count"] + maintenance_summary["success_count"]
-    )
-    total_errors = (
-        deterioration_summary["error_count"] + maintenance_summary["error_count"]
-    )
+    total_processed = deterioration_summary["total_images_analyzed"] + maintenance_summary["total_documents_processed"]
+    total_success = deterioration_summary["success_count"] + maintenance_summary["success_count"]
+    total_errors = deterioration_summary["error_count"] + maintenance_summary["error_count"]
 
     processing_duration_ms = int((time.time() - start_time) * 1000)
 
@@ -335,10 +317,7 @@ def handler(event, context):
     if sns_topic_arn and (critical_count > 0 or total_errors > 0):
         try:
             sns_client = boto3.client("sns")
-            subject = (
-                f"[UC22] Transportation Maintenance - "
-                f"{critical_count} CRITICAL defects, {total_errors} errors"
-            )
+            subject = f"[UC22] Transportation Maintenance - {critical_count} CRITICAL defects, {total_errors} errors"
             sns_client.publish(
                 TopicArn=sns_topic_arn,
                 Subject=subject[:100],

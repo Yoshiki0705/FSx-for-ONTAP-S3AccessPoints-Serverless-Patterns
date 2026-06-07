@@ -28,15 +28,11 @@ class TestClassifyFile:
     """ファイル分類ロジックのテスト"""
 
     def test_reservation_pdf(self):
-        result = classify_file(
-            "reservations/2026/01/booking.pdf", "reservations/", "facility-inspections/"
-        )
+        result = classify_file("reservations/2026/01/booking.pdf", "reservations/", "facility-inspections/")
         assert result == "reservation_doc"
 
     def test_reservation_jpg(self):
-        result = classify_file(
-            "reservations/scan/receipt.jpg", "reservations/", "facility-inspections/"
-        )
+        result = classify_file("reservations/scan/receipt.jpg", "reservations/", "facility-inspections/")
         assert result == "reservation_doc"
 
     def test_facility_image_jpeg(self):
@@ -64,15 +60,11 @@ class TestClassifyFile:
         assert result == "facility_image"
 
     def test_unsupported_extension(self):
-        result = classify_file(
-            "reservations/data.xlsx", "reservations/", "facility-inspections/"
-        )
+        result = classify_file("reservations/data.xlsx", "reservations/", "facility-inspections/")
         assert result is None
 
     def test_wrong_prefix(self):
-        result = classify_file(
-            "other/path/file.pdf", "reservations/", "facility-inspections/"
-        )
+        result = classify_file("other/path/file.pdf", "reservations/", "facility-inspections/")
         assert result is None
 
     def test_empty_key(self):
@@ -80,15 +72,11 @@ class TestClassifyFile:
         assert result is None
 
     def test_no_extension(self):
-        result = classify_file(
-            "reservations/noext", "reservations/", "facility-inspections/"
-        )
+        result = classify_file("reservations/noext", "reservations/", "facility-inspections/")
         assert result is None
 
     def test_case_insensitive_extension(self):
-        result = classify_file(
-            "reservations/doc.PDF", "reservations/", "facility-inspections/"
-        )
+        result = classify_file("reservations/doc.PDF", "reservations/", "facility-inspections/")
         assert result == "reservation_doc"
 
 
@@ -106,9 +94,7 @@ class TestValidateS3ApConnectivity:
 
         mock_s3ap = MagicMock()
         mock_s3ap.bucket_param = "test-ap"
-        mock_s3ap.list_objects.side_effect = S3ApHelperError(
-            "Connection failed", error_code="ServiceUnavailable"
-        )
+        mock_s3ap.list_objects.side_effect = S3ApHelperError("Connection failed", error_code="ServiceUnavailable")
         result = validate_s3ap_connectivity(mock_s3ap)
         assert result is not None
         assert result["statusCode"] == 503

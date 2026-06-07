@@ -136,7 +136,15 @@ metric_value_strategy = st.floats(min_value=-1e6, max_value=1e6, allow_nan=False
 @settings(max_examples=200)
 @given(
     metric_values=st.dictionaries(
-        keys=st.sampled_from(["call_volume", "average_duration", "peak_concurrent_calls", "equipment_failures_count", "capacity_breaches_count"]),
+        keys=st.sampled_from(
+            [
+                "call_volume",
+                "average_duration",
+                "peak_concurrent_calls",
+                "equipment_failures_count",
+                "capacity_breaches_count",
+            ]
+        ),
         values=metric_value_strategy,
         min_size=1,
         max_size=5,
@@ -160,8 +168,7 @@ def test_anomaly_count_bounds(
     プロパティ: 0 <= len(anomalies) <= len(current_metrics)
     """
     baseline = {
-        name: {"mean": baseline_mean, "stddev": baseline_stddev, "count": baseline_count}
-        for name in metric_values
+        name: {"mean": baseline_mean, "stddev": baseline_stddev, "count": baseline_count} for name in metric_values
     }
     anomalies = detect_anomalies(metric_values, baseline, threshold_stddev=threshold)
     assert 0 <= len(anomalies) <= len(metric_values)

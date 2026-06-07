@@ -56,8 +56,7 @@ def parse_suffix_filter(suffix_filter_str: str) -> list[str]:
     suffixes = [s.strip() for s in suffix_filter_str.split(",") if s.strip()]
     if len(suffixes) > MAX_SUFFIX_PATTERNS:
         logger.warning(
-            "Suffix filter exceeds maximum of %d patterns (%d provided). "
-            "Truncating to first %d entries.",
+            "Suffix filter exceeds maximum of %d patterns (%d provided). Truncating to first %d entries.",
             MAX_SUFFIX_PATTERNS,
             len(suffixes),
             MAX_SUFFIX_PATTERNS,
@@ -92,13 +91,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error(
@@ -107,13 +108,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -136,9 +139,7 @@ def handler(event, context):
         dict: manifest_key, total_objects, objects, suffix_patterns_used
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "")
     suffix_filter_str = os.environ.get("CDR_SUFFIX_FILTER", DEFAULT_CDR_SUFFIX_FILTER)
 
@@ -205,9 +206,7 @@ def handler(event, context):
     }
 
     # Manifest を S3 AP に書き出し
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

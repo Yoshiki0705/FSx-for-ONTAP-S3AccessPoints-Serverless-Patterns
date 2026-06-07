@@ -241,15 +241,17 @@ def identify_equipment_failures(
 
         for pattern in EQUIPMENT_FAILURE_PATTERNS:
             if pattern.search(message):
-                failures.append({
-                    "type": pattern.pattern.replace(r"[- ]?", "-").lower(),
-                    "hostname": entry.get("hostname", "unknown"),
-                    "app_name": entry.get("app_name", "unknown"),
-                    "timestamp": entry.get("timestamp", ""),
-                    "severity": entry.get("severity_label", entry.get("severity", "unknown")),
-                    "message": message[:500],  # メッセージ長制限
-                    "source": entry.get("format", entry.get("source", "unknown")),
-                })
+                failures.append(
+                    {
+                        "type": pattern.pattern.replace(r"[- ]?", "-").lower(),
+                        "hostname": entry.get("hostname", "unknown"),
+                        "app_name": entry.get("app_name", "unknown"),
+                        "timestamp": entry.get("timestamp", ""),
+                        "severity": entry.get("severity_label", entry.get("severity", "unknown")),
+                        "message": message[:500],  # メッセージ長制限
+                        "source": entry.get("format", entry.get("source", "unknown")),
+                    }
+                )
                 break  # 1エントリにつき最初にマッチしたパターンのみ
 
     return failures
@@ -282,16 +284,18 @@ def detect_capacity_breaches(
         if match:
             utilization = float(match.group(1))
             if utilization >= threshold_percent:
-                breaches.append({
-                    "hostname": entry.get("hostname", "unknown"),
-                    "app_name": entry.get("app_name", "unknown"),
-                    "timestamp": entry.get("timestamp", ""),
-                    "utilization_percent": utilization,
-                    "threshold_percent": threshold_percent,
-                    "exceeded_by": round(utilization - threshold_percent, 2),
-                    "message": message[:500],
-                    "source": entry.get("format", entry.get("source", "unknown")),
-                })
+                breaches.append(
+                    {
+                        "hostname": entry.get("hostname", "unknown"),
+                        "app_name": entry.get("app_name", "unknown"),
+                        "timestamp": entry.get("timestamp", ""),
+                        "utilization_percent": utilization,
+                        "threshold_percent": threshold_percent,
+                        "exceeded_by": round(utilization - threshold_percent, 2),
+                        "message": message[:500],
+                        "source": entry.get("format", entry.get("source", "unknown")),
+                    }
+                )
 
     return breaches
 
@@ -333,9 +337,7 @@ def handler(event, context):
     # 環境設定
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
     output_bucket = os.environ.get("OUTPUT_BUCKET", "")
-    capacity_threshold = float(
-        os.environ.get("CAPACITY_THRESHOLD_PERCENT", DEFAULT_CAPACITY_THRESHOLD_PERCENT)
-    )
+    capacity_threshold = float(os.environ.get("CAPACITY_THRESHOLD_PERCENT", DEFAULT_CAPACITY_THRESHOLD_PERCENT))
     s3_client = boto3.client("s3")
 
     # Step 1: ファイル取得

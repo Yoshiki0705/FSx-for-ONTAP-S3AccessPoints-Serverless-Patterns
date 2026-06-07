@@ -32,9 +32,7 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 # 物件画像の対応拡張子
-PROPERTY_IMAGE_EXTENSIONS: frozenset[str] = frozenset(
-    {".jpg", ".jpeg", ".png", ".tiff", ".tif"}
-)
+PROPERTY_IMAGE_EXTENSIONS: frozenset[str] = frozenset({".jpg", ".jpeg", ".png", ".tiff", ".tif"})
 
 # 契約書の対応拡張子
 CONTRACT_EXTENSIONS: frozenset[str] = frozenset({".pdf"})
@@ -58,9 +56,7 @@ IMAGE_TYPE_KEYWORDS: dict[str, str] = {
 }
 
 # 物件 ID パターン: PROP-XXXX, property-XXX, property_XXX
-PROPERTY_ID_PATTERN = re.compile(
-    r"(?:PROP[-_]|property[-_])([A-Za-z0-9]+)", re.IGNORECASE
-)
+PROPERTY_ID_PATTERN = re.compile(r"(?:PROP[-_]|property[-_])([A-Za-z0-9]+)", re.IGNORECASE)
 
 
 def classify_file(
@@ -154,25 +150,29 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error("Unexpected error during S3 AP connectivity: %s", str(e))
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -187,15 +187,12 @@ def handler(event, context):
         dict: manifest_key, total_objects, property_images, contracts
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     property_image_prefix = os.environ.get("PROPERTY_IMAGE_PREFIX", "properties/images/")
     contract_prefix = os.environ.get("CONTRACT_PREFIX", "properties/contracts/")
 
     logger.info(
-        "Real Estate Discovery started: access_point=%s, "
-        "image_prefix=%r, contract_prefix=%r",
+        "Real Estate Discovery started: access_point=%s, image_prefix=%r, contract_prefix=%r",
         os.environ["S3_ACCESS_POINT"],
         property_image_prefix,
         contract_prefix,
@@ -269,8 +266,7 @@ def handler(event, context):
             property_ids[pid] = property_ids.get(pid, 0) + 1
 
     logger.info(
-        "File classification: property_images=%d, contracts=%d, "
-        "total=%d, unique_properties=%d",
+        "File classification: property_images=%d, contracts=%d, total=%d, unique_properties=%d",
         len(property_images),
         len(contracts),
         len(all_objects),
@@ -293,10 +289,7 @@ def handler(event, context):
         "objects": all_objects,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-        f"{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

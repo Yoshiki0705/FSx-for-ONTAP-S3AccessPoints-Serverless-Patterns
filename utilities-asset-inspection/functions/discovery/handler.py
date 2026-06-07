@@ -36,14 +36,10 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 # ドローン画像の対応拡張子 (FLIR thermal = .fff, .seq)
-DRONE_IMAGE_EXTENSIONS: frozenset[str] = frozenset(
-    {".jpg", ".jpeg", ".png", ".tiff", ".tif", ".fff", ".seq"}
-)
+DRONE_IMAGE_EXTENSIONS: frozenset[str] = frozenset({".jpg", ".jpeg", ".png", ".tiff", ".tif", ".fff", ".seq"})
 
 # SCADA ログの対応拡張子
-SCADA_LOG_EXTENSIONS: frozenset[str] = frozenset(
-    {".csv", ".parquet", ".json", ".log"}
-)
+SCADA_LOG_EXTENSIONS: frozenset[str] = frozenset({".csv", ".parquet", ".json", ".log"})
 
 # ファイルタイプ定数
 FILE_TYPE_DRONE_IMAGE = "drone_image"
@@ -54,9 +50,7 @@ FILE_TYPE_SCADA_LOG = "scada_log"
 THERMAL_EXTENSIONS: frozenset[str] = frozenset({".fff", ".seq"})
 
 # 設備 ID パターン: パス中の EQ-XXXX or EQ_XXXX or equipment-XXX or equipment_XXX 形式
-EQUIPMENT_ID_PATTERN = re.compile(
-    r"(?:equipment[-_]|EQ[-_])([A-Za-z0-9]+)", re.IGNORECASE
-)
+EQUIPMENT_ID_PATTERN = re.compile(r"(?:equipment[-_]|EQ[-_])([A-Za-z0-9]+)", re.IGNORECASE)
 
 # 日付パターン (YYYY-MM-DD or YYYY/MM/DD or YYYYMMDD in path)
 DATE_PATTERN = re.compile(r"(\d{4})[-/]?(\d{2})[-/]?(\d{2})")
@@ -155,7 +149,7 @@ def get_file_format(key: str) -> str:
     if dot_index == -1:
         return "unknown"
 
-    ext = key[dot_index + 1:].lower()
+    ext = key[dot_index + 1 :].lower()
     # FLIR フォーマット
     if ext in ("fff", "seq"):
         return f"flir_{ext}"
@@ -195,13 +189,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error(
@@ -210,13 +206,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -232,15 +230,12 @@ def handler(event, context):
         dict: manifest_key, total_objects, drone_images, thermal_images, scada_logs
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     drone_image_prefix = os.environ.get("DRONE_IMAGE_PREFIX", "drone-images/")
     scada_log_prefix = os.environ.get("SCADA_LOG_PREFIX", "scada-logs/")
 
     logger.info(
-        "Utilities Asset Discovery started: access_point=%s, "
-        "drone_prefix=%r, scada_prefix=%r",
+        "Utilities Asset Discovery started: access_point=%s, drone_prefix=%r, scada_prefix=%r",
         os.environ["S3_ACCESS_POINT"],
         drone_image_prefix,
         scada_log_prefix,
@@ -321,8 +316,7 @@ def handler(event, context):
             equipment_ids[eq_id] = equipment_ids.get(eq_id, 0) + 1
 
     logger.info(
-        "File classification: drone_images=%d, thermal_images=%d, "
-        "scada_logs=%d, total=%d, unique_equipment=%d",
+        "File classification: drone_images=%d, thermal_images=%d, scada_logs=%d, total=%d, unique_equipment=%d",
         len(drone_images),
         len(thermal_images),
         len(scada_logs),
@@ -347,10 +341,7 @@ def handler(event, context):
         "objects": all_objects,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-        f"{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

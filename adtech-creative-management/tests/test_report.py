@@ -22,9 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Report handler
-_report_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "report", "handler.py"
-)
+_report_path = os.path.join(os.path.dirname(__file__), "..", "functions", "report", "handler.py")
 _report_spec = importlib.util.spec_from_file_location("adtech_report_handler", _report_path)
 _report_module = importlib.util.module_from_spec(_report_spec)
 _report_spec.loader.exec_module(_report_module)

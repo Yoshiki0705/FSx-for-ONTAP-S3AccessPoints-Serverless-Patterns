@@ -116,16 +116,18 @@ def detect_anomalies(
         z_score = abs(current_value - mean) / stddev
 
         if z_score > threshold_stddev:
-            anomalies.append({
-                "metric_name": metric_name,
-                "current_value": current_value,
-                "baseline_mean": round(mean, 4),
-                "baseline_stddev": round(stddev, 4),
-                "z_score": round(z_score, 4),
-                "threshold_stddev": threshold_stddev,
-                "deviation_direction": "above" if current_value > mean else "below",
-                "baseline_data_points": count,
-            })
+            anomalies.append(
+                {
+                    "metric_name": metric_name,
+                    "current_value": current_value,
+                    "baseline_mean": round(mean, 4),
+                    "baseline_stddev": round(stddev, 4),
+                    "z_score": round(z_score, 4),
+                    "threshold_stddev": threshold_stddev,
+                    "deviation_direction": "above" if current_value > mean else "below",
+                    "baseline_data_points": count,
+                }
+            )
 
     return anomalies
 
@@ -183,17 +185,11 @@ def load_baseline_from_s3(
                     # 統計値を抽出
                     stats = result.get("statistics", {})
                     if stats.get("total_records"):
-                        baseline_data["call_volume"].append(
-                            float(stats.get("total_records", 0))
-                        )
+                        baseline_data["call_volume"].append(float(stats.get("total_records", 0)))
                     if stats.get("average_duration"):
-                        baseline_data["average_duration"].append(
-                            float(stats["average_duration"])
-                        )
+                        baseline_data["average_duration"].append(float(stats["average_duration"]))
                     if stats.get("peak_concurrent_calls"):
-                        baseline_data["peak_concurrent_calls"].append(
-                            float(stats["peak_concurrent_calls"])
-                        )
+                        baseline_data["peak_concurrent_calls"].append(float(stats["peak_concurrent_calls"]))
 
                 except Exception as e:
                     logger.debug("Skipping baseline file %s: %s", obj["Key"], str(e))
@@ -225,13 +221,9 @@ def load_baseline_from_s3(
                     get_resp["Body"].close()
 
                     if "equipment_failures_count" in result:
-                        baseline_data["equipment_failures_count"].append(
-                            float(result["equipment_failures_count"])
-                        )
+                        baseline_data["equipment_failures_count"].append(float(result["equipment_failures_count"]))
                     if "capacity_breaches_count" in result:
-                        baseline_data["capacity_breaches_count"].append(
-                            float(result["capacity_breaches_count"])
-                        )
+                        baseline_data["capacity_breaches_count"].append(float(result["capacity_breaches_count"]))
                 except Exception:
                     continue
 
@@ -284,13 +276,13 @@ def invoke_bedrock_anomaly_classification(
     )
 
     def _invoke_model():
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 1024,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
-        })
+        body = json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 1024,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+        )
 
         response = bedrock_client.invoke_model(
             modelId=model_id,
@@ -380,12 +372,8 @@ def handler(event, context):
 
     # 環境設定
     output_bucket = os.environ.get("OUTPUT_BUCKET", "")
-    threshold_stddev = float(
-        os.environ.get("ANOMALY_THRESHOLD_STDDEV", DEFAULT_ANOMALY_THRESHOLD_STDDEV)
-    )
-    baseline_window_days = int(
-        os.environ.get("BASELINE_WINDOW_DAYS", DEFAULT_BASELINE_WINDOW_DAYS)
-    )
+    threshold_stddev = float(os.environ.get("ANOMALY_THRESHOLD_STDDEV", DEFAULT_ANOMALY_THRESHOLD_STDDEV))
+    baseline_window_days = int(os.environ.get("BASELINE_WINDOW_DAYS", DEFAULT_BASELINE_WINDOW_DAYS))
     model_id = os.environ.get("BEDROCK_MODEL_ID", DEFAULT_BEDROCK_MODEL_ID)
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
     s3_client = boto3.client("s3")
@@ -474,7 +462,8 @@ def handler(event, context):
             # エラー記録
             if output_bucket:
                 _record_error(
-                    s3_client, output_bucket,
+                    s3_client,
+                    output_bucket,
                     "anomaly_detection",
                     "bedrock_retry_exhausted",
                     str(e),
@@ -506,10 +495,7 @@ def handler(event, context):
     # 結果書き出し
     if output_bucket:
         date_prefix = datetime.now(timezone.utc).strftime("%Y/%m/%d")
-        result_key = (
-            f"results/anomaly/{date_prefix}/"
-            f"{context.aws_request_id}.json"
-        )
+        result_key = f"results/anomaly/{date_prefix}/{context.aws_request_id}.json"
         try:
             s3_client.put_object(
                 Bucket=output_bucket,
@@ -527,13 +513,17 @@ def handler(event, context):
             sns_client.publish(
                 TopicArn=sns_topic_arn,
                 Subject="[Telecom Analytics] Anomaly Detected",
-                Message=json.dumps({
-                    "anomaly_count": len(anomalies),
-                    "classification": classification.get("classification", "unknown"),
-                    "explanation": classification.get("explanation", ""),
-                    "anomalies": anomalies[:5],  # 上位5件のみ通知
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }, default=str, ensure_ascii=False),
+                Message=json.dumps(
+                    {
+                        "anomaly_count": len(anomalies),
+                        "classification": classification.get("classification", "unknown"),
+                        "explanation": classification.get("explanation", ""),
+                        "anomalies": anomalies[:5],  # 上位5件のみ通知
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                    default=str,
+                    ensure_ascii=False,
+                ),
             )
         except Exception as e:
             logger.error("Failed to publish SNS notification: %s", str(e))

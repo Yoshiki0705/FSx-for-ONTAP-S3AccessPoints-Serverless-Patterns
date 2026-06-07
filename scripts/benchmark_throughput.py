@@ -48,9 +48,7 @@ def get_object_latency(s3_client, bucket: str, key: str) -> tuple[float, bool]:
         return elapsed, False
 
 
-def run_concurrent_benchmark(
-    s3_client, bucket: str, key: str, concurrency: int, iterations: int
-) -> dict:
+def run_concurrent_benchmark(s3_client, bucket: str, key: str, concurrency: int, iterations: int) -> dict:
     """Run benchmark at specified concurrency level."""
     latencies: list[float] = []
     errors = 0
@@ -63,9 +61,7 @@ def run_concurrent_benchmark(
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
         futures = []
         for _ in range(iterations):
-            futures.append(
-                executor.submit(get_object_latency, s3_client, bucket, key)
-            )
+            futures.append(executor.submit(get_object_latency, s3_client, bucket, key))
         for future in as_completed(futures):
             latency_ms, success = future.result()
             latencies.append(latency_ms)
@@ -171,20 +167,23 @@ def main():
         )
 
     # Save results
-    output_file = f"benchmarks/data/throughput-{args.throughput}mbps-{datetime.now(timezone.utc).strftime('%Y%m%d')}.json"
+    output_file = (
+        f"benchmarks/data/throughput-{args.throughput}mbps-{datetime.now(timezone.utc).strftime('%Y%m%d')}.json"
+    )
     import os
+
     os.makedirs(os.path.dirname(output_file) if os.path.dirname(output_file) else ".", exist_ok=True)
     with open(output_file, "w") as f:
         json.dump(results, f, indent=2, default=str)
     print(f"\nResults saved to: {output_file}")
 
     # Print summary table
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"SUMMARY: {args.throughput} MBps - GetObject Latency (ms)")
     print("Sizing reference, not service limit.")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"{'Conc':>5} {'Mean':>8} {'P50':>8} {'P90':>8} {'P95':>8} {'P99':>8} {'Max':>8} {'Err%':>6}")
-    print(f"{'-'*5} {'-'*8} {'-'*8} {'-'*8} {'-'*8} {'-'*8} {'-'*8} {'-'*6}")
+    print(f"{'-' * 5} {'-' * 8} {'-' * 8} {'-' * 8} {'-' * 8} {'-' * 8} {'-' * 8} {'-' * 6}")
     for r in results["results"]:
         print(
             f"{r['concurrency']:>5} {r['mean_ms']:>8.1f} {r['p50_ms']:>8.1f} "
