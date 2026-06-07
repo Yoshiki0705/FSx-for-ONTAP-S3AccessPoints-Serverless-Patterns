@@ -19,6 +19,7 @@ A guide for selecting the optimal pattern from 28 use cases + 6 FlexCache/FlexCl
 | PII / personal data protection required | UC27 / UC26 + data_classification module |
 | ESG / sustainability reporting | UC23 + framework mapping |
 | Expansion of existing NFS/SMB workloads | FC1-FC6 (FlexCache/FlexClone patterns) |
+| Greenfield object-native workload (no NAS requirement) | Prefer standard S3 / DynamoDB serverless-native architecture |
 
 ## Technical Selection by Workload
 
