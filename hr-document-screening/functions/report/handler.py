@@ -41,9 +41,7 @@ def compute_pipeline_summary(scored_results: list[dict]) -> dict:
     errors = [r for r in scored_results if r.get("status") == "error"]
 
     # スコア分布
-    scores = [
-        r.get("scoring", {}).get("score", 0) for r in successful
-    ]
+    scores = [r.get("scoring", {}).get("score", 0) for r in successful]
 
     # スキル分布
     all_skills: list[str] = []
@@ -54,9 +52,7 @@ def compute_pipeline_summary(scored_results: list[dict]) -> dict:
     skill_distribution = dict(Counter(all_skills).most_common(20))
 
     # 職種別集計
-    position_breakdown: dict[str, dict] = defaultdict(
-        lambda: {"count": 0, "avg_score": 0, "total_score": 0}
-    )
+    position_breakdown: dict[str, dict] = defaultdict(lambda: {"count": 0, "avg_score": 0, "total_score": 0})
     for r in successful:
         pos_type = r.get("position_type", "general")
         score = r.get("scoring", {}).get("score", 0)
@@ -70,10 +66,7 @@ def compute_pipeline_summary(scored_results: list[dict]) -> dict:
 
     # スコアレンジ
     high_match = [r for r in successful if r.get("scoring", {}).get("score", 0) >= 80]
-    medium_match = [
-        r for r in successful
-        if 50 <= r.get("scoring", {}).get("score", 0) < 80
-    ]
+    medium_match = [r for r in successful if 50 <= r.get("scoring", {}).get("score", 0) < 80]
     low_match = [r for r in successful if r.get("scoring", {}).get("score", 0) < 50]
 
     return {
@@ -84,9 +77,7 @@ def compute_pipeline_summary(scored_results: list[dict]) -> dict:
             "high_match_80_plus": len(high_match),
             "medium_match_50_79": len(medium_match),
             "low_match_below_50": len(low_match),
-            "average_score": (
-                round(sum(scores) / len(scores), 1) if scores else 0.0
-            ),
+            "average_score": (round(sum(scores) / len(scores), 1) if scores else 0.0),
         },
         "skill_distribution": skill_distribution,
         "position_breakdown": dict(position_breakdown),
@@ -107,9 +98,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
     pii_filter = PiiFilter()
 

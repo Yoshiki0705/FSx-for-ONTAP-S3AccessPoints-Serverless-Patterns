@@ -49,9 +49,9 @@ UNIT_NORMALIZATION: dict[str, dict[str, Any]] = {
 # プラウシブルレンジ (1施設あたりの年間値の妥当範囲)
 PLAUSIBLE_RANGES: dict[str, dict[str, float]] = {
     "co2_emissions": {"min": 0.0, "max": 100_000_000.0},  # 0 〜 100M tCO2e
-    "energy_usage": {"min": 0.0, "max": 1_000_000.0},     # 0 〜 1M MWh
-    "waste_volume": {"min": 0.0, "max": 10_000_000.0},    # 0 〜 10M t
-    "water_usage": {"min": 0.0, "max": 100_000_000.0},    # 0 〜 100M m3
+    "energy_usage": {"min": 0.0, "max": 1_000_000.0},  # 0 〜 1M MWh
+    "waste_volume": {"min": 0.0, "max": 10_000_000.0},  # 0 〜 10M t
+    "water_usage": {"min": 0.0, "max": 100_000_000.0},  # 0 〜 100M m3
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

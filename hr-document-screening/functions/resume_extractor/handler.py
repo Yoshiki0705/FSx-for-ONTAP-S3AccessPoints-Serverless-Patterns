@@ -53,11 +53,22 @@ EXPERIENCE_PATTERNS: list[re.Pattern] = [
 ]
 
 # 資格パターン
-CERT_KEYWORDS: frozenset[str] = frozenset({
-    "aws", "azure", "gcp", "pmp", "cissp", "cpa", "toeic",
-    "基本情報", "応用情報", "ネットワークスペシャリスト",
-    "データベーススペシャリスト", "情報セキュリティ",
-})
+CERT_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "aws",
+        "azure",
+        "gcp",
+        "pmp",
+        "cissp",
+        "cpa",
+        "toeic",
+        "基本情報",
+        "応用情報",
+        "ネットワークスペシャリスト",
+        "データベーススペシャリスト",
+        "情報セキュリティ",
+    }
+)
 
 
 def extract_text_textract(
@@ -214,18 +225,17 @@ def handler(event, context):
             protected_found = pii_filter.contains_protected_characteristics(text)
             compliance_note = None
             if protected_found:
-                compliance_note = (
-                    f"Protected characteristics detected and excluded: "
-                    f"{', '.join(protected_found)}"
-                )
+                compliance_note = f"Protected characteristics detected and excluded: {', '.join(protected_found)}"
 
-            results.append({
-                "key": key,
-                "position_type": position_type,
-                "status": "success",
-                "candidate_data": candidate_data,
-                "compliance_note": compliance_note,
-            })
+            results.append(
+                {
+                    "key": key,
+                    "position_type": position_type,
+                    "status": "success",
+                    "candidate_data": candidate_data,
+                    "compliance_note": compliance_note,
+                }
+            )
             success_count += 1
 
         except Exception as e:
@@ -244,13 +254,15 @@ def handler(event, context):
                     str(e),
                     error_category.value,
                 )
-            results.append({
-                "key": key,
-                "position_type": position_type,
-                "status": "error",
-                "error_type": error_category.value,
-                "error_message": str(e),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "position_type": position_type,
+                    "status": "error",
+                    "error_type": error_category.value,
+                    "error_message": str(e),
+                }
+            )
             error_count += 1
 
     processing_duration_ms = int((time.time() - start_time) * 1000)

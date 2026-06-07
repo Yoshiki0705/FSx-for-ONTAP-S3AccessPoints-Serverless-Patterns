@@ -100,11 +100,13 @@ def detect_defects_rekognition(
         label_name = label.get("Name", "").lower()
         for keyword, defect_type in DEFECT_LABEL_MAPPING.items():
             if keyword in label_name:
-                defects.append({
-                    "label": label.get("Name", ""),
-                    "confidence": label.get("Confidence", 0.0),
-                    "defect_type": defect_type,
-                })
+                defects.append(
+                    {
+                        "label": label.get("Name", ""),
+                        "confidence": label.get("Confidence", 0.0),
+                        "defect_type": defect_type,
+                    }
+                )
                 break
 
     return defects
@@ -154,11 +156,13 @@ def assess_severity_bedrock(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 1024,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     try:
@@ -182,9 +186,7 @@ def assess_severity_bedrock(
             defect["severity"] = severity_map.get(defect_type, "minor")
 
     except Exception as e:
-        logger.warning(
-            "Bedrock severity assessment failed, defaulting to 'minor': %s", str(e)
-        )
+        logger.warning("Bedrock severity assessment failed, defaulting to 'minor': %s", str(e))
         for defect in defects:
             defect["severity"] = "minor"
 
@@ -205,7 +207,7 @@ def _parse_severity_response(text: str) -> list[dict]:
     end = text.rfind("]")
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(text[start:end + 1])
+            return json.loads(text[start : end + 1])
         except json.JSONDecodeError:
             pass
     return []
@@ -227,9 +229,7 @@ def handler(event, context):
     start_time = time.time()
 
     s3ap_alias = os.environ.get("S3_ACCESS_POINT", "")
-    confidence_threshold = float(
-        os.environ.get("DEFECT_CONFIDENCE_THRESHOLD", "70")
-    )
+    confidence_threshold = float(os.environ.get("DEFECT_CONFIDENCE_THRESHOLD", "70"))
 
     objects = event.get("objects", [])
     logger.info(
@@ -249,22 +249,22 @@ def handler(event, context):
 
         try:
             # Rekognition で欠陥ラベル検出
-            defects = detect_defects_rekognition(
-                s3ap_alias, key, confidence_threshold
-            )
+            defects = detect_defects_rekognition(s3ap_alias, key, confidence_threshold)
 
             # Bedrock で重大度評価
             if defects:
                 defects = assess_severity_bedrock(defects, equipment_id)
 
-            results.append({
-                "key": key,
-                "equipment_id": equipment_id,
-                "inspection_date": inspection_date,
-                "status": "success",
-                "defect_count": len(defects),
-                "defects": defects,
-            })
+            results.append(
+                {
+                    "key": key,
+                    "equipment_id": equipment_id,
+                    "inspection_date": inspection_date,
+                    "status": "success",
+                    "defect_count": len(defects),
+                    "defects": defects,
+                }
+            )
             success_count += 1
 
         except Exception as e:
@@ -278,14 +278,16 @@ def handler(event, context):
             )
 
             # Requirement 9.6: skip, record equipment ID + failure reason, continue
-            results.append({
-                "key": key,
-                "equipment_id": equipment_id,
-                "inspection_date": inspection_date,
-                "status": "error",
-                "error_type": error_category.value,
-                "error_message": str(e),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "equipment_id": equipment_id,
+                    "inspection_date": inspection_date,
+                    "status": "error",
+                    "error_type": error_category.value,
+                    "error_message": str(e),
+                }
+            )
             error_count += 1
 
     processing_duration_ms = int((time.time() - start_time) * 1000)

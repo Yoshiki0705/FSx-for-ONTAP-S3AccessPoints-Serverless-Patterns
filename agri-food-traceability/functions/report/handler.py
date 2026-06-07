@@ -87,13 +87,15 @@ def aggregate_crop_results(results: list[dict]) -> dict:
         # 座標情報の収集
         geolocation = result.get("geolocation")
         if geolocation and confirmed:
-            affected_coordinates.append({
-                "key": result.get("key"),
-                "latitude": geolocation.get("latitude"),
-                "longitude": geolocation.get("longitude"),
-                "anomaly_count": len(confirmed),
-                "anomaly_types": [a.get("anomaly_type") for a in confirmed],
-            })
+            affected_coordinates.append(
+                {
+                    "key": result.get("key"),
+                    "latitude": geolocation.get("latitude"),
+                    "longitude": geolocation.get("longitude"),
+                    "anomaly_count": len(confirmed),
+                    "anomaly_types": [a.get("anomaly_type") for a in confirmed],
+                }
+            )
 
     return {
         "total_images_analyzed": total,
@@ -157,9 +159,7 @@ def aggregate_traceability_results(results: list[dict]) -> dict:
     confidence_distribution = {
         "min": round(min(confidence_values), 4) if confidence_values else 0.0,
         "max": round(max(confidence_values), 4) if confidence_values else 0.0,
-        "mean": round(
-            sum(confidence_values) / len(confidence_values), 4
-        ) if confidence_values else 0.0,
+        "mean": round(sum(confidence_values) / len(confidence_values), 4) if confidence_values else 0.0,
         "above_threshold": classified_count,
         "below_threshold": review_required_count,
     }
@@ -198,9 +198,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     crop_results = event.get("crop_results", [])
@@ -218,10 +216,7 @@ def handler(event, context):
     traceability_summary = aggregate_traceability_results(traceability_results)
 
     # 全体サマリ
-    total_processed = (
-        crop_summary["total_images_analyzed"]
-        + traceability_summary["total_documents_processed"]
-    )
+    total_processed = crop_summary["total_images_analyzed"] + traceability_summary["total_documents_processed"]
     total_success = crop_summary["success_count"] + traceability_summary["success_count"]
     total_errors = crop_summary["error_count"] + traceability_summary["error_count"]
 

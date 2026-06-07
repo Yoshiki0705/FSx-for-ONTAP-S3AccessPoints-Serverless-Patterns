@@ -24,9 +24,7 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 # 履歴書の対応拡張子
-RESUME_EXTENSIONS: frozenset[str] = frozenset(
-    {".pdf", ".doc", ".docx", ".xls", ".xlsx"}
-)
+RESUME_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".doc", ".docx", ".xls", ".xlsx"})
 
 # ファイルタイプ定数
 FILE_TYPE_RESUME = "resume"
@@ -124,25 +122,29 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         logger.error("S3 AP connectivity failed: %s", str(e))
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error("Unexpected S3 AP error: %s", str(e))
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -155,9 +157,7 @@ def handler(event, context):
         dict: manifest_key, total_objects, resumes
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     resume_prefix = os.environ.get("RESUME_PREFIX", "hr/resumes/")
 
     logger.info(
@@ -208,10 +208,7 @@ def handler(event, context):
         "objects": resumes,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-        f"{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     # Note: Output bucket enforces SSE-KMS encryption via bucket default encryption policy
     # (configured in template.yaml OutputBucket resource)

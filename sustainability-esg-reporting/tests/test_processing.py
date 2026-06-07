@@ -14,12 +14,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Dynamic import: unit_normalizer
-_normalizer_path = (
-    Path(__file__).parent.parent / "shared" / "unit_normalizer.py"
-)
-_normalizer_spec = importlib.util.spec_from_file_location(
-    "esg_unit_normalizer", _normalizer_path
-)
+_normalizer_path = Path(__file__).parent.parent / "shared" / "unit_normalizer.py"
+_normalizer_spec = importlib.util.spec_from_file_location("esg_unit_normalizer", _normalizer_path)
 _normalizer_module = importlib.util.module_from_spec(_normalizer_spec)
 sys.modules["esg_unit_normalizer"] = _normalizer_module
 _normalizer_spec.loader.exec_module(_normalizer_module)
@@ -32,12 +28,8 @@ UNIT_NORMALIZATION = _normalizer_module.UNIT_NORMALIZATION
 NormalizationResult = _normalizer_module.NormalizationResult
 
 # Dynamic import: metrics_extractor
-_extractor_path = (
-    Path(__file__).parent.parent / "functions" / "metrics_extractor" / "handler.py"
-)
-_extractor_spec = importlib.util.spec_from_file_location(
-    "esg_metrics_extractor", _extractor_path
-)
+_extractor_path = Path(__file__).parent.parent / "functions" / "metrics_extractor" / "handler.py"
+_extractor_spec = importlib.util.spec_from_file_location("esg_metrics_extractor", _extractor_path)
 _extractor_module = importlib.util.module_from_spec(_extractor_spec)
 sys.modules["esg_metrics_extractor"] = _extractor_module
 _extractor_spec.loader.exec_module(_extractor_module)
@@ -45,12 +37,8 @@ normalize_metrics = _extractor_module.normalize_metrics
 _parse_metrics_json = _extractor_module._parse_metrics_json
 
 # Dynamic import: framework_mapper
-_mapper_path = (
-    Path(__file__).parent.parent / "functions" / "framework_mapper" / "handler.py"
-)
-_mapper_spec = importlib.util.spec_from_file_location(
-    "esg_framework_mapper", _mapper_path
-)
+_mapper_path = Path(__file__).parent.parent / "functions" / "framework_mapper" / "handler.py"
+_mapper_spec = importlib.util.spec_from_file_location("esg_framework_mapper", _mapper_path)
 _mapper_module = importlib.util.module_from_spec(_mapper_spec)
 sys.modules["esg_framework_mapper"] = _mapper_module
 _mapper_spec.loader.exec_module(_mapper_module)

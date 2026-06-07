@@ -24,9 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Discovery handler — classify_file
-_discovery_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-)
+_discovery_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
 _discovery_spec = importlib.util.spec_from_file_location("uc20_discovery_pbt", _discovery_path)
 _discovery_module = importlib.util.module_from_spec(_discovery_spec)
 _discovery_spec.loader.exec_module(_discovery_module)
@@ -36,9 +34,7 @@ RESERVATION_DOC_EXTENSIONS = _discovery_module.RESERVATION_DOC_EXTENSIONS
 FACILITY_IMAGE_EXTENSIONS = _discovery_module.FACILITY_IMAGE_EXTENSIONS
 
 # Facility Inspector handler — calculate_cleanliness_score
-_inspector_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "facility_inspector", "handler.py"
-)
+_inspector_path = os.path.join(os.path.dirname(__file__), "..", "functions", "facility_inspector", "handler.py")
 _inspector_spec = importlib.util.spec_from_file_location("uc20_inspector_pbt", _inspector_path)
 _inspector_module = importlib.util.module_from_spec(_inspector_spec)
 _inspector_spec.loader.exec_module(_inspector_module)
@@ -56,15 +52,17 @@ DAMAGE_LABELS = _inspector_module.DAMAGE_LABELS
 
 
 # Strategy: Generate Rekognition-like label dicts
-rekognition_label_strategy = st.fixed_dictionaries({
-    "Name": st.sampled_from(
-        list(CLEANLINESS_NEGATIVE_LABELS)
-        + list(CLEANLINESS_POSITIVE_LABELS)
-        + list(DAMAGE_LABELS)
-        + ["Floor", "Wall", "Room", "Window", "Door", "Furniture"]
-    ),
-    "Confidence": st.floats(min_value=0.0, max_value=100.0, allow_nan=False),
-})
+rekognition_label_strategy = st.fixed_dictionaries(
+    {
+        "Name": st.sampled_from(
+            list(CLEANLINESS_NEGATIVE_LABELS)
+            + list(CLEANLINESS_POSITIVE_LABELS)
+            + list(DAMAGE_LABELS)
+            + ["Floor", "Wall", "Room", "Window", "Door", "Furniture"]
+        ),
+        "Confidence": st.floats(min_value=0.0, max_value=100.0, allow_nan=False),
+    }
+)
 
 
 @settings(max_examples=200)
@@ -122,10 +120,21 @@ def test_cleanliness_score_determinism(labels: list[dict]):
 
 
 # Strategy for file keys with known extensions
-file_extension_strategy = st.sampled_from([
-    ".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".tif",
-    ".doc", ".txt", ".csv", ".mp4", "",
-])
+file_extension_strategy = st.sampled_from(
+    [
+        ".pdf",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".tiff",
+        ".tif",
+        ".doc",
+        ".txt",
+        ".csv",
+        ".mp4",
+        "",
+    ]
+)
 
 
 @settings(max_examples=200)

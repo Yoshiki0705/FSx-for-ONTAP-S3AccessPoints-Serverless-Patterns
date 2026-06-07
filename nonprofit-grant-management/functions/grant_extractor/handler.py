@@ -157,11 +157,13 @@ def extract_grant_info_with_bedrock(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 4096,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 4096,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     response = _call_bedrock()
@@ -231,13 +233,9 @@ def handler(event, context):
     )
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     textract_region = os.environ.get("CROSS_REGION_TEXTRACT_REGION", "us-east-1")
-    model_id = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-    )
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
     # Requirement 8.5: 未認識フォーマットのチェック
     if not is_supported_format(key):
@@ -293,9 +291,7 @@ def handler(event, context):
                 "use_case": "nonprofit-grant-management",
             },
         ):
-            grant_info = extract_grant_info_with_bedrock(
-                extracted_text, bedrock_client, model_id
-            )
+            grant_info = extract_grant_info_with_bedrock(extracted_text, bedrock_client, model_id)
 
         # メタデータ追加
         grant_info["_metadata"] = {
@@ -307,10 +303,7 @@ def handler(event, context):
         }
 
         # 結果を S3 に出力
-        result_key = (
-            f"results/grants/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-            f"{os.path.basename(key)}.json"
-        )
+        result_key = f"results/grants/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
         s3ap_output.put_object(
             key=result_key,
             body=json.dumps(grant_info, ensure_ascii=False, default=str),
@@ -350,10 +343,7 @@ def handler(event, context):
         logger.error("Grant extraction failed: key=%s, error=%s", key, str(e))
 
         # エラーを出力バケットに記録
-        error_key = (
-            f"errors/grants/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-            f"{os.path.basename(key)}.json"
-        )
+        error_key = f"errors/grants/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
         try:
             s3ap_output.put_object(
                 key=error_key,

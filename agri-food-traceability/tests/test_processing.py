@@ -85,9 +85,7 @@ class TestAnalyzeVegetationWithRekognition:
             ]
         }
 
-        result = analyze_vegetation_with_rekognition(
-            mock_client, "test-bucket", "test-key.tif"
-        )
+        result = analyze_vegetation_with_rekognition(mock_client, "test-bucket", "test-key.tif")
 
         assert result["total_labels"] == 3
         assert len(result["vegetation_labels"]) == 2
@@ -103,9 +101,7 @@ class TestAnalyzeVegetationWithRekognition:
             ]
         }
 
-        result = analyze_vegetation_with_rekognition(
-            mock_client, "test-bucket", "test-key.jpg"
-        )
+        result = analyze_vegetation_with_rekognition(mock_client, "test-bucket", "test-key.jpg")
 
         assert len(result["vegetation_labels"]) == 0
         assert len(result["other_labels"]) == 2
@@ -116,20 +112,25 @@ class TestClassifyAnomaliesWithBedrock:
 
     def test_anomalies_above_threshold(self):
         mock_client = MagicMock()
-        mock_response_body = json.dumps({
-            "content": [{"type": "text", "text": json.dumps([
-                {"anomaly_type": "pest_damage", "confidence": 0.85, "description": "Pest observed"},
-                {"anomaly_type": "irrigation_issue", "confidence": 0.72, "description": "Dry areas"},
-            ])}]
-        }).encode()
+        mock_response_body = json.dumps(
+            {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(
+                            [
+                                {"anomaly_type": "pest_damage", "confidence": 0.85, "description": "Pest observed"},
+                                {"anomaly_type": "irrigation_issue", "confidence": 0.72, "description": "Dry areas"},
+                            ]
+                        ),
+                    }
+                ]
+            }
+        ).encode()
 
-        mock_client.invoke_model.return_value = {
-            "body": MagicMock(read=MagicMock(return_value=mock_response_body))
-        }
+        mock_client.invoke_model.return_value = {"body": MagicMock(read=MagicMock(return_value=mock_response_body))}
 
-        result = classify_anomalies_with_bedrock(
-            mock_client, "test-model", {}, 0.70
-        )
+        result = classify_anomalies_with_bedrock(mock_client, "test-model", {}, 0.70)
 
         assert len(result) == 2
         assert result[0]["anomaly_type"] == "pest_damage"
@@ -139,19 +140,24 @@ class TestClassifyAnomaliesWithBedrock:
     def test_anomalies_below_threshold_marked_review(self):
         """Requirement 5.6: 閾値未満は review-required"""
         mock_client = MagicMock()
-        mock_response_body = json.dumps({
-            "content": [{"type": "text", "text": json.dumps([
-                {"anomaly_type": "pest_damage", "confidence": 0.65, "description": "Maybe pest"},
-            ])}]
-        }).encode()
+        mock_response_body = json.dumps(
+            {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(
+                            [
+                                {"anomaly_type": "pest_damage", "confidence": 0.65, "description": "Maybe pest"},
+                            ]
+                        ),
+                    }
+                ]
+            }
+        ).encode()
 
-        mock_client.invoke_model.return_value = {
-            "body": MagicMock(read=MagicMock(return_value=mock_response_body))
-        }
+        mock_client.invoke_model.return_value = {"body": MagicMock(read=MagicMock(return_value=mock_response_body))}
 
-        result = classify_anomalies_with_bedrock(
-            mock_client, "test-model", {}, 0.70
-        )
+        result = classify_anomalies_with_bedrock(mock_client, "test-model", {}, 0.70)
 
         assert len(result) == 1
         assert result[0]["status"] == "review-required"
@@ -159,17 +165,13 @@ class TestClassifyAnomaliesWithBedrock:
 
     def test_invalid_bedrock_response(self):
         mock_client = MagicMock()
-        mock_response_body = json.dumps({
-            "content": [{"type": "text", "text": "I cannot analyze this image."}]
-        }).encode()
+        mock_response_body = json.dumps(
+            {"content": [{"type": "text", "text": "I cannot analyze this image."}]}
+        ).encode()
 
-        mock_client.invoke_model.return_value = {
-            "body": MagicMock(read=MagicMock(return_value=mock_response_body))
-        }
+        mock_client.invoke_model.return_value = {"body": MagicMock(read=MagicMock(return_value=mock_response_body))}
 
-        result = classify_anomalies_with_bedrock(
-            mock_client, "test-model", {}, 0.70
-        )
+        result = classify_anomalies_with_bedrock(mock_client, "test-model", {}, 0.70)
 
         assert result == []
 
@@ -229,9 +231,7 @@ class TestClassifyDocumentByLot:
                 {"Type": "OTHER", "Text": "Farm A", "Score": 0.88},
             ]
         }
-        mock_client.detect_key_phrases.return_value = {
-            "KeyPhrases": [{"Text": "harvest record", "Score": 0.95}]
-        }
+        mock_client.detect_key_phrases.return_value = {"KeyPhrases": [{"Text": "harvest record", "Score": 0.95}]}
 
         result = classify_document_by_lot(mock_client, "test text", 0.80)
 
@@ -247,9 +247,7 @@ class TestClassifyDocumentByLot:
                 {"Type": "OTHER", "Text": "something", "Score": 0.55},
             ]
         }
-        mock_client.detect_key_phrases.return_value = {
-            "KeyPhrases": []
-        }
+        mock_client.detect_key_phrases.return_value = {"KeyPhrases": []}
 
         result = classify_document_by_lot(mock_client, "test text", 0.80)
 

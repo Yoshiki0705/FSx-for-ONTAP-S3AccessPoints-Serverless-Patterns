@@ -120,9 +120,9 @@ def aggregate_facility_results(results: list[dict]) -> dict:
     # 状態分類
     condition_distribution: dict[str, int] = {
         "excellent": 0,  # 90-100
-        "good": 0,       # 70-89
-        "fair": 0,       # 50-69
-        "poor": 0,       # 0-49
+        "good": 0,  # 70-89
+        "fair": 0,  # 50-69
+        "poor": 0,  # 0-49
     }
     for score in scores:
         if score >= 90:
@@ -253,9 +253,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     reservation_results = event.get("reservation_results", [])
@@ -301,9 +299,7 @@ def handler(event, context):
     }
 
     # 人間可読テキストレポート生成
-    text_report = generate_human_readable_report(
-        reservation_summary, facility_summary, report_period
-    )
+    text_report = generate_human_readable_report(reservation_summary, facility_summary, report_period)
 
     # 処理時間記録
     processing_duration_ms = int((time.time() - start_time) * 1000)

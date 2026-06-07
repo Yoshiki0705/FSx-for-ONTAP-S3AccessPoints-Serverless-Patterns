@@ -145,19 +145,21 @@ def generate_maintenance_schedule(
         # 1-365 の範囲にクランプ
         days_until_maintenance = max(1, min(365, days_until_maintenance))
 
-        schedule.append({
-            "equipment_id": eq_id,
-            "days_until_maintenance": days_until_maintenance,
-            "priority": priority,
-            "recommended_action": action,
-            "condition_summary": {
-                "overall": overall,
-                "defects": condition["defect_count"],
-                "critical_defects": condition["critical_defects"],
-                "anomalies": condition["anomaly_count"],
-                "hot_spots": condition["hot_spot_count"],
-            },
-        })
+        schedule.append(
+            {
+                "equipment_id": eq_id,
+                "days_until_maintenance": days_until_maintenance,
+                "priority": priority,
+                "recommended_action": action,
+                "condition_summary": {
+                    "overall": overall,
+                    "defects": condition["defect_count"],
+                    "critical_defects": condition["critical_defects"],
+                    "anomalies": condition["anomaly_count"],
+                    "hot_spots": condition["hot_spot_count"],
+                },
+            }
+        )
 
     # 優先度順にソート
     priority_order = {"immediate": 0, "high": 1, "medium": 2, "low": 3}
@@ -184,9 +186,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     defect_results = event.get("defect_results", [])
@@ -202,9 +202,7 @@ def handler(event, context):
     )
 
     # 設備状態評価
-    equipment_conditions = compute_equipment_condition(
-        defect_results, scada_results, thermal_results
-    )
+    equipment_conditions = compute_equipment_condition(defect_results, scada_results, thermal_results)
 
     # 予測保全スケジュール生成
     maintenance_schedule = generate_maintenance_schedule(equipment_conditions)
@@ -212,28 +210,14 @@ def handler(event, context):
     # 集計
     all_results = defect_results + scada_results + thermal_results
     total_processed = len(all_results)
-    success_count = sum(
-        1 for r in all_results if r.get("status") == "success"
-    )
-    error_count = sum(
-        1 for r in all_results if r.get("status") == "error"
-    )
+    success_count = sum(1 for r in all_results if r.get("status") == "success")
+    error_count = sum(1 for r in all_results if r.get("status") == "error")
 
     # 欠陥集計 (severity 別)
-    total_defects = sum(
-        r.get("defect_count", 0)
-        for r in defect_results
-        if r.get("status") == "success"
-    )
-    critical_defects = sum(
-        c.get("critical_defects", 0) for c in equipment_conditions.values()
-    )
-    major_defects = sum(
-        c.get("major_defects", 0) for c in equipment_conditions.values()
-    )
-    minor_defects = sum(
-        c.get("minor_defects", 0) for c in equipment_conditions.values()
-    )
+    total_defects = sum(r.get("defect_count", 0) for r in defect_results if r.get("status") == "success")
+    critical_defects = sum(c.get("critical_defects", 0) for c in equipment_conditions.values())
+    major_defects = sum(c.get("major_defects", 0) for c in equipment_conditions.values())
+    minor_defects = sum(c.get("minor_defects", 0) for c in equipment_conditions.values())
 
     processing_duration_ms = int((time.time() - start_time) * 1000)
 
@@ -279,8 +263,7 @@ def handler(event, context):
     )
 
     logger.info(
-        "Utilities Report generated: key=%s, equipment=%d, "
-        "defects=%d (critical=%d), errors=%d",
+        "Utilities Report generated: key=%s, equipment=%d, defects=%d (critical=%d), errors=%d",
         report_key,
         len(equipment_conditions),
         total_defects,
@@ -294,9 +277,7 @@ def handler(event, context):
             sns_client = boto3.client("sns")
             sns_client.publish(
                 TopicArn=sns_topic_arn,
-                Subject=(
-                    f"[UC25] CRITICAL - {critical_defects} critical defects detected"
-                ),
+                Subject=(f"[UC25] CRITICAL - {critical_defects} critical defects detected"),
                 Message=(
                     f"Utilities Asset Inspection Report\n"
                     f"Period: {report_period}\n"

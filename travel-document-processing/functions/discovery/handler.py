@@ -34,14 +34,10 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 # 予約文書の対応拡張子
-RESERVATION_DOC_EXTENSIONS: frozenset[str] = frozenset(
-    {".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".tif"}
-)
+RESERVATION_DOC_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".tif"})
 
 # 施設点検画像の対応拡張子
-FACILITY_IMAGE_EXTENSIONS: frozenset[str] = frozenset(
-    {".jpg", ".jpeg", ".png", ".tiff", ".tif"}
-)
+FACILITY_IMAGE_EXTENSIONS: frozenset[str] = frozenset({".jpg", ".jpeg", ".png", ".tiff", ".tif"})
 
 
 def classify_file(key: str, reservation_prefix: str, facility_prefix: str) -> str | None:
@@ -99,13 +95,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error(
@@ -114,13 +112,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -144,15 +144,12 @@ def handler(event, context):
         dict: manifest_key, total_objects, reservation_docs, facility_images
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     reservation_prefix = os.environ.get("RESERVATION_DOC_PREFIX", "reservations/")
     facility_prefix = os.environ.get("FACILITY_IMAGE_PREFIX", "facility-inspections/")
 
     logger.info(
-        "Travel Discovery started: access_point=%s, "
-        "reservation_prefix=%r, facility_prefix=%r",
+        "Travel Discovery started: access_point=%s, reservation_prefix=%r, facility_prefix=%r",
         os.environ["S3_ACCESS_POINT"],
         reservation_prefix,
         facility_prefix,
@@ -234,9 +231,7 @@ def handler(event, context):
         "objects": all_objects,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

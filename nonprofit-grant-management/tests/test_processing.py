@@ -12,12 +12,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Dynamic import for namespace isolation — Grant Extractor
-_grant_handler_path = (
-    Path(__file__).parent.parent / "functions" / "grant_extractor" / "handler.py"
-)
-_grant_spec = importlib.util.spec_from_file_location(
-    "npo_grant_extractor_handler", _grant_handler_path
-)
+_grant_handler_path = Path(__file__).parent.parent / "functions" / "grant_extractor" / "handler.py"
+_grant_spec = importlib.util.spec_from_file_location("npo_grant_extractor_handler", _grant_handler_path)
 _grant_module = importlib.util.module_from_spec(_grant_spec)
 sys.modules["npo_grant_extractor_handler"] = _grant_module
 _grant_spec.loader.exec_module(_grant_module)
@@ -28,20 +24,14 @@ grant_extract_grant_info_with_bedrock = _grant_module.extract_grant_info_with_be
 grant_parse_grant_json = _grant_module._parse_grant_json
 
 # Dynamic import for namespace isolation — Outcome Matcher
-_outcome_handler_path = (
-    Path(__file__).parent.parent / "functions" / "outcome_matcher" / "handler.py"
-)
-_outcome_spec = importlib.util.spec_from_file_location(
-    "npo_outcome_matcher_handler", _outcome_handler_path
-)
+_outcome_handler_path = Path(__file__).parent.parent / "functions" / "outcome_matcher" / "handler.py"
+_outcome_spec = importlib.util.spec_from_file_location("npo_outcome_matcher_handler", _outcome_handler_path)
 _outcome_module = importlib.util.module_from_spec(_outcome_spec)
 sys.modules["npo_outcome_matcher_handler"] = _outcome_module
 _outcome_spec.loader.exec_module(_outcome_module)
 
 outcome_is_supported_format = _outcome_module.is_supported_format
-outcome_extract_key_phrases_with_comprehend = (
-    _outcome_module.extract_key_phrases_with_comprehend
-)
+outcome_extract_key_phrases_with_comprehend = _outcome_module.extract_key_phrases_with_comprehend
 outcome_match_outcomes_with_bedrock = _outcome_module.match_outcomes_with_bedrock
 outcome_parse_outcome_json = _outcome_module._parse_outcome_json
 
@@ -134,12 +124,10 @@ class TestGrantExtractorBedrock:
         import io
 
         mock_client = MagicMock()
-        response_bytes = json.dumps({
-            "content": [{"type": "text", "text": json.dumps(expected_response)}]
-        }).encode("utf-8")
-        mock_client.invoke_model.return_value = {
-            "body": io.BytesIO(response_bytes)
-        }
+        response_bytes = json.dumps({"content": [{"type": "text", "text": json.dumps(expected_response)}]}).encode(
+            "utf-8"
+        )
+        mock_client.invoke_model.return_value = {"body": io.BytesIO(response_bytes)}
 
         result = grant_extract_grant_info_with_bedrock(
             "テスト テキスト 十分な長さのテキストです。これは助成金申請書の内容です。", mock_client, "test-model"
@@ -212,9 +200,7 @@ class TestOutcomeMatcherComprehend:
             ]
         }
 
-        result = outcome_extract_key_phrases_with_comprehend(
-            "テスト テキスト 十分な長さ", mock_client, "ja"
-        )
+        result = outcome_extract_key_phrases_with_comprehend("テスト テキスト 十分な長さ", mock_client, "ja")
         assert "教育支援" in result
         assert "参加者100名" in result
         assert "地域" not in result  # below 0.7 threshold
@@ -259,12 +245,10 @@ class TestOutcomeMatcherBedrock:
         import io
 
         mock_client = MagicMock()
-        response_bytes = json.dumps({
-            "content": [{"type": "text", "text": json.dumps(expected_response)}]
-        }).encode("utf-8")
-        mock_client.invoke_model.return_value = {
-            "body": io.BytesIO(response_bytes)
-        }
+        response_bytes = json.dumps({"content": [{"type": "text", "text": json.dumps(expected_response)}]}).encode(
+            "utf-8"
+        )
+        mock_client.invoke_model.return_value = {"body": io.BytesIO(response_bytes)}
 
         result = outcome_match_outcomes_with_bedrock(
             "テスト テキスト 十分な長さのテキストです。これは活動報告書の内容です。",

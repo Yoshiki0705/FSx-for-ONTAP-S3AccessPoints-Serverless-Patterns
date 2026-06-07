@@ -48,10 +48,21 @@ ANOMALY_TYPES: list[str] = [
 ]
 
 # 植生関連の Rekognition ラベル
-VEGETATION_LABELS: frozenset[str] = frozenset({
-    "Plant", "Vegetation", "Grass", "Tree", "Field", "Farm",
-    "Crop", "Agriculture", "Nature", "Outdoors", "Land",
-})
+VEGETATION_LABELS: frozenset[str] = frozenset(
+    {
+        "Plant",
+        "Vegetation",
+        "Grass",
+        "Tree",
+        "Field",
+        "Farm",
+        "Crop",
+        "Agriculture",
+        "Nature",
+        "Outdoors",
+        "Land",
+    }
+)
 
 DEFAULT_CONFIDENCE_THRESHOLD: float = 0.70
 
@@ -115,15 +126,19 @@ def analyze_vegetation_with_rekognition(
         confidence = label.get("Confidence", 0) / 100.0  # 0-1 scale
 
         if label_name in VEGETATION_LABELS:
-            vegetation_labels.append({
-                "name": label_name,
-                "confidence": round(confidence, 4),
-            })
+            vegetation_labels.append(
+                {
+                    "name": label_name,
+                    "confidence": round(confidence, 4),
+                }
+            )
         else:
-            issue_labels.append({
-                "name": label_name,
-                "confidence": round(confidence, 4),
-            })
+            issue_labels.append(
+                {
+                    "name": label_name,
+                    "confidence": round(confidence, 4),
+                }
+            )
 
     return {
         "vegetation_labels": vegetation_labels,
@@ -166,11 +181,13 @@ def classify_anomalies_with_bedrock(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 1024,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     response = _invoke_model()
@@ -196,20 +213,24 @@ def classify_anomalies_with_bedrock(
                 confidence = float(item.get("confidence", 0))
                 anomaly_type = item.get("anomaly_type", "unknown")
                 if anomaly_type in ANOMALY_TYPES and confidence >= confidence_threshold:
-                    anomalies.append({
-                        "anomaly_type": anomaly_type,
-                        "confidence": round(confidence, 4),
-                        "description": item.get("description", ""),
-                        "status": "confirmed",
-                    })
+                    anomalies.append(
+                        {
+                            "anomaly_type": anomaly_type,
+                            "confidence": round(confidence, 4),
+                            "description": item.get("description", ""),
+                            "status": "confirmed",
+                        }
+                    )
                 elif anomaly_type in ANOMALY_TYPES and confidence > 0:
-                    anomalies.append({
-                        "anomaly_type": anomaly_type,
-                        "confidence": round(confidence, 4),
-                        "description": item.get("description", ""),
-                        "status": "review-required",
-                        "reason": f"Confidence {confidence:.2f} below threshold {confidence_threshold}",
-                    })
+                    anomalies.append(
+                        {
+                            "anomaly_type": anomaly_type,
+                            "confidence": round(confidence, 4),
+                            "description": item.get("description", ""),
+                            "status": "review-required",
+                            "reason": f"Confidence {confidence:.2f} below threshold {confidence_threshold}",
+                        }
+                    )
     except (json.JSONDecodeError, ValueError, TypeError) as e:
         logger.warning("Failed to parse Bedrock anomaly response: %s", str(e))
 
@@ -235,12 +256,8 @@ def handler(event, context):
     start_time = time.time()
 
     s3_access_point = os.environ["S3_ACCESS_POINT"]
-    bedrock_model_id = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-    )
-    confidence_threshold = float(
-        os.environ.get("CROP_ANOMALY_CONFIDENCE_THRESHOLD", str(DEFAULT_CONFIDENCE_THRESHOLD))
-    )
+    bedrock_model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+    confidence_threshold = float(os.environ.get("CROP_ANOMALY_CONFIDENCE_THRESHOLD", str(DEFAULT_CONFIDENCE_THRESHOLD)))
 
     object_key = event.get("Key", "")
     object_size = event.get("Size", 0)
@@ -265,15 +282,11 @@ def handler(event, context):
 
     # Rekognition による植生解析
     rekognition_client = boto3.client("rekognition")
-    vegetation_data = analyze_vegetation_with_rekognition(
-        rekognition_client, s3_access_point, object_key
-    )
+    vegetation_data = analyze_vegetation_with_rekognition(rekognition_client, s3_access_point, object_key)
 
     # Bedrock による異常分類
     bedrock_client = boto3.client("bedrock-runtime")
-    anomalies = classify_anomalies_with_bedrock(
-        bedrock_client, bedrock_model_id, vegetation_data, confidence_threshold
-    )
+    anomalies = classify_anomalies_with_bedrock(bedrock_client, bedrock_model_id, vegetation_data, confidence_threshold)
 
     confirmed_anomalies = [a for a in anomalies if a.get("status") == "confirmed"]
     review_required = [a for a in anomalies if a.get("status") == "review-required"]

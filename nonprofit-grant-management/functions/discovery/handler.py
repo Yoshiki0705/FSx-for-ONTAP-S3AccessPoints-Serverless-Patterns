@@ -33,18 +33,14 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 # 助成金申請書・活動報告書の対応拡張子
-GRANT_DOC_EXTENSIONS: frozenset[str] = frozenset(
-    {".pdf", ".docx", ".doc"}
-)
+GRANT_DOC_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".docx", ".doc"})
 
 # ドキュメントタイプ
 DOC_TYPE_APPLICATION = "grant_application"
 DOC_TYPE_REPORT = "activity_report"
 
 # 日付パターン (YYYY-MM-DD or YYYY/MM/DD or YYYYMMDD in path)
-DATE_PATTERN = re.compile(
-    r"(\d{4})[-/]?(\d{2})[-/]?(\d{2})"
-)
+DATE_PATTERN = re.compile(r"(\d{4})[-/]?(\d{2})[-/]?(\d{2})")
 
 
 def classify_file(
@@ -100,7 +96,7 @@ def extract_program_area(key: str, prefix: str) -> str:
     if not key.startswith(prefix):
         return "general"
 
-    relative_path = key[len(prefix):]
+    relative_path = key[len(prefix) :]
     parts = relative_path.split("/")
 
     if len(parts) > 1 and parts[0]:
@@ -153,13 +149,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error(
@@ -168,13 +166,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -198,19 +198,12 @@ def handler(event, context):
         dict: manifest_key, total_objects, grant_applications, activity_reports
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
-    grant_application_prefix = os.environ.get(
-        "GRANT_APPLICATION_PREFIX", "grant-applications/"
-    )
-    activity_report_prefix = os.environ.get(
-        "ACTIVITY_REPORT_PREFIX", "activity-reports/"
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
+    grant_application_prefix = os.environ.get("GRANT_APPLICATION_PREFIX", "grant-applications/")
+    activity_report_prefix = os.environ.get("ACTIVITY_REPORT_PREFIX", "activity-reports/")
 
     logger.info(
-        "Nonprofit Grant Discovery started: access_point=%s, "
-        "grant_prefix=%r, report_prefix=%r",
+        "Nonprofit Grant Discovery started: access_point=%s, grant_prefix=%r, report_prefix=%r",
         os.environ["S3_ACCESS_POINT"],
         grant_application_prefix,
         activity_report_prefix,
@@ -272,8 +265,7 @@ def handler(event, context):
         program_areas[area] = program_areas.get(area, 0) + 1
 
     logger.info(
-        "File classification: grant_applications=%d, activity_reports=%d, "
-        "total=%d, program_areas=%s",
+        "File classification: grant_applications=%d, activity_reports=%d, total=%d, program_areas=%s",
         len(grant_applications),
         len(activity_reports),
         len(all_objects),
@@ -295,10 +287,7 @@ def handler(event, context):
         "objects": all_objects,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-        f"{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

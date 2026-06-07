@@ -248,7 +248,7 @@ def calculate_backoff(
     Returns:
         float: 待機時間（秒）
     """
-    return initial_interval * (backoff_rate ** attempt)
+    return initial_interval * (backoff_rate**attempt)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -316,8 +316,7 @@ def execute_with_retry(
                     config.backoff_rate,
                 )
                 logger.warning(
-                    "Retryable error (attempt %d/%d): %s. "
-                    "Waiting %.1f seconds before retry.",
+                    "Retryable error (attempt %d/%d): %s. Waiting %.1f seconds before retry.",
                     attempt + 1,
                     config.max_attempts,
                     str(e),
@@ -337,8 +336,7 @@ def execute_with_retry(
                     str(e),
                 )
                 raise RetryExhaustedError(
-                    f"All {config.max_attempts} retry attempts exhausted. "
-                    f"Last error: {e}",
+                    f"All {config.max_attempts} retry attempts exhausted. Last error: {e}",
                     attempts=config.max_attempts,
                     last_error=e,
                     error_code=error_code,

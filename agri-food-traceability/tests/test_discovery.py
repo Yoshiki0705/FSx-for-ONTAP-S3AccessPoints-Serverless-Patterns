@@ -31,29 +31,41 @@ class TestClassifyFile:
 
     def test_geotiff_image(self):
         result = classify_file(
-            "aerial-images/field-a/2026-06.tif", 100_000_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "aerial-images/field-a/2026-06.tif",
+            100_000_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result == "aerial_image"
 
     def test_jpeg_image(self):
         result = classify_file(
-            "aerial-images/field-b/drone_001.jpg", 50_000_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "aerial-images/field-b/drone_001.jpg",
+            50_000_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result == "aerial_image"
 
     def test_jpeg_extension_variant(self):
         result = classify_file(
-            "aerial-images/field-c/capture.jpeg", 30_000_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "aerial-images/field-c/capture.jpeg",
+            30_000_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result == "aerial_image"
 
     def test_geotiff_extension(self):
         result = classify_file(
-            "aerial-images/field/scan.geotiff", 200_000_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "aerial-images/field/scan.geotiff",
+            200_000_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result == "aerial_image"
 
@@ -61,8 +73,11 @@ class TestClassifyFile:
         """500 MB を超える画像はフィルタされる (Req 5.1)"""
         over_limit = 501 * 1024 * 1024  # 501 MB
         result = classify_file(
-            "aerial-images/large/huge.tif", over_limit,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "aerial-images/large/huge.tif",
+            over_limit,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result is None
 
@@ -70,64 +85,91 @@ class TestClassifyFile:
         """500 MB ちょうどは許可"""
         exactly = 500 * 1024 * 1024
         result = classify_file(
-            "aerial-images/exact/limit.tif", exactly,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "aerial-images/exact/limit.tif",
+            exactly,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result == "aerial_image"
 
     def test_traceability_pdf(self):
         result = classify_file(
-            "traceability/lot-001/harvest_record.pdf", 1_000_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "traceability/lot-001/harvest_record.pdf",
+            1_000_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result == "traceability_doc"
 
     def test_traceability_csv(self):
         result = classify_file(
-            "traceability/manifests/shipping.csv", 500_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "traceability/manifests/shipping.csv",
+            500_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result == "traceability_doc"
 
     def test_traceability_xlsx(self):
         result = classify_file(
-            "traceability/inspection/cert.xlsx", 2_000_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "traceability/inspection/cert.xlsx",
+            2_000_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result == "traceability_doc"
 
     def test_wrong_prefix(self):
         result = classify_file(
-            "other/path/image.tif", 100_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "other/path/image.tif",
+            100_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result is None
 
     def test_unsupported_extension_in_image_prefix(self):
         result = classify_file(
-            "aerial-images/data.mp4", 100_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "aerial-images/data.mp4",
+            100_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result is None
 
     def test_empty_key(self):
         result = classify_file(
-            "", 0,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "",
+            0,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result is None
 
     def test_no_extension(self):
         result = classify_file(
-            "aerial-images/noext", 100_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "aerial-images/noext",
+            100_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result is None
 
     def test_case_insensitive_extension(self):
         result = classify_file(
-            "aerial-images/field/photo.TIFF", 100_000,
-            "aerial-images/", "traceability/", MAX_SIZE_BYTES,
+            "aerial-images/field/photo.TIFF",
+            100_000,
+            "aerial-images/",
+            "traceability/",
+            MAX_SIZE_BYTES,
         )
         assert result == "aerial_image"
 
@@ -146,9 +188,7 @@ class TestValidateS3ApConnectivity:
 
         mock_s3ap = MagicMock()
         mock_s3ap.bucket_param = "test-ap"
-        mock_s3ap.list_objects.side_effect = S3ApHelperError(
-            "Connection failed", error_code="ServiceUnavailable"
-        )
+        mock_s3ap.list_objects.side_effect = S3ApHelperError("Connection failed", error_code="ServiceUnavailable")
         result = validate_s3ap_connectivity(mock_s3ap)
         assert result is not None
         assert result["statusCode"] == 503

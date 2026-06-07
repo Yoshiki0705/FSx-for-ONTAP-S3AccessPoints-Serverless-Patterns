@@ -130,10 +130,7 @@ def check_image_resolution(image_metadata: dict, min_width: int, min_height: int
 
     if not is_adequate:
         result["status"] = "requires-reinspection"
-        result["reason"] = (
-            f"Image resolution {width}x{height} is below minimum "
-            f"required {min_width}x{min_height}"
-        )
+        result["reason"] = f"Image resolution {width}x{height} is below minimum required {min_width}x{min_height}"
 
     return result
 
@@ -180,20 +177,24 @@ def detect_deterioration_with_rekognition(
         label_name = label.get("Name", "")
         confidence = label.get("Confidence", 0)
 
-        all_labels.append({
-            "name": label_name,
-            "confidence": round(confidence, 2),
-        })
+        all_labels.append(
+            {
+                "name": label_name,
+                "confidence": round(confidence, 2),
+            }
+        )
 
         # 劣化関連キーワードのマッチング
         label_lower = label_name.lower()
         for det_type in DETERIORATION_TYPES:
             if det_type in label_lower or label_lower in det_type:
-                deterioration_labels.append({
-                    "name": label_name,
-                    "confidence": round(confidence, 2),
-                    "deterioration_type": det_type,
-                })
+                deterioration_labels.append(
+                    {
+                        "name": label_name,
+                        "confidence": round(confidence, 2),
+                        "deterioration_type": det_type,
+                    }
+                )
                 break
 
     return {
@@ -256,11 +257,13 @@ def classify_severity_with_bedrock(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 1024,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     response = _invoke_model()
@@ -285,12 +288,14 @@ def classify_severity_with_bedrock(
                 severity = item.get("severity", "observation").lower()
                 if severity not in SEVERITY_LEVELS:
                     severity = "observation"
-                classifications.append({
-                    "defect_type": item.get("defect_type", "unknown"),
-                    "severity": severity,
-                    "confidence": round(float(item.get("confidence", 0)), 4),
-                    "description": item.get("description", ""),
-                })
+                classifications.append(
+                    {
+                        "defect_type": item.get("defect_type", "unknown"),
+                        "severity": severity,
+                        "confidence": round(float(item.get("confidence", 0)), 4),
+                        "description": item.get("description", ""),
+                    }
+                )
     except (json.JSONDecodeError, ValueError, TypeError) as e:
         logger.warning("Failed to parse Bedrock severity response: %s", str(e))
 
@@ -322,30 +327,22 @@ def handler(event, context):
     start_time = time.time()
 
     s3_access_point = os.environ["S3_ACCESS_POINT"]
-    bedrock_model_id = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-    )
+    bedrock_model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
     # 閾値パラメータ
-    standard_threshold = int(
-        os.environ.get("STANDARD_CONFIDENCE_THRESHOLD", str(DEFAULT_STANDARD_THRESHOLD))
-    )
+    standard_threshold = int(os.environ.get("STANDARD_CONFIDENCE_THRESHOLD", str(DEFAULT_STANDARD_THRESHOLD)))
     safety_critical_threshold = int(
         os.environ.get(
             "SAFETY_CRITICAL_CONFIDENCE_THRESHOLD",
             str(DEFAULT_SAFETY_CRITICAL_THRESHOLD),
         )
     )
-    human_review_threshold = int(
-        os.environ.get("HUMAN_REVIEW_THRESHOLD", str(DEFAULT_HUMAN_REVIEW_THRESHOLD))
-    )
+    human_review_threshold = int(os.environ.get("HUMAN_REVIEW_THRESHOLD", str(DEFAULT_HUMAN_REVIEW_THRESHOLD)))
     min_width = int(os.environ.get("MIN_IMAGE_WIDTH", str(DEFAULT_MIN_WIDTH)))
     min_height = int(os.environ.get("MIN_IMAGE_HEIGHT", str(DEFAULT_MIN_HEIGHT)))
 
     # 安全重要カテゴリ
-    safety_categories_str = os.environ.get(
-        "SAFETY_CRITICAL_CATEGORIES", DEFAULT_SAFETY_CRITICAL_CATEGORIES
-    )
+    safety_categories_str = os.environ.get("SAFETY_CRITICAL_CATEGORIES", DEFAULT_SAFETY_CRITICAL_CATEGORIES)
     safety_categories = parse_safety_critical_categories(safety_categories_str)
 
     object_key = event.get("Key", "")
@@ -360,9 +357,7 @@ def handler(event, context):
 
     # 安全重要インフラ判定
     is_safety_critical_asset = is_safety_critical(object_key, safety_categories)
-    effective_threshold = (
-        safety_critical_threshold if is_safety_critical_asset else standard_threshold
-    )
+    effective_threshold = safety_critical_threshold if is_safety_critical_asset else standard_threshold
 
     logger.info(
         "Safety classification: key=%s, is_safety_critical=%s, threshold=%d%%",
@@ -442,11 +437,13 @@ def handler(event, context):
         confidence = label.get("confidence", 0)
         if confidence < human_review_threshold:
             human_review_required = True
-            flagged_for_review.append({
-                "label": label.get("name"),
-                "confidence": confidence,
-                "reason": f"Confidence {confidence}% < {human_review_threshold}% threshold",
-            })
+            flagged_for_review.append(
+                {
+                    "label": label.get("name"),
+                    "confidence": confidence,
+                    "reason": f"Confidence {confidence}% < {human_review_threshold}% threshold",
+                }
+            )
 
     # 重大度サマリ
     severity_counts = {"critical": 0, "major": 0, "minor": 0, "observation": 0}

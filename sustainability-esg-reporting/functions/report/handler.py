@@ -105,25 +105,23 @@ def compute_yoy_trend(
         for category, current_value in current_totals.items():
             previous_value = previous_totals.get(category, 0)
             if previous_value > 0:
-                change_pct = round(
-                    (current_value - previous_value) / previous_value * 100, 2
-                )
+                change_pct = round((current_value - previous_value) / previous_value * 100, 2)
             elif current_value > 0:
                 change_pct = 100.0  # 前期ゼロ → 今期正
             else:
                 change_pct = 0.0
 
-            trends.append({
-                "category": category,
-                "current_period": current_period,
-                "previous_period": previous_period,
-                "current_value": current_value,
-                "previous_value": previous_value,
-                "change_percent": change_pct,
-                "direction": "increase" if change_pct > 0 else (
-                    "decrease" if change_pct < 0 else "unchanged"
-                ),
-            })
+            trends.append(
+                {
+                    "category": category,
+                    "current_period": current_period,
+                    "previous_period": previous_period,
+                    "current_value": current_value,
+                    "previous_value": previous_value,
+                    "change_percent": change_pct,
+                    "direction": "increase" if change_pct > 0 else ("decrease" if change_pct < 0 else "unchanged"),
+                }
+            )
 
     return trends
 
@@ -153,9 +151,7 @@ def generate_esg_summary(
 
     for esg_cat, metrics in categorized.items():
         success_metrics = [m for m in metrics if m.get("status") == "success"]
-        validation_metrics = [
-            m for m in metrics if m.get("status") == "requires-validation"
-        ]
+        validation_metrics = [m for m in metrics if m.get("status") == "requires-validation"]
 
         # メトリクスカテゴリ別集計
         category_totals: dict[str, dict] = {}
@@ -206,9 +202,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     results = event.get("results", [])
@@ -236,9 +230,7 @@ def handler(event, context):
     # 全体統計
     total_metrics = len(all_metrics)
     total_success = sum(1 for m in all_metrics if m.get("status") == "success")
-    total_validation = sum(
-        1 for m in all_metrics if m.get("status") == "requires-validation"
-    )
+    total_validation = sum(1 for m in all_metrics if m.get("status") == "requires-validation")
     total_errors = sum(1 for r in results if r.get("status") == "error")
 
     processing_duration_ms = int((time.time() - start_time) * 1000)
@@ -258,9 +250,7 @@ def handler(event, context):
             "processing_duration_ms": processing_duration_ms,
         },
         "esg_categories": esg_summary,
-        "period_breakdown": {
-            period: len(metrics) for period, metrics in period_data.items()
-        },
+        "period_breakdown": {period: len(metrics) for period, metrics in period_data.items()},
         "yoy_trends": yoy_trends,
         "frameworks": ["GRI", "TCFD", "CDP"],
         "discovery_metadata": {
@@ -282,8 +272,7 @@ def handler(event, context):
     )
 
     logger.info(
-        "ESG Report generated: key=%s, total_metrics=%d, success=%d, "
-        "validation=%d, errors=%d, yoy_available=%s",
+        "ESG Report generated: key=%s, total_metrics=%d, success=%d, validation=%d, errors=%d, yoy_available=%s",
         report_key,
         total_metrics,
         total_success,
@@ -298,9 +287,7 @@ def handler(event, context):
             sns_client = boto3.client("sns")
             sns_client.publish(
                 TopicArn=sns_topic_arn,
-                Subject=(
-                    f"[UC23] ESG Report - {total_validation} metrics require validation"
-                ),
+                Subject=(f"[UC23] ESG Report - {total_validation} metrics require validation"),
                 Message=(
                     f"ESG Metrics Report\n"
                     f"Period: {report_period}\n"

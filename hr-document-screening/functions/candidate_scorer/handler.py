@@ -62,9 +62,7 @@ def score_candidate_bedrock(
         bedrock_client = boto3.client("bedrock-runtime")
 
     if model_id is None:
-        model_id = os.environ.get(
-            "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-        )
+        model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
     # 保護特性除外プロンプト (Requirement 11.6)
     exclusion_prompt = pii_filter.create_scoring_exclusion_prompt()
@@ -88,11 +86,13 @@ def score_candidate_bedrock(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 1024,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     try:
@@ -121,7 +121,7 @@ def _parse_scoring_response(text: str) -> dict:
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
         try:
-            data = json.loads(text[start:end + 1])
+            data = json.loads(text[start : end + 1])
             # スコアを 0-100 にクランプ
             score = data.get("score", 0)
             if isinstance(score, (int, float)):
@@ -155,11 +155,14 @@ def handler(event, context):
     # when S3ApHelper supports it. See: shared/s3ap_helper.py
 
     results = event.get("results", [])
-    job_requirements = event.get("job_requirements", {
-        "required_skills": [],
-        "min_experience_years": 0,
-        "preferred_certifications": [],
-    })
+    job_requirements = event.get(
+        "job_requirements",
+        {
+            "required_skills": [],
+            "min_experience_years": 0,
+            "preferred_certifications": [],
+        },
+    )
 
     if is_strict_mode():
         logger.info("Candidate scoring started: %d candidates (strict PII mode)", len(results))
@@ -183,30 +186,32 @@ def handler(event, context):
             # 保護特性を再確認して除去
             candidate_data = pii_filter.remove_protected_characteristics(candidate_data)
 
-            scoring = score_candidate_bedrock(
-                candidate_data, job_requirements, pii_filter
-            )
+            scoring = score_candidate_bedrock(candidate_data, job_requirements, pii_filter)
 
-            scored_results.append({
-                "key": key,
-                "position_type": result.get("position_type", "general"),
-                "status": "success",
-                "candidate_data": candidate_data,
-                "scoring": scoring,
-                "compliance_note": result.get("compliance_note"),
-            })
+            scored_results.append(
+                {
+                    "key": key,
+                    "position_type": result.get("position_type", "general"),
+                    "status": "success",
+                    "candidate_data": candidate_data,
+                    "scoring": scoring,
+                    "compliance_note": result.get("compliance_note"),
+                }
+            )
             success_count += 1
 
         except Exception as e:
             error_category = categorize_error(e)
             logger.warning("Candidate scoring failed: %s [%s]", str(e), error_category.value)
-            scored_results.append({
-                "key": key,
-                "position_type": result.get("position_type", "general"),
-                "status": "error",
-                "error_type": error_category.value,
-                "error_message": str(e),
-            })
+            scored_results.append(
+                {
+                    "key": key,
+                    "position_type": result.get("position_type", "general"),
+                    "status": "error",
+                    "error_type": error_category.value,
+                    "error_message": str(e),
+                }
+            )
             error_count += 1
 
     processing_duration_ms = int((time.time() - start_time) * 1000)

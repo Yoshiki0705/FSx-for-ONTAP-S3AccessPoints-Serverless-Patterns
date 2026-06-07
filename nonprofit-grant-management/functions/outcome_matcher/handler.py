@@ -204,11 +204,13 @@ def match_outcomes_with_bedrock(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 4096,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 4096,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     response = _call_bedrock()
@@ -278,13 +280,9 @@ def handler(event, context):
     )
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     textract_region = os.environ.get("CROSS_REGION_TEXTRACT_REGION", "us-east-1")
-    model_id = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-    )
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
     language_code = os.environ.get("COMPREHEND_LANGUAGE_CODE", "ja")
 
     # Requirement 8.5: 未認識フォーマットのチェック
@@ -342,9 +340,7 @@ def handler(event, context):
                 "use_case": "nonprofit-grant-management",
             },
         ):
-            key_phrases = extract_key_phrases_with_comprehend(
-                extracted_text, comprehend_client, language_code
-            )
+            key_phrases = extract_key_phrases_with_comprehend(extracted_text, comprehend_client, language_code)
 
         # Step 4: Bedrock で成果マッチング
         with xray_subsegment(
@@ -355,9 +351,7 @@ def handler(event, context):
                 "use_case": "nonprofit-grant-management",
             },
         ):
-            outcome_data = match_outcomes_with_bedrock(
-                extracted_text, key_phrases, bedrock_client, model_id
-            )
+            outcome_data = match_outcomes_with_bedrock(extracted_text, key_phrases, bedrock_client, model_id)
 
         # メタデータ追加
         outcome_data["_metadata"] = {
@@ -370,10 +364,7 @@ def handler(event, context):
         }
 
         # 結果を S3 に出力
-        result_key = (
-            f"results/outcomes/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-            f"{os.path.basename(key)}.json"
-        )
+        result_key = f"results/outcomes/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
         s3ap_output.put_object(
             key=result_key,
             body=json.dumps(outcome_data, ensure_ascii=False, default=str),
@@ -381,8 +372,7 @@ def handler(event, context):
         )
 
         logger.info(
-            "Outcome matching completed: key=%s, result_key=%s, "
-            "metrics_count=%d, objectives_matched=%d",
+            "Outcome matching completed: key=%s, result_key=%s, metrics_count=%d, objectives_matched=%d",
             key,
             result_key,
             len(outcome_data.get("outcome_metrics", [])),
@@ -421,10 +411,7 @@ def handler(event, context):
         logger.error("Outcome matching failed: key=%s, error=%s", key, str(e))
 
         # エラーを出力バケットに記録
-        error_key = (
-            f"errors/outcomes/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-            f"{os.path.basename(key)}.json"
-        )
+        error_key = f"errors/outcomes/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
         try:
             s3ap_output.put_object(
                 key=error_key,
