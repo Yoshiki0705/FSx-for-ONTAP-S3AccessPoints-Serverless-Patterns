@@ -53,6 +53,8 @@ S3 Object Lock が使えない場合、FSx for ONTAP は以下の代替機能を
 - ランサムウェア検知・自動対応 → ARP を volume レベルで有効化（追加コスト無し）
 - point-in-time recovery → ONTAP Snapshot（S3 Versioning の代替）
 
+> **注意**: SnapLock は ONTAP ネイティブの WORM オプションですが、S3 Object Lock API のドロップイン代替ではありません。規制要件に基づいて SnapLock と標準 S3 Object Lock のどちらが適切かを検証してください。
+
 ## Versioning の代替
 
 S3 Versioning と ONTAP Snapshot は異なるリカバリモデルです:
