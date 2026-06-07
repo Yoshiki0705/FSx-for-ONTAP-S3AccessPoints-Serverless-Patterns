@@ -34,6 +34,12 @@ Step Functions 実行履歴、AI/ML サービス抽出結果、CloudWatch EMF Me
 - Critical アラートはドメイン専門家がレビュー
 - 定期サマリレポートは経営層がレビュー
 
+### Output Safeguard Requirements
+- 出力スキーマに age/gender/ethnicity/nationality フィールドを含めないこと
+- 評価説明は職務関連の資格・経験のみを根拠とすること
+- 検出された保護特性は保存前に除去されること
+- 全ての推薦結果は人間レビューを必須とすること
+
 ## アーキテクチャ
 
 詳細なデータフロー図は[アーキテクチャドキュメント](docs/architecture.md)を参照してください。
