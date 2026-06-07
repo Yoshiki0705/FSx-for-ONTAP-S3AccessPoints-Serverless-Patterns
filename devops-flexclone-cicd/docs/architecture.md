@@ -1,4 +1,4 @@
-# UC29 アーキテクチャ: DevOps FlexClone + S3AP
+# FC7 アーキテクチャ: DevOps FlexClone + S3AP
 
 ## データフロー
 
