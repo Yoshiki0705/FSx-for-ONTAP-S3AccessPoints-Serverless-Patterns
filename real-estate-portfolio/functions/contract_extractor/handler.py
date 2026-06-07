@@ -153,7 +153,7 @@ def extract_lease_terms(text: str, entities: list[dict]) -> dict:
             amount_str = match.group(1).replace(",", "")
             try:
                 result["rent_amount"] = int(amount_str)
-                if "万円" in text[match.start():match.end() + 5]:
+                if "万円" in text[match.start() : match.end() + 5]:
                     result["rent_amount"] *= 10000
             except ValueError:
                 pass
@@ -165,7 +165,7 @@ def extract_lease_terms(text: str, entities: list[dict]) -> dict:
         if match:
             period = int(match.group(1))
             # 「年」の場合は月に変換
-            if "年" in text[match.start():match.end() + 3] or "year" in text[match.start():match.end() + 5].lower():
+            if "年" in text[match.start() : match.end() + 3] or "year" in text[match.start() : match.end() + 5].lower():
                 period *= 12
             result["lease_period_months"] = period
             break
@@ -232,14 +232,16 @@ def handler(event, context):
             # 契約条件抽出
             lease_terms = extract_lease_terms(text, entities)
 
-            results.append({
-                "key": key,
-                "property_id": property_id,
-                "status": "success",
-                "lease_terms": lease_terms,
-                "text_length": len(text),
-                "entity_count": len(entities),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "property_id": property_id,
+                    "status": "success",
+                    "lease_terms": lease_terms,
+                    "text_length": len(text),
+                    "entity_count": len(entities),
+                }
+            )
             success_count += 1
 
         except Exception as e:
@@ -250,13 +252,15 @@ def handler(event, context):
                 str(e),
                 error_category.value,
             )
-            results.append({
-                "key": key,
-                "property_id": property_id,
-                "status": "error",
-                "error_type": error_category.value,
-                "error_message": str(e),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "property_id": property_id,
+                    "status": "error",
+                    "error_type": error_category.value,
+                    "error_message": str(e),
+                }
+            )
             error_count += 1
 
     processing_duration_ms = int((time.time() - start_time) * 1000)

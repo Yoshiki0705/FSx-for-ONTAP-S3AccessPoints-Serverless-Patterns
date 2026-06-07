@@ -133,9 +133,7 @@ def build_catalog_record(
     tags = asset_result.get("tags", [])
     tag_count = asset_result.get("tag_count", len(tags))
     compliance = asset_result.get("compliance", {})
-    processing_timestamp = asset_result.get(
-        "processing_timestamp", datetime.now(timezone.utc).isoformat()
-    )
+    processing_timestamp = asset_result.get("processing_timestamp", datetime.now(timezone.utc).isoformat())
 
     # Requirement 3.6: モデレーション評価
     moderation_eval = evaluate_moderation_status(moderation_labels, threshold)
@@ -143,9 +141,7 @@ def build_catalog_record(
     # Text Compliance 結果の統合
     text_compliance_status = "not_checked"
     if text_result and text_result.get("status") == "success":
-        text_compliance_status = text_result.get(
-            "compliance_result", "not_checked"
-        )
+        text_compliance_status = text_result.get("compliance_result", "not_checked")
 
     record = {
         "asset_key": asset_key,
@@ -190,8 +186,7 @@ def generate_csv_content(catalog_records: list[dict[str, Any]]) -> str:
             "tag_count": record.get("tag_count", 0),
             "compliance_status": record.get("compliance_status", ""),
             "moderation_labels": ";".join(
-                f"{l.get('name', '')}({l.get('confidence', 0):.1f}%)"
-                for l in record.get("moderation_labels", [])
+                f"{l.get('name', '')}({l.get('confidence', 0):.1f}%)" for l in record.get("moderation_labels", [])
             ),
             "text_compliance_status": record.get("text_compliance_status", ""),
             "processing_timestamp": record.get("processing_timestamp", ""),
@@ -400,13 +395,8 @@ def handler(event, context):
                 },
             ):
                 sns_client = boto3.client("sns")
-                review_assets = [
-                    r for r in catalog_records
-                    if r.get("review_status") == "requires-review"
-                ]
-                subject = (
-                    f"[REVIEW] {requires_review_count} assets require moderation review"
-                )
+                review_assets = [r for r in catalog_records if r.get("review_status") == "requires-review"]
+                subject = f"[REVIEW] {requires_review_count} assets require moderation review"
                 if len(subject) > 100:
                     subject = subject[:97] + "..."
 

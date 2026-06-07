@@ -95,20 +95,14 @@ class TestParseCsvCdr:
 
     def test_invalid_duration_defaults_to_zero(self):
         """不正な duration 値は 0.0 にデフォルトする"""
-        csv_content = (
-            "caller_id,callee_id,duration,timestamp\n"
-            "+81900000000,+81800000000,invalid,2026-06-02 12:00:00\n"
-        )
+        csv_content = "caller_id,callee_id,duration,timestamp\n+81900000000,+81800000000,invalid,2026-06-02 12:00:00\n"
         records = parse_csv_cdr(csv_content)
         assert len(records) == 1
         assert records[0]["duration"] == 0.0
 
     def test_row_with_only_timestamp_is_valid(self):
         """timestamp のみのレコードも有効として扱われる"""
-        csv_content = (
-            "caller_id,timestamp\n"
-            ",2026-06-02 12:00:00\n"
-        )
+        csv_content = "caller_id,timestamp\n,2026-06-02 12:00:00\n"
         records = parse_csv_cdr(csv_content)
         assert len(records) == 1
 
@@ -277,10 +271,12 @@ class TestParseSnmpTrap:
 
     def test_json_array_format(self):
         """JSON 配列形式の SNMP trap データ"""
-        content = json.dumps([
-            {"agent_address": "10.0.0.1", "enterprise": "1.3.6.1.4.1.9", "message": "link-down"},
-            {"agent_address": "10.0.0.2", "enterprise": "1.3.6.1.4.1.9", "message": "power failure"},
-        ])
+        content = json.dumps(
+            [
+                {"agent_address": "10.0.0.1", "enterprise": "1.3.6.1.4.1.9", "message": "link-down"},
+                {"agent_address": "10.0.0.2", "enterprise": "1.3.6.1.4.1.9", "message": "power failure"},
+            ]
+        )
         traps = parse_snmp_trap(content)
         assert len(traps) == 2
         assert traps[0]["agent_address"] == "10.0.0.1"
@@ -312,26 +308,58 @@ class TestIdentifyEquipmentFailures:
 
     def test_link_down_detected(self):
         """link-down パターンが検出される"""
-        entries = [{"message": "Interface eth0 link-down detected", "hostname": "sw1", "app_name": "linkd", "timestamp": "2026-01-01", "severity_label": "error"}]
+        entries = [
+            {
+                "message": "Interface eth0 link-down detected",
+                "hostname": "sw1",
+                "app_name": "linkd",
+                "timestamp": "2026-01-01",
+                "severity_label": "error",
+            }
+        ]
         failures = identify_equipment_failures(entries)
         assert len(failures) == 1
         assert "link" in failures[0]["type"]
 
     def test_hardware_error_detected(self):
         """hardware error パターンが検出される"""
-        entries = [{"message": "Module 3 hardware error reported", "hostname": "router1", "app_name": "hwmon", "timestamp": "2026-01-01", "severity_label": "critical"}]
+        entries = [
+            {
+                "message": "Module 3 hardware error reported",
+                "hostname": "router1",
+                "app_name": "hwmon",
+                "timestamp": "2026-01-01",
+                "severity_label": "critical",
+            }
+        ]
         failures = identify_equipment_failures(entries)
         assert len(failures) == 1
 
     def test_process_crash_detected(self):
         """process crash パターンが検出される"""
-        entries = [{"message": "BGP process crash observed", "hostname": "core-rtr", "app_name": "bgpd", "timestamp": "2026-01-01", "severity_label": "alert"}]
+        entries = [
+            {
+                "message": "BGP process crash observed",
+                "hostname": "core-rtr",
+                "app_name": "bgpd",
+                "timestamp": "2026-01-01",
+                "severity_label": "alert",
+            }
+        ]
         failures = identify_equipment_failures(entries)
         assert len(failures) == 1
 
     def test_no_failure_in_normal_message(self):
         """正常なメッセージでは障害が検出されない"""
-        entries = [{"message": "Routing table updated successfully", "hostname": "rtr1", "app_name": "routing", "timestamp": "2026-01-01", "severity_label": "informational"}]
+        entries = [
+            {
+                "message": "Routing table updated successfully",
+                "hostname": "rtr1",
+                "app_name": "routing",
+                "timestamp": "2026-01-01",
+                "severity_label": "informational",
+            }
+        ]
         failures = identify_equipment_failures(entries)
         assert len(failures) == 0
 
@@ -350,7 +378,9 @@ class TestDetectCapacityBreaches:
 
     def test_breach_at_default_threshold(self):
         """デフォルト閾値 80% で超過が検出される"""
-        entries = [{"message": "CPU utilization: 95%", "hostname": "host1", "app_name": "monitor", "timestamp": "2026-01-01"}]
+        entries = [
+            {"message": "CPU utilization: 95%", "hostname": "host1", "app_name": "monitor", "timestamp": "2026-01-01"}
+        ]
         breaches = detect_capacity_breaches(entries, threshold_percent=80.0)
         assert len(breaches) == 1
         assert breaches[0]["utilization_percent"] == 95.0
@@ -358,19 +388,25 @@ class TestDetectCapacityBreaches:
 
     def test_below_threshold_not_detected(self):
         """閾値未満は検出されない"""
-        entries = [{"message": "Memory usage: 50%", "hostname": "host1", "app_name": "monitor", "timestamp": "2026-01-01"}]
+        entries = [
+            {"message": "Memory usage: 50%", "hostname": "host1", "app_name": "monitor", "timestamp": "2026-01-01"}
+        ]
         breaches = detect_capacity_breaches(entries, threshold_percent=80.0)
         assert len(breaches) == 0
 
     def test_exactly_at_threshold_is_breach(self):
         """閾値ちょうどは超過として検出される"""
-        entries = [{"message": "Disk capacity: 80.0%", "hostname": "host1", "app_name": "monitor", "timestamp": "2026-01-01"}]
+        entries = [
+            {"message": "Disk capacity: 80.0%", "hostname": "host1", "app_name": "monitor", "timestamp": "2026-01-01"}
+        ]
         breaches = detect_capacity_breaches(entries, threshold_percent=80.0)
         assert len(breaches) == 1
 
     def test_custom_threshold(self):
         """カスタム閾値 (90%) のテスト"""
-        entries = [{"message": "Network load: 85%", "hostname": "host1", "app_name": "monitor", "timestamp": "2026-01-01"}]
+        entries = [
+            {"message": "Network load: 85%", "hostname": "host1", "app_name": "monitor", "timestamp": "2026-01-01"}
+        ]
         breaches = detect_capacity_breaches(entries, threshold_percent=90.0)
         assert len(breaches) == 0
 
@@ -491,11 +527,18 @@ class TestInvokeBedrockAnomalyClassification:
         """Bedrock が正常レスポンスを返す場合"""
         mock_client = MagicMock()
         response_body = {
-            "content": [{"type": "text", "text": json.dumps({
-                "classification": "traffic_surge",
-                "explanation": "Unusual traffic increase",
-                "recommendations": ["Scale up capacity", "Monitor closely"],
-            })}]
+            "content": [
+                {
+                    "type": "text",
+                    "text": json.dumps(
+                        {
+                            "classification": "traffic_surge",
+                            "explanation": "Unusual traffic increase",
+                            "recommendations": ["Scale up capacity", "Monitor closely"],
+                        }
+                    ),
+                }
+            ]
         }
         mock_body = MagicMock()
         mock_body.read.return_value = json.dumps(response_body).encode()
@@ -511,9 +554,7 @@ class TestInvokeBedrockAnomalyClassification:
     def test_bedrock_non_json_response(self):
         """Bedrock が JSON でないレスポンスを返す場合"""
         mock_client = MagicMock()
-        response_body = {
-            "content": [{"type": "text", "text": "This is plain text without JSON"}]
-        }
+        response_body = {"content": [{"type": "text", "text": "This is plain text without JSON"}]}
         mock_body = MagicMock()
         mock_body.read.return_value = json.dumps(response_body).encode()
         mock_client.invoke_model.return_value = {"body": mock_body}

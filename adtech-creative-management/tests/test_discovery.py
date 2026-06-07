@@ -22,9 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # handler モジュールを動的にインポート
-_handler_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-)
+_handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
 _spec = importlib.util.spec_from_file_location("adtech_discovery_handler", _handler_path)
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
@@ -172,9 +170,7 @@ class TestValidateS3apConnectivity:
         from shared.exceptions import S3ApHelperError
 
         mock_s3ap = MagicMock()
-        mock_s3ap.list_objects.side_effect = S3ApHelperError(
-            "Access denied", error_code="AccessDenied"
-        )
+        mock_s3ap.list_objects.side_effect = S3ApHelperError("Access denied", error_code="AccessDenied")
         mock_s3ap.bucket_param = "test-ap-alias"
 
         result = validate_s3ap_connectivity(mock_s3ap)
@@ -229,11 +225,36 @@ class TestHandler:
             mock_instance.list_objects.side_effect = [
                 [],  # connectivity check
                 [
-                    {"Key": "creatives/banner.jpg", "Size": 1_000_000, "LastModified": "2026-06-01T00:00:00Z", "ETag": '"abc"'},
-                    {"Key": "creatives/logo.png", "Size": 500_000, "LastModified": "2026-06-01T00:00:00Z", "ETag": '"def"'},
-                    {"Key": "creatives/readme.txt", "Size": 1_000, "LastModified": "2026-06-01T00:00:00Z", "ETag": '"ghi"'},
-                    {"Key": "creatives/video.mp4", "Size": 50_000_000, "LastModified": "2026-06-01T00:00:00Z", "ETag": '"jkl"'},
-                    {"Key": "creatives/data.csv", "Size": 2_000, "LastModified": "2026-06-01T00:00:00Z", "ETag": '"mno"'},
+                    {
+                        "Key": "creatives/banner.jpg",
+                        "Size": 1_000_000,
+                        "LastModified": "2026-06-01T00:00:00Z",
+                        "ETag": '"abc"',
+                    },
+                    {
+                        "Key": "creatives/logo.png",
+                        "Size": 500_000,
+                        "LastModified": "2026-06-01T00:00:00Z",
+                        "ETag": '"def"',
+                    },
+                    {
+                        "Key": "creatives/readme.txt",
+                        "Size": 1_000,
+                        "LastModified": "2026-06-01T00:00:00Z",
+                        "ETag": '"ghi"',
+                    },
+                    {
+                        "Key": "creatives/video.mp4",
+                        "Size": 50_000_000,
+                        "LastModified": "2026-06-01T00:00:00Z",
+                        "ETag": '"jkl"',
+                    },
+                    {
+                        "Key": "creatives/data.csv",
+                        "Size": 2_000,
+                        "LastModified": "2026-06-01T00:00:00Z",
+                        "ETag": '"mno"',
+                    },
                 ],
             ]
             mock_instance.bucket_param = "test-ap-alias"
@@ -261,9 +282,24 @@ class TestHandler:
             mock_instance.list_objects.side_effect = [
                 [],  # connectivity check
                 [
-                    {"Key": "creatives/small.jpg", "Size": 1_000_000, "LastModified": "2026-06-01T00:00:00Z", "ETag": '"a"'},
-                    {"Key": "creatives/huge.tiff", "Size": 6_000_000_000, "LastModified": "2026-06-01T00:00:00Z", "ETag": '"b"'},
-                    {"Key": "creatives/medium.psd", "Size": 4_000_000_000, "LastModified": "2026-06-01T00:00:00Z", "ETag": '"c"'},
+                    {
+                        "Key": "creatives/small.jpg",
+                        "Size": 1_000_000,
+                        "LastModified": "2026-06-01T00:00:00Z",
+                        "ETag": '"a"',
+                    },
+                    {
+                        "Key": "creatives/huge.tiff",
+                        "Size": 6_000_000_000,
+                        "LastModified": "2026-06-01T00:00:00Z",
+                        "ETag": '"b"',
+                    },
+                    {
+                        "Key": "creatives/medium.psd",
+                        "Size": 4_000_000_000,
+                        "LastModified": "2026-06-01T00:00:00Z",
+                        "ETag": '"c"',
+                    },
                 ],
             ]
             mock_instance.bucket_param = "test-ap-alias"
@@ -287,9 +323,7 @@ class TestHandler:
         with patch.object(_module, "S3ApHelper") as mock_s3ap_class:
             mock_instance = MagicMock()
             mock_s3ap_class.return_value = mock_instance
-            mock_instance.list_objects.side_effect = S3ApHelperError(
-                "Access denied", error_code="AccessDenied"
-            )
+            mock_instance.list_objects.side_effect = S3ApHelperError("Access denied", error_code="AccessDenied")
             mock_instance.bucket_param = "test-ap-alias"
 
             result = handler({}, self._make_context())

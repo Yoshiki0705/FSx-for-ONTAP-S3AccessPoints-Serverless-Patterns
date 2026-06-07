@@ -33,14 +33,10 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 # 点検画像の対応拡張子 (JPEG/PNG/TIFF)
-INSPECTION_IMAGE_EXTENSIONS: frozenset[str] = frozenset(
-    {".jpg", ".jpeg", ".png", ".tiff", ".tif"}
-)
+INSPECTION_IMAGE_EXTENSIONS: frozenset[str] = frozenset({".jpg", ".jpeg", ".png", ".tiff", ".tif"})
 
 # 保守報告書の対応拡張子 (PDF/Excel)
-MAINTENANCE_DOC_EXTENSIONS: frozenset[str] = frozenset(
-    {".pdf", ".xlsx", ".xls"}
-)
+MAINTENANCE_DOC_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".xlsx", ".xls"})
 
 
 def classify_file(
@@ -101,13 +97,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error(
@@ -116,13 +114,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -151,15 +151,12 @@ def handler(event, context):
         dict: manifest_key, total_objects, inspection_images, maintenance_reports
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     inspection_prefix = os.environ.get("INSPECTION_PREFIX", "inspections/")
     maintenance_prefix = os.environ.get("MAINTENANCE_PREFIX", "maintenance-reports/")
 
     logger.info(
-        "Transportation Discovery started: access_point=%s, "
-        "inspection_prefix=%r, maintenance_prefix=%r",
+        "Transportation Discovery started: access_point=%s, inspection_prefix=%r, maintenance_prefix=%r",
         os.environ["S3_ACCESS_POINT"],
         inspection_prefix,
         maintenance_prefix,
@@ -252,9 +249,7 @@ def handler(event, context):
         "objects": all_objects,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

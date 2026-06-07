@@ -65,9 +65,7 @@ def extract_text_with_textract(
 
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _detect_text():
-        return textract_client.detect_document_text(
-            Document={"S3Object": {"Bucket": s3_bucket, "Name": s3_key}}
-        )
+        return textract_client.detect_document_text(Document={"S3Object": {"Bucket": s3_bucket, "Name": s3_key}})
 
     response = _detect_text()
     blocks = response.get("Blocks", [])
@@ -242,10 +240,12 @@ def extract_lifecycle_data(
                 context_end = min(len(lines), i + 3)
                 context = "\n".join(lines[context_start:context_end])
                 if date_entity["text"] in context:
-                    lifecycle_data["repair_history"].append({
-                        "date": date_entity["text"],
-                        "description": line.strip(),
-                    })
+                    lifecycle_data["repair_history"].append(
+                        {
+                            "date": date_entity["text"],
+                            "description": line.strip(),
+                        }
+                    )
                     break
 
     return lifecycle_data
@@ -285,9 +285,7 @@ def handler(event, context):
 
     # Textract でテキスト抽出 (Cross-Region)
     textract_client = boto3.client("textract", region_name=cross_region)
-    extracted_text = extract_text_with_textract(
-        textract_client, s3_access_point, object_key
-    )
+    extracted_text = extract_text_with_textract(textract_client, s3_access_point, object_key)
 
     if not extracted_text.strip():
         logger.warning("No text extracted from document: %s", object_key)

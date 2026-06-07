@@ -140,9 +140,7 @@ def extract_hazard_info_bedrock(
         bedrock_client = boto3.client("bedrock-runtime")
 
     if model_id is None:
-        model_id = os.environ.get(
-            "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-        )
+        model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
     # テキストを制限
     truncated_text = text[:4000]
@@ -165,11 +163,13 @@ def extract_hazard_info_bedrock(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 1024,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     try:
@@ -194,7 +194,7 @@ def _parse_hazard_response(text: str) -> dict:
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(text[start:end + 1])
+            return json.loads(text[start : end + 1])
         except json.JSONDecodeError:
             pass
     return {
@@ -277,16 +277,18 @@ def handler(event, context):
             # 有効期限チェック
             expiry_info = check_sds_expiry(revision_date, validity_days)
 
-            results.append({
-                "key": key,
-                "substance_id": substance_id,
-                "revision_date": revision_date,
-                "status": "success",
-                "ghs_sections": ghs_check,
-                "missing_ghs_sections": missing_sections,
-                "hazard_info": hazard_info,
-                "expiry": expiry_info,
-            })
+            results.append(
+                {
+                    "key": key,
+                    "substance_id": substance_id,
+                    "revision_date": revision_date,
+                    "status": "success",
+                    "ghs_sections": ghs_check,
+                    "missing_ghs_sections": missing_sections,
+                    "hazard_info": hazard_info,
+                    "expiry": expiry_info,
+                }
+            )
             success_count += 1
 
         except Exception as e:
@@ -297,14 +299,16 @@ def handler(event, context):
                 str(e),
                 error_category.value,
             )
-            results.append({
-                "key": key,
-                "substance_id": substance_id,
-                "revision_date": revision_date,
-                "status": "error",
-                "error_type": error_category.value,
-                "error_message": str(e),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "substance_id": substance_id,
+                    "revision_date": revision_date,
+                    "status": "error",
+                    "error_type": error_category.value,
+                    "error_message": str(e),
+                }
+            )
             error_count += 1
 
     processing_duration_ms = int((time.time() - start_time) * 1000)

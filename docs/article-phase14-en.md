@@ -83,6 +83,19 @@ After raising this with AWS Support, the explanation was clear:
 
 AWS Support has escalated documentation clarification to the FSx for ONTAP service team. The distinction between "Not supported + hard-blocked" (returns error) and "Not supported + may incidentally work" (no guarantees) is being reviewed.
 
+> Readers should verify the [latest AWS documentation](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) before relying on this behavior, as the status may change.
+
+### Alternatives to Presigned URLs
+
+If you need time-limited or delegated file access without relying on unsupported behavior:
+
+- **API Gateway + Lambda proxy** with IAM or JWT authorization
+- **CloudFront signed URLs** backed by a controlled Lambda@Edge origin
+- **Temporary STS credentials** with scoped IAM permissions (time-limited, per-object or prefix)
+- **Application-level download broker** with audit logging and access revocation
+
+For a broader comparison with standard S3 bucket semantics, see the [S3 Bucket User Guide](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/s3-bucket-user-guide.md).
+
 ---
 
 ## 3. Benchmark Methodology: Hypothesis-Driven Testing
@@ -125,7 +138,9 @@ Based on 128 MBps observations where we observed concurrency=10 as the practical
 
 > **Note**: Linear scaling (2x capacity = 2x concurrency) is one possible outcome, but sub-linear or step-function behavior is equally plausible. The actual relationship depends on ONTAP data plane queuing, TCP connection overhead, and whether the bottleneck shifts from throughput to IOPS or latency at higher capacities.
 
-Verification is blocked by the S3 AP issue described below. Results will be published when available, regardless of whether they confirm or reject the hypothesis.
+Initial verification was blocked by the S3 AP issue described below. Results were published after recovery on 2026-05-25.
+
+> **Update (2026-05-25)**: S3 AP recovered. Benchmarks completed. See Section 7 for results and hypothesis verification.
 
 ---
 
@@ -155,6 +170,8 @@ While preparing to run 256 MBps benchmarks, we changed the FSx throughput capaci
 This is now tracked as an AWS Support case. Key takeaways:
 
 > **Plan throughput capacity changes during maintenance windows. S3 AP workloads may be disrupted for an extended period.**
+
+> Unlike standard S3 buckets, FSx ONTAP S3 AP availability can be affected by FSx file system operational changes such as throughput capacity updates.
 
 **Important context**: AWS documentation states that NFS/SMB access typically remains available during throughput capacity changes. The S3 AP disruption we observed appears to be specific to the S3 Access Point data plane — not the file system's NFS/SMB data LIFs. This distinction matters for environments that use both protocols.
 
@@ -190,7 +207,7 @@ To build toward Rising Star status (required for Article publishing on re:Post),
 
 ---
 
-## What's Blocked
+## Blockers and Current Status
 
 | Item | Blocker | Resolution |
 |------|---------|-----------|
@@ -206,15 +223,17 @@ S3 AP ServiceUnavailable was resolved on 2026-05-25. We immediately executed the
 
 ### Test Environment
 
+> **Note on methodology divergence**: The benchmark methodology (Section 3) defines 1769 MB Lambda + 50 iterations as the standard. The Internet tests below used a macOS client + 10 iterations per concurrency level due to the initial exploratory nature of these measurements. The Lambda egress test (Section 8) follows the 1769 MB / 50 iteration standard. Treat Internet results as directional sizing guidance, not as statistically rigorous benchmarks.
+
 | Parameter | Value |
 |-----------|-------|
 | Region | ap-northeast-1 (Tokyo) |
 | FSx ONTAP | Single-AZ, First-generation |
 | S3 AP | NetworkOrigin=Internet |
-| Client | macOS, boto3, Python 3.9 (Internet) |
+| Client | macOS, boto3, Python 3.9 (public Internet) |
 | Object sizes | 1 KB, 100 KB, 1 MB |
 | Concurrency | 1, 5, 10, 20, 50 |
-| Iterations | 10 per concurrency level |
+| Iterations | 10 per concurrency level (exploratory) |
 
 ### Key Results: 1 MB GetObject P99
 
@@ -241,23 +260,31 @@ S3 AP ServiceUnavailable was resolved on 2026-05-25. We immediately executed the
 | Medium files (100 KB) | 10 | 20 | 50 |
 | Large files (1 MB+) | 5 | 10 | 20 |
 
-> These are sizing references from a specific test environment, not service limits. VPC-internal Lambda access will show significantly better throughput. Always validate with your own workload profile.
+> These are sizing references from a specific test environment, not service limits. A VPC-internal Lambda + VPC-origin S3 AP path is expected to reduce public Internet overhead, but remains untested and must be validated separately. Always validate with your own workload profile.
 
 ### What This Means for Production
 
 - **For PoC (128 MBps)**: Keep Step Functions Map state MaxConcurrency ≤ 5 for 1 MB+ files
 - **For Production (256+ MBps)**: MaxConcurrency=10-20 is safe for most workloads
-- **For VPC-internal Lambda**: Expect 2-5x better throughput (Internet latency eliminated)
+- **For VPC-internal Lambda (untested)**: Expected to further reduce latency by eliminating public Internet path, but requires VPC-origin S3 AP (not yet measured)
 - **Throughput capacity changes**: Plan during maintenance windows (S3 AP disruption risk confirmed)
 - **Small files (< 1 KB)**: Throughput capacity increase has no effect — bottleneck is connection overhead, not bandwidth. Save costs by staying at 128 MBps for metadata-heavy workloads
 
 ---
 
-## 8. Lambda (AWS Network) Benchmark: Eliminating Internet Latency
+## 8. Lambda Egress Path Benchmark: Reducing Connection Overhead
 
-To validate the "VPC-internal Lambda" prediction, we deployed a benchmark Lambda (1769 MB, ARM64, VPC-external) and measured GetObject latency from within the AWS network.
+> **Terminology clarification**: This test uses a **VPC-external Lambda** (no VpcConfig) accessing an **Internet-origin S3 AP**. The Lambda egress path goes through AWS-managed networking, which is faster than public Internet but is NOT a VPC-internal path. A true VPC-internal test would require a VPC-origin S3 AP + VPC-internal Lambda — that remains untested.
 
-### Lambda vs Internet: 1 MB GetObject P50
+| Path | Status | What it measures |
+|------|--------|------------------|
+| Public Internet client → Internet-origin S3 AP | ✅ Measured (Section 7) | End-user/CI baseline |
+| VPC-external Lambda → Internet-origin S3 AP | ✅ Measured (this section) | AWS-managed Lambda egress, NOT VPC-private |
+| VPC-internal Lambda → VPC-origin S3 AP | ❌ Not yet measured | True private path (requires new AP) |
+
+We deployed a benchmark Lambda (1769 MB, ARM64, **no VpcConfig**) to measure GetObject latency via AWS-managed Lambda egress.
+
+### Lambda Egress vs Internet: 1 MB GetObject P50
 
 | Concurrency | Internet P50 | Lambda P50 | Improvement |
 |:-----------:|:---:|:---:|:---:|
@@ -269,10 +296,10 @@ To validate the "VPC-internal Lambda" prediction, we deployed a benchmark Lambda
 
 ### Key Findings
 
-1. **P50 dramatically improved at concurrency > 1**: Lambda eliminates TCP connection overhead that dominates Internet tests
+1. **P50 dramatically improved at concurrency > 1**: Lambda egress eliminates public Internet TCP connection overhead
 2. **P99 remains high (~1s)**: Even from Lambda, concurrency=20 shows P99 of 1,318 ms — this is the S3 AP data plane's internal queuing
 3. **concurrency=50 P50 is only 128 ms**: Lambda threads are efficient against S3 AP
-4. **The bottleneck is FSx ONTAP data plane**, not Lambda network bandwidth
+4. **The bottleneck is the FSx ONTAP S3 AP data plane**, not Lambda network bandwidth
 
 ### Production Sizing (Lambda)
 
@@ -282,13 +309,15 @@ To validate the "VPC-internal Lambda" prediction, we deployed a benchmark Lambda
 | Medium files (100 KB) | 20 | ~79 ms | ~1,044 ms |
 | Large files (1 MB) | 10 | ~73 ms | ~928 ms |
 
-> Set Lambda timeout to 30s+ and use Step Functions Retry to handle P99 spikes.
+> Set Lambda timeout to 30s+ and use Step Functions Retry to handle P99 spikes. These results are from VPC-external Lambda (AWS-managed egress), not true VPC-internal path.
 
 ---
 
-## 9. Replay Storm Validation: Zero Message Loss Under Load
+## 9. SQS Replay Storm Simulation: Zero Message Loss Under Load
 
-We validated the FPolicy replay storm handling by injecting 1,000 and 10,000 events directly into SQS (simulating FPolicy server reconnection after downtime).
+> **Scope clarification**: This test validates the **downstream SQS ingestion and Lambda consumer drain path** under replay-like burst conditions. It does NOT validate ONTAP Persistent Store buffering or FPolicy TCP-level server reconnection replay. Those require a live FPolicy server environment (future work).
+
+We simulated FPolicy server reconnection by injecting 1,000 and 10,000 events directly into SQS, mimicking the burst that occurs when a Persistent Store replays buffered events after server reconnection.
 
 ### Results
 
@@ -311,8 +340,24 @@ We validated the FPolicy replay storm handling by injecting 1,000 and 10,000 eve
 ### Implications
 
 - **30-min downtime** accumulates ~835K events at 464 eps. With Lambda auto-scaling (10 consumers), drain completes in < 5 minutes.
-- **Persistent Store sizing**: 2 GB volume is sufficient for all tested scenarios (10K events ≈ 5 MB).
+- **Persistent Store sizing estimate**: Based on simulated event payload size, 10K events ≈ 5 MB. Real ONTAP Persistent Store sizing must be validated with live FPolicy replay.
 - **No backpressure issues**: SQS Standard queue handles burst without message loss.
+
+---
+
+## 10. Operational Runbook: S3 AP Disruption Response
+
+When S3 AP becomes unavailable (e.g., during throughput capacity changes):
+
+1. **Check S3 AP health**: `ListObjectsV2` / `GetObject` against S3 AP alias
+2. **Check NFS/SMB separately**: mount + read test (may still be functional)
+3. **Check FSx file system status**: `describe-file-systems` → Lifecycle
+4. **Check CloudWatch alarms**: Lambda errors, Step Functions failures
+5. **Pause ingestion**: Disable EventBridge Schedules for affected UC pipelines
+6. **Wait and retry**: S3 AP recovery may take 15-60 min after throughput changes
+7. **Escalate**: If unavailable > 60 min, contact AWS Support with file system ID
+
+> See [Incident Response Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/incident-response-playbook.md) for full procedures.
 
 ---
 
@@ -332,7 +377,7 @@ We validated the FPolicy replay storm handling by injecting 1,000 and 10,000 eve
 - **Files changed**: 200+ (documentation, translations, shared modules, templates)
 - **New documents**: Partner/SI one-pager (JP/EN/KO/ZH-CN), cost calculator, customization guide, incident response playbook, demo mode guide, comparison alternatives, PoC Go/No-Go template
 - **New shared modules**: `data_classification.py`, `human_review.py`, `schemas/events.py`
-- **Benchmark runs**: 7 (128/256/512 MBps Internet × 2 file sizes + Lambda + Replay Storm)
+- **Benchmark runs**: 7 (128/256/512 MBps Internet × 2 file sizes + Lambda egress + SQS replay storm simulation)
 - **Templates fixed**: 5 (cfn-lint errors: RecursiveDeleteOption, SNSPublishMessagePolicy, Handler path)
 - **Translations added**: 20 files (FC1-FC6 ko/zh-CN + FC1/FC3 full 8-lang)
 - **samconfig.toml.example**: 24 patterns
@@ -342,7 +387,7 @@ We validated the FPolicy replay storm handling by injecting 1,000 and 10,000 eve
 - **AWS Support cases**: 1 resolved (S3 AP ServiceUnavailable — throughput change related)
 - **Operational discoveries**: 1 (throughput change → S3 AP disruption, now resolved)
 - **Cost savings**: ~$346/month (v4-test-demo + FPolicy server + VPC Endpoints + EC2 停止)
-- **Replay Storm**: 10,000 events, 0% loss, all SLOs passed
+- **SQS Replay Storm Simulation**: 10,000 events, 0% loss in downstream SQS/consumer path
 
 ---
 
@@ -352,18 +397,21 @@ We validated the FPolicy replay storm handling by injecting 1,000 and 10,000 eve
 - **Operations teams** learn that throughput capacity changes can disrupt S3 AP access
 - **Architects** get standardized benchmark methodology with hypothesis-driven testing
 - **Developers** get Presigned URL clarification — works but don't depend on it
+- **Standard S3 bucket users** learn where FSx ONTAP S3 AP differs from S3 bucket semantics, especially presigned URLs, availability, and operational dependencies
 - **Community members** get detailed answers to common FSx ONTAP questions on re:Post
 
 ---
 
 ## What You Can Do Today
 
-Even with benchmarks blocked, Phase 14 delivers immediately usable assets:
+Phase 14 delivers immediately usable assets:
 
 1. **Use the [Partner/SI one-pager](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/partner-si-one-pager.en.md)** for your next customer conversation about FSx ONTAP + serverless
 2. **Check the [S3AP Compatibility Notes](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/s3ap-compatibility-notes.md)** for the latest Presigned URL and troubleshooting guidance
 3. **Plan throughput changes carefully** — add S3 AP health checks to your maintenance runbook
-4. **Ask questions on [re:Post](https://repost.aws/tags/TAibLc_0diRMaBeYxIBdlP2g/amazon-fsx-for-netapp-ontap)** — the FSx for ONTAP community is growing
+4. **Use the Sizing Guidance tables** (Sections 7-8) to set MaxConcurrency for your workload
+5. **Review the [S3 Bucket User Guide](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/s3-bucket-user-guide.md)** before porting existing S3 applications to FSx ONTAP S3 AP
+6. **Ask questions on [re:Post](https://repost.aws/tags/TAibLc_0diRMaBeYxIBdlP2g/amazon-fsx-for-netapp-ontap)** — the FSx for ONTAP community is growing
 
 ---
 
@@ -371,4 +419,3 @@ Even with benchmarks blocked, Phase 14 delivers immediately usable assets:
 
 **Full series**: [FSx for ONTAP S3 Access Points on DEV.to](https://dev.to/yoshikifujiwara/series/39652)
 
-**Previous phases**: [Phase 1](https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a) · [Phase 7](https://dev.to/aws-builders/public-sector-use-cases-unified-output-destination-and-a-localization-batch-fsx-for-ontap-s3-2hmo) · [Phase 8](https://dev.to/aws-builders/operational-hardening-ci-grade-validation-and-pattern-c-b-hybrid-fsx-for-ontap-s3-access-587h) · [Phase 9](https://dev.to/aws-builders/production-rollout-vpc-endpoint-auto-detection-and-the-cdk-no-go-fsx-for-ontap-s3-access-3lni) · [Phase 10](https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6) · [Phase 11](https://dev.to/aws-builders/production-ready-fpolicy-event-pipeline-across-17-ucs-fsx-for-ontap-s3-access-points-phase-11-57p8) · [Phase 12](https://dev.to/aws-builders/operational-hardening-guardrails-secrets-rotation-slo-fsx-ontap-s3ap-phase-12-1k4o) · [Phase 13](https://dev.to/aws-builders/from-serverless-patterns-to-field-ready-reference-architecture-fsx-for-ontap-s3-access-points-dhj)

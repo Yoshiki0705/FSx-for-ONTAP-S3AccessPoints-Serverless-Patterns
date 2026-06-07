@@ -37,29 +37,73 @@ from shared.retry_handler import RetryConfig, categorize_error, retry_with_backo
 logger = logging.getLogger(__name__)
 
 # PII 関連テキストキーワード（表札・文書検出用）
-PII_TEXT_KEYWORDS: frozenset[str] = frozenset({
-    "nameplate", "表札", "name plate", "mailbox", "ポスト",
-    "document", "書類", "letter", "手紙", "certificate", "証明書",
-})
+PII_TEXT_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "nameplate",
+        "表札",
+        "name plate",
+        "mailbox",
+        "ポスト",
+        "document",
+        "書類",
+        "letter",
+        "手紙",
+        "certificate",
+        "証明書",
+    }
+)
 
 # 部屋タイプラベル
-ROOM_LABELS: frozenset[str] = frozenset({
-    "bedroom", "bathroom", "kitchen", "living room", "dining room",
-    "closet", "balcony", "office", "study", "laundry room",
-})
+ROOM_LABELS: frozenset[str] = frozenset(
+    {
+        "bedroom",
+        "bathroom",
+        "kitchen",
+        "living room",
+        "dining room",
+        "closet",
+        "balcony",
+        "office",
+        "study",
+        "laundry room",
+    }
+)
 
 # アメニティラベル
-AMENITY_LABELS: frozenset[str] = frozenset({
-    "pool", "swimming pool", "gym", "fitness", "parking",
-    "elevator", "garden", "terrace", "air conditioning",
-    "dishwasher", "washer", "dryer", "fireplace", "bathtub",
-    "jacuzzi", "sauna", "solar panel",
-})
+AMENITY_LABELS: frozenset[str] = frozenset(
+    {
+        "pool",
+        "swimming pool",
+        "gym",
+        "fitness",
+        "parking",
+        "elevator",
+        "garden",
+        "terrace",
+        "air conditioning",
+        "dishwasher",
+        "washer",
+        "dryer",
+        "fireplace",
+        "bathtub",
+        "jacuzzi",
+        "sauna",
+        "solar panel",
+    }
+)
 
 # 状態関連ラベル
-CONDITION_NEGATIVE_LABELS: frozenset[str] = frozenset({
-    "mold", "crack", "stain", "damage", "rust", "leak", "broken",
-})
+CONDITION_NEGATIVE_LABELS: frozenset[str] = frozenset(
+    {
+        "mold",
+        "crack",
+        "stain",
+        "damage",
+        "rust",
+        "leak",
+        "broken",
+    }
+)
 
 
 def analyze_image_rekognition(
@@ -177,9 +221,7 @@ def generate_listing_description(
         bedrock_client = boto3.client("bedrock-runtime")
 
     if model_id is None:
-        model_id = os.environ.get(
-            "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-        )
+        model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
     # 分析結果を要約
     all_rooms: set[str] = set()
@@ -206,11 +248,13 @@ def generate_listing_description(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 512,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 512,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
 
     try:
@@ -257,29 +301,27 @@ def handler(event, context):
         image_type = obj.get("image_type", "other")
 
         try:
-            analysis = analyze_image_rekognition(
-                s3ap_alias, key, confidence_threshold
-            )
+            analysis = analyze_image_rekognition(s3ap_alias, key, confidence_threshold)
 
             # PII チェック (Requirement 10.5)
             pii_detected = check_pii_in_image(analysis["text_detections"])
 
-            results.append({
-                "key": key,
-                "property_id": property_id,
-                "image_type": image_type,
-                "status": "success",
-                "room_count": len(analysis["rooms"]),
-                "rooms": analysis["rooms"],
-                "amenities": analysis["amenities"],
-                "condition_issues": analysis["condition_issues"],
-                "condition": (
-                    "needs_repair" if analysis["condition_issues"] else "good"
-                ),
-                "pii_detected": pii_detected,
-                "requires_redaction": pii_detected,
-                "label_count": len(analysis["labels"]),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "property_id": property_id,
+                    "image_type": image_type,
+                    "status": "success",
+                    "room_count": len(analysis["rooms"]),
+                    "rooms": analysis["rooms"],
+                    "amenities": analysis["amenities"],
+                    "condition_issues": analysis["condition_issues"],
+                    "condition": ("needs_repair" if analysis["condition_issues"] else "good"),
+                    "pii_detected": pii_detected,
+                    "requires_redaction": pii_detected,
+                    "label_count": len(analysis["labels"]),
+                }
+            )
             success_count += 1
 
         except Exception as e:
@@ -290,14 +332,16 @@ def handler(event, context):
                 str(e),
                 error_category.value,
             )
-            results.append({
-                "key": key,
-                "property_id": property_id,
-                "image_type": image_type,
-                "status": "error",
-                "error_type": error_category.value,
-                "error_message": str(e),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "property_id": property_id,
+                    "image_type": image_type,
+                    "status": "error",
+                    "error_type": error_category.value,
+                    "error_message": str(e),
+                }
+            )
             error_count += 1
 
     processing_duration_ms = int((time.time() - start_time) * 1000)

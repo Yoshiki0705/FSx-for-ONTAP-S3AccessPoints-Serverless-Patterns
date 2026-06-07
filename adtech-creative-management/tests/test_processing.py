@@ -26,9 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Visual Analyzer handler
-_va_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "visual_analyzer", "handler.py"
-)
+_va_path = os.path.join(os.path.dirname(__file__), "..", "functions", "visual_analyzer", "handler.py")
 _va_spec = importlib.util.spec_from_file_location("visual_analyzer_handler", _va_path)
 _va_module = importlib.util.module_from_spec(_va_spec)
 _va_spec.loader.exec_module(_va_module)
@@ -42,9 +40,7 @@ get_confidence_threshold = _va_module.get_confidence_threshold
 get_max_tags = _va_module.get_max_tags
 
 # Text Compliance handler
-_tc_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "text_compliance", "handler.py"
-)
+_tc_path = os.path.join(os.path.dirname(__file__), "..", "functions", "text_compliance", "handler.py")
 _tc_spec = importlib.util.spec_from_file_location("text_compliance_handler", _tc_path)
 _tc_module = importlib.util.module_from_spec(_tc_spec)
 _tc_spec.loader.exec_module(_tc_module)
@@ -93,10 +89,7 @@ class TestDetectLabels:
         """max_tags に制限される"""
         mock_client = MagicMock()
         mock_client.detect_labels.return_value = {
-            "Labels": [
-                {"Name": f"Label{i}", "Confidence": 90.0, "Categories": []}
-                for i in range(10)
-            ]
+            "Labels": [{"Name": f"Label{i}", "Confidence": 90.0, "Categories": []} for i in range(10)]
         }
 
         result = detect_labels(mock_client, b"fake_image", 80.0, 5)
@@ -203,10 +196,7 @@ class TestGenerateTags:
 
     def test_tags_max_limit(self):
         """タグ数が max_tags に制限される"""
-        labels = [
-            {"name": f"Label{i}", "confidence": 90.0, "categories": []}
-            for i in range(100)
-        ]
+        labels = [{"name": f"Label{i}", "confidence": 90.0, "categories": []} for i in range(100)]
         tags = generate_tags(labels, 50)
         assert len(tags) == 50
 
@@ -445,9 +435,11 @@ class TestValidateBrandTerminologyWithBedrock:
             "reasoning": "All terms correctly used",
         }
         mock_body = MagicMock()
-        mock_body.read.return_value = json.dumps({
-            "content": [{"type": "text", "text": json.dumps(bedrock_response)}],
-        }).encode()
+        mock_body.read.return_value = json.dumps(
+            {
+                "content": [{"type": "text", "text": json.dumps(bedrock_response)}],
+            }
+        ).encode()
         mock_client.invoke_model.return_value = {"body": mock_body}
 
         result = validate_brand_terminology_with_bedrock(
@@ -470,9 +462,11 @@ class TestValidateBrandTerminologyWithBedrock:
             "reasoning": "Prohibited term found",
         }
         mock_body = MagicMock()
-        mock_body.read.return_value = json.dumps({
-            "content": [{"type": "text", "text": json.dumps(bedrock_response)}],
-        }).encode()
+        mock_body.read.return_value = json.dumps(
+            {
+                "content": [{"type": "text", "text": json.dumps(bedrock_response)}],
+            }
+        ).encode()
         mock_client.invoke_model.return_value = {"body": mock_body}
 
         result = validate_brand_terminology_with_bedrock(

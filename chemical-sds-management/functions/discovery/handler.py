@@ -28,9 +28,7 @@ logger = logging.getLogger(__name__)
 SDS_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".xml"})
 
 # ラボノートの対応拡張子
-LABBOOK_EXTENSIONS: frozenset[str] = frozenset(
-    {".jpg", ".jpeg", ".png", ".tiff", ".tif"}
-)
+LABBOOK_EXTENSIONS: frozenset[str] = frozenset({".jpg", ".jpeg", ".png", ".tiff", ".tif"})
 
 # ファイルタイプ定数
 FILE_TYPE_SDS = "sds"
@@ -40,9 +38,7 @@ FILE_TYPE_LABBOOK = "labbook"
 DATE_PATTERN = re.compile(r"(\d{4})[-/]?(\d{2})[-/]?(\d{2})")
 
 # 物質名パターン (CAS 番号含む)
-SUBSTANCE_PATTERN = re.compile(
-    r"(?:substance[-_]|CAS[-_]?)([A-Za-z0-9-]+)", re.IGNORECASE
-)
+SUBSTANCE_PATTERN = re.compile(r"(?:substance[-_]|CAS[-_]?)([A-Za-z0-9-]+)", re.IGNORECASE)
 
 
 def classify_file(key: str, sds_prefix: str, labbook_prefix: str) -> str | None:
@@ -122,25 +118,29 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         logger.error("S3 AP connectivity failed: %s", str(e))
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error("Unexpected S3 AP error: %s", str(e))
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -153,9 +153,7 @@ def handler(event, context):
         dict: manifest_key, total_objects, sds_files, labbook_images
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     sds_prefix = os.environ.get("SDS_PREFIX", "sds/")
     labbook_prefix = os.environ.get("LABBOOK_PREFIX", "labbooks/")
 
@@ -224,10 +222,7 @@ def handler(event, context):
         "objects": all_objects,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/"
-        f"{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

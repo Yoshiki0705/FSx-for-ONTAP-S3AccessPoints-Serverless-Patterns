@@ -161,7 +161,11 @@ class TestBuildNetworkHealthReport:
         aggregated = {
             "anomalies": [{"metric_name": "failures", "z_score": 4.0}],
             "anomaly_count": 1,
-            "classification": {"classification": "equipment_degradation", "explanation": "Hardware failing", "recommendations": ["Replace"]},
+            "classification": {
+                "classification": "equipment_degradation",
+                "explanation": "Hardware failing",
+                "recommendations": ["Replace"],
+            },
             "current_metrics": {},
             "baseline_summary": {},
             "total_cdr_files": 5,
@@ -320,10 +324,13 @@ class TestReportHandler:
         ctx.function_name = "telecom-report"
         return ctx
 
-    @patch.dict(os.environ, {
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "SNS_TOPIC_ARN": "",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "SNS_TOPIC_ARN": "",
+        },
+    )
     @patch("boto3.client")
     def test_handler_success_normal(self, mock_boto_client):
         """正常系: 異常なしレポート生成"""
@@ -358,10 +365,13 @@ class TestReportHandler:
         assert "report_key" in result
         assert result["report_key"].startswith("reports/daily/")
 
-    @patch.dict(os.environ, {
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "SNS_TOPIC_ARN": "arn:aws:sns:ap-northeast-1:123:alert-topic",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "SNS_TOPIC_ARN": "arn:aws:sns:ap-northeast-1:123:alert-topic",
+        },
+    )
     @patch("boto3.client")
     def test_handler_critical_sends_sns(self, mock_boto_client):
         """異常系: クリティカルレポートで SNS 通知が発行される"""
@@ -373,7 +383,11 @@ class TestReportHandler:
             "anomaly_result": {
                 "anomalies": [{"metric_name": "failures", "z_score": 6.0}],
                 "anomaly_count": 1,
-                "classification": {"classification": "equipment_degradation", "explanation": "Failing", "recommendations": ["Fix"]},
+                "classification": {
+                    "classification": "equipment_degradation",
+                    "explanation": "Failing",
+                    "recommendations": ["Fix"],
+                },
                 "current_metrics": {},
                 "baseline_summary": {},
                 "total_cdr_files": 5,
@@ -392,10 +406,13 @@ class TestReportHandler:
         assert result["severity"] == "critical"
         mock_sns.publish.assert_called_once()
 
-    @patch.dict(os.environ, {
-        "OUTPUT_BUCKET": "test-output-bucket",
-        "SNS_TOPIC_ARN": "",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "OUTPUT_BUCKET": "test-output-bucket",
+            "SNS_TOPIC_ARN": "",
+        },
+    )
     @patch("boto3.client")
     def test_handler_emf_metrics_emitted(self, mock_boto_client):
         """EMF メトリクス (ProcessingDuration, SuccessCount, ErrorCount) が出力される"""
@@ -423,7 +440,9 @@ class TestReportHandler:
             result = handler(event, self._make_context())
 
         # EMF メトリクスの呼び出し確認
-        mock_emf.put_metric.assert_any_call("ProcessingDuration", pytest.approx(result["processing_duration_ms"], abs=100), "Milliseconds")
+        mock_emf.put_metric.assert_any_call(
+            "ProcessingDuration", pytest.approx(result["processing_duration_ms"], abs=100), "Milliseconds"
+        )
         mock_emf.put_metric.assert_any_call("SuccessCount", 2.0, "Count")
         mock_emf.put_metric.assert_any_call("ErrorCount", 1.0, "Count")
         mock_emf.flush.assert_called_once()

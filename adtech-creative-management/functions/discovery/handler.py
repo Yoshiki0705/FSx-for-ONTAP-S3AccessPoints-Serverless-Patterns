@@ -100,13 +100,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error(
@@ -115,13 +117,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -146,9 +150,7 @@ def handler(event, context):
               excluded_unsupported_count
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("CREATIVE_PREFIX_FILTER", "")
 
     logger.info(
@@ -210,8 +212,7 @@ def handler(event, context):
         filtered_objects.append(obj)
 
     logger.info(
-        "Media filter applied: total_scanned=%d, matched=%d, "
-        "excluded_unsupported=%d, excluded_oversize=%d",
+        "Media filter applied: total_scanned=%d, matched=%d, excluded_unsupported=%d, excluded_oversize=%d",
         len(all_objects),
         len(filtered_objects),
         excluded_unsupported_count,
@@ -234,9 +235,7 @@ def handler(event, context):
     }
 
     # Manifest を S3 AP に書き出し
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,
@@ -255,9 +254,7 @@ def handler(event, context):
     metrics.set_dimension("UseCase", "adtech-creative-management")
     metrics.put_metric("FilesProcessed", float(len(filtered_objects)), "Count")
     metrics.put_metric("FilesExcludedOversize", float(excluded_oversize_count), "Count")
-    metrics.put_metric(
-        "FilesExcludedUnsupported", float(excluded_unsupported_count), "Count"
-    )
+    metrics.put_metric("FilesExcludedUnsupported", float(excluded_unsupported_count), "Count")
     metrics.flush()
 
     return {

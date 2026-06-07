@@ -24,9 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # SDS Extractor handler
-_sds_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "sds_extractor", "handler.py"
-)
+_sds_path = os.path.join(os.path.dirname(__file__), "..", "functions", "sds_extractor", "handler.py")
 _sds_spec = importlib.util.spec_from_file_location("sds_extractor_pbt", _sds_path)
 _sds_module = importlib.util.module_from_spec(_sds_spec)
 _sds_spec.loader.exec_module(_sds_module)
@@ -164,9 +162,7 @@ def test_expired_sds_returns_critical_priority(days_ago: int):
 
     プロパティ: days_since_revision > 365 → priority == "critical"
     """
-    revision_date = (
-        datetime.now(timezone.utc) - timedelta(days=days_ago)
-    ).strftime("%Y-%m-%d")
+    revision_date = (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime("%Y-%m-%d")
     result = check_sds_expiry(revision_date, validity_days=365)
     assert result["is_expired"] is True
     assert result["priority"] == "critical"
@@ -184,9 +180,7 @@ def test_valid_sds_returns_no_priority(days_ago: int):
 
     プロパティ: days_since_revision <= 365 → priority is None
     """
-    revision_date = (
-        datetime.now(timezone.utc) - timedelta(days=days_ago)
-    ).strftime("%Y-%m-%d")
+    revision_date = (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime("%Y-%m-%d")
     result = check_sds_expiry(revision_date, validity_days=365)
     assert result["is_expired"] is False
     assert result["priority"] is None
@@ -204,9 +198,7 @@ def test_expiry_threshold_consistency(validity_days: int, days_ago: int):
 
     プロパティ: days_ago > validity_days ↔ is_expired == True
     """
-    revision_date = (
-        datetime.now(timezone.utc) - timedelta(days=days_ago)
-    ).strftime("%Y-%m-%d")
+    revision_date = (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime("%Y-%m-%d")
     result = check_sds_expiry(revision_date, validity_days=validity_days)
 
     # Allow 1-day tolerance due to time-of-day differences

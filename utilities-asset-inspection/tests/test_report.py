@@ -184,13 +184,21 @@ class TestGenerateMaintenanceSchedule:
     def test_schedule_sorted_by_priority(self):
         conditions = {
             "EQ-LOW": {
-                "defect_count": 0, "critical_defects": 0, "major_defects": 0,
-                "minor_defects": 0, "anomaly_count": 0, "hot_spot_count": 0,
+                "defect_count": 0,
+                "critical_defects": 0,
+                "major_defects": 0,
+                "minor_defects": 0,
+                "anomaly_count": 0,
+                "hot_spot_count": 0,
                 "overall_condition": "good",
             },
             "EQ-HIGH": {
-                "defect_count": 1, "critical_defects": 1, "major_defects": 0,
-                "minor_defects": 0, "anomaly_count": 0, "hot_spot_count": 0,
+                "defect_count": 1,
+                "critical_defects": 1,
+                "major_defects": 0,
+                "minor_defects": 0,
+                "anomaly_count": 0,
+                "hot_spot_count": 0,
                 "overall_condition": "critical",
             },
         }
@@ -201,13 +209,21 @@ class TestGenerateMaintenanceSchedule:
     def test_days_within_1_365_range(self):
         conditions = {
             "EQ-001": {
-                "defect_count": 0, "critical_defects": 0, "major_defects": 0,
-                "minor_defects": 0, "anomaly_count": 0, "hot_spot_count": 0,
+                "defect_count": 0,
+                "critical_defects": 0,
+                "major_defects": 0,
+                "minor_defects": 0,
+                "anomaly_count": 0,
+                "hot_spot_count": 0,
                 "overall_condition": "good",
             },
             "EQ-002": {
-                "defect_count": 5, "critical_defects": 3, "major_defects": 0,
-                "minor_defects": 2, "anomaly_count": 0, "hot_spot_count": 0,
+                "defect_count": 5,
+                "critical_defects": 3,
+                "major_defects": 0,
+                "minor_defects": 2,
+                "anomaly_count": 0,
+                "hot_spot_count": 0,
                 "overall_condition": "critical",
             },
         }

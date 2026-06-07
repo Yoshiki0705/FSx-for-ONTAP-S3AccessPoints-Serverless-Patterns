@@ -33,29 +33,54 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 # 保護特性カテゴリ
-PROTECTED_CHARACTERISTICS: frozenset[str] = frozenset({
-    "age",
-    "gender",
-    "sex",
-    "nationality",
-    "race",
-    "ethnicity",
-    "religion",
-    "disability",
-    "marital_status",
-    "sexual_orientation",
-})
+PROTECTED_CHARACTERISTICS: frozenset[str] = frozenset(
+    {
+        "age",
+        "gender",
+        "sex",
+        "nationality",
+        "race",
+        "ethnicity",
+        "religion",
+        "disability",
+        "marital_status",
+        "sexual_orientation",
+    }
+)
 
 # 保護特性キーワード（日本語 + 英語）
-PROTECTED_KEYWORDS_JA: frozenset[str] = frozenset({
-    "年齢", "性別", "国籍", "人種", "民族", "宗教",
-    "障害", "配偶者", "婚姻", "歳", "男性", "女性",
-})
+PROTECTED_KEYWORDS_JA: frozenset[str] = frozenset(
+    {
+        "年齢",
+        "性別",
+        "国籍",
+        "人種",
+        "民族",
+        "宗教",
+        "障害",
+        "配偶者",
+        "婚姻",
+        "歳",
+        "男性",
+        "女性",
+    }
+)
 
-PROTECTED_KEYWORDS_EN: frozenset[str] = frozenset({
-    "age", "gender", "sex", "nationality", "race", "ethnicity",
-    "religion", "disability", "marital", "married", "single",
-})
+PROTECTED_KEYWORDS_EN: frozenset[str] = frozenset(
+    {
+        "age",
+        "gender",
+        "sex",
+        "nationality",
+        "race",
+        "ethnicity",
+        "religion",
+        "disability",
+        "marital",
+        "married",
+        "single",
+    }
+)
 
 # PII パターン（マスク対象）
 PII_PATTERNS: list[tuple[str, re.Pattern]] = [

@@ -106,16 +106,14 @@ def detect_labels(
 
     labels = []
     for label in response.get("Labels", []):
-        categories = [
-            cat.get("Name", "")
-            for cat in label.get("Categories", [])
-            if cat.get("Name")
-        ]
-        labels.append({
-            "name": label["Name"],
-            "confidence": round(label["Confidence"], 2),
-            "categories": categories,
-        })
+        categories = [cat.get("Name", "") for cat in label.get("Categories", []) if cat.get("Name")]
+        labels.append(
+            {
+                "name": label["Name"],
+                "confidence": round(label["Confidence"], 2),
+                "categories": categories,
+            }
+        )
 
     return labels[:max_tags]
 
@@ -147,11 +145,13 @@ def detect_moderation_labels(
 
     moderation_labels = []
     for label in response.get("ModerationLabels", []):
-        moderation_labels.append({
-            "name": label.get("Name", ""),
-            "confidence": round(label.get("Confidence", 0.0), 2),
-            "parent_name": label.get("ParentName", ""),
-        })
+        moderation_labels.append(
+            {
+                "name": label.get("Name", ""),
+                "confidence": round(label.get("Confidence", 0.0), 2),
+                "parent_name": label.get("ParentName", ""),
+            }
+        )
 
     return moderation_labels
 
@@ -180,11 +180,13 @@ def detect_text(
 
     text_detections = []
     for detection in response.get("TextDetections", []):
-        text_detections.append({
-            "text": detection.get("DetectedText", ""),
-            "confidence": round(detection.get("Confidence", 0.0), 2),
-            "type": detection.get("Type", ""),
-        })
+        text_detections.append(
+            {
+                "text": detection.get("DetectedText", ""),
+                "confidence": round(detection.get("Confidence", 0.0), 2),
+                "type": detection.get("Type", ""),
+            }
+        )
 
     return text_detections
 
@@ -232,9 +234,7 @@ def load_compliance_rules(s3_client, output_bucket: str, rules_key: str) -> dict
         )
         return {}
     except (json.JSONDecodeError, Exception) as e:
-        logger.warning(
-            "Failed to parse compliance rules JSON: %s", str(e)
-        )
+        logger.warning("Failed to parse compliance rules JSON: %s", str(e))
         return {}
 
 
@@ -274,31 +274,30 @@ def check_compliance(
             parent_name = label.get("parent_name", "")
             for prohibited in prohibited_categories:
                 prohibited_lower = prohibited.lower()
-                if (
-                    prohibited_lower in label_name.lower()
-                    or prohibited_lower in parent_name.lower()
-                ):
-                    violations.append({
-                        "type": "prohibited_moderation_category",
-                        "category": prohibited,
-                        "detected_label": label_name,
-                        "confidence": label.get("confidence", 0.0),
-                    })
+                if prohibited_lower in label_name.lower() or prohibited_lower in parent_name.lower():
+                    violations.append(
+                        {
+                            "type": "prohibited_moderation_category",
+                            "category": prohibited,
+                            "detected_label": label_name,
+                            "confidence": label.get("confidence", 0.0),
+                        }
+                    )
 
     # 2. 必須免責事項キーワードチェック
     required_keywords = compliance_rules.get("required_disclaimer_keywords", [])
     if required_keywords:
         checks_performed.append("required_disclaimer_keywords")
         # 全検出テキストを結合して検索
-        all_text = " ".join(
-            d.get("text", "") for d in text_detections if d.get("type") == "LINE"
-        )
+        all_text = " ".join(d.get("text", "") for d in text_detections if d.get("type") == "LINE")
         for keyword in required_keywords:
             if keyword.lower() not in all_text.lower():
-                violations.append({
-                    "type": "missing_disclaimer_keyword",
-                    "keyword": keyword,
-                })
+                violations.append(
+                    {
+                        "type": "missing_disclaimer_keyword",
+                        "keyword": keyword,
+                    }
+                )
 
     # 3. ファイルサイズ制約チェック
     size_constraints = compliance_rules.get("size_constraints", {})
@@ -306,11 +305,13 @@ def check_compliance(
         checks_performed.append("size_constraints")
         max_bytes = size_constraints.get("max_bytes")
         if max_bytes and file_size > max_bytes:
-            violations.append({
-                "type": "file_size_exceeded",
-                "max_bytes": max_bytes,
-                "actual_bytes": file_size,
-            })
+            violations.append(
+                {
+                    "type": "file_size_exceeded",
+                    "max_bytes": max_bytes,
+                    "actual_bytes": file_size,
+                }
+            )
 
     status = "non-compliant" if violations else "compliant"
 
@@ -382,9 +383,7 @@ def record_processing_failure(
         )
         logger.info("Processing failure recorded: %s → %s", file_key, error_key)
     except Exception as e:
-        logger.error(
-            "Failed to record processing failure for %s: %s", file_key, str(e)
-        )
+        logger.error("Failed to record processing failure for %s: %s", file_key, str(e))
 
 
 @trace_lambda_handler
@@ -451,9 +450,7 @@ def handler(event, context):
         error_type = "retrieval_error"
         logger.error("Failed to retrieve file %s: %s", file_key, str(e))
         if output_bucket:
-            record_processing_failure(
-                s3_client, output_bucket, file_key, error_type, str(e)
-            )
+            record_processing_failure(s3_client, output_bucket, file_key, error_type, str(e))
         return {
             "key": file_key,
             "status": "error",
@@ -472,9 +469,7 @@ def handler(event, context):
                 "use_case": "adtech-creative-management",
             },
         ):
-            labels = detect_labels(
-                rekognition_client, image_bytes, confidence_threshold, max_tags
-            )
+            labels = detect_labels(rekognition_client, image_bytes, confidence_threshold, max_tags)
     except RetryExhaustedError as e:
         logger.error(
             "Rekognition DetectLabels failed after retries for %s: %s",
@@ -482,9 +477,7 @@ def handler(event, context):
             str(e),
         )
         if output_bucket:
-            record_processing_failure(
-                s3_client, output_bucket, file_key, "service_error_labels", str(e)
-            )
+            record_processing_failure(s3_client, output_bucket, file_key, "service_error_labels", str(e))
         return {
             "key": file_key,
             "status": "error",
@@ -495,13 +488,9 @@ def handler(event, context):
         # 破損/未対応フォーマット (Requirement 3.7)
         error_category = categorize_error(e)
         error_type = "corruption" if error_category == ErrorCategory.PARSE_ERROR else "service_error"
-        logger.warning(
-            "DetectLabels failed for %s (%s): %s", file_key, error_type, str(e)
-        )
+        logger.warning("DetectLabels failed for %s (%s): %s", file_key, error_type, str(e))
         if output_bucket:
-            record_processing_failure(
-                s3_client, output_bucket, file_key, error_type, str(e)
-            )
+            record_processing_failure(s3_client, output_bucket, file_key, error_type, str(e))
         return {
             "key": file_key,
             "status": "error",
@@ -520,9 +509,7 @@ def handler(event, context):
                 "use_case": "adtech-creative-management",
             },
         ):
-            moderation_labels = detect_moderation_labels(
-                rekognition_client, image_bytes, confidence_threshold
-            )
+            moderation_labels = detect_moderation_labels(rekognition_client, image_bytes, confidence_threshold)
     except RetryExhaustedError as e:
         logger.warning(
             "DetectModerationLabels failed after retries for %s: %s",
@@ -531,9 +518,7 @@ def handler(event, context):
         )
         # モデレーション失敗は処理継続（ラベルは取得済み）
     except Exception as e:
-        logger.warning(
-            "DetectModerationLabels failed for %s: %s", file_key, str(e)
-        )
+        logger.warning("DetectModerationLabels failed for %s: %s", file_key, str(e))
 
     # Step 4: Rekognition DetectText
     text_detections = []
@@ -619,8 +604,7 @@ def handler(event, context):
     metrics.flush()
 
     logger.info(
-        "Visual Analyzer completed: key=%s, labels=%d, moderation=%d, "
-        "text=%d, tags=%d, compliance=%s",
+        "Visual Analyzer completed: key=%s, labels=%d, moderation=%d, text=%d, tags=%d, compliance=%s",
         file_key,
         len(labels),
         len(moderation_labels),

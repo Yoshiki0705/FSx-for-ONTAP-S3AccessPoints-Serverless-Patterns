@@ -71,22 +71,26 @@ def compute_compliance_summary(
 
         # Requirement 12.5: 有効期限超過 → priority "critical"
         if expiry.get("is_expired"):
-            expired_alerts.append({
-                "key": result.get("key"),
-                "substance_id": result.get("substance_id"),
-                "revision_date": result.get("revision_date"),
-                "days_since_revision": expiry.get("days_since_revision"),
-                "priority": "critical",
-            })
+            expired_alerts.append(
+                {
+                    "key": result.get("key"),
+                    "substance_id": result.get("substance_id"),
+                    "revision_date": result.get("revision_date"),
+                    "days_since_revision": expiry.get("days_since_revision"),
+                    "priority": "critical",
+                }
+            )
 
         # GHS 必須セクション欠落
         if missing_sections:
-            missing_sections_alerts.append({
-                "key": result.get("key"),
-                "substance_id": result.get("substance_id"),
-                "missing_sections": missing_sections,
-                "priority": "high",
-            })
+            missing_sections_alerts.append(
+                {
+                    "key": result.get("key"),
+                    "substance_id": result.get("substance_id"),
+                    "missing_sections": missing_sections,
+                    "priority": "high",
+                }
+            )
 
         if not expiry.get("is_expired") and not missing_sections:
             compliant_count += 1
@@ -96,22 +100,22 @@ def compute_compliance_summary(
     for result in labbook_results:
         if result.get("status") != "success":
             continue
-        research_index.append({
-            "key": result.get("key"),
-            "substance_id": result.get("substance_id"),
-            "has_parameters": bool(result.get("experiment_data", {}).get("parameters")),
-            "has_results": bool(result.get("experiment_data", {}).get("results")),
-            "has_observations": bool(result.get("experiment_data", {}).get("observations")),
-        })
+        research_index.append(
+            {
+                "key": result.get("key"),
+                "substance_id": result.get("substance_id"),
+                "has_parameters": bool(result.get("experiment_data", {}).get("parameters")),
+                "has_results": bool(result.get("experiment_data", {}).get("results")),
+                "has_observations": bool(result.get("experiment_data", {}).get("observations")),
+            }
+        )
 
     total_sds = sum(1 for r in sds_results if r.get("status") == "success")
 
     return {
         "total_sds_analyzed": total_sds,
         "compliant_count": compliant_count,
-        "compliance_rate": (
-            round(compliant_count / total_sds * 100, 1) if total_sds > 0 else 0.0
-        ),
+        "compliance_rate": (round(compliant_count / total_sds * 100, 1) if total_sds > 0 else 0.0),
         "expired_sds_alerts": expired_alerts,
         "expired_sds_count": len(expired_alerts),
         "missing_sections_alerts": missing_sections_alerts,
@@ -136,9 +140,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
     validity_days = int(os.environ.get("SDS_VALIDITY_DAYS", "365"))
 

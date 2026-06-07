@@ -156,9 +156,9 @@ def build_network_health_report(
         "report_date": report_date,
         "severity": severity,
         "summary": {
-            "network_status": "degraded" if severity == "critical" else (
-                "attention_required" if severity == "warning" else "healthy"
-            ),
+            "network_status": "degraded"
+            if severity == "critical"
+            else ("attention_required" if severity == "warning" else "healthy"),
             "anomaly_count": aggregated["anomaly_count"],
             "classification": classification.get("classification", "normal"),
             "explanation": classification.get("explanation", ""),
@@ -221,10 +221,7 @@ def publish_critical_alert(
     classification = summary.get("classification", "unknown")
     explanation = summary.get("explanation", "")
 
-    subject = (
-        f"[CRITICAL] Telecom Network Anomaly: {classification} "
-        f"({anomaly_count} anomalies)"
-    )
+    subject = f"[CRITICAL] Telecom Network Anomaly: {classification} ({anomaly_count} anomalies)"
     # SNS subject 最大 100 文字
     if len(subject) > 100:
         subject = subject[:97] + "..."
@@ -373,8 +370,7 @@ def handler(event, context):
         metrics.flush()
 
         logger.info(
-            "Report Lambda metrics emitted: ProcessingDuration=%.2fms, "
-            "SuccessCount=%d, ErrorCount=%d",
+            "Report Lambda metrics emitted: ProcessingDuration=%.2fms, SuccessCount=%d, ErrorCount=%d",
             processing_duration_ms,
             success_count,
             error_count,

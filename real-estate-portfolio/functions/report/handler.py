@@ -104,30 +104,18 @@ def compute_portfolio_summary(
         "vacancy": {
             "vacant": vacant_count,
             "occupied": occupied_count,
-            "vacancy_rate": (
-                round(vacant_count / len(all_property_ids) * 100, 1)
-                if all_property_ids
-                else 0.0
-            ),
+            "vacancy_rate": (round(vacant_count / len(all_property_ids) * 100, 1) if all_property_ids else 0.0),
         },
         "condition": {
             "good": good_count,
             "needs_repair": repair_count,
         },
-        "pii_flagged_properties": [
-            pid
-            for pid, cond in property_conditions.items()
-            if cond["pii_flagged"]
-        ],
+        "pii_flagged_properties": [pid for pid, cond in property_conditions.items() if cond["pii_flagged"]],
         "contract_summary": {
             "with_contract": len(contract_info),
             "average_rent": (
                 round(
-                    sum(
-                        c["rent_amount"]
-                        for c in contract_info.values()
-                        if c.get("rent_amount")
-                    )
+                    sum(c["rent_amount"] for c in contract_info.values() if c.get("rent_amount"))
                     / max(
                         sum(1 for c in contract_info.values() if c.get("rent_amount")),
                         1,
@@ -157,9 +145,7 @@ def handler(event, context):
     """
     start_time = time.time()
 
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", ""))
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ.get("S3_ACCESS_POINT", "")))
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     property_results = event.get("property_results", [])

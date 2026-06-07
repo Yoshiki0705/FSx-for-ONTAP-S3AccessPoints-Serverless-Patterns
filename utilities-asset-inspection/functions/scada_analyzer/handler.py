@@ -247,9 +247,7 @@ def query_athena_scada(
         athena_client = boto3.client("athena")
 
     database = os.environ.get("ATHENA_DATABASE", "scada_db")
-    output_location = os.environ.get(
-        "ATHENA_OUTPUT_LOCATION", "s3://athena-results/"
-    )
+    output_location = os.environ.get("ATHENA_OUTPUT_LOCATION", "s3://athena-results/")
 
     query = (
         f"SELECT timestamp, equipment_id, voltage, nominal_voltage, "
@@ -275,16 +273,12 @@ def query_athena_scada(
     # クエリ完了待機
     @retry_with_backoff(config=RetryConfig(max_attempts=3))
     def _get_results():
-        status_response = athena_client.get_query_execution(
-            QueryExecutionId=execution_id
-        )
+        status_response = athena_client.get_query_execution(QueryExecutionId=execution_id)
         state = status_response["QueryExecution"]["Status"]["State"]
         if state in ("QUEUED", "RUNNING"):
             raise Exception(f"Query still {state}")  # noqa: TRY002
         if state == "FAILED":
-            reason = status_response["QueryExecution"]["Status"].get(
-                "StateChangeReason", "Unknown"
-            )
+            reason = status_response["QueryExecution"]["Status"].get("StateChangeReason", "Unknown")
             raise Exception(f"Athena query failed: {reason}")  # noqa: TRY002
 
         return athena_client.get_query_results(QueryExecutionId=execution_id)
@@ -308,9 +302,7 @@ def query_athena_scada(
         phase_b = record.pop("phase_b_load", None)
         phase_c = record.pop("phase_c_load", None)
         if phase_a and phase_b and phase_c:
-            record["phase_loads"] = [
-                float(phase_a), float(phase_b), float(phase_c)
-            ]
+            record["phase_loads"] = [float(phase_a), float(phase_b), float(phase_c)]
 
         records.append(record)
 
@@ -364,23 +356,23 @@ def handler(event, context):
         try:
             # Athena 経由でのデータ取得が可能な場合
             if equipment_id and inspection_date:
-                records = query_athena_scada(
-                    equipment_id, inspection_date, inspection_date
-                )
+                records = query_athena_scada(equipment_id, inspection_date, inspection_date)
                 anomalies = analyze_scada_records(records, thresholds)
             else:
                 anomalies = []
                 records = []
 
-            results.append({
-                "key": key,
-                "equipment_id": equipment_id,
-                "inspection_date": inspection_date,
-                "status": "success",
-                "record_count": len(records),
-                "anomaly_count": len(anomalies),
-                "anomalies": anomalies,
-            })
+            results.append(
+                {
+                    "key": key,
+                    "equipment_id": equipment_id,
+                    "inspection_date": inspection_date,
+                    "status": "success",
+                    "record_count": len(records),
+                    "anomaly_count": len(anomalies),
+                    "anomalies": anomalies,
+                }
+            )
             all_anomalies.extend(anomalies)
             success_count += 1
 
@@ -394,14 +386,16 @@ def handler(event, context):
                 error_category.value,
             )
 
-            results.append({
-                "key": key,
-                "equipment_id": equipment_id,
-                "inspection_date": inspection_date,
-                "status": "error",
-                "error_type": error_category.value,
-                "error_message": str(e),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "equipment_id": equipment_id,
+                    "inspection_date": inspection_date,
+                    "status": "error",
+                    "error_type": error_category.value,
+                    "error_message": str(e),
+                }
+            )
             error_count += 1
 
     processing_duration_ms = int((time.time() - start_time) * 1000)
