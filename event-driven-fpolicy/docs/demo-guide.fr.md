@@ -290,3 +290,10 @@ rm /mnt/fsxn/test-fpolicy-event.txt
 ### Événements non détectés avec NFSv4.2
 
 NFSv4.2 n'est pas pris en charge pour le monitoring ONTAP FPolicy. Spécifiez explicitement `mount -o vers=4.1`.
+
+
+## Captures d'écran
+
+![FPolicy Pipeline — CloudFormation Stacks](../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
+
+![FPolicy Pipeline — Lambda Functions](../../docs/screenshots/masked/phase13-lambda-functions.png)
