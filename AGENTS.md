@@ -357,3 +357,5 @@ When reviewing changes, consider these perspectives:
 | [S3AP Performance](docs/s3ap-performance-considerations.md) | Throughput design guidance |
 | [Local Testing](docs/local-testing-quick-start.md) | sam local + pytest setup |
 | [Partner/SI Checklist](docs/partner-si-delivery-checklist.md) | Customer delivery workflow |
+| [Pattern Selection Guide](docs/pattern-selection-guide.md) | Customer situation → recommended UC |
+| [ONTAP Integration Notes](docs/ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
