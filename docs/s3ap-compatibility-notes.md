@@ -41,6 +41,22 @@ Not all bucket-level features or integration patterns apply directly:
 - Object Lock (on the S3AP itself)
 - Presigned URLs (**Listed as "Not supported"** — but observed working; see [Presigned URL Support](#presigned-url-support) for AWS Support clarification)
 
+### WORM / Immutable Storage の代替
+
+S3 Object Lock / Versioning が使えないため、FSx for ONTAP 固有の代替機能を使用:
+
+| S3 機能 | ONTAP 代替 | 特徴 |
+|---|---|---|
+| Object Lock Compliance | **SnapLock Compliance** volume | SEC 17a-4(f), FINRA 4511 対応 WORM。保持期間中は誰も削除不可 |
+| Object Lock Governance | **SnapLock Enterprise** volume | 内部コンプライアンス用 WORM。Privileged delete 可能 |
+| Versioning (point-in-time) | **ONTAP Snapshot** | ファイルシステム全体の point-in-time 保護。差分ブロックのみ保存 |
+| Replication | **SnapMirror** | クロスリージョン/クロスアカウントレプリケーション |
+| ランサムウェア対策 | **Autonomous Ransomware Protection (ARP)** | AI ドリブン改ざん検知 + Tamperproof Snapshot 自動作成 |
+
+> **推奨**: 規制対応 WORM が必要な監査成果物は SnapLock Compliance volume に保存するか、標準 S3 バケット（Object Lock 有効）にコピーしてください。
+>
+> **出典**: [SnapLock](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/how-snaplock-works.html), [ARP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/ARP.html)
+
 ## Recommended Trigger Patterns
 
 | Pattern | Description |

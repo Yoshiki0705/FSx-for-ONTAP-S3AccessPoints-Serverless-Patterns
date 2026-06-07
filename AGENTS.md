@@ -359,3 +359,4 @@ When reviewing changes, consider these perspectives:
 | [Partner/SI Checklist](docs/partner-si-delivery-checklist.md) | Customer delivery workflow |
 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | Customer situation → recommended UC |
 | [ONTAP Integration Notes](docs/ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
+| [S3 Bucket User Guide](docs/s3-bucket-user-guide.md) | Standard S3 vs FSx ONTAP S3 AP differences |
