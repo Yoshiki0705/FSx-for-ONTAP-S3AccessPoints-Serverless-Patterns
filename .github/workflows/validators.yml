@@ -106,6 +106,41 @@ jobs:
             --data */template-deploy.yaml \
             --show-summary fail || true
 
+  deprecated-models-check:
+    name: "Bedrock model EOL guardrail"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Check for deprecated/EOL Bedrock model IDs
+        run: python3 scripts/check_deprecated_models.py
+
+  actions-pinning-check:
+    name: "Actions SHA pinning check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Check third-party Actions are SHA-pinned
+        run: python3 scripts/check_actions_pinning.py
+
+  dependency-audit:
+    name: "Dependency vulnerability audit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install pip-audit
+      - name: Audit Python dependencies
+        run: pip-audit -r requirements.txt --desc
+
   validators-summary:
     name: "Validators Summary"
     runs-on: ubuntu-latest
@@ -116,6 +151,9 @@ jobs:
       - python-quality
       - sensitive-leak-check
       - cfn-guard-security
+      - deprecated-models-check
+      - actions-pinning-check
+      - dependency-audit
     if: always()
     steps:
       - name: Evaluate
@@ -126,6 +164,9 @@ jobs:
             ["conditional-refs-check"]="${{ needs.conditional-refs-check.result }}"
             ["python-quality"]="${{ needs.python-quality.result }}"
             ["sensitive-leak-check"]="${{ needs.sensitive-leak-check.result }}"
+            ["deprecated-models-check"]="${{ needs.deprecated-models-check.result }}"
+            ["actions-pinning-check"]="${{ needs.actions-pinning-check.result }}"
+            ["dependency-audit"]="${{ needs.dependency-audit.result }}"
           )
           failed=0
           for name in "${!results[@]}"; do
