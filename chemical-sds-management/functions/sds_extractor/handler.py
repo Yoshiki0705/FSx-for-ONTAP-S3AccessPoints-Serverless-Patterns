@@ -140,7 +140,7 @@ def extract_hazard_info_bedrock(
         bedrock_client = boto3.client("bedrock-runtime")
 
     if model_id is None:
-        model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+        model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0")
 
     # テキストを制限
     truncated_text = text[:4000]

@@ -90,6 +90,13 @@ aws s3 cp s3://${OUTPUT_BUCKET}/reports/${EXECUTION_ID}/asset-catalog.json \
 
 ---
 
+---
+
+## Screenshots
+
+![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc19-demo/step-functions-graph-view.png)
+
+
 ## Bereinigung
 
 ```bash

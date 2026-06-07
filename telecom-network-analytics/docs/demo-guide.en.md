@@ -138,6 +138,13 @@ aws s3 ls s3://${OUTPUT_BUCKET}/reports/daily/${TODAY}/ --region ap-northeast-1
 
 ---
 
+---
+
+## Screenshots
+
+![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc18-demo/step-functions-graph-view.png)
+
+
 ## Cleanup
 
 ```bash

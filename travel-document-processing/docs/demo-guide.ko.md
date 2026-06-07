@@ -49,6 +49,13 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 
 ---
 
+---
+
+## 스크린샷
+
+![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc20-demo/step-functions-graph-view.png)
+
+
 ## 정리
 
 ```bash

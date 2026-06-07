@@ -50,6 +50,13 @@ aws stepfunctions start-execution --state-machine-arn $STATE_MACHINE_ARN --regio
 
 ---
 
+---
+
+## 截圖
+
+![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc21-demo/step-functions-graph-view.png)
+
+
 ## Cleanup
 
 ```bash

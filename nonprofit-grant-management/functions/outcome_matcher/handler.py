@@ -21,7 +21,7 @@ Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
     S3_ACCESS_POINT_OUTPUT: S3 AP Alias or ARN (出力書き込み用)
     CROSS_REGION_TEXTRACT_REGION: Textract リージョン (default: "us-east-1")
-    BEDROCK_MODEL_ID: Bedrock モデル ID (default: "anthropic.claude-3-haiku-20240307-v1:0")
+    BEDROCK_MODEL_ID: Bedrock モデル ID (default: "anthropic.claude-haiku-4-5-20251001-v1:0")
     COMPREHEND_LANGUAGE_CODE: Comprehend 言語コード (default: "ja")
 """
 
@@ -282,7 +282,7 @@ def handler(event, context):
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
     s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     textract_region = os.environ.get("CROSS_REGION_TEXTRACT_REGION", "us-east-1")
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0")
     language_code = os.environ.get("COMPREHEND_LANGUAGE_CODE", "ja")
 
     # Requirement 8.5: 未認識フォーマットのチェック

@@ -40,6 +40,13 @@ sam deploy \
 
 ---
 
+---
+
+## 截圖
+
+![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc26-demo/step-functions-graph-view.png)
+
+
 ## Cleanup
 
 ```bash

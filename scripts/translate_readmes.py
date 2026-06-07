@@ -91,7 +91,7 @@ class TranslationConfig:
             "retail-catalog",
         ]
     )
-    bedrock_model_id: str = "anthropic.claude-3-haiku-20240307-v1:0"
+    bedrock_model_id: str = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
 
 class LanguageSwitcherInjector:
@@ -220,7 +220,7 @@ class MarkdownTranslator:
 
     def __init__(
         self,
-        bedrock_model_id: str = "anthropic.claude-3-haiku-20240307-v1:0",
+        bedrock_model_id: str = "anthropic.claude-haiku-4-5-20251001-v1:0",
     ) -> None:
         """MarkdownTranslator を初期化.
 
@@ -572,7 +572,7 @@ def main():
     parser.add_argument("--project-root", default=".", help="プロジェクトルートパス")
     parser.add_argument(
         "--model-id",
-        default="anthropic.claude-3-haiku-20240307-v1:0",
+        default="anthropic.claude-haiku-4-5-20251001-v1:0",
         help="Bedrock モデル ID",
     )
     args = parser.parse_args()
