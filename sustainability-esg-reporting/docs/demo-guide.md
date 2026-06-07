@@ -164,6 +164,9 @@ sam deploy --parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai
 
 ---
 
+
+![Step Functions Graph View (SUCCEEDED)](../../docs/screenshots/masked/uc23-demo/step-functions-graph-view.png)
+
 ## 撮影ガイド
 
 ### 事前準備

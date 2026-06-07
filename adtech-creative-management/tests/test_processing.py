@@ -446,7 +446,7 @@ class TestValidateBrandTerminologyWithBedrock:
             bedrock_client=mock_client,
             extracted_text="ExampleBrand™ 公式",
             brand_guidelines={"required_terms": ["ExampleBrand™"]},
-            model_id="anthropic.claude-3-haiku-20240307-v1:0",
+            model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
         )
 
         assert result["compliance_result"] == "compliant"
@@ -473,7 +473,7 @@ class TestValidateBrandTerminologyWithBedrock:
             bedrock_client=mock_client,
             extracted_text="最安値セール",
             brand_guidelines={"prohibited_terms": ["最安値"], "required_terms": ["公式"]},
-            model_id="anthropic.claude-3-haiku-20240307-v1:0",
+            model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
         )
 
         assert result["compliance_result"] == "non-compliant"
@@ -487,7 +487,7 @@ class TestValidateBrandTerminologyWithBedrock:
             bedrock_client=mock_client,
             extracted_text="   ",
             brand_guidelines={"required_terms": ["Brand"]},
-            model_id="anthropic.claude-3-haiku-20240307-v1:0",
+            model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
         )
 
         assert result["compliance_result"] == "compliant"
@@ -501,7 +501,7 @@ class TestValidateBrandTerminologyWithBedrock:
             bedrock_client=mock_client,
             extracted_text="Some text",
             brand_guidelines={},
-            model_id="anthropic.claude-3-haiku-20240307-v1:0",
+            model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
         )
 
         assert result["compliance_result"] == "compliant"

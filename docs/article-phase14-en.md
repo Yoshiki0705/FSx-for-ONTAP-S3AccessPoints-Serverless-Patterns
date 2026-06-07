@@ -363,12 +363,16 @@ When S3 AP becomes unavailable (e.g., during throughput capacity changes):
 
 ## What's Next (Phase 15 candidates)
 
+> **Update**: Phase 15 expanded the pattern library from 17 to 28 industry-specific use cases. Items 1-2 below remain pending AWS feature availability. Items 3-4 are carried forward in Phase 15's What's Next.
+
 1. **FlexCache × S3 AP integration** — pending AWS feature availability (not yet supported)
 2. **FC1 Recovery Metrics** — route decision latency, cache health detection, failover timing (depends on #1)
 3. **Replay Storm with real FPolicy server** — TCP-level replay characteristics (requires ECS re-deploy)
 4. **VPC-internal Lambda with VPC Origin S3 AP** — true VPC-internal path (requires new AP with NetworkOrigin=VPC)
 
 > Multi-Account OAM validation completed 2026-05-25 — cross-account CloudWatch Metrics, Logs, and X-Ray Traces confirmed working.
+
+**Field feedback tracked**: S3 AP disruption during throughput change, presigned URL documentation gap, VPC-origin benchmark gap, and FlexCache × S3 AP feature dependency. Details in [`docs/ontap-integration-notes.md`](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/ontap-integration-notes.md#field-feedback-log).
 
 ---
 
@@ -398,6 +402,7 @@ When S3 AP becomes unavailable (e.g., during throughput capacity changes):
 - **Architects** get standardized benchmark methodology with hypothesis-driven testing
 - **Developers** get Presigned URL clarification — works but don't depend on it
 - **Standard S3 bucket users** learn where FSx ONTAP S3 AP differs from S3 bucket semantics, especially presigned URLs, availability, and operational dependencies
+- **Serverless-first teams** learn where the serverless processing plane ends and FSx ONTAP operational considerations begin
 - **Community members** get detailed answers to common FSx ONTAP questions on re:Post
 
 ---
@@ -411,7 +416,8 @@ Phase 14 delivers immediately usable assets:
 3. **Plan throughput changes carefully** — add S3 AP health checks to your maintenance runbook
 4. **Use the Sizing Guidance tables** (Sections 7-8) to set MaxConcurrency for your workload
 5. **Review the [S3 Bucket User Guide](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/s3-bucket-user-guide.md)** before porting existing S3 applications to FSx ONTAP S3 AP
-6. **Ask questions on [re:Post](https://repost.aws/tags/TAibLc_0diRMaBeYxIBdlP2g/amazon-fsx-for-netapp-ontap)** — the FSx for ONTAP community is growing
+6. **Review the [ONTAP Integration Notes](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/ontap-integration-notes.md)** before attaching S3 AP workflows to production SVMs and volumes
+7. **Ask questions on [re:Post](https://repost.aws/tags/TAibLc_0diRMaBeYxIBdlP2g/amazon-fsx-for-netapp-ontap)** — the FSx for ONTAP community is growing
 
 ---
 

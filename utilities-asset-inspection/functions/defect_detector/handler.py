@@ -136,7 +136,7 @@ def assess_severity_bedrock(
         bedrock_client = boto3.client("bedrock-runtime")
 
     if model_id is None:
-        model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+        model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0")
 
     defect_summary = json.dumps(defects, ensure_ascii=False)
     prompt = (
