@@ -302,3 +302,9 @@ aws s3 cp s3://<OUTPUT_BUCKET>/render-reports/render-001.json -
 | FlexCache 作成失敗 | アグリゲート容量不足 | ストレージ容量確認、サイズ調整 |
 | ヘルスチェック失敗 | ネットワーク到達性 | セキュリティグループ、ルートテーブル確認 |
 | Step Functions 失敗 | Lambda エラー | CloudWatch Logs で詳細確認 |
+
+
+## スクリーンショット
+
+![Phase 13 — CloudFormation Stacks](../../docs/screenshots/masked/phase13-cloudformation-stacks.png)
+![Phase 13 — Lambda Functions](../../docs/screenshots/masked/phase13-lambda-functions.png)
