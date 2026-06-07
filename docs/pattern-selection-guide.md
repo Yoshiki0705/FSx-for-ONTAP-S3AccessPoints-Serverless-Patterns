@@ -1,5 +1,7 @@
 # パターン選択ガイド — 顧客状況に応じたユースケース推奨
 
+🌐 **Language / 言語**: [日本語](pattern-selection-guide.md) | [English](pattern-selection-guide.en.md)
+
 ## 概要
 
 28 ユースケース + 6 FlexCache/FlexClone パターンから、顧客の状況に最適なパターンを選択するためのガイドです。Partner/SI が初回の顧客会話で使用することを想定しています。
