@@ -6,6 +6,21 @@
 
 FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file data stored in FSx for ONTAP. Data remains on FSx for ONTAP and can continue to be accessed through NFS and SMB.
 
+## S3 AP vs NFS/SMB: When to Use Which
+
+| Requirement | Prefer S3 AP | Prefer NFS/SMB |
+|---|:---:|:---:|
+| Serverless integration (Lambda, Step Functions) | ✅ | — |
+| POSIX semantics required (lock, rename, symlink) | — | ✅ |
+| Large sequential file processing | △ (5GB limit) | ✅ |
+| Permission-aware file access control | ✅ (dual-layer auth) | ✅ (NTFS/UNIX ACL) |
+| Low-latency metadata operations (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
+| Existing application compatibility | — | ✅ |
+| AWS service integration (Athena, Bedrock, Textract) | ✅ | — |
+| Event-driven file processing | ✅ (FPolicy + S3 AP) | △ (FPolicy + NFS mount) |
+
+> **Note**: S3 AP is not a replacement for NFS/SMB. It is a complementary access path for AWS service integration. The same volume can be accessed via NFS/SMB and S3 AP simultaneously.
+
 ## Tested Operations
 
 | Operation | Status |
@@ -27,6 +42,37 @@ Not all bucket-level features or integration patterns apply directly:
 - Bucket versioning
 - Object Lock (on the S3AP itself)
 - Presigned URLs (**Listed as "Not supported"** — but observed working; see [Presigned URL Support](#presigned-url-support) for AWS Support clarification)
+
+### WORM / Immutable Storage Alternatives
+
+S3 Object Lock / Versioning are not supported. FSx for ONTAP provides native alternatives:
+
+| S3 Feature | ONTAP Alternative | Characteristics |
+|---|---|---|
+| Object Lock Compliance | **SnapLock Compliance** volume | SEC 17a-4(f), FINRA 4511 compliant WORM. No one can delete during retention |
+| Object Lock Governance | **SnapLock Enterprise** volume | Internal compliance WORM. Privileged delete available |
+| Versioning (point-in-time) | **ONTAP Snapshot** | Point-in-time file system protection. Stores only changed blocks |
+| Replication | **SnapMirror** | Cross-region/cross-account replication |
+
+#### Tamperproof Snapshot
+
+Locks Snapshots for a specified retention period using the SnapLock Compliance clock. Once locked, no one — including ONTAP administrators — can delete the Snapshot until expiration. Protects against Snapshot deletion attacks (e.g., ransomware).
+
+> **Source**: [Snapshot locking — NetApp ONTAP](https://docs.netapp.com/us-en/ontap/snaplock/snapshot-lock-concept.html)
+
+#### Autonomous Ransomware Protection (ARP)
+
+AI-driven monitoring of volume behavior (data entropy changes, file extension changes, IOPS spikes). Automatically creates protective Snapshots when threats are detected. Focuses on detection and automatic response.
+
+> **Source**: [ARP — FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/ARP.html)
+
+> **Tamperproof Snapshot and ARP are distinct functions**:
+> - **Tamperproof Snapshot**: Locking mechanism (makes Snapshots indelible)
+> - **ARP**: Detection mechanism (creates protective Snapshots when threats detected)
+>
+> Combined: "ARP detects threat → creates Snapshot → Tamperproof locks it" for multi-layer defense.
+
+> **Note**: SnapLock is an ONTAP-native WORM option, but it is not a drop-in replacement for S3 Object Lock APIs. Validate regulatory requirements before choosing between SnapLock and standard S3 Object Lock.
 
 ## Recommended Trigger Patterns
 
