@@ -109,14 +109,14 @@ def main():
 
     run_id = f"s3ap-bench-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}-{args.throughput}mbps"
 
-    print(f"=== S3 AP Throughput Benchmark ===")
+    print("=== S3 AP Throughput Benchmark ===")
     print(f"Run ID: {run_id}")
     print(f"Throughput Capacity: {args.throughput} MBps")
     print(f"Concurrency levels: {concurrency_levels}")
     print(f"Iterations per level: {args.iterations}")
     print(f"S3 AP: {S3_AP_ALIAS}")
     print(f"Region: {REGION}")
-    print(f"Caller: local machine (Internet Origin)")
+    print("Caller: local machine (Internet Origin)")
     print()
 
     # Connectivity check
@@ -181,7 +181,7 @@ def main():
     # Print summary table
     print(f"\n{'='*80}")
     print(f"SUMMARY: {args.throughput} MBps - GetObject Latency (ms)")
-    print(f"Sizing reference, not service limit.")
+    print("Sizing reference, not service limit.")
     print(f"{'='*80}")
     print(f"{'Conc':>5} {'Mean':>8} {'P50':>8} {'P90':>8} {'P95':>8} {'P99':>8} {'Max':>8} {'Err%':>6}")
     print(f"{'-'*5} {'-'*8} {'-'*8} {'-'*8} {'-'*8} {'-'*8} {'-'*8} {'-'*6}")
