@@ -77,6 +77,9 @@
 | 🤝 Partner/SI 向け | [`docs/partner-si-one-pager.md`](docs/partner-si-one-pager.md) |
 | 🏛️ ガバナンス | [`docs/governance-checklist.md`](docs/governance-checklist.md) |
 | ⚡ ローカルテスト | [`docs/local-testing-quick-start.md`](docs/local-testing-quick-start.md) |
+| 🪣 S3 標準バケットユーザー向け | [`docs/s3-bucket-user-guide.md`](docs/s3-bucket-user-guide.md) |
+| 🔌 ONTAP 管理者向け | [`docs/ontap-integration-notes.md`](docs/ontap-integration-notes.md) |
+| 🎯 パターン選択ガイド | [`docs/pattern-selection-guide.md`](docs/pattern-selection-guide.md) |
 
 </details>
 
