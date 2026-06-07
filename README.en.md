@@ -77,6 +77,9 @@
 | 🤝 Partner/SI | [`docs/partner-si-one-pager.en.md`](docs/partner-si-one-pager.en.md) |
 | 🏛️ Governance | [`docs/governance-checklist.md`](docs/governance-checklist.md) |
 | ⚡ Local testing | [`docs/local-testing-quick-start.md`](docs/local-testing-quick-start.md) |
+| 🪣 For S3 bucket users | [`docs/s3-bucket-user-guide.md`](docs/s3-bucket-user-guide.md) |
+| 🔌 For ONTAP admins | [`docs/ontap-integration-notes.md`](docs/ontap-integration-notes.md) |
+| 🎯 Pattern selection guide | [`docs/pattern-selection-guide.md`](docs/pattern-selection-guide.md) |
 
 </details>
 
