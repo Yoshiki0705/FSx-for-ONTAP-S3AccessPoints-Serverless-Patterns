@@ -24,9 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Discovery handler — classify_file
-_discovery_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-)
+_discovery_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
 _discovery_spec = importlib.util.spec_from_file_location("uc21_discovery_pbt", _discovery_path)
 _discovery_module = importlib.util.module_from_spec(_discovery_spec)
 _discovery_spec.loader.exec_module(_discovery_module)
@@ -36,9 +34,7 @@ AERIAL_IMAGE_EXTENSIONS = _discovery_module.AERIAL_IMAGE_EXTENSIONS
 DEFAULT_MAX_IMAGE_SIZE_MB = _discovery_module.DEFAULT_MAX_IMAGE_SIZE_MB
 
 # Crop Analyzer handler — extract_exif_geolocation
-_crop_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "crop_analyzer", "handler.py"
-)
+_crop_path = os.path.join(os.path.dirname(__file__), "..", "functions", "crop_analyzer", "handler.py")
 _crop_spec = importlib.util.spec_from_file_location("uc21_crop_pbt", _crop_path)
 _crop_module = importlib.util.module_from_spec(_crop_spec)
 _crop_spec.loader.exec_module(_crop_module)

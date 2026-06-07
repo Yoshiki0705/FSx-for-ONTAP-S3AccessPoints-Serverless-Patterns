@@ -24,9 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Visual Analyzer handler
-_va_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "visual_analyzer", "handler.py"
-)
+_va_path = os.path.join(os.path.dirname(__file__), "..", "functions", "visual_analyzer", "handler.py")
 _va_spec = importlib.util.spec_from_file_location("va_handler_pbt", _va_path)
 _va_module = importlib.util.module_from_spec(_va_spec)
 _va_spec.loader.exec_module(_va_module)
@@ -35,9 +33,7 @@ generate_tags = _va_module.generate_tags
 check_compliance = _va_module.check_compliance
 
 # Report handler
-_report_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "report", "handler.py"
-)
+_report_path = os.path.join(os.path.dirname(__file__), "..", "functions", "report", "handler.py")
 _report_spec = importlib.util.spec_from_file_location("report_handler_pbt", _report_path)
 _report_module = importlib.util.module_from_spec(_report_spec)
 _report_spec.loader.exec_module(_report_module)
@@ -46,9 +42,7 @@ evaluate_moderation_status = _report_module.evaluate_moderation_status
 build_catalog_record = _report_module.build_catalog_record
 
 # Text Compliance handler
-_tc_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "text_compliance", "handler.py"
-)
+_tc_path = os.path.join(os.path.dirname(__file__), "..", "functions", "text_compliance", "handler.py")
 _tc_spec = importlib.util.spec_from_file_location("tc_handler_pbt", _tc_path)
 _tc_module = importlib.util.module_from_spec(_tc_spec)
 _tc_spec.loader.exec_module(_tc_module)
@@ -67,15 +61,17 @@ MAX_TAGS_PER_ASSET = 50
 
 # Strategy for generating label lists
 label_strategy = st.lists(
-    st.fixed_dictionaries({
-        "name": st.text(
-            alphabet=st.characters(whitelist_categories=("L", "Nd", "Zs")),
-            min_size=1,
-            max_size=30,
-        ),
-        "confidence": st.floats(min_value=0.0, max_value=100.0, allow_nan=False),
-        "categories": st.just([]),
-    }),
+    st.fixed_dictionaries(
+        {
+            "name": st.text(
+                alphabet=st.characters(whitelist_categories=("L", "Nd", "Zs")),
+                min_size=1,
+                max_size=30,
+            ),
+            "confidence": st.floats(min_value=0.0, max_value=100.0, allow_nan=False),
+            "categories": st.just([]),
+        }
+    ),
     min_size=0,
     max_size=100,
 )
@@ -220,48 +216,56 @@ def test_moderation_at_least_one_above_implies_review(
 
 
 moderation_label_strategy = st.lists(
-    st.fixed_dictionaries({
-        "name": st.sampled_from(["Violence", "Nudity", "Explicit", "Drugs", "Gambling"]),
-        "confidence": st.floats(min_value=0.0, max_value=100.0, allow_nan=False),
-        "parent_name": st.text(max_size=20),
-    }),
+    st.fixed_dictionaries(
+        {
+            "name": st.sampled_from(["Violence", "Nudity", "Explicit", "Drugs", "Gambling"]),
+            "confidence": st.floats(min_value=0.0, max_value=100.0, allow_nan=False),
+            "parent_name": st.text(max_size=20),
+        }
+    ),
     min_size=0,
     max_size=5,
 )
 
 text_detection_strategy = st.lists(
-    st.fixed_dictionaries({
-        "text": st.text(
-            alphabet=st.characters(whitelist_categories=("L", "Nd", "Zs", "P")),
-            min_size=0,
-            max_size=50,
-        ),
-        "confidence": st.floats(min_value=0.0, max_value=100.0, allow_nan=False),
-        "type": st.sampled_from(["LINE", "WORD"]),
-    }),
+    st.fixed_dictionaries(
+        {
+            "text": st.text(
+                alphabet=st.characters(whitelist_categories=("L", "Nd", "Zs", "P")),
+                min_size=0,
+                max_size=50,
+            ),
+            "confidence": st.floats(min_value=0.0, max_value=100.0, allow_nan=False),
+            "type": st.sampled_from(["LINE", "WORD"]),
+        }
+    ),
     min_size=0,
     max_size=10,
 )
 
-compliance_rules_strategy = st.fixed_dictionaries({
-    "prohibited_moderation_categories": st.lists(
-        st.sampled_from(["Violence", "Nudity", "Explicit", "Drugs"]),
-        min_size=0,
-        max_size=3,
-    ),
-    "required_disclaimer_keywords": st.lists(
-        st.text(
-            alphabet=st.characters(whitelist_categories=("L", "Nd")),
-            min_size=1,
-            max_size=10,
+compliance_rules_strategy = st.fixed_dictionaries(
+    {
+        "prohibited_moderation_categories": st.lists(
+            st.sampled_from(["Violence", "Nudity", "Explicit", "Drugs"]),
+            min_size=0,
+            max_size=3,
         ),
-        min_size=0,
-        max_size=3,
-    ),
-    "size_constraints": st.fixed_dictionaries({
-        "max_bytes": st.integers(min_value=1_000_000, max_value=10_000_000_000),
-    }),
-})
+        "required_disclaimer_keywords": st.lists(
+            st.text(
+                alphabet=st.characters(whitelist_categories=("L", "Nd")),
+                min_size=1,
+                max_size=10,
+            ),
+            min_size=0,
+            max_size=3,
+        ),
+        "size_constraints": st.fixed_dictionaries(
+            {
+                "max_bytes": st.integers(min_value=1_000_000, max_value=10_000_000_000),
+            }
+        ),
+    }
+)
 
 
 @settings(max_examples=200)

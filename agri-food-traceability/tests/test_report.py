@@ -63,7 +63,12 @@ class TestAggregateCropResults:
 
     def test_with_errors(self):
         results = [
-            {"status": "success", "location_status": "verified", "geolocation": None, "anomalies": {"confirmed": [], "review_required": []}},
+            {
+                "status": "success",
+                "location_status": "verified",
+                "geolocation": None,
+                "anomalies": {"confirmed": [], "review_required": []},
+            },
             {"status": "error", "error": {"type": "ServiceError", "message": "timeout"}},
         ]
 

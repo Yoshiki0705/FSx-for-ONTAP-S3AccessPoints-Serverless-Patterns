@@ -16,9 +16,7 @@ _report_handler_path = os.path.join(
     "report",
     "handler.py",
 )
-_report_spec = importlib.util.spec_from_file_location(
-    "uc22_report_handler", _report_handler_path
-)
+_report_spec = importlib.util.spec_from_file_location("uc22_report_handler", _report_handler_path)
 _report_module = importlib.util.module_from_spec(_report_spec)
 sys.modules["uc22_report_handler"] = _report_module
 _report_spec.loader.exec_module(_report_module)

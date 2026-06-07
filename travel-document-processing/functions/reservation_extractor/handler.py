@@ -61,23 +61,40 @@ COMPREHEND_SUPPORTED_LANGUAGES: frozenset[str] = frozenset(
 DATE_PATTERNS: list[re.Pattern] = [
     re.compile(r"\d{4}[-/]\d{1,2}[-/]\d{1,2}"),  # 2026-01-15, 2026/01/15
     re.compile(r"\d{1,2}[-/]\d{1,2}[-/]\d{4}"),  # 01-15-2026, 15/01/2026
-    re.compile(r"\d{4}年\d{1,2}月\d{1,2}日"),     # 2026年1月15日
+    re.compile(r"\d{4}年\d{1,2}月\d{1,2}日"),  # 2026年1月15日
 ]
 
 # 金額パターン
 AMOUNT_PATTERNS: list[re.Pattern] = [
-    re.compile(r"[¥￥]\s*[\d,]+"),               # ¥50,000
-    re.compile(r"\$\s*[\d,]+\.?\d*"),            # $500.00
-    re.compile(r"€\s*[\d,]+\.?\d*"),             # €450.00
+    re.compile(r"[¥￥]\s*[\d,]+"),  # ¥50,000
+    re.compile(r"\$\s*[\d,]+\.?\d*"),  # $500.00
+    re.compile(r"€\s*[\d,]+\.?\d*"),  # €450.00
     re.compile(r"[\d,]+\s*(?:円|yen|USD|EUR)"),  # 50,000円
 ]
 
 # 部屋タイプキーワード
 ROOM_TYPE_KEYWORDS: list[str] = [
-    "single", "double", "twin", "suite", "deluxe", "standard", "superior",
-    "premium", "executive", "family", "connecting",
-    "シングル", "ダブル", "ツイン", "スイート", "デラックス", "スタンダード",
-    "スーペリア", "プレミアム", "エグゼクティブ", "ファミリー",
+    "single",
+    "double",
+    "twin",
+    "suite",
+    "deluxe",
+    "standard",
+    "superior",
+    "premium",
+    "executive",
+    "family",
+    "connecting",
+    "シングル",
+    "ダブル",
+    "ツイン",
+    "スイート",
+    "デラックス",
+    "スタンダード",
+    "スーペリア",
+    "プレミアム",
+    "エグゼクティブ",
+    "ファミリー",
 ]
 
 
@@ -275,9 +292,7 @@ def handler(event, context):
     logger.info("Processing reservation document: key=%s", key)
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     textract_region = os.environ.get("CROSS_REGION_TEXTRACT_REGION", "us-east-1")
 
     # Textract クライアント (Cross-Region)
@@ -307,9 +322,7 @@ def handler(event, context):
                 "use_case": "travel-document-processing",
             },
         ):
-            extracted_text = extract_text_with_textract(
-                doc_bytes, textract_client, language_code="ja"
-            )
+            extracted_text = extract_text_with_textract(doc_bytes, textract_client, language_code="ja")
 
         # Step 3: 言語検出
         with xray_subsegment(
@@ -325,8 +338,7 @@ def handler(event, context):
         # 非日本語の場合は言語ヒント付きで再抽出 (Requirement 4.5)
         if language_code != "ja":
             logger.info(
-                "Non-Japanese document detected (lang=%s). "
-                "Re-extracting with language hints.",
+                "Non-Japanese document detected (lang=%s). Re-extracting with language hints.",
                 language_code,
             )
             with xray_subsegment(
@@ -337,16 +349,13 @@ def handler(event, context):
                     "language": language_code,
                 },
             ):
-                extracted_text = extract_text_with_textract(
-                    doc_bytes, textract_client, language_code=language_code
-                )
+                extracted_text = extract_text_with_textract(doc_bytes, textract_client, language_code=language_code)
 
         # Step 4: 構造化データ抽出
         structured_data = extract_structured_data(extracted_text, language_code)
 
         logger.info(
-            "Reservation extraction completed: key=%s, language=%s, "
-            "guest_name=%s, room_type=%s",
+            "Reservation extraction completed: key=%s, language=%s, guest_name=%s, room_type=%s",
             key,
             language_code,
             structured_data.get("guest_name"),
@@ -354,16 +363,22 @@ def handler(event, context):
         )
 
         # 結果を S3 に出力
-        result_key = f"results/reservations/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
+        result_key = (
+            f"results/reservations/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
+        )
         s3ap_output.put_object(
             key=result_key,
-            body=json.dumps({
-                "source_key": key,
-                "category": category,
-                "extracted_data": structured_data,
-                "extracted_text_length": len(extracted_text),
-                "processed_at": datetime.now(timezone.utc).isoformat(),
-            }, ensure_ascii=False, default=str),
+            body=json.dumps(
+                {
+                    "source_key": key,
+                    "category": category,
+                    "extracted_data": structured_data,
+                    "extracted_text_length": len(extracted_text),
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
+                },
+                ensure_ascii=False,
+                default=str,
+            ),
             content_type="application/json",
         )
 
@@ -401,7 +416,9 @@ def handler(event, context):
         )
 
         # エラーを出力バケットに記録
-        error_key = f"errors/reservations/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
+        error_key = (
+            f"errors/reservations/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"
+        )
         try:
             s3ap_output.put_object(
                 key=error_key,

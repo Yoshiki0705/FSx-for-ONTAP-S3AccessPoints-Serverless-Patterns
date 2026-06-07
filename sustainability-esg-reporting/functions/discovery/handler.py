@@ -35,9 +35,7 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 # ESG 文書の対応拡張子
-ESG_DOC_EXTENSIONS: frozenset[str] = frozenset(
-    {".pdf", ".xlsx", ".xls", ".csv", ".docx", ".doc"}
-)
+ESG_DOC_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".xlsx", ".xls", ".csv", ".docx", ".doc"})
 
 # ESG カテゴリ定義
 ESG_CATEGORIES: tuple[str, ...] = ("environmental", "social", "governance")
@@ -107,13 +105,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": e.error_code or "Unknown",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": e.error_code or "Unknown",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
     except Exception as e:
         logger.error(
@@ -122,13 +122,15 @@ def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
         )
         return {
             "statusCode": 503,
-            "body": json.dumps({
-                "error": "S3 Access Point unreachable",
-                "error_type": "ConnectivityError",
-                "error_code": "UnexpectedError",
-                "access_point": s3ap.bucket_param,
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "error": "S3 Access Point unreachable",
+                    "error_type": "ConnectivityError",
+                    "error_code": "UnexpectedError",
+                    "access_point": s3ap.bucket_param,
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -152,16 +154,13 @@ def handler(event, context):
         dict: manifest_key, total_objects, environmental_docs, social_docs, governance_docs
     """
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     environmental_prefix = os.environ.get("ENVIRONMENTAL_PREFIX", "environmental/")
     social_prefix = os.environ.get("SOCIAL_PREFIX", "social/")
     governance_prefix = os.environ.get("GOVERNANCE_PREFIX", "governance/")
 
     logger.info(
-        "ESG Discovery started: access_point=%s, "
-        "environmental_prefix=%r, social_prefix=%r, governance_prefix=%r",
+        "ESG Discovery started: access_point=%s, environmental_prefix=%r, social_prefix=%r, governance_prefix=%r",
         os.environ["S3_ACCESS_POINT"],
         environmental_prefix,
         social_prefix,
@@ -241,9 +240,7 @@ def handler(event, context):
         "objects": all_objects,
     }
 
-    manifest_key = (
-        f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
-    )
+    manifest_key = f"manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
 
     s3ap_output.put_object(
         key=manifest_key,

@@ -114,20 +114,20 @@ def extract_text_with_textract(
     """
 
     def _call():
-        return textract_client.detect_document_text(
-            Document={"Bytes": image_bytes}
-        )
+        return textract_client.detect_document_text(Document={"Bytes": image_bytes})
 
     response = execute_with_retry(_call, config=AI_SERVICE_RETRY_CONFIG)
 
     text_blocks = []
     for block in response.get("Blocks", []):
         if block.get("BlockType") in ("LINE", "WORD"):
-            text_blocks.append({
-                "text": block.get("Text", ""),
-                "confidence": round(block.get("Confidence", 0.0), 2),
-                "block_type": block.get("BlockType", ""),
-            })
+            text_blocks.append(
+                {
+                    "text": block.get("Text", ""),
+                    "confidence": round(block.get("Confidence", 0.0), 2),
+                    "block_type": block.get("BlockType", ""),
+                }
+            )
 
     return text_blocks
 
@@ -251,16 +251,18 @@ def validate_brand_terminology_with_bedrock(
     prompt = _build_brand_validation_prompt(extracted_text, brand_guidelines)
 
     def _call():
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 1024,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-        })
+        body = json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 1024,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+            }
+        )
         return bedrock_client.invoke_model(
             modelId=model_id,
             contentType="application/json",
@@ -353,25 +355,26 @@ def _parse_bedrock_compliance_response(
             parsed = json.loads(json_str)
 
             compliance_result = parsed.get("compliance_result", "compliant")
-            matched_terms = (
-                parsed.get("matched_prohibited_terms", [])
-                + parsed.get("matched_required_terms", [])
-            )
+            matched_terms = parsed.get("matched_prohibited_terms", []) + parsed.get("matched_required_terms", [])
             violations = []
 
             # 禁止用語が見つかった場合
             for term in parsed.get("matched_prohibited_terms", []):
-                violations.append({
-                    "type": "prohibited_term_found",
-                    "term": term,
-                })
+                violations.append(
+                    {
+                        "type": "prohibited_term_found",
+                        "term": term,
+                    }
+                )
 
             # 必須用語が不足している場合
             for term in parsed.get("missing_required_terms", []):
-                violations.append({
-                    "type": "required_term_missing",
-                    "term": term,
-                })
+                violations.append(
+                    {
+                        "type": "required_term_missing",
+                        "term": term,
+                    }
+                )
 
             return {
                 "compliance_result": compliance_result,
@@ -406,10 +409,12 @@ def _rule_based_brand_check(
     # 禁止用語チェック
     for term in brand_guidelines.get("prohibited_terms", []):
         if term.lower() in text_lower:
-            violations.append({
-                "type": "prohibited_term_found",
-                "term": term,
-            })
+            violations.append(
+                {
+                    "type": "prohibited_term_found",
+                    "term": term,
+                }
+            )
             matched_terms.append(term)
 
     # 必須用語チェック
@@ -417,10 +422,12 @@ def _rule_based_brand_check(
         if term.lower() in text_lower:
             matched_terms.append(term)
         else:
-            violations.append({
-                "type": "required_term_missing",
-                "term": term,
-            })
+            violations.append(
+                {
+                    "type": "required_term_missing",
+                    "term": term,
+                }
+            )
 
     compliance_result = "non-compliant" if violations else "compliant"
 
@@ -456,17 +463,15 @@ def check_compliance_rules(
     required_keywords = compliance_rules.get("required_disclaimer_keywords", [])
     if required_keywords:
         checks_performed.append("required_disclaimer_keywords")
-        all_text = " ".join(
-            block.get("text", "")
-            for block in text_blocks
-            if block.get("block_type") == "LINE"
-        )
+        all_text = " ".join(block.get("text", "") for block in text_blocks if block.get("block_type") == "LINE")
         for keyword in required_keywords:
             if keyword.lower() not in all_text.lower():
-                violations.append({
-                    "type": "missing_disclaimer_keyword",
-                    "keyword": keyword,
-                })
+                violations.append(
+                    {
+                        "type": "missing_disclaimer_keyword",
+                        "keyword": keyword,
+                    }
+                )
 
     # サイズ制約チェック
     size_constraints = compliance_rules.get("size_constraints", {})
@@ -474,11 +479,13 @@ def check_compliance_rules(
         checks_performed.append("size_constraints")
         max_bytes = size_constraints.get("max_bytes")
         if max_bytes and file_size > max_bytes:
-            violations.append({
-                "type": "file_size_exceeded",
-                "max_bytes": max_bytes,
-                "actual_bytes": file_size,
-            })
+            violations.append(
+                {
+                    "type": "file_size_exceeded",
+                    "max_bytes": max_bytes,
+                    "actual_bytes": file_size,
+                }
+            )
 
     return {
         "violations": violations,
@@ -525,9 +532,7 @@ def record_processing_failure(
         )
         logger.info("Processing failure recorded: %s → %s", file_key, error_key)
     except Exception as e:
-        logger.error(
-            "Failed to record processing failure for %s: %s", file_key, str(e)
-        )
+        logger.error("Failed to record processing failure for %s: %s", file_key, str(e))
 
 
 @trace_lambda_handler
@@ -571,9 +576,7 @@ def handler(event, context):
     output_bucket = os.environ.get("OUTPUT_BUCKET", "")
     brand_guidelines_key = os.environ.get("BRAND_GUIDELINES_S3_KEY", "")
     compliance_rules_key = os.environ.get("COMPLIANCE_RULES_S3_KEY", "")
-    model_id = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-    )
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
     s3_client = boto3.client("s3")
 
@@ -594,9 +597,7 @@ def handler(event, context):
         error_type = "retrieval_error"
         logger.error("Failed to retrieve file %s: %s", file_key, str(e))
         if output_bucket:
-            record_processing_failure(
-                s3_client, output_bucket, file_key, error_type, str(e)
-            )
+            record_processing_failure(s3_client, output_bucket, file_key, error_type, str(e))
         return {
             "key": file_key,
             "status": "error",
@@ -619,13 +620,9 @@ def handler(event, context):
         ):
             text_blocks = extract_text_with_textract(textract_client, file_bytes)
     except RetryExhaustedError as e:
-        logger.error(
-            "Textract failed after retries for %s: %s", file_key, str(e)
-        )
+        logger.error("Textract failed after retries for %s: %s", file_key, str(e))
         if output_bucket:
-            record_processing_failure(
-                s3_client, output_bucket, file_key, "service_error_textract", str(e)
-            )
+            record_processing_failure(s3_client, output_bucket, file_key, "service_error_textract", str(e))
         return {
             "key": file_key,
             "status": "error",
@@ -640,13 +637,9 @@ def handler(event, context):
         else:
             error_type = "service_error"
 
-        logger.warning(
-            "Textract failed for %s (%s): %s", file_key, error_type, str(e)
-        )
+        logger.warning("Textract failed for %s (%s): %s", file_key, error_type, str(e))
         if output_bucket:
-            record_processing_failure(
-                s3_client, output_bucket, file_key, error_type, str(e)
-            )
+            record_processing_failure(s3_client, output_bucket, file_key, error_type, str(e))
         return {
             "key": file_key,
             "status": "error",
@@ -655,16 +648,12 @@ def handler(event, context):
         }
 
     # 抽出テキストを連結
-    extracted_text = " ".join(
-        block["text"] for block in text_blocks if block.get("block_type") == "LINE"
-    )
+    extracted_text = " ".join(block["text"] for block in text_blocks if block.get("block_type") == "LINE")
 
     # Step 3: ブランドガイドライン読み込み
     brand_guidelines = {}
     if brand_guidelines_key and output_bucket:
-        brand_guidelines = load_brand_guidelines(
-            s3_client, output_bucket, brand_guidelines_key
-        )
+        brand_guidelines = load_brand_guidelines(s3_client, output_bucket, brand_guidelines_key)
 
     # Step 4: Bedrock によるブランド用語コンプライアンス検証
     brand_compliance = {
@@ -702,18 +691,14 @@ def handler(event, context):
             brand_compliance = _rule_based_brand_check(extracted_text, brand_guidelines)
             brand_compliance["reasoning"] += " (Bedrock retry exhausted, using rule-based fallback)"
         except Exception as e:
-            logger.warning(
-                "Bedrock brand validation failed for %s: %s", file_key, str(e)
-            )
+            logger.warning("Bedrock brand validation failed for %s: %s", file_key, str(e))
             brand_compliance = _rule_based_brand_check(extracted_text, brand_guidelines)
             brand_compliance["reasoning"] += f" (Bedrock error: {e}, using rule-based fallback)"
 
     # Step 5: コンプライアンスルール JSON チェック
     compliance_rules = {}
     if compliance_rules_key and output_bucket:
-        compliance_rules = load_compliance_rules(
-            s3_client, output_bucket, compliance_rules_key
-        )
+        compliance_rules = load_compliance_rules(s3_client, output_bucket, compliance_rules_key)
 
     rules_check = check_compliance_rules(
         text_blocks=text_blocks,
@@ -776,8 +761,7 @@ def handler(event, context):
     metrics.flush()
 
     logger.info(
-        "Text Compliance completed: key=%s, text_blocks=%d, "
-        "compliance=%s, violations=%d",
+        "Text Compliance completed: key=%s, text_blocks=%d, compliance=%s, violations=%d",
         file_key,
         len(text_blocks),
         final_compliance_status,

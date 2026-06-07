@@ -62,12 +62,14 @@ class TestRetryConfig:
 
     def test_default_retryable_errors(self):
         """デフォルトのリトライ対象エラーが4つ含まれること"""
-        expected = frozenset([
-            "ThrottlingException",
-            "ServiceUnavailableException",
-            "InternalServerError",
-            "ProvisionedThroughputExceededException",
-        ])
+        expected = frozenset(
+            [
+                "ThrottlingException",
+                "ServiceUnavailableException",
+                "InternalServerError",
+                "ProvisionedThroughputExceededException",
+            ]
+        )
         assert DEFAULT_RETRY_CONFIG.retryable_errors == expected
 
     def test_config_is_frozen(self):
@@ -217,6 +219,7 @@ class TestExecuteWithRetry:
 
     def test_retry_exhausted_raises_error(self):
         """全リトライ使い果たしで RetryExhaustedError を発生"""
+
         def always_fail():
             raise ClientError(
                 {"Error": {"Code": "ThrottlingException", "Message": "throttled"}},
@@ -300,6 +303,7 @@ class TestRetryWithBackoffDecorator:
 
     def test_decorator_preserves_function_name(self):
         """デコレータが関数名を保持する"""
+
         @retry_with_backoff(sleep_func=lambda _: None)
         def my_function():
             return "hello"
@@ -417,7 +421,7 @@ def test_backoff_formula_correctness(attempt, initial_interval, backoff_rate):
     **Validates: Requirements 2.6**
     """
     result = calculate_backoff(attempt, initial_interval, backoff_rate)
-    expected = initial_interval * (backoff_rate ** attempt)
+    expected = initial_interval * (backoff_rate**attempt)
     assert abs(result - expected) < 1e-10
 
 
@@ -527,9 +531,7 @@ def test_retry_sleep_times_follow_backoff(max_attempts, success_on_attempt):
 
     **Validates: Requirements 2.6**
     """
-    succeed_at = success_on_attempt.draw(
-        st.integers(min_value=2, max_value=max_attempts)
-    )
+    succeed_at = success_on_attempt.draw(st.integers(min_value=2, max_value=max_attempts))
     call_count = {"n": 0}
     config = RetryConfig(max_attempts=max_attempts)
 
@@ -550,7 +552,7 @@ def test_retry_sleep_times_follow_backoff(max_attempts, success_on_attempt):
 
     # 各スリープ時間がバックオフ式に従うことを検証
     for i, actual_sleep in enumerate(sleep_times):
-        expected_sleep = config.initial_interval_seconds * (config.backoff_rate ** i)
+        expected_sleep = config.initial_interval_seconds * (config.backoff_rate**i)
         assert abs(actual_sleep - expected_sleep) < 1e-10
 
 

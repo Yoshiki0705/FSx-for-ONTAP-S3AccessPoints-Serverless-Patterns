@@ -97,6 +97,7 @@ class TestCheckSdsExpiry:
     def test_valid_sds(self):
         # Today
         from datetime import datetime, timezone
+
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         result = check_sds_expiry(today, validity_days=365)
         assert result["is_expired"] is False

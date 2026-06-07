@@ -32,23 +32,54 @@ from shared.s3ap_helper import S3ApHelper
 logger = logging.getLogger(__name__)
 
 # 損傷関連ラベル（Rekognition DetectLabels の結果から抽出）
-DAMAGE_LABELS: frozenset[str] = frozenset({
-    "Crack", "Rust", "Mold", "Stain", "Damage", "Broken",
-    "Deterioration", "Corrosion", "Leak", "Peeling",
-    "Dent", "Scratch", "Discoloration", "Wear",
-})
+DAMAGE_LABELS: frozenset[str] = frozenset(
+    {
+        "Crack",
+        "Rust",
+        "Mold",
+        "Stain",
+        "Damage",
+        "Broken",
+        "Deterioration",
+        "Corrosion",
+        "Leak",
+        "Peeling",
+        "Dent",
+        "Scratch",
+        "Discoloration",
+        "Wear",
+    }
+)
 
 # 清潔度に悪影響を与えるラベル
-CLEANLINESS_NEGATIVE_LABELS: frozenset[str] = frozenset({
-    "Dirt", "Stain", "Mold", "Dust", "Debris",
-    "Clutter", "Mess", "Garbage", "Trash", "Grime",
-})
+CLEANLINESS_NEGATIVE_LABELS: frozenset[str] = frozenset(
+    {
+        "Dirt",
+        "Stain",
+        "Mold",
+        "Dust",
+        "Debris",
+        "Clutter",
+        "Mess",
+        "Garbage",
+        "Trash",
+        "Grime",
+    }
+)
 
 # 良好な状態を示すラベル
-CLEANLINESS_POSITIVE_LABELS: frozenset[str] = frozenset({
-    "Clean", "Tidy", "Organized", "Polished", "Pristine",
-    "Maintained", "New", "Fresh",
-})
+CLEANLINESS_POSITIVE_LABELS: frozenset[str] = frozenset(
+    {
+        "Clean",
+        "Tidy",
+        "Organized",
+        "Polished",
+        "Pristine",
+        "Maintained",
+        "New",
+        "Fresh",
+    }
+)
 
 # 最低信頼度閾値
 MIN_CONFIDENCE_THRESHOLD: float = 70.0
@@ -115,11 +146,13 @@ def detect_damage(labels: list[dict]) -> list[dict]:
         name = label.get("Name", "")
         confidence = label.get("Confidence", 0.0)
         if name in DAMAGE_LABELS and confidence >= MIN_CONFIDENCE_THRESHOLD:
-            damages.append({
-                "type": name,
-                "confidence": round(confidence, 2),
-                "instances": label.get("Instances", []),
-            })
+            damages.append(
+                {
+                    "type": name,
+                    "confidence": round(confidence, 2),
+                    "instances": label.get("Instances", []),
+                }
+            )
     return damages
 
 
@@ -143,9 +176,11 @@ def generate_maintenance_recommendations(
     if not damages and cleanliness_score >= 80:
         return ["No immediate maintenance required. Continue regular inspection schedule."]
 
-    damage_summary = ", ".join(
-        [f"{d['type']} (confidence: {d['confidence']}%)" for d in damages]
-    ) if damages else "No specific damage detected"
+    damage_summary = (
+        ", ".join([f"{d['type']} (confidence: {d['confidence']}%)" for d in damages])
+        if damages
+        else "No specific damage detected"
+    )
 
     prompt = (
         "You are a facility maintenance expert for a hotel/hospitality property. "
@@ -163,11 +198,13 @@ def generate_maintenance_recommendations(
             modelId=model_id,
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [{"role": "user", "content": prompt}],
-            }),
+            body=json.dumps(
+                {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 1024,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+            ),
         )
         return json.loads(response["body"].read())
 
@@ -192,9 +229,7 @@ def generate_maintenance_recommendations(
         logger.warning("Bedrock recommendation generation failed: %s", str(e))
         recommendations = []
         if damages:
-            recommendations.append(
-                f"Priority repair needed: {damages[0]['type']} detected."
-            )
+            recommendations.append(f"Priority repair needed: {damages[0]['type']} detected.")
         if cleanliness_score < 60:
             recommendations.append("Deep cleaning required for this area.")
         if not recommendations:
@@ -223,12 +258,8 @@ def handler(event, context):
     logger.info("Processing facility inspection image: key=%s", key)
 
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
-    s3ap_output = S3ApHelper(
-        os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"])
-    )
-    model_id = os.environ.get(
-        "BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"
-    )
+    s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 
     rekognition_client = boto3.client("rekognition")
     bedrock_client = boto3.client("bedrock-runtime")
@@ -274,8 +305,7 @@ def handler(event, context):
         cleanliness_score = calculate_cleanliness_score(labels)
 
         logger.info(
-            "Facility inspection analysis: key=%s, cleanliness=%d, "
-            "damage_count=%d",
+            "Facility inspection analysis: key=%s, cleanliness=%d, damage_count=%d",
             key,
             cleanliness_score,
             len(damages),
@@ -290,9 +320,7 @@ def handler(event, context):
                 "use_case": "travel-document-processing",
             },
         ):
-            recommendations = generate_maintenance_recommendations(
-                damages, cleanliness_score, bedrock_client, model_id
-            )
+            recommendations = generate_maintenance_recommendations(damages, cleanliness_score, bedrock_client, model_id)
 
         # 結果を S3 に出力
         result_key = f"results/facility/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{os.path.basename(key)}.json"

@@ -107,23 +107,15 @@ class TestComputeYoyTrend:
 
     def test_single_period_returns_none(self):
         """1 期間のみの場合はトレンドなし"""
-        period_data = {
-            "2024": [
-                {"category": "co2_emissions", "normalized_value": 100, "status": "success"}
-            ]
-        }
+        period_data = {"2024": [{"category": "co2_emissions", "normalized_value": 100, "status": "success"}]}
         result = compute_yoy_trend(period_data)
         assert result is None
 
     def test_two_periods_calculates_trend(self):
         """2 期間あればトレンドを計算"""
         period_data = {
-            "2023": [
-                {"category": "co2_emissions", "normalized_value": 100, "status": "success"}
-            ],
-            "2024": [
-                {"category": "co2_emissions", "normalized_value": 90, "status": "success"}
-            ],
+            "2023": [{"category": "co2_emissions", "normalized_value": 100, "status": "success"}],
+            "2024": [{"category": "co2_emissions", "normalized_value": 90, "status": "success"}],
         }
         result = compute_yoy_trend(period_data)
         assert result is not None
@@ -134,12 +126,8 @@ class TestComputeYoyTrend:
 
     def test_increase_trend(self):
         period_data = {
-            "2023": [
-                {"category": "energy_usage", "normalized_value": 500, "status": "success"}
-            ],
-            "2024": [
-                {"category": "energy_usage", "normalized_value": 600, "status": "success"}
-            ],
+            "2023": [{"category": "energy_usage", "normalized_value": 500, "status": "success"}],
+            "2024": [{"category": "energy_usage", "normalized_value": 600, "status": "success"}],
         }
         result = compute_yoy_trend(period_data)
         assert result is not None
@@ -148,12 +136,8 @@ class TestComputeYoyTrend:
 
     def test_unchanged_trend(self):
         period_data = {
-            "2023": [
-                {"category": "waste_volume", "normalized_value": 50, "status": "success"}
-            ],
-            "2024": [
-                {"category": "waste_volume", "normalized_value": 50, "status": "success"}
-            ],
+            "2023": [{"category": "waste_volume", "normalized_value": 50, "status": "success"}],
+            "2024": [{"category": "waste_volume", "normalized_value": 50, "status": "success"}],
         }
         result = compute_yoy_trend(period_data)
         assert result is not None
@@ -162,15 +146,9 @@ class TestComputeYoyTrend:
 
     def test_three_periods(self):
         period_data = {
-            "2022": [
-                {"category": "co2_emissions", "normalized_value": 200, "status": "success"}
-            ],
-            "2023": [
-                {"category": "co2_emissions", "normalized_value": 150, "status": "success"}
-            ],
-            "2024": [
-                {"category": "co2_emissions", "normalized_value": 120, "status": "success"}
-            ],
+            "2022": [{"category": "co2_emissions", "normalized_value": 200, "status": "success"}],
+            "2023": [{"category": "co2_emissions", "normalized_value": 150, "status": "success"}],
+            "2024": [{"category": "co2_emissions", "normalized_value": 120, "status": "success"}],
         }
         result = compute_yoy_trend(period_data)
         assert result is not None
@@ -182,9 +160,7 @@ class TestComputeYoyTrend:
                 {"category": "co2_emissions", "normalized_value": 100, "status": "success"},
                 {"category": "co2_emissions", "normalized_value": 50, "status": "requires-validation"},
             ],
-            "2024": [
-                {"category": "co2_emissions", "normalized_value": 80, "status": "success"}
-            ],
+            "2024": [{"category": "co2_emissions", "normalized_value": 80, "status": "success"}],
         }
         result = compute_yoy_trend(period_data)
         assert result is not None

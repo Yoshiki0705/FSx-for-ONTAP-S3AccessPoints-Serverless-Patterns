@@ -167,14 +167,16 @@ def handler(event, context):
             # 実験データ解析
             experiment_data = parse_experiment_data(text)
 
-            results.append({
-                "key": key,
-                "substance_id": substance_id,
-                "status": "success",
-                "experiment_data": experiment_data,
-                "labels": labels[:10],
-                "text_length": len(text),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "substance_id": substance_id,
+                    "status": "success",
+                    "experiment_data": experiment_data,
+                    "labels": labels[:10],
+                    "text_length": len(text),
+                }
+            )
             success_count += 1
 
         except Exception as e:
@@ -185,13 +187,15 @@ def handler(event, context):
                 str(e),
                 error_category.value,
             )
-            results.append({
-                "key": key,
-                "substance_id": substance_id,
-                "status": "error",
-                "error_type": error_category.value,
-                "error_message": str(e),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "substance_id": substance_id,
+                    "status": "error",
+                    "error_type": error_category.value,
+                    "error_message": str(e),
+                }
+            )
             error_count += 1
 
     processing_duration_ms = int((time.time() - start_time) * 1000)

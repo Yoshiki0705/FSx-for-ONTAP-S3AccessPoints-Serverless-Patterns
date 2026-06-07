@@ -25,9 +25,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Deterioration Detector handler
-_detector_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "deterioration_detector", "handler.py"
-)
+_detector_path = os.path.join(os.path.dirname(__file__), "..", "functions", "deterioration_detector", "handler.py")
 _detector_spec = importlib.util.spec_from_file_location("uc22_detector_pbt", _detector_path)
 _detector_module = importlib.util.module_from_spec(_detector_spec)
 _detector_spec.loader.exec_module(_detector_module)
@@ -105,12 +103,14 @@ def test_severity_classification_always_valid(severity_list: list[str]):
 
 @settings(max_examples=200)
 @given(
-    object_key=st.sampled_from([
-        "inspections/bridges/route-1/2026-01/img_001.jpg",
-        "inspections/signaling/station-A/2026-01/img_002.png",
-        "inspections/rail-joints/section-3/2026-01/img_003.tiff",
-        "inspections/BRIDGES/Route-2/img_004.jpg",
-    ]),
+    object_key=st.sampled_from(
+        [
+            "inspections/bridges/route-1/2026-01/img_001.jpg",
+            "inspections/signaling/station-A/2026-01/img_002.png",
+            "inspections/rail-joints/section-3/2026-01/img_003.tiff",
+            "inspections/BRIDGES/Route-2/img_004.jpg",
+        ]
+    ),
 )
 def test_safety_critical_threshold_60(object_key: str):
     """安全重要カテゴリのファイルは 60% 閾値が適用される。
@@ -122,20 +122,20 @@ def test_safety_critical_threshold_60(object_key: str):
     is_critical = is_safety_critical(object_key, SAFETY_CATEGORIES)
     assert is_critical is True
 
-    effective_threshold = (
-        DEFAULT_SAFETY_CRITICAL_THRESHOLD if is_critical else DEFAULT_STANDARD_THRESHOLD
-    )
+    effective_threshold = DEFAULT_SAFETY_CRITICAL_THRESHOLD if is_critical else DEFAULT_STANDARD_THRESHOLD
     assert effective_threshold == 60
 
 
 @settings(max_examples=200)
 @given(
-    object_key=st.sampled_from([
-        "inspections/tracks/section-1/2026-01/img_001.jpg",
-        "inspections/platforms/station-A/img_002.png",
-        "inspections/tunnels/t-01/2026-01/img_003.tiff",
-        "inspections/stations/tokyo/img_004.jpg",
-    ]),
+    object_key=st.sampled_from(
+        [
+            "inspections/tracks/section-1/2026-01/img_001.jpg",
+            "inspections/platforms/station-A/img_002.png",
+            "inspections/tunnels/t-01/2026-01/img_003.tiff",
+            "inspections/stations/tokyo/img_004.jpg",
+        ]
+    ),
 )
 def test_standard_threshold_80(object_key: str):
     """標準インフラのファイルは 80% 閾値が適用される。
@@ -147,9 +147,7 @@ def test_standard_threshold_80(object_key: str):
     is_critical = is_safety_critical(object_key, SAFETY_CATEGORIES)
     assert is_critical is False
 
-    effective_threshold = (
-        DEFAULT_SAFETY_CRITICAL_THRESHOLD if is_critical else DEFAULT_STANDARD_THRESHOLD
-    )
+    effective_threshold = DEFAULT_SAFETY_CRITICAL_THRESHOLD if is_critical else DEFAULT_STANDARD_THRESHOLD
     assert effective_threshold == 80
 
 
@@ -169,9 +167,7 @@ def test_threshold_always_60_or_80(object_key: str):
     プロパティ: effective_threshold ∈ {60, 80}
     """
     is_critical = is_safety_critical(object_key, SAFETY_CATEGORIES)
-    effective_threshold = (
-        DEFAULT_SAFETY_CRITICAL_THRESHOLD if is_critical else DEFAULT_STANDARD_THRESHOLD
-    )
+    effective_threshold = DEFAULT_SAFETY_CRITICAL_THRESHOLD if is_critical else DEFAULT_STANDARD_THRESHOLD
     assert effective_threshold in (60, 80)
 
 

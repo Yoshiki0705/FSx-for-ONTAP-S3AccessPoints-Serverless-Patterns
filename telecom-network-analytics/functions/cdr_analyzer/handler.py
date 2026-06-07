@@ -219,9 +219,7 @@ def parse_parquet_cdr(content: bytes) -> list[dict[str, Any]]:
         return records
 
     except ImportError:
-        raise ValueError(
-            "pyarrow is not installed. Parquet file parsing requires pyarrow library."
-        )
+        raise ValueError("pyarrow is not installed. Parquet file parsing requires pyarrow library.")
     except Exception as e:
         raise ValueError(f"Failed to parse Parquet CDR file: {e}") from e
 
@@ -291,7 +289,7 @@ def compute_traffic_statistics(records: list[dict[str, Any]]) -> dict[str, Any]:
                     "%Y/%m/%d %H:%M:%S",
                 ):
                     try:
-                        dt = datetime.strptime(ts[:19], fmt[:len(ts[:19])])
+                        dt = datetime.strptime(ts[:19], fmt[: len(ts[:19])])
                         hour_key = dt.strftime("%Y-%m-%d %H:00")
                         hourly_volume[hour_key] = hourly_volume.get(hour_key, 0) + 1
                         break
@@ -365,9 +363,7 @@ def run_athena_traffic_query(
 
         # クエリ完了を待機
         def _get_status():
-            return athena_client.get_query_execution(
-                QueryExecutionId=query_execution_id
-            )
+            return athena_client.get_query_execution(QueryExecutionId=query_execution_id)
 
         # 簡易ポーリング (最大 30 秒)
         for _ in range(15):
@@ -434,9 +430,7 @@ def record_parse_error(
         )
         logger.info("Parse error recorded: %s → %s", file_key, error_key)
     except Exception as e:
-        logger.error(
-            "Failed to record parse error for %s: %s", file_key, str(e)
-        )
+        logger.error("Failed to record parse error for %s: %s", file_key, str(e))
 
 
 @trace_lambda_handler

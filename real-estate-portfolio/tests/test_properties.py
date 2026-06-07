@@ -23,12 +23,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Discovery handler
-_discovery_path = os.path.join(
-    os.path.dirname(__file__), "..", "functions", "discovery", "handler.py"
-)
-_discovery_spec = importlib.util.spec_from_file_location(
-    "uc26_discovery_pbt", _discovery_path
-)
+_discovery_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
+_discovery_spec = importlib.util.spec_from_file_location("uc26_discovery_pbt", _discovery_path)
 _discovery_module = importlib.util.module_from_spec(_discovery_spec)
 _discovery_spec.loader.exec_module(_discovery_module)
 
@@ -143,9 +139,7 @@ def test_invalid_extension_returns_none(filename: str, extension: str):
     ),
     extension=st.sampled_from(VALID_IMAGE_EXTENSIONS),
 )
-def test_valid_image_in_image_prefix_returns_property_image(
-    filename: str, extension: str
-):
+def test_valid_image_in_image_prefix_returns_property_image(filename: str, extension: str):
     """画像プレフィックス内の有効画像ファイルは property_image を返す。
 
     **Validates: Requirements 13.3**

@@ -225,9 +225,7 @@ class TestValidateS3ApConnectivity:
 
         mock_s3ap = MagicMock()
         mock_s3ap.bucket_param = "test-ap"
-        mock_s3ap.list_objects.side_effect = S3ApHelperError(
-            "Connection failed", error_code="ServiceUnavailable"
-        )
+        mock_s3ap.list_objects.side_effect = S3ApHelperError("Connection failed", error_code="ServiceUnavailable")
         result = validate_s3ap_connectivity(mock_s3ap)
         assert result is not None
         assert result["statusCode"] == 503
