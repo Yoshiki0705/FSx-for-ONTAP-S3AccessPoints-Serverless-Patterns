@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 """ONTAP REST API クライアント.
 
 SnapMirror 関係の状態取得・転送トリガーを行う。
 """
 
 import logging
-from datetime import datetime, timezone
 from enum import Enum
 
 import httpx
@@ -90,7 +91,7 @@ class OntapClient:
 
                 # 転送中かどうかを判定
                 transfer = data.get("transfer", {})
-                relationship_state = data.get("state", "")
+                _ = data.get("state", "")  # noqa: F841
                 healthy = data.get("healthy", False)
 
                 if transfer and transfer.get("state") in ("transferring", "queued"):
@@ -126,7 +127,7 @@ class OntapClient:
                 return SnapMirrorStatus(
                     state=TransferState.FAILED,
                     healthy=False,
-                    error_message=f"接続エラー: ONTAP に接続できません",
+                    error_message="接続エラー: ONTAP に接続できません",
                 )
 
     async def trigger_update(self) -> SnapMirrorStatus:
@@ -245,6 +246,7 @@ from .config import settings as _settings
 
 if _settings.demo_mode:
     from .mock_client import MockOntapClient
+
     ontap_client = MockOntapClient()  # type: ignore[assignment]
 else:
     ontap_client = OntapClient()

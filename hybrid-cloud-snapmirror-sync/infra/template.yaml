@@ -210,6 +210,7 @@ Resources:
   FsxFileSystem:
     Type: AWS::FSx::FileSystem
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       FileSystemType: ONTAP
       StorageCapacity: !Ref FsxStorageCapacity
@@ -222,7 +223,7 @@ Resources:
         DeploymentType: !Ref FsxDeploymentType
         ThroughputCapacity: !Ref FsxThroughputCapacity
         # FSx ONTAP パスワード（デプロイ後に変更推奨）
-        FsxAdminPassword: '{{resolve:ssm-secure:/snapmirror-demo/fsx-admin-password}}'
+        FsxAdminPassword: '{{resolve:ssm:/snapmirror-demo/fsx-admin-password}}'
         PreferredSubnetId: !Ref PrivateSubnet1
       Tags:
         - Key: Name
@@ -240,6 +241,7 @@ Resources:
   FsxVolume:
     Type: AWS::FSx::Volume
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Name: !Ref VolumeName
       VolumeType: ONTAP

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """同期状態管理.
 
 二重実行防止、状態遷移管理を行う。
@@ -123,9 +125,7 @@ class SyncState:
                     self.phase = SyncPhase.DONE
                     self.message = "同期が完了しました ✓"
                     self.completed_at = datetime.now(timezone.utc).isoformat()
-                    logger.info(
-                        f"SnapMirror transfer completed. Bytes: {self.bytes_transferred}"
-                    )
+                    logger.info(f"SnapMirror transfer completed. Bytes: {self.bytes_transferred}")
                     break
 
                 if status.state == TransferState.FAILED:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """SnapMirror One-Click Sync — メインアプリケーション."""
 
 import json
@@ -11,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 
 from .config import settings
-from .ontap_client import TransferState, ontap_client
+from .ontap_client import ontap_client
 from .sync_manager import sync_manager
 
 # ロギング設定
@@ -73,9 +75,7 @@ async def lifespan(app: FastAPI):
             if status.healthy:
                 logger.info(f"✅ SnapMirror relationship healthy (state: {status.state.value})")
             else:
-                logger.warning(
-                    f"⚠️ SnapMirror relationship unhealthy (state: {status.state.value})"
-                )
+                logger.warning(f"⚠️ SnapMirror relationship unhealthy (state: {status.state.value})")
                 if status.error_message:
                     logger.warning(f"   Error: {status.error_message}")
         except Exception as e:

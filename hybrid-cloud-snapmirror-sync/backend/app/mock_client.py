@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """モック ONTAP クライアント.
 
 DEMO_MODE=true で起動した場合に使用する。
