@@ -213,6 +213,10 @@ print('WiFi QR code saved')
 3. オレンジ色の大きなボタンをタップ
 4. 進捗表示を確認（差分検出 → データ転送 → 完了）
 
+**開始中の画面**:
+
+![開始中（スマホ）](images/03a-starting-mobile.png)
+
 **同期中の画面**:
 
 ![同期中（スマホ）](images/03-syncing-mobile.png)
