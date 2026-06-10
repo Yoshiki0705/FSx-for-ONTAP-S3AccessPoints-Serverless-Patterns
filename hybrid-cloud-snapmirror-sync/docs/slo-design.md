@@ -64,6 +64,18 @@ designed for CloudWatch Application Signals.
 - Error budgets are tracked automatically and visible in the Application Signals console
 - SLOs can be created via Console, CLI, or CloudFormation (`AWS::ApplicationSignals::ServiceLevelObjective`)
 
+## Demo vs Production PoC Thresholds
+
+| SLO | Demo Threshold | Production PoC Threshold |
+|-----|---------------|-------------------------|
+| Replication Freshness | data age ≤ 10 min | Customer-defined based on RPO (recommended start: ≤ 15 min) |
+| S3 AP Availability | 99% (7-day) | 99.5%+ (customer SLA-aligned) |
+| Quick Readiness | 95% refresh success | 99% (production dashboards) |
+| Source-to-Insight | p95 ≤ 15 min | Customer-defined (recommended: ≤ 10 min) |
+| Sync Reliability | 95% trigger success | 99% (automated schedule) |
+
+> **Caution**: Demo thresholds should not be used as production requirements. Production SLOs must be defined in collaboration with the customer based on their RPO, business criticality, and operational capacity.
+
 ## Incident Response Flow
 
 When an SLO error budget is consumed:
