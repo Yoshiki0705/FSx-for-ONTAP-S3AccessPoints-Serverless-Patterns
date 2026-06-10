@@ -2,6 +2,9 @@
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/badge)](https://scorecard.dev/viewer/?uri=github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 
+> **This pattern is not a data migration demo.**
+> It demonstrates how enterprise file data replicated from an on-premises ONTAP environment to Amazon FSx for NetApp ONTAP can be made available to analytics, BI, and AI services through S3 Access Points — while preserving NAS-oriented operations and making data freshness explicit.
+
 ハイブリッドクラウド環境でオンプレミス NetApp ONTAP から Amazon FSx for NetApp ONTAP へのデータ同期を、ワンクリックで実行するデモツールです。
 
 ## このリポジトリが提供するもの
@@ -219,6 +222,7 @@ docker compose up -d
 | [Deployment Timeline](docs/deployment-timeline-ja.md) | PM / Engineer | Day-by-day plan |
 | [Network Alternatives](docs/network-alternatives-ja.md) | Network engineer | VPN alternatives for venues |
 | [Handover Guide](docs/handover-ja.md) | Partner receiving the tool | Quick start + checklist |
+| [Quick Demo Prompts](docs/quick-demo-prompts.md) | Demo operator / business | Sample prompts for Amazon Quick |
 
 ## ライセンス
 
