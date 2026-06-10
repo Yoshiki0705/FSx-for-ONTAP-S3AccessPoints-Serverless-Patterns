@@ -403,6 +403,26 @@ body {
     font-size: 0.85rem;
     color: #856404;
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.warning-action {
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid #856404;
+    background: transparent;
+    color: #856404;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.warning-action:hover {
+    background: #856404;
+    color: white;
 }
 
 /* デモモードバッジ */

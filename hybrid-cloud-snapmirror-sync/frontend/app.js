@@ -111,11 +111,16 @@
 
   // --- イベントハンドラ ---
   function handleSyncClick() {
-    // 即座にボタンを無効化（二重クリック防止）
+    // 即座にボタンを無効化 + ステータス更新（二重クリック防止）
     syncButton.disabled = true;
     syncButton.classList.add("syncing");
     buttonIcon.textContent = "⏳";
     buttonText.textContent = "開始中...";
+
+    // ステータスも即座に更新（サーバーレスポンスを待たない）
+    statusDot.className = "status-dot syncing";
+    statusText.textContent = "同期開始中";
+    statusDetail.textContent = "SnapMirror 更新をリクエスト中...";
 
     triggerSync();
   }
@@ -243,9 +248,15 @@
     statusDot.className = "status-dot done";
     statusText.textContent = "同期完了";
 
+    // 完了時刻 + 所要時間を表示
     if (state.completed_at) {
-      const time = new Date(state.completed_at).toLocaleTimeString("ja-JP");
-      statusDetail.textContent = `完了時刻: ${time}`;
+      const completedTime = new Date(state.completed_at).toLocaleTimeString("ja-JP");
+      let detail = `完了時刻: ${completedTime}`;
+      if (state.started_at) {
+        const elapsed = Math.round((new Date(state.completed_at) - new Date(state.started_at)) / 1000);
+        detail += ` (所要時間: ${elapsed}秒)`;
+      }
+      statusDetail.textContent = detail;
     }
 
     // 進捗バーを100%に
@@ -253,6 +264,20 @@
     progressBar.classList.remove("indeterminate");
     progressBar.style.width = "100%";
     setActiveStep(3);
+
+    // 転送情報
+    if (state.bytes_transferred > 0) {
+      transferInfo.style.display = "block";
+      const mb = (state.bytes_transferred / (1024 * 1024)).toFixed(1);
+      bytesTransferred.textContent = `${mb} MB`;
+    } else {
+      // 0 MB の場合はメタデータのみと表示
+      transferInfo.style.display = "block";
+      bytesTransferred.textContent = "メタデータのみ";
+    }
+    if (state.started_at) {
+      startTime.textContent = new Date(state.started_at).toLocaleTimeString("ja-JP");
+    }
 
     // 完了メッセージ
     hideAllMessages();
