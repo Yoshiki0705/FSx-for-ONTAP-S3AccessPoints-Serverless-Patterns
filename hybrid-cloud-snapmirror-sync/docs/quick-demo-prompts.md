@@ -28,6 +28,18 @@ Amazon Quick / Quick Sight を使ったデモで活用できるプロンプト�
 - "What should be checked before the next refresh?"
 - "Flag any files that haven't been updated in 30 days."
 - "Generate a report of today's data sync activity."
+- "Which operational team should review the highest-priority items?"
+- "Create a short summary for the daily operations meeting."
+- "List items that require human review."
+
+## Source-of-Truth Awareness (正本データの意識)
+
+- "Which dataset is the replicated copy, and what is the source-of-record timestamp?"
+- "Show the latest business metrics with the replication timestamp."
+- "Which insights are based on data replicated after the last SnapMirror update?"
+- "Which records changed since the last replication cycle?"
+- "Show the latest replicated timestamp and dashboard refresh timestamp."
+- "Summarize anomalies by site and severity."
 
 ---
 
