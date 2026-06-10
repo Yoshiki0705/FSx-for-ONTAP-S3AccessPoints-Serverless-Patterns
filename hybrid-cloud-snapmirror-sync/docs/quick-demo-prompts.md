@@ -75,3 +75,20 @@ Amazon Quick / Quick Sight を使ったデモで活用できるプロンプト�
 
 This aligns with the principle that generative AI and BI value comes from
 connecting data to business outcomes, not from building another visualization.
+
+
+## Safe Usage Prompts
+
+- "Is this dashboard showing source-of-record data or replicated data?"
+- "What is the latest replicated timestamp?"
+- "Is the data fresh enough for operational review?"
+- "Which insights require human review before action?"
+- "What should not be concluded from this dashboard?"
+
+## AI-Safe Interpretation
+
+- "Which assumptions are behind this insight?"
+- "Which fields are missing or stale?"
+- "Which recommendations require human review?"
+- "What data quality issues should be checked first?"
+- "Is the replicated data fresh enough for this conclusion?"
