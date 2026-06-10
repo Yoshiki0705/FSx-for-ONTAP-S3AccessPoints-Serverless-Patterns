@@ -1,6 +1,6 @@
 # Partner One-Pager: Hybrid Cloud SnapMirror Sync
 
-> 1. This pattern demonstrates how existing enterprise file data on ONTAP can be made available for cloud analytics and BI **without first moving everything into an S3 data lake**.
+> 1. This pattern demonstrates how existing enterprise file data on ONTAP can be made available for cloud analytics and BI **before building or duplicating a separate S3 data lake**.
 > 2. SnapMirror keeps FSx for ONTAP updated as a **near real-time replicated copy**.
 > 3. S3 Access Points expose the replicated file data to AWS services, while **Amazon Quick / Quick Sight provides the business-facing UI**.
 
