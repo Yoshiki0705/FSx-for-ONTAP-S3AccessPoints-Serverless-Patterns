@@ -63,3 +63,19 @@ For regulated industries (healthcare, finance, public sector):
 - Validate encryption requirements (KMS at rest, TLS in transit)
 - Ensure audit retention meets regulatory minimums
 - Confirm that replicated data classification does not exceed the destination environment's security posture
+
+
+## AI / BI Usage Boundary
+
+This pattern can support AI and BI exploration over replicated data.
+However, replicated data must not be used for high-impact automated decisions unless:
+
+- Data classification is reviewed and approved for the use case
+- Freshness SLO is currently met (see `slo-design.md`)
+- Source-of-record timestamp is visible in the AI/BI output
+- Human review workflow is defined for high-impact actions
+- Audit trail is enabled for all AI-generated recommendations
+
+> This pattern does not assume that replicated data is automatically AI-ready.
+> It provides freshness, governance, and observability signals that help determine
+> whether the data is ready for BI, AI, or operational analysis.
