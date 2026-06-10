@@ -57,14 +57,18 @@ def handler(event: dict, context) -> dict:
     # S3AP 名は clone 名から生成（ハイフン区切り、63 文字以内）
     s3ap_name = f"{S3AP_NAME_PREFIX}-{clone_name.replace('_', '-')}"[:63]
 
-    logger.info(json.dumps({
-        "event": "s3ap_provision_request",
-        "clone_name": clone_name,
-        "s3ap_name": s3ap_name,
-        "access_mode": access_mode,
-        "requester": requester,
-        "timestamp": timestamp,
-    }))
+    logger.info(
+        json.dumps(
+            {
+                "event": "s3ap_provision_request",
+                "clone_name": clone_name,
+                "s3ap_name": s3ap_name,
+                "access_mode": access_mode,
+                "requester": requester,
+                "timestamp": timestamp,
+            }
+        )
+    )
 
     if SIMULATION_MODE:
         simulated_alias = f"{s3ap_name}-fhyst3uaibf46uywh5xka84pnz8jaapn1a-ext-s3alias"
@@ -81,7 +85,7 @@ def handler(event: dict, context) -> dict:
             "simulation": True,
             "usage_example": {
                 "python": f's3.list_objects_v2(Bucket="{simulated_alias}", Prefix="data/")',
-                "cli": f'aws s3 ls s3://{simulated_alias}/data/',
+                "cli": f"aws s3 ls s3://{simulated_alias}/data/",
             },
         }
 
