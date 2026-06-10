@@ -368,6 +368,7 @@ curl -sk -u fsxadmin:<password> -X DELETE \
 # Source 側（list-destinations 情報を削除 = snapmirror release 相当）
 curl -sk -u fsxadmin:<password> -X DELETE \
   "https://<Source_Management_IP>/api/snapmirror/relationships/<UUID>?source_info_only=true"
+# ※ HTTP 404 が返る場合は Source に追跡情報がないため正常（スキップ可）
 ```
 
 > ⚠️ `destination_only=true` だけでは Source 側に追跡情報が残り、
