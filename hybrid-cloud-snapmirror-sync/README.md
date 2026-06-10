@@ -207,6 +207,17 @@ docker compose up -d
 
 > The goal is not to demonstrate a dashboard. The goal is to demonstrate how existing enterprise file data can become actionable through AWS analytics and AI services without first moving it into a separate data lake.
 
+## AWS-Native Observability
+
+This pattern can be monitored entirely with AWS-native services — no third-party platforms required.
+
+Amazon CloudWatch provides metrics (EMF), logs, dashboards, alarms, Logs Insights queries, Synthetics canaries, and Application Signals SLOs. AWS X-Ray and ADOT can trace the sync pipeline end-to-end. All events use a shared `correlation_id` for cross-service investigation.
+
+See:
+- [Observability Design](docs/observability-aws-native.md) — Metrics, dashboards, canaries, tracing
+- [Event Schema](docs/observability-events.md) — Structured events, Logs Insights queries
+- [SLO Design](docs/slo-design.md) — 5 SLOs with error budgets and incident response
+
 ## Documentation
 
 | Document | Audience | Content |
