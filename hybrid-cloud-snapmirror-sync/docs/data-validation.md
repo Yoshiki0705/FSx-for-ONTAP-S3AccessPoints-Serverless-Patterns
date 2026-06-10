@@ -3,6 +3,8 @@
 This pattern treats replicated files on FSx for ONTAP as **raw replicated data**.
 Before exposing the data to Amazon Quick / QuickSight or AI services, operators should validate data quality.
 
+> **Scope note**: "Validated" in this pattern means that the dataset passed minimum freshness, schema, and usage-boundary checks for the demo or PoC. It does not imply full enterprise data quality certification. This validation layer is not intended to replace an enterprise data quality platform or transactional data lake.
+
 > Reference: AWS provides an [official Glue ETL tutorial](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html) showing how to read raw data from FSx via S3 Access Points, transform/validate it, and write curated output back to the same FSx volume.
 
 ## Data States
