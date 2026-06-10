@@ -136,8 +136,8 @@ curl -k -u fsxadmin:<password> -X PATCH \
 
 | 間隔 | メリット | デメリット |
 |------|---------|-----------|
-| 1分 | ほぼリアルタイム | ONTAP の負荷増、SnapMirror ログが大量に | 
-| 5分 | デモに十分なリアルタイム性 | ワンクリックなしでも 5 分で同期 |
+| 1分 | Near real-time（注: FSx for ONTAP の最短サポート間隔は5分） | ONTAP 負荷増、ログ大量 | 
+| 5分 | FSx for ONTAP 推奨最短間隔（near real-time） | ワンクリックなしでも 5 分で同期 |
 | 15分 | ONTAP 負荷最小 | ワンクリックがほぼ必須になる |
 
 **デモには 5 分を推奨**。「定期でも同期されるが、ワンクリックで今すぐ」という使い分けを見せるのに最適。
@@ -164,7 +164,7 @@ SnapMirror Initialize（初回同期）:
 
 ## SnapMirror スケジュールの変更方法
 
-### デモ中にリアルタイム性を上げたい場合
+### デモ中にデータ鮮度を上げたい場合
 
 ```bash
 # 1分間隔に変更
@@ -243,4 +243,4 @@ curl -s http://<Sync_Server>:8080/api/health
 curl -s -X POST http://<Sync_Server>:8080/api/sync
 ```
 
-**ポイント**: 定期スケジュール(5分)はバックグラウンドで継続的にデータを保護し、ワンクリックは「来場者がファイルを保存した直後のリアルタイム同期」を演出するためのものです。
+**ポイント**: 定期スケジュール（5分）はバックグラウンドで継続的にデータを保護し、ワンクリックは「来場者がファイルを保存した直後の near real-time 同期」を演出するためのものです。SnapMirror on FSx for ONTAP は volume-level の非同期レプリケーションであり、Synchronous SnapMirror や SVMDR はサポートされていません。
