@@ -4,6 +4,14 @@ Before using replicated FSx for ONTAP data for AI, BI, or natural language analy
 
 > **Important**: This pattern does not assume that replicated data is automatically AI-ready. It provides freshness, governance, and observability signals that help determine whether the data is ready.
 
+## Readiness Levels
+
+| Level | Criteria | Usage |
+|-------|----------|-------|
+| **Ready** | Freshness, governance, quality, and usage boundaries are all satisfied | Safe for BI dashboards, AI prompts, and automated summaries |
+| **Needs review** | One or more checks are incomplete, but human-reviewed use may be acceptable | Acceptable for exploration with explicit caveats |
+| **Not ready** | Freshness unknown, classification missing, owner missing, or high-impact use without review | Do not expose to business users or AI services |
+
 ## Freshness
 
 - [ ] `source_of_record_timestamp` is available
