@@ -221,6 +221,9 @@ docker compose up -d
 | [Cost Estimate](docs/cost-estimate-ja.md) | PM / Finance | AWS cost breakdown |
 | [Deployment Timeline](docs/deployment-timeline-ja.md) | PM / Engineer | Day-by-day plan |
 | [Network Alternatives](docs/network-alternatives-ja.md) | Network engineer | VPN alternatives for venues |
+| [Observability (AWS-native)](docs/observability-aws-native.md) | SRE / DevOps | Metrics, dashboards, canaries, tracing |
+| [Observability Events](docs/observability-events.md) | SRE / Developer | Event schema, Logs Insights queries |
+| [SLO Design](docs/slo-design.md) | SRE / Platform | SLO definitions, error budgets |
 | [Handover Guide](docs/handover-ja.md) | Partner receiving the tool | Quick start + checklist |
 | [Quick Demo Prompts](docs/quick-demo-prompts.md) | Demo operator / business | Sample prompts for Amazon Quick |
 
