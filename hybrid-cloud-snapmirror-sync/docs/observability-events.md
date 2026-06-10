@@ -131,3 +131,13 @@ fields @timestamp, correlation_id, lag_seconds
 ```
 
 > Reference: [CloudWatch Logs Insights Query Syntax](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html)
+
+### Generic: Trace any sync cycle (copy-paste and replace ID)
+
+```sql
+fields @timestamp, event_type, correlation_id, replication_cycle_id, status, lag_seconds, data_age_seconds
+| filter correlation_id = "REPLACE_WITH_CORRELATION_ID"
+| sort @timestamp asc
+```
+
+> **Start here**: When investigating an issue, paste the `correlation_id` from the audit log or alarm notification into this query to see the full timeline of events for that sync cycle.
