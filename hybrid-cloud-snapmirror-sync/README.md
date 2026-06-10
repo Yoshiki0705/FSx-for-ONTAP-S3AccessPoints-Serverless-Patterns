@@ -218,6 +218,17 @@ See:
 - [Event Schema](docs/observability-events.md) — Structured events, Logs Insights queries
 - [SLO Design](docs/slo-design.md) — 5 SLOs with error budgets and incident response
 
+## Data Validation and AI Readiness
+
+This pattern does not assume that replicated data is automatically ready for BI, AI, or operational decisions.
+
+Before Amazon Quick / QuickSight users consume the data, operators should validate freshness, schema expectations, classification, ownership, and usage boundaries. Business users should verify the source-of-record timestamp, replication timestamp, and dashboard refresh timestamp before using insights for operational decisions.
+
+See:
+- [Data Validation](docs/data-validation.md) — Raw → validated → consumption states
+- [Business User Guide](docs/business-user-guide.md) — Dashboard labels, safe usage guidelines
+- [AI Readiness Checklist](docs/ai-readiness-checklist.md) — Pre-AI/BI verification checklist
+
 ## Documentation
 
 | Document | Audience | Content |
@@ -235,6 +246,9 @@ See:
 | [Observability (AWS-native)](docs/observability-aws-native.md) | SRE / DevOps | Metrics, dashboards, canaries, tracing |
 | [Observability Events](docs/observability-events.md) | SRE / Developer | Event schema, Logs Insights queries |
 | [SLO Design](docs/slo-design.md) | SRE / Platform | SLO definitions, error budgets |
+| [Data Validation](docs/data-validation.md) | Data engineer | Raw → validated → consumption |
+| [Business User Guide](docs/business-user-guide.md) | Business user | Dashboard labels, safe usage |
+| [AI Readiness Checklist](docs/ai-readiness-checklist.md) | Data governance / AI | Pre-AI/BI verification |
 | [Handover Guide](docs/handover-ja.md) | Partner receiving the tool | Quick start + checklist |
 | [Quick Demo Prompts](docs/quick-demo-prompts.md) | Demo operator / business | Sample prompts for Amazon Quick |
 
