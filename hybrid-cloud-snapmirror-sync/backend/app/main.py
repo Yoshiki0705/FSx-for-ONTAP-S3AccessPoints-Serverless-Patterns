@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """SnapMirror One-Click Sync — メインアプリケーション."""
 
 import json
@@ -13,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 
 from .config import settings
-from .ontap_client import ontap_client
+from .ontap_client import TransferState, ontap_client
 from .sync_manager import sync_manager
 
 # ロギング設定
@@ -75,7 +73,9 @@ async def lifespan(app: FastAPI):
             if status.healthy:
                 logger.info(f"✅ SnapMirror relationship healthy (state: {status.state.value})")
             else:
-                logger.warning(f"⚠️ SnapMirror relationship unhealthy (state: {status.state.value})")
+                logger.warning(
+                    f"⚠️ SnapMirror relationship unhealthy (state: {status.state.value})"
+                )
                 if status.error_message:
                     logger.warning(f"   Error: {status.error_message}")
         except Exception as e:
@@ -248,9 +248,27 @@ async def serve_js():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        "app.main:app",
-        host=settings.server_host,
-        port=settings.server_port,
-        reload=True,
-    )
+    from .ssl_utils import ensure_ssl_certs
+
+    ssl_certs = ensure_ssl_certs()
+
+    if ssl_certs:
+        cert_file, key_file = ssl_certs
+        print(f"🔒 HTTPS enabled: https://0.0.0.0:{settings.server_port}")
+        print(f"   (Self-signed cert — browser will show security warning on first access)")
+        uvicorn.run(
+            "app.main:app",
+            host=settings.server_host,
+            port=settings.server_port,
+            ssl_keyfile=str(key_file),
+            ssl_certfile=str(cert_file),
+            reload=True,
+        )
+    else:
+        print(f"⚠️  HTTPS unavailable — running HTTP only: http://0.0.0.0:{settings.server_port}")
+        uvicorn.run(
+            "app.main:app",
+            host=settings.server_host,
+            port=settings.server_port,
+            reload=True,
+        )
