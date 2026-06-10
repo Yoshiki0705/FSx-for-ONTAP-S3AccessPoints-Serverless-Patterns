@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SnapMirror Sync</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <h1 class="title">
+                <span class="icon">☁️</span>
+                Hybrid Cloud Sync
+            </h1>
+            <p class="subtitle">オンプレミス → AWS クラウド データ同期</p>
+        </header>
+
+        <!-- 接続警告（SnapMirror unhealthy 時に表示） -->
+        <div class="warning-banner" id="warning-banner" style="display: none;">
+            ⚠️ <span id="warning-text">SnapMirror 関係に問題があります</span>
+        </div>
+
+        <!-- デモモードバッジ -->
+        <div class="demo-badge" id="demo-badge" style="display: none;">
+            🎭 デモモード（ONTAP 未接続）
+        </div>
+
+        <!-- メインコンテンツ -->
+        <main class="main">
+            <!-- ステータスカード -->
+            <div class="status-card" id="status-card">
+                <div class="status-indicator" id="status-indicator">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span class="status-text" id="status-text">接続確認中...</span>
+                </div>
+                <p class="status-detail" id="status-detail"></p>
+            </div>
+
+            <!-- 同期ボタン -->
+            <button class="sync-button" id="sync-button" disabled>
+                <span class="button-icon" id="button-icon">▶</span>
+                <span class="button-text" id="button-text">同期開始</span>
+            </button>
+
+            <!-- 進捗表示 -->
+            <div class="progress-section" id="progress-section" style="display: none;">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div class="progress-steps">
+                    <div class="step" id="step-1">
+                        <div class="step-icon">📁</div>
+                        <div class="step-label">差分検出</div>
+                    </div>
+                    <div class="step" id="step-2">
+                        <div class="step-icon">📡</div>
+                        <div class="step-label">データ転送</div>
+                    </div>
+                    <div class="step" id="step-3">
+                        <div class="step-icon">✅</div>
+                        <div class="step-label">完了</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 転送情報 -->
+            <div class="transfer-info" id="transfer-info" style="display: none;">
+                <div class="info-item">
+                    <span class="info-label">転送データ量:</span>
+                    <span class="info-value" id="bytes-transferred">0 MB</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">開始時刻:</span>
+                    <span class="info-value" id="start-time">--:--:--</span>
+                </div>
+            </div>
+
+            <!-- 完了メッセージ -->
+            <div class="completion-message" id="completion-message" style="display: none;">
+                <div class="completion-icon">🎉</div>
+                <p class="completion-text">データ同期が完了しました！</p>
+                <p class="completion-subtext">AWS 上で最新データを検索できます</p>
+            </div>
+
+            <!-- エラーメッセージ -->
+            <div class="error-message" id="error-message" style="display: none;">
+                <div class="error-icon">⚠️</div>
+                <p class="error-text" id="error-text">エラーが発生しました</p>
+                <button class="retry-button" id="retry-button">リトライ</button>
+            </div>
+        </main>
+
+        <!-- フッター -->
+        <footer class="footer">
+            <div class="architecture-label">
+                <span>On-Premises ONTAP</span>
+                <span class="arrow">→</span>
+                <span>SnapMirror</span>
+                <span class="arrow">→</span>
+                <span>FSx for ONTAP</span>
+                <span class="arrow">→</span>
+                <span>Amazon Quick</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
