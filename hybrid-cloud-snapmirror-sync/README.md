@@ -1,5 +1,7 @@
 # SnapMirror One-Click Sync
 
+[日本語](README.md) | [English](README.en.md)
+
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/badge)](https://scorecard.dev/viewer/?uri=github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 
 > **This pattern is not a data migration demo.**

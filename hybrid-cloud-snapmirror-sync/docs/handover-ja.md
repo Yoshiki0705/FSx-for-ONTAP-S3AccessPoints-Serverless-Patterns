@@ -1,5 +1,7 @@
 # パートナー引き渡しガイド
 
+[日本語](handover-ja.md) | [English](handover-en.md)
+
 ## 引き渡し物一覧
 
 | # | 成果物 | 内容 |

@@ -1,5 +1,7 @@
 # Governance, Audit, and Data Classification
 
+[日本語](governance-and-audit-ja.md) | [English](governance-and-audit.md)
+
 ## Data Classification
 
 | Layer | Data Location | Classification | Owner |

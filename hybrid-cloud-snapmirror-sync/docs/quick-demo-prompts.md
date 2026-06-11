@@ -1,5 +1,7 @@
 # Amazon Quick Demo Prompts
 
+[日本語](quick-demo-prompts-ja.md) | [English](quick-demo-prompts.md)
+
 Amazon Quick / Quick Sight を使ったデモで活用できるプロンプト例・操作シナリオ。
 業務判断と次のアクションにつなげるストーリー構成。
 

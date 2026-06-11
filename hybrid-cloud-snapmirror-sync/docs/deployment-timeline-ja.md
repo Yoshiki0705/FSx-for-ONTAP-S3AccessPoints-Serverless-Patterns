@@ -1,5 +1,7 @@
 # デプロイメントタイムライン
 
+[日本語](deployment-timeline-ja.md) | [English](deployment-timeline-en.md)
+
 パートナーエンジニアが End-to-End で環境を構築するための手順と所要時間。
 
 ---
