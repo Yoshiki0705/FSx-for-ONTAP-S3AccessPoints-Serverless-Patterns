@@ -1,5 +1,7 @@
 # AWS-Native Observability Design
 
+[日本語](observability-aws-native-ja.md) | [English](observability-aws-native.md)
+
 This document defines the observability architecture for the hybrid cloud SnapMirror sync pattern using AWS-native services only.
 
 > This observability design does not require third-party observability platforms. The goal is to make the hybrid data pipeline **explainable** using AWS-native services — so that any operator can answer "Is the data fresh? Is the pipeline healthy? What failed and why?" at any point in time.

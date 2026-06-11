@@ -1,5 +1,7 @@
 # AI Readiness Checklist
 
+[日本語](ai-readiness-checklist-ja.md) | [English](ai-readiness-checklist.md)
+
 Before using replicated FSx for ONTAP data for AI, BI, or natural language analysis, verify:
 
 > **Important**: This pattern does not assume that replicated data is automatically AI-ready. It provides freshness, governance, and observability signals that help determine whether the data is ready.

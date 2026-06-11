@@ -1,5 +1,7 @@
 # デモ当日 運用ガイド
 
+[日本語](operation-guide-ja.md) | [English](operation-guide-en.md)
+
 ## デモの流れ
 
 ```
