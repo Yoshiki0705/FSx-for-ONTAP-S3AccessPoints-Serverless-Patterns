@@ -1,5 +1,7 @@
 # 会場ネットワーク — VPN 代替接続方式
 
+[日本語](network-alternatives-ja.md) | [English](network-alternatives-en.md)
+
 イベント会場のネットワークでは Site-to-Site VPN の構成が困難な場合があります（ルーターへのアクセス権がない等）。本ドキュメントでは代替方式を解説します。
 
 ---

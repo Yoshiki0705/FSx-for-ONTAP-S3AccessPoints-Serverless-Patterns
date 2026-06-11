@@ -1,5 +1,7 @@
 # Observability Event Schema
 
+[日本語](observability-events-ja.md) | [English](observability-events.md)
+
 Structured event schema for the hybrid cloud SnapMirror sync pipeline.
 All events use JSON format and include a `correlation_id` for end-to-end tracing.
 

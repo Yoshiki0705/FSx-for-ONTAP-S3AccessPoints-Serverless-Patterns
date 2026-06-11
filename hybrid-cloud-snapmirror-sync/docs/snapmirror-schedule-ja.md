@@ -1,5 +1,7 @@
 # SnapMirror スケジュールと同期間隔の設計
 
+[日本語](snapmirror-schedule-ja.md) | [English](snapmirror-schedule-en.md)
+
 ## このツールの位置づけ
 
 SnapMirror には2つの転送トリガーがあります:
