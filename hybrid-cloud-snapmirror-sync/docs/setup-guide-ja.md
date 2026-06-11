@@ -1,5 +1,7 @@
 # セットアップガイド
 
+[日本語](setup-guide-ja.md) | [English](setup-guide-en.md)
+
 ## 前提条件
 
 ### ハードウェア/ソフトウェア

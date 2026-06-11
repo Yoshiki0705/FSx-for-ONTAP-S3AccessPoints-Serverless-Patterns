@@ -1,5 +1,7 @@
 # アーキテクチャ
 
+[日本語](architecture.md) | [English](architecture-en.md)
+
 ## 全体構成
 
 ```

@@ -1,5 +1,7 @@
 # Business User Guide
 
+[日本語](business-user-guide-ja.md) | [English](business-user-guide.md)
+
 This guide is for business users who access dashboards and insights built on replicated data from FSx for ONTAP via Amazon Quick / QuickSight.
 
 ## Before Making Decisions, Check:

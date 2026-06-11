@@ -1,5 +1,7 @@
 # Data Freshness and RPO
 
+[日本語](data-freshness-ja.md) | [English](data-freshness.md)
+
 ## Replication Model
 
 This pattern uses **scheduled asynchronous SnapMirror replication** from on-premises ONTAP to Amazon FSx for NetApp ONTAP. Per AWS documentation, replication can be scheduled as frequently as every 5 minutes.

@@ -1,5 +1,7 @@
 # Data Validation Before Consumption
 
+[日本語](data-validation-ja.md) | [English](data-validation.md)
+
 This pattern treats replicated files on FSx for ONTAP as **raw replicated data**.
 Before exposing the data to Amazon Quick / QuickSight or AI services, operators should validate data quality.
 

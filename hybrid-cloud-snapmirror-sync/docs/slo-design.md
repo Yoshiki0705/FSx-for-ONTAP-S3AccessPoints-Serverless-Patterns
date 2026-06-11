@@ -1,5 +1,7 @@
 # SLO Design
 
+[日本語](slo-design-ja.md) | [English](slo-design.md)
+
 Service Level Objectives for the hybrid cloud SnapMirror sync pattern,
 designed for CloudWatch Application Signals.
 
