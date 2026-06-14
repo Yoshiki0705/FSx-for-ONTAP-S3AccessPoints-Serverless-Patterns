@@ -101,7 +101,10 @@ def main() -> int:
         findings = scan_file(filepath)
         for line_no, model_id, line_content in findings:
             info = DEPRECATED_MODELS[model_id]
-            warnings.append(f"  {filepath}:{line_no} — {model_id}\n    Status: {info['status']}")
+            warnings.append(
+                f"  {filepath}:{line_no} — {model_id}\n"
+                f"    Status: {info['status']}"
+            )
 
     if warnings:
         print(f"⚠️  {len(warnings)} deprecated model reference(s) in docs (warning):")
