@@ -1,9 +1,0 @@
-# Requires Python 3.10-3.13 (3.14+ is not supported by pydantic-core; use Docker instead)
-# For Python 3.9: also install eval_type_backport
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-httpx==0.28.1
-python-dotenv==1.0.1
-pydantic==2.10.4
-pydantic-settings==2.7.1
-eval-type-backport==0.2.2
