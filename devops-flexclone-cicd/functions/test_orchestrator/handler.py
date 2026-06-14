@@ -60,18 +60,14 @@ def handler(event: dict, context) -> dict:
     pipeline_run_id = event.get("pipeline_run_id", "unknown")
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    logger.info(
-        json.dumps(
-            {
-                "event": "test_orchestration_start",
-                "s3ap_alias": s3ap_alias,
-                "clone_name": clone_name,
-                "test_suite": test_suite,
-                "pipeline_run_id": pipeline_run_id,
-                "timestamp": timestamp,
-            }
-        )
-    )
+    logger.info(json.dumps({
+        "event": "test_orchestration_start",
+        "s3ap_alias": s3ap_alias,
+        "clone_name": clone_name,
+        "test_suite": test_suite,
+        "pipeline_run_id": pipeline_run_id,
+        "timestamp": timestamp,
+    }))
 
     # 1. データ可用性チェック
     _verify_data_availability(s3ap_alias, test_config)
@@ -104,7 +100,6 @@ def _verify_data_availability(s3ap_alias: str, test_config: dict) -> dict:
         return {"available": True, "latency_ms": 12, "object_count": 1000}
 
     import boto3
-
     s3 = boto3.client("s3")
     prefix = test_config.get("data_prefix", "")
 
@@ -169,7 +164,6 @@ def _save_results(pipeline_run_id: str, test_results: dict, timestamp: str) -> s
 
     if S3_RESULTS_BUCKET:
         import boto3
-
         s3 = boto3.client("s3")
         s3.put_object(
             Bucket=S3_RESULTS_BUCKET,
@@ -189,18 +183,14 @@ def _notify_completion(pipeline_run_id: str, test_results: dict, requester: str)
 
     if SNS_TOPIC_ARN:
         import boto3
-
         sns = boto3.client("sns")
         status = "✅ PASSED" if test_results.get("failed", 0) == 0 else "❌ FAILED"
         sns.publish(
             TopicArn=SNS_TOPIC_ARN,
             Subject=f"[CI/CD] Test {status} — {pipeline_run_id}",
-            Message=json.dumps(
-                {
-                    "pipeline_run_id": pipeline_run_id,
-                    "requester": requester,
-                    "results": test_results,
-                },
-                indent=2,
-            ),
+            Message=json.dumps({
+                "pipeline_run_id": pipeline_run_id,
+                "requester": requester,
+                "results": test_results,
+            }, indent=2),
         )

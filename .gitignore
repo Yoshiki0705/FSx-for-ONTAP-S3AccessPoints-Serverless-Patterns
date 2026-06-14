@@ -153,3 +153,13 @@ scripts/_lint_all_9_tmp.sh
 docs/devto/
 docs/article-update-draft-*.md
 docs/screenshots/raw/
+
+# Per-UC screenshots — originals contain account/resource IDs (gitignored), masked are tracked
+**/docs/screenshots/originals/
+**/docs/screenshots/MASK_GUIDE.md
+
+# RAG eval reports may contain S3 AP alias / environment specifics
+**/evaluation/eval-report*.json
+
+# Per-UC verification results contain account IDs, S3 AP aliases, resource IDs
+**/docs/verification-results.md
