@@ -1,0 +1,9 @@
+{
+  "action": "create_action_item",
+  "params": {
+    "title": "Acme Corp 向けPoC日程を調整する",
+    "assignee": "sales-a",
+    "due": "2026-02-10",
+    "role": "sales"
+  }
+}

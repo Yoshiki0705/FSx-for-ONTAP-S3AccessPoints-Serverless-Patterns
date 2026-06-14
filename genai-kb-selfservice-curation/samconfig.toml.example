@@ -1,0 +1,36 @@
+# samconfig.toml.example — genai-kb-selfservice-curation (UC29)
+#
+# 使用方法:
+#   1. このファイルを samconfig.toml にコピー
+#   2. <PLACEHOLDER> を実際の値に置き換え
+#   3. Knowledge Base / データソースを scripts/create_bedrock_kb.py か
+#      Bedrock コンソールで作成し、その ID を設定
+#   4. sam deploy を実行
+#
+# 注意: samconfig.toml は .gitignore に含まれています
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-s3ap-genai-kb-selfservice-curation"
+resolve_s3 = true
+s3_prefix = "fsxn-s3ap-genai-kb-selfservice-curation"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "S3AccessPointAlias=<YOUR_S3AP_ALIAS>-ext-s3alias",
+    "S3AccessPointName=<YOUR_S3AP_NAME>",
+    "KnowledgeBaseId=<YOUR_KB_ID>",
+    "DataSourceId=<YOUR_DATA_SOURCE_ID>",
+    "IngestionPrefix=",
+    "BedrockLlmModelId=amazon.nova-pro-v1:0",
+    "SyncScheduleExpression=rate(15 minutes)",
+    "NotificationEmail=",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true

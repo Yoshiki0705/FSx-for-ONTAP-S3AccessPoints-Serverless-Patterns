@@ -42,6 +42,8 @@
 | UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | 不動産 | 物件画像分析・契約書データ抽出 |
 | UC27 | [`hr-document-screening/`](hr-document-screening/) | 人材・HR | 履歴書スクリーニング・候補者評価 |
 | UC28 | [`chemical-sds-management/`](chemical-sds-management/) | 化学・素材 | SDS 管理・ラボノート分析 |
+| UC29 | [`genai-kb-selfservice-curation/`](genai-kb-selfservice-curation/) | 全業界横断 | セルフサービス AI ナレッジ運用（マネージド Bedrock KB + Windows ドラッグ&ドロップ） |
+| UC30 | [`genai-quick-agentic-workspace/`](genai-quick-agentic-workspace/) | 全業界横断 | Amazon Quick エージェント型ワークスペース（Index/Sight/Flows + S3 AP データ基盤） |
 
 ### FlexCache / FlexClone パターン (FC1-FC7)
 
@@ -504,6 +506,8 @@ EventBridge Scheduler (定期実行)
 | UC26 | 不動産 (ポートフォリオ) | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
 | UC27 | 人材・HR (履歴書) | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
 | UC28 | 化学・素材 (SDS) | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
+| UC29 | 全業界横断 (セルフサービス KB) | [📐 Architecture](genai-kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](genai-kb-selfservice-curation/docs/demo-guide.md) |
+| UC30 | 全業界横断 (Amazon Quick) | [📐 Architecture](genai-quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](genai-quick-agentic-workspace/docs/demo-guide.md) |
 
 ### UI/UX スクリーンショット（エンドユーザー / 職員 / 担当者向け画面）
 
