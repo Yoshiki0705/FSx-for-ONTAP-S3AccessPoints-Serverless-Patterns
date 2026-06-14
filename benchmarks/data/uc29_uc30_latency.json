@@ -1,0 +1,48 @@
+{
+  "benchmark_run_id": "20260612T040708Z",
+  "test_environment": {
+    "region": "ap-northeast-1",
+    "s3ap_alias": "v4testkbsync-f4uup1usns9zk3abn7qo413kcgzgrapn1a-ext-s3alias",
+    "prefix": "ai-knowledge/",
+    "network_origin": "Internet",
+    "concurrent_workload": "none-known",
+    "client_location": "outside-vpc"
+  },
+  "test_parameters": {
+    "iterations": 30,
+    "warmup": 3,
+    "sample_key_present": true
+  },
+  "results": {
+    "list_objects_v2": {
+      "samples": 30,
+      "mean_ms": 41.01,
+      "p50_ms": 40.65,
+      "p90_ms": 43.61,
+      "p95_ms": 44.62,
+      "p99_ms": 45.77,
+      "max_ms": 45.77,
+      "std_dev_ms": 2.01,
+      "error_count": 0,
+      "error_rate_pct": 0.0
+    },
+    "get_object": {
+      "samples": 30,
+      "mean_ms": 57.48,
+      "p50_ms": 56.91,
+      "p90_ms": 59.33,
+      "p95_ms": 61.16,
+      "p99_ms": 74.0,
+      "max_ms": 74.0,
+      "std_dev_ms": 3.54,
+      "error_count": 0,
+      "error_rate_pct": 0.0
+    }
+  },
+  "caveats": [
+    "特定の検証環境での結果であり、本番保証値ではない（sizing reference / not a service limit）。",
+    "FSx ONTAP スループットは NFS/SMB/S3AP 共有。同時ワークロードの有無を併記。",
+    "平均ではなく P99/tail を sizing シグナルとして解釈すること。",
+    "料金・サービス仕様は time-sensitive。"
+  ]
+}

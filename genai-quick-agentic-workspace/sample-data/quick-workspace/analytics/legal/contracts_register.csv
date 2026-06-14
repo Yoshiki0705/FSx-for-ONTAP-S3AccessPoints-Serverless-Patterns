@@ -1,0 +1,5 @@
+contract_id,counterparty,type,expiry_date,status
+C-3001,Acme Corp,NDA,2027-01-31,active
+C-3002,Beta Foods,MSA,2026-03-15,review
+C-3003,Gamma Logistics,DPA,2026-06-30,active
+C-3004,Delta Retail,NDA,2026-02-20,expiring

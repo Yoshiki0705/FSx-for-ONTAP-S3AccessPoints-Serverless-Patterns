@@ -1,0 +1,9 @@
+{
+  "action": "create_action_item",
+  "params": {
+    "title": "Sev2インシデントの恒久対応タスクを作成する",
+    "assignee": "it-oncall",
+    "due": "2026-01-30",
+    "role": "information-technology"
+  }
+}

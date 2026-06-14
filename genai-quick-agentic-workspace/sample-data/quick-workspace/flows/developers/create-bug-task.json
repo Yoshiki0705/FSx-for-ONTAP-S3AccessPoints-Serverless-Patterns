@@ -1,0 +1,9 @@
+{
+  "action": "create_action_item",
+  "params": {
+    "title": "change_fail_pct 上昇週の原因調査タスクを作成する",
+    "assignee": "platform",
+    "due": "2026-02-03",
+    "role": "developers"
+  }
+}
