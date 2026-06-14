@@ -113,22 +113,6 @@ Globals:
         PII_MODE: !Ref PiiMode
         POWERTOOLS_SERVICE_NAME: hr-document-screening
 
-Conditions:
-  IsPolling:
-    !Equals [!Ref TriggerMode, "POLLING"]
-  IsEventDriven:
-    !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
-  IsHybrid:
-    !Equals [!Ref TriggerMode, "HYBRID"]
-  IsPollingOrHybrid:
-    !Or
-      - !Condition IsPolling
-      - !Condition IsHybrid
-  IsEventDrivenOrHybrid:
-    !Or
-      - !Condition IsEventDriven
-      - !Condition IsHybrid
-
 Resources:
   DiscoveryFunction:
     Type: AWS::Serverless::Function
