@@ -1,0 +1,42 @@
+name: RAG Eval (UC29)
+
+# RAG 品質評価（GENOPS01）。
+# - PR/push: 評価スコアリングの単体テスト + モックハーネス（AWS 不要）
+# - 定期/手動: 実 AWS 評価は OIDC ロール設定時のみ（docs/evaluation.md 参照、ここでは実行しない）
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'genai-kb-selfservice-curation/evaluation/**'
+      - 'genai-kb-selfservice-curation/functions/query/**'
+      - '.github/workflows/rag-eval.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eval-logic:
+    name: Eval scoring tests + mock harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dev deps
+        run: pip install -r requirements-dev.txt
+      - name: Eval scoring unit tests
+        run: pytest genai-kb-selfservice-curation/tests/test_eval.py -v
+      - name: Mock harness run (no AWS)
+        working-directory: genai-kb-selfservice-curation/evaluation
+        run: |
+          python3 run_eval.py --mock fixtures-sample.json --threshold 0.8
+
+  # 実 AWS に対する定期評価は、OIDC ロールを設定の上で別途有効化する。
+  # 手順は docs/evaluation.md（Bedrock KB 評価ジョブ / RAGAS）を参照。

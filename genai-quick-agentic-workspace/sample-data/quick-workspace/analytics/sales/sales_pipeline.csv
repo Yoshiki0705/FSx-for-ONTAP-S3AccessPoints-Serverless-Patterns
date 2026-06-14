@@ -1,0 +1,7 @@
+deal_id,stage,amount_jpy,owner
+D-1001,Prospecting,480000,sales-a
+D-1002,Qualification,1440000,sales-a
+D-1003,Negotiation,2400000,sales-b
+D-1004,Negotiation,960000,sales-b
+D-1005,ClosedWon,1920000,sales-c
+D-1006,ClosedLost,720000,sales-c

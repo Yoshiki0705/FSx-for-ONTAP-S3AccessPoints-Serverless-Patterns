@@ -1,0 +1,9 @@
+{
+  "action": "create_action_item",
+  "params": {
+    "title": "期限切れ間近の契約（Delta Retail NDA）のレビューを依頼する",
+    "assignee": "legal",
+    "due": "2026-02-15",
+    "role": "legal"
+  }
+}

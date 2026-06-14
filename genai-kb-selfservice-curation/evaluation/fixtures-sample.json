@@ -1,0 +1,8 @@
+{
+  "sales-1": {"answer": "製品Xの計量範囲は0.1g〜30kg、価格帯は標準モデル¥480,000〜です。", "citations": [{"source": "s3://example/ai-knowledge/sales/product-catalog/product-x-spec.md"}]},
+  "ops-1": {"answer": "受注処理の標準納期は受注確定から5営業日です。", "citations": [{"source": "s3://example/ai-knowledge/operations/sop/order-fulfillment-sop.md"}]},
+  "legal-1": {"answer": "NDAの秘密保持義務は契約終了後3年間存続します。", "citations": [{"source": "s3://example/ai-knowledge/legal/contracts/nda-template.md"}]},
+  "it-1": {"answer": "Sev1の初動目標は15分以内です。", "citations": [{"source": "s3://example/ai-knowledge/information-technology/runbooks/incident-response-runbook.md"}]},
+  "finance-1": {"answer": "経費精算は発生月の翌月10営業日以内に申請します。", "citations": [{"source": "s3://example/ai-knowledge/finance/policies/expense-reimbursement-policy.md"}]},
+  "noanswer-1": {"answer": "検索結果には情報が含まれていません。", "citations": []}
+}

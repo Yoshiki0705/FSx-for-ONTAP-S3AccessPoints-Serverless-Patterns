@@ -1,0 +1,9 @@
+{
+  "action": "create_action_item",
+  "params": {
+    "title": "SLA未達日の遅延要因を調査しエスカレーションする",
+    "assignee": "operations",
+    "due": "2026-01-31",
+    "role": "operations"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "action": "create_action_item",
+  "params": {
+    "title": "AI/ML予算の超過（実績>計画）を確認しレビューを依頼する",
+    "assignee": "finance",
+    "due": "2026-02-05",
+    "role": "finance"
+  }
+}

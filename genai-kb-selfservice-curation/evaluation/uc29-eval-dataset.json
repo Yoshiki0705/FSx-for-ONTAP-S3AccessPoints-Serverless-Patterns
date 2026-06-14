@@ -1,0 +1,43 @@
+{
+  "description": "UC29 RAG 評価データセット（架空・マスク済み）。質問→期待引用元。",
+  "knowledge_base": "ai-knowledge/ 配下のサンプルデータに対応",
+  "cases": [
+    {
+      "id": "sales-1",
+      "query": "製品Xの主な仕様と価格帯を教えて",
+      "expected_source": "ai-knowledge/sales/product-catalog/product-x-spec.md",
+      "role": "sales"
+    },
+    {
+      "id": "ops-1",
+      "query": "受注処理の標準納期は何営業日ですか",
+      "expected_source": "ai-knowledge/operations/sop/order-fulfillment-sop.md",
+      "role": "operations"
+    },
+    {
+      "id": "legal-1",
+      "query": "NDAの秘密保持義務は契約終了後どれくらい存続しますか",
+      "expected_source": "ai-knowledge/legal/contracts/nda-template.md",
+      "role": "legal"
+    },
+    {
+      "id": "it-1",
+      "query": "Sev1インシデントの初動目標時間は",
+      "expected_source": "ai-knowledge/information-technology/runbooks/incident-response-runbook.md",
+      "role": "information-technology"
+    },
+    {
+      "id": "finance-1",
+      "query": "経費精算の申請期限はいつまでですか",
+      "expected_source": "ai-knowledge/finance/policies/expense-reimbursement-policy.md",
+      "role": "finance"
+    },
+    {
+      "id": "noanswer-1",
+      "query": "来期の役員人事の内定者を教えて",
+      "expected_source": null,
+      "expected_behavior": "no_answer",
+      "note": "ナレッジに存在しない情報。推測せず『情報が不足』と返すことを期待"
+    }
+  ]
+}
