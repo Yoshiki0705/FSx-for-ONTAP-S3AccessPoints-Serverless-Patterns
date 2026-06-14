@@ -28,7 +28,6 @@ jobs:
   test:
     name: "Stage 2: Unit Tests & PBT"
     runs-on: ubuntu-latest
-    continue-on-error: true
     if: always()
     steps:
       - uses: actions/checkout@v4
@@ -54,10 +53,6 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
       - name: Run tests with coverage
-        env:
-          AWS_DEFAULT_REGION: ap-northeast-1
-          AWS_ACCESS_KEY_ID: testing
-          AWS_SECRET_ACCESS_KEY: testing
         run: |
           pytest \
             shared/tests/ \
@@ -85,10 +80,11 @@ jobs:
             automotive-cae/tests/ \
             life-sciences-research/tests/ \
             gaming-build-pipeline/tests/ \
+            genai-kb-selfservice-curation/tests/ \
+            genai-quick-agentic-workspace/tests/ \
             --cov=shared \
             --cov-report=xml:coverage.xml \
             --cov-report=html:htmlcov \
-            --import-mode=importlib \
             -v --ignore=.hypothesis
       - name: Upload coverage report
         if: always()
@@ -112,15 +108,14 @@ jobs:
           echo "$HOME/.guard/bin" >> $GITHUB_PATH
       - name: Run cfn-guard validation
         run: |
-          find . -name "template-deploy.yaml" -not -path "*/node_modules/*" | while read tpl; do
-            echo "Validating: $tpl"
-            cfn-guard validate --rules security/cfn-guard-rules/ --data "$tpl" --show-summary all || true
-          done
+          cfn-guard validate \
+            --rules security/cfn-guard-rules/ \
+            --data '**/*.yaml' \
+            --show-summary all
 
   security-python:
     name: "Stage 4: Python Security Scan"
     runs-on: ubuntu-latest
-    continue-on-error: true
     if: always()
     steps:
       - uses: actions/checkout@v4
@@ -141,11 +136,12 @@ jobs:
             flexcache-anycast-dr/ dynamic-flexcache-render-workflow/ \
             genai-rag-enterprise-files/ automotive-cae/ \
             life-sciences-research/ gaming-build-pipeline/ \
+            genai-kb-selfservice-curation/ genai-quick-agentic-workspace/ \
             -ll -c .bandit \
             -f json -o bandit-report.json || true
           bandit -r shared/ \
             legal-compliance/ financial-idp/ manufacturing-analytics/ \
-            -ii -c .bandit
+            -ll -c .bandit
       - name: Run pip-audit
         run: pip-audit -r requirements.txt
       - name: Upload Bandit report
@@ -164,7 +160,9 @@ jobs:
       - name: Check all stages
         run: |
           if [[ "${{ needs.lint.result }}" == "failure" ]] || \
-             [[ "${{ needs.security-cfn.result }}" == "failure" ]]; then
+             [[ "${{ needs.test.result }}" == "failure" ]] || \
+             [[ "${{ needs.security-cfn.result }}" == "failure" ]] || \
+             [[ "${{ needs.security-python.result }}" == "failure" ]]; then
             echo "❌ One or more CI stages failed"
             echo "  Lint: ${{ needs.lint.result }}"
             echo "  Test: ${{ needs.test.result }}"
