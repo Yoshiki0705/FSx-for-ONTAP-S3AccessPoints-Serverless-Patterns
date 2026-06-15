@@ -299,6 +299,12 @@ KB Trigger Lambda を起動:
 KB Trigger Lambda は `StartIngestionJob` を呼び出し（デバウンス: 直近 N 秒以内に既に
 起動済みの場合はスキップ）。
 
+> 📸 EventBridge ルール詳細（FPolicy イベントパターン、実機実証済み）:
+> [`docs/screenshots/masked/scenario-c-eventbridge-rule.png`](screenshots/masked/scenario-c-eventbridge-rule.png)
+>
+> 合成 FPolicy イベント注入で `EventBridge ルール → KB Trigger Lambda → StartIngestionJob` を実証。
+> 詳細は [verification-results.md](verification-results.md)。
+
 ### C-4. リアルタイム反映の確認
 
 FPolicy 検知から数十秒〜数分で KB に反映。手動での同期操作もスケジュール待ちも不要:

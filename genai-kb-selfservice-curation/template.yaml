@@ -54,8 +54,34 @@ Parameters:
     Default: ''
     Description: 同期結果の通知先メールアドレス
 
+  # --- Scenario C: FPolicy イベント駆動（リアルタイム同期） ---
+  EnableScenarioC:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: >
+      シナリオ C（FPolicy イベント駆動リアルタイム同期）を有効化する。
+      true の場合、KB Trigger Lambda と EventBridge ルールを作成する。
+      event-driven-fpolicy スタックの FPolicy EventBus が前提。
+
+  FPolicyEventBusName:
+    Type: String
+    Default: 'fsxn-fpolicy-events'
+    Description: >
+      FPolicy EventBridge カスタムバス名（event-driven-fpolicy スタックで作成）。
+      シナリオ C 有効時に、このバス上にルーティングルールを作成する。
+
+  FPolicyVolumePathPrefix:
+    Type: String
+    Default: 'ai_knowledge'
+    Description: >
+      FPolicy が報告する ONTAP ボリュームパスのプレフィックス（EventBridge ルールの
+      一次フィルタおよび Lambda の二次フィルタに使用）。S3 取り込みプレフィックスとは
+      別名前空間（FPolicy は /<volume>/... を報告）。
+
 Conditions:
   HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+  IsScenarioCEnabled: !Equals [!Ref EnableScenarioC, 'true']
 
 Resources:
   # --- SNS Topic（同期結果通知） ---
@@ -456,6 +482,113 @@ Resources:
           ]
         }
 
+  # ============================================================
+  # Scenario C: FPolicy イベント駆動リアルタイム同期（EnableScenarioC=true 時のみ）
+  # ============================================================
+
+  # --- KB Trigger Lambda 用 IAM Role ---
+  KbTriggerRole:
+    Type: AWS::IAM::Role
+    Condition: IsScenarioCEnabled
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: KbTriggerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:StartIngestionJob
+                  - bedrock:ListIngestionJobs
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/${KnowledgeBaseId}'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+
+  # --- KB Trigger Lambda（FPolicy イベント → StartIngestionJob、デバウンス付き） ---
+  KbTriggerFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsScenarioCEnabled
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/kb_trigger/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt KbTriggerRole.Arn
+      Environment:
+        Variables:
+          KNOWLEDGE_BASE_ID: !Ref KnowledgeBaseId
+          DATA_SOURCE_ID: !Ref DataSourceId
+          FPOLICY_PATH_FILTER: !Ref FPolicyVolumePathPrefix
+          NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
+
+  # --- EventBridge ルール（ai-knowledge/ プレフィックスの FPolicy イベントをルーティング） ---
+  KbTriggerEventRule:
+    Type: AWS::Events::Rule
+    Condition: IsScenarioCEnabled
+    Properties:
+      Name: !Sub '${AWS::StackName}-fpolicy-kb-trigger'
+      Description: 'UC29 Scenario C: route FPolicy ai-knowledge file events to KB Trigger Lambda'
+      EventBusName: !Ref FPolicyEventBusName
+      EventPattern:
+        source:
+          - 'fsxn.fpolicy'
+        detail-type:
+          - 'FPolicy File Operation'
+        detail:
+          file_path:
+            - prefix: !Ref FPolicyVolumePathPrefix
+      State: ENABLED
+      Targets:
+        - Id: kb-trigger-lambda
+          Arn: !GetAtt KbTriggerFunction.Arn
+
+  # --- EventBridge → Lambda 呼び出し許可 ---
+  KbTriggerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Condition: IsScenarioCEnabled
+    Properties:
+      FunctionName: !Ref KbTriggerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt KbTriggerEventRule.Arn
+
+  # --- CloudWatch アラーム（KB Trigger エラー監視） ---
+  KbTriggerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsScenarioCEnabled
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-kbtrigger-errors'
+      AlarmDescription: KB Trigger Lambda のエラー検知（シナリオ C）
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref KbTriggerFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmsTopic
+
 Outputs:
   AutoSyncFunctionArn:
     Description: Auto-Sync Lambda ARN（差分検知 + Ingestion 起動）。シナリオAの手動同期にも使用
@@ -472,3 +605,7 @@ Outputs:
   NotificationTopicArn:
     Description: 同期結果通知 SNS Topic ARN
     Value: !Ref NotificationTopic
+  KbTriggerFunctionArn:
+    Condition: IsScenarioCEnabled
+    Description: KB Trigger Lambda ARN（シナリオC FPolicy イベント駆動リアルタイム同期）
+    Value: !GetAtt KbTriggerFunction.Arn
