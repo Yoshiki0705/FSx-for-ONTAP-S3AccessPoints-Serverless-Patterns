@@ -163,3 +163,4 @@ docs/screenshots/raw/
 
 # Per-UC verification results contain account IDs, S3 AP aliases, resource IDs
 **/docs/verification-results.md
+.playwright-mcp/
