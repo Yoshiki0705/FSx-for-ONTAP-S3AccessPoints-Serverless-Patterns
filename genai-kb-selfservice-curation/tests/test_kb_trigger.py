@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import pytest
+from botocore.exceptions import ClientError
 from unittest.mock import patch
 
 
@@ -98,17 +100,75 @@ class TestKbTrigger:
         assert result["status"] == "ingestion_started"
         assert result["operation"] == "delete"
 
-    def test_start_ingestion_failure_returns_error(self):
+    def test_start_ingestion_unexpected_error_reraises(self):
+        """予期せぬ例外は再送出され、Lambda 非同期リトライ/DLQ を発火させる。"""
         module = _load_handler()
         with patch.dict(os.environ, ENV, clear=False):
             with patch.object(module, "_find_active_ingestion_job", return_value=None):
                 with patch.object(
                     module.bedrock_agent,
                     "start_ingestion_job",
-                    side_effect=Exception("throttled"),
+                    side_effect=Exception("unexpected"),
+                ):
+                    with pytest.raises(Exception, match="unexpected"):
+                        module.handler(_fpolicy_event(), _Ctx())
+
+    def test_start_ingestion_throttling_reraises(self):
+        """ThrottlingException など ClientError（Conflict 以外）は再送出される。"""
+        module = _load_handler()
+        err = ClientError(
+            {"Error": {"Code": "ThrottlingException", "Message": "rate exceeded"}},
+            "StartIngestionJob",
+        )
+        with patch.dict(os.environ, ENV, clear=False):
+            with patch.object(module, "_find_active_ingestion_job", return_value=None):
+                with patch.object(
+                    module.bedrock_agent, "start_ingestion_job", side_effect=err
+                ):
+                    with pytest.raises(ClientError):
+                        module.handler(_fpolicy_event(), _Ctx())
+
+    def test_conflict_exception_treated_as_skip(self):
+        """検知とジョブ開始の競合（ConflictException）は進行中扱いでスキップ（リトライ不要）。"""
+        module = _load_handler()
+        err = ClientError(
+            {"Error": {"Code": "ConflictException", "Message": "ongoing ingestion job"}},
+            "StartIngestionJob",
+        )
+        with patch.dict(os.environ, ENV, clear=False):
+            with patch.object(module, "_find_active_ingestion_job", return_value=None):
+                with patch.object(
+                    module.bedrock_agent, "start_ingestion_job", side_effect=err
                 ):
                     result = module.handler(_fpolicy_event(), _Ctx())
-        assert result["status"] == "error"
+        assert result["status"] == "ingestion_in_progress"
+        assert result["reason"] == "conflict_exception"
+
+    def test_documented_schema_contract(self):
+        """デモガイドに記載のイベント本体スキーマ（operation_type/file_path）で動作する。"""
+        module = _load_handler()
+        # demo-guide / fpolicy-event-schema.json と同じフィールド名
+        event = {
+            "source": "fsxn.fpolicy",
+            "detail-type": "FPolicy File Operation",
+            "detail": {
+                "event_id": "33333333-3333-4333-8333-333333333333",
+                "operation_type": "create",
+                "file_path": "ai_knowledge/legal/contracts/nda.md",
+                "volume_name": "ai_knowledge",
+                "svm_name": "uc29demosvm",
+                "timestamp": "2026-06-16T01:00:00Z",
+                "file_size": 512,
+            },
+        }
+        start_resp = {"ingestionJob": {"ingestionJobId": "JOBSCHEMA"}}
+        with patch.dict(os.environ, ENV, clear=False):
+            with patch.object(module, "_find_active_ingestion_job", return_value=None):
+                with patch.object(
+                    module.bedrock_agent, "start_ingestion_job", return_value=start_resp
+                ):
+                    result = module.handler(event, _Ctx())
+        assert result["status"] == "ingestion_started"
 
     def test_find_active_job_returns_id(self):
         module = _load_handler()

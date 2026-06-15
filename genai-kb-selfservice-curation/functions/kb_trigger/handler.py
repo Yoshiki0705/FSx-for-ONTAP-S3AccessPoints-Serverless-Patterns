@@ -6,9 +6,28 @@ Bedrock Knowledge Base の Ingestion をリアルタイムで起動する。
 シナリオ B（EventBridge Scheduler の定期ポーリング）と異なり、
 ファイルが SMB/NFS で配置された瞬間に同期を開始する。
 
-デバウンス: 進行中の Ingestion ジョブがある場合は新規起動をスキップする
-（Bedrock KB はデータソースあたり同時に 1 ジョブのみ。実行中ジョブが
-完了後の残りファイルは次イベントまたは定期同期で取り込まれる）。
+## デバウンスと取りこぼし対策（重要）
+
+Bedrock KB はデータソースあたり同時に 1 ジョブのみ実行できる。本ハンドラーは進行中の
+Ingestion ジョブがある場合、新規起動を**スキップ**する（ConflictException も同様に扱う）。
+
+Ingestion はジョブ開始時点のソース全走査であるため、**ジョブ実行中に追加された
+ファイルのイベントはスキップされ、その実行には含まれない**（lost-update window）。
+このため、シナリオ C は単独で「取りこぼしゼロ」を保証しない。
+
+**必須の対策**: シナリオ C は**シナリオ B（EventBridge Scheduler による定期リコンサイル
+同期）と併用**すること。B が定期的に全 List 差分を取り、C のウィンドウで取りこぼした
+ファイルを後追いで取り込む安全網となる。C 単独運用は許容されない（README/設計ノート参照）。
+
+## エラーハンドリング
+
+- 進行中ジョブ検知 / ConflictException → スキップ（正常終了、リトライ不要）
+- 設定不備・フィルタ不一致 → スキップ（正常終了）
+- それ以外の予期せぬ例外 → **再送出**。これは Lambda の**実行失敗**となり、関数の
+  `EventInvokeConfig.OnFailure`（SQS DLQ）で捕捉される（CFn 側で設定）。
+  なお EventBridge ターゲットの `DeadLetterConfig` は EventBridge→Lambda の**配信失敗**
+  （スロットリング等）専用で、実行失敗は捕捉しない点に注意。
+- 追加の安全網: CloudWatch Errors アラーム + シナリオ B の定期リコンサイル。
 
 Environment Variables:
     KNOWLEDGE_BASE_ID: 対象 Bedrock Knowledge Base ID
@@ -27,6 +46,7 @@ import os
 from typing import Any
 
 import boto3
+from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -48,13 +68,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     Returns:
         dict: トリガー結果（status, ingestion_job_id 等）
+
+    Raises:
+        Exception: 予期せぬエラーは再送出し、Lambda 非同期リトライ/DLQ を発火させる。
     """
     kb_id = os.environ.get("KNOWLEDGE_BASE_ID", "")
     ds_id = os.environ.get("DATA_SOURCE_ID", "")
     # FPolicy のファイルパス（ONTAP ボリュームパス名前空間）に対する任意の二次フィルタ。
     # 一次フィルタは EventBridge ルール側で行う。空ならフィルタなし。
-    # 注意: これは KB の S3 取り込みプレフィックス（INGESTION_PREFIX）とは別名前空間
-    # （FPolicy は /<volume>/... を報告、S3 AP は別プレフィックス）。
+    # 注意: これは KB の S3 取り込みプレフィックスとは別名前空間
+    # （FPolicy は <volume>/... を報告、S3 AP は別プレフィックス）。
     path_filter = os.environ.get("FPOLICY_PATH_FILTER", "")
     topic_arn = os.environ.get("NOTIFICATION_TOPIC_ARN", "")
 
@@ -85,7 +108,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         )
     )
 
-    # デバウンス: 進行中ジョブがあればスキップ
+    # デバウンス: 進行中ジョブがあればスキップ（lost-update はシナリオ B が後追いで補完）
     active_job_id = _find_active_ingestion_job(kb_id, ds_id)
     if active_job_id:
         logger.info("Ingestion already in progress (job=%s), skipping", active_job_id)
@@ -104,10 +127,26 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             description=f"Scenario C trigger: {operation} {file_path}"[:200],
         )
         job_id = resp["ingestionJob"]["ingestionJobId"]
-    except Exception as e:  # noqa: BLE001
-        logger.error("StartIngestionJob failed: %s", str(e))
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code", "")
+        # 検知とジョブ開始の間に別ジョブが開始した競合は「進行中」と同義（スキップ・リトライ不要）
+        if code == "ConflictException":
+            logger.info("ConflictException on StartIngestionJob — treated as in-progress, skipping")
+            _emit_metric("KbTriggerSkipped", 1)
+            return {
+                "status": "ingestion_in_progress",
+                "reason": "conflict_exception",
+                "correlation_id": correlation_id,
+            }
+        # その他の API エラー（スロットリング・権限等）は再送出 → 非同期リトライ/DLQ
+        logger.error("StartIngestionJob ClientError (%s): %s", code, str(e))
         _emit_metric("KbTriggerError", 1)
-        return {"status": "error", "reason": str(e), "correlation_id": correlation_id}
+        raise
+    except Exception:
+        # 予期せぬ例外も再送出（リトライ/DLQ を発火）
+        logger.exception("StartIngestionJob unexpected error")
+        _emit_metric("KbTriggerError", 1)
+        raise
 
     logger.info("Ingestion started (job=%s) via FPolicy event", job_id)
     _emit_metric("KbTriggerStarted", 1)
@@ -139,7 +178,11 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def _find_active_ingestion_job(kb_id: str, ds_id: str) -> str | None:
-    """進行中（STARTING / IN_PROGRESS）の Ingestion ジョブ ID を返す（なければ None）."""
+    """進行中（STARTING / IN_PROGRESS）の Ingestion ジョブ ID を返す（なければ None）.
+
+    検知に失敗した場合は None を返すが、後続の StartIngestionJob が ConflictException を
+    返した際に「進行中」として安全にスキップされるため、二重起動は発生しない。
+    """
     try:
         resp = bedrock_agent.list_ingestion_jobs(
             knowledgeBaseId=kb_id,
@@ -151,7 +194,7 @@ def _find_active_ingestion_job(kb_id: str, ds_id: str) -> str | None:
         if summaries:
             return summaries[0].get("ingestionJobId")
     except Exception as e:  # noqa: BLE001
-        # filters 非対応や一時エラー時は安全側で「進行中なし」とせず、フォールバック取得
+        # filters 非対応や一時エラー時はフォールバック取得
         logger.warning("list_ingestion_jobs with filter failed: %s; falling back", str(e))
         try:
             resp = bedrock_agent.list_ingestion_jobs(
@@ -161,6 +204,7 @@ def _find_active_ingestion_job(kb_id: str, ds_id: str) -> str | None:
                 if s.get("status") in _ACTIVE_STATUSES:
                     return s.get("ingestionJobId")
         except Exception as e2:  # noqa: BLE001
+            # 検知不能。ConflictException による後続スキップに委ねる
             logger.warning("Fallback list_ingestion_jobs failed: %s", str(e2))
     return None
 
