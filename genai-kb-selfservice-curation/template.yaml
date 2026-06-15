@@ -516,6 +516,10 @@ Resources:
                 Resource: !Ref NotificationTopic
               - Effect: Allow
                 Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt KbTriggerDLQ.Arn
+              - Effect: Allow
+                Action:
                   - cloudwatch:PutMetricData
                 Resource: '*'
 
@@ -536,6 +540,42 @@ Resources:
           DATA_SOURCE_ID: !Ref DataSourceId
           FPOLICY_PATH_FILTER: !Ref FPolicyVolumePathPrefix
           NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
+      # Lambda 非同期実行失敗（再送出された例外）を捕捉する OnFailure 宛先。
+      # EventBridge ターゲットの DLQ は「配信失敗」のみを捕捉するため、関数の
+      # 「実行失敗」は EventInvokeConfig の OnFailure で別途捕捉する必要がある。
+      EventInvokeConfig:
+        MaximumRetryAttempts: 2
+        DestinationConfig:
+          OnFailure:
+            Type: SQS
+            Destination: !GetAtt KbTriggerDLQ.Arn
+
+  # --- KB Trigger 失敗イベント用 DLQ（EventBridge ターゲット配信失敗を捕捉） ---
+  KbTriggerDLQ:
+    Type: AWS::SQS::Queue
+    Condition: IsScenarioCEnabled
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-kbtrigger-dlq'
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  KbTriggerDLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: IsScenarioCEnabled
+    Properties:
+      Queues:
+        - !Ref KbTriggerDLQ
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt KbTriggerDLQ.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt KbTriggerEventRule.Arn
 
   # --- EventBridge ルール（ai-knowledge/ プレフィックスの FPolicy イベントをルーティング） ---
   KbTriggerEventRule:
@@ -557,6 +597,11 @@ Resources:
       Targets:
         - Id: kb-trigger-lambda
           Arn: !GetAtt KbTriggerFunction.Arn
+          DeadLetterConfig:
+            Arn: !GetAtt KbTriggerDLQ.Arn
+          RetryPolicy:
+            MaximumRetryAttempts: 3
+            MaximumEventAgeInSeconds: 3600
 
   # --- EventBridge → Lambda 呼び出し許可 ---
   KbTriggerInvokePermission:
