@@ -48,6 +48,8 @@ UC29 と同様、**手動体験（A）→ 自動化（B）** の2シナリオで
 Quick コンソールで S3 AP を Quick Index のデータソースに接続 → 同期 → 自然言語で質問:
 - 「製品Xの勝ち筋は？」→ `index/sales/account-strategy-notes.md` を引用
 
+> 📸 [`docs/screenshots/masked/quick-knowledge-integrations.png`](screenshots/masked/quick-knowledge-integrations.png) — Quick Knowledge データソース接続画面
+
 ### A-3. Quick Sight（BI）
 `analytics/` の CSV を Glue テーブル化（DDL は下記）→ Quick Sight データセット作成 → 可視化:
 - 「ステージ別パイプライン金額」「重大度別の平均 MTTR」
@@ -74,6 +76,8 @@ aws lambda invoke --function-name <DataPrepFunctionName> \
 
 ### B-2. BI クエリの自動化（Athena Query Lambda）
 構造化データを Athena で問い合わせ、Quick Sight / エージェント回答の裏付けに使う。
+
+> 📸 [`docs/screenshots/masked/athena-recent-queries.png`](screenshots/masked/athena-recent-queries.png) — Athena クエリ実行履歴
 
 ```bash
 aws lambda invoke --function-name <AthenaQueryFunctionName> \
