@@ -163,6 +163,70 @@ class FPolicyEvent(TypedDict):
 
 
 # ============================================================
+# Content Edge Delivery パターン固有
+# ============================================================
+
+
+class DeliveryPublishEntry(TypedDict, total=False):
+    """publish 済み（または参照生成済み）エントリ"""
+
+    key: str
+    delivery_mode: str
+    cdn_target: str
+    origin_access_point: str
+    target_bucket: str
+    target_endpoint: str
+    bytes: int
+    note: str
+
+
+class ApprovalProvenance(TypedDict):
+    """配信承認の監査証跡（誰が/いつ公開配信を承認したか）"""
+
+    source_key: str
+    approver: str
+    approval_id: str
+    published_at: str
+    execution_id: str
+
+
+class DeliveryManifest(TypedDict, total=False):
+    """配信マニフェスト（S3 AP に書き戻す JSON）"""
+
+    execution_id: str
+    timestamp: str
+    delivery_mode: str
+    cdn_target: str
+    total_candidates: int
+    total_targets: int
+    published: list[DeliveryPublishEntry]
+    skipped: list[dict]
+    provenance: list[ApprovalProvenance]
+    data_classification: str
+    data_classification_label: str
+
+
+class DeliveryPublishOutput(TypedDict):
+    """Publish Lambda の出力"""
+
+    manifest_key: str
+    delivery_mode: str
+    cdn_target: str
+    published: list[DeliveryPublishEntry]
+    total_objects: int
+    data_classification: str
+
+
+class DeliveryLogSummaryOutput(TypedDict):
+    """Delivery Log Sync Lambda の出力"""
+
+    summary_key: str
+    record_count: int
+    total_bytes: int
+    data_classification: str
+
+
+# ============================================================
 # SAP/ERP パターン固有
 # ============================================================
 

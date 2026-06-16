@@ -71,6 +71,9 @@ test-sap:
 test-fc1:
 	python3 -m pytest flexcache-anycast-dr/tests/ -v
 
+test-content-edge-delivery:
+	python3 -m pytest content-edge-delivery/tests/ -v
+
 # ============================================================
 # Linting
 # ============================================================
@@ -85,7 +88,8 @@ lint-cfn:
 	cfn-lint legal-compliance/template.yaml \
 		semiconductor-eda/template.yaml \
 		sap-erp-adjacent/template.yaml \
-		flexcache-anycast-dr/template.yaml
+		flexcache-anycast-dr/template.yaml \
+		content-edge-delivery/template.yaml
 
 # ============================================================
 # Security

@@ -19,6 +19,7 @@
 | PII / 個人情報保護が必要 | UC27 / UC26 + data_classification モジュール |
 | ESG / サステナビリティ報告 | UC23 + framework mapping |
 | 既存 NFS/SMB ワークロードの横展開 | FC1-FC6（FlexCache/FlexClone パターン） |
+| コンテンツを CDN/エッジ配信したい（CloudFront / サードパーティ CDN） | content-edge-delivery（[CDN比較](cdn-comparison.md) 参照） |
 | 新規オブジェクトネイティブワークロード（NAS 不要） | 標準 S3 / DynamoDB サーバーレスネイティブ構成を推奨 |
 
 ## ワークロード別の技術選択
