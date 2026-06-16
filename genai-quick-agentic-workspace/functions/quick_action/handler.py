@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -25,6 +26,17 @@ logger.setLevel(logging.INFO)
 
 bedrock_runtime = boto3.client("bedrock-runtime")
 sns_client = boto3.client("sns")
+
+
+def _caller_identity(event: dict[str, Any]) -> str:
+    """API Gateway の SigV4 認証済み呼び出し元 ARN/アカウントを取得する（監査用）。
+
+    本文の自己申告値ではなく、認証された呼び出し元を監査証跡に用いることで spoofing を防ぐ。
+    直接呼び出し（テスト等）では 'direct-invoke' を返す。
+    """
+    rc = event.get("requestContext", {}) if isinstance(event, dict) else {}
+    identity = rc.get("identity", {}) if isinstance(rc, dict) else {}
+    return identity.get("userArn") or identity.get("caller") or identity.get("accountId") or "direct-invoke"
 
 
 def _parse_body(event: dict[str, Any]) -> dict[str, Any]:
@@ -91,18 +103,19 @@ def _generate_brief(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _create_action_item(params: dict[str, Any]) -> dict[str, Any]:
+def _create_action_item(params: dict[str, Any], caller: str) -> dict[str, Any]:
     title = params.get("title")
     if not title:
         return {"status": "error", "error": "title is required for create_action_item"}
 
     now = datetime.now(timezone.utc)
     item = {
-        "id": f"AI-{int(now.timestamp())}",
+        "id": f"AI-{int(now.timestamp())}-{uuid.uuid4().hex[:8]}",
         "title": title,
         "assignee": params.get("assignee", "unassigned"),
         "due": params.get("due", ""),
         "role": params.get("role", ""),
+        "created_by": caller,  # 認証済み呼び出し元（spoofing 不可）
         "status": "open",
         "created_at": now.isoformat(),
     }
@@ -125,11 +138,14 @@ def _create_action_item(params: dict[str, Any]) -> dict[str, Any]:
 HIGH_RISK_OPERATIONS = {"send_email", "delete_data", "post_external", "approve_payment", "modify_access"}
 
 
-def _request_approval(params: dict[str, Any]) -> dict[str, Any]:
-    """高リスク操作を即時実行せず、承認待ちとして記録し通知する（human-in-the-loop）。
+def _request_approval(params: dict[str, Any], caller: str) -> dict[str, Any]:
+    """高リスク操作を即時実行せず、承認待ちとして記録し通知する（human-in-the-loop の入口）。
 
-    Quick Flows が高リスク操作を依頼した場合、本アクションで承認フローに回す。
-    自動実行はしない。承認は人手（SNS 通知先の担当者）が別途行う前提。
+    重要（強制力の範囲）: 本アクションは承認**要求**を記録・通知する非強制のスタブである。
+    高リスク操作の実行を技術的にゲートするものではない（承認ストア + executor は未実装）。
+    本番で強制的な human-in-the-loop が必要な場合は、承認レコードを永続化（例: DynamoDB）し、
+    実行側が「承認済み」を検証してから実行する設計を追加すること。
+    `requested_by` は本文ではなく**認証済み呼び出し元（SigV4）**から設定し、監査証跡の改ざんを防ぐ。
     """
     operation = params.get("operation", "")
     if not operation:
@@ -137,13 +153,15 @@ def _request_approval(params: dict[str, Any]) -> dict[str, Any]:
 
     now = datetime.now(timezone.utc)
     approval = {
-        "approval_id": f"APR-{int(now.timestamp())}",
+        "approval_id": f"APR-{int(now.timestamp())}-{uuid.uuid4().hex[:8]}",
         "operation": operation,
         "high_risk": operation in HIGH_RISK_OPERATIONS,
-        "requested_by": params.get("requested_by", "unknown"),
+        # 監査フィールドは本文ではなく認証済み呼び出し元から設定（spoofing 防止）
+        "requested_by": caller,
         "summary": params.get("summary", ""),
         "role": params.get("role", ""),
         "status": "pending_approval",
+        "enforced": False,  # 非強制スタブであることを明示
         "requested_at": now.isoformat(),
     }
 
@@ -164,6 +182,7 @@ def _request_approval(params: dict[str, Any]) -> dict[str, Any]:
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Quick Flows アクションハンドラー。"""
+    caller = _caller_identity(event)
     body = _parse_body(event)
     action = body.get("action", "")
     params = body.get("params", body)
@@ -172,10 +191,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if action == "generate_brief":
             return _response(200, _generate_brief(params))
         if action == "create_action_item":
-            return _response(200, _create_action_item(params))
+            return _response(200, _create_action_item(params, caller))
         if action == "request_approval":
-            return _response(202, _request_approval(params))
+            return _response(202, _request_approval(params, caller))
         return _response(400, {"status": "error", "error": f"unknown action: {action}"})
-    except Exception as e:  # noqa: BLE001 - エラーを可視化
-        logger.error("quick_action failed: %s", str(e))
-        return _response(500, {"status": "error", "error": str(e)})
+    except Exception as e:  # noqa: BLE001 - 内部詳細は漏らさず、サーバー側にのみ記録
+        logger.error("quick_action failed (action=%s): %s", action, str(e))
+        return _response(500, {"status": "error", "error": "internal error"})

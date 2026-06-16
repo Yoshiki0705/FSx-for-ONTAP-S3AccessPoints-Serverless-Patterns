@@ -74,6 +74,53 @@ class TestQuickAction:
         assert body["status"] == "pending_approval"
         assert body["approval"]["high_risk"] is True
         assert body["approval"]["status"] == "pending_approval"
+        # 非強制スタブであることを明示
+        assert body["approval"]["enforced"] is False
+        # 監査の requested_by は本文ではなく呼び出し元（直接呼び出しは direct-invoke）
+        assert body["approval"]["requested_by"] == "direct-invoke"
+
+    def test_requested_by_not_spoofable_from_body(self):
+        """本文の requested_by は監査値に採用されない（SigV4 呼び出し元を使用）。"""
+        module = _load_handler("quick_action")
+        event = {
+            "action": "request_approval",
+            "requestContext": {"identity": {"userArn": "arn:aws:iam::111122223333:role/QuickConn"}},
+            "params": {"operation": "send_email", "requested_by": "ceo@example.com"},
+        }
+        with patch.dict(os.environ, {"NOTIFICATION_TOPIC_ARN": ""}, clear=False):
+            resp = module.handler(event, None)
+        body = json.loads(resp["body"])
+        assert body["approval"]["requested_by"] == "arn:aws:iam::111122223333:role/QuickConn"
+
+    def test_request_approval_low_risk(self):
+        module = _load_handler("quick_action")
+        event = {"action": "request_approval", "params": {"operation": "noop_op"}}
+        with patch.dict(os.environ, {"NOTIFICATION_TOPIC_ARN": ""}, clear=False):
+            resp = module.handler(event, None)
+        body = json.loads(resp["body"])
+        assert body["approval"]["high_risk"] is False
+
+    def test_request_approval_missing_operation(self):
+        module = _load_handler("quick_action")
+        resp = module.handler({"action": "request_approval", "params": {}}, None)
+        body = json.loads(resp["body"])
+        assert body["status"] == "error"
+
+    def test_generate_brief_missing_context(self):
+        module = _load_handler("quick_action")
+        resp = module.handler({"action": "generate_brief", "params": {"title": "T"}}, None)
+        body = json.loads(resp["body"])
+        assert body["status"] == "error"
+
+    def test_internal_error_not_leaked(self):
+        """例外時に内部詳細（str(e)）を返さない。"""
+        module = _load_handler("quick_action")
+        with patch.object(module, "_generate_brief", side_effect=Exception("secret ARN detail")):
+            resp = module.handler({"action": "generate_brief", "params": {"context": "x"}}, None)
+        assert resp["statusCode"] == 500
+        body = json.loads(resp["body"])
+        assert body["error"] == "internal error"
+        assert "secret ARN detail" not in resp["body"]
 
 
 class TestAthenaQuery:
@@ -85,7 +132,47 @@ class TestAthenaQuery:
             result = module.handler({"sql": "SELECT 1"}, None)
         assert result["status"] == "error"
 
-    def test_named_query_success(self):
+    def test_raw_sql_rejected_by_default(self):
+        """既定（ALLOW_RAW_SQL 未設定）では任意 SQL を拒否する。"""
+        module = _load_handler("athena_query")
+        env = {"ATHENA_DATABASE": "quick_workspace_db", "ATHENA_WORKGROUP": "wg", "ATHENA_OUTPUT_LOCATION": "s3://b/r/"}
+        with patch.dict(os.environ, env, clear=False):
+            with patch.dict(os.environ, {"ALLOW_RAW_SQL": "false"}, clear=False):
+                result = module.handler({"sql": "SELECT * FROM finance_secret"}, None)
+        assert result["status"] == "error"
+        assert "raw sql is disabled" in result["error"]
+        assert "sales_pipeline_total" in result["allowed_queries"]
+
+    def test_raw_sql_allowed_when_enabled(self):
+        """ALLOW_RAW_SQL=true の管理用途では任意 SQL を実行する。"""
+        module = _load_handler("athena_query")
+        env = {
+            "ATHENA_DATABASE": "quick_workspace_db",
+            "ATHENA_WORKGROUP": "wg",
+            "ATHENA_OUTPUT_LOCATION": "s3://b/r/",
+            "ALLOW_RAW_SQL": "true",
+        }
+        rows = {"ResultSet": {"Rows": [{"Data": [{"VarCharValue": "c"}]}]}}
+        with patch.dict(os.environ, env, clear=False):
+            with patch.object(module.athena_client, "start_query_execution", return_value={"QueryExecutionId": "q1"}):
+                with patch.object(
+                    module.athena_client, "get_query_execution",
+                    return_value={"QueryExecution": {"Status": {"State": "SUCCEEDED"}}},
+                ):
+                    with patch.object(module.athena_client, "get_query_results", return_value=rows):
+                        result = module.handler({"sql": "SELECT 1 AS c"}, None)
+        assert result["status"] == "completed"
+
+    def test_internal_error_not_leaked(self):
+        module = _load_handler("athena_query")
+        env = {"ATHENA_DATABASE": "quick_workspace_db", "ATHENA_WORKGROUP": "wg", "ATHENA_OUTPUT_LOCATION": "s3://b/r/"}
+        with patch.dict(os.environ, env, clear=False):
+            with patch.object(
+                module.athena_client, "start_query_execution", side_effect=Exception("arn:secret")
+            ):
+                result = module.handler({"query_name": "sales_pipeline_total"}, None)
+        assert result["status"] == "error"
+        assert result["error"] == "internal error"
         module = _load_handler("athena_query")
         env = {"ATHENA_DATABASE": "quick_workspace_db", "ATHENA_WORKGROUP": "wg", "ATHENA_OUTPUT_LOCATION": "s3://b/r/"}
         rows = {
@@ -139,3 +226,20 @@ class TestDataPrep:
         assert result["by_service"]["analytics"] == 1
         assert result["by_service"]["flows"] == 1
         assert result["by_role"]["sales"] == 1
+
+    def test_prefix_clamped_to_workspace(self):
+        """WORKSPACE_PREFIX 外の prefix 要求はクランプされる（スコープ逸脱防止）。"""
+        module = _load_handler("data_prep")
+        captured = {}
+
+        def _capture(**kwargs):
+            captured.update(kwargs)
+            return {"Contents": [], "IsTruncated": False}
+
+        env = {"S3_ACCESS_POINT_ALIAS": "alias", "WORKSPACE_PREFIX": "quick-workspace/"}
+        with patch.dict(os.environ, env, clear=False):
+            with patch.object(module.s3_client, "list_objects_v2", side_effect=_capture):
+                result = module.handler({"prefix": ""}, None)
+        assert result["status"] == "completed"
+        # 空 prefix は WORKSPACE_PREFIX にクランプされる
+        assert captured["Prefix"] == "quick-workspace/"

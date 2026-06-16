@@ -59,6 +59,14 @@ Parameters:
     Default: '50'
     Description: 月次コスト予算（USD）。NotificationEmail 指定時に予算アラートを作成
 
+  AllowRawSql:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: >
+      Athena Query Lambda で任意 SQL（event.sql）を許可するか。既定 false（許可リスト
+      NAMED_QUERIES のみ実行）。管理用途で任意 SQL が必要な場合のみ true にする。
+
 Conditions:
   HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
   HasQuickPrincipal: !Not [!Equals [!Ref QuickDataSourcePrincipal, '']]
@@ -71,7 +79,36 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: aws:kms
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-query-results
+            Status: Enabled
+            ExpirationInDays: 30
+
+  # --- 結果バケットの TLS-only ポリシー ---
+  AthenaResultsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AthenaResultsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt AthenaResultsBucket.Arn
+              - !Sub '${AthenaResultsBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
 
   # --- Glue Database（構造化データのカタログ） ---
   GlueDatabase:
@@ -207,13 +244,18 @@ Resources:
                   - s3:GetObject
                 Resource: !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*'
 
-  # --- Quick Flows アクション API（IAM 認証） ---
+  # --- Quick Flows アクション API（IAM 認証 + スロットリング） ---
   QuickActionApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: prod
       Auth:
         DefaultAuthorizer: AWS_IAM
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          ThrottlingBurstLimit: 20
+          ThrottlingRateLimit: 10
 
   QuickActionRole:
     Type: AWS::IAM::Role
@@ -336,6 +378,7 @@ Resources:
           ATHENA_DATABASE: !Ref GlueDatabase
           ATHENA_WORKGROUP: !Ref AthenaWorkGroup
           ATHENA_OUTPUT_LOCATION: !Sub 's3://${AthenaResultsBucket}/athena-results/'
+          ALLOW_RAW_SQL: !Ref AllowRawSql
 
   # --- Data Prep Lambda（Quick データソース準備マニフェスト） ---
   DataPrepRole:
