@@ -5,11 +5,11 @@
 | Item | Monitoring Account | Workload Account |
 |------|-------------------|-----------------|
 | Account ID | 123456789012 | 234567890123 |
-| Account Name | <management-account> | <workload-account> |
+| Account Name | `<management-account>` | `<workload-account>` |
 | Region | ap-northeast-1 | ap-northeast-1 |
 | OAM Role | Sink | Link |
-| Sink ARN | arn:aws:oam:ap-northeast-1:123456789012:sink/<sink-id> | — |
-| Link ARN | — | arn:aws:oam:ap-northeast-1:234567890123:link/<link-id> |
+| Sink ARN | `arn:aws:oam:ap-northeast-1:123456789012:sink/<sink-id>` | — |
+| Link ARN | — | `arn:aws:oam:ap-northeast-1:234567890123:link/<link-id>` |
 | Resource Types | — | CloudWatch::Metric, Logs::LogGroup, XRay::Trace |
 
 ## Setup Method
@@ -34,11 +34,11 @@ aws oam create-link --label-template '$AccountName' \
 
 | # | Step | Expected Result | Actual Result | Status |
 |---|------|-----------------|---------------|:---:|
-| 1 | Create OAM Sink in management account | Sink created | ✅ Sink ID: <sink-id>-... | ✅ |
+| 1 | Create OAM Sink in management account | Sink created | ✅ Sink ID: `<sink-id>` | ✅ |
 | 2 | Set Sink Policy (allow workload account) | Policy applied | ✅ Policy set | ✅ |
 | 3 | AssumeRole to workload account | Credentials obtained | ✅ Session active | ✅ |
-| 4 | Create OAM Link in workload account | Link created | ✅ Link ID: <link-id>-... | ✅ |
-| 5 | Verify Link visible from management account | Link appears in list | ✅ Label: <workload-account> | ✅ |
+| 4 | Create OAM Link in workload account | Link created | ✅ Link ID: `<link-id>` | ✅ |
+| 5 | Verify Link visible from management account | Link appears in list | ✅ Label: `<workload-account>` | ✅ |
 | 6 | Verify Resource Types shared | Metric + Logs + XRay | ✅ All 3 types confirmed | ✅ |
 
 ## Cross-Account Observability Capabilities
