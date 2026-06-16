@@ -9,6 +9,14 @@ set -euo pipefail
 SECURITY_CHECK_ACCOUNT_ID="${SECURITY_CHECK_ACCOUNT_ID:-123456789012}"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
+# Detector-definition files legitimately contain the patterns they detect.
+# Exclude them from content scans to avoid self-match false positives.
+# (Real content files — docs, code, templates — are still fully scanned.)
+SELF_EXCLUDE_REGEX='^(scripts/pre-push-security-check\.sh|\.github/workflows/security-check\.yml|\.gitleaks\.toml)$'
+scan_files() { git ls-files | grep -Ev "$SELF_EXCLUDE_REGEX"; }
+export SELF_EXCLUDE_REGEX
+export -f scan_files
+
 PASS=0
 FAIL=0
 
@@ -54,16 +62,16 @@ echo ""
 
 # --- Check 2: No real AWS account ID in tracked files ---
 echo "📋 Check 2: No real AWS account ID in tracked files"
-check_empty "No account ID ($SECURITY_CHECK_ACCOUNT_ID)" bash -c "git ls-files | xargs grep -rl '$SECURITY_CHECK_ACCOUNT_ID' 2>/dev/null"
+check_empty "No account ID ($SECURITY_CHECK_ACCOUNT_ID)" bash -c "scan_files | xargs grep -rl '$SECURITY_CHECK_ACCOUNT_ID' 2>/dev/null"
 
 echo ""
 
 # --- Check 3: No personal file paths ---
 echo "📋 Check 3: No personal file paths (/Users/*/Downloads/*.pem etc.)"
-check_empty "No /Users/ paths with .pem" bash -c "git ls-files | xargs grep -rln '/Users/.*\.pem' 2>/dev/null"
+check_empty "No /Users/ paths with .pem" bash -c "scan_files | xargs grep -rln '/Users/.*\.pem' 2>/dev/null"
 
 # Allow /Users/ in scripts that use it as a default but check for hardcoded sensitive paths
-PERSONAL_PATH_FILES=$(git ls-files | xargs grep -rln '/Users/yoshiki' 2>/dev/null || true)
+PERSONAL_PATH_FILES=$(scan_files | xargs grep -rln '/Users/yoshiki' 2>/dev/null || true)
 if [ -n "$PERSONAL_PATH_FILES" ]; then
   echo "  ⚠️  WARN: Personal paths found in:"
   echo "$PERSONAL_PATH_FILES" | sed 's/^/       /'
@@ -75,14 +83,14 @@ echo ""
 
 # --- Check 4: No real IP addresses (non-RFC1918 patterns) ---
 echo "📋 Check 4: No real EC2 IP addresses"
-check_empty "No known EC2 IPs (3.112.208.171)" bash -c "git ls-files | xargs grep -rl '3\.112\.208\.171' 2>/dev/null"
-check_empty "No known EC2 IPs (13.113.190.197)" bash -c "git ls-files | xargs grep -rl '13\.113\.190\.197' 2>/dev/null"
+check_empty "No known EC2 IPs (3.112.208.171)" bash -c "scan_files | xargs grep -rl '3\.112\.208\.171' 2>/dev/null"
+check_empty "No known EC2 IPs (13.113.190.197)" bash -c "scan_files | xargs grep -rl '13\.113\.190\.197' 2>/dev/null"
 
 echo ""
 
 # --- Check 5: No ECR registry with real account ---
 echo "📋 Check 5: No hardcoded ECR registry"
-check_empty "No real ECR registry" bash -c "git ls-files | xargs grep -rl '${SECURITY_CHECK_ACCOUNT_ID}\.dkr\.ecr' 2>/dev/null"
+check_empty "No real ECR registry" bash -c "scan_files | xargs grep -rl '${SECURITY_CHECK_ACCOUNT_ID}\.dkr\.ecr' 2>/dev/null"
 
 echo ""
 
