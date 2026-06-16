@@ -38,17 +38,37 @@ NAMED_QUERIES = {
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Athena クエリを実行し結果行を返す。"""
+    """Athena クエリを実行し結果行を返す。
+
+    セキュリティ: 任意 SQL（`sql`）は既定で**無効**（`ALLOW_RAW_SQL=true` で明示的に有効化した
+    管理用途のみ）。通常は許可リスト `NAMED_QUERIES`（`query_name`）のみを実行する。
+    ロール別のデータ境界は Lake Formation（LF-TBAC）で強制する前提（テンプレート外の付与が必要）。
+    """
     database = os.environ.get("ATHENA_DATABASE", "")
     workgroup = os.environ.get("ATHENA_WORKGROUP", "primary")
     output_location = os.environ.get("ATHENA_OUTPUT_LOCATION", "")
+    allow_raw_sql = os.environ.get("ALLOW_RAW_SQL", "false").lower() == "true"
     now = int(datetime.now(timezone.utc).timestamp())
 
-    sql = event.get("sql") or NAMED_QUERIES.get(event.get("query_name", ""), "")
+    raw_sql = event.get("sql")
+    query_name = event.get("query_name", "")
+
+    # 既定: 任意 SQL は拒否。許可リストのみ実行。
+    if raw_sql and not allow_raw_sql:
+        logger.warning("Raw SQL rejected (ALLOW_RAW_SQL is false); use query_name allowlist")
+        return {
+            "status": "error",
+            "error": "raw sql is disabled; use a named query (query_name)",
+            "allowed_queries": sorted(NAMED_QUERIES.keys()),
+            "timestamp": now,
+        }
+
+    sql = (raw_sql if allow_raw_sql and raw_sql else None) or NAMED_QUERIES.get(query_name, "")
     if not (sql and database):
         return {
             "status": "error",
-            "error": "ATHENA_DATABASE and (sql or known query_name) are required",
+            "error": "ATHENA_DATABASE and (known query_name or enabled raw sql) are required",
+            "allowed_queries": sorted(NAMED_QUERIES.keys()),
             "timestamp": now,
         }
 
@@ -90,6 +110,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "timestamp": now,
         }
 
-    except Exception as e:  # noqa: BLE001 - エラーを可視化
+    except Exception as e:  # noqa: BLE001 - 内部詳細は漏らさずサーバー側にのみ記録
         logger.error("athena_query failed: %s", str(e))
-        return {"status": "error", "error": str(e), "timestamp": now}
+        return {"status": "error", "error": "internal error", "timestamp": now}
