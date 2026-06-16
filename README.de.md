@@ -4,7 +4,7 @@
 
 ## Current Status
 
-Dieses Repository enthält jetzt **28 branchenspezifische Anwendungsfälle** + **ein ereignisgesteuertes FPolicy-Muster** + **6 FlexCache/FlexClone-Muster** als vollständige serverlose Musterbibliothek.
+Dieses Repository enthält jetzt **28 branchenspezifische Anwendungsfälle** + **ein ereignisgesteuertes FPolicy-Muster** + **7 FlexCache/FlexClone-Muster** + **ein Content-Edge-Delivery-Muster** als vollständige serverlose Musterbibliothek.
 
 Die ursprünglichen 5 Muster (Phase 1) wurden über die Phasen 2–13 erweitert. Phase 10 führte die gemeinsame FPolicy-Ereignisaufnahme-Pipeline ein, Phase 11 erweiterte den Dispatch auf alle 17 UCs, Phase 12 härtete die Pipeline mit Persistent Store Replay-Validierung, SLO-Observability, Kapazitäts-Guardrails und Secrets-Rotation, und Phase 13 fügte FlexClone/FlexCache-Serverless-Automatisierung hinzu.
 
@@ -29,7 +29,7 @@ Der Artikel erklärt die architektonischen Überlegungen und Kompromisse. Dieses
 
 ## Überblick
 
-Dieses Repository bietet **28 branchenspezifische Muster (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)** für die serverlose Verarbeitung von Unternehmensdaten, die auf FSx for ONTAP über **S3 Access Points** gespeichert sind.
+Dieses Repository bietet **28 branchenspezifische Muster (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17, Phase 14: UC18–UC19, Phase 15: UC20–UC22, Phase 16: UC23–UC28)** für die serverlose Verarbeitung von Unternehmensdaten, die auf FSx for ONTAP über **S3 Access Points** gespeichert sind.
 
 > Im Folgenden wird FSx for ONTAP S3 Access Points als **S3 AP** abgekürzt.
 
@@ -213,6 +213,8 @@ EventBridge Scheduler (periodische Ausführung)
 | UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | Immobilien | Objektbilder・Vertragsdaten |
 | UC27 | [`hr-document-screening/`](hr-document-screening/) | Personal | Lebenslauf-Screening・Bewertung |
 | UC28 | [`chemical-sds-management/`](chemical-sds-management/) | Chemie | SDS-Management・Labornotizen |
+| UC29 | [`genai-kb-selfservice-curation/`](genai-kb-selfservice-curation/) | Branchenübergreifend | Self-Service-KI-Wissenskuratierung (verwaltetes Bedrock KB + Windows Drag-and-drop) |
+| UC30 | [`genai-quick-agentic-workspace/`](genai-quick-agentic-workspace/) | Branchenübergreifend | Agentenbasierter Amazon-Quick-Workspace (Index/Sight/Flows + S3-AP-Datenbasis) |
 
 > **Konformität mit öffentlicher Hand**: UC15 adressiert DoD CC SRG / CSfC / FedRAMP High (GovCloud-Migration), UC16 adressiert NARA / FOIA Section 552 / Section 508, UC17 adressiert INSPIRE-Richtlinie / OGC-Standards.
 
@@ -226,6 +228,14 @@ EventBridge Scheduler (periodische Ausführung)
 | FC4 | [`automotive-cae/`](automotive-cae/README.md) | Automotive CAE Analytics | Automatische Analyse von CAE-Simulationsergebnissen | ✅ Code + Tests fertig |
 | FC5 | [`life-sciences-research/`](life-sciences-research/README.md) | Life Sciences Research | Automatische Analyse von Forschungsdaten | ✅ Template fertig |
 | FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/README.md) | Gaming Build Pipeline | Qualitätsprüfung von Spiel-Assets und Log-Analyse | ✅ Template fertig |
+| FC7 | [`devops-flexclone-cicd/`](devops-flexclone-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | FlexClone-basierte Dev/Test-Aktualisierung + CI/CD | ✅ Code + Tests fertig |
+
+### Infrastruktur- / Querschnittsmuster
+
+| Verzeichnis | Inhalt |
+|:---|:---|
+| [`event-driven-fpolicy/`](event-driven-fpolicy/) | FPolicy-ereignisgesteuerte Pipeline |
+| [`content-edge-delivery/`](content-edge-delivery/) | CDN/Edge-Delivery-Muster (anbieterneutral; CloudFront/Drittanbieter, [CDN-Vergleich](docs/cdn-comparison.en.md)) |
 
 > **Wichtig**: Ob ein S3 Access Point an ein FlexCache-Volume angehängt werden kann, hängt von der ONTAP-Version und den FSx for ONTAP-Servicespezifikationen ab. Überprüfen Sie dies immer in Ihrer tatsächlichen Umgebung während des PoC.
 
@@ -263,6 +273,9 @@ Detaillierte Architekturdiagramme und Demo-Leitfäden für jeden UC sind im docs
 | UC26 | Immobilien | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
 | UC27 | Personal | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
 | UC28 | Chemie | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
+| UC29 | Branchenübergreifend (Self-Service-KB) | [📐 Architecture](genai-kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](genai-kb-selfservice-curation/docs/demo-guide.md) |
+| UC30 | Branchenübergreifend (Amazon Quick) | [📐 Architecture](genai-quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](genai-quick-agentic-workspace/docs/demo-guide.md) |
+| — | Content-Edge-Delivery (CDN) | [📐 Architecture](content-edge-delivery/docs/architecture.md) | [🎬 Demo Guide](content-edge-delivery/docs/demo-guide.md) |
 
 ## UI/UX-Screenshots (Endnutzer / Mitarbeiter / Zuständige-Ansichten)
 
