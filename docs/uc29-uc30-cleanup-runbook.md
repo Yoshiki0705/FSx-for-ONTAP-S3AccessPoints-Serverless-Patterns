@@ -14,12 +14,29 @@ bash scripts/teardown-uc29-uc30.sh
 source scripts/uc29-kb-manifest.local.env        # 実環境値（gitignored）
 .venv/bin/python scripts/rebuild-uc29-kb.py
 
-# ---- スタック再デプロイ（必要時）----
-make deploy-uc29   # genai-kb-selfservice-curation
-make deploy-uc30   # genai-quick-agentic-workspace
+# ---- スタック再デプロイ（必要時。UC29/30 は make ターゲット無し、sam 直接）----
+cd genai-kb-selfservice-curation  && sam build && sam deploy   # UC29（samconfig.toml 要）
+cd genai-quick-agentic-workspace && sam build && sam deploy   # UC30（samconfig.toml 要）
 ```
 
 > スクリプトは**冪等**。途中失敗（非同期依存）後はそのまま再実行すれば残りを片付ける。
+
+## 汎用ツールとの関係（重要：整合性・再利用性）
+
+このスクリプトは **UC29/UC30 専用**であり、全 UC 汎用ではない。理由と使い分け:
+
+| 対象 | 撤去ツール | 理由 |
+|------|-----------|------|
+| UC1–UC28 / SAP / FC1–6 | `scripts/cleanup_generic_ucs.py`（＋ `cleanup_stacks.sh`） | 純粋な CloudFormation スタックのみ。汎用ツールが Athena WG・バージョン付き S3・VPC Endpoint SG・DELETE_FAILED 修復を網羅 |
+| **UC29 / UC30** | **`scripts/teardown-uc29-uc30.sh`** | スタック外で手動作成した非 CFN リソース（AOSS コレクション/ポリシー、Managed AD、Windows EC2、FSx SVM/ボリューム、FSx S3 Access Point、Bedrock KB）を含むため専用処理が必要 |
+
+整合性のための約束:
+- CFn スタック削除のブロッカー対処（Athena WG recursive・バージョン付き S3 空化）は
+  汎用ツール（`cleanup_stacks.sh` / `cleanup_generic_ucs.py`）と**同じ規約**に揃えている。
+- 本スクリプト固有で汎用ツールに無い知見（**FSx S3 AP detach**・**Bedrock KB RETAIN**）は、
+  横展開のため `docs/operational-runbooks/cleanup-troubleshooting.md`（Failure Mode 7/8）にも記載。
+- 将来 UC29/30 を汎用 `cleanup_generic_ucs.py` に統合する場合は、UC_DIR_MAP 追加に加え
+  非 CFN リソースの削除フックが必要（現状は UC17 までの CFn 前提）。
 
 ## 撤去対象（スクリプトが自動解決・名前ベース）
 
