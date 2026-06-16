@@ -40,11 +40,21 @@ def _classify(key: str) -> tuple[str, str]:
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """データソース準備状況のマニフェストを返す。"""
     s3ap_alias = os.environ.get("S3_ACCESS_POINT_ALIAS", "")
-    prefix = event.get("prefix", os.environ.get("WORKSPACE_PREFIX", "quick-workspace/"))
+    workspace_prefix = os.environ.get("WORKSPACE_PREFIX", "quick-workspace/")
+    requested_prefix = event.get("prefix", workspace_prefix)
     now = int(datetime.now(timezone.utc).timestamp())
 
     if not s3ap_alias:
         return {"status": "error", "error": "S3_ACCESS_POINT_ALIAS is required", "timestamp": now}
+
+    # スコープ逸脱防止: 要求 prefix は設定済み WORKSPACE_PREFIX 配下に限定する
+    if not requested_prefix.startswith(workspace_prefix):
+        logger.warning(
+            "Requested prefix '%s' escapes workspace '%s'; clamping", requested_prefix, workspace_prefix
+        )
+        prefix = workspace_prefix
+    else:
+        prefix = requested_prefix
 
     by_service: dict[str, int] = {"index": 0, "analytics": 0, "flows": 0, "other": 0}
     by_role: dict[str, int] = {}
@@ -72,9 +82,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 break
             continuation_token = response.get("NextContinuationToken")
 
-    except Exception as e:  # noqa: BLE001 - エラーを可視化
+    except Exception as e:  # noqa: BLE001 - 内部詳細は漏らさずサーバー側にのみ記録
         logger.error("data_prep failed: %s", str(e))
-        return {"status": "error", "error": str(e), "timestamp": now}
+        return {"status": "error", "error": "internal error", "timestamp": now}
 
     logger.info("Data prep manifest: total=%d by_service=%s", total, by_service)
     return {
