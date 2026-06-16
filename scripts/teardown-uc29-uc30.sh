@@ -6,6 +6,19 @@
 # (Quick Agentic Workspace) verification. The shared FSx for ONTAP file system
 # is preserved by default (it backs all 28+ patterns).
 #
+# SCOPE / relationship to the generic tooling (consistency note):
+#   * UC1-UC28 / SAP / FC1-6 are pure CloudFormation stacks -> use the generic
+#     scripts/cleanup_generic_ucs.py (and scripts/cleanup_stacks.sh for
+#     DELETE_FAILED repair). Do NOT use this script for them.
+#   * UC29/UC30 additionally create NON-CloudFormation resources (AOSS,
+#     Managed AD, Windows EC2, FSx SVM/volumes, FSx S3 access points, Bedrock
+#     KB) that the generic CFN tooling cannot reach -> hence this UC-specific
+#     orchestrator. Its CFN-blocker handling (Athena WG recursive delete,
+#     versioned-bucket emptying) mirrors the generic scripts' conventions.
+#   * Reusable lessons unique to this script (FSx S3 AP detach, Bedrock KB
+#     RETAIN-before-delete) are also documented for cross-UC reuse in
+#     docs/operational-runbooks/cleanup-troubleshooting.md (Failure Mode 7/8).
+#
 # Design principles (lessons learned from prior deletions):
 #   - Resolve IDs by NAME at runtime; never hardcode (IDs go stale on rebuild).
 #   - Order matters: empty buckets / drop Glue tables BEFORE stack delete;

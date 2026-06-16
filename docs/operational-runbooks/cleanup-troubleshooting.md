@@ -324,7 +324,97 @@ bash scripts/cleanup_generic_ucs.sh UC1 UC2 ...
 
 ---
 
-## General troubleshooting workflow
+## Failure Mode 7: FSx volume has an attached S3 Access Point
+
+### Symptom
+
+```
+An error occurred (BadRequest) when calling the DeleteVolume operation:
+Cannot delete volume while it has one or multiple S3 access points: [<ap-name>]
+```
+
+### Root cause
+
+An Amazon S3 access point for FSx for ONTAP is attached to the volume.
+These are **not** S3 control-plane access points (`aws s3control
+list-access-points` does not show them) — they are managed by the FSx
+API and must be detached before the backing volume can be deleted.
+
+### Resolution
+
+```bash
+REGION=ap-northeast-1
+
+# List the FSx S3 access point attachments
+aws fsx describe-s3-access-point-attachments --region "$REGION" \
+    --query "S3AccessPointAttachments[].[Name,Lifecycle]" --output table
+
+# Detach + delete the one(s) on your volume
+aws fsx detach-and-delete-s3-access-point --region "$REGION" --name "<ap-name>"
+
+# Wait until the attachment is gone, then delete the volume
+aws fsx delete-volume --region "$REGION" --volume-id "<fsvol-id>" \
+    --ontap-configuration '{"SkipFinalBackup":true}'
+```
+
+### Affected patterns
+
+UC29 (`uc29-ai-knowledge-smb`), UC30 (`uc30-quick-workspace-smb`), and any
+pattern that creates a Windows/UNIX-identity S3 access point directly on a
+volume (outside CloudFormation). Automated in `scripts/teardown-uc29-uc30.sh`
+(Phase 7a).
+
+---
+
+## Failure Mode 8: Bedrock Knowledge Base stuck in DELETE_UNSUCCESSFUL
+
+### Symptom
+
+```
+KB status: DELETE_UNSUCCESSFUL
+failureReasons: "Unable to delete data from vector store for data source
+with ID <id>. ... consider updating the dataDeletionPolicy of the data
+source to RETAIN and retry your request."
+```
+
+### Root cause
+
+A KB whose data source has `dataDeletionPolicy=DELETE` tries to purge
+vectors from its vector store on delete. If the AOSS collection (or the
+KB execution role) was deleted **first**, the purge fails and the KB
+sticks. The original collection ARN cannot be recreated (a new collection
+gets a new ARN), so re-deleting alone does not recover it.
+
+### Resolution (recover a stuck KB)
+
+```bash
+REGION=ap-northeast-1; KB=<kb-id>
+for DS in $(aws bedrock-agent list-data-sources --knowledge-base-id "$KB" \
+              --region "$REGION" --query "dataSourceSummaries[].dataSourceId" --output text); do
+  NAME=$(aws bedrock-agent get-data-source --knowledge-base-id "$KB" --data-source-id "$DS" \
+           --region "$REGION" --query "dataSource.name" --output text)
+  CFG=$(aws bedrock-agent get-data-source --knowledge-base-id "$KB" --data-source-id "$DS" \
+           --region "$REGION" --query "dataSource.dataSourceConfiguration" --output json)
+  aws bedrock-agent update-data-source --knowledge-base-id "$KB" --data-source-id "$DS" \
+    --region "$REGION" --name "$NAME" --data-deletion-policy RETAIN \
+    --data-source-configuration "$CFG"
+  aws bedrock-agent delete-data-source --knowledge-base-id "$KB" --data-source-id "$DS" --region "$REGION"
+done
+aws bedrock-agent delete-knowledge-base --knowledge-base-id "$KB" --region "$REGION"
+```
+
+### Prevention (correct teardown order)
+
+Delete the **KB before** its AOSS collection and execution role, and flip
+data sources to `RETAIN` up front so deletion never depends on the store.
+Automated in `scripts/teardown-uc29-uc30.sh` (`delete_kb` helper).
+
+### Affected patterns
+
+UC29 and any custom-RAG pattern that provisions a Bedrock KB + AOSS outside
+CloudFormation.
+
+---
 
 When `DELETE_FAILED` occurs:
 
