@@ -37,6 +37,9 @@ Google Media CDN ほか）の技術比較は **[docs/cdn-comparison.md](../docs/
   - [ ] ORIGIN_PULL 採用時は SigV4×alias の実測が PASS
 - 将来作業は「未完成」ではなく **エビデンス拡張**（実機検証で TBV を実測値へ）と位置づける。
 
+**今すぐ試す（30秒アクション）**: `make test-content-edge-delivery` でユニットテスト（13件）を実行し、
+permission-aware フィルタ・承認証跡・PII マスクの動作を確認できます。
+
 ## Partner/SI 利用ガイド
 
 - **最初の顧客質問**: 「既存の NAS/ONTAP 資産を、コピーせずにエッジ配信へつなげたいか。配信は CloudFront か、
