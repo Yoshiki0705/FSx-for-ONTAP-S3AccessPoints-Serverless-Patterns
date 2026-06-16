@@ -508,6 +508,10 @@ Outputs:
     Description: 配信ワークフロー State Machine の ARN
     Value: !Ref DeliveryStateMachine
 
+  RunbookReference:
+    Description: 障害対応手順（README Runbook 節）
+    Value: "https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/tree/main/content-edge-delivery#%E9%81%8B%E7%94%A8--runbook%E4%BF%A1%E9%A0%BC%E6%80%A7ops"
+
   CloudFrontDomainName:
     Condition: CreateCloudFront
     Description: CloudFront ディストリビューションのドメイン名
