@@ -1,0 +1,514 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Content Edge Delivery: FSx for NetApp ONTAP を Single Source of Truth とし、
+  S3 Access Points 上の配信承認済みレンディションを CDN/エッジ配信ネットワークから
+  配信可能にする（ベンダー非依存）サーバーレスワークフロー。
+  詳細な統合メカニズムの比較は docs/cdn-comparison.md を参照。
+
+  NOTE: 配信用 Lambda は Internet-origin S3 AP へアクセスするため VPC 外で実行する
+  （AGENTS.md: VPC-external Lambda for Internet-origin S3AP access）。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias (入力読み取り用、Internet-origin)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  S3AccessPointOutputAlias:
+    Type: String
+    Description: FSx ONTAP S3 Access Point Alias (マニフェスト/ログ書き戻し用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  DeliveryMode:
+    Type: String
+    Default: "PUBLISH_PUSH"
+    AllowedValues: ["ORIGIN_PULL", "PUBLISH_PUSH"]
+    Description: >
+      配信統合メカニズム。
+      ORIGIN_PULL: CDN が S3 AP を直接 SigV4 で取得（オリジン参照マニフェストを生成）。
+      PUBLISH_PUSH: 承認済みレンディションを CDN 側 S3 互換ストアへ複製。
+
+  CDNTarget:
+    Type: String
+    Default: "CLOUDFRONT"
+    AllowedValues: ["CLOUDFRONT", "AKAMAI", "FASTLY", "CLOUDFLARE", "OTHER"]
+    Description: 配信先 CDN の記録用ラベル（マニフェストに記録）。
+
+  ApprovedPrefix:
+    Type: String
+    Default: "delivery-approved/"
+    Description: 配信承認済みオブジェクトのプレフィックス（permission-aware ガード）。
+
+  SuffixFilter:
+    Type: String
+    Default: ""
+    Description: 配信対象拡張子のカンマ区切り（例 ".mp4,.m3u8,.ts"、空で全件）。
+
+  DemoMode:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: true の場合、外部ストアへの実 push をスキップ（FSx/外部CDN無しで検証）。
+
+  ExternalStoreEndpoint:
+    Type: String
+    Default: ""
+    Description: PUBLISH_PUSH 時の S3 互換エンドポイント URL（例 Akamai Object Storage E3 / R2 / Fastly Object Storage）。
+
+  ExternalStoreBucket:
+    Type: String
+    Default: ""
+    Description: PUBLISH_PUSH 時の配信先バケット名。
+
+  DataClassification:
+    Type: String
+    Default: "PUBLIC"
+    AllowedValues: ["PUBLIC", "INTERNAL", "RESTRICTED", "HIGHLY_RESTRICTED"]
+    Description: 出力データ分類ラベル（配信成果物は原則 PUBLIC）。
+
+  RedactClientIp:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: 配信ログ書き戻し時にクライアント IP をマスクする（PII 配慮）。
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス。
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge Scheduler のスケジュール式（POLLING / HYBRID 時）。
+
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: >
+      トリガーモード。POLLING を主対象とする。EVENT_DRIVEN / HYBRID は
+      パラメータ定義のみで、本雛形では FPolicy 連携・冪等化（idempotency）は未実装
+      （shared/idempotency_checker.py への拡張ポイント）。
+
+  EnableCloudFront:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudFront Distribution を有効化する（ORIGIN_PULL のリファレンス配信）。
+
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する。
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    Description: CloudWatch Logs の保持日数。
+
+  ExternalStoreSecretName:
+    Type: String
+    Default: ""
+    Description: >
+      PUBLISH_PUSH 時の外部 S3 互換ストア（Akamai Object Storage / Cloudflare R2 /
+      Fastly Object Storage 等）認証情報の Secrets Manager シークレット名。
+      JSON 形式 {"access_key_id":"...","secret_access_key":"...","session_token":"(任意)"}。
+      空文字の場合は AWS 既定認証情報を使用（外部ベンダーには通用しない点に注意）。
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms（Lambda エラー / Step Functions 失敗）を有効化する。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateCloudFront: !Equals [!Ref EnableCloudFront, "true"]
+  EnableXRay: !Equals [!Ref EnableXRayTracing, "true"]
+  IsPolling: !Equals [!Ref TriggerMode, "POLLING"]
+  IsHybrid: !Equals [!Ref TriggerMode, "HYBRID"]
+  IsPollingOrHybrid: !Or [!Condition IsPolling, !Condition IsHybrid]
+  HasExternalStoreSecret: !Not [!Equals [!Ref ExternalStoreSecretName, ""]]
+  CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
+
+# =====================================================================
+# Globals
+# =====================================================================
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 300
+    MemorySize: 256
+    Architectures:
+      - arm64
+    Tracing: !If [EnableXRay, Active, PassThrough]
+    Tags:
+      UseCase: content-edge-delivery
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  PublishLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-publish"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  DeliveryLogSyncLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-delivery-log-sync"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  # -----------------------------------------------------------------
+  # Publish Function (VPC-external — Internet-origin S3 AP)
+  # -----------------------------------------------------------------
+  PublishFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-publish"
+      CodeUri: ../
+      Handler: content-edge-delivery/functions/publish/handler.handler
+      LoggingConfig:
+        LogGroup: !Ref PublishLogGroup
+      Environment:
+        Variables:
+          USE_CASE: content-edge-delivery
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          DELIVERY_MODE: !Ref DeliveryMode
+          CDN_TARGET: !Ref CDNTarget
+          APPROVED_PREFIX: !Ref ApprovedPrefix
+          SUFFIX_FILTER: !Ref SuffixFilter
+          DEMO_MODE: !Ref DemoMode
+          EXTERNAL_STORE_ENDPOINT: !Ref ExternalStoreEndpoint
+          EXTERNAL_STORE_BUCKET: !Ref ExternalStoreBucket
+          EXTERNAL_STORE_SECRET_NAME: !Ref ExternalStoreSecretName
+          DATA_CLASSIFICATION: !Ref DataClassification
+      Policies:
+        - Statement:
+            - Sid: S3AccessPointRead
+              Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+              Resource:
+                - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+            - Sid: S3AccessPointWriteManifest
+              Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource:
+                - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+        - !If
+          - HasExternalStoreSecret
+          - Statement:
+              - Sid: ReadExternalStoreSecret
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ExternalStoreSecretName}-*"
+          - !Ref AWS::NoValue
+
+  # -----------------------------------------------------------------
+  # Delivery Log Sync Function (VPC-external)
+  # -----------------------------------------------------------------
+  DeliveryLogSyncFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-delivery-log-sync"
+      CodeUri: ../
+      Handler: content-edge-delivery/functions/delivery_log_sync/handler.handler
+      LoggingConfig:
+        LogGroup: !Ref DeliveryLogSyncLogGroup
+      Environment:
+        Variables:
+          USE_CASE: content-edge-delivery
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          REDACT_CLIENT_IP: !Ref RedactClientIp
+          DEMO_MODE: !Ref DemoMode
+          DATA_CLASSIFICATION: INTERNAL
+      Policies:
+        - Statement:
+            - Sid: S3AccessPointWriteSummary
+              Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource:
+                - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+
+  # -----------------------------------------------------------------
+  # Step Functions: Publish -> Notify
+  # -----------------------------------------------------------------
+  DeliveryStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt PublishFunction.Arn
+              - Sid: PublishSns
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+
+  DeliveryStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt DeliveryStateMachineRole.Arn
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
+      DefinitionString: !Sub |
+        {
+          "Comment": "Content Edge Delivery - Publish approved renditions",
+          "StartAt": "Publish",
+          "States": {
+            "Publish": {
+              "Type": "Task",
+              "Resource": "${PublishFunction.Arn}",
+              "ResultPath": "$.publish",
+              "Next": "NotifyCompletion",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "NotifyCompletion"
+                }
+              ]
+            },
+            "NotifyCompletion": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "${NotificationTopic}",
+                "Subject": "Content Edge Delivery Completed",
+                "Message.$": "States.Format('Delivery publish completed. Manifest: {}', $.publish.manifest_key)"
+              },
+              "End": true
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler (POLLING / HYBRID)
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsPollingOrHybrid
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref DeliveryStateMachine
+
+  DeliverySchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsPollingOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref DeliveryStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # CloudFront Distribution + OAC (reference delivery for ORIGIN_PULL)
+  # IMPORTANT: S3 AP は internet network origin が必要。
+  # -----------------------------------------------------------------
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Condition: CreateCloudFront
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-s3ap-oac"
+        Description: OAC for FSx ONTAP S3 Access Point origin
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Condition: CreateCloudFront
+    Properties:
+      DistributionConfig:
+        Comment: !Sub "${AWS::StackName} - Approved rendition delivery"
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: s3ap-origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+        Origins:
+          - Id: s3ap-origin
+            DomainName: !Sub "${S3AccessPointOutputAlias}.s3.${AWS::Region}.amazonaws.com"
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        PriceClass: PriceClass_200
+        HttpVersion: http2and3
+        IPV6Enabled: true
+      Tags:
+        - Key: UseCase
+          Value: content-edge-delivery
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional) — Reliability/Ops
+  # -----------------------------------------------------------------
+  PublishErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-publish-errors"
+      AlarmDescription: Publish Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PublishFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  DeliveryLogSyncErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-log-sync-errors"
+      AlarmDescription: Delivery Log Sync Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref DeliveryLogSyncFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  StateMachineFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref DeliveryStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  PublishFunctionArn:
+    Description: Publish Lambda の ARN
+    Value: !GetAtt PublishFunction.Arn
+
+  DeliveryLogSyncFunctionArn:
+    Description: Delivery Log Sync Lambda の ARN
+    Value: !GetAtt DeliveryLogSyncFunction.Arn
+
+  StateMachineArn:
+    Description: 配信ワークフロー State Machine の ARN
+    Value: !Ref DeliveryStateMachine
+
+  CloudFrontDomainName:
+    Condition: CreateCloudFront
+    Description: CloudFront ディストリビューションのドメイン名
+    Value: !GetAtt CloudFrontDistribution.DomainName

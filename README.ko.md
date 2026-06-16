@@ -4,7 +4,7 @@
 
 ## Current Status
 
-본 리포지토리는 **28개의 산업별 유스케이스** + **이벤트 기반 FPolicy 패턴** + **6개의 FlexCache/FlexClone 패턴**을 포함하는 서버리스 패턴 라이브러리입니다.
+본 리포지토리는 **28개의 산업별 유스케이스** + **이벤트 기반 FPolicy 패턴** + **7개의 FlexCache/FlexClone 패턴** + **콘텐츠 엣지 배포 패턴**을 포함하는 서버리스 패턴 라이브러리입니다.
 
 초기 5개 패턴(Phase 1)에서 Phase 2–13을 통해 확장되었습니다. Phase 10에서 공유 FPolicy 이벤트 수집 파이프라인 도입, Phase 11에서 전체 17 UC에 디스패치 전개, Phase 12에서 Persistent Store 리플레이 검증·SLO 관측성·용량 가드레일·시크릿 로테이션으로 운영 강화, Phase 13에서 FlexClone/FlexCache 서버리스 자동화를 구현했습니다.
 
@@ -29,7 +29,7 @@ Amazon FSx for ONTAP의 S3 Access Points를 활용한 업종별 서버리스 자
 
 ## 개요
 
-이 리포지토리는 FSx for ONTAP에 저장된 엔터프라이즈 데이터를 **S3 Access Points**를 통해 서버리스로 처리하는 **28개의 산업별 패턴 (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17)**을 제공합니다.
+이 리포지토리는 FSx for ONTAP에 저장된 엔터프라이즈 데이터를 **S3 Access Points**를 통해 서버리스로 처리하는 **28개의 산업별 패턴 (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17, Phase 14: UC18–UC19, Phase 15: UC20–UC22, Phase 16: UC23–UC28)**을 제공합니다.
 
 > 이하에서는 FSx for ONTAP S3 Access Points를 간략히 **S3 AP**로 표기합니다.
 
@@ -213,6 +213,8 @@ EventBridge Scheduler (정기 실행)
 | UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | 부동산 | 물건 이미지 분석・계약서 데이터 추출 |
 | UC27 | [`hr-document-screening/`](hr-document-screening/) | 인사・HR | 이력서 스크리닝・후보자 평가 |
 | UC28 | [`chemical-sds-management/`](chemical-sds-management/) | 화학・소재 | SDS 관리・실험 노트 분석 |
+| UC29 | [`genai-kb-selfservice-curation/`](genai-kb-selfservice-curation/) | 전 산업 공통 | 셀프서비스 AI 지식 운영(매니지드 Bedrock KB + Windows 드래그&드롭) |
+| UC30 | [`genai-quick-agentic-workspace/`](genai-quick-agentic-workspace/) | 전 산업 공통 | Amazon Quick 에이전트형 워크스페이스(Index/Sight/Flows + S3 AP 데이터 기반) |
 
 > **공공 부문 적합성**: UC15는 DoD CC SRG / CSfC / FedRAMP High (GovCloud 마이그레이션 시), UC16은 NARA / FOIA 섹션 552 / 섹션 508, UC17은 INSPIRE 지침 / OGC 표준 준수.
 
@@ -226,6 +228,14 @@ EventBridge Scheduler (정기 실행)
 | FC4 | [`automotive-cae/`](automotive-cae/README.md) | Automotive CAE Analytics | CAE 시뮬레이션 결과 자동 분석 | ✅ 코드·테스트 완료 |
 | FC5 | [`life-sciences-research/`](life-sciences-research/README.md) | Life Sciences Research | 연구 데이터 자동 분석 | ✅ 템플릿 완료 |
 | FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/README.md) | Gaming Build Pipeline | 게임 에셋 품질 체크·로그 분석 | ✅ 템플릿 완료 |
+| FC7 | [`devops-flexclone-cicd/`](devops-flexclone-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | FlexClone 기반 Dev/Test 리프레시 및 CI/CD | ✅ 코드·테스트 완료 |
+
+### 인프라・공통 패턴
+
+| 디렉터리 | 내용 |
+|:---|:---|
+| [`event-driven-fpolicy/`](event-driven-fpolicy/) | FPolicy 이벤트 기반 파이프라인 |
+| [`content-edge-delivery/`](content-edge-delivery/) | CDN/엣지 배포 패턴(벤더 비종속・CloudFront/서드파티, [CDN 비교](docs/cdn-comparison.en.md)) |
 
 > **중요**: FlexCache 볼륨에 S3 Access Point를 연결할 수 있는지는 ONTAP 버전 및 FSx for ONTAP 서비스 사양에 따라 다릅니다. PoC 시 반드시 실제 환경에서 검증하세요.
 
@@ -264,6 +274,9 @@ EventBridge Scheduler (정기 실행)
 | UC26 | 부동산 | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
 | UC27 | 인사·HR | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
 | UC28 | 화학·소재 | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
+| UC29 | 전 산업 공통 (셀프서비스 KB) | [📐 Architecture](genai-kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](genai-kb-selfservice-curation/docs/demo-guide.md) |
+| UC30 | 전 산업 공통 (Amazon Quick) | [📐 Architecture](genai-quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](genai-quick-agentic-workspace/docs/demo-guide.md) |
+| — | 콘텐츠 엣지 배포 (CDN) | [📐 Architecture](content-edge-delivery/docs/architecture.md) | [🎬 Demo Guide](content-edge-delivery/docs/demo-guide.md) |
 
 ## UI/UX 스크린샷 (엔드유저 / 직원 / 담당자 뷰)
 

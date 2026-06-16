@@ -4,7 +4,7 @@
 
 ## Current Status
 
-本仓库现包含 **28 个行业用例** + **事件驱动 FPolicy 模式** + **6 个 FlexCache/FlexClone 模式**，构成完整的无服务器模式库。
+本仓库现包含 **28 个行业用例** + **事件驱动 FPolicy 模式** + **7 个 FlexCache/FlexClone 模式** + **内容边缘分发模式**，构成完整的无服务器模式库。
 
 从最初的 5 个模式（Phase 1）经 Phase 2–13 扩展而来。Phase 10 引入共享 FPolicy 事件摄取管道，Phase 11 将调度扩展至全部 17 UC，Phase 12 通过 Persistent Store 重放验证、SLO 可观测性、容量护栏和密钥轮换进行运维强化，Phase 13 实现 FlexClone/FlexCache 无服务器自动化。
 
@@ -29,7 +29,7 @@
 
 ## 概述
 
-本仓库提供 **28 种行业专属模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17）**，通过 **S3 Access Points** 对存储在 FSx for ONTAP 上的企业数据进行无服务器处理。
+本仓库提供 **28 种行业专属模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17、Phase 14: UC18–UC19、Phase 15: UC20–UC22、Phase 16: UC23–UC28）**，通过 **S3 Access Points** 对存储在 FSx for ONTAP 上的企业数据进行无服务器处理。
 
 > 以下将 FSx for ONTAP S3 Access Points 简称为 **S3 AP**。
 
@@ -213,6 +213,8 @@ EventBridge Scheduler (定期执行)
 | UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | 不动产 | 物件图像分析・合同数据提取 |
 | UC27 | [`hr-document-screening/`](hr-document-screening/) | 人才・HR | 简历筛选・候选人评估 |
 | UC28 | [`chemical-sds-management/`](chemical-sds-management/) | 化学・材料 | SDS 管理・实验笔记分析 |
+| UC29 | [`genai-kb-selfservice-curation/`](genai-kb-selfservice-curation/) | 全行业通用 | 自助式 AI 知识运营（托管 Bedrock KB + Windows 拖放） |
+| UC30 | [`genai-quick-agentic-workspace/`](genai-quick-agentic-workspace/) | 全行业通用 | Amazon Quick 智能体工作区（Index/Sight/Flows + S3 AP 数据底座） |
 
 > **公共部门合规性**: UC15 针对 DoD CC SRG / CSfC / FedRAMP High（GovCloud 迁移），UC16 针对 NARA / FOIA Section 552 / Section 508，UC17 针对 INSPIRE 指令 / OGC 标准。
 
@@ -226,6 +228,14 @@ EventBridge Scheduler (定期执行)
 | FC4 | [`automotive-cae/`](automotive-cae/README.md) | Automotive CAE Analytics | CAE 仿真结果自动分析 | ✅ 代码·测试完成 |
 | FC5 | [`life-sciences-research/`](life-sciences-research/README.md) | Life Sciences Research | 研究数据自动分析 | ✅ 模板完成 |
 | FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/README.md) | Gaming Build Pipeline | 游戏资产质量检查·日志分析 | ✅ 模板完成 |
+| FC7 | [`devops-flexclone-cicd/`](devops-flexclone-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | 基于 FlexClone 的 Dev/Test 刷新与 CI/CD | ✅ 代码·测试完成 |
+
+### 基础设施・通用模式
+
+| 目录 | 内容 |
+|:---|:---|
+| [`event-driven-fpolicy/`](event-driven-fpolicy/) | FPolicy 事件驱动管道 |
+| [`content-edge-delivery/`](content-edge-delivery/) | CDN/边缘分发模式（厂商中立・CloudFront/第三方，[CDN 对比](docs/cdn-comparison.en.md)） |
 
 > **重要**: FlexCache 卷是否可以附加 S3 Access Point 取决于 ONTAP 版本和 FSx for ONTAP 服务规格。PoC 时务必在实际环境中验证。
 
@@ -263,6 +273,9 @@ EventBridge Scheduler (定期执行)
 | UC26 | 不动产 | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
 | UC27 | 人才HR | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
 | UC28 | 化学 | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
+| UC29 | 全行业通用 (自助 KB) | [📐 Architecture](genai-kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](genai-kb-selfservice-curation/docs/demo-guide.md) |
+| UC30 | 全行业通用 (Amazon Quick) | [📐 Architecture](genai-quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](genai-quick-agentic-workspace/docs/demo-guide.md) |
+| — | 内容边缘分发 (CDN) | [📐 Architecture](content-edge-delivery/docs/architecture.md) | [🎬 Demo Guide](content-edge-delivery/docs/demo-guide.md) |
 
 ## UI/UX 截图 (最终用户 / 员工 / 负责人视图)
 
