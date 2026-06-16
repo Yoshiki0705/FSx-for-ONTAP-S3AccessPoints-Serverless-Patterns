@@ -41,6 +41,8 @@
 | UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | Real Estate | Property image + contract extraction |
 | UC27 | [`hr-document-screening/`](hr-document-screening/) | HR | Resume screening |
 | UC28 | [`chemical-sds-management/`](chemical-sds-management/) | Chemicals | SDS management + lab notebook |
+| UC29 | [`genai-kb-selfservice-curation/`](genai-kb-selfservice-curation/) | Cross-industry | Self-service AI knowledge curation (managed Bedrock KB + Windows drag-and-drop) |
+| UC30 | [`genai-quick-agentic-workspace/`](genai-quick-agentic-workspace/) | Cross-industry | Amazon Quick agentic workspace (Index/Sight/Flows + S3 AP data foundation) |
 | SAP | [`sap-erp-adjacent/`](sap-erp-adjacent/) | SAP/ERP | IDoc, HULFT, EDI processing |
 
 ### FlexCache / FlexClone Patterns (FC1-FC7)
@@ -61,6 +63,7 @@
 |:---|:---|
 | [`shared/`](shared/) | Common Python modules (S3ApHelper, OntapClient, observability) |
 | [`event-driven-fpolicy/`](event-driven-fpolicy/) | FPolicy event-driven pipeline |
+| [`content-edge-delivery/`](content-edge-delivery/) | CDN/edge delivery pattern (vendor-neutral; CloudFront/third-party, [CDN comparison](docs/cdn-comparison.en.md)) |
 | [`docs/`](docs/) | Design guides, benchmarks, Partner assets (40+ documents) |
 | [`scripts/`](scripts/) | Deploy, benchmark, utilities |
 | [`tests/`](tests/) | E2E & load tests |
@@ -88,7 +91,7 @@
 
 ## Current Status
 
-This repository now contains **28 industry use cases** + **event-driven FPolicy pattern** + **7 FlexCache/FlexClone patterns** as a serverless pattern library for Amazon FSx for ONTAP S3 Access Points.
+This repository now contains **28 industry use cases** + **event-driven FPolicy pattern** + **7 FlexCache/FlexClone patterns** + **content edge delivery pattern** as a serverless pattern library for Amazon FSx for ONTAP S3 Access Points.
 
 The original 5 patterns (Phase 1) have been expanded across Phases 2–13. Phase 10 introduced the shared FPolicy event-ingestion pipeline, Phase 11 wired dispatch across all 17 UCs, Phase 12 hardened the pipeline with Persistent Store replay validation, SLO observability, capacity guardrails, and secrets rotation, and Phase 13 added FlexClone/FlexCache serverless automation.
 
@@ -157,7 +160,7 @@ Local details: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md)
 
 ## Overview
 
-This repository provides **28 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17), plus an **event-driven FPolicy pattern** and **7 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6, Phase 15: FC7).
+This repository provides **28 industry-specific patterns** for serverlessly processing enterprise data stored in FSx for ONTAP via **S3 Access Points** (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17, Phase 14: UC18–UC19, Phase 15: UC20–UC22, Phase 16: UC23–UC28), plus an **event-driven FPolicy pattern**, **7 FlexCache/FlexClone patterns** (Phase 13: FC1–FC6, Phase 15: FC7), and a **content edge delivery pattern** (CDN/edge, vendor-neutral).
 
 > Hereafter, FSx for ONTAP S3 Access Points will be abbreviated as **S3 AP**.
 
@@ -408,6 +411,9 @@ Detailed architecture diagrams and demo guides for each use case are available i
 | UC26 | Real Estate (Portfolio) | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
 | UC27 | HR (Resume Screening) | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
 | UC28 | Chemical (SDS) | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
+| UC29 | Cross-industry (Self-service KB) | [📐 Architecture](genai-kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](genai-kb-selfservice-curation/docs/demo-guide.md) |
+| UC30 | Cross-industry (Amazon Quick) | [📐 Architecture](genai-quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](genai-quick-agentic-workspace/docs/demo-guide.md) |
+| — | Content Edge Delivery (CDN) | [📐 Architecture](content-edge-delivery/docs/architecture.md) | [🎬 Demo Guide](content-edge-delivery/docs/demo-guide.md) |
 
 > All documents are available in 8 languages (日本語・English・한국어・简体中文・繁體中文・Français・Deutsch・Español). Use the Language Switcher at the top of each document to switch languages.
 
