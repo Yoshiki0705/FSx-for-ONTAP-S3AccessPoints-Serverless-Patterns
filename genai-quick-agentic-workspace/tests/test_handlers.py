@@ -5,6 +5,9 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import boto3
+import pytest
+from moto import mock_aws
 from unittest.mock import patch
 
 
@@ -16,6 +19,14 @@ def _load_handler(function_name: str):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _sigv4_event(action: str, params: dict, caller_arn: str) -> dict:
+    return {
+        "action": action,
+        "params": params,
+        "requestContext": {"identity": {"userArn": caller_arn}},
+    }
 
 
 class TestQuickAction:
@@ -243,3 +254,107 @@ class TestDataPrep:
         assert result["status"] == "completed"
         # 空 prefix は WORKSPACE_PREFIX にクランプされる
         assert captured["Prefix"] == "quick-workspace/"
+
+
+class TestPerActionAuthorization:
+    """per-action 認可（ACTION_AUTH_MODE=enforce）のテスト"""
+
+    def test_open_mode_allows_all(self):
+        module = _load_handler("quick_action")
+        with patch.dict(os.environ, {"ACTION_AUTH_MODE": "open", "NOTIFICATION_TOPIC_ARN": ""}, clear=False):
+            resp = module.handler(_sigv4_event("create_action_item", {"title": "T"}, "arn:aws:iam::1:role/anyone"), None)
+        assert resp["statusCode"] == 200
+
+    def test_enforce_denies_unauthorized_mutation(self):
+        module = _load_handler("quick_action")
+        env = {"ACTION_AUTH_MODE": "enforce", "AUTHORIZED_PRINCIPALS": "role/QuickConn", "NOTIFICATION_TOPIC_ARN": ""}
+        with patch.dict(os.environ, env, clear=False):
+            resp = module.handler(_sigv4_event("create_action_item", {"title": "T"}, "arn:aws:iam::1:role/Stranger"), None)
+        assert resp["statusCode"] == 403
+        assert json.loads(resp["body"])["reason"] == "authorized_principal_required"
+
+    def test_enforce_allows_authorized_mutation(self):
+        module = _load_handler("quick_action")
+        env = {"ACTION_AUTH_MODE": "enforce", "AUTHORIZED_PRINCIPALS": "role/QuickConn", "NOTIFICATION_TOPIC_ARN": ""}
+        with patch.dict(os.environ, env, clear=False):
+            resp = module.handler(_sigv4_event("create_action_item", {"title": "T"}, "arn:aws:iam::1:role/QuickConn"), None)
+        assert resp["statusCode"] == 200
+
+    def test_enforce_read_only_allowed_without_principal(self):
+        module = _load_handler("quick_action")
+        converse_resp = {"output": {"message": {"content": [{"text": "brief"}]}}}
+        with patch.dict(os.environ, {"ACTION_AUTH_MODE": "enforce"}, clear=False):
+            with patch.object(module.bedrock_runtime, "converse", return_value=converse_resp):
+                resp = module.handler(_sigv4_event("generate_brief", {"context": "x"}, "arn:aws:iam::1:role/anyone"), None)
+        assert resp["statusCode"] == 200
+
+    def test_enforce_approve_requires_admin(self):
+        module = _load_handler("quick_action")
+        env = {"ACTION_AUTH_MODE": "enforce", "AUTHORIZED_PRINCIPALS": "role/QuickConn", "ADMIN_PRINCIPALS": "role/Admin"}
+        with patch.dict(os.environ, env, clear=False):
+            resp = module.handler(_sigv4_event("approve", {"approval_id": "APR-1"}, "arn:aws:iam::1:role/QuickConn"), None)
+        assert resp["statusCode"] == 403
+        assert json.loads(resp["body"])["reason"] == "admin_principal_required"
+
+
+@mock_aws
+class TestEnforcedHITL:
+    """強制 HITL（DynamoDB 承認ストア）のテスト"""
+
+    def _make_table(self):
+        ddb = boto3.resource("dynamodb", region_name="ap-northeast-1")
+        ddb.create_table(
+            TableName="uc30-approvals-test",
+            AttributeDefinitions=[{"AttributeName": "approval_id", "AttributeType": "S"}],
+            KeySchema=[{"AttributeName": "approval_id", "KeyType": "HASH"}],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        return "uc30-approvals-test"
+
+    def test_full_approval_lifecycle(self):
+        module = _load_handler("quick_action")
+        table_name = self._make_table()
+        env = {
+            "APPROVALS_TABLE": table_name,
+            "ACTION_AUTH_MODE": "open",
+            "NOTIFICATION_TOPIC_ARN": "",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            # 1. request_approval → 永続化（enforced=true）
+            r1 = module.handler(_sigv4_event("request_approval", {"operation": "approve_payment"}, "arn:aws:iam::1:role/QuickConn"), None)
+            body1 = json.loads(r1["body"])
+            assert body1["approval"]["enforced"] is True
+            apr_id = body1["approval"]["approval_id"]
+
+            # 2. execute before approve → 拒否（409）
+            r2 = module.handler(_sigv4_event("execute_approved", {"approval_id": apr_id}, "arn:aws:iam::1:role/QuickConn"), None)
+            assert r2["statusCode"] == 409
+            assert json.loads(r2["body"])["status"] == "rejected"
+
+            # 3. approve（管理者）
+            r3 = module.handler(_sigv4_event("approve", {"approval_id": apr_id}, "arn:aws:iam::1:role/Admin"), None)
+            assert r3["statusCode"] == 200
+            assert json.loads(r3["body"])["status"] == "approved"
+
+            # 4. execute after approve → 実行可（200）
+            r4 = module.handler(_sigv4_event("execute_approved", {"approval_id": apr_id}, "arn:aws:iam::1:role/QuickConn"), None)
+            assert r4["statusCode"] == 200
+            assert json.loads(r4["body"])["status"] == "executed"
+
+            # 5. 再実行は不可（状態が executed）
+            r5 = module.handler(_sigv4_event("execute_approved", {"approval_id": apr_id}, "arn:aws:iam::1:role/QuickConn"), None)
+            assert r5["statusCode"] == 409
+
+    def test_execute_without_store_returns_412(self):
+        module = _load_handler("quick_action")
+        with patch.dict(os.environ, {"APPROVALS_TABLE": "", "ACTION_AUTH_MODE": "open"}, clear=False):
+            resp = module.handler(_sigv4_event("execute_approved", {"approval_id": "APR-x"}, "arn:aws:iam::1:role/X"), None)
+        assert resp["statusCode"] == 412
+
+    def test_approve_nonexistent_returns_error(self):
+        module = _load_handler("quick_action")
+        table_name = self._make_table()
+        with patch.dict(os.environ, {"APPROVALS_TABLE": table_name, "ACTION_AUTH_MODE": "open"}, clear=False):
+            resp = module.handler(_sigv4_event("approve", {"approval_id": "APR-missing"}, "arn:aws:iam::1:role/Admin"), None)
+        body = json.loads(resp["body"])
+        assert body["status"] == "error"

@@ -79,6 +79,15 @@ Parameters:
       一次フィルタおよび Lambda の二次フィルタに使用）。S3 取り込みプレフィックスとは
       別名前空間（FPolicy は /<volume>/... を報告）。
 
+  KbTriggerReservedConcurrency:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 100
+    Description: >
+      KB Trigger Lambda の予約済み同時実行数（バースト制御）。デバウンスと併せ、
+      大量ファイル投入時の Bedrock/CloudWatch スロットリングを抑制する。
+
 Conditions:
   HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
   IsScenarioCEnabled: !Equals [!Ref EnableScenarioC, 'true']
@@ -534,6 +543,9 @@ Resources:
       Timeout: 60
       MemorySize: 256
       Role: !GetAtt KbTriggerRole.Arn
+      # バースト制御: 大量ファイル投入時の同時起動を抑制（Bedrock/CloudWatch スロットリング緩和）。
+      # デバウンス（進行中スキップ）と併せ、KB ジョブは同時 1 本に収束する。
+      ReservedConcurrentExecutions: !Ref KbTriggerReservedConcurrency
       Environment:
         Variables:
           KNOWLEDGE_BASE_ID: !Ref KnowledgeBaseId

@@ -67,6 +67,28 @@ Parameters:
       Athena Query Lambda で任意 SQL（event.sql）を許可するか。既定 false（許可リスト
       NAMED_QUERIES のみ実行）。管理用途で任意 SQL が必要な場合のみ true にする。
 
+  ActionAuthMode:
+    Type: String
+    Default: 'open'
+    AllowedValues: ['open', 'enforce']
+    Description: >
+      Quick Flows Action API の per-action 認可モード。open=デモ（認可強制なし）、
+      enforce=本番（状態変更/管理アクションを AuthorizedPrincipals/AdminPrincipals で制限）。
+
+  AuthorizedPrincipals:
+    Type: String
+    Default: ''
+    Description: >
+      状態変更アクション（create_action_item/request_approval/execute_approved）を許可する
+      呼び出し元 ARN の部分一致パターン（カンマ区切り）。ActionAuthMode=enforce 時に有効。
+
+  AdminPrincipals:
+    Type: String
+    Default: ''
+    Description: >
+      管理アクション（approve）を許可する呼び出し元 ARN の部分一致パターン（カンマ区切り）。
+      ActionAuthMode=enforce 時に有効。
+
 Conditions:
   HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
   HasQuickPrincipal: !Not [!Equals [!Ref QuickDataSourcePrincipal, '']]
@@ -109,6 +131,26 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: 'false'
+
+  # --- 承認ストア（強制 HITL 用 DynamoDB テーブル） ---
+  ApprovalsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-approvals'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: approval_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: approval_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
 
   # --- Glue Database（構造化データのカタログ） ---
   GlueDatabase:
@@ -287,6 +329,12 @@ Resources:
               - Effect: Allow
                 Action: sns:Publish
                 Resource: !Ref NotificationTopic
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt ApprovalsTable.Arn
 
   QuickActionFunction:
     Type: AWS::Serverless::Function
@@ -303,6 +351,10 @@ Resources:
           NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
           BEDROCK_GUARDRAIL_ID: !Ref BedrockGuardrailId
           BEDROCK_GUARDRAIL_VERSION: !Ref BedrockGuardrailVersion
+          APPROVALS_TABLE: !Ref ApprovalsTable
+          ACTION_AUTH_MODE: !Ref ActionAuthMode
+          AUTHORIZED_PRINCIPALS: !Ref AuthorizedPrincipals
+          ADMIN_PRINCIPALS: !Ref AdminPrincipals
       Events:
         ActionApi:
           Type: Api
