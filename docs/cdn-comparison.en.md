@@ -36,6 +36,33 @@ customer contracts, SLAs, operations, and regional requirements outside this doc
 > Universal constraint: viewer token auth cannot use S3 presigned URLs — use CDN-native tokens.
 > Public delivery bypasses NFS/SMB ACLs, so deliver only approved renditions (see section 4).
 
+## 2.5 Performance / throughput considerations (Storage design)
+
+CDN integration affects FSx for ONTAP's shared throughput. Understand origin-fetch load per mechanism:
+
+| Aspect | ORIGIN_PULL (M1/M2/M4) | PUBLISH_PUSH (M3) |
+|--------|------------------------|-------------------|
+| FSx read load | On every cache miss (ongoing) | Initial replication only (zero at steady state) |
+| Cache stampede risk | Simultaneous origin fetches can spike FSx | Absorbed by the delivery store (FSx unaffected) |
+| NFS/SMB bandwidth contention | Yes (S3AP/NFS/SMB share throughput) | Only during initial copy |
+| Large-media partial fetch | Range GET effective (CDN→S3 AP Range support TBV) | Depends on delivery store |
+
+- Use CDN **Origin Shield / high TTL / tiered cache** to reduce origin fetches.
+- Consider **FlexCache** to isolate delivery reads from production volumes (ONTAP native).
+- PUBLISH_PUSH avoids steady-state FSx reads entirely — lowest contention risk.
+- Quantitative sizing requires measurement (object size × concurrency × FSx provisioned throughput).
+
+## 2.6 Cost considerations (qualitative)
+
+| Mechanism | Primary cost components |
+|-----------|------------------------|
+| ORIGIN_PULL | FSx reads (cache-miss share) + AWS data-transfer out (S3 AP → CDN) + CDN delivery |
+| PUBLISH_PUSH | Delivery-store storage (approved renditions only) + initial replication transfer + CDN delivery |
+
+> These are **qualitative cost factors**, not dollar amounts. Actual costs depend on traffic volume, object
+> sizes, cache-hit ratios, and each vendor's current pricing. Calculate with real traffic projections against
+> latest pricing — do not extrapolate sample-run costs to production.
+
 ## 3. Mechanism support per delivery network (fact-based)
 
 ○ = documented native feature / △ = conditional or self-implemented / − = no such feature / TBV = S3 AP-specific verification needed.
