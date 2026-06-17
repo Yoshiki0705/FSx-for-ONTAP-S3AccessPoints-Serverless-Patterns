@@ -409,6 +409,21 @@ Delete the **KB before** its AOSS collection and execution role, and flip
 data sources to `RETAIN` up front so deletion never depends on the store.
 Automated in `scripts/teardown-uc29-uc30.sh` (`delete_kb` helper).
 
+### Temp-role rescue pattern (security note)
+
+If a stuck KB cannot be deleted because its execution role is already gone,
+you may need to **temporarily recreate the role** so Bedrock can assume it
+during the delete. CRITICAL rules:
+
+1. Make the temp role as narrow as possible (`aoss:APIAccessAll` on the
+   original collection ARN only — though if the collection is gone,
+   `RETAIN` + delete is the better path)
+2. **Delete the temp role immediately** after the KB is confirmed deleted
+   (`list-knowledge-bases` returns empty or the KB is absent)
+3. Verify with `aws iam get-role --role-name <name>` that it's gone
+4. Never leave a broad temp role overnight — set a calendar reminder if
+   the async delete takes hours
+
 ### Affected patterns
 
 UC29 and any custom-RAG pattern that provisions a Bedrock KB + AOSS outside

@@ -167,3 +167,10 @@ docs/screenshots/raw/
 
 # Local rebuild manifests contain real S3 AP aliases / environment specifics
 scripts/*.local.env
+
+# Blog drafts (internal review; publish to dev.to separately when finalized)
+**/docs/blog-draft*.md
+
+# Persona review board records (internal project-context; not for public repo)
+docs/review-uc*
+docs/review-*-persona-board*.md

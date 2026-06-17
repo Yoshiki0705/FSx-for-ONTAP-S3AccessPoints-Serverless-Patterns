@@ -255,6 +255,19 @@ EventBridge Scheduler 実行履歴、Bedrock Ingestion ジョブ統計（scanned
 
 ---
 
+## Data Classification
+
+| 出力 | 分類 | 根拠 |
+|------|------|------|
+| Bedrock KB Ingestion 結果（ベクトル + メタデータ） | INTERNAL | ソースファイルと同じ分類を継承。外部公開不可 |
+| Ingestion ジョブステータス / SNS 通知 | INTERNAL | 運用メタデータ。機密データを含まない |
+| CloudWatch Metrics / Logs | INTERNAL | 集計指標。ファイル内容を含まない |
+
+> 規制業種では CUI / FISC / HIPAA 分類が追加で必要。`shared/data_classification.py` のラベル体系を用途に合わせて拡張すること。
+> `dataDeletionPolicy=DELETE` はファイル削除時にベクトルも即時削除するが、保持期間要件がある場合は `RETAIN` を使用し別途パージ手順を設計する。
+
+---
+
 ## AWS ドキュメントリンク
 
 | サービス | ドキュメント |
