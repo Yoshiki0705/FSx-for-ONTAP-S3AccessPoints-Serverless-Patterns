@@ -176,6 +176,21 @@ Data Prep マニフェスト、Athena クエリ履歴、Action API（API Gateway
 
 ---
 
+## Data Classification
+
+| 出力 | 分類 | 根拠 |
+|------|------|------|
+| Action API レスポンス（generate_brief） | INTERNAL | ソースデータ由来の要約。外部公開不可 |
+| Action API レスポンス（create_action_item / approve / execute） | INTERNAL | 業務オペレーション記録 |
+| Athena クエリ結果（結果バケット） | INTERNAL | 暗号化 + 30 日 lifecycle + TLS 強制。analytics/ データと同レベル |
+| DynamoDB 承認ストア（ApprovalsTable） | INTERNAL | 承認ステート。operation / requested_by 等のメタデータ |
+| SNS 通知メッセージ | INTERNAL | アクション要約のみ。ファイル本体を含まない |
+
+> 規制業種では CUI / FISC / HIPAA 分類が追加で必要。`shared/data_classification.py` を拡張すること。
+> `ALLOW_RAW_SQL=false`（既定）の場合、Athena は許可リストクエリのみ実行するため、データ分類の越境リスクは低い。
+
+---
+
 ## AWS ドキュメントリンク
 
 | サービス | ドキュメント |
