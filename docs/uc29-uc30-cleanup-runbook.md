@@ -81,6 +81,18 @@ cd genai-quick-agentic-workspace && sam build && sam deploy   # UC30（samconfig
 
 ## Rebuild の要点（`scripts/rebuild-uc29-kb.py`）
 
+### 所要時間の目安
+
+| フェーズ | 所要時間 |
+|---------|---------|
+| AOSS collection 起動（CREATING→ACTIVE） | ~5 分 |
+| vector index 作成 + data-plane 伝播待ち | ~1 分 |
+| Bedrock KB + DataSource 作成 | ~30 秒 |
+| Ingestion ジョブ完了（20 ドキュメント規模） | ~3 分 |
+| **合計（rebuild 一回通し）** | **~10 分** |
+
+> ドキュメント数が多い（数百件）場合は Ingestion が 10-30 分に延びる。AOSS 起動時間はドキュメント数に依存しない。
+
 - **S3 Vectors ストアは CLI/boto3 で作成不可**（コンソール quick-create のみ）。
   本スクリプトは **OPENSEARCH_SERVERLESS** を使う。
 - 埋め込みは `amazon.titan-embed-text-v2:0` / **256 次元**。knn index の dimension と一致必須。
