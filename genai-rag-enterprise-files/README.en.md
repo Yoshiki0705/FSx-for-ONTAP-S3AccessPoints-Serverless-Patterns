@@ -92,7 +92,7 @@ User Query → Permission Filter → Vector Search → Bedrock Answer Generation
 
 ## Security Design
 
-- **No data movement**: Files remain on FSx ONTAP, read-only via S3 AP
+- **No data movement**: Files remain on FSx for ONTAP, read-only via S3 AP
 - **Permission preservation**: ACLs retrieved via ONTAP REST API, filtered at RAG response
 - **Encryption**: SSE-FSX (storage), TLS (in-transit), KMS (output)
 - **Least privilege**: Lambda permitted only necessary S3 AP operations

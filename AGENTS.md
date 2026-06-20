@@ -89,13 +89,13 @@ cfn-lint legal-compliance/template.yaml sap-erp-adjacent/template.yaml
 - **Trigger**: EventBridge Scheduler (polling) OR FPolicy EventBridge Rule (event-driven)
 - **Orchestration**: Step Functions state machine per UC
 - **Compute**: Lambda functions (Python 3.12, ARM64, 256-1024MB)
-- **Storage access**: FSx ONTAP S3 Access Points (read/write via S3ApHelper)
+- **Storage access**: FSx for ONTAP S3 Access Points (read/write via S3ApHelper)
 - **AI/ML**: Bedrock (Nova/Claude), Textract, Comprehend, Rekognition, SageMaker
 - **Analytics**: Athena + Glue Data Catalog
 - **Secrets**: Secrets Manager for ONTAP credentials
 - **Networking**: VPC-internal (ONTAP API) + VPC-external (S3 AP Internet Origin)
 - **TriggerMode**: POLLING / EVENT_DRIVEN / HYBRID (per-UC parameter)
-- **DemoMode**: `true` allows running without FSx ONTAP (regular S3 bucket)
+- **DemoMode**: `true` allows running without FSx for ONTAP (regular S3 bucket)
 
 ## Coding Conventions
 
@@ -183,7 +183,7 @@ Before submitting changes, run:
 A new industry pattern is considered field-shareable (ready for Partner/SI customer conversations) only when ALL of the following are met:
 
 - [ ] CloudFormation template passes `cfn-lint` with zero errors
-- [ ] DemoMode=true execution succeeds (no FSx ONTAP dependency)
+- [ ] DemoMode=true execution succeeds (no FSx for ONTAP dependency)
 - [ ] Unit tests + property-based tests pass
 - [ ] Success Metrics defined (Business Outcome / Technical KPI / Quality KPI / Cost KPI / Go-No-Go)
 - [ ] Data classification labels documented
@@ -207,7 +207,7 @@ All S3 AP access goes through `shared/s3ap_helper.py`. It accepts both S3 AP ali
 ### Output Destination Pattern
 
 - `OutputDestination=STANDARD_S3` — write to new S3 bucket (default)
-- `OutputDestination=FSXN_S3AP` — write back to FSx ONTAP via S3 AP (NFS/SMB users see results)
+- `OutputDestination=FSXN_S3AP` — write back to FSx for ONTAP via S3 AP (NFS/SMB users see results)
 
 ### Human Review Pattern
 
@@ -318,7 +318,7 @@ git diff --cached | grep -i '/Users/' && echo "LEAK DETECTED" || echo "OK"
 
 | Resource | Monthly Cost | Notes |
 |----------|-------------|-------|
-| FSx ONTAP (128 MBps) | ~$194 | Core infrastructure, always running |
+| FSx for ONTAP (128 MBps) | ~$194 | Core infrastructure, always running |
 | NAT Gateway | ~$32 each | Needed for VPC Lambda → Internet |
 | Interface VPC Endpoints | ~$7.20 each | ECR, Logs, STS, SQS, SecretsManager |
 | ECS Fargate (FPolicy) | ~$35 | Set desiredCount=0 when not testing |
@@ -327,7 +327,7 @@ git diff --cached | grep -i '/Users/' && echo "LEAK DETECTED" || echo "OK"
 ### Cost Optimization Patterns
 
 - Use `EnableVpcEndpoints=false` for PoC (saves ~$43/month)
-- Use `DemoMode=true` to test without FSx ONTAP
+- Use `DemoMode=true` to test without FSx for ONTAP
 - Disable EventBridge Schedules when not actively testing
 - Set ECS desiredCount=0 for FPolicy server when idle
 - Use `amazon.nova-lite-v1:0` (cheapest Bedrock model) for testing
@@ -347,7 +347,7 @@ When reviewing changes, consider these perspectives:
 
 | Document | Purpose |
 |----------|---------|
-| [Demo Mode Guide](docs/demo-mode-guide.md) | Run without FSx ONTAP |
+| [Demo Mode Guide](docs/demo-mode-guide.md) | Run without FSx for ONTAP |
 | [Customization Guide](docs/customization-guide.md) | Adapt patterns to your workload |
 | [Cost Calculator](docs/cost-calculator.md) | Estimate monthly costs |
 | [Comparison Alternatives](docs/comparison-alternatives.md) | S3 AP vs EFS vs NFS vs DataSync |
@@ -359,4 +359,40 @@ When reviewing changes, consider these perspectives:
 | [Partner/SI Checklist](docs/partner-si-delivery-checklist.md) | Customer delivery workflow |
 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | Customer situation → recommended UC |
 | [ONTAP Integration Notes](docs/ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
-| [S3 Bucket User Guide](docs/s3-bucket-user-guide.md) | Standard S3 vs FSx ONTAP S3 AP differences |
+| [S3 Bucket User Guide](docs/s3-bucket-user-guide.md) | Standard S3 vs FSx for ONTAP S3 AP differences |
+
+## Agent Output Standards
+
+> ユーザーレベル Kiro グローバル steering のミラー。steering 未ロードの環境でも従えるようにする。
+
+> CI: `.github/workflows/agent-output-audit.yml`（命名/中立性/リーク/parity）と `gitleaks.yml`（シークレット）。
+
+### Naming (NetApp / AWS)
+
+- 初出は **Amazon FSx for NetApp ONTAP**、以降 **FSx for ONTAP**。`FSxN` / 単独 `FSx` / `FSx ONTAP` は不可。アクセスポイントは **FSx for ONTAP S3 AP**。
+- NetApp Workload Factory / NetApp Console / BlueXP は提案しない。native 等価物（CloudWatch, ONTAP REST API, FabricPool, AWS DataSync, Snapshot/FlexClone/SnapMirror）に置換。
+- 例外: 外部引用タイトルの逐語引用（その行に `allow:naming` コメントを付与）。
+
+### Vendor neutrality (right-tool-for-the-job)
+
+- ベンダー対決/優劣表現は禁止（"best", "beats X", "X より優れている", "競合ツール", "優位性", "game-changer"）。選択肢として提示し、推奨案自身の制約も含めてトレードオフを対称に記載。
+
+### Public-output safety
+
+- 個人名/ペルソナ名・メール・AWS アカウントID・内部IP/ホスト名・サポートケース番号・ベンダー内部チケットID をコミットしない。role ベース表記（"Storage Specialist lens"）と "an internal product request (tracked)" を使う。
+- プロセスメタデータのノイズ禁止（"Persona Review Summary"・レビューラウンド・日付・レンズ数）。レビュー知見は inline の role-based lens note（`> **Topic** (Role lens): ...`）として織り込み、provenance は `.private/`（gitignore）へ。
+
+### Bilingual docs (JA primary + EN)
+
+- JA/EN parity を維持（セクション構成/数の一致、inline note の対応）。片方を変更したら同じ変更で両方に反映。
+
+### Technical reference / guide docs
+
+- 必須要素: エグゼクティブサマリの結論、FAQ/よくある誤解、選択フローチャート（mermaid 可）、OT/IT セキュリティ考慮（該当時）、段階的導入ステップ、Related Documents（逆リンク）、≥10 の inline role-based lens レビュー。
+
+### Before committing docs
+
+```bash
+gitleaks detect --config .gitleaks.toml --no-git --source .
+# CI が agent-output チェックをミラー: .github/workflows/agent-output-audit.yml
+```

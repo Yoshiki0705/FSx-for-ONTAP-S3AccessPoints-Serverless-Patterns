@@ -38,7 +38,7 @@
 ### 視点 3: 公式ドキュメントとの動線（AWS Ecosystem Integration）
 - **Score: 6.5/10**
 - **Good**: docs/demo-guide.md に技術コンポーネント表あり。S3AP 互換性ノートへのリンクあり。
-- **Gap**: AWS 公式ドキュメントへの直接リンクが README に不足（FSx ONTAP, S3 AP, Step Functions, Athena）。Well-Architected Framework の柱との対応なし。aws-samples との関連付けなし。
+- **Gap**: AWS 公式ドキュメントへの直接リンクが README に不足（FSx for ONTAP, S3 AP, Step Functions, Athena）。Well-Architected Framework の柱との対応なし。aws-samples との関連付けなし。
 - **Action**: ① README に AWS ドキュメントリンクセクション追加 ② Well-Architected 対応表を docs/architecture.md に追加
 
 ### 視点 4: デモシナリオとエビデンス（Demo Readiness）
@@ -503,7 +503,7 @@
 
 ### 視点 3: 公式ドキュメント動線
 - **Score: 5/10**
-- **Good**: AWS SAP on FSx ONTAP ドキュメントリンクあり。スコープノートで SAP 認定統合との差異を明示。
+- **Good**: AWS SAP on FSx for ONTAP ドキュメントリンクあり。スコープノートで SAP 認定統合との差異を明示。
 - **Gap**: SAP BTP、AWS SAP Lens へのリンクなし。
 - **Action**: AWS SAP Lens + BTP 連携ドキュメントリンク追加
 
@@ -687,7 +687,7 @@
 | FlexCache キャッシュヒット率 | ✅ FC1/FC2 | FC1 の docs に詳細あり |
 | NetworkOrigin 制約の明記 | ✅ 良好 | steering + shared ドキュメントで明確 |
 
-**Action**: 各 UC README に「Performance Considerations」セクション追加。「FSx ONTAP throughput capacity は NFS/SMB/S3AP で共有。sizing reference, not service limit」の caveat を統一追加。
+**Action**: 各 UC README に「Performance Considerations」セクション追加。「FSx for ONTAP throughput capacity は NFS/SMB/S3AP で共有。sizing reference, not service limit」の caveat を統一追加。
 
 ### Partner/SI 視点
 

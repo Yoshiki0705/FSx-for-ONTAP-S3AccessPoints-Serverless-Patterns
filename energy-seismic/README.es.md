@@ -5,7 +5,7 @@
 ## Descripción general
 Un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para automatizar la extracción de metadatos de los datos sísmicos SEG-Y, la detección de anomalías en los registros de pozos y la generación de informes de cumplimiento.
 ### Casos en los que este patrón es adecuado
-- SEG-Y Los datos de prospección sísmica y los registros de pozos se acumulan en grandes cantidades en FSx ONTAP
+- SEG-Y Los datos de prospección sísmica y los registros de pozos se acumulan en grandes cantidades en FSx for ONTAP
 - Desea catalogar automáticamente los metadatos de los datos de prospección sísmica (nombre de la encuesta, sistema de coordenadas, intervalo de muestras, número de trazas)
 - Desea detectar automáticamente anomalías a partir de las lecturas de sensores de registros de pozos
 - Se necesita un análisis de correlación de anomalías entre pozos y temporal con Athena SQL
@@ -86,7 +86,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -124,7 +124,7 @@ UC8 utiliza los siguientes servicios:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Para más detalles, consulte la [Matriz de compatibilidad de regiones](../docs/region-compatibility.md).
 ## Enlaces de referencia
-- [Puntos de acceso a S3 de FSx ONTAP 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Puntos de acceso a S3 de FSx for ONTAP 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Especificaciones del formato SEG-Y (Rev 2.0)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev2_0-mar2017.pdf)
 - [Guía del usuario de Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Detección de etiquetas de Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

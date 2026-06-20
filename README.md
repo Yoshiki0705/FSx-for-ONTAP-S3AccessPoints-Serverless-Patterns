@@ -203,7 +203,7 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 
 | リポジトリ | 概要 | 関連性 |
 |-----------|------|--------|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | FSx for ONTAP + Bedrock による権限考慮型 RAG チャットボット（CDK v2, Next.js, ECS） | 本リポジトリの FC3 (GenAI RAG) パターンの完全実装版。S3 AP 経由のドキュメント読み取り + NTFS ACL ベースのフィルタリングを Web UI 付きで提供 |
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | FSx for ONTAP + Bedrock による権限考慮型 RAG チャットボット（CDK v2, Next.js, ECS） | 本リポジトリの FC3 (GenAI RAG) パターンの完全実装版。S3 AP 経由のドキュメント読み取り + NTFS ACL ベースのフィルタリングを Web UI 付きで提供 | <!-- allow:naming -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × Lakehouse プラットフォーム統合（Databricks, Snowflake, Athena, Glue, EMR） | S3 AP の互換性マトリクス、プラットフォーム別検証結果、DataSync 連携パターンを提供。本リポジトリの制約表の詳細版 |
 | [FSx-ONTAP-S3AP-Benchmark](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | 本リポジトリ内 `docs/s3ap-benchmark-results.md` | 128/256/512 MBps × concurrency 1-50 のベンチマーク結果 |
 
@@ -211,7 +211,7 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
-│  Permission-aware-RAG-FSxN-CDK (CDK v2)                           │
+│  Permission-aware-RAG-FSxN-CDK (CDK v2)                           │ <!-- allow:naming -->
 │  ・完全な RAG アプリ（Next.js + Bedrock + OpenSearch）               │
 │  ・FSx for ONTAP S3 AP 経由のドキュメント読み取り                      │
 │  ・NTFS ACL ベースの権限フィルタリング                                 │
@@ -240,7 +240,7 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 
 | ユースケース | 推奨リポジトリ |
 |-------------|---------------|
-| 権限考慮型 RAG チャットボットを構築したい | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) |
+| 権限考慮型 RAG チャットボットを構築したい | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | <!-- allow:naming -->
 | S3 AP の設計パターンを学びたい | 本リポジトリ |
 | 業界別のサーバーレス自動化を PoC したい | 本リポジトリ |
 | FPolicy イベント駆動パイプラインを構築したい | 本リポジトリ |
@@ -1111,7 +1111,7 @@ python3 scripts/generate_test_data.py all --upload
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
 | クロスリージョン | us-east-1 (バージニア) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation（SAM Transform 利用） |
@@ -1186,7 +1186,7 @@ python3 scripts/generate_test_data.py all --upload
 | CloudFormation Transform | AWS::Serverless-2016-10-31 |
 | 検証済みボリューム security style | UNIX, NTFS |
 
-### FSx ONTAP S3 Access Points 対応 API
+### FSx for ONTAP S3 Access Points 対応 API
 
 S3 AP 経由で利用可能な API サブセット:
 

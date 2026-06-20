@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph OUTPUT_PASS["✅ Output — Pass"]
-        PUTBACK["S3 AP PutObject<br/>Write back to FSx ONTAP"]
+        PUTBACK["S3 AP PutObject<br/>Write back to FSx for ONTAP"]
     end
 
     subgraph OUTPUT_FAIL["❌ Output — Fail"]
@@ -67,7 +67,7 @@ flowchart TB
 ### Output
 | Artifact | Format | Description |
 |----------|--------|-------------|
-| Approved Asset | S3 AP PutObject → FSx ONTAP | Write back quality-approved assets |
+| Approved Asset | S3 AP PutObject → FSx for ONTAP | Write back quality-approved assets |
 | QC Report | `qc-results/YYYY/MM/DD/{shot}_{version}.json` | Quality check results |
 | SNS Notification | Email / Slack | Re-render notification on failure |
 

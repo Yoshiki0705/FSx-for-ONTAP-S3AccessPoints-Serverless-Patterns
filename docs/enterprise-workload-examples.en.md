@@ -21,7 +21,7 @@ The patterns in this repository are not limited to AI/ML use cases. S3 Access Po
 
 **Architecture Pattern**:
 ```
-SAP App Server → NFS → FSx ONTAP Volume
+SAP App Server → NFS → FSx for ONTAP Volume
                               ↓ (S3 Access Point)
                         Lambda (GetObject) → Bedrock (classification/summarization)
                                            → Athena (structured analysis)
@@ -39,7 +39,7 @@ SAP App Server → NFS → FSx ONTAP Volume
 
 **Architecture Pattern**:
 ```
-HULFT/EDI Gateway → SMB → FSx ONTAP Volume (/landing/)
+HULFT/EDI Gateway → SMB → FSx for ONTAP Volume (/landing/)
                                 ↓ (S3 Access Point + EventBridge Scheduler)
                           Step Functions
                             ├─→ Validation Lambda (format check)
@@ -58,7 +58,7 @@ HULFT/EDI Gateway → SMB → FSx ONTAP Volume (/landing/)
 
 **Architecture Pattern**:
 ```
-Audit System → SMB (NTFS ACL) → FSx ONTAP Volume
+Audit System → SMB (NTFS ACL) → FSx for ONTAP Volume
                                        ↓ (S3 AP, Windows identity)
                                  Lambda (periodic scan)
                                    ├─→ Integrity hash verification
@@ -89,7 +89,7 @@ Audit System → SMB (NTFS ACL) → FSx ONTAP Volume
 #### Architecture Pattern: EC2 Batch Output + S3 AP Post-processing
 
 ```
-EC2/ECS on EC2 Batch App → NFS → FSx ONTAP Volume (/batch-output/YYYYMMDD/)
+EC2/ECS on EC2 Batch App → NFS → FSx for ONTAP Volume (/batch-output/YYYYMMDD/)
                                         ↓ (S3 Access Point + EventBridge Scheduler)
                                   Step Functions (daily)
                                     ├─→ Discovery (detect today's output files)
@@ -101,7 +101,7 @@ EC2/ECS on EC2 Batch App → NFS → FSx ONTAP Volume (/batch-output/YYYYMMDD/)
 #### Architecture Pattern: Fargate App + S3 AP Bidirectional
 
 ```
-ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-output/)
+ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx for ONTAP Volume (/app-output/)
                                                 ↓
                                           NFS/SMB users view results
                                                 ↓ (EventBridge Scheduler)
@@ -135,7 +135,7 @@ ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-out
 
 **Architecture Pattern**:
 ```
-Scanner → SMB → FSx ONTAP Volume (/scanned-docs/)
+Scanner → SMB → FSx for ONTAP Volume (/scanned-docs/)
                        ↓ (S3 AP)
                  Step Functions
                    ├─→ Textract (OCR) ⚠️ Cross-Region

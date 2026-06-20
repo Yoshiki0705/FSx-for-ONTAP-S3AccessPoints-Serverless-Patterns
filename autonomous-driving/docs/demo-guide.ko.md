@@ -196,7 +196,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP("no data movement" 패턴)
-AI 산출물을 FSx for ONTAP S3 Access Point 경유로 원본 데이터와**동일한 FSx ONTAP 볼륨**에
+AI 산출물을 FSx for ONTAP S3 Access Point 경유로 원본 데이터와**동일한 FSx for ONTAP 볼륨**에
 다시 기록합니다. SMB/NFS 사용자가 업무에서 사용하는 디렉터리 구조 내에서 AI 산출물을
 직접 열람할 수 있습니다. 표준 S3 버킷은 생성되지 않습니다.
 

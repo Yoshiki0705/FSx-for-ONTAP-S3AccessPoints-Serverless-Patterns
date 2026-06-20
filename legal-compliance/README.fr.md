@@ -146,7 +146,7 @@ Voici la traduction en français :
 ### 1. Préparation des paramètres
 Veuillez vérifier les valeurs suivantes avant le déploiement :
 
-- Alias du point d'accès S3 FSx ONTAP
+- Alias du point d'accès S3 FSx for ONTAP
 - Adresse IP de gestion ONTAP
 - Nom du secret Secrets Manager
 - UUID du SVM, UUID du volume
@@ -193,9 +193,9 @@ Voici la traduction du texte en français :
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `SvmUuid` | ONTAP SVM UUID | — | ✅ |
@@ -310,7 +310,7 @@ Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon
 AWS Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx pour NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, `...`
 
 https://docs.aws.amazon.com/
-- [Présentation des points d'accès S3 FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Présentation des points d'accès S3 FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Exécution de requêtes SQL avec Athena (tutoriel officiel)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
 - [Traitement serverless avec Lambda (tutoriel officiel)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Référence de l'API InvokeModel de Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
@@ -349,7 +349,7 @@ Voici la traduction en français :
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

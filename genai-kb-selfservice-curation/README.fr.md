@@ -33,7 +33,7 @@ La même base prend en charge deux étapes selon la maturité opérationnelle (v
 | Problème | Solution |
 |------|--------|
 | Mises à jour en attente du travail manuel de l'IT | Le métier maintient via Windows ; ingestion automatique |
-| Double gestion due aux copies S3 | Source de données directe depuis l'original FSx ONTAP via S3 AP |
+| Double gestion due aux copies S3 | Source de données directe depuis l'original FSx for ONTAP via S3 AP |
 | Ingestions/mises à jour manquées | Détection des changements puis Ingestion automatique |
 | Compétences ETL/S3/Bedrock requises | Uniquement glisser-déposer Windows |
 | Propriété des données floue | Arborescence par rôle/service |
@@ -46,7 +46,7 @@ Cet UC adopte **Bedrock Knowledge Bases managé (Pattern C)** pour minimiser la 
 
 ## Sécurité
 
-- Aucun déplacement de données (l'original reste sur FSx ONTAP ; S3 AP en lecture seule)
+- Aucun déplacement de données (l'original reste sur FSx for ONTAP ; S3 AP en lecture seule)
 - Écriture uniquement via SMB/NFS ; le chemin d'ingestion IA (S3 AP) est en lecture
 - ACL NTFS par dossier pour séparer les droits d'écriture par service
 - La limite de la source de données S3 AP est au niveau volume/préfixe (le contrôle de visibilité par utilisateur est hors périmètre)

@@ -6,7 +6,7 @@
 
 ## 概述
 
-對 FSx ONTAP 上的大容量地理空間資料（GeoTIFF / Shapefile / LAS / GeoPackage）進行
+對 FSx for ONTAP 上的大容量地理空間資料（GeoTIFF / Shapefile / LAS / GeoPackage）進行
 無伺服器解析，執行土地利用分類、變化偵測、基礎設施評估、災害風險製圖、
 以及透過 Bedrock 生成報告。
 
@@ -14,7 +14,7 @@
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>GIS 資料<br/>部門別 ACL] --> S3AP[S3 Access Point]
+    FSx[FSx for ONTAP<br/>GIS 資料<br/>部門別 ACL] --> S3AP[S3 Access Point]
     S3AP --> SFN[Step Functions<br/>Smart City Workflow]
     SFN --> L1[Discovery]
     L1 --> L2[Preprocessing<br/>CRS 正規化 EPSG:4326]

@@ -197,7 +197,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP („no data movement"-Muster)
-Schreibt AI-Artefakte über FSx for ONTAP S3 Access Point zurück auf **dasselbe FSx ONTAP Volume** wie die Originaldaten.
+Schreibt AI-Artefakte über FSx for ONTAP S3 Access Point zurück auf **dasselbe FSx for ONTAP Volume** wie die Originaldaten.
 SMB/NFS-Benutzer können AI-Artefakte direkt in ihrer Arbeitsverzeichnisstruktur einsehen.
 Es wird kein Standard-S3-Bucket erstellt.
 

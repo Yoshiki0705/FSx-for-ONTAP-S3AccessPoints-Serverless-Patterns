@@ -108,7 +108,7 @@ aws cloudformation deploy \
 ### FSXN_S3AP（"no data movement" 模式）
 将 CRS 标准化元数据、土地利用分类结果、基础设施评估、风险地图、Bedrock 生成的
 城市规划报告（Markdown）通过 FSx for ONTAP S3 Access Point 写回到与原始 GIS 数据
-**相同的 FSx ONTAP 卷**中。
+**相同的 FSx for ONTAP 卷**中。
 城市规划负责人可以在 SMB/NFS 的现有目录结构中直接引用 AI 成果。
 不会创建标准 S3 存储桶。
 
@@ -160,7 +160,7 @@ aws cloudformation deploy \
 - Bedrock 生成的城市规划报告（Markdown 预览）
 - DynamoDB landuse_history 表（土地利用分类历史）
 - 风险地图 JSON 预览（CRITICAL/HIGH/MEDIUM/LOW 分类）
-- FSx ONTAP 卷上的 AI 成果（FSXN_S3AP 模式时 — 可通过 SMB/NFS 查看的 Markdown 报告）
+- FSx for ONTAP 卷上的 AI 成果（FSXN_S3AP 模式时 — 可通过 SMB/NFS 查看的 Markdown 报告）
 
 ### 截图指南
 

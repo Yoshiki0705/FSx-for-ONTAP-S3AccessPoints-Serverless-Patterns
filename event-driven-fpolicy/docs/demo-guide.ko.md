@@ -16,7 +16,7 @@
 |------|------|
 | FSx for ONTAP | ONTAP 9.17.1 이상, FPolicy 지원 |
 | VPC | FSxN과 동일 VPC에 프라이빗 서브넷 |
-| NFS 마운트 | 클라이언트에서 FSxN 볼륨에 NFS 마운트 완료 |
+| NFS 마운트 | 클라이언트에서 FSx for ONTAP 볼륨에 NFS 마운트 완료 |
 | AWS CLI | v2 이상, 적절한 IAM 권한 |
 | Docker | 컨테이너 이미지 빌드용 |
 | ECR | 리포지토리 생성 완료 |

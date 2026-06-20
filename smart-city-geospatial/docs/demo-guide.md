@@ -22,7 +22,7 @@
 
 ```mermaid
 graph LR
-    A[航空写真/GIS データ] --> B[FSx ONTAP S3 AP]
+    A[航空写真/GIS データ] --> B[FSx for ONTAP S3 AP]
     B --> C[Step Functions ワークフロー]
     C --> D[Preprocessing<br/>CRS 正規化]
     D --> E[Land Use<br/>土地利用分類]
@@ -36,7 +36,7 @@ graph LR
 
 **ワークフロー概要**:
 
-1. 航空写真（GeoTIFF）を FSx ONTAP ボリュームに配置（S3 AP 経由でアクセス）
+1. 航空写真（GeoTIFF）を FSx for ONTAP ボリュームに配置（S3 AP 経由でアクセス）
 2. CRS（座標参照系）の正規化で混在するデータソースを統一
 3. 土地利用分類（住宅・商業・農地・森林等）
 4. インフラ状態評価
@@ -213,7 +213,7 @@ aws cloudformation deploy \
 ### FSXN_S3AP（"no data movement" パターン）
 CRS 正規化メタデータ、土地利用分類結果、インフラ評価、リスクマップ、Bedrock が生成する
 都市計画レポート（Markdown）を、FSx for ONTAP S3 Access Point 経由でオリジナル GIS データと
-**同一の FSx ONTAP ボリューム**に書き戻します。
+**同一の FSx for ONTAP ボリューム**に書き戻します。
 都市計画担当者が SMB/NFS の既存ディレクトリ構造内で AI 成果物を直接参照できます。
 標準 S3 バケットは作成されません。
 
@@ -289,7 +289,7 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 - Bedrock 生成の都市計画レポート（Markdown プレビュー）
 - DynamoDB landuse_history テーブル（土地利用分類履歴）
 - リスクマップ JSON プレビュー（CRITICAL/HIGH/MEDIUM/LOW 分類）
-- FSx ONTAP ボリューム上の AI 成果物（FSXN_S3AP モード時 — SMB/NFS で閲覧可能な Markdown レポート）
+- FSx for ONTAP ボリューム上の AI 成果物（FSXN_S3AP モード時 — SMB/NFS で閲覧可能な Markdown レポート）
 
 ### 撮影ガイド
 

@@ -32,7 +32,7 @@ cd fsxn-s3ap-serverless-patterns/telecom-network-analytics
 
 ### 步骤 3：准备示例数据
 
-在 FSx ONTAP 卷上放置示例数据。
+在 FSx for ONTAP 卷上放置示例数据。
 
 ### 步骤 4：部署
 

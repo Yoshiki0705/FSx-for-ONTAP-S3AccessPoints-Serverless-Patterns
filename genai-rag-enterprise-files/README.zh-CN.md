@@ -31,7 +31,7 @@
 
 ## 安全设计
 
-- **无数据移动**: 文件保留在 FSx ONTAP 上，通过 S3 AP 只读访问
+- **无数据移动**: 文件保留在 FSx for ONTAP 上，通过 S3 AP 只读访问
 - **权限保留**: 通过 ONTAP REST API 检索 ACL，在 RAG 响应时过滤
 - **加密**: SSE-FSX（存储）、TLS（传输）、KMS（输出）
 - **最小权限**: Lambda 仅允许必要的 S3 AP 操作

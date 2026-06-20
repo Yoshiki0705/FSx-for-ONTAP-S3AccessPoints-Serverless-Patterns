@@ -1,8 +1,8 @@
-# インシデント対応 Playbook — FSx ONTAP S3AP パターン
+# インシデント対応 Playbook — FSx for ONTAP S3AP パターン
 
 ## 概要
 
-本 Playbook は、FSx ONTAP S3 Access Points を使用したサーバーレスパターンで
+本 Playbook は、FSx for ONTAP S3 Access Points を使用したサーバーレスパターンで
 セキュリティインシデントが発生した場合の対応手順を定義します。
 
 > **Governance Caveat**: 本 Playbook は技術的な対応手順のガイダンスです。組織のインシデント対応ポリシーに従い、適格なセキュリティ専門家の指示のもとで実行してください。
@@ -23,7 +23,7 @@
 | CloudTrail | S3 AP への全 API コール | デフォルト有効 |
 | GuardDuty | 異常なアクセスパターン | 有効化推奨 |
 | CloudWatch Alarms | エラー率の異常増加 | EnableCloudWatchAlarms=true |
-| FSx ONTAP 監査ログ | ファイルアクセス監査 | ONTAP 側で設定 |
+| FSx for ONTAP 監査ログ | ファイルアクセス監査 | ONTAP 側で設定 |
 | IAM Access Analyzer | 外部アクセス可能なリソース | 有効化推奨 |
 
 ## 対応フロー

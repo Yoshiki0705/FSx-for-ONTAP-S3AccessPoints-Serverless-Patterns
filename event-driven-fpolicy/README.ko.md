@@ -300,7 +300,7 @@ aws ecr delete-repository \
 | 항목 | 값 |
 |------|-----|
 | AWS 리전 | ap-northeast-1 (도쿄) |
-| FSx ONTAP 버전 | ONTAP 9.17.1P6 |
+| FSx for ONTAP 버전 | ONTAP 9.17.1P6 |
 | FSx 구성 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | 배포 방식 | CloudFormation (표준) |

@@ -1,7 +1,7 @@
 # UC29 / UC30 teardown & rebuild runbook
 
 両UC の検証環境を**スクリプト一発**で安全に撤去し、必要時に再構築する手順。
-過去の削除作業で得た学び（依存順序・FSx S3 AP・Athena WG・Bedrock KB の削除順）を
+過去の削除作業で得た学び（依存順序・FSx for ONTAP S3 AP・Athena WG・Bedrock KB の削除順）を
 スクリプトに内包済み。共有の FSx for ONTAP ファイルシステム本体は既定で**保持**する。
 
 ## TL;DR
@@ -33,7 +33,7 @@ cd genai-quick-agentic-workspace && sam build && sam deploy   # UC30（samconfig
 整合性のための約束:
 - CFn スタック削除のブロッカー対処（Athena WG recursive・バージョン付き S3 空化）は
   汎用ツール（`cleanup_stacks.sh` / `cleanup_generic_ucs.py`）と**同じ規約**に揃えている。
-- 本スクリプト固有で汎用ツールに無い知見（**FSx S3 AP detach**・**Bedrock KB RETAIN**）は、
+- 本スクリプト固有で汎用ツールに無い知見（**FSx for ONTAP S3 AP detach**・**Bedrock KB RETAIN**）は、
   横展開のため `docs/operational-runbooks/cleanup-troubleshooting.md`（Failure Mode 7/8）にも記載。
 - 将来 UC29/30 を汎用 `cleanup_generic_ucs.py` に統合する場合は、UC_DIR_MAP 追加に加え
   非 CFN リソースの削除フックが必要（現状は UC17 までの CFn 前提）。
@@ -48,7 +48,7 @@ cd genai-quick-agentic-workspace && sam build && sam deploy   # UC30（samconfig
 | IAM ロール | `fsxn-s3ap-bedrock-kb-role` |
 | Managed AD | `uc29demo.local` |
 | Windows EC2 + SG | `uc29-windows-demo` |
-| FSx S3 AP | `uc29-ai-knowledge-smb` / `uc30-quick-workspace-smb`（detach+delete） |
+| FSx for ONTAP S3 AP | `uc29-ai-knowledge-smb` / `uc30-quick-workspace-smb`（detach+delete） |
 | FSx ボリューム / SVM | `ai_knowledge` / `quick_workspace` / `uc29demosvm` |
 | Glue テーブル / Athena WG | `sales_pipeline`,`it_incidents` / `quick-workspace-wg` |
 | EventBridge バス | `fsxn-fpolicy-events` |
@@ -96,7 +96,7 @@ cd genai-quick-agentic-workspace && sam build && sam deploy   # UC30（samconfig
 - **S3 Vectors ストアは CLI/boto3 で作成不可**（コンソール quick-create のみ）。
   本スクリプトは **OPENSEARCH_SERVERLESS** を使う。
 - 埋め込みは `amazon.titan-embed-text-v2:0` / **256 次元**。knn index の dimension と一致必須。
-- KB データソースの「バケット」は **FSx ONTAP S3 AP のエイリアス**（`arn:aws:s3:::<alias>`）。
+- KB データソースの「バケット」は **FSx for ONTAP S3 AP のエイリアス**（`arn:aws:s3:::<alias>`）。
   実エイリアスは公開リポジトリに含めない → `scripts/uc29-kb-manifest.local.env`（gitignored）から供給。
 - AOSS data-access ポリシーには **KB ロールと呼び出し元の両方**を含める
   （index はカレント認証情報で作成するため）。

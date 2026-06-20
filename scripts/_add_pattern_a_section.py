@@ -54,13 +54,13 @@ def build_section(uc_dir: str, cfg: dict) -> str:
 
 ---
 
-## 出力先について: FSxN S3 Access Point (Pattern A)
+## 出力先について: FSx for ONTAP S3 Access Point (Pattern A)
 
 {uc_id} は **Pattern A: Native S3AP Output** に分類されます
 （`docs/output-destination-patterns.md` 参照）。
 
-**設計**: {output_desc}は全て FSxN S3 Access Point 経由で
-{source_desc}と**同一の FSx ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
+**設計**: {output_desc}は全て FSx for ONTAP S3 Access Point 経由で
+{source_desc}と**同一の FSx for ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
 作成されません（"no data movement" パターン）。
 
 **CloudFormation パラメータ**:

@@ -10,7 +10,7 @@ Un workflow serverless exploitant les S3 Access Points sur Amazon FSx for ONTAP 
 
 ### Cas d'utilisation appropriés
 
-- Les actifs créatifs (JPEG, PNG, TIFF, MP4, MOV, PSD) sont stockés sur FSx ONTAP
+- Les actifs créatifs (JPEG, PNG, TIFF, MP4, MOV, PSD) sont stockés sur FSx for ONTAP
 - Extraction de métadonnées visuelles basée sur Rekognition (étiquettes, détection de texte, modération)
 - Automatisation de la vérification de conformité terminologique via Textract + Bedrock
 - Génération automatique de catalogues d'actifs (JSON/CSV) avec gestion centralisée de la conformité
@@ -77,7 +77,7 @@ Pour les contraintes de compatibilité, le dépannage et les patterns de déclen
 ## ⚠️ Considérations de performance
 
 - La capacité de débit de FSx for ONTAP est **partagée entre NFS/SMB/S3 AP**. L'exécution avec MapConcurrency=10 en parallèle peut impacter d'autres charges de travail sur le même volume.
-- Pour le traitement par lots volumineux, vérifiez la Throughput Capacity (MBps) de FSx ONTAP et ajustez MapConcurrency en conséquence.
+- Pour le traitement par lots volumineux, vérifiez la Throughput Capacity (MBps) de FSx for ONTAP et ajustez MapConcurrency en conséquence.
 - Recommandé : Commencez avec MapConcurrency=5 en production, surveillez les métriques CloudWatch (ThroughputUtilization) et augmentez progressivement.
 
 > **Note S3 AP NetworkOrigin** : La Lambda Discovery est déployée dans un VPC. Si le NetworkOrigin du S3 Access Point est `Internet`, l'accès via S3 Gateway VPC Endpoint n'est pas possible (les requêtes ne sont pas routées vers le plan de données FSx). Utilisez un S3 AP VPC-origin ou configurez l'accès via NAT Gateway. Voir [Notes de compatibilité S3AP](../docs/s3ap-compatibility-notes.md).

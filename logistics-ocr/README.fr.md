@@ -5,7 +5,7 @@
 ## Aperçu
 FSx for ONTAP utilise les points d'accès S3 pour automatiser les workflows sans serveur, notamment l'extraction de texte OCR des bons de livraison, la détection et le comptage d'objets sur les images de stock de l'entrepôt, et la génération de rapports d'optimisation des itinéraires de livraison.
 ### Cas où ce modèle est approprié
-- Les images des bons de livraison et des inventaires de l'entrepôt sont stockées sur FSx ONTAP
+- Les images des bons de livraison et des inventaires de l'entrepôt sont stockées sur FSx for ONTAP
 - Nous souhaitons automatiser la reconnaissance optique de caractères (OCR) des bons de livraison avec Textract (expéditeur, destinataire, numéro de suivi, articles)
 - Il est nécessaire de normaliser les champs extraits et de générer des enregistrements de livraison structurés avec Bedrock
 - Nous souhaitons effectuer la détection et le comptage d'objets sur les images d'inventaire de l'entrepôt avec Rekognition (palettes, boîtes, taux d'occupation des étagères)
@@ -90,7 +90,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -128,7 +128,7 @@ UC12 utilise les services suivants :
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Appelez l'API Textract via le client Cross-Region. Vérifiez les exigences de résidence des données. Pour plus de détails, consultez la [Matrice de compatibilité des régions](../docs/region-compatibility.md).
 ## Liens utiles
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Documentation Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Détection de labels Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Référence API Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

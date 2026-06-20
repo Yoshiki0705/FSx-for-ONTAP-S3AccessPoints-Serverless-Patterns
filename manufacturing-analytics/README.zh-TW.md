@@ -63,7 +63,7 @@ graph LR
 ### 1. 參數準備
 部署前請確認以下值：
 
-- FSx ONTAP S3 Access Point 別名
+- FSx for ONTAP S3 Access Point 別名
 - ONTAP 管理 IP 地址
 - Secrets Manager 機密名稱
 - VPC ID、私有子網 ID
@@ -100,9 +100,9 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -160,7 +160,7 @@ UC3 使用以下服務：
 ## 參考連結
 
 ### AWS 官方文件
-- [FSx ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [使用 Athena 進行 SQL 查詢（官方教程）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
 - [使用 Glue 進行 ETL 管線（官方教程）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html)
 - [使用 Lambda 進行無伺服器處理（官方教程）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
@@ -177,7 +177,7 @@ UC3 使用以下服務：
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

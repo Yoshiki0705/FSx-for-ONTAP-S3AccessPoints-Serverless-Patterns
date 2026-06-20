@@ -21,7 +21,7 @@
 
 **アーキテクチャパターン**:
 ```
-SAP App Server → NFS → FSx ONTAP Volume
+SAP App Server → NFS → FSx for ONTAP Volume
                               ↓ (S3 Access Point)
                         Lambda (GetObject) → Bedrock (分類/要約)
                                            → Athena (構造化分析)
@@ -39,7 +39,7 @@ SAP App Server → NFS → FSx ONTAP Volume
 
 **アーキテクチャパターン**:
 ```
-HULFT/EDI Gateway → SMB → FSx ONTAP Volume (/landing/)
+HULFT/EDI Gateway → SMB → FSx for ONTAP Volume (/landing/)
                                 ↓ (S3 Access Point + EventBridge Scheduler)
                           Step Functions
                             ├─→ Validation Lambda (フォーマットチェック)
@@ -58,7 +58,7 @@ HULFT/EDI Gateway → SMB → FSx ONTAP Volume (/landing/)
 
 **アーキテクチャパターン**:
 ```
-Audit System → SMB (NTFS ACL) → FSx ONTAP Volume
+Audit System → SMB (NTFS ACL) → FSx for ONTAP Volume
                                        ↓ (S3 AP, Windows identity)
                                  Lambda (定期スキャン)
                                    ├─→ 完全性ハッシュ検証
@@ -89,7 +89,7 @@ Audit System → SMB (NTFS ACL) → FSx ONTAP Volume
 #### アーキテクチャパターン: EC2 バッチ出力 + S3 AP 後処理
 
 ```
-EC2/ECS on EC2 Batch App → NFS → FSx ONTAP Volume (/batch-output/YYYYMMDD/)
+EC2/ECS on EC2 Batch App → NFS → FSx for ONTAP Volume (/batch-output/YYYYMMDD/)
                                         ↓ (S3 Access Point + EventBridge Scheduler)
                                   Step Functions (日次)
                                     ├─→ Discovery (当日出力ファイル検出)
@@ -101,7 +101,7 @@ EC2/ECS on EC2 Batch App → NFS → FSx ONTAP Volume (/batch-output/YYYYMMDD/)
 #### アーキテクチャパターン: Fargate アプリ + S3 AP 双方向
 
 ```
-ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-output/)
+ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx for ONTAP Volume (/app-output/)
                                                 ↓
                                           NFS/SMB ユーザーが結果を閲覧
                                                 ↓ (EventBridge Scheduler)
@@ -135,7 +135,7 @@ ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-out
 
 **アーキテクチャパターン**:
 ```
-Scanner → SMB → FSx ONTAP Volume (/scanned-docs/)
+Scanner → SMB → FSx for ONTAP Volume (/scanned-docs/)
                        ↓ (S3 AP)
                  Step Functions
                    ├─→ Textract (OCR) ⚠️ Cross-Region

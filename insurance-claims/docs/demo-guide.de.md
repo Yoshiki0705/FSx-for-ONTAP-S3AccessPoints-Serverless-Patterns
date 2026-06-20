@@ -175,7 +175,7 @@ des Anspruchsfalls einsehen („no data movement"-Muster, auch aus PII-Schutzper
 # STANDARD_S3-Modus (Standard, wie bisher)
 --parameter-overrides OutputDestination=STANDARD_S3 ...
 
-# FSXN_S3AP-Modus (KI-Ergebnisse auf FSx ONTAP-Volume zurückschreiben)
+# FSXN_S3AP-Modus (KI-Ergebnisse auf FSx for ONTAP-Volume zurückschreiben)
 --parameter-overrides \
   OutputDestination=FSXN_S3AP \
   OutputS3APPrefix=ai-outputs/ \

@@ -6,7 +6,7 @@
 
 Procédure reproductible pour trancher, sur matériel réel, les points marqués **à vérifier (TBV)** dans le
 [comparatif CDN](cdn-comparison.fr.md) : à savoir **si la signature d'origine SigV4 de chaque CDN
-fonctionne sur l'hôte `accesspoint alias` du S3 Access Point FSx ONTAP comme sur un bucket S3 standard**.
+fonctionne sur l'hôte `accesspoint alias` du S3 Access Point FSx for ONTAP comme sur un bucket S3 standard**.
 
 À utiliser pour décider si `DeliveryMode=ORIGIN_PULL` (M1/M2) de `content-edge-delivery` est viable.
 **M3 (PUBLISH_PUSH) ne dépend pas de cette vérification** (il évite l'auth d'origine).

@@ -49,7 +49,7 @@
 - AI 検索を導入したいが、権限管理が課題
 
 ### Section 2: Architecture Overview（1:00–2:00）
-- FSx ONTAP + S3 AP + OpenSearch + Bedrock の構成説明
+- FSx for ONTAP + S3 AP + OpenSearch + Bedrock の構成説明
 - 権限フィルタリングの仕組み
 
 ### Section 3: Indexing Demo（2:00–3:30）

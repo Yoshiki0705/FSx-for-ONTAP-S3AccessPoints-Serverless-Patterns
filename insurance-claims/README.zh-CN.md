@@ -5,7 +5,7 @@
 ## 概述
 利用 Amazon FSx for ONTAP 的 S3 Access Points，实现事故照片损害评估、发票的 OCR 文本提取和自动生成理赔报告的无服务器工作流。
 ### 适用场景
-- 事故写真和见积书存储在 FSx ONTAP 上
+- 事故写真和见积书存储在 FSx for ONTAP 上
 - 希望自动化使用 Rekognition 进行事故照片损伤检测（车辆损伤标签、严重程度指标、影响部分）
 - 希望使用 Textract 进行见积书 OCR（维修项目、费用、工时、零件）
 - 需要基于照片的损伤评估和见积书数据的综合保险索赔报告
@@ -132,7 +132,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |

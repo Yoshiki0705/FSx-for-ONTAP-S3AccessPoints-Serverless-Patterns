@@ -5,7 +5,7 @@
 ## Aperçu
 Voici un workflow sans serveur qui utilise les points d'accès S3 de FSx for ONTAP pour l'envoi automatique de travaux de rendu VFX, les contrôles de qualité et l'écriture des sorties approuvées.
 ### Cas où ce modèle est approprié
-- VFX / アニメーション制作で FSx ONTAP をレンダリングストレージとして使用している
+- VFX / アニメーション制作で FSx for ONTAP をレンダリングストレージとして使用している
 - レンダリング完了後の品質チェックを自動化し、手動レビューの負荷を軽減したい
 - 品質合格したアセットを自動的にファイルサーバーに書き戻したい（S3 AP PutObject）
 - Deadline Cloud と既存の NAS ストレージを統合したパイプラインを構築したい
@@ -18,7 +18,7 @@ Voici un workflow sans serveur qui utilise les points d'accès S3 de FSx for ONT
 - Détection automatique des assets à rendre via S3 AP
 - Envoi automatique des travaux de rendu vers AWS Deadline Cloud
 - Évaluation de la qualité par Amazon Rekognition (résolution, artefacts, cohérence des couleurs)
-- En cas de réussite de la qualité, utilisation de PutObject pour FSx ONTAP via S3 AP, sinon notification par SNS
+- En cas de réussite de la qualité, utilisation de PutObject pour FSx for ONTAP via S3 AP, sinon notification par SNS
 ## Architecture
 
 ```mermaid
@@ -57,7 +57,7 @@ graph LR
 ### 1. Préparation des paramètres
 Avant le déploiement, veuillez vérifier les valeurs suivantes :
 
-- FSx ONTAP S3 Access Point Alias
+- FSx for ONTAP S3 Access Point Alias
 - ONTAP 管理 IP アドレス
 - Secrets Manager シークレット名
 - AWS Deadline Cloud Farm ID / Queue ID
@@ -95,9 +95,9 @@ Après le déploiement, un e-mail de confirmation de l'abonnement SNS sera envoy
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -172,7 +172,7 @@ UC4 utilise les services suivants :
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

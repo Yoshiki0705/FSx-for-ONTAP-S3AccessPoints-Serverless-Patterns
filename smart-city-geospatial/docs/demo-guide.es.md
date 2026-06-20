@@ -106,7 +106,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP (patrón "no data movement")
-Los metadatos de normalización CRS, resultados de clasificación de uso del suelo, evaluación de infraestructura, mapas de riesgo e informes de planificación urbana (Markdown) generados por Bedrock se escriben de vuelta al **mismo volumen FSx ONTAP** que los datos GIS originales a través del FSx for ONTAP S3 Access Point.
+Los metadatos de normalización CRS, resultados de clasificación de uso del suelo, evaluación de infraestructura, mapas de riesgo e informes de planificación urbana (Markdown) generados por Bedrock se escriben de vuelta al **mismo volumen FSx for ONTAP** que los datos GIS originales a través del FSx for ONTAP S3 Access Point.
 Los responsables de planificación urbana pueden consultar directamente los resultados de IA dentro de la estructura de directorios existente de SMB/NFS.
 No se crea un bucket S3 estándar.
 
@@ -156,7 +156,7 @@ Siguiendo la misma política que las demos de Phase 7 UC15/16/17 y UC6/11/14, se
 - Informe de planificación urbana generado por Bedrock (vista previa de Markdown)
 - Tabla DynamoDB landuse_history (historial de clasificación de uso del suelo)
 - Vista previa JSON del mapa de riesgos (clasificación CRITICAL/HIGH/MEDIUM/LOW)
-- Resultados de IA en volumen FSx ONTAP (modo FSXN_S3AP — informe Markdown visible mediante SMB/NFS)
+- Resultados de IA en volumen FSx for ONTAP (modo FSXN_S3AP — informe Markdown visible mediante SMB/NFS)
 
 ### Guía de captura
 

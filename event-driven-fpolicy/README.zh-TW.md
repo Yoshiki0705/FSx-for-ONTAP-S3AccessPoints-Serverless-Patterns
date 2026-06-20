@@ -221,7 +221,7 @@ fpolicy enable \
 | 參數 | 說明 | 預設值 | 必要 |
 |-----------|------|----------|------|
 | `ComputeType` | 執行環境選擇 (fargate/ec2) | `fargate` | |
-| `VpcId` | 與 FSxN 相同 VPC 的 ID | — | ✅ |
+| `VpcId` | 與 FSx for ONTAP 相同 VPC 的 ID | — | ✅ |
 | `SubnetIds` | Fargate 任務或 EC2 放置的 Private Subnet | — | ✅ |
 | `FsxnSvmSecurityGroupId` | FSx for ONTAP SVM 的 Security Group ID | — | ✅ |
 | `ContainerImage` | FPolicy Server 容器映像 URI | — | ✅ |
@@ -300,7 +300,7 @@ aws ecr delete-repository \
 | 項目 | 值 |
 |------|-----|
 | AWS 區域 | ap-northeast-1（東京） |
-| FSx ONTAP 版本 | ONTAP 9.17.1P6 |
+| FSx for ONTAP 版本 | ONTAP 9.17.1P6 |
 | FSx 組態 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | 部署方式 | CloudFormation（標準） |

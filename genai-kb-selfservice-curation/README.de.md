@@ -46,7 +46,7 @@ Dieser UC nutzt **managed Bedrock Knowledge Bases (Pattern C)**, um den Betriebs
 
 ## Sicherheit
 
-- Keine Datenbewegung (Original bleibt auf FSx ONTAP; S3 AP nur lesend)
+- Keine Datenbewegung (Original bleibt auf FSx for ONTAP; S3 AP nur lesend)
 - Schreiben nur über SMB/NFS; der KI-Ingestion-Pfad (S3 AP) liest
 - NTFS-ACLs pro Ordner trennen Schreibrechte je Abteilung
 - Die S3-AP-Datenquellengrenze liegt auf Volume-/Präfixebene (Sichtbarkeitssteuerung pro Nutzer ist außerhalb des Umfangs)

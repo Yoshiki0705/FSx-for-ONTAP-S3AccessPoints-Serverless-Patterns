@@ -5,7 +5,7 @@
 ## 개요
 FSx for ONTAP의 S3 액세스 포인트를 활용하여 사고 사진의 손해 평가, 견적서의 OCR 텍스트 추출, 보험금 청구 보고서의 자동 생성을 가능하게 하는 서버리스 워크플로입니다.
 ### 이 패턴이 적합한 경우
-- 사고 사진과 견적서가 FSx ONTAP에 저장되어 있습니다.
+- 사고 사진과 견적서가 FSx for ONTAP에 저장되어 있습니다.
 - Rekognition을 사용하여 사고 사진의 손상 감지(차량 손상 라벨, 심각도 지표, 영향 부위)를 자동화하고 싶습니다.
 - Textract를 사용하여 견적서의 OCR(수리 항목, 비용, 작업량, 부품)을 실시하고 싶습니다.
 - 사진 기반 손해 평가와 견적서 데이터를 연관시킨 종합 보험 청구 보고서가 필요합니다.
@@ -88,7 +88,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -134,7 +134,7 @@ UC14는 다음 서비스를 사용합니다:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Cross-Region Client을 통해 Textract API를 호출합니다. 데이터 거주 요건을 확인하세요. 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하세요.
 ## 참고 링크
-- [FSx ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition 라벨 감지](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon Textract 문서](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Bedrock API 참조](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

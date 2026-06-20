@@ -184,7 +184,7 @@ ORDER BY bounding_box_width DESC;
 
 | # | 画面 | 部分 | 备注 |
 |---|------|-----------|------|
-| 1 | 设计文件目录列表 | Section 1 | FSx ONTAP 上的文件结构 |
+| 1 | 设计文件目录列表 | Section 1 | FSx for ONTAP 上的文件结构 |
 | 2 | 工作流执行开始画面 | Section 2 | Step Functions 控制台 |
 | 3 | 工作流执行中（Map State 并行处理） | Section 3 | 可见进度状态 |
 | 4 | 工作流完成画面 | Section 3 | 所有步骤成功 |
@@ -322,7 +322,7 @@ Workgroup 为 `fsxn-eda-uc6-workgroup`，数据库为 `fsxn-eda-uc6-db`。
 
 ### 现有演示环境的确认事项
 
-- [ ] FSx ONTAP 卷中是否已放置样本数据
+- [ ] FSx for ONTAP 卷中是否已放置样本数据
 - [ ] S3 Access Point 是否已配置
 - [ ] Glue Data Catalog 的表定义是否存在
 - [ ] Athena 工作组是否可用

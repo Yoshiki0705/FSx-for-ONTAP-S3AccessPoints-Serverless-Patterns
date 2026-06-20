@@ -43,7 +43,7 @@ cd fsxn-s3ap-serverless-patterns/adtech-creative-management
 
 ### Step 3: Place Sample Data
 
-Place sample creative assets on the FSx ONTAP volume:
+Place sample creative assets on the FSx for ONTAP volume:
 
 ```
 /creative-assets/

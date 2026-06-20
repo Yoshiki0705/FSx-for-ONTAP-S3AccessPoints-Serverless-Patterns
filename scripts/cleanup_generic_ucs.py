@@ -368,7 +368,7 @@ def cleanup_stack(
 def main(argv: Optional[list[str]] = None) -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Cleanup FSxN S3AP serverless pattern demo stacks",
+        description="Cleanup FSx for ONTAP S3 AP serverless pattern demo stacks",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )

@@ -6,13 +6,13 @@
 
 ## Descripción general
 
-Analiza datos geoespaciales de gran volumen en FSx ONTAP (GeoTIFF / Shapefile / LAS / GeoPackage) de forma serverless, realizando clasificación de uso del suelo, detección de cambios, evaluación de infraestructura, mapeo de riesgos de desastres y generación de informes mediante Bedrock.
+Analiza datos geoespaciales de gran volumen en FSx for ONTAP (GeoTIFF / Shapefile / LAS / GeoPackage) de forma serverless, realizando clasificación de uso del suelo, detección de cambios, evaluación de infraestructura, mapeo de riesgos de desastres y generación de informes mediante Bedrock.
 
 ## Diagrama de arquitectura
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>Datos GIS<br/>ACL por departamento] --> S3AP[S3 Access Point]
+    FSx[FSx for ONTAP<br/>Datos GIS<br/>ACL por departamento] --> S3AP[S3 Access Point]
     S3AP --> SFN[Step Functions<br/>Smart City Workflow]
     SFN --> L1[Discovery]
     L1 --> L2[Preprocessing<br/>Normalización CRS EPSG:4326]

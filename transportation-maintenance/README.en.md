@@ -41,8 +41,8 @@ A serverless workflow leveraging FSx for ONTAP S3 Access Points to detect deteri
 ## ⚠️ Performance Considerations
 
 - FSx for ONTAP throughput capacity is **shared across NFS/SMB/S3 AP**. Running MapConcurrency=10 in parallel may impact other workloads on the same volume.
-- For large batch processing, check FSx ONTAP Throughput Capacity (MBps) and adjust MapConcurrency accordingly.
-- Recommended: Start with MapConcurrency=5 in production, monitor FSx ONTAP CloudWatch metrics (ThroughputUtilization), and increase gradually.
+- For large batch processing, check FSx for ONTAP Throughput Capacity (MBps) and adjust MapConcurrency accordingly.
+- Recommended: Start with MapConcurrency=5 in production, monitor FSx for ONTAP CloudWatch metrics (ThroughputUtilization), and increase gradually.
 
 ## Governance Note
 
@@ -51,3 +51,25 @@ A serverless workflow leveraging FSx for ONTAP S3 Access Points to detect deteri
 > **S3 AP NetworkOrigin Note**: The Discovery Lambda is deployed inside a VPC. If the S3 Access Point's NetworkOrigin is `Internet`, it cannot be accessed via S3 Gateway VPC Endpoint (requests are not routed to the FSx data plane). Use a VPC-origin S3 AP or configure NAT Gateway access. See [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
 
 > **Related Regulations**: 鉄道事業法 (Railway Business Act), 運輸安全委員会設置法
+
+---
+
+## Industry Reference Cases
+
+> **Evidence Tier**: Public (official blog / conference sessions)
+
+### 7-Eleven: GenAI Maintenance Technician Assistant (DAIS 2026)
+
+7-Eleven built a GenAI agent for 13,000+ store maintenance technicians working with HVAC, ovens, and other equipment. The agent provides instant answers from PDFs/spreadsheets stored in shared drives, accessible via smartphone.
+
+- **Results**: −60% search time, +25% first-time-fix rate, −40%+ latency
+- **Agent capabilities**: Document RAG search, image-based troubleshooting, parts information access, guarded web search
+- **FSx for ONTAP relevance**: Equipment manuals (PDF/images) stored on NFS/SMB shares → S3 AP for AI pipeline access → vectorization → agent search & answer
+
+This pattern (UC22) solves the same class of problem (inspection images + maintenance document analysis) using FSx for ONTAP S3 AP + AWS Bedrock.
+
+Detailed analysis: [DAIS 2026 Agent Bricks Industry Cases](../docs/investigations/dais2026-agent-bricks-industry-cases.md)
+
+Sources:
+- [DAIS 2026 Session: AI Agents for the Frontline](https://www.databricks.com/dataaisummit/session/ai-agents-frontline-7-elevens-genai-maintenance-assistant)
+- [Databricks Blog](https://www.databricks.com/blog/how-7-eleven-transformed-maintenance-technician-knowledge-access-databricks-agent-bricks)

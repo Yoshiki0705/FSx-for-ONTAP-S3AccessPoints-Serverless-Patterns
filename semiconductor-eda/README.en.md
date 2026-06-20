@@ -10,7 +10,7 @@ A serverless workflow that leverages S3 Access Points for FSx for ONTAP to autom
 
 ### When This Pattern Is a Good Fit
 
-- Large volumes of GDS/OASIS design files are stored on FSx ONTAP
+- Large volumes of GDS/OASIS design files are stored on FSx for ONTAP
 - You want to automatically catalog design file metadata (library name, cell count, bounding box, etc.)
 - You need periodic DRC statistics aggregation to track design quality trends
 - Cross-cutting design metadata analysis via Athena SQL is required
@@ -214,7 +214,7 @@ If using `template.yaml` directly with `aws cloudformation deploy`, SAM Transfor
 | Parameter | Description | Default | Required |
 |-----------|-------------|---------|----------|
 | `DeployBucket` | S3 bucket name for Lambda zip packages | — | ✅ |
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias (for input) | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias (for input) | — | ✅ |
 | `S3AccessPointName` | S3 AP name (for ARN-based IAM permission grants) | `""` | ⚠️ Recommended |
 | `OntapSecretName` | Secrets Manager secret name for ONTAP REST API credentials | — | ✅ |
 | `OntapManagementIp` | ONTAP cluster management IP address | — | ✅ |
@@ -291,7 +291,7 @@ UC6 uses the following services:
 
 ## References
 
-- [FSx ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Creating and Attaching S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html)
 - [Managing Access for S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
 - [Amazon Athena User Guide](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)

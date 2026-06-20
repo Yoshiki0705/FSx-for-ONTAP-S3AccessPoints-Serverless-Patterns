@@ -122,7 +122,7 @@ run_uc_test() {
 # メイン処理
 main() {
     echo "============================================================"
-    echo " FSxN S3AP Serverless Patterns - ローカルテスト"
+    echo " FSx for ONTAP S3 AP Serverless Patterns - ローカルテスト"
     echo "============================================================"
     echo ""
 

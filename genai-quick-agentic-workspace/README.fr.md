@@ -38,7 +38,7 @@ quick-workspace/
 
 ## Sécurité
 
-- Aucun déplacement de données (original sur FSx ONTAP ; S3 AP en lecture seule)
+- Aucun déplacement de données (original sur FSx for ONTAP ; S3 AP en lecture seule)
 - L'Action API utilise l'authentification IAM (SigV4) — pas de point de terminaison public non authentifié
 - Moindre privilège, chiffrement (SSE-FSX/SSE-S3/TLS)
 - Les connexions de source de données Quick se configurent dans la console Quick

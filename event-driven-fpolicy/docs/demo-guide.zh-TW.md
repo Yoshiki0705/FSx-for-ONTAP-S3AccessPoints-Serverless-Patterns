@@ -15,8 +15,8 @@
 | 項目 | 要求 |
 |------|------|
 | FSx for ONTAP | ONTAP 9.17.1 以上，支援 FPolicy |
-| VPC | 與 FSxN 相同 VPC 中的私有子網路 |
-| NFS 掛載 | 用戶端已 NFS 掛載到 FSxN 磁碟區 |
+| VPC | 與 FSx for ONTAP 相同 VPC 中的私有子網路 |
+| NFS 掛載 | 用戶端已 NFS 掛載到 FSx for ONTAP 磁碟區 |
 | AWS CLI | v2 以上，適當的 IAM 權限 |
 | Docker | 用於建置容器映像 |
 | ECR | 已建立儲存庫 |

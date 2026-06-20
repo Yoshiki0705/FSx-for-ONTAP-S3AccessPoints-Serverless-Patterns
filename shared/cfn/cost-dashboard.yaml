@@ -18,7 +18,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Cost Optimization Dashboard.
+  FSx for ONTAP S3 AP Serverless Patterns — Cost Optimization Dashboard.
   Metrics Math によるサービスカテゴリ別コスト推定ダッシュボード。
 
 Parameters:
@@ -82,7 +82,7 @@ Resources:
               "width": 24,
               "height": 2,
               "properties": {
-                "markdown": "# Cost Optimization Dashboard — FSxN S3AP Serverless Patterns\nPer-service cost estimation using CloudWatch Metrics Math. Prices based on ap-northeast-1 (Tokyo)."
+                "markdown": "# Cost Optimization Dashboard — FSx for ONTAP S3 AP Serverless Patterns\nPer-service cost estimation using CloudWatch Metrics Math. Prices based on ap-northeast-1 (Tokyo)."
               }
             },
             {

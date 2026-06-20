@@ -18,7 +18,7 @@ Der Workflow umfasst die folgenden Schritte:
 Lassen Sie uns nun in die Details gehen und sehen, wie Sie diesen End-to-End-Workflow mit AWS-Diensten aufbauen können.
 FSx for ONTAP S3 Access Points können genutzt werden, um eine serverlose Workflow-Automatisierung für die Validierung, Metadatenextraktion und DRC-Statistiken (Design Rule Check) von GDS/OASIS-Halbleiterdesigndateien durchzuführen.
 ### Dies sind Anwendungsfälle für dieses Muster:
-- GDS/OASIS-Designdateien haben sich auf dem FSx ONTAP stark angehäuft
+- GDS/OASIS-Designdateien haben sich auf dem FSx for ONTAP stark angehäuft
 - Die Metadaten der Designdateien (Bibliotheksname, Zellenzahl, Bounding-Box usw.) sollen automatisch katalogisiert werden
 - DRC-Statistiken sollen regelmäßig zusammengefasst werden, um Trends in der Designqualität zu erkennen
 - Übergreifende Analyse der Designmetadaten mithilfe von Athena SQL ist erforderlich
@@ -284,7 +284,7 @@ Hier sind einige Beispiele dafür, wie Sie die verschiedenen AWS-Ressourcen wie 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
 | `DeployBucket` | Lambda zip を格納する S3 バケット名 | — | ✅ |
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
@@ -397,7 +397,7 @@ Die detaillierten Informationen finden Sie in der [Region Compatibility Matrix](
 ## Referenzlinks
 
 AWS Step Functions kann verwendet werden, um komplexe Serverless-Anwendungen mit koordinierten Workflows zu erstellen. Amazon Athena ist ein interaktiver Abfragedienst, der es einfach macht, große Datenmengen in Amazon S3 direkt zu analysieren. AWS Lambda ermöglicht das Erstellen und Ausführen von Funktionen ohne Server verwalten zu müssen. Amazon FSx for ONTAP bietet ein vollständig verwaltetes Datei-Storage-Service. Amazon CloudWatch ist ein Überwachungsdienst, der Metriken und Protokolle sammelt. AWS CloudFormation ist ein Dienst, mit dem man Infrastruktur als Code erstellen und verwalten kann.
-- [Übersicht über den S3-Zugriff über FSx ONTAP-Zugriffspunkte](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Übersicht über den S3-Zugriff über FSx for ONTAP-Zugriffspunkte](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Erstellen und Anhängen von S3-Zugriffspunkten](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html)
 - [Verwaltung des Zugriffs auf S3-Zugriffspunkte](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
 - [Amazon Athena Benutzerhandbuch](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)

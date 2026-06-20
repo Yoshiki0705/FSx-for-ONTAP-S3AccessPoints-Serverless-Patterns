@@ -5,7 +5,7 @@
 ## Resumen
 Es un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para automatizar la extracción de texto OCR de las etiquetas de envío, la detección y conteo de objetos en imágenes de inventario de almacén y la generación de informes de optimización de rutas de entrega.
 ### Casos en los que este patrón es adecuado
-- Las imágenes de los albaranes de envío y las imágenes del inventario del almacén se están acumulando en FSx ONTAP
+- Las imágenes de los albaranes de envío y las imágenes del inventario del almacén se están acumulando en FSx for ONTAP
 - Queremos automatizar el OCR ( remitente, destinatario, número de seguimiento, artículos ) de los albaranes de envío con Textract
 - Se requiere la normalización de los campos extraídos y la generación de registros de envío estructurados con Bedrock
 - Queremos realizar la detección y conteo de objetos ( paletas, cajas, tasa de ocupación de estantes ) en las imágenes del inventario del almacén con Rekognition
@@ -90,7 +90,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -128,7 +128,7 @@ UC12 utiliza los siguientes servicios:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Llame a la API de Textract a través del Cliente de Región Cruzada. Verifique los requisitos de residencia de datos. Para obtener más detalles, consulte la [Matriz de compatibilidad regional](../docs/region-compatibility.md).
 ## Enlaces de referencia
-- [Puntos de acceso a S3 de FSx ONTAP 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Puntos de acceso a S3 de FSx for ONTAP 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Documentación de Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Rekognition detección de etiquetas](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Referencia de la API de Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

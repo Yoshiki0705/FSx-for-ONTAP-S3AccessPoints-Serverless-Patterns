@@ -72,7 +72,7 @@ NEW_PARAMS_BLOCK = """
     Default: ""
     Description: |
       入力用 S3 Access Point の名前 (alias ではなく)。指定すると AP ARN 形式でも
-      IAM アクセスを許可する (FSxN S3AP の permission 判定で両形式をサポート)。
+      IAM アクセスを許可する (FSx for ONTAP S3 AP の permission 判定で両形式をサポート)。
 
   OutputS3APName:
     Type: String
@@ -85,7 +85,7 @@ NEW_PARAMS_BLOCK = """
 # (current: no Default: line, just Type + Description + AllowedPattern)
 LEGACY_OUTPUT_ALIAS_OLD = """  S3AccessPointOutputAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias (出力書き込み用、入力と同じ AP でも可)
+    Description: FSx for ONTAP S3 Access Point Alias (出力書き込み用、入力と同じ AP でも可)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 """
 
@@ -93,7 +93,7 @@ LEGACY_OUTPUT_ALIAS_NEW = """  S3AccessPointOutputAlias:
     Type: String
     Default: ""
     Description: |
-      (legacy, optional) FSx ONTAP S3 Access Point Alias (出力書き込み用)。
+      (legacy, optional) FSx for ONTAP S3 Access Point Alias (出力書き込み用)。
       空の場合は OutputS3APAlias または S3AccessPointAlias にフォールバック。
       新規デプロイでは OutputS3APAlias を使用することを推奨。
     AllowedPattern: "^$|^[a-z0-9-]+-ext-s3alias$"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-lint_all_templates.py — Parallel cfn-lint runner for FSxN S3AP Serverless Patterns.
+lint_all_templates.py — Parallel cfn-lint runner for FSx for ONTAP S3 AP Serverless Patterns.
 
 Runs cfn-lint across all 17 UC templates in parallel (4 workers) and aggregates
 results. Designed to catch template-level errors that would otherwise block

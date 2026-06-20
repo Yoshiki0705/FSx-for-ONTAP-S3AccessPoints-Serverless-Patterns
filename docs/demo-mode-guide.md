@@ -1,11 +1,11 @@
-# デモモード ガイド — FSx ONTAP なしでパターンを体験する
+# デモモード ガイド — FSx for ONTAP なしでパターンを体験する
 
 🌐 **Language / 言語**: [日本語](demo-mode-guide.md) | [English](demo-mode-guide.en.md)
 
 ## 概要
 
 本リポジトリのパターンは FSx for ONTAP S3 Access Points を前提としていますが、
-**デモモード**を使用すると FSx ONTAP 環境なしでワークフロー全体を体験できます。
+**デモモード**を使用すると FSx for ONTAP 環境なしでワークフロー全体を体験できます。
 
 デモモードでは:
 - 通常の S3 バケットを S3 AP の代わりに使用
@@ -100,7 +100,7 @@ aws s3 ls s3://${DEMO_BUCKET}/reports/ --recursive
 
 | 機能 | 本番モード | デモモード |
 |------|-----------|-----------|
-| S3 AP 経由のファイル読み取り | ✅ FSx ONTAP ボリューム | ✅ 通常 S3 バケット |
+| S3 AP 経由のファイル読み取り | ✅ FSx for ONTAP ボリューム | ✅ 通常 S3 バケット |
 | ONTAP REST API (ACL 収集) | ✅ 実データ | ⚠️ モックデータ |
 | VPC 内実行 | ✅ | ❌ VPC 外実行 |
 | NTFS ACL 解析 | ✅ | ❌ サンプル ACL |
@@ -117,14 +117,14 @@ aws s3 ls s3://${DEMO_BUCKET}/reports/ --recursive
 
 ### DemoMode → Production の差分
 
-| 領域 | DemoMode（評価用） | Production（FSx ONTAP） |
+| 領域 | DemoMode（評価用） | Production（FSx for ONTAP） |
 |------|-------------------|------------------------|
-| 入力ソース | 通常 S3 バケット | FSx ONTAP S3 Access Point |
+| 入力ソース | 通常 S3 バケット | FSx for ONTAP S3 Access Point |
 | 権限モデル | S3 IAM のみ | IAM + S3 AP ポリシー + ONTAP ファイル ID |
 | ネットワーク | パブリック AWS サービスパス | Internet-origin or VPC-origin 設計判断（**作成後変更不可 — AP 再作成が必要**） |
 | データ | サンプル / 合成データ | 顧客管理 NAS データ |
 | ガバナンス | デモラベルのみ | データ分類 + リネージ + 保持ポリシー |
-| コスト | ~$0.10/実行 | + FSx ONTAP インフラ (~$194/月 基本) |
+| コスト | ~$0.10/実行 | + FSx for ONTAP インフラ (~$194/月 基本) |
 | AI 評価 | テストデータでの動作確認 | ドメインバリデーションセットでの精度評価 |
 
-> **Governance Caveat**: デモモードは技術検証用です。本番環境では必ず FSx ONTAP S3 Access Points を使用し、適切な IAM ポリシー、ネットワーク設計、データ分類、人間レビュー閾値を定義してください。各国・地域の規制要件への適合は顧客の責任で検証する必要があります。
+> **Governance Caveat**: デモモードは技術検証用です。本番環境では必ず FSx for ONTAP S3 Access Points を使用し、適切な IAM ポリシー、ネットワーク設計、データ分類、人間レビュー閾値を定義してください。各国・地域の規制要件への適合は顧客の責任で検証する必要があります。

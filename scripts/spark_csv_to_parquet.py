@@ -1,11 +1,11 @@
 """EMR Serverless Spark ジョブ: CSV → Parquet 変換
 
-FSx ONTAP S3 Access Point 経由で CSV センサーログを読み取り、
+FSx for ONTAP S3 Access Point 経由で CSV センサーログを読み取り、
 Parquet 形式に変換して書き戻す。
 
 参考:
 - EMR Serverless Getting Started: https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/getting-started.html
-- FSx ONTAP S3 AP + Glue ETL: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html
+- FSx for ONTAP S3 AP + Glue ETL: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html
 
 Usage:
     spark-submit spark_csv_to_parquet.py <s3_ap_alias> <input_prefix> <output_prefix>

@@ -185,7 +185,7 @@ ORDER BY bounding_box_width DESC;
 
 | # | Bildschirm | Abschnitt | Anmerkungen |
 |---|------|-----------|------|
-| 1 | Design-Dateiverzeichnisliste | Section 1 | Dateistruktur auf FSx ONTAP |
+| 1 | Design-Dateiverzeichnisliste | Section 1 | Dateistruktur auf FSx for ONTAP |
 | 2 | Workflow-Startbildschirm | Section 2 | Step Functions-Konsole |
 | 3 | Workflow in Ausführung (Map State parallele Verarbeitung) | Section 3 | Fortschritt sichtbar |
 | 4 | Workflow-Abschlussbildschirm | Section 3 | Alle Schritte erfolgreich |
@@ -322,7 +322,7 @@ einen japanischsprachigen Review-Bericht für Physical Design Leads.
 
 ### Überprüfungspunkte für bestehende Demo-Umgebung
 
-- [ ] Sind Beispieldaten im FSx ONTAP Volume platziert?
+- [ ] Sind Beispieldaten im FSx for ONTAP Volume platziert?
 - [ ] Ist der S3 Access Point konfiguriert?
 - [ ] Existiert die Glue Data Catalog-Tabellendefinition?
 - [ ] Ist die Athena Workgroup verfügbar?

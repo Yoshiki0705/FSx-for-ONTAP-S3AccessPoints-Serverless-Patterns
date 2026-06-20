@@ -80,7 +80,7 @@ When PutObject is performed via S3 AP:
 
 ## Security and Identity Notes
 
-- S3 AP access is not governed by NFS export policies in the same way as NFS clients. Requests are first authorized by AWS policies (IAM + S3 AP policy), then by the FSx ONTAP file-system identity associated with the access point
+- S3 AP access is not governed by NFS export policies in the same way as NFS clients. Requests are first authorized by AWS policies (IAM + S3 AP policy), then by the FSx for ONTAP file-system identity associated with the access point
 - Verify AD/UNIX mapping consistency via ONTAP REST API (`security login show`, `vserver name-mapping show`)
 - Test access-denied scenarios: verify that unintended file access is blocked
 - Confirm output file permissions from NFS/SMB clients (expected ownership/permissions)
@@ -117,17 +117,17 @@ OT environment-specific considerations:
 - Strict change window management
 - Definition of manual override processes
 
-## Notes on FSx ONTAP Costs
+## Notes on FSx for ONTAP Costs
 
-> FSx ONTAP costs vary by region, deployment type (Single-AZ/Multi-AZ), SSD capacity, Capacity Pool capacity, throughput capacity, backups, and data transfer. The $194/month figure cited in this repository is a baseline estimate for Single-AZ / 128 MBps / 1 TB SSD and is not a universal price.
+> FSx for ONTAP costs vary by region, deployment type (Single-AZ/Multi-AZ), SSD capacity, Capacity Pool capacity, throughput capacity, backups, and data transfer. The $194/month figure cited in this repository is a baseline estimate for Single-AZ / 128 MBps / 1 TB SSD and is not a universal price.
 
 ## Three Stages: DemoMode → Clone PoC → Production
 
 | Stage | Data Source | Characteristics |
 |---|---|---|
-| DemoMode | Synthetic S3 data | No FSx ONTAP required, can start same day |
+| DemoMode | Synthetic S3 data | No FSx for ONTAP required, can start same day |
 | Clone PoC | FlexClone (production-like data) | Validation with near-production data, space-efficient |
-| Production | Live FSx ONTAP S3 AP | Full authorization model + governance |
+| Production | Live FSx for ONTAP S3 AP | Full authorization model + governance |
 
 ## Field Feedback Log
 

@@ -1,6 +1,6 @@
 """SAP/ERP Adjacent Discovery Lambda
 
-FSx ONTAP S3 Access Point 経由で SAP IDoc、HULFT、EDI、バッチ出力ファイルを検出する。
+FSx for ONTAP S3 Access Point 経由で SAP IDoc、HULFT、EDI、バッチ出力ファイルを検出する。
 ファイルプレフィックスとサフィックスでフィルタリングし、Manifest JSON を生成する。
 
 Environment Variables:

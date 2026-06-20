@@ -32,7 +32,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Cross-Account IAM Role Set.
+  FSx for ONTAP S3 AP Serverless Patterns — Cross-Account IAM Role Set.
   マルチアカウント環境のクロスアカウントロール一式を作成する。
   全ロールに External ID 条件と Permission Boundary を適用。
 
@@ -74,7 +74,7 @@ Parameters:
   StorageAccountId:
     Type: String
     Description: >-
-      ストレージアカウント ID（FSx ONTAP / S3 AP を所有）。
+      ストレージアカウント ID（FSx for ONTAP / S3 AP を所有）。
     AllowedPattern: "^[0-9]{12}$"
 
   WorkloadAccountId:

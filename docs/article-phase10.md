@@ -34,7 +34,7 @@ ONTAP FPolicy は NFS/SMB のファイル操作を検知・通知するフレー
 ### アーキテクチャ
 
 ```
-FSx ONTAP SVM (ファイル操作: create/write/delete/rename)
+FSx for ONTAP SVM (ファイル操作: create/write/delete/rename)
   │
   │ TCP (port 9898, async mode)
   ▼

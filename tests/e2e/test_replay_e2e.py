@@ -81,7 +81,7 @@ class ReplayE2EValidator:
         """ReplayE2EValidator を初期化する.
 
         Args:
-            fsx_management_ip: FSx ONTAP 管理 IP アドレス
+            fsx_management_ip: FSx for ONTAP 管理 IP アドレス
             sqs_queue_url: SQS キュー URL
             ecs_cluster: ECS クラスター名または ARN
             ecs_service: ECS サービス名
@@ -434,7 +434,7 @@ class ReplayE2EValidator:
 class TestReplayE2EValidation:
     """Persistent Store Replay E2E 検証テスト.
 
-    実環境（ECS Fargate + FSx ONTAP + SQS）が必要なため、
+    実環境（ECS Fargate + FSx for ONTAP + SQS）が必要なため、
     CI では @pytest.mark.e2e マーカーでスキップ可能。
     """
 

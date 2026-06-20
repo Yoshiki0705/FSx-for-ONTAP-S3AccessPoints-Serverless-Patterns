@@ -1,6 +1,6 @@
 """UC30 Amazon Quick Agentic Workspace — Data Prep / Manifest
 
-FSx ONTAP S3 Access Point 上の Quick ワークスペース領域（index / analytics / flows）を
+FSx for ONTAP S3 Access Point 上の Quick ワークスペース領域（index / analytics / flows）を
 走査し、Amazon Quick のデータソース準備状況をマニフェスト化する。
 
 ボリューム構成（S3 AP プレフィックス）:

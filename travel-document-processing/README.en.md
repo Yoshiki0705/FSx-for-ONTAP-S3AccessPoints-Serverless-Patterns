@@ -10,7 +10,7 @@ A serverless workflow leveraging FSx for ONTAP S3 Access Points to automatically
 
 ### When This Pattern Fits
 
-- Reservation confirmations, cancellation notices, and guest correspondence stored on FSx ONTAP
+- Reservation confirmations, cancellation notices, and guest correspondence stored on FSx for ONTAP
 - Need to automatically extract guest name, dates, room type, and amounts from reservation documents
 - Want AI-powered facility inspection image analysis (rooms, common areas, exteriors)
 - Require multilingual document processing (non-Japanese guest documents)
@@ -94,8 +94,8 @@ aws cloudformation deploy \
 ## ⚠️ Performance Considerations
 
 - FSx for ONTAP throughput capacity is **shared across NFS/SMB/S3 AP**. Running MapConcurrency=10 in parallel may impact other workloads on the same volume.
-- For large batch processing, check FSx ONTAP Throughput Capacity (MBps) and adjust MapConcurrency accordingly.
-- Recommended: Start with MapConcurrency=5 in production, monitor FSx ONTAP CloudWatch metrics (ThroughputUtilization), and increase gradually.
+- For large batch processing, check FSx for ONTAP Throughput Capacity (MBps) and adjust MapConcurrency accordingly.
+- Recommended: Start with MapConcurrency=5 in production, monitor FSx for ONTAP CloudWatch metrics (ThroughputUtilization), and increase gradually.
 
 ## Governance Note
 

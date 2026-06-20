@@ -165,7 +165,7 @@ UC5 healthcare-dicom은 **Pattern A: Native S3AP Output**으로 분류됩니다
 (`docs/output-destination-patterns.md` 참조).
 
 **설계**: DICOM 메타데이터, 익명화 결과, PII 검출 로그는 모두 FSx for ONTAP S3 Access Point 경유로
-원본 DICOM 의료 영상과 **동일한 FSx ONTAP 볼륨**에 기록됩니다. 표준 S3 버킷은
+원본 DICOM 의료 영상과 **동일한 FSx for ONTAP 볼륨**에 기록됩니다. 표준 S3 버킷은
 생성되지 않습니다("no data movement" 패턴).
 
 **CloudFormation 파라미터**:

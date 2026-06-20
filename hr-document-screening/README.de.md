@@ -53,7 +53,7 @@ aws cloudformation deploy \
 ## ⚠️ Leistungshinweise
 
 - Die Durchsatzkapazität von FSx for ONTAP wird **zwischen NFS/SMB/S3 AP geteilt**. Die parallele Ausführung mit MapConcurrency=10 kann andere Workloads auf demselben Volume beeinflussen.
-- Bei der Verarbeitung großer Dateien prüfen Sie die FSx ONTAP Throughput Capacity (MBps) und passen Sie MapConcurrency entsprechend an.
+- Bei der Verarbeitung großer Dateien prüfen Sie die FSx for ONTAP Throughput Capacity (MBps) und passen Sie MapConcurrency entsprechend an.
 - Empfohlen: Beginnen Sie in der Produktion mit MapConcurrency=5, überwachen Sie die CloudWatch-Metriken (ThroughputUtilization) und erhöhen Sie schrittweise.
 
 ## Cleanup

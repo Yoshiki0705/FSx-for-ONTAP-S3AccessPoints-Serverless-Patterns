@@ -1,6 +1,6 @@
 """UC15 Defense/Space Discovery Lambda
 
-FSx ONTAP S3 Access Point から衛星画像ファイル（GeoTIFF/NITF/HDF5）の
+FSx for ONTAP S3 Access Point から衛星画像ファイル（GeoTIFF/NITF/HDF5）の
 一覧を取得し、Manifest JSON を生成・S3 に書き出す。
 
 Environment Variables:

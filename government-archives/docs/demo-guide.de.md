@@ -128,7 +128,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement"-Pattern)
 OCR-Text, Klassifizierungsergebnisse, PII-Erkennungsergebnisse, geschwärzte Dokumente und Schwärzungsmetadaten werden
-über den FSx for ONTAP S3 Access Point auf **dasselbe FSx ONTAP-Volume** wie die Originaldokumente zurückgeschrieben.
+über den FSx for ONTAP S3 Access Point auf **dasselbe FSx for ONTAP-Volume** wie die Originaldokumente zurückgeschrieben.
 Mitarbeiter der öffentlichen Dokumentenverwaltung können AI-Ergebnisse direkt innerhalb der bestehenden SMB/NFS-Verzeichnisstruktur einsehen.
 Es wird kein Standard-S3-Bucket erstellt.
 
@@ -190,7 +190,7 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` zusammengefasst.
 - DynamoDB retention-Tabelle (FOIA-Fristenverwaltung)
 - FOIA-Erinnerungs-SNS-E-Mail-Benachrichtigung
 - OpenSearch-Index (IndexGeneration-Ergebnis, wenn OpenSearchMode aktiviert)
-- AI-Ergebnisse auf FSx ONTAP-Volume (im FSXN_S3AP-Modus)
+- AI-Ergebnisse auf FSx for ONTAP-Volume (im FSXN_S3AP-Modus)
 
 ### Aufnahmeleitfaden
 

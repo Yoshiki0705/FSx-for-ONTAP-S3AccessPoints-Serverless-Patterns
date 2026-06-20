@@ -822,7 +822,7 @@ aws cloudformation create-stack \
 | Élément | Valeur |
 |---------|--------|
 | Région AWS | ap-northeast-1 (Tokyo) |
-| Version FSx ONTAP | ONTAP 9.17.1P4D3 |
+| Version FSx for ONTAP | ONTAP 9.17.1P4D3 |
 | Configuration FSx | SINGLE_AZ_1 |
 | Python | 3.12 |
 | Méthode de déploiement | CloudFormation (utilisant SAM Transform) |
@@ -888,7 +888,7 @@ Cette solution combine **plusieurs couches d'autorisation**, chacune ayant un r�
 | CloudFormation Transform | AWS::Serverless-2016-10-31 |
 | Style de sécurité du volume vérifié | UNIX, NTFS |
 
-### API prises en charge par FSx ONTAP S3 Access Points
+### API prises en charge par FSx for ONTAP S3 Access Points
 
 Sous-ensemble d'API disponible via S3 AP :
 

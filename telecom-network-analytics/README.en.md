@@ -10,7 +10,7 @@ A serverless workflow leveraging S3 Access Points on Amazon FSx for ONTAP to aut
 
 ### When This Pattern Is Suitable
 
-- CDR files (CSV, ASN.1 decoded, Parquet) are accumulated on FSx ONTAP
+- CDR files (CSV, ASN.1 decoded, Parquet) are accumulated on FSx for ONTAP
 - You want to automatically analyze network equipment syslog / SNMP trap data
 - You need Athena-based traffic statistics (hourly call volume, average call duration, peak concurrent calls)
 - You want Bedrock-based anomaly detection (7-day rolling baseline comparison, 3σ threshold detection)
@@ -133,7 +133,7 @@ aws cloudformation deploy \
 
 | Parameter | Description | Default | Required |
 |-----------|-------------|---------|----------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias (for input) | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias (for input) | — | ✅ |
 | `S3AccessPointName` | S3 AP name (for ARN-based IAM permissions) | `""` | ⚠️ Recommended |
 | `ScheduleExpression` | EventBridge Scheduler schedule expression | `cron(0 0 * * ? *)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -153,8 +153,8 @@ aws cloudformation deploy \
 ## ⚠️ Performance Considerations
 
 - FSx for ONTAP throughput capacity is **shared across NFS/SMB/S3 AP**. Running MapConcurrency=10 in parallel may impact other workloads on the same volume.
-- For large batch processing, check FSx ONTAP Throughput Capacity (MBps) and adjust MapConcurrency accordingly.
-- Recommended: Start with MapConcurrency=5 in production, monitor FSx ONTAP CloudWatch metrics (ThroughputUtilization), and increase gradually.
+- For large batch processing, check FSx for ONTAP Throughput Capacity (MBps) and adjust MapConcurrency accordingly.
+- Recommended: Start with MapConcurrency=5 in production, monitor FSx for ONTAP CloudWatch metrics (ThroughputUtilization), and increase gradually.
 
 ## Cleanup
 
@@ -185,7 +185,7 @@ UC18 uses the following services:
 
 ## Reference Links
 
-- [FSx ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Athena User Guide](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Bedrock API Reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 

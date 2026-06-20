@@ -20,7 +20,7 @@ Leveraging S3 Access Points in FSx for ONTAP, this serverless workflow automates
 - Automatic detection of rendering target assets via S3 AP
 - Automatic submission of rendering jobs to AWS Deadline Cloud
 - Quality assessment by Amazon Rekognition (resolution, artifacts, color consistency)
-- If quality is approved, execute PutObject to FSx ONTAP via S3 AP; if failed, send SNS notification
+- If quality is approved, execute PutObject to FSx for ONTAP via S3 AP; if failed, send SNS notification
 ## Architecture
 
 ```mermaid
@@ -59,7 +59,7 @@ graph LR
 ### 1. Preparing the parameters
 Before deployment, please confirm the following values:
 
-- FSx ONTAP S3 Access Point Alias
+- FSx for ONTAP S3 Access Point Alias
 - ONTAP Management IP Address
 - Secrets Manager Secret Name
 - AWS Deadline Cloud Farm ID / Queue ID
@@ -97,9 +97,9 @@ After deployment, an SNS subscription confirmation email will be sent to the spe
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -174,7 +174,7 @@ UC4 uses the following services:
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

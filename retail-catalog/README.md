@@ -10,7 +10,7 @@ FSx for ONTAP の S3 Access Points を活用し、商品画像の自動タグ付
 
 ### このパターンが適しているケース
 
-- 商品画像が FSx ONTAP 上に大量に蓄積されている
+- 商品画像が FSx for ONTAP 上に大量に蓄積されている
 - Rekognition による商品画像の自動ラベル付け（カテゴリ、色、素材）を実施したい
 - 構造化カタログメタデータ（product_category, color, material, style_attributes）を自動生成したい
 - 画像品質メトリクス（解像度、ファイルサイズ、アスペクト比）の自動検証が必要
@@ -113,7 +113,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -142,7 +142,7 @@ aws cloudformation wait stack-delete-complete \
 
 ## 参考リンク
 
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Amazon Bedrock API リファレンス](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [ストリーミング vs ポーリング選択ガイド](../docs/streaming-vs-polling-guide.md)
@@ -205,7 +205,7 @@ UC11 は以下のサービスを使用します:
 | サービス | ドキュメント |
 |---------|------------|
 | FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
-| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Rekognition | [開発者ガイド](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |
 | Amazon Kinesis | [開発者ガイド](https://docs.aws.amazon.com/streams/latest/dev/introduction.html) |
@@ -250,7 +250,7 @@ UC11 は以下のサービスを使用します:
 
 | コンポーネント | 月額 |
 |--------------|------|
-| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
 | S3 Access Point | 追加料金なし（S3 API 料金のみ） |
 
 ### 合計概算

@@ -134,7 +134,7 @@ The article explains the architectural design philosophy and trade-offs, while t
 
 | Repository | Summary | Relationship |
 |-----------|---------|--------------|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Permission-aware RAG chatbot with FSx for ONTAP + Bedrock (CDK v2, Next.js, ECS) | Full implementation of this repo's FC3 (GenAI RAG) pattern with Web UI |
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Permission-aware RAG chatbot with FSx for ONTAP + Bedrock (CDK v2, Next.js, ECS) | Full implementation of this repo's FC3 (GenAI RAG) pattern with Web UI | <!-- allow:naming -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × Lakehouse platform integrations (Databricks, Snowflake, Athena, Glue, EMR) | S3 AP compatibility matrix, platform-specific validation, DataSync patterns |
 
 ## FSx for ONTAP S3 Access Points — Constraints & Validated Patterns
@@ -971,7 +971,7 @@ aws cloudformation create-stack \
 |------|-------|
 | AWS Region | ap-northeast-1 (Tokyo) |
 | Cross-Region | us-east-1 (Virginia) |
-| FSx ONTAP Version | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP Version | ONTAP 9.17.1P4D3 |
 | FSx Configuration | SINGLE_AZ_1 |
 | Python | 3.12 |
 | Deployment Method | CloudFormation (using SAM Transform) |
@@ -1040,7 +1040,7 @@ This solution combines **multiple authorization layers**, each serving a differe
 | CloudFormation Transform | AWS::Serverless-2016-10-31 |
 | Verified Volume Security Style | UNIX, NTFS |
 
-### FSx ONTAP S3 Access Points Supported APIs
+### FSx for ONTAP S3 Access Points Supported APIs
 
 API subset available via S3 AP:
 

@@ -15,12 +15,12 @@ Description: >-
 Parameters:
   S3AccessPointAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias (入力読み取り用、Internet-origin)
+    Description: FSx for ONTAP S3 Access Point Alias (入力読み取り用、Internet-origin)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
   S3AccessPointOutputAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias (マニフェスト/ログ書き戻し用)
+    Description: FSx for ONTAP S3 Access Point Alias (マニフェスト/ログ書き戻し用)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
   DeliveryMode:
@@ -392,7 +392,7 @@ Resources:
     Properties:
       OriginAccessControlConfig:
         Name: !Sub "${AWS::StackName}-s3ap-oac"
-        Description: OAC for FSx ONTAP S3 Access Point origin
+        Description: OAC for FSx for ONTAP S3 Access Point origin
         OriginAccessControlOriginType: s3
         SigningBehavior: always
         SigningProtocol: sigv4

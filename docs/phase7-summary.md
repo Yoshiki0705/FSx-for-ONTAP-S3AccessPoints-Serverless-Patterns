@@ -62,7 +62,7 @@ not after, and is a net-positive for the shared utility library.
 
 All 3 Phase 7 stacks deployed to ap-northeast-1 with
 `OutputDestination=FSXN_S3AP` and completed Step Functions executions
-with outputs physically landing on FSx ONTAP via the S3 Access Point:
+with outputs physically landing on FSx for ONTAP via the S3 Access Point:
 
 | UC | Stack | Duration | OutputBucket created? | S3AP output files |
 |----|-------|----------|----------------------|-------------------|

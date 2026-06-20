@@ -300,7 +300,7 @@ Ce modèle utilise les services suivants :
 | Élément | Valeur |
 |---------|--------|
 | Région AWS | ap-northeast-1 (Tokyo) |
-| Version FSx ONTAP | ONTAP 9.17.1P6 |
+| Version FSx for ONTAP | ONTAP 9.17.1P6 |
 | Configuration FSx | SINGLE_AZ_1 |
 | Python | 3.12 |
 | Méthode de déploiement | CloudFormation (standard) |

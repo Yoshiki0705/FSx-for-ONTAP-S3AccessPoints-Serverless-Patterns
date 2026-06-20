@@ -31,7 +31,7 @@ flowchart TB
     end
 
     subgraph OUTPUT_PASS["✅ Output — 合格"]
-        PUTBACK["S3 AP PutObject<br/>FSx ONTAP 写回"]
+        PUTBACK["S3 AP PutObject<br/>FSx for ONTAP 写回"]
     end
 
     subgraph OUTPUT_FAIL["❌ Output — 不合格"]
@@ -69,7 +69,7 @@ flowchart TB
 ### Output
 | Artifact | Format | Description |
 |----------|--------|-------------|
-| Approved Asset | S3 AP PutObject → FSx ONTAP | 质量合格资产的写回 |
+| Approved Asset | S3 AP PutObject → FSx for ONTAP | 质量合格资产的写回 |
 | QC Report | `qc-results/YYYY/MM/DD/{shot}_{version}.json` | 质量检查结果 |
 | SNS Notification | Email / Slack | 不合格时的重新渲染通知 |
 

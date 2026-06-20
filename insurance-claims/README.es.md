@@ -5,7 +5,7 @@
 ## Resumen
 Este es un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para la evaluación de daños en fotografías de accidentes, la extracción de texto OCR de presupuestos y la generación automática de informes de reclamaciones de seguros.
 ### Casos en los que este patrón es apropiado
-- Las fotografías de accidentes y las facturas se están almacenando en FSx ONTAP
+- Las fotografías de accidentes y las facturas se están almacenando en FSx for ONTAP
 - Desea automatizar la detección de daños en fotografías de accidentes (etiquetas de daños en vehículos, índice de gravedad, áreas afectadas) con Rekognition
 - Desea realizar OCR de las facturas (artículos de reparación, costos, horas de trabajo, piezas) con Textract
 - Se necesita un informe integral de reclamación de seguros que correlacione la evaluación de daños basada en fotografías y los datos de las facturas
@@ -88,7 +88,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |

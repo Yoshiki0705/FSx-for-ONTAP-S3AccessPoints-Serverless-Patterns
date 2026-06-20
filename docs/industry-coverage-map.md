@@ -65,6 +65,19 @@
 
 ---
 
+## DAIS 2026 業界事例参照
+
+以下の公開事例が、既存パターンの業界適用を裏付けるリファレンスとなる。
+
+| 事例企業 | 業界 | 対応 UC | 概要 | Evidence Tier |
+|---------|------|---------|------|--------------|
+| 7-Eleven | Retail & Consumer Goods | UC22, UC11 | 設備メンテナンス技術者向け GenAI アシスタント。検索時間 −60%、初回修理成功率 +25% | Public (DAIS 2026 Session + Blog) |
+| AstraZeneca | Healthcare & Life Sciences | UC7, UC5 | マルチエージェントシステム。Supervisor + 治療領域別サブエージェント。5 → 20+ エージェントスケール | Public (DAIS 2026 Session + Blog) |
+
+詳細分析: [DAIS 2026 Agent Bricks 事例分析](investigations/dais2026-agent-bricks-industry-cases.md)
+
+---
+
 ## 実装優先順位
 
 ### P0（即時着手）
@@ -119,6 +132,7 @@
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-06-18 | DAIS 2026 業界事例参照を追加 — 7-Eleven (Retail, UC22), AstraZeneca (Healthcare & Life Sciences, UC7)。[詳細分析](investigations/dais2026-agent-bricks-industry-cases.md) |
 | 2026-06-03 | P2 完了 — UC23 (サステナビリティ), UC24 (NPO), UC25 (電力), UC26 (不動産), UC27 (HR), UC28 (化学) を Covered に更新。全 28 UC + 6 FC = 34 パターン |
 | 2026-06-03 | P1 完了 — UC20 (旅行), UC21 (農業), UC22 (運輸) を Covered に更新 |
 | 2026-06-02 | P0 完了 — UC18 (通信), UC19 (広告) を Covered に更新 |

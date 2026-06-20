@@ -5,7 +5,7 @@
 ## Aperçu
 FSx for ONTAP utilise les points d'accès S3 pour mettre en place un workflow sans serveur d'indexation et d'anonymisation automatique des images médicales DICOM. Cela assure la protection de la confidentialité des patients et une gestion efficace des images.
 ### Cas où ce motif est approprié
-- Je souhaite anonymiser périodiquement les fichiers DICOM stockés dans FSx ONTAP à partir de PACS / VNA
+- Je souhaite anonymiser périodiquement les fichiers DICOM stockés dans FSx for ONTAP à partir de PACS / VNA
 - Je souhaite supprimer automatiquement les IHP (informations de santé protégées) pour la création de jeux de données de recherche
 - Je souhaite détecter les informations sur les patients gravées dans l'image (annotation brûlée)
 - Je souhaite rationaliser la gestion des images par une classification automatique par modalité et par site
@@ -60,7 +60,7 @@ graph LR
 ### 1. Préparation des paramètres
 Avant le déploiement, veuillez vérifier les valeurs suivantes :
 
-- FSx ONTAP S3 Access Point Alias
+- FSx for ONTAP S3 Access Point Alias
 - Adresse IP de gestion ONTAP
 - Nom du secret Secrets Manager
 - ID de VPC, ID de sous-réseau privé
@@ -94,9 +94,9 @@ Après le déploiement, un e-mail de confirmation d'abonnement SNS sera envoyé 
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -161,14 +161,14 @@ UC5 utilise les services suivants :
 ## Liens de référence
 
 ### Documentation officielle AWS
-- [Points d'accès S3 FSx ONTAP 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Points d'accès S3 FSx for ONTAP 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Traitement serverless avec Lambda (Tutoriel officiel)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [API DetectPHI de Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/API_DetectPHI.html)
 - [API DetectText de Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectText.html)
 - [Livre blanc HIPAA sur AWS](https://docs.aws.amazon.com/whitepapers/latest/architecting-hipaa-security-and-compliance-on-aws/welcome.html)
 ### Article de blog AWS
 - [Blog de lancement S3 AP](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
-- [FSx ONTAP + Bedrock RAG](https://aws.amazon.com/blogs/machine-learning/build-rag-based-generative-ai-applications-in-aws-using-amazon-fsx-for-netapp-ontap-with-amazon-bedrock/)
+- [FSx for ONTAP + Bedrock RAG](https://aws.amazon.com/blogs/machine-learning/build-rag-based-generative-ai-applications-in-aws-using-amazon-fsx-for-netapp-ontap-with-amazon-bedrock/)
 ### Exemple GitHub
 - [aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing](https://github.com/aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing) — Traitement d'images et de vidéos à grande échelle avec Amazon Rekognition
 - [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — Modèles sans serveur
@@ -177,7 +177,7 @@ UC5 utilise les services suivants :
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

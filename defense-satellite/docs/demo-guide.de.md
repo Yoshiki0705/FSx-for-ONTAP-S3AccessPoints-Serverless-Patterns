@@ -110,7 +110,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement"-Pattern)
 Schreibt Tiling-Metadaten, Objekterkennungs-JSON und Geo-enriched-Erkennungsergebnisse über den FSx for ONTAP S3 Access Point
-zurück auf **dasselbe FSx ONTAP-Volume** wie die ursprünglichen Satellitenbilder.
+zurück auf **dasselbe FSx for ONTAP-Volume** wie die ursprünglichen Satellitenbilder.
 Analysten können AI-Artefakte direkt in der bestehenden SMB/NFS-Verzeichnisstruktur referenzieren.
 Es wird kein Standard-S3-Bucket erstellt.
 
@@ -165,7 +165,7 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` konsolidiert.
 - Rekognition Satellitenbild-Objekterkennungsergebnis JSON-Vorschau
 - GeoEnrichment Erkennungsergebnisse mit Koordinaten
 - SNS-Alarm-Benachrichtigungs-E-Mail
-- AI-Artefakte auf FSx ONTAP-Volume (im FSXN_S3AP-Modus)
+- AI-Artefakte auf FSx for ONTAP-Volume (im FSXN_S3AP-Modus)
 
 ### Aufnahmeleitfaden
 

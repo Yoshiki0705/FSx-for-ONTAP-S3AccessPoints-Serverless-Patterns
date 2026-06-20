@@ -163,7 +163,7 @@ UC5 healthcare-dicom は **Pattern A: Native S3AP Output** に分類されます
 （`docs/output-destination-patterns.md` 参照）。
 
 **設計**: DICOM メタデータ、匿名化結果、PII 検出ログは全て FSx for ONTAP S3 Access Point 経由で
-オリジナル DICOM 医用画像と**同一の FSx ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
+オリジナル DICOM 医用画像と**同一の FSx for ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
 作成されません（"no data movement" パターン）。
 
 **CloudFormation パラメータ**:
@@ -398,7 +398,7 @@ aws s3 cp "s3://${S3AP_ALIAS}/clinical/cardiology/_anonymized/manifest.json" - |
 |------|------|
 | アクセス制御 | NFSv4.1 + Kerberos (sec=krb5p) |
 | 暗号化（転送中） | Kerberos による暗号化 |
-| 暗号化（保存時） | FSx ONTAP ボリューム暗号化 |
+| 暗号化（保存時） | FSx for ONTAP ボリューム暗号化 |
 | 監査証跡 | S3AP リネージメタデータ + CloudTrail |
 | データ分離 | FlexClone による物理的分離 |
 | コンプライアンス | HIPAA, 個人情報保護法 |

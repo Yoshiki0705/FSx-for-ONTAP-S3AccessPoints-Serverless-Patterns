@@ -4,7 +4,7 @@
 
 ## 概述
 
-汽车 CAE（计算机辅助工程）仿真结果的自动分析管道。通过 S3 Access Points 从 FSx ONTAP 读取求解器输出（LS-DYNA、STAR-CCM+、Nastran 等），自动化质量检查、统计汇总和报告生成。
+汽车 CAE（计算机辅助工程）仿真结果的自动分析管道。通过 S3 Access Points 从 FSx for ONTAP 读取求解器输出（LS-DYNA、STAR-CCM+、Nastran 等），自动化质量检查、统计汇总和报告生成。
 
 ## 解决的问题
 

@@ -10,7 +10,7 @@ FSx for ONTAP の S3 Access Points を活用し、事故写真の損害評価、
 
 ### このパターンが適しているケース
 
-- 事故写真や見積書が FSx ONTAP 上に蓄積されている
+- 事故写真や見積書が FSx for ONTAP 上に蓄積されている
 - Rekognition による事故写真の損害検出（車両損害ラベル、重大度指標、影響箇所）を自動化したい
 - Textract による見積書の OCR（修理項目、費用、工数、部品）を実施したい
 - 写真ベース損害評価と見積書データを相関させた包括的保険金請求レポートが必要
@@ -123,7 +123,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -166,7 +166,7 @@ UC14 は以下のサービスを使用します:
 
 ## 参考リンク
 
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition ラベル検出](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon Textract ドキュメント](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Bedrock API リファレンス](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
@@ -179,7 +179,7 @@ UC14 は以下のサービスを使用します:
 | サービス | ドキュメント |
 |---------|------------|
 | FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
-| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Textract | [開発者ガイド](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |
 | Amazon Rekognition | [開発者ガイド](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |
@@ -224,7 +224,7 @@ UC14 は以下のサービスを使用します:
 
 | コンポーネント | 月額 |
 |--------------|------|
-| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
 | S3 Access Point | 追加料金なし（S3 API 料金のみ） |
 
 ### 合計概算

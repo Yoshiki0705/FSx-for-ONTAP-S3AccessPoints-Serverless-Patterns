@@ -817,7 +817,7 @@ aws cloudformation create-stack \
 | 項目 | 值 |
 |------|-----|
 | AWS 區域 | ap-northeast-1 (東京) |
-| FSx ONTAP 版本 | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP 版本 | ONTAP 9.17.1P4D3 |
 | FSx 配置 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | 部署方式 | CloudFormation（使用 SAM Transform） |
@@ -883,7 +883,7 @@ aws cloudformation create-stack \
 | CloudFormation Transform | AWS::Serverless-2016-10-31 |
 | 已驗證磁碟區 security style | UNIX, NTFS |
 
-### FSx ONTAP S3 Access Points 支援的 API
+### FSx for ONTAP S3 Access Points 支援的 API
 
 透過 S3 AP 可用的 API 子集:
 

@@ -15,8 +15,8 @@ Esta demostración muestra cómo las operaciones de creación de archivos a trav
 | Elemento | Requisito |
 |----------|-----------|
 | FSx for ONTAP | ONTAP 9.17.1 o superior, FPolicy compatible |
-| VPC | Subred privada en el mismo VPC que FSxN |
-| Montaje NFS | Montaje NFS del cliente al volumen FSxN realizado |
+| VPC | Subred privada en el mismo VPC que FSx for ONTAP |
+| Montaje NFS | Montaje NFS del cliente al volumen FSx for ONTAP realizado |
 | AWS CLI | v2 o superior, permisos IAM apropiados |
 | Docker | Para construir imágenes de contenedor |
 | ECR | Repositorio creado |

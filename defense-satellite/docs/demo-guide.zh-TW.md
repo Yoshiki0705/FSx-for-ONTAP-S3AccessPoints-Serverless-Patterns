@@ -110,7 +110,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP（"no data movement" 模式）
 將分割 metadata、物體檢測 JSON、Geo enrichment 完成的檢測結果，透過 FSx for ONTAP S3 Access Point
-寫回與原始衛星影像**相同的 FSx ONTAP 磁碟區**。
+寫回與原始衛星影像**相同的 FSx for ONTAP 磁碟區**。
 分析人員可以在 SMB/NFS 的現有目錄結構中直接參考 AI 成果。
 不會建立標準 S3 儲存貯體。
 
@@ -165,7 +165,7 @@ aws cloudformation deploy \
 - Rekognition 衛星影像物體檢測結果 JSON 預覽
 - GeoEnrichment 附座標的檢測結果
 - SNS 警示通知郵件
-- FSx ONTAP 磁碟區上的 AI 成果（FSXN_S3AP 模式時）
+- FSx for ONTAP 磁碟區上的 AI 成果（FSXN_S3AP 模式時）
 
 ### 截圖指南
 

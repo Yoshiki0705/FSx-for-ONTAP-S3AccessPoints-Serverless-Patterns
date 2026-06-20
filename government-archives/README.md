@@ -18,7 +18,7 @@ FSx for ONTAP S3 Access Points を活用した政府機関の公文書
 ### 処理フロー
 
 ```
-FSx ONTAP (公文書格納 — 部署別 NTFS ACL)
+FSx for ONTAP (公文書格納 — 部署別 NTFS ACL)
   → S3 Access Point
     → Step Functions ワークフロー
       → Discovery: 新規文書検出（PDF, TIFF, EML, MSG）
@@ -229,7 +229,7 @@ government-archives/
 | サービス | ドキュメント |
 |---------|------------|
 | FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
-| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Textract | [開発者ガイド](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |
 | Amazon Comprehend | [開発者ガイド](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html) |
@@ -275,7 +275,7 @@ government-archives/
 
 | コンポーネント | 月額 |
 |--------------|------|
-| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
 | S3 Access Point | 追加料金なし（S3 API 料金のみ） |
 
 ### 合計概算

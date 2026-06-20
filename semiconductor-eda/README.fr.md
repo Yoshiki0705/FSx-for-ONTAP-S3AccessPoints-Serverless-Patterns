@@ -30,7 +30,7 @@ Voici les cas où ce modèle est approprié :
 - Si vous avez besoin d'un stockage de fichiers hautement disponible et évolutif, Amazon FSx for ONTAP peut être envisagé.
 - Pour surveiller les performances de vos applications et services, Amazon CloudWatch peut vous aider.
 - Lorsque vous devez déployer et gérer votre infrastructure de manière déclarative, AWS CloudFormation peut être utile.
-- Les fichiers de conception GDS/OASIS s'accumulent en masse sur FSx ONTAP.
+- Les fichiers de conception GDS/OASIS s'accumulent en masse sur FSx for ONTAP.
 - Je voudrais cataloguer automatiquement les métadonnées des fichiers de conception (nom de la bibliothèque, nombre de cellules, boîte englobante, etc.).
 - Je veux compiler régulièrement les statistiques DRC afin de suivre les tendances de la qualité de la conception.
 - J'ai besoin d'une analyse transversale des métadonnées de conception avec SQL Athena.
@@ -292,7 +292,7 @@ Voici la traduction en français :
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
 | `DeployBucket` | Lambda zip を格納する S3 バケット名 | — | ✅ |
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
@@ -406,7 +406,7 @@ Veuillez consulter la [matrice de compatibilité des régions](../docs/region-co
 ## Liens de référence
 
 AWS Step Functions permet de créer des workflows d'application complexes à l'aide d'une interface visuelle. Amazon Athena est un service d'analyse de données sans serveur qui vous permet d'interroger facilement des données dans Amazon S3 en utilisant du SQL standard. AWS Lambda vous permet d'exécuter du code sans avoir à gérer des serveurs. Amazon FSx for ONTAP fournit un stockage de fichiers hautement performant et hautement disponible. Amazon CloudWatch vous permet de surveiller vos ressources AWS et vos applications. AWS CloudFormation vous aide à modéliser et configurer vos ressources AWS.
-- [Présentation des points d'accès S3 pour FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Présentation des points d'accès S3 pour FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Création et attachement de points d'accès S3](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html)
 - [Gestion de l'accès aux points d'accès S3](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
 - [Guide de l'utilisateur Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)

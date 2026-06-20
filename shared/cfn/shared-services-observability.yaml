@@ -28,7 +28,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Shared Services Observability.
+  FSx for ONTAP S3 AP Serverless Patterns — Shared Services Observability.
   CloudWatch Cross-Account Observability、X-Ray トレース集約、
   SNS アラート統合による集中可観測性プラットフォーム。
 
@@ -144,7 +144,7 @@ Resources:
               "width": 24,
               "height": 2,
               "properties": {
-                "markdown": "# FSxN S3AP Cross-Account Observability Dashboard\n\nAll workload accounts metrics aggregated in shared services account.\n\n**Refresh Interval**: ${DashboardRefreshInterval}s | **Environment**: ${Environment}"
+                "markdown": "# FSx for ONTAP S3 AP Cross-Account Observability Dashboard\n\nAll workload accounts metrics aggregated in shared services account.\n\n**Refresh Interval**: ${DashboardRefreshInterval}s | **Environment**: ${Environment}"
               }
             },
             {
@@ -226,7 +226,7 @@ Resources:
                   ["FSxN-S3AP", "ProcessingLatencyMs", {"stat": "Average", "period": 300}]
                 ],
                 "region": "${AWS::Region}",
-                "title": "FSxN S3AP Processing Latency (Custom Metrics)",
+                "title": "FSx for ONTAP S3 AP Processing Latency (Custom Metrics)",
                 "view": "timeSeries"
               }
             }
@@ -276,7 +276,7 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub "${ProjectPrefix}-aggregated-alerts"
-      DisplayName: "FSxN S3AP Aggregated Alerts (All Accounts)"
+      DisplayName: "FSx for ONTAP S3 AP Aggregated Alerts (All Accounts)"
       KmsMasterKeyId: !Ref AggregatedAlertTopicKey
       Tags:
         - Key: Phase

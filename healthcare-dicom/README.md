@@ -10,7 +10,7 @@ FSx for ONTAP の S3 Access Points を活用し、DICOM 医用画像の自動分
 
 ### このパターンが適しているケース
 
-- PACS / VNA から FSx ONTAP に保存された DICOM ファイルを定期的に匿名化したい
+- PACS / VNA から FSx for ONTAP に保存された DICOM ファイルを定期的に匿名化したい
 - 研究用データセット作成のために PHI（保護対象医療情報）を自動除去したい
 - 画像内に焼き込まれた患者情報（Burned-in Annotation）を検出したい
 - モダリティ・部位による自動分類で画像管理を効率化したい
@@ -96,7 +96,7 @@ graph LR
 
 デプロイ前に以下の値を確認してください:
 
-- FSx ONTAP S3 Access Point Alias
+- FSx for ONTAP S3 Access Point Alias
 - ONTAP 管理 IP アドレス
 - Secrets Manager シークレット名
 - VPC ID、プライベートサブネット ID
@@ -136,9 +136,9 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -214,7 +214,7 @@ UC5 は以下のサービスを使用します:
 
 ### AWS 公式ドキュメント
 
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Lambda でサーバーレス処理（公式チュートリアル）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Comprehend Medical DetectPHI API](https://docs.aws.amazon.com/comprehend-medical/latest/dev/API_DetectPHI.html)
 - [Rekognition DetectText API](https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectText.html)
@@ -223,7 +223,7 @@ UC5 は以下のサービスを使用します:
 ### AWS ブログ記事
 
 - [S3 AP 発表ブログ](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
-- [FSx ONTAP + Bedrock RAG](https://aws.amazon.com/blogs/machine-learning/build-rag-based-generative-ai-applications-in-aws-using-amazon-fsx-for-netapp-ontap-with-amazon-bedrock/)
+- [FSx for ONTAP + Bedrock RAG](https://aws.amazon.com/blogs/machine-learning/build-rag-based-generative-ai-applications-in-aws-using-amazon-fsx-for-netapp-ontap-with-amazon-bedrock/)
 
 ### GitHub サンプル
 
@@ -236,7 +236,7 @@ UC5 は以下のサービスを使用します:
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

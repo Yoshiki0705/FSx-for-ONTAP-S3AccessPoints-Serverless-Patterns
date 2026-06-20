@@ -32,7 +32,7 @@ cd fsxn-s3ap-serverless-patterns/telecom-network-analytics
 
 ### Step 3: 샘플 데이터 준비
 
-FSx ONTAP 볼륨에 샘플 데이터를 배치합니다.
+FSx for ONTAP 볼륨에 샘플 데이터를 배치합니다.
 
 ### Step 4: 배포
 

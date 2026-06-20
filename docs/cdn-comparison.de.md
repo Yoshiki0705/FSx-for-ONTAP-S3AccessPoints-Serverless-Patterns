@@ -1,4 +1,4 @@
-# CDN-/Edge-Auslieferungsintegration im Vergleich — Auslieferung aus FSx ONTAP S3 Access Points
+# CDN-/Edge-Auslieferungsintegration im Vergleich — Auslieferung aus FSx for ONTAP S3 Access Points
 
 🌐 **Language / 言語**: [日本語](cdn-comparison.md) | [English](cdn-comparison.en.md) | [한국어](cdn-comparison.ko.md) | [简体中文](cdn-comparison.zh-CN.md) | [繁體中文](cdn-comparison.zh-TW.md) | [Français](cdn-comparison.fr.md) | [Deutsch](cdn-comparison.de.md) | [Español](cdn-comparison.es.md)
 
@@ -7,7 +7,7 @@
 Eine Referenz zur technischen Machbarkeit der Auslieferung von Daten auf FSx for ONTAP
 S3 Access Points (S3 AP) über ein CDN/Edge-Netzwerk. Dieses Dokument **bewertet keine** Anbieter, vergleicht
 weder Preis noch Leistung und macht keine Marketingaussagen. Es behandelt ausschließlich, **was technisch
-machbar ist, was nicht und was verifiziert werden muss** angesichts der Einschränkungen des FSx ONTAP S3 AP.
+machbar ist, was nicht und was verifiziert werden muss** angesichts der Einschränkungen des FSx for ONTAP S3 AP.
 Die Anbieterauswahl hängt von Faktoren außerhalb dieses Dokuments ab (Verträge, SLAs, Betrieb, regionale
 Anforderungen) und liegt beim Kunden.
 
@@ -63,7 +63,7 @@ Anforderungen) und liegt beim Kunden.
 
 > Quellen sind öffentliche Anbieterdokumente (CloudFront OAC, Akamai Cloud Access Manager, Fastly
 > S3-kompatible private Origins, Cloudflare Workers/R2, Bunny Storage, Google Media CDN). Alle beschreiben
-> **Standard-S3-kompatible Buckets**; das Verhalten am accesspoint alias des FSx ONTAP S3 AP ist TBV.
+> **Standard-S3-kompatible Buckets**; das Verhalten am accesspoint alias des FSx for ONTAP S3 AP ist TBV.
 
 ## 4. Feste Sicherheitsanforderungen (mechanismusunabhängig)
 
@@ -84,7 +84,7 @@ Anforderungen) und liegt beim Kunden.
 - **Öffentliche Evidenz**: Anbieterfähigkeiten in Abschnitt 3 — basierend auf öffentlichen Dokumenten,
   **zeitabhängig**, vor Einführung erneut prüfen.
 - **Zu verifizieren (dieses Projekt)**: Verhalten der SigV4-Origin-Signierung am accesspoint alias des
-  FSx ONTAP S3 AP.
+  FSx for ONTAP S3 AP.
 
 ## 5. Machbarkeitszusammenfassung
 

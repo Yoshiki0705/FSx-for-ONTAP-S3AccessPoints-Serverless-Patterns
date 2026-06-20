@@ -5,7 +5,7 @@
 ## 目的
 
 为在实机上确定 [CDN 对比文档](cdn-comparison.zh-CN.md) 中标记为 **需验证（TBV）** 的项，即
-**“各 CDN 的 SigV4 源签名对 FSx ONTAP S3 Access Point 的 `accesspoint alias` 主机是否与标准 S3 桶一样工作”**
+**“各 CDN 的 SigV4 源签名对 FSx for ONTAP S3 Access Point 的 `accesspoint alias` 主机是否与标准 S3 桶一样工作”**
 而提供的可复现步骤。
 
 本清单用于 `content-edge-delivery` UC 的 `DeliveryMode=ORIGIN_PULL`（M1/M2）采用判断。

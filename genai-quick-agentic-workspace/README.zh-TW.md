@@ -38,7 +38,7 @@ quick-workspace/
 
 ## 安全
 
-- 無資料移動（FSx ONTAP 正本保留，S3 AP 唯讀）
+- 無資料移動（FSx for ONTAP 正本保留，S3 AP 唯讀）
 - Action API 使用 IAM 認證（SigV4）——不暴露未認證端點
 - 最小權限、加密（SSE-FSX/SSE-S3/TLS）
 - Quick 本體資料來源連接於 Quick 主控台設定

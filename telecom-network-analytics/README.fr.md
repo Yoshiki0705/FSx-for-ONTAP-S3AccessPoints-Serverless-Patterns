@@ -10,7 +10,7 @@ Workflow serverless exploitant les S3 Access Points d'Amazon FSx for ONTAP pour 
 
 ### Cas d'utilisation adaptés
 
-- Les fichiers CDR (CSV, ASN.1 décodé, Parquet) sont stockés sur FSx ONTAP
+- Les fichiers CDR (CSV, ASN.1 décodé, Parquet) sont stockés sur FSx for ONTAP
 - Analyse automatique des données syslog / SNMP trap des équipements réseau
 - Statistiques de trafic via Athena (volume d'appels par heure, durée moyenne, appels simultanés au pic)
 - Détection d'anomalies via Bedrock (comparaison avec baseline glissante de 7 jours, seuil 3σ)
@@ -101,7 +101,7 @@ aws cloudformation deploy \
 ## ⚠️ Considérations de performance
 
 - La capacité de débit de FSx for ONTAP est **partagée entre NFS/SMB/S3 AP**. L'exécution avec MapConcurrency=10 en parallèle peut impacter d'autres charges de travail sur le même volume.
-- Pour le traitement par lots volumineux, vérifiez la Throughput Capacity (MBps) de FSx ONTAP et ajustez MapConcurrency en conséquence.
+- Pour le traitement par lots volumineux, vérifiez la Throughput Capacity (MBps) de FSx for ONTAP et ajustez MapConcurrency en conséquence.
 - Recommandé : Commencez avec MapConcurrency=5 en production, surveillez les métriques CloudWatch (ThroughputUtilization) et augmentez progressivement.
 
 ## Nettoyage (Cleanup)

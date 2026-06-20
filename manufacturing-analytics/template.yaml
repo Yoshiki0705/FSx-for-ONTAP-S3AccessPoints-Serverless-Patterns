@@ -16,7 +16,7 @@ Description: >-
 Parameters:
   S3AccessPointAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias (入力読み取り用)
+    Description: FSx for ONTAP S3 Access Point Alias (入力読み取り用)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
   S3AccessPointName:
@@ -24,12 +24,12 @@ Parameters:
     Default: ""
     Description: |
       入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
-      IAM アクセスを許可する（FSxN S3AP の permission 判定で両形式をサポート）。
+      IAM アクセスを許可する（FSx for ONTAP S3 AP の permission 判定で両形式をサポート）。
       空文字列の場合は alias 形式のみ許可。
 
   S3AccessPointOutputAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias (出力書き込み用、入力と同じ AP でも可)
+    Description: FSx for ONTAP S3 Access Point Alias (出力書き込み用、入力と同じ AP でも可)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
   OntapSecretName:
@@ -1091,7 +1091,7 @@ Resources:
       Name: !Sub "${AWS::StackName}-glue-etl"
       Description: >-
         CSV → Parquet 変換 Glue ETL ジョブ。
-        FSx ONTAP S3 AP 経由でセンサーログを読み取り、
+        FSx for ONTAP S3 AP 経由でセンサーログを読み取り、
         Parquet 形式に変換して書き戻す。
       Role: !GetAtt GlueETLRole.Arn
       Command:

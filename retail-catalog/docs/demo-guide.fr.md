@@ -177,7 +177,7 @@ consulter les JSON de balises générées automatiquement dans la structure de r
 # Mode STANDARD_S3 (par défaut, comportement traditionnel)
 --parameter-overrides OutputDestination=STANDARD_S3 ...
 
-# Mode FSXN_S3AP (réécriture des résultats IA sur le volume FSx ONTAP)
+# Mode FSXN_S3AP (réécriture des résultats IA sur le volume FSx for ONTAP)
 --parameter-overrides \
   OutputDestination=FSXN_S3AP \
   OutputS3APPrefix=ai-outputs/ \

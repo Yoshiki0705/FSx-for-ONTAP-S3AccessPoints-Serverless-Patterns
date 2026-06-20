@@ -183,7 +183,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP（"no data movement" 模式）
-AI 成果物透過 FSx for ONTAP S3 Access Point 寫回至與原始資料**相同的 FSx ONTAP 磁碟區**。
+AI 成果物透過 FSx for ONTAP S3 Access Point 寫回至與原始資料**相同的 FSx for ONTAP 磁碟區**。
 SMB/NFS 使用者可在業務使用的目錄結構內直接瀏覽 AI 成果物。
 不會建立標準 S3 儲存貯體。
 

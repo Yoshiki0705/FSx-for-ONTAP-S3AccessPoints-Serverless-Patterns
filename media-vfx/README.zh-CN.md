@@ -9,7 +9,7 @@
 1. このパターンは、複数のAWSサービスを連携して使用する必要がある場合に適しています。
 2. 特に、Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormationなどを使用している場合。
 3. GDSII、DRC、OASIS、GDS、Lambda、tapeoutなどの技術术语也适用于该模式。
-- 在VFX / 动画制作中，使用FSx ONTAP作为渲染存储
+- 在VFX / 动画制作中，使用FSx for ONTAP作为渲染存储
 - 希望自动化完成渲染后的质量检查，减少手动审核的负担
 - 希望将通过质量检查的资产自动写回文件服务器（S3 AP PutObject）
 - 希望构建一个将Deadline Cloud与现有NAS存储集成的管道
@@ -22,7 +22,7 @@
 - 通过 S3 AP 自动检测渲染目标资产
 - 自动提交渲染作业到 AWS Deadline Cloud
 - 使用 Amazon Rekognition 进行质量评估（分辨率、伪影、色彩一致性）
-- 质量通过时通过 S3 AP 向 FSx ONTAP 发送 PutObject 请求，不合格时发送 SNS 通知
+- 质量通过时通过 S3 AP 向 FSx for ONTAP 发送 PutObject 请求，不合格时发送 SNS 通知
 ## 架构
 
 ```mermaid
@@ -69,7 +69,7 @@ graph LR
 ### 1. 准备参数
 部署之前请确认以下值：
 
-- FSx ONTAP S3 访问点别名
+- FSx for ONTAP S3 访问点别名
 - ONTAP 管理 IP 地址
 - Secrets Manager 秘密名称
 - AWS Deadline 云农场 ID / 队列 ID
@@ -107,9 +107,9 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -175,7 +175,7 @@ UC4 使用以下服务：
 ## 参考链接
 
 ### AWS 官方文档
-- [FSx ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [使用 CloudFront 进行流媒体（官方教程）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html)
 - [使用 Lambda 进行无服务器处理（官方教程）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Deadline Cloud API 参考](https://docs.aws.amazon.com/deadline-cloud/latest/APIReference/Welcome.html)
@@ -192,7 +192,7 @@ UC4 使用以下服务：
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

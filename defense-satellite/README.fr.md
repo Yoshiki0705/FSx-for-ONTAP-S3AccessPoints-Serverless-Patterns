@@ -10,7 +10,7 @@
 Serverless pipeline for satellite imagery (GeoTIFF / NITF / HDF5) analytics leveraging Amazon FSx for ONTAP S3 Access Points. Targets defense, intelligence, and space agencies processing Earth Observation data at scale without file copies out of the sovereign storage boundary.
 
 ### When this pattern is suitable
-- Large GeoTIFF / NITF / HDF5 images are stored on FSx ONTAP
+- Large GeoTIFF / NITF / HDF5 images are stored on FSx for ONTAP
 - Need automated object detection (vehicles, ships, buildings) with time-series change detection
 - Need to forward alerts on change-area threshold breach to an operations team
 - Want to run all analytics inside a single region for data sovereignty
@@ -39,7 +39,7 @@ Serverless pipeline for satellite imagery (GeoTIFF / NITF / HDF5) analytics leve
 
 > Cette section présente **les écrans UI/UX utilisés au quotidien par les agents**. Les vues techniques comme les graphes Step Functions sont documentées séparément dans `docs/verification-results-phase7.md`.
 
-#### 1. Placement d'imagerie satellite (via S3 AP sur FSx ONTAP)
+#### 1. Placement d'imagerie satellite (via S3 AP sur FSx for ONTAP)
 
 <!-- SCREENSHOT: phase7-uc15-s3-satellite-uploaded.png -->
 ![UC15: Placement d'imagerie satellite](../docs/screenshots/masked/phase7/phase7-uc15-s3-satellite-uploaded.png)

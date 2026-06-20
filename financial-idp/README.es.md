@@ -113,7 +113,7 @@ Antes de comenzar a diseñar el chip, necesitas preparar los parámetros clave. 
 Una vez que tengas los parámetros definidos, puedes comenzar a diseñar el chip utilizando herramientas de diseño como GDSII y DRC. Cuando hayas terminado el diseño, podrás generar el archivo OASIS y prepararlo para el tapeout utilizando AWS Lambda y AWS Step Functions.
 Antes de la implementación, verifique los siguientes valores:
 
-- FSx ONTAP S3 Access Point Alias
+- FSx for ONTAP S3 Access Point Alias
 - Dirección IP de administración de ONTAP
 - Nombre del secreto de AWS Secrets Manager
 - ID de VPC, ID de subred privada
@@ -153,9 +153,9 @@ AWS Step Functions を使用して、一連のタスクを自動化します。A
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -265,7 +265,7 @@ Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon
 Amazon Bedrock le permite diseñar y fabricar chips de manera rápida y eficiente. AWS Step Functions le permite crear flujos de trabajo de aplicaciones complejas de manera visual. Amazon Athena es un servicio de consulta interactiva para analizar datos almacenados en Amazon S3. AWS Lambda le permite ejecutar código sin aprovisionar ni administrar servidores. Amazon FSx for ONTAP le brinda almacenamiento de archivos empresarial altamente compatible y de alto rendimiento. Amazon CloudWatch le permite monitorear y optimizar la infraestructura en la nube. AWS CloudFormation le permite modelar y aprovisionar recursos de AWS de forma declarativa.
 
 ### Documentación oficial de AWS
-- [Resumen de los puntos de acceso a S3 de FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Resumen de los puntos de acceso a S3 de FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Procesamiento sin servidor con Lambda (tutorial oficial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Referencia de la API de Textract](https://docs.aws.amazon.com/textract/latest/dg/API_Reference.html)
 - [API DetectEntities de Comprehend](https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html)
@@ -299,7 +299,7 @@ Amazon Bedrock es una plataforma de desarrollo de chips personalizados que ayuda
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

@@ -176,7 +176,7 @@ UC11 在 2026-05-10 的更新中支援 `OutputDestination` 參數。
 # STANDARD_S3 模式（預設，與以往相同）
 --parameter-overrides OutputDestination=STANDARD_S3 ...
 
-# FSXN_S3AP 模式（將 AI 成果寫回 FSx ONTAP 磁碟區）
+# FSXN_S3AP 模式（將 AI 成果寫回 FSx for ONTAP 磁碟區）
 --parameter-overrides \
   OutputDestination=FSXN_S3AP \
   OutputS3APPrefix=ai-outputs/ \

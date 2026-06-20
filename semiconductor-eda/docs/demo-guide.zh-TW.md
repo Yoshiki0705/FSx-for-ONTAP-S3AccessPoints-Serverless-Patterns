@@ -184,7 +184,7 @@ ORDER BY bounding_box_width DESC;
 
 | # | 畫面 | 段落 | 備註 |
 |---|------|-----------|------|
-| 1 | 設計檔案目錄清單 | Section 1 | FSx ONTAP 上的檔案結構 |
+| 1 | 設計檔案目錄清單 | Section 1 | FSx for ONTAP 上的檔案結構 |
 | 2 | 工作流程執行開始畫面 | Section 2 | Step Functions 主控台 |
 | 3 | 工作流程執行中（Map State 並行處理） | Section 3 | 可見進度的狀態 |
 | 4 | 工作流程完成畫面 | Section 3 | 所有步驟成功 |
@@ -322,7 +322,7 @@ Workgroup 為 `fsxn-eda-uc6-workgroup`，資料庫為 `fsxn-eda-uc6-db`。
 
 ### 現有示範環境的確認事項
 
-- [ ] FSx ONTAP 磁碟區中是否已配置範例資料
+- [ ] FSx for ONTAP 磁碟區中是否已配置範例資料
 - [ ] S3 Access Point 是否已設定
 - [ ] Glue Data Catalog 的表格定義是否存在
 - [ ] Athena 工作群組是否可用

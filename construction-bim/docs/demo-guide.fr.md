@@ -182,7 +182,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP (pattern "no data movement")
-Écrit les résultats IA via FSx for ONTAP S3 Access Point dans le **même volume FSx ONTAP** que les données originales.
+Écrit les résultats IA via FSx for ONTAP S3 Access Point dans le **même volume FSx for ONTAP** que les données originales.
 Les utilisateurs SMB/NFS peuvent consulter directement les résultats IA dans la structure de répertoires
 qu'ils utilisent pour leur travail. Aucun bucket S3 standard n'est créé.
 

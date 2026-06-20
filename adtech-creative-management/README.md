@@ -10,7 +10,7 @@ FSx for ONTAP の S3 Access Points を活用し、広告クリエイティブア
 
 ### このパターンが適しているケース
 
-- クリエイティブアセット（JPEG, PNG, TIFF, MP4, MOV, PSD）が FSx ONTAP 上に蓄積されている
+- クリエイティブアセット（JPEG, PNG, TIFF, MP4, MOV, PSD）が FSx for ONTAP 上に蓄積されている
 - Rekognition によるビジュアルメタデータ抽出（ラベル、テキスト検出、モデレーション）を実施したい
 - Textract + Bedrock によるテキストオーバーレイのブランド用語準拠チェックを自動化したい
 - アセットカタログ（JSON/CSV）を自動生成し、コンプライアンス状態を一元管理したい
@@ -132,7 +132,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `cron(0 0 * * ? *)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -150,8 +150,8 @@ aws cloudformation deploy \
 ## ⚠️ パフォーマンスに関する注意事項
 
 - FSx for ONTAP のスループットキャパシティは **NFS/SMB/S3 AP 全体で共有**されます。MapConcurrency=10 で並列処理を行う場合、同一ボリュームの他のワークロードに影響する可能性があります。
-- 大量ファイルの一括処理を行う場合は、FSx ONTAP の Throughput Capacity (MBps) を確認し、必要に応じて MapConcurrency を調整してください。
-- 推奨: 本番環境では最初に MapConcurrency=5 で開始し、FSx ONTAP の CloudWatch メトリクス (ThroughputUtilization) を監視しながら段階的に増加させてください。
+- 大量ファイルの一括処理を行う場合は、FSx for ONTAP の Throughput Capacity (MBps) を確認し、必要に応じて MapConcurrency を調整してください。
+- 推奨: 本番環境では最初に MapConcurrency=5 で開始し、FSx for ONTAP の CloudWatch メトリクス (ThroughputUtilization) を監視しながら段階的に増加させてください。
 
 ## クリーンアップ
 
@@ -183,7 +183,7 @@ UC19 は以下のサービスを使用します:
 
 ## 参考リンク
 
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition ドキュメント](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html)
 - [Amazon Textract ドキュメント](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Bedrock API リファレンス](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
@@ -195,7 +195,7 @@ UC19 は以下のサービスを使用します:
 | サービス | ドキュメント |
 |---------|------------|
 | FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
-| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Rekognition | [開発者ガイド](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |
 | Amazon Textract | [開発者ガイド](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |
@@ -236,7 +236,7 @@ UC19 は以下のサービスを使用します:
 
 | コンポーネント | 月額 |
 |--------------|------|
-| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
 | S3 Access Point | 追加料金なし（S3 API 料金のみ） |
 
 ### 合計概算

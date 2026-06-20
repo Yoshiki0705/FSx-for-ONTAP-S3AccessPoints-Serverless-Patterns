@@ -5,7 +5,7 @@
 ## 概觀
 利用 FSx for ONTAP 的 S3 Access Points，構建一個自動化的無伺服器工作流程，以自動標記產品圖片、生成目錄中繼數據和執行圖片質量檢查。
 ### 適用此模式的情況
-- 商品圖像大量儲存於 FSx ONTAP 上
+- 商品圖像大量儲存於 FSx for ONTAP 上
 - 希望使用 Rekognition 自動標註商品圖像（類別、顏色、材質）
 - 希望自動生成結構化目錄中繼資料（product_category, color, material, style_attributes）
 - 需要自動驗證圖像品質指標（解析度、檔案大小、長寬比）
@@ -80,7 +80,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |

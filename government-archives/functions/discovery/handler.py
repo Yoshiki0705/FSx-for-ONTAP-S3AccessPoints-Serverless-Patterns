@@ -1,6 +1,6 @@
 """UC16 Government Archives Discovery Lambda
 
-FSx ONTAP S3 Access Point から公文書（PDF, TIFF, EML, DOCX）の一覧を取得する。
+FSx for ONTAP S3 Access Point から公文書（PDF, TIFF, EML, DOCX）の一覧を取得する。
 """
 
 from __future__ import annotations

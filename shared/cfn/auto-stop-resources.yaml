@@ -30,7 +30,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Auto-Stop Resources.
+  FSx for ONTAP S3 AP Serverless Patterns — Auto-Stop Resources.
   アイドル SageMaker エンドポイント自動停止 Lambda + EventBridge Schedule。
 
 # =====================================================================

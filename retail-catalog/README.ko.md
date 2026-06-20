@@ -5,7 +5,7 @@
 ## 개요
 FSx for ONTAP의 S3 액세스 포인트를 활용하여 제품 이미지의 자동 태깅, 카탈로그 메타데이터 생성, 이미지 품질 검사를 자동화하는 서버리스 워크플로입니다.
 ### 이 패턴이 적합한 경우
-- 상품 이미지가 FSx ONTAP에 대량으로 저장되어 있습니다.
+- 상품 이미지가 FSx for ONTAP에 대량으로 저장되어 있습니다.
 - Rekognition을 사용하여 상품 이미지에 대한 자동 라벨링(카테고리, 색상, 소재)을 구현하고 싶습니다.
 - 구조화된 카탈로그 메타데이터(product_category, color, material, style_attributes)를 자동 생성하고 싶습니다.
 - 이미지 품질 메트릭스(해상도, 파일 크기, 종횡비)의 자동 검증이 필요합니다.
@@ -88,7 +88,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -116,7 +116,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 
 ## 참조 링크
-- [FSx ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Amazon Bedrock API 참조](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [스트리밍 vs 폴링 선택 가이드](../docs/streaming-vs-polling-guide.md)

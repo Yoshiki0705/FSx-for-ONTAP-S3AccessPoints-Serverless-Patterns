@@ -823,7 +823,7 @@ aws cloudformation create-stack \
 | 항목 | 값 |
 |------|-----|
 | AWS 리전 | ap-northeast-1 (도쿄) |
-| FSx ONTAP 버전 | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP 버전 | ONTAP 9.17.1P4D3 |
 | FSx 구성 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | 배포 방식 | CloudFormation(SAM Transform 사용) |
@@ -889,7 +889,7 @@ aws cloudformation create-stack \
 | CloudFormation Transform | AWS::Serverless-2016-10-31 |
 | 검증 완료 볼륨 security style | UNIX, NTFS |
 
-### FSx ONTAP S3 Access Points 지원 API
+### FSx for ONTAP S3 Access Points 지원 API
 
 S3 AP를 통해 사용 가능한 API 서브셋:
 

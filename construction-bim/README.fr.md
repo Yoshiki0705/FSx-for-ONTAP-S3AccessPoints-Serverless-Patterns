@@ -5,7 +5,7 @@
 ## Aperçu
 FSx for ONTAP utilise les points d'accès S3 pour automatiser les flux de travail sans serveur de gestion des versions des modèles BIM (IFC/Revit), d'extraction de texte OCR des PDF de plans et de vérification de conformité sécurité.
 ### Cas où ce schéma est approprié
-- Les modèles BIM (IFC/Revit) et les PDF de plans sont stockés sur FSx ONTAP
+- Les modèles BIM (IFC/Revit) et les PDF de plans sont stockés sur FSx for ONTAP
 - Je souhaite cataloguer automatiquement les métadonnées des fichiers IFC (nom du projet, nombre d'éléments architecturaux, nombre d'étages)
 - Je souhaite détecter automatiquement les différences entre les versions des modèles BIM (ajout, suppression ou modification d'éléments)
 - Je souhaite extraire le texte et les tableaux des PDF de plans à l'aide de Textract
@@ -87,7 +87,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -125,7 +125,7 @@ UC10 utilise les services suivants :
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Appelez l'API Textract via le client inter-régions. Vérifiez les exigences de résidence des données. Pour plus de détails, consultez la [matrice de compatibilité des régions](../docs/region-compatibility.md).
 ## Liens de référence
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Documentation Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Spécifications du format IFC (buildingSMART)](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/)
 - [Détection de labels Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

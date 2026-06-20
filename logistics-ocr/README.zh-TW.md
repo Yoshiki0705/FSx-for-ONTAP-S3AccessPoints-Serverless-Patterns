@@ -5,7 +5,7 @@
 ## 概覽
 利用 FSx for ONTAP 的 S3 Access Points，自動化無伺服器工作流程，用於運輸票據的 OCR 文字提取、倉庫庫存圖像的物體檢測與計數、以及運輸路線優化報告生成。
 ### 此模式適用的情況
-- 配送傳票影像和倉庫庫存影像已在 FSx ONTAP 上累積
+- 配送傳票影像和倉庫庫存影像已在 FSx for ONTAP 上累積
 - 希望自動化 Textract 對配送傳票的 OCR（寄件人、收件人、跟踪號碼、物品）
 - 需要 Bedrock 進行提取欄位的標準化和結構化配送記錄生成
 - 希望使用 Rekognition 對倉庫庫存影像進行物體檢測和計數（托盤、箱子、貨架佔用率）
@@ -90,7 +90,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |

@@ -31,7 +31,7 @@
 
 ## 性能・スループット設計（Storage 観点）
 
-- FSx ONTAP のプロビジョンドスループットは NFS/SMB/S3AP で共有される。ORIGIN_PULL のキャッシュミス時に
+- FSx for ONTAP のプロビジョンドスループットは NFS/SMB/S3AP で共有される。ORIGIN_PULL のキャッシュミス時に
   CDN→S3 AP のオリジンフェッチが業務帯域と競合しうるため、キャッシュミス率と同時接続数を見積もる。
 - CDN の Origin Shield / 高 TTL でオリジンフェッチを削減。大容量メディアは Range GET を活用。
 - 配信読み取りを業務ボリュームから分離したい場合、**FlexCache** ボリュームを介す設計を検討（ONTAP ネイティブ）。
@@ -51,7 +51,7 @@
 - 本雛形は `POLLING` を主対象とする。`EVENT_DRIVEN` / `HYBRID` はパラメータ定義のみで、
   FPolicy 連携と `shared/idempotency_checker.py` による重複排除は未実装（拡張ポイント）。
 
-## 制約（FSx ONTAP S3 AP 由来）
+## 制約（FSx for ONTAP S3 AP 由来）
 
 - Block Public Access 強制（無効化不可）
 - オリジン認証は SigV4 必須

@@ -5,7 +5,7 @@
 ## 개요
 FSx for ONTAP의 S3 액세스 포인트를 활용하여 논문 PDF의 자동 분류, 인용 네트워크 분석, 연구 데이터 메타데이터 추출을 자동화하는 서버리스 워크플로우입니다.
 ### 이 패턴이 적합한 경우
-- 논문 PDF와 연구 데이터가 FSx ONTAP에 대량으로 축적되어 있습니다
+- 논문 PDF와 연구 데이터가 FSx for ONTAP에 대량으로 축적되어 있습니다
 - Textract를 사용하여 논문 PDF의 텍스트 추출을 자동화하고 싶습니다
 - Comprehend를 사용하여 토픽 감지 및 엔티티 추출(저자, 기관, 키워드)이 필요합니다
 - 인용 관계의 분석과 인용 네트워크(인접 리스트)의 자동 구축이 필요합니다
@@ -89,7 +89,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -127,7 +127,7 @@ UC13은 다음 서비스를 사용합니다:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Cross-Region Client을 통해 Textract API를 호출합니다. 데이터 레지던시 요구 사항을 확인하세요. 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하세요.
 ## 참고 링크
-- [FSx ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract 문서](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Comprehend 문서](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html)
 - [Amazon Bedrock API 참조](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

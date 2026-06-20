@@ -15,7 +15,7 @@ Parameters:
   # --- Layer 1: Phase 1 共通 ---
   S3AccessPointAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias (入力読み取り用)
+    Description: FSx for ONTAP S3 Access Point Alias (入力読み取り用)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
   S3AccessPointName:
@@ -27,7 +27,7 @@ Parameters:
 
   S3AccessPointOutputAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias (出力書き込み用)
+    Description: FSx for ONTAP S3 Access Point Alias (出力書き込み用)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
   OntapSecretName:

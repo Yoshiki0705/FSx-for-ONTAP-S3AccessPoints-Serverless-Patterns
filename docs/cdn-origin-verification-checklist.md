@@ -5,7 +5,7 @@
 ## 目的
 
 [CDN比較ドキュメント](cdn-comparison.md) で **要検証 (TBV)** とした項目、すなわち
-**「各 CDN の SigV4 オリジン署名が FSx ONTAP S3 Access Point の `accesspoint alias` ホストに対して
+**「各 CDN の SigV4 オリジン署名が FSx for ONTAP S3 Access Point の `accesspoint alias` ホストに対して
 標準 S3 バケットと同様に機能するか」** を実機で確定するための再現可能な検証手順です。
 
 本チェックリストは `content-edge-delivery` UC の `DeliveryMode=ORIGIN_PULL`（M1/M2）の採否判断に使います。

@@ -166,7 +166,7 @@ UC5 healthcare-dicom est classé comme **Pattern A: Native S3AP Output**
 (voir `docs/output-destination-patterns.md`).
 
 **Conception** : Les métadonnées DICOM, les résultats d'anonymisation et les journaux de détection PII sont tous écrits
-via FSx for ONTAP S3 Access Point dans le **même volume FSx ONTAP** que les images médicales DICOM originales. Aucun bucket S3 standard n'est
+via FSx for ONTAP S3 Access Point dans le **même volume FSx for ONTAP** que les images médicales DICOM originales. Aucun bucket S3 standard n'est
 créé (pattern "no data movement").
 
 **Paramètres CloudFormation** :

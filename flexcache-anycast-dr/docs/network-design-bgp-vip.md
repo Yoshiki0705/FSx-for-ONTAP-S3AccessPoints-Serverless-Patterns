@@ -90,11 +90,11 @@ graph TB
         HC_B[Health Check B]
     end
     subgraph "Primary (ap-northeast-1)"
-        FSX_A[FSx ONTAP A<br/>FlexCache]
+        FSX_A[FSx for ONTAP A<br/>FlexCache]
         ENI_A[ENI IP: 10.0.1.x]
     end
     subgraph "Secondary (us-west-2)"
-        FSX_B[FSx ONTAP B<br/>FlexCache]
+        FSX_B[FSx for ONTAP B<br/>FlexCache]
         ENI_B[ENI IP: 10.1.1.x]
     end
     R53 -->|Primary| ENI_A --> FSX_A
@@ -157,8 +157,8 @@ graph LR
     CLIENT[Client] --> GA[Global Accelerator<br/>Anycast IP]
     GA --> EP_A[Endpoint Group A<br/>ap-northeast-1]
     GA --> EP_B[Endpoint Group B<br/>us-west-2]
-    EP_A --> NLB_A[NLB A] --> FSX_A[FSx ONTAP A]
-    EP_B --> NLB_B[NLB B] --> FSX_B[FSx ONTAP B]
+    EP_A --> NLB_A[NLB A] --> FSX_A[FSx for ONTAP A]
+    EP_B --> NLB_B[NLB B] --> FSX_B[FSx for ONTAP B]
 ```
 
 ## Level 3: Lambda ルーティングロジック（シミュレーション）

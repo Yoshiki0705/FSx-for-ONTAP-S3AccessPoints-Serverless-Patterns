@@ -14,7 +14,7 @@ OCR、分类、PII 检测、编辑、全文检索、FOIA 期限跟踪自动化�
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>公文档存储<br/>部门级 NTFS ACL] --> S3AP[S3 Access Point]
+    FSx[FSx for ONTAP<br/>公文档存储<br/>部门级 NTFS ACL] --> S3AP[S3 Access Point]
     S3AP --> EB[EventBridge Scheduler]
     EB --> SFN[Step Functions<br/>Archive Workflow]
     SFN --> L1[Discovery]
@@ -75,7 +75,7 @@ graph LR
 ## 公共部门法规合规
 
 ### NARA Electronic Records Management (ERM)
-- 通过 FSx ONTAP Snapshot + Backup 支持 WORM
+- 通过 FSx for ONTAP Snapshot + Backup 支持 WORM
 - 所有处理均有 CloudTrail 审计跟踪
 - 启用 DynamoDB Point-in-Time Recovery
 

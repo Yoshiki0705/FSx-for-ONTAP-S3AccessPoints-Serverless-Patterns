@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   UC30 Amazon Quick Agentic Workspace over FSx for ONTAP
-  FSx ONTAP S3 Access Point を Amazon Quick Suite のデータ基盤として活用する。
+  FSx for ONTAP S3 Access Point を Amazon Quick Suite のデータ基盤として活用する。
   - Quick Index / Quick Research: 非構造化ファイル（index/）
   - Quick Sight (BI): 構造化 CSV を Glue/Athena 経由で分析（analytics/）
   - Quick Flows: アクション API（API Gateway + Lambda + Bedrock）（flows/）
@@ -89,6 +89,27 @@ Parameters:
       管理アクション（approve）を許可する呼び出し元 ARN の部分一致パターン（カンマ区切り）。
       ActionAuthMode=enforce 時に有効。
 
+  # --- Web Search ハイブリッド RAG (opt-in) ---
+  EnableWebSearch:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: >
+      AgentCore Web Search Tool による generate_brief_with_web アクションを有効化する。
+      true の場合、us-east-1 の AgentCore Gateway 経由で Web 検索を実行し、
+      ブリーフ生成時に外部情報で補強する。
+
+  AgentCoreGatewayId:
+    Type: String
+    Default: ''
+    Description: >
+      AgentCore Gateway ID (us-east-1)。EnableWebSearch=true 時に必須。
+
+  AgentCoreGatewayRegion:
+    Type: String
+    Default: 'us-east-1'
+    Description: AgentCore Gateway のリージョン
+
 Conditions:
   HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
   HasQuickPrincipal: !Not [!Equals [!Ref QuickDataSourcePrincipal, '']]
@@ -159,7 +180,7 @@ Resources:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
         Name: quick_workspace_db
-        Description: Amazon Quick Sight 用 FSx ONTAP S3 AP 構造化データ
+        Description: Amazon Quick Sight 用 FSx for ONTAP S3 AP 構造化データ
 
   # --- Athena WorkGroup ---
   AthenaWorkGroup:
@@ -335,6 +356,12 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:UpdateItem
                 Resource: !GetAtt ApprovalsTable.Arn
+              # Web Search: AgentCore Gateway 呼び出し (us-east-1)
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:InvokeGateway
+                Resource:
+                  - !Sub 'arn:aws:bedrock-agentcore:${AgentCoreGatewayRegion}:${AWS::AccountId}:gateway/*'
 
   QuickActionFunction:
     Type: AWS::Serverless::Function
@@ -355,6 +382,10 @@ Resources:
           ACTION_AUTH_MODE: !Ref ActionAuthMode
           AUTHORIZED_PRINCIPALS: !Ref AuthorizedPrincipals
           ADMIN_PRINCIPALS: !Ref AdminPrincipals
+          # Web Search ハイブリッド RAG (opt-in)
+          WEB_SEARCH_ENABLED: !Ref EnableWebSearch
+          AGENTCORE_GATEWAY_ID: !Ref AgentCoreGatewayId
+          AGENTCORE_GATEWAY_REGION: !Ref AgentCoreGatewayRegion
       Events:
         ActionApi:
           Type: Api

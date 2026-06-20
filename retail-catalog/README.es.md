@@ -5,7 +5,7 @@
 ## Resumen
 Un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para automatizar el etiquetado automático de imágenes de productos, la generación de metadatos de catálogo y la verificación de calidad de imagen.
 ### Casos en los que este patrón es adecuado
-- Las imágenes de productos se están acumulando en gran cantidad en FSx ONTAP
+- Las imágenes de productos se están acumulando en gran cantidad en FSx for ONTAP
 - Quiero realizar el etiquetado automático de imágenes de productos (categoría, color, material) mediante Rekognition
 - Deseo generar automáticamente metadatos de catálogo estructurado (product_category, color, material, style_attributes)
 - Se necesita la verificación automática de métricas de calidad de imagen (resolución, tamaño de archivo, relación de aspecto)
@@ -80,7 +80,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -108,7 +108,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 
 ## Enlaces de referencia
-- [Puntos de Acceso a S3 de FSx ONTAP 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Puntos de Acceso a S3 de FSx for ONTAP 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Referencia de la API de Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [Guía de Selección de Streaming vs  Polling](../docs/streaming-vs-polling-guide.md)

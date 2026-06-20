@@ -24,7 +24,7 @@
 
 ### FSx for ONTAP
 
-- [ ] FSx ONTAP ファイルシステムがデプロイ済み
+- [ ] FSx for ONTAP ファイルシステムがデプロイ済み
 - [ ] ONTAP バージョン: S3 Access Points をサポートするバージョン（9.17.1P4D3 で検証済み）
 - [ ] S3 Access Point が関連付けられた FSx for ONTAP ボリューム
 - [ ] ONTAP 管理用の認証情報が Secrets Manager に登録済み

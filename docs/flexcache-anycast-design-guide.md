@@ -20,8 +20,8 @@ FSx for ONTAP では VIP/BGP が利用できないため、以下の代替パタ
 ```mermaid
 graph TB
     CLIENT[Client] --> R53[Route 53<br/>Latency/Failover]
-    R53 --> FSX_A[FSx ONTAP A<br/>FlexCache]
-    R53 --> FSX_B[FSx ONTAP B<br/>FlexCache]
+    R53 --> FSX_A[FSx for ONTAP A<br/>FlexCache]
+    R53 --> FSX_B[FSx for ONTAP B<br/>FlexCache]
     FSX_A --> S3AP_A[S3 AP A] --> LAMBDA[Lambda<br/>Processing]
     FSX_B --> S3AP_B[S3 AP B] --> LAMBDA
 ```

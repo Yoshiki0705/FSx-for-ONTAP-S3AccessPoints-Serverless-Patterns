@@ -15,7 +15,7 @@ Parameters:
 
   S3AccessPointAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias
+    Description: FSx for ONTAP S3 Access Point Alias
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
   S3AccessPointName:
@@ -157,7 +157,7 @@ Parameters:
       AI/ML 成果物（OCR テキスト、分類結果、PII 検出結果、墨消し済みテキスト/PDF）
       の書き込み先。STANDARD_S3（デフォルト）は従来どおり新しい S3 バケットに書き込む。
       FSXN_S3AP は S3AccessPointAlias（または OutputS3APAlias）で指定した
-      FSxN S3 Access Point 経由でオリジナル文書と同一ボリュームに書き込む
+      FSx for ONTAP S3 Access Point 経由でオリジナル文書と同一ボリュームに書き込む
       （"no data movement" パターン）。
 
       注意: UC16 は複数 Lambda が前段成果物を読み戻すチェーン構造のため、
@@ -322,7 +322,7 @@ Resources:
   # -----------------------------------------------------------------
   # S3 Output Bucket (SSE-KMS)
   # OutputDestination=STANDARD_S3 モード時のみ作成される。
-  # FSXN_S3AP モード時はこのバケットは作成されず、成果物は FSx ONTAP ボリュームに
+  # FSXN_S3AP モード時はこのバケットは作成されず、成果物は FSx for ONTAP ボリュームに
   # S3 Access Point 経由で直接書き込まれる（"no data movement" パターン）。
   # -----------------------------------------------------------------
   OutputBucket:

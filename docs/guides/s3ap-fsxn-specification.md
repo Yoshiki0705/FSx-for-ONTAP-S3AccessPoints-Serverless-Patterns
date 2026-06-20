@@ -231,4 +231,4 @@ response["Body"].close()
 
 - [Managing access point access (AWS Docs)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
 - [Configuring IAM policies for access points (S3 Docs)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-policies.html)
-- [FSx ONTAP S3 AP announcement (AWS Blog)](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
+- [FSx for ONTAP S3 AP announcement (AWS Blog)](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)

@@ -15,8 +15,8 @@
 | 项目 | 要求 |
 |------|------|
 | FSx for ONTAP | ONTAP 9.17.1 以上，支持 FPolicy |
-| VPC | 与 FSxN 相同 VPC 中的私有子网 |
-| NFS 挂载 | 客户端已 NFS 挂载到 FSxN 卷 |
+| VPC | 与 FSx for ONTAP 相同 VPC 中的私有子网 |
+| NFS 挂载 | 客户端已 NFS 挂载到 FSx for ONTAP 卷 |
 | AWS CLI | v2 以上，适当的 IAM 权限 |
 | Docker | 用于构建容器镜像 |
 | ECR | 已创建仓库 |

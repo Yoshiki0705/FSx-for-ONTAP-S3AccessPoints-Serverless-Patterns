@@ -11,7 +11,7 @@
 
 | リソース | 値・状況 |
 |---|---|
-| FSxN ファイルシステム | `fs-09ffe72a3b2b7dbbd`、VPC `vpc-0ae01826f906191af`、subnet `subnet-0e36804c7fbc819a6` |
+| FSx for ONTAP ファイルシステム | `fs-09ffe72a3b2b7dbbd`、VPC `vpc-0ae01826f906191af`、subnet `subnet-0e36804c7fbc819a6` |
 | AD 連携 SVM | `FPolicySMB`（`svm-037cedb30df493c1e`）、ドメイン `FPOLICY.LOCAL`、SMB `FPOLSMB.FPOLICY.LOCAL`（10.0.15.0） |
 | AD DNS/DC | 10.0.5.22 / 10.0.28.223（自己管理 AD）。DC EC2 `itani-vpc03-ad1`（stopped、共有） |
 | ONTAP 管理 LIF | 10.0.15.0（VPC 内プライベート） |
@@ -30,8 +30,8 @@
 | Windows identity S3 AP 作成（FPOLICY\Admin） | **失敗**: "Failed to lookup the provided user in ONTAP" | AD ユーザーを ONTAP が解決できない |
 | AD DC `itani-vpc03-ad1`（172.29.2.77） | **stopped**、`vpc-061918058c0b96a8f`（172.29.x） | DC 停止中。ユーザー解決不可の一因 |
 | Windows クライアント `test-fujiwara-win-for-itani-vpc03`（172.29.12.161） | **stopped**、同上 VPC（172.29.x） | RDP 操作元の候補だが停止中・別VPC |
-| FSxN ファイルシステム / FPolicySMB SVM | VPC `vpc-0ae01826f906191af`（10.0.x）、AD DNS 10.0.5.22 / 10.0.28.223 | DC/クライアント（172.29.x）と別セグメント。到達性に VPC ピアリング等の確認が必要 |
-| `maru-win01`（172.30.1.253） | running だが `vpc-05192d06e1e91d756`（172.30.x） | さらに別VPC。FSxN に到達不可 |
+| FSx for ONTAP ファイルシステム / FPolicySMB SVM | VPC `vpc-0ae01826f906191af`（10.0.x）、AD DNS 10.0.5.22 / 10.0.28.223 | DC/クライアント（172.29.x）と別セグメント。到達性に VPC ピアリング等の確認が必要 |
+| `maru-win01`（172.30.1.253） | running だが `vpc-05192d06e1e91d756`（172.30.x） | さらに別VPC。FSx for ONTAP に到達不可 |
 
 > いずれも**同僚の共有リソース**かつ**複数 VPC にまたがる**。停止 EC2 の起動・AD 認証情報・
 > VPC 間到達性・RDP 人手操作が必要で、無断のトライ&エラー変更は行わない（安全方針）。
@@ -40,15 +40,15 @@
 1. **AD ユーザー**: S3 AP Windows identity 用に ONTAP が解決可能な FPOLICY.LOCAL ユーザー（`DOMAIN\user`）の提供
 2. **AD DC 起動可否**: `itani-vpc03-ad1`（共有）を起動してよいか。または別の稼働 DC があるか
 3. **AD/SVM 方針**: 共有 `FPolicySMB`/FPOLICY.LOCAL を使うか、専用の AWS Managed Microsoft AD + 新規 SVM を新設するか（後者はコスト発生）
-4. **VPC 作業ホスト**: SMB 共有/NTFS ACL 作成（ONTAP REST）と RDP ドラッグ&ドロップを行う、FSxN VPC（または到達可能な）Windows/Linux ホスト
-5. **到達性**: DC/クライアントの VPC（172.29.x / 172.30.x）と FSxN VPC（10.0.x）間のピアリング有無
+4. **VPC 作業ホスト**: SMB 共有/NTFS ACL 作成（ONTAP REST）と RDP ドラッグ&ドロップを行う、FSx for ONTAP VPC（または到達可能な）Windows/Linux ホスト
+5. **到達性**: DC/クライアントの VPC（172.29.x / 172.30.x）と FSx for ONTAP VPC（10.0.x）間のピアリング有無
 6. **人手前提の承認**: 最終のドラッグ&ドロップは RDP による人手操作になる点の合意
 
 ## アーキテクチャ（リテラル）
 
 ```
 業務ユーザー(Windows, AD参加) ──ドラッグ&ドロップ──▶ SMB 共有
-                                                      │ (FSxN AD参加SVM, NTFS volume /ai-knowledge)
+                                                      │ (FSx for ONTAP AD参加SVM, NTFS volume /ai-knowledge)
                                                       ▼ 読み取りパス
                                               S3 Access Point (Windows FileSystemIdentity)
                                                       ▼
@@ -59,8 +59,8 @@
 
 ### 0. 前提決定（要合意）
 - AD: 既存 `FPOLICY.LOCAL` を再利用 or 新規 Managed AD
-- Windows クライアント: 既存を AD 参加・同VPC化 or 新規 Windows EC2 を FSxN VPC に起動
-- VPC 内作業ホスト: ONTAP REST/ SMB 用に Linux/Windows を FSxN VPC に用意
+- Windows クライアント: 既存を AD 参加・同VPC化 or 新規 Windows EC2 を FSx for ONTAP VPC に起動
+- VPC 内作業ホスト: ONTAP REST/ SMB 用に Linux/Windows を FSx for ONTAP VPC に用意
 
 ### 1. NTFS ボリューム作成（FSx API・自動化可）
 ```bash

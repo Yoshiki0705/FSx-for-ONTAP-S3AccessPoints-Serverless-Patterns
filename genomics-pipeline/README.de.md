@@ -5,7 +5,7 @@
 ## Übersicht
 FSx for ONTAP nutzt S3 Access Points, um serverlose Workflows zur Automatisierung der Qualitätskontrolle von FASTQ/BAM/VCF-Genomdaten, der Aggregation von Variantenaufrufsstatistiken und der Erstellung von Forschungszusammenfassungen zu implementieren.
 ### Fälle, in denen dieses Muster geeignet ist
-- Die Ausgabedaten des nächsten Generation Sequenzers (FASTQ/BAM/VCF) werden auf FSx ONTAP gespeichert.
+- Die Ausgabedaten des nächsten Generation Sequenzers (FASTQ/BAM/VCF) werden auf FSx for ONTAP gespeichert.
 - Die Qualitätsmetriken der Sequenzdaten (Anzahl der Reads, Qualitätsscores, GC-Gehalt) sollen regelmäßig überwacht werden.
 - Die statistische Zusammenfassung der Variantenaufrufergebnisse (SNP/InDel Verhältnis, Ti/Tv Verhältnis) soll automatisiert werden.
 - Es ist eine automatische Extraktion biomedizinischer Entitäten (Gennamen, Krankheiten, Medikamente) mittels Comprehend Medical erforderlich.
@@ -90,7 +90,7 @@ Nach dem Bereitstellen stellen Sie sicher, dass die Lambda-Umgebungsvariable `CR
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -130,7 +130,7 @@ UC7 verwendet die folgenden Dienste:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Rufen Sie die Comprehend Medical API über den Cross-Region Client auf. Überprüfen Sie die Datenresidenzanforderungen. Weitere Informationen finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
 ## Referenzlinks
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/what-is.html)
 - [FASTQ-Formatspezifikation](https://en.wikipedia.org/wiki/FASTQ_format)
 - [VCF-Formatspezifikation](https://samtools.github.io/hts-specs/VCFv4.3.pdf)

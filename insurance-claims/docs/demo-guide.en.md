@@ -175,7 +175,7 @@ view damage evaluation JSON, OCR results, and claims reports within the claims c
 # STANDARD_S3 mode (default, traditional behavior)
 --parameter-overrides OutputDestination=STANDARD_S3 ...
 
-# FSXN_S3AP mode (write AI artifacts back to FSx ONTAP volume)
+# FSXN_S3AP mode (write AI artifacts back to FSx for ONTAP volume)
 --parameter-overrides \
   OutputDestination=FSXN_S3AP \
   OutputS3APPrefix=ai-outputs/ \

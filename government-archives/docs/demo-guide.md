@@ -22,7 +22,7 @@
 
 ```mermaid
 graph LR
-    A[公文書 PDF/画像] --> B[FSx ONTAP S3 AP]
+    A[公文書 PDF/画像] --> B[FSx for ONTAP S3 AP]
     B --> C[Step Functions ワークフロー]
     C --> D[OCR<br/>Textract]
     D --> E[Classification<br/>Comprehend/Bedrock]
@@ -36,7 +36,7 @@ graph LR
 
 **ワークフロー概要**:
 
-1. 公文書（PDF/画像）を FSx ONTAP ボリュームに配置（S3 AP 経由でアクセス）
+1. 公文書（PDF/画像）を FSx for ONTAP ボリュームに配置（S3 AP 経由でアクセス）
 2. Textract で OCR テキスト抽出
 3. Comprehend / Bedrock で文書分類（機密レベル判定）
 4. Comprehend で PII（個人情報）エンティティ検出
@@ -226,7 +226,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP（"no data movement" パターン）
 OCR テキスト、分類結果、PII 検出結果、墨消し済み文書、墨消しメタデータを、FSx for ONTAP S3 Access Point
-経由でオリジナル文書と**同一の FSx ONTAP ボリューム**に書き戻します。
+経由でオリジナル文書と**同一の FSx for ONTAP ボリューム**に書き戻します。
 公文書担当者が SMB/NFS の既存ディレクトリ構造内で AI 成果物を直接参照できます。
 標準 S3 バケットは作成されません。
 
@@ -312,7 +312,7 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 - DynamoDB retention テーブル（FOIA 期限管理）
 - FOIA リマインダー SNS メール通知
 - OpenSearch インデックス（IndexGeneration 結果、OpenSearchMode 有効時）
-- FSx ONTAP ボリューム上の AI 成果物（FSXN_S3AP モード時）
+- FSx for ONTAP ボリューム上の AI 成果物（FSXN_S3AP モード時）
 
 ### 撮影ガイド
 

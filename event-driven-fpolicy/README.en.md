@@ -300,7 +300,7 @@ This pattern uses the following services:
 | Item | Value |
 |------|-------|
 | AWS Region | ap-northeast-1 (Tokyo) |
-| FSx ONTAP Version | ONTAP 9.17.1P6 |
+| FSx for ONTAP Version | ONTAP 9.17.1P6 |
 | FSx Configuration | SINGLE_AZ_1 |
 | Python | 3.12 |
 | Deployment Method | CloudFormation (standard) |

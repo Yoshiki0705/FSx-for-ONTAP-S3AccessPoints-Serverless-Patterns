@@ -10,7 +10,7 @@ Ein serverloser Workflow, der S3 Access Points auf Amazon FSx for ONTAP nutzt, u
 
 ### Geeignete Anwendungsfälle
 
-- Creative Assets (JPEG, PNG, TIFF, MP4, MOV, PSD) sind auf FSx ONTAP gespeichert
+- Creative Assets (JPEG, PNG, TIFF, MP4, MOV, PSD) sind auf FSx for ONTAP gespeichert
 - Rekognition-basierte visuelle Metadatenextraktion (Labels, Texterkennung, Moderation) wird benötigt
 - Automatisierung der Markenterminologie-Compliance-Prüfung über Textract + Bedrock gewünscht
 - Automatische Generierung von Asset-Katalogen (JSON/CSV) mit zentraler Compliance-Verwaltung erforderlich
@@ -70,7 +70,7 @@ graph LR
 ## ⚠️ Leistungshinweise
 
 - Die Durchsatzkapazität von FSx for ONTAP wird **zwischen NFS/SMB/S3 AP geteilt**. Die parallele Ausführung mit MapConcurrency=10 kann andere Workloads auf demselben Volume beeinflussen.
-- Bei der Verarbeitung großer Dateien prüfen Sie die FSx ONTAP Throughput Capacity (MBps) und passen Sie MapConcurrency entsprechend an.
+- Bei der Verarbeitung großer Dateien prüfen Sie die FSx for ONTAP Throughput Capacity (MBps) und passen Sie MapConcurrency entsprechend an.
 - Empfohlen: Beginnen Sie in der Produktion mit MapConcurrency=5, überwachen Sie die CloudWatch-Metriken (ThroughputUtilization) und erhöhen Sie schrittweise.
 
 ## Governance-Hinweis

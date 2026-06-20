@@ -10,7 +10,7 @@ FSx for ONTAP の S3 Access Points を活用し、ダッシュカム映像と Li
 
 ### このパターンが適しているケース
 
-- ダッシュカム映像や LiDAR 点群データが FSx ONTAP 上に大量に蓄積されている
+- ダッシュカム映像や LiDAR 点群データが FSx for ONTAP 上に大量に蓄積されている
 - 映像からのキーフレーム抽出と物体検出（車両、歩行者、交通標識）を自動化したい
 - LiDAR 点群の品質チェック（点密度、座標整合性）を定期的に実施したい
 - COCO 互換形式でアノテーションメタデータを管理したい
@@ -118,7 +118,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -147,7 +147,7 @@ aws cloudformation wait stack-delete-complete \
 
 ## 参考リンク
 
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition ラベル検出](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon SageMaker Batch Transform](https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform.html)
 - [COCO データフォーマット](https://cocodataset.org/#format-data)
@@ -218,7 +218,7 @@ UC9 は以下のサービスを使用します:
 | サービス | ドキュメント |
 |---------|------------|
 | FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
-| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Rekognition | [開発者ガイド](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |
 | Amazon SageMaker | [開発者ガイド](https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html) |
@@ -263,7 +263,7 @@ UC9 は以下のサービスを使用します:
 
 | コンポーネント | 月額 |
 |--------------|------|
-| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
 | S3 Access Point | 追加料金なし（S3 API 料金のみ） |
 
 ### 合計概算

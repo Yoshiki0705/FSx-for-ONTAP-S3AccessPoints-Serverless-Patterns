@@ -6,7 +6,7 @@
 ## 概要
 
 FSx for ONTAP S3 Access Points を活用した衛星画像（SAR / 光学）の
-自動解析パイプライン。大容量の衛星画像データを FSx ONTAP に格納し、
+自動解析パイプライン。大容量の衛星画像データを FSx for ONTAP に格納し、
 S3 Access Points 経由でサーバーレス処理を実行する。
 
 ## ユースケース
@@ -17,7 +17,7 @@ S3 Access Points 経由でサーバーレス処理を実行する。
 ### 処理フロー
 
 ```
-FSx ONTAP (衛星画像格納)
+FSx for ONTAP (衛星画像格納)
   → S3 Access Point
     → Step Functions ワークフロー
       → Discovery: 新規画像検出（GeoTIFF, NITF, HDF5）
@@ -65,7 +65,7 @@ FSx ONTAP (衛星画像格納)
 を中心に掲載する。技術者向けのコンソール画面（Step Functions グラフ等）は
 [docs/verification-results-phase7.md](../docs/verification-results-phase7.md) 参照。
 
-### 1. 衛星画像の格納（FSx ONTAP / S3 Access Point 経由）
+### 1. 衛星画像の格納（FSx for ONTAP / S3 Access Point 経由）
 
 ファイルサーバー管理者から見た、解析対象となる衛星画像の配置確認画面。
 `satellite/YYYY/MM/` プレフィックス配下に新規画像を配置するだけで、
@@ -182,7 +182,7 @@ defense-satellite/
 | サービス | ドキュメント |
 |---------|------------|
 | FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
-| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon Rekognition | [開発者ガイド](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |
 | Amazon SageMaker | [開発者ガイド](https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html) |
@@ -227,7 +227,7 @@ defense-satellite/
 
 | コンポーネント | 月額 |
 |--------------|------|
-| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
 | S3 Access Point | 追加料金なし（S3 API 料金のみ） |
 
 ### 合計概算

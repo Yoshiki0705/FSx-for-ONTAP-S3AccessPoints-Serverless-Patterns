@@ -32,7 +32,7 @@ cd fsxn-s3ap-serverless-patterns/telecom-network-analytics
 
 ### Step 3: Prepare Sample Data
 
-Place sample data on FSx ONTAP volume:
+Place sample data on FSx for ONTAP volume:
 
 ```
 /cdr/

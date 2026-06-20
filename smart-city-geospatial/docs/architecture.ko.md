@@ -6,7 +6,7 @@
 
 ## 개요
 
-FSx ONTAP 상의 대용량 지리공간 데이터(GeoTIFF / Shapefile / LAS / GeoPackage)를
+FSx for ONTAP 상의 대용량 지리공간 데이터(GeoTIFF / Shapefile / LAS / GeoPackage)를
 서버리스로 분석하여 토지 이용 분류·변화 감지·인프라 평가·재해 위험 매핑·
 Bedrock을 통한 보고서 생성을 수행한다.
 
@@ -14,7 +14,7 @@ Bedrock을 통한 보고서 생성을 수행한다.
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>GIS 데이터<br/>부서별 ACL] --> S3AP[S3 Access Point]
+    FSx[FSx for ONTAP<br/>GIS 데이터<br/>부서별 ACL] --> S3AP[S3 Access Point]
     S3AP --> SFN[Step Functions<br/>Smart City Workflow]
     SFN --> L1[Discovery]
     L1 --> L2[Preprocessing<br/>CRS 정규화 EPSG:4326]

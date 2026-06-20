@@ -1,11 +1,11 @@
-# Demo Mode Guide — Experience Patterns Without FSx ONTAP
+# Demo Mode Guide — Experience Patterns Without FSx for ONTAP
 
 🌐 **Language / 言語**: [日本語](demo-mode-guide.md) | [English](demo-mode-guide.en.md)
 
 ## Overview
 
 The patterns in this repository assume FSx for ONTAP S3 Access Points, but
-**Demo Mode** allows you to experience the entire workflow without an FSx ONTAP environment.
+**Demo Mode** allows you to experience the entire workflow without an FSx for ONTAP environment.
 
 In Demo Mode:
 - A standard S3 bucket is used instead of S3 AP
@@ -100,7 +100,7 @@ The following features are restricted in Demo Mode:
 
 | Feature | Production Mode | Demo Mode |
 |---------|----------------|-----------|
-| File reading via S3 AP | ✅ FSx ONTAP volume | ✅ Standard S3 bucket |
+| File reading via S3 AP | ✅ FSx for ONTAP volume | ✅ Standard S3 bucket |
 | ONTAP REST API (ACL collection) | ✅ Real data | ⚠️ Mock data |
 | VPC execution | ✅ | ❌ Executes outside VPC |
 | NTFS ACL parsing | ✅ | ❌ Sample ACL |
@@ -117,14 +117,14 @@ After verifying operation in Demo Mode, follow these steps to migrate to product
 
 ### DemoMode → Production Differences
 
-| Area | DemoMode (Evaluation) | Production (FSx ONTAP) |
+| Area | DemoMode (Evaluation) | Production (FSx for ONTAP) |
 |------|----------------------|------------------------|
-| Input source | Standard S3 bucket | FSx ONTAP S3 Access Point |
+| Input source | Standard S3 bucket | FSx for ONTAP S3 Access Point |
 | Authorization model | S3 IAM only | IAM + S3 AP policy + ONTAP file ID |
 | Network | Public AWS service path | Internet-origin or VPC-origin design decision (**immutable after creation — AP recreation required**) |
 | Data | Sample / synthetic data | Customer-managed NAS data |
 | Governance | Demo labels only | Data classification + lineage + retention policies |
-| Cost | ~$0.10/execution | + FSx ONTAP infrastructure (~$194/month base) |
+| Cost | ~$0.10/execution | + FSx for ONTAP infrastructure (~$194/month base) |
 | AI evaluation | Operation verification with test data | Accuracy evaluation with domain validation set |
 
-> **Governance Caveat**: Demo Mode is for technical validation. In production environments, always use FSx ONTAP S3 Access Points and define appropriate IAM policies, network design, data classification, and human review thresholds. Compliance with regulatory requirements in each country/region must be verified under the customer's responsibility.
+> **Governance Caveat**: Demo Mode is for technical validation. In production environments, always use FSx for ONTAP S3 Access Points and define appropriate IAM policies, network design, data classification, and human review thresholds. Compliance with regulatory requirements in each country/region must be verified under the customer's responsibility.

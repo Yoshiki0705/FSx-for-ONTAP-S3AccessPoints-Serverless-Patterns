@@ -19,7 +19,7 @@ PARAM_BLOCK = """
     Default: ""
     Description: |
       入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
-      IAM アクセスを許可する（FSxN S3AP の permission 判定で両形式をサポート）。
+      IAM アクセスを許可する（FSx for ONTAP S3 AP の permission 判定で両形式をサポート）。
       空文字列の場合は alias 形式のみ許可。
 """
 

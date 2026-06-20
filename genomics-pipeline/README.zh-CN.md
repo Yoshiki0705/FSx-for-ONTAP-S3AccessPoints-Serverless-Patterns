@@ -7,7 +7,7 @@
 ### 适用场景
 
 适用以下情况：
-- 次世代测序仪输出的数据（FASTQ/BAM/VCF）存储在 FSx ONTAP 上
+- 次世代测序仪输出的数据（FASTQ/BAM/VCF）存储在 FSx for ONTAP 上
 - 希望定期监控测序数据的质量指标（读数、质量评分、GC 含量）
 - 希望自动化变异调用结果的统计汇总（SNP/InDel 比率、Ti/Tv 比）
 - 需要通过 Comprehend Medical 自动提取生物医学实体（基因名、疾病、药物）
@@ -109,7 +109,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -149,7 +149,7 @@ UC7 使用以下服务：
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > 通过跨区域客户端调用 Comprehend Medical API。请确认数据驻留要求。详情请参阅 [区域兼容性矩阵](../docs/region-compatibility.md)。
 ## 参考链接
-- [FSx ONTAP S3 访问点概览](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 访问点概览](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/what-is.html)
 - [FASTQ 格式规范](https://en.wikipedia.org/wiki/FASTQ_format)
 - [VCF 格式规范](https://samtools.github.io/hts-specs/VCFv4.3.pdf)

@@ -65,7 +65,7 @@ graph LR
 本パターンは SAP 認定統合（RFC/BAPI 直接接続）ではなく、SAP が出力したファイルの
 **後処理・分析** に特化しています。
 
-- ✅ SAP が NFS/SMB 経由で FSx ONTAP に出力したファイルの読み取り・分析
+- ✅ SAP が NFS/SMB 経由で FSx for ONTAP に出力したファイルの読み取り・分析
 - ✅ IDoc、EDI、CSV 等のフォーマット解析と Bedrock による要約
 - ❌ SAP システムへの直接接続（RFC/BAPI）
 - ❌ SAP トランザクション実行
@@ -76,7 +76,7 @@ graph LR
 | サービス | ドキュメント |
 |---------|------------|
 | FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
-| S3 Access Points for FSx ONTAP | [S3 AP ガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| S3 Access Points for FSx for ONTAP | [S3 AP ガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Amazon Bedrock | [ユーザーガイド](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | SAP on AWS | [SAP on AWS ガイド](https://docs.aws.amazon.com/sap/latest/general/welcome.html) |

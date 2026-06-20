@@ -164,7 +164,7 @@ UC4 media-vfx は **Pattern A: Native S3AP Output** に分類されます
 （`docs/output-destination-patterns.md` 参照）。
 
 **設計**: レンダリングメタデータ、フレーム品質評価は全て FSx for ONTAP S3 Access Point 経由で
-オリジナルレンダリングアセットと**同一の FSx ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
+オリジナルレンダリングアセットと**同一の FSx for ONTAP ボリューム**に書き戻されます。標準 S3 バケットは
 作成されません（"no data movement" パターン）。
 
 **CloudFormation パラメータ**:
@@ -260,7 +260,7 @@ FPolicy がレンダリング完了マーカーを検出し、Step Functions パ
 ### アーキテクチャ
 
 ```
-Render Farm (NFS) → FSx ONTAP Volume → FPolicy → SQS → Step Functions
+Render Farm (NFS) → FSx for ONTAP Volume → FPolicy → SQS → Step Functions
                                                             ├── Lambda: Snapshot
                                                             ├── Lambda: FlexClone
                                                             ├── Lambda: Process Frames (S3AP)

@@ -6,7 +6,7 @@
 
 A reproducible procedure to settle, on real hardware, the items marked **to-be-verified (TBV)** in the
 [CDN comparison](cdn-comparison.en.md): namely **whether each CDN's SigV4 origin signing works against the
-FSx ONTAP S3 Access Point `accesspoint alias` host the same way it does against a standard S3 bucket**.
+FSx for ONTAP S3 Access Point `accesspoint alias` host the same way it does against a standard S3 bucket**.
 
 Use this to decide whether `content-edge-delivery`'s `DeliveryMode=ORIGIN_PULL` (M1/M2) is viable.
 **M3 (PUBLISH_PUSH) does not depend on this verification** (it avoids origin auth).

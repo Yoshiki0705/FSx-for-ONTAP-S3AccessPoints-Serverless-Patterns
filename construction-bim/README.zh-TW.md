@@ -5,7 +5,7 @@
 ## 概述
 利用 NetApp ONTAP 的 FSx 的 S3 Access Points，無伺服器工作流程可自動化 BIM 模型（IFC/Revit）的版本控制、圖紙 PDF 的 OCR 文字提取和安全合規性檢查。
 ### 適用這種模式的情況
-- BIM 模型（IFC/Revit）和圖紙 PDF 已在 FSx ONTAP 上儲存
+- BIM 模型（IFC/Revit）和圖紙 PDF 已在 FSx for ONTAP 上儲存
 - 希望自動編目 IFC 文件的元數據（項目名稱、建築元數、樓層數）
 - 希望自動檢測 BIM 模型的版本差異（元素的新增、刪除、修改）
 - 希望使用 Textract 從圖紙 PDF 中提取文本和表格
@@ -87,7 +87,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -125,7 +125,7 @@ UC10 使用以下服務：
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > 透過跨區域用戶端呼叫 Textract API。請確認資料駐留要求。詳細資訊請參閱 [區域相容性矩陣](../docs/region-compatibility.md)。
 ## 參考連結
-- [FSx ONTAP S3 存取點概觀](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 存取點概觀](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract 文件](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [IFC 格式規範 (buildingSMART)](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/)
 - [Amazon Rekognition 標籤偵測](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

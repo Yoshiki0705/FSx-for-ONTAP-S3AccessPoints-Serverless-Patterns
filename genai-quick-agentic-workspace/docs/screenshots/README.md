@@ -14,6 +14,6 @@
 | `masked/quick-home.png` | Amazon Quick ホーム（エージェント型ワークスペース: Chat/Spaces/Flows/Research/Knowledge/Quick Sight） |
 | `masked/quick-knowledge-integrations.png` | Quick Knowledge データソース。**Amazon S3 コネクタ**（S3 Access Point データを Quick Index に接続する入口）ほか |
 | `masked/quick-flows.png` | Quick Flows 画面（アクション自動化、UC30 Action API 連携の入口） |
-| `masked/quick-s3-kb-connect.png` | Quick の S3 ナレッジベース接続ダイアログ。**FSxN S3 AP エイリアスを有効なバケット URL として受理**するが、権限不足メッセージ（接続にはデータアクセスロールの S3 AP 権限が必要＝統合境界の証跡） |
+| `masked/quick-s3-kb-connect.png` | Quick の S3 ナレッジベース接続ダイアログ。**FSx for ONTAP S3 AP エイリアスを有効なバケット URL として受理**するが、権限不足メッセージ（接続にはデータアクセスロールの S3 AP 権限が必要＝統合境界の証跡） |
 
 > アカウント ID・S3 結果バケット名・リソース ID・ユーザー名（Quick アカウント名）はマスク済み。

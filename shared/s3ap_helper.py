@@ -3,7 +3,7 @@
 FSx for NetApp ONTAP の S3 Access Points 経由のデータアクセスを抽象化する共通モジュール。
 ListObjectsV2、GetObject、PutObject、ページネーション、サフィックスフィルタを提供する。
 
-FSx ONTAP S3 Access Points は S3 API のサブセットのみをサポートするため、
+FSx for ONTAP S3 Access Points は S3 API のサブセットのみをサポートするため、
 SUPPORTED_OPERATIONS で互換 API を明示する。
 
 Key patterns:
@@ -229,7 +229,7 @@ class S3ApHelper:
             S3ApHelperError: S3 API 呼び出しに失敗した場合
 
         Note:
-            FSx ONTAP S3 Access Points の PutObject は最大 5 GB まで。
+            FSx for ONTAP S3 Access Points の PutObject は最大 5 GB まで。
             5 GB を超えるファイルはマルチパートアップロードを使用すること。
             暗号化は FSx が SSE-FSX で透過的に処理するため、
             ServerSideEncryption パラメータは指定不要。

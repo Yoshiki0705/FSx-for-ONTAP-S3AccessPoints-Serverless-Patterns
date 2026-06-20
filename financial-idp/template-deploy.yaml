@@ -15,14 +15,14 @@ Parameters:
 
   S3AccessPointAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias (入力読み取り用)
+    Description: FSx for ONTAP S3 Access Point Alias (入力読み取り用)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
   S3AccessPointOutputAlias:
     Type: String
     Default: ""
     Description: |
-      (legacy, optional) FSx ONTAP S3 Access Point Alias (出力書き込み用)。
+      (legacy, optional) FSx for ONTAP S3 Access Point Alias (出力書き込み用)。
       空の場合は OutputS3APAlias または S3AccessPointAlias にフォールバック。
       新規デプロイでは OutputS3APAlias を使用することを推奨。
     AllowedPattern: "^$|^[a-z0-9-]+-ext-s3alias$"
@@ -56,7 +56,7 @@ Parameters:
     Default: ""
     Description: |
       入力用 S3 Access Point の名前 (alias ではなく)。指定すると AP ARN 形式でも
-      IAM アクセスを許可する (FSxN S3AP の permission 判定で両形式をサポート)。
+      IAM アクセスを許可する (FSx for ONTAP S3 AP の permission 判定で両形式をサポート)。
 
   OutputS3APName:
     Type: String
@@ -270,7 +270,7 @@ Resources:
 
   # -----------------------------------------------------------------
   # SNS Topic + Email Subscription
-  # (OutputBucket removed — all output goes to FSx ONTAP via S3 AP)
+  # (OutputBucket removed — all output goes to FSx for ONTAP via S3 AP)
   # -----------------------------------------------------------------
   NotificationTopic:
     Type: AWS::SNS::Topic

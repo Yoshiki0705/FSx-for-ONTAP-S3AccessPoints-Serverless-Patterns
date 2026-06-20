@@ -5,7 +5,7 @@
 ## 概述
 利用 FSx for ONTAP 的 S3 Access Points，实现商品图片的自动标记、目录元数据生成和图片质量检查的无服务器工作流。
 ### 适用场景
-- 商品画像在 FSx ONTAP 上大量累积
+- 商品画像在 FSx for ONTAP 上大量累积
 - 希望通过 Rekognition 实现商品图像的自动标签（类别、颜色、材质）
 - 希望自动生成结构化目录元数据（product_category, color, material, style_attributes）
 - 需要自动验证图像质量指标（分辨率、文件大小、纵横比）
@@ -104,7 +104,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -132,7 +132,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 
 ## 参考链接
-- [FSx ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition DetectLabels](https://docs.aws.amazon.com/rekognition/latest/dg/labels-detect-labels-image.html)
 - [Amazon Bedrock API 参考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [流式传输 vs 轮询选择指南](../docs/streaming-vs-polling-guide.md)

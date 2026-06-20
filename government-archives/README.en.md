@@ -8,7 +8,7 @@
 Serverless pipeline for government public records (PDF / TIFF / EML / DOCX) automating OCR, classification, PII detection and redaction, full-text indexing, NARA retention scheduling, and FOIA deadline tracking.
 
 ### When this pattern is suitable
-- Department records are stored on FSx ONTAP with NTFS ACL governance
+- Department records are stored on FSx for ONTAP with NTFS ACL governance
 - Need OCR + PII automatic redaction for FOIA response
 - Need 20 business-day deadline tracking with reminder notifications
 - Need NARA General Records Schedule (GRS) compliance

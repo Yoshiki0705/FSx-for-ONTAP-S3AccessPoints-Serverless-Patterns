@@ -107,7 +107,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement" pattern)
 Writes CRS normalization metadata, land use classification results, infrastructure assessments, risk maps, and Bedrock-generated
-urban planning reports (Markdown) back to the **same FSx ONTAP volume** as the original GIS data via FSx for ONTAP S3 Access Point.
+urban planning reports (Markdown) back to the **same FSx for ONTAP volume** as the original GIS data via FSx for ONTAP S3 Access Point.
 Urban planning staff can directly reference AI outputs within the existing SMB/NFS directory structure.
 No standard S3 bucket is created.
 
@@ -159,7 +159,7 @@ stack events, etc.) are consolidated in `docs/verification-results-*.md`.
 - Bedrock-generated urban planning report (Markdown preview)
 - DynamoDB landuse_history table (land use classification history)
 - Risk map JSON preview (CRITICAL/HIGH/MEDIUM/LOW classification)
-- AI outputs on FSx ONTAP volume (FSXN_S3AP mode — Markdown reports viewable via SMB/NFS)
+- AI outputs on FSx for ONTAP volume (FSXN_S3AP mode — Markdown reports viewable via SMB/NFS)
 
 ### Capture Guide
 

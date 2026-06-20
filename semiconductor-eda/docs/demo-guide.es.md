@@ -186,7 +186,7 @@ ORDER BY bounding_box_width DESC;
 
 | # | Pantalla | Sección | Notas |
 |---|----------|---------|-------|
-| 1 | Lista de directorios de archivos de diseño | Section 1 | Estructura de archivos en FSx ONTAP |
+| 1 | Lista de directorios de archivos de diseño | Section 1 | Estructura de archivos en FSx for ONTAP |
 | 2 | Pantalla de inicio de ejecución del flujo de trabajo | Section 2 | Consola de Step Functions |
 | 3 | Flujo de trabajo en ejecución (procesamiento paralelo Map State) | Section 3 | Estado con progreso visible |
 | 4 | Pantalla de flujo de trabajo completado | Section 3 | Todos los pasos exitosos |
@@ -325,7 +325,7 @@ un informe de revisión en japonés dirigido al Physical Design Lead.
 
 ### Puntos de verificación del entorno de demostración existente
 
-- [ ] ¿Están colocados los datos de muestra en el volumen FSx ONTAP?
+- [ ] ¿Están colocados los datos de muestra en el volumen FSx for ONTAP?
 - [ ] ¿Está configurado el S3 Access Point?
 - [ ] ¿Existe la definición de tabla en Glue Data Catalog?
 - [ ] ¿Está disponible el workgroup de Athena?

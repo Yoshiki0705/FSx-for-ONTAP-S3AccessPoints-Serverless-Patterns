@@ -10,7 +10,7 @@
 Serverless pipeline for municipal geospatial data (GeoTIFF / Shapefile / GeoJSON / LAS / GeoPackage) automating CRS normalization, land use classification, change detection, infrastructure assessment, disaster risk mapping, and Bedrock-driven urban planning report generation.
 
 ### When this pattern is suitable
-- Municipalities storing GIS data on FSx ONTAP with department-level access control
+- Municipalities storing GIS data on FSx for ONTAP with department-level access control
 - Periodic analysis of land use changes (new buildings, green area reduction, road expansion)
 - Flood / earthquake / landslide risk score computation for urban planning
 - Automated Japanese-language planning report generation for city officials

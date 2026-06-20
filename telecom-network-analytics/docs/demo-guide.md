@@ -35,7 +35,7 @@
 
 ```
 CDR / ネットワークログ  →  自動検出  →  統計分析 / 異常検知  →  デイリーレポート
- (FSx ONTAP)              S3 AP        Athena / Bedrock        S3 + SNS アラート
+ (FSx for ONTAP)              S3 AP        Athena / Bedrock        S3 + SNS アラート
 ```
 
 ---
@@ -67,7 +67,7 @@ cd fsxn-s3ap-serverless-patterns/telecom-network-analytics
 
 ### Step 3: テスト用サンプルデータの配置
 
-FSx ONTAP ボリューム上に以下の構造でサンプルデータを配置します:
+FSx for ONTAP ボリューム上に以下の構造でサンプルデータを配置します:
 
 ```
 /cdr/
@@ -96,8 +96,8 @@ caller_id,callee_id,duration_sec,timestamp,cell_tower_id
 **NFS マウントとファイル配置例:**
 
 ```bash
-# FSx ONTAP NFS マウント
-sudo mount -t nfs <FSxN-DATA-LIF-IP>:/vol1 /mnt/fsxn
+# FSx for ONTAP NFS マウント
+sudo mount -t nfs <FSx-ONTAP-DATA-LIF-IP>:/vol1 /mnt/fsxn
 
 # サンプルデータ配置
 cp -r sample-data/* /mnt/fsxn/<prefix>/
@@ -210,7 +210,7 @@ aws s3 cp \
 ```bash
 # 処理統計メトリクスを確認
 aws cloudwatch get-metric-statistics \
-  --namespace FSxN-S3AP-Patterns \
+  --namespace FSxN-S3AP-Patterns \ # allow:naming
   --metric-name SuccessCount \
   --dimensions Name=UseCase,Value=telecom-network-analytics \
   --start-time $(date -v-1H +%Y-%m-%dT%H:%M:%S) \

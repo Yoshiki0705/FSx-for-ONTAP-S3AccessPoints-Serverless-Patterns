@@ -3,7 +3,7 @@
 FPolicy イベントパイプラインに高負荷を投入し、
 Fargate オートスケーリングとシステムスループットを検証する。
 
-実環境（FSx ONTAP、ECS Fargate、SQS、CloudWatch）を使用する。
+実環境（FSx for ONTAP、ECS Fargate、SQS、CloudWatch）を使用する。
 CI 環境では pytest.mark.load で skip 可能。
 
 Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7

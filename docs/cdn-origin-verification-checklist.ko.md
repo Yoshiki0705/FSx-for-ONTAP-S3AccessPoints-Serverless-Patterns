@@ -5,7 +5,7 @@
 ## 목적
 
 [CDN 비교 문서](cdn-comparison.ko.md)에서 **검증 필요(TBV)**로 분류한 항목, 즉
-**「각 CDN의 SigV4 오리진 서명이 FSx ONTAP S3 Access Point의 `accesspoint alias` 호스트에 대해 표준 S3
+**「각 CDN의 SigV4 오리진 서명이 FSx for ONTAP S3 Access Point의 `accesspoint alias` 호스트에 대해 표준 S3
 버킷과 동일하게 작동하는가」**를 실기로 확정하기 위한 재현 가능한 절차입니다.
 
 본 체크리스트는 `content-edge-delivery` UC의 `DeliveryMode=ORIGIN_PULL`(M1/M2) 채택 판단에 사용합니다.

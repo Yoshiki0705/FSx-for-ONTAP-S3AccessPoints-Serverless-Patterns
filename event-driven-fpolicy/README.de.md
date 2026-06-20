@@ -221,7 +221,7 @@ fpolicy enable \
 | Parameter | Beschreibung | Standard | Erforderlich |
 |-----------|--------------|----------|--------------|
 | `ComputeType` | Auswahl der Ausführungsumgebung (fargate/ec2) | `fargate` | |
-| `VpcId` | VPC-ID (gleiche VPC wie FSxN) | — | ✅ |
+| `VpcId` | VPC-ID (gleiche VPC wie FSx for ONTAP) | — | ✅ |
 | `SubnetIds` | Private Subnet für Fargate-Task oder EC2-Platzierung | — | ✅ |
 | `FsxnSvmSecurityGroupId` | Security Group ID des FSx for ONTAP SVM | — | ✅ |
 | `ContainerImage` | FPolicy Server Container-Image-URI | — | ✅ |
@@ -300,7 +300,7 @@ Dieses Muster verwendet die folgenden Dienste:
 | Element | Wert |
 |---------|------|
 | AWS-Region | ap-northeast-1 (Tokyo) |
-| FSx ONTAP-Version | ONTAP 9.17.1P6 |
+| FSx for ONTAP-Version | ONTAP 9.17.1P6 |
 | FSx-Konfiguration | SINGLE_AZ_1 |
 | Python | 3.12 |
 | Bereitstellungsmethode | CloudFormation (Standard) |

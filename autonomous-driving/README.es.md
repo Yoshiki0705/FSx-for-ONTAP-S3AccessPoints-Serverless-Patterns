@@ -5,7 +5,7 @@
 ## Descripción general
 Un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para automatizar el preprocesamiento, la verificación de calidad y la gestión de anotaciones de imágenes de dashcam y datos de nube de puntos LiDAR.
 ### Casos en los que este patrón es adecuado
-- Las imágenes de la dashcam y los datos de nubes de puntos LiDAR están almacenados en grandes cantidades en FSx ONTAP
+- Las imágenes de la dashcam y los datos de nubes de puntos LiDAR están almacenados en grandes cantidades en FSx for ONTAP
 - Quiero automatizar la extracción de fotogramas clave y la detección de objetos (vehículos, peatones, señales de tráfico) de las imágenes
 - Quiero realizar verificaciones de calidad periódicas de las nubes de puntos LiDAR (densidad de puntos, integridad de coordenadas)
 - Quiero gestionar los metadatos de anotación en formato COCO compatible
@@ -85,7 +85,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -113,7 +113,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 
 ## Enlaces de referencia
-- [Puntos de acceso a S3 de FSx ONTAP - 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Puntos de acceso a S3 de FSx for ONTAP - 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Detección de etiquetas con Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Transformación por lotes de Amazon SageMaker](https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform.html)
 - [Formato de datos COCO](https://cocodataset.org/#format-data)

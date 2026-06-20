@@ -166,7 +166,7 @@ UC3 manufacturing-analytics 归类为 **Pattern A: Native S3AP Output**
 （参见 `docs/output-destination-patterns.md`）。
 
 **设计**：传感器数据分析结果、异常检测报告、图像检查结果全部通过 FSx for ONTAP S3 Access Point
-写回到与原始传感器 CSV 和检查图像**相同的 FSx ONTAP 卷**。不创建标准 S3 存储桶
+写回到与原始传感器 CSV 和检查图像**相同的 FSx for ONTAP 卷**。不创建标准 S3 存储桶
 （"no data movement" 模式）。
 
 **CloudFormation 参数**:

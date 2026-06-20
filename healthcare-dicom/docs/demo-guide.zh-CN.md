@@ -165,7 +165,7 @@ UC5 healthcare-dicom 归类为 **Pattern A: Native S3AP Output**
 （参见 `docs/output-destination-patterns.md`）。
 
 **设计**：DICOM 元数据、匿名化结果、PII 检测日志全部通过 FSx for ONTAP S3 Access Point
-写回到与原始 DICOM 医用影像**相同的 FSx ONTAP 卷**。不创建标准 S3 存储桶
+写回到与原始 DICOM 医用影像**相同的 FSx for ONTAP 卷**。不创建标准 S3 存储桶
 （"no data movement" 模式）。
 
 **CloudFormation 参数**:

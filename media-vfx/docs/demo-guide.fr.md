@@ -167,7 +167,7 @@ UC4 media-vfx est classé dans **Pattern A: Native S3AP Output**
 (voir `docs/output-destination-patterns.md`).
 
 **Conception** : Les métadonnées de rendu et l'évaluation de la qualité des frames sont toutes écrites via FSx for ONTAP S3 Access Point
-dans le **même volume FSx ONTAP** que les assets de rendu originaux. Aucun bucket S3 standard n'est
+dans le **même volume FSx for ONTAP** que les assets de rendu originaux. Aucun bucket S3 standard n'est
 créé (pattern "no data movement").
 
 **Paramètres CloudFormation** :

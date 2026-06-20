@@ -41,7 +41,7 @@ From then on, business users just drag & drop into the AI folder as usual. S3 Ac
 | Problem | How this pattern solves it |
 |------|-------------------|
 | Knowledge updates wait on IT manual work | Business maintains it via Windows ops; auto-ingestion |
-| Duplicated data from S3 copies | The FSx ONTAP master is the data source directly via S3 AP |
+| Duplicated data from S3 copies | The FSx for ONTAP master is the data source directly via S3 AP |
 | Missed ingestion / stale data | File changes detected and ingested automatically |
 | Requires ETL/S3/Bedrock skills | Windows Explorer drag & drop only |
 | Unclear data ownership | Folder layout split per role/department |
@@ -132,7 +132,7 @@ Each folder uses NTFS ACLs to grant write access per role/department. This UC sh
 
 ## Security
 
-- **No data movement**: files stay on FSx ONTAP; S3 AP is read-only access
+- **No data movement**: files stay on FSx for ONTAP; S3 AP is read-only access
 - **Writes via SMB/NFS only**: the AI ingestion path (S3 AP) is read access
 - **Folder-level separation**: NTFS ACLs split write permission per department
 - **Least privilege**: Lambda only allowed List/Get on the target S3 AP and Ingestion/Retrieve on the KB
@@ -154,7 +154,7 @@ Each folder uses NTFS ACLs to grant write access per role/department. This UC sh
 
 > **Note**: Approximate for ap-northeast-1; actual costs vary by usage. Check the [AWS Pricing Calculator](https://calculator.aws/). Prices and benchmarks are time-sensitive.
 
-Serverless components (Lambda, S3 API, EventBridge Scheduler, Bedrock ingestion/generation, SNS, CloudWatch Logs) plus the KB vector store (OpenSearch Serverless) and the shared FSx ONTAP volume. See the Japanese README for the detailed table.
+Serverless components (Lambda, S3 API, EventBridge Scheduler, Bedrock ingestion/generation, SNS, CloudWatch Logs) plus the KB vector store (OpenSearch Serverless) and the shared FSx for ONTAP volume. See the Japanese README for the detailed table.
 
 > **Governance Caveat**: Cost estimates are approximate, not guaranteed.
 

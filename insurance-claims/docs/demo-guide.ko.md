@@ -175,7 +175,7 @@ UC14는 2026-05-10 업데이트에서 `OutputDestination` 파라미터를 지원
 # STANDARD_S3 모드(기본값, 기존과 동일)
 --parameter-overrides OutputDestination=STANDARD_S3 ...
 
-# FSXN_S3AP 모드(AI 산출물을 FSx ONTAP 볼륨에 다시 쓰기)
+# FSXN_S3AP 모드(AI 산출물을 FSx for ONTAP 볼륨에 다시 쓰기)
 --parameter-overrides \
   OutputDestination=FSXN_S3AP \
   OutputS3APPrefix=ai-outputs/ \

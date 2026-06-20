@@ -1,7 +1,7 @@
 """Unit tests for OutputWriter multipart/streaming API (Phase 8 Theme J).
 
 Tests put_stream, put_file, get_stream, and the 5 GB pre-check on put_bytes.
-Uses moto for Standard S3 multipart and MagicMock for FSxN S3AP delegation.
+Uses moto for Standard S3 multipart and MagicMock for FSx for ONTAP S3 AP delegation.
 """
 
 from __future__ import annotations
@@ -331,7 +331,7 @@ def test_put_stream_aborts_multipart_on_failure(aws_env):
 
 
 # ---------------------------------------------------------------------------
-# Test: put_stream — FSxN S3AP delegation
+# Test: put_stream — FSx for ONTAP S3 AP delegation
 # ---------------------------------------------------------------------------
 
 

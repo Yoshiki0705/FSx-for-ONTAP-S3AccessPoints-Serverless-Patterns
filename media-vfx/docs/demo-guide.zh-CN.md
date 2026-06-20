@@ -166,7 +166,7 @@ UC4 media-vfx 归类为 **Pattern A: Native S3AP Output**
 （参见 `docs/output-destination-patterns.md`）。
 
 **设计**：渲染元数据、帧质量评估全部通过 FSx for ONTAP S3 Access Point 写回到
-与原始渲染资产**相同的 FSx ONTAP 卷**。不会创建标准 S3 存储桶
+与原始渲染资产**相同的 FSx for ONTAP 卷**。不会创建标准 S3 存储桶
 （"no data movement" 模式）。
 
 **CloudFormation 参数**:

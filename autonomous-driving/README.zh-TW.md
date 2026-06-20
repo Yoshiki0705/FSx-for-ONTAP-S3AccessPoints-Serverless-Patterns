@@ -5,7 +5,7 @@
 ## 概述
 利用 Amazon FSx for ONTAP 的 S3 Access Points，自動化一個無伺服器工作流程，用於行車記錄儀影像和 LiDAR 點雲數據的預處理、質量檢查和註釋管理。
 ### 此種模式適用的情況
-- 行車攝像機影像和 LiDAR 點雲數據大量儲存在 FSx ONTAP 上
+- 行車攝像機影像和 LiDAR 點雲數據大量儲存在 FSx for ONTAP 上
 - 希望自動化影像中的關鍵幀提取和物體檢測（車輛、行人、交通標誌）
 - 希望定期進行 LiDAR 點雲的質量檢查（點密度、坐標一致性）
 - 希望以 COCO 兼容格式管理註釋元數據
@@ -85,7 +85,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -113,7 +113,7 @@ aws cloudformation wait stack-delete-complete \
 ```
 
 ## 參考連結
-- [FSx ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition 標籤檢測](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon SageMaker 批次轉換](https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform.html)
 - [COCO 資料格式](https://cocodataset.org/#format-data)

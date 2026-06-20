@@ -128,7 +128,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP（"无数据移动"模式）
 通过 FSx for ONTAP S3 Access Point 将 OCR 文本、分类结果、PII 检测结果、编辑后的文档、编辑元数据
-写回到与原始文档**相同的 FSx ONTAP 卷**。
+写回到与原始文档**相同的 FSx for ONTAP 卷**。
 公文档管理人员可以在 SMB/NFS 的现有目录结构中直接引用 AI 成果物。
 不会创建标准 S3 存储桶。
 
@@ -190,7 +190,7 @@ EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_wr
 - DynamoDB retention 表（FOIA 期限管理）
 - FOIA 提醒 SNS 邮件通知
 - OpenSearch 索引（IndexGeneration 结果，OpenSearchMode 启用时）
-- FSx ONTAP 卷上的 AI 成果物（FSXN_S3AP 模式时）
+- FSx for ONTAP 卷上的 AI 成果物（FSXN_S3AP 模式时）
 
 ### 拍摄指南
 

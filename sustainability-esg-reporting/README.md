@@ -10,7 +10,7 @@ FSx for ONTAP の S3 Access Points を活用し、サステナビリティレポ
 
 ### このパターンが適しているケース
 
-- ESG 関連文書（サステナビリティレポート、エネルギー記録、廃棄物マニフェスト）が FSx ONTAP 上に蓄積されている
+- ESG 関連文書（サステナビリティレポート、エネルギー記録、廃棄物マニフェスト）が FSx for ONTAP 上に蓄積されている
 - CO2 排出量、エネルギー使用量、廃棄物量、水使用量を異なる単位から統一基準に自動正規化したい
 - GRI、TCFD、CDP 等のフレームワークへの自動マッピングが必要
 - 年度比較（YoY）トレンド分析で ESG パフォーマンスを可視化したい
@@ -126,7 +126,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler スケジュール式 | `cron(0 0 * * ? *)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -141,8 +141,8 @@ aws cloudformation deploy \
 ## ⚠️ パフォーマンスに関する注意事項
 
 - FSx for ONTAP のスループットキャパシティは **NFS/SMB/S3 AP 全体で共有**されます。MapConcurrency=10 で並列処理を行う場合、同一ボリュームの他のワークロードに影響する可能性があります。
-- 大量ファイルの一括処理を行う場合は、FSx ONTAP の Throughput Capacity (MBps) を確認し、必要に応じて MapConcurrency を調整してください。
-- 推奨: 本番環境では最初に MapConcurrency=5 で開始し、FSx ONTAP の CloudWatch メトリクス (ThroughputUtilization) を監視しながら段階的に増加させてください。
+- 大量ファイルの一括処理を行う場合は、FSx for ONTAP の Throughput Capacity (MBps) を確認し、必要に応じて MapConcurrency を調整してください。
+- 推奨: 本番環境では最初に MapConcurrency=5 で開始し、FSx for ONTAP の CloudWatch メトリクス (ThroughputUtilization) を監視しながら段階的に増加させてください。
 
 ## クリーンアップ
 

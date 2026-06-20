@@ -109,7 +109,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP ("no data movement" pattern)
-Writes tiling metadata, object detection JSON, and Geo enrichment results back to the **same FSx ONTAP volume**
+Writes tiling metadata, object detection JSON, and Geo enrichment results back to the **same FSx for ONTAP volume**
 as the original satellite imagery via FSx for ONTAP S3 Access Point.
 Analysts can directly reference AI artifacts within the existing SMB/NFS directory structure.
 No standard S3 bucket is created.
@@ -165,7 +165,7 @@ stack events, etc.) are consolidated in `docs/verification-results-*.md`.
 - Rekognition satellite imagery object detection result JSON preview
 - GeoEnrichment coordinate-annotated detection results
 - SNS alert notification email
-- AI artifacts on FSx ONTAP volume (when in FSXN_S3AP mode)
+- AI artifacts on FSx for ONTAP volume (when in FSXN_S3AP mode)
 
 ### Capture Guide
 

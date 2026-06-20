@@ -94,7 +94,7 @@ graph LR
 
 デプロイ前に以下の値を確認してください:
 
-- FSx ONTAP S3 Access Point Alias
+- FSx for ONTAP S3 Access Point Alias
 - ONTAP 管理 IP アドレス
 - Secrets Manager シークレット名
 - VPC ID、プライベートサブネット ID
@@ -134,9 +134,9 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -220,7 +220,7 @@ UC2 は以下のサービスを使用します:
 
 ### AWS 公式ドキュメント
 
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Lambda でサーバーレス処理（公式チュートリアル）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Textract API リファレンス](https://docs.aws.amazon.com/textract/latest/dg/API_Reference.html)
 - [Comprehend DetectEntities API](https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html)
@@ -244,7 +244,7 @@ UC2 は以下のサービスを使用します:
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |
@@ -388,7 +388,7 @@ python3 -m pytest tests/ -v
 | 暗号化 | SSE-FSX（保存時）、TLS 1.2+（転送時）、KMS（出力バケット） |
 | 監査証跡 | CloudTrail（全 API コール）、CloudWatch Logs（Lambda 実行ログ）、X-Ray トレーシング |
 | データ保護 | VPC 内実行（オプション）、Secrets Manager（認証情報管理）、データ分類ラベル |
-| 可用性 | Step Functions Retry/Catch、Lambda 自動スケーリング、Multi-AZ FSx ONTAP（オプション） |
+| 可用性 | Step Functions Retry/Catch、Lambda 自動スケーリング、Multi-AZ FSx for ONTAP（オプション） |
 | 変更管理 | CloudFormation（IaC）、Git 管理、CI/CD パイプライン |
 | 障害対応 | CloudWatch Alarms、SNS 通知、インシデント対応 Playbook |
 

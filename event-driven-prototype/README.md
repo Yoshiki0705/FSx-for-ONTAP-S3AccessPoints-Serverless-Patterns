@@ -2,12 +2,12 @@
 
 ## 概要
 
-本プロトタイプは、FSx for ONTAP S3 Access Points（FSx ONTAP S3 AP）の
+本プロトタイプは、FSx for ONTAP S3 Access Points（FSx for ONTAP S3 AP）の
 将来のネイティブ通知機能を見据えた、イベント駆動ファイル処理パイプラインの
 リファレンス実装である。
 
 通常の S3 バケットの Event Notifications を使用して、
-将来の FSx ONTAP S3 AP ネイティブ通知動作をシミュレートする。
+将来の FSx for ONTAP S3 AP ネイティブ通知動作をシミュレートする。
 
 ## アーキテクチャ
 
@@ -20,18 +20,18 @@ S3 Bucket (PutObject)
           → Latency Reporter Lambda (EMF メトリクス出力)
 ```
 
-## FSx ONTAP S3 AP 将来対応へのマッピング
+## FSx for ONTAP S3 AP 将来対応へのマッピング
 
-| 現在のプロトタイプ | 将来の FSx ONTAP S3 AP |
+| 現在のプロトタイプ | 将来の FSx for ONTAP S3 AP |
 |---|---|
-| S3 Bucket + Event Notifications | FSx ONTAP S3 AP + Native Notifications |
+| S3 Bucket + Event Notifications | FSx for ONTAP S3 AP + Native Notifications |
 | `aws.s3` イベントソース | `aws.fsx` イベントソース（予定） |
 | S3 バケット名でフィルタ | S3 AP エイリアスでフィルタ |
 | S3 GetObject で読み取り | S3 AP 経由で読み取り |
 
 ## 必要な変更点（ネイティブ通知対応時）
 
-FSx ONTAP S3 AP がネイティブ通知をサポートした際に必要な変更:
+FSx for ONTAP S3 AP がネイティブ通知をサポートした際に必要な変更:
 
 ### 1. テンプレート変更
 
@@ -44,8 +44,8 @@ SourceBucket:
       EventBridgeConfiguration:
         EventBridgeEnabled: true
 
-# 変更後（FSx ONTAP S3 AP）
-# S3 Bucket リソースを削除し、既存の FSx ONTAP S3 AP を参照
+# 変更後（FSx for ONTAP S3 AP）
+# S3 Bucket リソースを削除し、既存の FSx for ONTAP S3 AP を参照
 # EventBridge Rule のソースフィルタを更新
 ```
 
@@ -75,7 +75,7 @@ S3_ACCESS_POINT: !Ref S3AccessPointAlias
 # 変更前（プロトタイプ）
 response = s3_client.get_object(Bucket=source_bucket, Key=file_key)
 
-# 変更後（FSx ONTAP S3 AP）
+# 変更後（FSx for ONTAP S3 AP）
 from shared.s3ap_helper import S3ApHelper
 s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
 response = s3ap.get_object(file_key)

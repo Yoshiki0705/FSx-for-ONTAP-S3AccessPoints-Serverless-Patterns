@@ -5,7 +5,7 @@
 ## 概述
 利用 FSx for ONTAP 的 S3 Access Points，实现一个用于自动化 SEG-Y 地震勘探数据元数据提取、井日志异常检测和合规性报告生成的无服务器工作流。
 ### 适用场景
-- SEG-Y 地震探测数据和井日志大量积累在 FSx ONTAP 上
+- SEG-Y 地震探测数据和井日志大量积累在 FSx for ONTAP 上
 - 希望自动目录化地震探测数据的元数据（测量名称、坐标系、采样间隔、迹数）
 - 希望从井日志的传感器读数中自动检测异常
 - 需要使用 Athena SQL 进行井间和时间序列的异常相关分析
@@ -112,7 +112,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -150,7 +150,7 @@ UC8 使用以下服务：
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > 有关详细信息，请参阅 [区域兼容性矩阵](../docs/region-compatibility.md)。
 ## 参考链接
-- [FSx ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [SEG-Y 格式规范 (Rev 2.0)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev2_0-mar2017.pdf)
 - [Amazon Athena 用户指南](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Rekognition 标签检测](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

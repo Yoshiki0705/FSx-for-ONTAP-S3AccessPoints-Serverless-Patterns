@@ -75,7 +75,7 @@ ComprehendMedicalRegion: "us-east-1"  # Comprehend Medical 対応リージョン
 
 - [Textract 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/textract.html)
 - [Comprehend Medical 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
-- [FSx ONTAP 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/fsxn.html)
+- [FSx for ONTAP 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/fsxn.html)
 - [Bedrock 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)
 - [Kinesis Data Streams 料金](https://aws.amazon.com/kinesis/data-streams/pricing/)
 - [SageMaker 料金](https://aws.amazon.com/sagemaker/pricing/)

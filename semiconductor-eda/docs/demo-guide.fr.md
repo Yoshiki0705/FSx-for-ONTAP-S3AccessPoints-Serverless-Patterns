@@ -186,7 +186,7 @@ ORDER BY bounding_box_width DESC;
 
 | # | Écran | Section | Remarques |
 |---|------|-----------|------|
-| 1 | Liste du répertoire des fichiers de conception | Section 1 | Structure de fichiers sur FSx ONTAP |
+| 1 | Liste du répertoire des fichiers de conception | Section 1 | Structure de fichiers sur FSx for ONTAP |
 | 2 | Écran de démarrage de l'exécution du workflow | Section 2 | Console Step Functions |
 | 3 | Workflow en cours d'exécution (traitement parallèle Map State) | Section 3 | État avec progression visible |
 | 4 | Écran de complétion du workflow | Section 3 | Toutes les étapes réussies |
@@ -325,7 +325,7 @@ un rapport de revue en japonais destiné au Physical Design Lead.
 
 ### Points de vérification de l'environnement de démo existant
 
-- [ ] Les données d'exemple sont-elles placées dans le volume FSx ONTAP
+- [ ] Les données d'exemple sont-elles placées dans le volume FSx for ONTAP
 - [ ] Le S3 Access Point est-il configuré
 - [ ] La définition de table Glue Data Catalog existe-t-elle
 - [ ] Le workgroup Athena est-il disponible

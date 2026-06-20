@@ -269,7 +269,7 @@ DynamoDB routing table updates, CloudWatch Logs, ONTAP REST API health check res
 
 | コンポーネント | 月額 |
 |--------------|------|
-| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
 | S3 Access Point | 追加料金なし（S3 API 料金のみ） |
 
 ### 合計概算
@@ -362,7 +362,7 @@ FlexCache ヘルスチェック + ルーティング決定の出力例:
 - 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
 - Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
 
-> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx for ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
 
 ---
 

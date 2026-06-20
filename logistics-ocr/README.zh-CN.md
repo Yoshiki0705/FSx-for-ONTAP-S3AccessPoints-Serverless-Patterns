@@ -5,7 +5,7 @@
 ## 概述
 利用 FSx for ONTAP 的 S3 Access Points，自动化无服务器工作流，实现运输单 OCR 文本提取、仓库库存图像的物体检测与计数、以及生成配送路线优化报告。
 ### 此模式适用的情况
-- 配送传票图像和仓库库存图像被积累在 FSx ONTAP 上
+- 配送传票图像和仓库库存图像被积累在 FSx for ONTAP 上
 - 希望通过 Textract 自动化配送传票的 OCR（发件人、收件人、追踪号、物品）
 - 需要通过 Bedrock 实现提取字段的规范化和生成结构化的配送记录
 - 希望通过 Rekognition 实现仓库库存图像的物体检测和计数（托盘、箱子、货架占用率）
@@ -94,7 +94,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -132,7 +132,7 @@ UC12 使用以下服务：
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > 通过跨区域客户端调用 Textract API。请确认数据居留要求。详情请参见 [区域兼容性矩阵](../docs/region-compatibility.md)。
 ## 参考链接
-- [FSx ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract 文档](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Rekognition 标签检测](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon Bedrock API 参考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

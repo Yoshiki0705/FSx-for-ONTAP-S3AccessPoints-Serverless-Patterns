@@ -5,7 +5,7 @@
 ## 개요
 FSx for ONTAP의 S3 액세스 포인트를 활용하여 DICOM 의료 이미지의 자동 분류 및 익명화를 수행하는 서버리스 워크플로입니다. 이를 통해 환자 프라이버시를 보호하고 효율적인 이미지 관리가 가능합니다.
 ### 이 패턴이 적합한 경우
-- PACS / VNA에서 저장된 DICOM 파일을 FSx ONTAP에 정기적으로 익명화하고 싶습니다
+- PACS / VNA에서 저장된 DICOM 파일을 FSx for ONTAP에 정기적으로 익명화하고 싶습니다
 - 연구용 데이터 세트를 작성하기 위해 PHI(보호 대상 의료 정보)를 자동으로 제거하고 싶습니다
 - 이미지에 내장된 환자 정보(Burned-in Annotation)를 감지하고 싶습니다
 - 모달리티와 부위별 자동 분류로 이미지 관리를 효율화하고 싶습니다
@@ -60,7 +60,7 @@ graph LR
 ### 1. 매개변수 준비
 배포 전에 다음 값을 확인하세요:
 
-- FSx ONTAP S3 액세스 포인트 별칭
+- FSx for ONTAP S3 액세스 포인트 별칭
 - ONTAP 관리 IP 주소
 - Secrets Manager 시크릿 이름
 - VPC ID, 프라이빗 서브넷 ID
@@ -94,9 +94,9 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -161,14 +161,14 @@ UC5는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, 
 ## 참고 링크
 
 ### AWS 공식 문서
-- [FSx ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Lambda를 사용한 서버리스 처리(공식 튜토리얼)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Comprehend Medical DetectPHI API](https://docs.aws.amazon.com/comprehend-medical/latest/dev/API_DetectPHI.html)
 - [Rekognition DetectText API](https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectText.html)
 - [AWS의 HIPAA 백서](https://docs.aws.amazon.com/whitepapers/latest/architecting-hipaa-security-and-compliance-on-aws/welcome.html)
 ### AWS 블로그 기사
 - [S3 AP 발표 블로그](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
-- [FSx ONTAP + Bedrock RAG](https://aws.amazon.com/blogs/machine-learning/build-rag-based-generative-ai-applications-in-aws-using-amazon-fsx-for-netapp-ontap-with-amazon-bedrock/)
+- [FSx for ONTAP + Bedrock RAG](https://aws.amazon.com/blogs/machine-learning/build-rag-based-generative-ai-applications-in-aws-using-amazon-fsx-for-netapp-ontap-with-amazon-bedrock/)
 ### GitHub 샘플
 - [aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing](https://github.com/aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing) — Rekognition 대규모 처리
 - [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — 서버리스 패턴 모음
@@ -177,7 +177,7 @@ UC5는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, 
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

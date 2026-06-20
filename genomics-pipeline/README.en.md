@@ -7,7 +7,7 @@
 ## Overview
 It is a serverless workflow that utilizes S3 Access Points of FSx for ONTAP to automate quality checks of FASTQ/BAM/VCF genome data, variant calling statistics aggregation, and research summary generation.
 ### Cases where this pattern is suitable
-- The output data (FASTQ/BAM/VCF) from the next-generation sequencer is being stored on FSx ONTAP
+- The output data (FASTQ/BAM/VCF) from the next-generation sequencer is being stored on FSx for ONTAP
 - We want to regularly monitor the quality metrics (read count, quality score, GC content) of the sequencing data
 - We want to automate the statistical aggregation of variant calling results (SNP/InDel ratio, Ti/Tv ratio)
 - Automated extraction of biomedical entities (gene names, diseases, drugs) using Comprehend Medical is required
@@ -92,7 +92,7 @@ After deployment, ensure that the Lambda environment variable `CROSS_REGION_TARG
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |

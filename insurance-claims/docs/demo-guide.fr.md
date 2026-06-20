@@ -176,7 +176,7 @@ dans la structure de répertoires du dossier de réclamation
 # Mode STANDARD_S3 (par défaut, comportement traditionnel)
 --parameter-overrides OutputDestination=STANDARD_S3 ...
 
-# Mode FSXN_S3AP (réécriture des résultats IA dans le volume FSx ONTAP)
+# Mode FSXN_S3AP (réécriture des résultats IA dans le volume FSx for ONTAP)
 --parameter-overrides \
   OutputDestination=FSXN_S3AP \
   OutputS3APPrefix=ai-outputs/ \

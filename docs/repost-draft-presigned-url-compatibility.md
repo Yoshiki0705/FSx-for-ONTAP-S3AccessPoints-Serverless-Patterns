@@ -55,9 +55,9 @@ AWS Support confirmed the following:
 
 2. **When you use the presigned URL**, you are issuing a standard `GetObject` HTTP request with the signature embedded in query-string parameters (instead of the `Authorization` header).
 
-3. **Since `GetObject` is listed as Supported**, the presigned URL works because it is just `GetObject`. It is structurally impossible for FSx ONTAP to block presigning without also breaking `GetObject` itself.
+3. **Since `GetObject` is listed as Supported**, the presigned URL works because it is just `GetObject`. It is structurally impossible for FSx for ONTAP to block presigning without also breaking `GetObject` itself.
 
-4. **What the documentation likely intended**: The FSx ONTAP team probably meant "we don't officially test presigned URL workflows" or "some presigning scenarios involving unsupported features (SSE parameters, versioning parameters, etc.) may fail."
+4. **What the documentation likely intended**: The FSx for ONTAP team probably meant "we don't officially test presigned URL workflows" or "some presigning scenarios involving unsupported features (SSE parameters, versioning parameters, etc.) may fail."
 
 ### Important: Should You Rely on This?
 
@@ -88,7 +88,7 @@ AWS Support has escalated this feedback to the FSx for ONTAP service team for do
 
 ### Practical Implications
 
-For teams building integrations (Athena, Databricks, Snowflake, etc.) against FSx ONTAP S3 Access Points:
+For teams building integrations (Athena, Databricks, Snowflake, etc.) against FSx for ONTAP S3 Access Points:
 
 - **Athena**: Uses `ListObjectsV2` + `GetObject` (both supported) — no impact
 - **Databricks/Snowflake**: Standard S3 connectors use `ListObjectsV2` + `GetObject` + multipart — no impact for basic read/write. Delta Lake features (vacuum, time-travel) that use `ListObjectVersions` should not be enabled

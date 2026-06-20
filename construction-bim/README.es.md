@@ -5,7 +5,7 @@
 ## Resumen
 Utilizando los Amazon S3 Access Points de FSx for ONTAP, es un flujo de trabajo sin servidor que automatiza la gestión de versiones de modelos BIM (IFC/Revit), la extracción de texto OCR de PDFs de planos y la comprobación de cumplimiento de seguridad.
 ### Casos en los que este patrón es adecuado
-- Los modelos BIM (IFC/Revit) y los PDF de planos se están acumulando en FSx ONTAP
+- Los modelos BIM (IFC/Revit) y los PDF de planos se están acumulando en FSx for ONTAP
 - Desea catalogar automáticamente los metadatos de los archivos IFC (nombre del proyecto, número de elementos arquitectónicos, número de pisos)
 - Desea detectar automáticamente las diferencias entre versiones de modelos BIM (adición, eliminación o cambio de elementos)
 - Desea extraer texto y tablas de los PDF de planos con Textract
@@ -87,7 +87,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -125,7 +125,7 @@ UC10 utiliza los siguientes servicios:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Llame a la API de Textract a través del Cliente de Región Cruzada. Verifique los requisitos de residencia de datos. Para más detalles, consulte la [Matriz de Compatibilidad de Regiones](../docs/region-compatibility.md).
 ## Enlaces de referencia
-- [Puntos de acceso a Amazon S3 de FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Puntos de acceso a Amazon S3 de FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Documentación de Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Especificaciones del formato IFC (buildingSMART)](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/)
 - [Detección de etiquetas de Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

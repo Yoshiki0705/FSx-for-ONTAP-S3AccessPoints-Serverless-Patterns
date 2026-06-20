@@ -174,7 +174,7 @@ UC11 は 2026-05-10 のアップデートで `OutputDestination` パラメータ
 # STANDARD_S3 モード（デフォルト、従来どおり）
 --parameter-overrides OutputDestination=STANDARD_S3 ...
 
-# FSXN_S3AP モード（AI 成果物を FSx ONTAP ボリュームに書き戻し）
+# FSXN_S3AP モード（AI 成果物を FSx for ONTAP ボリュームに書き戻し）
 --parameter-overrides \
   OutputDestination=FSXN_S3AP \
   OutputS3APPrefix=ai-outputs/ \

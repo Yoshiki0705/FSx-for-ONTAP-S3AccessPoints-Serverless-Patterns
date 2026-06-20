@@ -86,7 +86,7 @@ AI-driven monitoring of volume behavior (data entropy changes, file extension ch
 
 ## Presigned URL Support
 
-> ⚠️ **Production Warning**: AWS Support explicitly states that operations marked "Not supported" should NOT be relied upon for production workloads, even when they return success today. Design alternatives for any workflow that requires presigned URL access to FSx ONTAP S3 Access Points.
+> ⚠️ **Production Warning**: AWS Support explicitly states that operations marked "Not supported" should NOT be relied upon for production workloads, even when they return success today. Design alternatives for any workflow that requires presigned URL access to FSx for ONTAP S3 Access Points.
 
 ### Status: Listed as "Not supported" — but observed working
 

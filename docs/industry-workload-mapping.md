@@ -40,10 +40,10 @@
 ```mermaid
 graph LR
     subgraph "オリジン（本社/DC）"
-        ORIGIN[FSx ONTAP<br/>Origin Volume]
+        ORIGIN[FSx for ONTAP<br/>Origin Volume]
     end
     subgraph "キャッシュ（リモート拠点/クラウド）"
-        CACHE[FSx ONTAP<br/>FlexCache Volume]
+        CACHE[FSx for ONTAP<br/>FlexCache Volume]
         LAMBDA[Lambda<br/>S3 AP 経由処理]
     end
     ORIGIN -->|初回読み取り時<br/>データフェッチ| CACHE
@@ -132,9 +132,9 @@ Job Request → Create FlexCache → Prepopulate → Run Job → Cleanup
 
 ```
 [On-prem ONTAP Origin]
-    ├── FSx ONTAP (ap-northeast-1) FlexCache → S3 AP → Lambda
-    ├── FSx ONTAP (us-west-2) FlexCache → S3 AP → Lambda
-    └── FSx ONTAP (eu-west-1) FlexCache → S3 AP → Lambda
+    ├── FSx for ONTAP (ap-northeast-1) FlexCache → S3 AP → Lambda
+    ├── FSx for ONTAP (us-west-2) FlexCache → S3 AP → Lambda
+    └── FSx for ONTAP (eu-west-1) FlexCache → S3 AP → Lambda
 ```
 
 ### Pattern E: GenAI/RAG over Cached Enterprise Files

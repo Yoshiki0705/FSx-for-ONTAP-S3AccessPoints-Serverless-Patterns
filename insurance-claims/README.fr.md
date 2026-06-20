@@ -5,7 +5,7 @@
 ## Aperçu
 Un workflow sans serveur qui exploite les Points d'accès S3 de FSx pour NetApp ONTAP, permettant l'évaluation des dommages des photos d'accidents, l'extraction de texte OCR des devis et la génération automatique de rapports de réclamations d'assurance.
 ### Cas où ce modèle est approprié
-- Les photos d'accident et les devis sont stockés sur FSx ONTAP
+- Les photos d'accident et les devis sont stockés sur FSx for ONTAP
 - Nous souhaitons automatiser la détection des dommages sur les photos d'accident (étiquettes de dommages aux véhicules, indicateurs de gravité, zones affectées) avec Rekognition
 - Nous voulons mettre en œuvre l'OCR des devis avec Textract (éléments de réparation, coûts, heures-hommes, pièces)
 - Nous avons besoin d'un rapport de réclamation d'assurance complet qui corrèle l'évaluation des dommages basée sur les photos avec les données des devis
@@ -88,7 +88,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -126,7 +126,7 @@ UC14 utilise les services suivants :
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Appelez l'API Textract via le client Cross-Region. Vérifiez les exigences de résidence des données. Pour plus de détails, consultez la [Matrice de compatibilité des régions](../docs/region-compatibility.md).
 ## Liens utiles
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Détection de labels avec Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Documentation Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Référence API Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

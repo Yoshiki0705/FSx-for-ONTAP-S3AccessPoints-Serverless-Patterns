@@ -89,7 +89,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -127,7 +127,7 @@ UC10 uses the following services:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Call the Textract API via the Cross-Region Client. Please verify the data residency requirements. For details, refer to the [Region Compatibility Matrix](../docs/region-compatibility.md).
 ## References
-- [FSx ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract Documentation](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [IFC Format Specification (buildingSMART)](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/)
 - [Amazon Rekognition Label Detection](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

@@ -17,7 +17,7 @@ FSx for ONTAP S3 Access Points を活用した地理空間データ（GIS）の
 ### 処理フロー
 
 ```
-FSx ONTAP (GIS データ格納 — 部署別アクセス制御)
+FSx for ONTAP (GIS データ格納 — 部署別アクセス制御)
   → S3 Access Point
     → Step Functions ワークフロー
       → Discovery: 新規データ検出（GeoTIFF, Shapefile, GeoJSON, LAS）
@@ -206,7 +206,7 @@ smart-city-geospatial/
 | サービス | ドキュメント |
 |---------|------------|
 | FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
-| S3 Access Points | [S3 AP for FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | Step Functions | [開発者ガイド](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
 | Amazon SageMaker | [開発者ガイド](https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html) |
 | Amazon Location Service | [開発者ガイド](https://docs.aws.amazon.com/location/latest/developerguide/welcome.html) |
@@ -249,7 +249,7 @@ smart-city-geospatial/
 
 | コンポーネント | 月額 |
 |--------------|------|
-| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
 | S3 Access Point | 追加料金なし（S3 API 料金のみ） |
 
 ### 合計概算

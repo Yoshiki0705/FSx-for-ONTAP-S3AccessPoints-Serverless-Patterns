@@ -196,7 +196,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP ("no data movement" pattern)
-Writes AI artifacts back to the **same FSx ONTAP volume** as the original data via FSx for ONTAP S3 Access Point.
+Writes AI artifacts back to the **same FSx for ONTAP volume** as the original data via FSx for ONTAP S3 Access Point.
 SMB/NFS users can directly view AI artifacts within the directory structure used in their daily work.
 No standard S3 bucket is created.
 

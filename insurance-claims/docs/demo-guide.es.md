@@ -178,7 +178,7 @@ pueden ver el JSON de evaluación de daños, resultados OCR e informes de reclam
 # Modo STANDARD_S3 (predeterminado, como antes)
 --parameter-overrides OutputDestination=STANDARD_S3 ...
 
-# Modo FSXN_S3AP (escribir resultados de IA de vuelta al volumen FSx ONTAP)
+# Modo FSXN_S3AP (escribir resultados de IA de vuelta al volumen FSx for ONTAP)
 --parameter-overrides \
   OutputDestination=FSXN_S3AP \
   OutputS3APPrefix=ai-outputs/ \

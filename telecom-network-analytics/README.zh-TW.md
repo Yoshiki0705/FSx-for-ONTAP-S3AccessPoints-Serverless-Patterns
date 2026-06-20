@@ -10,7 +10,7 @@
 
 ### 適用情境
 
-- CDR 檔案（CSV、ASN.1 解碼、Parquet）累積在 FSx ONTAP 上
+- CDR 檔案（CSV、ASN.1 解碼、Parquet）累積在 FSx for ONTAP 上
 - 需要自動分析網路設備的 syslog / SNMP trap 資料
 - 需要透過 Athena 計算流量統計（時段通話量、平均通話時長、尖峰同時通話數）
 - 需要透過 Bedrock 進行異常偵測（7天滾動基線比較、3σ超過偵測）
@@ -101,7 +101,7 @@ aws cloudformation deploy \
 ## ⚠️ 效能注意事項
 
 - FSx for ONTAP 的吞吐量容量在 **NFS/SMB/S3 AP 之間共享**。使用 MapConcurrency=10 進行並行處理時可能影響同一卷上的其他工作負載。
-- 進行大規模批量處理時，請檢查 FSx ONTAP 的 Throughput Capacity (MBps) 並相應調整 MapConcurrency。
+- 進行大規模批量處理時，請檢查 FSx for ONTAP 的 Throughput Capacity (MBps) 並相應調整 MapConcurrency。
 - 建議：在生產環境中從 MapConcurrency=5 開始，監控 CloudWatch 指標 (ThroughputUtilization)，然後逐步增加。
 
 ## 清理 (Cleanup)

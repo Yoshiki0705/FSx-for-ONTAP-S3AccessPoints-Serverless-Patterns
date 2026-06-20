@@ -4,7 +4,7 @@
 
 ## Overview
 
-Automated analysis pipeline for automotive CAE (Computer-Aided Engineering) simulation results. Reads solver outputs (LS-DYNA, STAR-CCM+, Nastran, etc.) from FSx ONTAP via S3 Access Points and automates quality checks, statistical aggregation, and report generation.
+Automated analysis pipeline for automotive CAE (Computer-Aided Engineering) simulation results. Reads solver outputs (LS-DYNA, STAR-CCM+, Nastran, etc.) from FSx for ONTAP via S3 Access Points and automates quality checks, statistical aggregation, and report generation.
 
 ## Problems Solved
 

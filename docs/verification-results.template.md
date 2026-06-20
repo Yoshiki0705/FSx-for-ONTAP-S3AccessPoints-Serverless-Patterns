@@ -6,7 +6,7 @@ AWS 環境での検証結果を記録するためのテンプレートです。
 ## 検証環境
 
 - AWS リージョン: `<your-region>`
-- FSx ONTAP バージョン: `<ontap-version>`
+- FSx for ONTAP バージョン: `<ontap-version>`
 - FSx ファイルシステム ID: `<fs-id>`
 - S3 Access Point: `<s3ap-name>`
 - 検証日: `<date>`

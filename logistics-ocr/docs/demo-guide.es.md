@@ -184,7 +184,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP (patrón "no data movement")
-Escribe los resultados de IA de vuelta al **mismo volumen FSx ONTAP** que los datos originales
+Escribe los resultados de IA de vuelta al **mismo volumen FSx for ONTAP** que los datos originales
 a través del FSx for ONTAP S3 Access Point. Los usuarios de SMB/NFS pueden ver directamente los resultados
 de IA dentro de la estructura de directorios que usan en su trabajo diario. No se crea un bucket S3 estándar.
 

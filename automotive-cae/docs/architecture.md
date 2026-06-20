@@ -3,7 +3,7 @@
 ## 概要
 
 自動車 CAE（Computer-Aided Engineering）シミュレーション結果の自動解析パイプライン。
-LS-DYNA、STAR-CCM+、Nastran 等のソルバー出力を FSx ONTAP から S3 AP 経由で読み取り、
+LS-DYNA、STAR-CCM+、Nastran 等のソルバー出力を FSx for ONTAP から S3 AP 経由で読み取り、
 品質チェック・統計集計・レポート生成を自動化する。
 
 ## アーキテクチャ図

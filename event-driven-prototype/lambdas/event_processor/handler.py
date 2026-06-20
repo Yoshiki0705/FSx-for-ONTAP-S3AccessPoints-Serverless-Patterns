@@ -8,7 +8,7 @@ UC11 (Retail Catalog) と同一の処理ロジックを実装:
   4. 結果を S3 出力バケットに書き込み
 
 このプロトタイプは通常の S3 バケットを使用して、
-将来の FSx ONTAP S3 AP ネイティブ通知動作をシミュレートする。
+将来の FSx for ONTAP S3 AP ネイティブ通知動作をシミュレートする。
 
 Environment Variables:
     SOURCE_BUCKET: S3 ソースバケット名

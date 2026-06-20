@@ -5,7 +5,7 @@
 ## Aperçu
 Un workflow sans serveur qui utilise les Amazon S3 Access Points de FSx for ONTAP pour automatiser la classification automatique des PDF de documents, l'analyse des réseaux de citations et l'extraction des métadonnées des données de recherche.
 ### Cas où ce schéma est approprié
-- De nombreux PDF de recherches et données de recherche sont stockés sur FSx ONTAP
+- De nombreux PDF de recherches et données de recherche sont stockés sur FSx for ONTAP
 - Je souhaite automatiser l'extraction de texte des PDF de recherches avec Textract
 - Il est nécessaire de détecter les sujets et d'extraire les entités (auteurs, institutions, mots-clés) avec Comprehend
 - Il est nécessaire d'analyser les relations de citation et de construire automatiquement un réseau de citations (liste d'adjacence)
@@ -89,7 +89,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -127,7 +127,7 @@ UC13 utilise les services suivants :
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Appelez l'API Textract via le client Cross-Region. Vérifiez les exigences de résidence des données. Pour plus de détails, consultez la [Matrice de compatibilité des régions](../docs/region-compatibility.md).
 ## Liens de référence
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Documentation Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Documentation Amazon Comprehend](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html)
 - [Référence API Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

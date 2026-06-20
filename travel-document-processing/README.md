@@ -10,7 +10,7 @@ FSx for ONTAP の S3 Access Points を活用し、ホテル・旅館の予約文
 
 ### このパターンが適しているケース
 
-- 予約確認書、キャンセル通知、ゲスト対応文書が FSx ONTAP 上に蓄積されている
+- 予約確認書、キャンセル通知、ゲスト対応文書が FSx for ONTAP 上に蓄積されている
 - 予約文書から宿泊者名、日付、部屋タイプ、金額を自動抽出したい
 - 施設点検画像（客室、共用部、外装）の状態をAIで自動評価したい
 - 多言語対応（日本語以外のゲスト文書）の自動処理が必要
@@ -129,7 +129,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler スケジュール式 | `cron(0 0 * * ? *)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -144,8 +144,8 @@ aws cloudformation deploy \
 ## ⚠️ パフォーマンスに関する注意事項
 
 - FSx for ONTAP のスループットキャパシティは **NFS/SMB/S3 AP 全体で共有**されます。MapConcurrency=10 で並列処理を行う場合、同一ボリュームの他のワークロードに影響する可能性があります。
-- 大量ファイルの一括処理を行う場合は、FSx ONTAP の Throughput Capacity (MBps) を確認し、必要に応じて MapConcurrency を調整してください。
-- 推奨: 本番環境では最初に MapConcurrency=5 で開始し、FSx ONTAP の CloudWatch メトリクス (ThroughputUtilization) を監視しながら段階的に増加させてください。
+- 大量ファイルの一括処理を行う場合は、FSx for ONTAP の Throughput Capacity (MBps) を確認し、必要に応じて MapConcurrency を調整してください。
+- 推奨: 本番環境では最初に MapConcurrency=5 で開始し、FSx for ONTAP の CloudWatch メトリクス (ThroughputUtilization) を監視しながら段階的に増加させてください。
 
 ## クリーンアップ
 

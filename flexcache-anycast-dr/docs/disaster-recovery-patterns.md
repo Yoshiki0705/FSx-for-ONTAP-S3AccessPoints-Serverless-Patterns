@@ -12,7 +12,7 @@
 
 ```mermaid
 graph TB
-    subgraph "FSx ONTAP Multi-AZ"
+    subgraph "FSx for ONTAP Multi-AZ"
         PRIMARY[Primary Node<br/>AZ-a]
         STANDBY[Standby Node<br/>AZ-c]
         PRIMARY ---|自動フェイルオーバー| STANDBY
@@ -41,7 +41,7 @@ graph TB
 ```
 
 **フェイルオーバーフロー**:
-1. FSx ONTAP Multi-AZ が自動フェイルオーバー（<60秒）
+1. FSx for ONTAP Multi-AZ が自動フェイルオーバー（<60秒）
 2. Route 53 ヘルスチェックが Primary の障害を検出
 3. DNS レコードが Standby 側の FlexCache に切替
 4. Lambda/Step Functions は S3 AP 経由で継続アクセス

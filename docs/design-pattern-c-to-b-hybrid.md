@@ -135,7 +135,7 @@ Parameters:
     AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
     Description: |
       AI/ML artifacts destination. STANDARD_S3 (default) reuses the
-      metadata bucket; FSXN_S3AP writes to the FSx ONTAP volume via
+      metadata bucket; FSXN_S3AP writes to the FSx for ONTAP volume via
       S3 Access Point. Athena results are NOT affected by this
       parameter — they always go to the standard S3 metadata bucket.
   OutputS3APAlias:
@@ -324,7 +324,7 @@ UC8 seismic/anomaly/athena — which are tied to Athena/Glue by design).
 - Default remains `OutputDestination=STANDARD_S3`, which is identical
   to today's behavior (reuses metadata bucket for AI artifacts). No
   migration required for existing deployments
-- FSXN_S3AP mode reduces AI artifact storage to $0 (on FSx ONTAP
+- FSXN_S3AP mode reduces AI artifact storage to $0 (on FSx for ONTAP
   volume) but keeps metadata bucket cost constant (Glue/Athena
   requirements). Net effect: strictly ≤ current cost
 

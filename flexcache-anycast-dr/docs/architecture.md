@@ -41,14 +41,14 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Primary AZ (ap-northeast-1a)"
-        ORIGIN[FSx ONTAP<br/>Origin Volume<br/>Multi-AZ HA]
+        ORIGIN[FSx for ONTAP<br/>Origin Volume<br/>Multi-AZ HA]
     end
     subgraph "AZ-a Compute"
         EC2_A[EC2 / EKS Pod<br/>AZ-a]
         LAMBDA_A[Lambda AZ-a]
     end
     subgraph "AZ-c Compute"
-        CACHE_C[FSx ONTAP<br/>FlexCache<br/>AZ-c 最適化]
+        CACHE_C[FSx for ONTAP<br/>FlexCache<br/>AZ-c 最適化]
         EC2_C[EC2 / EKS Pod<br/>AZ-c]
         LAMBDA_C[Lambda AZ-c]
         S3AP_C[S3 AP]
@@ -61,7 +61,7 @@ graph TB
 ```
 
 **特徴**:
-- FSx ONTAP Multi-AZ HA で Origin を保護
+- FSx for ONTAP Multi-AZ HA で Origin を保護
 - 別 AZ のコンピュートは FlexCache 経由でアクセス
 - Cross-AZ データ転送を最小化
 
@@ -105,19 +105,19 @@ graph TB
         ORIGIN[ONTAP Origin<br/>EDA Tools + Libraries<br/>Render Assets]
     end
     subgraph "ap-northeast-1（東京）"
-        FSX_TKY[FSx ONTAP<br/>FlexCache]
+        FSX_TKY[FSx for ONTAP<br/>FlexCache]
         S3AP_TKY[S3 AP]
         LAMBDA_TKY[Lambda<br/>EDA/Render Job]
         BATCH_TKY[AWS Batch<br/>Spot Instances]
     end
     subgraph "us-west-2（オレゴン）"
-        FSX_PDX[FSx ONTAP<br/>FlexCache]
+        FSX_PDX[FSx for ONTAP<br/>FlexCache]
         S3AP_PDX[S3 AP]
         LAMBDA_PDX[Lambda<br/>EDA/Render Job]
         BATCH_PDX[AWS Batch<br/>Spot Instances]
     end
     subgraph "eu-west-1（アイルランド）"
-        FSX_DUB[FSx ONTAP<br/>FlexCache]
+        FSX_DUB[FSx for ONTAP<br/>FlexCache]
         S3AP_DUB[S3 AP]
         LAMBDA_DUB[Lambda<br/>EDA/Render Job]
         BATCH_DUB[AWS Batch<br/>Spot Instances]
@@ -161,7 +161,7 @@ graph TB
         VIP_B[VIP / AnyCast IP<br/>※オンプレのみ]
     end
     subgraph "AWS（FSx for ONTAP）"
-        FSX[FSx ONTAP<br/>FlexCache]
+        FSX[FSx for ONTAP<br/>FlexCache]
         S3AP[S3 Access Point]
         SFN[Step Functions]
     end

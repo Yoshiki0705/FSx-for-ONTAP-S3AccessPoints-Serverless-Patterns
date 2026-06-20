@@ -1,7 +1,7 @@
 """UC15 Defense/Space Tiling Lambda
 
 衛星画像を Cloud Optimized GeoTIFF (COG) に変換し、タイル分割して
-出力先（標準 S3 バケット、または FSxN S3 Access Point）に書き出す。
+出力先（標準 S3 バケット、または FSx for ONTAP S3 Access Point）に書き出す。
 
 rasterio ライブラリは Lambda Layer で提供される想定。
 Layer が利用できない環境向けに Pure Python fallback を実装（ヘッダ解析のみ）。

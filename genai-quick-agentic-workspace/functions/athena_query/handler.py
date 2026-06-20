@@ -1,6 +1,6 @@
 """UC30 Amazon Quick Agentic Workspace — Athena Query (BI 基盤)
 
-Amazon Quick Sight（BI）が参照する構造化データを、FSx ONTAP S3 Access Point 上の
+Amazon Quick Sight（BI）が参照する構造化データを、FSx for ONTAP S3 Access Point 上の
 CSV から Glue/Athena で問い合わせる。Quick Sight のデータセット作成や、エージェントが
 構造化データに基づく回答を返すための分析バックエンド。
 

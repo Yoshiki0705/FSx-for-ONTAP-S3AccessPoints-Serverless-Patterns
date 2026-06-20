@@ -169,7 +169,7 @@ UC1 legal-compliance wird als **Pattern A: Native S3AP Output** klassifiziert
 (siehe `docs/output-destination-patterns.md`).
 
 **Design**: Vertragsmetadaten, Audit-Logs und Zusammenfassungsberichte werden alle über den FSx for ONTAP S3 Access Point
-auf **dasselbe FSx ONTAP-Volume** wie die ursprünglichen Vertragsdaten zurückgeschrieben. Standard-S3-Buckets werden
+auf **dasselbe FSx for ONTAP-Volume** wie die ursprünglichen Vertragsdaten zurückgeschrieben. Standard-S3-Buckets werden
 nicht erstellt („no data movement"-Muster).
 
 **CloudFormation-Parameter**:
@@ -233,9 +233,9 @@ Ausgeführt mit aktiviertem Phase 8 Theme E (event-driven) + Theme N (observabil
 
 ![UC1 Step Functions Graph (Zoom-Ansicht)](../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
 
-#### UC1 S3 Access Points for FSx ONTAP (Konsolenansicht)
+#### UC1 S3 Access Points for FSx for ONTAP (Konsolenansicht)
 
-![UC1 S3 Access Points for FSx ONTAP](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
+![UC1 S3 Access Points for FSx for ONTAP](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
 
 #### UC1 S3 Access Point Details (Übersichtsansicht)
 

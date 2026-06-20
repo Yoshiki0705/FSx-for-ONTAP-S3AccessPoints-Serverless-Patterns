@@ -1,11 +1,11 @@
-# CDN / 邊緣傳遞整合比較 — 從 FSx ONTAP S3 Access Points 傳遞
+# CDN / 邊緣傳遞整合比較 — 從 FSx for ONTAP S3 Access Points 傳遞
 
 🌐 **Language / 言語**: [日本語](cdn-comparison.md) | [English](cdn-comparison.en.md) | [한국어](cdn-comparison.ko.md) | [简体中文](cdn-comparison.zh-CN.md) | [繁體中文](cdn-comparison.zh-TW.md) | [Français](cdn-comparison.fr.md) | [Deutsch](cdn-comparison.de.md) | [Español](cdn-comparison.es.md)
 
 ## 0. 範圍
 
 整理從 FSx for ONTAP S3 Access Points（S3 AP）上的資料透過 CDN/邊緣網路傳遞時的**技術可行性**之參考資料。
-本文件**不**進行供應商優劣比較、價格/效能比較或行銷主張。僅討論針對 FSx ONTAP S3 AP 的限制，**哪些可實現、
+本文件**不**進行供應商優劣比較、價格/效能比較或行銷主張。僅討論針對 FSx for ONTAP S3 AP 的限制，**哪些可實現、
 哪些不可實現、哪些需驗證**。傳遞供應商選型由客戶結合本文件範圍之外的因素（合約·SLA·維運體系·區域需求等）判斷。
 
 ## 1. 決定傳遞設計的 S3 AP 限制
@@ -53,7 +53,7 @@
   **非在運選項** — 排除。
 
 > 出處為各家公開文件（CloudFront OAC、Akamai Cloud Access Manager、Fastly S3 相容私有來源、Cloudflare
-> Workers/R2、Bunny Storage、Google Media CDN）。均為針對**標準 S3 相容儲存桶**的描述；於 FSx ONTAP S3 AP
+> Workers/R2、Bunny Storage、Google Media CDN）。均為針對**標準 S3 相容儲存桶**的描述；於 FSx for ONTAP S3 AP
 > accesspoint alias 上的行為為 TBV。
 
 ## 4. 安全固定要求（機制通用）
@@ -69,7 +69,7 @@
 
 ### 4.1 證據分類
 - **公開證據**：第 3 節各傳遞網功能 — 基於公開文件、**時點相關**，採用前以最新資訊再確認。
-- **需驗證（本專案）**：針對 FSx ONTAP S3 AP accesspoint alias 的各 CDN SigV4 來源簽章實際行為。
+- **需驗證（本專案）**：針對 FSx for ONTAP S3 AP accesspoint alias 的各 CDN SigV4 來源簽章實際行為。
 
 ## 5. 可行性小結
 

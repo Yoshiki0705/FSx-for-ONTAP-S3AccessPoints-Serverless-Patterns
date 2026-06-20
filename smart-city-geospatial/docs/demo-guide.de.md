@@ -107,7 +107,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP ("no data movement"-Muster)
 CRS-Normalisierungsmetadaten, Landnutzungsklassifizierungsergebnisse, Infrastrukturbewertung, Risikokarten und von Bedrock generierte
-Stadtplanungsberichte (Markdown) werden über den FSx for ONTAP S3 Access Point zurück auf **dasselbe FSx ONTAP-Volume** wie die ursprünglichen GIS-Daten geschrieben.
+Stadtplanungsberichte (Markdown) werden über den FSx for ONTAP S3 Access Point zurück auf **dasselbe FSx for ONTAP-Volume** wie die ursprünglichen GIS-Daten geschrieben.
 Stadtplaner können KI-Ergebnisse direkt innerhalb der bestehenden SMB/NFS-Verzeichnisstruktur einsehen.
 Es wird kein Standard-S3-Bucket erstellt.
 
@@ -158,7 +158,7 @@ Stack-Events usw.) werden in `docs/verification-results-*.md` konsolidiert.
 - Von Bedrock generierter Stadtplanungsbericht (Markdown-Vorschau)
 - DynamoDB landuse_history Tabelle (Landnutzungsklassifizierungsverlauf)
 - Risikokarten-JSON-Vorschau (CRITICAL/HIGH/MEDIUM/LOW-Klassifizierung)
-- KI-Ergebnisse auf FSx ONTAP-Volume (FSXN_S3AP-Modus — über SMB/NFS einsehbare Markdown-Berichte)
+- KI-Ergebnisse auf FSx for ONTAP-Volume (FSXN_S3AP-Modus — über SMB/NFS einsehbare Markdown-Berichte)
 
 ### Aufnahmeleitfaden
 

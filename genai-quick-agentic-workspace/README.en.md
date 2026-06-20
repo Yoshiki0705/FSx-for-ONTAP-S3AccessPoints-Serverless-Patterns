@@ -10,7 +10,7 @@ While UC29 ([genai-kb-selfservice-curation](../genai-kb-selfservice-curation/)) 
 
 > **Amazon Quick Suite**: launched October 2025, the evolution of Amazon Q Business — an agentic teammate that answers questions grounded in your business data and takes action (dashboards, scheduling, deliverables). Capabilities/pricing/regions are time-sensitive; see [aws.amazon.com/quick](https://aws.amazon.com/quick/).
 
-## Quick capabilities mapped to FSx ONTAP S3 AP
+## Quick capabilities mapped to FSx for ONTAP S3 AP
 
 | Quick capability | Role | Data type (on S3 AP) | This UC |
 |-----------|------|---------------------|-----------|
@@ -82,7 +82,7 @@ Sample seed data ships in [`sample-data/quick-workspace/`](sample-data/). This U
 
 ## Security
 
-- **No data movement**: files stay on FSx ONTAP; S3 AP is read-only
+- **No data movement**: files stay on FSx for ONTAP; S3 AP is read-only
 - **Action API uses IAM auth (SigV4)** — not an unauthenticated public endpoint; configure credentials in the Quick connection
 - **Least privilege**: Lambdas limited to the target S3 AP / Athena WorkGroup / Glue DB / Bedrock model
 - **Quick data source role**: trust principal is parameterized (defaults to account root; restrict to the Quick connection)

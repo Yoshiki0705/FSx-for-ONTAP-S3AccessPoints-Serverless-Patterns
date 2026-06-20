@@ -136,7 +136,7 @@ config = OntapClientConfig(
 - **S3 出力バケット**: SSE-KMS（aws/s3 マネージドキー）
 - **SNS Topic**: KMS 暗号化（aws/sns）
 - **DynamoDB**: 暗号化デフォルト有効
-- **FSx ONTAP volume**: FSx 管理の KMS キー
+- **FSx for ONTAP volume**: FSx 管理の KMS キー
 
 ## Audit Logging
 

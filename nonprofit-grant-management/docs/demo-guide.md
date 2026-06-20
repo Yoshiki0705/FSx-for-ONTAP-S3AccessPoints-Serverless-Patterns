@@ -41,14 +41,14 @@ cd fsxn-s3ap-serverless-patterns/nonprofit-grant-management
 
 ### Step 3: テスト用サンプルデータの配置
 
-FSx ONTAP ボリューム上にサンプルデータを配置してください。
+FSx for ONTAP ボリューム上にサンプルデータを配置してください。
 
 
 **NFS マウントとファイル配置例:**
 
 ```bash
-# FSx ONTAP NFS マウント
-sudo mount -t nfs <FSxN-DATA-LIF-IP>:/vol1 /mnt/fsxn
+# FSx for ONTAP NFS マウント
+sudo mount -t nfs <FSx-ONTAP-DATA-LIF-IP>:/vol1 /mnt/fsxn
 
 # サンプルデータ配置
 cp -r sample-data/* /mnt/fsxn/<prefix>/

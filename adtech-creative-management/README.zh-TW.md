@@ -10,7 +10,7 @@
 
 ### 適用情境
 
-- 創意資產（JPEG、PNG、TIFF、MP4、MOV、PSD）儲存於 FSx ONTAP
+- 創意資產（JPEG、PNG、TIFF、MP4、MOV、PSD）儲存於 FSx for ONTAP
 - 需要基於 Rekognition 的視覺中繼資料提取（標籤、文字偵測、內容審核）
 - 希望透過 Textract + Bedrock 自動化品牌用語合規檢查
 - 需要自動生成資產目錄（JSON/CSV）並集中管理合規狀態
@@ -70,7 +70,7 @@ graph LR
 ## ⚠️ 效能注意事項
 
 - FSx for ONTAP 的吞吐量容量在 **NFS/SMB/S3 AP 之間共享**。使用 MapConcurrency=10 進行並行處理時可能影響同一卷上的其他工作負載。
-- 進行大規模批量處理時，請檢查 FSx ONTAP 的 Throughput Capacity (MBps) 並相應調整 MapConcurrency。
+- 進行大規模批量處理時，請檢查 FSx for ONTAP 的 Throughput Capacity (MBps) 並相應調整 MapConcurrency。
 - 建議：在生產環境中從 MapConcurrency=5 開始，監控 CloudWatch 指標 (ThroughputUtilization)，然後逐步增加。
 
 ## Governance Note

@@ -5,7 +5,7 @@
 ## Resumen
 Un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx for ONTAP para el envío automático de trabajos de renderizado VFX, la verificación de calidad y la escritura de salidas aprobadas.
 ### Casos en los que este patrón es adecuado
-- Utilizando FSx ONTAP como almacenamiento de renderizado en producción de VFX / animación
+- Utilizando FSx for ONTAP como almacenamiento de renderizado en producción de VFX / animación
 - Automatizar los controles de calidad tras la finalización del renderizado para reducir la carga de revisión manual
 - Volver a escribir automáticamente los activos aprobados de calidad al servidor de archivos (S3 AP PutObject)
 - Construir un pipeline que integre Deadline Cloud con el almacenamiento NAS existente
@@ -18,7 +18,7 @@ Un flujo de trabajo sin servidor que aprovecha los Puntos de Acceso S3 de FSx fo
 - Detección automática de activos a renderizar a través de S3 AP
 - Envío automático de trabajos de renderizado a AWS Deadline Cloud
 - Evaluación de calidad mediante Amazon Rekognition (resolución, artefactos, consistencia de color)
-- Cuando la calidad apruebe, PutObject en FSx ONTAP a través de S3 AP; si no aprueba, notificación SNS
+- Cuando la calidad apruebe, PutObject en FSx for ONTAP a través de S3 AP; si no aprueba, notificación SNS
 ## Arquitectura
 
 ```mermaid
@@ -57,7 +57,7 @@ graph LR
 ### 1. Preparación de parámetros
 Antes de implementar, verifique los siguientes valores:
 
-- Alias del punto de acceso S3 de FSx ONTAP
+- Alias del punto de acceso S3 de FSx for ONTAP
 - Dirección IP de administración de ONTAP
 - Nombre del secreto de Secrets Manager
 - ID de granja en la nube de AWS Deadline / ID de cola
@@ -95,9 +95,9 @@ Después del despliegue, recibirá un correo electrónico de confirmación de su
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -155,7 +155,7 @@ UC4 utiliza los siguientes servicios:
 ## Enlaces de referencia
 
 ### Documentación oficial de AWS
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [CloudFront でストリーミング（公式チュートリアル）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html)
 - [Lambda でサーバーレス処理（公式チュートリアル）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Deadline Cloud API リファレンス](https://docs.aws.amazon.com/deadline-cloud/latest/APIReference/Welcome.html)
@@ -172,7 +172,7 @@ UC4 utiliza los siguientes servicios:
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

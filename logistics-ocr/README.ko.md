@@ -5,7 +5,7 @@
 ## 개요
 FSx for ONTAP의 S3 액세스 포인트를 활용하여 배송 전표의 OCR 텍스트 추출, 창고 재고 이미지의 물체 감지 및 카운트, 배송 경로 최적화 보고서 생성을 자동화하는 서버리스 워크플로우입니다.
 ### 이 패턴이 적합한 경우
-- 배송 전표 이미지와 창고 재고 이미지가 FSx ONTAP에 축적되어 있습니다.
+- 배송 전표 이미지와 창고 재고 이미지가 FSx for ONTAP에 축적되어 있습니다.
 - Textract를 사용하여 배송 전표의 OCR(발송인, 수령인, 추적 번호, 품목)를 자동화하고 싶습니다.
 - Bedrock을 사용하여 추출 필드의 정규화와 구조화된 배송 레코드 생성이 필요합니다.
 - Rekognition을 사용하여 창고 재고 이미지의 물체 감지 및 카운트(팔레트, 상자, 선반 점유율)를 수행하고 싶습니다.
@@ -90,7 +90,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -128,7 +128,7 @@ UC12는 다음 서비스를 사용합니다:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Cross-Region Client을 통해 Textract API를 호출합니다. 데이터 거주지 요건을 확인하세요. 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하세요.
 ## 참조 링크
-- [FSx ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract 문서](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Rekognition 레이블 감지](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon Bedrock API 참조](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

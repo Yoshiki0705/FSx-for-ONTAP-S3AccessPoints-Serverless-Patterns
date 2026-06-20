@@ -13,11 +13,11 @@
 
 | # | 検証項目 | 前提条件 | リスク | 優先度 |
 |---|---------|---------|--------|--------|
-| A-1 | FlexCache volume の ONTAP REST API 経由作成 | FSx ONTAP + Secrets Manager | FlexCache 作成 API のパラメータ/レスポンス形式が想定と異なる可能性 | **高** |
+| A-1 | FlexCache volume の ONTAP REST API 経由作成 | FSx for ONTAP + Secrets Manager | FlexCache 作成 API のパラメータ/レスポンス形式が想定と異なる可能性 | **高** |
 | A-2 | FlexCache volume の ONTAP REST API 経由削除 | A-1 で作成した FlexCache | 削除時の volume busy エラーハンドリング | **高** |
 | A-3 | FlexCache prepopulate の実行と完了待ち | A-1 + ONTAP 9.13.1+ | prepopulate の dir_paths 指定形式、ジョブ完了時間 | **高** |
 | A-4 | ONTAP 非同期ジョブ (GET /cluster/jobs/{uuid}) のポーリング | A-1 | ジョブ状態遷移（queued→running→success）の実際の挙動 | **高** |
-| A-5 | FlexCache 一覧取得（名前フィルタ） | FSx ONTAP | list_flexcaches の fields パラメータ互換性 | 中 |
+| A-5 | FlexCache 一覧取得（名前フィルタ） | FSx for ONTAP | list_flexcaches の fields パラメータ互換性 | 中 |
 | A-6 | 冪等性チェック（同名 FlexCache 存在時のスキップ） | A-1 | 409 Conflict レスポンスの実際の形式 | 中 |
 | A-7 | FlexCache 作成失敗時のエラーメッセージ解析 | 容量不足のアグリゲート | エラーメッセージのパース可否 | 中 |
 
@@ -25,7 +25,7 @@
 
 | # | 検証項目 | 前提条件 | リスク | 優先度 |
 |---|---------|---------|--------|--------|
-| B-1 | **FlexCache volume に S3 AP を attach 可能か** | FSx ONTAP + FlexCache volume | **最重要**: AWS ドキュメントに明示的記載なし。不可の場合はアーキテクチャ変更が必要 | **最高** |
+| B-1 | **FlexCache volume に S3 AP を attach 可能か** | FSx for ONTAP + FlexCache volume | **最重要**: AWS ドキュメントに明示的記載なし。不可の場合はアーキテクチャ変更が必要 | **最高** |
 | B-2 | FlexCache volume の S3 AP 経由 ListObjectsV2 | B-1 が成功した場合 | キャッシュ済み/未キャッシュデータの見え方 | **最高** |
 | B-3 | FlexCache volume の S3 AP 経由 GetObject | B-1 が成功した場合 | cache miss 時のレイテンシ、タイムアウト | **最高** |
 | B-4 | FlexCache volume の S3 AP 経由 GetObject（cache hit 時） | B-3 + prepopulate 済み | cache hit 時のレイテンシ改善の実測 | 高 |
@@ -84,7 +84,7 @@
 
 | # | 検証項目 | 前提条件 | リスク | 優先度 |
 |---|---------|---------|--------|--------|
-| F-1 | Lambda → ONTAP 管理 IP の到達性（VPC 内） | VPC + SG + FSx ONTAP | セキュリティグループ設定ミス | **高** |
+| F-1 | Lambda → ONTAP 管理 IP の到達性（VPC 内） | VPC + SG + FSx for ONTAP | セキュリティグループ設定ミス | **高** |
 | F-2 | Lambda → S3 AP の到達性（VPC 内/外） | S3 AP NetworkOrigin 設定 | VPC 内 Lambda + Internet Origin AP のタイムアウト | **高** |
 | F-3 | Lambda → Secrets Manager の到達性 | VPC Endpoint or NAT | VPC 内 Lambda からの Secrets Manager アクセス | 高 |
 | F-4 | Lambda → Bedrock の到達性 | VPC 外 or NAT | Bedrock API エンドポイントへの到達 | 中 |
@@ -95,7 +95,7 @@
 
 | # | 検証項目 | 前提条件 | リスク | 優先度 |
 |---|---------|---------|--------|--------|
-| G-1 | FlexCache disconnected mode の動作確認 | FSx ONTAP + FlexCache + Origin 停止 | FSx for ONTAP での disconnected mode サポート有無 | 高 |
+| G-1 | FlexCache disconnected mode の動作確認 | FSx for ONTAP + FlexCache + Origin 停止 | FSx for ONTAP での disconnected mode サポート有無 | 高 |
 | G-2 | Origin 到達不可時の FlexCache 読み取り継続 | G-1 | キャッシュ済みデータのみ読み取り可能か | 高 |
 | G-3 | Route 53 ヘルスチェック失敗→フェイルオーバー | Route 53 + ヘルスチェック設定 | フェイルオーバー時間の実測 | 中 |
 | G-4 | SnapMirror destination の break + FlexCache re-peer | SnapMirror 設定済み | re-peer の手順と所要時間 | 中 |
@@ -120,7 +120,7 @@
 | I-1 | IAM ポリシーの S3 AP ARN 形式が正しく動作するか | C-1〜C-6 | AccessDenied エラー | **高** |
 | I-2 | Secrets Manager からの ONTAP 認証情報取得 | Secrets Manager シークレット作成 | シークレット形式の不一致 | **高** |
 | I-3 | ONTAP RBAC 最小権限ロールでの FlexCache 操作 | ONTAP ユーザー作成 | 権限不足エラー | 高 |
-| I-4 | TLS 検証有効時の ONTAP REST API 接続 | FSx ONTAP 証明書 | 証明書検証エラー | 高 |
+| I-4 | TLS 検証有効時の ONTAP REST API 接続 | FSx for ONTAP 証明書 | 証明書検証エラー | 高 |
 | I-5 | KMS 暗号化の S3 出力バケット書き込み | KMS キー | 暗号化エラー | 中 |
 | I-6 | SNS 通知の送信確認 | SNS Topic + Email サブスクリプション | メール到達 | 低 |
 
@@ -179,7 +179,7 @@
 
 | フェーズ | 内容 | 推定時間 |
 |---------|------|---------|
-| 環境準備 | FSx ONTAP + FlexCache + S3 AP + Secrets Manager | 2-3 時間 |
+| 環境準備 | FSx for ONTAP + FlexCache + S3 AP + Secrets Manager | 2-3 時間 |
 | B-1 検証 | FlexCache + S3 AP attach 可否 | 30 分 |
 | C-1〜C-2 デプロイ | CloudFormation スタック作成 | 1 時間 |
 | E-2 シミュレーション | Step Functions E2E（SimulationMode） | 30 分 |

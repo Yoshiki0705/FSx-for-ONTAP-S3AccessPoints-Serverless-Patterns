@@ -27,13 +27,13 @@ graph LR
 
     GJ -->|Read CSV| S3AP_IN[S3 Access Point<br/>入力]
     GJ -->|Write Parquet| S3AP_OUT[S3 Access Point<br/>出力]
-    S3AP_IN -.->|Exposes| FSXN[FSx ONTAP Volume]
+    S3AP_IN -.->|Exposes| FSXN[FSx for ONTAP Volume]
     S3AP_OUT -.->|Exposes| FSXN
 ```
 
 ### 処理フロー
 
-1. **CSV 読み取り**: S3 AP 経由で FSx ONTAP 上の CSV センサーログを読み取り
+1. **CSV 読み取り**: S3 AP 経由で FSx for ONTAP 上の CSV センサーログを読み取り
 2. **データ変換**: タイムスタンプ変換、NULL フィルタリング、パーティションカラム追加
 3. **Parquet 書き出し**: Snappy 圧縮 + year/month/day パーティションで S3 AP に書き戻し
 

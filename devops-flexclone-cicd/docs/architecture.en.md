@@ -7,7 +7,7 @@ sequenceDiagram
     participant CI as CI/CD Pipeline
     participant SF as Step Functions
     participant CM as Clone Manager
-    participant ONTAP as FSx ONTAP
+    participant ONTAP as FSx for ONTAP
     participant SP as S3AP Provisioner
     participant TO as Test Orchestrator
     participant S3 as S3 Access Point

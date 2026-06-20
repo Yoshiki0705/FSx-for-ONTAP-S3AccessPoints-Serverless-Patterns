@@ -5,7 +5,7 @@
 ## Aperçu
 Il s'agit d'un flux de travail sans serveur automatisé pour l'extraction de métadonnées de données sismiques SEG-Y, la détection d'anomalies de journaux de puits et la génération de rapports de conformité en utilisant les Points d'accès S3 de FSx for ONTAP.
 ### Cas où ce modèle est approprié
-- Les données sismiques SEG-Y et les journaux de puits sont massivement stockés sur FSx ONTAP
+- Les données sismiques SEG-Y et les journaux de puits sont massivement stockés sur FSx for ONTAP
 - On souhaite cataloguer automatiquement les métadonnées des données sismiques (nom du levé, système de coordonnées, intervalle d'échantillonnage, nombre de traces)
 - On souhaite détecter automatiquement les anomalies à partir des lectures de capteurs des journaux de puits
 - Une analyse de corrélation d'anomalies entre puits et temporelles est nécessaire avec Athena SQL
@@ -86,7 +86,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -124,7 +124,7 @@ UC8 utilise les services suivants :
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Pour plus de détails, consultez la [Matrice de compatibilité régionale](../docs/region-compatibility.md).
 ## Liens utiles
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [SEG-Y フォーマット仕様 (Rev 2.0)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev2_0-mar2017.pdf)
 - [Guide de l'utilisateur d'Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Détection de labels avec Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

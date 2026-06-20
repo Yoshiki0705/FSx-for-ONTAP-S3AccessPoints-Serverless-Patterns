@@ -65,7 +65,7 @@ logger.info(f"Output S3 AP: {s3_ap_output}, Prefix: {output_prefix}")
 
 # =====================================================================
 # S3 AP パス構築
-# FSx ONTAP S3 AP は s3://<alias>/<prefix> 形式でアクセス可能
+# FSx for ONTAP S3 AP は s3://<alias>/<prefix> 形式でアクセス可能
 # IMPORTANT: Glue は internet network origin の S3 AP のみアクセス可能
 # =====================================================================
 input_path = f"s3://{s3_ap_input}/{input_prefix}"

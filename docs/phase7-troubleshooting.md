@@ -16,7 +16,7 @@ is not authorized to perform: s3:ListBucket
 on resource: "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/eda-demo-s3ap"
 ```
 
-**原因**: FSx ONTAP の S3 Access Point を使用する Lambda は、**Alias ARN と Access Point ARN
+**原因**: FSx for ONTAP の S3 Access Point を使用する Lambda は、**Alias ARN と Access Point ARN
 の両方**に対する権限が必要。`template-deploy.yaml` のデフォルトは Alias ARN のみ。
 
 **対処**:
@@ -449,7 +449,7 @@ EventBridge スケジュール (1 日 1 回) で UC17 を回す場合、Bedrock 
 - FSXN_S3AP だと: Bedrock + Lambda のみ、S3 ストレージ $0
 
 長期運用 (例: 1 年分の Markdown レポートアーカイブ) でも、
-`ai-outputs/uc17/reports/YYYY/MM/DD/*.md` は FSx ONTAP 側の容量に吸収され、
+`ai-outputs/uc17/reports/YYYY/MM/DD/*.md` は FSx for ONTAP 側の容量に吸収され、
 S3 標準料金の蓄積がない。
 
 ### 10.6 Lambda zip 再パッケージなしの CloudFormation デプロイ更新が無効

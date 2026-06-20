@@ -185,7 +185,7 @@ ORDER BY bounding_box_width DESC;
 
 | # | Screen | Section | Notes |
 |---|------|-----------|------|
-| 1 | Design file directory list | Section 1 | File structure on FSx ONTAP |
+| 1 | Design file directory list | Section 1 | File structure on FSx for ONTAP |
 | 2 | Workflow execution start screen | Section 2 | Step Functions console |
 | 3 | Workflow in progress (Map State parallel processing) | Section 3 | Progress visible |
 | 4 | Workflow completion screen | Section 3 | All steps successful |
@@ -324,7 +324,7 @@ a Japanese design review report for Physical Design Leads.
 
 ### Existing Demo Environment Checklist
 
-- [ ] Sample data placed in FSx ONTAP volume
+- [ ] Sample data placed in FSx for ONTAP volume
 - [ ] S3 Access Point configured
 - [ ] Glue Data Catalog table definitions exist
 - [ ] Athena workgroup available

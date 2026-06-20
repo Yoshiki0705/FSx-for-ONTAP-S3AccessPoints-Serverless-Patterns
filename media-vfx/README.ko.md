@@ -5,7 +5,7 @@
 ## 개요
 FSx for ONTAP의 S3 Access Points를 활용하여 VFX 렌더링 작업의 자동 제출, 품질 검사 및 승인된 출력의 반환을 수행하는 서버리스 워크플로입니다.
 ### 이 패턴이 적합한 경우
-- VFX / 애니메이션 제작에서 FSx ONTAP를 렌더링 스토리지로 사용하고 있습니다
+- VFX / 애니메이션 제작에서 FSx for ONTAP를 렌더링 스토리지로 사용하고 있습니다
 - 렌더링 완료 후 품질 검사를 자동화하여 수동 검토의 부담을 줄이고 싶습니다
 - 품질 통과한 자산을 자동으로 파일 서버에 다시 쓰고 싶습니다 (S3 AP PutObject)
 - Deadline Cloud와 기존 NAS 스토리지를 통합한 파이프라인을 구축하고 싶습니다
@@ -18,7 +18,7 @@ FSx for ONTAP의 S3 Access Points를 활용하여 VFX 렌더링 작업의 자동
 - S3 AP를 통해 렌더링할 대상 자산을 자동 검출
 - AWS Deadline Cloud로 렌더링 작업 자동 전송
 - Amazon Rekognition을 통한 품질 평가 (해상도, 아티팩트, 색상 일관성)
-- 품질 통과 시 S3 AP를 통해 FSx ONTAP에 PutObject, 불합격 시 SNS 알림
+- 품질 통과 시 S3 AP를 통해 FSx for ONTAP에 PutObject, 불합격 시 SNS 알림
 ## 아키텍처
 
 ```mermaid
@@ -57,7 +57,7 @@ graph LR
 ### 1. 파라미터 준비
 배포 전에 다음 값을 확인하십시오:
 
-- FSx ONTAP S3 액세스 포인트 별칭
+- FSx for ONTAP S3 액세스 포인트 별칭
 - ONTAP 관리 IP 주소
 - Secrets Manager 시크릿 이름
 - AWS Deadline Cloud Farm ID / Queue ID
@@ -95,9 +95,9 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -155,7 +155,7 @@ UC4는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, 
 ## 참고 링크
 
 ### AWS 공식 문서
-- [FSx ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [CloudFront으로 스트리밍(공식 튜토리얼)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html)
 - [Lambda로 서버리스 처리(공식 튜토리얼)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Deadline Cloud API 참조](https://docs.aws.amazon.com/deadline-cloud/latest/APIReference/Welcome.html)
@@ -172,7 +172,7 @@ UC4는 다음 서비스를 사용합니다: Amazon Bedrock, AWS Step Functions, 
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

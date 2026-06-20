@@ -88,6 +88,28 @@ Parameters:
       KB Trigger Lambda の予約済み同時実行数（バースト制御）。デバウンスと併せ、
       大量ファイル投入時の Bedrock/CloudWatch スロットリングを抑制する。
 
+  # --- Web Search ハイブリッド RAG (opt-in) ---
+  EnableWebSearch:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: >
+      AgentCore Web Search Tool によるハイブリッド RAG を有効化する。
+      true の場合、Query Lambda が内部 KB 回答に加えて外部 Web 情報で補強する。
+      us-east-1 の AgentCore Gateway が必要（クロスリージョン呼び出し）。
+
+  AgentCoreGatewayId:
+    Type: String
+    Default: ''
+    Description: >
+      AgentCore Gateway ID (us-east-1)。EnableWebSearch=true 時に必須。
+      scripts/poc-web-search.py setup で作成した Gateway ID を指定する。
+
+  AgentCoreGatewayRegion:
+    Type: String
+    Default: 'us-east-1'
+    Description: AgentCore Gateway のリージョン
+
 Conditions:
   HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
   IsScenarioCEnabled: !Equals [!Ref EnableScenarioC, 'true']
@@ -220,6 +242,19 @@ Resources:
                 Action:
                   - bedrock:ApplyGuardrail
                 Resource: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*'
+              # Web Search ハイブリッド RAG: AgentCore Gateway 呼び出し (us-east-1)
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:InvokeGateway
+                Resource:
+                  - !Sub 'arn:aws:bedrock-agentcore:${AgentCoreGatewayRegion}:${AWS::AccountId}:gateway/*'
+              # Web Search 補強時に Bedrock Converse を追加呼び出し
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - 'arn:aws:bedrock:*::foundation-model/amazon.nova-*'
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*'
 
   # --- Auto-Sync Lambda ---
   AutoSyncFunction:
@@ -270,6 +305,10 @@ Resources:
           BEDROCK_LLM_MODEL_ID: !Ref BedrockLlmModelId
           BEDROCK_GUARDRAIL_ID: !Ref BedrockGuardrailId
           BEDROCK_GUARDRAIL_VERSION: !Ref BedrockGuardrailVersion
+          # Web Search ハイブリッド RAG (opt-in)
+          WEB_SEARCH_ENABLED: !Ref EnableWebSearch
+          AGENTCORE_GATEWAY_ID: !Ref AgentCoreGatewayId
+          AGENTCORE_GATEWAY_REGION: !Ref AgentCoreGatewayRegion
 
   # --- Step Functions（シナリオB: 自動化ワークフロー） ---
   # 差分検知 → 取り込み起動 → 完了までポーリング待機 → 結果を SNS 通知

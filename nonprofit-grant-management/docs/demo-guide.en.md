@@ -30,7 +30,7 @@ cd fsxn-s3ap-serverless-patterns/nonprofit-grant-management
 
 ### Step 3: Place Sample Data
 
-Place sample data on the FSx ONTAP volume.
+Place sample data on the FSx for ONTAP volume.
 
 ### Step 4: SAM Build & Deploy
 

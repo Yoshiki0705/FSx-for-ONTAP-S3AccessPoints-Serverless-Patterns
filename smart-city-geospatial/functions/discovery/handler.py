@@ -1,6 +1,6 @@
 """UC17 Smart City Geospatial Discovery Lambda.
 
-FSx ONTAP S3 Access Point から GIS データ（GeoTIFF/Shapefile/GeoJSON/LAS/GeoPackage）の
+FSx for ONTAP S3 Access Point から GIS データ（GeoTIFF/Shapefile/GeoJSON/LAS/GeoPackage）の
 一覧を取得し、Manifest JSON を生成・S3 に書き出す。
 
 Environment Variables:

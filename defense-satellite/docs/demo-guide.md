@@ -22,7 +22,7 @@
 
 ```mermaid
 graph LR
-    A[衛星画像取得] --> B[FSx ONTAP S3 AP]
+    A[衛星画像取得] --> B[FSx for ONTAP S3 AP]
     B --> C[Step Functions ワークフロー]
     C --> D[Discovery]
     D --> E[Tiling]
@@ -37,7 +37,7 @@ graph LR
 
 **ワークフロー概要**:
 
-1. 衛星画像（GeoTIFF）を FSx ONTAP ボリュームに配置（S3 AP 経由でアクセス可能）
+1. 衛星画像（GeoTIFF）を FSx for ONTAP ボリュームに配置（S3 AP 経由でアクセス可能）
 2. Step Functions が自動的に画像を発見・タイリング
 3. 画像サイズに応じて Rekognition（< 5MB）または SageMaker（≥ 5MB）で物体検出
 4. geohash ベースの変化検出で過去画像との比較
@@ -203,7 +203,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP（"no data movement" パターン）
 タイリング metadata、物体検出 JSON、Geo enrichment 済み検出結果を、FSx for ONTAP S3 Access Point
-経由でオリジナル衛星画像と**同一の FSx ONTAP ボリューム**に書き戻します。
+経由でオリジナル衛星画像と**同一の FSx for ONTAP ボリューム**に書き戻します。
 分析担当者が SMB/NFS の既存ディレクトリ構造内で AI 成果物を直接参照できます。
 標準 S3 バケットは作成されません。
 
@@ -282,7 +282,7 @@ Phase 7 UC15/16/17 と UC6/11/14 のデモと同じ方針で、**エンドユー
 - Rekognition 衛星画像物体検出結果 JSON プレビュー
 - GeoEnrichment 座標付き検出結果
 - SNS アラート通知メール
-- FSx ONTAP ボリューム上の AI 成果物（FSXN_S3AP モード時）
+- FSx for ONTAP ボリューム上の AI 成果物（FSXN_S3AP モード時）
 
 ### 撮影ガイド
 

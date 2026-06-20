@@ -184,7 +184,7 @@ ORDER BY bounding_box_width DESC;
 
 | # | 화면 | 섹션 | 비고 |
 |---|------|-----------|------|
-| 1 | 설계 파일 디렉터리 목록 | Section 1 | FSx ONTAP 상의 파일 구조 |
+| 1 | 설계 파일 디렉터리 목록 | Section 1 | FSx for ONTAP 상의 파일 구조 |
 | 2 | 워크플로 실행 시작 화면 | Section 2 | Step Functions 콘솔 |
 | 3 | 워크플로 실행 중(Map State 병렬 처리) | Section 3 | 진행 상황이 보이는 상태 |
 | 4 | 워크플로 완료 화면 | Section 3 | 모든 단계 성공 |
@@ -323,7 +323,7 @@ Physical Design Lead를 위한 일본어 리뷰 보고서를 생성함.
 
 ### 기존 데모 환경 확인 사항
 
-- [ ] FSx ONTAP 볼륨에 샘플 데이터가 배치되어 있는가
+- [ ] FSx for ONTAP 볼륨에 샘플 데이터가 배치되어 있는가
 - [ ] S3 Access Point가 설정되어 있는가
 - [ ] Glue Data Catalog의 테이블 정의가 존재하는가
 - [ ] Athena 워크그룹을 사용할 수 있는가

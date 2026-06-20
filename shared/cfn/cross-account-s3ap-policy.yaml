@@ -3,14 +3,14 @@
 # =============================================================================
 #
 # 本テンプレートはワークロードアカウントの Lambda が中央ストレージアカウントの
-# S3 Access Point（FSx ONTAP）にクロスアカウントでアクセスするための
+# S3 Access Point（FSx for ONTAP）にクロスアカウントでアクセスするための
 # IAM ロールとポリシーを作成する。
 #
 # アーキテクチャ:
 #   Workload Account Lambda
 #     → AssumeRole (Cross-Account Role with External ID)
 #       → S3 Access Point (Storage Account)
-#         → FSx ONTAP Volume
+#         → FSx for ONTAP Volume
 #
 # デプロイ例:
 #   aws cloudformation deploy \
@@ -28,7 +28,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Cross-Account S3 Access Point Policy.
+  FSx for ONTAP S3 AP Serverless Patterns — Cross-Account S3 Access Point Policy.
   ワークロードアカウントからストレージアカウントの S3 AP へのクロスアカウントアクセス用
   IAM ロール・ポリシーを作成する。
 

@@ -145,7 +145,7 @@ echo "  ✅ ${OUTPUT_DIR}.tar.gz (${BUNDLE_SIZE})"
 # --- ONTAP CLI Commands (manual) ---
 echo ""
 echo "============================================================"
-echo "ONTAP CLI Commands (run manually on FSx ONTAP CLI)"
+echo "ONTAP CLI Commands (run manually on FSx for ONTAP CLI)"
 echo "============================================================"
 echo ""
 echo "  # FPolicy status"

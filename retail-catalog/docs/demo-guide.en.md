@@ -176,7 +176,7 @@ view auto-generated tag JSON within the product image directory structure
 # STANDARD_S3 mode (default, traditional behavior)
 --parameter-overrides OutputDestination=STANDARD_S3 ...
 
-# FSXN_S3AP mode (write AI outputs back to FSx ONTAP volume)
+# FSXN_S3AP mode (write AI outputs back to FSx for ONTAP volume)
 --parameter-overrides \
   OutputDestination=FSXN_S3AP \
   OutputS3APPrefix=ai-outputs/ \

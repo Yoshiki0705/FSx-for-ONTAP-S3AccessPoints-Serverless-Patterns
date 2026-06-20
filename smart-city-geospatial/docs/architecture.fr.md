@@ -6,7 +6,7 @@
 
 ## Vue d'ensemble
 
-Les données géospatiales volumineuses (GeoTIFF / Shapefile / LAS / GeoPackage) sur FSx ONTAP sont
+Les données géospatiales volumineuses (GeoTIFF / Shapefile / LAS / GeoPackage) sur FSx for ONTAP sont
 analysées de manière serverless pour effectuer la classification de l'utilisation des sols, la détection de changements, l'évaluation des infrastructures, la cartographie des risques de catastrophes et
 la génération de rapports par Bedrock.
 
@@ -14,7 +14,7 @@ la génération de rapports par Bedrock.
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>Données SIG<br/>ACL par département] --> S3AP[S3 Access Point]
+    FSx[FSx for ONTAP<br/>Données SIG<br/>ACL par département] --> S3AP[S3 Access Point]
     S3AP --> SFN[Step Functions<br/>Smart City Workflow]
     SFN --> L1[Discovery]
     L1 --> L2[Preprocessing<br/>Normalisation CRS EPSG:4326]

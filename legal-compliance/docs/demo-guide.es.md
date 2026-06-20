@@ -169,7 +169,7 @@ Servidor de archivos     Recopilación ACL    Análisis de permisos    Generaci�
 UC1 legal-compliance está clasificado como **Pattern A: Native S3AP Output**
 (consulte `docs/output-destination-patterns.md`).
 
-**Diseño**: Los metadatos de contratos, registros de auditoría e informes de resumen se escriben todos de vuelta al **mismo volumen de FSx ONTAP** que los datos de contratos originales a través de FSx for ONTAP S3 Access Point. No se crea un bucket S3 estándar (patrón "no data movement").
+**Diseño**: Los metadatos de contratos, registros de auditoría e informes de resumen se escriben todos de vuelta al **mismo volumen de FSx for ONTAP** que los datos de contratos originales a través de FSx for ONTAP S3 Access Point. No se crea un bucket S3 estándar (patrón "no data movement").
 
 **Parámetros de CloudFormation**:
 - `S3AccessPointAlias`: S3 AP Alias para lectura de datos de contratos de entrada
@@ -229,9 +229,9 @@ Ejecutado con Phase 8 Theme E (event-driven) + Theme N (observability) habilitad
 
 ![Gráfico de Step Functions de UC1 (Vista ampliada)](../../docs/screenshots/masked/uc1-demo/step-functions-graph-zoomed.png)
 
-#### S3 Access Points para FSx ONTAP de UC1 (Visualización de consola)
+#### S3 Access Points para FSx for ONTAP de UC1 (Visualización de consola)
 
-![S3 Access Points para FSx ONTAP de UC1](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
+![S3 Access Points para FSx for ONTAP de UC1](../../docs/screenshots/masked/uc1-demo/s3-access-points-for-fsx.png)
 
 #### Detalle de S3 Access Point de UC1 (Vista de resumen)
 

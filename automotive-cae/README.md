@@ -21,7 +21,7 @@
 ```mermaid
 graph TB
     subgraph "設計拠点（Origin）"
-        DESIGN[FSx ONTAP<br/>設計データ<br/>mesh / input deck]
+        DESIGN[FSx for ONTAP<br/>設計データ<br/>mesh / input deck]
     end
     subgraph "テスト拠点 / クラウド"
         CACHE[FlexCache<br/>シミュレーション入力]
@@ -140,7 +140,7 @@ Step Functions 実行履歴、Bedrock レポートメタデータ、CloudWatch M
 | サービス | ドキュメント |
 |---------|------------|
 | FSx for ONTAP | [ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
-| S3 Access Points for FSx ONTAP | [S3 AP ガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| S3 Access Points for FSx for ONTAP | [S3 AP ガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
 | AWS Batch | [ユーザーガイド](https://docs.aws.amazon.com/batch/latest/userguide/what-is-batch.html) |
 | AWS ParallelCluster | [ユーザーガイド](https://docs.aws.amazon.com/parallelcluster/latest/ug/what-is-aws-parallelcluster.html) |
 | Amazon Athena | [ユーザーガイド](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
@@ -189,7 +189,7 @@ Step Functions 実行履歴、Bedrock レポートメタデータ、CloudWatch M
 
 | コンポーネント | 月額 |
 |--------------|------|
-| FSx ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
 | S3 Access Point | 追加料金なし（S3 API 料金のみ） |
 
 ### 合計概算
@@ -285,7 +285,7 @@ CAE ソルバー出力解析パイプラインの出力例:
 - 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
 - Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
 
-> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx for ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
 
 ---
 

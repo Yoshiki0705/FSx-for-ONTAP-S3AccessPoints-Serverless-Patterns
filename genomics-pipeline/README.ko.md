@@ -5,7 +5,7 @@
 ## 개요
 FSx for ONTAP의 S3 액세스 포인트를 활용하여 FASTQ/BAM/VCF 게놈 데이터의 품질 검사, 변이체 호출 통계 수집, 연구 요약 생성을 자동화하는 서버리스 워크플로우입니다.
 ### 이 패턴이 적합한 경우
-- 차세대 시퀀서의 출력 데이터(FASTQ/BAM/VCF)가 FSx ONTAP에 축적되어 있습니다
+- 차세대 시퀀서의 출력 데이터(FASTQ/BAM/VCF)가 FSx for ONTAP에 축적되어 있습니다
 - 시퀀싱 데이터의 품질 메트릭(리드 수, 품질 점수, GC 함량)을 정기적으로 모니터링하고 싶습니다
 - 변이체 호출 결과의 통계 수집(SNP/InDel 비율, Ti/Tv 비율)을 자동화하고 싶습니다
 - Comprehend Medical을 통한 생물의학 엔터티(유전자 이름, 질병, 약물)의 자동 추출이 필요합니다
@@ -90,7 +90,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -130,7 +130,7 @@ UC7은 다음 서비스를 사용합니다:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Cross-Region Client를 통해 Comprehend Medical API를 호출합니다. 데이터 거주지 요구 사항을 확인하세요. 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하세요.
 ## 참고 링크
-- [FSx ONTAP S3 Access Points 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/what-is.html)
 - [FASTQ 형식 사양](https://en.wikipedia.org/wiki/FASTQ_format)
 - [VCF 형식 사양](https://samtools.github.io/hts-specs/VCFv4.3.pdf)

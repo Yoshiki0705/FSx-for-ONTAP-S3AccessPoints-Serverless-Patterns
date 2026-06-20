@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph OUTPUT_PASS["✅ 출력 — 합격"]
-        PUTBACK["S3 AP PutObject<br/>FSx ONTAP에 다시 쓰기"]
+        PUTBACK["S3 AP PutObject<br/>FSx for ONTAP에 다시 쓰기"]
     end
 
     subgraph OUTPUT_FAIL["❌ 출력 — 불합격"]
@@ -67,7 +67,7 @@ flowchart TB
 ### 출력
 | 산출물 | 형식 | 설명 |
 |--------|------|------|
-| 승인된 에셋 | S3 AP PutObject → FSx ONTAP | 품질 승인된 에셋 다시 쓰기 |
+| 승인된 에셋 | S3 AP PutObject → FSx for ONTAP | 품질 승인된 에셋 다시 쓰기 |
 | QC 보고서 | `qc-results/YYYY/MM/DD/{shot}_{version}.json` | 품질 검사 결과 |
 | SNS 알림 | Email / Slack | 불합격 시 재렌더링 알림 |
 

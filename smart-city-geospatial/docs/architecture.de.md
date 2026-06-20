@@ -6,7 +6,7 @@
 
 ## Übersicht
 
-Große geospatiale Daten auf FSx ONTAP (GeoTIFF / Shapefile / LAS / GeoPackage) werden
+Große geospatiale Daten auf FSx for ONTAP (GeoTIFF / Shapefile / LAS / GeoPackage) werden
 serverlos analysiert, um Landnutzungsklassifizierung, Änderungserkennung, Infrastrukturbewertung, Katastrophenrisiko-Mapping und
 Berichtserstellung durch Bedrock durchzuführen.
 
@@ -14,7 +14,7 @@ Berichtserstellung durch Bedrock durchzuführen.
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>GIS-Daten<br/>Abteilungs-ACL] --> S3AP[S3 Access Point]
+    FSx[FSx for ONTAP<br/>GIS-Daten<br/>Abteilungs-ACL] --> S3AP[S3 Access Point]
     S3AP --> SFN[Step Functions<br/>Smart City Workflow]
     SFN --> L1[Discovery]
     L1 --> L2[Preprocessing<br/>CRS-Normalisierung EPSG:4326]

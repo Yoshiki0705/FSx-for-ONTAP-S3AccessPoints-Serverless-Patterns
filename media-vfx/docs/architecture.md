@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph OUTPUT_PASS["✅ Output — 合格"]
-        PUTBACK["S3 AP PutObject<br/>FSx ONTAP 書き戻し"]
+        PUTBACK["S3 AP PutObject<br/>FSx for ONTAP 書き戻し"]
     end
 
     subgraph OUTPUT_FAIL["❌ Output — 不合格"]
@@ -67,7 +67,7 @@ flowchart TB
 ### Output
 | Artifact | Format | Description |
 |----------|--------|-------------|
-| Approved Asset | S3 AP PutObject → FSx ONTAP | 品質合格アセットの書き戻し |
+| Approved Asset | S3 AP PutObject → FSx for ONTAP | 品質合格アセットの書き戻し |
 | QC Report | `qc-results/YYYY/MM/DD/{shot}_{version}.json` | 品質チェック結果 |
 | SNS Notification | Email / Slack | 不合格時の再レンダリング通知 |
 

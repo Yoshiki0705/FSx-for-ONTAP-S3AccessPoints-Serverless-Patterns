@@ -4,7 +4,7 @@
 
 ## 개요
 
-자동차 CAE(Computer-Aided Engineering) 시뮬레이션 결과의 자동 분석 파이프라인입니다. FSx ONTAP에서 S3 Access Points를 통해 솔버 출력(LS-DYNA, STAR-CCM+, Nastran 등)을 읽고 품질 검사, 통계 집계, 보고서 생성을 자동화합니다.
+자동차 CAE(Computer-Aided Engineering) 시뮬레이션 결과의 자동 분석 파이프라인입니다. FSx for ONTAP에서 S3 Access Points를 통해 솔버 출력(LS-DYNA, STAR-CCM+, Nastran 등)을 읽고 품질 검사, 통계 집계, 보고서 생성을 자동화합니다.
 
 ## 해결하는 문제
 

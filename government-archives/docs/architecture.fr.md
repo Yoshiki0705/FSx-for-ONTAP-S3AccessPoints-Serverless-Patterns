@@ -12,7 +12,7 @@ Pipeline serverless automatisant l'OCR, la classification, la détection de PII,
 
 ```mermaid
 graph LR
-    FSx[FSx ONTAP<br/>Stockage documents publics<br/>ACL NTFS par département] --> S3AP[S3 Access Point]
+    FSx[FSx for ONTAP<br/>Stockage documents publics<br/>ACL NTFS par département] --> S3AP[S3 Access Point]
     S3AP --> EB[EventBridge Scheduler]
     EB --> SFN[Step Functions<br/>Archive Workflow]
     SFN --> L1[Discovery]
@@ -72,7 +72,7 @@ Implémentation dans `GRS_RETENTION_MAP` de `compliance_check/handler.py` :
 ## Conformité réglementaire du secteur public
 
 ### NARA Electronic Records Management (ERM)
-- Conformité WORM possible avec FSx ONTAP Snapshot + Backup
+- Conformité WORM possible avec FSx for ONTAP Snapshot + Backup
 - Piste CloudTrail pour tous les traitements
 - Point-in-Time Recovery DynamoDB activé
 

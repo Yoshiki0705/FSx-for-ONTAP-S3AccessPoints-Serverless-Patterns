@@ -81,7 +81,7 @@ SageMaker Endpoint deshabilitado por defecto (`EnableSageMaker=false`). Habilita
 
 ### FedRAMP
 - AWS GovCloud (US) cumple con FedRAMP High
-- FSx ONTAP, S3 Access Points, Lambda, Step Functions todos cubiertos
+- FSx for ONTAP, S3 Access Points, Lambda, Step Functions todos cubiertos
 
 ### Soberanía de datos
 - Datos completos dentro de la región (ap-northeast-1 / us-gov-west-1)

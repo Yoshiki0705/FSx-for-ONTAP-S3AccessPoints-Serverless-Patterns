@@ -5,7 +5,7 @@
 ## 概述
 利用 Amazon FSx for ONTAP 的 S3 Access Points，建立一個無伺服器工作流程，自動提交 VFX 渲染任務、進行質量檢查，並寫回已獲批准的輸出。
 ### 適用這種模式的情況
-- 使用 FSx ONTAP 作為 VFX / 動畫製作的渲染儲存
+- 使用 FSx for ONTAP 作為 VFX / 動畫製作的渲染儲存
 - 自動化渲染完成後的品質檢查，減輕手動審查的負擔
 - 將通過品質合格的資產自動寫回檔案伺服器（S3 AP PutObject）
 - 希望建立一個將 Deadline Cloud 與現有 NAS 儲存整合的管線
@@ -18,7 +18,7 @@
 - 透過 S3 AP 自動檢測渲染目標資產
 - 自動將渲染工作提交至 AWS Deadline Cloud
 - 使用 Amazon Rekognition 進行品質評估（解析度、人為干擾、顏色一致性）
-- 如果品質通過，透過 S3 AP 將物件放入 FSx ONTAP；如果不通過，則通知 SNS
+- 如果品質通過，透過 S3 AP 將物件放入 FSx for ONTAP；如果不通過，則通知 SNS
 ## 架構
 
 ```mermaid
@@ -57,7 +57,7 @@ graph LR
 ### 1. 準備參數
 部署前請確認以下值：
 
-- FSx ONTAP S3 Access Point 別名
+- FSx for ONTAP S3 Access Point 別名
 - ONTAP 管理 IP 地址
 - Secrets Manager 秘密名稱
 - AWS Deadline 雲端農場 ID / 佇列 ID
@@ -95,9 +95,9 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -155,7 +155,7 @@ UC4 使用以下服務：
 ## 參考連結
 
 ### AWS 官方文件
-- [FSx ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 存取點概覽](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [使用 CloudFront 進行串流（官方教學課程）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html)
 - [使用 Lambda 進行無伺服器處理（官方教學課程）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Deadline Cloud API 參考](https://docs.aws.amazon.com/deadline-cloud/latest/APIReference/Welcome.html)
@@ -172,7 +172,7 @@ UC4 使用以下服務：
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

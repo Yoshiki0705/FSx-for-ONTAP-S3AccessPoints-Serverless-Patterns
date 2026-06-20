@@ -1,4 +1,4 @@
-# Comparativa de integración CDN / edge — Distribución desde FSx ONTAP S3 Access Points
+# Comparativa de integración CDN / edge — Distribución desde FSx for ONTAP S3 Access Points
 
 🌐 **Language / 言語**: [日本語](cdn-comparison.md) | [English](cdn-comparison.en.md) | [한국어](cdn-comparison.ko.md) | [简体中文](cdn-comparison.zh-CN.md) | [繁體中文](cdn-comparison.zh-TW.md) | [Français](cdn-comparison.fr.md) | [Deutsch](cdn-comparison.de.md) | [Español](cdn-comparison.es.md)
 
@@ -7,7 +7,7 @@
 Referencia de viabilidad técnica para distribuir datos en los FSx for ONTAP S3 Access Points (S3 AP) a
 través de una red CDN/edge. Este documento **no** clasifica proveedores, no compara precio/rendimiento ni
 hace afirmaciones de marketing. Solo aborda **qué es técnicamente alcanzable, qué no lo es y qué requiere
-verificación** frente a las restricciones del S3 AP de FSx ONTAP. La selección del proveedor depende de
+verificación** frente a las restricciones del S3 AP de FSx for ONTAP. La selección del proveedor depende de
 factores fuera de este alcance (contratos, SLA, operación, requisitos regionales) y es responsabilidad del cliente.
 
 ## 1. Restricciones del S3 AP que determinan el diseño de distribución
@@ -61,7 +61,7 @@ factores fuera de este alcance (contratos, SLA, operación, requisitos regionale
 
 > Las fuentes son docs públicas de proveedores (CloudFront OAC, Akamai Cloud Access Manager, orígenes
 > privados S3-compatibles de Fastly, Cloudflare Workers/R2, Bunny Storage, Google Media CDN). Todas describen
-> **buckets S3-compatibles estándar**; el comportamiento en el accesspoint alias del S3 AP de FSx ONTAP es TBV.
+> **buckets S3-compatibles estándar**; el comportamiento en el accesspoint alias del S3 AP de FSx for ONTAP es TBV.
 
 ## 4. Requisitos de seguridad fijos (independientes del mecanismo)
 
@@ -83,7 +83,7 @@ factores fuera de este alcance (contratos, SLA, operación, requisitos regionale
 - **Evidencia pública**: capacidades de proveedores de la sección 3 — basadas en docs públicas,
   **dependientes del momento**, reverificar antes de adoptar.
 - **Por verificar (este proyecto)**: comportamiento de la firma de origen SigV4 frente al accesspoint alias
-  del S3 AP de FSx ONTAP.
+  del S3 AP de FSx for ONTAP.
 
 ## 5. Resumen de viabilidad
 

@@ -86,7 +86,7 @@ AWS Step Functions를 사용하여 `drc_check.py` 스크립트를 실행할 때 
 AWS Lambda 함수 `drc_check_lambda`를 호출하여 DRC 검사를 수행합니다. AWS CloudFormation 스택을 사용하여 필요한 AWS 리소스를 프로비저닝합니다. Amazon FSx for ONTAP 파일 시스템을 마운트하여 GDSII 파일을 제공합니다. Amazon CloudWatch를 사용하여 프로세스를 모니터링하고 경보를 설정합니다.
 다음 값을 배포 전에 확인하세요:
 
-- FSx ONTAP S3 Access Point Alias
+- FSx for ONTAP S3 Access Point Alias
 - ONTAP 관리 IP 주소
 - Secrets Manager 시크릿 이름
 - VPC ID, 프라이빗 서브넷 ID
@@ -128,9 +128,9 @@ Amazon Bedrock을 사용하여 통합 설계 환경을 구축하고 AWS Step Fun
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -261,7 +261,7 @@ AWS Bedrock, AWS 단계 기능, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx
 `GDSII`, `DRC`, `OASIS`, `GDS`, `Lambda`, `tapeout` 등의 기술 용어는 번역되지 않습니다.
 
 파일 경로와 URL 또한 번역되지 않습니다.
-- [FSx ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [AWS Lambda를 사용한 서버리스 처리(공식 튜토리얼)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Amazon Textract API 참조](https://docs.aws.amazon.com/textract/latest/dg/API_Reference.html)
 - [Amazon Comprehend DetectEntities API](https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html)
@@ -294,7 +294,7 @@ Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

@@ -302,7 +302,7 @@ aws ecr delete-repository \
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P6 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P6 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

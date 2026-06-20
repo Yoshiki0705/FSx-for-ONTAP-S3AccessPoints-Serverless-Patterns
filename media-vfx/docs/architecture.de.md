@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph OUTPUT_PASS["✅ Ausgabe — Bestanden"]
-        PUTBACK["S3 AP PutObject<br/>Zurückschreiben nach FSx ONTAP"]
+        PUTBACK["S3 AP PutObject<br/>Zurückschreiben nach FSx for ONTAP"]
     end
 
     subgraph OUTPUT_FAIL["❌ Ausgabe — Nicht bestanden"]
@@ -67,7 +67,7 @@ flowchart TB
 ### Ausgabe
 | Artefakt | Format | Beschreibung |
 |----------|--------|--------------|
-| Genehmigtes Asset | S3 AP PutObject → FSx ONTAP | Qualitätsgenehmigte Assets zurückschreiben |
+| Genehmigtes Asset | S3 AP PutObject → FSx for ONTAP | Qualitätsgenehmigte Assets zurückschreiben |
 | QC-Bericht | `qc-results/YYYY/MM/DD/{shot}_{version}.json` | Qualitätsprüfungsergebnisse |
 | SNS-Benachrichtigung | Email / Slack | Re-Rendering-Benachrichtigung bei Nichtbestehen |
 

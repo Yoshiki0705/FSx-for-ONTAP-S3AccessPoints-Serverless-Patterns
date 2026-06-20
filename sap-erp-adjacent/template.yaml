@@ -13,7 +13,7 @@ Metadata:
   AWS::ServerlessRepo::Application:
     Name: fsxn-s3ap-sap-erp-adjacent
     Description: SAP/ERP adjacent file workflow using FSx for ONTAP S3 Access Points
-    Author: FSxN S3AP Serverless Patterns
+    Author: FSx for ONTAP S3 AP Serverless Patterns
     Labels: ['fsxn', 's3ap', 'sap', 'erp', 'idoc', 'hulft']
 
 Parameters:
@@ -28,7 +28,7 @@ Parameters:
     Default: "false"
     AllowedValues: ["true", "false"]
     Description: >
-      Enable demo mode (no FSx ONTAP required).
+      Enable demo mode (no FSx for ONTAP required).
       When true, S3AccessPointAlias accepts a regular S3 bucket name,
       and OntapSecretArn is not required.
 

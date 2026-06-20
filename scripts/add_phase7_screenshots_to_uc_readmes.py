@@ -36,7 +36,7 @@ UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
         "en": [
             ("### Verified UI/UX Screenshots", "", ""),
             (
-                "#### 1. Satellite Imagery Placement (via S3 AP on FSx ONTAP)",
+                "#### 1. Satellite Imagery Placement (via S3 AP on FSx for ONTAP)",
                 "UC15: Satellite imagery placement",
                 "phase7-uc15-s3-satellite-uploaded.png",
             ),
@@ -51,7 +51,7 @@ UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
         "ko": [
             ("### 검증된 UI/UX 스크린샷", "", ""),
             (
-                "#### 1. 위성 이미지 배치 (FSx ONTAP 의 S3 AP 경유)",
+                "#### 1. 위성 이미지 배치 (FSx for ONTAP 의 S3 AP 경유)",
                 "UC15: 위성 이미지 배치",
                 "phase7-uc15-s3-satellite-uploaded.png",
             ),
@@ -62,7 +62,7 @@ UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
         "zh-CN": [
             ("### 已验证的 UI/UX 截图", "", ""),
             (
-                "#### 1. 卫星图像放置（通过 FSx ONTAP 的 S3 AP）",
+                "#### 1. 卫星图像放置（通过 FSx for ONTAP 的 S3 AP）",
                 "UC15: 卫星图像放置",
                 "phase7-uc15-s3-satellite-uploaded.png",
             ),
@@ -73,7 +73,7 @@ UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
         "zh-TW": [
             ("### 已驗證的 UI/UX 螢幕截圖", "", ""),
             (
-                "#### 1. 衛星影像放置（透過 FSx ONTAP 的 S3 AP）",
+                "#### 1. 衛星影像放置（透過 FSx for ONTAP 的 S3 AP）",
                 "UC15: 衛星影像放置",
                 "phase7-uc15-s3-satellite-uploaded.png",
             ),
@@ -84,7 +84,7 @@ UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
         "fr": [
             ("### Captures d'écran UI/UX vérifiées", "", ""),
             (
-                "#### 1. Placement d'imagerie satellite (via S3 AP sur FSx ONTAP)",
+                "#### 1. Placement d'imagerie satellite (via S3 AP sur FSx for ONTAP)",
                 "UC15: Placement d'imagerie satellite",
                 "phase7-uc15-s3-satellite-uploaded.png",
             ),
@@ -103,7 +103,7 @@ UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
         "de": [
             ("### Verifizierte UI/UX-Screenshots", "", ""),
             (
-                "#### 1. Satellitenbild-Platzierung (über S3 AP auf FSx ONTAP)",
+                "#### 1. Satellitenbild-Platzierung (über S3 AP auf FSx for ONTAP)",
                 "UC15: Satellitenbild-Platzierung",
                 "phase7-uc15-s3-satellite-uploaded.png",
             ),
@@ -122,7 +122,7 @@ UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
         "es": [
             ("### Capturas de pantalla UI/UX verificadas", "", ""),
             (
-                "#### 1. Colocación de imágenes satelitales (vía S3 AP en FSx ONTAP)",
+                "#### 1. Colocación de imágenes satelitales (vía S3 AP en FSx for ONTAP)",
                 "UC15: Colocación de imágenes satelitales",
                 "phase7-uc15-s3-satellite-uploaded.png",
             ),

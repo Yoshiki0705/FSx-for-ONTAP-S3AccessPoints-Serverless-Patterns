@@ -218,7 +218,7 @@ def handler(event, context):
         detection_count,
     )
 
-    # 結果を出力先（標準 S3 または FSxN S3AP）に書き出し
+    # 結果を出力先（標準 S3 または FSx for ONTAP S3 AP）に書き出し
     result_key = tile_key.replace(".tif", "_detections.json").replace("tiles/", "detections/")
     output_writer.put_json(
         key=result_key,

@@ -9,8 +9,8 @@
 #
 # Environment Variables:
 #   DEPLOY_BUCKET          - S3 bucket for Lambda packages and CFn templates
-#   S3_AP_ALIAS            - FSxN S3 Access Point alias
-#   S3_AP_NAME             - FSxN S3 Access Point name (for IAM dual-format)
+#   S3_AP_ALIAS            - FSx for ONTAP S3 Access Point alias
+#   S3_AP_NAME             - FSx for ONTAP S3 Access Point name (for IAM dual-format)
 #   VPC_ID                 - VPC ID for Lambda functions
 #   SUBNETS                - Comma-separated private subnet IDs
 #   NOTIFICATION_EMAIL     - Email for SNS notifications

@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
   Event-Driven Prototype: S3 Event Notifications → EventBridge → Step Functions
-  FSx ONTAP S3 AP ネイティブ通知の将来対応を見据えた、
+  FSx for ONTAP S3 AP ネイティブ通知の将来対応を見据えた、
   イベント駆動ファイル処理パイプラインのプロトタイプ実装。
   通常の S3 バケットを使用して将来の動作をシミュレートする。
 
@@ -93,7 +93,7 @@ Resources:
 
   # -----------------------------------------------------------------
   # S3 Source Bucket (Event Notifications 有効)
-  # FSx ONTAP S3 AP ネイティブ通知をシミュレート
+  # FSx for ONTAP S3 AP ネイティブ通知をシミュレート
   # -----------------------------------------------------------------
   SourceBucket:
     Type: AWS::S3::Bucket
@@ -518,7 +518,7 @@ Resources:
 # =====================================================================
 Outputs:
   SourceBucketName:
-    Description: S3 Source Bucket Name (simulates FSx ONTAP S3 AP)
+    Description: S3 Source Bucket Name (simulates FSx for ONTAP S3 AP)
     Value: !Ref SourceBucket
 
   SourceBucketArn:

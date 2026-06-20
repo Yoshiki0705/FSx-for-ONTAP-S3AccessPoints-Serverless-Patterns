@@ -167,7 +167,7 @@ UC3 manufacturing-analytics ist als **Pattern A: Native S3AP Output** klassifizi
 (siehe `docs/output-destination-patterns.md`).
 
 **Design**: Sensordatenanalyseergebnisse, Anomalieerkennungsberichte und Bildprüfungsergebnisse werden alle über FSx for ONTAP S3 Access Point
-in **dasselbe FSx ONTAP Volume** wie die ursprünglichen Sensor-CSV- und Prüfungsbilder zurückgeschrieben. Standard-S3-Buckets werden
+in **dasselbe FSx for ONTAP Volume** wie die ursprünglichen Sensor-CSV- und Prüfungsbilder zurückgeschrieben. Standard-S3-Buckets werden
 nicht erstellt („no data movement"-Muster).
 
 **CloudFormation-Parameter**:

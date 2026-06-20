@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TB
     subgraph INPUT["📥 Input — FSx for ONTAP"]
-        DATA["Business Data<br/>Files on FSx ONTAP Volume"]
+        DATA["Business Data<br/>Files on FSx for ONTAP Volume"]
     end
     subgraph S3AP["🔗 S3 Access Point"]
         ALIAS["S3 AP Alias<br/>ListObjectsV2 / GetObject"]

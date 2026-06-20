@@ -29,7 +29,7 @@
 
 ```
 予約文書 / 施設画像  →  自動検出  →  データ抽出 / 状態分析  →  レポート生成
- (FSx ONTAP)           S3 AP      Textract / Rekognition    S3 + SNS
+ (FSx for ONTAP)           S3 AP      Textract / Rekognition    S3 + SNS
 ```
 
 ---
@@ -54,7 +54,7 @@ cd fsxn-s3ap-serverless-patterns/travel-document-processing
 
 ### Step 3: テスト用サンプルデータの配置
 
-FSx ONTAP ボリューム上に以下の構造でサンプルデータを配置:
+FSx for ONTAP ボリューム上に以下の構造でサンプルデータを配置:
 
 ```
 /reservations/
@@ -71,8 +71,8 @@ FSx ONTAP ボリューム上に以下の構造でサンプルデータを配置:
 **NFS マウントとファイル配置例:**
 
 ```bash
-# FSx ONTAP NFS マウント
-sudo mount -t nfs <FSxN-DATA-LIF-IP>:/vol1 /mnt/fsxn
+# FSx for ONTAP NFS マウント
+sudo mount -t nfs <FSx-ONTAP-DATA-LIF-IP>:/vol1 /mnt/fsxn
 
 # サンプルデータ配置
 cp -r sample-data/* /mnt/fsxn/<prefix>/

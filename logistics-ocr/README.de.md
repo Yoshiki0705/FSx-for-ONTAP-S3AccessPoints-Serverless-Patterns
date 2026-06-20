@@ -5,7 +5,7 @@
 ## Übersicht
 Dies ist ein serverloser Workflow, der S3 Access Points für Amazon FSx for ONTAP nutzt, um die OCR-Textextraktion von Lieferscheinen, Objekterkennung und Zählung von Lagerbestandsbildern sowie die Erstellung von Berichten zur Optimierung von Lieferrouten zu automatisieren.
 ### Fälle, in denen dieses Muster geeignet ist
-- Lieferscheinbilder und Lagerbestandsbilder werden in FSx ONTAP gespeichert.
+- Lieferscheinbilder und Lagerbestandsbilder werden in FSx for ONTAP gespeichert.
 - Die OCR (Absender, Empfänger, Tracking-Nummer, Artikel) für Lieferscheine mittels Textract soll automatisiert werden.
 - Es ist eine Normalisierung der extrahierten Felder und die Generierung strukturierter Versanddaten mittels Bedrock erforderlich.
 - Die Objekterkennung und Zählung (Paletten, Kisten, Regalauslastung) von Lagerbestandsbildern mittels Rekognition soll durchgeführt werden.
@@ -90,7 +90,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -128,7 +128,7 @@ UC12 verwendet die folgenden Dienste:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Rufen Sie die Textract API über den Cross-Region Client auf. Überprüfen Sie die Datenresidenzanforderungen. Weitere Informationen finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
 ## Referenzlinks
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract Dokumentation](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Rekognition Labelerkennung](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon Bedrock API Referenz](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

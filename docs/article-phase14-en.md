@@ -35,7 +35,7 @@ Partners and SIs told us the existing 7-step delivery checklist was comprehensiv
 | Section | Content |
 |---------|---------|
 | **What** | 28 UCs + 6 FC patterns, CloudFormation templates, 4-level maturity model |
-| **When** | Customer has FSx ONTAP + needs serverless file processing + permission-aware access |
+| **When** | Customer has FSx for ONTAP + needs serverless file processing + permission-aware access |
 | **How** | Identify UC → Deploy template → Measure baseline → Evaluate Go/No-Go |
 | **Where** | Links to Success Metrics, Governance, Production Readiness, Benchmarks |
 
@@ -58,7 +58,7 @@ Each FlexCache/FlexClone pattern now has a **recommended first conversation ques
 
 ## 2. Presigned URLs: "Not Supported" but Working
 
-> ⚠️ **Production Warning**: AWS Support explicitly states that operations marked "Not supported" should NOT be relied upon for production workloads, even when they return success today. The behavior may change without deprecation notice, return inconsistent results across regions, or stop working after service updates. **Design alternatives for any workflow that requires presigned URL access to FSx ONTAP S3 Access Points.**
+> ⚠️ **Production Warning**: AWS Support explicitly states that operations marked "Not supported" should NOT be relied upon for production workloads, even when they return success today. The behavior may change without deprecation notice, return inconsistent results across regions, or stop working after service updates. **Design alternatives for any workflow that requires presigned URL access to FSx for ONTAP S3 Access Points.**
 
 ### The Discovery
 
@@ -171,7 +171,7 @@ This is now tracked as an AWS Support case. Key takeaways:
 
 > **Plan throughput capacity changes during maintenance windows. S3 AP workloads may be disrupted for an extended period.**
 
-> Unlike standard S3 buckets, FSx ONTAP S3 AP availability can be affected by FSx file system operational changes such as throughput capacity updates.
+> Unlike standard S3 buckets, FSx for ONTAP S3 AP availability can be affected by FSx file system operational changes such as throughput capacity updates.
 
 **Important context**: AWS documentation states that NFS/SMB access typically remains available during throughput capacity changes. The S3 AP disruption we observed appears to be specific to the S3 Access Point data plane — not the file system's NFS/SMB data LIFs. This distinction matters for environments that use both protocols.
 
@@ -228,7 +228,7 @@ S3 AP ServiceUnavailable was resolved on 2026-05-25. We immediately executed the
 | Parameter | Value |
 |-----------|-------|
 | Region | ap-northeast-1 (Tokyo) |
-| FSx ONTAP | Single-AZ, First-generation |
+| FSx for ONTAP | Single-AZ, First-generation |
 | S3 AP | NetworkOrigin=Internet |
 | Client | macOS, boto3, Python 3.9 (public Internet) |
 | Object sizes | 1 KB, 100 KB, 1 MB |
@@ -299,7 +299,7 @@ We deployed a benchmark Lambda (1769 MB, ARM64, **no VpcConfig**) to measure Get
 1. **P50 dramatically improved at concurrency > 1**: Lambda egress eliminates public Internet TCP connection overhead
 2. **P99 remains high (~1s)**: Even from Lambda, concurrency=20 shows P99 of 1,318 ms — this is the S3 AP data plane's internal queuing
 3. **concurrency=50 P50 is only 128 ms**: Lambda threads are efficient against S3 AP
-4. **The bottleneck is the FSx ONTAP S3 AP data plane**, not Lambda network bandwidth
+4. **The bottleneck is the FSx for ONTAP S3 AP data plane**, not Lambda network bandwidth
 
 ### Production Sizing (Lambda)
 
@@ -401,9 +401,9 @@ When S3 AP becomes unavailable (e.g., during throughput capacity changes):
 - **Operations teams** learn that throughput capacity changes can disrupt S3 AP access
 - **Architects** get standardized benchmark methodology with hypothesis-driven testing
 - **Developers** get Presigned URL clarification — works but don't depend on it
-- **Standard S3 bucket users** learn where FSx ONTAP S3 AP differs from S3 bucket semantics, especially presigned URLs, availability, and operational dependencies
-- **Serverless-first teams** learn where the serverless processing plane ends and FSx ONTAP operational considerations begin
-- **Community members** get detailed answers to common FSx ONTAP questions on re:Post
+- **Standard S3 bucket users** learn where FSx for ONTAP S3 AP differs from S3 bucket semantics, especially presigned URLs, availability, and operational dependencies
+- **Serverless-first teams** learn where the serverless processing plane ends and FSx for ONTAP operational considerations begin
+- **Community members** get detailed answers to common FSx for ONTAP questions on re:Post
 
 ---
 
@@ -411,11 +411,11 @@ When S3 AP becomes unavailable (e.g., during throughput capacity changes):
 
 Phase 14 delivers immediately usable assets:
 
-1. **Use the [Partner/SI one-pager](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/partner-si-one-pager.en.md)** for your next customer conversation about FSx ONTAP + serverless
+1. **Use the [Partner/SI one-pager](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/partner-si-one-pager.en.md)** for your next customer conversation about FSx for ONTAP + serverless
 2. **Check the [S3AP Compatibility Notes](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/s3ap-compatibility-notes.md)** for the latest Presigned URL and troubleshooting guidance
 3. **Plan throughput changes carefully** — add S3 AP health checks to your maintenance runbook
 4. **Use the Sizing Guidance tables** (Sections 7-8) to set MaxConcurrency for your workload
-5. **Review the [S3 Bucket User Guide](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/s3-bucket-user-guide.md)** before porting existing S3 applications to FSx ONTAP S3 AP
+5. **Review the [S3 Bucket User Guide](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/s3-bucket-user-guide.md)** before porting existing S3 applications to FSx for ONTAP S3 AP
 6. **Review the [ONTAP Integration Notes](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/ontap-integration-notes.md)** before attaching S3 AP workflows to production SVMs and volumes
 7. **Ask questions on [re:Post](https://repost.aws/tags/TAibLc_0diRMaBeYxIBdlP2g/amazon-fsx-for-netapp-ontap)** — the FSx for ONTAP community is growing
 

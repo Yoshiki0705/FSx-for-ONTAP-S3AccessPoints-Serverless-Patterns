@@ -16,7 +16,7 @@ Cette démonstration montre comment les opérations de création de fichiers via
 |---------|----------|
 | FSx for ONTAP | ONTAP 9.17.1 ou supérieur, FPolicy pris en charge |
 | VPC | Sous-réseau privé dans le même VPC que FSx for ONTAP |
-| Montage NFS | Montage NFS du client vers le volume FSxN effectué |
+| Montage NFS | Montage NFS du client vers le volume FSx for ONTAP effectué |
 | AWS CLI | v2 ou supérieur, permissions IAM appropriées |
 | Docker | Pour la construction d'images de conteneurs |
 | ECR | Dépôt créé |

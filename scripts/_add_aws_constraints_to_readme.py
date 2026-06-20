@@ -35,8 +35,8 @@ aws cloudformation deploy \\
     OutputS3APPrefix=ai-outputs/ \\
     ... (other required parameters)
 ```""",
-        "constraints_title": "FSxN S3 Access Points AWS Specification Constraints",
-        "constraints_intro": """FSxN S3 Access Points support only a subset of the S3 API (see
+        "constraints_title": "FSx for ONTAP S3 Access Points AWS Specification Constraints",
+        "constraints_intro": """FSx for ONTAP S3 Access Points support only a subset of the S3 API (see
 [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)).
 The following constraints force some features to use standard S3 buckets:""",
         "constraints_table_header": "| AWS Specification Constraint | Impact | Project Workaround | Feature Request (FR) |\n|---|---|---|---|",
@@ -56,10 +56,10 @@ The 3 output patterns (Pattern A/B/C) are compared in
         "per_uc_title": "Per-UC Output Destination Constraints",
         "per_uc_intro": """The 17 UCs fall into three output patterns:
 
-- **🟢 UC1-5**: existing `S3AccessPointOutputAlias` parameter supports FSxN S3AP output (designed this way from day 1)
+- **🟢 UC1-5**: existing `S3AccessPointOutputAlias` parameter supports FSx for ONTAP S3 AP output (designed this way from day 1)
 - **🟢🆕 UC9/10/11/12/14**: `OutputDestination` switch (STANDARD_S3 ⇄ FSXN_S3AP), implemented 2026-05-10. UC11/14 verified on AWS, UC9/10/12 unit-tested only
 - **🟡 UC6/7/8/13**: currently `OUTPUT_BUCKET` only (standard S3 fixed). Athena results require standard S3 per AWS spec, so `OutputDestination` adoption is partial
-- **🟢 UC15-17**: Pattern A (write back to FSxN S3AP, part of Phase 7)""",
+- **🟢 UC15-17**: Pattern A (write back to FSx for ONTAP S3 AP, part of Phase 7)""",
         "per_uc_table_header": "| UC | Input | Output | Selection Mechanism | Notes |\n|----|------|------|----------|------|",
         "per_uc_rows": [
             "| UC1 legal-compliance | S3AP | S3AP (existing) | `S3AccessPointOutputAlias` parameter | Contract metadata / audit logs |",
@@ -109,8 +109,8 @@ aws cloudformation deploy \\
     OutputS3APPrefix=ai-outputs/ \\
     ... (기타 필수 파라미터)
 ```""",
-        "constraints_title": "FSxN S3 Access Points의 AWS 사양 제약",
-        "constraints_intro": """FSxN S3 Access Points는 S3 API의 일부만 지원합니다
+        "constraints_title": "FSx for ONTAP S3 Access Points의 AWS 사양 제약",
+        "constraints_intro": """FSx for ONTAP S3 Access Points는 S3 API의 일부만 지원합니다
 ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) 참조).
 다음 제약 사항으로 인해 일부 기능은 표준 S3 버킷을 사용해야 합니다:""",
         "constraints_table_header": "| AWS 사양 제약 | 영향 | 프로젝트 해결 방법 | 기능 개선 요청 (FR) |\n|---|---|---|---|",
@@ -131,10 +131,10 @@ aws cloudformation deploy \\
         "per_uc_title": "UC별 출력 대상 제약",
         "per_uc_intro": """17개 UC는 3가지 출력 패턴으로 분류됩니다:
 
-- **🟢 UC1-5**: 기존 `S3AccessPointOutputAlias` 파라미터로 FSxN S3AP 출력 지원 (처음부터 이렇게 설계됨)
+- **🟢 UC1-5**: 기존 `S3AccessPointOutputAlias` 파라미터로 FSx for ONTAP S3 AP 출력 지원 (처음부터 이렇게 설계됨)
 - **🟢🆕 UC9/10/11/12/14**: `OutputDestination` 전환 메커니즘 (STANDARD_S3 ⇄ FSXN_S3AP), 2026-05-10 구현. UC11/14는 AWS 실증, UC9/10/12는 단위 테스트만 완료
 - **🟡 UC6/7/8/13**: 현재는 `OUTPUT_BUCKET`만 (표준 S3 고정). Athena 결과는 AWS 사양상 표준 S3 필수이므로 `OutputDestination` 적용은 부분적
-- **🟢 UC15-17**: Pattern A (FSxN S3AP로 write back, Phase 7의 일부)""",
+- **🟢 UC15-17**: Pattern A (FSx for ONTAP S3 AP로 write back, Phase 7의 일부)""",
         "per_uc_table_header": "| UC | 입력 | 출력 | 선택 메커니즘 | 비고 |\n|----|------|------|----------|------|",
         "per_uc_rows": [
             "| UC1 legal-compliance | S3AP | S3AP (기존) | `S3AccessPointOutputAlias` 파라미터 | 계약 메타데이터 / 감사 로그 |",
@@ -184,8 +184,8 @@ aws cloudformation deploy \\
     OutputS3APPrefix=ai-outputs/ \\
     ... (其他必需参数)
 ```""",
-        "constraints_title": "FSxN S3 Access Points 的 AWS 规格约束",
-        "constraints_intro": """FSxN S3 Access Points 仅支持 S3 API 的一部分
+        "constraints_title": "FSx for ONTAP S3 Access Points 的 AWS 规格约束",
+        "constraints_intro": """FSx for ONTAP S3 Access Points 仅支持 S3 API 的一部分
 (参见 [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html))。
 由于以下约束,某些功能需要使用标准 S3 存储桶:""",
         "constraints_table_header": "| AWS 规格约束 | 影响 | 项目解决方案 | 功能改进请求 (FR) |\n|---|---|---|---|",
@@ -206,10 +206,10 @@ aws cloudformation deploy \\
         "per_uc_title": "每个 UC 的输出目标约束",
         "per_uc_intro": """17 个 UC 分为 3 种输出模式:
 
-- **🟢 UC1-5**: 现有的 `S3AccessPointOutputAlias` 参数支持 FSxN S3AP 输出 (从一开始就这样设计)
+- **🟢 UC1-5**: 现有的 `S3AccessPointOutputAlias` 参数支持 FSx for ONTAP S3 AP 输出 (从一开始就这样设计)
 - **🟢🆕 UC9/10/11/12/14**: `OutputDestination` 切换机制 (STANDARD_S3 ⇄ FSXN_S3AP), 2026-05-10 实现。UC11/14 已在 AWS 上验证, UC9/10/12 仅完成单元测试
 - **🟡 UC6/7/8/13**: 当前仅为 `OUTPUT_BUCKET` (固定为标准 S3)。Athena 结果在规格上需要标准 S3, 因此 `OutputDestination` 应用是部分性的
-- **🟢 UC15-17**: Pattern A (write back 到 FSxN S3AP, Phase 7 的一部分)""",
+- **🟢 UC15-17**: Pattern A (write back 到 FSx for ONTAP S3 AP, Phase 7 的一部分)""",
         "per_uc_table_header": "| UC | 输入 | 输出 | 选择机制 | 备注 |\n|----|------|------|----------|------|",
         "per_uc_rows": [
             "| UC1 legal-compliance | S3AP | S3AP (现有) | `S3AccessPointOutputAlias` 参数 | 合同元数据 / 审计日志 |",
@@ -259,8 +259,8 @@ aws cloudformation deploy \\
     OutputS3APPrefix=ai-outputs/ \\
     ... (其他必要參數)
 ```""",
-        "constraints_title": "FSxN S3 Access Points 的 AWS 規格約束",
-        "constraints_intro": """FSxN S3 Access Points 僅支援 S3 API 的一部分
+        "constraints_title": "FSx for ONTAP S3 Access Points 的 AWS 規格約束",
+        "constraints_intro": """FSx for ONTAP S3 Access Points 僅支援 S3 API 的一部分
 (請參閱 [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html))。
 由於下列約束, 某些功能需要使用標準 S3 儲存貯體:""",
         "constraints_table_header": "| AWS 規格約束 | 影響 | 專案解決方案 | 功能改進需求 (FR) |\n|---|---|---|---|",
@@ -281,10 +281,10 @@ aws cloudformation deploy \\
         "per_uc_title": "每個 UC 的輸出目標約束",
         "per_uc_intro": """17 個 UC 分為 3 種輸出模式:
 
-- **🟢 UC1-5**: 現有的 `S3AccessPointOutputAlias` 參數支援 FSxN S3AP 輸出 (從一開始就這樣設計)
+- **🟢 UC1-5**: 現有的 `S3AccessPointOutputAlias` 參數支援 FSx for ONTAP S3 AP 輸出 (從一開始就這樣設計)
 - **🟢🆕 UC9/10/11/12/14**: `OutputDestination` 切換機制 (STANDARD_S3 ⇄ FSXN_S3AP), 2026-05-10 實作。UC11/14 已在 AWS 上驗證, UC9/10/12 僅完成單元測試
 - **🟡 UC6/7/8/13**: 目前僅為 `OUTPUT_BUCKET` (固定為標準 S3)。Athena 結果在規格上需要標準 S3, 因此 `OutputDestination` 應用是部分性的
-- **🟢 UC15-17**: Pattern A (write back 到 FSxN S3AP, Phase 7 的一部分)""",
+- **🟢 UC15-17**: Pattern A (write back 到 FSx for ONTAP S3 AP, Phase 7 的一部分)""",
         "per_uc_table_header": "| UC | 輸入 | 輸出 | 選擇機制 | 備註 |\n|----|------|------|----------|------|",
         "per_uc_rows": [
             "| UC1 legal-compliance | S3AP | S3AP (現有) | `S3AccessPointOutputAlias` 參數 | 合約中繼資料 / 稽核日誌 |",
@@ -335,8 +335,8 @@ aws cloudformation deploy \\
     OutputS3APPrefix=ai-outputs/ \\
     ... (autres paramètres requis)
 ```""",
-        "constraints_title": "Contraintes de spécification AWS des FSxN S3 Access Points",
-        "constraints_intro": """Les FSxN S3 Access Points ne prennent en charge qu'un sous-ensemble de l'API S3
+        "constraints_title": "Contraintes de spécification AWS des FSx for ONTAP S3 Access Points",
+        "constraints_intro": """Les FSx for ONTAP S3 Access Points ne prennent en charge qu'un sous-ensemble de l'API S3
 (voir [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)).
 Les contraintes suivantes obligent certaines fonctionnalités à utiliser des buckets S3 standard :""",
         "constraints_table_header": "| Contrainte de spécification AWS | Impact | Solution de contournement du projet | Demande d'amélioration (FR) |\n|---|---|---|---|",
@@ -356,10 +356,10 @@ Les 3 patterns de sortie (Pattern A/B/C) sont comparés dans
         "per_uc_title": "Contraintes de destination de sortie par UC",
         "per_uc_intro": """Les 17 UC se répartissent en 3 patterns de sortie :
 
-- **🟢 UC1-5** : le paramètre existant `S3AccessPointOutputAlias` prend en charge la sortie FSxN S3AP (conçu ainsi dès le début)
+- **🟢 UC1-5** : le paramètre existant `S3AccessPointOutputAlias` prend en charge la sortie FSx for ONTAP S3 AP (conçu ainsi dès le début)
 - **🟢🆕 UC9/10/11/12/14** : mécanisme de commutation `OutputDestination` (STANDARD_S3 ⇄ FSXN_S3AP), implémenté le 2026-05-10. UC11/14 vérifiés sur AWS, UC9/10/12 uniquement en tests unitaires
 - **🟡 UC6/7/8/13** : actuellement `OUTPUT_BUCKET` uniquement (S3 standard fixe). Les résultats Athena nécessitent S3 standard par spécification, donc l'adoption de `OutputDestination` est partielle
-- **🟢 UC15-17** : Pattern A (write back vers FSxN S3AP, partie de Phase 7)""",
+- **🟢 UC15-17** : Pattern A (write back vers FSx for ONTAP S3 AP, partie de Phase 7)""",
         "per_uc_table_header": "| UC | Entrée | Sortie | Mécanisme de sélection | Notes |\n|----|------|------|----------|------|",
         "per_uc_rows": [
             "| UC1 legal-compliance | S3AP | S3AP (existant) | paramètre `S3AccessPointOutputAlias` | Métadonnées de contrat / journaux d'audit |",
@@ -410,8 +410,8 @@ aws cloudformation deploy \\
     OutputS3APPrefix=ai-outputs/ \\
     ... (andere erforderliche Parameter)
 ```""",
-        "constraints_title": "AWS-Spezifikationsbeschränkungen der FSxN S3 Access Points",
-        "constraints_intro": """FSxN S3 Access Points unterstützen nur eine Teilmenge der S3-API
+        "constraints_title": "AWS-Spezifikationsbeschränkungen der FSx for ONTAP S3 Access Points",
+        "constraints_intro": """FSx for ONTAP S3 Access Points unterstützen nur eine Teilmenge der S3-API
 (siehe [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)).
 Die folgenden Beschränkungen zwingen einige Funktionen, Standard-S3-Buckets zu verwenden:""",
         "constraints_table_header": "| AWS-Spezifikationsbeschränkung | Auswirkung | Projekt-Workaround | Feature Request (FR) |\n|---|---|---|---|",
@@ -432,10 +432,10 @@ Die 3 Ausgabe-Patterns (Pattern A/B/C) werden in
         "per_uc_title": "Ausgabeziel-Beschränkungen pro UC",
         "per_uc_intro": """Die 17 UCs teilen sich in 3 Ausgabe-Patterns auf:
 
-- **🟢 UC1-5**: Bestehender `S3AccessPointOutputAlias`-Parameter unterstützt FSxN S3AP-Ausgabe (von Anfang an so konzipiert)
+- **🟢 UC1-5**: Bestehender `S3AccessPointOutputAlias`-Parameter unterstützt FSx for ONTAP S3 AP-Ausgabe (von Anfang an so konzipiert)
 - **🟢🆕 UC9/10/11/12/14**: `OutputDestination`-Schaltmechanismus (STANDARD_S3 ⇄ FSXN_S3AP), implementiert am 2026-05-10. UC11/14 auf AWS verifiziert, UC9/10/12 nur Unit-Tests
 - **🟡 UC6/7/8/13**: Derzeit nur `OUTPUT_BUCKET` (Standard-S3 fest). Athena-Ergebnisse erfordern Standard-S3 per Spezifikation, daher ist die `OutputDestination`-Übernahme teilweise
-- **🟢 UC15-17**: Pattern A (write back zu FSxN S3AP, Teil von Phase 7)""",
+- **🟢 UC15-17**: Pattern A (write back zu FSx for ONTAP S3 AP, Teil von Phase 7)""",
         "per_uc_table_header": "| UC | Eingabe | Ausgabe | Auswahlmechanismus | Hinweise |\n|----|------|------|----------|------|",
         "per_uc_rows": [
             "| UC1 legal-compliance | S3AP | S3AP (bestehend) | `S3AccessPointOutputAlias`-Parameter | Vertragsmetadaten / Audit-Logs |",
@@ -485,8 +485,8 @@ aws cloudformation deploy \\
     OutputS3APPrefix=ai-outputs/ \\
     ... (otros parámetros requeridos)
 ```""",
-        "constraints_title": "Restricciones de especificación de AWS de FSxN S3 Access Points",
-        "constraints_intro": """FSxN S3 Access Points solo admiten un subconjunto de la API de S3
+        "constraints_title": "Restricciones de especificación de AWS de FSx for ONTAP S3 Access Points",
+        "constraints_intro": """FSx for ONTAP S3 Access Points solo admiten un subconjunto de la API de S3
 (ver [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)).
 Las siguientes restricciones obligan a algunas funciones a usar buckets S3 estándar:""",
         "constraints_table_header": "| Restricción de especificación AWS | Impacto | Solución alternativa del proyecto | Solicitud de mejora (FR) |\n|---|---|---|---|",
@@ -506,10 +506,10 @@ Los 3 patrones de salida (Pattern A/B/C) se comparan en
         "per_uc_title": "Restricciones de destino de salida por UC",
         "per_uc_intro": """Los 17 UC se dividen en 3 patrones de salida:
 
-- **🟢 UC1-5**: el parámetro existente `S3AccessPointOutputAlias` admite salida FSxN S3AP (diseñado así desde el principio)
+- **🟢 UC1-5**: el parámetro existente `S3AccessPointOutputAlias` admite salida FSx for ONTAP S3 AP (diseñado así desde el principio)
 - **🟢🆕 UC9/10/11/12/14**: mecanismo de conmutación `OutputDestination` (STANDARD_S3 ⇄ FSXN_S3AP), implementado el 2026-05-10. UC11/14 verificados en AWS, UC9/10/12 solo pruebas unitarias
 - **🟡 UC6/7/8/13**: actualmente solo `OUTPUT_BUCKET` (S3 estándar fijo). Los resultados de Athena requieren S3 estándar por especificación, por lo que la adopción de `OutputDestination` es parcial
-- **🟢 UC15-17**: Pattern A (write back a FSxN S3AP, parte de Phase 7)""",
+- **🟢 UC15-17**: Pattern A (write back a FSx for ONTAP S3 AP, parte de Phase 7)""",
         "per_uc_table_header": "| UC | Entrada | Salida | Mecanismo de selección | Notas |\n|----|------|------|----------|------|",
         "per_uc_rows": [
             "| UC1 legal-compliance | S3AP | S3AP (existente) | parámetro `S3AccessPointOutputAlias` | Metadatos de contratos / registros de auditoría |",

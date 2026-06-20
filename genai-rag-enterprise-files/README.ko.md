@@ -31,7 +31,7 @@
 
 ## 보안 설계
 
-- **데이터 이동 없음**: 파일은 FSx ONTAP에 유지, S3 AP를 통한 읽기 전용
+- **데이터 이동 없음**: 파일은 FSx for ONTAP에 유지, S3 AP를 통한 읽기 전용
 - **권한 보존**: ONTAP REST API로 ACL 검색, RAG 응답 시 필터링
 - **암호화**: SSE-FSX(저장), TLS(전송), KMS(출력)
 - **최소 권한**: Lambda에 필요한 S3 AP 작업만 허용

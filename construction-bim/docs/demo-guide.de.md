@@ -182,7 +182,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP („no data movement"-Pattern)
-Schreibt KI-Ergebnisse über FSx for ONTAP S3 Access Point auf **dasselbe FSx ONTAP-Volume** wie die
+Schreibt KI-Ergebnisse über FSx for ONTAP S3 Access Point auf **dasselbe FSx for ONTAP-Volume** wie die
 Originaldaten zurück. SMB/NFS-Benutzer können KI-Ergebnisse direkt in der Verzeichnisstruktur
 ihrer täglichen Arbeit einsehen. Es wird kein Standard-S3-Bucket erstellt.
 

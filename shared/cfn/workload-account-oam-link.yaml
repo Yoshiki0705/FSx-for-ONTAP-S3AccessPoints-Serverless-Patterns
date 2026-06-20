@@ -23,7 +23,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Workload Account OAM Link.
+  FSx for ONTAP S3 AP Serverless Patterns — Workload Account OAM Link.
   共有サービスアカウントの Observability Sink にリンクする。
 
 Parameters:

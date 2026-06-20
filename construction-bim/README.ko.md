@@ -5,7 +5,7 @@
 ## 개요
 FSx for ONTAP의 S3 Access Points를 활용하여 BIM 모델(IFC/Revit)의 버전 관리, 도면 PDF의 OCR 텍스트 추출, 안전 컴플라이언스 체크를 자동화하는 서버리스 워크플로우입니다.
 ### 이 패턴이 적합한 경우
-- BIM 모델(IFC/Revit)과 도면 PDF가 FSx ONTAP에 저장되어 있습니다
+- BIM 모델(IFC/Revit)과 도면 PDF가 FSx for ONTAP에 저장되어 있습니다
 - IFC 파일의 메타데이터(프로젝트 이름, 건축 요소 수, 층 수)를 자동으로 카탈로그화하고 싶습니다
 - BIM 모델 버전 간 차이(요소 추가, 삭제, 변경)를 자동으로 감지하고 싶습니다
 - 도면 PDF에서 Textract를 사용하여 텍스트와 테이블을 추출하고 싶습니다
@@ -87,7 +87,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -125,7 +125,7 @@ UC10은 다음 서비스를 사용합니다:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Cross-Region Client을 통해 Textract API를 호출합니다. 데이터 레지던시 요건을 확인하세요. 자세한 내용은 [리전 호환성 매트릭스](../docs/region-compatibility.md)를 참조하세요.
 ## 참조 링크
-- [FSx ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 액세스 포인트 개요](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract 문서](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [IFC 형식 사양 (buildingSMART)](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/)
 - [Amazon Rekognition 레이블 감지](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

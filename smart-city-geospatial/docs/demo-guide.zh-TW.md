@@ -108,7 +108,7 @@ aws cloudformation deploy \
 ### FSXN_S3AP（"no data movement" 模式）
 將 CRS 正規化中繼資料、土地利用分類結果、基礎設施評估、風險地圖、Bedrock 生成的
 都市規劃報告（Markdown）透過 FSx for ONTAP S3 Access Point 寫回與原始 GIS 資料
-**相同的 FSx ONTAP 磁碟區**。
+**相同的 FSx for ONTAP 磁碟區**。
 都市規劃負責人可以在 SMB/NFS 的現有目錄結構中直接參考 AI 成果。
 不會建立標準 S3 儲存貯體。
 
@@ -160,7 +160,7 @@ aws cloudformation deploy \
 - Bedrock 生成的都市規劃報告（Markdown 預覽）
 - DynamoDB landuse_history 表格（土地利用分類歷史）
 - 風險地圖 JSON 預覽（CRITICAL/HIGH/MEDIUM/LOW 分類）
-- FSx ONTAP 磁碟區上的 AI 成果（FSXN_S3AP 模式時 — 可透過 SMB/NFS 檢視的 Markdown 報告）
+- FSx for ONTAP 磁碟區上的 AI 成果（FSXN_S3AP 模式時 — 可透過 SMB/NFS 檢視的 Markdown 報告）
 
 ### 拍攝指南
 

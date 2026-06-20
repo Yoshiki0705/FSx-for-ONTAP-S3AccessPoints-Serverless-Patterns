@@ -167,7 +167,7 @@ UC2 financial-idp está clasificado como **Pattern A: Native S3AP Output**
 (consulte `docs/output-destination-patterns.md`).
 
 **Diseño**: Los resultados de OCR de facturas, metadatos estructurados y resúmenes de BedRock se escriben todos a través del FSx for ONTAP S3 Access Point
-en el **mismo volumen FSx ONTAP** que los PDF de facturas originales. No se
+en el **mismo volumen FSx for ONTAP** que los PDF de facturas originales. No se
 crean buckets S3 estándar (patrón "no data movement").
 
 **Parámetros de CloudFormation**:

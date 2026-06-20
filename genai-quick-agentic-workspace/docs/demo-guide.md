@@ -34,7 +34,7 @@ UC29 と同様、**手動体験（A）→ 自動化（B）** の2シナリオで
 
 | 項目 | 内容 |
 |------|------|
-| Quick ワークスペース領域 | FSx ONTAP に `quick-workspace/` を作成し SMB 公開 |
+| Quick ワークスペース領域 | FSx for ONTAP に `quick-workspace/` を作成し SMB 公開 |
 | フォルダー構成 | `index/<role>/` `analytics/<role>/` `flows/<role>/`（7ロール） |
 | シードデータ | [`sample-data/quick-workspace/`](../sample-data/) をコピー（ロール×サービス） |
 | S3 Access Point | quick-workspace ボリュームに作成（読み取りパス） |

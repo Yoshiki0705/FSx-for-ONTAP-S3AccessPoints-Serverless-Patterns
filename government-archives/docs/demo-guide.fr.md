@@ -128,7 +128,7 @@ aws cloudformation deploy \
 
 ### FSXN_S3AP (pattern "no data movement")
 Écrit le texte OCR, les résultats de classification, les résultats de détection PII, les documents caviardés et les métadonnées de rédaction
-dans le **même volume FSx ONTAP** que les documents originaux, via le FSx for ONTAP S3 Access Point.
+dans le **même volume FSx for ONTAP** que les documents originaux, via le FSx for ONTAP S3 Access Point.
 Les responsables des archives publiques peuvent consulter directement les résultats de l'IA dans la structure de répertoires SMB/NFS existante.
 Aucun bucket S3 standard n'est créé.
 
@@ -190,7 +190,7 @@ etc.) sont consolidées dans `docs/verification-results-*.md`.
 - Table DynamoDB retention (gestion des délais FOIA)
 - Notification e-mail SNS de rappel FOIA
 - Index OpenSearch (résultats IndexGeneration, lorsque OpenSearchMode est activé)
-- Résultats de l'IA sur le volume FSx ONTAP (mode FSXN_S3AP)
+- Résultats de l'IA sur le volume FSx for ONTAP (mode FSXN_S3AP)
 
 ### Guide de capture
 

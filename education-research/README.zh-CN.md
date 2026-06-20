@@ -5,7 +5,7 @@
 ## 概述
 利用 FSx for ONTAP 的 S3 Access Points，实现论文 PDF 的自动分类、引用网络分析和研究数据元数据抽取的无服务器工作流。
 ### 适用场景
-- 论文 PDF 和研究数据大量积累在 FSx ONTAP 上
+- 论文 PDF 和研究数据大量积累在 FSx for ONTAP 上
 - 希望自动化使用 Textract 从论文 PDF 提取文本
 - 需要使用 Comprehend 进行主题检测和实体提取（作者、机构、关键词）
 - 需要分析引用关系并自动构建引用网络（邻接列表）
@@ -97,7 +97,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -135,7 +135,7 @@ UC13 使用以下服务：
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > 通过跨区域客户端调用 Textract API。请确认数据常驻要求。详情请参阅 [区域兼容性矩阵](../docs/region-compatibility.md)。
 ## 参考链接
-- [FSx ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract 文档](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Comprehend 文档](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html)
 - [Amazon Bedrock API 参考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

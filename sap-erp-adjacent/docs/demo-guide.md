@@ -16,7 +16,7 @@ SAP IDoc エクスポートファイルを FSx for ONTAP に配置し、S3 Acces
 
 ### Step 1: テストデータの配置
 
-NFS/SMB 経由で FSx ONTAP ボリュームにサンプルファイルを配置:
+NFS/SMB 経由で FSx for ONTAP ボリュームにサンプルファイルを配置:
 
 ```bash
 # NFS マウント経由

@@ -5,7 +5,7 @@
 ## Überblick
 FSx for ONTAP nutzt S3 Access Points, um serverlose Workflows für Schadenbewertungen anhand von Unfallfotos, OCR-Textextraktion aus Angeboten und automatische Generierung von Versicherungsberichten zu ermöglichen.
 ### Fälle, in denen dieses Muster geeignet ist
-- Unfallfotos und Kostenvoranschläge werden in FSx ONTAP gespeichert
+- Unfallfotos und Kostenvoranschläge werden in FSx for ONTAP gespeichert
 - Die Schadensermittlung von Unfallfotos mittels Rekognition (Fahrzeugschadenslabel, Schweregrad, betroffene Bereiche) soll automatisiert werden
 - OCR von Kostenvoranschlägen mittels Textract (Reparaturpunkte, Kosten, Arbeitszeit, Teile) soll durchgeführt werden
 - Ein umfassender Versicherungsanspruchsbericht, der Foto-basierte Schadensbewertungen und Kostenvoranschlagsdaten korreliert, wird benötigt
@@ -88,7 +88,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -126,7 +126,7 @@ UC14 verwendet die folgenden Dienste:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Rufen Sie die Textract API über den Cross-Region Client auf. Überprüfen Sie die Datenresidenzanforderungen. Weitere Informationen finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
 ## Referenzlinks
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Rekognition Labelerkennung](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 - [Amazon Textract Dokumente](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Bedrock API Referenz](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)

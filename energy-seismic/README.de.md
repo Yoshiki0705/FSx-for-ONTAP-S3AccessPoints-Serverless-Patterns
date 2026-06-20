@@ -5,7 +5,7 @@
 ## Übersicht
 FSx for ONTAP nutzt S3 Access Points für einen serverlosen Workflow, der die Metadatenextraktion von SEG-Y-Seismikdaten, die Anomalieerkennung in Bohrlochlogs und die Generierung von Compliance-Berichten automatisiert.
 ### Fälle, für die dieses Muster geeignet ist
-- SEG-Y-Seismikdaten und Bohrlochlogs sind in großen Mengen auf FSx ONTAP gespeichert
+- SEG-Y-Seismikdaten und Bohrlochlogs sind in großen Mengen auf FSx for ONTAP gespeichert
 - Die Metadaten der Seismikdaten (Survey-Name, Koordinatensystem, Abtastintervall, Anzahl der Traces) sollen automatisch katalogisiert werden
 - Anomalien in den Sensorablesungen der Bohrlöcher sollen automatisch erkannt werden
 - Eine anomale Korrelationsanalyse zwischen Bohrlöchern und Zeitreihen ist mithilfe von Athena SQL erforderlich
@@ -86,7 +86,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -124,7 +124,7 @@ UC8 verwendet die folgenden Dienste:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Details finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
 ## Referenzlinks
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [SEG-Y Formatspezifikation (Rev 2.0)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev2_0-mar2017.pdf)
 - [Amazon Athena Benutzerhandbuch](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Rekognition Labels erkennen](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

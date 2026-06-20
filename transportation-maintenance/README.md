@@ -10,7 +10,7 @@ FSx for ONTAP の S3 Access Points を活用し、鉄道インフラの点検画
 
 ### このパターンが適しているケース
 
-- 鉄道設備の定期点検画像（軌道、橋梁、信号設備）が FSx ONTAP に蓄積されている
+- 鉄道設備の定期点検画像（軌道、橋梁、信号設備）が FSx for ONTAP に蓄積されている
 - 劣化パターン（亀裂、錆、変位）をAIで自動検出し重大度を分類したい
 - 保守報告書（PDF、Excel）から修理履歴とライフサイクルデータを自動抽出したい
 - 安全重要インフラに対して低閾値検出 + 人間レビューフラグが必要
@@ -134,14 +134,36 @@ aws cloudformation deploy \
 ## ⚠️ パフォーマンスに関する注意事項
 
 - FSx for ONTAP のスループットキャパシティは **NFS/SMB/S3 AP 全体で共有**されます。MapConcurrency=10 で並列処理を行う場合、同一ボリュームの他のワークロードに影響する可能性があります。
-- 大量ファイルの一括処理を行う場合は、FSx ONTAP の Throughput Capacity (MBps) を確認し、必要に応じて MapConcurrency を調整してください。
-- 推奨: 本番環境では最初に MapConcurrency=5 で開始し、FSx ONTAP の CloudWatch メトリクス (ThroughputUtilization) を監視しながら段階的に増加させてください。
+- 大量ファイルの一括処理を行う場合は、FSx for ONTAP の Throughput Capacity (MBps) を確認し、必要に応じて MapConcurrency を調整してください。
+- 推奨: 本番環境では最初に MapConcurrency=5 で開始し、FSx for ONTAP の CloudWatch メトリクス (ThroughputUtilization) を監視しながら段階的に増加させてください。
 
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。鉄道インフラの安全管理は鉄道事業法および各種技術基準に準拠する必要があります。AI による検出結果は最終判断ではなく、有資格エンジニアによる確認が必須です。
 
 > **関連規制**: 鉄道事業法、運輸安全委員会設置法
+
+---
+
+## 業界参考事例 / Industry Reference Cases
+
+> **Evidence Tier**: Public（公式ブログ / カンファレンスセッションより）
+
+### 7-Eleven: メンテナンス技術者向け GenAI アシスタント (DAIS 2026)
+
+7-Eleven は 13,000+ 店舗の HVAC・オーブン等の設備メンテナンスにおいて、共有ドライブ上の PDF/スプレッドシートから技術者がスマートフォンで即時回答を得る GenAI エージェントを構築した。
+
+- **成果**: 検索時間 −60%、初回修理成功率 +25%、レイテンシ −40%以上
+- **エージェント機能**: ドキュメント RAG 検索、画像ベーストラブルシューティング、部品情報アクセス、ガードレール付き Web 検索
+- **FSx for ONTAP との関連**: 設備マニュアル（PDF/画像）を NFS/SMB 共有に保存 → S3 AP で AI パイプラインがアクセス → ベクトル化 → エージェントが検索・回答
+
+本パターン（UC22）は同種の課題（設備点検画像 + 保守ドキュメント分析）を FSx for ONTAP S3 AP + AWS Bedrock で解決するアーキテクチャを提供する。
+
+詳細分析: [DAIS 2026 Agent Bricks 事例分析](../docs/investigations/dais2026-agent-bricks-industry-cases.md)
+
+Sources:
+- [DAIS 2026 Session: AI Agents for the Frontline](https://www.databricks.com/dataaisummit/session/ai-agents-frontline-7-elevens-genai-maintenance-assistant)
+- [Databricks Blog](https://www.databricks.com/blog/how-7-eleven-transformed-maintenance-technician-knowledge-access-databricks-agent-bricks)
 
 ---
 

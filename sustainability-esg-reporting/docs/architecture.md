@@ -11,7 +11,7 @@
 ```mermaid
 flowchart TB
     subgraph INPUT["📥 Input — FSx for ONTAP"]
-        DATA["業務データ<br/>FSx ONTAP ボリューム上のファイル"]
+        DATA["業務データ<br/>FSx for ONTAP ボリューム上のファイル"]
     end
 
     subgraph S3AP["🔗 S3 Access Point"]

@@ -2,7 +2,7 @@
 """Phase 2 UC テストデータ生成スクリプト
 
 各 UC の Step Functions ワークフローを実データで検証するための
-テストデータを生成し、S3 Access Point 経由で FSx ONTAP にアップロードする。
+テストデータを生成し、S3 Access Point 経由で FSx for ONTAP にアップロードする。
 
 Usage:
     python3 scripts/generate_test_data.py [uc_name] [--upload]

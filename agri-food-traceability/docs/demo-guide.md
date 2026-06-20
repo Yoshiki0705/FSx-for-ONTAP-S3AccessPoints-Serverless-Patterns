@@ -55,8 +55,8 @@ cd fsxn-s3ap-serverless-patterns/agri-food-traceability
 **NFS マウントとファイル配置例:**
 
 ```bash
-# FSx ONTAP NFS マウント
-sudo mount -t nfs <FSxN-DATA-LIF-IP>:/vol1 /mnt/fsxn
+# FSx for ONTAP NFS マウント
+sudo mount -t nfs <FSx-ONTAP-DATA-LIF-IP>:/vol1 /mnt/fsxn
 
 # サンプルデータ配置
 cp -r sample-data/* /mnt/fsxn/<prefix>/

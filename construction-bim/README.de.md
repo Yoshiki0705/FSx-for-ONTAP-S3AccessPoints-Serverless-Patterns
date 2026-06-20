@@ -5,7 +5,7 @@
 ## Übersicht
 Serverlose Workflows zur Automatisierung der Versionskontrolle von BIM-Modellen (IFC/Revit), der OCR-Textextraktion aus Zeichnungs-PDFs und der Sicherheits-Compliance-Prüfung unter Verwendung der S3 Access Points von FSx for ONTAP.
 ### Fälle, in denen dieses Muster geeignet ist
-- BIM-Modelle (IFC/Revit) und Zeichnungen in PDF-Format sind auf FSx ONTAP gespeichert
+- BIM-Modelle (IFC/Revit) und Zeichnungen in PDF-Format sind auf FSx for ONTAP gespeichert
 - Die Metadaten von IFC-Dateien (Projektname, Anzahl der Bauelemente, Stockwerke) sollen automatisch katalogisiert werden
 - Unterschiede zwischen den Versionen der BIM-Modelle (Hinzufügen, Löschen, Ändern von Elementen) sollen automatisch erkannt werden
 - Aus den Zeichnungen im PDF-Format sollen Text und Tabellen mit Textract extrahiert werden
@@ -87,7 +87,7 @@ aws cloudformation deploy \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
@@ -125,7 +125,7 @@ UC10 verwendet die folgenden Dienste:
 | CloudWatch EMF | ほぼ全リージョンで利用可能 |
 > Rufen Sie die Textract API über den Cross-Region Client auf. Überprüfen Sie die Datenresidenzanforderungen. Weitere Informationen finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
 ## Referenzlinks
-- [FSx ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Amazon Textract-Dokumentation](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [IFC-Formatspezifikation (buildingSMART)](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/)
 - [Amazon Rekognition Label-Erkennung](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)

@@ -135,7 +135,7 @@ Voici quelques exemples de paramètres à préparer :
 Une fois ces paramètres configurés, vous pourrez passer à l'étape suivante du processus de conception.
 Veuillez vérifier les valeurs suivantes avant le déploiement :
 
-- Alias du point d'accès S3 FSx ONTAP
+- Alias du point d'accès S3 FSx for ONTAP
 - Adresse IP de gestion ONTAP
 - Nom du secret Secrets Manager
 - ID du VPC, ID du sous-réseau privé
@@ -185,9 +185,9 @@ Voici la traduction en français :
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx ONTAP S3 AP Alias（入力用） | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx ONTAP S3 AP Alias（出力用） | — | ✅ |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
 | `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
 | `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
 | `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
@@ -355,7 +355,7 @@ Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon
 Le service Amazon Bedrock vous permet de créer et de former des modèles d'IA de manière simplifiée. Avec AWS Step Functions, vous pouvez orchestrer facilement vos workflows d'application sans serveur. Amazon Athena est un service d'analyse de données sans serveur qui vous permet d'interroger des données stockées dans Amazon S3 à l'aide de SQL standard. Utilisez AWS Lambda pour exécuter votre code sans avoir à gérer les serveurs. Amazon FSx for ONTAP vous offre un stockage de fichiers haute performance et évolutif. Amazon CloudWatch vous aide à suivre les performances de vos applications et à prendre des mesures en cas de problèmes. Avec AWS CloudFormation, vous pouvez provisionner et gérer vos ressources AWS de manière automatisée.
 
 Parmi les termes techniques, on trouve GDSII, DRC, OASIS, GDS, Lambda, tapeout, etc.
-- [Présentation des points d'accès S3 pour FSx ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Présentation des points d'accès S3 pour FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Traitement sans serveur avec Lambda (didacticiel officiel)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Référence de l'API Textract](https://docs.aws.amazon.com/textract/latest/dg/API_Reference.html)
 - [API DetectEntities de Comprehend](https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html)
@@ -379,7 +379,7 @@ Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | ap-northeast-1 (東京) |
-| FSx ONTAP バージョン | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
 | FSx 構成 | SINGLE_AZ_1 |
 | Python | 3.12 |
 | デプロイ方式 | CloudFormation (標準) |

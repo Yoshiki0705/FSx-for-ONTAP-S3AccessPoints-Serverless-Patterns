@@ -7,7 +7,7 @@ Description: >
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: FPolicy Server を配置する VPC ID（FSxN と同一 VPC）
+    Description: FPolicy Server を配置する VPC ID（FSx for ONTAP と同一 VPC）
 
   SubnetId:
     Type: AWS::EC2::Subnet::Id
@@ -15,7 +15,7 @@ Parameters:
 
   FsxnSvmSecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
-    Description: FSxN SVM の Security Group ID
+    Description: FSx for ONTAP SVM の Security Group ID
 
   SqsQueueUrl:
     Type: String
@@ -64,24 +64,24 @@ Conditions:
 Resources:
   # --- Security Group ---
   # セキュリティ改善: CIDR ベースから Security Group ベースに変更
-  # SourceSecurityGroupId を使用することで、FSxN SVM からのアクセスのみ許可
+  # SourceSecurityGroupId を使用することで、FSx for ONTAP SVM からのアクセスのみ許可
   FPolicyServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: FPolicy Server EC2 - TCP from FSxN SVM Security Group
+      GroupDescription: FPolicy Server EC2 - TCP from FSx for ONTAP SVM Security Group
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: !Ref FPolicyPort
           ToPort: !Ref FPolicyPort
           SourceSecurityGroupId: !Ref FsxnSvmSecurityGroupId
-          Description: FPolicy TCP from FSxN SVM Security Group
+          Description: FPolicy TCP from FSx for ONTAP SVM Security Group
         # Legacy (参考): 以前は CIDR ベースで許可していた
         # - IpProtocol: tcp
         #   FromPort: !Ref FPolicyPort
         #   ToPort: !Ref FPolicyPort
         #   CidrIp: "10.0.0.0/8"
-        #   Description: FPolicy TCP from FSxN SVM
+        #   Description: FPolicy TCP from FSx for ONTAP SVM
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443

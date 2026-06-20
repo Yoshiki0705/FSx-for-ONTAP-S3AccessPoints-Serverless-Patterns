@@ -34,7 +34,7 @@ docs/screenshots/
 
 ## Phase 別ファイル一覧
 
-### Phase 1: Initial Deployment (FSx ONTAP + Step Functions)
+### Phase 1: Initial Deployment (FSx for ONTAP + Step Functions)
 
 | ファイル名 | 内容 |
 |-----------|------|

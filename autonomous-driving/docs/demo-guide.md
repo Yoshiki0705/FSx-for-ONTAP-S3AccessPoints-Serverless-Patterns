@@ -194,7 +194,7 @@ aws cloudformation deploy \
 ```
 
 ### FSXN_S3AP（"no data movement" パターン）
-AI 成果物を FSx for ONTAP S3 Access Point 経由でオリジナルデータと**同一の FSx ONTAP ボリューム**に
+AI 成果物を FSx for ONTAP S3 Access Point 経由でオリジナルデータと**同一の FSx for ONTAP ボリューム**に
 書き戻します。SMB/NFS ユーザーが業務で使用するディレクトリ構造内で AI 成果物を
 直接閲覧できます。標準 S3 バケットは作成されません。
 

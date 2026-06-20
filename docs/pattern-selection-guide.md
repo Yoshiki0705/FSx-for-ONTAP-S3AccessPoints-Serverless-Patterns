@@ -10,8 +10,8 @@
 
 | 顧客の状況 | 推奨パターン |
 |---|---|
-| FSx ONTAP を既にファイル共有で利用中 | 業界別 UC + DemoMode=false |
-| FSx ONTAP 未導入、ワークフロー評価したい | 任意の UC + DemoMode=true |
+| FSx for ONTAP を既にファイル共有で利用中 | 業界別 UC + DemoMode=false |
+| FSx for ONTAP 未導入、ワークフロー評価したい | 任意の UC + DemoMode=true |
 | 文書処理中心（PDF、契約書、レポート） | UC20 / UC23 / UC24 / UC26 / UC27 / UC28 |
 | 画像・点検ワークロード中心 | UC19 / UC21 / UC22 / UC25 |
 | ログ / 時系列 / 分析ワークロード | UC18 / UC25 (SCADA) |
@@ -20,6 +20,8 @@
 | ESG / サステナビリティ報告 | UC23 + framework mapping |
 | 既存 NFS/SMB ワークロードの横展開 | FC1-FC6（FlexCache/FlexClone パターン） |
 | コンテンツを CDN/エッジ配信したい（CloudFront / サードパーティ CDN） | content-edge-delivery（[CDN比較](cdn-comparison.md) 参照） |
+| 設備メンテナンス × マルチモーダル AI（画像 + 文書 RAG） | UC22 + Rekognition + Bedrock multimodal（[7-Eleven 事例参照](investigations/dais2026-agent-bricks-industry-cases.md#1-7-eleven-メンテナンス技術者向け-genai-アシスタント)） |
+| 製薬・ライフサイエンス × マルチエージェント権限保持 RAG | UC7 + Step Functions multi-agent routing（[AstraZeneca 事例参照](investigations/dais2026-agent-bricks-industry-cases.md#2-astrazeneca-マルチエージェントシステム10x-スケール)） |
 | 新規オブジェクトネイティブワークロード（NAS 不要） | 標準 S3 / DynamoDB サーバーレスネイティブ構成を推奨 |
 
 ## ワークロード別の技術選択
@@ -38,11 +40,11 @@
 |---|---|---|
 | ワークフロー動作 | ✅ Step Functions SUCCEEDED | — |
 | AI 抽出精度 | ✅ サンプルデータで確認 | ドメインバリデーションセットで評価 |
-| パフォーマンス | ⚠️ S3 バケット経由（参考値） | FSx ONTAP S3 AP 経由で実測 |
+| パフォーマンス | ⚠️ S3 バケット経由（参考値） | FSx for ONTAP S3 AP 経由で実測 |
 | 権限モデル | ⚠️ S3 IAM のみ | IAM + S3 AP policy + ONTAP ID |
 | ネットワーク | ⚠️ パブリック経路 | Internet/VPC-origin 設計判断 |
 | ガバナンス | ⚠️ デモラベル | データ分類 + リネージ + 保持 |
-| コスト | ✅ ~$0.10/実行 | + FSx ONTAP (~$194/月基本) |
+| コスト | ✅ ~$0.10/実行 | + FSx for ONTAP (~$194/月基本) |
 
 ## 安全重要・規制産業での追加考慮事項
 

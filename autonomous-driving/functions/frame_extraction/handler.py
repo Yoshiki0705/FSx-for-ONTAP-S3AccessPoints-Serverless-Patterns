@@ -263,7 +263,7 @@ def handler(event, context):
     file_stem = PurePosixPath(file_key).stem
     output_key = f"detections/{now.strftime('%Y/%m/%d')}/{file_stem}_detections.json"
 
-    # 結果を出力先（標準 S3 または FSxN S3AP）に書き込み
+    # 結果を出力先（標準 S3 または FSx for ONTAP S3 AP）に書き込み
     result = {
         "status": "SUCCESS",
         "file_key": file_key,
