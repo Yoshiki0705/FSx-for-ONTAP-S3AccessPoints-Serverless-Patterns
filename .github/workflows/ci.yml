@@ -56,10 +56,17 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-      - name: Run tests with coverage
+      - name: Run shared tests with coverage
         run: |
           pytest \
             shared/tests/ \
+            --cov=shared \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            -v --ignore=.hypothesis
+      - name: Run pattern tests
+        run: |
+          pytest \
             solutions/industry/legal-compliance/tests/ \
             solutions/industry/financial-idp/tests/ \
             solutions/industry/manufacturing-analytics/tests/ \
@@ -90,9 +97,6 @@ jobs:
             solutions/event-driven/prototype/tests/ \
             solutions/edge/content-delivery/tests/ \
             solutions/flexcache/devops-cicd/tests/ \
-            --cov=shared \
-            --cov-report=xml:coverage.xml \
-            --cov-report=html:htmlcov \
             -v --ignore=.hypothesis
       - name: Upload coverage report
         if: always()
