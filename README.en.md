@@ -91,9 +91,17 @@
 
 ## Current Status
 
-This repository now contains **28 industry use cases** + **event-driven FPolicy pattern** + **7 FlexCache/FlexClone patterns** + **content edge delivery pattern** as a serverless pattern library for Amazon FSx for ONTAP S3 Access Points.
+This repository contains **42 patterns** in a category-organized `solutions/` directory:
 
-The original 5 patterns (Phase 1) have been expanded across Phases 2–13. Phase 10 introduced the shared FPolicy event-ingestion pipeline, Phase 11 wired dispatch across all 17 UCs, Phase 12 hardened the pipeline with Persistent Store replay validation, SLO observability, capacity guardrails, and secrets rotation, and Phase 13 added FlexClone/FlexCache serverless automation.
+- **28 industry use cases** (UC1-UC28) — `solutions/industry/`
+- **7 FlexCache/FlexClone patterns** (FC1-FC7) — `solutions/flexcache/`
+- **2 GenAI patterns** (UC29-UC30: Bedrock KB / Agentic Workspace) — `solutions/genai/`
+- **1 SAP/ERP pattern** — `solutions/sap/`
+- **1 HA LifeKeeper monitoring pattern** — `solutions/ha/`
+- **2 event-driven patterns** (FPolicy pipeline) — `solutions/event-driven/`
+- **1 edge/CDN delivery pattern** — `solutions/edge/`
+
+Expanded from Phase 1 (5 patterns) through Phase 18. Phase 15 completed 28 UCs, Phase 16-17 added GenAI, Phase 18 added HA LifeKeeper monitoring and directory restructuring.
 
 A collection of industry-specific serverless automation patterns leveraging S3 Access Points for Amazon FSx for ONTAP.
 
@@ -101,7 +109,7 @@ A collection of industry-specific serverless automation patterns leveraging S3 A
 
 > **Purpose of this repository**: This is a "reference implementation for learning design decisions." Some use cases have been E2E verified in an AWS environment, while others have undergone CloudFormation deployment, shared Discovery Lambda, and operational verification of key components. It is designed for gradual adoption from PoC to production, demonstrating design decisions for cost optimization, security, and error handling through concrete code.
 
-**Tests**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
+**Tests**: 2,162+ unit/property tests | 126 test files | cfn-lint + ruff validation
 
 ## Choose Your Path
 
@@ -136,6 +144,7 @@ The article explains the architectural design philosophy and trade-offs, while t
 |-----------|---------|--------------|
 | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Permission-aware RAG chatbot with FSx for ONTAP + Bedrock (CDK v2, Next.js, ECS) | Full implementation of this repo's FC3 (GenAI RAG) pattern with Web UI | <!-- allow:naming -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × Lakehouse platform integrations (Databricks, Snowflake, Athena, Glue, EMR) | S3 AP compatibility matrix, platform-specific validation, DataSync patterns |
+| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP migration patterns | Post-migration data can be processed with this repo's S3 AP serverless patterns |
 
 ## FSx for ONTAP S3 Access Points — Constraints & Validated Patterns
 
