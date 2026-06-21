@@ -1,0 +1,100 @@
+[project]
+name = "fsxn-s3ap-serverless-patterns"
+version = "0.19.0"
+description = "FSx for ONTAP S3 Access Points Serverless Patterns — 42 industry-specific AI/ML patterns"
+readme = "README.en.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Yoshiki Fujiwara"},
+]
+keywords = [
+    "aws", "fsx-for-ontap", "s3-access-points", "serverless", "sam",
+    "step-functions", "bedrock", "lambda", "flexcache", "lifekeeper",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: AWS CDK",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+dependencies = [
+    "boto3==1.43.29",
+    "urllib3==2.7.0",
+    "jsonschema==4.17.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.0",
+    "pytest-cov==7.1.0",
+    "pytest-asyncio==0.23.8",
+    "hypothesis==6.155.2",
+    "moto[all]==5.2.2",
+    "ruff==0.15.17",
+    "cfn-lint==1.51.4",
+    "pyarrow==24.0.0",
+    "bandit==1.9.0",
+]
+xray = [
+    "aws-xray-sdk==2.14.0",
+]
+
+[project.urls]
+Repository = "https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns"
+Documentation = "https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/README.en.md"
+Issues = "https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/issues"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",   # Line too long — handled by formatter
+    "F841",   # Local variable assigned but never used (common in test fixtures)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["F811"]  # Redefined unused fixture names
+"**/conftest.py" = ["F401", "E402"]  # Unused imports + import order in conftest
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["shared/tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short --import-mode=importlib"
+asyncio_mode = "auto"
+markers = [
+    "property: Property-based tests (Hypothesis)",
+    "integration: Integration tests requiring AWS credentials",
+    "e2e: End-to-end tests requiring real AWS infrastructure",
+    "load: Load tests requiring real AWS infrastructure (skip in CI)",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".hypothesis", "__pycache__"]
+skips = ["B101"]  # assert used in test code
+
+[tool.coverage.run]
+source = ["shared"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["shared*"]
