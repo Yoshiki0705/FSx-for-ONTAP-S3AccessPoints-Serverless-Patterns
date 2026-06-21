@@ -66,7 +66,7 @@ graph TB
         SFN_P[Step Functions<br/>Workflow A]
         LAMBDA_P[Lambda Functions]
         S3AP_P[S3 Access Point]
-        FSXN_P[FSx ONTAP]
+        FSXN_P[FSx for ONTAP]
     end
 
     subgraph "us-east-1 (Secondary)"
@@ -74,7 +74,7 @@ graph TB
         SFN_S[Step Functions<br/>Workflow A']
         LAMBDA_S[Lambda Functions]
         S3AP_S[S3 Access Point]
-        FSXN_S[FSx ONTAP]
+        FSXN_S[FSx for ONTAP]
     end
 
     R53 -->|Tokyo users| SFN_P
@@ -226,7 +226,7 @@ graph TB
         LAMBDA_P1[Discovery Lambda]
         LAMBDA_P2[Processing Lambda]
         LAMBDA_P3[Callback Lambda]
-        S3AP_P[S3 Access Point<br/>FSx ONTAP]
+        S3AP_P[S3 Access Point<br/>FSx for ONTAP]
         DDB_P[DynamoDB<br/>Global Table Replica]
         CW_P[CloudWatch<br/>Alarms + Metrics]
     end
@@ -238,7 +238,7 @@ graph TB
         LAMBDA_S1[Discovery Lambda]
         LAMBDA_S2[Processing Lambda]
         LAMBDA_S3[Callback Lambda]
-        S3AP_S[S3 Access Point<br/>FSx ONTAP]
+        S3AP_S[S3 Access Point<br/>FSx for ONTAP]
         DDB_S[DynamoDB<br/>Global Table Replica]
         CW_S[CloudWatch<br/>Alarms + Metrics]
     end
@@ -280,7 +280,7 @@ graph TB
 | Lambda Functions | ✅ | ✅ | CloudFormation StackSets |
 | DynamoDB (Task Token) | ✅ Replica | ✅ Replica | Global Tables (< 1s) |
 | S3 Access Point | ✅ | ✅ | SnapMirror (< 15 min) |
-| FSx ONTAP | ✅ Primary | ✅ DR | SnapMirror |
+| FSx for ONTAP | ✅ Primary | ✅ DR | SnapMirror |
 | EventBridge | ✅ | ✅ | Cross-Region Rules |
 | CloudWatch | ✅ | ✅ | 独立（リージョン別） |
 | Route 53 | グローバル | グローバル | — |
@@ -294,8 +294,8 @@ graph TB
 | データソース | 同一リージョン | クロスリージョン | レプリケーション遅延 |
 |------------|--------------|----------------|-------------------|
 | DynamoDB Global Tables | 強整合性 | 結果整合性 | < 1 秒（通常） |
-| FSx ONTAP (SnapMirror) | 強整合性 | 結果整合性 | < 15 分（設定依存） |
-| S3 Access Point | 強整合性 | 結果整合性 | FSx ONTAP に依存 |
+| FSx for ONTAP (SnapMirror) | 強整合性 | 結果整合性 | < 15 分（設定依存） |
+| S3 Access Point | 強整合性 | 結果整合性 | FSx for ONTAP に依存 |
 | Step Functions 実行履歴 | 強整合性 | N/A（リージョン固有） | — |
 
 ### 書き込み整合性

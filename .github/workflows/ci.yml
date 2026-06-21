@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -31,6 +33,8 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -52,39 +56,47 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-      - name: Run tests with coverage
+      - name: Run shared tests with coverage
         run: |
           pytest \
             shared/tests/ \
-            legal-compliance/tests/ \
-            financial-idp/tests/ \
-            manufacturing-analytics/tests/ \
-            media-vfx/tests/ \
-            healthcare-dicom/tests/ \
-            semiconductor-eda/tests/ \
-            genomics-pipeline/tests/ \
-            energy-seismic/tests/ \
-            autonomous-driving/tests/ \
-            construction-bim/tests/ \
-            retail-catalog/tests/ \
-            logistics-ocr/tests/ \
-            education-research/tests/ \
-            insurance-claims/tests/ \
-            defense-satellite/tests/ \
-            government-archives/tests/ \
-            smart-city-geospatial/tests/ \
-            sap-erp-adjacent/tests/ \
-            flexcache-anycast-dr/tests/ \
-            dynamic-flexcache-render-workflow/tests/ \
-            genai-rag-enterprise-files/tests/ \
-            automotive-cae/tests/ \
-            life-sciences-research/tests/ \
-            gaming-build-pipeline/tests/ \
-            genai-kb-selfservice-curation/tests/ \
-            genai-quick-agentic-workspace/tests/ \
             --cov=shared \
             --cov-report=xml:coverage.xml \
             --cov-report=html:htmlcov \
+            -v --ignore=.hypothesis
+      - name: Run pattern tests
+        run: |
+          pytest \
+            solutions/industry/legal-compliance/tests/ \
+            solutions/industry/financial-idp/tests/ \
+            solutions/industry/manufacturing-analytics/tests/ \
+            solutions/industry/media-vfx/tests/ \
+            solutions/industry/healthcare-dicom/tests/ \
+            solutions/industry/semiconductor-eda/tests/ \
+            solutions/industry/genomics-pipeline/tests/ \
+            solutions/industry/energy-seismic/tests/ \
+            solutions/industry/autonomous-driving/tests/ \
+            solutions/industry/construction-bim/tests/ \
+            solutions/industry/retail-catalog/tests/ \
+            solutions/industry/logistics-ocr/tests/ \
+            solutions/industry/education-research/tests/ \
+            solutions/industry/insurance-claims/tests/ \
+            solutions/industry/defense-satellite/tests/ \
+            solutions/industry/government-archives/tests/ \
+            solutions/industry/smart-city-geospatial/tests/ \
+            solutions/sap/erp-adjacent/tests/ \
+            solutions/flexcache/anycast-dr/tests/ \
+            solutions/flexcache/dynamic-render-workflow/tests/ \
+            solutions/flexcache/rag-enterprise-files/tests/ \
+            solutions/flexcache/automotive-cae/tests/ \
+            solutions/flexcache/life-sciences-research/tests/ \
+            solutions/flexcache/gaming-build-pipeline/tests/ \
+            solutions/genai/kb-selfservice-curation/tests/ \
+            solutions/genai/quick-agentic-workspace/tests/ \
+            solutions/ha/lifekeeper-monitoring/tests/ \
+            solutions/event-driven/prototype/tests/ \
+            solutions/edge/content-delivery/tests/ \
+            solutions/flexcache/devops-cicd/tests/ \
             -v --ignore=.hypothesis
       - name: Upload coverage report
         if: always()
@@ -101,6 +113,8 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install cfn-guard
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/aws-cloudformation/cloudformation-guard/main/install-guard.sh | sh
@@ -119,6 +133,8 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -126,21 +142,11 @@ jobs:
         run: pip install bandit pip-audit
       - name: Run Bandit scan
         run: |
-          bandit -r shared/ \
-            legal-compliance/ financial-idp/ manufacturing-analytics/ \
-            media-vfx/ healthcare-dicom/ semiconductor-eda/ \
-            genomics-pipeline/ energy-seismic/ autonomous-driving/ \
-            construction-bim/ retail-catalog/ logistics-ocr/ \
-            education-research/ insurance-claims/ defense-satellite/ \
-            government-archives/ smart-city-geospatial/ sap-erp-adjacent/ \
-            flexcache-anycast-dr/ dynamic-flexcache-render-workflow/ \
-            genai-rag-enterprise-files/ automotive-cae/ \
-            life-sciences-research/ gaming-build-pipeline/ \
-            genai-kb-selfservice-curation/ genai-quick-agentic-workspace/ \
+          bandit -r shared/ solutions/ \
             -ll -c .bandit \
             -f json -o bandit-report.json || true
-          bandit -r shared/ \
-            legal-compliance/ financial-idp/ manufacturing-analytics/ \
+          bandit -r shared/ solutions/industry/legal-compliance/ \
+            solutions/industry/financial-idp/ solutions/industry/manufacturing-analytics/ \
             -ll -c .bandit
       - name: Run pip-audit
         run: pip-audit -r requirements.txt

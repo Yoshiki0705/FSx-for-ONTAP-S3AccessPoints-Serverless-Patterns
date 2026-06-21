@@ -1,0 +1,272 @@
+# ⚠️ NOTE: This file is for SAM local testing only.
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  UC26: 不動産ポートフォリオ管理
+  FSx for NetApp ONTAP S3 Access Points を活用した物件画像分析、
+  契約書データ抽出、ポートフォリオレポート生成のサーバーレスワークフロー。
+
+Parameters:
+  # --- Layer 1: Phase 1 共通 ---
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx for ONTAP S3 Access Point Alias (入力読み取り用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: S3 Access Point 名 (IAM ポリシー ARN 用)
+
+  S3AccessPointOutputAlias:
+    Type: String
+    Description: FSx for ONTAP S3 Access Point Alias (出力書き込み用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  OntapSecretName:
+    Type: String
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
+
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  SvmUuid:
+    Type: String
+    Description: ONTAP SVM UUID
+
+  ScheduleExpression:
+    Type: String
+    Default: "cron(0 0 * * ? *)"
+    Description: EventBridge Scheduler スケジュール式
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: プライベートサブネット ID リスト
+
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+    Description: プライベートサブネットのルートテーブル ID リスト
+
+  OutputBucketName:
+    Type: String
+    Default: ""
+    Description: 出力バケット名
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知メールアドレス
+
+  # --- Layer 2: Phase 2 拡張 ---
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 100
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 256
+    AllowedValues: [128, 256, 512, 1024, 2048]
+
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 900
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+  EnableS3GatewayEndpoint:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+  BedrockModelId:
+    Type: String
+    Default: "anthropic.claude-haiku-4-5-20251001-v1:0"
+
+  # --- Layer 3: TriggerMode ---
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN"]
+
+  FPolicyEventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+
+  # --- Layer 4: UC26 固有 ---
+  PropertyImagePrefix:
+    Type: String
+    Default: "properties/images/"
+    Description: 物件画像ファイルのプレフィックス
+
+  ContractPrefix:
+    Type: String
+    Default: "properties/contracts/"
+    Description: 契約書ファイルのプレフィックス
+
+  ConfidenceThreshold:
+    Type: Number
+    Default: 80
+    MinValue: 50
+    MaxValue: 99
+    Description: Rekognition 最小信頼度閾値
+
+  TextractRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: Textract リージョン (Cross-Region)
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: !Ref LambdaMemorySize
+    Timeout: !Ref LambdaTimeout
+    Environment:
+      Variables:
+        S3_ACCESS_POINT: !Ref S3AccessPointAlias
+        S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+        POWERTOOLS_SERVICE_NAME: real-estate-portfolio
+
+Resources:
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Handler: functions.discovery.handler.handler
+      Environment:
+        Variables:
+          PROPERTY_IMAGE_PREFIX: !Ref PropertyImagePrefix
+          CONTRACT_PREFIX: !Ref ContractPrefix
+
+  PropertyAnalyzerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-property-analyzer"
+      Handler: functions.property_analyzer.handler.handler
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
+
+  ContractExtractorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-contract-extractor"
+      Handler: functions.contract_extractor.handler.handler
+      Environment:
+        Variables:
+          TEXTRACT_REGION: !Ref TextractRegion
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Handler: functions.report.handler.handler
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  WorkflowStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-workflow"
+      DefinitionBody:
+        Comment: "UC26 Real Estate Portfolio Workflow"
+        StartAt: Discovery
+        States:
+          Discovery:
+            Type: Task
+            Resource: !GetAtt DiscoveryFunction.Arn
+            Next: PropertyAnalyzerMap
+          PropertyAnalyzerMap:
+            Type: Map
+            ItemsPath: "$.property_images"
+            MaxConcurrency: !Ref MapConcurrency
+            Iterator:
+              StartAt: AnalyzeProperty
+              States:
+                AnalyzeProperty:
+                  Type: Task
+                  Resource: !GetAtt PropertyAnalyzerFunction.Arn
+                  End: true
+            ResultPath: "$.property_results"
+            Next: ContractExtractorMap
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                ResultPath: "$.property_error"
+                Next: ContractExtractorMap
+          ContractExtractorMap:
+            Type: Map
+            ItemsPath: "$.contracts"
+            MaxConcurrency: !Ref MapConcurrency
+            Iterator:
+              StartAt: ExtractContract
+              States:
+                ExtractContract:
+                  Type: Task
+                  Resource: !GetAtt ContractExtractorFunction.Arn
+                  End: true
+            ResultPath: "$.contract_results"
+            Next: Report
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                ResultPath: "$.contract_error"
+                Next: Report
+          Report:
+            Type: Task
+            Resource: !GetAtt ReportFunction.Arn
+            End: true
+
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref WorkflowStateMachine
+
+  DiscoveryFunctionArn:
+    Description: Discovery Lambda ARN
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  PropertyAnalyzerFunctionArn:
+    Description: Property Analyzer Lambda ARN
+    Value: !GetAtt PropertyAnalyzerFunction.Arn
+
+  ContractExtractorFunctionArn:
+    Description: Contract Extractor Lambda ARN
+    Value: !GetAtt ContractExtractorFunction.Arn
+
+  ReportFunctionArn:
+    Description: Report Lambda ARN
+    Value: !GetAtt ReportFunction.Arn

@@ -25,9 +25,9 @@ the originals.
 
 | UC | Directory | Lambdas | Tests | AI/ML services |
 |----|-----------|---------|-------|----------------|
-| UC15 defense-satellite | `defense-satellite/` | 6 | 34 | Rekognition, SageMaker (opt), rasterio Layer |
-| UC16 government-archives | `government-archives/` | 8 | 52 | Textract (cross-region), Comprehend, OpenSearch (opt) |
-| UC17 smart-city-geospatial | `smart-city-geospatial/` | 7 | 34 | Rekognition, SageMaker (opt), Bedrock Nova Lite, pyproj/laspy Layer (opt) |
+| UC15 defense-satellite | `solutions/industry/defense-satellite/` | 6 | 34 | Rekognition, SageMaker (opt), rasterio Layer |
+| UC16 government-archives | `solutions/industry/government-archives/` | 8 | 52 | Textract (cross-region), Comprehend, OpenSearch (opt) |
+| UC17 smart-city-geospatial | `solutions/industry/smart-city-geospatial/` | 7 | 34 | Rekognition, SageMaker (opt), Bedrock Nova Lite, pyproj/laspy Layer (opt) |
 
 All three include:
 - CloudFormation template (`template-deploy.yaml` + `template.yaml`)
@@ -62,7 +62,7 @@ not after, and is a net-positive for the shared utility library.
 
 All 3 Phase 7 stacks deployed to ap-northeast-1 with
 `OutputDestination=FSXN_S3AP` and completed Step Functions executions
-with outputs physically landing on FSx ONTAP via the S3 Access Point:
+with outputs physically landing on FSx for ONTAP via the S3 Access Point:
 
 | UC | Stack | Duration | OutputBucket created? | S3AP output files |
 |----|-------|----------|----------------------|-------------------|
@@ -113,9 +113,9 @@ threads working in coordination. The supporting protocol:
 | Test suite | Tests | Status | Delta from pre-Phase 7 |
 |------------|-------|--------|------------------------|
 | `shared/tests/test_output_writer.py` | 28 | PASS | +7 (`get_*` helpers) |
-| `defense-satellite/tests/` | 34 | PASS | +34 (new UC) |
-| `government-archives/tests/` | 52 | PASS | +52 (new UC) |
-| `smart-city-geospatial/tests/` | 34 | PASS | +34 (new UC) |
+| `solutions/industry/defense-satellite/tests/` | 34 | PASS | +34 (new UC) |
+| `solutions/industry/government-archives/tests/` | 52 | PASS | +52 (new UC) |
+| `solutions/industry/smart-city-geospatial/tests/` | 34 | PASS | +34 (new UC) |
 | `shared/tests/` (other) | ~90 | PASS | unchanged |
 | Other UC tests (UC1-14) | ~280 | PASS | unchanged |
 | **Total** | **~518** | **PASS** | **+127** |
@@ -126,9 +126,9 @@ All three via `scripts/lint_phase7_templates.sh`:
 
 | Template | Real errors | Notes |
 |----------|-------------|-------|
-| `defense-satellite/template-deploy.yaml` | 0 | E2530 region + W2530 SnapStart warnings filtered |
-| `government-archives/template-deploy.yaml` | 0 | Same |
-| `smart-city-geospatial/template-deploy.yaml` | 0 | Same |
+| `solutions/industry/defense-satellite/template-deploy.yaml` | 0 | E2530 region + W2530 SnapStart warnings filtered |
+| `solutions/industry/government-archives/template-deploy.yaml` | 0 | Same |
+| `solutions/industry/smart-city-geospatial/template-deploy.yaml` | 0 | Same |
 
 ### Commit history (Phase 7 period)
 

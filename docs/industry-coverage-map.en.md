@@ -65,14 +65,27 @@ The following are focus areas based on the AWS Japan industry team structure. Th
 
 ---
 
+## DAIS 2026 Industry Reference Cases
+
+The following public cases validate the applicability of existing patterns to real-world enterprise deployments.
+
+| Company | Industry | Mapped UC | Summary | Evidence Tier |
+|---------|----------|-----------|---------|--------------|
+| 7-Eleven | Retail & Consumer Goods | UC22, UC11 | GenAI maintenance technician assistant. −60% search time, +25% first-time-fix rate | Public (DAIS 2026 Session + Blog) |
+| AstraZeneca | Healthcare & Life Sciences | UC7, UC5 | Multi-agent system. Supervisor + therapeutic area sub-agents. 5 → 20+ agent scale | Public (DAIS 2026 Session + Blog) |
+
+Detailed analysis: [DAIS 2026 Agent Bricks Industry Cases](investigations/dais2026-agent-bricks-industry-cases.md)
+
+---
+
 ## Implementation Priority Roadmap
 
 ### P0 (Immediate)
 
 | UC | Industry | Directory | Description |
 |----|----------|-----------|-------------|
-| UC18 | Telecommunications | `telecom-network-analytics/` | CDR/network log analysis and anomaly detection |
-| UC19 | Advertising & Marketing | `adtech-creative-management/` | Creative asset management and brand compliance |
+| UC18 | Telecommunications | `solutions/industry/telecom-network-analytics/` | CDR/network log analysis and anomaly detection |
+| UC19 | Advertising & Marketing | `solutions/industry/adtech-creative-management/` | Creative asset management and brand compliance |
 
 **Prerequisites**: None (ready to start immediately)
 
@@ -80,9 +93,9 @@ The following are focus areas based on the AWS Japan industry team structure. Th
 
 | UC | Industry | Directory | Description |
 |----|----------|-----------|-------------|
-| UC20 | Travel & Hospitality | `travel-document-processing/` | Reservation document processing and facility inspection |
-| UC21 | Agriculture & Food | `agri-food-traceability/` | Farmland aerial imagery and traceability document management |
-| UC22 | Transportation & Rail | `transportation-maintenance/` | Equipment inspection imagery and maintenance report analysis |
+| UC20 | Travel & Hospitality | `solutions/industry/travel-document-processing/` | Reservation document processing and facility inspection |
+| UC21 | Agriculture & Food | `solutions/industry/agri-food-traceability/` | Farmland aerial imagery and traceability document management |
+| UC22 | Transportation & Rail | `solutions/industry/transportation-maintenance/` | Equipment inspection imagery and maintenance report analysis |
 
 **Prerequisites**: UC18 + UC19 implementation complete
 
@@ -90,12 +103,12 @@ The following are focus areas based on the AWS Japan industry team structure. Th
 
 | UC | Industry | Directory | Description |
 |----|----------|-----------|-------------|
-| UC23 | Sustainability & ESG | `sustainability-esg-reporting/` | ESG metrics extraction and reporting |
-| UC24 | Nonprofit | `nonprofit-grant-management/` | Grant application classification and outcome matching |
-| UC25 | Power & Utilities | `utilities-asset-inspection/` | Drone imagery and SCADA log analysis |
-| UC26 | Real Estate | `real-estate-portfolio/` | Property image analysis and contract data extraction |
-| UC27 | Human Resources | `hr-document-screening/` | Resume screening and candidate evaluation |
-| UC28 | Chemicals & Materials | `chemical-sds-management/` | SDS management and lab notebook analysis |
+| UC23 | Sustainability & ESG | `solutions/industry/sustainability-esg-reporting/` | ESG metrics extraction and reporting |
+| UC24 | Nonprofit | `solutions/industry/nonprofit-grant-management/` | Grant application classification and outcome matching |
+| UC25 | Power & Utilities | `solutions/industry/utilities-asset-inspection/` | Drone imagery and SCADA log analysis |
+| UC26 | Real Estate | `solutions/industry/real-estate-portfolio/` | Property image analysis and contract data extraction |
+| UC27 | Human Resources | `solutions/industry/hr-document-screening/` | Resume screening and candidate evaluation |
+| UC28 | Chemicals & Materials | `solutions/industry/chemical-sds-management/` | SDS management and lab notebook analysis |
 
 **Prerequisites**: UC20 + UC21 + UC22 implementation complete
 
@@ -119,6 +132,7 @@ The following are focus areas based on the AWS Japan industry team structure. Th
 
 | Date | Change |
 |------|--------|
+| 2026-06-18 | Added DAIS 2026 industry reference cases — 7-Eleven (Retail, UC22), AstraZeneca (Healthcare & Life Sciences, UC7). [Detailed analysis](investigations/dais2026-agent-bricks-industry-cases.md) |
 | 2026-06-03 | P2 complete — Updated UC23 (Sustainability), UC24 (Nonprofit), UC25 (Power), UC26 (Real Estate), UC27 (HR), UC28 (Chemicals) to Covered. Total: 28 UC + 6 FC = 34 patterns |
 | 2026-06-03 | P1 complete — Updated UC20 (Travel), UC21 (Agriculture), UC22 (Transportation) to Covered |
 | 2026-06-02 | P0 complete — Updated UC18 (Telecom), UC19 (Advertising) to Covered |

@@ -6,13 +6,13 @@
 
 This document summarizes the key differences that users familiar with Amazon S3 standard buckets need to know when working with FSx for ONTAP S3 Access Points for the first time.
 
-> **Important**: This pattern library is **not a replacement for S3 data lake patterns**. It is a **file-data integration pattern** for processing file data stored on FSx ONTAP via S3-compatible APIs while maintaining NFS/SMB access paths.
+> **Important**: This pattern library is **not a replacement for S3 data lake patterns**. It is a **file-data integration pattern** for processing file data stored on FSx for ONTAP via S3-compatible APIs while maintaining NFS/SMB access paths.
 
-## Standard S3 Bucket vs FSx ONTAP S3 Access Point
+## Standard S3 Bucket vs FSx for ONTAP S3 Access Point
 
-| Feature | Standard S3 Bucket | FSx ONTAP S3 AP |
+| Feature | Standard S3 Bucket | FSx for ONTAP S3 AP |
 |---------|:---:|:---:|
-| Object storage backend | S3 | FSx ONTAP volume |
+| Object storage backend | S3 | FSx for ONTAP volume |
 | Versioning | ✅ Supported | ❌ Not supported |
 | Object Lock (WORM) | ✅ Supported | ❌ Not supported (alternative: SnapLock) |
 | Lifecycle policies | ✅ Supported | ❌ Not supported (alternative: Snapshot/SnapMirror) |
@@ -79,20 +79,20 @@ This pattern library primarily uses EventBridge Scheduler, but for real-time eve
 
 ## Performance Differences
 
-| Characteristic | Standard S3 | FSx ONTAP S3 AP |
+| Characteristic | Standard S3 | FSx for ONTAP S3 AP |
 |---|---|---|
 | Scaling | Automatic based on request rate | Depends on FSx throughput capacity (provisioned) |
 | Latency | Single-digit ms (same region) | Tens of ms (via S3 AP data plane) |
 | Parallelism | 5,500+ req/s/prefix with prefix parallelism | FSx throughput capacity is the bottleneck |
 | During throughput changes | No impact | S3 AP may return ServiceUnavailable |
 
-> Unlike standard S3 buckets, FSx ONTAP S3 AP availability may be affected by FSx file system operational changes (such as throughput capacity modifications).
+> Unlike standard S3 buckets, FSx for ONTAP S3 AP availability may be affected by FSx file system operational changes (such as throughput capacity modifications).
 
 ## Security Differences
 
-With standard S3 buckets, allowing access via Bucket Policy is sufficient, but with FSx ONTAP S3 AP:
+With standard S3 buckets, allowing access via Bucket Policy is sufficient, but with FSx for ONTAP S3 AP:
 
-> **FSx ONTAP S3 AP requests must pass both AWS authorization (IAM + S3 AP policy) and file system authorization (ONTAP file identity). IAM Allow alone is insufficient.**
+> **FSx for ONTAP S3 AP requests must pass both AWS authorization (IAM + S3 AP policy) and file system authorization (ONTAP file identity). IAM Allow alone is insufficient.**
 
 Recommended checks:
 - Validate S3 AP policy with IAM Access Analyzer before deployment
@@ -101,7 +101,7 @@ Recommended checks:
 
 ## NetworkOrigin Considerations
 
-| Standard S3 Bucket | FSx ONTAP S3 AP |
+| Standard S3 Bucket | FSx for ONTAP S3 AP |
 |---|---|
 | VPC Endpoint is a routing choice | NetworkOrigin is **determined at creation, immutable** |
 | Gateway/Interface EP can be added/changed later | Internet-origin ↔ VPC-origin cannot be changed |
@@ -119,13 +119,13 @@ Since S3 Lifecycle policies are not available:
 
 | Strategy | Use When |
 |---|---|
-| Keep on FSx ONTAP + process via S3 AP | File semantics, NFS/SMB compatibility, migration cost avoidance |
+| Keep on FSx for ONTAP + process via S3 AP | File semantics, NFS/SMB compatibility, migration cost avoidance |
 | Copy analysis results to standard S3 | Data lake governance, Lifecycle, Object Lock, Lake Formation needed |
 | Full S3 migration | Object-native application modernization |
 
 ## Observability Differences
 
-In addition to standard S3 bucket auditing (CloudTrail data events, S3 Server Access Logs, Storage Lens), FSx ONTAP provides:
+In addition to standard S3 bucket auditing (CloudTrail data events, S3 Server Access Logs, Storage Lens), FSx for ONTAP provides:
 
 ```
 AWS API plane:  CloudTrail, CloudWatch, Step Functions execution history
@@ -141,7 +141,7 @@ File-system:    FSx CloudWatch metrics, ONTAP REST API, FPolicy audit logs
 
 | Question | Answer |
 |----------|--------|
-| Is this a regular S3 bucket? | **No**. It is an S3 API access path to an FSx ONTAP volume |
+| Is this a regular S3 bucket? | **No**. It is an S3 API access path to an FSx for ONTAP volume |
 | Can I use Lifecycle? | **No**. Use Snapshot/SnapMirror/auto-tiering |
 | Can I use Versioning? | **No**. ONTAP Snapshot is the alternative |
 | Can I use Object Lock? | **No**. SnapLock (Compliance/Enterprise) is the alternative |

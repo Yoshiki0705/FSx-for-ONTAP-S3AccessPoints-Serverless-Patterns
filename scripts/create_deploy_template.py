@@ -58,10 +58,10 @@ if __name__ == "__main__":
         sys.argv[1:]
         if len(sys.argv) > 1
         else [
-            "financial-idp",
-            "manufacturing-analytics",
-            "media-vfx",
-            "healthcare-dicom",
+            "solutions/industry/financial-idp",
+            "solutions/industry/manufacturing-analytics",
+            "solutions/industry/media-vfx",
+            "solutions/industry/healthcare-dicom",
         ]
     )
     for uc in ucs:

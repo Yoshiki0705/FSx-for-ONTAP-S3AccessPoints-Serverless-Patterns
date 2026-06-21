@@ -72,7 +72,7 @@ Parameters:
     Default: "STANDARD_S3"      # 通常 S3 バケット
     AllowedValues:
       - "STANDARD_S3"           # 新規 S3 バケットに出力
-      - "FSXN_S3AP"             # FSx ONTAP に書き戻し（NFS/SMB ユーザーが閲覧可能）
+      - "FSXN_S3AP"             # FSx for ONTAP に書き戻し（NFS/SMB ユーザーが閲覧可能）
 ```
 
 ### 出力 JSON の拡張
@@ -134,7 +134,7 @@ class MyCustomHelper:
 
 ```bash
 # UC1 をベースに新パターンを作成
-cp -r legal-compliance/ my-custom-pattern/
+cp -r solutions/industry/legal-compliance/ my-custom-pattern/
 
 # 以下を変更:
 # 1. template.yaml の Description, Parameters

@@ -19,7 +19,7 @@ PARAM_BLOCK = """
     Default: ""
     Description: |
       入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
-      IAM アクセスを許可する（FSxN S3AP の permission 判定で両形式をサポート）。
+      IAM アクセスを許可する（FSx for ONTAP S3 AP の permission 判定で両形式をサポート）。
       空文字列の場合は alias 形式のみ許可。
 """
 
@@ -28,23 +28,23 @@ CONDITION_LINE = """  HasS3AccessPointName:
 """
 
 ALL_UCS = [
-    "legal-compliance",
-    "financial-idp",
-    "manufacturing-analytics",
-    "media-vfx",
-    "healthcare-dicom",
-    "construction-bim",
-    "genomics-pipeline",
-    "energy-seismic",
-    "autonomous-driving",
-    "logistics-ocr",
-    "insurance-claims",
-    "retail-catalog",
-    "semiconductor-eda",
-    "education-research",
-    "defense-satellite",
-    "government-archives",
-    "smart-city-geospatial",
+    "solutions/industry/legal-compliance",
+    "solutions/industry/financial-idp",
+    "solutions/industry/manufacturing-analytics",
+    "solutions/industry/media-vfx",
+    "solutions/industry/healthcare-dicom",
+    "solutions/industry/construction-bim",
+    "solutions/industry/genomics-pipeline",
+    "solutions/industry/energy-seismic",
+    "solutions/industry/autonomous-driving",
+    "solutions/industry/logistics-ocr",
+    "solutions/industry/insurance-claims",
+    "solutions/industry/retail-catalog",
+    "solutions/industry/semiconductor-eda",
+    "solutions/industry/education-research",
+    "solutions/industry/defense-satellite",
+    "solutions/industry/government-archives",
+    "solutions/industry/smart-city-geospatial",
 ]
 
 

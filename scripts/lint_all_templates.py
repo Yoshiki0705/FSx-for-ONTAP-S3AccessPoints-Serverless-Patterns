@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-lint_all_templates.py — Parallel cfn-lint runner for FSxN S3AP Serverless Patterns.
+lint_all_templates.py — Parallel cfn-lint runner for FSx for ONTAP S3 AP Serverless Patterns.
 
 Runs cfn-lint across all 17 UC templates in parallel (4 workers) and aggregates
 results. Designed to catch template-level errors that would otherwise block
@@ -37,23 +37,23 @@ from cfnlint import api
 
 # All 17 UC directories (each contains template-deploy.yaml).
 ALL_UC_SLUGS = [
-    "legal-compliance",  # UC1
-    "financial-idp",  # UC2
-    "manufacturing-analytics",  # UC3
-    "media-vfx",  # UC4
-    "healthcare-dicom",  # UC5
-    "construction-bim",  # UC6
-    "genomics-pipeline",  # UC7
-    "energy-seismic",  # UC8
-    "autonomous-driving",  # UC9
-    "logistics-ocr",  # UC10
-    "insurance-claims",  # UC11
-    "retail-catalog",  # UC12
-    "semiconductor-eda",  # UC13
-    "education-research",  # UC14
-    "defense-satellite",  # UC15
-    "government-archives",  # UC16
-    "smart-city-geospatial",  # UC17
+    "solutions/industry/legal-compliance",  # UC1
+    "solutions/industry/financial-idp",  # UC2
+    "solutions/industry/manufacturing-analytics",  # UC3
+    "solutions/industry/media-vfx",  # UC4
+    "solutions/industry/healthcare-dicom",  # UC5
+    "solutions/industry/construction-bim",  # UC6
+    "solutions/industry/genomics-pipeline",  # UC7
+    "solutions/industry/energy-seismic",  # UC8
+    "solutions/industry/autonomous-driving",  # UC9
+    "solutions/industry/logistics-ocr",  # UC10
+    "solutions/industry/insurance-claims",  # UC11
+    "solutions/industry/retail-catalog",  # UC12
+    "solutions/industry/semiconductor-eda",  # UC13
+    "solutions/industry/education-research",  # UC14
+    "solutions/industry/defense-satellite",  # UC15
+    "solutions/industry/government-archives",  # UC16
+    "solutions/industry/smart-city-geospatial",  # UC17
 ]
 
 BENIGN_CODES = ("E2530", "E3030", "E3006")

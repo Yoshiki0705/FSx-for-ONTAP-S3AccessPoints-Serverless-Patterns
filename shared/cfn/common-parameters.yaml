@@ -22,11 +22,11 @@ Description: >-
 # Parameters
 # =====================================================================
 Parameters:
-  # --- FSx ONTAP / S3 Access Point ---
+  # --- FSx for ONTAP / S3 Access Point ---
   S3AccessPointAlias:
     Type: String
     Description: >-
-      FSx ONTAP S3 Access Point Alias。
+      FSx for ONTAP S3 Access Point Alias。
       例: vol-name-xxxxx-ext-s3alias
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
     ConstraintDescription: >-

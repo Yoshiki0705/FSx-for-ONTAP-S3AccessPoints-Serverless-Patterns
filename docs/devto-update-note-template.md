@@ -29,7 +29,7 @@ Phase 13 adds FlexCache/FlexClone serverless automation, split-path S3AP monitor
 | Phase 1 | Industry-Specific Serverless Automation Patterns with FSx for ONTAP S3 Access Points | https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a |
 | Phase 9 | Production Rollout, VPC Endpoint Auto-Detection, and the CDK No-Go — FSx for ONTAP S3 Access Points, Phase 9 | https://dev.to/aws-builders/production-rollout-vpc-endpoint-auto-detection-and-the-cdk-no-go-fsx-for-ontap-s3-access-3lni |
 | Phase 10 | FPolicy Event-Driven Pipeline, Multi-Account StackSets, and Cost Optimization — FSx for ONTAP S3 Access Points, Phase 10 | https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6 |
-| Phase 12 | Operational Hardening — Guardrails, Secrets Rotation & SLO — FSx ONTAP S3AP Phase 12 | https://dev.to/aws-builders/operational-hardening-guardrails-secrets-rotation-slo-fsx-ontap-s3ap-phase-12-1k4o |
+| Phase 12 | Operational Hardening — Guardrails, Secrets Rotation & SLO — FSx for ONTAP S3AP Phase 12 | https://dev.to/aws-builders/operational-hardening-guardrails-secrets-rotation-slo-fsx-ontap-s3ap-phase-12-1k4o |
 
 ---
 

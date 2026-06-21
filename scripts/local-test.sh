@@ -40,20 +40,20 @@ NC='\033[0m' # No Color
 
 # UC ディレクトリとイベントファイルのマッピング
 declare -A UC_MAP=(
-    ["01"]="legal-compliance"
-    ["02"]="financial-idp"
-    ["03"]="manufacturing-analytics"
-    ["04"]="media-vfx"
-    ["05"]="healthcare-dicom"
-    ["06"]="semiconductor-eda"
-    ["07"]="genomics-pipeline"
-    ["08"]="energy-seismic"
-    ["09"]="autonomous-driving"
-    ["10"]="construction-bim"
-    ["11"]="retail-catalog"
-    ["12"]="logistics-ocr"
-    ["13"]="education-research"
-    ["14"]="insurance-claims"
+    ["01"]="solutions/industry/legal-compliance"
+    ["02"]="solutions/industry/financial-idp"
+    ["03"]="solutions/industry/manufacturing-analytics"
+    ["04"]="solutions/industry/media-vfx"
+    ["05"]="solutions/industry/healthcare-dicom"
+    ["06"]="solutions/industry/semiconductor-eda"
+    ["07"]="solutions/industry/genomics-pipeline"
+    ["08"]="solutions/industry/energy-seismic"
+    ["09"]="solutions/industry/autonomous-driving"
+    ["10"]="solutions/industry/construction-bim"
+    ["11"]="solutions/industry/retail-catalog"
+    ["12"]="solutions/industry/logistics-ocr"
+    ["13"]="solutions/industry/education-research"
+    ["14"]="solutions/industry/insurance-claims"
 )
 
 # 環境変数ファイル
@@ -122,7 +122,7 @@ run_uc_test() {
 # メイン処理
 main() {
     echo "============================================================"
-    echo " FSxN S3AP Serverless Patterns - ローカルテスト"
+    echo " FSx for ONTAP S3 AP Serverless Patterns - ローカルテスト"
     echo "============================================================"
     echo ""
 

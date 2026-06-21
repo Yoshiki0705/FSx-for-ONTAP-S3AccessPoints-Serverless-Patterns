@@ -40,10 +40,10 @@
 ```mermaid
 graph LR
     subgraph "オリジン（本社/DC）"
-        ORIGIN[FSx ONTAP<br/>Origin Volume]
+        ORIGIN[FSx for ONTAP<br/>Origin Volume]
     end
     subgraph "キャッシュ（リモート拠点/クラウド）"
-        CACHE[FSx ONTAP<br/>FlexCache Volume]
+        CACHE[FSx for ONTAP<br/>FlexCache Volume]
         LAMBDA[Lambda<br/>S3 AP 経由処理]
     end
     ORIGIN -->|初回読み取り時<br/>データフェッチ| CACHE
@@ -132,9 +132,9 @@ Job Request → Create FlexCache → Prepopulate → Run Job → Cleanup
 
 ```
 [On-prem ONTAP Origin]
-    ├── FSx ONTAP (ap-northeast-1) FlexCache → S3 AP → Lambda
-    ├── FSx ONTAP (us-west-2) FlexCache → S3 AP → Lambda
-    └── FSx ONTAP (eu-west-1) FlexCache → S3 AP → Lambda
+    ├── FSx for ONTAP (ap-northeast-1) FlexCache → S3 AP → Lambda
+    ├── FSx for ONTAP (us-west-2) FlexCache → S3 AP → Lambda
+    └── FSx for ONTAP (eu-west-1) FlexCache → S3 AP → Lambda
 ```
 
 ### Pattern E: GenAI/RAG over Cached Enterprise Files
@@ -146,11 +146,11 @@ Job Request → Create FlexCache → Prepopulate → Run Job → Cleanup
 [Enterprise Files (Origin)] → FlexCache → S3 AP → Bedrock Knowledge Base
 ```
 
-> **関連 UC**: 厳密な権限フィルタが必要なら [FC3 genai-rag-enterprise-files](../genai-rag-enterprise-files/)（カスタム RAG, Pattern A）。
+> **関連 UC**: 厳密な権限フィルタが必要なら [FC3 genai-rag-enterprise-files](../solutions/flexcache/rag-enterprise-files/)（カスタム RAG, Pattern A）。
 > IT 部門の手作業を排除し、業務部門が Windows ドラッグ&ドロップでマネージド KB を自助維持する運用なら
-> [UC29 genai-kb-selfservice-curation](../genai-kb-selfservice-curation/)（マネージド KB, Pattern C）。
+> [UC29 genai-kb-selfservice-curation](../solutions/genai/kb-selfservice-curation/)（マネージド KB, Pattern C）。
 > 検索・BI・アクションを束ねたエージェント型ワークスペースなら
-> [UC30 genai-quick-agentic-workspace](../genai-quick-agentic-workspace/)（Amazon Quick Suite + S3 AP データ基盤）。
+> [UC30 genai-quick-agentic-workspace](../solutions/genai/quick-agentic-workspace/)（Amazon Quick Suite + S3 AP データ基盤）。
 
 ### Pattern F: Manufacturing Simulation / CAE
 
@@ -181,7 +181,7 @@ Job Request → Create FlexCache → Prepopulate → Run Job → Cleanup
 
 ## 次のステップ
 
-- [FlexCache AnyCast / DR パターン](../flexcache-anycast-dr/README.md)
-- [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
+- [FlexCache AnyCast / DR パターン](../solutions/flexcache/anycast-dr/README.md)
+- [Dynamic FlexCache Render Workflow](../solutions/flexcache/dynamic-render-workflow/README.md)
 - [サポートマトリックス](support-matrix-fsx-ontap-flexcache-s3ap.md)
 - [FlexCache PoC チェックリスト](flexcache-poc-checklist.md)

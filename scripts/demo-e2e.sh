@@ -18,7 +18,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 STACK_NAME="fsxn-s3ap-uc1-demo"
-UC_DIR="legal-compliance"
+UC_DIR="solutions/industry/legal-compliance"
 
 # =============================================================================
 # Helper functions
@@ -331,7 +331,7 @@ success "Demo complete!"
 echo "=============================================="
 echo ""
 echo "Next steps:"
-echo "  - Try event-driven mode: cd event-driven-fpolicy/"
-echo "  - Deploy SAP pattern:    cd sap-erp-adjacent/"
+echo "  - Try event-driven mode: cd solutions/event-driven/fpolicy/"
+echo "  - Deploy SAP pattern:    cd solutions/sap/erp-adjacent/"
 echo "  - Read the docs:         docs/quick-start.md"
 echo ""

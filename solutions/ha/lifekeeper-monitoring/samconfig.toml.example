@@ -1,0 +1,79 @@
+# HA LifeKeeper Monitoring — SAM Deploy Configuration
+#
+# Usage:
+#   cp samconfig.toml.example samconfig.toml
+#   # Edit values below
+#   sam build && sam deploy
+#
+# DemoMode deploy (no FSx for ONTAP required):
+#   sam build && sam deploy --parameter-overrides DemoMode=true
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "ha-lifekeeper-monitoring"
+resolve_s3 = true
+s3_prefix = "ha-lifekeeper-monitoring"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "S3AccessPointAlias=your-fsxn-s3ap-alias-s3alias",
+    "DemoMode=true",
+    "OntapSecretArn=",
+    "ScheduleExpression=rate(5 minutes)",
+    "OutputBucketName=your-output-bucket",
+    "NotificationEmail=your-email@example.com",
+    "FilePrefix=lifekeeper/logs/",
+    "BedrockModelId=amazon.nova-pro-v1:0",
+    "MaxFilesPerExecution=50",
+    "LogRetentionInDays=90",
+    "TriggerMode=POLLING",
+    "OutputDestination=STANDARD_S3",
+    "ClusterName=lifekeeper-cluster",
+    "FailoverAlertSeverity=CRITICAL"
+]
+
+tags = [
+    "UseCase=ha-lifekeeper-monitoring",
+    "Pattern=fsxn-s3ap-serverless",
+    "Environment=dev"
+]
+
+[default.build.parameters]
+use_container = false
+parallel = true
+
+[production.deploy.parameters]
+stack_name = "prod-ha-lifekeeper-monitoring"
+resolve_s3 = true
+s3_prefix = "ha-lifekeeper-monitoring"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "S3AccessPointAlias=your-production-fsxn-s3ap-alias-s3alias",
+    "DemoMode=false",
+    "OntapSecretArn=arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:ontap-admin-creds-XXXXXX",
+    "ScheduleExpression=rate(5 minutes)",
+    "OutputBucketName=prod-ha-monitoring-output",
+    "NotificationEmail=ops-team@example.com",
+    "FilePrefix=lifekeeper/logs/",
+    "BedrockModelId=amazon.nova-pro-v1:0",
+    "MaxFilesPerExecution=50",
+    "LogRetentionInDays=2557",
+    "TriggerMode=HYBRID",
+    "OutputDestination=STANDARD_S3",
+    "ClusterName=prod-sap-ha-cluster",
+    "FailoverAlertSeverity=HIGH"
+]
+
+tags = [
+    "UseCase=ha-lifekeeper-monitoring",
+    "Pattern=fsxn-s3ap-serverless",
+    "Environment=production"
+]

@@ -14,7 +14,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # UC definitions: (dir_name, uc_number, title_ja, title_en, title_ko, title_zh_cn, title_zh_tw, title_fr, title_de, title_es)
 UCS = [
     (
-        "legal-compliance",
+        "solutions/industry/legal-compliance",
         "UC1",
         "法務・コンプライアンス — ファイルサーバー監査・データガバナンス",
         "Legal / Compliance — File Server Audit & Data Governance",
@@ -26,7 +26,7 @@ UCS = [
         "Legal / Cumplimiento — Auditoría de servidor de archivos y gobernanza de datos",
     ),
     (
-        "financial-idp",
+        "solutions/industry/financial-idp",
         "UC2",
         "金融・保険 — 契約書・請求書の自動処理 (IDP)",
         "Finance / Insurance — Automated Contract & Invoice Processing (IDP)",
@@ -38,7 +38,7 @@ UCS = [
         "Finanzas / Seguros — Procesamiento automatizado de contratos y facturas (IDP)",
     ),
     (
-        "manufacturing-analytics",
+        "solutions/industry/manufacturing-analytics",
         "UC3",
         "製造業 — IoT センサーログ・品質検査画像の分析",
         "Manufacturing — IoT Sensor Log & Quality Inspection Image Analysis",
@@ -50,7 +50,7 @@ UCS = [
         "Manufactura — Análisis de registros de sensores IoT e imágenes de inspección de calidad",
     ),
     (
-        "media-vfx",
+        "solutions/industry/media-vfx",
         "UC4",
         "メディア — VFX レンダリングパイプライン",
         "Media — VFX Rendering Pipeline",
@@ -62,7 +62,7 @@ UCS = [
         "Medios — Pipeline de renderizado VFX",
     ),
     (
-        "healthcare-dicom",
+        "solutions/industry/healthcare-dicom",
         "UC5",
         "医療 — DICOM 画像の自動分類・匿名化",
         "Healthcare — DICOM Image Auto-Classification & Anonymization",
@@ -74,7 +74,7 @@ UCS = [
         "Salud — Clasificación automática y anonimización de imágenes DICOM",
     ),
     (
-        "genomics-pipeline",
+        "solutions/industry/genomics-pipeline",
         "UC7",
         "ゲノミクス / バイオインフォマティクス — 品質チェック・バリアントコール集計",
         "Genomics / Bioinformatics — Quality Check & Variant Call Aggregation",
@@ -86,7 +86,7 @@ UCS = [
         "Genómica / Bioinformática — Control de calidad y agregación de llamadas de variantes",
     ),
     (
-        "energy-seismic",
+        "solutions/industry/energy-seismic",
         "UC8",
         "エネルギー / 石油・ガス — 地震探査データ処理・坑井ログ異常検知",
         "Energy / Oil & Gas — Seismic Data Processing & Well Log Anomaly Detection",
@@ -98,7 +98,7 @@ UCS = [
         "Energía / Petróleo y gas — Procesamiento de datos sísmicos y detección de anomalías en registros de pozos",
     ),
     (
-        "autonomous-driving",
+        "solutions/industry/autonomous-driving",
         "UC9",
         "自動運転 / ADAS — 映像・LiDAR 前処理・品質チェック・アノテーション",
         "Autonomous Driving / ADAS — Video & LiDAR Preprocessing, Quality Check & Annotation",
@@ -110,7 +110,7 @@ UCS = [
         "Conducción autónoma / ADAS — Preprocesamiento de video y LiDAR, control de calidad y anotación",
     ),
     (
-        "construction-bim",
+        "solutions/industry/construction-bim",
         "UC10",
         "建設 / AEC — BIM モデル管理・図面 OCR・安全コンプライアンス",
         "Construction / AEC — BIM Model Management, Drawing OCR & Safety Compliance",
@@ -122,7 +122,7 @@ UCS = [
         "Construcción / AEC — Gestión de modelos BIM, OCR de planos y cumplimiento de seguridad",
     ),
     (
-        "retail-catalog",
+        "solutions/industry/retail-catalog",
         "UC11",
         "小売 / EC — 商品画像自動タグ付け・カタログメタデータ生成",
         "Retail / E-Commerce — Product Image Auto-Tagging & Catalog Metadata Generation",
@@ -134,7 +134,7 @@ UCS = [
         "Retail / Comercio electrónico — Etiquetado automático de imágenes de productos y generación de metadatos de catálogo",
     ),
     (
-        "logistics-ocr",
+        "solutions/industry/logistics-ocr",
         "UC12",
         "物流 / サプライチェーン — 配送伝票 OCR・倉庫在庫画像分析",
         "Logistics / Supply Chain — Shipping Slip OCR & Warehouse Inventory Image Analysis",
@@ -146,7 +146,7 @@ UCS = [
         "Logística / Cadena de suministro — OCR de albaranes y análisis de imágenes de inventario de almacén",
     ),
     (
-        "education-research",
+        "solutions/industry/education-research",
         "UC13",
         "教育 / 研究 — 論文 PDF 自動分類・引用ネットワーク分析",
         "Education / Research — Paper PDF Auto-Classification & Citation Network Analysis",
@@ -158,7 +158,7 @@ UCS = [
         "Educación / Investigación — Clasificación automática de PDF de artículos y análisis de redes de citación",
     ),
     (
-        "insurance-claims",
+        "solutions/industry/insurance-claims",
         "UC14",
         "保険 / 損害査定 — 事故写真損害評価・見積書 OCR・査定レポート",
         "Insurance / Claims — Accident Photo Damage Assessment, Estimate OCR & Assessment Report",

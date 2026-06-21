@@ -9,15 +9,15 @@ Description: >
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: FPolicy Server を配置する VPC ID（FSxN と同一 VPC）
+    Description: FPolicy Server を配置する VPC ID（FSx for ONTAP と同一 VPC）
 
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-    Description: Fargate タスクを配置する Private Subnet（FSxN SVM data LIF と同一サブネット推奨）
+    Description: Fargate タスクを配置する Private Subnet（FSx for ONTAP SVM data LIF と同一サブネット推奨）
 
   FsxnSvmSecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
-    Description: FSxN SVM の Security Group ID（インバウンド許可元）
+    Description: FSx for ONTAP SVM の Security Group ID（インバウンド許可元）
 
   SqsQueueUrl:
     Type: String
@@ -95,20 +95,20 @@ Conditions:
 Resources:
   # --- Security Group ---
   # セキュリティ改善: CIDR ベースから Security Group ベースに変更
-  # SourceSecurityGroupId を使用することで、FSxN SVM の Security Group に属する
+  # SourceSecurityGroupId を使用することで、FSx for ONTAP SVM の Security Group に属する
   # リソースからのみアクセスを許可する（VPC 全体の 10.0.0.0/8 より厳密）
   FPolicyServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: FPolicy External Server - allows TCP from FSxN SVM Security Group
+      GroupDescription: FPolicy External Server - allows TCP from FSx for ONTAP SVM Security Group
       VpcId: !Ref VpcId
       SecurityGroupIngress:
-        # Primary: FSxN SVM Security Group からのアクセスのみ許可（推奨）
+        # Primary: FSx for ONTAP SVM Security Group からのアクセスのみ許可（推奨）
         - IpProtocol: tcp
           FromPort: !Ref FPolicyPort
           ToPort: !Ref FPolicyPort
           SourceSecurityGroupId: !Ref FsxnSvmSecurityGroupId
-          Description: FPolicy TCP from FSxN SVM Security Group (primary-servers connection)
+          Description: FPolicy TCP from FSx for ONTAP SVM Security Group (primary-servers connection)
         # Legacy (参考): 以前は CIDR ベースで許可していた
         # NLB ヘルスチェックは NLB 自体の IP から来るため、NLB を使用する場合は
         # 別途 NLB サブネットの CIDR を追加するか、以下のルールを有効化する
@@ -116,7 +116,7 @@ Resources:
         #   FromPort: !Ref FPolicyPort
         #   ToPort: !Ref FPolicyPort
         #   CidrIp: "10.0.0.0/8"
-        #   Description: FPolicy TCP from VPC (NLB health checks + FSxN SVM data LIFs)
+        #   Description: FPolicy TCP from VPC (NLB health checks + FSx for ONTAP SVM data LIFs)
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443
@@ -292,7 +292,7 @@ Resources:
   #     → kms:Decrypt が必要（送信側は kms:GenerateDataKey も必要）
   #   - 現在の構成: SqsQueueUrl パラメータで外部キューを参照。
   #     キューの暗号化設定に応じて kms:Decrypt の追加を検討すること。
-  #     event-driven-fpolicy/template*.yaml では SqsManagedSseEnabled: true を
+  #     solutions/event-driven/fpolicy/template*.yaml では SqsManagedSseEnabled: true を
   #     使用しているため、kms:Decrypt は不要。
   # =========================================================================
   TaskRole:

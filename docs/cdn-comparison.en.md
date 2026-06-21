@@ -1,4 +1,4 @@
-# CDN / Edge Delivery Integration Comparison — Delivering from FSx ONTAP S3 Access Points
+# CDN / Edge Delivery Integration Comparison — Delivering from FSx for ONTAP S3 Access Points
 
 🌐 **Language / 言語**: [日本語](cdn-comparison.md) | [English](cdn-comparison.en.md) | [한국어](cdn-comparison.ko.md) | [简体中文](cdn-comparison.zh-CN.md) | [繁體中文](cdn-comparison.zh-TW.md) | [Français](cdn-comparison.fr.md) | [Deutsch](cdn-comparison.de.md) | [Español](cdn-comparison.es.md)
 
@@ -7,7 +7,7 @@
 A technical-feasibility reference for delivering data on FSx for ONTAP S3 Access Points (S3 AP)
 through a CDN / edge network. This document does **not** rank vendors, compare price/performance, or
 make marketing claims. It only addresses **what is technically achievable, what is not, and what
-requires verification** against the constraints of FSx ONTAP S3 AP. Vendor selection depends on
+requires verification** against the constraints of FSx for ONTAP S3 AP. Vendor selection depends on
 customer contracts, SLAs, operations, and regional requirements outside this document's scope.
 
 ## 1. S3 AP constraints that drive delivery design
@@ -84,7 +84,7 @@ CDN integration affects FSx for ONTAP's shared throughput. Understand origin-fet
 
 > Sources are public vendor docs (CloudFront OAC, Akamai Cloud Access Manager, Fastly S3-compatible private
 > origins, Cloudflare Workers/R2, Bunny Storage, Google Media CDN). All describe **standard S3-compatible
-> buckets**; behavior on the FSx ONTAP S3 AP accesspoint alias is TBV.
+> buckets**; behavior on the FSx for ONTAP S3 AP accesspoint alias is TBV.
 
 ## 4. Fixed security requirements (mechanism-agnostic)
 
@@ -101,7 +101,7 @@ CDN integration affects FSx for ONTAP's shared throughput. Understand origin-fet
 
 ### 4.1 Evidence classification
 - **Public evidence**: section 3 vendor capabilities — based on public docs, **time-sensitive**, re-verify before adoption.
-- **To be verified (this project)**: SigV4 origin signing behavior against the FSx ONTAP S3 AP accesspoint alias.
+- **To be verified (this project)**: SigV4 origin signing behavior against the FSx for ONTAP S3 AP accesspoint alias.
 
 ## 5. Feasibility summary
 

@@ -6,9 +6,9 @@
 
 Procedimiento reproducible para resolver, en hardware real, los puntos marcados como **por verificar (TBV)**
 en la [comparativa CDN](cdn-comparison.es.md): es decir, **si la firma de origen SigV4 de cada CDN funciona
-sobre el host `accesspoint alias` del S3 Access Point de FSx ONTAP igual que sobre un bucket S3 estándar**.
+sobre el host `accesspoint alias` del S3 Access Point de FSx for ONTAP igual que sobre un bucket S3 estándar**.
 
-Úsese para decidir si `DeliveryMode=ORIGIN_PULL` (M1/M2) de `content-edge-delivery` es viable.
+Úsese para decidir si `DeliveryMode=ORIGIN_PULL` (M1/M2) de `solutions/edge/content-delivery` es viable.
 **M3 (PUBLISH_PUSH) no depende de esta verificación** (evita la auth de origen).
 
 > **Distinción**: esta es una medición en un entorno de prueba específico. No trate el comportamiento general
@@ -83,7 +83,7 @@ Para cada CDN, definir "origen = host alias del S3 AP" y confirmar que una obten
 devuelve 200.
 
 ### 2.1 Amazon CloudFront (M1 / OAC) — referencia
-- Desplegar la plantilla `content-edge-delivery` con `EnableCloudFront=true` (OAC + `SigningProtocol: sigv4`).
+- Desplegar la plantilla `solutions/edge/content-delivery` con `EnableCloudFront=true` (OAC + `SigningProtocol: sigv4`).
 - Verificar: `curl -I https://<distribution-domain>/delivery-approved/test-1mb.bin` → 200.
 - Esperado: éxito según el tutorial oficial de AWS (**probado**).
 
@@ -153,10 +153,10 @@ devuelve 200.
 
 - Reflejar los resultados confirmados en la [comparativa CDN](cdn-comparison.es.md) sección 3 "TBV específico
   del S3 AP" y 4.1 "por verificar" (TBV → resultado medido).
-- Para los CDN en FAIL, recomendar `DeliveryMode=PUBLISH_PUSH` (M3) en `content-edge-delivery`.
+- Para los CDN en FAIL, recomendar `DeliveryMode=PUBLISH_PUSH` (M3) en `solutions/edge/content-delivery`.
 
 ## Documentos relacionados
 
 - [Comparativa de integración CDN/edge](cdn-comparison.es.md)
-- [UC content-edge-delivery](../content-edge-delivery/README.es.md)
+- [UC content-edge-delivery](../solutions/edge/content-delivery/README.es.md)
 - [Notas de compatibilidad S3AP](s3ap-compatibility-notes.md)

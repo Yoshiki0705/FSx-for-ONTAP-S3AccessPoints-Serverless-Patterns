@@ -10,8 +10,8 @@ A guide for selecting the optimal pattern from 28 use cases + 6 FlexCache/FlexCl
 
 | Customer Situation | Recommended Pattern |
 |---|---|
-| Already using FSx ONTAP for file sharing | Industry-specific UC + DemoMode=false |
-| FSx ONTAP not deployed, wants to evaluate workflow | Any UC + DemoMode=true |
+| Already using FSx for ONTAP for file sharing | Industry-specific UC + DemoMode=false |
+| FSx for ONTAP not deployed, wants to evaluate workflow | Any UC + DemoMode=true |
 | Document processing-centric (PDF, contracts, reports) | UC20 / UC23 / UC24 / UC26 / UC27 / UC28 |
 | Image/inspection workload-centric | UC19 / UC21 / UC22 / UC25 |
 | Log / time-series / analytics workload | UC18 / UC25 (SCADA) |
@@ -19,6 +19,8 @@ A guide for selecting the optimal pattern from 28 use cases + 6 FlexCache/FlexCl
 | PII / personal data protection required | UC27 / UC26 + data_classification module |
 | ESG / sustainability reporting | UC23 + framework mapping |
 | Expansion of existing NFS/SMB workloads | FC1-FC6 (FlexCache/FlexClone patterns) |
+| Equipment maintenance × multimodal AI (image + document RAG) | UC22 + Rekognition + Bedrock multimodal ([7-Eleven case ref](investigations/dais2026-agent-bricks-industry-cases.md#1-7-eleven-メンテナンス技術者向け-genai-アシスタント)) |
+| Pharma/Life Sciences × multi-agent permission-aware RAG | UC7 + Step Functions multi-agent routing ([AstraZeneca case ref](investigations/dais2026-agent-bricks-industry-cases.md#2-astrazeneca-マルチエージェントシステム10x-スケール)) |
 | Greenfield object-native workload (no NAS requirement) | Prefer standard S3 / DynamoDB serverless-native architecture |
 
 ## Technical Selection by Workload
@@ -37,11 +39,11 @@ A guide for selecting the optimal pattern from 28 use cases + 6 FlexCache/FlexCl
 |---|---|---|
 | Workflow operation | ✅ Step Functions SUCCEEDED | — |
 | AI extraction accuracy | ✅ Confirmed with sample data | Evaluate with domain validation set |
-| Performance | ⚠️ Via S3 bucket (reference value) | Measure via FSx ONTAP S3 AP |
+| Performance | ⚠️ Via S3 bucket (reference value) | Measure via FSx for ONTAP S3 AP |
 | Authorization model | ⚠️ S3 IAM only | IAM + S3 AP policy + ONTAP ID |
 | Network | ⚠️ Public path | Internet/VPC-origin design decision |
 | Governance | ⚠️ Demo labels | Data classification + lineage + retention |
-| Cost | ✅ ~$0.10/execution | + FSx ONTAP (~$194/month base) |
+| Cost | ✅ ~$0.10/execution | + FSx for ONTAP (~$194/month base) |
 
 ## Additional Considerations for Safety-Critical / Regulated Industries
 

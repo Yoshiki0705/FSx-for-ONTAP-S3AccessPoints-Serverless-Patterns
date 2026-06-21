@@ -24,7 +24,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — SLO Dashboard.
+  FSx for ONTAP S3 AP Serverless Patterns — SLO Dashboard.
   イベント駆動パイプラインの SLO 可視化ダッシュボードとアラーム。
 
 Parameters:

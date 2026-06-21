@@ -1,6 +1,6 @@
 """tests.e2e — エンドツーエンドテスト
 
-実環境（FSx ONTAP、ECS Fargate、SQS、Step Functions）を使用した
+実環境（FSx for ONTAP、ECS Fargate、SQS、Step Functions）を使用した
 統合テスト。CI 環境では pytest.mark.skipif で skip 可能。
 
 テスト対象:

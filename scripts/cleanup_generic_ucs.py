@@ -34,23 +34,23 @@ from botocore.exceptions import ClientError
 # UC directory mapping
 # ---------------------------------------------------------------------------
 UC_DIR_MAP: dict[str, str] = {
-    "UC1": "legal-compliance",
-    "UC2": "financial-idp",
-    "UC3": "manufacturing-analytics",
-    "UC4": "media-vfx",
-    "UC5": "healthcare-dicom",
-    "UC6": "semiconductor-eda",
-    "UC7": "genomics-pipeline",
-    "UC8": "energy-seismic",
-    "UC9": "autonomous-driving",
-    "UC10": "construction-bim",
-    "UC11": "retail-catalog",
-    "UC12": "logistics-ocr",
-    "UC13": "education-research",
-    "UC14": "insurance-claims",
-    "UC15": "defense-satellite",
-    "UC16": "government-archives",
-    "UC17": "smart-city-geospatial",
+    "UC1": "solutions/industry/legal-compliance",
+    "UC2": "solutions/industry/financial-idp",
+    "UC3": "solutions/industry/manufacturing-analytics",
+    "UC4": "solutions/industry/media-vfx",
+    "UC5": "solutions/industry/healthcare-dicom",
+    "UC6": "solutions/industry/semiconductor-eda",
+    "UC7": "solutions/industry/genomics-pipeline",
+    "UC8": "solutions/industry/energy-seismic",
+    "UC9": "solutions/industry/autonomous-driving",
+    "UC10": "solutions/industry/construction-bim",
+    "UC11": "solutions/industry/retail-catalog",
+    "UC12": "solutions/industry/logistics-ocr",
+    "UC13": "solutions/industry/education-research",
+    "UC14": "solutions/industry/insurance-claims",
+    "UC15": "solutions/industry/defense-satellite",
+    "UC16": "solutions/industry/government-archives",
+    "UC17": "solutions/industry/smart-city-geospatial",
 }
 
 ALL_UCS = list(UC_DIR_MAP.keys())
@@ -368,7 +368,7 @@ def cleanup_stack(
 def main(argv: Optional[list[str]] = None) -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Cleanup FSxN S3AP serverless pattern demo stacks",
+        description="Cleanup FSx for ONTAP S3 AP serverless pattern demo stacks",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )

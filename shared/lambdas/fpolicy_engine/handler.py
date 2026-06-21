@@ -4,8 +4,8 @@ EventBridge ECS Task State Change イベントをトリガーとして、
 新しい Fargate タスクの Private IP を ONTAP FPolicy external-engine に反映する。
 
 Environment Variables:
-    FSXN_MGMT_IP: FSxN SVM 管理 IP (e.g., 10.0.x.x)
-    FSXN_SVM_UUID: FSxN SVM UUID
+    FSXN_MGMT_IP: FSx for ONTAP SVM 管理 IP (e.g., 10.0.x.x)
+    FSXN_SVM_UUID: FSx for ONTAP SVM UUID
     FSXN_ENGINE_NAME: FPolicy external-engine 名 (default: fpolicy_aws_engine)
     FSXN_POLICY_NAME: FPolicy ポリシー名 (default: fpolicy_aws)
     FSXN_CREDENTIALS_SECRET: Secrets Manager シークレット名

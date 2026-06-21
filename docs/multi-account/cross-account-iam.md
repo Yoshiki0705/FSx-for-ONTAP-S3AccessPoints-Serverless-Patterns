@@ -12,7 +12,7 @@
 Workload Account Lambda
   → sts:AssumeRole (External ID required)
     → Storage Account Cross-Account Role
-      → S3 Access Point → FSx ONTAP Volume
+      → S3 Access Point → FSx for ONTAP Volume
 ```
 
 ---

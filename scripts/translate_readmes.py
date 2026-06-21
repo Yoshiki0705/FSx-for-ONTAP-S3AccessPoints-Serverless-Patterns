@@ -75,20 +75,20 @@ class TranslationConfig:
     target_languages: list[str] = field(default_factory=lambda: ["en", "ko", "zh-CN", "zh-TW", "fr", "de", "es"])
     uc_folders: list[str] = field(
         default_factory=lambda: [
-            "semiconductor-eda",
-            "legal-compliance",
-            "financial-idp",
-            "manufacturing-analytics",
-            "media-vfx",
-            "healthcare-dicom",
-            "autonomous-driving",
-            "construction-bim",
-            "education-research",
-            "energy-seismic",
-            "genomics-pipeline",
-            "insurance-claims",
-            "logistics-ocr",
-            "retail-catalog",
+            "solutions/industry/semiconductor-eda",
+            "solutions/industry/legal-compliance",
+            "solutions/industry/financial-idp",
+            "solutions/industry/manufacturing-analytics",
+            "solutions/industry/media-vfx",
+            "solutions/industry/healthcare-dicom",
+            "solutions/industry/autonomous-driving",
+            "solutions/industry/construction-bim",
+            "solutions/industry/education-research",
+            "solutions/industry/energy-seismic",
+            "solutions/industry/genomics-pipeline",
+            "solutions/industry/insurance-claims",
+            "solutions/industry/logistics-ocr",
+            "solutions/industry/retail-catalog",
         ]
     )
     bedrock_model_id: str = "anthropic.claude-haiku-4-5-20251001-v1:0"

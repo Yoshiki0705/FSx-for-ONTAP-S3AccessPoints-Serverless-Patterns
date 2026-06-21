@@ -1,4 +1,4 @@
-"""Output Writer — 標準 S3 バケットと FSxN S3 Access Points の両方に対応した出力ヘルパー
+"""Output Writer — 標準 S3 バケットと FSx for ONTAP S3 Access Points の両方に対応した出力ヘルパー
 
 各 UC の Lambda ハンドラが生成した成果物（JSON/TEXT/バイナリ）を、
 環境変数 `OUTPUT_DESTINATION` に応じて以下のいずれかに書き込む:
@@ -8,22 +8,22 @@
 
 ### なぜこのヘルパーが必要か
 
-プロジェクトの核となる価値提案は "enterprise file data on FSxN consumed by AI/ML/Analytics
+プロジェクトの核となる価値提案は "enterprise file data on FSx for ONTAP consumed by AI/ML/Analytics
 services with no data movement" である。従来は Lambda ハンドラが直接
 `boto3.client('s3').put_object(Bucket=OUTPUT_BUCKET, ...)` で標準 S3 に書き込んでいた。
 
-しかし FSxN S3AP は PutObject を Supported としており
+しかし FSx for ONTAP S3 AP は PutObject を Supported としており
 (docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、
-Bedrock/Rekognition/Textract の出力 JSON 等を FSxN S3AP に書き戻せば、SMB/NFS
+Bedrock/Rekognition/Textract の出力 JSON 等を FSx for ONTAP S3 AP に書き戻せば、SMB/NFS
 ユーザーが既存のディレクトリ構造の中で AI 成果物を閲覧できる。
 
 本ヘルパーは以下の責務を持つ:
 1. 出力先の切替（STANDARD_S3 / FSXN_S3AP）
-2. FSxN S3AP 仕様への準拠:
+2. FSx for ONTAP S3 AP 仕様への準拠:
    - SSE-FSX が強制されるため `ServerSideEncryption` は渡さない
    - `GetObjectAcl` / `PutObjectAcl` は `bucket-owner-full-control` のみサポート
    - 5GB を超える場合はマルチパートアップロード（`shared.s3ap_helper` 側で対応）
-3. FSxN S3AP モード時のプレフィックス付与（`OUTPUT_S3AP_PREFIX`）
+3. FSx for ONTAP S3 AP モード時のプレフィックス付与（`OUTPUT_S3AP_PREFIX`）
 
 ### Environment Variables
 
@@ -172,7 +172,7 @@ class OutputWriter:
         """書き込み先の人間可読な説明を返す（ログ出力用）"""
         if self._destination == STANDARD_S3:
             return f"Standard S3 bucket '{self._bucket}'"
-        return f"FSxN S3 Access Point '{self._s3ap_alias}' (prefix: {self._s3ap_prefix!r})"
+        return f"FSx for ONTAP S3 Access Point '{self._s3ap_alias}' (prefix: {self._s3ap_prefix!r})"
 
     def _resolve_target(self, key: str) -> tuple[str, str]:
         """書き込み先の Bucket パラメータと実際のキーを返す
@@ -214,7 +214,7 @@ class OutputWriter:
 
         Raises:
             OutputWriterError: body が 5 GB を超える場合
-            S3ApHelperError: FSxN S3AP への書き込み失敗時
+            S3ApHelperError: FSx for ONTAP S3 AP への書き込み失敗時
             ClientError: 標準 S3 への書き込み失敗時
         """
         if len(body) > _MAX_PUT_OBJECT_SIZE:
@@ -225,7 +225,7 @@ class OutputWriter:
 
         bucket_param, resolved_key = self._resolve_target(key)
 
-        # FSxN S3AP は SSE-FSX のみサポートなので ServerSideEncryption は渡さない
+        # FSx for ONTAP S3 AP は SSE-FSX のみサポートなので ServerSideEncryption は渡さない
         put_kwargs = {
             "Bucket": bucket_param,
             "Key": resolved_key,
@@ -240,8 +240,8 @@ class OutputWriter:
             if self._destination == FSXN_S3AP:
                 raise S3ApHelperError(
                     f"Failed to put object '{resolved_key}' to "
-                    f"FSxN S3 Access Point '{self._s3ap_alias}': {e}. "
-                    f"Note: FSxN S3AP requires SSE-FSX (auto) and has a 5GB object size limit.",
+                    f"FSx for ONTAP S3 Access Point '{self._s3ap_alias}': {e}. "
+                    f"Note: FSx for ONTAP S3 AP requires SSE-FSX (auto) and has a 5GB object size limit.",
                     error_code=error_code,
                 ) from e
             raise
@@ -478,7 +478,7 @@ class OutputWriter:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if self._destination == FSXN_S3AP:
                 raise S3ApHelperError(
-                    f"Failed to get object '{resolved_key}' from FSxN S3 Access Point '{self._s3ap_alias}': {e}.",
+                    f"Failed to get object '{resolved_key}' from FSx for ONTAP S3 Access Point '{self._s3ap_alias}': {e}.",
                     error_code=error_code,
                 ) from e
             raise
@@ -606,7 +606,7 @@ class OutputWriter:
         progress_callback=None,
         content_length_hint: int | None = None,
     ) -> dict[str, Any]:
-        """FSxN S3AP multipart upload — delegates to S3ApHelper."""
+        """FSx for ONTAP S3 AP multipart upload — delegates to S3ApHelper."""
         from shared.s3ap_helper import S3ApHelper
 
         helper = S3ApHelper(self._s3ap_alias, session=self._session)
@@ -658,7 +658,7 @@ class OutputWriter:
             bytes: オブジェクトの Body
 
         Raises:
-            S3ApHelperError: FSxN S3AP からの読み取り失敗時
+            S3ApHelperError: FSx for ONTAP S3 AP からの読み取り失敗時
             ClientError: 標準 S3 からの読み取り失敗時
         """
         bucket_param, resolved_key = self._resolve_target(key)
@@ -668,7 +668,7 @@ class OutputWriter:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if self._destination == FSXN_S3AP:
                 raise S3ApHelperError(
-                    f"Failed to get object '{resolved_key}' from FSxN S3 Access Point '{self._s3ap_alias}': {e}.",
+                    f"Failed to get object '{resolved_key}' from FSx for ONTAP S3 Access Point '{self._s3ap_alias}': {e}.",
                     error_code=error_code,
                 ) from e
             raise

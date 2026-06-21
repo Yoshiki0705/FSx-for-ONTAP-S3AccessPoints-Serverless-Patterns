@@ -11,15 +11,15 @@ import sys
 from pathlib import Path
 
 UC_CONFIG = {
-    "autonomous-driving": {
+    "solutions/industry/autonomous-driving": {
         "uc_id": "UC9 autonomous-driving",
         "purpose": "ADAS / 自動運転データ（フレーム抽出、点群QC、アノテーション、推論）",
     },
-    "construction-bim": {
+    "solutions/industry/construction-bim": {
         "uc_id": "UC10 construction-bim",
         "purpose": "建設 BIM / 図面 OCR / 安全コンプライアンスチェック",
     },
-    "logistics-ocr": {
+    "solutions/industry/logistics-ocr": {
         "uc_id": "UC12 logistics-ocr",
         "purpose": "配送伝票 OCR / 在庫分析 / 物流レポート",
     },
@@ -56,7 +56,7 @@ aws cloudformation deploy \\
 ```
 
 ### FSXN_S3AP（"no data movement" パターン）
-AI 成果物を FSxN S3 Access Point 経由でオリジナルデータと**同一の FSx ONTAP ボリューム**に
+AI 成果物を FSx for ONTAP S3 Access Point 経由でオリジナルデータと**同一の FSx for ONTAP ボリューム**に
 書き戻します。SMB/NFS ユーザーが業務で使用するディレクトリ構造内で AI 成果物を
 直接閲覧できます。標準 S3 バケットは作成されません。
 
@@ -74,7 +74,7 @@ aws cloudformation deploy \\
 **注意事項**:
 
 - `S3AccessPointName` の指定を強く推奨（Alias 形式と ARN 形式の両方で IAM 許可する）
-- 5GB 超のオブジェクトは FSxN S3AP では不可（AWS 仕様）、マルチパートアップロード必須
+- 5GB 超のオブジェクトは FSx for ONTAP S3 AP では不可（AWS 仕様）、マルチパートアップロード必須
 - AWS 仕様上の制約は
   [プロジェクト README の "AWS 仕様上の制約と回避策" セクション](../../README.md#aws-仕様上の制約と回避策)
   および [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md) を参照

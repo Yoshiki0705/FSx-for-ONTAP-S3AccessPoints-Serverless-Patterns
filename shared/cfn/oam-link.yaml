@@ -24,7 +24,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Multi-Account OAM Link (Phase 12).
+  FSx for ONTAP S3 AP Serverless Patterns — Multi-Account OAM Link (Phase 12).
   ワークロードアカウントから監視アカウントへの CloudWatch OAM リンク。
 
 Parameters:

@@ -1,0 +1,165 @@
+{
+  "Comment": "HA LifeKeeper Monitoring Workflow — Discovers LifeKeeper logs via S3 AP, analyzes failover events with Bedrock, generates health reports and sends alerts.",
+  "StartAt": "Discovery",
+  "States": {
+    "Discovery": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${DiscoveryFunctionArn}",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$.discovery",
+      "ResultSelector": {
+        "status.$": "$.Payload.status",
+        "object_count.$": "$.Payload.object_count",
+        "objects.$": "$.Payload.objects",
+        "failover_events.$": "$.Payload.failover_events",
+        "failover_event_count.$": "$.Payload.failover_event_count",
+        "category_summary.$": "$.Payload.category_summary",
+        "cluster_name.$": "$.Payload.cluster_name",
+        "timestamp.$": "$.Payload.timestamp"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "HandleError",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "CheckDiscoveryResult"
+    },
+
+    "CheckDiscoveryResult": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.discovery.status",
+          "StringEquals": "error",
+          "Next": "HandleError"
+        },
+        {
+          "Variable": "$.discovery.object_count",
+          "NumericEquals": 0,
+          "Next": "NoFilesFound"
+        }
+      ],
+      "Default": "Processing"
+    },
+
+    "NoFilesFound": {
+      "Type": "Pass",
+      "Result": {
+        "status": "no_files",
+        "message": "No LifeKeeper log files found in the specified prefix. Cluster may be healthy with no recent events."
+      },
+      "End": true
+    },
+
+    "Processing": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ProcessingFunctionArn}",
+        "Payload": {
+          "objects.$": "$.discovery.objects",
+          "failover_events.$": "$.discovery.failover_events",
+          "failover_event_count.$": "$.discovery.failover_event_count",
+          "cluster_name.$": "$.discovery.cluster_name"
+        }
+      },
+      "ResultPath": "$.processing",
+      "ResultSelector": {
+        "status.$": "$.Payload.status",
+        "health_score.$": "$.Payload.health_score",
+        "failover_analyses.$": "$.Payload.failover_analyses",
+        "root_cause_analysis.$": "$.Payload.root_cause_analysis",
+        "log_summary.$": "$.Payload.log_summary",
+        "processed_count.$": "$.Payload.processed_count",
+        "failover_count.$": "$.Payload.failover_count",
+        "timestamp.$": "$.Payload.timestamp"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "HandleError",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "Report"
+    },
+
+    "Report": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ReportFunctionArn}",
+        "Payload": {
+          "health_score.$": "$.processing.health_score",
+          "failover_analyses.$": "$.processing.failover_analyses",
+          "root_cause_analysis.$": "$.processing.root_cause_analysis",
+          "log_summary.$": "$.processing.log_summary",
+          "processed_count.$": "$.processing.processed_count",
+          "failover_count.$": "$.processing.failover_count",
+          "cluster_name.$": "$.discovery.cluster_name"
+        }
+      },
+      "ResultPath": "$.report",
+      "ResultSelector": {
+        "status.$": "$.Payload.status",
+        "health_score.$": "$.Payload.health_score",
+        "health_level.$": "$.Payload.health_level",
+        "failover_count.$": "$.Payload.failover_count",
+        "alert_sent.$": "$.Payload.alert_sent",
+        "report_key.$": "$.Payload.report_key",
+        "timestamp.$": "$.Payload.timestamp"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "HandleError",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "Success"
+    },
+
+    "Success": {
+      "Type": "Succeed"
+    },
+
+    "HandleError": {
+      "Type": "Pass",
+      "Parameters": {
+        "status": "error",
+        "error.$": "$.error",
+        "message": "HA LifeKeeper monitoring workflow encountered an error. Check CloudWatch Logs for details."
+      },
+      "End": true
+    }
+  }
+}

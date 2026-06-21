@@ -32,7 +32,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — StackSets Administration.
+  FSx for ONTAP S3 AP Serverless Patterns — StackSets Administration.
   CloudFormation StackSets の管理ロールと実行ロールを作成する。
 
 # =====================================================================
@@ -87,7 +87,7 @@ Parameters:
     AllowedValues: ["restricted", "full"]
     Description: >-
       実行ロールの権限レベル。
-      restricted: FSxN S3AP パターンに必要なサービスのみ許可。
+      restricted: FSx for ONTAP S3 AP パターンに必要なサービスのみ許可。
       full: AdministratorAccess（開発環境のみ推奨）。
 
   EnableDriftDetection:
@@ -193,7 +193,7 @@ Resources:
       RoleName: !Sub "${ProjectPrefix}-stacksets-execution-role"
       Description: >-
         StackSets execution role (restricted permissions).
-        Only allows services needed for FSxN S3AP pattern deployment.
+        Only allows services needed for FSx for ONTAP S3 AP pattern deployment.
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -437,7 +437,7 @@ Resources:
           import json
 
           def handler(event, context):
-              """Detect drift in all FSxN S3AP StackSets."""
+              """Detect drift in all FSx for ONTAP S3 AP StackSets."""
               cfn = boto3.client("cloudformation")
               prefix = os.environ["PROJECT_PREFIX"]
 

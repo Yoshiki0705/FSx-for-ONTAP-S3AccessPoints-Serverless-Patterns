@@ -2,7 +2,7 @@
 # Capacity Guardrails — DynamoDB テーブル + IAM Policy
 # =============================================================================
 #
-# FSx ONTAP 自動拡張操作に対するレート制限・日次上限・クールダウン制御を
+# FSx for ONTAP 自動拡張操作に対するレート制限・日次上限・クールダウン制御を
 # 追跡するための DynamoDB テーブルと、UC Lambda からのアクセスポリシー。
 #
 # 使用方法:
@@ -19,7 +19,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Capacity Guardrails Tracking Table.
+  FSx for ONTAP S3 AP Serverless Patterns — Capacity Guardrails Tracking Table.
   自動拡張操作のレート制限・日次上限・クールダウン追跡用 DynamoDB テーブル。
 
 Parameters:

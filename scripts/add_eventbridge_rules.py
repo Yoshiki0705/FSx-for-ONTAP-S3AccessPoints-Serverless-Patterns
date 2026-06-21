@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # Each UC has: (dir_name, state_machine_ref, prefixes, suffixes, operations)
 UC_ROUTING = [
     {
-        "dir": "legal-compliance",
+        "dir": "solutions/industry/legal-compliance",
         "state_machine": "ComplianceStateMachine",
         "rule_name": "FPolicyComplianceRule",
         "role_name": "FPolicyEventRuleRole",
@@ -28,7 +28,7 @@ UC_ROUTING = [
         "operations": ["create", "write", "rename", "delete"],
     },
     {
-        "dir": "financial-idp",
+        "dir": "solutions/industry/financial-idp",
         "state_machine": "IdpStateMachine",
         "rule_name": "FPolicyIdpRule",
         "role_name": "FPolicyEventRuleRole",
@@ -37,7 +37,7 @@ UC_ROUTING = [
         "operations": ["create", "write"],
     },
     {
-        "dir": "manufacturing-analytics",
+        "dir": "solutions/industry/manufacturing-analytics",
         "state_machine": "ManufacturingStateMachine",
         "rule_name": "FPolicyManufacturingRule",
         "role_name": "FPolicyEventRuleRole",
@@ -46,7 +46,7 @@ UC_ROUTING = [
         "operations": ["create", "write"],
     },
     {
-        "dir": "media-vfx",
+        "dir": "solutions/industry/media-vfx",
         "state_machine": "VfxStateMachine",
         "rule_name": "FPolicyVfxRule",
         "role_name": "FPolicyEventRuleRole",
@@ -55,7 +55,7 @@ UC_ROUTING = [
         "operations": ["create", "write", "rename"],
     },
     {
-        "dir": "healthcare-dicom",
+        "dir": "solutions/industry/healthcare-dicom",
         "state_machine": "DicomStateMachine",
         "rule_name": "FPolicyDicomRule",
         "role_name": "FPolicyEventRuleRole",
@@ -64,7 +64,7 @@ UC_ROUTING = [
         "operations": ["create", "write"],
     },
     {
-        "dir": "insurance-claims",
+        "dir": "solutions/industry/insurance-claims",
         "state_machine": "InsuranceClaimsStateMachine",
         "rule_name": "FPolicyInsuranceRule",
         "role_name": "FPolicyEventRuleRole",
@@ -73,7 +73,7 @@ UC_ROUTING = [
         "operations": ["create", "write"],
     },
     {
-        "dir": "construction-bim",
+        "dir": "solutions/industry/construction-bim",
         "state_machine": "ConstructionBimStateMachine",
         "rule_name": "FPolicyBimRule",
         "role_name": "FPolicyEventRuleRole",
@@ -82,7 +82,7 @@ UC_ROUTING = [
         "operations": ["create", "write", "rename"],
     },
     {
-        "dir": "genomics-pipeline",
+        "dir": "solutions/industry/genomics-pipeline",
         "state_machine": "GenomicsStateMachine",
         "rule_name": "FPolicyGenomicsRule",
         "role_name": "FPolicyEventRuleRole",
@@ -91,7 +91,7 @@ UC_ROUTING = [
         "operations": ["create", "write"],
     },
     {
-        "dir": "logistics-ocr",
+        "dir": "solutions/industry/logistics-ocr",
         "state_machine": "LogisticsOcrStateMachine",
         "rule_name": "FPolicyLogisticsRule",
         "role_name": "FPolicyEventRuleRole",
@@ -100,7 +100,7 @@ UC_ROUTING = [
         "operations": ["create", "write"],
     },
     {
-        "dir": "retail-catalog",
+        "dir": "solutions/industry/retail-catalog",
         "state_machine": "RetailCatalogStateMachine",
         "rule_name": "FPolicyRetailRule",
         "role_name": "FPolicyEventRuleRole",
@@ -109,7 +109,7 @@ UC_ROUTING = [
         "operations": ["create", "write", "rename"],
     },
     {
-        "dir": "autonomous-driving",
+        "dir": "solutions/industry/autonomous-driving",
         "state_machine": "AutonomousDrivingStateMachine",
         "rule_name": "FPolicyAutonomousRule",
         "role_name": "FPolicyEventRuleRole",
@@ -118,7 +118,7 @@ UC_ROUTING = [
         "operations": ["create", "write"],
     },
     {
-        "dir": "semiconductor-eda",
+        "dir": "solutions/industry/semiconductor-eda",
         "state_machine": "EdaStateMachine",
         "rule_name": "FPolicyEdaRule",
         "role_name": "FPolicyEventRuleRole",
@@ -127,7 +127,7 @@ UC_ROUTING = [
         "operations": ["create", "write", "rename"],
     },
     {
-        "dir": "energy-seismic",
+        "dir": "solutions/industry/energy-seismic",
         "state_machine": "SeismicStateMachine",
         "rule_name": "FPolicySeismicRule",
         "role_name": "FPolicyEventRuleRole",
@@ -136,7 +136,7 @@ UC_ROUTING = [
         "operations": ["create", "write"],
     },
     {
-        "dir": "education-research",
+        "dir": "solutions/industry/education-research",
         "state_machine": "EducationResearchStateMachine",
         "rule_name": "FPolicyEducationRule",
         "role_name": "FPolicyEventRuleRole",
@@ -145,7 +145,7 @@ UC_ROUTING = [
         "operations": ["create", "write", "rename"],
     },
     {
-        "dir": "defense-satellite",
+        "dir": "solutions/industry/defense-satellite",
         "state_machine": None,  # Simplified template — no StateMachine
         "target_function": "DiscoveryFunction",
         "rule_name": "FPolicySatelliteRule",
@@ -155,7 +155,7 @@ UC_ROUTING = [
         "operations": ["create", "write"],
     },
     {
-        "dir": "government-archives",
+        "dir": "solutions/industry/government-archives",
         "state_machine": None,  # Simplified template — no StateMachine
         "target_function": "DiscoveryFunction",
         "rule_name": "FPolicyArchivesRule",
@@ -165,7 +165,7 @@ UC_ROUTING = [
         "operations": ["create", "write", "rename", "delete"],
     },
     {
-        "dir": "smart-city-geospatial",
+        "dir": "solutions/industry/smart-city-geospatial",
         "state_machine": None,  # Simplified template — no StateMachine
         "target_function": "DiscoveryFunction",
         "rule_name": "FPolicySmartCityRule",

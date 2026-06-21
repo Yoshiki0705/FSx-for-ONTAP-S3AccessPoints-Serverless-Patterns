@@ -1,4 +1,4 @@
-# Comparatif d'intégration CDN / edge — Diffusion depuis FSx ONTAP S3 Access Points
+# Comparatif d'intégration CDN / edge — Diffusion depuis FSx for ONTAP S3 Access Points
 
 🌐 **Language / 言語**: [日本語](cdn-comparison.md) | [English](cdn-comparison.en.md) | [한국어](cdn-comparison.ko.md) | [简体中文](cdn-comparison.zh-CN.md) | [繁體中文](cdn-comparison.zh-TW.md) | [Français](cdn-comparison.fr.md) | [Deutsch](cdn-comparison.de.md) | [Español](cdn-comparison.es.md)
 
@@ -8,7 +8,7 @@ Référence de faisabilité technique pour diffuser des données présentes sur 
 S3 Access Points (S3 AP) via un réseau CDN/edge. Ce document **ne** classe **pas** les fournisseurs, ne
 compare ni prix ni performances et ne formule aucune affirmation marketing. Il traite uniquement de **ce
 qui est techniquement réalisable, ce qui ne l'est pas et ce qui doit être vérifié** au regard des
-contraintes du S3 AP FSx ONTAP. Le choix du fournisseur dépend d'éléments hors périmètre (contrats, SLA,
+contraintes du S3 AP FSx for ONTAP. Le choix du fournisseur dépend d'éléments hors périmètre (contrats, SLA,
 exploitation, exigences régionales) et relève du client.
 
 ## 1. Contraintes du S3 AP qui déterminent la conception de la diffusion
@@ -63,7 +63,7 @@ exploitation, exigences régionales) et relève du client.
 > Les sources sont les docs publiques des fournisseurs (CloudFront OAC, Akamai Cloud Access Manager,
 > origines privées S3-compatibles Fastly, Cloudflare Workers/R2, Bunny Storage, Google Media CDN). Toutes
 > décrivent des **buckets S3-compatibles standard** ; le comportement sur l'accesspoint alias du S3 AP
-> FSx ONTAP est TBV.
+> FSx for ONTAP est TBV.
 
 ## 4. Exigences de sécurité fixes (indépendantes du mécanisme)
 
@@ -86,7 +86,7 @@ exploitation, exigences régionales) et relève du client.
 - **Preuve publique** : capacités des fournisseurs de la section 3 — basées sur des docs publiques,
   **dépendantes du moment**, à revérifier avant adoption.
 - **À vérifier (ce projet)** : comportement de la signature d'origine SigV4 sur l'accesspoint alias du
-  S3 AP FSx ONTAP.
+  S3 AP FSx for ONTAP.
 
 ## 5. Synthèse de faisabilité
 

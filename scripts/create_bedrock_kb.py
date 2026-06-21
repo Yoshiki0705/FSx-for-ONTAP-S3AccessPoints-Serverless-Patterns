@@ -67,7 +67,7 @@ try:
     ds_resp = client.create_data_source(
         knowledgeBaseId=kb_id,
         name="fsxn-s3ap-source",
-        description="FSx ONTAP S3 Access Point data source",
+        description="FSx for ONTAP S3 Access Point data source",
         dataSourceConfiguration={
             "type": "S3",
             "s3Configuration": {

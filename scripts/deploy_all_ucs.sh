@@ -29,19 +29,19 @@ REGION="${AWS_REGION:-ap-northeast-1}"
 # UC short name → directory mapping
 uc_to_dir() {
     case "$1" in
-        UC1) echo "legal-compliance" ;;
-        UC2) echo "financial-idp" ;;
-        UC3) echo "manufacturing-analytics" ;;
-        UC4) echo "media-vfx" ;;
-        UC5) echo "healthcare-dicom" ;;
-        UC7) echo "genomics-pipeline" ;;
-        UC8) echo "energy-seismic" ;;
-        UC9) echo "autonomous-driving" ;;
-        UC10) echo "construction-bim" ;;
-        UC11) echo "retail-catalog" ;;
-        UC12) echo "logistics-ocr" ;;
-        UC13) echo "education-research" ;;
-        UC14) echo "insurance-claims" ;;
+        UC1) echo "solutions/industry/legal-compliance" ;;
+        UC2) echo "solutions/industry/financial-idp" ;;
+        UC3) echo "solutions/industry/manufacturing-analytics" ;;
+        UC4) echo "solutions/industry/media-vfx" ;;
+        UC5) echo "solutions/industry/healthcare-dicom" ;;
+        UC7) echo "solutions/industry/genomics-pipeline" ;;
+        UC8) echo "solutions/industry/energy-seismic" ;;
+        UC9) echo "solutions/industry/autonomous-driving" ;;
+        UC10) echo "solutions/industry/construction-bim" ;;
+        UC11) echo "solutions/industry/retail-catalog" ;;
+        UC12) echo "solutions/industry/logistics-ocr" ;;
+        UC13) echo "solutions/industry/education-research" ;;
+        UC14) echo "solutions/industry/insurance-claims" ;;
         *) echo "$1" ;;
     esac
 }

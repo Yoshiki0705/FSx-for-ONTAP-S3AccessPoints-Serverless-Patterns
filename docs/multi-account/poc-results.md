@@ -12,7 +12,7 @@
 
 | アカウント | 役割 | 主要リソース |
 |-----------|------|-------------|
-| **Account A** (Storage/Shared) | ストレージ + 共有サービス | FSx ONTAP, S3 AP, CloudWatch Sink, Cross-Account IAM |
+| **Account A** (Storage/Shared) | ストレージ + 共有サービス | FSx for ONTAP, S3 AP, CloudWatch Sink, Cross-Account IAM |
 | **Account B** (Workload) | ワークロード実行 | Lambda, Step Functions, UC デプロイ |
 
 ### ネットワーク構成
@@ -20,7 +20,7 @@
 ```
 Account A (Storage/Shared Services)
 ├── VPC-A (10.0.0.0/16)
-│   ├── FSx ONTAP File System
+│   ├── FSx for ONTAP File System
 │   ├── S3 Access Point (network origin: internet)
 │   └── CloudWatch Observability Sink
 │
@@ -71,7 +71,7 @@ Account B (Workload)
 
 #### 制限事項（確認済み）
 
-- FSx ONTAP ファイルシステム自体は RAM 共有非対応
+- FSx for ONTAP ファイルシステム自体は RAM 共有非対応
 - S3 Access Point は RAM 共有非対応（IAM Cross-Account ロールで代替）
 - RAM 共有は VPC サブネット、Transit Gateway 等に有効
 

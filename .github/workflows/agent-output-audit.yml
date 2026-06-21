@@ -1,0 +1,178 @@
+name: Agent Output Audit (Naming / Neutrality / Leak / Parity)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+      - '**.yaml'
+      - '**.yml'
+      - '**.py'
+      - '**.sql'
+      - '**.json'
+      - '**.sh'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.md'
+      - '**.yaml'
+      - '**.yml'
+      - '**.py'
+      - '**.sql'
+      - '**.json'
+      - '**.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Agent Output Guardrails
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Determine changed files
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            BASE="${{ github.event.before }}"
+          else
+            BASE=""
+          fi
+
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            # workflow_dispatch or initial commit — scan all tracked files
+            CHANGED=$(git ls-files -- '*.md' '*.yaml' '*.yml' '*.py' '*.sql' '*.json' '*.sh')
+          else
+            CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD)
+          fi
+
+          # Exclude CI/meta paths from audit
+          CHANGED=$(echo "$CHANGED" | grep -vE '^(\.github/|AGENTS\.md|CONTRIBUTING|\.kiro/)' || true)
+
+          # Split into markdown and text (all auditable) file lists
+          MD_FILES=$(echo "$CHANGED" | grep -E '\.md$' || true)
+          TEXT_FILES=$(echo "$CHANGED" | grep -E '\.(md|yaml|yml|py|sql|json|sh)$' || true)
+
+          # Write to files for later steps
+          echo "$MD_FILES" > /tmp/changed_md.txt
+          echo "$TEXT_FILES" > /tmp/changed_text.txt
+
+          MD_COUNT=$(echo "$MD_FILES" | grep -c . || echo 0)
+          TEXT_COUNT=$(echo "$TEXT_FILES" | grep -c . || echo 0)
+          echo "md_count=$MD_COUNT" >> "$GITHUB_OUTPUT"
+          echo "text_count=$TEXT_COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: "Check: Naming standard (changed .md only)"
+        if: steps.changes.outputs.md_count > 0
+        run: |
+          FAIL=0
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            [ ! -f "$file" ] && continue
+            # Exclude lines with allow:naming comment
+            HITS=$(grep -nE '\bFSxN\b|FSx ONTAP|FSx S3 AP' "$file" | grep -v 'allow:naming' || true)
+            if [ -n "$HITS" ]; then
+              echo "::error file=$file::Naming violation (use 'FSx for ONTAP' / 'FSx for ONTAP S3 AP')"
+              echo "$HITS" | head -5
+              FAIL=1
+            fi
+          done < /tmp/changed_md.txt
+
+          # Forbidden tools
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            [ ! -f "$file" ] && continue
+            HITS=$(grep -nE 'Workload Factory|NetApp Console|BlueXP' "$file" || true)
+            if [ -n "$HITS" ]; then
+              echo "::error file=$file::Forbidden tool reference (use native equivalents)"
+              echo "$HITS" | head -5
+              FAIL=1
+            fi
+          done < /tmp/changed_md.txt
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo "❌ Naming check failed on changed markdown files"
+            exit 1
+          fi
+          echo "✅ Naming check passed"
+
+      - name: "Check: Vendor neutrality (changed .md only)"
+        if: steps.changes.outputs.md_count > 0
+        run: |
+          FAIL=0
+          PATTERN='最強|game-changer|ゲームチェンジャー|競合ツール|優位性|より優れ|is better than|is superior to'
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            [ ! -f "$file" ] && continue
+            HITS=$(grep -nE "$PATTERN" "$file" || true)
+            if [ -n "$HITS" ]; then
+              echo "::error file=$file::Vendor neutrality violation"
+              echo "$HITS" | head -5
+              FAIL=1
+            fi
+          done < /tmp/changed_md.txt
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo "❌ Neutrality check failed"
+            exit 1
+          fi
+          echo "✅ Neutrality check passed"
+
+      - name: "Check: Public-output leak (changed text files)"
+        if: steps.changes.outputs.text_count > 0
+        env:
+          PROJECT_CONTEXT_NAMES: ${{ secrets.PROJECT_CONTEXT_NAMES }}
+        run: |
+          FAIL=0
+          PATTERN='DB-I-[0-9]+'
+          if [ -n "$PROJECT_CONTEXT_NAMES" ]; then
+            PATTERN="${PROJECT_CONTEXT_NAMES}|${PATTERN}"
+          fi
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            [ ! -f "$file" ] && continue
+            HITS=$(grep -nE "$PATTERN" "$file" || true)
+            if [ -n "$HITS" ]; then
+              # Output file:line only — never echo match content
+              echo "::error file=$file::Potential leak detected"
+              echo "$HITS" | cut -d: -f1,2
+              FAIL=1
+            fi
+          done < /tmp/changed_text.txt
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo "❌ Leak check failed — see file:line references above"
+            exit 1
+          fi
+          echo "✅ Leak check passed"
+
+      - name: "Check: JA/EN parity (warning only)"
+        if: steps.changes.outputs.md_count > 0
+        run: |
+          # Find changed JA docs and check if corresponding EN doc has matching section count
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            [ ! -f "$file" ] && continue
+            # Check if this is a JA doc with a parallel EN doc
+            EN_FILE=$(echo "$file" | sed 's|/ja/|/en/|')
+            if [ "$file" != "$EN_FILE" ] && [ -f "$EN_FILE" ]; then
+              JA_SECTIONS=$(grep -c '^##' "$file" || echo 0)
+              EN_SECTIONS=$(grep -c '^##' "$EN_FILE" || echo 0)
+              if [ "$JA_SECTIONS" -ne "$EN_SECTIONS" ]; then
+                echo "::warning file=$file::JA/EN parity: JA has ${JA_SECTIONS} sections, EN has ${EN_SECTIONS} sections"
+              fi
+            fi
+          done < /tmp/changed_md.txt
+          echo "✅ Parity check complete (warnings only)"

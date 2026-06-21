@@ -10,6 +10,9 @@
 
 .PHONY: install test lint clean help
 
+# Python interpreter (override with: make test PYTHON=python3.12)
+PYTHON ?= python3
+
 # Default target
 help:
 	@echo "Available targets:"
@@ -41,38 +44,44 @@ install:
 # Testing
 # ============================================================
 test:
-	python3 -m pytest \
+	$(PYTHON) -m pytest \
 		shared/tests/ \
-		legal-compliance/tests/ \
-		semiconductor-eda/tests/ \
-		sap-erp-adjacent/tests/ \
-		smart-city-geospatial/tests/ \
-		defense-satellite/tests/ \
-		flexcache-anycast-dr/tests/ \
-		education-research/tests/ \
+		solutions/industry/legal-compliance/tests/ \
+		solutions/industry/semiconductor-eda/tests/ \
+		solutions/sap/erp-adjacent/tests/ \
+		solutions/industry/smart-city-geospatial/tests/ \
+		solutions/industry/defense-satellite/tests/ \
+		solutions/industry/education-research/tests/ \
+		--tb=short -q
+	$(PYTHON) -m pytest \
+		solutions/flexcache/anycast-dr/tests/ \
+		--tb=short -q
+	$(PYTHON) -m pytest \
+		solutions/ha/lifekeeper-monitoring/tests/ \
 		--tb=short -q
 
 test-quick:
-	python3 -m pytest \
-		shared/tests/ \
-		sap-erp-adjacent/tests/ \
-		semiconductor-eda/tests/ \
-		--tb=short -q
+	$(PYTHON) -m pytest shared/tests/test_s3ap_helper.py shared/tests/test_properties.py shared/tests/test_fsx_helper.py --tb=short -q
+	$(PYTHON) -m pytest solutions/sap/erp-adjacent/tests/ --tb=short -q
+	$(PYTHON) -m pytest solutions/industry/semiconductor-eda/tests/ --tb=short -q
 
 test-uc1:
-	python3 -m pytest legal-compliance/tests/ -v
+	$(PYTHON) -m pytest solutions/industry/legal-compliance/tests/ -v
 
 test-uc6:
-	python3 -m pytest semiconductor-eda/tests/ -v
+	$(PYTHON) -m pytest solutions/industry/semiconductor-eda/tests/ -v
 
 test-sap:
-	python3 -m pytest sap-erp-adjacent/tests/ -v
+	$(PYTHON) -m pytest solutions/sap/erp-adjacent/tests/ -v
 
 test-fc1:
-	python3 -m pytest flexcache-anycast-dr/tests/ -v
+	$(PYTHON) -m pytest solutions/flexcache/anycast-dr/tests/ -v
 
 test-content-edge-delivery:
-	python3 -m pytest content-edge-delivery/tests/ -v
+	$(PYTHON) -m pytest solutions/edge/content-delivery/tests/ -v
+
+test-ha-lifekeeper:
+	$(PYTHON) -m pytest solutions/ha/lifekeeper-monitoring/tests/ -v
 
 # ============================================================
 # Linting
@@ -80,38 +89,39 @@ test-content-edge-delivery:
 lint: lint-python lint-cfn
 
 lint-python:
-	ruff check shared/ legal-compliance/ semiconductor-eda/ sap-erp-adjacent/ \
+	ruff check shared/ solutions/ \
 		--config pyproject.toml 2>/dev/null || \
-	ruff check shared/ legal-compliance/ semiconductor-eda/ sap-erp-adjacent/
+	ruff check shared/ solutions/
 
 lint-cfn:
-	cfn-lint legal-compliance/template.yaml \
-		semiconductor-eda/template.yaml \
-		sap-erp-adjacent/template.yaml \
-		flexcache-anycast-dr/template.yaml \
-		content-edge-delivery/template.yaml
+	cfn-lint solutions/industry/legal-compliance/template.yaml \
+		solutions/industry/semiconductor-eda/template.yaml \
+		solutions/sap/erp-adjacent/template.yaml \
+		solutions/flexcache/anycast-dr/template.yaml \
+		solutions/edge/content-delivery/template.yaml \
+		solutions/ha/lifekeeper-monitoring/template.yaml
 
 # ============================================================
 # Security
 # ============================================================
 security:
-	bandit -r shared/ legal-compliance/ semiconductor-eda/ sap-erp-adjacent/ \
+	bandit -r shared/ solutions/ \
 		-ll -c .bandit
 
 # ============================================================
 # Build & Deploy (SAM)
 # ============================================================
 build-uc1:
-	cd legal-compliance && sam build
+	cd solutions/industry/legal-compliance && sam build
 
 build-sap:
-	cd sap-erp-adjacent && sam build
+	cd solutions/sap/erp-adjacent && sam build
 
 deploy-uc1:
-	cd legal-compliance && sam deploy --config-file samconfig.toml
+	cd solutions/industry/legal-compliance && sam deploy --config-file samconfig.toml
 
 deploy-sap:
-	cd sap-erp-adjacent && sam deploy --config-file samconfig.toml
+	cd solutions/sap/erp-adjacent && sam deploy --config-file samconfig.toml
 
 # ============================================================
 # Clean

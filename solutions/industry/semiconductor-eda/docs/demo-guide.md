@@ -1,0 +1,555 @@
+# EDA Design File Validation — Demo Guide
+
+🌐 **Language / 言語**: 日本語 | [English](demo-guide.en.md) | [한국어](demo-guide.ko.md) | [简体中文](demo-guide.zh-CN.md) | [繁體中文](demo-guide.zh-TW.md) | [Français](demo-guide.fr.md) | [Deutsch](demo-guide.de.md) | [Español](demo-guide.es.md)
+
+## Executive Summary
+
+本ガイドは、半導体設計エンジニア向けの技術デモンストレーションを定義する。デモでは、設計ファイル（GDS/OASIS）の自動品質検証ワークフローを実演し、テープアウト前の設計レビューを効率化する価値を示す。
+
+**デモの核心メッセージ**: 設計エンジニアが手動で行っていた IP ブロック横断の品質チェックを、自動化されたワークフローで数分以内に完了し、AI が生成する設計レビューレポートで即座にアクションを取れるようにする。
+
+**想定時間**: 3〜5 分（ナレーション付きスクリーンキャプチャ動画）
+
+---
+
+## Target Audience & Persona
+
+### Primary Audience: EDA エンドユーザー（設計エンジニア）
+
+| 項目 | 詳細 |
+|------|------|
+| **役職** | Physical Design Engineer / DRC Engineer / Design Lead |
+| **日常業務** | レイアウト設計、DRC 実行、IP ブロック統合、テープアウト準備 |
+| **課題** | 複数 IP ブロックの品質を横断的に把握するのに時間がかかる |
+| **ツール環境** | Calibre, Virtuoso, IC Compiler, Innovus 等の EDA ツール |
+| **期待する成果** | 設計品質の問題を早期発見し、テープアウトスケジュールを守る |
+
+### Persona: 田中さん（Physical Design Lead）
+
+- 大規模 SoC プロジェクトで 40+ IP ブロックを管理
+- テープアウト 2 週間前に全ブロックの品質レビューを実施する必要がある
+- 各ブロックの GDS/OASIS ファイルを個別に確認するのは非現実的
+- 「全ブロックの品質サマリーを一目で把握したい」
+
+---
+
+## Demo Scenario: Pre-tapeout Quality Review
+
+### シナリオ概要
+
+テープアウト前の品質レビューフェーズで、設計リードが複数の IP ブロック（40+ ファイル）に対して自動品質検証を実行し、AI が生成するレビューレポートに基づいてアクションを決定する。
+
+### ワークフロー全体像
+
+```
+設計ファイル群        自動検証          分析結果           AI レビュー
+(GDS/OASIS)    →   ワークフロー   →   統計集計    →    レポート生成
+                    トリガー           (Athena SQL)     (自然言語)
+```
+
+### デモで示す価値
+
+1. **時間短縮**: 手動で数日かかる横断レビューを数分で完了
+2. **網羅性**: 全 IP ブロックを漏れなく検証
+3. **定量的判断**: 統計的外れ値検出（IQR 法）による客観的品質評価
+4. **アクション可能**: AI が具体的な推奨対応を提示
+
+---
+
+## Storyboard（5 セクション / 3〜5 分）
+
+### Section 1: Problem Statement（0:00–0:45）
+
+**画面**: 設計プロジェクトのファイル一覧（40+ GDS/OASIS ファイル）
+
+**ナレーション要旨**:
+> テープアウト 2 週間前。40 以上の IP ブロックの設計品質を確認する必要がある。
+> 各ファイルを EDA ツールで個別に開いてチェックするのは現実的ではない。
+> セル数の異常、バウンディングボックスの外れ値、命名規則違反 — これらを横断的に検出する方法が必要だ。
+
+**Key Visual**:
+- 設計ファイルのディレクトリ構造（.gds, .gds2, .oas, .oasis）
+- 「手動レビュー: 推定 3〜5 日」のテキストオーバーレイ
+
+---
+
+### Section 2: Workflow Trigger（0:45–1:30）
+
+**画面**: 設計エンジニアが品質検証ワークフローをトリガーする操作
+
+**ナレーション要旨**:
+> 設計マイルストーン到達後、品質検証ワークフローを起動する。
+> 対象ディレクトリを指定するだけで、全設計ファイルの自動検証が開始される。
+
+**Key Visual**:
+- ワークフロー実行画面（Step Functions コンソール）
+- 入力パラメータ: 対象ボリュームパス、ファイルフィルタ（.gds/.oasis）
+- 実行開始の確認
+
+**エンジニアのアクション**:
+```
+対象: /vol/eda_designs/ 配下の全設計ファイル
+フィルタ: .gds, .gds2, .oas, .oasis
+実行: 品質検証ワークフロー開始
+```
+
+---
+
+### Section 3: Automated Analysis（1:30–2:30）
+
+**画面**: ワークフロー実行中の進捗表示
+
+**ナレーション要旨**:
+> ワークフローが自動的に以下を実行する:
+> 1. 設計ファイルの検出とリスト化
+> 2. 各ファイルのヘッダーからメタデータ抽出（library_name, cell_count, bounding_box, units）
+> 3. 抽出データに対する統計分析（SQL クエリ）
+> 4. AI による設計レビューレポート生成
+>
+> 大容量の GDS ファイル（数 GB）でも、ヘッダー部分（64KB）のみを読み取るため高速に処理される。
+
+**Key Visual**:
+- ワークフローの各ステップが順次完了していく様子
+- 並列処理（Map State）で複数ファイルが同時に処理される表示
+- 処理時間: 約 2〜3 分（40 ファイルの場合）
+
+---
+
+### Section 4: Results Review（2:30–3:45）
+
+**画面**: Athena SQL クエリ結果と統計サマリー
+
+**ナレーション要旨**:
+> 分析結果を SQL で自由にクエリできる。
+> 例えば「バウンディングボックスが異常に大きいセルを表示」といったアドホック分析が可能。
+
+**Key Visual — Athena クエリ例**:
+```sql
+-- バウンディングボックス外れ値の検出
+SELECT file_key, library_name, 
+       bounding_box_width, bounding_box_height
+FROM eda_metadata
+WHERE bounding_box_width > (SELECT Q3 + 1.5 * IQR FROM stats)
+ORDER BY bounding_box_width DESC;
+```
+
+**Key Visual — クエリ結果**:
+
+| file_key | library_name | width | height | 判定 |
+|----------|-------------|-------|--------|------|
+| analog_frontend.oas | ANALOG_FE | 15200.3 | 12100.8 | 外れ値 |
+| test_block_debug.gds | TEST_DBG | 8900.1 | 14500.2 | 外れ値 |
+| legacy_io_v1.gds2 | LEGACY_IO | 11200.5 | 13800.7 | 外れ値 |
+
+---
+
+### Section 5: Actionable Insights（3:45–5:00）
+
+**画面**: AI 生成の設計レビューレポート
+
+**ナレーション要旨**:
+> AI が統計分析結果を解釈し、設計エンジニア向けのレビューレポートを自動生成する。
+> リスク評価、具体的な推奨対応、優先度付きのアクションアイテムが含まれる。
+> このレポートをもとに、テープアウト前のレビュー会議で即座に議論を開始できる。
+
+**Key Visual — AI レビューレポート（抜粋）**:
+
+```markdown
+# 設計レビューレポート
+
+## リスク評価: Medium
+
+## 検出事項サマリー
+- バウンディングボックス外れ値: 3 件
+- 命名規則違反: 2 件
+- 無効ファイル: 2 件
+
+## 推奨対応（優先度順）
+1. [High] 無効ファイル 2 件の原因調査
+2. [Medium] analog_frontend.oas のレイアウト最適化検討
+3. [Low] 命名規則の統一（block-a-io → block_a_io）
+```
+
+**クロージング**:
+> 手動で数日かかっていた横断レビューが、数分で完了。
+> 設計エンジニアは分析結果の確認とアクション決定に集中できる。
+
+---
+
+## Screen Capture Plan
+
+### 必要な画面キャプチャ一覧
+
+| # | 画面 | セクション | 備考 |
+|---|------|-----------|------|
+| 1 | 設計ファイルディレクトリ一覧 | Section 1 | FSx for ONTAP 上のファイル構造 |
+| 2 | ワークフロー実行開始画面 | Section 2 | Step Functions コンソール |
+| 3 | ワークフロー実行中（Map State 並列処理） | Section 3 | 進捗が見える状態 |
+| 4 | ワークフロー完了画面 | Section 3 | 全ステップ成功 |
+| 5 | Athena クエリエディタ + 結果 | Section 4 | 外れ値検出クエリ |
+| 6 | メタデータ JSON 出力例 | Section 4 | 1 ファイル分の抽出結果 |
+| 7 | AI 設計レビューレポート全文 | Section 5 | Markdown レンダリング表示 |
+| 8 | SNS 通知メール | Section 5 | レポート完了通知 |
+
+### キャプチャ手順
+
+1. デモ環境にサンプルデータを配置
+2. ワークフローを手動実行し、各ステップで画面キャプチャ
+3. Athena コンソールでクエリを実行し結果をキャプチャ
+4. 生成されたレポートを S3 からダウンロードして表示
+
+---
+
+## 検証済みの UI/UX スクリーンショット（2026-05-10 再検証）
+
+Phase 7 UC15/16/17 と同じ方針で、**設計エンジニアが日常業務で実際に目にする UI/UX 画面**を
+撮影。Step Functions グラフのような技術者向けビューは除外（詳細は
+[`docs/verification-results-phase7.md`](../../docs/verification-results-phase7.md) 参照）。
+
+### 1. FSx for ONTAP Volumes — 設計ファイル用ボリューム
+
+設計エンジニアから見た ONTAP のボリューム一覧。`eda_demo_vol` に GDS/OASIS ファイルを
+NTFS ACL で管理された状態で配置。
+
+<!-- SCREENSHOT: uc6-fsx-volumes-list.png
+     内容: FSx コンソールで ONTAP Volumes 一覧（eda_demo_vol 等）、Status=Created、Type=ONTAP
+     マスク: アカウント ID、SVM ID の実値、ファイルシステム ID -->
+![UC6: FSx Volumes 一覧](../../docs/screenshots/masked/uc6-demo/uc6-fsx-volumes-list.png)
+
+### 2. S3 出力バケット — 設計ドキュメント・分析結果の一覧
+
+設計レビュー担当者が、ワークフロー完了後に結果を確認する画面。
+`metadata/` / `athena-results/` / `reports/` の 3 プレフィックスに整理されている。
+
+<!-- SCREENSHOT: uc6-s3-output-bucket.png
+     内容: S3 コンソールで bucket の top-level prefix を確認
+     マスク: アカウント ID、バケット名プレフィックス -->
+![UC6: S3 出力バケット](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+
+### 2. S3 出力バケット — 設計ドキュメント・分析結果の一覧
+
+設計レビュー担当者が、ワークフロー完了後に結果を確認する画面。
+`metadata/` / `athena-results/` / `reports/` の 3 プレフィックスに整理されている。
+
+<!-- SCREENSHOT: uc6-s3-output-bucket.png
+     内容: S3 コンソールで bucket の top-level prefix を確認
+     マスク: アカウント ID、バケット名プレフィックス -->
+![UC6: S3 出力バケット](../../docs/screenshots/masked/uc6-demo/uc6-s3-output-bucket.png)
+
+### 3. Athena クエリ結果 — EDA メタデータの SQL 分析
+
+設計リードがアドホックに DRC 情報を探索する画面。
+Workgroup は `fsxn-eda-uc6-workgroup`、データベースは `fsxn-eda-uc6-db`。
+
+<!-- SCREENSHOT: uc6-athena-query-result.png
+     内容: EDA メタデータ表の SELECT 結果（file_key、library_name、cell_count、bounding_box）
+     マスク: アカウント ID -->
+![UC6: Athena クエリ結果](../../docs/screenshots/masked/uc6-demo/uc6-athena-query-result.png)
+
+### 4. Bedrock 生成の設計レビューレポート
+
+**UC6 の目玉機能**: Athena の DRC 集計結果を元に、Bedrock Nova Lite が
+Physical Design Lead 向けの日本語レビューレポートを生成する。
+
+<!-- SCREENSHOT: uc6-bedrock-design-review.png
+     内容: エグゼクティブサマリー + セル数分析 + 命名規則違反一覧 + リスク評価 (High/Medium/Low)
+     実サンプル内容:
+       ## 設計レビューサマリー
+       ### エグゼクティブサマリー
+       今回のDRC集計結果に基づき、設計品質の全体評価を以下に示します。
+       設計ファイルは合計2件で、セル数分布は安定しており、バウンディングボックス外れ値は確認されませんでした。
+       しかし、命名規則違反が6件見つかりました。
+       ...
+       ### リスク評価
+       - **High**: なし
+       - **Medium**: 命名規則違反が6件確認されました。
+       - **Low**: セル数分布やバウンディングボックス外れ値に問題はありません。
+     マスク: アカウント ID -->
+![UC6: Bedrock 設計レビューレポート](../../docs/screenshots/masked/uc6-demo/uc6-bedrock-design-review.png)
+
+### 実測値（2026-05-10 AWS デプロイ検証）
+
+- **Step Functions 実行時間**: ~30 秒（Discovery + Map(2 files) + DRC + Report）
+- **Bedrock 生成レポート**: 2,093 bytes（マークダウン形式の日本語）
+- **Athena クエリ**: 0.02 KB スキャン、ランタイム 812 ms
+- **実スタック**: `fsxn-eda-uc6`（ap-northeast-1、2026-05-10 時点で稼働中）
+
+---
+
+## Narration Outline
+
+### トーン & スタイル
+
+- **視点**: 設計エンジニア（田中さん）の一人称視点
+- **トーン**: 実務的、課題解決型
+- **言語**: 日本語（英語字幕オプション）
+- **速度**: ゆっくり明瞭に（技術デモのため）
+
+### ナレーション構成
+
+| セクション | 時間 | キーメッセージ |
+|-----------|------|--------------|
+| Problem | 0:00–0:45 | 「テープアウト前に 40+ ブロックの品質確認が必要。手動では間に合わない」 |
+| Trigger | 0:45–1:30 | 「設計マイルストーン後にワークフローを起動するだけ」 |
+| Analysis | 1:30–2:30 | 「ヘッダー解析 → メタデータ抽出 → 統計分析が自動で進行」 |
+| Results | 2:30–3:45 | 「SQL で自由にクエリ。外れ値を即座に特定」 |
+| Insights | 3:45–5:00 | 「AI レポートで優先度付きアクションを提示。レビュー会議に直結」 |
+
+---
+
+## Sample Data Requirements
+
+### 必要なサンプルデータ
+
+| # | ファイル | フォーマット | 用途 |
+|---|---------|------------|------|
+| 1 | `top_chip_v3.gds` | GDSII | メインチップ（大規模、1000+ セル） |
+| 2 | `block_a_io.gds2` | GDSII | I/O ブロック（正常データ） |
+| 3 | `memory_ctrl.oasis` | OASIS | メモリコントローラ（正常データ） |
+| 4 | `analog_frontend.oas` | OASIS | アナログブロック（外れ値: 大きい BB） |
+| 5 | `test_block_debug.gds` | GDSII | デバッグ用（外れ値: 高さ異常） |
+| 6 | `legacy_io_v1.gds2` | GDSII | レガシーブロック（外れ値: 幅・高さ） |
+| 7 | `block-a-io.gds2` | GDSII | 命名規則違反サンプル |
+| 8 | `TOP CHIP (copy).gds` | GDSII | 命名規則違反サンプル |
+
+### サンプルデータ生成方針
+
+- **最小構成**: 8 ファイル（上記リスト）でデモの全シナリオをカバー
+- **推奨構成**: 40+ ファイル（統計分析の説得力向上）
+- **生成方法**: Python スクリプトで有効な GDSII/OASIS ヘッダーを持つテストファイルを生成
+- **サイズ**: ヘッダー解析のみのため、各ファイル 100KB 程度で十分
+
+### 既存デモ環境の確認事項
+
+- [ ] FSx for ONTAP ボリュームにサンプルデータが配置済みか
+- [ ] S3 Access Point が設定済みか
+- [ ] Glue Data Catalog のテーブル定義が存在するか
+- [ ] Athena ワークグループが利用可能か
+
+---
+
+## Timeline
+
+### 1 週間以内に達成可能
+
+| # | タスク | 所要時間 | 前提条件 |
+|---|--------|---------|---------|
+| 1 | サンプルデータ生成（8 ファイル） | 2 時間 | Python 環境 |
+| 2 | デモ環境でのワークフロー実行確認 | 2 時間 | デプロイ済み環境 |
+| 3 | 画面キャプチャ取得（8 画面） | 3 時間 | タスク 2 完了後 |
+| 4 | ナレーション原稿の最終化 | 2 時間 | タスク 3 完了後 |
+| 5 | 動画編集（キャプチャ + ナレーション） | 4 時間 | タスク 3, 4 完了後 |
+| 6 | レビュー & 修正 | 2 時間 | タスク 5 完了後 |
+| **合計** | | **15 時間** | |
+
+### 前提条件（1 週間達成のために必要）
+
+- Step Functions ワークフローがデプロイ済みで正常動作すること
+- Lambda 関数（Discovery, MetadataExtraction, DrcAggregation, ReportGeneration）が動作確認済み
+- Athena テーブルとクエリが実行可能な状態
+- Bedrock モデルアクセスが有効
+
+### Future Enhancements（将来の拡張）
+
+| # | 拡張項目 | 概要 | 優先度 |
+|---|---------|------|--------|
+| 1 | DRC ツール連携 | Calibre/Pegasus の DRC 結果ファイルを直接取り込み | High |
+| 2 | インタラクティブダッシュボード | QuickSight による設計品質ダッシュボード | Medium |
+| 3 | Slack/Teams 通知 | レビューレポート完了時にチャット通知 | Medium |
+| 4 | 差分レビュー | 前回実行との差分を自動検出・レポート | High |
+| 5 | カスタムルール定義 | プロジェクト固有の品質ルールを設定可能に | Medium |
+| 6 | 多言語レポート | 英語/日本語/中国語でのレポート生成 | Low |
+| 7 | CI/CD 統合 | 設計フロー内の自動品質ゲートとして組み込み | High |
+| 8 | 大規模データ対応 | 1000+ ファイルの並列処理最適化 | Medium |
+
+---
+
+## Technical Notes（デモ作成者向け）
+
+### 使用コンポーネント（既存実装のみ）
+
+| コンポーネント | 役割 |
+|--------------|------|
+| Step Functions | ワークフロー全体のオーケストレーション |
+| Lambda (Discovery) | 設計ファイルの検出・リスト化 |
+| Lambda (MetadataExtraction) | GDSII/OASIS ヘッダーパースとメタデータ抽出 |
+| Lambda (DrcAggregation) | Athena SQL による統計分析実行 |
+| Lambda (ReportGeneration) | Bedrock による AI レビューレポート生成 |
+| Amazon Athena | メタデータに対する SQL クエリ |
+| Amazon Bedrock | 自然言語レポート生成（Nova Lite / Claude） |
+
+### デモ実行時のフォールバック
+
+| シナリオ | 対応 |
+|---------|------|
+| ワークフロー実行失敗 | 事前録画済みの実行画面を使用 |
+| Bedrock レスポンス遅延 | 事前生成済みレポートを表示 |
+| Athena クエリタイムアウト | 事前取得済みの結果 CSV を表示 |
+| ネットワーク障害 | 全画面を事前キャプチャ済みとして動画化 |
+
+---
+
+*本ドキュメントは技術プレゼンテーション用デモ動画の制作ガイドとして作成されました。*
+
+
+---
+
+## FlexClone シナリオ: デザインライブラリの並列シミュレーション用 FlexClone
+
+### 概要
+
+半導体設計では、同一デザインライブラリ（数 TB）に対して複数のシミュレーション条件
+（コーナー: fast/slow/typical）を並列実行する必要がある。FlexClone により、
+各シミュレーションジョブに独立した書き込み可能コピーを瞬時に提供する。
+
+**FlexClone の価値**:
+- 数 TB のデザインライブラリを各コーナーに瞬時にコピー（< 1 秒）
+- 各シミュレーションが独立して書き込み可能（結果ファイルの競合なし）
+- NFSv3 + nconnect=16 で高スループットアクセス
+- Step Functions Map ステートで並列 FlexClone 作成を自動化
+
+### アーキテクチャ
+
+```
+Design Library (Parent Volume, 2TB)
+    │
+    ├── Snapshot: pre_sim_run_20260518
+    │
+    ├── FlexClone: sim_corner_fast    → NFSv3 Mount → Compute Farm (fast corner)
+    ├── FlexClone: sim_corner_slow    → NFSv3 Mount → Compute Farm (slow corner)
+    └── FlexClone: sim_corner_typical → NFSv3 Mount → Compute Farm (typical corner)
+                                              │
+                                              └── Results via S3AP → Lambda → Report
+```
+
+### 前提条件
+
+```bash
+# 環境変数の設定
+export STACK_NAME="fsxn-flexclone-pipeline"
+export ONTAP_MGMT_IP="10.0.1.100"
+export ONTAP_SECRET="fsxn/ontap-credentials"
+export SVM_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export DESIGN_LIB_VOLUME_UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export S3AP_ALIAS="fsxn-eda-s3ap-xxx-ext-s3alias"
+export S3AP_NAME="fsxn-eda-s3ap"
+export SNS_TOPIC_ARN="arn:aws:sns:ap-northeast-1:123456789012:eda-notifications"
+export VPC_ID="vpc-xxx"
+export SUBNET_IDS="subnet-aaa,subnet-bbb"
+export SG_ID="sg-xxx"
+```
+
+### Step 1: パイプラインのデプロイ
+
+```bash
+aws cloudformation deploy \
+  --template-file shared/cfn/flexclone-serverless-pipeline.yaml \
+  --stack-name "${STACK_NAME}" \
+  --parameter-overrides \
+    EnableFlexClonePipeline=true \
+    OntapMgmtIp="${ONTAP_MGMT_IP}" \
+    OntapCredentialsSecret="${ONTAP_SECRET}" \
+    SvmUuid="${SVM_UUID}" \
+    ParentVolumeUuid="${DESIGN_LIB_VOLUME_UUID}" \
+    S3AccessPointAlias="${S3AP_ALIAS}" \
+    S3AccessPointName="${S3AP_NAME}" \
+    NotificationTopicArn="${SNS_TOPIC_ARN}" \
+    VpcId="${VPC_ID}" \
+    SubnetIds="${SUBNET_IDS}" \
+    SecurityGroupId="${SG_ID}" \
+  --capabilities CAPABILITY_NAMED_IAM
+```
+
+### Step 2: 並列コーナーシミュレーション用 FlexClone 作成
+
+```bash
+# 各コーナーに対して Step Functions を実行
+CORNERS=("fast" "slow" "typical")
+SNAPSHOT_NAME="pre_sim_run_$(date +%Y%m%d_%H%M%S)"
+
+# まずスナップショットを作成（1 回のみ）
+aws lambda invoke \
+  --function-name "fsxn-s3ap-flexclone-snapshot" \
+  --payload "$(echo '{"volume_uuid":"'"${DESIGN_LIB_VOLUME_UUID}"'","snapshot_name":"'"${SNAPSHOT_NAME}"'"}' | base64)" \
+  /tmp/snapshot_result.json
+
+# 各コーナーの FlexClone を並列作成
+for CORNER in "${CORNERS[@]}"; do
+  aws stepfunctions start-execution \
+    --state-machine-arn "arn:aws:states:ap-northeast-1:123456789012:stateMachine:fsxn-s3ap-flexclone-pipeline" \
+    --input '{
+      "volume_uuid": "'"${DESIGN_LIB_VOLUME_UUID}"'",
+      "snapshot_name": "'"${SNAPSHOT_NAME}"'",
+      "clone_name": "sim_corner_'"${CORNER}"'",
+      "junction_path": "/sim/'"${CORNER}"'",
+      "security_style": "unix",
+      "s3ap_alias": "'"${S3AP_ALIAS}"'",
+      "file_prefix": "sim_results/'"${CORNER}"'/",
+      "output_prefix": "sim_results/'"${CORNER}"'/_report/",
+      "operation": "list_and_metadata",
+      "process_files": true,
+      "create_cifs_share": false
+    }' &
+done
+wait
+echo "All corner FlexClones created"
+```
+
+### Step 3: コンピュートファームからの NFSv3 マウント
+
+```bash
+# 各コンピュートノードで対応するコーナーをマウント
+# 高スループット設定: nconnect=16, rsize/wsize=1MB
+sudo mount -t nfs -o vers=3,hard,timeo=600,retrans=2,rsize=1048576,wsize=1048576,nconnect=16 \
+  "${ONTAP_MGMT_IP}:/sim/fast" /mnt/design_lib
+
+# シミュレーション実行
+cd /mnt/design_lib
+# innovus -batch -file run_timing.tcl
+# calibre -drc -hier design.gds
+```
+
+### Step 4: 結果の確認
+
+```bash
+# S3AP 経由でシミュレーション結果メタデータを確認
+aws s3 ls "s3://${S3AP_ALIAS}/sim_results/fast/_report/"
+aws s3 cp "s3://${S3AP_ALIAS}/sim_results/fast/_report/manifest.json" -
+```
+
+### 期待される出力
+
+```json
+{
+  "clone_result": {
+    "clone_name": "sim_corner_fast",
+    "clone_uuid": "abc12345-...",
+    "junction_path": "/sim/fast",
+    "status": "created"
+  },
+  "process_result": {
+    "file_count": 1523,
+    "processed": 1523,
+    "output_key": "sim_results/fast/_report/manifest.json"
+  }
+}
+```
+
+### クリーンアップ
+
+```bash
+# 全コーナーの FlexClone を削除
+for CORNER in "${CORNERS[@]}"; do
+  echo "Deleting FlexClone: sim_corner_${CORNER}"
+  # ONTAP REST API or CLI で削除
+done
+
+# スタックの削除
+aws cloudformation delete-stack --stack-name "${STACK_NAME}"
+aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}"
+```
+
+### 参考
+
+- [FlexClone Serverless Patterns ガイド](../../docs/guides/flexclone-serverless-patterns.md)
+- [AWS Guidance: Scaling Electronic Design Automation on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/)
