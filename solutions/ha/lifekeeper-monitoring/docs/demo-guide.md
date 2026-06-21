@@ -91,8 +91,10 @@ AWS コンソールの CloudWatch Logs で以下のロググループを確認:
 ### 期待される結果
 
 - Discovery: 5 ファイル検出 (failover-event × 1, health-check × 1, comm-path × 1, recovery-kit × 1, general × 1)
-- Processing: ヘルススコア 70 (WARNING) — フェイルオーバーイベント 1 件で 30 点減点
-- Report: Markdown レポート生成 + SNS 通知 (CRITICAL 設定のため通知なし)
+- Processing: ヘルススコア 40/100 — サンプルログにはフェイルオーバーイベントや異常パターンが意図的に含まれており、スコアリングパイプラインが正しく減点することを確認するためのデータセット
+- Report: Markdown レポート生成 + SNS 通知条件判定
+
+> **注意**: スコア 40/100 はサンプルデータの検出結果であり、LifeKeeper や FSx for ONTAP の品質指標ではない。実環境ではログ内容に応じてスコアが変動する。
 
 ---
 
@@ -119,13 +121,24 @@ aws stepfunctions start-execution \
 
 ## Step 7: クリーンアップ
 
-```bash
-# スタック削除
-sam delete --stack-name ha-lifekeeper-monitoring-demo
+**重要**: S3 バケットにオブジェクトが残っている場合、CloudFormation スタック削除が `DELETE_FAILED` になる。先にバケットを空にしてからスタックを削除する。
 
-# デモバケット削除
+```bash
+# 1. 出力バケットを空にして削除（スタック削除前に必須）
 aws s3 rb s3://$DEMO_BUCKET --force
+
+# 2. スタック削除
+aws cloudformation delete-stack --stack-name ha-lifekeeper-monitoring-demo --region ap-northeast-1
+
+# 3. 削除完了を待機（通常 1-3 分）
+aws cloudformation wait stack-delete-complete --stack-name ha-lifekeeper-monitoring-demo --region ap-northeast-1
+
+# 4. 削除確認
+aws cloudformation describe-stacks --stack-name ha-lifekeeper-monitoring-demo --region ap-northeast-1 2>&1
+# "does not exist" と表示されれば完了
 ```
+
+> **Tips**: `sam delete` コマンドも利用可能だが、S3 バケット内にオブジェクトがある場合は事前の `--force` 削除が必要な点は同じ。`aws cloudformation delete-stack` の方がエラー時の原因特定が容易。
 
 ---
 
@@ -139,6 +152,17 @@ aws s3 rb s3://$DEMO_BUCKET --force
 | Lambda タイムアウト | 大量ログ or Bedrock レイテンシ | MaxFilesPerExecution を小さく設定 |
 | `sam deploy` で `Invalid value` エラー | `OntapSecretArn=` (空文字) をパラメータに含めている | DemoMode ではこのパラメータを省略する（samconfig.toml から行を削除） |
 | `ScheduleExpression` が `rate(5` で切れる | CLI からのスペース含むパラメータが正しくクォートされていない | `samconfig.toml` 経由でデプロイする（CLI の `--parameter-overrides` ではスペース含む値は問題になりやすい） |
+| スタック削除が `DELETE_FAILED` | OutputBucket にオブジェクトが残存 | `aws s3 rb s3://bucket --force` でバケットを先に空にしてからリトライ |
+| `wait stack-delete-complete` が exit 1 | 削除に時間がかかっている（タイムアウト） | 数分後に `describe-stacks` で状態を再確認。大抵は正常に完了する |
+| ヘルススコアが 40/100 | サンプルログにフェイルオーバーイベントが含まれている | 正常な動作。実環境ではログ内容に応じてスコアが変動する |
+
+### デプロイ時の注意事項
+
+1. **samconfig.toml を使う**: CLI の `--parameter-overrides` でスペースを含む値（`rate(5 minutes)` 等）を渡すと解析エラーになりやすい。`samconfig.toml` の配列形式が安全。
+2. **OutputBucketName の命名**: S3 バケット名はグローバルユニークが必要。`$(date +%Y%m%d)` やアカウント ID を含めるパターンが実用的。
+3. **Bedrock モデルアクセス**: デプロイ前に `amazon.nova-pro-v1:0` のモデルアクセスを有効化する。初回は承認に数分かかる。
+4. **SNS サブスクリプション確認**: `NotificationEmail` を指定すると確認メールが届く。承認しないとアラート通知が配信されない。
+5. **DemoMode では OntapSecretArn を省略**: 空文字列 `OntapSecretArn=` を渡すと SAM CLI / CloudFormation がバリデーションエラーを出す。samconfig.toml からその行自体を削除する。
 
 ---
 
