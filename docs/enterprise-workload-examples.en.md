@@ -21,7 +21,7 @@ The patterns in this repository are not limited to AI/ML use cases. S3 Access Po
 
 **Architecture Pattern**:
 ```
-SAP App Server → NFS → FSx ONTAP Volume
+SAP App Server → NFS → FSx for ONTAP Volume
                               ↓ (S3 Access Point)
                         Lambda (GetObject) → Bedrock (classification/summarization)
                                            → Athena (structured analysis)
@@ -39,7 +39,7 @@ SAP App Server → NFS → FSx ONTAP Volume
 
 **Architecture Pattern**:
 ```
-HULFT/EDI Gateway → SMB → FSx ONTAP Volume (/landing/)
+HULFT/EDI Gateway → SMB → FSx for ONTAP Volume (/landing/)
                                 ↓ (S3 Access Point + EventBridge Scheduler)
                           Step Functions
                             ├─→ Validation Lambda (format check)
@@ -58,7 +58,7 @@ HULFT/EDI Gateway → SMB → FSx ONTAP Volume (/landing/)
 
 **Architecture Pattern**:
 ```
-Audit System → SMB (NTFS ACL) → FSx ONTAP Volume
+Audit System → SMB (NTFS ACL) → FSx for ONTAP Volume
                                        ↓ (S3 AP, Windows identity)
                                  Lambda (periodic scan)
                                    ├─→ Integrity hash verification
@@ -89,7 +89,7 @@ Audit System → SMB (NTFS ACL) → FSx ONTAP Volume
 #### Architecture Pattern: EC2 Batch Output + S3 AP Post-processing
 
 ```
-EC2/ECS on EC2 Batch App → NFS → FSx ONTAP Volume (/batch-output/YYYYMMDD/)
+EC2/ECS on EC2 Batch App → NFS → FSx for ONTAP Volume (/batch-output/YYYYMMDD/)
                                         ↓ (S3 Access Point + EventBridge Scheduler)
                                   Step Functions (daily)
                                     ├─→ Discovery (detect today's output files)
@@ -101,7 +101,7 @@ EC2/ECS on EC2 Batch App → NFS → FSx ONTAP Volume (/batch-output/YYYYMMDD/)
 #### Architecture Pattern: Fargate App + S3 AP Bidirectional
 
 ```
-ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-output/)
+ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx for ONTAP Volume (/app-output/)
                                                 ↓
                                           NFS/SMB users view results
                                                 ↓ (EventBridge Scheduler)
@@ -118,8 +118,8 @@ ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-out
 | Resource | Content | Link |
 |----------|---------|------|
 | AWS Documentation: ECS + FSx for ONTAP | NFS/SMB mount procedure for EC2 launch type | [mount-ontap-ecs-containers](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/mount-ontap-ecs-containers.html) |
-| This repository: UC1 (legal-compliance) | Basic pattern via S3 AP (Lambda + Step Functions) | [legal-compliance/](../legal-compliance/README.md) |
-| This repository: event-driven-fpolicy | FPolicy Server implementation on Fargate | [event-driven-fpolicy/](../event-driven-fpolicy/README.md) |
+| This repository: UC1 (legal-compliance) | Basic pattern via S3 AP (Lambda + Step Functions) | [solutions/industry/legal-compliance/](../solutions/industry/legal-compliance/README.md) |
+| This repository: event-driven-fpolicy | FPolicy Server implementation on Fargate | [solutions/event-driven/fpolicy/](../solutions/event-driven/fpolicy/README.md) |
 | This repository: Fargate vs EC2 Decision | Compute selection guide for FPolicy Server | [fargate-vs-ec2-fpolicy-decision.md](fargate-vs-ec2-fpolicy-decision.md) |
 | S3AP Benchmark Results | Measured PutObject/GetObject latency | [s3ap-benchmark-results.md](s3ap-benchmark-results.md) |
 | AWS Blog: Bridge legacy and modern apps | Connect file-based and object-based apps with S3 AP | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/) |
@@ -135,7 +135,7 @@ ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-out
 
 **Architecture Pattern**:
 ```
-Scanner → SMB → FSx ONTAP Volume (/scanned-docs/)
+Scanner → SMB → FSx for ONTAP Volume (/scanned-docs/)
                        ↓ (S3 AP)
                  Step Functions
                    ├─→ Textract (OCR) ⚠️ Cross-Region

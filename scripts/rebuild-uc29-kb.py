@@ -8,7 +8,7 @@ Recreates everything teardown removes for the KB side, in dependency order:
 Lessons learned encoded here:
   * Amazon S3 Vectors store is NOT creatable via CLI/boto3 (console quick-create
     only) -> we use OPENSEARCH_SERVERLESS.
-  * The KB data source 'bucket' is the FSx ONTAP S3 Access Point ALIAS
+  * The KB data source 'bucket' is the FSx for ONTAP S3 Access Point ALIAS
     (arn:aws:s3:::<alias>), supplied via env (never hardcoded in the repo).
   * Titan embed v2 here uses 256 dimensions -> the knn index dim MUST match.
   * AOSS data-access policy must include BOTH the KB role AND the caller
@@ -187,7 +187,7 @@ def ensure_kb(role_arn: str, coll_arn: str) -> str:
         log(f"KB exists: {existing[0]['knowledgeBaseId']}")
         return existing[0]["knowledgeBaseId"]
     resp = agent.create_knowledge_base(
-        name=KB_NAME, description="UC29 Self-Service KB Curation - FSxN S3 AP data source",
+        name=KB_NAME, description="UC29 Self-Service KB Curation - FSx for ONTAP S3 AP data source",
         roleArn=role_arn,
         knowledgeBaseConfiguration={"type": "VECTOR", "vectorKnowledgeBaseConfiguration": {
             "embeddingModelArn": f"arn:aws:bedrock:{REGION}::foundation-model/{EMBED_MODEL}",
@@ -209,7 +209,7 @@ def ensure_data_source(kb_id: str) -> str:
         return existing[0]["dataSourceId"]
     resp = agent.create_data_source(
         knowledgeBaseId=kb_id, name="fsxn-s3ap-ai-knowledge",
-        description="FSx ONTAP S3 AP - ai-knowledge/ prefix",
+        description="FSx for ONTAP S3 AP - ai-knowledge/ prefix",
         dataDeletionPolicy="DELETE",
         dataSourceConfiguration={"type": "S3", "s3Configuration": {
             "bucketArn": f"arn:aws:s3:::{DATA_BUCKET}", "inclusionPrefixes": [PREFIX]}})

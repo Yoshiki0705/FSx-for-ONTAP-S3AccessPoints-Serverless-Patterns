@@ -7,7 +7,7 @@
 # Active Directory 参加済み / 非参加の両パターンに対応。
 #
 # ユースケース:
-#   - Windows ファイルサーバー移行: オンプレ CIFS 共有を FSx ONTAP に移行後、
+#   - Windows ファイルサーバー移行: オンプレ CIFS 共有を FSx for ONTAP に移行後、
 #     Linux/Windows クライアントから SMB アクセス
 #   - マルチプロトコルアクセス: 同一ボリュームに NFS (Linux) + SMB (Windows) で
 #     同時アクセス（NTFS セキュリティスタイル推奨）

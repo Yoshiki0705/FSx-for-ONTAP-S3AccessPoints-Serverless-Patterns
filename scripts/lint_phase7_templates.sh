@@ -24,9 +24,9 @@ if [[ ! -x "$CFN_LINT" ]]; then
 fi
 
 TEMPLATES=(
-    "defense-satellite/template-deploy.yaml"
-    "government-archives/template-deploy.yaml"
-    "smart-city-geospatial/template-deploy.yaml"
+    "solutions/industry/defense-satellite/template-deploy.yaml"
+    "solutions/industry/government-archives/template-deploy.yaml"
+    "solutions/industry/smart-city-geospatial/template-deploy.yaml"
 )
 
 if [[ $# -gt 0 ]]; then

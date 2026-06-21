@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Amazon FSx for ONTAP (FSxN) integration with Amazon S3 Access Points (AP) enables enterprise file data to be consumed by AWS AI/ML and analytics services without data movement. This is a breakthrough integration for use cases spanning 17 industries (EDA, DICOM imaging, VFX rendering, FOIA archives, satellite imagery, etc.).
+Amazon FSx for ONTAP (FSx for ONTAP) integration with Amazon S3 Access Points (AP) enables enterprise file data to be consumed by AWS AI/ML and analytics services without data movement. This is a breakthrough integration for use cases spanning 17 industries (EDA, DICOM imaging, VFX rendering, FOIA archives, satellite imagery, etc.).
 
 However, during production implementation of 17 serverless use cases (UC1–UC17) against FSx for ONTAP S3 AP in `ap-northeast-1`, we identified **four critical gaps** that force customers to fall back to standard S3 buckets for output and orchestration — undermining the core value proposition of "one copy of data, accessed everywhere".
 
@@ -35,7 +35,7 @@ This breaks the "one copy" story: SMB/NFS users cannot see the AI enrichment wit
 
 ### Current State (verbatim-limited citation)
 
-From [Query files with SQL using Amazon Athena (FSx ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html):
+From [Query files with SQL using Amazon Athena (FSx for ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html):
 
 > "Athena writes query results to an Amazon S3 bucket, not to the FSx for ONTAP volume."
 >
@@ -43,7 +43,7 @@ From [Query files with SQL using Amazon Athena (FSx ONTAP User Guide)](https://d
 
 *Content was rephrased for compliance with licensing restrictions; see linked page for the authoritative wording.*
 
-This means Athena Workgroup `ResultConfiguration.OutputLocation` must point to a regular `s3://bucket/...` URI. A customer who wants the query output to live alongside the source data on FSxN has to run a post-processing job to copy results from the Athena S3 bucket back into FSx for ONTAP via the S3AP.
+This means Athena Workgroup `ResultConfiguration.OutputLocation` must point to a regular `s3://bucket/...` URI. A customer who wants the query output to live alongside the source data on FSx for ONTAP has to run a post-processing job to copy results from the Athena S3 bucket back into FSx for ONTAP via the S3AP.
 
 ### Impact on Our Patterns
 
@@ -68,7 +68,7 @@ Standard S3 bucket (`AWS::S3::Bucket` resource) provisioned per stack for Athena
 
 ### Current State
 
-From [Access point compatibility (FSx ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) — partial operation compatibility table:
+From [Access point compatibility (FSx for ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) — partial operation compatibility table:
 
 | Operation | FSx for ONTAP S3 AP status |
 |-----------|------------------|
@@ -87,7 +87,7 @@ A production event-driven architecture would reduce detection-to-processing late
 
 Either:
 - **Option A**: Support `PutBucketNotificationConfiguration` on the S3AP and deliver `s3:ObjectCreated:*`, `s3:ObjectRemoved:*`, etc. to SNS / SQS / Lambda
-- **Option B**: Emit ONTAP file events (create/update/delete on the junction-pathed volume) to Amazon EventBridge as native `aws.fsx` events (source: `aws.fsx`, detail-type: `FSxN Object Event`) — delivered at the S3AP abstraction layer, so the event payload carries the S3 key form
+- **Option B**: Emit ONTAP file events (create/update/delete on the junction-pathed volume) to Amazon EventBridge as native `aws.fsx` events (source: `aws.fsx`, detail-type: `FSxN Object Event`) — delivered at the S3AP abstraction layer, so the event payload carries the S3 key form <!-- allow:naming -->
 
 Option B would also help non-S3AP consumers that use NFS/SMB for writes.
 
@@ -101,7 +101,7 @@ Option B would also help non-S3AP consumers that use NFS/SMB for writes.
 
 ### Current State
 
-From [Access point compatibility (FSx ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) — Limitations section:
+From [Access point compatibility (FSx for ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) — Limitations section:
 
 > Object Lifecycle is listed alongside Object Versioning, Object Lock, Static Website Hosting, and conditional writes as not supported.
 
@@ -132,7 +132,7 @@ Custom retention sweeper Lambda (not yet implemented, tracked as backlog for UC1
 
 ### Current State
 
-From [Access point compatibility (FSx ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html):
+From [Access point compatibility (FSx for ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html):
 
 | Operation | Status |
 |-----------|--------|

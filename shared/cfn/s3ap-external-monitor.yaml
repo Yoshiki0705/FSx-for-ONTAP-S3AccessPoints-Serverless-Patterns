@@ -36,7 +36,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  FSxN S3AP Serverless Patterns — VPC-External S3AP Health Monitor.
+  FSx for ONTAP S3 AP Serverless Patterns — VPC-External S3AP Health Monitor.
   Internet-origin S3AP の可用性を VPC 外 Lambda で監視する。
 
 Parameters:

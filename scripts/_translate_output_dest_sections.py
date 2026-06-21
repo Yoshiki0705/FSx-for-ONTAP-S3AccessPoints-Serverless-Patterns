@@ -3,7 +3,7 @@
 all 7 non-Japanese languages.
 
 Each UC uses one of two output patterns:
-- Pattern A (UC1-5): Native FSxN S3AP output via S3AccessPointOutputAlias
+- Pattern A (UC1-5): Native FSx for ONTAP S3 AP output via S3AccessPointOutputAlias
 - Pattern B (UC9/10/11/12/14): Selectable via OutputDestination parameter
 
 This script inserts a concise language-localized summary after the
@@ -18,16 +18,16 @@ from pathlib import Path
 
 # UC → pattern mapping
 UC_PATTERNS = {
-    "legal-compliance": "A",
-    "financial-idp": "A",
-    "manufacturing-analytics": "A",
-    "media-vfx": "A",
-    "healthcare-dicom": "A",
-    "autonomous-driving": "B",
-    "construction-bim": "B",
-    "logistics-ocr": "B",
-    "retail-catalog": "B",
-    "insurance-claims": "B",
+    "solutions/industry/legal-compliance": "A",
+    "solutions/industry/financial-idp": "A",
+    "solutions/industry/manufacturing-analytics": "A",
+    "solutions/industry/media-vfx": "A",
+    "solutions/industry/healthcare-dicom": "A",
+    "solutions/industry/autonomous-driving": "B",
+    "solutions/industry/construction-bim": "B",
+    "solutions/industry/logistics-ocr": "B",
+    "solutions/industry/retail-catalog": "B",
+    "solutions/industry/insurance-claims": "B",
 }
 
 # Pattern A = native S3AP output (UC1-5)
@@ -35,13 +35,13 @@ UC_PATTERNS = {
 
 TRANSLATIONS = {
     "en": {
-        "A": """## Output Destination: FSxN S3 Access Point (Pattern A)
+        "A": """## Output Destination: FSx for ONTAP S3 Access Point (Pattern A)
 
 This UC falls under **Pattern A: Native S3AP Output**
 (see `docs/output-destination-patterns.md`).
 
-**Design**: All AI/ML artifacts are written back to the **same FSx ONTAP
-volume** as the source data via the FSxN S3 Access Point — no separate
+**Design**: All AI/ML artifacts are written back to the **same FSx for ONTAP
+volume** as the source data via the FSx for ONTAP S3 Access Point — no separate
 standard S3 bucket is created ("no data movement" pattern).
 
 **CloudFormation parameters**:
@@ -62,7 +62,7 @@ see `docs/output-destination-patterns.md`).
 
 - **STANDARD_S3** (default): AI artifacts go to a new S3 bucket
 - **FSXN_S3AP** ("no data movement"): AI artifacts go back to the same
-  FSx ONTAP volume via S3 Access Point — visible to SMB/NFS users in
+  FSx for ONTAP volume via S3 Access Point — visible to SMB/NFS users in
   the existing directory structure
 
 ```bash
@@ -77,13 +77,13 @@ for AWS-side limitations and workarounds.
 """,
     },
     "ko": {
-        "A": """## 출력 대상: FSxN S3 Access Point (Pattern A)
+        "A": """## 출력 대상: FSx for ONTAP S3 Access Point (Pattern A)
 
 이 UC는 **Pattern A: Native S3AP Output**에 해당합니다
 (`docs/output-destination-patterns.md` 참조).
 
-**설계**: 모든 AI/ML 아티팩트는 FSxN S3 Access Point를 통해 소스 데이터와 **동일한
-FSx ONTAP 볼륨**에 다시 씁니다. 별도의 표준 S3 버킷은 생성되지 않습니다
+**설계**: 모든 AI/ML 아티팩트는 FSx for ONTAP S3 Access Point를 통해 소스 데이터와 **동일한
+FSx for ONTAP 볼륨**에 다시 씁니다. 별도의 표준 S3 버킷은 생성되지 않습니다
 ("no data movement" 패턴).
 
 **CloudFormation 파라미터**:
@@ -104,7 +104,7 @@ AWS 사양 제약과 해결 방법은
 
 - **STANDARD_S3** (기본값): AI 아티팩트가 새 S3 버킷으로 이동
 - **FSXN_S3AP** ("no data movement"): AI 아티팩트가 S3 Access Point를 통해
-  동일한 FSx ONTAP 볼륨으로 돌아가며, SMB/NFS 사용자가 기존 디렉토리 구조 내에서
+  동일한 FSx for ONTAP 볼륨으로 돌아가며, SMB/NFS 사용자가 기존 디렉토리 구조 내에서
   볼 수 있음
 
 ```bash
@@ -119,12 +119,12 @@ AWS 사양 제약과 해결 방법은
 """,
     },
     "zh-CN": {
-        "A": """## 输出目标: FSxN S3 Access Point (Pattern A)
+        "A": """## 输出目标: FSx for ONTAP S3 Access Point (Pattern A)
 
 该 UC 属于 **Pattern A: Native S3AP Output**
 (参见 `docs/output-destination-patterns.md`)。
 
-**设计**: 所有 AI/ML 工件通过 FSxN S3 Access Point 写回到与源数据**同一的 FSx ONTAP 卷**。
+**设计**: 所有 AI/ML 工件通过 FSx for ONTAP S3 Access Point 写回到与源数据**同一的 FSx for ONTAP 卷**。
 不创建单独的标准 S3 存储桶 ("no data movement" 模式)。
 
 **CloudFormation 参数**:
@@ -145,7 +145,7 @@ AWS 规格约束和解决方案请参阅
 
 - **STANDARD_S3** (默认): AI 工件进入新的 S3 存储桶
 - **FSXN_S3AP** ("no data movement"): AI 工件通过 S3 Access Point 返回同一的
-  FSx ONTAP 卷, SMB/NFS 用户可在现有目录结构中查看
+  FSx for ONTAP 卷, SMB/NFS 用户可在现有目录结构中查看
 
 ```bash
 # FSXN_S3AP 模式
@@ -159,12 +159,12 @@ AWS 规格约束和解决方案请参阅
 """,
     },
     "zh-TW": {
-        "A": """## 輸出目標: FSxN S3 Access Point (Pattern A)
+        "A": """## 輸出目標: FSx for ONTAP S3 Access Point (Pattern A)
 
 此 UC 屬於 **Pattern A: Native S3AP Output**
 (請參閱 `docs/output-destination-patterns.md`)。
 
-**設計**: 所有 AI/ML 產物透過 FSxN S3 Access Point 寫回與來源資料**相同的 FSx ONTAP 磁碟區**。
+**設計**: 所有 AI/ML 產物透過 FSx for ONTAP S3 Access Point 寫回與來源資料**相同的 FSx for ONTAP 磁碟區**。
 不建立獨立的標準 S3 儲存貯體 ("no data movement" 模式)。
 
 **CloudFormation 參數**:
@@ -185,7 +185,7 @@ AWS 規格約束與解決方案請參閱
 
 - **STANDARD_S3** (預設): AI 產物進入新的 S3 儲存貯體
 - **FSXN_S3AP** ("no data movement"): AI 產物透過 S3 Access Point 返回相同的
-  FSx ONTAP 磁碟區, SMB/NFS 使用者可在現有目錄結構中檢視
+  FSx for ONTAP 磁碟區, SMB/NFS 使用者可在現有目錄結構中檢視
 
 ```bash
 # FSXN_S3AP 模式
@@ -199,13 +199,13 @@ AWS 規格約束與解決方案請參閱
 """,
     },
     "fr": {
-        "A": """## Destination de sortie : FSxN S3 Access Point (Pattern A)
+        "A": """## Destination de sortie : FSx for ONTAP S3 Access Point (Pattern A)
 
 Ce UC relève du **Pattern A : Native S3AP Output**
 (voir `docs/output-destination-patterns.md`).
 
-**Conception** : tous les artefacts IA/ML sont écrits via le FSxN S3 Access Point
-sur le **même volume FSx ONTAP** que les données source. Aucun bucket S3 standard
+**Conception** : tous les artefacts IA/ML sont écrits via le FSx for ONTAP S3 Access Point
+sur le **même volume FSx for ONTAP** que les données source. Aucun bucket S3 standard
 séparé n'est créé (pattern "no data movement").
 
 **Paramètres CloudFormation** :
@@ -226,7 +226,7 @@ voir `docs/output-destination-patterns.md`).
 
 - **STANDARD_S3** (par défaut) : les artefacts IA vont vers un nouveau bucket S3
 - **FSXN_S3AP** ("no data movement") : les artefacts IA retournent sur le même
-  volume FSx ONTAP via S3 Access Point, visibles pour les utilisateurs SMB/NFS
+  volume FSx for ONTAP via S3 Access Point, visibles pour les utilisateurs SMB/NFS
   dans la structure de répertoires existante
 
 ```bash
@@ -241,13 +241,13 @@ Pour les contraintes et solutions de contournement AWS, voir
 """,
     },
     "de": {
-        "A": """## Ausgabeziel: FSxN S3 Access Point (Pattern A)
+        "A": """## Ausgabeziel: FSx for ONTAP S3 Access Point (Pattern A)
 
 Dieser UC gehört zum **Pattern A: Native S3AP Output**
 (siehe `docs/output-destination-patterns.md`).
 
-**Design**: Alle AI/ML-Artefakte werden über den FSxN S3 Access Point auf
-**dasselbe FSx ONTAP Volume** wie die Quelldaten zurückgeschrieben. Kein separater
+**Design**: Alle AI/ML-Artefakte werden über den FSx for ONTAP S3 Access Point auf
+**dasselbe FSx for ONTAP Volume** wie die Quelldaten zurückgeschrieben. Kein separater
 Standard-S3-Bucket wird erstellt ("no data movement"-Pattern).
 
 **CloudFormation-Parameter**:
@@ -268,7 +268,7 @@ siehe `docs/output-destination-patterns.md`).
 
 - **STANDARD_S3** (Standard): AI-Artefakte gehen in einen neuen S3-Bucket
 - **FSXN_S3AP** ("no data movement"): AI-Artefakte gehen über den S3 Access Point
-  zurück auf dasselbe FSx ONTAP Volume, sichtbar für SMB/NFS-Benutzer in der
+  zurück auf dasselbe FSx for ONTAP Volume, sichtbar für SMB/NFS-Benutzer in der
   bestehenden Verzeichnisstruktur
 
 ```bash
@@ -283,13 +283,13 @@ AWS-Spezifikationsbeschränkungen und Workarounds siehe
 """,
     },
     "es": {
-        "A": """## Destino de salida: FSxN S3 Access Point (Pattern A)
+        "A": """## Destino de salida: FSx for ONTAP S3 Access Point (Pattern A)
 
 Este UC se clasifica como **Pattern A: Native S3AP Output**
 (consulte `docs/output-destination-patterns.md`).
 
-**Diseño**: todos los artefactos de IA/ML se escriben a través del FSxN S3 Access Point
-en el **mismo volumen FSx ONTAP** que los datos fuente. No se crea un bucket S3
+**Diseño**: todos los artefactos de IA/ML se escriben a través del FSx for ONTAP S3 Access Point
+en el **mismo volumen FSx for ONTAP** que los datos fuente. No se crea un bucket S3
 estándar separado (patrón "no data movement").
 
 **Parámetros CloudFormation**:
@@ -310,7 +310,7 @@ consulte `docs/output-destination-patterns.md`).
 
 - **STANDARD_S3** (predeterminado): los artefactos de IA van a un nuevo bucket S3
 - **FSXN_S3AP** ("no data movement"): los artefactos de IA regresan al mismo
-  volumen FSx ONTAP mediante S3 Access Point, visibles para usuarios SMB/NFS en
+  volumen FSx for ONTAP mediante S3 Access Point, visibles para usuarios SMB/NFS en
   la estructura de directorios existente
 
 ```bash

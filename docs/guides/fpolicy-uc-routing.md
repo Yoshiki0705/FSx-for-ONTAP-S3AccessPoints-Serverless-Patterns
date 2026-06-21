@@ -7,7 +7,7 @@ FPolicy イベント駆動パイプラインでは、EventBridge カスタムバ
 ## アーキテクチャ
 
 ```
-FSx ONTAP → FPolicy Server (ECS Fargate) → SQS → Bridge Lambda → EventBridge Bus
+FSx for ONTAP → FPolicy Server (ECS Fargate) → SQS → Bridge Lambda → EventBridge Bus
                                                                          │
                                     ┌────────────────────────────────────┼────────────────────────────┐
                                     │                                    │                            │

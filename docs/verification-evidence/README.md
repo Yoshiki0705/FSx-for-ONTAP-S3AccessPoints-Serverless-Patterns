@@ -18,7 +18,7 @@ serve as machine-readable proof that:
   S3 Access Point
 - `sample-tags-output.json` — one sample Rekognition tags JSON
   demonstrating successful label detection (top label `Oval` at 99.93%
-  confidence) written directly to the FSx ONTAP volume
+  confidence) written directly to the FSx for ONTAP volume
 
 ### UC14 insurance-claims (`uc14-demo/`)
 

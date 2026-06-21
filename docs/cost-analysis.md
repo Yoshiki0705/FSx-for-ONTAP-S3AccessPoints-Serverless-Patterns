@@ -386,4 +386,4 @@
 ### 参考リンク（FlexCache 関連）
 
 - [FSx for ONTAP 料金](https://aws.amazon.com/fsx/netapp-ontap/pricing/)
-- [Dynamic FlexCache コスト最適化ガイド](../dynamic-flexcache-render-workflow/docs/cost-optimization.md)
+- [Dynamic FlexCache コスト最適化ガイド](../solutions/flexcache/dynamic-render-workflow/docs/cost-optimization.md)

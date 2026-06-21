@@ -50,7 +50,7 @@ unified deployment API across all UCs that support FSx for ONTAP S3 AP output.
 **Recommended deployment** (new):
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template-deploy.yaml \
+  --template-file solutions/industry/legal-compliance/template-deploy.yaml \
   --stack-name fsxn-legal-compliance-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
@@ -62,7 +62,7 @@ aws cloudformation deploy \
 **Legacy deployment** (still works):
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template-deploy.yaml \
+  --template-file solutions/industry/legal-compliance/template-deploy.yaml \
   --stack-name fsxn-legal-compliance-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
@@ -76,7 +76,7 @@ aws cloudformation deploy \
 ```yaml
 S3AccessPointOutputAlias:
   Type: String
-  Description: FSx ONTAP S3 Access Point Alias (出力書き込み用、入力と同じ AP でも可)
+  Description: FSx for ONTAP S3 Access Point Alias (出力書き込み用、入力と同じ AP でも可)
 ```
 
 **Lambda handler pattern**:
@@ -94,7 +94,7 @@ s3ap_output.put_object(
 **Deployment example**:
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template-deploy.yaml \
+  --template-file solutions/industry/legal-compliance/template-deploy.yaml \
   --stack-name fsxn-legal-compliance-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
@@ -151,7 +151,7 @@ aws cloudformation deploy \
   --parameter-overrides OutputDestination=STANDARD_S3 \
   ...
 
-# FSXN_S3AP mode (writes AI outputs back to FSx ONTAP volume)
+# FSXN_S3AP mode (writes AI outputs back to FSx for ONTAP volume)
 aws cloudformation deploy \
   --parameter-overrides \
     OutputDestination=FSXN_S3AP \
@@ -181,7 +181,7 @@ S3 Access Point:
 
 > "Athena writes query results to an Amazon S3 bucket, not to the FSx for ONTAP volume."
 >
-> — [Query files with SQL using Amazon Athena (FSx ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
+> — [Query files with SQL using Amazon Athena (FSx for ONTAP User Guide)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
 
 Because the whole output pipeline in these UCs is structured around a
 single `OutputBucket` (metadata + athena-results + reports prefixes), the
@@ -224,6 +224,6 @@ has no `S3AccessPointOutputAlias` parameter, it's Pattern C.
 
 ## Cross-Reference
 
-- [aws-feature-requests/fsxn-s3ap-improvements.md](aws-feature-requests/fsxn-s3ap-improvements.md) — requested AWS enhancements including Athena result FSxN support
+- [aws-feature-requests/fsxn-s3ap-improvements.md](aws-feature-requests/fsxn-s3ap-improvements.md) — requested AWS enhancements including Athena result FSx for ONTAP support
 - [verification-results-output-destination.md](verification-results-output-destination.md) — AWS verification results for UC11/UC14 in FSXN_S3AP mode
 - [../README.md#aws-仕様上の制約と回避策](../README.md#aws-仕様上の制約と回避策) — top-level project docs on AWS limitations

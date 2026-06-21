@@ -256,7 +256,7 @@ aws ecs describe-services \
 tar -czf "${OUTPUT_DIR}.tar.gz" -C /tmp "diagnostic_bundle_${TIMESTAMP}"
 echo "Bundle: ${OUTPUT_DIR}.tar.gz"
 echo ""
-echo "ONTAP CLI commands (run manually on FSx ONTAP CLI):"
+echo "ONTAP CLI commands (run manually on FSx for ONTAP CLI):"
 echo "  fpolicy show -vserver ${SVM_NAME} -fields policy-name,status"
 echo "  fpolicy show-engine -vserver ${SVM_NAME}"
 echo "  fpolicy persistent-store show -vserver ${SVM_NAME}"

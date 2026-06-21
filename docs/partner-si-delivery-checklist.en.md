@@ -268,7 +268,7 @@ FC1 FlexCache Anycast/DR pattern PoC success criteria example:
 | False positive failovers (24h test) | 0 | DynamoDB routing table change audit |
 | Audit event completeness | 100% | DynamoDB Streams / CloudWatch Logs record count |
 
-> The above are reference values. Adjust according to customer SLA requirements. See [flexcache-anycast-dr/docs/](../flexcache-anycast-dr/docs/) for details.
+> The above are reference values. Adjust according to customer SLA requirements. See [solutions/flexcache/anycast-dr/docs/](../solutions/flexcache/anycast-dr/docs/) for details.
 
 > FlexCache/FlexClone patterns are optional extensions for customers who need distributed read access, dataset branching, cache lifecycle automation, or workload-specific acceleration. Not all customers need these patterns.
 
@@ -347,23 +347,23 @@ Links to each UC's Success Metrics (Outcome / Metrics / Measurement Method):
 
 | UC | Industry | Success Metrics |
 |----|----------|----------------|
-| UC1 | Legal/Compliance | [legal-compliance/README.md](../legal-compliance/README.md#success-metrics) |
-| UC2 | Financial/Insurance (IDP) | [financial-idp/README.md](../financial-idp/README.md#success-metrics) |
-| UC3 | Manufacturing | [manufacturing-analytics/README.md](../manufacturing-analytics/README.md#success-metrics) |
-| UC4 | Media (VFX) | [media-vfx/README.md](../media-vfx/README.md#success-metrics) |
-| UC5 | Healthcare (DICOM) | [healthcare-dicom/README.md](../healthcare-dicom/README.md#success-metrics) |
-| UC6 | Semiconductor / EDA | [semiconductor-eda/README.md](../semiconductor-eda/README.md#success-metrics) |
-| UC7 | Genomics | [genomics-pipeline/README.md](../genomics-pipeline/README.md#success-metrics) |
-| UC8 | Energy | [energy-seismic/README.md](../energy-seismic/README.md#success-metrics) |
-| UC9 | Autonomous Driving / ADAS | [autonomous-driving/README.md](../autonomous-driving/README.md#success-metrics) |
-| UC10 | Construction / BIM | [construction-bim/README.md](../construction-bim/README.md#success-metrics) |
-| UC11 | Retail / EC | [retail-catalog/README.md](../retail-catalog/README.md#success-metrics) |
-| UC12 | Logistics | [logistics-ocr/README.md](../logistics-ocr/README.md#success-metrics) |
-| UC13 | Education / Research | [education-research/README.md](../education-research/README.md#success-metrics) |
-| UC14 | Insurance | [insurance-claims/README.md](../insurance-claims/README.md#success-metrics) |
-| UC15 | Defense / Space | [defense-satellite/README.md](../defense-satellite/README.md#success-metrics) |
-| UC16 | Government (FOIA) | [government-archives/README.md](../government-archives/README.md#success-metrics) |
-| UC17 | Smart City | [smart-city-geospatial/README.md](../smart-city-geospatial/README.md#success-metrics) |
+| UC1 | Legal/Compliance | [solutions/industry/legal-compliance/README.md](../solutions/industry/legal-compliance/README.md#success-metrics) |
+| UC2 | Financial/Insurance (IDP) | [solutions/industry/financial-idp/README.md](../solutions/industry/financial-idp/README.md#success-metrics) |
+| UC3 | Manufacturing | [solutions/industry/manufacturing-analytics/README.md](../solutions/industry/manufacturing-analytics/README.md#success-metrics) |
+| UC4 | Media (VFX) | [solutions/industry/media-vfx/README.md](../solutions/industry/media-vfx/README.md#success-metrics) |
+| UC5 | Healthcare (DICOM) | [solutions/industry/healthcare-dicom/README.md](../solutions/industry/healthcare-dicom/README.md#success-metrics) |
+| UC6 | Semiconductor / EDA | [solutions/industry/semiconductor-eda/README.md](../solutions/industry/semiconductor-eda/README.md#success-metrics) |
+| UC7 | Genomics | [solutions/industry/genomics-pipeline/README.md](../solutions/industry/genomics-pipeline/README.md#success-metrics) |
+| UC8 | Energy | [solutions/industry/energy-seismic/README.md](../solutions/industry/energy-seismic/README.md#success-metrics) |
+| UC9 | Autonomous Driving / ADAS | [solutions/industry/autonomous-driving/README.md](../solutions/industry/autonomous-driving/README.md#success-metrics) |
+| UC10 | Construction / BIM | [solutions/industry/construction-bim/README.md](../solutions/industry/construction-bim/README.md#success-metrics) |
+| UC11 | Retail / EC | [solutions/industry/retail-catalog/README.md](../solutions/industry/retail-catalog/README.md#success-metrics) |
+| UC12 | Logistics | [solutions/industry/logistics-ocr/README.md](../solutions/industry/logistics-ocr/README.md#success-metrics) |
+| UC13 | Education / Research | [solutions/industry/education-research/README.md](../solutions/industry/education-research/README.md#success-metrics) |
+| UC14 | Insurance | [solutions/industry/insurance-claims/README.md](../solutions/industry/insurance-claims/README.md#success-metrics) |
+| UC15 | Defense / Space | [solutions/industry/defense-satellite/README.md](../solutions/industry/defense-satellite/README.md#success-metrics) |
+| UC16 | Government (FOIA) | [solutions/industry/government-archives/README.md](../solutions/industry/government-archives/README.md#success-metrics) |
+| UC17 | Smart City | [solutions/industry/smart-city-geospatial/README.md](../solutions/industry/smart-city-geospatial/README.md#success-metrics) |
 
 ## References
 

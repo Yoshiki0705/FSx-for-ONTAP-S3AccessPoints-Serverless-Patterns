@@ -14,7 +14,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Recommended Operational Alarms.
+  FSx for ONTAP S3 AP Serverless Patterns — Recommended Operational Alarms.
   FPolicy イベント駆動パイプラインの運用監視アラーム。
 
 Parameters:

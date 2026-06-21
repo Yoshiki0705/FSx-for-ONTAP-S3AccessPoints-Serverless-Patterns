@@ -34,8 +34,8 @@ stateDiagram-v2
 
 ## 詳細
 
-- [ワークフロー設計](../dynamic-flexcache-render-workflow/README.md)
-- [ONTAP REST API 設計](../dynamic-flexcache-render-workflow/docs/ontap-rest-api-design.md)
-- [障害ハンドリング](../dynamic-flexcache-render-workflow/docs/failure-handling.md)
-- [セキュリティ設計](../dynamic-flexcache-render-workflow/docs/security-design.md)
-- [コスト最適化](../dynamic-flexcache-render-workflow/docs/cost-optimization.md)
+- [ワークフロー設計](../solutions/flexcache/dynamic-render-workflow/README.md)
+- [ONTAP REST API 設計](../solutions/flexcache/dynamic-render-workflow/docs/ontap-rest-api-design.md)
+- [障害ハンドリング](../solutions/flexcache/dynamic-render-workflow/docs/failure-handling.md)
+- [セキュリティ設計](../solutions/flexcache/dynamic-render-workflow/docs/security-design.md)
+- [コスト最適化](../solutions/flexcache/dynamic-render-workflow/docs/cost-optimization.md)

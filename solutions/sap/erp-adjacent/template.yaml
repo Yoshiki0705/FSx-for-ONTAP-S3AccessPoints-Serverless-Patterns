@@ -1,0 +1,289 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAP/ERP Adjacent File Workflow Pattern
+  
+  Processes SAP IDoc exports, HULFT landing files, EDI landing zone files,
+  and batch job outputs from FSx for ONTAP via S3 Access Points.
+  
+  Architecture: EventBridge Scheduler → Step Functions → Discovery Lambda
+  → Processing Lambda (Bedrock) → Report Lambda (SNS)
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: fsxn-s3ap-sap-erp-adjacent
+    Description: SAP/ERP adjacent file workflow using FSx for ONTAP S3 Access Points
+    Author: FSx for ONTAP S3 AP Serverless Patterns
+    Labels: ['fsxn', 's3ap', 'sap', 'erp', 'idoc', 'hulft']
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: >
+      S3 Access Point alias for FSx for ONTAP volume.
+      In DemoMode, this can be a regular S3 bucket name.
+
+  DemoMode:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Enable demo mode (no FSx for ONTAP required).
+      When true, S3AccessPointAlias accepts a regular S3 bucket name,
+      and OntapSecretArn is not required.
+
+  OntapSecretArn:
+    Type: String
+    Default: ""
+    Description: Secrets Manager ARN containing ONTAP admin credentials (not required in DemoMode)
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge schedule expression (e.g., "rate(1 hour)", "cron(0 9 * * ? *)")
+
+  OutputBucketName:
+    Type: String
+    Description: S3 bucket for processed results and reports
+
+  NotificationEmail:
+    Type: String
+    Description: Email address for SNS notifications
+    AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+
+  FilePrefix:
+    Type: String
+    Default: "idoc-export/"
+    Description: >
+      S3 prefix to scan for files (e.g., "idoc-export/", "hulft-landing/", "edi-inbound/")
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-pro-v1:0"
+    Description: Bedrock model ID for document summarization
+
+  MaxFilesPerExecution:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 1000
+    Description: Maximum number of files to process per execution
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]
+    Description: CloudWatch Logs retention period in days (default 90, compliance-sensitive use 2557 = 7 years)
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 120
+    MemorySize: 256
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+        ONTAP_SECRET_ARN: !Ref OntapSecretArn
+        OUTPUT_BUCKET: !Ref OutputBucketName
+        FILE_PREFIX: !Ref FilePrefix
+        POWERTOOLS_SERVICE_NAME: sap-erp-adjacent
+
+Resources:
+  # ============================================================
+  # SNS Topic for notifications
+  # ============================================================
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${AWS::StackName}-notifications
+      DisplayName: SAP/ERP File Processing Notifications
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # ============================================================
+  # Output Bucket
+  # ============================================================
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldResults
+            Status: Enabled
+            ExpirationInDays: 90
+
+  # ============================================================
+  # Lambda Functions
+  # ============================================================
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-discovery
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Description: >
+        Discovers new/modified files on FSx for ONTAP via S3 Access Point
+        using ListObjectsV2. Filters by prefix and returns file manifest.
+      Timeout: 300
+      Environment:
+        Variables:
+          MAX_FILES: !Ref MaxFilesPerExecution
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref S3AccessPointAlias
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref OntapSecretArn
+
+  ProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-processing
+      Handler: handler.handler
+      CodeUri: functions/processing/
+      Description: >
+        Processes each discovered file: reads content via S3 AP,
+        sends to Bedrock for summarization/classification, writes results to S3.
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref S3AccessPointAlias
+        - S3CrudPolicy:
+            BucketName: !Ref OutputBucketName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-report
+      Handler: handler.handler
+      CodeUri: functions/report/
+      Description: >
+        Generates execution summary report and sends SNS notification
+        with processing results, file counts, and any errors.
+      Timeout: 60
+      MemorySize: 128
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref OutputBucketName
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt NotificationTopic.TopicName
+
+  # ============================================================
+  # Step Functions State Machine
+  # ============================================================
+  ProcessingStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub ${AWS::StackName}-workflow
+      DefinitionUri: statemachine/workflow.asl.json
+      DefinitionSubstitutions:
+        DiscoveryFunctionArn: !GetAtt DiscoveryFunction.Arn
+        ProcessingFunctionArn: !GetAtt ProcessingFunction.Arn
+        ReportFunctionArn: !GetAtt ReportFunction.Arn
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref DiscoveryFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessingFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportFunction
+
+  # ============================================================
+  # EventBridge Scheduler
+  # ============================================================
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Ref ProcessingStateMachine
+
+  ProcessingSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub ${AWS::StackName}-schedule
+      Description: Triggers SAP/ERP file processing workflow
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "FLEXIBLE"
+        MaximumWindowInMinutes: 15
+      Target:
+        Arn: !Ref ProcessingStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref ProcessingStateMachine
+
+  StateMachineConsoleUrl:
+    Description: Step Functions console URL
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/states/home?region=${AWS::Region}#/statemachines/view/${ProcessingStateMachine}
+
+  DiscoveryFunctionArn:
+    Description: Discovery Lambda function ARN
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  ProcessingFunctionArn:
+    Description: Processing Lambda function ARN
+    Value: !GetAtt ProcessingFunction.Arn
+
+  ReportFunctionArn:
+    Description: Report Lambda function ARN
+    Value: !GetAtt ReportFunction.Arn
+
+  NotificationTopicArn:
+    Description: SNS Topic ARN for notifications
+    Value: !Ref NotificationTopic
+
+  OutputBucketArn:
+    Description: Output S3 bucket ARN
+    Value: !GetAtt OutputBucket.Arn
+
+  ManualTriggerCommand:
+    Description: CLI command to manually trigger the workflow
+    Value: !Sub >
+      aws stepfunctions start-execution
+      --state-machine-arn ${ProcessingStateMachine}
+      --input '{}'

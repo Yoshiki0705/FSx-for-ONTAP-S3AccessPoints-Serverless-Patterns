@@ -7,8 +7,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'genai-kb-selfservice-curation/evaluation/**'
-      - 'genai-kb-selfservice-curation/functions/query/**'
+      - 'solutions/genai/kb-selfservice-curation/evaluation/**'
+      - 'solutions/genai/kb-selfservice-curation/functions/query/**'
       - '.github/workflows/rag-eval.yml'
   workflow_dispatch:
 
@@ -32,9 +32,9 @@ jobs:
       - name: Install dev deps
         run: pip install -r requirements-dev.txt
       - name: Eval scoring unit tests
-        run: pytest genai-kb-selfservice-curation/tests/test_eval.py -v
+        run: pytest solutions/genai/kb-selfservice-curation/tests/test_eval.py -v
       - name: Mock harness run (no AWS)
-        working-directory: genai-kb-selfservice-curation/evaluation
+        working-directory: solutions/genai/kb-selfservice-curation/evaluation
         run: |
           python3 run_eval.py --mock fixtures-sample.json --threshold 0.8
 

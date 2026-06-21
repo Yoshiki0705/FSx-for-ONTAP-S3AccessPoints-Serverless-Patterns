@@ -329,7 +329,7 @@ def generate_dashboard_widgets(
             "width": 24,
             "height": 2,
             "properties": {
-                "markdown": "# SLO Dashboard — FSxN S3AP Serverless Patterns\n"
+                "markdown": "# SLO Dashboard — FSx for ONTAP S3 AP Serverless Patterns\n"
                 "Service Level Objectives for the event-driven pipeline."
             },
         }

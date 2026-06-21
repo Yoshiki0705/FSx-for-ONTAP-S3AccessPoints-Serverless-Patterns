@@ -65,14 +65,27 @@
 
 ---
 
+## DAIS 2026 業界事例参照
+
+以下の公開事例が、既存パターンの業界適用を裏付けるリファレンスとなる。
+
+| 事例企業 | 業界 | 対応 UC | 概要 | Evidence Tier |
+|---------|------|---------|------|--------------|
+| 7-Eleven | Retail & Consumer Goods | UC22, UC11 | 設備メンテナンス技術者向け GenAI アシスタント。検索時間 −60%、初回修理成功率 +25% | Public (DAIS 2026 Session + Blog) |
+| AstraZeneca | Healthcare & Life Sciences | UC7, UC5 | マルチエージェントシステム。Supervisor + 治療領域別サブエージェント。5 → 20+ エージェントスケール | Public (DAIS 2026 Session + Blog) |
+
+詳細分析: [DAIS 2026 Agent Bricks 事例分析](investigations/dais2026-agent-bricks-industry-cases.md)
+
+---
+
 ## 実装優先順位
 
 ### P0（即時着手）
 
 | UC | 業界 | ディレクトリ | 概要 |
 |----|------|------------|------|
-| UC18 | 通信 | `telecom-network-analytics/` | CDR/ネットワークログ分析・異常検知 |
-| UC19 | 広告・マーケティング | `adtech-creative-management/` | クリエイティブアセット管理・ブランドコンプライアンス |
+| UC18 | 通信 | `solutions/industry/telecom-network-analytics/` | CDR/ネットワークログ分析・異常検知 |
+| UC19 | 広告・マーケティング | `solutions/industry/adtech-creative-management/` | クリエイティブアセット管理・ブランドコンプライアンス |
 
 **着手条件**: なし（即時着手可能）
 
@@ -80,9 +93,9 @@
 
 | UC | 業界 | ディレクトリ | 概要 |
 |----|------|------------|------|
-| UC20 | 旅行・ホスピタリティ | `travel-document-processing/` | 予約文書処理・施設点検画像分析 |
-| UC21 | 農業・食品 | `agri-food-traceability/` | 農地航空画像・トレーサビリティ文書管理 |
-| UC22 | 運輸・鉄道 | `transportation-maintenance/` | 設備点検画像・保守レポート分析 |
+| UC20 | 旅行・ホスピタリティ | `solutions/industry/travel-document-processing/` | 予約文書処理・施設点検画像分析 |
+| UC21 | 農業・食品 | `solutions/industry/agri-food-traceability/` | 農地航空画像・トレーサビリティ文書管理 |
+| UC22 | 運輸・鉄道 | `solutions/industry/transportation-maintenance/` | 設備点検画像・保守レポート分析 |
 
 **着手条件**: UC18 + UC19 の実装完了
 
@@ -90,12 +103,12 @@
 
 | UC | 業界 | ディレクトリ | 概要 |
 |----|------|------------|------|
-| UC23 | サステナビリティ・ESG | `sustainability-esg-reporting/` | ESG メトリクス抽出・レポーティング |
-| UC24 | NPO・非営利団体 | `nonprofit-grant-management/` | 助成金申請分類・成果マッチング |
-| UC25 | 電力・ユーティリティ | `utilities-asset-inspection/` | ドローン画像・SCADA ログ分析 |
-| UC26 | 不動産 | `real-estate-portfolio/` | 物件画像分析・契約書データ抽出 |
-| UC27 | 人材・HR | `hr-document-screening/` | 履歴書スクリーニング・候補者評価 |
-| UC28 | 化学・素材 | `chemical-sds-management/` | SDS 管理・ラボノート分析 |
+| UC23 | サステナビリティ・ESG | `solutions/industry/sustainability-esg-reporting/` | ESG メトリクス抽出・レポーティング |
+| UC24 | NPO・非営利団体 | `solutions/industry/nonprofit-grant-management/` | 助成金申請分類・成果マッチング |
+| UC25 | 電力・ユーティリティ | `solutions/industry/utilities-asset-inspection/` | ドローン画像・SCADA ログ分析 |
+| UC26 | 不動産 | `solutions/industry/real-estate-portfolio/` | 物件画像分析・契約書データ抽出 |
+| UC27 | 人材・HR | `solutions/industry/hr-document-screening/` | 履歴書スクリーニング・候補者評価 |
+| UC28 | 化学・素材 | `solutions/industry/chemical-sds-management/` | SDS 管理・ラボノート分析 |
 
 **着手条件**: UC20 + UC21 + UC22 の実装完了
 
@@ -119,6 +132,7 @@
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-06-18 | DAIS 2026 業界事例参照を追加 — 7-Eleven (Retail, UC22), AstraZeneca (Healthcare & Life Sciences, UC7)。[詳細分析](investigations/dais2026-agent-bricks-industry-cases.md) |
 | 2026-06-03 | P2 完了 — UC23 (サステナビリティ), UC24 (NPO), UC25 (電力), UC26 (不動産), UC27 (HR), UC28 (化学) を Covered に更新。全 28 UC + 6 FC = 34 パターン |
 | 2026-06-03 | P1 完了 — UC20 (旅行), UC21 (農業), UC22 (運輸) を Covered に更新 |
 | 2026-06-02 | P0 完了 — UC18 (通信), UC19 (広告) を Covered に更新 |

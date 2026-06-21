@@ -115,12 +115,12 @@ graph TB
         GA[Global Accelerator<br/>オプション]
     end
     subgraph "リージョン A"
-        FSXA[FSx ONTAP<br/>FlexCache A]
+        FSXA[FSx for ONTAP<br/>FlexCache A]
         S3APA[S3 Access Point A]
         LAMBDAA[Lambda A]
     end
     subgraph "リージョン B"
-        FSXB[FSx ONTAP<br/>FlexCache B]
+        FSXB[FSx for ONTAP<br/>FlexCache B]
         S3APB[S3 Access Point B]
         LAMBDAB[Lambda B]
     end
@@ -156,7 +156,7 @@ graph TB
 ## 関連ドキュメント
 
 - [業界・ワークロード マッピング](industry-workload-mapping.md)
-- [FlexCache AnyCast / DR パターン](../flexcache-anycast-dr/README.md)
-- [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
+- [FlexCache AnyCast / DR パターン](../solutions/flexcache/anycast-dr/README.md)
+- [Dynamic FlexCache Render Workflow](../solutions/flexcache/dynamic-render-workflow/README.md)
 - [FlexCache PoC チェックリスト](flexcache-poc-checklist.md)
 - [コスト分析](cost-analysis.md)

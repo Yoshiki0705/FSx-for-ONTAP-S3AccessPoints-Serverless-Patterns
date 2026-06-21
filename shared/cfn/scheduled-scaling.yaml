@@ -26,7 +26,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Scheduled Scaling.
+  FSx for ONTAP S3 AP Serverless Patterns — Scheduled Scaling.
   SageMaker エンドポイントのビジネスアワーベース自動スケーリング。
 
 # =====================================================================

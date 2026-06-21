@@ -1,7 +1,7 @@
 """OutputWriter ユニットテスト
 
 環境変数による出力先切替（STANDARD_S3 / FSXN_S3AP）と、各書き込み API
-（put_bytes / put_text / put_json）、FSxN S3AP 仕様への準拠を検証する。
+（put_bytes / put_text / put_json）、FSx for ONTAP S3 AP 仕様への準拠を検証する。
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ class TestConstruction:
             session=mock_session,
         )
         assert w.destination == FSXN_S3AP
-        assert "FSxN S3 Access Point 'xxx-ext-s3alias'" in w.target_description
+        assert "FSx for ONTAP S3 Access Point 'xxx-ext-s3alias'" in w.target_description
 
     def test_s3ap_prefix_normalized_to_trailing_slash(self, mock_session):
         w = OutputWriter(
@@ -236,13 +236,13 @@ class TestPutOperations:
 
 
 # ---------------------------------------------------------------------------
-# SSE-FSX compliance: FSxN S3AP では ServerSideEncryption を渡さないこと
+# SSE-FSX compliance: FSx for ONTAP S3 AP では ServerSideEncryption を渡さないこと
 # ---------------------------------------------------------------------------
 
 
 class TestSSEFSXCompliance:
     def test_no_server_side_encryption_param_for_fsxn(self, writer_s3ap, mock_session):
-        """FSxN S3AP は SSE-FSX が自動適用されるため、
+        """FSx for ONTAP S3 AP は SSE-FSX が自動適用されるため、
         アプリからは ServerSideEncryption を指定してはならない。"""
         writer_s3ap.put_bytes(key="x.bin", body=b"abc")
         call_kwargs = mock_session._s3_client.put_object.call_args.kwargs
@@ -271,7 +271,7 @@ class TestErrorHandling:
 
     def test_s3ap_put_failure_wrapped_as_s3ap_helper_error(self, writer_s3ap, mock_session):
         mock_session._s3_client.put_object.side_effect = self._client_error()
-        with pytest.raises(S3ApHelperError, match="FSxN S3 Access Point"):
+        with pytest.raises(S3ApHelperError, match="FSx for ONTAP S3 Access Point"):
             writer_s3ap.put_bytes(key="x.bin", body=b"abc")
 
     def test_standard_s3_put_failure_raises_client_error(self, writer_standard, mock_session):
@@ -334,7 +334,7 @@ class TestGetOperations:
             {"Error": {"Code": "NoSuchKey", "Message": "missing"}},
             "GetObject",
         )
-        with pytest.raises(S3ApHelperError, match="FSxN S3 Access Point"):
+        with pytest.raises(S3ApHelperError, match="FSx for ONTAP S3 Access Point"):
             writer_s3ap.get_bytes("missing.json")
 
     def test_standard_s3_get_failure_raises_client_error(self, writer_standard, mock_session):

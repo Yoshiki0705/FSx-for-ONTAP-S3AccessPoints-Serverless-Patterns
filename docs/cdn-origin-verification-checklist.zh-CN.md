@@ -5,10 +5,10 @@
 ## 目的
 
 为在实机上确定 [CDN 对比文档](cdn-comparison.zh-CN.md) 中标记为 **需验证（TBV）** 的项，即
-**“各 CDN 的 SigV4 源签名对 FSx ONTAP S3 Access Point 的 `accesspoint alias` 主机是否与标准 S3 桶一样工作”**
+**“各 CDN 的 SigV4 源签名对 FSx for ONTAP S3 Access Point 的 `accesspoint alias` 主机是否与标准 S3 桶一样工作”**
 而提供的可复现步骤。
 
-本清单用于 `content-edge-delivery` UC 的 `DeliveryMode=ORIGIN_PULL`（M1/M2）采用判断。
+本清单用于 `solutions/edge/content-delivery` UC 的 `DeliveryMode=ORIGIN_PULL`（M1/M2）采用判断。
 **M3（PUBLISH_PUSH）不依赖本验证**（因其规避源认证）。
 
 > **区分说明**：本验证为“特定测试环境下的实测”。请勿将一般 S3 行为或各 CDN 在标准桶上的实绩作为对 S3 AP
@@ -74,7 +74,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 在每个 CDN 设置“源=S3 AP alias 主机”，确认缓存未命中时的回源是否为 200。
 
 ### 2.1 Amazon CloudFront（M1 / OAC）— 参考
-- 以 `EnableCloudFront=true` 部署 `content-edge-delivery` 模板（OAC + `SigningProtocol: sigv4`）。
+- 以 `EnableCloudFront=true` 部署 `solutions/edge/content-delivery` 模板（OAC + `SigningProtocol: sigv4`）。
 - 验证：`curl -I https://<distribution-domain>/delivery-approved/test-1mb.bin` → 200。
 - 期望：依 AWS 官方教程成立（**有实绩**）。
 
@@ -139,10 +139,10 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ## 6. 验证结果反馈
 
 - 已确定的结果反映到 [CDN 对比文档](cdn-comparison.zh-CN.md) 第 3 节“S3 AP 专属 TBV”列 / 4.1“需验证”的更新（TBV → 实测结果）。
-- FAIL 的 CDN 在 `content-edge-delivery` 中以 `DeliveryMode=PUBLISH_PUSH`（M3）为推荐路径。
+- FAIL 的 CDN 在 `solutions/edge/content-delivery` 中以 `DeliveryMode=PUBLISH_PUSH`（M3）为推荐路径。
 
 ## 相关文档
 
 - [CDN/边缘分发集成对比](cdn-comparison.zh-CN.md)
-- [content-edge-delivery UC](../content-edge-delivery/README.zh-CN.md)
+- [content-edge-delivery UC](../solutions/edge/content-delivery/README.zh-CN.md)
 - [S3AP 兼容性说明](s3ap-compatibility-notes.md)

@@ -9,7 +9,7 @@
 
 Usage:
     python scripts/check_stacksets_compatibility.py
-    python scripts/check_stacksets_compatibility.py --template retail-catalog/template-deploy.yaml
+    python scripts/check_stacksets_compatibility.py --template solutions/industry/retail-catalog/template-deploy.yaml
     python scripts/check_stacksets_compatibility.py --all
 """
 
@@ -102,23 +102,23 @@ SAFE_PATTERNS = {
 
 # UC directories
 UC_DIRS = [
-    "legal-compliance",
-    "financial-idp",
-    "manufacturing-analytics",
-    "logistics-ocr",
-    "healthcare-dicom",
-    "semiconductor-eda",
-    "genomics-pipeline",
-    "energy-seismic",
-    "autonomous-driving",
-    "construction-bim",
-    "retail-catalog",
-    "media-vfx",
-    "education-research",
-    "insurance-claims",
-    "defense-satellite",
-    "government-archives",
-    "smart-city-geospatial",
+    "solutions/industry/legal-compliance",
+    "solutions/industry/financial-idp",
+    "solutions/industry/manufacturing-analytics",
+    "solutions/industry/logistics-ocr",
+    "solutions/industry/healthcare-dicom",
+    "solutions/industry/semiconductor-eda",
+    "solutions/industry/genomics-pipeline",
+    "solutions/industry/energy-seismic",
+    "solutions/industry/autonomous-driving",
+    "solutions/industry/construction-bim",
+    "solutions/industry/retail-catalog",
+    "solutions/industry/media-vfx",
+    "solutions/industry/education-research",
+    "solutions/industry/insurance-claims",
+    "solutions/industry/defense-satellite",
+    "solutions/industry/government-archives",
+    "solutions/industry/smart-city-geospatial",
 ]
 
 

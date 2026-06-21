@@ -54,8 +54,8 @@ SAM CLI v1.93.0+ では Finch が自動検出されます。
 ```bash
 # UC01: 法務・コンプライアンス の Discovery Lambda をテスト
 sam local invoke \
-  --template legal-compliance/template-deploy.yaml \
-  --event events/uc01-legal-compliance/discovery-event.json \
+  --template solutions/industry/legal-compliance/template-deploy.yaml \
+  --event events/uc01-solutions/industry/legal-compliance/discovery-event.json \
   --env-vars events/env.json \
   --region ap-northeast-1 \
   DiscoveryFunction
@@ -89,8 +89,8 @@ sam local invoke \
 
 | パラメータ | 説明 | 例 |
 |-----------|------|-----|
-| `--template` | CloudFormation テンプレートのパス | `legal-compliance/template-deploy.yaml` |
-| `--event` | Lambda に渡すイベント JSON | `events/uc01-legal-compliance/discovery-event.json` |
+| `--template` | CloudFormation テンプレートのパス | `solutions/industry/legal-compliance/template-deploy.yaml` |
+| `--event` | Lambda に渡すイベント JSON | `events/uc01-solutions/industry/legal-compliance/discovery-event.json` |
 | `--env-vars` | 環境変数の JSON ファイル | `events/env.json` |
 | `--region` | AWS リージョン | `ap-northeast-1` |
 | `--skip-pull-image` | Docker イメージのプルをスキップ | - |
@@ -124,7 +124,7 @@ sam local invoke \
 
 ```bash
 sam local start-lambda \
-  --template legal-compliance/template-deploy.yaml \
+  --template solutions/industry/legal-compliance/template-deploy.yaml \
   --env-vars events/env.json \
   --region ap-northeast-1 \
   --host 127.0.0.1 \
@@ -138,7 +138,7 @@ sam local start-lambda \
 aws lambda invoke \
   --function-name DiscoveryFunction \
   --endpoint-url http://127.0.0.1:3001 \
-  --payload file://events/uc01-legal-compliance/discovery-event.json \
+  --payload file://events/uc01-solutions/industry/legal-compliance/discovery-event.json \
   output.json
 
 cat output.json
@@ -328,7 +328,7 @@ docker network create sam-local-network
 # ネットワークを指定して実行
 sam local invoke \
   --docker-network sam-local-network \
-  --template legal-compliance/template-deploy.yaml \
+  --template solutions/industry/legal-compliance/template-deploy.yaml \
   DiscoveryFunction
 ```
 
@@ -337,33 +337,33 @@ sam local invoke \
 ```
 events/
 ├── env.json                              # 共通環境変数テンプレート
-├── uc01-legal-compliance/
+├── uc01-solutions/industry/legal-compliance/
 │   └── discovery-event.json
-├── uc02-financial-idp/
+├── uc02-solutions/industry/financial-idp/
 │   └── discovery-event.json
-├── uc03-manufacturing-analytics/
+├── uc03-solutions/industry/manufacturing-analytics/
 │   └── discovery-event.json
-├── uc04-media-vfx/
+├── uc04-solutions/industry/media-vfx/
 │   └── discovery-event.json
-├── uc05-healthcare-dicom/
+├── uc05-solutions/industry/healthcare-dicom/
 │   └── discovery-event.json
-├── uc06-semiconductor-eda/
+├── uc06-solutions/industry/semiconductor-eda/
 │   └── discovery-event.json
-├── uc07-genomics-pipeline/
+├── uc07-solutions/industry/genomics-pipeline/
 │   └── discovery-event.json
-├── uc08-energy-seismic/
+├── uc08-solutions/industry/energy-seismic/
 │   └── discovery-event.json
-├── uc09-autonomous-driving/
+├── uc09-solutions/industry/autonomous-driving/
 │   └── discovery-event.json
-├── uc10-construction-bim/
+├── uc10-solutions/industry/construction-bim/
 │   └── discovery-event.json
-├── uc11-retail-catalog/
+├── uc11-solutions/industry/retail-catalog/
 │   └── discovery-event.json
-├── uc12-logistics-ocr/
+├── uc12-solutions/industry/logistics-ocr/
 │   └── discovery-event.json
-├── uc13-education-research/
+├── uc13-solutions/industry/education-research/
 │   └── discovery-event.json
-└── uc14-insurance-claims/
+└── uc14-solutions/industry/insurance-claims/
     └── discovery-event.json
 
 samconfig.toml                            # SAM CLI 設定

@@ -80,7 +80,7 @@ S3 AP 経由で PutObject した場合:
 
 ## Security and Identity Notes
 
-- S3 AP access is not governed by NFS export policies in the same way as NFS clients. Requests are first authorized by AWS policies (IAM + S3 AP policy), then by the FSx ONTAP file-system identity associated with the access point
+- S3 AP access is not governed by NFS export policies in the same way as NFS clients. Requests are first authorized by AWS policies (IAM + S3 AP policy), then by the FSx for ONTAP file-system identity associated with the access point
 - AD/UNIX マッピングの整合性を ONTAP REST API (`security login show`, `vserver name-mapping show`) で確認
 - アクセス拒否シナリオのテスト: 意図しないファイルへのアクセスがブロックされることを検証
 - 出力ファイル権限を NFS/SMB クライアントから確認（意図した ownership/permissions か）
@@ -117,17 +117,17 @@ OT 環境固有の考慮事項:
 - 厳格な変更ウィンドウ管理
 - 手動オーバーライドプロセスの定義
 
-## FSx ONTAP コストに関する注記
+## FSx for ONTAP コストに関する注記
 
-> FSx ONTAP コストはリージョン、デプロイタイプ（Single-AZ/Multi-AZ）、SSD 容量、Capacity Pool 容量、throughput capacity、バックアップ、データ転送によって変動します。本リポジトリで記載している $194/月は Single-AZ / 128 MBps / 1 TB SSD の基本見積もりであり、普遍的な価格ではありません。
+> FSx for ONTAP コストはリージョン、デプロイタイプ（Single-AZ/Multi-AZ）、SSD 容量、Capacity Pool 容量、throughput capacity、バックアップ、データ転送によって変動します。本リポジトリで記載している $194/月は Single-AZ / 128 MBps / 1 TB SSD の基本見積もりであり、普遍的な価格ではありません。
 
 ## DemoMode → Clone PoC → Production の 3 段階
 
 | 段階 | データソース | 特徴 |
 |---|---|---|
-| DemoMode | 合成 S3 データ | FSx ONTAP 不要、即日開始可能 |
+| DemoMode | 合成 S3 データ | FSx for ONTAP 不要、即日開始可能 |
 | Clone PoC | FlexClone (本番類似データ) | 本番データに近い検証、容量効率的 |
-| Production | Live FSx ONTAP S3 AP | 完全な権限モデル + ガバナンス |
+| Production | Live FSx for ONTAP S3 AP | 完全な権限モデル + ガバナンス |
 
 ## Field Feedback Log
 

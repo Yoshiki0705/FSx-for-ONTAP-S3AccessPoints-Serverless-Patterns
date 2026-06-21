@@ -99,19 +99,19 @@ package_lambda() {
 echo "=== Packaging Lambda functions ==="
 # UC11: Retail Catalog
 for func in discovery image_tagging catalog_metadata quality_check stream_producer stream_consumer; do
-    package_lambda "retail-catalog" "$func"
+    package_lambda "solutions/industry/retail-catalog" "$func"
 done
 
 # UC9: Autonomous Driving
 for func in discovery frame_extraction point_cloud_qc annotation_manager sagemaker_invoke sagemaker_callback; do
-    package_lambda "autonomous-driving" "$func"
+    package_lambda "solutions/industry/autonomous-driving" "$func"
 done
 echo ""
 
 # --- UC11: Retail Catalog (with Kinesis streaming) ---
 echo "=== Deploying UC11: Retail Catalog ==="
 aws cloudformation deploy \
-    --template-file retail-catalog/template-deploy.yaml \
+    --template-file solutions/industry/retail-catalog/template-deploy.yaml \
     --stack-name fsxn-retail-catalog-phase3 \
     --capabilities CAPABILITY_NAMED_IAM \
     --parameter-overrides \
@@ -135,7 +135,7 @@ echo "UC11 deployed successfully"
 # --- UC9: Autonomous Driving (with SageMaker) ---
 echo "=== Deploying UC9: Autonomous Driving ==="
 aws cloudformation deploy \
-    --template-file autonomous-driving/template-deploy.yaml \
+    --template-file solutions/industry/autonomous-driving/template-deploy.yaml \
     --stack-name fsxn-autonomous-driving-phase3 \
     --capabilities CAPABILITY_NAMED_IAM \
     --parameter-overrides \

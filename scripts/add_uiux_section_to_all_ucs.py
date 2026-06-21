@@ -21,17 +21,17 @@ SKIP = {"UC6", "UC11", "UC14", "UC15", "UC16", "UC17"}
 
 # Mapping UC to demo-guide paths
 UC_DIRS = {
-    "UC1": "legal-compliance",
-    "UC2": "financial-idp",
-    "UC3": "manufacturing-analytics",
-    "UC4": "media-vfx",
-    "UC5": "healthcare-dicom",
-    "UC7": "genomics-pipeline",
-    "UC8": "energy-seismic",
-    "UC9": "autonomous-driving",
-    "UC10": "construction-bim",
-    "UC12": "logistics-ocr",
-    "UC13": "education-research",
+    "UC1": "solutions/industry/legal-compliance",
+    "UC2": "solutions/industry/financial-idp",
+    "UC3": "solutions/industry/manufacturing-analytics",
+    "UC4": "solutions/industry/media-vfx",
+    "UC5": "solutions/industry/healthcare-dicom",
+    "UC7": "solutions/industry/genomics-pipeline",
+    "UC8": "solutions/industry/energy-seismic",
+    "UC9": "solutions/industry/autonomous-driving",
+    "UC10": "solutions/industry/construction-bim",
+    "UC12": "solutions/industry/logistics-ocr",
+    "UC13": "solutions/industry/education-research",
 }
 
 # E2E verified in previous phases (from root README.md)
@@ -203,17 +203,17 @@ def apply_to_uc(uc_short: str, uc_dir: str) -> None:
         return
 
     sample_prefix_map = {
-        "legal-compliance": "contracts",
-        "financial-idp": "invoices",
-        "manufacturing-analytics": "sensors",
-        "media-vfx": "renders",
-        "healthcare-dicom": "dicom",
-        "genomics-pipeline": "fastq",
-        "energy-seismic": "seismic",
-        "autonomous-driving": "footage",
-        "construction-bim": "drawings",
-        "logistics-ocr": "waybills",
-        "education-research": "papers",
+        "solutions/industry/legal-compliance": "contracts",
+        "solutions/industry/financial-idp": "invoices",
+        "solutions/industry/manufacturing-analytics": "sensors",
+        "solutions/industry/media-vfx": "renders",
+        "solutions/industry/healthcare-dicom": "dicom",
+        "solutions/industry/genomics-pipeline": "fastq",
+        "solutions/industry/energy-seismic": "seismic",
+        "solutions/industry/autonomous-driving": "footage",
+        "solutions/industry/construction-bim": "drawings",
+        "solutions/industry/logistics-ocr": "waybills",
+        "solutions/industry/education-research": "papers",
     }
 
     section = SECTION_TEMPLATE.format(

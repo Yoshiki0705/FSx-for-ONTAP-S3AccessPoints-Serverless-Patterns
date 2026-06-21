@@ -2,9 +2,9 @@
 
 ## 概要
 
-本ドキュメントは、FSx for ONTAP S3 Access Points（以下 FSx ONTAP S3 AP）における
+本ドキュメントは、FSx for ONTAP S3 Access Points（以下 FSx for ONTAP S3 AP）における
 イベント駆動アーキテクチャの設計を定義する。現在のポーリングベースアーキテクチャから、
-将来の FSx ONTAP S3 AP ネイティブ通知機能を活用したイベント駆動アーキテクチャへの
+将来の FSx for ONTAP S3 AP ネイティブ通知機能を活用したイベント駆動アーキテクチャへの
 移行を見据えた設計である。
 
 ## ターゲットアーキテクチャ
@@ -12,7 +12,7 @@
 ### 最終目標状態
 
 ```
-FSx ONTAP S3 AP (ファイル操作)
+FSx for ONTAP S3 AP (ファイル操作)
   → S3 Event Notification (ネイティブ通知)
     → Amazon EventBridge (ルールベースフィルタリング)
       → AWS Step Functions (ワークフロー実行)
@@ -23,7 +23,7 @@ FSx ONTAP S3 AP (ファイル操作)
 
 | コンポーネント | 役割 | 備考 |
 |---|---|---|
-| FSx ONTAP S3 AP | イベントソース | ファイル操作（Put, Delete）をトリガー |
+| FSx for ONTAP S3 AP | イベントソース | ファイル操作（Put, Delete）をトリガー |
 | S3 Event Notification | イベント発行 | 標準 S3 イベント通知形式 |
 | Amazon EventBridge | イベントルーティング | パターンマッチングによるフィルタリング |
 | AWS Step Functions | ワークフロー実行 | 既存 UC パイプラインを再利用 |
@@ -33,7 +33,7 @@ FSx ONTAP S3 AP (ファイル操作)
 
 ## イベントスキーマ定義
 
-FSx ONTAP S3 AP ネイティブ通知は、標準 S3 Event Notification 形式に準拠する。
+FSx for ONTAP S3 AP ネイティブ通知は、標準 S3 Event Notification 形式に準拠する。
 
 ### S3 Event Notification スキーマ
 
@@ -150,7 +150,7 @@ EventBridge Scheduler → Discovery Lambda → Kinesis Data Stream
 ### Architecture 3: Event-Driven（ターゲット — Native Notifications）
 
 ```
-FSx ONTAP S3 AP (PutObject)
+FSx for ONTAP S3 AP (PutObject)
   → S3 Event Notification
     → EventBridge Rule (pattern filter)
       → Step Functions (StartExecution)
@@ -266,7 +266,7 @@ FSx ONTAP S3 AP (PutObject)
 
 #### 4. ソースボリュームフィルタ
 
-特定の S3 AP バケット（= FSx ONTAP ボリューム）のみ処理する。
+特定の S3 AP バケット（= FSx for ONTAP ボリューム）のみ処理する。
 
 ```json
 {
@@ -343,12 +343,12 @@ EventBridge ルールでソース ARN を検証し、不正なイベント注入
 
 ## 将来の拡張
 
-### FSx ONTAP S3 AP ネイティブ通知対応時の変更点
+### FSx for ONTAP S3 AP ネイティブ通知対応時の変更点
 
-1. **イベントソース変更**: S3 Bucket → FSx ONTAP S3 AP
+1. **イベントソース変更**: S3 Bucket → FSx for ONTAP S3 AP
 2. **EventBridge ルール更新**: `source` フィールドの変更（`aws.s3` → `aws.fsx` の可能性）
 3. **バケット名変更**: S3 AP エイリアスへの更新
-4. **テンプレート更新**: S3 Bucket リソース → FSx ONTAP S3 AP 参照
+4. **テンプレート更新**: S3 Bucket リソース → FSx for ONTAP S3 AP 参照
 
 ### 段階的移行パス
 

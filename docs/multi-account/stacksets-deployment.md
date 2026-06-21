@@ -98,7 +98,7 @@ aws cloudformation create-stack-instances \
 
 ```bash
 # テンプレートバケットにアップロード
-aws s3 cp use-cases/uc09-autonomous-driving/template-deploy.yaml \
+aws s3 cp use-cases/uc09-solutions/industry/autonomous-driving/template-deploy.yaml \
   s3://fsxn-s3ap-templates-123456789012/uc09/template-deploy.yaml
 ```
 
@@ -157,7 +157,7 @@ aws cloudformation list-stack-instances \
 
 ```bash
 # 1. 新しいテンプレートをアップロード
-aws s3 cp use-cases/uc09-autonomous-driving/template-deploy.yaml \
+aws s3 cp use-cases/uc09-solutions/industry/autonomous-driving/template-deploy.yaml \
   s3://fsxn-s3ap-templates-123456789012/uc09/template-deploy-v2.yaml
 
 # 2. StackSet を更新
@@ -288,7 +288,7 @@ aws cloudformation update-stack-set \
 
 ```bash
 # cfn-lint でテンプレートを検証
-cfn-lint use-cases/uc09-autonomous-driving/template-deploy.yaml
+cfn-lint use-cases/uc09-solutions/industry/autonomous-driving/template-deploy.yaml
 
 # ハードコード Account ID の検出
 grep -rn "[0-9]\{12\}" use-cases/*/template-deploy.yaml | grep -v "Ref\|Sub\|#"

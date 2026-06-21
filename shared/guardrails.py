@@ -1,6 +1,6 @@
 """shared.guardrails — Capacity Guardrails モジュール
 
-FSx ONTAP の自動拡張操作に対するレート制限・日次上限・クールダウン制御を提供する。
+FSx for ONTAP の自動拡張操作に対するレート制限・日次上限・クールダウン制御を提供する。
 GuardrailMode（DRY_RUN / ENFORCE / BREAK_GLASS）に応じた安全制御を実装し、
 CloudWatch EMF メトリクスと DynamoDB による追跡を行う。
 
@@ -67,7 +67,7 @@ class GuardrailResult:
 
 
 class CapacityGuardrail:
-    """FSx ONTAP 自動拡張操作に対する安全制御クラス。
+    """FSx for ONTAP 自動拡張操作に対する安全制御クラス。
 
     DynamoDB テーブルで日次拡張量・アクション回数・最終実行時刻を追跡し、
     ENFORCE モードではレート制限・日次キャップ・クールダウン期間を検証する。

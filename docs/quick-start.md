@@ -88,7 +88,7 @@ We'll deploy the **Legal Compliance** pattern (UC1) as a first example:
 
 ```bash
 # Navigate to the use case directory
-cd legal-compliance
+cd solutions/industry/legal-compliance
 
 # Build with SAM
 sam build
@@ -175,8 +175,8 @@ aws secretsmanager delete-secret --secret-id fsxn-s3ap-demo/ontap-credentials --
 
 | What to do next | Where to look |
 |-----------------|---------------|
-| Try EVENT_DRIVEN mode with FPolicy | `event-driven-fpolicy/` |
-| Deploy SAP/ERP adjacent workflow | `sap-erp-adjacent/` |
+| Try EVENT_DRIVEN mode with FPolicy | `solutions/event-driven/fpolicy/` |
+| Deploy SAP/ERP adjacent workflow | `solutions/sap/erp-adjacent/` |
 | Review Deployment Profiles | `docs/deployment-profiles.md` |
 | Plan for production | `docs/production-readiness.md` |
 | See all use case patterns | `README.md` |

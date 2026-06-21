@@ -217,7 +217,7 @@ fi
 # =============================================================================
 log "Phase 7a — Detach FSx S3 Access Points (blocks volume delete otherwise)"
 # =============================================================================
-# LESSON: an FSx ONTAP S3 access point attached to a volume blocks DeleteVolume
+# LESSON: an FSx for ONTAP S3 access point attached to a volume blocks DeleteVolume
 # with: "Cannot delete volume while it has one or multiple S3 access points".
 # These are NOT s3control access points — use the FSx DetachAndDeleteS3AccessPoint API.
 for ap in $(aws_r fsx describe-s3-access-point-attachments \

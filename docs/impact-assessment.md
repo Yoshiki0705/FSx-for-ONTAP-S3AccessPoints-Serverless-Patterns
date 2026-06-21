@@ -302,14 +302,14 @@ aws sagemaker delete-endpoint --endpoint-name <serverless-endpoint>
 **Phase 3 削除対象:**
 - `shared/streaming/`, `shared/observability.py`
 - `shared/cfn/observability-dashboard.yaml`, `shared/cfn/alert-automation.yaml`
-- `retail-catalog/functions/stream_producer/`, `retail-catalog/functions/stream_consumer/`
-- `autonomous-driving/functions/sagemaker_invoke/`, `autonomous-driving/functions/sagemaker_callback/`
+- `solutions/industry/retail-catalog/functions/stream_producer/`, `solutions/industry/retail-catalog/functions/stream_consumer/`
+- `solutions/industry/autonomous-driving/functions/sagemaker_invoke/`, `solutions/industry/autonomous-driving/functions/sagemaker_callback/`
 
 **Phase 4 削除対象:**
 - `shared/task_token_store.py`
 - `shared/cfn/cross-account-*.yaml`, `shared/cfn/ram-resource-share.yaml`, `shared/cfn/stacksets-admin.yaml`
-- `use-cases/uc09-autonomous-driving/lambdas/realtime_invoke/`, `use-cases/uc09-autonomous-driving/lambdas/inference_comparison/`
-- `event-driven-prototype/`, `scripts/register_model.py`, `scripts/compare_polling_vs_event.py`
+- `use-cases/uc09-solutions/industry/autonomous-driving/lambdas/realtime_invoke/`, `use-cases/uc09-solutions/industry/autonomous-driving/lambdas/inference_comparison/`
+- `solutions/event-driven/prototype/`, `scripts/register_model.py`, `scripts/compare_polling_vs_event.py`
 - `docs/multi-account/`, `docs/event-driven/`
 
 **Phase 5 削除対象:**

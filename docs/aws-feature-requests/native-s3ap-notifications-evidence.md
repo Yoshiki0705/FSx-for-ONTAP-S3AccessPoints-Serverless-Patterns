@@ -81,22 +81,22 @@ FPolicy のイベント配信保証:
 
 現在のアーキテクチャ:
 ```
-Account A (FSx ONTAP + FPolicy)
+Account A (FSx for ONTAP + FPolicy)
   → Fargate → SQS → Bridge Lambda → EventBridge Custom Bus
     → EventBridge Rule → Cross-Account Target (Account B)
 ```
 
 **ネイティブ通知があれば**:
 ```
-Account A (FSx ONTAP + S3 AP)
+Account A (FSx for ONTAP + S3 AP)
   → EventBridge (native) → Cross-Account Rule → Account B
 ```
 
 ### 課題 7: S3 ネイティブパターンとの統合不足
 
-S3 バケットでは以下が「設定するだけ」で動作しますが、S3 AP for FSx ONTAP では不可:
+S3 バケットでは以下が「設定するだけ」で動作しますが、S3 AP for FSx for ONTAP では不可:
 
-| S3 ネイティブ機能 | S3 バケット | S3 AP for FSx ONTAP |
+| S3 ネイティブ機能 | S3 バケット | S3 AP for FSx for ONTAP |
 |-----------------|------------|---------------------|
 | EventBridge 通知 | ✅ | ❌ |
 | S3 Event Notifications (SQS/SNS/Lambda) | ✅ | ❌ |
@@ -141,7 +141,7 @@ S3 バケットでは以下が「設定するだけ」で動作しますが、S3
 ### Option A: EventBridge 統合
 
 ```
-FSx ONTAP Volume (via S3 AP)
+FSx for ONTAP Volume (via S3 AP)
   → EventBridge (s3:ObjectCreated, s3:ObjectRemoved, etc.)
     → Any EventBridge Target
 ```
@@ -149,7 +149,7 @@ FSx ONTAP Volume (via S3 AP)
 ### Option B: S3 Event Notifications 互換
 
 ```
-FSx ONTAP Volume (via S3 AP)
+FSx for ONTAP Volume (via S3 AP)
   → S3 Event Notification Configuration
     → SQS / SNS / Lambda (直接)
 ```
@@ -180,4 +180,4 @@ FSx ONTAP Volume (via S3 AP)
 - [FSx for ONTAP S3 AP Improvements Feature Requests](fsxn-s3ap-improvements.md)
 - [Trigger Mode Decision Guide](../trigger-mode-decision-guide.md)
 - [Deployment Profiles](../deployment-profiles.md)
-- [FPolicy Event-Driven パターン](../../event-driven-fpolicy/README.md)
+- [FPolicy Event-Driven パターン](../../solutions/event-driven/fpolicy/README.md)

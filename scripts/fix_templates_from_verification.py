@@ -17,23 +17,23 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Phase 2 UC ディレクトリ
 PHASE2_UCS = [
-    "genomics-pipeline",
-    "energy-seismic",
-    "autonomous-driving",
-    "construction-bim",
-    "retail-catalog",
-    "logistics-ocr",
-    "education-research",
-    "insurance-claims",
+    "solutions/industry/genomics-pipeline",
+    "solutions/industry/energy-seismic",
+    "solutions/industry/autonomous-driving",
+    "solutions/industry/construction-bim",
+    "solutions/industry/retail-catalog",
+    "solutions/industry/logistics-ocr",
+    "solutions/industry/education-research",
+    "solutions/industry/insurance-claims",
 ]
 
 # Phase 1 UC ディレクトリ
 PHASE1_UCS = [
-    "legal-compliance",
-    "financial-idp",
-    "manufacturing-analytics",
-    "media-vfx",
-    "healthcare-dicom",
+    "solutions/industry/legal-compliance",
+    "solutions/industry/financial-idp",
+    "solutions/industry/manufacturing-analytics",
+    "solutions/industry/media-vfx",
+    "solutions/industry/healthcare-dicom",
 ]
 
 ALL_UCS = PHASE1_UCS + PHASE2_UCS

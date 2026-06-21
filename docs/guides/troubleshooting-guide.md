@@ -158,7 +158,7 @@ aws ec2 describe-vpc-endpoints \
 
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+  --template-file solutions/industry/legal-compliance/template.yaml \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     EnableVpcEndpoints=true \
@@ -460,7 +460,7 @@ with destination-prefix-list-id pl-xxxxx (Service: Ec2, Status Code: 400)"
 # 2 番目以降のスタックでは S3 Gateway Endpoint を無効化
 aws cloudformation create-stack \
   --stack-name fsxn-financial-idp \
-  --template-body file://financial-idp/template-deploy.yaml \
+  --template-body file://solutions/industry/financial-idp/template-deploy.yaml \
   --parameters \
     ParameterKey=EnableS3GatewayEndpoint,ParameterValue=false \
     ...
@@ -666,7 +666,7 @@ aws s3control put-access-point-policy \
 
 ### 重要な注意点
 
-- FSx ONTAP S3AP は通常の S3 とは異なるデータプレーンを使用する
+- FSx for ONTAP S3AP は通常の S3 とは異なるデータプレーンを使用する
 - 認証/認可エラーが `AccessDenied` ではなく `ConnectionClosedError` として表面化する場合がある
 - IAM identity-based policy だけでなく、S3AP resource policy の両方が必要
 - S3AP attachment の Lifecycle が `AVAILABLE` であることを必ず確認する

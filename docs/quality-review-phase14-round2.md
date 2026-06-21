@@ -30,12 +30,12 @@
 
 | テンプレート | エラー | 修正内容 |
 |------------|--------|---------|
-| manufacturing-analytics/template.yaml | E0000 Duplicate RecursiveDeleteOption | 重複キー削除 + EnforceWorkGroupConfiguration: true |
-| energy-seismic/template.yaml | E0000 Duplicate RecursiveDeleteOption | 同上 |
-| genomics-pipeline/template.yaml | E0000 Duplicate RecursiveDeleteOption | 同上 |
-| semiconductor-eda/template.yaml | E0000 Duplicate RecursiveDeleteOption | 同上 |
-| sap-erp-adjacent/template.yaml | E0001 SNSPublishMessagePolicy TopicName | TopicArn → TopicName に修正 |
-| sap-erp-adjacent/template.yaml | E0001 DefinitionBody not defined | DefinitionUri + ASL ファイル分離 |
+| solutions/industry/manufacturing-analytics/template.yaml | E0000 Duplicate RecursiveDeleteOption | 重複キー削除 + EnforceWorkGroupConfiguration: true |
+| solutions/industry/energy-seismic/template.yaml | E0000 Duplicate RecursiveDeleteOption | 同上 |
+| solutions/industry/genomics-pipeline/template.yaml | E0000 Duplicate RecursiveDeleteOption | 同上 |
+| solutions/industry/semiconductor-eda/template.yaml | E0000 Duplicate RecursiveDeleteOption | 同上 |
+| solutions/sap/erp-adjacent/template.yaml | E0001 SNSPublishMessagePolicy TopicName | TopicArn → TopicName に修正 |
+| solutions/sap/erp-adjacent/template.yaml | E0001 DefinitionBody not defined | DefinitionUri + ASL ファイル分離 |
 
 ### 残存警告（修正不要）
 
@@ -93,7 +93,7 @@
 |---------|--------|-------|
 | 出力 JSON サンプル（README 内） | 0/24 | 24/24 ✅ |
 | SAP デモガイド | なし | docs/demo-guide.md 作成 ✅ |
-| SAP テストデータ | なし | test-data/sap-erp-adjacent/ (3 ファイル) ✅ |
+| SAP テストデータ | なし | test-data/solutions/sap/erp-adjacent/ (3 ファイル) ✅ |
 | トラブルシューティング | SAP なし | SAP docs/demo-guide.md に追加 ✅ |
 
 **残存ギャップ**:
@@ -164,41 +164,41 @@
 |---|----------|------|------|
 | 9 | 全パターン E2E テスト再実行 + スクリーンショット更新 | 全パターン | S3 AP 稼働 |
 | 10 | FC1/FC2 実環境テスト | FC1/FC2 | FlexCache 環境 |
-| 11 | SAP パターン実環境テスト | SAP | FSx ONTAP + IDoc データ |
+| 11 | SAP パターン実環境テスト | SAP | FSx for ONTAP + IDoc データ |
 
 ---
 
 ## 変更ファイル一覧
 
 ### テンプレート修正（cfn-lint エラー修正）
-- `manufacturing-analytics/template.yaml` — RecursiveDeleteOption 重複削除
-- `energy-seismic/template.yaml` — RecursiveDeleteOption 重複削除
-- `genomics-pipeline/template.yaml` — RecursiveDeleteOption 重複削除
-- `semiconductor-eda/template.yaml` — RecursiveDeleteOption 重複削除
-- `sap-erp-adjacent/template.yaml` — SNSPublishMessagePolicy 修正 + Handler パス修正 + DefinitionUri 分離
+- `solutions/industry/manufacturing-analytics/template.yaml` — RecursiveDeleteOption 重複削除
+- `solutions/industry/energy-seismic/template.yaml` — RecursiveDeleteOption 重複削除
+- `solutions/industry/genomics-pipeline/template.yaml` — RecursiveDeleteOption 重複削除
+- `solutions/industry/semiconductor-eda/template.yaml` — RecursiveDeleteOption 重複削除
+- `solutions/sap/erp-adjacent/template.yaml` — SNSPublishMessagePolicy 修正 + Handler パス修正 + DefinitionUri 分離
 
 ### 新規ファイル
-- `sap-erp-adjacent/statemachine/workflow.asl.json` — Step Functions ASL 定義
-- `sap-erp-adjacent/docs/architecture.md` — アーキテクチャドキュメント
-- `sap-erp-adjacent/docs/demo-guide.md` — デモガイド
-- `test-data/sap-erp-adjacent/sample-idoc-orders.txt` — SAP IDoc サンプル
-- `test-data/sap-erp-adjacent/sample-hulft-transfer.csv` — HULFT 転送ログサンプル
-- `test-data/sap-erp-adjacent/sample-edi-x12.edi` — EDI X12 サンプル
-- `test-data/sap-erp-adjacent/README.md` — テストデータ説明
+- `solutions/sap/erp-adjacent/statemachine/workflow.asl.json` — Step Functions ASL 定義
+- `solutions/sap/erp-adjacent/docs/architecture.md` — アーキテクチャドキュメント
+- `solutions/sap/erp-adjacent/docs/demo-guide.md` — デモガイド
+- `test-data/solutions/sap/erp-adjacent/sample-idoc-orders.txt` — SAP IDoc サンプル
+- `test-data/solutions/sap/erp-adjacent/sample-hulft-transfer.csv` — HULFT 転送ログサンプル
+- `test-data/solutions/sap/erp-adjacent/sample-edi-x12.edi` — EDI X12 サンプル
+- `test-data/solutions/sap/erp-adjacent/README.md` — テストデータ説明
 
 ### README 更新（出力サンプル追加）
 - 全 18 UC パターン + 6 FC パターン = 24 README に出力 JSON サンプル追加
 
 ### README 更新（Governance Note 追加）
-- `automotive-cae/README.md`
-- `dynamic-flexcache-render-workflow/README.md`
-- `flexcache-anycast-dr/README.md`
-- `gaming-build-pipeline/README.md`
-- `genai-rag-enterprise-files/README.md`
-- `life-sciences-research/README.md`
+- `solutions/flexcache/automotive-cae/README.md`
+- `solutions/flexcache/dynamic-render-workflow/README.md`
+- `solutions/flexcache/anycast-dr/README.md`
+- `solutions/flexcache/gaming-build-pipeline/README.md`
+- `solutions/flexcache/rag-enterprise-files/README.md`
+- `solutions/flexcache/life-sciences-research/README.md`
 
 ### README 更新（Performance Considerations 追加）
-- 上記 6 パターン + `sap-erp-adjacent/README.md`
+- 上記 6 パターン + `solutions/sap/erp-adjacent/README.md`
 
 ---
 

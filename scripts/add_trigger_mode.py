@@ -2,7 +2,7 @@
 """
 Phase 11 Req 1: TriggerMode 全 17 UC 統合スクリプト
 
-legal-compliance/template.yaml の参照実装を残り 16 UC テンプレートに展開する。
+solutions/industry/legal-compliance/template.yaml の参照実装を残り 16 UC テンプレートに展開する。
 各 UC の template.yaml に以下を追加:
 1. Parameters: TriggerMode + FPolicyEventBusName
 2. Conditions: IsPolling, IsEventDriven, IsHybrid, IsPollingOrHybrid, IsEventDrivenOrHybrid
@@ -18,22 +18,22 @@ PROJECT_ROOT = Path(__file__).parent.parent
 
 # UCs to update (excluding legal-compliance which already has it, and event-driven-fpolicy which is infra)
 UC_DIRS = [
-    "financial-idp",
-    "manufacturing-analytics",
-    "media-vfx",
-    "healthcare-dicom",
-    "insurance-claims",
-    "construction-bim",
-    "genomics-pipeline",
-    "logistics-ocr",
-    "retail-catalog",
-    "autonomous-driving",
-    "semiconductor-eda",
-    "energy-seismic",
-    "education-research",
-    "defense-satellite",
-    "government-archives",
-    "smart-city-geospatial",
+    "solutions/industry/financial-idp",
+    "solutions/industry/manufacturing-analytics",
+    "solutions/industry/media-vfx",
+    "solutions/industry/healthcare-dicom",
+    "solutions/industry/insurance-claims",
+    "solutions/industry/construction-bim",
+    "solutions/industry/genomics-pipeline",
+    "solutions/industry/logistics-ocr",
+    "solutions/industry/retail-catalog",
+    "solutions/industry/autonomous-driving",
+    "solutions/industry/semiconductor-eda",
+    "solutions/industry/energy-seismic",
+    "solutions/industry/education-research",
+    "solutions/industry/defense-satellite",
+    "solutions/industry/government-archives",
+    "solutions/industry/smart-city-geospatial",
 ]
 
 # TriggerMode parameters snippet (to be inserted before Conditions section)

@@ -2,7 +2,7 @@
 
 ## 概要
 
-本テンプレートは、FSx ONTAP S3AP Serverless Patterns の PoC 実施後に
+本テンプレートは、FSx for ONTAP S3AP Serverless Patterns の PoC 実施後に
 本番移行の可否を判断するための基準を定義します。
 
 ## 判定基準テーブル
@@ -54,7 +54,7 @@
 | 項目 | 値 |
 |------|-----|
 | AWS リージョン | _______________ |
-| FSx ONTAP 構成 | Single-AZ / Multi-AZ, ___ MBps |
+| FSx for ONTAP 構成 | Single-AZ / Multi-AZ, ___ MBps |
 | S3 AP NetworkOrigin | Internet / VPC |
 | データ量 | ___ files, ___ GB |
 | 実行頻度 | _______________ |

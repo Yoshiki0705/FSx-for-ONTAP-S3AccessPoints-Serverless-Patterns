@@ -17,13 +17,13 @@
 graph TB
     subgraph "ap-northeast-1 (Primary)"
         LAMBDA_P[Lambda Functions]
-        S3AP_P[S3 Access Point<br/>FSx ONTAP Volume]
+        S3AP_P[S3 Access Point<br/>FSx for ONTAP Volume]
         FSXN_P[FSx for ONTAP<br/>Primary]
     end
 
     subgraph "us-east-1 (Secondary)"
         LAMBDA_S[Lambda Functions]
-        S3AP_S[S3 Access Point<br/>FSx ONTAP Volume]
+        S3AP_S[S3 Access Point<br/>FSx for ONTAP Volume]
         FSXN_S[FSx for ONTAP<br/>Secondary / SnapMirror]
     end
 
@@ -217,7 +217,7 @@ sequenceDiagram
 │  │  │ Lambda (VPC内) │  │◄──►│  │ Lambda (VPC内) │  │       │
 │  │  └────────────────┘  │    │  └────────────────┘  │       │
 │  │  ┌────────────────┐  │    │  ┌────────────────┐  │       │
-│  │  │ FSx ONTAP ENI  │  │    │  │ FSx ONTAP ENI  │  │       │
+│  │  │ FSx for ONTAP ENI  │  │    │  │ FSx for ONTAP ENI  │  │       │
 │  │  └────────────────┘  │    │  └────────────────┘  │       │
 │  └──────────────────────┘    └──────────────────────┘       │
 └─────────────────────────────────────────────────────────────┘

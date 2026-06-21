@@ -33,4 +33,4 @@ jobs:
       - name: Install cfn-lint
         run: pip install cfn-lint
       - name: Lint deployment templates
-        run: cfn-lint */template-deploy.yaml --ignore-checks W || echo "::warning::cfn-lint found issues in deployment templates (non-blocking)"
+        run: cfn-lint solutions/**/template-deploy.yaml --ignore-checks W || echo "::warning::cfn-lint found issues in deployment templates (non-blocking)"

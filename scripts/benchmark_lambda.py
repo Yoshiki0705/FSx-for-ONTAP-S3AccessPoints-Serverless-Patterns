@@ -1,6 +1,6 @@
 """
 S3 AP Concurrent GetObject Benchmark Lambda
-Measures latency for concurrent GetObject operations against FSx ONTAP S3 Access Point.
+Measures latency for concurrent GetObject operations against FSx for ONTAP S3 Access Point.
 """
 
 import time

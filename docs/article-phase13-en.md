@@ -113,7 +113,7 @@ The business outcome is faster and more resilient read access for distributed te
 
 The repository also includes FC2 (Dynamic FlexCache per-job lifecycle), FC3 (GenAI RAG with permission-aware chunking — connecting back to governance by keeping RAG preprocessing permission-aware), FC4 (Automotive CAE solver output analysis), FC5 (Life Sciences research data classification), and FC6 (Gaming build pipeline asset QC). Each has a deployable CloudFormation template and tests. The FlexCache/FlexClone patterns follow the same outcome-driven structure: each pattern should be evaluated through workload-specific success metrics, not only deployment success. Future updates will extend the same Outcome / Metric / Measurement Method structure to the FlexCache/FlexClone pattern READMEs.
 
-Full documentation: [flexcache-anycast-dr/](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/tree/main/flexcache-anycast-dr)
+Full documentation: [solutions/flexcache/anycast-dr/](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/tree/main/flexcache-anycast-dr)
 
 ---
 
@@ -227,7 +227,7 @@ Use [Public Sector Adoption Roadmap](https://github.com/Yoshiki0705/FSx-for-ONTA
 **If you only have 30 minutes:**
 1. Read [Choose Your Path](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns#choose-your-path)
 2. Deploy the [Quick Start](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/quick-start.md) pattern
-3. Review the [Success Metrics](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/legal-compliance/README.md#success-metrics) for the closest UC
+3. Review the [Success Metrics](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/solutions/industry/legal-compliance/README.md#success-metrics) for the closest UC
 
 **If you are preparing a customer conversation:**
 1. Review the [Partner/SI Delivery Checklist](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/partner-si-delivery-checklist.md)

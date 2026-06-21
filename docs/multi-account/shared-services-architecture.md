@@ -136,11 +136,11 @@ aws oam create-link \
 共有サービスアカウントの X-Ray コンソールで全アカウントのサービスマップを表示:
 
 ```
-Workload A Lambda → S3 AP → FSx ONTAP
+Workload A Lambda → S3 AP → FSx for ONTAP
                   → DynamoDB
                   → SageMaker
 
-Workload B Lambda → S3 AP → FSx ONTAP
+Workload B Lambda → S3 AP → FSx for ONTAP
                   → Step Functions → Processing Lambda
 ```
 
@@ -203,7 +203,7 @@ AlarmActions:
   "RoleName": "fsxn-s3ap-shared-metric-delivery-role",
   "Trust": "Workload Account IDs (Organization 条件付き)",
   "Permissions": [
-    "cloudwatch:PutMetricData (namespace: FSxN-S3AP)",
+    "cloudwatch:PutMetricData (namespace: FSxN-S3AP)", <!-- allow:naming -->
     "logs:CreateLogStream",
     "logs:PutLogEvents"
   ]

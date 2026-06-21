@@ -33,7 +33,7 @@ The FPolicy Event-Driven pattern has 3 deployment profiles based on requirements
 ### Configuration
 
 ```yaml
-# template.yaml (event-driven-fpolicy/)
+# template.yaml (solutions/event-driven/fpolicy/)
 Parameters:
   IsMandatory:
     Default: "false"    # Do not block file operations

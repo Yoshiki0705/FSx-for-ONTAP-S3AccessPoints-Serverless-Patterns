@@ -29,7 +29,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Synthetic Monitoring.
+  FSx for ONTAP S3 AP Serverless Patterns — Synthetic Monitoring.
   S3AP + ONTAP エンドツーエンドヘルスチェック Canary（5分間隔）。
 
 Parameters:

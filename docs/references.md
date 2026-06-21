@@ -4,11 +4,11 @@
 
 ---
 
-## AWS 公式 FSx ONTAP S3 Access Points ドキュメント
+## AWS 公式 FSx for ONTAP S3 Access Points ドキュメント
 
 | ドキュメント | URL | 説明 |
 |---|---|---|
-| S3 AP 概要 | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html | FSx ONTAP S3 Access Points の概要と基本概念 |
+| S3 AP 概要 | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html | FSx for ONTAP S3 Access Points の概要と基本概念 |
 | 対応 API 一覧 | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html | S3 AP 経由で利用可能な S3 API サブセット |
 | 制約事項 | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-point-for-fsxn-restrictions-limitations-naming-rules.html | S3 AP の制約事項・命名規則 |
 | AWS サービス連携 | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-access-points-with-aws-services.html | S3 AP と他の AWS サービスとの連携方法 |
@@ -17,16 +17,16 @@
 
 ## AWS 公式チュートリアル（7 パターン）と本プロジェクトの対応表
 
-AWS は FSx ONTAP S3 Access Points を活用した 7 つの公式チュートリアルを提供しています。本プロジェクトの各ユースケースとの対応関係は以下の通りです。
+AWS は FSx for ONTAP S3 Access Points を活用した 7 つの公式チュートリアルを提供しています。本プロジェクトの各ユースケースとの対応関係は以下の通りです。
 
 | チュートリアル | URL | 本プロジェクト対応 |
 |---|---|---|
 | Athena で SQL クエリ | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html | UC1（法務）、UC3（製造業） |
 | Lambda でサーバーレス処理 | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html | 全 UC 基盤 |
-| Glue で ETL パイプライン | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html | UC3 拡張（`manufacturing-analytics/glue-etl/`） |
+| Glue で ETL パイプライン | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html | UC3 拡張（`solutions/industry/manufacturing-analytics/glue-etl/`） |
 | Bedrock Knowledge Bases で RAG | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html | 拡張パターン（`docs/extension-patterns.md`） |
 | EMR Serverless で Spark | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-run-spark-with-emr-serverless.html | 拡張パターン（`docs/extension-patterns.md`） |
-| CloudFront でストリーミング | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html | UC4 拡張（`media-vfx/cloudfront/`） |
+| CloudFront でストリーミング | https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html | UC4 拡張（`solutions/industry/media-vfx/cloudfront/`） |
 | Transfer Family で SFTP | https://docs.aws.amazon.com/transfer/latest/userguide/fsx-s3-access-points.html | 拡張パターン（`docs/extension-patterns.md`） |
 
 ---
@@ -40,7 +40,7 @@ AWS は FSx ONTAP S3 Access Points を活用した 7 つの公式チュートリ
 | AD 統合 | https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/ | UC1 |
 | Transfer Family SFTP | https://aws.amazon.com/blogs/storage/secure-sftp-file-sharing-with-aws-transfer-family-amazon-fsx-for-netapp-ontap-and-s3-access-points/ | 拡張パターン |
 | Step Functions + Bedrock ドキュメント処理 | https://aws.amazon.com/blogs/compute/orchestrating-large-scale-document-processing-with-aws-step-functions-and-amazon-bedrock-batch-inference/ | UC2 |
-| FSx ONTAP + Bedrock RAG | https://aws.amazon.com/blogs/machine-learning/build-rag-based-generative-ai-applications-in-aws-using-amazon-fsx-for-netapp-ontap-with-amazon-bedrock/ | 拡張パターン |
+| FSx for ONTAP + Bedrock RAG | https://aws.amazon.com/blogs/machine-learning/build-rag-based-generative-ai-applications-in-aws-using-amazon-fsx-for-netapp-ontap-with-amazon-bedrock/ | 拡張パターン |
 
 ---
 

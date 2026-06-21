@@ -2,7 +2,7 @@
 # CloudWatch ダッシュボード — 全 14 UC 一元監視
 # =============================================================================
 #
-# 本テンプレートは FSxN S3AP Serverless Patterns の全 14 ユースケースから
+# 本テンプレートは FSx for ONTAP S3 AP Serverless Patterns の全 14 ユースケースから
 # 集約されたメトリクスを表示する CloudWatch ダッシュボードを作成する。
 #
 # 設計方針:
@@ -25,7 +25,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — CloudWatch Dashboard.
+  FSx for ONTAP S3 AP Serverless Patterns — CloudWatch Dashboard.
   全 14 UC のメトリクスを一元表示する可観測性ダッシュボード。
 
 # =====================================================================
@@ -101,7 +101,7 @@ Resources:
                 "width": 24,
                 "height": 2,
                 "properties": {
-                  "markdown": "# FSxN S3AP Serverless Patterns — Observability Dashboard\n\nMonitoring UC stacks: ${FirstStackName} (and others). Namespace: `FSxN-S3AP-Patterns` (EMF custom metrics) + `AWS/States` + `AWS/Lambda`."
+                  "markdown": "# FSx for ONTAP S3 AP Serverless Patterns — Observability Dashboard\n\nMonitoring UC stacks: ${FirstStackName} (and others). Namespace: `FSxN-S3AP-Patterns` (EMF custom metrics) + `AWS/States` + `AWS/Lambda`."
                 }
               },
               {

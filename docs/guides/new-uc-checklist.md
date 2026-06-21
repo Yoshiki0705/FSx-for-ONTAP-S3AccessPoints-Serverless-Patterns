@@ -43,7 +43,7 @@ checklist when adding a new UC to the pattern library.
 
 ## S3 Access Point（全 UC 共通 — 必読）
 
-⚠️ **FSx ONTAP S3 AP の制約** — 詳細: `docs/guides/s3ap-fsxn-specification.md`
+⚠️ **FSx for ONTAP S3 AP の制約** — 詳細: `docs/guides/s3ap-fsxn-specification.md`
 
 - [ ] S3 AP は**読み取り専用**。PutObject は使用不可（書き込みは NFS/SMB のみ）
 - [ ] IAM ポリシーの Resource ARN: `arn:aws:s3:{region}:{account}:accesspoint/{name}` 形式を使用（エイリアスではない）

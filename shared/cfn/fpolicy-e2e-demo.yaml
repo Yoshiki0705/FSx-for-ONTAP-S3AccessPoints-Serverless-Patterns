@@ -7,7 +7,7 @@ Description: >
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: FSxN と同一 VPC
+    Description: FSx for ONTAP と同一 VPC
 
   SubnetId:
     Type: AWS::EC2::Subnet::Id
@@ -27,7 +27,7 @@ Parameters:
 
   FsxnSvmIp:
     Type: String
-    Description: FSxN SVM の NFS data LIF IP（例: 10.0.x.x）
+    Description: FSx for ONTAP SVM の NFS data LIF IP（例: 10.0.x.x）
 
   FsxnVolumePath:
     Type: String

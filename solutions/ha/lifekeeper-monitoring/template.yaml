@@ -1,0 +1,408 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  HA LifeKeeper Monitoring Pattern
+
+  Monitors and analyzes application logs, health metrics, and failover events
+  from SIOS LifeKeeper HA clusters using FSx for ONTAP shared storage via
+  S3 Access Points. Provides AI-powered root cause analysis for failover events
+  and proactive health scoring.
+
+  Architecture: EventBridge Scheduler → Step Functions → Discovery Lambda
+  → Processing Lambda (Bedrock) → Report Lambda (SNS)
+
+  Reference: SIOS LifeKeeper for Linux + Amazon FSx for NetApp ONTAP Multi-AZ
+  provides application-level HA clustering with enterprise-grade shared storage.
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: fsxn-s3ap-ha-lifekeeper-monitoring
+    Description: HA cluster monitoring using FSx for ONTAP S3 Access Points with LifeKeeper integration
+    Author: FSx for ONTAP S3 AP Serverless Patterns
+    Labels: ['fsxn', 's3ap', 'lifekeeper', 'ha', 'clustering', 'sios', 'failover']
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: >
+      S3 Access Point alias for FSx for ONTAP volume containing LifeKeeper logs
+      and application data. In DemoMode, this can be a regular S3 bucket name.
+
+  DemoMode:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Enable demo mode (no FSx for ONTAP required).
+      When true, S3AccessPointAlias accepts a regular S3 bucket name,
+      and OntapSecretArn is not required.
+
+  OntapSecretArn:
+    Type: String
+    Default: ""
+    Description: Secrets Manager ARN containing ONTAP admin credentials (not required in DemoMode)
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(5 minutes)"
+    Description: >
+      EventBridge schedule expression for health monitoring.
+      HA monitoring typically requires higher frequency (e.g., "rate(5 minutes)").
+
+  OutputBucketName:
+    Type: String
+    Description: S3 bucket for analysis results and health reports
+
+  NotificationEmail:
+    Type: String
+    Description: Email address for failover alert notifications
+    AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+
+  FilePrefix:
+    Type: String
+    Default: "lifekeeper/logs/"
+    Description: >
+      S3 prefix for LifeKeeper log files (e.g., "lifekeeper/logs/",
+      "var/log/lifekeeper/", "ha-cluster/events/")
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-pro-v1:0"
+    Description: Bedrock model ID for failover root cause analysis
+
+  MaxFilesPerExecution:
+    Type: Number
+    Default: 50
+    MinValue: 1
+    MaxValue: 500
+    Description: Maximum number of log files to process per execution
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]
+    Description: CloudWatch Logs retention period in days (default 90, compliance-sensitive use 2557)
+
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: >
+      POLLING: EventBridge Scheduler periodic check.
+      EVENT_DRIVEN: FPolicy EventBridge Rule triggers on log write.
+      HYBRID: Both polling baseline + event-driven for failover events.
+
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: >
+      STANDARD_S3: Write reports to OutputBucketName.
+      FSXN_S3AP: Write back to FSx for ONTAP via S3 AP.
+
+  ClusterName:
+    Type: String
+    Default: "lifekeeper-cluster"
+    Description: LifeKeeper cluster name for tagging and identification
+
+  FailoverAlertSeverity:
+    Type: String
+    Default: "CRITICAL"
+    AllowedValues: ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    Description: Minimum severity level for SNS failover alerts
+
+Conditions:
+  IsPollingOrHybrid: !Or
+    - !Equals [!Ref TriggerMode, "POLLING"]
+    - !Equals [!Ref TriggerMode, "HYBRID"]
+  IsEventDrivenOrHybrid: !Or
+    - !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+    - !Equals [!Ref TriggerMode, "HYBRID"]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 120
+    Architectures:
+      - arm64
+    MemorySize: 512
+    Environment:
+      Variables:
+        S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+        OUTPUT_BUCKET: !Ref OutputBucketName
+        DEMO_MODE: !Ref DemoMode
+        CLUSTER_NAME: !Ref ClusterName
+    Tags:
+      UseCase: ha-lifekeeper-monitoring
+      Pattern: fsxn-s3ap-serverless
+
+Resources:
+  # ============================================================
+  # SNS Topic for Failover Alerts
+  # ============================================================
+  FailoverAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-failover-alerts"
+      Tags:
+        - Key: UseCase
+          Value: ha-lifekeeper-monitoring
+
+  FailoverAlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref FailoverAlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # ============================================================
+  # Discovery Lambda — Scan LifeKeeper Logs via S3 AP
+  # ============================================================
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      MemorySize: 256
+      Environment:
+        Variables:
+          FILE_PREFIX: !Ref FilePrefix
+          MAX_FILES: !Ref MaxFilesPerExecution
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref S3AccessPointAlias
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+      Tags:
+        UseCase: ha-lifekeeper-monitoring
+        Phase: discovery
+
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${DiscoveryFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  # ============================================================
+  # Processing Lambda — Analyze Failover Events with Bedrock
+  # ============================================================
+  ProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-processing"
+      Handler: handler.handler
+      CodeUri: functions/processing/
+      MemorySize: 1024
+      Timeout: 300
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          FAILOVER_ALERT_SEVERITY: !Ref FailoverAlertSeverity
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref S3AccessPointAlias
+        - S3WritePolicy:
+            BucketName: !Ref OutputBucketName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource:
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+      Tags:
+        UseCase: ha-lifekeeper-monitoring
+        Phase: processing
+
+  ProcessingLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProcessingFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  # ============================================================
+  # Report Lambda — Generate Health Report & Send Alerts
+  # ============================================================
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Handler: handler.handler
+      CodeUri: functions/report/
+      MemorySize: 256
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref FailoverAlertTopic
+          FAILOVER_ALERT_SEVERITY: !Ref FailoverAlertSeverity
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref OutputBucketName
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt FailoverAlertTopic.TopicName
+      Tags:
+        UseCase: ha-lifekeeper-monitoring
+        Phase: report
+
+  ReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ReportFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  # ============================================================
+  # Step Functions State Machine
+  # ============================================================
+  MonitoringStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-monitoring"
+      DefinitionUri: statemachine/workflow.asl.json
+      DefinitionSubstitutions:
+        DiscoveryFunctionArn: !GetAtt DiscoveryFunction.Arn
+        ProcessingFunctionArn: !GetAtt ProcessingFunction.Arn
+        ReportFunctionArn: !GetAtt ReportFunction.Arn
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref DiscoveryFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessingFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportFunction
+      Tags:
+        UseCase: ha-lifekeeper-monitoring
+      Type: STANDARD
+
+  # ============================================================
+  # EventBridge Scheduler (Polling / Hybrid)
+  # ============================================================
+  MonitoringSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsPollingOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt MonitoringStateMachine.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: !Sub |
+          {
+            "trigger": "scheduled",
+            "cluster_name": "${ClusterName}",
+            "schedule_expression": "${ScheduleExpression}"
+          }
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsPollingOrHybrid
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartStateMachine
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt MonitoringStateMachine.Arn
+
+  # ============================================================
+  # EventBridge Rule (Event-Driven / Hybrid) — FPolicy Trigger
+  # ============================================================
+  FPolicyEventRule:
+    Type: AWS::Events::Rule
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-fpolicy-trigger"
+      Description: Trigger monitoring on LifeKeeper log write events via FPolicy
+      EventPattern:
+        source:
+          - "fsxn.fpolicy"
+        detail-type:
+          - "File Operation"
+        detail:
+          operation:
+            - "CREATE"
+            - "WRITE"
+            - "CLOSE"
+          path:
+            - prefix: "lifekeeper/"
+      Targets:
+        - Id: MonitoringStateMachine
+          Arn: !GetAtt MonitoringStateMachine.Arn
+          RoleArn: !GetAtt EventBridgeRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              path: "$.detail.path"
+              operation: "$.detail.operation"
+            InputTemplate: |
+              {
+                "trigger": "fpolicy_event",
+                "cluster_name": "<cluster_name>",
+                "file_path": "<path>",
+                "operation": "<operation>"
+              }
+
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartStateMachine
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt MonitoringStateMachine.Arn
+
+Outputs:
+  StateMachineArn:
+    Description: Monitoring State Machine ARN
+    Value: !GetAtt MonitoringStateMachine.Arn
+
+  DiscoveryFunctionArn:
+    Description: Discovery Lambda ARN
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  ProcessingFunctionArn:
+    Description: Processing Lambda ARN
+    Value: !GetAtt ProcessingFunction.Arn
+
+  ReportFunctionArn:
+    Description: Report Lambda ARN
+    Value: !GetAtt ReportFunction.Arn
+
+  FailoverAlertTopicArn:
+    Description: SNS Topic for failover alerts
+    Value: !Ref FailoverAlertTopic
+
+  ClusterName:
+    Description: LifeKeeper cluster name being monitored
+    Value: !Ref ClusterName
