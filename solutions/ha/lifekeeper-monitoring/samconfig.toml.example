@@ -7,6 +7,9 @@
 #
 # DemoMode deploy (no FSx for ONTAP required):
 #   sam build && sam deploy --parameter-overrides DemoMode=true
+#
+# Note: In DemoMode, omit OntapSecretArn entirely (empty values cause SAM CLI errors).
+#       Use samconfig.toml (not CLI --parameter-overrides) for values containing spaces.
 
 version = 0.1
 
@@ -22,7 +25,6 @@ disable_rollback = false
 parameter_overrides = [
     "S3AccessPointAlias=your-fsxn-s3ap-alias-s3alias",
     "DemoMode=true",
-    "OntapSecretArn=",
     "ScheduleExpression=rate(5 minutes)",
     "OutputBucketName=your-output-bucket",
     "NotificationEmail=your-email@example.com",
