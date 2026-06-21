@@ -82,6 +82,11 @@ jobs:
             solutions/flexcache/gaming-build-pipeline/tests/ \
             solutions/genai/kb-selfservice-curation/tests/ \
             solutions/genai/quick-agentic-workspace/tests/ \
+            solutions/ha/lifekeeper-monitoring/tests/ \
+            solutions/event-driven/fpolicy/tests/ \
+            solutions/event-driven/prototype/tests/ \
+            solutions/edge/content-delivery/tests/ \
+            solutions/flexcache/devops-cicd/tests/ \
             --cov=shared \
             --cov-report=xml:coverage.xml \
             --cov-report=html:htmlcov \

@@ -19,7 +19,7 @@
 | PII / 個人情報保護が必要 | UC27 / UC26 + data_classification モジュール |
 | ESG / サステナビリティ報告 | UC23 + framework mapping |
 | 既存 NFS/SMB ワークロードの横展開 | FC1-FC6（FlexCache/FlexClone パターン） |
-| コンテンツを CDN/エッジ配信したい（CloudFront / サードパーティ CDN） | content-edge-delivery（[CDN比較](cdn-comparison.md) 参照） |
+| コンテンツを CDN/エッジ配信したい（CloudFront / サードパーティ CDN） | solutions/edge/content-delivery（[CDN比較](cdn-comparison.md) 参照） |
 | 設備メンテナンス × マルチモーダル AI（画像 + 文書 RAG） | UC22 + Rekognition + Bedrock multimodal（[7-Eleven 事例参照](investigations/dais2026-agent-bricks-industry-cases.md#1-7-eleven-メンテナンス技術者向け-genai-アシスタント)） |
 | 製薬・ライフサイエンス × マルチエージェント権限保持 RAG | UC7 + Step Functions multi-agent routing（[AstraZeneca 事例参照](investigations/dais2026-agent-bricks-industry-cases.md#2-astrazeneca-マルチエージェントシステム10x-スケール)） |
 | 新規オブジェクトネイティブワークロード（NAS 不要） | 標準 S3 / DynamoDB サーバーレスネイティブ構成を推奨 |
