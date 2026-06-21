@@ -298,6 +298,12 @@ S3 Access Points for FSx for ONTAP は **デュアルレイヤー認可** を採
 ## アーキテクチャ
 
 ```mermaid
+---
+title: 共通サーバーレスアーキテクチャ
+---
+%%{init: {"theme": "default"}}%%
+%% accTitle: FSx for ONTAP S3 AP サーバーレスパターン共通アーキテクチャ図
+%% accDescr: EventBridge Scheduler から Step Functions を経由し、Discovery/Processing/Report Lambda が S3 Access Point 経由で FSx for ONTAP にアクセスし、Bedrock/Textract/Comprehend/Rekognition/SageMaker で処理する共通フロー
 graph TB
     subgraph "スケジューリング層"
         EBS[EventBridge Scheduler<br/>cron/rate 式]
@@ -406,6 +412,8 @@ EventBridge Scheduler (定期実行)
 <summary><strong>🏭 FlexCache / FlexClone パターン (FC1-FC7)</strong></summary>
 
 ```mermaid
+%% accTitle: FlexCache/FlexClone パターンアーキテクチャ
+%% accDescr: ONTAP REST API による FlexCache ヘルスチェック、DynamoDB ルーティングテーブル、作成/削除ライフサイクルの図
 graph TB
     subgraph "トリガー"
         SCHED[EventBridge Scheduler]
@@ -469,6 +477,8 @@ graph TB
 <summary><strong>🤖 GenAI パターン (UC29-UC30)</strong></summary>
 
 ```mermaid
+%% accTitle: GenAI パターンアーキテクチャ (UC29-UC30)
+%% accDescr: FPolicy イベント駆動インジェッション、Bedrock Knowledge Bases、RetrieveAndGenerate、エージェント型マルチアクション実行の図
 graph TB
     subgraph "データソース"
         FSXN[FSx for ONTAP<br/>Volume]
@@ -521,6 +531,8 @@ graph TB
 <summary><strong>🛡️ HA LifeKeeper Monitoring パターン</strong></summary>
 
 ```mermaid
+%% accTitle: HA LifeKeeper Monitoring アーキテクチャ
+%% accDescr: LifeKeeper HA クラスタのログを S3 AP 経由で非侵入的に読み取り、Bedrock で根本原因分析とヘルススコアリングを実行する図
 graph TB
     subgraph "HA クラスタ"
         LK1[LifeKeeper Node 1<br/>Active / ISP]
@@ -571,6 +583,8 @@ graph TB
 <summary><strong>⚡ Event-Driven パターン (FPolicy パイプライン)</strong></summary>
 
 ```mermaid
+%% accTitle: Event-Driven FPolicy パイプラインアーキテクチャ
+%% accDescr: FPolicy Engine から ECS Fargate TCP サーバー、SQS、EventBridge を経由して各 UC パターンにルーティングする図
 graph TB
     subgraph "FSx for ONTAP"
         FSXN[FSx for ONTAP Volume<br/>NFS/SMB クライアント書き込み]
@@ -615,6 +629,8 @@ graph TB
 <summary><strong>🌐 Edge / CDN 配信パターン</strong></summary>
 
 ```mermaid
+%% accTitle: Edge/CDN 配信パターンアーキテクチャ
+%% accDescr: FSx for ONTAP から S3 AP 経由で 3 つの配信モード (ORIGIN_PULL, OAC, PUBLISH_PUSH) でベンダー非依存 CDN に配信する図
 graph TB
     subgraph "FSx for ONTAP"
         FSXN[FSx for ONTAP Volume<br/>コンテンツマスター]

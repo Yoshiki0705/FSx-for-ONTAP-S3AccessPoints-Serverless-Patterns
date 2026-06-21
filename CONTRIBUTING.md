@@ -190,3 +190,60 @@ feature/* → PR → main (staging auto-deploy) → manual promotion → product
 ## ライセンス
 
 本プロジェクトに貢献することで、あなたの貢献が MIT License の下でライセンスされることに同意したものとみなされます。
+
+---
+
+## 新規パターンの追加方法
+
+新しい業界パターン (UC) やカテゴリパターンを追加する場合:
+
+### 1. カテゴリの選択
+
+| カテゴリ | ディレクトリ | 対象 |
+|---------|-------------|------|
+| Industry | `solutions/industry/<pattern-name>/` | 業界固有の AI/ML ユースケース (UC1-UC28) |
+| FlexCache | `solutions/flexcache/<pattern-name>/` | FlexCache/FlexClone 活用パターン |
+| GenAI | `solutions/genai/<pattern-name>/` | Bedrock KB / Agentic AI パターン |
+| HA | `solutions/ha/<pattern-name>/` | 高可用性監視パターン |
+| Event-Driven | `solutions/event-driven/<pattern-name>/` | FPolicy / イベント駆動パターン |
+| Edge | `solutions/edge/<pattern-name>/` | CDN / エッジ配信パターン |
+| SAP | `solutions/sap/<pattern-name>/` | SAP/ERP 連携パターン |
+
+### 2. 必須ファイル構成
+
+```
+solutions/<category>/<pattern-name>/
+├── template.yaml              # SAM/CloudFormation テンプレート
+├── samconfig.toml.example     # デプロイ設定サンプル
+├── README.md                  # 日本語 README
+├── functions/
+│   └── discovery/
+│       └── handler.py         # Discovery Lambda (共通パターン)
+├── tests/
+│   └── test_<pattern>.py      # ユニットテスト (pytest + hypothesis)
+└── docs/
+    └── demo-guide.md          # DemoMode デモガイド
+```
+
+### 3. 必須チェックリスト
+
+- [ ] `template.yaml` に `TriggerMode`, `DemoMode`, `OutputDestination` パラメータを含む
+- [ ] `DemoMode=true` で FSx for ONTAP なしで動作する
+- [ ] `shared/s3ap_helper.py` を使用して S3 AP にアクセスする
+- [ ] `shared/observability.py` で EMF メトリクスを出力する
+- [ ] `shared/data_classification.py` で出力にデータ分類ラベルを付与する
+- [ ] `shared/human_review.py` で信頼度に基づく Human Review 判定を実装する
+- [ ] ユニットテストが `pytest` で PASS する
+- [ ] `cfn-lint` でテンプレートが検証を通過する
+- [ ] Governance Note セクションが README に存在する
+- [ ] Performance Considerations セクションが README に存在する
+
+### 4. git 設定 (大量リネーム時)
+
+PR で大量ファイルを移動する場合:
+
+```bash
+# リネーム検出の上限を引き上げ
+git config diff.renameLimit 3000
+git config merge.renameLimit 3000
+```

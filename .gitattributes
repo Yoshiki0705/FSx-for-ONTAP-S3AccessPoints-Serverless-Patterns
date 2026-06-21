@@ -1,0 +1,10 @@
+# Ensure consistent line endings
+* text=auto
+
+# Mark binary files
+*.pyc binary
+*.pem binary
+
+# Language-specific diff drivers for better diffs
+*.py diff=python
+*.md diff=markdown
