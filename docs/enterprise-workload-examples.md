@@ -118,8 +118,8 @@ ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx for ONTAP Volume (/app
 | リソース | 内容 | リンク |
 |---------|------|--------|
 | AWS ドキュメント: ECS + FSx for ONTAP | EC2 launch type での NFS/SMB マウント手順 | [mount-ontap-ecs-containers](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/mount-ontap-ecs-containers.html) |
-| 本リポジトリ: UC1 (legal-compliance) | S3 AP 経由の基本パターン（Lambda + Step Functions） | [legal-compliance/](../legal-compliance/README.md) |
-| 本リポジトリ: event-driven-fpolicy | Fargate での FPolicy Server 実装例 | [event-driven-fpolicy/](../event-driven-fpolicy/README.md) |
+| 本リポジトリ: UC1 (legal-compliance) | S3 AP 経由の基本パターン（Lambda + Step Functions） | [solutions/industry/legal-compliance/](../solutions/industry/legal-compliance/README.md) |
+| 本リポジトリ: event-driven-fpolicy | Fargate での FPolicy Server 実装例 | [solutions/event-driven/fpolicy/](../solutions/event-driven/fpolicy/README.md) |
 | 本リポジトリ: Fargate vs EC2 Decision | FPolicy Server のコンピュート選択ガイド | [fargate-vs-ec2-fpolicy-decision.md](fargate-vs-ec2-fpolicy-decision.md) |
 | S3AP Benchmark Results | PutObject/GetObject の実測レイテンシ | [s3ap-benchmark-results.md](s3ap-benchmark-results.md) |
 | AWS ブログ: Bridge legacy and modern apps | S3 AP で file-based と object-based アプリを接続 | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/) |

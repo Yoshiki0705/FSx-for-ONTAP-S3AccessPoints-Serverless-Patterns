@@ -156,7 +156,7 @@ graph TB
 ## 関連ドキュメント
 
 - [業界・ワークロード マッピング](industry-workload-mapping.md)
-- [FlexCache AnyCast / DR パターン](../flexcache-anycast-dr/README.md)
-- [Dynamic FlexCache Render Workflow](../dynamic-flexcache-render-workflow/README.md)
+- [FlexCache AnyCast / DR パターン](../solutions/flexcache/anycast-dr/README.md)
+- [Dynamic FlexCache Render Workflow](../solutions/flexcache/dynamic-render-workflow/README.md)
 - [FlexCache PoC チェックリスト](flexcache-poc-checklist.md)
 - [コスト分析](cost-analysis.md)

@@ -27,7 +27,7 @@
 - **Score: 7/10**
 - **Good**: template.yaml + template-deploy.yaml の二重構成で SAM local と本番を分離。AllowedPattern でパラメータバリデーション。デモガイドに撮影ガイド・実行時間目安あり。
 - **Gap**: 必須パラメータが 10+ 個（S3AP Alias, ONTAP IP, SVM UUID, VPC ID, Subnet IDs 等）で初回デプロイのハードルが高い。test-data/ がルートに存在しない（UC6以降は存在）。Quick Start が `aws cloudformation deploy` コマンドのみで `sam deploy --guided` ではない。
-- **Action**: ① samconfig.toml サンプルを追加 ② test-data/legal-compliance/ にサンプル ACL データを追加 ③ Prerequisites チェックスクリプトを README に記載
+- **Action**: ① samconfig.toml サンプルを追加 ② test-data/solutions/industry/legal-compliance/ にサンプル ACL データを追加 ③ Prerequisites チェックスクリプトを README に記載
 
 ### 視点 2: コード品質と流用可能性（Code Quality）
 - **Score: 8.5/10**
@@ -55,7 +55,7 @@
 - **Score: 7/10**
 - **Good**: パラメータ構成が UC1 と統一。Textract クロスリージョン対応が明記。
 - **Gap**: test-data/ なし。Textract が ap-northeast-1 未対応の注意書きはあるが、クロスリージョン設定の具体手順が不足。
-- **Action**: ① test-data/financial-idp/ にサンプル帳票 PDF 追加 ② クロスリージョン Textract の設定手順を README に追記
+- **Action**: ① test-data/solutions/industry/financial-idp/ にサンプル帳票 PDF 追加 ② クロスリージョン Textract の設定手順を README に追記
 
 ### 視点 2: コード品質
 - **Score: 8/10**
@@ -83,7 +83,7 @@
 - **Score: 7/10**
 - **Good**: Glue ETL スクリプト同梱。Athena 分析パターンが明確。
 - **Gap**: test-data/ なし。Glue ジョブの IAM 設定が複雑。
-- **Action**: ① test-data/manufacturing-analytics/ にサンプルセンサーデータ追加
+- **Action**: ① test-data/solutions/industry/manufacturing-analytics/ にサンプルセンサーデータ追加
 
 ### 視点 2: コード品質
 - **Score: 8/10**
@@ -162,7 +162,7 @@
 
 ### 視点 1: すぐに試せるか
 - **Score: 8.5/10**
-- **Good**: test-data/semiconductor-eda/ にサンプルデータあり。docs/sample-output/ に出力例あり。デモスクリプト同梱。
+- **Good**: test-data/solutions/industry/semiconductor-eda/ にサンプルデータあり。docs/sample-output/ に出力例あり。デモスクリプト同梱。
 - **Gap**: GDS/OASIS パーサーの依存ライブラリ（gdspy 等）のインストール手順が不明確。
 - **Action**: requirements.txt に GDS パーサー依存を明記
 
@@ -190,7 +190,7 @@
 
 ### 視点 1: すぐに試せるか
 - **Score: 8.5/10**
-- **Good**: test-data/genomics-pipeline/ にサンプルデータあり。FASTQ/VCF の処理フローが明確。
+- **Good**: test-data/solutions/industry/genomics-pipeline/ にサンプルデータあり。FASTQ/VCF の処理フローが明確。
 - **Gap**: バイオインフォマティクスツール（samtools 等）の Lambda Layer 構成が不明確。
 - **Action**: Lambda Layer のビルド手順を README に追記
 
@@ -217,7 +217,7 @@
 
 ### 視点 1: すぐに試せるか
 - **Score: 8.5/10**
-- **Good**: test-data/energy-seismic/ にサンプルデータあり。SEG-Y ヘッダー解析が明確。
+- **Good**: test-data/solutions/industry/energy-seismic/ にサンプルデータあり。SEG-Y ヘッダー解析が明確。
 - **Gap**: SEG-Y フォーマットの前提知識が必要。
 - **Action**: SEG-Y フォーマット概要を README に追記
 
@@ -244,7 +244,7 @@
 
 ### 視点 1: すぐに試せるか
 - **Score: 8.5/10**
-- **Good**: test-data/autonomous-driving/ にサンプルデータあり。9 Lambda 関数で最も充実。SageMaker Batch Transform 統合。
+- **Good**: test-data/solutions/industry/autonomous-driving/ にサンプルデータあり。9 Lambda 関数で最も充実。SageMaker Batch Transform 統合。
 - **Gap**: SageMaker エンドポイントの事前準備が必要（コスト発生）。
 - **Action**: SageMaker なしモード（Rekognition のみ）のデプロイオプション追加
 
@@ -272,7 +272,7 @@
 
 ### 視点 1: すぐに試せるか
 - **Score: 8/10**
-- **Good**: test-data/construction-bim/ あり。IFC パース + バージョン差分検出が実用的。
+- **Good**: test-data/solutions/industry/construction-bim/ あり。IFC パース + バージョン差分検出が実用的。
 - **Gap**: IFC ファイルの入手方法が不明確。
 - **Action**: 公開 IFC サンプル（buildingSMART）へのリンク追加
 
@@ -299,7 +299,7 @@
 
 ### 視点 1: すぐに試せるか
 - **Score: 8.5/10**
-- **Good**: test-data/retail-catalog/ あり。Kinesis ストリーミングモード（Phase 3 追加）で最も高度。6 Lambda 関数。
+- **Good**: test-data/solutions/industry/retail-catalog/ あり。Kinesis ストリーミングモード（Phase 3 追加）で最も高度。6 Lambda 関数。
 - **Gap**: Kinesis Data Stream の事前作成が必要。
 - **Action**: ストリーミングモード無効時のシンプルデプロイ手順を強調
 
@@ -326,7 +326,7 @@
 
 ### 視点 1: すぐに試せるか
 - **Score: 8/10**
-- **Good**: test-data/logistics-ocr/ あり。OCR + 在庫画像分析のデュアルパス。
+- **Good**: test-data/solutions/industry/logistics-ocr/ あり。OCR + 在庫画像分析のデュアルパス。
 - **Gap**: Textract クロスリージョンの設定が初回ユーザーには複雑。
 - **Action**: クロスリージョン Textract の設定チェックリスト追加
 
@@ -353,7 +353,7 @@
 
 ### 視点 1: すぐに試せるか
 - **Score: 8/10**
-- **Good**: test-data/education-research/ あり。引用ネットワーク分析が独自性高い。
+- **Good**: test-data/solutions/industry/education-research/ あり。引用ネットワーク分析が独自性高い。
 - **Gap**: Comprehend のカスタム分類器トレーニングが必要な場合の手順が不明確。
 - **Action**: Comprehend カスタム分類器なしモードの説明追加
 
@@ -380,7 +380,7 @@
 
 ### 視点 1: すぐに試せるか
 - **Score: 8/10**
-- **Good**: test-data/insurance-claims/ あり。損害評価 + 見積 OCR の並列処理。
+- **Good**: test-data/solutions/industry/insurance-claims/ あり。損害評価 + 見積 OCR の並列処理。
 - **Gap**: 保険業界固有の用語・フォーマットの前提知識が必要。
 - **Action**: 保険業界用語の glossary を README に追加
 

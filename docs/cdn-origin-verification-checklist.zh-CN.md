@@ -144,5 +144,5 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ## 相关文档
 
 - [CDN/边缘分发集成对比](cdn-comparison.zh-CN.md)
-- [content-edge-delivery UC](../content-edge-delivery/README.zh-CN.md)
+- [content-edge-delivery UC](../solutions/edge/content-delivery/README.zh-CN.md)
 - [S3AP 兼容性说明](s3ap-compatibility-notes.md)

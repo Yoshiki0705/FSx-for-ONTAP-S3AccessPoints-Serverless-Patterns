@@ -134,7 +134,7 @@ class MyCustomHelper:
 
 ```bash
 # UC1 をベースに新パターンを作成
-cp -r legal-compliance/ my-custom-pattern/
+cp -r solutions/industry/legal-compliance/ my-custom-pattern/
 
 # 以下を変更:
 # 1. template.yaml の Description, Parameters

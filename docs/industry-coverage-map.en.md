@@ -84,8 +84,8 @@ Detailed analysis: [DAIS 2026 Agent Bricks Industry Cases](investigations/dais20
 
 | UC | Industry | Directory | Description |
 |----|----------|-----------|-------------|
-| UC18 | Telecommunications | `telecom-network-analytics/` | CDR/network log analysis and anomaly detection |
-| UC19 | Advertising & Marketing | `adtech-creative-management/` | Creative asset management and brand compliance |
+| UC18 | Telecommunications | `solutions/industry/telecom-network-analytics/` | CDR/network log analysis and anomaly detection |
+| UC19 | Advertising & Marketing | `solutions/industry/adtech-creative-management/` | Creative asset management and brand compliance |
 
 **Prerequisites**: None (ready to start immediately)
 
@@ -93,9 +93,9 @@ Detailed analysis: [DAIS 2026 Agent Bricks Industry Cases](investigations/dais20
 
 | UC | Industry | Directory | Description |
 |----|----------|-----------|-------------|
-| UC20 | Travel & Hospitality | `travel-document-processing/` | Reservation document processing and facility inspection |
-| UC21 | Agriculture & Food | `agri-food-traceability/` | Farmland aerial imagery and traceability document management |
-| UC22 | Transportation & Rail | `transportation-maintenance/` | Equipment inspection imagery and maintenance report analysis |
+| UC20 | Travel & Hospitality | `solutions/industry/travel-document-processing/` | Reservation document processing and facility inspection |
+| UC21 | Agriculture & Food | `solutions/industry/agri-food-traceability/` | Farmland aerial imagery and traceability document management |
+| UC22 | Transportation & Rail | `solutions/industry/transportation-maintenance/` | Equipment inspection imagery and maintenance report analysis |
 
 **Prerequisites**: UC18 + UC19 implementation complete
 
@@ -103,12 +103,12 @@ Detailed analysis: [DAIS 2026 Agent Bricks Industry Cases](investigations/dais20
 
 | UC | Industry | Directory | Description |
 |----|----------|-----------|-------------|
-| UC23 | Sustainability & ESG | `sustainability-esg-reporting/` | ESG metrics extraction and reporting |
-| UC24 | Nonprofit | `nonprofit-grant-management/` | Grant application classification and outcome matching |
-| UC25 | Power & Utilities | `utilities-asset-inspection/` | Drone imagery and SCADA log analysis |
-| UC26 | Real Estate | `real-estate-portfolio/` | Property image analysis and contract data extraction |
-| UC27 | Human Resources | `hr-document-screening/` | Resume screening and candidate evaluation |
-| UC28 | Chemicals & Materials | `chemical-sds-management/` | SDS management and lab notebook analysis |
+| UC23 | Sustainability & ESG | `solutions/industry/sustainability-esg-reporting/` | ESG metrics extraction and reporting |
+| UC24 | Nonprofit | `solutions/industry/nonprofit-grant-management/` | Grant application classification and outcome matching |
+| UC25 | Power & Utilities | `solutions/industry/utilities-asset-inspection/` | Drone imagery and SCADA log analysis |
+| UC26 | Real Estate | `solutions/industry/real-estate-portfolio/` | Property image analysis and contract data extraction |
+| UC27 | Human Resources | `solutions/industry/hr-document-screening/` | Resume screening and candidate evaluation |
+| UC28 | Chemicals & Materials | `solutions/industry/chemical-sds-management/` | SDS management and lab notebook analysis |
 
 **Prerequisites**: UC20 + UC21 + UC22 implementation complete
 

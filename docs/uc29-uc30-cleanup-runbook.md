@@ -15,8 +15,8 @@ source scripts/uc29-kb-manifest.local.env        # 実環境値（gitignored）
 .venv/bin/python scripts/rebuild-uc29-kb.py
 
 # ---- スタック再デプロイ（必要時。UC29/30 は make ターゲット無し、sam 直接）----
-cd genai-kb-selfservice-curation  && sam build && sam deploy   # UC29（samconfig.toml 要）
-cd genai-quick-agentic-workspace && sam build && sam deploy   # UC30（samconfig.toml 要）
+cd solutions/genai/kb-selfservice-curation  && sam build && sam deploy   # UC29（samconfig.toml 要）
+cd solutions/genai/quick-agentic-workspace && sam build && sam deploy   # UC30（samconfig.toml 要）
 ```
 
 > スクリプトは**冪等**。途中失敗（非同期依存）後はそのまま再実行すれば残りを片付ける。

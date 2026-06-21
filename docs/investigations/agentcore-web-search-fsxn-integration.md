@@ -142,7 +142,7 @@ Agent (MCP Client)
 
 ### 4.2 UC29 への統合案（Query Lambda 拡張）
 
-既存の `genai-kb-selfservice-curation/functions/query/handler.py` を拡張:
+既存の `solutions/genai/kb-selfservice-curation/functions/query/handler.py` を拡張:
 
 ```python
 """拡張版: 内部 KB + Web Search ハイブリッド"""
@@ -217,7 +217,7 @@ HYBRID_SYSTEM_PROMPT = """あなたは企業向け業務アシスタントです
 
 ### 4.3 UC30 への統合案（Action API 拡張）
 
-既存の `genai-quick-agentic-workspace/functions/quick_action/handler.py` に新アクション追加:
+既存の `solutions/genai/quick-agentic-workspace/functions/quick_action/handler.py` に新アクション追加:
 
 ```python
 def _generate_brief_with_web_context(params: dict, caller: str) -> dict:
@@ -571,8 +571,8 @@ AgentCore Web Search は本プロジェクトの FSx ONTAP ハイブリッド RA
 
 ### 関連ドキュメント
 
-- [UC29 Self-Service KB Curation](../../genai-kb-selfservice-curation/README.md)
-- [UC30 Quick Agentic Workspace](../../genai-quick-agentic-workspace/README.md)
+- [UC29 Self-Service KB Curation](../../solutions/genai/kb-selfservice-curation/README.md)
+- [UC30 Quick Agentic Workspace](../../solutions/genai/quick-agentic-workspace/README.md)
 - [S3 Annotations 互換性調査](./s3-annotations-fsxn-compatibility.md)
 - [DAIS 2026 Agent Bricks 調査](./dais2026-agent-bricks-industry-cases.md)
 

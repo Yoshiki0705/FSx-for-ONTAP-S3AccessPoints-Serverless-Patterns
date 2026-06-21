@@ -255,8 +255,8 @@ ap-northeast-1 環境で以下を検証済み:
 | ドキュメント検索・Q&A | Bedrock Knowledge Bases 統合 |
 | 外部パートナーとのファイル交換 | Transfer Family SFTP 統合 |
 | TB 規模のデータ処理 | EMR Serverless Spark |
-| GB 規模の ETL | Glue ETL（`manufacturing-analytics/glue-etl/`） |
-| メディアコンテンツ配信 | CloudFront 統合（`media-vfx/cloudfront/`） |
+| GB 規模の ETL | Glue ETL（`solutions/industry/manufacturing-analytics/glue-etl/`） |
+| メディアコンテンツ配信 | CloudFront 統合（`solutions/industry/media-vfx/cloudfront/`） |
 | リアルタイム・少量データ処理 | Lambda ベース（基本ユースケース） |
 
 ### 組み合わせ例

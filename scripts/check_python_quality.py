@@ -49,7 +49,7 @@ def main() -> int:
     os.chdir(repo)
 
     roots = []
-    for uc in sorted(repo.glob("*/functions")):
+    for uc in sorted(repo.glob("solutions/**/functions")):
         if uc.is_dir():
             roots.append(uc)
     shared = repo / "shared"

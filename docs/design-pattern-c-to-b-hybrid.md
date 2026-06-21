@@ -16,10 +16,10 @@ Four UCs are currently classified as Pattern C in
 
 | UC | Directory | Why Pattern C |
 |----|-----------|---------------|
-| UC6 | `semiconductor-eda/` | Uses Athena for DRC aggregation; Athena results must go to standard S3 |
-| UC7 | `genomics-pipeline/` | Uses Athena for variant QC summary; same constraint |
-| UC8 | `energy-seismic/` | Uses Athena for well-cross-time anomaly correlation; same constraint |
-| UC13 | `education-research/` | **No Athena.** Currently Pattern C due to original spec assumption, but actually migratable to full Pattern B |
+| UC6 | `solutions/industry/semiconductor-eda/` | Uses Athena for DRC aggregation; Athena results must go to standard S3 |
+| UC7 | `solutions/industry/genomics-pipeline/` | Uses Athena for variant QC summary; same constraint |
+| UC8 | `solutions/industry/energy-seismic/` | Uses Athena for well-cross-time anomaly correlation; same constraint |
+| UC13 | `solutions/industry/education-research/` | **No Athena.** Currently Pattern C due to original spec assumption, but actually migratable to full Pattern B |
 
 The Pattern C classification was pragmatic: Athena's
 `StartQueryExecution.ResultConfiguration.OutputLocation` requires a
@@ -454,8 +454,8 @@ transitional state, not a permanent one.
 - [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](aws-feature-requests/fsxn-s3ap-improvements.md) — FR-2 (Athena OutputLocation support on S3AP)
 - [`docs/phase7-summary.md`](phase7-summary.md) — Phase 7 completion summary, lists B-P8-2 as a candidate
 - [`shared/output_writer.py`](../shared/output_writer.py) — OutputWriter implementation
-- [`retail-catalog/template-deploy.yaml`](../retail-catalog/template-deploy.yaml) — UC11 reference template (Pattern B full migration, non-hybrid)
-- [`semiconductor-eda/template-deploy.yaml`](../semiconductor-eda/template-deploy.yaml) — UC6 current template (Pattern C, starting point for hybrid)
+- [`solutions/industry/retail-catalog/template-deploy.yaml`](../solutions/industry/retail-catalog/template-deploy.yaml) — UC11 reference template (Pattern B full migration, non-hybrid)
+- [`solutions/industry/semiconductor-eda/template-deploy.yaml`](../solutions/industry/semiconductor-eda/template-deploy.yaml) — UC6 current template (Pattern C, starting point for hybrid)
 
 ## 9. Next Actions (if B-P8-2 is approved)
 

@@ -103,7 +103,7 @@ jobs:
         run: |
           cfn-guard validate \
             --rules security/cfn-guard-rules/ \
-            --data */template-deploy.yaml \
+            --data solutions/**/template-deploy.yaml \
             --show-summary fail || true
 
   deprecated-models-check:

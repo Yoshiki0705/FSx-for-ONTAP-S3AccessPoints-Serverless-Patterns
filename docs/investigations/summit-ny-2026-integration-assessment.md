@@ -32,10 +32,10 @@
 | ユニットテスト (24件) | `shared/tests/test_web_search_client.py` |
 | IAM Role CFn テンプレート | `shared/cfn/agentcore-gateway-role.yaml` |
 | PoC スクリプト | `scripts/poc-web-search.py` |
-| UC29 Query Lambda ハイブリッド化 | `genai-kb-selfservice-curation/functions/query/handler.py` |
-| UC29 テンプレート パラメータ追加 | `genai-kb-selfservice-curation/template.yaml` |
-| UC30 新アクション追加 | `genai-quick-agentic-workspace/functions/quick_action/handler.py` |
-| UC30 テンプレート パラメータ追加 | `genai-quick-agentic-workspace/template.yaml` |
+| UC29 Query Lambda ハイブリッド化 | `solutions/genai/kb-selfservice-curation/functions/query/handler.py` |
+| UC29 テンプレート パラメータ追加 | `solutions/genai/kb-selfservice-curation/template.yaml` |
+| UC30 新アクション追加 | `solutions/genai/quick-agentic-workspace/functions/quick_action/handler.py` |
+| UC30 テンプレート パラメータ追加 | `solutions/genai/quick-agentic-workspace/template.yaml` |
 
 ### 調査文書
 

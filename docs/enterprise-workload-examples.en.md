@@ -118,8 +118,8 @@ ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx for ONTAP Volume (/app
 | Resource | Content | Link |
 |----------|---------|------|
 | AWS Documentation: ECS + FSx for ONTAP | NFS/SMB mount procedure for EC2 launch type | [mount-ontap-ecs-containers](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/mount-ontap-ecs-containers.html) |
-| This repository: UC1 (legal-compliance) | Basic pattern via S3 AP (Lambda + Step Functions) | [legal-compliance/](../legal-compliance/README.md) |
-| This repository: event-driven-fpolicy | FPolicy Server implementation on Fargate | [event-driven-fpolicy/](../event-driven-fpolicy/README.md) |
+| This repository: UC1 (legal-compliance) | Basic pattern via S3 AP (Lambda + Step Functions) | [solutions/industry/legal-compliance/](../solutions/industry/legal-compliance/README.md) |
+| This repository: event-driven-fpolicy | FPolicy Server implementation on Fargate | [solutions/event-driven/fpolicy/](../solutions/event-driven/fpolicy/README.md) |
 | This repository: Fargate vs EC2 Decision | Compute selection guide for FPolicy Server | [fargate-vs-ec2-fpolicy-decision.md](fargate-vs-ec2-fpolicy-decision.md) |
 | S3AP Benchmark Results | Measured PutObject/GetObject latency | [s3ap-benchmark-results.md](s3ap-benchmark-results.md) |
 | AWS Blog: Bridge legacy and modern apps | Connect file-based and object-based apps with S3 AP | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/) |

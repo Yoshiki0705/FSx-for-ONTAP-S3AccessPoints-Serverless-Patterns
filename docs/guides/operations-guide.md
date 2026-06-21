@@ -273,7 +273,7 @@ aws cloudformation get-template \
 
 # スタックの更新
 aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+  --template-file solutions/industry/legal-compliance/template.yaml \
   --stack-name fsxn-legal-compliance \
   --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
   --region ap-northeast-1

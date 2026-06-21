@@ -9,10 +9,10 @@
 
 ```bash
 # リポジトリルートから実行（PYTHONPATH に自動追加される）
-python3 -m pytest semiconductor-eda/tests/ -v
+python3 -m pytest solutions/industry/semiconductor-eda/tests/ -v
 
 # または明示的に PYTHONPATH を設定
-PYTHONPATH=. python3 -m pytest sap-erp-adjacent/tests/ -v
+PYTHONPATH=. python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
 ```
 
 ### sam build 時

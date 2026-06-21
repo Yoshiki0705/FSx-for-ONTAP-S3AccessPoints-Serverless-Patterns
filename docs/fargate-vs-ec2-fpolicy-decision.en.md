@@ -80,12 +80,12 @@ Do you want to avoid OS patch management?
 ## Templates
 
 The repository includes both templates:
-- `event-driven-fpolicy/template.yaml` — Fargate configuration
-- `event-driven-fpolicy/template-ec2.yaml` — EC2 configuration
+- `solutions/event-driven/fpolicy/template.yaml` — Fargate configuration
+- `solutions/event-driven/fpolicy/template-ec2.yaml` — EC2 configuration
 
 Switchable via the `ComputeType` parameter.
 
 ## References
 
 - [Deployment Profiles](deployment-profiles.md)
-- [event-driven-fpolicy/ README](../event-driven-fpolicy/README.md)
+- [solutions/event-driven/fpolicy/ README](../solutions/event-driven/fpolicy/README.md)

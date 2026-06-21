@@ -50,7 +50,7 @@ unified deployment API across all UCs that support FSx for ONTAP S3 AP output.
 **Recommended deployment** (new):
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template-deploy.yaml \
+  --template-file solutions/industry/legal-compliance/template-deploy.yaml \
   --stack-name fsxn-legal-compliance-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
@@ -62,7 +62,7 @@ aws cloudformation deploy \
 **Legacy deployment** (still works):
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template-deploy.yaml \
+  --template-file solutions/industry/legal-compliance/template-deploy.yaml \
   --stack-name fsxn-legal-compliance-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
@@ -94,7 +94,7 @@ s3ap_output.put_object(
 **Deployment example**:
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template-deploy.yaml \
+  --template-file solutions/industry/legal-compliance/template-deploy.yaml \
   --stack-name fsxn-legal-compliance-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \

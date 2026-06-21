@@ -144,5 +144,5 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ## 관련 문서
 
 - [CDN/엣지 배포 통합 비교](cdn-comparison.ko.md)
-- [content-edge-delivery UC](../content-edge-delivery/README.ko.md)
+- [content-edge-delivery UC](../solutions/edge/content-delivery/README.ko.md)
 - [S3AP 호환성 노트](s3ap-compatibility-notes.md)

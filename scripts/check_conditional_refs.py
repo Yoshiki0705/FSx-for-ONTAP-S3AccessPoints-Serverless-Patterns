@@ -88,7 +88,7 @@ def has_definition_substitutions(data) -> bool:
 
 def main() -> int:
     repo = Path(__file__).resolve().parent.parent
-    templates = sorted(repo.glob("*/template-deploy.yaml"))
+    templates = sorted(repo.glob("solutions/**/template-deploy.yaml"))
     # Exclude prototype
     templates = [t for t in templates if "event-driven-prototype" not in str(t)]
 

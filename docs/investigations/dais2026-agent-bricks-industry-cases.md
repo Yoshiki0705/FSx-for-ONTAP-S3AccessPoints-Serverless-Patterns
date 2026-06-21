@@ -111,10 +111,10 @@ Two industry cases presented at DAIS 2026 serve as reference patterns for AI pro
 
 | 既存パターン | ディレクトリ | 関連性 |
 |-------------|------------|--------|
-| **UC22** Transportation Maintenance | `transportation-maintenance/` | ⭐ 最も近い。設備点検画像＋保守レポート分析。7-Eleven の HVAC/オーブン保守は同一パターン |
-| **UC11** Retail Catalog | `retail-catalog/` | 業界（小売）が一致。商品カタログ → 設備パーツカタログへの応用 |
-| **UC3** Manufacturing Analytics | `manufacturing-analytics/` | 製造設備の分析。店舗設備（HVAC等）への応用 |
-| **GenAI RAG Enterprise Files** | `genai-rag-enterprise-files/` | RAG パターンの基盤。ドキュメント検索 + 回答生成 |
+| **UC22** Transportation Maintenance | `solutions/industry/transportation-maintenance/` | ⭐ 最も近い。設備点検画像＋保守レポート分析。7-Eleven の HVAC/オーブン保守は同一パターン |
+| **UC11** Retail Catalog | `solutions/industry/retail-catalog/` | 業界（小売）が一致。商品カタログ → 設備パーツカタログへの応用 |
+| **UC3** Manufacturing Analytics | `solutions/industry/manufacturing-analytics/` | 製造設備の分析。店舗設備（HVAC等）への応用 |
+| **GenAI RAG Enterprise Files** | `solutions/flexcache/rag-enterprise-files/` | RAG パターンの基盤。ドキュメント検索 + 回答生成 |
 
 **推奨パターン**: UC22 をベースに、マルチモーダル（画像 + テキスト）RAG を拡張。
 
@@ -223,11 +223,11 @@ Two industry cases presented at DAIS 2026 serve as reference patterns for AI pro
 
 | 既存パターン | ディレクトリ | 関連性 |
 |-------------|------------|--------|
-| **UC7** Life Sciences Research | `life-sciences-research/` | ⭐ 最も近い。臨床文書の AI 分析パターン |
-| **UC5** Healthcare DICOM | `healthcare-dicom/` | 医療画像処理。DICOM + 臨床レポートの組み合わせ |
-| **UC28** Chemical SDS Management | `chemical-sds-management/` | ラボドキュメント管理。創薬研究文書への応用 |
-| **GenAI RAG Enterprise Files** | `genai-rag-enterprise-files/` | RAG 基盤パターン。権限付き文書検索 |
-| **GenAI KB Self-Service Curation** | `genai-kb-selfservice-curation/` | ナレッジベースのセルフサービスキュレーション |
+| **UC7** Life Sciences Research | `solutions/flexcache/life-sciences-research/` | ⭐ 最も近い。臨床文書の AI 分析パターン |
+| **UC5** Healthcare DICOM | `solutions/industry/healthcare-dicom/` | 医療画像処理。DICOM + 臨床レポートの組み合わせ |
+| **UC28** Chemical SDS Management | `solutions/industry/chemical-sds-management/` | ラボドキュメント管理。創薬研究文書への応用 |
+| **GenAI RAG Enterprise Files** | `solutions/flexcache/rag-enterprise-files/` | RAG 基盤パターン。権限付き文書検索 |
+| **GenAI KB Self-Service Curation** | `solutions/genai/kb-selfservice-curation/` | ナレッジベースのセルフサービスキュレーション |
 
 **推奨パターン**: UC7 をベースに、Multi-Agent Supervisor パターン（Step Functions による治療領域別ルーティング）を追加。
 
@@ -277,7 +277,7 @@ Two industry cases presented at DAIS 2026 serve as reference patterns for AI pro
 ### 4.1 提案 A: Retail Maintenance AI（7-Eleven パターン）
 
 
-**対応 UC**: UC22 (`transportation-maintenance/`) の拡張として実装可能
+**対応 UC**: UC22 (`solutions/industry/transportation-maintenance/`) の拡張として実装可能
 
 **追加要素**:
 
@@ -316,7 +316,7 @@ Start → ClassifyQuery
 
 ### 4.2 提案 B: Pharma Multi-Agent System（AstraZeneca パターン）
 
-**対応 UC**: UC7 (`life-sciences-research/`) の拡張として実装可能
+**対応 UC**: UC7 (`solutions/flexcache/life-sciences-research/`) の拡張として実装可能
 
 **追加要素**:
 
@@ -371,8 +371,8 @@ User (Entra ID / Cognito)
 
 | アクション | 対象 | 内容 |
 |-----------|------|------|
-| UC22 README 更新 | `transportation-maintenance/README.md` | 7-Eleven 事例を「業界参考事例」セクションに追加（public evidence tier） |
-| UC7 README 更新 | `life-sciences-research/README.md` | AstraZeneca 事例を「業界参考事例」セクションに追加 |
+| UC22 README 更新 | `solutions/industry/transportation-maintenance/README.md` | 7-Eleven 事例を「業界参考事例」セクションに追加（public evidence tier） |
+| UC7 README 更新 | `solutions/flexcache/life-sciences-research/README.md` | AstraZeneca 事例を「業界参考事例」セクションに追加 |
 | パターン選択ガイド更新 | `docs/pattern-selection-guide.md` | マルチモーダル保守 AI、マルチエージェント製薬 AI を選択肢に追加 |
 | 業界カバレッジマップ更新 | `docs/industry-coverage-map.md` | DAIS 2026 事例参照を注記として追加 |
 

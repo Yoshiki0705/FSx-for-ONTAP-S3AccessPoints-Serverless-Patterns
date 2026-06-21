@@ -77,14 +77,14 @@ acquisition (see §7).
 
 **B's exclusive region**:
 - `shared/output_writer.py` + `shared/tests/test_output_writer.py`
-- `retail-catalog/**`, `insurance-claims/**`,
-  `autonomous-driving/**`, `construction-bim/**`, `logistics-ocr/**`
+- `solutions/industry/retail-catalog/**`, `solutions/industry/insurance-claims/**`,
+  `solutions/industry/autonomous-driving/**`, `solutions/industry/construction-bim/**`, `solutions/industry/logistics-ocr/**`
   (full per-UC trees: `functions/**/handler.py`, `template-deploy.yaml`,
   `tests/**`, `docs/demo-guide.md`)
-- `legal-compliance/**`, `financial-idp/**`,
-  `manufacturing-analytics/**`, `media-vfx/**`, `healthcare-dicom/**`
+- `solutions/industry/legal-compliance/**`, `solutions/industry/financial-idp/**`,
+  `solutions/industry/manufacturing-analytics/**`, `solutions/industry/media-vfx/**`, `solutions/industry/healthcare-dicom/**`
   (UC1-5 OutputDestination unify, same file set as above)
-- `defense-satellite/**`, `government-archives/**`, `smart-city-geo/**`
+- `solutions/industry/defense-satellite/**`, `solutions/industry/government-archives/**`, `smart-city-geo/**`
   (UC15-17 OutputDestination unify, Phase 7)
 - `docs/output-destination-patterns.md`
 - `docs/verification-results-output-destination.md`

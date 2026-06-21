@@ -24,7 +24,7 @@ def run_pyflakes(path: Path) -> list[str]:
 
 def main() -> int:
     repo = Path(__file__).resolve().parent.parent
-    handlers = sorted(repo.glob("*/functions/*/handler.py"))
+    handlers = sorted(repo.glob("solutions/**/functions/*/handler.py"))
 
     issues = 0
     for h in handlers:

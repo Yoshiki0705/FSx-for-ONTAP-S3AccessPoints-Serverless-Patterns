@@ -39,7 +39,7 @@ graph TB
 ## 詳細設計
 
 詳細は以下を参照:
-- [アーキテクチャ](../flexcache-anycast-dr/docs/architecture.md)
-- [設計パターン](../flexcache-anycast-dr/docs/design-patterns.md)
-- [ネットワーク設計](../flexcache-anycast-dr/docs/network-design-bgp-vip.md)
-- [DR パターン](../flexcache-anycast-dr/docs/disaster-recovery-patterns.md)
+- [アーキテクチャ](../solutions/flexcache/anycast-dr/docs/architecture.md)
+- [設計パターン](../solutions/flexcache/anycast-dr/docs/design-patterns.md)
+- [ネットワーク設計](../solutions/flexcache/anycast-dr/docs/network-design-bgp-vip.md)
+- [DR パターン](../solutions/flexcache/anycast-dr/docs/disaster-recovery-patterns.md)

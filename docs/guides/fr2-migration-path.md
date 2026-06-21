@@ -105,7 +105,7 @@ fpolicy enable -vserver FSxN_OnPre -policy-name fpolicy_aws -sequence-number 1
 5. ECR リポジトリ（FPolicy Server イメージ）
 6. ONTAP FPolicy ポリシー + エンジン + イベント定義
 7. Persistent Store ボリューム（使用時）
-8. `event-driven-fpolicy/` CloudFormation スタック
+8. `solutions/event-driven/fpolicy/` CloudFormation スタック
 
 **保持するリソース**:
 - EventBridge カスタムバス `fsxn-fpolicy-events`（S3AP 通知の送信先として再利用）

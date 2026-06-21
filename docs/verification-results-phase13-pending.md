@@ -35,12 +35,12 @@
 
 | # | 検証項目 | テンプレート | リスク | 優先度 |
 |---|---------|------------|--------|--------|
-| C-1 | flexcache-anycast-dr/template.yaml デプロイ | flexcache-anycast-dr | SAM Transform + StateMachine Definition の互換性 | **高** |
-| C-2 | dynamic-flexcache-render-workflow/template.yaml デプロイ | dynamic-flexcache-render-workflow | 同上 | **高** |
-| C-3 | genai-rag-enterprise-files/template.yaml デプロイ | genai-rag-enterprise-files | 同上 | 高 |
-| C-4 | automotive-cae/template.yaml デプロイ | automotive-cae | 同上 | 高 |
-| C-5 | life-sciences-research/template.yaml デプロイ | life-sciences-research | 同上 | 中 |
-| C-6 | gaming-build-pipeline/template.yaml デプロイ | gaming-build-pipeline | 同上 | 中 |
+| C-1 | solutions/flexcache/anycast-dr/template.yaml デプロイ | flexcache-anycast-dr | SAM Transform + StateMachine Definition の互換性 | **高** |
+| C-2 | solutions/flexcache/dynamic-render-workflow/template.yaml デプロイ | dynamic-flexcache-render-workflow | 同上 | **高** |
+| C-3 | solutions/flexcache/rag-enterprise-files/template.yaml デプロイ | genai-rag-enterprise-files | 同上 | 高 |
+| C-4 | solutions/flexcache/automotive-cae/template.yaml デプロイ | automotive-cae | 同上 | 高 |
+| C-5 | solutions/flexcache/life-sciences-research/template.yaml デプロイ | life-sciences-research | 同上 | 中 |
+| C-6 | solutions/flexcache/gaming-build-pipeline/template.yaml デプロイ | gaming-build-pipeline | 同上 | 中 |
 | C-7 | 全スタックの CREATE_COMPLETE 確認 | C-1〜C-6 | IAM ポリシー、リソース名衝突 | **高** |
 | C-8 | EventBridge Scheduler の作成・有効化確認 | C-1〜C-6 | スケジュール式の構文 | 中 |
 
@@ -203,6 +203,6 @@ FlexCache volume に S3 AP を attach できない場合:
 
 この場合、以下のドキュメント更新が必要:
 1. `docs/support-matrix-fsx-ontap-flexcache-s3ap.md` の B-1 行を ❌ に更新
-2. `flexcache-anycast-dr/README.md` の制約事項を更新
+2. `solutions/flexcache/anycast-dr/README.md` の制約事項を更新
 3. `docs/industry-workload-mapping.md` の FlexCache + S3 AP 組み合わせ図を修正
 4. 各 UC の FlexCache セクションに「S3 AP は Origin volume 経由」の注記追加

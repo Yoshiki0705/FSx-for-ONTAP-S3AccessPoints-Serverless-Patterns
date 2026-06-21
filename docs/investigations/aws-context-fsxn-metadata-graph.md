@@ -382,6 +382,6 @@ AWS Context は **Coming soon** のため即時実装はできないが、FSx fo
 - [S3 Annotations × FSx S3 AP 互換性調査](./s3-annotations-fsxn-compatibility.md)
 - [AgentCore Web Search 統合設計](./agentcore-web-search-fsxn-integration.md)
 - [DAIS 2026 Agent Bricks 業種別ユースケース](./dais2026-agent-bricks-industry-cases.md)
-- [UC29 Self-Service KB Curation](../../genai-kb-selfservice-curation/README.md)
-- [UC30 Quick Agentic Workspace](../../genai-quick-agentic-workspace/README.md)
+- [UC29 Self-Service KB Curation](../../solutions/genai/kb-selfservice-curation/README.md)
+- [UC30 Quick Agentic Workspace](../../solutions/genai/quick-agentic-workspace/README.md)
 - [Permission-Aware RAG 設計原則](../../docs/comparison-alternatives.md)

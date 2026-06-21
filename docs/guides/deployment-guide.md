@@ -130,7 +130,7 @@ bash scripts/deploy_uc1.sh
 
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template-deploy.yaml \
+  --template-file solutions/industry/legal-compliance/template-deploy.yaml \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -313,7 +313,7 @@ done
 # 1. UC1 をデプロイ（S3 Gateway Endpoint を作成）
 aws cloudformation create-stack \
   --stack-name fsxn-legal-compliance \
-  --template-body file://legal-compliance/template-deploy.yaml \
+  --template-body file://solutions/industry/legal-compliance/template-deploy.yaml \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameters \
     ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true \
@@ -322,7 +322,7 @@ aws cloudformation create-stack \
 # 2. UC2 をデプロイ（S3 Gateway Endpoint はスキップ）
 aws cloudformation create-stack \
   --stack-name fsxn-financial-idp \
-  --template-body file://financial-idp/template-deploy.yaml \
+  --template-body file://solutions/industry/financial-idp/template-deploy.yaml \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameters \
     ParameterKey=EnableS3GatewayEndpoint,ParameterValue=false \
@@ -368,8 +368,8 @@ python3 scripts/create_deploy_template.py
 
 | ユースケース | テンプレート | README |
 |------------|------------|--------|
-| UC1: 法務・コンプライアンス | `legal-compliance/template.yaml` | [legal-compliance/README.md](../../legal-compliance/README.md) |
-| UC2: 金融・保険 | `financial-idp/template.yaml` | [financial-idp/README.md](../../financial-idp/README.md) |
-| UC3: 製造業 | `manufacturing-analytics/template.yaml` | [manufacturing-analytics/README.md](../../manufacturing-analytics/README.md) |
-| UC4: メディア | `media-vfx/template.yaml` | [media-vfx/README.md](../../media-vfx/README.md) |
-| UC5: 医療 | `healthcare-dicom/template.yaml` | [healthcare-dicom/README.md](../../healthcare-dicom/README.md) |
+| UC1: 法務・コンプライアンス | `solutions/industry/legal-compliance/template.yaml` | [solutions/industry/legal-compliance/README.md](../../solutions/industry/legal-compliance/README.md) |
+| UC2: 金融・保険 | `solutions/industry/financial-idp/template.yaml` | [solutions/industry/financial-idp/README.md](../../solutions/industry/financial-idp/README.md) |
+| UC3: 製造業 | `solutions/industry/manufacturing-analytics/template.yaml` | [solutions/industry/manufacturing-analytics/README.md](../../solutions/industry/manufacturing-analytics/README.md) |
+| UC4: メディア | `solutions/industry/media-vfx/template.yaml` | [solutions/industry/media-vfx/README.md](../../solutions/industry/media-vfx/README.md) |
+| UC5: 医療 | `solutions/industry/healthcare-dicom/template.yaml` | [solutions/industry/healthcare-dicom/README.md](../../solutions/industry/healthcare-dicom/README.md) |

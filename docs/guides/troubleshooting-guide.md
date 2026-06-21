@@ -158,7 +158,7 @@ aws ec2 describe-vpc-endpoints \
 
 ```bash
 aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+  --template-file solutions/industry/legal-compliance/template.yaml \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     EnableVpcEndpoints=true \
@@ -460,7 +460,7 @@ with destination-prefix-list-id pl-xxxxx (Service: Ec2, Status Code: 400)"
 # 2 番目以降のスタックでは S3 Gateway Endpoint を無効化
 aws cloudformation create-stack \
   --stack-name fsxn-financial-idp \
-  --template-body file://financial-idp/template-deploy.yaml \
+  --template-body file://solutions/industry/financial-idp/template-deploy.yaml \
   --parameters \
     ParameterKey=EnableS3GatewayEndpoint,ParameterValue=false \
     ...

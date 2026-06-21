@@ -211,7 +211,7 @@ aws cloudformation delete-stack \
    ```bash
    cfn-guard validate \
      --rules security/cfn-guard-rules/new-rule.guard \
-     --data autonomous-driving/template-deploy.yaml
+     --data solutions/industry/autonomous-driving/template-deploy.yaml
    ```
 3. デプロイスクリプトを再実行:
    ```bash

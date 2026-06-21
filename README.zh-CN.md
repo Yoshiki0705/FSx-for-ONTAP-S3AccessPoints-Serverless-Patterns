@@ -171,25 +171,25 @@ EventBridge Scheduler (定期执行)
 
 | # | 目录 | 行业 | 模式 | 使用的 AI/ML 服务 | ap-northeast-1 验证状态 |
 |---|------|------|------|-----------------|----------------------|
-| UC1 | `legal-compliance/` | 法务合规 | 文件服务器审计与数据治理 | Athena, Bedrock | ✅ E2E 成功 |
-| UC2 | `financial-idp/` | 金融保险 | 合同/发票自动处理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ 东京不支持（使用对应区域） |
-| UC3 | `manufacturing-analytics/` | 制造业 | IoT 传感器日志与质量检测图像分析 | Athena, Rekognition | ✅ E2E 成功 |
-| UC4 | `media-vfx/` | 媒体 | VFX 渲染管线 | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 需配置 |
-| UC5 | `healthcare-dicom/` | 医疗 | DICOM 图像自动分类与脱敏 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 东京不支持（使用对应区域） |
+| UC1 | `solutions/industry/legal-compliance/` | 法务合规 | 文件服务器审计与数据治理 | Athena, Bedrock | ✅ E2E 成功 |
+| UC2 | `solutions/industry/financial-idp/` | 金融保险 | 合同/发票自动处理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ 东京不支持（使用对应区域） |
+| UC3 | `solutions/industry/manufacturing-analytics/` | 制造业 | IoT 传感器日志与质量检测图像分析 | Athena, Rekognition | ✅ E2E 成功 |
+| UC4 | `solutions/industry/media-vfx/` | 媒体 | VFX 渲染管线 | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 需配置 |
+| UC5 | `solutions/industry/healthcare-dicom/` | 医疗 | DICOM 图像自动分类与脱敏 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 东京不支持（使用对应区域） |
 
 ### Phase 2 (UC6–UC14)
 
 | # | 目录 | 行业 | 模式 | 使用的 AI/ML 服务 | ap-northeast-1 验证状态 |
 |---|------|------|------|-----------------|----------------------|
-| UC6 | `semiconductor-eda/` | 半导体 / EDA | GDS/OASIS 验证・元数据提取・DRC 汇总 | Athena, Bedrock | ✅ 测试通过 |
-| UC7 | `genomics-pipeline/` | 基因组学 | FASTQ/VCF 质量检查・变异调用汇总 | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
-| UC8 | `energy-seismic/` | 能源 | SEG-Y 元数据提取・井日志异常检测 | Athena, Bedrock, Rekognition | ✅ 测试通过 |
-| UC9 | `autonomous-driving/` | 自动驾驶 / ADAS | 视频/LiDAR 预处理・质量检查・标注 | Rekognition, Bedrock, SageMaker | ✅ 测试通过 |
-| UC10 | `construction-bim/` | 建筑 / AEC | BIM 版本管理・图纸 OCR・安全合规 | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
-| UC11 | `retail-catalog/` | 零售 / 电商 | 商品图像标签・目录元数据生成 | Rekognition, Bedrock | ✅ 测试通过 |
-| UC12 | `logistics-ocr/` | 物流 | 运单 OCR・仓库库存图像分析 | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC13 | `education-research/` | 教育 / 研究 | 论文 PDF 分类・引用网络分析 | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC14 | `insurance-claims/` | 保险 | 事故照片损害评估・估价单 OCR・理赔报告 | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC6 | `solutions/industry/semiconductor-eda/` | 半导体 / EDA | GDS/OASIS 验证・元数据提取・DRC 汇总 | Athena, Bedrock | ✅ 测试通过 |
+| UC7 | `solutions/industry/genomics-pipeline/` | 基因组学 | FASTQ/VCF 质量检查・变异调用汇总 | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
+| UC8 | `solutions/industry/energy-seismic/` | 能源 | SEG-Y 元数据提取・井日志异常检测 | Athena, Bedrock, Rekognition | ✅ 测试通过 |
+| UC9 | `solutions/industry/autonomous-driving/` | 自动驾驶 / ADAS | 视频/LiDAR 预处理・质量检查・标注 | Rekognition, Bedrock, SageMaker | ✅ 测试通过 |
+| UC10 | `solutions/industry/construction-bim/` | 建筑 / AEC | BIM 版本管理・图纸 OCR・安全合规 | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
+| UC11 | `solutions/industry/retail-catalog/` | 零售 / 电商 | 商品图像标签・目录元数据生成 | Rekognition, Bedrock | ✅ 测试通过 |
+| UC12 | `solutions/industry/logistics-ocr/` | 物流 | 运单 OCR・仓库库存图像分析 | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC13 | `solutions/industry/education-research/` | 教育 / 研究 | 论文 PDF 分类・引用网络分析 | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC14 | `solutions/industry/insurance-claims/` | 保险 | 事故照片损害评估・估价单 OCR・理赔报告 | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
 
 > **区域限制**: Amazon Textract 和 Amazon Comprehend Medical 在 ap-northeast-1（东京）不可用。Phase 2 UC（UC7、UC10、UC12、UC13、UC14）通过 Cross_Region_Client 将 API 调用路由到 us-east-1。Rekognition、Comprehend、Bedrock、Athena 在 ap-northeast-1 可用。
 > 
@@ -199,22 +199,22 @@ EventBridge Scheduler (定期执行)
 
 | # | 目录 | 行业 | 模式 | AI/ML 服务 | ap-northeast-1 验证状态 |
 |---|------|------|------|-----------|-----------------------|
-| UC15 | `defense-satellite/` | 国防/太空 | 卫星图像分析（对象检测、变化检测、警报）| Rekognition, SageMaker（可选）, Bedrock | ✅ 代码+测试完成，AWS 已验证 |
-| UC16 | `government-archives/` | 政府 | 公文档案·FOIA（OCR、分类、编辑、20 天期限跟踪）| Textract ⚠️, Comprehend, Bedrock, OpenSearch（可选）| ✅ 代码+测试完成，AWS 已验证 |
-| UC17 | `smart-city-geospatial/` | 智慧城市 | 地理空间分析（CRS 归一化、土地利用、风险映射、规划报告）| Rekognition, SageMaker（可选）, Bedrock (Nova Lite) | ✅ 代码+测试完成，AWS 已验证 |
-| UC18 | [`telecom-network-analytics/`](telecom-network-analytics/) | 通信 | CDR/网络日志分析・异常检测 |
-| UC19 | [`adtech-creative-management/`](adtech-creative-management/) | 广告 | 创意资产管理・品牌合规 |
-| UC20 | [`travel-document-processing/`](travel-document-processing/) | 旅行 | 预订文档处理・设施检查图像分析 |
-| UC21 | [`agri-food-traceability/`](agri-food-traceability/) | 农业・食品 | 农田航空图像・追溯文档管理 |
-| UC22 | [`transportation-maintenance/`](transportation-maintenance/) | 运输・铁路 | 设备检查图像・维护报告分析 |
-| UC23 | [`sustainability-esg-reporting/`](sustainability-esg-reporting/) | 可持续发展 | ESG 指标提取・报告 |
-| UC24 | [`nonprofit-grant-management/`](nonprofit-grant-management/) | NPO | 补助金申请分类・成果匹配 |
-| UC25 | [`utilities-asset-inspection/`](utilities-asset-inspection/) | 电力 | 无人机图像・SCADA 日志分析 |
-| UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | 不动产 | 物件图像分析・合同数据提取 |
-| UC27 | [`hr-document-screening/`](hr-document-screening/) | 人才・HR | 简历筛选・候选人评估 |
-| UC28 | [`chemical-sds-management/`](chemical-sds-management/) | 化学・材料 | SDS 管理・实验笔记分析 |
-| UC29 | [`genai-kb-selfservice-curation/`](genai-kb-selfservice-curation/) | 全行业通用 | 自助式 AI 知识运营（托管 Bedrock KB + Windows 拖放） |
-| UC30 | [`genai-quick-agentic-workspace/`](genai-quick-agentic-workspace/) | 全行业通用 | Amazon Quick 智能体工作区（Index/Sight/Flows + S3 AP 数据底座） |
+| UC15 | `solutions/industry/defense-satellite/` | 国防/太空 | 卫星图像分析（对象检测、变化检测、警报）| Rekognition, SageMaker（可选）, Bedrock | ✅ 代码+测试完成，AWS 已验证 |
+| UC16 | `solutions/industry/government-archives/` | 政府 | 公文档案·FOIA（OCR、分类、编辑、20 天期限跟踪）| Textract ⚠️, Comprehend, Bedrock, OpenSearch（可选）| ✅ 代码+测试完成，AWS 已验证 |
+| UC17 | `solutions/industry/smart-city-geospatial/` | 智慧城市 | 地理空间分析（CRS 归一化、土地利用、风险映射、规划报告）| Rekognition, SageMaker（可选）, Bedrock (Nova Lite) | ✅ 代码+测试完成，AWS 已验证 |
+| UC18 | [`solutions/industry/telecom-network-analytics/`](solutions/industry/telecom-network-analytics/) | 通信 | CDR/网络日志分析・异常检测 |
+| UC19 | [`solutions/industry/adtech-creative-management/`](solutions/industry/adtech-creative-management/) | 广告 | 创意资产管理・品牌合规 |
+| UC20 | [`solutions/industry/travel-document-processing/`](solutions/industry/travel-document-processing/) | 旅行 | 预订文档处理・设施检查图像分析 |
+| UC21 | [`solutions/industry/agri-food-traceability/`](solutions/industry/agri-food-traceability/) | 农业・食品 | 农田航空图像・追溯文档管理 |
+| UC22 | [`solutions/industry/transportation-maintenance/`](solutions/industry/transportation-maintenance/) | 运输・铁路 | 设备检查图像・维护报告分析 |
+| UC23 | [`solutions/industry/sustainability-esg-reporting/`](solutions/industry/sustainability-esg-reporting/) | 可持续发展 | ESG 指标提取・报告 |
+| UC24 | [`solutions/industry/nonprofit-grant-management/`](solutions/industry/nonprofit-grant-management/) | NPO | 补助金申请分类・成果匹配 |
+| UC25 | [`solutions/industry/utilities-asset-inspection/`](solutions/industry/utilities-asset-inspection/) | 电力 | 无人机图像・SCADA 日志分析 |
+| UC26 | [`solutions/industry/real-estate-portfolio/`](solutions/industry/real-estate-portfolio/) | 不动产 | 物件图像分析・合同数据提取 |
+| UC27 | [`solutions/industry/hr-document-screening/`](solutions/industry/hr-document-screening/) | 人才・HR | 简历筛选・候选人评估 |
+| UC28 | [`solutions/industry/chemical-sds-management/`](solutions/industry/chemical-sds-management/) | 化学・材料 | SDS 管理・实验笔记分析 |
+| UC29 | [`solutions/genai/kb-selfservice-curation/`](solutions/genai/kb-selfservice-curation/) | 全行业通用 | 自助式 AI 知识运营（托管 Bedrock KB + Windows 拖放） |
+| UC30 | [`solutions/genai/quick-agentic-workspace/`](solutions/genai/quick-agentic-workspace/) | 全行业通用 | Amazon Quick 智能体工作区（Index/Sight/Flows + S3 AP 数据底座） |
 
 > **公共部门合规性**: UC15 针对 DoD CC SRG / CSfC / FedRAMP High（GovCloud 迁移），UC16 针对 NARA / FOIA Section 552 / Section 508，UC17 针对 INSPIRE 指令 / OGC 标准。
 
@@ -222,20 +222,20 @@ EventBridge Scheduler (定期执行)
 
 | # | 目录 | 模式 | 概述 | 状态 |
 |---|------|------|------|------|
-| FC1 | [`flexcache-anycast-dr/`](flexcache-anycast-dr/README.md) | FlexCache AnyCast / DR | 健康检查·路由决策·故障转移模拟 | ✅ 代码·文档完成 |
-| FC2 | [`dynamic-flexcache-render-workflow/`](dynamic-flexcache-render-workflow/README.md) | Dynamic FlexCache Render/EDA | 按作业动态创建·删除 FlexCache 工作流 | ✅ 代码·测试完成 |
-| FC3 | [`genai-rag-enterprise-files/`](genai-rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | 基于权限的 RAG（通过 S3 AP，无需数据复制）| ✅ 代码·测试完成 |
-| FC4 | [`automotive-cae/`](automotive-cae/README.md) | Automotive CAE Analytics | CAE 仿真结果自动分析 | ✅ 代码·测试完成 |
-| FC5 | [`life-sciences-research/`](life-sciences-research/README.md) | Life Sciences Research | 研究数据自动分析 | ✅ 模板完成 |
-| FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/README.md) | Gaming Build Pipeline | 游戏资产质量检查·日志分析 | ✅ 模板完成 |
-| FC7 | [`devops-flexclone-cicd/`](devops-flexclone-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | 基于 FlexClone 的 Dev/Test 刷新与 CI/CD | ✅ 代码·测试完成 |
+| FC1 | [`solutions/flexcache/anycast-dr/`](solutions/flexcache/anycast-dr/README.md) | FlexCache AnyCast / DR | 健康检查·路由决策·故障转移模拟 | ✅ 代码·文档完成 |
+| FC2 | [`solutions/flexcache/dynamic-render-workflow/`](solutions/flexcache/dynamic-render-workflow/README.md) | Dynamic FlexCache Render/EDA | 按作业动态创建·删除 FlexCache 工作流 | ✅ 代码·测试完成 |
+| FC3 | [`solutions/flexcache/rag-enterprise-files/`](solutions/flexcache/rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | 基于权限的 RAG（通过 S3 AP，无需数据复制）| ✅ 代码·测试完成 |
+| FC4 | [`solutions/flexcache/automotive-cae/`](solutions/flexcache/automotive-cae/README.md) | Automotive CAE Analytics | CAE 仿真结果自动分析 | ✅ 代码·测试完成 |
+| FC5 | [`solutions/flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/README.md) | Life Sciences Research | 研究数据自动分析 | ✅ 模板完成 |
+| FC6 | [`solutions/flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/README.md) | Gaming Build Pipeline | 游戏资产质量检查·日志分析 | ✅ 模板完成 |
+| FC7 | [`solutions/flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | 基于 FlexClone 的 Dev/Test 刷新与 CI/CD | ✅ 代码·测试完成 |
 
 ### 基础设施・通用模式
 
 | 目录 | 内容 |
 |:---|:---|
-| [`event-driven-fpolicy/`](event-driven-fpolicy/) | FPolicy 事件驱动管道 |
-| [`content-edge-delivery/`](content-edge-delivery/) | CDN/边缘分发模式（厂商中立・CloudFront/第三方，[CDN 对比](docs/cdn-comparison.en.md)） |
+| [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy 事件驱动管道 |
+| [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/边缘分发模式（厂商中立・CloudFront/第三方，[CDN 对比](docs/cdn-comparison.en.md)） |
 
 > **重要**: FlexCache 卷是否可以附加 S3 Access Point 取决于 ONTAP 版本和 FSx for ONTAP 服务规格。PoC 时务必在实际环境中验证。
 
@@ -245,37 +245,37 @@ EventBridge Scheduler (定期执行)
 
 | # | 用例 | 架构 | 演示指南 |
 |---|------|------|----------|
-| UC1 | 法务 | [📐 Architecture](legal-compliance/docs/architecture.md) | [🎬 Demo Guide](legal-compliance/docs/demo-guide.md) |
-| UC2 | 金融 | [📐 Architecture](financial-idp/docs/architecture.md) | [🎬 Demo Guide](financial-idp/docs/demo-guide.md) |
-| UC3 | 制造 | [📐 Architecture](manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](manufacturing-analytics/docs/demo-guide.md) |
-| UC4 | 媒体 | [📐 Architecture](media-vfx/docs/architecture.md) | [🎬 Demo Guide](media-vfx/docs/demo-guide.md) |
-| UC5 | 医疗 | [📐 Architecture](healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](healthcare-dicom/docs/demo-guide.md) |
-| UC6 | 半导体 | [📐 Architecture](semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](semiconductor-eda/docs/demo-guide.md) |
-| UC7 | 基因组 | [📐 Architecture](genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](genomics-pipeline/docs/demo-guide.md) |
-| UC8 | 能源 | [📐 Architecture](energy-seismic/docs/architecture.md) | [🎬 Demo Guide](energy-seismic/docs/demo-guide.md) |
-| UC9 | 自动驾驶 | [📐 Architecture](autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](autonomous-driving/docs/demo-guide.md) |
-| UC10 | 建筑 | [📐 Architecture](construction-bim/docs/architecture.md) | [🎬 Demo Guide](construction-bim/docs/demo-guide.md) |
-| UC11 | 零售 | [📐 Architecture](retail-catalog/docs/architecture.md) | [🎬 Demo Guide](retail-catalog/docs/demo-guide.md) |
-| UC12 | 物流 | [📐 Architecture](logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.md) |
-| UC13 | 教育 | [📐 Architecture](education-research/docs/architecture.md) | [🎬 Demo Guide](education-research/docs/demo-guide.md) |
-| UC14 | 保险 | [📐 Architecture](insurance-claims/docs/architecture.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.md) |
-| UC15 | 国防 | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Guide](defense-satellite/docs/demo-guide.md) |
-| UC16 | 政府 | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Guide](government-archives/docs/demo-guide.md) |
-| UC17 | 智慧城市 | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/demo-guide.md) |
-| UC18 | 通信 | [📐 Architecture](telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](telecom-network-analytics/docs/demo-guide.md) |
-| UC19 | 广告 | [📐 Architecture](adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](adtech-creative-management/docs/demo-guide.md) |
-| UC20 | 旅行 | [📐 Architecture](travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](travel-document-processing/docs/demo-guide.md) |
-| UC21 | 农业 | [📐 Architecture](agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](agri-food-traceability/docs/demo-guide.md) |
-| UC22 | 运输 | [📐 Architecture](transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](transportation-maintenance/docs/demo-guide.md) |
-| UC23 | 可持续发展 | [📐 Architecture](sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](sustainability-esg-reporting/docs/demo-guide.md) |
-| UC24 | NPO | [📐 Architecture](nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](nonprofit-grant-management/docs/demo-guide.md) |
-| UC25 | 电力 | [📐 Architecture](utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](utilities-asset-inspection/docs/demo-guide.md) |
-| UC26 | 不动产 | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
-| UC27 | 人才HR | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
-| UC28 | 化学 | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
-| UC29 | 全行业通用 (自助 KB) | [📐 Architecture](genai-kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](genai-kb-selfservice-curation/docs/demo-guide.md) |
-| UC30 | 全行业通用 (Amazon Quick) | [📐 Architecture](genai-quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](genai-quick-agentic-workspace/docs/demo-guide.md) |
-| — | 内容边缘分发 (CDN) | [📐 Architecture](content-edge-delivery/docs/architecture.md) | [🎬 Demo Guide](content-edge-delivery/docs/demo-guide.md) |
+| UC1 | 法务 | [📐 Architecture](solutions/industry/legal-compliance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/legal-compliance/docs/demo-guide.md) |
+| UC2 | 金融 | [📐 Architecture](solutions/industry/financial-idp/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/financial-idp/docs/demo-guide.md) |
+| UC3 | 制造 | [📐 Architecture](solutions/industry/manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/manufacturing-analytics/docs/demo-guide.md) |
+| UC4 | 媒体 | [📐 Architecture](solutions/industry/media-vfx/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/media-vfx/docs/demo-guide.md) |
+| UC5 | 医疗 | [📐 Architecture](solutions/industry/healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/healthcare-dicom/docs/demo-guide.md) |
+| UC6 | 半导体 | [📐 Architecture](solutions/industry/semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/semiconductor-eda/docs/demo-guide.md) |
+| UC7 | 基因组 | [📐 Architecture](solutions/industry/genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/genomics-pipeline/docs/demo-guide.md) |
+| UC8 | 能源 | [📐 Architecture](solutions/industry/energy-seismic/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/energy-seismic/docs/demo-guide.md) |
+| UC9 | 自动驾驶 | [📐 Architecture](solutions/industry/autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/autonomous-driving/docs/demo-guide.md) |
+| UC10 | 建筑 | [📐 Architecture](solutions/industry/construction-bim/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/construction-bim/docs/demo-guide.md) |
+| UC11 | 零售 | [📐 Architecture](solutions/industry/retail-catalog/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/retail-catalog/docs/demo-guide.md) |
+| UC12 | 物流 | [📐 Architecture](solutions/industry/logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/logistics-ocr/docs/demo-guide.md) |
+| UC13 | 教育 | [📐 Architecture](solutions/industry/education-research/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/education-research/docs/demo-guide.md) |
+| UC14 | 保险 | [📐 Architecture](solutions/industry/insurance-claims/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/insurance-claims/docs/demo-guide.md) |
+| UC15 | 国防 | [📐 Architecture](solutions/industry/defense-satellite/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/defense-satellite/docs/demo-guide.md) |
+| UC16 | 政府 | [📐 Architecture](solutions/industry/government-archives/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/government-archives/docs/demo-guide.md) |
+| UC17 | 智慧城市 | [📐 Architecture](solutions/industry/smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/smart-city-geospatial/docs/demo-guide.md) |
+| UC18 | 通信 | [📐 Architecture](solutions/industry/telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/telecom-network-analytics/docs/demo-guide.md) |
+| UC19 | 广告 | [📐 Architecture](solutions/industry/adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/adtech-creative-management/docs/demo-guide.md) |
+| UC20 | 旅行 | [📐 Architecture](solutions/industry/travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/travel-document-processing/docs/demo-guide.md) |
+| UC21 | 农业 | [📐 Architecture](solutions/industry/agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/agri-food-traceability/docs/demo-guide.md) |
+| UC22 | 运输 | [📐 Architecture](solutions/industry/transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/transportation-maintenance/docs/demo-guide.md) |
+| UC23 | 可持续发展 | [📐 Architecture](solutions/industry/sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/sustainability-esg-reporting/docs/demo-guide.md) |
+| UC24 | NPO | [📐 Architecture](solutions/industry/nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/nonprofit-grant-management/docs/demo-guide.md) |
+| UC25 | 电力 | [📐 Architecture](solutions/industry/utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/utilities-asset-inspection/docs/demo-guide.md) |
+| UC26 | 不动产 | [📐 Architecture](solutions/industry/real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/real-estate-portfolio/docs/demo-guide.md) |
+| UC27 | 人才HR | [📐 Architecture](solutions/industry/hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/hr-document-screening/docs/demo-guide.md) |
+| UC28 | 化学 | [📐 Architecture](solutions/industry/chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/chemical-sds-management/docs/demo-guide.md) |
+| UC29 | 全行业通用 (自助 KB) | [📐 Architecture](solutions/genai/kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/kb-selfservice-curation/docs/demo-guide.md) |
+| UC30 | 全行业通用 (Amazon Quick) | [📐 Architecture](solutions/genai/quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/quick-agentic-workspace/docs/demo-guide.md) |
+| — | 内容边缘分发 (CDN) | [📐 Architecture](solutions/edge/content-delivery/docs/architecture.md) | [🎬 Demo Guide](solutions/edge/content-delivery/docs/demo-guide.md) |
 
 ## UI/UX 截图 (最终用户 / 员工 / 负责人视图)
 
@@ -292,23 +292,23 @@ EventBridge Scheduler (定期执行)
 
 | UC | 行业 | 截图数 | 主要内容 | 位置 |
 |----|------|--------|---------|------|
-| UC1 | 法务·合规 | 1 | Step Functions 图 (审计负责人工作流可视化) | [`legal-compliance/docs/demo-guide.zh-CN.md`](legal-compliance/docs/demo-guide.zh-CN.md) |
-| UC2 | 金融·IDP | 1 | Step Functions 图 (发票处理负责人工作流可视化) | [`financial-idp/docs/demo-guide.zh-CN.md`](financial-idp/docs/demo-guide.zh-CN.md) |
-| UC3 | 制造·分析 | 1 | Step Functions 图 (质量管理负责人工作流可视化) | [`manufacturing-analytics/docs/demo-guide.zh-CN.md`](manufacturing-analytics/docs/demo-guide.zh-CN.md) |
-| UC4 | 媒体·VFX | 未刊载 | (渲染负责人界面, 计划拍摄) | [`media-vfx/docs/demo-guide.zh-CN.md`](media-vfx/docs/demo-guide.zh-CN.md) |
-| UC5 | 医疗·DICOM | 1 | Step Functions 图 (医疗信息管理员工作流可视化) | [`healthcare-dicom/docs/demo-guide.zh-CN.md`](healthcare-dicom/docs/demo-guide.zh-CN.md) |
-| UC6 | 半导体·EDA | 4 | FSx Volumes / S3 输出桶 / Athena 查询结果 / Bedrock 设计审查报告 | [`semiconductor-eda/docs/demo-guide.zh-CN.md`](semiconductor-eda/docs/demo-guide.zh-CN.md) |
-| UC7 | 基因组学流水线 | 1 | Step Functions 图 (研究者工作流可视化) | [`genomics-pipeline/docs/demo-guide.zh-CN.md`](genomics-pipeline/docs/demo-guide.zh-CN.md) |
-| UC8 | 能源·地震勘探 | 1 | Step Functions 图 (地质解析负责人工作流可视化) | [`energy-seismic/docs/demo-guide.zh-CN.md`](energy-seismic/docs/demo-guide.zh-CN.md) |
-| UC9 | 自动驾驶 | 未刊载 | (ADAS 分析负责人界面, 计划拍摄) | [`autonomous-driving/docs/demo-guide.zh-CN.md`](autonomous-driving/docs/demo-guide.zh-CN.md) |
-| UC10 | 建筑·BIM | 1 | Step Functions 图 (BIM 管理员 / 安全负责人工作流可视化) | [`construction-bim/docs/demo-guide.zh-CN.md`](construction-bim/docs/demo-guide.zh-CN.md) |
-| UC11 | 零售·目录 | 2 | 产品标签结果 / S3 输出桶 (EC 负责人用) | [`retail-catalog/docs/demo-guide.zh-CN.md`](retail-catalog/docs/demo-guide.zh-CN.md) |
-| UC12 | 物流·OCR | 1 | Step Functions 图 (配送负责人工作流可视化) | [`logistics-ocr/docs/demo-guide.zh-CN.md`](logistics-ocr/docs/demo-guide.zh-CN.md) |
-| UC13 | 教育·研究 | 1 | Step Functions 图 (研究事务负责人工作流可视化) | [`education-research/docs/demo-guide.zh-CN.md`](education-research/docs/demo-guide.zh-CN.md) |
-| UC14 | 保险 | 2 | 理赔报告 / S3 输出桶 (保险理算员用) | [`insurance-claims/docs/demo-guide.zh-CN.md`](insurance-claims/docs/demo-guide.zh-CN.md) |
-| UC15 | 国防·卫星图像 (Public Sector) | 4 | S3 上传 / 输出 / SNS 邮件 / JSON 成果物 (分析负责人用) | [`defense-satellite/README.md`](defense-satellite/README.md) |
-| UC16 | 政府·FOIA (Public Sector) | 5 | 上传 / 编辑预览 / 元数据 / FOIA 提醒邮件 / DynamoDB 保留历史 (公文档负责人用) | [`government-archives/README.md`](government-archives/README.md) |
-| UC17 | 智慧城市 (Public Sector) | 5 | GIS 上传 / Bedrock 报告 / 风险地图 / 土地利用分布 / 时序历史 (城市规划负责人用) | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md) |
+| UC1 | 法务·合规 | 1 | Step Functions 图 (审计负责人工作流可视化) | [`solutions/industry/legal-compliance/docs/demo-guide.zh-CN.md`](solutions/industry/legal-compliance/docs/demo-guide.zh-CN.md) |
+| UC2 | 金融·IDP | 1 | Step Functions 图 (发票处理负责人工作流可视化) | [`solutions/industry/financial-idp/docs/demo-guide.zh-CN.md`](solutions/industry/financial-idp/docs/demo-guide.zh-CN.md) |
+| UC3 | 制造·分析 | 1 | Step Functions 图 (质量管理负责人工作流可视化) | [`solutions/industry/manufacturing-analytics/docs/demo-guide.zh-CN.md`](solutions/industry/manufacturing-analytics/docs/demo-guide.zh-CN.md) |
+| UC4 | 媒体·VFX | 未刊载 | (渲染负责人界面, 计划拍摄) | [`solutions/industry/media-vfx/docs/demo-guide.zh-CN.md`](solutions/industry/media-vfx/docs/demo-guide.zh-CN.md) |
+| UC5 | 医疗·DICOM | 1 | Step Functions 图 (医疗信息管理员工作流可视化) | [`solutions/industry/healthcare-dicom/docs/demo-guide.zh-CN.md`](solutions/industry/healthcare-dicom/docs/demo-guide.zh-CN.md) |
+| UC6 | 半导体·EDA | 4 | FSx Volumes / S3 输出桶 / Athena 查询结果 / Bedrock 设计审查报告 | [`solutions/industry/semiconductor-eda/docs/demo-guide.zh-CN.md`](solutions/industry/semiconductor-eda/docs/demo-guide.zh-CN.md) |
+| UC7 | 基因组学流水线 | 1 | Step Functions 图 (研究者工作流可视化) | [`solutions/industry/genomics-pipeline/docs/demo-guide.zh-CN.md`](solutions/industry/genomics-pipeline/docs/demo-guide.zh-CN.md) |
+| UC8 | 能源·地震勘探 | 1 | Step Functions 图 (地质解析负责人工作流可视化) | [`solutions/industry/energy-seismic/docs/demo-guide.zh-CN.md`](solutions/industry/energy-seismic/docs/demo-guide.zh-CN.md) |
+| UC9 | 自动驾驶 | 未刊载 | (ADAS 分析负责人界面, 计划拍摄) | [`solutions/industry/autonomous-driving/docs/demo-guide.zh-CN.md`](solutions/industry/autonomous-driving/docs/demo-guide.zh-CN.md) |
+| UC10 | 建筑·BIM | 1 | Step Functions 图 (BIM 管理员 / 安全负责人工作流可视化) | [`solutions/industry/construction-bim/docs/demo-guide.zh-CN.md`](solutions/industry/construction-bim/docs/demo-guide.zh-CN.md) |
+| UC11 | 零售·目录 | 2 | 产品标签结果 / S3 输出桶 (EC 负责人用) | [`solutions/industry/retail-catalog/docs/demo-guide.zh-CN.md`](solutions/industry/retail-catalog/docs/demo-guide.zh-CN.md) |
+| UC12 | 物流·OCR | 1 | Step Functions 图 (配送负责人工作流可视化) | [`solutions/industry/logistics-ocr/docs/demo-guide.zh-CN.md`](solutions/industry/logistics-ocr/docs/demo-guide.zh-CN.md) |
+| UC13 | 教育·研究 | 1 | Step Functions 图 (研究事务负责人工作流可视化) | [`solutions/industry/education-research/docs/demo-guide.zh-CN.md`](solutions/industry/education-research/docs/demo-guide.zh-CN.md) |
+| UC14 | 保险 | 2 | 理赔报告 / S3 输出桶 (保险理算员用) | [`solutions/industry/insurance-claims/docs/demo-guide.zh-CN.md`](solutions/industry/insurance-claims/docs/demo-guide.zh-CN.md) |
+| UC15 | 国防·卫星图像 (Public Sector) | 4 | S3 上传 / 输出 / SNS 邮件 / JSON 成果物 (分析负责人用) | [`solutions/industry/defense-satellite/README.md`](solutions/industry/defense-satellite/README.md) |
+| UC16 | 政府·FOIA (Public Sector) | 5 | 上传 / 编辑预览 / 元数据 / FOIA 提醒邮件 / DynamoDB 保留历史 (公文档负责人用) | [`solutions/industry/government-archives/README.md`](solutions/industry/government-archives/README.md) |
+| UC17 | 智慧城市 (Public Sector) | 5 | GIS 上传 / Bedrock 报告 / 风险地图 / 土地利用分布 / 时序历史 (城市规划负责人用) | [`solutions/industry/smart-city-geospatial/README.md`](solutions/industry/smart-city-geospatial/README.md) |
 
 **通用截图** (跨行业通用视图, `docs/screenshots/masked/common/`):
 - `fsx-s3ap-detail.png` — FSx for ONTAP S3 Access Point 详情视图 (存储管理员参考)
@@ -338,7 +338,7 @@ AI/ML 工件的写入目标（已在 UC9/10/11/12/14 实现,
 ```bash
 # 以 FSXN_S3AP 模式部署
 aws cloudformation deploy \
-  --template-file retail-catalog/template-deploy.yaml \
+  --template-file solutions/industry/retail-catalog/template-deploy.yaml \
   --stack-name fsxn-retail-catalog-demo \
   --parameter-overrides \
     OutputDestination=FSXN_S3AP \
@@ -789,7 +789,7 @@ export AWS_DEFAULT_REGION=us-east-1  # 推荐支持所有服务的区域
 # CloudFormation 部署
 aws cloudformation create-stack \
   --stack-name fsxn-legal-compliance \
-  --template-body file://legal-compliance/template-deploy.yaml \
+  --template-body file://solutions/industry/legal-compliance/template-deploy.yaml \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameters \
     ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
@@ -961,11 +961,11 @@ fsxn-s3ap-serverless-patterns/
 │   ├── discovery_handler.py          # 共享 Discovery Lambda 模板
 │   ├── cfn/                          # CloudFormation 代码片段
 │   └── tests/                        # 单元测试与属性测试
-├── legal-compliance/                  # UC1: 法务合规
-├── financial-idp/                     # UC2: 金融保险
-├── manufacturing-analytics/           # UC3: 制造业
-├── media-vfx/                         # UC4: 媒体
-├── healthcare-dicom/                  # UC5: 医疗
+├── solutions/industry/legal-compliance/                  # UC1: 法务合规
+├── solutions/industry/financial-idp/                     # UC2: 金融保险
+├── solutions/industry/manufacturing-analytics/           # UC3: 制造业
+├── solutions/industry/media-vfx/                         # UC4: 媒体
+├── solutions/industry/healthcare-dicom/                  # UC5: 医疗
 ├── scripts/                           # 验证与部署脚本
 │   ├── deploy_uc.sh                  # UC 部署脚本（通用）
 │   ├── verify_shared_modules.py      # 共享模块 AWS 环境验证

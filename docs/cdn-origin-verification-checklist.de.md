@@ -154,5 +154,5 @@ Für jedes CDN „Origin = S3-AP-Alias-Host" festlegen und bestätigen, dass ein
 ## Zugehörige Dokumente
 
 - [CDN/Edge-Auslieferungsvergleich](cdn-comparison.de.md)
-- [content-edge-delivery UC](../content-edge-delivery/README.de.md)
+- [content-edge-delivery UC](../solutions/edge/content-delivery/README.de.md)
 - [S3AP-Kompatibilitätshinweise](s3ap-compatibility-notes.md)

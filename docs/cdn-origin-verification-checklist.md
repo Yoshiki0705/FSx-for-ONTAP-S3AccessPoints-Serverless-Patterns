@@ -155,5 +155,5 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ## 関連ドキュメント
 
 - [CDN/エッジ配信統合比較](cdn-comparison.md)
-- [content-edge-delivery UC](../content-edge-delivery/README.md)
+- [content-edge-delivery UC](../solutions/edge/content-delivery/README.md)
 - [S3AP 互換性ノート](s3ap-compatibility-notes.md)

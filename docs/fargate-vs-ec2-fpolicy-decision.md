@@ -80,12 +80,12 @@ OS パッチ管理を避けたいか？
 ## テンプレート
 
 リポジトリには両方のテンプレートが含まれています:
-- `event-driven-fpolicy/template.yaml` — Fargate 構成
-- `event-driven-fpolicy/template-ec2.yaml` — EC2 構成
+- `solutions/event-driven/fpolicy/template.yaml` — Fargate 構成
+- `solutions/event-driven/fpolicy/template-ec2.yaml` — EC2 構成
 
 `ComputeType` パラメータで切り替え可能。
 
 ## 参考リンク
 
 - [Deployment Profiles](deployment-profiles.md)
-- [event-driven-fpolicy/ README](../event-driven-fpolicy/README.md)
+- [solutions/event-driven/fpolicy/ README](../solutions/event-driven/fpolicy/README.md)

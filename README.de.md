@@ -171,25 +171,25 @@ EventBridge Scheduler (periodische Ausführung)
 
 | # | Verzeichnis | Branche | Muster | Verwendete AI/ML-Dienste | ap-northeast-1 Verifizierungsstatus |
 |---|-------------|---------|--------|--------------------------|-------------------------------------|
-| UC1 | `legal-compliance/` | Recht und Compliance | Dateiserver-Audit und Data Governance | Athena, Bedrock | ✅ E2E erfolgreich |
-| UC2 | `financial-idp/` | Finanz- und Versicherungswesen | Automatisierte Vertrags- und Rechnungsverarbeitung (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Nicht in Tokyo (unterstützte Region nutzen) |
-| UC3 | `manufacturing-analytics/` | Fertigung | IoT-Sensorprotokoll- und Qualitätsprüfungsbildanalyse | Athena, Rekognition | ✅ E2E erfolgreich |
-| UC4 | `media-vfx/` | Medien | VFX-Rendering-Pipeline | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud-Einrichtung erforderlich |
-| UC5 | `healthcare-dicom/` | Gesundheitswesen | Automatische DICOM-Bildklassifizierung und Anonymisierung | Rekognition, Comprehend Medical ⚠️ | ⚠️ Nicht in Tokyo (unterstützte Region nutzen) |
+| UC1 | `solutions/industry/legal-compliance/` | Recht und Compliance | Dateiserver-Audit und Data Governance | Athena, Bedrock | ✅ E2E erfolgreich |
+| UC2 | `solutions/industry/financial-idp/` | Finanz- und Versicherungswesen | Automatisierte Vertrags- und Rechnungsverarbeitung (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ Nicht in Tokyo (unterstützte Region nutzen) |
+| UC3 | `solutions/industry/manufacturing-analytics/` | Fertigung | IoT-Sensorprotokoll- und Qualitätsprüfungsbildanalyse | Athena, Rekognition | ✅ E2E erfolgreich |
+| UC4 | `solutions/industry/media-vfx/` | Medien | VFX-Rendering-Pipeline | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud-Einrichtung erforderlich |
+| UC5 | `solutions/industry/healthcare-dicom/` | Gesundheitswesen | Automatische DICOM-Bildklassifizierung und Anonymisierung | Rekognition, Comprehend Medical ⚠️ | ⚠️ Nicht in Tokyo (unterstützte Region nutzen) |
 
 ### Phase 2 (UC6–UC14)
 
 | # | Verzeichnis | Branche | Muster | Verwendete AI/ML-Dienste | ap-northeast-1 Verifizierungsstatus |
 |---|-------------|---------|--------|--------------------------|-------------------------------------|
-| UC6 | `semiconductor-eda/` | Halbleiter / EDA | GDS/OASIS-Validierung, Metadatenextraktion, DRC-Aggregation | Athena, Bedrock | ✅ Tests bestanden |
-| UC7 | `genomics-pipeline/` | Genomik | FASTQ/VCF-Qualitätsprüfung, Variantenaufruf-Aggregation | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
-| UC8 | `energy-seismic/` | Energie | SEG-Y-Metadatenextraktion, Bohrloch-Anomalieerkennung | Athena, Bedrock, Rekognition | ✅ Tests bestanden |
-| UC9 | `autonomous-driving/` | Autonomes Fahren / ADAS | Video/LiDAR-Vorverarbeitung, QC, Annotation | Rekognition, Bedrock, SageMaker | ✅ Tests bestanden |
-| UC10 | `construction-bim/` | Bauwesen / AEC | BIM-Versionsverwaltung, Zeichnungs-OCR, Sicherheits-Compliance | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
-| UC11 | `retail-catalog/` | Einzelhandel / E-Commerce | Produktbild-Tagging, Katalog-Metadatengenerierung | Rekognition, Bedrock | ✅ Tests bestanden |
-| UC12 | `logistics-ocr/` | Logistik | Lieferschein-OCR, Lagerbestandsbildanalyse | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC13 | `education-research/` | Bildung / Forschung | PDF-Klassifizierung, Zitationsnetzwerkanalyse | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC14 | `insurance-claims/` | Versicherung | Unfallfotos-Schadensbewertung, Kostenvoranschlag-OCR, Schadenbericht | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC6 | `solutions/industry/semiconductor-eda/` | Halbleiter / EDA | GDS/OASIS-Validierung, Metadatenextraktion, DRC-Aggregation | Athena, Bedrock | ✅ Tests bestanden |
+| UC7 | `solutions/industry/genomics-pipeline/` | Genomik | FASTQ/VCF-Qualitätsprüfung, Variantenaufruf-Aggregation | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
+| UC8 | `solutions/industry/energy-seismic/` | Energie | SEG-Y-Metadatenextraktion, Bohrloch-Anomalieerkennung | Athena, Bedrock, Rekognition | ✅ Tests bestanden |
+| UC9 | `solutions/industry/autonomous-driving/` | Autonomes Fahren / ADAS | Video/LiDAR-Vorverarbeitung, QC, Annotation | Rekognition, Bedrock, SageMaker | ✅ Tests bestanden |
+| UC10 | `solutions/industry/construction-bim/` | Bauwesen / AEC | BIM-Versionsverwaltung, Zeichnungs-OCR, Sicherheits-Compliance | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
+| UC11 | `solutions/industry/retail-catalog/` | Einzelhandel / E-Commerce | Produktbild-Tagging, Katalog-Metadatengenerierung | Rekognition, Bedrock | ✅ Tests bestanden |
+| UC12 | `solutions/industry/logistics-ocr/` | Logistik | Lieferschein-OCR, Lagerbestandsbildanalyse | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC13 | `solutions/industry/education-research/` | Bildung / Forschung | PDF-Klassifizierung, Zitationsnetzwerkanalyse | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
+| UC14 | `solutions/industry/insurance-claims/` | Versicherung | Unfallfotos-Schadensbewertung, Kostenvoranschlag-OCR, Schadenbericht | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
 
 > **Regionale Einschränkungen**: Amazon Textract und Amazon Comprehend Medical sind in ap-northeast-1 (Tokyo) nicht verfügbar. Phase 2 UCs (UC7, UC10, UC12, UC13, UC14) verwenden Cross_Region_Client, um API-Aufrufe an us-east-1 weiterzuleiten. Rekognition, Comprehend, Bedrock und Athena sind in ap-northeast-1 verfügbar.
 > 
@@ -199,22 +199,22 @@ EventBridge Scheduler (periodische Ausführung)
 
 | # | Verzeichnis | Branche | Muster | AI/ML-Services | ap-northeast-1 Status |
 |---|-------------|---------|--------|----------------|----------------------|
-| UC15 | `defense-satellite/` | Verteidigung/Weltraum | Satellitenbildanalyse (Objekterkennung, Veränderungserkennung, Alarme) | Rekognition, SageMaker (optional), Bedrock | ✅ Code + Tests vollständig, AWS verifiziert |
-| UC16 | `government-archives/` | Regierung | Behördenakten / FOIA (OCR, Klassifikation, Schwärzung, 20-Tage-Frist) | Textract ⚠️, Comprehend, Bedrock, OpenSearch (optional) | ✅ Code + Tests vollständig, AWS verifiziert |
-| UC17 | `smart-city-geospatial/` | Smart City | Geospatiale Analyse (CRS-Normalisierung, Landnutzung, Risikokartierung, Planungsbericht) | Rekognition, SageMaker (optional), Bedrock (Nova Lite) | ✅ Code + Tests vollständig, AWS verifiziert |
-| UC18 | [`telecom-network-analytics/`](telecom-network-analytics/) | Telekom | CDR/Netzwerk-Log-Analyse |
-| UC19 | [`adtech-creative-management/`](adtech-creative-management/) | Werbung | Kreativ-Asset-Management |
-| UC20 | [`travel-document-processing/`](travel-document-processing/) | Reise | Buchungsdokumente・Inspektionsbilder |
-| UC21 | [`agri-food-traceability/`](agri-food-traceability/) | Landwirtschaft | Luftbilder・Rückverfolgbarkeit |
-| UC22 | [`transportation-maintenance/`](transportation-maintenance/) | Transport | Inspektionsbilder・Wartungsberichte |
-| UC23 | [`sustainability-esg-reporting/`](sustainability-esg-reporting/) | Nachhaltigkeit | ESG-Metriken・Reporting |
-| UC24 | [`nonprofit-grant-management/`](nonprofit-grant-management/) | NPO | Förderanträge・Wirkungsmatching |
-| UC25 | [`utilities-asset-inspection/`](utilities-asset-inspection/) | Energie | Drohnenbilder・SCADA-Logs |
-| UC26 | [`real-estate-portfolio/`](real-estate-portfolio/) | Immobilien | Objektbilder・Vertragsdaten |
-| UC27 | [`hr-document-screening/`](hr-document-screening/) | Personal | Lebenslauf-Screening・Bewertung |
-| UC28 | [`chemical-sds-management/`](chemical-sds-management/) | Chemie | SDS-Management・Labornotizen |
-| UC29 | [`genai-kb-selfservice-curation/`](genai-kb-selfservice-curation/) | Branchenübergreifend | Self-Service-KI-Wissenskuratierung (verwaltetes Bedrock KB + Windows Drag-and-drop) |
-| UC30 | [`genai-quick-agentic-workspace/`](genai-quick-agentic-workspace/) | Branchenübergreifend | Agentenbasierter Amazon-Quick-Workspace (Index/Sight/Flows + S3-AP-Datenbasis) |
+| UC15 | `solutions/industry/defense-satellite/` | Verteidigung/Weltraum | Satellitenbildanalyse (Objekterkennung, Veränderungserkennung, Alarme) | Rekognition, SageMaker (optional), Bedrock | ✅ Code + Tests vollständig, AWS verifiziert |
+| UC16 | `solutions/industry/government-archives/` | Regierung | Behördenakten / FOIA (OCR, Klassifikation, Schwärzung, 20-Tage-Frist) | Textract ⚠️, Comprehend, Bedrock, OpenSearch (optional) | ✅ Code + Tests vollständig, AWS verifiziert |
+| UC17 | `solutions/industry/smart-city-geospatial/` | Smart City | Geospatiale Analyse (CRS-Normalisierung, Landnutzung, Risikokartierung, Planungsbericht) | Rekognition, SageMaker (optional), Bedrock (Nova Lite) | ✅ Code + Tests vollständig, AWS verifiziert |
+| UC18 | [`solutions/industry/telecom-network-analytics/`](solutions/industry/telecom-network-analytics/) | Telekom | CDR/Netzwerk-Log-Analyse |
+| UC19 | [`solutions/industry/adtech-creative-management/`](solutions/industry/adtech-creative-management/) | Werbung | Kreativ-Asset-Management |
+| UC20 | [`solutions/industry/travel-document-processing/`](solutions/industry/travel-document-processing/) | Reise | Buchungsdokumente・Inspektionsbilder |
+| UC21 | [`solutions/industry/agri-food-traceability/`](solutions/industry/agri-food-traceability/) | Landwirtschaft | Luftbilder・Rückverfolgbarkeit |
+| UC22 | [`solutions/industry/transportation-maintenance/`](solutions/industry/transportation-maintenance/) | Transport | Inspektionsbilder・Wartungsberichte |
+| UC23 | [`solutions/industry/sustainability-esg-reporting/`](solutions/industry/sustainability-esg-reporting/) | Nachhaltigkeit | ESG-Metriken・Reporting |
+| UC24 | [`solutions/industry/nonprofit-grant-management/`](solutions/industry/nonprofit-grant-management/) | NPO | Förderanträge・Wirkungsmatching |
+| UC25 | [`solutions/industry/utilities-asset-inspection/`](solutions/industry/utilities-asset-inspection/) | Energie | Drohnenbilder・SCADA-Logs |
+| UC26 | [`solutions/industry/real-estate-portfolio/`](solutions/industry/real-estate-portfolio/) | Immobilien | Objektbilder・Vertragsdaten |
+| UC27 | [`solutions/industry/hr-document-screening/`](solutions/industry/hr-document-screening/) | Personal | Lebenslauf-Screening・Bewertung |
+| UC28 | [`solutions/industry/chemical-sds-management/`](solutions/industry/chemical-sds-management/) | Chemie | SDS-Management・Labornotizen |
+| UC29 | [`solutions/genai/kb-selfservice-curation/`](solutions/genai/kb-selfservice-curation/) | Branchenübergreifend | Self-Service-KI-Wissenskuratierung (verwaltetes Bedrock KB + Windows Drag-and-drop) |
+| UC30 | [`solutions/genai/quick-agentic-workspace/`](solutions/genai/quick-agentic-workspace/) | Branchenübergreifend | Agentenbasierter Amazon-Quick-Workspace (Index/Sight/Flows + S3-AP-Datenbasis) |
 
 > **Konformität mit öffentlicher Hand**: UC15 adressiert DoD CC SRG / CSfC / FedRAMP High (GovCloud-Migration), UC16 adressiert NARA / FOIA Section 552 / Section 508, UC17 adressiert INSPIRE-Richtlinie / OGC-Standards.
 
@@ -222,20 +222,20 @@ EventBridge Scheduler (periodische Ausführung)
 
 | # | Verzeichnis | Muster | Beschreibung | Status |
 |---|------------|--------|--------------|--------|
-| FC1 | [`flexcache-anycast-dr/`](flexcache-anycast-dr/README.md) | FlexCache AnyCast / DR | Health-Check, Routing-Entscheidung, Failover-Simulation | ✅ Code + Doku fertig |
-| FC2 | [`dynamic-flexcache-render-workflow/`](dynamic-flexcache-render-workflow/README.md) | Dynamic FlexCache Render/EDA | Dynamische FlexCache-Erstellung/-Löschung pro Job | ✅ Code + Tests fertig |
-| FC3 | [`genai-rag-enterprise-files/`](genai-rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | Berechtigungsbasiertes RAG (über S3 AP, ohne Datenkopie) | ✅ Code + Tests fertig |
-| FC4 | [`automotive-cae/`](automotive-cae/README.md) | Automotive CAE Analytics | Automatische Analyse von CAE-Simulationsergebnissen | ✅ Code + Tests fertig |
-| FC5 | [`life-sciences-research/`](life-sciences-research/README.md) | Life Sciences Research | Automatische Analyse von Forschungsdaten | ✅ Template fertig |
-| FC6 | [`gaming-build-pipeline/`](gaming-build-pipeline/README.md) | Gaming Build Pipeline | Qualitätsprüfung von Spiel-Assets und Log-Analyse | ✅ Template fertig |
-| FC7 | [`devops-flexclone-cicd/`](devops-flexclone-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | FlexClone-basierte Dev/Test-Aktualisierung + CI/CD | ✅ Code + Tests fertig |
+| FC1 | [`solutions/flexcache/anycast-dr/`](solutions/flexcache/anycast-dr/README.md) | FlexCache AnyCast / DR | Health-Check, Routing-Entscheidung, Failover-Simulation | ✅ Code + Doku fertig |
+| FC2 | [`solutions/flexcache/dynamic-render-workflow/`](solutions/flexcache/dynamic-render-workflow/README.md) | Dynamic FlexCache Render/EDA | Dynamische FlexCache-Erstellung/-Löschung pro Job | ✅ Code + Tests fertig |
+| FC3 | [`solutions/flexcache/rag-enterprise-files/`](solutions/flexcache/rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | Berechtigungsbasiertes RAG (über S3 AP, ohne Datenkopie) | ✅ Code + Tests fertig |
+| FC4 | [`solutions/flexcache/automotive-cae/`](solutions/flexcache/automotive-cae/README.md) | Automotive CAE Analytics | Automatische Analyse von CAE-Simulationsergebnissen | ✅ Code + Tests fertig |
+| FC5 | [`solutions/flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/README.md) | Life Sciences Research | Automatische Analyse von Forschungsdaten | ✅ Template fertig |
+| FC6 | [`solutions/flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/README.md) | Gaming Build Pipeline | Qualitätsprüfung von Spiel-Assets und Log-Analyse | ✅ Template fertig |
+| FC7 | [`solutions/flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | FlexClone-basierte Dev/Test-Aktualisierung + CI/CD | ✅ Code + Tests fertig |
 
 ### Infrastruktur- / Querschnittsmuster
 
 | Verzeichnis | Inhalt |
 |:---|:---|
-| [`event-driven-fpolicy/`](event-driven-fpolicy/) | FPolicy-ereignisgesteuerte Pipeline |
-| [`content-edge-delivery/`](content-edge-delivery/) | CDN/Edge-Delivery-Muster (anbieterneutral; CloudFront/Drittanbieter, [CDN-Vergleich](docs/cdn-comparison.en.md)) |
+| [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy-ereignisgesteuerte Pipeline |
+| [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/Edge-Delivery-Muster (anbieterneutral; CloudFront/Drittanbieter, [CDN-Vergleich](docs/cdn-comparison.en.md)) |
 
 > **Wichtig**: Ob ein S3 Access Point an ein FlexCache-Volume angehängt werden kann, hängt von der ONTAP-Version und den FSx for ONTAP-Servicespezifikationen ab. Überprüfen Sie dies immer in Ihrer tatsächlichen Umgebung während des PoC.
 
@@ -245,37 +245,37 @@ Detaillierte Architekturdiagramme und Demo-Leitfäden für jeden UC sind im docs
 
 | # | Anwendungsfall | Architektur | Demo-Leitfaden |
 |---|----------------|-------------|----------------|
-| UC1 | Recht | [📐 Architecture](legal-compliance/docs/architecture.md) | [🎬 Demo Guide](legal-compliance/docs/demo-guide.md) |
-| UC2 | Finanzen | [📐 Architecture](financial-idp/docs/architecture.md) | [🎬 Demo Guide](financial-idp/docs/demo-guide.md) |
-| UC3 | Fertigung | [📐 Architecture](manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](manufacturing-analytics/docs/demo-guide.md) |
-| UC4 | Medien | [📐 Architecture](media-vfx/docs/architecture.md) | [🎬 Demo Guide](media-vfx/docs/demo-guide.md) |
-| UC5 | Gesundheit | [📐 Architecture](healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](healthcare-dicom/docs/demo-guide.md) |
-| UC6 | Halbleiter | [📐 Architecture](semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](semiconductor-eda/docs/demo-guide.md) |
-| UC7 | Genomik | [📐 Architecture](genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](genomics-pipeline/docs/demo-guide.md) |
-| UC8 | Energie | [📐 Architecture](energy-seismic/docs/architecture.md) | [🎬 Demo Guide](energy-seismic/docs/demo-guide.md) |
-| UC9 | Autonomes Fahren | [📐 Architecture](autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](autonomous-driving/docs/demo-guide.md) |
-| UC10 | Bau | [📐 Architecture](construction-bim/docs/architecture.md) | [🎬 Demo Guide](construction-bim/docs/demo-guide.md) |
-| UC11 | Einzelhandel | [📐 Architecture](retail-catalog/docs/architecture.md) | [🎬 Demo Guide](retail-catalog/docs/demo-guide.md) |
-| UC12 | Logistik | [📐 Architecture](logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](logistics-ocr/docs/demo-guide.md) |
-| UC13 | Bildung | [📐 Architecture](education-research/docs/architecture.md) | [🎬 Demo Guide](education-research/docs/demo-guide.md) |
-| UC14 | Versicherung | [📐 Architecture](insurance-claims/docs/architecture.md) | [🎬 Demo Guide](insurance-claims/docs/demo-guide.md) |
-| UC15 | Verteidigung | [📐 Architecture](defense-satellite/docs/architecture.md) | [🎬 Demo Guide](defense-satellite/docs/demo-guide.md) |
-| UC16 | Regierung | [📐 Architecture](government-archives/docs/architecture.md) | [🎬 Demo Guide](government-archives/docs/demo-guide.md) |
-| UC17 | Smart City | [📐 Architecture](smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](smart-city-geospatial/docs/demo-guide.md) |
-| UC18 | Telekom | [📐 Architecture](telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](telecom-network-analytics/docs/demo-guide.md) |
-| UC19 | Werbung | [📐 Architecture](adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](adtech-creative-management/docs/demo-guide.md) |
-| UC20 | Reise | [📐 Architecture](travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](travel-document-processing/docs/demo-guide.md) |
-| UC21 | Landwirtschaft | [📐 Architecture](agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](agri-food-traceability/docs/demo-guide.md) |
-| UC22 | Transport | [📐 Architecture](transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](transportation-maintenance/docs/demo-guide.md) |
-| UC23 | Nachhaltigkeit | [📐 Architecture](sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](sustainability-esg-reporting/docs/demo-guide.md) |
-| UC24 | NPO | [📐 Architecture](nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](nonprofit-grant-management/docs/demo-guide.md) |
-| UC25 | Versorgung | [📐 Architecture](utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](utilities-asset-inspection/docs/demo-guide.md) |
-| UC26 | Immobilien | [📐 Architecture](real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](real-estate-portfolio/docs/demo-guide.md) |
-| UC27 | Personal | [📐 Architecture](hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](hr-document-screening/docs/demo-guide.md) |
-| UC28 | Chemie | [📐 Architecture](chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](chemical-sds-management/docs/demo-guide.md) |
-| UC29 | Branchenübergreifend (Self-Service-KB) | [📐 Architecture](genai-kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](genai-kb-selfservice-curation/docs/demo-guide.md) |
-| UC30 | Branchenübergreifend (Amazon Quick) | [📐 Architecture](genai-quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](genai-quick-agentic-workspace/docs/demo-guide.md) |
-| — | Content-Edge-Delivery (CDN) | [📐 Architecture](content-edge-delivery/docs/architecture.md) | [🎬 Demo Guide](content-edge-delivery/docs/demo-guide.md) |
+| UC1 | Recht | [📐 Architecture](solutions/industry/legal-compliance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/legal-compliance/docs/demo-guide.md) |
+| UC2 | Finanzen | [📐 Architecture](solutions/industry/financial-idp/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/financial-idp/docs/demo-guide.md) |
+| UC3 | Fertigung | [📐 Architecture](solutions/industry/manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/manufacturing-analytics/docs/demo-guide.md) |
+| UC4 | Medien | [📐 Architecture](solutions/industry/media-vfx/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/media-vfx/docs/demo-guide.md) |
+| UC5 | Gesundheit | [📐 Architecture](solutions/industry/healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/healthcare-dicom/docs/demo-guide.md) |
+| UC6 | Halbleiter | [📐 Architecture](solutions/industry/semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/semiconductor-eda/docs/demo-guide.md) |
+| UC7 | Genomik | [📐 Architecture](solutions/industry/genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/genomics-pipeline/docs/demo-guide.md) |
+| UC8 | Energie | [📐 Architecture](solutions/industry/energy-seismic/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/energy-seismic/docs/demo-guide.md) |
+| UC9 | Autonomes Fahren | [📐 Architecture](solutions/industry/autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/autonomous-driving/docs/demo-guide.md) |
+| UC10 | Bau | [📐 Architecture](solutions/industry/construction-bim/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/construction-bim/docs/demo-guide.md) |
+| UC11 | Einzelhandel | [📐 Architecture](solutions/industry/retail-catalog/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/retail-catalog/docs/demo-guide.md) |
+| UC12 | Logistik | [📐 Architecture](solutions/industry/logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/logistics-ocr/docs/demo-guide.md) |
+| UC13 | Bildung | [📐 Architecture](solutions/industry/education-research/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/education-research/docs/demo-guide.md) |
+| UC14 | Versicherung | [📐 Architecture](solutions/industry/insurance-claims/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/insurance-claims/docs/demo-guide.md) |
+| UC15 | Verteidigung | [📐 Architecture](solutions/industry/defense-satellite/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/defense-satellite/docs/demo-guide.md) |
+| UC16 | Regierung | [📐 Architecture](solutions/industry/government-archives/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/government-archives/docs/demo-guide.md) |
+| UC17 | Smart City | [📐 Architecture](solutions/industry/smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/smart-city-geospatial/docs/demo-guide.md) |
+| UC18 | Telekom | [📐 Architecture](solutions/industry/telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/telecom-network-analytics/docs/demo-guide.md) |
+| UC19 | Werbung | [📐 Architecture](solutions/industry/adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/adtech-creative-management/docs/demo-guide.md) |
+| UC20 | Reise | [📐 Architecture](solutions/industry/travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/travel-document-processing/docs/demo-guide.md) |
+| UC21 | Landwirtschaft | [📐 Architecture](solutions/industry/agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/agri-food-traceability/docs/demo-guide.md) |
+| UC22 | Transport | [📐 Architecture](solutions/industry/transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/transportation-maintenance/docs/demo-guide.md) |
+| UC23 | Nachhaltigkeit | [📐 Architecture](solutions/industry/sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/sustainability-esg-reporting/docs/demo-guide.md) |
+| UC24 | NPO | [📐 Architecture](solutions/industry/nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/nonprofit-grant-management/docs/demo-guide.md) |
+| UC25 | Versorgung | [📐 Architecture](solutions/industry/utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/utilities-asset-inspection/docs/demo-guide.md) |
+| UC26 | Immobilien | [📐 Architecture](solutions/industry/real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/real-estate-portfolio/docs/demo-guide.md) |
+| UC27 | Personal | [📐 Architecture](solutions/industry/hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/hr-document-screening/docs/demo-guide.md) |
+| UC28 | Chemie | [📐 Architecture](solutions/industry/chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/chemical-sds-management/docs/demo-guide.md) |
+| UC29 | Branchenübergreifend (Self-Service-KB) | [📐 Architecture](solutions/genai/kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/kb-selfservice-curation/docs/demo-guide.md) |
+| UC30 | Branchenübergreifend (Amazon Quick) | [📐 Architecture](solutions/genai/quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/quick-agentic-workspace/docs/demo-guide.md) |
+| — | Content-Edge-Delivery (CDN) | [📐 Architecture](solutions/edge/content-delivery/docs/architecture.md) | [🎬 Demo Guide](solutions/edge/content-delivery/docs/demo-guide.md) |
 
 ## UI/UX-Screenshots (Endnutzer / Mitarbeiter / Zuständige-Ansichten)
 
@@ -297,23 +297,23 @@ Derselbe Ansatz wird für alle Branchen angewendet, nicht nur für den
 
 | UC | Branche | Anzahl Screenshots | Hauptinhalt | Speicherort |
 |----|---------|--------------------|-------------|-------------|
-| UC1 | Recht & Compliance | 1 | Step Functions-Grafik (Workflow-Visualisierung für Compliance-Auditoren) | [`legal-compliance/docs/demo-guide.de.md`](legal-compliance/docs/demo-guide.de.md) |
-| UC2 | Finanz-IDP | 1 | Step Functions-Grafik (Workflow-Visualisierung für Rechnungsbearbeitungsmitarbeiter) | [`financial-idp/docs/demo-guide.de.md`](financial-idp/docs/demo-guide.de.md) |
-| UC3 | Fertigung & Analytik | 1 | Step Functions-Grafik (Workflow-Visualisierung für Qualitätskontrollmitarbeiter) | [`manufacturing-analytics/docs/demo-guide.de.md`](manufacturing-analytics/docs/demo-guide.de.md) |
-| UC4 | Medien & VFX | Noch nicht erfasst | (Ansichten für Rendering-Techniker, Erfassung geplant) | [`media-vfx/docs/demo-guide.de.md`](media-vfx/docs/demo-guide.de.md) |
-| UC5 | Healthcare DICOM | 1 | Step Functions-Grafik (Workflow-Visualisierung für medizinische Aktenmanager) | [`healthcare-dicom/docs/demo-guide.de.md`](healthcare-dicom/docs/demo-guide.de.md) |
-| UC6 | Halbleiter EDA | 4 | FSx Volumes / S3-Ausgabe-Bucket / Athena-Query-Ergebnisse / Bedrock-Designüberprüfungsbericht | [`semiconductor-eda/docs/demo-guide.de.md`](semiconductor-eda/docs/demo-guide.de.md) |
-| UC7 | Genomik-Pipeline | 1 | Step Functions-Grafik (Workflow-Visualisierung für Forscher) | [`genomics-pipeline/docs/demo-guide.de.md`](genomics-pipeline/docs/demo-guide.de.md) |
-| UC8 | Energie & Seismik | 1 | Step Functions-Grafik (Workflow-Visualisierung für geologische Analysten) | [`energy-seismic/docs/demo-guide.de.md`](energy-seismic/docs/demo-guide.de.md) |
-| UC9 | Autonomes Fahren | Noch nicht erfasst | (ADAS-Analysten-Ansichten, Erfassung geplant) | [`autonomous-driving/docs/demo-guide.de.md`](autonomous-driving/docs/demo-guide.de.md) |
-| UC10 | Bau BIM | 1 | Step Functions-Grafik (Workflow-Visualisierung für BIM-Manager / Sicherheitsbeauftragte) | [`construction-bim/docs/demo-guide.de.md`](construction-bim/docs/demo-guide.de.md) |
-| UC11 | Einzelhandel Katalog | 2 | Produkt-Tagging-Ergebnisse / S3-Ausgabe-Bucket (für E-Commerce-Betreiber) | [`retail-catalog/docs/demo-guide.de.md`](retail-catalog/docs/demo-guide.de.md) |
-| UC12 | Logistik OCR | 1 | Step Functions-Grafik (Workflow-Visualisierung für Lieferbetreiber) | [`logistics-ocr/docs/demo-guide.de.md`](logistics-ocr/docs/demo-guide.de.md) |
-| UC13 | Bildung & Forschung | 1 | Step Functions-Grafik (Workflow-Visualisierung für Forschungsverwaltungsmitarbeiter) | [`education-research/docs/demo-guide.de.md`](education-research/docs/demo-guide.de.md) |
-| UC14 | Versicherung | 2 | Schadensbericht / S3-Ausgabe-Bucket (für Versicherungsgutachter) | [`insurance-claims/docs/demo-guide.de.md`](insurance-claims/docs/demo-guide.de.md) |
-| UC15 | Verteidigung & Satellitenbilder (Public Sector) | 4 | S3-Upload / Ausgabe / SNS-E-Mail / JSON-Artefakte (für Satellitenbilder-Analysten) | [`defense-satellite/README.md`](defense-satellite/README.md) |
-| UC16 | Regierung FOIA (Public Sector) | 5 | Upload / redaktierte Vorschau / Metadaten / FOIA-Erinnerungs-E-Mail / DynamoDB-Aufbewahrungshistorie (für öffentliche Aktenverantwortliche) | [`government-archives/README.md`](government-archives/README.md) |
-| UC17 | Smart City (Public Sector) | 5 | GIS-Upload / Bedrock-Bericht / Risikokarte / Landnutzungsverteilung / Zeitreihenhistorie (für Stadtplaner) | [`smart-city-geospatial/README.md`](smart-city-geospatial/README.md) |
+| UC1 | Recht & Compliance | 1 | Step Functions-Grafik (Workflow-Visualisierung für Compliance-Auditoren) | [`solutions/industry/legal-compliance/docs/demo-guide.de.md`](solutions/industry/legal-compliance/docs/demo-guide.de.md) |
+| UC2 | Finanz-IDP | 1 | Step Functions-Grafik (Workflow-Visualisierung für Rechnungsbearbeitungsmitarbeiter) | [`solutions/industry/financial-idp/docs/demo-guide.de.md`](solutions/industry/financial-idp/docs/demo-guide.de.md) |
+| UC3 | Fertigung & Analytik | 1 | Step Functions-Grafik (Workflow-Visualisierung für Qualitätskontrollmitarbeiter) | [`solutions/industry/manufacturing-analytics/docs/demo-guide.de.md`](solutions/industry/manufacturing-analytics/docs/demo-guide.de.md) |
+| UC4 | Medien & VFX | Noch nicht erfasst | (Ansichten für Rendering-Techniker, Erfassung geplant) | [`solutions/industry/media-vfx/docs/demo-guide.de.md`](solutions/industry/media-vfx/docs/demo-guide.de.md) |
+| UC5 | Healthcare DICOM | 1 | Step Functions-Grafik (Workflow-Visualisierung für medizinische Aktenmanager) | [`solutions/industry/healthcare-dicom/docs/demo-guide.de.md`](solutions/industry/healthcare-dicom/docs/demo-guide.de.md) |
+| UC6 | Halbleiter EDA | 4 | FSx Volumes / S3-Ausgabe-Bucket / Athena-Query-Ergebnisse / Bedrock-Designüberprüfungsbericht | [`solutions/industry/semiconductor-eda/docs/demo-guide.de.md`](solutions/industry/semiconductor-eda/docs/demo-guide.de.md) |
+| UC7 | Genomik-Pipeline | 1 | Step Functions-Grafik (Workflow-Visualisierung für Forscher) | [`solutions/industry/genomics-pipeline/docs/demo-guide.de.md`](solutions/industry/genomics-pipeline/docs/demo-guide.de.md) |
+| UC8 | Energie & Seismik | 1 | Step Functions-Grafik (Workflow-Visualisierung für geologische Analysten) | [`solutions/industry/energy-seismic/docs/demo-guide.de.md`](solutions/industry/energy-seismic/docs/demo-guide.de.md) |
+| UC9 | Autonomes Fahren | Noch nicht erfasst | (ADAS-Analysten-Ansichten, Erfassung geplant) | [`solutions/industry/autonomous-driving/docs/demo-guide.de.md`](solutions/industry/autonomous-driving/docs/demo-guide.de.md) |
+| UC10 | Bau BIM | 1 | Step Functions-Grafik (Workflow-Visualisierung für BIM-Manager / Sicherheitsbeauftragte) | [`solutions/industry/construction-bim/docs/demo-guide.de.md`](solutions/industry/construction-bim/docs/demo-guide.de.md) |
+| UC11 | Einzelhandel Katalog | 2 | Produkt-Tagging-Ergebnisse / S3-Ausgabe-Bucket (für E-Commerce-Betreiber) | [`solutions/industry/retail-catalog/docs/demo-guide.de.md`](solutions/industry/retail-catalog/docs/demo-guide.de.md) |
+| UC12 | Logistik OCR | 1 | Step Functions-Grafik (Workflow-Visualisierung für Lieferbetreiber) | [`solutions/industry/logistics-ocr/docs/demo-guide.de.md`](solutions/industry/logistics-ocr/docs/demo-guide.de.md) |
+| UC13 | Bildung & Forschung | 1 | Step Functions-Grafik (Workflow-Visualisierung für Forschungsverwaltungsmitarbeiter) | [`solutions/industry/education-research/docs/demo-guide.de.md`](solutions/industry/education-research/docs/demo-guide.de.md) |
+| UC14 | Versicherung | 2 | Schadensbericht / S3-Ausgabe-Bucket (für Versicherungsgutachter) | [`solutions/industry/insurance-claims/docs/demo-guide.de.md`](solutions/industry/insurance-claims/docs/demo-guide.de.md) |
+| UC15 | Verteidigung & Satellitenbilder (Public Sector) | 4 | S3-Upload / Ausgabe / SNS-E-Mail / JSON-Artefakte (für Satellitenbilder-Analysten) | [`solutions/industry/defense-satellite/README.md`](solutions/industry/defense-satellite/README.md) |
+| UC16 | Regierung FOIA (Public Sector) | 5 | Upload / redaktierte Vorschau / Metadaten / FOIA-Erinnerungs-E-Mail / DynamoDB-Aufbewahrungshistorie (für öffentliche Aktenverantwortliche) | [`solutions/industry/government-archives/README.md`](solutions/industry/government-archives/README.md) |
+| UC17 | Smart City (Public Sector) | 5 | GIS-Upload / Bedrock-Bericht / Risikokarte / Landnutzungsverteilung / Zeitreihenhistorie (für Stadtplaner) | [`solutions/industry/smart-city-geospatial/README.md`](solutions/industry/smart-city-geospatial/README.md) |
 
 **Gemeinsame Screenshots** (branchenübergreifende generische Ansichten in `docs/screenshots/masked/common/`):
 - `fsx-s3ap-detail.png` — FSx for ONTAP S3 Access Point Detailansicht
@@ -344,7 +344,7 @@ Pattern-Tabelle unten):
 ```bash
 # Deployment im FSXN_S3AP-Modus
 aws cloudformation deploy \
-  --template-file retail-catalog/template-deploy.yaml \
+  --template-file solutions/industry/retail-catalog/template-deploy.yaml \
   --stack-name fsxn-retail-catalog-demo \
   --parameter-overrides \
     OutputDestination=FSXN_S3AP \
@@ -791,7 +791,7 @@ export AWS_DEFAULT_REGION=us-east-1  # Region mit Unterstützung aller Dienste e
 # CloudFormation-Bereitstellung
 aws cloudformation create-stack \
   --stack-name fsxn-legal-compliance \
-  --template-body file://legal-compliance/template-deploy.yaml \
+  --template-body file://solutions/industry/legal-compliance/template-deploy.yaml \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameters \
     ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
@@ -963,11 +963,11 @@ fsxn-s3ap-serverless-patterns/
 │   ├── discovery_handler.py          # Gemeinsames Discovery Lambda Template
 │   ├── cfn/                          # CloudFormation-Snippets
 │   └── tests/                        # Unit-Tests und Eigenschaftstests
-├── legal-compliance/                  # UC1: Recht und Compliance
-├── financial-idp/                     # UC2: Finanz- und Versicherungswesen
-├── manufacturing-analytics/           # UC3: Fertigung
-├── media-vfx/                         # UC4: Medien
-├── healthcare-dicom/                  # UC5: Gesundheitswesen
+├── solutions/industry/legal-compliance/                  # UC1: Recht und Compliance
+├── solutions/industry/financial-idp/                     # UC2: Finanz- und Versicherungswesen
+├── solutions/industry/manufacturing-analytics/           # UC3: Fertigung
+├── solutions/industry/media-vfx/                         # UC4: Medien
+├── solutions/industry/healthcare-dicom/                  # UC5: Gesundheitswesen
 ├── scripts/                           # Verifizierungs- und Bereitstellungsskripte
 │   ├── deploy_uc.sh                  # UC-Bereitstellungsskript (generisch)
 │   ├── verify_shared_modules.py      # Verifizierung gemeinsamer Module in AWS-Umgebung

@@ -158,5 +158,5 @@ renvoie 200.
 ## Documents associés
 
 - [Comparatif d'intégration CDN/edge](cdn-comparison.fr.md)
-- [UC content-edge-delivery](../content-edge-delivery/README.fr.md)
+- [UC content-edge-delivery](../solutions/edge/content-delivery/README.fr.md)
 - [Notes de compatibilité S3AP](s3ap-compatibility-notes.md)

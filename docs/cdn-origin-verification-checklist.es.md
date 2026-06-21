@@ -158,5 +158,5 @@ devuelve 200.
 ## Documentos relacionados
 
 - [Comparativa de integración CDN/edge](cdn-comparison.es.md)
-- [UC content-edge-delivery](../content-edge-delivery/README.es.md)
+- [UC content-edge-delivery](../solutions/edge/content-delivery/README.es.md)
 - [Notas de compatibilidad S3AP](s3ap-compatibility-notes.md)

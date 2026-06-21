@@ -589,6 +589,8 @@ _acl_spec = _importlib_util.spec_from_file_location(
     "acl_collection_handler",
     str(
         __import__("pathlib").Path(__file__).resolve().parents[2]
+        / "solutions"
+        / "industry"
         / "legal-compliance"
         / "functions"
         / "acl_collection"
@@ -676,7 +678,7 @@ import importlib.util as _ocr_importlib_util
 _ocr_spec = _ocr_importlib_util.spec_from_file_location(
     "ocr_handler",
     str(
-        __import__("pathlib").Path(__file__).resolve().parents[2] / "financial-idp" / "functions" / "ocr" / "handler.py"
+        __import__("pathlib").Path(__file__).resolve().parents[2] / "solutions" / "industry" / "financial-idp" / "functions" / "ocr" / "handler.py"
     ),
 )
 _ocr_module = _ocr_importlib_util.module_from_spec(_ocr_spec)
@@ -716,7 +718,7 @@ _summary_spec = _ocr_importlib_util.spec_from_file_location(
     "summary_handler",
     str(
         __import__("pathlib").Path(__file__).resolve().parents[2]
-        / "financial-idp"
+        / "solutions" / "industry" / "financial-idp"
         / "functions"
         / "summary"
         / "handler.py"
@@ -794,7 +796,7 @@ _transform_spec = _transform_importlib_util.spec_from_file_location(
     "transform_handler",
     str(
         __import__("pathlib").Path(__file__).resolve().parents[2]
-        / "manufacturing-analytics"
+        / "solutions" / "industry" / "manufacturing-analytics"
         / "functions"
         / "transform"
         / "handler.py"
@@ -863,7 +865,7 @@ _image_analysis_spec = _transform_importlib_util.spec_from_file_location(
     "image_analysis_handler",
     str(
         __import__("pathlib").Path(__file__).resolve().parents[2]
-        / "manufacturing-analytics"
+        / "solutions" / "industry" / "manufacturing-analytics"
         / "functions"
         / "image_analysis"
         / "handler.py"
@@ -911,7 +913,7 @@ _anon_spec = _anon_importlib_util.spec_from_file_location(
     "anonymization_handler",
     str(
         __import__("pathlib").Path(__file__).resolve().parents[2]
-        / "healthcare-dicom"
+        / "solutions" / "industry" / "healthcare-dicom"
         / "functions"
         / "anonymization"
         / "handler.py"

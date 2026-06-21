@@ -37,24 +37,43 @@ make security
 make clean
 
 # Manual pytest (specific pattern)
-python3 -m pytest semiconductor-eda/tests/ -v
+python3 -m pytest solutions/industry/semiconductor-eda/tests/ -v
 python3 -m pytest shared/tests/ -q
 
 # cfn-lint validation
-cfn-lint legal-compliance/template.yaml sap-erp-adjacent/template.yaml
+cfn-lint solutions/industry/legal-compliance/template.yaml solutions/sap/erp-adjacent/template.yaml
 ```
 
 ## Project Layout
 
 ```
-├── {uc-name}/              # 28 UC + SAP + 6 FC directories
-│   ├── template.yaml       # SAM/CloudFormation template
-│   ├── functions/          # Lambda function handlers
-│   │   └── {func}/handler.py
-│   ├── tests/              # UC-specific tests (pytest + hypothesis)
-│   ├── docs/               # Architecture, demo guide (8 languages)
-│   ├── samconfig.toml.example  # SAM deploy config template
-│   └── README.md           # 8 languages (ja/en/ko/zh-CN/zh-TW/fr/de/es)
+├── solutions/
+│   ├── industry/                     # UC1-UC28 industry-specific patterns
+│   │   └── {pattern-name}/
+│   │       ├── template.yaml         # SAM/CloudFormation template
+│   │       ├── functions/            # Lambda function handlers
+│   │       │   └── {func}/handler.py
+│   │       ├── tests/                # Pattern-specific tests (pytest + hypothesis)
+│   │       ├── docs/                 # Architecture, demo guide (8 languages)
+│   │       ├── samconfig.toml.example
+│   │       └── README.md             # 8 languages (ja/en/ko/zh-CN/zh-TW/fr/de/es)
+│   ├── sap/erp-adjacent/            # SAP/ERP pattern
+│   ├── flexcache/                    # FlexCache/FlexClone patterns (7)
+│   │   ├── anycast-dr/
+│   │   ├── dynamic-render-workflow/
+│   │   ├── rag-enterprise-files/
+│   │   ├── automotive-cae/
+│   │   ├── life-sciences-research/
+│   │   ├── gaming-build-pipeline/
+│   │   └── devops-cicd/
+│   ├── genai/                        # GenAI patterns (2)
+│   │   ├── kb-selfservice-curation/
+│   │   └── quick-agentic-workspace/
+│   ├── ha/lifekeeper-monitoring/     # HA monitoring pattern
+│   ├── event-driven/                 # Event-driven patterns (2)
+│   │   ├── fpolicy/
+│   │   └── prototype/
+│   └── edge/content-delivery/        # CDN/edge delivery pattern
 ├── shared/                 # Shared Python modules (imported by all patterns)
 │   ├── s3ap_helper.py      # S3 Access Point helper (core abstraction)
 │   ├── ontap_client.py     # ONTAP REST API client
@@ -75,7 +94,6 @@ cfn-lint legal-compliance/template.yaml sap-erp-adjacent/template.yaml
 │   ├── cfn/                # Shared CloudFormation snippets
 │   ├── lambdas/            # Shared Lambda functions
 │   └── tests/              # Shared module tests
-├── event-driven-fpolicy/   # FPolicy event-driven infrastructure
 ├── test-data/              # Sample data per UC (gitignore override)
 ├── scripts/                # Automation scripts
 ├── docs/                   # Documentation and guides (40+ docs)
@@ -149,15 +167,16 @@ cfn-lint legal-compliance/template.yaml sap-erp-adjacent/template.yaml
 
 ```python
 # In conftest.py (each pattern's tests/)
+# Root conftest.py adds project root to sys.path automatically.
+# Pattern tests only need to add their local functions dir:
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # repo root
 sys.path.insert(0, str(Path(__file__).parent.parent / "functions" / "discovery"))
 ```
 
 ```bash
-# Run from repo root (PYTHONPATH auto-resolved)
-python3 -m pytest sap-erp-adjacent/tests/ -v
+# Run from repo root (PYTHONPATH auto-resolved via root conftest.py)
+python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
 ```
 
 ### Known test exclusions

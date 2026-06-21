@@ -150,5 +150,5 @@ For each CDN, set "origin = S3 AP alias host" and confirm that a cache-miss orig
 ## Related docs
 
 - [CDN/Edge delivery comparison](cdn-comparison.en.md)
-- [content-edge-delivery UC](../content-edge-delivery/README.en.md)
+- [content-edge-delivery UC](../solutions/edge/content-delivery/README.en.md)
 - [S3AP compatibility notes](s3ap-compatibility-notes.md)

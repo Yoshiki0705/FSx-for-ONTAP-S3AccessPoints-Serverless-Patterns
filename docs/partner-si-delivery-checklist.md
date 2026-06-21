@@ -272,7 +272,7 @@ FC1 FlexCache Anycast/DR パターンの PoC 成功基準例:
 | False positive failovers (24h test) | 0 | DynamoDB routing table change audit |
 | Audit event completeness | 100% | DynamoDB Streams / CloudWatch Logs record count |
 
-> 上記は参考値です。顧客の SLA 要件に合わせて調整してください。詳細は [flexcache-anycast-dr/docs/](../flexcache-anycast-dr/docs/) を参照。
+> 上記は参考値です。顧客の SLA 要件に合わせて調整してください。詳細は [solutions/flexcache/anycast-dr/docs/](../solutions/flexcache/anycast-dr/docs/) を参照。
 
 > FlexCache/FlexClone patterns are optional extensions for customers who need distributed read access, dataset branching, cache lifecycle automation, or workload-specific acceleration. Not all customers need these patterns.
 
@@ -351,23 +351,23 @@ FC1 FlexCache Anycast/DR パターンの PoC 成功基準例:
 
 | UC | 業界 | Success Metrics |
 |----|------|----------------|
-| UC1 | 法務・コンプライアンス | [legal-compliance/README.md](../legal-compliance/README.md#success-metrics) |
-| UC2 | 金融・保険 (IDP) | [financial-idp/README.md](../financial-idp/README.md#success-metrics) |
-| UC3 | 製造業 | [manufacturing-analytics/README.md](../manufacturing-analytics/README.md#success-metrics) |
-| UC4 | メディア (VFX) | [media-vfx/README.md](../media-vfx/README.md#success-metrics) |
-| UC5 | 医療 (DICOM) | [healthcare-dicom/README.md](../healthcare-dicom/README.md#success-metrics) |
-| UC6 | 半導体 / EDA | [semiconductor-eda/README.md](../semiconductor-eda/README.md#success-metrics) |
-| UC7 | ゲノミクス | [genomics-pipeline/README.md](../genomics-pipeline/README.md#success-metrics) |
-| UC8 | エネルギー | [energy-seismic/README.md](../energy-seismic/README.md#success-metrics) |
-| UC9 | 自動運転 / ADAS | [autonomous-driving/README.md](../autonomous-driving/README.md#success-metrics) |
-| UC10 | 建設 / BIM | [construction-bim/README.md](../construction-bim/README.md#success-metrics) |
-| UC11 | 小売 / EC | [retail-catalog/README.md](../retail-catalog/README.md#success-metrics) |
-| UC12 | 物流 | [logistics-ocr/README.md](../logistics-ocr/README.md#success-metrics) |
-| UC13 | 教育 / 研究 | [education-research/README.md](../education-research/README.md#success-metrics) |
-| UC14 | 保険 | [insurance-claims/README.md](../insurance-claims/README.md#success-metrics) |
-| UC15 | 防衛・宇宙 | [defense-satellite/README.md](../defense-satellite/README.md#success-metrics) |
-| UC16 | 政府 (FOIA) | [government-archives/README.md](../government-archives/README.md#success-metrics) |
-| UC17 | スマートシティ | [smart-city-geospatial/README.md](../smart-city-geospatial/README.md#success-metrics) |
+| UC1 | 法務・コンプライアンス | [solutions/industry/legal-compliance/README.md](../solutions/industry/legal-compliance/README.md#success-metrics) |
+| UC2 | 金融・保険 (IDP) | [solutions/industry/financial-idp/README.md](../solutions/industry/financial-idp/README.md#success-metrics) |
+| UC3 | 製造業 | [solutions/industry/manufacturing-analytics/README.md](../solutions/industry/manufacturing-analytics/README.md#success-metrics) |
+| UC4 | メディア (VFX) | [solutions/industry/media-vfx/README.md](../solutions/industry/media-vfx/README.md#success-metrics) |
+| UC5 | 医療 (DICOM) | [solutions/industry/healthcare-dicom/README.md](../solutions/industry/healthcare-dicom/README.md#success-metrics) |
+| UC6 | 半導体 / EDA | [solutions/industry/semiconductor-eda/README.md](../solutions/industry/semiconductor-eda/README.md#success-metrics) |
+| UC7 | ゲノミクス | [solutions/industry/genomics-pipeline/README.md](../solutions/industry/genomics-pipeline/README.md#success-metrics) |
+| UC8 | エネルギー | [solutions/industry/energy-seismic/README.md](../solutions/industry/energy-seismic/README.md#success-metrics) |
+| UC9 | 自動運転 / ADAS | [solutions/industry/autonomous-driving/README.md](../solutions/industry/autonomous-driving/README.md#success-metrics) |
+| UC10 | 建設 / BIM | [solutions/industry/construction-bim/README.md](../solutions/industry/construction-bim/README.md#success-metrics) |
+| UC11 | 小売 / EC | [solutions/industry/retail-catalog/README.md](../solutions/industry/retail-catalog/README.md#success-metrics) |
+| UC12 | 物流 | [solutions/industry/logistics-ocr/README.md](../solutions/industry/logistics-ocr/README.md#success-metrics) |
+| UC13 | 教育 / 研究 | [solutions/industry/education-research/README.md](../solutions/industry/education-research/README.md#success-metrics) |
+| UC14 | 保険 | [solutions/industry/insurance-claims/README.md](../solutions/industry/insurance-claims/README.md#success-metrics) |
+| UC15 | 防衛・宇宙 | [solutions/industry/defense-satellite/README.md](../solutions/industry/defense-satellite/README.md#success-metrics) |
+| UC16 | 政府 (FOIA) | [solutions/industry/government-archives/README.md](../solutions/industry/government-archives/README.md#success-metrics) |
+| UC17 | スマートシティ | [solutions/industry/smart-city-geospatial/README.md](../solutions/industry/smart-city-geospatial/README.md#success-metrics) |
 
 ## 参考リンク
 

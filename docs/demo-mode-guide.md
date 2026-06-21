@@ -41,19 +41,19 @@ aws s3 mb s3://${DEMO_BUCKET} --region ap-northeast-1
 
 ```bash
 # UC1 (legal-compliance) の場合
-aws s3 cp test-data/legal-compliance/ s3://${DEMO_BUCKET}/legal-docs/ --recursive
+aws s3 cp test-data/solutions/industry/legal-compliance/ s3://${DEMO_BUCKET}/legal-docs/ --recursive
 
 # UC6 (semiconductor-eda) の場合
-aws s3 cp test-data/semiconductor-eda/ s3://${DEMO_BUCKET}/eda-designs/ --recursive
+aws s3 cp test-data/solutions/industry/semiconductor-eda/ s3://${DEMO_BUCKET}/eda-designs/ --recursive
 
 # SAP の場合
-aws s3 cp test-data/sap-erp-adjacent/ s3://${DEMO_BUCKET}/idoc-export/ --recursive
+aws s3 cp test-data/solutions/sap/erp-adjacent/ s3://${DEMO_BUCKET}/idoc-export/ --recursive
 ```
 
 ### Step 3: デモモードでデプロイ
 
 ```bash
-cd legal-compliance/
+cd solutions/industry/legal-compliance/
 
 sam build && sam deploy --guided \
   --parameter-overrides \
