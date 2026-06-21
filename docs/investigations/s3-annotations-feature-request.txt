@@ -1,0 +1,139 @@
+===============================================================
+AWS Support Case — Feature Request
+===============================================================
+
+Type: Technical
+Service: Amazon FSx for NetApp ONTAP
+Category: S3 Access Points
+Severity: General guidance
+Preferred contact language: English (日本語でのフォローアップ可)
+
+---------------------------------------------------------------
+Subject
+---------------------------------------------------------------
+
+Feature Request: Support S3 Annotations API on FSx for ONTAP S3 Access Points
+
+---------------------------------------------------------------
+Description
+---------------------------------------------------------------
+
+We are requesting support for the newly launched Amazon S3 Annotations API
+(GA 2026-06-16) on FSx for ONTAP S3 Access Points.
+
+[What we tried]
+
+We attempted to call PutObjectAnnotation via an FSx for ONTAP S3 Access
+Point (Internet Origin, ap-northeast-1).
+
+  API:     PutObjectAnnotation
+  Target:  FSxN S3 AP alias (headobj-test-s3a-***-ext-s3alias)
+  Key:     _uc-deploy/marker.txt (existing object on ONTAP volume)
+
+[What happened]
+
+  HTTP 501 — NotImplemented
+  Error Message: "An access point you provided implies functionality
+                  that is not implemented"
+
+[What we expected]
+
+The same behavior as on a standard S3 bucket, where
+PutObjectAnnotation succeeded with HTTP 200 and the annotation was
+retrievable via GetObjectAnnotation.
+
+We confirmed the following:
+  - Standard S3 bucket: PutObjectAnnotation, GetObjectAnnotation,
+    ListObjectAnnotations, DeleteObjectAnnotation all work (HTTP 200/204)
+  - FSxN S3 AP: PutObjectAnnotation returns 501 NotImplemented
+  - boto3 version: 1.43.31 (annotation API methods available)
+  - AWS CLI version: 2.35.4 (put-object-annotation not yet recognized
+    as a valid subcommand; CLI update may be pending)
+
+[Environment]
+
+  - Region: ap-northeast-1 (Tokyo)
+  - File System ID: fs-09ffe72a3b2b7dbbd
+  - ONTAP version: 9.17.1P6
+  - S3 AP type: Internet Origin (no VpcConfiguration)
+  - File system identity: UNIX (root)
+  - boto3: 1.43.31, botocore: 1.43.31
+
+[Use case and business justification]
+
+We are building serverless AI/ML processing pipelines on AWS that:
+
+  1. Read enterprise files from FSx for ONTAP volumes via S3 Access Points
+  2. Analyze them using Amazon Bedrock (classification, summarization,
+     compliance checks)
+  3. Need to persist AI-generated metadata BACK to the source objects
+
+With S3 Annotations, this metadata (data classification labels,
+confidence scores, processing lineage, human review decisions) could be
+attached directly to the source files on FSx for ONTAP, without
+modifying the file content itself.
+
+Specific scenarios:
+
+  (a) Attaching AI-generated data classification (INTERNAL / RESTRICTED /
+      CUI) to files processed by compliance pipelines — queryable via
+      S3 Metadata annotation tables + Athena
+
+  (b) Storing processing lineage (model ID, chunking strategy version,
+      timestamp, execution ARN) alongside source documents for
+      Permission-Aware RAG systems
+
+  (c) Enabling Athena-based metadata queries across FSxN volumes via
+      S3 Metadata annotation tables, eliminating the need for a
+      separate DynamoDB metadata store
+
+  (d) Supporting agentic AI workflows (Amazon Quick, Bedrock Agents)
+      that need to discover and act on file metadata autonomously —
+      aligned with S3 Annotations' stated GA use case
+
+[Business impact if supported]
+
+  - Eliminates separate metadata databases (DynamoDB/RDS) for tracking
+    AI analysis results per file
+  - Enables unified metadata queries across FSxN volumes via Athena
+  - Supports "AI enrichment without file modification" — NFS/SMB users
+    see unchanged files, while serverless pipelines query rich metadata
+  - Reduces operational complexity in hybrid NAS + AI architectures
+  - Directly aligns with the S3 Annotations GA blog's stated vision of
+    "AI agents that need to find, understand, and act on data"
+
+[Current workaround]
+
+Processing results are written to a standard S3 bucket (separate from
+FSxN) with annotations attached there. This requires maintaining a
+separate path-to-object mapping and loses the co-location benefit that
+annotations provide.
+
+[Request]
+
+Please consider adding PutObjectAnnotation, GetObjectAnnotation,
+ListObjectAnnotations, and DeleteObjectAnnotation to the list of
+supported S3 API operations for FSx for ONTAP S3 Access Points.
+
+We understand this is a feature request and there is no guaranteed
+timeline. We would appreciate any guidance on:
+  - Whether this is on the FSx for ONTAP roadmap
+  - Any known technical constraints that make this difficult
+  - Recommended alternative approaches in the meantime
+
+---------------------------------------------------------------
+Additional context (for internal routing)
+---------------------------------------------------------------
+
+Related documentation:
+  - S3 Annotations blog: https://aws.amazon.com/blogs/aws/amazon-s3-annotations-attach-rich-queryable-context-directly-to-your-objects/
+  - FSxN S3 AP compatibility table: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html
+  - S3 Metadata overview: https://aws.amazon.com/s3/features/metadata/
+
+The compatibility table does not list PutObjectAnnotation /
+GetObjectAnnotation at all (neither as Supported nor Not supported).
+A documentation update to clarify the status would also be helpful.
+
+===============================================================
+End of case description
+===============================================================

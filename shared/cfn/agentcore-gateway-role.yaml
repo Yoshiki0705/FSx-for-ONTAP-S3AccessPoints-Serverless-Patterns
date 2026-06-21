@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  AgentCore Gateway Service Role for Web Search Tool
+  us-east-1 にデプロイし、Web Search コネクタ用の権限を付与する。
+  FSx ONTAP S3 AP パターンのハイブリッド RAG で利用。
+
+Parameters:
+  GatewayName:
+    Type: String
+    Default: fsxn-hybrid-rag-gateway
+    Description: AgentCore Gateway 名（タグ用）
+
+Resources:
+  AgentCoreGatewayServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${GatewayName}-service-role'
+      Description: AgentCore Gateway service role for Web Search connector invocation
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: WebSearchConnectorAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowWebSearchConnector
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:InvokeGateway
+                Resource: '*'
+      Tags:
+        - Key: UseCase
+          Value: fsxn-hybrid-rag
+        - Key: Component
+          Value: agentcore-gateway
+
+  # クロスリージョン呼び出し用: ap-northeast-1 の Lambda が us-east-1 の Gateway を呼ぶ際の権限
+  CrossRegionInvokerPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub '${GatewayName}-cross-region-invoker'
+      Description: >
+        ap-northeast-1 の Lambda/ECS が us-east-1 の AgentCore Gateway を呼び出すための
+        ポリシー。UC29/UC30 の Lambda Role にアタッチする。
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowGatewayInvoke
+            Effect: Allow
+            Action:
+              - bedrock-agentcore:InvokeGateway
+            Resource:
+              - !Sub 'arn:aws:bedrock-agentcore:us-east-1:${AWS::AccountId}:gateway/*'
+
+Outputs:
+  ServiceRoleArn:
+    Description: AgentCore Gateway Service Role ARN（Gateway 作成時に指定）
+    Value: !GetAtt AgentCoreGatewayServiceRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ServiceRoleArn'
+
+  CrossRegionInvokerPolicyArn:
+    Description: クロスリージョン呼び出し用ポリシー ARN（UC29/UC30 Lambda Role にアタッチ）
+    Value: !Ref CrossRegionInvokerPolicy
+    Export:
+      Name: !Sub '${AWS::StackName}-InvokerPolicyArn'

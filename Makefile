@@ -50,6 +50,7 @@ test:
 		defense-satellite/tests/ \
 		flexcache-anycast-dr/tests/ \
 		education-research/tests/ \
+		ha-lifekeeper-monitoring/tests/ \
 		--tb=short -q
 
 test-quick:
@@ -74,6 +75,9 @@ test-fc1:
 test-content-edge-delivery:
 	python3 -m pytest content-edge-delivery/tests/ -v
 
+test-ha-lifekeeper:
+	python3 -m pytest ha-lifekeeper-monitoring/tests/ -v
+
 # ============================================================
 # Linting
 # ============================================================
@@ -89,7 +93,8 @@ lint-cfn:
 		semiconductor-eda/template.yaml \
 		sap-erp-adjacent/template.yaml \
 		flexcache-anycast-dr/template.yaml \
-		content-edge-delivery/template.yaml
+		content-edge-delivery/template.yaml \
+		ha-lifekeeper-monitoring/template.yaml
 
 # ============================================================
 # Security
