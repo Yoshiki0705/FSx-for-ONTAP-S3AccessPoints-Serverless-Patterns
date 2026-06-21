@@ -253,6 +253,7 @@ decision = evaluate_confidence(confidence=0.72)
 | `mount -o vers=4` negotiates NFSv4.2 | Always use explicit `vers=4.1` |
 | Hypothesis + moto DynamoDB slow | Use `deadline=None` in `@given()` settings |
 | Test file name collision across patterns | Use unique test file names or run per-directory |
+| `from functions.xxx import` collision in batch test runs | Run patterns with `handler` module imports in separate pytest invocations (Makefile splits these) |
 
 ## S3 Access Point Critical Knowledge
 

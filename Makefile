@@ -10,6 +10,9 @@
 
 .PHONY: install test lint clean help
 
+# Python interpreter (override with: make test PYTHON=python3.12)
+PYTHON ?= python3
+
 # Default target
 help:
 	@echo "Available targets:"
@@ -41,7 +44,7 @@ install:
 # Testing
 # ============================================================
 test:
-	python3 -m pytest \
+	$(PYTHON) -m pytest \
 		shared/tests/ \
 		solutions/industry/legal-compliance/tests/ \
 		solutions/industry/semiconductor-eda/tests/ \
@@ -50,37 +53,35 @@ test:
 		solutions/industry/defense-satellite/tests/ \
 		solutions/industry/education-research/tests/ \
 		--tb=short -q
-	python3 -m pytest \
+	$(PYTHON) -m pytest \
 		solutions/flexcache/anycast-dr/tests/ \
 		--tb=short -q
-	python3 -m pytest \
+	$(PYTHON) -m pytest \
 		solutions/ha/lifekeeper-monitoring/tests/ \
 		--tb=short -q
 
 test-quick:
-	python3 -m pytest \
-		shared/tests/ \
-		solutions/sap/erp-adjacent/tests/ \
-		solutions/industry/semiconductor-eda/tests/ \
-		--tb=short -q
+	$(PYTHON) -m pytest shared/tests/test_s3ap_helper.py shared/tests/test_properties.py shared/tests/test_fsx_helper.py --tb=short -q
+	$(PYTHON) -m pytest solutions/sap/erp-adjacent/tests/ --tb=short -q
+	$(PYTHON) -m pytest solutions/industry/semiconductor-eda/tests/ --tb=short -q
 
 test-uc1:
-	python3 -m pytest solutions/industry/legal-compliance/tests/ -v
+	$(PYTHON) -m pytest solutions/industry/legal-compliance/tests/ -v
 
 test-uc6:
-	python3 -m pytest solutions/industry/semiconductor-eda/tests/ -v
+	$(PYTHON) -m pytest solutions/industry/semiconductor-eda/tests/ -v
 
 test-sap:
-	python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
+	$(PYTHON) -m pytest solutions/sap/erp-adjacent/tests/ -v
 
 test-fc1:
-	python3 -m pytest solutions/flexcache/anycast-dr/tests/ -v
+	$(PYTHON) -m pytest solutions/flexcache/anycast-dr/tests/ -v
 
 test-content-edge-delivery:
-	python3 -m pytest solutions/edge/content-delivery/tests/ -v
+	$(PYTHON) -m pytest solutions/edge/content-delivery/tests/ -v
 
 test-ha-lifekeeper:
-	python3 -m pytest solutions/ha/lifekeeper-monitoring/tests/ -v
+	$(PYTHON) -m pytest solutions/ha/lifekeeper-monitoring/tests/ -v
 
 # ============================================================
 # Linting
