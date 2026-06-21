@@ -167,7 +167,7 @@ sam deploy --guided \
 
 ```bash
 # ユニットテスト
-python3 -m pytest ha-lifekeeper-monitoring/tests/ -v
+python3 -m pytest solutions/ha/lifekeeper-monitoring/tests/ -v
 
 # DemoMode でのエンドツーエンドテスト
 # (事前にデモ用 S3 バケットにサンプルログを配置)
@@ -192,10 +192,11 @@ aws stepfunctions start-execution \
 ## ディレクトリ構成
 
 ```
-ha-lifekeeper-monitoring/
+solutions/ha/lifekeeper-monitoring/
 ├── template.yaml              # SAM テンプレート
 ├── samconfig.toml.example     # デプロイ設定例
-├── README.md                  # 本ドキュメント
+├── README.md                  # 本ドキュメント (日本語)
+├── README.en.md               # English README + Success Metrics
 ├── functions/
 │   ├── discovery/
 │   │   └── handler.py         # LifeKeeper ログ検出
@@ -206,7 +207,8 @@ ha-lifekeeper-monitoring/
 ├── statemachine/
 │   └── workflow.asl.json      # Step Functions 定義
 ├── docs/
-│   └── architecture.md        # アーキテクチャ詳細
+│   ├── architecture.md        # アーキテクチャ詳細
+│   └── demo-guide.md          # デモガイド (DemoMode)
 └── tests/
     ├── conftest.py
     └── test_discovery.py      # ユニットテスト
@@ -218,9 +220,9 @@ ha-lifekeeper-monitoring/
 
 | パターン | 関連性 |
 |---------|--------|
-| `sap-erp-adjacent/` | LifeKeeper で保護された SAP 環境の IDoc/バッチ処理 |
-| `event-driven-fpolicy/` | FPolicy イベント駆動による即時ログ検知 |
-| `flexcache-anycast-dr/` | マルチリージョン DR 構成の参考 |
+| `solutions/sap/erp-adjacent/` | LifeKeeper で保護された SAP 環境の IDoc/バッチ処理 |
+| `solutions/event-driven/fpolicy/` | FPolicy イベント駆動による即時ログ検知 |
+| `solutions/flexcache/anycast-dr/` | マルチリージョン DR 構成の参考 |
 
 ---
 
