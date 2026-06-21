@@ -8,7 +8,7 @@ BASE = os.environ.get("PROJECT_DIR", os.path.dirname(os.path.dirname(os.path.abs
 # UC configurations: (dir_name, title_ja, title_en, title_ko, title_zhCN, title_zhTW, title_fr, title_de, title_es, workflow_desc)
 UCS = [
     (
-        "legal-compliance",
+        "solutions/industry/legal-compliance",
         "파일 서버 권한 감사",
         "文件服务器权限审计",
         "檔案伺服器權限稽核",

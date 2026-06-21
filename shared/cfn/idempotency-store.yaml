@@ -21,7 +21,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Idempotency Store.
+  FSx for ONTAP S3 AP Serverless Patterns — Idempotency Store.
   HYBRID モードでの重複排除用 DynamoDB テーブル。
 
 Parameters:

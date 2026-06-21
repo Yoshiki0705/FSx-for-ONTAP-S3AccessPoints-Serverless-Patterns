@@ -34,10 +34,10 @@ DEPRECATED_MODELS = {
 
 # File patterns to scan
 SCAN_PATTERNS = [
-    "*/template.yaml",
-    "*/template-deploy.yaml",
-    "**/handler.py",
-    "**/samconfig.toml.example",
+    "solutions/**/template.yaml",
+    "solutions/**/template-deploy.yaml",
+    "solutions/**/handler.py",
+    "solutions/**/samconfig.toml.example",
     "scripts/*.py",
     "shared/**/*.py",
 ]

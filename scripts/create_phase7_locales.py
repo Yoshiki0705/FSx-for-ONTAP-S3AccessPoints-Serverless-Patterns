@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-UCS = ["defense-satellite", "government-archives", "smart-city-geospatial"]
+UCS = ["solutions/industry/defense-satellite", "solutions/industry/government-archives", "solutions/industry/smart-city-geospatial"]
 LOCALES = {
     "ko": ("한국어", "Korean"),
     "zh-CN": ("简体中文", "Simplified Chinese"),

@@ -1,0 +1,707 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  UC29 Self-Service Knowledge Base Curation
+  FSx for ONTAP S3 AP 上のファイル投入を検知し、マネージド Amazon Bedrock
+  Knowledge Base へ自動取り込みするセルフサービス自動同期レイヤ。
+  （Knowledge Base / データソース本体は scripts/create_bedrock_kb.py または
+   Bedrock コンソールで作成し、その ID をパラメータに渡す）
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: S3 Access Point エイリアス（xxx-ext-s3alias 形式、差分検知用）
+
+  S3AccessPointName:
+    Type: String
+    Description: S3 Access Point 名（IAM ARN 用）
+
+  KnowledgeBaseId:
+    Type: String
+    Description: 既存の Amazon Bedrock Knowledge Base ID
+
+  DataSourceId:
+    Type: String
+    Description: Knowledge Base に紐づく S3 AP データソース ID
+
+  IngestionPrefix:
+    Type: String
+    Default: ''
+    Description: 差分検知対象のプレフィックス（空文字でボリューム全体）
+
+  BedrockLlmModelId:
+    Type: String
+    Default: apac.amazon.nova-pro-v1:0
+    Description: 回答生成用 Bedrock モデル/推論プロファイル ID（Query Lambda 用）
+
+  BedrockGuardrailId:
+    Type: String
+    Default: ''
+    Description: 任意の Bedrock Guardrail ID（GENSEC02。空なら未適用）
+
+  BedrockGuardrailVersion:
+    Type: String
+    Default: DRAFT
+    Description: Bedrock Guardrail バージョン
+
+  SyncScheduleExpression:
+    Type: String
+    Default: rate(15 minutes)
+    Description: 自動同期スケジュール（取り込み所要時間より長く設定すること）
+
+  NotificationEmail:
+    Type: String
+    Default: ''
+    Description: 同期結果の通知先メールアドレス
+
+  # --- Scenario C: FPolicy イベント駆動（リアルタイム同期） ---
+  EnableScenarioC:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: >
+      シナリオ C（FPolicy イベント駆動リアルタイム同期）を有効化する。
+      true の場合、KB Trigger Lambda と EventBridge ルールを作成する。
+      event-driven-fpolicy スタックの FPolicy EventBus が前提。
+
+  FPolicyEventBusName:
+    Type: String
+    Default: 'fsxn-fpolicy-events'
+    Description: >
+      FPolicy EventBridge カスタムバス名（event-driven-fpolicy スタックで作成）。
+      シナリオ C 有効時に、このバス上にルーティングルールを作成する。
+
+  FPolicyVolumePathPrefix:
+    Type: String
+    Default: 'ai_knowledge'
+    Description: >
+      FPolicy が報告する ONTAP ボリュームパスのプレフィックス（EventBridge ルールの
+      一次フィルタおよび Lambda の二次フィルタに使用）。S3 取り込みプレフィックスとは
+      別名前空間（FPolicy は /<volume>/... を報告）。
+
+  KbTriggerReservedConcurrency:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 100
+    Description: >
+      KB Trigger Lambda の予約済み同時実行数（バースト制御）。デバウンスと併せ、
+      大量ファイル投入時の Bedrock/CloudWatch スロットリングを抑制する。
+
+  # --- Web Search ハイブリッド RAG (opt-in) ---
+  EnableWebSearch:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: >
+      AgentCore Web Search Tool によるハイブリッド RAG を有効化する。
+      true の場合、Query Lambda が内部 KB 回答に加えて外部 Web 情報で補強する。
+      us-east-1 の AgentCore Gateway が必要（クロスリージョン呼び出し）。
+
+  AgentCoreGatewayId:
+    Type: String
+    Default: ''
+    Description: >
+      AgentCore Gateway ID (us-east-1)。EnableWebSearch=true 時に必須。
+      scripts/poc-web-search.py setup で作成した Gateway ID を指定する。
+
+  AgentCoreGatewayRegion:
+    Type: String
+    Default: 'us-east-1'
+    Description: AgentCore Gateway のリージョン
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
+  IsScenarioCEnabled: !Equals [!Ref EnableScenarioC, 'true']
+
+Resources:
+  # --- SNS Topic（同期結果通知） ---
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # --- アラーム通知用 CMK + 専用トピック（CloudWatch→SNS の確実な配信） ---
+  AlarmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: UC29 alarm notifications CMK (CloudWatch -> SNS)
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Root
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: AllowCloudWatchAndSNS
+            Effect: Allow
+            Principal:
+              Service:
+                - cloudwatch.amazonaws.com
+                - sns.amazonaws.com
+            Action:
+              - kms:GenerateDataKey*
+              - kms:Decrypt
+            Resource: '*'
+
+  AlarmsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref AlarmsKey
+
+  AlarmsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref AlarmsTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # --- Auto-Sync Lambda 用 IAM Role ---
+  AutoSyncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SelfServiceKbSyncPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # S3 AP 差分検知（List/Get）
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource: !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub 'arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*'
+              # Bedrock KB 取り込み起動・状態確認
+              - Effect: Allow
+                Action:
+                  - bedrock:StartIngestionJob
+                  - bedrock:GetIngestionJob
+                  - bedrock:ListIngestionJobs
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/${KnowledgeBaseId}'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+
+  # --- Query Lambda 用 IAM Role（デモ Q&A） ---
+  QueryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SelfServiceKbQueryPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:RetrieveAndGenerate
+                  - bedrock:Retrieve
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/${KnowledgeBaseId}'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:GetInferenceProfile
+                Resource:
+                  - 'arn:aws:bedrock:*::foundation-model/amazon.nova-*'
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*'
+              - Effect: Allow
+                Action:
+                  - bedrock:ApplyGuardrail
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/*'
+              # Web Search ハイブリッド RAG: AgentCore Gateway 呼び出し (us-east-1)
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:InvokeGateway
+                Resource:
+                  - !Sub 'arn:aws:bedrock-agentcore:${AgentCoreGatewayRegion}:${AWS::AccountId}:gateway/*'
+              # Web Search 補強時に Bedrock Converse を追加呼び出し
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - 'arn:aws:bedrock:*::foundation-model/amazon.nova-*'
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*'
+
+  # --- Auto-Sync Lambda ---
+  AutoSyncFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/auto_sync/
+      Timeout: 120
+      MemorySize: 512
+      Role: !GetAtt AutoSyncRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          KNOWLEDGE_BASE_ID: !Ref KnowledgeBaseId
+          DATA_SOURCE_ID: !Ref DataSourceId
+          INGESTION_PREFIX: !Ref IngestionPrefix
+          NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
+
+  # --- Ingestion Status Lambda（Step Functions の完了待ちに使用） ---
+  IngestionStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/ingestion_status/
+      Timeout: 30
+      MemorySize: 256
+      Role: !GetAtt AutoSyncRole.Arn
+      Environment:
+        Variables:
+          KNOWLEDGE_BASE_ID: !Ref KnowledgeBaseId
+          DATA_SOURCE_ID: !Ref DataSourceId
+
+  # --- Query Lambda（デモ用 Q&A） ---
+  QueryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/query/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt QueryRole.Arn
+      Environment:
+        Variables:
+          KNOWLEDGE_BASE_ID: !Ref KnowledgeBaseId
+          BEDROCK_LLM_MODEL_ID: !Ref BedrockLlmModelId
+          BEDROCK_GUARDRAIL_ID: !Ref BedrockGuardrailId
+          BEDROCK_GUARDRAIL_VERSION: !Ref BedrockGuardrailVersion
+          # Web Search ハイブリッド RAG (opt-in)
+          WEB_SEARCH_ENABLED: !Ref EnableWebSearch
+          AGENTCORE_GATEWAY_ID: !Ref AgentCoreGatewayId
+          AGENTCORE_GATEWAY_REGION: !Ref AgentCoreGatewayRegion
+
+  # --- Step Functions（シナリオB: 自動化ワークフロー） ---
+  # 差分検知 → 取り込み起動 → 完了までポーリング待機 → 結果を SNS 通知
+  KbSyncWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: genai-kb-selfservice-sync
+      Role: !GetAtt StepFunctionsRole.Arn
+      Definition:
+        Comment: Self-service KB auto-sync workflow
+        StartAt: DetectAndStartIngestion
+        States:
+          DetectAndStartIngestion:
+            Type: Task
+            Resource: !GetAtt AutoSyncFunction.Arn
+            Retry:
+              - ErrorEquals:
+                  - Lambda.ServiceException
+                  - Lambda.TooManyRequestsException
+                  - States.TaskFailed
+                IntervalSeconds: 5
+                MaxAttempts: 3
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: [States.ALL]
+                ResultPath: $.error
+                Next: NotifyFailure
+            Next: WasIngestionStarted
+          WasIngestionStarted:
+            Type: Choice
+            Choices:
+              - Variable: $.status
+                StringEquals: ingestion_started
+                Next: WaitForIngestion
+            Default: NoChange
+          NoChange:
+            Type: Succeed
+          WaitForIngestion:
+            Type: Wait
+            Seconds: 30
+            Next: CheckIngestionStatus
+          CheckIngestionStatus:
+            Type: Task
+            Resource: !GetAtt IngestionStatusFunction.Arn
+            Parameters:
+              knowledge_base_id.$: $.knowledge_base_id
+              data_source_id.$: $.data_source_id
+              ingestion_job_id.$: $.ingestion_job_id
+            Retry:
+              - ErrorEquals:
+                  - Lambda.ServiceException
+                  - Lambda.TooManyRequestsException
+                  - States.TaskFailed
+                IntervalSeconds: 5
+                MaxAttempts: 3
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: [States.ALL]
+                ResultPath: $.error
+                Next: NotifyFailure
+            Next: IsIngestionComplete
+          IsIngestionComplete:
+            Type: Choice
+            Choices:
+              - Variable: $.ingestion_status
+                StringEquals: COMPLETE
+                Next: NotifySuccess
+              - Variable: $.ingestion_status
+                StringEquals: FAILED
+                Next: NotifyFailure
+            Default: WaitForIngestion
+          NotifySuccess:
+            Type: Task
+            Resource: arn:aws:states:::sns:publish
+            Parameters:
+              TopicArn: !Ref NotificationTopic
+              Subject: '[UC29] KB sync COMPLETE'
+              Message.$: States.JsonToString($)
+            End: true
+          NotifyFailure:
+            Type: Task
+            Resource: arn:aws:states:::sns:publish
+            Parameters:
+              TopicArn: !Ref NotificationTopic
+              Subject: '[UC29] KB sync FAILED'
+              Message.$: States.JsonToString($)
+            End: true
+
+  StepFunctionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WorkflowPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt AutoSyncFunction.Arn
+                  - !GetAtt IngestionStatusFunction.Arn
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref NotificationTopic
+
+  # --- EventBridge Scheduler（シナリオB: 定期自動実行） ---
+  SyncSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      ScheduleExpression: !Ref SyncScheduleExpression
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !Ref KbSyncWorkflow
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: '{}'
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartWorkflow
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Ref KbSyncWorkflow
+
+  # --- CloudWatch アラーム（Lambda エラー監視 / 可観測性） ---
+  AutoSyncErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-autosync-errors'
+      AlarmDescription: Auto-Sync Lambda のエラー検知
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AutoSyncFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmsTopic
+
+  QueryErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-query-errors'
+      AlarmDescription: Query Lambda のエラー検知
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref QueryFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmsTopic
+
+  # --- CloudWatch ダッシュボード（可観測性） ---
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${AWS::StackName}-dashboard'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric", "x": 0, "y": 0, "width": 12, "height": 6,
+              "properties": {
+                "title": "Lambda Invocations / Errors",
+                "region": "${AWS::Region}",
+                "stat": "Sum", "period": 300,
+                "metrics": [
+                  [ "AWS/Lambda", "Invocations", "FunctionName", "${AutoSyncFunction}" ],
+                  [ "AWS/Lambda", "Errors", "FunctionName", "${AutoSyncFunction}" ],
+                  [ "AWS/Lambda", "Invocations", "FunctionName", "${QueryFunction}" ],
+                  [ "AWS/Lambda", "Errors", "FunctionName", "${QueryFunction}" ],
+                  [ "AWS/Lambda", "Errors", "FunctionName", "${IngestionStatusFunction}" ]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 12, "y": 0, "width": 12, "height": 6,
+              "properties": {
+                "title": "Lambda Duration (p95)",
+                "region": "${AWS::Region}",
+                "stat": "p95", "period": 300,
+                "metrics": [
+                  [ "AWS/Lambda", "Duration", "FunctionName", "${AutoSyncFunction}" ],
+                  [ "AWS/Lambda", "Duration", "FunctionName", "${QueryFunction}" ],
+                  [ "AWS/Lambda", "Duration", "FunctionName", "${IngestionStatusFunction}" ]
+                ]
+              }
+            }
+          ]
+        }
+
+  # ============================================================
+  # Scenario C: FPolicy イベント駆動リアルタイム同期（EnableScenarioC=true 時のみ）
+  # ============================================================
+
+  # --- KB Trigger Lambda 用 IAM Role ---
+  KbTriggerRole:
+    Type: AWS::IAM::Role
+    Condition: IsScenarioCEnabled
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: KbTriggerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:StartIngestionJob
+                  - bedrock:ListIngestionJobs
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/${KnowledgeBaseId}'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt KbTriggerDLQ.Arn
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+
+  # --- KB Trigger Lambda（FPolicy イベント → StartIngestionJob、デバウンス付き） ---
+  KbTriggerFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsScenarioCEnabled
+    Properties:
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: functions/kb_trigger/
+      Timeout: 60
+      MemorySize: 256
+      Role: !GetAtt KbTriggerRole.Arn
+      # バースト制御: 大量ファイル投入時の同時起動を抑制（Bedrock/CloudWatch スロットリング緩和）。
+      # デバウンス（進行中スキップ）と併せ、KB ジョブは同時 1 本に収束する。
+      ReservedConcurrentExecutions: !Ref KbTriggerReservedConcurrency
+      Environment:
+        Variables:
+          KNOWLEDGE_BASE_ID: !Ref KnowledgeBaseId
+          DATA_SOURCE_ID: !Ref DataSourceId
+          FPOLICY_PATH_FILTER: !Ref FPolicyVolumePathPrefix
+          NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
+      # Lambda 非同期実行失敗（再送出された例外）を捕捉する OnFailure 宛先。
+      # EventBridge ターゲットの DLQ は「配信失敗」のみを捕捉するため、関数の
+      # 「実行失敗」は EventInvokeConfig の OnFailure で別途捕捉する必要がある。
+      EventInvokeConfig:
+        MaximumRetryAttempts: 2
+        DestinationConfig:
+          OnFailure:
+            Type: SQS
+            Destination: !GetAtt KbTriggerDLQ.Arn
+
+  # --- KB Trigger 失敗イベント用 DLQ（EventBridge ターゲット配信失敗を捕捉） ---
+  KbTriggerDLQ:
+    Type: AWS::SQS::Queue
+    Condition: IsScenarioCEnabled
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-kbtrigger-dlq'
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  KbTriggerDLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: IsScenarioCEnabled
+    Properties:
+      Queues:
+        - !Ref KbTriggerDLQ
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt KbTriggerDLQ.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt KbTriggerEventRule.Arn
+
+  # --- EventBridge ルール（ai-knowledge/ プレフィックスの FPolicy イベントをルーティング） ---
+  KbTriggerEventRule:
+    Type: AWS::Events::Rule
+    Condition: IsScenarioCEnabled
+    Properties:
+      Name: !Sub '${AWS::StackName}-fpolicy-kb-trigger'
+      Description: 'UC29 Scenario C: route FPolicy ai-knowledge file events to KB Trigger Lambda'
+      EventBusName: !Ref FPolicyEventBusName
+      EventPattern:
+        source:
+          - 'fsxn.fpolicy'
+        detail-type:
+          - 'FPolicy File Operation'
+        detail:
+          file_path:
+            - prefix: !Ref FPolicyVolumePathPrefix
+      State: ENABLED
+      Targets:
+        - Id: kb-trigger-lambda
+          Arn: !GetAtt KbTriggerFunction.Arn
+          DeadLetterConfig:
+            Arn: !GetAtt KbTriggerDLQ.Arn
+          RetryPolicy:
+            MaximumRetryAttempts: 3
+            MaximumEventAgeInSeconds: 3600
+
+  # --- EventBridge → Lambda 呼び出し許可 ---
+  KbTriggerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Condition: IsScenarioCEnabled
+    Properties:
+      FunctionName: !Ref KbTriggerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt KbTriggerEventRule.Arn
+
+  # --- CloudWatch アラーム（KB Trigger エラー監視） ---
+  KbTriggerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsScenarioCEnabled
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-kbtrigger-errors'
+      AlarmDescription: KB Trigger Lambda のエラー検知（シナリオ C）
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref KbTriggerFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmsTopic
+
+Outputs:
+  AutoSyncFunctionArn:
+    Description: Auto-Sync Lambda ARN（差分検知 + Ingestion 起動）。シナリオAの手動同期にも使用
+    Value: !GetAtt AutoSyncFunction.Arn
+  IngestionStatusFunctionArn:
+    Description: Ingestion Status Lambda ARN（完了待ちポーリング）
+    Value: !GetAtt IngestionStatusFunction.Arn
+  KbSyncWorkflowArn:
+    Description: Step Functions ワークフロー ARN（シナリオB 自動化）
+    Value: !Ref KbSyncWorkflow
+  QueryFunctionArn:
+    Description: Query Lambda ARN（RetrieveAndGenerate）
+    Value: !GetAtt QueryFunction.Arn
+  NotificationTopicArn:
+    Description: 同期結果通知 SNS Topic ARN
+    Value: !Ref NotificationTopic
+  KbTriggerFunctionArn:
+    Condition: IsScenarioCEnabled
+    Description: KB Trigger Lambda ARN（シナリオC FPolicy イベント駆動リアルタイム同期）
+    Value: !GetAtt KbTriggerFunction.Arn

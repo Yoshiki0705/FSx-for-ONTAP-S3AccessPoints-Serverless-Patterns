@@ -5,7 +5,7 @@ Records: mean, p50, p90, p95, p99, max, std_dev, error_rate per concurrency leve
 
 CAVEAT: Results are from a specific test environment and represent a sizing reference,
 not a service limit. Actual performance depends on workload characteristics, network
-conditions, and FSx ONTAP configuration.
+conditions, and FSx for ONTAP configuration.
 
 Usage:
     python3 scripts/benchmark_throughput.py --throughput 256 --concurrency 1,5,10,20,25,50

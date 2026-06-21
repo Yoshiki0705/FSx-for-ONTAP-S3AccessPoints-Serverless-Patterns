@@ -2,7 +2,7 @@
 # SNS アラート自動化 — CloudWatch Alarms + SNS 通知
 # =============================================================================
 #
-# 本テンプレートは FSxN S3AP Serverless Patterns の全 14 ユースケースに対する
+# 本テンプレートは FSx for ONTAP S3 AP Serverless Patterns の全 14 ユースケースに対する
 # CloudWatch Alarms と SNS 通知ルールを作成する。
 #
 # 設計方針:
@@ -29,7 +29,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Alert Automation.
+  FSx for ONTAP S3 AP Serverless Patterns — Alert Automation.
   CloudWatch Alarms + SNS 通知による閾値ベース自動アラート。
 
 # =====================================================================
@@ -128,7 +128,7 @@ Resources:
   AlertTopicKey:
     Type: AWS::KMS::Key
     Properties:
-      Description: KMS key for FSxN S3AP alert SNS topic encryption
+      Description: KMS key for FSx for ONTAP S3 AP alert SNS topic encryption
       EnableKeyRotation: true
       KeyPolicy:
         Version: "2012-10-17"
@@ -175,7 +175,7 @@ Resources:
     Properties:
       TopicName: !Sub "fsxn-s3ap-alerts-${AWS::StackName}"
       DisplayName: !Sub
-        - "FSxN S3AP Alerts (monitoring ${StackCount} UC stacks)"
+        - "FSx for ONTAP S3 AP Alerts (monitoring ${StackCount} UC stacks)"
         - StackCount: !Select [0, !Ref UseCaseStackNames]
       KmsMasterKeyId: !Ref AlertTopicKey
       Tags:

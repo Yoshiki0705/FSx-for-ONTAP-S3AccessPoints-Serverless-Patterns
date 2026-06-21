@@ -1,4 +1,4 @@
-# コスト試算ツール — FSx ONTAP S3AP Serverless Patterns
+# コスト試算ツール — FSx for ONTAP S3AP Serverless Patterns
 
 ## 入力パラメータ
 
@@ -76,11 +76,11 @@ SNS 月額 = R × 30 × $0.50 / 100,000
 | 大規模 | 1,000 | hourly | $25.10 | $8.70 | $7.20 | $108.00 | **~$150/月** |
 | エンタープライズ | 10,000 | 15min | $100+ | $35+ | $72+ | $430+ | **~$640/月** |
 
-## 固定コスト（既存 FSx ONTAP 環境前提）
+## 固定コスト（既存 FSx for ONTAP 環境前提）
 
 | コンポーネント | 月額概算 | 備考 |
 |--------------|---------|------|
-| FSx ONTAP (128 MBps, 1 TB SSD) | ~$230 | 既存環境を共有する前提 |
+| FSx for ONTAP (128 MBps, 1 TB SSD) | ~$230 | 既存環境を共有する前提 |
 | S3 Access Point | $0 | 追加料金なし |
 | CloudWatch Logs (1 GB/月) | $0.76 | |
 | Secrets Manager (1 シークレット) | $0.40 | |

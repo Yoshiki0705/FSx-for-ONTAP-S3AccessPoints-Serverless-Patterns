@@ -15,7 +15,7 @@ PARAMS_BLOCK = """
     AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
     Description: |
       AI/ML 成果物の書き込み先。STANDARD_S3（デフォルト）は新しい S3 バケットに書き込み。
-      FSXN_S3AP は FSxN S3 Access Point 経由でオリジナルデータと同一ボリュームに書き込み
+      FSXN_S3AP は FSx for ONTAP S3 Access Point 経由でオリジナルデータと同一ボリュームに書き込み
       （"no data movement" パターン）。詳細: docs/aws-feature-requests/fsxn-s3ap-improvements.md
 
   OutputS3APAlias:
@@ -35,7 +35,7 @@ PARAMS_BLOCK = """
     Default: ""
     Description: |
       入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
-      IAM アクセスを許可する（FSxN S3AP の permission 判定で両形式をサポート）。
+      IAM アクセスを許可する（FSx for ONTAP S3 AP の permission 判定で両形式をサポート）。
 
   OutputS3APName:
     Type: String

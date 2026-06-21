@@ -41,7 +41,7 @@
   },
   "caveats": [
     "特定の検証環境での結果であり、本番保証値ではない（sizing reference / not a service limit）。",
-    "FSx ONTAP スループットは NFS/SMB/S3AP 共有。同時ワークロードの有無を併記。",
+    "FSx for ONTAP スループットは NFS/SMB/S3AP 共有。同時ワークロードの有無を併記。",
     "平均ではなく P99/tail を sizing シグナルとして解釈すること。",
     "料金・サービス仕様は time-sensitive。"
   ]

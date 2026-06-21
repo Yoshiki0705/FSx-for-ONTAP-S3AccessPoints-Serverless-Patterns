@@ -19,7 +19,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  FSxN S3AP Serverless Patterns — Lineage Retention.
+  FSx for ONTAP S3 AP Serverless Patterns — Lineage Retention.
   DynamoDB → S3 日次エクスポート + Object Lock (7 年保存)。
 
 Parameters:

@@ -131,7 +131,7 @@ cat /tmp/s3ap_health_result.json
 
 # メトリクス確認
 aws cloudwatch get-metric-statistics \
-  --namespace "FSxN-S3AP-Patterns/Canary" \
+  --namespace "FSxN-S3AP-Patterns/Canary" \ # allow:naming
   --metric-name S3APHealthCheck \
   --dimensions Name=CheckType,Value=VPC-External \
   --start-time $(date -d '10 minutes ago' --iso-8601=seconds) \

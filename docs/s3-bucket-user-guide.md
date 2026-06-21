@@ -6,13 +6,13 @@
 
 Amazon S3 標準バケットを普段使用している方が、FSx for ONTAP S3 Access Points を初めて扱う際に知るべき差分を整理します。
 
-> **重要**: このパターンライブラリは **S3 データレイクパターンの代替ではありません**。FSx ONTAP に保存されたファイルデータを、NFS/SMB アクセスパスを維持しながら S3 互換 API で処理するための **file-data integration pattern** です。
+> **重要**: このパターンライブラリは **S3 データレイクパターンの代替ではありません**。FSx for ONTAP に保存されたファイルデータを、NFS/SMB アクセスパスを維持しながら S3 互換 API で処理するための **file-data integration pattern** です。
 
-## Standard S3 Bucket vs FSx ONTAP S3 Access Point
+## Standard S3 Bucket vs FSx for ONTAP S3 Access Point
 
-| 機能 | Standard S3 Bucket | FSx ONTAP S3 AP |
+| 機能 | Standard S3 Bucket | FSx for ONTAP S3 AP |
 |------|:---:|:---:|
-| Object storage backend | S3 | FSx ONTAP volume |
+| Object storage backend | S3 | FSx for ONTAP volume |
 | Versioning | ✅ Supported | ❌ Not supported |
 | Object Lock (WORM) | ✅ Supported | ❌ Not supported (代替: SnapLock) |
 | Lifecycle policies | ✅ Supported | ❌ Not supported (代替: Snapshot/SnapMirror) |
@@ -79,20 +79,20 @@ S3 Versioning と ONTAP Snapshot は異なるリカバリモデルです:
 
 ## Performance の違い
 
-| 特性 | Standard S3 | FSx ONTAP S3 AP |
+| 特性 | Standard S3 | FSx for ONTAP S3 AP |
 |---|---|---|
 | スケーリング | リクエスト率に応じて自動 | FSx throughput capacity に依存（provisioned） |
 | レイテンシ | 数ms（同一リージョン） | tens of ms（S3 AP data plane 経由） |
 | 並列性能 | プレフィックス並列で 5,500+ req/s/prefix | FSx throughput capacity がボトルネック |
 | Throughput 変更時 | 影響なし | S3 AP が ServiceUnavailable になる可能性あり |
 
-> S3 標準バケットとは異なり、FSx ONTAP S3 AP の可用性は FSx ファイルシステムの運用変更（throughput capacity 変更など）の影響を受ける可能性があります。
+> S3 標準バケットとは異なり、FSx for ONTAP S3 AP の可用性は FSx ファイルシステムの運用変更（throughput capacity 変更など）の影響を受ける可能性があります。
 
 ## Security の違い
 
-S3 標準バケットでは Bucket Policy で許可すれば OK ですが、FSx ONTAP S3 AP では:
+S3 標準バケットでは Bucket Policy で許可すれば OK ですが、FSx for ONTAP S3 AP では:
 
-> **FSx ONTAP S3 AP リクエストは AWS 認可（IAM + S3 AP policy）とファイルシステム認可（ONTAP file identity）の両方を通過する必要があります。IAM Allow だけでは不十分です。**
+> **FSx for ONTAP S3 AP リクエストは AWS 認可（IAM + S3 AP policy）とファイルシステム認可（ONTAP file identity）の両方を通過する必要があります。IAM Allow だけでは不十分です。**
 
 推奨チェック:
 - IAM Access Analyzer で S3 AP policy を検証してからデプロイ
@@ -101,7 +101,7 @@ S3 標準バケットでは Bucket Policy で許可すれば OK ですが、FSx 
 
 ## NetworkOrigin の注意
 
-| S3 標準バケット | FSx ONTAP S3 AP |
+| S3 標準バケット | FSx for ONTAP S3 AP |
 |---|---|
 | VPC Endpoint は routing choice | NetworkOrigin は **作成時に決定、変更不可** |
 | Gateway/Interface EP を後から追加・変更可能 | Internet-origin ↔ VPC-origin 変更不可 |
@@ -119,13 +119,13 @@ S3 Lifecycle policies が使えないため:
 
 | 戦略 | 使用する場合 |
 |---|---|
-| FSx ONTAP に残す + S3 AP で処理 | ファイルセマンティクス、NFS/SMB 互換性、移行コスト回避 |
+| FSx for ONTAP に残す + S3 AP で処理 | ファイルセマンティクス、NFS/SMB 互換性、移行コスト回避 |
 | 分析結果を標準 S3 にコピー | データレイクガバナンス、Lifecycle、Object Lock、Lake Formation が必要 |
 | 全面 S3 移行 | Object-native アプリケーションモダナイゼーション |
 
 ## Observability の違い
 
-S3 標準バケットの監査（CloudTrail data events, S3 Server Access Logs, Storage Lens）に加え、FSx ONTAP では:
+S3 標準バケットの監査（CloudTrail data events, S3 Server Access Logs, Storage Lens）に加え、FSx for ONTAP では:
 
 ```
 AWS API plane:  CloudTrail, CloudWatch, Step Functions execution history
@@ -141,7 +141,7 @@ File-system:    FSx CloudWatch metrics, ONTAP REST API, FPolicy audit logs
 
 | 質問 | 回答 |
 |------|------|
-| これは普通の S3 バケットですか？ | **いいえ**。FSx ONTAP volume への S3 API アクセスパスです |
+| これは普通の S3 バケットですか？ | **いいえ**。FSx for ONTAP volume への S3 API アクセスパスです |
 | Lifecycle は使えますか？ | **いいえ**。Snapshot/SnapMirror/auto-tiering を使用 |
 | Versioning は使えますか？ | **いいえ**。ONTAP Snapshot が代替 |
 | Object Lock は使えますか？ | **いいえ**。SnapLock (Compliance/Enterprise) が代替 |

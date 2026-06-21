@@ -310,7 +310,7 @@ def run_comparison(
 
     # EMF メトリクス出力
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="latency_comparison")
-    metrics.set_dimension("UseCase", "event-driven-prototype")
+    metrics.set_dimension("UseCase", "solutions/event-driven/prototype")
     metrics.put_metric("EventDrivenAvgLatency", event_stats["avg"], "Milliseconds")
     metrics.put_metric("PollingAvgLatency", polling_stats["avg"], "Milliseconds")
     metrics.put_metric("LatencyImprovement", results["improvement"]["avg_reduction_pct"], "None")

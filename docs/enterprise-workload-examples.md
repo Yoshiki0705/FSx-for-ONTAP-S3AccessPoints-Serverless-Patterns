@@ -21,7 +21,7 @@
 
 **アーキテクチャパターン**:
 ```
-SAP App Server → NFS → FSx ONTAP Volume
+SAP App Server → NFS → FSx for ONTAP Volume
                               ↓ (S3 Access Point)
                         Lambda (GetObject) → Bedrock (分類/要約)
                                            → Athena (構造化分析)
@@ -39,7 +39,7 @@ SAP App Server → NFS → FSx ONTAP Volume
 
 **アーキテクチャパターン**:
 ```
-HULFT/EDI Gateway → SMB → FSx ONTAP Volume (/landing/)
+HULFT/EDI Gateway → SMB → FSx for ONTAP Volume (/landing/)
                                 ↓ (S3 Access Point + EventBridge Scheduler)
                           Step Functions
                             ├─→ Validation Lambda (フォーマットチェック)
@@ -58,7 +58,7 @@ HULFT/EDI Gateway → SMB → FSx ONTAP Volume (/landing/)
 
 **アーキテクチャパターン**:
 ```
-Audit System → SMB (NTFS ACL) → FSx ONTAP Volume
+Audit System → SMB (NTFS ACL) → FSx for ONTAP Volume
                                        ↓ (S3 AP, Windows identity)
                                  Lambda (定期スキャン)
                                    ├─→ 完全性ハッシュ検証
@@ -89,7 +89,7 @@ Audit System → SMB (NTFS ACL) → FSx ONTAP Volume
 #### アーキテクチャパターン: EC2 バッチ出力 + S3 AP 後処理
 
 ```
-EC2/ECS on EC2 Batch App → NFS → FSx ONTAP Volume (/batch-output/YYYYMMDD/)
+EC2/ECS on EC2 Batch App → NFS → FSx for ONTAP Volume (/batch-output/YYYYMMDD/)
                                         ↓ (S3 Access Point + EventBridge Scheduler)
                                   Step Functions (日次)
                                     ├─→ Discovery (当日出力ファイル検出)
@@ -101,7 +101,7 @@ EC2/ECS on EC2 Batch App → NFS → FSx ONTAP Volume (/batch-output/YYYYMMDD/)
 #### アーキテクチャパターン: Fargate アプリ + S3 AP 双方向
 
 ```
-ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-output/)
+ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx for ONTAP Volume (/app-output/)
                                                 ↓
                                           NFS/SMB ユーザーが結果を閲覧
                                                 ↓ (EventBridge Scheduler)
@@ -118,8 +118,8 @@ ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-out
 | リソース | 内容 | リンク |
 |---------|------|--------|
 | AWS ドキュメント: ECS + FSx for ONTAP | EC2 launch type での NFS/SMB マウント手順 | [mount-ontap-ecs-containers](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/mount-ontap-ecs-containers.html) |
-| 本リポジトリ: UC1 (legal-compliance) | S3 AP 経由の基本パターン（Lambda + Step Functions） | [legal-compliance/](../legal-compliance/README.md) |
-| 本リポジトリ: event-driven-fpolicy | Fargate での FPolicy Server 実装例 | [event-driven-fpolicy/](../event-driven-fpolicy/README.md) |
+| 本リポジトリ: UC1 (legal-compliance) | S3 AP 経由の基本パターン（Lambda + Step Functions） | [solutions/industry/legal-compliance/](../solutions/industry/legal-compliance/README.md) |
+| 本リポジトリ: event-driven-fpolicy | Fargate での FPolicy Server 実装例 | [solutions/event-driven/fpolicy/](../solutions/event-driven/fpolicy/README.md) |
 | 本リポジトリ: Fargate vs EC2 Decision | FPolicy Server のコンピュート選択ガイド | [fargate-vs-ec2-fpolicy-decision.md](fargate-vs-ec2-fpolicy-decision.md) |
 | S3AP Benchmark Results | PutObject/GetObject の実測レイテンシ | [s3ap-benchmark-results.md](s3ap-benchmark-results.md) |
 | AWS ブログ: Bridge legacy and modern apps | S3 AP で file-based と object-based アプリを接続 | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/) |
@@ -135,7 +135,7 @@ ECS Fargate App ──→ S3 AP (PutObject) ──→ FSx ONTAP Volume (/app-out
 
 **アーキテクチャパターン**:
 ```
-Scanner → SMB → FSx ONTAP Volume (/scanned-docs/)
+Scanner → SMB → FSx for ONTAP Volume (/scanned-docs/)
                        ↓ (S3 AP)
                  Step Functions
                    ├─→ Textract (OCR) ⚠️ Cross-Region

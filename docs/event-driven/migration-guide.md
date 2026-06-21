@@ -6,7 +6,7 @@
 イベント駆動（S3 Event Notifications → EventBridge → Step Functions）アーキテクチャへの
 段階的移行手順を定義する。
 
-FSx ONTAP S3 AP ネイティブ通知機能が利用可能になった際に、
+FSx for ONTAP S3 AP ネイティブ通知機能が利用可能になった際に、
 既存デプロイメントを安全に移行するためのガイドである。
 
 ---
@@ -411,10 +411,10 @@ Resources:
 
 | メトリクス | 名前空間 | 説明 |
 |---|---|---|
-| `EventToProcessingLatency` | FSxN-S3AP-Patterns | イベント発生→処理開始 |
-| `EndToEndDuration` | FSxN-S3AP-Patterns | イベント発生→処理完了 |
-| `EventVolumePerMinute` | FSxN-S3AP-Patterns | 1分あたりイベント数 |
-| `PollingCatchupCount` | FSxN-S3AP-Patterns | Polling キャッチアップ数 |
+| `EventToProcessingLatency` | FSxN-S3AP-Patterns | イベント発生→処理開始 | <!-- allow:naming -->
+| `EndToEndDuration` | FSxN-S3AP-Patterns | イベント発生→処理完了 | <!-- allow:naming -->
+| `EventVolumePerMinute` | FSxN-S3AP-Patterns | 1分あたりイベント数 | <!-- allow:naming -->
+| `PollingCatchupCount` | FSxN-S3AP-Patterns | Polling キャッチアップ数 | <!-- allow:naming -->
 
 ### アラート設定
 

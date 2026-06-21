@@ -1,0 +1,29 @@
+# cfn-lint project configuration
+# https://github.com/aws-cloudformation/cfn-lint
+
+templates:
+  - "solutions/**/template.yaml"
+  - "solutions/**/template-deploy.yaml"
+
+ignore_templates:
+  - "shared/cfn/*.yaml"
+  - "security/**"
+
+# Rules to ignore project-wide
+ignore_checks:
+  # W3002: CodeUri/DefinitionUri should be S3 URI — we use local paths for sam build
+  - W3002
+  # W1031: Fn::Sub with Ref in Secrets Manager ARNs triggers false positive
+  - W1031
+
+# Default region for resource availability checks
+regions:
+  - ap-northeast-1
+
+# SAM transform support
+configure_rules:
+  E3012:
+    strict: false
+
+include_checks:
+  - I

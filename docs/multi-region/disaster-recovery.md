@@ -101,7 +101,7 @@ Resources:
 
 **注意**: Step Functions の実行中状態はリージョン固有。フェイルオーバー時に実行中のワークフローは失われる。冪等性設計により再実行で復旧可能。
 
-### S3 Access Point / FSx ONTAP
+### S3 Access Point / FSx for ONTAP
 
 | Tier | 戦略 | RPO | 復旧手順 |
 |------|------|-----|---------|
@@ -270,7 +270,7 @@ aws stepfunctions start-execution ...
 | DynamoDB Global Tables | $40 | $40 | $20 (PITR のみ) |
 | Lambda Functions | $60 | $10 (最小構成) | $0 (未デプロイ) |
 | Step Functions | $100 | $10 (最小実行) | $0 (未デプロイ) |
-| FSx ONTAP (Secondary) | $500 | $300 (小容量) | $0 (Snapshot のみ) |
+| FSx for ONTAP (Secondary) | $500 | $300 (小容量) | $0 (Snapshot のみ) |
 | SnapMirror データ転送 | $50 | $30 | $5 (日次) |
 | Route 53 Health Checks | $2 | $2 | $1 |
 | EventBridge | $5 | $2 | $0 |

@@ -1,11 +1,11 @@
-# CDN / 边缘分发集成对比 — 从 FSx ONTAP S3 Access Points 分发
+# CDN / 边缘分发集成对比 — 从 FSx for ONTAP S3 Access Points 分发
 
 🌐 **Language / 言語**: [日本語](cdn-comparison.md) | [English](cdn-comparison.en.md) | [한국어](cdn-comparison.ko.md) | [简体中文](cdn-comparison.zh-CN.md) | [繁體中文](cdn-comparison.zh-TW.md) | [Français](cdn-comparison.fr.md) | [Deutsch](cdn-comparison.de.md) | [Español](cdn-comparison.es.md)
 
 ## 0. 范围
 
 整理从 FSx for ONTAP S3 Access Points（S3 AP）上的数据通过 CDN/边缘网络分发时的**技术可行性**的参考资料。
-本文档**不**进行厂商优劣对比、价格/性能对比或营销主张。仅讨论针对 FSx ONTAP S3 AP 的约束，**哪些可实现、
+本文档**不**进行厂商优劣对比、价格/性能对比或营销主张。仅讨论针对 FSx for ONTAP S3 AP 的约束，**哪些可实现、
 哪些不可实现、哪些需验证**。分发厂商选型由客户结合本文档范围之外的因素（合同·SLA·运维体系·区域要求等）判断。
 
 ## 1. 决定分发设计的 S3 AP 约束
@@ -53,7 +53,7 @@
   **非在运选项** — 排除。
 
 > 出处为各家公开文档（CloudFront OAC、Akamai Cloud Access Manager、Fastly S3 兼容私有源、Cloudflare
-> Workers/R2、Bunny Storage、Google Media CDN）。均为针对**标准 S3 兼容桶**的描述；在 FSx ONTAP S3 AP
+> Workers/R2、Bunny Storage、Google Media CDN）。均为针对**标准 S3 兼容桶**的描述；在 FSx for ONTAP S3 AP
 > accesspoint alias 上的行为为 TBV。
 
 ## 4. 安全固定要求（机制通用）
@@ -69,7 +69,7 @@
 
 ### 4.1 证据分类
 - **公开证据**：第 3 节各分发网功能 — 基于公开文档、**时点相关**，采用前以最新信息再确认。
-- **需验证（本项目）**：针对 FSx ONTAP S3 AP accesspoint alias 的各 CDN SigV4 源签名实际行为。
+- **需验证（本项目）**：针对 FSx for ONTAP S3 AP accesspoint alias 的各 CDN SigV4 源签名实际行为。
 
 ## 5. 可行性小结
 

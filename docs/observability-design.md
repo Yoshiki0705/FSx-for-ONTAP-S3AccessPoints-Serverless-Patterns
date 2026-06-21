@@ -189,7 +189,7 @@ Three new operational runbooks will live under
 UC1 (legal-compliance) is the smallest UC and already deployed in all
 Phase 8 testing, making it the best reference implementation target.
 
-Changes to `legal-compliance/template-deploy.yaml`:
+Changes to `solutions/industry/legal-compliance/template-deploy.yaml`:
 
 - Add `EnableObservability`, `AlarmNotificationEmail`, `AlarmSnsTopicArn`
   parameters

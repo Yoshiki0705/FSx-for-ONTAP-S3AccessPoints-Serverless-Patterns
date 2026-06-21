@@ -9,11 +9,11 @@
 
 Usage:
     python scripts/translate_docs.py \
-        --source semiconductor-eda/docs/demo-guide.md \
+        --source solutions/industry/semiconductor-eda/docs/demo-guide.md \
         --project-root /path/to/project
 
     python scripts/translate_docs.py \
-        --source semiconductor-eda/docs/uc6-architecture.md \
+        --source solutions/industry/semiconductor-eda/docs/uc6-architecture.md \
         --project-root /path/to/project
 """
 
@@ -208,7 +208,7 @@ def translate_doc(
     """Translate a single documentation file into 7 target languages.
 
     Args:
-        source_path: Relative path from project root (e.g., "semiconductor-eda/docs/demo-guide.md")
+        source_path: Relative path from project root (e.g., "solutions/industry/semiconductor-eda/docs/demo-guide.md")
         project_root: Absolute path to project root
         model_id: Bedrock model ID for translation
         force: If True, overwrite existing translations

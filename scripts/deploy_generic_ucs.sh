@@ -9,8 +9,8 @@
 #
 # Environment Variables:
 #   DEPLOY_BUCKET          - S3 bucket for Lambda packages and CFn templates
-#   S3_AP_ALIAS            - FSxN S3 Access Point alias
-#   S3_AP_NAME             - FSxN S3 Access Point name (for IAM dual-format)
+#   S3_AP_ALIAS            - FSx for ONTAP S3 Access Point alias
+#   S3_AP_NAME             - FSx for ONTAP S3 Access Point name (for IAM dual-format)
 #   VPC_ID                 - VPC ID for Lambda functions
 #   SUBNETS                - Comma-separated private subnet IDs
 #   NOTIFICATION_EMAIL     - Email for SNS notifications
@@ -109,23 +109,23 @@ fi
 # Map short names to directories (using case for bash 3.2 compat)
 uc_to_dir() {
     case "$1" in
-        UC1) echo "legal-compliance" ;;
-        UC2) echo "financial-idp" ;;
-        UC3) echo "manufacturing-analytics" ;;
-        UC4) echo "media-vfx" ;;
-        UC5) echo "healthcare-dicom" ;;
-        UC6) echo "semiconductor-eda" ;;
-        UC7) echo "genomics-pipeline" ;;
-        UC8) echo "energy-seismic" ;;
-        UC9) echo "autonomous-driving" ;;
-        UC10) echo "construction-bim" ;;
-        UC11) echo "retail-catalog" ;;
-        UC12) echo "logistics-ocr" ;;
-        UC13) echo "education-research" ;;
-        UC14) echo "insurance-claims" ;;
-        UC15) echo "defense-satellite" ;;
-        UC16) echo "government-archives" ;;
-        UC17) echo "smart-city-geospatial" ;;
+        UC1) echo "solutions/industry/legal-compliance" ;;
+        UC2) echo "solutions/industry/financial-idp" ;;
+        UC3) echo "solutions/industry/manufacturing-analytics" ;;
+        UC4) echo "solutions/industry/media-vfx" ;;
+        UC5) echo "solutions/industry/healthcare-dicom" ;;
+        UC6) echo "solutions/industry/semiconductor-eda" ;;
+        UC7) echo "solutions/industry/genomics-pipeline" ;;
+        UC8) echo "solutions/industry/energy-seismic" ;;
+        UC9) echo "solutions/industry/autonomous-driving" ;;
+        UC10) echo "solutions/industry/construction-bim" ;;
+        UC11) echo "solutions/industry/retail-catalog" ;;
+        UC12) echo "solutions/industry/logistics-ocr" ;;
+        UC13) echo "solutions/industry/education-research" ;;
+        UC14) echo "solutions/industry/insurance-claims" ;;
+        UC15) echo "solutions/industry/defense-satellite" ;;
+        UC16) echo "solutions/industry/government-archives" ;;
+        UC17) echo "solutions/industry/smart-city-geospatial" ;;
         *) echo "$1" ;;  # already a directory name
     esac
 }

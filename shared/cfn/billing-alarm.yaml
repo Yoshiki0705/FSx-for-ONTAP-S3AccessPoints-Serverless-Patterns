@@ -32,7 +32,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Billing Alarm.
+  FSx for ONTAP S3 AP Serverless Patterns — Billing Alarm.
   3 段階請求アラーム + サービス別コストダッシュボード。
 
 # =====================================================================
@@ -98,7 +98,7 @@ Resources:
   BillingAlarmKey:
     Type: AWS::KMS::Key
     Properties:
-      Description: KMS key for FSxN S3AP billing alarm SNS topic encryption
+      Description: KMS key for FSx for ONTAP S3 AP billing alarm SNS topic encryption
       EnableKeyRotation: true
       KeyPolicy:
         Version: "2012-10-17"
@@ -144,7 +144,7 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub "fsxn-s3ap-billing-alarms-${AWS::StackName}"
-      DisplayName: "FSxN S3AP Billing Alarms"
+      DisplayName: "FSx for ONTAP S3 AP Billing Alarms"
       KmsMasterKeyId: !Ref BillingAlarmKey
       Tags:
         - Key: Phase

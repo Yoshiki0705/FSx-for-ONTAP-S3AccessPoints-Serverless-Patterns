@@ -44,7 +44,7 @@ Parameters:
   # --- 必須パラメータ（常にデフォルト有効） ---
   S3AccessPointAlias:
     Type: String
-    Description: FSx ONTAP S3 Access Point Alias
+    Description: FSx for ONTAP S3 Access Point Alias
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
 
   OntapSecretName:

@@ -655,7 +655,7 @@ class ProductionUCValidator:
 class TestProductionUCDeployment:
     """Production UC Deployment E2E 検証テスト.
 
-    実環境（CloudFormation + FSx ONTAP + SQS + Step Functions）が必要なため、
+    実環境（CloudFormation + FSx for ONTAP + SQS + Step Functions）が必要なため、
     CI では @pytest.mark.e2e マーカーでスキップ可能。
 
     Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.5, 12.6

@@ -13,7 +13,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-UC_DIRS = ["defense-satellite", "government-archives", "smart-city-geospatial"]
+UC_DIRS = ["solutions/industry/defense-satellite", "solutions/industry/government-archives", "solutions/industry/smart-city-geospatial"]
 LOCALES_SUFFIX = ["ko", "zh-CN", "zh-TW", "fr", "de", "es", "en"]
 
 

@@ -18,61 +18,61 @@ fi
 # Map UC → directory + sample key + local file + prefix
 case "$UC" in
   UC1)
-    DIR="legal-compliance"
+    DIR="solutions/industry/legal-compliance"
     STACK="fsxn-legal-compliance-demo"
     LOCAL_FILE="/tmp/uc1_contract.pdf"
     S3_KEY="contracts/2026/05/sample_contract.pdf"
     ;;
   UC2)
-    DIR="financial-idp"
+    DIR="solutions/industry/financial-idp"
     STACK="fsxn-financial-idp-demo"
     LOCAL_FILE="/tmp/uc2_invoice.pdf"
     S3_KEY="invoices/2026/05/sample_invoice.pdf"
     ;;
   UC3)
-    DIR="manufacturing-analytics"
+    DIR="solutions/industry/manufacturing-analytics"
     STACK="fsxn-manufacturing-analytics-demo"
     LOCAL_FILE="/tmp/uc3_sensors.csv"
     S3_KEY="sensors/2026/05/sensor_data.csv"
     ;;
   UC5)
-    DIR="healthcare-dicom"
+    DIR="solutions/industry/healthcare-dicom"
     STACK="fsxn-healthcare-dicom-demo"
     LOCAL_FILE="/tmp/uc5_dicom_meta.json"
     S3_KEY="dicom/2026/05/patient001.json"
     ;;
   UC7)
-    DIR="genomics-pipeline"
+    DIR="solutions/industry/genomics-pipeline"
     STACK="fsxn-genomics-pipeline-demo"
     LOCAL_FILE="/tmp/uc7_sample.fastq"
     S3_KEY="genomics/2026/05/sample001.fastq"
     ;;
   UC8)
-    DIR="energy-seismic"
+    DIR="solutions/industry/energy-seismic"
     STACK="fsxn-energy-seismic-demo"
     LOCAL_FILE="/tmp/uc8_seismic.segy"
     S3_KEY="seismic/2026/05/survey001.segy"
     ;;
   UC9)
-    DIR="autonomous-driving"
+    DIR="solutions/industry/autonomous-driving"
     STACK="fsxn-autonomous-driving-demo"
     LOCAL_FILE="/tmp/uc3_inspection.jpg"
     S3_KEY="adas/2026/05/sensor_frame.jpg"
     ;;
   UC10)
-    DIR="construction-bim"
+    DIR="solutions/industry/construction-bim"
     STACK="fsxn-construction-bim-demo"
     LOCAL_FILE="/tmp/uc10_drawing.pdf"
     S3_KEY="drawings/2026/05/floor_plan.pdf"
     ;;
   UC12)
-    DIR="logistics-ocr"
+    DIR="solutions/industry/logistics-ocr"
     STACK="fsxn-logistics-ocr-demo"
     LOCAL_FILE="/tmp/uc12_waybill.pdf"
     S3_KEY="waybills/2026/05/WB-2026-5001.pdf"
     ;;
   UC13)
-    DIR="education-research"
+    DIR="solutions/industry/education-research"
     STACK="fsxn-education-research-demo"
     LOCAL_FILE="/tmp/uc13_paper.pdf"
     S3_KEY="papers/2026/05/paper001.pdf"

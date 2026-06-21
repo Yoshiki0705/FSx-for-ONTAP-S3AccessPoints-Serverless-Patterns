@@ -522,4 +522,4 @@ for obj in response.get("Contents", []):
 - [NetApp: FlexClone for infrastructure operations](https://www.netapp.com/customers/it-use-cases/flexcone/)
 - [NetApp Docs: Create a FlexClone volume](https://docs.netapp.com/us-en/ontap/volumes/create-flexclone-task.html)
 - [AWS Docs: Mounting volumes on Windows clients](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/attach-windows-client.html)
-- [AWS rePost: Mount FSx ONTAP CIFS share on Linux EC2](https://repost.aws/knowledge-center/ec2-mount-fsx-ontap-cifs)
+- [AWS rePost: Mount FSx for ONTAP CIFS share on Linux EC2](https://repost.aws/knowledge-center/ec2-mount-fsx-ontap-cifs)

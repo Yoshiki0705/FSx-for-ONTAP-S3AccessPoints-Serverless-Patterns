@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  Multi-Region Base Template — FSxN S3AP Serverless Patterns Phase 5.
+  Multi-Region Base Template — FSx for ONTAP S3 AP Serverless Patterns Phase 5.
   Creates foundational resources for secondary region deployment:
   Route 53 Health Check, Cross-Region EventBridge Rules,
   and deployment mode configuration (active-active / active-passive).

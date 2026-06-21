@@ -27,7 +27,7 @@
 
 ```
 NFS Client (NFSv3 mount)
-  → FSx ONTAP Volume (file create/write/delete/rename)
+  → FSx for ONTAP Volume (file create/write/delete/rename)
     → ONTAP FPolicy (async, external engine)
       → ECS Fargate TCP Server (port 9898, direct IP)
         → SQS Ingestion Queue

@@ -11,15 +11,15 @@ import re
 import os
 
 PHASE2_UCS = [
-    "semiconductor-eda",
-    "genomics-pipeline",
-    "energy-seismic",
-    "autonomous-driving",
-    "construction-bim",
-    "retail-catalog",
-    "logistics-ocr",
-    "education-research",
-    "insurance-claims",
+    "solutions/industry/semiconductor-eda",
+    "solutions/industry/genomics-pipeline",
+    "solutions/industry/energy-seismic",
+    "solutions/industry/autonomous-driving",
+    "solutions/industry/construction-bim",
+    "solutions/industry/retail-catalog",
+    "solutions/industry/logistics-ocr",
+    "solutions/industry/education-research",
+    "solutions/industry/insurance-claims",
 ]
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

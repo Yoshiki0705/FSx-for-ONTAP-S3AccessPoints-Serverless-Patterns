@@ -179,7 +179,7 @@ ComponentsScaleFromZeroTimeout = 300
 
 # または直接 SAM/CloudFormation デプロイ
 aws cloudformation deploy \
-  --template-file autonomous-driving/template-deploy.yaml \
+  --template-file solutions/industry/autonomous-driving/template-deploy.yaml \
   --stack-name uc9-autonomous-driving \
   --parameter-overrides \
     EnableInferenceComponents=true \

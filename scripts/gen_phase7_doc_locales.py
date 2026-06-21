@@ -12,7 +12,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-UCS = ["defense-satellite", "government-archives", "smart-city-geospatial"]
+UCS = ["solutions/industry/defense-satellite", "solutions/industry/government-archives", "solutions/industry/smart-city-geospatial"]
 DOC_TYPES = ["architecture", "demo-guide"]
 
 LOCALES = [

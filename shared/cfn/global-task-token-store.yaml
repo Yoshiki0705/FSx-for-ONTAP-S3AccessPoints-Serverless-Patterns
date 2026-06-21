@@ -34,7 +34,7 @@
 
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FSxN S3AP Serverless Patterns — Global Task Token Store.
+  FSx for ONTAP S3 AP Serverless Patterns — Global Task Token Store.
   DynamoDB Global Tables による Multi-Region Task Token レプリケーション。
 
 # =====================================================================
