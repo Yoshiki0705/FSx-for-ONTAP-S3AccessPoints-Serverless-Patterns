@@ -309,6 +309,264 @@ EventBridge Scheduler (Periodic Execution)
        └─→ Report/Notification: Generate result report → SNS notification
 ```
 
+### Category-Specific Architectures
+
+The above shows the common serverless processing flow. Each category has unique architectural elements.
+
+<details>
+<summary><strong>🏭 FlexCache / FlexClone Patterns (FC1-FC7)</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "Trigger"
+        SCHED[EventBridge Scheduler]
+        MANUAL[Manual Execution]
+    end
+
+    subgraph "Orchestration"
+        SFN[Step Functions]
+    end
+
+    subgraph "FlexCache Management"
+        HC[HealthCheck Lambda<br/>Monitor each FlexCache availability]
+        RD[RouteDecision Lambda<br/>Latency/Affinity/Failover strategy]
+        CREATE[CreateFlexCache Lambda<br/>ONTAP REST API]
+        CLEANUP[CleanupFlexCache Lambda<br/>ONTAP REST API]
+    end
+
+    subgraph "State Management"
+        DDB[DynamoDB<br/>FlexCache Routing Table]
+    end
+
+    subgraph "FSx for ONTAP"
+        ORIGIN[Origin Volume<br/>SVM / NFS / SMB]
+        FC1[FlexCache Volume 1<br/>Region A]
+        FC2[FlexCache Volume 2<br/>Region B]
+        FC3[FlexCache Volume 3<br/>DR Region]
+    end
+
+    subgraph "Report & Notification"
+        RPT[Report Lambda]
+        SNS[SNS Topic]
+    end
+
+    SCHED --> SFN
+    MANUAL --> SFN
+    SFN --> HC
+    SFN --> RD
+    SFN --> CREATE
+    SFN --> CLEANUP
+    SFN --> RPT
+
+    HC --> DDB
+    RD --> DDB
+    HC -->|ONTAP REST API| FC1
+    HC -->|ONTAP REST API| FC2
+    HC -->|ONTAP REST API| FC3
+    CREATE -->|ONTAP REST API| ORIGIN
+    CLEANUP -->|ONTAP REST API| FC1
+
+    ORIGIN -.->|FlexCache relationship| FC1
+    ORIGIN -.->|FlexCache relationship| FC2
+    ORIGIN -.->|FlexCache relationship| FC3
+    RPT --> SNS
+```
+
+**Patterns**: anycast-dr (Multi-region DR), dynamic-render-workflow (On-demand create/delete), rag-enterprise-files (ACL-aware RAG), automotive-cae, life-sciences-research, gaming-build-pipeline, devops-cicd
+
+</details>
+
+<details>
+<summary><strong>🤖 GenAI Patterns (UC29-UC30)</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "Data Source"
+        FSXN[FSx for ONTAP<br/>Volume]
+        S3AP[S3 Access Point]
+    end
+
+    subgraph "Ingestion UC29"
+        FPOLICY[FPolicy Event<br/>File Change Detection]
+        SQS[SQS Queue]
+        EB[EventBridge Rule]
+        KB_TRIGGER[KB Trigger Lambda<br/>Bedrock KB StartIngestionJob]
+    end
+
+    subgraph "Bedrock Knowledge Bases"
+        KB[Bedrock Knowledge Base<br/>Managed RAG]
+        DS[Data Source<br/>via S3 AP]
+        VS[Vector Store<br/>OpenSearch Serverless]
+    end
+
+    subgraph "Query UC29"
+        QUERY[Query Lambda<br/>RetrieveAndGenerate API]
+        MODEL[Bedrock Model<br/>Claude / Nova]
+        GUARD[Bedrock Guardrails]
+    end
+
+    subgraph "Agent UC30"
+        AGENT[Agentic Workspace Lambda<br/>Multi-action execution]
+        TOOLS[Tool Execution<br/>summarize / search /<br/>generate_brief / approve]
+    end
+
+    FSXN --> S3AP
+    FPOLICY -->|File change| SQS --> EB --> KB_TRIGGER
+    KB_TRIGGER --> KB
+    S3AP --> DS --> KB
+    KB --> VS
+
+    QUERY --> KB
+    QUERY --> MODEL
+    QUERY --> GUARD
+    AGENT --> TOOLS
+    AGENT --> MODEL
+    AGENT --> KB
+```
+
+**Patterns**: kb-selfservice-curation (Bedrock KB self-service + FPolicy integration), quick-agentic-workspace (Multi-action agent)
+
+</details>
+
+<details>
+<summary><strong>🛡️ HA LifeKeeper Monitoring Pattern</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "HA Cluster"
+        LK1[LifeKeeper Node 1<br/>Active ISP]
+        LK2[LifeKeeper Node 2<br/>Standby ISS]
+        VIP[VIP<br/>Failover target]
+    end
+
+    subgraph "Shared Storage"
+        FSXN[FSx for ONTAP Multi-AZ<br/>NFS / iSCSI]
+        S3AP[S3 Access Point<br/>Read-only log access]
+        LOGS[LifeKeeper Logs<br/>failover / health-check /<br/>comm-path / recovery-kit]
+    end
+
+    subgraph "Analysis Pipeline"
+        SFN[Step Functions]
+        DISC[Discovery Lambda<br/>Log file detection and classification]
+        PROC[Processing Lambda<br/>State transition detection and health score]
+        BEDROCK[Amazon Bedrock<br/>Nova Pro<br/>Root Cause Analysis]
+        RPT[Report Lambda<br/>Markdown report generation]
+    end
+
+    subgraph "Output"
+        S3OUT[S3 Output<br/>Health Report]
+        SNS[SNS Topic<br/>Failover Alert]
+        CW[CloudWatch<br/>Health Score Metrics]
+    end
+
+    LK1 -->|Log write| FSXN
+    LK2 -->|Log write| FSXN
+    LK1 -.-> VIP
+    FSXN --> S3AP
+    S3AP -->|Non-intrusive read| DISC
+
+    SFN --> DISC --> PROC --> RPT
+    PROC --> BEDROCK
+    RPT --> S3OUT
+    RPT --> SNS
+    PROC --> CW
+
+    LOGS -.-> FSXN
+```
+
+**Design Principles**: Non-intrusive (no monitoring agent on HA nodes), Human-in-the-loop (AI analysis is advisory), does not interfere with LifeKeeper's own failover decisions
+
+</details>
+
+<details>
+<summary><strong>⚡ Event-Driven Pattern (FPolicy Pipeline)</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "FSx for ONTAP"
+        FSXN[FSx for ONTAP Volume<br/>NFS/SMB client writes]
+        FPOLICY_ENGINE[FPolicy Engine<br/>File operation event generation]
+    end
+
+    subgraph "FPolicy Server ECS Fargate"
+        TCP[TCP Server<br/>Port 9999<br/>protobuf/XML parser]
+    end
+
+    subgraph "Event Bus"
+        SQS[SQS Queue<br/>Buffering]
+        EB[EventBridge<br/>Rule matching]
+    end
+
+    subgraph "Pattern Routing"
+        RULE_UC[UC Pattern Rule<br/>Extension/path/size conditions]
+        RULE_KB[KB Trigger Rule<br/>UC29 ingestion]
+        RULE_CUSTOM[Custom Rules]
+    end
+
+    subgraph "Processing"
+        SFN[Step Functions<br/>UC Workflows]
+        LATENCY[Latency Reporter<br/>E2E latency measurement]
+    end
+
+    FSXN -->|File operation| FPOLICY_ENGINE
+    FPOLICY_ENGINE -->|TCP notification| TCP
+    TCP -->|Event dispatch| SQS
+    SQS --> EB
+    EB --> RULE_UC --> SFN
+    EB --> RULE_KB
+    EB --> RULE_CUSTOM
+    SFN --> LATENCY
+```
+
+**TriggerMode Integration**: Each UC pattern supports `TriggerMode=POLLING|EVENT_DRIVEN|HYBRID`. HYBRID runs both periodic polling and event-driven in parallel with idempotency checks to deduplicate processing.
+
+</details>
+
+<details>
+<summary><strong>🌐 Edge / CDN Delivery Pattern</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "FSx for ONTAP"
+        FSXN[FSx for ONTAP Volume<br/>Content Master]
+        S3AP[S3 Access Point<br/>Internet Origin]
+    end
+
+    subgraph "Delivery Modes"
+        M1[M1: ORIGIN_PULL<br/>CDN to S3 AP direct]
+        M2[M2: ORIGIN_PULL + OAC<br/>CloudFront signed]
+        M3[M3: PUBLISH_PUSH<br/>S3 AP to External CDN Push]
+    end
+
+    subgraph "CDN"
+        CF[Amazon CloudFront<br/>OAC + sigv4]
+        CDN3P[Third-party CDN<br/>Akamai / Fastly / Cloudflare]
+    end
+
+    subgraph "Pipeline"
+        PUB[Publish Lambda<br/>Approval check + metadata]
+        SYNC[Delivery Log Sync Lambda<br/>Delivery log collection and analysis]
+    end
+
+    subgraph "Security"
+        APPROVE[Approver Check<br/>data_classification integration]
+        REDACT[IP Address Redaction<br/>Privacy protection]
+    end
+
+    FSXN --> S3AP
+    S3AP --> M1 --> CDN3P
+    S3AP --> M2 --> CF
+    S3AP --> M3
+    M3 --> PUB --> CDN3P
+
+    SYNC --> REDACT
+    PUB --> APPROVE
+```
+
+**Vendor-neutral design**: Works with CloudFront, Akamai, Fastly, or Cloudflare. See [CDN Comparison Guide](docs/cdn-comparison.md) / [CDN Origin Verification Checklist](docs/cdn-origin-verification-checklist.en.md).
+
+</details>
+
 ## Use Case List
 
 ### Phase 1 (UC1–UC5)

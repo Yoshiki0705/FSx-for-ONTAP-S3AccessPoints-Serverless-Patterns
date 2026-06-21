@@ -398,6 +398,264 @@ EventBridge Scheduler (定期実行)
        └─→ Report/Notification: 結果レポート生成 → SNS 通知
 ```
 
+### カテゴリ別アーキテクチャ
+
+上記は全パターン共通のサーバーレス処理フローです。各カテゴリには固有のアーキテクチャ要素があります。
+
+<details>
+<summary><strong>🏭 FlexCache / FlexClone パターン (FC1-FC7)</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "トリガー"
+        SCHED[EventBridge Scheduler]
+        MANUAL[手動実行]
+    end
+
+    subgraph "オーケストレーション"
+        SFN[Step Functions]
+    end
+
+    subgraph "FlexCache 管理"
+        HC[HealthCheck Lambda<br/>各 FlexCache の可用性監視]
+        RD[RouteDecision Lambda<br/>Latency/Affinity/Failover戦略]
+        CREATE[CreateFlexCache Lambda<br/>ONTAP REST API]
+        CLEANUP[CleanupFlexCache Lambda<br/>ONTAP REST API]
+    end
+
+    subgraph "状態管理"
+        DDB[DynamoDB<br/>FlexCache ルーティングテーブル]
+    end
+
+    subgraph "FSx for ONTAP"
+        ORIGIN[Origin Volume<br/>SVM / NFS / SMB]
+        FC1[FlexCache Volume 1<br/>Region A]
+        FC2[FlexCache Volume 2<br/>Region B]
+        FC3[FlexCache Volume 3<br/>DR Region]
+    end
+
+    subgraph "レポート・通知"
+        RPT[Report Lambda]
+        SNS[SNS Topic]
+    end
+
+    SCHED --> SFN
+    MANUAL --> SFN
+    SFN --> HC
+    SFN --> RD
+    SFN --> CREATE
+    SFN --> CLEANUP
+    SFN --> RPT
+
+    HC --> DDB
+    RD --> DDB
+    HC -->|ONTAP REST API| FC1
+    HC -->|ONTAP REST API| FC2
+    HC -->|ONTAP REST API| FC3
+    CREATE -->|ONTAP REST API| ORIGIN
+    CLEANUP -->|ONTAP REST API| FC1
+
+    ORIGIN -.->|FlexCache 関係| FC1
+    ORIGIN -.->|FlexCache 関係| FC2
+    ORIGIN -.->|FlexCache 関係| FC3
+    RPT --> SNS
+```
+
+**パターン一覧**: anycast-dr (マルチリージョン DR), dynamic-render-workflow (オンデマンド作成/削除), rag-enterprise-files (ACL-aware RAG), automotive-cae, life-sciences-research, gaming-build-pipeline, devops-cicd
+
+</details>
+
+<details>
+<summary><strong>🤖 GenAI パターン (UC29-UC30)</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "データソース"
+        FSXN[FSx for ONTAP<br/>Volume]
+        S3AP[S3 Access Point]
+    end
+
+    subgraph "インジェスション (UC29)"
+        FPOLICY[FPolicy イベント<br/>ファイル変更検知]
+        SQS[SQS Queue]
+        EB[EventBridge Rule]
+        KB_TRIGGER[KB Trigger Lambda<br/>Bedrock KB StartIngestionJob]
+    end
+
+    subgraph "Bedrock Knowledge Bases"
+        KB[Bedrock Knowledge Base<br/>マネージド RAG]
+        DS[Data Source<br/>S3 AP 経由取得]
+        VS[Vector Store<br/>OpenSearch Serverless]
+    end
+
+    subgraph "クエリ (UC29)"
+        QUERY[Query Lambda<br/>RetrieveAndGenerate API]
+        MODEL[Bedrock Model<br/>Claude / Nova]
+        GUARD[Bedrock Guardrails]
+    end
+
+    subgraph "エージェント (UC30)"
+        AGENT[Agentic Workspace Lambda<br/>マルチアクション実行]
+        TOOLS[Tool 実行<br/>summarize / search /<br/>generate_brief / approve]
+    end
+
+    FSXN --> S3AP
+    FPOLICY -->|ファイル変更| SQS --> EB --> KB_TRIGGER
+    KB_TRIGGER --> KB
+    S3AP --> DS --> KB
+    KB --> VS
+
+    QUERY --> KB
+    QUERY --> MODEL
+    QUERY --> GUARD
+    AGENT --> TOOLS
+    AGENT --> MODEL
+    AGENT --> KB
+```
+
+**パターン一覧**: kb-selfservice-curation (Bedrock KB セルフサービス + FPolicy 連動), quick-agentic-workspace (マルチアクション型エージェント)
+
+</details>
+
+<details>
+<summary><strong>🛡️ HA LifeKeeper Monitoring パターン</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "HA クラスタ"
+        LK1[LifeKeeper Node 1<br/>Active / ISP]
+        LK2[LifeKeeper Node 2<br/>Standby / ISS]
+        VIP[VIP 10.0.x.x<br/>フェイルオーバー対象]
+    end
+
+    subgraph "共有ストレージ"
+        FSXN[FSx for ONTAP Multi-AZ<br/>NFS / iSCSI]
+        S3AP[S3 Access Point<br/>ログ読み取り専用]
+        LOGS[LifeKeeper ログ<br/>failover / health-check /<br/>comm-path / recovery-kit]
+    end
+
+    subgraph "分析パイプライン"
+        SFN[Step Functions]
+        DISC[Discovery Lambda<br/>ログファイル検出・分類]
+        PROC[Processing Lambda<br/>状態遷移検出・ヘルススコア]
+        BEDROCK[Amazon Bedrock<br/>Nova Pro<br/>根本原因分析 RCA]
+        RPT[Report Lambda<br/>Markdown レポート生成]
+    end
+
+    subgraph "出力"
+        S3OUT[S3 Output<br/>ヘルスレポート]
+        SNS[SNS Topic<br/>フェイルオーバーアラート]
+        CW[CloudWatch<br/>ヘルススコアメトリクス]
+    end
+
+    LK1 -->|ログ書き込み| FSXN
+    LK2 -->|ログ書き込み| FSXN
+    LK1 -.-> VIP
+    FSXN --> S3AP
+    S3AP -->|非侵入的読み取り| DISC
+
+    SFN --> DISC --> PROC --> RPT
+    PROC --> BEDROCK
+    RPT --> S3OUT
+    RPT --> SNS
+    PROC --> CW
+
+    LOGS -.-> FSXN
+```
+
+**設計原則**: 非侵入型（HA クラスタに監視エージェント追加なし）、Human-in-the-loop（AI 分析は参考情報）、LifeKeeper 自身のフェイルオーバー判断に干渉しない
+
+</details>
+
+<details>
+<summary><strong>⚡ Event-Driven パターン (FPolicy パイプライン)</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "FSx for ONTAP"
+        FSXN[FSx for ONTAP Volume<br/>NFS/SMB クライアント書き込み]
+        FPOLICY_ENGINE[FPolicy Engine<br/>ファイル操作イベント生成]
+    end
+
+    subgraph "FPolicy Server (ECS Fargate)"
+        TCP[TCP Server<br/>Port 9999<br/>protobuf/XML パーサー]
+    end
+
+    subgraph "イベントバス"
+        SQS[SQS Queue<br/>バッファリング]
+        EB[EventBridge<br/>ルールマッチング]
+    end
+
+    subgraph "パターンルーティング"
+        RULE_UC[UC パターンルール<br/>拡張子/パス/サイズ条件]
+        RULE_KB[KB Trigger ルール<br/>UC29 インジェスション]
+        RULE_CUSTOM[カスタムルール]
+    end
+
+    subgraph "処理"
+        SFN[Step Functions<br/>各 UC ワークフロー]
+        LATENCY[Latency Reporter<br/>E2E レイテンシ計測]
+    end
+
+    FSXN -->|ファイル操作| FPOLICY_ENGINE
+    FPOLICY_ENGINE -->|TCP 通知| TCP
+    TCP -->|イベント送信| SQS
+    SQS --> EB
+    EB --> RULE_UC --> SFN
+    EB --> RULE_KB
+    EB --> RULE_CUSTOM
+    SFN --> LATENCY
+```
+
+**TriggerMode 連携**: 各 UC パターンは `TriggerMode=POLLING|EVENT_DRIVEN|HYBRID` パラメータで切り替え可能。HYBRID モードでは定期ポーリングとイベント駆動の両方が並行動作し、冪等性チェックで重複処理を排除。
+
+</details>
+
+<details>
+<summary><strong>🌐 Edge / CDN 配信パターン</strong></summary>
+
+```mermaid
+graph TB
+    subgraph "FSx for ONTAP"
+        FSXN[FSx for ONTAP Volume<br/>コンテンツマスター]
+        S3AP[S3 Access Point<br/>Internet Origin]
+    end
+
+    subgraph "配信モード"
+        M1[M1: ORIGIN_PULL<br/>CDN → S3 AP 直接]
+        M2[M2: ORIGIN_PULL + OAC<br/>CloudFront 署名付き]
+        M3[M3: PUBLISH_PUSH<br/>S3 AP → 外部 CDN Push]
+    end
+
+    subgraph "CDN"
+        CF[Amazon CloudFront<br/>OAC + sigv4]
+        CDN3P[サードパーティ CDN<br/>Akamai / Fastly / Cloudflare]
+    end
+
+    subgraph "パイプライン"
+        PUB[Publish Lambda<br/>承認チェック + メタデータ]
+        SYNC[Delivery Log Sync Lambda<br/>配信ログ収集・分析]
+    end
+
+    subgraph "セキュリティ"
+        APPROVE[承認者チェック<br/>data_classification 連動]
+        REDACT[IP アドレスリダクション<br/>プライバシー保護]
+    end
+
+    FSXN --> S3AP
+    S3AP --> M1 --> CDN3P
+    S3AP --> M2 --> CF
+    S3AP --> M3
+    M3 --> PUB --> CDN3P
+
+    SYNC --> REDACT
+    PUB --> APPROVE
+```
+
+**ベンダー非依存設計**: CloudFront、Akamai、Fastly、Cloudflare いずれでも動作。[CDN 比較ガイド](docs/cdn-comparison.md) / [CDN Origin Verification Checklist](docs/cdn-origin-verification-checklist.md) 参照。
+
+</details>
+
 ## ユースケース一覧
 
 ### Phase 1（UC1–UC5）
