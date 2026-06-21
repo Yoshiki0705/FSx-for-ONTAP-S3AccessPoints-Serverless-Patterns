@@ -137,6 +137,8 @@ aws s3 rb s3://$DEMO_BUCKET --force
 | Processing で Bedrock エラー | モデルアクセスが未有効化 | Bedrock コンソールでモデルアクセス申請 |
 | SNS 通知が届かない | メール未確認 | SNS サブスクリプション確認メールを承認 |
 | Lambda タイムアウト | 大量ログ or Bedrock レイテンシ | MaxFilesPerExecution を小さく設定 |
+| `sam deploy` で `Invalid value` エラー | `OntapSecretArn=` (空文字) をパラメータに含めている | DemoMode ではこのパラメータを省略する（samconfig.toml から行を削除） |
+| `ScheduleExpression` が `rate(5` で切れる | CLI からのスペース含むパラメータが正しくクォートされていない | `samconfig.toml` 経由でデプロイする（CLI の `--parameter-overrides` ではスペース含む値は問題になりやすい） |
 
 ---
 
