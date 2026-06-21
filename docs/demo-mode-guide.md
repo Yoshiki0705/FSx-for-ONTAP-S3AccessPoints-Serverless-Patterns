@@ -90,8 +90,8 @@ aws s3 ls s3://${DEMO_BUCKET}/reports/ --recursive
 | パターン | DemoMode 対応 | 備考 |
 |---------|:---:|------|
 | UC1 legal-compliance | ✅ | ACL 収集はモックデータ |
-| SAP sap-erp-adjacent | ✅ | ONTAP 不要（S3 AP のみ使用） |
-| FC3 genai-rag-enterprise-files | ✅ | ACL 収集はモックデータ |
+| SAP solutions/sap/erp-adjacent | ✅ | ONTAP 不要（S3 AP のみ使用） |
+| FC3 solutions/flexcache/rag-enterprise-files | ✅ | ACL 収集はモックデータ |
 | その他の UC | 🔄 | 順次対応予定 |
 
 ## 制約事項

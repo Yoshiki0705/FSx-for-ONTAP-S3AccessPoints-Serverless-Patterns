@@ -118,7 +118,7 @@ def register_model(
     # カスタムメタデータ
     customer_metadata = {
         "registered_at": datetime.now(timezone.utc).isoformat(),
-        "use_case": "autonomous-driving",
+        "use_case": "solutions/industry/autonomous-driving",
         "phase": "4",
     }
     if accuracy is not None:

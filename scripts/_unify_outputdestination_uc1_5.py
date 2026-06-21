@@ -34,11 +34,11 @@ from pathlib import Path
 
 
 UC_DIRS = [
-    "legal-compliance",
-    "financial-idp",
-    "manufacturing-analytics",
-    "media-vfx",
-    "healthcare-dicom",
+    "solutions/industry/legal-compliance",
+    "solutions/industry/financial-idp",
+    "solutions/industry/manufacturing-analytics",
+    "solutions/industry/media-vfx",
+    "solutions/industry/healthcare-dicom",
 ]
 
 

@@ -8,7 +8,7 @@
 **「각 CDN의 SigV4 오리진 서명이 FSx for ONTAP S3 Access Point의 `accesspoint alias` 호스트에 대해 표준 S3
 버킷과 동일하게 작동하는가」**를 실기로 확정하기 위한 재현 가능한 절차입니다.
 
-본 체크리스트는 `content-edge-delivery` UC의 `DeliveryMode=ORIGIN_PULL`(M1/M2) 채택 판단에 사용합니다.
+본 체크리스트는 `solutions/edge/content-delivery` UC의 `DeliveryMode=ORIGIN_PULL`(M1/M2) 채택 판단에 사용합니다.
 **M3(PUBLISH_PUSH)는 본 검증에 의존하지 않습니다**(오리진 인증을 회피하므로).
 
 > **구별 명시**: 본 검증은 "특정 테스트 환경에서의 실측"입니다. 일반적인 S3 동작이나 각 CDN의 표준 버킷
@@ -74,7 +74,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 각 CDN에서 "오리진=S3 AP alias 호스트"를 설정하고, 캐시 미스 시 오리진 페치가 200이 되는지 확인.
 
 ### 2.1 Amazon CloudFront(M1 / OAC) — 레퍼런스
-- `content-edge-delivery` 템플릿을 `EnableCloudFront=true`로 배포(OAC + `SigningProtocol: sigv4`).
+- `solutions/edge/content-delivery` 템플릿을 `EnableCloudFront=true`로 배포(OAC + `SigningProtocol: sigv4`).
 - 검증: `curl -I https://<distribution-domain>/delivery-approved/test-1mb.bin` → 200.
 - 기대: AWS 공식 튜토리얼에 준해 성립(**실적 있음**).
 
@@ -139,7 +139,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ## 6. 검증 결과 피드백
 
 - 확정된 결과는 [CDN 비교 문서](cdn-comparison.ko.md) 3절 "S3 AP 고유 TBV" 열 / 4.1 "검증 필요" 갱신에 반영(TBV → 실측 결과).
-- FAIL인 CDN은 `content-edge-delivery`에서 `DeliveryMode=PUBLISH_PUSH`(M3)를 권장 경로로 함.
+- FAIL인 CDN은 `solutions/edge/content-delivery`에서 `DeliveryMode=PUBLISH_PUSH`(M3)를 권장 경로로 함.
 
 ## 관련 문서
 

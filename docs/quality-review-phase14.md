@@ -748,7 +748,7 @@
 | 8 | 出力 JSON サンプルを README に追加 | 全 UC | 2 hours |
 | 9 | FC3-FC6 に docs/ ディレクトリ追加 | FC3-FC6 | 4 hours |
 | 10 | FC5/FC6 にテストスイート追加 | FC5/FC6 | 4 hours |
-| 11 | SAP/ERP Adjacent の Lambda 実装 | sap-erp-adjacent | 4 hours |
+| 11 | SAP/ERP Adjacent の Lambda 実装 | solutions/sap/erp-adjacent | 4 hours |
 
 ### P2: 中期改善（1 週間）
 

@@ -28,7 +28,7 @@ other UCs are covered by Pattern A or Pattern C — see the Pattern table below)
 ```bash
 # Deploy in FSXN_S3AP mode
 aws cloudformation deploy \\
-  --template-file retail-catalog/template-deploy.yaml \\
+  --template-file solutions/industry/retail-catalog/template-deploy.yaml \\
   --stack-name fsxn-retail-catalog-demo \\
   --parameter-overrides \\
     OutputDestination=FSXN_S3AP \\
@@ -102,7 +102,7 @@ AI/ML 아티팩트의 쓰기 대상을 선택할 수 있습니다 (UC9/10/11/12/
 ```bash
 # FSXN_S3AP 모드로 배포
 aws cloudformation deploy \\
-  --template-file retail-catalog/template-deploy.yaml \\
+  --template-file solutions/industry/retail-catalog/template-deploy.yaml \\
   --stack-name fsxn-retail-catalog-demo \\
   --parameter-overrides \\
     OutputDestination=FSXN_S3AP \\
@@ -177,7 +177,7 @@ AI/ML 工件的写入目标（已在 UC9/10/11/12/14 实现,
 ```bash
 # 以 FSXN_S3AP 模式部署
 aws cloudformation deploy \\
-  --template-file retail-catalog/template-deploy.yaml \\
+  --template-file solutions/industry/retail-catalog/template-deploy.yaml \\
   --stack-name fsxn-retail-catalog-demo \\
   --parameter-overrides \\
     OutputDestination=FSXN_S3AP \\
@@ -252,7 +252,7 @@ AI/ML 產物的寫入目標 (已在 UC9/10/11/12/14 實作,
 ```bash
 # 以 FSXN_S3AP 模式部署
 aws cloudformation deploy \\
-  --template-file retail-catalog/template-deploy.yaml \\
+  --template-file solutions/industry/retail-catalog/template-deploy.yaml \\
   --stack-name fsxn-retail-catalog-demo \\
   --parameter-overrides \\
     OutputDestination=FSXN_S3AP \\
@@ -328,7 +328,7 @@ Patterns ci-dessous) :
 ```bash
 # Déploiement en mode FSXN_S3AP
 aws cloudformation deploy \\
-  --template-file retail-catalog/template-deploy.yaml \\
+  --template-file solutions/industry/retail-catalog/template-deploy.yaml \\
   --stack-name fsxn-retail-catalog-demo \\
   --parameter-overrides \\
     OutputDestination=FSXN_S3AP \\
@@ -403,7 +403,7 @@ Pattern-Tabelle unten):
 ```bash
 # Deployment im FSXN_S3AP-Modus
 aws cloudformation deploy \\
-  --template-file retail-catalog/template-deploy.yaml \\
+  --template-file solutions/industry/retail-catalog/template-deploy.yaml \\
   --stack-name fsxn-retail-catalog-demo \\
   --parameter-overrides \\
     OutputDestination=FSXN_S3AP \\
@@ -478,7 +478,7 @@ otros UC están cubiertos por Pattern A o Pattern C — ver la tabla de Patterns
 ```bash
 # Despliegue en modo FSXN_S3AP
 aws cloudformation deploy \\
-  --template-file retail-catalog/template-deploy.yaml \\
+  --template-file solutions/industry/retail-catalog/template-deploy.yaml \\
   --stack-name fsxn-retail-catalog-demo \\
   --parameter-overrides \\
     OutputDestination=FSXN_S3AP \\

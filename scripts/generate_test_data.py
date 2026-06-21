@@ -533,34 +533,34 @@ startxref
 
 # UC → テストデータ生成関数のマッピング
 UC_TEST_DATA = {
-    "semiconductor-eda": [
+    "solutions/industry/semiconductor-eda": [
         ("eda-designs/test_chip.gds", generate_gds_test_file),
         ("eda-designs/test_chip_v2.gds2", generate_gds_test_file),
     ],
-    "genomics-pipeline": [
+    "solutions/industry/genomics-pipeline": [
         ("genomics/sample_001.fastq", generate_fastq_test_file),
         ("genomics/variants.vcf", generate_vcf_test_file),
     ],
-    "energy-seismic": [
+    "solutions/industry/energy-seismic": [
         ("seismic/survey_001.segy", generate_segy_test_file),
     ],
-    "autonomous-driving": [
+    "solutions/industry/autonomous-driving": [
         ("driving/dashcam_001.jpg", generate_product_image),  # placeholder
     ],
-    "construction-bim": [
+    "solutions/industry/construction-bim": [
         ("bim/building_model.ifc", generate_ifc_test_file),
     ],
-    "retail-catalog": [
+    "solutions/industry/retail-catalog": [
         ("catalog/product_001.jpg", generate_product_image),
         ("catalog/product_002.jpg", generate_product_image),
     ],
-    "logistics-ocr": [
+    "solutions/industry/logistics-ocr": [
         ("logistics/delivery_slip_001.pdf", generate_delivery_slip_pdf),
     ],
-    "education-research": [
+    "solutions/industry/education-research": [
         ("research/paper_001.pdf", generate_delivery_slip_pdf),  # placeholder PDF
     ],
-    "insurance-claims": [
+    "solutions/industry/insurance-claims": [
         ("claims/accident_photo_001.jpg", generate_product_image),
         ("claims/estimate_001.pdf", generate_delivery_slip_pdf),
     ],

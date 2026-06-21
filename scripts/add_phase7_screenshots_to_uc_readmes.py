@@ -31,7 +31,7 @@ def _screenshot_block(
 
 UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
     # format: uc_dir -> locale -> list of (heading, caption, image_file)
-    "defense-satellite": {
+    "solutions/industry/defense-satellite": {
         # locale: [(section_heading, image_caption, image_filename)]
         "en": [
             ("### Verified UI/UX Screenshots", "", ""),
@@ -135,7 +135,7 @@ UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
             ("#### 4. Resultados de detección (JSON)", "UC15: Resultados JSON", "phase7-uc15-detections-json.png"),
         ],
     },
-    "government-archives": {
+    "solutions/industry/government-archives": {
         "en": [
             ("### Verified UI/UX Screenshots", "", ""),
             (
@@ -273,7 +273,7 @@ UC_SECTIONS: dict[str, dict[str, list[tuple[str, str, str]]]] = {
             ),
         ],
     },
-    "smart-city-geospatial": {
+    "solutions/industry/smart-city-geospatial": {
         "en": [
             ("### Verified UI/UX Screenshots", "", ""),
             ("#### 1. GIS Data Placement (via S3 AP)", "UC17: GIS data placement", "phase7-uc17-s3-gis-uploaded.png"),

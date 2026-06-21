@@ -8,7 +8,7 @@ Procédure reproductible pour trancher, sur matériel réel, les points marqués
 [comparatif CDN](cdn-comparison.fr.md) : à savoir **si la signature d'origine SigV4 de chaque CDN
 fonctionne sur l'hôte `accesspoint alias` du S3 Access Point FSx for ONTAP comme sur un bucket S3 standard**.
 
-À utiliser pour décider si `DeliveryMode=ORIGIN_PULL` (M1/M2) de `content-edge-delivery` est viable.
+À utiliser pour décider si `DeliveryMode=ORIGIN_PULL` (M1/M2) de `solutions/edge/content-delivery` est viable.
 **M3 (PUBLISH_PUSH) ne dépend pas de cette vérification** (il évite l'auth d'origine).
 
 > **Distinction** : il s'agit d'une mesure dans un environnement de test spécifique. Ne pas considérer le
@@ -83,7 +83,7 @@ Pour chaque CDN, définir « origine = hôte alias S3 AP » et confirmer qu'un f
 renvoie 200.
 
 ### 2.1 Amazon CloudFront (M1 / OAC) — référence
-- Déployer le template `content-edge-delivery` avec `EnableCloudFront=true` (OAC + `SigningProtocol: sigv4`).
+- Déployer le template `solutions/edge/content-delivery` avec `EnableCloudFront=true` (OAC + `SigningProtocol: sigv4`).
 - Vérifier : `curl -I https://<distribution-domain>/delivery-approved/test-1mb.bin` → 200.
 - Attendu : réussite selon le tutoriel officiel AWS (**avéré**).
 
@@ -153,7 +153,7 @@ renvoie 200.
 
 - Reporter les résultats confirmés dans le [comparatif CDN](cdn-comparison.fr.md) section 3 « TBV propre au
   S3 AP » et 4.1 « à vérifier » (TBV → résultat mesuré).
-- Pour les CDN en FAIL, recommander `DeliveryMode=PUBLISH_PUSH` (M3) dans `content-edge-delivery`.
+- Pour les CDN en FAIL, recommander `DeliveryMode=PUBLISH_PUSH` (M3) dans `solutions/edge/content-delivery`.
 
 ## Documents associés
 

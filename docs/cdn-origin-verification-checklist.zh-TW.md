@@ -8,7 +8,7 @@
 **「各 CDN 的 SigV4 來源簽章對 FSx for ONTAP S3 Access Point 的 `accesspoint alias` 主機是否與標準 S3 儲存桶一樣運作」**
 而提供的可重現步驟。
 
-本清單用於 `content-edge-delivery` UC 的 `DeliveryMode=ORIGIN_PULL`（M1/M2）採用判斷。
+本清單用於 `solutions/edge/content-delivery` UC 的 `DeliveryMode=ORIGIN_PULL`（M1/M2）採用判斷。
 **M3（PUBLISH_PUSH）不依賴本驗證**（因其規避來源驗證）。
 
 > **區分說明**：本驗證為「特定測試環境下的實測」。請勿將一般 S3 行為或各 CDN 在標準桶上的實績當作對 S3 AP
@@ -74,7 +74,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 在每個 CDN 設定「來源=S3 AP alias 主機」，確認快取未命中時的回源是否為 200。
 
 ### 2.1 Amazon CloudFront（M1 / OAC）— 參考
-- 以 `EnableCloudFront=true` 部署 `content-edge-delivery` 範本（OAC + `SigningProtocol: sigv4`）。
+- 以 `EnableCloudFront=true` 部署 `solutions/edge/content-delivery` 範本（OAC + `SigningProtocol: sigv4`）。
 - 驗證：`curl -I https://<distribution-domain>/delivery-approved/test-1mb.bin` → 200。
 - 期望：依 AWS 官方教學成立（**有實績**）。
 
@@ -139,7 +139,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 ## 6. 驗證結果回饋
 
 - 已確定的結果反映到 [CDN 比較文件](cdn-comparison.zh-TW.md) 第 3 節「S3 AP 專屬 TBV」欄 / 4.1「需驗證」的更新（TBV → 實測結果）。
-- FAIL 的 CDN 在 `content-edge-delivery` 中以 `DeliveryMode=PUBLISH_PUSH`（M3）為建議路徑。
+- FAIL 的 CDN 在 `solutions/edge/content-delivery` 中以 `DeliveryMode=PUBLISH_PUSH`（M3）為建議路徑。
 
 ## 相關文件
 

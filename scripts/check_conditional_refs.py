@@ -90,7 +90,7 @@ def main() -> int:
     repo = Path(__file__).resolve().parent.parent
     templates = sorted(repo.glob("solutions/**/template-deploy.yaml"))
     # Exclude prototype
-    templates = [t for t in templates if "event-driven-prototype" not in str(t)]
+    templates = [t for t in templates if "solutions/event-driven/prototype" not in str(t)]
 
     issues = 0
     for tpl in templates:

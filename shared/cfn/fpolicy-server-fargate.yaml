@@ -292,7 +292,7 @@ Resources:
   #     → kms:Decrypt が必要（送信側は kms:GenerateDataKey も必要）
   #   - 現在の構成: SqsQueueUrl パラメータで外部キューを参照。
   #     キューの暗号化設定に応じて kms:Decrypt の追加を検討すること。
-  #     event-driven-fpolicy/template*.yaml では SqsManagedSseEnabled: true を
+  #     solutions/event-driven/fpolicy/template*.yaml では SqsManagedSseEnabled: true を
   #     使用しているため、kms:Decrypt は不要。
   # =========================================================================
   TaskRole:

@@ -8,7 +8,7 @@ A reproducible procedure to settle, on real hardware, the items marked **to-be-v
 [CDN comparison](cdn-comparison.en.md): namely **whether each CDN's SigV4 origin signing works against the
 FSx for ONTAP S3 Access Point `accesspoint alias` host the same way it does against a standard S3 bucket**.
 
-Use this to decide whether `content-edge-delivery`'s `DeliveryMode=ORIGIN_PULL` (M1/M2) is viable.
+Use this to decide whether `solutions/edge/content-delivery`'s `DeliveryMode=ORIGIN_PULL` (M1/M2) is viable.
 **M3 (PUBLISH_PUSH) does not depend on this verification** (it avoids origin auth).
 
 > **Distinction**: This is a measurement in a specific test environment. Do not treat general S3 behavior or
@@ -77,7 +77,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 For each CDN, set "origin = S3 AP alias host" and confirm that a cache-miss origin fetch returns 200.
 
 ### 2.1 Amazon CloudFront (M1 / OAC) — reference
-- Deploy the `content-edge-delivery` template with `EnableCloudFront=true` (OAC + `SigningProtocol: sigv4`).
+- Deploy the `solutions/edge/content-delivery` template with `EnableCloudFront=true` (OAC + `SigningProtocol: sigv4`).
 - Verify: `curl -I https://<distribution-domain>/delivery-approved/test-1mb.bin` → 200.
 - Expected to succeed per the AWS official tutorial (**proven**).
 
@@ -145,7 +145,7 @@ For each CDN, set "origin = S3 AP alias host" and confirm that a cache-miss orig
 
 - Reflect confirmed results into the [CDN comparison](cdn-comparison.en.md) section 3 "S3 AP-specific TBV"
   column and 4.1 "to be verified" (TBV → measured result).
-- For CDNs that FAIL, recommend `DeliveryMode=PUBLISH_PUSH` (M3) as the path in `content-edge-delivery`.
+- For CDNs that FAIL, recommend `DeliveryMode=PUBLISH_PUSH` (M3) as the path in `solutions/edge/content-delivery`.
 
 ## Related docs
 

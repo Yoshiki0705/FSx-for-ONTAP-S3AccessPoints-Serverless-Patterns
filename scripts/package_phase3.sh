@@ -74,13 +74,13 @@ package_lambda() {
 
 echo "=== Packaging UC11: Retail Catalog ==="
 for func in discovery image_tagging catalog_metadata quality_check stream_producer stream_consumer; do
-    package_lambda "retail-catalog" "$func"
+    package_lambda "solutions/industry/retail-catalog" "$func"
 done
 
 echo ""
 echo "=== Packaging UC9: Autonomous Driving ==="
 for func in discovery frame_extraction point_cloud_qc annotation_manager sagemaker_invoke sagemaker_callback; do
-    package_lambda "autonomous-driving" "$func"
+    package_lambda "solutions/industry/autonomous-driving" "$func"
 done
 
 echo ""

@@ -44,7 +44,7 @@ REGION="${AWS_REGION:-ap-northeast-1}"
 
 UCS=()
 if [[ $# -eq 0 ]]; then
-    UCS=("defense-satellite" "government-archives" "smart-city-geospatial")
+    UCS=("solutions/industry/defense-satellite" "solutions/industry/government-archives" "solutions/industry/smart-city-geospatial")
 else
     UCS=("$@")
 fi
@@ -71,9 +71,9 @@ for UC in "${UCS[@]}"; do
     # 2) CloudFormation デプロイ
     echo "[2/3] Deploying CloudFormation stack..."
     EXTRA_PARAMS=""
-    if [[ "$UC" == "government-archives" ]]; then
+    if [[ "$UC" == "solutions/industry/government-archives" ]]; then
         EXTRA_PARAMS="OpenSearchMode=none CrossRegion=${CROSS_REGION:-us-east-1} UseCrossRegion=true"
-    elif [[ "$UC" == "smart-city-geospatial" ]]; then
+    elif [[ "$UC" == "solutions/industry/smart-city-geospatial" ]]; then
         EXTRA_PARAMS="BedrockModelId=amazon.nova-lite-v1:0"
     fi
 

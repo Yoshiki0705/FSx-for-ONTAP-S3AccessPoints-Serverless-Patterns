@@ -43,7 +43,7 @@ LANG_LABELS = {
 
 # UC definitions
 USE_CASES = {
-    "healthcare-dicom": {
+    "solutions/industry/healthcare-dicom": {
         "titles": {
             "ko": "DICOM 익명화 워크플로우",
             "zh-CN": "DICOM 匿名化工作流",
@@ -165,7 +165,7 @@ USE_CASES = {
             ],
         },
     },
-    "autonomous-driving": {
+    "solutions/industry/autonomous-driving": {
         "titles": {
             "ko": "자율주행 데이터 전처리 파이프라인",
             "zh-CN": "自动驾驶数据预处理流水线",
@@ -287,7 +287,7 @@ USE_CASES = {
             ],
         },
     },
-    "construction-bim": {
+    "solutions/industry/construction-bim": {
         "titles": {
             "ko": "BIM 모델 변경 감지 및 안전 준수 검사",
             "zh-CN": "BIM 模型变更检测与安全合规检查",
@@ -409,7 +409,7 @@ USE_CASES = {
             ],
         },
     },
-    "education-research": {
+    "solutions/industry/education-research": {
         "titles": {
             "ko": "논문 분류 및 인용 네트워크 분석",
             "zh-CN": "论文分类与引用网络分析",
@@ -531,7 +531,7 @@ USE_CASES = {
             ],
         },
     },
-    "energy-seismic": {
+    "solutions/industry/energy-seismic": {
         "titles": {
             "ko": "검층 이상 감지 및 규정 준수 보고",
             "zh-CN": "测井异常检测与合规报告",
@@ -653,7 +653,7 @@ USE_CASES = {
             ],
         },
     },
-    "genomics-pipeline": {
+    "solutions/industry/genomics-pipeline": {
         "titles": {
             "ko": "시퀀싱 QC 및 변이 집계",
             "zh-CN": "测序 QC 与变异聚合",
@@ -775,7 +775,7 @@ USE_CASES = {
             ],
         },
     },
-    "insurance-claims": {
+    "solutions/industry/insurance-claims": {
         "titles": {
             "ko": "사고 사진 손해 평가 및 청구 보고서",
             "zh-CN": "事故照片损害评估与理赔报告",
@@ -897,7 +897,7 @@ USE_CASES = {
             ],
         },
     },
-    "logistics-ocr": {
+    "solutions/industry/logistics-ocr": {
         "titles": {
             "ko": "배송 전표 OCR 및 재고 분석",
             "zh-CN": "运单 OCR 与库存分析",
@@ -1019,7 +1019,7 @@ USE_CASES = {
             ],
         },
     },
-    "retail-catalog": {
+    "solutions/industry/retail-catalog": {
         "titles": {
             "ko": "상품 이미지 태깅 및 카탈로그 메타데이터 생성",
             "zh-CN": "商品图片标签与目录元数据生成",

@@ -12,31 +12,31 @@ import sys
 from pathlib import Path
 
 UC_CONFIG = {
-    "legal-compliance": {
+    "solutions/industry/legal-compliance": {
         "uc_id": "UC1 legal-compliance",
         "output_desc": "契約メタデータ、監査ログ、サマリーレポート",
         "source_desc": "オリジナル契約データ",
         "example_path": "/vol/contracts/\n  ├── 2026/Q2/contract_ABC.pdf         # オリジナル契約書\n  └── summaries/2026/05/                # AI 生成サマリー（同じボリューム内）\n      └── contract_ABC.json",
     },
-    "financial-idp": {
+    "solutions/industry/financial-idp": {
         "uc_id": "UC2 financial-idp",
         "output_desc": "請求書 OCR 結果、構造化メタデータ、BedRock サマリー",
         "source_desc": "オリジナル請求書 PDF",
         "example_path": "/vol/invoices/\n  ├── 2026/05/invoice_001.pdf          # オリジナル請求書\n  └── summaries/2026/05/                # AI 生成サマリー（同じボリューム内）\n      └── invoice_001.json",
     },
-    "manufacturing-analytics": {
+    "solutions/industry/manufacturing-analytics": {
         "uc_id": "UC3 manufacturing-analytics",
         "output_desc": "センサーデータ解析結果、異常検知レポート、画像検査結果",
         "source_desc": "オリジナルセンサー CSV と検査画像",
         "example_path": "/vol/sensors/\n  ├── 2026/05/line_A/sensor_001.csv    # オリジナルセンサーデータ\n  └── analysis/2026/05/                 # AI 異常検知結果（同じボリューム内）\n      └── line_A_report.json",
     },
-    "media-vfx": {
+    "solutions/industry/media-vfx": {
         "uc_id": "UC4 media-vfx",
         "output_desc": "レンダリングメタデータ、フレーム品質評価",
         "source_desc": "オリジナルレンダリングアセット",
         "example_path": "/vol/renders/\n  ├── shot_001/frame_0001.exr         # オリジナルレンダーフレーム\n  └── qc/shot_001/                     # フレーム品質評価（同じボリューム内）\n      └── frame_0001_qc.json",
     },
-    "healthcare-dicom": {
+    "solutions/industry/healthcare-dicom": {
         "uc_id": "UC5 healthcare-dicom",
         "output_desc": "DICOM メタデータ、匿名化結果、PII 検出ログ",
         "source_desc": "オリジナル DICOM 医用画像",
@@ -107,7 +107,7 @@ def patch(path: Path, uc_dir: str, cfg: dict) -> bool:
 
 def main() -> int:
     for uc_dir, cfg in UC_CONFIG.items():
-        if uc_dir == "legal-compliance":
+        if uc_dir == "solutions/industry/legal-compliance":
             # already patched manually
             continue
         path = Path(f"{uc_dir}/docs/demo-guide.md")

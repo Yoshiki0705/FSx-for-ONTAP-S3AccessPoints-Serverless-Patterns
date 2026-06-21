@@ -549,8 +549,8 @@ AgentCore Web Search の優位性: 外部 API キー不要、AWS 内完結、デ
 
 | パターン | 変更内容 | 破壊的変更 | 備考 |
 |---------|---------|-----------|------|
-| UC29 (genai-kb-selfservice-curation) | Query Lambda に optional web search 追加 | なし（パラメータ opt-in） | `EnableWebSearch=false` がデフォルト |
-| UC30 (genai-quick-agentic-workspace) | 新アクション追加 | なし（既存アクション影響なし） | `generate_brief` は変更なし |
+| UC29 (solutions/genai/kb-selfservice-curation) | Query Lambda に optional web search 追加 | なし（パラメータ opt-in） | `EnableWebSearch=false` がデフォルト |
+| UC30 (solutions/genai/quick-agentic-workspace) | 新アクション追加 | なし（既存アクション影響なし） | `generate_brief` は変更なし |
 | shared/ | `web_search_client.py` 追加 | なし | 新モジュール追加のみ |
 | template.yaml | パラメータ追加 + IAM ポリシー追加 | なし | Conditions で制御 |
 

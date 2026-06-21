@@ -95,7 +95,7 @@ class TestRegisterModel:
         metadata = call_kwargs["CustomerMetadataProperties"]
         assert metadata["accuracy"] == "0.95"
         assert metadata["loss"] == "0.05"
-        assert metadata["use_case"] == "autonomous-driving"
+        assert metadata["use_case"] == "solutions/industry/autonomous-driving"
         assert metadata["phase"] == "4"
 
     def test_register_without_optional_metrics(self):

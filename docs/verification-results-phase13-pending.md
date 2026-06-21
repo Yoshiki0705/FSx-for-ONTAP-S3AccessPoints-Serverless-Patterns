@@ -35,9 +35,9 @@
 
 | # | 検証項目 | テンプレート | リスク | 優先度 |
 |---|---------|------------|--------|--------|
-| C-1 | solutions/flexcache/anycast-dr/template.yaml デプロイ | flexcache-anycast-dr | SAM Transform + StateMachine Definition の互換性 | **高** |
-| C-2 | solutions/flexcache/dynamic-render-workflow/template.yaml デプロイ | dynamic-flexcache-render-workflow | 同上 | **高** |
-| C-3 | solutions/flexcache/rag-enterprise-files/template.yaml デプロイ | genai-rag-enterprise-files | 同上 | 高 |
+| C-1 | solutions/flexcache/anycast-dr/template.yaml デプロイ | solutions/flexcache/anycast-dr | SAM Transform + StateMachine Definition の互換性 | **高** |
+| C-2 | solutions/flexcache/dynamic-render-workflow/template.yaml デプロイ | solutions/flexcache/dynamic-render-workflow | 同上 | **高** |
+| C-3 | solutions/flexcache/rag-enterprise-files/template.yaml デプロイ | solutions/flexcache/rag-enterprise-files | 同上 | 高 |
 | C-4 | solutions/flexcache/automotive-cae/template.yaml デプロイ | automotive-cae | 同上 | 高 |
 | C-5 | solutions/flexcache/life-sciences-research/template.yaml デプロイ | life-sciences-research | 同上 | 中 |
 | C-6 | solutions/flexcache/gaming-build-pipeline/template.yaml デプロイ | gaming-build-pipeline | 同上 | 中 |
@@ -48,17 +48,17 @@
 
 | # | 検証項目 | 対象 Lambda | リスク | 優先度 |
 |---|---------|-----------|--------|--------|
-| D-1 | HealthCheck Lambda（SimulationMode=true） | flexcache-anycast-dr | 環境変数の受け渡し | 高 |
-| D-2 | HealthCheck Lambda（SimulationMode=false） | flexcache-anycast-dr | ONTAP REST API 到達性、認証 | **高** |
-| D-3 | RouteDecision Lambda + DynamoDB 連携 | flexcache-anycast-dr | DynamoDB テーブルの Scan 動作 | 高 |
-| D-4 | Discovery Lambda + S3 AP 連携 | flexcache-anycast-dr | S3 AP エイリアスでの ListObjectsV2 | **高** |
-| D-5 | CreateFlexCache Lambda（SimulationMode=false） | dynamic-flexcache-render-workflow | ONTAP REST API FlexCache 作成 | **高** |
-| D-6 | CleanupFlexCache Lambda（SimulationMode=false） | dynamic-flexcache-render-workflow | ONTAP REST API FlexCache 削除 | **高** |
-| D-7 | SubmitJob Lambda | dynamic-flexcache-render-workflow | モックジョブ ID 生成 | 低 |
-| D-8 | MonitorJob Lambda | dynamic-flexcache-render-workflow | ポーリングループの動作 | 低 |
-| D-9 | Chunking Lambda + S3 AP GetObject | genai-rag-enterprise-files | ファイル読み取り、テキスト抽出 | 高 |
-| D-10 | Embedding Lambda + Bedrock InvokeModel | genai-rag-enterprise-files | Titan Embeddings API 呼び出し | 高 |
-| D-11 | ACL Extraction Lambda + ONTAP REST API | genai-rag-enterprise-files | get_file_security API | 高 |
+| D-1 | HealthCheck Lambda（SimulationMode=true） | solutions/flexcache/anycast-dr | 環境変数の受け渡し | 高 |
+| D-2 | HealthCheck Lambda（SimulationMode=false） | solutions/flexcache/anycast-dr | ONTAP REST API 到達性、認証 | **高** |
+| D-3 | RouteDecision Lambda + DynamoDB 連携 | solutions/flexcache/anycast-dr | DynamoDB テーブルの Scan 動作 | 高 |
+| D-4 | Discovery Lambda + S3 AP 連携 | solutions/flexcache/anycast-dr | S3 AP エイリアスでの ListObjectsV2 | **高** |
+| D-5 | CreateFlexCache Lambda（SimulationMode=false） | solutions/flexcache/dynamic-render-workflow | ONTAP REST API FlexCache 作成 | **高** |
+| D-6 | CleanupFlexCache Lambda（SimulationMode=false） | solutions/flexcache/dynamic-render-workflow | ONTAP REST API FlexCache 削除 | **高** |
+| D-7 | SubmitJob Lambda | solutions/flexcache/dynamic-render-workflow | モックジョブ ID 生成 | 低 |
+| D-8 | MonitorJob Lambda | solutions/flexcache/dynamic-render-workflow | ポーリングループの動作 | 低 |
+| D-9 | Chunking Lambda + S3 AP GetObject | solutions/flexcache/rag-enterprise-files | ファイル読み取り、テキスト抽出 | 高 |
+| D-10 | Embedding Lambda + Bedrock InvokeModel | solutions/flexcache/rag-enterprise-files | Titan Embeddings API 呼び出し | 高 |
+| D-11 | ACL Extraction Lambda + ONTAP REST API | solutions/flexcache/rag-enterprise-files | get_file_security API | 高 |
 | D-12 | SolverOutputParser Lambda + S3 AP Range GetObject | automotive-cae | Range ヘッダーでの部分読み取り | 中 |
 | D-13 | QualityCheck Lambda + Bedrock | automotive-cae | Nova Pro API 呼び出し | 中 |
 | D-14 | Life Sciences Discovery Lambda | life-sciences-research | S3 AP ListObjectsV2 | 中 |
@@ -69,15 +69,15 @@
 
 | # | 検証項目 | ワークフロー | リスク | 優先度 |
 |---|---------|------------|--------|--------|
-| E-1 | FlexCache AnyCast ワークフロー全体実行 | flexcache-anycast-dr | HealthCheck→RouteDecision→Report の連携 | **高** |
-| E-2 | Dynamic FlexCache ワークフロー全体実行（Simulation） | dynamic-flexcache-render-workflow | Create→Submit→Monitor→Cleanup→Report | **高** |
-| E-3 | Dynamic FlexCache ワークフロー全体実行（Real ONTAP） | dynamic-flexcache-render-workflow | 実 FlexCache 作成→削除のライフサイクル | **最高** |
-| E-4 | Dynamic FlexCache 失敗時の FailureHandler 動作 | dynamic-flexcache-render-workflow | Catch→FailureHandler→Cleanup の遷移 | 高 |
-| E-5 | GenAI RAG インデックスワークフロー | genai-rag-enterprise-files | Discovery→Map(Chunk→Embed→ACL)→Report | 高 |
+| E-1 | FlexCache AnyCast ワークフロー全体実行 | solutions/flexcache/anycast-dr | HealthCheck→RouteDecision→Report の連携 | **高** |
+| E-2 | Dynamic FlexCache ワークフロー全体実行（Simulation） | solutions/flexcache/dynamic-render-workflow | Create→Submit→Monitor→Cleanup→Report | **高** |
+| E-3 | Dynamic FlexCache ワークフロー全体実行（Real ONTAP） | solutions/flexcache/dynamic-render-workflow | 実 FlexCache 作成→削除のライフサイクル | **最高** |
+| E-4 | Dynamic FlexCache 失敗時の FailureHandler 動作 | solutions/flexcache/dynamic-render-workflow | Catch→FailureHandler→Cleanup の遷移 | 高 |
+| E-5 | GenAI RAG インデックスワークフロー | solutions/flexcache/rag-enterprise-files | Discovery→Map(Chunk→Embed→ACL)→Report | 高 |
 | E-6 | Automotive CAE ワークフロー | automotive-cae | Discovery→Map(Parse→QC)→Report | 中 |
 | E-7 | Life Sciences ワークフロー | life-sciences-research | Discovery→Map(Classify→Metadata)→Report | 中 |
 | E-8 | Gaming Build ワークフロー | gaming-build-pipeline | Discovery→Map(QC→Log)→Report | 中 |
-| E-9 | MonitorJob ポーリングループの実際の Wait 動作 | dynamic-flexcache-render-workflow | Wait State の 10 秒待機 | 中 |
+| E-9 | MonitorJob ポーリングループの実際の Wait 動作 | solutions/flexcache/dynamic-render-workflow | Wait State の 10 秒待機 | 中 |
 | E-10 | Map State の MaxConcurrency 制御 | 全ワークフロー | 並列実行数の制御 | 低 |
 
 ### F. ネットワーク・ルーティング検証

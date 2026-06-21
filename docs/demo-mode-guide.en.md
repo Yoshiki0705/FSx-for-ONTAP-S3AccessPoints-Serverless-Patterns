@@ -90,8 +90,8 @@ aws s3 ls s3://${DEMO_BUCKET}/reports/ --recursive
 | Pattern | DemoMode Support | Notes |
 |---------|:---:|------|
 | UC1 legal-compliance | ✅ | ACL collection uses mock data |
-| SAP sap-erp-adjacent | ✅ | ONTAP not required (uses S3 AP only) |
-| FC3 genai-rag-enterprise-files | ✅ | ACL collection uses mock data |
+| SAP solutions/sap/erp-adjacent | ✅ | ONTAP not required (uses S3 AP only) |
+| FC3 solutions/flexcache/rag-enterprise-files | ✅ | ACL collection uses mock data |
 | Other UCs | 🔄 | Support being added progressively |
 
 ## Limitations

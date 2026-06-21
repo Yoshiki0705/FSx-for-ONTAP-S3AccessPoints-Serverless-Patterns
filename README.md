@@ -1293,21 +1293,30 @@ fsxn-s3ap-serverless-patterns/
 │   │   └── stacksets-admin.yaml     # StackSets 管理 (Phase 4)
 │   └── tests/                        # ユニットテスト・プロパティテスト
 │
-├── solutions/industry/legal-compliance/                  # UC1: 法務・コンプライアンス
-├── solutions/industry/financial-idp/                     # UC2: 金融・保険
-├── solutions/industry/manufacturing-analytics/           # UC3: 製造業
-├── solutions/industry/media-vfx/                         # UC4: メディア
-├── solutions/industry/healthcare-dicom/                  # UC5: 医療
-├── solutions/industry/semiconductor-eda/                 # UC6: 半導体 / EDA (Phase 2)
-├── solutions/industry/genomics-pipeline/                 # UC7: ゲノミクス (Phase 2)
-├── solutions/industry/energy-seismic/                    # UC8: エネルギー (Phase 2)
-├── solutions/industry/autonomous-driving/                # UC9: 自動運転 / ADAS (Phase 2/3/4/5/6B)
-├── solutions/industry/construction-bim/                  # UC10: 建設 / AEC (Phase 2)
-├── solutions/industry/retail-catalog/                    # UC11: 小売 / EC (Phase 2/3)
-├── solutions/industry/logistics-ocr/                     # UC12: 物流 (Phase 2)
-├── solutions/industry/education-research/                # UC13: 教育 / 研究 (Phase 2)
-├── solutions/industry/insurance-claims/                  # UC14: 保険 (Phase 2)
-├── solutions/event-driven/prototype/            # イベント駆動プロトタイプ (Phase 4)
+├── solutions/                          # パターンライブラリ
+│   ├── industry/                     # UC1-UC28 業界別パターン
+│   │   ├── legal-compliance/         # UC1: 法務・コンプライアンス
+│   │   ├── financial-idp/            # UC2: 金融・保険
+│   │   ├── manufacturing-analytics/  # UC3: 製造業
+│   │   ├── ...                       # UC4-UC27
+│   │   └── chemical-sds-management/  # UC28: 化学
+│   ├── sap/erp-adjacent/             # SAP/ERP 連携パターン
+│   ├── flexcache/                    # FlexCache/FlexClone パターン (7)
+│   │   ├── anycast-dr/              # FC1: Anycast DR
+│   │   ├── dynamic-render-workflow/ # FC2: 動的レンダリング
+│   │   ├── rag-enterprise-files/    # FC3: RAG エンタープライズ
+│   │   ├── automotive-cae/          # FC4: 自動車 CAE
+│   │   ├── life-sciences-research/  # FC5: ライフサイエンス
+│   │   ├── gaming-build-pipeline/   # FC6: ゲーム CI/CD
+│   │   └── devops-cicd/             # FC7: DevOps CI/CD
+│   ├── genai/                        # GenAI パターン (2)
+│   │   ├── kb-selfservice-curation/ # UC29: Bedrock KB セルフサービス
+│   │   └── quick-agentic-workspace/ # UC30: エージェント型ワークスペース
+│   ├── ha/lifekeeper-monitoring/     # HA: LifeKeeper 監視
+│   ├── event-driven/                 # イベント駆動パターン (2)
+│   │   ├── fpolicy/                 # FPolicy パイプライン
+│   │   └── prototype/              # イベント駆動プロトタイプ
+│   └── edge/content-delivery/        # CDN/エッジ配信
 │
 ├── events/                            # SAM CLI ローカルテスト用イベント (Phase 6A)
 │   ├── env.json                      # 共通環境変数テンプレート

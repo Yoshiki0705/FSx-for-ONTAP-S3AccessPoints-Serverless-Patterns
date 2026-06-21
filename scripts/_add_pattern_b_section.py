@@ -11,15 +11,15 @@ import sys
 from pathlib import Path
 
 UC_CONFIG = {
-    "autonomous-driving": {
+    "solutions/industry/autonomous-driving": {
         "uc_id": "UC9 autonomous-driving",
         "purpose": "ADAS / 自動運転データ（フレーム抽出、点群QC、アノテーション、推論）",
     },
-    "construction-bim": {
+    "solutions/industry/construction-bim": {
         "uc_id": "UC10 construction-bim",
         "purpose": "建設 BIM / 図面 OCR / 安全コンプライアンスチェック",
     },
-    "logistics-ocr": {
+    "solutions/industry/logistics-ocr": {
         "uc_id": "UC12 logistics-ocr",
         "purpose": "配送伝票 OCR / 在庫分析 / 物流レポート",
     },

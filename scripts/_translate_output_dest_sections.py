@@ -18,16 +18,16 @@ from pathlib import Path
 
 # UC → pattern mapping
 UC_PATTERNS = {
-    "legal-compliance": "A",
-    "financial-idp": "A",
-    "manufacturing-analytics": "A",
-    "media-vfx": "A",
-    "healthcare-dicom": "A",
-    "autonomous-driving": "B",
-    "construction-bim": "B",
-    "logistics-ocr": "B",
-    "retail-catalog": "B",
-    "insurance-claims": "B",
+    "solutions/industry/legal-compliance": "A",
+    "solutions/industry/financial-idp": "A",
+    "solutions/industry/manufacturing-analytics": "A",
+    "solutions/industry/media-vfx": "A",
+    "solutions/industry/healthcare-dicom": "A",
+    "solutions/industry/autonomous-driving": "B",
+    "solutions/industry/construction-bim": "B",
+    "solutions/industry/logistics-ocr": "B",
+    "solutions/industry/retail-catalog": "B",
+    "solutions/industry/insurance-claims": "B",
 }
 
 # Pattern A = native S3AP output (UC1-5)

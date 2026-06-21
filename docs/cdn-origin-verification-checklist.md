@@ -8,7 +8,7 @@
 **「各 CDN の SigV4 オリジン署名が FSx for ONTAP S3 Access Point の `accesspoint alias` ホストに対して
 標準 S3 バケットと同様に機能するか」** を実機で確定するための再現可能な検証手順です。
 
-本チェックリストは `content-edge-delivery` UC の `DeliveryMode=ORIGIN_PULL`（M1/M2）の採否判断に使います。
+本チェックリストは `solutions/edge/content-delivery` UC の `DeliveryMode=ORIGIN_PULL`（M1/M2）の採否判断に使います。
 **M3（PUBLISH_PUSH）はこの検証に依存しません**（オリジン認証を回避するため）。
 
 > **区別の明示**: 本検証は「特定テスト環境での実測」です。一般的な S3 の挙動や各 CDN の標準バケットでの
@@ -76,7 +76,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 
 ### 2.1 Amazon CloudFront（M1 / OAC）— リファレンス
 
-- `content-edge-delivery` テンプレートで `EnableCloudFront=true` をデプロイ（OAC + `SigningProtocol: sigv4`）。
+- `solutions/edge/content-delivery` テンプレートで `EnableCloudFront=true` をデプロイ（OAC + `SigningProtocol: sigv4`）。
 - 検証: `curl -I https://<distribution-domain>/delivery-approved/test-1mb.bin` → 200。
 - 期待: AWS 公式チュートリアルに準拠し成立（**実績あり**）。OAC の `OriginAccessControlOriginType: s3`。
 
@@ -150,7 +150,7 @@ curl -sS -o /tmp/out.bin -w "%{http_code}\n" \
 
 - 確定した結果は [CDN比較ドキュメント](cdn-comparison.md) 第3節「S3 AP 固有の要検証」列／4.1「要検証」の更新に反映する
   （TBV → 実測結果へ）。
-- FAIL の CDN は `content-edge-delivery` で `DeliveryMode=PUBLISH_PUSH`（M3）を推奨経路とする。
+- FAIL の CDN は `solutions/edge/content-delivery` で `DeliveryMode=PUBLISH_PUSH`（M3）を推奨経路とする。
 
 ## 関連ドキュメント
 
