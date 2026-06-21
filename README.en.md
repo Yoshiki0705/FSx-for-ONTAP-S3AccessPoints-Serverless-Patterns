@@ -209,6 +209,11 @@ S3 Access Points for FSx for ONTAP uses a **dual-layer authorization** model. Fo
 ## Architecture
 
 ```mermaid
+---
+title: Common Serverless Architecture
+---
+%% accTitle: FSx for ONTAP S3 AP Serverless Patterns Common Architecture
+%% accDescr: EventBridge Scheduler triggers Step Functions which orchestrates Discovery, Processing, and Report Lambdas accessing FSx for ONTAP via S3 Access Points with Bedrock, Textract, Comprehend, Rekognition, and SageMaker
 graph TB
     subgraph "Scheduling Layer"
         EBS[EventBridge Scheduler<br/>cron/rate expressions]
@@ -317,6 +322,8 @@ The above shows the common serverless processing flow. Each category has unique 
 <summary><strong>🏭 FlexCache / FlexClone Patterns (FC1-FC7)</strong></summary>
 
 ```mermaid
+%% accTitle: FlexCache/FlexClone Pattern Architecture
+%% accDescr: ONTAP REST API health checks, DynamoDB routing table, FlexCache create/cleanup lifecycle across multiple regions
 graph TB
     subgraph "Trigger"
         SCHED[EventBridge Scheduler]
@@ -380,6 +387,8 @@ graph TB
 <summary><strong>🤖 GenAI Patterns (UC29-UC30)</strong></summary>
 
 ```mermaid
+%% accTitle: GenAI Pattern Architecture (UC29-UC30)
+%% accDescr: FPolicy event-driven ingestion, Bedrock Knowledge Bases, RetrieveAndGenerate, and agentic multi-action workspace
 graph TB
     subgraph "Data Source"
         FSXN[FSx for ONTAP<br/>Volume]
@@ -432,6 +441,8 @@ graph TB
 <summary><strong>🛡️ HA LifeKeeper Monitoring Pattern</strong></summary>
 
 ```mermaid
+%% accTitle: HA LifeKeeper Monitoring Architecture
+%% accDescr: Non-intrusive log reading from LifeKeeper HA cluster via S3 AP, Bedrock root cause analysis, health scoring and alerting
 graph TB
     subgraph "HA Cluster"
         LK1[LifeKeeper Node 1<br/>Active ISP]
@@ -482,6 +493,8 @@ graph TB
 <summary><strong>⚡ Event-Driven Pattern (FPolicy Pipeline)</strong></summary>
 
 ```mermaid
+%% accTitle: Event-Driven FPolicy Pipeline Architecture
+%% accDescr: FPolicy Engine to ECS Fargate TCP server, SQS, EventBridge routing to UC pattern workflows
 graph TB
     subgraph "FSx for ONTAP"
         FSXN[FSx for ONTAP Volume<br/>NFS/SMB client writes]
@@ -526,6 +539,8 @@ graph TB
 <summary><strong>🌐 Edge / CDN Delivery Pattern</strong></summary>
 
 ```mermaid
+%% accTitle: Edge/CDN Delivery Pattern Architecture
+%% accDescr: Three delivery modes (ORIGIN_PULL, OAC, PUBLISH_PUSH) from FSx for ONTAP via S3 AP to vendor-neutral CDN
 graph TB
     subgraph "FSx for ONTAP"
         FSXN[FSx for ONTAP Volume<br/>Content Master]
