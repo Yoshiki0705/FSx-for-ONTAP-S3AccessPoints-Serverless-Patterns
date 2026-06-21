@@ -156,6 +156,7 @@ docs/screenshots/raw/
 
 # Per-UC screenshots — originals contain account/resource IDs (gitignored), masked are tracked
 **/docs/screenshots/originals/
+**/docs/screenshots/*-raw.png
 **/docs/screenshots/MASK_GUIDE.md
 
 # RAG eval reports may contain S3 AP alias / environment specifics
