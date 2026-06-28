@@ -62,6 +62,11 @@ def xray_subsegment(
         from aws_xray_sdk.core import xray_recorder  # noqa: F401
 
         subsegment = xray_recorder.begin_subsegment(name)
+        if subsegment is None:
+            # No active segment (e.g., running in tests without X-Ray context)
+            logger.debug("No active X-Ray segment, subsegment '%s' skipped", name)
+            yield None
+            return
         try:
             if annotations:
                 for key, value in annotations.items():
