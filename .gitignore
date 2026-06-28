@@ -151,6 +151,7 @@ test-data/
 scripts/_lint_parallel.py
 scripts/_lint_all_9_tmp.sh
 docs/devto/
+docs/devto-ja/
 docs/article-update-draft-*.md
 docs/screenshots/raw/
 
