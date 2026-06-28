@@ -10,8 +10,8 @@
 
 .PHONY: install test lint clean help
 
-# Python interpreter (override with: make test PYTHON=python3.12)
-PYTHON ?= python3
+# Python interpreter — project targets 3.12 (override with: make test PYTHON=python3.13)
+PYTHON ?= python3.12
 
 # Default target
 help:
@@ -47,10 +47,14 @@ test:
 	$(PYTHON) -m pytest \
 		shared/tests/ \
 		solutions/industry/legal-compliance/tests/ \
-		solutions/industry/semiconductor-eda/tests/ \
 		solutions/sap/erp-adjacent/tests/ \
 		solutions/industry/smart-city-geospatial/tests/ \
 		solutions/industry/defense-satellite/tests/ \
+		--tb=short -q
+	$(PYTHON) -m pytest \
+		solutions/industry/semiconductor-eda/tests/ \
+		--tb=short -q
+	$(PYTHON) -m pytest \
 		solutions/industry/education-research/tests/ \
 		--tb=short -q
 	$(PYTHON) -m pytest \
