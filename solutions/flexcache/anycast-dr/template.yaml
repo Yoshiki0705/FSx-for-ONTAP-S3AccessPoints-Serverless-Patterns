@@ -64,9 +64,6 @@ Parameters:
 
 Conditions:
   HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, '']]
-  HasS3AccessPoint: !Not [!Equals [!Ref S3AccessPointAlias, '']]
-  CreateVpcEndpoints: !Equals [!Ref EnableVpcEndpoints, 'true']
-  CreateAlarms: !Equals [!Ref EnableCloudWatchAlarms, 'true']
 
 Resources:
   # --- DynamoDB ルーティングテーブル ---

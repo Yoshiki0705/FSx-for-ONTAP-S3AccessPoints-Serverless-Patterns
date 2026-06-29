@@ -180,7 +180,7 @@ def _set_secret(service_client: Any, arn: str, token: str) -> None:
     headers["Content-Type"] = "application/json"
 
     logger.info(
-        "setSecret: Applying password change to ONTAP at %s for user %s.",
+        "setSecret: Applying credential change to ONTAP at %s for user %s.",
         management_ip,
         username,
     )
@@ -194,14 +194,14 @@ def _set_secret(service_client: Any, arn: str, token: str) -> None:
 
     if response.status not in (200, 202):
         error_msg = (
-            f"ONTAP password change failed: HTTP {response.status} - {response.data.decode('utf-8', errors='replace')}"
+            f"ONTAP credential change failed: HTTP {response.status} - {response.data.decode('utf-8', errors='replace')}"
         )
         logger.error("setSecret: %s", error_msg)
         _notify_failure(arn, "setSecret", error_msg)
         raise ValueError(error_msg)
 
     logger.info(
-        "setSecret: Successfully applied password change to ONTAP for secret %s.",
+        "setSecret: Successfully applied credential change to ONTAP for secret %s.",
         arn,
     )
 
