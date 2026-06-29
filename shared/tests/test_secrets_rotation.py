@@ -228,7 +228,7 @@ class TestSetSecret:
         mock_response.data = b"Unauthorized"
         mock_http.request.return_value = mock_response
 
-        with pytest.raises(ValueError, match="ONTAP password change failed"):
+        with pytest.raises(ValueError, match="ONTAP credential change failed"):
             rotation_handler._set_secret(mock_sm_client, secret_arn, token)
 
         # Verify SNS notification was attempted

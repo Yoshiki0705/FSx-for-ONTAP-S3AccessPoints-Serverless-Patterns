@@ -29,15 +29,39 @@ from shared.lambdas.canary.s3ap_health_check import (
 check_failure_strategy = st.tuples(st.booleans(), st.booleans(), st.booleans())
 
 # Strategy for S3 object content (arbitrary text data, excluding surrogates)
+# Exclude strings that are JSON structural literals or substrings of known result
+# field names/values to avoid false-positive partial matches.
+_RESULT_SUBSTRINGS = frozenset({
+    "true", "false", "null", "name", "passed", "error",
+    "s3ap_list", "s3ap_get", "ontap_health", "ontap_he",
+    "s3ap_li", "s3ap_ge", "status", "passed", "failed",
+    "checks", "latency", "latency_ms",
+})
+
+
+def _not_substring_of_result_structure(s: str) -> bool:
+    """Reject generated content that is a substring of known result JSON structure."""
+    s_lower = s.lower()
+    # Reject if it's a known keyword
+    if s_lower in _RESULT_SUBSTRINGS:
+        return False
+    # Reject if it's a substring of the check names used in the handler
+    known_names = ("S3AP_List", "S3AP_Get", "ONTAP_Health", "PASSED", "FAILED")
+    for name in known_names:
+        if s in name or s.upper() in name:
+            return False
+    return True
+
+
 s3_content_strategy = st.text(
     alphabet=st.characters(
-        min_codepoint=1,
+        min_codepoint=32,  # Printable ASCII and above
         max_codepoint=65535,
         exclude_categories=("Cs",),  # Exclude surrogates
     ),
-    min_size=4,
+    min_size=10,
     max_size=500,
-)
+).filter(_not_substring_of_result_structure)
 
 # Strategy for latency values
 latency_strategy = st.floats(min_value=0.1, max_value=5000.0, allow_nan=False, allow_infinity=False)
@@ -266,7 +290,8 @@ class TestCanaryNoSensitiveDataInResults:
         result_str = json.dumps(result)
 
         # The S3 object content must NOT appear in the result
-        # (content is guaranteed to be > 3 chars due to min_size=4 in strategy)
+        # (content is guaranteed to be > 7 chars due to min_size=8 in strategy,
+        #  and JSON literals are excluded by filter)
         assert content not in result_str, (
             f"S3 object content leaked into canary result. Content (first 50 chars): {content[:50]!r}"
         )
