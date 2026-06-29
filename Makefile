@@ -10,13 +10,22 @@
 
 .PHONY: install test lint clean help
 
-# Python interpreter — project targets 3.12 (override with: make test PYTHON=python3.13)
-PYTHON ?= python3.12
+# Python interpreter — auto-detect .venv if available (override with: make test PYTHON=python3.13)
+# Priority: 1) explicit override  2) .venv/bin/python  3) system python3.12
+ifeq ($(origin PYTHON), undefined)
+  ifneq (,$(wildcard .venv/bin/python))
+    PYTHON := .venv/bin/python
+  else
+    PYTHON := python3.12
+  endif
+else
+  PYTHON ?= python3.12
+endif
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  make install       — Install development dependencies"
+	@echo "  make install       — Create .venv and install all dependencies"
 	@echo "  make test          — Run all unit tests"
 	@echo "  make test-quick    — Run tests for key patterns only"
 	@echo "  make lint          — Run ruff + cfn-lint"
@@ -24,6 +33,8 @@ help:
 	@echo "  make lint-python   — Run ruff only"
 	@echo "  make security      — Run bandit security scan"
 	@echo "  make clean         — Remove build artifacts"
+	@echo ""
+	@echo "Python: $(PYTHON) (auto-detects .venv/bin/python; override: PYTHON=...)"
 	@echo ""
 	@echo "Pattern-specific targets:"
 	@echo "  make test-uc1      — Run UC1 (legal-compliance) tests"
@@ -37,8 +48,17 @@ help:
 # Setup
 # ============================================================
 install:
-	pip install -r requirements.txt
-	pip install -r requirements-dev.txt
+	@echo "🐍 Setting up Python 3.12 virtual environment..."
+	@command -v python3.12 >/dev/null 2>&1 || { echo "❌ python3.12 not found. Install: brew install python@3.12"; exit 1; }
+	@if [ ! -f .venv/bin/python ] || ! .venv/bin/python --version 2>/dev/null | grep -q "3.12"; then \
+		echo "  Creating .venv (python3.12)..."; \
+		python3.12 -m venv .venv --clear; \
+	fi
+	@echo "  Installing dependencies..."
+	.venv/bin/pip install --upgrade pip -q
+	.venv/bin/pip install -r requirements.txt -q
+	.venv/bin/pip install pytest pytest-cov "pytest-asyncio>=0.24" hypothesis "moto[all]" ruff cfn-lint pyarrow "bandit>=1.9.1" -q
+	@echo "✅ Setup complete. Run: make test-quick"
 
 # ============================================================
 # Testing
@@ -136,4 +156,5 @@ clean:
 	find . -type d -name ".aws-sam" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.pyc" -delete 2>/dev/null || true
+	rm -rf .hypothesis/examples/ 2>/dev/null || true
 	rm -rf build/ htmlcov/ coverage.xml

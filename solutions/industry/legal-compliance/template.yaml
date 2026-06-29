@@ -124,8 +124,6 @@ Parameters:
 # Conditions
 # =====================================================================
 Conditions:
-  HasS3AccessPointName:
-    !Not [!Equals [!Ref S3AccessPointName, ""]]
   CreateVpcEndpoints:
     !Equals [!Ref EnableVpcEndpoints, "true"]
   CreateCloudWatchAlarms:

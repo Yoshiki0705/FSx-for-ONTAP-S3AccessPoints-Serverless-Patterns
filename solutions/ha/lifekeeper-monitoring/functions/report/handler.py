@@ -19,7 +19,6 @@ Environment Variables:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
@@ -118,41 +117,41 @@ def _generate_report(
     level = health_score.get("level", "HEALTHY")
 
     report_lines = [
-        f"# LifeKeeper HA Cluster Health Report",
-        f"",
+        "# LifeKeeper HA Cluster Health Report",
+        "",
         f"**Cluster**: {cluster_name}",
         f"**Generated**: {now}",
         f"**Health Score**: {score}/100 ({level})",
         f"**Files Analyzed**: {processed_count}",
-        f"",
-        f"---",
-        f"",
-        f"## Health Score Breakdown",
-        f"",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "",
+        "---",
+        "",
+        "## Health Score Breakdown",
+        "",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Score | {score}/100 |",
         f"| Level | {level} |",
         f"| Failover Events | {health_score.get('failover_count', 0)} |",
         f"| Total Deducted | -{health_score.get('deduction_breakdown', {}).get('total_deducted', 0)} |",
-        f"",
+        "",
     ]
 
     # ログサマリ
     if log_summary:
         report_lines.extend([
-            f"## Log Analysis Summary",
-            f"",
-            f"| Category | Count |",
-            f"|----------|-------|",
+            "## Log Analysis Summary",
+            "",
+            "| Category | Count |",
+            "|----------|-------|",
         ])
         for cat, count in log_summary.get("category_counts", {}).items():
             report_lines.append(f"| {cat} | {count} |")
         report_lines.append("")
 
         report_lines.extend([
-            f"| Severity | Count |",
-            f"|----------|-------|",
+            "| Severity | Count |",
+            "|----------|-------|",
         ])
         for sev, count in log_summary.get("severity_counts", {}).items():
             report_lines.append(f"| {sev} | {count} |")
@@ -161,17 +160,17 @@ def _generate_report(
     # フェイルオーバー分析
     if failover_analyses:
         report_lines.extend([
-            f"## Failover Event Analysis",
-            f"",
+            "## Failover Event Analysis",
+            "",
         ])
         for i, analysis in enumerate(failover_analyses, 1):
             report_lines.extend([
                 f"### Event {i}: {analysis.get('file', 'unknown')}",
-                f"",
+                "",
                 f"- **Severity**: {analysis.get('severity', 'N/A')}",
                 f"- **Indicators Found**: {analysis.get('indicator_count', 0)}",
                 f"- **Last Modified**: {analysis.get('last_modified', 'N/A')}",
-                f"",
+                "",
             ])
             if analysis.get("state_transitions"):
                 report_lines.append("**State Transitions**:")
@@ -184,12 +183,12 @@ def _generate_report(
     # 根本原因分析
     if root_cause_analysis:
         report_lines.extend([
-            f"## Root Cause Analysis (AI-powered)",
-            f"",
+            "## Root Cause Analysis (AI-powered)",
+            "",
             f"**Model**: {root_cause_analysis.get('model_id', 'N/A')}",
-            f"",
+            "",
             f"{root_cause_analysis.get('analysis', 'No analysis available.')}",
-            f"",
+            "",
         ])
         if root_cause_analysis.get("recommendations"):
             report_lines.append("### Recommendations")
@@ -200,27 +199,27 @@ def _generate_report(
 
     # アーキテクチャ参考情報
     report_lines.extend([
-        f"---",
-        f"",
-        f"## Architecture Reference",
-        f"",
-        f"This cluster uses **SIOS LifeKeeper** for application-level HA with",
-        f"**Amazon FSx for NetApp ONTAP** Multi-AZ as shared storage.",
-        f"",
-        f"- LifeKeeper manages VIP failover, application start/stop, and recovery",
-        f"- FSx for ONTAP provides NFS/iSCSI shared storage across AZs",
-        f"- S3 Access Points enable non-disruptive log analytics without impacting HA operations",
-        f"",
-        f"### References",
-        f"",
-        f"- [SIOS LifeKeeper と Amazon FSx for NetApp ONTAP を活用した高可用性ソリューション (AWS JAPAN APN Blog)](https://aws.amazon.com/jp/blogs/psa/high-availability-solution-with-sios-lifekeeper-and-amazon-fsx-for-netapp-ontap/)",
-        f"- [NetApp ONTAP と LifeKeeper による高可用性設計 (SIOS bcblog)](https://bcblog.sios.jp/netapp-ontap-lifekeeper-high-availability-design/)",
-        f"- [Amazon FSx for NetApp ONTAP を LifeKeeper の共有ディスクとして利用 (SIOS bcblog)](https://bcblog.sios.jp/amazon-fsx-netapp-ontap-lifekeeper-shared-disk/)",
-        f"- [SIOS Protection Suite for Linux on AWS](https://aws.amazon.com/solutions/partners/sios-protection-suite/)",
-        f"- [SIOS LifeKeeper for Linux — AWS Partner Solution](https://aws-ia.github.io/cfn-ps-sios-protection-suite/)",
-        f"- [Deploying highly available SAP systems using SIOS Protection Suite on AWS](https://aws.amazon.com/blogs/awsforsap/deploying-highly-available-sap-systems-using-sios-protection-suite-on-aws/)",
-        f"- [SQL Server HA with Amazon FSx for NetApp ONTAP](https://aws.amazon.com/blogs/modernizing-with-aws/sql-server-high-availability-amazon-fsx-for-netapp-ontap/)",
-        f"",
+        "---",
+        "",
+        "## Architecture Reference",
+        "",
+        "This cluster uses **SIOS LifeKeeper** for application-level HA with",
+        "**Amazon FSx for NetApp ONTAP** Multi-AZ as shared storage.",
+        "",
+        "- LifeKeeper manages VIP failover, application start/stop, and recovery",
+        "- FSx for ONTAP provides NFS/iSCSI shared storage across AZs",
+        "- S3 Access Points enable non-disruptive log analytics without impacting HA operations",
+        "",
+        "### References",
+        "",
+        "- [SIOS LifeKeeper と Amazon FSx for NetApp ONTAP を活用した高可用性ソリューション (AWS JAPAN APN Blog)](https://aws.amazon.com/jp/blogs/psa/high-availability-solution-with-sios-lifekeeper-and-amazon-fsx-for-netapp-ontap/)",
+        "- [NetApp ONTAP と LifeKeeper による高可用性設計 (SIOS bcblog)](https://bcblog.sios.jp/netapp-ontap-lifekeeper-high-availability-design/)",
+        "- [Amazon FSx for NetApp ONTAP を LifeKeeper の共有ディスクとして利用 (SIOS bcblog)](https://bcblog.sios.jp/amazon-fsx-netapp-ontap-lifekeeper-shared-disk/)",
+        "- [SIOS Protection Suite for Linux on AWS](https://aws.amazon.com/solutions/partners/sios-protection-suite/)",
+        "- [SIOS LifeKeeper for Linux — AWS Partner Solution](https://aws-ia.github.io/cfn-ps-sios-protection-suite/)",
+        "- [Deploying highly available SAP systems using SIOS Protection Suite on AWS](https://aws.amazon.com/blogs/awsforsap/deploying-highly-available-sap-systems-using-sios-protection-suite-on-aws/)",
+        "- [SQL Server HA with Amazon FSx for NetApp ONTAP](https://aws.amazon.com/blogs/modernizing-with-aws/sql-server-high-availability-amazon-fsx-for-netapp-ontap/)",
+        "",
     ])
 
     return "\n".join(report_lines)
@@ -247,7 +246,6 @@ def _save_report(report: str, output_bucket: str, cluster_name: str) -> str:
 
 def _should_send_alert(current_level: str, threshold_severity: str) -> bool:
     """アラートを送信すべきか判定する"""
-    current_order = SEVERITY_ORDER.get(current_level, 0)
     # level→severity マッピング: CRITICAL/DEGRADED → CRITICAL/HIGH
     level_to_severity = {
         "HEALTHY": "LOW",
@@ -276,33 +274,33 @@ def _send_failover_alert(
     subject = f"[{level}] LifeKeeper Cluster Alert: {cluster_name} (Score: {score}/100)"
 
     message_lines = [
-        f"LifeKeeper HA Cluster Failover Alert",
-        f"=====================================",
-        f"",
+        "LifeKeeper HA Cluster Failover Alert",
+        "=====================================",
+        "",
         f"Cluster: {cluster_name}",
         f"Health Score: {score}/100 ({level})",
         f"Failover Events Detected: {failover_count}",
         f"Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
-        f"",
+        "",
     ]
 
     if root_cause_analysis and root_cause_analysis.get("analysis"):
         message_lines.extend([
-            f"Root Cause Analysis:",
-            f"-------------------",
+            "Root Cause Analysis:",
+            "-------------------",
             f"{root_cause_analysis['analysis'][:500]}",
-            f"",
+            "",
         ])
 
     message_lines.extend([
-        f"Recommended Actions:",
-        f"- Check LifeKeeper GUI or `lcdstatus` for current resource states",
-        f"- Verify FSx for ONTAP NFS/iSCSI mount health on all cluster nodes",
-        f"- Review communication paths: `lcdstatus -q -d node_name`",
-        f"- Check ONTAP volume availability: ONTAP REST API or CLI",
-        f"",
-        f"This alert was generated by the HA LifeKeeper Monitoring pattern",
-        f"using FSx for ONTAP S3 Access Points for non-disruptive log access.",
+        "Recommended Actions:",
+        "- Check LifeKeeper GUI or `lcdstatus` for current resource states",
+        "- Verify FSx for ONTAP NFS/iSCSI mount health on all cluster nodes",
+        "- Review communication paths: `lcdstatus -q -d node_name`",
+        "- Check ONTAP volume availability: ONTAP REST API or CLI",
+        "",
+        "This alert was generated by the HA LifeKeeper Monitoring pattern",
+        "using FSx for ONTAP S3 Access Points for non-disruptive log access.",
     ])
 
     message = "\n".join(message_lines)
