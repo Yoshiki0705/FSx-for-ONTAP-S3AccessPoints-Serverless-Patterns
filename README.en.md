@@ -131,12 +131,19 @@ A collection of industry-specific serverless automation patterns leveraging S3 A
 
 ## Related Articles
 
-This repository provides the implementation examples for the architecture described in the following article:
+This repository provides the implementation examples for the architecture described in the following article series on dev.to:
 
-- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
-  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
+| Phase | Title |
+|-------|-------|
+| 1 | [Industry-Specific Serverless Automation Patterns with FSx for ONTAP S3 Access Points](https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a) |
+| 9 | [Production Rollout, VPC Endpoint Auto-Detection, and the CDK No-Go](https://dev.to/aws-builders/production-rollout-vpc-endpoint-auto-detection-and-the-cdk-no-go-fsx-for-ontap-s3-access-3lni) |
+| 10 | [FPolicy Event-Driven Pipeline, Multi-Account StackSets, and Cost Optimization](https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6) |
+| 12 | [Operational Hardening — Guardrails, Secrets Rotation & SLO](https://dev.to/aws-builders/operational-hardening-guardrails-secrets-rotation-slo-fsx-ontap-s3ap-phase-12-1k4o) |
+| 13 | [From Serverless Patterns to Field-Ready Reference Architecture](https://dev.to/aws-builders/from-serverless-patterns-to-field-ready-reference-architecture-fsx-for-ontap-s3-access-points-dhj) |
 
-The article explains the architectural design philosophy and trade-offs, while this repository provides concrete, reusable implementation patterns.
+The articles explain the architectural design philosophy and trade-offs, while this repository provides concrete, reusable implementation patterns.
+
+> **Japanese article series** is in preparation (6 articles, managed in `docs/devto-ja/`).
 
 ## Related Repositories (Same Author)
 

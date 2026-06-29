@@ -204,12 +204,19 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 
 ## 関連記事
 
-本リポジトリは以下の記事で解説したアーキテクチャの実装例です:
+本リポジトリは以下の記事シリーズ（dev.to）で解説したアーキテクチャの実装例です:
 
-- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
-  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
+| Phase | タイトル |
+|-------|---------|
+| 1 | [Industry-Specific Serverless Automation Patterns with FSx for ONTAP S3 Access Points](https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a) |
+| 9 | [Production Rollout, VPC Endpoint Auto-Detection, and the CDK No-Go](https://dev.to/aws-builders/production-rollout-vpc-endpoint-auto-detection-and-the-cdk-no-go-fsx-for-ontap-s3-access-3lni) |
+| 10 | [FPolicy Event-Driven Pipeline, Multi-Account StackSets, and Cost Optimization](https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6) |
+| 12 | [Operational Hardening — Guardrails, Secrets Rotation & SLO](https://dev.to/aws-builders/operational-hardening-guardrails-secrets-rotation-slo-fsx-ontap-s3ap-phase-12-1k4o) |
+| 13 | [From Serverless Patterns to Field-Ready Reference Architecture](https://dev.to/aws-builders/from-serverless-patterns-to-field-ready-reference-architecture-fsx-for-ontap-s3-access-points-dhj) |
 
 記事ではアーキテクチャの設計思想とトレードオフを解説し、本リポジトリでは具体的な再利用可能な実装パターンを提供します。
+
+> **日本語版記事** は準備中です（6記事構成、`docs/devto-ja/` にドラフト管理）。
 
 ## 関連リポジトリ（同一著者）
 
