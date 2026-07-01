@@ -216,7 +216,16 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 
 記事ではアーキテクチャの設計思想とトレードオフを解説し、本リポジトリでは具体的な再利用可能な実装パターンを提供します。
 
-> **日本語版記事** は準備中です（6記事構成、`docs/devto-ja/` にドラフト管理）。
+### 日本語版（はてなブログ）
+
+| # | 日本語 | English (dev.to) |
+|---|--------|-----------------|
+| 1 | [42パターンの出発点](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part1-introduction) | [Phase 1](https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a) |
+| 2 | [本番アーキテクチャへの進化](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part2-production-architecture) | Phase 3-6 |
+| 3 | [運用ベースラインの確立](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part3-operational-baseline) | [Phase 9](https://dev.to/aws-builders/production-rollout-vpc-endpoint-auto-detection-and-the-cdk-no-go-fsx-for-ontap-s3-access-3lni) |
+| 4 | [FPolicy Event-Driven パイプライン](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part4-event-driven-fpolicy) | [Phase 10](https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6) |
+| 5 | [28業種パターンへの拡張](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part5-field-ready-28-patterns) | [Phase 13](https://dev.to/aws-builders/from-serverless-patterns-to-field-ready-reference-architecture-fsx-for-ontap-s3-access-points-dhj) |
+| 6 | [GenAI 統合と 42 パターン到達](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part6-genai-42-patterns) | Phase 16-18 |
 
 ## 関連リポジトリ（同一著者）
 
