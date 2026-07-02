@@ -2,31 +2,59 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
+📚 **Dokumentation**: [Architekturdiagramm](docs/architecture.de.md) | [Demo-Leitfaden](docs/demo-guide.de.md)
+
 ## Übersicht
-FSx for ONTAP nutzt S3 Access Points für serverlose Workflows, die VFX-Rendering-Jobs automatisch versenden, Qualitätskontrollen durchführen und genehmigte Ausgaben zurückschreiben.
-### Fälle, für die dieses Muster geeignet ist
-- VFX / Animationsproduktionen verwenden FSx for ONTAP als Rendering-Speicher
-- Wir möchten die Qualitätskontrolle nach Abschluss des Renderings automatisieren und die Belastung durch manuelle Überprüfungen reduzieren
-- Qualitätsgeprüfte Assets sollen automatisch zurück auf den Dateiserver geschrieben werden (S3 AP PutObject)
-- Wir möchten eine Pipeline aufbauen, die Deadline Cloud und bestehende NAS-Speicher integriert
-### Fälle, in denen dieses Muster nicht geeignet ist
-- Sofortige Kick-Starts für Rendering-Jobs (durch Dateispeicherung ausgelöst)
-- Nutzung einer anderen Rendering-Farm als Deadline Cloud (z.B. Thinkbox Deadline On-Premise)
-- Rendering-Ausgaben übersteigen 5 GB (obere Grenze für S3 AP PutObject)
-- Qualitätskontrolle erfordert eigenes Bildqualitätsbewertungsmodell (Rekognition-Etiketterkennung ist unzureichend)
+
+Ein serverloser Workflow, der die S3 Access Points von FSx for ONTAP nutzt, um das Einreichen von VFX-Rendering-Jobs, Qualitätsprüfungen und das Zurückschreiben genehmigter Ausgaben zu automatisieren.
+
+### Wann dieses Muster geeignet ist
+
+- Sie nutzen FSx for ONTAP als Rendering-Speicher für die VFX-/Animationsproduktion
+- Sie möchten Qualitätsprüfungen nach Abschluss des Renderings automatisieren und den Aufwand für manuelle Überprüfungen reduzieren
+- Sie möchten Assets, die die Qualitätsprüfung bestanden haben, automatisch auf den Dateiserver zurückschreiben (S3 AP PutObject)
+- Sie möchten eine Pipeline aufbauen, die Deadline Cloud mit vorhandenem NAS-Speicher integriert
+
+### Wann dieses Muster nicht geeignet ist
+
+- Sie benötigen ein sofortiges Anstoßen von Rendering-Jobs (Trigger beim Speichern von Dateien)
+- Sie verwenden eine andere Render-Farm als Deadline Cloud (z. B. Thinkbox Deadline On-Premises)
+- Die Rendering-Ausgabe überschreitet 5 GB (die Obergrenze von S3 AP PutObject)
+- Für die Qualitätsprüfung ist ein proprietäres Modell zur Bildqualitätsbewertung erforderlich (die Labelerkennung von Rekognition reicht nicht aus)
+
 ### Hauptfunktionen
-- Automatische Erkennung von Rendering-Ziel-Assets über S3 AP
-- Automatisches Senden von Rendering-Jobs an AWS Deadline Cloud
-- Qualitätsbewertung (Auflösung, Artefakte, Farbkonsistenz) mit Amazon Rekognition
-- Bei bestandener Qualität PutObject an FSx for ONTAP über S3 AP, bei nicht bestandener Qualität SNS-Benachrichtigung
+
+- Automatische Erkennung der Ziel-Rendering-Assets über S3 AP
+- Automatisches Einreichen von Rendering-Jobs an AWS Deadline Cloud
+- Qualitätsbewertung durch Amazon Rekognition (Auflösung, Artefakte, Farbkonsistenz)
+- Bei Bestehen PutObject an FSx for ONTAP über S3 AP; bei Nichtbestehen SNS-Benachrichtigung
+
+## Success Metrics
+
+### Outcome
+Verkürzung der Asset-Suchzeit durch automatische Klassifizierung und Metadaten-Kennzeichnung von VFX-Assets.
+
+### Metrics
+| Metrik | Zielwert (Beispiel) |
+|-----------|------------|
+| Verarbeitete Assets pro Ausführung | > 200 files |
+| Erfolgsrate der Metadaten-Kennzeichnung | > 95% |
+| Verkürzung der Asset-Suchzeit | > 60% |
+| Verarbeitungszeit pro Datei | < 60 Sek. |
+| Kosten pro Ausführung | < $10 |
+| Anteil für Human Review | < 10% |
+
+### Measurement Method
+Step Functions-Ausführungsverlauf, Rekognition label count, S3-Ausgabemetadaten.
+
 ## Architektur
 
 ```mermaid
 graph LR
-    subgraph "Step Functions ワークフロー"
-        D[Discovery Lambda<br/>アセット検出]
-        JS[Job Submit Lambda<br/>Deadline Cloud ジョブ送信]
-        QC[Quality Check Lambda<br/>Rekognition 品質評価]
+    subgraph "Step Functions-Workflow"
+        D[Discovery Lambda<br/>Asset-Erkennung]
+        JS[Job Submit Lambda<br/>Deadline Cloud Job-Einreichung]
+        QC[Quality Check Lambda<br/>Rekognition-Qualitätsbewertung]
     end
 
     D -->|Manifest| JS
@@ -36,36 +64,42 @@ graph LR
     JS -.->|GetObject| S3AP
     JS -.->|CreateJob| DC[AWS Deadline Cloud]
     QC -.->|DetectLabels| Rekognition[Amazon Rekognition]
-    QC -.->|PutObject（合格時）| S3AP
-    QC -.->|Publish（不合格時）| SNS[SNS Topic]
+    QC -.->|PutObject (bei Bestehen)| S3AP
+    QC -.->|Publish (bei Nichtbestehen)| SNS[SNS Topic]
 ```
 
 ### Workflow-Schritte
-1. **Discovery**: Entdeckung von Renderziel-Assets von S3 AP und Generierung eines Manifests
-2. **Job Submit**: Abrufen der Assets über S3 AP und Senden eines Rendering-Jobs an AWS Deadline Cloud
-3. **Quality Check**: Bewertung der Qualität der Rendering-Ergebnisse mit Rekognition. Bei Bestehen einen PutObject an S3 AP, bei Misslingen eine SNS-Benachrichtigung für eine erneute Rendering-Flag
+
+1. **Discovery**: Ziel-Rendering-Assets aus dem S3 AP erkennen und ein Manifest generieren
+2. **Job Submit**: Assets über den S3 AP abrufen und Rendering-Jobs an AWS Deadline Cloud einreichen
+3. **Quality Check**: Die Qualität der Rendering-Ergebnisse mit Rekognition bewerten. Bei Bestehen PutObject an den S3 AP; bei Nichtbestehen per SNS-Benachrichtigung zum erneuten Rendern kennzeichnen
+
 ## Voraussetzungen
-- AWS-Konto und entsprechende IAM-Berechtigungen
-- FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
-- S3 Access Point aktivierter Volume
-- ONTAP REST API-Authentifizierungsdaten in Secrets Manager registriert
-- VPC, private Subnetz
-- AWS Deadline Cloud Farm / Queue konfiguriert
-- Amazon Rekognition verfügbare Region
+
+- Ein AWS-Konto und geeignete IAM-Berechtigungen
+- Ein FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
+- Ein Volume mit aktivierten S3 Access Points
+- In Secrets Manager registrierte ONTAP REST API-Anmeldeinformationen
+- Ein VPC und private Subnetze
+- Eine bereits konfigurierte AWS Deadline Cloud Farm / Queue
+- Eine Region, in der Amazon Rekognition verfügbar ist
+
 ## Bereitstellungsschritte
 
-### 1. Vorbereitung der Parameter
-Vor dem Deployment überprüfen Sie bitte die folgenden Werte:
+### 1. Parameter vorbereiten
+
+Bestätigen Sie vor der Bereitstellung die folgenden Werte:
 
 - FSx for ONTAP S3 Access Point Alias
-- ONTAP Verwaltungs-IP-Adresse
-- Secrets Manager Geheimnamen
-- AWS Deadline Cloud Farm ID / Warteschlangen-ID
-- VPC ID, privates Subnetz ID
+- ONTAP-Verwaltungs-IP-Adresse
+- Secrets Manager-Secret-Name
+- AWS Deadline Cloud Farm ID / Queue ID
+- VPC ID, private Subnetz-ID
+
 ### 2. SAM-Bereitstellung
 
 ```bash
-# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+# Voraussetzung: AWS SAM CLI ist erforderlich. sam build verpackt den Code und den gemeinsamen Layer automatisch.
 sam build
 
 sam deploy \
@@ -90,108 +124,276 @@ sam deploy \
   --region ap-northeast-1
 ```
 
-> **Hinweis**: `template.yaml` ist für die Verwendung mit der AWS SAM CLI (`sam build` + `sam deploy`) vorgesehen.
-> Für eine direkte Bereitstellung mit `aws cloudformation deploy` verwenden Sie stattdessen `template-deploy.yaml` (erfordert das vorherige Packen der Lambda-Zip-Dateien und das Hochladen in einen S3-Bucket).
-> **Hinweis**: Ersetzen Sie die Platzhalter `<...>` durch die tatsächlichen Umgebungswerte.
-### 3. Überprüfung der SNS-Abonnements
-Nach der Bereitstellung erhalten Sie eine E-Mail zur Bestätigung der SNS-Abonnements an die angegebene E-Mail-Adresse.
+> **Hinweis**: `template.yaml` wird mit der SAM CLI (`sam build` + `sam deploy`) verwendet.
+> Um direkt mit dem Befehl `aws cloudformation deploy` bereitzustellen, verwenden Sie stattdessen `template-deploy.yaml` (dies erfordert das vorherige Verpacken der Lambda-Zip-Dateien und das Hochladen nach S3).
 
-> **Hinweis**: Wenn `S3AccessPointName` weggelassen wird, kann es dazu kommen, dass die IAM-Richtlinie nur auf Alias-Basis beruht und ein `AccessDenied`-Fehler auftritt. Die Angabe wird in der Produktionsumgebung empfohlen. Weitere Informationen finden Sie im [Anleitung zur Fehlerbehebung](../docs/guides/troubleshooting-guide.md#1-accessdenied-fehler).
+> **Hinweis**: Ersetzen Sie die Platzhalter `<...>` durch die tatsächlichen Werte Ihrer Umgebung.
+
+### 3. SNS-Abonnement bestätigen
+
+Nach der Bereitstellung wird eine SNS-Abonnement-Bestätigungs-E-Mail an die angegebene E-Mail-Adresse gesendet.
+
+> **Hinweis**: Wenn Sie `S3AccessPointName` weglassen, wird die IAM-Richtlinie nur Alias-basiert, was zu einem `AccessDenied`-Fehler führen kann. In einer Produktionsumgebung wird die Angabe empfohlen. Weitere Details finden Sie im [Leitfaden zur Fehlerbehebung](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+
 ## Liste der Konfigurationsparameter
 
-| パラメータ | 説明 | デフォルト | 必須 |
+| Parameter | Beschreibung | Standard | Erforderlich |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
-| `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
-| `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
-| `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
-| `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias (für Eingabe) | — | ✅ |
+| `S3AccessPointName` | S3 AP-Name (für ARN-basierte IAM-Berechtigungsvergabe; bei Weglassen nur Alias-basiert) | `""` | ⚠️ Empfohlen |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias (für Ausgabe) | — | ✅ |
+| `OntapSecretName` | Secrets Manager-Secret-Name für ONTAP-Anmeldeinformationen | — | ✅ |
+| `OntapManagementIp` | ONTAP-Cluster-Verwaltungs-IP-Adresse | — | ✅ |
+| `ScheduleExpression` | Zeitplanausdruck von EventBridge Scheduler | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
-| `PrivateSubnetIds` | プライベートサブネット ID リスト | — | ✅ |
-| `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
+| `PrivateSubnetIds` | Liste der privaten Subnetz-IDs | — | ✅ |
+| `NotificationEmail` | SNS-Benachrichtigungs-E-Mail-Adresse | — | ✅ |
 | `DeadlineFarmId` | AWS Deadline Cloud Farm ID | — | ✅ |
 | `DeadlineQueueId` | AWS Deadline Cloud Queue ID | — | ✅ |
-| `QualityThreshold` | Rekognition 品質評価の閾値（0.0〜100.0） | `80.0` | |
-| `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
-| `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `QualityThreshold` | Rekognition-Qualitätsbewertungsschwelle (0.0–100.0) | `80.0` | |
+| `EnableVpcEndpoints` | Interface VPC Endpoints aktivieren | `false` | |
+| `EnableCloudWatchAlarms` | CloudWatch Alarms aktivieren | `false` | |
 
 ## Kostenstruktur
 
-### On-Demand-Anfrage (nach Nutzung abgerechnet)
+### Anfragebasiert (nutzungsabhängig)
 
-| サービス | 課金単位 | 概算（100 アセット/月） |
+| Service | Abrechnungseinheit | Schätzung (100 Assets/Monat) |
 |---------|---------|----------------------|
-| Lambda | リクエスト数 + 実行時間 | ~$0.01 |
-| Step Functions | ステート遷移数 | 無料枠内 |
-| S3 API | リクエスト数 | ~$0.01 |
-| Rekognition | 画像数 | ~$0.10 |
-| Deadline Cloud | レンダリング時間 | 別途見積もり※ |
-※ Die Kosten für AWS Deadline Cloud hängen von der Größe und Dauer der Rendering-Jobs ab.
-### Rund-um-die-Uhr-Betrieb (optional)
+| Lambda | Anzahl der Anfragen + Ausführungszeit | ~$0.01 |
+| Step Functions | Anzahl der Zustandsübergänge | Innerhalb des kostenlosen Kontingents |
+| S3 API | Anzahl der Anfragen | ~$0.01 |
+| Rekognition | Anzahl der Bilder | ~$0.10 |
+| Deadline Cloud | Rendering-Zeit | Separat geschätzt※ |
 
-| サービス | パラメータ | 月額 |
+※ Die Kosten von AWS Deadline Cloud hängen vom Umfang und der Dauer der Rendering-Jobs ab.
+
+### Dauerbetrieb (optional)
+
+| Service | Parameter | Monatlich |
 |---------|-----------|------|
 | Interface VPC Endpoints | `EnableVpcEndpoints=true` | ~$28.80 |
 | CloudWatch Alarms | `EnableCloudWatchAlarms=true` | ~$0.20 |
-> In Demo-/PoC-Umgebungen sind sie ab **~0,12 €/Monat** (ohne Deadline Cloud) nur mit variablen Kosten verfügbar.
+
+> In einer Demo-/PoC-Umgebung können Sie mit ausschließlich variablen Kosten ab **~$0.12/Monat** (ohne Deadline Cloud) starten.
+
 ## Bereinigung
 
 ```bash
-# CloudFormation スタックの削除
+# CloudFormation-Stack löschen
 aws cloudformation delete-stack \
   --stack-name fsxn-media-vfx \
   --region ap-northeast-1
 
-# 削除完了を待機
+# Auf Abschluss der Löschung warten
 aws cloudformation wait stack-delete-complete \
   --stack-name fsxn-media-vfx \
   --region ap-northeast-1
 ```
-> **Hinweis**: Das Löschen des Stacks kann fehlschlagen, wenn sich Objekte im S3-Bucket befinden. Bitte leeren Sie den Bucket zuvor.
-## Unterstützte Regionen
-UC4 verwendet die folgenden Dienste:
-| サービス | リージョン制約 |
+
+> **Hinweis**: Das Löschen des Stacks kann fehlschlagen, wenn im S3-Bucket noch Objekte vorhanden sind. Leeren Sie den Bucket im Voraus.
+
+## Supported Regions
+
+UC4 verwendet die folgenden Services:
+
+| Service | Regionale Einschränkung |
 |---------|-------------|
-| Amazon Rekognition | ほぼ全リージョンで利用可能 |
-| AWS Deadline Cloud | 対応リージョンが限定的（[Deadline Cloud 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/deadline-cloud.html)） |
-| AWS X-Ray | ほぼ全リージョンで利用可能 |
-| CloudWatch EMF | ほぼ全リージョンで利用可能 |
-> Details finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
+| Amazon Rekognition | In fast allen Regionen verfügbar |
+| AWS Deadline Cloud | Eingeschränkte Regionsverfügbarkeit ([Von Deadline Cloud unterstützte Regionen](https://docs.aws.amazon.com/general/latest/gr/deadline-cloud.html)) |
+| AWS X-Ray | In fast allen Regionen verfügbar |
+| CloudWatch EMF | In fast allen Regionen verfügbar |
+
+> Weitere Details finden Sie in der [Matrix zur Regionskompatibilität](../docs/region-compatibility.md).
+
 ## Referenzlinks
 
-### AWS-Dokumentation
-- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+### Offizielle AWS-Dokumentation
+
+- [Übersicht über FSx for ONTAP S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Streaming mit CloudFront (offizielles Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html)
 - [Serverlose Verarbeitung mit Lambda (offizielles Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
-- [Deadline Cloud API Referenz](https://docs.aws.amazon.com/deadline-cloud/latest/APIReference/Welcome.html)
+- [Deadline Cloud API-Referenz](https://docs.aws.amazon.com/deadline-cloud/latest/APIReference/Welcome.html)
 - [Rekognition DetectLabels API](https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectLabels.html)
-### AWS-Blogartikel
-- [S3 AP 発表ブログ](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
-- [3 つのサーバーレスアーキテクチャパターン](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/)
-### GitHub-Beispiel
-- [aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing](https://github.com/aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing) — Rekognition Großflächige Verarbeitung
-- [aws-samples/dotnet-serverless-imagerecognition](https://github.com/aws-samples/dotnet-serverless-imagerecognition) — AWS Step Functions + Rekognition
+
+### AWS-Blogbeiträge
+
+- [S3 AP-Ankündigungsblog](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
+- [Drei serverlose Architekturmuster](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/)
+
+### GitHub-Beispiele
+
+- [aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing](https://github.com/aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing) — Rekognition-Verarbeitung im großen Maßstab
+- [aws-samples/dotnet-serverless-imagerecognition](https://github.com/aws-samples/dotnet-serverless-imagerecognition) — Step Functions + Rekognition
 - [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — Sammlung serverloser Muster
-## Verifizierte Umgebung
 
-| 項目 | 値 |
+### Projektinterne Leitfäden
+
+- [FlexClone Serverless Patterns (Japanisch)](../docs/guides/flexclone-serverless-patterns.md) — Pipeline zur sequenziellen Frame-Verarbeitung mit FlexClone + Step Functions + S3AP, Multiprotokoll-Mount, branchenspezifische Anwendungsfälle
+- [FlexClone Serverless Patterns (English)](../docs/guides/flexclone-serverless-patterns-en.md) — FlexClone + Step Functions + S3AP sequential frame processing pipeline
+
+## Validierte Umgebung
+
+| Element | Wert |
 |------|-----|
-| AWS リージョン | ap-northeast-1 (東京) |
-| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
-| FSx 構成 | SINGLE_AZ_1 |
+| AWS-Region | ap-northeast-1 (Tokio) |
+| FSx for ONTAP-Version | ONTAP 9.17.1P4D3 |
+| FSx-Konfiguration | SINGLE_AZ_1 |
 | Python | 3.12 |
-| デプロイ方式 | CloudFormation (標準) |
+| Bereitstellungsmethode | CloudFormation (Standard) |
 
-## Lambda VPC Konfigurationsarchitektur
-Aufgrund der Erkenntnisse aus der Überprüfung wurden die Lambda-Funktionen in und außerhalb der VPC getrennt platziert.
+## Lambda-VPC-Platzierungsarchitektur
 
-**Lambda innerhalb der VPC** (nur Funktionen, die ONTAP REST API-Zugriff benötigen):
+Basierend auf den bei der Validierung gewonnenen Erkenntnissen werden die Lambda-Funktionen innerhalb und außerhalb des VPC getrennt platziert.
+
+**Lambda innerhalb des VPC** (nur Funktionen, die ONTAP REST API-Zugriff benötigen):
 - Discovery Lambda — S3 AP + ONTAP API
 
-**Lambda außerhalb der VPC** (nur AWS-verwaltete Dienste-APIs):
+**Lambda außerhalb des VPC** (nutzen nur APIs verwalteter AWS-Services):
 - Alle anderen Lambda-Funktionen
 
-> **Grund**: Für den Zugriff auf AWS-verwaltete Dienste-APIs (Athena, Bedrock, Textract usw.) von Lambda innerhalb der VPC ist ein Interface VPC Endpoint erforderlich (jeweils $7,20/Monat). Lambda außerhalb der VPC kann direkt über das Internet auf die AWS-APIs zugreifen und ohne zusätzliche Kosten arbeiten.
+> **Grund**: Der Zugriff auf APIs verwalteter AWS-Services (Athena, Bedrock, Textract usw.) von einer Lambda innerhalb des VPC erfordert einen Interface VPC Endpoint (jeweils 7,20 $/Monat). Lambda-Funktionen außerhalb des VPC können über das Internet direkt auf AWS-APIs zugreifen und laufen ohne zusätzliche Kosten.
 
-> **Hinweis**: Bei UC (UC1 Legal & Compliance) mit ONTAP REST API ist `EnableVpcEndpoints=true` erforderlich, um ONTAP-Anmeldeinformationen über den Secrets Manager VPC Endpoint abzurufen.
+> **Hinweis**: Für UCs, die die ONTAP REST API verwenden (UC1 Recht und Compliance), ist `EnableVpcEndpoints=true` zwingend erforderlich, da die ONTAP-Anmeldeinformationen über den Secrets Manager VPC Endpoint abgerufen werden.
+
+## FlexCache-Rendering-Beschleunigungserweiterung
+
+### Übersicht
+
+In VFX-Rendering-Workflows sind render input assets (Texturen, Geometrie, Plates) leselastig, was sie zu einem idealen Ziel für FlexCache macht. Durch das dynamische Erstellen eines FlexCache beim Jobstart und das automatische Löschen nach Abschluss des Renderings können Sie sowohl Kostenoptimierung als auch Leistungsverbesserung erreichen.
+
+### Klassifizierung von Rendering-Daten
+
+| Datentyp | Zugriffsmuster | FlexCache anwendbar | S3 AP-Nutzung |
+|-----------|---------------|:---:|:---:|
+| Textures | Nur Lesen | ✅ | ⚠️ Binär |
+| Geometry/Plates | Nur Lesen | ✅ | ⚠️ Binär |
+| Scene Files | Nur Lesen | ✅ | ❌ |
+| Render Output (EXR/PNG) | Schreiben | ❌ | ✅ QC/Metadaten |
+| Logs | Schreiben → Lesen | ❌ | ✅ Analyse |
+| Cache (sim/fluid) | Lesen/Schreiben | ❌ | ❌ |
+
+### Dynamic FlexCache Render Workflow
+
+Details zu einem Workflow, der pro Job einen FlexCache erstellt und löscht, finden Sie unter:
+
+- **[Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md)** — Automatisierung mit Step Functions
+- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — Multi-Region-Render-Farm
+- [Branchen-/Workload-Zuordnung](../docs/industry-workload-mapping.md) — Pattern E: Media/VFX Render Farm
+
+### Erwartete Vorteile
+
+| KPI | Ohne FlexCache | Mit FlexCache | Verbesserung |
+|-----|--------------|---------------|--------|
+| Wartezeit bis zum Rendering-Start | 10-20 Min. | 2-5 Min. | 75% |
+| Zeit pro Frame | 15 Min. | 10 Min. | 33% |
+| WAN-Übertragung pro Job | 500GB | 50GB | 90% |
+| Kosten pro Frame | $0.50 | $0.35 | 30% |
+
+---
+
+## AWS-Dokumentationslinks
+
+| Service | Dokumentation |
+|---------|------------|
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon CloudFront | [Amazon CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html) |
+| Amazon Bedrock | [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Ausrichtung am Well-Architected Framework
+
+| Säule | Ausrichtung |
+|----|------|
+| Operative Exzellenz | X-Ray-Tracing, EMF-Metriken, Überwachung des Jobstatus |
+| Sicherheit | IAM mit geringsten Rechten, CloudFront OAC, KMS-Verschlüsselung |
+| Zuverlässigkeit | Step Functions Retry/Catch, Qualitätsprüfungs-Gate |
+| Leistungseffizienz | CloudFront CDN-Auslieferung, Lambda-Parallelverarbeitung |
+| Kostenoptimierung | Serverlos, Nutzung des CloudFront-Cache |
+| Nachhaltigkeit | On-Demand-Ausführung, reduzierte Origin-Last über CDN |
+
+---
+
+## Lokale Tests
+
+### Prüfung der Voraussetzungen
+
+```bash
+# Voraussetzungen prüfen
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (für sam local)
+aws sts get-caller-identity  # AWS-Anmeldeinformationen
+```
+
+### sam local invoke
+
+```bash
+# Build
+# Voraussetzung: AWS SAM CLI ist erforderlich. sam build verpackt den Code und den gemeinsamen Layer automatisch.
+sam build
+
+# Discovery Lambda lokal ausführen
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# Mit Überschreibung der Umgebungsvariablen
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### Unit-Tests
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+Weitere Details finden Sie im [Schnellstart für lokale Tests](../docs/local-testing-quick-start.md).
+
+---
+
+## Ausgabebeispiel (Output Sample)
+
+Beispielausgabe einer VFX-Rendering-Qualitätsprüfung:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 48,
+    "prefix": "renders/shot-042/"
+  },
+  "quality_check": [
+    {
+      "key": "renders/shot-042/frame-0001.exr",
+      "resolution": "4096x2160",
+      "color_space": "ACEScg",
+      "quality_score": 0.94,
+      "issues": [],
+      "cloudfront_url": "https://d1234.cloudfront.net/delivery/shot-042/frame-0001.exr"
+    }
+  ],
+  "delivery": {
+    "total_frames": 48,
+    "passed_qc": 46,
+    "failed_qc": 2,
+    "cloudfront_distribution": "d1234.cloudfront.net"
+  }
+}
+```
+
+> **Anmerkung**: Das Obige ist eine Beispielausgabe; die tatsächlichen Werte variieren je nach Umgebung und Eingabedaten. Benchmark-Zahlen sind ein Dimensionierungsrichtwert (sizing reference), keine Servicegrenze (service limit).
+
+---
+
+## Governance Note
+
+> Dieses Muster bietet technische Architekturberatung. Es handelt sich nicht um Rechts-, Compliance- oder Regulierungsberatung. Organisationen sollten qualifizierte Fachleute konsultieren.
+
+---
+
+## S3AP Compatibility
+
+Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern der S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
