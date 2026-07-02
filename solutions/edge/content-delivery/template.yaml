@@ -157,6 +157,23 @@ Globals:
 # =====================================================================
 Resources:
 
+  # Shared Lambda Layer (shared/ module — imported at module load by both functions)
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, data_classification, observability, schemas, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
   NotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -189,8 +206,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-publish"
-      CodeUri: ../
-      Handler: content-edge-delivery/functions/publish/handler.handler
+      CodeUri: functions/publish/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedLayer
       LoggingConfig:
         LogGroup: !Ref PublishLogGroup
       Environment:
@@ -244,8 +263,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-delivery-log-sync"
-      CodeUri: ../
-      Handler: content-edge-delivery/functions/delivery_log_sync/handler.handler
+      CodeUri: functions/delivery_log_sync/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedLayer
       LoggingConfig:
         LogGroup: !Ref DeliveryLogSyncLogGroup
       Environment:
