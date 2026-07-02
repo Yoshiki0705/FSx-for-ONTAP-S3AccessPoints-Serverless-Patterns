@@ -62,11 +62,13 @@ graph LR
 - Point de terminaison SageMaker (modèle de segmentation de nuages de points) — Facultatif
 ## Étapes de déploiement
 
-### 1. Déploiement CloudFormation
+### 1. Déploiement SAM
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template.yaml \
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -77,7 +79,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -123,14 +126,17 @@ Lors de la phase 3, vous pouvez opter pour l’**inférence de segmentation de n
 ### Activation
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template.yaml \
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving \
   --parameter-overrides \
     EnableSageMakerTransform=true \
     MockMode=true \
     ... # 他のパラメータ
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### Flux de travail

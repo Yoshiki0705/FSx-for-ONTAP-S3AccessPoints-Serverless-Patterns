@@ -57,11 +57,13 @@ graph LR
 - 已啟用Amazon Bedrock模型存取（Claude / Nova）
 ## 部署步驟
 
-### 1. CloudFormation 部署
+### 1. SAM 部署
 
 ```bash
-aws cloudformation deploy \
-  --template-file retail-catalog/template.yaml \
+# 前提條件：需要 AWS SAM CLI。'sam build' 會自動打包程式碼與共用層。
+sam build
+
+sam deploy \
   --stack-name fsxn-retail-catalog \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -72,7 +74,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -117,13 +120,16 @@ aws cloudformation wait stack-delete-complete \
 ### 啟用
 
 ```bash
-aws cloudformation deploy \
-  --template-file retail-catalog/template.yaml \
+# 前提條件：需要 AWS SAM CLI。'sam build' 會自動打包程式碼與共用層。
+sam build
+
+sam deploy \
   --stack-name fsxn-retail-catalog \
   --parameter-overrides \
     EnableStreamingMode=true \
     ... # 他のパラメータ
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### 串流模式的架構

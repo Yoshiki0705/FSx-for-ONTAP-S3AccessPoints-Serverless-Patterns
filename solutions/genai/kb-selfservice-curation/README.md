@@ -358,6 +358,7 @@ python3 -m pytest tests/ -v
 ### sam local invoke
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 sam local invoke AutoSyncFunction --event events/auto-sync-event.json
 ```

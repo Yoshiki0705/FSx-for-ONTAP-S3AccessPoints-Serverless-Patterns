@@ -166,8 +166,10 @@ bash scripts/deploy_phase7.sh smart-city-geospatial
 ### 手動デプロイ
 
 ```bash
-aws cloudformation deploy \
-  --template-file smart-city-geospatial/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-smart-city \
   --parameter-overrides \
     S3AccessPointAlias=<alias> \
@@ -175,7 +177,8 @@ aws cloudformation deploy \
     OntapSecretName=<secret> \
     OntapManagementIp=<ip> \
     BedrockModelId=amazon.nova-lite-v1:0 \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 **重要**: Bedrock コンソールで `amazon.nova-lite-v1:0` のモデルアクセスを有効化してください。
@@ -281,6 +284,7 @@ aws sts get-caller-identity  # AWS 認証情報
 
 ```bash
 # ビルド
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # Discovery Lambda のローカル実行

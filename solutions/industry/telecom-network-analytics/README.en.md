@@ -107,11 +107,13 @@ graph LR
 
 Confirm CDR file suffix filters and capacity thresholds before deploying.
 
-### 2. Deploy via CloudFormation
+### 2. Deploy via SAM
 
 ```bash
-aws cloudformation deploy \
-  --template-file telecom-network-analytics/template.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-telecom-analytics \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -125,7 +127,8 @@ aws cloudformation deploy \
     CapacityThresholdPercent=80 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

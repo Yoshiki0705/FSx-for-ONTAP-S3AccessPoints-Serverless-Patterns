@@ -49,8 +49,10 @@ Step Functions 実行履歴、AI/ML サービス抽出結果、CloudWatch EMF Me
 ## デプロイ手順
 
 ```bash
-aws cloudformation deploy \
-  --template-file chemical-sds-management/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-chemical-sds \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -59,7 +61,8 @@ aws cloudformation deploy \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     ScheduleExpression="cron(0 0 * * ? *)" \
     NotificationEmail=<your-email@example.com> \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

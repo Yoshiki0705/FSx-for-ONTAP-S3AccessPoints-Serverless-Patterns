@@ -27,16 +27,18 @@
 ### 0:10 - 0:15 Despliegue en vivo (5 minutos)
 
 ```bash
-aws cloudformation deploy \
-  --template-file defense-satellite/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-uc15-demo \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-ap-ext-s3alias> \
     VpcId=<vpc-id> \
     PrivateSubnetIds=<subnet-ids> \
     NotificationEmail=ops@example.com \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -100,8 +102,10 @@ escribe los resultados de IA allí. Solo el manifest de Discovery Lambda se escr
 en el S3 Access Point (como antes).
 
 ```bash
-aws cloudformation deploy \
-  --template-file defense-satellite/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-defense-satellite-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
@@ -115,8 +119,7 @@ Los analistas pueden referenciar directamente los resultados de IA dentro de la 
 SMB/NFS existente. No se crea un bucket S3 estándar.
 
 ```bash
-aws cloudformation deploy \
-  --template-file defense-satellite/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-defense-satellite-demo \
   --parameter-overrides \
     OutputDestination=FSXN_S3AP \

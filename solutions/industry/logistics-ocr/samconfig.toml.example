@@ -20,7 +20,6 @@ disable_rollback = false
 
 parameter_overrides = [
     "S3AccessPointAlias=<YOUR_S3AP_ALIAS>-ext-s3alias",
-    "S3AccessPointName=",
     "OntapSecretName=<YOUR_ONTAP_SECRET_NAME>",
     "OntapManagementIp=<YOUR_ONTAP_MGMT_IP>",
     "SvmUuid=<YOUR_SVM_UUID>",

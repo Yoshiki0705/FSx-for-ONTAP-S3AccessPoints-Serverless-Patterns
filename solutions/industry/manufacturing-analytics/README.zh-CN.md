@@ -74,11 +74,13 @@ graph LR
 - Secrets Manager 密钥名称
 - VPC ID、私有子网 ID
 - 异常检测阈值、缺陷检测可信度阈值
-### 2. CloudFormation 部署
+### 2. SAM 部署
 
 ```bash
-aws cloudformation deploy \
-  --template-file manufacturing-analytics/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-manufacturing-analytics \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -94,7 +96,8 @@ aws cloudformation deploy \
     ConfidenceThreshold=80.0 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 > **注意**: 请用实际的环境值替换 `<...>` 占位符。

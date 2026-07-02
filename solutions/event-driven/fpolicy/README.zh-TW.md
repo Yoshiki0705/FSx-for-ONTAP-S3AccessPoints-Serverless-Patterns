@@ -130,13 +130,15 @@ docker buildx build --platform linux/arm64 \
   --push .
 ```
 
-### 2. CloudFormation 部署
+### 2. SAM 部署
 
 #### Fargate 模式（預設）
 
 ```bash
-aws cloudformation deploy \
-  --template-file event-driven-fpolicy/template.yaml \
+# 前提條件：需要 AWS SAM CLI。'sam build' 會自動打包程式碼與共用層。
+sam build
+
+sam deploy \
   --stack-name fsxn-fpolicy-event-driven \
   --parameter-overrides \
     ComputeType=fargate \
@@ -148,14 +150,17 @@ aws cloudformation deploy \
     FsxnSvmUuid=<svm-uuid> \
     FsxnCredentialsSecret=<secret-name> \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
 #### EC2 模式（固定 IP、低成本）
 
 ```bash
-aws cloudformation deploy \
-  --template-file event-driven-fpolicy/template.yaml \
+# 前提條件：需要 AWS SAM CLI。'sam build' 會自動打包程式碼與共用層。
+sam build
+
+sam deploy \
   --stack-name fsxn-fpolicy-event-driven \
   --parameter-overrides \
     ComputeType=ec2 \
@@ -168,6 +173,7 @@ aws cloudformation deploy \
     FsxnSvmUuid=<svm-uuid> \
     FsxnCredentialsSecret=<secret-name> \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

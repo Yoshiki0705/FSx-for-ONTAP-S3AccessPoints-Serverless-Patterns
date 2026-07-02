@@ -66,23 +66,25 @@ graph LR
 
 ### 1. Überprüfung der cros-Region-Parameter
 Da Textract nicht in der Tokio-Region verfügbar ist, konfigurieren Sie den Cross-Region-Aufruf mit dem `CrossRegionTarget`-Parameter.
-### 2. CloudFormation-Bereitstellung
+### 2. SAM-Bereitstellung
 
 ```bash
-aws cloudformation deploy \
-  --template-file logistics-ocr/template.yaml \
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
   --stack-name fsxn-logistics-ocr \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
-    S3AccessPointName=<your-s3ap-name> \
     VpcId=<your-vpc-id> \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     ScheduleExpression="rate(1 hour)" \
     NotificationEmail=<your-email@example.com> \
-    CrossRegionTarget=us-east-1 \
+    CrossRegion=us-east-1 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

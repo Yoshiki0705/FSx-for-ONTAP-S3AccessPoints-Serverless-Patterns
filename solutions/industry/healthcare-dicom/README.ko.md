@@ -64,11 +64,13 @@ graph LR
 - ONTAP 관리 IP 주소
 - Secrets Manager 시크릿 이름
 - VPC ID, 프라이빗 서브넷 ID
-### 2. CloudFormation 배포
+### 2. SAM 배포
 
 ```bash
-aws cloudformation deploy \
-  --template-file healthcare-dicom/template.yaml \
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-healthcare-dicom \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -82,7 +84,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 > **주의**: `<...>` 의 플레이스홀더를 실제 환경 값으로 바꾸어 주세요.

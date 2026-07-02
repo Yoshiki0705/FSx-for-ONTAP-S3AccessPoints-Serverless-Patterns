@@ -65,11 +65,13 @@ graph LR
 
 ### 1. 跨区域参数的确认
 Textract 不支持东京区域，因此使用 `CrossRegionTarget` 参数来设置跨区域调用。
-### 2. CloudFormation 部署
+### 2. SAM 部署
 
 ```bash
-aws cloudformation deploy \
-  --template-file construction-bim/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-construction-bim \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -78,10 +80,11 @@ aws cloudformation deploy \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     ScheduleExpression="rate(1 hour)" \
     NotificationEmail=<your-email@example.com> \
-    CrossRegionTarget=us-east-1 \
+    CrossRegion=us-east-1 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

@@ -204,16 +204,17 @@ for func in discovery metadata_extraction drc_aggregation report_generation; do
 done
 ```
 
-### 4. AWS CloudFormation部署
+### 4. AWS SAM部署
 
 この手順では、AWS CloudFormationを使用してAWS Lambdaファンクションを含むインフラストラクチャをデプロイします。cloudformation.yamlテンプレートファイルを使用して、Lambdaファンクション、Amazon S3バケット、AWS Step Functionsステートマシンなどのリソースを作成します。このプロセスでは、Amazon Athenaクエリを実行してAmazon FSx for ONTAPのファイルを処理することも行います。Amazon CloudWatchのログ記録を設定して、デプロイの進行状況を監視できます。
 
 ```bash
-aws cloudformation deploy \
-  --template-file semiconductor-eda/template-deploy.yaml \
+# 前提條件：需要 AWS SAM CLI。'sam build' 會自動打包程式碼與共用層。
+sam build
+
+sam deploy \
   --stack-name fsxn-semiconductor-eda \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-s3ap-alias> \
     S3AccessPointName=<your-s3ap-name> \
     OntapSecretName=<your-secret-name> \
@@ -229,6 +230,7 @@ aws cloudformation deploy \
     LambdaMemorySize=512 \
     LambdaTimeout=300 \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region <your-region>
 ```
 **重要**: `S3AccessPointName` 是 S3 AP 的名稱(非別名,而是在建立時指定的名稱)。在 IAM 政策中會使用基於 ARN 的授權。如果省略,可能會發生 `AccessDenied` 錯誤。

@@ -175,8 +175,6 @@ UC14 は 2026-05-10 のアップデートで `OutputDestination` パラメータ
 
 # FSXN_S3AP モード（AI 成果物を FSx for ONTAP ボリュームに書き戻し）
 --parameter-overrides \
-  OutputDestination=FSXN_S3AP \
-  OutputS3APPrefix=ai-outputs/ \
   ...
 ```
 

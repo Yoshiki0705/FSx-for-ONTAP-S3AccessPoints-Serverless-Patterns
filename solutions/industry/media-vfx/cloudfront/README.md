@@ -57,8 +57,10 @@ graph LR
 CloudFormation デプロイ時に `EnableCloudFront=true` パラメータを指定します:
 
 ```bash
-aws cloudformation deploy \
-  --template-file media-vfx/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-media-vfx \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -71,7 +73,8 @@ aws cloudformation deploy \
     DeadlineFarmId=<your-deadline-farm-id> \
     DeadlineQueueId=<your-deadline-queue-id> \
     EnableCloudFront=true \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
