@@ -53,8 +53,10 @@ graph LR
 CloudFormation デプロイ時に `EnableGlueETL=true` パラメータを指定します:
 
 ```bash
-aws cloudformation deploy \
-  --template-file manufacturing-analytics/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-manufacturing-analytics \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -65,7 +67,8 @@ aws cloudformation deploy \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     NotificationEmail=<your-email@example.com> \
     EnableGlueETL=true \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

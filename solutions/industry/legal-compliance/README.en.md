@@ -141,11 +141,13 @@ Please check the following values before deployment:
 - Secrets Manager Secret Name
 - SVM UUID, Volume UUID
 - VPC ID, Private Subnet ID
-### 2. AWS CloudFormation Deployment
+### 2. AWS SAM Deployment
 
 ```bash
-aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -162,7 +164,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 **Note**: Please replace the placeholders `<...>` with the actual environment values.

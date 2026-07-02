@@ -130,13 +130,15 @@ docker buildx build --platform linux/arm64 \
   --push .
 ```
 
-### 2. Déploiement CloudFormation
+### 2. Déploiement SAM
 
 #### Mode Fargate (par défaut)
 
 ```bash
-aws cloudformation deploy \
-  --template-file event-driven-fpolicy/template.yaml \
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
   --stack-name fsxn-fpolicy-event-driven \
   --parameter-overrides \
     ComputeType=fargate \
@@ -148,14 +150,17 @@ aws cloudformation deploy \
     FsxnSvmUuid=<svm-uuid> \
     FsxnCredentialsSecret=<secret-name> \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
 #### Mode EC2 (IP fixe, faible coût)
 
 ```bash
-aws cloudformation deploy \
-  --template-file event-driven-fpolicy/template.yaml \
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
   --stack-name fsxn-fpolicy-event-driven \
   --parameter-overrides \
     ComputeType=ec2 \
@@ -168,6 +173,7 @@ aws cloudformation deploy \
     FsxnSvmUuid=<svm-uuid> \
     FsxnCredentialsSecret=<secret-name> \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

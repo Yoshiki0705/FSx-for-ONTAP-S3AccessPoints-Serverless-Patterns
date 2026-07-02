@@ -69,17 +69,19 @@ Serverless pipeline for government public records (PDF / TIFF / EML / DOCX) auto
 ## Deploy
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
   --stack-name fsxn-gov-archives \
   --parameter-overrides \
-    DeployBucket=<deploy-bucket> \
     S3AccessPointAlias=<ap-ext-s3alias> \
     VpcId=<vpc-id> \
     PrivateSubnetIds=<subnet-ids> \
     NotificationEmail=ops@example.com \
     OpenSearchMode=none \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

@@ -40,6 +40,7 @@ aws s3 cp ../../../test-data/ha-lifekeeper-monitoring/ s3://$DEMO_BUCKET/lifekee
 ## Step 3: デプロイ
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 sam deploy --guided \
   --stack-name ha-lifekeeper-monitoring-demo \

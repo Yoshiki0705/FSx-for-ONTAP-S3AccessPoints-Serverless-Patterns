@@ -27,17 +27,19 @@
 ### 0:10 - 0:15 部署（5 分钟）
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-uc16-demo \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-ap-ext-s3alias> \
     VpcId=<vpc-id> \
     PrivateSubnetIds=<subnet-ids> \
     NotificationEmail=ops@example.com \
     OpenSearchMode=none \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -118,8 +120,10 @@ UC16 government-archives 在 2026-05-11 的更新中支持了 `OutputDestination
 （与以前相同）。
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
@@ -133,8 +137,7 @@ aws cloudformation deploy \
 不会创建标准 S3 存储桶。
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=FSXN_S3AP \

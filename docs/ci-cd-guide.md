@@ -170,8 +170,10 @@ jobs:
     steps:
       - name: Deploy to production
         run: |
-          aws cloudformation deploy \
-            --template-file template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://params/production.json
 ```
@@ -280,8 +282,10 @@ git log --oneline -5
 git checkout {COMMIT_HASH}
 
 # 再デプロイ
-aws cloudformation deploy \
-  --template-file template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name {STACK_NAME} \
   --parameter-overrides file://params/production.json
 ```

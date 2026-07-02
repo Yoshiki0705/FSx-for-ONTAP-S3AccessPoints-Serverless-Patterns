@@ -81,6 +81,7 @@ cp -r sample-data/* /mnt/fsxn/<prefix>/
 ### Step 4: SAM ビルドとデプロイ
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 cp samconfig.toml.example samconfig.toml
@@ -168,29 +169,6 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-travel-demo --re
 ---
 
 *本ドキュメントは技術プレゼンテーション用デモ動画の制作ガイドです。*
----
-
-## 出力先について: OutputDestination で選択可能
-
-本パターンは `OutputDestination` パラメータで AI 成果物の書き込み先を選択できます。
-
-| モード | 説明 |
-|--------|------|
-| `STANDARD_S3`（デフォルト） | 新しい S3 バケットに書き込み |
-| `FSXN_S3AP` | FSx for ONTAP S3 AP 経由で同一ボリュームに書き戻し（NFS/SMB ユーザーが直接参照可能） |
-
-```bash
-# STANDARD_S3 モード（デフォルト）
-sam deploy --parameter-overrides OutputDestination=STANDARD_S3 ...
-
-# FSXN_S3AP モード（no data movement）
-sam deploy --parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai-outputs/ ...
-```
-
-詳細は [output-destination-patterns.md](../../docs/output-destination-patterns.md) を参照。
-
----
-
 ## 検証済みの UI/UX スクリーンショット
 
 ### 検証ステータス
@@ -220,6 +198,7 @@ sam deploy --parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai
 ```bash
 # Lambda パッケージ作成
 cd solutions/industry/travel-document-processing
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # デプロイ

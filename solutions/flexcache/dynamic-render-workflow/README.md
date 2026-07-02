@@ -108,10 +108,13 @@ dynamic-flexcache-render-workflow/
 ### デプロイ
 
 ```bash
-aws cloudformation deploy \
-  --template-file dynamic-flexcache-render-workflow/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name dynamic-flexcache-workflow-demo \
-  --capabilities CAPABILITY_IAM \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --parameter-overrides \
     OntapManagementIp=10.0.0.1 \
     OntapSecretName=fsxn/ontap-credentials \
@@ -238,6 +241,7 @@ aws sts get-caller-identity  # AWS 認証情報
 
 ```bash
 # ビルド
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # Discovery Lambda のローカル実行

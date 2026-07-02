@@ -178,8 +178,6 @@ dans la structure de répertoires du dossier de réclamation
 
 # Mode FSXN_S3AP (réécriture des résultats IA dans le volume FSx for ONTAP)
 --parameter-overrides \
-  OutputDestination=FSXN_S3AP \
-  OutputS3APPrefix=ai-outputs/ \
   ...
 ```
 

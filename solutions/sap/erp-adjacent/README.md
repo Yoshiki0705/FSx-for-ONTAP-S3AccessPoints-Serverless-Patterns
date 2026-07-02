@@ -65,6 +65,7 @@ Serverless pattern for processing SAP IDoc exports, HULFT landing files, EDI lan
 ## Deployment
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 sam deploy --guided --stack-name fsxn-s3ap-sap-erp \
   --parameter-overrides \
@@ -154,6 +155,7 @@ aws sts get-caller-identity  # AWS 認証情報
 
 ```bash
 # ビルド
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # Discovery Lambda のローカル実行

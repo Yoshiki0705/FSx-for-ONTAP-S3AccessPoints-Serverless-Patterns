@@ -64,11 +64,13 @@ graph LR
 - SageMaker endpoint (point cloud segmentation model) — Optional
 ## Deployment steps
 
-### 1. CloudFormation Deployment
+### 1. SAM Deployment
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -79,7 +81,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -125,14 +128,17 @@ In Phase 3, **LiDAR point cloud segmentation inference with SageMaker Batch Tran
 ### Activation
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving \
   --parameter-overrides \
     EnableSageMakerTransform=true \
     MockMode=true \
     ... # 他のパラメータ
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### Workflow

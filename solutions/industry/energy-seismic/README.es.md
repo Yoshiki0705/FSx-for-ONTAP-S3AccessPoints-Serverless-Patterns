@@ -63,11 +63,13 @@ graph LR
 - Acceso a modelos de Amazon Bedrock habilitado (Claude / Nova)
 ## Pasos de implementación
 
-### 1. Despliegue de CloudFormation
+### 1. Despliegue de SAM
 
 ```bash
-aws cloudformation deploy \
-  --template-file energy-seismic/template.yaml \
+# Requisito: se necesita AWS SAM CLI. «sam build» empaqueta automáticamente el código y la capa compartida.
+sam build
+
+sam deploy \
   --stack-name fsxn-energy-seismic \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -78,7 +80,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

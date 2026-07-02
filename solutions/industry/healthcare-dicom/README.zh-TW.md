@@ -66,11 +66,13 @@ graph LR
 - ONTAP 管理 IP 地址
 - Secrets Manager 機密名稱
 - VPC ID、私有子網 ID
-### 2. CloudFormation 部署
+### 2. SAM 部署
 
 ```bash
-aws cloudformation deploy \
-  --template-file healthcare-dicom/template.yaml \
+# 前提條件：需要 AWS SAM CLI。'sam build' 會自動打包程式碼與共用層。
+sam build
+
+sam deploy \
   --stack-name fsxn-healthcare-dicom \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -84,7 +86,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 > **注意**: 請將 `<...>` 的佔位符替換為實際的環境值。

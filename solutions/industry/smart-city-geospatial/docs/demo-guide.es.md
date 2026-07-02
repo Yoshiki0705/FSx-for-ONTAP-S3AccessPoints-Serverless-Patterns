@@ -27,17 +27,19 @@
 ### 0:10 - 0:15 Despliegue (5 minutos)
 
 ```bash
-aws cloudformation deploy \
-  --template-file smart-city-geospatial/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-uc17-demo \
   --parameter-overrides \
-    DeployBucket=<deploy-bucket> \
     S3AccessPointAlias=<your-ap-ext-s3alias> \
     VpcId=<vpc-id> \
     PrivateSubnetIds=<subnet-ids> \
     NotificationEmail=ops@example.com \
     BedrockModelId=amazon.nova-lite-v1:0 \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### 0:15 - 0:22 Ejecución del procesamiento (7 minutos)
@@ -97,8 +99,7 @@ escribe los resultados de IA allí. Solo el manifest de Discovery Lambda se escr
 en el S3 Access Point (como antes).
 
 ```bash
-aws cloudformation deploy \
-  --template-file smart-city-geospatial/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-smart-city-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
@@ -111,8 +112,7 @@ Los responsables de planificación urbana pueden consultar directamente los resu
 No se crea un bucket S3 estándar.
 
 ```bash
-aws cloudformation deploy \
-  --template-file smart-city-geospatial/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-smart-city-demo \
   --parameter-overrides \
     OutputDestination=FSXN_S3AP \

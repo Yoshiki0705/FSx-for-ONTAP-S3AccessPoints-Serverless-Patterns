@@ -178,8 +178,10 @@ UC1 legal-compliance 归类为 **Pattern A: Native S3AP Output**
 
 **部署示例**:
 ```bash
-aws cloudformation deploy \
-  --template-file legal-compliance/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-legal-compliance-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
