@@ -164,8 +164,16 @@ clean:
 # ============================================================
 build-SharedLayer:
 	mkdir -p "$(ARTIFACTS_DIR)/python/shared"
-	cp -r shared/*.py "$(ARTIFACTS_DIR)/python/shared/"
-	cp -r shared/schemas "$(ARTIFACTS_DIR)/python/shared/" 2>/dev/null || true
+	# Copy the whole shared/ package so eager imports in shared/__init__.py
+	# (streaming, routing, etc.) and any subpackage a handler imports are present
+	# in the layer. Prune non-runtime dirs (tests, standalone servers, CFn/lambda
+	# sources) and bytecode caches.
+	cp -r shared/. "$(ARTIFACTS_DIR)/python/shared/"
+	rm -rf "$(ARTIFACTS_DIR)/python/shared/tests" \
+	       "$(ARTIFACTS_DIR)/python/shared/fpolicy-server" \
+	       "$(ARTIFACTS_DIR)/python/shared/cfn" \
+	       "$(ARTIFACTS_DIR)/python/shared/lambdas"
+	find "$(ARTIFACTS_DIR)/python/shared" -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Build & Deploy logistics-ocr (UC12)
 build-uc12:

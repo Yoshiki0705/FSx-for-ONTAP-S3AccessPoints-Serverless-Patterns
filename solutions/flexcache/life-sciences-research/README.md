@@ -210,7 +210,7 @@ aws sts get-caller-identity  # AWS 認証情報
 
 ```bash
 # ビルド
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# 前提: AWS SAM CLI が必要です。sam build がコードを自動でパッケージングします。
 sam build
 
 # Discovery Lambda のローカル実行
@@ -309,7 +309,7 @@ Sources:
 AWS SAM CLI でデプロイします（プレースホルダは環境に合わせて置き換えてください）:
 
 ```bash
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# 前提: AWS SAM CLI が必要です。sam build がコードを自動でパッケージングします。
 sam build
 
 sam deploy \

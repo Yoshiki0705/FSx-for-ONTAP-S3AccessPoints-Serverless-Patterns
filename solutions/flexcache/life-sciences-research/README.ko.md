@@ -47,7 +47,7 @@
 AWS SAM CLI로 배포합니다 (플레이스홀더는 환경에 맞게 교체하세요):
 
 ```bash
-# 전제 조건: AWS SAM CLI 필요. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+# 전제 조건: AWS SAM CLI 필요. 'sam build'가 함수 코드를 자동으로 패키징합니다.
 sam build
 
 sam deploy \

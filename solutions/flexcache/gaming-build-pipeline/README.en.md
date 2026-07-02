@@ -34,7 +34,7 @@ Automated asset quality checking and build log analysis pipeline for game develo
 Deploy with the AWS SAM CLI (replace the placeholders for your environment):
 
 ```bash
-# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the function code automatically.
 sam build
 
 sam deploy \
