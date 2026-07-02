@@ -80,11 +80,13 @@ graph LR
 - SageMaker 端点（点云分割模型）—— 可选
 ## 部署步骤
 
-### 1. CloudFormation 部署
+### 1. SAM 部署
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -95,7 +97,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -141,14 +144,17 @@ aws cloudformation wait stack-delete-complete \
 ### 启用
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving \
   --parameter-overrides \
     EnableSageMakerTransform=true \
     MockMode=true \
     ... # 他のパラメータ
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### 工作流程

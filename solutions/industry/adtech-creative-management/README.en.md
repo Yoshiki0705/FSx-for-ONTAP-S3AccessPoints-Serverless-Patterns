@@ -96,8 +96,10 @@ graph LR
 ## Deployment
 
 ```bash
-aws cloudformation deploy \
-  --template-file adtech-creative-management/template.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-adtech-creative \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -109,7 +111,8 @@ aws cloudformation deploy \
     BrandGuidelinesS3Key=brand-guidelines.json \
     ModerationConfidenceThreshold=80 \
     MaxTagsPerAsset=50 \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

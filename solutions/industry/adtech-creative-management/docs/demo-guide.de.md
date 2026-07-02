@@ -33,6 +33,7 @@ cd fsxn-s3ap-serverless-patterns/solutions/industry/adtech-creative-management
 ### Step 3: SAM Build und Deploy
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 sam deploy \

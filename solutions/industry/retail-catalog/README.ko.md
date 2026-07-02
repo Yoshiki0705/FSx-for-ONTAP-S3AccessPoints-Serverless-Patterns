@@ -57,7 +57,7 @@ graph LR
 - Amazon Bedrock 모델 액세스 활성화(Claude / Nova)
 ## 배포 절차
 
-### 1. CloudFormation 배포
+### 1. SAM 배포
 
 규칙:
 - AWS 서비스 이름은 영어로 유지(Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation 등)
@@ -68,8 +68,10 @@ graph LR
 - 설명은 반환하지 않음, 번역된 텍스트만 반환
 
 ```bash
-aws cloudformation deploy \
-  --template-file retail-catalog/template.yaml \
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-retail-catalog \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -80,7 +82,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -125,13 +128,16 @@ aws cloudformation wait stack-delete-complete \
 ### 활성화
 
 ```bash
-aws cloudformation deploy \
-  --template-file retail-catalog/template.yaml \
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-retail-catalog \
   --parameter-overrides \
     EnableStreamingMode=true \
     ... # 他のパラメータ
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### 스트리밍 모드의 아키텍처

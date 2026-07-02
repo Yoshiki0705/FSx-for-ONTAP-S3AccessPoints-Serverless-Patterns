@@ -60,6 +60,7 @@ Place sample creative assets on the FSx for ONTAP volume:
 ### Step 4: SAM Build and Deploy
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 sam deploy \

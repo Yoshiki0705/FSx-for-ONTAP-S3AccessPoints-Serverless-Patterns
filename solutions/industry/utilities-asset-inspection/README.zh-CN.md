@@ -35,8 +35,10 @@ See [Architecture Document](docs/architecture.zh-CN.md) for detailed data flow d
 ## Deployment
 
 ```bash
-aws cloudformation deploy \
-  --template-file utilities-asset-inspection/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-utilities-inspection \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -44,7 +46,8 @@ aws cloudformation deploy \
     VpcId=<your-vpc-id> \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     NotificationEmail=<your-email@example.com> \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

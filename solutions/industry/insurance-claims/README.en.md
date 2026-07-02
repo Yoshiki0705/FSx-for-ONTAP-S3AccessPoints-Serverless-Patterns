@@ -66,11 +66,13 @@ graph LR
 
 ### 1. Check Cross-Region Parameters
 Since Textract is not available in the Tokyo region, configure cross-region calls with the `CrossRegionTarget` parameter.
-### 2. CloudFormation Deployment
+### 2. SAM Deployment
 
 ```bash
-aws cloudformation deploy \
-  --template-file insurance-claims/template.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-insurance-claims \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -79,10 +81,11 @@ aws cloudformation deploy \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     ScheduleExpression="rate(1 hour)" \
     NotificationEmail=<your-email@example.com> \
-    CrossRegionTarget=us-east-1 \
+    CrossRegion=us-east-1 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

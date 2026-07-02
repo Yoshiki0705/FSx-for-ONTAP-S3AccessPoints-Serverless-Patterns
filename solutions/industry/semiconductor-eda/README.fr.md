@@ -210,18 +210,19 @@ for func in discovery metadata_extraction drc_aggregation report_generation; do
 done
 ```
 
-### 4. Déploiement de CloudFormation
+### 4. Déploiement de SAM
 
 AWS Step Functions を使用してリソースをプロビジョニングするには、AWS CloudFormation テンプレートを定義する必要があります。CloudFormation は、AWS 上のインフラストラクチャを宣言的に記述するツールです。アプリケーションに必要なリソースを定義し、リソースの依存関係を管理できます。
 
 CloudFormation テンプレートを使用すると、一貫性のあるインフラストラクチャ環境を簡単に作成、更新、削除できます。また、Amazon S3 にテンプレートを保存し、AWS Lambda や Amazon Athena などの他のサービスと統合することもできます。
 
 ```bash
-aws cloudformation deploy \
-  --template-file semiconductor-eda/template-deploy.yaml \
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
   --stack-name fsxn-semiconductor-eda \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-s3ap-alias> \
     S3AccessPointName=<your-s3ap-name> \
     OntapSecretName=<your-secret-name> \
@@ -237,6 +238,7 @@ aws cloudformation deploy \
     LambdaMemorySize=512 \
     LambdaTimeout=300 \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region <your-region>
 ```
 **Important** : `S3AccessPointName` est le nom (et non l'alias) du point d'accès S3, spécifié lors de la création. Il est utilisé dans les politiques IAM pour l'octroi d'autorisations basées sur les ARN. Omettre cette valeur peut entraîner une erreur `AccessDenied`.

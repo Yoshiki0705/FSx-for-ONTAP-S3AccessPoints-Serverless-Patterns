@@ -64,11 +64,13 @@ Before deployment, please confirm the following values:
 - Secrets Manager Secret Name
 - AWS Deadline Cloud Farm ID / Queue ID
 - VPC ID, Private Subnet ID
-### 2. CloudFormation Deployment
+### 2. SAM Deployment
 
 ```bash
-aws cloudformation deploy \
-  --template-file media-vfx/template.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-media-vfx \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -85,7 +87,8 @@ aws cloudformation deploy \
     QualityThreshold=80.0 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 > **Note**: Replace the placeholder `<...>` with the actual environment values.

@@ -37,6 +37,7 @@ Placer les données d'exemple sur le volume FSx for ONTAP.
 ### Étape 4 : Déployer
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 sam deploy \

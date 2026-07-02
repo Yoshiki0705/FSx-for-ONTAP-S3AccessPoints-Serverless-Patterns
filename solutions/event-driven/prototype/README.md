@@ -95,14 +95,16 @@ response = s3ap.get_object(file_key)
 # 1. Lambda パッケージのビルド・アップロード
 # (省略: CI/CD パイプラインで自動化)
 
-# 2. CloudFormation スタックのデプロイ
-aws cloudformation deploy \
-  --template-file event-driven-prototype/template-deploy.yaml \
+# 2. SAM スタックのデプロイ
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name event-driven-prototype \
   --parameter-overrides \
-    DeployBucket=<deploy-bucket> \
     NotificationEmail=<email> \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 
 # 3. テストファイルのアップロード
 aws s3 cp test-image.jpg \

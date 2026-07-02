@@ -173,11 +173,12 @@ Crea un nuevo bucket S3 (`${AWS::StackName}-output-${AWS::AccountId}`) y
 escribe los resultados de IA allí.
 
 ```bash
-aws cloudformation deploy \
-  --template-file construction-bim/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-construction-bim-demo \
   --parameter-overrides \
-    OutputDestination=STANDARD_S3 \
     ... (otros parámetros requeridos)
 ```
 
@@ -188,12 +189,9 @@ ver directamente los resultados de IA dentro de la estructura de directorios que
 No se crea un bucket S3 estándar.
 
 ```bash
-aws cloudformation deploy \
-  --template-file construction-bim/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-construction-bim-demo \
   --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
     ... (otros parámetros requeridos)
 ```

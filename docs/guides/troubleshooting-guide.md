@@ -157,12 +157,15 @@ aws ec2 describe-vpc-endpoints \
 **対処法**: `EnableVpcEndpoints=true` でスタックを再デプロイ:
 
 ```bash
-aws cloudformation deploy \
-  --template-file solutions/industry/legal-compliance/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     EnableVpcEndpoints=true \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

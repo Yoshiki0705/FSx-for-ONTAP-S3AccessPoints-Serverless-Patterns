@@ -180,7 +180,7 @@ Bitte überprüfen Sie vor der Bereitstellung die folgenden Werte:
 - Secrets Manager Geheimnisname
 - SVM UUID, Volume UUID
 - VPC-ID, Private-Subnet-ID
-### 2. AWS CloudFormation-Bereitstellung
+### 2. AWS SAM-Bereitstellung
 
 Die zentrale Komponente für die Bereitstellung Ihrer Infrastruktur ist AWS CloudFormation. Damit können Sie Ihre gesamte Infrastruktur als Code definieren und verwalten. 
 
@@ -189,8 +189,10 @@ CloudFormation-Vorlagen beschreiben die Ressourcen, die Sie in Ihrer Umgebung be
 Wenn Sie eine CloudFormation-Vorlage bereitstellen, erstellt AWS CloudFormation alle erforderlichen Ressourcen für Sie. So können Sie Ihre Infrastruktur schnell und konsistent aufbauen und warten.
 
 ```bash
-aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -207,7 +209,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 **Achtung**: Bitte ersetzen Sie die Platzhalter `<...>` durch die tatsächlichen Werte Ihrer Umgebung.

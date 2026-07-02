@@ -76,8 +76,10 @@ PR 合并或夜间构建时自动触发。测试完成后立即清理。
 ## 部署
 
 ```bash
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
 sam deploy \
-  --template-file template.yaml \
   --stack-name devops-flexclone-cicd \
   --parameter-overrides \
     OntapManagementIp=10.0.1.100 \
@@ -85,7 +87,7 @@ sam deploy \
     SvmName=svm1 \
     SourceVolumeName=production_data \
     SimulationMode=true \
-  --capabilities CAPABILITY_IAM
+  --capabilities CAPABILITY_NAMED_IAM
 ```
 
 ## 成功指标

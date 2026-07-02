@@ -176,8 +176,10 @@ Aucun bucket S3 standard n'est créé (pattern "no data movement").
 
 **Exemple de déploiement** :
 ```bash
-aws cloudformation deploy \
-  --template-file financial-idp/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-financial-idp-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \

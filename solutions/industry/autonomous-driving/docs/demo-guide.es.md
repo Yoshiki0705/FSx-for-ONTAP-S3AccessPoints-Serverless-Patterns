@@ -187,11 +187,12 @@ Crea un nuevo bucket S3 (`${AWS::StackName}-output-${AWS::AccountId}`) y
 escribe los artefactos de IA allí.
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving-demo \
   --parameter-overrides \
-    OutputDestination=STANDARD_S3 \
     ... (他の必須パラメータ)
 ```
 
@@ -201,12 +202,9 @@ a través del FSx for ONTAP S3 Access Point. Los usuarios de SMB/NFS pueden ver 
 dentro de la estructura de directorios que usan en su trabajo diario. No se crea un bucket S3 estándar.
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-autonomous-driving-demo \
   --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
     ... (他の必須パラメータ)
 ```

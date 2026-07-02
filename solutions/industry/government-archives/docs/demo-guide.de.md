@@ -27,17 +27,19 @@
 ### 0:10 - 0:15 Bereitstellung (5 Minuten)
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-uc16-demo \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-ap-ext-s3alias> \
     VpcId=<vpc-id> \
     PrivateSubnetIds=<subnet-ids> \
     NotificationEmail=ops@example.com \
     OpenSearchMode=none \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -118,8 +120,10 @@ schreibt AI-Ergebnisse dorthin. Nur das Manifest der Discovery Lambda wird in de
 geschrieben (wie bisher).
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
@@ -133,8 +137,7 @@ Mitarbeiter der öffentlichen Dokumentenverwaltung können AI-Ergebnisse direkt 
 Es wird kein Standard-S3-Bucket erstellt.
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=FSXN_S3AP \

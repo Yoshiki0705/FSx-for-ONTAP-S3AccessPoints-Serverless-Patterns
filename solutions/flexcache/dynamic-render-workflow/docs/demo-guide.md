@@ -11,10 +11,13 @@
 ### デプロイ
 
 ```bash
-aws cloudformation deploy \
-  --template-file dynamic-flexcache-render-workflow/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name dynamic-flexcache-demo \
-  --capabilities CAPABILITY_IAM \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --parameter-overrides \
     OntapManagementIp=10.0.0.1 \
     OntapSecretName=fsxn/ontap-credentials \
@@ -120,10 +123,10 @@ aws logs filter-log-events \
 > - FlexCache 作成に十分なアグリゲート容量
 
 ```bash
-aws cloudformation deploy \
-  --template-file dynamic-flexcache-render-workflow/template.yaml \
+sam deploy \
   --stack-name dynamic-flexcache-real \
-  --capabilities CAPABILITY_IAM \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --parameter-overrides \
     OntapManagementIp=<REAL_MGMT_IP> \
     OntapSecretName=fsxn/ontap-credentials \

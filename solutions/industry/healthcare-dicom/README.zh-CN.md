@@ -82,7 +82,7 @@ graph LR
 - ONTAP 管理 IP 地址
 - Secrets Manager 机密名称
 - VPC ID，私有子网 ID
-### 2. CloudFormation 部署
+### 2. SAM 部署
 
 1. 确保你已经安装了 AWS CLI 和相关的软件包。
 2. 创建一个新的 CloudFormation 堆栈，使用 `AWS CloudFormation` 服务。
@@ -96,8 +96,10 @@ graph LR
 10. 在堆栈部署过程中，如果遇到任何错误，可以查看 `CloudFormation` 事件日志来排除故障。
 
 ```bash
-aws cloudformation deploy \
-  --template-file healthcare-dicom/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-healthcare-dicom \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -111,7 +113,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 > **注意**: 请将 `<...>` 中的占位符替换为实际的环境值。

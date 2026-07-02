@@ -27,17 +27,19 @@
 ### 0:10 - 0:15 Déploiement (5 minutes)
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-uc16-demo \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-ap-ext-s3alias> \
     VpcId=<vpc-id> \
     PrivateSubnetIds=<subnet-ids> \
     NotificationEmail=ops@example.com \
     OpenSearchMode=none \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -118,8 +120,10 @@ y écrit les résultats de l'IA. Seul le manifest du Lambda Discovery est écrit
 dans le S3 Access Point (comme auparavant).
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
@@ -133,8 +137,7 @@ Les responsables des archives publiques peuvent consulter directement les résul
 Aucun bucket S3 standard n'est créé.
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=FSXN_S3AP \

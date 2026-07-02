@@ -126,7 +126,7 @@ Amazon Bedrock服务用于半导体设计。可以使用AWS Step Functions编排
 - Secrets Manager 秘密名称
 - SVM UUID、卷 UUID
 - VPC ID、私有子网 ID
-### 2. AWS CloudFormation部署
+### 2. AWS SAM部署
 
 使用AWS CloudFormation part:
 
@@ -140,8 +140,10 @@ Amazon Bedrock服务用于半导体设计。可以使用AWS Step Functions编排
 AWS CloudFormation为您提供一种声明式方式来管理整个基础设施,并确保一致的部署。
 
 ```bash
-aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -158,7 +160,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 **注意**: 请将 `<...>` 中的占位符替换为实际的环境值。

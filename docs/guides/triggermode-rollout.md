@@ -25,11 +25,14 @@ POLLING (default) → HYBRID (移行安全モード) → EVENT_DRIVEN (完全イ
 ### Step 3: 低リスク UC を HYBRID に切り替え
 
 ```bash
-aws cloudformation deploy \
-  --template-file {uc}/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name {stack-name} \
   --parameter-overrides TriggerMode=HYBRID \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 **監視項目**:
@@ -45,11 +48,14 @@ aws cloudformation deploy \
 ### Step 4: レイテンシ重視 UC を EVENT_DRIVEN に切り替え
 
 ```bash
-aws cloudformation deploy \
-  --template-file {uc}/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name {stack-name} \
   --parameter-overrides TriggerMode=EVENT_DRIVEN \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 **結果**:
@@ -81,18 +87,21 @@ EVENT_DRIVEN → HYBRID → POLLING
 
 ```bash
 # EVENT_DRIVEN → HYBRID
-aws cloudformation deploy \
-  --template-file {uc}/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name {stack-name} \
   --parameter-overrides TriggerMode=HYBRID \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 
 # HYBRID → POLLING（完全ロールバック）
 aws cloudformation deploy \
-  --template-file {uc}/template.yaml \
   --stack-name {stack-name} \
   --parameter-overrides TriggerMode=POLLING \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### ロールバック完了確認

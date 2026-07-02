@@ -24,6 +24,7 @@ aws sts get-caller-identity
 ```bash
 git clone https://github.com/Yoshiki0705/fsxn-s3ap-serverless-patterns.git
 cd fsxn-s3ap-serverless-patterns/solutions/industry/agri-food-traceability
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 sam deploy \
   --stack-name fsxn-agri-demo \

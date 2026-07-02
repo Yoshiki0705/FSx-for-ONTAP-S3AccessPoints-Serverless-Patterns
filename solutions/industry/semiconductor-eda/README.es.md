@@ -223,11 +223,12 @@ done
 ### 4. Implementación de CloudFormation
 
 ```bash
-aws cloudformation deploy \
-  --template-file semiconductor-eda/template-deploy.yaml \
+# Requisito: se necesita AWS SAM CLI. «sam build» empaqueta automáticamente el código y la capa compartida.
+sam build
+
+sam deploy \
   --stack-name fsxn-semiconductor-eda \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-s3ap-alias> \
     S3AccessPointName=<your-s3ap-name> \
     OntapSecretName=<your-secret-name> \
@@ -243,6 +244,7 @@ aws cloudformation deploy \
     LambdaMemorySize=512 \
     LambdaTimeout=300 \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region <your-region>
 ```
 **Importante**: `S3AccessPointName` es el nombre del punto de acceso de S3 (no el alias, sino el nombre especificado al crearlo). Se utiliza en políticas de IAM para otorgar permisos basados en ARN. Si se omite, puede ocurrir un error `AccessDenied`.

@@ -178,8 +178,6 @@ automatisch generierte Tag-JSONs innerhalb der Verzeichnisstruktur der Produktbi
 
 # FSXN_S3AP-Modus (KI-Ergebnisse auf FSx for ONTAP-Volume zurückschreiben)
 --parameter-overrides \
-  OutputDestination=FSXN_S3AP \
-  OutputS3APPrefix=ai-outputs/ \
   ...
 ```
 

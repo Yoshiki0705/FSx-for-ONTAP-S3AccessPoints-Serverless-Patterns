@@ -45,8 +45,10 @@ docker buildx build --platform linux/arm64 \
 ### 1.2 CloudFormation-Bereitstellung
 
 ```bash
-aws cloudformation deploy \
-  --template-file template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-fpolicy-demo \
   --parameter-overrides \
     VpcId=vpc-xxxxxxxxx \
@@ -57,6 +59,7 @@ aws cloudformation deploy \
     FsxnSvmUuid=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
     FsxnCredentialsSecret=fsxn-admin-credentials \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

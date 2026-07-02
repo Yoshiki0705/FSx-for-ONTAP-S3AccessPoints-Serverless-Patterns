@@ -80,8 +80,10 @@ graph LR
 ## 部署方法
 
 ```bash
-aws cloudformation deploy \
-  --template-file telecom-network-analytics/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-telecom-analytics \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -93,7 +95,8 @@ aws cloudformation deploy \
     CdrSuffixFilter=".csv,.asn1,.parquet" \
     AnomalyThresholdStdDev=3 \
     CapacityThresholdPercent=80 \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

@@ -27,17 +27,19 @@
 ### 0:10 - 0:15 배포 (5분)
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-uc16-demo \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-ap-ext-s3alias> \
     VpcId=<vpc-id> \
     PrivateSubnetIds=<subnet-ids> \
     NotificationEmail=ops@example.com \
     OpenSearchMode=none \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -118,8 +120,10 @@ AI 산출물을 그곳에 작성합니다. Discovery Lambda의 manifest만 S3 Ac
 에 작성됩니다 (기존 방식).
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=STANDARD_S3 \
@@ -133,8 +137,7 @@ OCR 텍스트, 분류 결과, PII 탐지 결과, 편집된 문서, 편집 메타
 표준 S3 버킷은 생성되지 않습니다.
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-government-archives-demo \
   --parameter-overrides \
     OutputDestination=FSXN_S3AP \

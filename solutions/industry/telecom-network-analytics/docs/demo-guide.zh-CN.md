@@ -37,6 +37,7 @@ cd fsxn-s3ap-serverless-patterns/solutions/industry/telecom-network-analytics
 ### 步骤 4：部署
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 sam deploy \

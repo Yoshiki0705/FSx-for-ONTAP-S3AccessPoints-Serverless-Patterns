@@ -103,11 +103,13 @@ graph LR
 
 ESG 文書のパスパターン（Environmental/Social/Governance プレフィクス）を事前に確認します。
 
-### 2. CloudFormation デプロイ
+### 2. SAM デプロイ
 
 ```bash
-aws cloudformation deploy \
-  --template-file sustainability-esg-reporting/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-esg-reporting \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -118,7 +120,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

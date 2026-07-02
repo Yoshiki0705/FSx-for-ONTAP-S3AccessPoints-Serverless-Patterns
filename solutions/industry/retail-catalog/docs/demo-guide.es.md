@@ -178,8 +178,6 @@ visualizar los JSON de etiquetas generadas automáticamente dentro de la estruct
 
 # Modo FSXN_S3AP (escribir resultados de IA de vuelta al volumen FSx for ONTAP)
 --parameter-overrides \
-  OutputDestination=FSXN_S3AP \
-  OutputS3APPrefix=ai-outputs/ \
   ...
 ```
 

@@ -177,8 +177,6 @@ UC14 在 2026-05-10 的更新中支援了 `OutputDestination` 參數。
 
 # FSXN_S3AP 模式(將 AI 成果寫回 FSx for ONTAP 磁碟區)
 --parameter-overrides \
-  OutputDestination=FSXN_S3AP \
-  OutputS3APPrefix=ai-outputs/ \
   ...
 ```
 
