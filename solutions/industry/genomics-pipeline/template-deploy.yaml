@@ -291,25 +291,6 @@ Conditions:
 
 
 # --- Phase 10 Mappings ---
-Mappings:
-  AlarmProfileConfig:
-    BATCH:
-      FailureThreshold: "10"
-      ErrorThreshold: "3"
-      EvaluationPeriods: "3"
-    REALTIME:
-      FailureThreshold: "5"
-      ErrorThreshold: "1"
-      EvaluationPeriods: "1"
-    HIGH_VOLUME:
-      FailureThreshold: "15"
-      ErrorThreshold: "5"
-      EvaluationPeriods: "5"
-    CUSTOM:
-      FailureThreshold: "10"
-      ErrorThreshold: "3"
-      EvaluationPeriods: "3"
-
 Resources:
 
   # -----------------------------------------------------------------
@@ -1027,12 +1008,11 @@ Resources:
         - !Sub "${AWS::StackName}-workgroup"
         - !Ref AthenaWorkgroupName
       State: ENABLED
+      RecursiveDeleteOption: true
       WorkGroupConfiguration:
-        RecursiveDeleteOption: true
         ResultConfiguration:
           OutputLocation: !Sub "s3://${OutputBucket}/athena-results/"
-        EnforceWorkGroupConfiguration:
-        RecursiveDeleteOption: true true
+        EnforceWorkGroupConfiguration: true
         PublishCloudWatchMetricsEnabled: true
 
   # -----------------------------------------------------------------

@@ -173,11 +173,12 @@ Erstellt einen neuen S3-Bucket (`${AWS::StackName}-output-${AWS::AccountId}`) un
 schreibt KI-Ergebnisse dorthin.
 
 ```bash
-aws cloudformation deploy \
-  --template-file construction-bim/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-construction-bim-demo \
   --parameter-overrides \
-    OutputDestination=STANDARD_S3 \
     ... (andere erforderliche Parameter)
 ```
 
@@ -187,12 +188,9 @@ Originaldaten zurück. SMB/NFS-Benutzer können KI-Ergebnisse direkt in der Verz
 ihrer täglichen Arbeit einsehen. Es wird kein Standard-S3-Bucket erstellt.
 
 ```bash
-aws cloudformation deploy \
-  --template-file construction-bim/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-construction-bim-demo \
   --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
     ... (andere erforderliche Parameter)
 ```

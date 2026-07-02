@@ -62,11 +62,13 @@ graph LR
 - Punto de enlace de SageMaker (modelo de segmentación de nubes de puntos): opcional
 ## Pasos de implementación
 
-### 1. Despliegue de CloudFormation
+### 1. Despliegue de SAM
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template.yaml \
+# Requisito: se necesita AWS SAM CLI. «sam build» empaqueta automáticamente el código y la capa compartida.
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -77,7 +79,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -123,14 +126,17 @@ En la **Fase 3**, la **inferencia de segmentación de nubes de puntos LiDAR con 
 ### Activación
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template.yaml \
+# Requisito: se necesita AWS SAM CLI. «sam build» empaqueta automáticamente el código y la capa compartida.
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving \
   --parameter-overrides \
     EnableSageMakerTransform=true \
     MockMode=true \
     ... # 他のパラメータ
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### Flujo de trabajo

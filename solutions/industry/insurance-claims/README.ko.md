@@ -64,11 +64,13 @@ graph LR
 
 ### 1. 크로스 리전 파라미터 확인
 Textract는 도쿄 리전을 지원하지 않기 때문에 `CrossRegionTarget` 파라미터로 크로스 리전 호출을 설정합니다.
-### 2. CloudFormation 배포
+### 2. SAM 배포
 
 ```bash
-aws cloudformation deploy \
-  --template-file insurance-claims/template.yaml \
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-insurance-claims \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -77,10 +79,11 @@ aws cloudformation deploy \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     ScheduleExpression="rate(1 hour)" \
     NotificationEmail=<your-email@example.com> \
-    CrossRegionTarget=us-east-1 \
+    CrossRegion=us-east-1 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

@@ -418,25 +418,6 @@ Conditions:
 
 
 # --- Phase 10 Mappings ---
-Mappings:
-  AlarmProfileConfig:
-    BATCH:
-      FailureThreshold: "10"
-      ErrorThreshold: "3"
-      EvaluationPeriods: "3"
-    REALTIME:
-      FailureThreshold: "5"
-      ErrorThreshold: "1"
-      EvaluationPeriods: "1"
-    HIGH_VOLUME:
-      FailureThreshold: "15"
-      ErrorThreshold: "5"
-      EvaluationPeriods: "5"
-    CUSTOM:
-      FailureThreshold: "10"
-      ErrorThreshold: "3"
-      EvaluationPeriods: "3"
-
 Resources:
 
   # -----------------------------------------------------------------

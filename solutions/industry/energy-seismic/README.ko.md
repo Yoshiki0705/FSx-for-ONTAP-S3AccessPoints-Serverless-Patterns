@@ -63,11 +63,13 @@ graph LR
 - Amazon Bedrock 모델 액세스 활성화(Claude / Nova)
 ## 배포 절차
 
-### 1. CloudFormation 배포
+### 1. SAM 배포
 
 ```bash
-aws cloudformation deploy \
-  --template-file energy-seismic/template.yaml \
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-energy-seismic \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -78,7 +80,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

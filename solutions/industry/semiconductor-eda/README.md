@@ -174,14 +174,15 @@ for func in discovery metadata_extraction drc_aggregation report_generation; do
 done
 ```
 
-### 4. CloudFormation デプロイ
+### 4. SAM デプロイ
 
 ```bash
-aws cloudformation deploy \
-  --template-file semiconductor-eda/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-semiconductor-eda \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-s3ap-alias> \
     S3AccessPointName=<your-s3ap-name> \
     OntapSecretName=<your-secret-name> \
@@ -197,6 +198,7 @@ aws cloudformation deploy \
     LambdaMemorySize=512 \
     LambdaTimeout=300 \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region <your-region>
 ```
 
@@ -455,6 +457,7 @@ aws sts get-caller-identity  # AWS 認証情報
 
 ```bash
 # ビルド
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # Discovery Lambda のローカル実行

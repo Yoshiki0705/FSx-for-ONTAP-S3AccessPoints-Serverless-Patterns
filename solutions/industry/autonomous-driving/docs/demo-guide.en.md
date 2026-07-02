@@ -187,11 +187,12 @@ Creates a new S3 bucket (`${AWS::StackName}-output-${AWS::AccountId}`) and
 writes AI artifacts there.
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving-demo \
   --parameter-overrides \
-    OutputDestination=STANDARD_S3 \
     ... (other required parameters)
 ```
 
@@ -201,12 +202,9 @@ SMB/NFS users can directly view AI artifacts within the directory structure used
 No standard S3 bucket is created.
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-autonomous-driving-demo \
   --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
     ... (other required parameters)
 ```

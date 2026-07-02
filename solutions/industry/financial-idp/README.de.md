@@ -117,7 +117,7 @@ Bitte überprüfen Sie vor der Bereitstellung die folgenden Werte:
 - ONTAP Verwaltungs-IP-Adresse
 - Secrets Manager Geheimnis Name
 - VPC-ID, private Subnetz-ID
-### 2. CloudFormation Bereitstellung
+### 2. SAM Bereitstellung
 
 AWS CloudFormation wird verwendet, um die Infrastruktur und Dienste bereitzustellen. Die Ressourcen werden in einer Vorlage definiert und von CloudFormation erstellt und konfiguriert. Die Vorlage definiert die AWS-Ressourcen, wie z.B. Amazon S3-Buckets, AWS Lambda-Funktionen und Amazon Athena-Datenbanken.
 
@@ -128,8 +128,10 @@ Für die Bereitstellung der Infrastruktur und der Dienste werden die folgenden S
 3. Überwachen Sie den Bereitstellungsprozess in der AWS CloudFormation-Konsole.
 
 ```bash
-aws cloudformation deploy \
-  --template-file financial-idp/template.yaml \
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
   --stack-name fsxn-financial-idp \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -143,7 +145,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 **Achtung**: Bitte ersetzen Sie die Platzhalter `<...>` durch die tatsächlichen Umgebungswerte.

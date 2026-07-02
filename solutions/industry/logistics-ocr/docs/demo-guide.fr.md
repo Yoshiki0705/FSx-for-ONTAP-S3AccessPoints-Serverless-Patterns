@@ -175,11 +175,12 @@ Crée un nouveau bucket S3 (`${AWS::StackName}-output-${AWS::AccountId}`) et
 y écrit les résultats de l'IA.
 
 ```bash
-aws cloudformation deploy \
-  --template-file logistics-ocr/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-logistics-ocr-demo \
   --parameter-overrides \
-    OutputDestination=STANDARD_S3 \
     ... (autres paramètres obligatoires)
 ```
 
@@ -189,13 +190,9 @@ Les utilisateurs SMB/NFS peuvent consulter directement les résultats de l'IA da
 qu'ils utilisent pour leur travail. Aucun bucket S3 standard n'est créé.
 
 ```bash
-aws cloudformation deploy \
-  --template-file logistics-ocr/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-logistics-ocr-demo \
   --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
-    S3AccessPointName=eda-demo-s3ap \
     ... (autres paramètres obligatoires)
 ```
 

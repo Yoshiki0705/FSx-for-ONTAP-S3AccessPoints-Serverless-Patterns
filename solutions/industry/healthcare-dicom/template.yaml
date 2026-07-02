@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -142,6 +138,22 @@ Conditions:
 # Resources
 # =====================================================================
 Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
   # (OutputBucket removed - all output goes to FSx for ONTAP via S3 AP)
 
@@ -508,13 +520,15 @@ Resources:
   # Lambda Functions (Python 3.12, 256MB, 300s timeout)
   # -----------------------------------------------------------------
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.13
-      Handler: healthcare-dicom/functions/discovery/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -532,17 +546,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        - Key: UseCase
-          Value: healthcare-dicom
+        UseCase: healthcare-dicom
 
   DicomParseFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-dicom-parse"
       Runtime: python3.13
-      Handler: healthcare-dicom/functions/dicom_parse/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/dicom_parse/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt DicomParseLambdaRole.Arn
@@ -554,17 +569,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DicomParseLogGroup
       Tags:
-        - Key: UseCase
-          Value: healthcare-dicom
+        UseCase: healthcare-dicom
 
   PiiDetectionFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-pii-detection"
       Runtime: python3.13
-      Handler: healthcare-dicom/functions/pii_detection/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/pii_detection/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt PiiDetectionLambdaRole.Arn
@@ -576,17 +592,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref PiiDetectionLogGroup
       Tags:
-        - Key: UseCase
-          Value: healthcare-dicom
+        UseCase: healthcare-dicom
 
   AnonymizationFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-anonymization"
       Runtime: python3.13
-      Handler: healthcare-dicom/functions/anonymization/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/anonymization/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt AnonymizationLambdaRole.Arn
@@ -599,8 +616,7 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref AnonymizationLogGroup
       Tags:
-        - Key: UseCase
-          Value: healthcare-dicom
+        UseCase: healthcare-dicom
 
   # -----------------------------------------------------------------
   # Step Functions State Machine

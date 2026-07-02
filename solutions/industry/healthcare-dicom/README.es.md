@@ -64,11 +64,13 @@ Antes de implementar, verifique los siguientes valores:
 - Dirección IP de administración de ONTAP
 - Nombre del secreto de Secrets Manager
 - ID de VPC, ID de subred privada
-### 2. Despliegue de CloudFormation
+### 2. Despliegue de SAM
 
 ```bash
-aws cloudformation deploy \
-  --template-file healthcare-dicom/template.yaml \
+# Requisito: se necesita AWS SAM CLI. «sam build» empaqueta automáticamente el código y la capa compartida.
+sam build
+
+sam deploy \
   --stack-name fsxn-healthcare-dicom \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -82,7 +84,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 > **Advertencia**: Reemplace los marcadores de posición `<...>` con los valores de entorno reales.

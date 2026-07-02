@@ -81,11 +81,13 @@ graph LR
 - 已启用 Amazon Bedrock 模型访问（Claude / Nova）
 ## 部署步骤
 
-### 1. CloudFormation 部署
+### 1. SAM 部署
 
 ```bash
-aws cloudformation deploy \
-  --template-file retail-catalog/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-retail-catalog \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -96,7 +98,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -141,13 +144,16 @@ aws cloudformation wait stack-delete-complete \
 ### 启用
 
 ```bash
-aws cloudformation deploy \
-  --template-file retail-catalog/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-retail-catalog \
   --parameter-overrides \
     EnableStreamingMode=true \
     ... # 他のパラメータ
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### 流式模式架构

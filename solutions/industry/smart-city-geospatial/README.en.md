@@ -65,17 +65,19 @@ Serverless pipeline for municipal geospatial data (GeoTIFF / Shapefile / GeoJSON
 ## Deploy
 
 ```bash
-aws cloudformation deploy \
-  --template-file smart-city-geospatial/template-deploy.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-smart-city \
   --parameter-overrides \
-    DeployBucket=<deploy-bucket> \
     S3AccessPointAlias=<ap-ext-s3alias> \
     VpcId=<vpc-id> \
     PrivateSubnetIds=<subnet-ids> \
     NotificationEmail=ops@example.com \
     BedrockModelId=amazon.nova-lite-v1:0 \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

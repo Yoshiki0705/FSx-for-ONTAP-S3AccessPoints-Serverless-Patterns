@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -153,6 +149,22 @@ Conditions:
 # Resources
 # =====================================================================
 Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
   # -----------------------------------------------------------------
   # S3 Athena Results Bucket (SSE-KMS)
@@ -567,13 +579,15 @@ Resources:
   # Lambda Functions (Python 3.12, 256MB, 300s timeout)
   # -----------------------------------------------------------------
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.13
-      Handler: legal-compliance/functions/discovery/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -595,17 +609,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        - Key: UseCase
-          Value: legal-compliance
+        UseCase: legal-compliance
 
   AclCollectionFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-acl-collection"
       Runtime: python3.13
-      Handler: legal-compliance/functions/acl_collection/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/acl_collection/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt AclCollectionLambdaRole.Arn
@@ -625,17 +640,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref AclCollectionLogGroup
       Tags:
-        - Key: UseCase
-          Value: legal-compliance
+        UseCase: legal-compliance
 
   AthenaAnalysisFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-athena-analysis"
       Runtime: python3.13
-      Handler: legal-compliance/functions/athena_analysis/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/athena_analysis/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt AthenaAnalysisLambdaRole.Arn
@@ -650,17 +666,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref AthenaAnalysisLogGroup
       Tags:
-        - Key: UseCase
-          Value: legal-compliance
+        UseCase: legal-compliance
 
   ReportGenerationFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report-generation"
       Runtime: python3.13
-      Handler: legal-compliance/functions/report_generation/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/report_generation/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt ReportGenerationLambdaRole.Arn
@@ -673,8 +690,7 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref ReportGenerationLogGroup
       Tags:
-        - Key: UseCase
-          Value: legal-compliance
+        UseCase: legal-compliance
 
   # -----------------------------------------------------------------
   # Glue Database + Table (conditional on CreateAthenaWorkgroup)
@@ -725,8 +741,8 @@ Resources:
     Properties:
       Name: !Sub "${AWS::StackName}-workgroup"
       State: ENABLED
+      RecursiveDeleteOption: true
       WorkGroupConfiguration:
-        RecursiveDeleteOption: true
         ResultConfiguration:
           OutputLocation: !Sub "s3://${AthenaResultsBucket}/athena-results/"
         EnforceWorkGroupConfiguration: true

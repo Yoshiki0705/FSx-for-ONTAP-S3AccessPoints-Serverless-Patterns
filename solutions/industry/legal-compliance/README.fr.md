@@ -151,13 +151,15 @@ Veuillez vérifier les valeurs suivantes avant le déploiement :
 - Nom du secret Secrets Manager
 - UUID du SVM, UUID du volume
 - ID du VPC, ID du sous-réseau privé
-### 2. Déploiement de CloudFormation
+### 2. Déploiement de SAM
 
 Amazon Bedrock を使用して、AWS Step Functions でワークフローを定義し、Amazon Athena を使用してデータを分析します。続いて、Amazon S3 にデータを格納し、AWS Lambda で処理を行います。最後に、Amazon FSx for ONTAP を使用してデータレイクを構築し、Amazon CloudWatch でモニタリングを行います。
 
 ```bash
-aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -174,7 +176,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 **Remarque**: Veuillez remplacer les espaces réservés `<...>` par les valeurs de votre environnement.

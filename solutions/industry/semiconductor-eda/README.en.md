@@ -155,14 +155,15 @@ for func in discovery metadata_extraction drc_aggregation report_generation; do
 done
 ```
 
-### 4. CloudFormation Deployment
+### 4. SAM Deployment
 
 ```bash
-aws cloudformation deploy \
-  --template-file semiconductor-eda/template-deploy.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-semiconductor-eda \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-s3ap-alias> \
     S3AccessPointName=<your-s3ap-name> \
     OntapSecretName=<your-secret-name> \
@@ -178,6 +179,7 @@ aws cloudformation deploy \
     LambdaMemorySize=512 \
     LambdaTimeout=300 \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region <your-region>
 ```
 

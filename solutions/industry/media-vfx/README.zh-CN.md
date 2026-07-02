@@ -74,11 +74,13 @@ graph LR
 - Secrets Manager 秘密名称
 - AWS Deadline 云农场 ID / 队列 ID
 - VPC ID、私有子网 ID
-### 2. CloudFormation 部署
+### 2. SAM 部署
 
 ```bash
-aws cloudformation deploy \
-  --template-file media-vfx/template.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-media-vfx \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -95,7 +97,8 @@ aws cloudformation deploy \
     QualityThreshold=80.0 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 > **注意**: 请将 `<...>` 中的占位符替换为实际的环境值。

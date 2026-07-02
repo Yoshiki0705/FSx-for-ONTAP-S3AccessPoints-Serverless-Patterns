@@ -76,8 +76,10 @@ Validate DR procedures against a clone of production data. Zero impact on produc
 ## Deployment
 
 ```bash
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
 sam deploy \
-  --template-file template.yaml \
   --stack-name devops-flexclone-cicd \
   --parameter-overrides \
     OntapManagementIp=10.0.1.100 \
@@ -85,7 +87,7 @@ sam deploy \
     SvmName=svm1 \
     SourceVolumeName=production_data \
     SimulationMode=true \
-  --capabilities CAPABILITY_IAM
+  --capabilities CAPABILITY_NAMED_IAM
 ```
 
 ## Success Metrics

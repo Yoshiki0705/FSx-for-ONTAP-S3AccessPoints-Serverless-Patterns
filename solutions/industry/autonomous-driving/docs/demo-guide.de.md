@@ -188,11 +188,12 @@ Erstellt einen neuen S3-Bucket (`${AWS::StackName}-output-${AWS::AccountId}`) un
 schreibt AI-Artefakte dorthin.
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving-demo \
   --parameter-overrides \
-    OutputDestination=STANDARD_S3 \
     ... (他の必須パラメータ)
 ```
 
@@ -202,12 +203,9 @@ SMB/NFS-Benutzer können AI-Artefakte direkt in ihrer Arbeitsverzeichnisstruktur
 Es wird kein Standard-S3-Bucket erstellt.
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-autonomous-driving-demo \
   --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
     ... (他の必須パラメータ)
 ```

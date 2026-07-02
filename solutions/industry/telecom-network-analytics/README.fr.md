@@ -80,8 +80,10 @@ graph LR
 ## Déploiement
 
 ```bash
-aws cloudformation deploy \
-  --template-file telecom-network-analytics/template.yaml \
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
   --stack-name fsxn-telecom-analytics \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -93,7 +95,8 @@ aws cloudformation deploy \
     CdrSuffixFilter=".csv,.asn1,.parquet" \
     AnomalyThresholdStdDev=3 \
     CapacityThresholdPercent=80 \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

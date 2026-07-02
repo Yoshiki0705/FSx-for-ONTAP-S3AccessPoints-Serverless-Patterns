@@ -178,8 +178,6 @@ UC11 在 2026-05-10 的更新中支持了 `OutputDestination` 参数。
 
 # FSXN_S3AP 模式（将 AI 成果物写回 FSx for ONTAP 卷）
 --parameter-overrides \
-  OutputDestination=FSXN_S3AP \
-  OutputS3APPrefix=ai-outputs/ \
   ...
 ```
 

@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -139,7 +135,37 @@ Parameters:
 # =====================================================================
 # Conditions
 # =====================================================================
+  # --- OutputDestination (Pattern B: FSx for ONTAP S3 AP write-back) ---
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: >
+      AI/ML 成果物の書き込み先。STANDARD_S3 は新規 S3 バケット、FSXN_S3AP は FSx for ONTAP
+      S3 Access Point 経由でオリジナルと同一ボリュームへ書き戻す（no data movement）。
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: FSXN_S3AP 出力先 S3 AP Alias。空なら入力 S3AccessPointAlias を再利用。
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: 出力用 S3 AP 名。空なら S3AccessPointName を再利用。
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: FSXN_S3AP 出力キーのプレフィックス。
+
 Conditions:
+  # --- OutputDestination Conditions ---
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  UseInputApAsOutputAp:
+    !Equals [!Ref OutputS3APAlias, ""]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
   HasS3AccessPointName:
     !Not [!Equals [!Ref S3AccessPointName, ""]]
   CreateCloudWatchAlarms:
@@ -174,6 +200,22 @@ Conditions:
 # Resources
 # =====================================================================
 Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
   # -----------------------------------------------------------------
   # S3 Output Bucket (SSE-KMS)
@@ -501,8 +543,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -553,8 +607,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: SNSPublish
                 Effect: Allow
                 Action:
@@ -582,13 +648,15 @@ Resources:
   # BimParse / OCR / SafetyCheck: VPC 外
   # -----------------------------------------------------------------
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.13
-      Handler: construction-bim/functions/discovery/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -609,17 +677,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        - Key: UseCase
-          Value: construction-bim
+        UseCase: construction-bim
 
   BimParseFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-bim-parse"
       Runtime: python3.13
-      Handler: construction-bim/functions/bim_parse/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/bim_parse/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 512
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt BimParseLambdaRole.Arn
@@ -627,22 +696,30 @@ Resources:
         Variables:
           USE_CASE: "construction-bim"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           PREVIOUS_METADATA_PREFIX: "metadata/history/"
       LoggingConfig:
         LogGroup: !Ref BimParseLogGroup
       Tags:
-        - Key: UseCase
-          Value: construction-bim
+        UseCase: construction-bim
 
   OcrFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
       Runtime: python3.13
-      Handler: construction-bim/functions/ocr/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/ocr/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 512
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt OcrLambdaRole.Arn
@@ -650,29 +727,44 @@ Resources:
         Variables:
           USE_CASE: "construction-bim"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           CROSS_REGION: !Ref CrossRegion
       LoggingConfig:
         LogGroup: !Ref OcrLogGroup
       Tags:
-        - Key: UseCase
-          Value: construction-bim
+        UseCase: construction-bim
 
   SafetyCheckFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-safety-check"
       Runtime: python3.13
-      Handler: construction-bim/functions/safety_check/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/safety_check/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt SafetyCheckLambdaRole.Arn
       Environment:
         Variables:
           USE_CASE: "construction-bim"
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
           # 安全記録保護: LOG_SAFETY_DATA=false により、SafetyCheck Lambda は
@@ -681,8 +773,7 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref SafetyCheckLogGroup
       Tags:
-        - Key: UseCase
-          Value: construction-bim
+        UseCase: construction-bim
 
   # -----------------------------------------------------------------
   # Step Functions State Machine

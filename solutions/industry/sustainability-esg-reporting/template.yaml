@@ -1,0 +1,740 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  UC23: サステナビリティ・ESG レポーティング（本番デプロイ用）
+  FSx for NetApp ONTAP S3 Access Points を活用した ESG メトリクス抽出、
+  フレームワークマッピング、レポート生成のサーバーレスワークフロー。
+
+# =====================================================================
+# Parameters — Layer 1 (共通) + Layer 2 (拡張) + Layer 3 (TriggerMode) + Layer 4 (UC固有)
+# =====================================================================
+Parameters:
+
+  # --- Layer 1: Phase 1 共通 ---
+  S3AccessPointAlias:
+    Type: String
+    Description: FSx for ONTAP S3 Access Point Alias (入力読み取り用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: |
+      入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
+      IAM アクセスを許可する。空文字列の場合は alias 形式のみ許可。
+
+  S3AccessPointOutputAlias:
+    Type: String
+    Description: FSx for ONTAP S3 Access Point Alias (出力書き込み用)
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  OntapSecretName:
+    Type: String
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
+
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP クラスタ管理 IP アドレス
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  SvmUuid:
+    Type: String
+    Description: ONTAP SVM UUID
+
+  ScheduleExpression:
+    Type: String
+    Default: "cron(0 0 * * ? *)"
+    Description: "EventBridge Scheduler スケジュール式 (デフォルト: 毎日 00:00 UTC)"
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Lambda 関数を配置する VPC ID
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Lambda 関数を配置するプライベートサブネット ID リスト
+
+  PrivateRouteTableIds:
+    Type: CommaDelimitedList
+    Description: プライベートサブネットのルートテーブル ID リスト
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス
+
+  # --- Layer 2: Phase 2 拡張 ---
+  MapConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 100
+    Description: Step Functions Map State の並列度
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 256
+    AllowedValues: [128, 256, 512, 1024, 2048]
+    Description: Lambda 関数のメモリサイズ (MB)
+
+  LambdaTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 900
+    Description: Lambda 関数のタイムアウト (秒)
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms を有効化する
+
+  EnableVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Interface VPC Endpoints を有効化する
+
+  EnableS3GatewayEndpoint:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: S3 Gateway VPC Endpoint を作成する
+
+  BedrockModelId:
+    Type: String
+    Default: "anthropic.claude-haiku-4-5-20251001-v1:0"
+    Description: Bedrock モデル ID
+
+  # --- Layer 3: TriggerMode ---
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: トリガーモード
+
+  FPolicyEventBusName:
+    Type: String
+    Default: "fsxn-fpolicy-events"
+    Description: FPolicy EventBridge カスタムバス名
+
+  # --- Layer 4: UC23 固有 ---
+  EsgReportPrefix:
+    Type: String
+    Default: "esg/"
+    Description: ESG レポートファイルのプレフィックス
+
+  FrameworkType:
+    Type: String
+    Default: "GRI,TCFD,ISSB"
+    Description: 対応フレームワーク（カンマ区切り）
+
+  TextractRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: Textract リージョン (Cross-Region)
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
+  CreateVpcEndpoints:
+    !Equals [!Ref EnableVpcEndpoints, "true"]
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  CreateS3GatewayEndpoint:
+    !Equals [!Ref EnableS3GatewayEndpoint, "true"]
+  IsPollingOrHybrid:
+    !Or
+      - !Equals [!Ref TriggerMode, "POLLING"]
+      - !Equals [!Ref TriggerMode, "HYBRID"]
+  IsEventDrivenOrHybrid:
+    !Or
+      - !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+      - !Equals [!Ref TriggerMode, "HYBRID"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
+  # -----------------------------------------------------------------
+  # SNS Topic + Email Subscription
+  # -----------------------------------------------------------------
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # -----------------------------------------------------------------
+  # Lambda Security Group
+  # -----------------------------------------------------------------
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - Lambda functions security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  # -----------------------------------------------------------------
+  # S3 Gateway Endpoint (conditional)
+  # -----------------------------------------------------------------
+  S3GatewayEndpoint:
+    Condition: CreateS3GatewayEndpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref PrivateRouteTableIds
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups
+  # -----------------------------------------------------------------
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: 14
+
+  MetricsExtractorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-metrics-extractor"
+      RetentionInDays: 14
+
+  FrameworkMapperLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-framework-mapper"
+      RetentionInDays: 14
+
+  ReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-report"
+      RetentionInDays: 14
+
+  # -----------------------------------------------------------------
+  # IAM Roles — least-privilege per Lambda
+  # -----------------------------------------------------------------
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Ref AWS::NoValue
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: SecretsManager
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt DiscoveryLogGroup.Arn
+                  - !Sub "${DiscoveryLogGroup.Arn}:*"
+
+  MetricsExtractorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-metrics-extractor-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: MetricsExtractorPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: Textract
+                Effect: Allow
+                Action:
+                  - textract:AnalyzeDocument
+                  - textract:DetectDocumentText
+                Resource: "*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt MetricsExtractorLogGroup.Arn
+                  - !Sub "${MetricsExtractorLogGroup.Arn}:*"
+
+  FrameworkMapperLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-framework-mapper-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: FrameworkMapperPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Output
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt FrameworkMapperLogGroup.Arn
+                  - !Sub "${FrameworkMapperLogGroup.Arn}:*"
+
+  ReportLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-report-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReportPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Output
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: SNS
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ReportLogGroup.Arn
+                  - !Sub "${ReportLogGroup.Arn}:*"
+
+  # -----------------------------------------------------------------
+  # Lambda Functions (Production — S3 deploy packages)
+  # -----------------------------------------------------------------
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          USE_CASE: "sustainability-esg-reporting"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          PREFIX_FILTER: !Ref EsgReportPrefix
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          SVM_UUID: !Ref SvmUuid
+          VERIFY_SSL: "false"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+      Tags:
+        UseCase: sustainability-esg-reporting
+
+  MetricsExtractorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-metrics-extractor"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: functions/metrics_extractor/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt MetricsExtractorLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "sustainability-esg-reporting"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          TEXTRACT_REGION: !Ref TextractRegion
+      LoggingConfig:
+        LogGroup: !Ref MetricsExtractorLogGroup
+      Tags:
+        UseCase: sustainability-esg-reporting
+
+  FrameworkMapperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-framework-mapper"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: functions/framework_mapper/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt FrameworkMapperLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "sustainability-esg-reporting"
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          FRAMEWORK_TYPE: !Ref FrameworkType
+      LoggingConfig:
+        LogGroup: !Ref FrameworkMapperLogGroup
+      Tags:
+        UseCase: sustainability-esg-reporting
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: functions/report/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ReportLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "sustainability-esg-reporting"
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      LoggingConfig:
+        LogGroup: !Ref ReportLogGroup
+      Tags:
+        UseCase: sustainability-esg-reporting
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt MetricsExtractorFunction.Arn
+                  - !GetAtt FrameworkMapperFunction.Arn
+                  - !GetAtt ReportFunction.Arn
+
+  EsgStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "UC23: Sustainability ESG Reporting - Discovery → Metrics Map → Framework Mapper → Report",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "CheckObjectsFound",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            },
+            "CheckObjectsFound": {
+              "Type": "Choice",
+              "Choices": [{"Variable": "$.discovery.total_objects", "NumericGreaterThan": 0, "Next": "MetricsExtractorMap"}],
+              "Default": "ReportGeneration"
+            },
+            "MetricsExtractorMap": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.objects",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.metrics_results",
+              "Next": "FrameworkMapper",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "ExtractMetrics",
+                "States": {
+                  "ExtractMetrics": {
+                    "Type": "Task",
+                    "Resource": "${MetricsExtractorFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkMetricsFailed"}],
+                    "End": true
+                  },
+                  "MarkMetricsFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
+                }
+              }
+            },
+            "FrameworkMapper": {
+              "Type": "Task",
+              "Resource": "${FrameworkMapperFunction.Arn}",
+              "ResultPath": "$.framework_result",
+              "Next": "ReportGeneration",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            },
+            "ReportGeneration": {
+              "Type": "Task",
+              "Resource": "${ReportFunction.Arn}",
+              "ResultPath": "$.report",
+              "End": true,
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler (conditional)
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsPollingOrHybrid
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref EsgStateMachine
+
+  EsgSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsPollingOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref EsgStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional)
+  # -----------------------------------------------------------------
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref EsgStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  ReportErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-report-errors"
+      AlarmDescription: Report Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ReportFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref EsgStateMachine
+
+  NotificationTopicArn:
+    Description: SNS Notification Topic ARN
+    Value: !Ref NotificationTopic
+
+  DiscoveryFunctionArn:
+    Description: Discovery Lambda Function ARN
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  MetricsExtractorFunctionArn:
+    Description: Metrics Extractor Lambda Function ARN
+    Value: !GetAtt MetricsExtractorFunction.Arn
+
+  FrameworkMapperFunctionArn:
+    Description: Framework Mapper Lambda Function ARN
+    Value: !GetAtt FrameworkMapperFunction.Arn
+
+  ReportFunctionArn:
+    Description: Report Lambda Function ARN
+    Value: !GetAtt ReportFunction.Arn

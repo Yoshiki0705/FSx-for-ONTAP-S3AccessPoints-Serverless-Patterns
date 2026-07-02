@@ -278,22 +278,18 @@ export SG_ID="sg-xxx"
 ### Step 1: パイプラインのデプロイ
 
 ```bash
-aws cloudformation deploy \
-  --template-file shared/cfn/flexclone-serverless-pipeline.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name "${STACK_NAME}" \
   --parameter-overrides \
-    EnableFlexClonePipeline=true \
-    OntapMgmtIp="${ONTAP_MGMT_IP}" \
-    OntapCredentialsSecret="${ONTAP_SECRET}" \
     SvmUuid="${SVM_UUID}" \
-    ParentVolumeUuid="${REFERENCE_VOLUME_UUID}" \
     S3AccessPointAlias="${S3AP_ALIAS}" \
     S3AccessPointName="${S3AP_NAME}" \
-    NotificationTopicArn="${SNS_TOPIC_ARN}" \
     VpcId="${VPC_ID}" \
-    SubnetIds="${SUBNET_IDS}" \
-    SecurityGroupId="${SG_ID}" \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### Step 2: 研究者別 FlexClone の作成

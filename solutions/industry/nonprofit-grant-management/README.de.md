@@ -36,8 +36,10 @@ See [Architecture Document](docs/architecture.de.md) for detailed data flow diag
 ## Deployment
 
 ```bash
-aws cloudformation deploy \
-  --template-file nonprofit-grant-management/template.yaml \
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
   --stack-name fsxn-nonprofit-grants \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -45,7 +47,8 @@ aws cloudformation deploy \
     VpcId=<your-vpc-id> \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     NotificationEmail=<your-email@example.com> \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

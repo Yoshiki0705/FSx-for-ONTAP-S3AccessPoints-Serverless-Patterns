@@ -57,11 +57,13 @@ graph LR
 - Accès aux modèles Amazon Bedrock activé (Claude / Nova)
 ## Étapes de déploiement
 
-### 1. Déploiement CloudFormation
+### 1. Déploiement SAM
 
 ```bash
-aws cloudformation deploy \
-  --template-file retail-catalog/template.yaml \
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
   --stack-name fsxn-retail-catalog \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -72,7 +74,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
@@ -117,13 +120,16 @@ Phase 3 : en plus du sondage EventBridge, le traitement quasi en temps réel ave
 ### Activation
 
 ```bash
-aws cloudformation deploy \
-  --template-file retail-catalog/template.yaml \
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
   --stack-name fsxn-retail-catalog \
   --parameter-overrides \
     EnableStreamingMode=true \
     ... # 他のパラメータ
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### Architecture du mode streaming

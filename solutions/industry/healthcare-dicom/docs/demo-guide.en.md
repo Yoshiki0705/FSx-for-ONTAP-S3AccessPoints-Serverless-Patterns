@@ -172,8 +172,10 @@ UC5 healthcare-dicom is classified as **Pattern A: Native S3AP Output**
 
 **Deployment Example**:
 ```bash
-aws cloudformation deploy \
-  --template-file healthcare-dicom/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-healthcare-dicom-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \

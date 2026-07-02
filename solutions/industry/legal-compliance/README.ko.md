@@ -143,8 +143,10 @@ CloudFormation 스택 배포 시 필요한 단계는 다음과 같습니다:
 스택 생성 시 CloudFormation은 템플릿에 정의된 리소스를 프로비저닝하고 배포를 모니터링합니다. 배포 중 오류가 발생하면 CloudFormation이 자동으로 롤백하여 일관된 상태를 보장합니다.
 
 ```bash
-aws cloudformation deploy \
-  --template-file legal-compliance/template.yaml \
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-legal-compliance \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -161,7 +163,8 @@ aws cloudformation deploy \
     NotificationEmail=<your-email@example.com> \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 **주의**: `<...>`의 자리표시자를 실제 환경 값으로 바꾸세요.

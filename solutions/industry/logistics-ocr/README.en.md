@@ -67,26 +67,63 @@ graph LR
 ## Deployment steps
 
 ### 1. Verifying Cross-Region Parameters
-Textract is not supported in the Tokyo region, so configure a cross-region call with the `CrossRegionTarget` parameter.
-### 2. CloudFormation Deployment
+Textract is not supported in some regions (e.g., ap-northeast-1), so configure a cross-region call with the `CrossRegion` parameter.
+
+### 2. Prerequisites
 
 ```bash
-aws cloudformation deploy \
-  --template-file logistics-ocr/template.yaml \
+# Install AWS SAM CLI (if not already installed)
+# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
+
+# Clone the repository
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
+cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/solutions/industry/logistics-ocr
+```
+
+### 3. Configure samconfig.toml
+
+```bash
+cp samconfig.toml.example samconfig.toml
+# Edit samconfig.toml and replace placeholders with your actual values
+```
+
+### 4. Build and Deploy with SAM CLI
+
+```bash
+# Build (automatically packages Lambda code + creates shared/ Layer)
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+# Deploy
+sam deploy --config-file samconfig.toml
+```
+
+Alternatively, deploy with inline parameters (without samconfig.toml):
+
+```bash
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-logistics-ocr \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
-    S3AccessPointName=<your-s3ap-name> \
+    OntapSecretName=<your-ontap-secret-name> \
+    OntapManagementIp=<your-ontap-mgmt-ip> \
+    SvmUuid=<your-svm-uuid> \
     VpcId=<your-vpc-id> \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
-    ScheduleExpression="rate(1 hour)" \
     NotificationEmail=<your-email@example.com> \
-    CrossRegionTarget=us-east-1 \
+    CrossRegion=us-east-1 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --region ap-northeast-1
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
 ```
+
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
 
 ## List of Configuration Parameters
 

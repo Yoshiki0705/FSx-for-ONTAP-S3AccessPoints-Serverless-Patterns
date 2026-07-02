@@ -57,6 +57,7 @@ cp -r sample-data/* /mnt/fsxn/<prefix>/
 ### Step 4: SAM ビルドとデプロイ
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 cp samconfig.toml.example samconfig.toml
@@ -174,6 +175,7 @@ sam deploy --parameter-overrides OutputDestination=FSXN_S3AP OutputS3APPrefix=ai
 ```bash
 # Lambda パッケージ作成
 cd solutions/industry/utilities-asset-inspection
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # デプロイ

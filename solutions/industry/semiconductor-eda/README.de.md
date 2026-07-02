@@ -196,7 +196,7 @@ for func in discovery metadata_extraction drc_aggregation report_generation; do
 done
 ```
 
-### 4. CloudFormation-Bereitstellung
+### 4. SAM-Bereitstellung
 
 Die Schlüsselkomponenten für die Bereitstellung in AWS sind:
 
@@ -211,11 +211,12 @@ Die Schlüsselkomponenten für die Bereitstellung in AWS sind:
 Diese Dienste können über AWS CloudFormation, eine Infrastruktur-als-Code-Plattform, bereitgestellt werden. Mit CloudFormation können Entwickler komplexe Anwendungen in AWS schnell und konsistent bereitstellen.
 
 ```bash
-aws cloudformation deploy \
-  --template-file semiconductor-eda/template-deploy.yaml \
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
   --stack-name fsxn-semiconductor-eda \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-s3ap-alias> \
     S3AccessPointName=<your-s3ap-name> \
     OntapSecretName=<your-secret-name> \
@@ -231,6 +232,7 @@ aws cloudformation deploy \
     LambdaMemorySize=512 \
     LambdaTimeout=300 \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region <your-region>
 ```
 **Wichtig**: `S3AccessPointName` ist der Name (nicht der Alias) des S3-Zugangspunkts, der bei der Erstellung angegeben wurde. Dieser wird in IAM-Richtlinien für ARN-basierte Berechtigungen verwendet. Wenn dieser Wert nicht angegeben wird, kann ein `AccessDenied`-Fehler auftreten.

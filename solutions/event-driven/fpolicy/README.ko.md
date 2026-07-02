@@ -130,13 +130,15 @@ docker buildx build --platform linux/arm64 \
   --push .
 ```
 
-### 2. CloudFormation 배포
+### 2. SAM 배포
 
 #### Fargate 모드(기본값)
 
 ```bash
-aws cloudformation deploy \
-  --template-file event-driven-fpolicy/template.yaml \
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-fpolicy-event-driven \
   --parameter-overrides \
     ComputeType=fargate \
@@ -148,14 +150,17 @@ aws cloudformation deploy \
     FsxnSvmUuid=<svm-uuid> \
     FsxnCredentialsSecret=<secret-name> \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
 #### EC2 모드(고정 IP, 저비용)
 
 ```bash
-aws cloudformation deploy \
-  --template-file event-driven-fpolicy/template.yaml \
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-fpolicy-event-driven \
   --parameter-overrides \
     ComputeType=ec2 \
@@ -168,6 +173,7 @@ aws cloudformation deploy \
     FsxnSvmUuid=<svm-uuid> \
     FsxnCredentialsSecret=<secret-name> \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 
