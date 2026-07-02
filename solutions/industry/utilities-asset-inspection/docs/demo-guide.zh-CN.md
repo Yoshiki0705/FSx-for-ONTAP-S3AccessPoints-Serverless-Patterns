@@ -15,6 +15,7 @@ This demo showcases an automated pipeline where AI/ML services analyze files on 
 ```bash
 git clone https://github.com/Yoshiki0705/fsxn-s3ap-serverless-patterns.git
 cd fsxn-s3ap-serverless-patterns/solutions/industry/utilities-asset-inspection
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 sam deploy \
   --stack-name fsxn-utilities-inspection-demo \

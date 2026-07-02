@@ -62,11 +62,13 @@ Antes de implementar, verifique los siguientes valores:
 - Nombre del secreto de Secrets Manager
 - ID de granja en la nube de AWS Deadline / ID de cola
 - ID de VPC, ID de subred privada
-### 2. Despliegue de CloudFormation
+### 2. Despliegue de SAM
 
 ```bash
-aws cloudformation deploy \
-  --template-file media-vfx/template.yaml \
+# Requisito: se necesita AWS SAM CLI. «sam build» empaqueta automáticamente el código y la capa compartida.
+sam build
+
+sam deploy \
   --stack-name fsxn-media-vfx \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -83,7 +85,8 @@ aws cloudformation deploy \
     QualityThreshold=80.0 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 > **Nota**: Reemplace los marcadores de posición `<...>` con los valores de entorno reales.

@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -189,6 +185,22 @@ Conditions:
 # Resources
 # =====================================================================
 Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
   # -----------------------------------------------------------------
   # Output Bucket (conditional)
@@ -513,13 +525,15 @@ Resources:
   # Lambda Functions
   # -----------------------------------------------------------------
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
-      Handler: functions/discovery/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -542,17 +556,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        - Key: UseCase
-          Value: agri-food-traceability
+        UseCase: agri-food-traceability
 
   CropAnalyzerFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-crop-analyzer"
       Runtime: python3.12
-      Handler: functions/crop_analyzer/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/crop_analyzer/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       EphemeralStorage:
@@ -568,17 +583,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref CropAnalyzerLogGroup
       Tags:
-        - Key: UseCase
-          Value: agri-food-traceability
+        UseCase: agri-food-traceability
 
   TraceabilityExtractorFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-traceability-extractor"
       Runtime: python3.12
-      Handler: functions/traceability_extractor/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/traceability_extractor/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt TraceabilityExtractorLambdaRole.Arn
@@ -592,17 +608,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref TraceabilityExtractorLogGroup
       Tags:
-        - Key: UseCase
-          Value: agri-food-traceability
+        UseCase: agri-food-traceability
 
   ReportFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
       Runtime: python3.12
-      Handler: functions/report/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/report/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt ReportLambdaRole.Arn
@@ -614,8 +631,7 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref ReportLogGroup
       Tags:
-        - Key: UseCase
-          Value: agri-food-traceability
+        UseCase: agri-food-traceability
 
   # -----------------------------------------------------------------
   # Step Functions State Machine

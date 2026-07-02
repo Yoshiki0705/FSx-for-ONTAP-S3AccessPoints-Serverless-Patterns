@@ -158,10 +158,13 @@ cp params/staging.json params/flexcache-anycast-demo.json
 # 必要なパラメータを設定
 
 # デプロイ
-aws cloudformation deploy \
-  --template-file flexcache-anycast-dr/template.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name flexcache-anycast-demo \
-  --capabilities CAPABILITY_IAM \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --parameter-overrides \
     SimulationMode=true \
     CacheEndpoints="cache-a.example.com,cache-b.example.com" \
@@ -301,6 +304,7 @@ aws sts get-caller-identity  # AWS 認証情報
 
 ```bash
 # ビルド
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # Discovery Lambda のローカル実行

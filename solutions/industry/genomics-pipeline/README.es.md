@@ -64,11 +64,13 @@ graph LR
 
 ### 1. Verificación de parámetros entre regiones
 Comprehend Medical no es compatible con la región de Tokio, por lo que debe configurar las llamadas entre regiones con el parámetro `CrossRegionServices`.
-### 2. Despliegue de CloudFormation
+### 2. Despliegue de SAM
 
 ```bash
-aws cloudformation deploy \
-  --template-file genomics-pipeline/template.yaml \
+# Requisito: se necesita AWS SAM CLI. «sam build» empaqueta automáticamente el código y la capa compartida.
+sam build
+
+sam deploy \
   --stack-name fsxn-genomics-pipeline \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -77,10 +79,11 @@ aws cloudformation deploy \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     ScheduleExpression="rate(1 hour)" \
     NotificationEmail=<your-email@example.com> \
-    CrossRegionTarget=us-east-1 \
+    CrossRegion=us-east-1 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

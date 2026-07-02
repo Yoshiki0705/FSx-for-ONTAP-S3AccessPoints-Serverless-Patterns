@@ -251,16 +251,17 @@ for func in discovery metadata_extraction drc_aggregation report_generation; do
 done
 ```
 
-### 4. AWS CloudFormation 部署
+### 4. AWS SAM 部署
 
 Amazon S3 を使用して、チップ設計ファイル(GDSII、DRC、OASIS、GDS)をアップロードします。AWS Step Functions を使用してチップ製造ワークフローを実行し、Amazon Athena と Amazon CloudWatch を使用してクエリとモニタリングを行います。AWS Lambda で独自のカスタムロジックを実装し、Amazon FSx for ONTAP を使用してファイルを管理します。最後に、AWS CloudFormation テンプレートを使用して、リソースの一括デプロイを行います。
 
 ```bash
-aws cloudformation deploy \
-  --template-file semiconductor-eda/template-deploy.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-semiconductor-eda \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-s3ap-alias> \
     S3AccessPointName=<your-s3ap-name> \
     OntapSecretName=<your-secret-name> \
@@ -276,6 +277,7 @@ aws cloudformation deploy \
     LambdaMemorySize=512 \
     LambdaTimeout=300 \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region <your-region>
 ```
 **重要**：`S3AccessPointName` 是 S3 访问点的名称（不是别名，而是创建时指定的名称）。在 IAM 策略中使用基于 ARN 的权限授予。如果省略可能会导致 `AccessDenied` 错误。

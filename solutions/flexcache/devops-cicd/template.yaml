@@ -1,0 +1,339 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  FC7: DevOps FlexClone + S3AP — Dev/Test データリフレッシュと CI/CD パイプライン統合。
+  Amazon FSx for NetApp ONTAP の FlexClone で本番データの即時コピーを作成し、
+  FSx for ONTAP S3 AP 経由でサーバーレスにアクセス。テスト完了後は TTL ベースで自動削除。
+  既定は SimulationMode=true（ONTAP 未接続でも動作、PoC 向け）。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  OntapManagementIp:
+    Type: String
+    Default: ""
+    Description: ONTAP クラスタ管理 IP（SimulationMode=false 時に必須）
+
+  OntapSecretName:
+    Type: String
+    Default: "fsxn/ontap-credentials"
+    Description: ONTAP REST API 認証情報の Secrets Manager シークレット名
+
+  SvmName:
+    Type: String
+    Default: "svm1"
+    Description: FlexClone を作成する SVM 名
+
+  SourceVolumeName:
+    Type: String
+    Default: "production_data"
+    Description: FlexClone 元となる本番ボリューム名（State Machine の既定入力）
+
+  SimulationMode:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: true の場合 ONTAP API を呼ばずシミュレーション動作
+
+  ClonePrefix:
+    Type: String
+    Default: "devtest_clone"
+    Description: FlexClone ボリューム名プレフィックス
+
+  S3apNamePrefix:
+    Type: String
+    Default: "devtest-clone"
+    Description: S3 Access Point 名プレフィックス
+
+  TtlHours:
+    Type: Number
+    Default: 24
+    MinValue: 1
+    MaxValue: 720
+    Description: FlexClone の TTL（時間）。超過分は ttl_sweep で自動削除
+
+  TtlSweepScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: TTL 超過 FlexClone を掃除する EventBridge スケジュール式
+
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: SNS 通知先メールアドレス（空の場合サブスクリプションを作成しない）
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, ""]]
+
+# =====================================================================
+# Globals
+# =====================================================================
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures:
+      - arm64
+    MemorySize: 256
+    Timeout: 120
+    Environment:
+      Variables:
+        SIMULATION_MODE: !Ref SimulationMode
+        ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+        ONTAP_SECRET_NAME: !Ref OntapSecretName
+        SVM_NAME: !Ref SvmName
+        CLONE_PREFIX: !Ref ClonePrefix
+        TTL_HOURS: !Ref TtlHours
+    Tags:
+      UseCase: devops-cicd
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # --- SNS notification topic ---
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # --- S3 bucket for test results (SSE-KMS, private) ---
+  ResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-results-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  # --- Lambda functions (self-contained; no shared/ dependency) ---
+  CloneManagerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-clone-manager"
+      Handler: handler.handler
+      CodeUri: functions/clone_manager/
+      Policies:
+        - Statement:
+            - Sid: OntapSecret
+              Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+
+  S3apProvisionerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-s3ap-provisioner"
+      Handler: handler.handler
+      CodeUri: functions/s3ap_provisioner/
+      Environment:
+        Variables:
+          S3AP_NAME_PREFIX: !Ref S3apNamePrefix
+      Policies:
+        - Statement:
+            - Sid: OntapSecret
+              Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+            - Sid: S3AccessPointManage
+              Effect: Allow
+              Action:
+                - s3:CreateAccessPoint
+                - s3:GetAccessPoint
+              Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+
+  TestOrchestratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-test-orchestrator"
+      Handler: handler.handler
+      CodeUri: functions/test_orchestrator/
+      Timeout: 300
+      Environment:
+        Variables:
+          S3_RESULTS_BUCKET: !Ref ResultsBucket
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub "${AWS::StackName}-results-${AWS::AccountId}"
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt NotificationTopic.TopicName
+        - Statement:
+            - Sid: S3AccessPointRead
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+
+  CleanupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-cleanup"
+      Handler: handler.handler
+      CodeUri: functions/cleanup/
+      Policies:
+        - Statement:
+            - Sid: OntapSecret
+              Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+
+  # --- Step Functions state machine (CI/CD test workflow) ---
+  CicdStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-workflow"
+      Type: STANDARD
+      DefinitionSubstitutions:
+        CloneManagerArn: !GetAtt CloneManagerFunction.Arn
+        S3apProvisionerArn: !GetAtt S3apProvisionerFunction.Arn
+        TestOrchestratorArn: !GetAtt TestOrchestratorFunction.Arn
+        CleanupArn: !GetAtt CleanupFunction.Arn
+        DefaultSourceVolume: !Ref SourceVolumeName
+        DefaultTtlHours: !Ref TtlHours
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CloneManagerFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref S3apProvisionerFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref TestOrchestratorFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CleanupFunction
+      Definition:
+        Comment: "DevOps FlexClone CI/CD — create clone -> provision S3AP -> test -> cleanup"
+        StartAt: CreateClone
+        States:
+          CreateClone:
+            Type: Task
+            Resource: "${CloneManagerArn}"
+            Parameters:
+              action: "CREATE"
+              "source_volume.$": "$.source_volume"
+              "requester.$": "$.requester"
+              "ttl_hours.$": "$.ttl_hours"
+            ResultPath: "$.clone"
+            Retry:
+              - ErrorEquals: ["States.TaskFailed"]
+                IntervalSeconds: 5
+                MaxAttempts: 2
+                BackoffRate: 2.0
+            Next: ProvisionS3AP
+          ProvisionS3AP:
+            Type: Task
+            Resource: "${S3apProvisionerArn}"
+            Parameters:
+              "clone_name.$": "$.clone.clone_name"
+              "junction_path.$": "$.clone.junction_path"
+              "requester.$": "$.requester"
+              access_mode: "readonly"
+            ResultPath: "$.s3ap"
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                ResultPath: "$.error"
+                Next: CleanupOnFailure
+            Next: RunTests
+          RunTests:
+            Type: Task
+            Resource: "${TestOrchestratorArn}"
+            Parameters:
+              "s3ap_alias.$": "$.s3ap.s3ap_alias"
+              "clone_name.$": "$.clone.clone_name"
+              "test_suite.$": "$.test_suite"
+              "test_config.$": "$.test_config"
+              "requester.$": "$.requester"
+              "pipeline_run_id.$": "$.pipeline_run_id"
+            ResultPath: "$.test"
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                ResultPath: "$.error"
+                Next: CleanupOnFailure
+            Next: Cleanup
+          Cleanup:
+            Type: Task
+            Resource: "${CleanupArn}"
+            Parameters:
+              mode: "immediate"
+              "clone_name.$": "$.clone.clone_name"
+            End: true
+          CleanupOnFailure:
+            Type: Task
+            Resource: "${CleanupArn}"
+            Parameters:
+              mode: "immediate"
+              "clone_name.$": "$.clone.clone_name"
+            Next: FailState
+          FailState:
+            Type: Fail
+            Error: "TestWorkflowFailed"
+            Cause: "S3AP provisioning or tests failed; clone cleaned up."
+
+  # --- EventBridge Scheduler: TTL-based cleanup sweep ---
+  TtlSweepScheduleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-ttl-sweep-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeCleanup
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt CleanupFunction.Arn
+
+  TtlSweepSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-ttl-sweep"
+      ScheduleExpression: !Ref TtlSweepScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt CleanupFunction.Arn
+        RoleArn: !GetAtt TtlSweepScheduleRole.Arn
+        Input: '{"mode": "ttl_sweep"}'
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  StateMachineArn:
+    Description: CI/CD test workflow state machine ARN
+    Value: !Ref CicdStateMachine
+  ResultsBucketName:
+    Description: Test results S3 bucket
+    Value: !Ref ResultsBucket
+  NotificationTopicArn:
+    Description: SNS notification topic ARN
+    Value: !Ref NotificationTopic

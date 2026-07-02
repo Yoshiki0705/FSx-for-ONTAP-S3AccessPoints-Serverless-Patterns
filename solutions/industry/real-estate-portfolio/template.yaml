@@ -1,12 +1,15 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  UC26: 不動産ポートフォリオ管理
+  UC26: 不動産ポートフォリオ管理（本番デプロイ用）
   FSx for NetApp ONTAP S3 Access Points を活用した物件画像分析、
   契約書データ抽出、ポートフォリオレポート生成のサーバーレスワークフロー。
 
+# =====================================================================
+# Parameters — Layer 1 (共通) + Layer 2 (拡張) + Layer 3 (TriggerMode) + Layer 4 (UC固有)
+# =====================================================================
 Parameters:
+
   # --- Layer 1: Phase 1 共通 ---
   S3AccessPointAlias:
     Type: String
@@ -16,7 +19,9 @@ Parameters:
   S3AccessPointName:
     Type: String
     Default: ""
-    Description: S3 Access Point 名 (IAM ポリシー ARN 用)
+    Description: |
+      入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
+      IAM アクセスを許可する。空文字列の場合は alias 形式のみ許可。
 
   S3AccessPointOutputAlias:
     Type: String
@@ -39,28 +44,23 @@ Parameters:
   ScheduleExpression:
     Type: String
     Default: "cron(0 0 * * ? *)"
-    Description: EventBridge Scheduler スケジュール式
+    Description: "EventBridge Scheduler スケジュール式 (デフォルト: 毎日 00:00 UTC)"
 
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: VPC ID
+    Description: Lambda 関数を配置する VPC ID
 
   PrivateSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-    Description: プライベートサブネット ID リスト
+    Description: Lambda 関数を配置するプライベートサブネット ID リスト
 
   PrivateRouteTableIds:
     Type: CommaDelimitedList
     Description: プライベートサブネットのルートテーブル ID リスト
 
-  OutputBucketName:
-    Type: String
-    Default: ""
-    Description: 出力バケット名
-
   NotificationEmail:
     Type: String
-    Description: SNS 通知メールアドレス
+    Description: SNS 通知の送信先メールアドレス
 
   # --- Layer 2: Phase 2 拡張 ---
   MapConcurrency:
@@ -68,51 +68,55 @@ Parameters:
     Default: 10
     MinValue: 1
     MaxValue: 100
+    Description: Step Functions Map State の並列度
 
   LambdaMemorySize:
     Type: Number
     Default: 256
     AllowedValues: [128, 256, 512, 1024, 2048]
+    Description: Lambda 関数のメモリサイズ (MB)
 
   LambdaTimeout:
     Type: Number
     Default: 300
     MinValue: 30
     MaxValue: 900
+    Description: Lambda 関数のタイムアウト (秒)
 
   EnableCloudWatchAlarms:
     Type: String
     Default: "false"
     AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms を有効化する
 
   EnableVpcEndpoints:
     Type: String
     Default: "false"
     AllowedValues: ["true", "false"]
-
-  EnableXRayTracing:
-    Type: String
-    Default: "true"
-    AllowedValues: ["true", "false"]
+    Description: Interface VPC Endpoints を有効化する
 
   EnableS3GatewayEndpoint:
     Type: String
     Default: "true"
     AllowedValues: ["true", "false"]
+    Description: S3 Gateway VPC Endpoint を作成する
 
   BedrockModelId:
     Type: String
     Default: "anthropic.claude-haiku-4-5-20251001-v1:0"
+    Description: Bedrock モデル ID
 
   # --- Layer 3: TriggerMode ---
   TriggerMode:
     Type: String
     Default: "POLLING"
-    AllowedValues: ["POLLING", "EVENT_DRIVEN"]
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: トリガーモード
 
   FPolicyEventBusName:
     Type: String
     Default: "fsxn-fpolicy-events"
+    Description: FPolicy EventBridge カスタムバス名
 
   # --- Layer 4: UC26 固有 ---
   PropertyImagePrefix:
@@ -137,60 +141,56 @@ Parameters:
     Default: "us-east-1"
     Description: Textract リージョン (Cross-Region)
 
-Globals:
-  Function:
-    Runtime: python3.12
-    MemorySize: !Ref LambdaMemorySize
-    Timeout: !Ref LambdaTimeout
-    Environment:
-      Variables:
-        S3_ACCESS_POINT: !Ref S3AccessPointAlias
-        S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
-        POWERTOOLS_SERVICE_NAME: real-estate-portfolio
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
+  CreateVpcEndpoints:
+    !Equals [!Ref EnableVpcEndpoints, "true"]
+  CreateCloudWatchAlarms:
+    !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  CreateS3GatewayEndpoint:
+    !Equals [!Ref EnableS3GatewayEndpoint, "true"]
+  IsPollingOrHybrid:
+    !Or
+      - !Equals [!Ref TriggerMode, "POLLING"]
+      - !Equals [!Ref TriggerMode, "HYBRID"]
+  IsEventDrivenOrHybrid:
+    !Or
+      - !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+      - !Equals [!Ref TriggerMode, "HYBRID"]
 
+# =====================================================================
+# Resources
+# =====================================================================
 Resources:
-  DiscoveryFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "${AWS::StackName}-discovery"
-      Handler: functions.discovery.handler.handler
-      Environment:
-        Variables:
-          PROPERTY_IMAGE_PREFIX: !Ref PropertyImagePrefix
-          CONTRACT_PREFIX: !Ref ContractPrefix
 
-  PropertyAnalyzerFunction:
-    Type: AWS::Serverless::Function
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
     Properties:
-      FunctionName: !Sub "${AWS::StackName}-property-analyzer"
-      Handler: functions.property_analyzer.handler.handler
-      Environment:
-        Variables:
-          BEDROCK_MODEL_ID: !Ref BedrockModelId
-          CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
-  ContractExtractorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "${AWS::StackName}-contract-extractor"
-      Handler: functions.contract_extractor.handler.handler
-      Environment:
-        Variables:
-          TEXTRACT_REGION: !Ref TextractRegion
-
-  ReportFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "${AWS::StackName}-report"
-      Handler: functions.report.handler.handler
-      Environment:
-        Variables:
-          SNS_TOPIC_ARN: !Ref NotificationTopic
-
+  # -----------------------------------------------------------------
+  # SNS Topic + Email Subscription
+  # -----------------------------------------------------------------
   NotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
 
   EmailSubscription:
     Type: AWS::SNS::Subscription
@@ -199,74 +199,566 @@ Resources:
       Protocol: email
       Endpoint: !Ref NotificationEmail
 
-  WorkflowStateMachine:
-    Type: AWS::Serverless::StateMachine
+  # -----------------------------------------------------------------
+  # Lambda Security Group
+  # -----------------------------------------------------------------
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      Name: !Sub "${AWS::StackName}-workflow"
-      DefinitionBody:
-        Comment: "UC26 Real Estate Portfolio Workflow"
-        StartAt: Discovery
-        States:
-          Discovery:
-            Type: Task
-            Resource: !GetAtt DiscoveryFunction.Arn
-            Next: PropertyAnalyzerMap
-          PropertyAnalyzerMap:
-            Type: Map
-            ItemsPath: "$.property_images"
-            MaxConcurrency: !Ref MapConcurrency
-            Iterator:
-              StartAt: AnalyzeProperty
-              States:
-                AnalyzeProperty:
-                  Type: Task
-                  Resource: !GetAtt PropertyAnalyzerFunction.Arn
-                  End: true
-            ResultPath: "$.property_results"
-            Next: ContractExtractorMap
-            Catch:
-              - ErrorEquals: ["States.ALL"]
-                ResultPath: "$.property_error"
-                Next: ContractExtractorMap
-          ContractExtractorMap:
-            Type: Map
-            ItemsPath: "$.contracts"
-            MaxConcurrency: !Ref MapConcurrency
-            Iterator:
-              StartAt: ExtractContract
-              States:
-                ExtractContract:
-                  Type: Task
-                  Resource: !GetAtt ContractExtractorFunction.Arn
-                  End: true
-            ResultPath: "$.contract_results"
-            Next: Report
-            Catch:
-              - ErrorEquals: ["States.ALL"]
-                ResultPath: "$.contract_error"
-                Next: Report
-          Report:
-            Type: Task
-            Resource: !GetAtt ReportFunction.Arn
-            End: true
+      GroupDescription: !Sub "${AWS::StackName} - Lambda functions security group"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
 
+  # -----------------------------------------------------------------
+  # S3 Gateway Endpoint (conditional)
+  # -----------------------------------------------------------------
+  S3GatewayEndpoint:
+    Condition: CreateS3GatewayEndpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref PrivateRouteTableIds
+
+  # -----------------------------------------------------------------
+  # CloudWatch Log Groups
+  # -----------------------------------------------------------------
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: 14
+
+  PropertyAnalyzerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-property-analyzer"
+      RetentionInDays: 14
+
+  ContractExtractorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-contract-extractor"
+      RetentionInDays: 14
+
+  ReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-report"
+      RetentionInDays: 14
+
+  # -----------------------------------------------------------------
+  # IAM Roles — least-privilege per Lambda
+  # -----------------------------------------------------------------
+  DiscoveryLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Ref AWS::NoValue
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: SecretsManager
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OntapSecretName}*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt DiscoveryLogGroup.Arn
+                  - !Sub "${DiscoveryLogGroup.Arn}:*"
+
+  PropertyAnalyzerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-property-analyzer-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: PropertyAnalyzerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              # Rekognition does not support resource-level IAM policies (Resource: "*" is required)
+              # See: https://docs.aws.amazon.com/rekognition/latest/dg/security_iam_service-with-iam.html
+              - Sid: Rekognition
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                  - rekognition:DetectModerationLabels
+                Resource: "*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt PropertyAnalyzerLogGroup.Arn
+                  - !Sub "${PropertyAnalyzerLogGroup.Arn}:*"
+
+  ContractExtractorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-contract-extractor-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ContractExtractorPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: Textract
+                Effect: Allow
+                Action:
+                  - textract:AnalyzeDocument
+                  - textract:DetectDocumentText
+                Resource: "*"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ContractExtractorLogGroup.Arn
+                  - !Sub "${ContractExtractorLogGroup.Arn}:*"
+
+  ReportLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-report-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReportPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Output
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: SNS
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ReportLogGroup.Arn
+                  - !Sub "${ReportLogGroup.Arn}:*"
+
+  # -----------------------------------------------------------------
+  # Lambda Functions (Production — S3 deploy packages)
+  # -----------------------------------------------------------------
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.13
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          USE_CASE: "real-estate-portfolio"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          PROPERTY_IMAGE_PREFIX: !Ref PropertyImagePrefix
+          CONTRACT_PREFIX: !Ref ContractPrefix
+          ONTAP_SECRET_NAME: !Ref OntapSecretName
+          ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
+          SVM_UUID: !Ref SvmUuid
+          VERIFY_SSL: "false"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+      Tags:
+        UseCase: real-estate-portfolio
+
+  PropertyAnalyzerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-property-analyzer"
+      Runtime: python3.13
+      Handler: handler.handler
+      CodeUri: functions/property_analyzer/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt PropertyAnalyzerLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "real-estate-portfolio"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
+      LoggingConfig:
+        LogGroup: !Ref PropertyAnalyzerLogGroup
+      Tags:
+        UseCase: real-estate-portfolio
+
+  ContractExtractorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-contract-extractor"
+      Runtime: python3.13
+      Handler: handler.handler
+      CodeUri: functions/contract_extractor/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ContractExtractorLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "real-estate-portfolio"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          TEXTRACT_REGION: !Ref TextractRegion
+      LoggingConfig:
+        LogGroup: !Ref ContractExtractorLogGroup
+      Tags:
+        UseCase: real-estate-portfolio
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Runtime: python3.13
+      Handler: handler.handler
+      CodeUri: functions/report/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ReportLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "real-estate-portfolio"
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      LoggingConfig:
+        LogGroup: !Ref ReportLogGroup
+      Tags:
+        UseCase: real-estate-portfolio
+
+  # -----------------------------------------------------------------
+  # Step Functions State Machine
+  # -----------------------------------------------------------------
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt PropertyAnalyzerFunction.Arn
+                  - !GetAtt ContractExtractorFunction.Arn
+                  - !GetAtt ReportFunction.Arn
+
+  PortfolioStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "UC26: Real Estate Portfolio - Discovery → Property Analyzer Map → Contract Extractor Map → Report",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "PropertyAnalyzerMap",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            },
+            "PropertyAnalyzerMap": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.property_images",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.property_results",
+              "Next": "ContractExtractorMap",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "AnalyzeProperty",
+                "States": {
+                  "AnalyzeProperty": {
+                    "Type": "Task",
+                    "Resource": "${PropertyAnalyzerFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkPropertyFailed"}],
+                    "End": true
+                  },
+                  "MarkPropertyFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
+                }
+              }
+            },
+            "ContractExtractorMap": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.contracts",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.contract_results",
+              "Next": "ReportGeneration",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "ExtractContract",
+                "States": {
+                  "ExtractContract": {
+                    "Type": "Task",
+                    "Resource": "${ContractExtractorFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkContractFailed"}],
+                    "End": true
+                  },
+                  "MarkContractFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
+                }
+              }
+            },
+            "ReportGeneration": {
+              "Type": "Task",
+              "Resource": "${ReportFunction.Arn}",
+              "ResultPath": "$.report",
+              "End": true,
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}]
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler (conditional)
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsPollingOrHybrid
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref PortfolioStateMachine
+
+  PortfolioSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsPollingOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref PortfolioStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional)
+  # -----------------------------------------------------------------
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref PortfolioStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  ReportErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-report-errors"
+      AlarmDescription: Report Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ReportFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
 Outputs:
   StateMachineArn:
     Description: Step Functions State Machine ARN
-    Value: !Ref WorkflowStateMachine
+    Value: !Ref PortfolioStateMachine
+
+  NotificationTopicArn:
+    Description: SNS Notification Topic ARN
+    Value: !Ref NotificationTopic
 
   DiscoveryFunctionArn:
-    Description: Discovery Lambda ARN
+    Description: Discovery Lambda Function ARN
     Value: !GetAtt DiscoveryFunction.Arn
 
   PropertyAnalyzerFunctionArn:
-    Description: Property Analyzer Lambda ARN
+    Description: Property Analyzer Lambda Function ARN
     Value: !GetAtt PropertyAnalyzerFunction.Arn
 
   ContractExtractorFunctionArn:
-    Description: Contract Extractor Lambda ARN
+    Description: Contract Extractor Lambda Function ARN
     Value: !GetAtt ContractExtractorFunction.Arn
 
   ReportFunctionArn:
-    Description: Report Lambda ARN
+    Description: Report Lambda Function ARN
     Value: !GetAtt ReportFunction.Arn

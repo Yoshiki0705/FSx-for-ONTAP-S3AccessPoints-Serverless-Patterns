@@ -188,11 +188,12 @@ Crée un nouveau bucket S3 (`${AWS::StackName}-output-${AWS::AccountId}`) et
 y écrit les résultats IA.
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-autonomous-driving-demo \
   --parameter-overrides \
-    OutputDestination=STANDARD_S3 \
     ... (他の必須パラメータ)
 ```
 
@@ -202,12 +203,9 @@ Les utilisateurs SMB/NFS peuvent consulter directement les résultats IA dans la
 qu'ils utilisent pour leur travail. Aucun bucket S3 standard n'est créé.
 
 ```bash
-aws cloudformation deploy \
-  --template-file autonomous-driving/template-deploy.yaml \
+sam deploy \
   --stack-name fsxn-autonomous-driving-demo \
   --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
     S3AccessPointName=eda-demo-s3ap \
     ... (他の必須パラメータ)
 ```

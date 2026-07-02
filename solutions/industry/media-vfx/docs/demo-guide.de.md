@@ -176,8 +176,10 @@ nicht erstellt („no data movement"-Pattern).
 
 **Deployment-Beispiel**:
 ```bash
-aws cloudformation deploy \
-  --template-file media-vfx/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-media-vfx-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \

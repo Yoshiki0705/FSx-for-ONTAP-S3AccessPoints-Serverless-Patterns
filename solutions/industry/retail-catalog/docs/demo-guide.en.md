@@ -178,8 +178,6 @@ view auto-generated tag JSON within the product image directory structure
 
 # FSXN_S3AP mode (write AI outputs back to FSx for ONTAP volume)
 --parameter-overrides \
-  OutputDestination=FSXN_S3AP \
-  OutputS3APPrefix=ai-outputs/ \
   ...
 ```
 
