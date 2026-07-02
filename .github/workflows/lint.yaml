@@ -36,3 +36,7 @@ jobs:
         run: cfn-lint solutions/**/template-deploy.yaml --ignore-checks W || echo "::warning::cfn-lint found issues in deployment templates (non-blocking)"
       - name: Validate self-contained SAM templates (Issue #53 regression guard)
         run: python3 scripts/validate_sam_templates.py
+      - name: Check README deploy params match templates (Issue #53 regression guard)
+        run: python3 scripts/check_readme_param_names.py
+      - name: Check deploy-doc parity across languages
+        run: python3 scripts/check_readme_deploy_parity.py
