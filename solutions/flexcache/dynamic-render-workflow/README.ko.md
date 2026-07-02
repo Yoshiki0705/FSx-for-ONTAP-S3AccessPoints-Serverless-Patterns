@@ -42,6 +42,30 @@ Job Request → Validate → Create FlexCache → Wait Ready → Prepopulate
 
 ---
 
+## 배포
+
+AWS SAM CLI로 배포합니다 (파라미터는 환경에 맞게 교체하세요):
+
+```bash
+# 전제 조건: AWS SAM CLI 필요. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
+  --stack-name dynamic-flexcache-workflow-demo \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --parameter-overrides \
+    OntapManagementIp=10.0.0.1 \
+    OntapSecretName=fsxn/ontap-credentials \
+    OriginSvmName=svm1 \
+    OriginVolumeName=render_assets \
+    CacheSvmName=svm1 \
+    SimulationMode=true
+```
+
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
+
 ## Governance Note
 
 > 본 패턴은 기술 아키텍처 가이던스를 제공합니다. 법적, 컴플라이언스, 규제 관련 조언이 아닙니다. 조직은 적격한 전문가에게 상담하십시오.
