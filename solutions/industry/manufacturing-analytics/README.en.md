@@ -68,11 +68,13 @@ Before deployment, confirm the following values:
 - Secrets Manager Secret name
 - VPC ID, Private Subnet ID
 - Anomaly Detection Threshold, Defect Detection Confidence Threshold
-### 2. CloudFormation Deployment
+### 2. SAM Deployment
 
 ```bash
-aws cloudformation deploy \
-  --template-file manufacturing-analytics/template.yaml \
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
   --stack-name fsxn-manufacturing-analytics \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
@@ -88,7 +90,8 @@ aws cloudformation deploy \
     ConfidenceThreshold=80.0 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 > **Note**: Replace the placeholder `<...>` with the actual environment values.

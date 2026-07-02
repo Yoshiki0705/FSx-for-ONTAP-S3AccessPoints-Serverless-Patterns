@@ -143,15 +143,18 @@ bash scripts/deploy_phase7.sh defense-satellite
 ### 手動デプロイ
 
 ```bash
-aws cloudformation deploy \
-  --template-file defense-satellite/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-defense-satellite \
   --parameter-overrides \
     S3AccessPointAlias=<alias> \
     S3AccessPointName=<name> \
     OntapSecretName=<secret> \
     OntapManagementIp=<ip> \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 **重要**: `S3AccessPointName` は S3 AP の IAM 権限付与に必須。
@@ -259,6 +262,7 @@ aws sts get-caller-identity  # AWS 認証情報
 
 ```bash
 # ビルド
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # Discovery Lambda のローカル実行

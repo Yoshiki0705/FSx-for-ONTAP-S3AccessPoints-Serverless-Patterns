@@ -99,27 +99,63 @@ graph LR
 
 ### 1. クロスリージョンパラメータの確認
 
-Textract は東京リージョン非対応のため、`CrossRegionTarget` パラメータでクロスリージョン呼び出しを設定します。
+Textract は東京リージョン非対応のため、`CrossRegion` パラメータでクロスリージョン呼び出しを設定します。
 
-### 2. CloudFormation デプロイ
+### 2. 事前準備
 
 ```bash
-aws cloudformation deploy \
-  --template-file logistics-ocr/template.yaml \
+# AWS SAM CLI のインストール（未インストールの場合）
+# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
+
+# リポジトリのクローン
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
+cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/solutions/industry/logistics-ocr
+```
+
+### 3. samconfig.toml の設定
+
+```bash
+cp samconfig.toml.example samconfig.toml
+# samconfig.toml を編集して実際の値に置き換え
+```
+
+### 4. SAM CLI によるビルド＆デプロイ
+
+```bash
+# ビルド（Lambda コードのパッケージング + shared/ Layer 生成を自動実行）
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+# デプロイ
+sam deploy --config-file samconfig.toml
+```
+
+`samconfig.toml` を使わずに直接パラメータを指定してデプロイすることも可能です:
+
+```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-logistics-ocr \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
-    S3AccessPointName=<your-s3ap-name> \
+    OntapSecretName=<your-ontap-secret-name> \
+    OntapManagementIp=<your-ontap-mgmt-ip> \
+    SvmUuid=<your-svm-uuid> \
     VpcId=<your-vpc-id> \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
-    ScheduleExpression="rate(1 hour)" \
     NotificationEmail=<your-email@example.com> \
-    CrossRegionTarget=us-east-1 \
+    CrossRegion=us-east-1 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --region ap-northeast-1
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
 ```
+
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
 
 ## 設定パラメータ一覧
 
@@ -258,6 +294,7 @@ aws sts get-caller-identity  # AWS 認証情報
 
 ```bash
 # ビルド
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # Discovery Lambda のローカル実行

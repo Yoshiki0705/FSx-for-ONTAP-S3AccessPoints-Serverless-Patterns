@@ -180,8 +180,10 @@ bash scripts/deploy_phase7.sh government-archives
 ### 手動デプロイ
 
 ```bash
-aws cloudformation deploy \
-  --template-file government-archives/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-gov-archives \
   --parameter-overrides \
     S3AccessPointAlias=<alias> \
@@ -191,7 +193,8 @@ aws cloudformation deploy \
     UseCrossRegion=true \
     OntapSecretName=<secret> \
     OntapManagementIp=<ip> \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### OpenSearch モード
@@ -307,6 +310,7 @@ aws sts get-caller-identity  # AWS 認証情報
 
 ```bash
 # ビルド
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 # Discovery Lambda のローカル実行

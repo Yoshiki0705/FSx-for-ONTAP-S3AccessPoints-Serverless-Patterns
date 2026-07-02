@@ -259,18 +259,19 @@ for func in discovery metadata_extraction drc_aggregation report_generation; do
 done
 ```
 
-### 4. CloudFormation 배포
+### 4. SAM 배포
 
 AWS CloudFormation을 사용하여 CloudFormation 스택을 만들어 Amazon S3 버킷, AWS Lambda 함수, Amazon Athena 테이블 등의 리소스를 배포할 수 있습니다. CloudFormation 템플릿은 YAML 또는 JSON 형식으로 작성할 수 있으며, 팀 간에 공유되어 배포 프로세스를 자동화할 수 있습니다.
 
 Amazon FSx for ONTAP를 사용하여 데이터 저장을 관리하고, Amazon CloudWatch를 사용하여 배포된 리소스를 모니터링할 수 있습니다. AWS Step Functions를 사용하여 배포 프로세스를 오케스트레이션할 수도 있습니다.
 
 ```bash
-aws cloudformation deploy \
-  --template-file semiconductor-eda/template-deploy.yaml \
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-semiconductor-eda \
   --parameter-overrides \
-    DeployBucket=<your-deploy-bucket> \
     S3AccessPointAlias=<your-s3ap-alias> \
     S3AccessPointName=<your-s3ap-name> \
     OntapSecretName=<your-secret-name> \
@@ -286,6 +287,7 @@ aws cloudformation deploy \
     LambdaMemorySize=512 \
     LambdaTimeout=300 \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region <your-region>
 ```
 **중요**: `S3AccessPointName`은 S3 액세스 포인트의 이름(별칭이 아닌 생성 시 지정한 이름)입니다. IAM 정책에서 ARN 기반 권한 부여에 사용됩니다. 생략하면 `AccessDenied` 오류가 발생할 수 있습니다.

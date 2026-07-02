@@ -37,6 +37,7 @@ Beispieldaten auf dem FSx for ONTAP Volume platzieren.
 ### Schritt 4: Bereitstellen
 
 ```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
 sam build
 
 sam deploy \

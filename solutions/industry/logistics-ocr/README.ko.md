@@ -65,26 +65,63 @@ graph LR
 ## 배포 절차
 
 ### 1. 크로스 리전 파라미터 확인
-Textract는 도쿄 리전을 지원하지 않으므로, `CrossRegionTarget` 파라미터를 사용하여 크로스 리전 호출을 설정합니다.
-### 2. CloudFormation 배포
+Textract는 도쿄 리전을 지원하지 않으므로, `CrossRegion` 파라미터를 사용하여 크로스 리전 호출을 설정합니다.
+
+### 2. 사전 준비
 
 ```bash
-aws cloudformation deploy \
-  --template-file logistics-ocr/template.yaml \
+# AWS SAM CLI 설치 (미설치 시)
+# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
+
+# 리포지토리 클론
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
+cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/solutions/industry/logistics-ocr
+```
+
+### 3. samconfig.toml 설정
+
+```bash
+cp samconfig.toml.example samconfig.toml
+# samconfig.toml을 편집하여 실제 값으로 치환
+```
+
+### 4. SAM CLI를 사용한 빌드 및 배포
+
+```bash
+# 빌드 (Lambda 코드 패키징 + shared/ Layer 생성을 자동 수행)
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+# 배포
+sam deploy --config-file samconfig.toml
+```
+
+또는 `samconfig.toml` 없이 직접 파라미터를 지정하여 배포할 수도 있습니다:
+
+```bash
+# 사전 요구사항: AWS SAM CLI가 필요합니다. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
   --stack-name fsxn-logistics-ocr \
   --parameter-overrides \
     S3AccessPointAlias=<your-volume-ext-s3alias> \
-    S3AccessPointName=<your-s3ap-name> \
+    OntapSecretName=<your-ontap-secret-name> \
+    OntapManagementIp=<your-ontap-mgmt-ip> \
+    SvmUuid=<your-svm-uuid> \
     VpcId=<your-vpc-id> \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
-    ScheduleExpression="rate(1 hour)" \
     NotificationEmail=<your-email@example.com> \
-    CrossRegionTarget=us-east-1 \
+    CrossRegion=us-east-1 \
     EnableVpcEndpoints=false \
     EnableCloudWatchAlarms=false \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --region ap-northeast-1
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
 ```
+
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
 
 ## 설정 파라미터 목록
 

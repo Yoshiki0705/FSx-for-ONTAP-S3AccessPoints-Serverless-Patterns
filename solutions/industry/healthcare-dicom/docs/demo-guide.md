@@ -172,8 +172,10 @@ UC5 healthcare-dicom は **Pattern A: Native S3AP Output** に分類されます
 
 **デプロイ例**:
 ```bash
-aws cloudformation deploy \
-  --template-file healthcare-dicom/template-deploy.yaml \
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
   --stack-name fsxn-healthcare-dicom-demo \
   --parameter-overrides \
     S3AccessPointAlias=eda-demo-s3ap-XYZ-ext-s3alias \
@@ -302,22 +304,14 @@ export SG_ID="sg-xxx"
 ### Step 1: パイプラインのデプロイ
 
 ```bash
-aws cloudformation deploy \
-  --template-file shared/cfn/flexclone-serverless-pipeline.yaml \
+sam deploy \
   --stack-name "${STACK_NAME}" \
   --parameter-overrides \
-    EnableFlexClonePipeline=true \
-    OntapMgmtIp="${ONTAP_MGMT_IP}" \
-    OntapCredentialsSecret="${ONTAP_SECRET}" \
-    SvmUuid="${SVM_UUID}" \
-    ParentVolumeUuid="${DICOM_VOLUME_UUID}" \
     S3AccessPointAlias="${S3AP_ALIAS}" \
     S3AccessPointName="${S3AP_NAME}" \
-    NotificationTopicArn="${SNS_TOPIC_ARN}" \
     VpcId="${VPC_ID}" \
-    SubnetIds="${SUBNET_IDS}" \
-    SecurityGroupId="${SG_ID}" \
-  --capabilities CAPABILITY_NAMED_IAM
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3
 ```
 
 ### Step 2: 研究スタディ別 FlexClone の作成

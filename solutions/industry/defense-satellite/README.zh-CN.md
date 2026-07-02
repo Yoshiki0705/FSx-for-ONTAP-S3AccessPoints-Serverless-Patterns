@@ -62,16 +62,18 @@ Serverless pipeline for satellite imagery (GeoTIFF / NITF / HDF5) analytics leve
 ## Deploy
 
 ```bash
-aws cloudformation deploy \
-  --template-file defense-satellite/template-deploy.yaml \
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
   --stack-name fsxn-defense-satellite \
   --parameter-overrides \
-    DeployBucket=<deploy-bucket> \
     S3AccessPointAlias=<ap-ext-s3alias> \
     VpcId=<vpc-id> \
     PrivateSubnetIds=<subnet-ids> \
     NotificationEmail=ops@example.com \
   --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
   --region ap-northeast-1
 ```
 

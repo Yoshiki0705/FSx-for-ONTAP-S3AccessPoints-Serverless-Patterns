@@ -68,6 +68,7 @@ Use FSx for ONTAP S3 Access Points to read LifeKeeper logs **non-intrusively** v
 
 ```bash
 cd solutions/ha/lifekeeper-monitoring
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
 sam build
 sam deploy --guided \
   --parameter-overrides \
@@ -80,6 +81,7 @@ sam deploy --guided \
 ### Production Deploy
 
 ```bash
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
 sam build
 sam deploy --guided \
   --parameter-overrides \
