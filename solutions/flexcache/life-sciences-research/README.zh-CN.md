@@ -42,6 +42,28 @@
 
 ---
 
+## 部署
+
+使用 AWS SAM CLI 部署（请将占位符替换为您的环境值）：
+
+```bash
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
+  --stack-name fsxn-life-sciences-research \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **注意**: `template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，请改用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3 存储桶）。
+
 ## Governance Note
 
 > 本模式提供技术架构指导。不构成法律、合规或监管建议。组织应咨询合格的专业人员。

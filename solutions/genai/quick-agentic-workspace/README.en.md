@@ -92,6 +92,30 @@ Sample seed data ships in [`sample-data/quick-workspace/`](sample-data/). This U
 
 > **Deployment prerequisite**: Amazon Quick Suite data source connections (Quick Index → S3 AP, Quick Sight datasets) are configured in the Quick console. This template provides the serverless data foundation (Action API / Athena / Data Prep / Quick IAM role).
 
+## Deployment
+
+Deploy with the AWS SAM CLI (replace the placeholders for your environment):
+
+```bash
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
+  --stack-name fsxn-quick-agentic-workspace \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
+> **Amazon Quick setup**: connecting an Index, creating datasets, and running Flows are out of scope for this template. Configure them in the Amazon Quick console after deploy (see [quick-console-setup](docs/quick-console-setup.md)).
+
 ## Governance Note
 
 > Technical architecture guidance, not legal/compliance advice. Amazon Quick capabilities/pricing/regions change; verify against official sources. The S3 AP data source boundary is volume/prefix level; per-user visibility control is out of scope.

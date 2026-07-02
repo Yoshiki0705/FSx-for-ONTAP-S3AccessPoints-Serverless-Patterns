@@ -117,6 +117,9 @@ sam deploy \
   --resolve-s3 \
   --region ap-northeast-1
 ```
+
+> **注意**: `template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，请改用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3 存储桶）。
 > **注意**: 请将 `<...>` 中的占位符替换为实际的环境值。
 ### 3. 确认 SNS 订阅
 部署之后，您指定的电子邮件地址会收到 SNS 订阅确认邮件。

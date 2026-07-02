@@ -90,6 +90,9 @@ sam deploy \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
+> **注意**: `template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，请改用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3 存储桶）。
+
 ## 成功指标
 
 | 成果 | 指标 | 测量 | 人工审核 |

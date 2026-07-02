@@ -118,6 +118,9 @@ sam deploy --guided \
   --stack-name fsxn-content-edge-delivery
 ```
 
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
 DemoMode の確認は [docs/demo-guide.md](docs/demo-guide.md) を参照。
 
 ## セキュリティ / ガバナンス

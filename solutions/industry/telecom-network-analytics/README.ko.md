@@ -100,6 +100,8 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
 
 ## ⚠️ 성능 고려사항
 

@@ -132,6 +132,9 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
 ## Configuration Parameters
 
 | Parameter | Description | Default | Required |
@@ -151,7 +154,6 @@ sam deploy \
 | `LambdaTimeout` | Lambda timeout (seconds) | `300` | |
 | `EnableVpcEndpoints` | Enable Interface VPC Endpoints | `false` | |
 | `EnableCloudWatchAlarms` | Enable CloudWatch Alarms | `false` | |
-
 
 ## ⚠️ Performance Considerations
 

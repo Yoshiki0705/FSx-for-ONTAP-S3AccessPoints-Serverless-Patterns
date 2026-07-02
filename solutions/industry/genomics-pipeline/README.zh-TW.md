@@ -87,6 +87,9 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **注意**: `template.yaml` 用於 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，請改用 `template-deploy.yaml`（需要預先封裝 Lambda zip 檔案並上傳至 S3 儲存貯體）。
+
 ### 3. 確認跨區域設定
 部署後，請確認 Lambda 環境變數 `CROSS_REGION_TARGET` 已設定為 `us-east-1`。
 ## 設定參數列表

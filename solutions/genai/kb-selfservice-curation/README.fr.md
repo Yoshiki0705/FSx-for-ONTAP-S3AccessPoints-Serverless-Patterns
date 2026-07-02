@@ -51,6 +51,32 @@ Cet UC adopte **Bedrock Knowledge Bases managé (Pattern C)** pour minimiser la 
 - ACL NTFS par dossier pour séparer les droits d'écriture par service
 - La limite de la source de données S3 AP est au niveau volume/préfixe (le contrôle de visibilité par utilisateur est hors périmètre)
 
+## Déploiement
+
+Déployez avec AWS SAM CLI (remplacez les valeurs d'exemple selon votre environnement) :
+
+> **Prérequis de déploiement** : ce modèle suppose une Amazon Bedrock Knowledge Base et une source de données existantes (connectées au S3 AP). La création d'index vectoriel OpenSearch Serverless n'étant pas native à CloudFormation, créez d'abord la Knowledge Base et passez ses `KnowledgeBaseId` / `DataSourceId` en paramètres (via `scripts/create_bedrock_kb.py` à la racine du dépôt, ou la console Bedrock).
+
+```bash
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
+  --stack-name fsxn-kb-selfservice-curation \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    KnowledgeBaseId=<your-kb-id> \
+    DataSourceId=<your-datasource-id> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **Remarque** : `template.yaml` est conçu pour être utilisé avec AWS SAM CLI (`sam build` + `sam deploy`).
+> Pour un déploiement direct avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite de packager au préalable les fichiers zip Lambda et de les téléverser dans un bucket S3).
+
 ## Governance Note
 
 > Ce modèle fournit des orientations d'architecture technique, et non des conseils juridiques ou de conformité. Consultez des professionnels qualifiés.

@@ -33,7 +33,6 @@ FSx for ONTAP の S3 Access Points を活用し、SEG-Y 地震探査データの
 - Rekognition による坑井ログ可視化画像のパターン認識
 - Amazon Bedrock によるコンプライアンスレポート生成
 
-
 ## Success Metrics
 
 ### Outcome
@@ -118,6 +117,9 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
 ## 設定パラメータ一覧
 
 | パラメータ | 説明 | デフォルト | 必須 |
@@ -170,7 +172,6 @@ UC8 は以下のサービスを使用します:
 - [Amazon Athena ユーザーガイド](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Rekognition ラベル検出](https://docs.aws.amazon.com/rekognition/latest/dg/labels.html)
 
-
 ---
 
 ## AWS ドキュメントリンク
@@ -193,10 +194,6 @@ UC8 は以下のサービスを使用します:
 | パフォーマンス効率 | Range GET（ヘッダー部分読み取り）、Athena パーティション |
 | コスト最適化 | サーバーレス（使用時のみ課金）、部分読み取りで転送量削減 |
 | 持続可能性 | オンデマンド実行、差分処理 |
-
-
-
-
 
 ---
 

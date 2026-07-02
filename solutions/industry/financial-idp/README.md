@@ -29,7 +29,6 @@ FSx for ONTAP の S3 Access Points を活用し、契約書・請求書などの
 - Amazon Comprehend による Named Entity 抽出（日付、金額、組織名、人名）
 - Amazon Bedrock による構造化サマリー生成
 
-
 ## Success Metrics
 
 ### Outcome
@@ -124,6 +123,9 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
 > **注意**: `<...>` のプレースホルダーを実際の環境値に置き換えてください。
 
 ### 3. SNS サブスクリプションの確認
@@ -131,7 +133,6 @@ sam deploy \
 デプロイ後、指定したメールアドレスに SNS サブスクリプション確認メールが届きます。
 
 > **注意**: `S3AccessPointName` を省略すると、IAM ポリシーが Alias ベースのみとなり `AccessDenied` エラーが発生する場合があります。本番環境では指定を推奨します。詳細は [トラブルシューティングガイド](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー) を参照してください。
-
 
 ## 設定パラメータ一覧
 
@@ -241,7 +242,6 @@ UC2 は以下のサービスを使用します:
 - [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — サーバーレスパターン集
 - [aws-samples/aws-stepfunctions-examples](https://github.com/aws-samples/aws-stepfunctions-examples) — Step Functions サンプル
 
-
 ## 検証済み環境
 
 | 項目 | 値 |
@@ -266,7 +266,6 @@ UC2 は以下のサービスを使用します:
 
 > **注意**: ONTAP REST API を使用する UC（UC1 法務・コンプライアンス）では `EnableVpcEndpoints=true` が必須です。Secrets Manager VPC Endpoint 経由で ONTAP 認証情報を取得するためです。
 
-
 ---
 
 ## AWS ドキュメントリンク
@@ -290,9 +289,6 @@ UC2 は以下のサービスを使用します:
 | パフォーマンス効率 | Lambda メモリ最適化、並列 OCR 処理 |
 | コスト最適化 | サーバーレス（使用時のみ課金）、Textract ページ単位課金 |
 | 持続可能性 | オンデマンド実行、不要リソースの自動停止 |
-
-
-
 
 ---
 

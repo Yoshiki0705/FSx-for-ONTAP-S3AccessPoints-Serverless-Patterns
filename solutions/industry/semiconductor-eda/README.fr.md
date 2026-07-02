@@ -176,41 +176,7 @@ aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip_v2.gds2 \
   "s3://${S3AP_ALIAS}/eda-designs/test_chip_v2.gds2" --region <your-region>
 ```
 
-### 3. Création du package de déploiement Lambda
-
-En utilisant AWS Lambda, vous pouvez exécuter votre code sans avoir à vous soucier de la gestion des serveurs. Pour cela, vous devez d'abord créer un package de déploiement Lambda. Ce package contient le code de votre fonction Lambda ainsi que toutes les dépendances nécessaires.
-
-Pour créer le package de déploiement, suivez ces étapes :
-
-1. Préparez votre code Lambda dans un répertoire local.
-2. Créez un fichier ZIP contenant tous les fichiers de votre code.
-3. Téléchargez ce fichier ZIP en tant que package de déploiement dans votre fonction Lambda.
-
-Voici un exemple de commande pour créer le package de déploiement :
-
-`zip -r function.zip .`
-
-Cette commande crée un fichier ZIP nommé `function.zip` contenant tous les fichiers du répertoire actuel.
-Lorsque vous utilisez `template-deploy.yaml`, vous devez télécharger le code de la fonction AWS Lambda sous forme de package zip dans Amazon S3.
-```bash
-# デプロイ用 S3 バケットの作成
-DEPLOY_BUCKET="<your-deploy-bucket-name>"
-aws s3 mb "s3://${DEPLOY_BUCKET}" --region <your-region>
-
-# 各 Lambda 関数をパッケージング
-for func in discovery metadata_extraction drc_aggregation report_generation; do
-  TMPDIR=$(mktemp -d)
-  cp semiconductor-eda/functions/${func}/handler.py "${TMPDIR}/"
-  cp -r shared "${TMPDIR}/shared"
-  (cd "${TMPDIR}" && zip -r "/tmp/semiconductor-eda-${func}.zip" . \
-    -x "*.pyc" "__pycache__/*" "shared/tests/*" "shared/cfn/*")
-  aws s3 cp "/tmp/semiconductor-eda-${func}.zip" \
-    "s3://${DEPLOY_BUCKET}/lambda/semiconductor-eda-${func}.zip" --region <your-region>
-  rm -rf "${TMPDIR}"
-done
-```
-
-### 4. Déploiement de SAM
+### 3. Déploiement de SAM
 
 AWS Step Functions を使用してリソースをプロビジョニングするには、AWS CloudFormation テンプレートを定義する必要があります。CloudFormation は、AWS 上のインフラストラクチャを宣言的に記述するツールです。アプリケーションに必要なリソースを定義し、リソースの依存関係を管理できます。
 
@@ -242,7 +208,7 @@ sam deploy \
   --region <your-region>
 ```
 **Important** : `S3AccessPointName` est le nom (et non l'alias) du point d'accès S3, spécifié lors de la création. Il est utilisé dans les politiques IAM pour l'octroi d'autorisations basées sur les ARN. Omettre cette valeur peut entraîner une erreur `AccessDenied`.
-### 5. Vérifier les abonnements SNS
+### 4. Vérifier les abonnements SNS
 
 Amazon SNS permet de recevoir des notifications sur les événements importants de vos workflows. Vous pouvez vérifier les abonnements SNS configurés dans votre compte AWS à l'aide de la console AWS ou de l'AWS CLI.
 
@@ -258,7 +224,7 @@ Vous pouvez également afficher les détails d'un abonnement spécifique à l'ai
 
 Cette commande fournit des informations détaillées sur l'abonnement, comme le protocole, le point de terminaison, l'ARN, etc.
 Après le déploiement, un e-mail de confirmation sera envoyé à l'adresse électronique spécifiée. Veuillez cliquer sur le lien pour confirmer.
-### 6. Vérification du fonctionnement
+### 5. Vérification du fonctionnement
 
 Amazon Bedrock を使用して新しいチップの設計を作成し、AWS Step Functions を利用してツールチェーンを自動化します。Amazon Athena とAmazon S3 を使用して GDSII ファイルの検証と DRC を実行し、AWS Lambda で RTL コードを合成します。Amazon FSx for ONTAP を使用して設計データを保存し、Amazon CloudWatch で進捗状況をモニタリングします。最後に AWS CloudFormation を使用してエンドツーエンドのデプロイメントを実行し、OASIS ファイルを生成してテープアウトします。
 Vérifier le fonctionnement en exécutant manuellement AWS Step Functions :
@@ -269,31 +235,14 @@ aws stepfunctions start-execution \
   --region <your-region>
 ```
 **Remarque** : Lors de la première exécution, il est possible que les résultats de l'agrégation DRC d'Athena soient de 0 enregistrements. Cela est dû au délai de réflexion des métadonnées dans la table Glue. Les statistiques correctes seront obtenues lors des exécutions suivantes.
-### Utilisation des modèles
-
-Voici quelques exemples d'utilisation de modèles dans différents services AWS :
-
-- Utilisez Amazon Bedrock pour créer des modèles de langage avancés.
-- Orchestrez vos workflows avec AWS Step Functions.
-- Interrogez et analysez vos données avec Amazon Athena.
-- Stockez et gérez vos fichiers avec Amazon S3.
-- Exécutez du code serverless avec AWS Lambda.
-- Utilisez Amazon FSx for ONTAP pour accéder à des systèmes de fichiers haute performance.
-- Surveillez vos ressources avec Amazon CloudWatch.
-- Automatisez le provisionnement de vos infrastructures avec AWS CloudFormation.
-
-| テンプレート | 用途 | Lambda コード |
-|-------------|------|--------------|
-| `template.yaml` | SAM CLI でのローカル開発・テスト | インラインパス参照（`sam build` が必要） |
-| `template-deploy.yaml` | 本番デプロイ | S3 バケットから zip 取得 |
-Dans le cas où vous utilisez directement `template.yaml` avec `aws cloudformation deploy`, le traitement SAM Transform est nécessaire. Veuillez utiliser `template-deploy.yaml` pour les déploiements en production.
+> **Remarque** : `template.yaml` est conçu pour être utilisé avec AWS SAM CLI (`sam build` + `sam deploy`).
+> Pour un déploiement direct avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite de packager au préalable les fichiers zip Lambda et de les téléverser dans un bucket S3).
 Voici la traduction en français :
 
 ## Liste des paramètres de configuration
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `DeployBucket` | Lambda zip を格納する S3 バケット名 | — | ✅ |
 | `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |

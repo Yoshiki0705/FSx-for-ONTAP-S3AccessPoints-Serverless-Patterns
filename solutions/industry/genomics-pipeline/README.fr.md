@@ -87,6 +87,9 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **Remarque** : `template.yaml` est conçu pour être utilisé avec AWS SAM CLI (`sam build` + `sam deploy`).
+> Pour un déploiement direct avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite de packager au préalable les fichiers zip Lambda et de les téléverser dans un bucket S3).
+
 ### 3. Vérification de la configuration entre régions
 Après le déploiement, assurez-vous que la variable d'environnement Lambda `CROSS_REGION_TARGET` est définie sur `us-east-1`.
 ## Liste des paramètres de configuration

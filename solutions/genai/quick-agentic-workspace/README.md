@@ -344,6 +344,30 @@ sam local invoke DataPrepFunction --event events/data-prep-event.json
 
 ---
 
+## デプロイ
+
+AWS SAM CLI でデプロイします（プレースホルダは環境に合わせて置き換えてください）:
+
+```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
+  --stack-name fsxn-quick-agentic-workspace \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
+> **Amazon Quick の設定**: Index 接続・データセット作成・Flows 実行は本テンプレートの範囲外です。デプロイ後に Amazon Quick コンソールで設定してください（[quick-console-setup](docs/quick-console-setup.md) 参照）。
+
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。

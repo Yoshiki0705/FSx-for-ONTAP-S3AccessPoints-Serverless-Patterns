@@ -43,6 +43,30 @@ quick-workspace/
 - 最小权限、加密（SSE-FSX/SSE-S3/TLS）
 - Quick 本体数据源连接在 Quick 控制台配置
 
+## 部署
+
+使用 AWS SAM CLI 部署（请将占位符替换为您的环境值）：
+
+```bash
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
+  --stack-name fsxn-quick-agentic-workspace \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **注意**: `template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，请改用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3 存储桶）。
+
+> **Amazon Quick 设置**: 连接 Index、创建数据集、运行 Flows 不在本模板范围内。部署后请在 Amazon Quick 控制台中配置（参见 [quick-console-setup](docs/quick-console-setup.md)）。
+
 ## Governance Note
 
 > 本文为技术架构指导，不构成法律或合规建议。Quick 功能与价格可能变化，请以官方信息为准。

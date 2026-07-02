@@ -33,6 +33,33 @@ Ein serverloser Workflow, der FSx for ONTAP S3 Access Points nutzt, um automatis
 - Bei der Verarbeitung großer Dateien prüfen Sie die FSx for ONTAP Throughput Capacity (MBps) und passen Sie MapConcurrency entsprechend an.
 - Empfohlen: Beginnen Sie in der Produktion mit MapConcurrency=5, überwachen Sie die CloudWatch-Metriken (ThroughputUtilization) und erhöhen Sie schrittweise.
 
+## Bereitstellung
+
+Stellen Sie mit der AWS SAM CLI bereit (ersetzen Sie die Platzhalter-Parameter für Ihre Umgebung):
+
+```bash
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
+  --stack-name fsxn-travel-processing \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-volume-ext-s3alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    VpcId=<your-vpc-id> \
+    PrivateSubnetIds=<subnet-1>,<subnet-2> \
+    ScheduleExpression="cron(0 0 * * ? *)" \
+    NotificationEmail=<your-email@example.com> \
+    EnableVpcEndpoints=false \
+    EnableCloudWatchAlarms=false \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region ap-northeast-1
+```
+
+> **Hinweis**: `template.yaml` ist für die Verwendung mit der AWS SAM CLI (`sam build` + `sam deploy`) vorgesehen.
+> Für eine direkte Bereitstellung mit `aws cloudformation deploy` verwenden Sie stattdessen `template-deploy.yaml` (erfordert das vorherige Packen der Lambda-Zip-Dateien und das Hochladen in einen S3-Bucket).
+
 ## Governance-Hinweis
 
 > Dieses Muster bietet technische Architekturberatung. Es stellt keine Rechts-, Compliance- oder Regulierungsberatung dar.

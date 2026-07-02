@@ -32,7 +32,6 @@ FSx for ONTAP の S3 Access Points を活用し、事故写真の損害評価、
 - Bedrock による包括的保険金請求レポート生成（JSON + 人間可読形式）
 - SNS 通知による結果の即時共有
 
-
 ## Success Metrics
 
 ### Outcome
@@ -122,6 +121,9 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
 ## 設定パラメータ一覧
 
 | パラメータ | 説明 | デフォルト | 必須 |
@@ -174,7 +176,6 @@ UC14 は以下のサービスを使用します:
 - [Amazon Textract ドキュメント](https://docs.aws.amazon.com/textract/latest/dg/what-is.html)
 - [Amazon Bedrock API リファレンス](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 
-
 ---
 
 ## AWS ドキュメントリンク
@@ -199,10 +200,6 @@ UC14 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、Textract ページ単位課金 |
 | 持続可能性 | オンデマンド実行、差分処理 |
 
-
-
-
-
 ---
 
 ## コスト見積もり（月額概算）
@@ -221,7 +218,6 @@ UC14 は以下のサービスを使用します:
 | SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
 | CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
 | Rekognition | $0.001/image |
-
 
 ### 固定コスト（FSx for ONTAP — 既存環境前提）
 
