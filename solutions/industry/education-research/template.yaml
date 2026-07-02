@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -116,7 +112,37 @@ Parameters:
     Default: "fsxn-fpolicy-events"
     Description: FPolicy EventBridge カスタムバス名（EVENT_DRIVEN / HYBRID 時に使用）
 
+  # --- OutputDestination (Pattern B: FSx for ONTAP S3 AP write-back) ---
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: >
+      AI/ML 成果物の書き込み先。STANDARD_S3 は新規 S3 バケット、FSXN_S3AP は FSx for ONTAP
+      S3 Access Point 経由でオリジナルと同一ボリュームへ書き戻す（no data movement）。
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: FSXN_S3AP 出力先 S3 AP Alias。空なら入力 S3AccessPointAlias を再利用。
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: 出力用 S3 AP 名。空なら S3AccessPointName を再利用。
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: FSXN_S3AP 出力キーのプレフィックス。
+
 Conditions:
+  # --- OutputDestination Conditions ---
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  UseInputApAsOutputAp:
+    !Equals [!Ref OutputS3APAlias, ""]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
   HasS3AccessPointName:
     !Not [!Equals [!Ref S3AccessPointName, ""]]
   CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
@@ -146,6 +172,22 @@ Conditions:
       - !Condition IsEventDriven
       - !Condition IsHybrid
 Resources:
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
   OutputBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -293,13 +335,8 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-          - Sid: XRayTracing
-            Effect: Allow
-            Action:
-              - xray:PutTraceSegments
-              - xray:PutTelemetryRecords
-            Resource: "*"
       ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       Policies:
         - PolicyName: DiscoveryPolicy
@@ -335,13 +372,8 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-          - Sid: XRayTracing
-            Effect: Allow
-            Action:
-              - xray:PutTraceSegments
-              - xray:PutTelemetryRecords
-            Resource: "*"
       ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: OcrPolicy
@@ -358,7 +390,20 @@ Resources:
                 Resource: "*"
               - Effect: Allow
                 Action: [s3:PutObject]
-                Resource: !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Effect: Allow
                 Action: [logs:CreateLogStream, logs:PutLogEvents]
                 Resource: [!GetAtt OcrLogGroup.Arn, !Sub "${OcrLogGroup.Arn}:*"]
@@ -374,13 +419,8 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-          - Sid: XRayTracing
-            Effect: Allow
-            Action:
-              - xray:PutTraceSegments
-              - xray:PutTelemetryRecords
-            Resource: "*"
       ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: ClassificationPolicy
@@ -395,7 +435,20 @@ Resources:
                 Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
               - Effect: Allow
                 Action: [s3:PutObject]
-                Resource: !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Effect: Allow
                 Action: [logs:CreateLogStream, logs:PutLogEvents]
                 Resource: [!GetAtt ClassificationLogGroup.Arn, !Sub "${ClassificationLogGroup.Arn}:*"]
@@ -411,13 +464,8 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-          - Sid: XRayTracing
-            Effect: Allow
-            Action:
-              - xray:PutTraceSegments
-              - xray:PutTelemetryRecords
-            Resource: "*"
       ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: CitationAnalysisPolicy
@@ -426,7 +474,20 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: [s3:PutObject]
-                Resource: !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Effect: Allow
                 Action: [logs:CreateLogStream, logs:PutLogEvents]
                 Resource: [!GetAtt CitationAnalysisLogGroup.Arn, !Sub "${CitationAnalysisLogGroup.Arn}:*"]
@@ -442,13 +503,8 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-          - Sid: XRayTracing
-            Effect: Allow
-            Action:
-              - xray:PutTraceSegments
-              - xray:PutTelemetryRecords
-            Resource: "*"
       ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: MetadataPolicy
@@ -457,20 +513,35 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: [s3:PutObject]
-                Resource: !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Effect: Allow
                 Action: [logs:CreateLogStream, logs:PutLogEvents]
                 Resource: [!GetAtt MetadataLogGroup.Arn, !Sub "${MetadataLogGroup.Arn}:*"]
 
   # Lambda Functions
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.13
-      Handler: education-research/functions/discovery/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -491,13 +562,15 @@ Resources:
         LogGroup: !Ref DiscoveryLogGroup
 
   OcrFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
       Runtime: python3.13
-      Handler: education-research/functions/ocr/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/ocr/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt OcrLambdaRole.Arn
@@ -505,63 +578,97 @@ Resources:
         Variables:
           USE_CASE: "education-research"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           CROSS_REGION: !Ref CrossRegion
       LoggingConfig:
         LogGroup: !Ref OcrLogGroup
 
   ClassificationFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-classification"
       Runtime: python3.13
-      Handler: education-research/functions/classification/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/classification/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt ClassificationLambdaRole.Arn
       Environment:
         Variables:
           USE_CASE: "education-research"
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
       LoggingConfig:
         LogGroup: !Ref ClassificationLogGroup
 
   CitationAnalysisFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-citation-analysis"
       Runtime: python3.13
-      Handler: education-research/functions/citation_analysis/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/citation_analysis/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt CitationAnalysisLambdaRole.Arn
       Environment:
         Variables:
           USE_CASE: "education-research"
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref CitationAnalysisLogGroup
 
   MetadataFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-metadata"
       Runtime: python3.13
-      Handler: education-research/functions/metadata/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/metadata/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt MetadataLambdaRole.Arn
       Environment:
         Variables:
           USE_CASE: "education-research"
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref MetadataLogGroup
 
