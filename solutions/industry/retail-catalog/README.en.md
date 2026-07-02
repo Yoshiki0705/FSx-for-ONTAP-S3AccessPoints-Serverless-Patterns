@@ -81,6 +81,9 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
 ## List of Configuration Parameters
 
 | パラメータ | 説明 | デフォルト | 必須 |

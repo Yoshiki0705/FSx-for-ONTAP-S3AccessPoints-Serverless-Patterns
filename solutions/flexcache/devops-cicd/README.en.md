@@ -90,6 +90,9 @@ sam deploy \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
 ## Success Metrics
 
 | Outcome | Metric | Measurement | Human Review |

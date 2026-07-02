@@ -28,6 +28,32 @@ Dieses Pattern bietet Designleitfäden, Simulationsdemos und betriebliche Design
 
 ---
 
+## Bereitstellung
+
+Stellen Sie mit der AWS SAM CLI bereit (ersetzen Sie die Platzhalter-Parameter für Ihre Umgebung):
+
+```bash
+# パラメータファイルを編集
+cp params/staging.json params/flexcache-anycast-demo.json
+# 必要なパラメータを設定
+
+# デプロイ
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
+  --stack-name flexcache-anycast-demo \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --parameter-overrides \
+    SimulationMode=true \
+    CacheEndpoints="cache-a.example.com,cache-b.example.com" \
+    HealthCheckIntervalMinutes=5
+```
+
+> **Hinweis**: `template.yaml` ist für die Verwendung mit der AWS SAM CLI (`sam build` + `sam deploy`) vorgesehen.
+> Für eine direkte Bereitstellung mit `aws cloudformation deploy` verwenden Sie stattdessen `template-deploy.yaml` (erfordert das vorherige Packen der Lambda-Zip-Dateien und das Hochladen in einen S3-Bucket).
+
 ## Governance-Hinweis
 
 > Dieses Pattern bietet technische Architekturberatung. Es stellt keine rechtliche, Compliance- oder regulatorische Beratung dar. Organisationen sollten qualifizierte Fachleute konsultieren.

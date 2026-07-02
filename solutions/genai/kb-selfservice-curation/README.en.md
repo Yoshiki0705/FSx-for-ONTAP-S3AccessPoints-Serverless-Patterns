@@ -166,6 +166,32 @@ Serverless components (Lambda, S3 API, EventBridge Scheduler, Bedrock ingestion/
 | [Extension pattern: Bedrock KB](../docs/extension-patterns.md) | Generic managed KB + S3 AP pattern |
 | [KB creation script](../scripts/create_bedrock_kb.py) | KB / data source creation (deployment prerequisite) |
 
+## Deployment
+
+Deploy with the AWS SAM CLI (replace the placeholders for your environment):
+
+> **Deployment prerequisite**: this template assumes an existing Amazon Bedrock Knowledge Base and data source (connected to the S3 AP). Because OpenSearch Serverless vector index creation is not CloudFormation-native, create the Knowledge Base first and pass its `KnowledgeBaseId` / `DataSourceId` as parameters (use `scripts/create_bedrock_kb.py` from the repo root, or the Bedrock console).
+
+```bash
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
+  --stack-name fsxn-kb-selfservice-curation \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    KnowledgeBaseId=<your-kb-id> \
+    DataSourceId=<your-datasource-id> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
 ## Governance Note
 
 > This pattern provides technical architecture guidance, not legal, compliance, or regulatory advice. Consult qualified professionals. The S3 AP data source boundary is volume/prefix level; per-user visibility control is out of scope for this UC.

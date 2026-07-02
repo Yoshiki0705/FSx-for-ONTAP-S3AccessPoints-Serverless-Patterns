@@ -152,29 +152,7 @@ aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip_v2.gds2 \
   "s3://${S3AP_ALIAS}/eda-designs/test_chip_v2.gds2" --region <your-region>
 ```
 
-### 3. Lambda デプロイパッケージの作成
-
-`template-deploy.yaml` を使用する場合、Lambda 関数のコードを zip パッケージとして S3 にアップロードする必要があります。
-
-```bash
-# デプロイ用 S3 バケットの作成
-DEPLOY_BUCKET="<your-deploy-bucket-name>"
-aws s3 mb "s3://${DEPLOY_BUCKET}" --region <your-region>
-
-# 各 Lambda 関数をパッケージング
-for func in discovery metadata_extraction drc_aggregation report_generation; do
-  TMPDIR=$(mktemp -d)
-  cp semiconductor-eda/functions/${func}/handler.py "${TMPDIR}/"
-  cp -r shared "${TMPDIR}/shared"
-  (cd "${TMPDIR}" && zip -r "/tmp/semiconductor-eda-${func}.zip" . \
-    -x "*.pyc" "__pycache__/*" "shared/tests/*" "shared/cfn/*")
-  aws s3 cp "/tmp/semiconductor-eda-${func}.zip" \
-    "s3://${DEPLOY_BUCKET}/lambda/semiconductor-eda-${func}.zip" --region <your-region>
-  rm -rf "${TMPDIR}"
-done
-```
-
-### 4. SAM デプロイ
+### 3. SAM デプロイ
 
 ```bash
 # 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
@@ -204,11 +182,11 @@ sam deploy \
 
 > **重要**: `S3AccessPointName` は S3 AP の名前（Alias ではなく作成時に指定した名前）です。IAM ポリシーで ARN ベースの権限付与に使用されます。省略すると `AccessDenied` エラーが発生する場合があります。
 
-### 5. SNS サブスクリプションの確認
+### 4. SNS サブスクリプションの確認
 
 デプロイ後、指定したメールアドレスに確認メールが届きます。リンクをクリックして確認してください。
 
-### 6. 動作確認
+### 5. 動作確認
 
 Step Functions を手動実行して動作を確認します:
 
@@ -221,20 +199,13 @@ aws stepfunctions start-execution \
 
 > **注意**: 初回実行では Athena の DRC 集計結果が 0 件になる場合があります。これは Glue テーブルへのメタデータ反映にタイムラグがあるためです。2 回目以降の実行で正しい統計が得られます。
 
-### テンプレートの使い分け
-
-| テンプレート | 用途 | Lambda コード |
-|-------------|------|--------------|
-| `template.yaml` | SAM CLI でのローカル開発・テスト | インラインパス参照（`sam build` が必要） |
-| `template-deploy.yaml` | 本番デプロイ | S3 バケットから zip 取得 |
-
-`template.yaml` を直接 `aws cloudformation deploy` で使用する場合は、SAM Transform の処理が必要です。本番デプロイには `template-deploy.yaml` を使用してください。
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
 
 ## 設定パラメータ一覧
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `DeployBucket` | Lambda zip を格納する S3 バケット名 | — | ✅ |
 | `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |

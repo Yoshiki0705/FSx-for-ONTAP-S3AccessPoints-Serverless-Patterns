@@ -34,6 +34,30 @@ Ein Pattern, das vertrauliche Dokumente auf Unternehmens-Dateiservern (FSx for O
 
 ---
 
+## Bereitstellung
+
+Stellen Sie mit der AWS SAM CLI bereit (ersetzen Sie die Platzhalter für Ihre Umgebung):
+
+```bash
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
+  --stack-name fsxn-rag-enterprise-files \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **Hinweis**: `template.yaml` ist für die Verwendung mit der AWS SAM CLI (`sam build` + `sam deploy`) vorgesehen.
+> Für eine direkte Bereitstellung mit `aws cloudformation deploy` verwenden Sie stattdessen `template-deploy.yaml` (erfordert das vorherige Packen der Lambda-Zip-Dateien und das Hochladen in einen S3-Bucket).
+
+> **Zur ACL-Extraktion auf Dateiebene**: Standardmäßig läuft die ACL-Extraktion im Simulationsmodus (kein ONTAP erforderlich). Um echte ACLs zu extrahieren, setzen Sie `OntapManagementIp` / `OntapSecretName`. Beachten Sie, dass diese Vorlage kein `VpcConfig` enthält; das Erreichen eines privaten ONTAP-Management-LIF erfordert daher eine zusätzliche Netzwerkkonfiguration.
+
 ## Governance-Hinweis
 
 > Dieses Pattern bietet technische Architekturberatung. Es stellt keine rechtliche, Compliance- oder regulatorische Beratung dar. Organisationen sollten qualifizierte Fachleute konsultieren.

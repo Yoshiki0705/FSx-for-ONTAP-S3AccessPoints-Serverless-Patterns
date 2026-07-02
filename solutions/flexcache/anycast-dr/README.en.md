@@ -61,6 +61,32 @@ Storage Layer:
 | [healthcare-dicom/](../healthcare-dicom/) | FlexCache for inter-site DICOM caching |
 | [semiconductor-eda/](../semiconductor-eda/) | Cloud bursting for EDA tools/libraries |
 
+## Deployment
+
+Deploy with the AWS SAM CLI (replace the placeholder parameters for your environment):
+
+```bash
+# パラメータファイルを編集
+cp params/staging.json params/flexcache-anycast-demo.json
+# 必要なパラメータを設定
+
+# デプロイ
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
+  --stack-name flexcache-anycast-demo \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --parameter-overrides \
+    SimulationMode=true \
+    CacheEndpoints="cache-a.example.com,cache-b.example.com" \
+    HealthCheckIntervalMinutes=5
+```
+
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
 ## Success Metrics
 
 | Metric | Target |

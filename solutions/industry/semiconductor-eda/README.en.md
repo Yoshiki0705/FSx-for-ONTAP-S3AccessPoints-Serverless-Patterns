@@ -133,29 +133,7 @@ aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip_v2.gds2 \
   "s3://${S3AP_ALIAS}/eda-designs/test_chip_v2.gds2" --region <your-region>
 ```
 
-### 3. Create Lambda Deployment Packages
-
-When using `template-deploy.yaml`, you need to upload the Lambda function code as zip packages to S3.
-
-```bash
-# Create a deployment S3 bucket
-DEPLOY_BUCKET="<your-deploy-bucket-name>"
-aws s3 mb "s3://${DEPLOY_BUCKET}" --region <your-region>
-
-# Package each Lambda function
-for func in discovery metadata_extraction drc_aggregation report_generation; do
-  TMPDIR=$(mktemp -d)
-  cp semiconductor-eda/functions/${func}/handler.py "${TMPDIR}/"
-  cp -r shared "${TMPDIR}/shared"
-  (cd "${TMPDIR}" && zip -r "/tmp/semiconductor-eda-${func}.zip" . \
-    -x "*.pyc" "__pycache__/*" "shared/tests/*" "shared/cfn/*")
-  aws s3 cp "/tmp/semiconductor-eda-${func}.zip" \
-    "s3://${DEPLOY_BUCKET}/lambda/semiconductor-eda-${func}.zip" --region <your-region>
-  rm -rf "${TMPDIR}"
-done
-```
-
-### 4. SAM Deployment
+### 3. SAM Deployment
 
 ```bash
 # Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
@@ -185,11 +163,11 @@ sam deploy \
 
 > **Important**: `S3AccessPointName` is the name of the S3 AP (the name specified at creation time, not the Alias). It is used for ARN-based permission grants in IAM policies. Omitting it may result in `AccessDenied` errors.
 
-### 5. Confirm SNS Subscription
+### 4. Confirm SNS Subscription
 
 After deployment, a confirmation email will be sent to the specified email address. Click the link to confirm.
 
-### 6. Verify Operation
+### 5. Verify Operation
 
 Manually execute the Step Functions state machine to verify operation:
 
@@ -202,20 +180,13 @@ aws stepfunctions start-execution \
 
 > **Note**: On the first execution, the Athena DRC aggregation results may return 0 rows. This is because there is a time lag before metadata is reflected in the Glue table. Correct statistics will be obtained from the second execution onward.
 
-### Template Selection Guide
-
-| Template | Use Case | Lambda Code |
-|----------|----------|-------------|
-| `template.yaml` | Local development and testing with SAM CLI | Inline path references (requires `sam build`) |
-| `template-deploy.yaml` | Production deployment | Fetched as zip from S3 bucket |
-
-If using `template.yaml` directly with `aws cloudformation deploy`, SAM Transform processing is required. Use `template-deploy.yaml` for production deployments.
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
 
 ## Configuration Parameters
 
 | Parameter | Description | Default | Required |
 |-----------|-------------|---------|----------|
-| `DeployBucket` | S3 bucket name for Lambda zip packages | — | ✅ |
 | `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias (for input) | — | ✅ |
 | `S3AccessPointName` | S3 AP name (for ARN-based IAM permission grants) | `""` | ⚠️ Recommended |
 | `OntapSecretName` | Secrets Manager secret name for ONTAP REST API credentials | — | ✅ |

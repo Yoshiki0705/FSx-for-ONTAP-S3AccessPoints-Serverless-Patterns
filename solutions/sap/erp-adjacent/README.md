@@ -77,6 +77,9 @@ sam deploy --guided --stack-name fsxn-s3ap-sap-erp \
     ScheduleExpression="cron(0 */2 * * ? *)"
 ```
 
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
 ## Customization
 
 ### Change the file prefix for different landing zones:
@@ -95,11 +98,6 @@ Edit `functions/processing/index.py` to customize the summarization prompt for y
 - [Enterprise Workload Examples](../docs/enterprise-workload-examples.md) — Full list of enterprise patterns
 - [Quick Start Guide](../docs/quick-start.md) — First deployment walkthrough
 - [Deployment Profiles](../docs/deployment-profiles.md) — Production configuration options
-
-
-
-
-
 
 ---
 

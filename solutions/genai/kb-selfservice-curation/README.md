@@ -427,6 +427,32 @@ sam local invoke AutoSyncFunction --event events/auto-sync-event.json
 
 ---
 
+## デプロイ
+
+AWS SAM CLI でデプロイします（プレースホルダは環境に合わせて置き換えてください）:
+
+> **デプロイ前提**: 本テンプレートは既存の Amazon Bedrock Knowledge Base とデータソース（S3 AP 接続）を前提とします。OpenSearch Serverless のベクトルインデックス作成が CloudFormation ネイティブではないため、Knowledge Base 本体はデプロイ前に作成し、その `KnowledgeBaseId` / `DataSourceId` をパラメータに渡します（リポジトリルートの `scripts/create_bedrock_kb.py` または Bedrock コンソールで作成）。
+
+```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
+  --stack-name fsxn-kb-selfservice-curation \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    KnowledgeBaseId=<your-kb-id> \
+    DataSourceId=<your-datasource-id> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。S3 AP のデータソース境界はボリューム/プレフィックス単位であり、利用者個人ごとの可視範囲制御が必要な場合は本UCの適用範囲外です。

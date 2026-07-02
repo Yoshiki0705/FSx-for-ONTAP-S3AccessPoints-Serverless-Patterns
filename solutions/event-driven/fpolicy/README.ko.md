@@ -154,6 +154,9 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
+
 #### EC2 모드(고정 IP, 저비용)
 
 ```bash
@@ -227,7 +230,7 @@ fpolicy enable \
 | 파라미터 | 설명 | 기본값 | 필수 |
 |-----------|------|----------|------|
 | `ComputeType` | 실행 환경 선택 (fargate/ec2) | `fargate` | |
-| `VpcId` | FSxN과 동일 VPC의 ID | — | ✅ |
+| `VpcId` | FSx for ONTAP와 동일 VPC의 ID | — | ✅ |
 | `SubnetIds` | Fargate 태스크 또는 EC2 배치 대상 Private Subnet | — | ✅ |
 | `FsxnSvmSecurityGroupId` | FSx for ONTAP SVM의 Security Group ID | — | ✅ |
 | `ContainerImage` | FPolicy Server 컨테이너 이미지 URI | — | ✅ |
