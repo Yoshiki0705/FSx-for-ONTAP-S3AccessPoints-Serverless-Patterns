@@ -31,7 +31,6 @@ FSx for ONTAP の S3 Access Points を活用し、商品画像の自動タグ付
 - Bedrock による構造化カタログメタデータ生成
 - 画像品質メトリクス検証（最小解像度、ファイルサイズ範囲、アスペクト比）
 
-
 ## Success Metrics
 
 ### Outcome
@@ -111,6 +110,9 @@ sam deploy \
   --resolve-s3 \
   --region ap-northeast-1
 ```
+
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
 
 ## 設定パラメータ一覧
 
@@ -203,7 +205,6 @@ UC11 は以下のサービスを使用します:
 
 > Kinesis ストリーミングモードを有効化する場合、シャード料金がリージョンにより異なる点に注意してください。詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
 
-
 ---
 
 ## AWS ドキュメントリンク
@@ -228,10 +229,6 @@ UC11 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、Kinesis On-Demand モード |
 | 持続可能性 | 差分処理（変更画像のみ）、DynamoDB 状態管理 |
 
-
-
-
-
 ---
 
 ## コスト見積もり（月額概算）
@@ -250,7 +247,6 @@ UC11 は以下のサービスを使用します:
 | SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
 | CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
 | Kinesis Data Stream (オプション) | $0.015/shard-hour |
-
 
 ### 固定コスト（FSx for ONTAP — 既存環境前提）
 

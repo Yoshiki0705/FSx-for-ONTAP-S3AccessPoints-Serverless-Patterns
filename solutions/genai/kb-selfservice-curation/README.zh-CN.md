@@ -51,6 +51,32 @@
 - 按文件夹的 NTFS ACL 分离各部门写权限
 - S3 AP 数据源边界为卷/前缀级别（按用户的可见范围控制不在范围内）
 
+## 部署
+
+使用 AWS SAM CLI 部署（请将占位符替换为您的环境值）：
+
+> **部署前提**: 本模板假设已存在 Amazon Bedrock Knowledge Base 及数据源（连接到 S3 AP）。由于 OpenSearch Serverless 向量索引创建并非 CloudFormation 原生支持，请先创建 Knowledge Base，并将其 `KnowledgeBaseId` / `DataSourceId` 作为参数传入（使用仓库根目录的 `scripts/create_bedrock_kb.py` 或 Bedrock 控制台）。
+
+```bash
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
+  --stack-name fsxn-kb-selfservice-curation \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    KnowledgeBaseId=<your-kb-id> \
+    DataSourceId=<your-datasource-id> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **注意**: `template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，请改用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3 存储桶）。
+
 ## Governance Note
 
 > 本模式提供技术架构指导，不构成法律或合规建议。请咨询合格的专业人士。

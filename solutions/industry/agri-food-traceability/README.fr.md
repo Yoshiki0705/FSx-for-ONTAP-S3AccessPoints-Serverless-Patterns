@@ -20,6 +20,31 @@ Workflow serverless exploitant FSx for ONTAP S3 Access Points pour analyser les 
 
 > Ce modèle fournit des conseils d'architecture technique. Il ne constitue pas un avis juridique ou réglementaire.
 
+## Déploiement
+
+Déployez avec AWS SAM CLI (remplacez les paramètres d'exemple selon votre environnement) :
+
+```bash
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
+  --stack-name fsxn-agri-traceability \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-volume-ext-s3alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    VpcId=<your-vpc-id> \
+    PrivateSubnetIds=<subnet-1>,<subnet-2> \
+    ScheduleExpression="cron(0 0 * * ? *)" \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region ap-northeast-1
+```
+
+> **Remarque** : `template.yaml` est conçu pour être utilisé avec AWS SAM CLI (`sam build` + `sam deploy`).
+> Pour un déploiement direct avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite de packager au préalable les fichiers zip Lambda et de les téléverser dans un bucket S3).
+
 ## ⚠️ Considérations de performance
 
 - La capacité de débit de FSx for ONTAP est **partagée entre NFS/SMB/S3 AP**. L'exécution avec MapConcurrency=10 en parallèle peut impacter d'autres charges de travail sur le même volume.

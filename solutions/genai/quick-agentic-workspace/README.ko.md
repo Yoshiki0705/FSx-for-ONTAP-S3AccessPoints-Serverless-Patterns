@@ -43,6 +43,30 @@ quick-workspace/
 - 최소 권한, 암호화(SSE-FSX/SSE-S3/TLS)
 - Quick 본체 데이터 소스 연결은 Quick 콘솔에서 구성
 
+## 배포
+
+AWS SAM CLI로 배포합니다 (플레이스홀더는 환경에 맞게 교체하세요):
+
+```bash
+# 전제 조건: AWS SAM CLI 필요. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
+  --stack-name fsxn-quick-agentic-workspace \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
+
+> **Amazon Quick 설정**: Index 연결·데이터셋 생성·Flows 실행은 본 템플릿 범위 밖입니다. 배포 후 Amazon Quick 콘솔에서 설정하세요 ([quick-console-setup](docs/quick-console-setup.md) 참조).
+
 ## Governance Note
 
 > 기술 아키텍처 가이던스이며 법적·규제 자문이 아닙니다. Quick 기능·요금은 변경될 수 있어 공식 정보를 확인하세요.

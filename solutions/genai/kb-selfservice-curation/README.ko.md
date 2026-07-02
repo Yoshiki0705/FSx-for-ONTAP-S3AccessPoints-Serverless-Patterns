@@ -51,6 +51,32 @@ FSx for ONTAP에 **AI 전용 볼륨/폴더**를 만들어 SMB로 각 역할·부
 - 폴더 단위 NTFS ACL로 부서별 쓰기 권한 분리
 - S3 AP 데이터 소스 경계는 볼륨/프리픽스 단위(사용자별 가시 범위 제어는 범위 외)
 
+## 배포
+
+AWS SAM CLI로 배포합니다 (플레이스홀더는 환경에 맞게 교체하세요):
+
+> **배포 전제**: 본 템플릿은 기존 Amazon Bedrock Knowledge Base와 데이터 소스(S3 AP 연결)를 전제로 합니다. OpenSearch Serverless 벡터 인덱스 생성이 CloudFormation 네이티브가 아니므로, Knowledge Base를 먼저 생성하고 그 `KnowledgeBaseId` / `DataSourceId`를 파라미터로 전달하세요 (리포지토리 루트의 `scripts/create_bedrock_kb.py` 또는 Bedrock 콘솔 사용).
+
+```bash
+# 전제 조건: AWS SAM CLI 필요. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
+  --stack-name fsxn-kb-selfservice-curation \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    KnowledgeBaseId=<your-kb-id> \
+    DataSourceId=<your-datasource-id> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
+
 ## Governance Note
 
 > 본 패턴은 기술 아키텍처 가이던스를 제공하며 법적·규제 자문이 아닙니다. 자격을 갖춘 전문가와 상담하세요.

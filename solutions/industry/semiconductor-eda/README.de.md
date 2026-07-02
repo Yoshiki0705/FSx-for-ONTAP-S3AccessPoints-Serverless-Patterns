@@ -176,27 +176,7 @@ aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip_v2.gds2 \
   "s3://${S3AP_ALIAS}/eda-designs/test_chip_v2.gds2" --region <your-region>
 ```
 
-### 3. Erstellung des Lambda-Bereitstellungspakets
-Bei Verwendung von `template-deploy.yaml` müssen Sie den Code der Lambda-Funktion als Zip-Paket in Amazon S3 hochladen.
-```bash
-# デプロイ用 S3 バケットの作成
-DEPLOY_BUCKET="<your-deploy-bucket-name>"
-aws s3 mb "s3://${DEPLOY_BUCKET}" --region <your-region>
-
-# 各 Lambda 関数をパッケージング
-for func in discovery metadata_extraction drc_aggregation report_generation; do
-  TMPDIR=$(mktemp -d)
-  cp semiconductor-eda/functions/${func}/handler.py "${TMPDIR}/"
-  cp -r shared "${TMPDIR}/shared"
-  (cd "${TMPDIR}" && zip -r "/tmp/semiconductor-eda-${func}.zip" . \
-    -x "*.pyc" "__pycache__/*" "shared/tests/*" "shared/cfn/*")
-  aws s3 cp "/tmp/semiconductor-eda-${func}.zip" \
-    "s3://${DEPLOY_BUCKET}/lambda/semiconductor-eda-${func}.zip" --region <your-region>
-  rm -rf "${TMPDIR}"
-done
-```
-
-### 4. SAM-Bereitstellung
+### 3. SAM-Bereitstellung
 
 Die Schlüsselkomponenten für die Bereitstellung in AWS sind:
 
@@ -236,7 +216,7 @@ sam deploy \
   --region <your-region>
 ```
 **Wichtig**: `S3AccessPointName` ist der Name (nicht der Alias) des S3-Zugangspunkts, der bei der Erstellung angegeben wurde. Dieser wird in IAM-Richtlinien für ARN-basierte Berechtigungen verwendet. Wenn dieser Wert nicht angegeben wird, kann ein `AccessDenied`-Fehler auftreten.
-### 5. Überprüfung der SNS-Abonnements
+### 4. Überprüfung der SNS-Abonnements
 
 Amazon SNS-Themen können Nachrichten an HTTP, HTTPS, Amazon SQS-Warteschlangen, AWS Lambda-Funktionen, SMS, E-Mails und mehr senden. Überprüfen Sie, ob die erwarteten Abonnements für Ihre Amazon SNS-Themen vorhanden sind.
 
@@ -247,7 +227,7 @@ Amazon SNS-Themen können Nachrichten an HTTP, HTTPS, Amazon SQS-Warteschlangen,
 
 Wenn ein erwartetes Abonnement fehlt, fügen Sie es hinzu oder korrigieren Sie die Konfiguration, damit Benachrichtigungen an den richtigen Ort gesendet werden.
 Nach der Bereitstellung erhalten Sie eine Bestätigungsmail an die angegebene E-Mail-Adresse. Bitte klicken Sie auf den Link, um die Überprüfung abzuschließen.
-### 6. Funktionsüberprüfung
+### 5. Funktionsüberprüfung
 
 - Starten Sie den Amazon Bedrock-Dienst und überwachen Sie den Ausführungsstatus mithilfe von AWS Step Functions.
 - Führen Sie eine Abfrage auf Amazon Athena durch, um die Daten in Amazon S3 zu analysieren.
@@ -263,29 +243,12 @@ aws stepfunctions start-execution \
   --region <your-region>
 ```
 **Hinweis**: Beim ersten Ausführen können die DRC-Aggregationsergebnisse von Amazon Athena null sein. Dies liegt an der Zeitverzögerung bei der Aktualisierung der Metadaten in der Amazon Glue-Tabelle. Bei darauffolgenden Ausführungen werden die korrekten Statistiken angezeigt.
-### Auswahl der richtigen Vorlage
-
-Hier sind einige Beispiele dafür, wie Sie die verschiedenen AWS-Ressourcen wie Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch und AWS CloudFormation in Ihren Projekten einsetzen können:
-
-- Verwenden Sie Amazon Bedrock, um GDSII, DRC und OASIS-Dateien zu verarbeiten und GDS-Dateien zu generieren.
-- Nutzen Sie AWS Step Functions, um einen Workflow mit Amazon Athena, Amazon S3 und AWS Lambda zu orchestrieren.
-- Speichern Sie Ihre Daten in Amazon S3 und analysieren Sie sie mit Amazon Athena.
-- Führen Sie serverlose Berechnungen mit AWS Lambda durch.
-- Verwenden Sie Amazon FSx for ONTAP, um Ihre Dateisysteme zu verwalten.
-- Überwachen Sie Ihre Ressourcen mit Amazon CloudWatch.
-- Verwalten Sie Ihre Infrastruktur mit AWS CloudFormation.
-- Führen Sie den tapeout-Prozess mit den richtigen Tools durch.
-
-| テンプレート | 用途 | Lambda コード |
-|-------------|------|--------------|
-| `template.yaml` | SAM CLI でのローカル開発・テスト | インラインパス参照（`sam build` が必要） |
-| `template-deploy.yaml` | 本番デプロイ | S3 バケットから zip 取得 |
-`template.yaml` muss für die direkte Verwendung mit `aws cloudformation deploy` zunächst mit SAM Transform verarbeitet werden. Für die Produktionsbereitstellung sollten Sie stattdessen `template-deploy.yaml` verwenden.
+> **Hinweis**: `template.yaml` ist für die Verwendung mit der AWS SAM CLI (`sam build` + `sam deploy`) vorgesehen.
+> Für eine direkte Bereitstellung mit `aws cloudformation deploy` verwenden Sie stattdessen `template-deploy.yaml` (erfordert das vorherige Packen der Lambda-Zip-Dateien und das Hochladen in einen S3-Bucket).
 ## Parameterliste
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `DeployBucket` | Lambda zip を格納する S3 バケット名 | — | ✅ |
 | `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |

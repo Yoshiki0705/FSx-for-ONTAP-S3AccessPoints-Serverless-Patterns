@@ -22,6 +22,31 @@ FSx for ONTAP S3 Access Points를 활용하여 철도 인프라 점검 이미지
 
 > 본 패턴은 기술 아키텍처 가이던스를 제공합니다. AI 감지 결과는 최종 판단이 아니며, 자격을 갖춘 엔지니어의 확인이 필수입니다.
 
+## 배포
+
+AWS SAM CLI로 배포합니다 (파라미터는 환경에 맞게 교체하세요):
+
+```bash
+# 전제 조건: AWS SAM CLI 필요. 'sam build'가 코드와 공유 레이어를 자동으로 패키징합니다.
+sam build
+
+sam deploy \
+  --stack-name fsxn-transport-maintenance \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-volume-ext-s3alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    VpcId=<your-vpc-id> \
+    PrivateSubnetIds=<subnet-1>,<subnet-2> \
+    ScheduleExpression="cron(0 0 * * ? *)" \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region ap-northeast-1
+```
+
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
+
 ## ⚠️ 성능 고려사항
 
 - FSx for ONTAP의 처리량 용량은 **NFS/SMB/S3 AP에서 공유**됩니다. MapConcurrency=10으로 병렬 처리 시 동일 볼륨의 다른 워크로드에 영향을 줄 수 있습니다.

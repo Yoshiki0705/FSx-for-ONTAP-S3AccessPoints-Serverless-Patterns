@@ -115,6 +115,23 @@ Conditions:
   HasQuickPrincipal: !Not [!Equals [!Ref QuickDataSourcePrincipal, '']]
 
 Resources:
+  # Shared Lambda Layer (shared/ module — used by web-search hybrid RAG)
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (web_search_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
   # --- Athena 結果バケット ---
   AthenaResultsBucket:
     Type: AWS::S3::Bucket
@@ -372,6 +389,8 @@ Resources:
       Timeout: 60
       MemorySize: 512
       Role: !GetAtt QuickActionRole.Arn
+      Layers:
+        - !Ref SharedLayer
       Environment:
         Variables:
           BEDROCK_LLM_MODEL_ID: !Ref BedrockLlmModelId

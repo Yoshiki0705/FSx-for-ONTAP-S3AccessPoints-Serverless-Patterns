@@ -55,6 +55,30 @@ Job Request → Validate → Create FlexCache → Wait Ready → Prepopulate
 | [Security Design](docs/security-design.md) | Security considerations |
 | [Workflow Design](docs/workflow-design.md) | Step Functions design |
 
+## Deployment
+
+Deploy with the AWS SAM CLI (replace the placeholder parameters for your environment):
+
+```bash
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
+  --stack-name dynamic-flexcache-workflow-demo \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --parameter-overrides \
+    OntapManagementIp=10.0.0.1 \
+    OntapSecretName=fsxn/ontap-credentials \
+    OriginSvmName=svm1 \
+    OriginVolumeName=render_assets \
+    CacheSvmName=svm1 \
+    SimulationMode=true
+```
+
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
 ## Success Metrics
 
 | Metric | Target |

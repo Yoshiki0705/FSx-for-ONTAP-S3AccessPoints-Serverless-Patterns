@@ -171,6 +171,9 @@ sam deploy \
     HealthCheckIntervalMinutes=5
 ```
 
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
 ### デモ実行
 
 ```bash
@@ -244,10 +247,6 @@ DynamoDB routing table updates, CloudWatch Logs, ONTAP REST API health check res
 - [NetApp FlexCache ドキュメント](https://docs.netapp.com/us-en/ontap/flexcache/index.html)
 - [FSx for ONTAP ドキュメント](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/)
 
-
-
-
-
 ---
 
 ## コスト見積もり（月額概算）
@@ -266,7 +265,6 @@ DynamoDB routing table updates, CloudWatch Logs, ONTAP REST API health check res
 | SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
 | CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
 | Route 53 Health Check | $0.50/check/月 |
-
 
 ### 固定コスト（FSx for ONTAP — 既存環境前提）
 

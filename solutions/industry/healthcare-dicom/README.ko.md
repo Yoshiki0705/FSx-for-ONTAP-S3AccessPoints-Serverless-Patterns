@@ -88,6 +88,9 @@ sam deploy \
   --resolve-s3 \
   --region ap-northeast-1
 ```
+
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
 > **주의**: `<...>` 의 플레이스홀더를 실제 환경 값으로 바꾸어 주세요.
 ### 3. SNS 구독 확인
 배포 후, 지정한 이메일 주소로 SNS 구독 확인 이메일이 도착합니다.

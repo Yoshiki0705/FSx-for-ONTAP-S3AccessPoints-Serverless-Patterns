@@ -141,6 +141,9 @@ sam deploy \
   --resolve-s3 \
   --region ap-northeast-1
 ```
+
+> **Nota**: `template.yaml` está diseñado para usarse con AWS SAM CLI (`sam build` + `sam deploy`).
+> Para desplegar directamente con `aws cloudformation deploy`, use `template-deploy.yaml` en su lugar (requiere empaquetar previamente los archivos zip de Lambda y subirlos a un bucket de S3).
 **Atención**: Reemplace los marcadores de posición `<...>` con los valores reales de su entorno.
 ### 3. Verificación de la suscripción de SNS
 Tras el despliegue, se enviará un correo electrónico de confirmación de suscripción a SNS a la dirección de correo electrónico especificada.

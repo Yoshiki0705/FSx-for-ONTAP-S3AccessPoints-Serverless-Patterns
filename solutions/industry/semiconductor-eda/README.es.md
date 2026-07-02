@@ -200,27 +200,7 @@ aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip_v2.gds2 \
   "s3://${S3AP_ALIAS}/eda-designs/test_chip_v2.gds2" --region <your-region>
 ```
 
-### 3. Creación del paquete de implementación de Lambda
-Al usar `template-deploy.yaml`, es necesario cargar el código de la función de AWS Lambda en un paquete zip en Amazon S3.
-```bash
-# デプロイ用 S3 バケットの作成
-DEPLOY_BUCKET="<your-deploy-bucket-name>"
-aws s3 mb "s3://${DEPLOY_BUCKET}" --region <your-region>
-
-# 各 Lambda 関数をパッケージング
-for func in discovery metadata_extraction drc_aggregation report_generation; do
-  TMPDIR=$(mktemp -d)
-  cp semiconductor-eda/functions/${func}/handler.py "${TMPDIR}/"
-  cp -r shared "${TMPDIR}/shared"
-  (cd "${TMPDIR}" && zip -r "/tmp/semiconductor-eda-${func}.zip" . \
-    -x "*.pyc" "__pycache__/*" "shared/tests/*" "shared/cfn/*")
-  aws s3 cp "/tmp/semiconductor-eda-${func}.zip" \
-    "s3://${DEPLOY_BUCKET}/lambda/semiconductor-eda-${func}.zip" --region <your-region>
-  rm -rf "${TMPDIR}"
-done
-```
-
-### 4. Implementación de CloudFormation
+### 3. Implementación de CloudFormation
 
 ```bash
 # Requisito: se necesita AWS SAM CLI. «sam build» empaqueta automáticamente el código y la capa compartida.
@@ -248,7 +228,7 @@ sam deploy \
   --region <your-region>
 ```
 **Importante**: `S3AccessPointName` es el nombre del punto de acceso de S3 (no el alias, sino el nombre especificado al crearlo). Se utiliza en políticas de IAM para otorgar permisos basados en ARN. Si se omite, puede ocurrir un error `AccessDenied`.
-### 5. Verificación de las suscripciones de SNS
+### 4. Verificación de las suscripciones de SNS
 
 Amazon SNS (Simple Notification Service) es un servicio de AWS que permite enviar notificaciones de forma fiable y escalable. Una vez que hayas configurado un tema de SNS, puedes verificar las suscripciones que se han establecido para ese tema.
 
@@ -258,7 +238,7 @@ Amazon SNS (Simple Notification Service) es un servicio de AWS que permite envia
 4. Puedes filtrar y ordenar las suscripciones según sea necesario.
 5. Revisa los detalles de cada suscripción, como el protocolo, el punto final y el estado.
 Después de la implementación, recibirá un correo electrónico de confirmación en la dirección de correo electrónico especificada. Haga clic en el enlace para confirmarlo.
-### 6. Comprobación de funcionamiento
+### 5. Comprobación de funcionamiento
 
 Para comprobar el funcionamiento del diseño, siguientes son los pasos recomendados:
 
@@ -274,13 +254,8 @@ aws stepfunctions start-execution \
   --region <your-region>
 ```
 **Observación**: Es posible que en la primera ejecución los resultados de la agregación DRC de Amazon Athena sean de 0 registros. Esto se debe a que hay un desfase en la reflección de los metadatos en las tablas de AWS Glue. En las ejecuciones posteriores se obtendrán las estadísticas correctas.
-### Elección de plantillas
-
-| テンプレート | 用途 | Lambda コード |
-|-------------|------|--------------|
-| `template.yaml` | SAM CLI でのローカル開発・テスト | インラインパス参照（`sam build` が必要） |
-| `template-deploy.yaml` | 本番デプロイ | S3 バケットから zip 取得 |
-En el caso de utilizar directamente `template.yaml` con `aws cloudformation deploy`, es necesario aplicar la transformación de SAM. Para la implementación en producción, por favor, utilice `template-deploy.yaml`.
+> **Nota**: `template.yaml` está diseñado para usarse con AWS SAM CLI (`sam build` + `sam deploy`).
+> Para desplegar directamente con `aws cloudformation deploy`, use `template-deploy.yaml` en su lugar (requiere empaquetar previamente los archivos zip de Lambda y subirlos a un bucket de S3).
 ## Lista de parámetros de configuración
 
 Amazon Bedrock を使用して GDSII ファイルからマスクを生成し、AWS Step Functions でウォークフローを自動化します。次に、Amazon Athena を使用して Amazon S3 に保存されたデータをクエリし、AWS Lambda で後処理を行います。最後に、Amazon FSx for ONTAP を使用して最終的なアーティファクトを保存します。
@@ -289,7 +264,6 @@ Amazon Bedrock を使用して GDSII ファイルからマスクを生成し、A
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `DeployBucket` | Lambda zip を格納する S3 バケット名 | — | ✅ |
 | `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |

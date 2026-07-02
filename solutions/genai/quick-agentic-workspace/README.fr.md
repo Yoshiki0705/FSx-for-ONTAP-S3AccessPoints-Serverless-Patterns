@@ -43,6 +43,30 @@ quick-workspace/
 - Moindre privilège, chiffrement (SSE-FSX/SSE-S3/TLS)
 - Les connexions de source de données Quick se configurent dans la console Quick
 
+## Déploiement
+
+Déployez avec AWS SAM CLI (remplacez les valeurs d'exemple selon votre environnement) :
+
+```bash
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
+  --stack-name fsxn-quick-agentic-workspace \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **Remarque** : `template.yaml` est conçu pour être utilisé avec AWS SAM CLI (`sam build` + `sam deploy`).
+> Pour un déploiement direct avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite de packager au préalable les fichiers zip Lambda et de les téléverser dans un bucket S3).
+
+> **Configuration Amazon Quick** : la connexion d'un Index, la création de jeux de données et l'exécution de Flows sont hors du périmètre de ce modèle. Configurez-les dans la console Amazon Quick après le déploiement (voir [quick-console-setup](docs/quick-console-setup.md)).
+
 ## Governance Note
 
 > Orientations d'architecture technique, et non des conseils juridiques ou de conformité. Les fonctionnalités/tarifs de Quick évoluent ; vérifiez les sources officielles.

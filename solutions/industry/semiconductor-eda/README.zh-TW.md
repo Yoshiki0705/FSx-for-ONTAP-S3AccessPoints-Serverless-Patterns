@@ -184,27 +184,7 @@ aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip_v2.gds2 \
   "s3://${S3AP_ALIAS}/eda-designs/test_chip_v2.gds2" --region <your-region>
 ```
 
-### 3. 建立 Lambda 部署封裝
-使用 `template-deploy.yaml` 時,需將 Lambda 函式的程式碼以 zip 套件的形式上傳至 Amazon S3。
-```bash
-# デプロイ用 S3 バケットの作成
-DEPLOY_BUCKET="<your-deploy-bucket-name>"
-aws s3 mb "s3://${DEPLOY_BUCKET}" --region <your-region>
-
-# 各 Lambda 関数をパッケージング
-for func in discovery metadata_extraction drc_aggregation report_generation; do
-  TMPDIR=$(mktemp -d)
-  cp semiconductor-eda/functions/${func}/handler.py "${TMPDIR}/"
-  cp -r shared "${TMPDIR}/shared"
-  (cd "${TMPDIR}" && zip -r "/tmp/semiconductor-eda-${func}.zip" . \
-    -x "*.pyc" "__pycache__/*" "shared/tests/*" "shared/cfn/*")
-  aws s3 cp "/tmp/semiconductor-eda-${func}.zip" \
-    "s3://${DEPLOY_BUCKET}/lambda/semiconductor-eda-${func}.zip" --region <your-region>
-  rm -rf "${TMPDIR}"
-done
-```
-
-### 4. AWS SAM部署
+### 3. AWS SAM部署
 
 この手順では、AWS CloudFormationを使用してAWS Lambdaファンクションを含むインフラストラクチャをデプロイします。cloudformation.yamlテンプレートファイルを使用して、Lambdaファンクション、Amazon S3バケット、AWS Step Functionsステートマシンなどのリソースを作成します。このプロセスでは、Amazon Athenaクエリを実行してAmazon FSx for ONTAPのファイルを処理することも行います。Amazon CloudWatchのログ記録を設定して、デプロイの進行状況を監視できます。
 
@@ -234,7 +214,7 @@ sam deploy \
   --region <your-region>
 ```
 **重要**: `S3AccessPointName` 是 S3 AP 的名稱(非別名,而是在建立時指定的名稱)。在 IAM 政策中會使用基於 ARN 的授權。如果省略,可能會發生 `AccessDenied` 錯誤。
-### 5. 確認 SNS 訂閱
+### 4. 確認 SNS 訂閱
 
 Amazon SNS 主題已成功建立。現在請確認是否已建立正確的訂閱。可以在 AWS Management Console 中的 Amazon SNS 服務控制台中查看訂閱詳細資訊。
 
@@ -242,7 +222,7 @@ Amazon SNS 主題是用來接收來自 AWS Lambda 函數的通知。您可以設
 
 如果一切設定正確,當 AWS Lambda 函數執行時,您應該會收到相關通知。
 部署後,將向指定的電子郵件地址發送確認郵件。請點擊鏈接進行確認。
-### 6. 動作確認
+### 5. 動作確認
 
 將設計檔案匯出為 `GDSII` 格式,並通過 DRC 檢查。成功後,將檔案轉換為 `OASIS` 格式並上傳至 Amazon S3。
 
@@ -257,22 +237,14 @@ aws stepfunctions start-execution \
   --region <your-region>
 ```
 **注意**:初次執行可能會導致 Amazon Athena 的 DRC 彙總結果為 0 筆。這是因為 AWS Glue 表格的元數據更新需要一些時間延遲。從第二次執行開始即可獲得正確的統計數據。
-### 使用不同模板
-
-Amazon Bedrock 可為您設計自訂矽晶片。您可使用AWS Step Functions協調多個服務,如Amazon Athena、Amazon S3 和AWS Lambda,以自動化複雜的工作流程。在 Amazon FSx for ONTAP 上,您可存儲和分析大量資料,並以 Amazon CloudWatch 監視系統健康狀況。使用AWS CloudFormation建立和管理資源堆疊。
-
-| テンプレート | 用途 | Lambda コード |
-|-------------|------|--------------|
-| `template.yaml` | SAM CLI でのローカル開発・テスト | インラインパス参照（`sam build` が必要） |
-| `template-deploy.yaml` | 本番デプロイ | S3 バケットから zip 取得 |
-`template-deploy.yaml` 檔案應該用於生產環境部署,因為它已經處理了 SAM Transform。您可以直接使用 `aws cloudformation deploy` 命令進行部署。
+> **注意**: `template.yaml` 用於 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，請改用 `template-deploy.yaml`（需要預先封裝 Lambda zip 檔案並上傳至 S3 儲存貯體）。
 ## 參數設定列表
 
 Amazon Bedrock是一項完整的無伺服器機器學習服務,可讓您輕鬆建立、訓練和部署高度可用和可擴展的機器學習模型。AWS Step Functions提供狀態自動化和順序控制服務,可協助您協調分散式應用程式和微服務。Amazon Athena是一種交互式查詢服務,可用於使用標準SQL查詢從Amazon S3直接分析數據。AWS Lambda是無伺服器計算服務,可讓您運行代碼而無需管理服務器。Amazon FSx for ONTAP是一種完全受管的第三方檔案儲存服務,提供高性能的NetApp ONTAP文件系統。Amazon CloudWatch是一種監控和觀察服務,可幫助您理解您的應用程式和微服務,並有效地進行運營。AWS CloudFormation是一項基於模板的服務,可自動化和簡化AWS資源的部署和管理。
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `DeployBucket` | Lambda zip を格納する S3 バケット名 | — | ✅ |
 | `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |

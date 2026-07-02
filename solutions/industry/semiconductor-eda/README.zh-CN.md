@@ -208,50 +208,7 @@ aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip_v2.gds2 \
   "s3://${S3AP_ALIAS}/eda-designs/test_chip_v2.gds2" --region <your-region>
 ```
 
-### 3. 创建 Lambda 部署软件包
-
-AWS Lambda 函数需要一个部署软件包才能运行。这个软件包可以是一个 ZIP 文件,其中包含您的代码和任何依赖项。在本教程中,您将创建一个简单的 `hello-world` Lambda 函数,并将其部署为一个 ZIP 文件。
-
-您可以使用以下步骤创建部署软件包:
-
-1. 在您的本地机器上创建一个新目录,例如 `hello-world`。
-2. 在此目录中创建一个新的 Python 文件,例如 `lambda_function.py`,并添加以下代码:
-
-   ```python
-   def lambda_handler(event, context):
-       return {
-           'statusCode': 200,
-           'body': 'Hello from AWS Lambda!'
-       }
-   ```
-
-3. 使用以下命令创建 ZIP 文件:
-
-   ```
-   zip -r hello-world.zip lambda_function.py
-   ```
-
-现在您已经准备好将此 ZIP 文件部署到 AWS Lambda 了。
-使用 `template-deploy.yaml` 时,需要将 Lambda 函数的代码作为 zip 包上传到 Amazon S3。
-```bash
-# デプロイ用 S3 バケットの作成
-DEPLOY_BUCKET="<your-deploy-bucket-name>"
-aws s3 mb "s3://${DEPLOY_BUCKET}" --region <your-region>
-
-# 各 Lambda 関数をパッケージング
-for func in discovery metadata_extraction drc_aggregation report_generation; do
-  TMPDIR=$(mktemp -d)
-  cp semiconductor-eda/functions/${func}/handler.py "${TMPDIR}/"
-  cp -r shared "${TMPDIR}/shared"
-  (cd "${TMPDIR}" && zip -r "/tmp/semiconductor-eda-${func}.zip" . \
-    -x "*.pyc" "__pycache__/*" "shared/tests/*" "shared/cfn/*")
-  aws s3 cp "/tmp/semiconductor-eda-${func}.zip" \
-    "s3://${DEPLOY_BUCKET}/lambda/semiconductor-eda-${func}.zip" --region <your-region>
-  rm -rf "${TMPDIR}"
-done
-```
-
-### 4. AWS SAM 部署
+### 3. AWS SAM 部署
 
 Amazon S3 を使用して、チップ設計ファイル(GDSII、DRC、OASIS、GDS)をアップロードします。AWS Step Functions を使用してチップ製造ワークフローを実行し、Amazon Athena と Amazon CloudWatch を使用してクエリとモニタリングを行います。AWS Lambda で独自のカスタムロジックを実装し、Amazon FSx for ONTAP を使用してファイルを管理します。最後に、AWS CloudFormation テンプレートを使用して、リソースの一括デプロイを行います。
 
@@ -281,7 +238,7 @@ sam deploy \
   --region <your-region>
 ```
 **重要**：`S3AccessPointName` 是 S3 访问点的名称（不是别名，而是创建时指定的名称）。在 IAM 策略中使用基于 ARN 的权限授予。如果省略可能会导致 `AccessDenied` 错误。
-### 5. 检查 SNS 订阅
+### 4. 检查 SNS 订阅
 
 サブスクリプションを確認するには、Amazon SNS コンソールを使用します。
 
@@ -289,7 +246,7 @@ sam deploy \
 2. 左側のナビゲーションで「Subscriptions」を選択する
 3. 作成したサブスクリプションが表示されることを確認する
 部署后,将向指定的电子邮件地址发送确认邮件。请点击链接进行确认。
-### 6. 操作确认
+### 5. 操作确认
 
 在完成所有设置和配置后,您需要确认整个工作流程是否如预期运行。您可以使用以下服务和工具来进行操作确认:
 
@@ -307,22 +264,8 @@ aws stepfunctions start-execution \
   --region <your-region>
 ```
 **注意**：在首次运行中，Amazon Athena 的 DRC 聚合结果可能为 0 条。这是因为 AWS Glue 表的元数据反映存在时间延迟。在第二次及以后的运行中将能获得正确的统计信息。
-### 使用适合的模板
-
-您可以根据不同的用例和要求选择合适的AWS服务。例如:
-
-- 对于无服务器应用程序,可以使用AWS Lambda和Amazon S3。
-- 对于复杂的数据处理工作流,可以使用AWS Step Functions。
-- 对于交互式分析,可以使用Amazon Athena。 
-- 对于企业级文件共享和存储,可以使用Amazon FSx for ONTAP。
-- 对于监控和报警,可以使用Amazon CloudWatch。
-- 对于自动化基础设施部署,可以使用AWS CloudFormation。
-
-| テンプレート | 用途 | Lambda コード |
-|-------------|------|--------------|
-| `template.yaml` | SAM CLI でのローカル開発・テスト | インラインパス参照（`sam build` が必要） |
-| `template-deploy.yaml` | 本番デプロイ | S3 バケットから zip 取得 |
-`template.yaml`直接使用于`aws cloudformation deploy`时需要进行SAM Transform处理。生产环境部署请使用`template-deploy.yaml`。
+> **注意**: `template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，请改用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3 存储桶）。
 ## 参数列表
 
 您可以使用以下参数来配置 AWS Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch 和 AWS CloudFormation:
@@ -338,7 +281,6 @@ aws stepfunctions start-execution \
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|----------|------|
-| `DeployBucket` | Lambda zip を格納する S3 バケット名 | — | ✅ |
 | `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
 | `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
 | `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |

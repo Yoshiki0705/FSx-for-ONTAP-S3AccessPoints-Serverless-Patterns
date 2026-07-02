@@ -20,6 +20,31 @@
 
 > 本模式提供技術架構指導，不構成法律、合規或監管建議。
 
+## 部署
+
+使用 AWS SAM CLI 部署（請將佔位參數替換為您的環境值）：
+
+```bash
+# 前提條件：需要 AWS SAM CLI。'sam build' 會自動封裝程式碼與共用層。
+sam build
+
+sam deploy \
+  --stack-name fsxn-agri-traceability \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-volume-ext-s3alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    VpcId=<your-vpc-id> \
+    PrivateSubnetIds=<subnet-1>,<subnet-2> \
+    ScheduleExpression="cron(0 0 * * ? *)" \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region ap-northeast-1
+```
+
+> **注意**: `template.yaml` 用於 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，請改用 `template-deploy.yaml`（需要預先封裝 Lambda zip 檔案並上傳至 S3 儲存貯體）。
+
 ## ⚠️ 效能注意事項
 
 - FSx for ONTAP 的吞吐量容量在 **NFS/SMB/S3 AP 之間共享**。使用 MapConcurrency=10 進行並行處理時可能影響同一卷上的其他工作負載。

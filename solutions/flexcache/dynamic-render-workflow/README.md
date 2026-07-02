@@ -124,6 +124,9 @@ sam deploy \
     SimulationMode=true
 ```
 
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
 ### ジョブ投入
 
 ```bash
@@ -163,7 +166,6 @@ aws stepfunctions start-execution \
 - [media-vfx/](../media-vfx/README.md)
 - [semiconductor-eda/](../semiconductor-eda/README.md)
 
-
 ## Success Metrics
 
 ### Outcome
@@ -180,10 +182,6 @@ aws stepfunctions start-execution \
 
 ### Measurement Method
 Step Functions 実行履歴、ONTAP REST API レスポンス、CloudWatch Metrics、コスト比較。
-
-
-
-
 
 ---
 
@@ -203,7 +201,6 @@ Step Functions 実行履歴、ONTAP REST API レスポンス、CloudWatch Metric
 | SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
 | CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
 | FlexCache ボリューム | FSx for ONTAP ストレージ料金に含む |
-
 
 ### 固定コスト（FSx for ONTAP — 既存環境前提）
 

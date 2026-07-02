@@ -28,6 +28,32 @@
 
 ---
 
+## 部署
+
+使用 AWS SAM CLI 部署（請將佔位參數替換為您的環境值）：
+
+```bash
+# パラメータファイルを編集
+cp params/staging.json params/flexcache-anycast-demo.json
+# 必要なパラメータを設定
+
+# デプロイ
+# 前提條件：需要 AWS SAM CLI。'sam build' 會自動封裝程式碼與共用層。
+sam build
+
+sam deploy \
+  --stack-name flexcache-anycast-demo \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --parameter-overrides \
+    SimulationMode=true \
+    CacheEndpoints="cache-a.example.com,cache-b.example.com" \
+    HealthCheckIntervalMinutes=5
+```
+
+> **注意**: `template.yaml` 用於 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，請改用 `template-deploy.yaml`（需要預先封裝 Lambda zip 檔案並上傳至 S3 儲存貯體）。
+
 ## Governance Note
 
 > 本模式提供技術架構指導。不構成法律、合規或監管建議。組織應諮詢合格的專業人員。
