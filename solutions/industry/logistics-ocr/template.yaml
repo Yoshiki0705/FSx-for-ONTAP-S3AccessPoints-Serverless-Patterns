@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -11,6 +7,20 @@ Description: >-
   サーバーレスワークフロー。Cross-Region Textract 対応。
 
 # =====================================================================
+# Globals (SAM)
+# =====================================================================
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures:
+      - arm64
+    MemorySize: !Ref LambdaMemorySize
+    Timeout: !Ref LambdaTimeout
+    Tracing: !If [EnableXRay, Active, PassThrough]
+    Tags:
+      UseCase: logistics-ocr
+
+# =====================================================================
 # Parameters
 # =====================================================================
 Parameters:
@@ -18,14 +28,6 @@ Parameters:
     Type: String
     Description: FSx for ONTAP S3 Access Point Alias (入力読み取り用)
     AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
-
-  S3AccessPointName:
-    Type: String
-    Default: ""
-    Description: |
-      入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
-      IAM アクセスを許可する（FSx for ONTAP S3 AP の permission 判定で両形式をサポート）。
-      空文字列の場合は alias 形式のみ許可。
 
   OntapSecretName:
     Type: String
@@ -123,6 +125,38 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: X-Ray トレーシングを有効化する
 
+  # --- OutputDestination (Pattern B: FSx for ONTAP S3 AP write-back) ---
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: >
+      AI/ML 成果物の書き込み先。STANDARD_S3（デフォルト）は新しい S3 バケットに書き込み。
+      FSXN_S3AP は FSx for ONTAP S3 Access Point 経由でオリジナルデータと同一ボリュームに
+      書き込み（"no data movement" パターン）。
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: >
+      入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
+      IAM アクセスを許可する（FSx for ONTAP S3 AP の permission 判定で両形式をサポート）。
+
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: OutputDestination=FSXN_S3AP 時の出力先 S3 AP Alias。空なら入力用 S3AccessPointAlias を再利用。
+
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: 出力用 S3 AP の名前。空なら S3AccessPointName を再利用。
+
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: OutputDestination=FSXN_S3AP 時、全出力キーに付与するプレフィックス。
+
 
   # --- TriggerMode (Phase 11 Req 1) ---
   TriggerMode:
@@ -144,8 +178,6 @@ Parameters:
 # Conditions
 # =====================================================================
 Conditions:
-  HasS3AccessPointName:
-    !Not [!Equals [!Ref S3AccessPointName, ""]]
   CreateCloudWatchAlarms:
     !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateVpcEndpoints:
@@ -156,6 +188,18 @@ Conditions:
       - !Not [!Equals [!Select [0, !Ref PrivateRouteTableIds], ""]]
   UseAutoOutputBucket:
     !Equals [!Ref OutputBucketName, ""]
+
+  # --- OutputDestination Conditions ---
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  UseInputApAsOutputAp:
+    !Equals [!Ref OutputS3APAlias, ""]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
 
   EnableXRay:
     !Equals [!Ref EnableXRayTracing, "true"]
@@ -179,7 +223,7 @@ Conditions:
 # =====================================================================
 Resources:
 
-  # S3 Output Bucket (SSE-KMS)
+  # S3 Output Bucket (SSE-KMS) — created only for STANDARD_S3 output
   OutputBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -417,8 +461,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -462,8 +518,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -513,8 +581,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -558,8 +638,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: SNSPublish
                 Effect: Allow
                 Action:
@@ -581,18 +673,33 @@ Resources:
                   - xray:PutTelemetryRecords
                 Resource: "*"
 
+  # Shared Lambda Layer (shared/ module)
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
   # Lambda Functions
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.13
-      Handler: logistics-ocr/functions/discovery/handler.handler
-      MemorySize: !Ref LambdaMemorySize
-      Timeout: !Ref LambdaTimeout
+      Handler: handler.handler
+      CodeUri: functions/discovery/
       Role: !GetAtt DiscoveryLambdaRole.Arn
+      Layers:
+        - !Ref SharedLayer
       VpcConfig:
         SecurityGroupIds:
           - !Ref LambdaSecurityGroup
@@ -609,101 +716,106 @@ Resources:
           VERIFY_SSL: "false"
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
-      Tags:
-        - Key: UseCase
-          Value: logistics-ocr
 
   OcrFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
-      Runtime: python3.13
-      Handler: logistics-ocr/functions/ocr/handler.handler
-      MemorySize: !Ref LambdaMemorySize
-      Timeout: !Ref LambdaTimeout
+      Handler: handler.handler
+      CodeUri: functions/ocr/
       Role: !GetAtt OcrLambdaRole.Arn
+      Layers:
+        - !Ref SharedLayer
       Environment:
         Variables:
           USE_CASE: "logistics-ocr"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           CROSS_REGION: !Ref CrossRegion
           CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
       LoggingConfig:
         LogGroup: !Ref OcrLogGroup
-      Tags:
-        - Key: UseCase
-          Value: logistics-ocr
 
   DataStructuringFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-data-structuring"
-      Runtime: python3.13
-      Handler: logistics-ocr/functions/data_structuring/handler.handler
-      MemorySize: !Ref LambdaMemorySize
-      Timeout: !Ref LambdaTimeout
+      Handler: handler.handler
+      CodeUri: functions/data_structuring/
       Role: !GetAtt DataStructuringLambdaRole.Arn
+      Layers:
+        - !Ref SharedLayer
       Environment:
         Variables:
           USE_CASE: "logistics-ocr"
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
       LoggingConfig:
         LogGroup: !Ref DataStructuringLogGroup
-      Tags:
-        - Key: UseCase
-          Value: logistics-ocr
 
   InventoryAnalysisFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-inventory-analysis"
-      Runtime: python3.13
-      Handler: logistics-ocr/functions/inventory_analysis/handler.handler
-      MemorySize: !Ref LambdaMemorySize
-      Timeout: !Ref LambdaTimeout
+      Handler: handler.handler
+      CodeUri: functions/inventory_analysis/
       Role: !GetAtt InventoryAnalysisLambdaRole.Arn
+      Layers:
+        - !Ref SharedLayer
       Environment:
         Variables:
           USE_CASE: "logistics-ocr"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
       LoggingConfig:
         LogGroup: !Ref InventoryAnalysisLogGroup
-      Tags:
-        - Key: UseCase
-          Value: logistics-ocr
 
   ReportFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.13
-      Handler: logistics-ocr/functions/report/handler.handler
-      MemorySize: !Ref LambdaMemorySize
-      Timeout: !Ref LambdaTimeout
+      Handler: handler.handler
+      CodeUri: functions/report/
       Role: !GetAtt ReportLambdaRole.Arn
+      Layers:
+        - !Ref SharedLayer
       Environment:
         Variables:
           USE_CASE: "logistics-ocr"
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
       LoggingConfig:
         LogGroup: !Ref ReportLogGroup
-      Tags:
-        - Key: UseCase
-          Value: logistics-ocr
 
   # Step Functions State Machine
   StateMachineRole:

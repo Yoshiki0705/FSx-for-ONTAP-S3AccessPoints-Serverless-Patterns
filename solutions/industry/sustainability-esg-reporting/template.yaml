@@ -1,14 +1,15 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  UC20: 旅行・ホスピタリティ業界 — 予約文書処理/施設点検画像分析
-  FSx for NetApp ONTAP S3 Access Points を活用した予約文書の構造化抽出、
-  施設状態分析、トレンドレポート生成のサーバーレスワークフロー。
+  UC23: サステナビリティ・ESG レポーティング（本番デプロイ用）
+  FSx for NetApp ONTAP S3 Access Points を活用した ESG メトリクス抽出、
+  フレームワークマッピング、レポート生成のサーバーレスワークフロー。
 
 # =====================================================================
 # Parameters — Layer 1 (共通) + Layer 2 (拡張) + Layer 3 (TriggerMode) + Layer 4 (UC固有)
 # =====================================================================
 Parameters:
+
   # --- Layer 1: Phase 1 共通 ---
   S3AccessPointAlias:
     Type: String
@@ -18,7 +19,9 @@ Parameters:
   S3AccessPointName:
     Type: String
     Default: ""
-    Description: 入力用 S3 Access Point の名前（IAM ARN 用）
+    Description: |
+      入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
+      IAM アクセスを許可する。空文字列の場合は alias 形式のみ許可。
 
   S3AccessPointOutputAlias:
     Type: String
@@ -41,24 +44,19 @@ Parameters:
   ScheduleExpression:
     Type: String
     Default: "cron(0 0 * * ? *)"
-    Description: "EventBridge Scheduler スケジュール式"
+    Description: "EventBridge Scheduler スケジュール式 (デフォルト: 毎日 00:00 UTC)"
 
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: VPC ID
+    Description: Lambda 関数を配置する VPC ID
 
   PrivateSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-    Description: プライベートサブネット ID リスト
+    Description: Lambda 関数を配置するプライベートサブネット ID リスト
 
   PrivateRouteTableIds:
     Type: CommaDelimitedList
     Description: プライベートサブネットのルートテーブル ID リスト
-
-  OutputBucketName:
-    Type: String
-    Default: ""
-    Description: 出力バケット名（空の場合は自動作成）
 
   NotificationEmail:
     Type: String
@@ -70,68 +68,71 @@ Parameters:
     Default: 10
     MinValue: 1
     MaxValue: 100
+    Description: Step Functions Map State の並列度
 
   LambdaMemorySize:
     Type: Number
-    Default: 512
+    Default: 256
     AllowedValues: [128, 256, 512, 1024, 2048]
+    Description: Lambda 関数のメモリサイズ (MB)
 
   LambdaTimeout:
     Type: Number
     Default: 300
     MinValue: 30
     MaxValue: 900
+    Description: Lambda 関数のタイムアウト (秒)
 
   EnableCloudWatchAlarms:
     Type: String
     Default: "false"
     AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms を有効化する
 
   EnableVpcEndpoints:
     Type: String
     Default: "false"
     AllowedValues: ["true", "false"]
-
-  EnableXRayTracing:
-    Type: String
-    Default: "true"
-    AllowedValues: ["true", "false"]
+    Description: Interface VPC Endpoints を有効化する
 
   EnableS3GatewayEndpoint:
     Type: String
     Default: "true"
     AllowedValues: ["true", "false"]
+    Description: S3 Gateway VPC Endpoint を作成する
 
   BedrockModelId:
     Type: String
     Default: "anthropic.claude-haiku-4-5-20251001-v1:0"
-    Description: Bedrock モデル ID（メンテナンス推奨生成用）
+    Description: Bedrock モデル ID
 
   # --- Layer 3: TriggerMode ---
   TriggerMode:
     Type: String
     Default: "POLLING"
     AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: トリガーモード
 
   FPolicyEventBusName:
     Type: String
     Default: "fsxn-fpolicy-events"
+    Description: FPolicy EventBridge カスタムバス名
 
-  # --- Layer 4: UC20 固有 ---
-  CrossRegionTextractRegion:
+  # --- Layer 4: UC23 固有 ---
+  EsgReportPrefix:
+    Type: String
+    Default: "esg/"
+    Description: ESG レポートファイルのプレフィックス
+
+  FrameworkType:
+    Type: String
+    Default: "GRI,TCFD,ISSB"
+    Description: 対応フレームワーク（カンマ区切り）
+
+  TextractRegion:
     Type: String
     Default: "us-east-1"
-    Description: Textract を実行するリージョン (Cross-Region)
-
-  ReservationDocPrefix:
-    Type: String
-    Default: "reservations/"
-    Description: 予約文書の S3 プレフィックス
-
-  FacilityImagePrefix:
-    Type: String
-    Default: "facility-inspections/"
-    Description: 施設点検画像の S3 プレフィックス
+    Description: Textract リージョン (Cross-Region)
 
 # =====================================================================
 # Conditions
@@ -139,30 +140,20 @@ Parameters:
 Conditions:
   HasS3AccessPointName:
     !Not [!Equals [!Ref S3AccessPointName, ""]]
-  HasOutputBucketName:
-    !Not [!Equals [!Ref OutputBucketName, ""]]
   CreateVpcEndpoints:
     !Equals [!Ref EnableVpcEndpoints, "true"]
   CreateCloudWatchAlarms:
     !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateS3GatewayEndpoint:
     !Equals [!Ref EnableS3GatewayEndpoint, "true"]
-  EnableXRay:
-    !Equals [!Ref EnableXRayTracing, "true"]
-  IsPolling:
-    !Equals [!Ref TriggerMode, "POLLING"]
-  IsEventDriven:
-    !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
-  IsHybrid:
-    !Equals [!Ref TriggerMode, "HYBRID"]
   IsPollingOrHybrid:
     !Or
-      - !Condition IsPolling
-      - !Condition IsHybrid
+      - !Equals [!Ref TriggerMode, "POLLING"]
+      - !Equals [!Ref TriggerMode, "HYBRID"]
   IsEventDrivenOrHybrid:
     !Or
-      - !Condition IsEventDriven
-      - !Condition IsHybrid
+      - !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+      - !Equals [!Ref TriggerMode, "HYBRID"]
 
 # =====================================================================
 # Resources
@@ -184,31 +175,6 @@ Resources:
     Metadata:
       BuildMethod: makefile
       BuildArchitecture: arm64
-
-  # -----------------------------------------------------------------
-  # Output Bucket (conditional)
-  # -----------------------------------------------------------------
-  OutputBucket:
-    Type: AWS::S3::Bucket
-    Condition: HasOutputBucketName
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      BucketName: !Ref OutputBucketName
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: aws:kms
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      VersioningConfiguration:
-        Status: Enabled
-      Tags:
-        - Key: UseCase
-          Value: travel-document-processing
 
   # -----------------------------------------------------------------
   # SNS Topic + Email Subscription
@@ -265,16 +231,16 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
       RetentionInDays: 14
 
-  ReservationExtractorLogGroup:
+  MetricsExtractorLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-reservation-extractor"
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-metrics-extractor"
       RetentionInDays: 14
 
-  FacilityInspectorLogGroup:
+  FrameworkMapperLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-facility-inspector"
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-framework-mapper"
       RetentionInDays: 14
 
   ReportLogGroup:
@@ -340,17 +306,11 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
-              - Sid: XRayTracing
-                Effect: Allow
-                Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                Resource: "*"
 
-  ReservationExtractorLambdaRole:
+  MetricsExtractorLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${AWS::StackName}-reservation-extractor-role"
+      RoleName: !Sub "${AWS::StackName}-metrics-extractor-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -361,7 +321,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
-        - PolicyName: ReservationExtractorPolicy
+        - PolicyName: MetricsExtractorPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -371,83 +331,17 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
-                  - !If
-                    - HasS3AccessPointName
-                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
-                    - !Ref AWS::NoValue
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
-              - Sid: TextractCrossRegion
+              - Sid: Textract
                 Effect: Allow
                 Action:
                   - textract:AnalyzeDocument
                   - textract:DetectDocumentText
-                Resource: "*"
-              - Sid: Comprehend
-                Effect: Allow
-                Action:
-                  - comprehend:DetectDominantLanguage
-                  - comprehend:DetectEntities
-                  - comprehend:DetectKeyPhrases
-                Resource: "*"
-              - Sid: CloudWatchLogs
-                Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - !GetAtt ReservationExtractorLogGroup.Arn
-                  - !Sub "${ReservationExtractorLogGroup.Arn}:*"
-              - Sid: XRayTracing
-                Effect: Allow
-                Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                Resource: "*"
-
-  FacilityInspectorLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-facility-inspector-role"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: FacilityInspectorPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Sid: S3AccessPointRead
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
-                  - !If
-                    - HasS3AccessPointName
-                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
-                    - !Ref AWS::NoValue
-              - Sid: S3AccessPointOutput
-                Effect: Allow
-                Action:
-                  - s3:PutObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
-              - Sid: Rekognition
-                Effect: Allow
-                Action:
-                  - rekognition:DetectLabels
-                  - rekognition:DetectModerationLabels
                 Resource: "*"
               - Sid: Bedrock
                 Effect: Allow
@@ -461,14 +355,48 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !GetAtt FacilityInspectorLogGroup.Arn
-                  - !Sub "${FacilityInspectorLogGroup.Arn}:*"
-              - Sid: XRayTracing
+                  - !GetAtt MetricsExtractorLogGroup.Arn
+                  - !Sub "${MetricsExtractorLogGroup.Arn}:*"
+
+  FrameworkMapperLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-framework-mapper-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: FrameworkMapperPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Output
                 Effect: Allow
                 Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                Resource: "*"
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt FrameworkMapperLogGroup.Arn
+                  - !Sub "${FrameworkMapperLogGroup.Arn}:*"
 
   ReportLambdaRole:
     Type: AWS::IAM::Role
@@ -508,20 +436,13 @@ Resources:
                 Resource:
                   - !GetAtt ReportLogGroup.Arn
                   - !Sub "${ReportLogGroup.Arn}:*"
-              - Sid: XRayTracing
-                Effect: Allow
-                Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                Resource: "*"
 
   # -----------------------------------------------------------------
-  # Lambda Functions
+  # Lambda Functions (Production — S3 deploy packages)
   # -----------------------------------------------------------------
   DiscoveryFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: handler.handler
@@ -537,11 +458,10 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
-          USE_CASE: "travel-document-processing"
+          USE_CASE: "sustainability-esg-reporting"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
-          RESERVATION_DOC_PREFIX: !Ref ReservationDocPrefix
-          FACILITY_IMAGE_PREFIX: !Ref FacilityImagePrefix
+          PREFIX_FILTER: !Ref EsgReportPrefix
           ONTAP_SECRET_NAME: !Ref OntapSecretName
           ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
           SVM_UUID: !Ref SvmUuid
@@ -549,60 +469,58 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        UseCase: travel-document-processing
+        UseCase: sustainability-esg-reporting
 
-  ReservationExtractorFunction:
+  MetricsExtractorFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Tracing: !If [EnableXRay, "Active", "PassThrough"]
-      FunctionName: !Sub "${AWS::StackName}-reservation-extractor"
+      FunctionName: !Sub "${AWS::StackName}-metrics-extractor"
       Runtime: python3.12
       Handler: handler.handler
-      CodeUri: functions/reservation_extractor/
+      CodeUri: functions/metrics_extractor/
       Layers:
         - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
-      Role: !GetAtt ReservationExtractorLambdaRole.Arn
+      Role: !GetAtt MetricsExtractorLambdaRole.Arn
       Environment:
         Variables:
-          USE_CASE: "travel-document-processing"
-          S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
-          CROSS_REGION_TEXTRACT_REGION: !Ref CrossRegionTextractRegion
-      LoggingConfig:
-        LogGroup: !Ref ReservationExtractorLogGroup
-      Tags:
-        UseCase: travel-document-processing
-
-  FacilityInspectorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Tracing: !If [EnableXRay, "Active", "PassThrough"]
-      FunctionName: !Sub "${AWS::StackName}-facility-inspector"
-      Runtime: python3.12
-      Handler: handler.handler
-      CodeUri: functions/facility_inspector/
-      Layers:
-        - !Ref SharedLayer
-      MemorySize: !Ref LambdaMemorySize
-      Timeout: !Ref LambdaTimeout
-      Role: !GetAtt FacilityInspectorLambdaRole.Arn
-      Environment:
-        Variables:
-          USE_CASE: "travel-document-processing"
+          USE_CASE: "sustainability-esg-reporting"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           BEDROCK_MODEL_ID: !Ref BedrockModelId
+          TEXTRACT_REGION: !Ref TextractRegion
       LoggingConfig:
-        LogGroup: !Ref FacilityInspectorLogGroup
+        LogGroup: !Ref MetricsExtractorLogGroup
       Tags:
-        UseCase: travel-document-processing
+        UseCase: sustainability-esg-reporting
+
+  FrameworkMapperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-framework-mapper"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: functions/framework_mapper/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt FrameworkMapperLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "sustainability-esg-reporting"
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          FRAMEWORK_TYPE: !Ref FrameworkType
+      LoggingConfig:
+        LogGroup: !Ref FrameworkMapperLogGroup
+      Tags:
+        UseCase: sustainability-esg-reporting
 
   ReportFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
       Runtime: python3.12
       Handler: handler.handler
@@ -614,17 +532,16 @@ Resources:
       Role: !GetAtt ReportLambdaRole.Arn
       Environment:
         Variables:
-          USE_CASE: "travel-document-processing"
+          USE_CASE: "sustainability-esg-reporting"
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           SNS_TOPIC_ARN: !Ref NotificationTopic
       LoggingConfig:
         LogGroup: !Ref ReportLogGroup
       Tags:
-        UseCase: travel-document-processing
+        UseCase: sustainability-esg-reporting
 
   # -----------------------------------------------------------------
   # Step Functions State Machine
-  # Discovery → ReservationMap → FacilityMap → Report
   # -----------------------------------------------------------------
   StateMachineRole:
     Type: AWS::IAM::Role
@@ -648,122 +565,72 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - !GetAtt DiscoveryFunction.Arn
-                  - !GetAtt ReservationExtractorFunction.Arn
-                  - !GetAtt FacilityInspectorFunction.Arn
+                  - !GetAtt MetricsExtractorFunction.Arn
+                  - !GetAtt FrameworkMapperFunction.Arn
                   - !GetAtt ReportFunction.Arn
 
-  TravelStateMachine:
+  EsgStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
-      TracingConfiguration:
-        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |
         {
-          "Comment": "UC20: Travel Document Processing - Discovery → Reservation Map → Facility Map → Report",
+          "Comment": "UC23: Sustainability ESG Reporting - Discovery → Metrics Map → Framework Mapper → Report",
           "StartAt": "Discovery",
           "States": {
             "Discovery": {
               "Type": "Task",
               "Resource": "${DiscoveryFunction.Arn}",
               "ResultPath": "$.discovery",
-              "Next": "ReservationExtractorMap",
-              "Retry": [
-                {
-                  "ErrorEquals": ["States.TaskFailed"],
-                  "IntervalSeconds": 5,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2.0
-                }
-              ]
+              "Next": "CheckObjectsFound",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2.0}]
             },
-            "ReservationExtractorMap": {
+            "CheckObjectsFound": {
+              "Type": "Choice",
+              "Choices": [{"Variable": "$.discovery.total_objects", "NumericGreaterThan": 0, "Next": "MetricsExtractorMap"}],
+              "Default": "ReportGeneration"
+            },
+            "MetricsExtractorMap": {
               "Type": "Map",
-              "ItemsPath": "$.discovery.reservation_docs",
+              "ItemsPath": "$.discovery.objects",
               "MaxConcurrency": ${MapConcurrency},
-              "ResultPath": "$.reservation_results",
-              "Next": "FacilityInspectorMap",
+              "ResultPath": "$.metrics_results",
+              "Next": "FrameworkMapper",
               "ItemProcessor": {
-                "ProcessorConfig": { "Mode": "INLINE" },
-                "StartAt": "ExtractReservation",
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "ExtractMetrics",
                 "States": {
-                  "ExtractReservation": {
+                  "ExtractMetrics": {
                     "Type": "Task",
-                    "Resource": "${ReservationExtractorFunction.Arn}",
-                    "Retry": [
-                      {
-                        "ErrorEquals": ["States.TaskFailed"],
-                        "IntervalSeconds": 10,
-                        "MaxAttempts": 3,
-                        "BackoffRate": 2.0
-                      }
-                    ],
-                    "Catch": [
-                      {
-                        "ErrorEquals": ["States.ALL"],
-                        "ResultPath": "$.error",
-                        "Next": "MarkReservationFailed"
-                      }
-                    ],
+                    "Resource": "${MetricsExtractorFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkMetricsFailed"}],
                     "End": true
                   },
-                  "MarkReservationFailed": {
-                    "Type": "Pass",
-                    "Result": {"status": "FAILED"},
-                    "End": true
-                  }
+                  "MarkMetricsFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
                 }
               }
             },
-            "FacilityInspectorMap": {
-              "Type": "Map",
-              "ItemsPath": "$.discovery.facility_images",
-              "MaxConcurrency": ${MapConcurrency},
-              "ResultPath": "$.facility_results",
-              "Next": "GenerateReport",
-              "ItemProcessor": {
-                "ProcessorConfig": { "Mode": "INLINE" },
-                "StartAt": "InspectFacility",
-                "States": {
-                  "InspectFacility": {
-                    "Type": "Task",
-                    "Resource": "${FacilityInspectorFunction.Arn}",
-                    "Retry": [
-                      {
-                        "ErrorEquals": ["States.TaskFailed"],
-                        "IntervalSeconds": 10,
-                        "MaxAttempts": 3,
-                        "BackoffRate": 2.0
-                      }
-                    ],
-                    "Catch": [
-                      {
-                        "ErrorEquals": ["States.ALL"],
-                        "ResultPath": "$.error",
-                        "Next": "MarkFacilityFailed"
-                      }
-                    ],
-                    "End": true
-                  },
-                  "MarkFacilityFailed": {
-                    "Type": "Pass",
-                    "Result": {"status": "FAILED"},
-                    "End": true
-                  }
-                }
-              }
+            "FrameworkMapper": {
+              "Type": "Task",
+              "Resource": "${FrameworkMapperFunction.Arn}",
+              "ResultPath": "$.framework_result",
+              "Next": "ReportGeneration",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}]
             },
-            "GenerateReport": {
+            "ReportGeneration": {
               "Type": "Task",
               "Resource": "${ReportFunction.Arn}",
-              "End": true
+              "ResultPath": "$.report",
+              "End": true,
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}]
             }
           }
         }
 
   # -----------------------------------------------------------------
-  # EventBridge Scheduler (conditional — POLLING or HYBRID)
+  # EventBridge Scheduler (conditional)
   # -----------------------------------------------------------------
   SchedulerRole:
     Type: AWS::IAM::Role
@@ -778,15 +645,17 @@ Resources:
               Service: scheduler.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: StartExecution
+        - PolicyName: SchedulerPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: states:StartExecution
-                Resource: !GetAtt TravelStateMachine.Arn
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref EsgStateMachine
 
-  WorkflowSchedule:
+  EsgSchedule:
     Type: AWS::Scheduler::Schedule
     Condition: IsPollingOrHybrid
     Properties:
@@ -795,13 +664,14 @@ Resources:
       FlexibleTimeWindow:
         Mode: "OFF"
       Target:
-        Arn: !GetAtt TravelStateMachine.Arn
+        Arn: !Ref EsgStateMachine
         RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
 
   # -----------------------------------------------------------------
   # CloudWatch Alarms (conditional)
   # -----------------------------------------------------------------
-  StateMachineFailureAlarm:
+  StepFunctionsFailureAlarm:
     Type: AWS::CloudWatch::Alarm
     Condition: CreateCloudWatchAlarms
     Properties:
@@ -811,12 +681,33 @@ Resources:
       MetricName: ExecutionsFailed
       Dimensions:
         - Name: StateMachineArn
-          Value: !GetAtt TravelStateMachine.Arn
+          Value: !Ref EsgStateMachine
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  ReportErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-report-errors"
+      AlarmDescription: Report Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ReportFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
       AlarmActions:
         - !Ref NotificationTopic
 
@@ -825,20 +716,25 @@ Resources:
 # =====================================================================
 Outputs:
   StateMachineArn:
-    Value: !GetAtt TravelStateMachine.Arn
     Description: Step Functions State Machine ARN
-
-  DiscoveryFunctionArn:
-    Value: !GetAtt DiscoveryFunction.Arn
-
-  ReservationExtractorFunctionArn:
-    Value: !GetAtt ReservationExtractorFunction.Arn
-
-  FacilityInspectorFunctionArn:
-    Value: !GetAtt FacilityInspectorFunction.Arn
-
-  ReportFunctionArn:
-    Value: !GetAtt ReportFunction.Arn
+    Value: !Ref EsgStateMachine
 
   NotificationTopicArn:
+    Description: SNS Notification Topic ARN
     Value: !Ref NotificationTopic
+
+  DiscoveryFunctionArn:
+    Description: Discovery Lambda Function ARN
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  MetricsExtractorFunctionArn:
+    Description: Metrics Extractor Lambda Function ARN
+    Value: !GetAtt MetricsExtractorFunction.Arn
+
+  FrameworkMapperFunctionArn:
+    Description: Framework Mapper Lambda Function ARN
+    Value: !GetAtt FrameworkMapperFunction.Arn
+
+  ReportFunctionArn:
+    Description: Report Lambda Function ARN
+    Value: !GetAtt ReportFunction.Arn

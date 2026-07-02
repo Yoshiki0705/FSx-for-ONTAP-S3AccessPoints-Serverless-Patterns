@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -185,7 +181,37 @@ Parameters:
 # =====================================================================
 # Conditions
 # =====================================================================
+  # --- OutputDestination (Pattern B: FSx for ONTAP S3 AP write-back) ---
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: >
+      AI/ML 成果物の書き込み先。STANDARD_S3 は新規 S3 バケット、FSXN_S3AP は FSx for ONTAP
+      S3 Access Point 経由でオリジナルと同一ボリュームへ書き戻す（no data movement）。
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: FSXN_S3AP 出力先 S3 AP Alias。空なら入力 S3AccessPointAlias を再利用。
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: 出力用 S3 AP 名。空なら S3AccessPointName を再利用。
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: FSXN_S3AP 出力キーのプレフィックス。
+
 Conditions:
+  # --- OutputDestination Conditions ---
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  UseInputApAsOutputAp:
+    !Equals [!Ref OutputS3APAlias, ""]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
   HasS3AccessPointName:
     !Not [!Equals [!Ref S3AccessPointName, ""]]
   CreateCloudWatchAlarms:
@@ -225,6 +251,22 @@ Conditions:
 # Resources
 # =====================================================================
 Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
   # -----------------------------------------------------------------
   # S3 Output Bucket (SSE-KMS)
@@ -482,8 +524,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -529,8 +583,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -582,8 +648,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: SNSPublish
                 Effect: Allow
                 Action:
@@ -609,13 +687,15 @@ Resources:
   # Lambda Functions
   # -----------------------------------------------------------------
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.13
-      Handler: autonomous-driving/functions/discovery/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -636,17 +716,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        - Key: UseCase
-          Value: autonomous-driving
+        UseCase: autonomous-driving
 
   FrameExtractionFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-frame-extraction"
       Runtime: python3.13
-      Handler: autonomous-driving/functions/frame_extraction/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/frame_extraction/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt FrameExtractionLambdaRole.Arn
@@ -654,22 +735,30 @@ Resources:
         Variables:
           USE_CASE: "autonomous-driving"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           FRAME_INTERVAL: !Ref FrameInterval
       LoggingConfig:
         LogGroup: !Ref FrameExtractionLogGroup
       Tags:
-        - Key: UseCase
-          Value: autonomous-driving
+        UseCase: autonomous-driving
 
   PointCloudQcFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-point-cloud-qc"
       Runtime: python3.13
-      Handler: autonomous-driving/functions/point_cloud_qc/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/point_cloud_qc/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt PointCloudQcLambdaRole.Arn
@@ -677,36 +766,50 @@ Resources:
         Variables:
           USE_CASE: "autonomous-driving"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref PointCloudQcLogGroup
       Tags:
-        - Key: UseCase
-          Value: autonomous-driving
+        UseCase: autonomous-driving
 
   AnnotationManagerFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-annotation-manager"
       Runtime: python3.13
-      Handler: autonomous-driving/functions/annotation_manager/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/annotation_manager/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt AnnotationManagerLambdaRole.Arn
       Environment:
         Variables:
           USE_CASE: "autonomous-driving"
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           SNS_TOPIC_ARN: !Ref NotificationTopic
           SAGEMAKER_TRANSFORM_JOB_NAME: !Ref SageMakerTransformJobName
       LoggingConfig:
         LogGroup: !Ref AnnotationManagerLogGroup
       Tags:
-        - Key: UseCase
-          Value: autonomous-driving
+        UseCase: autonomous-driving
 
   # -----------------------------------------------------------------
   # Step Functions State Machine
@@ -1246,8 +1349,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -1309,8 +1424,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: StepFunctionsSendTask
                 Effect: Allow
                 Action:
@@ -1427,14 +1554,16 @@ Resources:
   # SageMaker Invoke Lambda Function
   # -----------------------------------------------------------------
   SageMakerInvokeFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Condition: CreateSageMakerResources
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-sagemaker-invoke"
       Runtime: python3.13
-      Handler: autonomous-driving/functions/sagemaker_invoke/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/sagemaker_invoke/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt SageMakerInvokeLambdaRole.Arn
@@ -1443,7 +1572,14 @@ Resources:
           MOCK_MODE: !Ref MockMode
           SAGEMAKER_MODEL_NAME: !Ref SageMakerModelName
           SAGEMAKER_INSTANCE_TYPE: !Ref SageMakerInstanceType
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           USE_CASE: autonomous-driving
           REGION: !Ref "AWS::Region"
           TOKEN_STORAGE_MODE: !If [CreateTokenStore, "dynamodb", "direct"]
@@ -1452,25 +1588,24 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref SageMakerInvokeLogGroup
       Tags:
-        - Key: UseCase
-          Value: autonomous-driving
-        - Key: Phase
-          Value: "3"
-        - Key: Component
-          Value: sagemaker
+        UseCase: autonomous-driving
+        Phase: "3"
+        Component: sagemaker
 
   # -----------------------------------------------------------------
   # SageMaker Callback Lambda Function
   # -----------------------------------------------------------------
   SageMakerCallbackFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Condition: CreateSageMakerResources
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-sagemaker-callback"
       Runtime: python3.13
-      Handler: autonomous-driving/functions/sagemaker_callback/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/sagemaker_callback/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt SageMakerCallbackLambdaRole.Arn
@@ -1484,12 +1619,9 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref SageMakerCallbackLogGroup
       Tags:
-        - Key: UseCase
-          Value: autonomous-driving
-        - Key: Phase
-          Value: "3"
-        - Key: Component
-          Value: sagemaker
+        UseCase: autonomous-driving
+        Phase: "3"
+        Component: sagemaker
 
   # -----------------------------------------------------------------
   # EventBridge Rule: SageMaker Transform Job State Change
