@@ -47,7 +47,7 @@
 使用 AWS SAM CLI 部署（请将占位符替换为您的环境值）：
 
 ```bash
-# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包函数代码。
 sam build
 
 sam deploy \
