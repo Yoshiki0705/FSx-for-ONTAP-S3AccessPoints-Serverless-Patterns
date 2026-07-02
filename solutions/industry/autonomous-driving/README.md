@@ -32,7 +32,6 @@ FSx for ONTAP の S3 Access Points を活用し、ダッシュカム映像と Li
 - SageMaker Batch Transform による点群セグメンテーション推論
 - COCO 互換 JSON 形式でのアノテーション出力
 
-
 ## Success Metrics
 
 ### Outcome
@@ -116,6 +115,9 @@ sam deploy \
   --resolve-s3 \
   --region ap-northeast-1
 ```
+
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
 
 ## 設定パラメータ一覧
 
@@ -216,7 +218,6 @@ UC9 は以下のサービスを使用します:
 
 > SageMaker Batch Transform を有効化する場合、デプロイ前に [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) でターゲットリージョンのインスタンスタイプ可用性を確認してください。詳細は [リージョン互換性マトリックス](../docs/region-compatibility.md) を参照。
 
-
 ---
 
 ## AWS ドキュメントリンク
@@ -241,10 +242,6 @@ UC9 は以下のサービスを使用します:
 | コスト最適化 | サーバーレス、SageMaker スポットインスタンス対応 |
 | 持続可能性 | オンデマンド実行、差分処理（新規フレームのみ） |
 
-
-
-
-
 ---
 
 ## コスト見積もり（月額概算）
@@ -263,7 +260,6 @@ UC9 は以下のサービスを使用します:
 | SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
 | CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
 | SageMaker Inference | $0.046/hour (ml.m5.large) |
-
 
 ### 固定コスト（FSx for ONTAP — 既存環境前提）
 

@@ -106,6 +106,30 @@ User Query → Permission Filter → Vector Search → Bedrock Answer Generation
 - Manufacturing (design documents, quality management)
 - Government (official documents, policy documents)
 
+## Deployment
+
+Deploy with the AWS SAM CLI (replace the placeholders for your environment):
+
+```bash
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
+  --stack-name fsxn-rag-enterprise-files \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
+> **About file-level ACL extraction**: by default, ACL extraction runs in simulation mode (no ONTAP required). To extract real ACLs, set `OntapManagementIp` / `OntapSecretName`. Note that this template does not include a `VpcConfig`, so reaching a private ONTAP management LIF requires additional network configuration.
+
 ## Success Metrics
 
 | Metric | Target |

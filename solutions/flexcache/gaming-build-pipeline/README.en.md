@@ -29,6 +29,28 @@ Automated asset quality checking and build log analysis pipeline for game develo
 - **Build cache**: Fast asset reads from CI/CD pipelines
 - **Version management**: Delta delivery between asset versions
 
+## Deployment
+
+Deploy with the AWS SAM CLI (replace the placeholders for your environment):
+
+```bash
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
+  --stack-name fsxn-gaming-build-pipeline \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
 ## Success Metrics
 
 | Metric | Target |

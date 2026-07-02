@@ -34,6 +34,30 @@ Un pattern qui fournit de manière sécurisée les documents confidentiels des s
 
 ---
 
+## Déploiement
+
+Déployez avec AWS SAM CLI (remplacez les valeurs d'exemple selon votre environnement) :
+
+```bash
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+sam deploy \
+  --stack-name fsxn-rag-enterprise-files \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **Remarque** : `template.yaml` est conçu pour être utilisé avec AWS SAM CLI (`sam build` + `sam deploy`).
+> Pour un déploiement direct avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite de packager au préalable les fichiers zip Lambda et de les téléverser dans un bucket S3).
+
+> **À propos de l'extraction d'ACL au niveau fichier** : par défaut, l'extraction d'ACL fonctionne en mode simulation (aucun ONTAP requis). Pour extraire des ACL réelles, définissez `OntapManagementIp` / `OntapSecretName`. Notez que ce modèle n'inclut pas de `VpcConfig` ; joindre un LIF de gestion ONTAP privé nécessite donc une configuration réseau supplémentaire.
+
 ## Note de gouvernance
 
 > Ce pattern fournit des conseils d'architecture technique. Il ne constitue pas un avis juridique, de conformité ou réglementaire. Les organisations doivent consulter des professionnels qualifiés.
