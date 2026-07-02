@@ -34,3 +34,5 @@ jobs:
         run: pip install cfn-lint
       - name: Lint deployment templates
         run: cfn-lint solutions/**/template-deploy.yaml --ignore-checks W || echo "::warning::cfn-lint found issues in deployment templates (non-blocking)"
+      - name: Validate self-contained SAM templates (Issue #53 regression guard)
+        run: python3 scripts/validate_sam_templates.py
