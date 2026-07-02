@@ -121,6 +121,23 @@ Resources:
                   - sns:Publish
                 Resource: !Ref NotificationTopic
 
+  # Shared Lambda Layer (shared/ module)
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (ontap_client, s3ap_helper, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
   # --- Lambda Functions ---
   DiscoveryFunction:
     Type: AWS::Serverless::Function
@@ -174,6 +191,8 @@ Resources:
       Timeout: 60
       MemorySize: 256
       Role: !GetAtt LambdaRole.Arn
+      Layers:
+        - !Ref SharedLayer
       Environment:
         Variables:
           ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
