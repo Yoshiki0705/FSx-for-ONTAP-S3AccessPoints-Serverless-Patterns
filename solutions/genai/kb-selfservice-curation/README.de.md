@@ -51,6 +51,32 @@ Dieser UC nutzt **managed Bedrock Knowledge Bases (Pattern C)**, um den Betriebs
 - NTFS-ACLs pro Ordner trennen Schreibrechte je Abteilung
 - Die S3-AP-Datenquellengrenze liegt auf Volume-/Präfixebene (Sichtbarkeitssteuerung pro Nutzer ist außerhalb des Umfangs)
 
+## Bereitstellung
+
+Stellen Sie mit der AWS SAM CLI bereit (ersetzen Sie die Platzhalter für Ihre Umgebung):
+
+> **Bereitstellungsvoraussetzung**: Diese Vorlage setzt eine vorhandene Amazon Bedrock Knowledge Base und Datenquelle (mit dem S3 AP verbunden) voraus. Da die Erstellung des OpenSearch-Serverless-Vektorindex nicht CloudFormation-nativ ist, erstellen Sie die Knowledge Base zuerst und übergeben deren `KnowledgeBaseId` / `DataSourceId` als Parameter (mit `scripts/create_bedrock_kb.py` im Repo-Stammverzeichnis oder der Bedrock-Konsole).
+
+```bash
+# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+sam build
+
+sam deploy \
+  --stack-name fsxn-kb-selfservice-curation \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    KnowledgeBaseId=<your-kb-id> \
+    DataSourceId=<your-datasource-id> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **Hinweis**: `template.yaml` ist für die Verwendung mit der AWS SAM CLI (`sam build` + `sam deploy`) vorgesehen.
+> Für eine direkte Bereitstellung mit `aws cloudformation deploy` verwenden Sie stattdessen `template-deploy.yaml` (erfordert das vorherige Packen der Lambda-Zip-Dateien und das Hochladen in einen S3-Bucket).
+
 ## Governance Note
 
 > Dieses Muster bietet technische Architekturhinweise, keine rechtliche oder Compliance-Beratung. Konsultieren Sie qualifizierte Fachleute.

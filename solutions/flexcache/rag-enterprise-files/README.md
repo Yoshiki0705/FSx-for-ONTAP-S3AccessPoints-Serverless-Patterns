@@ -309,6 +309,30 @@ Permission-aware RAG パイプラインの出力例:
 
 ---
 
+## デプロイ
+
+AWS SAM CLI でデプロイします（プレースホルダは環境に合わせて置き換えてください）:
+
+```bash
+# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+sam build
+
+sam deploy \
+  --stack-name fsxn-rag-enterprise-files \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-s3ap-alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region <your-region>
+```
+
+> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
+> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+
+> **ファイルレベル ACL 抽出について**: 既定では ACL 抽出はシミュレーションモードで動作します（ONTAP 不要）。実際の ACL を取得するには `OntapManagementIp` / `OntapSecretName` を指定します。ただし本テンプレートは `VpcConfig` を含まないため、プライベートな ONTAP 管理 LIF へ到達するには追加のネットワーク構成が必要です。
+
 ## Governance Note
 
 > 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。

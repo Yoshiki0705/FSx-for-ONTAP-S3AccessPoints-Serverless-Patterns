@@ -54,6 +54,31 @@ A serverless workflow leveraging FSx for ONTAP S3 Access Points to detect deteri
 
 ---
 
+## Deployment
+
+Deploy with the AWS SAM CLI (replace the placeholder parameters for your environment):
+
+```bash
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+sam deploy \
+  --stack-name fsxn-transport-maintenance \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-volume-ext-s3alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    VpcId=<your-vpc-id> \
+    PrivateSubnetIds=<subnet-1>,<subnet-2> \
+    ScheduleExpression="cron(0 0 * * ? *)" \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region ap-northeast-1
+```
+
+> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
+> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
+
 ## Industry Reference Cases
 
 > **Evidence Tier**: Public (official blog / conference sessions)

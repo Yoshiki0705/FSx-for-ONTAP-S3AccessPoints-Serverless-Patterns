@@ -64,6 +64,9 @@ sam deploy --guided \
   --stack-name fsxn-content-edge-delivery
 ```
 
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
+
 ## 보안 / 거버넌스
 
 - **permission-aware**: 배포 대상은 `ApprovedPrefix` 하위로 한정. ACL 제어 마스터를 직접 배포하지 않음.

@@ -21,6 +21,31 @@
 
 > 本模式提供技术架构指导。AI 检测结果不是最终判断，需要合格工程师确认。
 
+## 部署
+
+使用 AWS SAM CLI 部署（请将占位参数替换为您的环境值）：
+
+```bash
+# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+sam build
+
+sam deploy \
+  --stack-name fsxn-transport-maintenance \
+  --parameter-overrides \
+    S3AccessPointAlias=<your-volume-ext-s3alias> \
+    S3AccessPointName=<your-s3ap-name> \
+    VpcId=<your-vpc-id> \
+    PrivateSubnetIds=<subnet-1>,<subnet-2> \
+    ScheduleExpression="cron(0 0 * * ? *)" \
+    NotificationEmail=<your-email@example.com> \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --resolve-s3 \
+  --region ap-northeast-1
+```
+
+> **注意**: `template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，请改用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3 存储桶）。
+
 ## ⚠️ 性能注意事项
 
 - FSx for ONTAP 的吞吐量容量在 **NFS/SMB/S3 AP 之间共享**。使用 MapConcurrency=10 进行并行处理时可能影响同一卷上的其他工作负载。

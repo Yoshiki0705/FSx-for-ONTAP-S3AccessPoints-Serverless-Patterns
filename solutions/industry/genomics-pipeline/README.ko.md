@@ -87,6 +87,9 @@ sam deploy \
   --region ap-northeast-1
 ```
 
+> **참고**: `template.yaml`은 SAM CLI (`sam build` + `sam deploy`) 를 통해 배포합니다.
+> `aws cloudformation deploy` 명령으로 직접 배포하려면 `template-deploy.yaml`을 사용하세요 (Lambda zip 파일의 사전 패키징 및 S3 업로드가 필요합니다).
+
 ### 3. 크로스 리전 설정 확인
 배포 후, Lambda 환경 변수 `CROSS_REGION_TARGET`이 `us-east-1`로 설정되어 있는지 확인하세요.
 ## 설정 매개변수 목록

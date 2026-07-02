@@ -63,6 +63,9 @@ sam deploy --guided \
   --stack-name fsxn-content-edge-delivery
 ```
 
+> **注意**: `template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
+> 如需使用原生 `aws cloudformation deploy` 部署，请改用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3 存储桶）。
+
 ## 安全 / 治理
 
 - **permission-aware**：分发对象仅限 `ApprovedPrefix` 下。不直接分发受 ACL 控制的主数据。
