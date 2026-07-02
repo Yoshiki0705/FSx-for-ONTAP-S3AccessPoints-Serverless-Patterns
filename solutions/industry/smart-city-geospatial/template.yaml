@@ -1,123 +1,733 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: UC17 Smart City Geospatial SAM template for local testing
+Description: >-
+  UC17: スマートシティ — 地理空間データ解析・都市計画
+  FSx for NetApp ONTAP S3 Access Points を活用した GIS データ（GeoTIFF/Shapefile/
+  LAS 等）の前処理、土地利用分類、変化検出、インフラ評価、リスクマッピング、
+  Bedrock によるレポート生成のサーバーレスワークフロー。
 
-Globals:
-  Function:
-    Runtime: python3.13
-    Timeout: 300
-    MemorySize: 1024
-    Environment:
-      Variables:
-        OUTPUT_BUCKET: !Ref OutputBucket
-
+# =====================================================================
+# Parameters
+# =====================================================================
 Parameters:
-  S3AccessPoint:
-    Type: String
-    Default: "test-ap-ext-s3alias"
-  OutputBucket:
-    Type: String
-    Default: "test-output-bucket"
 
-  # --- TriggerMode (Phase 11 Req 1) ---
-  TriggerMode:
+  S3AccessPointAlias:
     Type: String
-    Default: "POLLING"
-    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
-    Description: >
-      トリガーモードの選択。
-      POLLING: 既存の EventBridge Scheduler + Discovery Lambda（デフォルト）。
-      EVENT_DRIVEN: FPolicy イベント駆動のみ（Scheduler 無効化）。
-      HYBRID: 両方有効（Idempotency Store で重複排除）。
-  FPolicyEventBusName:
+    Description: FSx for ONTAP S3 Access Point Alias
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  S3AccessPointName:
     Type: String
-    Default: "fsxn-fpolicy-events"
-    Description: FPolicy EventBridge カスタムバス名（EVENT_DRIVEN / HYBRID 時に使用）
+    Default: ""
+    Description: S3 Access Point Name（ARN ベース、空の場合は Alias のみ）
+
+  OntapSecretName:
+    Type: String
+    Default: ""
+
+  OntapManagementIp:
+    Type: String
+    Default: "10.0.0.1"
+    AllowedPattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+
+  SvmUuid:
+    Type: String
+    Default: ""
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 day)"
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+
+  OutputBucketName:
+    Type: String
+    Default: ""
+
+  NotificationEmail:
+    Type: String
+
+  # UC17 固有
+  TargetCrs:
+    Type: String
+    Default: "EPSG:4326"
+    Description: 正規化後の座標参照系
+
+  ChangeThreshold:
+    Type: Number
+    Default: 0.15
+    MinValue: 0.01
+    MaxValue: 2.0
+    Description: 土地利用変化の検出閾値 (L1 差分、0-2)
+
+  InferenceType:
+    Type: String
+    Default: "none"
+    AllowedValues: ["none", "provisioned", "serverless", "components"]
+
+  SageMakerEndpointName:
+    Type: String
+    Default: ""
+
+  BedrockModelId:
+    Type: String
+    Default: "amazon.nova-lite-v1:0"
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 1024
+    MinValue: 128
+    MaxValue: 10240
+
+  LambdaTimeout:
+    Type: Number
+    Default: 600
+    MinValue: 30
+    MaxValue: 900
+
+  MapConcurrency:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 40
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableSnapStart:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+
+  EnableSageMaker:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: SageMaker 関連リソースを作成（コスト発生）
+
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90]
+
+  # ---------- OutputDestination 統一 API (Pattern B 相当) ----------
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: |
+      AI/ML 成果物（前処理メタデータ、土地利用分類、インフラ評価、リスクマップ、
+      Bedrock 生成レポート）の書き込み先。STANDARD_S3（デフォルト）は従来どおり
+      新しい S3 バケットに書き込む。FSXN_S3AP は S3AccessPointAlias（または
+      OutputS3APAlias）で指定した FSx for ONTAP S3 Access Point 経由でオリジナル GIS
+      データと同一ボリュームに書き込む（"no data movement" パターン）。
+
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: |
+      OutputDestination=FSXN_S3AP 時の出力先 S3 Access Point Alias または ARN。
+      空の場合は入力用の S3AccessPointAlias を再利用する。
+
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: |
+      OutputDestination=FSXN_S3AP 時、全出力キーに付与するプレフィックス。
+
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: |
+      出力用 S3 Access Point の名前（ARN ベース許可用）。空の場合は S3AccessPointName を再利用する。
 
 # =====================================================================
 # Conditions
 # =====================================================================
+
+  # --- Phase 10: TriggerMode ---
+  TriggerMode:
+    Type: String
+    Default: "POLLING"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: |
+      トリガーモード。POLLING=既存のEventBridge Scheduler+Discovery Lambda、
+      EVENT_DRIVEN=FPolicy イベント駆動のみ、HYBRID=両方（冪等性ストアで重複排除）。
+
+  # --- Phase 10: AlarmProfile ---
+  AlarmProfile:
+    Type: String
+    Default: "REALTIME"
+    AllowedValues: ["BATCH", "REALTIME", "HIGH_VOLUME", "CUSTOM"]
+    Description: |
+      アラーム閾値プロファイル。BATCH=定期バッチ向け（緩い閾値）、
+      REALTIME=リアルタイム向け（厳しい閾値）、HIGH_VOLUME=大量処理向け、
+      CUSTOM=CustomFailureThreshold/CustomErrorThreshold で個別指定。
+
+  CustomFailureThreshold:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 100
+    Description: CUSTOM プロファイル時の Step Functions 失敗率閾値（%）
+
+  CustomErrorThreshold:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    MaxValue: 100
+    Description: CUSTOM プロファイル時の Discovery Lambda エラー閾値（回/時間）
+
+  # --- Phase 10: MaxConcurrency ---
+  MaxConcurrencyUpperBound:
+    Type: Number
+    Default: 40
+    MinValue: 1
+    MaxValue: 1000
+    Description: Step Functions Map State の MaxConcurrency 上限値
+
+  OntapApiRateLimit:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 10000
+    Description: ONTAP API の秒間リクエスト上限（MaxConcurrency 算出に使用）
+
+  # --- Phase 10: CostScheduling ---
+  EnableCostScheduling:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: 営業時間ベースのスケジュール動的変更を有効化
+
+  BusinessHoursStart:
+    Type: Number
+    Default: 9
+    MinValue: 0
+    MaxValue: 23
+    Description: 営業時間開始（時、JST）
+
+  BusinessHoursEnd:
+    Type: Number
+    Default: 18
+    MinValue: 0
+    MaxValue: 23
+    Description: 営業時間終了（時、JST）
+
 Conditions:
-  # TriggerMode Conditions
-  IsPolling:
-    !Equals [!Ref TriggerMode, "POLLING"]
-  IsEventDriven:
-    !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
-  IsHybrid:
-    !Equals [!Ref TriggerMode, "HYBRID"]
-  IsPollingOrHybrid:
-    !Or
-      - !Condition IsPolling
-      - !Condition IsHybrid
-  IsEventDrivenOrHybrid:
-    !Or
-      - !Condition IsEventDriven
-      - !Condition IsHybrid
+  UseAutoOutputBucket: !Equals [!Ref OutputBucketName, ""]
+  CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  SnapStartEnabled: !Equals [!Ref EnableSnapStart, "true"]
+  CreateSageMakerResources: !Equals [!Ref EnableSageMaker, "true"]
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  UseInputApAsOutputAp:
+    !Equals [!Ref OutputS3APAlias, ""]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
 
+# =====================================================================
+# Resources
+# =====================================================================
+
+  # --- Phase 10 Conditions ---
+  EnablePolling: !Or
+    - !Equals [!Ref TriggerMode, "POLLING"]
+    - !Equals [!Ref TriggerMode, "HYBRID"]
+  EnableEventDriven: !Or
+    - !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+    - !Equals [!Ref TriggerMode, "HYBRID"]
+  EnableIdempotency: !Equals [!Ref TriggerMode, "HYBRID"]
+  UseCustomProfile: !Equals [!Ref AlarmProfile, "CUSTOM"]
+  EnableCostSchedulingCondition: !Equals [!Ref EnableCostScheduling, "true"]
+
+
+# --- Phase 10 Mappings ---
 Resources:
-  DiscoveryFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ./functions/discovery/
-      Handler: handler.handler
 
-  PreprocessingFunction:
-    Type: AWS::Serverless::Function
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
     Properties:
-      CodeUri: ./functions/preprocessing/
-      Handler: handler.handler
-
-  LandUseClassificationFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ./functions/land_use_classification/
-      Handler: handler.handler
-
-  ChangeDetectionFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ./functions/change_detection/
-      Handler: handler.handler
-
-  InfraAssessmentFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ./functions/infra_assessment/
-      Handler: handler.handler
-
-  RiskMappingFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ./functions/risk_mapping/
-      Handler: handler.handler
-
-  ReportGenerationFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ./functions/report_generation/
-      Handler: handler.handler
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
   # -----------------------------------------------------------------
-  # FPolicy EventBridge Rule (EVENT_DRIVEN / HYBRID)
+  # S3 Output Bucket (SSE-KMS)
+  # OutputDestination=STANDARD_S3 モード時のみ作成される。
+  # FSXN_S3AP モード時はこのバケットは作成されず、成果物は FSx for ONTAP ボリュームに
+  # S3 Access Point 経由で直接書き込まれる（"no data movement" パターン）。
   # -----------------------------------------------------------------
-  FPolicyEventRuleRole:
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Condition: UseStandardS3
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If
+        - UseAutoOutputBucket
+        - !Sub "${AWS::StackName}-output-${AWS::AccountId}"
+        - !Ref OutputBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: UseCase
+          Value: smart-city-geospatial
+
+  LandUseHistoryTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub "${AWS::StackName}-landuse-history"
+      AttributeDefinitions:
+        - AttributeName: area_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: area_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: UseCase
+          Value: smart-city-geospatial
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} Discovery Lambda SG"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-lambda-sg"
+
+  # Log groups
+  DiscoveryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
+      RetentionInDays: !Ref LogRetentionDays
+
+  PreprocessingLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-preprocessing"
+      RetentionInDays: !Ref LogRetentionDays
+
+  LandUseClassificationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-land-use-classification"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ChangeDetectionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-change-detection"
+      RetentionInDays: !Ref LogRetentionDays
+
+  InfraAssessmentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-infra-assessment"
+      RetentionInDays: !Ref LogRetentionDays
+
+  RiskMappingLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-risk-mapping"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ReportGenerationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-report-generation"
+      RetentionInDays: !Ref LogRetentionDays
+
+  # IAM Roles
+  DiscoveryLambdaRole:
     Type: AWS::IAM::Role
-    Condition: IsEventDrivenOrHybrid
     Properties:
-      RoleName: !Sub "${AWS::StackName}-fpolicy-rule-role"
+      RoleName: !Sub "${AWS::StackName}-discovery-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              Service: events.amazonaws.com
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      Policies:
+        - PolicyName: DiscoveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+
+  ProcessingLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-processing-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: ProcessingPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource: !If
+                  - HasS3AccessPointName
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+                    - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/*"
+                  - - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}"
+                    - !Sub "arn:${AWS::Partition}:s3:::${S3AccessPointAlias}/*"
+              - !If
+                - UseStandardS3
+                - Sid: S3OutputBucketWrite
+                  Effect: Allow
+                  Action:
+                    - s3:PutObject
+                    - s3:ListBucket
+                  Resource:
+                    - !GetAtt OutputBucket.Arn
+                    - !Sub "${OutputBucket.Arn}/*"
+                - !If
+                  - HasS3AccessPointName
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:${AWS::Partition}:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                  - Sid: S3APOutputWrite
+                    Effect: Allow
+                    Action:
+                      - s3:PutObject
+                    Resource:
+                      - !Sub
+                        - "arn:${AWS::Partition}:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - Sid: Rekognition
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: "*"
+              - Sid: SageMakerInvoke
+                Effect: Allow
+                Action:
+                  - sagemaker:InvokeEndpoint
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/*"
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*"
+              - Sid: DynamoDB
+                Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt LandUseHistoryTable.Arn
+              - Sid: SNS
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+
+  # Lambda Functions
+  DiscoveryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-discovery"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: 512
+      Timeout: 120
+      Role: !GetAtt DiscoveryLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: [!Ref LambdaSecurityGroup]
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          PREFIX_FILTER: "gis/"
+      LoggingConfig:
+        LogGroup: !Ref DiscoveryLogGroup
+
+  PreprocessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-preprocessing"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      CodeUri: functions/preprocessing/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          TARGET_CRS: !Ref TargetCrs
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
+      LoggingConfig:
+        LogGroup: !Ref PreprocessingLogGroup
+
+  LandUseClassificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-land-use-classification"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      CodeUri: functions/land_use_classification/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          INFERENCE_TYPE: !Ref InferenceType
+          SAGEMAKER_ENDPOINT_NAME: !Ref SageMakerEndpointName
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
+      LoggingConfig:
+        LogGroup: !Ref LandUseClassificationLogGroup
+
+  ChangeDetectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-change-detection"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      CodeUri: functions/change_detection/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: 512
+      Timeout: 180
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          LANDUSE_HISTORY_TABLE: !Ref LandUseHistoryTable
+          CHANGE_THRESHOLD: !Ref ChangeThreshold
+      LoggingConfig:
+        LogGroup: !Ref ChangeDetectionLogGroup
+
+  InfraAssessmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-infra-assessment"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      CodeUri: functions/infra_assessment/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
+      LoggingConfig:
+        LogGroup: !Ref InfraAssessmentLogGroup
+
+  RiskMappingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-risk-mapping"
+      Runtime: python3.13
+      SnapStart:
+        !If [SnapStartEnabled, {ApplyOn: PublishedVersions}, !Ref AWS::NoValue]
+      Handler: handler.handler
+      CodeUri: functions/risk_mapping/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: 512
+      Timeout: 120
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
+      LoggingConfig:
+        LogGroup: !Ref RiskMappingLogGroup
+
+  ReportGenerationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report-generation"
+      Runtime: python3.13
+      Handler: handler.handler
+      CodeUri: functions/report_generation/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: 1024
+      Timeout: 300
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
+      LoggingConfig:
+        LogGroup: !Ref ReportGenerationLogGroup
+
+  # Step Functions
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: InvokeLambda
+        - PolicyName: Policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -126,40 +736,243 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - !GetAtt DiscoveryFunction.Arn
+                  - !GetAtt PreprocessingFunction.Arn
+                  - !GetAtt LandUseClassificationFunction.Arn
+                  - !GetAtt ChangeDetectionFunction.Arn
+                  - !GetAtt InfraAssessmentFunction.Arn
+                  - !GetAtt RiskMappingFunction.Arn
+                  - !GetAtt ReportGenerationFunction.Arn
 
-  FPolicySmartCityRule:
-    Type: AWS::Events::Rule
-    Condition: IsEventDrivenOrHybrid
+  SmartCityStateMachine:
+    Type: AWS::StepFunctions::StateMachine
     Properties:
-      Name: !Sub "${AWS::StackName}-fpolicy-trigger"
-      EventBusName: !Ref FPolicyEventBusName
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "UC17 Smart City Geospatial Workflow",
+          "StartAt": "Discovery",
+          "States": {
+            "Discovery": {
+              "Type": "Task",
+              "Resource": "${DiscoveryFunction.Arn}",
+              "ResultPath": "$.discovery",
+              "Next": "ProcessItems",
+              "Retry": [{
+                "ErrorEquals": ["States.TaskFailed"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 2,
+                "BackoffRate": 2.0
+              }]
+            },
+            "ProcessItems": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.objects",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.processed",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "Preprocessing",
+                "States": {
+                  "Preprocessing": {
+                    "Type": "Task",
+                    "Resource": "${PreprocessingFunction.Arn}",
+                    "ResultPath": "$.preprocess",
+                    "Next": "LandUseClassification"
+                  },
+                  "LandUseClassification": {
+                    "Type": "Task",
+                    "Resource": "${LandUseClassificationFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key"
+                    },
+                    "ResultPath": "$.landuse",
+                    "Next": "ChangeDetection"
+                  },
+                  "ChangeDetection": {
+                    "Type": "Task",
+                    "Resource": "${ChangeDetectionFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key",
+                      "landuse_distribution.$": "$.landuse.landuse_distribution"
+                    },
+                    "ResultPath": "$.change",
+                    "Next": "InfraAssessment"
+                  },
+                  "InfraAssessment": {
+                    "Type": "Task",
+                    "Resource": "${InfraAssessmentFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key"
+                    },
+                    "ResultPath": "$.infra",
+                    "Next": "RiskMapping"
+                  },
+                  "RiskMapping": {
+                    "Type": "Task",
+                    "Resource": "${RiskMappingFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key",
+                      "landuse_distribution.$": "$.landuse.landuse_distribution"
+                    },
+                    "ResultPath": "$.risk",
+                    "Next": "ReportGeneration"
+                  },
+                  "ReportGeneration": {
+                    "Type": "Task",
+                    "Resource": "${ReportGenerationFunction.Arn}",
+                    "Parameters": {
+                      "source_key.$": "$.Key",
+                      "landuse_distribution.$": "$.landuse.landuse_distribution",
+                      "change_magnitude.$": "$.change.change_magnitude",
+                      "dominant_change.$": "$.change.dominant_change",
+                      "risks.$": "$.risk.risks"
+                    },
+                    "ResultPath": "$.report",
+                    "End": true
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        }
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref SmartCityStateMachine
+
+  SmartCitySchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: DISABLED
+      Target:
+        Arn: !Ref SmartCityStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  StepFunctionsFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref SmartCityStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+
+  # EventBridge rule: notify on Step Functions execution failure/timeout/abort
+  StepFunctionsFailureEventRule:
+    Type: AWS::Events::Rule
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      Description: !Sub "Notify on ${AWS::StackName} Step Functions execution failures"
       EventPattern:
         source:
-          - "fsxn.fpolicy"
+          - aws.states
         detail-type:
-          - "FPolicy File Operation"
+          - "Step Functions Execution Status Change"
         detail:
-          operation_type:
-              - "create"
-              - "write"
-          file_path:
-              - prefix: "/smartcity/"
-              - prefix: "/geospatial/"
-              - prefix: "/gis/"
-              - suffix: ".geojson"
-              - suffix: ".shp"
-              - suffix: ".tiff"
-              - suffix: ".las"
-      State: ENABLED
+          status:
+            - FAILED
+            - TIMED_OUT
+            - ABORTED
+          stateMachineArn:
+            - !Ref SmartCityStateMachine
       Targets:
-        - Id: lambda-target
-          Arn: !GetAtt DiscoveryFunction.Arn
+        - Arn: !Ref NotificationTopic
+          Id: SnsFailureTarget
+          InputTransformer:
+            InputPathsMap:
+              execName: $.detail.name
+              execStatus: $.detail.status
+              execArn: $.detail.executionArn
+            InputTemplate: '"Step Functions execution <execName> finished with status <execStatus>. ARN: <execArn>"'
 
-  FPolicyLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Condition: IsEventDrivenOrHybrid
+  # Allow EventBridge to publish to SNS topic
+  EventBridgeToSnsPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: CreateCloudWatchAlarms
     Properties:
-      FunctionName: !Ref DiscoveryFunction
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt FPolicySmartCityRule.Arn
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref NotificationTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt StepFunctionsFailureEventRule.Arn
+      Topics:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref SmartCityStateMachine
+    Export:
+      Name: !Sub "${AWS::StackName}-StateMachineArn"
+
+  OutputBucketName:
+    Description: S3 Output Bucket Name (STANDARD_S3 モード時のみ)
+    Condition: UseStandardS3
+    Value: !Ref OutputBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-OutputBucket"
+
+  OutputDestinationMode:
+    Description: 成果物の出力先モード
+    Value: !Ref OutputDestination
+    Export:
+      Name: !Sub "${AWS::StackName}-OutputDestination"
+
+  OutputS3APAliasResolved:
+    Description: FSXN_S3AP モード時に使用される出力 S3 Access Point Alias
+    Condition: UseFsxnS3AP
+    Value:
+      !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+    Export:
+      Name: !Sub "${AWS::StackName}-OutputS3APAlias"
+
+  LandUseHistoryTableName:
+    Value: !Ref LandUseHistoryTable
+
+  NotificationTopicArn:
+    Value: !Ref NotificationTopic

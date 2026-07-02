@@ -1,14 +1,15 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  UC20: 旅行・ホスピタリティ業界 — 予約文書処理/施設点検画像分析
-  FSx for NetApp ONTAP S3 Access Points を活用した予約文書の構造化抽出、
-  施設状態分析、トレンドレポート生成のサーバーレスワークフロー。
+  UC25: 電力・ユーティリティ設備点検（本番デプロイ用）
+  FSx for NetApp ONTAP S3 Access Points を活用したドローン画像欠陥検知、
+  SCADA 異常分析、熱画像解析、レポート生成のサーバーレスワークフロー。
 
 # =====================================================================
 # Parameters — Layer 1 (共通) + Layer 2 (拡張) + Layer 3 (TriggerMode) + Layer 4 (UC固有)
 # =====================================================================
 Parameters:
+
   # --- Layer 1: Phase 1 共通 ---
   S3AccessPointAlias:
     Type: String
@@ -18,7 +19,9 @@ Parameters:
   S3AccessPointName:
     Type: String
     Default: ""
-    Description: 入力用 S3 Access Point の名前（IAM ARN 用）
+    Description: |
+      入力用 S3 Access Point の名前（alias ではなく）。指定すると AP ARN 形式でも
+      IAM アクセスを許可する。空文字列の場合は alias 形式のみ許可。
 
   S3AccessPointOutputAlias:
     Type: String
@@ -41,24 +44,19 @@ Parameters:
   ScheduleExpression:
     Type: String
     Default: "cron(0 0 * * ? *)"
-    Description: "EventBridge Scheduler スケジュール式"
+    Description: "EventBridge Scheduler スケジュール式 (デフォルト: 毎日 00:00 UTC)"
 
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: VPC ID
+    Description: Lambda 関数を配置する VPC ID
 
   PrivateSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-    Description: プライベートサブネット ID リスト
+    Description: Lambda 関数を配置するプライベートサブネット ID リスト
 
   PrivateRouteTableIds:
     Type: CommaDelimitedList
     Description: プライベートサブネットのルートテーブル ID リスト
-
-  OutputBucketName:
-    Type: String
-    Default: ""
-    Description: 出力バケット名（空の場合は自動作成）
 
   NotificationEmail:
     Type: String
@@ -70,68 +68,78 @@ Parameters:
     Default: 10
     MinValue: 1
     MaxValue: 100
+    Description: Step Functions Map State の並列度
 
   LambdaMemorySize:
     Type: Number
-    Default: 512
+    Default: 256
     AllowedValues: [128, 256, 512, 1024, 2048]
+    Description: Lambda 関数のメモリサイズ (MB)
 
   LambdaTimeout:
     Type: Number
     Default: 300
     MinValue: 30
     MaxValue: 900
+    Description: Lambda 関数のタイムアウト (秒)
 
   EnableCloudWatchAlarms:
     Type: String
-    Default: "false"
+    Default: "true"
     AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms を有効化する（電力インフラ監視のため default=true 推奨）
 
   EnableVpcEndpoints:
     Type: String
     Default: "false"
     AllowedValues: ["true", "false"]
-
-  EnableXRayTracing:
-    Type: String
-    Default: "true"
-    AllowedValues: ["true", "false"]
+    Description: Interface VPC Endpoints を有効化する
 
   EnableS3GatewayEndpoint:
     Type: String
     Default: "true"
     AllowedValues: ["true", "false"]
+    Description: S3 Gateway VPC Endpoint を作成する
 
   BedrockModelId:
     Type: String
     Default: "anthropic.claude-haiku-4-5-20251001-v1:0"
-    Description: Bedrock モデル ID（メンテナンス推奨生成用）
+    Description: Bedrock モデル ID
 
   # --- Layer 3: TriggerMode ---
   TriggerMode:
     Type: String
     Default: "POLLING"
     AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: トリガーモード
 
   FPolicyEventBusName:
     Type: String
     Default: "fsxn-fpolicy-events"
+    Description: FPolicy EventBridge カスタムバス名
 
-  # --- Layer 4: UC20 固有 ---
-  CrossRegionTextractRegion:
+  # --- Layer 4: UC25 固有 ---
+  DroneImagePrefix:
     Type: String
-    Default: "us-east-1"
-    Description: Textract を実行するリージョン (Cross-Region)
+    Default: "inspections/drone/"
+    Description: ドローン画像ファイルのプレフィックス
 
-  ReservationDocPrefix:
+  ScadaDataPrefix:
     Type: String
-    Default: "reservations/"
-    Description: 予約文書の S3 プレフィックス
+    Default: "inspections/scada/"
+    Description: SCADA データファイルのプレフィックス
 
-  FacilityImagePrefix:
+  ThermalImagePrefix:
     Type: String
-    Default: "facility-inspections/"
-    Description: 施設点検画像の S3 プレフィックス
+    Default: "inspections/thermal/"
+    Description: 熱画像ファイルのプレフィックス
+
+  DefectConfidenceThreshold:
+    Type: Number
+    Default: 75
+    MinValue: 50
+    MaxValue: 99
+    Description: 欠陥検出の最小信頼度閾値
 
 # =====================================================================
 # Conditions
@@ -139,30 +147,20 @@ Parameters:
 Conditions:
   HasS3AccessPointName:
     !Not [!Equals [!Ref S3AccessPointName, ""]]
-  HasOutputBucketName:
-    !Not [!Equals [!Ref OutputBucketName, ""]]
   CreateVpcEndpoints:
     !Equals [!Ref EnableVpcEndpoints, "true"]
   CreateCloudWatchAlarms:
     !Equals [!Ref EnableCloudWatchAlarms, "true"]
   CreateS3GatewayEndpoint:
     !Equals [!Ref EnableS3GatewayEndpoint, "true"]
-  EnableXRay:
-    !Equals [!Ref EnableXRayTracing, "true"]
-  IsPolling:
-    !Equals [!Ref TriggerMode, "POLLING"]
-  IsEventDriven:
-    !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
-  IsHybrid:
-    !Equals [!Ref TriggerMode, "HYBRID"]
   IsPollingOrHybrid:
     !Or
-      - !Condition IsPolling
-      - !Condition IsHybrid
+      - !Equals [!Ref TriggerMode, "POLLING"]
+      - !Equals [!Ref TriggerMode, "HYBRID"]
   IsEventDrivenOrHybrid:
     !Or
-      - !Condition IsEventDriven
-      - !Condition IsHybrid
+      - !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+      - !Equals [!Ref TriggerMode, "HYBRID"]
 
 # =====================================================================
 # Resources
@@ -184,31 +182,6 @@ Resources:
     Metadata:
       BuildMethod: makefile
       BuildArchitecture: arm64
-
-  # -----------------------------------------------------------------
-  # Output Bucket (conditional)
-  # -----------------------------------------------------------------
-  OutputBucket:
-    Type: AWS::S3::Bucket
-    Condition: HasOutputBucketName
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      BucketName: !Ref OutputBucketName
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: aws:kms
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      VersioningConfiguration:
-        Status: Enabled
-      Tags:
-        - Key: UseCase
-          Value: travel-document-processing
 
   # -----------------------------------------------------------------
   # SNS Topic + Email Subscription
@@ -265,16 +238,22 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-discovery"
       RetentionInDays: 14
 
-  ReservationExtractorLogGroup:
+  DefectDetectorLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-reservation-extractor"
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-defect-detector"
       RetentionInDays: 14
 
-  FacilityInspectorLogGroup:
+  ScadaAnalyzerLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-facility-inspector"
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-scada-analyzer"
+      RetentionInDays: 14
+
+  ThermalAnalyzerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-thermal-analyzer"
       RetentionInDays: 14
 
   ReportLogGroup:
@@ -340,17 +319,11 @@ Resources:
                 Resource:
                   - !GetAtt DiscoveryLogGroup.Arn
                   - !Sub "${DiscoveryLogGroup.Arn}:*"
-              - Sid: XRayTracing
-                Effect: Allow
-                Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                Resource: "*"
 
-  ReservationExtractorLambdaRole:
+  DefectDetectorLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${AWS::StackName}-reservation-extractor-role"
+      RoleName: !Sub "${AWS::StackName}-defect-detector-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -361,7 +334,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
-        - PolicyName: ReservationExtractorPolicy
+        - PolicyName: DefectDetectorPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -371,78 +344,14 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
-                  - !If
-                    - HasS3AccessPointName
-                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
-                    - !Ref AWS::NoValue
               - Sid: S3AccessPointOutput
                 Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
-              - Sid: TextractCrossRegion
-                Effect: Allow
-                Action:
-                  - textract:AnalyzeDocument
-                  - textract:DetectDocumentText
-                Resource: "*"
-              - Sid: Comprehend
-                Effect: Allow
-                Action:
-                  - comprehend:DetectDominantLanguage
-                  - comprehend:DetectEntities
-                  - comprehend:DetectKeyPhrases
-                Resource: "*"
-              - Sid: CloudWatchLogs
-                Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - !GetAtt ReservationExtractorLogGroup.Arn
-                  - !Sub "${ReservationExtractorLogGroup.Arn}:*"
-              - Sid: XRayTracing
-                Effect: Allow
-                Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                Resource: "*"
-
-  FacilityInspectorLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-facility-inspector-role"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: FacilityInspectorPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Sid: S3AccessPointRead
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
-                  - !If
-                    - HasS3AccessPointName
-                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
-                    - !Ref AWS::NoValue
-              - Sid: S3AccessPointOutput
-                Effect: Allow
-                Action:
-                  - s3:PutObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              # Rekognition does not support resource-level IAM policies (Resource: "*" is required)
+              # See: https://docs.aws.amazon.com/rekognition/latest/dg/security_iam_service-with-iam.html
               - Sid: Rekognition
                 Effect: Allow
                 Action:
@@ -461,14 +370,105 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !GetAtt FacilityInspectorLogGroup.Arn
-                  - !Sub "${FacilityInspectorLogGroup.Arn}:*"
-              - Sid: XRayTracing
+                  - !GetAtt DefectDetectorLogGroup.Arn
+                  - !Sub "${DefectDetectorLogGroup.Arn}:*"
+
+  ScadaAnalyzerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scada-analyzer-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ScadaAnalyzerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
                 Effect: Allow
                 Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ScadaAnalyzerLogGroup.Arn
+                  - !Sub "${ScadaAnalyzerLogGroup.Arn}:*"
+
+  ThermalAnalyzerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-thermal-analyzer-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ThermalAnalyzerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - Sid: S3AccessPointOutput
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+              # Rekognition does not support resource-level IAM policies (Resource: "*" is required)
+              # See: https://docs.aws.amazon.com/rekognition/latest/dg/security_iam_service-with-iam.html
+              - Sid: Rekognition
+                Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
                 Resource: "*"
+              - Sid: Bedrock
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt ThermalAnalyzerLogGroup.Arn
+                  - !Sub "${ThermalAnalyzerLogGroup.Arn}:*"
 
   ReportLambdaRole:
     Type: AWS::IAM::Role
@@ -508,20 +508,13 @@ Resources:
                 Resource:
                   - !GetAtt ReportLogGroup.Arn
                   - !Sub "${ReportLogGroup.Arn}:*"
-              - Sid: XRayTracing
-                Effect: Allow
-                Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                Resource: "*"
 
   # -----------------------------------------------------------------
-  # Lambda Functions
+  # Lambda Functions (Production — S3 deploy packages)
   # -----------------------------------------------------------------
   DiscoveryFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.12
       Handler: handler.handler
@@ -537,11 +530,12 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
-          USE_CASE: "travel-document-processing"
+          USE_CASE: "utilities-asset-inspection"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
-          RESERVATION_DOC_PREFIX: !Ref ReservationDocPrefix
-          FACILITY_IMAGE_PREFIX: !Ref FacilityImagePrefix
+          DRONE_IMAGE_PREFIX: !Ref DroneImagePrefix
+          SCADA_DATA_PREFIX: !Ref ScadaDataPrefix
+          THERMAL_IMAGE_PREFIX: !Ref ThermalImagePrefix
           ONTAP_SECRET_NAME: !Ref OntapSecretName
           ONTAP_MANAGEMENT_IP: !Ref OntapManagementIp
           SVM_UUID: !Ref SvmUuid
@@ -549,60 +543,81 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        UseCase: travel-document-processing
+        UseCase: utilities-asset-inspection
 
-  ReservationExtractorFunction:
+  DefectDetectorFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Tracing: !If [EnableXRay, "Active", "PassThrough"]
-      FunctionName: !Sub "${AWS::StackName}-reservation-extractor"
+      FunctionName: !Sub "${AWS::StackName}-defect-detector"
       Runtime: python3.12
       Handler: handler.handler
-      CodeUri: functions/reservation_extractor/
+      CodeUri: functions/defect_detector/
       Layers:
         - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
-      Role: !GetAtt ReservationExtractorLambdaRole.Arn
+      Role: !GetAtt DefectDetectorLambdaRole.Arn
       Environment:
         Variables:
-          USE_CASE: "travel-document-processing"
+          USE_CASE: "utilities-asset-inspection"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
-          CROSS_REGION_TEXTRACT_REGION: !Ref CrossRegionTextractRegion
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          DEFECT_CONFIDENCE_THRESHOLD: !Ref DefectConfidenceThreshold
       LoggingConfig:
-        LogGroup: !Ref ReservationExtractorLogGroup
+        LogGroup: !Ref DefectDetectorLogGroup
       Tags:
-        UseCase: travel-document-processing
+        UseCase: utilities-asset-inspection
 
-  FacilityInspectorFunction:
+  ScadaAnalyzerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Tracing: !If [EnableXRay, "Active", "PassThrough"]
-      FunctionName: !Sub "${AWS::StackName}-facility-inspector"
+      FunctionName: !Sub "${AWS::StackName}-scada-analyzer"
       Runtime: python3.12
       Handler: handler.handler
-      CodeUri: functions/facility_inspector/
+      CodeUri: functions/scada_analyzer/
       Layers:
         - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
-      Role: !GetAtt FacilityInspectorLambdaRole.Arn
+      Role: !GetAtt ScadaAnalyzerLambdaRole.Arn
       Environment:
         Variables:
-          USE_CASE: "travel-document-processing"
+          USE_CASE: "utilities-asset-inspection"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           BEDROCK_MODEL_ID: !Ref BedrockModelId
       LoggingConfig:
-        LogGroup: !Ref FacilityInspectorLogGroup
+        LogGroup: !Ref ScadaAnalyzerLogGroup
       Tags:
-        UseCase: travel-document-processing
+        UseCase: utilities-asset-inspection
+
+  ThermalAnalyzerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-thermal-analyzer"
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: functions/thermal_analyzer/
+      Layers:
+        - !Ref SharedLayer
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Role: !GetAtt ThermalAnalyzerLambdaRole.Arn
+      Environment:
+        Variables:
+          USE_CASE: "utilities-asset-inspection"
+          S3_ACCESS_POINT: !Ref S3AccessPointAlias
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      LoggingConfig:
+        LogGroup: !Ref ThermalAnalyzerLogGroup
+      Tags:
+        UseCase: utilities-asset-inspection
 
   ReportFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
       Runtime: python3.12
       Handler: handler.handler
@@ -614,17 +629,16 @@ Resources:
       Role: !GetAtt ReportLambdaRole.Arn
       Environment:
         Variables:
-          USE_CASE: "travel-document-processing"
+          USE_CASE: "utilities-asset-inspection"
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           SNS_TOPIC_ARN: !Ref NotificationTopic
       LoggingConfig:
         LogGroup: !Ref ReportLogGroup
       Tags:
-        UseCase: travel-document-processing
+        UseCase: utilities-asset-inspection
 
   # -----------------------------------------------------------------
   # Step Functions State Machine
-  # Discovery → ReservationMap → FacilityMap → Report
   # -----------------------------------------------------------------
   StateMachineRole:
     Type: AWS::IAM::Role
@@ -648,122 +662,108 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - !GetAtt DiscoveryFunction.Arn
-                  - !GetAtt ReservationExtractorFunction.Arn
-                  - !GetAtt FacilityInspectorFunction.Arn
+                  - !GetAtt DefectDetectorFunction.Arn
+                  - !GetAtt ScadaAnalyzerFunction.Arn
+                  - !GetAtt ThermalAnalyzerFunction.Arn
                   - !GetAtt ReportFunction.Arn
 
-  TravelStateMachine:
+  InspectionStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
-      TracingConfiguration:
-        Enabled: !If [EnableXRay, true, false]
       StateMachineName: !Sub "${AWS::StackName}-workflow"
       RoleArn: !GetAtt StateMachineRole.Arn
       DefinitionString: !Sub |
         {
-          "Comment": "UC20: Travel Document Processing - Discovery → Reservation Map → Facility Map → Report",
+          "Comment": "UC25: Utilities Asset Inspection - Discovery → Defect Map → SCADA Map → Thermal Map → Report",
           "StartAt": "Discovery",
           "States": {
             "Discovery": {
               "Type": "Task",
               "Resource": "${DiscoveryFunction.Arn}",
               "ResultPath": "$.discovery",
-              "Next": "ReservationExtractorMap",
-              "Retry": [
-                {
-                  "ErrorEquals": ["States.TaskFailed"],
-                  "IntervalSeconds": 5,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2.0
-                }
-              ]
+              "Next": "CheckObjectsFound",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2.0}]
             },
-            "ReservationExtractorMap": {
+            "CheckObjectsFound": {
+              "Type": "Choice",
+              "Choices": [{"Variable": "$.discovery.total_objects", "NumericGreaterThan": 0, "Next": "DefectDetectorMap"}],
+              "Default": "ReportGeneration"
+            },
+            "DefectDetectorMap": {
               "Type": "Map",
-              "ItemsPath": "$.discovery.reservation_docs",
+              "ItemsPath": "$.discovery.drone_images",
               "MaxConcurrency": ${MapConcurrency},
-              "ResultPath": "$.reservation_results",
-              "Next": "FacilityInspectorMap",
+              "ResultPath": "$.defect_results",
+              "Next": "ScadaAnalyzerMap",
               "ItemProcessor": {
-                "ProcessorConfig": { "Mode": "INLINE" },
-                "StartAt": "ExtractReservation",
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "DetectDefect",
                 "States": {
-                  "ExtractReservation": {
+                  "DetectDefect": {
                     "Type": "Task",
-                    "Resource": "${ReservationExtractorFunction.Arn}",
-                    "Retry": [
-                      {
-                        "ErrorEquals": ["States.TaskFailed"],
-                        "IntervalSeconds": 10,
-                        "MaxAttempts": 3,
-                        "BackoffRate": 2.0
-                      }
-                    ],
-                    "Catch": [
-                      {
-                        "ErrorEquals": ["States.ALL"],
-                        "ResultPath": "$.error",
-                        "Next": "MarkReservationFailed"
-                      }
-                    ],
+                    "Resource": "${DefectDetectorFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkDefectFailed"}],
                     "End": true
                   },
-                  "MarkReservationFailed": {
-                    "Type": "Pass",
-                    "Result": {"status": "FAILED"},
-                    "End": true
-                  }
+                  "MarkDefectFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
                 }
               }
             },
-            "FacilityInspectorMap": {
+            "ScadaAnalyzerMap": {
               "Type": "Map",
-              "ItemsPath": "$.discovery.facility_images",
+              "ItemsPath": "$.discovery.scada_logs",
               "MaxConcurrency": ${MapConcurrency},
-              "ResultPath": "$.facility_results",
-              "Next": "GenerateReport",
+              "ResultPath": "$.scada_results",
+              "Next": "ThermalAnalyzerMap",
               "ItemProcessor": {
-                "ProcessorConfig": { "Mode": "INLINE" },
-                "StartAt": "InspectFacility",
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "AnalyzeScada",
                 "States": {
-                  "InspectFacility": {
+                  "AnalyzeScada": {
                     "Type": "Task",
-                    "Resource": "${FacilityInspectorFunction.Arn}",
-                    "Retry": [
-                      {
-                        "ErrorEquals": ["States.TaskFailed"],
-                        "IntervalSeconds": 10,
-                        "MaxAttempts": 3,
-                        "BackoffRate": 2.0
-                      }
-                    ],
-                    "Catch": [
-                      {
-                        "ErrorEquals": ["States.ALL"],
-                        "ResultPath": "$.error",
-                        "Next": "MarkFacilityFailed"
-                      }
-                    ],
+                    "Resource": "${ScadaAnalyzerFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkScadaFailed"}],
                     "End": true
                   },
-                  "MarkFacilityFailed": {
-                    "Type": "Pass",
-                    "Result": {"status": "FAILED"},
-                    "End": true
-                  }
+                  "MarkScadaFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
                 }
               }
             },
-            "GenerateReport": {
+            "ThermalAnalyzerMap": {
+              "Type": "Map",
+              "ItemsPath": "$.discovery.thermal_images",
+              "MaxConcurrency": ${MapConcurrency},
+              "ResultPath": "$.thermal_results",
+              "Next": "ReportGeneration",
+              "ItemProcessor": {
+                "ProcessorConfig": {"Mode": "INLINE"},
+                "StartAt": "AnalyzeThermal",
+                "States": {
+                  "AnalyzeThermal": {
+                    "Type": "Task",
+                    "Resource": "${ThermalAnalyzerFunction.Arn}",
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2.0}],
+                    "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "MarkThermalFailed"}],
+                    "End": true
+                  },
+                  "MarkThermalFailed": {"Type": "Pass", "Result": {"status": "FAILED"}, "End": true}
+                }
+              }
+            },
+            "ReportGeneration": {
               "Type": "Task",
               "Resource": "${ReportFunction.Arn}",
-              "End": true
+              "ResultPath": "$.report",
+              "End": true,
+              "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}]
             }
           }
         }
 
   # -----------------------------------------------------------------
-  # EventBridge Scheduler (conditional — POLLING or HYBRID)
+  # EventBridge Scheduler (conditional)
   # -----------------------------------------------------------------
   SchedulerRole:
     Type: AWS::IAM::Role
@@ -778,15 +778,17 @@ Resources:
               Service: scheduler.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: StartExecution
+        - PolicyName: SchedulerPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: states:StartExecution
-                Resource: !GetAtt TravelStateMachine.Arn
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref InspectionStateMachine
 
-  WorkflowSchedule:
+  InspectionSchedule:
     Type: AWS::Scheduler::Schedule
     Condition: IsPollingOrHybrid
     Properties:
@@ -795,13 +797,14 @@ Resources:
       FlexibleTimeWindow:
         Mode: "OFF"
       Target:
-        Arn: !GetAtt TravelStateMachine.Arn
+        Arn: !Ref InspectionStateMachine
         RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
 
   # -----------------------------------------------------------------
   # CloudWatch Alarms (conditional)
   # -----------------------------------------------------------------
-  StateMachineFailureAlarm:
+  StepFunctionsFailureAlarm:
     Type: AWS::CloudWatch::Alarm
     Condition: CreateCloudWatchAlarms
     Properties:
@@ -811,12 +814,33 @@ Resources:
       MetricName: ExecutionsFailed
       Dimensions:
         - Name: StateMachineArn
-          Value: !GetAtt TravelStateMachine.Arn
+          Value: !Ref InspectionStateMachine
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  ReportErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-report-errors"
+      AlarmDescription: Report Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ReportFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
       AlarmActions:
         - !Ref NotificationTopic
 
@@ -825,20 +849,29 @@ Resources:
 # =====================================================================
 Outputs:
   StateMachineArn:
-    Value: !GetAtt TravelStateMachine.Arn
     Description: Step Functions State Machine ARN
-
-  DiscoveryFunctionArn:
-    Value: !GetAtt DiscoveryFunction.Arn
-
-  ReservationExtractorFunctionArn:
-    Value: !GetAtt ReservationExtractorFunction.Arn
-
-  FacilityInspectorFunctionArn:
-    Value: !GetAtt FacilityInspectorFunction.Arn
-
-  ReportFunctionArn:
-    Value: !GetAtt ReportFunction.Arn
+    Value: !Ref InspectionStateMachine
 
   NotificationTopicArn:
+    Description: SNS Notification Topic ARN
     Value: !Ref NotificationTopic
+
+  DiscoveryFunctionArn:
+    Description: Discovery Lambda Function ARN
+    Value: !GetAtt DiscoveryFunction.Arn
+
+  DefectDetectorFunctionArn:
+    Description: Defect Detector Lambda Function ARN
+    Value: !GetAtt DefectDetectorFunction.Arn
+
+  ScadaAnalyzerFunctionArn:
+    Description: SCADA Analyzer Lambda Function ARN
+    Value: !GetAtt ScadaAnalyzerFunction.Arn
+
+  ThermalAnalyzerFunctionArn:
+    Description: Thermal Analyzer Lambda Function ARN
+    Value: !GetAtt ThermalAnalyzerFunction.Arn
+
+  ReportFunctionArn:
+    Description: Report Lambda Function ARN
+    Value: !GetAtt ReportFunction.Arn

@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -152,6 +148,22 @@ Conditions:
 # Resources
 # =====================================================================
 Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
   # -----------------------------------------------------------------
   # SNS Topic + Email Subscription
@@ -504,13 +516,15 @@ Resources:
   # Lambda Functions (Python 3.12, 256MB, 300s timeout)
   # -----------------------------------------------------------------
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.13
-      Handler: financial-idp/functions/discovery/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -528,17 +542,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        - Key: UseCase
-          Value: financial-idp
+        UseCase: financial-idp
 
   OcrFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-ocr"
       Runtime: python3.13
-      Handler: financial-idp/functions/ocr/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/ocr/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 512
       Timeout: 600
       Role: !GetAtt OcrLambdaRole.Arn
@@ -551,17 +566,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref OcrLogGroup
       Tags:
-        - Key: UseCase
-          Value: financial-idp
+        UseCase: financial-idp
 
   EntityExtractionFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-entity-extraction"
       Runtime: python3.13
-      Handler: financial-idp/functions/entity_extraction/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/entity_extraction/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt EntityExtractionLambdaRole.Arn
@@ -572,17 +588,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref EntityExtractionLogGroup
       Tags:
-        - Key: UseCase
-          Value: financial-idp
+        UseCase: financial-idp
 
   SummaryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-summary"
       Runtime: python3.13
-      Handler: financial-idp/functions/summary/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/summary/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt SummaryLambdaRole.Arn
@@ -595,8 +612,7 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref SummaryLogGroup
       Tags:
-        - Key: UseCase
-          Value: financial-idp
+        UseCase: financial-idp
 
   # -----------------------------------------------------------------
   # Step Functions State Machine

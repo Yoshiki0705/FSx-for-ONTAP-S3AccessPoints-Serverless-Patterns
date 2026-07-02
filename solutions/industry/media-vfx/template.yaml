@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -158,6 +154,22 @@ Conditions:
 # Resources
 # =====================================================================
 Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
   # (OutputBucket removed - all output goes to FSx for ONTAP via S3 AP)
 
@@ -483,13 +495,15 @@ Resources:
   # Discovery/QualityCheck: 256MB, JobSubmit: 512MB
   # -----------------------------------------------------------------
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.13
-      Handler: media-vfx/functions/discovery/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -507,17 +521,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        - Key: UseCase
-          Value: media-vfx
+        UseCase: media-vfx
 
   JobSubmitFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-job-submit"
       Runtime: python3.13
-      Handler: media-vfx/functions/job_submit/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/job_submit/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 512
       Timeout: 300
       Role: !GetAtt JobSubmitLambdaRole.Arn
@@ -531,17 +546,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref JobSubmitLogGroup
       Tags:
-        - Key: UseCase
-          Value: media-vfx
+        UseCase: media-vfx
 
   QualityCheckFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-quality-check"
       Runtime: python3.13
-      Handler: media-vfx/functions/quality_check/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/quality_check/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: 256
       Timeout: 300
       Role: !GetAtt QualityCheckLambdaRole.Arn
@@ -555,8 +571,7 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref QualityCheckLogGroup
       Tags:
-        - Key: UseCase
-          Value: media-vfx
+        UseCase: media-vfx
 
   # -----------------------------------------------------------------
   # Step Functions State Machine

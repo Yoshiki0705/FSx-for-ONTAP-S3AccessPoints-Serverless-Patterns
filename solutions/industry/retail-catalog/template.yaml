@@ -1,7 +1,3 @@
-# ⚠️ NOTE: This file is for SAM local testing only.
-# The authoritative deployment template is template-deploy.yaml.
-# Edit template-deploy.yaml for production changes.
-#
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
@@ -166,7 +162,37 @@ Parameters:
 # =====================================================================
 # Conditions
 # =====================================================================
+  # --- OutputDestination (Pattern B: FSx for ONTAP S3 AP write-back) ---
+  OutputDestination:
+    Type: String
+    Default: "STANDARD_S3"
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Description: >
+      AI/ML 成果物の書き込み先。STANDARD_S3 は新規 S3 バケット、FSXN_S3AP は FSx for ONTAP
+      S3 Access Point 経由でオリジナルと同一ボリュームへ書き戻す（no data movement）。
+  OutputS3APAlias:
+    Type: String
+    Default: ""
+    Description: FSXN_S3AP 出力先 S3 AP Alias。空なら入力 S3AccessPointAlias を再利用。
+  OutputS3APName:
+    Type: String
+    Default: ""
+    Description: 出力用 S3 AP 名。空なら S3AccessPointName を再利用。
+  OutputS3APPrefix:
+    Type: String
+    Default: "ai-outputs/"
+    Description: FSXN_S3AP 出力キーのプレフィックス。
+
 Conditions:
+  # --- OutputDestination Conditions ---
+  UseStandardS3:
+    !Equals [!Ref OutputDestination, "STANDARD_S3"]
+  UseFsxnS3AP:
+    !Equals [!Ref OutputDestination, "FSXN_S3AP"]
+  UseInputApAsOutputAp:
+    !Equals [!Ref OutputS3APAlias, ""]
+  UseInputApNameAsOutputApName:
+    !Equals [!Ref OutputS3APName, ""]
   HasS3AccessPointName:
     !Not [!Equals [!Ref S3AccessPointName, ""]]
   CreateStreamingResources:
@@ -203,6 +229,22 @@ Conditions:
 # Resources
 # =====================================================================
 Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, ontap_client, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
 
   # -----------------------------------------------------------------
   # S3 Output Bucket (SSE-KMS)
@@ -453,8 +495,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -499,8 +553,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -546,8 +612,20 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub "${OutputBucket.Arn}/*"
+                Resource: !If
+                  - UseStandardS3
+                  - - !Sub "${OutputBucket.Arn}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+                      - !Sub
+                        - "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${Name}/object/*"
+                        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]
+                    - - !Sub
+                        - "arn:aws:s3:::${Alias}/*"
+                        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:
@@ -569,13 +647,15 @@ Resources:
   # ImageTagging / CatalogMetadata / QualityCheck: VPC 外
   # -----------------------------------------------------------------
   DiscoveryFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
       Runtime: python3.13
-      Handler: retail-catalog/functions/discovery/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/discovery/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt DiscoveryLambdaRole.Arn
@@ -596,17 +676,18 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
-        - Key: UseCase
-          Value: retail-catalog
+        UseCase: retail-catalog
 
   ImageTaggingFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-image-tagging"
       Runtime: python3.13
-      Handler: retail-catalog/functions/image_tagging/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/image_tagging/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt ImageTaggingLambdaRole.Arn
@@ -614,45 +695,61 @@ Resources:
         Variables:
           USE_CASE: "retail-catalog"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           CONFIDENCE_THRESHOLD: !Ref ConfidenceThreshold
           SNS_TOPIC_ARN: !Ref NotificationTopic
       LoggingConfig:
         LogGroup: !Ref ImageTaggingLogGroup
       Tags:
-        - Key: UseCase
-          Value: retail-catalog
+        UseCase: retail-catalog
 
   CatalogMetadataFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-catalog-metadata"
       Runtime: python3.13
-      Handler: retail-catalog/functions/catalog_metadata/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/catalog_metadata/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt CatalogMetadataLambdaRole.Arn
       Environment:
         Variables:
           USE_CASE: "retail-catalog"
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
           BEDROCK_MODEL_ID: !Ref BedrockModelId
       LoggingConfig:
         LogGroup: !Ref CatalogMetadataLogGroup
       Tags:
-        - Key: UseCase
-          Value: retail-catalog
+        UseCase: retail-catalog
 
   QualityCheckFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-quality-check"
       Runtime: python3.13
-      Handler: retail-catalog/functions/quality_check/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/quality_check/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt QualityCheckLambdaRole.Arn
@@ -660,12 +757,18 @@ Resources:
         Variables:
           USE_CASE: "retail-catalog"
           S3_ACCESS_POINT: !Ref S3AccessPointAlias
-          OUTPUT_BUCKET: !Ref OutputBucket
+          OUTPUT_DESTINATION: !Ref OutputDestination
+          OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]
+          OUTPUT_S3AP_ALIAS:
+            !If
+              - UseFsxnS3AP
+              - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]
+              - ""
+          OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix
       LoggingConfig:
         LogGroup: !Ref QualityCheckLogGroup
       Tags:
-        - Key: UseCase
-          Value: retail-catalog
+        UseCase: retail-catalog
 
   # -----------------------------------------------------------------
   # Step Functions State Machine
@@ -1186,14 +1289,16 @@ Resources:
   # Stream Producer Lambda Function
   # -----------------------------------------------------------------
   StreamProducerFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Condition: CreateStreamingResources
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-stream-producer"
       Runtime: python3.13
-      Handler: retail-catalog/functions/stream_producer/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/stream_producer/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt StreamProducerLambdaRole.Arn
@@ -1207,25 +1312,24 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref StreamProducerLogGroup
       Tags:
-        - Key: UseCase
-          Value: retail-catalog
-        - Key: Phase
-          Value: "3"
-        - Key: Component
-          Value: streaming
+        UseCase: retail-catalog
+        Phase: "3"
+        Component: streaming
 
   # -----------------------------------------------------------------
   # Stream Consumer Lambda Function
   # -----------------------------------------------------------------
   StreamConsumerFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Condition: CreateStreamingResources
     Properties:
-      TracingConfig:
-        Mode: !If [EnableXRay, "Active", "PassThrough"]
+      Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-stream-consumer"
       Runtime: python3.13
-      Handler: retail-catalog/functions/stream_consumer/handler.handler
+      Handler: handler.handler
+      CodeUri: functions/stream_consumer/
+      Layers:
+        - !Ref SharedLayer
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout
       Role: !GetAtt StreamConsumerLambdaRole.Arn
@@ -1240,12 +1344,9 @@ Resources:
       LoggingConfig:
         LogGroup: !Ref StreamConsumerLogGroup
       Tags:
-        - Key: UseCase
-          Value: retail-catalog
-        - Key: Phase
-          Value: "3"
-        - Key: Component
-          Value: streaming
+        UseCase: retail-catalog
+        Phase: "3"
+        Component: streaming
 
   # -----------------------------------------------------------------
   # Stream Producer EventBridge Scheduler

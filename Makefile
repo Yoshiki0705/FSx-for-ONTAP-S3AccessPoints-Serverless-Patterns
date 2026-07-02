@@ -158,3 +158,18 @@ clean:
 	find . -name "*.pyc" -delete 2>/dev/null || true
 	rm -rf .hypothesis/examples/ 2>/dev/null || true
 	rm -rf build/ htmlcov/ coverage.xml
+
+# ============================================================
+# SAM Layer Build Target (used by sam build --BuildMethod makefile)
+# ============================================================
+build-SharedLayer:
+	mkdir -p "$(ARTIFACTS_DIR)/python/shared"
+	cp -r shared/*.py "$(ARTIFACTS_DIR)/python/shared/"
+	cp -r shared/schemas "$(ARTIFACTS_DIR)/python/shared/" 2>/dev/null || true
+
+# Build & Deploy logistics-ocr (UC12)
+build-uc12:
+	cd solutions/industry/logistics-ocr && sam build
+
+deploy-uc12:
+	cd solutions/industry/logistics-ocr && sam deploy --config-file samconfig.toml
