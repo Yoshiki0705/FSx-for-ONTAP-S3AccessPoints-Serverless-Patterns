@@ -1,35 +1,65 @@
-# UC5: Medizin – Automatische Klassifizierung und Anonymisierung von DICOM-Bildern
+# UC5: Gesundheitswesen – Automatische Klassifizierung und Anonymisierung von DICOM-Bildern
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | Deutsch | [Español](README.es.md)
 
+📚 **Dokumentation**: [Architekturdiagramm](docs/architecture.md) | [Demo-Leitfaden](docs/demo-guide.md)
+
 ## Übersicht
-Mithilfe der S3 Access Points von Amazon FSx for ONTAP wird ein serverloser Workflow für die automatische Klassifizierung und Anonymisierung von DICOM-Medizinbildern bereitgestellt. Dies gewährleistet den Schutz der Patientenprivatsphäre und eine effiziente Bildverwaltung.
+
+Mithilfe der S3 Access Points von FSx for ONTAP klassifiziert und anonymisiert dieser serverlose Workflow DICOM-Medizinbilder automatisch. Er gewährleistet den Schutz der Privatsphäre der Patienten und eine effiziente Bildverwaltung.
+
 ### Fälle, für die dieses Muster geeignet ist
-- DICOM-Dateien, die von PACS/VNA in FSx for ONTAP gespeichert wurden, regelmäßig anonymisieren zu wollen
-- PHI (Protected Health Information) für die Erstellung von Forschungsdatensätzen automatisch entfernen zu wollen
-- Patienteninformationen (Burned-in Annotation), die in Bildern eingebrannt sind, erkennen zu wollen
-- die Bildverwaltung durch automatische Klassifizierung nach Modalität und Region zu verbessern
-- eine Anonymisierungspipeline zu erstellen, die HIPAA/personenbezogenen Datenschutzgesetzen entspricht
+
+- Sie möchten DICOM-Dateien, die aus einem PACS / VNA in FSx for ONTAP gespeichert wurden, regelmäßig anonymisieren
+- Sie möchten PHI (Protected Health Information) zur Erstellung von Forschungsdatensätzen automatisch entfernen
+- Sie möchten in Bilder eingebrannte Patientendaten (Burned-in Annotation) erkennen
+- Sie möchten die Bildverwaltung durch automatische Klassifizierung nach Modalität und Körperregion effizienter gestalten
+- Sie möchten eine Anonymisierungs-Pipeline aufbauen, die HIPAA / Datenschutzgesetzen entspricht
+
 ### Fälle, für die dieses Muster nicht geeignet ist
-- Echtzeit-DICOM-Routing (DICOM MWL / MPPS-Integration erforderlich)
-- Bilddiagnostik-KI zur Unterstützung (CAD) – Dieses Muster ist auf Klassifizierung und Anonymisierung spezialisiert
-- Übertragene Daten in Regionen, in denen Comprehend Medical nicht verfügbar ist, sind aufgrund von Vorschriften nicht zulässig
-- DICOM-Dateigröße überschreitet 5 GB (z. B. bei Multi-Frame MR/CT)
+
+- DICOM-Routing in Echtzeit (erfordert eine DICOM-MWL-/MPPS-Integration)
+- Diagnoseunterstützende KI für Bilder (CAD) — dieses Muster ist auf Klassifizierung und Anonymisierung spezialisiert
+- Regionsübergreifende Datenübertragung ist aus regulatorischen Gründen in Regionen, in denen Comprehend Medical nicht verfügbar ist, nicht zulässig
+- Die DICOM-Dateigröße überschreitet 5 GB (z. B. Multi-Frame-MR/CT)
+
 ### Hauptfunktionen
-- Automatische Erkennung von.dcm-Dateien über S3 AP
-- Analyse von DICOM-Metadaten (Patientenname, Untersuchungsdatum, Modalität, Region) und Klassifizierung
-- Erkennung von eingebrannten personenbezogenen Informationen (PII) in Bildern mit Amazon Rekognition
+
+- Automatische Erkennung von .dcm-Dateien über S3 AP
+- Analyse der DICOM-Metadaten (Patientenname, Untersuchungsdatum, Modalität, Körperregion) und Klassifizierung
+- Erkennung eingebrannter personenbezogener Informationen (PII) in Bildern mit Amazon Rekognition
 - Identifizierung und Entfernung von PHI (Protected Health Information) mit Amazon Comprehend Medical
-- Ausgabe anonymisierter DICOM-Dateien mit Klassifizierungsmetadaten in S3
+- S3-Ausgabe der anonymisierten DICOM-Dateien mit Klassifizierungsmetadaten
+
+## Success Metrics
+
+### Outcome
+Durch die automatische Klassifizierung und Anonymisierung von DICOM-Bildern die Sucheffizienz für die Radiologie verbessern und die Privatsphäre der Patienten schützen.
+
+### Metrics
+| Metrik | Zielwert (Beispiel) |
+|-----------|------------|
+| Verarbeitete DICOM-Dateien / Ausführung | > 500 files |
+| Klassifizierungsgenauigkeit | > 90% |
+| Erfolgsquote der Anonymisierung | 100% (kein PHI-Leck) |
+| Verarbeitungszeit / Datei | < 30 Sekunden |
+| Kosten / Ausführung | < $15 |
+| Pflichtquote Human Review | 100% (Überprüfung aller Anonymisierungsergebnisse empfohlen) |
+
+> **Grund für 100% Human Review**: Da eine versäumte Anonymisierung sich direkt auf die Privatsphäre der Patienten auswirkt, wird eine menschliche Überprüfung aller Dateien empfohlen.
+
+### Measurement Method
+Step Functions-Ausführungsverlauf, Comprehend Medical entity count, Diff-Überprüfung vor und nach der Anonymisierung sowie CloudWatch Metrics. Die Überprüfungsergebnisse werden in DynamoDB aufgezeichnet, sodass bei Audits nachvollziehbar ist, „wer wann was überprüft hat".
+
 ## Architektur
 
 ```mermaid
 graph LR
-    subgraph "Step Functions ワークフロー"
-        D[Discovery Lambda<br/>.dcm ファイル検出]
-        DP[DICOM Parse Lambda<br/>メタデータ解析・分類]
-        PII[PII Detection Lambda<br/>Rekognition 画像内 PII 検出]
-        ANON[Anonymization Lambda<br/>Comprehend Medical PHI 除去]
+    subgraph "Step Functions-Workflow"
+        D[Discovery Lambda<br/>.dcm-Dateierkennung]
+        DP[DICOM Parse Lambda<br/>Metadatenanalyse & Klassifizierung]
+        PII[PII Detection Lambda<br/>Rekognition PII-Erkennung im Bild]
+        ANON[Anonymization Lambda<br/>Comprehend Medical PHI-Entfernung]
     end
 
     D -->|Manifest| DP
@@ -44,30 +74,36 @@ graph LR
 ```
 
 ### Workflow-Schritte
-1. **Discovery**: .dcm-Dateien von S3 AP erkennen und Manifest erzeugen
-2. **DICOM-Analyse**: DICOM-Metadaten (Patientenname, Studiendatum, Modalität, Körperteil) analysieren und nach Modalität und Körperteil klassifizieren
-3. **PII-Erkennung**: Mit Rekognition eingebrannte personenbezogene Informationen in Bildpixeln erkennen
-4. **Anonymisierung**: Mit Comprehend Medical PHI identifizieren und entfernen, anonymisierte DICOM mit Klassifizierungsmetadaten in S3 ausgeben
+
+1. **Discovery**: .dcm-Dateien aus dem S3 AP erkennen und ein Manifest erzeugen
+2. **DICOM Parse**: DICOM-Metadaten (patient name, study date, modality, body part) analysieren und nach Modalität und Körperregion klassifizieren
+3. **PII Detection**: eingebrannte personenbezogene Informationen in den Bildpixeln mit Rekognition erkennen
+4. **Anonymization**: PHI mit Comprehend Medical identifizieren und entfernen und das anonymisierte DICOM mit Klassifizierungsmetadaten nach S3 ausgeben
+
 ## Voraussetzungen
-- AWS-Konto und angemessene IAM-Berechtigungen
-- FSx for ONTAP-Dateisysteme (ONTAP 9.17.1P4D3 oder höher)
-- S3 Access Point aktivierte Volumes
-- ONTAP REST API-Anmeldeinformationen, die im Secrets Manager registriert sind
-- VPC, private Subnetz
-- Amazon Rekognition, Amazon Comprehend Medical in verfügbaren Regionen
+
+- Ein AWS-Konto und angemessene IAM-Berechtigungen
+- Ein FSx for ONTAP-Dateisystem (ONTAP 9.17.1P4D3 oder höher)
+- Ein Volume mit aktivierten S3 Access Points
+- In Secrets Manager registrierte Anmeldeinformationen für die ONTAP REST API
+- Ein VPC und private Subnetze
+- Eine Region, in der Amazon Rekognition und Amazon Comprehend Medical verfügbar sind
+
 ## Bereitstellungsschritte
 
 ### 1. Vorbereitung der Parameter
-Vor dem Deploy die folgenden Werte überprüfen:
+
+Überprüfen Sie vor der Bereitstellung die folgenden Werte:
 
 - FSx for ONTAP S3 Access Point Alias
-- ONTAP Verwaltungs-IP-Adresse
-- Secrets Manager Geheimnisname
-- VPC ID, privates Subnetz ID
+- ONTAP-Management-IP-Adresse
+- Secrets Manager-Secret-Name
+- VPC-ID, private Subnetz-IDs
+
 ### 2. SAM-Bereitstellung
 
 ```bash
-# Voraussetzung: AWS SAM CLI erforderlich. „sam build“ verpackt Code und Shared Layer automatisch.
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
 sam build
 
 sam deploy \
@@ -89,114 +125,243 @@ sam deploy \
   --region ap-northeast-1
 ```
 
-> **Hinweis**: `template.yaml` ist für die Verwendung mit der AWS SAM CLI (`sam build` + `sam deploy`) vorgesehen.
-> Für eine direkte Bereitstellung mit `aws cloudformation deploy` verwenden Sie stattdessen `template-deploy.yaml` (erfordert das vorherige Packen der Lambda-Zip-Dateien und das Hochladen in einen S3-Bucket).
-> **Hinweis**: Ersetzen Sie die Platzhalter `<...>` durch die tatsächlichen Umgebungswerte.
-### 3. Überprüfung der SNS-Abonnements
-Nach der Bereitstellung erhalten Sie eine E-Mail zur Bestätigung des SNS-Abonnements an die angegebene E-Mail-Adresse.
+> **Hinweis**: `template.yaml` wird mit dem SAM CLI (`sam build` + `sam deploy`) verwendet.
+> Für eine direkte Bereitstellung mit dem Befehl `aws cloudformation deploy` verwenden Sie stattdessen `template-deploy.yaml` (dies erfordert das Vorab-Packen der Lambda-Zip-Dateien und deren Upload nach S3).
 
-> **Hinweis**: Wenn Sie `S3AccessPointName` weglassen, kann es in der IAM-Richtlinie zu einem Alias-basierten Fehler `AccessDenied` kommen. Es wird empfohlen, diesen in einer Produktionsumgebung anzugeben. Weitere Informationen finden Sie im [Fehlerbehebungsleitfaden](../docs/guides/troubleshooting-guide.md#1-accessdenied-fehler).
+> **Hinweis**: Ersetzen Sie die Platzhalter `<...>` durch die tatsächlichen Werte Ihrer Umgebung.
+
+### 3. Bestätigung des SNS-Abonnements
+
+Nach der Bereitstellung wird eine SNS-Abonnement-Bestätigungs-E-Mail an die angegebene E-Mail-Adresse gesendet.
+
+> **Hinweis**: Wenn Sie `S3AccessPointName` weglassen, basiert die IAM-Richtlinie nur auf dem Alias, und es kann ein Fehler `AccessDenied` auftreten. In Produktionsumgebungen wird empfohlen, ihn anzugeben. Weitere Informationen finden Sie im [Leitfaden zur Fehlerbehebung](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+
 ## Liste der Konfigurationsparameter
 
-| パラメータ | 説明 | デフォルト | 必須 |
+| Parameter | Beschreibung | Standard | Erforderlich |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
-| `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
-| `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
-| `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
-| `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
-| `VpcId` | VPC ID | — | ✅ |
-| `PrivateSubnetIds` | プライベートサブネット ID リスト | — | ✅ |
-| `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
-| `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
-| `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias (für Eingabe) | — | ✅ |
+| `S3AccessPointName` | S3-AP-Name (für die ARN-basierte IAM-Berechtigungsvergabe; bei Weglassen nur Alias-basiert) | `""` | ⚠️ Empfohlen |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias (für Ausgabe) | — | ✅ |
+| `OntapSecretName` | Secrets Manager-Secret-Name der ONTAP-Anmeldeinformationen | — | ✅ |
+| `OntapManagementIp` | ONTAP-Cluster-Management-IP-Adresse | — | ✅ |
+| `ScheduleExpression` | Zeitplanausdruck des EventBridge Scheduler | `rate(1 hour)` | |
+| `VpcId` | VPC-ID | — | ✅ |
+| `PrivateSubnetIds` | Liste der privaten Subnetz-IDs | — | ✅ |
+| `NotificationEmail` | SNS-Benachrichtigungs-E-Mail-Adresse | — | ✅ |
+| `EnableVpcEndpoints` | Interface VPC Endpoints aktivieren | `false` | |
+| `EnableCloudWatchAlarms` | CloudWatch Alarms aktivieren | `false` | |
 
 ## Kostenstruktur
 
-### Request-basiert (nutzungsabhängige Gebühren)
+### Anfragebasiert (nutzungsabhängige Gebühren)
 
-| サービス | 課金単位 | 概算（100 DICOM ファイル/月） |
+| Service | Abrechnungseinheit | Schätzung (100 DICOM-Dateien/Monat) |
 |---------|---------|---------------------------|
-| Lambda | リクエスト数 + 実行時間 | ~$0.01 |
-| Step Functions | ステート遷移数 | 無料枠内 |
-| S3 API | リクエスト数 | ~$0.01 |
-| Rekognition | 画像数 | ~$0.10 |
-| Comprehend Medical | ユニット数 | ~$0.05 |
+| Lambda | Anzahl der Anfragen + Ausführungszeit | ~$0.01 |
+| Step Functions | Anzahl der Zustandsübergänge | Innerhalb des kostenlosen Kontingents |
+| S3 API | Anzahl der Anfragen | ~$0.01 |
+| Rekognition | Anzahl der Bilder | ~$0.10 |
+| Comprehend Medical | Anzahl der Einheiten | ~$0.05 |
 
-### Rund-um-die-Uhr-Betrieb (optional)
+### Dauerbetrieb (optional)
 
-| サービス | パラメータ | 月額 |
+| Service | Parameter | Monatlich |
 |---------|-----------|------|
 | Interface VPC Endpoints | `EnableVpcEndpoints=true` | ~$28.80 |
 | CloudWatch Alarms | `EnableCloudWatchAlarms=true` | ~$0.20 |
-> Im Demo-/PoC-Umfeld sind die Kosten variabel und beginnen bei **~0,17 €/Monat**.
+
+> In einer Demo-/PoC-Umgebung ist die Nutzung ab **~$0.17/Monat** bei ausschließlich variablen Kosten möglich.
+
 ## Sicherheit und Compliance
-Dieses Workflow behandelt medizinische Daten und implementiert daher folgende Sicherheitsmaßnahmen:
+
+Da dieser Workflow medizinische Daten verarbeitet, implementiert er die folgenden Sicherheitsmaßnahmen:
 
 - **Verschlüsselung**: Der S3-Ausgabe-Bucket wird mit SSE-KMS verschlüsselt
-- **Ausführung innerhalb des VPC**: Die Lambda-Funktionen werden innerhalb des VPC ausgeführt (VPC Endpoints empfohlen)
-- **Minimale IAM-Rechte**: Jede Lambda-Funktion erhält nur die minimal notwendigen IAM-Rechte
-- **PHI-Entfernung**: Comprehend Medical erkennt und entfernt geschützte medizinische Informationen automatisch
-- **Überwachungsprotokolle**: CloudWatch Logs protokolliert alle Vorgänge
+- **Ausführung innerhalb eines VPC**: Lambda-Funktionen werden innerhalb eines VPC ausgeführt (die Aktivierung von VPC Endpoints wird empfohlen)
+- **IAM mit geringsten Rechten**: Jeder Lambda-Funktion werden nur die minimal erforderlichen IAM-Berechtigungen erteilt
+- **PHI-Entfernung**: Geschützte Gesundheitsinformationen werden mit Comprehend Medical automatisch erkannt und entfernt
+- **Audit-Protokolle**: Alle Verarbeitungsvorgänge werden in CloudWatch Logs protokolliert
 
-> **Hinweis**: Dieses Muster ist eine Beispielimplementierung. Für die Nutzung in einer echten medizinischen Umgebung sind zusätzliche Sicherheitsmaßnahmen und Compliance-Prüfungen gemäß regulatorischen Anforderungen wie HIPAA erforderlich.
+> **Hinweis**: Dieses Muster ist eine Beispielimplementierung. Der Einsatz in einer echten medizinischen Umgebung erfordert zusätzliche Sicherheitsmaßnahmen und eine Compliance-Prüfung gemäß regulatorischen Anforderungen wie HIPAA.
+
 ## Bereinigung
 
 ```bash
-# CloudFormation スタックの削除
+# Delete the CloudFormation stack
 aws cloudformation delete-stack \
   --stack-name fsxn-healthcare-dicom \
   --region ap-northeast-1
 
-# 削除完了を待機
+# Wait for deletion to complete
 aws cloudformation wait stack-delete-complete \
   --stack-name fsxn-healthcare-dicom \
   --region ap-northeast-1
 ```
-> **Hinweis**: Das Löschen des Stapels kann fehlschlagen, wenn sich Objekte im S3-Bucket befinden. Bitte leeren Sie den Bucket zuvor.
-## Unterstützte Regionen
-UC5 verwendet die folgenden Dienste:
-| サービス | リージョン制約 |
-|---------|-------------|
-| Amazon Rekognition | ほぼ全リージョンで利用可能 |
-| Amazon Comprehend Medical | 限定リージョンのみ対応。`COMPREHEND_MEDICAL_REGION` パラメータで対応リージョン（us-east-1 等）を指定 |
-| AWS X-Ray | ほぼ全リージョンで利用可能 |
-| CloudWatch EMF | ほぼ全リージョンで利用可能 |
-> Rufen Sie die Comprehend Medical API über den Cross-Region Client auf. Überprüfen Sie die Datenresidenzanforderungen. Weitere Informationen finden Sie in der [Regionskompatibilitätsmatrix](../docs/region-compatibility.md).
-## Referenzlinks
 
-### AWS-Dokumentation
-- [FSx for ONTAP S3 Access Points 概要](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
-- [Lambda für serverlose Verarbeitung (offizielles Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
+> **Hinweis**: Das Löschen des Stacks kann fehlschlagen, wenn sich noch Objekte im S3-Bucket befinden. Leeren Sie den Bucket zuvor.
+
+## Unterstützte Regionen
+
+UC5 verwendet die folgenden Services:
+
+| Service | Regionsbeschränkung |
+|---------|-------------|
+| Amazon Rekognition | In nahezu allen Regionen verfügbar |
+| Amazon Comprehend Medical | Nur in begrenzten Regionen unterstützt. Geben Sie mit dem Parameter `COMPREHEND_MEDICAL_REGION` eine unterstützte Region (z. B. us-east-1) an |
+| AWS X-Ray | In nahezu allen Regionen verfügbar |
+| CloudWatch EMF | In nahezu allen Regionen verfügbar |
+
+> Die Comprehend Medical API wird über einen Cross-Region Client aufgerufen. Überprüfen Sie Ihre Anforderungen an die Datenresidenz. Weitere Informationen finden Sie in der [Matrix zur Regionskompatibilität](../docs/region-compatibility.md).
+
+## Referenzen
+
+### Offizielle AWS-Dokumentation
+
+- [Übersicht über FSx for ONTAP S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Serverlose Verarbeitung mit Lambda (offizielles Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Comprehend Medical DetectPHI API](https://docs.aws.amazon.com/comprehend-medical/latest/dev/API_DetectPHI.html)
 - [Rekognition DetectText API](https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectText.html)
 - [HIPAA on AWS Whitepaper](https://docs.aws.amazon.com/whitepapers/latest/architecting-hipaa-security-and-compliance-on-aws/welcome.html)
+
 ### AWS-Blogartikel
-- [S3 AP 発表ブログ](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
+
+- [Blog zur Ankündigung der S3 AP](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
 - [FSx for ONTAP + Bedrock RAG](https://aws.amazon.com/blogs/machine-learning/build-rag-based-generative-ai-applications-in-aws-using-amazon-fsx-for-netapp-ontap-with-amazon-bedrock/)
-### GitHub-Beispiel
-- [aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing](https://github.com/aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing) — Rekognition Großflächige Verarbeitung
-- [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — Serverless-Muster
-## Verifizierte Umgebung
 
-| 項目 | 値 |
+### GitHub-Beispiele
+
+- [aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing](https://github.com/aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing) — Rekognition-Verarbeitung im großen Maßstab
+- [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — Sammlung serverloser Muster
+
+## Validierte Umgebung
+
+| Element | Wert |
 |------|-----|
-| AWS リージョン | ap-northeast-1 (東京) |
-| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
-| FSx 構成 | SINGLE_AZ_1 |
+| AWS-Region | ap-northeast-1 (Tokio) |
+| FSx for ONTAP-Version | ONTAP 9.17.1P4D3 |
+| FSx for ONTAP-Konfiguration | SINGLE_AZ_1 |
 | Python | 3.12 |
-| デプロイ方式 | CloudFormation (標準) |
+| Bereitstellungsmethode | CloudFormation (Standard) |
 
-## Lambda VPC-Konfigurationsarchitektur
-Aufgrund der Erkenntnisse aus der Überprüfung sind die Lambda-Funktionen in VPC-intern/extern aufgeteilt.
+## Lambda-VPC-Platzierungsarchitektur
 
-**VPC-intern Lambda** (nur Funktionen, die ONTAP REST API-Zugriff benötigen):
+Basierend auf den Erkenntnissen aus der Validierung sind die Lambda-Funktionen auf innerhalb und außerhalb des VPC aufgeteilt.
+
+**Lambda innerhalb des VPC** (nur Funktionen, die Zugriff auf die ONTAP REST API benötigen):
 - Discovery Lambda — S3 AP + ONTAP API
 
-**VPC-extern Lambda** (nur AWS-verwaltete Dienste APIs):
-- Alle anderen Lambda-Funktionen
+**Lambda außerhalb des VPC** (nur Funktionen, die AWS-Managed-Service-APIs verwenden):
+- Alle übrigen Lambda-Funktionen
 
-> **Grund**: Für den Zugriff auf AWS-verwaltete Dienste APIs (Athena, Bedrock, Textract usw.) von internen VPC-Lambdas aus ist ein Interface VPC Endpoint erforderlich (jeweils $7,20/Monat). Externe VPC-Lambdas können direkt auf AWS APIs über das Internet zugreifen und ohne zusätzliche Kosten funktionieren.
+> **Grund**: Der Zugriff auf AWS-Managed-Service-APIs (Athena, Bedrock, Textract usw.) aus einer Lambda innerhalb des VPC erfordert Interface VPC Endpoints (je 7,20 $/Monat). Eine Lambda außerhalb des VPC kann direkt über das Internet auf AWS-APIs zugreifen und ohne zusätzliche Kosten arbeiten.
 
-> **Hinweis**: Bei UC (UC1 Recht und Compliance), die die ONTAP REST API verwenden, ist `EnableVpcEndpoints=true` erforderlich. Die ONTAP-Anmeldeinformationen werden über den Secrets Manager VPC Endpoint abgerufen.
+> **Hinweis**: Für einen UC, der die ONTAP REST API verwendet (UC1 Recht & Compliance), ist `EnableVpcEndpoints=true` erforderlich. Dies dient dazu, die ONTAP-Anmeldeinformationen über den Secrets Manager VPC Endpoint abzurufen.
+
+---
+
+## Links zur AWS-Dokumentation
+
+| Service | Dokumentation |
+|---------|------------|
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Comprehend Medical | [Amazon Comprehend Medical](https://docs.aws.amazon.com/comprehend-medical/latest/dev/comprehendmedical-welcome.html) |
+| Amazon Bedrock | [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+| HIPAA-fähige Services von AWS | [HIPAA-fähige Services von AWS](https://aws.amazon.com/compliance/hipaa-eligible-services-reference/) |
+
+### Ausrichtung am Well-Architected Framework
+
+| Säule | Ausrichtung |
+|----|------|
+| Operative Exzellenz | X-Ray-Tracing, EMF-Metriken, Anonymisierungs-Audit-Protokolle |
+| Sicherheit | IAM mit geringsten Rechten, KMS-Verschlüsselung, PII-Erkennung & Anonymisierung, HIPAA-Überlegungen |
+| Zuverlässigkeit | Step Functions Retry/Catch, regionsübergreifendes Fallback |
+| Leistungseffizienz | Lambda-Speicheroptimierung, DICOM-Streaming-Verarbeitung |
+| Kostenoptimierung | Serverless, seitenbasierte Abrechnung von Comprehend Medical |
+| Nachhaltigkeit | Bedarfsgesteuerte Ausführung, Wiederverwendung anonymisierter Daten |
+
+---
+
+## Lokale Tests
+
+### Prüfung der Voraussetzungen
+
+```bash
+# Confirm prerequisites
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (for sam local)
+aws sts get-caller-identity  # AWS credentials
+```
+
+### sam local invoke
+
+```bash
+# Build
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+# Run the Discovery Lambda locally
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# With environment variable overrides
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### Unit-Tests
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+Weitere Informationen finden Sie im [Schnelleinstieg für lokale Tests](../docs/local-testing-quick-start.md).
+
+---
+
+## Ausgabebeispiel (Output Sample)
+
+Beispielausgabe der DICOM-Anonymisierungs-Pipeline:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 12,
+    "prefix": "dicom-inbox/"
+  },
+  "anonymization": [
+    {
+      "key": "dicom-inbox/study-001/series-001.dcm",
+      "pii_detected": ["PatientName", "PatientID", "InstitutionName"],
+      "pii_removed": 3,
+      "anonymized_key": "anonymized/study-001/series-001.dcm",
+      "integrity_hash": "sha256:a1b2c3..."
+    }
+  ],
+  "report": {
+    "total_files": 12,
+    "anonymized": 12,
+    "pii_fields_removed": 36,
+    "compliance_status": "HIPAA_SAFE_HARBOR_COMPLIANT"
+  }
+}
+```
+
+> **Anmerkung**: Das Obige ist eine Beispielausgabe; die tatsächlichen Werte variieren je nach Umgebung und Eingabedaten. Benchmark-Zahlen sind eine Dimensionierungsreferenz (sizing reference), keine Servicegrenze (service limit).
+
+---
+
+## Governance Note
+
+> Dieses Muster bietet technische Architekturberatung. Es handelt sich nicht um rechtliche, Compliance- oder regulatorische Beratung. Organisationen sollten qualifizierte Fachleute konsultieren.
+
+---
+
+## S3AP Compatibility
+
+Informationen zu Kompatibilitätsbeschränkungen, Fehlerbehebung und Trigger-Mustern der S3 Access Points for FSx for ONTAP finden Sie in den [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
