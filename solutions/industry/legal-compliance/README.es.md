@@ -1,51 +1,77 @@
-# UC1: Cumplimiento y Cumplimiento Legal - Auditoría del servidor de archivos y gobernanza de datos
+# UC1: Legal y cumplimiento — Auditoría de servidor de archivos y gobernanza de datos
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
-Amazon FSx for ONTAP permite auditar el acceso a los archivos y carpetas almacenados en los sistemas de archivos de NetApp. Puedes obtener informes detallados de acceso utilizando Amazon Athena y almacenar los registros de auditoría en Amazon S3. AWS Lambda se puede utilizar para automatizar la generación de informes y enviarlos a las partes interesadas. Amazon CloudWatch puede monitorear los patrones de acceso anómalo y desencadenar alertas. AWS CloudFormation simplifica la implementación y administración de toda la solución.
+📚 **Documentación**: [Diagrama de arquitectura](docs/architecture.es.md) | [Guía de demostración](docs/demo-guide.es.md)
 
 ## Resumen
 
-En este tutorial, aprenderás a usar servicios de AWS como Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch y AWS CloudFormation para diseñar e implementar un flujo de trabajo de fabricación de chips. Explorarás cómo procesar archivos GDSII y OASIS, ejecutar comprobaciones de diseño (DRC) y generar archivos de cinta de salida (tapeout).
-FSx for ONTAP se utiliza para recopilar y analizar automáticamente la información de NTFS ACL de los servidores de archivos y generar informes de cumplimiento mediante un flujo de trabajo sin servidor utilizando los Puntos de acceso S3.
-### Esta patrón es adecuado para los siguientes casos:
+Este es un flujo de trabajo sin servidor que aprovecha los S3 Access Points de Amazon FSx for NetApp ONTAP para recopilar y analizar automáticamente la información de ACL NTFS de un servidor de archivos y generar informes de cumplimiento.
 
-- Cuando necesita crear y orquestar un flujo de trabajo complejo que involucre múltiples servicios de AWS como Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, etc.
-- Cuando necesita procesar datos a gran escala utilizando herramientas de macrodatos como `GDSII`, `DRC`, `OASIS`, `GDS`, etc.
-- Cuando requiere ejecutar cargas de trabajo sin servidor y sin estado como `Lambda`.
-- Cuando necesita implementar un proceso de diseño y fabricación de chips, como `tapeout`.
-- Es necesario realizar escaneos periódicos de gobernanza y cumplimiento para los datos de NAS.
-- Las notificaciones de eventos de S3 no están disponibles o se prefiere una auditoría basada en sondeo.
-- Desea mantener los datos de archivos en ONTAP y mantener el acceso SMB/NFS existente.
-- Quiere analizar transversalmente el historial de cambios en los ACL de NTFS con Amazon Athena.
-- Desea generar informes de cumplimiento en lenguaje natural de forma automática.
-### Casos en los que este patrón no es apropiado
+### Cuándo es adecuado este patrón
 
-- El uso de Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch y AWS CloudFormation puede complicar la implementación y aumentar los costos.
-- Las tareas como GDSII, DRC, OASIS y GDS, así como el proceso de tapeout, requieren un conocimiento técnico profundo que puede ser difícil de adquirir.
-- El uso de `lambda` puede no ser adecuado si se necesita un mayor control sobre la ejecución del código.
-- Se necesitan procesos impulsados por eventos en tiempo real (detección inmediata de cambios de archivos)
-- Se requiere la semántica completa de los buckets de S3 (notificaciones, URL firmados previamente)
-- Ya se ejecuta el procesamiento por lotes basado en EC2 y los costos de migración no lo justifican
-- No se puede garantizar la conectividad de red al API REST de ONTAP
-### Principales características
+- Se requieren análisis periódicos de gobernanza y cumplimiento de los datos NAS
+- Las notificaciones de eventos de S3 no están disponibles, o se prefiere una auditoría basada en sondeo (polling)
+- Desea mantener los datos de archivos en ONTAP y conservar el acceso SMB/NFS existente
+- Desea analizar de forma transversal el historial de cambios de ACL NTFS con Athena
+- Desea generar automáticamente informes de cumplimiento en lenguaje natural
 
-Utilice Amazon Bedrock para crear modelos de lenguaje de IA innovadores y de alto rendimiento. AWS Step Functions le permite orquestar servicios de AWS y aplicaciones. Amazon Athena es un servicio de consulta interactiva sin servidor que facilita el análisis de datos en Amazon S3. AWS Lambda le permite ejecutar código sin aprovisionar ni administrar servidores. Amazon FSx for ONTAP proporciona almacenamiento de archivos altamente disponible y confiable. Amazon CloudWatch recopila métricas y registros de sus recursos de AWS y de sus aplicaciones en ejecución en AWS. AWS CloudFormation le ayuda a modelar y aprovisionar sus recursos de AWS de una manera declarativa.
-- Recopilación automática de información sobre NTFS ACL, recursos compartidos CIFS y políticas de exportación a través de la API REST de ONTAP
-- Detección de accesos excesivos, accesos obsoletos y violaciones de políticas mediante SQL de Amazon Athena
-- Generación automática de informes de cumplimiento de lenguaje natural mediante Amazon Bedrock
-- Compartir inmediato de los resultados de auditoría mediante notificaciones de SNS
+### Cuándo no es adecuado este patrón
+
+- Se requiere un procesamiento en tiempo real basado en eventos (detección inmediata de cambios de archivos)
+- Se requiere una semántica completa de bucket de S3 (notificaciones, URL prefirmadas)
+- Ya está en funcionamiento un procesamiento por lotes basado en EC2 y el coste de migración no está justificado
+- Un entorno en el que no se puede garantizar la accesibilidad de red a la API REST de ONTAP
+
+### Funciones principales
+
+- Recopilación automática de información de ACL NTFS, recursos compartidos CIFS y políticas de exportación a través de la API REST de ONTAP
+- Detección de recursos compartidos con permisos excesivos, accesos obsoletos y violaciones de políticas con Athena SQL
+- Generación automática de informes de cumplimiento en lenguaje natural con Amazon Bedrock
+- Uso compartido inmediato de los resultados de auditoría mediante notificaciones de SNS
+
+## Success Metrics
+
+### Outcome
+Reducir el esfuerzo de auditoría manual mediante la automatización de las auditorías de servidores de archivos y las comprobaciones de cumplimiento.
+
+### Metrics
+| Métrica | Valor objetivo (ejemplo) |
+|-----------|------------|
+| Número de archivos analizados por ejecución | > 1,000 files |
+| Número de permisos excesivos detectados por análisis | Visualización (establecer una línea base) |
+| Tiempo de generación del informe de cumplimiento | < 5 min |
+| Tasa de reducción del esfuerzo de auditoría manual | > 50% |
+| Coste por análisis | < $1 |
+| Tasa objetivo de Human Review | < 10 % (solo detecciones de alto riesgo) |
+
+### Measurement Method
+Historial de ejecución de Step Functions, CloudWatch Metrics (FilesProcessed, Duration), metadatos de los informes generados, registros de notificación de SNS.
+
+### Sample Run Results (Ejemplo medido)
+
+**Entorno**: FSx for ONTAP Single-AZ, 128 MBps, ap-northeast-1, S3AP Internet Origin
+
+| Indicador | Before (manual) | After (automatización S3AP) |
+|------|-------------|-------------------|
+| Detección de archivos | Varias horas (inventario manual) | 36 ms (10 files) |
+| Lectura de archivos | Acceso individual | avg 37 ms / file |
+| Tiempo total de procesamiento | De horas a días | 404 ms (10 files, sequential) |
+| Formato del informe | No estandarizado | Metadatos JSON + informe de auditoría |
+| Proceso de revisión | Dependiente del responsable | Human Review Queue |
+| Registro de auditoría | Registros personales | DynamoDB + CloudWatch |
+
+> **Nota**: Los valores anteriores son los resultados de una ejecución de muestra a pequeña escala; no constituyen una estimación de rendimiento en producción ni una garantía de rendimiento. El sample run de UC1 utiliza archivos de muestra sintéticos o no sensibles y no representa los documentos legales del cliente. Este sample run solo valida la ruta de procesamiento. La validez legal, la calidad de la clasificación y la exhaustividad de la revisión deben evaluarse por separado en un PoC específico del cliente.
+
 ## Arquitectura
-
-El uso de Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch y AWS CloudFormation en la creación de soluciones de chip de silicio puede simplificar el proceso de diseño y fabricación. GDSII, DRC, OASIS y GDS son términos clave en este contexto. AWS Lambda es una pieza esencial para la automatización del flujo de trabajo, mientras que `tapeout` es un paso crítico en la fabricación de chips. Amazon CloudWatch y AWS CloudFormation facilitan la gestión y el despliegue de la infraestructura.
 
 ```mermaid
 graph LR
-    subgraph "Step Functions ワークフロー"
-        D[Discovery Lambda<br/>オブジェクト検出 +<br/>ONTAP メタデータ収集]
-        ACL[ACL Collection Lambda<br/>NTFS ACL 情報取得]
-        ATH[Athena Analysis Lambda<br/>SQL 分析・違反検出]
-        RPT[Report Generation Lambda<br/>Bedrock レポート生成]
+    subgraph "Flujo de trabajo de Step Functions"
+        D[Discovery Lambda<br/>Detección de objetos +<br/>recopilación de metadatos de ONTAP]
+        ACL[ACL Collection Lambda<br/>Obtención de ACL NTFS]
+        ATH[Athena Analysis Lambda<br/>Análisis SQL / detección de violaciones]
+        RPT[Report Generation Lambda<br/>Generación de informes con Bedrock]
     end
 
     D -->|Manifest| ACL
@@ -62,63 +88,44 @@ graph LR
 
 ### Pasos del flujo de trabajo
 
-Puedes utilizar Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch y AWS CloudFormation para crear un flujo de trabajo que automatice tareas como la conversión de GDSII a OASIS, el análisis DRC, la generación de GDS y la carga en Amazon S3 para su posterior tapeout.
-1. **Descubrimiento**: Obtener una lista de objetos desde S3 AP y recopilar metadatos de ONTAP (estilo de seguridad, política de exportación, permisos CIFS).
-2. **Recopilación de ACL**: Obtener información de NTFS ACL de cada objeto a través de la API REST de ONTAP y generar un archivo en formato JSON Lines con partición por fecha en S3.
-3. **Análisis de Athena**: Crear/actualizar tablas en el Catálogo de Datos de Glue y detectar permisos excesivos, accesos obsoletos y violaciones de políticas mediante consultas SQL de Athena.
-4. **Generación de informes**: Generar informes de cumplimiento en lenguaje natural utilizando Bedrock y exportarlos a S3 con notificación a SNS.
+1. **Discovery**: Obtener la lista de objetos desde el S3 AP y recopilar los metadatos de ONTAP (estilo de seguridad, política de exportación, ACL de recurso compartido CIFS)
+2. **ACL Collection**: Obtener la información de ACL NTFS de cada objeto a través de la API REST de ONTAP y escribirla en S3 en formato JSON Lines con partición por fecha
+3. **Athena Analysis**: Crear/actualizar la tabla de Glue Data Catalog y usar Athena SQL para detectar permisos excesivos, accesos obsoletos y violaciones de políticas
+4. **Report Generation**: Generar un informe de cumplimiento en lenguaje natural con Bedrock, escribirlo en S3 y enviar una notificación de SNS
+
 ## Requisitos previos
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, `...`
-- Cuenta de AWS y permisos de IAM apropiados
-- Sistema de archivos FSx para NetApp ONTAP (ONTAP 9.17.1P4D3 o superior)
-- Volumen con punto de acceso S3 habilitado
+- Una cuenta de AWS y los permisos de IAM adecuados
+- Un sistema de archivos FSx for ONTAP (ONTAP 9.17.1P4D3 o posterior)
+- Un volumen con los S3 Access Points habilitados
 - Credenciales de la API REST de ONTAP registradas en Secrets Manager
-- VPC, subredes privadas
-- Acceso al modelo Amazon Bedrock habilitado (Claude / Nova)
+- Una VPC y subredes privadas
+- Acceso a los modelos de Amazon Bedrock habilitado (Claude / Nova)
+
 ### Consideraciones al ejecutar Lambda dentro de una VPC
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, `...`, GDSII, DRC, OASIS, GDS, Lambda, tapeout, `https://docs.aws.amazon.com/vpc/latest/userguide/vpc-lambda.html`.
-**Problemas importantes identificados en la verificación de la implementación (2026-05-03)**
+> **Puntos importantes confirmados en la verificación de la implementación (2026-05-03)**
 
-- **Entorno de PoC/demostración**: Se recomienda ejecutar Lambda fuera de la VPC. Si el origen de red de S3 AP es `internet`, se puede acceder a él sin problemas desde un Lambda fuera de la VPC.
-- **Entorno de producción**: Especifique el parámetro `PrivateRouteTableId` y asocie la tabla de rutas al extremo de puerta de enlace S3. Si no se especifica, el acceso desde un Lambda dentro de la VPC al S3 AP puede producir un tiempo de espera.
-- Consulte la [Guía de solución de problemas](../docs/guides/troubleshooting-guide.md#6-tiempo-de-espera-de-s3-ap-al-ejecutar-lambda-en-la-vpc) para más detalles.
-## Procedimientos de implementación
+- **Entornos PoC / demo**: Se recomienda ejecutar Lambda fuera de la VPC. Si la network origin del S3 AP es `internet`, se puede acceder sin problemas desde una Lambda fuera de la VPC
+- **Entornos de producción**: Especifique el parámetro `PrivateRouteTableId` y asocie la tabla de rutas al S3 Gateway Endpoint. Si no se especifica, el acceso desde una Lambda dentro de la VPC al S3 AP agotará el tiempo de espera
+- Para más detalles, consulte la [Guía de solución de problemas](../docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)
 
-Amazon Bedrock を使用して、AWS Step Functions を通じてローカル環境でデバッグできます。クエリは Amazon Athena を使用して分析し、結果を Amazon S3 に保存できます。最終的にはAWS Lambda 関数から Amazon FSx for ONTAP に書き込むことができます。この過程は、Amazon CloudWatch と AWS CloudFormation を使用して監視およびデプロイできます。
+## Procedimiento de implementación
 
-GDSII、DRC、OASIS、GDS、Lambda、tapeout などの技術的なプロセスは、このプロセスの一部です。
+### 1. Preparación de los parámetros
 
-`/opt/data/output.txt` にあるファイルを確認してください。 https://docs.aws.amazon.com/は、この課題のドキュメントの参照先です。
-
-### 1. Preparación de parámetros
-
-A continuación, tendrá que preparar los siguientes parámetros:
-
-- `aws_region`: la región de AWS que utilizará para el proceso de fabricación.
-- `s3_bucket`: el bucket de Amazon S3 donde se almacenarán los archivos.
-- `gdsii_file`: la ruta del archivo GDSII que contiene el diseño del chip.
-- `design_name`: el nombre del diseño.
-- `technology_node`: el nodo tecnológico del diseño.
-- `step_functions_state_machine`: el nombre de la máquina de estado de AWS Step Functions que coordinará el flujo de trabajo.
-- `drc_deck`: la ruta del archivo DRC deck que se utilizará para la verificación.
-- `oasis_file`: la ruta del archivo OASIS que contiene el diseño del chip.
-- `drc_report_s3_path`: la ruta en Amazon S3 donde se guardará el informe DRC.
-- `gds_output_s3_path`: la ruta en Amazon S3 donde se guardará el archivo GDS.
-
-Cuando tenga todos estos parámetros listos, podrá continuar con el siguiente paso.
-Antes de la implementación, verifique los siguientes valores:
+Confirme los siguientes valores antes de la implementación:
 
 - FSx for ONTAP S3 Access Point Alias
-- Dirección IP de administración de ONTAP
-- Nombre de secreto de AWS Secrets Manager
-- UUID de SVM, UUID de volumen
-- ID de VPC, ID de subred privada
-### 2. Implementación de CloudFormation
+- Dirección IP de gestión de ONTAP
+- Nombre del secreto de Secrets Manager
+- SVM UUID, volume UUID
+- VPC ID, ID de subred privada
+
+### 2. Implementación con SAM
 
 ```bash
-# Requisito: se necesita AWS SAM CLI. «sam build» empaqueta automáticamente el código y la capa compartida.
+# Requisito previo: se necesita AWS SAM CLI. sam build empaqueta automáticamente el código y la capa compartida.
 sam build
 
 sam deploy \
@@ -143,219 +150,241 @@ sam deploy \
   --region ap-northeast-1
 ```
 
-> **Nota**: `template.yaml` está diseñado para usarse con AWS SAM CLI (`sam build` + `sam deploy`).
-> Para desplegar directamente con `aws cloudformation deploy`, use `template-deploy.yaml` en su lugar (requiere empaquetar previamente los archivos zip de Lambda y subirlos a un bucket de S3).
-**Atención**: Reemplaza los marcadores de posición `<...>` con los valores reales de tu entorno.
-### 3. Verificar las suscripciones de Amazon SNS
-Después de la implementación, se enviará un correo electrónico de confirmación de suscripción a SNS a la dirección de correo electrónico especificada. Haga clic en el enlace del correo electrónico para confirmar.
+> **Nota**: `template.yaml` se usa con la SAM CLI (`sam build` + `sam deploy`).
+> Para implementar directamente con el comando `aws cloudformation deploy`, use `template-deploy.yaml` (requiere el empaquetado previo de los archivos zip de Lambda y su carga en S3).
 
-> **Atención**: Si omite `S3AccessPointName`, la política de IAM puede basarse solo en alias y puede producir un error `AccessDenied`. Se recomienda especificarlo en entornos de producción. Consulte la [Guía de solución de problemas](../docs/guides/troubleshooting-guide.md#1-accessdenied-error) para más detalles.
+> **Nota**: Reemplace los marcadores de posición `<...>` por los valores reales de su entorno.
+
+### 3. Confirmación de la suscripción a SNS
+
+Después de la implementación, se envía un correo de confirmación de suscripción a SNS a la dirección de correo electrónico especificada. Haga clic en el enlace del correo para confirmar.
+
+> **Nota**: Si omite `S3AccessPointName`, la política de IAM queda basada únicamente en el Alias, lo que puede provocar un error `AccessDenied`. Se recomienda especificarlo en entornos de producción. Para más detalles, consulte la [Guía de solución de problemas](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+
 ## Lista de parámetros de configuración
 
-Amazon Bedrock を使用して半導体設計のワークフローを構築する際に設定する主なパラメータを以下に示します。
-
-- セクション: `common`
-  - `cpu_cores`: プロセッサで使用するコア数を指定します
-  - `memory_gb`: プロセッサに割り当てるメモリサイズ(GB)を指定します
-  - `disk_gb`: プロセッサに割り当てるディスク容量(GB)を指定します
-
-- セクション: `design`
-  - `input_gdsii`: 入力 GDSII ファイルのパスを指定します
-  - `output_gdsii`: 出力 GDSII ファイルのパスを指定します
-  - `drc_deck`: DRC ルールデッキのパスを指定します
-  - `oasis_input`: 入力 OASIS ファイルのパスを指定します
-  - `oasis_output`: 出力 OASIS ファイルのパスを指定します
-
-- セクション: `flow`
-  - `tapeout_step`: テープアウトのステップを実行するには `true` を指定します
-  - `verification_step`: 検証のステップを実行するには `true` を指定します
-
-- セクション: `aws`
-  - `step_functions_arn`: AWS Step Functions のARNを指定します
-  - `athena_database`: Amazon Athena のデータベース名を指定します
-  - `s3_bucket`: Amazon S3 のバケット名を指定します
-  - `lambda_function`: AWS Lambda 関数名を指定します
-  - `fsx_ontap_file_system_id`: Amazon FSx for ONTAP のファイルシステムIDを指定します
-  - `cloudwatch_log_group`: Amazon CloudWatch のロググループ名を指定します
-  - `cloudformation_stack_name`: AWS CloudFormation スタック名を指定します
-
-| パラメータ | 説明 | デフォルト | 必須 |
+| Parámetro | Descripción | Predeterminado | Obligatorio |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
-| `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
-| `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
-| `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias (para entrada) | — | ✅ |
+| `S3AccessPointName` | Nombre del S3 AP (para conceder permisos de IAM basados en ARN; solo basado en Alias si se omite) | `""` | ⚠️ Recomendado |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias (para salida) | — | ✅ |
+| `OntapSecretName` | Nombre del secreto de Secrets Manager para las credenciales de ONTAP | — | ✅ |
+| `OntapManagementIp` | Dirección IP de gestión del clúster de ONTAP | — | ✅ |
 | `SvmUuid` | ONTAP SVM UUID | — | ✅ |
-| `VolumeUuid` | ONTAP ボリューム UUID | — | ✅ |
-| `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
+| `VolumeUuid` | ONTAP volume UUID | — | ✅ |
+| `ScheduleExpression` | Expresión de programación de EventBridge Scheduler | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
-| `PrivateSubnetIds` | プライベートサブネット ID リスト | — | ✅ |
-| `PrivateRouteTableIds` | プライベートサブネットのルートテーブル ID リスト（カンマ区切り） | — | ✅ |
-| `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
-| `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
-| `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
-| `EnableAthenaWorkgroup` | Athena Workgroup / Glue Data Catalog の有効化 | `true` | |
+| `PrivateSubnetIds` | Lista de ID de subredes privadas | — | ✅ |
+| `PrivateRouteTableIds` | Lista de ID de tablas de rutas de las subredes privadas (separadas por comas) | — | ✅ |
+| `NotificationEmail` | Dirección de correo electrónico de destino de las notificaciones de SNS | — | ✅ |
+| `EnableVpcEndpoints` | Habilitar Interface VPC Endpoints | `false` | |
+| `EnableCloudWatchAlarms` | Habilitar CloudWatch Alarms | `false` | |
+| `EnableAthenaWorkgroup` | Habilitar Athena Workgroup / Glue Data Catalog | `true` | |
 
-## Estructura de costos
+## Estructura de costes
 
-Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation などのAWSサービスを使用すると、スケーラビリティ、柔軟性、信頼性の高いエンドツーエンドのソリューションを構築できます。これにより、かかるコストを最適化し、リソースやインフラストラクチャの管理を簡素化できます。
+### Basado en solicitudes (pago por uso)
 
-たとえば、Amazon Bedrock を使用して、カスタムチップを設計し、GDSII、DRC、OASIS、GDSのような産業標準のフォーマットでエクスポートできます。その後、AWS Step Functionsを使用してテープアウトプロセスを自動化し、Amazon Athenaを使用してデータを分析できます。
-
-また、Amazon S3を使用してデータを安全に保存し、AWS Lambdaを使用してサーバレスのコンピューティング機能を利用できます。さらに、Amazon FSx for ONTAPを使用してHPCワークロードを実行し、Amazon CloudWatchを使用してパフォーマンスを監視できます。
-
-### Basado en solicitudes (facturación por consumo)
-
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, `...`
-
-| サービス | 課金単位 | 概算（100 ファイル/月） |
+| Servicio | Unidad de facturación | Estimación (100 archivos/mes) |
 |---------|---------|---------------------|
-| Lambda | リクエスト数 + 実行時間 | ~$0.01 |
-| Step Functions | ステート遷移数 | 無料枠内 |
-| S3 API | リクエスト数 | ~$0.01 |
-| Athena | スキャンデータ量 | ~$0.01 |
-| Bedrock | トークン数 | ~$0.10 |
+| Lambda | Número de solicitudes + tiempo de ejecución | ~$0.01 |
+| Step Functions | Número de transiciones de estado | Dentro del nivel gratuito |
+| S3 API | Número de solicitudes | ~$0.01 |
+| Athena | Volumen de datos analizados | ~$0.01 |
+| Bedrock | Número de tokens | ~$0.10 |
 
-### Funcionamiento continuo (opcional)
+### Siempre activo (opcional)
 
-Amazon Bedrock le permite crear y ejecutar modelos de IA sin servidor. AWS Step Functions le permite coordinar el flujo de trabajo de sus aplicaciones. Amazon Athena le permite analizar datos almacenados en Amazon S3 utilizando SQL estándar. AWS Lambda le permite ejecutar código sin aprovisionar ni administrar servidores. Amazon FSx for ONTAP le brinda almacenamiento de archivos de alto rendimiento. Amazon CloudWatch le permite monitorear y optimizar sus cargas de trabajo. AWS CloudFormation le permite aprovisionar y administrar sus recursos de AWS de manera declarativa.
-
-| サービス | パラメータ | 月額 |
+| Servicio | Parámetro | Mensual |
 |---------|-----------|------|
 | Interface VPC Endpoints | `EnableVpcEndpoints=true` | ~$28.80 |
 | CloudWatch Alarms | `EnableCloudWatchAlarms=true` | ~$0.30 |
-En el entorno de demostración/PoC, el uso comienza desde **~$0.13/mes** solo con costos variables.
+
+> En entornos de demo/PoC, puede empezar desde **~$0.13/mes** solo con costes variables.
+
 ## Limpieza
 
-Cuando termine su trabajo en AWS, es importante limpiar los recursos que ha creado para evitar incurrir en cargos inesperados. Aquí hay algunos pasos que puede seguir:
-
-1. Detenga y elimine las instancias de Amazon EC2 que ya no necesite.
-2. Vacíe y elimine los cubos de Amazon S3 que ya no necesite.
-3. Detenga y elimine los trabajos de AWS Lambda que ya no necesite.
-4. Elimine las definiciones de flujo de trabajo de AWS Step Functions que ya no necesite.
-5. Elimine los cuadernos de Amazon Athena que ya no necesite.
-6. Elimine las cargas de trabajo de Amazon FSx for ONTAP que ya no necesite.
-7. Revise los registros de Amazon CloudWatch y elimine los que ya no necesite.
-8. Elimine las pilas de AWS CloudFormation que ya no necesite.
-
 ```bash
-# CloudFormation スタックの削除
+# Eliminar la pila de CloudFormation
 aws cloudformation delete-stack \
   --stack-name fsxn-legal-compliance \
   --region ap-northeast-1
 
-# 削除完了を待機
+# Esperar a que finalice la eliminación
 aws cloudformation wait stack-delete-complete \
   --stack-name fsxn-legal-compliance \
   --region ap-northeast-1
 ```
-**Atención**: Si hay objetos restantes en el bucket de S3, la eliminación de la pila puede fallar. Vacíe el bucket antes.
-## Regiones compatibles
 
-Amazon Bedrock es compatible con las siguientes regiones de AWS:
+> **Nota**: Si quedan objetos en el bucket de S3, la eliminación de la pila puede fallar. Vacíe el bucket de antemano.
 
-- US East (N. Virginia)
-- US East (Ohio)
-- US West (Oregon)
-- Europe (Ireland)
-- Europe (Frankfurt)
-- Asia Pacific (Tokyo)
-- Asia Pacific (Seoul)
-- Asia Pacific (Singapore)
-- Asia Pacific (Sydney)
-- Asia Pacific (Mumbai)
+## Supported Regions
 
-Para obtener la lista más reciente de regiones compatibles, consulta la [documentación de Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/dg/regions.html).
 UC1 utiliza los siguientes servicios:
 
-Amazon Bedrock
-AWS Step Functions
-Amazon Athena
-Amazon S3
-AWS Lambda
-Amazon FSx for ONTAP
-Amazon CloudWatch
-AWS CloudFormation
-| サービス | リージョン制約 |
+| Servicio | Restricción de región |
 |---------|-------------|
-| Amazon Athena | ほぼ全リージョンで利用可能 |
-| Amazon Bedrock | 対応リージョンを確認（[Bedrock 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)） |
-| AWS X-Ray | ほぼ全リージョンで利用可能 |
-| CloudWatch EMF | ほぼ全リージョンで利用可能 |
-Consulte la [Matriz de compatibilidad de regiones](../docs/region-compatibility.md) para más detalles.
-## Enlaces de referencia
+| Amazon Athena | Disponible en casi todas las regiones |
+| Amazon Bedrock | Consulte las regiones compatibles ([Regiones compatibles con Bedrock](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)) |
+| AWS X-Ray | Disponible en casi todas las regiones |
+| CloudWatch EMF | Disponible en casi todas las regiones |
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, `...`
+> Para más detalles, consulte la [Matriz de compatibilidad de regiones](../docs/region-compatibility.md).
+
+## Enlaces de referencia
 
 ### Documentación oficial de AWS
 
-Conserve los nombres de los servicios de AWS en inglés (Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, etc.).
-
-Mantenga los términos técnicos sin traducir (GDSII, DRC, OASIS, GDS, Lambda, tapeout, etc.).
-
-Conserve el código en línea (`...`) sin traducir.
-
-Mantenga las rutas de archivo y las URL sin traducir.
-
-Traduzca de manera natural, no palabra por palabra.
-- [Resumen de los puntos de acceso a S3 de FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Descripción general de FSx for ONTAP S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Consultas SQL con Athena (tutorial oficial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
 - [Procesamiento sin servidor con Lambda (tutorial oficial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Referencia de la API InvokeModel de Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [Referencia de la API REST de ONTAP](https://docs.netapp.com/us-en/ontap-automation/)
-### Artículo del blog de AWS
-- [Publicación del blog de S3 AP](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
-- [Blog de integración de AD](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
-- [3 patrones de arquitectura sin servidor](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/)
-### Muestra de GitHub
 
-Utilice el Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch y AWS CloudFormation para crear una solución de fabricación de chips. Ingeste datos de diseño en `GDSII`, ejecute `DRC` y `OASIS` verificaciones, y finalmente envíe el `GDS` a la fundición.
+### Artículos del blog de AWS
 
-Paso 1: Cree una definición de flujo de trabajo en AWS Step Functions para coordinar las diferentes tareas.
+- [Blog de anuncio del S3 AP](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
+- [Blog de integración con AD](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
+- [Tres patrones de arquitectura sin servidor](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/)
 
-Paso 2: Use Amazon Athena para consultar los datos de diseño almacenados en Amazon S3.
+### Ejemplos de GitHub
 
-Paso 3: Implemente funciones AWS Lambda para ejecutar `DRC` y `OASIS` verificaciones.
-
-Paso 4: Utilice Amazon FSx for ONTAP para almacenar de forma segura los datos de `tapeout`.
-
-Paso 5: Configure Amazon CloudWatch para monitorear el proceso y AWS CloudFormation para automatizar el despliegue.
 - [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — Colección de patrones sin servidor
-- [aws-samples/aws-stepfunctions-examples](https://github.com/aws-samples/aws-stepfunctions-examples) — Ejemplos de AWS Step Functions
-## Entornos verificados
+- [aws-samples/aws-stepfunctions-examples](https://github.com/aws-samples/aws-stepfunctions-examples) — Ejemplos de Step Functions
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation y otros servicios de AWS pueden utilizarse para crear una infraestructura de chip robusta y escalable. Los términos técnicos como `GDSII`, `DRC`, `OASIS`, `GDS`, `Lambda`, `tapeout`, etc. se mantienen sin traducir.
+## Entorno verificado
 
-| 項目 | 値 |
+| Elemento | Valor |
 |------|-----|
-| AWS リージョン | ap-northeast-1 (東京) |
-| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
-| FSx 構成 | SINGLE_AZ_1 |
+| Región de AWS | ap-northeast-1 (Tokio) |
+| Versión de FSx for ONTAP | ONTAP 9.17.1P4D3 |
+| Configuración de FSx | SINGLE_AZ_1 |
 | Python | 3.12 |
-| デプロイ方式 | CloudFormation (標準) |
+| Método de implementación | CloudFormation (estándar) |
 
-## Arquitectura de Configuración de VPC de Lambda
+## Arquitectura de ubicación de Lambda en la VPC
 
-Las funciones de Lambda pueden acceder a recursos en una VPC de AWS. Esta es una arquitectura común para configurar una función de Lambda que se comunica con otros servicios de AWS, como Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch y AWS CloudFormation.
+Basándose en los conocimientos obtenidos durante la verificación, las funciones Lambda se distribuyen dentro y fuera de la VPC.
 
-La función de Lambda se implementa en una subred privada dentro de la VPC. La función de Lambda requiere acceso a Internet para descargar paquetes, consultar API externas, etc. Para permitir el acceso a Internet, se pueden utilizar las siguientes opciones:
+**Lambda dentro de la VPC** (solo funciones que requieren acceso a la API REST de ONTAP):
+- Discovery Lambda — S3 AP + ONTAP API
+- AclCollection Lambda — ONTAP file-security API
 
-1. Configurar una `NAT Gateway` en una subred pública de la VPC.
-2. Configurar un `Internet Gateway` y enrutar el tráfico saliente a través de él.
+**Lambda fuera de la VPC** (que solo usan las API de servicios gestionados de AWS):
+- Todas las demás funciones Lambda
 
-La función de Lambda también necesita acceso a otros recursos dentro de la VPC, como bases de datos, servidores, etc. Esto se logra configurando los grupos de seguridad y las tablas de enrutamiento apropiadas.
+> **Motivo**: Para acceder a las API de servicios gestionados de AWS (Athena, Bedrock, Textract, etc.) desde una Lambda dentro de la VPC, se necesita un Interface VPC Endpoint (cada uno $7.20/mes). Una Lambda fuera de la VPC puede acceder directamente a las API de AWS a través de internet y funciona sin coste adicional.
 
-Además, se pueden agregar ajustes adicionales, como `CloudWatch Logs` para el registro, `AWS CloudFormation` para implementación y `GDSII`, `DRC`, `OASIS` y `GDS` para flujos de trabajo de diseño.
-De acuerdo con los hallazgos de la verificación, las funciones de AWS Lambda se han desplegado de forma aislada dentro y fuera de la VPC.
+> **Nota**: Para los UC que usan la API REST de ONTAP (UC1 Legal y cumplimiento), `EnableVpcEndpoints=true` es obligatorio. Esto se debe a que las credenciales de ONTAP se obtienen a través del Secrets Manager VPC Endpoint.
 
-**Lambda dentro de la VPC** (solo las funciones que necesitan acceso a la API de ONTAP RESTFULLY):
-- Lambda de Descubrimiento — S3 AP + API ONTAP
-- Lambda de Recopilación de ACL — API de seguridad de archivos ONTAP
+---
 
-**Lambda fuera de la VPC** (solo utilizan las API de servicios administrados de AWS):
-- Todas las demás funciones de Lambda
+## Enlaces a la documentación de AWS
 
-> **Razón**: Para acceder a las API de servicios administrados de AWS (Athena, Bedrock, Textract, etc.) desde una Lambda dentro de la VPC, se requiere un Endpoint de VPC de interfaz (cada uno a $7.20/mes). Las Lambdas fuera de la VPC pueden acceder directamente a las API de AWS a través de Internet sin costos adicionales.
+| Servicio | Documentación |
+|---------|------------|
+| FSx for ONTAP | [Guía del usuario](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Guía del desarrollador](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Athena | [Guía del usuario](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
+| Amazon Bedrock | [Guía del usuario](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+| ONTAP REST API | [Referencia de la API REST de NetApp ONTAP](https://docs.netapp.com/us-en/ontap-automation/) |
 
-> **Nota**: Para el caso de uso 'Cumplimiento legal' (UC1), que utiliza la API REST de ONTAP, es obligatorio tener `EnableVpcEndpoints=true`. Esto es para obtener las credenciales de ONTAP a través del Endpoint de VPC de Secrets Manager.
+### Alineación con el Well-Architected Framework
+
+| Pilar | Alineación |
+|----|------|
+| Excelencia operativa | Rastreo con X-Ray, métricas EMF, CloudWatch Alarms |
+| Seguridad | IAM de privilegio mínimo, cifrado KMS, aislamiento de VPC, Secrets Manager |
+| Fiabilidad | Step Functions Retry/Catch, procesamiento paralelo con Map state |
+| Eficiencia del rendimiento | Optimización de memoria de Lambda, recopilación de ACL en paralelo |
+| Optimización de costes | Sin servidor (se factura solo cuando se usa), VPC Endpoint condicional |
+| Sostenibilidad | Ejecución bajo demanda, detención automática de recursos innecesarios |
+
+---
+
+## Pruebas locales
+
+### Comprobación de Prerequisites
+
+```bash
+# Confirmar los requisitos previos
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (para sam local)
+aws sts get-caller-identity  # Credenciales de AWS
+```
+
+### sam local invoke
+
+```bash
+# Compilación
+# Requisito previo: se necesita AWS SAM CLI. sam build empaqueta automáticamente el código y la capa compartida.
+sam build
+
+# Ejecución local de la Discovery Lambda
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# Con anulaciones de variables de entorno
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### Pruebas unitarias
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+Para más detalles, consulte el [Inicio rápido de pruebas locales](../docs/local-testing-quick-start.md).
+
+---
+
+## Ejemplo de salida (Output Sample)
+
+Ejemplo de la salida final cuando finaliza la ejecución de Step Functions:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 549,
+    "prefix": "legal-docs/",
+    "timestamp": 1716480000
+  },
+  "acl_collection": {
+    "processed": 549,
+    "acl_records_written": 2847,
+    "output_prefix": "s3://output-bucket/acl-data/"
+  },
+  "athena_analysis": {
+    "findings": {
+      "excessive_permissions": 12,
+      "stale_access": 34,
+      "policy_violations": 3
+    },
+    "query_execution_id": "a1b2c3d4-..."
+  },
+  "report_generation": {
+    "report_key": "reports/compliance-2026-05-23T09:00:00.md",
+    "total_findings": 49,
+    "sns_message_id": "msg-12345..."
+  }
+}
+```
+
+> **Nota**: Lo anterior es una salida de muestra; los valores reales varían según el entorno y los datos de entrada. Las cifras de referencia son un sizing reference, no un service limit.
+
+---
+
+## Governance Note
+
+> Este patrón proporciona orientación de arquitectura técnica. No constituye asesoramiento legal, de cumplimiento ni regulatorio. Las organizaciones deben consultar a profesionales cualificados.
+
+---
+
+## S3AP Compatibility
+
+Para conocer las restricciones de compatibilidad, la solución de problemas y los patrones de activación de los S3 Access Points for FSx for ONTAP, consulte las [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).

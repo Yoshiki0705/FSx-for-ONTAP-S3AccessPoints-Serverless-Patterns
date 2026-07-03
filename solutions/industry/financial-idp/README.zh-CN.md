@@ -1,64 +1,61 @@
-# 用例2：金融和保险 — 合同和发票的自动处理(IDP)
+# UC2: 金融·保险 — 合同·发票自动处理 (IDP)
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-这个用例描述了在金融和保险行业中,如何使用 AWS 服务来自动化合同和发票的处理。主要包括以下步骤:
+📚 **文档**: [架构图](docs/architecture.zh-CN.md) | [演示指南](docs/demo-guide.zh-CN.md)
 
-1. 使用 Amazon Bedrock 从客户提供的合同和发票文件中提取结构化数据。
-2. 使用 AWS Step Functions 协调各个 AWS 服务的工作流,确保整个处理过程高效顺畅。
-3. 利用 Amazon Athena 对提取的数据进行分析和查询,以生成洞察报告。
-4. 将分析结果存储在 Amazon S3 上,并使用 AWS Lambda 触发后续的业务流程。
-5. 使用 Amazon FSx for ONTAP 管理和存储相关的文件数据。
-6. 利用 Amazon CloudWatch 监控整个流程,并使用 AWS CloudFormation 管理基础设施。
+## 概述
 
-整个解决方案可以大幅提高合同和发票处理的效率和准确性,降低人工成本,提升客户体验。
+这是一个利用 FSx for ONTAP 的 S3 Access Points，对合同、发票等文档自动执行 OCR 处理、实体提取和摘要生成的无服务器工作流。
 
-## 概要
+### 适合此模式的场景
 
-使用Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch和AWS CloudFormation等AWS服务,您可以轻松构建和部署复杂的机器学习管道。从将数据从GDSII文件转换为OASIS文件,到对其运行DRC检查,再到利用`lambda_function.py`运行tapeout - 整个流程都可以自动化。CloudWatch指标可以监控流水线的健康状况,而CloudFormation模板可以轻松复制整个架构。
-利用 FSx for ONTAP 的 S3 访问点,可以自动执行光学字符识别(OCR)、实体提取和摘要生成等流程,处理合同、发票等文档。这是一个无服务器工作流。
-### 这种模式适用于以下情况
+- 希望对文件服务器上的 PDF/TIFF/JPEG 文档定期进行批量 OCR 处理
+- 希望在不更改现有 NAS 工作流（扫描仪 → 文件服务器保存）的情况下添加 AI 处理
+- 希望从合同、发票中自动提取日期、金额、组织名称，并作为结构化数据加以利用
+- 希望以最低成本试用 Textract + Comprehend + Bedrock 的 IDP 流水线
 
-- 需要高度定制化的解决方案，并且有复杂的工作流程和数据处理需求
-- 希望充分利用AWS的各种服务,如Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation等
-- 需要处理 `GDSII`、`DRC`、`OASIS`、`GDS` 等复杂的技术文件格式
-- 需要在 `tapeout` 阶段执行一些自动化操作
-- 希望在文件服务器上定期批量进行 PDF/TIFF/JPEG 文档的 OCR 处理
-- 希望在不改变现有 NAS 工作流（扫描仪 → 文件服务器存储）的情况下添加 AI 处理
-- 希望从合同和发票中自动提取日期、金额和机构名称,并将其用作结构化数据
-- 希望以最低成本尝试使用 Textract + Comprehend + Bedrock 的 IDP 管道
-以下のようなケースでは、このパターンが適切ではない可能性があります。
+### 不适合此模式的场景
 
-- Lambda関数のサイズが大きく、ボイラープレートのオーバーヘッドが大きくなる
-- AWS Step Functionsのステートマシンが複雑で、開発と運用の両面で管理が難しくなる
-- Amazon Athenaを使った大量のデータクエリにより、Amazon S3ストレージコストが高額になる
-- Amazon CloudWatchのメトリクスの可視化やアラート設定が必要な場合
-- AWS CloudFormationによるInfrastructure as Codeの管理が必須の場合
-- Amazon FSx for ONTAPのようなファイルシステムを必要とする場合
-- 文档上传后需要实时处理
-- 每天处理数万份大量文档（注意 Amazon Textract API 速率限制）
-- 对于 Amazon Textract 不支持的区域，跨区域调用延迟不可接受
-- 文档已存在于 Amazon S3 标准存储桶中，可通过 Amazon S3 事件通知进行处理
+- 需要在文档上传后立即进行实时处理
+- 每天处理数万件以上的大量文档（注意 Textract 的 API 速率限制）
+- 在 Textract 不支持的区域中无法接受跨区域调用的延迟
+- 文档已存在于 S3 标准存储桶中，可通过 S3 事件通知进行处理
+
 ### 主要功能
 
-Amazon Bedrock自动执行数字电路设计关键任务,例如GDSII文件生成和DRC运行。AWS Step Functions用于编排复杂的设计流程。Amazon Athena支持数据分析和报告。Amazon S3存储原始数据文件,AWS Lambda执行自定义数据处理任务。Amazon FSx for ONTAP提供高性能存储。Amazon CloudWatch监控关键指标,AWS CloudFormation管理基础设施。这些集成服务大幅提高了效率并降低成本。
-- 通过 Amazon S3 自动检测 PDF、TIFF、JPEG 文档
+- 通过 S3 AP 自动检测 PDF、TIFF、JPEG 文档
 - 使用 Amazon Textract 进行 OCR 文本提取（自动选择同步/异步 API）
-- 利用 Amazon Comprehend 提取命名实体（日期、金额、组织名称、人名）
-- 通过 Amazon Bedrock 生成结构化摘要
+- 使用 Amazon Comprehend 进行命名实体（日期、金额、组织名称、人名）提取
+- 使用 Amazon Bedrock 生成结构化摘要
+
+## Success Metrics
+
+### Outcome
+通过自动处理合同、发票，减少手动数据录入工时。
+
+### Metrics
+| 指标 | 目标值（示例） |
+|-----------|------------|
+| 每次执行处理的文档数 | > 500 documents |
+| OCR 准确率（字符识别率） | > 95% |
+| 数据提取成功率 | > 90% |
+| 每文档处理时间 | < 30 秒 |
+| 每文档成本 | < $0.10 |
+| Human Review 对象比例 | < 20%（低置信度分数） |
+
+### Measurement Method
+Step Functions 执行历史、Textract confidence score、CloudWatch Metrics、S3 输出文件数。
+
 ## 架构
-
-在Amazon Bedrock上构建微服务。使用AWS Step Functions调度和协调这些服务。Amazon Athena处理您存储在Amazon S3上的数据。AWS Lambda运行事件驱动型无服务器代码。Amazon FSx for ONTAP提供高性能的文件存储。Amazon CloudWatch监控整个系统的运行状况。AWS CloudFormation帮助您定义和配置您的整个环境。
-
-从GDSII或OASIS文件开始,使用DRC检查您的设计,然后使用AWS Lambda生成GDS文件进行tapeout。
 
 ```mermaid
 graph LR
-    subgraph "Step Functions ワークフロー"
-        D[Discovery Lambda<br/>ドキュメント検出]
-        OCR[OCR Lambda<br/>Textract テキスト抽出]
-        ENT[Entity Extraction Lambda<br/>Comprehend エンティティ抽出]
-        SUM[Summary Lambda<br/>Bedrock サマリー生成]
+    subgraph "Step Functions 工作流"
+        D[Discovery Lambda<br/>文档检测]
+        OCR[OCR Lambda<br/>Textract 文本提取]
+        ENT[Entity Extraction Lambda<br/>Comprehend 实体提取]
+        SUM[Summary Lambda<br/>Bedrock 摘要生成]
     end
 
     D -->|Manifest| OCR
@@ -73,102 +70,38 @@ graph LR
     SUM -.->|PutObject| S3OUT[S3 Output]
 ```
 
-### 工作流程步骤
+### 工作流步骤
 
-Amazon Bedrock是一个用于构建和部署大规模机器学习模型的托管服务。您可以使用AWS Step Functions来编排多个AWS服务,例如Amazon Athena、Amazon S3和AWS Lambda,创建复杂的工作流程。
+1. **Discovery**：从 S3 AP 检测 PDF、TIFF、JPEG 文档，并生成 Manifest
+2. **OCR**：根据文档页数自动选择 Textract 同步/异步 API 并执行 OCR
+3. **Entity Extraction**：使用 Comprehend 提取命名实体（日期、金额、组织名称、人名）
+4. **Summary**：使用 Bedrock 生成结构化摘要，并以 JSON 格式输出到 S3
 
-您可以使用Amazon FSx for ONTAP来管理存储需求,Amazon CloudWatch可用于监控工作流程的性能和运行状况。AWS CloudFormation允许您以基础设施即代码的方式部署和管理工作流程资源。
-
-在机器学习建模过程中,您可能需要处理GDSII、DRC和OASIS等技术文件格式。Lambda函数可用于自动执行tapeout等重复性任务。
-1. **发现**: 从 Amazon S3 检测 PDF、TIFF 和 JPEG 文档并生成清单
-2. **光学字符识别**: 根据文档页数自动选择 Amazon Textract 同步/异步 API 执行光学字符识别
-3. **实体提取**: 使用 Amazon Comprehend 提取命名实体（日期、金额、组织名称、人名）
-4. **摘要**: 使用 Amazon Bedrock 生成结构化摘要并以 JSON 格式输出到 Amazon S3
 ## 前提条件
 
-要成功运行本教程,您需要准备以下内容:
-
-- 一个Amazon Web Services (AWS)账户
-- 使用AWS Identity and Access Management (IAM)创建具有必要权限的IAM用户
-- 安装并配置AWS Command Line Interface (CLI)
-- 创建一个AWS Step Functions状态机
-- 创建一个Amazon Athena查询
-- 创建一个Amazon S3存储桶
-- 创建一个AWS Lambda函数
-- 创建一个Amazon FSx for ONTAP文件系统
-- 配置Amazon CloudWatch日志
-- 使用AWS CloudFormation创建资源堆栈
-- AWS帐号和合适的IAM权限
-- 适用于NetApp ONTAP的FSx文件系统(ONTAP 9.17.1P4D3及以上版本)
-- 启用了S3访问点的卷
-- ONTAP REST API凭证已注册到Secrets Manager
+- AWS 账户和适当的 IAM 权限
+- FSx for ONTAP 文件系统（ONTAP 9.17.1P4D3 及以上）
+- 已启用 S3 Access Point 的卷
+- ONTAP REST API 凭证已注册到 Secrets Manager
 - VPC、私有子网
-- 已启用Amazon Bedrock模型访问(Claude/Nova)
-- 可使用的Amazon Textract、Amazon Comprehend区域
-## 部署流程
+- 已启用 Amazon Bedrock 模型访问（Claude / Nova）
+- 可使用 Amazon Textract、Amazon Comprehend 的区域
 
-AWS Step Functions使用来管理一系列的自动化操作。这些操作包括在Amazon Athena中运行查询、在Amazon S3中上传文件以及在AWS Lambda中执行自定义代码。Amazon FSx for ONTAP用于存储和共享文件。您可以使用Amazon CloudWatch来监控服务的运行状况,并使用AWS CloudFormation创建和管理云基础设施。
+## 部署步骤
 
 ### 1. 准备参数
 
-パラメータの準備を行う前に、まず必要なAWSサービスについて確認しましょう。今回のユースケースでは、以下のサービスを使用します:
-
-- Amazon Bedrock
-- AWS Step Functions
-- Amazon Athena
-- Amazon S3
-- AWS Lambda
-- Amazon FSx for ONTAP
-- Amazon CloudWatch
-- AWS CloudFormation
-
-さらに、以下のような技術用語が含まれています:
-
-- GDSII
-- DRC
-- OASIS
-- GDS
-- Lambda
-- tapeout
-
-これらはそのままの形で使用します。
-
-次に、以下のようなパラメータを準備する必要があります:
-
-- `bedrock_model_name`: Bedrock モデルの名称
-- `workflow_name`: Step Functions ワークフローの名称
-- `athena_database`: Athena データベースの名称
-- `athena_table`: Athena テーブルの名称
-- `s3_input_path`: 入力データの S3 パス
-- `s3_output_path`: 出力データの S3 パス
-- `lambda_function_name`: Lambda 関数の名称
-- `fsx_file_system_id`: FSx for ONTAP のファイルシステムID
-- `cloudwatch_log_group_name`: CloudWatch ロググループの名称
-- `cloudformation_stack_name`: CloudFormation スタックの名称
-在部署前,请确认以下值:
+部署前请确认以下值：
 
 - FSx for ONTAP S3 Access Point Alias
 - ONTAP 管理 IP 地址
 - Secrets Manager 密钥名称
 - VPC ID、私有子网 ID
-### 2. SAM部署
 
-AWS CloudFormationを使用して、インフラストラクチャをプロビジョニングします。以下のリソースを作成します:
-
-- Amazon S3バケット
-- AWS Lambda関数
-- Amazon Athenaデータベースとテーブル
-- Amazon FSx for ONTAPファイルシステム
-- Amazon CloudWatchアラーム
-
-CloudFormationテンプレートは、 `infrastructure.yaml` に保存されています。テンプレートをデプロイするには、以下のコマンドを実行します:
-
-```
-aws cloudformation create-stack --template-body file://infrastructure.yaml
-```
+### 2. SAM 部署
 
 ```bash
-# 前提条件：需要 AWS SAM CLI。'sam build' 会自动打包代码和共享层。
+# 前提：需要 AWS SAM CLI。sam build 会自动打包代码和共享层。
 sam build
 
 sam deploy \
@@ -190,95 +123,68 @@ sam deploy \
   --region ap-northeast-1
 ```
 
-> **注意**: `template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
-> 如需使用原生 `aws cloudformation deploy` 部署，请改用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3 存储桶）。
-**注意**: 请将 `<...>` 占位符替换为实际环境中的值。
-### 3. 检查 Amazon SNS 订阅
+> **注意**：`template.yaml` 用于 SAM CLI（`sam build` + `sam deploy`）。
+> 如果使用 `aws cloudformation deploy` 命令直接部署，请使用 `template-deploy.yaml`（需要预先打包 Lambda zip 文件并上传到 S3）。
 
-AWS Step Functions 工作流程将在每个步骤完成时发送通知到 Amazon SNS 主题。让我们检查一下这些订阅:
+> **注意**：请将 `<...>` 占位符替换为实际的环境值。
 
-1. 打开 Amazon SNS 控制台。
-2. 选择 "主题" 菜单。
-3. 查找名为 "StepFunction-Notifications" 的主题。
-4. 选择主题,然后选择 "订阅" 选项卡。
-5. 确认这里列出了您的电子邮件地址。
-部署后,将向指定的电子邮件地址发送 SNS 订阅确认邮件。
+### 3. 确认 SNS 订阅
 
-> **注意**: 如果省略 `S3AccessPointName`,IAM 策略可能仅基于别名,并可能发生 `AccessDenied` 错误。建议在生产环境中指定该参数。详情请参见[故障排除指南](../docs/guides/troubleshooting-guide.md#1-accessdenied-错误)。
-## 参数设置列表
+部署后，指定的电子邮件地址会收到 SNS 订阅确认邮件。
 
-您可以通过以下参数来配置 Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch 和 AWS CloudFormation 服务:
+> **注意**：如果省略 `S3AccessPointName`，IAM 策略将仅基于 Alias，可能会发生 `AccessDenied` 错误。在生产环境中建议指定。详情请参阅[故障排除指南](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー)。
 
-- `max_sentence_length`: 设置每个句子的最大长度
-- `min_confidence`: 设置所需的最小置信度
-- `output_format`: 选择输出格式,如 GDSII、DRC、OASIS 等
-- `s3_bucket`: 指定要使用的 Amazon S3 存储桶
-- `lambda_function`: 指定要调用的 AWS Lambda 函数
-- `fsx_volume`: 指定要使用的 Amazon FSx for ONTAP 卷
-- `cloudwatch_metric`: 选择要监控的 Amazon CloudWatch 指标
-- `cloudformation_template`: 指定要使用的 AWS CloudFormation 模板
+## 配置参数一览
 
-您可以在代码中将这些参数设置为适当的值,如 `max_sentence_length=100`、`min_confidence=0.8` 等。如果您需要上传 GDS 文件进行 tapeout,也可以将文件路径传递给相应的参数。
-
-| パラメータ | 説明 | デフォルト | 必須 |
+| 参数 | 说明 | 默认值 | 必填 |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
-| `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
-| `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
-| `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
-| `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（输入用） | — | ✅ |
+| `S3AccessPointName` | S3 AP 名称（用于基于 ARN 的 IAM 权限授予。省略时仅基于 Alias） | `""` | ⚠️ 推荐 |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（输出用） | — | ✅ |
+| `OntapSecretName` | ONTAP 凭证的 Secrets Manager 密钥名称 | — | ✅ |
+| `OntapManagementIp` | ONTAP 集群管理 IP 地址 | — | ✅ |
+| `ScheduleExpression` | EventBridge Scheduler 的调度表达式 | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
-| `PrivateSubnetIds` | プライベートサブネット ID リスト | — | ✅ |
-| `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
-| `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
-| `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
+| `PrivateSubnetIds` | 私有子网 ID 列表 | — | ✅ |
+| `NotificationEmail` | SNS 通知目标电子邮件地址 | — | ✅ |
+| `EnableVpcEndpoints` | 启用 Interface VPC Endpoints | `false` | |
+| `EnableCloudWatchAlarms` | 启用 CloudWatch Alarms | `false` | |
 
 ## 成本结构
 
-AWS Step Functions可用于协调复杂的工作流程,从而提高您的应用程序的可伸缩性和可靠性。Amazon Athena是一个交互式查询服务,可用于分析存储在Amazon S3中的数据。AWS Lambda允许您无需配置或管理服务器即可运行代码。Amazon FSx for ONTAP提供功能齐全的网络附加存储(NAS)文件系统。Amazon CloudWatch可帮助您监控AWS和内部资源,并采取自动化操作。AWS CloudFormation提供基于代码的方式来使用模板创建和管理AWS资源。
+### 按请求计费（按量付费）
 
-### 按需付费
-
-AWS Step Functions可以自动化服务和应用程序的复杂工作流。您可以使用可视化工具来定义状态机,并使用Amazon Athena等Analytics服务对工作流进行分析。
-
-Amazon S3提供可靠、持久的对象存储,可用于存储和检索任何数量的数据。您可以利用AWS Lambda无服务器计算来处理存储在Amazon S3中的数据。
-
-Amazon FSx for ONTAP为企业提供高性能、完全托管的文件存储。您可以使用Amazon CloudWatch监控和分析您的存储和计算资源。
-
-AWS CloudFormation使您能够使用编码模板创建和管理AWS资源。这有助于确保您的基础架构是一致和可重复的。
-
-| サービス | 課金単位 | 概算（100 ドキュメント/月） |
+| 服务 | 计费单位 | 概算（100 文档/月） |
 |---------|---------|--------------------------|
-| Lambda | リクエスト数 + 実行時間 | ~$0.01 |
-| Step Functions | ステート遷移数 | 無料枠内 |
-| S3 API | リクエスト数 | ~$0.01 |
-| Textract | ページ数 | ~$0.15 |
-| Comprehend | ユニット数（100文字単位） | ~$0.03 |
-| Bedrock | トークン数 | ~$0.10 |
+| Lambda | 请求数 + 执行时间 | ~$0.01 |
+| Step Functions | 状态转换数 | 免费额度内 |
+| S3 API | 请求数 | ~$0.01 |
+| Textract | 页数 | ~$0.15 |
+| Comprehend | 单元数（每 100 字符） | ~$0.03 |
+| Bedrock | 令牌数 | ~$0.10 |
 
-### 高可用性（可选）
+### 常时运行（可选）
 
-Amazon Bedrock以及其他AWS服务如AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch和AWS CloudFormation,可确保您的工作负载持续运行,即使在发生硬件故障或其他中断的情况下也是如此。您可使用这些服务来管理和复制您的设计数据(如GDSII、DRC、OASIS和GDS文件)、Lamba函数以及其他相关资源,以确保在芯片`tapeout`期间业务连续性。
-
-| サービス | パラメータ | 月額 |
+| 服务 | 参数 | 月费 |
 |---------|-----------|------|
 | Interface VPC Endpoints | `EnableVpcEndpoints=true` | ~$28.80 |
 | CloudWatch Alarms | `EnableCloudWatchAlarms=true` | ~$0.30 |
-在演示/概念验证 (PoC) 环境中,可以以每月约 **$0.30** 的可变成本开始使用。
-作为一个半管理的服务,Amazon Bedrock帮助您从事复杂的深度学习模型训练和部署任务。您可以利用AWS Step Functions来编排复杂的机器学习工作流程,包括数据预处理、模型训练和推理部署。Amazon Athena可以帮助您快速分析存储在Amazon S3上的数据。AWS Lambda让您无需管理服务器即可运行代码。Amazon FSx for ONTAP为您提供高性能、可扩展的文件存储。Amazon CloudWatch收集和跟踪您的AWS资源的指标和日志数据。AWS CloudFormation让您以代码的形式定义和管理您的AWS资源。
 
-您可以输出各种常见的数据格式,如GDSII、DRC、OASIS和GDS。在 `tapeout` 流程中,您可以利用这些格式来描述芯片的物理层面。
-总结 Lambda 的输出 JSON:
+> 在演示/PoC 环境中，仅凭变动费用即可从 **~$0.30/月** 开始使用。
+
+## 输出数据格式
+
+Summary Lambda 的输出 JSON：
+
 ```json
 {
-  "extracted_text": "契約書の全文テキスト...",
+  "extracted_text": "合同全文文本...",
   "entities": [
     {"type": "DATE", "text": "2026年1月15日"},
-    {"type": "ORGANIZATION", "text": "株式会社サンプル"},
-    {"type": "QUANTITY", "text": "1,000,000円"}
+    {"type": "ORGANIZATION", "text": "示例株式会社"},
+    {"type": "QUANTITY", "text": "1,000,000日元"}
   ],
-  "summary": "本契約書は...",
+  "summary": "本合同...",
   "document_key": "contracts/2026/sample-contract.pdf",
   "processed_at": "2026-01-15T10:00:00Z"
 }
@@ -286,158 +192,214 @@ Amazon Bedrock以及其他AWS服务如AWS Step Functions、Amazon Athena、Amazo
 
 ## 清理
 
-Amazon Bedrock 模型可以使用 AWS Step Functions 来管理模型培训和推理工作流。这些工作流可以在 Amazon Athena 和 Amazon S3 上进行数据准备,并在 AWS Lambda 上运行训练和推理任务。另外,您可以使用 Amazon FSx for ONTAP 来存储训练和生产模型。在整个过程中,您可以使用 Amazon CloudWatch 来监控工作流的执行情况,并使用 AWS CloudFormation 来自动化您的基础设施部署。
-
-如果您有 GDSII、DRC 或 OASIS 格式的设计文件,您可以使用 AWS Bedrock 将它们转换为 GDS 格式,以便进行后续的 tapeout 流程。
-
 ```bash
-# CloudFormation スタックの削除
+# 删除 CloudFormation 堆栈
 aws cloudformation delete-stack \
   --stack-name fsxn-financial-idp \
   --region ap-northeast-1
 
-# 削除完了を待機
+# 等待删除完成
 aws cloudformation wait stack-delete-complete \
   --stack-name fsxn-financial-idp \
   --region ap-northeast-1
 ```
-**注意**：如果 Amazon S3 存储桶中仍有对象存在,则删除堆栈可能会失败。请先清空该存储桶。
-以下是翻译后的简体中文版本:
 
-## 支持的区域
+> **注意**：如果 S3 存储桶中仍有对象，堆栈删除可能会失败。请事先清空存储桶。
 
-Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch和AWS CloudFormation目前在以下AWS区域可用:
+## Supported Regions
 
-- 美国东部(弗吉尼亚北部)
-- 美国东部(俄亥俄州)
-- 美国西部(俄勒冈州)
-- 美国西部(加利福尼亚北部)
-- 加拿大(中部)
-- 欧洲(爱尔兰)
-- 欧洲(伦敦)
-- 欧洲(巴黎)
-- 欧洲(斯德哥尔摩)
-- 亚太地区(东京)
-- 亚太地区(首尔)
-- 亚太地区(新加坡)
-- 亚太地区(悉尼)
-UC2使用以下服务:
+UC2 使用以下服务：
 
-Amazon Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation
-
-其他未翻译的技术术语有:GDSII、DRC、OASIS、GDS、Lambda、tapeout等。
-| サービス | リージョン制約 |
+| 服务 | 区域约束 |
 |---------|-------------|
-| Amazon Textract | ap-northeast-1 非対応。`TEXTRACT_REGION` パラメータで対応リージョン（us-east-1 等）を指定 |
-| Amazon Comprehend | ほぼ全リージョンで利用可能 |
-| Amazon Bedrock | 対応リージョンを確認（[Bedrock 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)） |
-| AWS X-Ray | ほぼ全リージョンで利用可能 |
-| CloudWatch EMF | ほぼ全リージョンで利用可能 |
-通过跨区域客户端调用 Textract API。请确认数据驻留要求。 详情请参考[区域兼容性矩阵](../docs/region-compatibility.md)。
-## 参考链接
+| Amazon Textract | 不支持 ap-northeast-1。使用 `TEXTRACT_REGION` 参数指定支持的区域（如 us-east-1） |
+| Amazon Comprehend | 几乎所有区域均可使用 |
+| Amazon Bedrock | 确认支持的区域（[Bedrock 支持的区域](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)） |
+| AWS X-Ray | 几乎所有区域均可使用 |
+| CloudWatch EMF | 几乎所有区域均可使用 |
 
-AWS Bedrock是一项完全托管的机器学习服务,可以帮助您快速部署和扩展机器学习模型。AWS Step Functions是一项完全托管的状态机服务,可以帮助您协调分布式应用程序的组件。Amazon Athena是一款交互式查询服务,可以轻松分析存储在Amazon S3上的数据。AWS Lambda是一种无服务器计算服务,可以帮助您运行代码,而无需管理服务器。Amazon FSx for ONTAP提供高性能、可靠的文件存储。Amazon CloudWatch是一项监控和观测性服务,可以帮助您收集和跟踪指标、日志和事件。AWS CloudFormation是一项基于模板的服务,可以帮助您管理AWS资源。
+> 通过 Cross-Region Client 调用 Textract API。请确认数据驻留要求。详情请参阅[区域兼容性矩阵](../docs/region-compatibility.md)。
+
+## 参考链接
 
 ### AWS 官方文档
 
-Creating a new product with Amazon Bedrock starts with setting up AWS Step Functions to manage the overall workflow. First, you'll define an Amazon Athena query to fetch design files from Amazon S3. Then, you'll use AWS Lambda to perform GDSII validation and DRC checks. Finally, you'll leverage Amazon FSx for ONTAP to store the processed design files, and configure Amazon CloudWatch to monitor the workflow.
+- [FSx for ONTAP S3 Access Points 概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [使用 Lambda 进行无服务器处理（官方教程）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
+- [Textract API 参考](https://docs.aws.amazon.com/textract/latest/dg/API_Reference.html)
+- [Comprehend DetectEntities API](https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html)
+- [Bedrock InvokeModel API 参考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 
-设计新产品时,首先需要使用 AWS Step Functions 来管理整个工作流程。你需要先定义一个 Amazon Athena 查询来从 Amazon S3 获取设计文件。然后,使用 AWS Lambda 执行 GDSII 验证和 DRC 检查。最后,利用 Amazon FSx for ONTAP 存储已处理的设计文件,并配置 Amazon CloudWatch 来监控工作流程。
+### AWS 博客文章·指南
 
-To deploy this solution, you can use AWS CloudFormation to provision all the necessary resources. The CloudFormation template includes parameters for the Amazon S3 bucket, Amazon Athena database, and other configurations.
+- [S3 AP 发布博客](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
+- [Step Functions + Bedrock 文档处理](https://aws.amazon.com/blogs/compute/orchestrating-large-scale-document-processing-with-aws-step-functions-and-amazon-bedrock-batch-inference/)
+- [IDP 指南（Intelligent Document Processing on AWS）](https://aws.amazon.com/solutions/guidance/intelligent-document-processing-on-aws3/)
 
-要部署这个解决方案,你可以使用 AWS CloudFormation 来配置所有必需的资源。CloudFormation 模板包含 Amazon S3 存储桶、Amazon Athena 数据库以及其他配置的参数。
+### GitHub 示例
 
-The design files are processed in batches, with each batch going through the following steps:
+- [aws-samples/amazon-textract-serverless-large-scale-document-processing](https://github.com/aws-samples/amazon-textract-serverless-large-scale-document-processing) — Textract 大规模处理
+- [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — 无服务器模式集合
+- [aws-samples/aws-stepfunctions-examples](https://github.com/aws-samples/aws-stepfunctions-examples) — Step Functions 示例
 
-1. Fetch the GDSII, OASIS, or GDS design files from Amazon S3.
-2. Validate the design files using `validate_design.py`.
-3. Perform DRC checks using `drc_check.py`.
-4. Store the processed design files in the Amazon FSx for ONTAP file system.
-5. Trigger an Amazon CloudWatch event to notify stakeholders about the successful tapeout.
+## 已验证环境
 
-设计文件是分批处理的,每批文件都要经历以下步骤:
-
-1. 从 Amazon S3 获取 GDSII、OASIS 或 GDS 设计文件。
-2. 使用 `validate_design.py` 验证设计文件。
-3. 使用 `drc_check.py` 执行 DRC 检查。
-4. 将处理后的设计文件存储在 Amazon FSx for ONTAP 文件系统中。
-5. 触发 Amazon CloudWatch 事件,通知相关人员 tapeout 已成功完成。
-- [Amazon FSx for ONTAP S3访问点概述](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
-- [使用AWS Lambda进行无服务器处理（官方教程）](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
-- [Amazon Textract API参考](https://docs.aws.amazon.com/textract/latest/dg/API_Reference.html)
-- [Amazon Comprehend DetectEntities API](https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html)
-- [Amazon Bedrock InvokeModel API参考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
-### AWS博客文章和指南
-
-AWS Bedrock、AWS Step Functions、Amazon Athena、Amazon S3、AWS Lambda、Amazon FSx for ONTAP、Amazon CloudWatch、AWS CloudFormation等AWS服务名称保持英文不变。
-
-GDSII、DRC、OASIS、GDS、Lambda、tapeout等技术术语保持原文。
-
-`...`中的内联代码保持原文不翻译。
-
-文件路径和URL保持原文不翻译。
-
-根据自然语义进行翻译,而非逐词翻译。
-- [亚马逊 S3 APAC 发布博客](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
-- [AWS Step Functions 和 Amazon Bedrock 文档处理编排](https://aws.amazon.com/blogs/compute/orchestrating-large-scale-document-processing-with-aws-step-functions-and-amazon-bedrock-batch-inference/)
-- [AWS 智能文档处理解决方案指南](https://aws.amazon.com/solutions/guidance/intelligent-document-processing-on-aws3/)
-### GitHub示例
-
-使用AWS服务创建无服务器工作流程：
-
-- 使用Amazon Bedrock建立您的底层架构
-- 使用AWS Step Functions协调您的工作流
-- 使用Amazon Athena查询数据集
-- 将数据存储在Amazon S3中
-- 使用AWS Lambda执行自定义代码
-- 使用Amazon FSx for ONTAP管理数据
-- 使用Amazon CloudWatch监控您的环境
-- 使用AWS CloudFormation自动化您的基础架构
-
-技术术语:
-- `GDSII`
-- `DRC` 
-- `OASIS`
-- `GDS`
-- `Lambda`
-- `tapeout`
-- [aws-samples/amazon-textract-serverless-large-scale-document-processing](https://github.com/aws-samples/amazon-textract-serverless-large-scale-document-processing) — Amazon Textract 大规模文档处理
-- [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — 无服务器模式集
-- [aws-samples/aws-stepfunctions-examples](https://github.com/aws-samples/aws-stepfunctions-examples) — AWS Step Functions 示例
-## 已验证的环境
-
-Amazon Bedrock、AWS Step Functions和Amazon Athena等AWS服务可以帮助您创建和管理高性能的数字集成电路(IC)设计环境。通过将Amazon S3、AWS Lambda和Amazon FSx for ONTAP等服务组合使用,您可以构建一个完整的IC设计工作流,包括GDSII数据管理、电路设计规则检查(DRC)、OASIS数据处理和GDS转换等关键步骤。
-
-此外,您还可以使用Amazon CloudWatch和AWS CloudFormation等工具来监控和自动化您的工作流程。借助这些服务,您可以确保在tapeout过程中一切正常运行,从而提高生产效率。
-
-| 項目 | 値 |
+| 项目 | 值 |
 |------|-----|
-| AWS リージョン | ap-northeast-1 (東京) |
-| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
-| FSx 構成 | SINGLE_AZ_1 |
+| AWS 区域 | ap-northeast-1 (东京) |
+| FSx for ONTAP 版本 | ONTAP 9.17.1P4D3 |
+| FSx 配置 | SINGLE_AZ_1 |
 | Python | 3.12 |
-| デプロイ方式 | CloudFormation (標準) |
+| 部署方式 | CloudFormation (标准) |
 
-## Lambda VPC 配置架构
+## Lambda VPC 部署架构
 
-您可以将 AWS Lambda 函数部署到 Amazon VPC 中。这允许您的 Lambda 函数访问 VPC 内的资源,如Amazon EC2 实例、Amazon Databases (如 Amazon RDS、Amazon DocumentDB)、Amazon FSx for ONTAP 以及其他网络资源。
+基于验证中获得的经验，Lambda 函数被分别部署在 VPC 内/外。
 
-有两种方法可以将 Lambda 函数部署到 VPC 中:
-
-1. 使用`vpc-id`和`subnet-ids`参数在 AWS Lambda 中配置 VPC。这种方法要求您手动管理 VPC 的网络配置。
-
-2. 使用 AWS Step Functions 创建一个无服务器工作流,其中包含执行 VPC 配置的 AWS CloudFormation 任务。 AWS CloudFormation 可以自动设置 VPC 网络配置,并将其与您的 Lambda 函数集成。
-
-无论采用哪种方法,您都可以使用 Amazon CloudWatch 监控 Lambda 函数的性能和错误。如果需要对 Lambda 函数进行扩展和自动扩缩,您还可以使用 AWS Auto Scaling。
-根据验证获得的见解,Lambda 函数被隔离部署在 VPC 内/外。
-
-**VPC 内 Lambda**（仅需要访问 ONTAP REST API 的函数）:
+**VPC 内 Lambda**（仅需要 ONTAP REST API 访问的函数）：
 - Discovery Lambda — S3 AP + ONTAP API
 
-**VPC 外 Lambda**（仅使用 AWS 托管服务 API）:
+**VPC 外 Lambda**（仅使用 AWS 托管服务 API）：
 - 其他所有 Lambda 函数
 
-> **原因**: 从 VPC 内 Lambda 访问 AWS 托管服务 API（Athena、Bedrock、Textract 等）需要 Interface VPC Endpoint (每月 $7.20)。VPC 外 Lambda 可以通过互联网直接访问 AWS API,无需额外成本。
+> **原因**：要从 VPC 内 Lambda 访问 AWS 托管服务 API（Athena、Bedrock、Textract 等），需要 Interface VPC Endpoint（每个 $7.20/月）。VPC 外 Lambda 可通过互联网直接访问 AWS API，无需额外成本即可运行。
 
-> **注意**: 使用 ONTAP REST API 的 UC（UC1 法务与合规）必须设置 `EnableVpcEndpoints=true`。这是为了通过 Secrets Manager VPC Endpoint 获取 ONTAP 认证信息。
+> **注意**：对于使用 ONTAP REST API 的 UC（UC1 法务·合规），`EnableVpcEndpoints=true` 是必需的。因为需要通过 Secrets Manager VPC Endpoint 获取 ONTAP 凭证。
+
+---
+
+## AWS 文档链接
+
+| 服务 | 文档 |
+|---------|------------|
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Textract | [Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/what-is.html) |
+| Amazon Comprehend | [Amazon Comprehend](https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html) |
+| Amazon Bedrock | [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Well-Architected Framework 对应
+
+| 支柱 | 对应 |
+|----|------|
+| 卓越运营 | X-Ray 跟踪、EMF 指标、结构化日志 |
+| 安全性 | 最小权限 IAM、KMS 加密、PII 检测 |
+| 可靠性 | Step Functions Retry/Catch、跨区域回退 |
+| 性能效率 | Lambda 内存优化、并行 OCR 处理 |
+| 成本优化 | 无服务器（仅使用时计费）、Textract 按页计费 |
+| 可持续性 | 按需执行、自动停止不需要的资源 |
+
+---
+
+## 本地测试
+
+### Prerequisites 检查
+
+```bash
+# 确认前提条件
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (sam local 用)
+aws sts get-caller-identity  # AWS 凭证
+```
+
+### sam local invoke
+
+```bash
+# 构建
+# 前提：需要 AWS SAM CLI。sam build 会自动打包代码和共享层。
+sam build
+
+# 本地运行 Discovery Lambda
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# 带环境变量覆盖
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### 单元测试
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+详情请参阅[本地测试快速入门](../docs/local-testing-quick-start.md)。
+
+---
+
+## 输出示例 (Output Sample)
+
+票据 OCR → 实体提取的输出示例：
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 25,
+    "prefix": "invoices/"
+  },
+  "processing": [
+    {
+      "key": "invoices/INV-2026-001.pdf",
+      "ocr_result": {
+        "document_type": "invoice",
+        "confidence": 0.97
+      },
+      "entities": {
+        "vendor_name": "示例株式会社",
+        "invoice_number": "INV-2026-001",
+        "amount": "1,234,567",
+        "currency": "JPY",
+        "due_date": "2026-06-30"
+      },
+      "summary": "来自示例公司的发票。金额 1,234,567 日元，付款期限 2026/6/30。"
+    }
+  ],
+  "report": {
+    "total_processed": 25,
+    "succeeded": 24,
+    "failed": 1,
+    "output_prefix": "s3://output-bucket/extracted/"
+  }
+}
+```
+
+> **注记**：以上为示例输出，实际值因环境·输入数据而异。基准数值为 sizing reference，而非 service limit。
+
+---
+
+## Governance Note
+
+> 本模式提供技术架构指南。它不是法律、合规或监管方面的建议。组织应咨询合格的专业人士。
+
+### FISC 安全对策基准对应
+
+面向日本的金融机构，本节展示本模式的设计要素与 FISC（金融信息系统中心）安全对策基准的对应关系。
+
+> **重要**：本节不保证符合 FISC 要求。FISC 合规的最终判断应由金融机构的信息安全部门及审计法人作出。
+
+| FISC 对策基准类别 | 本模式的对应设计要素 |
+|---------------------|----------------------|
+| 访问管理 | IAM 最小权限、S3 AP 资源策略、ONTAP 双层授权 |
+| 加密 | SSE-FSX（静态时）、TLS 1.2+（传输时）、KMS（输出存储桶） |
+| 审计追踪 | CloudTrail（所有 API 调用）、CloudWatch Logs（Lambda 执行日志）、X-Ray 跟踪 |
+| 数据保护 | VPC 内执行（可选）、Secrets Manager（凭证管理）、数据分类标签 |
+| 可用性 | Step Functions Retry/Catch、Lambda 自动扩展、Multi-AZ FSx for ONTAP（可选） |
+| 变更管理 | CloudFormation（IaC）、Git 管理、CI/CD 流水线 |
+| 故障应对 | CloudWatch Alarms、SNS 通知、事件响应 Playbook |
+
+**需要额外考虑的事项**：
+- 金融数据的境内保管要求（通过使用 ap-northeast-1 区域来应对）
+- Textract 跨区域调用时数据路径（经由 us-east-1）是否可接受
+- 对外部委托方（AWS）的监督义务的梳理
+- 定期漏洞诊断·渗透测试的实施计划
+
+---
+
+## S3AP Compatibility
+
+关于 S3 Access Points for FSx for ONTAP 的兼容性约束、故障排除和触发器模式，请参阅 [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md)。
