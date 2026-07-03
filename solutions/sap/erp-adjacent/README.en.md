@@ -1,6 +1,6 @@
 # SAP/ERP Adjacent File Workflow Pattern
 
-🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 Serverless pattern for processing SAP IDoc exports, HULFT landing files, EDI landing zone files, and batch job outputs stored on FSx for ONTAP — accessed via S3 Access Points.
 
@@ -67,7 +67,7 @@ Serverless pattern for processing SAP IDoc exports, HULFT landing files, EDI lan
 ## Deployment
 
 ```bash
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# Prerequisite: AWS SAM CLI is required. sam build automatically packages the code and shared layers.
 sam build
 sam deploy --guided --stack-name fsxn-s3ap-sap-erp \
   --parameter-overrides \
@@ -79,8 +79,8 @@ sam deploy --guided --stack-name fsxn-s3ap-sap-erp \
     ScheduleExpression="cron(0 */2 * * ? *)"
 ```
 
-> **注意**: `template.yaml` は SAM CLI（`sam build` + `sam deploy`）で使用します。
-> `aws cloudformation deploy` コマンドで直接デプロイする場合は `template-deploy.yaml` を使用してください（Lambda zip ファイルの事前パッケージングと S3 アップロードが必要です）。
+> **Note**: `template.yaml` is used with the SAM CLI (`sam build` + `sam deploy`).
+> To deploy directly with the `aws cloudformation deploy` command, use `template-deploy.yaml` (which requires pre-packaging the Lambda zip files and uploading them to S3).
 
 ## Customization
 
@@ -103,83 +103,83 @@ Edit `functions/processing/index.py` to customize the summarization prompt for y
 
 ---
 
-## コスト見積もり（月額概算）
+## Cost Estimate (Monthly Approximation)
 
-> **注記**: 以下は ap-northeast-1 リージョンの概算であり、実際のコストは使用量により異なります。最新の料金は [AWS Pricing Calculator](https://calculator.aws/) で確認してください。
+> **Note**: The following is an approximation for the ap-northeast-1 region; actual costs vary with usage. Check the latest pricing with the [AWS Pricing Calculator](https://calculator.aws/).
 
-### サーバーレスコンポーネント（従量課金）
+### Serverless Components (Pay-as-you-go)
 
-| サービス | 単価 | 想定使用量 | 月額概算 |
+| Service | Unit Price | Assumed Usage | Monthly Approximation |
 |---------|------|-----------|---------|
-| Lambda | $0.0000166667/GB-sec | 3 関数 × 100 files/日 | ~$1-5 |
-| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/日 | ~$1.5 |
-| Step Functions | $0.025/1K state transitions | ~1K transitions/日 | ~$0.75 |
-| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~50K tokens/実行 | ~$3-10 |
+| Lambda | $0.0000166667/GB-sec | 3 functions × 100 files/day | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/day | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/day | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~50K tokens/execution | ~$3-10 |
 | Athena | $5/TB scanned | N/A | ~$0.5-2 |
-| SNS | $0.50/100K notifications | ~100 notifications/日 | ~$0.15 |
-| CloudWatch Logs | $0.76/GB ingested | ~1 GB/月 | ~$0.76 |
+| SNS | $0.50/100K notifications | ~100 notifications/day | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/month | ~$0.76 |
 
-### 固定コスト（FSx for ONTAP — 既存環境前提）
+### Fixed Cost (FSx for ONTAP — assumes existing environment)
 
-| コンポーネント | 月額 |
+| Component | Monthly |
 |--------------|------|
-| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (既存環境を共有) |
-| S3 Access Point | 追加料金なし（S3 API 料金のみ） |
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (shared with existing environment) |
+| S3 Access Point | No additional charge (S3 API charges only) |
 
-### 合計概算
+### Total Approximation
 
-| 構成 | 月額概算 |
+| Configuration | Monthly Approximation |
 |------|---------|
-| 最小構成（日次 1 回実行） | ~$5-15 |
-| 標準構成（時次実行） | ~$15-50 |
-| 大規模構成（高頻度 + アラーム） | ~$50-150 |
+| Minimal configuration (once daily) | ~$5-15 |
+| Standard configuration (hourly) | ~$15-50 |
+| Large-scale configuration (high frequency + alarms) | ~$50-150 |
 
-> **Governance Caveat**: コスト見積もりは概算であり、保証値ではありません。実際の請求額は使用パターン、データ量、リージョンにより異なります。
+> **Governance Caveat**: Cost estimates are approximations, not guaranteed values. Actual charges vary with usage patterns, data volume, and region.
 
 ---
 
-## ローカルテスト
+## Local Testing
 
-### Prerequisites チェック
+### Prerequisites Check
 
 ```bash
-# 前提条件の確認
+# Check prerequisites
 aws --version          # AWS CLI v2
 sam --version          # SAM CLI
 python3 --version      # Python 3.9+
-docker --version       # Docker (sam local 用)
-aws sts get-caller-identity  # AWS 認証情報
+docker --version       # Docker (for sam local)
+aws sts get-caller-identity  # AWS credentials
 ```
 
 ### sam local invoke
 
 ```bash
-# ビルド
-# 前提: AWS SAM CLI が必要です。sam build がコードと共有レイヤーを自動でパッケージングします。
+# Build
+# Prerequisite: AWS SAM CLI is required. sam build automatically packages the code and shared layers.
 sam build
 
-# Discovery Lambda のローカル実行
+# Run Discovery Lambda locally
 sam local invoke DiscoveryFunction --event events/discovery-event.json
 
-# 環境変数オーバーライド付き
+# With environment variable overrides
 sam local invoke DiscoveryFunction \
   --event events/discovery-event.json \
   --env-vars env.json
 ```
 
-### ユニットテスト
+### Unit Tests
 
 ```bash
 python3 -m pytest tests/ -v
 ```
 
-詳細は [ローカルテスト クイックスタート](../docs/local-testing-quick-start.md) を参照してください。
+For details, see the [Local Testing Quick Start](../docs/local-testing-quick-start.md).
 
 ---
 
-## 出力サンプル (Output Sample)
+## Output Sample
 
-SAP/ERP ファイル処理ワークフローの出力例:
+Example output of the SAP/ERP file processing workflow:
 
 ```json
 {
@@ -194,7 +194,7 @@ SAP/ERP ファイル処理ワークフローの出力例:
       "key": "idoc-export/ORDERS_20260523_001.idoc",
       "status": "completed",
       "category": "sap_idoc",
-      "summary": "受注 IDoc (ORDERS05)。取引先: 株式会社サンプル、注文番号: PO-2026-001、金額: 2,500,000 JPY",
+      "summary": "Sales order IDoc (ORDERS05). Business partner: Sample Corporation, order number: PO-2026-001, amount: 2,500,000 JPY",
       "document_type": "ORDERS05",
       "key_fields": ["BELNR", "KUNNR", "NETWR", "WAERK"]
     }
@@ -210,26 +210,26 @@ SAP/ERP ファイル処理ワークフローの出力例:
 }
 ```
 
-> **注記**: 上記はサンプル出力であり、実際の値は環境・入力データにより異なります。ベンチマーク数値は sizing reference であり、service limit ではありません。
+> **Note**: The above is sample output; actual values vary with the environment and input data. Benchmark figures are a sizing reference, not a service limit.
 
 ---
 
 ## Governance Note
 
-> 本パターンは技術アーキテクチャガイダンスを提供します。法的・コンプライアンス・規制上の助言ではありません。組織は適格な専門家に相談してください。
+> This pattern provides technical architecture guidance. It is not legal, compliance, or regulatory advice. Organizations should consult qualified professionals.
 
 ---
 
 ## S3AP Compatibility
 
-S3 Access Points for FSx for ONTAP の互換性制約、トラブルシューティング、トリガーパターンについては [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) を参照してください。
+For compatibility constraints, troubleshooting, and trigger patterns for S3 Access Points for FSx for ONTAP, see the [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
 ---
 
 ## Performance Considerations
 
-- FSx for ONTAP のスループットキャパシティは NFS/SMB/S3AP で共有されます
-- S3 Access Point 経由のレイテンシは数十ミリ秒のオーバーヘッドが発生します
-- 大量ファイル処理時は Step Functions Map state の MaxConcurrency で並列度を制御してください
-- Lambda メモリサイズの増加はネットワーク帯域幅の向上にも寄与します
+- FSx for ONTAP throughput capacity is shared across NFS/SMB/S3AP
+- Latency via the S3 Access Point incurs tens of milliseconds of overhead
+- When processing large numbers of files, control the degree of parallelism with the Step Functions Map state MaxConcurrency
+- Increasing the Lambda memory size also improves network bandwidth
 
-> **注記**: 本パターンのパフォーマンス数値は sizing reference であり、service limit ではありません。実環境での性能は FSx for ONTAP スループットキャパシティ、ネットワーク構成、同時実行ワークロードにより異なります。
+> **Note**: The performance figures for this pattern are a sizing reference, not a service limit. Real-world performance varies with FSx for ONTAP throughput capacity, network configuration, and concurrent workloads.
