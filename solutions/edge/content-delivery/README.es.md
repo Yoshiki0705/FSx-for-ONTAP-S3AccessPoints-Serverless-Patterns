@@ -1,62 +1,115 @@
-# Content Edge Delivery — FSx for ONTAP S3 AP × CDN/edge (neutral respecto al proveedor)
+# Content Edge Delivery — FSx for ONTAP S3 AP × distribución CDN/edge (independiente del proveedor)
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
-## Resumen
+## Descripción general
 
-Patrón serverless neutral respecto al proveedor que mantiene FSx for NetApp ONTAP como
-**fuente única de verdad (master)** y hace que las **renditions aprobadas para distribución** en los
-S3 Access Points (S3 AP) sean distribuibles a través de una red CDN/edge.
+Un patrón serverless **independiente del proveedor de distribución** que conserva FSx for NetApp ONTAP como
+**Single Source of Truth (maestro)** y hace que las **renditions aprobadas para distribución** en los
+S3 Access Points (S3 AP) puedan distribuirse desde una red de distribución CDN/edge.
 
-Para la comparación de viabilidad técnica entre redes de distribución (CloudFront / Akamai / Fastly /
-Cloudflare / Bunny.net / Google Media CDN, etc.), consulte **[comparativa CDN](../docs/cdn-comparison.es.md)**.
+Para la comparación técnica de los mecanismos de integración y la viabilidad de cada red de distribución
+(CloudFront / Akamai / Fastly / Cloudflare / Bunny.net / Google Media CDN, etc.),
+consulte **[docs/cdn-comparison.md](../docs/cdn-comparison.md)**.
 
-> Esta es una implementación de referencia. La selección del proveedor, la gestión de derechos, las
-> restricciones geográficas y el cumplimiento son responsabilidad del cliente.
+> Este patrón es una reference implementation (implementación de referencia). La selección del proveedor de
+> distribución, la gestión de derechos, las restricciones geográficas y el cumplimiento los decide el cliente.
 
-> **TL;DR (30s)**: sin mover el master ONTAP/NAS, distribuir **solo renditions aprobadas** vía CloudFront o
-> un CDN de terceros. Empezar por `PUBLISH_PUSH` (M3), el de menor riesgo. Adoptar el pull directo SigV4
-> (ORIGIN_PULL) solo tras medirlo con la [lista de verificación](../docs/cdn-origin-verification-checklist.es.md).
+> **TL;DR (30 s)**: sin mover el maestro ONTAP/NAS, distribuya **solo los artefactos de distribución aprobados**
+> mediante CloudFront o un CDN de terceros. Comience con `PUBLISH_PUSH` (M3), que presenta el menor riesgo de
+> verificación. Adopte el pull directo SigV4 (ORIGIN_PULL) solo después de medirlo con la
+> [lista de verificación](../docs/cdn-origin-verification-checklist.md).
 
 ## Resultado de negocio y adopción (Outcome / Adoption)
 
-Evaluar por **resultado de negocio**, no por "se desplegó".
+Evalúe por **resultado de negocio**, no por «se desplegó».
 
-| Aspecto | Outcome / Métrica / Método de medición |
+| Categoría | Definición (Outcome / Metric / Método de medición) |
 |---|---|
-| Resultado de negocio | Distribución edge sin duplicar el master (solo se copian renditions aprobadas) |
-| Métrica | Objetos master que se filtran a la capa de distribución = 0 / nº de aprobaciones `unrecorded` |
-| Medición | Agregar `provenance` y `skipped`/`published` del manifiesto publish |
+| Business Outcome | Lograr la distribución edge sin duplicar el maestro (las copias de distribución son únicamente artefactos aprobados) |
+| Metric | Número de maestros filtrados a la capa de distribución = 0 / número de procedencias de aprobación `unrecorded` |
+| Método de medición | Agregar `provenance` y `skipped`/`published` del manifiesto de publicación |
 
-- **Límite de experimentación seguro**: `DemoMode=true` valida la lógica sin FSx/CDN externo.
-- **Business sponsor**: asignar un responsable de distribución (equipo de medios/plataforma) que apruebe el Go/No-Go.
-- **Lista Go/No-Go**: ningún objeto fuera de `ApprovedPrefix` es objetivo; trazabilidad de aprobación
-  registrada; tokens de espectador vía mecanismo nativo del CDN; para ORIGIN_PULL, la medición SigV4×alias es PASS.
-- Presentar el trabajo futuro como **expansión de evidencia** (TBV → medido), no como incompletitud.
+- **Límite de experimentación seguro**: `DemoMode=true` valida el funcionamiento sin FSx/CDN externo (rango en el que se permite el ensayo y error).
+- **Business Sponsor**: designar a un responsable de distribución (equipo de medios/plataforma de distribución) que apruebe el Go/No-Go.
+- **Lista de verificación Go/No-Go**:
+  - [ ] Nada fuera de `ApprovedPrefix` se incluye en el objetivo de distribución (límite de permisos)
+  - [ ] La procedencia de aprobación (quién aprobó) queda registrada
+  - [ ] Los tokens de espectador funcionan mediante el mecanismo nativo del CDN
+  - [ ] Al adoptar ORIGIN_PULL, la medición SigV4×alias es PASS
+- Posicione el trabajo futuro como **ampliación de evidencia** (convertir los TBV en valores medidos mediante verificación en hardware real), no como «incompletitud».
 
-## Guía Partner/SI
+**Pruébelo ahora (acción de 30 segundos)**: ejecute `make test-content-edge-delivery` para lanzar las pruebas
+unitarias (13 casos) y confirmar el funcionamiento del filtro permission-aware, la procedencia de aprobación y el enmascaramiento de PII.
 
-- **Primera pregunta al cliente**: "¿Quiere conectar activos NAS/ONTAP existentes a la distribución edge sin
-  copiar? ¿La distribución va por CloudFront o un CDN contratado (p. ej. Akamai)?"
-- **Entregables de PoC**: demo DemoMode → manifiesto de distribución de renditions aprobadas → (opcional)
-  resultado de verificación SigV4 en hardware. Use la [comparativa CDN](../docs/cdn-comparison.es.md) en conversaciones con clientes.
+## Guía de uso Partner/SI
 
-## Dos mecanismos de integración
+- **Primera pregunta al cliente**: «¿Desea conectar los activos NAS/ONTAP existentes a la distribución edge sin
+  copiar? ¿La distribución es mediante CloudFront o mediante un CDN ya contratado (p. ej., Akamai)?»
+- **Entregables del PoC**: demo de DemoMode → manifiesto de distribución de las renditions aprobadas → (opcional) resultado de verificación SigV4 en hardware real.
+- Para la selección de la red de distribución, la [comparación de CDN](../docs/cdn-comparison.md) puede usarse tal cual en las conversaciones con el cliente.
 
-- **ORIGIN_PULL**: sin copia de objetos; genera un manifiesto de referencia de origen para un CDN que obtiene
-  el S3 AP directamente vía SigV4. CloudFront se admite de forma nativa vía OAC (referencia). La firma de
-  origen SigV4 en CDN de terceros está **por verificar**.
-- **PUBLISH_PUSH**: replica las renditions aprobadas al almacén compatible con S3 del CDN. Evita la cuestión
-  de la auth de origen y es neutral — el primer paso de menor riesgo.
+## Problemas que resuelve
 
-## Componentes clave
+- Conectar los datos de producción/gestión en ONTAP/NAS a la distribución edge sin duplicar copias
+- Como la distribución no pasa por las ACL NFS/SMB de ONTAP, **limitar el objetivo de distribución a los artefactos aprobados**
+- Evitar el bloqueo en un CDN específico y mantener CloudFront / los CDN de terceros intercambiables
+
+## Arquitectura (dos mecanismos de integración)
+
+```mermaid
+graph LR
+    subgraph "Maestro (controlado por ACL)"
+        FSX[FSx for ONTAP]
+        AP[S3 Access Point<br/>internet origin]
+    end
+    subgraph "Capa de distribución"
+        PUB[Publish Lambda]
+        CF[CloudFront / 3rd-party CDN]
+        EXT[(Store compatible con S3 del lado del CDN)]
+    end
+    V[Espectador]
+
+    FSX --- AP
+    AP -->|Solo aprobados| PUB
+    PUB -->|ORIGIN_PULL: solo referencia| CF
+    PUB -->|PUBLISH_PUSH: replicación| EXT
+    EXT --> CF
+    CF -->|SigV4 origin pull| AP
+    CF --> V
+```
+
+- **ORIGIN_PULL**: no copia objetos; genera un manifiesto de referencia de origen partiendo de la premisa de que el
+  CDN obtiene el S3 AP directamente mediante SigV4. CloudFront lo admite mediante OAC (implementación de referencia).
+  La firma de origen SigV4 en CDN de terceros está **por verificar** (consulte el [documento de comparación](../docs/cdn-comparison.md)).
+- **PUBLISH_PUSH**: replica las renditions aprobadas al store compatible con S3 del lado del CDN. Evita el problema
+  de autenticación de origen y es independiente del CDN — el primer paso con el menor riesgo de verificación.
+
+## Componentes principales
 
 | Componente | Función |
 |---|---|
-| `functions/publish/handler.py` | Refleja las renditions aprobadas a la capa de distribución y reescribe un manifiesto de distribución en el S3 AP |
-| `functions/delivery_log_sync/handler.py` | Normaliza los logs de distribución del CDN (enmascarado de IP) y los reescribe en el S3 AP para correlacionarlos con los datos de producción |
+| `functions/publish/handler.py` | Refleja las renditions aprobadas en la capa de distribución y reescribe el manifiesto de distribución en el S3 AP |
+| `functions/delivery_log_sync/handler.py` | Normaliza los registros de distribución del CDN (enmascaramiento de IP) y los reescribe en el S3 AP para permitir la correlación con los datos de producción |
 | Step Functions | Publish → notificación SNS |
 | CloudFront (opcional) | Distribución de referencia para ORIGIN_PULL (OAC + SigV4) |
+
+## Parámetros
+
+| Parámetro | Descripción | Predeterminado |
+|---|---|---|
+| `S3AccessPointAlias` | Alias de S3 AP de entrada (Internet-origin) | — |
+| `S3AccessPointOutputAlias` | Alias de S3 AP para reescribir manifiestos/registros | — |
+| `DeliveryMode` | `ORIGIN_PULL` / `PUBLISH_PUSH` | `PUBLISH_PUSH` |
+| `CDNTarget` | `CLOUDFRONT`/`AKAMAI`/`FASTLY`/`CLOUDFLARE`/`OTHER` | `CLOUDFRONT` |
+| `ApprovedPrefix` | Prefijo aprobado para distribución (permission-aware) | `delivery-approved/` |
+| `SuffixFilter` | Extensiones objetivo de distribución (separadas por comas) | `""` |
+| `DemoMode` | Omitir el push externo (validar sin FSx/CDN externo) | `true` |
+| `ExternalStoreEndpoint` | Endpoint compatible con S3 para PUBLISH_PUSH | `""` |
+| `ExternalStoreBucket` | Bucket de destino para PUBLISH_PUSH | `""` |
+| `EnableCloudFront` | Habilitar la distribución CloudFront | `false` |
+| `RedactClientIp` | Enmascaramiento de IP de los registros de distribución | `true` |
+| `TriggerMode` | `POLLING`/`EVENT_DRIVEN`/`HYBRID` | `POLLING` |
 
 ## Despliegue
 
@@ -67,51 +120,80 @@ sam deploy --guided \
   --stack-name fsxn-content-edge-delivery
 ```
 
-> **Nota**: `template.yaml` está diseñado para usarse con AWS SAM CLI (`sam build` + `sam deploy`).
-> Para desplegar directamente con `aws cloudformation deploy`, use `template-deploy.yaml` en su lugar (requiere empaquetar previamente los archivos zip de Lambda y subirlos a un bucket de S3).
+> **Nota**: `template.yaml` se utiliza con la SAM CLI (`sam build` + `sam deploy`).
+> Para desplegar directamente con el comando `aws cloudformation deploy`, utilice en su lugar `template-deploy.yaml` (requiere empaquetar previamente los archivos zip de Lambda y subirlos a un bucket S3).
+
+Para la verificación de DemoMode, consulte [docs/demo-guide.md](docs/demo-guide.md).
 
 ## Seguridad / Gobernanza
 
-- **permission-aware**: la distribución se limita a objetos bajo `ApprovedPrefix`. Los datos master
-  controlados por ACL no se distribuyen directamente.
-- **Autenticación de espectadores**: URL prefirmadas de S3 no admitidas → tokens nativos del CDN.
-- **PII**: la IP del cliente se enmascara al reescribir los logs (`RedactClientIp=true`).
-- **Mínimo privilegio**: las Lambdas de distribución se ejecutan **fuera de la VPC** para el acceso Internet-origin.
+- **permission-aware**: el objetivo de distribución se limita a lo que está bajo `ApprovedPrefix`. Los maestros
+  bajo control de ACL no se distribuyen directamente.
+- **Registro de auditoría de la aprobación de distribución**: registra `provenance` (source_key / approver / approval_id /
+  published_at / execution_id) en el manifiesto de publicación. El origen de la aprobación se obtiene de los
+  metadatos de usuario del objeto (`x-amz-meta-approved-by` / `x-amz-meta-approval-id`); cuando no se registra, se
+  hace visible como `unrecorded` (la distribución no se detiene, se detecta en operación). Cuando se requiere un
+  seguimiento durable, puede ampliarse para registrar en `shared/lineage.py` (DynamoDB).
+- **Residencia de datos / restricciones geográficas**: como los CDN distribuyen globalmente, los datos cuya
+  distribución fuera de la región no esté permitida deben excluirse de la aprobación o controlarse con el geo-blocking del CDN.
+- **Autenticación de espectadores**: como las URL prefirmadas de S3 no se admiten, utilice los mecanismos de token nativos del CDN.
+- **PII**: las IP de cliente se enmascaran al reescribir los registros de distribución (`RedactClientIp=true`).
+- **Privilegio mínimo**: Publish/LogSync solo tienen las Actions necesarias en el S3 AP objetivo. Las Lambdas de
+  distribución se ejecutan **fuera del VPC** para el acceso al S3 AP Internet-origin.
 
-> **Governance Note**: la distribución no aplica los permisos de archivos de ONTAP. El límite de distribución
-> se garantiza mediante la regla "solo renditions aprobadas", la trazabilidad de aprobaciones y los controles
-> de acceso del destino.
+> **Governance Note**: la distribución no aplica de forma obligatoria los permisos de archivo de ONTAP. El límite de
+> distribución se garantiza mediante la regla operativa «distribuir solo artefactos aprobados», el registro de la
+> procedencia de aprobación y los controles de acceso del destino de distribución.
 
-### Responsabilidades (RACI / sector público)
+### Reparto de responsabilidades (RACI / perspectiva Public Sector)
 
 | Rol | Responsabilidad |
 |---|---|
-| Data Owner | Responsabilidad final de la clasificación, residencia y elegibilidad de publicación |
-| Approver | Aprueba la colocación bajo `ApprovedPrefix`; establece la trazabilidad (approved-by / approval-id) |
-| Audit Reviewer | Revisa periódicamente `provenance` en los manifiestos y los logs de distribución |
-| Ops Owner | Recibe alarmas, gestiona incidentes, ejecuta rollback |
+| Propietario de los datos (Data Owner) | Responsabilidad final de la clasificación, la residencia y la elegibilidad de publicación de los datos objetivo de distribución |
+| Aprobador (Approver) | Aprueba la colocación bajo `ApprovedPrefix`; asigna la procedencia de aprobación (approved-by / approval-id) |
+| Revisor del registro de auditoría (Audit Reviewer) | Revisa periódicamente la `provenance` del manifiesto de publicación y los registros de distribución |
+| Responsable de operaciones (Ops Owner) | Recibe alarmas, gestiona incidentes, ejecuta el rollback |
 
-- Las decisiones IA/automáticas son **señales asistivas**; la publicación la deciden humanos
-  (Data Owner / Approver).
-- Usar datos **sintéticos/de muestra no sensibles** para la verificación (nunca datos personales de producción).
-- La validación técnica **no reemplaza** la evaluación legal/cumplimiento/privacidad.
+- Las decisiones de IA/automatizadas son **señales de asistencia**; la publicación la deciden las personas (Data Owner / Approver).
+- Use datos **sintéticos/de muestra no sensibles** para la verificación (no reutilice nunca datos personales de producción para la verificación).
+- La validación técnica **no reemplaza** la evaluación legal, de cumplimiento y de privacidad.
 
-## Operación / Runbook
+## Restricciones del Scaffold (explícitas)
 
-- **Alarmas**: con `EnableCloudWatchAlarms=true`, los errores de Lambda (publish/log-sync) y los fallos de
-  Step Functions notifican vía SNS (`NotificationEmail`).
-- **Triaje**: errores de publish → revisar `/aws/lambda/<stack>-publish`; aislar la autz del S3 AP (IAM +
-  AP policy + identidad ONTAP) de la auth del almacén externo (Secrets Manager). Fallos de push externo →
-  revisar `ExternalStoreSecretName`, endpoint, bucket. Sospecha de violación de límite →
-  [playbook de respuesta a incidentes](../docs/incident-response-playbook.md).
-- **Rollback**: la distribución solo publica renditions aprobadas; ante una publicación errónea, eliminar el
-  objeto del destino (almacén/distribución del CDN), retirarlo de `ApprovedPrefix` y volver a publicar.
-- **Auth del almacén externo**: para PUBLISH_PUSH a Akamai/R2/Fastly, las credenciales AWS por defecto no
-  aplican — establecer `ExternalStoreSecretName` (Secrets Manager, `{"access_key_id","secret_access_key"}`).
+- `TriggerMode=EVENT_DRIVEN` / `HYBRID` están **definidos como parámetros, pero este scaffold no implementa la
+  integración con FPolicy ni la idempotencia (idempotency)**. Si se requiere la deduplicación para HYBRID, integre
+  `shared/idempotency_checker.py` en la ruta de publicación. La verificación actual del funcionamiento se realiza con `POLLING`.
+- El push real al store externo para `PUBLISH_PUSH` solo es efectivo cuando el endpoint/bucket están configurados (DemoMode registra un skip).
+- El pull directo de origen SigV4 de ORIGIN_PULL está **por verificar** en CDN de terceros (consulte el [documento de comparación](../docs/cdn-comparison.md) 4.1).
+
+## Operación / Runbook (Reliability/Ops)
+
+- **Alarmas**: con `EnableCloudWatchAlarms=true`, los errores de Lambda (publish / log-sync) y los fallos de Step Functions
+  se notifican mediante SNS. Recepción mediante `NotificationEmail`.
+- **Respuesta a incidentes**:
+  - error de publish → revisar CloudWatch Logs `/aws/lambda/<stack>-publish`. Separar la autorización del S3 AP
+    (IAM + AP policy + ID de ONTAP) de la autenticación del store externo (Secrets Manager).
+  - fallo del push externo → revisar las credenciales, el endpoint y el bucket en `ExternalStoreSecretName`.
+  - sospecha de problema de límite de distribución (distribución fuera de permisos) → [playbook de respuesta a incidentes](../docs/incident-response-playbook.md).
+- **Rollback**: la distribución solo publica artefactos aprobados. En caso de publicación errónea, elimine el objeto
+  correspondiente del destino de distribución (store del CDN/Distribution), retírelo de `ApprovedPrefix` y vuelva a publicar.
+- **Autenticación del store externo**: al replicar a Akamai/R2/Fastly, etc. con PUBLISH_PUSH, las credenciales
+  predeterminadas de AWS no se aplican, por lo que se requiere `ExternalStoreSecretName` (Secrets Manager, `{"access_key_id","secret_access_key"}`).
+
+## Success Metrics (perspectiva PoC Go/No-Go)
+
+| Categoría | Indicador | Referencia |
+|---|---|---|
+| Business Outcome | Evitar la duplicación del maestro | Las copias de distribución son únicamente artefactos aprobados |
+| Technical KPI | Tasa de éxito de publish | SUCCEEDED en DemoMode |
+| Quality KPI | Limitación del objetivo de distribución | Nada fuera de ApprovedPrefix se distribuye |
+| Cost KPI | Capacidad del store de distribución | Solo para las renditions aprobadas |
+| Go/No-Go | Pull directo de origen SigV4 | Los CDN de terceros se juzgan por verificación en hardware real |
 
 ## Documentos relacionados
 
-- [Comparativa de integración CDN/edge](../docs/cdn-comparison.es.md)
-- [Lista de verificación SigV4 ORIGIN_PULL](../docs/cdn-origin-verification-checklist.es.md) (procedimiento en hardware)
-- [Comparativa de arquitecturas alternativas](../docs/comparison-alternatives.md)
-- [Playbook de respuesta a incidentes](../docs/incident-response-playbook.md)
+- [Comparación de la integración de distribución CDN/edge](../docs/cdn-comparison.md) / [English](../docs/cdn-comparison.en.md)
+- [Lista de verificación SigV4 de ORIGIN_PULL](../docs/cdn-origin-verification-checklist.md) (procedimiento en hardware real)
+- [Comparación de arquitecturas alternativas](../docs/comparison-alternatives.md)
+- [Notas de compatibilidad de S3AP](../docs/s3ap-compatibility-notes.md)
+- [Playbook de respuesta a incidentes](../docs/incident-response-playbook.md) (ruta de respuesta ante distribución fuera de permisos / publicación errónea)
