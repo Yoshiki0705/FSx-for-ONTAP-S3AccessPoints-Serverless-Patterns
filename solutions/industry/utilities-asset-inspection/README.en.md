@@ -37,13 +37,13 @@ See [Architecture Document](docs/architecture.en.md) for detailed data flow diag
 
 ## Prerequisites
 
+> **S3 AP NetworkOrigin Note**: The Discovery Lambda is deployed inside a VPC. If the S3 Access Point's NetworkOrigin is `Internet`, it cannot be accessed via S3 Gateway VPC Endpoint (requests are not routed to the FSx data plane). Use a VPC-origin S3 AP or configure NAT Gateway access. See [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+
 - AWS account with appropriate IAM permissions
 - FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
 - S3 Access Point enabled on volume
 - VPC with private subnets
 - Amazon Bedrock model access enabled (Claude / Nova)
-
-> **S3 AP NetworkOrigin Note**: The Discovery Lambda is deployed inside a VPC. If the S3 Access Point's NetworkOrigin is `Internet`, it cannot be accessed via S3 Gateway VPC Endpoint (requests are not routed to the FSx data plane). Use a VPC-origin S3 AP or configure NAT Gateway access. See [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
 
 ## Deployment
 
@@ -97,7 +97,7 @@ aws cloudformation wait stack-delete-complete --stack-name fsxn-utilities-inspec
 
 > This pattern provides technical architecture guidance. It does not constitute legal, compliance, or regulatory advice. SCADA data is critical infrastructure information. Access control and audit log retention must comply with applicable electricity business regulations and critical infrastructure protection guidelines.
 
-> **Related Regulations**: 電気事業法 (Electricity Business Act), 電気設備技術基準
+> **Related Regulations**: Electricity Business Act (電気事業法), Technical Standards for Electrical Equipment (電気設備技術基準)
 
 ---
 
