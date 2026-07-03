@@ -10,9 +10,9 @@ A serverless workflow that leverages S3 Access Points for FSx for ONTAP to autom
 
 ### When This Pattern Is a Good Fit
 
-- Large volumes of GDS/OASIS design files are stored on FSx for ONTAP
+- Large volumes of GDS/OASIS design files are accumulated on FSx for ONTAP
 - You want to automatically catalog design file metadata (library name, cell count, bounding box, etc.)
-- You need periodic DRC statistics aggregation to track design quality trends
+- You need to periodically aggregate DRC statistics to track design quality trends
 - Cross-cutting design metadata analysis via Athena SQL is required
 - You want to auto-generate natural language design review summaries
 
@@ -30,6 +30,25 @@ A serverless workflow that leverages S3 Access Points for FSx for ONTAP to autom
 - DRC statistical aggregation via Athena SQL (cell count distribution, bounding box outliers, naming convention violations)
 - Natural language design review summary generation via Amazon Bedrock
 - Immediate result sharing via SNS notifications
+
+
+## Success Metrics
+
+### Outcome
+Reduce design review preparation effort by automating GDS/OASIS validation and metadata extraction.
+
+### Metrics
+| Metric | Target (example) |
+|-----------|------------|
+| Design files processed / execution | > 100 files |
+| Validation error detection rate | 100% (known error patterns) |
+| Bedrock report generation time | < 3 minutes |
+| Athena query response time | < 10 seconds |
+| Cost / execution | < $5 |
+| Human Review target rate | < 15% (design review findings) |
+
+### Measurement Method
+Step Functions execution history, Athena query results, Bedrock report metadata, CloudWatch Metrics.
 
 ## Architecture
 
@@ -254,7 +273,7 @@ aws cloudformation wait stack-delete-complete \
 UC6 uses the following services:
 
 | Service | Regional Constraints |
-|---------|---------------------|
+|---------|-------------|
 | Amazon Athena | Available in most regions |
 | Amazon Bedrock | Check supported regions ([Bedrock supported regions](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)) |
 | AWS X-Ray | Available in most regions |
@@ -270,3 +289,210 @@ UC6 uses the following services:
 - [Amazon Athena User Guide](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Bedrock API Reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [GDSII Format Specification](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+
+## FlexCache Cloud Burst Extension
+
+### Overview
+
+In EDA workloads, Tools/Libraries/PDK are read-centric and are ideal targets for FlexCache. By caching the EDA toolchain stored on an on-premises ONTAP Origin into FSx for ONTAP FlexCache on AWS, you can significantly improve data access performance during cloud bursting.
+
+### EDA Volume Classification and FlexCache Applicability
+
+| Volume Type | Access Pattern | FlexCache Applicability | S3 AP Usage |
+|--------------|---------------|:---:|:---:|
+| Tools (Cadence/Synopsys/Siemens) | Read-only | ✅ Optimal | ⚠️ Binary |
+| Libraries | Read-only | ✅ Optimal | ⚠️ Binary |
+| PDK (Process Design Kit) | Read-only | ✅ Optimal | ⚠️ Binary |
+| RCS (Revision Control) | Read/write | ❌ | ❌ |
+| Home | Read/write | ❌ | ❌ |
+| Scratch | Write-centric | ❌ | ❌ |
+| Results | Write → read | ❌ | ✅ For analysis |
+
+### Cloud Burst Architecture
+
+```mermaid
+graph TB
+    subgraph "On-Premises DC"
+        ORIGIN[ONTAP Cluster<br/>Tools + Libraries + PDK]
+        LIC[License Server]
+    end
+    subgraph "AWS (ap-northeast-1)"
+        FSX_CACHE[FSx for ONTAP<br/>FlexCache<br/>Tools/Libs/PDK]
+        EC2[EC2 Spot Instances<br/>EDA Compute]
+        S3AP[S3 Access Point<br/>Results Analysis]
+        SFN[Step Functions<br/>UC6 Workflow]
+    end
+    ORIGIN -->|Cluster Peering<br/>Direct Connect| FSX_CACHE
+    FSX_CACHE -->|NFS Mount| EC2
+    EC2 -->|Job Results| FSX_CACHE
+    FSX_CACHE --> S3AP --> SFN
+    EC2 -.->|License Check| LIC
+```
+
+### KPI
+
+| KPI | Without FlexCache | With FlexCache | Improvement |
+|-----|--------------|---------------|--------|
+| EDA job start wait time | 15-30 min (WAN) | 1-3 min (cache hit) | 80-90% |
+| Regression completion time | 8 hours | 3 hours | 62% |
+| WAN transfer volume/day | 500GB | 50GB | 90% |
+| License utilization efficiency | 60% | 85% | +25pt |
+
+### Related Patterns
+
+- [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — Dynamic per-job FlexCache creation and deletion
+- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — Multi-region cloud bursting
+- [Industry / Workload Mapping](../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
+
+
+---
+
+## AWS Documentation Links
+
+| Service | Documentation |
+|---------|------------|
+| FSx for ONTAP | [User Guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Developer Guide](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Athena | [User Guide](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
+| Amazon Bedrock | [User Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Well-Architected Framework Alignment
+
+| Pillar | Alignment |
+|----|------|
+| Operational Excellence | X-Ray tracing, EMF metrics, DRC statistics dashboard |
+| Security | Least-privilege IAM, KMS encryption, design data access control |
+| Reliability | Step Functions Retry/Catch, metadata extraction retries |
+| Performance Efficiency | GDS header partial reads, Athena partitioning |
+| Cost Optimization | Serverless (billed only when used), Athena scan optimization |
+| Sustainability | On-demand execution, incremental processing (changed files only) |
+
+
+
+
+
+---
+
+## Cost Estimate (Approximate Monthly)
+
+> **Note**: The following are estimates for the ap-northeast-1 region; actual costs vary by usage. Check the latest pricing with the [AWS Pricing Calculator](https://calculator.aws/).
+
+### Serverless Components (Pay-as-you-go)
+
+| Service | Unit Price | Estimated Usage | Approx. Monthly |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 5 functions × 100 files/day | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/day | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/day | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~50K tokens/execution | ~$3-10 |
+| Athena | $5/TB scanned | ~10 MB/query | ~$0.5-2 |
+| SNS | $0.50/100K notifications | ~100 notifications/day | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/month | ~$0.76 |
+| Glue ETL (optional) | $0.44/DPU-hour |
+
+
+### Fixed Cost (FSx for ONTAP — Assuming Existing Environment)
+
+| Component | Monthly |
+|--------------|------|
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (shared with existing environment) |
+| S3 Access Point | No additional charge (S3 API charges only) |
+
+### Total Estimate
+
+| Configuration | Approx. Monthly |
+|------|---------|
+| Minimal (once daily) | ~$5-15 |
+| Standard (hourly) | ~$15-50 |
+| Large-scale (high frequency + alarms) | ~$50-150 |
+
+> **Governance Caveat**: Cost estimates are approximate and not guaranteed. Actual charges vary by usage pattern, data volume, and region.
+
+---
+
+## Local Testing
+
+### Prerequisites Check
+
+```bash
+# Verify prerequisites
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (for sam local)
+aws sts get-caller-identity  # AWS credentials
+```
+
+### sam local invoke
+
+```bash
+# Build
+# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+sam build
+
+# Run Discovery Lambda locally
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# With environment variable overrides
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### Unit Tests
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+For details, see the [Local Testing Quick Start](../docs/local-testing-quick-start.md).
+
+---
+
+## Output Sample (Output Sample)
+
+Example output of EDA design file validation:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 5,
+    "prefix": "eda-designs/"
+  },
+  "metadata_extraction": [
+    {
+      "key": "eda-designs/top_chip_v3.gds",
+      "format": "GDSII",
+      "cell_count": 1284,
+      "bounding_box": {"max_x": 12000.5, "max_y": 9800.2}
+    }
+  ],
+  "drc_aggregation": {
+    "total_violations": 23,
+    "critical": 2,
+    "major": 8,
+    "minor": 13,
+    "categories": {"spacing": 10, "width": 8, "enclosure": 5}
+  },
+  "report": {
+    "report_key": "reports/design-review-2026-05-23.md",
+    "recommendation": "2 critical DRC violations require manual review before tapeout"
+  }
+}
+```
+
+> **Note**: The above is sample output; actual values vary by environment and input data. Benchmark figures are sizing references, not service limits.
+
+---
+
+## Governance Note
+
+> This pattern provides technical architecture guidance. It is not legal, compliance, or regulatory advice. Organizations should consult qualified professionals.
+
+---
+
+## S3AP Compatibility
+
+For compatibility constraints, troubleshooting, and trigger patterns for S3 Access Points for FSx for ONTAP, see [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).

@@ -5,32 +5,58 @@
 📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
 
 ## Overview
-It is a serverless workflow that utilizes S3 Access Points in Amazon FSx for ONTAP for automatic anomaly detection in IoT sensor logs and defect detection in quality inspection images.
-### When this pattern is appropriate
-- We want to regularly analyze the CSV sensor logs accumulated on the factory file server
-- We want to automate and streamline the visual verification of quality inspection images with AI
-- We want to add analysis without changing the existing NAS-based data collection flow (PLC → file server)
-- We want to achieve flexible threshold-based anomaly detection with Athena SQL
-- We need a phased judgment (automatic pass/manual review/automatic fail) based on Rekognition confidence scores
-### Cases where this pattern is not suitable
-- Real-time anomaly detection needed with millisecond accuracy (IoT Core + Kinesis recommended)
-- Bulk processing of TB-scale sensor logs (EMR Serverless Spark recommended)
-- Custom trained model needed for image defect detection (SageMaker endpoint recommended)
-- Sensor data already stored in a time-series database (e.g., Timestream)
-### Main features
+
+A serverless workflow that leverages the S3 Access Points of Amazon FSx for NetApp ONTAP to automate anomaly detection in IoT sensor logs and defect detection in quality inspection images.
+
+### When this pattern is a good fit
+
+- You want to periodically analyze CSV sensor logs accumulated on a factory file server
+- You want to automate and streamline the visual inspection of quality inspection images with AI
+- You want to add analytics without changing the existing NAS-based data collection flow (PLC → file server)
+- You want flexible threshold-based anomaly detection with Athena SQL
+- You need phased judgments (automatic pass / manual review / automatic fail) based on Rekognition confidence scores
+
+### When this pattern is not a good fit
+
+- You need real-time anomaly detection at millisecond granularity (IoT Core + Kinesis recommended)
+- You need to batch-process TB-scale sensor logs (EMR Serverless Spark recommended)
+- You need a custom trained model for image defect detection (SageMaker endpoint recommended)
+- Your sensor data is already stored in a time-series database (such as Timestream)
+
+### Key features
+
 - Automatic detection of CSV sensor logs and JPEG/PNG inspection images via S3 AP
-- Efficiency improvement in analysis through CSV to Parquet conversion
-- Detection of abnormal sensor values based on thresholds using Amazon Athena SQL
-- Defect detection and manual review flag setting using Amazon Rekognition
+- More efficient analysis through CSV → Parquet conversion
+- Threshold-based detection of abnormal sensor values with Amazon Athena SQL
+- Defect detection and manual review flagging with Amazon Rekognition
+
+## Success Metrics
+
+### Outcome
+Automated analysis of IoT sensor logs and quality inspection images speeds up anomaly detection and reduces quality-management effort.
+
+### Metrics
+| Metric | Target (example) |
+|-----------|------------|
+| Files analyzed per run | > 1,000 files |
+| Anomaly detection latency | < 1 hour (POLLING) |
+| False positive rate | < 5% |
+| Processing throughput | > 500 files/hour |
+| Cost per scan | < $5 |
+| Human Review rate | < 5% (alert notifications only) |
+
+### Measurement Method
+CloudWatch Metrics (FilesProcessed, AnomaliesDetected), Athena query results, SNS notification logs.
+
 ## Architecture
 
 ```mermaid
 graph LR
-    subgraph "Step Functions ワークフロー"
-        D[Discovery Lambda<br/>センサーログ・画像検出]
-        TR[Transform Lambda<br/>CSV → Parquet 変換]
-        ATH[Athena Analysis Lambda<br/>異常値検出]
-        IMG[Image Analysis Lambda<br/>Rekognition 欠陥検出]
+    subgraph "Step Functions Workflow"
+        D[Discovery Lambda<br/>Sensor log / image detection]
+        TR[Transform Lambda<br/>CSV → Parquet conversion]
+        ATH[Athena Analysis Lambda<br/>Anomaly detection]
+        IMG[Image Analysis Lambda<br/>Rekognition defect detection]
     end
 
     D -->|Manifest| TR
@@ -47,31 +73,37 @@ graph LR
 ```
 
 ### Workflow Steps
-1. **Discovery**: Discover CSV sensor logs and JPEG/PNG inspection images from S3 AP and generate Manifest
-2. **Transform**: Convert CSV files to Parquet format for S3 output (enhancing analysis efficiency)
-3. **Athena Analysis**: Detect abnormal sensor values using Athena SQL based on threshold
-4. **Image Analysis**: Use Rekognition to detect defects; set a manual review flag if confidence is below the threshold
+
+1. **Discovery**: Detect CSV sensor logs and JPEG/PNG inspection images from S3 AP and generate a Manifest
+2. **Transform**: Convert CSV files to Parquet format and write to S3 output (improves analysis efficiency)
+3. **Athena Analysis**: Detect abnormal sensor values on a threshold basis with Athena SQL
+4. **Image Analysis**: Detect defects with Rekognition; set a manual review flag when confidence is below the threshold
+
 ## Prerequisites
-- AWS account and appropriate IAM permissions
-- FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
-- S3 Access Point enabled volume
+
+- An AWS account and appropriate IAM permissions
+- An FSx for ONTAP file system (ONTAP 9.17.1P4D3 or later)
+- A volume with S3 Access Point enabled
 - ONTAP REST API credentials registered in Secrets Manager
-- VPC, private subnets
-- Amazon Rekognition available region
+- A VPC and private subnets
+- A region where Amazon Rekognition is available
+
 ## Deployment Steps
 
-### 1. Preparing Parameters
-Before deployment, confirm the following values:
+### 1. Preparing parameters
+
+Confirm the following values before deployment:
 
 - FSx for ONTAP S3 Access Point Alias
-- ONTAP Management IP address
-- Secrets Manager Secret name
-- VPC ID, Private Subnet ID
-- Anomaly Detection Threshold, Defect Detection Confidence Threshold
-### 2. SAM Deployment
+- ONTAP management IP address
+- Secrets Manager secret name
+- VPC ID, private subnet IDs
+- Anomaly detection threshold, defect detection confidence threshold
+
+### 2. SAM deployment
 
 ```bash
-# Prerequisite: AWS SAM CLI required. 'sam build' packages the code and shared layer automatically.
+# Prerequisite: AWS SAM CLI is required. sam build packages the code and shared layer automatically.
 sam build
 
 sam deploy \
@@ -95,108 +127,239 @@ sam deploy \
   --region ap-northeast-1
 ```
 
-> **Note**: `template.yaml` is designed for use with SAM CLI (`sam build` + `sam deploy`).
-> To deploy with raw `aws cloudformation deploy`, use `template-deploy.yaml` instead (requires pre-packaging Lambda zip files and uploading them to an S3 bucket).
-> **Note**: Replace the placeholder `<...>` with the actual environment values.
-### 3. Checking SNS Subscription
-After deployment, an SNS subscription confirmation email will be sent to the specified email address.
+> **Note**: `template.yaml` is for use with the SAM CLI (`sam build` + `sam deploy`).
+> To deploy directly with the `aws cloudformation deploy` command, use `template-deploy.yaml` instead (this requires pre-packaging the Lambda zip files and uploading them to S3).
 
-> **Note**: If `S3AccessPointName` is omitted, the IAM policy may become Alias-based only, resulting in an `AccessDenied` error. Specifying it is recommended for production environments. For more details, refer to the [Troubleshooting Guide](../docs/guides/troubleshooting-guide.md#1-accessdenied-error).
-## List of Configuration Parameters
+> **Note**: Replace the `<...>` placeholders with your actual environment values.
 
-| パラメータ | 説明 | デフォルト | 必須 |
+### 3. Confirming the SNS subscription
+
+After deployment, an SNS subscription confirmation email is sent to the address you specified.
+
+> **Note**: If you omit `S3AccessPointName`, the IAM policy becomes Alias-based only, which can cause an `AccessDenied` error. Specifying it is recommended for production environments. For details, see the [Troubleshooting Guide](../docs/guides/troubleshooting-guide.md#1-accessdenied-エラー).
+
+## Configuration Parameters
+
+| Parameter | Description | Default | Required |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
-| `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用。省略時は Alias ベースのみ） | `""` | ⚠️ 推奨 |
-| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias（出力用） | — | ✅ |
-| `OntapSecretName` | ONTAP 認証情報の Secrets Manager シークレット名 | — | ✅ |
-| `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
-| `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias (input) | — | ✅ |
+| `S3AccessPointName` | S3 AP name (for ARN-based IAM permission grants; Alias-based only when omitted) | `""` | ⚠️ Recommended |
+| `S3AccessPointOutputAlias` | FSx for ONTAP S3 AP Alias (output) | — | ✅ |
+| `OntapSecretName` | Secrets Manager secret name for ONTAP credentials | — | ✅ |
+| `OntapManagementIp` | ONTAP cluster management IP address | — | ✅ |
+| `ScheduleExpression` | EventBridge Scheduler schedule expression | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
-| `PrivateSubnetIds` | プライベートサブネット ID リスト | — | ✅ |
-| `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
-| `AnomalyThreshold` | 異常検出閾値（標準偏差の倍数） | `3.0` | |
-| `ConfidenceThreshold` | Rekognition 欠陥検出の信頼度閾値 | `80.0` | |
-| `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
-| `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
-| `EnableAthenaWorkgroup` | Athena Workgroup / Glue Data Catalog の有効化 | `true` | |
+| `PrivateSubnetIds` | Private subnet ID list | — | ✅ |
+| `NotificationEmail` | SNS notification email address | — | ✅ |
+| `AnomalyThreshold` | Anomaly detection threshold (multiple of standard deviation) | `3.0` | |
+| `ConfidenceThreshold` | Confidence threshold for Rekognition defect detection | `80.0` | |
+| `EnableVpcEndpoints` | Enable Interface VPC Endpoints | `false` | |
+| `EnableCloudWatchAlarms` | Enable CloudWatch Alarms | `false` | |
+| `EnableAthenaWorkgroup` | Enable Athena Workgroup / Glue Data Catalog | `true` | |
 
-## Cost structure
+## Cost Structure
 
-### Request-based (Pay-as-you-go)
+### Request-based (pay-as-you-go)
 
-| サービス | 課金単位 | 概算（100 ファイル/月） |
+| Service | Billing unit | Estimate (100 files/month) |
 |---------|---------|---------------------|
-| Lambda | リクエスト数 + 実行時間 | ~$0.01 |
-| Step Functions | ステート遷移数 | 無料枠内 |
-| S3 API | リクエスト数 | ~$0.01 |
-| Athena | スキャンデータ量 | ~$0.01 |
-| Rekognition | 画像数 | ~$0.10 |
+| Lambda | Requests + execution time | ~$0.01 |
+| Step Functions | State transitions | Within free tier |
+| S3 API | Requests | ~$0.01 |
+| Athena | Data scanned | ~$0.01 |
+| Rekognition | Number of images | ~$0.10 |
 
-### Always On (Optional)
+### Always on (optional)
 
-| サービス | パラメータ | 月額 |
+| Service | Parameter | Monthly |
 |---------|-----------|------|
 | Interface VPC Endpoints | `EnableVpcEndpoints=true` | ~$28.80 |
 | CloudWatch Alarms | `EnableCloudWatchAlarms=true` | ~$0.30 |
-In the demo/PoC environment, it is available starting at just **~$0.13 per month** with variable costs.
+
+> In demo/PoC environments, you can start from just **~$0.13/month** with variable costs only.
+
 ## Cleanup
 
 ```bash
-# CloudFormation スタックの削除
+# Delete the CloudFormation stack
 aws cloudformation delete-stack \
   --stack-name fsxn-manufacturing-analytics \
   --region ap-northeast-1
 
-# 削除完了を待機
+# Wait for deletion to complete
 aws cloudformation wait stack-delete-complete \
   --stack-name fsxn-manufacturing-analytics \
   --region ap-northeast-1
 ```
-> **Note**: If there are remaining objects in the S3 bucket, the stack deletion may fail. Please empty the bucket in advance.
+
+> **Note**: If objects remain in the S3 bucket, stack deletion may fail. Empty the bucket beforehand.
+
 ## Supported Regions
+
 UC3 uses the following services:
-| サービス | リージョン制約 |
+
+| Service | Region constraint |
 |---------|-------------|
-| Amazon Athena | ほぼ全リージョンで利用可能 |
-| Amazon Rekognition | ほぼ全リージョンで利用可能 |
-| AWS X-Ray | ほぼ全リージョンで利用可能 |
-| CloudWatch EMF | ほぼ全リージョンで利用可能 |
+| Amazon Athena | Available in almost all regions |
+| Amazon Rekognition | Available in almost all regions |
+| AWS X-Ray | Available in almost all regions |
+| CloudWatch EMF | Available in almost all regions |
+
 > See the [Region Compatibility Matrix](../docs/region-compatibility.md) for details.
+
 ## References
 
-### AWS Official Documentation
-- [FSx for ONTAP S3 Access Points Overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
-- [SQL Queries with Athena (Official Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
-- [ETL Pipelines with Glue (Official Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html)
-- [Serverless Processing with Lambda (Official Tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
+### AWS official documentation
+
+- [FSx for ONTAP S3 Access Points overview](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [SQL queries with Athena (official tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
+- [ETL pipelines with Glue (official tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html)
+- [Serverless processing with Lambda (official tutorial)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html)
 - [Rekognition DetectLabels API](https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectLabels.html)
-### AWS Blog Post
-- [Amazon FSx for ONTAP now integrates with Amazon S3 for seamless data access blog announcement](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
+
+### AWS blog posts
+
+- [S3 AP announcement blog](https://aws.amazon.com/blogs/aws/amazon-fsx-for-netapp-ontap-now-integrates-with-amazon-s3-for-seamless-data-access/)
 - [Three serverless architecture patterns](https://aws.amazon.com/blogs/storage/bridge-legacy-and-modern-applications-with-amazon-s3-access-points-for-amazon-fsx/)
-### GitHub Samples
-- [aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing](https://github.com/aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing) — Large-Scale Image and Video Processing with Amazon Rekognition
-- [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — Collection of Serverless Patterns
-- [aws-samples/aws-stepfunctions-examples](https://github.com/aws-samples/aws-stepfunctions-examples) — AWS Step Functions Examples
+
+### GitHub samples
+
+- [aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing](https://github.com/aws-samples/amazon-rekognition-serverless-large-scale-image-and-video-processing) — Large-scale Rekognition processing
+- [aws-samples/serverless-patterns](https://github.com/aws-samples/serverless-patterns) — Collection of serverless patterns
+- [aws-samples/aws-stepfunctions-examples](https://github.com/aws-samples/aws-stepfunctions-examples) — Step Functions samples
+
 ## Validated Environment
 
-| 項目 | 値 |
+| Item | Value |
 |------|-----|
-| AWS リージョン | ap-northeast-1 (東京) |
-| FSx for ONTAP バージョン | ONTAP 9.17.1P4D3 |
-| FSx 構成 | SINGLE_AZ_1 |
+| AWS Region | ap-northeast-1 (Tokyo) |
+| FSx for ONTAP version | ONTAP 9.17.1P4D3 |
+| FSx configuration | SINGLE_AZ_1 |
 | Python | 3.12 |
-| デプロイ方式 | CloudFormation (標準) |
+| Deployment method | CloudFormation (standard) |
 
-## Lambda VPC Configuration Architecture
-Based on the findings from the validation, Lambda functions are deployed either inside or outside the VPC.
+## Lambda VPC Placement Architecture
 
-**Lambda inside VPC** (only for functions that require ONTAP REST API access):
+Based on findings from validation, Lambda functions are placed either inside or outside the VPC.
+
+**Lambda inside the VPC** (only functions that require ONTAP REST API access):
 - Discovery Lambda — S3 AP + ONTAP API
 
-**Lambda outside VPC** (only using AWS managed service APIs):
+**Lambda outside the VPC** (using only AWS managed service APIs):
 - All other Lambda functions
 
-> **Reason**: To access AWS managed service APIs (Athena, Bedrock, Textract, etc.) from a Lambda inside the VPC, an Interface VPC Endpoint is required (at $7.20/month each). Lambda functions outside the VPC can directly access AWS APIs over the internet and operate without additional costs.
+> **Reason**: Accessing AWS managed service APIs (Athena, Bedrock, Textract, etc.) from a Lambda inside the VPC requires Interface VPC Endpoints ($7.20/month each). Lambda functions outside the VPC can access AWS APIs directly over the internet and run at no additional cost.
 
-> **Note**: For UC (UC1 Legal & Compliance) that uses ONTAP REST API, `EnableVpcEndpoints=true` is mandatory. This is because ONTAP credentials are retrieved via the Secrets Manager VPC Endpoint.
+> **Note**: For UCs that use the ONTAP REST API (UC1 Legal & Compliance), `EnableVpcEndpoints=true` is mandatory, because ONTAP credentials are retrieved via the Secrets Manager VPC Endpoint.
+
+---
+
+## AWS Documentation Links
+
+| Service | Documentation |
+|---------|------------|
+| FSx for ONTAP | [FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| AWS Glue | [AWS Glue](https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html) |
+| Amazon Athena | [Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
+| Amazon Rekognition | [Amazon Rekognition](https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html) |
+
+### Well-Architected Framework alignment
+
+| Pillar | Implementation |
+|----|------|
+| Operational Excellence | X-Ray tracing, EMF metrics, Glue job monitoring |
+| Security | Least-privilege IAM, KMS encryption, VPC isolation |
+| Reliability | Step Functions Retry/Catch, Glue job retries |
+| Performance Efficiency | Glue ETL parallel processing, Athena partitions |
+| Cost Optimization | Serverless, Glue DPU auto-scaling |
+| Sustainability | On-demand execution, data lifecycle management |
+
+---
+
+## Local Testing
+
+### Prerequisites check
+
+```bash
+# Check prerequisites
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (for sam local)
+aws sts get-caller-identity  # AWS credentials
+```
+
+### sam local invoke
+
+```bash
+# Build
+# Prerequisite: AWS SAM CLI is required. sam build packages the code and shared layer automatically.
+sam build
+
+# Run the Discovery Lambda locally
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# With environment variable overrides
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### Unit tests
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+For details, see the [Local Testing Quick Start](../docs/local-testing-quick-start.md).
+
+---
+
+## Output Sample
+
+Example output from sensor-data ETL + image analysis:
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 150,
+    "categories": {"csv_sensor": 120, "image_inspection": 30}
+  },
+  "etl_results": {
+    "records_processed": 45000,
+    "anomalies_detected": 7,
+    "output_table": "manufacturing_metrics"
+  },
+  "image_analysis": [
+    {
+      "key": "inspection/line-A/frame-001.jpg",
+      "defect_detected": true,
+      "defect_type": "scratch",
+      "confidence": 0.92,
+      "bounding_box": {"x": 120, "y": 80, "w": 45, "h": 30}
+    }
+  ],
+  "athena_summary": {
+    "oee_score": 0.87,
+    "defect_rate_pct": 2.3,
+    "query_execution_id": "qe-abc123..."
+  }
+}
+```
+
+> **Note**: The above is sample output; actual values vary by environment and input data. Benchmark figures are sizing references, not service limits.
+
+---
+
+## Governance Note
+
+> This pattern provides technical architecture guidance. It is not legal, compliance, or regulatory advice. Organizations should consult qualified professionals.
+
+---
+
+## S3AP Compatibility
+
+For S3 Access Points for FSx for ONTAP compatibility constraints, troubleshooting, and trigger patterns, see the [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).

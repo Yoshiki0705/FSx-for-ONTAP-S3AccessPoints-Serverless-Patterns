@@ -1,70 +1,68 @@
-# Use Cas 6 : Semi-conducteurs / EDA — Validation des fichiers de conception et extraction de métadonnées
+# UC6 : Semi-conducteurs / EDA — Validation des fichiers de conception et extraction de métadonnées
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
-Voici le processus recommandé pour valider les fichiers de conception et extraire les métadonnées :
+📚 **Documentation** : [Schéma d'architecture](docs/architecture.fr.md) | [Guide de démonstration](docs/demo-guide.fr.md)
 
-1. Utilisez Amazon Bedrock pour convertir les fichiers de conception aux formats GDSII et OASIS.
-2. Exécutez les règles de vérification de la conception (DRC) à l'aide d'Amazon Athena.
-3. Stockez les fichiers de conception validés dans Amazon S3.
-4. Utilisez AWS Step Functions pour orchestrer le workflow de validation et d'extraction des métadonnées.
-5. Appelez AWS Lambda pour extraire les métadonnées des fichiers de conception.
-6. Stockez les métadonnées extraites dans Amazon FSx for ONTAP.
-7. Configurez Amazon CloudWatch pour surveiller les erreurs et les anomalies.
-8. Utilisez AWS CloudFormation pour déployer et gérer l'infrastructure.
+## Vue d'ensemble
 
-## Aperçu
+Un workflow serverless qui exploite les S3 Access Points pour FSx for ONTAP afin d'automatiser la validation, l'extraction de métadonnées et l'agrégation statistique DRC (Design Rule Check) des fichiers de conception de semi-conducteurs GDS/OASIS.
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx pour NetApp ONTAP, Amazon CloudWatch, AWS CloudFormation et d'autres services AWS vous aident à construire et à exécuter vos applications.
+### Quand ce modèle convient
 
-L'utilisation d'`AWS Step Functions` vous permet de coordonner les différentes parties de votre application dans un workflow sans avoir à vous soucier de la gestion des ressources. `Amazon Athena` vous permet d'interroger directement vos données stockées dans `Amazon S3`. `AWS Lambda` vous offre le calcul sans serveur pour exécuter votre code en réponse aux événements.
+- De grands volumes de fichiers de conception GDS/OASIS sont accumulés sur FSx for ONTAP
+- Vous souhaitez cataloguer automatiquement les métadonnées des fichiers de conception (nom de bibliothèque, nombre de cellules, boîte englobante, etc.)
+- Vous devez agréger périodiquement les statistiques DRC pour suivre les tendances de qualité de conception
+- Une analyse transversale des métadonnées de conception via Athena SQL est requise
+- Vous souhaitez générer automatiquement des résumés de revue de conception en langage naturel
 
-`Amazon FSx pour NetApp ONTAP` fournit un système de fichiers haute performance et entièrement géré, basé sur la technologie ONTAP de NetApp. `Amazon CloudWatch` vous aide à surveiller vos ressources AWS et à prendre des mesures en fonction des informations recueillies.
+### Quand ce modèle ne convient pas
 
-Enfin, `AWS CloudFormation` vous permet de définir et de provisionner vos ressources AWS de manière déclarative, facilitant ainsi la gestion de votre infrastructure.
-Exploitez les points d'accès S3 d'Amazon FSx pour NetApp ONTAP afin d'automatiser un workflow sans serveur pour la validation des fichiers de conception de semi-conducteurs GDSII/OASIS, l'extraction de métadonnées et l'agrégation des statistiques de vérification des règles de conception.
-Voici les cas où ce modèle est approprié :
+- Une exécution DRC en temps réel est requise (suppose une intégration d'outils EDA)
+- Une validation physique des fichiers de conception (vérification complète de la conformité aux règles de fabrication) est nécessaire
+- Une chaîne d'outils EDA basée sur EC2 est déjà en service et les coûts de migration ne sont pas justifiés
+- Un environnement où la joignabilité réseau vers l'API REST ONTAP ne peut pas être garantie
 
-- Lorsque vous avez besoin d'exécuter des charges de travail de manière fiable et évolutive, vous pouvez utiliser des services gérés comme Amazon Bedrock, AWS Step Functions, Amazon Athena et AWS Lambda.
-- Lorsque vous devez stocker et accéder à de grandes quantités de données, Amazon S3 peut être une bonne solution.
-- Si vous avez besoin d'un stockage de fichiers hautement disponible et évolutif, Amazon FSx for ONTAP peut être envisagé.
-- Pour surveiller les performances de vos applications et services, Amazon CloudWatch peut vous aider.
-- Lorsque vous devez déployer et gérer votre infrastructure de manière déclarative, AWS CloudFormation peut être utile.
-- Les fichiers de conception GDS/OASIS s'accumulent en masse sur FSx for ONTAP.
-- Je voudrais cataloguer automatiquement les métadonnées des fichiers de conception (nom de la bibliothèque, nombre de cellules, boîte englobante, etc.).
-- Je veux compiler régulièrement les statistiques DRC afin de suivre les tendances de la qualité de la conception.
-- J'ai besoin d'une analyse transversale des métadonnées de conception avec SQL Athena.
-- Je souhaite générer automatiquement des résumés de revue de conception en langage naturel.
-### Les cas où ce modèle n'est pas adapté
+### Principales fonctionnalités
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, etc.
-- Exécution du DRC en temps réel nécessaire (intégration avec les outils EDA est un prérequis)
-- Validation physique des fichiers de conception (vérification complète de la conformité aux règles de fabrication) est nécessaire
-- La chaîne d'outils EDA basée sur EC2 est déjà opérationnelle, et les coûts de migration ne s'y prêtent pas
-- Impossibilité de garantir l'accessibilité réseau à l'API REST ONTAP
-### Principales fonctionnalités 
+- Détection automatique des fichiers GDS/OASIS via S3 AP (.gds, .gds2, .oas, .oasis)
+- Extraction des métadonnées d'en-tête (library_name, units, cell_count, bounding_box, creation_date)
+- Agrégation statistique DRC via Athena SQL (distribution du nombre de cellules, valeurs aberrantes de boîte englobante, violations de convention de nommage)
+- Génération de résumés de revue de conception en langage naturel via Amazon Bedrock
+- Partage immédiat des résultats via notifications SNS
 
-Amazon Bedrock vous permet de concevoir et de développer facilement des circuits intégrés complexes. Avec AWS Step Functions, vous pouvez automatiser les workflows de conception de circuits. Amazon Athena vous permet d'interroger et d'analyser efficacement vos données stockées dans Amazon S3. Utilisez AWS Lambda pour exécuter du code sans avoir à gérer les serveurs. Amazon FSx for ONTAP vous offre un stockage de fichiers haute performance. Amazon CloudWatch vous aide à surveiller et à diagnostiquer vos applications. AWS CloudFormation vous permet de provisonner et de gérer vos ressources AWS de manière déclarative.
-- Détection automatique des fichiers GDS/OASIS (`.gds`, `.gds2`, `.oas`, `.oasis`) via Amazon S3
-- Extraction des métadonnées d'en-tête (nom de la bibliothèque, unités, nombre de cellules, boîte englobante, date de création)
-- Statistiques DRC agrégées via Amazon Athena SQL (distribution du nombre de cellules, valeurs aberrantes de la boîte englobante, violation des conventions d'affectation des noms)
-- Génération de résumés des revues de conception en langage naturel via Amazon Bedrock
-- Partage instantané des résultats via des notifications Amazon SNS
+
+## Success Metrics
+
+### Outcome
+Réduire l'effort de préparation des revues de conception en automatisant la validation GDS/OASIS et l'extraction de métadonnées.
+
+### Metrics
+| Métrique | Valeur cible (exemple) |
+|-----------|------------|
+| Fichiers de conception traités / exécution | > 100 files |
+| Taux de détection des erreurs de validation | 100 % (schémas d'erreurs connus) |
+| Temps de génération du rapport Bedrock | < 3 minutes |
+| Temps de réponse des requêtes Athena | < 10 secondes |
+| Coût / exécution | < $5 |
+| Taux ciblé pour Human Review | < 15 % (observations de revue de conception) |
+
+### Measurement Method
+Historique d'exécution Step Functions, résultats de requêtes Athena, métadonnées de rapport Bedrock, CloudWatch Metrics.
+
 ## Architecture
-
-La conception de cette infrastructure repose sur l'utilisation de plusieurs services AWS tels qu'Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx pour NetApp ONTAP, Amazon CloudWatch et AWS CloudFormation. Les processus techniques tels que GDSII, DRC, OASIS, GDS, Lambda et la finalisation de la bande magnétique sont également impliqués. Les fichiers et URL sont conservés dans leur forme originale.
 
 ```mermaid
 graph LR
-    subgraph "Step Functions ワークフロー"
-        D[Discovery Lambda<br/>GDS/OASIS ファイル検出]
-        ME[Metadata Extraction Lambda<br/>ヘッダーメタデータ抽出]
-        DRC[DRC Aggregation Lambda<br/>Athena SQL 統計集計]
-        RPT[Report Lambda<br/>Bedrock レビューサマリー生成]
+    subgraph "Workflow Step Functions"
+        D[Discovery Lambda<br/>Détection de fichiers GDS/OASIS]
+        ME[Metadata Extraction Lambda<br/>Extraction des métadonnées d'en-tête]
+        DRC[DRC Aggregation Lambda<br/>Agrégation statistique Athena SQL]
+        RPT[Report Lambda<br/>Génération du résumé de revue Bedrock]
     end
 
     D -->|Manifest| ME
-    ME -->|JSON メタデータ| DRC
+    ME -->|Métadonnées JSON| DRC
     DRC -->|Query Results| RPT
 
     D -.->|ListObjectsV2| S3AP[S3 Access Point]
@@ -77,47 +75,28 @@ graph LR
 
 ### Étapes du workflow
 
-- Utilisez Amazon Bedrock pour concevoir et fabriquer des circuits intégrés.
-- Déployez des workflows avec AWS Step Functions.
-- Interrogez des données avec Amazon Athena.
-- Stockez des fichiers avec Amazon S3.
-- Exécutez du code avec AWS Lambda.
-- Utilisez Amazon FSx for ONTAP pour accéder à vos données.
-- Surveillez votre infrastructure avec Amazon CloudWatch.
-- Automatisez le déploiement avec AWS CloudFormation.
-1. **Découverte** : Détecter les fichiers .gds, .gds2, .oas, .oasis à partir d'Amazon S3 et générer un manifeste.
-2. **Extraction des métadonnées** : Extraire les métadonnées des en-têtes de chaque fichier de conception et les écrire dans Amazon S3 sous forme de JSON partitionné par date.
-3. **Agrégation des DRC** : Analyser le catalogue des métadonnées avec Amazon Athena SQL et agréger les statistiques DRC.
-4. **Génération de rapports** : Générer un résumé de l'examen de la conception avec Amazon Bedrock, le stocker dans Amazon S3 et envoyer une notification via Amazon SNS.
-Voici la traduction en français :
+1. **Discovery** : Détecte les fichiers .gds, .gds2, .oas, .oasis depuis le S3 AP et génère un Manifest
+2. **Metadata Extraction** : Extrait les métadonnées de l'en-tête de chaque fichier de conception et produit un JSON partitionné par date vers S3
+3. **DRC Aggregation** : Effectue une analyse transversale du catalogue de métadonnées via Athena SQL et agrège les statistiques DRC
+4. **Report Generation** : Génère un résumé de revue de conception via Bedrock et produit vers S3 + notification SNS
 
 ## Prérequis
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout, `...`
-- Compte AWS et autorisations IAM appropriées
-- Système de fichiers FSx pour NetApp ONTAP (version 9.17.1P4D3 ou ultérieure)
-- Volume avec point d'accès S3 activé (pour stocker les fichiers GDS/OASIS)
+- Compte AWS avec les autorisations IAM appropriées
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou ultérieur)
+- Un volume avec S3 Access Point activé (contenant les fichiers GDS/OASIS)
 - VPC, sous-réseaux privés
-- **Passerelle NAT ou points de terminaison VPC** (nécessaires pour que la fonction Lambda Discovery accède aux services AWS depuis le VPC)
+- **NAT Gateway ou VPC Endpoints** (requis pour que la Discovery Lambda accède aux services AWS depuis le VPC)
 - Accès aux modèles Amazon Bedrock activé (Claude / Nova)
-- Informations d'authentification à l'API REST ONTAP stockées dans Secrets Manager
-## Procédure de déploiement
+- Identifiants de l'API REST ONTAP stockés dans Secrets Manager
 
-Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch, AWS CloudFormation, GDSII, DRC, OASIS, GDS, Lambda, tapeout
+## Étapes de déploiement
 
-### 1. Création d'un point d'accès Amazon S3
+### 1. Créer le S3 Access Point
 
-L'étape suivante consiste à créer un point d'accès Amazon S3. Cela vous permettra d'accéder à vos objets Amazon S3 de manière plus sécurisée et simplifiée.
+Créez un S3 Access Point sur le volume qui stocke les fichiers GDS/OASIS.
 
-1. Accédez à la console AWS et sélectionnez le service Amazon S3.
-2. Cliquez sur "Créer un point d'accès" et suivez les instructions pour configurer votre point d'accès.
-3. Attribuez un nom à votre point d'accès et sélectionnez le compartiment Amazon S3 auquel vous souhaitez l'associer.
-4. Configurez les paramètres d'accès selon vos besoins, tels que les autorisations et les politiques.
-5. Passez en revue vos paramètres, puis cliquez sur "Créer un point d'accès" pour finaliser la création.
-Créez un point d'accès S3 pour le volume stockant les fichiers GDS/OASIS.
-Voici la traduction française :
-
-#### Création avec l'AWS CLI
+#### Création via AWS CLI
 
 ```bash
 aws fsx create-and-attach-s3-access-point \
@@ -134,38 +113,35 @@ aws fsx create-and-attach-s3-access-point \
   }' \
   --region <your-region>
 ```
-Après la création, notez la valeur de `S3AccessPoint.Alias` dans la réponse (au format `xxx-ext-s3alias`).
-#### Création dans la AWS Management Console
 
-Utiliser les services AWS tels que Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx pour NetApp ONTAP, Amazon CloudWatch et AWS CloudFormation pour créer votre solution.
-Voici la traduction :
+Après la création, notez le `S3AccessPoint.Alias` de la réponse (au format `xxx-ext-s3alias`).
 
-1. Ouvrir la [console Amazon FSx](https://console.aws.amazon.com/fsx/)
-2. Sélectionner le système de fichiers concerné
-3. Dans l'onglet "Volumes", sélectionner le volume concerné
-4. Sélectionner l'onglet "Points d'accès S3"
-5. Cliquer sur "Créer et attacher un point d'accès S3"
-6. Saisir un nom pour le point d'accès, spécifier le type d'identifiant du système de fichiers (UNIX/WINDOWS) et l'utilisateur
-7. Cliquer sur "Créer"
+#### Création via la console de gestion AWS
 
-> Consultez [Création de points d'accès S3 pour FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html) pour plus d'informations.
-Voici la traduction en français :
+1. Ouvrez la [console Amazon FSx](https://console.aws.amazon.com/fsx/)
+2. Sélectionnez le système de fichiers cible
+3. Sélectionnez le volume cible dans l'onglet « Volumes »
+4. Sélectionnez l'onglet « Points d'accès S3 »
+5. Cliquez sur « Créer et attacher un point d'accès S3 »
+6. Saisissez le nom du point d'accès et spécifiez le type d'identité du système de fichiers (UNIX/WINDOWS) et l'utilisateur
+7. Cliquez sur « Créer »
 
-#### Vérifier l'état du S3 AP
+> Pour plus de détails, consultez [Création de S3 Access Points pour FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html).
+
+#### Vérification de l'état du S3 AP
 
 ```bash
 aws fsx describe-s3-access-point-attachments --region <your-region> \
   --query 'S3AccessPointAttachments[*].{Name:Name,Lifecycle:Lifecycle,Alias:S3AccessPoint.Alias}' \
   --output table
 ```
-Veuillez patienter jusqu'à ce que l'état `Lifecycle` devienne `AVAILABLE` (généralement entre 1 et 2 minutes).
-### 2. Téléchargement des fichiers d'exemple (optionnel)
 
-1. Accédez à la console Amazon S3.
-2. Créez un nouveau compartiment S3 ou utilisez un compartiment existant.
-3. Téléchargez les fichiers d'exemple à partir de votre ordinateur local vers le compartiment S3.
-4. Notez le chemin d'accès au fichier dans le compartiment S3.
-Téléchargez les fichiers GDS de test sur le volume :
+Attendez que `Lifecycle` devienne `AVAILABLE` (généralement 1 à 2 minutes).
+
+### 2. Téléverser des fichiers d'exemple (facultatif)
+
+Téléversez des fichiers GDS de test vers le volume :
+
 ```bash
 S3AP_ALIAS="<your-s3ap-alias>"
 
@@ -176,11 +152,7 @@ aws s3 cp test-data/semiconductor-eda/eda-designs/test_chip_v2.gds2 \
   "s3://${S3AP_ALIAS}/eda-designs/test_chip_v2.gds2" --region <your-region>
 ```
 
-### 3. Déploiement de SAM
-
-AWS Step Functions を使用してリソースをプロビジョニングするには、AWS CloudFormation テンプレートを定義する必要があります。CloudFormation は、AWS 上のインフラストラクチャを宣言的に記述するツールです。アプリケーションに必要なリソースを定義し、リソースの依存関係を管理できます。
-
-CloudFormation テンプレートを使用すると、一貫性のあるインフラストラクチャ環境を簡単に作成、更新、削除できます。また、Amazon S3 にテンプレートを保存し、AWS Lambda や Amazon Athena などの他のサービスと統合することもできます。
+### 3. Déploiement SAM
 
 ```bash
 # Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
@@ -207,159 +179,320 @@ sam deploy \
   --resolve-s3 \
   --region <your-region>
 ```
-**Important** : `S3AccessPointName` est le nom (et non l'alias) du point d'accès S3, spécifié lors de la création. Il est utilisé dans les politiques IAM pour l'octroi d'autorisations basées sur les ARN. Omettre cette valeur peut entraîner une erreur `AccessDenied`.
-### 4. Vérifier les abonnements SNS
 
-Amazon SNS permet de recevoir des notifications sur les événements importants de vos workflows. Vous pouvez vérifier les abonnements SNS configurés dans votre compte AWS à l'aide de la console AWS ou de l'AWS CLI.
+> **Important** : `S3AccessPointName` est le nom du S3 AP (le nom spécifié à la création, pas l'Alias). Il est utilisé pour les octrois d'autorisations basés sur l'ARN dans les politiques IAM. Son omission peut entraîner des erreurs `AccessDenied`.
 
-Vous pouvez par exemple lister tous les abonnements SNS dans une région donnée avec la commande AWS CLI suivante :
+### 4. Confirmer l'abonnement SNS
 
-`aws sns list-subscriptions --region <region>`
+Après le déploiement, un e-mail de confirmation sera envoyé à l'adresse e-mail spécifiée. Cliquez sur le lien pour confirmer.
 
-Cette commande affiche tous les abonnements SNS, y compris le protocole (e-mail, SMS, Lambda, etc.), le point de terminaison et l'ARN de l'abonnement.
+### 5. Vérifier le fonctionnement
 
-Vous pouvez également afficher les détails d'un abonnement spécifique à l'aide de la commande :
+Exécutez manuellement la machine à états Step Functions pour vérifier le fonctionnement :
 
-`aws sns get-subscription-attributes --subscription-arn <subscription-arn>`
-
-Cette commande fournit des informations détaillées sur l'abonnement, comme le protocole, le point de terminaison, l'ARN, etc.
-Après le déploiement, un e-mail de confirmation sera envoyé à l'adresse électronique spécifiée. Veuillez cliquer sur le lien pour confirmer.
-### 5. Vérification du fonctionnement
-
-Amazon Bedrock を使用して新しいチップの設計を作成し、AWS Step Functions を利用してツールチェーンを自動化します。Amazon Athena とAmazon S3 を使用して GDSII ファイルの検証と DRC を実行し、AWS Lambda で RTL コードを合成します。Amazon FSx for ONTAP を使用して設計データを保存し、Amazon CloudWatch で進捗状況をモニタリングします。最後に AWS CloudFormation を使用してエンドツーエンドのデプロイメントを実行し、OASIS ファイルを生成してテープアウトします。
-Vérifier le fonctionnement en exécutant manuellement AWS Step Functions :
 ```bash
 aws stepfunctions start-execution \
   --state-machine-arn "arn:aws:states:<region>:<account-id>:stateMachine:fsxn-semiconductor-eda-workflow" \
   --input '{}' \
   --region <your-region>
 ```
-**Remarque** : Lors de la première exécution, il est possible que les résultats de l'agrégation DRC d'Athena soient de 0 enregistrements. Cela est dû au délai de réflexion des métadonnées dans la table Glue. Les statistiques correctes seront obtenues lors des exécutions suivantes.
-> **Remarque** : `template.yaml` est conçu pour être utilisé avec AWS SAM CLI (`sam build` + `sam deploy`).
-> Pour un déploiement direct avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite de packager au préalable les fichiers zip Lambda et de les téléverser dans un bucket S3).
-Voici la traduction en français :
+
+> **Remarque** : Lors de la première exécution, les résultats d'agrégation DRC d'Athena peuvent renvoyer 0 ligne. Cela est dû à un décalage temporel avant que les métadonnées ne soient reflétées dans la table Glue. Des statistiques correctes seront obtenues à partir de la deuxième exécution.
+
+> **Remarque** : `template.yaml` est conçu pour être utilisé avec la SAM CLI (`sam build` + `sam deploy`).
+> Pour déployer avec la commande brute `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite l'empaquetage préalable des fichiers zip Lambda et leur téléversement vers un bucket S3).
 
 ## Liste des paramètres de configuration
 
-| パラメータ | 説明 | デフォルト | 必須 |
+| Paramètre | Description | Par défaut | Requis |
 |-----------|------|----------|------|
-| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias（入力用） | — | ✅ |
-| `S3AccessPointName` | S3 AP 名（ARN ベースの IAM 権限付与用） | `""` | ⚠️ 推奨 |
-| `OntapSecretName` | ONTAP REST API 認証情報の Secrets Manager シークレット名 | — | ✅ |
-| `OntapManagementIp` | ONTAP クラスタ管理 IP アドレス | — | ✅ |
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias (pour l'entrée) | — | ✅ |
+| `S3AccessPointName` | Nom du S3 AP (pour les octrois d'autorisations IAM basés sur l'ARN) | `""` | ⚠️ Recommandé |
+| `OntapSecretName` | Nom du secret Secrets Manager pour les identifiants de l'API REST ONTAP | — | ✅ |
+| `OntapManagementIp` | Adresse IP de gestion du cluster ONTAP | — | ✅ |
 | `SvmUuid` | ONTAP SVM UUID | — | ✅ |
-| `ScheduleExpression` | EventBridge Scheduler のスケジュール式 | `rate(1 hour)` | |
+| `ScheduleExpression` | Expression de planification EventBridge Scheduler | `rate(1 hour)` | |
 | `VpcId` | VPC ID | — | ✅ |
-| `PrivateSubnetIds` | プライベートサブネット ID リスト | — | ✅ |
-| `PrivateRouteTableIds` | プライベートサブネットのルートテーブル ID リスト（S3 Gateway Endpoint 用） | `""` | |
-| `NotificationEmail` | SNS 通知先メールアドレス | — | ✅ |
-| `BedrockModelId` | Bedrock モデル ID | `amazon.nova-lite-v1:0` | |
-| `MapConcurrency` | Map ステートの並列実行数 | `10` | |
-| `LambdaMemorySize` | Lambda メモリサイズ (MB) | `256` | |
-| `LambdaTimeout` | Lambda タイムアウト (秒) | `300` | |
-| `EnableVpcEndpoints` | Interface VPC Endpoints の有効化 | `false` | |
-| `EnableCloudWatchAlarms` | CloudWatch Alarms の有効化 | `false` | |
-| `EnableXRayTracing` | X-Ray トレーシングの有効化 | `true` | |
-⚠️ **`S3AccessPointName`** : Ce paramètre est facultatif, mais si vous ne le spécifiez pas, la politique IAM sera basée uniquement sur les alias et dans certains environnements, une erreur `AccessDenied` peut se produire. Il est recommandé de le spécifier pour l'environnement de production.
-Voici la traduction en français :
+| `PrivateSubnetIds` | Liste des ID de sous-réseaux privés | — | ✅ |
+| `PrivateRouteTableIds` | Liste des ID de tables de routage des sous-réseaux privés (pour S3 Gateway Endpoint) | `""` | |
+| `NotificationEmail` | Adresse e-mail de destination des notifications SNS | — | ✅ |
+| `BedrockModelId` | ID du modèle Bedrock | `amazon.nova-lite-v1:0` | |
+| `MapConcurrency` | Nombre d'exécutions parallèles de l'état Map | `10` | |
+| `LambdaMemorySize` | Taille de mémoire Lambda (Mo) | `256` | |
+| `LambdaTimeout` | Délai d'expiration Lambda (secondes) | `300` | |
+| `EnableVpcEndpoints` | Activer les Interface VPC Endpoints | `false` | |
+| `EnableCloudWatchAlarms` | Activer les CloudWatch Alarms | `false` | |
+| `EnableXRayTracing` | Activer le traçage X-Ray | `true` | |
 
-## Résolution des problèmes
+> ⚠️ **`S3AccessPointName`** : Facultatif, mais s'il est omis, la politique IAM sera uniquement basée sur l'Alias, ce qui peut provoquer des erreurs `AccessDenied` dans certains environnements. Sa spécification est recommandée pour les environnements de production.
 
-### La fonction Lambda Discovery rencontre des problèmes de dépassement de délai
-**Raison** : Le Lambda dans le VPC ne peut pas accéder aux services AWS (Secrets Manager, S3, CloudWatch).
+## Dépannage
 
-**Solution** : Veuillez vérifier l'un des éléments suivants :
+### La Discovery Lambda expire
+
+**Cause** : La Lambda exécutée dans le VPC ne peut pas atteindre les services AWS (Secrets Manager, S3, CloudWatch).
+
+**Solution** : Vérifiez l'un des points suivants :
 1. Déployez avec `EnableVpcEndpoints=true` et spécifiez `PrivateRouteTableIds`
-2. Le VPC a un passerelle NAT et la table de routage du sous-réseau privé a une route vers la passerelle NAT
-### Erreur d'accès refusé (ListObjectsV2)
-**Raison**: Les autorisations basées sur l'ARN du point d'accès S3 sont insuffisantes dans la politique IAM.
+2. Une NAT Gateway existe dans le VPC et les tables de routage des sous-réseaux privés ont une route vers la NAT Gateway
 
-**Solution**: Mettez à jour la pile en spécifiant le nom (et non l'alias) du point d'accès S3 dans le paramètre `S3AccessPointName`.
-### Les résultats de l'agrégation DRC d'Athena sont nuls
-**Raison** : Il peut y avoir un manque de correspondance entre le filtre `metadata_prefix` utilisé par la fonction Lambda de regroupement DRC et la valeur `file_key` dans le JSON de métadonnées réel. De plus, lors de la première exécution, les métadonnées peuvent ne pas encore exister dans la table Glue, entraînant un résultat de 0 enregistrement.
+### Erreur AccessDenied (ListObjectsV2)
+
+**Cause** : La politique IAM ne dispose pas des autorisations basées sur l'ARN pour le S3 Access Point.
+
+**Solution** : Spécifiez le nom du S3 AP (le nom donné à la création, pas l'Alias) dans le paramètre `S3AccessPointName` et mettez à jour la stack.
+
+### L'agrégation DRC d'Athena renvoie 0 résultat
+
+**Cause** : Le filtre `metadata_prefix` utilisé par la DRC Aggregation Lambda peut ne pas correspondre aux valeurs `file_key` réelles dans le JSON de métadonnées. De plus, lors de la première exécution, aucune métadonnée n'existe dans la table Glue, d'où 0 ligne.
 
 **Solution** :
-1. Exécuter les Step Functions deux fois (la première fois pour écrire les métadonnées dans S3, la seconde pour permettre à Athena d'agréger les données)
-2. Exécuter directement dans la console Athena `SELECT * FROM "<db>"."<table>" LIMIT 10` pour vérifier que les données peuvent être lues
-3. Si les données peuvent être lues mais l'agrégation donne 0 enregistrement, vérifier la cohérence entre la valeur `file_key` et le filtre `prefix`
+1. Exécutez le workflow Step Functions deux fois (la première exécution écrit les métadonnées vers S3, et la seconde permet à Athena de les agréger)
+2. Exécutez `SELECT * FROM "<db>"."<table>" LIMIT 10` directement dans la console Athena pour confirmer que les données sont lisibles
+3. Si les données sont lisibles mais que l'agrégation renvoie 0 résultat, vérifiez la cohérence entre les valeurs `file_key` et le filtre `prefix`
+
 ## Nettoyage
 
-Vous pouvez utiliser Amazon Bedrock, AWS Step Functions, Amazon Athena, Amazon S3, AWS Lambda, Amazon FSx for ONTAP, Amazon CloudWatch et AWS CloudFormation pour automatiser le nettoyage de vos ressources. Voici quelques étapes à suivre :
-
-1. Utilisez `aws_cleanup.py` pour identifier les ressources inutilisées.
-2. Définissez des règles dans AWS CloudFormation pour supprimer automatiquement les ressources identifiées.
-3. Configurez des déclencheurs Amazon CloudWatch pour exécuter le nettoyage à intervalles réguliers.
-4. Surveillez les résultats du nettoyage à l'aide d'Amazon CloudWatch.
-
-N'hésitez pas à ajuster ces étapes en fonction de vos besoins spécifiques. N'oubliez pas d'effectuer des tests approfondis avant d'appliquer le nettoyage en production.
-
 ```bash
-# S3 バケットを空にする
+# Vider le bucket S3
 aws s3 rm s3://fsxn-semiconductor-eda-output-${AWS_ACCOUNT_ID} --recursive
 
-# CloudFormation スタックの削除
+# Supprimer la stack CloudFormation
 aws cloudformation delete-stack \
   --stack-name fsxn-semiconductor-eda \
   --region ap-northeast-1
 
-# 削除完了を待機
+# Attendre la fin de la suppression
 aws cloudformation wait stack-delete-complete \
   --stack-name fsxn-semiconductor-eda \
   --region ap-northeast-1
 ```
 
-## Régions prises en charge
+## Supported Regions
 
-Amazon Bedrock est actuellement disponible dans les régions AWS suivantes :
-- US East (N. Virginia)
-- US West (Oregon)
-- Europe (Ireland)
-
-AWS Step Functions est disponible dans la plupart des régions AWS. Consultez la [documentation AWS Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/regions-availability.html) pour obtenir la liste complète des régions prises en charge.
-
-Amazon Athena est disponible dans la plupart des régions AWS. Consultez la [documentation Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/regions.html) pour obtenir la liste complète des régions prises en charge.
-
-Amazon S3 est disponible dans toutes les régions AWS. Consultez la [documentation Amazon S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-bucket-intro.html) pour plus d'informations.
-
-AWS Lambda est disponible dans la plupart des régions AWS. Consultez la [documentation AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/lambda-services.html) pour obtenir la liste complète des régions prises en charge.
-
-Amazon FSx for ONTAP est actuellement disponible dans les régions AWS suivantes :
-- US East (N. Virginia)
-- US West (Oregon)
-- Europe (Ireland)
-
-Amazon CloudWatch est disponible dans la plupart des régions AWS. Consultez la [documentation Amazon CloudWatch](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch-supported-regions.html) pour obtenir la liste complète des régions prises en charge.
-
-AWS CloudFormation est disponible dans la plupart des régions AWS. Consultez la [documentation AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-whatis-concepts.html#w2ab1c11c15c17c11) pour plus d'informations.
 UC6 utilise les services suivants :
 
-- Amazon Bedrock
-- AWS Step Functions
-- Amazon Athena
-- Amazon S3
-- AWS Lambda
-- Amazon FSx for ONTAP
-- Amazon CloudWatch
-- AWS CloudFormation
-- GDSII
-- DRC
-- OASIS
-- GDS
-- Lambda
-- tapeout
-| サービス | リージョン制約 |
+| Service | Contraintes régionales |
 |---------|-------------|
-| Amazon Athena | ほぼ全リージョンで利用可能 |
-| Amazon Bedrock | 対応リージョンを確認（[Bedrock 対応リージョン](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)） |
-| AWS X-Ray | ほぼ全リージョンで利用可能 |
-| CloudWatch EMF | ほぼ全リージョンで利用可能 |
-Veuillez consulter la [matrice de compatibilité des régions](../docs/region-compatibility.md) pour plus de détails.
+| Amazon Athena | Disponible dans la plupart des régions |
+| Amazon Bedrock | Vérifiez les régions prises en charge ([Régions prises en charge par Bedrock](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)) |
+| AWS X-Ray | Disponible dans la plupart des régions |
+| CloudWatch EMF | Disponible dans la plupart des régions |
+
+> Pour plus de détails, consultez la [matrice de compatibilité régionale](../docs/region-compatibility.md).
+
 ## Liens de référence
 
-AWS Step Functions permet de créer des workflows d'application complexes à l'aide d'une interface visuelle. Amazon Athena est un service d'analyse de données sans serveur qui vous permet d'interroger facilement des données dans Amazon S3 en utilisant du SQL standard. AWS Lambda vous permet d'exécuter du code sans avoir à gérer des serveurs. Amazon FSx for ONTAP fournit un stockage de fichiers hautement performant et hautement disponible. Amazon CloudWatch vous permet de surveiller vos ressources AWS et vos applications. AWS CloudFormation vous aide à modéliser et configurer vos ressources AWS.
-- [Présentation des points d'accès S3 pour FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
-- [Création et attachement de points d'accès S3](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html)
-- [Gestion de l'accès aux points d'accès S3](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
+- [Présentation des S3 Access Points pour FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Création et attachement de S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points-create-fsxn.html)
+- [Gestion des accès pour les S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-ap-manage-access-fsxn.html)
 - [Guide de l'utilisateur Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Référence de l'API Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [Spécification du format GDSII](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+
+## Extension Cloud Burst FlexCache
+
+### Vue d'ensemble
+
+Dans les charges de travail EDA, les Tools/Libraries/PDK sont principalement en lecture et constituent des cibles idéales pour FlexCache. En mettant en cache la chaîne d'outils EDA stockée sur un ONTAP Origin sur site dans FSx for ONTAP FlexCache sur AWS, vous pouvez améliorer considérablement les performances d'accès aux données lors du cloud bursting.
+
+### Classification des volumes EDA et applicabilité de FlexCache
+
+| Type de volume | Modèle d'accès | Applicabilité FlexCache | Utilisation S3 AP |
+|--------------|---------------|:---:|:---:|
+| Tools (Cadence/Synopsys/Siemens) | Lecture seule | ✅ Optimal | ⚠️ Binaire |
+| Libraries | Lecture seule | ✅ Optimal | ⚠️ Binaire |
+| PDK (Process Design Kit) | Lecture seule | ✅ Optimal | ⚠️ Binaire |
+| RCS (Revision Control) | Lecture/écriture | ❌ | ❌ |
+| Home | Lecture/écriture | ❌ | ❌ |
+| Scratch | Écriture principalement | ❌ | ❌ |
+| Results | Écriture → lecture | ❌ | ✅ Pour analyse |
+
+### Configuration Cloud Burst
+
+```mermaid
+graph TB
+    subgraph "DC sur site"
+        ORIGIN[ONTAP Cluster<br/>Tools + Libraries + PDK]
+        LIC[License Server]
+    end
+    subgraph "AWS (ap-northeast-1)"
+        FSX_CACHE[FSx for ONTAP<br/>FlexCache<br/>Tools/Libs/PDK]
+        EC2[EC2 Spot Instances<br/>EDA Compute]
+        S3AP[S3 Access Point<br/>Analyse des Results]
+        SFN[Step Functions<br/>Workflow UC6]
+    end
+    ORIGIN -->|Cluster Peering<br/>Direct Connect| FSX_CACHE
+    FSX_CACHE -->|NFS Mount| EC2
+    EC2 -->|Résultats de tâche| FSX_CACHE
+    FSX_CACHE --> S3AP --> SFN
+    EC2 -.->|Vérification de licence| LIC
+```
+
+### KPI
+
+| KPI | Sans FlexCache | Avec FlexCache | Amélioration |
+|-----|--------------|---------------|--------|
+| Temps d'attente au démarrage d'une tâche EDA | 15-30 min (WAN) | 1-3 min (cache hit) | 80-90 % |
+| Temps de complétion de la régression | 8 heures | 3 heures | 62 % |
+| Volume de transfert WAN/jour | 500 Go | 50 Go | 90 % |
+| Efficacité d'utilisation des licences | 60 % | 85 % | +25 pt |
+
+### Modèles associés
+
+- [Dynamic FlexCache Render/EDA Workflow](../dynamic-flexcache-render-workflow/README.md) — Création et suppression dynamiques de FlexCache par tâche
+- [FlexCache AnyCast / DR](../flexcache-anycast-dr/README.md) — Cloud bursting multi-région
+- [Cartographie secteur/charge de travail](../docs/industry-workload-mapping.md) — Pattern D: EDA Cloud Burst
+
+
+---
+
+## Liens vers la documentation AWS
+
+| Service | Documentation |
+|---------|------------|
+| FSx for ONTAP | [Guide de l'utilisateur](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Guide du développeur](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Athena | [Guide de l'utilisateur](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
+| Amazon Bedrock | [Guide de l'utilisateur](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Alignement avec le Well-Architected Framework
+
+| Pilier | Alignement |
+|----|------|
+| Excellence opérationnelle | Traçage X-Ray, métriques EMF, tableau de bord des statistiques DRC |
+| Sécurité | IAM à moindre privilège, chiffrement KMS, contrôle d'accès aux données de conception |
+| Fiabilité | Step Functions Retry/Catch, nouvelles tentatives d'extraction de métadonnées |
+| Efficacité des performances | Lecture partielle de l'en-tête GDS, partitionnement Athena |
+| Optimisation des coûts | Serverless (facturé uniquement à l'utilisation), optimisation du balayage Athena |
+| Durabilité | Exécution à la demande, traitement incrémentiel (fichiers modifiés uniquement) |
+
+
+
+
+
+---
+
+## Estimation des coûts (approximation mensuelle)
+
+> **Note** : Les valeurs suivantes sont des approximations pour la région ap-northeast-1 ; les coûts réels varient selon l'utilisation. Vérifiez les tarifs les plus récents avec l'[AWS Pricing Calculator](https://calculator.aws/).
+
+### Composants serverless (paiement à l'usage)
+
+| Service | Prix unitaire | Utilisation estimée | Approx. mensuel |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 5 fonctions × 100 files/jour | ~$1-5 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~10K requests/jour | ~$1.5 |
+| Step Functions | $0.025/1K state transitions | ~1K transitions/jour | ~$0.75 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~50K tokens/exécution | ~$3-10 |
+| Athena | $5/TB scanned | ~10 MB/requête | ~$0.5-2 |
+| SNS | $0.50/100K notifications | ~100 notifications/jour | ~$0.15 |
+| CloudWatch Logs | $0.76/GB ingested | ~1 GB/mois | ~$0.76 |
+| Glue ETL (facultatif) | $0.44/DPU-hour |
+
+
+### Coût fixe (FSx for ONTAP — en supposant un environnement existant)
+
+| Composant | Mensuel |
+|--------------|------|
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (partagé avec l'environnement existant) |
+| S3 Access Point | Aucun frais supplémentaire (frais S3 API uniquement) |
+
+### Estimation totale
+
+| Configuration | Approx. mensuel |
+|------|---------|
+| Configuration minimale (une fois par jour) | ~$5-15 |
+| Configuration standard (horaire) | ~$15-50 |
+| Configuration à grande échelle (haute fréquence + alarmes) | ~$50-150 |
+
+> **Governance Caveat** : Les estimations de coûts sont approximatives et non garanties. Les frais réels varient selon le modèle d'utilisation, le volume de données et la région.
+
+---
+
+## Tests locaux
+
+### Vérification des prérequis
+
+```bash
+# Vérifier les prérequis
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (pour sam local)
+aws sts get-caller-identity  # Identifiants AWS
+```
+
+### sam local invoke
+
+```bash
+# Build
+# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+sam build
+
+# Exécuter la Discovery Lambda localement
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# Avec substitution de variables d'environnement
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### Tests unitaires
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+Pour plus de détails, consultez le [Démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+
+---
+
+## Exemple de sortie (Output Sample)
+
+Exemple de sortie de validation de fichier de conception EDA :
+
+```json
+{
+  "discovery": {
+    "status": "completed",
+    "object_count": 5,
+    "prefix": "eda-designs/"
+  },
+  "metadata_extraction": [
+    {
+      "key": "eda-designs/top_chip_v3.gds",
+      "format": "GDSII",
+      "cell_count": 1284,
+      "bounding_box": {"max_x": 12000.5, "max_y": 9800.2}
+    }
+  ],
+  "drc_aggregation": {
+    "total_violations": 23,
+    "critical": 2,
+    "major": 8,
+    "minor": 13,
+    "categories": {"spacing": 10, "width": 8, "enclosure": 5}
+  },
+  "report": {
+    "report_key": "reports/design-review-2026-05-23.md",
+    "recommendation": "2 critical DRC violations require manual review before tapeout"
+  }
+}
+```
+
+> **Note** : Ce qui précède est une sortie d'exemple ; les valeurs réelles varient selon l'environnement et les données d'entrée. Les chiffres de référence sont des références de dimensionnement, pas des limites de service.
+
+---
+
+## Governance Note
+
+> Ce modèle fournit des orientations d'architecture technique. Il ne s'agit pas de conseils juridiques, de conformité ou réglementaires. Les organisations doivent consulter des professionnels qualifiés.
+
+---
+
+## S3AP Compatibility
+
+Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points pour FSx for ONTAP, consultez les [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
