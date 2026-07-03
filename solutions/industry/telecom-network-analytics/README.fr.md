@@ -1,86 +1,116 @@
-# UC18 : Télécommunications / Analyse Réseau — Détection d'anomalies CDR/journaux réseau et rapports de conformité
+# UC18 : Télécommunications / Analyse réseau — Détection d'anomalies dans les CDR/journaux réseau et rapports de conformité
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
+🌐 **Language / Langue**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
-📚 **Documentation** : [Diagramme d'architecture](docs/architecture.fr.md) | [Guide de démo](docs/demo-guide.fr.md)
+📚 **Documentation** : [Schéma d'architecture](docs/architecture.fr.md) | [Guide de démonstration](docs/demo-guide.fr.md)
 
-## Aperçu
+## Vue d'ensemble
 
-Workflow serverless exploitant les S3 Access Points d'Amazon FSx for ONTAP pour automatiser l'analyse des CDR (enregistrements détaillés d'appels) et des journaux d'équipements réseau, la détection d'anomalies, les statistiques de trafic et la génération de rapports de conformité.
+Un flux de travail serverless qui exploite les S3 Access Points de FSx for ONTAP pour réaliser la détection d'anomalies des CDR (enregistrements détaillés des appels) et des journaux d'équipements réseau, l'analyse des statistiques de trafic et la génération automatique de rapports de conformité.
 
-### Cas d'utilisation adaptés
+### Cas où ce modèle est adapté
 
-- Les fichiers CDR (CSV, ASN.1 décodé, Parquet) sont stockés sur FSx for ONTAP
-- Analyse automatique des données syslog / SNMP trap des équipements réseau
-- Statistiques de trafic via Athena (volume d'appels par heure, durée moyenne, appels simultanés au pic)
-- Détection d'anomalies via Bedrock (comparaison avec baseline glissante de 7 jours, seuil 3σ)
-- Détection et alerte automatiques des pannes d'équipement (link-down, erreurs matérielles, crash de processus)
+- Des fichiers CDR (CSV, ASN.1 décodé, Parquet) sont accumulés sur FSx for ONTAP
+- Vous souhaitez analyser automatiquement les données syslog / trap SNMP des équipements réseau
+- Vous souhaitez calculer des statistiques de trafic via Athena (volume d'appels par tranche horaire, durée moyenne des appels, nombre maximal d'appels simultanés)
+- Vous souhaitez réaliser une détection d'anomalies via Bedrock (comparaison à une ligne de base glissante sur 7 jours, détection de dépassement de 3σ)
+- Vous souhaitez détecter et alerter automatiquement les pannes d'équipements (link-down, erreurs matérielles, plantages de processus)
+
+### Cas où ce modèle n'est pas adapté
+
+- Un système de surveillance réseau en temps réel est nécessaire (réactivité à la seconde)
+- Une plateforme NOC (Network Operations Center) complète est requise
+- Une analyse de topologie réseau à grande échelle est nécessaire
+- Un environnement où l'accessibilité réseau à l'API REST ONTAP ne peut pas être garantie
 
 ### Fonctionnalités principales
 
-- Détection automatique des fichiers CDR (.csv, .asn1, .parquet) et syslog via S3 AP
-- Analyse statistique du trafic via Athena (volume d'appels, durée, connexions simultanées au pic)
-- Détection d'anomalies via Bedrock (seuil 3σ, comparaison baseline 7 jours)
-- Analyse Syslog RFC 5424 + données SNMP trap
-- Détection de pannes d'équipement (link-down, erreurs matérielles, dépassement de capacité)
-- Rapport quotidien de santé réseau + alertes d'anomalies (SNS)
+- Détection automatique des fichiers CDR (.csv, .asn1, .parquet) et des fichiers syslog via S3 AP
+- Analyse des statistiques de trafic via Athena (volume d'appels, durée des appels, nombre maximal de connexions simultanées)
+- Détection d'anomalies via Bedrock (dépassement de 3σ, comparaison à une ligne de base sur 7 jours)
+- Analyse syntaxique Syslog RFC 5424 + analyse des données de trap SNMP
+- Détection des pannes d'équipements (link-down, erreurs matérielles, dépassement du seuil de capacité)
+- Rapport quotidien de santé du réseau + notifications d'alerte d'anomalie (SNS)
 
-## Indicateurs de succès (Success Metrics)
+## Success Metrics
 
-### Résultat attendu (Outcome)
-Automatiser l'analyse CDR/journaux réseau pour accélérer la détection de pannes et la planification de capacité des opérateurs télécoms.
+### Outcome
+Accélérer la détection des pannes réseau et la planification de la capacité pour les opérateurs de télécommunications grâce à l'automatisation de l'analyse des CDR/journaux réseau.
 
-### Indicateurs (Metrics)
-| Indicateur | Valeur cible (exemple) |
-|-----------|----------------------|
-| Fichiers CDR traités / exécution | > 200 fichiers |
-| Précision de détection d'anomalies | > 90% |
-| Taux de détection de pannes | > 95% |
-| Temps de génération de rapport | < 5 min / lot quotidien |
+### Metrics
+| Métrique | Valeur cible (exemple) |
+|-----------|------------|
+| Nombre de fichiers CDR traités / exécution | > 200 files |
+| Précision de la détection d'anomalies | > 90 % |
+| Taux de détection des pannes d'équipements | > 95 % |
+| Temps de génération du rapport | < 5 min / traitement par lot quotidien |
 | Coût / exécution quotidienne | < $1.00 |
-| Taux de revue humaine nécessaire | > 20% (anomalies critiques entièrement vérifiées) |
+| Taux obligatoire de Human Review | > 20 % (les anomalies critiques sont toutes vérifiées) |
 
-### Méthode de mesure
-Historique d'exécution Step Functions, résultats Athena, journaux d'inférence Bedrock, CloudWatch EMF Metrics (ProcessingDuration, SuccessCount, ErrorCount).
+### Measurement Method
+Historique d'exécution Step Functions, résultats de requêtes Athena, journaux d'inférence Bedrock, CloudWatch EMF Metrics (ProcessingDuration, SuccessCount, ErrorCount).
 
-### Exigences de revue humaine
-- Les anomalies critiques dépassant 3σ sont automatiquement alertées puis confirmées par un humain
-- Les pannes d'équipement (link-down) déclenchent une notification immédiate + confirmation opérateur
-- Les rapports de tendance mensuels sont revus par l'équipe de planification réseau
+### Human Review Requirements
+- Les anomalies critiques dépassant 3σ sont vérifiées par un humain après l'alerte automatique
+- Les pannes d'équipements (link-down) déclenchent une notification immédiate + confirmation de l'opérateur
+- Les rapports de tendances mensuels sont examinés par l'équipe de planification réseau
 
 ## Architecture
 
 ```mermaid
 graph LR
-    subgraph "Workflow Step Functions"
+    subgraph "Flux de travail Step Functions"
         D[Discovery Lambda<br/>Détection CDR/Syslog]
-        CA[CDR Analyzer Lambda<br/>Statistiques trafic Athena]
-        LA[Log Analyzer Lambda<br/>Analyse Syslog + Détection pannes]
-        AD[Anomaly Detector Lambda<br/>Détection anomalies Bedrock]
-        R[Report Lambda<br/>Génération rapport quotidien]
+        CA[CDR Analyzer Lambda<br/>Statistiques de trafic Athena]
+        LA[Log Analyzer Lambda<br/>Analyse Syslog + Détection de pannes]
+        AD[Anomaly Detector Lambda<br/>Détection d'anomalies Bedrock]
+        R[Report Lambda<br/>Génération de rapport quotidien]
     end
 
-    D -->|Manifeste| CA
-    D -->|Manifeste| LA
-    CA -->|Stats trafic| AD
-    LA -->|Événements panne| AD
-    AD -->|Résultats anomalies| R
+    D -->|Manifest| CA
+    D -->|Manifest| LA
+    CA -->|Traffic Stats| AD
+    LA -->|Failure Events| AD
+    AD -->|Anomaly Results| R
 
     D -.->|ListObjectsV2| S3AP[S3 Access Point]
     CA -.->|GetObject| S3AP
-    CA -.->|Requête| Athena[Amazon Athena]
+    CA -.->|Query| Athena[Amazon Athena]
     LA -.->|GetObject| S3AP
     AD -.->|InvokeModel| Bedrock[Amazon Bedrock]
-    R -.->|PutObject| S3OUT[S3 Bucket de sortie]
-    R -.->|Publier| SNS[SNS Topic]
+    R -.->|PutObject| S3OUT[S3 Output Bucket]
+    R -.->|Publish| SNS[SNS Topic]
 ```
 
-> **Note S3 AP NetworkOrigin** : La Lambda Discovery est déployée dans un VPC. Si le NetworkOrigin du S3 Access Point est `Internet`, l'accès via S3 Gateway VPC Endpoint n'est pas possible (les requêtes ne sont pas routées vers le plan de données FSx). Utilisez un S3 AP VPC-origin ou configurez l'accès via NAT Gateway. Voir [Notes de compatibilité S3AP](../docs/s3ap-compatibility-notes.md).
+### Étapes du flux de travail
 
-## Déploiement
+1. **Discovery** : Détecter les fichiers CDR et syslog depuis le S3 AP
+2. **CDR Analyzer** : Analyser les CDR, agréger les statistiques de trafic via Athena
+3. **Log Analyzer** : Analyser Syslog RFC 5424, analyser les traps SNMP, détecter les pannes d'équipements
+4. **Anomaly Detector** : Comparer à la ligne de base sur 7 jours, marquer les anomalies dépassant 3σ (inférence Bedrock)
+5. **Report** : Générer un rapport quotidien de santé du réseau + alertes SNS
+
+## Prérequis
+
+> **Remarque sur S3 AP NetworkOrigin** : La Discovery Lambda est déployée dans un VPC. Si le NetworkOrigin du S3 Access Point est `Internet`, l'accès n'est pas possible via un S3 Gateway VPC Endpoint (car les requêtes ne sont pas routées vers le plan de données FSx). Utilisez un S3 AP avec NetworkOrigin=VPC, ou configurez l'accès via une NAT Gateway. Pour plus de détails, consultez [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+
+- Compte AWS et autorisations IAM appropriées
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou version ultérieure)
+- Volume avec S3 Access Point activé (stockant les CDR/syslog)
+- VPC, sous-réseaux privés
+- Accès aux modèles Amazon Bedrock activé (Claude / Nova)
+- Groupe de travail Amazon Athena configuré
+
+## Procédure de déploiement
+
+### 1. Vérification des paramètres
+
+Vérifiez à l'avance le filtre de suffixe des fichiers CDR et les seuils de capacité.
+
+### 2. Déploiement SAM
 
 ```bash
-# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+# Prérequis : AWS SAM CLI est requis. 'sam build' package automatiquement le code et la couche partagée.
 sam build
 
 sam deploy \
@@ -95,21 +125,43 @@ sam deploy \
     CdrSuffixFilter=".csv,.asn1,.parquet" \
     AnomalyThresholdStdDev=3 \
     CapacityThresholdPercent=80 \
+    EnableVpcEndpoints=false \
+    EnableCloudWatchAlarms=false \
   --capabilities CAPABILITY_NAMED_IAM \
   --resolve-s3 \
   --region ap-northeast-1
 ```
 
-> **Remarque** : `template.yaml` est conçu pour être utilisé avec AWS SAM CLI (`sam build` + `sam deploy`).
-> Pour un déploiement direct avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite de packager au préalable les fichiers zip Lambda et de les téléverser dans un bucket S3).
+> **Remarque** : `template.yaml` s'utilise avec la SAM CLI (`sam build` + `sam deploy`).
+> Pour déployer directement avec la commande `aws cloudformation deploy`, utilisez `template-deploy.yaml` (nécessite le pré-packaging des fichiers zip Lambda et leur téléversement vers S3).
 
-## ⚠️ Considérations de performance
+## Liste des paramètres de configuration
 
-- La capacité de débit de FSx for ONTAP est **partagée entre NFS/SMB/S3 AP**. L'exécution avec MapConcurrency=10 en parallèle peut impacter d'autres charges de travail sur le même volume.
-- Pour le traitement par lots volumineux, vérifiez la Throughput Capacity (MBps) de FSx for ONTAP et ajustez MapConcurrency en conséquence.
-- Recommandé : Commencez avec MapConcurrency=5 en production, surveillez les métriques CloudWatch (ThroughputUtilization) et augmentez progressivement.
+| Paramètre | Description | Par défaut | Requis |
+|-----------|------|----------|------|
+| `S3AccessPointAlias` | FSx for ONTAP S3 AP Alias (pour l'entrée) | — | ✅ |
+| `S3AccessPointName` | Nom du S3 AP (pour l'octroi d'autorisations IAM basées sur ARN) | `""` | ⚠️ Recommandé |
+| `ScheduleExpression` | Expression de planification d'EventBridge Scheduler | `cron(0 0 * * ? *)` | |
+| `VpcId` | ID du VPC | — | ✅ |
+| `PrivateSubnetIds` | Liste des ID de sous-réseaux privés | — | ✅ |
+| `NotificationEmail` | Adresse e-mail de destination des notifications SNS | — | ✅ |
+| `CdrSuffixFilter` | Filtre de suffixe pour la détection des fichiers CDR | `.csv,.asn1,.parquet` | |
+| `AnomalyThresholdStdDev` | Seuil d'écart type pour la détection d'anomalies | `3` | |
+| `CapacityThresholdPercent` | Seuil de capacité (%) | `80` | |
+| `BaselineWindowDays` | Période de la ligne de base (jours) | `7` | |
+| `MapConcurrency` | Nombre d'exécutions parallèles de l'état Map | `10` | |
+| `LambdaMemorySize` | Taille mémoire Lambda (MB) | `512` | |
+| `LambdaTimeout` | Délai d'expiration Lambda (secondes) | `300` | |
+| `EnableVpcEndpoints` | Activer les Interface VPC Endpoints | `false` | |
+| `EnableCloudWatchAlarms` | Activer les CloudWatch Alarms | `false` | |
 
-## Nettoyage (Cleanup)
+## ⚠️ Considérations relatives aux performances
+
+- La capacité de débit de FSx for ONTAP est **partagée entre NFS/SMB/S3 AP**. Lorsque vous effectuez un traitement parallèle avec MapConcurrency=10, cela peut impacter d'autres charges de travail sur le même volume.
+- Pour le traitement par lot d'un grand nombre de fichiers, vérifiez la Throughput Capacity (MBps) de FSx for ONTAP et ajustez MapConcurrency selon les besoins.
+- Recommandé : en environnement de production, commencez d'abord avec MapConcurrency=5, puis augmentez progressivement tout en surveillant la métrique CloudWatch de FSx for ONTAP (ThroughputUtilization).
+
+## Nettoyage
 
 ```bash
 aws s3 rm s3://fsxn-telecom-analytics-output-${AWS_ACCOUNT_ID} --recursive
@@ -117,10 +169,138 @@ aws s3 rm s3://fsxn-telecom-analytics-output-${AWS_ACCOUNT_ID} --recursive
 aws cloudformation delete-stack \
   --stack-name fsxn-telecom-analytics \
   --region ap-northeast-1
+
+aws cloudformation wait stack-delete-complete \
+  --stack-name fsxn-telecom-analytics \
+  --region ap-northeast-1
 ```
 
-## Note de gouvernance
+## Supported Regions
 
-> Ce modèle fournit des conseils d'architecture technique. Il ne constitue pas un avis juridique, de conformité ou réglementaire. Les données CDR contiennent des données de communication personnelles et doivent être traitées conformément aux réglementations télécoms et aux lois sur la protection des données applicables.
+UC18 utilise les services suivants :
 
-> **Related Regulations**: 電気通信事業法 (Telecommunications Business Act), 個人情報保護法 (APPI - Personal Information Protection)
+| Service | Contraintes de région |
+|---------|-------------|
+| Amazon Athena | Disponible dans presque toutes les régions |
+| Amazon Bedrock | Vérifiez les régions prises en charge ([Régions Bedrock](https://docs.aws.amazon.com/general/latest/gr/bedrock.html)) |
+| AWS X-Ray | Disponible dans presque toutes les régions |
+| CloudWatch EMF | Disponible dans presque toutes les régions |
+
+> UC18 n'utilise pas d'appels inter-régions. Athena et Bedrock sont disponibles dans ap-northeast-1.
+
+## Liens de référence
+
+- [Vue d'ensemble de FSx for ONTAP S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
+- [Guide de l'utilisateur Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
+- [Référence de l'API Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
+
+---
+
+## Liens vers la documentation AWS
+
+| Service | Documentation |
+|---------|------------|
+| FSx for ONTAP | [Guide de l'utilisateur](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html) |
+| S3 Access Points | [S3 AP for FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html) |
+| Step Functions | [Guide du développeur](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) |
+| Amazon Athena | [Guide de l'utilisateur](https://docs.aws.amazon.com/athena/latest/ug/what-is.html) |
+| Amazon Bedrock | [Guide de l'utilisateur](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) |
+
+### Alignement avec le Well-Architected Framework
+
+| Pilier | Prise en charge |
+|----|------|
+| Excellence opérationnelle | Traçage X-Ray, métriques EMF, surveillance de la détection d'anomalies |
+| Sécurité | IAM au moindre privilège, chiffrement KMS, contrôle d'accès aux données CDR |
+| Fiabilité | Step Functions Retry/Catch, exponential backoff (3 tentatives) |
+| Efficacité des performances | Requêtes CDR à grande échelle via Athena, traitement parallèle |
+| Optimisation des coûts | Serverless, facturation à l'analyse Athena |
+| Durabilité | Exécution à la demande, traitement incrémentiel |
+
+---
+
+## Estimation des coûts (approximation mensuelle)
+
+> **Remarque** : Les valeurs suivantes sont des approximations pour la région ap-northeast-1, et les coûts réels varient selon l'utilisation. Vérifiez les tarifs les plus récents avec l'[AWS Pricing Calculator](https://calculator.aws/).
+
+### Composants serverless (facturation à l'usage)
+
+| Service | Prix unitaire | Utilisation estimée | Approximation mensuelle |
+|---------|------|-----------|---------|
+| Lambda | $0.0000166667/GB-sec | 5 fonctions × exécution quotidienne | ~$1-3 |
+| S3 API (GetObject/ListObjects) | $0.0047/10K requests | ~5K requests/jour | ~$0.75 |
+| Step Functions | $0.025/1K state transitions | ~500 transitions/jour | ~$0.40 |
+| Bedrock (Nova Lite) | $0.00006/1K input tokens | ~30K tokens/exécution | ~$2-5 |
+| Athena | $5/TB scanned | ~10 MB/requête | ~$1-3 |
+| SNS | $0.50/100K notifications | ~30 notifications/jour | ~$0.10 |
+| CloudWatch Logs | $0.76/GB ingested | ~500 MB/mois | ~$0.38 |
+
+### Coût fixe (FSx for ONTAP — suppose un environnement existant)
+
+| Composant | Mensuel |
+|--------------|------|
+| FSx for ONTAP (128 MBps, 1 TB) | ~$230 (partage l'environnement existant) |
+| S3 Access Point | Aucuns frais supplémentaires (uniquement les frais d'API S3) |
+
+### Approximation totale
+
+| Configuration | Approximation mensuelle |
+|------|---------|
+| Configuration minimale (1 exécution quotidienne) | ~$5-12 |
+| Configuration standard (quotidienne + alarmes activées) | ~$12-30 |
+| Configuration à grande échelle (fréquence élevée + gros volume de CDR) | ~$30-100 |
+
+> **Governance Caveat** : Les estimations de coûts sont des approximations et non des valeurs garanties. Le montant facturé réel varie selon les schémas d'utilisation, le volume de données et la région.
+
+---
+
+## Tests locaux
+
+### Vérification des prérequis
+
+```bash
+# Vérifier les prérequis
+aws --version          # AWS CLI v2
+sam --version          # SAM CLI
+python3 --version      # Python 3.9+
+docker --version       # Docker (pour sam local)
+aws sts get-caller-identity  # Identifiants AWS
+```
+
+### sam local invoke
+
+```bash
+# Build
+# Prérequis : AWS SAM CLI est requis. 'sam build' package automatiquement le code et la couche partagée.
+sam build
+
+# Exécution locale de la Discovery Lambda
+sam local invoke DiscoveryFunction --event events/discovery-event.json
+
+# Avec remplacement des variables d'environnement
+sam local invoke DiscoveryFunction \
+  --event events/discovery-event.json \
+  --env-vars env.json
+```
+
+### Tests unitaires
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+Pour plus de détails, consultez [Démarrage rapide des tests locaux](../docs/local-testing-quick-start.md).
+
+---
+
+## Governance Note
+
+> Ce modèle fournit des conseils d'architecture technique. Il ne s'agit pas de conseils juridiques, de conformité ou réglementaires. Les organisations doivent consulter des professionnels qualifiés. Comme les données de télécommunications (CDR) contiennent des données de communication personnelles, elles doivent être traitées conformément aux lois sur les télécommunications et aux lois sur la protection des informations personnelles de chaque pays.
+
+> **Réglementations connexes** : loi sur les télécommunications, loi sur la protection des informations personnelles (secret des communications)
+
+---
+
+## S3AP Compatibility
+
+Pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement des S3 Access Points for FSx for ONTAP, consultez [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
