@@ -1,41 +1,54 @@
-# UC25: Énergie et services publics — Inspection par drone / Détection d'anomalies SCADA
+# UC25 : Énergie et services publics — Inspection d'images par drone / Détection d'anomalies SCADA
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
-📚 **Documentation**: [Architecture](docs/architecture.fr.md) | [Guide de démo](docs/demo-guide.fr.md)
+📚 **Documentation**: [Architecture](docs/architecture.fr.md) | [Guide de démonstration](docs/demo-guide.fr.md)
 
-## Overview
+## Aperçu
 
-A serverless workflow leveraging FSx for ONTAP S3 Access Points to detect equipment defects from drone inspection images of transmission facilities, identify anomalies in SCADA time-series logs, and analyze thermal hot-spots from FLIR imagery.
+Un workflow serverless exploitant FSx for ONTAP S3 Access Points pour détecter les défauts d'équipement à partir d'images d'inspection par drone des installations de transport d'électricité, identifier les anomalies dans les journaux chronologiques SCADA et analyser les points chauds des images thermiques FLIR.
 
 ## Success Metrics
 
-| Metric | Target |
-|--------|--------|
-| Defect detection rate | ≥ 85% |
-| SCADA anomaly false positive rate | < 10% |
-| Thermal hot-spot detection accuracy | ≥ 90% |
-| Report generation time | < 5 min / batch |
-| Cost / daily execution | < $3.00 |
-| Human review required rate | > 30% (all critical severity detections reviewed) |
+### Outcome
+Automatiser le traitement et l'analyse des documents afin d'améliorer l'efficacité opérationnelle et la conformité.
+
+### Metrics
+| Métrique | Cible (exemple) |
+|-----------|------------|
+| Taux de détection des défauts | ≥ 85% |
+| Taux de faux positifs des anomalies SCADA | < 10% |
+| Précision de détection des points chauds thermiques | ≥ 90% |
+| Temps de génération du rapport | < 5 min / lot |
+| Coût / exécution quotidienne | < $3.00 |
+| Taux de revue humaine requise | > 30% (toutes les détections de gravité Critical sont revues) |
+
+### Measurement Method
+Historique d'exécution Step Functions, résultats d'extraction des services AI/ML, CloudWatch EMF Metrics (ProcessingDuration, SuccessCount, ErrorCount).
+
+### Human Review Requirements
+- Les résultats à faible confiance nécessitent une vérification manuelle
+- Les alertes Critical sont examinées par des experts du domaine
+- Les rapports de synthèse périodiques sont examinés par la direction
 
 ## Architecture
 
-See [Architecture Document](docs/architecture.fr.md) for detailed data flow diagrams.
+Consultez le [document d'architecture](docs/architecture.fr.md) pour les diagrammes de flux de données détaillés.
 
-## Prerequisites
+## Prérequis
 
-- AWS account with appropriate IAM permissions
-- FSx for ONTAP file system (ONTAP 9.17.1P4D3+)
-- S3 Access Point enabled on volume
-- Amazon Bedrock model access enabled
+> **Note S3 AP NetworkOrigin** : La fonction Lambda Discovery est déployée dans un VPC. Si le NetworkOrigin du S3 Access Point est `Internet`, il n'est pas accessible via le S3 Gateway VPC Endpoint (les requêtes ne sont pas routées vers le plan de données FSx). Utilisez un S3 AP avec NetworkOrigin=VPC ou configurez un accès via NAT Gateway. Voir [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
 
-> **Note S3 AP NetworkOrigin** : La Lambda Discovery est déployée dans un VPC. Si le NetworkOrigin du S3 Access Point est `Internet`, l'accès via S3 Gateway VPC Endpoint n'est pas possible (les requêtes ne sont pas routées vers le plan de données FSx). Utilisez un S3 AP VPC-origin ou configurez l'accès via NAT Gateway. Voir [Notes de compatibilité S3AP](../docs/s3ap-compatibility-notes.md).
+- Compte AWS avec les autorisations IAM appropriées
+- Système de fichiers FSx for ONTAP (ONTAP 9.17.1P4D3 ou version ultérieure)
+- S3 Access Point activé sur le volume
+- VPC avec sous-réseaux privés
+- Accès aux modèles Amazon Bedrock activé (Claude / Nova)
 
-## Deployment
+## Déploiement
 
 ```bash
-# Prérequis : AWS SAM CLI requis. « sam build » empaquette automatiquement le code et la couche partagée.
+# Prérequis : AWS SAM CLI requis. 'sam build' empaquette automatiquement le code et la couche partagée.
 sam build
 
 sam deploy \
@@ -45,38 +58,49 @@ sam deploy \
     S3AccessPointName=<your-s3ap-name> \
     VpcId=<your-vpc-id> \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
+    ScheduleExpression="cron(0 0 * * ? *)" \
     NotificationEmail=<your-email@example.com> \
   --capabilities CAPABILITY_NAMED_IAM \
   --resolve-s3 \
   --region ap-northeast-1
 ```
 
-> **Remarque** : `template.yaml` est conçu pour être utilisé avec AWS SAM CLI (`sam build` + `sam deploy`).
-> Pour un déploiement direct avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite de packager au préalable les fichiers zip Lambda et de les téléverser dans un bucket S3).
+> **Note** : `template.yaml` est conçu pour être utilisé avec la SAM CLI (`sam build` + `sam deploy`).
+> Pour déployer directement avec `aws cloudformation deploy`, utilisez plutôt `template-deploy.yaml` (nécessite un pré-empaquetage des fichiers zip Lambda et leur téléversement vers un bucket S3).
 
-## ⚠️ Considérations de performance
+## ⚠️ Considérations sur les performances
 
-- La capacité de débit de FSx for ONTAP est **partagée entre NFS/SMB/S3 AP**. L'exécution avec MapConcurrency=10 en parallèle peut impacter d'autres charges de travail sur le même volume.
-- Pour le traitement par lots volumineux, vérifiez la Throughput Capacity (MBps) de FSx for ONTAP et ajustez MapConcurrency en conséquence.
-- Recommandé : Commencez avec MapConcurrency=5 en production, surveillez les métriques CloudWatch (ThroughputUtilization) et augmentez progressivement.
+- La capacité de débit de FSx for ONTAP est **partagée entre NFS/SMB/S3 AP**. Exécuter MapConcurrency=10 en parallèle peut affecter d'autres charges de travail sur le même volume.
+- Pour le traitement par lots de volumes importants, vérifiez la Throughput Capacity (MBps) de FSx for ONTAP et ajustez MapConcurrency en conséquence.
+- Recommandé : Commencez avec MapConcurrency=5 en production, surveillez les métriques CloudWatch de FSx for ONTAP (ThroughputUtilization) et augmentez progressivement.
 
-## Cleanup
+## Nettoyage
 
 ```bash
 aws s3 rm s3://fsxn-utilities-inspection-output-${AWS_ACCOUNT_ID} --recursive
 aws cloudformation delete-stack --stack-name fsxn-utilities-inspection --region ap-northeast-1
+aws cloudformation wait stack-delete-complete --stack-name fsxn-utilities-inspection --region ap-northeast-1
 ```
+
+## Estimation des coûts (mensuelle)
+
+> **Remarque** : Estimations pour ap-northeast-1. Les coûts réels varient selon l'utilisation.
+
+| Configuration | Estimation mensuelle |
+|------|---------|
+| Minimale (1x par jour) | ~$8-20 |
+| Standard | ~$20-50 |
 
 ---
 
 ## Governance Note
 
-> This pattern provides technical architecture guidance only. It does not constitute legal, compliance, or regulatory advice. SCADA data is critical infrastructure information. Access control and audit log retention must comply with applicable electricity business regulations and critical infrastructure protection guidelines.
+> Ce pattern fournit des conseils d'architecture technique. Il ne constitue pas un avis juridique, de conformité ou réglementaire. Les données SCADA sont des informations d'infrastructure critique. La gestion des droits d'accès et la conservation des journaux d'audit doivent se conformer aux réglementations applicables sur les activités électriques et aux directives de protection des infrastructures critiques.
 
-> **Related Regulations**: 電気事業法 (Electricity Business Act), 電気設備技術基準
+> **Réglementations associées** : Loi sur les activités électriques (電気事業法), Normes techniques des installations électriques (電気設備技術基準)
 
 ---
 
 ## S3AP Compatibility
 
-See [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md).
+Consultez [S3AP Compatibility Notes](../docs/s3ap-compatibility-notes.md) pour les contraintes de compatibilité, le dépannage et les modèles de déclenchement de FSx for ONTAP S3 Access Points.
