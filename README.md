@@ -84,6 +84,7 @@
 | 🪣 S3 標準バケットユーザー向け | [`docs/s3-bucket-user-guide.md`](docs/s3-bucket-user-guide.md) |
 | 🔌 ONTAP 管理者向け | [`docs/ontap-integration-notes.md`](docs/ontap-integration-notes.md) |
 | 🎯 パターン選択ガイド | [`docs/pattern-selection-guide.md`](docs/pattern-selection-guide.md) |
+| 🧠 Bedrock 推論プロファイル（Nova/Claude の必須設定・IAM・データレジデンシー） | [`docs/bedrock-inference-profiles.md`](docs/bedrock-inference-profiles.md) |
 
 </details>
 
