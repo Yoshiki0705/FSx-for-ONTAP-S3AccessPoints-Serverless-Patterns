@@ -7,7 +7,9 @@ Environment Variables:
     OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
     OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
     OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
-    BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
+    BEDROCK_MODEL_ID: Bedrock モデル ID または推論プロファイル ID
+        (Nova はオンデマンドではクロスリージョン推論プロファイルが必須。
+         例: apac.amazon.nova-lite-v1:0 / us.amazon.nova-lite-v1:0 / eu.amazon.nova-lite-v1:0)
     SNS_TOPIC_ARN: SNS トピック ARN
 """
 
@@ -85,7 +87,8 @@ def handler(event, context):
 
     output_writer = OutputWriter.from_env()
     output_bucket = os.environ.get("OUTPUT_BUCKET", "")  # legacy fallback for non-put_object usages
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+    # Nova はオンデマンドではクロスリージョン推論プロファイル ID が必須（例: apac./us./eu. 接頭辞）
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-lite-v1:0")
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     logger.info(
@@ -94,33 +97,17 @@ def handler(event, context):
         len(inventory_analyses),
     )
 
-    # Bedrock でレポート生成
+    # Bedrock でレポート生成（Converse API: モデル非依存 / 推論プロファイル対応）
     bedrock_client = boto3.client("bedrock-runtime")
     prompt = _build_report_prompt(structured_records, inventory_analyses)
 
     try:
-        bedrock_response = bedrock_client.invoke_model(
+        bedrock_response = bedrock_client.converse(
             modelId=model_id,
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps(
-                {
-                    "inputText": prompt,
-                    "textGenerationConfig": {
-                        "maxTokenCount": 4096,
-                        "temperature": 0.3,
-                    },
-                }
-            ),
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 4096, "temperature": 0.3},
         )
-        response_json = json.loads(bedrock_response["body"].read())
-
-        if "results" in response_json:
-            report_text = response_json["results"][0].get("outputText", "")
-        elif "content" in response_json:
-            report_text = response_json["content"][0].get("text", "")
-        else:
-            report_text = "レポート生成に失敗しました。"
+        report_text = bedrock_response["output"]["message"]["content"][0]["text"]
     except Exception as e:
         logger.warning("Bedrock invocation failed: %s", e)
         report_text = f"レポート自動生成に失敗しました。エラー: {e}"
