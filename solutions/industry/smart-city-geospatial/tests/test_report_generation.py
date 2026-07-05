@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from unittest.mock import MagicMock, patch
 
 
@@ -28,32 +27,32 @@ def test_build_prompt_includes_sections(report_generation_handler):
     assert "災害リスク" in prompt
 
 
+def _converse_response(text: str) -> dict:
+    """Bedrock Converse API レスポンス形式のモックを生成する。"""
+    return {"output": {"message": {"content": [{"text": text}]}}}
+
+
 def test_invoke_bedrock_nova_format(report_generation_handler):
     mock_bedrock = MagicMock()
-    mock_bedrock.invoke_model.return_value = {
-        "body": MagicMock(
-            read=lambda: json.dumps({"output": {"message": {"content": [{"text": "Generated report text"}]}}}).encode()
-        )
-    }
-    result = report_generation_handler.invoke_bedrock(mock_bedrock, "amazon.nova-lite-v1:0", "test prompt", 1024)
+    mock_bedrock.converse.return_value = _converse_response("Generated report text")
+    result = report_generation_handler.invoke_bedrock(mock_bedrock, "apac.amazon.nova-lite-v1:0", "test prompt", 1024)
     assert result == "Generated report text"
 
 
-def test_invoke_bedrock_anthropic_format(report_generation_handler):
+def test_invoke_bedrock_claude_via_converse(report_generation_handler):
+    # Converse is model-agnostic; a Claude inference-profile id returns the same shape.
     mock_bedrock = MagicMock()
-    mock_bedrock.invoke_model.return_value = {
-        "body": MagicMock(read=lambda: json.dumps({"content": [{"text": "Claude response"}]}).encode())
-    }
+    mock_bedrock.converse.return_value = _converse_response("Claude response")
     result = report_generation_handler.invoke_bedrock(
-        mock_bedrock, "anthropic.claude-haiku-4-5-20251001-v1:0", "test prompt", 1024
+        mock_bedrock, "apac.anthropic.claude-haiku-4-5-20251001-v1:0", "test prompt", 1024
     )
     assert result == "Claude response"
 
 
 def test_invoke_bedrock_error(report_generation_handler):
     mock_bedrock = MagicMock()
-    mock_bedrock.invoke_model.side_effect = Exception("Bedrock error")
-    result = report_generation_handler.invoke_bedrock(mock_bedrock, "amazon.nova-lite-v1:0", "test", 1024)
+    mock_bedrock.converse.side_effect = Exception("Bedrock error")
+    result = report_generation_handler.invoke_bedrock(mock_bedrock, "apac.amazon.nova-lite-v1:0", "test", 1024)
     assert "failed" in result.lower()
 
 
@@ -62,11 +61,7 @@ def test_handler_generates_report(report_generation_handler, lambda_context, mon
     monkeypatch.setenv("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
 
     mock_bedrock = MagicMock()
-    mock_bedrock.invoke_model.return_value = {
-        "body": MagicMock(
-            read=lambda: json.dumps({"output": {"message": {"content": [{"text": "都市計画レポート"}]}}}).encode()
-        )
-    }
+    mock_bedrock.converse.return_value = _converse_response("都市計画レポート")
 
     def boto3_client(service):
         if service == "bedrock-runtime":
