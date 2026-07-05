@@ -12,6 +12,7 @@ Template-aware: only drops keys genuinely absent from that pattern's template.
 
 Usage: python3 scripts/fix_readme_param_names.py <pattern-dir> [--write]
 """
+
 from __future__ import annotations
 
 import re

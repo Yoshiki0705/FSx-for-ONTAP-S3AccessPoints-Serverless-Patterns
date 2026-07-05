@@ -51,12 +51,16 @@ def handler(event: dict, context) -> dict:
     action = event.get("action", "CREATE").upper()
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    logger.info(json.dumps({
-        "event": "flexclone_request",
-        "action": action,
-        "timestamp": timestamp,
-        "simulation_mode": SIMULATION_MODE,
-    }))
+    logger.info(
+        json.dumps(
+            {
+                "event": "flexclone_request",
+                "action": action,
+                "timestamp": timestamp,
+                "simulation_mode": SIMULATION_MODE,
+            }
+        )
+    )
 
     if action == "CREATE":
         return _create_clone(event, timestamp)
@@ -193,15 +197,18 @@ def _get_status(event: dict, timestamp: str) -> dict:
 def _get_ontap_credentials() -> dict:
     """Secrets Manager から ONTAP 認証情報を取得する。"""
     import boto3
+
     client = boto3.client("secretsmanager")
     response = client.get_secret_value(SecretId=ONTAP_SECRET_NAME)
     return json.loads(response["SecretString"])
 
 
-def _ontap_create_clone(management_ip: str, credentials: dict, svm_name: str,
-                        source_volume: str, clone_name: str) -> dict:
+def _ontap_create_clone(
+    management_ip: str, credentials: dict, svm_name: str, source_volume: str, clone_name: str
+) -> dict:
     """ONTAP REST API: POST /api/storage/volumes (clone)."""
     import urllib3
+
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     url = f"https://{management_ip}/api/storage/volumes"
@@ -228,10 +235,10 @@ def _ontap_create_clone(management_ip: str, credentials: dict, svm_name: str,
     return {"job_uuid": result.get("job", {}).get("uuid", "")}
 
 
-def _ontap_delete_volume(management_ip: str, credentials: dict, svm_name: str,
-                         volume_name: str) -> None:
+def _ontap_delete_volume(management_ip: str, credentials: dict, svm_name: str, volume_name: str) -> None:
     """ONTAP REST API: DELETE /api/storage/volumes/{uuid}."""
     import urllib3
+
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     # First get volume UUID
@@ -258,17 +265,13 @@ def _ontap_delete_volume(management_ip: str, credentials: dict, svm_name: str,
     http.request("DELETE", delete_url, headers=headers)
 
 
-def _ontap_get_volume(management_ip: str, credentials: dict, svm_name: str,
-                      volume_name: str) -> dict:
+def _ontap_get_volume(management_ip: str, credentials: dict, svm_name: str, volume_name: str) -> dict:
     """ONTAP REST API: GET /api/storage/volumes."""
     import urllib3
+
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    url = (
-        f"https://{management_ip}/api/storage/volumes"
-        f"?name={volume_name}&svm.name={svm_name}"
-        f"&fields=state,space,clone"
-    )
+    url = f"https://{management_ip}/api/storage/volumes?name={volume_name}&svm.name={svm_name}&fields=state,space,clone"
     http = urllib3.PoolManager(cert_reqs="CERT_NONE")
     headers = urllib3.make_headers(basic_auth=f"{credentials['username']}:{credentials['password']}")
 

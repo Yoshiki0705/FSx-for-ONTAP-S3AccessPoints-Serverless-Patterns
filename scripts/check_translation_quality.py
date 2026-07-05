@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Quick translation-quality check for a pattern's README language variants:
 Japanese-specific kana remnants (excluding the language switcher line) + fence balance."""
+
 from __future__ import annotations
 import re
 import sys

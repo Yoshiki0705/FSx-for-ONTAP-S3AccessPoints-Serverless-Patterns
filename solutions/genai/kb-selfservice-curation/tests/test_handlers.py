@@ -10,9 +10,7 @@ from unittest.mock import patch
 
 def _load_handler(function_name: str):
     """指定した関数のハンドラーモジュールをロード（importlib 方式）"""
-    handler_path = os.path.join(
-        os.path.dirname(__file__), "..", "functions", function_name, "handler.py"
-    )
+    handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", function_name, "handler.py")
     spec = importlib.util.spec_from_file_location(f"uc29_{function_name}_handler", handler_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -34,17 +32,21 @@ class TestAutoSync:
     @staticmethod
     def _jobs_side_effect(active_jobs, last_started):
         """list_ingestion_jobs のモック。STATUS フィルタ時は進行中ジョブ、sortBy 時は直近ジョブ。"""
+
         def _fn(**kwargs):
             if "filters" in kwargs:
                 return {"ingestionJobSummaries": active_jobs}
             if last_started is not None:
                 return {"ingestionJobSummaries": [{"startedAt": last_started}]}
             return {"ingestionJobSummaries": []}
+
         return _fn
 
     def test_missing_config_returns_error(self):
         module = _load_handler("auto_sync")
-        with patch.dict(os.environ, {"S3_ACCESS_POINT_ALIAS": "", "KNOWLEDGE_BASE_ID": "", "DATA_SOURCE_ID": ""}, clear=False):
+        with patch.dict(
+            os.environ, {"S3_ACCESS_POINT_ALIAS": "", "KNOWLEDGE_BASE_ID": "", "DATA_SOURCE_ID": ""}, clear=False
+        ):
             result = module.handler({}, None)
         assert result["status"] == "error"
 
@@ -60,7 +62,9 @@ class TestAutoSync:
             "IsTruncated": False,
         }
         with patch.dict(os.environ, AUTO_SYNC_ENV, clear=False):
-            with patch.object(module.bedrock_agent, "list_ingestion_jobs", side_effect=self._jobs_side_effect([], last_job)):
+            with patch.object(
+                module.bedrock_agent, "list_ingestion_jobs", side_effect=self._jobs_side_effect([], last_job)
+            ):
                 with patch.object(module.s3_client, "list_objects_v2", return_value=list_resp):
                     result = module.handler({}, None)
         assert result["status"] == "no_change"
@@ -77,7 +81,9 @@ class TestAutoSync:
         }
         start_resp = {"ingestionJob": {"ingestionJobId": "JOB789"}}
         with patch.dict(os.environ, AUTO_SYNC_ENV, clear=False):
-            with patch.object(module.bedrock_agent, "list_ingestion_jobs", side_effect=self._jobs_side_effect([], last_job)):
+            with patch.object(
+                module.bedrock_agent, "list_ingestion_jobs", side_effect=self._jobs_side_effect([], last_job)
+            ):
                 with patch.object(module.s3_client, "list_objects_v2", return_value=list_resp):
                     with patch.object(module.bedrock_agent, "start_ingestion_job", return_value=start_resp) as start:
                         result = module.handler({}, None)
@@ -91,7 +97,9 @@ class TestAutoSync:
         list_resp = {"Contents": [], "IsTruncated": False}
         start_resp = {"ingestionJob": {"ingestionJobId": "JOBFORCE"}}
         with patch.dict(os.environ, AUTO_SYNC_ENV, clear=False):
-            with patch.object(module.bedrock_agent, "list_ingestion_jobs", side_effect=self._jobs_side_effect([], None)):
+            with patch.object(
+                module.bedrock_agent, "list_ingestion_jobs", side_effect=self._jobs_side_effect([], None)
+            ):
                 with patch.object(module.s3_client, "list_objects_v2", return_value=list_resp):
                     with patch.object(module.bedrock_agent, "start_ingestion_job", return_value=start_resp) as start:
                         result = module.handler({"force": True}, None)
@@ -157,14 +165,14 @@ class TestQuery:
         rag_resp = {
             "output": {"text": "新製品Xの仕様は..."},
             "citations": [
-                {
-                    "retrievedReferences": [
-                        {"location": {"s3Location": {"uri": "s3://ap/sales/product-x-spec.pdf"}}}
-                    ]
-                }
+                {"retrievedReferences": [{"location": {"s3Location": {"uri": "s3://ap/sales/product-x-spec.pdf"}}}]}
             ],
         }
-        env = {"KNOWLEDGE_BASE_ID": "KB123", "BEDROCK_LLM_MODEL_ID": "amazon.nova-pro-v1:0", "AWS_REGION": "ap-northeast-1"}
+        env = {
+            "KNOWLEDGE_BASE_ID": "KB123",
+            "BEDROCK_LLM_MODEL_ID": "amazon.nova-pro-v1:0",
+            "AWS_REGION": "ap-northeast-1",
+        }
         with patch.dict(os.environ, env, clear=False):
             with patch.object(module.bedrock_runtime, "retrieve_and_generate", return_value=rag_resp):
                 result = module.handler({"query": "新製品Xの主な仕様を教えて"}, None)
@@ -175,7 +183,11 @@ class TestQuery:
     def test_role_filter_builds_metadata_filter(self):
         module = _load_handler("query")
         rag_resp = {"output": {"text": "ans"}, "citations": []}
-        env = {"KNOWLEDGE_BASE_ID": "KB123", "BEDROCK_LLM_MODEL_ID": "amazon.nova-pro-v1:0", "AWS_REGION": "ap-northeast-1"}
+        env = {
+            "KNOWLEDGE_BASE_ID": "KB123",
+            "BEDROCK_LLM_MODEL_ID": "amazon.nova-pro-v1:0",
+            "AWS_REGION": "ap-northeast-1",
+        }
         captured = {}
 
         def _capture(**kwargs):

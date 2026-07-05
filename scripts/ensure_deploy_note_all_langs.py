@@ -9,6 +9,7 @@ localized note right after the deploy fenced block.
 Idempotent: skips READMEs that already mention `template-deploy.yaml`.
 Only touches READMEs that actually contain a `sam deploy` block.
 """
+
 from __future__ import annotations
 
 import glob
@@ -54,7 +55,7 @@ NOTE = {
 
 
 def suffix_of(path: Path) -> str:
-    return "md" if path.name == "README.md" else path.name[len("README."):]
+    return "md" if path.name == "README.md" else path.name[len("README.") :]
 
 
 def insert_note_after_deploy_block(text: str, note: str) -> str | None:
@@ -66,10 +67,10 @@ def insert_note_after_deploy_block(text: str, note: str) -> str | None:
             j = i + 1
             while j < len(lines) and not lines[j].strip().startswith("```"):
                 j += 1
-            block = lines[start:j + 1]
+            block = lines[start : j + 1]
             if any("sam deploy" in ln for ln in block):
                 close_idx = j  # index of closing ```
-                new_lines = lines[:close_idx + 1] + ["", note] + lines[close_idx + 1:]
+                new_lines = lines[: close_idx + 1] + ["", note] + lines[close_idx + 1 :]
                 out = "\n".join(new_lines)
                 out = re.sub(r"\n{3,}", "\n\n", out)
                 return out

@@ -10,6 +10,7 @@ contain sts:AssumeRole with a Principal. This:
 
 Usage: python3 scripts/fix_trust_policy_xray.py <template.yaml> [--write]
 """
+
 from __future__ import annotations
 
 import re
@@ -20,27 +21,28 @@ XRAY_MANAGED = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
 
 # The misplaced block, right after the AssumeRole statement.
 MISPLACED_RE = re.compile(
-    r'(\n[ \t]+Action:\s*sts:AssumeRole[ \t]*\n)'
-    r'[ \t]+- Sid:\s*XRayTracing[ \t]*\n'
-    r'[ \t]+Effect:\s*Allow[ \t]*\n'
-    r'[ \t]+Action:[ \t]*\n'
-    r'[ \t]+-\s*xray:PutTraceSegments[ \t]*\n'
-    r'[ \t]+-\s*xray:PutTelemetryRecords[ \t]*\n'
+    r"(\n[ \t]+Action:\s*sts:AssumeRole[ \t]*\n)"
+    r"[ \t]+- Sid:\s*XRayTracing[ \t]*\n"
+    r"[ \t]+Effect:\s*Allow[ \t]*\n"
+    r"[ \t]+Action:[ \t]*\n"
+    r"[ \t]+-\s*xray:PutTraceSegments[ \t]*\n"
+    r"[ \t]+-\s*xray:PutTelemetryRecords[ \t]*\n"
     r'[ \t]+Resource:\s*"\*"[ \t]*\n'
 )
 
 
 def add_xray_managed(content: str) -> str:
     """Add AWSXRayDaemonWriteAccess after each ManagedPolicyArns: header once."""
+
     def repl(m: re.Match) -> str:
         ind = m.group("ind")
         block = m.group(0)
         if XRAY_MANAGED in block:
             return block
-        return f"{ind}ManagedPolicyArns:\n{ind}  - {XRAY_MANAGED}\n" + block[len(f"{ind}ManagedPolicyArns:\n"):]
+        return f"{ind}ManagedPolicyArns:\n{ind}  - {XRAY_MANAGED}\n" + block[len(f"{ind}ManagedPolicyArns:\n") :]
 
     return re.sub(
-        r'^(?P<ind>[ \t]+)ManagedPolicyArns:[ \t]*\n',
+        r"^(?P<ind>[ \t]+)ManagedPolicyArns:[ \t]*\n",
         repl,
         content,
         flags=re.MULTILINE,

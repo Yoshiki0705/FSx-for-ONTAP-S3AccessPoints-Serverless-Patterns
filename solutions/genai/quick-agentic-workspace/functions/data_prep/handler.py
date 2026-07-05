@@ -49,9 +49,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # スコープ逸脱防止: 要求 prefix は設定済み WORKSPACE_PREFIX 配下に限定する
     if not requested_prefix.startswith(workspace_prefix):
-        logger.warning(
-            "Requested prefix '%s' escapes workspace '%s'; clamping", requested_prefix, workspace_prefix
-        )
+        logger.warning("Requested prefix '%s' escapes workspace '%s'; clamping", requested_prefix, workspace_prefix)
         prefix = workspace_prefix
     else:
         prefix = requested_prefix
