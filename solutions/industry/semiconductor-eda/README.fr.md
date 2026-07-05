@@ -170,7 +170,7 @@ sam deploy \
     PrivateSubnetIds=<subnet-1>,<subnet-2> \
     PrivateRouteTableIds=<rtb-1>,<rtb-2> \
     NotificationEmail=<your-email@example.com> \
-    BedrockModelId=amazon.nova-lite-v1:0 \
+    BedrockModelId=apac.amazon.nova-lite-v1:0 \
     EnableVpcEndpoints=true \
     MapConcurrency=10 \
     LambdaMemorySize=512 \
@@ -216,7 +216,7 @@ aws stepfunctions start-execution \
 | `PrivateSubnetIds` | Liste des ID de sous-réseaux privés | — | ✅ |
 | `PrivateRouteTableIds` | Liste des ID de tables de routage des sous-réseaux privés (pour S3 Gateway Endpoint) | `""` | |
 | `NotificationEmail` | Adresse e-mail de destination des notifications SNS | — | ✅ |
-| `BedrockModelId` | ID du modèle Bedrock | `amazon.nova-lite-v1:0` | |
+| `BedrockModelId` | ID du modèle Bedrock | `apac.amazon.nova-lite-v1:0` | |
 | `MapConcurrency` | Nombre d'exécutions parallèles de l'état Map | `10` | |
 | `LambdaMemorySize` | Taille de mémoire Lambda (Mo) | `256` | |
 | `LambdaTimeout` | Délai d'expiration Lambda (secondes) | `300` | |

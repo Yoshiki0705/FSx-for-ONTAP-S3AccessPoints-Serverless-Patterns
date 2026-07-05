@@ -178,12 +178,12 @@ sam deploy \
     S3AccessPointName=<name> \
     OntapSecretName=<secret> \
     OntapManagementIp=<ip> \
-    BedrockModelId=amazon.nova-lite-v1:0 \
+    BedrockModelId=apac.amazon.nova-lite-v1:0 \
   --capabilities CAPABILITY_NAMED_IAM \
   --resolve-s3
 ```
 
-**Wichtig**: Aktivieren Sie in der Bedrock-Konsole den Modellzugriff für `amazon.nova-lite-v1:0`.
+**Wichtig**: Aktivieren Sie in der Bedrock-Konsole den Modellzugriff für `apac.amazon.nova-lite-v1:0`.
 
 ## Verzeichnisstruktur
 
