@@ -31,14 +31,43 @@ See docs/bedrock-inference-profiles.md.
 from __future__ import annotations
 
 import argparse
+import glob
+import re
 import sys
 from pathlib import Path
 
 import boto3
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from shared.bedrock_helper import converse_text, is_inference_profile_id  # noqa: E402
+
+
+def _discover_repo_default_models() -> list[str]:
+    """Return the distinct geo-prefixed model/profile IDs the templates default to.
+
+    This lets one invocation validate that *every* default the fleet ships actually
+    resolves + invokes — catching invalid profile IDs (e.g. a geo prefix that does not
+    exist for a given model) that static checks cannot detect.
+    """
+    pat = re.compile(r'Default:\s*"?((?:apac|us|eu|us-gov|jp|au|ca|global)\.[A-Za-z0-9.:-]+)"?')
+    found: set[str] = set()
+    for tpl in glob.glob(str(ROOT / "solutions" / "**" / "template*.yaml"), recursive=True):
+        if ".aws-sam" in tpl:
+            continue
+        for m in pat.finditer(Path(tpl).read_text(encoding="utf-8", errors="ignore")):
+            found.add(m.group(1))
+    return sorted(found)
+
+
+def _invoke_once(model_id: str, region: str, prompt: str, max_tokens: int) -> tuple[bool, str]:
+    client = boto3.client("bedrock-runtime", region_name=region)
+    try:
+        text = converse_text(model_id=model_id, prompt=prompt, max_tokens=max_tokens, temperature=0.2, client=client)
+        return True, text.replace("\n", " ")[:60]
+    except Exception as e:  # noqa: BLE001 — surface the real error to the operator
+        return False, f"{type(e).__name__}: {e}"
 
 
 def main(argv: list[str]) -> int:
@@ -47,7 +76,23 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--region", default="ap-northeast-1", help="AWS region")
     parser.add_argument("--prompt", default="Reply with a single short sentence confirming you are reachable.")
     parser.add_argument("--max-tokens", type=int, default=128)
+    parser.add_argument(
+        "--all-repo-defaults",
+        action="store_true",
+        help="Discover every geo-prefixed default in the templates and invoke each once (fleet validation).",
+    )
     args = parser.parse_args(argv)
+
+    if args.all_repo_defaults:
+        models = _discover_repo_default_models()
+        print(f"Discovered {len(models)} distinct geo-prefixed default(s) in templates; region={args.region}\n")
+        failures = 0
+        for mid in models:
+            ok, detail = _invoke_once(mid, args.region, args.prompt, args.max_tokens)
+            print(f"  {'✅' if ok else '❌'} {mid}\n      {detail}")
+            failures += 0 if ok else 1
+        print(f"\n{'✅ all defaults invoke' if failures == 0 else f'❌ {failures} default(s) failed'} in {args.region}")
+        return 0 if failures == 0 else 2
 
     profile_like = is_inference_profile_id(args.model_id)
     print(f"model_id       : {args.model_id}")

@@ -31,11 +31,19 @@ this model.
 | リージョン系 | 接頭辞 | 例 |
 |---|---|---|
 | アジアパシフィック | `apac.` | `apac.amazon.nova-lite-v1:0` |
+| 日本 | `jp.` | `jp.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| グローバル | `global.` | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | 米国 | `us.` | `us.amazon.nova-lite-v1:0` |
 | 欧州 | `eu.` | `eu.amazon.nova-lite-v1:0` |
 
-本リポジトリの既定は **主要デプロイ先(ap-northeast-1 系)に合わせて `apac.`** です。
+本リポジトリの既定は主要デプロイ先(ap-northeast-1 系)に合わせています。
 他リージョンにデプロイする場合は `BedrockModelId` を該当接頭辞に変更してください。
+
+> **接頭辞の利用可否はモデル依存**です。例えば **Amazon Nova は `apac.`** が使えますが、
+> **Claude Haiku 4.5 には `apac.` プロファイルが存在せず**、`jp.`（日本）または `global.` を使います
+> （`aws bedrock list-inference-profiles` で確認）。本リポジトリの Claude パターンは、全リージョンで
+> 動作する移植性を優先して **`global.`** を既定にしています。より厳格なデータレジデンシーが必要な場合は
+> **`jp.`（日本国内にルーティング）** またはリージョン内 Provisioned Throughput を使用してください。
 
 ### 前提条件: モデルアクセスの有効化
 
@@ -96,9 +104,17 @@ aws bedrock list-inference-profiles --region <your-region> \
 ライブ確認例（認証情報とモデルアクセスが必要、少額課金あり）:
 
 ```bash
+# 単一モデル
 python3 scripts/bedrock_inference_profile_smoke.py \
   --model-id apac.amazon.nova-lite-v1:0 --region ap-northeast-1
+
+# リポジトリが出荷する全既定モデルを一括検証（無効なプロファイル ID を検出）
+python3 scripts/bedrock_inference_profile_smoke.py --all-repo-defaults --region ap-northeast-1
 ```
+
+`--all-repo-defaults` は、テンプレートの geo 接頭辞付き既定値をすべて抽出して各 1 回呼び出します。
+**存在しないプロファイル ID（例: 特定モデルに `apac.` が無いのに指定した場合）は静的チェックでは検出
+できない**ため、この一括ライブ検証が有効です。
 
 ### コスト注記
 
@@ -135,11 +151,19 @@ defaults to profile IDs:
 | Region group | Prefix | Example |
 |---|---|---|
 | Asia Pacific | `apac.` | `apac.amazon.nova-lite-v1:0` |
+| Japan | `jp.` | `jp.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| Global | `global.` | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | United States | `us.` | `us.amazon.nova-lite-v1:0` |
 | Europe | `eu.` | `eu.amazon.nova-lite-v1:0` |
 
-This repository defaults to **`apac.`** to match the primary deployment region family (ap-northeast-1).
+This repository's defaults match the primary deployment region family (ap-northeast-1).
 When deploying elsewhere, set `BedrockModelId` to the profile ID for your region.
+
+> **Prefix availability is model-specific.** For example **Amazon Nova offers `apac.`**, but
+> **Claude Haiku 4.5 has no `apac.` profile** — it is offered as `jp.` (Japan) or `global.`
+> (check with `aws bedrock list-inference-profiles`). This repository's Claude patterns default to
+> **`global.`** for portability (works in every region); for stricter data residency use
+> **`jp.` (routes within Japan)** or in-region Provisioned Throughput.
 
 ### Prerequisite: enable model access
 
@@ -201,9 +225,17 @@ always enforced for every Bedrock-using pattern.
 Live check example (needs credentials + model access; incurs a small cost):
 
 ```bash
+# single model
 python3 scripts/bedrock_inference_profile_smoke.py \
   --model-id apac.amazon.nova-lite-v1:0 --region ap-northeast-1
+
+# validate every default the repo ships (catches invalid profile IDs)
+python3 scripts/bedrock_inference_profile_smoke.py --all-repo-defaults --region ap-northeast-1
 ```
+
+`--all-repo-defaults` extracts every geo-prefixed default from the templates and invokes each once.
+**A non-existent profile ID (e.g. specifying `apac.` for a model that has no `apac.` profile) cannot
+be caught by static checks** — this bulk live check catches it.
 
 ### Cost note
 
