@@ -9,10 +9,10 @@ count and H2 section count to the Japanese canonical, and classifies:
 
 Prints a per-language summary and totals so we can scope the work.
 """
+
 from __future__ import annotations
 
 import glob
-import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -59,7 +59,7 @@ def main() -> int:
             cls = classify(ratio)
             if cls != "FULL":
                 per_lang_stub[lang] += 1
-            row.append(f"{lang.split('.')[0]}:{ln}({int(ratio*100)}%,{cls[0]})")
+            row.append(f"{lang.split('.')[0]}:{ln}({int(ratio * 100)}%,{cls[0]})")
         buckets["rows"].append(row)
 
     for row in buckets["rows"]:

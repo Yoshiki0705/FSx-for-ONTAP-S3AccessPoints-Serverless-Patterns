@@ -86,7 +86,13 @@ skips = ["B101"]  # assert used in test code
 
 [tool.coverage.run]
 source = ["shared"]
-omit = ["*/tests/*", "*/__pycache__/*"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    # Live-infra / type-only modules excluded from unit coverage:
+    "*/fpolicy-server/fpolicy_server.py",  # standalone TCP server (ECS Fargate); needs live infra
+    "*/schemas/*",  # TypedDict/type declarations only — no runtime logic
+]
 
 [tool.coverage.report]
 fail_under = 80

@@ -22,9 +22,7 @@ from shared.bedrock_helper import (
 
 def _mock_client(text: str = "hello") -> MagicMock:
     client = MagicMock()
-    client.converse.return_value = {
-        "output": {"message": {"role": "assistant", "content": [{"text": text}]}}
-    }
+    client.converse.return_value = {"output": {"message": {"role": "assistant", "content": [{"text": text}]}}}
     return client
 
 
@@ -72,9 +70,7 @@ class TestConverseText:
 
     def test_multiple_text_blocks_concatenated(self):
         client = MagicMock()
-        client.converse.return_value = {
-            "output": {"message": {"content": [{"text": "part1"}, {"text": "part2"}]}}
-        }
+        client.converse.return_value = {"output": {"message": {"content": [{"text": "part1"}, {"text": "part2"}]}}}
         assert converse_text("m", prompt="p", client=client) == "part1\npart2"
 
     def test_empty_content_returns_empty_string(self):

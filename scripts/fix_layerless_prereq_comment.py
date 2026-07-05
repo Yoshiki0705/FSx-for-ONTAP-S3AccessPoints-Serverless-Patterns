@@ -7,6 +7,7 @@ For these, drop the "and shared layer" wording (nothing to package into a
 layer). Other patterns keep the shared-layer wording because they do declare
 a SharedLayer. Applies to both the Deployment and local-testing code blocks.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

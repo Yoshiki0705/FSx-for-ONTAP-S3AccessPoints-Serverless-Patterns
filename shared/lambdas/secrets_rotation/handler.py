@@ -193,9 +193,7 @@ def _set_secret(service_client: Any, arn: str, token: str) -> None:
     )
 
     if response.status not in (200, 202):
-        error_msg = (
-            f"ONTAP credential change failed: HTTP {response.status} - {response.data.decode('utf-8', errors='replace')}"
-        )
+        error_msg = f"ONTAP credential change failed: HTTP {response.status} - {response.data.decode('utf-8', errors='replace')}"
         logger.error("setSecret: %s", error_msg)
         _notify_failure(arn, "setSecret", error_msg)
         raise ValueError(error_msg)

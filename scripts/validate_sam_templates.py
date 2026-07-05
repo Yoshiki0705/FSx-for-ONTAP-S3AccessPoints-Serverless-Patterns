@@ -12,6 +12,7 @@ Exit code 0 = all good; 1 = one or more violations (CI-friendly).
 
 Usage: python3 scripts/validate_sam_templates.py
 """
+
 from __future__ import annotations
 
 import glob
@@ -42,8 +43,10 @@ def check(path: Path) -> list[str]:
             # crude but effective: a genuine trust policy has no Resource key
             first_chunk = "\n".join(body.split("\n")[:12])
             if "Resource:" in first_chunk:
-                errors.append("IAM trust policy (AssumeRolePolicyDocument) contains a "
-                              "Resource/permission statement (must be sts:AssumeRole only)")
+                errors.append(
+                    "IAM trust policy (AssumeRolePolicyDocument) contains a "
+                    "Resource/permission statement (must be sts:AssumeRole only)"
+                )
                 break
 
     lines = text.split("\n")
@@ -80,8 +83,7 @@ def check(path: Path) -> list[str]:
 
 def main() -> int:
     templates = sorted(
-        t for t in glob.glob(str(ROOT / "solutions" / "**" / "template.yaml"), recursive=True)
-        if ".aws-sam" not in t
+        t for t in glob.glob(str(ROOT / "solutions" / "**" / "template.yaml"), recursive=True) if ".aws-sam" not in t
     )
     failures = 0
     for t in templates:

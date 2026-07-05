@@ -10,6 +10,7 @@ Reports, per pattern, any README param keys not declared in template.yaml.
 
 Usage: python3 scripts/check_readme_param_names.py
 """
+
 from __future__ import annotations
 
 import glob

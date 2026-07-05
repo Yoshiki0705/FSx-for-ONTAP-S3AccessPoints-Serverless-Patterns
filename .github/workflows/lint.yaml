@@ -17,7 +17,9 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install ruff
-        run: pip install ruff
+        # Pin to the requirements-dev.txt version so `ruff format --check` is reproducible
+        # (a floating `pip install ruff` can drift the formatter target between runs).
+        run: pip install ruff==0.15.17
       - name: Ruff check
         run: ruff check .
       - name: Ruff format check

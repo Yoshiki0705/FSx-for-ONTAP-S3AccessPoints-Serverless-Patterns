@@ -41,11 +41,15 @@ def handler(event: dict, context) -> dict:
     mode = event.get("mode", "immediate")
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    logger.info(json.dumps({
-        "event": "cleanup_triggered",
-        "mode": mode,
-        "timestamp": timestamp,
-    }))
+    logger.info(
+        json.dumps(
+            {
+                "event": "cleanup_triggered",
+                "mode": mode,
+                "timestamp": timestamp,
+            }
+        )
+    )
 
     if mode == "immediate":
         return _immediate_cleanup(event, timestamp)
@@ -73,6 +77,7 @@ def _immediate_cleanup(event: dict, timestamp: str) -> dict:
 
     # 実環境: Clone Manager の削除ロジックを再利用
     from devops_flexclone_cicd.functions.clone_manager.handler import _delete_clone
+
     _delete_clone({"clone_name": clone_name}, timestamp)
     return {
         "status": "success",
@@ -100,6 +105,7 @@ def _ttl_sweep(timestamp: str) -> dict:
     # 実環境: ONTAP REST API でプレフィックスマッチするボリュームを列挙
     # 作成時刻 + TTL < now のものを削除
     import urllib3
+
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     credentials = _get_ontap_credentials()
@@ -128,6 +134,7 @@ def _ttl_sweep(timestamp: str) -> dict:
 def _get_ontap_credentials() -> dict:
     """Secrets Manager から ONTAP 認証情報を取得する。"""
     import boto3
+
     client = boto3.client("secretsmanager")
     response = client.get_secret_value(SecretId=ONTAP_SECRET_NAME)
     return json.loads(response["SecretString"])
@@ -186,8 +193,11 @@ def _delete_volume(credentials: dict, volume_name: str) -> None:
     headers["Content-Type"] = "application/json"
 
     # Offline
-    http.request("PATCH", f"https://{ONTAP_MANAGEMENT_IP}/api/storage/volumes/{vol_uuid}",
-                 body=json.dumps({"state": "offline"}), headers=headers)
+    http.request(
+        "PATCH",
+        f"https://{ONTAP_MANAGEMENT_IP}/api/storage/volumes/{vol_uuid}",
+        body=json.dumps({"state": "offline"}),
+        headers=headers,
+    )
     # Delete
-    http.request("DELETE", f"https://{ONTAP_MANAGEMENT_IP}/api/storage/volumes/{vol_uuid}",
-                 headers=headers)
+    http.request("DELETE", f"https://{ONTAP_MANAGEMENT_IP}/api/storage/volumes/{vol_uuid}", headers=headers)

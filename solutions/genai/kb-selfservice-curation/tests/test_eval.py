@@ -26,7 +26,10 @@ class TestScoreCase:
     def test_citation_match_pass(self):
         m = _load_eval()
         case = {"id": "sales-1", "expected_source": "ai-knowledge/sales/product-catalog/product-x-spec.md"}
-        result = {"answer": "...", "citations": [{"source": "s3://b/ai-knowledge/sales/product-catalog/product-x-spec.md"}]}
+        result = {
+            "answer": "...",
+            "citations": [{"source": "s3://b/ai-knowledge/sales/product-catalog/product-x-spec.md"}],
+        }
         s = m.score_case(case, result)
         assert s["passed"] is True
         assert s["citation_match"] is True

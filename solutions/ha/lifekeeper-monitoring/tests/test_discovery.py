@@ -201,16 +201,18 @@ class TestCategorizeProperties:
             min_size=5,
             max_size=80,
         ),
-        category=st.sampled_from([
-            "failover_event",
-            "health_check",
-            "cluster_config",
-            "recovery_kit_log",
-            "communication_log",
-            "general_log",
-            "event_log",
-            "other",
-        ]),
+        category=st.sampled_from(
+            [
+                "failover_event",
+                "health_check",
+                "cluster_config",
+                "recovery_kit_log",
+                "communication_log",
+                "general_log",
+                "event_log",
+                "other",
+            ]
+        ),
     )
     @settings(max_examples=100)
     def test_assess_severity_never_raises(self, filename: str, category: str):
@@ -322,6 +324,7 @@ class TestDiscoveryHandler:
     def test_handler_max_files_respected(self, mock_s3):
         """MAX_FILES 制限が尊重される"""
         import os
+
         os.environ["MAX_FILES"] = "2"
 
         mock_s3.list_objects_v2.return_value = {

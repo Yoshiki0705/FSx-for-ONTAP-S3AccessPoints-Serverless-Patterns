@@ -142,7 +142,9 @@ class FPolicyServer:
         """サーバーを起動し、接続を待ち受ける."""
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind(("0.0.0.0", self.port))
+        # Container-internal FPolicy listener; bound to all interfaces by design.
+        # Network exposure is controlled by the ECS task SG / VPC, not the process bind.
+        server.bind(("0.0.0.0", self.port))  # nosec B104
         server.listen(5)
         self._running = True
 
