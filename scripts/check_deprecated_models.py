@@ -12,23 +12,28 @@ import glob
 import sys
 from pathlib import Path
 
-# Model IDs that are LEGACY or EOL — update this list as AWS notifies
+# Model IDs that are LEGACY or EOL — update this list as AWS notifies.
+# Replacements are geo-prefixed cross-region INFERENCE-PROFILE IDs, not bare model IDs:
+# Nova/newer Claude cannot be invoked on-demand by the bare ID in some regions, and the
+# repo enforces profile IDs (see docs/bedrock-inference-profiles.md + the inference-profile
+# guard). Note prefix availability is model-specific — claude-haiku-4-5 / claude-sonnet-4-5
+# have jp./global. but no apac.; global. is used here for portability.
 DEPRECATED_MODELS = {
     "anthropic.claude-3-haiku-20240307-v1:0": {
         "status": "LEGACY → EOL 2026-09-10",
-        "replacement": "anthropic.claude-haiku-4-5-20251001-v1:0",
+        "replacement": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
     },
     "anthropic.claude-3-5-sonnet-20240620-v1:0": {
         "status": "LEGACY → EOL 2026-07-30",
-        "replacement": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "replacement": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
     },
     "anthropic.claude-3-sonnet-20240229-v1:0": {
         "status": "LEGACY",
-        "replacement": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "replacement": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
     },
     "anthropic.claude-3-5-sonnet-20241022-v2:0": {
         "status": "LEGACY",
-        "replacement": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "replacement": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
     },
 }
 
