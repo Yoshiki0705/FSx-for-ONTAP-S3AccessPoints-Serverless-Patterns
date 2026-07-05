@@ -75,7 +75,13 @@ Parameters:
 
   BedrockModelId:
     Type: String
-    Default: "amazon.nova-lite-v1:0"
+    Default: "apac.amazon.nova-lite-v1:0"
+    Description: >-
+      Bedrock モデル ID または推論プロファイル ID（都市計画レポート生成用）。
+      Amazon Nova はオンデマンドではクロスリージョン推論プロファイル ID が必須です
+      （リージョンに応じて接頭辞を変更: Asia Pacific=apac. / US=us. / Europe=eu.）。
+      例: apac.amazon.nova-lite-v1:0, us.amazon.nova-lite-v1:0, eu.amazon.nova-lite-v1:0
+      詳細は docs/bedrock-inference-profiles.md を参照。
 
   LambdaMemorySize:
     Type: Number

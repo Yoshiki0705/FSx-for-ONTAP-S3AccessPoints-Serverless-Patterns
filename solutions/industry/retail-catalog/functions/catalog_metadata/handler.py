@@ -9,12 +9,11 @@ Environment Variables:
     OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
     OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
     OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
-    BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
+    BEDROCK_MODEL_ID: Bedrock モデル ID / 推論プロファイル ID (デフォルト: apac.amazon.nova-lite-v1:0)
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -22,6 +21,7 @@ from pathlib import PurePosixPath
 
 import boto3
 
+from shared.bedrock_helper import converse_text, extract_json
 from shared.exceptions import lambda_error_handler
 from shared.output_writer import OutputWriter
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
@@ -60,53 +60,22 @@ def generate_catalog_metadata(bedrock_client, model_id: str, file_key: str, labe
         f"Return ONLY the JSON object, no additional text."
     )
 
-    body = json.dumps(
-        {
-            "inputText": prompt,
-            "textGenerationConfig": {
-                "maxTokenCount": 1024,
-                "temperature": 0.3,
-                "topP": 0.9,
-            },
-        }
-    )
-
     with xray_subsegment(
-        name="bedrock_invokemodel",
-        annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "retail-catalog"},
+        name="bedrock_converse",
+        annotations={"service_name": "bedrock", "operation": "Converse", "use_case": "retail-catalog"},
     ):
-        response = bedrock_client.invoke_model(
-            modelId=model_id,
-            body=body,
-            contentType="application/json",
-            accept="application/json",
+        # モデル非依存の Converse API を使用（Nova / Claude は推論プロファイル ID 必須）。
+        # 詳細は docs/bedrock-inference-profiles.md を参照。
+        generated_text = converse_text(
+            model_id=model_id,
+            prompt=prompt,
+            max_tokens=1024,
+            temperature=0.3,
+            client=bedrock_client,
         )
 
-    response_body = json.loads(response["body"].read())
-
-    # Bedrock レスポンスからテキストを抽出
-    generated_text = ""
-    if "results" in response_body:
-        generated_text = response_body["results"][0].get("outputText", "")
-    elif "output" in response_body:
-        generated_text = response_body["output"].get("text", "")
-    elif "completion" in response_body:
-        generated_text = response_body["completion"]
-
-    # JSON パース試行
-    try:
-        # JSON ブロックを抽出（```json ... ``` 形式対応）
-        if "```json" in generated_text:
-            json_start = generated_text.index("```json") + 7
-            json_end = generated_text.index("```", json_start)
-            generated_text = generated_text[json_start:json_end].strip()
-        elif "```" in generated_text:
-            json_start = generated_text.index("```") + 3
-            json_end = generated_text.index("```", json_start)
-            generated_text = generated_text[json_start:json_end].strip()
-
-        metadata = json.loads(generated_text)
-    except (json.JSONDecodeError, ValueError):
+    metadata = extract_json(generated_text)
+    if not metadata:
         # パース失敗時はラベルからデフォルトメタデータを生成
         logger.warning("Failed to parse Bedrock response as JSON, using fallback metadata")
         metadata = _generate_fallback_metadata(labels)
@@ -183,7 +152,7 @@ def handler(event, context):
         dict: status, file_key, catalog_metadata, output_key
     """
     output_writer = OutputWriter.from_env()
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-lite-v1:0")
     file_key = event["file_key"]
     labels = event.get("labels", [])
 
