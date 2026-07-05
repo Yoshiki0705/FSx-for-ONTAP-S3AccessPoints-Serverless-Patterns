@@ -34,9 +34,6 @@ ROOT = Path(__file__).resolve().parents[1]
 # Remove entries as each remediation batch lands; target = empty set.
 KNOWN_PENDING: set[str] = {
     # Tier B (body + model + IAM)
-    "solutions/event-driven/prototype",
-    "solutions/industry/autonomous-driving",
-    "solutions/industry/education-research",
     "solutions/industry/insurance-claims",
     "solutions/industry/retail-catalog",
     "solutions/industry/smart-city-geospatial",

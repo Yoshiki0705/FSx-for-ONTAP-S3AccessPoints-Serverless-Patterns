@@ -42,6 +42,11 @@ from event_processor_handler import (
 )
 
 
+def _converse_response(text: str) -> dict:
+    """Bedrock Converse API レスポンス形式のモックを生成する。"""
+    return {"output": {"message": {"content": [{"text": text}]}}}
+
+
 class TestDetectLabels:
     """detect_labels 関数のテスト"""
 
@@ -142,27 +147,20 @@ class TestGenerateCatalogMetadata:
     def test_successful_bedrock_invocation(self):
         """Bedrock 呼び出し成功時にメタデータを返す"""
         mock_client = MagicMock()
-        response_body = json.dumps(
-            {
-                "results": [
-                    {
-                        "outputText": json.dumps(
-                            {
-                                "title": "Test Product",
-                                "description": "A test product",
-                                "category": "electronics",
-                                "tags": ["product", "electronics"],
-                            }
-                        )
-                    }
-                ]
-            }
-        ).encode()
-        mock_client.invoke_model.return_value = {"body": MagicMock(read=MagicMock(return_value=response_body))}
+        mock_client.converse.return_value = _converse_response(
+            json.dumps(
+                {
+                    "title": "Test Product",
+                    "description": "A test product",
+                    "category": "electronics",
+                    "tags": ["product", "electronics"],
+                }
+            )
+        )
 
         result = generate_catalog_metadata(
             mock_client,
-            "amazon.nova-lite-v1:0",
+            "apac.amazon.nova-lite-v1:0",
             "products/test.jpg",
             [{"name": "Product", "confidence": 95.0}],
         )
@@ -173,7 +171,7 @@ class TestGenerateCatalogMetadata:
     def test_bedrock_failure_returns_fallback(self):
         """Bedrock 呼び出し失敗時にフォールバックメタデータを返す"""
         mock_client = MagicMock()
-        mock_client.invoke_model.side_effect = Exception("Service unavailable")
+        mock_client.converse.side_effect = Exception("Service unavailable")
 
         labels = [
             {"name": "Product", "confidence": 95.0},
@@ -182,7 +180,7 @@ class TestGenerateCatalogMetadata:
 
         result = generate_catalog_metadata(
             mock_client,
-            "amazon.nova-lite-v1:0",
+            "apac.amazon.nova-lite-v1:0",
             "products/test_item.jpg",
             labels,
         )
@@ -194,12 +192,11 @@ class TestGenerateCatalogMetadata:
     def test_non_json_bedrock_response(self):
         """Bedrock が非 JSON テキストを返した場合"""
         mock_client = MagicMock()
-        response_body = json.dumps({"results": [{"outputText": "This is not valid JSON"}]}).encode()
-        mock_client.invoke_model.return_value = {"body": MagicMock(read=MagicMock(return_value=response_body))}
+        mock_client.converse.return_value = _converse_response("This is not valid JSON")
 
         result = generate_catalog_metadata(
             mock_client,
-            "amazon.nova-lite-v1:0",
+            "apac.amazon.nova-lite-v1:0",
             "products/item.jpg",
             [{"name": "Product", "confidence": 90.0}],
         )
@@ -225,23 +222,16 @@ class TestProcessImage:
         }
 
         mock_bedrock = MagicMock()
-        response_body = json.dumps(
-            {
-                "results": [
-                    {
-                        "outputText": json.dumps(
-                            {
-                                "title": "Running Shoe",
-                                "description": "Athletic footwear",
-                                "category": "shoes",
-                                "tags": ["shoe", "athletic"],
-                            }
-                        )
-                    }
-                ]
-            }
-        ).encode()
-        mock_bedrock.invoke_model.return_value = {"body": MagicMock(read=MagicMock(return_value=response_body))}
+        mock_bedrock.converse.return_value = _converse_response(
+            json.dumps(
+                {
+                    "title": "Running Shoe",
+                    "description": "Athletic footwear",
+                    "category": "shoes",
+                    "tags": ["shoe", "athletic"],
+                }
+            )
+        )
 
         result = process_image(
             s3_client=mock_s3,
@@ -276,7 +266,7 @@ class TestProcessImage:
         mock_rek.detect_labels.return_value = {"Labels": [{"Name": "Unknown", "Confidence": 30.0}]}
 
         mock_bedrock = MagicMock()
-        mock_bedrock.invoke_model.side_effect = Exception("skip")
+        mock_bedrock.converse.side_effect = Exception("skip")
 
         result = process_image(
             s3_client=mock_s3,
@@ -301,7 +291,7 @@ class TestProcessImage:
         mock_rek.detect_labels.return_value = {"Labels": []}
 
         mock_bedrock = MagicMock()
-        mock_bedrock.invoke_model.side_effect = Exception("skip")
+        mock_bedrock.converse.side_effect = Exception("skip")
 
         result = process_image(
             s3_client=mock_s3,
@@ -341,7 +331,7 @@ class TestHandler:
         mock_rek = MagicMock()
         mock_rek.detect_labels.return_value = {"Labels": [{"Name": "Product", "Confidence": 90.0}]}
         mock_bedrock = MagicMock()
-        mock_bedrock.invoke_model.side_effect = Exception("skip")
+        mock_bedrock.converse.side_effect = Exception("skip")
 
         mock_boto3.client.side_effect = lambda svc: {
             "s3": mock_s3,
@@ -383,7 +373,7 @@ class TestHandler:
         mock_rek = MagicMock()
         mock_rek.detect_labels.return_value = {"Labels": [{"Name": "Shoe", "Confidence": 85.0}]}
         mock_bedrock = MagicMock()
-        mock_bedrock.invoke_model.side_effect = Exception("skip")
+        mock_bedrock.converse.side_effect = Exception("skip")
 
         mock_boto3.client.side_effect = lambda svc: {
             "s3": mock_s3,

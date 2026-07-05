@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 
 import boto3
 
+from shared.bedrock_helper import converse_text
 from shared.exceptions import lambda_error_handler
 from shared.output_writer import OutputWriter
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
@@ -269,25 +270,19 @@ def _invoke_bedrock_annotation_suggestions(bedrock_client, model_id: str, detect
 
     try:
         with xray_subsegment(
-            name="bedrock_invokemodel",
-            annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "autonomous-driving"},
+            name="bedrock_converse",
+            annotations={"service_name": "bedrock", "operation": "Converse", "use_case": "autonomous-driving"},
         ):
-            response = bedrock_client.invoke_model(
-                modelId=model_id,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps(
-                    {
-                        "inputText": prompt,
-                        "textGenerationConfig": {
-                            "maxTokenCount": 1024,
-                            "temperature": 0.3,
-                        },
-                    }
-                ),
+            # モデル非依存の Converse API を使用（Nova / Claude は推論プロファイル ID 必須）。
+            # 詳細は docs/bedrock-inference-profiles.md を参照。
+            suggestions = converse_text(
+                model_id=model_id,
+                prompt=prompt,
+                max_tokens=1024,
+                temperature=0.3,
+                client=bedrock_client,
             )
-        response_body = json.loads(response["body"].read())
-        return response_body.get("results", [{}])[0].get("outputText", "No suggestions generated")
+        return suggestions or "No suggestions generated"
     except Exception as e:
         logger.warning("Bedrock annotation suggestion failed: %s", e)
         return f"Annotation suggestion generation failed: {e}"
@@ -339,7 +334,7 @@ def handler(event, context):
     sagemaker_output = event.get("sagemaker_output", None)
 
     output_writer = OutputWriter.from_env()
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-lite-v1:0")
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
     transform_job_prefix = os.environ.get("SAGEMAKER_TRANSFORM_JOB_NAME", "ad-segmentation")
 
