@@ -117,6 +117,19 @@ jobs:
       - name: Check for deprecated/EOL Bedrock model IDs
         run: python3 scripts/check_deprecated_models.py
 
+  bedrock-inference-profile-check:
+    name: "Bedrock inference-profile guard"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Self-test the guard
+        run: python3 scripts/check_bedrock_inference_profile.py --selftest
+      - name: Check Bedrock inference-profile compliance
+        run: python3 scripts/check_bedrock_inference_profile.py
+
   actions-pinning-check:
     name: "Actions SHA pinning check"
     runs-on: ubuntu-latest
@@ -152,6 +165,7 @@ jobs:
       - sensitive-leak-check
       - cfn-guard-security
       - deprecated-models-check
+      - bedrock-inference-profile-check
       - actions-pinning-check
       - dependency-audit
     if: always()
@@ -165,6 +179,7 @@ jobs:
             ["python-quality"]="${{ needs.python-quality.result }}"
             ["sensitive-leak-check"]="${{ needs.sensitive-leak-check.result }}"
             ["deprecated-models-check"]="${{ needs.deprecated-models-check.result }}"
+            ["bedrock-inference-profile-check"]="${{ needs.bedrock-inference-profile-check.result }}"
             ["actions-pinning-check"]="${{ needs.actions-pinning-check.result }}"
             ["dependency-audit"]="${{ needs.dependency-audit.result }}"
           )
