@@ -8,12 +8,11 @@ Environment Variables:
     OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
     OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
     OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
-    BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
+    BEDROCK_MODEL_ID: Bedrock モデル ID / 推論プロファイル ID (デフォルト: apac.amazon.nova-lite-v1:0)
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -21,6 +20,7 @@ from pathlib import PurePosixPath
 
 import boto3
 
+from shared.bedrock_helper import converse_text, extract_json
 from shared.exceptions import lambda_error_handler
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 from shared.output_writer import OutputWriter
@@ -129,51 +129,30 @@ def _classify_domain_with_bedrock(bedrock_client, text: str, model_id: str) -> d
 
 JSON のみを出力してください。"""
 
+    fallback = {
+        "domain": "Other",
+        "confidence": 0.0,
+        "summary": "",
+        "keywords": [],
+    }
     try:
         with xray_subsegment(
-            name="bedrock_invokemodel",
-            annotations={"service_name": "bedrock", "operation": "InvokeModel", "use_case": "education-research"},
+            name="bedrock_converse",
+            annotations={"service_name": "bedrock", "operation": "Converse", "use_case": "education-research"},
         ):
-            response = bedrock_client.invoke_model(
-                modelId=model_id,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps(
-                    {
-                        "inputText": prompt,
-                        "textGenerationConfig": {
-                            "maxTokenCount": 1024,
-                            "temperature": 0.1,
-                        },
-                    }
-                ),
+            # モデル非依存の Converse API を使用（Nova / Claude は推論プロファイル ID 必須）。
+            # 詳細は docs/bedrock-inference-profiles.md を参照。
+            output_text = converse_text(
+                model_id=model_id,
+                prompt=prompt,
+                max_tokens=1024,
+                temperature=0.1,
+                client=bedrock_client,
             )
-        response_json = json.loads(response["body"].read())
-
-        if "results" in response_json:
-            output_text = response_json["results"][0].get("outputText", "")
-        elif "content" in response_json:
-            output_text = response_json["content"][0].get("text", "")
-        else:
-            output_text = ""
-
-        # JSON 解析
-        if "```json" in output_text:
-            json_str = output_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in output_text:
-            json_str = output_text.split("```")[1].split("```")[0].strip()
-        else:
-            json_str = output_text.strip()
-
-        return json.loads(json_str)
+        return extract_json(output_text) or fallback
     except Exception as e:
         logger.warning("Bedrock classification failed: %s", e)
-        return {
-            "domain": "Other",
-            "confidence": 0.0,
-            "summary": "",
-            "keywords": [],
-        }
+        return fallback
 
 
 @trace_lambda_handler
@@ -205,7 +184,7 @@ def handler(event, context):
     file_key = event.get("file_key", "")
     extracted_text = event.get("extracted_text", "")
 
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-lite-v1:0")
 
     logger.info(
         "Classification started: file_key=%s, text_length=%d",
