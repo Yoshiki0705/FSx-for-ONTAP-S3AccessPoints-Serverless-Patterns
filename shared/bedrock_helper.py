@@ -151,4 +151,6 @@ def is_inference_profile_id(model_id: str) -> bool:
     """
     if model_id.startswith("arn:") and "inference-profile/" in model_id:
         return True
-    return model_id.split(".", 1)[0] in {"apac", "us", "eu", "us-gov"}
+    # Cross-region / geo / global inference-profile prefixes. Note: availability of a
+    # given prefix is model-specific (e.g. some models expose jp./global. but not apac.).
+    return model_id.split(".", 1)[0] in {"apac", "us", "eu", "us-gov", "jp", "au", "ca", "global"}
