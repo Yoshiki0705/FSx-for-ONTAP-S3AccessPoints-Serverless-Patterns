@@ -33,10 +33,6 @@ ROOT = Path(__file__).resolve().parents[1]
 # Pattern directories not yet migrated to inference profiles.
 # Remove entries as each remediation batch lands; target = empty set.
 KNOWN_PENDING: set[str] = {
-    # Tier B (body + model + IAM)
-    "solutions/industry/insurance-claims",
-    "solutions/industry/retail-catalog",
-    "solutions/industry/smart-city-geospatial",
     # Tier A (model default + IAM)
     "solutions/flexcache/automotive-cae",
     "solutions/flexcache/gaming-build-pipeline",
