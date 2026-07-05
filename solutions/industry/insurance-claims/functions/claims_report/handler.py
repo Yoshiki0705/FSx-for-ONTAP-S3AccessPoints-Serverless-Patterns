@@ -8,7 +8,7 @@ Environment Variables:
     OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
     OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
     OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
-    BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
+    BEDROCK_MODEL_ID: Bedrock モデル ID / 推論プロファイル ID (デフォルト: apac.amazon.nova-lite-v1:0)
     SNS_TOPIC_ARN: SNS トピック ARN
     LOG_PII_DATA: PII データのログ出力 (デフォルト: false)
 """
@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 
 import boto3
 
+from shared.bedrock_helper import converse_text
 from shared.exceptions import lambda_error_handler
 from shared.output_writer import OutputWriter
 from shared.observability import EmfMetrics, trace_lambda_handler
@@ -120,7 +121,7 @@ def handler(event, context):
     estimate_data = event.get("estimate_data", [])
 
     output_writer = OutputWriter.from_env()
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-lite-v1:0")
     sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
 
     logger.info(
@@ -135,27 +136,18 @@ def handler(event, context):
     prompt = _build_claims_prompt(damage_assessments, estimate_data)
 
     try:
-        bedrock_response = bedrock_client.invoke_model(
-            modelId=model_id,
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps(
-                {
-                    "inputText": prompt,
-                    "textGenerationConfig": {
-                        "maxTokenCount": 4096,
-                        "temperature": 0.2,
-                    },
-                }
-            ),
+        # モデル非依存の Converse API を使用（Nova / Claude は推論プロファイル ID 必須）。
+        # 詳細は docs/bedrock-inference-profiles.md を参照。
+        report_text = (
+            converse_text(
+                model_id=model_id,
+                prompt=prompt,
+                max_tokens=4096,
+                temperature=0.2,
+                client=bedrock_client,
+            )
+            or "レポート生成に失敗しました。"
         )
-        response_json = json.loads(bedrock_response["body"].read())
-        if "results" in response_json:
-            report_text = response_json["results"][0].get("outputText", "")
-        elif "content" in response_json:
-            report_text = response_json["content"][0].get("text", "")
-        else:
-            report_text = "レポート生成に失敗しました。"
     except Exception as e:
         logger.warning("Bedrock invocation failed: %s", e)
         report_text = f"レポート自動生成に失敗しました。エラー: {e}"

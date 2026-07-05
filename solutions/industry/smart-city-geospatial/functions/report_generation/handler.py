@@ -4,7 +4,7 @@ Bedrock Nova Lite を使って、土地利用・変化検出・リスク評価�
 都市計画レポートを自然言語で生成する。
 
 Environment Variables:
-    BEDROCK_MODEL_ID: モデル ID (default: "amazon.nova-lite-v1:0")
+    BEDROCK_MODEL_ID: モデル ID / 推論プロファイル ID (default: "apac.amazon.nova-lite-v1:0")
     MAX_TOKENS: 生成最大トークン (default: 2048)
     OUTPUT_DESTINATION: `STANDARD_S3` or `FSXN_S3AP` (デフォルト: `STANDARD_S3`)
     OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット
@@ -14,7 +14,6 @@ Environment Variables:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -22,6 +21,7 @@ from typing import Any
 
 import boto3
 
+from shared.bedrock_helper import converse_text
 from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler
 from shared.output_writer import OutputWriter
@@ -69,45 +69,23 @@ def build_prompt(
 
 
 def invoke_bedrock(bedrock, model_id: str, prompt: str, max_tokens: int) -> str:
-    """Bedrock を呼び出してレポートを生成する。"""
+    """Bedrock を呼び出してレポートを生成する。
+
+    モデル非依存の Converse API を使用（Nova / Claude 共通）。Nova / Claude は
+    オンデマンドでは推論プロファイル ID が必須。詳細は
+    docs/bedrock-inference-profiles.md を参照。
+    """
     try:
-        # Nova / Claude 共通の messages format
-        if "nova" in model_id.lower():
-            body = {
-                "messages": [{"role": "user", "content": [{"text": prompt}]}],
-                "inferenceConfig": {
-                    "maxTokens": max_tokens,
-                    "temperature": 0.3,
-                },
-            }
-        else:
-            # Anthropic format
-            body = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": max_tokens,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-
-        response = bedrock.invoke_model(
-            modelId=model_id,
-            body=json.dumps(body),
-            contentType="application/json",
+        return (
+            converse_text(
+                model_id=model_id,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                temperature=0.3,
+                client=bedrock,
+            )
+            or "(Report generation failed: empty response)"
         )
-        raw = json.loads(response["body"].read())
-
-        # Nova response
-        if "output" in raw:
-            content_list = raw["output"].get("message", {}).get("content", [])
-            for item in content_list:
-                if "text" in item:
-                    return item["text"]
-        # Anthropic
-        if "content" in raw:
-            content = raw["content"]
-            if isinstance(content, list) and content:
-                return content[0].get("text", "")
-
-        return json.dumps(raw)[:1000]
     except Exception as e:
         logger.error("Bedrock invocation failed: %s", e)
         return f"(Report generation failed: {e})"
@@ -130,7 +108,7 @@ def handler(event, context):
     Output: {"source_key": str, "report_key": str, "report_text": str}
     """
     output_writer = OutputWriter.from_env()
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-lite-v1:0")
     max_tokens = int(os.environ.get("MAX_TOKENS", "2048"))
 
     source_key = event.get("source_key", "")
