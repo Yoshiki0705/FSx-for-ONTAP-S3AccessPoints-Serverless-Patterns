@@ -26,7 +26,7 @@ from functions.ocr.handler import (
 )
 from functions.data_structuring.handler import (
     _ensure_required_fields,
-    _parse_bedrock_response,
+    _extract_json_from_text,
 )
 from functions.inventory_analysis.handler import (
     detect_inventory_objects,
@@ -184,33 +184,30 @@ class TestEnsureRequiredFields:
         assert result["total_quantity"] == 0
 
 
-class TestParsBedrockResponse:
-    """Bedrock レスポンス解析のテスト"""
+class TestExtractJsonFromText:
+    """モデル出力テキストからの JSON 抽出テスト（Converse API 対応）"""
 
-    def test_parse_nova_response(self):
-        """Nova モデルレスポンスが正しく解析されること"""
-        response_body = json.dumps(
+    def test_parse_plain_json(self):
+        """プレーンな JSON 文字列が正しく解析されること"""
+        output_text = json.dumps(
             {
-                "results": [
-                    {
-                        "outputText": json.dumps(
-                            {
-                                "sender_name": "テスト送り主",
-                                "tracking_number": "ABC-123",
-                            }
-                        )
-                    }
-                ]
+                "sender_name": "テスト送り主",
+                "tracking_number": "ABC-123",
             }
-        ).encode()
-        result = _parse_bedrock_response(response_body)
+        )
+        result = _extract_json_from_text(output_text)
         assert result["sender_name"] == "テスト送り主"
         assert result["tracking_number"] == "ABC-123"
 
+    def test_parse_json_in_code_block(self):
+        """コードブロック内の JSON が抽出・解析されること"""
+        output_text = "```json\n" + json.dumps({"tracking_number": "XYZ-789"}) + "\n```"
+        result = _extract_json_from_text(output_text)
+        assert result["tracking_number"] == "XYZ-789"
+
     def test_parse_invalid_json_returns_empty(self):
         """無効な JSON で空辞書が返ること"""
-        response_body = json.dumps({"results": [{"outputText": "This is not JSON"}]}).encode()
-        result = _parse_bedrock_response(response_body)
+        result = _extract_json_from_text("This is not JSON")
         assert result == {}
 
 
