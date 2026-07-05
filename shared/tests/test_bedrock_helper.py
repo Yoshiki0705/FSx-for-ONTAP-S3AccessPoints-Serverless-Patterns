@@ -103,6 +103,8 @@ class TestIsInferenceProfileId:
             "apac.amazon.nova-lite-v1:0",
             "us.amazon.nova-pro-v1:0",
             "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "global.anthropic.claude-haiku-4-5-20251001-v1:0",
             "arn:aws:bedrock:ap-northeast-1:123456789012:inference-profile/apac.amazon.nova-lite-v1:0",
         ],
     )

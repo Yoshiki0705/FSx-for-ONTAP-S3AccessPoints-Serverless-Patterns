@@ -53,7 +53,7 @@ Parameters:
     AllowedValues: ["true", "false"]
   BedrockModelId:
     Type: String
-    Default: "apac.anthropic.claude-haiku-4-5-20251001-v1:0"
+    Default: "global.anthropic.claude-haiku-4-5-20251001-v1:0"
   TriggerMode:
     Type: String
     Default: "POLLING"
