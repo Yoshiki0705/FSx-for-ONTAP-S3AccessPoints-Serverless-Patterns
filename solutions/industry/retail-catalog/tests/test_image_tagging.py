@@ -487,25 +487,25 @@ class TestCatalogMetadataHandler:
         from functions.catalog_metadata.handler import handler
 
         mock_bedrock = MagicMock()
-        mock_body = MagicMock()
-        mock_body.read.return_value = json.dumps(
-            {
-                "results": [
-                    {
-                        "outputText": json.dumps(
-                            {
-                                "product_category": "Apparel > Tops > Shirts",
-                                "color": "Blue",
-                                "material": "Cotton",
-                                "style_attributes": ["casual", "short-sleeve"],
-                                "suggested_tags": ["summer", "everyday"],
-                            }
-                        )
-                    }
-                ]
+        mock_bedrock.converse.return_value = {
+            "output": {
+                "message": {
+                    "content": [
+                        {
+                            "text": json.dumps(
+                                {
+                                    "product_category": "Apparel > Tops > Shirts",
+                                    "color": "Blue",
+                                    "material": "Cotton",
+                                    "style_attributes": ["casual", "short-sleeve"],
+                                    "suggested_tags": ["summer", "everyday"],
+                                }
+                            )
+                        }
+                    ]
+                }
             }
-        ).encode()
-        mock_bedrock.invoke_model.return_value = {"body": mock_body}
+        }
 
         mock_s3_client = MagicMock()
 
@@ -553,11 +553,9 @@ class TestCatalogMetadataHandler:
         from functions.catalog_metadata.handler import handler
 
         mock_bedrock = MagicMock()
-        mock_body = MagicMock()
-        mock_body.read.return_value = json.dumps(
-            {"results": [{"outputText": "This is not valid JSON at all"}]}
-        ).encode()
-        mock_bedrock.invoke_model.return_value = {"body": mock_body}
+        mock_bedrock.converse.return_value = {
+            "output": {"message": {"content": [{"text": "This is not valid JSON at all"}]}}
+        }
 
         mock_s3_client = MagicMock()
 
