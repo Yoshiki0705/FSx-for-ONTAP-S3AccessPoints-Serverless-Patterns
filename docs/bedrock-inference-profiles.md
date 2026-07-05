@@ -78,6 +78,21 @@ aws bedrock list-inference-profiles --region <your-region> \
 **README のパラメータ表/CLI 例** に残ったベア ID も検出します。許可リストは空で、全 Bedrock 利用パターンに
 対して常時強制されます。
 
+### 検証レベル
+
+| レベル | 手段 | ネットワーク | CI |
+|---|---|---|---|
+| 静的（テンプレート/README） | 上記 guard + cfn-lint | 不要 | 常時 |
+| Converse 契約（リクエスト/レスポンス形状） | `shared/tests/test_bedrock_helper_contract.py`（botocore Stubber で実サービスモデル検証） | 不要 | 常時 |
+| ライブ E2E（実呼び出し） | `scripts/bedrock_inference_profile_smoke.py`（オプトイン） | **要**・課金あり | 手動のみ |
+
+ライブ確認例（認証情報とモデルアクセスが必要、少額課金あり）:
+
+```bash
+python3 scripts/bedrock_inference_profile_smoke.py \
+  --model-id apac.amazon.nova-lite-v1:0 --region ap-northeast-1
+```
+
 ### コスト注記
 
 - 本リポジトリのサンプル既定は **コスト優先で `nova-lite`** です。品質要件がある場合は
@@ -159,6 +174,21 @@ Auditing is unchanged: track invocations via `CloudTrail` and Bedrock **model in
 **template defaults** (no bare Nova/Claude ID + IAM that includes an `inference-profile` ARN) and any
 bare IDs left in **README parameter tables / CLI examples**. The allowlist is empty, so the rule is
 always enforced for every Bedrock-using pattern.
+
+### Verification levels
+
+| Level | Mechanism | Network | CI |
+|---|---|---|---|
+| Static (templates / READMEs) | guard above + cfn-lint | none | always |
+| Converse contract (request/response shape) | `shared/tests/test_bedrock_helper_contract.py` (botocore Stubber validates the real service model) | none | always |
+| Live E2E (real invoke) | `scripts/bedrock_inference_profile_smoke.py` (opt-in) | **required**, small cost | manual only |
+
+Live check example (needs credentials + model access; incurs a small cost):
+
+```bash
+python3 scripts/bedrock_inference_profile_smoke.py \
+  --model-id apac.amazon.nova-lite-v1:0 --region ap-northeast-1
+```
 
 ### Cost note
 
