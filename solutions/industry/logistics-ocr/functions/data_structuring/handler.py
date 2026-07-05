@@ -8,7 +8,9 @@ Environment Variables:
     OUTPUT_BUCKET: STANDARD_S3 モードの出力バケット名
     OUTPUT_S3AP_ALIAS: FSXN_S3AP モードの S3AP Alias or ARN
     OUTPUT_S3AP_PREFIX: FSXN_S3AP モードの出力プレフィックス (デフォルト: `ai-outputs/`)
-    BEDROCK_MODEL_ID: Bedrock モデル ID (デフォルト: amazon.nova-lite-v1:0)
+    BEDROCK_MODEL_ID: Bedrock モデル ID または推論プロファイル ID
+        (Nova はオンデマンドではクロスリージョン推論プロファイルが必須。
+         例: apac.amazon.nova-lite-v1:0 / us.amazon.nova-lite-v1:0 / eu.amazon.nova-lite-v1:0)
 """
 
 from __future__ import annotations
@@ -77,25 +79,19 @@ def _build_prompt(extracted_text: str, forms: list[dict]) -> str:
 JSON のみを出力してください。"""
 
 
-def _parse_bedrock_response(response_body: bytes) -> dict:
-    """Bedrock レスポンスから JSON を解析する
+def _extract_json_from_text(output_text: str) -> dict:
+    """モデル出力テキストから JSON を抽出・解析する
+
+    Bedrock Converse API はモデル非依存の共通レスポンス形式を返すため、
+    ここではモデル出力テキスト（自然言語／コードブロック混在）から
+    JSON 部分のみを取り出して解析する。
 
     Args:
-        response_body: Bedrock レスポンスボディ
+        output_text: モデルが生成したテキスト
 
     Returns:
-        dict: 解析された構造化データ
+        dict: 解析された構造化データ（解析失敗時は空 dict）
     """
-    response_json = json.loads(response_body)
-
-    # Nova モデルのレスポンス形式
-    if "results" in response_json:
-        output_text = response_json["results"][0].get("outputText", "")
-    elif "content" in response_json:
-        output_text = response_json["content"][0].get("text", "")
-    else:
-        output_text = json.dumps(response_json)
-
     # JSON 部分を抽出
     try:
         # コードブロック内の JSON を探す
@@ -162,7 +158,8 @@ def handler(event, context):
     forms = event.get("forms", [])
 
     output_writer = OutputWriter.from_env()
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+    # Nova はオンデマンドではクロスリージョン推論プロファイル ID が必須（例: apac./us./eu. 接頭辞）
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-lite-v1:0")
 
     logger.info(
         "Data structuring started: file_key=%s, text_length=%d, forms=%d",
@@ -171,26 +168,18 @@ def handler(event, context):
         len(forms),
     )
 
-    # Bedrock でデータ構造化
+    # Bedrock でデータ構造化（Converse API: モデル非依存 / 推論プロファイル対応）
     bedrock_client = boto3.client("bedrock-runtime")
     prompt = _build_prompt(extracted_text, forms)
 
     try:
-        bedrock_response = bedrock_client.invoke_model(
+        bedrock_response = bedrock_client.converse(
             modelId=model_id,
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps(
-                {
-                    "inputText": prompt,
-                    "textGenerationConfig": {
-                        "maxTokenCount": 2048,
-                        "temperature": 0.1,
-                    },
-                }
-            ),
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 2048, "temperature": 0.1},
         )
-        structured_record = _parse_bedrock_response(bedrock_response["body"].read())
+        output_text = bedrock_response["output"]["message"]["content"][0]["text"]
+        structured_record = _extract_json_from_text(output_text)
     except Exception as e:
         logger.warning("Bedrock invocation failed: %s, using fallback", e)
         structured_record = {}
