@@ -50,8 +50,13 @@ Parameters:
 
   BedrockModelId:
     Type: String
-    Default: "amazon.nova-lite-v1:0"
-    Description: Bedrock モデル ID（カタログメタデータ生成用）
+    Default: "apac.amazon.nova-lite-v1:0"
+    Description: >-
+      Bedrock モデル ID または推論プロファイル ID（カタログメタデータ生成用）。
+      Amazon Nova はオンデマンドではクロスリージョン推論プロファイル ID が必須です
+      （リージョンに応じて接頭辞を変更: Asia Pacific=apac. / US=us. / Europe=eu.）。
+      例: apac.amazon.nova-lite-v1:0, us.amazon.nova-lite-v1:0, eu.amazon.nova-lite-v1:0
+      詳細は docs/bedrock-inference-profiles.md を参照。
 
   PrefixFilter:
     Type: String
@@ -236,8 +241,11 @@ Resources:
                 Effect: Allow
                 Action:
                   - bedrock:InvokeModel
+                # Nova 等の推論プロファイル呼び出しには、推論プロファイル ARN と
+                # プロファイルがルーティングする各リージョンの foundation-model ARN の両方が必要
                 Resource:
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+                  - !Sub "arn:aws:bedrock:*::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*"
               - Sid: CloudWatchLogs
                 Effect: Allow
                 Action:

@@ -29,6 +29,7 @@ from pathlib import PurePosixPath
 
 import boto3
 
+from shared.bedrock_helper import converse_text, extract_json
 from shared.exceptions import lambda_error_handler
 from shared.observability import trace_lambda_handler
 
@@ -102,30 +103,18 @@ def generate_catalog_metadata(bedrock_client, model_id: str, file_key: str, labe
         f"Return a JSON object with fields: title, description, category, tags."
     )
 
-    body = json.dumps(
-        {
-            "inputText": prompt,
-            "textGenerationConfig": {
-                "maxTokenCount": 512,
-                "temperature": 0.3,
-            },
-        }
-    )
-
     try:
-        response = bedrock_client.invoke_model(
-            modelId=model_id,
-            body=body,
-            contentType="application/json",
-            accept="application/json",
+        # モデル非依存の Converse API を使用（Nova / Claude は推論プロファイル ID 必須）。
+        # 詳細は docs/bedrock-inference-profiles.md を参照。
+        generated_text = converse_text(
+            model_id=model_id,
+            prompt=prompt,
+            max_tokens=512,
+            temperature=0.3,
+            client=bedrock_client,
         )
-        response_body = json.loads(response["body"].read())
-        generated_text = response_body.get("results", [{}])[0].get("outputText", "")
-
-        # Try to parse as JSON, fallback to raw text
-        try:
-            metadata = json.loads(generated_text)
-        except (json.JSONDecodeError, TypeError):
+        metadata = extract_json(generated_text)
+        if not metadata:
             metadata = {
                 "title": PurePosixPath(file_key).stem,
                 "description": generated_text[:500] if generated_text else "",
@@ -289,7 +278,7 @@ def handler(event, context):
     source_bucket = os.environ["SOURCE_BUCKET"]
     output_bucket = os.environ["OUTPUT_BUCKET"]
     confidence_threshold = float(os.environ.get("CONFIDENCE_THRESHOLD", "70"))
-    bedrock_model_id = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+    bedrock_model_id = os.environ.get("BEDROCK_MODEL_ID", "apac.amazon.nova-lite-v1:0")
 
     # EventBridge イベントからファイル情報を抽出
     detail = event.get("detail", {})
