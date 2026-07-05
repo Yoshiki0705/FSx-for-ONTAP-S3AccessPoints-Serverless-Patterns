@@ -61,7 +61,7 @@ Serverless pattern for processing SAP IDoc exports, HULFT landing files, EDI lan
 | `OutputBucketName` | S3 bucket for results | (required) |
 | `NotificationEmail` | Email for SNS alerts | (required) |
 | `FilePrefix` | Directory prefix to scan | `idoc-export/` |
-| `BedrockModelId` | Bedrock model for summarization | `amazon.nova-pro-v1:0` |
+| `BedrockModelId` | Bedrock model for summarization | `apac.amazon.nova-pro-v1:0` |
 | `MaxFilesPerExecution` | Max files per run | `100` |
 
 ## Deployment
