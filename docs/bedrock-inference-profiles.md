@@ -10,8 +10,9 @@
 
 ### なぜ推論プロファイルが必要か
 
-Amazon Nova（`amazon.nova-lite-v1:0` 等）や新しい Claude モデルは、**オンデマンドではベアな
-モデル ID を直接呼び出せません**。次のエラーになります。
+Amazon Nova（`amazon.nova-lite-v1:0` 等）や新しい Claude モデルは、**リージョンによっては
+オンデマンドでベアなモデル ID を呼び出せません**（オンデマンド対応状況はリージョン・モデル・
+時期により異なります）。未対応リージョンでは次のエラーになります。
 
 ```
 ValidationException: Invocation of model ID amazon.nova-lite-v1:0 with on-demand throughput
@@ -19,7 +20,13 @@ isn't supported. Retry your request with the ID or ARN of an inference profile t
 this model.
 ```
 
-これらのモデルは **クロスリージョン推論プロファイル ID**（geo 接頭辞付き）で呼び出します。
+**クロスリージョン推論プロファイル ID**（geo 接頭辞付き）は geo 内の対応リージョンへルーティング
+されるため、**デプロイ先リージョンに依存せず動作します**。本リポジトリが profile ID を既定にする
+理由はこの移植性です。
+
+> **確認済み挙動（サンプル観測 / 2026-07 時点）**: 同一 geo 内でも、あるリージョンではベア ID の
+> オンデマンド呼び出しが成功し、別のリージョンでは上記 `ValidationException` になりました。profile ID
+> は両リージョンで成功。対応状況は変化するため、デプロイ先で必ず確認してください（下記コマンド）。
 
 | リージョン系 | 接頭辞 | 例 |
 |---|---|---|
@@ -107,7 +114,8 @@ python3 scripts/bedrock_inference_profile_smoke.py \
 ### Why an inference profile is required
 
 Amazon Nova (e.g. `amazon.nova-lite-v1:0`) and newer Claude models **cannot be invoked on-demand
-by the bare model ID**. Doing so fails with:
+by the bare model ID in some regions** (on-demand availability varies by region, model, and over
+time). Where it is unsupported, the call fails with:
 
 ```
 ValidationException: Invocation of model ID amazon.nova-lite-v1:0 with on-demand throughput
@@ -115,7 +123,14 @@ isn't supported. Retry your request with the ID or ARN of an inference profile t
 this model.
 ```
 
-Invoke them with a **cross-region inference profile ID** (geo prefix):
+A **cross-region inference profile ID** (geo prefix) routes to a supported region within the geo,
+so it **works regardless of your deployment region**. That portability is why this repository
+defaults to profile IDs:
+
+> **Observed behavior (sample, as of 2026-07):** within the same geo, the bare ID invoked
+> on-demand successfully in one region but returned the `ValidationException` above in another;
+> the profile ID succeeded in both. Availability changes over time — verify in your deployment
+> region (command below).
 
 | Region group | Prefix | Example |
 |---|---|---|
