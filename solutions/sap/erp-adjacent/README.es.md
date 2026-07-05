@@ -61,7 +61,7 @@ Patrón serverless para procesar exportaciones de IDoc de SAP, archivos deposita
 | `OutputBucketName` | Bucket de S3 para los resultados | (obligatorio) |
 | `NotificationEmail` | Correo electrónico para las alertas de SNS | (obligatorio) |
 | `FilePrefix` | Prefijo de directorio a escanear | `idoc-export/` |
-| `BedrockModelId` | Modelo de Bedrock para el resumen | `amazon.nova-pro-v1:0` |
+| `BedrockModelId` | Modelo de Bedrock para el resumen | `apac.amazon.nova-pro-v1:0` |
 | `MaxFilesPerExecution` | Máximo de archivos por ejecución | `100` |
 
 ## Deployment

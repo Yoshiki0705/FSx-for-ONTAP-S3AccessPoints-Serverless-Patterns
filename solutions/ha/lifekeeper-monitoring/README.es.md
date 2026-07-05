@@ -162,7 +162,7 @@ sam deploy --guided \
 | DemoMode | false | Habilitar el modo demostración |
 | ScheduleExpression | rate(5 minutes) | Intervalo de supervisión |
 | TriggerMode | POLLING | POLLING / EVENT_DRIVEN / HYBRID |
-| BedrockModelId | amazon.nova-pro-v1:0 | Modelo de Bedrock para el análisis |
+| BedrockModelId | apac.amazon.nova-pro-v1:0 | Modelo de Bedrock para el análisis |
 | FailoverAlertSeverity | CRITICAL | Gravedad mínima para las alertas de SNS |
 | ClusterName | lifekeeper-cluster | Nombre del clúster de LifeKeeper |
 | OutputDestination | STANDARD_S3 | Destino de salida de los informes |

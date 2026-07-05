@@ -71,6 +71,13 @@ aws bedrock list-inference-profiles --region <your-region> \
 
 監査は不変です。`CloudTrail` と Bedrock の **model invocation logging** で呼び出しを追跡できます。
 
+### CI による強制
+
+`scripts/check_bedrock_inference_profile.py`（CI の "Bedrock inference-profile guard"）が、
+**テンプレートの既定値**（ベアな Nova/Claude ID の禁止 + `inference-profile` ARN を含む IAM）に加えて、
+**README のパラメータ表/CLI 例** に残ったベア ID も検出します。許可リストは空で、全 Bedrock 利用パターンに
+対して常時強制されます。
+
 ### コスト注記
 
 - 本リポジトリのサンプル既定は **コスト優先で `nova-lite`** です。品質要件がある場合は
@@ -145,6 +152,13 @@ Alternatives:
 - Choose a **model that supports bare on-demand invocation** in your region.
 
 Auditing is unchanged: track invocations via `CloudTrail` and Bedrock **model invocation logging**.
+
+### CI enforcement
+
+`scripts/check_bedrock_inference_profile.py` (the CI "Bedrock inference-profile guard") checks both
+**template defaults** (no bare Nova/Claude ID + IAM that includes an `inference-profile` ARN) and any
+bare IDs left in **README parameter tables / CLI examples**. The allowlist is empty, so the rule is
+always enforced for every Bedrock-using pattern.
 
 ### Cost note
 
