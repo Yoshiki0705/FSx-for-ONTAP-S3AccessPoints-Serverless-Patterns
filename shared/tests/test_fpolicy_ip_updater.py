@@ -161,9 +161,7 @@ class TestIPUpdaterSkipConditions:
         """対象外クラスターのイベントをスキップ。"""
         from shared.lambdas.fpolicy_engine.handler import handler
 
-        event = _ecs_task_event(
-            cluster_arn="arn:aws:ecs:ap-northeast-1:123456789012:cluster/other-cluster"
-        )
+        event = _ecs_task_event(cluster_arn="arn:aws:ecs:ap-northeast-1:123456789012:cluster/other-cluster")
         result = handler(event, mock_context)
 
         assert result["statusCode"] == 200
@@ -263,9 +261,7 @@ class TestIPUpdaterOntapApiExtension:
         self._setup_secrets()
         mock_pool = MagicMock()
         mock_pool_cls.return_value = mock_pool
-        mock_pool.request.return_value = _mock_ontap_response(
-            200, {"records": [{"name": "fpolicy_aws"}]}
-        )
+        mock_pool.request.return_value = _mock_ontap_response(200, {"records": [{"name": "fpolicy_aws"}]})
 
         from shared.lambdas.fpolicy_engine.handler import handler
 

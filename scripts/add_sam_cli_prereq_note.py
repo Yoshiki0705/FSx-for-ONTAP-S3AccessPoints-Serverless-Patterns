@@ -6,6 +6,7 @@ Language is inferred from the filename suffix (README.md = Japanese primary).
 
 Usage: python3 scripts/add_sam_cli_prereq_note.py <README.md> [--write]
 """
+
 from __future__ import annotations
 
 import re

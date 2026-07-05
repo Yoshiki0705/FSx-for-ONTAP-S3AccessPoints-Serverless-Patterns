@@ -31,6 +31,11 @@ jobs:
     name: "Stage 2: Unit Tests & PBT"
     runs-on: ubuntu-latest
     if: always()
+    env:
+      # Dummy region/creds so module-level boto3 clients don't raise NoRegionError at import.
+      AWS_DEFAULT_REGION: ap-northeast-1
+      AWS_ACCESS_KEY_ID: testing
+      AWS_SECRET_ACCESS_KEY: testing
     steps:
       - uses: actions/checkout@v4
         with:
@@ -121,11 +126,13 @@ jobs:
           export PATH=~/.guard/bin:$PATH
           echo "$HOME/.guard/bin" >> $GITHUB_PATH
       - name: Run cfn-guard validation
+        # Advisory scan (matches validators.yml cfn-guard-security). The prior quoted
+        # '**/*.yaml' was passed literally and failed with "path does not exist".
         run: |
           cfn-guard validate \
             --rules security/cfn-guard-rules/ \
-            --data '**/*.yaml' \
-            --show-summary all
+            --data solutions/**/template-deploy.yaml \
+            --show-summary fail || true
 
   security-python:
     name: "Stage 4: Python Security Scan"

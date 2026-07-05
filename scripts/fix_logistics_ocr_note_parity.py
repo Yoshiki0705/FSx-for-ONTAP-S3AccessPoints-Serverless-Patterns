@@ -5,6 +5,7 @@ after the `sam deploy` fenced block, before the next `## ` section heading.
 
 Idempotent: skips files that already contain the note.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -45,9 +46,7 @@ def insert_note(text: str, note: str) -> str:
     except StopIteration:
         return text
     # first H2 heading after the deploy command marks the config-params section
-    idx_heading = next(
-        (i for i in range(idx_deploy, len(lines)) if lines[i].startswith("## ")), None
-    )
+    idx_heading = next((i for i in range(idx_deploy, len(lines)) if lines[i].startswith("## ")), None)
     if idx_heading is None:
         return text
     # ensure a blank line separates the note block from the heading

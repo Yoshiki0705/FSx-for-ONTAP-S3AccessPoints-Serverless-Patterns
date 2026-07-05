@@ -12,6 +12,7 @@ Fixes two mechanical error classes introduced by earlier bulk edits:
 
 Usage: python3 scripts/repair_deploy_templates.py <template-deploy.yaml> [--write]
 """
+
 from __future__ import annotations
 
 import re
@@ -21,8 +22,8 @@ from pathlib import Path
 
 def fix_true_true(content: str) -> str:
     return re.sub(
-        r'^(?P<ind>[ \t]+)EnforceWorkGroupConfiguration:[ \t]*\n'
-        r'[ \t]+RecursiveDeleteOption:[ \t]*true[ \t]+true[ \t]*\n',
+        r"^(?P<ind>[ \t]+)EnforceWorkGroupConfiguration:[ \t]*\n"
+        r"[ \t]+RecursiveDeleteOption:[ \t]*true[ \t]+true[ \t]*\n",
         lambda m: f"{m.group('ind')}EnforceWorkGroupConfiguration: true\n",
         content,
         flags=re.MULTILINE,
@@ -32,12 +33,9 @@ def fix_true_true(content: str) -> str:
 def move_recursive_delete_option(content: str) -> str:
     """Move RecursiveDeleteOption out of WorkGroupConfiguration to WorkGroup level."""
     return re.sub(
-        r'^(?P<ind>[ \t]+)WorkGroupConfiguration:[ \t]*\n'
-        r'[ \t]+RecursiveDeleteOption:[ \t]*(?P<val>true|false)[ \t]*\n',
-        lambda m: (
-            f"{m.group('ind')}RecursiveDeleteOption: {m.group('val')}\n"
-            f"{m.group('ind')}WorkGroupConfiguration:\n"
-        ),
+        r"^(?P<ind>[ \t]+)WorkGroupConfiguration:[ \t]*\n"
+        r"[ \t]+RecursiveDeleteOption:[ \t]*(?P<val>true|false)[ \t]*\n",
+        lambda m: f"{m.group('ind')}RecursiveDeleteOption: {m.group('val')}\n{m.group('ind')}WorkGroupConfiguration:\n",
         content,
         flags=re.MULTILINE,
     )
@@ -46,8 +44,8 @@ def move_recursive_delete_option(content: str) -> str:
 def remove_alarm_profile_mapping(content: str) -> str:
     """Remove the unused AlarmProfileConfig mapping block (2-space indented key)."""
     return re.sub(
-        r'^  AlarmProfileConfig:\n(?:    .*\n|\n)*?(?=^  [A-Za-z0-9]+:\n|^[A-Za-z])',
-        '',
+        r"^  AlarmProfileConfig:\n(?:    .*\n|\n)*?(?=^  [A-Za-z0-9]+:\n|^[A-Za-z])",
+        "",
         content,
         flags=re.MULTILINE,
     )
@@ -56,8 +54,8 @@ def remove_alarm_profile_mapping(content: str) -> str:
 def remove_empty_mappings(content: str) -> str:
     """Remove a now-empty `Mappings:` section header."""
     return re.sub(
-        r'^Mappings:[ \t]*\n(?=(?:\n)*^(?:Resources|Conditions|Outputs|Globals):)',
-        '',
+        r"^Mappings:[ \t]*\n(?=(?:\n)*^(?:Resources|Conditions|Outputs|Globals):)",
+        "",
         content,
         flags=re.MULTILINE,
     )
@@ -67,7 +65,7 @@ def repair(content: str) -> str:
     content = fix_true_true(content)
     content = move_recursive_delete_option(content)
     # Only remove if not referenced by FindInMap
-    if not re.search(r'FindInMap[^\n]*AlarmProfileConfig', content):
+    if not re.search(r"FindInMap[^\n]*AlarmProfileConfig", content):
         content = remove_alarm_profile_mapping(content)
     content = remove_empty_mappings(content)
     return content

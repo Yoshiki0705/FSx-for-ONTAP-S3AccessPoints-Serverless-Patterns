@@ -14,6 +14,7 @@ Pattern-specific facts baked in:
 
 Idempotent: skips any README already containing `sam deploy`.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -21,9 +22,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 HEADING = {
-    "md": "## デプロイ", "en.md": "## Deployment", "ko.md": "## 배포",
-    "zh-CN.md": "## 部署", "zh-TW.md": "## 部署", "fr.md": "## Déploiement",
-    "de.md": "## Bereitstellung", "es.md": "## Despliegue",
+    "md": "## デプロイ",
+    "en.md": "## Deployment",
+    "ko.md": "## 배포",
+    "zh-CN.md": "## 部署",
+    "zh-TW.md": "## 部署",
+    "fr.md": "## Déploiement",
+    "de.md": "## Bereitstellung",
+    "es.md": "## Despliegue",
 }
 INTRO = {
     "md": "AWS SAM CLI でデプロイします（プレースホルダは環境に合わせて置き換えてください）:",
@@ -117,40 +123,74 @@ KB_PREREQ = {
 PATTERNS: dict[str, dict] = {
     "flexcache/automotive-cae": {
         "stack": "fsxn-automotive-cae",
-        "params": ["S3AccessPointAlias=<your-s3ap-alias>", "S3AccessPointName=<your-s3ap-name>", "NotificationEmail=<your-email@example.com>"],
+        "params": [
+            "S3AccessPointAlias=<your-s3ap-alias>",
+            "S3AccessPointName=<your-s3ap-name>",
+            "NotificationEmail=<your-email@example.com>",
+        ],
     },
     "flexcache/gaming-build-pipeline": {
         "stack": "fsxn-gaming-build-pipeline",
-        "params": ["S3AccessPointAlias=<your-s3ap-alias>", "S3AccessPointName=<your-s3ap-name>", "NotificationEmail=<your-email@example.com>"],
+        "params": [
+            "S3AccessPointAlias=<your-s3ap-alias>",
+            "S3AccessPointName=<your-s3ap-name>",
+            "NotificationEmail=<your-email@example.com>",
+        ],
     },
     "flexcache/life-sciences-research": {
         "stack": "fsxn-life-sciences-research",
-        "params": ["S3AccessPointAlias=<your-s3ap-alias>", "S3AccessPointName=<your-s3ap-name>", "NotificationEmail=<your-email@example.com>"],
+        "params": [
+            "S3AccessPointAlias=<your-s3ap-alias>",
+            "S3AccessPointName=<your-s3ap-name>",
+            "NotificationEmail=<your-email@example.com>",
+        ],
     },
     "flexcache/rag-enterprise-files": {
         "stack": "fsxn-rag-enterprise-files",
-        "params": ["S3AccessPointAlias=<your-s3ap-alias>", "S3AccessPointName=<your-s3ap-name>", "NotificationEmail=<your-email@example.com>"],
+        "params": [
+            "S3AccessPointAlias=<your-s3ap-alias>",
+            "S3AccessPointName=<your-s3ap-name>",
+            "NotificationEmail=<your-email@example.com>",
+        ],
         "extra_note": RAG_ACL_NOTE,
     },
     "genai/kb-selfservice-curation": {
         "stack": "fsxn-kb-selfservice-curation",
-        "params": ["S3AccessPointAlias=<your-s3ap-alias>", "S3AccessPointName=<your-s3ap-name>", "KnowledgeBaseId=<your-kb-id>", "DataSourceId=<your-datasource-id>", "NotificationEmail=<your-email@example.com>"],
+        "params": [
+            "S3AccessPointAlias=<your-s3ap-alias>",
+            "S3AccessPointName=<your-s3ap-name>",
+            "KnowledgeBaseId=<your-kb-id>",
+            "DataSourceId=<your-datasource-id>",
+            "NotificationEmail=<your-email@example.com>",
+        ],
         "preamble": KB_PREREQ,
     },
     "genai/quick-agentic-workspace": {
         "stack": "fsxn-quick-agentic-workspace",
-        "params": ["S3AccessPointAlias=<your-s3ap-alias>", "S3AccessPointName=<your-s3ap-name>", "NotificationEmail=<your-email@example.com>"],
+        "params": [
+            "S3AccessPointAlias=<your-s3ap-alias>",
+            "S3AccessPointName=<your-s3ap-name>",
+            "NotificationEmail=<your-email@example.com>",
+        ],
         "extra_note": QUICK_CONSOLE_NOTE,
     },
 }
 
 
 def suffix_of(path: Path) -> str:
-    return "md" if path.name == "README.md" else path.name[len("README."):]
+    return "md" if path.name == "README.md" else path.name[len("README.") :]
 
 
 def code_block(suf: str, stack: str, params: list[str]) -> list[str]:
-    lines = ["```bash", PREREQ[suf], "sam build", "", "sam deploy \\", f"  --stack-name {stack} \\", "  --parameter-overrides \\"]
+    lines = [
+        "```bash",
+        PREREQ[suf],
+        "sam build",
+        "",
+        "sam deploy \\",
+        f"  --stack-name {stack} \\",
+        "  --parameter-overrides \\",
+    ]
     for p in params:
         lines.append(f"    {p} \\")
     lines += ["  --capabilities CAPABILITY_NAMED_IAM \\", "  --resolve-s3 \\", "  --region <your-region>", "```"]

@@ -174,9 +174,7 @@ def _detect_state_transitions(content: str) -> list[dict[str, str]]:
     return transitions
 
 
-def _calculate_health_score(
-    objects: list[dict[str, Any]], failover_events: list[dict[str, Any]]
-) -> dict[str, Any]:
+def _calculate_health_score(objects: list[dict[str, Any]], failover_events: list[dict[str, Any]]) -> dict[str, Any]:
     """クラスタのヘルススコアを算出する (100点満点)"""
     score = 100
 
@@ -301,8 +299,8 @@ Analyze the following failover events from LifeKeeper cluster "{cluster_name}"
 and provide root cause analysis with actionable recommendations.
 
 ## Cluster Health Score
-- Score: {health_score['score']}/100 ({health_score['level']})
-- Failover events detected: {health_score['failover_count']}
+- Score: {health_score["score"]}/100 ({health_score["level"]})
+- Failover events detected: {health_score["failover_count"]}
 
 ## Failover Event Details
 {indicators_text}

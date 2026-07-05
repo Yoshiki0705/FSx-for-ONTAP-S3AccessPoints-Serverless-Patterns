@@ -68,10 +68,12 @@ jobs:
           echo "$MD_FILES" > /tmp/changed_md.txt
           echo "$TEXT_FILES" > /tmp/changed_text.txt
 
-          MD_COUNT=$(echo "$MD_FILES" | grep -c . || echo 0)
-          TEXT_COUNT=$(echo "$TEXT_FILES" | grep -c . || echo 0)
-          echo "md_count=$MD_COUNT" >> "$GITHUB_OUTPUT"
-          echo "text_count=$TEXT_COUNT" >> "$GITHUB_OUTPUT"
+          # grep -c prints "0" and exits 1 on no match; use `|| true` (not `|| echo 0`,
+          # which would append a second line and break the GITHUB_OUTPUT format).
+          MD_COUNT=$(grep -c . /tmp/changed_md.txt || true)
+          TEXT_COUNT=$(grep -c . /tmp/changed_text.txt || true)
+          echo "md_count=${MD_COUNT:-0}" >> "$GITHUB_OUTPUT"
+          echo "text_count=${TEXT_COUNT:-0}" >> "$GITHUB_OUTPUT"
 
       - name: "Check: Naming standard (changed .md only)"
         if: steps.changes.outputs.md_count > 0
