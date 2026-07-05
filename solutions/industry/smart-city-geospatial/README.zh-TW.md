@@ -176,12 +176,12 @@ sam deploy \
     S3AccessPointName=<name> \
     OntapSecretName=<secret> \
     OntapManagementIp=<ip> \
-    BedrockModelId=amazon.nova-lite-v1:0 \
+    BedrockModelId=apac.amazon.nova-lite-v1:0 \
   --capabilities CAPABILITY_NAMED_IAM \
   --resolve-s3
 ```
 
-**重要**：請在 Bedrock 主控台啟用 `amazon.nova-lite-v1:0` 的模型存取權限。
+**重要**：請在 Bedrock 主控台啟用 `apac.amazon.nova-lite-v1:0` 的模型存取權限。
 
 ## 目錄結構
 

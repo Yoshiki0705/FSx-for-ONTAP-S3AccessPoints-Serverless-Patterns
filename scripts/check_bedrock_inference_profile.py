@@ -81,6 +81,37 @@ def _pattern_dir(template_path: Path) -> str:
     return str(template_path.parent.relative_to(ROOT))
 
 
+def scan_readme_drift() -> dict[str, list[int]]:
+    """Return {readme_path: [line numbers]} where a BedrockModelId/BedrockLlmModelId
+    documentation line references a BARE (non-geo-prefixed) Nova/Claude model id.
+
+    READMEs are the user-facing contract: a bare default in a parameter table or CLI
+    example reproduces the on-demand ValidationException. Scoped to lines mentioning
+    a BedrockModelId-style parameter to avoid flagging explanatory prose.
+    """
+    results: dict[str, list[int]] = {}
+    for md in sorted(glob.glob(str(ROOT / "solutions" / "**" / "README*.md"), recursive=True)):
+        bad = [
+            i
+            for i, line in enumerate(Path(md).read_text(encoding="utf-8", errors="ignore").splitlines(), 1)
+            if _readme_line_has_bare_model(line)
+        ]
+        if bad:
+            results[str(Path(md).relative_to(ROOT))] = bad
+    return results
+
+
+def _readme_line_has_bare_model(line: str) -> bool:
+    """True if a BedrockModelId/BedrockLlmModelId doc line cites a bare Nova/Claude id."""
+    if "BedrockModelId" not in line and "BedrockLlmModelId" not in line:
+        return False
+    for m in re.finditer(r"(amazon\.nova|anthropic\.claude)[\w.:-]*", line):
+        # bare iff not immediately preceded by a geo prefix dot (apac./us./eu.)
+        if m.start() == 0 or line[m.start() - 1] != ".":
+            return True
+    return False
+
+
 def scan() -> dict[str, set[str]]:
     """Return {pattern_dir: violation_codes} for every Bedrock-using pattern."""
     results: dict[str, set[str]] = {}
@@ -116,6 +147,12 @@ def selftest() -> int:
     assert "iam-missing" in classify_template(bad_iam)
     assert "iam-wildcard" in classify_template(bad_wild)
     assert classify_template(embed_ok) == set()
+    # README drift line detection
+    assert _readme_line_has_bare_model("| BedrockModelId | amazon.nova-pro-v1:0 | model |")
+    assert _readme_line_has_bare_model("BedrockModelId=anthropic.claude-haiku-4-5-20251001-v1:0 \\")
+    assert not _readme_line_has_bare_model("| BedrockModelId | apac.amazon.nova-pro-v1:0 | model |")
+    assert not _readme_line_has_bare_model("Some prose mentioning amazon.nova-lite-v1:0 without the param")
+    assert not _readme_line_has_bare_model("| BedrockModelId | amazon.titan-embed-text-v2:0 | embeddings |")
     print("✅ selftest passed")
     return 0
 
@@ -160,6 +197,15 @@ def main(argv: list[str]) -> int:
         print(f"\n❌ {len(stale_allowlist)} KNOWN_PENDING entr(y/ies) are already compliant — remove them:")
         for d in stale_allowlist:
             print(f"  {d}")
+        exit_code = 1
+
+    readme_drift = scan_readme_drift()
+    if readme_drift:
+        total = sum(len(v) for v in readme_drift.values())
+        print(f"\n❌ {total} README line(s) in {len(readme_drift)} file(s) show a BARE Nova/Claude model id")
+        print("   (parameter table / CLI example). Use the geo-prefixed profile id to match the template default:")
+        for path, lines in sorted(readme_drift.items()):
+            print(f"  {path}: line(s) {', '.join(map(str, lines))}")
         exit_code = 1
 
     if exit_code == 0:
