@@ -34,12 +34,6 @@ ROOT = Path(__file__).resolve().parents[1]
 # Remove entries as each remediation batch lands; target = empty set.
 KNOWN_PENDING: set[str] = {
     # Tier A (model default + IAM)
-    "solutions/industry/genomics-pipeline",
-    "solutions/industry/hr-document-screening",
-    "solutions/industry/legal-compliance",
-    "solutions/industry/nonprofit-grant-management",
-    "solutions/industry/real-estate-portfolio",
-    "solutions/industry/semiconductor-eda",
     "solutions/industry/sustainability-esg-reporting",
     "solutions/industry/telecom-network-analytics",
     "solutions/industry/transportation-maintenance",
