@@ -162,7 +162,7 @@ sam deploy --guided \
 | DemoMode | false | 启用演示模式 |
 | ScheduleExpression | rate(5 minutes) | 监控间隔 |
 | TriggerMode | POLLING | POLLING / EVENT_DRIVEN / HYBRID |
-| BedrockModelId | amazon.nova-pro-v1:0 | 分析用 Bedrock 模型 |
+| BedrockModelId | apac.amazon.nova-pro-v1:0 | 分析用 Bedrock 模型 |
 | FailoverAlertSeverity | CRITICAL | SNS 告警最低重要度 |
 | ClusterName | lifekeeper-cluster | LifeKeeper 集群名称 |
 | OutputDestination | STANDARD_S3 | 报告输出目标 |
