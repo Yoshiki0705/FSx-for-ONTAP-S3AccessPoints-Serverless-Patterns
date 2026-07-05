@@ -172,7 +172,9 @@ class WebSearchClient:
             elapsed_ms = (time.time() - start_time) * 1000
             logger.info(
                 "Web Search completed: %d results, %.0f ms, query='%s'",
-                len(results), elapsed_ms, truncated_query[:50],
+                len(results),
+                elapsed_ms,
+                truncated_query[:50],
             )
             return results
 
@@ -181,7 +183,10 @@ class WebSearchClient:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             logger.warning(
                 "Web Search failed (ClientError): code=%s, %.0f ms, query='%s' — %s",
-                error_code, elapsed_ms, truncated_query[:50], str(e),
+                error_code,
+                elapsed_ms,
+                truncated_query[:50],
+                str(e),
             )
             return []
 
@@ -189,7 +194,9 @@ class WebSearchClient:
             elapsed_ms = (time.time() - start_time) * 1000
             logger.warning(
                 "Web Search failed (unexpected): %.0f ms, query='%s' — %s",
-                elapsed_ms, truncated_query[:50], str(e),
+                elapsed_ms,
+                truncated_query[:50],
+                str(e),
             )
             return []
 
@@ -207,10 +214,12 @@ class WebSearchClient:
             response = client.invoke_tool(
                 gatewayIdentifier=self._gateway_id,
                 toolName=self._tool_name,
-                content=json.dumps({
-                    "query": query,
-                    "maxResults": max_results,
-                }),
+                content=json.dumps(
+                    {
+                        "query": query,
+                        "maxResults": max_results,
+                    }
+                ),
             )
             return self._parse_response(response)
         except AttributeError:
@@ -278,10 +287,7 @@ class WebSearchClient:
         lines: list[str] = []
         current_chars = 0
         for r in results:
-            line = (
-                f"- [{r.title}]({r.url})"
-                f" ({r.published_date}): {r.text[:300]}"
-            )
+            line = f"- [{r.title}]({r.url}) ({r.published_date}): {r.text[:300]}"
             if current_chars + len(line) > max_chars:
                 break
             lines.append(line)
@@ -290,11 +296,7 @@ class WebSearchClient:
         if not lines:
             return ""
 
-        return (
-            "<web_search_results>\n"
-            + "\n".join(lines)
-            + "\n</web_search_results>"
-        )
+        return "<web_search_results>\n" + "\n".join(lines) + "\n</web_search_results>"
 
     def format_citations(self, results: list[WebSearchResult]) -> list[str]:
         """引用リスト（Acceptable Use Policy 準拠: ソース URL + タイトル表示義務）。"""

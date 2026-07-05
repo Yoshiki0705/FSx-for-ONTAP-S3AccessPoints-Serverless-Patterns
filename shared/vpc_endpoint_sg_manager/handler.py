@@ -169,7 +169,8 @@ def send_response(
     )
 
     try:
-        urllib.request.urlopen(req)
+        # response_url is the CloudFormation-provided pre-signed S3 URL (trusted, HTTPS).
+        urllib.request.urlopen(req)  # nosec B310
         logger.info(f"Response sent: {status}")
     except Exception as e:
         logger.error(f"Failed to send response: {e}")

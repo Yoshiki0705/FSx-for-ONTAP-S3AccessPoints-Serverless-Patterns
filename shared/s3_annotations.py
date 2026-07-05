@@ -179,9 +179,7 @@ class AnnotationHelper:
             if error_code in ("InvalidAction", "NotImplemented", "UnsupportedOperation"):
                 self._annotations_supported = False
                 return self._handle_fallback(key, annotation_name, payload, e)
-            raise S3AnnotationError(
-                f"Failed to put annotation: {error_code} — {e}"
-            ) from e
+            raise S3AnnotationError(f"Failed to put annotation: {error_code} — {e}") from e
 
         except AttributeError:
             # boto3 が put_object_annotation をまだ実装していない場合
@@ -295,9 +293,7 @@ class AnnotationHelper:
         """API 未サポート時のフォールバック処理。"""
 
         if self._fallback_mode == FALLBACK_MODE_ERROR:
-            raise S3AnnotationError(
-                f"S3 Annotations API not supported: {original_error}"
-            ) from original_error
+            raise S3AnnotationError(f"S3 Annotations API not supported: {original_error}") from original_error
 
         if self._fallback_mode == FALLBACK_MODE_TAG:
             return self._fallback_to_tags(key, annotation_name, payload)

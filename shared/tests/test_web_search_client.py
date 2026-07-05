@@ -94,12 +94,15 @@ class TestWebSearchClientDisabled:
 class TestWebSearchClientEnvVars:
     """環境変数からの設定読み込みテスト。"""
 
-    @patch.dict("os.environ", {
-        "AGENTCORE_GATEWAY_ID": "gw-env-test",
-        "AGENTCORE_GATEWAY_REGION": "us-west-2",
-        "WEB_SEARCH_MAX_RESULTS": "10",
-        "WEB_SEARCH_ENABLED": "true",
-    })
+    @patch.dict(
+        "os.environ",
+        {
+            "AGENTCORE_GATEWAY_ID": "gw-env-test",
+            "AGENTCORE_GATEWAY_REGION": "us-west-2",
+            "WEB_SEARCH_MAX_RESULTS": "10",
+            "WEB_SEARCH_ENABLED": "true",
+        },
+    )
     def test_from_env_vars(self):
         client = WebSearchClient()
         assert client._gateway_id == "gw-env-test"
@@ -108,10 +111,13 @@ class TestWebSearchClientEnvVars:
         assert client._enabled is True
         assert client.is_enabled is True
 
-    @patch.dict("os.environ", {
-        "AGENTCORE_GATEWAY_ID": "",
-        "WEB_SEARCH_ENABLED": "false",
-    })
+    @patch.dict(
+        "os.environ",
+        {
+            "AGENTCORE_GATEWAY_ID": "",
+            "WEB_SEARCH_ENABLED": "false",
+        },
+    )
     def test_defaults_disabled(self):
         client = WebSearchClient()
         assert client.is_enabled is False
@@ -134,20 +140,22 @@ class TestWebSearchClientInvoke:
     def test_successful_search(self):
         client = WebSearchClient(gateway_id="gw-123", region="us-east-1", enabled=True)
         mock_boto3_client = MagicMock()
-        mock_boto3_client.invoke_tool.return_value = self._mock_response([
-            {
-                "text": "FSx for ONTAP now supports S3 Access Points",
-                "url": "https://aws.amazon.com/fsx",
-                "title": "FSx Update",
-                "publishedDate": "2026-06-17",
-            },
-            {
-                "text": "Enterprise storage meets AI workloads",
-                "url": "https://example.com/storage",
-                "title": "Storage AI",
-                "publishedDate": "2026-06-16",
-            },
-        ])
+        mock_boto3_client.invoke_tool.return_value = self._mock_response(
+            [
+                {
+                    "text": "FSx for ONTAP now supports S3 Access Points",
+                    "url": "https://aws.amazon.com/fsx",
+                    "title": "FSx Update",
+                    "publishedDate": "2026-06-17",
+                },
+                {
+                    "text": "Enterprise storage meets AI workloads",
+                    "url": "https://example.com/storage",
+                    "title": "Storage AI",
+                    "publishedDate": "2026-06-16",
+                },
+            ]
+        )
         client._client = mock_boto3_client
 
         results = client.search("FSx for ONTAP")
@@ -230,9 +238,7 @@ class TestWebSearchClientInvoke:
         """JSON パース失敗時に空リストを返す。"""
         client = WebSearchClient(gateway_id="gw-123", enabled=True)
         mock_client = MagicMock()
-        mock_client.invoke_tool.return_value = {
-            "content": [{"type": "text", "text": "not valid json {{{"}]
-        }
+        mock_client.invoke_tool.return_value = {"content": [{"type": "text", "text": "not valid json {{{"}]}
         client._client = mock_client
 
         results = client.search("test")
@@ -242,11 +248,13 @@ class TestWebSearchClientInvoke:
         """text が空の結果はスキップされる。"""
         client = WebSearchClient(gateway_id="gw-123", enabled=True)
         mock_client = MagicMock()
-        mock_client.invoke_tool.return_value = self._mock_response([
-            {"text": "valid", "url": "https://a.com", "title": "A", "publishedDate": "2026-01-01"},
-            {"text": "", "url": "https://b.com", "title": "B", "publishedDate": "2026-01-01"},
-            {"text": "also valid", "url": "https://c.com", "title": "C", "publishedDate": "2026-01-02"},
-        ])
+        mock_client.invoke_tool.return_value = self._mock_response(
+            [
+                {"text": "valid", "url": "https://a.com", "title": "A", "publishedDate": "2026-01-01"},
+                {"text": "", "url": "https://b.com", "title": "B", "publishedDate": "2026-01-01"},
+                {"text": "also valid", "url": "https://c.com", "title": "C", "publishedDate": "2026-01-02"},
+            ]
+        )
         client._client = mock_client
 
         results = client.search("test")

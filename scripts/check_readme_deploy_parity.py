@@ -6,6 +6,7 @@ and report when a deploy-related marker is present in some language variants but
 missing in others. Surfaces asymmetric updates (e.g. ja/en got a note the other
 languages did not).
 """
+
 from __future__ import annotations
 
 import glob

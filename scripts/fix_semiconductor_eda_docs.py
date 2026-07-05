@@ -12,6 +12,7 @@ Aligns the deployment docs to the post-#54 SAM-first standard:
 Structural anchors (code blocks, table keys) are language-agnostic; only the
 replacement note text is per-language.
 """
+
 from __future__ import annotations
 
 import re
@@ -91,7 +92,7 @@ def replace_usage_table(text: str, note: str) -> str:
         return text
     idx_head = next(i for i in range(idx_row, -1, -1) if lines[i].startswith("### "))
     idx_note = next(i for i in range(idx_row + 1, len(lines)) if "cloudformation deploy" in lines[i])
-    new_lines = lines[:idx_head] + [note] + lines[idx_note + 1:]
+    new_lines = lines[:idx_head] + [note] + lines[idx_note + 1 :]
     return "\n".join(new_lines)
 
 

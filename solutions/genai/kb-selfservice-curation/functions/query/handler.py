@@ -31,6 +31,7 @@ bedrock_runtime = boto3.client("bedrock-agent-runtime")
 _web_search_client = None
 try:
     from shared.web_search_client import WebSearchClient
+
     _web_search_client = WebSearchClient()  # 環境変数から設定読み込み
 except ImportError:
     logger.debug("shared.web_search_client not available — Web Search disabled")
@@ -94,9 +95,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     kb_config: dict[str, Any] = {"knowledgeBaseId": kb_id, "modelArn": model_arn}
     if vector_search_config:
-        kb_config["retrievalConfiguration"] = {
-            "vectorSearchConfiguration": vector_search_config
-        }
+        kb_config["retrievalConfiguration"] = {"vectorSearchConfiguration": vector_search_config}
     # 任意: Bedrock Guardrails（GENSEC02 — 有害・不正確な応答の抑制）
     guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID", "")
     if guardrail_id:
@@ -131,10 +130,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             web_results = _web_search_client.search(query, max_results=3)
             if web_results:
                 web_context_block = _web_search_client.format_context_block(web_results)
-                web_citations = [
-                    {"source": r.url, "title": r.title, "type": "web"}
-                    for r in web_results
-                ]
+                web_citations = [{"source": r.url, "title": r.title, "type": "web"} for r in web_results]
                 logger.info("Web Search augmentation: %d results", len(web_results))
 
                 # 内部 KB 回答 + Web コンテキストで補強回答を生成

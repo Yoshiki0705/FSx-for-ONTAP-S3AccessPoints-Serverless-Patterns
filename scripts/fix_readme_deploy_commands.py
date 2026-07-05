@@ -8,6 +8,7 @@ plus --resolve-s3 (SAM packages/uploads the code + shared Layer automatically).
 
 Usage: python3 scripts/fix_readme_deploy_commands.py <README.md> [--write]
 """
+
 from __future__ import annotations
 
 import sys

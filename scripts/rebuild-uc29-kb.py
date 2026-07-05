@@ -24,6 +24,7 @@ Usage:
   source scripts/uc29-kb-manifest.local.env   # provides KB_DATA_BUCKET etc.
   .venv/bin/python scripts/rebuild-uc29-kb.py
 """
+
 from __future__ import annotations
 
 import json
@@ -70,8 +71,7 @@ def role_arn_of_caller() -> str:
 
 
 def ensure_encryption_policy() -> None:
-    policy = {"Rules": [{"ResourceType": "collection", "Resource": [f"collection/{COLLECTION}"]}],
-              "AWSOwnedKey": True}
+    policy = {"Rules": [{"ResourceType": "collection", "Resource": [f"collection/{COLLECTION}"]}], "AWSOwnedKey": True}
     try:
         aoss.create_security_policy(name=ENC_POLICY, type="encryption", policy=json.dumps(policy))
         log(f"created encryption policy {ENC_POLICY}")
@@ -80,9 +80,15 @@ def ensure_encryption_policy() -> None:
 
 
 def ensure_network_policy() -> None:
-    policy = [{"Rules": [{"ResourceType": "collection", "Resource": [f"collection/{COLLECTION}"]},
-                         {"ResourceType": "dashboard", "Resource": [f"collection/{COLLECTION}"]}],
-               "AllowFromPublic": True}]
+    policy = [
+        {
+            "Rules": [
+                {"ResourceType": "collection", "Resource": [f"collection/{COLLECTION}"]},
+                {"ResourceType": "dashboard", "Resource": [f"collection/{COLLECTION}"]},
+            ],
+            "AllowFromPublic": True,
+        }
+    ]
     try:
         aoss.create_security_policy(name=NET_POLICY, type="network", policy=json.dumps(policy))
         log(f"created network policy {NET_POLICY}")
@@ -91,23 +97,44 @@ def ensure_network_policy() -> None:
 
 
 def ensure_role() -> str:
-    trust = {"Version": "2012-10-17", "Statement": [{
-        "Effect": "Allow", "Principal": {"Service": "bedrock.amazonaws.com"},
-        "Action": "sts:AssumeRole",
-        "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT}}}]}
+    trust = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+                "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT}},
+            }
+        ],
+    }
     try:
-        iam.create_role(RoleName=ROLE_NAME, AssumeRolePolicyDocument=json.dumps(trust),
-                        Description="UC29 Bedrock KB execution role")
+        iam.create_role(
+            RoleName=ROLE_NAME, AssumeRolePolicyDocument=json.dumps(trust), Description="UC29 Bedrock KB execution role"
+        )
         log(f"created IAM role {ROLE_NAME}")
     except iam.exceptions.EntityAlreadyExistsException:
         log(f"IAM role exists: {ROLE_NAME}")
-    inline = {"Version": "2012-10-17", "Statement": [
-        {"Effect": "Allow", "Action": ["aoss:APIAccessAll"],
-         "Resource": [f"arn:aws:aoss:{REGION}:{ACCOUNT}:collection/*"]},
-        {"Effect": "Allow", "Action": ["bedrock:InvokeModel"],
-         "Resource": [f"arn:aws:bedrock:{REGION}::foundation-model/{EMBED_MODEL}"]},
-        {"Effect": "Allow", "Action": ["s3:GetObject", "s3:ListBucket"],
-         "Resource": [f"arn:aws:s3:::{DATA_BUCKET}", f"arn:aws:s3:::{DATA_BUCKET}/*"]}]}
+    inline = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": ["aoss:APIAccessAll"],
+                "Resource": [f"arn:aws:aoss:{REGION}:{ACCOUNT}:collection/*"],
+            },
+            {
+                "Effect": "Allow",
+                "Action": ["bedrock:InvokeModel"],
+                "Resource": [f"arn:aws:bedrock:{REGION}::foundation-model/{EMBED_MODEL}"],
+            },
+            {
+                "Effect": "Allow",
+                "Action": ["s3:GetObject", "s3:ListBucket"],
+                "Resource": [f"arn:aws:s3:::{DATA_BUCKET}", f"arn:aws:s3:::{DATA_BUCKET}/*"],
+            },
+        ],
+    }
     iam.put_role_policy(RoleName=ROLE_NAME, PolicyName="kb-access", PolicyDocument=json.dumps(inline))
     log("attached inline policy kb-access")
     return f"arn:aws:iam::{ACCOUNT}:role/{ROLE_NAME}"
@@ -115,10 +142,15 @@ def ensure_role() -> str:
 
 def ensure_access_policy(role_arn: str) -> None:
     principals = sorted({role_arn, role_arn_of_caller()})
-    policy = [{"Rules": [
-        {"ResourceType": "index", "Resource": [f"index/{COLLECTION}/*"], "Permission": ["aoss:*"]},
-        {"ResourceType": "collection", "Resource": [f"collection/{COLLECTION}"], "Permission": ["aoss:*"]}],
-        "Principal": principals}]
+    policy = [
+        {
+            "Rules": [
+                {"ResourceType": "index", "Resource": [f"index/{COLLECTION}/*"], "Permission": ["aoss:*"]},
+                {"ResourceType": "collection", "Resource": [f"collection/{COLLECTION}"], "Permission": ["aoss:*"]},
+            ],
+            "Principal": principals,
+        }
+    ]
     try:
         aoss.create_access_policy(name=ACCESS_POLICY, type="data", policy=json.dumps(policy))
         log(f"created data-access policy {ACCESS_POLICY}")
@@ -127,15 +159,15 @@ def ensure_access_policy(role_arn: str) -> None:
         for p in ver:
             if p["name"] == ACCESS_POLICY:
                 cur = aoss.get_access_policy(name=ACCESS_POLICY, type="data")["accessPolicyDetail"]
-                aoss.update_access_policy(name=ACCESS_POLICY, type="data",
-                                          policyVersion=cur["policyVersion"], policy=json.dumps(policy))
+                aoss.update_access_policy(
+                    name=ACCESS_POLICY, type="data", policyVersion=cur["policyVersion"], policy=json.dumps(policy)
+                )
                 log(f"updated data-access policy {ACCESS_POLICY}")
 
 
 def ensure_collection() -> tuple[str, str]:
     try:
-        aoss.create_collection(name=COLLECTION, type="VECTORSEARCH",
-                               description="UC29 KB vector store")
+        aoss.create_collection(name=COLLECTION, type="VECTORSEARCH", description="UC29 KB vector store")
         log(f"creating collection {COLLECTION} ...")
     except aoss.exceptions.ConflictException:
         log(f"collection exists: {COLLECTION}")
@@ -152,19 +184,29 @@ def ensure_collection() -> tuple[str, str]:
 
 def ensure_index(host: str) -> None:
     creds = boto3.Session().get_credentials()
-    auth = AWS4Auth(creds.access_key, creds.secret_key, REGION, "aoss",
-                    session_token=creds.token)
-    client = OpenSearch(hosts=[{"host": host, "port": 443}], http_auth=auth,
-                        use_ssl=True, verify_certs=True, connection_class=RequestsHttpConnection,
-                        pool_maxsize=20)
+    auth = AWS4Auth(creds.access_key, creds.secret_key, REGION, "aoss", session_token=creds.token)
+    client = OpenSearch(
+        hosts=[{"host": host, "port": 443}],
+        http_auth=auth,
+        use_ssl=True,
+        verify_certs=True,
+        connection_class=RequestsHttpConnection,
+        pool_maxsize=20,
+    )
     body = {
         "settings": {"index": {"knn": True}},
-        "mappings": {"properties": {
-            "embedding": {"type": "knn_vector", "dimension": EMBED_DIMS,
-                          "method": {"name": "hnsw", "engine": "faiss",
-                                     "space_type": "l2", "parameters": {}}},
-            "AMAZON_BEDROCK_TEXT_CHUNK": {"type": "text"},
-            "AMAZON_BEDROCK_METADATA": {"type": "text", "index": False}}}}
+        "mappings": {
+            "properties": {
+                "embedding": {
+                    "type": "knn_vector",
+                    "dimension": EMBED_DIMS,
+                    "method": {"name": "hnsw", "engine": "faiss", "space_type": "l2", "parameters": {}},
+                },
+                "AMAZON_BEDROCK_TEXT_CHUNK": {"type": "text"},
+                "AMAZON_BEDROCK_METADATA": {"type": "text", "index": False},
+            }
+        },
+    }
     for attempt in range(10):
         try:
             if client.indices.exists(INDEX_NAME):
@@ -181,22 +223,34 @@ def ensure_index(host: str) -> None:
 
 
 def ensure_kb(role_arn: str, coll_arn: str) -> str:
-    existing = [k for k in agent.list_knowledge_bases()["knowledgeBaseSummaries"]
-                if k["name"] == KB_NAME]
+    existing = [k for k in agent.list_knowledge_bases()["knowledgeBaseSummaries"] if k["name"] == KB_NAME]
     if existing:
         log(f"KB exists: {existing[0]['knowledgeBaseId']}")
         return existing[0]["knowledgeBaseId"]
     resp = agent.create_knowledge_base(
-        name=KB_NAME, description="UC29 Self-Service KB Curation - FSx for ONTAP S3 AP data source",
+        name=KB_NAME,
+        description="UC29 Self-Service KB Curation - FSx for ONTAP S3 AP data source",
         roleArn=role_arn,
-        knowledgeBaseConfiguration={"type": "VECTOR", "vectorKnowledgeBaseConfiguration": {
-            "embeddingModelArn": f"arn:aws:bedrock:{REGION}::foundation-model/{EMBED_MODEL}",
-            "embeddingModelConfiguration": {"bedrockEmbeddingModelConfiguration": {"dimensions": EMBED_DIMS}}}},
-        storageConfiguration={"type": "OPENSEARCH_SERVERLESS", "opensearchServerlessConfiguration": {
-            "collectionArn": coll_arn, "vectorIndexName": INDEX_NAME,
-            "fieldMapping": {"vectorField": "embedding",
-                             "textField": "AMAZON_BEDROCK_TEXT_CHUNK",
-                             "metadataField": "AMAZON_BEDROCK_METADATA"}}})
+        knowledgeBaseConfiguration={
+            "type": "VECTOR",
+            "vectorKnowledgeBaseConfiguration": {
+                "embeddingModelArn": f"arn:aws:bedrock:{REGION}::foundation-model/{EMBED_MODEL}",
+                "embeddingModelConfiguration": {"bedrockEmbeddingModelConfiguration": {"dimensions": EMBED_DIMS}},
+            },
+        },
+        storageConfiguration={
+            "type": "OPENSEARCH_SERVERLESS",
+            "opensearchServerlessConfiguration": {
+                "collectionArn": coll_arn,
+                "vectorIndexName": INDEX_NAME,
+                "fieldMapping": {
+                    "vectorField": "embedding",
+                    "textField": "AMAZON_BEDROCK_TEXT_CHUNK",
+                    "metadataField": "AMAZON_BEDROCK_METADATA",
+                },
+            },
+        },
+    )
     kb_id = resp["knowledgeBase"]["knowledgeBaseId"]
     log(f"created KB {kb_id}")
     return kb_id
@@ -208,11 +262,15 @@ def ensure_data_source(kb_id: str) -> str:
         log(f"data source exists: {existing[0]['dataSourceId']}")
         return existing[0]["dataSourceId"]
     resp = agent.create_data_source(
-        knowledgeBaseId=kb_id, name="fsxn-s3ap-ai-knowledge",
+        knowledgeBaseId=kb_id,
+        name="fsxn-s3ap-ai-knowledge",
         description="FSx for ONTAP S3 AP - ai-knowledge/ prefix",
         dataDeletionPolicy="DELETE",
-        dataSourceConfiguration={"type": "S3", "s3Configuration": {
-            "bucketArn": f"arn:aws:s3:::{DATA_BUCKET}", "inclusionPrefixes": [PREFIX]}})
+        dataSourceConfiguration={
+            "type": "S3",
+            "s3Configuration": {"bucketArn": f"arn:aws:s3:::{DATA_BUCKET}", "inclusionPrefixes": [PREFIX]},
+        },
+    )
     ds_id = resp["dataSource"]["dataSourceId"]
     log(f"created data source {ds_id}")
     return ds_id
@@ -233,8 +291,11 @@ def main() -> None:
     ds_id = ensure_data_source(kb_id)
     job = agent.start_ingestion_job(knowledgeBaseId=kb_id, dataSourceId=ds_id)
     log(f"started ingestion job {job['ingestionJob']['ingestionJobId']}")
-    print(json.dumps({"knowledgeBaseId": kb_id, "dataSourceId": ds_id,
-                      "collection": COLLECTION, "index": INDEX_NAME}, indent=2))
+    print(
+        json.dumps(
+            {"knowledgeBaseId": kb_id, "dataSourceId": ds_id, "collection": COLLECTION, "index": INDEX_NAME}, indent=2
+        )
+    )
     log("Rebuild complete. Update UC29 stack params KbId/DataSourceId if redeploying the stack.")
 
 

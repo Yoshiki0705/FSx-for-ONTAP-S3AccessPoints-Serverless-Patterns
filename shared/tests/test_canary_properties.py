@@ -31,12 +31,28 @@ check_failure_strategy = st.tuples(st.booleans(), st.booleans(), st.booleans())
 # Strategy for S3 object content (arbitrary text data, excluding surrogates)
 # Exclude strings that are JSON structural literals or substrings of known result
 # field names/values to avoid false-positive partial matches.
-_RESULT_SUBSTRINGS = frozenset({
-    "true", "false", "null", "name", "passed", "error",
-    "s3ap_list", "s3ap_get", "ontap_health", "ontap_he",
-    "s3ap_li", "s3ap_ge", "status", "passed", "failed",
-    "checks", "latency", "latency_ms",
-})
+_RESULT_SUBSTRINGS = frozenset(
+    {
+        "true",
+        "false",
+        "null",
+        "name",
+        "passed",
+        "error",
+        "s3ap_list",
+        "s3ap_get",
+        "ontap_health",
+        "ontap_he",
+        "s3ap_li",
+        "s3ap_ge",
+        "status",
+        "passed",
+        "failed",
+        "checks",
+        "latency",
+        "latency_ms",
+    }
+)
 
 
 def _not_substring_of_result_structure(s: str) -> bool:

@@ -16,6 +16,7 @@ Idempotent: skips any README that already contains `sam deploy`.
 Self-limiting: patterns whose Japanese README has no `sam deploy` block
 (pure design-guide patterns) are skipped automatically.
 """
+
 from __future__ import annotations
 
 import glob
@@ -95,7 +96,7 @@ def suffix_of(path: Path) -> str:
     name = path.name
     if name == "README.md":
         return "md"
-    return name[len("README."):]
+    return name[len("README.") :]
 
 
 def extract_ja_deploy_block(ja_text: str) -> list[str] | None:
@@ -109,7 +110,7 @@ def extract_ja_deploy_block(ja_text: str) -> list[str] | None:
             j = i + 1
             while j < len(lines) and not lines[j].strip().startswith("```"):
                 j += 1
-            block = lines[start:j + 1]
+            block = lines[start : j + 1]
             if any("sam deploy" in ln for ln in block):
                 return block
             i = j + 1

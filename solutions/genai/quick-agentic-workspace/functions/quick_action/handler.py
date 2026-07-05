@@ -56,6 +56,7 @@ dynamodb = boto3.resource("dynamodb")
 _web_search_client = None
 try:
     from shared.web_search_client import WebSearchClient
+
     _web_search_client = WebSearchClient()
 except ImportError:
     logger.debug("shared.web_search_client not available — Web Search disabled")
@@ -204,8 +205,7 @@ def _generate_brief_with_web(params: dict[str, Any]) -> dict[str, Any]:
         if web_results:
             web_context_block = _web_search_client.format_context_block(web_results)
             web_citations = [
-                {"source": r.url, "title": r.title, "publishedDate": r.published_date}
-                for r in web_results
+                {"source": r.url, "title": r.title, "publishedDate": r.published_date} for r in web_results
             ]
 
     model_id = os.environ.get("BEDROCK_LLM_MODEL_ID", "apac.amazon.nova-pro-v1:0")

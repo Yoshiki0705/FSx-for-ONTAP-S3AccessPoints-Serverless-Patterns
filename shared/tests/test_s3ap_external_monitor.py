@@ -53,6 +53,7 @@ def mock_cloudwatch():
 def _import_handler():
     """ハンドラーモジュールを動的にインポートする。"""
     from shared.lambdas.s3ap_external_monitor.handler import handler
+
     return handler
 
 

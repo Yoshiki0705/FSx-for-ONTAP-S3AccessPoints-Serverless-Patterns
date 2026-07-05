@@ -21,6 +21,7 @@ Transforms applied:
 
 Usage: python3 scripts/convert_to_self_contained_sam.py <pattern-dir> [--write]
 """
+
 from __future__ import annotations
 
 import re
@@ -50,8 +51,8 @@ def ensure_transform(content: str) -> str:
     if "Transform: AWS::Serverless-2016-10-31" in content:
         return content
     return re.sub(
-        r'(^AWSTemplateFormatVersion:.*\n)',
-        r'\1Transform: AWS::Serverless-2016-10-31\n',
+        r"(^AWSTemplateFormatVersion:.*\n)",
+        r"\1Transform: AWS::Serverless-2016-10-31\n",
         content,
         count=1,
         flags=re.MULTILINE,
@@ -63,8 +64,8 @@ def insert_shared_layer(content: str) -> str:
         return content
     # Insert right after the first `Resources:` line (allow trailing comment lines skipped)
     return re.sub(
-        r'(^Resources:\s*\n)',
-        r'\1' + SHARED_LAYER_BLOCK,
+        r"(^Resources:\s*\n)",
+        r"\1" + SHARED_LAYER_BLOCK,
         content,
         count=1,
         flags=re.MULTILINE,
@@ -79,24 +80,19 @@ def convert_handlers(content: str) -> str:
     """Convert path/dotted handler to handler.handler + CodeUri + Layers."""
     # Path style: [<uc>/]functions/<dir>/handler.handler  (UC prefix optional)
     path_re = re.compile(
-        r'^(?P<ind>\s+)Handler:\s+(?:[A-Za-z0-9_-]+/)?functions/(?P<dir>[A-Za-z0-9_]+)/handler\.handler\s*$',
+        r"^(?P<ind>\s+)Handler:\s+(?:[A-Za-z0-9_-]+/)?functions/(?P<dir>[A-Za-z0-9_]+)/handler\.handler\s*$",
         re.MULTILINE,
     )
     # Dotted style: functions.<dir>.handler.handler
     dotted_re = re.compile(
-        r'^(?P<ind>\s+)Handler:\s+functions\.(?P<dir>[A-Za-z0-9_]+)\.handler\.handler\s*$',
+        r"^(?P<ind>\s+)Handler:\s+functions\.(?P<dir>[A-Za-z0-9_]+)\.handler\.handler\s*$",
         re.MULTILINE,
     )
 
     def repl(m: re.Match) -> str:
         ind = m.group("ind")
         d = m.group("dir")
-        return (
-            f"{ind}Handler: handler.handler\n"
-            f"{ind}CodeUri: functions/{d}/\n"
-            f"{ind}Layers:\n"
-            f"{ind}  - !Ref SharedLayer"
-        )
+        return f"{ind}Handler: handler.handler\n{ind}CodeUri: functions/{d}/\n{ind}Layers:\n{ind}  - !Ref SharedLayer"
 
     content = path_re.sub(repl, content)
     content = dotted_re.sub(repl, content)
@@ -106,7 +102,7 @@ def convert_handlers(content: str) -> str:
 def convert_tracing(content: str) -> str:
     # TracingConfig:\n<ind>  Mode: X  -> Tracing: X
     return re.sub(
-        r'^(?P<ind>\s+)TracingConfig:\s*\n\s+Mode:\s+(?P<val>.+)$',
+        r"^(?P<ind>\s+)TracingConfig:\s*\n\s+Mode:\s+(?P<val>.+)$",
         lambda m: f"{m.group('ind')}Tracing: {m.group('val').strip()}",
         content,
         flags=re.MULTILINE,
@@ -162,10 +158,10 @@ def convert_tags(content: str) -> str:
 
 def strip_local_testing_header(content: str) -> str:
     return re.sub(
-        r'^# ⚠️ NOTE: This file is for SAM local testing only\.\n'
-        r'# The authoritative deployment template is template-deploy\.yaml\.\n'
-        r'# Edit template-deploy\.yaml for production changes\.\n#\n',
-        '',
+        r"^# ⚠️ NOTE: This file is for SAM local testing only\.\n"
+        r"# The authoritative deployment template is template-deploy\.yaml\.\n"
+        r"# Edit template-deploy\.yaml for production changes\.\n#\n",
+        "",
         content,
     )
 
@@ -174,12 +170,9 @@ def fix_athena_workgroup(content: str) -> str:
     """Move RecursiveDeleteOption out of WorkGroupConfiguration (it is a direct
     property of AWS::Athena::WorkGroup, not of WorkGroupConfiguration)."""
     return re.sub(
-        r'^(?P<ind>[ \t]+)WorkGroupConfiguration:[ \t]*\n'
-        r'[ \t]+RecursiveDeleteOption:[ \t]*(?P<val>true|false)[ \t]*\n',
-        lambda m: (
-            f"{m.group('ind')}RecursiveDeleteOption: {m.group('val')}\n"
-            f"{m.group('ind')}WorkGroupConfiguration:\n"
-        ),
+        r"^(?P<ind>[ \t]+)WorkGroupConfiguration:[ \t]*\n"
+        r"[ \t]+RecursiveDeleteOption:[ \t]*(?P<val>true|false)[ \t]*\n",
+        lambda m: f"{m.group('ind')}RecursiveDeleteOption: {m.group('val')}\n{m.group('ind')}WorkGroupConfiguration:\n",
         content,
         flags=re.MULTILINE,
     )
@@ -188,30 +181,25 @@ def fix_athena_workgroup(content: str) -> str:
 def convert_deploy_code_blocks(content: str, uc: str) -> str:
     """Convert template-deploy.yaml style Code blocks to CodeUri + Layers."""
     code_re = re.compile(
-        r'^(?P<ind>[ \t]+)Handler:[ \t]+handler\.handler[ \t]*\n'
-        r'[ \t]+Code:[ \t]*\n'
-        r'[ \t]+S3Bucket:[ \t]+!Ref DeployBucket[ \t]*\n'
-        r'[ \t]+S3Key:[ \t]+lambda/' + re.escape(uc) + r'-(?P<funcpart>[A-Za-z0-9_-]+)\.zip[ \t]*\n',
+        r"^(?P<ind>[ \t]+)Handler:[ \t]+handler\.handler[ \t]*\n"
+        r"[ \t]+Code:[ \t]*\n"
+        r"[ \t]+S3Bucket:[ \t]+!Ref DeployBucket[ \t]*\n"
+        r"[ \t]+S3Key:[ \t]+lambda/" + re.escape(uc) + r"-(?P<funcpart>[A-Za-z0-9_-]+)\.zip[ \t]*\n",
         re.MULTILINE,
     )
 
     def repl(m: re.Match) -> str:
         ind = m.group("ind")
         d = m.group("funcpart").replace("-", "_")
-        return (
-            f"{ind}Handler: handler.handler\n"
-            f"{ind}CodeUri: functions/{d}/\n"
-            f"{ind}Layers:\n"
-            f"{ind}  - !Ref SharedLayer\n"
-        )
+        return f"{ind}Handler: handler.handler\n{ind}CodeUri: functions/{d}/\n{ind}Layers:\n{ind}  - !Ref SharedLayer\n"
 
     return code_re.sub(repl, content)
 
 
 def remove_deploy_bucket_param(content: str) -> str:
     return re.sub(
-        r'^  DeployBucket:\n(?:    .*\n)+?(?=  [A-Za-z0-9]+:\n|\n)',
-        '',
+        r"^  DeployBucket:\n(?:    .*\n)+?(?=  [A-Za-z0-9]+:\n|\n)",
+        "",
         content,
         count=1,
         flags=re.MULTILINE,

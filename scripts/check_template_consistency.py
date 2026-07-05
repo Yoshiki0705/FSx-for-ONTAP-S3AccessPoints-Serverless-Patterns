@@ -10,6 +10,7 @@ Reports drift. Exit 0 = consistent; 1 = drift found.
 
 Usage: python3 scripts/check_template_consistency.py
 """
+
 from __future__ import annotations
 
 import glob
@@ -27,8 +28,9 @@ def params_of(text: str) -> set[str]:
 
 def function_ids(text: str) -> set[str]:
     ids: set[str] = set()
-    for m in re.finditer(r"^  ([A-Za-z0-9]+):\n(?:    .*\n|\n)*?    Type:\s*AWS::(?:Serverless|Lambda)::Function",
-                         text, re.M):
+    for m in re.finditer(
+        r"^  ([A-Za-z0-9]+):\n(?:    .*\n|\n)*?    Type:\s*AWS::(?:Serverless|Lambda)::Function", text, re.M
+    ):
         ids.add(m.group(1))
     return ids
 
@@ -51,7 +53,9 @@ def main() -> int:
         if f1 != f2:
             drift += 1
             print(f"FUNC DRIFT  {rel}: only-in-template={sorted(f1 - f2)} only-in-deploy={sorted(f2 - f1)}")
-    print(f"\n{'OK - template.yaml and template-deploy.yaml consistent' if drift == 0 else f'{drift} drift finding(s)'}")
+    print(
+        f"\n{'OK - template.yaml and template-deploy.yaml consistent' if drift == 0 else f'{drift} drift finding(s)'}"
+    )
     return 1 if drift else 0
 
 

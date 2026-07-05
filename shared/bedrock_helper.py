@@ -113,11 +113,7 @@ def _extract_text(response: dict) -> str:
     output.message.content は複数ブロック（text / toolUse など）を含みうるため、
     text ブロックのみを抽出して連結する。空の場合は空文字列を返す。
     """
-    content = (
-        response.get("output", {})
-        .get("message", {})
-        .get("content", [])
-    )
+    content = response.get("output", {}).get("message", {}).get("content", [])
     texts = [block["text"] for block in content if isinstance(block, dict) and "text" in block]
     return "\n".join(texts).strip()
 

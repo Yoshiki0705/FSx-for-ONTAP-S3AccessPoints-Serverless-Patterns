@@ -93,10 +93,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             return {"status": "error", "query_state": state, "query_id": qid, "timestamp": now}
 
         results = athena_client.get_query_results(QueryExecutionId=qid, MaxResults=100)
-        rows = [
-            [col.get("VarCharValue", "") for col in row["Data"]]
-            for row in results["ResultSet"]["Rows"]
-        ]
+        rows = [[col.get("VarCharValue", "") for col in row["Data"]] for row in results["ResultSet"]["Rows"]]
         header = rows[0] if rows else []
         data_rows = rows[1:] if len(rows) > 1 else []
 
