@@ -16,6 +16,7 @@ Transforms (idempotent; skips if OutputDestination already present):
 
 Usage: python3 scripts/merge_output_destination.py <pattern-dir> [--write]
 """
+
 from __future__ import annotations
 
 import re
@@ -67,12 +68,12 @@ def env_block(indent: str) -> str:
     i = indent
     return (
         f"{i}OUTPUT_DESTINATION: !Ref OutputDestination\n"
-        f"{i}OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, \"\"]\n"
+        f'{i}OUTPUT_BUCKET: !If [UseStandardS3, !Ref OutputBucket, ""]\n'
         f"{i}OUTPUT_S3AP_ALIAS:\n"
         f"{i}  !If\n"
         f"{i}    - UseFsxnS3AP\n"
         f"{i}    - !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]\n"
-        f"{i}    - \"\"\n"
+        f'{i}    - ""\n'
         f"{i}OUTPUT_S3AP_PREFIX: !Ref OutputS3APPrefix"
     )
 
@@ -83,17 +84,17 @@ def iam_block(indent: str) -> str:
     return (
         f"{i}Resource: !If\n"
         f"{i}  - UseStandardS3\n"
-        f"{i}  - - !Sub \"${{OutputBucket.Arn}}/*\"\n"
+        f'{i}  - - !Sub "${{OutputBucket.Arn}}/*"\n'
         f"{i}  - !If\n"
         f"{i}    - HasS3AccessPointName\n"
         f"{i}    - - !Sub\n"
-        f"{i}        - \"arn:aws:s3:::${{Alias}}/*\"\n"
+        f'{i}        - "arn:aws:s3:::${{Alias}}/*"\n'
         f"{i}        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]\n"
         f"{i}      - !Sub\n"
-        f"{i}        - \"arn:aws:s3:${{AWS::Region}}:${{AWS::AccountId}}:accesspoint/${{Name}}/object/*\"\n"
+        f'{i}        - "arn:aws:s3:${{AWS::Region}}:${{AWS::AccountId}}:accesspoint/${{Name}}/object/*"\n'
         f"{i}        - Name: !If [UseInputApNameAsOutputApName, !Ref S3AccessPointName, !Ref OutputS3APName]\n"
         f"{i}    - - !Sub\n"
-        f"{i}        - \"arn:aws:s3:::${{Alias}}/*\"\n"
+        f'{i}        - "arn:aws:s3:::${{Alias}}/*"\n'
         f"{i}        - Alias: !If [UseInputApAsOutputAp, !Ref S3AccessPointAlias, !Ref OutputS3APAlias]"
     )
 
@@ -116,7 +117,7 @@ def merge(text: str) -> tuple[str, list[str]]:
     conditions = CONDITIONS
     if "HasS3AccessPointName:" in text:
         conditions = conditions.replace(
-            "  HasS3AccessPointName:\n    !Not [!Equals [!Ref S3AccessPointName, \"\"]]\n", ""
+            '  HasS3AccessPointName:\n    !Not [!Equals [!Ref S3AccessPointName, ""]]\n', ""
         )
     text = text.replace("Conditions:\n", "Conditions:\n" + conditions, 1)
 
@@ -132,6 +133,7 @@ def merge(text: str) -> tuple[str, list[str]]:
     # 4. env blocks
     def env_repl(m: re.Match) -> str:
         return env_block(m.group("ind"))
+
     text, ne = re.subn(
         r"^(?P<ind>[ \t]+)OUTPUT_BUCKET: !Ref OutputBucket$",
         env_repl,
@@ -143,6 +145,7 @@ def merge(text: str) -> tuple[str, list[str]]:
     # 5. IAM output-write resource blocks
     def iam_repl(m: re.Match) -> str:
         return iam_block(m.group("ind"))
+
     text, ni = re.subn(
         r"^(?P<ind>[ \t]+)Resource:\n[ \t]+- !Sub \"\$\{OutputBucket\.Arn\}/\*\"$",
         iam_repl,
@@ -154,6 +157,7 @@ def merge(text: str) -> tuple[str, list[str]]:
     # 5b. inline-form IAM output-write: `Resource: !Sub "${OutputBucket.Arn}/*"`
     def iam_inline_repl(m: re.Match) -> str:
         return iam_block(m.group("ind"))
+
     text, ni2 = re.subn(
         r'^(?P<ind>[ \t]+)Resource: !Sub "\$\{OutputBucket\.Arn\}/\*"$',
         iam_inline_repl,

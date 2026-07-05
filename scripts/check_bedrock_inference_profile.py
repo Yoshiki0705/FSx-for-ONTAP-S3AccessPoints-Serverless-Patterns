@@ -136,7 +136,7 @@ def selftest() -> int:
       Action: bedrock:InvokeModel
     """
     bad_bare = 'BedrockModelId:\n    Default: "amazon.nova-lite-v1:0"\n'
-    bad_iam = 'Action: bedrock:InvokeModel\nResource:\n  - foundation-model/x\n'
+    bad_iam = "Action: bedrock:InvokeModel\nResource:\n  - foundation-model/x\n"
     bad_wild = "Action: bedrock:InvokeModel\nResource: '*'\n"
     embed_ok = 'Default: "amazon.titan-embed-text-v2:0"\n'
     assert classify_template(ok_profile) == set(), classify_template(ok_profile)

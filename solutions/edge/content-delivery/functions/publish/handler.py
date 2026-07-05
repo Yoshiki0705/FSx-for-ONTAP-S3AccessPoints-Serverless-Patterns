@@ -265,9 +265,7 @@ def handler(event, context) -> DeliveryPublishOutput:
         "data_classification_label": classification.label,
     }
 
-    manifest_key = (
-        f"delivery-manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
-    )
+    manifest_key = f"delivery-manifests/{datetime.now(timezone.utc).strftime('%Y/%m/%d')}/{context.aws_request_id}.json"
     s3ap_output.put_object(
         key=manifest_key,
         body=json.dumps(manifest, default=str),

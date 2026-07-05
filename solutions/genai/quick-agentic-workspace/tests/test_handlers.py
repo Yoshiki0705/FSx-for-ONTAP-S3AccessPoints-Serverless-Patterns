@@ -12,9 +12,7 @@ from unittest.mock import patch
 
 
 def _load_handler(function_name: str):
-    handler_path = os.path.join(
-        os.path.dirname(__file__), "..", "functions", function_name, "handler.py"
-    )
+    handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", function_name, "handler.py")
     spec = importlib.util.spec_from_file_location(f"uc30_{function_name}_handler", handler_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -52,9 +50,7 @@ class TestQuickAction:
 
     def test_generate_brief_invokes_bedrock(self):
         module = _load_handler("quick_action")
-        converse_resp = {
-            "output": {"message": {"content": [{"text": "ブリーフ要約テキスト"}]}}
-        }
+        converse_resp = {"output": {"message": {"content": [{"text": "ブリーフ要約テキスト"}]}}}
         event = {
             "action": "generate_brief",
             "params": {"title": "案件サマリ", "context": "製品Xの提案状況..."},
@@ -167,7 +163,8 @@ class TestAthenaQuery:
         with patch.dict(os.environ, env, clear=False):
             with patch.object(module.athena_client, "start_query_execution", return_value={"QueryExecutionId": "q1"}):
                 with patch.object(
-                    module.athena_client, "get_query_execution",
+                    module.athena_client,
+                    "get_query_execution",
                     return_value={"QueryExecution": {"Status": {"State": "SUCCEEDED"}}},
                 ):
                     with patch.object(module.athena_client, "get_query_results", return_value=rows):
@@ -178,9 +175,7 @@ class TestAthenaQuery:
         module = _load_handler("athena_query")
         env = {"ATHENA_DATABASE": "quick_workspace_db", "ATHENA_WORKGROUP": "wg", "ATHENA_OUTPUT_LOCATION": "s3://b/r/"}
         with patch.dict(os.environ, env, clear=False):
-            with patch.object(
-                module.athena_client, "start_query_execution", side_effect=Exception("arn:secret")
-            ):
+            with patch.object(module.athena_client, "start_query_execution", side_effect=Exception("arn:secret")):
                 result = module.handler({"query_name": "sales_pipeline_total"}, None)
         assert result["status"] == "error"
         assert result["error"] == "internal error"
@@ -262,14 +257,18 @@ class TestPerActionAuthorization:
     def test_open_mode_allows_all(self):
         module = _load_handler("quick_action")
         with patch.dict(os.environ, {"ACTION_AUTH_MODE": "open", "NOTIFICATION_TOPIC_ARN": ""}, clear=False):
-            resp = module.handler(_sigv4_event("create_action_item", {"title": "T"}, "arn:aws:iam::1:role/anyone"), None)
+            resp = module.handler(
+                _sigv4_event("create_action_item", {"title": "T"}, "arn:aws:iam::1:role/anyone"), None
+            )
         assert resp["statusCode"] == 200
 
     def test_enforce_denies_unauthorized_mutation(self):
         module = _load_handler("quick_action")
         env = {"ACTION_AUTH_MODE": "enforce", "AUTHORIZED_PRINCIPALS": "role/QuickConn", "NOTIFICATION_TOPIC_ARN": ""}
         with patch.dict(os.environ, env, clear=False):
-            resp = module.handler(_sigv4_event("create_action_item", {"title": "T"}, "arn:aws:iam::1:role/Stranger"), None)
+            resp = module.handler(
+                _sigv4_event("create_action_item", {"title": "T"}, "arn:aws:iam::1:role/Stranger"), None
+            )
         assert resp["statusCode"] == 403
         assert json.loads(resp["body"])["reason"] == "authorized_principal_required"
 
@@ -277,7 +276,9 @@ class TestPerActionAuthorization:
         module = _load_handler("quick_action")
         env = {"ACTION_AUTH_MODE": "enforce", "AUTHORIZED_PRINCIPALS": "role/QuickConn", "NOTIFICATION_TOPIC_ARN": ""}
         with patch.dict(os.environ, env, clear=False):
-            resp = module.handler(_sigv4_event("create_action_item", {"title": "T"}, "arn:aws:iam::1:role/QuickConn"), None)
+            resp = module.handler(
+                _sigv4_event("create_action_item", {"title": "T"}, "arn:aws:iam::1:role/QuickConn"), None
+            )
         assert resp["statusCode"] == 200
 
     def test_enforce_read_only_allowed_without_principal(self):
@@ -285,14 +286,22 @@ class TestPerActionAuthorization:
         converse_resp = {"output": {"message": {"content": [{"text": "brief"}]}}}
         with patch.dict(os.environ, {"ACTION_AUTH_MODE": "enforce"}, clear=False):
             with patch.object(module.bedrock_runtime, "converse", return_value=converse_resp):
-                resp = module.handler(_sigv4_event("generate_brief", {"context": "x"}, "arn:aws:iam::1:role/anyone"), None)
+                resp = module.handler(
+                    _sigv4_event("generate_brief", {"context": "x"}, "arn:aws:iam::1:role/anyone"), None
+                )
         assert resp["statusCode"] == 200
 
     def test_enforce_approve_requires_admin(self):
         module = _load_handler("quick_action")
-        env = {"ACTION_AUTH_MODE": "enforce", "AUTHORIZED_PRINCIPALS": "role/QuickConn", "ADMIN_PRINCIPALS": "role/Admin"}
+        env = {
+            "ACTION_AUTH_MODE": "enforce",
+            "AUTHORIZED_PRINCIPALS": "role/QuickConn",
+            "ADMIN_PRINCIPALS": "role/Admin",
+        }
         with patch.dict(os.environ, env, clear=False):
-            resp = module.handler(_sigv4_event("approve", {"approval_id": "APR-1"}, "arn:aws:iam::1:role/QuickConn"), None)
+            resp = module.handler(
+                _sigv4_event("approve", {"approval_id": "APR-1"}, "arn:aws:iam::1:role/QuickConn"), None
+            )
         assert resp["statusCode"] == 403
         assert json.loads(resp["body"])["reason"] == "admin_principal_required"
 
@@ -321,13 +330,18 @@ class TestEnforcedHITL:
         }
         with patch.dict(os.environ, env, clear=False):
             # 1. request_approval → 永続化（enforced=true）
-            r1 = module.handler(_sigv4_event("request_approval", {"operation": "approve_payment"}, "arn:aws:iam::1:role/QuickConn"), None)
+            r1 = module.handler(
+                _sigv4_event("request_approval", {"operation": "approve_payment"}, "arn:aws:iam::1:role/QuickConn"),
+                None,
+            )
             body1 = json.loads(r1["body"])
             assert body1["approval"]["enforced"] is True
             apr_id = body1["approval"]["approval_id"]
 
             # 2. execute before approve → 拒否（409）
-            r2 = module.handler(_sigv4_event("execute_approved", {"approval_id": apr_id}, "arn:aws:iam::1:role/QuickConn"), None)
+            r2 = module.handler(
+                _sigv4_event("execute_approved", {"approval_id": apr_id}, "arn:aws:iam::1:role/QuickConn"), None
+            )
             assert r2["statusCode"] == 409
             assert json.loads(r2["body"])["status"] == "rejected"
 
@@ -337,24 +351,32 @@ class TestEnforcedHITL:
             assert json.loads(r3["body"])["status"] == "approved"
 
             # 4. execute after approve → 実行可（200）
-            r4 = module.handler(_sigv4_event("execute_approved", {"approval_id": apr_id}, "arn:aws:iam::1:role/QuickConn"), None)
+            r4 = module.handler(
+                _sigv4_event("execute_approved", {"approval_id": apr_id}, "arn:aws:iam::1:role/QuickConn"), None
+            )
             assert r4["statusCode"] == 200
             assert json.loads(r4["body"])["status"] == "executed"
 
             # 5. 再実行は不可（状態が executed）
-            r5 = module.handler(_sigv4_event("execute_approved", {"approval_id": apr_id}, "arn:aws:iam::1:role/QuickConn"), None)
+            r5 = module.handler(
+                _sigv4_event("execute_approved", {"approval_id": apr_id}, "arn:aws:iam::1:role/QuickConn"), None
+            )
             assert r5["statusCode"] == 409
 
     def test_execute_without_store_returns_412(self):
         module = _load_handler("quick_action")
         with patch.dict(os.environ, {"APPROVALS_TABLE": "", "ACTION_AUTH_MODE": "open"}, clear=False):
-            resp = module.handler(_sigv4_event("execute_approved", {"approval_id": "APR-x"}, "arn:aws:iam::1:role/X"), None)
+            resp = module.handler(
+                _sigv4_event("execute_approved", {"approval_id": "APR-x"}, "arn:aws:iam::1:role/X"), None
+            )
         assert resp["statusCode"] == 412
 
     def test_approve_nonexistent_returns_error(self):
         module = _load_handler("quick_action")
         table_name = self._make_table()
         with patch.dict(os.environ, {"APPROVALS_TABLE": table_name, "ACTION_AUTH_MODE": "open"}, clear=False):
-            resp = module.handler(_sigv4_event("approve", {"approval_id": "APR-missing"}, "arn:aws:iam::1:role/Admin"), None)
+            resp = module.handler(
+                _sigv4_event("approve", {"approval_id": "APR-missing"}, "arn:aws:iam::1:role/Admin"), None
+            )
         body = json.loads(resp["body"])
         assert body["status"] == "error"

@@ -117,13 +117,7 @@ def cmd_setup(args: argparse.Namespace) -> None:
         target_resp = client.create_gateway_target(
             gatewayIdentifier=gateway_id,
             name=WEB_SEARCH_TARGET_NAME,
-            targetConfiguration={
-                "mcp": {
-                    "connector": {
-                        "connectorId": "web-search"
-                    }
-                }
-            },
+            targetConfiguration={"mcp": {"connector": {"connectorId": "web-search"}}},
         )
         target_id = target_resp["targetId"]
         logger.info("Web Search target created: targetId=%s", target_id)
@@ -173,10 +167,12 @@ def invoke_web_search(gateway_id: str, query: str, max_results: int = 5) -> list
         response = client.invoke_tool(
             gatewayIdentifier=gateway_id,
             toolName=f"{WEB_SEARCH_TARGET_NAME}___WebSearch",
-            content=json.dumps({
-                "query": truncated_query,
-                "maxResults": max_results,
-            }),
+            content=json.dumps(
+                {
+                    "query": truncated_query,
+                    "maxResults": max_results,
+                }
+            ),
         )
 
         # MCP レスポンスのパース
@@ -263,9 +259,7 @@ def retrieve_from_kb(query: str, kb_id: str, num_results: int = 5) -> list[dict[
         resp = client.retrieve(
             knowledgeBaseId=kb_id,
             retrievalQuery={"text": query},
-            retrievalConfiguration={
-                "vectorSearchConfiguration": {"numberOfResults": num_results}
-            },
+            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": num_results}},
         )
         return [
             {
@@ -290,16 +284,21 @@ def generate_hybrid_answer(
     client = get_bedrock_runtime()
 
     # コンテキスト構築
-    internal_text = "\n".join([
-        f"- [source: {c['source']}] (score: {c['score']:.2f}): {c['text'][:300]}"
-        for c in internal_chunks
-    ]) or "(内部文書の検索結果なし)"
+    internal_text = (
+        "\n".join([f"- [source: {c['source']}] (score: {c['score']:.2f}): {c['text'][:300]}" for c in internal_chunks])
+        or "(内部文書の検索結果なし)"
+    )
 
-    web_text = "\n".join([
-        f"- [{r.get('title', 'N/A')}]({r.get('url', '')}) ({r.get('publishedDate', 'N/A')}): "
-        f"{r.get('text', '')[:200]}"
-        for r in web_results
-    ]) or "(Web 検索結果なし — Web Search 未設定または失敗)"
+    web_text = (
+        "\n".join(
+            [
+                f"- [{r.get('title', 'N/A')}]({r.get('url', '')}) ({r.get('publishedDate', 'N/A')}): "
+                f"{r.get('text', '')[:200]}"
+                for r in web_results
+            ]
+        )
+        or "(Web 検索結果なし — Web Search 未設定または失敗)"
+    )
 
     user_message = (
         f"<internal_documents>\n{internal_text}\n</internal_documents>\n\n"
@@ -480,7 +479,8 @@ def main() -> None:
     # setup
     sp_setup = subparsers.add_parser("setup", help="Gateway 作成 + Web Search ターゲット追加")
     sp_setup.add_argument(
-        "--role-arn", required=True,
+        "--role-arn",
+        required=True,
         help="AgentCore Gateway Service Role ARN (bedrock-agentcore.amazonaws.com を信頼)",
     )
     sp_setup.set_defaults(func=cmd_setup)

@@ -10,9 +10,7 @@ from unittest.mock import patch
 
 
 def _load_handler():
-    handler_path = os.path.join(
-        os.path.dirname(__file__), "..", "functions", "kb_trigger", "handler.py"
-    )
+    handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "kb_trigger", "handler.py")
     spec = importlib.util.spec_from_file_location("uc29_kb_trigger_handler", handler_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -67,9 +65,7 @@ class TestKbTrigger:
         start_resp = {"ingestionJob": {"ingestionJobId": "JOB789"}}
         with patch.dict(os.environ, ENV, clear=False):
             with patch.object(module, "_find_active_ingestion_job", return_value=None):
-                with patch.object(
-                    module.bedrock_agent, "start_ingestion_job", return_value=start_resp
-                ) as start:
+                with patch.object(module.bedrock_agent, "start_ingestion_job", return_value=start_resp) as start:
                     result = module.handler(_fpolicy_event("create"), _Ctx())
         assert result["status"] == "ingestion_started"
         assert result["trigger"] == "fpolicy_event"
@@ -91,12 +87,8 @@ class TestKbTrigger:
         start_resp = {"ingestionJob": {"ingestionJobId": "JOBDEL"}}
         with patch.dict(os.environ, ENV, clear=False):
             with patch.object(module, "_find_active_ingestion_job", return_value=None):
-                with patch.object(
-                    module.bedrock_agent, "start_ingestion_job", return_value=start_resp
-                ):
-                    result = module.handler(
-                        _fpolicy_event("delete", "ai_knowledge/sales/old.md"), _Ctx()
-                    )
+                with patch.object(module.bedrock_agent, "start_ingestion_job", return_value=start_resp):
+                    result = module.handler(_fpolicy_event("delete", "ai_knowledge/sales/old.md"), _Ctx())
         assert result["status"] == "ingestion_started"
         assert result["operation"] == "delete"
 
@@ -122,9 +114,7 @@ class TestKbTrigger:
         )
         with patch.dict(os.environ, ENV, clear=False):
             with patch.object(module, "_find_active_ingestion_job", return_value=None):
-                with patch.object(
-                    module.bedrock_agent, "start_ingestion_job", side_effect=err
-                ):
+                with patch.object(module.bedrock_agent, "start_ingestion_job", side_effect=err):
                     with pytest.raises(ClientError):
                         module.handler(_fpolicy_event(), _Ctx())
 
@@ -137,9 +127,7 @@ class TestKbTrigger:
         )
         with patch.dict(os.environ, ENV, clear=False):
             with patch.object(module, "_find_active_ingestion_job", return_value=None):
-                with patch.object(
-                    module.bedrock_agent, "start_ingestion_job", side_effect=err
-                ):
+                with patch.object(module.bedrock_agent, "start_ingestion_job", side_effect=err):
                     result = module.handler(_fpolicy_event(), _Ctx())
         assert result["status"] == "ingestion_in_progress"
         assert result["reason"] == "conflict_exception"
@@ -164,9 +152,7 @@ class TestKbTrigger:
         start_resp = {"ingestionJob": {"ingestionJobId": "JOBSCHEMA"}}
         with patch.dict(os.environ, ENV, clear=False):
             with patch.object(module, "_find_active_ingestion_job", return_value=None):
-                with patch.object(
-                    module.bedrock_agent, "start_ingestion_job", return_value=start_resp
-                ):
+                with patch.object(module.bedrock_agent, "start_ingestion_job", return_value=start_resp):
                     result = module.handler(event, _Ctx())
         assert result["status"] == "ingestion_started"
 
@@ -179,8 +165,6 @@ class TestKbTrigger:
 
     def test_find_active_job_none_when_empty(self):
         module = _load_handler()
-        with patch.object(
-            module.bedrock_agent, "list_ingestion_jobs", return_value={"ingestionJobSummaries": []}
-        ):
+        with patch.object(module.bedrock_agent, "list_ingestion_jobs", return_value={"ingestionJobSummaries": []}):
             job = module._find_active_ingestion_job("KB123", "DS456")
         assert job is None

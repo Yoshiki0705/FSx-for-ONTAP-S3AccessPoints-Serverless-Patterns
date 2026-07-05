@@ -94,9 +94,7 @@ class TestPublishHandlerBehavior:
         manifest = json.loads(fake_out.put_calls[0]["body"])
         assert len(manifest["skipped"]) == 1
 
-    def test_only_approved_prefix_is_targeted(
-        self, monkeypatch, publish_handler, lambda_context, fake_s3ap_factory
-    ):
+    def test_only_approved_prefix_is_targeted(self, monkeypatch, publish_handler, lambda_context, fake_s3ap_factory):
         self._set_env(monkeypatch, DELIVERY_MODE="ORIGIN_PULL")
         objs = [
             {"Key": "delivery-approved/ok.mp4", "Size": 1},
@@ -171,7 +169,11 @@ class TestDeliveryLogSyncHandler:
         fake_out = fake_s3ap_factory()
         monkeypatch.setattr(delivery_log_sync_handler, "S3ApHelper", lambda *a, **k: fake_out)
 
-        event = {"log_records": [{"timestamp": "t", "key": "clip.mp4", "status": "200", "bytes": 100, "client_ip": "203.0.113.5"}]}
+        event = {
+            "log_records": [
+                {"timestamp": "t", "key": "clip.mp4", "status": "200", "bytes": 100, "client_ip": "203.0.113.5"}
+            ]
+        }
         result = delivery_log_sync_handler.handler(event, lambda_context)
 
         assert result["record_count"] == 1
