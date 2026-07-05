@@ -24,11 +24,26 @@ from shared.lambdas.secrets_rotation import handler as rotation_module
 
 # Generate passwords that could potentially leak into logs
 # Exclude strings that are substrings of expected log messages (defense-in-depth)
-_LOG_FIXED_WORDS = frozenset({
-    "credential", "change", "applying", "applied", "successfully",
-    "ontap", "secret", "testing", "verified", "user", "fsxadmin",
-    "admin", "ontap_user", "created", "promoted", "rotation",
-})
+_LOG_FIXED_WORDS = frozenset(
+    {
+        "credential",
+        "change",
+        "applying",
+        "applied",
+        "successfully",
+        "ontap",
+        "secret",
+        "testing",
+        "verified",
+        "user",
+        "fsxadmin",
+        "admin",
+        "ontap_user",
+        "created",
+        "promoted",
+        "rotation",
+    }
+)
 
 password_strategy = st.text(
     alphabet=st.characters(

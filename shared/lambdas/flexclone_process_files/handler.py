@@ -228,7 +228,8 @@ def _generate_thumbnails(s3ap_alias: str, prefix: str, output_prefix: str) -> di
             head_bytes = response["Body"].read()
             response["Body"].close()
 
-            file_hash = hashlib.md5(head_bytes).hexdigest()  # noqa: S324
+            # Non-security content hash (dedup/change-detection only); not for auth/signing.
+            file_hash = hashlib.md5(head_bytes, usedforsecurity=False).hexdigest()  # noqa: S324
 
             # メタデータ JSON を出力
             basename = img_file["key"].rsplit("/", 1)[-1]

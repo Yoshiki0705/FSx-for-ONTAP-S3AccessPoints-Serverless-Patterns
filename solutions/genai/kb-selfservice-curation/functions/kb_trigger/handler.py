@@ -91,9 +91,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # 二次パスフィルタ（FPolicy ボリュームパス名前空間。EventBridge ルールが一次フィルタ）
     if path_filter and path_filter not in file_path:
-        logger.info(
-            "Skip: file_path '%s' does not match path filter '%s'", file_path, path_filter
-        )
+        logger.info("Skip: file_path '%s' does not match path filter '%s'", file_path, path_filter)
         return {"status": "skipped", "reason": "path_filter_mismatch", "file_path": file_path}
 
     correlation_id = detail.get("event_id", context.aws_request_id if context else "n/a")
@@ -197,9 +195,7 @@ def _find_active_ingestion_job(kb_id: str, ds_id: str) -> str | None:
         # filters 非対応や一時エラー時はフォールバック取得
         logger.warning("list_ingestion_jobs with filter failed: %s; falling back", str(e))
         try:
-            resp = bedrock_agent.list_ingestion_jobs(
-                knowledgeBaseId=kb_id, dataSourceId=ds_id, maxResults=10
-            )
+            resp = bedrock_agent.list_ingestion_jobs(knowledgeBaseId=kb_id, dataSourceId=ds_id, maxResults=10)
             for s in resp.get("ingestionJobSummaries", []):
                 if s.get("status") in _ACTIVE_STATUSES:
                     return s.get("ingestionJobId")

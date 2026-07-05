@@ -6,6 +6,7 @@ template ships no VpcConfig, and the handler defaults to simulation mode
 (`if SIMULATION_MODE or not ONTAP_MANAGEMENT_IP: simulate`). The corrected note
 states this accurately.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

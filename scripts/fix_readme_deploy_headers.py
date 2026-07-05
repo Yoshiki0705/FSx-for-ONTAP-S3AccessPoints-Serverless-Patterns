@@ -8,21 +8,20 @@ CloudFormation untouched. Idempotent.
 
 Usage: python3 scripts/fix_readme_deploy_headers.py <README.md> [--write]
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-DEPLOY_WORDS = ("デプロイ", "Deployment", "Deploy", "部署", "배포",
-                "Bereitstellung", "Déploiement", "Despliegue")
+DEPLOY_WORDS = ("デプロイ", "Deployment", "Deploy", "部署", "배포", "Bereitstellung", "Déploiement", "Despliegue")
 
 
 def transform(content: str) -> tuple[str, int]:
     lines = content.split("\n")
     count = 0
     for i, line in enumerate(lines):
-        if line.lstrip().startswith("#") and "CloudFormation" in line \
-                and any(w in line for w in DEPLOY_WORDS):
+        if line.lstrip().startswith("#") and "CloudFormation" in line and any(w in line for w in DEPLOY_WORDS):
             new = line.replace("AWS CloudFormation", "AWS SAM").replace("CloudFormation", "SAM")
             if new != line:
                 lines[i] = new
