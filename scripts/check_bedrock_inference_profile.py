@@ -31,15 +31,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # Pattern directories not yet migrated to inference profiles.
-# Remove entries as each remediation batch lands; target = empty set.
-KNOWN_PENDING: set[str] = {
-    # Tier A (model default + IAM)
-    "solutions/industry/sustainability-esg-reporting",
-    "solutions/industry/telecom-network-analytics",
-    "solutions/industry/transportation-maintenance",
-    "solutions/industry/travel-document-processing",
-    "solutions/industry/utilities-asset-inspection",
-}
+# Empty: the fleet-wide rollout is complete and the guard now fully enforces the
+# inference-profile rule for every Bedrock-using pattern (no allowlist).
+KNOWN_PENDING: set[str] = set()
 
 _GEO_PREFIXES = ("apac.", "us.", "eu.", "us-gov.")
 # Bare text-generation model families that need an inference profile on-demand.
@@ -169,7 +163,10 @@ def main(argv: list[str]) -> int:
         exit_code = 1
 
     if exit_code == 0:
-        print("✅ No unexpected violations. (Remaining KNOWN_PENDING entries shrink as batches land.)")
+        if KNOWN_PENDING:
+            print("✅ No unexpected violations. (Remaining KNOWN_PENDING entries shrink as batches land.)")
+        else:
+            print("✅ No violations and no allowlist — inference-profile rule fully enforced fleet-wide.")
     return exit_code
 
 
