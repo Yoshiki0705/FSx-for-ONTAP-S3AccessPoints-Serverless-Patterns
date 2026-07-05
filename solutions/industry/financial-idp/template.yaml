@@ -78,7 +78,7 @@ Parameters:
 
   BedrockModelId:
     Type: String
-    Default: "amazon.nova-lite-v1:0"
+    Default: "apac.amazon.nova-lite-v1:0"
     Description: Bedrock モデル ID（サマリー生成用）
 
   TextractPageThreshold:
@@ -490,7 +490,9 @@ Resources:
                 Action:
                   - bedrock:InvokeModel
                 Resource:
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+                  # Nova/Claude 推論プロファイル: プロファイル ARN と各リージョンの foundation-model ARN の両方が必要
+                  - !Sub "arn:aws:bedrock:*::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*"
               - Sid: SNS
                 Effect: Allow
                 Action:
