@@ -61,7 +61,7 @@ Serverless-Pattern zur Verarbeitung von SAP-IDoc-Exporten, per HULFT abgelegten 
 | `OutputBucketName` | S3-Bucket für Ergebnisse | (erforderlich) |
 | `NotificationEmail` | E-Mail für SNS-Benachrichtigungen | (erforderlich) |
 | `FilePrefix` | Zu scannendes Verzeichnispräfix | `idoc-export/` |
-| `BedrockModelId` | Bedrock-Modell für die Zusammenfassung | `amazon.nova-pro-v1:0` |
+| `BedrockModelId` | Bedrock-Modell für die Zusammenfassung | `apac.amazon.nova-pro-v1:0` |
 | `MaxFilesPerExecution` | Maximale Anzahl Dateien pro Lauf | `100` |
 
 ## Deployment

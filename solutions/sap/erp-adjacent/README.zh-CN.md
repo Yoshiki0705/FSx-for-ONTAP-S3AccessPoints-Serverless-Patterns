@@ -61,7 +61,7 @@
 | `OutputBucketName` | 用于存放结果的 S3 存储桶 | (必填) |
 | `NotificationEmail` | SNS 告警的电子邮件 | (必填) |
 | `FilePrefix` | 要扫描的目录前缀 | `idoc-export/` |
-| `BedrockModelId` | 用于汇总的 Bedrock 模型 | `amazon.nova-pro-v1:0` |
+| `BedrockModelId` | 用于汇总的 Bedrock 模型 | `apac.amazon.nova-pro-v1:0` |
 | `MaxFilesPerExecution` | 每次运行的最大文件数 | `100` |
 
 ## Deployment

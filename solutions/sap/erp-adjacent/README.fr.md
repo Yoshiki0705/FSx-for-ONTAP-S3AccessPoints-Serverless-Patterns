@@ -61,7 +61,7 @@ Modèle serverless pour traiter les exports IDoc SAP, les fichiers déposés par
 | `OutputBucketName` | Bucket S3 pour les résultats | (requis) |
 | `NotificationEmail` | E-mail pour les alertes SNS | (requis) |
 | `FilePrefix` | Préfixe de répertoire à analyser | `idoc-export/` |
-| `BedrockModelId` | Modèle Bedrock pour la synthèse | `amazon.nova-pro-v1:0` |
+| `BedrockModelId` | Modèle Bedrock pour la synthèse | `apac.amazon.nova-pro-v1:0` |
 | `MaxFilesPerExecution` | Nombre maximal de fichiers par exécution | `100` |
 
 ## Deployment
