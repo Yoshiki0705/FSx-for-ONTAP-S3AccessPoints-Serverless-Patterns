@@ -137,6 +137,29 @@ muss man entscheiden, **auf welcher Schicht** die Einfügung erfolgt.
 > laufen protokollunabhängig parallel auf denselben Daten — das ist die Motivation, FSx for ONTAP mit
 > S3 Access Points zu kombinieren.
 
+## Streaming-Herausforderungen und Lösungsideen (Use Cases)
+
+Über Post-Live-VOD und Near-live-Editing hinaus lassen sich mehrere wiederkehrende
+Streaming-Herausforderungen gut auf einen geteilten FSx-for-ONTAP-Medien-Workspace abbilden, der
+über S3 Access Points bereitgestellt wird. Dies sind Optionen und Kompromisse, kein Ranking;
+kombinieren Sie sie mit den genannten komplementären AWS-Mediendiensten.
+
+| Streaming-Herausforderung | Lösungsidee (FSx for ONTAP + S3 AP + IVS) | Komplementäre Dienste | Ehrlicher Kompromiss |
+|---|---|---|---|
+| Internationale Zielgruppen mit mehrsprachigen Untertiteln/Übersetzung erreichen | Lokalisierungsteams erstellen Untertitel-Assets über NFS/SMB an derselben Aufnahme; VTT über S3 AP + CloudFront (Near-live-Rendition) ausliefern oder Client-Overlays über Timed Metadata steuern | Amazon Transcribe, Amazon Translate; Live-Untertitel-Partner | Live-Übersetzung ist near-live; menschliche Prüfung für regulierte/markenkritische Inhalte empfohlen |
+| Lange Livestreams schnell zu Highlights/Clips machen | EventBridge → Step Functions schneidet finalisierte Segmente als Highlight-Assets auf FSx for ONTAP; Bearbeitung über SMB; Veröffentlichung über S3 AP + CloudFront | AWS Elemental MediaConvert (Renditions) | Segment-Finalisierungsverzögerung; Clip-Genauigkeit hängt von Markern/Timecodes ab |
+| Remote-/geo-verteilte Bearbeitung über Verbindungen mit hoher Latenz | Editoren mit FlexCache einen lokal-ähnlichen Cache in ihrer Nähe geben; niedrigauflösende Proxys bearbeiten, während die volle Auflösung auf dem Ursprungsvolume bleibt | — | FlexCache erfordert Cache-Verwaltung; Proxy-Workflow braucht einen Erzeugungsschritt |
+| Wachsende Medienbibliotheken und Speicherkosten | Kalte Assets mit FabricPool in einen Capacity Pool schichten; heiße Bearbeitungsdaten auf SSD halten | — | Tiering ist ONTAP-nativ (kein S3 Lifecycle, das S3 AP nicht bieten); Rückholungslatenz für kalte Daten |
+| Geschäftskontinuität für Medienbetrieb | Medien-Workspace mit SnapMirror regionsübergreifend replizieren; Point-in-Time-Snapshots; an einem 3-2-1-Ansatz ausrichten | CloudFront + Resilienz der AWS-Mediendienste | RPO/RTO für Quelldaten und Index getrennt definieren; Replikation verursacht Kosten |
+| Interaktiver Live-Commerce / Engagement | Produkt-Overlays und Momente mit IVS Timed Metadata steuern; Produkt-/Katalog-/Overlay-Assets auf FSx for ONTAP über S3 AP + CloudFront ausliefern; den „Moment" als VOD clippen | IVS Timed Metadata, IVS Chat | PutMetadata-Grenzen 1 KB / 5 TPS; Overlays clientseitig gerendert |
+| Regulierte Aufbewahrung/Audit von Aufnahmen | Aufnahmen auf ONTAP mit Snapshot-/Aufbewahrungsfunktionen und Audit-Trails aufbewahren; Lesepfade pro Titel/Rolle über separate Access Points bereitstellen | — | Immutabilitäts-/Aufbewahrungsfunktionen für Ihre FSx-for-ONTAP-Version und Jurisdiktion prüfen; dies ist Governance-Leitlinie, keine Rechtsberatung |
+| Durchsuchbares Medienarchiv | Aufnahmen transkribieren, für die Suche indexieren und über S3 AP analysieren, ohne Daten aus FSx for ONTAP zu kopieren | Amazon Transcribe, Athena/Glue, Amazon Bedrock, OpenSearch | Extraktions-/Indexkosten; Zugriffskontrolle pro Titel zur Abfragezeit anwenden |
+
+> **Neutrale Rahmung**: Jede Zeile ist eine kontextabhängige Option. AWS Elemental
+> MediaLive / MediaPackage / MediaTailor decken serverseitige Live-Bearbeitung, Packaging und
+> Ad-Insertion ab; dieses Muster fokussiert den Datei- + S3-API-Medien-Workspace und die
+> Post-/Near-live-Auslieferung. Wählen Sie nach Workload, Einschränkungen und Kompromissen.
+
 ## Wann dieses Muster verwenden — Entscheidungshilfe
 
 ```mermaid

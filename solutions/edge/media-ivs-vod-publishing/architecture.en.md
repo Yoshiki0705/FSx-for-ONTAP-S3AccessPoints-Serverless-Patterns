@@ -139,6 +139,28 @@ the insertion happens at.
 > captioning, and analysis run concurrently on the same data regardless of protocol — that is the
 > motivation for combining FSx for ONTAP with S3 Access Points.
 
+## Streaming challenges and solution ideas (use cases)
+
+Beyond post-live VOD and near-live editing, several recurring streaming challenges map well to a
+shared FSx for ONTAP media workspace exposed through S3 Access Points. These are options and
+trade-offs, not a ranking; combine them with the complementary AWS media services noted.
+
+| Streaming challenge | Solution idea (FSx for ONTAP + S3 AP + IVS) | Complementary services | Honest trade-off |
+|---|---|---|---|
+| Reach international audiences with multi-language subtitles/translation | Localization teams author caption/subtitle assets over NFS/SMB on the same recording; serve VTT via S3 AP + CloudFront (near-live rendition), or drive client overlays via timed metadata | Amazon Transcribe, Amazon Translate; live-captioning partners | Live translation is near-live; human review is advisable for regulated or brand-sensitive content |
+| Turn long live streams into highlights/clips quickly | EventBridge → Step Functions clip finished segments into highlight assets on FSx for ONTAP; editors refine over SMB; publish via S3 AP + CloudFront | AWS Elemental MediaConvert (renditions) | Segment-finalization delay; clip accuracy depends on markers/timecodes |
+| Remote / geographically distributed editing over high-latency links | Give editors a local-like cache with FlexCache near them; edit low-res proxies while full-res stays on the origin volume | — | FlexCache adds cache management; proxy workflow needs a proxy-generation step |
+| Growing media libraries and storage cost | Tier cold assets with FabricPool to a capacity pool; keep hot editing data on SSD | — | Tiering is ONTAP-native (not S3 Lifecycle, which S3 AP does not provide); recall latency for cold data |
+| Business continuity for media operations | Replicate the media workspace cross-region with SnapMirror; take point-in-time Snapshots; align to a 3-2-1 approach | CloudFront + AWS media services resiliency | Define RPO/RTO for source data and any index separately; replication has cost |
+| Interactive live commerce / engagement | Drive product overlays and moments with IVS timed metadata; keep product/catalog/overlay assets on FSx for ONTAP served via S3 AP + CloudFront; clip the "moment" to VOD | IVS timed metadata, IVS chat | PutMetadata 1 KB / 5 TPS limits; overlays render client-side |
+| Regulated retention / audit of recordings | Keep recordings on ONTAP with Snapshot/retention features and audit trails; expose read paths per title/role via separate access points | — | Validate the immutability/retention features for your FSx for ONTAP version and jurisdiction; this is governance guidance, not legal advice |
+| Searchable media archive | Transcribe recordings to text, index for search, and run analysis over S3 AP without copying data out of FSx for ONTAP | Amazon Transcribe, Athena/Glue, Amazon Bedrock, OpenSearch | Extraction/index cost; apply per-title access control at query time |
+
+> **Neutral framing**: each row is an option suited to a different context. AWS Elemental
+> MediaLive / MediaPackage / MediaTailor handle server-side live manipulation, packaging, and ad
+> insertion; this pattern focuses on the file + S3-API media workspace and post/near-live delivery.
+> Choose by workload, constraints, and trade-offs.
+
 ## When to use this pattern — decision guide
 
 ```mermaid
