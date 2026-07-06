@@ -140,6 +140,13 @@ python3 scripts/bedrock_inference_profile_smoke.py --all-repo-defaults --region 
 **存在しないプロファイル ID（例: 特定モデルに `apac.` が無いのに指定した場合）は静的チェックでは検出
 できない**ため、この一括ライブ検証が有効です。
 
+#### スケジュール実行（任意）
+
+`.github/workflows/bedrock-default-validation.yml` が、上記 `--all-repo-defaults` を**週次 + 手動**で
+実行し、無効プロファイル ID / モデル EOL / リージョン可用性の変化を自動検知します。**オプトイン**です:
+リポジトリ変数 `BEDROCK_VALIDATION_ROLE_ARN` に、GitHub OIDC を信頼し `bedrock:InvokeModel` を許可する
+IAM ロール ARN を設定すると有効化されます（未設定ならジョブはスキップ＝AWS 呼び出しも課金も無し）。
+
 ### コスト注記
 
 - 本リポジトリのサンプル既定は **コスト優先で `nova-lite`** です。品質要件がある場合は
@@ -286,6 +293,14 @@ python3 scripts/bedrock_inference_profile_smoke.py --all-repo-defaults --region 
 `--all-repo-defaults` extracts every geo-prefixed default from the templates and invokes each once.
 **A non-existent profile ID (e.g. specifying `apac.` for a model that has no `apac.` profile) cannot
 be caught by static checks** — this bulk live check catches it.
+
+#### Scheduled validation (optional)
+
+`.github/workflows/bedrock-default-validation.yml` runs the `--all-repo-defaults` check **weekly +
+on-demand** to auto-detect invalid profile IDs, model EOL, and regional-availability changes. It is
+**opt-in**: set the repository variable `BEDROCK_VALIDATION_ROLE_ARN` to an IAM role ARN that trusts
+GitHub OIDC and allows `bedrock:InvokeModel` to enable it. If unset, the job is skipped (no AWS calls,
+no cost).
 
 ### Cost note
 
