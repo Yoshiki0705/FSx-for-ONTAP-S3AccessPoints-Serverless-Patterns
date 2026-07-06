@@ -54,6 +54,10 @@ Parameters:
   BedrockModelId:
     Type: String
     Default: "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+    Description: >-
+      Bedrock モデル ID / 推論プロファイル ID（重大度分類用）。接頭辞がルーティング範囲=データレジデンシーを表します:
+      global.(世界・移植性優先の既定) / apac.・us.・eu.(地域) / jp.・au. 等(国内・主権)。要件に応じ変更可。
+      詳細: docs/bedrock-inference-profiles.md
   TriggerMode:
     Type: String
     Default: "POLLING"
