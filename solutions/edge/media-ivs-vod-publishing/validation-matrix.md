@@ -36,4 +36,4 @@ Status legend:
 - Which IAM / AP policy / ONTAP file-system identity pattern does the IVS Service-Linked Role
   require to write recordings through an S3 AP?
 
-These are tracked in [support-request/feature-request-en.md](support-request/feature-request-en.md).
+These are tracked as an AWS feature request (kept privately, outside this public repository).

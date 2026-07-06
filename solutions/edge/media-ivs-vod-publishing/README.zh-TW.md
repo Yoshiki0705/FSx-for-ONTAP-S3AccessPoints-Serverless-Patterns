@@ -200,7 +200,6 @@ VOD 發佈不僅依賴自動判定。依套件**完整性訊號**計算 publish-
 | [docs/demo-guide.md](docs/demo-guide.md) | DemoMode 驗證步驟 |
 | [samples/](samples/) | EventBridge 事件、Step Functions ASL、Lambda 片段、AP 政策、CloudFront 說明 |
 | [scripts/](scripts/) | Recording Config 建立/驗證/同步 CLI |
-| [support-request/](support-request/) | AWS 功能改進請求範本（JA / EN） |
 
 ## 安全 / 治理
 
