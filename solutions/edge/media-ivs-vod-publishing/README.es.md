@@ -14,7 +14,7 @@
 | **Experimental** | `Not documented as supported` | Apuntar una IVS Recording Configuration directamente a un alias de S3 Access Point de FSx for ONTAP. **No documentado como compatible por AWS** — validar por separado. Véase [direct-recording-experiment.md](direct-recording-experiment.md). |
 
 > Esta es una **implementación de referencia**. La elección del proveedor de entrega, la gestión de
-> derechos, las restricciones geográficas y el cumplimiento los decide el cliente. La validación
+> derechos, las restricciones geográficas y el cumplimiento los decide la organización usuaria. La validación
 > técnica no sustituye la revisión legal, de cumplimiento o de privacidad.
 
 > **TL;DR (30 s)**: conserve la experiencia en directo de IVS; grabe en el **bucket S3 compatible**;
@@ -40,7 +40,7 @@ herramientas de archivos y servicios de la API S3) en lugar de copias separadas 
 
 ## Guía Partner/SI
 
-- **Primera pregunta al cliente**: «Tras el directo, ¿la edición/QC/aprobación/archivo necesitan tanto protocolos de archivo (NFS/SMB) como la API S3? ¿La entrega VOD es vía CloudFront?»
+- **Primera pregunta a aclarar**: «Tras el directo, ¿la edición/QC/aprobación/archivo necesitan tanto protocolos de archivo (NFS/SMB) como la API S3? ¿La entrega VOD es vía CloudFront?»
 - **Entregables PoC**: demo DemoMode → manifiesto de publicación VOD (validación del master manifest + decisión de Human Review) → (opcional) grabación IVS real → publicación FSx → entrega CloudFront.
 
 ## Arquitectura (ruta recomendada)

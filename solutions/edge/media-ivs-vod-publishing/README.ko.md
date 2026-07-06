@@ -13,7 +13,7 @@
 | **권장(Recommended)** | `Supported components` | Amazon IVS 를 정식 지원되는 표준 S3 버킷에 Auto-Record 한 뒤 HLS 패키지를 FSx for ONTAP 로 게시하고 S3 Access Point + Amazon CloudFront 로 VOD 전달. 각 구성 요소는 개별적으로 문서화·지원됨. |
 | **실험(Experimental)** | `Not documented as supported` | IVS Recording Configuration 의 출력 대상으로 FSx for ONTAP S3 Access Point alias 를 직접 지정하는 구성. **AWS 공식 문서에서 지원으로 명시되지 않음** — 별도 검증 필요. [direct-recording-experiment.md](direct-recording-experiment.md) 참조. |
 
-> 본 패턴은 **참조 구현**입니다. 전달 벤더 선택, 권리 처리, 지역 제한, 컴플라이언스는 고객이 판단합니다.
+> 본 패턴은 **참조 구현**입니다. 전달 벤더 선택, 권리 처리, 지역 제한, 컴플라이언스는 이용자·조직이 판단합니다.
 > 기술 검증은 법무·컴플라이언스·개인정보 평가를 대체하지 않습니다.
 
 > **TL;DR (30초)**: IVS 라이브 경험은 그대로 활용하고, 녹화는 **지원되는 S3 버킷**으로. 이후 HLS 를
@@ -37,7 +37,7 @@ S3 API 서비스 모두 사용 가능) 운영합니다.
 
 ## Partner/SI 가이드
 
-- **첫 고객 질문**: "라이브 이후 편집·QC·승인·아카이브에 파일(NFS/SMB)과 S3 API 가 모두 필요한가? VOD 전달은 CloudFront 인가?"
+- **첫 확인 질문**: "라이브 이후 편집·QC·승인·아카이브에 파일(NFS/SMB)과 S3 API 가 모두 필요한가? VOD 전달은 CloudFront 인가?"
 - **PoC 산출물**: DemoMode 데모 → VOD publish 매니페스트(master manifest 검증 + Human Review 판정) → (선택) 실제 IVS 녹화 → FSx 게시 → CloudFront 전달.
 
 ## 아키텍처(권장 경로)

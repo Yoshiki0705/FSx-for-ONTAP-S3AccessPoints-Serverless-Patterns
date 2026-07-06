@@ -1,7 +1,7 @@
 # Supported Path — IVS → S3 → FSx for ONTAP → S3 Access Point → CloudFront
 
 > **Status: Recommended.** Every component below is documented and supported by AWS
-> individually. This is the path to present to customers.
+> individually. This is the path to present to users, teams, and organizations.
 
 ## Flow
 
