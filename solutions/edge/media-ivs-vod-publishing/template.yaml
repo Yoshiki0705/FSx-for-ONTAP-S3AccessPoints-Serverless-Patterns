@@ -1,0 +1,661 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Media IVS VOD Publishing: Amazon IVS のライブ録画（HLS）を、正式サポートされた S3 バケットから
+  FSx for NetApp ONTAP の S3 Access Point へ取り込み、master manifest を検証したうえで
+  VOD publish マニフェストを書き戻すサーバーレスワークフロー。CloudFront + S3 AP で VOD 配信する。
+
+  NOTE: Publish Lambda は Internet-origin S3 AP へアクセスするため VPC 外で実行する
+  （AGENTS.md: VPC-external Lambda for Internet-origin S3AP access）。
+  NOTE: 「IVS が直接 FSx S3 AP へ録画する」構成は Experimental（未サポート）であり本テンプレートには含めない。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  RecordingSourceBucket:
+    Type: String
+    Description: IVS Auto-Record 先の標準 S3 バケット名（または S3 AP Alias）。
+    AllowedPattern: "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+
+  S3AccessPointOutputAlias:
+    Type: String
+    Description: FSx for ONTAP 書き込み用 S3 Access Point Alias（Internet-origin）。
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  MasterManifestName:
+    Type: String
+    Default: "master.m3u8"
+    Description: master manifest のファイル名（VOD 完全性検証に使用）。
+
+  TriggerMode:
+    Type: String
+    Default: "EVENT_DRIVEN"
+    AllowedValues: ["POLLING", "EVENT_DRIVEN", "HYBRID"]
+    Description: >
+      トリガーモード。EVENT_DRIVEN を主対象とする（IVS Recording End → EventBridge → Step Functions）。
+      POLLING は SourcePrefixRoot 配下を走査。HYBRID は両方を有効化するが冪等化は未実装。
+
+  SourcePrefixRoot:
+    Type: String
+    Default: "ivs/v1/"
+    Description: POLLING 時に走査する IVS 録画プレフィックス。
+
+  DemoMode:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: true の場合、FSx への実コピーをスキップし記録のみ（FSx 無しで検証）。
+
+  DataClassification:
+    Type: String
+    Default: "PUBLIC"
+    AllowedValues: ["PUBLIC", "INTERNAL", "RESTRICTED", "HIGHLY_RESTRICTED"]
+    Description: 出力データ分類ラベル（VOD 配信成果物は原則 PUBLIC）。
+
+  HumanReviewAutoApproveThreshold:
+    Type: String
+    Default: "0.85"
+    Description: 自動公開（AUTO_APPROVE）の confidence 閾値。
+
+  HumanReviewRejectThreshold:
+    Type: String
+    Default: "0.30"
+    Description: 自動却下（REJECT）の confidence 閾値。
+
+  EnableModeration:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      opt-in。Amazon Rekognition で録画サムネイルのコンテンツモデレーションを実施する。
+      フラグ時は publish をブロックし人手確認へ回す。既定は無効（推奨パス/DemoMode は不変）。
+
+  ModerationMinConfidence:
+    Type: String
+    Default: "80"
+    Description: モデレーションラベル採用の最小 confidence（EnableModeration=true 時）。
+
+  ModerationMaxImages:
+    Type: String
+    Default: "5"
+    Description: モデレーション対象サムネイル数の上限（コスト制御）。
+
+  EnableStrictModeration:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      opt-in。動画（Rekognition）・音声（Transcribe + Comprehend）・字幕（Comprehend）の厳密
+      モデレーション Lambda（非同期 start/collect）を作成する。既定は無効。
+
+  ModerationToxicityThreshold:
+    Type: String
+    Default: "0.5"
+    Description: Comprehend DetectToxicContent の toxicity しきい値（0-1、EnableStrictModeration=true 時）。
+
+  MediaModerationLanguage:
+    Type: String
+    Default: "en"
+    Description: Comprehend / Transcribe の言語コード（EnableStrictModeration=true 時）。
+
+  MediaConvertRoleArn:
+    Type: String
+    Default: ""
+    Description: >
+      HLS→MP4 変換に使う AWS Elemental MediaConvert 実行ロールの ARN
+      （EnableStrictModeration=true で動画モデレーションを行う場合に必要）。
+
+  EnableCloudFront:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudFront Distribution（S3 AP オリジンからの VOD 配信）を有効化する。
+
+  NotificationEmail:
+    Type: String
+    Description: SNS 通知の送信先メールアドレス。
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 hour)"
+    Description: EventBridge Scheduler のスケジュール式（POLLING / HYBRID 時）。
+
+  EnableCloudWatchAlarms:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: CloudWatch Alarms（Lambda エラー / Step Functions 失敗）を有効化する。
+
+  EnableXRayTracing:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: X-Ray トレーシングを有効化する。
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    Description: CloudWatch Logs の保持日数。
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateCloudFront: !Equals [!Ref EnableCloudFront, "true"]
+  EnableXRay: !Equals [!Ref EnableXRayTracing, "true"]
+  IsPolling: !Equals [!Ref TriggerMode, "POLLING"]
+  IsEventDriven: !Equals [!Ref TriggerMode, "EVENT_DRIVEN"]
+  IsHybrid: !Equals [!Ref TriggerMode, "HYBRID"]
+  IsPollingOrHybrid: !Or [!Condition IsPolling, !Condition IsHybrid]
+  IsEventDrivenOrHybrid: !Or [!Condition IsEventDriven, !Condition IsHybrid]
+  CreateCloudWatchAlarms: !Equals [!Ref EnableCloudWatchAlarms, "true"]
+  EnableModerationCond: !Equals [!Ref EnableModeration, "true"]
+  EnableStrictModerationCond: !Equals [!Ref EnableStrictModeration, "true"]
+  HasMediaConvertRole: !Not [!Equals [!Ref MediaConvertRoleArn, ""]]
+
+# =====================================================================
+# Globals
+# =====================================================================
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 300
+    MemorySize: 512
+    Architectures:
+      - arm64
+    Tracing: !If [EnableXRay, Active, PassThrough]
+    Tags:
+      UseCase: media-ivs-vod-publishing
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-shared"
+      Description: Shared Python modules (s3ap_helper, data_classification, human_review, observability, etc.)
+      ContentUri: ../../../
+      CompatibleRuntimes:
+        - python3.12
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: alias/aws/sns
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  PublishLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-publish"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  # -----------------------------------------------------------------
+  # Publish Function (VPC-external — Internet-origin S3 AP)
+  # -----------------------------------------------------------------
+  PublishFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-publish"
+      CodeUri: functions/publish/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedLayer
+      LoggingConfig:
+        LogGroup: !Ref PublishLogGroup
+      Environment:
+        Variables:
+          USE_CASE: media-ivs-vod-publishing
+          S3_SOURCE: !Ref RecordingSourceBucket
+          S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
+          MASTER_MANIFEST_NAME: !Ref MasterManifestName
+          SOURCE_PREFIX_ROOT: !Ref SourcePrefixRoot
+          REQUIRE_RECORDING_END: "true"
+          DEMO_MODE: !Ref DemoMode
+          DATA_CLASSIFICATION: !Ref DataClassification
+          HUMAN_REVIEW_AUTO_APPROVE_THRESHOLD: !Ref HumanReviewAutoApproveThreshold
+          HUMAN_REVIEW_REJECT_THRESHOLD: !Ref HumanReviewRejectThreshold
+          ENABLE_MODERATION: !Ref EnableModeration
+          MODERATION_MIN_CONFIDENCE: !Ref ModerationMinConfidence
+          MODERATION_MAX_IMAGES: !Ref ModerationMaxImages
+      Policies:
+        - Statement:
+            - Sid: S3ReadRecordingSource
+              Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+              Resource:
+                - !Sub "arn:aws:s3:::${RecordingSourceBucket}"
+                - !Sub "arn:aws:s3:::${RecordingSourceBucket}/*"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+            - Sid: S3AccessPointWriteOutput
+              Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource:
+                - !Sub "arn:aws:s3:::${S3AccessPointOutputAlias}/*"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+        - !If
+          - EnableModerationCond
+          - Statement:
+              - Sid: RekognitionModeration
+                Effect: Allow
+                Action:
+                  - rekognition:DetectModerationLabels
+                Resource: "*"
+          - !Ref AWS::NoValue
+
+  # -----------------------------------------------------------------
+  # Strict Moderation Function (opt-in, async: video/audio/captions)
+  # VPC-external; reads standard recording bucket; calls Rekognition/Transcribe/Comprehend.
+  # -----------------------------------------------------------------
+  ModerationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: EnableStrictModerationCond
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-moderation"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  ModerationFunction:
+    Type: AWS::Serverless::Function
+    Condition: EnableStrictModerationCond
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-moderation"
+      CodeUri: functions/moderation/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedLayer
+      LoggingConfig:
+        LogGroup: !Ref ModerationLogGroup
+      Environment:
+        Variables:
+          USE_CASE: media-ivs-vod-publishing
+          S3_SOURCE: !Ref RecordingSourceBucket
+          MODERATION_MIN_CONFIDENCE: !Ref ModerationMinConfidence
+          MODERATION_TOXICITY_THRESHOLD: !Ref ModerationToxicityThreshold
+          MODERATION_LANGUAGE_CODE: !Ref MediaModerationLanguage
+          TRANSCRIBE_OUTPUT_PREFIX: "moderation/transcripts/"
+      Policies:
+        - Statement:
+            - Sid: S3ReadWriteSourceForModeration
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:ListBucket
+              Resource:
+                - !Sub "arn:aws:s3:::${RecordingSourceBucket}"
+                - !Sub "arn:aws:s3:::${RecordingSourceBucket}/*"
+            - Sid: RekognitionVideoModeration
+              Effect: Allow
+              Action:
+                - rekognition:StartContentModeration
+                - rekognition:GetContentModeration
+              Resource: "*"
+            - Sid: TranscribeAudio
+              Effect: Allow
+              Action:
+                - transcribe:StartTranscriptionJob
+                - transcribe:GetTranscriptionJob
+              Resource: "*"
+            - Sid: ComprehendToxicity
+              Effect: Allow
+              Action:
+                - comprehend:DetectToxicContent
+              Resource: "*"
+
+  # -----------------------------------------------------------------
+  # Transcode Function (opt-in): HLS -> MP4 via MediaConvert, for strict
+  # video moderation input. Created only when EnableStrictModeration=true.
+  # -----------------------------------------------------------------
+  TranscodeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: EnableStrictModerationCond
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-transcode"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  TranscodeFunction:
+    Type: AWS::Serverless::Function
+    Condition: EnableStrictModerationCond
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-transcode"
+      CodeUri: functions/transcode/
+      Handler: handler.handler
+      Layers:
+        - !Ref SharedLayer
+      LoggingConfig:
+        LogGroup: !Ref TranscodeLogGroup
+      Environment:
+        Variables:
+          USE_CASE: media-ivs-vod-publishing
+          S3_SOURCE: !Ref RecordingSourceBucket
+          MEDIACONVERT_ROLE_ARN: !Ref MediaConvertRoleArn
+          MEDIACONVERT_OUTPUT_PREFIX: "moderation/mp4/"
+          MASTER_MANIFEST_NAME: !Ref MasterManifestName
+      Policies:
+        - Statement:
+            - Sid: S3ReadWriteSourceForTranscode
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:ListBucket
+              Resource:
+                - !Sub "arn:aws:s3:::${RecordingSourceBucket}"
+                - !Sub "arn:aws:s3:::${RecordingSourceBucket}/*"
+            - Sid: MediaConvertJobs
+              Effect: Allow
+              Action:
+                - mediaconvert:CreateJob
+                - mediaconvert:GetJob
+              Resource: "*"
+            - Sid: PassMediaConvertRole
+              Effect: Allow
+              Action:
+                - iam:PassRole
+              Resource:
+                - !If
+                  - HasMediaConvertRole
+                  - !Ref MediaConvertRoleArn
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/*"
+
+  # -----------------------------------------------------------------
+  # Step Functions: Publish -> Notify
+  # -----------------------------------------------------------------
+  PublishStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeLambda
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt PublishFunction.Arn
+              - Sid: PublishSns
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+
+  PublishStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${AWS::StackName}-workflow"
+      RoleArn: !GetAtt PublishStateMachineRole.Arn
+      TracingConfiguration:
+        Enabled: !If [EnableXRay, true, false]
+      DefinitionString: !Sub |
+        {
+          "Comment": "Media IVS VOD Publishing - ingest IVS HLS recording to FSx for ONTAP S3 AP",
+          "StartAt": "Publish",
+          "States": {
+            "Publish": {
+              "Type": "Task",
+              "Resource": "${PublishFunction.Arn}",
+              "ResultPath": "$.publish",
+              "Next": "NotifyCompletion",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 5,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2.0
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "NotifyCompletion"
+                }
+              ]
+            },
+            "NotifyCompletion": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "${NotificationTopic}",
+                "Subject": "Media IVS VOD Publishing finished",
+                "Message.$": "States.Format('IVS VOD publish finished with status {}', $.publish.status)"
+              },
+              "End": true
+            }
+          }
+        }
+
+  # -----------------------------------------------------------------
+  # EventBridge Rule: IVS Recording End (EVENT_DRIVEN / HYBRID)
+  # -----------------------------------------------------------------
+  EventBridgeInvokeRole:
+    Type: AWS::IAM::Role
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-eb-invoke-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartStateMachine
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref PublishStateMachine
+
+  IvsRecordingEndRule:
+    Type: AWS::Events::Rule
+    Condition: IsEventDrivenOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-ivs-recording-end"
+      Description: Trigger VOD publish on IVS Recording End
+      EventPattern:
+        source:
+          - aws.ivs
+        detail-type:
+          - IVS Recording State Change
+        detail:
+          recording_status:
+            - Recording End
+      State: ENABLED
+      Targets:
+        - Arn: !Ref PublishStateMachine
+          Id: PublishStateMachineTarget
+          RoleArn: !GetAtt EventBridgeInvokeRole.Arn
+
+  # -----------------------------------------------------------------
+  # EventBridge Scheduler (POLLING / HYBRID)
+  # -----------------------------------------------------------------
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Condition: IsPollingOrHybrid
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - !Ref PublishStateMachine
+
+  PublishSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: IsPollingOrHybrid
+    Properties:
+      Name: !Sub "${AWS::StackName}-schedule"
+      ScheduleExpression: !Ref ScheduleExpression
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref PublishStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: "{}"
+
+  # -----------------------------------------------------------------
+  # CloudFront Distribution + OAC (VOD delivery from S3 AP origin)
+  # IMPORTANT: S3 AP は internet network origin が必要。
+  # -----------------------------------------------------------------
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Condition: CreateCloudFront
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-s3ap-oac"
+        Description: OAC for FSx for ONTAP S3 Access Point origin
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Condition: CreateCloudFront
+    Properties:
+      DistributionConfig:
+        Comment: !Sub "${AWS::StackName} - IVS VOD delivery"
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: s3ap-origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+        Origins:
+          - Id: s3ap-origin
+            DomainName: !Sub "${S3AccessPointOutputAlias}.s3.${AWS::Region}.amazonaws.com"
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        PriceClass: PriceClass_200
+        HttpVersion: http2and3
+        IPV6Enabled: true
+      Tags:
+        - Key: UseCase
+          Value: media-ivs-vod-publishing
+
+  # -----------------------------------------------------------------
+  # CloudWatch Alarms (conditional) — Reliability/Ops
+  # -----------------------------------------------------------------
+  PublishErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-publish-errors"
+      AlarmDescription: Publish Lambda error rate
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PublishFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+  StateMachineFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateCloudWatchAlarms
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sfn-failures"
+      AlarmDescription: Step Functions execution failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref PublishStateMachine
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref NotificationTopic
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  PublishFunctionArn:
+    Description: Publish Lambda の ARN
+    Value: !GetAtt PublishFunction.Arn
+
+  StateMachineArn:
+    Description: VOD publish ワークフロー State Machine の ARN
+    Value: !Ref PublishStateMachine
+
+  CloudFrontDomainName:
+    Condition: CreateCloudFront
+    Description: CloudFront ディストリビューションのドメイン名
+    Value: !GetAtt CloudFrontDistribution.DomainName
+
+  ModerationFunctionArn:
+    Condition: EnableStrictModerationCond
+    Description: Strict moderation Lambda の ARN（非同期 start/collect）
+    Value: !GetAtt ModerationFunction.Arn
+
+  TranscodeFunctionArn:
+    Condition: EnableStrictModerationCond
+    Description: HLS→MP4 Transcode Lambda の ARN（非同期 start/collect）
+    Value: !GetAtt TranscodeFunction.Arn

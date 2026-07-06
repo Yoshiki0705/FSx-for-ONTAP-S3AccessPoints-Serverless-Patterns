@@ -1,0 +1,144 @@
+{
+  "Comment": "Strict moderation pipeline (opt-in): HLS->MP4 transcode (MediaConvert) -> async video/audio/captions moderation gate -> publish or human review. Two-phase (start->Wait->collect) for both the transcode and the moderation Lambdas. PoC-grade: tune Wait/retry, add SNS/HITL, and scope IAM/queues for production.",
+  "StartAt": "StartTranscode",
+  "States": {
+    "StartTranscode": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${TranscodeFunctionArn}",
+        "Payload": {
+          "transcode_phase": "start",
+          "recording_prefix.$": "$.detail.recording_s3_key_prefix"
+        }
+      },
+      "ResultSelector": {
+        "mediaconvert_job_id.$": "$.Payload.mediaconvert_job_id",
+        "video_key.$": "$.Payload.video_key"
+      },
+      "ResultPath": "$.transcode",
+      "Next": "WaitTranscode"
+    },
+    "WaitTranscode": {
+      "Type": "Wait",
+      "Seconds": 120,
+      "Next": "CollectTranscode"
+    },
+    "CollectTranscode": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${TranscodeFunctionArn}",
+        "Payload": {
+          "transcode_phase": "collect",
+          "mediaconvert_job_id.$": "$.transcode.mediaconvert_job_id",
+          "video_key.$": "$.transcode.video_key"
+        }
+      },
+      "ResultSelector": {
+        "status.$": "$.Payload.status",
+        "video_key.$": "$.Payload.video_key"
+      },
+      "ResultPath": "$.transcodeResult",
+      "Next": "IsTranscodeComplete"
+    },
+    "IsTranscodeComplete": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.transcodeResult.status",
+          "StringEquals": "pending",
+          "Next": "WaitTranscode"
+        },
+        {
+          "Variable": "$.transcodeResult.status",
+          "StringEquals": "error",
+          "Next": "TranscodeFailed"
+        }
+      ],
+      "Default": "StartModeration"
+    },
+    "TranscodeFailed": {
+      "Type": "Fail",
+      "Error": "TranscodeFailed",
+      "Cause": "MediaConvert HLS->MP4 job failed; strict video moderation cannot proceed."
+    },
+    "StartModeration": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ModerationFunctionArn}",
+        "Payload": {
+          "moderation_phase": "start",
+          "recording_prefix.$": "$.detail.recording_s3_key_prefix",
+          "video_key.$": "$.transcodeResult.video_key"
+        }
+      },
+      "ResultSelector": {
+        "rekognition_job_id.$": "$.Payload.rekognition_job_id",
+        "transcribe_job_name.$": "$.Payload.transcribe_job_name",
+        "transcribe_output_key.$": "$.Payload.transcribe_output_key",
+        "captions_flagged.$": "$.Payload.captions_flagged"
+      },
+      "ResultPath": "$.moderation",
+      "Next": "WaitForJobs"
+    },
+    "WaitForJobs": {
+      "Type": "Wait",
+      "Seconds": 60,
+      "Next": "CollectModeration"
+    },
+    "CollectModeration": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ModerationFunctionArn}",
+        "Payload": {
+          "moderation_phase": "collect",
+          "rekognition_job_id.$": "$.moderation.rekognition_job_id",
+          "transcribe_job_name.$": "$.moderation.transcribe_job_name",
+          "transcribe_output_key.$": "$.moderation.transcribe_output_key",
+          "captions_flagged.$": "$.moderation.captions_flagged"
+        }
+      },
+      "ResultSelector": {
+        "status.$": "$.Payload.status",
+        "decision.$": "$.Payload.decision",
+        "flagged.$": "$.Payload.flagged"
+      },
+      "ResultPath": "$.moderationResult",
+      "Next": "IsModerationComplete"
+    },
+    "IsModerationComplete": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.moderationResult.status",
+          "StringEquals": "pending",
+          "Next": "WaitForJobs"
+        },
+        {
+          "Variable": "$.moderationResult.decision",
+          "StringEquals": "BLOCK",
+          "Next": "ModerationBlocked"
+        }
+      ],
+      "Default": "ModerationApproved"
+    },
+    "ModerationApproved": {
+      "Type": "Task",
+      "Comment": "Cleared by strict moderation — proceed to the Publish workflow.",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${PublishFunctionArn}",
+        "Payload.$": "$"
+      },
+      "End": true
+    },
+    "ModerationBlocked": {
+      "Type": "Fail",
+      "Error": "ModerationBlocked",
+      "Cause": "Strict moderation flagged the content; routed to human review instead of publishing."
+    }
+  }
+}

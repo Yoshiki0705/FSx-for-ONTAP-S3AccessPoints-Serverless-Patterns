@@ -104,6 +104,9 @@ test-fc1:
 test-content-edge-delivery:
 	$(PYTHON) -m pytest solutions/edge/content-delivery/tests/ -v
 
+test-media-ivs-vod-publishing:
+	$(PYTHON) -m pytest solutions/edge/media-ivs-vod-publishing/tests/ -v
+
 test-ha-lifekeeper:
 	$(PYTHON) -m pytest solutions/ha/lifekeeper-monitoring/tests/ -v
 
@@ -123,6 +126,7 @@ lint-cfn:
 		solutions/sap/erp-adjacent/template.yaml \
 		solutions/flexcache/anycast-dr/template.yaml \
 		solutions/edge/content-delivery/template.yaml \
+		solutions/edge/media-ivs-vod-publishing/template.yaml \
 		solutions/ha/lifekeeper-monitoring/template.yaml
 
 # ============================================================
