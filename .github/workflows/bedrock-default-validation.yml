@@ -1,0 +1,54 @@
+name: Bedrock default validation (live, opt-in)
+
+# Weekly + on-demand LIVE check that every geo-prefixed BedrockModelId default the
+# templates ship actually resolves and invokes via Amazon Bedrock. This catches
+# regressions that STATIC checks cannot: invalid inference-profile IDs (e.g. a geo
+# prefix that does not exist for a model), model EOL, and regional availability
+# changes. See docs/bedrock-inference-profiles.md.
+#
+# OPT-IN: the job runs only when the repository variable BEDROCK_VALIDATION_ROLE_ARN
+# is set to an IAM role ARN that (a) trusts GitHub OIDC for this repo and (b) allows
+# bedrock:InvokeModel. If the variable is unset, the job is SKIPPED — no AWS calls,
+# no cost. Setup: Settings → Secrets and variables → Actions → Variables.
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "AWS region to validate"
+        default: "ap-northeast-1"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: "Validate repo Bedrock defaults (live)"
+    # Opt-in gate: only runs once an OIDC role ARN is configured as a repo variable.
+    if: ${{ vars.BEDROCK_VALIDATION_ROLE_ARN != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      - name: Install boto3
+        run: pip install boto3
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
+        with:
+          role-to-assume: ${{ vars.BEDROCK_VALIDATION_ROLE_ARN }}
+          aws-region: ${{ inputs.region || 'ap-northeast-1' }}
+      - name: Validate all repo default models invoke
+        env:
+          REGION: ${{ inputs.region || 'ap-northeast-1' }}
+        run: |
+          python3 scripts/bedrock_inference_profile_smoke.py --all-repo-defaults --region "$REGION"
