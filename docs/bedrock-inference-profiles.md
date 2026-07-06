@@ -48,6 +48,14 @@ this model.
 - **国内主権**: 国内に閉じたい → `jp.` / `au.` / `us.` 等（自国リージョンのプロファイル）、または
   **リージョン内 Provisioned Throughput**（単一リージョン固定）。
 
+デプロイ時は `BedrockModelId` を上書きするだけで切り替えられます（コード変更不要）:
+
+```bash
+# 例: 既定（移植性優先の global.）を、日本国内スコープ（jp.）に変更してデプロイ
+sam deploy --parameter-overrides BedrockModelId=jp.anthropic.claude-haiku-4-5-20251001-v1:0
+# 自リージョンで利用可能なプロファイル ID は list-inference-profiles で確認（下記）
+```
+
 > **確認済み挙動（サンプル観測 / 2026-07 時点）**: 同一モデルでも、あるリージョンではベア ID の
 > オンデマンド呼び出しが成功し、別のリージョンでは上記 `ValidationException` になりました。profile ID は
 > いずれでも成功。また `apac.` が無いモデル（例: Claude Haiku 4.5 は `jp.`/`global.` のみ）もあります。
@@ -84,6 +92,13 @@ aws bedrock list-inference-profiles --region <your-region> \
 クロスリージョン推論プロファイルは、**スコープ内の複数リージョンにリクエストをルーティング**します
 （`global.`＝世界、`apac.`＝APAC 全域、`jp.`＝日本国内 など）。規制・データ主権要件のあるワークロードでは、
 **推論データがどの範囲で処理されうるか**を上記「ルーティングスコープ」に照らして必ず評価してください。
+
+> AWS の公式整理では、クロスリージョン推論は 2 種類（**Geographic**＝地理境界内 / **Global**＝世界）に
+> 分類されます。ルーティングされるのは**推論の一時的な計算**であり、**保存データ（ログ・ナレッジベース・
+> 設定）はソースリージョンに留まる**設計です。通信は AWS ネットワーク内で暗号化され、パブリック
+> インターネットを経由しません（[cross-Region inference](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html)）。
+> データ主権要件がある場合は Geographic（`apac.` や国内 `jp.`/`au.` 等）を、可用性・コスト優先なら
+> Global（`global.`）を選択します。
 
 残留性を狭める選択肢（強い順）:
 
@@ -177,6 +192,14 @@ Set `BedrockModelId` to a profile ID whose scope matches your requirement (the p
 - **In-country / sovereign:** keep data within your country → `jp.` / `au.` / `us.` … (your country's
   profile), or **in-region Provisioned Throughput** (pinned to a single region).
 
+Switch at deploy time by overriding `BedrockModelId` (no code change):
+
+```bash
+# e.g. change the default (portability-first global.) to Japan in-country scope (jp.)
+sam deploy --parameter-overrides BedrockModelId=jp.anthropic.claude-haiku-4-5-20251001-v1:0
+# list the profile IDs available in your region with list-inference-profiles (below)
+```
+
 > **Observed behavior (sample, as of 2026-07):** for the same model, the bare ID invoked on-demand
 > successfully in one region but returned the `ValidationException` above in another; the profile ID
 > succeeded in both. Some models also have no `apac.` (e.g. Claude Haiku 4.5 offers only `jp.`/
@@ -214,6 +237,14 @@ A cross-region inference profile **routes requests across multiple regions withi
 (`global.` = worldwide, `apac.` = across APAC, `jp.` = within Japan, …). For regulated or
 data-sovereignty-sensitive workloads, evaluate **where inference data may be processed** against the
 "Routing scope" table above.
+
+> AWS classifies cross-Region inference into two types — **Geographic** (stays within a geographic
+> boundary) and **Global** (worldwide). What routes is the **transient inference computation**;
+> **data at rest (logs, knowledge bases, configuration) stays in the source Region**, and traffic
+> stays on the encrypted AWS network (never the public internet). See
+> [cross-Region inference](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html).
+> Choose **Geographic** (`apac.`, or in-country `jp.`/`au.`/…) for data-residency needs; choose
+> **Global** (`global.`) for availability/cost (AWS notes ~10% lower price for global).
 
 Ways to narrow residency (strongest first):
 
@@ -264,6 +295,13 @@ be caught by static checks** — this bulk live check catches it.
   token volume, model, and region. See the [Cost Calculator](cost-calculator.md).
 
 ---
+
+## AWS References / 参考資料（一次情報）
+
+- [Increase throughput with cross-Region inference](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html) — Geographic vs Global comparison, data-residency guidance
+- [Geographic cross-Region inference](https://docs.aws.amazon.com/bedrock/latest/userguide/geographic-cross-region-inference.html) — using a profile ID as `modelId` (InvokeModel / Converse)
+- [Supported cross-Region inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html) — which models/prefixes exist per geography
+- CLI: `aws bedrock list-inference-profiles --region <your-region>` — authoritative per-region list
 
 ## Related Documents
 
