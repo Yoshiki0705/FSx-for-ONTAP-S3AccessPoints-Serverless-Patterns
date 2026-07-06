@@ -3,8 +3,8 @@ on:
   push:
     branches: [main]
 
+# Minimal at workflow level; id-token:write is granted per-job only where OIDC is used.
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -15,9 +15,10 @@ jobs:
       changed_templates: ${{ steps.detect.outputs.templates }}
       has_changes: ${{ steps.detect.outputs.has_changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 2
+          persist-credentials: false
       - name: Detect changed CloudFormation templates
         id: detect
         run: |
@@ -41,8 +42,13 @@ jobs:
     if: needs.detect-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     environment: staging
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
         with:
@@ -50,7 +56,7 @@ jobs:
           aws-region: ap-northeast-1
       - name: Deploy changed templates to staging
         run: |
-          TEMPLATES='${{ needs.detect-changes.outputs.changed_templates }}'
+          TEMPLATES='${NEEDS_DETECT_CHANGES_OUTPUTS_CHANGED_TEMPLATES}'
           echo "Deploying templates to staging..."
           
           for TEMPLATE in $(echo "$TEMPLATES" | jq -r '.[]'); do
@@ -68,13 +74,20 @@ jobs:
               --no-fail-on-empty-changeset \
               --tags Environment=staging Project=fsxn-s3ap-serverless-patterns
           done
+        env:
+          NEEDS_DETECT_CHANGES_OUTPUTS_CHANGED_TEMPLATES: ${{ needs.detect-changes.outputs.changed_templates }}
 
   smoke-test:
     name: "Smoke Test"
     needs: deploy-staging
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
         with:
@@ -86,7 +99,7 @@ jobs:
           
           # Invoke Step Functions with test data
           EXECUTION_ARN=$(aws stepfunctions start-execution \
-            --state-machine-arn "arn:aws:states:ap-northeast-1:${{ vars.AWS_ACCOUNT_ID }}:stateMachine:fsxn-s3ap-staging-workflow" \
+            --state-machine-arn "arn:aws:states:ap-northeast-1:${VARS_AWS_ACCOUNT_ID}:stateMachine:fsxn-s3ap-staging-workflow" \
             --input file://test-data/smoke-test-input.json \
             --query 'executionArn' --output text 2>/dev/null || echo "")
           
@@ -119,14 +132,21 @@ jobs:
           
           echo "❌ Smoke test timed out"
           exit 1
+        env:
+          VARS_AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
 
   rollback:
     name: "Rollback Staging"
     needs: smoke-test
     if: failure()
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
         with:
@@ -155,8 +175,13 @@ jobs:
     needs: smoke-test
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
         with:
@@ -164,7 +189,7 @@ jobs:
           aws-region: ap-northeast-1
       - name: Deploy to production
         run: |
-          TEMPLATES='${{ needs.detect-changes.outputs.changed_templates }}'
+          TEMPLATES='${NEEDS_DETECT_CHANGES_OUTPUTS_CHANGED_TEMPLATES}'
           echo "Deploying templates to production..."
           
           for TEMPLATE in $(echo "$TEMPLATES" | jq -r '.[]'); do
@@ -183,3 +208,5 @@ jobs:
           done
           
           echo "✅ Production deployment complete"
+        env:
+          NEEDS_DETECT_CHANGES_OUTPUTS_CHANGED_TEMPLATES: ${{ needs.detect-changes.outputs.changed_templates }}
