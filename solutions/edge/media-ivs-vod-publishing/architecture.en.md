@@ -204,7 +204,7 @@ or out of order. Do not treat a single `Recording End` event as a guaranteed exa
    integration if publishing publicly.
 
 > **Partner/SI** (delivery lens): Phases 1–2 are a 30-minute, FSx-free PoC suitable for the first
-> customer conversation; Phases 3–5 map to the customer's real environment and are where sizing
+> discovery conversation; Phases 3–5 map to the user's real environment and are where sizing
 > and governance sign-off happen.
 
 > **App Developer** (developer lens): the deployable handler is `functions/publish/handler.py`

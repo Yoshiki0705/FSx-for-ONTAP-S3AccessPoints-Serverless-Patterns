@@ -205,7 +205,7 @@ désordonnés possibles. Ne pas traiter un unique `Recording End` comme un décl
    modération si publication publique.
 
 > **Partner/SI** (delivery lens) : les phases 1–2 sont un PoC de 30 minutes sans FSx, adapté à la
-> première conversation client ; les phases 3–5 correspondent à l'environnement réel du client et
+> première conversation de découverte ; les phases 3–5 correspondent à l'environnement réel de l'utilisateur et
 > c'est là que se font le dimensionnement et la validation de gouvernance.
 
 > **App Developer** (developer lens) : le handler déployable est `functions/publish/handler.py`

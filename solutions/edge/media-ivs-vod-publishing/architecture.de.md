@@ -198,7 +198,7 @@ oder unsortiert sein. Ein einzelnes `Recording End` nicht als garantiert Exactly
 5. **Härten**: HYBRID + Idempotenz, DLQ, Alarme (`EnableCloudWatchAlarms=true`), Moderationsintegration bei öffentlicher Veröffentlichung.
 
 > **Partner/SI** (delivery lens): Phasen 1–2 sind ein 30-minütiger, FSx-freier PoC für das erste
-> Kundengespräch; Phasen 3–5 bilden die reale Kundenumgebung ab und sind der Ort für Sizing und Governance-Freigabe.
+> Discovery-Gespräch; Phasen 3–5 bilden die reale Umgebung der nutzenden Organisation ab und sind der Ort für Sizing und Governance-Freigabe.
 
 > **App Developer** (developer lens): der deploybare Handler ist `functions/publish/handler.py`
 > (nutzt `shared/` für S3-AP-Zugriff, Datenklassifizierung, Human Review, EMF). Die `samples/`-
