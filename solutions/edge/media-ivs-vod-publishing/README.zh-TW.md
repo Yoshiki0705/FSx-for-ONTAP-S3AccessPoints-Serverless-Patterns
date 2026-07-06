@@ -28,6 +28,8 @@
 - **FSx for ONTAP** 作為**直播後媒體工作區**：透過 **NFS/SMB** 在同一資料上進行編輯、QC、審核。
 - 透過 **S3 Access Point** 以 S3 API 將 FSx 上的檔案暴露給 AWS 服務（CloudFront、Lambda、Athena、Glue、Amazon Bedrock）。
 - **Amazon CloudFront** 將成品 HLS VOD 再分發給觀眾。
+- 亦可擴展到**與直播並行的 near-live 協同編輯**（直播中處理追趕編輯與字幕）。但無法直接插入 IVS 直播清單，
+  需依層設計（參見 [architecture.zh-TW.md](architecture.zh-TW.md) 的「直播並行的 near-live 協同編輯」）。
 
 無需為編輯與分發重複保存媒體，在 FSx for ONTAP 上保留單一權威副本（檔案協定工具與 S3 API 服務皆可使用）。
 

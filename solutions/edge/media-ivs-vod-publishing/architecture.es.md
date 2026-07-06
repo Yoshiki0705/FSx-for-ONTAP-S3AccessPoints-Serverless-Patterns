@@ -108,6 +108,35 @@ Amazon IVS
 > medios por rendición + segmentos (`.ts` para TS, `.m4s`+init para fMP4/CMAF) más miniaturas y
 > metadatos de grabación JSON. Validar el master multivariante, no cualquier playlist.
 
+## Edición colaborativa near-live durante el directo (modelo de 3 capas)
+
+«Durante el directo, insertar ediciones de recuperación o subtítulos desde FSx for ONTAP a través de
+un S3 Access Point» es una petición natural, pero por cómo funciona la entrega en directo de IVS hay
+que decidir **en qué capa** ocurre la inserción.
+
+| Capa | Qué permite | Papel del FSx for ONTAP S3 AP |
+|------|-------------|-------------------------------|
+| **1. Ruta de entrega en directo de IVS (gestionada por IVS)** | encoder → transcodificación/empaquetado IVS → CDN de IVS a los espectadores. El **manifiesto de reproducción en directo lo gestiona IVS**; no hay punto de inserción para segmentos/subtítulos HLS creados externamente. | **No es posible** (manifiesto en directo inmutable). La manipulación en directo del lado servidor es dominio de AWS Elemental MediaLive / MediaPackage. |
+| **2. Superposición en cliente (timed metadata)** | Insertar [Timed Metadata (`PutMetadata`)](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) sincronizados al directo; el SDK del reproductor **renderiza subtítulos/rótulos/gráficos en el cliente**. `PutMetadata`: máx. 1 KB/solicitud, 5 TPS/canal. | **Posible indirectamente**: poner una «clave de referencia de activo + timecode» en los metadatos y obtener el texto de subtítulos / imágenes desde **CloudFront (origen = FSx for ONTAP S3 AP)**. Los equipos editan subtítulos por NFS/SMB; los mismos datos los sirve S3 AP + CloudFront. |
+| **3. Rendición de edición near-live (lado grabación)** | Ingerir de forma continua el HLS Auto-Record en FSx for ONTAP, editar la grabación en curso y publicar una rendición near-live en una **URL separada, con decenas de segundos a minutos de retraso respecto al directo**. | **El punto fuerte**: NLE (SMB) / herramientas de subtítulos (SMB) / automatización S3-API / análisis Athena/Bedrock se ejecutan en paralelo sobre una **única copia autorizada** sin copias adicionales (edición colaborativa independiente del protocolo). |
+
+> **Media SME lens**: en lugar de «grabar en el propio directo», impleméntalo en la capa 2 (renderizado
+> en cliente) o la capa 3 (rendición near-live), lo que se ajusta a cómo funciona IVS. Los subtítulos
+> grabados (CEA-608/708) se incrustan en el **encoder**, no se añaden después desde FSx.
+
+### Restricciones honestas
+
+- **Near-live, no realmente en directo**: finalización de segmentos → ingesta → edición → republicación
+  añaden retraso. «Recuperación» supone decenas de segundos a minutos de retardo.
+- **El manifiesto en directo de IVS es inmutable**: sin inyección en la capa 1.
+- **Los subtítulos grabados en directo** son cosa del encoder (fuera de IVS).
+- Para la capa 2, mantente dentro de los límites de `PutMetadata` 1 KB / 5 TPS llevando referencias, no cargas útiles.
+
+> **Valor para el usuario** (Partner/SI lens): el atractivo del patrón va más allá del «VOD post-directo»
+> hacia un **espacio de edición colaborativa near-live en paralelo al directo**. Edición, QC, subtitulado
+> y análisis se ejecutan en paralelo sobre los mismos datos con independencia del protocolo — esa es la
+> motivación para combinar FSx for ONTAP con S3 Access Points.
+
 ## Cuándo usar este patrón — guía de decisión
 
 ```mermaid

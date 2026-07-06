@@ -110,6 +110,35 @@ Amazon IVS
 > per-rendition media playlists + segments (`.ts` for TS, `.m4s`+init for fMP4/CMAF) plus
 > thumbnails and recording metadata JSON. Validate the multivariate master, not just any playlist.
 
+## Near-live collaborative editing during a live stream (3-layer model)
+
+"During a live stream, insert catch-up edits or captions from FSx for ONTAP through an S3 Access
+Point" is a natural ask, but because of how IVS live delivery works, you must decide **which layer**
+the insertion happens at.
+
+| Layer | What it can do | Role of FSx for ONTAP S3 AP |
+|-------|----------------|------------------------------|
+| **1. IVS live delivery path (IVS-managed)** | encoder → IVS transcode/packaging → IVS CDN to viewers. The **live playback manifest is IVS-managed**; there is no hook to inject externally authored HLS segments/captions into it. | **Not possible** (the live manifest is immutable). Server-side live manipulation is the domain of AWS Elemental MediaLive / MediaPackage. |
+| **2. Client-side overlay (timed metadata)** | Insert [Timed Metadata (`PutMetadata`)](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) synced to the live stream; the player SDK renders **captions/lower-thirds/graphics on the client**. `PutMetadata` allows max 1 KB/request, 5 TPS/channel. | **Indirectly possible**: put an "asset reference key + timecode" in the metadata, and fetch the caption text / overlay images from **CloudFront (origin = FSx for ONTAP S3 AP)**. Editors author captions over NFS/SMB; the same data is served by S3 AP + CloudFront. |
+| **3. Near-live editing rendition (recording side)** | Continuously ingest the Auto-Recorded HLS into FSx for ONTAP, edit the growing recording, and publish a near-live rendition on a **separate URL, tens of seconds to minutes behind live**. | **The sweet spot**: NLE (SMB) / caption tools (SMB) / S3-API automation / Athena/Bedrock analysis run concurrently on a **single authoritative copy** without extra copies (protocol-agnostic collaborative editing). |
+
+> **Media SME lens**: rather than "burning into the live stream itself," realize this at layer 2
+> (client rendering) or layer 3 (near-live rendition), which matches how IVS works. Burned-in
+> closed captions (CEA-608/708) are embedded at the **encoder**, not added later from FSx.
+
+### Honest constraints
+
+- **Near-live, not truly live**: segment finalization → ingest → edit → re-publish each add delay.
+  "Catch-up" implies tens of seconds to minutes of lag.
+- **The IVS live manifest is immutable**: no injection into layer 1.
+- **Live burned-in captions** are an encoder-side concern (outside IVS).
+- For layer 2, keep within the `PutMetadata` 1 KB / 5 TPS limits by carrying references, not payloads.
+
+> **User value** (Partner/SI lens): the pattern's appeal extends beyond "post-live VOD" to a
+> **near-live collaborative editing workspace running alongside the live stream**. Editing, QC,
+> captioning, and analysis run concurrently on the same data regardless of protocol — that is the
+> motivation for combining FSx for ONTAP with S3 Access Points.
+
 ## When to use this pattern — decision guide
 
 ```mermaid
