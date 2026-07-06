@@ -1,3 +1,18 @@
+---
+title: "IVS live recordings on FSx for ONTAP: a VOD publishing pattern with S3 Access Points + CloudFront"
+published: false
+description: "Take Amazon IVS live recordings into an FSx for ONTAP media workspace via S3 Access Points and publish VOD through CloudFront. Supported-only recommended path; direct IVS to S3 AP recording kept Experimental."
+tags: aws, netapp, ivs, cloudfront
+series: "FSx for ONTAP S3 AP Serverless Patterns"
+---
+
+<!--
+dev.to publishing draft (English). Set `published: true` when ready.
+Source of truth (canonical): the pattern in the GitHub repo
+  solutions/edge/media-ivs-vod-publishing/
+Japanese version for Hatena Blog: blog/ja.md
+-->
+
 # Building a VOD Publishing Pattern with Amazon IVS and Amazon FSx for NetApp ONTAP S3 Access Points
 
 > Technical community blog draft. It separates what AWS documents as supported from what still

@@ -1,3 +1,11 @@
+<!--
+はてなブログ投稿用ドラフト（日本語）。はてなブログの Markdown 記法モードに貼り付けて使用。
+- 推奨カテゴリー/タグ: AWS / FSx for ONTAP / Amazon IVS / CloudFront
+- 正典（canonical）: GitHub リポジトリ内のパターン solutions/edge/media-ivs-vod-publishing/
+- 英語版（dev.to）: blog/en.md
+- シリーズ: FSx for ONTAP S3 AP サーバーレスパターン集
+-->
+
 # Amazon IVS のライブ録画を FSx for ONTAP に展開して VOD 配信基盤を作る
 
 > 技術検証ブログ草案（AWS Community Builder 目線）。断定を避け、公式ドキュメントで確認できる
