@@ -1,0 +1,12 @@
+flowchart LR
+    Broadcaster["Streamer / Encoder"] -->|RTMPS or IVS Broadcast SDK| IVS["Amazon IVS Channel"]
+    IVS -->|Auto-Record| S3[("Amazon S3 Bucket")]
+    S3 -->|Recording End Event| EB["Amazon EventBridge"]
+    EB --> SFN["AWS Step Functions"]
+    SFN --> COPY["Lambda / ECS / Batch / DataSync Copy Job"]
+    COPY --> FSX[("FSx for ONTAP Volume")]
+    FSX -->|NFS / SMB| Editors["Editors / QC / MAM"]
+    FSX --> AP["S3 Access Point"]
+    AP --> CF["Amazon CloudFront (OAC)"]
+    CF --> Viewers["VOD Viewers"]
+    AP --> Analytics["Lambda / Athena / Glue / Bedrock"]

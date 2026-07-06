@@ -1,0 +1,27 @@
+{
+  "_comment": "Sample Amazon IVS 'Recording End' event (Low-Latency Streaming). Schema matches the AWS IVS EventBridge docs: https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/eventbridge.html . Values are placeholders. TODO: confirm the exact fields your account emits (e.g. recording_session_stream_ids appears only when merge-fragmented-streams is enabled).",
+  "version": "0",
+  "id": "12345678-1a23-4567-a1bc-1a2b34567890",
+  "detail-type": "IVS Recording State Change",
+  "source": "aws.ivs",
+  "account": "123456789012",
+  "time": "2020-06-24T07:51:32Z",
+  "region": "ap-northeast-1",
+  "resources": [
+    "arn:aws:ivs:ap-northeast-1:123456789012:channel/AbCdef1G2hij"
+  ],
+  "detail": {
+    "channel_name": "Your Channel",
+    "stream_id": "st-1A2b3c4D5e6F78ghij9Klmn",
+    "recording_status": "Recording End",
+    "recording_status_reason": "",
+    "recording_s3_bucket_name": "your-ivs-recording-bucket",
+    "recording_s3_key_prefix": "ivs/v1/123456789012/AbCdef1G2hij/2020/6/23/20/12/EXAMPLE-recording-id",
+    "recording_duration_ms": 99370264,
+    "recording_session_id": "a6RfV23ES97iyfoQ",
+    "recording_session_stream_ids": [
+      "st-254sopYUvi6F78ghpO9vn0A",
+      "st-1A2b3c4D5e6F78ghij9Klmn"
+    ]
+  }
+}

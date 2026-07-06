@@ -1,0 +1,186 @@
+{
+  "Comment": "PoC state machine: publish an IVS HLS recording from S3 to FSx for ONTAP, then optionally catalog + invalidate CloudFront. Triggered by an EventBridge 'IVS Recording State Change' (Recording End) rule. PoC-grade: tune retries, add idempotency (shared/idempotency_checker.py) before production.",
+  "StartAt": "ValidateRecordingPath",
+  "States": {
+    "ValidateRecordingPath": {
+      "Type": "Choice",
+      "Comment": "Only proceed on Recording End with a non-empty prefix.",
+      "Choices": [
+        {
+          "And": [
+            {
+              "Variable": "$.detail.recording_status",
+              "StringEquals": "Recording End"
+            },
+            {
+              "Variable": "$.detail.recording_s3_key_prefix",
+              "IsPresent": true
+            },
+            {
+              "Not": {
+                "Variable": "$.detail.recording_s3_key_prefix",
+                "StringEquals": ""
+              }
+            }
+          ],
+          "Next": "ListRecordingObjects"
+        }
+      ],
+      "Default": "SkipNonRecordingEnd"
+    },
+    "SkipNonRecordingEnd": {
+      "Type": "Succeed",
+      "Comment": "Not a completed recording; nothing to publish."
+    },
+    "ListRecordingObjects": {
+      "Type": "Task",
+      "Comment": "List HLS objects under the IVS recording prefix.",
+      "Resource": "arn:aws:states:::aws-sdk:s3:listObjectsV2",
+      "Parameters": {
+        "Bucket.$": "$.detail.recording_s3_bucket_name",
+        "Prefix.$": "$.detail.recording_s3_key_prefix"
+      },
+      "ResultPath": "$.listResult",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "PublishFailed"
+        }
+      ],
+      "Next": "CopyPackageToFsx"
+    },
+    "CopyPackageToFsx": {
+      "Type": "Task",
+      "Comment": "Copy/sync the HLS package to FSx for ONTAP (Lambda for small packages; swap for ECS/Batch/DataSync for large ones).",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${CopyHandlerFunctionArn}",
+        "Payload": {
+          "source_bucket.$": "$.detail.recording_s3_bucket_name",
+          "recording_prefix.$": "$.detail.recording_s3_key_prefix",
+          "recording_session_id.$": "$.detail.recording_session_id"
+        }
+      },
+      "ResultPath": "$.copyResult",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.TooManyRequestsException", "States.TaskFailed"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "PublishFailed"
+        }
+      ],
+      "Next": "ValidateManifestExists"
+    },
+    "ValidateManifestExists": {
+      "Type": "Choice",
+      "Comment": "Confirm the copy handler reported a master manifest on FSx.",
+      "Choices": [
+        {
+          "Variable": "$.copyResult.Payload.manifest_present",
+          "BooleanEquals": true,
+          "Next": "UpdateMetadataCatalog"
+        }
+      ],
+      "Default": "PublishFailed"
+    },
+    "UpdateMetadataCatalog": {
+      "Type": "Task",
+      "Comment": "OPTIONAL: record the VOD asset in a catalog (DynamoDB). Remove if not needed.",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "${VodCatalogTableName}",
+        "Item": {
+          "recording_session_id": {
+            "S.$": "$.detail.recording_session_id"
+          },
+          "channel_name": {
+            "S.$": "$.detail.channel_name"
+          },
+          "fsx_prefix": {
+            "S.$": "$.detail.recording_s3_key_prefix"
+          },
+          "master_manifest": {
+            "S.$": "$.copyResult.Payload.master_manifest_key"
+          },
+          "published_at": {
+            "S.$": "$$.State.EnteredTime"
+          }
+        }
+      },
+      "ResultPath": "$.catalogResult",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "PublishFailed"
+        }
+      ],
+      "Next": "InvalidateCloudFrontPlaylist"
+    },
+    "InvalidateCloudFrontPlaylist": {
+      "Type": "Task",
+      "Comment": "OPTIONAL: invalidate the short-TTL playlist path so viewers see the new VOD. Segments are immutable (long TTL) and need no invalidation.",
+      "Resource": "arn:aws:states:::aws-sdk:cloudfront:createInvalidation",
+      "Parameters": {
+        "DistributionId": "${CloudFrontDistributionId}",
+        "InvalidationBatch": {
+          "CallerReference.$": "$.detail.recording_session_id",
+          "Paths": {
+            "Quantity": 1,
+            "Items.$": "States.Array(States.Format('/{}/*.m3u8', $.detail.recording_s3_key_prefix))"
+          }
+        }
+      },
+      "ResultPath": "$.invalidationResult",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "PublishFailed"
+        }
+      ],
+      "Next": "MarkJobCompleted"
+    },
+    "MarkJobCompleted": {
+      "Type": "Succeed"
+    },
+    "PublishFailed": {
+      "Type": "Fail",
+      "Error": "IvsVodPublishFailed",
+      "Cause": "See execution input $.error for the failing state details."
+    }
+  }
+}

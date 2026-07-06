@@ -1,6 +1,6 @@
 # Solutions Directory / ソリューションディレクトリ
 
-このディレクトリには全42パターンがカテゴリ別に整理されています。
+このディレクトリには全43パターンがカテゴリ別に整理されています。
 
 | カテゴリ | ディレクトリ | パターン数 | 概要 |
 |---------|-------------|-----------|------|
@@ -10,7 +10,7 @@
 | 🤖 GenAI | [`genai/`](genai/) | 2 | Bedrock KB / Agentic AI パターン |
 | 🛡️ HA | [`ha/`](ha/) | 1 | 高可用性監視パターン (LifeKeeper) |
 | 📡 Event-Driven | [`event-driven/`](event-driven/) | 2 | FPolicy イベント駆動パターン |
-| 🌐 Edge | [`edge/`](edge/) | 1 | CDN / エッジ配信パターン |
+| 🌐 Edge | [`edge/`](edge/) | 2 | CDN / エッジ配信 + Amazon IVS VOD 配信パターン |
 
 ## パターン選択ガイド
 
