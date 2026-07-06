@@ -31,6 +31,9 @@
 - **FSx for ONTAP** 를 **라이브 이후 미디어 워크스페이스**로 사용. 편집·QC·승인을 동일 데이터에서 **NFS/SMB** 로 수행.
 - **S3 Access Point** 를 통해 FSx 상의 파일을 AWS 서비스(CloudFront, Lambda, Athena, Glue, Amazon Bedrock)에 S3 API 로 노출.
 - **Amazon CloudFront** 로 완성된 HLS VOD 를 시청자에게 재전달.
+- **라이브 병행 near-live 공동 편집**으로도 확장(방송 중 따라잡기 편집·자막). 단 IVS 라이브 매니페스트에
+  직접 삽입은 불가하며 레이어를 나누어 설계([architecture.ko.md](architecture.ko.md) 의 "라이브 병행
+  near-live 공동 편집" 참조).
 
 편집용과 전달용으로 미디어를 이중 보관하지 않고 FSx for ONTAP 에 단일 정본을 두어(파일 프로토콜 도구와
 S3 API 서비스 모두 사용 가능) 운영합니다.

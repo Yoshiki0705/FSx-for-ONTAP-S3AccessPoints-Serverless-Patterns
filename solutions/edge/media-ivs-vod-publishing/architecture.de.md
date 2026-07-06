@@ -108,6 +108,35 @@ Amazon IVS
 > Rendition-Medienplaylists + Segmente (`.ts` für TS, `.m4s`+init für fMP4/CMAF) plus Thumbnails und
 > Aufzeichnungs-Metadaten-JSON auf. Das multivariate Master validieren, nicht irgendeine Playlist.
 
+## Near-live-Kollaboration während des Livestreams (3-Schichten-Modell)
+
+„Während des Livestreams Catch-up-Schnitte oder Untertitel aus FSx for ONTAP über einen S3 Access
+Point einfügen" ist ein naheliegender Wunsch, aber wegen der Funktionsweise der IVS-Live-Auslieferung
+muss man entscheiden, **auf welcher Schicht** die Einfügung erfolgt.
+
+| Schicht | Was möglich ist | Rolle des FSx for ONTAP S3 AP |
+|---------|-----------------|-------------------------------|
+| **1. IVS-Live-Auslieferungspfad (IVS-verwaltet)** | encoder → IVS-Transcode/Packaging → IVS-CDN zu den Zuschauern. Das **Live-Wiedergabe-Manifest wird von IVS verwaltet**; es gibt keinen Hook, um extern erzeugte HLS-Segmente/Untertitel einzuschleusen. | **Nicht möglich** (Live-Manifest unveränderlich). Serverseitige Live-Bearbeitung ist die Domäne von AWS Elemental MediaLive / MediaPackage. |
+| **2. Client-seitiges Overlay (Timed Metadata)** | [Timed Metadata (`PutMetadata`)](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) synchron in den Live-Stream einfügen; das Player-SDK rendert **Untertitel/Bauchbinden/Grafiken clientseitig**. `PutMetadata`: max. 1 KB/Anfrage, 5 TPS/Kanal. | **Indirekt möglich**: „Asset-Referenzschlüssel + Timecode" in die Metadaten legen und den Untertiteltext / Overlay-Bilder von **CloudFront (Origin = FSx for ONTAP S3 AP)** abrufen. Teams bearbeiten Untertitel über NFS/SMB; dieselben Daten werden von S3 AP + CloudFront ausgeliefert. |
+| **3. Near-live-Editing-Rendition (Aufnahmeseite)** | Die Auto-Record-HLS kontinuierlich in FSx for ONTAP ingestieren, die laufende Aufnahme bearbeiten und eine Near-live-Rendition auf einer **separaten URL, Sekunden bis Minuten hinter dem Live** veröffentlichen. | **Der Sweet Spot**: NLE (SMB) / Untertitel-Tools (SMB) / S3-API-Automatisierung / Athena-/Bedrock-Analyse laufen parallel auf einer **einzigen maßgeblichen Kopie** ohne zusätzliche Kopien (protokollunabhängige Kollaboration). |
+
+> **Media SME lens**: Statt „in den Live-Stream selbst einzubrennen", auf Schicht 2 (Client-Rendering)
+> oder Schicht 3 (Near-live-Rendition) umsetzen — das entspricht der Funktionsweise von IVS. Eingebrannte
+> Closed Captions (CEA-608/708) werden **encoder-seitig** eingebettet, nicht später aus FSx hinzugefügt.
+
+### Ehrliche Einschränkungen
+
+- **Near-live, nicht echt live**: Segmentfinalisierung → Ingest → Schnitt → Re-Publishing verursachen
+  jeweils Verzögerung. „Catch-up" setzt zehn Sekunden bis Minuten Verzögerung voraus.
+- **Das IVS-Live-Manifest ist unveränderlich**: keine Injektion auf Schicht 1.
+- **Live eingebrannte Untertitel** sind Sache des Encoders (außerhalb IVS).
+- Für Schicht 2 innerhalb der `PutMetadata`-Grenzen 1 KB / 5 TPS bleiben, indem Referenzen statt Nutzdaten übertragen werden.
+
+> **Nutzerwert** (Partner/SI lens): Der Reiz des Musters geht über „Post-Live-VOD" hinaus zu einem
+> **near-live-Kollaborations-Workspace parallel zum Livestream**. Schnitt, QC, Untertitelung und Analyse
+> laufen protokollunabhängig parallel auf denselben Daten — das ist die Motivation, FSx for ONTAP mit
+> S3 Access Points zu kombinieren.
+
 ## Wann dieses Muster verwenden — Entscheidungshilfe
 
 ```mermaid
