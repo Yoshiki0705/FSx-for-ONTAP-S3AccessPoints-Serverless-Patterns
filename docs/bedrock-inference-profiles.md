@@ -20,30 +20,38 @@ isn't supported. Retry your request with the ID or ARN of an inference profile t
 this model.
 ```
 
-**クロスリージョン推論プロファイル ID**（geo 接頭辞付き）は geo 内の対応リージョンへルーティング
-されるため、**デプロイ先リージョンに依存せず動作します**。本リポジトリが profile ID を既定にする
-理由はこの移植性です。
+**推論プロファイル ID の接頭辞は、リクエストのルーティング範囲（＝データがどこで処理されうるか）を
+表します。** 接頭辞を選ぶことで、可用性とデータレジデンシー/主権のトレードオフをユーザー自身が制御
+できます。二択（グローバル vs 日本）ではなく、**スコープの連続スペクトラム**です。
 
-> **確認済み挙動（サンプル観測 / 2026-07 時点）**: 同一 geo 内でも、あるリージョンではベア ID の
-> オンデマンド呼び出しが成功し、別のリージョンでは上記 `ValidationException` になりました。profile ID
-> は両リージョンで成功。対応状況は変化するため、デプロイ先で必ず確認してください（下記コマンド）。
+#### ルーティングスコープ（＝データレジデンシー）
 
-| リージョン系 | 接頭辞 | 例 |
-|---|---|---|
-| アジアパシフィック | `apac.` | `apac.amazon.nova-lite-v1:0` |
-| 日本 | `jp.` | `jp.anthropic.claude-haiku-4-5-20251001-v1:0` |
-| グローバル | `global.` | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
-| 米国 | `us.` | `us.amazon.nova-lite-v1:0` |
-| 欧州 | `eu.` | `eu.amazon.nova-lite-v1:0` |
+| スコープ | 接頭辞（例） | ルーティング範囲 | 主な用途 |
+|---|---|---|---|
+| グローバル | `global.` | 世界中の対応リージョン | 最大の可用性・移植性（残留性制約が無い場合） |
+| 大陸 / 地域 (geo) | `apac.` / `us.` / `eu.` | 同一 geo 内の複数リージョン | 地域レベルのレジデンシー |
+| 国内 / 主権 (sovereign) | `jp.`（日本）/ `au.`（豪州）/ `us.`（米国）… | 単一国内の複数リージョン | 国内完結の厳格なレジデンシー |
 
-本リポジトリの既定は主要デプロイ先(ap-northeast-1 系)に合わせています。
-他リージョンにデプロイする場合は `BedrockModelId` を該当接頭辞に変更してください。
+> **接頭辞名がそのまま意図を表します**。`jp.`＝日本国内、`au.`＝豪州国内、`eu.`＝欧州、`global.`＝世界。
+> AWS は複数の国内リージョンを持つ国（日本・米国・豪州・インド 等）向けに国内スコープのプロファイルを
+> 順次拡大しています（例: 上記実測では日本 `jp.`・豪州 `au.` を確認。インド系リージョンは現時点で
+> `apac.`/`global.` のみ＝国内スコープは今後拡大の可能性）。**利用可否はモデル・リージョン・時期で
+> 変わるため、必ず `aws bedrock list-inference-profiles` で確認してください。**
 
-> **接頭辞の利用可否はモデル依存**です。例えば **Amazon Nova は `apac.`** が使えますが、
-> **Claude Haiku 4.5 には `apac.` プロファイルが存在せず**、`jp.`（日本）または `global.` を使います
-> （`aws bedrock list-inference-profiles` で確認）。本リポジトリの Claude パターンは、全リージョンで
-> 動作する移植性を優先して **`global.`** を既定にしています。より厳格なデータレジデンシーが必要な場合は
-> **`jp.`（日本国内にルーティング）** またはリージョン内 Provisioned Throughput を使用してください。
+#### 選び方
+
+`BedrockModelId` に、要件に合うスコープのプロファイル ID を設定するだけです（パラメータは自由入力）。
+
+- **移植性優先（既定）**: 本リポジトリの既定は、全リージョンで動く `global.`（Claude 系）/ APAC 全域の
+  `apac.`（Nova 系）。まず「動く」ことを優先。
+- **地域レジデンシー**: geo 内に留めたい → `apac.` / `us.` / `eu.`。
+- **国内主権**: 国内に閉じたい → `jp.` / `au.` / `us.` 等（自国リージョンのプロファイル）、または
+  **リージョン内 Provisioned Throughput**（単一リージョン固定）。
+
+> **確認済み挙動（サンプル観測 / 2026-07 時点）**: 同一モデルでも、あるリージョンではベア ID の
+> オンデマンド呼び出しが成功し、別のリージョンでは上記 `ValidationException` になりました。profile ID は
+> いずれでも成功。また `apac.` が無いモデル（例: Claude Haiku 4.5 は `jp.`/`global.` のみ）もあります。
+> 対応状況は変化するため、デプロイ先で必ず確認してください。
 
 ### 前提条件: モデルアクセスの有効化
 
@@ -73,13 +81,14 @@ aws bedrock list-inference-profiles --region <your-region> \
 
 ### ⚠️ データレジデンシー / データ主権(重要)
 
-クロスリージョン推論プロファイルは、**geo 内の複数リージョンにリクエストをルーティング**します
-（例: `apac.` はデプロイリージョン以外の APAC リージョンへ転送されうる）。規制・データ主権要件の
-あるワークロードでは、**推論データがデプロイリージョン外で処理される可能性**を必ず評価してください。
+クロスリージョン推論プロファイルは、**スコープ内の複数リージョンにリクエストをルーティング**します
+（`global.`＝世界、`apac.`＝APAC 全域、`jp.`＝日本国内 など）。規制・データ主権要件のあるワークロードでは、
+**推論データがどの範囲で処理されうるか**を上記「ルーティングスコープ」に照らして必ず評価してください。
 
-代替オプション:
+残留性を狭める選択肢（強い順）:
 
-- **リージョン内 Provisioned Throughput** を購入し、そのモデル ARN を `BedrockModelId` に指定する。
+- **国内 / 主権スコープのプロファイル** を選ぶ（`jp.` / `au.` / `us.` 等）。国内の複数リージョン内に閉じる。
+- **リージョン内 Provisioned Throughput** を購入し、そのモデル ARN を `BedrockModelId` に指定する（単一リージョン固定）。
 - **Bedrock VPC エンドポイント(PrivateLink)** を使い、Bedrock トラフィックをプライベート経路に限定する
   （生成系 Lambda は VPC-external のため、必要に応じて VPC 構成を追加）。
 - 対象リージョンで **ベア ID のオンデマンド呼び出しに対応するモデル** を選ぶ。
@@ -139,31 +148,39 @@ isn't supported. Retry your request with the ID or ARN of an inference profile t
 this model.
 ```
 
-A **cross-region inference profile ID** (geo prefix) routes to a supported region within the geo,
-so it **works regardless of your deployment region**. That portability is why this repository
-defaults to profile IDs:
+**An inference-profile ID's prefix expresses the request's routing scope (i.e. where data may be
+processed).** By choosing the prefix, you control the availability-vs-residency/sovereignty
+trade-off yourself. It is **not** a global-vs-Japan binary — it's a continuous spectrum of scopes.
 
-> **Observed behavior (sample, as of 2026-07):** within the same geo, the bare ID invoked
-> on-demand successfully in one region but returned the `ValidationException` above in another;
-> the profile ID succeeded in both. Availability changes over time — verify in your deployment
-> region (command below).
+#### Routing scope (= data residency)
 
-| Region group | Prefix | Example |
-|---|---|---|
-| Asia Pacific | `apac.` | `apac.amazon.nova-lite-v1:0` |
-| Japan | `jp.` | `jp.anthropic.claude-haiku-4-5-20251001-v1:0` |
-| Global | `global.` | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
-| United States | `us.` | `us.amazon.nova-lite-v1:0` |
-| Europe | `eu.` | `eu.amazon.nova-lite-v1:0` |
+| Scope | Prefix (examples) | Routes within | Typical use |
+|---|---|---|---|
+| Global | `global.` | supported regions worldwide | maximum availability / portability (no residency constraint) |
+| Continent / geo | `apac.` / `us.` / `eu.` | multiple regions in one geo | geo-level residency |
+| Country / sovereign | `jp.` (Japan) / `au.` (Australia) / `us.` (US) … | multiple regions within one country | strict in-country residency |
 
-This repository's defaults match the primary deployment region family (ap-northeast-1).
-When deploying elsewhere, set `BedrockModelId` to the profile ID for your region.
+> **The prefix name conveys the intent**: `jp.` = within Japan, `au.` = within Australia, `eu.` =
+> Europe, `global.` = worldwide. AWS is expanding in-country (sovereign) profiles for countries that
+> have multiple in-country regions (Japan, US, Australia, India, …). In this repo's live probe we saw
+> Japan `jp.` and Australia `au.`; India-family regions currently expose only `apac.`/`global.`
+> (country scope may appear later). **Availability is model-, region-, and time-specific — always
+> verify with `aws bedrock list-inference-profiles`.**
 
-> **Prefix availability is model-specific.** For example **Amazon Nova offers `apac.`**, but
-> **Claude Haiku 4.5 has no `apac.` profile** — it is offered as `jp.` (Japan) or `global.`
-> (check with `aws bedrock list-inference-profiles`). This repository's Claude patterns default to
-> **`global.`** for portability (works in every region); for stricter data residency use
-> **`jp.` (routes within Japan)** or in-region Provisioned Throughput.
+#### How to choose
+
+Set `BedrockModelId` to a profile ID whose scope matches your requirement (the parameter is free-form):
+
+- **Portability (default):** this repo defaults to `global.` (Claude) / `apac.` (Nova) so it "just
+  works" everywhere.
+- **Geo residency:** keep data within a geo → `apac.` / `us.` / `eu.`.
+- **In-country / sovereign:** keep data within your country → `jp.` / `au.` / `us.` … (your country's
+  profile), or **in-region Provisioned Throughput** (pinned to a single region).
+
+> **Observed behavior (sample, as of 2026-07):** for the same model, the bare ID invoked on-demand
+> successfully in one region but returned the `ValidationException` above in another; the profile ID
+> succeeded in both. Some models also have no `apac.` (e.g. Claude Haiku 4.5 offers only `jp.`/
+> `global.`). Availability changes over time — verify in your deployment region.
 
 ### Prerequisite: enable model access
 
@@ -193,14 +210,16 @@ Each template in this repository grants:
 
 ### ⚠️ Data residency / sovereignty (important)
 
-A cross-region inference profile **routes requests across multiple regions within the geo**
-(e.g. `apac.` may forward to APAC regions other than your deployment region). For regulated or
-data-sovereignty-sensitive workloads, evaluate whether inference data may be **processed outside
-your deployment region**.
+A cross-region inference profile **routes requests across multiple regions within its scope**
+(`global.` = worldwide, `apac.` = across APAC, `jp.` = within Japan, …). For regulated or
+data-sovereignty-sensitive workloads, evaluate **where inference data may be processed** against the
+"Routing scope" table above.
 
-Alternatives:
+Ways to narrow residency (strongest first):
 
-- Purchase **in-region Provisioned Throughput** and set its model ARN as `BedrockModelId`.
+- Choose a **country / sovereign-scope profile** (`jp.` / `au.` / `us.` …) — stays within that
+  country's regions.
+- Purchase **in-region Provisioned Throughput** and set its model ARN as `BedrockModelId` (pinned to a single region).
 - Use a **Bedrock VPC endpoint (PrivateLink)** to keep Bedrock traffic on a private path
   (generation Lambdas are VPC-external; add VPC configuration as needed).
 - Choose a **model that supports bare on-demand invocation** in your region.
