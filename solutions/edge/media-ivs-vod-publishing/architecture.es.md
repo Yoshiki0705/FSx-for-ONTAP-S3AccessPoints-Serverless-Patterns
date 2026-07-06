@@ -198,7 +198,7 @@ desordenados posibles. No tratar un único `Recording End` como un disparador ex
 5. **Endurecer**: HYBRID + idempotencia, DLQ, alarmas (`EnableCloudWatchAlarms=true`), integración de moderación si se publica públicamente.
 
 > **Partner/SI** (delivery lens): las fases 1–2 son un PoC de 30 minutos sin FSx, adecuado para la
-> primera conversación con el cliente; las fases 3–5 se mapean al entorno real del cliente y es donde se hace el dimensionamiento y la aprobación de gobernanza.
+> primera conversación de descubrimiento; las fases 3–5 se mapean al entorno real de la organización usuaria y es donde se hace el dimensionamiento y la aprobación de gobernanza.
 
 > **App Developer** (developer lens): el handler desplegable es `functions/publish/handler.py` (usa
 > `shared/` para acceso S3 AP, clasificación de datos, Human Review, EMF). Los fragmentos `samples/` son

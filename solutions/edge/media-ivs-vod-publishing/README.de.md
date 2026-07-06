@@ -14,7 +14,7 @@
 | **Experimentell** | `Not documented as supported` | Eine IVS Recording Configuration direkt auf einen FSx-for-ONTAP-S3-Access-Point-Alias richten. **Von AWS nicht als unterstützt dokumentiert** — separat zu validieren. Siehe [direct-recording-experiment.md](direct-recording-experiment.md). |
 
 > Dies ist eine **Referenzimplementierung**. Wahl des Auslieferungsanbieters, Rechteverwaltung,
-> Geobeschränkungen und Compliance liegen beim Kunden. Technische Validierung ersetzt keine
+> Geobeschränkungen und Compliance liegen bei der nutzenden Organisation. Technische Validierung ersetzt keine
 > rechtliche, Compliance- oder Datenschutzprüfung.
 
 > **TL;DR (30 s)**: IVS-Live-Erlebnis beibehalten; in den **unterstützten S3-Bucket** aufzeichnen;
@@ -39,7 +39,7 @@ S3-API-Diensten) statt getrennter Kopien für Schnitt und Auslieferung.
 
 ## Partner/SI-Leitfaden
 
-- **Erste Kundenfrage**: „Benötigen Schnitt/QC/Freigabe/Archiv nach dem Live sowohl Dateiprotokolle (NFS/SMB) als auch die S3-API? Erfolgt die VOD-Auslieferung über CloudFront?"
+- **Erste zu klärende Frage**: „Benötigen Schnitt/QC/Freigabe/Archiv nach dem Live sowohl Dateiprotokolle (NFS/SMB) als auch die S3-API? Erfolgt die VOD-Auslieferung über CloudFront?"
 - **PoC-Ergebnisse**: DemoMode-Demo → VOD-Publish-Manifest (Master-Manifest-Validierung + Human-Review-Entscheidung) → (optional) echte IVS-Aufzeichnung → FSx-Publishing → CloudFront-Auslieferung.
 
 ## Architektur (empfohlener Pfad)

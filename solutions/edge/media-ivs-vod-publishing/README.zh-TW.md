@@ -12,7 +12,7 @@
 | **建議（Recommended）** | `Supported components` | Amazon IVS 自動錄製到受支援的標準 S3 儲存貯體，隨後將 HLS 套件發佈到 FSx for ONTAP，並透過 S3 Access Point + Amazon CloudFront 分發 VOD。各元件皆已個別文件化並受支援。 |
 | **實驗（Experimental）** | `Not documented as supported` | 將 IVS Recording Configuration 的輸出目標直接指定為 FSx for ONTAP S3 Access Point alias。**AWS 官方文件未聲明支援** — 需另行驗證。參見 [direct-recording-experiment.md](direct-recording-experiment.md)。 |
 
-> 本模式為**參考實作**。分發廠商選擇、版權處理、地域限制與合規由客戶判斷。技術驗證不取代法律、合規與隱私評估。
+> 本模式為**參考實作**。分發廠商選擇、版權處理、地域限制與合規由使用方/組織判斷。技術驗證不取代法律、合規與隱私評估。
 
 > **TL;DR（30 秒）**：保留 IVS 直播體驗，錄製到**受支援的 S3 儲存貯體**；隨後將 HLS 發佈到 FSx for ONTAP，
 > 透過 NFS/SMB 進行編輯/QC/審核，並以 S3 Access Point + CloudFront 再分發 VOD。直接錄製（IVS→FSx for ONTAP S3 AP）
@@ -33,7 +33,7 @@
 
 ## Partner/SI 指南
 
-- **首個客戶問題**：「直播後編輯/QC/審核/封存是否同時需要檔案（NFS/SMB）與 S3 API？VOD 分發是否用 CloudFront？」
+- **首個確認問題**：「直播後編輯/QC/審核/封存是否同時需要檔案（NFS/SMB）與 S3 API？VOD 分發是否用 CloudFront？」
 - **PoC 交付物**：DemoMode 示範 → VOD publish 清單（master manifest 檢查 + Human Review 判定）→（選用）真實 IVS 錄製 → FSx 發佈 → CloudFront 分發。
 
 ## 架構（建議路徑）
