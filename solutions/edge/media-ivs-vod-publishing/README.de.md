@@ -33,6 +33,9 @@ Human-Review-Entscheidung und die Datenklassifizierung (kein FSx for ONTAP nöti
 - **FSx for ONTAP** wird zum **Post-Live-Medien-Workspace**: Schnitt, QC und Freigabe über **NFS/SMB** auf denselben Daten.
 - **S3 Access Points** stellt diese auf FSx liegenden Dateien AWS-Diensten (CloudFront, Lambda, Athena, Glue, Amazon Bedrock) über die S3-API bereit.
 - **Amazon CloudFront** liefert das fertige HLS-VOD an Zuschauer aus.
+- Es erweitert sich auch auf **near-live-Kollaboration parallel zum Livestream** (Catch-up-Schnitte und
+  Untertitel während der Übertragung). Direkte Injektion in das IVS-Live-Manifest ist nicht möglich;
+  nach Schicht gestalten (siehe „Near-live-Kollaboration" in [architecture.de.md](architecture.de.md)).
 
 So hält ein Medienteam eine einzige maßgebliche Kopie auf FSx for ONTAP (nutzbar von Datei-Tools und
 S3-API-Diensten) statt getrennter Kopien für Schnitt und Auslieferung.

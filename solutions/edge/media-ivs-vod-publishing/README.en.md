@@ -34,6 +34,9 @@ manifest validation, the Human Review decision, and data classification (no FSx 
 - **S3 Access Points** expose those FSx-resident files to AWS services (CloudFront, Lambda,
   Athena, Glue, Amazon Bedrock) via the S3 API.
 - **Amazon CloudFront** re-delivers the finished HLS VOD to viewers.
+- It also extends to **near-live collaborative editing alongside the live stream** (catch-up edits and
+  captions during the broadcast). Direct injection into the IVS live manifest is not possible; design it
+  by layer (see "Near-live collaborative editing" in [architecture.en.md](architecture.en.md)).
 
 This lets a media team keep one authoritative copy of the media on FSx for ONTAP (usable by
 both file-protocol tools and S3-API services) instead of separate copies for editing and delivery.

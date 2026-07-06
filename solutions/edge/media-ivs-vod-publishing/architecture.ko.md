@@ -100,6 +100,33 @@ Amazon IVS
 > 플레이리스트 + 세그먼트(TS 는 `.ts`, fMP4/CMAF 는 `.m4s`+init)와 썸네일·녹화 메타데이터 JSON 으로
 > 기록한다. 임의 플레이리스트가 아니라 multivariate master 를 검증할 것.
 
+## 라이브 병행 near-live 공동 편집(3-레이어 정리)
+
+"라이브 중에 FSx for ONTAP 에서 S3 Access Point 를 통해 따라잡기 편집이나 자막을 삽입하고 싶다"는
+요구는 자연스럽지만, IVS 라이브 전달 구조상 **어느 레이어에서 삽입할지**를 나누어 설계해야 한다.
+
+| 레이어 | 무엇이 가능한가 | FSx for ONTAP S3 AP 의 관여 |
+|--------|----------------|------------------------------|
+| **1. IVS 라이브 전달 경로(IVS 관리)** | encoder → IVS 트랜스코드/패키징 → IVS CDN 으로 시청자에게. 이 **라이브 재생 매니페스트는 IVS 가 관리**하며, 외부에서 만든 HLS 세그먼트/자막을 나중에 끼워 넣을 훅이 없다. | **불가**(라이브 매니페스트는 불변). 서버 측 라이브 가공은 AWS Elemental MediaLive / MediaPackage 영역. |
+| **2. 클라이언트 측 오버레이(timed metadata)** | [Timed Metadata(`PutMetadata`)](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) 를 라이브에 동기 삽입하고 플레이어 SDK 가 **클라이언트에서 자막·자막바·그래픽을 렌더링**. `PutMetadata` 는 요청당 최대 1 KB·채널당 5 TPS. | **간접적으로 가능**: metadata 에 "에셋 참조 키 + 타임코드"를 싣고, 자막 본문/오버레이 이미지 실체는 **CloudFront(오리진 = FSx for ONTAP S3 AP)** 에서 가져오게 한다. 편집팀은 NFS/SMB 로 자막을 쓰고, 같은 데이터를 S3 AP + CloudFront 가 배포. |
+| **3. near-live 편집 렌디션(녹화 측)** | Auto-Record 된 HLS 를 지속적으로 FSx for ONTAP 로 취합하고, 편집팀이 growing recording 을 편집해 **라이브보다 수십 초~수 분 지연된 별도 URL** 로 near-live 배포. | **핵심**: NLE(SMB) / 자막 도구(SMB) / S3-API 자동화 / Athena·Bedrock 분석이 복사 없이 **단일 정본 데이터** 위에서 병행(프로토콜 무관 공동 편집). |
+
+> **Media SME lens**: "라이브 자체에 굽는" 것이 아니라 레이어 2(클라이언트 렌더링) 또는 레이어 3
+> (near-live 별도 렌디션)에서 구현하는 것이 IVS 방식에 맞다. 영상에 구워진 클로즈드 캡션
+> (CEA-608/708)은 **인코더 측**에서 삽입하며 FSx 에서 나중에 넣는 것이 아니다.
+
+### 솔직한 제약
+
+- **진짜 라이브가 아니라 near-live**: 세그먼트 확정 → 취합 → 편집 → 재배포만큼 반드시 지연된다.
+  "따라잡기"는 수십 초~분 단위 지연이 전제.
+- **IVS 라이브 매니페스트는 불변**: 레이어 1 삽입은 불가.
+- **라이브 굽기 자막**은 인코더 측(IVS 외부).
+- 레이어 2 는 `PutMetadata` 1 KB / 5 TPS 한도에 맞게 실체가 아닌 참조를 싣는다.
+
+> **이용자 가치**(Partner/SI lens): 이 패턴의 매력은 "라이브 이후 VOD 화"뿐 아니라
+> **라이브와 병행하는 near-live 공동 편집 워크스페이스**로 확장된다. 편집·QC·자막·분석이 프로토콜과
+> 무관하게 같은 데이터 위에서 병행되는 점이 FSx for ONTAP + S3 Access Points 조합의 동기다.
+
 ## 언제 이 패턴을 쓰는가 — 의사결정 가이드
 
 ```mermaid

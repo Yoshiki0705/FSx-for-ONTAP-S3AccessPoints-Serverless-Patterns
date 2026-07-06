@@ -93,6 +93,31 @@ Amazon IVS
 > **媒体工作流**（Media SME lens）：IVS 将 HLS 记录为 multivariate `master.m3u8` + 各码率媒体播放列表 +
 > 段（TS 为 `.ts`，fMP4/CMAF 为 `.m4s`+init）以及缩略图、录制元数据 JSON。应校验 multivariate master 而非任意播放列表。
 
+## 直播并行的 near-live 协同编辑（三层梳理）
+
+"在直播过程中，从 FSx for ONTAP 经由 S3 Access Point 插入追赶编辑或字幕"是很自然的诉求，但受限于
+IVS 直播分发机制，需要区分**在哪一层插入**来设计。
+
+| 层 | 能做什么 | FSx for ONTAP S3 AP 的参与 |
+|----|----------|----------------------------|
+| **1. IVS 直播分发路径（IVS 托管）** | encoder → IVS 转码/封装 → IVS CDN 到观众。此**直播播放清单由 IVS 托管**，没有把外部制作的 HLS 分片/字幕事后插入的入口。 | **不可**（直播清单不可变）。服务端直播加工属于 AWS Elemental MediaLive / MediaPackage 领域。 |
+| **2. 客户端叠加（timed metadata）** | 将 [Timed Metadata（`PutMetadata`）](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/metadata.html) 同步插入直播，播放器 SDK 在**客户端渲染字幕/字幕条/图形**。`PutMetadata` 每请求最多 1 KB、每频道 5 TPS。 | **可间接实现**：在 metadata 里放"资源引用键 + 时间码"，字幕正文/叠加图片的实体从 **CloudFront（源 = FSx for ONTAP S3 AP）** 获取。编辑团队用 NFS/SMB 编写字幕，同一份数据由 S3 AP + CloudFront 分发。 |
+| **3. near-live 编辑版本（录制侧）** | 持续将 Auto-Record 的 HLS 取入 FSx for ONTAP，编辑团队编辑 growing recording，并以**比直播延迟数十秒至数分钟的独立 URL** 做 near-live 分发。 | **主战场**：NLE(SMB) / 字幕工具(SMB) / S3-API 自动化 / Athena·Bedrock 分析在**单一权威数据**上并行，无需额外拷贝（协议无关的协同编辑）。 |
+
+> **Media SME lens**：不是"烧录进直播本身"，而是在第 2 层（客户端渲染）或第 3 层（near-live 独立版本）
+> 实现，才符合 IVS 的机制。烧录式闭合字幕（CEA-608/708）在**编码器侧**嵌入，而非从 FSx 事后加入。
+
+### 诚实的限制
+
+- **不是真直播而是 near-live**：分片确定 → 取入 → 编辑 → 再分发都会带来延迟。"追赶"以数十秒至分钟级延迟为前提。
+- **IVS 直播清单不可变**：无法插入第 1 层。
+- **直播烧录字幕**属编码器侧（IVS 之外）。
+- 第 2 层需在 `PutMetadata` 1 KB / 5 TPS 限制内，放引用而非实体。
+
+> **用户价值**（Partner/SI lens）：本模式的价值不仅是"直播后 VOD 化"，还扩展到
+> **与直播并行的 near-live 协同编辑工作区**。编辑·QC·字幕·分析可跨协议在同一份数据上并行，正是
+> 组合 FSx for ONTAP 与 S3 Access Points 的动机。
+
 ## 何时使用本模式 — 决策指南
 
 ```mermaid
