@@ -218,7 +218,6 @@ Full detail is in [validation-matrix.md](validation-matrix.md).
 | [docs/demo-guide.md](docs/demo-guide.md) | DemoMode verification steps |
 | [samples/](samples/) | EventBridge event, Step Functions ASL, Lambda snippet, AP policy, CloudFront notes |
 | [scripts/](scripts/) | CLI helpers for recording config + validation + sync |
-| [blog/](blog/) | Community blog drafts (JA / EN) |
 | [support-request/](support-request/) | Feature-request templates for AWS (JA / EN) |
 
 ## Security / Governance

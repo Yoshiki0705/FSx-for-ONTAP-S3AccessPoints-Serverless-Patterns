@@ -212,7 +212,6 @@ Vollständige Details in [validation-matrix.md](validation-matrix.md).
 | [docs/demo-guide.md](docs/demo-guide.md) | DemoMode-Prüfschritte |
 | [samples/](samples/) | EventBridge-Event, Step-Functions-ASL, Lambda-Snippet, AP-Policy, CloudFront-Hinweise |
 | [scripts/](scripts/) | CLI zum Erstellen/Validieren/Synchronisieren der Recording-Config |
-| [blog/](blog/) | Community-Blog-Entwürfe (JA / EN) |
 | [support-request/](support-request/) | Feature-Request-Vorlagen für AWS (JA / EN) |
 
 ## Sicherheit / Governance
