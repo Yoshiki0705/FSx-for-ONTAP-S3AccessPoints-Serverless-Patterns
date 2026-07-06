@@ -1,0 +1,47 @@
+# samconfig.toml.example — media-ivs-vod-publishing
+#
+# 使用方法:
+#   1. このファイルを samconfig.toml にコピー
+#   2. <PLACEHOLDER> を実際の値に置き換え
+#   3. sam deploy を実行
+#
+# 注意: samconfig.toml は .gitignore に含まれています
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-media-ivs-vod-publishing"
+resolve_s3 = true
+s3_prefix = "fsxn-media-ivs-vod-publishing"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+disable_rollback = false
+
+parameter_overrides = [
+    "RecordingSourceBucket=<YOUR_IVS_RECORDING_BUCKET>",
+    "S3AccessPointOutputAlias=<YOUR_OUTPUT_S3AP_ALIAS>-ext-s3alias",
+    "MasterManifestName=master.m3u8",
+    "TriggerMode=EVENT_DRIVEN",
+    "SourcePrefixRoot=ivs/v1/",
+    "DemoMode=true",
+    "DataClassification=PUBLIC",
+    "HumanReviewAutoApproveThreshold=0.85",
+    "HumanReviewRejectThreshold=0.30",
+    "EnableModeration=false",
+    "ModerationMinConfidence=80",
+    "ModerationMaxImages=5",
+    "EnableStrictModeration=false",
+    "ModerationToxicityThreshold=0.5",
+    "MediaModerationLanguage=en",
+    "EnableCloudFront=false",
+    "NotificationEmail=<YOUR_EMAIL>",
+    "ScheduleExpression=rate(1 hour)",
+    "EnableCloudWatchAlarms=false",
+    "EnableXRayTracing=true",
+    "LogRetentionInDays=90",
+]
+
+[default.build.parameters]
+cached = true
+parallel = true
