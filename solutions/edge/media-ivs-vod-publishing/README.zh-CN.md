@@ -200,7 +200,6 @@ VOD 发布不仅依赖自动判定。基于包的**完整性信号**计算 publi
 | [docs/demo-guide.md](docs/demo-guide.md) | DemoMode 验证步骤 |
 | [samples/](samples/) | EventBridge 事件、Step Functions ASL、Lambda 片段、AP 策略、CloudFront 说明 |
 | [scripts/](scripts/) | Recording Config 创建/验证/同步 CLI |
-| [support-request/](support-request/) | AWS 功能改进请求模板（JA / EN） |
 
 ## 安全 / 治理
 
