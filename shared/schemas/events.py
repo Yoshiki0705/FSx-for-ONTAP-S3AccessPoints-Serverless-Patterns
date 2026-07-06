@@ -227,6 +227,49 @@ class DeliveryLogSummaryOutput(TypedDict):
 
 
 # ============================================================
+# Media IVS VOD Publishing パターン固有
+# ============================================================
+
+
+class MediaVodPublishManifest(TypedDict, total=False):
+    """IVS VOD publish マニフェスト（S3 AP に書き戻す JSON）"""
+
+    execution_id: str
+    timestamp: str
+    recording_session_id: str
+    channel_name: str
+    source_bucket: str
+    recording_prefix: str
+    total_objects: int
+    master_manifest_present: bool
+    master_manifest_key: str
+    published: list[dict]
+    skipped: list[dict]
+    human_review: HumanReviewInfo
+    moderation: dict
+    data_classification: str
+    data_classification_label: str
+
+
+class MediaVodPublishOutput(TypedDict, total=False):
+    """Media IVS VOD Publishing Publish Lambda の出力"""
+
+    status: Literal["completed", "skipped"]
+    reason: str
+    recording_status: str
+    manifest_key: str
+    master_manifest_present: bool
+    master_manifest_key: str
+    human_review: HumanReviewInfo
+    moderation: dict
+    blocked_by_moderation: bool
+    total_objects: int
+    published: list[dict]
+    skipped_count: int
+    data_classification: str
+
+
+# ============================================================
 # SAP/ERP パターン固有
 # ============================================================
 
