@@ -114,8 +114,16 @@ destination, and record:
 
 | Test | Input (`destinationConfiguration.s3.bucketName`) | Result |
 |------|--------------------------------------------------|--------|
-| Alias as `bucketName` | S3 AP **alias** (`<name>-s3alias`, ≤63 chars) | RecordingConfiguration created and reached **`state: ACTIVE`** |
-| ARN as `bucketName` | S3 AP **ARN** (`arn:aws:s3:<region>:<account-id>:accesspoint/<name>`, 78 chars) | **Rejected** — `ValidationException: ...bucketName is required to have a maximum length of 63, found 78` |
+| Alias as `bucketName` (standard S3 AP) | S3 AP **alias** (`<name>-s3alias`, ≤63 chars) | RecordingConfiguration created and reached **`state: ACTIVE`** |
+| ARN as `bucketName` (standard S3 AP) | S3 AP **ARN** (`arn:aws:s3:<region>:<account-id>:accesspoint/<name>`, 78 chars) | **Rejected** — `ValidationException: ...bucketName is required to have a maximum length of 63, found 78` |
+| Alias as `bucketName` (**FSx for ONTAP S3 AP**) | FSx-for-ONTAP S3 AP **alias** (`<name>-ext-s3alias`, ≤63 chars) | RecordingConfiguration created and reached **`state: ACTIVE`** (config-creation only; deleted after) |
+| ARN as `bucketName` (**FSx for ONTAP S3 AP**) | FSx-for-ONTAP S3 AP **ARN** (68 chars) | **Rejected** — `ValidationException` (consistent ≤63-char `bucketName` limit) |
+
+> **Update (advanced observation)**: a later run reused an **existing FSx for ONTAP S3 Access Point
+> attachment** (not a standard S3 AP) and confirmed its **alias** is likewise accepted by IVS at
+> config-creation time and reaches `ACTIVE`; the **ARN** is rejected on the 63-char limit. This was
+> config-creation validation only — **no channel attach, no live stream, no writes to the FSx for
+> ONTAP volume** — so recording-time behavior and dual-layer authorization remain **unverified**.
 
 ### Interpretation
 
@@ -126,8 +134,11 @@ destination, and record:
   the configuration is created, but the actual object writes happen during a live stream (Recording
   Start/End) via the IVS service-linked role. This test did **not** run a live stream, so recording
   success is **unverified**.
-- This used a **standard S3 AP**. An **FSx for ONTAP S3 AP** adds dual-layer authorization (AP policy
-  **and** ONTAP file-system identity) and a different backing store; behavior there is **untested**.
+- Both a **standard S3 AP** and an **FSx for ONTAP S3 AP** alias passed config-creation and reached
+  ACTIVE (see the advanced observation above). However, an FSx for ONTAP S3 AP adds dual-layer
+  authorization (AP policy **and** ONTAP file-system identity) and a different backing store; the
+  **recording-time** behavior (actual writes through the AP during a live stream) is still **untested**
+  for both.
 
 ### Public label decision
 

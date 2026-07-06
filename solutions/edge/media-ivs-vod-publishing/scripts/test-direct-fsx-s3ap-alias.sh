@@ -60,7 +60,23 @@ for _ in $(seq 1 30); do
   sleep 5
 done
 
-echo ">> Next steps (see direct-recording-experiment.md):"
+# This script tests config-creation validation ONLY. Auto-delete the RecordingConfiguration so
+# nothing is left behind (safe to re-run). Set KEEP_RC=1 to keep it for a live-stream test.
+if [[ "${KEEP_RC:-0}" != "1" ]]; then
+  echo ">> Cleaning up (config-creation test only): deleting ${RC_ARN}"
+  aws ivs delete-recording-configuration --region "${AWS_REGION}" --arn "${RC_ARN}" || true
+fi
+
+# Optional: confirm the ARN form is rejected on the 63-char bucketName limit (no resource created).
+if [[ -n "${FSX_S3AP_ARN:-}" ]]; then
+  echo ">> Confirming ARN form is rejected (expected ValidationException, 63-char limit)"
+  set +e
+  aws ivs create-recording-configuration --region "${AWS_REGION}" --name "${CONFIG_NAME}-arn" \
+    --destination-configuration "{\"s3\": {\"bucketName\": \"${FSX_S3AP_ARN}\"}}" 2>&1 | tail -2
+  set -e
+fi
+
+echo ">> Next steps for a full recording test (see direct-recording-experiment.md; KEEP_RC=1):"
 echo "   1) Attach to a channel, stream briefly."
 echo "   2) Watch EventBridge 'IVS Recording State Change' (Start/End/Failure)."
 echo "   3) Check for ivs/v1/... objects on the FSx volume (via S3 AP or NFS/SMB)."
