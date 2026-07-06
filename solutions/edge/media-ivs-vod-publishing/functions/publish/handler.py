@@ -281,9 +281,7 @@ def _copy_package(source: S3ApHelper, output: S3ApHelper, objects: list[dict]) -
                 key,
                 size,
             )
-            skipped.append(
-                {"key": key, "bytes": size, "reason": "exceeds_lambda_ingest_limit_use_datasync_or_ecs"}
-            )
+            skipped.append({"key": key, "bytes": size, "reason": "exceeds_lambda_ingest_limit_use_datasync_or_ecs"})
             continue
         published.append(_ingest_object(source, output, key, size))
     return published, skipped

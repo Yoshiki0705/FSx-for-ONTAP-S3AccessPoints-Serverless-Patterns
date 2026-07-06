@@ -262,7 +262,11 @@ def _collect(event: dict, _context) -> dict:
     transcribe_output_key = event.get("transcribe_output_key") or ""
     captions_flagged = bool(event.get("captions_flagged"))
 
-    video = _collect_video(rekognition_job_id) if rekognition_job_id else {"status": "skipped", "flagged": False, "pending": False}
+    video = (
+        _collect_video(rekognition_job_id)
+        if rekognition_job_id
+        else {"status": "skipped", "flagged": False, "pending": False}
+    )
     audio = (
         _collect_audio(transcribe_job_name, transcribe_output_key)
         if transcribe_job_name

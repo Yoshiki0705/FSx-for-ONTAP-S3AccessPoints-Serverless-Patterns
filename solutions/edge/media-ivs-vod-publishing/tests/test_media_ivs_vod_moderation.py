@@ -135,9 +135,7 @@ class TestStartPhase:
         ctx.aws_request_id = "req-1"
         return ctx
 
-    def test_start_captions_flagged_no_video(
-        self, monkeypatch, moderation_handler, fake_s3ap_factory
-    ):
+    def test_start_captions_flagged_no_video(self, monkeypatch, moderation_handler, fake_s3ap_factory):
         _set_env(monkeypatch)
         prefix = "ivs/v1/a/b/c/rec1"
         fake_src = fake_s3ap_factory(
@@ -154,9 +152,7 @@ class TestStartPhase:
         assert result["started"] == {"video": False, "audio": False}
         assert result["rekognition_job_id"] == ""
 
-    def test_start_with_video_starts_async_jobs(
-        self, monkeypatch, moderation_handler, fake_s3ap_factory
-    ):
+    def test_start_with_video_starts_async_jobs(self, monkeypatch, moderation_handler, fake_s3ap_factory):
         _set_env(monkeypatch)
         prefix = "ivs/v1/a/b/c/rec2"
         fake_src = fake_s3ap_factory(objects=[{"Key": f"{prefix}/master.m3u8", "Size": 1}])
@@ -242,7 +238,9 @@ class TestCollectPhase:
         monkeypatch.setattr(
             moderation_handler.boto3,
             "client",
-            _dispatcher(rekognition=rek, transcribe=transcribe, s3=FakeS3(transcript), comprehend=FakeComprehend(CLEAN)),
+            _dispatcher(
+                rekognition=rek, transcribe=transcribe, s3=FakeS3(transcript), comprehend=FakeComprehend(CLEAN)
+            ),
         )
 
         event = {

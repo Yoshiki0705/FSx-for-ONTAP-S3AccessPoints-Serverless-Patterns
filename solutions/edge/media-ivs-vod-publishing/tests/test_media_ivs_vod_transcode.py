@@ -66,9 +66,7 @@ class TestStatic:
 
 
 class TestStart:
-    def test_start_creates_job_and_returns_video_key(
-        self, monkeypatch, transcode_handler, fake_s3ap_factory
-    ):
+    def test_start_creates_job_and_returns_video_key(self, monkeypatch, transcode_handler, fake_s3ap_factory):
         _set_env(monkeypatch)
         prefix = "ivs/v1/a/b/c/rec1"
         fake_src = fake_s3ap_factory(objects=[{"Key": f"{prefix}/master.m3u8", "Size": 1}])
@@ -86,9 +84,7 @@ class TestStart:
         assert fake_mc.created["Settings"]["Inputs"][0]["FileInput"].endswith("/master.m3u8")
         assert fake_mc.created["Role"].endswith("MediaConvertRole")
 
-    def test_start_uses_explicit_master_key(
-        self, monkeypatch, transcode_handler, fake_s3ap_factory
-    ):
+    def test_start_uses_explicit_master_key(self, monkeypatch, transcode_handler, fake_s3ap_factory):
         _set_env(monkeypatch)
         fake_mc = FakeMediaConvert()
         # S3ApHelper should not be needed when master_key is explicit
