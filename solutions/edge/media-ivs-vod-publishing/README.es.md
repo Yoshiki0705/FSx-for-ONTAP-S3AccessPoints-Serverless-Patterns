@@ -212,7 +212,6 @@ Detalles completos en [validation-matrix.md](validation-matrix.md).
 | [docs/demo-guide.md](docs/demo-guide.md) | Pasos de verificación DemoMode |
 | [samples/](samples/) | Evento EventBridge, ASL de Step Functions, fragmento Lambda, política AP, notas CloudFront |
 | [scripts/](scripts/) | CLI de creación/validación/sincronización de la config de grabación |
-| [support-request/](support-request/) | Plantillas de solicitud de mejora para AWS (JA / EN) |
 
 ## Seguridad / Gobernanza
 
