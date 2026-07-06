@@ -34,6 +34,10 @@ données (FSx for ONTAP non requis).
 - **FSx for ONTAP** devient l'**espace de travail média post-live** : édition, QC et approbation via **NFS/SMB** sur les mêmes données.
 - **S3 Access Points** expose ces fichiers résidant sur FSx aux services AWS (CloudFront, Lambda, Athena, Glue, Amazon Bedrock) via l'API S3.
 - **Amazon CloudFront** rediffuse la VOD HLS finie aux spectateurs.
+- Le modèle s'étend aussi à l'**édition collaborative near-live en parallèle du direct** (montages en
+  rattrapage et sous-titres pendant la diffusion). L'injection directe dans le manifeste live d'IVS est
+  impossible ; concevez-la par couche (voir « Édition collaborative near-live » dans
+  [architecture.fr.md](architecture.fr.md)).
 
 Une équipe média conserve ainsi une seule copie faisant autorité sur FSx for ONTAP (utilisable par
 les outils fichiers et les services API S3) au lieu de copies séparées pour l'édition et la diffusion.
