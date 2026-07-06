@@ -1,0 +1,104 @@
+==============================================================================
+AWS SUPPORT - FEATURE REQUEST (ready to paste into the Create case form)
+Amazon IVS Auto-Record: support an S3 Access Point destination (incl. FSx for ONTAP)
+==============================================================================
+
+Plain-text version. Paste SUBJECT into the Subject field and DESCRIPTION into
+the Description field of the AWS Support Center "Create case" form.
+Do NOT add account IDs, internal IPs, support case numbers, or personal names.
+
+
+HOW TO SUBMIT
+------------------------------------------------------------------------------
+1. Open the AWS Support Center Create case page:
+   https://support.console.aws.amazon.com/support/home#/case/create
+   (In the console: top-right "?" icon -> Support -> Support Center -> Create case)
+2. Case type: Technical
+   Note: a Technical case requires a Developer, Business, or Enterprise Support
+   plan. With Basic Support you cannot open a Technical case; instead raise this
+   through your AWS account team / Solutions Architect, or the public AWS re:Post
+   forum, or a Partner channel.
+3. Service: Interactive Video Service (IVS)   [pick the closest match in the list]
+4. Category: General guidance or Feature request   [pick the closest match]
+5. Severity: Low (general question / feature request)
+6. Subject: paste the SUBJECT line below.
+7. Description: paste the whole DESCRIPTION block below.
+8. Communication preference: Email (or Web/Chat).
+9. Attachments (optional): up to 3 files, 5 MB each. Attach only sanitized logs
+   or screenshots (mask account IDs, IPs, ARNs, aliases).
+
+
+------------------------------------------------------------------------------
+SUBJECT
+------------------------------------------------------------------------------
+Feature request: allow an S3 Access Point (incl. FSx for ONTAP) as an Amazon IVS Auto-Record destination
+
+
+------------------------------------------------------------------------------
+DESCRIPTION
+------------------------------------------------------------------------------
+Summary
+Please consider supporting an S3 Access Point alias or ARN - in particular an
+access point associated with Amazon FSx for NetApp ONTAP - as an explicit
+destination for Amazon IVS Auto-Record, in addition to a standard S3 bucket
+name in RecordingConfiguration.destinationConfiguration.s3.bucketName.
+
+Business and technical motivation
+- Post-live VOD, editing, QC, approval, and archive workflows commonly need both
+  file protocols (NFS/SMB) and the S3 API on the same media.
+- FSx for ONTAP exposes the same data over NFS/SMB and via an S3 Access Point,
+  which fits media workflows well: a single authoritative copy usable by editors
+  and by S3-API services (CloudFront, Lambda, Athena, Amazon Bedrock).
+- Writing IVS recordings directly to an FSx for ONTAP volume would remove the
+  extra copy step from the standard S3 bucket into FSx for ONTAP.
+- Relevant use cases include live commerce, event streaming, education,
+  sports/fitness, and internal broadcast archives.
+
+Requested clarifications
+1. Is specifying an S3 Access Point alias in
+   destinationConfiguration.s3.bucketName a supported configuration for IVS
+   Auto-Record?
+2. If the alias points to an FSx for ONTAP S3 Access Point, is the behavior
+   supported?
+3. If it is not currently supported, can this be accepted as a roadmap item /
+   feature request?
+4. Are there plans to support an S3 Access Point ARN as a destination?
+5. Can AWS provide the recommended policy pattern for the IVS service-linked
+   role interacting with an S3 Access Point policy and the FSx for ONTAP file
+   system identity (UNIX / Windows)?
+6. If direct recording is not feasible, could AWS publish an official reference
+   architecture for IVS to S3 to FSx for ONTAP for post-live media workspaces
+   and VOD publishing?
+
+What we observed in a test environment (standard S3 access point, NOT FSx for ONTAP)
+- create-recording-configuration with the access point alias as bucketName
+  reached state ACTIVE.
+- The access point ARN was rejected with:
+  ValidationException: bucketName is required to have a maximum length of 63.
+- This indicates IVS validates bucketName only as a bucket-name-shaped string of
+  at most 63 characters at config-creation time. It does NOT confirm
+  recording-time writes through the access point, nor FSx for ONTAP S3 Access
+  Point behavior (config creation is not the same as recording success).
+  Explicit ARN support would require relaxing the 63-character bucketName limit.
+
+Supporting references (public documentation)
+- IVS CreateRecordingConfiguration API (accepts bucketName):
+  https://docs.aws.amazon.com/ivs/latest/LowLatencyAPIReference/API_CreateRecordingConfiguration.html
+- IVS Auto-Record to Amazon S3:
+  https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/record-to-s3.html
+- FSx for ONTAP S3 access points (support S3 object operations such as
+  PutObject / GetObject / ListObjectsV2):
+  https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html
+- S3 Access Point alias can stand in for a bucket name in object operations:
+  https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-alias.html
+
+Recommended next validation (for the AWS team or for us to run)
+End-to-end result with a live stream and an FSx for ONTAP S3 Access Point:
+Recording Start/End events, whether ivs/v1/... objects are written through the
+access point, and CloudTrail entries for the S3 APIs the IVS service-linked role
+invokes.
+
+Framing
+This is a constructive capability request and a set of clarifications, not a
+complaint. Thank you for considering it.
+==============================================================================

@@ -1,0 +1,103 @@
+==============================================================================
+AWS サポート - 機能改善要望（ケース作成フォームにそのまま貼り付け可能）
+Amazon IVS Auto-Record の出力先に S3 Access Point（FSx for ONTAP 含む）を
+==============================================================================
+
+プレーンテキスト版です。SUBJECT を「件名」欄に、DESCRIPTION を「説明」欄に
+そのまま貼り付けてください。
+アカウント ID、内部 IP、サポートケース番号、個人名は記載しないでください。
+
+
+提出方法
+------------------------------------------------------------------------------
+1. AWS サポートセンターのケース作成ページを開く:
+   https://support.console.aws.amazon.com/support/home#/case/create
+   （コンソール右上の「?」アイコン -> サポート -> サポートセンター -> ケースの作成）
+2. ケースタイプ: 技術（Technical）
+   注意: 技術ケースの作成には Developer / Business / Enterprise いずれかの
+   サポートプランが必要です。Basic サポートでは技術ケースを作成できないため、
+   その場合は担当の AWS アカウントチーム / ソリューションアーキテクト、
+   公開フォーラムの AWS re:Post、またはパートナー経由で相談してください。
+3. サービス: Interactive Video Service (IVS)  ［一覧で最も近いものを選択］
+4. カテゴリ: 一般的なガイダンス もしくは 機能リクエスト  ［最も近いものを選択］
+5. 重要度: 低（一般的な質問 / 機能リクエスト）
+6. 件名: 下の SUBJECT 行を貼り付け。
+7. 説明: 下の DESCRIPTION ブロック全体を貼り付け。
+8. 連絡方法: E メール（または Web / チャット）。
+9. 添付（任意）: 最大 3 ファイル、各 5 MB まで。ログやスクリーンショットを
+   添付する場合は、アカウント ID・IP・ARN・alias をマスクしてください。
+
+
+------------------------------------------------------------------------------
+SUBJECT（件名）
+------------------------------------------------------------------------------
+機能リクエスト: Amazon IVS Auto-Record の出力先として S3 Access Point（FSx for ONTAP 含む）を指定可能に
+
+
+------------------------------------------------------------------------------
+DESCRIPTION（説明）
+------------------------------------------------------------------------------
+要望サマリ
+Amazon IVS の Auto-Record（Recording Configuration）の出力先として、標準 S3
+バケット名だけでなく、S3 Access Point の alias または ARN、特に Amazon FSx for
+NetApp ONTAP に紐づく S3 Access Point を、
+RecordingConfiguration.destinationConfiguration.s3.bucketName に明示的に指定
+できるようサポートを検討いただきたい。
+
+ビジネス / 技術的な動機
+- ライブ配信後の VOD、編集、QC、承認、アーカイブのワークフローでは、ファイル
+  プロトコル（NFS/SMB）と S3 API の両方が同一メディア上で必要になる。
+- FSx for ONTAP は同一データを NFS/SMB と S3 Access Point の両方から扱えるため、
+  メディアワークフローに適している（編集者と S3 API サービスの双方が使える単一
+  の正となるコピー）。
+- IVS の録画データを直接 FSx for ONTAP volume へ配置できれば、標準 S3 バケット
+  から FSx for ONTAP への後続コピーを削減できる。
+- ライブコマース、イベント配信、教育、スポーツ / フィットネス、社内配信アーカイブ
+  などでニーズがある。
+
+確認したい事項
+1. destinationConfiguration.s3.bucketName に S3 Access Point alias を指定する
+   ことは IVS Auto-Record のサポート対象か。
+2. その alias が FSx for ONTAP S3 Access Point を指す場合、動作はサポート対象か。
+3. 現時点でサポート対象外の場合、今後のロードマップ / 機能リクエストとして受付
+   可能か。
+4. S3 Access Point ARN を出力先として対応する予定はあるか。
+5. IVS のサービスリンクロールと、S3 Access Point ポリシー / FSx for ONTAP の
+   ファイルシステム identity（UNIX / Windows）の推奨ポリシーパターンを提供
+   いただけるか。
+6. 直接録画が難しい場合、ライブ後メディアワークスペース / VOD 配信向けに、
+   IVS -> S3 -> FSx for ONTAP の推奨リファレンスアーキテクチャを公式に整理
+   いただけるか。
+
+検証環境での観測（標準 S3 Access Point であり、FSx for ONTAP ではない）
+- create-recording-configuration に Access Point の alias を bucketName として
+  指定すると、状態が ACTIVE に到達した。
+- 一方、Access Point の ARN を指定すると、次のエラーで拒否された:
+  ValidationException: bucketName is required to have a maximum length of 63
+- これは IVS が config 作成時に bucketName を「63 文字以下・バケット名形状の
+  文字列」としてのみ検証することを示す。録画時（ストリーム中）の Access Point
+  経由の書き込みや、FSx for ONTAP S3 Access Point の挙動は確認していない
+  （config 作成の成功は録画の成功と同義ではない）。ARN の明示サポートには
+  63 文字制約の緩和が必要。
+
+参考（公開ドキュメント）
+- IVS CreateRecordingConfiguration API（bucketName を受け付ける）:
+  https://docs.aws.amazon.com/ivs/latest/LowLatencyAPIReference/API_CreateRecordingConfiguration.html
+- IVS Auto-Record to Amazon S3:
+  https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/record-to-s3.html
+- FSx for ONTAP S3 access points（PutObject / GetObject / ListObjectsV2 等の
+  S3 object operation をサポート）:
+  https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html
+- S3 Access Point alias は object 操作でバケット名の代わりに使える:
+  https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-alias.html
+
+推奨する次の検証（AWS 側、または当方で実施）
+ライブ配信 + FSx for ONTAP S3 Access Point でのエンドツーエンド結果:
+Recording Start/End イベント、ivs/v1/... オブジェクトが Access Point 経由で
+書き込まれるか、IVS サービスリンクロールが呼び出す S3 API の CloudTrail
+エントリ。
+
+姿勢
+本内容は非難ではなく、建設的な機能追加のお願いと確認事項です。ご検討ほど
+よろしくお願いいたします。
+==============================================================================
