@@ -118,6 +118,26 @@ IVS 直播分发机制，需要区分**在哪一层插入**来设计。
 > **与直播并行的 near-live 协同编辑工作区**。编辑·QC·字幕·分析可跨协议在同一份数据上并行，正是
 > 组合 FSx for ONTAP 与 S3 Access Points 的动机。
 
+## 直播的挑战与解决思路（用例集）
+
+除直播后 VOD 与 near-live 编辑外，直播现场常见的挑战也能映射到通过 S3 Access Points 暴露的
+FSx for ONTAP 共享媒体工作区。以下并非优劣，而是**按场景选择的选项与权衡**，与所列补充服务组合使用。
+
+| 直播挑战 | 解决思路（FSx for ONTAP + S3 AP + IVS） | 补充服务 | 诚实的权衡 |
+|---|---|---|---|
+| 用多语言字幕/翻译触达海外观众 | 本地化团队对同一录制通过 NFS/SMB 制作字幕资产，用 S3 AP + CloudFront（near-live 版本）分发 VTT，或用 timed metadata 驱动客户端叠加 | Amazon Transcribe、Amazon Translate、直播字幕合作方 | 直播翻译为 near-live。受监管/品牌敏感内容建议人工复核 |
+| 将长直播快速做成高光/剪辑 | 用 EventBridge → Step Functions 将确定分片切成高光素材到 FSx for ONTAP，用 SMB 编辑，用 S3 AP + CloudFront 发布 | AWS Elemental MediaConvert（版本） | 分片确定延迟。剪辑精度取决于标记/时间码 |
+| 高延迟链路的远程/分布式编辑 | 在编辑者附近用 FlexCache 提供类本地缓存，用低分辨率代理编辑（全分辨率保留在源卷） | — | FlexCache 增加缓存运维。代理流程需要生成步骤 |
+| 媒体库增长与存储成本 | 用 FabricPool 将冷素材分层到 capacity pool，热编辑数据保留在 SSD | — | 分层为 ONTAP 原生（S3 AP 不提供 S3 Lifecycle）。冷数据召回延迟 |
+| 媒体运营的业务连续性 | 用 SnapMirror 跨区域复制媒体工作区，用 Snapshot 做时间点恢复，符合 3-2-1 方针 | CloudFront + AWS 媒体服务弹性 | 源数据与索引的 RPO/RTO 分别定义。复制有成本 |
+| 交互式直播电商/互动 | 用 IVS timed metadata 驱动商品叠加与决定性瞬间，将商品/目录/叠加资产置于 FSx for ONTAP 并经 S3 AP + CloudFront 分发，将瞬间剪辑为 VOD | IVS timed metadata、IVS chat | PutMetadata 为 1 KB / 5 TPS。叠加在客户端渲染 |
+| 合规保留/审计 | 将录制在 ONTAP 上以 Snapshot/保留功能与审计轨迹保存，按标题/角色以独立 access point 暴露读取路径 | — | 不可变性/保留功能需按 FSx for ONTAP 版本与辖区验证。此为治理指引，非法律建议 |
+| 可检索的媒体归档 | 转写录制并建立检索索引，不将数据复制出 FSx for ONTAP，经 S3 AP 分析 | Amazon Transcribe、Athena/Glue、Amazon Bedrock、OpenSearch | 抽取/索引成本。检索时按标题施加访问控制 |
+
+> **中立表述**：每行都是按场景的选项。服务器端直播加工、封装与广告插入属 AWS Elemental
+> MediaLive / MediaPackage / MediaTailor 领域，本模式聚焦文件 + S3 API 媒体工作区与直播后/near-live 分发。
+> 按工作负载、约束与权衡进行选择。
+
 ## 何时使用本模式 — 决策指南
 
 ```mermaid
