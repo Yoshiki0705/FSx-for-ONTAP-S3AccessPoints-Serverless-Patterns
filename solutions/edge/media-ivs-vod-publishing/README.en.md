@@ -14,7 +14,7 @@
 | **Experimental** | `Not documented as supported` | Pointing an IVS Recording Configuration directly at an FSx for ONTAP S3 Access Point alias. This is **not documented by AWS as supported** and must be validated separately. See [direct-recording-experiment.md](direct-recording-experiment.md). |
 
 > This is a **reference implementation**. Delivery vendor selection, rights management, geo
-> restrictions, and compliance judgments are the customer's responsibility. Technical
+> restrictions, and compliance judgments are the operating organization's responsibility. Technical
 > validation does not replace legal, compliance, or privacy review.
 
 > **TL;DR (30s)**: Keep the IVS live experience; record to the **supported S3 bucket**; then
@@ -40,7 +40,7 @@ both file-protocol tools and S3-API services) instead of separate copies for edi
 
 ## Partner/SI usage guide
 
-- **First customer question**: "After live streaming, do editing/QC/approval/archive need both
+- **First discovery question**: "After live streaming, do editing/QC/approval/archive need both
   file protocols (NFS/SMB) and the S3 API? Is VOD delivery via CloudFront?"
 - **PoC deliverables**: DemoMode demo → VOD publish manifest (master-manifest validation + Human
   Review decision) → (optional) real IVS recording → FSx publish → CloudFront delivery.
@@ -320,6 +320,8 @@ These are composable, not mutually exclusive.
 - [Using Amazon EventBridge with IVS Low-Latency Streaming](https://docs.aws.amazon.com/ivs/latest/LowLatencyUserGuide/eventbridge.html)
 - [AWS::IVS::RecordingConfiguration (CloudFormation)](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-ivs-recordingconfiguration.html)
 - [FSx for ONTAP S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/s3-access-points.html)
+- [Using access points with AWS services (Athena/Lambda/Glue/Bedrock/EMR/CloudFront)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-access-points-with-aws-services.html)
+- [Stream video using CloudFront with FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-stream-video-with-cloudfront.html)
 - [Restricting access to an Amazon S3 origin (CloudFront OAC)](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html)
 
 ## Related documents
