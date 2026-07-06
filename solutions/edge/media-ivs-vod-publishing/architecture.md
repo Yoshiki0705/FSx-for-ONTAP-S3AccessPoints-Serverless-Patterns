@@ -128,6 +128,27 @@ Amazon IVS
 > **ライブ並走の near-live 共同編集ワークスペース**に広がる。編集・QC・字幕・解析が同一データ上で
 > プロトコルを問わず並行できる点が、FSx for ONTAP + S3 AP を組み合わせる動機になる。
 
+## 配信の課題と解決アイデア（ユースケース集）
+
+ライブ後 VOD や near-live 編集以外にも、配信の現場でよくある課題は、S3 Access Points 経由で公開する
+FSx for ONTAP 共有メディアワークスペースにマッピングできる。以下は優劣ではなく**用途に応じた選択肢と
+トレードオフ**であり、記載の補完サービスと組み合わせて使う。
+
+| 配信の課題 | 解決アイデア（FSx for ONTAP + S3 AP + IVS） | 補完サービス | 正直なトレードオフ |
+|---|---|---|---|
+| 多言語字幕/翻訳で海外の視聴者に届ける | ローカライズチームが同じ録画に対し NFS/SMB で字幕アセットを作成し、VTT を S3 AP + CloudFront（near-live レンディション）で配信、または timed metadata でクライアント側オーバーレイを駆動 | Amazon Transcribe、Amazon Translate、ライブ字幕パートナー | ライブ翻訳は near-live。規制/ブランド重要コンテンツは人間レビューを推奨 |
+| 長いライブをハイライト/クリップへ素早く | EventBridge → Step Functions で確定セグメントをハイライト素材として FSx for ONTAP に切り出し、SMB で編集、S3 AP + CloudFront で公開 | AWS Elemental MediaConvert（レンディション） | セグメント確定の遅延。クリップ精度はマーカー/タイムコード次第 |
+| 高遅延回線でのリモート/地理分散編集 | 編集者の近くに FlexCache でローカル同様のキャッシュを置き、低解像度プロキシで編集（フル解像度はオリジンボリュームに保持） | — | FlexCache はキャッシュ運用が増える。プロキシ運用は生成ステップが必要 |
+| メディアライブラリ増大とストレージコスト | FabricPool でコールドな素材を capacity pool へ階層化し、ホットな編集データは SSD に保持 | — | 階層化は ONTAP ネイティブ（S3 AP は S3 Lifecycle 非提供）。コールドデータは呼び戻し遅延 |
+| メディア運用の事業継続 | SnapMirror でメディアワークスペースをクロスリージョン複製、Snapshot で特定時点復旧、3-2-1 方針に整合 | CloudFront + AWS メディアサービスのレジリエンシー | ソースデータとインデックスの RPO/RTO は別々に定義。複製にコスト |
+| インタラクティブなライブコマース/エンゲージメント | IVS timed metadata で商品オーバーレイや「決定的瞬間」を駆動、商品/カタログ/オーバーレイ資産を FSx for ONTAP に置き S3 AP + CloudFront で配信、瞬間を VOD へクリップ | IVS timed metadata、IVS chat | PutMetadata は 1 KB / 5 TPS。オーバーレイはクライアント側描画 |
+| 規制対応の保持/監査 | 録画を ONTAP 上で Snapshot/保持機能と監査証跡とともに保持、タイトル/ロール単位の読み取り経路を別々の access point で公開 | — | 不変性/保持機能は FSx for ONTAP のバージョンと管轄で要検証。これはガバナンス指針であり法的助言ではない |
+| 検索可能なメディアアーカイブ | 録画を文字起こしして検索用にインデックス化し、データを FSx for ONTAP の外へコピーせず S3 AP 経由で解析 | Amazon Transcribe、Athena/Glue、Amazon Bedrock、OpenSearch | 抽出/インデックスのコスト。検索時にタイトル単位のアクセス制御を適用 |
+
+> **中立フレーミング**: 各行は文脈に応じた選択肢である。サーバー側のライブ加工・パッケージング・広告挿入は
+> AWS Elemental MediaLive / MediaPackage / MediaTailor の領域で、本パターンはファイル + S3 API の
+> メディアワークスペースとライブ後/near-live 配信に焦点を置く。ワークロード・制約・トレードオフで選ぶ。
+
 ## いつ本パターンを使うか — 意思決定ガイド
 
 ```mermaid

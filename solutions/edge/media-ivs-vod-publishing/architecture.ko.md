@@ -127,6 +127,27 @@ Amazon IVS
 > **라이브와 병행하는 near-live 공동 편집 워크스페이스**로 확장된다. 편집·QC·자막·분석이 프로토콜과
 > 무관하게 같은 데이터 위에서 병행되는 점이 FSx for ONTAP + S3 Access Points 조합의 동기다.
 
+## 배포의 과제와 해결 아이디어(유스케이스 모음)
+
+라이브 이후 VOD 나 near-live 편집 외에도, 배포 현장에서 흔한 과제는 S3 Access Points 로 노출하는
+FSx for ONTAP 공유 미디어 워크스페이스에 매핑할 수 있다. 아래는 우열이 아니라 **용도에 따른 선택지와
+트레이드오프**이며, 명시된 보완 서비스와 조합해 사용한다.
+
+| 배포 과제 | 해결 아이디어(FSx for ONTAP + S3 AP + IVS) | 보완 서비스 | 솔직한 트레이드오프 |
+|---|---|---|---|
+| 다국어 자막/번역으로 해외 시청자에게 전달 | 로컬라이제이션 팀이 같은 녹화에 대해 NFS/SMB 로 자막 에셋을 만들고, VTT 를 S3 AP + CloudFront(near-live 렌디션)로 배포하거나 timed metadata 로 클라이언트 오버레이 구동 | Amazon Transcribe, Amazon Translate, 라이브 자막 파트너 | 라이브 번역은 near-live. 규제/브랜드 민감 콘텐츠는 사람 검토 권장 |
+| 긴 라이브를 하이라이트/클립으로 신속히 | EventBridge → Step Functions 로 확정 세그먼트를 하이라이트 소재로 FSx for ONTAP 에 잘라내고 SMB 로 편집, S3 AP + CloudFront 로 공개 | AWS Elemental MediaConvert(렌디션) | 세그먼트 확정 지연. 클립 정확도는 마커/타임코드에 의존 |
+| 고지연 회선의 원격/지리 분산 편집 | 편집자 근처에 FlexCache 로 로컬 같은 캐시를 두고 저해상도 프록시로 편집(풀 해상도는 오리진 볼륨 유지) | — | FlexCache 는 캐시 운영 증가. 프록시 운영은 생성 단계 필요 |
+| 미디어 라이브러리 증가와 스토리지 비용 | FabricPool 로 콜드 소재를 capacity pool 로 계층화하고 핫한 편집 데이터는 SSD 유지 | — | 계층화는 ONTAP 네이티브(S3 AP 는 S3 Lifecycle 미제공). 콜드 데이터는 회수 지연 |
+| 미디어 운영의 사업 연속성 | SnapMirror 로 미디어 워크스페이스를 크로스 리전 복제, Snapshot 으로 특정 시점 복구, 3-2-1 방침에 정합 | CloudFront + AWS 미디어 서비스 복원력 | 소스 데이터와 인덱스의 RPO/RTO 를 별도 정의. 복제 비용 |
+| 인터랙티브 라이브 커머스/인게이지먼트 | IVS timed metadata 로 상품 오버레이·결정적 순간을 구동, 상품/카탈로그/오버레이 자산을 FSx for ONTAP 에 두고 S3 AP + CloudFront 로 배포, 순간을 VOD 로 클립 | IVS timed metadata, IVS chat | PutMetadata 1 KB / 5 TPS. 오버레이는 클라이언트 렌더링 |
+| 규제 대응 보존/감사 | 녹화를 ONTAP 에서 Snapshot/보존 기능과 감사 추적과 함께 보존, 타이틀/롤 단위 읽기 경로를 별도 access point 로 노출 | — | 불변성/보존 기능은 FSx for ONTAP 버전·관할에서 검증 필요. 이는 거버넌스 지침이며 법적 조언이 아님 |
+| 검색 가능한 미디어 아카이브 | 녹화를 전사해 검색용 인덱스화하고 데이터를 FSx for ONTAP 밖으로 복사하지 않고 S3 AP 로 분석 | Amazon Transcribe, Athena/Glue, Amazon Bedrock, OpenSearch | 추출/인덱스 비용. 검색 시 타이틀 단위 접근 제어 적용 |
+
+> **중립 프레이밍**: 각 행은 문맥에 맞는 선택지다. 서버 측 라이브 가공·패키징·광고 삽입은 AWS Elemental
+> MediaLive / MediaPackage / MediaTailor 영역이며, 본 패턴은 파일 + S3 API 미디어 워크스페이스와
+> 라이브 이후/near-live 배포에 초점을 둔다. 워크로드·제약·트레이드오프로 선택한다.
+
 ## 언제 이 패턴을 쓰는가 — 의사결정 가이드
 
 ```mermaid
