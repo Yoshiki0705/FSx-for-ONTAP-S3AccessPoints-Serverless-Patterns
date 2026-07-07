@@ -258,8 +258,10 @@ oder unsortiert sein. Ein einzelnes `Recording End` nicht als garantiert Exactly
 
 ## FAQ / verbreitete Missverständnisse
 
-- **„Kann IVS direkt in einen FSx-for-ONTAP-S3-Access-Point aufzeichnen?"** Nicht als unterstützt
-  dokumentiert — als Experimentell behandeln und validieren ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- **„Kann IVS direkt in einen FSx-for-ONTAP-S3-Access-Point aufzeichnen?"** Die Konfigurationserstellung
+  erreicht `ACTIVE`, aber in einer Testumgebung erzeugte ein Live-Stream einen **„Recording Start Failure"** und
+  schrieb keine `ivs/v1/...`-Objekte. Es ist zudem nicht als unterstützt dokumentiert — als Experimentell behandeln
+  ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **„Ist ein S3 Access Point ein Drop-in-S3-Bucket?"** Nein — eine S3-kompatible Zugriffsgrenze. Kein
   Presigned URL, Versioning, Object Lock, Lifecycle oder Static Website Hosting.
 - **„Kann man Zuschauern eine Presigned URL des VOD geben?"** Nein — CloudFront-signierte URLs/Cookies verwenden.
