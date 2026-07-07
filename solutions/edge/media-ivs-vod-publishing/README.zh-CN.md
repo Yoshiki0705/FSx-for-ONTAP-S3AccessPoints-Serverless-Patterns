@@ -10,7 +10,7 @@
 | 路径 | 状态 | 含义 |
 |------|------|------|
 | **推荐（Recommended）** | `Supported components` | Amazon IVS 自动录制到受支持的标准 S3 存储桶，随后将 HLS 包发布到 FSx for ONTAP，并通过 S3 Access Point + Amazon CloudFront 分发 VOD。每个组件均已单独文档化并受支持。 |
-| **实验（Experimental）** | `Not documented as supported` | 将 IVS Recording Configuration 的输出目标直接指定为 FSx for ONTAP S3 Access Point alias。**AWS 官方文档未声明支持** — 需单独验证。参见 [direct-recording-experiment.md](direct-recording-experiment.md)。 |
+| **实验（Experimental）** | `Observed: recording-time failure` | 将 IVS Recording Configuration 的输出目标直接指定为 FSx for ONTAP S3 Access Point alias。**AWS 官方文档未声明支持**。测试环境中配置创建可达 `ACTIVE`，但实时直播出现 **“Recording Start Failure”**，且未向 AP 写入 `ivs/v1/...` 对象（即使在 AP 策略中授予 IVS SLR 亦如此）。生产请使用推荐路径。参见 [direct-recording-experiment.md](direct-recording-experiment.md)。 |
 
 > 本模式为**参考实现**。分发厂商选择、版权处理、地域限制与合规由使用方/组织判断。技术验证不替代法律、合规与隐私评估。
 
@@ -258,7 +258,8 @@ VOD 发布不仅依赖自动判定。基于包的**完整性信号**计算 publi
 
 ## FAQ / 常见误解
 
-- **"IVS 能否直接录制到 FSx for ONTAP S3 AP？"** 无官方支持声明 → 作为 Experimental 验证
+- **"IVS 能否直接录制到 FSx for ONTAP S3 AP？"** 配置创建可达 `ACTIVE`，但测试环境的实时直播出现
+  **"Recording Start Failure"**，且未写入 `ivs/v1/...` 对象。也无官方支持声明 → 作为 Experimental 处理
   ([direct-recording-experiment.md](direct-recording-experiment.md))。
 - **"S3 AP 是完整 S3 存储桶吗？"** 否（不支持 Presigned URL / Versioning / Object Lock / Lifecycle /
   Static Website Hosting）。

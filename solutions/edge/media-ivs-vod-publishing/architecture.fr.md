@@ -265,8 +265,10 @@ désordonnés possibles. Ne pas traiter un unique `Recording End` comme un décl
 
 ## FAQ / idées reçues
 
-- **« IVS peut-il enregistrer directement dans un S3 Access Point FSx for ONTAP ? »** Non documenté
-  comme pris en charge — à traiter comme Expérimental et valider ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- **« IVS peut-il enregistrer directement dans un S3 Access Point FSx for ONTAP ? »** La création de
+  configuration atteint `ACTIVE`, mais dans un environnement de test un flux en direct a produit un **« Recording
+  Start Failure »** sans écrire aucun objet `ivs/v1/...`. Ce n'est pas non plus documenté comme pris en charge —
+  à traiter comme Expérimental ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **« Un S3 Access Point est-il un bucket S3 interchangeable ? »** Non — c'est une limite d'accès
   compatible S3. Pas d'URL présignée, Versioning, Object Lock, Lifecycle ni Static Website Hosting.
 - **« Peut-on donner une URL présignée du VOD aux spectateurs ? »** Non — utiliser URL/cookies signés CloudFront.

@@ -11,7 +11,7 @@
 | Pfad | Status | Bedeutung |
 |------|--------|-----------|
 | **Empfohlen** | `Supported components` | Amazon IVS zeichnet automatisch in einen unterstützten Standard-S3-Bucket auf; anschließend wird das HLS-Paket nach FSx for ONTAP publiziert und über S3 Access Point + Amazon CloudFront als VOD ausgeliefert. Jede Komponente ist einzeln dokumentiert und unterstützt. |
-| **Experimentell** | `Not documented as supported` | Eine IVS Recording Configuration direkt auf einen FSx-for-ONTAP-S3-Access-Point-Alias richten. **Von AWS nicht als unterstützt dokumentiert** — separat zu validieren. Siehe [direct-recording-experiment.md](direct-recording-experiment.md). |
+| **Experimentell** | `Observed: recording-time failure` | Eine IVS Recording Configuration direkt auf einen FSx-for-ONTAP-S3-Access-Point-Alias richten. **Von AWS nicht als unterstützt dokumentiert**. In einer Testumgebung erreichte die Konfigurationserstellung `ACTIVE`, ein Livestream erzeugte jedoch ein **„Recording Start Failure"** und schrieb keine `ivs/v1/...`-Objekte auf den Access Point (auch mit auf dem AP berechtigter IVS-Service-Linked-Role). Für den Produktivbetrieb den empfohlenen Pfad verwenden. Siehe [direct-recording-experiment.md](direct-recording-experiment.md). |
 
 > Dies ist eine **Referenzimplementierung**. Wahl des Auslieferungsanbieters, Rechteverwaltung,
 > Geobeschränkungen und Compliance liegen bei der nutzenden Organisation. Technische Validierung ersetzt keine
@@ -282,8 +282,10 @@ Diese sind **kombinierbar**, nicht exklusiv.
 
 ## FAQ / verbreitete Missverständnisse
 
-- **„Kann IVS direkt in einen FSx-for-ONTAP-S3-AP aufzeichnen?"** Nicht als unterstützt dokumentiert →
-  als Experimentell behandeln ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- **„Kann IVS direkt in einen FSx-for-ONTAP-S3-AP aufzeichnen?"** Die Konfigurationserstellung erreicht
+  `ACTIVE`, aber in einer Testumgebung erzeugte ein Live-Stream einen **„Recording Start Failure"** und schrieb
+  keine `ivs/v1/...`-Objekte. Es ist zudem nicht als unterstützt dokumentiert → als Experimentell behandeln
+  ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **„Ist ein S3 AP ein vollständiger S3-Bucket?"** Nein (kein Presigned URL / Versioning / Object Lock /
   Lifecycle / Static Website Hosting).
 - **„Kann man Zuschauern eine Presigned URL geben?"** Nein → CloudFront-signierte URLs/Cookies verwenden.
