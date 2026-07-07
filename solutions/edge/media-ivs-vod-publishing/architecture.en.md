@@ -264,8 +264,9 @@ or out of order. Do not treat a single `Recording End` event as a guaranteed exa
 
 ## FAQ / common misconceptions
 
-- **"Can IVS record straight into FSx for ONTAP's S3 Access Point?"** Not documented as supported —
-  treat as Experimental and validate ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- **"Can IVS record straight into FSx for ONTAP's S3 Access Point?"** Config creation reaches `ACTIVE`, but
+  in a test environment a live stream produced a **"Recording Start Failure"** and wrote no `ivs/v1/...` objects.
+  It is also not documented as supported — treat as Experimental ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **"Is an S3 Access Point a drop-in S3 bucket?"** No — it is an S3-compatible access boundary.
   No Presigned URLs, Versioning, Object Lock, Lifecycle, or Static Website Hosting.
 - **"Can viewers get a presigned URL to the VOD?"** No — use CloudFront signed URLs/cookies.
