@@ -76,8 +76,9 @@ def handler(event, context):
 
     Output:
         {
-            "status": "SUCCESS",
+            "status": "SUCCESS" | "SUCCESS_DEGRADED",
             "report_summary": "...",
+            "report_generation_failed": false,
             "output_key": "...",
             "notification_sent": true
         }
@@ -101,6 +102,9 @@ def handler(event, context):
     bedrock_client = boto3.client("bedrock-runtime")
     prompt = _build_report_prompt(structured_records, inventory_analyses)
 
+    # レポート生成が劣化（Bedrock 失敗）したかを観測可能にするフラグ。
+    # graceful degradation は維持しつつ、監視・下流でこの状態を検知できるようにする。
+    report_generation_failed = False
     try:
         bedrock_response = bedrock_client.converse(
             modelId=model_id,
@@ -110,6 +114,7 @@ def handler(event, context):
         report_text = bedrock_response["output"]["message"]["content"][0]["text"]
     except Exception as e:
         logger.warning("Bedrock invocation failed: %s", e)
+        report_generation_failed = True
         report_text = f"レポート自動生成に失敗しました。エラー: {e}"
 
     # 出力キー生成
@@ -123,6 +128,7 @@ def handler(event, context):
         "total_records_analyzed": len(structured_records),
         "total_inventories_analyzed": len(inventory_analyses),
         "report_text": report_text,
+        "report_generation_failed": report_generation_failed,
         "structured_records_summary": structured_records[:5],
         "inventory_summary": inventory_analyses[:3],
     }
@@ -159,11 +165,15 @@ def handler(event, context):
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="report")
     metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "logistics-ocr"))
     metrics.put_metric("FilesProcessed", 1.0, "Count")
+    # 常に発行（0/1）することで、しきい値・合計アラームを組みやすくする。
+    metrics.put_metric("ReportGenerationFailures", 1.0 if report_generation_failed else 0.0, "Count")
     metrics.flush()
 
+    # graceful degradation は維持しつつ、劣化を status で区別可能にする。
     return {
-        "status": "SUCCESS",
+        "status": "SUCCESS_DEGRADED" if report_generation_failed else "SUCCESS",
         "report_summary": report_text[:500],
+        "report_generation_failed": report_generation_failed,
         "output_key": output_key,
         "notification_sent": notification_sent,
     }

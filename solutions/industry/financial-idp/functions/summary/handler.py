@@ -104,6 +104,8 @@ def handler(event, context):
         "- 要約（3-5文）"
     )
 
+    # サマリー生成が劣化（Bedrock 失敗）したかを観測可能にするフラグ。
+    summary_generation_failed = False
     try:
         bedrock_response = bedrock_client.invoke_model(
             modelId=model_id,
@@ -129,6 +131,7 @@ def handler(event, context):
         summary_text = response_body.get("output", {}).get("message", {}).get("content", [{}])[0].get("text", "")
     except Exception as e:
         logger.error("Bedrock InvokeModel failed: %s", e)
+        summary_generation_failed = True
         summary_text = f"サマリー生成に失敗しました: {str(e)[:200]}"
 
     # 構造化出力を生成
@@ -138,6 +141,8 @@ def handler(event, context):
         summary_text=summary_text,
         document_key=document_key,
     )
+    # graceful degradation は維持しつつ、劣化を永続化した成果物からも検知できるようにする。
+    output["summary_generation_failed"] = summary_generation_failed
 
     # S3 AP に書き出し
     s3ap_output = S3ApHelper(os.environ["S3_ACCESS_POINT_OUTPUT"])
@@ -159,9 +164,12 @@ def handler(event, context):
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="summary")
     metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "financial-idp"))
     metrics.put_metric("FilesProcessed", 1.0, "Count")
+    # 常に発行（0/1）することで、しきい値・合計アラームを組みやすくする。
+    metrics.put_metric("SummaryGenerationFailures", 1.0 if summary_generation_failed else 0.0, "Count")
     metrics.flush()
 
     return {
         "document_key": document_key,
         "output_key": output_key,
+        "summary_generation_failed": summary_generation_failed,
     }
