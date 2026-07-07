@@ -85,6 +85,35 @@ cfn-lint solutions/edge/media-ivs-vod-publishing/template.yaml   # 0 エラー
 - **B4: S3 Access Point → CloudFront（OAC）配信レグ** — 標準 S3 バケット + S3 AP + CloudFront で
   `.m3u8`/segments の SigV4 取得・TTL 挙動を確認（FSx 不要）。
 
+#### B 実施結果（実 AWS で検証済み）
+
+IVS チャンネル + Recording Configuration（S3 出力）を作成し、**ffmpeg から RTMPS で短時間配信** →
+Auto-Record → S3 → publish ロジックまでを実機確認した。
+
+- **ライブ再生**（hls.js、ブラウザで確認。URL はマスキング）:
+
+  ![Amazon IVS ライブ再生（Auto-Record 有効、検証環境）](images/demo-ivs-live-playback.png)
+
+- **配信中の timed metadata**（レイヤー2 のオーバーレイ機構）:
+
+  ```bash
+  aws ivs put-metadata --channel-arn <channel-arn> \
+    --metadata '{"type":"caption","cue":"c-010","assetKey":"captions/en/seg-010.vtt"}'
+  #=> rc=0（配信が LIVE の間のみ受理。実体アセットは CloudFront(S3 AP オリジン) から取得する設計）
+  ```
+  > オーバーレイの実描画には IVS Player SDK が必要（本検証は挿入機構の確認まで）。
+
+- **Auto-Record 生成物**（配信停止後、IVS が S3 にファイナライズ）:
+  `ivs/v1/<account>/<channel>/<date>/<session>/` 配下に `media/hls/master.m3u8`、
+  `media/hls/720p/playlist.m3u8` + セグメント、`media/thumbnails/`、
+  `events/recording-started.json` / `recording-ended.json` を確認。
+
+- **publish ステップ**（実録画に対し同一ハンドラを DemoMode で実行）:
+  `master_manifest_present=true`、confidence `0.95` → `AUTO_APPROVE`、manifest 出力を確認。
+
+> 検証で作成した IVS チャンネル・Recording Configuration・録画用 S3 バケットは、確認後にすべて削除。
+> `-t` による尺制限はエンコーダー実装依存のため、固定長で流す場合は入力側の duration を用いる。
+
 ### C. FSx for ONTAP を使う検証（既存リソースを活用）
 
 新規に FSx for ONTAP を作らず、**既存のファイルシステム/ボリューム/S3 アクセスポイント接続を再利用**する。
