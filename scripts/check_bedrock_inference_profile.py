@@ -242,7 +242,9 @@ def main(argv: list[str]) -> int:
     samconfig_drift = scan_samconfig_drift()
     if samconfig_drift:
         total = sum(len(v) for v in samconfig_drift.values())
-        print(f"\n❌ {total} samconfig.toml.example override(s) in {len(samconfig_drift)} file(s) pin a BARE Nova/Claude id")
+        print(
+            f"\n❌ {total} samconfig.toml.example override(s) in {len(samconfig_drift)} file(s) pin a BARE Nova/Claude id"
+        )
         print("   parameter_overrides OVERRIDE the template default — use the geo-prefixed profile id:")
         for path, lines in sorted(samconfig_drift.items()):
             print(f"  {path}: line(s) {', '.join(map(str, lines))}")
