@@ -112,7 +112,41 @@ Auto-Record → S3 → publish ロジックまでを実機確認した。
   `master_manifest_present=true`、confidence `0.95` → `AUTO_APPROVE`、manifest 出力を確認。
 
 > 検証で作成した IVS チャンネル・Recording Configuration・録画用 S3 バケットは、確認後にすべて削除。
-> `-t` による尺制限はエンコーダー実装依存のため、固定長で流す場合は入力側の duration を用いる。
+> `-t` による尺制限はエンコーダー実装依存のため、固定長で流す場合は入力側の duration を用いる
+> （例: `-f lavfi -i "testsrc2=...:d=30"`）。
+
+#### B1 実経路（SAM デプロイ）実施結果（実 AWS で検証済み）
+
+`sam build` / `sam deploy`（`DemoMode=true` `TriggerMode=EVENT_DRIVEN`）でスタックを作成し、
+**実 IVS 配信の Recording End イベント**でデプロイ済み経路を起動した。
+
+```bash
+sam build --template template.yaml
+sam deploy --template .aws-sam/build/template.yaml --stack-name <stack> \
+  --capabilities CAPABILITY_NAMED_IAM --resolve-s3 \
+  --parameter-overrides "RecordingSourceBucket=<recordings-bucket> \
+    S3AccessPointOutputAlias=<fsxontap-s3ap-alias> DemoMode=true \
+    TriggerMode=EVENT_DRIVEN NotificationEmail=<email>"
+```
+
+- **注意**: `S3AccessPointOutputAlias` は `^[a-z0-9-]+-ext-s3alias$` を要求（S3 AP alias 必須）。
+  DemoMode でも publish は manifest を出力先へ書くため、**書き込み可能な実 FSx for ONTAP S3 AP**を
+  出力に指定する（本検証では出力 manifest が FSx for ONTAP に着地）。
+- **注意**: `aws events put-events` の `Source=aws.ivs` は予約済みで拒否される
+  （`NotAuthorizedForSourceException`）。実経路の起動には**実 IVS 配信**が必要（イベントを偽装できない）。
+
+検証結果（実 IVS 配信 → 実 Recording End → デプロイ済み EventBridge ルール → Step Functions → Lambda）:
+
+- Step Functions 実行: **`SUCCEEDED`**
+- publish Lambda が **FSx for ONTAP 出力 S3 AP** に VOD publish manifest を書き込み
+  （`vod-publish-manifests/<date>/<uuid>.json`）
+- manifest 内容: `master_manifest_present=true`、`human_review` confidence `0.95` → `AUTO_APPROVE`、
+  `recording_prefix` は実録画セッション、`data_classification=PUBLIC`
+
+> Step Functions の最終出力は末尾 `NotifyCompletion`（SNS publish）の応答に置き換わるため、
+> publish の確定的な証跡は出力先 S3 AP に書かれた manifest オブジェクトで確認する。
+> 検証後、IVS チャンネル・Recording Configuration・SAM スタック・出力用 FSx for ONTAP S3 AP/ボリューム・
+> 録画用 S3 バケットはすべて削除。
 
 ### C. FSx for ONTAP を使う検証（既存リソースを活用）
 
