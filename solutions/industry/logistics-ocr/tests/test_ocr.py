@@ -355,3 +355,65 @@ class TestOcrHandler:
         assert result["status"] == "SUCCESS"
         assert result["file_key"] == "slips/delivery_001.pdf"
         assert "配送伝票" in result["extracted_text"]
+
+
+# =========================================================================
+# Report ハンドラー: 観測性（劣化検知）テスト
+# =========================================================================
+
+
+class TestReportHandlerObservability:
+    """Bedrock 失敗時に graceful degradation を維持しつつ、
+    劣化を status / フラグ / メトリクスで検知できることを検証する。"""
+
+    @patch.dict(
+        os.environ,
+        {"OUTPUT_BUCKET": "test-output-bucket", "BEDROCK_MODEL_ID": "apac.amazon.nova-lite-v1:0"},
+    )
+    @patch("functions.report.handler.OutputWriter")
+    @patch("functions.report.handler.boto3")
+    def test_report_degraded_on_bedrock_failure(self, mock_boto3, mock_output_writer_cls):
+        """Bedrock 例外時: status=SUCCESS_DEGRADED かつ report_generation_failed=True"""
+        from functions.report.handler import handler
+
+        mock_bedrock = MagicMock()
+        mock_bedrock.converse.side_effect = Exception("ValidationException: on-demand throughput isn't supported")
+        mock_boto3.client.return_value = mock_bedrock
+
+        mock_writer = MagicMock()
+        mock_output_writer_cls.from_env.return_value = mock_writer
+
+        event = {"structured_records": [{"route": "A"}], "inventory_analyses": []}
+        result = handler(event, MagicMock())
+
+        assert result["report_generation_failed"] is True
+        assert result["status"] == "SUCCESS_DEGRADED"
+        # graceful degradation: 成果物は書き出されている
+        mock_writer.put_json.assert_called_once()
+        written = mock_writer.put_json.call_args.kwargs["data"]
+        assert written["report_generation_failed"] is True
+
+    @patch.dict(
+        os.environ,
+        {"OUTPUT_BUCKET": "test-output-bucket", "BEDROCK_MODEL_ID": "apac.amazon.nova-lite-v1:0"},
+    )
+    @patch("functions.report.handler.OutputWriter")
+    @patch("functions.report.handler.boto3")
+    def test_report_success_when_bedrock_ok(self, mock_boto3, mock_output_writer_cls):
+        """正常時: status=SUCCESS かつ report_generation_failed=False"""
+        from functions.report.handler import handler
+
+        mock_bedrock = MagicMock()
+        mock_bedrock.converse.return_value = {
+            "output": {"message": {"content": [{"text": "配送ルート最適化レポート本文"}]}}
+        }
+        mock_boto3.client.return_value = mock_bedrock
+
+        mock_writer = MagicMock()
+        mock_output_writer_cls.from_env.return_value = mock_writer
+
+        event = {"structured_records": [], "inventory_analyses": []}
+        result = handler(event, MagicMock())
+
+        assert result["report_generation_failed"] is False
+        assert result["status"] == "SUCCESS"

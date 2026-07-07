@@ -135,21 +135,24 @@ def handler(event, context):
     bedrock_client = boto3.client("bedrock-runtime")
     prompt = _build_claims_prompt(damage_assessments, estimate_data)
 
+    # レポート生成が劣化（Bedrock 失敗 or 空応答）したかを観測可能にするフラグ。
+    report_generation_failed = False
     try:
         # モデル非依存の Converse API を使用（Nova / Claude は推論プロファイル ID 必須）。
         # 詳細は docs/bedrock-inference-profiles.md を参照。
-        report_text = (
-            converse_text(
-                model_id=model_id,
-                prompt=prompt,
-                max_tokens=4096,
-                temperature=0.2,
-                client=bedrock_client,
-            )
-            or "レポート生成に失敗しました。"
+        report_text = converse_text(
+            model_id=model_id,
+            prompt=prompt,
+            max_tokens=4096,
+            temperature=0.2,
+            client=bedrock_client,
         )
+        if not report_text:
+            report_generation_failed = True
+            report_text = "レポート生成に失敗しました。"
     except Exception as e:
         logger.warning("Bedrock invocation failed: %s", e)
+        report_generation_failed = True
         report_text = f"レポート自動生成に失敗しました。エラー: {e}"
 
     # 構造化レポート
@@ -173,6 +176,7 @@ def handler(event, context):
         },
         "recommendation": "review",
         "confidence": 0.75,
+        "report_generation_failed": report_generation_failed,
     }
 
     # JSON 出力
@@ -215,12 +219,16 @@ def handler(event, context):
     metrics = EmfMetrics(namespace="FSxN-S3AP-Patterns", service="claims_report")
     metrics.set_dimension("UseCase", os.environ.get("USE_CASE", "insurance-claims"))
     metrics.put_metric("FilesProcessed", 1.0, "Count")
+    # 常に発行（0/1）することで、しきい値・合計アラームを組みやすくする。
+    metrics.put_metric("ReportGenerationFailures", 1.0 if report_generation_failed else 0.0, "Count")
     metrics.flush()
 
+    # graceful degradation は維持しつつ、劣化を status で区別可能にする。
     return {
-        "status": "SUCCESS",
+        "status": "SUCCESS_DEGRADED" if report_generation_failed else "SUCCESS",
         "claims_report": claims_report,
         "output_key": output_key,
         "human_readable_key": human_readable_key,
         "notification_sent": notification_sent,
+        "report_generation_failed": report_generation_failed,
     }
