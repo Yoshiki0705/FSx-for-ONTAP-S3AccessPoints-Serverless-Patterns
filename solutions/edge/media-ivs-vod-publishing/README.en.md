@@ -11,7 +11,7 @@
 | Path | Status | Meaning |
 |------|--------|---------|
 | **Recommended** | `Supported components` | Amazon IVS Auto-Record to a standard S3 bucket, then publish the HLS package to FSx for ONTAP and deliver via S3 Access Point + Amazon CloudFront. Every component is individually documented and supported. |
-| **Experimental** | `Not documented as supported` | Pointing an IVS Recording Configuration directly at an FSx for ONTAP S3 Access Point alias. This is **not documented by AWS as supported** and must be validated separately. See [direct-recording-experiment.md](direct-recording-experiment.md). |
+| **Experimental** | `Observed: recording-time failure` | Pointing an IVS Recording Configuration directly at an FSx for ONTAP S3 Access Point alias. This is **not documented by AWS as supported**. In a test environment, config creation reached `ACTIVE`, but a live stream produced a **"Recording Start Failure"** and wrote no `ivs/v1/...` objects to the access point (even with the IVS service-linked role granted on the AP). Use the recommended path for real work. See [direct-recording-experiment.md](direct-recording-experiment.md). |
 
 > This is a **reference implementation**. Delivery vendor selection, rights management, geo
 > restrictions, and compliance judgments are the operating organization's responsibility. Technical
@@ -296,8 +296,10 @@ These are composable, not mutually exclusive.
 
 ## FAQ / common misconceptions
 
-- **"Can IVS record straight into an FSx for ONTAP S3 AP?"** Not documented as supported → treat
-  as Experimental ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- **"Can IVS record straight into an FSx for ONTAP S3 AP?"** Config creation reaches `ACTIVE`, but in a
+  test environment a live stream produced a **"Recording Start Failure"** and wrote no `ivs/v1/...` objects.
+  It is also not documented as supported → treat as Experimental
+  ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **"Is an S3 AP a full S3 bucket?"** No (no Presigned URL / Versioning / Object Lock / Lifecycle /
   Static Website Hosting).
 - **"Can viewers get a presigned URL?"** No → use CloudFront signed URLs / cookies.

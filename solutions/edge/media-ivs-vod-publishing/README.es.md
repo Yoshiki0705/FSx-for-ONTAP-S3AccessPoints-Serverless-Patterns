@@ -11,7 +11,7 @@
 | Ruta | Estado | Significado |
 |------|--------|-------------|
 | **Recomendada** | `Supported components` | Amazon IVS graba automáticamente en un bucket S3 estándar compatible; luego el paquete HLS se publica en FSx for ONTAP y se entrega vía S3 Access Point + Amazon CloudFront. Cada componente está documentado y es compatible individualmente. |
-| **Experimental** | `Not documented as supported` | Apuntar una IVS Recording Configuration directamente a un alias de S3 Access Point de FSx for ONTAP. **No documentado como compatible por AWS** — validar por separado. Véase [direct-recording-experiment.md](direct-recording-experiment.md). |
+| **Experimental** | `Observed: recording-time failure` | Apuntar una IVS Recording Configuration directamente a un alias de S3 Access Point de FSx for ONTAP. Esto **no está documentado como compatible por AWS**. En un entorno de pruebas, la creación de la configuración alcanzó el estado `ACTIVE`, pero un stream en directo produjo un **"Recording Start Failure"** y no escribió ningún objeto `ivs/v1/...` en el access point (incluso con el rol vinculado al servicio de IVS concedido en el AP). Use la ruta recomendada para trabajo real. Véase [direct-recording-experiment.md](direct-recording-experiment.md). |
 
 > Esta es una **implementación de referencia**. La elección del proveedor de entrega, la gestión de
 > derechos, las restricciones geográficas y el cumplimiento los decide la organización usuaria. La validación
@@ -281,8 +281,10 @@ Son **combinables**, no excluyentes.
 
 ## FAQ / conceptos erróneos comunes
 
-- **«¿Puede IVS grabar directamente en un S3 AP de FSx for ONTAP?»** No documentado como compatible →
-  tratar como Experimental ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- **«¿Puede IVS grabar directamente en un S3 AP de FSx for ONTAP?»** La creación de la configuración
+  alcanza `ACTIVE`, pero en un entorno de pruebas un stream en directo produjo un **«Recording Start Failure»**
+  y no escribió ningún objeto `ivs/v1/...`. Tampoco está documentado como compatible → tratar como Experimental
+  ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **«¿Un S3 AP es un bucket S3 completo?»** No (sin URL prefirmada / Versioning / Object Lock / Lifecycle /
   Static Website Hosting).
 - **«¿Se puede dar una URL prefirmada a los espectadores?»** No → use URL/cookies firmadas de CloudFront.

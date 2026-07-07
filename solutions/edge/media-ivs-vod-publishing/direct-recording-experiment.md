@@ -140,19 +140,38 @@ destination, and record:
   **recording-time** behavior (actual writes through the AP during a live stream) is still **untested**
   for both.
 
+> **Update (recording-time write-through — observed FAILURE)**: a later run went past config creation
+> to an actual live stream. With a channel whose recording destination was an **FSx for ONTAP S3 AP
+> alias**, the stream session recorded a **`Recording Start Failure`** (IVS Recording State Change) at
+> stream start, and **no `ivs/v1/...` objects were written** to the access point. This happened **even
+> with an access point policy granting the IVS RecordToS3 service-linked role** write access
+> (`s3:PutObject`/`GetObject`/`ListBucket`/`AbortMultipartUpload`/`ListMultipartUploadParts`). The
+> event `code` was empty, so no detailed public reason surfaced.
+>
+> Note on the AP policy: `s3:GetBucketLocation` and `s3:ListBucketMultipartUploads` are **rejected by
+> the FSx for ONTAP S3 AP policy** ("MalformedPolicy: invalid action") — use only the supported subset.
+
 ### Public label decision
 
-Config-creation acceptance is a **positive but partial** signal. Per the rule above, this stays
-**Experimental** in the README until all of: (a) actual recording via a live stream is verified
-end-to-end, (b) the FSx for ONTAP S3 AP case is validated, and (c) AWS documents support. **Do not
-mark Supported.**
+Config-creation acceptance is a **positive but partial** signal, and the **recording-time write-through
+was observed to FAIL** (`Recording Start Failure`, no objects written) for an FSx for ONTAP S3 AP alias.
+This stays **Experimental / not supported** in the README. Use the recommended path
+(IVS → standard S3 bucket → FSx for ONTAP) for real work. **Do not mark Supported.**
 
-### Still to verify (requires a live stream + an FSx for ONTAP S3 AP)
+### Observed status summary
 
-- Attach the RecordingConfiguration to a channel, stream briefly, and confirm Recording Start/End and
-  that `ivs/v1/...` objects are actually written **through the access point**.
-- Whether the IVS service-linked role can write through an S3 AP that has **no resource policy**
-  granting it, and what AP policy is required.
+| Stage | FSx for ONTAP S3 AP alias | Notes |
+|-------|---------------------------|-------|
+| Config creation (alias) | **ACTIVE** | Also ACTIVE for a standard S3 AP alias |
+| Config creation (ARN) | **Rejected** | `bucketName` max length 63 |
+| Recording-time write-through | **Recording Start Failure** | No `ivs/v1/...` objects written; SLR granted on AP; empty reason code |
+
+### Still open (with AWS)
+
+- Whether recording-time Auto-Record to an FSx for ONTAP S3 AP is intended to be supportable, and if
+  so the required AP policy / service-linked-role / FileSystemIdentity / network-origin configuration.
+- Whether `Recording Start Failure` can surface a more specific reason code for destination
+  compatibility. Raised with AWS Support as a feature request (templates kept privately, not in this repo).
 - The same sequence against an **FSx for ONTAP S3 AP** (AP policy + ONTAP UNIX/Windows identity).
 
 ## Cleanup
