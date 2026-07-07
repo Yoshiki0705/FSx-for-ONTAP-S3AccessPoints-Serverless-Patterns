@@ -25,7 +25,7 @@ parameter_overrides = [
     "OutputBucketName=fsxn-s3ap-sap-erp-adjacent-output-<ACCOUNT_ID>",
     "NotificationEmail=<YOUR_EMAIL>",
     "FilePrefix=idoc-export/",
-    "BedrockModelId=amazon.nova-pro-v1:0",
+    "BedrockModelId=apac.amazon.nova-pro-v1:0",
     "MaxFilesPerExecution=100",
 ]
 
