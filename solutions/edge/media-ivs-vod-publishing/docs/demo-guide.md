@@ -98,10 +98,22 @@ Auto-Record → S3 → publish ロジックまでを実機確認した。
 
   ```bash
   aws ivs put-metadata --channel-arn <channel-arn> \
-    --metadata '{"type":"caption","cue":"c-010","assetKey":"captions/en/seg-010.vtt"}'
+    --metadata '{"type":"caption","text":"...","assetKey":"captions/en/seg-010.vtt"}'
   #=> rc=0（配信が LIVE の間のみ受理。実体アセットは CloudFront(S3 AP オリジン) から取得する設計）
   ```
-  > オーバーレイの実描画には IVS Player SDK が必要（本検証は挿入機構の確認まで）。
+
+  **オーバーレイの実描画（IVS Player SDK で検証済み）**: Amazon IVS Player SDK（web）で
+  `PlayerEventType.TEXT_METADATA_CUE` を購読し、`put-metadata` で送った cue から字幕バー/ロワーサードを
+  **クライアント側で描画**することを確認した。
+
+  ![IVS Player SDK による timed metadata オーバーレイ描画（検証環境）](images/demo-ivs-timed-metadata-overlay.png)
+
+  > 注意: **IVS Player SDK は `file://` オリジンでは MSE が拒否される**
+  > （`Media load from MediaSourceHandle rejected by safety check`）。`http(s)://` か `localhost`
+  > で配信して検証する（本検証は `python -m http.server` 経由）。
+  > 本デモは描画機構の確認のため字幕テキストを metadata に埋め込んでいる（≤1 KB）。ドキュメントの
+  > 設計では metadata に *アセット参照 + タイムコード* を載せ、実体は CloudFront（FSx for ONTAP S3 AP
+  > オリジン）から取得する。検証後 IVS チャンネルは削除。
 
 - **Auto-Record 生成物**（配信停止後、IVS が S3 にファイナライズ）:
   `ivs/v1/<account>/<channel>/<date>/<session>/` 配下に `media/hls/master.m3u8`、
