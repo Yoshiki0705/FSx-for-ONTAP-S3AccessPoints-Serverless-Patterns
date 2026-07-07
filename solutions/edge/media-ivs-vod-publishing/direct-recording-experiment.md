@@ -174,6 +174,14 @@ This stays **Experimental / not supported** in the README. Use the recommended p
   compatibility. Raised with AWS Support as a feature request (templates kept privately, not in this repo).
 - The same sequence against an **FSx for ONTAP S3 AP** (AP policy + ONTAP UNIX/Windows identity).
 
+> **Support status update**: A support request is open. AWS Premium Support confirmed that the public IVS
+> Auto-Record documentation describes the recording destination as a **standard Amazon S3 bucket** and that
+> `destinationConfiguration.s3.bucketName` is defined as an S3 bucket name, with **no explicit mention of S3
+> access points** — consistent with the alias being accepted as a bucket-name-shaped value at config creation
+> while recording-time behavior is a separate matter. The definitive supported / not-supported position
+> (and, if supportable, the required AP policy / service-linked-role / FileSystemIdentity / network-origin
+> configuration) is **pending the Amazon IVS service team**. Until then this stays **Experimental**.
+
 ## Cleanup
 
 ```bash
