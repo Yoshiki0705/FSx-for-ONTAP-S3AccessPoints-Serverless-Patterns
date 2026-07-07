@@ -101,3 +101,36 @@ cfn-lint solutions/edge/media-ivs-vod-publishing/template.yaml   # 0 エラー
 
 > 注意: 共有の既存 FSx for ONTAP を使う場合は、**専用のプレフィックス/ボリューム**に限定し、既存データに
 > 触れないこと。検証で作成した IVS RecordingConfiguration 等の一時リソースは完了後に削除する。
+>
+> 注意: FSx for ONTAP の S3 アクセスポイントは、**マネージド S3 アクセスポイントをサポートする SVM**
+> 上に作成すること。既に手動で ONTAP object-storage（S3）サーバーが構成された SVM ではアタッチが
+> 失敗する（`unable to create an S3 access point because of an existing ONTAP object storage server`）。
+
+### C. 実施結果（実 AWS で検証済み）
+
+既存 FSx for ONTAP ファイルシステム上に**専用ボリューム + 専用 S3 アクセスポイント（internet-origin）**を
+作成し、ffmpeg で生成した短尺 HLS を S3 API 経由でアップロード、CloudFront（OAC）から配信して再生を確認。
+
+検証コマンドと結果（値はマスキング）:
+
+```bash
+# 1) S3 API データプレーン（AP alias 経由の PutObject / ListObjectsV2）— 確認済み
+aws s3api put-object --bucket <fsxontap-s3ap-alias> --key vod/demo1/master.m3u8 \
+  --body master.m3u8 --content-type application/vnd.apple.mpegurl
+aws s3api list-objects-v2 --bucket <fsxontap-s3ap-alias> --prefix vod/demo1/
+
+# 2) CloudFront(OAC) → FSx for ONTAP S3 AP 配信レグ — 確認済み
+curl -sS -o /dev/null -w "%{http_code} %{content_type} %{size_download}\n" \
+  https://<distribution-id>.cloudfront.net/master.m3u8
+#=> 200 application/vnd.apple.mpegurl 121
+curl -sS -D - -o /dev/null https://<distribution-id>.cloudfront.net/seg_000.ts | grep -i x-cache
+#=> 200 video/mp2t 478836 ... x-cache: Hit from cloudfront
+```
+
+hls.js プレイヤーで再生した様子（オリジン = FSx for ONTAP S3 AP、エッジ = CloudFront/OAC）:
+
+![FSx for ONTAP S3 AP + CloudFront による HLS 再生（検証環境）](images/demo-cloudfront-fsxontap-hls-playback.png)
+
+> 検証で作成した CloudFront ディストリビューション・OAC・S3 アクセスポイント・専用ボリュームは、
+> 確認後にすべて削除している（既存/他プロジェクトのリソースは不変）。手順とテンプレートは
+> [../cloudfront/](../cloudfront/) と [../scripts/demo-cloudfront-fsxontap.sh](../scripts/demo-cloudfront-fsxontap.sh) を参照。
