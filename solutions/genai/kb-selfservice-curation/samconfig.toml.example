@@ -26,7 +26,7 @@ parameter_overrides = [
     "KnowledgeBaseId=<YOUR_KB_ID>",
     "DataSourceId=<YOUR_DATA_SOURCE_ID>",
     "IngestionPrefix=",
-    "BedrockLlmModelId=amazon.nova-pro-v1:0",
+    "BedrockLlmModelId=apac.amazon.nova-pro-v1:0",
     "SyncScheduleExpression=rate(15 minutes)",
     "NotificationEmail=",
 ]
