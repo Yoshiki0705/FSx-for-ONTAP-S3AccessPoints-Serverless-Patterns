@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Amazon CloudFront (OAC) delivery in front of an existing Amazon FSx for NetApp ONTAP
+  S3 Access Point origin, for HLS/VOD delivery. Bring your own (existing) FSx for ONTAP
+  S3 Access Point (internet network origin). This template creates the CloudFront
+  distribution + Origin Access Control only. After deploy, add an access point policy
+  that allows this distribution to read objects (see Outputs.AccessPointPolicyHint).
+
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: >
+      Existing FSx for ONTAP S3 Access Point alias (internet origin), e.g.
+      my-ap-xxxxxxxxxxxxxxxxxxxxxxxxxxxx-ext-s3alias. Used as the CloudFront S3 origin host.
+    AllowedPattern: "^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$"
+  OriginPath:
+    Type: String
+    Default: "/vod"
+    Description: Origin path prefix under the access point (e.g. /vod). Leave empty for root.
+  PriceClass:
+    Type: String
+    Default: PriceClass_200
+    AllowedValues: [PriceClass_100, PriceClass_200, PriceClass_All]
+
+Resources:
+  Oac:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        Description: OAC for FSx for ONTAP S3 Access Point origin
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub "${AWS::StackName} - HLS delivery from FSx for ONTAP S3 AP"
+        Enabled: true
+        HttpVersion: http2and3
+        PriceClass: !Ref PriceClass
+        Origins:
+          - Id: s3ap-origin
+            DomainName: !Sub "${S3AccessPointAlias}.s3.${AWS::Region}.amazonaws.com"
+            OriginPath: !Ref OriginPath
+            OriginAccessControlId: !GetAtt Oac.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: s3ap-origin
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          # Managed CachePolicy: CachingOptimized
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        # HLS media playlists should use short TTLs; immutable segments can cache longer.
+        # Tune with a custom cache policy / cache-control on the objects for production.
+
+Outputs:
+  DistributionId:
+    Value: !Ref Distribution
+  DistributionDomainName:
+    Value: !GetAtt Distribution.DomainName
+  PlaybackUrlHint:
+    Value: !Sub "https://${Distribution.DomainName}/master.m3u8"
+  AccessPointPolicyHint:
+    Description: >
+      Add this statement to the FSx for ONTAP S3 Access Point policy so CloudFront (OAC)
+      can read objects. Replace <account-id>/<ap-name> and use this distribution ARN.
+    Value: !Sub >
+      {"Effect":"Allow","Principal":{"Service":"cloudfront.amazonaws.com"},
+      "Action":"s3:GetObject",
+      "Resource":"arn:aws:s3:${AWS::Region}:<account-id>:accesspoint/<ap-name>/object/*",
+      "Condition":{"StringEquals":{"AWS:SourceArn":"arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"}}}
