@@ -102,14 +102,39 @@ def scan_readme_drift() -> dict[str, list[int]]:
 
 
 def _readme_line_has_bare_model(line: str) -> bool:
-    """True if a BedrockModelId/BedrockLlmModelId doc line cites a bare Nova/Claude id."""
+    """True if a BedrockModelId/BedrockLlmModelId line cites a bare Nova/Claude id.
+
+    Shared by the README and samconfig scanners (both express the parameter as a
+    BedrockModelId=/BedrockLlmModelId= line). Bare = the model family is not
+    immediately preceded by a geo/scope prefix dot (apac./us./eu./jp./global./...).
+    """
     if "BedrockModelId" not in line and "BedrockLlmModelId" not in line:
         return False
     for m in re.finditer(r"(amazon\.nova|anthropic\.claude)[\w.:-]*", line):
-        # bare iff not immediately preceded by a geo prefix dot (apac./us./eu.)
         if m.start() == 0 or line[m.start() - 1] != ".":
             return True
     return False
+
+
+def scan_samconfig_drift() -> dict[str, list[int]]:
+    """Return {samconfig_path: [line numbers]} where a parameter_override pins a BARE
+    Nova/Claude model id.
+
+    samconfig.toml.example is copied to samconfig.toml and its parameter_overrides
+    OVERRIDE the template default — so a bare id here reintroduces the on-demand
+    ValidationException even after the template default is fixed (real user-reported
+    failure). Titan embeddings are unaffected (regex matches only nova/claude).
+    """
+    results: dict[str, list[int]] = {}
+    for cfg in sorted(glob.glob(str(ROOT / "solutions" / "**" / "samconfig.toml.example"), recursive=True)):
+        bad = [
+            i
+            for i, line in enumerate(Path(cfg).read_text(encoding="utf-8", errors="ignore").splitlines(), 1)
+            if _readme_line_has_bare_model(line)
+        ]
+        if bad:
+            results[str(Path(cfg).relative_to(ROOT))] = bad
+    return results
 
 
 def scan() -> dict[str, set[str]]:
@@ -153,6 +178,12 @@ def selftest() -> int:
     assert not _readme_line_has_bare_model("| BedrockModelId | apac.amazon.nova-pro-v1:0 | model |")
     assert not _readme_line_has_bare_model("Some prose mentioning amazon.nova-lite-v1:0 without the param")
     assert not _readme_line_has_bare_model("| BedrockModelId | amazon.titan-embed-text-v2:0 | embeddings |")
+    # samconfig parameter_overrides (same predicate)
+    assert _readme_line_has_bare_model('    "BedrockModelId=amazon.nova-lite-v1:0",')
+    assert _readme_line_has_bare_model('    "BedrockLlmModelId=amazon.nova-pro-v1:0",')
+    assert not _readme_line_has_bare_model('    "BedrockModelId=apac.amazon.nova-lite-v1:0",')
+    assert not _readme_line_has_bare_model('    "BedrockModelId=global.anthropic.claude-haiku-4-5-20251001-v1:0",')
+    assert not _readme_line_has_bare_model('    "BedrockModelId=amazon.titan-embed-text-v2:0",')
     print("✅ selftest passed")
     return 0
 
@@ -205,6 +236,17 @@ def main(argv: list[str]) -> int:
         print(f"\n❌ {total} README line(s) in {len(readme_drift)} file(s) show a BARE Nova/Claude model id")
         print("   (parameter table / CLI example). Use the geo-prefixed profile id to match the template default:")
         for path, lines in sorted(readme_drift.items()):
+            print(f"  {path}: line(s) {', '.join(map(str, lines))}")
+        exit_code = 1
+
+    samconfig_drift = scan_samconfig_drift()
+    if samconfig_drift:
+        total = sum(len(v) for v in samconfig_drift.values())
+        print(
+            f"\n❌ {total} samconfig.toml.example override(s) in {len(samconfig_drift)} file(s) pin a BARE Nova/Claude id"
+        )
+        print("   parameter_overrides OVERRIDE the template default — use the geo-prefixed profile id:")
+        for path, lines in sorted(samconfig_drift.items()):
             print(f"  {path}: line(s) {', '.join(map(str, lines))}")
         exit_code = 1
 
