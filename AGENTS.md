@@ -99,6 +99,7 @@ cfn-lint solutions/industry/legal-compliance/template.yaml solutions/sap/erp-adj
 ├── docs/                   # Documentation and guides (40+ docs)
 ├── security/               # cfn-guard rules
 ├── Makefile                # Developer workflow commands
+├── renovate.json           # Automated dependency updates (requires Renovate GitHub App)
 └── .github/workflows/      # CI/CD (lint → test → security → deploy)
 ```
 
@@ -331,6 +332,14 @@ make lint
 make test-quick
 git diff --cached | grep -i '/Users/' && echo "LEAK DETECTED" || echo "OK"
 ```
+
+## Dependency Updates
+
+| Tool | File | Purpose |
+|------|------|---------|
+| Renovate | `renovate.json` | Automated dependency updates (GitHub Actions, `requirements*.txt`/`pyproject.toml`, Dockerfiles). Major bumps require Dependency Dashboard approval. |
+
+Renovate keeps SHA-pinned Actions pinned (`helpers:pinGitHubActionDigests` + `pinDigests: true` on the `github-actions` packageRule), so it does not conflict with the zizmor/gitleaks/scorecard SHA-pinning policy above. **Requires enabling the [Renovate GitHub App](https://github.com/apps/renovate) on this repository** — the config file alone does not activate it.
 
 ## Cost Awareness
 
