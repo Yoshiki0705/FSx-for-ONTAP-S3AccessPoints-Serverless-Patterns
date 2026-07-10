@@ -69,6 +69,7 @@
 | [`tests/`](tests/) | E2E & load tests |
 | [`security/`](security/) | cfn-guard rules |
 | [`.github/workflows/`](.github/workflows/) | CI/CD (lint → test → security → deploy) |
+| [`renovate.json`](renovate.json) | Automated dependency updates (GitHub Actions / Python / Docker). Requires installing the [Renovate GitHub App](https://github.com/apps/renovate) separately to activate |
 
 ### Quick Start
 

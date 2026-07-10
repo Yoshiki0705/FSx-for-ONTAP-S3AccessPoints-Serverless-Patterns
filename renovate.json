@@ -1,0 +1,58 @@
+{
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommitsDisabled"
+  ],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "commitMessagePrefix": "chore(deps):",
+  "dependencyDashboard": true,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Group all GitHub Actions updates together, keep SHA pinning per repo policy (zizmor/gitleaks/scorecard workflows rely on this)",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "pinDigests": true
+    },
+    {
+      "description": "Group Python dependency updates from requirements.txt / requirements-dev.txt",
+      "matchManagers": ["pip_requirements"],
+      "groupName": "python-dependencies"
+    },
+    {
+      "description": "Group Python dependency updates from pyproject.toml",
+      "matchManagers": ["pep621"],
+      "groupName": "python-dependencies"
+    },
+    {
+      "description": "Group base image updates for FPolicy server Dockerfiles",
+      "matchManagers": ["dockerfile"],
+      "groupName": "docker-base-images"
+    },
+    {
+      "description": "Require manual approval for major version bumps",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "ignorePaths": [
+    ".venv/**",
+    "node_modules/**",
+    "vendor/**",
+    ".pytest_cache/**",
+    ".hypothesis/**",
+    ".ruff_cache/**",
+    ".private/**"
+  ]
+}
