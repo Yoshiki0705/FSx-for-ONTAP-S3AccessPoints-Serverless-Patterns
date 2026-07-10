@@ -257,10 +257,11 @@ desordenados posibles. No tratar un único `Recording End` como un disparador ex
 
 ## FAQ / conceptos erróneos comunes
 
-- **«¿Puede IVS grabar directamente en un S3 Access Point de FSx for ONTAP?»** La creación de la
-  configuración alcanza `ACTIVE`, pero en un entorno de pruebas un stream en directo produjo un **«Recording Start
-  Failure»** y no escribió ningún objeto `ivs/v1/...`. Tampoco está documentado como compatible — tratar como
-  Experimental ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- **«¿Puede IVS grabar directamente en un S3 Access Point de FSx for ONTAP?»** No — **el equipo de servicio de
+  AWS confirmó que no es compatible** (el destino compatible es un bucket Amazon S3 estándar). La creación de la
+  configuración alcanza `ACTIVE` (porque `bucketName` solo se valida como una cadena con formato de nombre de bucket),
+  pero la grabación falla (**«Recording Start Failure»**, ningún objeto `ivs/v1/...`). Use un bucket S3 estándar
+  ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **«¿Un S3 Access Point es un bucket S3 intercambiable?»** No — es un límite de acceso compatible con
   S3. Sin URL prefirmada, Versioning, Object Lock, Lifecycle ni Static Website Hosting.
 - **«¿Se puede dar una URL prefirmada del VOD a los espectadores?»** No — use URL/cookies firmadas de CloudFront.

@@ -11,7 +11,7 @@
 | Pfad | Status | Bedeutung |
 |------|--------|-----------|
 | **Empfohlen** | `Supported components` | Amazon IVS zeichnet automatisch in einen unterstützten Standard-S3-Bucket auf; anschließend wird das HLS-Paket nach FSx for ONTAP publiziert und über S3 Access Point + Amazon CloudFront als VOD ausgeliefert. Jede Komponente ist einzeln dokumentiert und unterstützt. |
-| **Experimentell** | `Observed: recording-time failure` | Eine IVS Recording Configuration direkt auf einen FSx-for-ONTAP-S3-Access-Point-Alias richten. **Von AWS nicht als unterstützt dokumentiert**. In einer Testumgebung erreichte die Konfigurationserstellung `ACTIVE`, ein Livestream erzeugte jedoch ein **„Recording Start Failure"** und schrieb keine `ivs/v1/...`-Objekte auf den Access Point (auch mit auf dem AP berechtigter IVS-Service-Linked-Role). Für den Produktivbetrieb den empfohlenen Pfad verwenden. Siehe [direct-recording-experiment.md](direct-recording-experiment.md). |
+| **Nicht unterstützt (von AWS bestätigt)** | `Confirmed unsupported` | Eine IVS Recording Configuration direkt auf einen FSx-for-ONTAP-S3-Access-Point-Alias richten. **Das AWS-Serviceteam hat bestätigt, dass dies nicht unterstützt wird** (die unterstützte Zieldestination ist ein Standard-Amazon-S3-Bucket). Der Alias besteht die Konfigurationserstellung nur, weil `bucketName` als bucket-namensförmige Zeichenfolge (≤63 Zeichen) validiert wird, und erreicht `ACTIVE`; die Schreibvorgänge zur Aufzeichnungszeit schlagen fehl (Testumgebung: **„Recording Start Failure"**, keine `ivs/v1/...`-Objekte, auch mit auf dem AP berechtigter IVS-Service-Linked-Role). Den empfohlenen Pfad (über einen Standard-S3-Bucket) verwenden. Siehe [direct-recording-experiment.md](direct-recording-experiment.md). |
 
 > Dies ist eine **Referenzimplementierung**. Wahl des Auslieferungsanbieters, Rechteverwaltung,
 > Geobeschränkungen und Compliance liegen bei der nutzenden Organisation. Technische Validierung ersetzt keine
@@ -19,8 +19,8 @@
 
 > **TL;DR (30 s)**: IVS-Live-Erlebnis beibehalten; in den **unterstützten S3-Bucket** aufzeichnen;
 > danach HLS nach FSx for ONTAP publizieren, über NFS/SMB schneiden/QC/freigeben und VOD über
-> S3 Access Point + CloudFront ausliefern. Direktaufzeichnung (IVS→FSx for ONTAP S3 AP) ist **Experimentell** —
-> nur Validierungsplan.
+> S3 Access Point + CloudFront ausliefern. Direktaufzeichnung (IVS→FSx for ONTAP S3 AP) ist **von AWS als
+> nicht unterstützt bestätigt** (ein Standard-S3-Bucket ist die einzige unterstützte Zieldestination).
 
 **Jetzt testen (30 s)**: `make test-media-ivs-vod-publishing` führt Unit-/Property-Tests aus und
 prüft Recording-End-Validierung, die permission-aware Ingest-Grenze, Manifest-Validierung, die
@@ -188,14 +188,14 @@ und Untertitel (`EnableStrictModeration=true` erstellt `functions/moderation/han
 | Technical KPI | Publish-Erfolgsrate | SUCCEEDED im DemoMode |
 | Quality KPI | Master-Manifest-Validierung | Master-Manifest vor Veröffentlichung bestätigen |
 | Cost KPI | FSx-Lese-Bandbreiten-Einfluss | Origin-Fetches verdrängen Schnitt-Traffic nicht (P95/P99) |
-| Go/No-Go | Direktaufzeichnung (IVS→FSx for ONTAP S3 AP) | Per Hardware-Validierung entschieden (Experimentell, solange AWS es nicht dokumentiert) |
+| Go/No-Go | Direktaufzeichnung (IVS→FSx for ONTAP S3 AP) | **Nicht unterstützt** (vom AWS-Serviceteam bestätigt). Standard-S3-Bucket verwenden |
 
 ## Validierungsmatrix (Zusammenfassung)
 
 | Integrationspunkt | Status |
 |-------------------|--------|
 | IVS-Auto-Record in Standard-S3-Bucket | Supported |
-| IVS RecordingConfiguration + FSx-S3-AP-Alias | Experimental / Unknown |
+| IVS RecordingConfiguration + FSx-S3-AP-Alias | Nicht unterstützt (von AWS bestätigt) |
 | S3 → FSx über NFS/SMB | Supported |
 | S3 → FSx über S3 AP `PutObject` | Supported (Größen-/API-Grenzen) |
 | FSx for ONTAP S3 AP → CloudFront | Supported (dokumentiertes Tutorial) |
@@ -243,7 +243,7 @@ Vollständige Details in [validation-matrix.md](validation-matrix.md).
   Objekte, **Streaming-Multipart** (`streaming_download` + `multipart_upload`, geringer Speicher) für große
   (Standard > 100MB). Objekte über der Lambda-Ingest-Obergrenze (Standard 20GB) werden übersprungen — DataSync
   oder ECS/Batch (NFS/SMB-Mount) bevorzugen.
-- Direktaufzeichnung ist Experimentell ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- Direktaufzeichnung ist **nicht unterstützt** (vom AWS-Serviceteam bestätigt; [direct-recording-experiment.md](direct-recording-experiment.md)).
 
 ## Geltungsbereich
 
@@ -282,10 +282,10 @@ Diese sind **kombinierbar**, nicht exklusiv.
 
 ## FAQ / verbreitete Missverständnisse
 
-- **„Kann IVS direkt in einen FSx-for-ONTAP-S3-AP aufzeichnen?"** Die Konfigurationserstellung erreicht
-  `ACTIVE`, aber in einer Testumgebung erzeugte ein Live-Stream einen **„Recording Start Failure"** und schrieb
-  keine `ivs/v1/...`-Objekte. Es ist zudem nicht als unterstützt dokumentiert → als Experimentell behandeln
-  ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- **„Kann IVS direkt in einen FSx-for-ONTAP-S3-AP aufzeichnen?"** Nein — **das AWS-Serviceteam hat bestätigt,
+  dass dies nicht unterstützt wird**. Die Konfigurationserstellung erreicht `ACTIVE` (weil `bucketName` nur als
+  bucket-namensförmige Zeichenfolge validiert wird), aber die Aufzeichnung schlägt fehl (**„Recording Start
+  Failure"**, keine `ivs/v1/...`-Objekte). Einen Standard-S3-Bucket verwenden ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **„Ist ein S3 AP ein vollständiger S3-Bucket?"** Nein (kein Presigned URL / Versioning / Object Lock /
   Lifecycle / Static Website Hosting).
 - **„Kann man Zuschauern eine Presigned URL geben?"** Nein → CloudFront-signierte URLs/Cookies verwenden.

@@ -7,7 +7,7 @@ Description: >-
 
   NOTE: Publish Lambda は Internet-origin S3 AP へアクセスするため VPC 外で実行する
   （AGENTS.md: VPC-external Lambda for Internet-origin S3AP access）。
-  NOTE: 「IVS が直接 FSx S3 AP へ録画する」構成は Experimental（未サポート）であり本テンプレートには含めない。
+  NOTE: 「IVS が直接 FSx for ONTAP S3 AP へ録画する」構成は AWS が非サポートと確認済みのため本テンプレートには含めない。
 
 # =====================================================================
 # Parameters
