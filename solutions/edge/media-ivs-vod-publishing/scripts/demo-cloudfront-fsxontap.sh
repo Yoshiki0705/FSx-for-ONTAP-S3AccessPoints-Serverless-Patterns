@@ -151,7 +151,7 @@ PY
   echo ">> Deleting OAC ${OAC_ID}"
   OETAG=$(aws cloudfront get-origin-access-control --region us-east-1 --id "${OAC_ID}" --query ETag --output text)
   aws cloudfront delete-origin-access-control --region us-east-1 --id "${OAC_ID}" --if-match "${OETAG}"
-  echo ">> Done. (The FSx S3 AP policy and demo objects are left for you to remove if desired.)"
+  echo ">> Done. (The FSx for ONTAP S3 AP policy and demo objects are left for you to remove if desired.)"
 }
 
 case "${1:-}" in

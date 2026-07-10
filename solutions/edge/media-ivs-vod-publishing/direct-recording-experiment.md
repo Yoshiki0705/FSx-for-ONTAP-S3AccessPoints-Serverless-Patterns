@@ -1,11 +1,35 @@
 # Direct Path Experiment — IVS Recording directly to an FSx for ONTAP S3 Access Point
 
-> **Status: Experimental / Not documented as supported.**
-> This plan tests whether an Amazon IVS Recording Configuration can point directly at an
-> FSx for ONTAP S3 Access Point alias. AWS documentation does **not** state this is supported.
-> **Do not describe this as "Supported" in public docs based on a test result alone.** If it
-> appears to work, describe it as *"Observed working in this test environment, not documented
-> as officially supported."*
+> **Status: RESOLVED — Not supported (confirmed by the AWS service team).**
+> AWS Support, after confirming with the Amazon IVS service team, stated that **Amazon S3 Access
+> Points — including those backed by Amazon FSx for NetApp ONTAP — are not a supported IVS
+> Auto-Record recording destination**. The access point alias is accepted at configuration
+> creation only because it is validated as a bucket-name-shaped string; recording-time writes
+> through the access point are a separate, unsupported path. This matches the recording-time
+> failure observed below. **Use the recommended path (IVS → standard Amazon S3 bucket → FSx for
+> ONTAP), which is the supported destination.** The sections below are retained as the
+> investigation record that led to this confirmation.
+
+## Resolution (AWS service team confirmation)
+
+- **Supported destination**: IVS Auto-Record supports recording to a **standard Amazon S3 bucket**.
+  Destinations other than a standard S3 bucket — including S3 Access Points and FSx for ONTAP S3
+  access points — are **not supported**. AWS does not separately document every unsupported
+  destination; the supported-destination statement in the docs is the boundary to rely on.
+- **Why config-creation still "succeeds"**: `destinationConfiguration.s3.bucketName` is validated
+  only as a bucket-name-shaped string (≤63 chars), so an access point **alias** passes and the
+  RecordingConfiguration reaches `ACTIVE`. That is **not** an indication of support.
+- **No configuration makes it work today**: because the destination itself is unsupported, there is
+  **no access point policy, service-linked role, or FileSystemIdentity configuration** that will make
+  recording-time writes succeed. The live-stream write-through test is not worth pursuing further.
+- **Feature request**: the use case (direct recording to an S3 Access Point, and accepting an S3
+  Access Point **ARN** as a destination — which would require relaxing the 63-char `bucketName`
+  limit) has been raised with the service team. There is **no roadmap or timeline** to share.
+- **Recommended action**: continue building on the supported path (IVS → standard S3 → FSx for ONTAP),
+  which is exactly the production architecture this pattern already uses.
+
+> Provenance (support case reference, correspondence, dates) is kept in `.private/`, not in this
+> public repository.
 
 ## Hypothesis
 
@@ -102,8 +126,9 @@ destination, and record:
 | Config ACTIVE + recording written successfully | **Experimental** — "Observed working in this test environment, not documented as officially supported" |
 | Mixed / intermittent | **Unknown** — document what varied |
 
-> **Rule:** regardless of a successful observation, unless AWS documentation explicitly states
-> support, the README must say **Experimental**, never **Supported**.
+> **Rule (superseded by the Resolution above):** during the investigation, no observation was to be
+> labeled **Supported** without AWS documentation. This is now settled — the AWS service team
+> confirmed the destination is **Not supported**, which is the label the README uses.
 
 ## Observed results (this test environment — not official support)
 
@@ -153,10 +178,11 @@ destination, and record:
 
 ### Public label decision
 
-Config-creation acceptance is a **positive but partial** signal, and the **recording-time write-through
-was observed to FAIL** (`Recording Start Failure`, no objects written) for an FSx for ONTAP S3 AP alias.
-This stays **Experimental / not supported** in the README. Use the recommended path
-(IVS → standard S3 bucket → FSx for ONTAP) for real work. **Do not mark Supported.**
+Config-creation acceptance is a validation artifact (bucket-name-shaped string ≤63 chars), the
+**recording-time write-through was observed to FAIL** (`Recording Start Failure`, no objects
+written) for an FSx for ONTAP S3 AP alias, and the **AWS service team has now confirmed the
+destination is not supported**. The README labels this **Not supported (confirmed by AWS)**. Use the
+recommended path (IVS → standard S3 bucket → FSx for ONTAP) for real work. **Do not mark Supported.**
 
 ### Observed status summary
 
@@ -166,21 +192,26 @@ This stays **Experimental / not supported** in the README. Use the recommended p
 | Config creation (ARN) | **Rejected** | `bucketName` max length 63 |
 | Recording-time write-through | **Recording Start Failure** | No `ivs/v1/...` objects written; SLR granted on AP; empty reason code |
 
-### Still open (with AWS)
+### Resolved by AWS
 
-- Whether recording-time Auto-Record to an FSx for ONTAP S3 AP is intended to be supportable, and if
-  so the required AP policy / service-linked-role / FileSystemIdentity / network-origin configuration.
-- Whether `Recording Start Failure` can surface a more specific reason code for destination
-  compatibility. Raised with AWS Support as a feature request (templates kept privately, not in this repo).
-- The same sequence against an **FSx for ONTAP S3 AP** (AP policy + ONTAP UNIX/Windows identity).
+- **Is recording-time Auto-Record to an S3 Access Point (incl. FSx for ONTAP) supported?** **No** —
+  confirmed by the AWS service team. No AP policy / service-linked-role / FileSystemIdentity /
+  network-origin configuration makes it work today.
+- **Feature request raised**: direct recording to an S3 Access Point, and accepting an S3 Access
+  Point **ARN** as a destination (relaxing the 63-char `bucketName` limit). **No roadmap/timeline**
+  is available.
 
-> **Support status update**: A support request is open. AWS Premium Support confirmed that the public IVS
-> Auto-Record documentation describes the recording destination as a **standard Amazon S3 bucket** and that
-> `destinationConfiguration.s3.bucketName` is defined as an S3 bucket name, with **no explicit mention of S3
-> access points** — consistent with the alias being accepted as a bucket-name-shaped value at config creation
-> while recording-time behavior is a separate matter. The definitive supported / not-supported position
-> (and, if supportable, the required AP policy / service-linked-role / FileSystemIdentity / network-origin
-> configuration) is **pending the Amazon IVS service team**. Until then this stays **Experimental**.
+### Remaining follow-up (non-blocking)
+
+- AWS asked for the exact `recording_status_reason` value from the observed `Recording Start Failure`
+  event, plus what diagnostic detail would have helped identify the destination issue faster, to
+  evaluate improving the reason code. In this test the event `code` was **empty**. This feedback is
+  tracked privately (`.private/`) and does not change the supported/not-supported outcome.
+
+> **Support status**: Resolved. The AWS service team confirmed S3 Access Points (including FSx for
+> ONTAP) are **not** a supported IVS Auto-Record destination; the supported destination is a **standard
+> Amazon S3 bucket**. The feature request is recorded with the team (no roadmap). Correspondence is kept
+> in `.private/`, outside this repository.
 
 ## Cleanup
 
