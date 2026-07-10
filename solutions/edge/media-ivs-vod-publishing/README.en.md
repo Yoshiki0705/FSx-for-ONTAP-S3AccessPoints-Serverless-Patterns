@@ -11,7 +11,7 @@
 | Path | Status | Meaning |
 |------|--------|---------|
 | **Recommended** | `Supported components` | Amazon IVS Auto-Record to a standard S3 bucket, then publish the HLS package to FSx for ONTAP and deliver via S3 Access Point + Amazon CloudFront. Every component is individually documented and supported. |
-| **Experimental** | `Observed: recording-time failure` | Pointing an IVS Recording Configuration directly at an FSx for ONTAP S3 Access Point alias. This is **not documented by AWS as supported**. In a test environment, config creation reached `ACTIVE`, but a live stream produced a **"Recording Start Failure"** and wrote no `ivs/v1/...` objects to the access point (even with the IVS service-linked role granted on the AP). Use the recommended path for real work. See [direct-recording-experiment.md](direct-recording-experiment.md). |
+| **Not supported (confirmed by AWS)** | `Confirmed unsupported` | Pointing an IVS Recording Configuration directly at an FSx for ONTAP S3 Access Point alias. The **AWS service team confirmed this destination is not supported** (the supported destination is a standard Amazon S3 bucket). The alias only passes config creation because `bucketName` is validated as a bucket-name-shaped string (≤63 chars), so it reaches `ACTIVE`; recording-time writes fail (test environment: **"Recording Start Failure"**, no `ivs/v1/...` objects, even with the IVS service-linked role granted on the AP). Use the recommended path (via a standard S3 bucket). See [direct-recording-experiment.md](direct-recording-experiment.md). |
 
 > This is a **reference implementation**. Delivery vendor selection, rights management, geo
 > restrictions, and compliance judgments are the operating organization's responsibility. Technical
@@ -19,7 +19,7 @@
 
 > **TL;DR (30s)**: Keep the IVS live experience; record to the **supported S3 bucket**; then
 > publish HLS to FSx for ONTAP, edit/QC/approve over NFS/SMB, and re-deliver VOD via S3 Access
-> Point + CloudFront. Direct recording (IVS→FSx for ONTAP S3 AP) is **Experimental** — validation plan only.
+> Point + CloudFront. Direct recording (IVS→FSx for ONTAP S3 AP) is **confirmed not supported by AWS** (a standard S3 bucket is the only supported destination).
 
 **Try it now (30-second action)**: run `make test-media-ivs-vod-publishing` to execute the
 unit/property tests and confirm Recording End validation, the permission-aware ingest boundary,
@@ -194,14 +194,14 @@ audio, and captions (`EnableStrictModeration=true` creates `functions/moderation
 | Technical KPI | publish success rate | SUCCEEDED in DemoMode |
 | Quality KPI | master manifest validation | Confirm master manifest before publishing |
 | Cost KPI | FSx read bandwidth impact | Delivery origin fetches don't crowd out editing (P95/P99) |
-| Go/No-Go | Direct recording (IVS→FSx for ONTAP S3 AP) | Judged by hardware validation (Experimental unless AWS documents it) |
+| Go/No-Go | Direct recording (IVS→FSx for ONTAP S3 AP) | **Not supported** (confirmed by the AWS service team). Use a standard S3 bucket |
 
 ## Validation matrix (summary)
 
 | Integration point | Status |
 |-------------------|--------|
 | IVS Auto-Record to standard S3 bucket | Supported |
-| IVS RecordingConfiguration with FSx for ONTAP S3 AP alias | Experimental / Unknown |
+| IVS RecordingConfiguration with FSx for ONTAP S3 AP alias | Not supported (confirmed by AWS) |
 | S3 → FSx via NFS/SMB | Supported |
 | S3 → FSx via S3 AP `PutObject` | Supported (size/API constraints) |
 | FSx for ONTAP S3 AP → CloudFront | Supported (documented tutorial exists) |
@@ -216,7 +216,7 @@ Full detail is in [validation-matrix.md](validation-matrix.md).
 |----------|---------|
 | [architecture.en.md](architecture.en.md) | Design principles, data flow, network design |
 | [validation-matrix.md](validation-matrix.md) | Support status of each integration point |
-| [direct-recording-experiment.md](direct-recording-experiment.md) | Experimental plan for direct IVS → FSx for ONTAP S3 AP recording |
+| [direct-recording-experiment.md](direct-recording-experiment.md) | Investigation record for direct IVS → FSx for ONTAP S3 AP recording (resolved: not supported) |
 | [supported-path-ivs-s3-fsx-cloudfront.md](supported-path-ivs-s3-fsx-cloudfront.md) | Recommended path implementation notes |
 | [docs/demo-guide.md](docs/demo-guide.md) | DemoMode verification steps |
 | [samples/](samples/) | EventBridge event, Step Functions ASL, Lambda snippet, AP policy, CloudFront notes |
@@ -258,7 +258,7 @@ Full detail is in [validation-matrix.md](validation-matrix.md).
   objects, **streaming multipart** (`streaming_download` + `multipart_upload`, low memory) for large ones
   (default > 100MB). Objects above the Lambda ingest ceiling (default 20GB) are skipped — prefer DataSync
   or ECS/Batch (NFS/SMB mount); snippets in [samples/](samples/).
-- Direct recording is Experimental ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- Direct recording is **not supported** (confirmed by the AWS service team; [direct-recording-experiment.md](direct-recording-experiment.md)).
 
 ## Scope
 
@@ -296,10 +296,10 @@ These are composable, not mutually exclusive.
 
 ## FAQ / common misconceptions
 
-- **"Can IVS record straight into an FSx for ONTAP S3 AP?"** Config creation reaches `ACTIVE`, but in a
-  test environment a live stream produced a **"Recording Start Failure"** and wrote no `ivs/v1/...` objects.
-  It is also not documented as supported → treat as Experimental
-  ([direct-recording-experiment.md](direct-recording-experiment.md)).
+- **"Can IVS record straight into an FSx for ONTAP S3 AP?"** No — the **AWS service team confirmed it is
+  not supported**. Config creation reaches `ACTIVE` (because `bucketName` is validated only as a
+  bucket-name-shaped string), but recording-time writes fail (**"Recording Start Failure"**, no `ivs/v1/...`
+  objects). Use a standard S3 bucket ([direct-recording-experiment.md](direct-recording-experiment.md)).
 - **"Is an S3 AP a full S3 bucket?"** No (no Presigned URL / Versioning / Object Lock / Lifecycle /
   Static Website Hosting).
 - **"Can viewers get a presigned URL?"** No → use CloudFront signed URLs / cookies.
