@@ -1,0 +1,453 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Demo AD Environment for FSx for ONTAP S3 Access Points (WINDOWS User Type)
+
+  Provisions Active Directory and EC2 test instances to validate WINDOWS-type
+  S3 Access Point operations. Supports three AD modes:
+    - create-new: Creates a new AWS Managed Microsoft AD
+    - use-existing-managed: Uses an existing AWS Managed Microsoft AD
+    - use-self-managed: Uses an existing self-managed (on-premises) AD
+
+  After deployment, join the FSx for ONTAP SVM to the AD domain using:
+    scripts/demo-ad-join-svm.sh --stack-name <this-stack>
+
+  IMPORTANT: WINDOWS-type S3 Access Points require the SVM to be AD-joined.
+  When specifying WindowsUser.Name for the S3 AP, do NOT include the domain
+  prefix (use "Admin", not "DOMAIN\\Admin") — the domain prefix causes
+  AccessDenied on data-plane API calls (ListObjects, GetObject, PutObject).
+
+# =====================================================================
+# Metadata
+# =====================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: AD Configuration
+        Parameters:
+          - AdMode
+          - DomainName
+          - DomainShortName
+          - AdminPassword
+          - ExistingDirectoryId
+          - SelfManagedDnsIps
+          - SelfManagedDomainName
+          - SelfManagedAdminUser
+          - SelfManagedAdminPassword
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VpcId
+          - PrivateSubnetIds
+          - PublicSubnetId
+      - Label:
+          default: EC2 Instances
+        Parameters:
+          - KeyPairName
+          - WindowsAmiId
+          - LinuxAmiId
+          - InstanceType
+      - Label:
+          default: FSx for ONTAP Reference
+        Parameters:
+          - FsxFileSystemId
+          - OntapManagementIp
+          - OntapSecretName
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  # --- AD Mode ---
+  AdMode:
+    Type: String
+    Default: create-new
+    AllowedValues:
+      - create-new
+      - use-existing-managed
+      - use-self-managed
+    Description: >
+      AD provisioning mode.
+      create-new: Creates AWS Managed Microsoft AD (Standard edition).
+      use-existing-managed: Reuses an existing AWS Managed AD (provide DirectoryId).
+      use-self-managed: Uses a self-managed AD (provide DNS IPs and credentials).
+
+  # --- New AD Parameters ---
+  DomainName:
+    Type: String
+    Default: demo.fsxn.local
+    Description: FQDN for new AWS Managed AD (only used when AdMode=create-new)
+    AllowedPattern: "^[a-zA-Z0-9.-]+$"
+
+  DomainShortName:
+    Type: String
+    Default: DEMO
+    Description: NetBIOS name for the domain (only used when AdMode=create-new)
+    MaxLength: 15
+    AllowedPattern: "^[A-Z0-9]+$"
+
+  AdminPassword:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      Admin password for new AWS Managed AD (AdMode=create-new).
+      Must be 8-64 chars with uppercase, lowercase, digits, and special chars.
+      Leave empty to skip AD creation (use-existing modes).
+
+  # --- Existing Managed AD Parameters ---
+  ExistingDirectoryId:
+    Type: String
+    Default: ""
+    Description: >
+      Directory ID of existing AWS Managed AD (AdMode=use-existing-managed).
+      Format: d-XXXXXXXXXX
+
+  # --- Self-Managed AD Parameters ---
+  SelfManagedDnsIps:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: >
+      DNS IP addresses for self-managed AD (AdMode=use-self-managed).
+      Comma-separated, e.g., "198.51.100.10,198.51.100.11"
+
+  SelfManagedDomainName:
+    Type: String
+    Default: ""
+    Description: FQDN of self-managed AD domain (AdMode=use-self-managed)
+
+  SelfManagedAdminUser:
+    Type: String
+    Default: ""
+    Description: >
+      AD admin username with SVM join privileges (AdMode=use-self-managed).
+      Format: username only (no domain prefix).
+
+  SelfManagedAdminPassword:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Password for self-managed AD admin user
+
+  # --- Network ---
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC where FSx for ONTAP is deployed
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >
+      Two private subnets in different AZs (for AD and EC2).
+      Must be in the same VPC as FSx for ONTAP.
+
+  PublicSubnetId:
+    Type: String
+    Default: ""
+    Description: >
+      Public subnet for Windows bastion (optional).
+      If empty, Windows EC2 is placed in the first private subnet.
+
+  # --- EC2 ---
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: EC2 key pair name (optional — for SSH/RDP access)
+
+  WindowsAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-windows-latest/Windows_Server-2022-English-Full-Base
+    Description: Windows Server 2022 AMI (latest via SSM parameter)
+
+  LinuxAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+    Description: Amazon Linux 2023 AMI (ARM64, latest via SSM parameter)
+
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    Description: EC2 instance type for both Windows and Linux instances
+
+  # --- FSx for ONTAP Reference ---
+  FsxFileSystemId:
+    Type: String
+    Default: ""
+    Description: >
+      FSx for ONTAP file system ID (for outputs and join script reference).
+      Not used for resource creation — informational only.
+
+  OntapManagementIp:
+    Type: String
+    Default: ""
+    Description: >
+      ONTAP management IP (file system management endpoint).
+      Used by demo-ad-join-svm.sh to join SVM to AD domain.
+
+  OntapSecretName:
+    Type: String
+    Default: ""
+    Description: >
+      Secrets Manager secret name for ONTAP admin credentials.
+      Used by demo-ad-join-svm.sh.
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateNewAd: !Equals [!Ref AdMode, "create-new"]
+  UseExistingManaged: !Equals [!Ref AdMode, "use-existing-managed"]
+  UseSelfManaged: !Equals [!Ref AdMode, "use-self-managed"]
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+  HasPublicSubnet: !Not [!Equals [!Ref PublicSubnetId, ""]]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # Security Groups
+  # -----------------------------------------------------------------
+  AdMemberSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - AD member instances (Windows/Linux)"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+          Description: Allow all outbound (required for AD join, S3 AP, SSM)
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ad-member-sg"
+
+  AdMemberSgIngressSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AdMemberSecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !Ref AdMemberSecurityGroup
+      Description: Allow all traffic within AD member group
+
+  # -----------------------------------------------------------------
+  # AWS Managed Microsoft AD (create-new mode)
+  # -----------------------------------------------------------------
+  ManagedAd:
+    Type: AWS::DirectoryService::MicrosoftAD
+    Condition: CreateNewAd
+    Properties:
+      Name: !Ref DomainName
+      ShortName: !Ref DomainShortName
+      Password: !Ref AdminPassword
+      Edition: Standard
+      VpcSettings:
+        VpcId: !Ref VpcId
+        SubnetIds: !Ref PrivateSubnetIds
+
+  # -----------------------------------------------------------------
+  # IAM Role for EC2 instances (SSM + AD join)
+  # -----------------------------------------------------------------
+  Ec2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-ec2-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMDirectoryServiceAccess"
+      Policies:
+        - PolicyName: S3ApAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+              - Effect: Allow
+                Action:
+                  - fsx:DescribeFileSystems
+                  - fsx:DescribeStorageVirtualMachines
+                  - fsx:DescribeVolumes
+                Resource: "*"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ec2-role"
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref Ec2InstanceRole
+
+  # -----------------------------------------------------------------
+  # Windows EC2 Instance (WINDOWS S3 AP validation)
+  # -----------------------------------------------------------------
+  WindowsInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref WindowsAmiId
+      InstanceType: !Ref InstanceType
+      SubnetId: !If
+        - HasPublicSubnet
+        - !Ref PublicSubnetId
+        - !Select [0, !Ref PrivateSubnetIds]
+      SecurityGroupIds:
+        - !Ref AdMemberSecurityGroup
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
+      SsmAssociations:
+        - DocumentName: AWS-JoinDirectoryServiceDomain
+          AssociationParameters:
+            - Key: directoryId
+              Value:
+                - !If
+                  - CreateNewAd
+                  - !Ref ManagedAd
+                  - !If
+                    - UseExistingManaged
+                    - !Ref ExistingDirectoryId
+                    - !Ref "AWS::NoValue"
+            - Key: directoryName
+              Value:
+                - !If
+                  - CreateNewAd
+                  - !Ref DomainName
+                  - !If
+                    - UseExistingManaged
+                    - !Ref DomainName
+                    - !Ref "AWS::NoValue"
+      UserData:
+        Fn::Base64: |
+          <powershell>
+          # Install AWS CLI v2
+          Start-Process msiexec.exe -Wait -ArgumentList '/i https://awscli.amazonaws.com/AWSCLIV2.msi /quiet'
+          # Tag instance for identification
+          $instanceId = (Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/instance-id)
+          Write-Output "Windows S3 AP Test Instance: $instanceId"
+          Write-Output "Purpose: Validate WINDOWS user type S3 Access Point operations"
+          Write-Output "IMPORTANT: When creating S3 AP with FileSystemUserType=WINDOWS,"
+          Write-Output "  use username ONLY (e.g., 'Admin'), NOT domain\\username"
+          </powershell>
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-windows-s3ap-test"
+        - Key: Purpose
+          Value: windows-s3ap-validation
+        - Key: OS
+          Value: Windows Server 2022
+
+  # -----------------------------------------------------------------
+  # Amazon Linux EC2 Instance (UNIX S3 AP validation)
+  # -----------------------------------------------------------------
+  LinuxInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LinuxAmiId
+      InstanceType: !If
+        - HasKeyPair
+        - !Ref InstanceType
+        - t4g.micro
+      SubnetId: !Select [0, !Ref PrivateSubnetIds]
+      SecurityGroupIds:
+        - !Ref AdMemberSecurityGroup
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          # Amazon Linux 2023 has AWS CLI pre-installed
+          echo "Linux S3 AP Test Instance"
+          echo "Purpose: Validate UNIX user type S3 Access Point operations"
+          echo "Example: aws s3 ls s3://<s3ap-alias>/ --region ${AWS::Region}"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-linux-s3ap-test"
+        - Key: Purpose
+          Value: unix-s3ap-validation
+        - Key: OS
+          Value: Amazon Linux 2023
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  AdMode:
+    Description: AD provisioning mode used
+    Value: !Ref AdMode
+
+  DirectoryId:
+    Description: Directory ID (AWS Managed AD)
+    Condition: CreateNewAd
+    Value: !Ref ManagedAd
+
+  DomainName:
+    Description: AD domain FQDN
+    Value: !If
+      - UseSelfManaged
+      - !Ref SelfManagedDomainName
+      - !Ref DomainName
+
+  DomainShortName:
+    Description: AD NetBIOS short name
+    Value: !If
+      - UseSelfManaged
+      - "N/A (self-managed)"
+      - !Ref DomainShortName
+
+  DnsIpAddresses:
+    Description: DNS IP addresses for AD domain
+    Condition: CreateNewAd
+    Value: !Join
+      - ","
+      - !GetAtt ManagedAd.DnsIpAddresses
+
+  WindowsInstanceId:
+    Description: Windows EC2 instance ID (for SSM Session Manager)
+    Value: !Ref WindowsInstance
+
+  LinuxInstanceId:
+    Description: Linux EC2 instance ID (for SSM Session Manager)
+    Value: !Ref LinuxInstance
+
+  SecurityGroupId:
+    Description: Security Group for AD member instances
+    Value: !Ref AdMemberSecurityGroup
+
+  OntapManagementIp:
+    Description: ONTAP management IP (pass to demo-ad-join-svm.sh)
+    Value: !Ref OntapManagementIp
+
+  OntapSecretName:
+    Description: ONTAP credentials secret name (pass to demo-ad-join-svm.sh)
+    Value: !Ref OntapSecretName
+
+  FsxFileSystemId:
+    Description: FSx for ONTAP file system ID
+    Value: !Ref FsxFileSystemId
+
+  SvmAdJoinCommand:
+    Description: Command to join SVM to AD domain after stack creation
+    Value: !Sub >
+      ./scripts/demo-ad-join-svm.sh
+      --stack-name ${AWS::StackName}
+      --region ${AWS::Region}
+
+  S3ApWindowsUserNote:
+    Description: >
+      CRITICAL: When creating S3 AP with FileSystemUserType=WINDOWS,
+      specify username only (e.g., "Admin"), NOT "DOMAIN\\Admin".
+      Domain prefix causes AccessDenied on data-plane operations.
+    Value: "Use username only — no domain prefix (e.g., Admin, not DEMO\\Admin)"
