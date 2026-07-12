@@ -1,0 +1,42 @@
+[
+  {
+    "ParameterKey": "S3AccessPointAlias",
+    "ParameterValue": "fsxn-sap-idoc-ext-s3alias"
+  },
+  {
+    "ParameterKey": "DemoMode",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "OntapSecretArn",
+    "ParameterValue": "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsxn/ontap-admin-credentials-AbCdEf"
+  },
+  {
+    "ParameterKey": "ScheduleExpression",
+    "ParameterValue": "rate(1 hour)"
+  },
+  {
+    "ParameterKey": "OutputBucketName",
+    "ParameterValue": "fsxn-sap-output-123456789012-ap-northeast-1"
+  },
+  {
+    "ParameterKey": "NotificationEmail",
+    "ParameterValue": "sap-alerts@example.com"
+  },
+  {
+    "ParameterKey": "FilePrefix",
+    "ParameterValue": "idoc-export/"
+  },
+  {
+    "ParameterKey": "BedrockModelId",
+    "ParameterValue": "apac.amazon.nova-pro-v1:0"
+  },
+  {
+    "ParameterKey": "MaxFilesPerExecution",
+    "ParameterValue": "100"
+  },
+  {
+    "ParameterKey": "LogRetentionInDays",
+    "ParameterValue": "90"
+  }
+]
