@@ -74,6 +74,8 @@ cfn-lint solutions/industry/legal-compliance/template.yaml solutions/sap/erp-adj
 │   │   ├── fpolicy/
 │   │   └── prototype/
 │   └── edge/content-delivery/        # CDN/edge delivery pattern
+├── infrastructure/         # Shared infrastructure templates (not per-pattern)
+│   └── demo-ad-environment.yaml  # AD + EC2 for WINDOWS S3 AP testing
 ├── shared/                 # Shared Python modules (imported by all patterns)
 │   ├── s3ap_helper.py      # S3 Access Point helper (core abstraction)
 │   ├── ontap_client.py     # ONTAP REST API client
@@ -96,7 +98,12 @@ cfn-lint solutions/industry/legal-compliance/template.yaml solutions/sap/erp-adj
 │   └── tests/              # Shared module tests
 ├── test-data/              # Sample data per UC (gitignore override)
 ├── scripts/                # Automation scripts
+│   └── demo-ad-join-svm.sh  # Join SVM to AD domain (WINDOWS S3 AP enablement)
 ├── docs/                   # Documentation and guides (40+ docs)
+│   ├── en/                 # English docs (deployment-guide.md, etc.)
+│   └── ja/                 # Japanese docs (deployment-guide.md, etc.)
+├── cfn-params/             # Sample CloudFormation parameter files (*.example.json)
+├── params/                 # Additional parameter files (infrastructure templates)
 ├── security/               # cfn-guard rules
 ├── Makefile                # Developer workflow commands
 ├── renovate.json           # Automated dependency updates (requires Renovate GitHub App)
@@ -255,6 +262,9 @@ decision = evaluate_confidence(confidence=0.72)
 | Hypothesis + moto DynamoDB slow | Use `deadline=None` in `@given()` settings |
 | Test file name collision across patterns | Use unique test file names or run per-directory |
 | `from functions.xxx import` collision in batch test runs | Run patterns with `handler` module imports in separate pytest invocations (Makefile splits these) |
+| `SsmAssociations` + `aws:domainJoin` → schema error | Use separate `AWS::SSM::Association` resource with `AWS-JoinDirectoryServiceDomain` document (see below) |
+| WINDOWS S3 AP `AccessDenied` on data-plane | `WindowsUser.Name` must be username only (`Admin`), NOT `DOMAIN\Admin` — domain prefix silently breaks data-plane |
+| WINDOWS S3 AP creation fails | SVM must be AD-joined first; use `scripts/demo-ad-join-svm.sh` |
 
 ## S3 Access Point Critical Knowledge
 
@@ -284,6 +294,46 @@ NOT supported: GetBucketNotificationConfiguration, Presigned URLs (documented as
 
 - `Internet`: Accessible from anywhere with valid credentials. NOT via S3 Gateway VPC Endpoint.
 - `VPC`: Accessible only from bound VPC via S3 Gateway/Interface Endpoint.
+
+## SSM Domain Join — Correct Pattern for Windows EC2 AD Join
+
+```yaml
+# ❌ FAILS: EC2 SsmAssociations + aws:domainJoin (any schemaVersion)
+# Error: "Document schema version, 2.2, is not supported by association
+#         that is created with instance id"
+WindowsInstance:
+  SsmAssociations:
+    - DocumentName: !Ref MyCustomDoc  # ← NEVER do this for AD join
+
+# ✅ CORRECT: Separate AWS::SSM::Association resource
+DomainJoinAssociation:
+  Type: AWS::SSM::Association
+  Properties:
+    Name: AWS-JoinDirectoryServiceDomain  # AWS-managed document
+    Targets:
+      - Key: InstanceIds
+        Values:
+          - !Ref WindowsInstance
+    Parameters:
+      directoryId:
+        - !Ref ManagedAd
+      directoryName:
+        - !Ref DomainName
+      dnsIpAddresses:
+        - !Select [0, !GetAtt ManagedAd.DnsIpAddresses]
+        - !Select [1, !GetAtt ManagedAd.DnsIpAddresses]
+```
+
+EC2 IAM role requires: `AmazonSSMManagedInstanceCore` + `AmazonSSMDirectoryServiceAccess`.
+
+## WINDOWS User Type S3 Access Point — AD Requirements
+
+- SVM must be AD-joined before creating WINDOWS-type S3 AP (fails immediately if not)
+- `WindowsUser.Name` = username only (`Admin`), NEVER `DOMAIN\Admin`
+- Domain prefix is accepted at API level but causes `AccessDenied` on data-plane (ListObjects/GetObject/PutObject)
+- Infrastructure template: `infrastructure/demo-ad-environment.yaml` (3 AD modes)
+- Join script: `scripts/demo-ad-join-svm.sh` (auto-resolves from CFn stack outputs)
+- Parameter file: `params/demo-ad-environment.example.json`
 
 ## External Dependencies
 
