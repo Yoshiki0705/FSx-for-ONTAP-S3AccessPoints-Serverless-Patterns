@@ -307,27 +307,6 @@ Resources:
         - !Ref AdMemberSecurityGroup
       IamInstanceProfile: !Ref Ec2InstanceProfile
       KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
-      SsmAssociations:
-        - DocumentName: AWS-JoinDirectoryServiceDomain
-          AssociationParameters:
-            - Key: directoryId
-              Value:
-                - !If
-                  - CreateNewAd
-                  - !Ref ManagedAd
-                  - !If
-                    - UseExistingManaged
-                    - !Ref ExistingDirectoryId
-                    - !Ref "AWS::NoValue"
-            - Key: directoryName
-              Value:
-                - !If
-                  - CreateNewAd
-                  - !Ref DomainName
-                  - !If
-                    - UseExistingManaged
-                    - !Ref DomainName
-                    - !Ref "AWS::NoValue"
       UserData:
         Fn::Base64: |
           <powershell>
@@ -347,6 +326,47 @@ Resources:
           Value: windows-s3ap-validation
         - Key: OS
           Value: Windows Server 2022
+
+  # -----------------------------------------------------------------
+  # SSM Association — AD Domain Join (separate resource)
+  # NOTE: Do NOT use EC2 SsmAssociations property with aws:domainJoin.
+  # The SsmAssociations property + custom/inline Document causes:
+  #   "Document schema version, 2.2, is not supported by association
+  #    that is created with instance id"
+  # Use AWS-managed document via AWS::SSM::Association instead.
+  # -----------------------------------------------------------------
+  DomainJoinAssociation:
+    Type: AWS::SSM::Association
+    Condition: CreateNewAd
+    Properties:
+      Name: AWS-JoinDirectoryServiceDomain
+      Targets:
+        - Key: InstanceIds
+          Values:
+            - !Ref WindowsInstance
+      Parameters:
+        directoryId:
+          - !Ref ManagedAd
+        directoryName:
+          - !Ref DomainName
+        dnsIpAddresses:
+          - !Select [0, !GetAtt ManagedAd.DnsIpAddresses]
+          - !Select [1, !GetAtt ManagedAd.DnsIpAddresses]
+
+  DomainJoinAssociationExisting:
+    Type: AWS::SSM::Association
+    Condition: UseExistingManaged
+    Properties:
+      Name: AWS-JoinDirectoryServiceDomain
+      Targets:
+        - Key: InstanceIds
+          Values:
+            - !Ref WindowsInstance
+      Parameters:
+        directoryId:
+          - !Ref ExistingDirectoryId
+        directoryName:
+          - !Ref DomainName
 
   # -----------------------------------------------------------------
   # Amazon Linux EC2 Instance (UNIX S3 AP validation)
