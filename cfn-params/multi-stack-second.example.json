@@ -1,0 +1,74 @@
+[
+  {
+    "ParameterKey": "S3AccessPointAlias",
+    "ParameterValue": "fsxn-mfg-data-ext-s3alias"
+  },
+  {
+    "ParameterKey": "S3AccessPointName",
+    "ParameterValue": "fsxn-mfg-data"
+  },
+  {
+    "ParameterKey": "S3AccessPointOutputAlias",
+    "ParameterValue": "fsxn-mfg-data-ext-s3alias"
+  },
+  {
+    "ParameterKey": "OntapSecretName",
+    "ParameterValue": "fsxn/ontap-admin-credentials"
+  },
+  {
+    "ParameterKey": "OntapManagementIp",
+    "ParameterValue": "198.51.100.10"
+  },
+  {
+    "ParameterKey": "SvmUuid",
+    "ParameterValue": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  },
+  {
+    "ParameterKey": "VolumeUuid",
+    "ParameterValue": "c3d4e5f6-a7b8-9012-cdef-234567890123"
+  },
+  {
+    "ParameterKey": "ScheduleExpression",
+    "ParameterValue": "rate(30 minutes)"
+  },
+  {
+    "ParameterKey": "VpcId",
+    "ParameterValue": "vpc-0123456789abcdef0"
+  },
+  {
+    "ParameterKey": "PrivateSubnetIds",
+    "ParameterValue": "subnet-0aaa111122223333a,subnet-0bbb444455556666b"
+  },
+  {
+    "ParameterKey": "PrivateRouteTableIds",
+    "ParameterValue": "rtb-0ccc777788889999c,rtb-0ddd000011112222d"
+  },
+  {
+    "ParameterKey": "NotificationEmail",
+    "ParameterValue": "manufacturing-alerts@example.com"
+  },
+  {
+    "ParameterKey": "EnableVpcEndpoints",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "EnableS3GatewayEndpoint",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "EnableCloudWatchAlarms",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "BedrockModelId",
+    "ParameterValue": "apac.amazon.nova-pro-v1:0"
+  },
+  {
+    "ParameterKey": "EnableXRayTracing",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "TriggerMode",
+    "ParameterValue": "POLLING"
+  }
+]

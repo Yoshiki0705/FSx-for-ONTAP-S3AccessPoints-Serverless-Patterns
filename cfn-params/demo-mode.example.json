@@ -1,0 +1,42 @@
+[
+  {
+    "ParameterKey": "S3AccessPointAlias",
+    "ParameterValue": "my-demo-bucket-123456789012"
+  },
+  {
+    "ParameterKey": "DemoMode",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "OntapSecretArn",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ScheduleExpression",
+    "ParameterValue": "rate(1 hour)"
+  },
+  {
+    "ParameterKey": "OutputBucketName",
+    "ParameterValue": "my-demo-output-123456789012"
+  },
+  {
+    "ParameterKey": "NotificationEmail",
+    "ParameterValue": "demo@example.com"
+  },
+  {
+    "ParameterKey": "FilePrefix",
+    "ParameterValue": "sample-data/"
+  },
+  {
+    "ParameterKey": "BedrockModelId",
+    "ParameterValue": "apac.amazon.nova-lite-v1:0"
+  },
+  {
+    "ParameterKey": "MaxFilesPerExecution",
+    "ParameterValue": "10"
+  },
+  {
+    "ParameterKey": "LogRetentionInDays",
+    "ParameterValue": "7"
+  }
+]
