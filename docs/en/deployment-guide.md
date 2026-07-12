@@ -541,6 +541,60 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 - **Maximum object size via PutObject is 5 GB** — use Multipart Upload for larger files.
 - **S3 Gateway VPC Endpoint does NOT route Internet-origin S3 AP traffic** — use NAT Gateway or VPC-external Lambda instead.
 
+### WINDOWS User Type S3 Access Points — AD Requirements
+
+S3 Access Points support two user types: `UNIX` (default) and `WINDOWS`. The WINDOWS type maps file ownership and ACLs to Active Directory identities, enabling Windows-native access control on FSx for ONTAP volumes exposed via S3 AP.
+
+**Prerequisites for WINDOWS-type S3 AP creation:**
+
+1. **SVM must be joined to an Active Directory domain** — attempting to create a WINDOWS-type S3 AP on an SVM that is not AD-joined will fail immediately.
+2. **AD environment must be reachable** — the SVM needs DNS resolution and network connectivity to the AD domain controllers (ports 53, 88, 389, 445).
+
+**Critical: WindowsUser.Name must NOT include the domain prefix**
+
+When creating or using a WINDOWS-type S3 Access Point, specify the username only:
+
+```bash
+# CORRECT — username only
+aws fsx create-and-attach-s3-access-point \
+  --file-system-id fs-XXXXXXXXX \
+  --s3-access-point-configuration '{
+    "Namespace": "s3ap-win",
+    "FileSystemUserType": "WINDOWS",
+    "WindowsUser": {"Name": "Admin"},
+    "NetworkOrigin": "Internet"
+  }'
+
+# INCORRECT — domain prefix causes AccessDenied on data-plane operations
+# "WindowsUser": {"Name": "DEMO\\Admin"}  ← DO NOT USE
+```
+
+The domain prefix (`DOMAIN\username`) is accepted at the CLI/API level without error, but subsequent data-plane operations (ListObjects, GetObject, PutObject) will return `AccessDenied`. This is a known behavior, not a transient error.
+
+**Setting up the AD environment:**
+
+Use the included infrastructure template and join script:
+
+```bash
+# 1. Deploy AD + test EC2 instances
+aws cloudformation create-stack \
+  --stack-name demo-ad-env \
+  --template-body file://infrastructure/demo-ad-environment.yaml \
+  --parameters file://params/demo-ad-environment.example.json \
+  --capabilities CAPABILITY_NAMED_IAM
+
+# 2. Wait for AD creation (~20-30 minutes for AWS Managed AD)
+aws cloudformation wait stack-create-complete --stack-name demo-ad-env
+
+# 3. Join SVM to the AD domain
+./scripts/demo-ad-join-svm.sh --stack-name demo-ad-env --svm-name svm1
+
+# 4. Create WINDOWS-type S3 AP (now possible)
+aws fsx create-and-attach-s3-access-point ...
+```
+
+See [infrastructure/demo-ad-environment.yaml](../../infrastructure/demo-ad-environment.yaml) and [scripts/demo-ad-join-svm.sh](../../scripts/demo-ad-join-svm.sh) for details.
+
 ---
 
 ## Troubleshooting
@@ -558,6 +612,8 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 | `ONTAP S3 server exists on SVM` | ONTAP native S3 conflicts with FSx S3 AP | Use a different SVM or remove the ONTAP S3 server (see Known Constraints) |
 | `Template size exceeds 51200 bytes` | Template too large for `--template-body` | Use `sam deploy` (handles S3 upload) or upload template to S3 first |
 | `Bedrock InvokeModel AccessDenied` | Model access not enabled in the region | Enable model access in Bedrock console; use cross-region inference profile ID |
+| `AccessDenied` on WINDOWS S3 AP data ops | `WindowsUser.Name` contains domain prefix | Remove domain prefix — use `"Admin"` not `"DOMAIN\\Admin"` |
+| S3 AP creation fails (WINDOWS type) | SVM not joined to AD domain | Join SVM to AD first: `./scripts/demo-ad-join-svm.sh` |
 
 ### Debugging Connectivity
 
