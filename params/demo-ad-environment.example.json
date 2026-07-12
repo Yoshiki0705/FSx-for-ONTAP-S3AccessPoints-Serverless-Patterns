@@ -1,0 +1,70 @@
+[
+  {
+    "ParameterKey": "AdMode",
+    "ParameterValue": "create-new"
+  },
+  {
+    "ParameterKey": "DomainName",
+    "ParameterValue": "demo.fsxn.local"
+  },
+  {
+    "ParameterKey": "DomainShortName",
+    "ParameterValue": "DEMO"
+  },
+  {
+    "ParameterKey": "AdminPassword",
+    "ParameterValue": "CHANGE-ME-ComplexP@ss1"
+  },
+  {
+    "ParameterKey": "ExistingDirectoryId",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "SelfManagedDnsIps",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "SelfManagedDomainName",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "SelfManagedAdminUser",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "SelfManagedAdminPassword",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "VpcId",
+    "ParameterValue": "vpc-0123456789abcdef0"
+  },
+  {
+    "ParameterKey": "PrivateSubnetIds",
+    "ParameterValue": "subnet-0aaa111122223333a,subnet-0bbb444455556666b"
+  },
+  {
+    "ParameterKey": "PublicSubnetId",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "KeyPairName",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "InstanceType",
+    "ParameterValue": "t3.medium"
+  },
+  {
+    "ParameterKey": "FsxFileSystemId",
+    "ParameterValue": "fs-0123456789abcdef0"
+  },
+  {
+    "ParameterKey": "OntapManagementIp",
+    "ParameterValue": "198.51.100.10"
+  },
+  {
+    "ParameterKey": "OntapSecretName",
+    "ParameterValue": "fsxn/ontap-admin-credentials"
+  }
+]
