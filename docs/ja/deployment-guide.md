@@ -538,6 +538,60 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 - **PutObject の最大オブジェクトサイズは 5 GB** — より大きなファイルには Multipart Upload を使用してください。
 - **S3 Gateway VPC Endpoint は Internet-origin S3 AP トラフィックをルーティングしない** — NAT Gateway または VPC 外部 Lambda を使用してください。
 
+### WINDOWS ユーザータイプ S3 Access Point — AD 要件
+
+S3 Access Point は `UNIX`（デフォルト）と `WINDOWS` の 2 つのユーザータイプをサポートしています。WINDOWS タイプは、FSx for ONTAP ボリュームのファイル所有権と ACL を Active Directory アイデンティティにマッピングし、S3 AP 経由で Windows ネイティブのアクセス制御を実現します。
+
+**WINDOWS タイプ S3 AP 作成の前提条件:**
+
+1. **SVM が Active Directory ドメインに参加済みであること** — AD 未参加の SVM で WINDOWS タイプの S3 AP を作成しようとすると即座にエラーになります。
+2. **AD 環境に到達可能であること** — SVM から AD ドメインコントローラーへの DNS 解決とネットワーク接続（ポート 53, 88, 389, 445）が必要です。
+
+**重要: WindowsUser.Name にドメインプレフィクスを含めてはいけない**
+
+WINDOWS タイプの S3 Access Point を作成・使用する際は、ユーザー名のみを指定してください：
+
+```bash
+# 正しい — ユーザー名のみ
+aws fsx create-and-attach-s3-access-point \
+  --file-system-id fs-XXXXXXXXX \
+  --s3-access-point-configuration '{
+    "Namespace": "s3ap-win",
+    "FileSystemUserType": "WINDOWS",
+    "WindowsUser": {"Name": "Admin"},
+    "NetworkOrigin": "Internet"
+  }'
+
+# 不正 — ドメインプレフィクスはデータプレーンで AccessDenied を引き起こす
+# "WindowsUser": {"Name": "DEMO\\Admin"}  ← 使用禁止
+```
+
+ドメインプレフィクス（`DOMAIN\username`）は CLI/API レベルではエラーなく受け入れられますが、後続のデータプレーン操作（ListObjects, GetObject, PutObject）で `AccessDenied` が返されます。これは一時的なエラーではなく、既知の動作です。
+
+**AD 環境のセットアップ:**
+
+付属のインフラテンプレートとジョインスクリプトを使用します：
+
+```bash
+# 1. AD + テスト EC2 インスタンスのデプロイ
+aws cloudformation create-stack \
+  --stack-name demo-ad-env \
+  --template-body file://infrastructure/demo-ad-environment.yaml \
+  --parameters file://params/demo-ad-environment.example.json \
+  --capabilities CAPABILITY_NAMED_IAM
+
+# 2. AD 作成の完了を待機（AWS Managed AD は約 20-30 分）
+aws cloudformation wait stack-create-complete --stack-name demo-ad-env
+
+# 3. SVM を AD ドメインに参加させる
+./scripts/demo-ad-join-svm.sh --stack-name demo-ad-env --svm-name svm1
+
+# 4. WINDOWS タイプの S3 AP を作成（AD 参加後に可能）
+aws fsx create-and-attach-s3-access-point ...
+```
+
+詳細は [infrastructure/demo-ad-environment.yaml](../../infrastructure/demo-ad-environment.yaml) および [scripts/demo-ad-join-svm.sh](../../scripts/demo-ad-join-svm.sh) を参照してください。
+
 ---
 
 ## トラブルシューティング
@@ -554,6 +608,8 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 | `Secret not found` | シークレット名のタイポまたはリージョン間違い | `aws secretsmanager describe-secret --secret-id <NAME>` で確認 |
 | `ONTAP S3 server exists on SVM` | ONTAP ネイティブ S3 が FSx S3 AP と競合 | 別の SVM を使用するか、ONTAP S3 サーバーを削除（既知の制約事項を参照） |
 | `Bedrock InvokeModel AccessDenied` | リージョンでモデルアクセスが有効化されていない | Bedrock コンソールでモデルアクセスを有効化; クロスリージョン推論プロファイル ID を使用 |
+| WINDOWS S3 AP データ操作で `AccessDenied` | `WindowsUser.Name` にドメインプレフィクスが含まれている | ドメインプレフィクスを削除 — `"DOMAIN\\Admin"` ではなく `"Admin"` を使用 |
+| S3 AP 作成失敗（WINDOWS タイプ） | SVM が AD ドメインに未参加 | 先に SVM を AD に参加: `./scripts/demo-ad-join-svm.sh` |
 
 ### 接続のデバッグ
 
