@@ -1,0 +1,78 @@
+[
+  {
+    "ParameterKey": "ComputeType",
+    "ParameterValue": "fargate"
+  },
+  {
+    "ParameterKey": "VpcId",
+    "ParameterValue": "vpc-0123456789abcdef0"
+  },
+  {
+    "ParameterKey": "SubnetIds",
+    "ParameterValue": "subnet-0aaa111122223333a,subnet-0bbb444455556666b"
+  },
+  {
+    "ParameterKey": "FsxnSvmSecurityGroupId",
+    "ParameterValue": "sg-0eee333344445555e"
+  },
+  {
+    "ParameterKey": "ContainerImage",
+    "ParameterValue": "123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/fpolicy-server:latest"
+  },
+  {
+    "ParameterKey": "FPolicyPort",
+    "ParameterValue": "9898"
+  },
+  {
+    "ParameterKey": "WriteCompleteDelaySec",
+    "ParameterValue": "5"
+  },
+  {
+    "ParameterKey": "Mode",
+    "ParameterValue": "realtime"
+  },
+  {
+    "ParameterKey": "DesiredCount",
+    "ParameterValue": "1"
+  },
+  {
+    "ParameterKey": "Cpu",
+    "ParameterValue": "256"
+  },
+  {
+    "ParameterKey": "Memory",
+    "ParameterValue": "512"
+  },
+  {
+    "ParameterKey": "EventBusName",
+    "ParameterValue": "fsxn-fpolicy-events"
+  },
+  {
+    "ParameterKey": "FsxnMgmtIp",
+    "ParameterValue": "198.51.100.10"
+  },
+  {
+    "ParameterKey": "FsxnSvmUuid",
+    "ParameterValue": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  },
+  {
+    "ParameterKey": "FsxnEngineName",
+    "ParameterValue": "fpolicy_aws_engine"
+  },
+  {
+    "ParameterKey": "FsxnPolicyName",
+    "ParameterValue": "fpolicy_aws"
+  },
+  {
+    "ParameterKey": "FsxnCredentialsSecret",
+    "ParameterValue": "fsxn/ontap-admin-credentials"
+  },
+  {
+    "ParameterKey": "SvmName",
+    "ParameterValue": "svm1"
+  },
+  {
+    "ParameterKey": "VolumeName",
+    "ParameterValue": "vol1"
+  }
+]

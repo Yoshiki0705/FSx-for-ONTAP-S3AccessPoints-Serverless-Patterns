@@ -176,3 +176,7 @@ scripts/*.local.env
 # Persona review board records (internal project-context; not for public repo)
 docs/review-uc*
 docs/review-*-persona-board*.md
+
+# cfn-params — real parameter files with actual resource IDs (*.example.json is tracked)
+cfn-params/*.json
+!cfn-params/*.example.json
