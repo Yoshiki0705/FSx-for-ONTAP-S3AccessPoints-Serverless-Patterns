@@ -55,6 +55,7 @@ graph TD
 |------|------|
 | 本番データ保護 | FlexClone で検証 — SnapMirror 先に直接アクセスしない |
 | AD DC 依存 | Pre-flight check で早期失敗 (AD-joined SVM の場合) |
+| FlexClone セキュリティスタイル | 親ボリュームから継承 — 明示指定不可。NTFS→NTFS, UNIX→UNIX |
 | SnapMirror break 時間 | 通常 < 60s (Step Functions タイムアウト: 300s) |
 | FlexClone 作成 | 即時 (メタデータのみ) |
 | Resync 時間 | データ差分に依存 — Step Functions で最大 1 時間待機 |
@@ -92,9 +93,11 @@ graph TD
 
 ### AD DC Health Check Integration (全 WINDOWS パターン)
 
-- Step Functions ワークフロー先頭に `require_ad_dc_reachability()` を追加
-- 対象: WINDOWS identity type の S3 AP を使う全パターン
-- 実装: `shared/ad_health_check.py` (完了)、各パターンへの統合 (TODO)
+- ✅ `shared/ad_health_check.py` モジュール実装完了（14 テスト pass）
+- ✅ `scripts/demo-ad-join-svm.sh` に post-join 検証追加
+- ✅ `infrastructure/demo-ad-environment.yaml` に検証ガイダンス出力追加
+- ✅ `docs/en/` + `docs/ja/` ドキュメント作成（8ペルソナレビュー済み）
+- 📋 Step Functions ワークフロー先頭に `require_ad_dc_reachability()` を統合 — 対象: WINDOWS identity type の S3 AP を使う全パターン
 
 ### SnapMirror API Methods for OntapClient
 
