@@ -263,8 +263,12 @@ decision = evaluate_confidence(confidence=0.72)
 | Test file name collision across patterns | Use unique test file names or run per-directory |
 | `from functions.xxx import` collision in batch test runs | Run patterns with `handler` module imports in separate pytest invocations (Makefile splits these) |
 | `SsmAssociations` + `aws:domainJoin` → schema error | Use separate `AWS::SSM::Association` resource with `AWS-JoinDirectoryServiceDomain` document (see below) |
+| IVS Auto-Record to FSx for ONTAP S3 AP → `Recording Start Failure` | IVS does not support S3 AP as recording destination (confirmed by AWS service team). Use IVS → standard S3 bucket → FSx for ONTAP path |
 | WINDOWS S3 AP `AccessDenied` on data-plane | `WindowsUser.Name` must be username only (`Admin`), NOT `DOMAIN\Admin` — domain prefix silently breaks data-plane |
 | WINDOWS S3 AP creation fails | SVM must be AD-joined first; use `scripts/demo-ad-join-svm.sh` |
+| AD-joined SVM + S3 AP data ops → `AccessDenied` | AD DC must be reachable for all data operations (ListObjectsV2/GetObject/PutObject). ONTAP performs `unix→win` reverse name-mapping on every data op. HeadBucket succeeds (false positive) — always verify with a data operation |
+| HeadBucket success but data operations fail on S3 AP | HeadBucket is metadata-only (S3 layer). If AD DC is unreachable, data ops fail at the file-system layer. Check CIFS domain discovery: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers` |
+| AD-joined SVM + S3 AP data ops → AD DC unreachable | AccessDenied on ListObjectsV2 (HeadBucket OK = false positive). Pre-flight check: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers` — if `discovered_servers == []`, AD DC is unreachable. Use `shared/ad_health_check.py` for programmatic verification |
 
 ## S3 Access Point Critical Knowledge
 
@@ -294,6 +298,38 @@ NOT supported: GetBucketNotificationConfiguration, Presigned URLs (documented as
 
 - `Internet`: Accessible from anywhere with valid credentials. NOT via S3 Gateway VPC Endpoint.
 - `VPC`: Accessible only from bound VPC via S3 Gateway/Interface Endpoint.
+
+### AD-Joined SVM: AD DC Reachability Required for Data Operations
+
+On AD-joined SVMs (CIFS enabled), **every S3 AP data operation** (ListObjectsV2, GetObject, PutObject) requires the SVM to successfully contact its AD domain controllers. ONTAP's multiprotocol identity pipeline performs a `unix→win` reverse lookup for every file system operation when CIFS is enabled — even on UNIX security style volumes accessed via S3 AP.
+
+**Diagnostic pattern**:
+| Test | AD DC Reachable | AD DC Unreachable |
+|------|:---:|:---:|
+| HeadBucket | ✅ | ✅ (false positive) |
+| ListObjectsV2 | ✅ | ❌ AccessDenied |
+| GetObject | ✅ | ❌ AccessDenied |
+| PutObject | ✅ | ❌ AccessDenied |
+
+**Pre-flight check** (recommended for Step Functions workflows on AD-joined SVMs):
+```python
+# 1. Check if SVM has CIFS enabled (= AD-joined)
+cifs = ontap_request("GET", f"/protocols/cifs/services?svm.name={svm}&fields=ad_domain.fqdn")
+if cifs["records"]:
+    # 2. Verify DC discovery
+    domains = ontap_request("GET", f"/protocols/cifs/domains?svm.name={svm}&fields=discovered_servers")
+    if not domains["records"] or domains["records"][0].get("discovered_servers") == []:
+        raise RuntimeError("AD DC unreachable — S3 AP data operations will fail with AccessDenied")
+```
+
+**Why this is confusing**: HeadBucket succeeds because it only validates at the S3 metadata layer. All IAM, AP policy, and network checks also pass. This leads developers to investigate the wrong layers. The root cause is at the ONTAP file-system layer (reverse name-mapping requires AD DC LDAP/Kerberos connectivity).
+
+**When this happens**:
+- AD (Managed AD or self-managed) is deleted, stopped, or network-unreachable
+- SVM DNS IPs point to old/dead AD DC addresses after AD recreation
+- Security Group or NACL blocks AD ports (53/88/389/445/636) from SVM ENIs to DC IPs
+
+> **Note**: This pattern was verified in `fsxn-observability-integrations` (restore-verification workflow). The patterns in this repo work without AD because they typically target pure UNIX SVMs (no CIFS enabled).
 
 ## SSM Domain Join — Correct Pattern for Windows EC2 AD Join
 
@@ -440,6 +476,7 @@ When reviewing changes, consider these perspectives:
 | [ONTAP Integration Notes](docs/ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
 | [S3 Bucket User Guide](docs/s3-bucket-user-guide.md) | Standard S3 vs FSx for ONTAP S3 AP differences |
 | [Bedrock Inference Profiles](docs/bedrock-inference-profiles.md) | Nova/Claude on-demand requirement, IAM (foundation-model + inference-profile), data residency, CI enforcement |
+| [AD-Joined SVM S3 AP Prerequisites](docs/en/ad-joined-svm-s3ap-prerequisites.md) | AD DC reachability, Internet-origin AP + VPC-external Lambda, same-account policy |
 
 ## Agent Output Standards
 

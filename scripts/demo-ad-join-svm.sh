@@ -349,6 +349,7 @@ join_svm_to_ad() {
       case "$state" in
         success)
           ok "SVM '$SVM_NAME' successfully joined to AD domain '$DOMAIN_NAME'"
+          verify_ad_dc_reachability || warn "AD DC reachability check failed — see above."
           print_next_steps
           return
           ;;
@@ -377,6 +378,7 @@ join_svm_to_ad() {
   cifs_name=$(echo "$result" | jq -r '.name // empty' 2>/dev/null || echo "")
   if [[ -n "$cifs_name" ]]; then
     ok "SVM '$SVM_NAME' successfully joined to AD domain '$DOMAIN_NAME' (CIFS: $cifs_name)"
+    verify_ad_dc_reachability || warn "AD DC reachability check failed — see above."
     print_next_steps
     return
   fi
@@ -385,6 +387,63 @@ join_svm_to_ad() {
   warn "Unexpected response from ONTAP API:"
   echo "$result" | jq . 2>/dev/null || echo "$result"
   info "Verify AD join status: curl -sku user:pass 'https://$ONTAP_MGMT_IP/api/protocols/cifs/services?svm.name=$SVM_NAME'"
+}
+
+verify_ad_dc_reachability() {
+  # Post-join verification: check that AD DC is reachable from the SVM
+  # This validates that S3 AP data operations will succeed.
+  # Reference: shared/ad_health_check.py (Python equivalent for Lambda)
+  info "Verifying AD DC reachability from SVM '$SVM_NAME'..."
+
+  local cifs_domains
+  cifs_domains=$(curl -sku "$ONTAP_USER:$ONTAP_PASS" \
+    "https://$ONTAP_MGMT_IP/api/protocols/cifs/domains?svm.name=$SVM_NAME&fields=discovered_servers" \
+    --connect-timeout 10 --max-time 30 2>/dev/null) || {
+    warn "Cannot query CIFS domains API — skipping AD DC reachability verification."
+    return 0
+  }
+
+  local num_records
+  num_records=$(echo "$cifs_domains" | jq -r '.num_records // 0' 2>/dev/null || echo "0")
+
+  if [[ "$num_records" == "0" ]]; then
+    warn "No CIFS domain records found — cannot verify AD DC reachability."
+    warn "S3 AP data operations may fail with AccessDenied if AD DC is unreachable."
+    return 0
+  fi
+
+  local discovered
+  discovered=$(echo "$cifs_domains" | jq -r '.records[0].discovered_servers // empty' 2>/dev/null || echo "")
+
+  if [[ -z "$discovered" || "$discovered" == "null" ]]; then
+    warn "discovered_servers field not available — cannot verify AD DC reachability."
+    return 0
+  fi
+
+  local server_count
+  server_count=$(echo "$cifs_domains" | jq -r '.records[0].discovered_servers | length' 2>/dev/null || echo "0")
+
+  if [[ "$server_count" == "0" ]]; then
+    fail "AD CONNECTIVITY FAILURE: SVM '$SVM_NAME' cannot reach any AD Domain Controllers."
+    fail "discovered_servers is empty."
+    fail ""
+    fail "Impact: S3 AP data operations (ListObjectsV2/GetObject/PutObject) will fail"
+    fail "        with AccessDenied. HeadBucket will still succeed (false positive)."
+    fail ""
+    fail "Troubleshooting:"
+    fail "  1. Verify SVM DNS IPs point to active AD DCs"
+    fail "  2. Check Security Groups allow ports 53/88/389/445/636 from SVM ENIs to DC IPs"
+    fail "  3. Confirm AD domain is Active (AWS Managed AD) or DC instances are running"
+    fail ""
+    fail "API check: curl -sku user:pass 'https://$ONTAP_MGMT_IP/api/protocols/cifs/domains?svm.name=$SVM_NAME&fields=discovered_servers'"
+    return 1
+  fi
+
+  ok "AD DC reachability verified — $server_count domain controller(s) discovered."
+  local server_ips
+  server_ips=$(echo "$cifs_domains" | jq -r '.records[0].discovered_servers[].server_ip // .records[0].discovered_servers[]' 2>/dev/null || echo "(details unavailable)")
+  info "  Discovered servers: $server_ips"
+  return 0
 }
 
 print_next_steps() {
