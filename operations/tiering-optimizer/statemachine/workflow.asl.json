@@ -1,0 +1,36 @@
+{
+  "Comment": "OPS3: Tiering Optimizer Workflow",
+  "StartAt": "CollectTieringData",
+  "States": {
+    "CollectTieringData": {
+      "Type": "Task",
+      "Resource": "${CollectFunctionArn}",
+      "ResultPath": "$.collect_output",
+      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 30, "MaxAttempts": 2, "BackoffRate": 2.0}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "CollectFailed"}],
+      "Next": "AnalyzeTiering"
+    },
+    "AnalyzeTiering": {
+      "Type": "Task",
+      "Resource": "${AnalyzeFunctionArn}",
+      "InputPath": "$.collect_output",
+      "ResultPath": "$.analyze_output",
+      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "AnalyzeFailed"}],
+      "Next": "GenerateReport"
+    },
+    "GenerateReport": {
+      "Type": "Task",
+      "Resource": "${ReportFunctionArn}",
+      "InputPath": "$.analyze_output",
+      "ResultPath": "$.report_output",
+      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "ReportFailed"}],
+      "Next": "Success"
+    },
+    "Success": {"Type": "Succeed"},
+    "CollectFailed": {"Type": "Fail", "Error": "CollectFailed", "Cause": "Failed to collect tiering data"},
+    "AnalyzeFailed": {"Type": "Fail", "Error": "AnalyzeFailed", "Cause": "Failed to analyze tiering"},
+    "ReportFailed": {"Type": "Fail", "Error": "ReportFailed", "Cause": "Failed to generate report"}
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "Comment": "OPS1: Capacity Rightsizing Workflow - Collect → Analyze → Report → (Alert)",
+  "StartAt": "CollectMetrics",
+  "States": {
+    "CollectMetrics": {
+      "Type": "Task",
+      "Resource": "${CollectFunctionArn}",
+      "ResultPath": "$.collect_output",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed", "Lambda.ServiceException"],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "CollectFailed"
+        }
+      ],
+      "Next": "AnalyzeAndRecommend"
+    },
+    "AnalyzeAndRecommend": {
+      "Type": "Task",
+      "Resource": "${AnalyzeFunctionArn}",
+      "InputPath": "$.collect_output",
+      "ResultPath": "$.analyze_output",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "AnalyzeFailed"
+        }
+      ],
+      "Next": "GenerateReport"
+    },
+    "GenerateReport": {
+      "Type": "Task",
+      "Resource": "${ReportFunctionArn}",
+      "InputPath": "$.analyze_output",
+      "ResultPath": "$.report_output",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ReportFailed"
+        }
+      ],
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Succeed",
+      "Comment": "Workflow completed successfully"
+    },
+    "CollectFailed": {
+      "Type": "Fail",
+      "Error": "CollectMetricsFailed",
+      "Cause": "Failed to collect metrics from ONTAP REST API or CloudWatch"
+    },
+    "AnalyzeFailed": {
+      "Type": "Fail",
+      "Error": "AnalyzeRecommendFailed",
+      "Cause": "Failed to analyze metrics and generate recommendations"
+    },
+    "ReportFailed": {
+      "Type": "Fail",
+      "Error": "GenerateReportFailed",
+      "Cause": "Failed to generate report or send alert"
+    }
+  }
+}

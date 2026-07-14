@@ -4,7 +4,9 @@
 
 ## Project Overview
 
-FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use cases (UC1-UC28)** + **1 SAP/ERP pattern** + **7 FlexCache/FlexClone patterns** + **2 GenAI patterns** + **1 HA monitoring pattern** + **2 event-driven patterns** + **1 edge delivery pattern** using Amazon FSx for ONTAP S3 Access Points. Each pattern is an independent CloudFormation/SAM template with shared Python modules.
+FSx for ONTAP S3 Access Points Serverless Patterns — a library of **28 industry-specific use cases (UC1-UC28)** + **1 SAP/ERP pattern** + **7 FlexCache/FlexClone patterns** + **2 GenAI patterns** + **1 HA monitoring pattern** + **2 event-driven patterns** + **1 edge delivery pattern** + **6 operations optimization patterns (OPS1-OPS6)** using Amazon FSx for ONTAP S3 Access Points. Each pattern is an independent CloudFormation/SAM template with shared Python modules.
+
+**Two pillars**: `solutions/` (S3 AP data processing patterns) + `operations/` (FS operational optimization patterns).
 
 **Test coverage**: 2,162+ unit/property tests | 126 test files | cfn-lint + ruff validation
 
@@ -25,10 +27,13 @@ make test-uc1    # UC1 legal-compliance
 make test-uc6    # UC6 semiconductor-eda
 make test-sap    # SAP/ERP adjacent
 make test-fc1    # FC1 flexcache-anycast-dr
+make test-ops1   # OPS1 capacity-rightsizing
 
 # Build & deploy (requires samconfig.toml)
 make build-uc1
 make deploy-uc1
+make build-ops1
+make deploy-ops1
 
 # Security scan
 make security
@@ -74,12 +79,23 @@ cfn-lint solutions/industry/legal-compliance/template.yaml solutions/sap/erp-adj
 │   │   ├── fpolicy/
 │   │   └── prototype/
 │   └── edge/content-delivery/        # CDN/edge delivery pattern
+├── operations/             # Operational optimization patterns (NEW)
+│   ├── README.md           # Category overview + adoption roadmap
+│   ├── docs/               # Cross-pattern docs (metrics-mapping, SLO, etc.)
+│   ├── capacity-rightsizing/   # OPS1: Volume/throughput monitoring + AI recommendations
+│   ├── snapshot-lifecycle/     # OPS4: Retention compliance + cleanup (planned)
+│   ├── tiering-optimizer/      # OPS3: FabricPool policy optimization (planned)
+│   ├── storage-efficiency/     # OPS2: Dedup/compression tracking (planned)
+│   ├── cost-optimization/      # OPS5: FinOps integration (planned)
+│   └── qos-monitoring/         # OPS6: QoS policy compliance (planned)
 ├── infrastructure/         # Shared infrastructure templates (not per-pattern)
 │   └── demo-ad-environment.yaml  # AD + EC2 for WINDOWS S3 AP testing
 ├── shared/                 # Shared Python modules (imported by all patterns)
 │   ├── s3ap_helper.py      # S3 Access Point helper (core abstraction)
-│   ├── ontap_client.py     # ONTAP REST API client
+│   ├── ontap_client.py     # ONTAP REST API client (SVM scope)
+│   ├── ontap_metrics.py    # ONTAP metrics collector (Cluster scope, for operations/)
 │   ├── fsx_helper.py       # AWS FSx API helper
+│   ├── demo_data_loader.py # DemoMode mock data loader (for operations/)
 │   ├── exceptions.py       # Common exceptions + error handler decorator
 │   ├── observability.py    # EMF metrics + structured logging
 │   ├── data_classification.py  # Data classification labels (INTERNAL/CUI/etc.)
@@ -90,6 +106,7 @@ cfn-lint solutions/industry/legal-compliance/template.yaml solutions/sap/erp-adj
 │   ├── slo.py              # SLO monitoring
 │   ├── schemas/            # TypedDict event/response schemas
 │   │   ├── events.py       # DiscoveryOutput, ProcessingOutput, etc.
+│   │   ├── ops_events.py   # OPS pattern TypedDicts (VolumeSpaceMetric, etc.)
 │   │   └── fpolicy-event-schema.json
 │   ├── fpolicy/            # FPolicy protobuf/XML parsers
 │   ├── fpolicy-server/     # FPolicy TCP server (ECS Fargate)

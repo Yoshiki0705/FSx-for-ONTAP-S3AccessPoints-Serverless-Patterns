@@ -1,0 +1,338 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  OPS4: FSx for ONTAP Snapshot Lifecycle Management - Monitors snapshot
+  retention compliance, detects policy drift, and provides Human Review
+  based cleanup of expired snapshots.
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: fsxn-ops-snapshot-lifecycle
+    Description: >
+      Snapshot retention compliance, policy drift detection, and
+      Human Review cleanup for FSx for ONTAP.
+    Author: FSx for ONTAP S3 AP Serverless Patterns
+    Labels: ['fsxn', 'operations', 'snapshot', 'lifecycle', 'retention', 'compliance']
+
+Parameters:
+  # --- Common OPS Parameters ---
+  FileSystemIds:
+    Type: CommaDelimitedList
+    Description: Comma-separated list of FSx for ONTAP file system IDs to monitor.
+
+  OntapSecretArn:
+    Type: String
+    Description: >
+      Secrets Manager ARN containing ONTAP fsxadmin credentials.
+      Not required when DemoMode=true.
+    Default: ""
+
+  AutomationLevel:
+    Type: String
+    AllowedValues: ["0", "1", "2", "3"]
+    Default: "0"
+    Description: >
+      0=Report only, 1=Alert+Recommend, 2=Human Review+Execute cleanup,
+      3=Auto-cleanup within guardrails (expired only).
+
+  DemoMode:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+  NotificationEmail:
+    Type: String
+    Default: ""
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 day)"
+
+  EnableBedrockSummary:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+  ReportFormat:
+    Type: String
+    AllowedValues: ["JSON", "HTML", "BOTH"]
+    Default: "BOTH"
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 2557, 3653]
+
+  OutputDestination:
+    Type: String
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Default: "STANDARD_S3"
+    Description: >
+      STANDARD_S3: Write to dedicated S3 bucket.
+      FSXN_S3AP: Write to FSx for ONTAP volume via S3 Access Point.
+
+  S3AccessPointAlias:
+    Type: String
+    Default: ""
+    Description: S3 AP alias for report output (required when OutputDestination=FSXN_S3AP).
+
+  # --- OPS4-Specific Parameters ---
+  RetentionPolicy:
+    Type: String
+    AllowedValues: ["FISC", "HIPAA", "NARA", "CUSTOM"]
+    Default: "CUSTOM"
+    Description: >
+      Retention policy preset. FISC=7 years (2557 days), HIPAA=6 years (2192 days),
+      NARA=30 years (10950 days), CUSTOM=use MaxRetentionDays parameter.
+
+  MaxRetentionDays:
+    Type: Number
+    Default: 90
+    MinValue: 1
+    MaxValue: 10950
+    Description: >
+      Maximum snapshot age in days before flagging as expired (CUSTOM mode).
+      Ignored when RetentionPolicy is FISC/HIPAA/NARA (uses preset values).
+
+  MinRetentionDays:
+    Type: Number
+    Default: 7
+    MinValue: 1
+    MaxValue: 365
+    Description: >
+      Minimum snapshot age in days. Snapshots younger than this are NEVER
+      recommended for deletion regardless of other criteria.
+
+  SnapshotReserveWarningPercent:
+    Type: Number
+    Default: 80
+    MinValue: 50
+    MaxValue: 99
+    Description: >
+      Alert when snapshot reserve usage exceeds this percentage.
+
+  # --- VPC Configuration ---
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+    Default: ""
+
+  VpcSecurityGroupIds:
+    Type: CommaDelimitedList
+    Default: ""
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, ""]]
+  IsAlertEnabled: !And
+    - !Not [!Equals [!Ref AutomationLevel, "0"]]
+    - !Condition HasNotificationEmail
+  IsBedrockEnabled: !Equals [!Ref EnableBedrockSummary, "true"]
+  HasVpcConfig: !Not [!Equals [!Select [0, !Ref VpcSubnetIds], ""]]
+  IsHumanReviewEnabled: !Or
+    - !Equals [!Ref AutomationLevel, "2"]
+    - !Equals [!Ref AutomationLevel, "3"]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures:
+      - arm64
+    Timeout: 300
+    MemorySize: 512
+    Environment:
+      Variables:
+        FILE_SYSTEM_IDS: !Join [",", !Ref FileSystemIds]
+        ONTAP_SECRET_ARN: !Ref OntapSecretArn
+        AUTOMATION_LEVEL: !Ref AutomationLevel
+        DEMO_MODE: !Ref DemoMode
+        ENABLE_BEDROCK_SUMMARY: !Ref EnableBedrockSummary
+        REPORT_FORMAT: !Ref ReportFormat
+        REPORT_BUCKET: !Ref ReportBucket
+        OUTPUT_DESTINATION: !Ref OutputDestination
+        S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+        RETENTION_POLICY: !Ref RetentionPolicy
+        MAX_RETENTION_DAYS: !Ref MaxRetentionDays
+        MIN_RETENTION_DAYS: !Ref MinRetentionDays
+        SNAPSHOT_RESERVE_WARNING_PERCENT: !Ref SnapshotReserveWarningPercent
+        POWERTOOLS_SERVICE_NAME: ops-snapshot-lifecycle
+        LOG_LEVEL: INFO
+    Tags:
+      UseCase: OPS4-SnapshotLifecycle
+      Pattern: operations
+
+Resources:
+  # --- S3 Bucket for Reports ---
+  ReportBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-reports-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldReports
+            Status: Enabled
+            ExpirationInDays: 365
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: UseCase
+          Value: OPS4-SnapshotLifecycle
+
+  # --- SNS Topic ---
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: IsAlertEnabled
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-alerts"
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsAlertEnabled
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # --- SQS Queue for Human Review (Level 2+) ---
+  HumanReviewQueue:
+    Type: AWS::SQS::Queue
+    Condition: IsHumanReviewEnabled
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-human-review"
+      VisibilityTimeout: 3600
+      MessageRetentionPeriod: 259200  # 3 days
+
+  # --- Lambda Functions ---
+  CollectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-collect"
+      Handler: handler.handler
+      CodeUri: functions/collect/
+      Description: Collect snapshots and snapshot policies from ONTAP REST API.
+      VpcConfig: !If
+        - HasVpcConfig
+        - SubnetIds: !Ref VpcSubnetIds
+          SecurityGroupIds: !Ref VpcSecurityGroupIds
+        - !Ref AWS::NoValue
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Ref OntapSecretArn
+            - Effect: Allow
+              Action:
+                - fsx:DescribeFileSystems
+                - fsx:DescribeVolumes
+              Resource: "*"
+
+  AnalyzeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-analyze"
+      Handler: handler.handler
+      CodeUri: functions/analyze/
+      Description: >
+        Analyze snapshot retention compliance, detect policy drift,
+        and generate cleanup recommendations.
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - !If
+              - IsBedrockEnabled
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.amazon.nova-lite-v1:0"
+              - !Ref AWS::NoValue
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Handler: handler.handler
+      CodeUri: functions/report/
+      Description: Generate audit reports and send alerts.
+      Environment:
+        Variables:
+          ALERT_TOPIC_ARN: !If [IsAlertEnabled, !Ref AlertTopic, ""]
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ReportBucket
+        - CloudWatchPutMetricPolicy: {}
+        - !If
+          - IsAlertEnabled
+          - SNSPublishMessagePolicy:
+              TopicName: !GetAtt AlertTopic.TopicName
+          - !Ref AWS::NoValue
+
+  # --- Step Functions State Machine ---
+  OpsStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-workflow"
+      DefinitionUri: statemachine/workflow.asl.json
+      DefinitionSubstitutions:
+        CollectFunctionArn: !GetAtt CollectFunction.Arn
+        AnalyzeFunctionArn: !GetAtt AnalyzeFunction.Arn
+        ReportFunctionArn: !GetAtt ReportFunction.Arn
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ScheduleExpression
+            Description: OPS4 Snapshot Lifecycle scheduled execution
+            Enabled: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CollectFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AnalyzeFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportFunction
+      Tags:
+        UseCase: OPS4-SnapshotLifecycle
+      Type: STANDARD
+
+  # --- CloudWatch Log Groups ---
+  CollectFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CollectFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  AnalyzeFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AnalyzeFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  ReportFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ReportFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+Outputs:
+  StateMachineArn:
+    Value: !Ref OpsStateMachine
+
+  ReportBucketName:
+    Value: !Ref ReportBucket
+
+  AlertTopicArn:
+    Condition: IsAlertEnabled
+    Value: !Ref AlertTopic
+
+  HumanReviewQueueUrl:
+    Condition: IsHumanReviewEnabled
+    Value: !Ref HumanReviewQueue

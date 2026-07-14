@@ -1,0 +1,368 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  OPS1: FSx for ONTAP Capacity Rightsizing - Monitors volume/aggregate
+  utilization and throughput capacity, generates AI-powered recommendations,
+  and optionally executes approved changes via Step Functions.
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: fsxn-ops-capacity-rightsizing
+    Description: >
+      FSx for ONTAP capacity and throughput rightsizing with AI recommendations,
+      What-If simulation, and progressive automation.
+    Author: FSx for ONTAP S3 AP Serverless Patterns
+    Labels: ['fsxn', 'operations', 'capacity', 'rightsizing', 'monitoring', 'finops']
+
+Parameters:
+  # --- Common OPS Parameters ---
+  FileSystemIds:
+    Type: CommaDelimitedList
+    Description: >
+      Comma-separated list of FSx for ONTAP file system IDs to monitor.
+      Example: fs-0123456789abcdef0,fs-0987654321fedcba0
+
+  OntapSecretArn:
+    Type: String
+    Description: >
+      Secrets Manager ARN containing ONTAP fsxadmin credentials.
+      JSON format: {"username": "fsxadmin", "password": "..."}
+      Not required when DemoMode=true.
+    Default: ""
+
+  AutomationLevel:
+    Type: String
+    AllowedValues: ["0", "1", "2", "3"]
+    Default: "0"
+    Description: >
+      0=Report only, 1=Alert+Recommend (SNS), 2=Human Review+Execute,
+      3=Auto-execute within guardrails.
+
+  ThresholdPercent:
+    Type: Number
+    Default: 80
+    MinValue: 50
+    MaxValue: 95
+    Description: >
+      Utilization threshold (%) above which recommendations are generated.
+      AWS recommends not exceeding 80% SSD utilization on an ongoing basis.
+
+  LowUtilizationThresholdPercent:
+    Type: Number
+    Default: 20
+    MinValue: 5
+    MaxValue: 50
+    Description: >
+      Utilization threshold (%) below which downsizing recommendations are generated.
+      Only applies to volumes without autosize enabled.
+
+  DemoMode:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: >
+      Enable demo mode (no FSx for ONTAP required).
+      Uses mock data from test-data/ops/ fixtures.
+
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: >
+      Email address for alert notifications (AutomationLevel >= 1).
+      Leave empty to skip SNS topic creation.
+
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 day)"
+    Description: >
+      EventBridge schedule expression. Recommended:
+      - rate(1 day) for standard monitoring
+      - rate(6 hours) for high-change environments
+      - cron(0 9 * * ? *) for daily at 09:00 UTC
+
+  EnableBedrockSummary:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: >
+      Generate natural-language AI recommendations using Bedrock Nova.
+
+  ReportFormat:
+    Type: String
+    AllowedValues: ["JSON", "HTML", "BOTH"]
+    Default: "BOTH"
+    Description: Report output format.
+
+  OutputDestination:
+    Type: String
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Default: "STANDARD_S3"
+    Description: >
+      Report output destination.
+      STANDARD_S3: Write to a dedicated S3 bucket (default, simplest setup).
+      FSXN_S3AP: Write to FSx for ONTAP volume via S3 Access Point, so
+        NFS/SMB users can browse reports directly on the file server.
+      Considerations for FSXN_S3AP:
+        - Requires an existing S3 Access Point attached to an FSx for ONTAP volume
+        - Lambda must be VPC-external (Internet-origin AP) or have NAT Gateway
+        - PutObject max 5 GB (reports are typically < 1 MB, no issue)
+        - ONTAP file system identity (UNIX UID) must have write permission on the volume
+
+  S3AccessPointAlias:
+    Type: String
+    Default: ""
+    Description: >
+      S3 Access Point alias for report output (required when OutputDestination=FSXN_S3AP).
+      Format: {ap-name}-{account-id-hash}-s3alias
+      Example: my-ops-reports-ab1cd2ef3g-s3alias
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 2557, 3653]
+    Description: CloudWatch Logs retention period.
+
+  # --- VPC Configuration (for ONTAP REST API access) ---
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+    Description: >
+      Private subnet IDs for Lambda functions that access ONTAP REST API.
+      Must have connectivity to FSx for ONTAP management endpoints.
+    Default: ""
+
+  VpcSecurityGroupIds:
+    Type: CommaDelimitedList
+    Description: >
+      Security group IDs for Lambda functions accessing ONTAP REST API.
+      Must allow outbound HTTPS (443) to FSx for ONTAP management IPs.
+    Default: ""
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, ""]]
+  IsAlertEnabled: !And
+    - !Not [!Equals [!Ref AutomationLevel, "0"]]
+    - !Condition HasNotificationEmail
+  IsBedrockEnabled: !Equals [!Ref EnableBedrockSummary, "true"]
+  HasVpcConfig: !Not [!Equals [!Select [0, !Ref VpcSubnetIds], ""]]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures:
+      - arm64
+    Timeout: 300
+    MemorySize: 512
+    Environment:
+      Variables:
+        FILE_SYSTEM_IDS: !Join [",", !Ref FileSystemIds]
+        ONTAP_SECRET_ARN: !Ref OntapSecretArn
+        AUTOMATION_LEVEL: !Ref AutomationLevel
+        THRESHOLD_PERCENT: !Ref ThresholdPercent
+        LOW_UTILIZATION_THRESHOLD_PERCENT: !Ref LowUtilizationThresholdPercent
+        DEMO_MODE: !Ref DemoMode
+        ENABLE_BEDROCK_SUMMARY: !Ref EnableBedrockSummary
+        REPORT_FORMAT: !Ref ReportFormat
+        REPORT_BUCKET: !Ref ReportBucket
+        OUTPUT_DESTINATION: !Ref OutputDestination
+        S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+        POWERTOOLS_SERVICE_NAME: ops-capacity-rightsizing
+        LOG_LEVEL: INFO
+    Tags:
+      UseCase: OPS1-CapacityRightsizing
+      Pattern: operations
+
+Resources:
+  # --- S3 Bucket for Reports ---
+  ReportBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-reports-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldReports
+            Status: Enabled
+            ExpirationInDays: 90
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: UseCase
+          Value: OPS1-CapacityRightsizing
+
+  # --- SNS Topic (Alert notifications) ---
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: IsAlertEnabled
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-alerts"
+      Tags:
+        - Key: UseCase
+          Value: OPS1-CapacityRightsizing
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsAlertEnabled
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # --- Lambda Functions ---
+  CollectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-collect"
+      Handler: handler.handler
+      CodeUri: functions/collect/
+      Description: >
+        Collect metrics from ONTAP REST API and CloudWatch for all target file systems.
+      VpcConfig: !If
+        - HasVpcConfig
+        - SubnetIds: !Ref VpcSubnetIds
+          SecurityGroupIds: !Ref VpcSecurityGroupIds
+        - !Ref AWS::NoValue
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Ref OntapSecretArn
+            - Effect: Allow
+              Action:
+                - cloudwatch:GetMetricData
+                - cloudwatch:GetMetricStatistics
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - fsx:DescribeFileSystems
+              Resource: "*"
+
+  AnalyzeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-analyze"
+      Handler: handler.handler
+      CodeUri: functions/analyze/
+      Description: >
+        Analyze collected metrics, generate recommendations and What-If scenarios.
+      Policies:
+        - !If
+          - IsBedrockEnabled
+          - Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.amazon.nova-lite-v1:0"
+          - !Ref AWS::NoValue
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Handler: handler.handler
+      CodeUri: functions/report/
+      Description: >
+        Generate JSON/HTML reports, publish CloudWatch custom metrics,
+        and trigger alerts if AutomationLevel >= 1.
+      Environment:
+        Variables:
+          ALERT_TOPIC_ARN: !If [IsAlertEnabled, !Ref AlertTopic, ""]
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ReportBucket
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*/object/*"
+        - CloudWatchPutMetricPolicy: {}
+        - !If
+          - IsAlertEnabled
+          - SNSPublishMessagePolicy:
+              TopicName: !GetAtt AlertTopic.TopicName
+          - !Ref AWS::NoValue
+
+  # --- Step Functions State Machine ---
+  OpsStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-workflow"
+      DefinitionUri: statemachine/workflow.asl.json
+      DefinitionSubstitutions:
+        CollectFunctionArn: !GetAtt CollectFunction.Arn
+        AnalyzeFunctionArn: !GetAtt AnalyzeFunction.Arn
+        ReportFunctionArn: !GetAtt ReportFunction.Arn
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ScheduleExpression
+            Description: OPS1 Capacity Rightsizing scheduled execution
+            Enabled: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CollectFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AnalyzeFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportFunction
+      Tags:
+        UseCase: OPS1-CapacityRightsizing
+      Type: STANDARD
+
+  # --- CloudWatch Log Groups ---
+  CollectFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CollectFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  AnalyzeFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AnalyzeFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  ReportFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ReportFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+Outputs:
+  StateMachineArn:
+    Description: Step Functions State Machine ARN
+    Value: !Ref OpsStateMachine
+
+  ReportBucketName:
+    Description: S3 Bucket for reports
+    Value: !Ref ReportBucket
+
+  AlertTopicArn:
+    Condition: IsAlertEnabled
+    Description: SNS Topic ARN for alerts
+    Value: !Ref AlertTopic
+
+  CollectFunctionArn:
+    Description: Collect Lambda Function ARN
+    Value: !GetAtt CollectFunction.Arn
+
+  AnalyzeFunctionArn:
+    Description: Analyze Lambda Function ARN
+    Value: !GetAtt AnalyzeFunction.Arn
+
+  ReportFunctionArn:
+    Description: Report Lambda Function ARN
+    Value: !GetAtt ReportFunction.Arn

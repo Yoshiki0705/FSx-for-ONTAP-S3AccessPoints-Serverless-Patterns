@@ -1,0 +1,10 @@
+{
+  "storage_capacity_utilization_percent": 75.0,
+  "network_throughput_utilization_percent": 62.5,
+  "disk_iops_utilization_percent": 45.0,
+  "cpu_utilization_percent": 38.0,
+  "network_sent_bytes_per_sec": 83886080,
+  "network_received_bytes_per_sec": 41943040,
+  "is_gen2": true,
+  "throughput_capacity_mbps": 128
+}
