@@ -1,0 +1,62 @@
+[
+  {
+    "name": "vol_production_data",
+    "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "svm_name": "svm-prod",
+    "dedupe_enabled": true,
+    "compression_enabled": true,
+    "dedupe_savings_bytes": 214748364800,
+    "compression_savings_bytes": 107374182400,
+    "overall_ratio": 2.1,
+    "logical_used_bytes": 1963268506009,
+    "physical_used_bytes": 934584532377
+  },
+  {
+    "name": "vol_dev_workspace",
+    "uuid": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "svm_name": "svm-dev",
+    "dedupe_enabled": false,
+    "compression_enabled": false,
+    "dedupe_savings_bytes": 0,
+    "compression_savings_bytes": 0,
+    "overall_ratio": 1.0,
+    "logical_used_bytes": 109951162778,
+    "physical_used_bytes": 109951162778
+  },
+  {
+    "name": "vol_archive_2023",
+    "uuid": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "svm_name": "svm-prod",
+    "dedupe_enabled": true,
+    "compression_enabled": true,
+    "dedupe_savings_bytes": 549755813888,
+    "compression_savings_bytes": 274877906944,
+    "overall_ratio": 3.2,
+    "logical_used_bytes": 5629499534214,
+    "physical_used_bytes": 1759218604442
+  },
+  {
+    "name": "vol_analytics_staging",
+    "uuid": "d4e5f6a7-b8c9-0123-defa-234567890123",
+    "svm_name": "svm-analytics",
+    "dedupe_enabled": true,
+    "compression_enabled": false,
+    "dedupe_savings_bytes": 53687091200,
+    "compression_savings_bytes": 0,
+    "overall_ratio": 1.5,
+    "logical_used_bytes": 371085174374,
+    "physical_used_bytes": 247390116250
+  },
+  {
+    "name": "vol_backup_temp",
+    "uuid": "e5f6a7b8-c9d0-1234-efab-345678901234",
+    "svm_name": "svm-prod",
+    "dedupe_enabled": false,
+    "compression_enabled": false,
+    "dedupe_savings_bytes": 0,
+    "compression_savings_bytes": 0,
+    "overall_ratio": 1.0,
+    "logical_used_bytes": 109951162778,
+    "physical_used_bytes": 109951162778
+  }
+]

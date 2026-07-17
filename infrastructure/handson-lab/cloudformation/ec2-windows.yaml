@@ -1,0 +1,394 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Windows EC2 Stack - FSx for ONTAP Hands-on Lab Environment
+
+  Provisions a Windows Server 2022 (Japanese) EC2 instance with:
+  - SSM Fleet Manager / Session Manager access (no public IP required)
+  - AD domain join via AWS-JoinDirectoryServiceDomain
+  - Drive mappings (X: for data, Y: for .snapshot)
+  - Tera Term installation for ONTAP CLI access
+  - Sample data and command files on desktop
+  - Ransomware simulator script on desktop
+
+  Access methods:
+  1. Systems Manager Fleet Manager (GUI, recommended)
+  2. Systems Manager Session Manager (PowerShell)
+  3. RDP via Session Manager port forwarding (optional)
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t3.small
+      - t3.medium
+      - t3.large
+      - m5.large
+    Description: EC2 instance type
+
+  WindowsAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-windows-latest/Windows_Server-2022-Japanese-Full-Base
+    Description: Windows Server 2022 Japanese Full Base AMI (latest via SSM)
+
+  SubnetId:
+    Type: String
+    Description: Private Subnet ID for EC2 placement
+
+  Ec2SecurityGroupId:
+    Type: String
+    Description: Security Group ID for EC2 instance
+
+  Ec2InstanceProfileName:
+    Type: String
+    Description: IAM Instance Profile name for EC2
+
+  DirectoryId:
+    Type: String
+    Description: AWS Managed AD Directory ID for domain join
+
+  DomainName:
+    Type: String
+    Default: handson.local
+    Description: AD domain FQDN
+
+  DomainDnsIp1:
+    Type: String
+    Description: AD DNS IP address 1
+
+  DomainDnsIp2:
+    Type: String
+    Description: AD DNS IP address 2
+
+  SvmName:
+    Type: String
+    Default: svm01
+    Description: SVM name for SMB share path construction
+
+  VolumeName:
+    Type: String
+    Default: user01
+    Description: Volume name for drive mapping
+
+  OntapManagementIp:
+    Type: String
+    Description: ONTAP management endpoint IP (for Tera Term connection info)
+
+  AdUserName:
+    Type: String
+    Default: user01
+    Description: AD user for drive mapping authentication
+
+  AdUserPasswordSecretArn:
+    Type: String
+    Description: Secrets Manager ARN for AD user password
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # Windows EC2 Instance
+  # -----------------------------------------------------------------
+  WindowsInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref WindowsAmiId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref Ec2SecurityGroupId
+      IamInstanceProfile: !Ref Ec2InstanceProfileName
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 50
+            VolumeType: gp3
+            DeleteOnTermination: true
+      UserData:
+        Fn::Base64: !Sub |
+          <powershell>
+          # ================================================================
+          # FSx for ONTAP Hands-on Lab - Windows EC2 Initial Setup
+          # ================================================================
+          Start-Transcript -Path "C:\handson-setup.log" -Append
+
+          Write-Output "=== Phase 1: DNS Configuration ==="
+          # Point DNS to AD domain controllers (required before domain join)
+          $adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -First 1
+          Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses ${DomainDnsIp1},${DomainDnsIp2}
+          Write-Output "DNS set to: ${DomainDnsIp1}, ${DomainDnsIp2}"
+
+          Write-Output "=== Phase 2: Create Desktop Shortcuts & Files ==="
+          $desktopPath = "C:\Users\Public\Desktop"
+
+          # Create command reference file
+          $commandFile = @"
+          # ============================================================
+          # FSx for ONTAP Hands-on Lab - Command Reference
+          # ============================================================
+          # User: ${AdUserName}
+          # Domain: ${DomainName}
+          # SVM: ${SvmName}
+          # Volume: ${VolumeName}
+          # ONTAP Management IP: ${OntapManagementIp}
+          # ============================================================
+
+          # --- ONTAP CLI Access (via Tera Term or PowerShell SSH) ---
+          ssh fsxadmin@${OntapManagementIp}
+
+          # --- Basic ONTAP Commands ---
+          rows 0
+          volume show -vserver ${SvmName}
+          snapshot show -vserver ${SvmName} -volume ${VolumeName}
+          cifs share show -vserver ${SvmName}
+
+          # --- Snapshot Operations ---
+          # Show all snapshots
+          snapshot show -vserver ${SvmName} -volume ${VolumeName}
+
+          # Show Tamperproof (SnapLock) expiry
+          snapshot show -vserver ${SvmName} -volume ${VolumeName} -fields snaplock-expiry-time
+
+          # Delete all snapshots (ransomware simulation - attacker action)
+          set -confirmations off
+          snapshot delete -vserver ${SvmName} -volume ${VolumeName} -snapshot *
+
+          # Stop snapshot schedule (attacker tries to prevent new snapshots)
+          volume modify -vserver ${SvmName} -volume ${VolumeName} -snapshot-policy none
+
+          # --- Recovery Operations ---
+          # Restore snapshot policy
+          volume modify -vserver ${SvmName} -volume ${VolumeName} -snapshot-policy default
+
+          # Create FlexClone from protected snapshot
+          volume clone create -vserver ${SvmName} -flexclone ${VolumeName}clone -parent-vserver ${SvmName} -parent-volume ${VolumeName} -parent-snapshot <snapshot_name> -junction-path /${VolumeName}clone
+
+          # Create SMB share for clone
+          cifs share create -share-name ${VolumeName}clone -path /${VolumeName}clone -vserver ${SvmName}
+
+          # --- S3 Access Point Commands (from PowerShell) ---
+          # List files via S3 AP
+          aws s3 ls s3://<S3AP_ALIAS>/ --region ${AWS::Region}
+
+          # Download file via S3 AP
+          aws s3 cp s3://<S3AP_ALIAS>/sample_doc.txt C:\Users\${AdUserName}\Desktop\ --region ${AWS::Region}
+
+          # Upload file via S3 AP
+          aws s3 cp C:\Users\${AdUserName}\Desktop\test.txt s3://<S3AP_ALIAS>/test.txt --region ${AWS::Region}
+          "@
+          Set-Content -Path "$desktopPath\command_${AdUserName}.txt" -Value $commandFile -Encoding UTF8
+
+          Write-Output "=== Phase 3: Install Tera Term ==="
+          # Install Tera Term via winget (for ONTAP CLI SSH access)
+          try {
+              winget install --id TeraTermProject.teraterm --accept-source-agreements --accept-package-agreements --silent 2>$null
+              Write-Output "Tera Term installation initiated"
+          } catch {
+              Write-Output "winget not available, will try Chocolatey or manual install later"
+              # Fallback: download from GitHub releases
+              $teratermUrl = "https://github.com/TeraTermProject/teraterm/releases/download/v5.3/teraterm-5.3.exe"
+              $teratermInstaller = "C:\temp\teraterm-installer.exe"
+              New-Item -ItemType Directory -Path "C:\temp" -Force | Out-Null
+              try {
+                  Invoke-WebRequest -Uri $teratermUrl -OutFile $teratermInstaller -UseBasicParsing
+                  Start-Process -FilePath $teratermInstaller -ArgumentList "/SILENT" -Wait
+                  Write-Output "Tera Term installed via direct download"
+              } catch {
+                  Write-Output "Tera Term installation failed - install manually"
+              }
+          }
+
+          Write-Output "=== Phase 4: Create Sample Data ==="
+          # Create sample data directory (will be copied to X: drive after domain join)
+          $sampleDir = "C:\handson-sample-data"
+          New-Item -ItemType Directory -Path $sampleDir -Force | Out-Null
+
+          # Create sample files
+          "FSx for ONTAP S3 Access Points Guide - Sample Document" | Set-Content "$sampleDir\FSxONTAPGuide.txt"
+          "This is a sample document for the hands-on lab.`nCreated: $(Get-Date)" | Set-Content "$sampleDir\sample_doc1.txt"
+          "Important business data - DO NOT DELETE`nProject Alpha - Q3 Report" | Set-Content "$sampleDir\sample_doc2.txt"
+          "Financial Report 2026 - Confidential`nRevenue: xxx`nExpenses: xxx" | Set-Content "$sampleDir\financial_report.txt"
+          "Customer Database Extract`nID,Name,Email`n001,Tanaka,tanaka@example.com`n002,Suzuki,suzuki@example.com" | Set-Content "$sampleDir\customer_data.csv"
+
+          Write-Output "=== Phase 5: Create Ransomware Simulator ==="
+          # Educational ransomware simulation script (rename-only, no actual encryption)
+          $ransomwareScript = @"
+          # ============================================================
+          # RANSOMWARE SIMULATOR (Education Purpose Only)
+          # ============================================================
+          # This script simulates ransomware behavior by:
+          # 1. Renaming files with .lckd extension (original content preserved)
+          # 2. Creating a ransom note
+          #
+          # NO ENCRYPTION IS PERFORMED. Files are only renamed.
+          # Original content is intact inside .lckd files.
+          # Recovery demo: use Tamperproof Snapshot + FlexClone.
+          #
+          # SAFE TO RUN: Only affects files in the specified folder.
+          # Does NOT spread, does NOT encrypt, does NOT affect system files.
+          # ============================================================
+
+          param(
+              [Parameter(Mandatory=`$true)]
+              [string]`$TargetFolder
+          )
+
+          Write-Host "============================================" -ForegroundColor Red
+          Write-Host " RANSOMWARE SIMULATOR - EDUCATION ONLY" -ForegroundColor Red
+          Write-Host "============================================" -ForegroundColor Red
+          Write-Host ""
+          Write-Host "Target folder: `$TargetFolder" -ForegroundColor Yellow
+          Write-Host "Action: Rename files to .lckd (no encryption)" -ForegroundColor Yellow
+          Write-Host ""
+
+          `$confirm = Read-Host "Proceed with simulated attack? (yes/no)"
+          if (`$confirm -ne "yes") {
+              Write-Host "Cancelled." -ForegroundColor Green
+              exit
+          }
+
+          `$files = Get-ChildItem -Path `$TargetFolder -File -Recurse | Where-Object { `$_.Extension -ne ".lckd" -and `$_.Name -ne "RANSOM_NOTE.txt" }
+          `$count = 0
+
+          foreach (`$file in `$files) {
+              try {
+                  # Rename file with .lckd extension (content unchanged)
+                  `$newPath = `$file.FullName + ".lckd"
+                  Rename-Item -Path `$file.FullName -NewName (`$file.Name + ".lckd") -Force
+                  `$count++
+                  Write-Host "  [LOCKED] `$(`$file.Name) -> `$(`$file.Name).lckd" -ForegroundColor Red
+              } catch {
+                  Write-Host "  [SKIPPED] `$(`$file.Name): `$(`$_.Exception.Message)" -ForegroundColor Gray
+              }
+          }
+
+          # Create ransom note
+          `$ransomNote = @"
+          ===================================================
+           YOUR FILES HAVE BEEN LOCKED!
+          ===================================================
+
+          All your important files have been renamed with .lckd extension.
+          In a real attack, these would be encrypted and unrecoverable
+          without paying a ransom.
+
+          Files affected: `$count
+          Simulation date: `$(Get-Date)
+
+          [THIS IS A SIMULATION FOR EDUCATIONAL PURPOSES]
+          [Files are only renamed, not encrypted]
+          [Recovery: use FSx for ONTAP Tamperproof Snapshot + FlexClone]
+          [See the hands-on guide for recovery steps]
+          ===================================================
+          "@
+          Set-Content -Path "`$TargetFolder\RANSOM_NOTE.txt" -Value `$ransomNote
+
+          Write-Host ""
+          Write-Host "Simulation complete: `$count files renamed to .lckd" -ForegroundColor Red
+          Write-Host "Ransom note created at: `$TargetFolder\RANSOM_NOTE.txt" -ForegroundColor Yellow
+          Write-Host ""
+          Write-Host "=== RECOVERY STEPS ===" -ForegroundColor Green
+          Write-Host "1. Check Tamperproof Snapshots: snapshot show -vserver ${SvmName} -volume ${VolumeName}" -ForegroundColor Green
+          Write-Host "2. Create FlexClone from protected snapshot" -ForegroundColor Green
+          Write-Host "3. Access recovered data via SMB" -ForegroundColor Green
+          "@
+          Set-Content -Path "$desktopPath\ransomware_simulator.ps1" -Value $ransomwareScript -Encoding UTF8
+
+          Write-Output "=== Phase 6: Create Drive Mapping Script ==="
+          # Post-domain-join drive mapping script (run after reboot)
+          $driveMapScript = @"
+          # Run this script after domain join is complete
+          # Maps X: to SMB share, Y: to .snapshot directory
+
+          `$domain = "${DomainName}"
+          `$svm = "${SvmName}"
+          `$volume = "${VolumeName}"
+          `$sharePath = "\\`$svm.`$domain\`$volume"
+          `$snapshotPath = "\\`$svm.`$domain\`$volume\.snapshot"
+
+          Write-Host "Mapping X: to `$sharePath"
+          net use X: `$sharePath /persistent:yes 2>$null
+          if (`$LASTEXITCODE -eq 0) { Write-Host "  X: mapped successfully" -ForegroundColor Green }
+          else { Write-Host "  X: mapping failed (domain join may not be complete)" -ForegroundColor Yellow }
+
+          Write-Host "Mapping Y: to `$snapshotPath"
+          net use Y: `$snapshotPath /persistent:yes 2>$null
+          if (`$LASTEXITCODE -eq 0) { Write-Host "  Y: mapped successfully" -ForegroundColor Green }
+          else { Write-Host "  Y: mapping failed" -ForegroundColor Yellow }
+          "@
+          Set-Content -Path "$desktopPath\map_drives.ps1" -Value $driveMapScript -Encoding UTF8
+
+          Write-Output "=== Setup Complete ==="
+          Stop-Transcript
+          </powershell>
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-windows-handson"
+        - Key: Purpose
+          Value: handson-lab
+        - Key: OS
+          Value: Windows Server 2022 Japanese
+
+  # -----------------------------------------------------------------
+  # SSM Association — AD Domain Join
+  # NOTE: Use separate AWS::SSM::Association, NOT EC2 SsmAssociations.
+  # -----------------------------------------------------------------
+  DomainJoinAssociation:
+    Type: AWS::SSM::Association
+    Properties:
+      Name: AWS-JoinDirectoryServiceDomain
+      Targets:
+        - Key: InstanceIds
+          Values:
+            - !Ref WindowsInstance
+      Parameters:
+        directoryId:
+          - !Ref DirectoryId
+        directoryName:
+          - !Ref DomainName
+        dnsIpAddresses:
+          - !Ref DomainDnsIp1
+          - !Ref DomainDnsIp2
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  InstanceId:
+    Description: Windows EC2 Instance ID
+    Value: !Ref WindowsInstance
+    Export:
+      Name: !Sub "${AWS::StackName}-WindowsInstanceId"
+
+  FleetManagerUrl:
+    Description: >
+      Fleet Manager Remote Desktop URL (GUI access via AWS Console).
+      Open this URL in your browser to access the Windows desktop.
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/systems-manager/managed-instances/${WindowsInstance}/terminate?region=${AWS::Region}"
+
+  SessionManagerCommand:
+    Description: >
+      Session Manager command for PowerShell access.
+    Value: !Sub "aws ssm start-session --target ${WindowsInstance} --region ${AWS::Region}"
+
+  RdpPortForwardCommand:
+    Description: >
+      RDP port forwarding via Session Manager (for local RDP client).
+      After running this, connect RDP to localhost:13389.
+    Value: !Sub >
+      aws ssm start-session --target ${WindowsInstance}
+      --document-name AWS-StartPortForwardingSession
+      --parameters "portNumber=3389,localPortNumber=13389"
+      --region ${AWS::Region}
+
+  DomainJoinNote:
+    Description: >
+      Domain join is automatic via SSM Association.
+      After join completes (~2-5 min), run map_drives.ps1 on the desktop
+      to map X: (data) and Y: (.snapshot) drives.
+    Value: "Domain join in progress. Run map_drives.ps1 after instance reboot."

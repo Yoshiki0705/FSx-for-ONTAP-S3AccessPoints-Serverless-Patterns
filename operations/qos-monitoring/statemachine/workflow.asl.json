@@ -1,0 +1,34 @@
+{
+  "Comment": "OPS6: QoS Monitoring Workflow",
+  "StartAt": "CollectQoS",
+  "States": {
+    "CollectQoS": {
+      "Type": "Task",
+      "Resource": "${CollectFunctionArn}",
+      "ResultPath": "$.collect_output",
+      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 30, "MaxAttempts": 2, "BackoffRate": 2.0}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "Failed"}],
+      "Next": "AnalyzeQoS"
+    },
+    "AnalyzeQoS": {
+      "Type": "Task",
+      "Resource": "${AnalyzeFunctionArn}",
+      "InputPath": "$.collect_output",
+      "ResultPath": "$.analyze_output",
+      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "Failed"}],
+      "Next": "GenerateReport"
+    },
+    "GenerateReport": {
+      "Type": "Task",
+      "Resource": "${ReportFunctionArn}",
+      "InputPath": "$.analyze_output",
+      "ResultPath": "$.report_output",
+      "Retry": [{"ErrorEquals": ["States.TaskFailed"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2.0}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "Failed"}],
+      "Next": "Success"
+    },
+    "Success": {"Type": "Succeed"},
+    "Failed": {"Type": "Fail", "Error": "WorkflowFailed", "Cause": "Step failed"}
+  }
+}

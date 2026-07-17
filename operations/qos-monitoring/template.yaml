@@ -1,0 +1,229 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  OPS6: FSx for ONTAP QoS Monitoring - Monitors QoS policy compliance,
+  detects bandwidth contention, and recommends workload isolation.
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: fsxn-ops-qos-monitoring
+    Description: QoS policy compliance monitoring and bandwidth contention detection.
+    Author: FSx for ONTAP S3 AP Serverless Patterns
+    Labels: ['fsxn', 'operations', 'qos', 'performance', 'workload']
+
+Parameters:
+  FileSystemIds:
+    Type: CommaDelimitedList
+  OntapSecretArn:
+    Type: String
+    Default: ""
+  AutomationLevel:
+    Type: String
+    AllowedValues: ["0", "1", "2", "3"]
+    Default: "0"
+  DemoMode:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+  NotificationEmail:
+    Type: String
+    Default: ""
+  ScheduleExpression:
+    Type: String
+    Default: "rate(1 day)"
+  EnableBedrockSummary:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+  ReportFormat:
+    Type: String
+    AllowedValues: ["JSON", "HTML", "BOTH"]
+    Default: "BOTH"
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 2557, 3653]
+
+  OutputDestination:
+    Type: String
+    AllowedValues: ["STANDARD_S3", "FSXN_S3AP"]
+    Default: "STANDARD_S3"
+    Description: >
+      STANDARD_S3: Write to dedicated S3 bucket.
+      FSXN_S3AP: Write to FSx for ONTAP volume via S3 Access Point.
+
+  S3AccessPointAlias:
+    Type: String
+    Default: ""
+    Description: S3 AP alias for report output (required when OutputDestination=FSXN_S3AP).
+
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+    Default: ""
+  VpcSecurityGroupIds:
+    Type: CommaDelimitedList
+    Default: ""
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, ""]]
+  IsAlertEnabled: !And
+    - !Not [!Equals [!Ref AutomationLevel, "0"]]
+    - !Condition HasNotificationEmail
+  IsBedrockEnabled: !Equals [!Ref EnableBedrockSummary, "true"]
+  HasVpcConfig: !Not [!Equals [!Select [0, !Ref VpcSubnetIds], ""]]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [arm64]
+    Timeout: 300
+    MemorySize: 512
+    Environment:
+      Variables:
+        FILE_SYSTEM_IDS: !Join [",", !Ref FileSystemIds]
+        ONTAP_SECRET_ARN: !Ref OntapSecretArn
+        AUTOMATION_LEVEL: !Ref AutomationLevel
+        DEMO_MODE: !Ref DemoMode
+        ENABLE_BEDROCK_SUMMARY: !Ref EnableBedrockSummary
+        REPORT_FORMAT: !Ref ReportFormat
+        REPORT_BUCKET: !Ref ReportBucket
+        OUTPUT_DESTINATION: !Ref OutputDestination
+        S3_ACCESS_POINT_ALIAS: !Ref S3AccessPointAlias
+        POWERTOOLS_SERVICE_NAME: ops-qos-monitoring
+        LOG_LEVEL: INFO
+    Tags:
+      UseCase: OPS6-QoSMonitoring
+      Pattern: operations
+
+Resources:
+  ReportBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-reports-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: IsAlertEnabled
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-alerts"
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: IsAlertEnabled
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  CollectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-collect"
+      Handler: handler.handler
+      CodeUri: functions/collect/
+      VpcConfig: !If
+        - HasVpcConfig
+        - SubnetIds: !Ref VpcSubnetIds
+          SecurityGroupIds: !Ref VpcSecurityGroupIds
+        - !Ref AWS::NoValue
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action: [secretsmanager:GetSecretValue]
+              Resource: !Ref OntapSecretArn
+            - Effect: Allow
+              Action: [fsx:DescribeFileSystems]
+              Resource: "*"
+
+  AnalyzeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-analyze"
+      Handler: handler.handler
+      CodeUri: functions/analyze/
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - !If
+              - IsBedrockEnabled
+              - Effect: Allow
+                Action: [bedrock:InvokeModel]
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.amazon.nova-lite-v1:0"
+              - !Ref AWS::NoValue
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-report"
+      Handler: handler.handler
+      CodeUri: functions/report/
+      Environment:
+        Variables:
+          ALERT_TOPIC_ARN: !If [IsAlertEnabled, !Ref AlertTopic, ""]
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ReportBucket
+        - CloudWatchPutMetricPolicy: {}
+        - !If
+          - IsAlertEnabled
+          - SNSPublishMessagePolicy:
+              TopicName: !GetAtt AlertTopic.TopicName
+          - !Ref AWS::NoValue
+
+  OpsStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${AWS::StackName}-workflow"
+      DefinitionUri: statemachine/workflow.asl.json
+      DefinitionSubstitutions:
+        CollectFunctionArn: !GetAtt CollectFunction.Arn
+        AnalyzeFunctionArn: !GetAtt AnalyzeFunction.Arn
+        ReportFunctionArn: !GetAtt ReportFunction.Arn
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ScheduleExpression
+            Enabled: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CollectFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AnalyzeFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportFunction
+      Type: STANDARD
+
+  CollectFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CollectFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+  AnalyzeFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AnalyzeFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+  ReportFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ReportFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+Outputs:
+  StateMachineArn:
+    Value: !Ref OpsStateMachine
+  ReportBucketName:
+    Value: !Ref ReportBucket

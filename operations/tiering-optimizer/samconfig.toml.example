@@ -1,0 +1,19 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-ops-tiering-optimizer"
+resolve_s3 = true
+s3_prefix = "fsxn-ops-tiering-optimizer"
+region = "ap-northeast-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+
+parameter_overrides = [
+    "FileSystemIds=fs-0123456789abcdef0",
+    "OntapSecretArn=arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsxn/admin-XXXXXX",
+    "AutomationLevel=1",
+    "ColdDataThresholdPercent=30",
+    "NotificationEmail=ops-team@example.com",
+    "VpcSubnetIds=subnet-xxx,subnet-yyy",
+    "VpcSecurityGroupIds=sg-xxx",
+]

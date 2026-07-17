@@ -1,0 +1,401 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSx for ONTAP Stack - Hands-on Lab Environment
+
+  Provisions Amazon FSx for NetApp ONTAP file system, Storage Virtual Machine (SVM),
+  and Volume. Supports using an existing FSx for ONTAP environment via the
+  UseExistingFsx condition to avoid the 30-60 minute creation wait time.
+
+  When UseExistingFsx=true, provide the existing file system, SVM, and volume IDs.
+  The template will skip resource creation and only export the provided values.
+
+  IMPORTANT:
+  - SVM AD join is configured via ActiveDirectoryConfiguration
+  - Volume security style is NTFS (required for WINDOWS-type S3 Access Points)
+  - Tamperproof Snapshot must be enabled post-deployment via ONTAP CLI
+  - FileSystemAdministratorsGroup must be "Domain Admins" (not AWS Delegated)
+
+# =====================================================================
+# Metadata
+# =====================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Existing Resource Options
+        Parameters:
+          - UseExistingFsx
+          - ExistingFileSystemId
+          - ExistingSvmId
+          - ExistingVolumeId
+          - ExistingManagementIp
+      - Label:
+          default: FSx for ONTAP File System
+        Parameters:
+          - StorageCapacityGiB
+          - ThroughputCapacity
+          - DeploymentType
+          - PreferredSubnetId
+          - StandbySubnetId
+          - FsxSecurityGroupId
+          - FsxAdminPasswordSecretArn
+      - Label:
+          default: Storage Virtual Machine (SVM)
+        Parameters:
+          - SvmName
+          - SvmNetBiosName
+          - AdDomainName
+          - AdDnsIp1
+          - AdDnsIp2
+          - AdAdminUser
+          - AdAdminPasswordSecretArn
+          - AdOuDn
+      - Label:
+          default: Volume
+        Parameters:
+          - VolumeName
+          - VolumeSizeMB
+          - VolumeJunctionPath
+          - VolumeSecurityStyle
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  # --- Existing Resource Options ---
+  UseExistingFsx:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >
+      Set to true to use an existing FSx for ONTAP environment.
+      Skips FS/SVM/Volume creation (saves 30-60 min deployment time).
+
+  ExistingFileSystemId:
+    Type: String
+    Default: ""
+    Description: >
+      Existing FSx for ONTAP file system ID (e.g., fs-0123456789abcdef0).
+      Only used when UseExistingFsx=true.
+
+  ExistingSvmId:
+    Type: String
+    Default: ""
+    Description: >
+      Existing SVM ID (e.g., svm-0123456789abcdef0).
+      Only used when UseExistingFsx=true.
+
+  ExistingVolumeId:
+    Type: String
+    Default: ""
+    Description: >
+      Existing Volume ID (e.g., fsvol-0123456789abcdef0).
+      Only used when UseExistingFsx=true.
+
+  ExistingManagementIp:
+    Type: String
+    Default: ""
+    Description: >
+      Existing ONTAP management endpoint IP.
+      Only used when UseExistingFsx=true.
+
+  # --- File System ---
+  StorageCapacityGiB:
+    Type: Number
+    Default: 1024
+    MinValue: 1024
+    MaxValue: 196608
+    Description: >
+      Storage capacity in GiB (minimum 1024 GiB for SINGLE_AZ_1).
+
+  ThroughputCapacity:
+    Type: Number
+    Default: 128
+    AllowedValues:
+      - 128
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
+    Description: >
+      Throughput capacity in MB/s. 128 MB/s is the minimum (cost-optimized for lab).
+      IMPORTANT: This throughput is SHARED across all protocols (NFS, SMB, S3 AP,
+      iSCSI, ONTAP REST API, inter-cluster replication). During hands-on, concurrent
+      S3 AP downloads + SMB access share this bandwidth.
+
+  DeploymentType:
+    Type: String
+    Default: SINGLE_AZ_1
+    AllowedValues:
+      - SINGLE_AZ_1
+      - SINGLE_AZ_2
+      - MULTI_AZ_1
+      - MULTI_AZ_2
+    Description: >
+      Deployment type. SINGLE_AZ_1 recommended for cost-optimized lab environments.
+
+  PreferredSubnetId:
+    Type: String
+    Description: >
+      Preferred subnet for FSx for ONTAP (Private Subnet 1).
+      For SINGLE_AZ deployments, this is the only subnet used.
+
+  StandbySubnetId:
+    Type: String
+    Default: ""
+    Description: >
+      Standby subnet (Private Subnet 2). Required only for MULTI_AZ deployments.
+
+  FsxSecurityGroupId:
+    Type: String
+    Description: Security Group ID for FSx for ONTAP
+
+  FsxAdminPasswordSecretArn:
+    Type: String
+    Description: >
+      Secrets Manager secret ARN for fsxadmin password.
+      Used for ONTAP CLI/REST API administration.
+
+  # --- SVM ---
+  SvmName:
+    Type: String
+    Default: svm01
+    Description: Storage Virtual Machine name
+
+  SvmNetBiosName:
+    Type: String
+    Default: SVM01
+    MaxLength: 15
+    Description: >
+      SVM NetBIOS name for CIFS/SMB. Must be different from AD domain short name.
+      Max 15 characters.
+
+  AdDomainName:
+    Type: String
+    Default: handson.local
+    Description: AD domain FQDN for SVM join
+
+  AdDnsIp1:
+    Type: String
+    Description: AD DNS server IP address 1
+
+  AdDnsIp2:
+    Type: String
+    Description: AD DNS server IP address 2
+
+  AdAdminUser:
+    Type: String
+    Default: Admin
+    Description: >
+      AD admin username with permissions to join computer objects.
+      For AWS Managed AD, use "Admin".
+
+  AdAdminPasswordSecretArn:
+    Type: String
+    Description: Secrets Manager secret ARN for AD admin password
+
+  AdOuDn:
+    Type: String
+    Default: ""
+    Description: >
+      OU Distinguished Name for SVM computer object.
+      For AWS Managed AD: OU=Computers,OU=<ShortName>,DC=<part1>,DC=<part2>
+      Leave empty for default Computers container.
+
+  # --- Volume ---
+  VolumeName:
+    Type: String
+    Default: user01
+    Description: Volume name
+
+  VolumeSizeMB:
+    Type: Number
+    Default: 10240
+    MinValue: 20
+    Description: Volume size in MB (default 10 GiB = 10240 MB)
+
+  VolumeJunctionPath:
+    Type: String
+    Default: /user01
+    Description: NAS junction path (mount point within SVM namespace)
+
+  VolumeSecurityStyle:
+    Type: String
+    Default: NTFS
+    AllowedValues:
+      - NTFS
+      - UNIX
+      - MIXED
+    Description: >
+      Volume security style. NTFS required for WINDOWS-type S3 Access Points.
+      UNIX for NFS-only access patterns.
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateNewFsx: !Equals [!Ref UseExistingFsx, "false"]
+  IsMultiAz: !Or
+    - !Equals [!Ref DeploymentType, "MULTI_AZ_1"]
+    - !Equals [!Ref DeploymentType, "MULTI_AZ_2"]
+  HasOuDn: !Not [!Equals [!Ref AdOuDn, ""]]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # FSx for ONTAP File System
+  # -----------------------------------------------------------------
+  FsxFileSystem:
+    Type: AWS::FSx::FileSystem
+    Condition: CreateNewFsx
+    DeletionPolicy: Delete
+    Properties:
+      FileSystemType: ONTAP
+      StorageCapacity: !Ref StorageCapacityGiB
+      SubnetIds: !If
+        - IsMultiAz
+        - - !Ref PreferredSubnetId
+          - !Ref StandbySubnetId
+        - - !Ref PreferredSubnetId
+      SecurityGroupIds:
+        - !Ref FsxSecurityGroupId
+      OntapConfiguration:
+        DeploymentType: !Ref DeploymentType
+        ThroughputCapacity: !Ref ThroughputCapacity
+        FsxAdminPassword: !Sub "{{resolve:secretsmanager:${FsxAdminPasswordSecretArn}:SecretString}}"
+        PreferredSubnetId: !Ref PreferredSubnetId
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-fsx-ontap"
+        - Key: Purpose
+          Value: handson-lab
+
+  # -----------------------------------------------------------------
+  # Storage Virtual Machine (SVM) with AD Join
+  # -----------------------------------------------------------------
+  StorageVirtualMachine:
+    Type: AWS::FSx::StorageVirtualMachine
+    Condition: CreateNewFsx
+    Properties:
+      FileSystemId: !Ref FsxFileSystem
+      Name: !Ref SvmName
+      ActiveDirectoryConfiguration:
+        NetBiosName: !Ref SvmNetBiosName
+        SelfManagedActiveDirectoryConfiguration:
+          DomainName: !Ref AdDomainName
+          OrganizationalUnitDistinguishedName: !If
+            - HasOuDn
+            - !Ref AdOuDn
+            - !Ref "AWS::NoValue"
+          UserName: !Ref AdAdminUser
+          Password: !Sub "{{resolve:secretsmanager:${AdAdminPasswordSecretArn}:SecretString}}"
+          DnsIps:
+            - !Ref AdDnsIp1
+            - !Ref AdDnsIp2
+          FileSystemAdministratorsGroup: "Domain Admins"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${SvmName}"
+
+  # -----------------------------------------------------------------
+  # Volume
+  # -----------------------------------------------------------------
+  Volume:
+    Type: AWS::FSx::Volume
+    Condition: CreateNewFsx
+    Properties:
+      Name: !Ref VolumeName
+      VolumeType: ONTAP
+      OntapConfiguration:
+        StorageVirtualMachineId: !Ref StorageVirtualMachine
+        SizeInMegabytes: !Ref VolumeSizeMB
+        StorageEfficiencyEnabled: true
+        SecurityStyle: !Ref VolumeSecurityStyle
+        JunctionPath: !Ref VolumeJunctionPath
+        TieringPolicy:
+          CoolingPeriod: 31
+          Name: AUTO
+        SnapshotPolicy: default
+        # NOTE: Tamperproof Snapshot is NOT configured via SnaplockConfiguration.
+        # SnaplockConfiguration is for SnapLock Compliance/Enterprise (file-level WORM).
+        # Tamperproof Snapshot (snapshot-level WORM) is enabled post-deployment
+        # via ONTAP CLI: volume snapshot locking modify -is-enabled true
+        # See scripts/setup_ontap.sh for the post-deployment step.
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${VolumeName}"
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  FileSystemId:
+    Description: FSx for ONTAP File System ID
+    Value: !If [CreateNewFsx, !Ref FsxFileSystem, !Ref ExistingFileSystemId]
+    Export:
+      Name: !Sub "${AWS::StackName}-FileSystemId"
+
+  StorageVirtualMachineId:
+    Description: Storage Virtual Machine ID
+    Value: !If [CreateNewFsx, !Ref StorageVirtualMachine, !Ref ExistingSvmId]
+    Export:
+      Name: !Sub "${AWS::StackName}-SvmId"
+
+  VolumeId:
+    Description: Volume ID
+    Value: !If [CreateNewFsx, !Ref Volume, !Ref ExistingVolumeId]
+    Export:
+      Name: !Sub "${AWS::StackName}-VolumeId"
+
+  ManagementEndpointIp:
+    Description: >
+      ONTAP management endpoint IP address.
+      Use this for SSH/REST API access (fsxadmin).
+      NOTE: This value is only available after file system creation completes.
+      For existing FSx environments, the management IP is provided as a parameter.
+    Value: !If
+      - CreateNewFsx
+      - !GetAtt FsxFileSystem.DNSName
+      - !Ref ExistingManagementIp
+    Export:
+      Name: !Sub "${AWS::StackName}-ManagementIp"
+
+  SvmName:
+    Description: SVM Name
+    Value: !Ref SvmName
+    Export:
+      Name: !Sub "${AWS::StackName}-SvmName"
+
+  VolumeName:
+    Description: Volume Name
+    Value: !Ref VolumeName
+    Export:
+      Name: !Sub "${AWS::StackName}-VolumeName"
+
+  VolumeJunctionPath:
+    Description: Volume junction path
+    Value: !Ref VolumeJunctionPath
+    Export:
+      Name: !Sub "${AWS::StackName}-VolumeJunctionPath"
+
+  SmbSharePath:
+    Description: >
+      SMB share UNC path for Windows drive mapping.
+      Format: \\<svm-name>.<domain>\<volume-name>
+    Value: !Sub "\\\\${SvmName}.${AdDomainName}\\${VolumeName}"
+    Export:
+      Name: !Sub "${AWS::StackName}-SmbSharePath"
+
+  PostDeploymentNote:
+    Description: >
+      Post-deployment steps required (not automatable via CloudFormation):
+      1. Verify SVM AD join status (Lifecycle = CREATED)
+      2. Enable Tamperproof Snapshot via ONTAP CLI
+      3. Create initial snapshots for hands-on demo
+    Value: "See scripts/setup_ontap.sh for post-deployment configuration"
