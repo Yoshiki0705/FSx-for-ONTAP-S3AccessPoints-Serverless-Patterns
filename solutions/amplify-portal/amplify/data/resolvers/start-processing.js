@@ -4,7 +4,7 @@ export function request(ctx) {
   const { pattern, inputPrefix, parameters } = ctx.arguments;
 
   const stateMachineArn =
-    "arn:aws:states:ap-northeast-1:123456789012:stateMachine:placeholder";
+    "arn:aws:states:ap-northeast-1:123456789012:stateMachine:amplify-portal-test-workflow";
 
   const input = JSON.stringify({
     inputPrefix: inputPrefix,
