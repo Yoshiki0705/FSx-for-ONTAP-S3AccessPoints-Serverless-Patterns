@@ -1,0 +1,184 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  IAM Stack - FSx for ONTAP Hands-on Lab Environment
+
+  Provisions IAM roles, policies, and instance profiles for:
+  - EC2 instances (SSM + AD join + S3 AP access + FSx read)
+  - Lambda execution roles (Custom Resources)
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  StackPrefix:
+    Type: String
+    Default: fsx-handson
+    Description: Prefix for IAM resource names
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # EC2 Instance Role (SSM + AD Join + S3 AP + FSx Read)
+  # -----------------------------------------------------------------
+  Ec2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackPrefix}-ec2-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMDirectoryServiceAccess"
+      Policies:
+        - PolicyName: S3AccessPointOperations
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3ApDataAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${StackPrefix}-*"
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${StackPrefix}-*/object/*"
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/my-s3-access-point*"
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/my-s3-access-point*/object/*"
+              - Sid: S3ApManagement
+                Effect: Allow
+                Action:
+                  - s3:CreateAccessPoint
+                  - s3:DeleteAccessPoint
+                  - s3:GetAccessPoint
+                  - s3:ListAccessPoints
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${StackPrefix}-*"
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/my-s3-access-point*"
+        - PolicyName: FsxReadAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - fsx:DescribeFileSystems
+                  - fsx:DescribeStorageVirtualMachines
+                  - fsx:DescribeVolumes
+                  - fsx:DescribeSnapshots
+                  - fsx:ListTagsForResource
+                Resource: "*"
+        - PolicyName: FsxVolumeOperations
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: FlexCloneOperations
+                Effect: Allow
+                Action:
+                  - fsx:CreateVolume
+                  - fsx:DeleteVolume
+                  - fsx:UpdateVolume
+                  - fsx:CreateSnapshot
+                  - fsx:DeleteSnapshot
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:fsx:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:${AWS::Partition}:fsx:${AWS::Region}:${AWS::AccountId}:snapshot/*"
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackPrefix}-ec2-role"
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "${StackPrefix}-ec2-profile"
+      Roles:
+        - !Ref Ec2InstanceRole
+
+  # -----------------------------------------------------------------
+  # Lambda Execution Role (S3 Access Point Custom Resource)
+  # -----------------------------------------------------------------
+  S3ApLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackPrefix}-s3ap-lambda-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: FsxS3ApManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - fsx:CreateDataRepositoryAssociation
+                  - fsx:DeleteDataRepositoryAssociation
+                  - fsx:DescribeDataRepositoryAssociations
+                  - fsx:DescribeVolumes
+                  - fsx:DescribeStorageVirtualMachines
+                  - fsx:DescribeFileSystems
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:CreateAccessPoint
+                  - s3:DeleteAccessPoint
+                  - s3:GetAccessPoint
+                  - s3:PutAccessPointPolicy
+                  - s3:DeleteAccessPointPolicy
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/*"
+        - PolicyName: SecretsManagerRead
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${StackPrefix}-*"
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackPrefix}-s3ap-lambda-role"
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  Ec2InstanceRoleArn:
+    Description: EC2 Instance Role ARN
+    Value: !GetAtt Ec2InstanceRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Ec2InstanceRoleArn"
+
+  Ec2InstanceProfileArn:
+    Description: EC2 Instance Profile ARN
+    Value: !GetAtt Ec2InstanceProfile.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Ec2InstanceProfileArn"
+
+  Ec2InstanceProfileName:
+    Description: EC2 Instance Profile Name
+    Value: !Ref Ec2InstanceProfile
+    Export:
+      Name: !Sub "${AWS::StackName}-Ec2InstanceProfileName"
+
+  S3ApLambdaRoleArn:
+    Description: S3 Access Point Lambda Execution Role ARN
+    Value: !GetAtt S3ApLambdaRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-S3ApLambdaRoleArn"

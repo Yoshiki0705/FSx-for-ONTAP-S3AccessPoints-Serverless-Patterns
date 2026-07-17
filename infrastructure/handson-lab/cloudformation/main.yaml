@@ -1,0 +1,395 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSx for ONTAP Hands-on Lab - Parent Stack
+
+  Orchestrates the deployment of all nested stacks for the hands-on lab environment:
+  - Network (VPC, Subnets, NAT, Security Groups, VPC Endpoints)
+  - Active Directory (AWS Managed AD, DHCP, AD User)
+  - IAM (Roles, Policies, Instance Profiles)
+  - FSx for ONTAP (File System, SVM, Volume)
+  - S3 Access Point (Custom Resource)
+  - EC2 Windows (Hands-on workstation)
+
+  Supports "existing resource" mode for VPC and FSx for ONTAP to enable
+  rapid iteration without recreating long-running resources.
+
+  Deployment time:
+  - Full deployment (new resources): ~45-60 minutes (FSx for ONTAP is the bottleneck)
+  - Existing FSx mode: ~15-20 minutes
+
+  Post-deployment steps:
+  1. Run scripts/setup_ontap.sh to enable Tamperproof Snapshot
+  2. Run scripts/setup_quick.py to configure Amazon Q Knowledge Base (optional)
+  3. Wait for EC2 domain join (~2-5 min after stack completes)
+  4. Access Windows EC2 via Fleet Manager and run map_drives.ps1
+
+# =====================================================================
+# Metadata
+# =====================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Template Location
+        Parameters:
+          - TemplateBaseUrl
+          - LambdaCodeS3Bucket
+      - Label:
+          default: Existing Resource Options
+        Parameters:
+          - UseExistingVpc
+          - ExistingVpcId
+          - ExistingPrivateSubnet1Id
+          - ExistingPrivateSubnet2Id
+          - ExistingPublicSubnetId
+          - UseExistingFsx
+          - ExistingFileSystemId
+          - ExistingSvmId
+          - ExistingVolumeId
+          - ExistingManagementIp
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VpcCidr
+          - EnableVpcEndpoints
+      - Label:
+          default: Active Directory
+        Parameters:
+          - DomainName
+          - DomainShortName
+          - AdAdminPasswordSecretArn
+          - AdUserPasswordSecretArn
+      - Label:
+          default: FSx for ONTAP
+        Parameters:
+          - StorageCapacityGiB
+          - ThroughputCapacity
+          - FsxAdminPasswordSecretArn
+      - Label:
+          default: EC2 Instance
+        Parameters:
+          - InstanceType
+      - Label:
+          default: S3 Access Point
+        Parameters:
+          - S3AccessPointName
+          - AdUserName
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  # --- Template & Code Location ---
+  TemplateBaseUrl:
+    Type: String
+    Description: >
+      S3 URL base for nested stack templates.
+      Example: https://my-bucket.s3.ap-northeast-1.amazonaws.com/handson-lab/cloudformation
+
+  LambdaCodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment packages
+
+  # --- Existing VPC ---
+  UseExistingVpc:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Use existing VPC instead of creating new one
+
+  ExistingVpcId:
+    Type: String
+    Default: ""
+
+  ExistingPrivateSubnet1Id:
+    Type: String
+    Default: ""
+
+  ExistingPrivateSubnet2Id:
+    Type: String
+    Default: ""
+
+  ExistingPublicSubnetId:
+    Type: String
+    Default: ""
+
+  # --- Existing FSx ---
+  UseExistingFsx:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Use existing FSx for ONTAP (skips 30-60 min creation)
+
+  ExistingFileSystemId:
+    Type: String
+    Default: ""
+
+  ExistingSvmId:
+    Type: String
+    Default: ""
+
+  ExistingVolumeId:
+    Type: String
+    Default: ""
+
+  ExistingManagementIp:
+    Type: String
+    Default: ""
+
+  # --- Network ---
+  VpcCidr:
+    Type: String
+    Default: "10.0.0.0/16"
+
+  EnableVpcEndpoints:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+  # --- AD ---
+  DomainName:
+    Type: String
+    Default: handson.local
+
+  DomainShortName:
+    Type: String
+    Default: HANDSON
+    MaxLength: 15
+
+  AdAdminPasswordSecretArn:
+    Type: String
+    Description: >
+      Secrets Manager secret ARN for AD admin password.
+      Create with: aws secretsmanager create-secret --name fsx-handson-ad-admin --secret-string '<password>'
+
+  AdUserPasswordSecretArn:
+    Type: String
+    Description: >
+      Secrets Manager secret ARN for hands-on user (user01) password.
+
+  # --- FSx ---
+  StorageCapacityGiB:
+    Type: Number
+    Default: 1024
+
+  ThroughputCapacity:
+    Type: Number
+    Default: 128
+    AllowedValues: [128, 256, 512, 1024, 2048, 4096]
+
+  FsxAdminPasswordSecretArn:
+    Type: String
+    Description: >
+      Secrets Manager secret ARN for fsxadmin password.
+
+  # --- EC2 ---
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues: [t3.small, t3.medium, t3.large, m5.large]
+
+  # --- S3 AP ---
+  S3AccessPointName:
+    Type: String
+    Default: my-s3-access-point01
+
+  AdUserName:
+    Type: String
+    Default: user01
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # Network Stack
+  # -----------------------------------------------------------------
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${TemplateBaseUrl}/network.yaml"
+      Parameters:
+        UseExistingVpc: !Ref UseExistingVpc
+        ExistingVpcId: !Ref ExistingVpcId
+        ExistingPrivateSubnet1Id: !Ref ExistingPrivateSubnet1Id
+        ExistingPrivateSubnet2Id: !Ref ExistingPrivateSubnet2Id
+        ExistingPublicSubnetId: !Ref ExistingPublicSubnetId
+        VpcCidr: !Ref VpcCidr
+        EnableVpcEndpoints: !Ref EnableVpcEndpoints
+      Tags:
+        - Key: Component
+          Value: network
+
+  # -----------------------------------------------------------------
+  # IAM Stack
+  # -----------------------------------------------------------------
+  IamStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${TemplateBaseUrl}/iam.yaml"
+      Parameters:
+        StackPrefix: !Sub "${AWS::StackName}"
+      Tags:
+        - Key: Component
+          Value: iam
+
+  # -----------------------------------------------------------------
+  # AD Stack
+  # -----------------------------------------------------------------
+  AdStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${TemplateBaseUrl}/ad.yaml"
+      Parameters:
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+        PrivateSubnet1Id: !GetAtt NetworkStack.Outputs.PrivateSubnet1Id
+        PrivateSubnet2Id: !GetAtt NetworkStack.Outputs.PrivateSubnet2Id
+        DomainName: !Ref DomainName
+        DomainShortName: !Ref DomainShortName
+        AdAdminPasswordSecretArn: !Ref AdAdminPasswordSecretArn
+        AdUserName: !Ref AdUserName
+        AdUserPasswordSecretArn: !Ref AdUserPasswordSecretArn
+        LambdaCodeS3Bucket: !Ref LambdaCodeS3Bucket
+        LambdaCodeS3Key: lambda/custom_resource_ad_user.zip
+      Tags:
+        - Key: Component
+          Value: active-directory
+
+  # -----------------------------------------------------------------
+  # FSx for ONTAP Stack
+  # -----------------------------------------------------------------
+  FsxStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${TemplateBaseUrl}/fsx-ontap.yaml"
+      Parameters:
+        UseExistingFsx: !Ref UseExistingFsx
+        ExistingFileSystemId: !Ref ExistingFileSystemId
+        ExistingSvmId: !Ref ExistingSvmId
+        ExistingVolumeId: !Ref ExistingVolumeId
+        ExistingManagementIp: !Ref ExistingManagementIp
+        StorageCapacityGiB: !Ref StorageCapacityGiB
+        ThroughputCapacity: !Ref ThroughputCapacity
+        DeploymentType: SINGLE_AZ_1
+        PreferredSubnetId: !GetAtt NetworkStack.Outputs.PrivateSubnet1Id
+        FsxSecurityGroupId: !GetAtt NetworkStack.Outputs.FsxSecurityGroupId
+        FsxAdminPasswordSecretArn: !Ref FsxAdminPasswordSecretArn
+        SvmName: svm01
+        SvmNetBiosName: SVM01
+        AdDomainName: !Ref DomainName
+        AdDnsIp1: !GetAtt AdStack.Outputs.DnsIp1
+        AdDnsIp2: !GetAtt AdStack.Outputs.DnsIp2
+        AdAdminUser: Admin
+        AdAdminPasswordSecretArn: !Ref AdAdminPasswordSecretArn
+        AdOuDn: !GetAtt AdStack.Outputs.OuDistinguishedName
+        VolumeName: user01
+        VolumeSizeMB: 10240
+        VolumeJunctionPath: /user01
+        VolumeSecurityStyle: NTFS
+      Tags:
+        - Key: Component
+          Value: fsx-ontap
+
+  # -----------------------------------------------------------------
+  # S3 Access Point Stack
+  # -----------------------------------------------------------------
+  S3ApStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${TemplateBaseUrl}/s3-access-point.yaml"
+      Parameters:
+        VolumeId: !GetAtt FsxStack.Outputs.VolumeId
+        AccessPointName: !Ref S3AccessPointName
+        FileSystemUserType: WINDOWS
+        WindowsUserName: !Ref AdUserName
+        LambdaCodeS3Bucket: !Ref LambdaCodeS3Bucket
+        LambdaCodeS3Key: lambda/custom_resource_s3ap.zip
+        S3ApLambdaRoleArn: !GetAtt IamStack.Outputs.S3ApLambdaRoleArn
+      Tags:
+        - Key: Component
+          Value: s3-access-point
+
+  # -----------------------------------------------------------------
+  # EC2 Windows Stack
+  # -----------------------------------------------------------------
+  Ec2Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${TemplateBaseUrl}/ec2-windows.yaml"
+      Parameters:
+        InstanceType: !Ref InstanceType
+        SubnetId: !GetAtt NetworkStack.Outputs.PrivateSubnet1Id
+        Ec2SecurityGroupId: !GetAtt NetworkStack.Outputs.Ec2SecurityGroupId
+        Ec2InstanceProfileName: !GetAtt IamStack.Outputs.Ec2InstanceProfileName
+        DirectoryId: !GetAtt AdStack.Outputs.DirectoryId
+        DomainName: !Ref DomainName
+        DomainDnsIp1: !GetAtt AdStack.Outputs.DnsIp1
+        DomainDnsIp2: !GetAtt AdStack.Outputs.DnsIp2
+        SvmName: svm01
+        VolumeName: user01
+        OntapManagementIp: !GetAtt FsxStack.Outputs.ManagementEndpointIp
+        AdUserName: !Ref AdUserName
+        AdUserPasswordSecretArn: !Ref AdUserPasswordSecretArn
+      Tags:
+        - Key: Component
+          Value: ec2-windows
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  # --- Access Info ---
+  WindowsInstanceId:
+    Description: Windows EC2 Instance ID (for Fleet Manager / Session Manager)
+    Value: !GetAtt Ec2Stack.Outputs.InstanceId
+
+  FleetManagerAccess:
+    Description: Access Windows desktop via Fleet Manager (recommended)
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/systems-manager/fleet-manager/managed-nodes?region=${AWS::Region}"
+
+  SessionManagerCommand:
+    Description: CLI access to Windows EC2 via Session Manager
+    Value: !GetAtt Ec2Stack.Outputs.SessionManagerCommand
+
+  # --- FSx for ONTAP ---
+  OntapManagementIp:
+    Description: ONTAP management IP (for SSH/CLI access)
+    Value: !GetAtt FsxStack.Outputs.ManagementEndpointIp
+
+  SmbSharePath:
+    Description: "SMB share path (map as X: drive)"
+    Value: !GetAtt FsxStack.Outputs.SmbSharePath
+
+  FileSystemId:
+    Description: FSx for ONTAP File System ID
+    Value: !GetAtt FsxStack.Outputs.FileSystemId
+
+  # --- S3 Access Point ---
+  S3AccessPointAlias:
+    Description: S3 Access Point alias (use in aws s3 commands)
+    Value: !GetAtt S3ApStack.Outputs.S3AccessPointAlias
+
+  S3AccessPointArn:
+    Description: S3 Access Point ARN
+    Value: !GetAtt S3ApStack.Outputs.S3AccessPointArn
+
+  # --- AD ---
+  DomainInfo:
+    Description: AD domain name
+    Value: !Ref DomainName
+
+  DirectoryId:
+    Description: AWS Managed AD Directory ID
+    Value: !GetAtt AdStack.Outputs.DirectoryId
+
+  # --- Post-deployment ---
+  NextSteps:
+    Description: >
+      Post-deployment steps:
+      1. Wait 2-5 min for EC2 domain join
+      2. Run: ./scripts/setup_ontap.sh (Tamperproof Snapshot + initial snapshots)
+      3. Access EC2 via Fleet Manager
+      4. Run map_drives.ps1 on desktop
+      5. (Optional) Run: python3 ./scripts/setup_quick.py
+    Value: "See README.md for detailed post-deployment instructions"

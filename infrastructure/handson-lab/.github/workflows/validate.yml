@@ -1,0 +1,52 @@
+name: Validate CloudFormation Templates
+
+on:
+  push:
+    paths:
+      - 'infrastructure/handson-lab/cloudformation/**'
+      - 'infrastructure/handson-lab/lambda/**'
+  pull_request:
+    paths:
+      - 'infrastructure/handson-lab/cloudformation/**'
+      - 'infrastructure/handson-lab/lambda/**'
+
+permissions:
+  contents: read
+
+jobs:
+  cfn-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install cfn-lint
+        run: pip install cfn-lint
+
+      - name: Run cfn-lint
+        run: |
+          cfn-lint infrastructure/handson-lab/cloudformation/*.yaml
+
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint Lambda functions
+        run: |
+          ruff check infrastructure/handson-lab/lambda/
+          ruff format --check infrastructure/handson-lab/lambda/
