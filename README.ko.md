@@ -61,6 +61,7 @@ Amazon FSx for ONTAP의 S3 Access Points를 활용한 업종별 서버리스 자
 | [Customer Discovery Template](docs/customer-discovery-template.md) | 고객 히어링 시트 |
 | [Well-Architected Mapping](docs/well-architected-mapping.md) | AWS Well-Architected 6 Pillar 대응표 |
 | [Quick Start Guide](docs/quick-start.md) | 30분 내 첫 배포 가이드 |
+| 🏗️ 핸즈온 Lab 환경 구축 (S3 AP + Tamperproof + FlexClone) | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) |
 
 ## 아키텍처
 
@@ -234,6 +235,7 @@ EventBridge Scheduler (정기 실행)
 
 | 디렉터리 | 내용 |
 |:---|:---|
+| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | **핸즈온 Lab IaC** (CloudFormation 네스트 스택: VPC/AD/FSx/EC2/S3AP. S3 AP + Tamperproof Snapshot + FlexClone 복구를 개별적으로 검증 가능) |
 | [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy 이벤트 기반 파이프라인 |
 | [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/엣지 배포 패턴(벤더 비종속・CloudFront/서드파티, [CDN 비교](docs/cdn-comparison.en.md)) |
 
@@ -399,10 +401,12 @@ FSx for ONTAP S3 Access Points는 S3 API의 일부만 지원합니다
 | UC16 government-archives | S3AP | S3AP | 기존 패턴 | FOIA 편집 결과 / 메타데이터 |
 | UC17 smart-city-geospatial | S3AP | S3AP | 기존 패턴 | GIS 분석 결과 / 리스크 맵 |
 
-**로드맵**:
-- ~~Part B: UC1-5의 기존 `S3AccessPointOutputAlias` 패턴 문서화~~ ✅ 완료 (`docs/output-destination-patterns.md`)
-- UC6/7/8/13의 Athena 출력은 사양상 표준 S3 필수이지만, Bedrock 보고서 등 비 Athena 아티팩트는 `OutputDestination=FSXN_S3AP`로 write back할 수 있는 선택지를 추가 가능 (Pattern C → Pattern B 하이브리드, 향후 확장)
-- UC9/10/12의 AWS 실제 배포 검증 (단위 테스트는 완료, 배포는 미실시)
+**현재 상태 및 다음 단계**:
+
+전체 28 UC + SAP에서 `OutputDestination` 파라미터를 통한 출력 대상 전환이 가능합니다. UC6/7/8만 Athena 결과 출력은 AWS 사양상 표준 S3 고정이며, 기타 아티팩트(Bedrock 보고서, 메타데이터 등)는 `FSXN_S3AP`로 전환 가능합니다.
+
+남은 과제:
+- UC9/10/12/15/16/17의 AWS 실제 배포 검증 (단위 테스트 완료, UC11/14 검증 완료)
 ## 리전 선택 가이드
 
 본 패턴 컬렉션은 **ap-northeast-1(도쿄)**에서 검증을 실시했지만, 필요한 서비스가 이용 가능한 모든 AWS 리전에 배포할 수 있습니다.
@@ -968,6 +972,13 @@ fsxn-s3ap-serverless-patterns/
 ├── solutions/industry/manufacturing-analytics/           # UC3: 제조업
 ├── solutions/industry/media-vfx/                         # UC4: 미디어
 ├── solutions/industry/healthcare-dicom/                  # UC5: 의료
+├── infrastructure/                    # 인프라 템플릿
+│   ├── demo-ad-environment.yaml      # AD + EC2 테스트 환경 (WINDOWS S3 AP)
+│   └── handson-lab/                  # 핸즈온 Lab IaC (CloudFormation 네스트 스택)
+│       ├── cloudformation/           # 7 템플릿 (network/ad/iam/fsx/s3ap/ec2/main)
+│       ├── lambda/                   # Custom Resource (AD User / S3 AP)
+│       ├── scripts/                  # deploy / setup_ontap / cleanup / verify
+│       └── docs/                     # 가이드 / 비용 견적
 ├── scripts/                           # 검증・배포 스크립트
 │   ├── deploy_uc.sh                  # UC 배포 스크립트(범용)
 │   ├── verify_shared_modules.py      # 공통 모듈 AWS 환경 검증

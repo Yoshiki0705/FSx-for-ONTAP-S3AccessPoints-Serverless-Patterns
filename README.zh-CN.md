@@ -61,6 +61,7 @@
 | [Customer Discovery Template](docs/customer-discovery-template.md) | 客户访谈模板 |
 | [Well-Architected Mapping](docs/well-architected-mapping.md) | AWS Well-Architected 6 支柱对应表 |
 | [Quick Start Guide](docs/quick-start.md) | 30 分钟内首次部署指南 |
+| 🏗️ 动手实验 Lab 环境构建 (S3 AP + Tamperproof + FlexClone) | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) |
 
 ## 架构
 
@@ -234,6 +235,7 @@ EventBridge Scheduler (定期执行)
 
 | 目录 | 内容 |
 |:---|:---|
+| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | **动手实验 Lab IaC**（CloudFormation 嵌套堆栈: VPC/AD/FSx/EC2/S3AP。可单独验证 S3 AP + Tamperproof Snapshot + FlexClone 恢复） |
 | [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy 事件驱动管道 |
 | [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/边缘分发模式（厂商中立・CloudFront/第三方，[CDN 对比](docs/cdn-comparison.en.md)） |
 
@@ -397,10 +399,12 @@ FSx for ONTAP S3 Access Points 仅支持 S3 API 的一部分
 | UC16 government-archives | S3AP | S3AP | 现有模式 | FOIA 编辑结果 / 元数据 |
 | UC17 smart-city-geospatial | S3AP | S3AP | 现有模式 | GIS 分析结果 / 风险地图 |
 
-**路线图**:
-- ~~Part B: UC1-5 现有 `S3AccessPointOutputAlias` 模式的文档整理~~ ✅ 完成 (`docs/output-destination-patterns.md`)
-- UC6/7/8/13 的 Athena 输出在规格上需要标准 S3, 但 Bedrock 报告等非 Athena 工件可以通过 `OutputDestination=FSXN_S3AP` write back 的选项 (Pattern C → Pattern B 混合, 未来扩展)
-- UC9/10/12 的 AWS 实际部署验证 (单元测试已完成, 部署未实施)
+**当前状态与下一步**:
+
+全部 28 UC + SAP 均可通过 `OutputDestination` 参数切换输出目标。仅 UC6/7/8 的 Athena 结果输出受 AWS 规格限制固定为标准 S3，其他产出物（Bedrock 报告、元数据等）均可切换至 `FSXN_S3AP`。
+
+待办:
+- UC9/10/12/15/16/17 的 AWS 实际部署验证（单元测试已完成，UC11/14 已验证）
 ## 区域选择指南
 
 本模式集在 **ap-northeast-1（东京）** 进行了验证，但可以部署到任何所需服务可用的 AWS 区域。
@@ -966,6 +970,13 @@ fsxn-s3ap-serverless-patterns/
 ├── solutions/industry/manufacturing-analytics/           # UC3: 制造业
 ├── solutions/industry/media-vfx/                         # UC4: 媒体
 ├── solutions/industry/healthcare-dicom/                  # UC5: 医疗
+├── infrastructure/                    # 基础设施模板
+│   ├── demo-ad-environment.yaml      # AD + EC2 测试环境 (WINDOWS S3 AP)
+│   └── handson-lab/                  # 动手实验 Lab IaC (CloudFormation 嵌套堆栈)
+│       ├── cloudformation/           # 7 模板 (network/ad/iam/fsx/s3ap/ec2/main)
+│       ├── lambda/                   # Custom Resource (AD User / S3 AP)
+│       ├── scripts/                  # deploy / setup_ontap / cleanup / verify
+│       └── docs/                     # 指南 / 成本估算
 ├── scripts/                           # 验证与部署脚本
 │   ├── deploy_uc.sh                  # UC 部署脚本（通用）
 │   ├── verify_shared_modules.py      # 共享模块 AWS 环境验证

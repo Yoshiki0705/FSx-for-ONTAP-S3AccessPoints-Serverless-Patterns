@@ -61,6 +61,7 @@ Cada caso de uso es un template de CloudFormation independiente, con módulos co
 | [Customer Discovery Template](docs/customer-discovery-template.md) | Plantilla de entrevista al cliente |
 | [Well-Architected Mapping](docs/well-architected-mapping.md) | Mapeo AWS Well-Architected 6 pilares |
 | [Quick Start Guide](docs/quick-start.md) | Guía de primer despliegue en 30 minutos |
+| 🏗️ Entorno Lab práctico (S3 AP + Tamperproof + FlexClone) | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) |
 
 ## Arquitectura
 
@@ -234,6 +235,7 @@ EventBridge Scheduler (ejecución periódica)
 
 | Directorio | Contenido |
 |:---|:---|
+| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | **IaC Lab práctico** (pilas anidadas CloudFormation: VPC/AD/FSx/EC2/S3AP. Verificación individual de S3 AP + Tamperproof Snapshot + recuperación FlexClone) |
 | [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | Pipeline basado en eventos FPolicy |
 | [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | Patrón de entrega CDN/edge (neutral respecto al proveedor; CloudFront/terceros, [comparativa CDN](docs/cdn-comparison.en.md)) |
 
@@ -401,11 +403,12 @@ Los 28 UC se dividen en 3 patrones de salida:
 | UC16 government-archives | S3AP | S3AP | patrón existente | Redacción FOIA / metadatos |
 | UC17 smart-city-geospatial | S3AP | S3AP | patrón existente | Análisis SIG / mapas de riesgo |
 
-**Hoja de ruta**:
-- ~~Parte B: documentación del patrón `S3AccessPointOutputAlias` existente en UC1-5~~ ✅ Completado (`docs/output-destination-patterns.md`)
-- La salida Athena de UC6/7/8/13 debe permanecer en S3 estándar por especificación, pero los artefactos no-Athena (ej. informes Bedrock) podrían volverse seleccionables con `OutputDestination=FSXN_S3AP` como híbrido Pattern C → Pattern B (mejora futura)
-- Verificación de despliegue AWS para UC9/10/12 (pruebas unitarias completadas, despliegue pendiente)
-## Guía de selección de región
+**Estado actual y próximos pasos**:
+
+El parámetro `OutputDestination` está disponible en los 28 UC + SAP. Solo UC6/7/8: la salida de resultados Athena es fija en S3 estándar (especificación AWS), pero todas las demás salidas (informes Bedrock, metadatos, etc.) son conmutables a `FSXN_S3AP`.
+
+Pendiente:
+- Verificación de despliegue AWS para UC9/10/12/15/16/17 (pruebas unitarias completadas, UC11/14 verificados)
 
 Esta colección de patrones está verificada en **ap-northeast-1 (Tokio)**, pero puede desplegarse en cualquier región de AWS donde los servicios requeridos estén disponibles.
 
@@ -966,6 +969,13 @@ fsxn-s3ap-serverless-patterns/
 ├── solutions/industry/manufacturing-analytics/           # UC3: Manufactura
 ├── solutions/industry/media-vfx/                         # UC4: Medios
 ├── solutions/industry/healthcare-dicom/                  # UC5: Salud
+├── infrastructure/                    # Plantillas de infraestructura
+│   ├── demo-ad-environment.yaml      # Entorno de prueba AD + EC2 (WINDOWS S3 AP)
+│   └── handson-lab/                  # IaC Lab práctico (pilas anidadas CloudFormation)
+│       ├── cloudformation/           # 7 plantillas (network/ad/iam/fsx/s3ap/ec2/main)
+│       ├── lambda/                   # Custom Resources (AD User / S3 AP)
+│       ├── scripts/                  # deploy / setup_ontap / cleanup / verify
+│       └── docs/                     # Guía / estimación de costos
 ├── scripts/                           # Scripts de verificación y despliegue
 │   ├── deploy_uc.sh                  # Script de despliegue UC (genérico)
 │   ├── verify_shared_modules.py      # Verificación de módulos compartidos en entorno AWS
