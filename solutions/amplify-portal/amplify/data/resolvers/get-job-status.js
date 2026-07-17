@@ -31,8 +31,8 @@ export function response(ctx) {
   return {
     executionArn: body.executionArn,
     status: body.status,
-    startDate: body.startDate,
-    stopDate: body.stopDate || null,
+    startDate: body.startDate ? "" + body.startDate : null,
+    stopDate: body.stopDate ? "" + body.stopDate : null,
     output: body.output ? JSON.parse(body.output) : null,
   };
 }
