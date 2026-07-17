@@ -62,6 +62,7 @@
 | Directory | Contents |
 |:---|:---|
 | [`shared/`](shared/) | Common Python modules (S3ApHelper, OntapClient, observability) |
+| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | **Hands-on Lab IaC** (CloudFormation nested stacks: VPC/AD/FSx/EC2/S3AP. Verify S3 AP + Tamperproof Snapshot + FlexClone recovery individually) |
 | [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy event-driven pipeline |
 | [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/edge delivery pattern (vendor-neutral; CloudFront/third-party, [CDN comparison](docs/cdn-comparison.en.md)) |
 | [`docs/`](docs/) | Design guides, benchmarks, Partner assets (40+ documents) |
@@ -82,6 +83,7 @@
 | 🤝 Partner/SI | [`docs/partner-si-one-pager.en.md`](docs/partner-si-one-pager.en.md) |
 | 🏛️ Governance | [`docs/governance-checklist.md`](docs/governance-checklist.md) |
 | ⚡ Local testing | [`docs/local-testing-quick-start.md`](docs/local-testing-quick-start.md) |
+| 🏗️ Hands-on Lab Environment (S3 AP + Tamperproof + FlexClone) | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) |
 | 🪣 For S3 bucket users | [`docs/s3-bucket-user-guide.en.md`](docs/s3-bucket-user-guide.en.md) |
 | 🔌 For ONTAP admins | [`docs/ontap-integration-notes.en.md`](docs/ontap-integration-notes.en.md) |
 | 🎯 Pattern selection guide | [`docs/pattern-selection-guide.en.md`](docs/pattern-selection-guide.en.md) |
@@ -153,6 +155,52 @@ The articles explain the architectural design philosophy and trade-offs, while t
 | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Permission-aware RAG chatbot with FSx for ONTAP + Bedrock (CDK v2, Next.js, ECS) | Full implementation of this repo's FC3 (GenAI RAG) pattern with Web UI | <!-- allow:naming -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × Lakehouse platform integrations (Databricks, Snowflake, Athena, Glue, EMR) | S3 AP compatibility matrix, platform-specific validation, DataSync patterns |
 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP migration patterns | Post-migration data can be processed with this repo's S3 AP serverless patterns |
+
+### Repository Relationships
+
+```
+Permission-aware-RAG-FSxN-CDK (CDK v2)
+├── RAG app (Next.js + Bedrock + OpenSearch)
+├── Document read via FSx for ONTAP S3 AP
+├── NTFS ACL permission filtering
+└── Production-ready Web UI
+        │
+        │ S3 AP, ONTAP REST API, Bedrock
+        ▼
+FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns [this repo]
+├── 42 patterns (28 UC + 7 FC + 2 GenAI + SAP + HA + ED + Edge)
+├── CloudFormation/SAM templates (independently deployable)
+├── shared/ modules (S3ApHelper, OntapClient, Observability)
+├── Benchmarks, Governance, Partner/SI assets
+└── Hands-on Lab IaC (infrastructure/handson-lab/)
+        │                       │
+        │ FSx for ONTAP, EC2    │ S3 AP, DataSync, Lakehouse
+        │                       ▼
+        │               fsxn-lakehouse-integrations
+        │               ├── Lakehouse (Databricks, Snowflake, etc.)
+        │               ├── S3 AP Compatibility Matrix (AWS confirmed)
+        │               └── DataSync patterns
+        ▼
+vmware-migration-ec2-ontap
+├── VMware -> EC2 + FSx for ONTAP migration
+├── S3 AP patterns applicable to migrated data
+└── On-prem NAS -> Cloud-native AI processing path
+```
+
+### Usage Guide
+
+| Use Case | Recommended Repository |
+|----------|----------------------|
+| Want to build a permission-aware RAG chatbot | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | <!-- allow:naming -->
+| Want to integrate Lakehouse platforms (Databricks/Snowflake/Athena/Glue/EMR) with FSx for ONTAP | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) |
+| Want to migrate VMware to EC2 + FSx for ONTAP | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) |
+| Want to learn S3 AP design patterns | This repo |
+| Want to PoC industry-specific serverless automation | This repo (`solutions/industry/`) |
+| Want to build GenAI / Bedrock KB / agentic AI | This repo (`solutions/genai/`) |
+| Want to build an FPolicy event-driven pipeline | This repo (`solutions/event-driven/`) |
+| Want to explore FlexCache × serverless designs | This repo (`solutions/flexcache/`) |
+| Want to implement AI monitoring for HA clusters (LifeKeeper) | This repo (`solutions/ha/`) |
+| Want to build S3 AP + Tamperproof Snapshot hands-on environment | This repo ([`infrastructure/handson-lab/`](infrastructure/handson-lab/)) |
 
 ## FSx for ONTAP S3 Access Points — Constraints & Validated Patterns
 
@@ -832,10 +880,13 @@ The 28 UCs fall into three output patterns:
 | UC16 government-archives | S3AP | S3AP | existing pattern | FOIA redaction / metadata |
 | UC17 smart-city-geospatial | S3AP | S3AP | existing pattern | GIS analysis / risk maps |
 
-**Roadmap**:
-- ~~Part B: Documentation of existing `S3AccessPointOutputAlias` pattern in UC1-5~~ ✅ Complete (`docs/output-destination-patterns.md`)
-- UC6/7/8/13 Athena output must stay on standard S3 per spec, but non-Athena artifacts (e.g., Bedrock reports) could become `OutputDestination=FSXN_S3AP` selectable as a Pattern C → Pattern B hybrid (future enhancement)
-- UC9/10/12 AWS deployment verification (unit tests complete, deploy pending)
+**Current Status & Next Steps**:
+
+OutputDestination parameter is available across all 28 UC + SAP. UC6/7/8 only: Athena result output is fixed to standard S3 (AWS specification), but all other outputs (Bedrock reports, metadata, etc.) are switchable to `FSXN_S3AP`.
+
+Remaining:
+- AWS deployment verification for UC9/10/12/15/16/17 (unit tests completed, UC11/14 verified)
+
 ## Region Selection Guide
 
 This pattern collection is verified in **ap-northeast-1 (Tokyo)**, but can be deployed to any AWS region where the required services are available.
@@ -1410,6 +1461,13 @@ fsxn-s3ap-serverless-patterns/
 ├── solutions/industry/manufacturing-analytics/           # UC3: Manufacturing
 ├── solutions/industry/media-vfx/                         # UC4: Media
 ├── solutions/industry/healthcare-dicom/                  # UC5: Healthcare
+├── infrastructure/                    # Infrastructure templates
+│   ├── demo-ad-environment.yaml      # AD + EC2 test environment (WINDOWS S3 AP)
+│   └── handson-lab/                  # Hands-on Lab IaC (CloudFormation nested stacks)
+│       ├── cloudformation/           # 7 templates (network/ad/iam/fsx/s3ap/ec2/main)
+│       ├── lambda/                   # Custom Resources (AD User / S3 AP)
+│       ├── scripts/                  # deploy / setup_ontap / cleanup / verify
+│       └── docs/                     # Guide / cost estimate
 ├── scripts/                           # Verification & deployment scripts
 │   ├── deploy_uc.sh                  # UC deployment script (generic)
 │   ├── verify_shared_modules.py      # Shared module AWS environment verification
