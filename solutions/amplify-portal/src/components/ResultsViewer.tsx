@@ -112,10 +112,10 @@ export function ResultsViewer({ executionArn }: ResultsViewerProps) {
             <dd className="arn">{result.executionArn}</dd>
 
             <dt>Started</dt>
-            <dd>{result.startDate ? new Date(result.startDate).toLocaleString() : "-"}</dd>
+            <dd>{result.startDate ? new Date(parseFloat(result.startDate) * 1000).toLocaleString() : "-"}</dd>
 
             <dt>Completed</dt>
-            <dd>{result.stopDate ? new Date(result.stopDate).toLocaleString() : "-"}</dd>
+            <dd>{result.stopDate ? new Date(parseFloat(result.stopDate) * 1000).toLocaleString() : "-"}</dd>
 
             {dataClassification && (
               <>
