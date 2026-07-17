@@ -1,0 +1,89 @@
+{
+  "Comment": "OPS4: Snapshot Lifecycle Workflow - Collect → Analyze → Report",
+  "StartAt": "CollectSnapshots",
+  "States": {
+    "CollectSnapshots": {
+      "Type": "Task",
+      "Resource": "${CollectFunctionArn}",
+      "ResultPath": "$.collect_output",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed", "Lambda.ServiceException"],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "CollectFailed"
+        }
+      ],
+      "Next": "AnalyzeRetention"
+    },
+    "AnalyzeRetention": {
+      "Type": "Task",
+      "Resource": "${AnalyzeFunctionArn}",
+      "InputPath": "$.collect_output",
+      "ResultPath": "$.analyze_output",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "AnalyzeFailed"
+        }
+      ],
+      "Next": "GenerateAuditReport"
+    },
+    "GenerateAuditReport": {
+      "Type": "Task",
+      "Resource": "${ReportFunctionArn}",
+      "InputPath": "$.analyze_output",
+      "ResultPath": "$.report_output",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ReportFailed"
+        }
+      ],
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Succeed"
+    },
+    "CollectFailed": {
+      "Type": "Fail",
+      "Error": "CollectSnapshotsFailed",
+      "Cause": "Failed to collect snapshots from ONTAP REST API"
+    },
+    "AnalyzeFailed": {
+      "Type": "Fail",
+      "Error": "AnalyzeRetentionFailed",
+      "Cause": "Failed to analyze snapshot retention compliance"
+    },
+    "ReportFailed": {
+      "Type": "Fail",
+      "Error": "GenerateAuditReportFailed",
+      "Cause": "Failed to generate audit report or send alert"
+    }
+  }
+}

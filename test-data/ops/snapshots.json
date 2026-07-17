@@ -1,0 +1,65 @@
+[
+  {
+    "volume_name": "vol_production_data",
+    "volume_uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "snapshot_name": "daily.2026-07-12_0010",
+    "snapshot_uuid": "snap-001",
+    "create_time": "2026-07-12T00:10:00+09:00",
+    "size_bytes": 1073741824,
+    "age_days": 1
+  },
+  {
+    "volume_name": "vol_production_data",
+    "volume_uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "snapshot_name": "daily.2026-07-11_0010",
+    "snapshot_uuid": "snap-002",
+    "create_time": "2026-07-11T00:10:00+09:00",
+    "size_bytes": 1073741824,
+    "age_days": 2
+  },
+  {
+    "volume_name": "vol_production_data",
+    "volume_uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "snapshot_name": "weekly.2026-07-06_0015",
+    "snapshot_uuid": "snap-003",
+    "create_time": "2026-07-06T00:15:00+09:00",
+    "size_bytes": 5368709120,
+    "age_days": 7
+  },
+  {
+    "volume_name": "vol_production_data",
+    "volume_uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "snapshot_name": "weekly.2026-03-01_0015",
+    "snapshot_uuid": "snap-004",
+    "create_time": "2026-03-01T00:15:00+09:00",
+    "size_bytes": 10737418240,
+    "age_days": 134
+  },
+  {
+    "volume_name": "vol_production_data",
+    "volume_uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "snapshot_name": "manual_before_migration",
+    "snapshot_uuid": "snap-005",
+    "create_time": "2025-12-15T10:30:00+09:00",
+    "size_bytes": 21474836480,
+    "age_days": 210
+  },
+  {
+    "volume_name": "vol_archive_2023",
+    "volume_uuid": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "snapshot_name": "daily.2026-07-12_0010",
+    "snapshot_uuid": "snap-006",
+    "create_time": "2026-07-12T00:10:00+09:00",
+    "size_bytes": 2147483648,
+    "age_days": 1
+  },
+  {
+    "volume_name": "vol_archive_2023",
+    "volume_uuid": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "snapshot_name": "yearly_2024",
+    "snapshot_uuid": "snap-007",
+    "create_time": "2025-01-01T00:00:00+09:00",
+    "size_bytes": 53687091200,
+    "age_days": 559
+  }
+]

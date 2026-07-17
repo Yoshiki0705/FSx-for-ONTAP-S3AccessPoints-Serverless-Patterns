@@ -1,0 +1,66 @@
+# OPS1: Capacity Rightsizing - SAM deployment configuration
+# Copy this file to samconfig.toml and fill in your values.
+#
+# パラメータの取得方法:
+#   FileSystemIds:
+#     aws fsx describe-file-systems --query "FileSystems[?FileSystemType=='ONTAP'].FileSystemId" --output text
+#
+#   OntapSecretArn:
+#     aws secretsmanager list-secrets --query "SecretList[?contains(Name,'fsxn') || contains(Name,'ontap')].ARN" --output text
+#     シークレットが未作成の場合:
+#       aws secretsmanager create-secret --name fsxn/admin-credentials \
+#         --secret-string '{"username":"fsxadmin","password":"<your-password>"}'
+#
+#   VpcSubnetIds:
+#     aws fsx describe-file-systems --file-system-ids <FS_ID> \
+#       --query "FileSystems[0].SubnetIds" --output text
+#
+#   VpcSecurityGroupIds:
+#     FSx for ONTAP 管理 IP (TCP 443) へのアウトバウンドを許可する SG を指定。
+#     VPC の default SG で通常は OK:
+#       aws ec2 describe-security-groups --filters "Name=vpc-id,Values=<VPC_ID>" "Name=group-name,Values=default" \
+#         --query "SecurityGroups[0].GroupId" --output text
+#
+#   S3AccessPointAlias (FSXN_S3AP 利用時のみ):
+#     python3 -c "import boto3,json; print(json.dumps(boto3.client('fsx').describe_s3_access_point_attachments()['S3AccessPointAttachments'], indent=2, default=str))"
+#
+# デプロイ前に必ず ./build.sh を実行してください (shared/ モジュールを Lambda にコピー)。
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-ops-capacity-rightsizing"
+resolve_s3 = true
+s3_prefix = "fsxn-ops-capacity-rightsizing"
+region = "ap-northeast-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+
+parameter_overrides = [
+    "FileSystemIds=fs-0123456789abcdef0",
+    "OntapSecretArn=arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsxn/admin-XXXXXX",
+    "AutomationLevel=0",
+    "ThresholdPercent=80",
+    "LowUtilizationThresholdPercent=20",
+    "DemoMode=false",
+    "NotificationEmail=ops-team@example.com",
+    "ScheduleExpression=rate(1 day)",
+    "EnableBedrockSummary=true",
+    "ReportFormat=BOTH",
+    "LogRetentionInDays=90",
+    "VpcSubnetIds=subnet-0123456789abcdef0",
+    "VpcSecurityGroupIds=sg-0123456789abcdef0",
+    "OutputDestination=STANDARD_S3",
+    "S3AccessPointAlias=",
+]
+
+# --- DemoMode deployment (no FSx for ONTAP required) ---
+# ./build.sh && sam build && sam deploy --parameter-overrides \
+#   DemoMode=true FileSystemIds=fs-demo01 EnableBedrockSummary=false \
+#   VpcSubnetIds= VpcSecurityGroupIds=
+
+# --- FSXN_S3AP output mode ---
+# sam deploy --parameter-overrides \
+#   OutputDestination=FSXN_S3AP \
+#   S3AccessPointAlias=my-ap-xxxxxxxxxxxx-s3alias \
+#   ...other params...

@@ -1,0 +1,25 @@
+# OPS4: Snapshot Lifecycle - SAM deployment configuration
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "fsxn-ops-snapshot-lifecycle"
+resolve_s3 = true
+s3_prefix = "fsxn-ops-snapshot-lifecycle"
+region = "ap-northeast-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+
+parameter_overrides = [
+    "FileSystemIds=fs-0123456789abcdef0",
+    "OntapSecretArn=arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsxn/admin-XXXXXX",
+    "AutomationLevel=1",
+    "RetentionPolicy=CUSTOM",
+    "MaxRetentionDays=90",
+    "MinRetentionDays=7",
+    "SnapshotReserveWarningPercent=80",
+    "NotificationEmail=ops-team@example.com",
+    "ScheduleExpression=rate(1 day)",
+    "VpcSubnetIds=subnet-0123456789abcdef0,subnet-0987654321fedcba0",
+    "VpcSecurityGroupIds=sg-0123456789abcdef0",
+]

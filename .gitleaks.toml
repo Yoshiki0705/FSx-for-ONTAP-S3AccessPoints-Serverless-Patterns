@@ -141,4 +141,6 @@ paths = [
   '''cdk\.context\.json\..*$''',
   '''test-jwt.*\.js$''',
   '''lambda/permissions/''',
+  '''parameters/.*\.example\.json$''',
+  '''parameters/dev\.json$''',
 ]

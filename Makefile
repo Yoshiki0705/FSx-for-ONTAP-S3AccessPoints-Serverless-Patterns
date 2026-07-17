@@ -41,8 +41,9 @@ help:
 	@echo "  make test-uc6      — Run UC6 (semiconductor-eda) tests"
 	@echo "  make test-sap      — Run SAP tests"
 	@echo "  make test-fc1      — Run FC1 (flexcache-anycast-dr) tests"
+	@echo "  make test-ops1     — Run OPS1 (capacity-rightsizing) tests"
 	@echo "  make deploy-uc1    — Deploy UC1 (requires samconfig.toml)"
-	@echo "  make build-uc1     — Build UC1"
+	@echo "  make deploy-ops1   — Deploy OPS1 (requires samconfig.toml)"
 
 # ============================================================
 # Setup
@@ -107,6 +108,12 @@ test-content-edge-delivery:
 test-media-ivs-vod-publishing:
 	$(PYTHON) -m pytest solutions/edge/media-ivs-vod-publishing/tests/ -v
 
+test-media-mediaconvert-vod-publishing:
+	$(PYTHON) -m pytest solutions/edge/media-mediaconvert-vod-publishing/tests/ -v
+
+test-genai-kb-selfservice-curation:
+	$(PYTHON) -m pytest solutions/genai/kb-selfservice-curation/tests/ -v
+
 test-ha-lifekeeper:
 	$(PYTHON) -m pytest solutions/ha/lifekeeper-monitoring/tests/ -v
 
@@ -116,9 +123,9 @@ test-ha-lifekeeper:
 lint: lint-python lint-cfn
 
 lint-python:
-	ruff check shared/ solutions/ \
+	ruff check shared/ solutions/ operations/ \
 		--config pyproject.toml 2>/dev/null || \
-	ruff check shared/ solutions/
+	ruff check shared/ solutions/ operations/
 
 lint-cfn:
 	cfn-lint solutions/industry/legal-compliance/template.yaml \
@@ -127,13 +134,16 @@ lint-cfn:
 		solutions/flexcache/anycast-dr/template.yaml \
 		solutions/edge/content-delivery/template.yaml \
 		solutions/edge/media-ivs-vod-publishing/template.yaml \
-		solutions/ha/lifekeeper-monitoring/template.yaml
+		solutions/edge/media-mediaconvert-vod-publishing/template.yaml \
+		solutions/genai/kb-selfservice-curation/template.yaml \
+		solutions/ha/lifekeeper-monitoring/template.yaml \
+		operations/capacity-rightsizing/template.yaml
 
 # ============================================================
 # Security
 # ============================================================
 security:
-	bandit -r shared/ solutions/ \
+	bandit -r shared/ solutions/ operations/ \
 		-ll -c .bandit
 
 # ============================================================
@@ -185,3 +195,46 @@ build-uc12:
 
 deploy-uc12:
 	cd solutions/industry/logistics-ocr && sam deploy --config-file samconfig.toml
+
+# ============================================================
+# Operations Patterns (operations/)
+# ============================================================
+test-ops1:
+	$(PYTHON) -m pytest operations/capacity-rightsizing/tests/ -v
+
+test-ops4:
+	$(PYTHON) -m pytest operations/snapshot-lifecycle/tests/ -v
+
+test-ops3:
+	$(PYTHON) -m pytest operations/tiering-optimizer/tests/ -v
+
+test-ops2:
+	$(PYTHON) -m pytest operations/storage-efficiency/tests/ -v
+
+test-ops5:
+	$(PYTHON) -m pytest operations/cost-optimization/tests/ -v
+
+test-ops6:
+	$(PYTHON) -m pytest operations/qos-monitoring/tests/ -v
+
+test-ops:
+	$(PYTHON) -m pytest operations/ --tb=short -q
+
+lint-ops:
+	ruff check operations/ shared/ontap_metrics.py shared/demo_data_loader.py shared/schemas/ops_events.py \
+		--config pyproject.toml 2>/dev/null || \
+	ruff check operations/ shared/ontap_metrics.py shared/demo_data_loader.py shared/schemas/ops_events.py
+
+lint-cfn-ops:
+	cfn-lint operations/capacity-rightsizing/template.yaml \
+		operations/snapshot-lifecycle/template.yaml \
+		operations/tiering-optimizer/template.yaml \
+		operations/storage-efficiency/template.yaml \
+		operations/cost-optimization/template.yaml \
+		operations/qos-monitoring/template.yaml
+
+build-ops1:
+	cd operations/capacity-rightsizing && sam build
+
+deploy-ops1:
+	cd operations/capacity-rightsizing && sam deploy --config-file samconfig.toml
