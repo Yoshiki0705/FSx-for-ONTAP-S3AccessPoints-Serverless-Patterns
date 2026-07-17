@@ -247,40 +247,32 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 ### リポジトリ間の関係
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  Permission-aware-RAG-FSxN-CDK (CDK v2)                          │ <!-- allow:naming -->
-│  - 完全な RAG アプリ (Next.js + Bedrock + OpenSearch)            │
-│  - FSx for ONTAP S3 AP 経由のドキュメント読み取り                │
-│  - NTFS ACL ベースの権限フィルタリング                           │
-│  - 本番デプロイ可能な Web UI                                     │
-└──────────────────────────────────┬───────────────────────────────┘
-                                   │ 共通技術: S3 AP, ONTAP REST API, Bedrock
-                                   │
-┌──────────────────────────────────▼───────────────────────────────┐
-│  FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns (本リポジトリ) │
-│  - 42 パターン (28 UC + 7 FC + 2 GenAI + SAP + HA + ED + Edge)  │
-│  - CloudFormation/SAM テンプレート (独立デプロイ可能)             │
-│  - shared/ モジュール (S3ApHelper, OntapClient, 可観測性)        │
-│  - ベンチマーク、ガバナンス、Partner/SI 資料                     │
-│  - ハンズオン Lab IaC (infrastructure/handson-lab/)              │
-└──────────┬───────────────────────▼───────────────────────────────┘
-           │                       │ 共通技術: S3 AP, DataSync, Lakehouse
-           │                       │
-           │  ┌────────────────────▼───────────────────────────────┐
-           │  │  fsxn-lakehouse-integrations                       │
-           │  │  - Lakehouse 統合 (Databricks, Snowflake 等)       │
-           │  │  - S3 AP 互換性マトリクス (AWS Support 確認済み)   │
-           │  │  - DataSync 連携パターン                           │
-           │  └────────────────────────────────────────────────────┘
-           │
-           │ 共通技術: FSx for ONTAP, EC2, 移行ツール
-           │
-┌──────────▼───────────────────────────────────────────────────────┐
-│  vmware-migration-ec2-ontap                                      │
-│  - VMware → EC2 + FSx for ONTAP マイグレーション                 │
-│  - 移行後データに S3 AP パターンを適用可能                       │
-│  - オンプレ NAS → クラウドネイティブ AI 処理への導線             │
-└──────────────────────────────────────────────────────────────────┘
+Permission-aware-RAG-FSxN-CDK (CDK v2)              <!-- allow:naming -->
+├── RAG app (Next.js + Bedrock + OpenSearch)
+├── Document read via FSx for ONTAP S3 AP
+├── NTFS ACL permission filtering
+└── Production-ready Web UI
+        │
+        │ S3 AP, ONTAP REST API, Bedrock
+        ▼
+FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns [this repo]
+├── 42 patterns (28 UC + 7 FC + 2 GenAI + SAP + HA + ED + Edge)
+├── CloudFormation/SAM templates (independently deployable)
+├── shared/ modules (S3ApHelper, OntapClient, Observability)
+├── Benchmarks, Governance, Partner/SI assets
+└── Hands-on Lab IaC (infrastructure/handson-lab/)
+        │                       │
+        │ FSx for ONTAP, EC2    │ S3 AP, DataSync, Lakehouse
+        │                       ▼
+        │               fsxn-lakehouse-integrations
+        │               ├── Lakehouse (Databricks, Snowflake, etc.)
+        │               ├── S3 AP Compatibility Matrix (AWS confirmed)
+        │               └── DataSync patterns
+        ▼
+vmware-migration-ec2-ontap
+├── VMware -> EC2 + FSx for ONTAP migration
+├── S3 AP patterns applicable to migrated data
+└── On-prem NAS -> Cloud-native AI processing path
 ```
 
 ### 使い分けガイド
