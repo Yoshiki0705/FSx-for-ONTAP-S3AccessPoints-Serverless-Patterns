@@ -111,6 +111,20 @@ export AMPLIFY_PORTAL_SFN_ARN=arn:aws:states:ap-northeast-1:123456789012:stateMa
 
 ## Deployment Guide
 
+### Quick Demo Path (Fastest)
+
+```bash
+make install
+cp amplify/portal-config.example.ts amplify/portal-config.ts
+make sfn-test-create   # Creates test SFn — note the ARN in the output
+# Edit portal-config.ts: paste the ARN into stateMachineArn
+# Edit amplify/data/resolvers/start-processing.js: paste the ARN (line 6)
+make sandbox
+make dev
+```
+
+> **Two-place ARN sync**: The state machine ARN must be set in both `portal-config.ts` (for IAM scoping) and `start-processing.js` (for runtime invocation). This is a known limitation of APPSYNC_JS resolvers which cannot read CDK parameters at runtime. See [Known Pitfalls #6](#6-two-place-arn-configuration).
+
 ### DemoMode (No FSx for ONTAP)
 
 For development without FSx for ONTAP:
@@ -128,6 +142,8 @@ For development without FSx for ONTAP:
 4. Redeploy: `make sandbox`
 
 > **Note**: The ListFiles Lambda runs VPC-external (no VpcConfig). This is intentional — Internet-origin S3 APs are accessible without VPC placement. If using a VPC-origin AP, you must add VPC configuration to the Lambda.
+
+> **Throughput note**: S3 AP operations share FSx for ONTAP throughput capacity with NFS/SMB workloads. For concurrent user planning, see [Throughput and Capacity Planning](../../docs/file-portal-amplify-gen2.md#スループットと容量計画).
 
 ### Connecting to a Deployed UC Pattern
 
@@ -188,6 +204,17 @@ aws cognito-idp admin-confirm-sign-up \
   --username "test@example.com" \
   --region <REGION>
 ```
+
+### 6. Two-Place ARN Configuration
+
+The Step Functions state machine ARN must be set in **two places**:
+
+1. `amplify/portal-config.ts` → `stateMachineArn` (used for IAM policy scoping in CDK)
+2. `amplify/data/resolvers/start-processing.js` → `const stateMachineArn = "..."` (used at runtime by the AppSync resolver)
+
+This duplication exists because APPSYNC_JS resolvers cannot read CDK parameters or environment variables at runtime. They are static JavaScript evaluated by AppSync's built-in runtime.
+
+**Forgetting to update one of the two** is the most common deployment issue.
 
 ---
 
@@ -283,9 +310,15 @@ Uncomment the SAML or OIDC section in `amplify/auth/resource.ts` for enterprise 
 
 ### IAM Least Privilege
 
+> ⚠️ **Security Warning**: The default `stateMachineResourceScope: "*"` grants the AppSync data source permission to invoke **any** state machine in the account. This is acceptable for personal sandbox only. For any shared or production environment, restrict to a specific ARN pattern.
+
 In `portal-config.ts`, restrict:
-- `stateMachineResourceScope` → specific state machine ARN
+- `stateMachineResourceScope` → specific state machine ARN or pattern (e.g., `"arn:aws:states:ap-northeast-1:123456789012:stateMachine:uc*"`)
 - `s3ApResourceArns` → specific AP ARN
+
+### Audit Trail (CloudTrail)
+
+When the portal triggers Step Functions, CloudTrail records the **AppSync service role** as the caller — not the end user. For audit traceability, the `userId` field is embedded in the Step Functions execution input by the `start-processing.js` resolver. Query the execution history to map actions back to users.
 
 ### Hosting
 
