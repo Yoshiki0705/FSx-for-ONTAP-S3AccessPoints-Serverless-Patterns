@@ -867,14 +867,14 @@ The 28 UCs fall into three output patterns:
 | UC3 manufacturing-analytics | S3AP | S3AP (existing) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Inspection results / anomaly detection |
 | UC4 media-vfx | S3AP | S3AP (existing) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Render metadata |
 | UC5 healthcare-dicom | S3AP | S3AP (existing) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | DICOM metadata / de-identification |
-| UC6 semiconductor-eda | S3AP | **Standard S3** | ⚠️ Not implemented | Bedrock/Athena results (Athena requires standard S3 per spec) |
-| UC7 genomics-pipeline | S3AP | **Standard S3** | ⚠️ Not implemented | Glue/Athena results (Athena requires standard S3 per spec) |
-| UC8 energy-seismic | S3AP | **Standard S3** | ⚠️ Not implemented | Glue/Athena results (Athena requires standard S3 per spec) |
+| UC6 semiconductor-eda | S3AP | **Selectable (Hybrid)** | ✅ `OutputDestination` | Bedrock reports/metadata → switchable, Athena DRC results → standard S3 only (AWS spec) |
+| UC7 genomics-pipeline | S3AP | **Selectable (Hybrid)** | ✅ `OutputDestination` | QC/Variant/Summary → switchable, Athena results → standard S3 only (AWS spec) |
+| UC8 energy-seismic | S3AP | **Selectable (Hybrid)** | ✅ `OutputDestination` | Metadata/anomaly/compliance report → switchable, Athena → standard S3 only |
 | UC9 autonomous-driving | S3AP | **Selectable** 🆕 | ✅ `OutputDestination` | ADAS analysis results |
 | UC10 construction-bim | S3AP | **Selectable** 🆕 | ✅ `OutputDestination` | BIM metadata / safety compliance reports |
 | **UC11 retail-catalog** | S3AP | **Selectable** | ✅ `OutputDestination` | AWS-verified 2026-05-10 |
 | UC12 logistics-ocr | S3AP | **Selectable** 🆕 | ✅ `OutputDestination` | Delivery waybill OCR |
-| UC13 education-research | S3AP | **Standard S3** | ⚠️ Not implemented | Includes Athena results (Athena requires standard S3 per spec) |
+| UC13 education-research | S3AP | **Selectable** | ✅ `OutputDestination` | OCR/classification/citation/metadata → all switchable |
 | **UC14 insurance-claims** | S3AP | **Selectable** | ✅ `OutputDestination` | AWS-verified 2026-05-10 |
 | UC15 defense-satellite | S3AP | S3AP | existing pattern | Object detection / change detection |
 | UC16 government-archives | S3AP | S3AP | existing pattern | FOIA redaction / metadata |

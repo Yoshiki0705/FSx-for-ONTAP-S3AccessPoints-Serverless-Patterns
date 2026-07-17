@@ -392,14 +392,14 @@ Die 28 UCs teilen sich in 3 Ausgabe-Patterns auf:
 | UC3 manufacturing-analytics | S3AP | S3AP (bestehend) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Inspektionsergebnisse / Anomalieerkennung |
 | UC4 media-vfx | S3AP | S3AP (bestehend) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Rendering-Metadaten |
 | UC5 healthcare-dicom | S3AP | S3AP (bestehend) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | DICOM-Metadaten / Anonymisierung |
-| UC6 semiconductor-eda | S3AP | **Standard S3** | ⚠️ Nicht implementiert | Bedrock/Athena-Ergebnisse (Athena erfordert Standard-S3 per Spezifikation) |
-| UC7 genomics-pipeline | S3AP | **Standard S3** | ⚠️ Nicht implementiert | Glue/Athena-Ergebnisse (Athena erfordert Standard-S3 per Spezifikation) |
-| UC8 energy-seismic | S3AP | **Standard S3** | ⚠️ Nicht implementiert | Glue/Athena-Ergebnisse (Athena erfordert Standard-S3 per Spezifikation) |
+| UC6 semiconductor-eda | S3AP | **Wählbar (Hybrid)** | ✅ `OutputDestination` | Bedrock-Berichte/Metadaten → umschaltbar, Athena DRC → Standard-S3 (AWS-Spezifikation) |
+| UC7 genomics-pipeline | S3AP | **Wählbar (Hybrid)** | ✅ `OutputDestination` | QC/Variant/Summary → umschaltbar, Athena → Standard-S3 (AWS-Spezifikation) |
+| UC8 energy-seismic | S3AP | **Wählbar (Hybrid)** | ✅ `OutputDestination` | Metadaten/Anomalie/Compliance → umschaltbar, Athena → Standard-S3 |
 | UC9 autonomous-driving | S3AP | **Auswählbar** 🆕 | ✅ `OutputDestination` | ADAS-Analyseergebnisse |
 | UC10 construction-bim | S3AP | **Auswählbar** 🆕 | ✅ `OutputDestination` | BIM-Metadaten / Sicherheits-Compliance-Berichte |
 | **UC11 retail-catalog** | S3AP | **Auswählbar** | ✅ `OutputDestination` | AWS-verifiziert 2026-05-10 |
 | UC12 logistics-ocr | S3AP | **Auswählbar** 🆕 | ✅ `OutputDestination` | Lieferschein-OCR |
-| UC13 education-research | S3AP | **Standard S3** | ⚠️ Nicht implementiert | Enthält Athena-Ergebnisse (Athena erfordert Standard-S3 per Spezifikation) |
+| UC13 education-research | S3AP | **Wählbar** | ✅ `OutputDestination` | OCR/Klassifikation/Zitationsanalyse/Metadaten → alle umschaltbar |
 | **UC14 insurance-claims** | S3AP | **Auswählbar** | ✅ `OutputDestination` | AWS-verifiziert 2026-05-10 |
 | UC15 defense-satellite | S3AP | S3AP | bestehendes Pattern | Objekterkennung / Änderungserkennung |
 | UC16 government-archives | S3AP | S3AP | bestehendes Pattern | FOIA-Schwärzung / Metadaten |
