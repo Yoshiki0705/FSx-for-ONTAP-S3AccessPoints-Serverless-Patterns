@@ -17,7 +17,7 @@ Amazon S3 標準バケットを普段使用している方が、FSx for ONTAP S3
 | Object Lock (WORM) | ✅ Supported | ❌ Not supported (代替: SnapLock) |
 | Lifecycle policies | ✅ Supported | ❌ Not supported (代替: Snapshot/SnapMirror) |
 | S3 Event Notifications | ✅ Supported | ❌ Not supported (代替: FPolicy) |
-| Presigned URLs | ✅ Supported | ❌ Not supported (docs) |
+| Presigned URLs | ✅ Supported | ⚠️ Works but listed as "Not supported" (docs) |
 | S3 Replication | ✅ Supported | ❌ Not supported (代替: SnapMirror) |
 | File protocol access (NFS/SMB) | ❌ | ✅ Alongside S3 API |
 | Dual-layer authorization | IAM only | IAM + S3 AP policy + ONTAP file identity |
@@ -145,7 +145,7 @@ File-system:    FSx CloudWatch metrics, ONTAP REST API, FPolicy audit logs
 | Lifecycle は使えますか？ | **いいえ**。Snapshot/SnapMirror/auto-tiering を使用 |
 | Versioning は使えますか？ | **いいえ**。ONTAP Snapshot が代替 |
 | Object Lock は使えますか？ | **いいえ**。SnapLock (Compliance/Enterprise) が代替 |
-| Presigned URL は使えますか？ | **ドキュメント上 Not supported** |
+| Presigned URL は使えますか？ | **動作する**（ドキュメント上は Not supported だが、GetObject の署名付きリクエストとして成功する。ただし本番依存は AWS が非推奨） |
 | NFS/SMB からもアクセスできますか？ | **はい**。同じデータに並行アクセス可能 |
 | データレイクとして使うべきですか？ | **通常 No**。Integration boundary として使い、分析出力は標準 S3 へ |
 | S3 Event Notifications は使えますか？ | **いいえ**。FPolicy または EventBridge Scheduler を使用 |
