@@ -28,7 +28,7 @@ CDN 統合の設計は、すべて以下の S3 AP の仕様から導かれます
 | **Block Public Access 強制** | S3 AP は BPA がデフォルトで有効、かつ無効化不可 | 認証なしのパブリックオリジンとして使えない。オリジン認証が必須 |
 | **オリジン認証は SigV4（IAM）** | リクエストは IAM/Access Point policy で評価 | CDN はオリジン取得時に AWS SigV4 署名が必要 |
 | **二段階認可（AWS 側 + ONTAP 側）** | IAM 認可の後、AP に紐づく ONTAP ファイルシステム ID（UNIX UID / Windows AD）でも認可 | 配信対象は ONTAP 側 ID で読める範囲に限定される |
-| **Presigned URL 非対応** | S3 Presigned URL は公式に未サポート | 視聴者向けトークン認証に S3 Presigned URL を使えない。CDN ネイティブのトークン機構を使う |
+| **Presigned URL（ドキュメント上 Not supported だが動作する）** | Presigned URL は実際には動作する（GetObject の署名付きリクエスト）が、AWS は本番依存を非推奨。[詳細](./s3ap-compatibility-notes.md#presigned-url-support) | 視聴者向けトークン認証に S3 Presigned URL を使用可能だが本番保証なし。CDN ネイティブのトークン機構も選択肢 |
 | **NetworkOrigin（Internet / VPC、作成後変更不可）** | CDN は AWS マネージド/外部網からアクセス | CDN 連携には **Internet origin** が必要。VPC origin はクラウド外 CDN から到達不可 |
 | **PutObject 上限 5 GB** | 単一 PUT は 5 GB まで | 配信成果物の書き戻しは大容量時にマルチパート |
 
@@ -167,7 +167,7 @@ CDN を使う/使わないに関わらず、S3 AP 配信では以下を固定要
    マスターデータを直接配信レイヤへ流さない。
 2. **マスターと配信系の分離** — マスター（ACL 制御・機微）と配信成果物（公開/準公開）を分離する。M3（Push）は
    この分離が構造的に自然。
-3. **視聴者認証は CDN ネイティブ機構** — S3 Presigned URL 非対応のため、トークン/署名 URL は各 CDN の機能を使う。
+3. **視聴者認証は CDN ネイティブ機構を推奨** — S3 Presigned URL はドキュメント上 Not supported（実際は動作するが本番保証なし）のため、トークン/署名 URL は各 CDN の機能を使うのが安全。
 4. **オリジン認証情報の最小権限** — CDN/署名層に渡す IAM 権限は対象 AP の `s3:GetObject` 等に限定。長期鍵を
    エッジに置かず、短期クレデンシャルを優先。
 5. **配信ログの取り扱い** — 配信ログを分析目的で FSx へ書き戻す場合、視聴者 PII の取り扱いを設計に含める。

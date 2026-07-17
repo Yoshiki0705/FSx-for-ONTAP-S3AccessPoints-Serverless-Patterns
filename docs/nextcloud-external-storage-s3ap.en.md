@@ -306,7 +306,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 
 | Constraint | Impact | Workaround |
 |-----------|--------|-----------|
-| **Presigned URLs not supported** | Nextcloud cannot generate direct download links to S3 AP | Nextcloud proxies all downloads through its server process. This is transparent to users but adds server load. |
+| **Presigned URLs (listed as "Not supported" but works)** | Nextcloud can generate direct download links via Presigned URL (works as a signed GetObject request). However, AWS recommends against production reliance. | Option A: Use Presigned URL for direct download (reduces server load). Option B: Proxy through server process (governance-first). |
 | **PutObject max 5 GB** | Large file uploads limited | Nextcloud uses multipart upload for large files. Verify S3 AP multipart support with your ONTAP version (9.15.1+). |
 | **ListObjectsV2 max 1000/request** | Large directories need pagination | Nextcloud handles this automatically via its S3 backend library. |
 | **No S3 event notifications** | Cannot trigger on S3 AP upload events | Use Nextcloud Flow/Workflow webhook, or FPolicy (ONTAP-native event), or scheduled scan. |

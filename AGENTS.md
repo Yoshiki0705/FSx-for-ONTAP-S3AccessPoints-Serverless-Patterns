@@ -309,7 +309,8 @@ Both must Allow:
 ### Supported Operations
 
 PutObject (max 5GB), GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
-NOT supported: GetBucketNotificationConfiguration, Presigned URLs (documented as unsupported).
+NOT supported: GetBucketNotificationConfiguration.
+Presigned URLs: Listed as "Not supported" in AWS docs, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support advises against production reliance. See docs/s3ap-compatibility-notes.md for details.
 
 ### NetworkOrigin (Immutable After Creation)
 

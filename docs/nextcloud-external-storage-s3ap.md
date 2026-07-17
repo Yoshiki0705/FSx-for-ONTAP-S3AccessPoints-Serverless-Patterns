@@ -306,7 +306,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 
 | 制約 | 影響 | 回避策 |
 |------|------|--------|
-| **Presigned URL 非対応** | Nextcloud が S3 AP への直接ダウンロードリンクを生成できない | Nextcloud がサーバープロセス経由で全ダウンロードをプロキシ。ユーザーには透過的だがサーバー負荷が増加。 |
+| **Presigned URL（ドキュメント上 Not supported だが動作する）** | Nextcloud が S3 AP への直接ダウンロードリンクを Presigned URL で生成可能（GetObject の署名付きリクエストとして動作）。ただし AWS は本番依存を非推奨 | 選択肢 A: Presigned URL を利用しダイレクトダウンロード（サーバー負荷軽減）。選択肢 B: サーバープロセス経由プロキシ（ガバナンス重視）。 |
 | **PutObject 最大 5 GB** | 大ファイルアップロードに制限 | Nextcloud はマルチパートアップロードを使用。ONTAP バージョン（9.15.1+）での S3 AP マルチパートサポートを確認。 |
 | **ListObjectsV2 最大 1000/リクエスト** | 大規模ディレクトリにページネーションが必要 | Nextcloud の S3 バックエンドライブラリが自動処理。 |
 | **S3 イベント通知なし** | S3 AP アップロードイベントでトリガーできない | Nextcloud Flow/Workflow の webhook、FPolicy（ONTAP ネイティブイベント）、またはスケジュールスキャンを使用。 |

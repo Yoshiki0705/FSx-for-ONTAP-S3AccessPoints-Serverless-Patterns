@@ -87,7 +87,7 @@ All three approaches share the same backend integration point: the existing Step
 | **Language/framework** | TypeScript + React | PHP (server) | Any |
 | **AD integration** | Via Cognito federation | Native LDAP/AD | Via Cognito federation |
 | **Mobile access** | Responsive web | Native apps (iOS/Android) | Responsive web |
-| **S3 AP Presigned URL** | Not supported (Lambda proxy) | Not supported (Lambda proxy) | Not supported (Lambda proxy) |
+| **S3 AP Presigned URL** | Works (※ listed as "Not supported" in docs; [details](./s3ap-compatibility-notes.en.md#presigned-url-support)) | Same | Same |
 
 ---
 
@@ -248,7 +248,7 @@ solutions/amplify-portal/
 **External Storage via S3 AP**: Nextcloud's "External Storage" app supports S3-compatible backends. Configure with the S3 AP alias as the bucket, and Nextcloud presents FSx for ONTAP files in its native file browser.
 
 **S3 AP constraints with Nextcloud**:
-- Presigned URLs are not supported on FSx for ONTAP S3 AP, so Nextcloud must proxy file downloads through its server process
+- Presigned URLs are listed as "Not supported" in AWS docs but actually work (they are client-side SigV4 calculations that execute as standard GetObject; [details](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, production reliance is not recommended, so Nextcloud can also proxy file downloads through its server process for governance control
 - `ListObjectsV2` pagination (max 1000 objects/request) is handled natively by Nextcloud's S3 backend
 - PutObject (max 5 GB) enables file upload from Nextcloud UI to FSx for ONTAP
 
@@ -343,7 +343,7 @@ User click → Auth token (Cognito/LDAP/SAML)
 | Data residency (in-region) | Lambda proxy (no CDN for file content) | Server-side proxy | Lambda proxy |
 | Existing shared/ modules | `data_classification`, `lineage`, `human_review` work unchanged in backend Lambda | Same | Same |
 
-> **Governance note**: S3 AP does not support Presigned URLs. File content always passes through a server-side component (Lambda or Nextcloud server), ensuring data residency controls are enforceable at the application layer.
+> **Governance note**: S3 AP Presigned URLs are listed as "Not supported" in AWS docs but actually work as standard GetObject requests with query-string signatures ([details](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, AWS Support recommends against production reliance. For data governance, routing file content through a server-side component (Lambda or Nextcloud server) provides an enforceable data residency control layer.
 
 > **Compliance note**: Processing result files carry `data_classification` labels (INTERNAL/CUI/PUBLIC, etc.). File portal UIs should surface these labels to users. The backend `shared/data_classification.py` module provides the classification logic.
 
@@ -431,7 +431,7 @@ A: Not directly. The frontend accesses data through S3 AP, which shares throughp
 A: Yes. The backend patterns are frontend-agnostic. You can run Nextcloud for file browsing immediately, then add an Amplify-based processing dashboard when custom UI needs arise.
 
 **Q: What about S3 AP Presigned URLs for direct download?**
-A: FSx for ONTAP S3 AP does not support Presigned URLs. All file content must flow through a server-side proxy (Lambda for Amplify/Custom, Nextcloud server for Nextcloud). This is actually a benefit for data governance — content always passes through a controllable layer.
+A: AWS documentation lists Presigned URLs as "Not supported", but they actually work — presigning is a client-side SigV4 calculation, and the resulting request is a standard GetObject which is supported ([verification and AWS Support clarification](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, AWS Support recommends against production reliance. For data governance, you may choose to route content through a server-side proxy, but direct download via Presigned URL is technically possible.
 
 **Q: Which approach works for regulated environments (FISC, HIPAA)?**
 A: All three can meet regulatory requirements when properly configured. Key controls (audit logging, encryption, access control) are in the backend layer which is shared. Frontend-specific considerations: Amplify Gen2 (Cognito SAML + WAF), Nextcloud (LDAP + WAF on ALB), Custom (depends on implementation).
