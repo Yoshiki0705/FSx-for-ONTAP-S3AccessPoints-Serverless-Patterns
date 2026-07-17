@@ -1062,6 +1062,60 @@ cfn-lint */template.yaml */template-deploy.yaml
 - Step Functions 执行历史保留期和日志级别设置
 - Lambda 的 Reserved Concurrency / Provisioned Concurrency 设置
 
+## 相关仓库（同一作者）
+
+| 仓库 | 概要 | 关联性 |
+|------|------|--------|
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | FSx for ONTAP + Bedrock 权限感知 RAG 聊天机器人 (CDK v2, Next.js, ECS) | 本仓库 FC3 (GenAI RAG) 模式的完整实现 | <!-- allow:naming -->
+| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × Lakehouse 平台集成 (Databricks, Snowflake, Athena, Glue, EMR) | S3 AP 兼容性矩阵、平台验证结果、DataSync 模式 |
+| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 迁移模式 | 迁移后数据可应用 S3 AP 模式 |
+
+### 仓库间关系
+
+```
+Permission-aware-RAG-FSxN-CDK (CDK v2)
+├── RAG app (Next.js + Bedrock + OpenSearch)
+├── Document read via FSx for ONTAP S3 AP
+├── NTFS ACL permission filtering
+└── Production-ready Web UI
+        │
+        │ S3 AP, ONTAP REST API, Bedrock
+        ▼
+FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns [this repo]
+├── 42 patterns (28 UC + 7 FC + 2 GenAI + SAP + HA + ED + Edge)
+├── CloudFormation/SAM templates (independently deployable)
+├── shared/ modules (S3ApHelper, OntapClient, Observability)
+├── Benchmarks, Governance, Partner/SI assets
+└── Hands-on Lab IaC (infrastructure/handson-lab/)
+        │                       │
+        │ FSx for ONTAP, EC2    │ S3 AP, DataSync, Lakehouse
+        │                       ▼
+        │               fsxn-lakehouse-integrations
+        │               ├── Lakehouse (Databricks, Snowflake, etc.)
+        │               ├── S3 AP Compatibility Matrix (AWS confirmed)
+        │               └── DataSync patterns
+        ▼
+vmware-migration-ec2-ontap
+├── VMware -> EC2 + FSx for ONTAP migration
+├── S3 AP patterns applicable to migrated data
+└── On-prem NAS -> Cloud-native AI processing path
+```
+
+### 使用指南
+
+| 用途 | 推荐仓库 |
+|------|---------|
+| 构建权限感知 RAG 聊天机器人 | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | <!-- allow:naming -->
+| 将 Lakehouse 平台与 FSx for ONTAP 集成 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) |
+| 将 VMware 迁移到 EC2 + FSx for ONTAP | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) |
+| 学习 S3 AP 设计模式 | 本仓库 |
+| 行业服务器无关自动化 PoC | 本仓库 (`solutions/industry/`) |
+| 构建 GenAI / Bedrock KB / 代理型 AI | 本仓库 (`solutions/genai/`) |
+| 构建 FPolicy 事件驱动管道 | 本仓库 (`solutions/event-driven/`) |
+| 探索 FlexCache × 无服务器设计 | 本仓库 (`solutions/flexcache/`) |
+| 实现 HA 集群 (LifeKeeper) AI 监控 | 本仓库 (`solutions/ha/`) |
+| 构建 S3 AP + Tamperproof Snapshot 动手实验环境 | 本仓库 ([`infrastructure/handson-lab/`](infrastructure/handson-lab/)) |
+
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request。详情请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。

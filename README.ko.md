@@ -1064,6 +1064,60 @@ cfn-lint */template.yaml */template-deploy.yaml
 - Step Functions의 실행 이력 보존 기간과 로그 레벨 설정
 - Lambda의 Reserved Concurrency / Provisioned Concurrency 설정
 
+## 관련 저장소 (동일 저자)
+
+| 저장소 | 개요 | 관련성 |
+|--------|------|--------|
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | FSx for ONTAP + Bedrock 권한 인식 RAG 챗봇 (CDK v2, Next.js, ECS) | 본 저장소 FC3 (GenAI RAG) 패턴의 전체 구현 버전 | <!-- allow:naming -->
+| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × Lakehouse 플랫폼 통합 (Databricks, Snowflake, Athena, Glue, EMR) | S3 AP 호환성 매트릭스, 플랫폼별 검증 결과, DataSync 패턴 |
+| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 마이그레이션 패턴 | 마이그레이션 후 데이터에 S3 AP 패턴 적용 가능 |
+
+### 저장소 간의 관계
+
+```
+Permission-aware-RAG-FSxN-CDK (CDK v2)
+├── RAG app (Next.js + Bedrock + OpenSearch)
+├── Document read via FSx for ONTAP S3 AP
+├── NTFS ACL permission filtering
+└── Production-ready Web UI
+        │
+        │ S3 AP, ONTAP REST API, Bedrock
+        ▼
+FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns [this repo]
+├── 42 patterns (28 UC + 7 FC + 2 GenAI + SAP + HA + ED + Edge)
+├── CloudFormation/SAM templates (independently deployable)
+├── shared/ modules (S3ApHelper, OntapClient, Observability)
+├── Benchmarks, Governance, Partner/SI assets
+└── Hands-on Lab IaC (infrastructure/handson-lab/)
+        │                       │
+        │ FSx for ONTAP, EC2    │ S3 AP, DataSync, Lakehouse
+        │                       ▼
+        │               fsxn-lakehouse-integrations
+        │               ├── Lakehouse (Databricks, Snowflake, etc.)
+        │               ├── S3 AP Compatibility Matrix (AWS confirmed)
+        │               └── DataSync patterns
+        ▼
+vmware-migration-ec2-ontap
+├── VMware -> EC2 + FSx for ONTAP migration
+├── S3 AP patterns applicable to migrated data
+└── On-prem NAS -> Cloud-native AI processing path
+```
+
+### 사용 가이드
+
+| 유스 케이스 | 권장 저장소 |
+|------------|------------|
+| 권한 인식 RAG 챗봇을 구축하고 싶다 | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | <!-- allow:naming -->
+| Lakehouse 플랫폼과 FSx for ONTAP를 통합하고 싶다 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) |
+| VMware를 EC2 + FSx for ONTAP로 마이그레이션하고 싶다 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) |
+| S3 AP 설계 패턴을 배우고 싶다 | 본 저장소 |
+| 업계별 서버리스 자동화를 PoC하고 싶다 | 본 저장소 (`solutions/industry/`) |
+| GenAI / Bedrock KB / 에이전트형 AI를 구축하고 싶다 | 본 저장소 (`solutions/genai/`) |
+| FPolicy 이벤트 드리븐 파이프라인을 구축하고 싶다 | 본 저장소 (`solutions/event-driven/`) |
+| FlexCache × 서버리스 설계를 검토하고 싶다 | 본 저장소 (`solutions/flexcache/`) |
+| HA 클러스터 (LifeKeeper) AI 모니터링을 구현하고 싶다 | 본 저장소 (`solutions/ha/`) |
+| S3 AP + Tamperproof Snapshot 핸즈온 환경을 구축하고 싶다 | 본 저장소 ([`infrastructure/handson-lab/`](infrastructure/handson-lab/)) |
+
 ## 기여
 
 Issue와 Pull Request를 환영합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.

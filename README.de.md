@@ -1064,6 +1064,60 @@ Dieses Repository enthält Designentscheidungen für den Produktionseinsatz, abe
 - Aufbewahrungszeitraum der Step Functions-Ausführungshistorie und Protokollierungseinstellungen
 - Lambda Reserved Concurrency / Provisioned Concurrency-Einstellungen
 
+## Verwandte Repositories (gleicher Autor)
+
+| Repository | Beschreibung | Relevanz |
+|-----------|-------------|----------|
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Berechtigungsbewusster RAG-Chatbot mit FSx for ONTAP + Bedrock (CDK v2, Next.js, ECS) | Vollständige Implementierung des FC3 (GenAI RAG) Patterns | <!-- allow:naming -->
+| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × Lakehouse-Plattform-Integration (Databricks, Snowflake, Athena, Glue, EMR) | S3 AP-Kompatibilitätsmatrix, plattformspezifische Validierungen, DataSync-Patterns |
+| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP Migrationsmuster | Nach Migration können S3 AP-Patterns angewendet werden |
+
+### Beziehungen zwischen Repositories
+
+```
+Permission-aware-RAG-FSxN-CDK (CDK v2)
+├── RAG app (Next.js + Bedrock + OpenSearch)
+├── Document read via FSx for ONTAP S3 AP
+├── NTFS ACL permission filtering
+└── Production-ready Web UI
+        │
+        │ S3 AP, ONTAP REST API, Bedrock
+        ▼
+FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns [this repo]
+├── 42 patterns (28 UC + 7 FC + 2 GenAI + SAP + HA + ED + Edge)
+├── CloudFormation/SAM templates (independently deployable)
+├── shared/ modules (S3ApHelper, OntapClient, Observability)
+├── Benchmarks, Governance, Partner/SI assets
+└── Hands-on Lab IaC (infrastructure/handson-lab/)
+        │                       │
+        │ FSx for ONTAP, EC2    │ S3 AP, DataSync, Lakehouse
+        │                       ▼
+        │               fsxn-lakehouse-integrations
+        │               ├── Lakehouse (Databricks, Snowflake, etc.)
+        │               ├── S3 AP Compatibility Matrix (AWS confirmed)
+        │               └── DataSync patterns
+        ▼
+vmware-migration-ec2-ontap
+├── VMware -> EC2 + FSx for ONTAP migration
+├── S3 AP patterns applicable to migrated data
+└── On-prem NAS -> Cloud-native AI processing path
+```
+
+### Nutzungsleitfaden
+
+| Anwendungsfall | Empfohlenes Repository |
+|---------------|----------------------|
+| Berechtigungsbewussten RAG-Chatbot erstellen | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | <!-- allow:naming -->
+| Lakehouse-Plattformen mit FSx for ONTAP integrieren | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) |
+| VMware zu EC2 + FSx for ONTAP migrieren | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) |
+| S3 AP-Designmuster lernen | Dieses Repository |
+| Branchenspezifische serverlose Automatisierung PoC | Dieses Repository (`solutions/industry/`) |
+| GenAI / Bedrock KB / agentische KI erstellen | Dieses Repository (`solutions/genai/`) |
+| FPolicy-ereignisgesteuerte Pipeline erstellen | Dieses Repository (`solutions/event-driven/`) |
+| FlexCache × Serverless-Designs erkunden | Dieses Repository (`solutions/flexcache/`) |
+| KI-Monitoring für HA-Cluster (LifeKeeper) implementieren | Dieses Repository (`solutions/ha/`) |
+| S3 AP + Tamperproof Snapshot Hands-on-Umgebung erstellen | Dieses Repository ([`infrastructure/handson-lab/`](infrastructure/handson-lab/)) |
+
 ## Mitwirken
 
 Issues und Pull Requests sind willkommen. Siehe [CONTRIBUTING.md](CONTRIBUTING.md) für Details.
