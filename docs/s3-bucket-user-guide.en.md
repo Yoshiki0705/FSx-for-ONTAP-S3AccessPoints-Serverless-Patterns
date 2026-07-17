@@ -17,7 +17,7 @@ This document summarizes the key differences that users familiar with Amazon S3 
 | Object Lock (WORM) | ✅ Supported | ❌ Not supported (alternative: SnapLock) |
 | Lifecycle policies | ✅ Supported | ❌ Not supported (alternative: Snapshot/SnapMirror) |
 | S3 Event Notifications | ✅ Supported | ❌ Not supported (alternative: FPolicy) |
-| Presigned URLs | ✅ Supported | ❌ Not supported (docs) |
+| Presigned URLs | ✅ Supported | ⚠️ Works but listed as "Not supported" (docs) |
 | S3 Replication | ✅ Supported | ❌ Not supported (alternative: SnapMirror) |
 | File protocol access (NFS/SMB) | ❌ | ✅ Alongside S3 API |
 | Dual-layer authorization | IAM only | IAM + S3 AP policy + ONTAP file identity |
@@ -145,7 +145,7 @@ File-system:    FSx CloudWatch metrics, ONTAP REST API, FPolicy audit logs
 | Can I use Lifecycle? | **No**. Use Snapshot/SnapMirror/auto-tiering |
 | Can I use Versioning? | **No**. ONTAP Snapshot is the alternative |
 | Can I use Object Lock? | **No**. SnapLock (Compliance/Enterprise) is the alternative |
-| Can I use Presigned URLs? | **Not supported per documentation** |
+| Can I use Presigned URLs? | **Works** (listed as "Not supported" in docs, but succeeds as a signed GetObject request. AWS Support advises against production reliance) |
 | Can I also access via NFS/SMB? | **Yes**. Concurrent access to the same data is possible |
 | Should I use this as a data lake? | **Typically No**. Use as an integration boundary, route analysis output to standard S3 |
 | Can I use S3 Event Notifications? | **No**. Use FPolicy or EventBridge Scheduler |

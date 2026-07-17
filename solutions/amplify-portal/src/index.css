@@ -1,0 +1,345 @@
+/* FSx for ONTAP File Portal — Minimal CSS */
+
+:root {
+  --color-primary: #0972d3;
+  --color-success: #037f0c;
+  --color-error: #d13212;
+  --color-warning: #8d6605;
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-border: #e0e0e0;
+  --color-text: #16191f;
+  --color-text-secondary: #5f6b7a;
+  --radius: 6px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.app-nav {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.app-nav button {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.app-nav button.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.user-info {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.sign-out {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* Main content */
+.app-main {
+  flex: 1;
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* File Explorer */
+.file-explorer-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.file-explorer-header h2 {
+  margin: 0;
+}
+
+.breadcrumb {
+  flex: 1;
+  font-size: 0.85rem;
+}
+
+.breadcrumb button {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.process-btn {
+  padding: 0.4rem 0.8rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.file-list {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.file-item {
+  display: grid;
+  grid-template-columns: 2rem 1fr 6rem 8rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-item.folder {
+  cursor: pointer;
+}
+
+.file-item.folder:hover {
+  background: #f3f6f9;
+}
+
+.file-item .size,
+.file-item .modified {
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
+/* Forms */
+.job-submit-form form {
+  background: var(--color-surface);
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.form-group select,
+.form-group input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+button[type="submit"] {
+  padding: 0.6rem 1.2rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Results */
+.result-card {
+  background: var(--color-surface);
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-running { background: #e3f2fd; color: #1565c0; }
+.status-succeeded { background: #e8f5e9; color: var(--color-success); }
+.status-failed { background: #fbe9e7; color: var(--color-error); }
+.status-aborted { background: #fff3e0; color: var(--color-warning); }
+
+.polling-indicator {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.result-details {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.result-details dt {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.result-details .arn {
+  font-family: monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+
+.classification {
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.classification-internal { background: #fff3e0; color: var(--color-warning); }
+.classification-cui { background: #fbe9e7; color: var(--color-error); }
+.classification-public { background: #e8f5e9; color: var(--color-success); }
+
+.result-output {
+  margin-top: 1rem;
+}
+
+.result-output pre {
+  background: #f5f5f5;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  overflow-x: auto;
+}
+
+/* Utilities */
+.error-message {
+  padding: 0.5rem 0.75rem;
+  background: #fbe9e7;
+  color: var(--color-error);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.success-message {
+  padding: 0.5rem 0.75rem;
+  background: #e8f5e9;
+  color: var(--color-success);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.loading {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.load-more {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-primary);
+}
+
+.refresh-btn {
+  margin-top: 1rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+}
