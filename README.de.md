@@ -61,6 +61,7 @@ Jeder Anwendungsfall ist als eigenständiges CloudFormation-Template umgesetzt. 
 | [Customer Discovery Template](docs/customer-discovery-template.md) | Kunden-Interview-Vorlage |
 | [Well-Architected Mapping](docs/well-architected-mapping.md) | AWS Well-Architected 6-Säulen-Zuordnung |
 | [Quick Start Guide](docs/quick-start.md) | Erste Bereitstellung in 30 Minuten |
+| 🏗️ Hands-on Lab Umgebung (S3 AP + Tamperproof + FlexClone) | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) |
 
 ## Architektur
 
@@ -234,6 +235,7 @@ EventBridge Scheduler (periodische Ausführung)
 
 | Verzeichnis | Inhalt |
 |:---|:---|
+| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | **Hands-on Lab IaC** (CloudFormation-verschachtelte Stacks: VPC/AD/FSx/EC2/S3AP. S3 AP + Tamperproof Snapshot + FlexClone-Wiederherstellung einzeln überprüfbar) |
 | [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy-ereignisgesteuerte Pipeline |
 | [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/Edge-Delivery-Muster (anbieterneutral; CloudFront/Drittanbieter, [CDN-Vergleich](docs/cdn-comparison.en.md)) |
 
@@ -403,10 +405,12 @@ Die 28 UCs teilen sich in 3 Ausgabe-Patterns auf:
 | UC16 government-archives | S3AP | S3AP | bestehendes Pattern | FOIA-Schwärzung / Metadaten |
 | UC17 smart-city-geospatial | S3AP | S3AP | bestehendes Pattern | GIS-Analyse / Risikokarten |
 
-**Roadmap**:
-- ~~Teil B: Dokumentation des bestehenden `S3AccessPointOutputAlias`-Patterns in UC1-5~~ ✅ Abgeschlossen (`docs/output-destination-patterns.md`)
-- Die Athena-Ausgabe von UC6/7/8/13 muss per Spezifikation auf Standard-S3 bleiben, aber Nicht-Athena-Artefakte (z. B. Bedrock-Berichte) könnten als Pattern C → Pattern B-Hybrid mit `OutputDestination=FSXN_S3AP` wählbar werden (zukünftige Erweiterung)
-- AWS-Deployment-Verifizierung für UC9/10/12 (Unit-Tests abgeschlossen, Deployment ausstehend)
+**Aktueller Status und nächste Schritte**:
+
+Der `OutputDestination`-Parameter ist für alle 28 UC + SAP verfügbar. Nur UC6/7/8: Die Athena-Ergebnisausgabe ist auf Standard-S3 festgelegt (AWS-Spezifikation), alle anderen Ausgaben (Bedrock-Berichte, Metadaten usw.) sind auf `FSXN_S3AP` umschaltbar.
+
+Ausstehend:
+- AWS-Deployment-Verifizierung für UC9/10/12/15/16/17 (Unit-Tests abgeschlossen, UC11/14 verifiziert)
 ## Leitfaden zur Regionsauswahl
 
 Diese Mustersammlung wurde in **ap-northeast-1 (Tokyo)** verifiziert, kann aber in jeder AWS-Region bereitgestellt werden, in der die erforderlichen Dienste verfügbar sind.
@@ -968,6 +972,13 @@ fsxn-s3ap-serverless-patterns/
 ├── solutions/industry/manufacturing-analytics/           # UC3: Fertigung
 ├── solutions/industry/media-vfx/                         # UC4: Medien
 ├── solutions/industry/healthcare-dicom/                  # UC5: Gesundheitswesen
+├── infrastructure/                    # Infrastruktur-Templates
+│   ├── demo-ad-environment.yaml      # AD + EC2 Testumgebung (WINDOWS S3 AP)
+│   └── handson-lab/                  # Hands-on Lab IaC (CloudFormation-verschachtelte Stacks)
+│       ├── cloudformation/           # 7 Templates (network/ad/iam/fsx/s3ap/ec2/main)
+│       ├── lambda/                   # Custom Resources (AD User / S3 AP)
+│       ├── scripts/                  # deploy / setup_ontap / cleanup / verify
+│       └── docs/                     # Anleitung / Kostenschätzung
 ├── scripts/                           # Verifizierungs- und Bereitstellungsskripte
 │   ├── deploy_uc.sh                  # UC-Bereitstellungsskript (generisch)
 │   ├── verify_shared_modules.py      # Verifizierung gemeinsamer Module in AWS-Umgebung
