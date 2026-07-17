@@ -386,14 +386,14 @@ FSx for ONTAP S3 Access Points 僅支援 S3 API 的一部分
 | UC3 manufacturing-analytics | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 檢查結果 / 異常偵測 |
 | UC4 media-vfx | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 渲染中繼資料 |
 | UC5 healthcare-dicom | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | DICOM 中繼資料 / 匿名化結果 |
-| UC6 semiconductor-eda | S3AP | **標準 S3** | ⚠️ 未實作 | Bedrock/Athena 結果 (Athena 在規格上需要標準 S3) |
-| UC7 genomics-pipeline | S3AP | **標準 S3** | ⚠️ 未實作 | Glue/Athena 結果 (Athena 在規格上需要標準 S3) |
-| UC8 energy-seismic | S3AP | **標準 S3** | ⚠️ 未實作 | Glue/Athena 結果 (Athena 在規格上需要標準 S3) |
+| UC6 semiconductor-eda | S3AP | **可選 (混合)** | ✅ `OutputDestination` | Bedrock 報告/中繼資料 → 可切換, Athena DRC 結果 → 標準 S3 固定 (AWS 規格) |
+| UC7 genomics-pipeline | S3AP | **可選 (混合)** | ✅ `OutputDestination` | QC/Variant/Summary → 可切換, Athena 結果 → 標準 S3 固定 (AWS 規格) |
+| UC8 energy-seismic | S3AP | **可選 (混合)** | ✅ `OutputDestination` | 中繼資料/異常偵測/合規報告 → 可切換, Athena → 標準 S3 固定 |
 | UC9 autonomous-driving | S3AP | **可選擇** 🆕 | ✅ `OutputDestination` | ADAS 分析結果 |
 | UC10 construction-bim | S3AP | **可選擇** 🆕 | ✅ `OutputDestination` | BIM 中繼資料 / 安全合規報告 |
 | **UC11 retail-catalog** | S3AP | **可選擇** | ✅ `OutputDestination` | AWS 實證完成 2026-05-10 |
 | UC12 logistics-ocr | S3AP | **可選擇** 🆕 | ✅ `OutputDestination` | 配送運單 OCR |
-| UC13 education-research | S3AP | **標準 S3** | ⚠️ 未實作 | 包含 Athena 結果 (Athena 在規格上需要標準 S3) |
+| UC13 education-research | S3AP | **可選** | ✅ `OutputDestination` | OCR/分類/引用分析/中繼資料 → 全部可切換 |
 | **UC14 insurance-claims** | S3AP | **可選擇** | ✅ `OutputDestination` | AWS 實證完成 2026-05-10 |
 | UC15 defense-satellite | S3AP | S3AP | 現有模式 | 物件偵測 / 變化偵測結果 |
 | UC16 government-archives | S3AP | S3AP | 現有模式 | FOIA 編輯結果 / 中繼資料 |

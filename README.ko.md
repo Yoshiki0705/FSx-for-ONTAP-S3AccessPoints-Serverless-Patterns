@@ -388,14 +388,14 @@ FSx for ONTAP S3 Access Points는 S3 API의 일부만 지원합니다
 | UC3 manufacturing-analytics | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 검사 결과 / 이상 감지 |
 | UC4 media-vfx | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 렌더링 메타데이터 |
 | UC5 healthcare-dicom | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | DICOM 메타데이터 / 익명화 결과 |
-| UC6 semiconductor-eda | S3AP | **표준 S3** | ⚠️ 미구현 | Bedrock/Athena 결과 (Athena는 사양상 표준 S3 필수) |
-| UC7 genomics-pipeline | S3AP | **표준 S3** | ⚠️ 미구현 | Glue/Athena 결과 (Athena는 사양상 표준 S3 필수) |
-| UC8 energy-seismic | S3AP | **표준 S3** | ⚠️ 미구현 | Glue/Athena 결과 (Athena는 사양상 표준 S3 필수) |
+| UC6 semiconductor-eda | S3AP | **선택 가능 (하이브리드)** | ✅ `OutputDestination` | Bedrock 보고서/메타데이터 → 전환 가능, Athena DRC 결과 → 표준 S3 고정 (AWS 사양) |
+| UC7 genomics-pipeline | S3AP | **선택 가능 (하이브리드)** | ✅ `OutputDestination` | QC/Variant/Summary → 전환 가능, Athena 결과 → 표준 S3 고정 (AWS 사양) |
+| UC8 energy-seismic | S3AP | **선택 가능 (하이브리드)** | ✅ `OutputDestination` | 메타데이터/이상 감지/컴플라이언스 → 전환 가능, Athena → 표준 S3 고정 |
 | UC9 autonomous-driving | S3AP | **선택 가능** 🆕 | ✅ `OutputDestination` | ADAS 분석 결과 |
 | UC10 construction-bim | S3AP | **선택 가능** 🆕 | ✅ `OutputDestination` | BIM 메타데이터 / 안전 컴플라이언스 보고서 |
 | **UC11 retail-catalog** | S3AP | **선택 가능** | ✅ `OutputDestination` | AWS 실증 완료 2026-05-10 |
 | UC12 logistics-ocr | S3AP | **선택 가능** 🆕 | ✅ `OutputDestination` | 배송 화물 OCR |
-| UC13 education-research | S3AP | **표준 S3** | ⚠️ 미구현 | Athena 결과 포함 (Athena는 사양상 표준 S3 필수) |
+| UC13 education-research | S3AP | **선택 가능** | ✅ `OutputDestination` | OCR/분류/인용 분석/메타데이터 → 전체 전환 가능 |
 | **UC14 insurance-claims** | S3AP | **선택 가능** | ✅ `OutputDestination` | AWS 실증 완료 2026-05-10 |
 | UC15 defense-satellite | S3AP | S3AP | 기존 패턴 | 객체 감지 / 변화 감지 결과 |
 | UC16 government-archives | S3AP | S3AP | 기존 패턴 | FOIA 편집 결과 / 메타데이터 |
