@@ -1,0 +1,11 @@
+[
+  {
+    "name": "aggr1",
+    "uuid": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+    "size_bytes": 5497558138880,
+    "used_bytes": 4123168604160,
+    "available_bytes": 1374389534720,
+    "utilization_percent": 75.0,
+    "state": "online"
+  }
+]

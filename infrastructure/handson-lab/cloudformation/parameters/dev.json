@@ -1,0 +1,38 @@
+[
+  {
+    "ParameterKey": "VpcCidr",
+    "ParameterValue": "10.0.0.0/16"
+  },
+  {
+    "ParameterKey": "EnableVpcEndpoints",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "DomainName",
+    "ParameterValue": "handson.local"
+  },
+  {
+    "ParameterKey": "DomainShortName",
+    "ParameterValue": "HANDSON"
+  },
+  {
+    "ParameterKey": "StorageCapacityGiB",
+    "ParameterValue": "1024"
+  },
+  {
+    "ParameterKey": "ThroughputCapacity",
+    "ParameterValue": "128"
+  },
+  {
+    "ParameterKey": "InstanceType",
+    "ParameterValue": "t3.medium"
+  },
+  {
+    "ParameterKey": "S3AccessPointName",
+    "ParameterValue": "my-s3-access-point01"
+  },
+  {
+    "ParameterKey": "AdUserName",
+    "ParameterValue": "user01"
+  }
+]

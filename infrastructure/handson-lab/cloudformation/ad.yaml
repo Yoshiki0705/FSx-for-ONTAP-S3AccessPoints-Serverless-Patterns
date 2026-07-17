@@ -1,0 +1,275 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Active Directory Stack - FSx for ONTAP Hands-on Lab Environment
+
+  Provisions AWS Managed Microsoft AD, DHCP Options Set, and a Custom Resource
+  Lambda to create AD domain users for the hands-on lab.
+
+  IMPORTANT: AWS Managed AD creates an intermediate OU with the domain short name.
+  The correct OU path for FSx SVM computer objects is:
+    OU=Computers,OU=<ShortName>,DC=<part1>,DC=<part2>
+  This template exports the OU DN for use by the FSx for ONTAP stack.
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  VpcId:
+    Type: String
+    Description: VPC ID where AD will be deployed
+
+  PrivateSubnet1Id:
+    Type: String
+    Description: Private Subnet 1 ID (AD first AZ)
+
+  PrivateSubnet2Id:
+    Type: String
+    Description: Private Subnet 2 ID (AD second AZ)
+
+  DomainName:
+    Type: String
+    Default: handson.local
+    Description: >
+      FQDN for AWS Managed AD.
+      Used as the AD domain for SVM join and EC2 domain join.
+    AllowedPattern: "^[a-zA-Z0-9][a-zA-Z0-9.-]+[a-zA-Z0-9]$"
+
+  DomainShortName:
+    Type: String
+    Default: HANDSON
+    Description: >
+      NetBIOS short name for the AD domain.
+      Max 15 characters, uppercase alphanumeric.
+    MaxLength: 15
+    AllowedPattern: "^[A-Z0-9]+$"
+
+  AdAdminPasswordSecretArn:
+    Type: String
+    Description: >
+      Secrets Manager secret ARN containing the AD admin password.
+      The secret value must be a plain string (not JSON).
+      Password requirements: 8-64 chars, uppercase, lowercase, digit, special char.
+
+  AdUserName:
+    Type: String
+    Default: user01
+    Description: >
+      Username for the hands-on participant AD user.
+      This user will be granted SMB access to FSx for ONTAP volumes.
+
+  AdUserPasswordSecretArn:
+    Type: String
+    Description: >
+      Secrets Manager secret ARN containing the AD user password.
+
+  LambdaCodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing the Lambda deployment package
+
+  LambdaCodeS3Key:
+    Type: String
+    Default: lambda/custom_resource_ad_user.zip
+    Description: S3 key for the AD user creation Lambda package
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # AWS Managed Microsoft AD
+  # -----------------------------------------------------------------
+  ManagedAd:
+    Type: AWS::DirectoryService::MicrosoftAD
+    Properties:
+      Name: !Ref DomainName
+      ShortName: !Ref DomainShortName
+      Password: !Sub "{{resolve:secretsmanager:${AdAdminPasswordSecretArn}:SecretString}}"
+      Edition: Standard
+      VpcSettings:
+        VpcId: !Ref VpcId
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+
+  # -----------------------------------------------------------------
+  # DHCP Options Set (point DNS to AD domain controllers)
+  # -----------------------------------------------------------------
+  DhcpOptions:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainName: !Ref DomainName
+      DomainNameServers: !GetAtt ManagedAd.DnsIpAddresses
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-dhcp-options"
+
+  DhcpOptionsAssociation:
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      VpcId: !Ref VpcId
+      DhcpOptionsId: !Ref DhcpOptions
+
+  # -----------------------------------------------------------------
+  # Lambda Execution Role (AD User Creation)
+  # -----------------------------------------------------------------
+  AdUserLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-ad-user-lambda-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      Policies:
+        - PolicyName: DirectoryServiceAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ds:DescribeDirectories
+                  - ds:ResetUserPassword
+                  - ds:AccessDsData
+                  - ds-data:CreateUser
+                  - ds-data:DeleteUser
+                  - ds-data:DescribeUser
+                  - ds-data:UpdateUser
+                Resource: !Sub "arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${ManagedAd}"
+        - PolicyName: SecretsManagerRead
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref AdAdminPasswordSecretArn
+                  - !Ref AdUserPasswordSecretArn
+
+  # -----------------------------------------------------------------
+  # Lambda Function — AD User Creation Custom Resource
+  # -----------------------------------------------------------------
+  AdUserLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ad-user-creator"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt AdUserLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+      VpcConfig:
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+        SecurityGroupIds:
+          - !Ref AdUserLambdaSecurityGroup
+      Environment:
+        Variables:
+          DIRECTORY_ID: !Ref ManagedAd
+          DOMAIN_NAME: !Ref DomainName
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ad-user-creator"
+
+  AdUserLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - AD User Lambda"
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+          Description: Allow all outbound (AD communication)
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ad-user-lambda-sg"
+
+  # -----------------------------------------------------------------
+  # Custom Resource — Create AD User
+  # -----------------------------------------------------------------
+  AdUserCustomResource:
+    Type: Custom::AdUser
+    DependsOn: DhcpOptionsAssociation
+    Properties:
+      ServiceToken: !GetAtt AdUserLambdaFunction.Arn
+      DirectoryId: !Ref ManagedAd
+      UserName: !Ref AdUserName
+      UserPasswordSecretArn: !Ref AdUserPasswordSecretArn
+      DomainName: !Ref DomainName
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  DirectoryId:
+    Description: AWS Managed AD Directory ID
+    Value: !Ref ManagedAd
+    Export:
+      Name: !Sub "${AWS::StackName}-DirectoryId"
+
+  DomainName:
+    Description: AD Domain FQDN
+    Value: !Ref DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-DomainName"
+
+  DomainShortName:
+    Description: AD Domain NetBIOS Short Name
+    Value: !Ref DomainShortName
+    Export:
+      Name: !Sub "${AWS::StackName}-DomainShortName"
+
+  DnsIpAddresses:
+    Description: AD DNS IP addresses (comma-separated)
+    Value: !Join [",", !GetAtt ManagedAd.DnsIpAddresses]
+    Export:
+      Name: !Sub "${AWS::StackName}-DnsIpAddresses"
+
+  DnsIp1:
+    Description: AD DNS IP address 1
+    Value: !Select [0, !GetAtt ManagedAd.DnsIpAddresses]
+    Export:
+      Name: !Sub "${AWS::StackName}-DnsIp1"
+
+  DnsIp2:
+    Description: AD DNS IP address 2
+    Value: !Select [1, !GetAtt ManagedAd.DnsIpAddresses]
+    Export:
+      Name: !Sub "${AWS::StackName}-DnsIp2"
+
+  OuDistinguishedName:
+    Description: >
+      OU Distinguished Name for FSx SVM computer object placement.
+      AWS Managed AD creates OU=<ShortName> under the domain root.
+      For handson.local with ShortName=HANDSON:
+        OU=Computers,OU=HANDSON,DC=handson,DC=local
+    Value: !Join
+      - ""
+      - - "OU=Computers,OU="
+        - !Ref DomainShortName
+        - ",DC="
+        - !Select [0, !Split [".", !Ref DomainName]]
+        - ",DC="
+        - !Select [1, !Split [".", !Ref DomainName]]
+    Export:
+      Name: !Sub "${AWS::StackName}-OuDn"
+
+  AdUserName:
+    Description: AD user created for hands-on participant
+    Value: !Ref AdUserName
+    Export:
+      Name: !Sub "${AWS::StackName}-AdUserName"
+
+  AdUserLambdaArn:
+    Description: ARN of the AD user creation Lambda
+    Value: !GetAtt AdUserLambdaFunction.Arn

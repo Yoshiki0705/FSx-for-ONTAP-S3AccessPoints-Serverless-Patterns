@@ -1,0 +1,98 @@
+[
+  {
+    "ParameterKey": "TemplateBaseUrl",
+    "ParameterValue": "https://YOUR-BUCKET.s3.ap-northeast-1.amazonaws.com/handson-lab/cloudformation"
+  },
+  {
+    "ParameterKey": "LambdaCodeS3Bucket",
+    "ParameterValue": "YOUR-BUCKET"
+  },
+  {
+    "ParameterKey": "UseExistingVpc",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "ExistingVpcId",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ExistingPrivateSubnet1Id",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ExistingPrivateSubnet2Id",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ExistingPublicSubnetId",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "UseExistingFsx",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "ExistingFileSystemId",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ExistingSvmId",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ExistingVolumeId",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ExistingManagementIp",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "VpcCidr",
+    "ParameterValue": "10.0.0.0/16"
+  },
+  {
+    "ParameterKey": "EnableVpcEndpoints",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "DomainName",
+    "ParameterValue": "handson.local"
+  },
+  {
+    "ParameterKey": "DomainShortName",
+    "ParameterValue": "HANDSON"
+  },
+  {
+    "ParameterKey": "AdAdminPasswordSecretArn",
+    "ParameterValue": "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsx-handson-ad-admin-XXXXXX"
+  },
+  {
+    "ParameterKey": "AdUserPasswordSecretArn",
+    "ParameterValue": "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsx-handson-user01-XXXXXX"
+  },
+  {
+    "ParameterKey": "StorageCapacityGiB",
+    "ParameterValue": "1024"
+  },
+  {
+    "ParameterKey": "ThroughputCapacity",
+    "ParameterValue": "128"
+  },
+  {
+    "ParameterKey": "FsxAdminPasswordSecretArn",
+    "ParameterValue": "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsx-handson-fsxadmin-XXXXXX"
+  },
+  {
+    "ParameterKey": "InstanceType",
+    "ParameterValue": "t3.medium"
+  },
+  {
+    "ParameterKey": "S3AccessPointName",
+    "ParameterValue": "my-s3-access-point01"
+  },
+  {
+    "ParameterKey": "AdUserName",
+    "ParameterValue": "user01"
+  }
+]

@@ -1,0 +1,169 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  S3 Access Point Stack - FSx for ONTAP Hands-on Lab Environment
+
+  Creates an S3 Access Point on the FSx for ONTAP volume using a Custom Resource
+  Lambda function. FSx for ONTAP S3 Access Points are not natively supported as
+  a CloudFormation resource type, so we use the FSx API via Lambda.
+
+  IMPORTANT:
+  - The SVM must be AD-joined before creating WINDOWS-type S3 Access Points
+  - WindowsUser.Name must be username only (e.g., "user01"), NOT "DOMAIN\\user01"
+  - Same user cannot have multiple S3 Access Points on the same file system
+  - S3 AP alias is auto-generated and immutable after creation
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  VolumeId:
+    Type: String
+    Description: FSx for ONTAP Volume ID to attach the S3 Access Point to
+
+  AccessPointName:
+    Type: String
+    Default: my-s3-access-point01
+    Description: >
+      Name for the S3 Access Point.
+      Must be unique within the AWS account and region.
+    AllowedPattern: "^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$"
+
+  FileSystemUserType:
+    Type: String
+    Default: WINDOWS
+    AllowedValues:
+      - WINDOWS
+      - UNIX
+    Description: >
+      User type for file system identity mapping.
+      WINDOWS: Maps to AD user (SVM must be AD-joined)
+      UNIX: Maps to UNIX UID/GID
+
+  WindowsUserName:
+    Type: String
+    Default: user01
+    Description: >
+      Windows AD username for WINDOWS type (no domain prefix!).
+      CRITICAL: Use "user01", NOT "HANDSON\\user01".
+      Domain prefix causes AccessDenied on data-plane operations.
+
+  UnixUserId:
+    Type: String
+    Default: "1001"
+    Description: UNIX UID for UNIX type file system identity
+
+  UnixGroupId:
+    Type: String
+    Default: "1001"
+    Description: UNIX GID for UNIX type file system identity
+
+  LambdaCodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing the Lambda deployment package
+
+  LambdaCodeS3Key:
+    Type: String
+    Default: lambda/custom_resource_s3ap.zip
+    Description: S3 key for the S3 AP Custom Resource Lambda package
+
+  S3ApLambdaRoleArn:
+    Type: String
+    Description: IAM Role ARN for the S3 AP Lambda function
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  IsWindowsUser: !Equals [!Ref FileSystemUserType, "WINDOWS"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # Lambda Function — S3 Access Point Custom Resource
+  # -----------------------------------------------------------------
+  S3ApLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-s3ap-creator"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !Ref S3ApLambdaRoleArn
+      Timeout: 600
+      MemorySize: 256
+      Architectures:
+        - arm64
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+      Environment:
+        Variables:
+          LOG_LEVEL: INFO
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-s3ap-creator"
+
+  # -----------------------------------------------------------------
+  # Custom Resource — Create S3 Access Point
+  # -----------------------------------------------------------------
+  S3AccessPoint:
+    Type: Custom::FsxS3AccessPoint
+    Properties:
+      ServiceToken: !GetAtt S3ApLambdaFunction.Arn
+      VolumeId: !Ref VolumeId
+      AccessPointName: !Ref AccessPointName
+      FileSystemUserType: !Ref FileSystemUserType
+      # WINDOWS user identity
+      WindowsUserName: !If
+        - IsWindowsUser
+        - !Ref WindowsUserName
+        - !Ref "AWS::NoValue"
+      # UNIX user identity
+      UnixUserId: !If
+        - IsWindowsUser
+        - !Ref "AWS::NoValue"
+        - !Ref UnixUserId
+      UnixGroupId: !If
+        - IsWindowsUser
+        - !Ref "AWS::NoValue"
+        - !Ref UnixGroupId
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  S3AccessPointArn:
+    Description: S3 Access Point ARN
+    Value: !GetAtt S3AccessPoint.AccessPointArn
+    Export:
+      Name: !Sub "${AWS::StackName}-S3ApArn"
+
+  S3AccessPointAlias:
+    Description: >
+      S3 Access Point alias (auto-generated, use as bucket name in S3 API calls).
+      Example: my-s3-access-point01-abc123def456-s3alias
+    Value: !GetAtt S3AccessPoint.AccessPointAlias
+    Export:
+      Name: !Sub "${AWS::StackName}-S3ApAlias"
+
+  S3AccessPointName:
+    Description: S3 Access Point name
+    Value: !Ref AccessPointName
+    Export:
+      Name: !Sub "${AWS::StackName}-S3ApName"
+
+  DataRepositoryAssociationId:
+    Description: Data Repository Association ID
+    Value: !GetAtt S3AccessPoint.DataRepositoryAssociationId
+
+  UsageNote:
+    Description: >
+      S3 AP usage examples (run from EC2 with appropriate IAM role):
+      - List files: aws s3 ls s3://<alias>/ --region ap-northeast-1
+      - Download: aws s3 cp s3://<alias>/file.txt ./file.txt --region ap-northeast-1
+      - Upload: aws s3 cp ./file.txt s3://<alias>/file.txt --region ap-northeast-1
+    Value: !Sub
+      - "aws s3 ls s3://${Alias}/ --region ${AWS::Region}"
+      - Alias: !GetAtt S3AccessPoint.AccessPointAlias

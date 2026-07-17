@@ -1,0 +1,461 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Network Stack - FSx for ONTAP Hands-on Lab Environment
+
+  Provisions VPC, subnets, NAT Gateway, Security Groups, and VPC Endpoints
+  required for the hands-on lab. Supports using an existing VPC via the
+  UseExistingVpc condition.
+
+# =====================================================================
+# Metadata
+# =====================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Existing Resource Options
+        Parameters:
+          - UseExistingVpc
+          - ExistingVpcId
+          - ExistingPrivateSubnet1Id
+          - ExistingPrivateSubnet2Id
+          - ExistingPublicSubnetId
+      - Label:
+          default: New VPC Configuration
+        Parameters:
+          - VpcCidr
+          - PrivateSubnet1Cidr
+          - PrivateSubnet2Cidr
+          - PublicSubnetCidr
+      - Label:
+          default: VPC Endpoints
+        Parameters:
+          - EnableVpcEndpoints
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  UseExistingVpc:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >
+      Set to true to use an existing VPC instead of creating a new one.
+      When true, provide ExistingVpcId and subnet IDs below.
+
+  ExistingVpcId:
+    Type: String
+    Default: ""
+    Description: >
+      VPC ID of existing VPC (only used when UseExistingVpc=true).
+
+  ExistingPrivateSubnet1Id:
+    Type: String
+    Default: ""
+    Description: >
+      Private Subnet 1 ID (only used when UseExistingVpc=true).
+      Must be in a different AZ from Private Subnet 2.
+
+  ExistingPrivateSubnet2Id:
+    Type: String
+    Default: ""
+    Description: >
+      Private Subnet 2 ID (only used when UseExistingVpc=true).
+      Required for Multi-AZ AD deployment.
+
+  ExistingPublicSubnetId:
+    Type: String
+    Default: ""
+    Description: >
+      Public Subnet ID (only used when UseExistingVpc=true).
+      Must have a NAT Gateway or Internet Gateway for SSM connectivity.
+
+  VpcCidr:
+    Type: String
+    Default: "10.0.0.0/16"
+    Description: CIDR block for the new VPC
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: "10.0.1.0/24"
+    Description: CIDR for Private Subnet 1 (FSx for ONTAP preferred subnet)
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: "10.0.2.0/24"
+    Description: CIDR for Private Subnet 2 (FSx for ONTAP standby / AD second AZ)
+
+  PublicSubnetCidr:
+    Type: String
+    Default: "10.0.0.0/24"
+    Description: CIDR for Public Subnet (NAT Gateway)
+
+  EnableVpcEndpoints:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >
+      Create VPC Endpoints for SSM (ssm, ssmmessages, ec2messages).
+      Set to false if using NAT Gateway path for SSM or endpoints already exist.
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  CreateNewVpc: !Equals [!Ref UseExistingVpc, "false"]
+  CreateVpcEndpoints: !And
+    - !Equals [!Ref EnableVpcEndpoints, "true"]
+    - !Equals [!Ref UseExistingVpc, "false"]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+
+  # -----------------------------------------------------------------
+  # VPC
+  # -----------------------------------------------------------------
+  Vpc:
+    Type: AWS::EC2::VPC
+    Condition: CreateNewVpc
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpc"
+
+  # -----------------------------------------------------------------
+  # Internet Gateway
+  # -----------------------------------------------------------------
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Condition: CreateNewVpc
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-igw"
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  # -----------------------------------------------------------------
+  # Public Subnet + NAT Gateway
+  # -----------------------------------------------------------------
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnetCidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public-subnet"
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-public-rt"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Condition: CreateNewVpc
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateNewVpc
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  NatGatewayEip:
+    Type: AWS::EC2::EIP
+    Condition: CreateNewVpc
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-nat-eip"
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Condition: CreateNewVpc
+    Properties:
+      AllocationId: !GetAtt NatGatewayEip.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-nat-gw"
+
+  # -----------------------------------------------------------------
+  # Private Subnets
+  # -----------------------------------------------------------------
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-subnet-1"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-subnet-2"
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: CreateNewVpc
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-rt"
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Condition: CreateNewVpc
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateNewVpc
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateNewVpc
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # -----------------------------------------------------------------
+  # Security Groups
+  # -----------------------------------------------------------------
+  FsxSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - FSx for ONTAP access"
+      VpcId: !If [CreateNewVpc, !Ref Vpc, !Ref ExistingVpcId]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-fsx-sg"
+
+  Ec2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - EC2 instances"
+      VpcId: !If [CreateNewVpc, !Ref Vpc, !Ref ExistingVpcId]
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+          Description: Allow all outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ec2-sg"
+
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateVpcEndpoints
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName} - VPC Endpoints"
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref VpcCidr
+          Description: HTTPS from VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpce-sg"
+
+  # --- FSx SG Ingress Rules ---
+  FsxIngressSmb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 445
+      ToPort: 445
+      SourceSecurityGroupId: !Ref Ec2SecurityGroup
+      Description: SMB from EC2
+
+  FsxIngressNfs:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref Ec2SecurityGroup
+      Description: NFS from EC2
+
+  FsxIngressSsh:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref Ec2SecurityGroup
+      Description: SSH (ONTAP CLI) from EC2
+
+  FsxIngressHttps:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref Ec2SecurityGroup
+      Description: HTTPS (ONTAP REST API) from EC2
+
+  FsxIngressIcmp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: icmp
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId: !Ref Ec2SecurityGroup
+      Description: ICMP from EC2
+
+  FsxIngressSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FsxSecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !Ref FsxSecurityGroup
+      Description: All traffic within FSx SG (inter-node HA)
+
+  # --- EC2 SG Ingress from FSx (for NFS callbacks, etc.) ---
+  Ec2IngressFromFsx:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref Ec2SecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !Ref FsxSecurityGroup
+      Description: All traffic from FSx for ONTAP
+
+  # -----------------------------------------------------------------
+  # VPC Endpoints (SSM Fleet Manager access for private subnets)
+  # -----------------------------------------------------------------
+  SsmEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+
+  SsmMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+
+  Ec2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVpcEndpoints
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2messages"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !If [CreateNewVpc, !Ref Vpc, !Ref ExistingVpcId]
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcId"
+
+  PrivateSubnet1Id:
+    Description: Private Subnet 1 ID (FSx for ONTAP preferred)
+    Value: !If [CreateNewVpc, !Ref PrivateSubnet1, !Ref ExistingPrivateSubnet1Id]
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet1Id"
+
+  PrivateSubnet2Id:
+    Description: Private Subnet 2 ID (AD second AZ / FSx standby)
+    Value: !If [CreateNewVpc, !Ref PrivateSubnet2, !Ref ExistingPrivateSubnet2Id]
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet2Id"
+
+  PublicSubnetId:
+    Description: Public Subnet ID
+    Value: !If [CreateNewVpc, !Ref PublicSubnet, !Ref ExistingPublicSubnetId]
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnetId"
+
+  FsxSecurityGroupId:
+    Description: Security Group for FSx for ONTAP
+    Value: !Ref FsxSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-FsxSecurityGroupId"
+
+  Ec2SecurityGroupId:
+    Description: Security Group for EC2 instances
+    Value: !Ref Ec2SecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-Ec2SecurityGroupId"
+
+  VpcCidrBlock:
+    Description: VPC CIDR block
+    Value: !If [CreateNewVpc, !Ref VpcCidr, "N/A (existing VPC)"]
