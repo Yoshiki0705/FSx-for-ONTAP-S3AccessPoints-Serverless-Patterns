@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Amplify Gen2
+.amplify/
+amplify_outputs.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
