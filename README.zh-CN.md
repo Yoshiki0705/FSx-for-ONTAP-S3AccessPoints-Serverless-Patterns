@@ -1073,7 +1073,7 @@ cfn-lint */template.yaml */template-deploy.yaml
 ### 仓库间关系
 
 ```
-Permission-aware-RAG-FSxN-CDK (CDK v2)
+Permission-aware-RAG-FSxN-CDK (CDK v2) # allow:naming
 ├── RAG app (Next.js + Bedrock + OpenSearch)
 ├── Document read via FSx for ONTAP S3 AP
 ├── NTFS ACL permission filtering
