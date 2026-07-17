@@ -11,7 +11,14 @@
  *   export AMPLIFY_PORTAL_S3AP_ALIAS=my-s3-access-point01-abc123-s3alias
  *   export AMPLIFY_PORTAL_SFN_ARN=arn:aws:states:ap-northeast-1:123456789012:stateMachine:my-workflow
  */
-import type { PortalConfig } from "./portal-config";
+
+export interface PortalConfig {
+  region: string;
+  s3ApAlias: string;
+  stateMachineArn: string;
+  stateMachineResourceScope: string;
+  s3ApResourceArns: string[];
+}
 
 export const config: PortalConfig = {
   // ─── Required ───────────────────────────────────────────────────────────
