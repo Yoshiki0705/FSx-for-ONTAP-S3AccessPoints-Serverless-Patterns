@@ -7,6 +7,7 @@ dist/
 # Amplify Gen2
 .amplify/
 amplify_outputs.json
+amplify/portal-config.ts
 
 # IDE
 .vscode/

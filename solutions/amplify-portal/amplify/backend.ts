@@ -1,6 +1,7 @@
 import { defineBackend } from "@aws-amplify/backend";
 import { auth } from "./auth/resource";
 import { data } from "./data/resource";
+import { config } from "./portal-config";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { Duration, Stack } from "aws-cdk-lib";
@@ -14,8 +15,16 @@ import { Duration, Stack } from "aws-cdk-lib";
  *     → HTTP Data Source → Step Functions API (StartExecution, DescribeExecution)
  *     → Lambda Data Source → ListFiles Lambda → S3 AP
  *
- * Data sources are added to the same stack as the AppSync API (data stack)
- * to avoid cross-stack reference issues with resolver → data source binding.
+ * Configuration is loaded from ./portal-config.ts.
+ * Copy portal-config.example.ts → portal-config.ts and set your values.
+ *
+ * Key lessons from deployment verification:
+ *   1. Data sources MUST be added to the same CDK stack as the AppSync API
+ *      (cross-stack references cause resolver binding failures)
+ *   2. APPSYNC_JS resolvers cannot use: new Date(), template literals,
+ *      or global constructors — use util.* and string concatenation
+ *   3. Step Functions DescribeExecution returns epoch seconds (not ISO 8601)
+ *      — conversion must happen on the frontend
  */
 const backend = defineBackend({
   auth,
@@ -28,16 +37,19 @@ const api = dataResources.graphqlApi;
 const dataStack = Stack.of(api);
 
 // --- HTTP Data Source for Step Functions ---
+const sfnEndpoint = `https://states.${config.region}.amazonaws.com`;
+
 const sfnDataSource = api.addHttpDataSource(
   "StepFunctionsHttpDataSource",
-  `https://states.ap-northeast-1.amazonaws.com`,
+  sfnEndpoint,
   {
     authorizationConfig: {
-      signingRegion: "ap-northeast-1",
+      signingRegion: config.region,
       signingServiceName: "states",
     },
   }
 );
+
 sfnDataSource.grantPrincipal.addToPrincipalPolicy(
   new iam.PolicyStatement({
     actions: [
@@ -45,7 +57,7 @@ sfnDataSource.grantPrincipal.addToPrincipalPolicy(
       "states:DescribeExecution",
       "states:StopExecution",
     ],
-    resources: ["*"],
+    resources: [config.stateMachineResourceScope],
   })
 );
 
@@ -62,10 +74,7 @@ const listFilesRole = new iam.Role(dataStack, "ListFilesLambdaRole", {
       statements: [
         new iam.PolicyStatement({
           actions: ["s3:ListBucket", "s3:GetObject", "s3:GetBucketLocation"],
-          resources: [
-            "arn:aws:s3:*:*:accesspoint/*",
-            "arn:aws:s3:*:*:accesspoint/*/object/*",
-          ],
+          resources: config.s3ApResourceArns,
         }),
       ],
     }),
@@ -83,7 +92,12 @@ import boto3
 s3 = boto3.client("s3")
 
 def handler(event, context):
-    """List files in S3 AP with pagination and directory navigation."""
+    """List files in S3 AP with pagination and directory navigation.
+
+    Supports both FSx for ONTAP S3 Access Points and regular S3 buckets.
+    Set S3_AP_ALIAS environment variable to the AP alias or bucket name.
+    Uses Delimiter='/' for directory-style navigation (CommonPrefixes).
+    """
     ap_alias = os.environ.get("S3_AP_ALIAS", "")
     prefix = event.get("prefix", "")
     max_keys = event.get("maxKeys", 100)
@@ -128,7 +142,7 @@ def handler(event, context):
 `),
   role: listFilesRole,
   environment: {
-    S3_AP_ALIAS: "", // Set via parameter override or sandbox config
+    S3_AP_ALIAS: config.s3ApAlias,
   },
   memorySize: 256,
   timeout: Duration.seconds(30),
