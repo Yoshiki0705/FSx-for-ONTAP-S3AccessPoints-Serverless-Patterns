@@ -973,12 +973,12 @@ FSx for ONTAP S3 Access Points は S3 API の一部のみサポートします
 | UC16 government-archives | S3AP | **選択可** 🆕 | ✅ `OutputDestination` (2026-05-11) | OCR テキスト / 分類 / PII 検出 / 墨消し / OpenSearch 前段ドキュメントを標準 S3 or S3AP に選択可 |
 | UC17 smart-city-geospatial | S3AP | **選択可** 🆕 | ✅ `OutputDestination` (2026-05-11) | CRS 正規化メタデータ / 土地利用分類 / リスクマップ / Bedrock レポートを標準 S3 or S3AP に選択可 |
 
-**次のロードマップ**:
-- ~~Part B: UC1-5 の既存 `S3AccessPointOutputAlias` パターンのドキュメント整備~~ ✅ 完了（`docs/output-destination-patterns.md`）
-- ~~Part C: UC1-5 にも `OutputDestination` 統一 API を追加~~ ✅ 完了（2026-05-11、backward compat 維持）
-- ~~UC15/16/17 に `OutputDestination` 統一 API を追加~~ ✅ 完了（2026-05-11、backward compat 維持）
-- ~~UC6/7/8/13 の非 Athena 成果物に `OutputDestination` 切替を追加~~ ✅ 完了（Pattern C → B ハイブリッド。Athena 結果は仕様上標準 S3 必須、非 Athena Lambda は OutputWriter 対応済み）
-- UC9/10/12/15/16/17 の AWS 実デプロイ検証（単体テストは完了、UC11/14 は検証済み、その他は Phase 8 候補）
+**現在のステータスと次のステップ**:
+
+全 28 UC + SAP で `OutputDestination` パラメータによる出力先切替が利用可能です。UC6/7/8 のみ Athena 結果出力は AWS 仕様上標準 S3 固定ですが、非 Athena 成果物 (Bedrock レポート、メタデータ等) は `FSXN_S3AP` に切替可能です。
+
+残課題:
+- UC9/10/12/15/16/17 の AWS 実デプロイ検証（単体テストは完了、UC11/14 は検証済み）
 
 ## リージョン選択ガイド
 
