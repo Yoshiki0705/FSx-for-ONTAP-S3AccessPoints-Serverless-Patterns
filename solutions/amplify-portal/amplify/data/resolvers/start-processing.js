@@ -1,34 +1,20 @@
-/**
- * AppSync HTTP Resolver: Start Step Functions execution.
- *
- * This resolver calls StartExecution on the Step Functions API directly,
- * without an intermediate Lambda function. It maps the GraphQL mutation
- * arguments to the StartExecution request format.
- *
- * Data source: StepFunctionsHttpDataSource (configured in custom stack)
- * Endpoint: https://states.<region>.amazonaws.com
- *
- * Note: `util` is an AppSync APPSYNC_JS runtime global — it is NOT
- * imported. See: https://docs.aws.amazon.com/appsync/latest/devguide/resolver-util-reference-js.html
- */
+import { util } from "@aws-appsync/utils";
+
 export function request(ctx) {
   const { pattern, inputPrefix, parameters } = ctx.arguments;
 
-  // Map pattern enum to state machine ARN
-  // TODO: Implement ARN mapping. Options:
-  //   1. Store ARNs in DynamoDB and look up via pipeline resolver (stash)
-  //   2. Use SSM Parameter Store with a before-mapping template
-  //   3. Hardcode ARN for single-pattern deployments
-  // For now, this uses a single ARN from the environment/stash.
-  const stateMachineArn = ctx.stash.stateMachineArn || ctx.env.STATE_MACHINE_ARN;
+  const stateMachineArn =
+    "arn:aws:states:ap-northeast-1:178625946981:stateMachine:placeholder";
 
   const input = JSON.stringify({
-    inputPrefix,
+    inputPrefix: inputPrefix,
     parameters: parameters || {},
     triggeredBy: "amplify-portal",
-    triggeredAt: new Date().toISOString(),
+    triggeredAt: util.time.nowISO8601(),
     userId: ctx.identity.username,
   });
+
+  const executionName = "portal-" + pattern + "-" + util.time.nowEpochMilliSeconds();
 
   return {
     method: "POST",
@@ -39,21 +25,25 @@ export function request(ctx) {
         "X-Amz-Target": "AWSStepFunctions.StartExecution",
       },
       body: JSON.stringify({
-        stateMachineArn,
-        input,
-        name: `portal-${pattern}-${Date.now()}`,
+        stateMachineArn: stateMachineArn,
+        input: input,
+        name: executionName,
       }),
     },
   };
 }
 
 export function response(ctx) {
-  const body = JSON.parse(ctx.result.body);
-
-  if (ctx.result.statusCode !== 200) {
-    return util.error(body.message || "Failed to start execution", "StepFunctionsError");
+  if (ctx.error) {
+    return util.error(ctx.error.message, ctx.error.type);
   }
 
+  if (ctx.result.statusCode !== 200) {
+    var errorBody = JSON.parse(ctx.result.body);
+    return util.error(errorBody.message || "Failed to start execution", "StepFunctionsError");
+  }
+
+  var body = JSON.parse(ctx.result.body);
   return {
     executionArn: body.executionArn,
     startDate: body.startDate,

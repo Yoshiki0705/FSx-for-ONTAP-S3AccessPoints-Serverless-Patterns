@@ -1,12 +1,11 @@
 /**
- * AppSync Lambda Resolver: List files via S3 AP.
+ * AppSync APPSYNC_JS Resolver: List files via Lambda (S3 AP).
  *
- * This resolver invokes a Lambda function that calls ListObjectsV2
- * on the FSx for ONTAP S3 Access Point. The Lambda runs VPC-external
- * (Internet-origin AP pattern).
- *
- * Data source: ListFilesLambdaDataSource (configured in custom stack)
+ * Invokes the ListFiles Lambda function which calls ListObjectsV2
+ * on the FSx for ONTAP S3 Access Point.
  */
+import { util } from "@aws-appsync/utils";
+
 export function request(ctx) {
   const { prefix, maxKeys, continuationToken } = ctx.arguments;
 
