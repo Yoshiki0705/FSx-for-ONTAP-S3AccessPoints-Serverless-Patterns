@@ -31,11 +31,14 @@ paths = [
   '''\.yaml$''',
   '''\.yml$''',
   '''\.txt$''',
+  '''\.py$''',
+  '''\.sh$''',
 ]
 regexTarget = "line"
 regexes = [
   '''(?:example|placeholder|dummy|test|localhost|127\.0\.0\.1|0\.0\.0\.0)''',
   '''(?:CIDR|subnet|VPC|range|prefix)''',
+  '''(?:e\.g\.|management_ip|FSXN_MGMT_IP|10\.0\.0\.0)''',
 ]
 
 [[rules]]
@@ -98,6 +101,9 @@ paths = [
   '''\.md$''',
   '''docs/''',
   '''node_modules/''',
+  '''\.yaml$''',
+  '''\.yml$''',
+  '''\.json$''',
 ]
 
 [[rules]]
