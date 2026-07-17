@@ -390,14 +390,14 @@ Los 28 UC se dividen en 3 patrones de salida:
 | UC3 manufacturing-analytics | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Resultados de inspección / detección de anomalías |
 | UC4 media-vfx | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Metadatos de renderizado |
 | UC5 healthcare-dicom | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Metadatos DICOM / anonimización |
-| UC6 semiconductor-eda | S3AP | **S3 estándar** | ⚠️ No implementado | Resultados Bedrock/Athena (Athena requiere S3 estándar por especificación) |
-| UC7 genomics-pipeline | S3AP | **S3 estándar** | ⚠️ No implementado | Resultados Glue/Athena (Athena requiere S3 estándar por especificación) |
-| UC8 energy-seismic | S3AP | **S3 estándar** | ⚠️ No implementado | Resultados Glue/Athena (Athena requiere S3 estándar por especificación) |
+| UC6 semiconductor-eda | S3AP | **Seleccionable (Híbrido)** | ✅ `OutputDestination` | Informes Bedrock/metadatos → conmutable, resultados Athena DRC → S3 estándar (especificación AWS) |
+| UC7 genomics-pipeline | S3AP | **Seleccionable (Híbrido)** | ✅ `OutputDestination` | QC/Variant/Summary → conmutable, resultados Athena → S3 estándar (especificación AWS) |
+| UC8 energy-seismic | S3AP | **Seleccionable (Híbrido)** | ✅ `OutputDestination` | Metadatos/anomalías/compliance → conmutable, Athena → S3 estándar |
 | UC9 autonomous-driving | S3AP | **Seleccionable** 🆕 | ✅ `OutputDestination` | Resultados de análisis ADAS |
 | UC10 construction-bim | S3AP | **Seleccionable** 🆕 | ✅ `OutputDestination` | Metadatos BIM / informes de cumplimiento de seguridad |
 | **UC11 retail-catalog** | S3AP | **Seleccionable** | ✅ `OutputDestination` | Verificado en AWS 2026-05-10 |
 | UC12 logistics-ocr | S3AP | **Seleccionable** 🆕 | ✅ `OutputDestination` | OCR de guías de entrega |
-| UC13 education-research | S3AP | **S3 estándar** | ⚠️ No implementado | Incluye resultados Athena (Athena requiere S3 estándar por especificación) |
+| UC13 education-research | S3AP | **Seleccionable** | ✅ `OutputDestination` | OCR/clasificación/análisis de citas/metadatos → todo conmutable |
 | **UC14 insurance-claims** | S3AP | **Seleccionable** | ✅ `OutputDestination` | Verificado en AWS 2026-05-10 |
 | UC15 defense-satellite | S3AP | S3AP | patrón existente | Detección de objetos / detección de cambios |
 | UC16 government-archives | S3AP | S3AP | patrón existente | Redacción FOIA / metadatos |
