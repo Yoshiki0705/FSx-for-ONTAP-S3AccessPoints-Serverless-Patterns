@@ -63,6 +63,7 @@
 |:---|:---|
 | [`shared/`](shared/) | 共通 Python モジュール（S3ApHelper, OntapClient, 可観測性） |
 | [`operations/`](operations/) | **運用最適化パターン**（容量/スループット/ティアリング/スナップショット/コスト/QoS） |
+| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | **ハンズオン Lab 環境 IaC**（CloudFormation ネストスタック: VPC/AD/FSx/EC2/S3AP。S3 AP + Tamperproof Snapshot + FlexClone 復旧を個人で検証可能） |
 | [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy イベント駆動パイプライン |
 | [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/エッジ配信パターン（ベンダー非依存・CloudFront/サードパーティ、[CDN比較](docs/cdn-comparison.md)） |
 | [`docs/`](docs/) | 設計ガイド・ベンチマーク・Partner 資料（40+ ドキュメント） |
@@ -83,6 +84,7 @@
 | 🤝 Partner/SI 向け | [`docs/partner-si-one-pager.md`](docs/partner-si-one-pager.md) |
 | 🏛️ ガバナンス | [`docs/governance-checklist.md`](docs/governance-checklist.md) |
 | ⚡ ローカルテスト | [`docs/local-testing-quick-start.md`](docs/local-testing-quick-start.md) |
+| 🏗️ ハンズオン Lab 環境構築 (S3 AP + Tamperproof + FlexClone) | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) |
 | 🪣 S3 標準バケットユーザー向け | [`docs/s3-bucket-user-guide.md`](docs/s3-bucket-user-guide.md) |
 | 🔌 ONTAP 管理者向け | [`docs/ontap-integration-notes.md`](docs/ontap-integration-notes.md) |
 | 🎯 パターン選択ガイド | [`docs/pattern-selection-guide.md`](docs/pattern-selection-guide.md) |
@@ -245,39 +247,40 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 ### リポジトリ間の関係
 
 ```
-┌───────────────────────────────────────────────────────────────────┐
-│  Permission-aware-RAG-FSxN-CDK (CDK v2)                           │ <!-- allow:naming -->
-│  ・完全な RAG アプリ（Next.js + Bedrock + OpenSearch）               │
-│  ・FSx for ONTAP S3 AP 経由のドキュメント読み取り                      │
-│  ・NTFS ACL ベースの権限フィルタリング                                 │
-│  ・本番デプロイ可能な Web UI                                         │
-└────────────────────────────────┬──────────────────────────────────┘
-                                 │ 共通技術: S3 AP, ONTAP REST API, Bedrock
-                                 │
-┌────────────────────────────────▼──────────────────────────────────┐
-│  FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns (本リポジトリ)    │
-│  ・42 パターン (28 UC + 7 FC + 2 GenAI + 1 SAP + 1 HA + 2 ED + 1 Edge)│
-│  ・CloudFormation/SAM テンプレート（独立デプロイ可能）                  │
-│  ・shared/ モジュール（S3ApHelper, OntapClient, 可観測性）            │
-│  ・ベンチマーク、ガバナンス、Partner/SI 資料                            │
-└──────────┬─────────────────────▼──────────────────────────────────┘
-           │                     │ 共通技術: S3 AP, DataSync, Lakehouse
-           │                     │
-           │  ┌──────────────────▼──────────────────────────────────┐
-           │  │  fsxn-lakehouse-integrations                        │
-           │  │  ・Lakehouse プラットフォーム統合（Databricks, Snowflake 等）│
-           │  │  ・S3 AP 互換性マトリクス（AWS Support 確認済み）        │
-           │  │  ・DataSync 連携パターン                              │
+┌──────────────────────────────────────────────────────────────────┐
+│  Permission-aware-RAG-FSxN-CDK (CDK v2)                          │ <!-- allow:naming -->
+│  - 完全な RAG アプリ (Next.js + Bedrock + OpenSearch)            │
+│  - FSx for ONTAP S3 AP 経由のドキュメント読み取り                │
+│  - NTFS ACL ベースの権限フィルタリング                           │
+│  - 本番デプロイ可能な Web UI                                     │
+└──────────────────────────────────┬───────────────────────────────┘
+                                   │ 共通技術: S3 AP, ONTAP REST API, Bedrock
+                                   │
+┌──────────────────────────────────▼───────────────────────────────┐
+│  FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns (本リポジトリ) │
+│  - 42 パターン (28 UC + 7 FC + 2 GenAI + SAP + HA + ED + Edge)  │
+│  - CloudFormation/SAM テンプレート (独立デプロイ可能)             │
+│  - shared/ モジュール (S3ApHelper, OntapClient, 可観測性)        │
+│  - ベンチマーク、ガバナンス、Partner/SI 資料                     │
+│  - ハンズオン Lab IaC (infrastructure/handson-lab/)              │
+└──────────┬───────────────────────▼───────────────────────────────┘
+           │                       │ 共通技術: S3 AP, DataSync, Lakehouse
+           │                       │
+           │  ┌────────────────────▼───────────────────────────────┐
+           │  │  fsxn-lakehouse-integrations                       │
+           │  │  - Lakehouse 統合 (Databricks, Snowflake 等)       │
+           │  │  - S3 AP 互換性マトリクス (AWS Support 確認済み)   │
+           │  │  - DataSync 連携パターン                           │
            │  └────────────────────────────────────────────────────┘
            │
            │ 共通技術: FSx for ONTAP, EC2, 移行ツール
            │
-┌──────────▼────────────────────────────────────────────────────────┐
-│  vmware-migration-ec2-ontap                                       │
-│  ・VMware → EC2 + FSx for ONTAP マイグレーション                    │
-│  ・移行後データに S3 AP パターンを適用可能                             │
-│  ・オンプレ NAS → クラウドネイティブ AI 処理への導線                    │
-└───────────────────────────────────────────────────────────────────┘
+┌──────────▼───────────────────────────────────────────────────────┐
+│  vmware-migration-ec2-ontap                                      │
+│  - VMware → EC2 + FSx for ONTAP マイグレーション                 │
+│  - 移行後データに S3 AP パターンを適用可能                       │
+│  - オンプレ NAS → クラウドネイティブ AI 処理への導線             │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ### 使い分けガイド
@@ -293,6 +296,7 @@ FSx for ONTAP S3 Access Points はファイルデータへの S3 アクセス境
 | FPolicy イベント駆動パイプラインを構築したい | 本リポジトリ (`solutions/event-driven/`) |
 | FlexCache × サーバーレスの設計を検討したい | 本リポジトリ (`solutions/flexcache/`) |
 | HA クラスタ (LifeKeeper) の AI 監視を実装したい | 本リポジトリ (`solutions/ha/`) |
+| S3 AP + Tamperproof Snapshot のハンズオン環境を構築したい | 本リポジトリ ([`infrastructure/handson-lab/`](infrastructure/handson-lab/)) |
 | S3 AP のベンチマーク結果を参照したい | 本リポジトリ `docs/s3ap-benchmark-results.md` |
 | S3 AP の互換性マトリクスを参照したい | [fsxn-lakehouse-integrations: Compatibility Matrix](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md) |
 
@@ -1650,6 +1654,14 @@ fsxn-s3ap-serverless-patterns/
 ├── events/                            # SAM CLI ローカルテスト用イベント (Phase 6A)
 │   ├── env.json                      # 共通環境変数テンプレート
 │   └── uc01-uc14/                    # 各 UC の discovery-event.json
+│
+├── infrastructure/                    # インフラテンプレート
+│   ├── demo-ad-environment.yaml      # AD + EC2 テスト環境（WINDOWS S3 AP 検証用）
+│   └── handson-lab/                  # ハンズオン Lab IaC (CloudFormation ネストスタック)
+│       ├── cloudformation/           # 7 テンプレート (network/ad/iam/fsx/s3ap/ec2/main)
+│       ├── lambda/                   # Custom Resource (AD User / S3 AP)
+│       ├── scripts/                  # deploy / setup_ontap / cleanup / verify
+│       └── docs/                     # 手順書 / コスト見積もり
 │
 ├── security/                          # セキュリティルール (Phase 5/6B)
 │   ├── cfn-guard-rules/              # cfn-guard ポリシールール
