@@ -1,0 +1,47 @@
+# Nextcloud + MariaDB for External Storage S3 AP verification
+# Usage: docker compose up -d
+# Access: http://localhost:8080
+#
+# This is a LOCAL TEST SETUP — not for production.
+# See docs/nextcloud-external-storage-s3ap.md for production guidance.
+
+services:
+  nextcloud:
+    image: nextcloud:29
+    container_name: nextcloud-s3ap-test
+    ports:
+      - "8080:80"
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=nextcloud
+      - NEXTCLOUD_ADMIN_USER=admin
+      - NEXTCLOUD_ADMIN_PASSWORD=admin123
+    volumes:
+      - nextcloud_data:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mariadb:11
+    container_name: nextcloud-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=nextcloud
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  nextcloud_data:
+  db_data:
