@@ -29,6 +29,55 @@ Web-based file portal for browsing, processing, and viewing results on FSx for O
 └──────────────────┘          └─────────────────────────┘
 ```
 
+### Request Flow (Sequence Diagram)
+
+```mermaid
+sequenceDiagram
+    participant User as Browser (React)
+    participant Auth as Cognito
+    participant API as AppSync GraphQL
+    participant SFn as Step Functions
+    participant Lambda as ListFiles Lambda
+    participant S3AP as S3 Access Point
+    participant ONTAP as FSx for ONTAP Volume
+
+    Note over User,ONTAP: File Listing Flow
+    User->>Auth: Sign in (email + password)
+    Auth-->>User: JWT token
+    User->>API: listFiles(prefix="/documents/")
+    API->>Lambda: Invoke (event: {prefix, maxKeys})
+    Lambda->>S3AP: ListObjectsV2(Delimiter="/")
+    S3AP->>ONTAP: Read directory from volume
+    ONTAP-->>S3AP: File/folder entries
+    S3AP-->>Lambda: CommonPrefixes + Contents
+    Lambda-->>API: {files, isTruncated, nextToken}
+    API-->>User: Render FileExplorer
+
+    Note over User,ONTAP: Processing Flow
+    User->>API: startProcessing(pattern, prefix)
+    API->>SFn: StartExecution (HTTP resolver, no Lambda)
+    SFn-->>API: {executionArn, startDate}
+    API-->>User: Navigate to Results tab
+
+    loop Poll every 5s while RUNNING
+        User->>API: getJobStatus(executionArn)
+        API->>SFn: DescribeExecution (HTTP resolver)
+        SFn-->>API: {status, output}
+        API-->>User: Update status badge
+    end
+
+    Note over SFn,ONTAP: Inside Step Functions (UC pattern)
+    SFn->>Lambda: Discovery Lambda (VPC-internal)
+    Lambda->>ONTAP: ONTAP REST API (management LIF)
+    ONTAP-->>Lambda: Volume/file metadata
+    SFn->>Lambda: Processing Lambda (VPC-external)
+    Lambda->>S3AP: GetObject (read file data)
+    S3AP->>ONTAP: Read file content
+    ONTAP-->>S3AP: File bytes
+    S3AP-->>Lambda: Object data
+    Lambda-->>SFn: Processing result + dataClassification
+```
+
 ---
 
 ## Prerequisites

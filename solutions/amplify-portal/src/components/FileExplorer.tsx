@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { portalSettings } from "../portal-settings";
 
 const client = generateClient<Schema>();
 
@@ -108,6 +109,7 @@ export function FileExplorer({ onSelectPrefix }: FileExplorerProps) {
           className="process-btn"
           onClick={() => onSelectPrefix(currentPrefix)}
           title="Process files in this directory"
+          disabled={!portalSettings.processingEnabled}
         >
           Process this folder
         </button>
