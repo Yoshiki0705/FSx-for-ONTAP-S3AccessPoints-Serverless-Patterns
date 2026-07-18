@@ -11,13 +11,15 @@
 export const portalSettings = {
   /**
    * Enable the Process tab (Start Processing button).
-   * Set to false if stateMachineArn in start-processing.js is still "placeholder".
+   * Set to true AFTER configuring stateMachineArn in start-processing.js.
+   * Default: false (safe-by-default — prevents confusing errors in unconfigured state)
    */
-  processingEnabled: true,
+  processingEnabled: false,
 
   /**
    * Enable the Files tab (S3 AP file listing).
-   * Set to false if S3_AP_ALIAS Lambda env var is empty.
+   * Set to true AFTER configuring S3_AP_ALIAS Lambda env var.
+   * Default: false (shows "not configured" instead of misleading "No files")
    */
   fileListingEnabled: true,
 };
