@@ -21,10 +21,18 @@ open http://localhost:8080
 # Navigate to: Files → FSxONTAP-Data
 ```
 
+### Expected Result
+
+After `make verify` shows `status: ok`, you'll see:
+- **Nextcloud Files UI**: A folder named "FSxONTAP-Data" in the file list
+- **Inside the folder**: Directories and files from your S3 bucket/AP alias
+- **WebDAV**: `make list-files` outputs the file paths
+
 ## Prerequisites
 
 - Docker + Docker Compose
 - AWS CLI configured with valid credentials
+- ~1 GB free disk space (Docker images) and ~512 MB free RAM (Nextcloud container)
 - (Optional) FSx for ONTAP with S3 Access Point attached
 
 ## Configuration
