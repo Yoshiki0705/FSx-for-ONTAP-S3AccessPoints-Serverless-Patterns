@@ -99,13 +99,16 @@ sequenceDiagram
 
 > **Timing**: First-time setup takes ~8 minutes total (npm install ~2min + sandbox deploy ~5min). Subsequent iterations are much faster (~30s for sandbox updates).
 
+> **Multi-developer**: Each developer gets a separate sandbox (identified by OS username). Multiple team members can work on the same AWS account without conflicts. Use `npx ampx sandbox --identifier <name>` to customize.
+
 ```bash
 # 1. Install dependencies
 make install
 
-# 2. Create your configuration
+# 2. Create your configuration (REQUIRED before build/sandbox)
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 # Edit portal-config.ts — at minimum set your region (e.g., us-east-1 for US, ap-northeast-1 for Japan)
+# ⚠️ Without this file, `make sandbox` and `npx tsc` will fail with "Cannot find module './portal-config'"
 
 # 3. Deploy backend to personal sandbox (~3-5 min first time, ~30s incremental)
 make sandbox
