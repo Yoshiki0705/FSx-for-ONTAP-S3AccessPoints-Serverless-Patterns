@@ -2,6 +2,8 @@
 
 Local Docker setup for verifying Nextcloud's External Storage integration with S3 buckets and FSx for ONTAP S3 Access Points.
 
+> **What is S3 AP?** S3 Access Points provide an S3-compatible API layer over FSx for ONTAP file volumes, enabling S3 tools and services to read/write NAS data without copying it.
+
 ## Quick Start
 
 ```bash
