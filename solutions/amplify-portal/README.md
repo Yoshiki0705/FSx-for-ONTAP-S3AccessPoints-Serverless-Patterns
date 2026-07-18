@@ -38,6 +38,7 @@ Web-based file portal for browsing, processing, and viewing results on FSx for O
 | Node.js | 18.17+ (required by Amplify Gen2) |
 | AWS CLI | v2 configured with credentials |
 | AWS account | Permissions for Amplify, Cognito, AppSync, Lambda, Step Functions |
+| OS | macOS or Linux (Windows: use WSL2 or run npm scripts directly) |
 | (Optional) FSx for ONTAP | With **Internet-origin** S3 AP attached (VPC-origin NOT supported by this portal) |
 | (Optional) Deployed UC pattern | For Step Functions integration |
 
@@ -55,7 +56,7 @@ make install
 
 # 2. Create your configuration
 cp amplify/portal-config.example.ts amplify/portal-config.ts
-# Edit portal-config.ts — at minimum set your region
+# Edit portal-config.ts — at minimum set your region (e.g., us-east-1 for US, ap-northeast-1 for Japan)
 
 # 3. Deploy backend to personal sandbox (~3-5 min first time, ~30s incremental)
 make sandbox
@@ -360,6 +361,19 @@ Configure CloudWatch Logs retention for AppSync request logs and Step Functions 
 The current skeleton allows any authenticated user to query any execution ARN. For production, implement owner-based authorization (store execution → userId mapping in DynamoDB).
 
 > **File-level visibility note**: The portal's Cognito authentication controls who can access the AppSync API. However, file-level access control (which files a user can see/modify) is determined by the S3 AP's **File System Identity** on the ONTAP volume, not by Cognito groups. If all portal users share the same S3 AP (same UNIX/Windows identity), they see the same files. For per-user file isolation, create separate S3 APs with different file system identities.
+
+### Inline Lambda Code
+
+The ListFiles Lambda is defined inline (as a string in `backend.ts`) for simplicity. For production:
+- Extract to a separate Python file with proper error handling and logging
+- Add unit tests
+- Consider using a Lambda Layer for shared dependencies
+
+### Amplify Gen2 API Stability
+
+Amplify Gen2 is actively evolving. Pin `@aws-amplify/*` package versions and test after upgrades. Breaking changes may occur in minor versions during the early lifecycle.
+
+> **Tip for live demos**: Deploy the sandbox beforehand (`make sandbox`) and only run `make dev` during the presentation. Sandbox deployment takes 3-5 minutes on first run.
 
 ---
 
