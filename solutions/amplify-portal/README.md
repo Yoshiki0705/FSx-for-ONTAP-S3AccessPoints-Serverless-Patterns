@@ -38,12 +38,16 @@ Web-based file portal for browsing, processing, and viewing results on FSx for O
 | Node.js | 18.17+ (required by Amplify Gen2) |
 | AWS CLI | v2 configured with credentials |
 | AWS account | Permissions for Amplify, Cognito, AppSync, Lambda, Step Functions |
-| (Optional) FSx for ONTAP | With S3 AP attached for real file listing |
+| (Optional) FSx for ONTAP | With **Internet-origin** S3 AP attached (VPC-origin NOT supported by this portal) |
 | (Optional) Deployed UC pattern | For Step Functions integration |
+
+> ⚠️ **Sandbox resources persist until explicitly deleted.** After testing, always run `make sandbox-delete` to avoid leaving orphaned AWS resources (Cognito User Pool, AppSync API, Lambda). See [Cleanup](#cleanup).
 
 ---
 
 ## Quick Start (5 minutes)
+
+> **Timing**: First-time setup takes ~8 minutes total (npm install ~2min + sandbox deploy ~5min). Subsequent iterations are much faster (~30s for sandbox updates).
 
 ```bash
 # 1. Install dependencies
@@ -145,6 +149,8 @@ For development without FSx for ONTAP:
 
 > **Throughput note**: S3 AP operations share FSx for ONTAP throughput capacity with NFS/SMB workloads. For concurrent user planning, see [Throughput and Capacity Planning](../../docs/file-portal-amplify-gen2.md#スループットと容量計画).
 
+> **Performance note**: The ListFiles Lambda typically responds in 100-300ms for directories with < 100 objects. For directories with 1000 objects (max single page), expect 300-800ms. The Lambda has a 30-second timeout as a safety net, but normal operation is well under 1 second.
+
 ### Connecting to a Deployed UC Pattern
 
 After deploying a UC pattern (e.g., `make deploy-uc1` from the repo root):
@@ -216,6 +222,15 @@ This duplication exists because APPSYNC_JS resolvers cannot read CDK parameters 
 
 **Forgetting to update one of the two** is the most common deployment issue.
 
+### 7. State Machine ARN in Resolver Is Not a Secret
+
+The ARN hardcoded in `start-processing.js` is visible in the source code. This is acceptable because:
+- ARNs are not secrets — they identify resources but don't grant access
+- IAM policies (not ARNs) control who can invoke a state machine
+- The AppSync API requires Cognito authentication before any resolver executes
+
+However, the ARN is **environment-specific** — always update it when switching between dev/staging/prod.
+
 ---
 
 ## Development Commands
@@ -271,6 +286,8 @@ amplify-portal/
 ---
 
 ## Cleanup
+
+> ⚠️ **Important**: Sandbox resources are NOT automatically deleted. They persist in your AWS account until you explicitly remove them.
 
 ### Delete Sandbox (Development Resources)
 
