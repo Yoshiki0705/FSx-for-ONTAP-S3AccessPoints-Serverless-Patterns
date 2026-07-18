@@ -40,6 +40,12 @@ configure-s3: ## Configure External Storage with S3 bucket/AP alias (requires S3
 		echo "   Usage: export S3_BUCKET=my-bucket-or-ap-alias && make configure-s3"; \
 		exit 1; \
 	fi
+	@EXISTING=$$(docker exec -u 33 $(NC_CONTAINER) php occ files_external:list --output=json 2>/dev/null | grep -c '"mount_point"' || true); \
+	if [ "$$EXISTING" -gt "0" ]; then \
+		echo "⚠️  External Storage already configured. Run 'make clean && make up' to reconfigure."; \
+		docker exec -u 33 $(NC_CONTAINER) php occ files_external:list; \
+		exit 0; \
+	fi
 	@echo "Creating External Storage mount '$(MOUNT_NAME)'..."
 	@MOUNT_ID=$$(docker exec -u 33 $(NC_CONTAINER) php occ files_external:create \
 		$(MOUNT_NAME) amazons3 amazons3::accesskey 2>&1 | grep -o 'id [0-9]*' | grep -o '[0-9]*'); \
