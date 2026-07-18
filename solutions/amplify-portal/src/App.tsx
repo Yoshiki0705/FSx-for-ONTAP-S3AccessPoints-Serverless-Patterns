@@ -6,6 +6,12 @@ import { ResultsViewer } from "./components/ResultsViewer";
 
 type View = "files" | "submit" | "results";
 
+const VIEWS: { id: View; label: string }[] = [
+  { id: "files", label: "Files" },
+  { id: "submit", label: "Process" },
+  { id: "results", label: "Results" },
+];
+
 /**
  * Main application shell.
  *
@@ -24,55 +30,55 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>FSx for ONTAP File Portal</h1>
-        <nav className="app-nav">
-          <button
-            className={currentView === "files" ? "active" : ""}
-            onClick={() => setCurrentView("files")}
-          >
-            Files
-          </button>
-          <button
-            className={currentView === "submit" ? "active" : ""}
-            onClick={() => setCurrentView("submit")}
-          >
-            Process
-          </button>
-          <button
-            className={currentView === "results" ? "active" : ""}
-            onClick={() => setCurrentView("results")}
-          >
-            Results
-          </button>
+        <nav className="app-nav" role="tablist" aria-label="Portal navigation">
+          {VIEWS.map((view) => (
+            <button
+              key={view.id}
+              role="tab"
+              aria-selected={currentView === view.id}
+              aria-controls={`panel-${view.id}`}
+              className={currentView === view.id ? "active" : ""}
+              onClick={() => setCurrentView(view.id)}
+            >
+              {view.label}
+            </button>
+          ))}
         </nav>
         <div className="user-info">
           <span>{user?.signInDetails?.loginId}</span>
-          <button onClick={signOut} className="sign-out">
+          <button onClick={signOut} className="sign-out" aria-label="Sign out">
             Sign Out
           </button>
         </div>
       </header>
 
       <main className="app-main">
-        {currentView === "files" && (
-          <FileExplorer
-            onSelectPrefix={(prefix) => {
-              setSelectedPrefix(prefix);
-              setCurrentView("submit");
-            }}
-          />
-        )}
-        {currentView === "submit" && (
-          <JobSubmitForm
-            initialPrefix={selectedPrefix}
-            onJobStarted={(arn) => {
-              setActiveJobArn(arn);
-              setCurrentView("results");
-            }}
-          />
-        )}
-        {currentView === "results" && (
-          <ResultsViewer executionArn={activeJobArn} />
-        )}
+        <div id="panel-files" role="tabpanel" aria-labelledby="tab-files" hidden={currentView !== "files"}>
+          {currentView === "files" && (
+            <FileExplorer
+              onSelectPrefix={(prefix) => {
+                setSelectedPrefix(prefix);
+                setCurrentView("submit");
+              }}
+            />
+          )}
+        </div>
+        <div id="panel-submit" role="tabpanel" aria-labelledby="tab-submit" hidden={currentView !== "submit"}>
+          {currentView === "submit" && (
+            <JobSubmitForm
+              initialPrefix={selectedPrefix}
+              onJobStarted={(arn) => {
+                setActiveJobArn(arn);
+                setCurrentView("results");
+              }}
+            />
+          )}
+        </div>
+        <div id="panel-results" role="tabpanel" aria-labelledby="tab-results" hidden={currentView !== "results"}>
+          {currentView === "results" && (
+            <ResultsViewer executionArn={activeJobArn} />
+          )}
+        </div>
       </main>
     </div>
   );
