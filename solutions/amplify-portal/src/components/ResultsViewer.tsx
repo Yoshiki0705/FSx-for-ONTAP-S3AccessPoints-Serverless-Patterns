@@ -98,8 +98,8 @@ export function ResultsViewer({ executionArn }: ResultsViewerProps) {
 
       {result && (
         <div className="result-card">
-          <div className="result-header">
-            <span className={`status-badge ${statusColor(result.status)}`}>
+          <div className="result-header" aria-live="polite" aria-atomic="true">
+            <span className={`status-badge ${statusColor(result.status)}`} role="status">
               {result.status}
             </span>
             {result.status === "RUNNING" && (
