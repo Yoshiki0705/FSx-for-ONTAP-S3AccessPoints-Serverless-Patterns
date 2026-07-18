@@ -186,6 +186,49 @@ Click on **Files** in the top navigation. The configured folder name should appe
 
 ---
 
+## CLI Automation Setup (Docker / occ command)
+
+For CLI-based External Storage configuration (CI/CD, Docker environments, scripted setup):
+
+```bash
+# 1. Enable External Storage app
+docker exec -u 33 <CONTAINER> php occ app:enable files_external
+
+# 2. Create mount point
+docker exec -u 33 <CONTAINER> php occ files_external:create FSxONTAP-Data amazons3 amazons3::accesskey
+# → Returns "Storage created with id N". Note the ID.
+
+# 3. Set parameters (ONE parameter per invocation — mandatory)
+docker exec -u 33 <CONTAINER> php occ files_external:config <ID> bucket <S3_AP_ALIAS>
+docker exec -u 33 <CONTAINER> php occ files_external:config <ID> hostname s3.<REGION>.amazonaws.com
+docker exec -u 33 <CONTAINER> php occ files_external:config <ID> region <REGION>
+docker exec -u 33 <CONTAINER> php occ files_external:config <ID> use_ssl true
+docker exec -u 33 <CONTAINER> php occ files_external:config <ID> use_path_style true
+docker exec -u 33 <CONTAINER> php occ files_external:config <ID> key <ACCESS_KEY_ID>
+docker exec -u 33 <CONTAINER> php occ files_external:config <ID> secret <SECRET_ACCESS_KEY>
+
+# 4. Verify connection
+docker exec -u 33 <CONTAINER> php occ files_external:verify <ID>
+# → "status: ok" means success
+```
+
+> **CLI Pitfalls**:
+> - `occ files_external:config` requires **one invocation per parameter**. Combining multiple `-c` flags or arguments in a single command returns "Too many arguments"
+> - Docker execution requires `-u 33` (www-data user). Running as root returns a permission error
+> - If credentials (key/secret) are empty, the AWS SDK falls back to EC2 Instance Metadata (169.254.169.254), which always times out in Docker
+
+This repository includes a Docker Compose + Makefile automation at `solutions/nextcloud-test/`:
+
+```bash
+cd solutions/nextcloud-test
+make up
+export S3_BUCKET=<your-bucket-or-ap-alias>
+make configure-s3
+make verify
+```
+
+---
+
 ## Verification Steps
 
 After configuration, verify the following operations:
