@@ -346,9 +346,20 @@ make build
 # Upload dist/ to S3 + CloudFront, or connect Git repo to Amplify Hosting
 ```
 
+### Monitoring
+
+Add CloudWatch Alarms for:
+- AppSync: 4xx/5xx error rate
+- Lambda (ListFiles): error count, duration p99
+- Step Functions: failed execution count
+
+Configure CloudWatch Logs retention for AppSync request logs and Step Functions execution history to meet audit/compliance requirements.
+
 ### Access Control
 
 The current skeleton allows any authenticated user to query any execution ARN. For production, implement owner-based authorization (store execution → userId mapping in DynamoDB).
+
+> **File-level visibility note**: The portal's Cognito authentication controls who can access the AppSync API. However, file-level access control (which files a user can see/modify) is determined by the S3 AP's **File System Identity** on the ONTAP volume, not by Cognito groups. If all portal users share the same S3 AP (same UNIX/Windows identity), they see the same files. For per-user file isolation, create separate S3 APs with different file system identities.
 
 ---
 
