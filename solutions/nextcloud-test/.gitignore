@@ -1,0 +1,3 @@
+# Docker volumes (if bind-mounted)
+data/
+db/
