@@ -5,10 +5,11 @@ Local Docker setup for verifying Nextcloud's External Storage integration with S
 ## Quick Start
 
 ```bash
-# 1. Start Nextcloud + MariaDB
+# 1. Start Nextcloud + MariaDB (~40s first run, ~5s subsequent)
 make up
 
 # 2. Configure External Storage with your S3 bucket or S3 AP alias
+export S3_BUCKET=my-bucket-or-ap-alias
 make configure-s3
 
 # 3. Verify connection
@@ -92,6 +93,14 @@ Replace `bucket` value with the S3 AP alias — all other settings remain identi
 ### 5. Nextcloud + S3 AP Data Visibility
 
 Files written via NFS/SMB to FSx for ONTAP volumes appear immediately in Nextcloud's file browser (ONTAP provides strong consistency for S3 AP reads).
+
+> **Note**: Nextcloud caches file metadata in its database. If files uploaded via NFS/SMB don't appear in the UI, run `docker exec -u 33 <CONTAINER> php occ files:scan --all` to force a rescan. For production, configure Nextcloud's background job interval (cron) to control scan frequency.
+
+## Security Notes
+
+- **Credentials**: AWS access keys are passed to the Nextcloud container and stored in its database (MariaDB volume). Running `make clean` deletes the volume and all stored credentials.
+- **Passwords**: The admin password (`admin123`) and database passwords are insecure placeholders. This setup is for **local testing only** — never expose port 8080 on a public network.
+- **Network**: By default, only `localhost:8080` is exposed. The container has no inbound access from external networks unless you modify the port binding.
 
 ## Cleanup
 
