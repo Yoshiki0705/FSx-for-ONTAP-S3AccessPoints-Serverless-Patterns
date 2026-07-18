@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { portalSettings } from "../portal-settings";
 
 const client = generateClient<Schema>();
 
@@ -75,6 +76,15 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
     <div className="job-submit-form">
       <h2>Start Processing Job</h2>
 
+      {!portalSettings.processingEnabled && (
+        <div className="error-message" role="alert">
+          Processing is not configured. Set a valid Step Functions ARN in{" "}
+          <code>amplify/data/resolvers/start-processing.js</code> and{" "}
+          <code>amplify/portal-config.ts</code>, then redeploy.
+          See <a href="https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/tree/main/solutions/amplify-portal#connecting-to-a-deployed-uc-pattern">README</a> for details.
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="pattern">Processing Pattern</label>
@@ -82,6 +92,7 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
             id="pattern"
             value={pattern}
             onChange={(e) => setPattern(e.target.value as ProcessingPattern)}
+            disabled={!portalSettings.processingEnabled}
           >
             {Object.entries(PATTERN_DESCRIPTIONS).map(([key, desc]) => (
               <option key={key} value={key}>
@@ -99,6 +110,7 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
             value={prefix}
             onChange={(e) => setPrefix(e.target.value)}
             placeholder="e.g., documents/contracts/2024/"
+            disabled={!portalSettings.processingEnabled}
           />
           <small>
             Files under this prefix will be processed by the selected pattern.
@@ -108,7 +120,7 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
         {error && <div className="error-message">{error}</div>}
         {success && <div className="success-message">{success}</div>}
 
-        <button type="submit" disabled={submitting || !prefix}>
+        <button type="submit" disabled={submitting || !prefix || !portalSettings.processingEnabled}>
           {submitting ? "Starting..." : "Start Processing"}
         </button>
       </form>
