@@ -126,6 +126,73 @@ All three approaches share the same backend integration point: the existing Step
 
 ---
 
+## Coexistence Architecture: Amplify Gen2 + Nextcloud
+
+The two approaches are not exclusive — they can **coexist, each handling what it does well**.
+
+### Role Division
+
+| Function | Nextcloud handles | Amplify Gen2 handles |
+|---|---|---|
+| File browsing & download | ✅ External Storage, immediate | ✅ ListFiles Lambda |
+| File upload | ✅ Drag & drop, sync client | ❌ Not implemented |
+| Desktop/mobile sync | ✅ Official clients | ❌ |
+| Sharing links & comments | ✅ Built-in | ❌ |
+| AI/ML processing workflow trigger | ⚠️ Possible via webhook (setup required) | ✅ AppSync Mutation → Step Functions |
+| Real-time processing status | ❌ No polling mechanism | ✅ 5s polling + status badge |
+| Processing pattern selection UI | ❌ | ✅ Dropdown + parameter input |
+| Data classification label display | ❌ | ✅ dataClassification rendering |
+
+### Coexistence Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Users                                                           │
+│  ┌─────────────────────┐   ┌──────────────────────────────────┐ │
+│  │ Nextcloud           │   │ Amplify Gen2 Portal              │ │
+│  │ (File Management)   │   │ (Processing Dashboard)           │ │
+│  │ - Browse/DL/UL      │   │ - Pattern selection              │ │
+│  │ - Sync client       │   │ - Job submission                 │ │
+│  │ - Share/Comment     │   │ - Result viewing                 │ │
+│  └────────┬────────────┘   └──────────────┬───────────────────┘ │
+└───────────┼───────────────────────────────┼─────────────────────┘
+            │                               │
+            │ S3 AP (External Storage)      │ AppSync → Step Functions
+            │ or NFS (Direct Mount)         │ + ListFiles Lambda → S3 AP
+            │                               │
+            ▼                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  FSx for ONTAP                                                   │
+│  ┌───────────────────────────────────────────────────────────┐   │
+│  │ Volume (/vol/data)                                        │   │
+│  │ NFS + SMB + S3 AP — same data, multiprotocol access       │   │
+│  └───────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Points for Coexistence
+
+1. **Single data source**: Both access the same FSx for ONTAP volume/S3 AP. No data duplication.
+2. **Independent auth**: Nextcloud uses LDAP/SAML, Amplify uses Cognito. Different user bases are fine.
+3. **Network isolation possible**: Nextcloud in VPC (NFS + VPC-origin S3 AP), Amplify outside VPC (Internet-origin S3 AP).
+4. **Incremental adoption**: Start with Nextcloud for file management, add Amplify portal when processing needs arise.
+5. **Shared throughput**: Both consume the same FSx for ONTAP bandwidth — plan accordingly (see [Throughput Planning](#throughput-and-capacity-planning)).
+
+### Typical Coexistence Scenario
+
+```
+Day 1: Team uses Nextcloud for file browsing & sharing
+       (Same data visible to NFS/SMB users from the Web)
+
+Day 2: Admin decides "I want to AI-classify this contract folder"
+       → Amplify portal Process tab: run UC1 (Legal Compliance)
+
+Day 3: Results (with classification labels) written back to the same volume
+       → Nextcloud users AND NFS/SMB users can immediately view results
+```
+
+---
+
 ## Amplify Gen2 Integration Pattern
 
 ### Architecture Detail
