@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { FlexCloneStatus } from "./FlexCloneStatus";
 
 const client = generateClient<Schema>();
 
@@ -143,10 +144,15 @@ export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }:
           </dl>
 
           {result.output && result.status === "SUCCEEDED" && (
-            <details className="result-output">
-              <summary>Output Data</summary>
-              <pre>{JSON.stringify(result.output, null, 2)}</pre>
-            </details>
+            <>
+              {result.output.flexClone && (
+                <FlexCloneStatus cloneInfo={result.output.flexClone as Record<string, string>} />
+              )}
+              <details className="result-output">
+                <summary>Output Data</summary>
+                <pre>{JSON.stringify(result.output, null, 2)}</pre>
+              </details>
+            </>
           )}
 
           <button onClick={fetchStatus} disabled={loading} className="refresh-btn">

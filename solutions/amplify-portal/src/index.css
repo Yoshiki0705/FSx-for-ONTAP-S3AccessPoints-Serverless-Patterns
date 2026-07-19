@@ -446,3 +446,33 @@ button[type="submit"]:disabled {
 .breadcrumb-link:hover {
   color: #004499;
 }
+
+/* FlexClone Status */
+.flexclone-status {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #f0f7ff;
+  border: 1px solid #cce0ff;
+  border-radius: 6px;
+}
+
+.flexclone-status h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+}
+
+.clone-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  font-size: 0.85rem;
+}
+
+.clone-details dt {
+  font-weight: 600;
+  color: #555;
+}
+
+.clone-details dd {
+  margin: 0;
+}
