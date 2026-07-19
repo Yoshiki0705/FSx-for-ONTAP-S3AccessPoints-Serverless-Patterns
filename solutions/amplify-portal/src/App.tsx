@@ -3,13 +3,15 @@ import { useAuthenticator } from "@aws-amplify/ui-react";
 import { FileExplorer } from "./components/FileExplorer";
 import { JobSubmitForm } from "./components/JobSubmitForm";
 import { ResultsViewer } from "./components/ResultsViewer";
+import { JobHistory } from "./components/JobHistory";
 
-type View = "files" | "submit" | "results";
+type View = "files" | "submit" | "results" | "history";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "files", label: "Files" },
   { id: "submit", label: "Process" },
   { id: "results", label: "Results" },
+  { id: "history", label: "History" },
 ];
 
 /**
@@ -77,6 +79,16 @@ function App() {
         <div id="panel-results" role="tabpanel" aria-labelledby="tab-results" hidden={currentView !== "results"}>
           {currentView === "results" && (
             <ResultsViewer executionArn={activeJobArn} />
+          )}
+        </div>
+        <div id="panel-history" role="tabpanel" aria-labelledby="tab-history" hidden={currentView !== "history"}>
+          {currentView === "history" && (
+            <JobHistory
+              onSelectExecution={(arn) => {
+                setActiveJobArn(arn);
+                setCurrentView("results");
+              }}
+            />
           )}
         </div>
       </main>

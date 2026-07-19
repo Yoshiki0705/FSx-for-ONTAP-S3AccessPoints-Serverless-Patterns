@@ -25,6 +25,19 @@ const schema = a.schema({
     "OPS1_CAPACITY_RIGHTSIZING",
   ]),
 
+  // --- DynamoDB Model ---
+  JobExecution: a
+    .model({
+      executionArn: a.string().required(),
+      pattern: a.string().required(),
+      inputPrefix: a.string().required(),
+      status: a.string(),
+      startDate: a.string(),
+      stopDate: a.string(),
+      output: a.json(),
+    })
+    .authorization((allow) => [allow.owner()]),
+
   // --- Custom Types ---
   FileItem: a.customType({
     key: a.string().required(),
