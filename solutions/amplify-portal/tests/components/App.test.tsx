@@ -13,6 +13,7 @@ vi.mock("@aws-amplify/ui-react", () => ({
   useAuthenticator: () => ({
     user: { signInDetails: { loginId: "test@example.com" } },
     signOut: vi.fn(),
+    authStatus: "authenticated",
   }),
   Authenticator: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));

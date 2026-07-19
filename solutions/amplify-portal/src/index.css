@@ -343,3 +343,52 @@ button[type="submit"]:disabled {
   background: transparent;
   cursor: pointer;
 }
+
+/* Loading Skeleton */
+.loading-skeleton {
+  max-width: 800px;
+  margin: 80px auto;
+  padding: 2rem;
+}
+
+.skeleton-header {
+  margin-bottom: 2rem;
+}
+
+.skeleton-bar {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-title {
+  height: 2rem;
+  width: 60%;
+}
+
+.skeleton-nav {
+  height: 1.5rem;
+  width: 40%;
+}
+
+.skeleton-content-1 {
+  height: 1rem;
+  width: 90%;
+}
+
+.skeleton-content-2 {
+  height: 1rem;
+  width: 75%;
+}
+
+.skeleton-content-3 {
+  height: 1rem;
+  width: 80%;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
