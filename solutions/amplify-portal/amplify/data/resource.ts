@@ -176,6 +176,91 @@ const schema = a.schema({
         entry: "./resolvers/detect-labels.js",
       })
     ),
+
+  // --- Athena SQL Query ---
+  runAthenaQuery: a
+    .mutation()
+    .arguments({
+      sql: a.string().required(),
+      database: a.string(),
+    })
+    .returns(
+      a.customType({
+        columns: a.string().array(),
+        rows: a.json(),
+        status: a.string(),
+        error: a.string(),
+        executionId: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "AthenaQueryLambdaDataSource",
+        entry: "./resolvers/run-athena-query.js",
+      })
+    ),
+
+  // --- Textract ---
+  extractText: a
+    .mutation()
+    .arguments({
+      key: a.string().required(),
+      mode: a.string(), // "text" or "analyze"
+    })
+    .returns(
+      a.customType({
+        text: a.string(),
+        blockCount: a.integer(),
+        pageCount: a.integer(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "TextractLambdaDataSource",
+        entry: "./resolvers/extract-text.js",
+      })
+    ),
+
+  // --- Comprehend ---
+  analyzeText: a
+    .mutation()
+    .arguments({
+      key: a.string().required(),
+      analysisType: a.string(), // "entities", "sentiment", "keyPhrases"
+    })
+    .returns(
+      a.customType({
+        results: a.json(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "ComprehendLambdaDataSource",
+        entry: "./resolvers/analyze-text.js",
+      })
+    ),
+
+  // --- Glue Catalog ---
+  browseCatalog: a
+    .query()
+    .arguments({
+      action: a.string().required(), // "listDatabases", "listTables", "getSchema"
+      database: a.string(),
+      table: a.string(),
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "GlueCatalogLambdaDataSource",
+        entry: "./resolvers/browse-catalog.js",
+      })
+    ),
 });
 
 export type Schema = ClientSchema<typeof schema>;
