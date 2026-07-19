@@ -188,9 +188,50 @@ aws cloudformation delete-stack --stack-name quick-verify-ad-env --region ap-nor
 
 ### 検証ステータス
 
-| 項目 | ステータス |
-|---|---|
-| Quick S3 KB がエイリアスを受理する | ✅ 確認済み（2026-06-12） |
-| AD identity S3 AP で同期成功 | 📋 未検証（AD 環境削除済み、上記ランブックで再実行） |
-| Chat Agent でファイル内容に基づく回答 | 📋 未検証（上記ステップ 6 で確認） |
-| AWS 公式ブログ/Workshop で手順が公開済み | ✅ 確認済み（[Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/), [Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup)） |
+| 項目 | ステータス | 日付 |
+|---|---|---|
+| Quick S3 KB がエイリアスを受理する | ✅ 確認済み | 2026-06-12 |
+| AD identity S3 AP 作成 + データアクセス | ✅ 確認済み | 2026-07-19 |
+| AD identity S3 AP で Quick ナレッジベース同期成功 | 📋 Console 操作待ち（下記手順） | — |
+| Chat Agent でファイル内容に基づく回答 | 📋 上記完了後に確認 | — |
+| AWS 公式ブログ/Workshop で手順が公開済み | ✅ 確認済み | [Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/), [Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) |
+
+### 検証環境情報（2026-07-19 デプロイ済み）
+
+```
+CloudFormation Stack: quick-verify-ad-env
+AD Domain:           quick.verify.local (short: QUICKV)
+Directory ID:        d-956797dc4e
+SVM:                 quick-verify-svm (svm-095a498b30a1824a7)
+Volume:              quick_test_vol (fsvol-088fdc091530d4d69, NTFS, /quick_test)
+S3 AP Name:          quick-verify-ad
+S3 AP Alias:         quick-verify-ad-iwq81486tzgfet7ef3tut8uxbt8inapn1a-ext-s3alias
+Identity:            WINDOWS / Admin
+Test Data:           documents/ (4 files: q2-summary, infra-report, csat)
+```
+
+### Quick Console 手順（手動実行）
+
+1. Amazon Quick コンソールを開く（ap-northeast-1）
+2. **Integrations** → **Knowledge bases** → **Amazon S3** → **+**
+3. Name: `quick-fsxn-verification`
+4. S3 bucket URL: `s3://quick-verify-ad-iwq81486tzgfet7ef3tut8uxbt8inapn1a-ext-s3alias`
+5. **Create** → 同期完了まで待機（Available）
+6. **Chat agents** → テストクエリ: "What was the Q2 2026 revenue trend?"
+7. スクリーンショット撮影（マスク: Account ID, ARN, ユーザー名）
+
+### クリーンアップ（検証完了後）
+
+```bash
+# S3 AP 削除
+aws fsx detach-and-delete-s3-access-point --name quick-verify-ad --region ap-northeast-1
+
+# ボリューム削除
+aws fsx delete-volume --volume-id fsvol-088fdc091530d4d69 --region ap-northeast-1
+
+# SVM 削除
+aws fsx delete-storage-virtual-machine --storage-virtual-machine-id svm-095a498b30a1824a7 --region ap-northeast-1
+
+# AD 環境削除（月額 ~$73 のコスト削減）
+aws cloudformation delete-stack --stack-name quick-verify-ad-env --region ap-northeast-1
+```
