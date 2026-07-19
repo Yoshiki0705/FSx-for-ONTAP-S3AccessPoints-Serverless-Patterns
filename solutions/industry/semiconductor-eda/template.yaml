@@ -138,6 +138,15 @@ Parameters:
     Default: "fsxn-fpolicy-events"
     Description: FPolicy EventBridge カスタムバス名（EVENT_DRIVEN / HYBRID 時に使用）
 
+  # --- Glue Crawler (Workshop Module 14) ---
+  EnableGlueCrawler:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Glue Crawler を有効化する。S3 AP 上の CSV/Parquet データのスキーマを自動検出し、
+      Athena / Quick Sight / SageMaker から統一的にアクセス可能にする。
+
 # =====================================================================
 # Conditions
 # =====================================================================
@@ -208,6 +217,9 @@ Conditions:
     !Or
       - !Condition IsEventDriven
       - !Condition IsHybrid
+  # --- Glue Crawler Condition ---
+  CreateGlueCrawler:
+    !Equals [!Ref EnableGlueCrawler, "true"]
 # =====================================================================
 # Resources
 # =====================================================================
@@ -868,6 +880,71 @@ Resources:
           OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
           SerdeInfo:
             SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+
+  # -----------------------------------------------------------------
+  # Glue Crawler (Workshop Module 14 — auto-schema discovery)
+  # -----------------------------------------------------------------
+  GlueCrawlerRole:
+    Type: AWS::IAM::Role
+    Condition: CreateGlueCrawler
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-glue-crawler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      Policies:
+        - PolicyName: GlueCrawlerS3APAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3AccessPointRead
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Ref AWS::NoValue
+                  - !If
+                    - HasS3AccessPointName
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                    - !Ref AWS::NoValue
+
+  GlueCrawler:
+    Type: AWS::Glue::Crawler
+    Condition: CreateGlueCrawler
+    DependsOn: GlueDatabase
+    Properties:
+      Name: !Sub "${AWS::StackName}-eda-crawler"
+      Role: !GetAtt GlueCrawlerRole.Arn
+      DatabaseName: !If
+        - UseAutoGlueDatabase
+        - !Sub "${AWS::StackName}-db"
+        - !Ref GlueDatabaseName
+      Description: >-
+        Crawls EDA regression data on FSx for ONTAP via S3 Access Point.
+        Auto-discovers CSV/JSON schema for Athena, Quick Sight, and SageMaker.
+      Targets:
+        S3Targets:
+          - Path: !Sub "s3://${S3AccessPointAlias}/"
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: LOG
+      Schedule:
+        ScheduleExpression: "cron(0 6 * * ? *)"
+      Tags:
+        UseCase: UC6-semiconductor-eda
+        ManagedBy: !Ref AWS::StackName
 
   # -----------------------------------------------------------------
   # Athena Workgroup

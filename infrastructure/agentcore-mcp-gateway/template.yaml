@@ -1,0 +1,273 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  AgentCore MCP Gateway — FSx for ONTAP S3 AP EDA Log Analyzer
+  Lambda MCP Tools + Gateway IAM Role をデプロイする。
+  Gateway 本体は CloudFormation 未対応のため deploy スクリプトで作成する。
+
+# =====================================================================
+# Parameters
+# =====================================================================
+Parameters:
+  S3AccessPointAlias:
+    Type: String
+    Description: >
+      FSx for ONTAP S3 Access Point Alias（例: my-ap-xxxxx-ext-s3alias）。
+      Lambda が ListObjectsV2/GetObject で使用する。
+    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+
+  S3AccessPointName:
+    Type: String
+    Default: ""
+    Description: >
+      S3 AP 名（ARN ベースの IAM 権限付与用）。
+      空の場合は Alias ベースのみ。本番環境では指定推奨。
+
+  GatewayName:
+    Type: String
+    Default: "eda-mcp-gateway"
+    Description: AgentCore Gateway 名（タグ・スクリプト連携用）
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 256
+    MinValue: 128
+    MaxValue: 1024
+    Description: Lambda メモリサイズ (MB)
+
+  LambdaTimeout:
+    Type: Number
+    Default: 30
+    MinValue: 5
+    MaxValue: 300
+    Description: Lambda タイムアウト (秒)
+
+# =====================================================================
+# Conditions
+# =====================================================================
+Conditions:
+  HasS3AccessPointName:
+    !Not [!Equals [!Ref S3AccessPointName, ""]]
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # -----------------------------------------------------------------
+  # Lambda Execution Role
+  # -----------------------------------------------------------------
+  McpToolsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-mcp-tools-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3AccessPointRead
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3APReadViaAlias
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}"
+                  - !Sub "arn:aws:s3:::${S3AccessPointAlias}/*"
+              - !If
+                - HasS3AccessPointName
+                - Sid: S3APReadViaArn
+                  Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:ListBucket
+                    - s3:GetBucketLocation
+                  Resource:
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+                - !Ref AWS::NoValue
+      Tags:
+        - Key: UseCase
+          Value: agentcore-mcp-eda
+        - Key: ManagedBy
+          Value: !Ref AWS::StackName
+
+  # -----------------------------------------------------------------
+  # Lambda Function — MCP Tools (list_files / read_file / search_files)
+  # -----------------------------------------------------------------
+  McpToolsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-mcp-tools"
+      Description: >
+        AgentCore MCP Tools for FSx for ONTAP S3 AP.
+        Provides list_files, read_file, search_files.
+      Runtime: python3.12
+      Architectures:
+        - arm64
+      Handler: handler.handler
+      Role: !GetAtt McpToolsLambdaRole.Arn
+      MemorySize: !Ref LambdaMemorySize
+      Timeout: !Ref LambdaTimeout
+      Environment:
+        Variables:
+          S3_AP_ALIAS: !Ref S3AccessPointAlias
+      Code:
+        ZipFile: |
+          """AgentCore MCP Tools Lambda - FSx for ONTAP S3 AP operations.
+          See: solutions/genai/quick-agentic-workspace/functions/mcp_tools/handler.py
+          for the full implementation. This inline version is a minimal placeholder.
+          Deploy the full version via: scripts/deploy-agentcore-mcp.sh
+          """
+          import json, os, re, logging
+          import boto3
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          s3 = boto3.client("s3")
+          AP_ALIAS = os.environ.get("S3_AP_ALIAS", "")
+          DELIMITER = "___"
+
+          def handler(event, context):
+              tool_name = ""
+              try:
+                  custom = context.client_context.custom
+                  full_name = custom.get("bedrockAgentCoreToolName", "")
+                  tool_name = full_name.split(DELIMITER, 1)[1] if DELIMITER in full_name else full_name
+              except (AttributeError, TypeError):
+                  tool_name = event.pop("toolName", event.pop("name", ""))
+                  event = event.pop("input", event) if "input" in event else event
+
+              params = event if tool_name else event
+              handlers = {"list_files": list_files, "read_file": read_file, "search_files": search_files}
+
+              if tool_name not in handlers:
+                  return {"error": f"Unknown tool: {tool_name}. Available: {list(handlers.keys())}"}
+              try:
+                  return handlers[tool_name](params)
+              except Exception as e:
+                  logger.exception("Tool failed: %s", tool_name)
+                  return {"error": str(e)}
+
+          def list_files(p):
+              r = s3.list_objects_v2(Bucket=AP_ALIAS, Prefix=p.get("path",""), MaxKeys=min(int(p.get("max_results",100)),1000))
+              ext = p.get("file_extension","")
+              files = [{"path":o["Key"],"size":o["Size"],"last_modified":o["LastModified"].isoformat()} for o in r.get("Contents",[]) if not ext or o["Key"].endswith(ext)]
+              return {"files":files,"count":len(files),"truncated":r.get("IsTruncated",False)}
+
+          def read_file(p):
+              path = p.get("path","")
+              if not path: return {"error":"path is required"}
+              mx = min(int(p.get("max_bytes",65536)),1048576)
+              r = s3.get_object(Bucket=AP_ALIAS, Key=path, Range=f"bytes=0-{mx-1}")
+              c = r["Body"].read().decode("utf-8", errors="replace")
+              return {"path":path,"content":c,"size":r.get("ContentLength",len(c)),"truncated":r.get("ContentLength",0)>mx}
+
+          def search_files(p):
+              pat = p.get("pattern","")
+              if not pat: return {"error":"pattern is required"}
+              prefix, ext, mx = p.get("path",""), p.get("file_extension",""), min(int(p.get("max_results",20)),100)
+              preview = p.get("include_content_preview",False)
+              if isinstance(preview,str): preview = preview.lower()=="true"
+              pg = s3.get_paginator("list_objects_v2")
+              matches = []
+              for page in pg.paginate(Bucket=AP_ALIAS, Prefix=prefix, PaginationConfig={"MaxItems":500}):
+                  for o in page.get("Contents",[]):
+                      k = o["Key"]
+                      if ext and not k.endswith(ext): continue
+                      if re.search(pat, k, re.IGNORECASE):
+                          m = {"path":k,"size":o["Size"],"last_modified":o["LastModified"].isoformat()}
+                          if preview:
+                              try: m["preview"]=s3.get_object(Bucket=AP_ALIAS,Key=k,Range="bytes=0-1023")["Body"].read().decode("utf-8",errors="replace")
+                              except: m["preview"]="(read error)"
+                          matches.append(m)
+                          if len(matches)>=mx: break
+                  if len(matches)>=mx: break
+              return {"pattern":pat,"matches":matches,"count":len(matches)}
+      Tags:
+        - Key: UseCase
+          Value: agentcore-mcp-eda
+        - Key: ManagedBy
+          Value: !Ref AWS::StackName
+
+  # -----------------------------------------------------------------
+  # Lambda Permission — AgentCore Gateway が Lambda を呼び出す許可
+  # -----------------------------------------------------------------
+  McpToolsAgentCorePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref McpToolsFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock-agentcore.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+
+  # -----------------------------------------------------------------
+  # AgentCore Gateway Service Role
+  # -----------------------------------------------------------------
+  GatewayServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-gateway-role"
+      Description: AgentCore Gateway service role for Lambda target invocation
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeMcpToolsLambda
+                Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt McpToolsFunction.Arn
+      Tags:
+        - Key: UseCase
+          Value: agentcore-mcp-eda
+        - Key: ManagedBy
+          Value: !Ref AWS::StackName
+
+# =====================================================================
+# Outputs
+# =====================================================================
+Outputs:
+  McpToolsFunctionArn:
+    Description: Lambda ARN（Gateway ターゲット登録時に使用）
+    Value: !GetAtt McpToolsFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-McpToolsFunctionArn"
+
+  GatewayServiceRoleArn:
+    Description: Gateway Service Role ARN（Gateway 作成時に使用）
+    Value: !GetAtt GatewayServiceRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-GatewayServiceRoleArn"
+
+  GatewayName:
+    Description: Gateway 名（deploy スクリプトで使用）
+    Value: !Ref GatewayName
+
+  S3AccessPointAlias:
+    Description: S3 AP Alias
+    Value: !Ref S3AccessPointAlias
+
+  DeployNextSteps:
+    Description: >
+      CloudFormation デプロイ後、以下のスクリプトで Gateway を作成してください:
+      scripts/deploy-agentcore-mcp.sh --stack-name <this-stack-name>
+    Value: "See scripts/deploy-agentcore-mcp.sh"

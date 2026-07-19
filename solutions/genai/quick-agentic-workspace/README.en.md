@@ -108,6 +108,36 @@ curl -X POST https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/prod/acti
 
 Details: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
+## AgentCore MCP Gateway (Workshop Module 09 Validated)
+
+> [AWS Workshop: Deploy AgentCore Gateway](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/09-agentcore)
+
+Unlike Knowledge Base (which searches an index snapshot), AgentCore MCP Gateway **reads files live in real-time** via the S3 Access Point. The agent can browse directories, read specific files, and search across logs — always current, always complete.
+
+### Knowledge Base vs AgentCore Selection Guide
+
+| Approach | Data Freshness | Implementation Cost | Best For |
+|----------|---------------|--------------------|---------| 
+| **Quick Index (KB)** | Depends on sync timing | Low (console config only) | Standard Q&A, document search |
+| **AgentCore (MCP)** | Always current | Medium (Cognito + Lambda + Gateway) | Multi-step reasoning, cross-file log analysis |
+
+### Components Built in the Workshop
+
+1. **Cognito User Pool** — OAuth 2.0 authentication
+2. **Lambda function** — Exposes list / read / search operations via S3 AP
+3. **AgentCore MCP Gateway** — Connects Quick Suite to Lambda via MCP protocol
+4. **Quick Suite MCP Integration** — Agentic log analysis
+
+### Sample Questions (AI-Powered Analytics, Module 10)
+
+```
+"How many simulations failed?"
+"What are the most common errors?"
+"Show me tests with timing violations"
+"Which modules have the most warnings?"
+"Summarize the test results"
+```
+
 ## Roles × services (aligned with Amazon Quick target roles)
 
 The roles are the seven that Amazon Quick targets — **sales / marketing / IT / operations / finance / legal** (FAQ) — plus **developers**, which has a dedicated page. Data is organized by the service used (Index / Sight / Flows).
@@ -312,6 +342,8 @@ sam local invoke DataPrepFunction --event events/data-prep-event.json
 
 | Related | Point |
 |------|---------|
+| [AWS Workshop: FSx for ONTAP S3 AP (EDA)](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US) | Quick + AgentCore + S3 AP hands-on (Modules 08-12) |
+| [Workshop EDA Integration Guide](../../docs/en/workshop-eda-integration.md) | Workshop module ↔ repository UC mapping |
 | [PoC prerequisites checklist](docs/poc-checklist.md) | Quick enablement, Glue/LF, inference profiles, etc. |
 | [Amazon Quick console setup steps](docs/quick-console-setup.md) | Index/Sight/Flows connection (with screenshot guidance) |
 | [Lake Formation TBAC notes](docs/lake-formation-tbac.md) | Per-role data visibility (LF-TBAC + Quick RLS) |

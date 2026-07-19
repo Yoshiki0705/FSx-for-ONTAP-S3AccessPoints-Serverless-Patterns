@@ -4,12 +4,18 @@
  * SETUP:
  *   1. Copy this file:  cp portal-config.example.ts portal-config.ts
  *   2. Edit portal-config.ts with your environment values
- *   3. Deploy: make sandbox (or npx ampx sandbox)
+ *   3. Edit src/portal-settings.ts for frontend settings (Upload tab, region, accountId)
+ *   4. Deploy: make sandbox (or npx ampx sandbox)
  *
  * ALTERNATIVE: Set environment variables instead of editing the file:
  *   export AMPLIFY_PORTAL_REGION=ap-northeast-1
  *   export AMPLIFY_PORTAL_S3AP_ALIAS=my-s3-access-point01-abc123-s3alias
  *   export AMPLIFY_PORTAL_SFN_ARN=arn:aws:states:ap-northeast-1:123456789012:stateMachine:my-workflow
+ *
+ * UPLOAD TAB (Storage Browser):
+ *   The Upload tab uses Storage Browser for S3, which requires frontend-side config
+ *   in src/portal-settings.ts. Set region, accountId, and s3ApAlias there.
+ *   The Upload tab uses Cognito Identity Pool credentials (auto-provisioned by sandbox).
  */
 
 export interface PortalConfig {
