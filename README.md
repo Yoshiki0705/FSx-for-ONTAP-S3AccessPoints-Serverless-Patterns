@@ -181,6 +181,15 @@ graph TB
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | Lakehouse 統合（Databricks, Snowflake, Athena, Glue, EMR） |
 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 移行 |
 
+### AWS 公式リソース
+
+| リソース | 概要 |
+|---|---|
+| [AWS Workshop: Amazon Quick + FSx for ONTAP S3 AP](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) | Quick Suite と S3 AP 連携のハンズオン Lab |
+| [AWS Storage Blog: AI-powered analytics on enterprise file data](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/) | AD 構成の S3 AP + Amazon Quick 連携手順 |
+| [Guidance: Scaling EDA on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/) | 半導体 EDA ワークフローのクラウドスケーリング |
+| [Semiconductor Design on AWS (Whitepaper)](https://docs.aws.amazon.com/whitepapers/latest/semiconductor-design-on-aws/semiconductor-design-on-aws.pdf) | 半導体設計ワークフローのリファレンスアーキテクチャ |
+
 </details>
 
 <details>
