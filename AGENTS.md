@@ -342,6 +342,7 @@ All README and documentation files follow these UX principles:
 | Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign. Use `Config(signature_version="s3v4")` explicitly |
 | Presigned URL `PermanentRedirect` from Lambda | Global endpoint `s3.amazonaws.com` redirects. Use `endpoint_url=f"https://s3.{region}.amazonaws.com"` |
 | Presigned URL `HEAD` returns 403 but `GET` works | Some S3 AP configurations don't support HEAD on presigned URLs. Use GET for verification |
+| Bedrock `InvokeModel` with `inputText` → ValidationException | Nova/Claude models require Messages API. Use `bedrock.converse()` (not `invoke_model` with `inputText`). Add `bedrock:Converse` to IAM policy |
 
 ## S3 Access Point Critical Knowledge
 
@@ -553,6 +554,7 @@ When reviewing changes, consider these perspectives:
 | [AD-Joined SVM S3 AP Prerequisites](docs/en/ad-joined-svm-s3ap-prerequisites.md) | AD DC reachability, Internet-origin AP + VPC-external Lambda, same-account policy |
 | [File Portal UI Options](docs/file-portal-amplify-gen2.md) | Amplify Gen2 / Nextcloud / Custom Build comparison, selection guide, implementation roadmap |
 | [Nextcloud External Storage Setup](docs/nextcloud-external-storage-s3ap.md) | Nextcloud + FSx for ONTAP S3 AP step-by-step configuration |
+| [Workshop EDA Integration Guide](docs/workshop-eda-integration.md) | AWS Workshop modules mapped to UC patterns (EDA scenarios, Athena, Glue, AgentCore, Quick) |
 
 ## Agent Output Standards
 
