@@ -115,15 +115,17 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if alert_required and alert_topic_arn:
             _send_alert(alert_topic_arn, fs_id, recommendations, ai_summary)
 
-        results.append({
-            "fs_id": fs_id,
-            "report_s3_key": json_key,
-            "html_report_s3_key": html_key,
-            "ai_summary": ai_summary,
-            "recommendation_count": len(recommendations),
-            "alert_required": alert_required,
-            "reported_at": now.isoformat(),
-        })
+        results.append(
+            {
+                "fs_id": fs_id,
+                "report_s3_key": json_key,
+                "html_report_s3_key": html_key,
+                "ai_summary": ai_summary,
+                "recommendation_count": len(recommendations),
+                "alert_required": alert_required,
+                "reported_at": now.isoformat(),
+            }
+        )
 
     return {
         "reports": results,
@@ -132,9 +134,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     }
 
 
-def _upload_json(
-    s3_client: Any, bucket: str, key: str, data: dict
-) -> None:
+def _upload_json(s3_client: Any, bucket: str, key: str, data: dict) -> None:
     """JSON レポートを S3 (バケット or S3 AP alias) にアップロードする.
 
     Note: bucket パラメータは S3 バケット名または S3 Access Point alias の
@@ -150,9 +150,7 @@ def _upload_json(
     logger.info("JSON report uploaded: s3://%s/%s", bucket, key)
 
 
-def _upload_html(
-    s3_client: Any, bucket: str, key: str, html: str
-) -> None:
+def _upload_html(s3_client: Any, bucket: str, key: str, html: str) -> None:
     """HTML レポートを S3 (バケット or S3 AP alias) にアップロードする."""
     s3_client.put_object(
         Bucket=bucket,
@@ -175,14 +173,18 @@ def _generate_html_report(report_data: dict) -> str:
     # Build recommendations HTML
     rec_rows = ""
     for rec in recommendations:
-        color = "#dc3545" if "upsize" in rec.get("recommendation_type", "") or "upgrade" in rec.get("recommendation_type", "") else "#28a745"
+        color = (
+            "#dc3545"
+            if "upsize" in rec.get("recommendation_type", "") or "upgrade" in rec.get("recommendation_type", "")
+            else "#28a745"
+        )
         rec_rows += f"""
         <tr>
-            <td><span style="color:{color}; font-weight:bold;">{rec.get('recommendation_type', '')}</span></td>
-            <td>{rec.get('target', '')}</td>
-            <td>{rec.get('current_value', '')}</td>
-            <td>{rec.get('recommended_value', '')}</td>
-            <td>${rec.get('monthly_cost_delta_usd', 0):.2f}/月</td>
+            <td><span style="color:{color}; font-weight:bold;">{rec.get("recommendation_type", "")}</span></td>
+            <td>{rec.get("target", "")}</td>
+            <td>{rec.get("current_value", "")}</td>
+            <td>{rec.get("recommended_value", "")}</td>
+            <td>${rec.get("monthly_cost_delta_usd", 0):.2f}/月</td>
         </tr>"""
 
     # Build What-If HTML
@@ -192,9 +194,9 @@ def _generate_html_report(report_data: dict) -> str:
         color = "#dc3545" if delta > 0 else "#28a745"
         whatif_rows += f"""
         <tr>
-            <td>{scenario.get('scenario_name', '')}</td>
-            <td>${scenario.get('current_monthly_cost_usd', 0):.2f}</td>
-            <td>${scenario.get('projected_monthly_cost_usd', 0):.2f}</td>
+            <td>{scenario.get("scenario_name", "")}</td>
+            <td>${scenario.get("current_monthly_cost_usd", 0):.2f}</td>
+            <td>${scenario.get("projected_monthly_cost_usd", 0):.2f}</td>
             <td style="color:{color}; font-weight:bold;">${delta:+.2f}</td>
         </tr>"""
 
@@ -236,19 +238,19 @@ def _generate_html_report(report_data: dict) -> str:
         <h2>サマリ</h2>
         <div class="stat-grid">
             <div class="stat-card">
-                <div class="stat-value">{summary.get('total_volumes', 0)}</div>
+                <div class="stat-value">{summary.get("total_volumes", 0)}</div>
                 <div class="stat-label">Total Volumes</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{summary.get('volumes_above_threshold', 0)}</div>
+                <div class="stat-value">{summary.get("volumes_above_threshold", 0)}</div>
                 <div class="stat-label">Above Threshold</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{summary.get('avg_volume_utilization_percent', 0):.1f}%</div>
+                <div class="stat-value">{summary.get("avg_volume_utilization_percent", 0):.1f}%</div>
                 <div class="stat-label">Avg Utilization</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{summary.get('recommendation_count', 0)}</div>
+                <div class="stat-value">{summary.get("recommendation_count", 0)}</div>
                 <div class="stat-label">Recommendations</div>
             </div>
         </div>
@@ -312,12 +314,14 @@ def _publish_metrics(
     # Throughput utilization (if available)
     throughput_util = summary.get("throughput_utilization_percent")
     if throughput_util is not None:
-        metric_data.append({
-            "MetricName": "ThroughputUtilizationPercent",
-            "Value": throughput_util,
-            "Unit": "Percent",
-            "Dimensions": [{"Name": "FileSystemId", "Value": fs_id}],
-        })
+        metric_data.append(
+            {
+                "MetricName": "ThroughputUtilizationPercent",
+                "Value": throughput_util,
+                "Unit": "Percent",
+                "Dimensions": [{"Name": "FileSystemId", "Value": fs_id}],
+            }
+        )
 
     cw_client.put_metric_data(Namespace=CW_NAMESPACE, MetricData=metric_data)
     logger.info("Published %d custom metrics for %s", len(metric_data), fs_id)
@@ -334,8 +338,7 @@ def _send_alert(
 
     # Build alert message
     rec_summary = "\n".join(
-        f"  - [{r['recommendation_type']}] {r['target']}: {r['reason']}"
-        for r in recommendations[:5]
+        f"  - [{r['recommendation_type']}] {r['target']}: {r['reason']}" for r in recommendations[:5]
     )
 
     message = (
@@ -349,10 +352,7 @@ def _send_alert(
     if ai_summary:
         message += f"\nAI Summary:\n{ai_summary}\n"
 
-    message += (
-        "\nFull report available in S3 (report bucket).\n"
-        "AutomationLevel=2 required for auto-execution.\n"
-    )
+    message += "\nFull report available in S3 (report bucket).\nAutomationLevel=2 required for auto-execution.\n"
 
     sns_client.publish(
         TopicArn=topic_arn,

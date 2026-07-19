@@ -33,18 +33,22 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         recommendations = []
         # Recommend if throughput is > 50% of total cost
         if breakdown.get("throughput", 0) > total * 0.5:
-            recommendations.append({
-                "type": "throughput_review",
-                "description": "Throughput cost is >50% of total. Review if current tier is needed.",
-                "potential_savings_usd": round(breakdown["throughput"] * 0.3, 2),
-            })
+            recommendations.append(
+                {
+                    "type": "throughput_review",
+                    "description": "Throughput cost is >50% of total. Review if current tier is needed.",
+                    "potential_savings_usd": round(breakdown["throughput"] * 0.3, 2),
+                }
+            )
         # Recommend tiering if SSD is > 60% of total and no capacity pool usage
         if breakdown.get("ssd", 0) > total * 0.6 and fs_data.get("capacity_pool_gb", 0) < 10:
-            recommendations.append({
-                "type": "enable_tiering",
-                "description": "SSD dominates cost with minimal tiering. Enable auto tiering.",
-                "potential_savings_usd": round(breakdown["ssd"] * 0.2, 2),
-            })
+            recommendations.append(
+                {
+                    "type": "enable_tiering",
+                    "description": "SSD dominates cost with minimal tiering. Enable auto tiering.",
+                    "potential_savings_usd": round(breakdown["ssd"] * 0.2, 2),
+                }
+            )
 
         summary = {
             "total_monthly_cost_usd": total,
@@ -59,14 +63,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if enable_bedrock and total > 0:
             ai_summary = _generate_ai_summary(fs_id, summary, breakdown)
 
-        all_results.append({
-            "fs_id": fs_id,
-            "cost_breakdown": breakdown,
-            "recommendations": recommendations,
-            "summary": summary,
-            "ai_summary": ai_summary,
-            "analyzed_at": datetime.now(UTC).isoformat(),
-        })
+        all_results.append(
+            {
+                "fs_id": fs_id,
+                "cost_breakdown": breakdown,
+                "recommendations": recommendations,
+                "summary": summary,
+                "ai_summary": ai_summary,
+                "analyzed_at": datetime.now(UTC).isoformat(),
+            }
+        )
 
     return {
         "analyses": all_results,
@@ -78,14 +84,24 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 def _generate_ai_summary(fs_id: str, summary: dict, breakdown: dict) -> str | None:
     try:
         import boto3
+
         bedrock = boto3.client("bedrock-runtime")
         prompt = (
             "Analyze this FSx for ONTAP cost data. Provide 3-4 bullet points in Japanese: "
             "current cost drivers, projected growth, and cost reduction opportunities.\n"
             f"FS: {fs_id}\nBreakdown: {json.dumps(breakdown)}\nSummary: {json.dumps(summary)}"
         )
-        resp = bedrock.invoke_model(modelId="amazon.nova-lite-v1:0", contentType="application/json", accept="application/json",
-                                    body=json.dumps({"messages": [{"role": "user", "content": [{"text": prompt}]}], "inferenceConfig": {"maxTokens": 400, "temperature": 0.3}}))
+        resp = bedrock.invoke_model(
+            modelId="amazon.nova-lite-v1:0",
+            contentType="application/json",
+            accept="application/json",
+            body=json.dumps(
+                {
+                    "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                    "inferenceConfig": {"maxTokens": 400, "temperature": 0.3},
+                }
+            ),
+        )
         result = json.loads(resp["body"].read())
         content = result.get("output", {}).get("message", {}).get("content", [{}])
         return content[0].get("text", "") if content else None

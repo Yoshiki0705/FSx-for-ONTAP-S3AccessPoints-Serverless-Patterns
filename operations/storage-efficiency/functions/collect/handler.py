@@ -23,6 +23,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     for fs_id in fs_ids:
         if demo_mode:
             from shared.demo_data_loader import DemoDataLoader
+
             loader = DemoDataLoader(source="local", base_path="test-data/ops")
             volumes = loader.load_efficiency(fs_id=fs_id)
         else:
@@ -45,6 +46,7 @@ def _collect_live(fs_id: str) -> list[dict]:
 
     from shared.ontap_client import OntapClient, OntapClientConfig
     from shared.ontap_metrics import OntapMetricsCollector
+
     config = OntapClientConfig(management_ip=ips[0], secret_name=secret_arn, verify_ssl=False)
     collector = OntapMetricsCollector(OntapClient(config))
     volumes = collector.collect_efficiency()

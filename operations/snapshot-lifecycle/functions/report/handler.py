@@ -38,7 +38,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     logger.info(
         "Generating snapshot audit reports for %d file systems (%d expired)",
-        len(analyses), total_expired,
+        len(analyses),
+        total_expired,
     )
 
     s3_client = boto3.client("s3")
@@ -91,24 +92,24 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         _publish_metrics(cw_client, fs_id, summary, volume_audits)
 
         # Alert
-        alert_required = (
-            automation_level >= 1
-            and (summary.get("total_expired_snapshots", 0) > 0
-                 or summary.get("volumes_with_drift", 0) > 0)
+        alert_required = automation_level >= 1 and (
+            summary.get("total_expired_snapshots", 0) > 0 or summary.get("volumes_with_drift", 0) > 0
         )
         if alert_required and alert_topic_arn:
             _send_alert(alert_topic_arn, fs_id, summary, volume_audits, ai_summary)
 
-        results.append({
-            "fs_id": fs_id,
-            "report_s3_key": json_key,
-            "html_report_s3_key": html_key,
-            "ai_summary": ai_summary,
-            "expired_count": summary.get("total_expired_snapshots", 0),
-            "drift_count": summary.get("volumes_with_drift", 0),
-            "alert_required": alert_required,
-            "reported_at": now.isoformat(),
-        })
+        results.append(
+            {
+                "fs_id": fs_id,
+                "report_s3_key": json_key,
+                "html_report_s3_key": html_key,
+                "ai_summary": ai_summary,
+                "expired_count": summary.get("total_expired_snapshots", 0),
+                "drift_count": summary.get("volumes_with_drift", 0),
+                "alert_required": alert_required,
+                "reported_at": now.isoformat(),
+            }
+        )
 
     return {
         "reports": results,
@@ -126,11 +127,7 @@ def _publish_metrics(
     """CloudWatch カスタムメトリクスを publish."""
     total_snapshots = summary.get("total_snapshots_scanned", 0)
     total_expired = summary.get("total_expired_snapshots", 0)
-    compliance_pct = (
-        ((total_snapshots - total_expired) / total_snapshots * 100)
-        if total_snapshots > 0
-        else 100.0
-    )
+    compliance_pct = ((total_snapshots - total_expired) / total_snapshots * 100) if total_snapshots > 0 else 100.0
 
     metric_data = [
         {
@@ -184,9 +181,7 @@ def _send_alert(
     drift_details = []
     for audit in volume_audits:
         if audit.get("policy_drift_detected"):
-            drift_details.append(
-                f"  - {audit['volume_name']}: {audit['policy_drift_details']}"
-            )
+            drift_details.append(f"  - {audit['volume_name']}: {audit['policy_drift_details']}")
 
     message = (
         f"[OPS4] Snapshot Lifecycle Alert\n"
@@ -236,10 +231,10 @@ def _generate_html_report(report_data: dict) -> str:
         drift_icon = "⚠️" if audit["policy_drift_detected"] else "—"
         audit_rows += f"""
         <tr>
-            <td>{audit['volume_name']}</td>
-            <td>{audit['total_snapshots']}</td>
-            <td>{audit['expired_count']}</td>
-            <td>{audit['oldest_snapshot_age_days']} days</td>
+            <td>{audit["volume_name"]}</td>
+            <td>{audit["total_snapshots"]}</td>
+            <td>{audit["expired_count"]}</td>
+            <td>{audit["oldest_snapshot_age_days"]} days</td>
             <td>{compliance_icon}</td>
             <td>{drift_icon}</td>
         </tr>"""
@@ -280,26 +275,26 @@ def _generate_html_report(report_data: dict) -> str:
     <div class="header">
         <h1>OPS4: Snapshot Lifecycle Audit</h1>
         <p>File System: {fs_id} | Generated: {generated_at}</p>
-        <p>Policy: {summary.get('retention_policy', 'CUSTOM')} | Max Retention: {summary.get('effective_max_retention_days', 0)} days</p>
+        <p>Policy: {summary.get("retention_policy", "CUSTOM")} | Max Retention: {summary.get("effective_max_retention_days", 0)} days</p>
     </div>
 
     <div class="section">
         <h2>サマリ</h2>
         <div class="stat-grid">
             <div class="stat-card">
-                <div class="stat-value">{summary.get('total_snapshots_scanned', 0)}</div>
+                <div class="stat-value">{summary.get("total_snapshots_scanned", 0)}</div>
                 <div class="stat-label">Total Snapshots</div>
             </div>
-            <div class="stat-card {'danger' if summary.get('total_expired_snapshots', 0) > 0 else ''}">
-                <div class="stat-value">{summary.get('total_expired_snapshots', 0)}</div>
+            <div class="stat-card {"danger" if summary.get("total_expired_snapshots", 0) > 0 else ""}">
+                <div class="stat-value">{summary.get("total_expired_snapshots", 0)}</div>
                 <div class="stat-label">Expired</div>
             </div>
-            <div class="stat-card {'warning' if summary.get('total_expired_gb', 0) > 10 else ''}">
-                <div class="stat-value">{summary.get('total_expired_gb', 0):.1f} GB</div>
+            <div class="stat-card {"warning" if summary.get("total_expired_gb", 0) > 10 else ""}">
+                <div class="stat-value">{summary.get("total_expired_gb", 0):.1f} GB</div>
                 <div class="stat-label">Expired Size</div>
             </div>
-            <div class="stat-card {'warning' if summary.get('volumes_with_drift', 0) > 0 else ''}">
-                <div class="stat-value">{summary.get('volumes_with_drift', 0)}</div>
+            <div class="stat-card {"warning" if summary.get("volumes_with_drift", 0) > 0 else ""}">
+                <div class="stat-value">{summary.get("volumes_with_drift", 0)}</div>
                 <div class="stat-label">Policy Drift</div>
             </div>
         </div>
@@ -319,7 +314,7 @@ def _generate_html_report(report_data: dict) -> str:
         <div class="governance">
             <strong>Governance Note:</strong> This report identifies snapshots that exceed the configured
             retention period. Deletion requires Human Review (AutomationLevel=2+).
-            Snapshots within MinRetentionDays ({summary.get('min_retention_days', 7)} days) are never
+            Snapshots within MinRetentionDays ({summary.get("min_retention_days", 7)} days) are never
             recommended for deletion. Regulatory requirements (FISC/HIPAA/NARA) take precedence
             over cost optimization.
         </div>

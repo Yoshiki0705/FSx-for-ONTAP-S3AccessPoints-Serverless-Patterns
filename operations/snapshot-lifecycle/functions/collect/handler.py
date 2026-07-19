@@ -66,12 +66,14 @@ def _collect_demo(fs_id: str) -> dict[str, Any]:
 
     volume_snapshots = []
     for vol_name, snaps in volumes_map.items():
-        volume_snapshots.append({
-            "volume_name": vol_name,
-            "volume_uuid": snaps[0].get("volume_uuid", ""),
-            "snapshots": snaps,
-            "snapshot_count": len(snaps),
-        })
+        volume_snapshots.append(
+            {
+                "volume_name": vol_name,
+                "volume_uuid": snaps[0].get("volume_uuid", ""),
+                "snapshots": snaps,
+                "snapshot_count": len(snaps),
+            }
+        )
 
     return {
         "fs_id": fs_id,
@@ -139,12 +141,14 @@ def _collect_live(fs_id: str) -> dict[str, Any]:
             snap["volume_uuid"] = vol_uuid
             snap["fs_id"] = fs_id
 
-        volume_snapshots.append({
-            "volume_name": vol_name,
-            "volume_uuid": vol_uuid,
-            "snapshots": snaps,
-            "snapshot_count": len(snaps),
-        })
+        volume_snapshots.append(
+            {
+                "volume_name": vol_name,
+                "volume_uuid": vol_uuid,
+                "snapshots": snaps,
+                "snapshot_count": len(snaps),
+            }
+        )
 
     return {
         "fs_id": fs_id,
@@ -162,12 +166,7 @@ def _get_management_ip(fs_id: str) -> str:
     if not file_systems:
         raise RuntimeError(f"File system not found: {fs_id}")
 
-    endpoints = (
-        file_systems[0]
-        .get("OntapConfiguration", {})
-        .get("Endpoints", {})
-        .get("Management", {})
-    )
+    endpoints = file_systems[0].get("OntapConfiguration", {}).get("Endpoints", {}).get("Management", {})
     ip_addresses = endpoints.get("IpAddresses", [])
     if not ip_addresses:
         raise RuntimeError(f"Management IP not found for {fs_id}")
