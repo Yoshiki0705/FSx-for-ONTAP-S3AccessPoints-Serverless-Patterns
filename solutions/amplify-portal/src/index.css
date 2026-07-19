@@ -788,3 +788,104 @@ button[type="submit"]:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Athena Query Panel */
+.athena-panel {
+  padding: 1rem;
+}
+
+.athena-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.athena-header h3 {
+  margin: 0;
+}
+
+.athena-db-input {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  width: 120px;
+}
+
+.athena-sql-input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.athena-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.75rem 0;
+}
+
+.athena-actions button {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.athena-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.athena-status {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.athena-error {
+  color: var(--color-error);
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+}
+
+.athena-results {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.athena-results table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.athena-results th,
+.athena-results td {
+  border: 1px solid var(--color-border);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.athena-results th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+.athena-results tr:hover {
+  background: #f8fafc;
+}
+
+.athena-row-count {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
