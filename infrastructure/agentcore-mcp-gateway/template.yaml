@@ -236,6 +236,19 @@ Resources:
                 Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !GetAtt McpToolsFunction.Arn
+        - PolicyName: PolicyEngineAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: PolicyEngineOperations
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetPolicyEngine
+                  - bedrock-agentcore:AuthorizeAction
+                  - bedrock-agentcore:PartiallyAuthorizeActions
+                  - bedrock-agentcore:GetPolicy
+                  - bedrock-agentcore:ListPolicies
+                Resource: !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*"
       Tags:
         - Key: UseCase
           Value: agentcore-mcp-eda
@@ -253,7 +266,11 @@ Outputs:
       Name: !Sub "${AWS::StackName}-McpToolsFunctionArn"
 
   GatewayServiceRoleArn:
-    Description: Gateway Service Role ARN（Gateway 作成時に使用）
+    Description: |
+      Gateway Service Role ARN（Gateway 作成時に使用）。
+      CUSTOM_JWT 認証 + Policy Engine を使う場合、このロールには
+      bedrock-agentcore:AuthorizeAction, PartiallyAuthorizeActions,
+      GetPolicyEngine の権限が必要です（deploy スクリプトが自動追加）。
     Value: !GetAtt GatewayServiceRole.Arn
     Export:
       Name: !Sub "${AWS::StackName}-GatewayServiceRoleArn"

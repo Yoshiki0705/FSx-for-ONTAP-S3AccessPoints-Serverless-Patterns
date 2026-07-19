@@ -11,7 +11,7 @@
 |----------|:----:|:--------:|:----------:|
 | Quick Web console | 1 | 0 | — |
 | Quick Desktop | 1 | 0 | ✅ Import method |
-| AgentCore Gateway auth | 1 | 0 | ✅ NONE auth |
+| AgentCore Gateway auth | 0 | 1 | ✅ Policy Engine + allowedClients |
 | Lambda / Backend | 0 | 3 | — |
 
 ---
@@ -66,29 +66,50 @@
 
 | Item | Details |
 |------|---------|
-| **Status** | 🟡 Investigation needed |
+| **Status** | ✅ **Resolved** (2026-07-20) |
 | **Severity** | High (production impact) |
 | **Found** | 2026-07-20 |
 
-**Symptom**: When sending a Cognito ID Token as Bearer header to a CUSTOM_JWT Gateway, it returns 403 Forbidden. JWT `aud` claim matches the Gateway's `allowedAudience`.
+**Symptom**: When sending a Cognito ID Token as Bearer header to a CUSTOM_JWT Gateway, it returns 403 Forbidden.
 
-**Impact**: Cannot use authenticated Gateways from Quick Desktop. PoC works with NONE auth, but production requires authentication.
+**Root cause (3 combined misconfigurations)**:
 
-**Investigated**:
-- JWT claims verified: `aud`, `iss`, `sub` all correct
-- Gateway RFC 9728 metadata: returns normally
-- 401 → 403 transition: token is recognized but authorization denies
+1. **No Policy Engine attached**: CUSTOM_JWT Gateway defaults to deny-all on tool calls. Policy Engine + Cedar policy required.
+2. **`allowedAudience` incompatible with client_credentials tokens**: Cognito `client_credentials` flow tokens do not include an `aud` claim. Remove `allowedAudience` and use `allowedClients` only.
+3. **Gateway Service Role missing permissions**: Policy Engine integration requires `bedrock-agentcore:AuthorizeAction`, `PartiallyAuthorizeActions`, `GetPolicyEngine`.
 
-**Hypotheses**:
-1. CUSTOM_JWT Gateway default authorization policy denies all tool invocations
-2. Explicit authorization rules (policy) required beyond `allowedClients` / `allowedAudience`
-3. `customClaims` mapping not configured, causing permission evaluation failure
+**Fix (verified 2026-07-20)**:
 
-**Next actions**:
-- Investigate AgentCore Gateway policy configuration (`Use an AgentCore Gateway with Policy`)
-- AWS documentation: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/use-gateway-with-policy.html
+```bash
+# 1. Create Policy Engine
+aws bedrock-agentcore-control create-policy-engine --name eda_mcp_policy --region us-east-1
 
-**Interim workaround**: `authorizerType: NONE` + VPC / Security Group for network-level protection.
+# 2. Add Cedar permit-all policy (PoC — use IGNORE_ALL_FINDINGS)
+aws bedrock-agentcore-control create-policy \
+  --policy-engine-id <engine-id> \
+  --name permit_all_poc \
+  --definition '{"cedar":{"statement":"permit(principal, action, resource is AgentCore::Gateway);"}}' \
+  --validation-mode IGNORE_ALL_FINDINGS --region us-east-1
+
+# 3. Add permissions to Gateway service role
+aws iam put-role-policy --role-name <gateway-role> --policy-name PolicyEngineAccess \
+  --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"bedrock-agentcore:*","Resource":"arn:aws:bedrock-agentcore:<region>:<account>:*"}]}'
+
+# 4. Update Gateway (remove allowedAudience, attach policy engine)
+aws bedrock-agentcore-control update-gateway --gateway-identifier <id> \
+  --name <name> --role-arn <role-arn> --authorizer-type CUSTOM_JWT \
+  --authorizer-configuration '{"customJWTAuthorizer":{"discoveryUrl":"...","allowedClients":["<client-id>"],"allowedScopes":["scope1"]}}' \
+  --policy-engine-configuration '{"arn":"<policy-engine-arn>","mode":"ENFORCE"}'
+
+# 5. Get M2M token (client_credentials flow)
+curl -X POST "https://<domain>.auth.<region>.amazoncognito.com/oauth2/token" \
+  -H "Authorization: Basic <base64(client_id:secret)>" \
+  -d "grant_type=client_credentials&scope=scope1+scope2"
+```
+
+**Verification**: tools/list returns 3 tools, tools/call executes successfully.
+
+**Production note**: Replace `permit(principal, action, resource is AgentCore::Gateway)` with scoped Cedar policies (e.g., restrict by principal claims, specific tools, or time-based conditions). Do not use `IGNORE_ALL_FINDINGS` in production.
 
 ---
 
@@ -133,7 +154,7 @@ The following must be resolved before Quick + AgentCore MCP integration moves be
 
 | # | Blocker | Impact | Resolution path |
 |---|---------|--------|-----------------|
-| 1 | CUSTOM_JWT auth 403 issue | Must use no-auth Gateway | ISSUE-3 investigation |
+| ~~1~~ | ~~CUSTOM_JWT auth 403 issue~~ | ~~Must use no-auth Gateway~~ | ✅ **Resolved** (Policy Engine + allowedClients) |
 | 2 | Web console MCP UI bug | Cannot link tools to Agents | AWS fix pending |
 | 3 | Desktop MCP persistence bug | Only Import works | AWS fix pending |
 | 4 | `CreateActionConnector` API lacks MCP type | No API-based workaround | API extension pending |
