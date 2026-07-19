@@ -3,6 +3,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { portalSettings } from "../portal-settings";
 import { FilePreview } from "./FilePreview";
+import { RestoreFromSnapshot } from "./RestoreFromSnapshot";
 
 const client = generateClient<Schema>();
 
@@ -114,6 +115,7 @@ export function FileExplorer({ onSelectPrefix }: FileExplorerProps) {
         >
           Process this folder
         </button>
+        <RestoreFromSnapshot currentPrefix={currentPrefix} />
       </div>
 
       {error && <div className="error-message">{error}</div>}
