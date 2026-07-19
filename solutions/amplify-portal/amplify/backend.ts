@@ -235,3 +235,232 @@ api.addLambdaDataSource(
   "GetPresignedUrlLambdaDataSource",
   getPresignedUrlFunction
 );
+
+// --- Lambda Data Source for AskAboutFile (Bedrock) ---
+const askAboutFileRole = new iam.Role(dataStack, "AskAboutFileLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    S3APAndBedrock: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          actions: ["s3:GetObject"],
+          resources: config.s3ApResourceArns,
+        }),
+        new iam.PolicyStatement({
+          actions: ["bedrock:InvokeModel"],
+          resources: ["arn:aws:bedrock:*::foundation-model/*"],
+        }),
+      ],
+    }),
+  },
+});
+
+const askAboutFileFunction = new lambda.Function(
+  dataStack,
+  "AskAboutFileFunction",
+  {
+    runtime: lambda.Runtime.PYTHON_3_12,
+    architecture: lambda.Architecture.ARM_64,
+    handler: "index.handler",
+    code: lambda.Code.fromInline(`
+import os
+import json
+import boto3
+from botocore.config import Config
+
+region = os.environ.get("AWS_REGION", "ap-northeast-1")
+s3 = boto3.client("s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4"))
+bedrock = boto3.client("bedrock-runtime", region_name=region)
+
+MAX_FILE_SIZE = 100 * 1024  # 100KB max for inline context
+MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+
+def handler(event, context):
+    """Ask a question about a file on FSx for ONTAP S3 AP using Bedrock.
+
+    Reads file content via S3 AP, sends to Bedrock with the user question,
+    returns the AI-generated answer.
+    """
+    ap_alias = os.environ.get("S3_AP_ALIAS", "")
+    key = event.get("key", "")
+    question = event.get("question", "")
+
+    if not ap_alias or not key or not question:
+        return {"answer": "", "error": "Missing required parameters (key, question)"}
+
+    try:
+        # Get file content from S3 AP
+        obj = s3.get_object(Bucket=ap_alias, Key=key)
+        content_length = obj.get("ContentLength", 0)
+
+        if content_length > MAX_FILE_SIZE:
+            # Read first 100KB for large files
+            body = obj["Body"].read(MAX_FILE_SIZE).decode("utf-8", errors="replace")
+            body += f"\\n\\n[Truncated: file is {content_length} bytes, showing first {MAX_FILE_SIZE} bytes]"
+        else:
+            body = obj["Body"].read().decode("utf-8", errors="replace")
+
+        # Build prompt
+        prompt = f"""Based on the following file content, answer the user's question concisely.
+
+File: {key}
+Content:
+---
+{body}
+---
+
+Question: {question}
+
+Answer:"""
+
+        # Call Bedrock
+        response = bedrock.invoke_model(
+            modelId=MODEL_ID,
+            contentType="application/json",
+            accept="application/json",
+            body=json.dumps({
+                "inputText": prompt,
+                "textGenerationConfig": {
+                    "maxTokenCount": 1024,
+                    "temperature": 0.3,
+                    "topP": 0.9,
+                }
+            }),
+        )
+
+        result = json.loads(response["body"].read())
+        answer = result.get("results", [{}])[0].get("outputText", "")
+        if not answer:
+            # Try Claude/Nova response format
+            answer = result.get("output", {}).get("message", {}).get("content", [{}])[0].get("text", "")
+        if not answer:
+            answer = json.dumps(result)[:500]
+
+        return {"answer": answer, "model": MODEL_ID, "error": None}
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return {"answer": "", "model": MODEL_ID, "error": str(e)}
+`),
+    role: askAboutFileRole,
+    environment: {
+      S3_AP_ALIAS: config.s3ApAlias,
+      BEDROCK_MODEL_ID: "amazon.nova-lite-v1:0",
+    },
+    memorySize: 512,
+    timeout: Duration.seconds(60),
+    description: "Asks Bedrock about file content from FSx for ONTAP S3 AP",
+  }
+);
+
+api.addLambdaDataSource("AskAboutFileLambdaDataSource", askAboutFileFunction);
+
+// --- Lambda Data Source for DetectLabels (Rekognition) ---
+const detectLabelsRole = new iam.Role(dataStack, "DetectLabelsLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    S3APAndRekognition: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          actions: ["s3:GetObject"],
+          resources: config.s3ApResourceArns,
+        }),
+        new iam.PolicyStatement({
+          actions: ["rekognition:DetectLabels"],
+          resources: ["*"],
+        }),
+      ],
+    }),
+  },
+});
+
+const detectLabelsFunction = new lambda.Function(
+  dataStack,
+  "DetectLabelsFunction",
+  {
+    runtime: lambda.Runtime.PYTHON_3_12,
+    architecture: lambda.Architecture.ARM_64,
+    handler: "index.handler",
+    code: lambda.Code.fromInline(`
+import os
+import json
+import boto3
+from botocore.config import Config
+
+region = os.environ.get("AWS_REGION", "ap-northeast-1")
+s3 = boto3.client("s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4"))
+rekognition = boto3.client("rekognition", region_name=region)
+
+def handler(event, context):
+    """Detect objects/labels in an image file on FSx for ONTAP S3 AP using Rekognition.
+
+    Downloads image via S3 AP, sends to Rekognition DetectLabels,
+    returns labels with bounding boxes and confidence scores.
+    """
+    ap_alias = os.environ.get("S3_AP_ALIAS", "")
+    key = event.get("key", "")
+    max_labels = event.get("maxLabels", 10)
+    min_confidence = event.get("minConfidence", 70.0)
+
+    if not ap_alias or not key:
+        return {"labels": [], "error": "Missing required parameters (key)"}
+
+    try:
+        # Get image from S3 AP
+        obj = s3.get_object(Bucket=ap_alias, Key=key)
+        image_bytes = obj["Body"].read()
+
+        # Detect labels
+        response = rekognition.detect_labels(
+            Image={"Bytes": image_bytes},
+            MaxLabels=max_labels,
+            MinConfidence=min_confidence,
+        )
+
+        labels = []
+        for label in response.get("Labels", []):
+            label_data = {
+                "name": label["Name"],
+                "confidence": round(label["Confidence"], 1),
+                "instances": [],
+            }
+            for instance in label.get("Instances", []):
+                box = instance.get("BoundingBox", {})
+                label_data["instances"].append({
+                    "boundingBox": {
+                        "width": round(box.get("Width", 0), 4),
+                        "height": round(box.get("Height", 0), 4),
+                        "left": round(box.get("Left", 0), 4),
+                        "top": round(box.get("Top", 0), 4),
+                    },
+                    "confidence": round(instance.get("Confidence", 0), 1),
+                })
+            labels.append(label_data)
+
+        return {"labels": labels, "imageWidth": None, "imageHeight": None, "error": None}
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return {"labels": [], "error": str(e)}
+`),
+    role: detectLabelsRole,
+    environment: {
+      S3_AP_ALIAS: config.s3ApAlias,
+    },
+    memorySize: 512,
+    timeout: Duration.seconds(30),
+    description: "Detects labels/objects in images from FSx for ONTAP S3 AP via Rekognition",
+  }
+);
+
+api.addLambdaDataSource("DetectLabelsLambdaDataSource", detectLabelsFunction);

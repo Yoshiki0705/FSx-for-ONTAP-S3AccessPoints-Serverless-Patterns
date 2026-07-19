@@ -5,6 +5,7 @@ import { JobSubmitForm } from "./components/JobSubmitForm";
 import { ResultsViewer } from "./components/ResultsViewer";
 import { JobHistory } from "./components/JobHistory";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
+import { AiPanel } from "./components/AiPanel";
 
 type View = "files" | "submit" | "results" | "history";
 
@@ -27,6 +28,8 @@ function App() {
   const [currentView, setCurrentView] = useState<View>("files");
   const [selectedPrefix, setSelectedPrefix] = useState("");
   const [activeJobArn, setActiveJobArn] = useState<string | null>(null);
+  const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const { user, signOut, authStatus } = useAuthenticator();
 
   // Show skeleton while auth is resolving (prevents blank flash)
@@ -63,12 +66,22 @@ function App() {
       <main className="app-main">
         <div id="panel-files" role="tabpanel" aria-labelledby="tab-files" hidden={currentView !== "files"}>
           {currentView === "files" && (
-            <FileExplorer
-              onSelectPrefix={(prefix) => {
-                setSelectedPrefix(prefix);
-                setCurrentView("submit");
-              }}
-            />
+            <>
+              <FileExplorer
+                onSelectPrefix={(prefix) => {
+                  setSelectedPrefix(prefix);
+                  setCurrentView("submit");
+                }}
+                onFileSelect={(key, name) => {
+                  setSelectedFileKey(key);
+                  setSelectedFileName(name);
+                }}
+              />
+              <AiPanel
+                selectedFileKey={selectedFileKey}
+                selectedFileName={selectedFileName}
+              />
+            </>
           )}
         </div>
         <div id="panel-submit" role="tabpanel" aria-labelledby="tab-submit" hidden={currentView !== "submit"}>
