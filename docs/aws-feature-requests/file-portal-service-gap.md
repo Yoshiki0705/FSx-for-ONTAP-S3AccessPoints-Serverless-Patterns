@@ -75,29 +75,31 @@ Our portal's advantages (AI/ML pipeline, FlexClone, multi-protocol) are unique c
 
 ## Feature Requests
 
-### ~~FR-5: Storage Browser for S3 — Support FSx for ONTAP S3 Access Points~~（⚠️ クライアントサイドでは動作する可能性が高い）
+### FR-5: Storage Browser for S3 — FSx for ONTAP S3 Access Points の公式サポート
 
 **Service**: Amazon S3 / Amplify UI
 
 **Current state**: [Storage Browser for S3](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) (GA December 2024) provides browse, download, upload, copy, delete, and file preview for S3 data. Its public roadmap explicitly lists **"Support for S3 Access Points"** as a feature under evaluation ([source](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)). 
 
-**動作分析**: Storage Browser はクライアントサイドで S3 API を呼ぶ React コンポーネントです。内部的には `ListObjectsV2`、`GetObject`、`PutObject`、`DeleteObject` を実行します。FSx for ONTAP S3 AP はこれらの操作をすべてサポートしており、S3 AP alias (`xxx-s3alias`) はバケット名として SDK に渡せます。Presigned URL と同じ論理で、**クライアントが S3 AP alias をバケット名として使用すれば Storage Browser は動作する**。
+**動作原理**: Storage Browser はクライアントサイドで S3 API（`ListObjectsV2`、`GetObject`、`PutObject`、`DeleteObject`）を呼ぶ React コンポーネント。FSx for ONTAP S3 AP はこれらの操作をすべてサポートしており、S3 AP alias (`xxx-s3alias`) は SDK にバケット名として渡せる。Presigned URL（動作確認済み）と同じ論理で、クライアントが S3 AP alias をバケット名として使用すれば動作する。
 
-**公式ロードマップ記載の意味**: AWS が「Support for S3 Access Points」をロードマップに載せているのは、(a) 公式テスト・サポート対象にする、(b) S3 Access Grants との統合を正式に対応する、という意味と推察される。クライアントサイドの API 呼び出し自体は今でも動作する。
+**公式ロードマップ記載の意味**: AWS が「Support for S3 Access Points」をロードマップに載せているのは、(a) 公式テスト・サポート対象にする、(b) S3 Access Grants との統合を正式に対応する、という趣旨。クライアントサイドの S3 API 呼び出し自体は現時点で動作する原理。
 
-**FR-5 の変更**: 「使えない」→「非公式だが動作する。公式サポート + S3 Access Grants 統合を要望」に修正。
+**要望**: Storage Browser の `createManagedAuthAdapter` で S3 AP alias を正式にサポートし、ドキュメントに FSx for ONTAP S3 AP での使用例を記載すること。
 
 **Action**: 
-- `createManagedAuthAdapter` で S3 AP alias をターゲットに指定して動作検証する
-- 動作確認できた場合、re:Post で「Storage Browser + FSx for ONTAP S3 AP の構成例」として投稿
-- Amplify UI GitHub で公式サポートを要望（ロードマップ加速目的）
+- `createManagedAuthAdapter` で S3 AP alias をターゲットに指定してデプロイ検証
+- 動作確認後、re:Post で「Storage Browser + FSx for ONTAP S3 AP の構成例」として投稿
+- Amplify UI GitHub で公式サポートを要望（ロードマップ加速）
+
+**Impact**: 公式サポートされれば以下が即座に利用可能:
 - File preview (images, video, text)
 - File download
 - File upload (with 5GB limit per FSx for ONTAP S3 AP constraint)
 - Copy and delete operations
 - Folder creation
 
-**Impact**: This single FR would close 4 of the 8 gaps (preview, download, upload, partial sharing) and eliminate the need for custom file management components.
+This single FR would close 4 of the 8 gaps (preview, download, upload, partial sharing) and eliminate the need for custom file management components.
 
 **Workaround**: Custom React components (FileExplorer, FilePreview) calling Lambda-proxied S3 API operations against the AP. This approach cannot provide real previews without Presigned URL support.
 
@@ -145,7 +147,7 @@ export const storage = defineStorage({
 1. **Presigning はクライアントサイド操作** — `aws s3 presign` は SigV4 署名をローカルで計算するだけ。ネットワークリクエストは発生しない。
 2. **生成された URL は標準の GetObject** — 署名が Authorization ヘッダーではなくクエリパラメータに埋め込まれるだけ。
 3. **GetObject がサポートされている以上、Presigned URL をブロックすることは構造的に不可能**。
-4. **ドキュメントの意図**: "Presigned URL ワークフローを公式にテストしていない" という趣旨と思われる。
+4. **ドキュメントの意図（AWS Support 回答）**: "Presigned URL ワークフローを公式にテストしていない" ため "Not supported" と記載している。
 
 **Technical context**: ONTAP native S3 は ONTAP 9.11 以降で Presigned URL を正式サポート（[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket)）。プロトコル層に制約はない。
 
@@ -161,7 +163,7 @@ export const storage = defineStorage({
 - 時限付き共有リンク
 - Storage Browser for S3 の FSx for ONTAP S3 AP 対応（S3 AP がクライアント利用をサポートした場合）
 
-**残るリスク**: AWS が将来的に Presigned URL のクエリパラメータ形式を S3 AP レイヤーで明示的にブロックする可能性（低いが非ゼロ）。本番利用する場合は、フォールバック（Lambda プロキシ）を用意しておくのが prudent。
+**Production guidance**: AWS Support は「"Not supported" に分類されている操作を本番で依存することは推奨しない」と回答している。動作は確認済みだが、リージョン間の一貫性やサービスアップデート後の動作保証はない。本番利用する場合は、Lambda プロキシによるフォールバック経路を用意しておくことを推奨。
 
 ---
 
@@ -198,9 +200,8 @@ export const storage = defineStorage({
 当プロジェクトの検証では、S3 AP を **UNIX root identity** で構成していたため、Quick のデータアクセスロールを AP ポリシーに追加できなかった（`MalformedPolicy: Invalid principal`）。これはサービス制約ではなく、**S3 AP の FileSystemIdentity 設定の問題**。AD ベースの Windows identity で構成すれば正常動作する。
 
 **Action**: 
-- `solutions/genai/quick-agentic-workspace/docs/quick-console-setup.md` の「構造的に接続不可」記述を修正
-- AD identity で S3 AP を再構成して検証を再実行
-- FR-9 は取り下げ（機能要望ではなく構成ガイダンスの問題）
+- AD identity で S3 AP を再構成して Quick 接続の自環境検証を再実行
+- FR-9 は取り下げ（機能要望ではなく構成の問題）
 
 ---
 
