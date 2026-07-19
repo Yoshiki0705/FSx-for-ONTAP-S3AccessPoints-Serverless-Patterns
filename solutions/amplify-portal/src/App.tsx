@@ -4,6 +4,7 @@ import { FileExplorer } from "./components/FileExplorer";
 import { JobSubmitForm } from "./components/JobSubmitForm";
 import { ResultsViewer } from "./components/ResultsViewer";
 import { JobHistory } from "./components/JobHistory";
+import { LoadingSkeleton } from "./components/LoadingSkeleton";
 
 type View = "files" | "submit" | "results" | "history";
 
@@ -26,7 +27,12 @@ function App() {
   const [currentView, setCurrentView] = useState<View>("files");
   const [selectedPrefix, setSelectedPrefix] = useState("");
   const [activeJobArn, setActiveJobArn] = useState<string | null>(null);
-  const { user, signOut } = useAuthenticator();
+  const { user, signOut, authStatus } = useAuthenticator();
+
+  // Show skeleton while auth is resolving (prevents blank flash)
+  if (authStatus !== "authenticated") {
+    return <LoadingSkeleton />;
+  }
 
   return (
     <div className="app">
