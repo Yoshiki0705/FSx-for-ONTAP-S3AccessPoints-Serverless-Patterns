@@ -4,6 +4,7 @@ import type { Schema } from "../../amplify/data/resource";
 import { portalSettings } from "../portal-settings";
 import { FilePreview } from "./FilePreview";
 import { RestoreFromSnapshot } from "./RestoreFromSnapshot";
+import { ShareLink } from "./ShareLink";
 
 const client = generateClient<Schema>();
 
@@ -149,6 +150,7 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
           return (
             <div key={file.key} className="file-item">
               <FilePreview fileKey={file.key} fileName={fileName} onSelect={onFileSelect} />
+              <ShareLink fileKey={file.key} fileName={fileName} />
               <span className="name">{fileName}</span>
               <span className="size">{formatSize(file.size)}</span>
               <span className="modified">

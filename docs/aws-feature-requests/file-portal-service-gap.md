@@ -45,14 +45,14 @@ Compared current Amplify Gen2 File Portal capabilities against:
 | Collaborative real-time editing | Yes | Yes | Yes | No | Low |
 | Audit trail (who accessed what) | Yes | Yes | Yes | No | Medium |
 | Mobile responsive UI | Yes | Yes | Yes | Partial | Low |
-| AI/ML processing pipeline trigger | No | No | No | Yes | — (advantage) |
-| FlexClone / Snapshot restore | No | No | No | Yes | — (advantage) |
-| Job history & status tracking | No | No | No | Yes | — (advantage) |
-| Multi-protocol access (NFS/SMB/S3) | No | No | No | Yes | — (advantage) |
+| AI/ML processing pipeline trigger | No | No | No | Yes | — (unique to this pattern) |
+| FlexClone / Snapshot restore | No | No | No | Yes | — (unique to this pattern) |
+| Job history & status tracking | No | No | No | Yes | — (unique to this pattern) |
+| Multi-protocol access (NFS/SMB/S3) | No | No | No | Yes | — (unique to this pattern) |
 
 ### Key Insight
 
-Our portal's advantages (AI/ML pipeline, FlexClone, multi-protocol) are unique capabilities that SaaS products cannot offer. The gaps are in **basic file management UX** — most of which are blocked by AWS service limitations, not by implementation effort.
+Our portal's unique capabilities (AI/ML pipeline, FlexClone, multi-protocol) address use cases that SaaS file management products do not cover. The gaps are in **basic file management UX** — most of which are blocked by AWS service limitations, not by implementation effort.
 
 ---
 
@@ -253,7 +253,7 @@ Despite the gaps, our portal provides capabilities that SaaS products cannot:
 | Job execution history | DynamoDB-backed, owner-scoped, with status tracking |
 | Event-driven + polling hybrid | TriggerMode parameter per use case |
 
-These are genuine differentiators that justify building a custom portal even with the current limitations.
+These capabilities are not available in SaaS file management products, which makes a custom portal worth building even with the current limitations in basic file management UX.
 
 ---
 
@@ -319,7 +319,7 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 
 #### 14. Backup / DR Specialist
 
-> **DR note**: The FlexClone restore feature is a genuine differentiator — no SaaS product offers instant point-in-time volume recovery from the file portal UI. This should be highlighted more prominently in the gap analysis. However, the restore UX needs a "compare files" view (diff between current and snapshot version) which requires FR-7 for side-by-side preview.
+> **DR note**: The FlexClone restore feature provides instant point-in-time volume recovery from the file portal UI — a capability not available in SaaS file management products. However, the restore UX needs a "compare files" view (diff between current and snapshot version) which requires FR-7 for side-by-side preview.
 
 #### 15. Network Engineer
 
@@ -363,7 +363,7 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 
 #### 25. AI/ML Engineer
 
-> **AI note**: The processing pipeline integration (our advantage) could be enhanced with a "preview AI results" feature — e.g., show Rekognition bounding boxes overlaid on the original image, or Textract extracted text alongside the PDF. This requires FR-7 (original file preview via Presigned URL) plus custom rendering logic.
+> **AI note**: The processing pipeline integration could be enhanced with a "preview AI results" feature — e.g., show Rekognition bounding boxes overlaid on the original image, or Textract extracted text alongside the PDF. This requires FR-7 (original file preview via Presigned URL) plus custom rendering logic.
 
 #### 26. Quality Assurance / Testing
 
@@ -371,7 +371,7 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 
 #### 27. Accessibility Specialist
 
-> **Accessibility note**: File preview must include alt-text generation for images (Rekognition can provide this). PDF preview should extract text for screen readers. Video preview needs captions. Our AI/ML pipeline advantage could feed accessibility metadata back to the portal — a unique value prop that no SaaS competitor offers.
+> **Accessibility note**: File preview must include alt-text generation for images (Rekognition can provide this). PDF preview should extract text for screen readers. Video preview needs captions. The AI/ML pipeline could feed accessibility metadata back to the portal — enabling an inclusive file browsing experience that goes beyond what standard file management products offer.
 
 #### 28. Multi-Cloud / Hybrid Architect
 
