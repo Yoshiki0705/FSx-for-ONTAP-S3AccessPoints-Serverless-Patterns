@@ -17,6 +17,8 @@
 | #143 | Results breadcrumb (click-to-navigate to folder) |
 | #144 | FlexClone status display in Results tab |
 | #145 | Restore from Snapshot action in Files tab |
+| #146 | ROADMAP.md creation |
+| #147 | Docs sync with completed File Portal features |
 | #136-137 | README redesign: 8 languages, hub-and-spoke (~12K→1.4K lines) |
 | #138 | Documentation Design Principles in AGENTS.md |
 
@@ -40,6 +42,21 @@
 | Paste JA draft to hakobiya.hatenablog.com | Ready (`.private/article-file-portal-draft.md`) |
 | Paste EN draft to dev.to | Ready (`.private/article-file-portal-draft.en.md`) |
 | Update README blog link placeholders after publication | `grep 'TODO: Uncomment after blog'` in `solutions/nextcloud-test/README.md` |
+
+---
+
+## 📝 AWS Feature Requests
+
+| Document | Scope | FRs | Status |
+|---|---|---|---|
+| [`fsxn-s3ap-improvements.md`](aws-feature-requests/fsxn-s3ap-improvements.md) | FSx for ONTAP S3 AP core | FR-1 to FR-4 | ✅ Submitted 2026-05-10 |
+| [`file-portal-service-gap.md`](aws-feature-requests/file-portal-service-gap.md) | File Portal UI + SaaS gap | FR-5 to FR-10 | 📋 Draft (2026-07-18) |
+
+**Priority chain**: FR-7 (Presigned URL) → FR-5 (Storage Browser) → FR-6 (Amplify Storage). FR-7 is the keystone — without it, browser-native preview/download/sharing remain blocked.
+
+**Next actions**:
+- Submit FR-5/6/7 via re:Post and Support cases
+- File GitHub issues on `aws-amplify/amplify-ui` (Storage Browser + S3 AP) and `aws-amplify/amplify-backend` (Storage category + S3 AP)
 
 ---
 
