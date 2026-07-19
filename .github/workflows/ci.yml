@@ -140,7 +140,7 @@ jobs:
           cache: "npm"
           cache-dependency-path: solutions/amplify-portal/package-lock.json
       - name: Install dependencies
-        run: npm ci
+        run: npm install --ignore-scripts
       - name: Create portal-config (required for tsc)
         run: cp amplify/portal-config.example.ts amplify/portal-config.ts
       - name: TypeScript type check
