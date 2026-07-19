@@ -23,26 +23,26 @@ Storage Browser for S3 は Amplify UI の React コンポーネント（2024年1
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  ブラウザ (React + @aws-amplify/ui-react-storage)           │
+│  ブラウザ (React + @aws-amplify/ui-react-storage)     　   　 │
 │  ┌──────────────────────────────────────────────────┐       │
-│  │  StorageBrowser コンポーネント                    │       │
-│  │  - createManagedAuthAdapter (IAM 資格情報)       │       │
-│  │  - S3 Client → ListObjectsV2 / GetObject / etc. │       │
+│  │  Storage Browser コンポーネント                    │       │
+│  │  - createManagedAuthAdapter (IAM 資格情報)        │       │
+│  │  - S3 Client → ListObjectsV2 / GetObject / etc.  │       │
 │  └──────────────────┬───────────────────────────────┘       │
 └─────────────────────┼───────────────────────────────────────┘
                       │ HTTPS (SigV4)
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  S3 Access Point エンドポイント                             │
-│  エイリアス: xxx-ext-s3alias                                │
-│  ネットワークオリジン: Internet                             │
+│  S3 Access Point エンドポイント                               │
+│  エイリアス: xxx-ext-s3alias                                　│
+│  ネットワークオリジン: Internet                             　　│
 └─────────────────────┼───────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  FSx for ONTAP ボリューム                                   │
-│  - NFS/SMB と S3 AP から同時アクセス可能                    │
-│  - FileSystemIdentity が ONTAP レベルの権限を適用           │
+│  FSx for ONTAP ボリューム                         　          │
+│  - NFS/SMB と S3 AP から同時アクセス可能              　        │
+│  - FileSystemIdentity が ONTAP レベルの権限を適用       　　    │
 └─────────────────────────────────────────────────────────────┘
 ```
 

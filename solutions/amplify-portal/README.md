@@ -86,6 +86,21 @@ sequenceDiagram
 
 ---
 
+## Portal Tabs (6)
+
+| Tab | Purpose | Key Components |
+|-----|---------|----------------|
+| **Files** | Browse, preview, AI Q&A, share links | FileExplorer + FilePreview + ShareLink + AiPanel |
+| **Upload** | Drag-and-drop upload, file management | Storage Browser for S3 (zero custom code) |
+| **Process** | Trigger AI/ML workflows | JobSubmitForm → Step Functions |
+| **Results** | Real-time job status + output | ResultsViewer (5s polling) + FlexCloneStatus |
+| **History** | Past job executions | JobHistory (DynamoDB, owner-scoped) |
+| **Analytics** | SQL queries on cataloged data | AthenaQueryPanel → Glue Data Catalog |
+
+> **Detailed guide with screenshots**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
+
+---
+
 ## Prerequisites
 
 | Requirement | Version / Notes |
@@ -312,30 +327,115 @@ However, the ARN is **environment-specific** — always update it when switching
 
 ---
 
+## Deployment Timing (Verified 2026-07-20)
+
+| Step | First Time | Subsequent |
+|------|-----------|-----------|
+| `npm install` | ~60s | 0s (cached) |
+| `make sandbox` | 4-5 min (CDK bootstrap + full stack) | 20-40s (incremental) |
+| `make sandbox-delete` | ~2 min | — |
+| Cognito user creation (CLI) | 2s | — |
+| `make dev` → browser | 2s | 2s |
+
+**Total first-time setup**: ~8 minutes from `git clone` to working portal.
+
+### Production Deployment
+
+For production (Amplify Hosting + custom domain), see [Amplify Hosting Production Guide](../../docs/en/amplify-hosting-production-guide.md).
+
+Key differences from sandbox:
+- Branch-based CI/CD (push to `main` → auto-deploy)
+- Custom domain with ACM certificate
+- WAF integration for DDoS protection
+- SAML/OIDC instead of email-only auth
+
+---
+
+## Known Pitfalls — Additional Learnings (2026-07-20)
+
+### 8. Upload Tab Requires `portal-settings.ts` Configuration
+
+The Upload tab (Storage Browser for S3) reads `region`, `accountId`, and `s3ApAlias` from `src/portal-settings.ts` — NOT from `amplify/portal-config.ts`. This is because Storage Browser runs entirely client-side (no Lambda) and needs direct S3 API access via Cognito Identity Pool credentials.
+
+If you see "Network Error" in the Upload tab, check that `portal-settings.ts` has the correct `s3ApAlias`.
+
+### 9. Cognito Identity Pool IAM Must Allow S3 AP Access
+
+The Amplify sandbox auto-creates a Cognito Identity Pool, but its IAM role does NOT include S3 AP access by default. For the Upload tab (Storage Browser) to work, the Identity Pool's authenticated role needs:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
+  "Resource": [
+    "arn:aws:s3:::your-ap-alias-ext-s3alias",
+    "arn:aws:s3:::your-ap-alias-ext-s3alias/*"
+  ]
+}
+```
+
+Add this via `amplify/auth/resource.ts` inline policy or post-deploy CLI.
+
+### 10. Sandbox Deletion Is Complete
+
+`make sandbox-delete` removes ALL resources (Cognito User Pool, AppSync API, Lambda functions, DynamoDB tables, IAM roles). User accounts, job history, and API endpoints are permanently deleted. No partial cleanup option exists.
+
+### 11. Multi-Developer Sandboxes
+
+Each developer gets an isolated sandbox keyed by OS username. Running `make sandbox` on different machines (or different usernames) creates separate stacks:
+
+```
+amplify-fsxns3apamplifyportal-yoshiki-sandbox-ae70db2b34  ← developer 1
+amplify-fsxns3apamplifyportal-tanaka-sandbox-bf81ec3c45   ← developer 2
+```
+
+They share the same AWS account but don't interfere. Use `npx ampx sandbox --identifier custom-name` for explicit naming.
+
+---
+
 ## Project Structure
 
 ```
 amplify-portal/
 ├── amplify/
-│   ├── backend.ts                  # Entry point — imports config, creates data sources
+│   ├── backend.ts                  # Entry point — imports config, creates data sources + Lambda
 │   ├── portal-config.ts            # YOUR configuration (git-ignored)
 │   ├── portal-config.example.ts    # Template — copy and customize
 │   ├── auth/resource.ts            # Cognito (email + MFA + SAML/OIDC placeholders)
 │   ├── data/
-│   │   ├── resource.ts             # AppSync schema (queries, mutations, types)
-│   │   └── resolvers/
+│   │   ├── resource.ts             # AppSync schema (queries, mutations, custom types)
+│   │   └── resolvers/              # APPSYNC_JS resolvers (7 files)
 │   │       ├── start-processing.js # HTTP → StepFunctions.StartExecution
 │   │       ├── get-job-status.js   # HTTP → StepFunctions.DescribeExecution
-│   │       └── list-files.js       # Lambda invoke → S3 AP ListObjectsV2
+│   │       ├── list-files.js       # Lambda → S3 AP ListObjectsV2
+│   │       ├── get-presigned-url.js # Lambda → Presigned URL generation
+│   │       ├── ask-about-file.js   # Lambda → Bedrock Converse API
+│   │       ├── detect-labels.js    # Lambda → Rekognition DetectLabels
+│   │       └── run-athena-query.js # Lambda → Athena StartQueryExecution
 │   └── custom/
-│       └── step-functions.ts       # (Reference — data sources moved to backend.ts)
+│       └── step-functions.ts       # (Reference — moved to backend.ts)
 ├── src/
-│   ├── main.tsx                    # Amplify configure + Authenticator
-│   ├── App.tsx                     # 3-tab shell (Files / Process / Results)
+│   ├── main.tsx                    # Amplify configure + Authenticator wrapper
+│   ├── App.tsx                     # 6-tab shell (Files/Upload/Process/Results/History/Analytics)
+│   ├── portal-settings.ts         # Frontend config (Upload tab, region, accountId)
 │   └── components/
-│       ├── FileExplorer.tsx        # Directory browsing with pagination
-│       ├── JobSubmitForm.tsx       # Pattern selection + job submission
-│       └── ResultsViewer.tsx       # Status polling + data classification display
+│       ├── FileExplorer.tsx        # Directory browsing + pagination + share links
+│       ├── FilePreview.tsx         # Image preview via Presigned URL + Rekognition labels
+│       ├── ShareLink.tsx           # Presigned URL share link generator (TTL selectable)
+│       ├── StorageBrowserTab.tsx   # Storage Browser for S3 (Upload tab)
+│       ├── AiPanel.tsx             # Bedrock Q&A chat interface
+│       ├── AthenaQueryPanel.tsx    # SQL editor + results table
+│       ├── JobSubmitForm.tsx       # UC pattern selection + job submission
+│       ├── ResultsViewer.tsx       # Status polling + output display
+│       ├── FlexCloneStatus.tsx     # Clone creation progress
+│       ├── RestoreFromSnapshot.tsx # FlexClone trigger dialog
+│       ├── JobHistory.tsx          # Past executions (DynamoDB)
+│       └── LoadingSkeleton.tsx     # Auth loading placeholder
+├── docs/
+│   ├── portal-tabs-guide.md       # 6-tab detailed guide with screenshots
+│   └── screenshots/               # Portal UI screenshots
+├── tests/
+│   └── components/App.test.tsx     # Tab rendering + navigation tests
 ├── amplify_outputs.json            # Auto-generated by sandbox (git-ignored)
 ├── package.json
 ├── Makefile                        # All workflow commands
@@ -449,6 +549,7 @@ This portal is an **optional frontend layer**. It does not modify the core patte
 ## Related Documentation
 
 - [File Portal UI Options (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
+- [Quick Desktop MCP Setup (AgentCore Gateway)](../../docs/quick-desktop-mcp-setup.md)
 - [Nextcloud External Storage Setup](../../docs/nextcloud-external-storage-s3ap.md)
 - [S3AP Compatibility Notes](../../docs/s3ap-compatibility-notes.md)
 - [Demo Mode Guide](../../docs/demo-mode-guide.md)

@@ -702,6 +702,108 @@ aws cloudformation execute-change-set \
 
 ---
 
+---
+
+## Amplify Gen2 File Portal
+
+The Amplify Gen2 File Portal is a separate deployment from the SAM/CloudFormation pattern stacks above. It provides a browser-based UI for file browsing, AI processing, and workflow management against the same FSx for ONTAP S3 Access Points.
+
+### What it deploys
+
+| Resource | Purpose |
+|----------|---------|
+| Cognito User Pool + Identity Pool | Authentication + S3 API credentials |
+| AppSync GraphQL API | Frontend ↔ backend communication |
+| Lambda x8 (inline, Python 3.12 ARM64) | File listing, presigned URLs, AI services |
+| DynamoDB table | Job execution history |
+
+### Deployment steps
+
+```bash
+cd solutions/amplify-portal
+make install
+cp amplify/portal-config.example.ts amplify/portal-config.ts
+# Edit portal-config.ts: set region and s3ApAlias (from your S3 AP)
+# Edit src/portal-settings.ts: set region, accountId, s3ApAlias (for Upload tab)
+make sandbox       # ~5 min first time, ~30s subsequent
+make dev           # Start local dev server → http://localhost:5173
+```
+
+### Finding your parameter values
+
+```bash
+# S3 AP Alias
+aws fsx describe-s3-access-point-attachments \
+  --query "S3AccessPointAttachments[?Lifecycle=='AVAILABLE'].S3AccessPoint.Alias" \
+  --region ap-northeast-1 --output text
+
+# Account ID (for portal-settings.ts)
+aws sts get-caller-identity --query Account --output text
+
+# Step Functions ARN (if you've deployed a UC pattern)
+aws stepfunctions list-state-machines --region ap-northeast-1 \
+  --query "stateMachines[*].[name,stateMachineArn]" --output table
+```
+
+### Deployment timing (verified 2026-07-20)
+
+| Step | Duration | Notes |
+|------|----------|-------|
+| `npm install` | ~1 min | First time only (lockfile cached) |
+| `make sandbox` (first) | 4-5 min | CDK bootstrap + full stack creation |
+| `make sandbox` (incremental) | 20-40s | Only changed resources redeployed |
+| `make sandbox-delete` | ~2 min | Full resource cleanup |
+
+### Test user creation (CLI)
+
+After sandbox deploy, create a test user without email verification:
+
+```bash
+USER_POOL_ID=$(jq -r '.auth.user_pool_id' amplify_outputs.json)
+aws cognito-idp admin-create-user \
+  --user-pool-id $USER_POOL_ID \
+  --username demo@example.com \
+  --user-attributes Name=email,Value=demo@example.com Name=email_verified,Value=true \
+  --temporary-password 'Demo1234!' \
+  --region ap-northeast-1
+
+aws cognito-idp admin-set-user-password \
+  --user-pool-id $USER_POOL_ID \
+  --username demo@example.com \
+  --password 'Demo1234!' \
+  --permanent \
+  --region ap-northeast-1
+```
+
+### Portal tabs (6)
+
+| Tab | Function |
+|-----|----------|
+| Files | Browse files, preview images, generate share links, AI Q&A |
+| Upload | Storage Browser — drag-and-drop upload, delete, copy (S3 AP direct) |
+| Process | Select UC pattern → trigger Step Functions workflow |
+| Results | Real-time execution status + output display |
+| History | Past job list (DynamoDB, per-user scoped) |
+| Analytics | Athena SQL queries against Glue Data Catalog |
+
+### Cleanup
+
+```bash
+cd solutions/amplify-portal
+make sandbox-delete   # Deletes Cognito, AppSync, Lambda, DynamoDB
+make sfn-test-delete  # If you created a test state machine
+```
+
+> **Cost note**: Sandbox resources persist until explicitly deleted. No scheduled costs (all serverless/on-demand), but the Cognito User Pool and AppSync API exist as long as the stack is active. Always `make sandbox-delete` after testing.
+
+### Detailed documentation
+
+- [Portal Tabs Guide (with screenshots)](../../solutions/amplify-portal/docs/portal-tabs-guide.md)
+- [Portal README](../../solutions/amplify-portal/README.md)
+- [Amplify Hosting Production Guide](amplify-hosting-production-guide.md)
+
+---
+
 ## Related Documents
 
 - [Demo Mode Guide](../demo-mode-guide.en.md) — Run patterns without FSx for ONTAP

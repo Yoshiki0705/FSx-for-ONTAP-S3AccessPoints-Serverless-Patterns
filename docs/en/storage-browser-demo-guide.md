@@ -27,7 +27,7 @@ Storage Browser for S3 is an Amplify UI React component (GA December 2024) that 
 │  ┌──────────────────────────────────────────────────┐       │
 │  │  StorageBrowser component                        │       │
 │  │  - createManagedAuthAdapter (IAM credentials)    │       │
-│  │  - S3 Client → ListObjectsV2 / GetObject / etc. │       │
+│  │  - S3 Client → ListObjectsV2 / GetObject / etc.  │       │
 │  └──────────────────┬───────────────────────────────┘       │
 └─────────────────────┼───────────────────────────────────────┘
                       │ HTTPS (SigV4)
