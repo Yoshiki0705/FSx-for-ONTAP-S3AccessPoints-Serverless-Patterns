@@ -252,7 +252,7 @@ const askAboutFileRole = new iam.Role(dataStack, "AskAboutFileLambdaRole", {
           resources: config.s3ApResourceArns,
         }),
         new iam.PolicyStatement({
-          actions: ["bedrock:InvokeModel"],
+          actions: ["bedrock:InvokeModel", "bedrock:Converse"],
           resources: ["arn:aws:bedrock:*::foundation-model/*"],
         }),
       ],
@@ -318,28 +318,23 @@ Question: {question}
 
 Answer:"""
 
-        # Call Bedrock
-        response = bedrock.invoke_model(
+        # Call Bedrock (Messages API format for Nova/Claude models)
+        response = bedrock.converse(
             modelId=MODEL_ID,
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps({
-                "inputText": prompt,
-                "textGenerationConfig": {
-                    "maxTokenCount": 1024,
-                    "temperature": 0.3,
-                    "topP": 0.9,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{"text": prompt}],
                 }
-            }),
+            ],
+            inferenceConfig={
+                "maxTokens": 1024,
+                "temperature": 0.3,
+                "topP": 0.9,
+            },
         )
 
-        result = json.loads(response["body"].read())
-        answer = result.get("results", [{}])[0].get("outputText", "")
-        if not answer:
-            # Try Claude/Nova response format
-            answer = result.get("output", {}).get("message", {}).get("content", [{}])[0].get("text", "")
-        if not answer:
-            answer = json.dumps(result)[:500]
+        answer = response["output"]["message"]["content"][0]["text"]
 
         return {"answer": answer, "model": MODEL_ID, "error": None}
 
