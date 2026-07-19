@@ -133,6 +133,49 @@ const schema = a.schema({
         entry: "./resolvers/get-presigned-url.js",
       })
     ),
+
+  // --- AI/Analytics Mutations ---
+  askAboutFile: a
+    .mutation()
+    .arguments({
+      key: a.string().required(),
+      question: a.string().required(),
+    })
+    .returns(
+      a.customType({
+        answer: a.string(),
+        model: a.string(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "AskAboutFileLambdaDataSource",
+        entry: "./resolvers/ask-about-file.js",
+      })
+    ),
+
+  detectLabels: a
+    .mutation()
+    .arguments({
+      key: a.string().required(),
+      maxLabels: a.integer(),
+      minConfidence: a.float(),
+    })
+    .returns(
+      a.customType({
+        labels: a.json(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "DetectLabelsLambdaDataSource",
+        entry: "./resolvers/detect-labels.js",
+      })
+    ),
 });
 
 export type Schema = ClientSchema<typeof schema>;

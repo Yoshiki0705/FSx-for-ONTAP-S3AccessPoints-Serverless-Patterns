@@ -6,9 +6,28 @@ const client = generateClient<Schema>();
 
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"];
 
+interface BoundingBox {
+  width: number;
+  height: number;
+  left: number;
+  top: number;
+}
+
+interface LabelInstance {
+  boundingBox: BoundingBox;
+  confidence: number;
+}
+
+interface DetectedLabel {
+  name: string;
+  confidence: number;
+  instances: LabelInstance[];
+}
+
 interface FilePreviewProps {
   fileKey: string;
   fileName: string;
+  onSelect?: (fileKey: string, fileName: string) => void;
 }
 
 /**
@@ -24,11 +43,13 @@ interface FilePreviewProps {
  *   Click → AppSync getPresignedUrl → Lambda → boto3 generate_presigned_url
  *   → S3 AP alias (FSx for ONTAP) → signed URL → <img src={url} />
  */
-export function FilePreview({ fileKey, fileName }: FilePreviewProps) {
+export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [labels, setLabels] = useState<DetectedLabel[]>([]);
+  const [labelsLoading, setLabelsLoading] = useState(false);
 
   const extension = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
   const isImage = IMAGE_EXTENSIONS.includes(extension);
@@ -79,12 +100,34 @@ export function FilePreview({ fileKey, fileName }: FilePreviewProps) {
     }
   }, [fileKey]);
 
+  const handleDetectLabels = useCallback(async () => {
+    if (labels.length > 0) return; // Already detected
+    setLabelsLoading(true);
+    try {
+      const response = await client.mutations.detectLabels({
+        key: fileKey,
+        maxLabels: 10,
+        minConfidence: 70,
+      });
+      if (response.data?.labels) {
+        setLabels(response.data.labels as DetectedLabel[]);
+      }
+    } catch (err) {
+      console.error("Label detection failed:", err);
+    } finally {
+      setLabelsLoading(false);
+    }
+  }, [fileKey, labels.length]);
+
   if (!isImage) {
     return (
       <span
         className="icon file-preview-trigger"
-        onClick={handleDownload}
-        title="Click to download"
+        onClick={() => {
+          onSelect?.(fileKey, fileName);
+          handleDownload();
+        }}
+        title="Click to download / select for AI"
         role="button"
         aria-label={`Download ${fileName}`}
       >
@@ -96,7 +139,10 @@ export function FilePreview({ fileKey, fileName }: FilePreviewProps) {
   return (
     <span className="icon file-preview-trigger" style={{ position: "relative" }}>
       <span
-        onClick={fetchPresignedUrl}
+        onClick={() => {
+          onSelect?.(fileKey, fileName);
+          fetchPresignedUrl();
+        }}
         role="button"
         aria-label={`Preview ${fileName}`}
         title="Click to preview"
@@ -140,7 +186,26 @@ export function FilePreview({ fileKey, fileName }: FilePreviewProps) {
             >
               Download
             </button>
+            <button
+              className="preview-detect-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDetectLabels();
+              }}
+              disabled={labelsLoading}
+            >
+              {labelsLoading ? "Detecting..." : labels.length > 0 ? `${labels.length} labels` : "Detect Objects"}
+            </button>
           </span>
+          {labels.length > 0 && (
+            <span className="preview-labels">
+              {labels.map((label, idx) => (
+                <span key={idx} className="preview-label-tag">
+                  {label.name} ({label.confidence}%)
+                </span>
+              ))}
+            </span>
+          )}
         </span>
       )}
 
