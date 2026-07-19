@@ -9,6 +9,7 @@ const client = generateClient<Schema>();
 
 interface FileExplorerProps {
   onSelectPrefix: (prefix: string) => void;
+  onFileSelect?: (fileKey: string, fileName: string) => void;
 }
 
 interface FileItem {
@@ -27,7 +28,7 @@ interface FileItem {
  * - Pagination (1000 objects per page)
  * - File selection for processing
  */
-export function FileExplorer({ onSelectPrefix }: FileExplorerProps) {
+export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps) {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [currentPrefix, setCurrentPrefix] = useState("");
   const [loading, setLoading] = useState(false);
@@ -147,7 +148,7 @@ export function FileExplorer({ onSelectPrefix }: FileExplorerProps) {
           const fileName = file.key.replace(currentPrefix, "");
           return (
             <div key={file.key} className="file-item">
-              <FilePreview fileKey={file.key} fileName={fileName} />
+              <FilePreview fileKey={file.key} fileName={fileName} onSelect={onFileSelect} />
               <span className="name">{fileName}</span>
               <span className="size">{formatSize(file.size)}</span>
               <span className="modified">

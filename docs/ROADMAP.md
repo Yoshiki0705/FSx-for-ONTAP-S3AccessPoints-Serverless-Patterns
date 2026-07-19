@@ -26,13 +26,26 @@
 
 ## 🔜 Next Up
 
-### File Portal UI (Amplify Gen2)
+### File Portal UI — AI/Analytics Service Integrations
 
-| Item | Priority | Notes |
+エンドユーザーがファイルポータルからシームレスに AWS AI/Analytics サービスを利用できるようにする。
+
+| # | Feature | Priority | Architecture |
+|---|---|---|---|
+| 1 | **Bedrock ファイル Q&A** | High | 選択ファイル → GetObject → Bedrock InvokeModel → 回答表示 |
+| 2 | **Rekognition ラベル検出** | High | 画像クリック → DetectLabels → バウンディングボックス描画 |
+| 3 | **Athena SQL クエリ UI** | Medium | クエリエディタ → StartQueryExecution → 結果テーブル表示 |
+| 4 | **Textract テキスト抽出** | Medium | PDF/画像 → AnalyzeDocument → 構造化テキスト表示 |
+| 5 | **Comprehend エンティティ抽出** | Low | テキスト → DetectEntities → ハイライト表示 |
+| 6 | **Glue Data Catalog ブラウザ** | Low | テーブル/パーティション一覧 → スキーマ表示 |
+
+### File Portal UI (Amplify Gen2) — Completed & Remaining
+
+| Item | Status | Notes |
 |---|---|---|
-| Connect FilePreview to actual presigned URL for image thumbnails | Medium | `fileKey` prop is ready; needs a `getPresignedUrl` AppSync query |
-| Production Amplify Hosting deployment guide | Medium | Currently sandbox-only |
-| SAML/OIDC Cognito integration guide | Low | For enterprise SSO |
+| ~~Presigned URL ファイルプレビュー~~ | ✅ PR #159-160 | Lambda + AppSync + popover |
+| ~~Production Amplify Hosting guide~~ | ✅ PR #159 | docs/en/ + docs/ja/ |
+| SAML/OIDC Cognito integration guide | Low | ガイドのみ（Hosting guide に概要記載済み） |
 | Mobile-responsive CSS refinements | Low | Basic responsive works, needs testing |
 
 ### Blog Publication
