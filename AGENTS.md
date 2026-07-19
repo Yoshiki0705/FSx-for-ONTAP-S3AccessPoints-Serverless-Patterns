@@ -333,6 +333,12 @@ All README and documentation files follow these UX principles:
 | AD-joined SVM + S3 AP data ops → `AccessDenied` | AD DC must be reachable for all data operations (ListObjectsV2/GetObject/PutObject). ONTAP performs `unix→win` reverse name-mapping on every data op. HeadBucket succeeds (false positive) — always verify with a data operation |
 | HeadBucket success but data operations fail on S3 AP | HeadBucket is metadata-only (S3 layer). If AD DC is unreachable, data ops fail at the file-system layer. Check CIFS domain discovery: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers` |
 | AD-joined SVM + S3 AP data ops → AD DC unreachable | AccessDenied on ListObjectsV2 (HeadBucket OK = false positive). Pre-flight check: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers` — if `discovered_servers == []`, AD DC is unreachable. Use `shared/ad_health_check.py` for programmatic verification |
+| CFn deploy with `CAPABILITY_IAM` → InsufficientCapabilitiesException | Use `CAPABILITY_NAMED_IAM` (template creates named IAM roles). `--capabilities CAPABILITY_NAMED_IAM` |
+| Volume name `quick-test-data` → BadRequest | Volume names allow only alphanumeric + underscore. Use `quick_test_data` (no hyphens) |
+| Existing SVM with stale AD → "SVM is already joined to a domain" | Cannot re-join via FSx API. Either unjoin via ONTAP CLI (`vserver cifs delete`) or create a new SVM with AD config |
+| `aws fsx create-and-attach-s3-access-point` positional args fail | Use `--cli-input-json file://create-ap.json`. Positional `--ontap-configuration` parsing is fragile |
+| Delete volume while S3 AP attached → BadRequest | Delete S3 AP first (`detach-and-delete-s3-access-point`), wait for deletion, then delete volume |
+| Quick S3 Knowledge base not visible in ap-northeast-1 | S3 KB feature only available in us-east-1, us-west-2, ap-southeast-2, eu-west-1. Use Bedrock KB for Tokyo region, or cross-region Quick account |
 
 ## S3 Access Point Critical Knowledge
 
