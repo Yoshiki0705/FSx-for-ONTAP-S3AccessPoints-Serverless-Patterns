@@ -79,7 +79,7 @@ Our portal's advantages (AI/ML pipeline, FlexClone, multi-protocol) are unique c
 
 **Service**: Amazon S3 / Amplify UI
 
-**Current state**: [Storage Browser for S3](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) (GA December 2024) provides browse, download, upload, copy, delete, and file preview for S3 data. It supports standard S3 buckets and S3 Access Points on standard buckets. It does NOT support FSx for ONTAP S3 Access Points.
+**Current state**: [Storage Browser for S3](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) (GA December 2024) provides browse, download, upload, copy, delete, and file preview for S3 data. Its public roadmap explicitly lists **"Support for S3 Access Points"** as a feature under evaluation ([source](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)). This confirms AWS is aware of the gap but has not yet shipped it.
 
 **Requested behavior**: Allow Storage Browser for S3 to connect to FSx for ONTAP S3 Access Points using the AP alias or ARN as the target. This would instantly provide:
 - File preview (images, video, text)
@@ -131,6 +131,8 @@ export const storage = defineStorage({
 
 **Current state**: Presigned URLs are documented as "not supported" for FSx for ONTAP S3 Access Points ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)). This was previously submitted as FR-4.
 
+**Technical context**: ONTAP native S3 (non-FSx) は ONTAP 9.11 以降で Presigned URL をサポートしている（[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket)）。つまり ONTAP のプロトコル層には実装が存在する。FSx for ONTAP S3 AP で未サポートなのは AWS 側の S3 AP レイヤーの制約であり、技術的に不可能ではないことを示唆している。
+
 **Why escalation**: This is the single most impactful limitation for file portal use cases. Without Presigned URLs:
 - No browser-native file preview (images, PDF, video)
 - No direct file download (must proxy through Lambda, adding latency + cost)
@@ -162,52 +164,67 @@ export const storage = defineStorage({
 
 ---
 
-### FR-9: Amazon Kendra / OpenSearch — Native Connector for FSx for ONTAP S3 Access Points
+### FR-9: 全文検索 — OpenSearch Serverless / Amazon Quick の FSx for ONTAP S3 AP ネイティブ連携
 
-**Service**: Amazon Kendra / Amazon OpenSearch Service
+**Service**: Amazon OpenSearch Service / Amazon Quick
 
-**Current state**: Amazon Kendra supports S3 as a data source connector. OpenSearch Ingestion supports S3 as a source. Neither explicitly supports FSx for ONTAP S3 Access Points as a data source.
+**Current state**: 
+- **Amazon Kendra**: Maintenance Mode (2026/6/30)、新規利用停止 (2026/7/30)。使用不可。
+- **Amazon Q Business**: 同様に新規利用停止 (2026/7/31)。後継は **Amazon Quick**。([公式案内](https://docs.aws.amazon.com/amazonq/latest/qbusiness-ug/qbusiness-availability-change.html))
+- **Amazon Quick**: Q Business/QuickSight の後継サービス（2025/10 Quick Suite → 2026 Amazon Quick）。S3 コネクタ経由でデータ接続可能。FSx for ONTAP S3 AP との直接連携は明示ドキュメント未確認だが、S3 AP が標準 S3 API を提供するため、S3 コネクタで AP alias を指定できる可能性が高い（要検証）。
+- **Amazon Bedrock Knowledge Base**: FSx for ONTAP S3 AP を直接データソースとして利用可能（[公式チュートリアル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html)）。RAG ベースの質問応答は **実現済み**。
+- **Amazon OpenSearch Service**: S3 AP を直接データソースとして指定する Ingestion パイプラインの公式サポートは未確認。
 
-**Requested behavior**: Allow Kendra (or OpenSearch Ingestion) to use an FSx for ONTAP S3 AP alias/ARN as a data source, enabling:
-- Full-text indexing of documents on FSx for ONTAP volumes
-- Search results that return S3 AP keys (file paths)
-- Incremental crawling based on LastModified metadata
+**Gap**: 
+- Bedrock Knowledge Base は RAG（質問応答）に適しているが、ファイルポータルに必要な「キーワード検索 → ファイル一覧表示」パターンには最適化されていない
+- Amazon Quick が FSx for ONTAP S3 AP を直接データソースとして使えれば、エンタープライズ検索 + AI Q&A が統合的に実現する（要検証）
+- OpenSearch Serverless でキーワード検索を実現する場合、S3 AP からの増分取り込みパイプラインが必要
 
-**Impact**: Full-text search is the #1 most-requested feature in enterprise file portals. Without a native connector, customers must copy data to a standard S3 bucket for indexing — breaking the "no data movement" value proposition.
+**Requested behavior**: 
+1. Amazon Quick の S3 コネクタが FSx for ONTAP S3 AP ARN/alias を受け付けることを公式確認・ドキュメント化
+2. OpenSearch Ingestion が FSx for ONTAP S3 AP をソースとして直接クロールできるようにする（ListObjectsV2 + GetObject による増分取り込み）
 
-**Workaround**: Lambda-based crawler that lists objects via S3 AP, downloads content, and pushes to Kendra/OpenSearch. This is the pattern we'd implement in a hypothetical UC29.
+**Impact**: ファイルポータルの「検索バー」機能を実現するための最短経路。現状は ListObjectsV2 のプレフィクス検索のみ（部分一致・本文検索不可）。
+
+**What works today (no FR needed)**:
+- Bedrock Knowledge Base → FSx for ONTAP S3 AP: RAG / AI Q&A（公式チュートリアル）
+- Transfer Family → FSx for ONTAP S3 AP: SFTP/FTPS ファイル交換（2026/1 GA）
+- CloudFront → FSx for ONTAP S3 AP: ビデオストリーミング（公式チュートリアル）
+
+**Workaround**: Lambda ベースのクローラーが S3 AP 経由でファイルを取得し、OpenSearch Serverless にインデックスする。RAG 目的ならワークアラウンド不要（Bedrock KB で実現済み）。
 
 ---
 
-### FR-10: AWS Transfer Family — SFTP/FTPS Endpoint Backed by FSx for ONTAP S3 Access Point
+### ~~FR-10: AWS Transfer Family~~（✅ 実現済み — 2026/1 リリース）
 
-**Service**: AWS Transfer Family
+**Status**: **解決済み**
 
-**Current state**: AWS Transfer Family supports SFTP/FTPS/FTP endpoints backed by standard S3 buckets or EFS. It does not support FSx for ONTAP S3 Access Points as a storage backend.
+**確認結果**: AWS Transfer Family は 2026 年 1 月に FSx for ONTAP S3 Access Points をサポートした。
 
-**Requested behavior**: Allow Transfer Family to use an FSx for ONTAP S3 AP as the storage backend, enabling:
-- External partners to upload/download files via SFTP
-- Files land directly on the FSx for ONTAP volume (accessible via NFS/SMB)
-- No intermediate S3 bucket copy needed
+- [AWS What's New (2026/1)](https://aws.amazon.com/about-aws/whats-new/2026/01/aws-transfer-family-amazon-fsx-netapp-ontap)
+- [公式ドキュメント](https://docs.aws.amazon.com/transfer/latest/userguide/fsx-s3-access-points.html)
+- [AWS Storage Blog (2026/3)](https://aws.amazon.com/blogs/storage/secure-sftp-file-sharing-with-aws-transfer-family-amazon-fsx-for-netapp-ontap-and-s3-access-points/)
 
-**Impact**: B2B file exchange (supply chain documents, insurance claims, healthcare records) often requires SFTP. Today, customers use Transfer Family → S3 → DataSync → FSx for ONTAP, which adds latency and complexity.
+Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP にアクセスでき、ファイルは FSx for ONTAP ボリュームに直接書き込まれる（NFS/SMB からもアクセス可能）。IAM ポリシー + S3 AP リソースポリシーでアクセス制御。
 
-**Note**: FSx for ONTAP natively supports NFS/SMB, but many B2B partners require SFTP specifically for compliance or legacy integration reasons.
+**Action**: この FR は取り下げ。代わりに、当プロジェクトの UC として Transfer Family 連携パターンを追加することを検討する（ROADMAP 参照）。
 
 ---
 
 ## Priority Ranking
 
-| Rank | FR | Impact | Effort (estimated) |
-|------|-----|--------|-------------------|
-| 1 | FR-7 (Presigned URL) | Unblocks FR-5, preview, download, sharing | Medium (S3 AP signing layer) |
-| 2 | FR-5 (Storage Browser) | Closes 4 gaps with zero custom code | Low (if FR-7 is resolved) |
-| 3 | FR-6 (Amplify Storage) | Developer experience for NAS-backed apps | Medium |
-| 4 | FR-9 (Search connector) | Full-text search without data copy | Medium |
-| 5 | FR-8 (Audit UI) | Compliance requirement | Low |
-| 6 | FR-10 (Transfer Family) | B2B file exchange | Medium |
+| Rank | FR | Impact | Effort (estimated) | Status |
+|------|-----|--------|-------------------|--------|
+| 1 | FR-7 (Presigned URL) | Unblocks FR-5, preview, download, sharing | Medium (S3 AP signing layer) | Open |
+| 2 | FR-5 (Storage Browser + S3 AP) | Closes 4 gaps with zero custom code | Low (if FR-7 is resolved) | On Roadmap (Amplify UI) |
+| 3 | FR-6 (Amplify Storage + S3 AP) | Developer experience for NAS-backed apps | Medium | Open |
+| 4 | FR-9 (OpenSearch / Amazon Quick + S3 AP) | Full-text search without data copy | Medium | Open |
+| 5 | FR-8 (Audit UI) | Compliance requirement | Low | Open |
+| — | ~~FR-10 (Transfer Family)~~ | ~~B2B file exchange~~ | — | ✅ Resolved (2026/1) |
 
 **Critical dependency**: FR-7 (Presigned URL) is the keystone. Without it, FR-5 (Storage Browser) cannot function, and all preview/download/sharing features remain blocked.
+
+**Positive signal**: Storage Browser for S3 の公式ロードマップに「Support for S3 Access Points」が明記されている（[Amplify UI Storage Browser docs](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)）。これは FR-5 が AWS 側でも認識されていることを示す。
 
 ---
 
@@ -220,6 +237,8 @@ Despite the gaps, our portal provides capabilities that SaaS products cannot:
 | AI/ML processing pipeline | Step Functions + Bedrock/Textract/Comprehend triggered from UI |
 | FlexClone snapshot restore | ONTAP REST API creates point-in-time clone in seconds |
 | Multi-protocol data access | Same file accessible via NFS (Linux), SMB (Windows), S3 API (cloud) |
+| SFTP/FTPS file exchange | Transfer Family → FSx for ONTAP S3 AP (GA 2026/1) |
+| RAG / AI Q&A over NAS data | Bedrock Knowledge Base → FSx for ONTAP S3 AP (direct data source) |
 | Data classification labels | Automated INTERNAL/CUI/PUBLIC tagging on processing results |
 | Job execution history | DynamoDB-backed, owner-scoped, with status tracking |
 | Event-driven + polling hybrid | TriggerMode parameter per use case |
@@ -258,7 +277,7 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 
 #### 6. Data Engineer / Analytics
 
-> **Analytics note**: FR-9 (Search connector) should consider OpenSearch Serverless over Kendra for cost reasons. A 10TB FSx for ONTAP volume with 1M files would cost ~$180/month to index in Kendra vs ~$50/month in OpenSearch Serverless (with appropriate OCU scaling). The connector should support incremental sync based on S3 AP ListObjectsV2 `LastModified`.
+> **Analytics note**: Kendra is entering Maintenance Mode (2026/6/30) and Q Business will stop accepting new customers (2026/7/31). The successor service is Amazon Quick. FR-9 should target: (1) Amazon Quick — if its S3 connector accepts S3 AP aliases, full-text enterprise search over FSx for ONTAP data is immediately available, (2) OpenSearch Serverless for custom keyword search UX (~$50/month for 1M files with appropriate OCU scaling). Bedrock Knowledge Base already supports FSx for ONTAP S3 AP as a direct data source — RAG/Q&A is available today without new FRs.
 
 #### 7. Enterprise IT Manager
 
@@ -326,7 +345,7 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 
 #### 23. Supply Chain / Logistics
 
-> **Logistics note**: B2B document exchange (EDI, purchase orders, shipping manifests) via SFTP is standard in supply chain. FR-10 (Transfer Family + S3 AP) would enable partners to drop files that immediately appear in the portal UI — creating a unified inbound document queue.
+> **Logistics note**: B2B document exchange (EDI, purchase orders, shipping manifests) via SFTP is now natively supported — Transfer Family + FSx for ONTAP S3 AP (GA 2026/1). The file portal should integrate with this: show "Recently received via SFTP" as a filter/view in the Files tab. This is implementable today without new FRs.
 
 #### 24. Startup / Small Team Lead
 
@@ -391,6 +410,15 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 | FR-3 (Lifecycle) | Enables retention policy display in portal UI |
 | FR-4 (Versioning + Presigned) | **FR-7 is a priority escalation of FR-4's Presigned URL component** |
 
+## Already Resolved (since original FR submission)
+
+| Capability | Resolution |
+|---|---|
+| SFTP/FTPS access to FSx for ONTAP | ✅ Transfer Family + S3 AP (2026/1 GA) |
+| RAG over NAS data | ✅ Bedrock Knowledge Base + S3 AP (公式チュートリアル) |
+| Video streaming from NAS | ✅ CloudFront + S3 AP (公式チュートリアル) |
+| Enterprise search (Kendra alternative) | ⚠️ Kendra → Maintenance Mode (2026/6/30), Q Business → 新規停止 (2026/7/31). 後継: Amazon Quick (S3 AP 対応要検証) |
+
 ---
 
 ## Next Steps
@@ -405,14 +433,22 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 
 ## References
 
-1. [Storage Browser for S3 — Amplify UI](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)
-2. [Storage Browser for S3 is now GA — AWS News](https://aws.amazon.com/about-aws/whats-new/2024/12/storage-browser-amazon-s3)
+1. [Storage Browser for S3 — Amplify UI](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) — includes public roadmap with "Support for S3 Access Points"
+2. [Storage Browser for S3 is now GA — AWS News (2024/12)](https://aws.amazon.com/about-aws/whats-new/2024/12/storage-browser-amazon-s3)
 3. [Use Amplify Storage with custom S3 — Amplify Docs](https://docs.amplify.aws/android/build-a-backend/storage/use-with-custom-s3/)
 4. [Access point compatibility — FSx for ONTAP User Guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
-5. [Box Retention Policies — Box Support](https://support.box.com/hc/en-us/articles/360043694374-About-Retention-and-Retention-Policies)
-6. [Box Archive — Box Docs](https://docs.box.com/en/box-archive)
-7. [Top features in a client file sharing portal (2025) — Moxo](https://www.moxo.com/blog/client-file-sharing-portal)
-8. [Enterprise file sharing solution guide (2026) — fast.io](https://about.fast.io/resources/enterprise-file-sharing-solution/)
+5. [AWS Transfer Family now supports FSx for ONTAP — AWS News (2026/1)](https://aws.amazon.com/about-aws/whats-new/2026/01/aws-transfer-family-amazon-fsx-netapp-ontap)
+6. [Access your FSx for ONTAP file systems with Transfer Family — User Guide](https://docs.aws.amazon.com/transfer/latest/userguide/fsx-s3-access-points.html)
+7. [Secure SFTP file sharing with Transfer Family + FSx for ONTAP — AWS Storage Blog (2026/3)](https://aws.amazon.com/blogs/storage/secure-sftp-file-sharing-with-aws-transfer-family-amazon-fsx-for-netapp-ontap-and-s3-access-points/)
+8. [Build a RAG application using Bedrock KB + FSx for ONTAP — User Guide](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html)
+9. [Amazon Kendra availability change (Maintenance Mode 2026/6/30)](https://docs.aws.amazon.com/kendra/latest/dg/kendra-availability-change.html)
+10. [Amazon Q Business availability change (新規停止 2026/7/31)](https://docs.aws.amazon.com/amazonq/latest/qbusiness-ug/qbusiness-availability-change.html)
+11. [Amazon Quick — Enterprise AI Productivity Assistant](https://aws.amazon.com/quick/enterprise/)
+12. [Amazon Quick: Accelerating enterprise data to AI-powered decisions — AWS ML Blog (2026/1)](https://aws.amazon.com/blogs/machine-learning/amazon-quick-accelerating-the-path-from-enterprise-data-to-ai-powered-decisions/)
+13. [ONTAP 9.11+ Presigned URL support — NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket)
+14. [Box Retention Policies — Box Support](https://support.box.com/hc/en-us/articles/360043694374-About-Retention-and-Retention-Policies)
+15. [Top features in a client file sharing portal (2025) — Moxo](https://www.moxo.com/blog/client-file-sharing-portal)
+16. [Enterprise file sharing solution guide (2026) — fast.io](https://about.fast.io/resources/enterprise-file-sharing-solution/)
 
 ---
 
