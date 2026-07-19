@@ -75,13 +75,22 @@ Our portal's advantages (AI/ML pipeline, FlexClone, multi-protocol) are unique c
 
 ## Feature Requests
 
-### FR-5: Storage Browser for S3 — Support FSx for ONTAP S3 Access Points
+### ~~FR-5: Storage Browser for S3 — Support FSx for ONTAP S3 Access Points~~（⚠️ クライアントサイドでは動作する可能性が高い）
 
 **Service**: Amazon S3 / Amplify UI
 
-**Current state**: [Storage Browser for S3](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) (GA December 2024) provides browse, download, upload, copy, delete, and file preview for S3 data. Its public roadmap explicitly lists **"Support for S3 Access Points"** as a feature under evaluation ([source](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)). This confirms AWS is aware of the gap but has not yet shipped it.
+**Current state**: [Storage Browser for S3](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) (GA December 2024) provides browse, download, upload, copy, delete, and file preview for S3 data. Its public roadmap explicitly lists **"Support for S3 Access Points"** as a feature under evaluation ([source](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)). 
 
-**Requested behavior**: Allow Storage Browser for S3 to connect to FSx for ONTAP S3 Access Points using the AP alias or ARN as the target. This would instantly provide:
+**動作分析**: Storage Browser はクライアントサイドで S3 API を呼ぶ React コンポーネントです。内部的には `ListObjectsV2`、`GetObject`、`PutObject`、`DeleteObject` を実行します。FSx for ONTAP S3 AP はこれらの操作をすべてサポートしており、S3 AP alias (`xxx-s3alias`) はバケット名として SDK に渡せます。Presigned URL と同じ論理で、**クライアントが S3 AP alias をバケット名として使用すれば Storage Browser は動作する**。
+
+**公式ロードマップ記載の意味**: AWS が「Support for S3 Access Points」をロードマップに載せているのは、(a) 公式テスト・サポート対象にする、(b) S3 Access Grants との統合を正式に対応する、という意味と推察される。クライアントサイドの API 呼び出し自体は今でも動作する。
+
+**FR-5 の変更**: 「使えない」→「非公式だが動作する。公式サポート + S3 Access Grants 統合を要望」に修正。
+
+**Action**: 
+- `createManagedAuthAdapter` で S3 AP alias をターゲットに指定して動作検証する
+- 動作確認できた場合、re:Post で「Storage Browser + FSx for ONTAP S3 AP の構成例」として投稿
+- Amplify UI GitHub で公式サポートを要望（ロードマップ加速目的）
 - File preview (images, video, text)
 - File download
 - File upload (with 5GB limit per FSx for ONTAP S3 AP constraint)
@@ -171,33 +180,27 @@ export const storage = defineStorage({
 
 ---
 
-### FR-9: Amazon Quick — FSx for ONTAP S3 AP をデータソースとしたエンタープライズ検索・Q&A
+### ~~FR-9~~: Amazon Quick + FSx for ONTAP S3 AP（✅ 動作確認済み — AWS 公式ブログ + Workshop）
 
-**Service**: Amazon Quick
+**Status**: **解決済み（実装の問題であり、サービス制約ではない）**
 
-**Current state**: 
-- **Amazon Kendra**: Maintenance Mode (2026/6/30)、新規利用停止 (2026/7/30)。使用不可。
-- **Amazon Q Business**: 同様に新規利用停止 (2026/7/31)。後継は **Amazon Quick**。([公式案内](https://docs.aws.amazon.com/amazonq/latest/qbusiness-ug/qbusiness-availability-change.html))
-- **Amazon Quick**: Q Business/QuickSight の後継サービス（2025/10 Quick Suite → 2026 Amazon Quick）。Chat Agent 機能により、接続したデータソースに対する自然言語検索・Q&A が可能。S3 コネクタ経由でデータ接続可能。FSx for ONTAP S3 AP との直接連携は明示ドキュメント未確認だが、S3 AP が標準 S3 API を提供するため、S3 コネクタで AP alias を指定できる可能性が高い（要検証）。
-- **Amazon Bedrock Knowledge Base**: FSx for ONTAP S3 AP を直接データソースとして利用可能（[公式チュートリアル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html)）。RAG ベースの質問応答は **実現済み**。
+**根拠**:
+- [AWS Storage Blog: Enabling AI-powered analytics on enterprise file data: Configuring S3 Access Points for FSx for ONTAP with Active Directory](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/) — Amazon Quick Suite + S3 AP の連携手順とスクリーンショットを含む公式ブログ
+- [AWS Workshop Studio: FSx for ONTAP S3 AP + Quick Suite セットアップ](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) — ハンズオン手順
 
-**分析**: 
-- 従来の「キーワード検索 → ファイル一覧表示」パターンは、**Amazon Quick の Chat Agent** で代替可能。Chat Agent はデータソース内のドキュメントを自然言語で検索し、関連ファイルを提示できる。
-- Bedrock Knowledge Base も RAG 目的で同様の検索を提供済み。
-- **OpenSearch を独自に構築する必要性は低い**。Amazon Quick の S3 コネクタが S3 AP を受け付けることが確認できれば、全文検索要件は解決する。
+**動作手順**（AWS ブログより）:
+1. FSx for ONTAP S3 AP を **AD ユーザー/サービスアカウントの Windows identity** で作成
+2. Amazon Quick コンソール → Integrations → Knowledge bases → Amazon S3
+3. 「S3 bucket URL」に `s3://<S3-AP-alias>` を入力
+4. 同期完了後、Chat Agent で自然言語検索が動作
 
-**Requested behavior**: 
-- Amazon Quick の S3 コネクタが FSx for ONTAP S3 AP ARN/alias を受け付けることを公式確認・ドキュメント化
-- Chat Agent が FSx for ONTAP 上のドキュメントを検索対象にできることを公式チュートリアルとして提供
+**前回の検証失敗の原因（2026-06-12）**:
+当プロジェクトの検証では、S3 AP を **UNIX root identity** で構成していたため、Quick のデータアクセスロールを AP ポリシーに追加できなかった（`MalformedPolicy: Invalid principal`）。これはサービス制約ではなく、**S3 AP の FileSystemIdentity 設定の問題**。AD ベースの Windows identity で構成すれば正常動作する。
 
-**Impact**: ファイルポータルに Amazon Quick の Chat Agent を埋め込めば、自然言語でファイルを検索・質問できる UI が実現する。
-
-**What works today (no FR needed)**:
-- Bedrock Knowledge Base → FSx for ONTAP S3 AP: RAG / AI Q&A（公式チュートリアル）
-- Transfer Family → FSx for ONTAP S3 AP: SFTP/FTPS ファイル交換（2026/1 GA）
-- CloudFront → FSx for ONTAP S3 AP: ビデオストリーミング（公式チュートリアル）
-
-**Workaround**: Bedrock Knowledge Base を直接利用すれば RAG ベースの検索は今すぐ実現可能。ファイルポータル UI に RetrieveAndGenerate API を組み込むことで、ユーザーは自然言語で NAS データを検索できる。
+**Action**: 
+- `solutions/genai/quick-agentic-workspace/docs/quick-console-setup.md` の「構造的に接続不可」記述を修正
+- AD identity で S3 AP を再構成して検証を再実行
+- FR-9 は取り下げ（機能要望ではなく構成ガイダンスの問題）
 
 ---
 
@@ -217,20 +220,20 @@ Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP
 
 ---
 
-## Priority Ranking
+## Priority Ranking（最終版）
 
-| Rank | FR | Impact | Effort (estimated) | Status |
-|------|-----|--------|-------------------|--------|
-| 1 | FR-5 (Storage Browser + S3 AP) | Closes 4 gaps with zero custom code | Low | On Roadmap (Amplify UI) |
-| 2 | FR-6 (Amplify Storage + S3 AP) | Developer experience for NAS-backed apps | Medium | Open |
-| 3 | FR-9 (Amazon Quick + S3 AP) | Enterprise search / AI Q&A over NAS data | Low (if S3 connector works) | 要検証 |
-| 4 | FR-8 (Audit UI) | Compliance requirement | Low | Open |
-| — | FR-7 (Presigned URL docs correction) | ドキュメント修正のみ（実動作は確認済み） | — | ドキュメント修正要望 |
-| — | ~~FR-10 (Transfer Family)~~ | ~~B2B file exchange~~ | — | ✅ Resolved (2026/1) |
+| FR | Status | Next Action |
+|-----|--------|-------------|
+| ~~FR-5~~ (Storage Browser + S3 AP) | 📋 要検証（クライアントサイドで動作する原理） | `createManagedAuthAdapter` で S3 AP alias 指定して検証 |
+| **FR-6** (Amplify Storage + S3 AP) | **Open** | GitHub Issue on amplify-backend |
+| ~~FR-7~~ (Presigned URL) | ✅ 動作確認済み | ドキュメント修正要望のみ |
+| **FR-8** (Audit UI) | **Open** | CloudTrail data events 可視化コンポーネントの要望 |
+| ~~FR-9~~ (Amazon Quick + S3 AP) | ✅ 動作確認済み（AWS ブログ + Workshop） | AD identity で S3 AP を再構成して自環境で再検証 |
+| ~~FR-10~~ (Transfer Family) | ✅ 2026/1 解決済み | — |
 
-**状況の変化**: FR-7 (Presigned URL) が「動作確認済み」であるため、**Storage Browser の S3 AP 対応（FR-5）が最優先**に昇格。Presigned URL が動作する以上、Storage Browser が S3 AP を受け付けさえすれば、プレビュー・ダウンロード・アップロードが全て動作する。
+**結論**: 真に「動かない」FR は **FR-6 (Amplify Storage category)** と **FR-8 (Audit UI)** の 2 つのみ。他はすべて動作確認済みまたはクライアントサイドで動作する構成が存在する。
 
-**Positive signal**: Storage Browser for S3 の公式ロードマップに「Support for S3 Access Points」が明記されている（[Amplify UI Storage Browser docs](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)）。これは FR-5 が AWS 側でも認識されていることを示す。
+**Positive signal**: Storage Browser for S3 の公式ロードマップに「Support for S3 Access Points」が明記されている（[Amplify UI Storage Browser docs](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)）。
 
 ---
 
@@ -418,12 +421,13 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 
 ## Already Resolved (since original FR submission)
 
-| Capability | Resolution |
-|---|---|
-| SFTP/FTPS access to FSx for ONTAP | ✅ Transfer Family + S3 AP (2026/1 GA) |
-| RAG over NAS data | ✅ Bedrock Knowledge Base + S3 AP (公式チュートリアル) |
-| Video streaming from NAS | ✅ CloudFront + S3 AP (公式チュートリアル) |
-| Enterprise search (Kendra alternative) | ⚠️ Kendra → Maintenance Mode (2026/6/30), Q Business → 新規停止 (2026/7/31). 後継: Amazon Quick (S3 AP 対応要検証) |
+| Capability | Resolution | Source |
+|---|---|---|
+| SFTP/FTPS access to FSx for ONTAP | ✅ Transfer Family + S3 AP (2026/1 GA) | [docs](https://docs.aws.amazon.com/transfer/latest/userguide/fsx-s3-access-points.html) |
+| RAG over NAS data | ✅ Bedrock Knowledge Base + S3 AP | [FSx User Guide tutorial](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html) |
+| Enterprise search / AI Q&A | ✅ Amazon Quick + S3 AP (AD identity 必須) | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/), [Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) |
+| Video streaming from NAS | ✅ CloudFront + S3 AP | [FSx User Guide tutorial](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-access-points-with-aws-services.html) |
+| Presigned URL for file preview/download | ✅ 動作確認済み（client-side SigV4） | [プロジェクト検証記録](../repost-draft-presigned-url-compatibility.md) |
 
 ---
 
