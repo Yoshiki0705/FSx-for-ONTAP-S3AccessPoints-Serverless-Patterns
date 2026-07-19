@@ -120,6 +120,10 @@ make clean  # Removes containers AND volumes (full reset)
 
 ## Related Documentation
 
+<!-- TODO: Uncomment after blog publication
+- [Blog: FSx for ONTAP S3 AP にファイルポータルを追加する](https://dev.to/yoshiki0705/xxx)
+-->
 - [Nextcloud External Storage Setup Guide](../../docs/nextcloud-external-storage-s3ap.md)
+- [File Portal UI Selection Guide](../../docs/file-portal-amplify-gen2.md)
 - [File Portal UI Options (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
 - [S3AP Compatibility Notes](../../docs/s3ap-compatibility-notes.md)
