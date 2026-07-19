@@ -2,7 +2,7 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | 简体中文 | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-📚 **文档**: [架构图](docs/architecture.zh-CN.md) | [演示指南](docs/demo-guide.zh-CN.md)
+📚 **文档**: [架构图](docs/architecture.zh-CN.md) | [演示指南](docs/demo-guide.zh-CN.md) | [Workshop Lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
 
 ## 概述
 
@@ -289,6 +289,28 @@ UC6 使用以下服务：
 - [Amazon Athena 用户指南](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Bedrock API 参考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [GDSII 格式规范](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+- [AWS Workshop: Amazon Quick + FSx for ONTAP S3 AP](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup)
+- [AWS Storage Blog: AI-powered analytics on enterprise file data](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
+- [Guidance: Scaling EDA on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/)
+
+## Workshop 验证的 EDA 场景
+
+> **动手实验**: [FSx for ONTAP S3 Access Points Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
+
+| EDA 工具 | 日志类型 | UC6 处理 |
+|----------|---------|----------|
+| LSF (IBM Spectrum) | 作业调度 | 资源使用量汇总 |
+| Cadence ncvlog/ncelab | 编译 | 错误/警告计数 |
+| Cadence Xcelium | 仿真 | PASS/FAIL/UVM_FATAL 检测 |
+| Coverage Analysis | 后处理 | 覆盖率汇总 |
+
+| 触发方式 | 延迟 | 实现复杂度 | 模式支持 |
+|---------|------|-----------|:---:|
+| EventBridge Scheduler (轮询) | 分钟~小时 | 低 | ✅ TriggerMode=POLLING |
+| FPolicy → EventBridge (事件驱动) | 秒~分钟 | 高 | ✅ TriggerMode=EVENT_DRIVEN |
+| S3 Event Notifications | — | — | ❌ S3 AP 不支持 |
+
+---
 
 ## FlexCache 云爆发扩展
 
