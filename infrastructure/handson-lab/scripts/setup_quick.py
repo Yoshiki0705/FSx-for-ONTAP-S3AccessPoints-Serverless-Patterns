@@ -106,11 +106,7 @@ def create_s3_data_source(
                 "BucketName": s3_ap_alias,
             }
         },
-        "repositoryConfigurations": {
-            "document": {
-                "fieldMappings": []
-            }
-        },
+        "repositoryConfigurations": {"document": {"fieldMappings": []}},
         "syncMode": "FULL_CRAWL",
     }
 
@@ -146,9 +142,7 @@ def start_sync(region: str, app_id: str, index_id: str, ds_id: str) -> None:
 
 def main() -> None:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Set up Amazon Q Business with FSx for ONTAP S3 Access Point"
-    )
+    parser = argparse.ArgumentParser(description="Set up Amazon Q Business with FSx for ONTAP S3 Access Point")
     parser.add_argument("--stack-name", help="CloudFormation stack name")
     parser.add_argument("--s3-ap-alias", help="S3 Access Point alias (if not using stack)")
     parser.add_argument("--region", default="ap-northeast-1", help="AWS region")
@@ -196,15 +190,10 @@ def main() -> None:
             "No --role-arn provided. You need to create an IAM role for Q Business "
             "data source with S3 read permissions on the AP ARN."
         )
-        logger.info(
-            "Create the data source manually in the Q Business console with "
-            "S3 AP alias: %s", s3_ap_alias
-        )
+        logger.info("Create the data source manually in the Q Business console with S3 AP alias: %s", s3_ap_alias)
         return
 
-    ds_id = create_s3_data_source(
-        args.region, app_id, index_id, s3_ap_alias, args.role_arn
-    )
+    ds_id = create_s3_data_source(args.region, app_id, index_id, s3_ap_alias, args.role_arn)
 
     # Start initial sync
     start_sync(args.region, app_id, index_id, ds_id)
