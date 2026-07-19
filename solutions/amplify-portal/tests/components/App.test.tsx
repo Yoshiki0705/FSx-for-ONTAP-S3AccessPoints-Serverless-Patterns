@@ -34,10 +34,11 @@ describe("App", () => {
     expect(tablist).toHaveAttribute("aria-label", "Portal navigation");
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(3);
+    expect(tabs).toHaveLength(4);
     expect(tabs[0]).toHaveTextContent("Files");
     expect(tabs[1]).toHaveTextContent("Process");
     expect(tabs[2]).toHaveTextContent("Results");
+    expect(tabs[3]).toHaveTextContent("History");
   });
 
   it("marks the active tab with aria-selected", () => {

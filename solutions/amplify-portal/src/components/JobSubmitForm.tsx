@@ -61,6 +61,21 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
 
       if (response.data?.executionArn) {
         setSuccess(`Job started: ${response.data.executionArn}`);
+
+        // Save to job history (DynamoDB, owner-based)
+        try {
+          await client.models.JobExecution.create({
+            executionArn: response.data.executionArn,
+            pattern,
+            inputPrefix: prefix,
+            status: "RUNNING",
+            startDate: new Date().toISOString(),
+          });
+        } catch {
+          // History save failure is non-critical; don't block the user
+          console.warn("Failed to save job to history");
+        }
+
         onJobStarted(response.data.executionArn);
       } else if (response.errors) {
         setError(response.errors.map((e) => e.message).join(", "));
