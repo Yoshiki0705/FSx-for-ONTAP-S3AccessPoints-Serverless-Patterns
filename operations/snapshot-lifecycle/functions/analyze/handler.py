@@ -24,9 +24,9 @@ logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
 # Retention policy presets (days)
 RETENTION_PRESETS = {
-    "FISC": 2557,    # 7 years (金融: FISC 安全対策基準)
-    "HIPAA": 2192,   # 6 years (医療)
-    "NARA": 10950,   # 30 years (公文書: National Archives)
+    "FISC": 2557,  # 7 years (金融: FISC 安全対策基準)
+    "HIPAA": 2192,  # 6 years (医療)
+    "NARA": 10950,  # 30 years (公文書: National Archives)
     "CUSTOM": None,  # Uses MAX_RETENTION_DAYS parameter
 }
 
@@ -51,7 +51,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     file_systems = event.get("file_systems", [])
     logger.info(
         "Analyzing snapshots for %d file systems (policy=%s, max=%d days, min=%d days)",
-        len(file_systems), retention_policy, effective_max_days, min_retention_days,
+        len(file_systems),
+        retention_policy,
+        effective_max_days,
+        min_retention_days,
     )
 
     all_results = []
@@ -75,22 +78,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             )
             volume_audits.append(audit)
             total_expired += len(audit["expired_snapshots"])
-            total_expired_bytes += sum(
-                s.get("size_bytes", 0) for s in audit["expired_snapshots"]
-            )
+            total_expired_bytes += sum(s.get("size_bytes", 0) for s in audit["expired_snapshots"])
 
         # Summary
         summary = {
             "total_volumes_scanned": len(volume_snapshots),
-            "total_snapshots_scanned": sum(
-                v.get("snapshot_count", 0) for v in volume_snapshots
-            ),
+            "total_snapshots_scanned": sum(v.get("snapshot_count", 0) for v in volume_snapshots),
             "total_expired_snapshots": total_expired,
             "total_expired_bytes": total_expired_bytes,
             "total_expired_gb": round(total_expired_bytes / (1024**3), 2),
-            "volumes_with_drift": sum(
-                1 for a in volume_audits if a["policy_drift_detected"]
-            ),
+            "volumes_with_drift": sum(1 for a in volume_audits if a["policy_drift_detected"]),
             "retention_policy": retention_policy,
             "effective_max_retention_days": effective_max_days,
             "min_retention_days": min_retention_days,
@@ -101,19 +98,19 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if enable_bedrock and (total_expired > 0 or summary["volumes_with_drift"] > 0):
             ai_summary = _generate_ai_summary(fs_id, summary, volume_audits)
 
-        all_results.append({
-            "fs_id": fs_id,
-            "volume_audits": volume_audits,
-            "summary": summary,
-            "ai_summary": ai_summary,
-            "analyzed_at": datetime.now(UTC).isoformat(),
-        })
+        all_results.append(
+            {
+                "fs_id": fs_id,
+                "volume_audits": volume_audits,
+                "summary": summary,
+                "ai_summary": ai_summary,
+                "analyzed_at": datetime.now(UTC).isoformat(),
+            }
+        )
 
     return {
         "analyses": all_results,
-        "total_expired_snapshots": sum(
-            r["summary"]["total_expired_snapshots"] for r in all_results
-        ),
+        "total_expired_snapshots": sum(r["summary"]["total_expired_snapshots"] for r in all_results),
         "analyzed_at": datetime.now(UTC).isoformat(),
     }
 
@@ -148,9 +145,7 @@ def _audit_volume_snapshots(
             compliant_snapshots.append(snap)
 
     # Policy drift detection
-    drift_detected, drift_details = _detect_policy_drift(
-        vol_name, snapshots, policies
-    )
+    drift_detected, drift_details = _detect_policy_drift(vol_name, snapshots, policies)
 
     # Total snapshot size
     total_size = sum(s.get("size_bytes", 0) for s in snapshots)
@@ -190,7 +185,8 @@ def _detect_policy_drift(
     daily_count = sum(1 for s in snapshots if "daily" in s.get("snapshot_name", "").lower())
     weekly_count = sum(1 for s in snapshots if "weekly" in s.get("snapshot_name", "").lower())
     manual_count = sum(
-        1 for s in snapshots
+        1
+        for s in snapshots
         if "daily" not in s.get("snapshot_name", "").lower()
         and "weekly" not in s.get("snapshot_name", "").lower()
         and "hourly" not in s.get("snapshot_name", "").lower()
@@ -212,17 +208,11 @@ def _detect_policy_drift(
 
     drift_items = []
     if expected_daily > 0 and daily_count > expected_daily * 1.5:
-        drift_items.append(
-            f"daily snapshots: expected ~{expected_daily}, found {daily_count}"
-        )
+        drift_items.append(f"daily snapshots: expected ~{expected_daily}, found {daily_count}")
     if expected_weekly > 0 and weekly_count > expected_weekly * 1.5:
-        drift_items.append(
-            f"weekly snapshots: expected ~{expected_weekly}, found {weekly_count}"
-        )
+        drift_items.append(f"weekly snapshots: expected ~{expected_weekly}, found {weekly_count}")
     if manual_count > 10:
-        drift_items.append(
-            f"manual/orphan snapshots: {manual_count} (consider cleanup)"
-        )
+        drift_items.append(f"manual/orphan snapshots: {manual_count} (consider cleanup)")
 
     if drift_items:
         return True, "; ".join(drift_items)
@@ -244,12 +234,14 @@ def _generate_ai_summary(
         audit_summary = []
         for audit in volume_audits[:5]:
             if audit["expired_count"] > 0 or audit["policy_drift_detected"]:
-                audit_summary.append({
-                    "volume": audit["volume_name"],
-                    "expired": audit["expired_count"],
-                    "oldest_days": audit["oldest_snapshot_age_days"],
-                    "drift": audit["policy_drift_details"],
-                })
+                audit_summary.append(
+                    {
+                        "volume": audit["volume_name"],
+                        "expired": audit["expired_count"],
+                        "oldest_days": audit["oldest_snapshot_age_days"],
+                        "drift": audit["policy_drift_details"],
+                    }
+                )
 
         prompt = (
             "You are an AWS storage operations advisor. "
@@ -269,10 +261,12 @@ def _generate_ai_summary(
             modelId="amazon.nova-lite-v1:0",
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "messages": [{"role": "user", "content": [{"text": prompt}]}],
-                "inferenceConfig": {"maxTokens": 500, "temperature": 0.3},
-            }),
+            body=json.dumps(
+                {
+                    "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                    "inferenceConfig": {"maxTokens": 500, "temperature": 0.3},
+                }
+            ),
         )
 
         result = json.loads(response["body"].read())
