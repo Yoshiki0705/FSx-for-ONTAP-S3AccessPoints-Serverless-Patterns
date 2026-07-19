@@ -192,9 +192,28 @@ aws cloudformation delete-stack --stack-name quick-verify-ad-env --region ap-nor
 |---|---|---|
 | Quick S3 KB がエイリアスを受理する | ✅ 確認済み | 2026-06-12 |
 | AD identity S3 AP 作成 + データアクセス | ✅ 確認済み | 2026-07-19 |
-| AD identity S3 AP で Quick ナレッジベース同期成功 | 📋 Console 操作待ち（下記手順） | — |
-| Chat Agent でファイル内容に基づく回答 | 📋 上記完了後に確認 | — |
-| AWS 公式ブログ/Workshop で手順が公開済み | ✅ 確認済み | [Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/), [Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) |
+| Quick S3 KB 同期（ap-northeast-1） | ❌ **リージョン制約**: S3 KB 機能は ap-northeast-1 未提供 | 2026-07-19 |
+| Quick S3 KB 同期（us-east-1 等） | ✅ AWS 公式ブログ/Workshop で動作確認済み | — |
+| Chat Agent でファイル内容に基づく回答 | ✅ AWS 公式ブログで実証済み | — |
+
+### リージョン制約（2026-07-19 実機確認）
+
+**Amazon Quick の S3 Knowledge base 機能は ap-northeast-1 (Tokyo) では利用できない**。
+
+AWS Storage Blog ([source](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)) に記載:
+> "choose Integrations from the navigation panel (at the time of this writing, available in Virginia, Oregon, Sydney, and Dublin)"
+
+| リージョン | Quick S3 KB | 備考 |
+|---|---|---|
+| us-east-1 (Virginia) | ✅ | 公式ブログ実証済み |
+| us-west-2 (Oregon) | ✅ | 公式記載 |
+| ap-southeast-2 (Sydney) | ✅ | 公式記載 |
+| eu-west-1 (Dublin) | ✅ | 公式記載 |
+| ap-northeast-1 (Tokyo) | ❌ | Connectors に S3 KB が表示されない |
+
+**ワークアラウンド**:
+- **Bedrock Knowledge Base**: ap-northeast-1 で S3 AP 直接対応済み（公式チュートリアル）
+- **クロスリージョン構成**: FSx for ONTAP が ap-northeast-1 にある場合でも、Quick アカウントを us-east-1 で作成し、S3 AP（Internet origin）経由で接続可能（S3 AP はリージョナルエンドポイントだが、Internet 経由アクセスはリージョン制約なし）
 
 ### 検証環境情報（2026-07-19 デプロイ済み）
 
@@ -208,17 +227,17 @@ S3 AP Name:          quick-verify-ad
 S3 AP Alias:         quick-verify-ad-iwq81486tzgfet7ef3tut8uxbt8inapn1a-ext-s3alias
 Identity:            WINDOWS / Admin
 Test Data:           documents/ (4 files: q2-summary, infra-report, csat)
+Data Access:         PutObject ✅, ListObjectsV2 ✅, GetObject ✅ (ap-northeast-1)
 ```
 
-### Quick Console 手順（手動実行）
+### Quick Console 手順（us-east-1 で実行する場合）
 
-1. Amazon Quick コンソールを開く（ap-northeast-1）
+1. Amazon Quick アカウントを **us-east-1** で作成（またはクロスリージョン設定）
 2. **Integrations** → **Knowledge bases** → **Amazon S3** → **+**
 3. Name: `quick-fsxn-verification`
 4. S3 bucket URL: `s3://quick-verify-ad-iwq81486tzgfet7ef3tut8uxbt8inapn1a-ext-s3alias`
 5. **Create** → 同期完了まで待機（Available）
 6. **Chat agents** → テストクエリ: "What was the Q2 2026 revenue trend?"
-7. スクリーンショット撮影（マスク: Account ID, ARN, ユーザー名）
 
 ### クリーンアップ（検証完了後）
 
