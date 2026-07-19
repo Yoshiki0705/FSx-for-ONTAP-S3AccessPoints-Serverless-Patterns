@@ -183,8 +183,14 @@ import os
 import boto3
 from botocore.config import Config
 
-# Use path-style addressing for S3 AP alias compatibility
-s3 = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
+# Use SigV4 signing with explicit regional endpoint (required for FSx for ONTAP S3 AP)
+region = os.environ.get("AWS_REGION", "ap-northeast-1")
+s3 = boto3.client(
+    "s3",
+    region_name=region,
+    endpoint_url=f"https://s3.{region}.amazonaws.com",
+    config=Config(signature_version="s3v4"),
+)
 
 def handler(event, context):
     """Generate a presigned URL for an object on FSx for ONTAP S3 AP.
