@@ -84,7 +84,14 @@ function App() {
         </div>
         <div id="panel-results" role="tabpanel" aria-labelledby="tab-results" hidden={currentView !== "results"}>
           {currentView === "results" && (
-            <ResultsViewer executionArn={activeJobArn} />
+            <ResultsViewer
+              executionArn={activeJobArn}
+              inputPrefix={selectedPrefix}
+              onNavigateToFolder={(prefix) => {
+                setSelectedPrefix(prefix);
+                setCurrentView("files");
+              }}
+            />
           )}
         </div>
         <div id="panel-history" role="tabpanel" aria-labelledby="tab-history" hidden={currentView !== "history"}>

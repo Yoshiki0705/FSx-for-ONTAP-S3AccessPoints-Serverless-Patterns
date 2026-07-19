@@ -6,6 +6,8 @@ const client = generateClient<Schema>();
 
 interface ResultsViewerProps {
   executionArn: string | null;
+  inputPrefix?: string;
+  onNavigateToFolder?: (prefix: string) => void;
 }
 
 interface JobResult {
@@ -27,7 +29,7 @@ interface JobResult {
  *
  * Auto-polls every 5 seconds while status is RUNNING.
  */
-export function ResultsViewer({ executionArn }: ResultsViewerProps) {
+export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }: ResultsViewerProps) {
   const [result, setResult] = useState<JobResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +95,19 @@ export function ResultsViewer({ executionArn }: ResultsViewerProps) {
   return (
     <div className="results-viewer">
       <h2>Results</h2>
+
+      {inputPrefix && onNavigateToFolder && (
+        <nav className="results-breadcrumb" aria-label="Processed folder">
+          <span>Processed: </span>
+          <button
+            className="breadcrumb-link"
+            onClick={() => onNavigateToFolder(inputPrefix)}
+            title={`Navigate to ${inputPrefix}`}
+          >
+            📂 /{inputPrefix}
+          </button>
+        </nav>
+      )}
 
       {error && <div className="error-message">{error}</div>}
 
