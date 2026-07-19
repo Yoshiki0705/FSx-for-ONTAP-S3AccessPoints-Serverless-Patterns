@@ -112,6 +112,27 @@ const schema = a.schema({
         entry: "./resolvers/list-files.js",
       })
     ),
+
+  getPresignedUrl: a
+    .query()
+    .arguments({
+      key: a.string().required(),
+      expiresIn: a.integer(),
+    })
+    .returns(
+      a.customType({
+        url: a.string(),
+        expiresIn: a.integer(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "GetPresignedUrlLambdaDataSource",
+        entry: "./resolvers/get-presigned-url.js",
+      })
+    ),
 });
 
 export type Schema = ClientSchema<typeof schema>;

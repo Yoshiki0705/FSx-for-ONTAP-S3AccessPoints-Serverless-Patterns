@@ -150,3 +150,82 @@ def handler(event, context):
 });
 
 api.addLambdaDataSource("ListFilesLambdaDataSource", listFilesFunction);
+
+// --- Lambda Data Source for GetPresignedUrl ---
+const getPresignedUrlRole = new iam.Role(dataStack, "GetPresignedUrlLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    S3APGetObject: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          actions: ["s3:GetObject"],
+          resources: config.s3ApResourceArns,
+        }),
+      ],
+    }),
+  },
+});
+
+const getPresignedUrlFunction = new lambda.Function(
+  dataStack,
+  "GetPresignedUrlFunction",
+  {
+    runtime: lambda.Runtime.PYTHON_3_12,
+    architecture: lambda.Architecture.ARM_64,
+    handler: "index.handler",
+    code: lambda.Code.fromInline(`
+import os
+import boto3
+from botocore.config import Config
+
+# Use path-style addressing for S3 AP alias compatibility
+s3 = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
+
+def handler(event, context):
+    """Generate a presigned URL for an object on FSx for ONTAP S3 AP.
+
+    Presigned URLs on FSx for ONTAP S3 AP are client-side SigV4 calculations
+    that execute as standard GetObject requests. Verified working (2026-07-19).
+
+    Args:
+        event: { "key": "path/to/file.jpg", "expiresIn": 300 }
+    Returns:
+        { "url": "https://...", "expiresIn": 300 }
+    """
+    ap_alias = os.environ.get("S3_AP_ALIAS", "")
+    key = event.get("key", "")
+    expires_in = min(event.get("expiresIn", 300), 3600)  # Max 1 hour
+
+    if not ap_alias or not key:
+        return {"url": None, "expiresIn": 0, "error": "Missing S3_AP_ALIAS or key"}
+
+    try:
+        url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": ap_alias, "Key": key},
+            ExpiresIn=expires_in,
+        )
+        return {"url": url, "expiresIn": expires_in, "error": None}
+    except Exception as e:
+        print(f"Error generating presigned URL: {e}")
+        return {"url": None, "expiresIn": 0, "error": str(e)}
+`),
+    role: getPresignedUrlRole,
+    environment: {
+      S3_AP_ALIAS: config.s3ApAlias,
+    },
+    memorySize: 128,
+    timeout: Duration.seconds(10),
+    description: "Generates presigned URLs for FSx for ONTAP S3 AP file preview/download",
+  }
+);
+
+api.addLambdaDataSource(
+  "GetPresignedUrlLambdaDataSource",
+  getPresignedUrlFunction
+);
