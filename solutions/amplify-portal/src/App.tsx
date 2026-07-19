@@ -7,11 +7,13 @@ import { JobHistory } from "./components/JobHistory";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { AiPanel } from "./components/AiPanel";
 import { AthenaQueryPanel } from "./components/AthenaQueryPanel";
+import { StorageBrowserTab } from "./components/StorageBrowserTab";
 
-type View = "files" | "submit" | "results" | "history" | "analytics";
+type View = "files" | "upload" | "submit" | "results" | "history" | "analytics";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "files", label: "Files" },
+  { id: "upload", label: "Upload" },
   { id: "submit", label: "Process" },
   { id: "results", label: "Results" },
   { id: "history", label: "History" },
@@ -85,6 +87,9 @@ function App() {
               />
             </>
           )}
+        </div>
+        <div id="panel-upload" role="tabpanel" aria-labelledby="tab-upload" hidden={currentView !== "upload"}>
+          {currentView === "upload" && <StorageBrowserTab />}
         </div>
         <div id="panel-submit" role="tabpanel" aria-labelledby="tab-submit" hidden={currentView !== "submit"}>
           {currentView === "submit" && (
