@@ -59,17 +59,59 @@ def report_handler():
 def collect_output():
     """Simulated Collect output with mixed tiering policies."""
     return {
-        "file_systems": [{
-            "fs_id": "fs-test01",
-            "volumes": [
-                {"name": "vol_production_data", "uuid": "u1", "svm_name": "svm-prod", "tiering_policy": "auto", "cooling_period_days": 31, "cloud_storage_used_bytes": 214748364800, "fs_id": "fs-test01"},
-                {"name": "vol_dev_workspace", "uuid": "u2", "svm_name": "svm-dev", "tiering_policy": "none", "cooling_period_days": 31, "cloud_storage_used_bytes": 0, "fs_id": "fs-test01"},
-                {"name": "vol_archive_2023", "uuid": "u3", "svm_name": "svm-prod", "tiering_policy": "snapshot-only", "cooling_period_days": 2, "cloud_storage_used_bytes": 549755813888, "fs_id": "fs-test01"},
-                {"name": "vol_analytics", "uuid": "u4", "svm_name": "svm-analytics", "tiering_policy": "auto", "cooling_period_days": 14, "cloud_storage_used_bytes": 53687091200, "fs_id": "fs-test01"},
-                {"name": "vol_backup_temp", "uuid": "u5", "svm_name": "svm-prod", "tiering_policy": "none", "cooling_period_days": 31, "cloud_storage_used_bytes": 0, "fs_id": "fs-test01"},
-            ],
-            "collected_at": "2026-07-13T00:00:00+00:00",
-        }],
+        "file_systems": [
+            {
+                "fs_id": "fs-test01",
+                "volumes": [
+                    {
+                        "name": "vol_production_data",
+                        "uuid": "u1",
+                        "svm_name": "svm-prod",
+                        "tiering_policy": "auto",
+                        "cooling_period_days": 31,
+                        "cloud_storage_used_bytes": 214748364800,
+                        "fs_id": "fs-test01",
+                    },
+                    {
+                        "name": "vol_dev_workspace",
+                        "uuid": "u2",
+                        "svm_name": "svm-dev",
+                        "tiering_policy": "none",
+                        "cooling_period_days": 31,
+                        "cloud_storage_used_bytes": 0,
+                        "fs_id": "fs-test01",
+                    },
+                    {
+                        "name": "vol_archive_2023",
+                        "uuid": "u3",
+                        "svm_name": "svm-prod",
+                        "tiering_policy": "snapshot-only",
+                        "cooling_period_days": 2,
+                        "cloud_storage_used_bytes": 549755813888,
+                        "fs_id": "fs-test01",
+                    },
+                    {
+                        "name": "vol_analytics",
+                        "uuid": "u4",
+                        "svm_name": "svm-analytics",
+                        "tiering_policy": "auto",
+                        "cooling_period_days": 14,
+                        "cloud_storage_used_bytes": 53687091200,
+                        "fs_id": "fs-test01",
+                    },
+                    {
+                        "name": "vol_backup_temp",
+                        "uuid": "u5",
+                        "svm_name": "svm-prod",
+                        "tiering_policy": "none",
+                        "cooling_period_days": 31,
+                        "cloud_storage_used_bytes": 0,
+                        "fs_id": "fs-test01",
+                    },
+                ],
+                "collected_at": "2026-07-13T00:00:00+00:00",
+            }
+        ],
         "collected_at": "2026-07-13T00:00:00+00:00",
         "demo_mode": True,
     }

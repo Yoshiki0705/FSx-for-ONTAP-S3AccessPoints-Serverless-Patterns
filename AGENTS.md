@@ -261,6 +261,53 @@ decision = evaluate_confidence(confidence=0.72)
 # decision.action: "AUTO_APPROVE" | "HUMAN_REVIEW" | "REJECT"
 ```
 
+## Documentation Design Principles
+
+All README and documentation files follow these UX principles:
+
+### Hub & Spoke Model
+- **README.md is the hub**: It links OUT to everything, never contains full details inline
+- **docs/ files are spokes**: Each answers ONE specific question in depth
+- **Maximum visible content in README**: ~150 lines (before `<details>` expansion)
+
+### Progressive Disclosure
+- Use `<details><summary>` for everything not immediately needed on first read
+- First-time visitors need: (1) What is this? (2) How do I start? (3) Where are details?
+- Returning visitors need: (1) What changed? (2) Where's the specific doc?
+
+### Action-First Headings
+- ✅ "はじめる" / "Get Started" — action verb
+- ❌ "Prerequisites" / "前提条件" — static noun (move to deployment guide)
+- The first visible section should be a "Get Started" table with time estimates
+
+### 7±2 Rule
+- No more than 7 items visible at any single navigation level
+- If a table has >7 rows, collapse it into `<details>`
+- If a section has >7 bullet points, restructure into a table or sub-sections
+
+### Multi-Language Consistency
+- All language README files (JA, EN, KO, ZH-CN, ZH-TW, FR, DE, ES) use IDENTICAL structure
+- Translate: headings, descriptions, table content
+- Never translate: file paths, commands, badge URLs, anchor IDs
+- Language switcher at BOTH top and bottom of README
+
+### No Dead Weight
+- Phase-based development history → belongs in CHANGELOG.md or blog articles, NOT README
+- Verification screenshots → belong in docs/verification-results*.md
+- Full deploy commands → belong in docs/guides/deployment-guide.md
+- API compatibility tables → belong in docs/s3ap-compatibility-notes.md
+- If content will never be updated again, it should not be in README
+
+### Mobile & Scanning Readability
+- Tables with >5 columns are unreadable on mobile → split or use key-value format
+- Code blocks should be copy-pasteable without horizontal scrolling
+- Use emoji as visual markers for quick scanning (📂, 🚀, ⚠️, 📚, 🔧)
+
+### Cross-Repository Consistency
+- All Yoshiki0705 repos should follow this same README structure
+- Same language switcher format, same badge style, same `<details>` patterns
+- Related repositories link to each other in a consistent "Related Repositories" section
+
 ## Common Pitfalls
 
 | Pitfall | Solution |
@@ -280,8 +327,22 @@ decision = evaluate_confidence(confidence=0.72)
 | Test file name collision across patterns | Use unique test file names or run per-directory |
 | `from functions.xxx import` collision in batch test runs | Run patterns with `handler` module imports in separate pytest invocations (Makefile splits these) |
 | `SsmAssociations` + `aws:domainJoin` → schema error | Use separate `AWS::SSM::Association` resource with `AWS-JoinDirectoryServiceDomain` document (see below) |
+| IVS Auto-Record to FSx for ONTAP S3 AP → `Recording Start Failure` | IVS does not support S3 AP as recording destination (confirmed by AWS service team). Use IVS → standard S3 bucket → FSx for ONTAP path |
 | WINDOWS S3 AP `AccessDenied` on data-plane | `WindowsUser.Name` must be username only (`Admin`), NOT `DOMAIN\Admin` — domain prefix silently breaks data-plane |
 | WINDOWS S3 AP creation fails | SVM must be AD-joined first; use `scripts/demo-ad-join-svm.sh` |
+| AD-joined SVM + S3 AP data ops → `AccessDenied` | AD DC must be reachable for all data operations (ListObjectsV2/GetObject/PutObject). ONTAP performs `unix→win` reverse name-mapping on every data op. HeadBucket succeeds (false positive) — always verify with a data operation |
+| HeadBucket success but data operations fail on S3 AP | HeadBucket is metadata-only (S3 layer). If AD DC is unreachable, data ops fail at the file-system layer. Check CIFS domain discovery: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers` |
+| AD-joined SVM + S3 AP data ops → AD DC unreachable | AccessDenied on ListObjectsV2 (HeadBucket OK = false positive). Pre-flight check: `GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers` — if `discovered_servers == []`, AD DC is unreachable. Use `shared/ad_health_check.py` for programmatic verification |
+| CFn deploy with `CAPABILITY_IAM` → InsufficientCapabilitiesException | Use `CAPABILITY_NAMED_IAM` (template creates named IAM roles). `--capabilities CAPABILITY_NAMED_IAM` |
+| Volume name `quick-test-data` → BadRequest | Volume names allow only alphanumeric + underscore. Use `quick_test_data` (no hyphens) |
+| Existing SVM with stale AD → "SVM is already joined to a domain" | Cannot re-join via FSx API. Either unjoin via ONTAP CLI (`vserver cifs delete`) or create a new SVM with AD config |
+| `aws fsx create-and-attach-s3-access-point` positional args fail | Use `--cli-input-json file://create-ap.json`. Positional `--ontap-configuration` parsing is fragile |
+| Delete volume while S3 AP attached → BadRequest | Delete S3 AP first (`detach-and-delete-s3-access-point`), wait for deletion, then delete volume |
+| Quick S3 Knowledge base not visible in ap-northeast-1 | S3 KB feature only available in us-east-1, us-west-2, ap-southeast-2, eu-west-1. Use Bedrock KB for Tokyo region, or cross-region Quick account |
+| Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign. Use `Config(signature_version="s3v4")` explicitly |
+| Presigned URL `PermanentRedirect` from Lambda | Global endpoint `s3.amazonaws.com` redirects. Use `endpoint_url=f"https://s3.{region}.amazonaws.com"` |
+| Presigned URL `HEAD` returns 403 but `GET` works | Some S3 AP configurations don't support HEAD on presigned URLs. Use GET for verification |
+| Bedrock `InvokeModel` with `inputText` → ValidationException | Nova/Claude models require Messages API. Use `bedrock.converse()` (not `invoke_model` with `inputText`). Add `bedrock:Converse` to IAM policy |
 
 ## S3 Access Point Critical Knowledge
 
@@ -305,12 +366,45 @@ Both must Allow:
 ### Supported Operations
 
 PutObject (max 5GB), GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
-NOT supported: GetBucketNotificationConfiguration, Presigned URLs (documented as unsupported).
+NOT supported: GetBucketNotificationConfiguration.
+Presigned URLs: Listed as "Not supported" in AWS docs, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support advises against production reliance. See docs/s3ap-compatibility-notes.md for details.
 
 ### NetworkOrigin (Immutable After Creation)
 
 - `Internet`: Accessible from anywhere with valid credentials. NOT via S3 Gateway VPC Endpoint.
 - `VPC`: Accessible only from bound VPC via S3 Gateway/Interface Endpoint.
+
+### AD-Joined SVM: AD DC Reachability Required for Data Operations
+
+On AD-joined SVMs (CIFS enabled), **every S3 AP data operation** (ListObjectsV2, GetObject, PutObject) requires the SVM to successfully contact its AD domain controllers. ONTAP's multiprotocol identity pipeline performs a `unix→win` reverse lookup for every file system operation when CIFS is enabled — even on UNIX security style volumes accessed via S3 AP.
+
+**Diagnostic pattern**:
+| Test | AD DC Reachable | AD DC Unreachable |
+|------|:---:|:---:|
+| HeadBucket | ✅ | ✅ (false positive) |
+| ListObjectsV2 | ✅ | ❌ AccessDenied |
+| GetObject | ✅ | ❌ AccessDenied |
+| PutObject | ✅ | ❌ AccessDenied |
+
+**Pre-flight check** (recommended for Step Functions workflows on AD-joined SVMs):
+```python
+# 1. Check if SVM has CIFS enabled (= AD-joined)
+cifs = ontap_request("GET", f"/protocols/cifs/services?svm.name={svm}&fields=ad_domain.fqdn")
+if cifs["records"]:
+    # 2. Verify DC discovery
+    domains = ontap_request("GET", f"/protocols/cifs/domains?svm.name={svm}&fields=discovered_servers")
+    if not domains["records"] or domains["records"][0].get("discovered_servers") == []:
+        raise RuntimeError("AD DC unreachable — S3 AP data operations will fail with AccessDenied")
+```
+
+**Why this is confusing**: HeadBucket succeeds because it only validates at the S3 metadata layer. All IAM, AP policy, and network checks also pass. This leads developers to investigate the wrong layers. The root cause is at the ONTAP file-system layer (reverse name-mapping requires AD DC LDAP/Kerberos connectivity).
+
+**When this happens**:
+- AD (Managed AD or self-managed) is deleted, stopped, or network-unreachable
+- SVM DNS IPs point to old/dead AD DC addresses after AD recreation
+- Security Group or NACL blocks AD ports (53/88/389/445/636) from SVM ENIs to DC IPs
+
+> **Note**: This pattern was verified in `fsxn-observability-integrations` (restore-verification workflow). The patterns in this repo work without AD because they typically target pure UNIX SVMs (no CIFS enabled).
 
 ## SSM Domain Join — Correct Pattern for Windows EC2 AD Join
 
@@ -457,6 +551,10 @@ When reviewing changes, consider these perspectives:
 | [ONTAP Integration Notes](docs/ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
 | [S3 Bucket User Guide](docs/s3-bucket-user-guide.md) | Standard S3 vs FSx for ONTAP S3 AP differences |
 | [Bedrock Inference Profiles](docs/bedrock-inference-profiles.md) | Nova/Claude on-demand requirement, IAM (foundation-model + inference-profile), data residency, CI enforcement |
+| [AD-Joined SVM S3 AP Prerequisites](docs/en/ad-joined-svm-s3ap-prerequisites.md) | AD DC reachability, Internet-origin AP + VPC-external Lambda, same-account policy |
+| [File Portal UI Options](docs/file-portal-amplify-gen2.md) | Amplify Gen2 / Nextcloud / Custom Build comparison, selection guide, implementation roadmap |
+| [Nextcloud External Storage Setup](docs/nextcloud-external-storage-s3ap.md) | Nextcloud + FSx for ONTAP S3 AP step-by-step configuration |
+| [Workshop EDA Integration Guide](docs/workshop-eda-integration.md) | AWS Workshop modules mapped to UC patterns (EDA scenarios, Athena, Glue, AgentCore, Quick) |
 
 ## Agent Output Standards
 

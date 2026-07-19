@@ -73,25 +73,39 @@ class TestPolicyDrift:
         """手動スナップショットが多すぎるとドリフト検出."""
         # Create input with many manual snapshots
         input_data = {
-            "file_systems": [{
-                "fs_id": "fs-test01",
-                "volume_snapshots": [{
-                    "volume_name": "vol_many_manual",
-                    "volume_uuid": "uuid-001",
-                    "snapshot_count": 15,
-                    "snapshots": [
-                        {"snapshot_name": f"manual_backup_{i}", "snapshot_uuid": f"s{i}",
-                         "size_bytes": 1073741824, "age_days": 30 + i,
-                         "volume_name": "vol_many_manual", "volume_uuid": "uuid-001", "fs_id": "fs-test01"}
-                        for i in range(15)
+            "file_systems": [
+                {
+                    "fs_id": "fs-test01",
+                    "volume_snapshots": [
+                        {
+                            "volume_name": "vol_many_manual",
+                            "volume_uuid": "uuid-001",
+                            "snapshot_count": 15,
+                            "snapshots": [
+                                {
+                                    "snapshot_name": f"manual_backup_{i}",
+                                    "snapshot_uuid": f"s{i}",
+                                    "size_bytes": 1073741824,
+                                    "age_days": 30 + i,
+                                    "volume_name": "vol_many_manual",
+                                    "volume_uuid": "uuid-001",
+                                    "fs_id": "fs-test01",
+                                }
+                                for i in range(15)
+                            ],
+                        }
                     ],
-                }],
-                "snapshot_policies": [
-                    {"name": "default", "uuid": "p1", "enabled": True,
-                     "schedules": [{"schedule": "daily", "count": 7}]},
-                ],
-                "collected_at": "2026-07-13T00:00:00+00:00",
-            }],
+                    "snapshot_policies": [
+                        {
+                            "name": "default",
+                            "uuid": "p1",
+                            "enabled": True,
+                            "schedules": [{"schedule": "daily", "count": 7}],
+                        },
+                    ],
+                    "collected_at": "2026-07-13T00:00:00+00:00",
+                }
+            ],
             "collected_at": "2026-07-13T00:00:00+00:00",
             "demo_mode": True,
         }

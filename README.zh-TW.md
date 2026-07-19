@@ -1,1056 +1,215 @@
-# FSx for ONTAP S3 Access Points Serverless Patterns
+# FSx for ONTAP S3 Access Points — 無伺服器模式
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+![tests](https://img.shields.io/badge/tests-2%2C162%2B%20passed-brightgreen) ![cfn-lint](https://img.shields.io/badge/cfn--lint-0%20errors-brightgreen) ![ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen) ![patterns](https://img.shields.io/badge/patterns-42%2B-blue) ![region](https://img.shields.io/badge/verified-ap--northeast--1-blue)
 
-## Current Status
+🌐 [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-本儲存庫現包含 **28 個產業用例** + **事件驅動 FPolicy 模式** + **7 個 FlexCache/FlexClone 模式** + **內容邊緣傳遞模式**，構成完整的無伺服器模式庫。
+---
 
-從最初的 5 個模式（Phase 1）經 Phase 2–13 擴展而來。Phase 10 引入共用 FPolicy 事件擷取管線，Phase 11 將調度擴展至全部 17 UC，Phase 12 透過 Persistent Store 重播驗證、SLO 可觀測性、容量護欄和密鑰輪換進行維運強化，Phase 13 實現 FlexClone/FlexCache 無伺服器自動化。
+> **42 個參考模式** — 透過 S3 Access Points 對 FSx for ONTAP 上的企業 NAS 資料進行無伺服器處理。**無需複製資料**。
+>
+> 28 個產業用例 + 7 個 FlexCache/FlexClone + 2 個 GenAI + SAP + HA 監控 + 事件驅動 + 邊緣配送 + File Portal UI
 
-基於 Amazon FSx for ONTAP S3 Access Points 的產業專屬無伺服器自動化模式集合。
+---
 
-> **本儲存庫的定位**: 這是一個「用於學習設計決策的參考實作」。部分使用案例已在 AWS 環境中完成 E2E 驗證，其他使用案例也已完成 CloudFormation 部署、共用 Discovery Lambda 及關鍵元件的功能驗證。本儲存庫以從 PoC 到正式環境的漸進式應用為目標，透過具體程式碼展示成本最佳化、安全性和錯誤處理的設計決策。
+## 快速入門
 
-**測試**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
+| 我想要... | 指南 | 所需時間 |
+|---|---|---|
+| 無需 FSx 體驗展示 | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 分鐘 |
+| 透過 Web 入口瀏覽檔案 | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.en.md) | 10 分鐘 |
+| 將模式部署到 AWS | [Deployment Guide](docs/guides/deployment-guide.md) | 30 分鐘 |
+| 為我的工作負載選擇合適的模式 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 分鐘 |
+| 估算成本 | [Cost Calculator](docs/cost-calculator.md) | 5 分鐘 |
+| 建置動手實驗室環境 | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60 分鐘 |
 
-## Governance Disclaimer
+---
 
-本儲存庫的治理文件旨在支援架構和維運審查，不能替代法務判斷、合規評估、隱私評估或監管應對。
+<details>
+<summary><strong>📂 所有模式（點擊展開）</strong></summary>
 
-## 相關文章
+### 產業用例 (UC1-UC28 + SAP)
 
-本儲存庫是以下文章中所述架構的實作範例：
+| # | 目錄 | 產業 | 摘要 |
+|---|---|---|---|
+| UC1 | [`legal-compliance/`](solutions/industry/legal-compliance/) | 法務 | NTFS ACL 稽核與合規報告 |
+| UC2 | [`financial-idp/`](solutions/industry/financial-idp/) | 金融 | 發票 OCR 與實體擷取 |
+| UC3 | [`manufacturing-analytics/`](solutions/industry/manufacturing-analytics/) | 製造 | IoT 感測器與品質檢驗 |
+| UC4 | [`media-vfx/`](solutions/industry/media-vfx/) | 媒體 | VFX 算圖品質檢查 |
+| UC5 | [`healthcare-dicom/`](solutions/industry/healthcare-dicom/) | 醫療 | DICOM 匿名化 |
+| UC6 | [`semiconductor-eda/`](solutions/industry/semiconductor-eda/) | 半導體 | GDS/OASIS 驗證 |
+| UC7 | [`genomics-pipeline/`](solutions/industry/genomics-pipeline/) | 基因組學 | FASTQ/VCF 品質檢查 |
+| UC8 | [`energy-seismic/`](solutions/industry/energy-seismic/) | 能源 | SEG-Y 地震資料分析 |
+| UC9 | [`autonomous-driving/`](solutions/industry/autonomous-driving/) | 汽車 | 影片/LiDAR 前處理 |
+| UC10 | [`construction-bim/`](solutions/industry/construction-bim/) | 建築 | BIM 模型管理 |
+| UC11 | [`retail-catalog/`](solutions/industry/retail-catalog/) | 零售 | 商品圖片標籤 |
+| UC12 | [`logistics-ocr/`](solutions/industry/logistics-ocr/) | 物流 | 運輸文件 OCR |
+| UC13 | [`education-research/`](solutions/industry/education-research/) | 教育 | 論文分類 |
+| UC14 | [`insurance-claims/`](solutions/industry/insurance-claims/) | 保險 | 損害評估 |
+| UC15 | [`defense-satellite/`](solutions/industry/defense-satellite/) | 國防 | 衛星影像分析 |
+| UC16 | [`government-archives/`](solutions/industry/government-archives/) | 政府 | 公共檔案與資訊公開 |
+| UC17 | [`smart-city-geospatial/`](solutions/industry/smart-city-geospatial/) | 智慧城市 | 地理空間分析 |
+| UC18 | [`telecom-network-analytics/`](solutions/industry/telecom-network-analytics/) | 電信 | CDR/網路日誌分析 |
+| UC19 | [`adtech-creative-management/`](solutions/industry/adtech-creative-management/) | 廣告 | 創意素材管理 |
+| UC20 | [`travel-document-processing/`](solutions/industry/travel-document-processing/) | 旅遊 | 訂票文件處理 |
+| UC21 | [`agri-food-traceability/`](solutions/industry/agri-food-traceability/) | 農業 | 可追溯性 |
+| UC22 | [`transportation-maintenance/`](solutions/industry/transportation-maintenance/) | 交通 | 設備檢查 |
+| UC23 | [`sustainability-esg-reporting/`](solutions/industry/sustainability-esg-reporting/) | ESG | 指標擷取 |
+| UC24 | [`nonprofit-grant-management/`](solutions/industry/nonprofit-grant-management/) | 非營利 | 補助金管理 |
+| UC25 | [`utilities-asset-inspection/`](solutions/industry/utilities-asset-inspection/) | 公用事業 | 無人機/SCADA 分析 |
+| UC26 | [`real-estate-portfolio/`](solutions/industry/real-estate-portfolio/) | 不動產 | 物件圖片與合約 |
+| UC27 | [`hr-document-screening/`](solutions/industry/hr-document-screening/) | HR | 履歷篩選 |
+| UC28 | [`chemical-sds-management/`](solutions/industry/chemical-sds-management/) | 化學 | SDS 與實驗筆記 |
+| SAP | [`sap/erp-adjacent/`](solutions/sap/erp-adjacent/) | SAP/ERP | IDoc 與 EDI 處理 |
 
-- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
-  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
+### FlexCache / FlexClone (FC1-FC7)
 
-文章解釋架構設計思想和權衡取捨，本儲存庫提供具體的、可重複使用的實作模式。
+| # | 目錄 | 模式 |
+|---|---|---|
+| FC1 | [`flexcache/anycast-dr/`](solutions/flexcache/anycast-dr/) | AnyCast / DR 容錯移轉 |
+| FC2 | [`flexcache/dynamic-render-workflow/`](solutions/flexcache/dynamic-render-workflow/) | 依作業動態 FlexCache |
+| FC3 | [`flexcache/rag-enterprise-files/`](solutions/flexcache/rag-enterprise-files/) | 權限感知 RAG |
+| FC4 | [`flexcache/automotive-cae/`](solutions/flexcache/automotive-cae/) | CAE 模擬分析 |
+| FC5 | [`flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/) | 研究資料分類 |
+| FC6 | [`flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/) | 遊戲素材品質檢查 |
+| FC7 | [`flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/) | FlexClone Dev/Test 與 CI/CD |
 
-## 概述
+### GenAI / HA / 事件驅動 / 邊緣 / File Portal
 
-本儲存庫提供 **28 種產業專屬模式（Phase 1: UC1–UC5、Phase 2: UC6–UC14、Phase 7: UC15–UC17、Phase 14: UC18–UC19、Phase 15: UC20–UC22、Phase 16: UC23–UC28）**，透過 **S3 Access Points** 對儲存在 FSx for ONTAP 上的企業資料進行無伺服器處理。
+| 目錄 | 摘要 |
+|---|---|
+| [`genai/kb-selfservice-curation/`](solutions/genai/kb-selfservice-curation/) | Bedrock KB 自助維運 |
+| [`genai/quick-agentic-workspace/`](solutions/genai/quick-agentic-workspace/) | Agent 工作空間 |
+| [`ha/lifekeeper-monitoring/`](solutions/ha/lifekeeper-monitoring/) | HA LifeKeeper AI 監控 |
+| [`event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy 事件驅動管線 |
+| [`edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/邊緣配送（廠商中立） |
+| [`amplify-portal/`](solutions/amplify-portal/) | File Portal UI (Amplify Gen2) |
+| [`nextcloud-test/`](solutions/nextcloud-test/) | File Portal UI (Nextcloud Docker) |
 
-> 以下將 FSx for ONTAP S3 Access Points 簡稱為 **S3 AP**。
+### 基礎設施與共用模組
 
-每個使用案例都是獨立的 CloudFormation 範本，共用模組（ONTAP REST API 用戶端、FSx 輔助工具、S3 AP 輔助工具）位於 `shared/` 目錄中供重複使用。
+| 目錄 | 摘要 |
+|---|---|
+| [`shared/`](shared/) | 通用 Python 模組 (S3ApHelper, OntapClient, Observability) |
+| [`operations/`](operations/) | 6 個維運最佳化模式 |
+| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | 動手實驗室 IaC (VPC/AD/FSx/EC2/S3AP) |
+| [`docs/`](docs/) | 設計指南與效能基準 (40+ 文件) |
+| [`scripts/`](scripts/) | 部署、基準測試、工具 |
+| [`.github/workflows/`](.github/workflows/) | CI/CD (lint → test → security → deploy) |
 
-### 主要特性
+</details>
 
-- **輪詢架構**: 由於 S3 AP 不支援 `GetBucketNotificationConfiguration`，採用 EventBridge Scheduler + Step Functions 定期執行
-- **事件驅動路徑（Phase 10）**: 透過 ONTAP FPolicy → ECS Fargate → SQS → EventBridge 實現 NFSv3 檔案事件偵測（[快速入門](docs/event-driven/README.md)）
-- **SMB (CIFS) 支援已驗證**: FPolicy E2E 已通過 NFSv3 和 SMB 協議測試 — SMB 需要加入 AD 的 SVM（[SMB 設定](docs/event-driven/README.md#smb-cifs-テスト手順)）
-- **共用模組分離**: OntapClient / FsxHelper / S3ApHelper 在所有使用案例中重複使用
-- **CloudFormation / SAM Transform 架構**: 每個使用案例都是獨立的 CloudFormation 範本（使用 SAM Transform）
-- **安全優先**: 預設啟用 TLS 驗證、最小權限 IAM、KMS 加密
-- **成本最佳化**: 高成本常駐資源（Interface VPC Endpoints 等）為選用項目
-
-### 設計指南與維運文件
-
-| 文件 | 內容 |
-|------|------|
-| [S3AP 雙層授權模型](docs/s3ap-authorization-model.md) | AWS IAM + 檔案系統權限的雙層授權設計 |
-| [Deployment Profiles](docs/deployment-profiles.md) | PoC / Production / Compliance-sensitive 三種設定檔定義 |
-| [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md) | POLLING / EVENT_DRIVEN / HYBRID 選擇標準 |
-| [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | SAP・EDI・稽核・批次輸出等企業應用範例 |
-| [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | 吞吐量設計・Lambda 規格選擇・並行度計算 |
-| [S3AP Benchmark Results](docs/s3ap-benchmark-results.md) | 實測值: PutObject/GetObject/Range GET/ListObjectsV2 延遲 |
-| [Partner/SI Delivery Checklist](docs/partner-si-delivery-checklist.md) | 合作夥伴・SI 提案・設計・交付清單 |
-| [Governance Checklist](docs/governance-checklist.md) | 監管・公共・醫療工作負載治理檢查項 |
-| [Production Readiness](docs/production-readiness.md) | PoC → 正式環境的 4 級成熟度模型 |
-| [Customer Discovery Template](docs/customer-discovery-template.md) | 客戶訪談範本 |
-| [Well-Architected Mapping](docs/well-architected-mapping.md) | AWS Well-Architected 6 支柱對應表 |
-| [Quick Start Guide](docs/quick-start.md) | 30 分鐘內首次部署指南 |
+---
 
 ## 架構
 
+```
+EventBridge Scheduler（定時觸發）
+  └→ Step Functions State Machine
+      ├→ Discovery Lambda：透過 S3 AP 列出檔案
+      ├→ Map State（平行）：使用 AI/ML 處理每個檔案
+      └→ Report Lambda：產生結果 → SNS 通知
+```
+
+這是所有模式共用的通用流程。AI/ML 服務（Bedrock、Textract、Comprehend、Rekognition）依用例而異。
+
+<details>
+<summary><strong>Mermaid 圖（點擊展開）</strong></summary>
+
 ```mermaid
 graph TB
-    subgraph "Scheduling Layer"
-        EBS[EventBridge Scheduler<br/>cron/rate expressions]
-        KDS[Kinesis Data Streams<br/>Near-real-time detection<br/>UC11 opt-in]
-    end
-
-    subgraph "Orchestration Layer"
-        SFN[Step Functions<br/>State Machine]
-    end
-
-    subgraph "Compute Layer"
-        DL[Discovery Lambda<br/>Object Detection<br/>Within VPC]
-        PL[Processing Lambda<br/>AI/ML Processing<br/>Map State parallel]
-        RL[Report Lambda<br/>Report Generation & Notification]
-    end
-
-    subgraph "Data Sources"
-        FSXN[FSx for ONTAP<br/>Volume]
-        S3AP[S3 Access Point<br/>ListObjectsV2 / GetObject /<br/>Range / PutObject]
-        ONTAP_API[ONTAP REST API<br/>ACL / Volume Metadata]
-    end
-
-    subgraph "AI/ML Services"
-        BEDROCK[Amazon Bedrock<br/>Nova / Claude]
-        TEXTRACT[Amazon Textract<br/>OCR ⚠️ Cross-Region]
-        COMPREHEND[Amazon Comprehend /<br/>Comprehend Medical ⚠️]
-        REKOGNITION[Amazon Rekognition<br/>Image Analysis]
-        SAGEMAKER[Amazon SageMaker<br/>Batch / Real-time /<br/>Serverless Inference<br/>UC9 opt-in]
-    end
-
-    subgraph "Data Analytics"
-        GLUE[AWS Glue<br/>Data Catalog]
-        ATHENA[Amazon Athena<br/>SQL Analytics]
-    end
-
-    subgraph "Storage & State Management"
-        S3OUT[S3 Output Bucket<br/>SSE-KMS Encryption]
-        DDB[DynamoDB<br/>Task Token Store<br/>UC9 opt-in]
-        SM[Secrets Manager]
-    end
-
-    subgraph "Notifications"
-        SNS[SNS Topic<br/>Email / Slack]
-    end
-
-    subgraph "Observability (Phase 3+)"
-        XRAY[AWS X-Ray<br/>Distributed Tracing]
-        CW[CloudWatch<br/>EMF Metrics /<br/>Dashboards]
-    end
-
-    subgraph "VPC Endpoints (Optional)"
-        VPCE_S3[S3 Gateway EP<br/>Free]
-        VPCE_IF[Interface EPs<br/>Secrets Manager / FSx /<br/>CloudWatch / SNS]
-    end
-
-    EBS -->|Periodic trigger| SFN
-    KDS -->|Real-time| SFN
-    SFN -->|Step 1| DL
-    SFN -->|Step 2 Map| PL
-    SFN -->|Step 3| RL
-
-    DL -->|ListObjectsV2| S3AP
-    DL -->|REST API| ONTAP_API
-    PL -->|GetObject / Range| S3AP
-    PL -->|PutObject| S3OUT
-    PL --> BEDROCK
-    PL --> TEXTRACT
-    PL --> COMPREHEND
-    PL --> REKOGNITION
-    PL --> SAGEMAKER
-    PL --> GLUE
-    PL --> ATHENA
-
-    S3AP -.->|Exposes| FSXN
-    GLUE -.-> ATHENA
-
-    DL --> VPCE_S3
-    DL --> VPCE_IF --> SM
-    RL --> SNS
-
-    SFN --> XRAY
-    DL --> CW
-    PL --> CW
-    RL --> CW
-
-    SAGEMAKER -.-> DDB
+    EBS[EventBridge Scheduler] --> SFN[Step Functions]
+    SFN --> DL[Discovery Lambda<br/>S3 AP ListObjectsV2]
+    SFN --> PL[Processing Lambda<br/>AI/ML processing]
+    SFN --> RL[Report Lambda<br/>notification]
+    DL --> S3AP[S3 Access Point]
+    PL --> S3AP
+    S3AP --> FSXN[FSx for ONTAP Volume]
+    PL --> AI[Bedrock / Textract /<br/>Comprehend / Rekognition]
 ```
 
-> 此圖展示了涵蓋所有階段（Phase 1-5）服務的完整架構。SageMaker、Kinesis 和 DynamoDB 透過 CloudFormation Conditions 進行選擇性控制，未啟用時不會產生額外費用。對於 PoC/演示用途，也可以選擇 VPC 外部的 Lambda 配置。
+</details>
 
-### 工作流程概述
+<details>
+<summary><strong>分類架構（FlexCache、GenAI、HA、事件驅動、邊緣）</strong></summary>
 
-```
-EventBridge Scheduler (定期執行)
-  └─→ Step Functions State Machine
-       ├─→ Discovery Lambda: 從 S3 AP 取得物件清單 → 產生 Manifest
-       ├─→ Map State (平行處理): 使用 AI/ML 服務處理各物件
-       └─→ Report/Notification: 產生結果報告 → SNS 通知
-```
+各類別的詳細架構圖：
+- [FlexCache / FlexClone](docs/industry-workload-mapping.md)
+- [GenAI (Bedrock KB / Agentic)](solutions/genai/kb-selfservice-curation/docs/architecture.md)
+- [HA LifeKeeper Monitoring](solutions/ha/lifekeeper-monitoring/README.md)
+- [Event-Driven FPolicy](solutions/event-driven/fpolicy/README.md)
+- [Edge / CDN](solutions/edge/content-delivery/docs/architecture.md)
+- [File Portal (Amplify Gen2)](solutions/amplify-portal/README.md)
 
-## 使用案例列表
+</details>
 
-### Phase 1 (UC1–UC5)
+---
 
-| # | 目錄 | 產業 | 模式 | 使用的 AI/ML 服務 | ap-northeast-1 驗證狀態 |
-|---|------|------|------|-----------------|----------------------|
-| UC1 | `solutions/industry/legal-compliance/` | 法務合規 | 檔案伺服器稽核與資料治理 | Athena, Bedrock | ✅ E2E 成功 |
-| UC2 | `solutions/industry/financial-idp/` | 金融保險 | 合約/發票自動處理 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ 東京不支援（使用對應區域） |
-| UC3 | `solutions/industry/manufacturing-analytics/` | 製造業 | IoT 感測器日誌與品質檢測影像分析 | Athena, Rekognition | ✅ E2E 成功 |
-| UC4 | `solutions/industry/media-vfx/` | 媒體 | VFX 算繪管線 | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 需設定 |
-| UC5 | `solutions/industry/healthcare-dicom/` | 醫療 | DICOM 影像自動分類與去識別化 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 東京不支援（使用對應區域） |
+## 關鍵 S3 Access Point 限制
 
-### Phase 2 (UC6–UC14)
+| 限制 | 解決方案 |
+|---|---|
+| 不支援 S3 Event Notifications | EventBridge Scheduler 輪詢或 FPolicy |
+| Presigned URL 非官方支援 | 實際可用但不建議用於生產環境 |
+| 5GB 上傳限制 | Multipart Upload |
+| 無法將 Athena 結果寫入 S3AP | 輸出到標準 S3 儲存桶 |
+| 僅支援 SSE-FSX | 使用磁碟區層級 KMS 加密 |
 
-| # | 目錄 | 產業 | 模式 | 使用的 AI/ML 服務 | ap-northeast-1 驗證狀態 |
-|---|------|------|------|-----------------|----------------------|
-| UC6 | `solutions/industry/semiconductor-eda/` | 半導體 / EDA | GDS/OASIS 驗證・中繼資料擷取・DRC 彙總 | Athena, Bedrock | ✅ 測試通過 |
-| UC7 | `solutions/industry/genomics-pipeline/` | 基因體學 | FASTQ/VCF 品質檢查・變異呼叫彙總 | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
-| UC8 | `solutions/industry/energy-seismic/` | 能源 | SEG-Y 中繼資料擷取・井日誌異常偵測 | Athena, Bedrock, Rekognition | ✅ 測試通過 |
-| UC9 | `solutions/industry/autonomous-driving/` | 自動駕駛 / ADAS | 影片/LiDAR 前處理・品質檢查・標註 | Rekognition, Bedrock, SageMaker | ✅ 測試通過 |
-| UC10 | `solutions/industry/construction-bim/` | 營建 / AEC | BIM 版本管理・圖面 OCR・安全合規 | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
-| UC11 | `solutions/industry/retail-catalog/` | 零售 / 電商 | 商品影像標籤・目錄中繼資料生成 | Rekognition, Bedrock | ✅ 測試通過 |
-| UC12 | `solutions/industry/logistics-ocr/` | 物流 | 運單 OCR・倉庫庫存影像分析 | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC13 | `solutions/industry/education-research/` | 教育 / 研究 | 論文 PDF 分類・引用網路分析 | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC14 | `solutions/industry/insurance-claims/` | 保險 | 事故照片損害評估・估價單 OCR・理賠報告 | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+詳情：[S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix（AWS 確認）](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md)
 
-> **區域限制**: Amazon Textract 和 Amazon Comprehend Medical 在 ap-northeast-1（東京）不可用。Phase 2 UC（UC7、UC10、UC12、UC13、UC14）透過 Cross_Region_Client 將 API 呼叫路由至 us-east-1。Rekognition、Comprehend、Bedrock、Athena 在 ap-northeast-1 可用。
-> 
-> 參考: [Textract 支援區域](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 支援區域](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
+---
 
-### Phase 7 (UC15–UC17) 公共部門擴展
+<details>
+<summary><strong>📚 相關文章與儲存庫</strong></summary>
 
-| # | 目錄 | 產業 | 模式 | AI/ML 服務 | ap-northeast-1 驗證狀態 |
-|---|------|------|------|-----------|-----------------------|
-| UC15 | `solutions/industry/defense-satellite/` | 國防/太空 | 衛星影像分析（物件偵測、變化偵測、警報）| Rekognition, SageMaker（可選）, Bedrock | ✅ 程式碼+測試完成，AWS 已驗證 |
-| UC16 | `solutions/industry/government-archives/` | 政府 | 公文檔案·FOIA（OCR、分類、編輯、20 天期限追蹤）| Textract ⚠️, Comprehend, Bedrock, OpenSearch（可選）| ✅ 程式碼+測試完成，AWS 已驗證 |
-| UC17 | `solutions/industry/smart-city-geospatial/` | 智慧城市 | 地理空間分析（CRS 正規化、土地利用、風險映射、規劃報告）| Rekognition, SageMaker（可選）, Bedrock (Nova Lite) | ✅ 程式碼+測試完成，AWS 已驗證 |
-| UC18 | [`solutions/industry/telecom-network-analytics/`](solutions/industry/telecom-network-analytics/) | 通訊 | CDR/網路日誌分析・異常偵測 |
-| UC19 | [`solutions/industry/adtech-creative-management/`](solutions/industry/adtech-creative-management/) | 廣告 | 創意資產管理・品牌合規 |
-| UC20 | [`solutions/industry/travel-document-processing/`](solutions/industry/travel-document-processing/) | 旅遊 | 預訂文件處理・設施檢查影像分析 |
-| UC21 | [`solutions/industry/agri-food-traceability/`](solutions/industry/agri-food-traceability/) | 農業・食品 | 農地航拍影像・追溯文件管理 |
-| UC22 | [`solutions/industry/transportation-maintenance/`](solutions/industry/transportation-maintenance/) | 運輸・鐵道 | 設備檢查影像・維護報告分析 |
-| UC23 | [`solutions/industry/sustainability-esg-reporting/`](solutions/industry/sustainability-esg-reporting/) | 永續發展 | ESG 指標擷取・報告 |
-| UC24 | [`solutions/industry/nonprofit-grant-management/`](solutions/industry/nonprofit-grant-management/) | NPO | 補助金申請分類・成果配對 |
-| UC25 | [`solutions/industry/utilities-asset-inspection/`](solutions/industry/utilities-asset-inspection/) | 電力 | 無人機影像・SCADA 日誌分析 |
-| UC26 | [`solutions/industry/real-estate-portfolio/`](solutions/industry/real-estate-portfolio/) | 不動產 | 物件影像分析・合約資料擷取 |
-| UC27 | [`solutions/industry/hr-document-screening/`](solutions/industry/hr-document-screening/) | 人才・HR | 履歷篩選・候選人評估 |
-| UC28 | [`solutions/industry/chemical-sds-management/`](solutions/industry/chemical-sds-management/) | 化學・材料 | SDS 管理・實驗筆記分析 |
-| UC29 | [`solutions/genai/kb-selfservice-curation/`](solutions/genai/kb-selfservice-curation/) | 全產業通用 | 自助式 AI 知識運營（受管 Bedrock KB + Windows 拖放） |
-| UC30 | [`solutions/genai/quick-agentic-workspace/`](solutions/genai/quick-agentic-workspace/) | 全產業通用 | Amazon Quick 代理型工作區（Index/Sight/Flows + S3 AP 資料基礎） |
+### 文章系列
 
-> **公共部門合規性**: UC15 針對 DoD CC SRG / CSfC / FedRAMP High（GovCloud 遷移），UC16 針對 NARA / FOIA Section 552 / Section 508，UC17 針對 INSPIRE 指令 / OGC 標準。
+| 主題 | 日語 | 英語 |
+|---|---|---|
+| 42 模式介紹 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part1-introduction) | [dev.to](https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a) |
+| 生產架構 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part2-production-architecture) | — |
+| 維運基線 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part3-operational-baseline) | [dev.to](https://dev.to/aws-builders/production-rollout-vpc-endpoint-auto-detection-and-the-cdk-no-go-fsx-for-ontap-s3-access-3lni) |
+| FPolicy 事件驅動 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part4-event-driven-fpolicy) | [dev.to](https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6) |
+| 28 個產業模式 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part5-field-ready-28-patterns) | [dev.to](https://dev.to/aws-builders/from-serverless-patterns-to-field-ready-reference-architecture-fsx-for-ontap-s3-access-points-dhj) |
+| GenAI 整合 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part6-genai-42-patterns) | — |
 
-### Phase 13: FlexCache × S3 AP × Serverless 擴展模式
+### 相關儲存庫
 
-| # | 目錄 | 模式 | 概述 | 狀態 |
-|---|------|------|------|------|
-| FC1 | [`solutions/flexcache/anycast-dr/`](solutions/flexcache/anycast-dr/README.md) | FlexCache AnyCast / DR | 健康檢查·路由決策·故障轉移模擬 | ✅ 程式碼·文件完成 |
-| FC2 | [`solutions/flexcache/dynamic-render-workflow/`](solutions/flexcache/dynamic-render-workflow/README.md) | Dynamic FlexCache Render/EDA | 按作業動態建立·刪除 FlexCache 工作流 | ✅ 程式碼·測試完成 |
-| FC3 | [`solutions/flexcache/rag-enterprise-files/`](solutions/flexcache/rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | 基於權限的 RAG（透過 S3 AP，無需資料複製）| ✅ 程式碼·測試完成 |
-| FC4 | [`solutions/flexcache/automotive-cae/`](solutions/flexcache/automotive-cae/README.md) | Automotive CAE Analytics | CAE 模擬結果自動分析 | ✅ 程式碼·測試完成 |
-| FC5 | [`solutions/flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/README.md) | Life Sciences Research | 研究資料自動分析 | ✅ 範本完成 |
-| FC6 | [`solutions/flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/README.md) | Gaming Build Pipeline | 遊戲資產品質檢查·日誌分析 | ✅ 範本完成 |
-| FC7 | [`solutions/flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | 基於 FlexClone 的 Dev/Test 重新整理與 CI/CD | ✅ 程式碼·測試完成 |
+| 儲存庫 | 摘要 |
+|---|---|
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 權限感知 RAG 聊天機器人 (CDK + Next.js + ECS) |
+| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | 湖倉整合 (Databricks, Snowflake, Athena, Glue, EMR) |
+| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 遷移 |
 
-### 基礎設施・通用模式
+</details>
 
-| 目錄 | 內容 |
-|:---|:---|
-| [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy 事件驅動管線 |
-| [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/邊緣傳遞模式（供應商中立・CloudFront/第三方，[CDN 比較](docs/cdn-comparison.en.md)） |
+<details>
+<summary><strong>🔧 開發者指南（測試與貢獻）</strong></summary>
 
-> **重要**: FlexCache 磁碟區是否可以附加 S3 Access Point 取決於 ONTAP 版本和 FSx for ONTAP 服務規格。PoC 時務必在實際環境中驗證。
-
-### 文件（架構・展示指南）
-
-各 UC 的詳細架構圖和展示指南在 docs/ 資料夾中以 8 種語言提供。
-
-| # | 用例 | 架構 | 展示指南 |
-|---|------|------|----------|
-| UC1 | 法務 | [📐 Architecture](solutions/industry/legal-compliance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/legal-compliance/docs/demo-guide.md) |
-| UC2 | 金融 | [📐 Architecture](solutions/industry/financial-idp/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/financial-idp/docs/demo-guide.md) |
-| UC3 | 製造 | [📐 Architecture](solutions/industry/manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/manufacturing-analytics/docs/demo-guide.md) |
-| UC4 | 媒體 | [📐 Architecture](solutions/industry/media-vfx/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/media-vfx/docs/demo-guide.md) |
-| UC5 | 醫療 | [📐 Architecture](solutions/industry/healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/healthcare-dicom/docs/demo-guide.md) |
-| UC6 | 半導體 | [📐 Architecture](solutions/industry/semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/semiconductor-eda/docs/demo-guide.md) |
-| UC7 | 基因組 | [📐 Architecture](solutions/industry/genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/genomics-pipeline/docs/demo-guide.md) |
-| UC8 | 能源 | [📐 Architecture](solutions/industry/energy-seismic/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/energy-seismic/docs/demo-guide.md) |
-| UC9 | 自動駕駛 | [📐 Architecture](solutions/industry/autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/autonomous-driving/docs/demo-guide.md) |
-| UC10 | 建築 | [📐 Architecture](solutions/industry/construction-bim/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/construction-bim/docs/demo-guide.md) |
-| UC11 | 零售 | [📐 Architecture](solutions/industry/retail-catalog/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/retail-catalog/docs/demo-guide.md) |
-| UC12 | 物流 | [📐 Architecture](solutions/industry/logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/logistics-ocr/docs/demo-guide.md) |
-| UC13 | 教育 | [📐 Architecture](solutions/industry/education-research/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/education-research/docs/demo-guide.md) |
-| UC14 | 保險 | [📐 Architecture](solutions/industry/insurance-claims/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/insurance-claims/docs/demo-guide.md) |
-| UC15 | 國防 | [📐 Architecture](solutions/industry/defense-satellite/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/defense-satellite/docs/demo-guide.md) |
-| UC16 | 政府 | [📐 Architecture](solutions/industry/government-archives/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/government-archives/docs/demo-guide.md) |
-| UC17 | 智慧城市 | [📐 Architecture](solutions/industry/smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/smart-city-geospatial/docs/demo-guide.md) |
-| UC18 | 通訊 | [📐 Architecture](solutions/industry/telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/telecom-network-analytics/docs/demo-guide.md) |
-| UC19 | 廣告 | [📐 Architecture](solutions/industry/adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/adtech-creative-management/docs/demo-guide.md) |
-| UC20 | 旅遊 | [📐 Architecture](solutions/industry/travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/travel-document-processing/docs/demo-guide.md) |
-| UC21 | 農業 | [📐 Architecture](solutions/industry/agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/agri-food-traceability/docs/demo-guide.md) |
-| UC22 | 運輸 | [📐 Architecture](solutions/industry/transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/transportation-maintenance/docs/demo-guide.md) |
-| UC23 | 永續發展 | [📐 Architecture](solutions/industry/sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/sustainability-esg-reporting/docs/demo-guide.md) |
-| UC24 | NPO | [📐 Architecture](solutions/industry/nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/nonprofit-grant-management/docs/demo-guide.md) |
-| UC25 | 電力 | [📐 Architecture](solutions/industry/utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/utilities-asset-inspection/docs/demo-guide.md) |
-| UC26 | 不動產 | [📐 Architecture](solutions/industry/real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/real-estate-portfolio/docs/demo-guide.md) |
-| UC27 | 人才HR | [📐 Architecture](solutions/industry/hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/hr-document-screening/docs/demo-guide.md) |
-| UC28 | 化學 | [📐 Architecture](solutions/industry/chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/chemical-sds-management/docs/demo-guide.md) |
-| UC29 | 全產業通用 (自助 KB) | [📐 Architecture](solutions/genai/kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/kb-selfservice-curation/docs/demo-guide.md) |
-| UC30 | 全產業通用 (Amazon Quick) | [📐 Architecture](solutions/genai/quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/quick-agentic-workspace/docs/demo-guide.md) |
-| — | 內容邊緣傳遞 (CDN) | [📐 Architecture](solutions/edge/content-delivery/docs/architecture.md) | [🎬 Demo Guide](solutions/edge/content-delivery/docs/demo-guide.md) |
-
-## UI/UX 螢幕截圖 (最終使用者 / 員工 / 負責人檢視)
-
-每個 UC 的 **最終使用者、員工、負責人在日常工作中實際看到的 UI/UX 畫面**
-在各 UC 的 README 和 demo-guide 中刊載。Step Functions 工作流程圖等技術人員
-檢視集中在各 phase 的驗證結果文件 (`docs/verification-results-phase*.md`) 中。
-
-不僅限於 Public Sector (UC15/16/17), 所有業種的 UC 採用相同方針:
-
-- **擔當者視角**: 在 S3 控制台確認產物、閱讀 Bedrock 報告、接收 SNS 郵件、
-  在 DynamoDB 檢索歷史等日常業務畫面
-- **技術人員視角除外**: CloudFormation 堆疊事件、Lambda 日誌、Step Functions 圖
-  (工作流程視覺化目的除外) 保留在 `verification-results-*.md` 中
-
-| UC | 業種 | 螢幕截圖數 | 主要內容 | 位置 |
-|----|------|-----------|---------|------|
-| UC1 | 法務·合規 | 1 | Step Functions 圖 (稽核負責人工作流程視覺化) | [`solutions/industry/legal-compliance/docs/demo-guide.zh-TW.md`](solutions/industry/legal-compliance/docs/demo-guide.zh-TW.md) |
-| UC2 | 金融·IDP | 1 | Step Functions 圖 (發票處理負責人工作流程視覺化) | [`solutions/industry/financial-idp/docs/demo-guide.zh-TW.md`](solutions/industry/financial-idp/docs/demo-guide.zh-TW.md) |
-| UC3 | 製造·分析 | 1 | Step Functions 圖 (品質管理負責人工作流程視覺化) | [`solutions/industry/manufacturing-analytics/docs/demo-guide.zh-TW.md`](solutions/industry/manufacturing-analytics/docs/demo-guide.zh-TW.md) |
-| UC4 | 媒體·VFX | 未刊載 | (渲染負責人畫面, 計劃拍攝) | [`solutions/industry/media-vfx/docs/demo-guide.zh-TW.md`](solutions/industry/media-vfx/docs/demo-guide.zh-TW.md) |
-| UC5 | 醫療·DICOM | 1 | Step Functions 圖 (醫療資訊管理員工作流程視覺化) | [`solutions/industry/healthcare-dicom/docs/demo-guide.zh-TW.md`](solutions/industry/healthcare-dicom/docs/demo-guide.zh-TW.md) |
-| UC6 | 半導體·EDA | 4 | FSx Volumes / S3 輸出儲存貯體 / Athena 查詢結果 / Bedrock 設計審查報告 | [`solutions/industry/semiconductor-eda/docs/demo-guide.zh-TW.md`](solutions/industry/semiconductor-eda/docs/demo-guide.zh-TW.md) |
-| UC7 | 基因體學流水線 | 1 | Step Functions 圖 (研究者工作流程視覺化) | [`solutions/industry/genomics-pipeline/docs/demo-guide.zh-TW.md`](solutions/industry/genomics-pipeline/docs/demo-guide.zh-TW.md) |
-| UC8 | 能源·地震勘探 | 1 | Step Functions 圖 (地質解析負責人工作流程視覺化) | [`solutions/industry/energy-seismic/docs/demo-guide.zh-TW.md`](solutions/industry/energy-seismic/docs/demo-guide.zh-TW.md) |
-| UC9 | 自動駕駛 | 未刊載 | (ADAS 分析負責人畫面, 計劃拍攝) | [`solutions/industry/autonomous-driving/docs/demo-guide.zh-TW.md`](solutions/industry/autonomous-driving/docs/demo-guide.zh-TW.md) |
-| UC10 | 建築·BIM | 1 | Step Functions 圖 (BIM 管理員 / 安全負責人工作流程視覺化) | [`solutions/industry/construction-bim/docs/demo-guide.zh-TW.md`](solutions/industry/construction-bim/docs/demo-guide.zh-TW.md) |
-| UC11 | 零售·目錄 | 2 | 產品標籤結果 / S3 輸出儲存貯體 (EC 負責人用) | [`solutions/industry/retail-catalog/docs/demo-guide.zh-TW.md`](solutions/industry/retail-catalog/docs/demo-guide.zh-TW.md) |
-| UC12 | 物流·OCR | 1 | Step Functions 圖 (配送負責人工作流程視覺化) | [`solutions/industry/logistics-ocr/docs/demo-guide.zh-TW.md`](solutions/industry/logistics-ocr/docs/demo-guide.zh-TW.md) |
-| UC13 | 教育·研究 | 1 | Step Functions 圖 (研究事務負責人工作流程視覺化) | [`solutions/industry/education-research/docs/demo-guide.zh-TW.md`](solutions/industry/education-research/docs/demo-guide.zh-TW.md) |
-| UC14 | 保險 | 2 | 理賠報告 / S3 輸出儲存貯體 (保險理賠員用) | [`solutions/industry/insurance-claims/docs/demo-guide.zh-TW.md`](solutions/industry/insurance-claims/docs/demo-guide.zh-TW.md) |
-| UC15 | 國防·衛星圖像 (Public Sector) | 4 | S3 上傳 / 輸出 / SNS 郵件 / JSON 產物 (分析負責人用) | [`solutions/industry/defense-satellite/README.md`](solutions/industry/defense-satellite/README.md) |
-| UC16 | 政府·FOIA (Public Sector) | 5 | 上傳 / 編輯預覽 / 中繼資料 / FOIA 提醒郵件 / DynamoDB 保留歷史 (公文書負責人用) | [`solutions/industry/government-archives/README.md`](solutions/industry/government-archives/README.md) |
-| UC17 | 智慧城市 (Public Sector) | 5 | GIS 上傳 / Bedrock 報告 / 風險地圖 / 土地利用分布 / 時序歷史 (都市規劃負責人用) | [`solutions/industry/smart-city-geospatial/README.md`](solutions/industry/smart-city-geospatial/README.md) |
-
-**通用螢幕截圖** (業種橫跨通用檢視, `docs/screenshots/masked/common/`):
-- `fsx-s3ap-detail.png` — FSx for ONTAP S3 Access Point 詳情檢視
-- `s3ap-list.png` — S3 Access Points 清單
-
-**依 Phase 檢視** (`docs/screenshots/masked/phase{1..7}/`):
-- Phase 1-6b: 基礎設施建構 / 功能新增時的技術人員檢視
-- Phase 7: UC15/16/17 共通 FSx S3 Access Points 檢視等
-
-業種對映表 (8 語言): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
-新增工作流程: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
-
-> 所有文件均提供 8 種語言版本。
-## AWS 規格約束及解決方案
-
-### 輸出目標選擇 (OutputDestination 參數)
-
-每個 UC 的 CloudFormation 範本都包含 `OutputDestination` 參數來選擇
-AI/ML 產物的寫入目標 (已在 UC9/10/11/12/14 實作,
-其他 UC 由 Pattern A 或 Pattern C 涵蓋 - 請參閱下面的 Pattern 表):
-
-- **`STANDARD_S3`** (預設): 寫入新的 S3 儲存貯體 (現有行為)
-- **`FSXN_S3AP`**: 透過 S3 Access Point 將結果寫回同一個 FSx for ONTAP 磁碟區
-  (**"no data movement" 模式**, 使 SMB/NFS 使用者能夠在現有目錄結構中
-  檢視 AI 產物)
+### 測試
 
 ```bash
-# 以 FSXN_S3AP 模式部署
-aws cloudformation deploy \
-  --template-file solutions/industry/retail-catalog/template-deploy.yaml \
-  --stack-name fsxn-retail-catalog-demo \
-  --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
-    ... (其他必要參數)
+pytest shared/tests/ -v                    # Unit tests
+ruff check . && ruff format --check .      # Python linter
+cfn-lint solutions/industry/*/template.yaml # CloudFormation validation
 ```
 
-### FSx for ONTAP S3 Access Points 的 AWS 規格約束
+### 技術堆疊
 
-FSx for ONTAP S3 Access Points 僅支援 S3 API 的一部分
-(請參閱 [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html))。
-由於下列約束, 某些功能需要使用標準 S3 儲存貯體:
+Python 3.12 | CloudFormation + SAM | Lambda (ARM64) | Step Functions | EventBridge | Bedrock / Textract / Comprehend / Rekognition | Secrets Manager | Athena + Glue
 
-| AWS 規格約束 | 影響 | 專案解決方案 | 功能改進需求 (FR) |
-|---|---|---|---|
-| Athena 查詢結果輸出位置無法指定 S3AP<br>(Athena 無法 write back 到 S3AP) | UC6/7/8/13 的 Athena 結果需要標準 S3 | 每個範本建立專用於 Athena 結果的 S3 儲存貯體 | [FR-1](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-1) |
-| S3AP 不發出 S3 Event Notifications / EventBridge 事件 | 無法實現事件驅動的工作流程 | EventBridge Scheduler + Discovery Lambda 輪詢方式 | [FR-2](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-2) |
-| S3AP 不支援 Object Lifecycle 政策 | 7 年保留 (UC1 法務), 永久保留 (UC16 政府檔案) 等自動化困難 | 定期刪除的 Lambda 清理器 (未實作, 待辦事項) | [FR-3](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-3) |
-| S3AP 不支援 Object Versioning / Presigned URL | 文件版本管理, 外部稽核員的限時共享無法實現 | DynamoDB 用於版本管理, 標準 S3 複製 + Presign | [FR-4](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-4) |
-| 5GB 上傳大小限制 | 大型二進位檔案 (4K 影片, 未壓縮 GeoTIFF 等) | `shared.s3ap_helper.multipart_upload()` 支援到 5GB | (接受的 AWS 規格) |
-| 僅支援 SSE-FSX (不支援 SSE-KMS) | 無法使用自訂 KMS 金鑰加密 | 透過 FSx 磁碟區層級的 KMS 設定進行加密 | (接受的 AWS 規格) |
+### 貢獻
 
-所有 4 個功能改進需求 (FR-1 ~ FR-4) 的詳細內容與業務影響整理在
-[`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](docs/aws-feature-requests/fsxn-s3ap-improvements.md)
-中。
+歡迎提交 Issue 和 Pull Request。請參閱 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-3 種輸出模式 (Pattern A/B/C) 的詳細比較請參閱
-[`docs/output-destination-patterns.md`](docs/output-destination-patterns.md)。
+</details>
 
-### 每個 UC 的輸出目標約束
-
-28 個 UC 分為 3 種輸出模式:
-
-- **🟢 UC1-5** (Pattern A, 2026-05-11 更新): `S3AccessPointOutputAlias` (legacy, optional) + 新增的 `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` 支援。預設 `OutputDestination=FSXN_S3AP` 維持現有行為
-- **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 實作): `OutputDestination` 切換機制 (STANDARD_S3 ⇄ FSXN_S3AP)。預設 `OutputDestination=STANDARD_S3`。UC11/14 已在 AWS 上驗證, UC9/10/12 僅完成單元測試
-- **🟡 UC6/7/8/13**: 目前僅為 `OUTPUT_BUCKET` (固定為標準 S3)。Athena 結果在規格上需要標準 S3, 因此 `OutputDestination` 應用是部分性的
-- **🟢 UC15-17**: Pattern A (write back 到 FSx for ONTAP S3 AP, Phase 7 的一部分)
-
-| UC | 輸入 | 輸出 | 選擇機制 | 備註 |
-|----|------|------|----------|------|
-| UC1 legal-compliance | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 合約中繼資料 / 稽核日誌 |
-| UC2 financial-idp | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 發票 OCR 結果 |
-| UC3 manufacturing-analytics | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 檢查結果 / 異常偵測 |
-| UC4 media-vfx | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 渲染中繼資料 |
-| UC5 healthcare-dicom | S3AP | S3AP (現有) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | DICOM 中繼資料 / 匿名化結果 |
-| UC6 semiconductor-eda | S3AP | **標準 S3** | ⚠️ 未實作 | Bedrock/Athena 結果 (Athena 在規格上需要標準 S3) |
-| UC7 genomics-pipeline | S3AP | **標準 S3** | ⚠️ 未實作 | Glue/Athena 結果 (Athena 在規格上需要標準 S3) |
-| UC8 energy-seismic | S3AP | **標準 S3** | ⚠️ 未實作 | Glue/Athena 結果 (Athena 在規格上需要標準 S3) |
-| UC9 autonomous-driving | S3AP | **可選擇** 🆕 | ✅ `OutputDestination` | ADAS 分析結果 |
-| UC10 construction-bim | S3AP | **可選擇** 🆕 | ✅ `OutputDestination` | BIM 中繼資料 / 安全合規報告 |
-| **UC11 retail-catalog** | S3AP | **可選擇** | ✅ `OutputDestination` | AWS 實證完成 2026-05-10 |
-| UC12 logistics-ocr | S3AP | **可選擇** 🆕 | ✅ `OutputDestination` | 配送運單 OCR |
-| UC13 education-research | S3AP | **標準 S3** | ⚠️ 未實作 | 包含 Athena 結果 (Athena 在規格上需要標準 S3) |
-| **UC14 insurance-claims** | S3AP | **可選擇** | ✅ `OutputDestination` | AWS 實證完成 2026-05-10 |
-| UC15 defense-satellite | S3AP | S3AP | 現有模式 | 物件偵測 / 變化偵測結果 |
-| UC16 government-archives | S3AP | S3AP | 現有模式 | FOIA 編輯結果 / 中繼資料 |
-| UC17 smart-city-geospatial | S3AP | S3AP | 現有模式 | GIS 分析結果 / 風險地圖 |
-
-**藍圖**:
-- ~~Part B: UC1-5 現有 `S3AccessPointOutputAlias` 模式的文件整理~~ ✅ 完成 (`docs/output-destination-patterns.md`)
-- UC6/7/8/13 的 Athena 輸出在規格上需要標準 S3, 但 Bedrock 報告等非 Athena 產物可以透過 `OutputDestination=FSXN_S3AP` write back 的選項 (Pattern C → Pattern B 混合, 未來擴充)
-- UC9/10/12 的 AWS 實際部署驗證 (單元測試已完成, 部署未實施)
-## 區域選擇指南
-
-本模式集在 **ap-northeast-1（東京）** 進行了驗證，但可以部署到任何所需服務可用的 AWS 區域。
-
-### 部署前檢查清單
-
-1. 在 [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) 確認服務可用性
-2. 確認 Phase 3 服務：
-   - **Kinesis Data Streams**：幾乎所有區域可用（分片定價因區域而異）
-   - **SageMaker Batch Transform**：執行個體類型可用性因區域而異
-   - **X-Ray / CloudWatch EMF**：幾乎所有區域可用
-3. 確認 Cross-Region 目標服務（Textract、Comprehend Medical）的目標區域
-
-詳情請參閱[區域相容性矩陣](docs/region-compatibility.md)。
-
-### Phase 3 功能概要
-
-| 功能 | 說明 | 目標 UC |
-|------|------|---------|
-| Kinesis 串流 | 近即時檔案變更偵測和處理 | UC11（可選啟用） |
-| SageMaker Batch Transform | 點雲分割推論（Callback Pattern） | UC9（可選啟用） |
-| X-Ray 追蹤 | 分散式追蹤實現執行路徑視覺化 | 全部 14 UC |
-| CloudWatch EMF | 結構化指標輸出（FilesProcessed、Duration、Errors） | 全部 14 UC |
-| 可觀測性儀表板 | 全 UC 橫跨指標集中展示 | 共用 |
-| 告警自動化 | 基於錯誤率閾值的 SNS 通知 | 共用 |
-
-詳情請參閱[串流 vs 輪詢選擇指南](docs/streaming-vs-polling-guide-zh-TW.md)。
-
-### Phase 4 功能概要
-
-| 功能 | 說明 | 目標 UC |
-|------|------|---------|
-| DynamoDB Task Token Store | SageMaker Callback Pattern 的生產安全 Token 管理（Correlation ID 方式） | UC9（可選啟用） |
-| Real-time Inference Endpoint | 透過 SageMaker Real-time Endpoint 實現低延遲推論 | UC9（可選啟用） |
-| A/B Testing | 透過 Multi-Variant Endpoint 進行模型版本比較 | UC9（可選啟用） |
-| Model Registry | 透過 SageMaker Model Registry 進行模型生命週期管理 | UC9（可選啟用） |
-| Multi-Account Deployment | 透過 StackSets / Cross-Account IAM / S3 AP 政策實現多帳戶支援 | 全部 UC（提供範本） |
-| Event-Driven Prototype | S3 Event Notifications → EventBridge → Step Functions 管線 | 原型 |
-
-Phase 4 的所有功能透過 CloudFormation Conditions 進行可選控制，未啟用時不會產生額外費用。
-
-詳情請參閱以下文件：
-- [推論成本比較指南](docs/inference-cost-comparison.md)
-- [Model Registry 指南](docs/model-registry-guide.md)
-- [Multi-Account PoC 結果](docs/multi-account/poc-results.md)
-- [Event-Driven 架構設計](docs/event-driven/architecture-design.md)
-
-### Phase 5 功能概要
-
-| 功能 | 說明 | 目標 UC |
-|------|------|---------|
-| SageMaker Serverless Inference | 第3路由選項（Batch / Real-time / Serverless 三路選擇） | UC9（可選啟用） |
-| Scheduled Scaling | 基於營業時間的 SageMaker Endpoint 自動擴縮 | UC9（可選啟用） |
-| CloudWatch Billing Alarms | Warning / Critical / Emergency 三級成本警報 | 通用（可選啟用） |
-| Auto-Stop Lambda | 自動偵測並縮減閒置 SageMaker Endpoint | 通用（可選啟用） |
-| CI/CD Pipeline | GitHub Actions 工作流程（cfn-lint → pytest → cfn-guard → Bandit → deploy） | 全部 UC |
-| Multi-Region | DynamoDB Global Tables + CrossRegionClient 故障轉移 | 通用（可選啟用） |
-| Disaster Recovery | DR Tier 1/2/3 定義、故障轉移運行手冊 | 通用（設計文件） |
-
-Phase 5 的所有功能同樣透過 CloudFormation Conditions 進行可選控制，未啟用時不會產生額外費用。
-
-詳情請參閱以下文件：
-- [Serverless Inference 冷啟動特性](docs/serverless-inference-cold-start.md)
-- [成本最佳化最佳實踐指南](docs/cost-optimization-guide.md)
-- [CI/CD 指南](docs/ci-cd-guide.md)
-- [Multi-Region Step Functions 設計](docs/multi-region/step-functions-design.md)
-- [Disaster Recovery 指南](docs/multi-region/disaster-recovery.md)
-
-### 螢幕截圖
-
-> 以下為驗證環境中的截圖範例。環境特定資訊（帳戶 ID 等）已進行遮罩處理。
-
-#### 全部 5 個 UC 的 Step Functions 部署與執行確認
-
-![Step Functions 全部工作流程](docs/screenshots/masked/phase1/phase1-step-functions-all-succeeded.png)
-
-> UC1 和 UC3 已完成完整的 E2E 驗證，UC2、UC4 和 UC5 已完成 CloudFormation 部署和主要元件的功能驗證。使用有區域限制的 AI/ML 服務（Textract、Comprehend Medical）時，需要跨區域呼叫至支援區域，請確認資料駐留和合規要求。
-
-#### Phase 2: 全部 9 個 UC CloudFormation 部署・Step Functions 執行成功
-
-![CloudFormation Phase 2 堆疊](docs/screenshots/masked/phase2/phase2-cloudformation-phase2-stacks.png)
-
-> 全部 9 個堆疊（UC6–UC14）達到 CREATE_COMPLETE / UPDATE_COMPLETE。共 205 個資源。
-
-![Step Functions Phase 2 工作流程](docs/screenshots/masked/phase2/phase2-step-functions-phase2-all-workflows.png)
-
-> 全部 9 個工作流程已啟用。投入測試資料後 E2E 執行全部 SUCCEEDED。
-
-![UC6 執行 Graph View](docs/screenshots/masked/phase2/phase2-step-functions-uc6-execution-graph.png)
-
-> UC6（半導體 EDA）Step Functions 執行詳情。Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration 全部狀態成功。
-
-![EventBridge Phase 2 排程](docs/screenshots/masked/phase2/phase2-eventbridge-phase2-schedules.png)
-
-> 全部 9 個 UC 的 EventBridge Scheduler 排程（rate(1 hour)）已啟用。
-
-#### AI/ML 服務畫面（Phase 1）
-
-##### Amazon Bedrock — 模型目錄
-
-![Bedrock 模型目錄](docs/screenshots/masked/phase1/phase1-bedrock-model-catalog.png)
-
-##### Amazon Rekognition — 標籤偵測
-
-![Rekognition 標籤偵測](docs/screenshots/masked/phase1/phase1-rekognition-label-detection.png)
-
-##### Amazon Comprehend — 實體偵測
-
-![Comprehend 主控台](docs/screenshots/masked/phase1/phase1-comprehend-console.png)
-
-#### AI/ML 服務畫面（Phase 2）
-
-##### Amazon Bedrock — 模型目錄（UC6: 報告產生）
-
-![Bedrock 模型目錄 Phase 2](docs/screenshots/masked/phase2/phase2-bedrock-model-catalog.png)
-
-> UC6（半導體 EDA）中使用 Nova Lite 模型產生 DRC 報告。
-
-##### Amazon Athena — 查詢執行歷史（UC6: 中繼資料彙總）
-
-![Athena 查詢歷史 Phase 2](docs/screenshots/masked/phase2/phase2-athena-query-history.png)
-
-> UC6 的 Step Functions 工作流程中執行 Athena 查詢（cell_count, bbox, naming, invalid）。
-
-##### Amazon Rekognition — 標籤偵測（UC11: 商品圖片標記）
-
-![Rekognition 標籤偵測 Phase 2](docs/screenshots/masked/phase2/phase2-rekognition-label-detection.png)
-
-> UC11（零售目錄）從商品圖片中偵測 15 個標籤（Lighting 98.5%, Light 96.0%, Purple 92.0% 等）。
-
-##### Amazon Textract — 文件 OCR（UC12: 配送單據讀取）
-
-![Textract 文件分析 Phase 2](docs/screenshots/masked/phase2/phase2-textract-analyze-document.png)
-
-> UC12（物流 OCR）從配送單據 PDF 中擷取文字。透過 Cross-Region（us-east-1）執行。
-
-##### Amazon Comprehend Medical — 醫療實體偵測（UC7: 基因體分析）
-
-![Comprehend Medical 即時分析 Phase 2](docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis.png)
-
-> UC7（基因體管線）中使用 DetectEntitiesV2 API 從 VCF 分析結果中擷取基因名（GC）。透過 Cross-Region（us-east-1）執行。
-
-##### Lambda 函式清單（Phase 2）
-
-![Lambda 函式清單 Phase 2](docs/screenshots/masked/phase2/phase2-lambda-phase2-functions.png)
-
-> Phase 2 的全部 Lambda 函式（Discovery, Processing, Report 等）已成功部署。
-
-#### Phase 3: 即時處理・SageMaker 整合・可觀測性強化
-
-##### Step Functions E2E 執行成功（UC11）
-
-![Step Functions Phase 3 執行成功](docs/screenshots/masked/phase3/phase3-step-functions-uc11-succeeded.png)
-
-> UC11 Step Functions 工作流程 E2E 執行成功。Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck 全狀態成功（8.974秒）。X-Ray 追蹤生成確認。
-
-##### Kinesis Data Streams（UC11 串流模式）
-
-![Kinesis Data Stream](docs/screenshots/masked/phase3/phase3-kinesis-stream-active.png)
-
-> UC11 Kinesis Data Stream（1 分片，佈建模式）處於活躍狀態。顯示監控指標。
-
-##### DynamoDB 狀態管理表（UC11 變更偵測）
-
-![DynamoDB State Tables](docs/screenshots/masked/phase3/phase3-dynamodb-state-tables.png)
-
-> UC11 變更偵測用 DynamoDB 表。streaming-state（狀態管理）和 streaming-dead-letter（DLQ）兩張表。
-
-##### 可觀測性堆疊
-
-![X-Ray Traces](docs/screenshots/masked/phase3/phase3-xray-traces.png)
-
-> X-Ray 追蹤。Stream Producer Lambda 1分鐘間隔執行追蹤（全部 OK，延遲 7-11ms）。
-
-![CloudWatch Dashboard](docs/screenshots/masked/phase3/phase3-cloudwatch-dashboard.png)
-
-> 全 14 UC 橫跨集中式 CloudWatch 儀表板。Step Functions 成功/失敗、Lambda 錯誤率、EMF 自訂指標。
-
-![CloudWatch Alarms](docs/screenshots/masked/phase3/phase3-cloudwatch-alarms.png)
-
-> Phase 3 警報自動化。Step Functions 失敗率、Lambda 錯誤率、Kinesis Iterator Age 閾值警報（全部 OK 狀態）。
-
-##### S3 Access Point 驗證
-
-![S3 AP Available](docs/screenshots/masked/phase3/phase3-s3ap-available.png)
-
-> FSx for ONTAP S3 Access Point（fsxn-eda-s3ap）處於 Available 狀態。透過 FSx 主控台磁碟區 S3 索引標籤確認。
-
-#### Phase 4: 正式 SageMaker 整合、即時推論、多帳戶、事件驅動
-
-##### DynamoDB Task Token Store
-
-![DynamoDB Task Token Store](docs/screenshots/masked/phase4/phase4-dynamodb-task-token-store.png)
-
-> DynamoDB Task Token Store 資料表。以 8 字元 hex Correlation ID 作為分區鍵儲存 Task Token。TTL 已啟用，PAY_PER_REQUEST 模式，GSI（TransformJobNameIndex）已設定。
-
-##### SageMaker Real-time Endpoint（Multi-Variant A/B Testing）
-
-![SageMaker Endpoint](docs/screenshots/masked/phase4/phase4-sagemaker-realtime-endpoint.png)
-
-> SageMaker Real-time Inference Endpoint。Multi-Variant 組態（model-v1: 70%, model-v2: 30%）用於 A/B 測試。Auto Scaling 已設定。
-
-##### Step Functions 工作流程（Realtime/Batch 路由）
-
-![Step Functions Phase 4](docs/screenshots/masked/phase4/phase4-step-functions-routing.png)
-
-> UC9 Step Functions 工作流程。Choice State 在 file_count < threshold 時路由至 Real-time Endpoint，否則路由至 Batch Transform。
-
-##### Event-Driven Prototype — EventBridge Rule
-
-![EventBridge Rule](docs/screenshots/masked/phase4/phase4-eventbridge-event-rule.png)
-
-> Event-Driven Prototype EventBridge Rule。依 suffix (.jpg, .png) + prefix (products/) 篩選 S3 ObjectCreated 事件並觸發 Step Functions。
-
-##### Event-Driven Prototype — Step Functions 執行成功
-
-![Event-Driven Step Functions](docs/screenshots/masked/phase4/phase4-event-driven-sfn-succeeded.png)
-
-> Event-Driven Prototype Step Functions 執行成功。S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter 所有狀態成功。
-
-##### CloudFormation Phase 4 堆疊
-
-![CloudFormation Phase 4](docs/screenshots/masked/phase4/phase4-cloudformation-stacks.png)
-
-> Phase 4 CloudFormation 堆疊。UC9 擴充（Task Token Store + Real-time Endpoint）及 Event-Driven Prototype CREATE_COMPLETE。
-
-#### Phase 5: Serverless Inference·成本最佳化·Multi-Region
-
-##### SageMaker Serverless Inference Endpoint
-
-![SageMaker Serverless Endpoint 設定](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-settings.png)
-
-> SageMaker Serverless Inference Endpoint 設定。記憶體 4096 MB，最大並行 5。
-
-##### CloudWatch Billing Alarms（3 級成本警報）
-
-![CloudWatch Billing Alarms](docs/screenshots/masked/phase5/phase5-cloudwatch-billing-alarms.png)
-
-> Warning / Critical / Emergency 3 級 Billing Alarms。超閾值時 SNS 通知。
-
-##### DynamoDB Global Table（Multi-Region）
-
-![DynamoDB Global Table](docs/screenshots/masked/phase5/phase5-dynamodb-global-table.png)
-
-> DynamoDB Global Table 設定。Multi-Region 複製已啟用。
-
-![DynamoDB Global Replicas](docs/screenshots/masked/phase5/phase5-dynamodb-global-replicas.png)
-
-> Global Table 副本設定。多區域間資料同步。
-
-## 技術堆疊
-
-| 層級 | 技術 |
-|------|------|
-| 語言 | Python 3.12 |
-| IaC | CloudFormation (YAML) + SAM Transform |
-| 運算 | AWS Lambda（正式: VPC 內 / PoC: VPC 外也可選擇） |
-| 編排 | AWS Step Functions |
-| 排程 | Amazon EventBridge Scheduler |
-| 儲存 | FSx for ONTAP (S3 AP) + S3 輸出儲存貯體 (SSE-KMS) |
-| 通知 | Amazon SNS |
-| 分析 | Amazon Athena + AWS Glue Data Catalog |
-| AI/ML | Amazon Bedrock, Textract, Comprehend, Rekognition |
-| 安全 | Secrets Manager, KMS, IAM 最小權限 |
-| 測試 | pytest + Hypothesis (PBT), moto, cfn-lint, ruff |
-
-## 先決條件
-
-- **AWS 帳戶**: 有效的 AWS 帳戶和適當的 IAM 權限
-- **FSx for ONTAP**: 已部署的檔案系統
-  - ONTAP 版本: 支援 S3 Access Points 的版本（已在 9.17.1P4D3 上驗證）
-  - 已關聯 S3 Access Point 的 FSx for ONTAP 磁碟區（network origin 依使用案例選擇。使用 Athena / Glue 時建議 `internet`）
-- **網路**: VPC、私有子網路、路由表
-- **Secrets Manager**: 預先註冊 ONTAP REST API 憑證（格式: `{"username":"fsxadmin","password":"..."}`）
-- **S3 儲存貯體**: 預先建立用於 Lambda 部署套件的儲存貯體（例: `fsxn-s3ap-deploy-<account-id>`）
-- **Python 3.12+**: 本機開發和測試用
-- **AWS CLI v2**: 部署和管理用
-
-### 準備命令
-
-```bash
-# 1. 建立部署用 S3 儲存貯體
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-aws s3 mb "s3://fsxn-s3ap-deploy-${ACCOUNT_ID}" --region $AWS_DEFAULT_REGION
-
-# 2. 將 ONTAP 憑證註冊到 Secrets Manager
-aws secretsmanager create-secret \
-  --name fsxn-ontap-credentials \
-  --secret-string '{"username":"fsxadmin","password":"<your-ontap-password>"}' \
-  --region $AWS_DEFAULT_REGION
-
-# 3. 檢查現有 S3 Gateway Endpoint（防止重複建立）
-aws ec2 describe-vpc-endpoints \
-  --filters "Name=vpc-id,Values=<your-vpc-id>" "Name=service-name,Values=com.amazonaws.${AWS_DEFAULT_REGION}.s3" \
-  --query 'VpcEndpoints[*].{Id:VpcEndpointId,State:State}' \
-  --output table
-# → 如果有結果，使用 EnableS3GatewayEndpoint=false 部署
-```
-
-### Lambda 部署選擇指南
-
-| 用途 | 建議部署 | 原因 |
-|------|---------|------|
-| 展示 / PoC | VPC 外 Lambda | 無需 VPC Endpoint，低成本、設定簡單 |
-| 正式環境 / 封閉網路需求 | VPC 內 Lambda | 可透過 PrivateLink 使用 Secrets Manager / FSx / SNS 等 |
-| 使用 Athena / Glue 的 UC | S3 AP network origin: `internet` | 需要 AWS 受管服務的存取 |
-
-### 從 VPC 內 Lambda 存取 S3 AP 的注意事項
-
-> **UC1 部署驗證（2026-05-03）中確認的重要事項**
-
-- **S3 Gateway Endpoint 的路由表關聯是必須的**: 如果未在 `RouteTableIds` 中指定私有子網路的路由表 ID，VPC 內 Lambda 對 S3 / S3 AP 的存取將逾時
-- **確認 VPC DNS 解析**: 確保 VPC 的 `enableDnsSupport` / `enableDnsHostnames` 已啟用
-- **PoC / 展示環境建議在 VPC 外執行 Lambda**: 如果 S3 AP 的 network origin 為 `internet`，VPC 外 Lambda 可以正常存取。無需 VPC Endpoint，可降低成本並簡化設定
-- 詳情請參閱[疑難排解指南](docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)
-
-### 所需 AWS 服務配額
-
-| 服務 | 配額 | 建議值 |
-|------|------|--------|
-| Lambda 並行執行數 | ConcurrentExecutions | 100 以上 |
-| Step Functions 執行數 | StartExecution/秒 | 預設值 (25) |
-| S3 Access Point | 每帳戶 AP 數 | 預設值 (10,000) |
-
-## 快速開始
-
-### 1. 複製儲存庫
-
-```bash
-git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
-cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
-```
-
-### 2. 安裝相依性
-
-```bash
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-```
-
-### 3. 執行測試
-
-```bash
-# 單元測試（含覆蓋率）
-pytest shared/tests/ --cov=shared --cov-report=term-missing -v
-
-# 屬性基測試
-pytest shared/tests/test_properties.py -v
-
-# 程式碼檢查
-ruff check .
-ruff format --check .
-```
-
-### 4. 部署使用案例（範例: UC1 法務合規）
-
-> ⚠️ **關於對現有環境影響的重要事項**
->
-> 部署前請確認以下內容:
->
-> | 參數 | 對現有環境的影響 | 確認方法 |
-> |------|----------------|---------|
-> | `VpcId` / `PrivateSubnetIds` | 將在指定的 VPC/子網路中建立 Lambda ENI | `aws ec2 describe-network-interfaces --filters Name=group-id,Values=<sg-id>` |
-> | `EnableS3GatewayEndpoint=true` | 將向 VPC 新增 S3 Gateway Endpoint。**如果同一 VPC 中已存在 S3 Gateway Endpoint，請設定為 `false`** | `aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=<vpc-id>` |
-> | `PrivateRouteTableIds` | S3 Gateway Endpoint 將關聯到路由表。不影響現有路由 | `aws ec2 describe-route-tables --route-table-ids <rtb-id>` |
-> | `ScheduleExpression` | EventBridge Scheduler 將定期執行 Step Functions。**可在部署後停用排程以避免不必要的執行** | AWS 主控台 → EventBridge → Schedules |
-> | `NotificationEmail` | 將傳送 SNS 訂閱確認郵件 | 檢查郵件收件匣 |
->
-> **堆疊刪除注意事項**:
-> - 如果 S3 儲存貯體（Athena Results）中仍有物件，刪除將失敗。請先使用 `aws s3 rm s3://<bucket> --recursive` 清空
-> - 啟用版本控制的儲存貯體需要使用 `aws s3api delete-objects` 刪除所有版本
-> - VPC Endpoints 刪除可能需要 5-15 分鐘
-> - Lambda ENI 釋放可能需要時間，導致 Security Group 刪除失敗。請等待幾分鐘後重試
-
-```bash
-# 設定區域（透過環境變數管理）
-export AWS_DEFAULT_REGION=us-east-1  # 建議支援所有服務的區域
-
-# Lambda 打包
-./scripts/deploy_uc.sh legal-compliance package
-
-# CloudFormation 部署
-aws cloudformation create-stack \
-  --stack-name fsxn-legal-compliance \
-  --template-body file://solutions/industry/legal-compliance/template-deploy.yaml \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameters \
-    ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
-    ParameterKey=S3AccessPointAlias,ParameterValue=<your-volume-ext-s3alias> \
-    ParameterKey=S3AccessPointName,ParameterValue=<your-s3ap-name> \
-    ParameterKey=S3AccessPointOutputAlias,ParameterValue=<your-output-volume-ext-s3alias> \
-    ParameterKey=OntapSecretName,ParameterValue=<your-ontap-secret-name> \
-    ParameterKey=OntapManagementIp,ParameterValue=<your-ontap-management-ip> \
-    ParameterKey=SvmUuid,ParameterValue=<your-svm-uuid> \
-    ParameterKey=VolumeUuid,ParameterValue=<your-volume-uuid> \
-    ParameterKey=VpcId,ParameterValue=<your-vpc-id> \
-    'ParameterKey=PrivateSubnetIds,ParameterValue=<subnet-1>,<subnet-2>' \
-    'ParameterKey=PrivateRouteTableIds,ParameterValue=<rtb-1>,<rtb-2>' \
-    ParameterKey=NotificationEmail,ParameterValue=<your-email@example.com> \
-    ParameterKey=EnableVpcEndpoints,ParameterValue=true \
-    ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true
-```
-
-> **注意**: 請將 `<...>` 佔位符替換為實際環境值。
->
-> **關於 `EnableVpcEndpoints`**: Quick Start 中指定 `true` 以確保 VPC 內 Lambda 到 Secrets Manager / CloudWatch / SNS 的連通性。如果已有 Interface VPC Endpoints 或 NAT Gateway，可以指定 `false` 以降低成本。
-> 
-> **區域選擇**: 建議使用所有 AI/ML 服務均可用的 `us-east-1` 或 `us-west-2`。`ap-northeast-1` 不支援 Textract 和 Comprehend Medical（可透過跨區域呼叫解決）。詳情請參閱[區域相容性矩陣](docs/region-compatibility.md)。
->
-> **VPC 連接性**: Discovery Lambda 部署在 VPC 內。存取 ONTAP REST API 和 S3 Access Point 需要 NAT Gateway 或 Interface VPC Endpoints。請設定 `EnableVpcEndpoints=true` 或使用現有的 NAT Gateway。
-
-### 已驗證環境
-
-| 項目 | 值 |
-|------|-----|
-| AWS 區域 | ap-northeast-1 (東京) |
-| FSx for ONTAP 版本 | ONTAP 9.17.1P4D3 |
-| FSx 配置 | SINGLE_AZ_1 |
-| Python | 3.12 |
-| 部署方式 | CloudFormation（使用 SAM Transform） |
-
-已完成全部 5 個使用案例的 CloudFormation 堆疊部署和 Discovery Lambda 的功能驗證。
-詳情請參閱[驗證結果記錄](docs/verification-results.md)。
-
-## 成本結構摘要
-
-### 各環境成本估算
-
-| 環境 | 固定費/月 | 變動費/月 | 合計/月 |
-|------|----------|----------|--------|
-| 展示/PoC | ~$0 | ~$1〜$3 | **~$1〜$3** |
-| 正式環境（1 UC） | ~$29 | ~$1〜$3 | **~$30〜$32** |
-| 正式環境（全部 5 UC） | ~$29 | ~$5〜$15 | **~$34〜$44** |
-
-### 成本分類
-
-- **按請求計費（按量付費）**: Lambda, Step Functions, S3 API, Textract, Comprehend, Rekognition, Bedrock, Athena — 不使用則為 $0
-- **常駐運行（固定費）**: Interface VPC Endpoints (~$28.80/月) — **選用（opt-in）**
-
-> Quick Start 為優先確保 VPC 內 Lambda 的連通性而指定 `EnableVpcEndpoints=true`。如果優先考慮低成本 PoC，請考慮使用 VPC 外 Lambda 配置或利用現有的 NAT / Interface VPC Endpoints。
-
-> 詳細成本分析請參閱 [docs/cost-analysis.md](docs/cost-analysis.md)。
-
-### 選用資源
-
-高成本常駐資源透過 CloudFormation 參數設為選用。
-
-| 資源 | 參數 | 預設值 | 月固定費 | 說明 |
-|------|------|--------|---------|------|
-| Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~$28.80 | 用於 Secrets Manager、FSx、CloudWatch、SNS。正式環境建議 `true`。Quick Start 中為確保連通性指定 `true` |
-| CloudWatch Alarms | `EnableCloudWatchAlarms` | `false` | ~$0.10/警示 | 監控 Step Functions 失敗率、Lambda 錯誤率 |
-
-> **S3 Gateway VPC Endpoint** 無額外按時計費，因此在 VPC 內 Lambda 存取 S3 AP 的配置中建議啟用。但如果已存在 S3 Gateway Endpoint 或 PoC / 展示用途中 Lambda 部署在 VPC 外，請指定 `EnableS3GatewayEndpoint=false`。S3 API 請求、資料傳輸及各 AWS 服務使用費照常產生。
-
-## 安全與授權模型
-
-本方案組合了**多個授權層**，各層承擔不同角色:
-
-| 層級 | 角色 | 控制範圍 |
-|------|------|---------|
-| **IAM** | AWS 服務和 S3 Access Points 的存取控制 | Lambda 執行角色、S3 AP 原則 |
-| **S3 Access Point** | 透過與 S3 AP 關聯的檔案系統使用者定義存取邊界 | S3 AP 原則、network origin、關聯使用者 |
-| **ONTAP 檔案系統** | 強制執行檔案層級權限 | UNIX 權限 / NTFS ACL |
-| **ONTAP REST API** | 僅公開中繼資料和控制平面作業 | Secrets Manager 驗證 + TLS |
-
-**重要設計注意事項**:
-
-- S3 API 不公開檔案層級 ACL。檔案權限資訊**只能透過 ONTAP REST API** 取得（UC1 的 ACL Collection 使用此模式）
-- 透過 S3 AP 的存取在 IAM / S3 AP 原則許可後，以與 S3 AP 關聯的 UNIX / Windows 檔案系統使用者身分在 ONTAP 側進行授權
-- ONTAP REST API 憑證在 Secrets Manager 中管理，不儲存在 Lambda 環境變數中
-
-## 相容性矩陣
-
-| 項目 | 值 / 驗證內容 |
-|------|-------------|
-| ONTAP 版本 | 已在 9.17.1P4D3 上驗證（需要支援 S3 Access Points 的版本） |
-| 已驗證區域 | ap-northeast-1（東京） |
-| 建議區域 | us-east-1 / us-west-2（使用全部 AI/ML 服務時） |
-| Python 版本 | 3.12+ |
-| CloudFormation Transform | AWS::Serverless-2016-10-31 |
-| 已驗證磁碟區 security style | UNIX, NTFS |
-
-### FSx for ONTAP S3 Access Points 支援的 API
-
-透過 S3 AP 可用的 API 子集:
-
-| API | 支援 |
-|-----|------|
-| ListObjectsV2 | ✅ |
-| GetObject | ✅ |
-| PutObject | ✅ (最大 5 GB) |
-| HeadObject | ✅ |
-| DeleteObject | ✅ |
-| DeleteObjects | ✅ |
-| CopyObject | ✅ (同一 AP 內、同一區域) |
-| GetObjectAttributes | ✅ |
-| GetObjectTagging / PutObjectTagging | ✅ |
-| CreateMultipartUpload | ✅ |
-| UploadPart / UploadPartCopy | ✅ |
-| CompleteMultipartUpload | ✅ |
-| AbortMultipartUpload | ✅ |
-| ListParts / ListMultipartUploads | ✅ |
-| HeadBucket / GetBucketLocation | ✅ |
-| GetBucketNotificationConfiguration | ❌（不支援 → 輪詢設計的原因） |
-| Presign | ❌ |
-
-### S3 Access Point 網路來源約束
-
-| 網路來源 | Lambda (VPC 外) | Lambda (VPC 內) | Athena / Glue | 建議 UC |
-|---------|----------------|----------------|--------------|---------|
-| **internet** | ✅ | ✅ (透過 S3 Gateway EP) | ✅ | UC1, UC3 (使用 Athena) |
-| **VPC** | ❌ | ✅ (S3 Gateway EP 必須) | ❌ | UC2, UC4, UC5 (不使用 Athena) |
-
-> **重要**: Athena / Glue 從 AWS 受管基礎設施存取，因此無法存取 VPC origin 的 S3 AP。UC1（法務）和 UC3（製造業）使用 Athena，因此 S3 AP 必須以 **internet** network origin 建立。
-
-### S3 AP 限制事項
-
-- **PutObject 最大大小**: 5 GB。multipart upload API 受支援，但 5 GB 以上的上傳可行性請按使用案例逐一驗證。
-- **加密**: 僅支援 SSE-FSX（FSx 透明處理，無需指定 ServerSideEncryption 參數）
-- **ACL**: 僅支援 `bucket-owner-full-control`
-- **不支援的功能**: Object Versioning, Object Lock, Object Lifecycle, Static Website Hosting, Requester Pays, Presigned URL
-
-## 文件
-
-詳細指南和螢幕截圖儲存在 `docs/` 目錄中。
-
-| 文件 | 說明 |
-|------|------|
-| [docs/guides/deployment-guide.md](docs/guides/deployment-guide.md) | 部署指南（先決條件確認 → 參數準備 → 部署 → 功能驗證） |
-| [docs/guides/operations-guide.md](docs/guides/operations-guide.md) | 維運指南（排程變更、手動執行、日誌確認、警示回應） |
-| [docs/guides/troubleshooting-guide.md](docs/guides/troubleshooting-guide.md) | 疑難排解（AccessDenied、VPC Endpoint、ONTAP 逾時、Athena） |
-| [docs/cost-analysis.md](docs/cost-analysis.md) | 成本結構分析 |
-| [docs/references.md](docs/references.md) | 參考連結集 |
-| [docs/extension-patterns.md](docs/extension-patterns.md) | 擴充模式指南 |
-| [docs/region-compatibility.md](docs/region-compatibility.md) | AWS 區域 AI/ML 服務支援狀況 |
-| [docs/article-draft.md](docs/article-draft.md) | dev.to 文章原始草稿（已發佈版本請參閱 README 頂部的相關文章） |
-| [docs/verification-results.md](docs/verification-results.md) | AWS 環境驗證結果記錄 |
-| [docs/screenshots/](docs/screenshots/README.md) | AWS 主控台螢幕截圖（已遮罩） |
-
-## 目錄結構
-
-```
-fsxn-s3ap-serverless-patterns/
-├── README.md                          # 本檔案
-├── LICENSE                            # MIT License
-├── requirements.txt                   # 正式環境相依性
-├── requirements-dev.txt               # 開發相依性
-├── shared/                            # 共用模組
-│   ├── __init__.py
-│   ├── ontap_client.py               # ONTAP REST API 用戶端
-│   ├── fsx_helper.py                 # AWS FSx API 輔助工具
-│   ├── s3ap_helper.py                # S3 Access Point 輔助工具
-│   ├── exceptions.py                 # 共用例外與錯誤處理器
-│   ├── discovery_handler.py          # 共用 Discovery Lambda 範本
-│   ├── cfn/                          # CloudFormation 程式碼片段
-│   └── tests/                        # 單元測試與屬性測試
-├── solutions/industry/legal-compliance/                  # UC1: 法務合規
-├── solutions/industry/financial-idp/                     # UC2: 金融保險
-├── solutions/industry/manufacturing-analytics/           # UC3: 製造業
-├── solutions/industry/media-vfx/                         # UC4: 媒體
-├── solutions/industry/healthcare-dicom/                  # UC5: 醫療
-├── scripts/                           # 驗證與部署指令碼
-│   ├── deploy_uc.sh                  # UC 部署指令碼（通用）
-│   ├── verify_shared_modules.py      # 共用模組 AWS 環境驗證
-│   └── verify_cfn_templates.sh       # CloudFormation 範本驗證
-├── .github/workflows/                 # CI/CD (lint, test)
-└── docs/                              # 文件
-    ├── guides/                        # 操作指南
-    │   ├── deployment-guide.md       # 部署指南
-    │   ├── operations-guide.md       # 維運指南
-    │   └── troubleshooting-guide.md  # 疑難排解
-    ├── screenshots/                   # AWS 主控台螢幕截圖
-    ├── cost-analysis.md               # 成本結構分析
-    ├── references.md                  # 參考連結集
-    ├── extension-patterns.md          # 擴充模式指南
-    ├── region-compatibility.md        # 區域相容性矩陣
-    ├── verification-results.md        # 驗證結果記錄
-    └── article-draft.md               # dev.to 文章原始草稿
-```
-
-## 共用模組 (shared/)
-
-| 模組 | 說明 |
-|------|------|
-| `ontap_client.py` | ONTAP REST API 用戶端（Secrets Manager 驗證、urllib3、TLS、重試） |
-| `fsx_helper.py` | AWS FSx API + CloudWatch 指標取得 |
-| `s3ap_helper.py` | S3 Access Point 輔助工具（分頁、後綴篩選） |
-| `exceptions.py` | 共用例外類別、`lambda_error_handler` 裝飾器 |
-| `discovery_handler.py` | 共用 Discovery Lambda 範本（Manifest 產生） |
-
-## 開發
-
-### 執行測試
-
-```bash
-# 全部測試
-pytest shared/tests/ -v
-
-# 含覆蓋率
-pytest shared/tests/ --cov=shared --cov-report=term-missing --cov-fail-under=80 -v
-
-# 僅屬性基測試
-pytest shared/tests/test_properties.py -v
-```
-
-### 程式碼檢查
-
-```bash
-# Python 程式碼檢查
-ruff check .
-ruff format --check .
-
-# CloudFormation 範本驗證
-cfn-lint */template.yaml */template-deploy.yaml
-```
-
-## 何時使用 / 何時不使用本模式集
-
-### 適用情境
-
-- 希望在不移動 FSx for ONTAP 上現有 NAS 資料的情況下進行無伺服器處理
-- 希望從 Lambda 無需 NFS / SMB 掛載即可取得檔案清單和進行前處理
-- 希望學習 S3 Access Points 和 ONTAP REST API 的職責分離
-- 希望快速驗證產業專屬 AI / ML 處理模式作為 PoC
-- 可以接受 EventBridge Scheduler + Step Functions 的輪詢設計
-
-### 不適用情境
-
-- 需要即時檔案變更事件處理（S3 Event Notification 不支援）
-- 需要 Presigned URL 等完整的 S3 儲存貯體相容性
-- 已有基於 EC2 / ECS 的常駐批次處理基礎設施，且可以接受 NFS 掛載維運
-- 檔案資料已存在於 S3 標準儲存貯體中，可透過 S3 事件通知處理
-
-## 正式環境部署的額外考量事項
-
-本儲存庫包含面向正式環境部署的設計決策，但在實際正式環境中請額外考量以下事項。
-
-- 與組織 IAM / SCP / Permission Boundary 的一致性
-- S3 AP 原則和 ONTAP 側使用者權限的審查
-- Lambda / Step Functions / Bedrock / Textract 等的稽核日誌和執行日誌（CloudTrail / CloudWatch Logs）的啟用
-- CloudWatch Alarms / SNS / Incident Management 整合（`EnableCloudWatchAlarms=true`）
-- 資料分類、個人資訊、醫療資訊等產業特定合規要求
-- 區域限制和跨區域呼叫時的資料駐留確認
-- Step Functions 執行歷程保留期和日誌層級設定
-- Lambda 的 Reserved Concurrency / Provisioned Concurrency 設定
-
-## 貢獻
-
-歡迎提交 Issue 和 Pull Request。詳情請參閱 [CONTRIBUTING.md](CONTRIBUTING.md)。
+---
 
 ## 授權條款
 
-MIT License — 詳情請參閱 [LICENSE](LICENSE)。
+MIT — [LICENSE](LICENSE)
+
+---
+
+🌐 [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)

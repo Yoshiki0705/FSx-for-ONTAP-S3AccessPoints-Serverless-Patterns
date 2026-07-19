@@ -1,20 +1,13 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  Demo AD Environment for FSx for ONTAP S3 Access Points (WINDOWS User Type)
-
-  Provisions Active Directory and EC2 test instances to validate WINDOWS-type
-  S3 Access Point operations. Supports three AD modes:
-    - create-new: Creates a new AWS Managed Microsoft AD
-    - use-existing-managed: Uses an existing AWS Managed Microsoft AD
-    - use-self-managed: Uses an existing self-managed (on-premises) AD
-
-  After deployment, join the FSx for ONTAP SVM to the AD domain using:
-    scripts/demo-ad-join-svm.sh --stack-name <this-stack>
-
-  IMPORTANT: WINDOWS-type S3 Access Points require the SVM to be AD-joined.
-  When specifying WindowsUser.Name for the S3 AP, do NOT include the domain
-  prefix (use "Admin", not "DOMAIN\\Admin") — the domain prefix causes
-  AccessDenied on data-plane API calls (ListObjects, GetObject, PutObject).
+  Demo AD Environment for FSx for ONTAP S3 Access Points (WINDOWS User Type).
+  Provisions AD and EC2 test instances for WINDOWS-type S3 AP validation.
+  Supports 3 modes: create-new, use-existing-managed, use-self-managed.
+  After deploy: scripts/demo-ad-join-svm.sh --stack-name <this-stack>.
+  The script auto-verifies AD DC reachability post-join (required for S3 AP data ops).
+  CRITICAL: WindowsUser.Name must be username only (no domain prefix).
+  Also used for: Amazon Quick knowledge base integration (see scripts/verify-quick-s3ap.sh).
+  Deploy with: --capabilities CAPABILITY_NAMED_IAM (not CAPABILITY_IAM).
 
 # =====================================================================
 # Metadata
@@ -471,3 +464,13 @@ Outputs:
       specify username only (e.g., "Admin"), NOT "DOMAIN\\Admin".
       Domain prefix causes AccessDenied on data-plane operations.
     Value: "Use username only — no domain prefix (e.g., Admin, not DEMO\\Admin)"
+
+  AdDcReachabilityNote:
+    Description: >
+      POST-DEPLOYMENT VERIFICATION: After SVM AD join, verify AD DC reachability.
+      AD-joined SVMs require AD DC connectivity for ALL S3 AP data operations
+      (ListObjectsV2/GetObject/PutObject). HeadBucket succeeds even without AD DC
+      (false positive). The demo-ad-join-svm.sh script includes an automatic
+      post-join verification step. For programmatic checks in Lambda, use
+      shared/ad_health_check.py::require_ad_dc_reachability().
+    Value: "Run: curl -sku user:pass 'https://<mgmt-ip>/api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers' — discovered_servers must NOT be empty"
