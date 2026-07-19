@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "boto3==1.43.29",
+    "boto3==1.43.51",
     "urllib3==2.7.0",
     "jsonschema==4.17.3",
 ]
