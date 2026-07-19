@@ -11,7 +11,7 @@
 |---------|:----:|:--------:|:----------:|
 | Quick Web コンソール | 1 | 0 | — |
 | Quick Desktop | 1 | 0 | ✅ Import 方式 |
-| AgentCore Gateway 認証 | 1 | 0 | ✅ NONE auth |
+| AgentCore Gateway 認証 | 0 | 1 | ✅ Policy Engine + allowedClients |
 | Lambda / バックエンド | 0 | 3 | — |
 
 ---
@@ -66,29 +66,69 @@
 
 | 項目 | 内容 |
 |------|------|
-| **ステータス** | 🟡 Investigation needed |
+| **ステータス** | ✅ **Resolved** (2026-07-20) |
 | **重大度** | High（本番環境への影響大） |
 | **発見日** | 2026-07-20 |
 
 **症状**: CUSTOM_JWT 認証の Gateway に対して、Cognito ID Token を Bearer ヘッダーで送信すると 403 Forbidden。JWT の `aud` claim と Gateway の `allowedAudience` は一致。
 
-**影響**: 認証付き Gateway を Quick Desktop から利用できない。PoC は NONE auth で動作するが、本番環境には認証が必須。
+**根本原因（3 つの設定不足の複合）**:
 
-**調査済み事項**:
-- JWT claims 確認: `aud`, `iss`, `sub` 全て正しい
-- Gateway の RFC 9728 メタデータ: 正常に返却
-- 401 → 403 遷移: トークンは認識されるが認可で拒否
+1. **Policy Engine 未設定**: CUSTOM_JWT Gateway はデフォルトで全ツール呼び出しを deny。Policy Engine + Cedar ポリシーの作成・接続が必要
+2. **`allowedAudience` と client_credentials トークンの不一致**: Cognito `client_credentials` フローのトークンには `aud` claim が含まれない。`allowedAudience` を削除して `allowedClients` のみで認証する
+3. **Gateway Service Role の権限不足**: Policy Engine 連携に `bedrock-agentcore:AuthorizeAction`, `PartiallyAuthorizeActions`, `GetPolicyEngine` 等が必要
 
-**仮説**:
-1. CUSTOM_JWT Gateway のデフォルト認可ポリシーが全ツール呼び出しを拒否
-2. `allowedClients` / `allowedAudience` だけでなく、明示的な認可ルール（policy）の設定が必要
-3. `customClaims` マッピングが未設定のため、権限判定に失敗
+**修正手順**:
 
-**次のアクション**:
-- AgentCore Gateway のポリシー設定（`Use an AgentCore Gateway with Policy`）を調査
-- AWS ドキュメント参照: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/use-gateway-with-policy.html
+```bash
+# 1. Policy Engine 作成
+aws bedrock-agentcore-control create-policy-engine --name eda_mcp_policy --region us-east-1
 
-**暫定回避策**: `authorizerType: NONE` + VPC / Security Group でネットワークレベル保護。
+# 2. Cedar ポリシー追加（IGNORE_ALL_FINDINGS で PoC 用 permit-all）
+aws bedrock-agentcore-control create-policy \
+  --policy-engine-id <engine-id> \
+  --name permit_all_poc \
+  --definition '{"cedar":{"statement":"permit(principal, action, resource is AgentCore::Gateway);"}}' \
+  --validation-mode IGNORE_ALL_FINDINGS \
+  --region us-east-1
+
+# 3. Gateway Service Role に bedrock-agentcore:* 権限追加
+aws iam put-role-policy --role-name <gateway-role> --policy-name PolicyEngineAccess \
+  --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"bedrock-agentcore:*","Resource":"arn:aws:bedrock-agentcore:<region>:<account>:*"}]}'
+
+# 4. Gateway 更新（allowedAudience 削除 + Policy Engine 接続）
+aws bedrock-agentcore-control update-gateway \
+  --gateway-identifier <gateway-id> \
+  --name <gateway-name> \
+  --role-arn <role-arn> \
+  --authorizer-type CUSTOM_JWT \
+  --authorizer-configuration '{"customJWTAuthorizer":{
+    "discoveryUrl":"https://cognito-idp.<region>.amazonaws.com/<pool-id>/.well-known/openid-configuration",
+    "allowedClients":["<client-id>"],
+    "allowedScopes":["<scope1>","<scope2>"]
+  }}' \
+  --policy-engine-configuration '{"arn":"<policy-engine-arn>","mode":"ENFORCE"}'
+
+# 5. M2M トークン取得（Cognito client_credentials）
+curl -X POST "https://<domain>.auth.<region>.amazoncognito.com/oauth2/token" \
+  -H "Authorization: Basic <base64(client_id:secret)>" \
+  -d "grant_type=client_credentials&scope=<scope1>+<scope2>"
+
+# 6. 動作確認
+curl -X POST "https://<gateway-id>.gateway.bedrock-agentcore.<region>.amazonaws.com/mcp" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+# → 3 tools returned ✅
+```
+
+**検証結果** (2026-07-20):
+- `tools/list`: ✅ 3 ツール正常表示
+- `tools/call` (list_files): ✅ FSx for ONTAP S3 AP のファイル一覧取得成功
+
+**本番向けの注意**:
+- `permit(principal, action, resource is AgentCore::Gateway)` は PoC 用（全許可）
+- 本番では `principal == AgentCore::OAuthUser::"<specific-sub>"` や `when { context.scopes.contains("admin") }` で制限する
+- `validationMode: IGNORE_ALL_FINDINGS` は本番では使用しない
 
 ---
 
@@ -133,7 +173,7 @@
 
 | # | ブロッカー | 影響 | 解決パス |
 |---|-----------|------|---------|
-| 1 | CUSTOM_JWT 認証の 403 問題 | 認証なし Gateway を使わざるを得ない | ISSUE-3 の調査 |
+| ~~1~~ | ~~CUSTOM_JWT 認証の 403 問題~~ | ~~認証なし Gateway を使わざるを得ない~~ | ✅ **解決済み** (Policy Engine + allowedClients) |
 | 2 | Web コンソール MCP UI バグ | Agent にツールをリンクできない | AWS 修正待ち |
 | 3 | Desktop MCP 永続化バグ | Import のみが動作 | AWS 修正待ち |
 | 4 | `CreateActionConnector` API に MCP Type なし | API 経由の回避策なし | API 拡張待ち |
@@ -142,11 +182,12 @@
 
 ## 次のアクション
 
-- [ ] AWS サポートからの回答を待機（2 件のケース）
-- [ ] CUSTOM_JWT Gateway + Policy の設定を調査・検証
+- [x] ~~CUSTOM_JWT Gateway + Policy の設定を調査・検証~~ → **解決済み (2026-07-20)**
+- [ ] AWS サポートからの回答を待機（2 件のケース: Web UI バグ, Desktop 永続化）
 - [ ] Quick Desktop の次バージョンで MCP 永続化バグが修正されるか確認
 - [ ] Web コンソール UI 修正後に Agent リンクの E2E テスト実施
-- [ ] 本番認証パターン（VPC + CUSTOM_JWT + Policy）の設計ドキュメント作成
+- [ ] 本番認証パターンの Cedar ポリシーを scope/claim ベースに強化
+- [ ] Quick Desktop から CUSTOM_JWT Gateway への接続検証（mcp-remote + Bearer token）
 
 ---
 
