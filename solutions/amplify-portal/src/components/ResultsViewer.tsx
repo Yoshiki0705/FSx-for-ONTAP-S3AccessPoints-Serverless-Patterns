@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { FlexCloneStatus } from "./FlexCloneStatus";
 
 const client = generateClient<Schema>();
 
 interface ResultsViewerProps {
   executionArn: string | null;
+  inputPrefix?: string;
+  onNavigateToFolder?: (prefix: string) => void;
 }
 
 interface JobResult {
@@ -27,7 +30,7 @@ interface JobResult {
  *
  * Auto-polls every 5 seconds while status is RUNNING.
  */
-export function ResultsViewer({ executionArn }: ResultsViewerProps) {
+export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }: ResultsViewerProps) {
   const [result, setResult] = useState<JobResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,12 +97,25 @@ export function ResultsViewer({ executionArn }: ResultsViewerProps) {
     <div className="results-viewer">
       <h2>Results</h2>
 
+      {inputPrefix && onNavigateToFolder && (
+        <nav className="results-breadcrumb" aria-label="Processed folder">
+          <span>Processed: </span>
+          <button
+            className="breadcrumb-link"
+            onClick={() => onNavigateToFolder(inputPrefix)}
+            title={`Navigate to ${inputPrefix}`}
+          >
+            📂 /{inputPrefix}
+          </button>
+        </nav>
+      )}
+
       {error && <div className="error-message">{error}</div>}
 
       {result && (
         <div className="result-card">
-          <div className="result-header">
-            <span className={`status-badge ${statusColor(result.status)}`}>
+          <div className="result-header" aria-live="polite" aria-atomic="true">
+            <span className={`status-badge ${statusColor(result.status)}`} role="status">
               {result.status}
             </span>
             {result.status === "RUNNING" && (
@@ -112,10 +128,10 @@ export function ResultsViewer({ executionArn }: ResultsViewerProps) {
             <dd className="arn">{result.executionArn}</dd>
 
             <dt>Started</dt>
-            <dd>{result.startDate ? new Date(result.startDate).toLocaleString() : "-"}</dd>
+            <dd>{result.startDate ? new Date(parseFloat(result.startDate) * 1000).toLocaleString() : "-"}</dd>
 
             <dt>Completed</dt>
-            <dd>{result.stopDate ? new Date(result.stopDate).toLocaleString() : "-"}</dd>
+            <dd>{result.stopDate ? new Date(parseFloat(result.stopDate) * 1000).toLocaleString() : "-"}</dd>
 
             {dataClassification && (
               <>
@@ -128,10 +144,15 @@ export function ResultsViewer({ executionArn }: ResultsViewerProps) {
           </dl>
 
           {result.output && result.status === "SUCCEEDED" && (
-            <details className="result-output">
-              <summary>Output Data</summary>
-              <pre>{JSON.stringify(result.output, null, 2)}</pre>
-            </details>
+            <>
+              {result.output.flexClone && (
+                <FlexCloneStatus cloneInfo={result.output.flexClone as Record<string, string>} />
+              )}
+              <details className="result-output">
+                <summary>Output Data</summary>
+                <pre>{JSON.stringify(result.output, null, 2)}</pre>
+              </details>
+            </>
           )}
 
           <button onClick={fetchStatus} disabled={loading} className="refresh-btn">

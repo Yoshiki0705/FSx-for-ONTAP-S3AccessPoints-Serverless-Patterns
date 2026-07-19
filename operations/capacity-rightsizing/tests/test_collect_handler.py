@@ -30,9 +30,16 @@ class TestCollectHandlerDemoMode:
         vol = result["file_systems"][0]["volumes"][0]
 
         required_fields = [
-            "name", "uuid", "svm_name", "size_bytes", "used_bytes",
-            "available_bytes", "utilization_percent", "autosize_enabled",
-            "autosize_mode", "fs_id",
+            "name",
+            "uuid",
+            "svm_name",
+            "size_bytes",
+            "used_bytes",
+            "available_bytes",
+            "utilization_percent",
+            "autosize_enabled",
+            "autosize_mode",
+            "fs_id",
         ]
         for field in required_fields:
             assert field in vol, f"Missing field: {field}"

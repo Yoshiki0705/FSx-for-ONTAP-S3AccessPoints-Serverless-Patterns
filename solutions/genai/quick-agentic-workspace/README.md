@@ -114,6 +114,36 @@ curl -X POST https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/prod/acti
 
 詳細: [docs/investigations/agentcore-web-search-fsxn-integration.md](../../docs/investigations/agentcore-web-search-fsxn-integration.md)
 
+## AgentCore MCP Gateway（Workshop Module 09 検証済み）
+
+> [AWS Workshop: Deploy AgentCore Gateway](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/09-agentcore)
+
+Knowledge Base（インデックスのスナップショット検索）とは異なり、AgentCore MCP Gateway は S3 AP 経由で **ファイルをリアルタイムにライブ読み取り** します。エージェントがディレクトリをブラウズし、特定ファイルを読み取り、ログ横断検索を実行できます。
+
+### Knowledge Base vs AgentCore 選択ガイド
+
+| 方式 | データ鮮度 | 実装コスト | 適するシナリオ |
+|------|-----------|-----------|---------------|
+| **Quick Index (KB)** | 同期タイミング依存 | 低（コンソール設定のみ） | 定型的な Q&A、文書検索 |
+| **AgentCore (MCP)** | 常に最新 | 中（Cognito + Lambda + Gateway） | マルチステップ推論、ログ横断分析 |
+
+### Workshop で構築するコンポーネント
+
+1. **Cognito User Pool** — OAuth 2.0 認証
+2. **Lambda 関数** — S3 AP 経由で list / read / search 操作を公開
+3. **AgentCore MCP Gateway** — Quick Suite と Lambda を MCP プロトコルで接続
+4. **Quick Suite MCP Integration** — エージェント型ログ分析
+
+### サンプル質問（AI-Powered Analytics, Module 10）
+
+```
+「シミュレーションで失敗したのは何件？」
+「最も多いエラーの種類は？」
+「タイミング違反のあるテストを表示して」
+「警告が最も多いモジュールは？」
+「テスト結果をサマリーにして」
+```
+
 ## ロール × サービス構成（Amazon Quick 想定ロールに準拠）
 
 ロールは Amazon Quick が対象とする **sales / marketing / IT / operations / finance / legal**（FAQ）に、
@@ -327,6 +357,8 @@ sam local invoke DataPrepFunction --event events/data-prep-event.json
 
 | 関連 | ポイント |
 |------|---------|
+| [AWS Workshop: FSx for ONTAP S3 AP (EDA)](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US) | Quick + AgentCore + S3 AP 統合ハンズオン（Module 08-12） |
+| [Workshop EDA 統合ガイド](../../docs/workshop-eda-integration.md) | Workshop 各モジュールと本リポジトリ UC の対応表 |
 | [PoC 前提条件チェックリスト](docs/poc-checklist.md) | Quick 有効化・Glue/LF・推論プロファイル等 |
 | [Amazon Quick コンソール設定手順](docs/quick-console-setup.md) | Index/Sight/Flows 接続（スクショ取得指針つき） |
 | [Lake Formation TBAC ノート](docs/lake-formation-tbac.md) | ロール別データ可視性（LF-TBAC + Quick RLS） |

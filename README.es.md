@@ -1,1124 +1,215 @@
-# FSx for ONTAP S3 Access Points Serverless Patterns
+# FSx for ONTAP S3 Access Points — Patrones Serverless
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+![tests](https://img.shields.io/badge/tests-2%2C162%2B%20passed-brightgreen) ![cfn-lint](https://img.shields.io/badge/cfn--lint-0%20errors-brightgreen) ![ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen) ![patterns](https://img.shields.io/badge/patterns-42%2B-blue) ![region](https://img.shields.io/badge/verified-ap--northeast--1-blue)
 
-## Current Status
+🌐 [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-Este repositorio contiene ahora **28 casos de uso sectoriales** + **un patrón FPolicy basado en eventos** + **7 patrones FlexCache/FlexClone** + **un patrón de entrega en edge (edge delivery)**, formando una biblioteca completa de patrones serverless.
+---
 
-Los 5 patrones originales (Phase 1) se han expandido a través de las Fases 2–13. Phase 10 introdujo el pipeline compartido de ingesta de eventos FPolicy, Phase 11 extendió el dispatch a los 17 UCs, Phase 12 endureció el pipeline con validación de replay de Persistent Store, observabilidad SLO, guardarraíles de capacidad y rotación de secretos, y Phase 13 añadió automatización serverless FlexClone/FlexCache.
+> **42 patrones de referencia** para el procesamiento serverless de datos NAS empresariales en FSx for ONTAP mediante S3 Access Points — **sin necesidad de copiar datos**.
+>
+> 28 casos de uso por industria + 7 FlexCache/FlexClone + 2 GenAI + SAP + monitoreo HA + Event-Driven + distribución Edge + File Portal UI
 
-Colección de patrones de automatización serverless por sector, basados en los S3 Access Points de Amazon FSx for ONTAP.
+---
 
-> **Posicionamiento de este repositorio**: Esta es una «implementación de referencia para aprender decisiones de diseño». Algunos casos de uso han sido verificados E2E en un entorno AWS, mientras que otros han sido validados mediante despliegue de CloudFormation, Lambda Discovery compartido y pruebas de componentes principales. El objetivo es demostrar decisiones de diseño sobre optimización de costos, seguridad y manejo de errores a través de código concreto, con un camino desde PoC hasta producción.
+## Primeros pasos
 
-**Tests**: 1.499+ tests unitarios/property | 126 archivos de test | cfn-lint + ruff validation
+| Quiero... | Guía | Tiempo |
+|---|---|---|
+| Probar una demo sin FSx | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 min |
+| Navegar archivos mediante un portal web | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.en.md) | 10 min |
+| Desplegar un patrón en AWS | [Deployment Guide](docs/guides/deployment-guide.md) | 30 min |
+| Encontrar el patrón adecuado para mi carga | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 min |
+| Estimar costos | [Cost Calculator](docs/cost-calculator.md) | 5 min |
+| Construir un entorno de laboratorio | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60 min |
 
-## Governance Disclaimer
+---
 
-Los documentos de gobernanza de este repositorio están destinados a apoyar la revisión arquitectónica y operativa. No reemplazan las evaluaciones legales, de cumplimiento, de privacidad o regulatorias.
+<details>
+<summary><strong>📂 Todos los patrones (clic para expandir)</strong></summary>
 
-## Artículo relacionado
+### Casos de uso por industria (UC1-UC28 + SAP)
 
-Este repositorio proporciona los ejemplos de implementación de la arquitectura descrita en el siguiente artículo:
+| # | Directorio | Industria | Resumen |
+|---|---|---|---|
+| UC1 | [`legal-compliance/`](solutions/industry/legal-compliance/) | Legal | Auditoría NTFS ACL e informes de cumplimiento |
+| UC2 | [`financial-idp/`](solutions/industry/financial-idp/) | Finanzas | OCR de facturas y extracción de entidades |
+| UC3 | [`manufacturing-analytics/`](solutions/industry/manufacturing-analytics/) | Manufactura | Sensores IoT e inspección de calidad |
+| UC4 | [`media-vfx/`](solutions/industry/media-vfx/) | Medios | Control de calidad de renderizado VFX |
+| UC5 | [`healthcare-dicom/`](solutions/industry/healthcare-dicom/) | Salud | Anonimización DICOM |
+| UC6 | [`semiconductor-eda/`](solutions/industry/semiconductor-eda/) | Semiconductores | Validación GDS/OASIS |
+| UC7 | [`genomics-pipeline/`](solutions/industry/genomics-pipeline/) | Genómica | Control de calidad FASTQ/VCF |
+| UC8 | [`energy-seismic/`](solutions/industry/energy-seismic/) | Energía | Análisis de datos sísmicos SEG-Y |
+| UC9 | [`autonomous-driving/`](solutions/industry/autonomous-driving/) | Automotriz | Preprocesamiento de video/LiDAR |
+| UC10 | [`construction-bim/`](solutions/industry/construction-bim/) | Construcción | Gestión de modelos BIM |
+| UC11 | [`retail-catalog/`](solutions/industry/retail-catalog/) | Retail | Etiquetado de imágenes de productos |
+| UC12 | [`logistics-ocr/`](solutions/industry/logistics-ocr/) | Logística | OCR de documentos de envío |
+| UC13 | [`education-research/`](solutions/industry/education-research/) | Educación | Clasificación de artículos |
+| UC14 | [`insurance-claims/`](solutions/industry/insurance-claims/) | Seguros | Evaluación de daños |
+| UC15 | [`defense-satellite/`](solutions/industry/defense-satellite/) | Defensa | Análisis de imágenes satelitales |
+| UC16 | [`government-archives/`](solutions/industry/government-archives/) | Gobierno | Archivos públicos y acceso a información |
+| UC17 | [`smart-city-geospatial/`](solutions/industry/smart-city-geospatial/) | Ciudad inteligente | Análisis geoespacial |
+| UC18 | [`telecom-network-analytics/`](solutions/industry/telecom-network-analytics/) | Telecomunicaciones | Análisis de CDR/registros de red |
+| UC19 | [`adtech-creative-management/`](solutions/industry/adtech-creative-management/) | Publicidad | Gestión de activos creativos |
+| UC20 | [`travel-document-processing/`](solutions/industry/travel-document-processing/) | Viajes | Procesamiento de documentos de reserva |
+| UC21 | [`agri-food-traceability/`](solutions/industry/agri-food-traceability/) | Agricultura | Trazabilidad |
+| UC22 | [`transportation-maintenance/`](solutions/industry/transportation-maintenance/) | Transporte | Inspección de equipos |
+| UC23 | [`sustainability-esg-reporting/`](solutions/industry/sustainability-esg-reporting/) | ESG | Extracción de métricas |
+| UC24 | [`nonprofit-grant-management/`](solutions/industry/nonprofit-grant-management/) | Sin fines de lucro | Gestión de subvenciones |
+| UC25 | [`utilities-asset-inspection/`](solutions/industry/utilities-asset-inspection/) | Servicios públicos | Análisis de drones/SCADA |
+| UC26 | [`real-estate-portfolio/`](solutions/industry/real-estate-portfolio/) | Bienes raíces | Imágenes de propiedades y contratos |
+| UC27 | [`hr-document-screening/`](solutions/industry/hr-document-screening/) | RRHH | Selección de currículos |
+| UC28 | [`chemical-sds-management/`](solutions/industry/chemical-sds-management/) | Química | HDS y notas de laboratorio |
+| SAP | [`sap/erp-adjacent/`](solutions/sap/erp-adjacent/) | SAP/ERP | Procesamiento IDoc y EDI |
 
-- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
-  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
+### FlexCache / FlexClone (FC1-FC7)
 
-El artículo explica el razonamiento arquitectónico y las compensaciones. Este repositorio proporciona patrones de implementación concretos y reutilizables.
+| # | Directorio | Patrón |
+|---|---|---|
+| FC1 | [`flexcache/anycast-dr/`](solutions/flexcache/anycast-dr/) | AnyCast / conmutación por error DR |
+| FC2 | [`flexcache/dynamic-render-workflow/`](solutions/flexcache/dynamic-render-workflow/) | FlexCache dinámico por trabajo |
+| FC3 | [`flexcache/rag-enterprise-files/`](solutions/flexcache/rag-enterprise-files/) | RAG con reconocimiento de permisos |
+| FC4 | [`flexcache/automotive-cae/`](solutions/flexcache/automotive-cae/) | Análisis de simulación CAE |
+| FC5 | [`flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/) | Clasificación de datos de investigación |
+| FC6 | [`flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/) | Control de calidad de assets de juegos |
+| FC7 | [`flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/) | FlexClone Dev/Test y CI/CD |
 
-## Descripción general
+### GenAI / HA / Event-Driven / Edge / File Portal
 
-Este repositorio proporciona **28 patrones sectoriales (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17, Phase 14: UC18–UC19, Phase 15: UC20–UC22, Phase 16: UC23–UC28)** para el procesamiento serverless de datos empresariales almacenados en FSx for ONTAP a través de **S3 Access Points**.
+| Directorio | Resumen |
+|---|---|
+| [`genai/kb-selfservice-curation/`](solutions/genai/kb-selfservice-curation/) | Operaciones autoservicio Bedrock KB |
+| [`genai/quick-agentic-workspace/`](solutions/genai/quick-agentic-workspace/) | Espacio de trabajo agéntico |
+| [`ha/lifekeeper-monitoring/`](solutions/ha/lifekeeper-monitoring/) | Monitoreo HA LifeKeeper con IA |
+| [`event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | Pipeline event-driven FPolicy |
+| [`edge/content-delivery/`](solutions/edge/content-delivery/) | Distribución CDN/edge (neutral en proveedor) |
+| [`amplify-portal/`](solutions/amplify-portal/) | File Portal UI (Amplify Gen2) |
+| [`nextcloud-test/`](solutions/nextcloud-test/) | File Portal UI (Nextcloud Docker) |
 
-> En adelante, FSx for ONTAP S3 Access Points se abrevia como **S3 AP**.
+### Infraestructura y módulos compartidos
 
-Cada caso de uso es un template de CloudFormation independiente, con módulos compartidos (cliente ONTAP REST API, helper FSx, helper S3 AP) en `shared/` para reutilización.
+| Directorio | Resumen |
+|---|---|
+| [`shared/`](shared/) | Módulos Python comunes (S3ApHelper, OntapClient, Observability) |
+| [`operations/`](operations/) | 6 patrones de optimización operativa |
+| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | IaC de laboratorio práctico (VPC/AD/FSx/EC2/S3AP) |
+| [`docs/`](docs/) | Guías de diseño y benchmarks (40+ documentos) |
+| [`scripts/`](scripts/) | Despliegue, benchmarks, utilidades |
+| [`.github/workflows/`](.github/workflows/) | CI/CD (lint → test → security → deploy) |
 
-### Características principales
+</details>
 
-- **Arquitectura basada en sondeo**: Dado que S3 AP no soporta `GetBucketNotificationConfiguration`, ejecución periódica mediante EventBridge Scheduler + Step Functions
-- **Ruta basada en eventos (Phase 10)**: Detección de eventos de archivos NFSv3 mediante ONTAP FPolicy → ECS Fargate → SQS → EventBridge ([Inicio rápido](docs/event-driven/README.md))
-- **Soporte SMB (CIFS) verificado**: FPolicy E2E probado con protocolos NFSv3 y SMB — SVM unida a AD requerida para SMB ([Configuración SMB](docs/event-driven/README.md#smb-cifs-テスト手順))
-- **Separación de módulos compartidos**: OntapClient / FsxHelper / S3ApHelper reutilizados en todos los casos de uso
-- **CloudFormation / SAM Transform**: Cada caso de uso es un template de CloudFormation independiente con SAM Transform
-- **Seguridad primero**: Verificación TLS habilitada por defecto, IAM de mínimo privilegio, cifrado KMS
-- **Optimización de costos**: Los recursos permanentes de alto costo (Interface VPC Endpoints, etc.) son opcionales
-
-### Guías de diseño y documentación operativa
-
-| Documento | Contenido |
-|-----------|-----------|
-| [Modelo de autorización S3AP de doble capa](docs/s3ap-authorization-model.md) | Diseño de autorización de doble capa: AWS IAM + permisos del sistema de archivos |
-| [Deployment Profiles](docs/deployment-profiles.md) | Definición de 3 perfiles: PoC / Production / Compliance-sensitive |
-| [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md) | Criterios de selección POLLING / EVENT_DRIVEN / HYBRID |
-| [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | Ejemplos de aplicación empresarial: SAP, EDI, auditoría, salidas batch |
-| [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | Diseño de rendimiento, dimensionamiento Lambda, cálculo de concurrencia |
-| [S3AP Benchmark Results](docs/s3ap-benchmark-results.md) | Mediciones: latencia PutObject/GetObject/Range GET/ListObjectsV2 |
-| [Partner/SI Delivery Checklist](docs/partner-si-delivery-checklist.md) | Checklist de entrega para partners/SI |
-| [Governance Checklist](docs/governance-checklist.md) | Checklist de gobernanza para cargas reguladas |
-| [Production Readiness](docs/production-readiness.md) | Modelo de madurez en 4 niveles |
-| [Customer Discovery Template](docs/customer-discovery-template.md) | Plantilla de entrevista al cliente |
-| [Well-Architected Mapping](docs/well-architected-mapping.md) | Mapeo AWS Well-Architected 6 pilares |
-| [Quick Start Guide](docs/quick-start.md) | Guía de primer despliegue en 30 minutos |
-| 🏗️ Entorno Lab práctico (S3 AP + Tamperproof + FlexClone) | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) |
+---
 
 ## Arquitectura
 
+```
+EventBridge Scheduler (disparador periódico)
+  └→ Step Functions State Machine
+      ├→ Discovery Lambda: listar archivos vía S3 AP
+      ├→ Map State (paralelo): procesar cada archivo con AI/ML
+      └→ Report Lambda: generar resultados → notificación SNS
+```
+
+Este es el flujo común compartido por todos los patrones. Los servicios AI/ML (Bedrock, Textract, Comprehend, Rekognition) varían según el caso de uso.
+
+<details>
+<summary><strong>Diagrama Mermaid (clic para expandir)</strong></summary>
+
 ```mermaid
 graph TB
-    subgraph "Scheduling Layer"
-        EBS[EventBridge Scheduler<br/>cron/rate expressions]
-        KDS[Kinesis Data Streams<br/>Near-real-time detection<br/>UC11 opt-in]
-    end
-
-    subgraph "Orchestration Layer"
-        SFN[Step Functions<br/>State Machine]
-    end
-
-    subgraph "Compute Layer"
-        DL[Discovery Lambda<br/>Object Detection<br/>Within VPC]
-        PL[Processing Lambda<br/>AI/ML Processing<br/>Map State parallel]
-        RL[Report Lambda<br/>Report Generation & Notification]
-    end
-
-    subgraph "Data Sources"
-        FSXN[FSx for ONTAP<br/>Volume]
-        S3AP[S3 Access Point<br/>ListObjectsV2 / GetObject /<br/>Range / PutObject]
-        ONTAP_API[ONTAP REST API<br/>ACL / Volume Metadata]
-    end
-
-    subgraph "AI/ML Services"
-        BEDROCK[Amazon Bedrock<br/>Nova / Claude]
-        TEXTRACT[Amazon Textract<br/>OCR ⚠️ Cross-Region]
-        COMPREHEND[Amazon Comprehend /<br/>Comprehend Medical ⚠️]
-        REKOGNITION[Amazon Rekognition<br/>Image Analysis]
-        SAGEMAKER[Amazon SageMaker<br/>Batch / Real-time /<br/>Serverless Inference<br/>UC9 opt-in]
-    end
-
-    subgraph "Data Analytics"
-        GLUE[AWS Glue<br/>Data Catalog]
-        ATHENA[Amazon Athena<br/>SQL Analytics]
-    end
-
-    subgraph "Storage & State Management"
-        S3OUT[S3 Output Bucket<br/>SSE-KMS Encryption]
-        DDB[DynamoDB<br/>Task Token Store<br/>UC9 opt-in]
-        SM[Secrets Manager]
-    end
-
-    subgraph "Notifications"
-        SNS[SNS Topic<br/>Email / Slack]
-    end
-
-    subgraph "Observability (Phase 3+)"
-        XRAY[AWS X-Ray<br/>Distributed Tracing]
-        CW[CloudWatch<br/>EMF Metrics /<br/>Dashboards]
-    end
-
-    subgraph "VPC Endpoints (Optional)"
-        VPCE_S3[S3 Gateway EP<br/>Free]
-        VPCE_IF[Interface EPs<br/>Secrets Manager / FSx /<br/>CloudWatch / SNS]
-    end
-
-    EBS -->|Periodic trigger| SFN
-    KDS -->|Real-time| SFN
-    SFN -->|Step 1| DL
-    SFN -->|Step 2 Map| PL
-    SFN -->|Step 3| RL
-
-    DL -->|ListObjectsV2| S3AP
-    DL -->|REST API| ONTAP_API
-    PL -->|GetObject / Range| S3AP
-    PL -->|PutObject| S3OUT
-    PL --> BEDROCK
-    PL --> TEXTRACT
-    PL --> COMPREHEND
-    PL --> REKOGNITION
-    PL --> SAGEMAKER
-    PL --> GLUE
-    PL --> ATHENA
-
-    S3AP -.->|Exposes| FSXN
-    GLUE -.-> ATHENA
-
-    DL --> VPCE_S3
-    DL --> VPCE_IF --> SM
-    RL --> SNS
-
-    SFN --> XRAY
-    DL --> CW
-    PL --> CW
-    RL --> CW
-
-    SAGEMAKER -.-> DDB
+    EBS[EventBridge Scheduler] --> SFN[Step Functions]
+    SFN --> DL[Discovery Lambda<br/>S3 AP ListObjectsV2]
+    SFN --> PL[Processing Lambda<br/>AI/ML processing]
+    SFN --> RL[Report Lambda<br/>notification]
+    DL --> S3AP[S3 Access Point]
+    PL --> S3AP
+    S3AP --> FSXN[FSx for ONTAP Volume]
+    PL --> AI[Bedrock / Textract /<br/>Comprehend / Rekognition]
 ```
 
-> El diagrama muestra la arquitectura completa que cubre todas las Fases (Phase 1-5). SageMaker, Kinesis y DynamoDB se controlan mediante CloudFormation Conditions (opt-in) y no generan costos adicionales a menos que se activen. Para PoC/demos, también se puede elegir una configuración Lambda fuera del VPC.
+</details>
 
-### Resumen del flujo de trabajo
+<details>
+<summary><strong>Arquitecturas por categoría (FlexCache, GenAI, HA, Event-Driven, Edge)</strong></summary>
 
-```
-EventBridge Scheduler (ejecución periódica)
-  └─→ Step Functions State Machine
-       ├─→ Discovery Lambda: Obtener lista de objetos de S3 AP → Generar Manifest
-       ├─→ Map State (procesamiento paralelo): Procesar cada objeto con servicios AI/ML
-       └─→ Report/Notification: Generar informe de resultados → Notificación SNS
-```
+Diagramas de arquitectura detallados por categoría:
+- [FlexCache / FlexClone](docs/industry-workload-mapping.md)
+- [GenAI (Bedrock KB / Agentic)](solutions/genai/kb-selfservice-curation/docs/architecture.md)
+- [HA LifeKeeper Monitoring](solutions/ha/lifekeeper-monitoring/README.md)
+- [Event-Driven FPolicy](solutions/event-driven/fpolicy/README.md)
+- [Edge / CDN](solutions/edge/content-delivery/docs/architecture.md)
+- [File Portal (Amplify Gen2)](solutions/amplify-portal/README.md)
 
-## Lista de casos de uso
+</details>
 
-### Phase 1 (UC1–UC5)
+---
 
-| # | Directorio | Sector | Patrón | Servicios AI/ML utilizados | Estado de verificación ap-northeast-1 |
-|---|------------|--------|--------|---------------------------|--------------------------------------|
-| UC1 | `solutions/industry/legal-compliance/` | Legal y cumplimiento | Auditoría de servidor de archivos y gobernanza de datos | Athena, Bedrock | ✅ E2E exitoso |
-| UC2 | `solutions/industry/financial-idp/` | Finanzas y seguros | Procesamiento automatizado de contratos y facturas (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ No en Tokio (usar región compatible) |
-| UC3 | `solutions/industry/manufacturing-analytics/` | Manufactura | Análisis de registros de sensores IoT e imágenes de inspección de calidad | Athena, Rekognition | ✅ E2E exitoso |
-| UC4 | `solutions/industry/media-vfx/` | Medios | Pipeline de renderizado VFX | Rekognition, Deadline Cloud | ⚠️ Configuración de Deadline Cloud requerida |
-| UC5 | `solutions/industry/healthcare-dicom/` | Salud | Clasificación automática y anonimización de imágenes DICOM | Rekognition, Comprehend Medical ⚠️ | ⚠️ No en Tokio (usar región compatible) |
+## Restricciones clave de S3 Access Points
 
-### Phase 2 (UC6–UC14)
+| Restricción | Solución alternativa |
+|---|---|
+| Sin S3 Event Notifications | Polling con EventBridge Scheduler o FPolicy |
+| URLs prefirmadas no oficiales | Funcionan en la práctica pero no se recomiendan para producción |
+| Límite de carga de 5 GB | Multipart Upload |
+| No se pueden escribir resultados de Athena en S3AP | Salida a bucket S3 estándar |
+| Solo SSE-FSX | Usar cifrado KMS a nivel de volumen |
 
-| # | Directorio | Sector | Patrón | Servicios AI/ML utilizados | Estado de verificación ap-northeast-1 |
-|---|------------|--------|--------|---------------------------|--------------------------------------|
-| UC6 | `solutions/industry/semiconductor-eda/` | Semiconductores / EDA | Validación GDS/OASIS, extracción de metadatos, agregación DRC | Athena, Bedrock | ✅ Pruebas exitosas |
-| UC7 | `solutions/industry/genomics-pipeline/` | Genómica | Control de calidad FASTQ/VCF, agregación de llamadas de variantes | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
-| UC8 | `solutions/industry/energy-seismic/` | Energía | Extracción de metadatos SEG-Y, detección de anomalías en pozos | Athena, Bedrock, Rekognition | ✅ Pruebas exitosas |
-| UC9 | `solutions/industry/autonomous-driving/` | Conducción autónoma / ADAS | Preprocesamiento de video/LiDAR, QC, anotación | Rekognition, Bedrock, SageMaker | ✅ Pruebas exitosas |
-| UC10 | `solutions/industry/construction-bim/` | Construcción / AEC | Gestión de versiones BIM, OCR de planos, cumplimiento de seguridad | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
-| UC11 | `solutions/industry/retail-catalog/` | Comercio / E-commerce | Etiquetado de imágenes de productos, generación de metadatos de catálogo | Rekognition, Bedrock | ✅ Pruebas exitosas |
-| UC12 | `solutions/industry/logistics-ocr/` | Logística | OCR de albaranes, análisis de imágenes de inventario | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC13 | `solutions/industry/education-research/` | Educación / Investigación | Clasificación de PDF, análisis de red de citas | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC14 | `solutions/industry/insurance-claims/` | Seguros | Evaluación de daños por fotos, OCR de presupuestos, informe de siniestros | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+Detalles: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix (confirmada por AWS)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md)
 
-> **Restricciones regionales**: Amazon Textract y Amazon Comprehend Medical no están disponibles en ap-northeast-1 (Tokio). Los UC de Phase 2 (UC7, UC10, UC12, UC13, UC14) utilizan Cross_Region_Client para enrutar las llamadas API a us-east-1. Rekognition, Comprehend, Bedrock y Athena están disponibles en ap-northeast-1.
-> 
-> Referencia: [Regiones compatibles con Textract](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Regiones compatibles con Comprehend Medical](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
+---
 
-### Phase 7 (UC15–UC17) Expansión Sector Público
+<details>
+<summary><strong>📚 Artículos y repositorios relacionados</strong></summary>
 
-| # | Directorio | Industria | Patrón | Servicios AI/ML | Estado ap-northeast-1 |
-|---|-----------|-----------|--------|-----------------|----------------------|
-| UC15 | `solutions/industry/defense-satellite/` | Defensa/Espacio | Análisis de imágenes satelitales (detección de objetos, detección de cambios, alertas) | Rekognition, SageMaker (opcional), Bedrock | ✅ Código + pruebas completos, AWS verificado |
-| UC16 | `solutions/industry/government-archives/` | Gobierno | Archivos públicos / FOIA (OCR, clasificación, redacción, seguimiento de plazo 20 días) | Textract ⚠️, Comprehend, Bedrock, OpenSearch (opcional) | ✅ Código + pruebas completos, AWS verificado |
-| UC17 | `solutions/industry/smart-city-geospatial/` | Ciudad Inteligente | Análisis geoespacial (normalización CRS, uso del suelo, mapeo de riesgos, informe de planificación) | Rekognition, SageMaker (opcional), Bedrock (Nova Lite) | ✅ Código + pruebas completos, AWS verificado |
-| UC18 | [`solutions/industry/telecom-network-analytics/`](solutions/industry/telecom-network-analytics/) | Telecom | Análisis CDR/logs de red |
-| UC19 | [`solutions/industry/adtech-creative-management/`](solutions/industry/adtech-creative-management/) | Publicidad | Gestión de creativos・cumplimiento de marca |
-| UC20 | [`solutions/industry/travel-document-processing/`](solutions/industry/travel-document-processing/) | Viajes | Procesamiento de reservas |
-| UC21 | [`solutions/industry/agri-food-traceability/`](solutions/industry/agri-food-traceability/) | Agricultura | Imágenes aéreas・trazabilidad |
-| UC22 | [`solutions/industry/transportation-maintenance/`](solutions/industry/transportation-maintenance/) | Transporte | Inspección de equipos・mantenimiento |
-| UC23 | [`solutions/industry/sustainability-esg-reporting/`](solutions/industry/sustainability-esg-reporting/) | Sostenibilidad | Extracción métricas ESG |
-| UC24 | [`solutions/industry/nonprofit-grant-management/`](solutions/industry/nonprofit-grant-management/) | ONG | Clasificación de subvenciones |
-| UC25 | [`solutions/industry/utilities-asset-inspection/`](solutions/industry/utilities-asset-inspection/) | Energía | Imágenes dron・SCADA |
-| UC26 | [`solutions/industry/real-estate-portfolio/`](solutions/industry/real-estate-portfolio/) | Inmobiliaria | Análisis de imágenes・contratos |
-| UC27 | [`solutions/industry/hr-document-screening/`](solutions/industry/hr-document-screening/) | RRHH | Screening de CV・evaluación |
-| UC28 | [`solutions/industry/chemical-sds-management/`](solutions/industry/chemical-sds-management/) | Química | Gestión SDS・notas de laboratorio |
-| UC29 | [`solutions/genai/kb-selfservice-curation/`](solutions/genai/kb-selfservice-curation/) | Todos los sectores | Curación de conocimiento IA self-service (Bedrock KB gestionado + arrastrar y soltar en Windows) |
-| UC30 | [`solutions/genai/quick-agentic-workspace/`](solutions/genai/quick-agentic-workspace/) | Todos los sectores | Espacio de trabajo agéntico Amazon Quick (Index/Sight/Flows + base de datos S3 AP) |
+### Serie de artículos
 
-> **Cumplimiento Sector Público**: UC15 apunta a DoD CC SRG / CSfC / FedRAMP High (migración a GovCloud), UC16 apunta a NARA / FOIA Sección 552 / Sección 508, UC17 apunta a Directiva INSPIRE / estándares OGC.
+| Tema | Japonés | Inglés |
+|---|---|---|
+| Introducción a los 42 patrones | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part1-introduction) | [dev.to](https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a) |
+| Arquitectura de producción | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part2-production-architecture) | — |
+| Línea base operativa | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part3-operational-baseline) | [dev.to](https://dev.to/aws-builders/production-rollout-vpc-endpoint-auto-detection-and-the-cdk-no-go-fsx-for-ontap-s3-access-3lni) |
+| FPolicy Event-Driven | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part4-event-driven-fpolicy) | [dev.to](https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6) |
+| 28 patrones por industria | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part5-field-ready-28-patterns) | [dev.to](https://dev.to/aws-builders/from-serverless-patterns-to-field-ready-reference-architecture-fsx-for-ontap-s3-access-points-dhj) |
+| Integración GenAI | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part6-genai-42-patterns) | — |
 
-### Phase 13: FlexCache × S3 AP × Serverless — Patrones de extensión
+### Repositorios relacionados
 
-| # | Directorio | Patrón | Descripción | Estado |
-|---|-----------|--------|-------------|--------|
-| FC1 | [`solutions/flexcache/anycast-dr/`](solutions/flexcache/anycast-dr/README.md) | FlexCache AnyCast / DR | Verificación de salud, decisión de enrutamiento, simulación de conmutación por error | ✅ Código + docs completos |
-| FC2 | [`solutions/flexcache/dynamic-render-workflow/`](solutions/flexcache/dynamic-render-workflow/README.md) | Dynamic FlexCache Render/EDA | Flujo de trabajo de creación/eliminación dinámica de FlexCache por trabajo | ✅ Código + pruebas completos |
-| FC3 | [`solutions/flexcache/rag-enterprise-files/`](solutions/flexcache/rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | RAG basado en permisos (vía S3 AP, sin copia de datos) | ✅ Código + pruebas completos |
-| FC4 | [`solutions/flexcache/automotive-cae/`](solutions/flexcache/automotive-cae/README.md) | Automotive CAE Analytics | Análisis automático de resultados de simulación CAE | ✅ Código + pruebas completos |
-| FC5 | [`solutions/flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/README.md) | Life Sciences Research | Análisis automático de datos de investigación | ✅ Plantilla completa |
-| FC6 | [`solutions/flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/README.md) | Gaming Build Pipeline | Control de calidad de assets de juegos y análisis de logs | ✅ Plantilla completa |
-| FC7 | [`solutions/flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | Actualización Dev/Test basada en FlexClone + CI/CD | ✅ Código + pruebas completos |
+| Repositorio | Resumen |
+|---|---|
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Chatbot RAG con reconocimiento de permisos (CDK + Next.js + ECS) |
+| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | Integración Lakehouse (Databricks, Snowflake, Athena, Glue, EMR) |
+| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | Migración VMware → EC2 + FSx for ONTAP |
 
-### Patrones de infraestructura / transversales
+</details>
 
-| Directorio | Contenido |
-|:---|:---|
-| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | **IaC Lab práctico** (pilas anidadas CloudFormation: VPC/AD/FSx/EC2/S3AP. Verificación individual de S3 AP + Tamperproof Snapshot + recuperación FlexClone) |
-| [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | Pipeline basado en eventos FPolicy |
-| [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | Patrón de entrega CDN/edge (neutral respecto al proveedor; CloudFront/terceros, [comparativa CDN](docs/cdn-comparison.en.md)) |
+<details>
+<summary><strong>🔧 Guía para desarrolladores (pruebas y contribución)</strong></summary>
 
-> **Importante**: Si se puede adjuntar un S3 Access Point a un volumen FlexCache depende de la versión de ONTAP y las especificaciones del servicio FSx for ONTAP. Verifique siempre en su entorno real durante el PoC.
-
-### Documentación (Arquitectura・Guía de demostración)
-
-Los diagramas de arquitectura detallados y las guías de demostración de cada UC están disponibles en la carpeta docs/ en 8 idiomas.
-
-| # | Caso de uso | Arquitectura | Guía de demo |
-|---|-------------|--------------|--------------|
-| UC1 | Legal | [📐 Architecture](solutions/industry/legal-compliance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/legal-compliance/docs/demo-guide.md) |
-| UC2 | Finanzas | [📐 Architecture](solutions/industry/financial-idp/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/financial-idp/docs/demo-guide.md) |
-| UC3 | Manufactura | [📐 Architecture](solutions/industry/manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/manufacturing-analytics/docs/demo-guide.md) |
-| UC4 | Medios | [📐 Architecture](solutions/industry/media-vfx/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/media-vfx/docs/demo-guide.md) |
-| UC5 | Salud | [📐 Architecture](solutions/industry/healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/healthcare-dicom/docs/demo-guide.md) |
-| UC6 | Semiconductores | [📐 Architecture](solutions/industry/semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/semiconductor-eda/docs/demo-guide.md) |
-| UC7 | Genómica | [📐 Architecture](solutions/industry/genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/genomics-pipeline/docs/demo-guide.md) |
-| UC8 | Energía | [📐 Architecture](solutions/industry/energy-seismic/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/energy-seismic/docs/demo-guide.md) |
-| UC9 | Conducción autónoma | [📐 Architecture](solutions/industry/autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/autonomous-driving/docs/demo-guide.md) |
-| UC10 | Construcción | [📐 Architecture](solutions/industry/construction-bim/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/construction-bim/docs/demo-guide.md) |
-| UC11 | Comercio | [📐 Architecture](solutions/industry/retail-catalog/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/retail-catalog/docs/demo-guide.md) |
-| UC12 | Logística | [📐 Architecture](solutions/industry/logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/logistics-ocr/docs/demo-guide.md) |
-| UC13 | Educación | [📐 Architecture](solutions/industry/education-research/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/education-research/docs/demo-guide.md) |
-| UC14 | Seguros | [📐 Architecture](solutions/industry/insurance-claims/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/insurance-claims/docs/demo-guide.md) |
-| UC15 | Defensa | [📐 Architecture](solutions/industry/defense-satellite/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/defense-satellite/docs/demo-guide.md) |
-| UC16 | Gobierno | [📐 Architecture](solutions/industry/government-archives/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/government-archives/docs/demo-guide.md) |
-| UC17 | Ciudad inteligente | [📐 Architecture](solutions/industry/smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/smart-city-geospatial/docs/demo-guide.md) |
-| UC18 | Telecom | [📐 Architecture](solutions/industry/telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/telecom-network-analytics/docs/demo-guide.md) |
-| UC19 | Publicidad | [📐 Architecture](solutions/industry/adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/adtech-creative-management/docs/demo-guide.md) |
-| UC20 | Viajes | [📐 Architecture](solutions/industry/travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/travel-document-processing/docs/demo-guide.md) |
-| UC21 | Agricultura | [📐 Architecture](solutions/industry/agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/agri-food-traceability/docs/demo-guide.md) |
-| UC22 | Transporte | [📐 Architecture](solutions/industry/transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/transportation-maintenance/docs/demo-guide.md) |
-| UC23 | Sostenibilidad | [📐 Architecture](solutions/industry/sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/sustainability-esg-reporting/docs/demo-guide.md) |
-| UC24 | ONG | [📐 Architecture](solutions/industry/nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/nonprofit-grant-management/docs/demo-guide.md) |
-| UC25 | Servicios públicos | [📐 Architecture](solutions/industry/utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/utilities-asset-inspection/docs/demo-guide.md) |
-| UC26 | Inmobiliaria | [📐 Architecture](solutions/industry/real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/real-estate-portfolio/docs/demo-guide.md) |
-| UC27 | RRHH | [📐 Architecture](solutions/industry/hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/hr-document-screening/docs/demo-guide.md) |
-| UC28 | Química | [📐 Architecture](solutions/industry/chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/chemical-sds-management/docs/demo-guide.md) |
-| UC29 | Todos los sectores (KB self-service) | [📐 Architecture](solutions/genai/kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/kb-selfservice-curation/docs/demo-guide.md) |
-| UC30 | Todos los sectores (Amazon Quick) | [📐 Architecture](solutions/genai/quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/quick-agentic-workspace/docs/demo-guide.md) |
-| — | Entrega edge de contenido (CDN) | [📐 Architecture](solutions/edge/content-delivery/docs/architecture.md) | [🎬 Demo Guide](solutions/edge/content-delivery/docs/demo-guide.md) |
-
-## Capturas de pantalla UI/UX (vistas para usuarios finales / personal / responsables)
-
-Las pantallas UI/UX que **los usuarios finales, el personal y los
-responsables realmente ven en su trabajo diario** se presentan en el README
-y demo-guide de cada UC. Las vistas técnicas como los gráficos de flujo de
-trabajo de Step Functions se consolidan en documentos de verificación por
-fase (`docs/verification-results-phase*.md`).
-
-Se aplica el mismo enfoque a todas las industrias, no solo al Sector
-Público (UC15/16/17):
-
-- **Vista de personal operativo**: verificación de salidas en la consola S3,
-  lectura de informes Bedrock, recepción de notificaciones SNS, búsqueda
-  en historiales DynamoDB, etc.
-- **Vistas técnicas excluidas**: eventos de pila CloudFormation, logs Lambda,
-  gráficos Step Functions (excepto para visualización de flujo de trabajo)
-  se mantienen en `verification-results-*.md`
-
-| UC | Sector | Número de capturas | Contenido principal | Ubicación |
-|----|--------|--------------------|---------------------|-----------|
-| UC1 | Legal y cumplimiento | 1 | Gráfico Step Functions (visualización de flujo para auditores de cumplimiento) | [`solutions/industry/legal-compliance/docs/demo-guide.es.md`](solutions/industry/legal-compliance/docs/demo-guide.es.md) |
-| UC2 | Financiero IDP | 1 | Gráfico Step Functions (visualización de flujo para personal de procesamiento de facturas) | [`solutions/industry/financial-idp/docs/demo-guide.es.md`](solutions/industry/financial-idp/docs/demo-guide.es.md) |
-| UC3 | Fabricación y análisis | 1 | Gráfico Step Functions (visualización de flujo para personal de control de calidad) | [`solutions/industry/manufacturing-analytics/docs/demo-guide.es.md`](solutions/industry/manufacturing-analytics/docs/demo-guide.es.md) |
-| UC4 | Medios y VFX | No capturado | (vistas de técnicos de renderizado, planificado para captura) | [`solutions/industry/media-vfx/docs/demo-guide.es.md`](solutions/industry/media-vfx/docs/demo-guide.es.md) |
-| UC5 | Sanidad DICOM | 1 | Gráfico Step Functions (visualización de flujo para gestores de historiales médicos) | [`solutions/industry/healthcare-dicom/docs/demo-guide.es.md`](solutions/industry/healthcare-dicom/docs/demo-guide.es.md) |
-| UC6 | Semiconductores EDA | 4 | FSx Volumes / bucket de salida S3 / resultados de consulta Athena / informe de revisión de diseño Bedrock | [`solutions/industry/semiconductor-eda/docs/demo-guide.es.md`](solutions/industry/semiconductor-eda/docs/demo-guide.es.md) |
-| UC7 | Pipeline genómica | 1 | Gráfico Step Functions (visualización de flujo para investigadores) | [`solutions/industry/genomics-pipeline/docs/demo-guide.es.md`](solutions/industry/genomics-pipeline/docs/demo-guide.es.md) |
-| UC8 | Energía y sísmica | 1 | Gráfico Step Functions (visualización de flujo para analistas geológicos) | [`solutions/industry/energy-seismic/docs/demo-guide.es.md`](solutions/industry/energy-seismic/docs/demo-guide.es.md) |
-| UC9 | Conducción autónoma | No capturado | (vistas de analistas ADAS, planificado para captura) | [`solutions/industry/autonomous-driving/docs/demo-guide.es.md`](solutions/industry/autonomous-driving/docs/demo-guide.es.md) |
-| UC10 | Construcción BIM | 1 | Gráfico Step Functions (visualización de flujo para gestores BIM / responsables de seguridad) | [`solutions/industry/construction-bim/docs/demo-guide.es.md`](solutions/industry/construction-bim/docs/demo-guide.es.md) |
-| UC11 | Catálogo minorista | 2 | Resultados de etiquetado de productos / bucket de salida S3 (para operadores de e-commerce) | [`solutions/industry/retail-catalog/docs/demo-guide.es.md`](solutions/industry/retail-catalog/docs/demo-guide.es.md) |
-| UC12 | Logística OCR | 1 | Gráfico Step Functions (visualización de flujo para operadores de entrega) | [`solutions/industry/logistics-ocr/docs/demo-guide.es.md`](solutions/industry/logistics-ocr/docs/demo-guide.es.md) |
-| UC13 | Educación e investigación | 1 | Gráfico Step Functions (visualización de flujo para personal administrativo de investigación) | [`solutions/industry/education-research/docs/demo-guide.es.md`](solutions/industry/education-research/docs/demo-guide.es.md) |
-| UC14 | Seguros | 2 | Informe de reclamaciones / bucket de salida S3 (para ajustadores de seguros) | [`solutions/industry/insurance-claims/docs/demo-guide.es.md`](solutions/industry/insurance-claims/docs/demo-guide.es.md) |
-| UC15 | Defensa e imágenes satelitales (Public Sector) | 4 | Subida S3 / salida / email SNS / artefactos JSON (para analistas de imágenes satelitales) | [`solutions/industry/defense-satellite/README.md`](solutions/industry/defense-satellite/README.md) |
-| UC16 | Gobierno FOIA (Public Sector) | 5 | Subida / vista previa redactada / metadatos / email recordatorio FOIA / historial de retención DynamoDB (para responsables de archivos públicos) | [`solutions/industry/government-archives/README.md`](solutions/industry/government-archives/README.md) |
-| UC17 | Smart City (Public Sector) | 5 | Subida GIS / informe Bedrock / mapa de riesgos / distribución de uso del suelo / historial temporal (para urbanistas) | [`solutions/industry/smart-city-geospatial/README.md`](solutions/industry/smart-city-geospatial/README.md) |
-
-**Capturas de pantalla comunes** (vistas genéricas intersectoriales, en `docs/screenshots/masked/common/`):
-- `fsx-s3ap-detail.png` — vista de detalle del S3 Access Point (FSx for ONTAP)
-- `s3ap-list.png` — lista de S3 Access Points
-
-**Vistas por fase** (`docs/screenshots/masked/phase{1..7}/`):
-- Phase 1-6b: vistas técnicas para construcción de infraestructura / adición de características
-- Phase 7: vistas comunes FSx S3 Access Points para UC15/16/17
-
-Tabla de mapeo sectorial (8 idiomas): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
-Flujo de adición: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
-
-> Todos los documentos están disponibles en 8 idiomas.
-## Restricciones de especificación de AWS y soluciones alternativas
-
-### Selección de destino de salida (parámetro OutputDestination)
-
-La plantilla CloudFormation de cada UC expone un parámetro `OutputDestination`
-para elegir dónde se escriben los artefactos de IA/ML (implementado en UC9/10/11/12/14;
-otros UC están cubiertos por Pattern A o Pattern C — ver la tabla de Patterns abajo):
-
-- **`STANDARD_S3`** (predeterminado): Escribe en un nuevo bucket S3 (comportamiento existente)
-- **`FSXN_S3AP`**: Escribe de vuelta al mismo volumen FSx for ONTAP a través del
-  S3 Access Point (el **patrón "no data movement"**, permite a usuarios SMB/NFS
-  ver artefactos de IA dentro de la estructura de directorios existente)
+### Pruebas
 
 ```bash
-# Despliegue en modo FSXN_S3AP
-aws cloudformation deploy \
-  --template-file solutions/industry/retail-catalog/template-deploy.yaml \
-  --stack-name fsxn-retail-catalog-demo \
-  --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
-    ... (otros parámetros requeridos)
+pytest shared/tests/ -v                    # Unit tests
+ruff check . && ruff format --check .      # Python linter
+cfn-lint solutions/industry/*/template.yaml # CloudFormation validation
 ```
 
-### Restricciones de especificación de AWS de FSx for ONTAP S3 Access Points
+### Stack tecnológico
 
-FSx for ONTAP S3 Access Points solo admiten un subconjunto de la API de S3
-(ver [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)).
-Las siguientes restricciones obligan a algunas funciones a usar buckets S3 estándar:
+Python 3.12 | CloudFormation + SAM | Lambda (ARM64) | Step Functions | EventBridge | Bedrock / Textract / Comprehend / Rekognition | Secrets Manager | Athena + Glue
 
-| Restricción de especificación AWS | Impacto | Solución alternativa del proyecto | Solicitud de mejora (FR) |
-|---|---|---|---|
-| No se puede especificar S3AP como ubicación de resultado de consulta Athena<br>(Athena no puede write back a S3AP) | Los resultados de Athena requieren S3 estándar para UC6/7/8/13 | Cada plantilla crea un bucket S3 dedicado para resultados de Athena | [FR-1](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-1) |
-| S3AP no emite S3 Event Notifications / eventos EventBridge | Flujos de trabajo basados en eventos imposibles | Patrón de polling EventBridge Scheduler + Discovery Lambda | [FR-2](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-2) |
-| S3AP no admite políticas Object Lifecycle | Retención de 7 años (UC1 legal), retención permanente (UC16 archivos), etc. difíciles de automatizar | Sweeper Lambda personalizado para eliminación periódica (no implementado, backlog) | [FR-3](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-3) |
-| S3AP no admite Object Versioning / Presigned URLs | Gestión de versiones de documentos, compartición limitada en tiempo para auditores externos imposibles | DynamoDB para gestión de versiones, copia S3 estándar + Presign | [FR-4](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-4) |
-| Límite de tamaño de carga de 5 GB | Binarios grandes (video 4K, GeoTIFF sin comprimir, etc.) | `shared.s3ap_helper.multipart_upload()` admite hasta 5 GB | (especificación AWS aceptada) |
-| Solo SSE-FSX (no SSE-KMS) | No se puede cifrar con claves KMS personalizadas | Cifrado mediante configuración KMS a nivel de volumen FSx | (especificación AWS aceptada) |
+### Contribuir
 
-Los detalles e impacto empresarial de las 4 solicitudes de mejora (FR-1 a FR-4)
-están documentados en [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](docs/aws-feature-requests/fsxn-s3ap-improvements.md).
+Issues y Pull Requests son bienvenidos. Consulte [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Los 3 patrones de salida (Pattern A/B/C) se comparan en
-[`docs/output-destination-patterns.md`](docs/output-destination-patterns.md).
+</details>
 
-### Restricciones de destino de salida por UC
-
-Los 28 UC se dividen en 3 patrones de salida:
-
-- **🟢 UC1-5** (Pattern A, actualizado 2026-05-11): `S3AccessPointOutputAlias` (legacy, opcional) + nuevos parámetros `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` admitidos. Por defecto `OutputDestination=FSXN_S3AP` preserva el comportamiento existente
-- **🟢🆕 UC9/10/11/12/14** (Pattern B, implementado el 2026-05-10): mecanismo de conmutación `OutputDestination` (STANDARD_S3 ⇄ FSXN_S3AP). Por defecto `OutputDestination=STANDARD_S3`. UC11/14 verificados en AWS, UC9/10/12 solo pruebas unitarias
-- **🟡 UC6/7/8/13**: actualmente solo `OUTPUT_BUCKET` (S3 estándar fijo). Los resultados de Athena requieren S3 estándar por especificación, por lo que la adopción de `OutputDestination` es parcial
-- **🟢 UC15-17**: Pattern A (write back a FSx for ONTAP S3 AP, parte de Phase 7)
-
-| UC | Entrada | Salida | Mecanismo de selección | Notas |
-|----|------|------|----------|------|
-| UC1 legal-compliance | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Metadatos de contratos / registros de auditoría |
-| UC2 financial-idp | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Resultados OCR de facturas |
-| UC3 manufacturing-analytics | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Resultados de inspección / detección de anomalías |
-| UC4 media-vfx | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Metadatos de renderizado |
-| UC5 healthcare-dicom | S3AP | S3AP (existente) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | Metadatos DICOM / anonimización |
-| UC6 semiconductor-eda | S3AP | **Seleccionable (Híbrido)** | ✅ `OutputDestination` | Informes Bedrock/metadatos → conmutable, resultados Athena DRC → S3 estándar (especificación AWS) |
-| UC7 genomics-pipeline | S3AP | **Seleccionable (Híbrido)** | ✅ `OutputDestination` | QC/Variant/Summary → conmutable, resultados Athena → S3 estándar (especificación AWS) |
-| UC8 energy-seismic | S3AP | **Seleccionable (Híbrido)** | ✅ `OutputDestination` | Metadatos/anomalías/compliance → conmutable, Athena → S3 estándar |
-| UC9 autonomous-driving | S3AP | **Seleccionable** 🆕 | ✅ `OutputDestination` | Resultados de análisis ADAS |
-| UC10 construction-bim | S3AP | **Seleccionable** 🆕 | ✅ `OutputDestination` | Metadatos BIM / informes de cumplimiento de seguridad |
-| **UC11 retail-catalog** | S3AP | **Seleccionable** | ✅ `OutputDestination` | Verificado en AWS 2026-05-10 |
-| UC12 logistics-ocr | S3AP | **Seleccionable** 🆕 | ✅ `OutputDestination` | OCR de guías de entrega |
-| UC13 education-research | S3AP | **Seleccionable** | ✅ `OutputDestination` | OCR/clasificación/análisis de citas/metadatos → todo conmutable |
-| **UC14 insurance-claims** | S3AP | **Seleccionable** | ✅ `OutputDestination` | Verificado en AWS 2026-05-10 |
-| UC15 defense-satellite | S3AP | S3AP | patrón existente | Detección de objetos / detección de cambios |
-| UC16 government-archives | S3AP | S3AP | patrón existente | Redacción FOIA / metadatos |
-| UC17 smart-city-geospatial | S3AP | S3AP | patrón existente | Análisis SIG / mapas de riesgo |
-
-**Estado actual y próximos pasos**:
-
-El parámetro `OutputDestination` está disponible en los 28 UC + SAP. Solo UC6/7/8: la salida de resultados Athena es fija en S3 estándar (especificación AWS), pero todas las demás salidas (informes Bedrock, metadatos, etc.) son conmutables a `FSXN_S3AP`.
-
-Pendiente:
-- Verificación de despliegue AWS para UC9/10/12/15/16/17 (pruebas unitarias completadas, UC11/14 verificados)
-
-Esta colección de patrones está verificada en **ap-northeast-1 (Tokio)**, pero puede desplegarse en cualquier región de AWS donde los servicios requeridos estén disponibles.
-
-### Lista de verificación previa al despliegue
-
-1. Verificar la disponibilidad de servicios en la [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/)
-2. Verificar los servicios de Phase 3:
-   - **Kinesis Data Streams**: Disponible en casi todas las regiones (precios de shards varían por región)
-   - **SageMaker Batch Transform**: La disponibilidad de tipos de instancia varía por región
-   - **X-Ray / CloudWatch EMF**: Disponible en casi todas las regiones
-3. Confirmar las regiones objetivo para servicios Cross-Region (Textract, Comprehend Medical)
-
-Consulte la [Matriz de compatibilidad regional](docs/region-compatibility.md) para más detalles.
-
-### Resumen de funcionalidades Phase 3
-
-| Funcionalidad | Descripción | UC objetivo |
-|---------------|-------------|-------------|
-| Streaming Kinesis | Detección y procesamiento de cambios de archivos en casi tiempo real | UC11 (opt-in) |
-| SageMaker Batch Transform | Inferencia de segmentación de nube de puntos (Callback Pattern) | UC9 (opt-in) |
-| Trazado X-Ray | Trazado distribuido para visualización de rutas de ejecución | Todos los 14 UC |
-| CloudWatch EMF | Salida de métricas estructuradas (FilesProcessed, Duration, Errors) | Todos los 14 UC |
-| Panel de observabilidad | Visualización centralizada de métricas de todos los UC | Compartido |
-| Automatización de alertas | Notificaciones SNS basadas en umbrales de tasa de error | Compartido |
-
-Consulte la [Guía de selección Streaming vs Polling](docs/streaming-vs-polling-guide-es.md) para más detalles.
-
-### Resumen de funcionalidades Phase 4
-
-| Funcionalidad | Descripción | UC objetivo |
-|---------------|-------------|-------------|
-| DynamoDB Task Token Store | Gestión segura de Tokens para SageMaker Callback Pattern (enfoque Correlation ID) | UC9 (opt-in) |
-| Real-time Inference Endpoint | Inferencia de baja latencia a través de SageMaker Real-time Endpoint | UC9 (opt-in) |
-| A/B Testing | Comparación de versiones de modelos mediante Multi-Variant Endpoint | UC9 (opt-in) |
-| Model Registry | Gestión del ciclo de vida de modelos mediante SageMaker Model Registry | UC9 (opt-in) |
-| Multi-Account Deployment | Soporte multi-cuenta mediante StackSets / Cross-Account IAM / políticas S3 AP | Todos los UC (plantillas proporcionadas) |
-| Event-Driven Prototype | Pipeline S3 Event Notifications → EventBridge → Step Functions | Prototipo |
-
-Todas las funcionalidades de Phase 4 están controladas por CloudFormation Conditions (opt-in). No se generan costos adicionales a menos que se activen explícitamente.
-
-Consulte los siguientes documentos para más detalles:
-- [Guía de comparación de costos de inferencia](docs/inference-cost-comparison.md)
-- [Guía de Model Registry](docs/model-registry-guide.md)
-- [Resultados PoC Multi-Account](docs/multi-account/poc-results.md)
-- [Diseño de arquitectura Event-Driven](docs/event-driven/architecture-design.md)
-
-### Resumen de funcionalidades Phase 5
-
-| Funcionalidad | Descripción | UC objetivo |
-|---------------|-------------|-------------|
-| SageMaker Serverless Inference | 3ª opción de enrutamiento (selección de 3 vías: Batch / Real-time / Serverless) | UC9 (opt-in) |
-| Scheduled Scaling | Auto-escalado de SageMaker Endpoints basado en horario laboral | UC9 (opt-in) |
-| CloudWatch Billing Alarms | Alertas de costos de 3 niveles: Warning / Critical / Emergency | Común (opt-in) |
-| Auto-Stop Lambda | Detección automática y reducción de SageMaker Endpoints inactivos | Común (opt-in) |
-| CI/CD Pipeline | Flujo de trabajo GitHub Actions (cfn-lint → pytest → cfn-guard → Bandit → deploy) | Todos los UC |
-| Multi-Region | DynamoDB Global Tables + conmutación por error CrossRegionClient | Común (opt-in) |
-| Disaster Recovery | Definiciones DR Tier 1/2/3, runbook de conmutación por error | Común (docs de diseño) |
-
-Todas las funcionalidades de Phase 5 también están controladas por CloudFormation Conditions (opt-in). No se generan costos adicionales a menos que se activen explícitamente.
-
-Consulte los siguientes documentos para más detalles:
-- [Características de arranque en frío de Serverless Inference](docs/serverless-inference-cold-start.md)
-- [Guía de mejores prácticas de optimización de costos](docs/cost-optimization-guide.md)
-- [Guía CI/CD](docs/ci-cd-guide.md)
-- [Diseño Multi-Region Step Functions](docs/multi-region/step-functions-design.md)
-- [Guía de Disaster Recovery](docs/multi-region/disaster-recovery.md)
-
-### Capturas de pantalla
-
-> Las siguientes son ejemplos capturados en un entorno de verificación. La información específica del entorno (IDs de cuenta, etc.) ha sido enmascarada.
-
-#### Verificación de despliegue y ejecución de Step Functions para los 5 UCs
-
-![Step Functions todos los flujos de trabajo](docs/screenshots/masked/phase1/phase1-step-functions-all-succeeded.png)
-
-> UC1 y UC3 han sido verificados E2E completamente, mientras que UC2, UC4 y UC5 han sido validados mediante despliegue de CloudFormation y verificación operativa de componentes principales. Al usar servicios AI/ML con restricciones regionales (Textract, Comprehend Medical), se requiere invocación entre regiones a regiones compatibles. Verifique los requisitos de residencia de datos y cumplimiento.
-
-#### Phase 2: Despliegue CloudFormation y ejecución Step Functions exitosos para los 9 UCs
-
-![Pilas CloudFormation Phase 2](docs/screenshots/masked/phase2/phase2-cloudformation-phase2-stacks.png)
-
-> Las 9 pilas (UC6–UC14) alcanzaron CREATE_COMPLETE / UPDATE_COMPLETE. Total de 205 recursos.
-
-![Flujos de trabajo Step Functions Phase 2](docs/screenshots/masked/phase2/phase2-step-functions-phase2-all-workflows.png)
-
-> Los 9 flujos de trabajo activos. Todos SUCCEEDED confirmados tras ejecución E2E con datos de prueba.
-
-![Vista de gráfico de ejecución UC6](docs/screenshots/masked/phase2/phase2-step-functions-uc6-execution-graph.png)
-
-> Detalle de ejecución Step Functions UC6 (Semiconductores EDA). Todos los estados exitosos: Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration.
-
-![Programaciones EventBridge Phase 2](docs/screenshots/masked/phase2/phase2-eventbridge-phase2-schedules.png)
-
-> Las 9 programaciones EventBridge Scheduler (rate(1 hour)) están habilitadas.
-
-#### Pantallas de servicios AI/ML (Phase 1)
-
-##### Amazon Bedrock — Catálogo de modelos
-
-![Catálogo de modelos Bedrock](docs/screenshots/masked/phase1/phase1-bedrock-model-catalog.png)
-
-##### Amazon Rekognition — Detección de etiquetas
-
-![Detección de etiquetas Rekognition](docs/screenshots/masked/phase1/phase1-rekognition-label-detection.png)
-
-##### Amazon Comprehend — Detección de entidades
-
-![Consola Comprehend](docs/screenshots/masked/phase1/phase1-comprehend-console.png)
-
-#### Pantallas de servicios AI/ML (Phase 2)
-
-##### Amazon Bedrock — Catálogo de modelos (UC6: Generación de informes)
-
-![Catálogo de modelos Bedrock Phase 2](docs/screenshots/masked/phase2/phase2-bedrock-model-catalog.png)
-
-> Utilizado para la generación de informes DRC con el modelo Nova Lite en UC6 (Semiconductores EDA).
-
-##### Amazon Athena — Historial de ejecución de consultas (UC6: Agregación de metadatos)
-
-![Historial de consultas Athena Phase 2](docs/screenshots/masked/phase2/phase2-athena-query-history.png)
-
-> Consultas Athena (cell_count, bbox, naming, invalid) ejecutadas en el flujo de trabajo Step Functions UC6.
-
-##### Amazon Rekognition — Detección de etiquetas (UC11: Etiquetado de imágenes de productos)
-
-![Detección de etiquetas Rekognition Phase 2](docs/screenshots/masked/phase2/phase2-rekognition-label-detection.png)
-
-> 15 etiquetas detectadas (Lighting 98,5%, Light 96,0%, Purple 92,0%, etc.) de imágenes de productos en UC11 (Catálogo minorista).
-
-##### Amazon Textract — OCR de documentos (UC12: Lectura de albaranes de entrega)
-
-![Análisis de documentos Textract Phase 2](docs/screenshots/masked/phase2/phase2-textract-analyze-document.png)
-
-> Extracción de texto de PDF de albaranes de entrega en UC12 (OCR logístico). Ejecutado vía Cross-Region (us-east-1).
-
-##### Amazon Comprehend Medical — Detección de entidades médicas (UC7: Análisis genómico)
-
-![Análisis en tiempo real Comprehend Medical Phase 2](docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis.png)
-
-> Nombres de genes (GC) extraídos de resultados de análisis VCF usando la API DetectEntitiesV2 en UC7 (Pipeline genómico). Ejecutado vía Cross-Region (us-east-1).
-
-##### Funciones Lambda (Phase 2)
-
-![Funciones Lambda Phase 2](docs/screenshots/masked/phase2/phase2-lambda-phase2-functions.png)
-
-> Todas las funciones Lambda Phase 2 (Discovery, Processing, Report, etc.) desplegadas exitosamente.
-
-#### Phase 3: Procesamiento en tiempo real, integración SageMaker y observabilidad
-
-##### Ejecución E2E de Step Functions exitosa (UC11)
-
-![Step Functions Phase 3 Éxito](docs/screenshots/masked/phase3/phase3-step-functions-uc11-succeeded.png)
-
-> Ejecución E2E del flujo de trabajo Step Functions UC11 exitosa. Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck todos los estados exitosos (8,974s). Generación de trazas X-Ray confirmada.
-
-##### Kinesis Data Streams (UC11 Modo streaming)
-
-![Kinesis Data Stream](docs/screenshots/masked/phase3/phase3-kinesis-stream-active.png)
-
-> UC11 Kinesis Data Stream (1 shard, modo aprovisionado) en estado activo. Métricas de monitorización mostradas.
-
-##### Tablas DynamoDB de gestión de estado (UC11 Detección de cambios)
-
-![DynamoDB State Tables](docs/screenshots/masked/phase3/phase3-dynamodb-state-tables.png)
-
-> Tablas DynamoDB de detección de cambios UC11. streaming-state (gestión de estado) y streaming-dead-letter (DLQ).
-
-##### Stack de observabilidad
-
-![X-Ray Traces](docs/screenshots/masked/phase3/phase3-xray-traces.png)
-
-> Trazas X-Ray. Trazas de ejecución del Lambda Stream Producer a intervalos de 1 minuto (todos OK, latencia 7-11ms).
-
-![CloudWatch Dashboard](docs/screenshots/masked/phase3/phase3-cloudwatch-dashboard.png)
-
-> Panel centralizado de CloudWatch monitorizando los 14 casos de uso. Éxitos/fallos de Step Functions, tasas de error Lambda, métricas personalizadas EMF.
-
-![CloudWatch Alarms](docs/screenshots/masked/phase3/phase3-cloudwatch-alarms.png)
-
-> Automatización de alertas Phase 3. Alarmas basadas en umbrales para fallos de Step Functions, tasas de error Lambda y Kinesis Iterator Age (todos en estado OK).
-
-##### Verificación de S3 Access Point
-
-![S3 AP Available](docs/screenshots/masked/phase3/phase3-s3ap-available.png)
-
-> FSx for ONTAP S3 Access Point (fsxn-eda-s3ap) en estado Available. Confirmado a través de la pestaña S3 del volumen en la consola FSx.
-
-#### Phase 4: Integración SageMaker producción, inferencia en tiempo real, multi-cuenta, basado en eventos
-
-##### DynamoDB Task Token Store
-
-![DynamoDB Task Token Store](docs/screenshots/masked/phase4/phase4-dynamodb-task-token-store.png)
-
-> Tabla DynamoDB Task Token Store. Almacena Task Tokens con Correlation ID hex de 8 caracteres como clave de partición. TTL habilitado, modo PAY_PER_REQUEST, GSI (TransformJobNameIndex) configurado.
-
-##### SageMaker Real-time Endpoint (Multi-Variant A/B Testing)
-
-![SageMaker Endpoint](docs/screenshots/masked/phase4/phase4-sagemaker-realtime-endpoint.png)
-
-> SageMaker Real-time Inference Endpoint. Configuración Multi-Variant (model-v1: 70%, model-v2: 30%) para pruebas A/B. Auto Scaling configurado.
-
-##### Flujo de trabajo Step Functions (Enrutamiento Realtime/Batch)
-
-![Step Functions Phase 4](docs/screenshots/masked/phase4/phase4-step-functions-routing.png)
-
-> Flujo de trabajo Step Functions UC9. Choice State enruta al Real-time Endpoint cuando file_count < threshold, de lo contrario a Batch Transform.
-
-##### Event-Driven Prototype — Regla EventBridge
-
-![EventBridge Rule](docs/screenshots/masked/phase4/phase4-eventbridge-event-rule.png)
-
-> Regla EventBridge del prototipo Event-Driven. Filtra eventos S3 ObjectCreated por suffix (.jpg, .png) + prefix (products/) y activa Step Functions.
-
-##### Event-Driven Prototype — Ejecución de Step Functions exitosa
-
-![Event-Driven Step Functions](docs/screenshots/masked/phase4/phase4-event-driven-sfn-succeeded.png)
-
-> Ejecución de Step Functions del prototipo Event-Driven exitosa. S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter todos los estados exitosos.
-
-##### Stacks CloudFormation Phase 4
-
-![CloudFormation Phase 4](docs/screenshots/masked/phase4/phase4-cloudformation-stacks.png)
-
-> Stacks CloudFormation Phase 4. Extensión UC9 (Task Token Store + Real-time Endpoint) y prototipo Event-Driven CREATE_COMPLETE.
-
-#### Phase 5: Serverless Inference, Optimización de costos y Multi-Region
-
-##### SageMaker Serverless Inference Endpoint
-
-![SageMaker Serverless Endpoint](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-settings.png)
-
-> Configuración del SageMaker Serverless Inference Endpoint. Memoria 4096 MB, concurrencia máxima 5.
-
-##### CloudWatch Billing Alarms (Alertas de costos de 3 niveles)
-
-![CloudWatch Billing Alarms](docs/screenshots/masked/phase5/phase5-cloudwatch-billing-alarms.png)
-
-> Alarmas de facturación Warning / Critical / Emergency. Notificación SNS al superar umbrales.
-
-##### DynamoDB Global Table (Multi-Region)
-
-![DynamoDB Global Table](docs/screenshots/masked/phase5/phase5-dynamodb-global-table.png)
-
-> Configuración de DynamoDB Global Table. Replicación Multi-Region habilitada.
-
-![DynamoDB Global Replicas](docs/screenshots/masked/phase5/phase5-dynamodb-global-replicas.png)
-
-> Configuración de réplicas Global Table. Sincronización de datos entre regiones.
-
-## Stack tecnológico
-
-| Capa | Tecnología |
-|------|-----------|
-| Lenguaje | Python 3.12 |
-| IaC | CloudFormation (YAML) + SAM Transform |
-| Cómputo | AWS Lambda (Producción: dentro del VPC / PoC: fuera del VPC posible) |
-| Orquestación | AWS Step Functions |
-| Programación | Amazon EventBridge Scheduler |
-| Almacenamiento | FSx for ONTAP (S3 AP) + Bucket S3 de salida (SSE-KMS) |
-| Notificación | Amazon SNS |
-| Analítica | Amazon Athena + AWS Glue Data Catalog |
-| AI/ML | Amazon Bedrock, Textract, Comprehend, Rekognition |
-| Seguridad | Secrets Manager, KMS, IAM mínimo privilegio |
-| Pruebas | pytest + Hypothesis (PBT), moto, cfn-lint, ruff |
-
-## Requisitos previos
-
-- **Cuenta AWS**: Una cuenta AWS válida con permisos IAM apropiados
-- **FSx for ONTAP**: Un sistema de archivos desplegado
-  - Versión ONTAP: Una versión que soporte S3 Access Points (verificado con 9.17.1P4D3)
-  - Un volumen FSx for ONTAP con un S3 Access Point asociado (network origin según caso de uso; `internet` recomendado para Athena / Glue)
-- **Red**: VPC, subredes privadas, tablas de rutas
-- **Secrets Manager**: Pre-registrar credenciales ONTAP REST API (formato: `{"username":"fsxadmin","password":"..."}`)
-- **Bucket S3**: Pre-crear un bucket para paquetes de despliegue Lambda (ej.: `fsxn-s3ap-deploy-<account-id>`)
-- **Python 3.12+**: Para desarrollo y pruebas locales
-- **AWS CLI v2**: Para despliegue y gestión
-
-### Comandos de preparación
-
-```bash
-# 1. Crear bucket S3 de despliegue
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-aws s3 mb "s3://fsxn-s3ap-deploy-${ACCOUNT_ID}" --region $AWS_DEFAULT_REGION
-
-# 2. Registrar credenciales ONTAP en Secrets Manager
-aws secretsmanager create-secret \
-  --name fsxn-ontap-credentials \
-  --secret-string '{"username":"fsxadmin","password":"<your-ontap-password>"}' \
-  --region $AWS_DEFAULT_REGION
-
-# 3. Verificar S3 Gateway Endpoint existente (para evitar duplicación)
-aws ec2 describe-vpc-endpoints \
-  --filters "Name=vpc-id,Values=<your-vpc-id>" "Name=service-name,Values=com.amazonaws.${AWS_DEFAULT_REGION}.s3" \
-  --query 'VpcEndpoints[*].{Id:VpcEndpointId,State:State}' \
-  --output table
-# → Si existen resultados, desplegar con EnableS3GatewayEndpoint=false
-```
-
-### Guía de selección de ubicación de Lambda
-
-| Propósito | Ubicación recomendada | Razón |
-|-----------|----------------------|-------|
-| Demo / PoC | Lambda fuera del VPC | No requiere VPC Endpoint, bajo costo, configuración simple |
-| Producción / requisitos de red privada | Lambda dentro del VPC | Secrets Manager / FSx / SNS accesibles vía PrivateLink |
-| UCs que usan Athena / Glue | S3 AP network origin: `internet` | Se requiere acceso desde servicios gestionados de AWS |
-
-### Notas sobre el acceso a S3 AP desde Lambda dentro del VPC
-
-> **Hallazgos importantes confirmados durante la verificación de despliegue de UC1 (2026-05-03)**
-
-- **La asociación de tabla de rutas del S3 Gateway Endpoint es obligatoria**: Si no especifica los IDs de tabla de rutas de las subredes privadas en `RouteTableIds`, el acceso desde Lambda dentro del VPC a S3 / S3 AP expirará
-- **Verificar la resolución DNS del VPC**: Asegúrese de que `enableDnsSupport` / `enableDnsHostnames` estén habilitados en el VPC
-- **Se recomienda ejecutar Lambda fuera del VPC para entornos PoC / demo**: Si el network origin del S3 AP es `internet`, Lambda fuera del VPC puede acceder sin problemas. No se necesita VPC Endpoint, reduciendo costos y simplificando la configuración
-- Consulte la [Guía de solución de problemas](docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト) para más detalles
-
-### Cuotas de servicios AWS requeridas
-
-| Servicio | Cuota | Valor recomendado |
-|----------|-------|-------------------|
-| Ejecuciones simultáneas de Lambda | ConcurrentExecutions | 100 o más |
-| Ejecuciones de Step Functions | StartExecution/seg | Predeterminado (25) |
-| S3 Access Point | APs por cuenta | Predeterminado (10,000) |
-
-## Inicio rápido
-
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
-cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
-```
-
-### 2. Instalar dependencias
-
-```bash
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-```
-
-### 3. Ejecutar pruebas
-
-```bash
-# Pruebas unitarias (con cobertura)
-pytest shared/tests/ --cov=shared --cov-report=term-missing -v
-
-# Pruebas basadas en propiedades
-pytest shared/tests/test_properties.py -v
-
-# Linter
-ruff check .
-ruff format --check .
-```
-
-### 4. Desplegar un caso de uso (ejemplo: UC1 Legal y cumplimiento)
-
-> ⚠️ **Notas importantes sobre el impacto en entornos existentes**
->
-> Verifique lo siguiente antes del despliegue:
->
-> | Parámetro | Impacto en el entorno existente | Método de verificación |
-> |-----------|-------------------------------|----------------------|
-> | `VpcId` / `PrivateSubnetIds` | Se crearán ENIs de Lambda en el VPC/subredes especificados | `aws ec2 describe-network-interfaces --filters Name=group-id,Values=<sg-id>` |
-> | `EnableS3GatewayEndpoint=true` | Se agregará un S3 Gateway Endpoint al VPC. **Establecer en `false` si ya existe un S3 Gateway Endpoint en el mismo VPC** | `aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=<vpc-id>` |
-> | `PrivateRouteTableIds` | El S3 Gateway Endpoint se asociará con las tablas de rutas. Sin impacto en el enrutamiento existente | `aws ec2 describe-route-tables --route-table-ids <rtb-id>` |
-> | `ScheduleExpression` | EventBridge Scheduler ejecutará Step Functions periódicamente. **La programación puede deshabilitarse después del despliegue para evitar ejecuciones innecesarias** | Consola AWS → EventBridge → Schedules |
-> | `NotificationEmail` | Se enviará un correo de confirmación de suscripción SNS | Verificar bandeja de entrada |
->
-> **Notas sobre la eliminación del stack**:
-> - La eliminación fallará si quedan objetos en el bucket S3 (Athena Results). Vacíelo primero con `aws s3 rm s3://<bucket> --recursive`
-> - Para buckets con versionado habilitado, todas las versiones deben eliminarse con `aws s3api delete-objects`
-> - La eliminación de VPC Endpoints puede tardar de 5 a 15 minutos
-> - La liberación de ENIs de Lambda puede tardar, causando que la eliminación del Security Group falle. Espere unos minutos y reintente
-
-```bash
-# Establecer la región (gestionada mediante variable de entorno)
-export AWS_DEFAULT_REGION=us-east-1  # Se recomienda región que soporte todos los servicios
-
-# Empaquetado de Lambda
-./scripts/deploy_uc.sh legal-compliance package
-
-# Despliegue de CloudFormation
-aws cloudformation create-stack \
-  --stack-name fsxn-legal-compliance \
-  --template-body file://solutions/industry/legal-compliance/template-deploy.yaml \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameters \
-    ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
-    ParameterKey=S3AccessPointAlias,ParameterValue=<your-volume-ext-s3alias> \
-    ParameterKey=S3AccessPointName,ParameterValue=<your-s3ap-name> \
-    ParameterKey=S3AccessPointOutputAlias,ParameterValue=<your-output-volume-ext-s3alias> \
-    ParameterKey=OntapSecretName,ParameterValue=<your-ontap-secret-name> \
-    ParameterKey=OntapManagementIp,ParameterValue=<your-ontap-management-ip> \
-    ParameterKey=SvmUuid,ParameterValue=<your-svm-uuid> \
-    ParameterKey=VolumeUuid,ParameterValue=<your-volume-uuid> \
-    ParameterKey=VpcId,ParameterValue=<your-vpc-id> \
-    'ParameterKey=PrivateSubnetIds,ParameterValue=<subnet-1>,<subnet-2>' \
-    'ParameterKey=PrivateRouteTableIds,ParameterValue=<rtb-1>,<rtb-2>' \
-    ParameterKey=NotificationEmail,ParameterValue=<your-email@example.com> \
-    ParameterKey=EnableVpcEndpoints,ParameterValue=true \
-    ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true
-```
-
-> **Nota**: Reemplace los marcadores de posición `<...>` con los valores reales de su entorno.
->
-> **Sobre `EnableVpcEndpoints`**: El inicio rápido especifica `true` para asegurar la conectividad desde Lambda dentro del VPC hacia Secrets Manager / CloudWatch / SNS. Si tiene Interface VPC Endpoints o un NAT Gateway existentes, puede especificar `false` para reducir costos.
-> 
-> **Selección de región**: Se recomienda `us-east-1` o `us-west-2` donde todos los servicios AI/ML están disponibles. Textract y Comprehend Medical no están disponibles en `ap-northeast-1` (se puede usar invocación entre regiones como solución alternativa). Consulte la [Matriz de compatibilidad regional](docs/region-compatibility.md) para más detalles.
->
-> **Conectividad VPC**: Discovery Lambda se coloca dentro del VPC. El acceso a la API REST de ONTAP y al S3 Access Point requiere NAT Gateway o Interface VPC Endpoints. Configure `EnableVpcEndpoints=true` o use un NAT Gateway existente.
-
-### Entorno verificado
-
-| Elemento | Valor |
-|----------|-------|
-| Región AWS | ap-northeast-1 (Tokio) |
-| Versión FSx for ONTAP | ONTAP 9.17.1P4D3 |
-| Configuración FSx | SINGLE_AZ_1 |
-| Python | 3.12 |
-| Método de despliegue | CloudFormation (usando SAM Transform) |
-
-Se ha completado el despliegue del stack de CloudFormation y la verificación operativa del Discovery Lambda para los 5 casos de uso.
-Consulte los [Resultados de verificación](docs/verification-results.md) para más detalles.
-
-## Resumen de estructura de costos
-
-### Estimaciones de costos por entorno
-
-| Entorno | Costo fijo/mes | Costo variable/mes | Total/mes |
-|---------|---------------|--------------------:|-----------|
-| Demo/PoC | ~$0 | ~$1–$3 | **~$1–$3** |
-| Producción (1 UC) | ~$29 | ~$1–$3 | **~$30–$32** |
-| Producción (5 UCs) | ~$29 | ~$5–$15 | **~$34–$44** |
-
-### Clasificación de costos
-
-- **Basado en solicitudes (pago por uso)**: Lambda, Step Functions, S3 API, Textract, Comprehend, Rekognition, Bedrock, Athena — $0 si no se usa
-- **Siempre activo (costo fijo)**: Interface VPC Endpoints (~$28.80/mes) — **Opcional (opt-in)**
-
-> El inicio rápido especifica `EnableVpcEndpoints=true` para priorizar la conectividad de Lambda dentro del VPC. Para un PoC de bajo costo, considere usar Lambda fuera del VPC o aprovechar NAT / Interface VPC Endpoints existentes.
-
-> Consulte [docs/cost-analysis.md](docs/cost-analysis.md) para un análisis detallado de costos.
-
-### Recursos opcionales
-
-Los recursos permanentes de alto costo se hacen opcionales mediante parámetros de CloudFormation.
-
-| Recurso | Parámetro | Predeterminado | Costo fijo mensual | Descripción |
-|---------|-----------|----------------|-------------------|-------------|
-| Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~$28.80 | Para Secrets Manager, FSx, CloudWatch, SNS. `true` recomendado para producción. El inicio rápido especifica `true` para conectividad |
-| CloudWatch Alarms | `EnableCloudWatchAlarms` | `false` | ~$0.10/alarma | Monitoreo de tasa de fallos de Step Functions, tasa de errores de Lambda |
-
-> El **S3 Gateway VPC Endpoint** no tiene cargos horarios adicionales, por lo que se recomienda habilitarlo para configuraciones donde Lambda dentro del VPC accede a S3 AP. Sin embargo, especifique `EnableS3GatewayEndpoint=false` si ya existe un S3 Gateway Endpoint o si Lambda se coloca fuera del VPC para PoC / demo. Los cargos estándar por solicitudes de API S3, transferencia de datos y uso individual de servicios AWS siguen aplicando.
-
-## Modelo de seguridad y autorización
-
-Esta solución combina **múltiples capas de autorización**, cada una con un rol diferente:
-
-| Capa | Rol | Alcance del control |
-|------|-----|-------------------|
-| **IAM** | Control de acceso a servicios AWS y S3 Access Points | Rol de ejecución Lambda, política S3 AP |
-| **S3 Access Point** | Define límites de acceso a través de usuarios del sistema de archivos asociados al S3 AP | Política S3 AP, network origin, usuarios asociados |
-| **Sistema de archivos ONTAP** | Aplica permisos a nivel de archivo | Permisos UNIX / ACL NTFS |
-| **ONTAP REST API** | Expone solo metadatos y operaciones del plano de control | Autenticación Secrets Manager + TLS |
-
-**Consideraciones de diseño importantes**:
-
-- La API S3 no expone ACLs a nivel de archivo. La información de permisos de archivo solo puede obtenerse **a través de la ONTAP REST API** (la recopilación de ACL de UC1 usa este patrón)
-- El acceso vía S3 AP se autoriza en el lado ONTAP como el usuario del sistema de archivos UNIX / Windows asociado al S3 AP, después de ser permitido por las políticas IAM / S3 AP
-- Las credenciales de ONTAP REST API se gestionan en Secrets Manager y no se almacenan en variables de entorno de Lambda
-
-## Matriz de compatibilidad
-
-| Elemento | Valor / Detalles de verificación |
-|----------|--------------------------------|
-| Versión ONTAP | Verificado con 9.17.1P4D3 (se requiere una versión que soporte S3 Access Points) |
-| Región verificada | ap-northeast-1 (Tokio) |
-| Región recomendada | us-east-1 / us-west-2 (al usar todos los servicios AI/ML) |
-| Versión Python | 3.12+ |
-| CloudFormation Transform | AWS::Serverless-2016-10-31 |
-| Estilo de seguridad del volumen verificado | UNIX, NTFS |
-
-### APIs soportadas por FSx for ONTAP S3 Access Points
-
-Subconjunto de APIs disponible vía S3 AP:
-
-| API | Soporte |
-|-----|---------|
-| ListObjectsV2 | ✅ |
-| GetObject | ✅ |
-| PutObject | ✅ (máx 5 GB) |
-| HeadObject | ✅ |
-| DeleteObject | ✅ |
-| DeleteObjects | ✅ |
-| CopyObject | ✅ (mismo AP, misma región) |
-| GetObjectAttributes | ✅ |
-| GetObjectTagging / PutObjectTagging | ✅ |
-| CreateMultipartUpload | ✅ |
-| UploadPart / UploadPartCopy | ✅ |
-| CompleteMultipartUpload | ✅ |
-| AbortMultipartUpload | ✅ |
-| ListParts / ListMultipartUploads | ✅ |
-| HeadBucket / GetBucketLocation | ✅ |
-| GetBucketNotificationConfiguration | ❌ (No soportado → razón del diseño por sondeo) |
-| Presign | ❌ |
-
-### Restricciones de network origin de S3 Access Point
-
-| Network origin | Lambda (fuera del VPC) | Lambda (dentro del VPC) | Athena / Glue | UCs recomendados |
-|---------------|----------------------|------------------------|--------------|-----------------|
-| **internet** | ✅ | ✅ (vía S3 Gateway EP) | ✅ | UC1, UC3 (usa Athena) |
-| **VPC** | ❌ | ✅ (S3 Gateway EP requerido) | ❌ | UC2, UC4, UC5 (sin Athena) |
-
-> **Importante**: Athena / Glue acceden desde la infraestructura gestionada de AWS, por lo que no pueden acceder a S3 APs con origin VPC. UC1 (Legal) y UC3 (Manufactura) usan Athena, por lo que el S3 AP debe crearse con network origin **internet**.
-
-### Limitaciones del S3 AP
-
-- **Tamaño máximo de PutObject**: 5 GB. Las APIs de carga multiparte están soportadas, pero verifique la viabilidad de carga para objetos que excedan 5 GB caso por caso.
-- **Cifrado**: Solo SSE-FSX (FSx maneja de forma transparente, no se necesita parámetro ServerSideEncryption)
-- **ACL**: Solo se soporta `bucket-owner-full-control`
-- **Funcionalidades no soportadas**: Object Versioning, Object Lock, Object Lifecycle, Static Website Hosting, Requester Pays, Presigned URL
-
-## Documentación
-
-Las guías detalladas y capturas de pantalla se almacenan en el directorio `docs/`.
-
-| Documento | Descripción |
-|-----------|-------------|
-| [docs/guides/deployment-guide.md](docs/guides/deployment-guide.md) | Guía de despliegue (verificación de requisitos → preparación de parámetros → despliegue → verificación) |
-| [docs/guides/operations-guide.md](docs/guides/operations-guide.md) | Guía de operaciones (cambios de programación, ejecución manual, revisión de registros, respuesta a alarmas) |
-| [docs/guides/troubleshooting-guide.md](docs/guides/troubleshooting-guide.md) | Solución de problemas (AccessDenied, VPC Endpoint, timeout ONTAP, Athena) |
-| [docs/cost-analysis.md](docs/cost-analysis.md) | Análisis de estructura de costos |
-| [docs/references.md](docs/references.md) | Enlaces de referencia |
-| [docs/extension-patterns.md](docs/extension-patterns.md) | Guía de patrones de extensión |
-| [docs/region-compatibility.md](docs/region-compatibility.md) | Disponibilidad de servicios AI/ML por región AWS |
-| [docs/article-draft.md](docs/article-draft.md) | Borrador original del artículo dev.to (ver Artículo relacionado en la parte superior del README para la versión publicada) |
-| [docs/verification-results.md](docs/verification-results.md) | Resultados de verificación en entorno AWS |
-| [docs/screenshots/](docs/screenshots/README.md) | Capturas de pantalla de la consola AWS (enmascaradas) |
-
-## Estructura de directorios
-
-```
-fsxn-s3ap-serverless-patterns/
-├── README.md                          # Este archivo
-├── LICENSE                            # MIT License
-├── requirements.txt                   # Dependencias de producción
-├── requirements-dev.txt               # Dependencias de desarrollo
-├── shared/                            # Módulos compartidos
-│   ├── __init__.py
-│   ├── ontap_client.py               # Cliente ONTAP REST API
-│   ├── fsx_helper.py                 # Helper AWS FSx API
-│   ├── s3ap_helper.py                # Helper S3 Access Point
-│   ├── exceptions.py                 # Excepciones compartidas y manejador de errores
-│   ├── discovery_handler.py          # Template Lambda Discovery compartido
-│   ├── cfn/                          # Fragmentos de CloudFormation
-│   └── tests/                        # Pruebas unitarias y pruebas de propiedades
-├── solutions/industry/legal-compliance/                  # UC1: Legal y cumplimiento
-├── solutions/industry/financial-idp/                     # UC2: Finanzas y seguros
-├── solutions/industry/manufacturing-analytics/           # UC3: Manufactura
-├── solutions/industry/media-vfx/                         # UC4: Medios
-├── solutions/industry/healthcare-dicom/                  # UC5: Salud
-├── infrastructure/                    # Plantillas de infraestructura
-│   ├── demo-ad-environment.yaml      # Entorno de prueba AD + EC2 (WINDOWS S3 AP)
-│   └── handson-lab/                  # IaC Lab práctico (pilas anidadas CloudFormation)
-│       ├── cloudformation/           # 7 plantillas (network/ad/iam/fsx/s3ap/ec2/main)
-│       ├── lambda/                   # Custom Resources (AD User / S3 AP)
-│       ├── scripts/                  # deploy / setup_ontap / cleanup / verify
-│       └── docs/                     # Guía / estimación de costos
-├── scripts/                           # Scripts de verificación y despliegue
-│   ├── deploy_uc.sh                  # Script de despliegue UC (genérico)
-│   ├── verify_shared_modules.py      # Verificación de módulos compartidos en entorno AWS
-│   └── verify_cfn_templates.sh       # Verificación de templates CloudFormation
-├── .github/workflows/                 # CI/CD (lint, test)
-└── docs/                              # Documentación
-    ├── guides/                        # Guías operativas
-    │   ├── deployment-guide.md       # Guía de despliegue
-    │   ├── operations-guide.md       # Guía de operaciones
-    │   └── troubleshooting-guide.md  # Solución de problemas
-    ├── screenshots/                   # Capturas de pantalla de la consola AWS
-    ├── cost-analysis.md               # Análisis de estructura de costos
-    ├── references.md                  # Enlaces de referencia
-    ├── extension-patterns.md          # Guía de patrones de extensión
-    ├── region-compatibility.md        # Matriz de compatibilidad regional
-    ├── verification-results.md        # Resultados de verificación
-    └── article-draft.md               # Borrador original del artículo dev.to
-```
-
-## Módulos compartidos (shared/)
-
-| Módulo | Descripción |
-|--------|-------------|
-| `ontap_client.py` | Cliente ONTAP REST API (autenticación Secrets Manager, urllib3, TLS, reintentos) |
-| `fsx_helper.py` | AWS FSx API + obtención de métricas CloudWatch |
-| `s3ap_helper.py` | Helper S3 Access Point (paginación, filtro por sufijo) |
-| `exceptions.py` | Clases de excepciones compartidas, decorador `lambda_error_handler` |
-| `discovery_handler.py` | Template Lambda Discovery compartido (generación de Manifest) |
-
-## Desarrollo
-
-### Ejecución de pruebas
-
-```bash
-# Todas las pruebas
-pytest shared/tests/ -v
-
-# Con cobertura
-pytest shared/tests/ --cov=shared --cov-report=term-missing --cov-fail-under=80 -v
-
-# Solo pruebas basadas en propiedades
-pytest shared/tests/test_properties.py -v
-```
-
-### Linter
-
-```bash
-# Linter Python
-ruff check .
-ruff format --check .
-
-# Verificación de templates CloudFormation
-cfn-lint */template.yaml */template-deploy.yaml
-```
-
-## Cuándo usar / Cuándo no usar esta colección de patrones
-
-### Cuándo usar
-
-- Desea procesar de forma serverless datos NAS existentes en FSx for ONTAP sin moverlos
-- Desea listar archivos y realizar preprocesamiento desde Lambda sin montaje NFS / SMB
-- Desea aprender la separación de responsabilidades entre S3 Access Points y ONTAP REST API
-- Desea validar rápidamente patrones de procesamiento AI / ML sectoriales como PoC
-- El diseño basado en sondeo con EventBridge Scheduler + Step Functions es aceptable
-
-### Cuándo no usar
-
-- Se requiere procesamiento de eventos de cambio de archivos en tiempo real (S3 Event Notification no soportado)
-- Se necesita compatibilidad completa con buckets S3 como Presigned URLs
-- Ya tiene una infraestructura batch permanente basada en EC2 / ECS y la operación con montaje NFS es aceptable
-- Los datos de archivos ya existen en buckets S3 estándar y pueden procesarse con notificaciones de eventos S3
-
-## Consideraciones adicionales para despliegue en producción
-
-Este repositorio incluye decisiones de diseño orientadas al despliegue en producción, pero considere adicionalmente lo siguiente para entornos de producción reales.
-
-- Alineación con IAM / SCP / Permission Boundary de la organización
-- Revisión de políticas S3 AP y permisos de usuario del lado ONTAP
-- Habilitación de registros de auditoría y ejecución para Lambda / Step Functions / Bedrock / Textract, etc. (CloudTrail / CloudWatch Logs)
-- Integración de CloudWatch Alarms / SNS / Incident Management (`EnableCloudWatchAlarms=true`)
-- Requisitos de cumplimiento específicos del sector como clasificación de datos, información personal e información médica
-- Verificación de residencia de datos para restricciones regionales e invocaciones entre regiones
-- Período de retención del historial de ejecución de Step Functions y configuración del nivel de registro
-- Configuración de Lambda Reserved Concurrency / Provisioned Concurrency
-
-## Repositorios relacionados (mismo autor)
-
-| Repositorio | Descripción | Relación |
-|------------|-------------|----------|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Chatbot RAG con permisos usando FSx for ONTAP + Bedrock (CDK v2, Next.js, ECS) | Implementación completa del patrón FC3 (GenAI RAG) | <!-- allow:naming -->
-| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × plataformas Lakehouse (Databricks, Snowflake, Athena, Glue, EMR) | Matriz de compatibilidad S3 AP, validaciones por plataforma, patrones DataSync |
-| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | Patrones de migración VMware → EC2 + FSx for ONTAP | Datos migrados pueden usar patrones S3 AP |
-
-### Relación entre repositorios
-
-```
-Permission-aware-RAG-FSxN-CDK (CDK v2) # allow:naming
-├── RAG app (Next.js + Bedrock + OpenSearch)
-├── Document read via FSx for ONTAP S3 AP
-├── NTFS ACL permission filtering
-└── Production-ready Web UI
-        │
-        │ S3 AP, ONTAP REST API, Bedrock
-        ▼
-FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns [this repo]
-├── 42 patterns (28 UC + 7 FC + 2 GenAI + SAP + HA + ED + Edge)
-├── CloudFormation/SAM templates (independently deployable)
-├── shared/ modules (S3ApHelper, OntapClient, Observability)
-├── Benchmarks, Governance, Partner/SI assets
-└── Hands-on Lab IaC (infrastructure/handson-lab/)
-        │                       │
-        │ FSx for ONTAP, EC2    │ S3 AP, DataSync, Lakehouse
-        │                       ▼
-        │               fsxn-lakehouse-integrations
-        │               ├── Lakehouse (Databricks, Snowflake, etc.)
-        │               ├── S3 AP Compatibility Matrix (AWS confirmed)
-        │               └── DataSync patterns
-        ▼
-vmware-migration-ec2-ontap
-├── VMware -> EC2 + FSx for ONTAP migration
-├── S3 AP patterns applicable to migrated data
-└── On-prem NAS -> Cloud-native AI processing path
-```
-
-### Guía de uso
-
-| Caso de uso | Repositorio recomendado |
-|-------------|------------------------|
-| Construir chatbot RAG con permisos | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | <!-- allow:naming -->
-| Integrar plataformas Lakehouse con FSx for ONTAP | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) |
-| Migrar VMware a EC2 + FSx for ONTAP | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) |
-| Aprender patrones de diseño S3 AP | Este repositorio |
-| PoC de automatización serverless por industria | Este repositorio (`solutions/industry/`) |
-| Construir GenAI / Bedrock KB / AI agéntico | Este repositorio (`solutions/genai/`) |
-| Construir pipeline orientado a eventos FPolicy | Este repositorio (`solutions/event-driven/`) |
-| Explorar diseños FlexCache × serverless | Este repositorio (`solutions/flexcache/`) |
-| Implementar monitoreo AI para clusters HA (LifeKeeper) | Este repositorio (`solutions/ha/`) |
-| Construir entorno hands-on S3 AP + Tamperproof Snapshot | Este repositorio ([`infrastructure/handson-lab/`](infrastructure/handson-lab/)) |
-
-## Contribución
-
-Se aceptan Issues y Pull Requests. Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para más detalles.
+---
 
 ## Licencia
 
-MIT License — Consulte [LICENSE](LICENSE) para más detalles.
+MIT — [LICENSE](LICENSE)
+
+---
+
+🌐 [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)

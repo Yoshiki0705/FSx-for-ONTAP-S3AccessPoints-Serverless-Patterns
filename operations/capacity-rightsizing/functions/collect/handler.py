@@ -127,9 +127,7 @@ def _get_management_ip(fs_id: str) -> str:
     return ip_addresses[0]
 
 
-def _collect_ontap_metrics(
-    mgmt_ip: str, secret_arn: str
-) -> tuple[list[dict], list[dict]]:
+def _collect_ontap_metrics(mgmt_ip: str, secret_arn: str) -> tuple[list[dict], list[dict]]:
     """ONTAP REST API からボリューム/アグリゲートメトリクスを収集する."""
     from shared.ontap_client import OntapClient, OntapClientConfig
     from shared.ontap_metrics import OntapMetricsCollector
@@ -170,10 +168,12 @@ def _collect_cloudwatch_metrics(fs_id: str) -> dict[str, Any]:
 
     # Gen2-specific metrics
     if is_gen2:
-        metric_queries.extend([
-            _build_metric_query("NetworkThroughputUtilization", fs_id, "m5"),
-            _build_metric_query("DiskIOPSUtilization", fs_id, "m6"),
-        ])
+        metric_queries.extend(
+            [
+                _build_metric_query("NetworkThroughputUtilization", fs_id, "m5"),
+                _build_metric_query("DiskIOPSUtilization", fs_id, "m6"),
+            ]
+        )
 
     response = cw_client.get_metric_data(
         MetricDataQueries=metric_queries,
@@ -236,11 +236,7 @@ def _is_gen2_filesystem(fsx_client: Any, fs_id: str) -> bool:
     if not file_systems:
         return False
 
-    deployment_type = (
-        file_systems[0]
-        .get("OntapConfiguration", {})
-        .get("DeploymentType", "")
-    )
+    deployment_type = file_systems[0].get("OntapConfiguration", {}).get("DeploymentType", "")
     return deployment_type in ("MULTI_AZ_2", "SINGLE_AZ_2")
 
 
@@ -251,8 +247,4 @@ def _get_throughput_capacity(fsx_client: Any, fs_id: str) -> int:
     if not file_systems:
         return 0
 
-    return (
-        file_systems[0]
-        .get("OntapConfiguration", {})
-        .get("ThroughputCapacity", 0)
-    )
+    return file_systems[0].get("OntapConfiguration", {}).get("ThroughputCapacity", 0)

@@ -58,15 +58,53 @@ def report_handler():
 @pytest.fixture
 def collect_output():
     return {
-        "file_systems": [{
-            "fs_id": "fs-test01",
-            "volumes": [
-                {"name": "vol_prod", "uuid": "u1", "svm_name": "svm1", "dedupe_enabled": True, "compression_enabled": True, "dedupe_savings_bytes": 214748364800, "compression_savings_bytes": 107374182400, "overall_ratio": 2.1, "logical_used_bytes": 1963268506009, "physical_used_bytes": 934584532377, "fs_id": "fs-test01"},
-                {"name": "vol_dev", "uuid": "u2", "svm_name": "svm1", "dedupe_enabled": False, "compression_enabled": False, "dedupe_savings_bytes": 0, "compression_savings_bytes": 0, "overall_ratio": 1.0, "logical_used_bytes": 109951162778, "physical_used_bytes": 109951162778, "fs_id": "fs-test01"},
-                {"name": "vol_archive", "uuid": "u3", "svm_name": "svm1", "dedupe_enabled": True, "compression_enabled": True, "dedupe_savings_bytes": 549755813888, "compression_savings_bytes": 274877906944, "overall_ratio": 3.2, "logical_used_bytes": 5629499534214, "physical_used_bytes": 1759218604442, "fs_id": "fs-test01"},
-            ],
-            "collected_at": "2026-07-13T00:00:00+00:00",
-        }],
+        "file_systems": [
+            {
+                "fs_id": "fs-test01",
+                "volumes": [
+                    {
+                        "name": "vol_prod",
+                        "uuid": "u1",
+                        "svm_name": "svm1",
+                        "dedupe_enabled": True,
+                        "compression_enabled": True,
+                        "dedupe_savings_bytes": 214748364800,
+                        "compression_savings_bytes": 107374182400,
+                        "overall_ratio": 2.1,
+                        "logical_used_bytes": 1963268506009,
+                        "physical_used_bytes": 934584532377,
+                        "fs_id": "fs-test01",
+                    },
+                    {
+                        "name": "vol_dev",
+                        "uuid": "u2",
+                        "svm_name": "svm1",
+                        "dedupe_enabled": False,
+                        "compression_enabled": False,
+                        "dedupe_savings_bytes": 0,
+                        "compression_savings_bytes": 0,
+                        "overall_ratio": 1.0,
+                        "logical_used_bytes": 109951162778,
+                        "physical_used_bytes": 109951162778,
+                        "fs_id": "fs-test01",
+                    },
+                    {
+                        "name": "vol_archive",
+                        "uuid": "u3",
+                        "svm_name": "svm1",
+                        "dedupe_enabled": True,
+                        "compression_enabled": True,
+                        "dedupe_savings_bytes": 549755813888,
+                        "compression_savings_bytes": 274877906944,
+                        "overall_ratio": 3.2,
+                        "logical_used_bytes": 5629499534214,
+                        "physical_used_bytes": 1759218604442,
+                        "fs_id": "fs-test01",
+                    },
+                ],
+                "collected_at": "2026-07-13T00:00:00+00:00",
+            }
+        ],
         "collected_at": "2026-07-13T00:00:00+00:00",
         "demo_mode": True,
     }

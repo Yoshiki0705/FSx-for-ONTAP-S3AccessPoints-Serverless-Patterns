@@ -2,7 +2,11 @@
 
 ## Executive Summary
 
-Teams that need a **web-based interface** for browsing, requesting processing, and viewing results on FSx for ONTAP volumes have several architectural options. This document compares three approaches — AWS Amplify Gen2, Nextcloud, and custom-build (CDK + framework) — and provides a selection guide based on team context.
+Teams that need a **web-based interface** for browsing, requesting processing, and viewing results on FSx for ONTAP volumes have several architectural options.
+
+As of this writing, AWS does not provide a managed service that delivers a Box/Google Drive-like file management experience (folder navigation, file preview, sharing links, sync clients) for NAS data on FSx for ONTAP. The S3 Console allows object listing but is not an end-user file portal. Building this experience requires assembling your own solution or leveraging OSS tools.
+
+This document compares three approaches — AWS Amplify Gen2, Nextcloud, and custom-build (CDK + framework) — and provides a selection guide based on team context.
 
 **Key takeaway**: All three are valid. Choose based on your team's existing skills, operational preferences, and compliance requirements. The core S3 AP serverless patterns in this repository work independently of the frontend choice.
 
@@ -123,6 +127,76 @@ All three approaches share the same backend integration point: the existing Step
 - Results are consumed via NFS/SMB by existing tools
 - AWS Console or CLI is sufficient for ad-hoc operations
 - Existing monitoring dashboards (Grafana, CloudWatch) cover observability needs
+
+---
+
+## Coexistence Architecture: Amplify Gen2 + Nextcloud
+
+The two approaches are not exclusive — they can **coexist, each handling what it does well**.
+
+### Role Division
+
+| Function | Nextcloud handles | Amplify Gen2 handles |
+|---|---|---|
+| File browsing & download | ✅ External Storage, immediate | ✅ ListFiles Lambda + image preview |
+| File upload | ✅ Drag & drop, sync client | ❌ Not implemented |
+| Desktop/mobile sync | ✅ Official clients | ❌ |
+| Sharing links & comments | ✅ Built-in | ❌ |
+| AI/ML processing workflow trigger | ⚠️ Possible via webhook (setup required) | ✅ AppSync Mutation → Step Functions |
+| Real-time processing status | ❌ No polling mechanism | ✅ 5s polling + status badge |
+| Job execution history | ❌ | ✅ DynamoDB (owner-based auth) |
+| Processing pattern selection UI | ❌ | ✅ Dropdown + parameter input |
+| Data classification label display | ❌ | ✅ dataClassification rendering |
+| FlexClone snapshot restore | ❌ | ✅ Directly from UI |
+| FlexClone status display | ❌ | ✅ In Results tab |
+
+### Coexistence Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Users                                                           │
+│  ┌─────────────────────┐   ┌──────────────────────────────────┐ │
+│  │ Nextcloud           │   │ Amplify Gen2 Portal              │ │
+│  │ (File Management)   │   │ (Processing Dashboard)           │ │
+│  │ - Browse/DL/UL      │   │ - Pattern selection              │ │
+│  │ - Sync client       │   │ - Job submission                 │ │
+│  │ - Share/Comment     │   │ - Result viewing                 │ │
+│  └────────┬────────────┘   └──────────────┬───────────────────┘ │
+└───────────┼───────────────────────────────┼─────────────────────┘
+            │                               │
+            │ S3 AP (External Storage)      │ AppSync → Step Functions
+            │ or NFS (Direct Mount)         │ + ListFiles Lambda → S3 AP
+            │                               │
+            ▼                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  FSx for ONTAP                                                   │
+│  ┌───────────────────────────────────────────────────────────┐   │
+│  │ Volume (/vol/data)                                        │   │
+│  │ NFS + SMB + S3 AP — same data, multiprotocol access       │   │
+│  └───────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Points for Coexistence
+
+1. **Single data source**: Both access the same FSx for ONTAP volume/S3 AP. No data duplication.
+2. **Independent auth**: Nextcloud uses LDAP/SAML, Amplify uses Cognito. Different user bases are fine.
+3. **Network isolation possible**: Nextcloud in VPC (NFS + VPC-origin S3 AP), Amplify outside VPC (Internet-origin S3 AP).
+4. **Incremental adoption**: Start with Nextcloud for file management, add Amplify portal when processing needs arise.
+5. **Shared throughput**: Both consume the same FSx for ONTAP bandwidth — plan accordingly (see [Throughput Planning](#throughput-and-capacity-planning)).
+
+### Typical Coexistence Scenario
+
+```
+Day 1: Team uses Nextcloud for file browsing & sharing
+       (Same data visible to NFS/SMB users from the Web)
+
+Day 2: Admin decides "I want to AI-classify this contract folder"
+       → Amplify portal Process tab: run UC1 (Legal Compliance)
+
+Day 3: Results (with classification labels) written back to the same volume
+       → Nextcloud users AND NFS/SMB users can immediately view results
+```
 
 ---
 
