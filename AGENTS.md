@@ -261,6 +261,53 @@ decision = evaluate_confidence(confidence=0.72)
 # decision.action: "AUTO_APPROVE" | "HUMAN_REVIEW" | "REJECT"
 ```
 
+## Documentation Design Principles
+
+All README and documentation files follow these UX principles:
+
+### Hub & Spoke Model
+- **README.md is the hub**: It links OUT to everything, never contains full details inline
+- **docs/ files are spokes**: Each answers ONE specific question in depth
+- **Maximum visible content in README**: ~150 lines (before `<details>` expansion)
+
+### Progressive Disclosure
+- Use `<details><summary>` for everything not immediately needed on first read
+- First-time visitors need: (1) What is this? (2) How do I start? (3) Where are details?
+- Returning visitors need: (1) What changed? (2) Where's the specific doc?
+
+### Action-First Headings
+- ✅ "はじめる" / "Get Started" — action verb
+- ❌ "Prerequisites" / "前提条件" — static noun (move to deployment guide)
+- The first visible section should be a "Get Started" table with time estimates
+
+### 7±2 Rule
+- No more than 7 items visible at any single navigation level
+- If a table has >7 rows, collapse it into `<details>`
+- If a section has >7 bullet points, restructure into a table or sub-sections
+
+### Multi-Language Consistency
+- All language README files (JA, EN, KO, ZH-CN, ZH-TW, FR, DE, ES) use IDENTICAL structure
+- Translate: headings, descriptions, table content
+- Never translate: file paths, commands, badge URLs, anchor IDs
+- Language switcher at BOTH top and bottom of README
+
+### No Dead Weight
+- Phase-based development history → belongs in CHANGELOG.md or blog articles, NOT README
+- Verification screenshots → belong in docs/verification-results*.md
+- Full deploy commands → belong in docs/guides/deployment-guide.md
+- API compatibility tables → belong in docs/s3ap-compatibility-notes.md
+- If content will never be updated again, it should not be in README
+
+### Mobile & Scanning Readability
+- Tables with >5 columns are unreadable on mobile → split or use key-value format
+- Code blocks should be copy-pasteable without horizontal scrolling
+- Use emoji as visual markers for quick scanning (📂, 🚀, ⚠️, 📚, 🔧)
+
+### Cross-Repository Consistency
+- All Yoshiki0705 repos should follow this same README structure
+- Same language switcher format, same badge style, same `<details>` patterns
+- Related repositories link to each other in a consistent "Related Repositories" section
+
 ## Common Pitfalls
 
 | Pitfall | Solution |
