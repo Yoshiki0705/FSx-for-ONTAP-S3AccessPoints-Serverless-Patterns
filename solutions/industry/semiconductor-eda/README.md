@@ -2,7 +2,7 @@
 
 🌐 **Language / 言語**: 日本語 | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-📚 **ドキュメント**: [アーキテクチャ図](docs/architecture.md) | [デモガイド](docs/demo-guide.md)
+📚 **ドキュメント**: [アーキテクチャ図](docs/architecture.md) | [デモガイド](docs/demo-guide.md) | [Workshop Lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
 
 ## 概要
 
@@ -289,6 +289,128 @@ UC6 は以下のサービスを使用します:
 - [Amazon Athena ユーザーガイド](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Bedrock API リファレンス](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [GDSII フォーマット仕様](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+- [AWS Workshop Studio: Amazon Quick + FSx for ONTAP S3 AP ハンズオン](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup)
+- [AWS Storage Blog: Enabling AI-powered analytics on enterprise file data](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
+- [Guidance for Scaling Electronic Design Automation (EDA) on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/)
+
+## Amazon Quick 連携（EDA データの AI 活用）
+
+UC6 で生成した DRC 統計・設計メタデータ・レビューサマリーを、**Amazon Quick**（旧 Amazon QuickSight の拡張版）と連携させることで、EDA チーム全体が自然言語で設計品質データにアクセスできる環境を構築できます。
+
+### Quick の各機能と UC6 出力の対応
+
+| Quick 機能 | UC6 連携ポイント | データ種別 |
+|-----------|-----------------|-----------|
+| **Quick Index / Research** | S3 AP 上の設計ファイル + Bedrock レビューサマリーを非構造化検索 | GDS/OASIS + レポート (md/json) |
+| **Quick Sight** | Athena/Glue の DRC 統計テーブルを BI ダッシュボード化 | 構造化データ (Parquet/CSV) |
+| **Quick Flows** | DRC 異常検出時にレビュー依頼を自動起票 | アクション自動化 (json) |
+| **Quick Automate** | Regression 結果のトリアージ → 担当者アサインの自動化 | エンドツーエンドプロセス |
+
+### セットアップ手順（概要）
+
+1. FSx for ONTAP S3 AP を **AD ユーザー（Windows identity）** で作成
+2. Amazon Quick コンソール → Integrations → Knowledge bases → Amazon S3
+3. S3 bucket URL に `s3://<S3-AP-alias>` を入力して同期
+4. DRC 統計ダッシュボード: Athena → Quick Sight データセットとして追加
+5. Quick Flows で DRC 閾値超過時のアラート・レビュー依頼を自動化
+
+> **前提条件**: S3 AP は AD ベースの Windows identity で構成する必要があります（UNIX identity では Quick のデータアクセスロールを AP ポリシーに追加できません）。詳細な手順は [AWS Workshop Studio ハンズオン](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) を参照してください。
+
+### EDA チーム向けユースケース例
+
+| シナリオ | Quick で実現する体験 |
+|---------|---------------------|
+| 設計者が DRC 傾向を確認 | 「先週の DRC エラー上位 5 セルは？」と自然言語で質問 |
+| チームリードが品質レポートを取得 | Quick Research で設計レビューサマリーを横断検索 |
+| マネージャーが週次報告を自動化 | Quick Flows で毎週月曜に DRC 統計サマリーをメール送信 |
+| 新規プロセスノードの Regression 結果トリアージ | Quick Automate でエラー分類 → 担当者アサイン → Jira 起票 |
+
+### 関連パターン
+
+- [Amazon Quick Agentic Workspace (UC30)](../../genai/quick-agentic-workspace/) — Quick Suite の全機能を活用したエージェント型ワークスペースの完全実装
+- [検証スクリプト: verify-quick-s3ap.sh](../../../scripts/verify-quick-s3ap.sh) — AD 環境構築から Quick 接続までの E2E 検証
+
+---
+
+## Workshop 検証済み EDA シナリオ
+
+> **ハンズオン Lab**: [FSx for ONTAP S3 Access Points Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
+>
+> 詳細な統合ガイド: [Workshop EDA 統合ガイド](../../../docs/workshop-eda-integration.md)
+
+AWS Workshop Studio で検証済みの EDA ワークフローシナリオを、本 UC6 パターンで本番化できます。
+
+### データ生成（Module 06）
+
+Workshop では 500 EDA ジョブ・約 2,000 ログファイルを合成生成し、以下のツールチェーンをカバーします:
+
+| EDA ツール | ログ種別 | UC6 での処理 |
+|-----------|---------|-------------|
+| LSF (IBM Spectrum) | ジョブスケジューリング | リソース使用量集計・ボトルネック特定 |
+| Cadence ncvlog/ncelab | コンパイル | エラー/警告カウント・モジュール別集計 |
+| Cadence Xcelium | シミュレーション | PASS/FAIL/UVM_FATAL 検出・トリアージ |
+| Coverage Analysis | ポストプロセッシング | カバレッジ率集計・閾値アラート |
+
+> ライセンス不要 — 合成データで全シナリオを DemoMode=true で体験可能。
+
+### Athena SQL 分析（Module 13）
+
+S3 AP 上の CSV データに対して直接 SQL クエリを実行し、EDA Regression を分析:
+
+```sql
+-- モジュール別失敗数
+SELECT module_name, COUNT(*) as failure_count
+FROM eda_regression WHERE status = 'FAIL'
+GROUP BY module_name ORDER BY failure_count DESC;
+
+-- タイミング違反の特定
+SELECT job_id, module_name, timing_slack
+FROM eda_regression WHERE timing_slack < 0
+ORDER BY timing_slack ASC LIMIT 20;
+
+-- ライセンス障害の原因分析
+SELECT license_feature, COUNT(*) as checkout_failures
+FROM eda_regression WHERE error_type = 'LICENSE_CHECKOUT_FAILED'
+GROUP BY license_feature ORDER BY checkout_failures DESC;
+```
+
+### Glue Data Catalog（Module 14）
+
+Glue Crawler で S3 AP 上のデータスキーマを自動検出し、Athena / Quick Sight / SageMaker から統一的にアクセス:
+
+```yaml
+# IAM ポリシー: Glue Crawler → S3 AP
+- Sid: GlueCrawlerS3APAccess
+  Effect: Allow
+  Action:
+    - s3:GetObject
+    - s3:ListBucket
+  Resource:
+    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+```
+
+### イベント駆動処理（Module 15）
+
+EventBridge Scheduler + Lambda で、Regression 完了後のログを自動解析し UVM_FATAL エラーを即時通知:
+
+| トリガー方式 | レイテンシー | 実装複雑度 | 本パターン対応 |
+|------------|------------|-----------|:---:|
+| EventBridge Scheduler (ポーリング) | 分〜時間 | 低 | ✅ TriggerMode=POLLING |
+| FPolicy → EventBridge (イベント駆動) | 秒〜分 | 高 | ✅ TriggerMode=EVENT_DRIVEN |
+| S3 Event Notifications | — | — | ❌ S3 AP 非対応 |
+
+### Quick Automations（Module 12）
+
+EDA チーム向けの自動化シナリオ:
+
+| 自動化 | トリガー | アクション |
+|--------|---------|-----------|
+| 日次トリアージ | 毎朝 9:00 | Regression 失敗サマリーをメール送信 |
+| カバレッジゲート | リアルタイム | モジュールカバレッジ < 80% でアラート |
+| ライセンスモニター | 15 分間隔 | 繰り返しチェックアウト失敗を検出・通知 |
+
+---
 
 ## FlexCache クラウドバースト拡張
 
