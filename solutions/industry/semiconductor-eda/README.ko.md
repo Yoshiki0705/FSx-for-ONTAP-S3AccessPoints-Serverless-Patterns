@@ -2,7 +2,7 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | 한국어 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-📚 **문서**: [아키텍처 다이어그램](docs/architecture.ko.md) | [데모 가이드](docs/demo-guide.ko.md)
+📚 **문서**: [아키텍처 다이어그램](docs/architecture.ko.md) | [데모 가이드](docs/demo-guide.ko.md) | [Workshop Lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
 
 ## 개요
 
@@ -289,6 +289,30 @@ UC6 은 다음 서비스를 사용합니다:
 - [Amazon Athena 사용자 가이드](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Bedrock API 참조](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [GDSII 포맷 사양](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+- [AWS Workshop: Amazon Quick + FSx for ONTAP S3 AP](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup)
+- [AWS Storage Blog: AI-powered analytics on enterprise file data](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
+- [Guidance: Scaling EDA on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/)
+
+## Workshop 검증 EDA 시나리오
+
+> **핸즈온 Lab**: [FSx for ONTAP S3 Access Points Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
+
+AWS Workshop Studio 에서 검증된 EDA 워크플로 시나리오를 본 UC6 패턴으로 프로덕션화할 수 있습니다.
+
+| EDA 도구 | 로그 유형 | UC6 처리 |
+|----------|----------|----------|
+| LSF (IBM Spectrum) | 작업 스케줄링 | 리소스 사용량 집계 |
+| Cadence ncvlog/ncelab | 컴파일 | 오류/경고 카운트 |
+| Cadence Xcelium | 시뮬레이션 | PASS/FAIL/UVM_FATAL 감지 |
+| Coverage Analysis | 후처리 | 커버리지율 집계 |
+
+| 트리거 방식 | 지연 시간 | 구현 복잡도 | 패턴 지원 |
+|------------|----------|-----------|:---:|
+| EventBridge Scheduler (폴링) | 분~시간 | 낮음 | ✅ TriggerMode=POLLING |
+| FPolicy → EventBridge (이벤트 기반) | 초~분 | 높음 | ✅ TriggerMode=EVENT_DRIVEN |
+| S3 Event Notifications | — | — | ❌ S3 AP 미지원 |
+
+---
 
 ## FlexCache 클라우드 버스트 확장
 

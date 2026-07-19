@@ -2,7 +2,7 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | Español
 
-📚 **Documentación**: [Diagrama de arquitectura](docs/architecture.es.md) | [Guía de demostración](docs/demo-guide.es.md)
+📚 **Documentación**: [Diagrama de arquitectura](docs/architecture.es.md) | [Guía de demostración](docs/demo-guide.es.md) | [Workshop Lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
 
 ## Descripción general
 
@@ -289,6 +289,28 @@ UC6 utiliza los siguientes servicios:
 - [Guía del usuario de Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Referencia de la API de Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [Especificación del formato GDSII](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+- [AWS Workshop: Amazon Quick + FSx for ONTAP S3 AP](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup)
+- [AWS Storage Blog: AI-powered analytics on enterprise file data](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
+- [Guidance: Scaling EDA on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/)
+
+## Escenarios EDA validados por Workshop
+
+> **Lab práctico**: [FSx for ONTAP S3 Access Points Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
+
+| Herramienta EDA | Tipo de log | Procesamiento UC6 |
+|----------------|------------|-------------------|
+| LSF (IBM Spectrum) | Programación de trabajos | Agregación de uso de recursos |
+| Cadence ncvlog/ncelab | Compilación | Conteo de errores/advertencias |
+| Cadence Xcelium | Simulación | Detección PASS/FAIL/UVM_FATAL |
+| Coverage Analysis | Post-procesamiento | Agregación de tasa de cobertura |
+
+| Método de activación | Latencia | Complejidad | Soporte |
+|--------------------|----------|------------|:---:|
+| EventBridge Scheduler (polling) | Minutos a horas | Baja | ✅ TriggerMode=POLLING |
+| FPolicy → EventBridge (event-driven) | Segundos a minutos | Alta | ✅ TriggerMode=EVENT_DRIVEN |
+| S3 Event Notifications | — | — | ❌ No soportado para S3 AP |
+
+---
 
 ## Extensión Cloud Burst de FlexCache
 

@@ -7,6 +7,14 @@
  *
  * Set `fileListingEnabled` to true once you have configured an
  * S3 AP alias or bucket in the backend Lambda environment variable.
+ *
+ * UPLOAD TAB (Storage Browser for S3):
+ *   The Upload tab requires `region`, `accountId`, and `s3ApAlias` below.
+ *   - region: Same as your FSx for ONTAP region (e.g., "ap-northeast-1")
+ *   - accountId: Your AWS account ID (aws sts get-caller-identity --query Account --output text)
+ *   - s3ApAlias: Same alias used in portal-config.ts (e.g., "my-ap-xxxxx-ext-s3alias")
+ *   These are used client-side by Storage Browser to call S3 API directly
+ *   (via Cognito Identity Pool credentials, no Lambda proxy needed).
  */
 export const portalSettings = {
   /**
@@ -22,4 +30,13 @@ export const portalSettings = {
    * Default: false (shows "not configured" instead of misleading "No files")
    */
   fileListingEnabled: true,
+
+  /**
+   * Storage Browser configuration.
+   * Required for the Upload tab (Storage Browser for S3 component).
+   * Set these to match your FSx for ONTAP S3 AP and account.
+   */
+  region: "ap-northeast-1",
+  accountId: "123456789012",
+  s3ApAlias: "",
 };

@@ -2,7 +2,7 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | Français | [Deutsch](README.de.md) | [Español](README.es.md)
 
-📚 **Documentation** : [Schéma d'architecture](docs/architecture.fr.md) | [Guide de démonstration](docs/demo-guide.fr.md)
+📚 **Documentation** : [Schéma d'architecture](docs/architecture.fr.md) | [Guide de démonstration](docs/demo-guide.fr.md) | [Workshop Lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
 
 ## Vue d'ensemble
 
@@ -289,6 +289,28 @@ UC6 utilise les services suivants :
 - [Guide de l'utilisateur Amazon Athena](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Référence de l'API Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [Spécification du format GDSII](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+- [AWS Workshop: Amazon Quick + FSx for ONTAP S3 AP](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup)
+- [AWS Storage Blog: AI-powered analytics on enterprise file data](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
+- [Guidance: Scaling EDA on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/)
+
+## Scénarios EDA validés par le Workshop
+
+> **Lab pratique**: [FSx for ONTAP S3 Access Points Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
+
+| Outil EDA | Type de log | Traitement UC6 |
+|-----------|------------|----------------|
+| LSF (IBM Spectrum) | Ordonnancement | Agrégation utilisation ressources |
+| Cadence ncvlog/ncelab | Compilation | Comptage erreurs/avertissements |
+| Cadence Xcelium | Simulation | Détection PASS/FAIL/UVM_FATAL |
+| Coverage Analysis | Post-traitement | Agrégation taux de couverture |
+
+| Mode déclenchement | Latence | Complexité | Support |
+|-------------------|---------|-----------|:---:|
+| EventBridge Scheduler (polling) | Minutes à heures | Faible | ✅ TriggerMode=POLLING |
+| FPolicy → EventBridge (événementiel) | Secondes à minutes | Élevée | ✅ TriggerMode=EVENT_DRIVEN |
+| S3 Event Notifications | — | — | ❌ Non supporté pour S3 AP |
+
+---
 
 ## Extension Cloud Burst FlexCache
 

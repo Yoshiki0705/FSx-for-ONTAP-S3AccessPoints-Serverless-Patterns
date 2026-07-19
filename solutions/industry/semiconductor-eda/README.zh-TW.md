@@ -2,7 +2,7 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | 繁體中文 | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-📚 **文件**: [架構圖](docs/architecture.zh-TW.md) | [示範指南](docs/demo-guide.zh-TW.md)
+📚 **文件**: [架構圖](docs/architecture.zh-TW.md) | [示範指南](docs/demo-guide.zh-TW.md) | [Workshop Lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
 
 ## 概述
 
@@ -289,6 +289,28 @@ UC6 使用以下服務：
 - [Amazon Athena 使用者指南](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Bedrock API 參考](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [GDSII 格式規範](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+- [AWS Workshop: Amazon Quick + FSx for ONTAP S3 AP](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup)
+- [AWS Storage Blog: AI-powered analytics on enterprise file data](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
+- [Guidance: Scaling EDA on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/)
+
+## Workshop 驗證的 EDA 場景
+
+> **動手實驗**: [FSx for ONTAP S3 Access Points Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
+
+| EDA 工具 | 日誌類型 | UC6 處理 |
+|----------|---------|----------|
+| LSF (IBM Spectrum) | 作業排程 | 資源使用量彙總 |
+| Cadence ncvlog/ncelab | 編譯 | 錯誤/警告計數 |
+| Cadence Xcelium | 模擬 | PASS/FAIL/UVM_FATAL 偵測 |
+| Coverage Analysis | 後處理 | 覆蓋率彙總 |
+
+| 觸發方式 | 延遲 | 實作複雜度 | 模式支援 |
+|---------|------|-----------|:---:|
+| EventBridge Scheduler (輪詢) | 分鐘~小時 | 低 | ✅ TriggerMode=POLLING |
+| FPolicy → EventBridge (事件驅動) | 秒~分鐘 | 高 | ✅ TriggerMode=EVENT_DRIVEN |
+| S3 Event Notifications | — | — | ❌ S3 AP 不支援 |
+
+---
 
 ## FlexCache 雲端爆發擴充
 
