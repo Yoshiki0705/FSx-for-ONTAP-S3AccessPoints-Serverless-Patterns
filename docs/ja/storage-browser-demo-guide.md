@@ -164,6 +164,44 @@ function App() {
 export default App;
 ```
 
+### 4. CLI で S3 AP を作成（検証済み構文）
+
+```bash
+# JSON 入力ファイル作成（S3AccessPoint ブロック省略 = Internet origin）
+cat <<EOF > create-ap.json
+{
+    "Name": "my-storage-browser-ap",
+    "Type": "ONTAP",
+    "OntapConfiguration": {
+        "VolumeId": "fsvol-XXXXXXXXXXXXXXXXX",
+        "FileSystemIdentity": {
+            "Type": "UNIX",
+            "UnixUser": {
+                "Name": "root"
+            }
+        }
+    }
+}
+EOF
+
+# S3 AP 作成
+aws fsx create-and-attach-s3-access-point \
+  --cli-input-json file://create-ap.json \
+  --region ap-northeast-1
+
+# AVAILABLE になるまで待機（10 秒間隔でポーリング）
+watch -n 10 "aws fsx describe-s3-access-point-attachments \
+  --region ap-northeast-1 \
+  --query 'S3AccessPointAttachments[?Name==\`my-storage-browser-ap\`].{Lifecycle:Lifecycle,Alias:S3AccessPoint.Alias}' \
+  --output table"
+```
+
+**検証で得た知見（2026-07-19）**:
+- `--cli-input-json` が複雑な構造を渡す確実な方法（位置引数は脆弱）
+- `S3AccessPoint` ブロック省略 → Internet origin（デフォルト）。VPC 制限する場合は `"S3AccessPoint": {"VpcConfiguration": {"VpcId": "vpc-XXX"}}` を追加
+- WINDOWS identity は AD DC が SVM から到達可能でなければエラー（"Failed to lookup the provided user in ONTAP"）
+- UNIX identity（例: `root`）は AD 不要 — デモに最適
+
 ### 5. 起動・確認
 
 ```bash
