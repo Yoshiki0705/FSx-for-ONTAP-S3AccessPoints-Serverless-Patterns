@@ -138,14 +138,17 @@ The two approaches are not exclusive — they can **coexist, each handling what 
 
 | Function | Nextcloud handles | Amplify Gen2 handles |
 |---|---|---|
-| File browsing & download | ✅ External Storage, immediate | ✅ ListFiles Lambda |
+| File browsing & download | ✅ External Storage, immediate | ✅ ListFiles Lambda + image preview |
 | File upload | ✅ Drag & drop, sync client | ❌ Not implemented |
 | Desktop/mobile sync | ✅ Official clients | ❌ |
 | Sharing links & comments | ✅ Built-in | ❌ |
 | AI/ML processing workflow trigger | ⚠️ Possible via webhook (setup required) | ✅ AppSync Mutation → Step Functions |
 | Real-time processing status | ❌ No polling mechanism | ✅ 5s polling + status badge |
+| Job execution history | ❌ | ✅ DynamoDB (owner-based auth) |
 | Processing pattern selection UI | ❌ | ✅ Dropdown + parameter input |
 | Data classification label display | ❌ | ✅ dataClassification rendering |
+| FlexClone snapshot restore | ❌ | ✅ Directly from UI |
+| FlexClone status display | ❌ | ✅ In Results tab |
 
 ### Coexistence Architecture
 
