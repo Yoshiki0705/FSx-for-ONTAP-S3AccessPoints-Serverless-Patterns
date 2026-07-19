@@ -2,6 +2,12 @@
 
 Web-based file portal for browsing, processing, and viewing results on FSx for ONTAP volumes via S3 Access Points.
 
+## Why build a file portal?
+
+AWS provides building blocks (S3 API, Cognito, AppSync) but no integrated managed service that delivers a Box/Google Drive-like file management experience for NAS data on FSx for ONTAP. To give end users browser-based access to files, processing triggers, and result viewing, you need to assemble your own solution. This project is one such assembly using Amplify Gen2.
+
+See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
+
 ## Architecture
 
 ```

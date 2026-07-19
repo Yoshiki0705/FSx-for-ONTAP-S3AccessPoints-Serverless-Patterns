@@ -2,7 +2,11 @@
 
 ## Executive Summary
 
-Teams that need a **web-based interface** for browsing, requesting processing, and viewing results on FSx for ONTAP volumes have several architectural options. This document compares three approaches — AWS Amplify Gen2, Nextcloud, and custom-build (CDK + framework) — and provides a selection guide based on team context.
+Teams that need a **web-based interface** for browsing, requesting processing, and viewing results on FSx for ONTAP volumes have several architectural options.
+
+As of this writing, AWS does not provide a managed service that delivers a Box/Google Drive-like file management experience (folder navigation, file preview, sharing links, sync clients) for NAS data on FSx for ONTAP. The S3 Console allows object listing but is not an end-user file portal. Building this experience requires assembling your own solution or leveraging OSS tools.
+
+This document compares three approaches — AWS Amplify Gen2, Nextcloud, and custom-build (CDK + framework) — and provides a selection guide based on team context.
 
 **Key takeaway**: All three are valid. Choose based on your team's existing skills, operational preferences, and compliance requirements. The core S3 AP serverless patterns in this repository work independently of the frontend choice.
 
