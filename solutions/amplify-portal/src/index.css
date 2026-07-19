@@ -392,3 +392,34 @@ button[type="submit"]:disabled {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* File Preview */
+.file-preview-trigger {
+  position: relative;
+  cursor: pointer;
+}
+
+.file-preview-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background: #1a1a2e;
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.preview-placeholder {
+  font-weight: 500;
+}
+
+.preview-hint {
+  opacity: 0.7;
+}
