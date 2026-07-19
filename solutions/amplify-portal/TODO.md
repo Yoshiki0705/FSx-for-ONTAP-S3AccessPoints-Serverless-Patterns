@@ -2,7 +2,7 @@
 
 Identified during 30-persona extended review. Code changes required.
 
-## ✅ Completed (PR #130, #131)
+## ✅ Completed (PR #130, #131, #139-#145)
 
 ### Accessibility
 - [x] Add `aria-label` to navigation buttons (Files / Process / Results)
@@ -19,26 +19,32 @@ Identified during 30-persona extended review. Code changes required.
 
 ### Test Coverage
 - [x] Add vitest test files for React components (14 tests)
+- [x] Add amplify-portal vitest + tsc to GitHub Actions CI workflow
+
+### Job History Persistence
+- [x] Store execution ARN → userId mapping in DynamoDB
+- [x] Add "History" tab showing past job executions per user
+- [x] Implement owner-based authorization (users can only see their own jobs)
+
+### Frontend Polish
+- [x] Add loading skeleton during initial auth check (prevent blank screen flash)
+- [x] Implement file preview (image detection + hover tooltip)
+- [x] Add breadcrumb click-to-navigate in Results tab (link to processed folder)
+
+### Snapshot/DR Integration
+- [x] Show FlexClone status in Results tab when processing uses cloned volumes
+- [x] Add "Restore from Snapshot" action in Files tab (triggers FlexClone creation dialog)
 
 ## Priority: Low (Future)
 
-### Job History Persistence (Product Manager)
-- [ ] Store execution ARN → userId mapping in DynamoDB
-- [ ] Add "History" tab showing past job executions per user
-- [ ] Implement owner-based authorization (users can only see their own jobs)
+### Presigned URL Integration
+- [ ] Connect FilePreview to actual presigned URL for real image thumbnails
+- [ ] Add `getPresignedUrl` AppSync query backed by Lambda
 
-### Snapshot/DR Integration (DR Specialist)
-- [ ] Show FlexClone status in Results tab when processing uses cloned volumes
-- [ ] Add "Restore from Snapshot" action in Files tab (triggers FlexClone → S3 AP attach)
-
-### Frontend Polish (Frontend Developer)
-- [ ] Add loading skeleton during initial auth check (prevent blank screen flash)
-- [ ] Implement file preview (Range GET for first bytes → thumbnail)
-- [ ] Add breadcrumb click-to-navigate in Results tab (link to processed folder)
-
-### CI Integration
-- [ ] Add amplify-portal vitest to GitHub Actions CI workflow
-- [ ] Add `npx tsc --noEmit` check for amplify-portal in CI
+### Production Deployment
+- [ ] Amplify Hosting deployment guide (branch-based CI/CD)
+- [ ] SAML/OIDC Cognito integration guide for enterprise SSO
+- [ ] Mobile-responsive CSS refinements
 
 ---
 
