@@ -451,7 +451,7 @@ cat /tmp/output.json | jq .
 | Lambda Duration | `AWS/Lambda` | > 80% of timeout |
 | Step Functions ExecutionsFailed | `AWS/States` | > 0 over 15 min |
 | SQS ApproximateAgeOfOldestMessage | `AWS/SQS` | > 3600s (FPolicy) |
-| Custom: FilesProcessed | `FSxN/S3AP` | = 0 for 2 consecutive periods |
+| Custom: FilesProcessed | `FSx for ONTAP S3 AP` | = 0 for 2 consecutive periods |
 
 ### Monthly Review Checklist
 
@@ -609,7 +609,7 @@ See [infrastructure/demo-ad-environment.yaml](../../infrastructure/demo-ad-envir
 | `Network timeout` connecting to ONTAP | Lambda in VPC cannot reach ONTAP management LIF | Verify SG allows egress to port 443; confirm ONTAP management IP is reachable from private subnets |
 | `Access Denied` on S3 AP operations | IAM policy or S3 AP resource policy mismatch | Check both IAM identity policy and S3 AP resource policy allow the action |
 | `Secret not found` | Secret name typo or wrong region | Verify with `aws secretsmanager describe-secret --secret-id <NAME>` |
-| `ONTAP S3 server exists on SVM` | ONTAP native S3 conflicts with FSx S3 AP | Use a different SVM or remove the ONTAP S3 server (see Known Constraints) |
+| `ONTAP S3 server exists on SVM` | ONTAP native S3 conflicts with FSx for ONTAP S3 AP | Use a different SVM or remove the ONTAP S3 server (see Known Constraints) |
 | `Template size exceeds 51200 bytes` | Template too large for `--template-body` | Use `sam deploy` (handles S3 upload) or upload template to S3 first |
 | `Bedrock InvokeModel AccessDenied` | Model access not enabled in the region | Enable model access in Bedrock console; use cross-region inference profile ID |
 | `AccessDenied` on WINDOWS S3 AP data ops | `WindowsUser.Name` contains domain prefix | Remove domain prefix — use `"Admin"` not `"DOMAIN\\Admin"` |
