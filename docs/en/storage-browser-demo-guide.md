@@ -216,6 +216,44 @@ function App() {
 export default App;
 ```
 
+### 4. Create the S3 AP via CLI (verified syntax)
+
+```bash
+# Create JSON input (Internet origin is default when S3AccessPoint block is omitted)
+cat <<EOF > create-ap.json
+{
+    "Name": "my-storage-browser-ap",
+    "Type": "ONTAP",
+    "OntapConfiguration": {
+        "VolumeId": "fsvol-XXXXXXXXXXXXXXXXX",
+        "FileSystemIdentity": {
+            "Type": "UNIX",
+            "UnixUser": {
+                "Name": "root"
+            }
+        }
+    }
+}
+EOF
+
+# Create the access point
+aws fsx create-and-attach-s3-access-point \
+  --cli-input-json file://create-ap.json \
+  --region ap-northeast-1
+
+# Wait for AVAILABLE (poll every 10s)
+watch -n 10 "aws fsx describe-s3-access-point-attachments \
+  --region ap-northeast-1 \
+  --query 'S3AccessPointAttachments[?Name==\`my-storage-browser-ap\`].{Lifecycle:Lifecycle,Alias:S3AccessPoint.Alias}' \
+  --output table"
+```
+
+**Key learnings from our verification (2026-07-19)**:
+- `--cli-input-json` is the reliable way to pass complex structures (positional args are fragile)
+- Omitting `S3AccessPoint` block → Internet origin (default). To restrict to VPC, add `"S3AccessPoint": {"VpcConfiguration": {"VpcId": "vpc-XXX"}}`
+- WINDOWS identity requires AD DC reachable from SVM (otherwise: "Failed to lookup the provided user in ONTAP")
+- UNIX identity (e.g., `root`) works without AD — simplest for demos
+
 ### 5. Run and verify
 
 ```bash
