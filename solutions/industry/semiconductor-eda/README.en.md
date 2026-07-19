@@ -2,7 +2,7 @@
 
 🌐 **Language / 言語**: [日本語](README.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md)
+📚 **Documentation**: [Architecture Diagram](docs/architecture.en.md) | [Demo Guide](docs/demo-guide.en.md) | [Workshop Lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
 
 ## Overview
 
@@ -289,6 +289,128 @@ UC6 uses the following services:
 - [Amazon Athena User Guide](https://docs.aws.amazon.com/athena/latest/ug/what-is.html)
 - [Amazon Bedrock API Reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html)
 - [GDSII Format Specification](https://boolean.klaasholwerda.nl/interface/bnf/gdsformat.html)
+- [AWS Workshop Studio: Amazon Quick + FSx for ONTAP S3 AP Hands-on](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup)
+- [AWS Storage Blog: Enabling AI-powered analytics on enterprise file data](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)
+- [Guidance for Scaling Electronic Design Automation (EDA) on AWS](https://aws.amazon.com/solutions/guidance/scaling-electronic-design-automation-on-aws/)
+
+## Amazon Quick Integration (AI-Powered EDA Data Access)
+
+By integrating UC6 outputs (DRC statistics, design metadata, review summaries) with **Amazon Quick** (the evolution of Amazon QuickSight into a unified AI workspace), EDA teams can access design quality data through natural language queries.
+
+### Quick Features Mapped to UC6 Outputs
+
+| Quick Feature | UC6 Integration Point | Data Type |
+|-----------|-----------------|-----------|
+| **Quick Index / Research** | Search design files + Bedrock review summaries on S3 AP | GDS/OASIS + reports (md/json) |
+| **Quick Sight** | BI dashboards from Athena/Glue DRC statistics tables | Structured data (Parquet/CSV) |
+| **Quick Flows** | Auto-create review requests when DRC anomalies detected | Action automation (json) |
+| **Quick Automate** | Triage regression results → assign owners automatically | End-to-end process |
+
+### Setup Steps (Overview)
+
+1. Create FSx for ONTAP S3 AP with **AD user (Windows identity)**
+2. Amazon Quick console → Integrations → Knowledge bases → Amazon S3
+3. Enter `s3://<S3-AP-alias>` as the S3 bucket URL and sync
+4. DRC statistics dashboard: Add Athena as a Quick Sight dataset
+5. Configure Quick Flows for DRC threshold alerts and review automation
+
+> **Prerequisite**: The S3 AP must be configured with an AD-based Windows identity (UNIX identity does not allow adding Quick's data access role to the AP policy). See the [AWS Workshop Studio hands-on lab](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) for detailed steps.
+
+### EDA Team Use Case Examples
+
+| Scenario | Experience Enabled by Quick |
+|---------|---------------------|
+| Designer checks DRC trends | Ask "What are the top 5 DRC error cells from last week?" in natural language |
+| Team lead retrieves quality reports | Cross-search design review summaries via Quick Research |
+| Manager automates weekly reports | Quick Flows sends DRC statistics summary every Monday |
+| Regression result triage for new process node | Quick Automate classifies errors → assigns owners → creates Jira tickets |
+
+### Related Patterns
+
+- [Amazon Quick Agentic Workspace (UC30)](../../genai/quick-agentic-workspace/) — Full implementation of an agentic workspace using all Quick Suite features
+- [Verification script: verify-quick-s3ap.sh](../../../scripts/verify-quick-s3ap.sh) — E2E verification from AD environment setup to Quick connection
+
+---
+
+## Workshop-Validated EDA Scenarios
+
+> **Hands-on Lab**: [FSx for ONTAP S3 Access Points Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US)
+>
+> Detailed integration guide: [Workshop EDA Integration Guide](../../../docs/en/workshop-eda-integration.md)
+
+EDA workflow scenarios validated in AWS Workshop Studio can be productionized with this UC6 pattern.
+
+### Data Generation (Module 06)
+
+The Workshop generates 500 EDA jobs with ~2,000 log files covering:
+
+| EDA Tool | Log Type | UC6 Processing |
+|----------|----------|----------------|
+| LSF (IBM Spectrum) | Job scheduling | Resource usage aggregation, bottleneck identification |
+| Cadence ncvlog/ncelab | Compilation | Error/warning count, per-module aggregation |
+| Cadence Xcelium | Simulation | PASS/FAIL/UVM_FATAL detection, triage |
+| Coverage Analysis | Post-processing | Coverage rate aggregation, threshold alerts |
+
+> No licenses needed — all scenarios can be experienced with synthetic data using DemoMode=true.
+
+### Athena SQL Analysis (Module 13)
+
+Run SQL queries directly on CSV data via S3 AP to analyze EDA regression results:
+
+```sql
+-- Per-module failure count
+SELECT module_name, COUNT(*) as failure_count
+FROM eda_regression WHERE status = 'FAIL'
+GROUP BY module_name ORDER BY failure_count DESC;
+
+-- Identify timing violations
+SELECT job_id, module_name, timing_slack
+FROM eda_regression WHERE timing_slack < 0
+ORDER BY timing_slack ASC LIMIT 20;
+
+-- License failure root cause
+SELECT license_feature, COUNT(*) as checkout_failures
+FROM eda_regression WHERE error_type = 'LICENSE_CHECKOUT_FAILED'
+GROUP BY license_feature ORDER BY checkout_failures DESC;
+```
+
+### Glue Data Catalog (Module 14)
+
+Auto-discover data schema on S3 AP with Glue Crawler, enabling unified access from Athena / Quick Sight / SageMaker:
+
+```yaml
+# IAM policy: Glue Crawler → S3 AP
+- Sid: GlueCrawlerS3APAccess
+  Effect: Allow
+  Action:
+    - s3:GetObject
+    - s3:ListBucket
+  Resource:
+    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+    - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+```
+
+### Event-Driven Processing (Module 15)
+
+EventBridge Scheduler + Lambda automatically parses logs after regression completes and immediately alerts on UVM_FATAL errors:
+
+| Trigger Approach | Latency | Complexity | Pattern Support |
+|-----------------|---------|-----------|:---:|
+| EventBridge Scheduler (polling) | Minutes to hours | Low | ✅ TriggerMode=POLLING |
+| FPolicy → EventBridge (event-driven) | Seconds to minutes | High | ✅ TriggerMode=EVENT_DRIVEN |
+| S3 Event Notifications | — | — | ❌ Not supported for S3 AP |
+
+### Quick Automations (Module 12)
+
+Automation scenarios for EDA teams:
+
+| Automation | Trigger | Action |
+|-----------|---------|--------|
+| Daily triage | Every morning 9:00 | Email regression failure summary |
+| Coverage gate | Real-time | Alert when module coverage < 80% |
+| License monitor | Every 15 min | Detect and notify recurring checkout failures |
+
+---
 
 ## FlexCache Cloud Burst Extension
 

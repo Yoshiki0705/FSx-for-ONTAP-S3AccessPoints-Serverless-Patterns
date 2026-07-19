@@ -336,3 +336,29 @@ aws ecr delete-repository \
 - [ONTAP REST API リファレンス](https://docs.netapp.com/us-en/ontap-automation/)
 - [ECS Fargate ドキュメント](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html)
 - [EventBridge カスタムバス](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-event-bus.html)
+- [AWS Workshop: Event-Driven Processing (Module 15)](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/15-event-processing)
+- [Workshop EDA 統合ガイド](../../../docs/workshop-eda-integration.md)
+
+## Workshop 比較: ポーリング vs イベント駆動
+
+> [AWS Workshop Module 15: Event-Driven Processing](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/15-event-processing)
+
+Workshop の Event-Driven Processing モジュールでは、**EventBridge Scheduler + Lambda** で S3 AP 上の EDA シミュレーションログを定期的に読み取り、UVM_FATAL エラーを検出して SNS アラートを送信します。これは S3 AP が S3 Event Notifications を非対応であるための代替アプローチです。
+
+本パターン（FPolicy）は、ファイル操作をリアルタイムに検知するためのより高度なアプローチです。
+
+### トリガー方式の選択ガイド
+
+| 方式 | レイテンシー | 実装複雑度 | コスト | 適するユースケース |
+|------|------------|-----------|-------|-----------------|
+| **EventBridge Scheduler** (Workshop Module 15) | 分〜時間 | 低 | 低（Lambda 実行回数のみ） | バッチ分析、日次/時次レポート、PoC |
+| **FPolicy → EventBridge** (本パターン) | 秒〜分 | 高（ECS + FPolicy 設定） | 中（ECS Fargate 常時稼働） | リアルタイムセキュリティ監視、即時通知、コンプライアンス |
+| S3 Event Notifications | — | — | — | ❌ S3 AP 非対応（使用不可） |
+
+### 段階的導入の推奨
+
+1. **Phase 1 (PoC)**: Workshop 方式 — EventBridge Scheduler でログをポーリング（TriggerMode=POLLING）
+2. **Phase 2 (本番)**: FPolicy 方式 — ファイル書き込みをリアルタイム検知（TriggerMode=EVENT_DRIVEN）
+3. **Phase 3 (ハイブリッド)**: 両方併用 — FPolicy で即時処理 + Scheduler で定期バッチ集計（TriggerMode=HYBRID）
+
+> Workshop でポーリング方式を体験した後、本番要件に応じて FPolicy 方式に移行する段階的アプローチを推奨します。
