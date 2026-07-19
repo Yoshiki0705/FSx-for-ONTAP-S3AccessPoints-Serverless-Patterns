@@ -47,9 +47,7 @@ def ops1_env_vars(monkeypatch):
 @pytest.fixture
 def collect_handler():
     """Import collect handler module dynamically."""
-    spec = importlib.util.spec_from_file_location(
-        "collect_handler", FUNCTIONS_DIR / "collect" / "handler.py"
-    )
+    spec = importlib.util.spec_from_file_location("collect_handler", FUNCTIONS_DIR / "collect" / "handler.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules["collect_handler"] = module
     spec.loader.exec_module(module)
@@ -59,9 +57,7 @@ def collect_handler():
 @pytest.fixture
 def analyze_handler():
     """Import analyze handler module dynamically."""
-    spec = importlib.util.spec_from_file_location(
-        "analyze_handler", FUNCTIONS_DIR / "analyze" / "handler.py"
-    )
+    spec = importlib.util.spec_from_file_location("analyze_handler", FUNCTIONS_DIR / "analyze" / "handler.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules["analyze_handler"] = module
     spec.loader.exec_module(module)
@@ -71,9 +67,7 @@ def analyze_handler():
 @pytest.fixture
 def report_handler():
     """Import report handler module dynamically."""
-    spec = importlib.util.spec_from_file_location(
-        "report_handler", FUNCTIONS_DIR / "report" / "handler.py"
-    )
+    spec = importlib.util.spec_from_file_location("report_handler", FUNCTIONS_DIR / "report" / "handler.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules["report_handler"] = module
     spec.loader.exec_module(module)

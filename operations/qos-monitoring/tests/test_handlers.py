@@ -49,7 +49,11 @@ class TestReport:
         analyze_out = analyze_handler.handler(collect_out, None)
         with patch.object(report_handler, "boto3") as mock_boto3:
             mock_s3 = MagicMock()
-            mock_boto3.client.side_effect = lambda svc, **kw: {"s3": mock_s3, "cloudwatch": MagicMock(), "sns": MagicMock()}.get(svc, MagicMock())
+            mock_boto3.client.side_effect = lambda svc, **kw: {
+                "s3": mock_s3,
+                "cloudwatch": MagicMock(),
+                "sns": MagicMock(),
+            }.get(svc, MagicMock())
             report_handler.handler(analyze_out, None)
             assert mock_s3.put_object.called
             assert "qos-report.json" in mock_s3.put_object.call_args_list[0].kwargs["Key"]

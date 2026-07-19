@@ -48,7 +48,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         summary = {
             "total_volumes": len(volumes),
             "volumes_with_recommendations": len(recommendations),
-            "total_potential_savings_usd": round(sum(r.get("estimated_monthly_savings_usd", 0) for r in recommendations), 2),
+            "total_potential_savings_usd": round(
+                sum(r.get("estimated_monthly_savings_usd", 0) for r in recommendations), 2
+            ),
             "policy_distribution": _count_policies(volumes),
         }
 
@@ -56,13 +58,15 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if enable_bedrock and recommendations:
             ai_summary = _generate_ai_summary(fs_id, summary, recommendations)
 
-        all_results.append({
-            "fs_id": fs_id,
-            "recommendations": recommendations,
-            "summary": summary,
-            "ai_summary": ai_summary,
-            "analyzed_at": datetime.now(UTC).isoformat(),
-        })
+        all_results.append(
+            {
+                "fs_id": fs_id,
+                "recommendations": recommendations,
+                "summary": summary,
+                "ai_summary": ai_summary,
+                "analyzed_at": datetime.now(UTC).isoformat(),
+            }
+        )
 
     return {
         "analyses": all_results,
@@ -161,6 +165,7 @@ def _generate_ai_summary(fs_id: str, summary: dict, recommendations: list[dict])
     """Bedrock AI サマリ生成."""
     try:
         import boto3
+
         bedrock = boto3.client("bedrock-runtime")
         prompt = (
             "You are an AWS storage cost advisor. Analyze these FSx for ONTAP tiering "
@@ -173,7 +178,12 @@ def _generate_ai_summary(fs_id: str, summary: dict, recommendations: list[dict])
             modelId="amazon.nova-lite-v1:0",
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({"messages": [{"role": "user", "content": [{"text": prompt}]}], "inferenceConfig": {"maxTokens": 400, "temperature": 0.3}}),
+            body=json.dumps(
+                {
+                    "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                    "inferenceConfig": {"maxTokens": 400, "temperature": 0.3},
+                }
+            ),
         )
         result = json.loads(response["body"].read())
         content = result.get("output", {}).get("message", {}).get("content", [{}])

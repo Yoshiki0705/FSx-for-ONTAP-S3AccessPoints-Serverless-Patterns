@@ -16,7 +16,9 @@ class TestReportGeneration:
             mock_s3 = MagicMock()
             mock_cw = MagicMock()
             mock_boto3.client.side_effect = lambda service, **kw: {
-                "s3": mock_s3, "cloudwatch": mock_cw, "sns": MagicMock(),
+                "s3": mock_s3,
+                "cloudwatch": mock_cw,
+                "sns": MagicMock(),
             }.get(service, MagicMock())
 
             report_handler.handler(analyze_output, None)
@@ -43,7 +45,9 @@ class TestReportGeneration:
         with patch.object(report_handler, "boto3") as mock_boto3:
             mock_sns = MagicMock()
             mock_boto3.client.side_effect = lambda service, **kw: {
-                "s3": MagicMock(), "cloudwatch": MagicMock(), "sns": mock_sns,
+                "s3": MagicMock(),
+                "cloudwatch": MagicMock(),
+                "sns": mock_sns,
             }.get(service, MagicMock())
 
             result = report_handler.handler(analyze_output, None)
@@ -59,7 +63,9 @@ class TestReportGeneration:
         with patch.object(report_handler, "boto3") as mock_boto3:
             mock_sns = MagicMock()
             mock_boto3.client.side_effect = lambda service, **kw: {
-                "s3": MagicMock(), "cloudwatch": mock_cw, "sns": mock_sns,
+                "s3": MagicMock(),
+                "cloudwatch": mock_cw,
+                "sns": mock_sns,
             }.get(service, MagicMock())
             mock_cw = MagicMock()
 
@@ -77,7 +83,9 @@ class TestCloudWatchMetrics:
         with patch.object(report_handler, "boto3") as mock_boto3:
             mock_cw = MagicMock()
             mock_boto3.client.side_effect = lambda service, **kw: {
-                "s3": MagicMock(), "cloudwatch": mock_cw, "sns": MagicMock(),
+                "s3": MagicMock(),
+                "cloudwatch": mock_cw,
+                "sns": MagicMock(),
             }.get(service, MagicMock())
 
             report_handler.handler(analyze_output, None)

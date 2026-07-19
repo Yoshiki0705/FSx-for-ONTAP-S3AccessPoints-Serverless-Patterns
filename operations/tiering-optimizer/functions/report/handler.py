@@ -49,12 +49,22 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         json_key = None
         if report_format in ("JSON", "BOTH"):
             json_key = f"reports/{date_prefix}/{fs_id}/tiering-report.json"
-            s3_client.put_object(Bucket=report_bucket, Key=json_key, Body=json.dumps(report_data, ensure_ascii=False, indent=2), ContentType="application/json")
+            s3_client.put_object(
+                Bucket=report_bucket,
+                Key=json_key,
+                Body=json.dumps(report_data, ensure_ascii=False, indent=2),
+                ContentType="application/json",
+            )
 
         html_key = None
         if report_format in ("HTML", "BOTH"):
             html_key = f"reports/{date_prefix}/{fs_id}/tiering-report.html"
-            s3_client.put_object(Bucket=report_bucket, Key=html_key, Body=_generate_html(report_data).encode("utf-8"), ContentType="text/html; charset=utf-8")
+            s3_client.put_object(
+                Bucket=report_bucket,
+                Key=html_key,
+                Body=_generate_html(report_data).encode("utf-8"),
+                ContentType="text/html; charset=utf-8",
+            )
 
         _publish_metrics(cw_client, fs_id, summary)
 
@@ -62,15 +72,17 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if alert_required and alert_topic_arn:
             _send_alert(alert_topic_arn, fs_id, summary, recommendations, ai_summary)
 
-        results.append({
-            "fs_id": fs_id,
-            "report_s3_key": json_key,
-            "html_report_s3_key": html_key,
-            "recommendation_count": len(recommendations),
-            "potential_savings_usd": summary.get("total_potential_savings_usd", 0),
-            "alert_required": alert_required,
-            "reported_at": now.isoformat(),
-        })
+        results.append(
+            {
+                "fs_id": fs_id,
+                "report_s3_key": json_key,
+                "html_report_s3_key": html_key,
+                "recommendation_count": len(recommendations),
+                "potential_savings_usd": summary.get("total_potential_savings_usd", 0),
+                "alert_required": alert_required,
+                "reported_at": now.isoformat(),
+            }
+        )
 
     return {"reports": results, "total_recommendations": total_recs, "reported_at": now.isoformat()}
 
@@ -79,15 +91,28 @@ def _publish_metrics(cw_client: Any, fs_id: str, summary: dict) -> None:
     cw_client.put_metric_data(
         Namespace=CW_NAMESPACE,
         MetricData=[
-            {"MetricName": "TieringRecommendationCount", "Value": summary.get("volumes_with_recommendations", 0), "Unit": "Count", "Dimensions": [{"Name": "FileSystemId", "Value": fs_id}]},
-            {"MetricName": "TieringPotentialSavingsUSD", "Value": summary.get("total_potential_savings_usd", 0), "Unit": "None", "Dimensions": [{"Name": "FileSystemId", "Value": fs_id}]},
+            {
+                "MetricName": "TieringRecommendationCount",
+                "Value": summary.get("volumes_with_recommendations", 0),
+                "Unit": "Count",
+                "Dimensions": [{"Name": "FileSystemId", "Value": fs_id}],
+            },
+            {
+                "MetricName": "TieringPotentialSavingsUSD",
+                "Value": summary.get("total_potential_savings_usd", 0),
+                "Unit": "None",
+                "Dimensions": [{"Name": "FileSystemId", "Value": fs_id}],
+            },
         ],
     )
 
 
 def _send_alert(topic_arn: str, fs_id: str, summary: dict, recs: list[dict], ai_summary: str | None) -> None:
     sns_client = boto3.client("sns")
-    rec_lines = "\n".join(f"  - {r['volume_name']}: {r['current_policy']}→{r['recommended_policy']} (${r['estimated_monthly_savings_usd']:.2f}/mo)" for r in recs[:5])
+    rec_lines = "\n".join(
+        f"  - {r['volume_name']}: {r['current_policy']}→{r['recommended_policy']} (${r['estimated_monthly_savings_usd']:.2f}/mo)"
+        for r in recs[:5]
+    )
     message = (
         f"[OPS3] Tiering Optimization Alert\n{'=' * 50}\n"
         f"File System: {fs_id}\n"
@@ -121,9 +146,9 @@ def _generate_html(report_data: dict) -> str:
 .section{{background:white;padding:1.5rem;border-radius:8px;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}}
 table{{width:100%;border-collapse:collapse}}th,td{{padding:.75rem;text-align:left;border-bottom:1px solid #dee2e6}}th{{background:#f1f3f5}}
 .ai-summary{{background:#fff3e0;padding:1rem;border-radius:8px;margin-top:1rem}}pre{{white-space:pre-wrap}}</style></head>
-<body><div class="header"><h1>OPS3: Tiering Optimizer Report</h1><p>{fs_id} | {report_data.get('generated_at','')}</p></div>
-<div class="section"><h2>サマリ</h2><p>対象ボリューム: {summary.get('total_volumes',0)} | 推奨数: {summary.get('volumes_with_recommendations',0)} | 月額削減見込: ${summary.get('total_potential_savings_usd',0):.2f}</p>
-<p>ポリシー分布: {json.dumps(summary.get('policy_distribution',{}))}</p></div>
+<body><div class="header"><h1>OPS3: Tiering Optimizer Report</h1><p>{fs_id} | {report_data.get("generated_at", "")}</p></div>
+<div class="section"><h2>サマリ</h2><p>対象ボリューム: {summary.get("total_volumes", 0)} | 推奨数: {summary.get("volumes_with_recommendations", 0)} | 月額削減見込: ${summary.get("total_potential_savings_usd", 0):.2f}</p>
+<p>ポリシー分布: {json.dumps(summary.get("policy_distribution", {}))}</p></div>
 <div class="section"><h2>推奨アクション</h2><table><thead><tr><th>Volume</th><th>現在</th><th>推奨</th><th>Cooling</th><th>月額削減</th></tr></thead><tbody>{rec_rows or '<tr><td colspan="5">推奨なし</td></tr>'}</tbody></table>{ai_section}</div>
 <div class="section"><p><strong>参考</strong>: SSD ${0.125}/GB/月, Capacity Pool ${0.021}/GB/月. ティアリングポリシー変更は <a href="https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/volume-data-tiering.html">AWS Docs</a> 参照.</p></div>
 </body></html>"""

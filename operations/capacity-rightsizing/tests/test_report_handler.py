@@ -124,10 +124,7 @@ class TestHtmlReport:
 
             # Should have 2 S3 uploads (JSON + HTML)
             assert mock_s3.put_object.call_count == 2
-            content_types = [
-                call.kwargs["ContentType"]
-                for call in mock_s3.put_object.call_args_list
-            ]
+            content_types = [call.kwargs["ContentType"] for call in mock_s3.put_object.call_args_list]
             assert "application/json" in content_types
             assert "text/html; charset=utf-8" in content_types
 

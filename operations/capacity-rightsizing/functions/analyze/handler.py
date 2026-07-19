@@ -56,9 +56,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Generate recommendations
         recommendations = _analyze_capacity(fs_id, volumes, threshold, low_threshold)
-        recommendations.extend(
-            _analyze_throughput(fs_id, cloudwatch, threshold)
-        )
+        recommendations.extend(_analyze_throughput(fs_id, cloudwatch, threshold))
 
         # Generate What-If scenarios
         what_if_scenarios = _generate_what_if(fs_id, cloudwatch)
@@ -71,20 +69,20 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if enable_bedrock and recommendations:
             ai_summary = _generate_ai_summary(fs_id, recommendations, summary)
 
-        all_results.append({
-            "fs_id": fs_id,
-            "recommendations": recommendations,
-            "what_if_scenarios": what_if_scenarios,
-            "summary_stats": summary,
-            "ai_summary": ai_summary,
-            "analyzed_at": datetime.now(UTC).isoformat(),
-        })
+        all_results.append(
+            {
+                "fs_id": fs_id,
+                "recommendations": recommendations,
+                "what_if_scenarios": what_if_scenarios,
+                "summary_stats": summary,
+                "ai_summary": ai_summary,
+                "analyzed_at": datetime.now(UTC).isoformat(),
+            }
+        )
 
     return {
         "analyses": all_results,
-        "total_recommendations": sum(
-            len(r["recommendations"]) for r in all_results
-        ),
+        "total_recommendations": sum(len(r["recommendations"]) for r in all_results),
         "analyzed_at": datetime.now(UTC).isoformat(),
     }
 
@@ -128,21 +126,21 @@ def _analyze_capacity(
             expand_gb = size_gb * 0.2  # Suggest 20% expansion
             cost_delta = expand_gb * SSD_PRICE_PER_GB_MONTH
 
-            recommendations.append({
-                "fs_id": fs_id,
-                "recommendation_type": rec_type,
-                "target": name,
-                "current_value": f"{util:.1f}% ({size_gb:.0f} GB)",
-                "recommended_value": (
-                    "Enable autosize (grow)"
-                    if not autosize_enabled
-                    else f"Expand +{expand_gb:.0f} GB"
-                ),
-                "reason": reason,
-                "monthly_cost_delta_usd": round(cost_delta, 2),
-                "confidence": 0.85 if util >= 90 else 0.70,
-                "automation_action": action,
-            })
+            recommendations.append(
+                {
+                    "fs_id": fs_id,
+                    "recommendation_type": rec_type,
+                    "target": name,
+                    "current_value": f"{util:.1f}% ({size_gb:.0f} GB)",
+                    "recommended_value": (
+                        "Enable autosize (grow)" if not autosize_enabled else f"Expand +{expand_gb:.0f} GB"
+                    ),
+                    "reason": reason,
+                    "monthly_cost_delta_usd": round(cost_delta, 2),
+                    "confidence": 0.85 if util >= 90 else 0.70,
+                    "automation_action": action,
+                }
+            )
 
         # Low utilization → downsize recommendation (only if autosize not managing it)
         elif util <= low_threshold and not autosize_enabled:
@@ -153,21 +151,23 @@ def _analyze_capacity(
             savings = (size_gb - recommended_gb) * SSD_PRICE_PER_GB_MONTH
 
             if savings > 1.0:  # Only recommend if savings > $1/month
-                recommendations.append({
-                    "fs_id": fs_id,
-                    "recommendation_type": "downsize",
-                    "target": name,
-                    "current_value": f"{util:.1f}% ({size_gb:.0f} GB allocated, {used_gb:.0f} GB used)",
-                    "recommended_value": f"Shrink to {recommended_gb:.0f} GB or enable autosize (grow_shrink)",
-                    "reason": (
-                        f"Volume '{name}' is at only {util:.1f}% utilization "
-                        f"({used_gb:.0f} GB used of {size_gb:.0f} GB). "
-                        f"Consider enabling autosize (grow_shrink) or shrinking to {recommended_gb:.0f} GB."
-                    ),
-                    "monthly_cost_delta_usd": round(-savings, 2),
-                    "confidence": 0.60,
-                    "automation_action": "volume_autosize_enable_grow_shrink",
-                })
+                recommendations.append(
+                    {
+                        "fs_id": fs_id,
+                        "recommendation_type": "downsize",
+                        "target": name,
+                        "current_value": f"{util:.1f}% ({size_gb:.0f} GB allocated, {used_gb:.0f} GB used)",
+                        "recommended_value": f"Shrink to {recommended_gb:.0f} GB or enable autosize (grow_shrink)",
+                        "reason": (
+                            f"Volume '{name}' is at only {util:.1f}% utilization "
+                            f"({used_gb:.0f} GB used of {size_gb:.0f} GB). "
+                            f"Consider enabling autosize (grow_shrink) or shrinking to {recommended_gb:.0f} GB."
+                        ),
+                        "monthly_cost_delta_usd": round(-savings, 2),
+                        "confidence": 0.60,
+                        "automation_action": "volume_autosize_enable_grow_shrink",
+                    }
+                )
 
     return recommendations
 
@@ -192,21 +192,23 @@ def _analyze_throughput(
             cost_next = next_tier * THROUGHPUT_PRICE_PER_MBPS_MONTH
             delta = cost_next - cost_current
 
-            recommendations.append({
-                "fs_id": fs_id,
-                "recommendation_type": "tier_upgrade",
-                "target": fs_id,
-                "current_value": f"{current_mbps} MBps ({net_util:.1f}% utilized)",
-                "recommended_value": f"{next_tier} MBps",
-                "reason": (
-                    f"Network throughput utilization is {net_util:.1f}% "
-                    f"(threshold: {threshold}%). Current tier: {current_mbps} MBps. "
-                    f"Upgrading to {next_tier} MBps will provide headroom for growth."
-                ),
-                "monthly_cost_delta_usd": round(delta, 2),
-                "confidence": 0.80,
-                "automation_action": "fsx_update_throughput",
-            })
+            recommendations.append(
+                {
+                    "fs_id": fs_id,
+                    "recommendation_type": "tier_upgrade",
+                    "target": fs_id,
+                    "current_value": f"{current_mbps} MBps ({net_util:.1f}% utilized)",
+                    "recommended_value": f"{next_tier} MBps",
+                    "reason": (
+                        f"Network throughput utilization is {net_util:.1f}% "
+                        f"(threshold: {threshold}%). Current tier: {current_mbps} MBps. "
+                        f"Upgrading to {next_tier} MBps will provide headroom for growth."
+                    ),
+                    "monthly_cost_delta_usd": round(delta, 2),
+                    "confidence": 0.80,
+                    "automation_action": "fsx_update_throughput",
+                }
+            )
 
     # Gen1: calculate from network bytes
     elif net_util is None and current_mbps > 0:
@@ -219,21 +221,23 @@ def _analyze_throughput(
             next_tier = _get_next_tier(current_mbps)
             if next_tier:
                 cost_delta = (next_tier - current_mbps) * THROUGHPUT_PRICE_PER_MBPS_MONTH
-                recommendations.append({
-                    "fs_id": fs_id,
-                    "recommendation_type": "tier_upgrade",
-                    "target": fs_id,
-                    "current_value": f"{current_mbps} MBps (~{calc_util:.1f}% utilized, Gen1 estimate)",
-                    "recommended_value": f"{next_tier} MBps",
-                    "reason": (
-                        f"Estimated throughput utilization is ~{calc_util:.1f}% "
-                        f"(Gen1: calculated from network bytes). "
-                        f"Current tier: {current_mbps} MBps."
-                    ),
-                    "monthly_cost_delta_usd": round(cost_delta, 2),
-                    "confidence": 0.65,  # Lower confidence for Gen1 estimate
-                    "automation_action": "fsx_update_throughput",
-                })
+                recommendations.append(
+                    {
+                        "fs_id": fs_id,
+                        "recommendation_type": "tier_upgrade",
+                        "target": fs_id,
+                        "current_value": f"{current_mbps} MBps (~{calc_util:.1f}% utilized, Gen1 estimate)",
+                        "recommended_value": f"{next_tier} MBps",
+                        "reason": (
+                            f"Estimated throughput utilization is ~{calc_util:.1f}% "
+                            f"(Gen1: calculated from network bytes). "
+                            f"Current tier: {current_mbps} MBps."
+                        ),
+                        "monthly_cost_delta_usd": round(cost_delta, 2),
+                        "confidence": 0.65,  # Lower confidence for Gen1 estimate
+                        "automation_action": "fsx_update_throughput",
+                    }
+                )
 
     return recommendations
 
@@ -257,18 +261,20 @@ def _generate_what_if(
         delta = tier_cost - current_cost
         direction = "Upgrade" if tier > current_mbps else "Downgrade"
 
-        scenarios.append({
-            "fs_id": fs_id,
-            "scenario_name": f"{direction} to {tier} MBps",
-            "current_monthly_cost_usd": round(current_cost, 2),
-            "projected_monthly_cost_usd": round(tier_cost, 2),
-            "monthly_delta_usd": round(delta, 2),
-            "description": (
-                f"Throughput tier change: {current_mbps} → {tier} MBps. "
-                f"Monthly cost {'increase' if delta > 0 else 'decrease'}: "
-                f"${abs(delta):.2f}/month."
-            ),
-        })
+        scenarios.append(
+            {
+                "fs_id": fs_id,
+                "scenario_name": f"{direction} to {tier} MBps",
+                "current_monthly_cost_usd": round(current_cost, 2),
+                "projected_monthly_cost_usd": round(tier_cost, 2),
+                "monthly_delta_usd": round(delta, 2),
+                "description": (
+                    f"Throughput tier change: {current_mbps} → {tier} MBps. "
+                    f"Monthly cost {'increase' if delta > 0 else 'decrease'}: "
+                    f"${abs(delta):.2f}/month."
+                ),
+            }
+        )
 
     return scenarios
 
@@ -284,23 +290,15 @@ def _compute_summary(
 
     return {
         "total_volumes": len(volumes),
-        "volumes_above_threshold": sum(
-            1 for u in vol_utils if u >= int(os.environ.get("THRESHOLD_PERCENT", "80"))
-        ),
+        "volumes_above_threshold": sum(1 for u in vol_utils if u >= int(os.environ.get("THRESHOLD_PERCENT", "80"))),
         "volumes_below_low_threshold": sum(
             1 for u in vol_utils if u <= int(os.environ.get("LOW_UTILIZATION_THRESHOLD_PERCENT", "20"))
         ),
-        "avg_volume_utilization_percent": round(
-            sum(vol_utils) / len(vol_utils), 2
-        ) if vol_utils else 0,
+        "avg_volume_utilization_percent": round(sum(vol_utils) / len(vol_utils), 2) if vol_utils else 0,
         "max_volume_utilization_percent": max(vol_utils) if vol_utils else 0,
-        "throughput_utilization_percent": cloudwatch.get(
-            "network_throughput_utilization_percent"
-        ),
+        "throughput_utilization_percent": cloudwatch.get("network_throughput_utilization_percent"),
         "recommendation_count": len(recommendations),
-        "total_monthly_cost_delta_usd": round(
-            sum(r.get("monthly_cost_delta_usd", 0) for r in recommendations), 2
-        ),
+        "total_monthly_cost_delta_usd": round(sum(r.get("monthly_cost_delta_usd", 0) for r in recommendations), 2),
     }
 
 
@@ -330,13 +328,15 @@ def _generate_ai_summary(
             modelId="amazon.nova-lite-v1:0",
             contentType="application/json",
             accept="application/json",
-            body=json.dumps({
-                "messages": [{"role": "user", "content": [{"text": prompt}]}],
-                "inferenceConfig": {
-                    "maxTokens": 500,
-                    "temperature": 0.3,
-                },
-            }),
+            body=json.dumps(
+                {
+                    "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                    "inferenceConfig": {
+                        "maxTokens": 500,
+                        "temperature": 0.3,
+                    },
+                }
+            ),
         )
 
         result = json.loads(response["body"].read())

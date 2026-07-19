@@ -37,9 +37,7 @@ def ops4_env_vars(monkeypatch):
 @pytest.fixture
 def collect_handler():
     """Import collect handler module dynamically."""
-    spec = importlib.util.spec_from_file_location(
-        "ops4_collect_handler", FUNCTIONS_DIR / "collect" / "handler.py"
-    )
+    spec = importlib.util.spec_from_file_location("ops4_collect_handler", FUNCTIONS_DIR / "collect" / "handler.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules["ops4_collect_handler"] = module
     spec.loader.exec_module(module)
@@ -49,9 +47,7 @@ def collect_handler():
 @pytest.fixture
 def analyze_handler():
     """Import analyze handler module dynamically."""
-    spec = importlib.util.spec_from_file_location(
-        "ops4_analyze_handler", FUNCTIONS_DIR / "analyze" / "handler.py"
-    )
+    spec = importlib.util.spec_from_file_location("ops4_analyze_handler", FUNCTIONS_DIR / "analyze" / "handler.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules["ops4_analyze_handler"] = module
     spec.loader.exec_module(module)
@@ -61,9 +57,7 @@ def analyze_handler():
 @pytest.fixture
 def report_handler():
     """Import report handler module dynamically."""
-    spec = importlib.util.spec_from_file_location(
-        "ops4_report_handler", FUNCTIONS_DIR / "report" / "handler.py"
-    )
+    spec = importlib.util.spec_from_file_location("ops4_report_handler", FUNCTIONS_DIR / "report" / "handler.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules["ops4_report_handler"] = module
     spec.loader.exec_module(module)
@@ -83,11 +77,56 @@ def collect_output():
                         "volume_uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
                         "snapshot_count": 5,
                         "snapshots": [
-                            {"snapshot_name": "daily.2026-07-12_0010", "snapshot_uuid": "s1", "create_time": "2026-07-12T00:10:00+00:00", "size_bytes": 1073741824, "age_days": 1, "volume_name": "vol_production_data", "volume_uuid": "a1b2c3d4", "fs_id": "fs-test01"},
-                            {"snapshot_name": "daily.2026-07-11_0010", "snapshot_uuid": "s2", "create_time": "2026-07-11T00:10:00+00:00", "size_bytes": 1073741824, "age_days": 2, "volume_name": "vol_production_data", "volume_uuid": "a1b2c3d4", "fs_id": "fs-test01"},
-                            {"snapshot_name": "weekly.2026-07-06_0015", "snapshot_uuid": "s3", "create_time": "2026-07-06T00:15:00+00:00", "size_bytes": 5368709120, "age_days": 7, "volume_name": "vol_production_data", "volume_uuid": "a1b2c3d4", "fs_id": "fs-test01"},
-                            {"snapshot_name": "weekly.2026-03-01_0015", "snapshot_uuid": "s4", "create_time": "2026-03-01T00:15:00+00:00", "size_bytes": 10737418240, "age_days": 134, "volume_name": "vol_production_data", "volume_uuid": "a1b2c3d4", "fs_id": "fs-test01"},
-                            {"snapshot_name": "manual_before_migration", "snapshot_uuid": "s5", "create_time": "2025-12-15T10:30:00+00:00", "size_bytes": 21474836480, "age_days": 210, "volume_name": "vol_production_data", "volume_uuid": "a1b2c3d4", "fs_id": "fs-test01"},
+                            {
+                                "snapshot_name": "daily.2026-07-12_0010",
+                                "snapshot_uuid": "s1",
+                                "create_time": "2026-07-12T00:10:00+00:00",
+                                "size_bytes": 1073741824,
+                                "age_days": 1,
+                                "volume_name": "vol_production_data",
+                                "volume_uuid": "a1b2c3d4",
+                                "fs_id": "fs-test01",
+                            },
+                            {
+                                "snapshot_name": "daily.2026-07-11_0010",
+                                "snapshot_uuid": "s2",
+                                "create_time": "2026-07-11T00:10:00+00:00",
+                                "size_bytes": 1073741824,
+                                "age_days": 2,
+                                "volume_name": "vol_production_data",
+                                "volume_uuid": "a1b2c3d4",
+                                "fs_id": "fs-test01",
+                            },
+                            {
+                                "snapshot_name": "weekly.2026-07-06_0015",
+                                "snapshot_uuid": "s3",
+                                "create_time": "2026-07-06T00:15:00+00:00",
+                                "size_bytes": 5368709120,
+                                "age_days": 7,
+                                "volume_name": "vol_production_data",
+                                "volume_uuid": "a1b2c3d4",
+                                "fs_id": "fs-test01",
+                            },
+                            {
+                                "snapshot_name": "weekly.2026-03-01_0015",
+                                "snapshot_uuid": "s4",
+                                "create_time": "2026-03-01T00:15:00+00:00",
+                                "size_bytes": 10737418240,
+                                "age_days": 134,
+                                "volume_name": "vol_production_data",
+                                "volume_uuid": "a1b2c3d4",
+                                "fs_id": "fs-test01",
+                            },
+                            {
+                                "snapshot_name": "manual_before_migration",
+                                "snapshot_uuid": "s5",
+                                "create_time": "2025-12-15T10:30:00+00:00",
+                                "size_bytes": 21474836480,
+                                "age_days": 210,
+                                "volume_name": "vol_production_data",
+                                "volume_uuid": "a1b2c3d4",
+                                "fs_id": "fs-test01",
+                            },
                         ],
                     },
                     {
@@ -95,8 +134,26 @@ def collect_output():
                         "volume_uuid": "c3d4e5f6-a7b8-9012-cdef-123456789012",
                         "snapshot_count": 2,
                         "snapshots": [
-                            {"snapshot_name": "daily.2026-07-12_0010", "snapshot_uuid": "s6", "create_time": "2026-07-12T00:10:00+00:00", "size_bytes": 2147483648, "age_days": 1, "volume_name": "vol_archive_2023", "volume_uuid": "c3d4e5f6", "fs_id": "fs-test01"},
-                            {"snapshot_name": "yearly_2024", "snapshot_uuid": "s7", "create_time": "2025-01-01T00:00:00+00:00", "size_bytes": 53687091200, "age_days": 559, "volume_name": "vol_archive_2023", "volume_uuid": "c3d4e5f6", "fs_id": "fs-test01"},
+                            {
+                                "snapshot_name": "daily.2026-07-12_0010",
+                                "snapshot_uuid": "s6",
+                                "create_time": "2026-07-12T00:10:00+00:00",
+                                "size_bytes": 2147483648,
+                                "age_days": 1,
+                                "volume_name": "vol_archive_2023",
+                                "volume_uuid": "c3d4e5f6",
+                                "fs_id": "fs-test01",
+                            },
+                            {
+                                "snapshot_name": "yearly_2024",
+                                "snapshot_uuid": "s7",
+                                "create_time": "2025-01-01T00:00:00+00:00",
+                                "size_bytes": 53687091200,
+                                "age_days": 559,
+                                "volume_name": "vol_archive_2023",
+                                "volume_uuid": "c3d4e5f6",
+                                "fs_id": "fs-test01",
+                            },
                         ],
                     },
                 ],

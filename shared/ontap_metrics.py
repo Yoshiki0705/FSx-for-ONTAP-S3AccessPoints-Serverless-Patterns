@@ -97,19 +97,21 @@ class OntapMetricsCollector:
 
             utilization = (used_bytes / size_bytes * 100) if size_bytes > 0 else 0.0
 
-            results.append({
-                "name": vol.get("name", ""),
-                "uuid": vol.get("uuid", ""),
-                "svm_name": vol.get("svm", {}).get("name", ""),
-                "size_bytes": size_bytes,
-                "used_bytes": used_bytes,
-                "available_bytes": available_bytes,
-                "utilization_percent": round(utilization, 2),
-                "autosize_enabled": autosize.get("mode", "off") != "off",
-                "autosize_mode": autosize.get("mode", "off"),
-                "style": vol.get("style", "unknown"),
-                "state": vol.get("state", "unknown"),
-            })
+            results.append(
+                {
+                    "name": vol.get("name", ""),
+                    "uuid": vol.get("uuid", ""),
+                    "svm_name": vol.get("svm", {}).get("name", ""),
+                    "size_bytes": size_bytes,
+                    "used_bytes": used_bytes,
+                    "available_bytes": available_bytes,
+                    "utilization_percent": round(utilization, 2),
+                    "autosize_enabled": autosize.get("mode", "off") != "off",
+                    "autosize_mode": autosize.get("mode", "off"),
+                    "style": vol.get("style", "unknown"),
+                    "state": vol.get("state", "unknown"),
+                }
+            )
 
         logger.info("Collected space metrics for %d volumes", len(results))
         return results
@@ -150,15 +152,17 @@ class OntapMetricsCollector:
 
             utilization = (used_bytes / size_bytes * 100) if size_bytes > 0 else 0.0
 
-            results.append({
-                "name": aggr.get("name", ""),
-                "uuid": aggr.get("uuid", ""),
-                "size_bytes": size_bytes,
-                "used_bytes": used_bytes,
-                "available_bytes": available_bytes,
-                "utilization_percent": round(utilization, 2),
-                "state": aggr.get("state", "unknown"),
-            })
+            results.append(
+                {
+                    "name": aggr.get("name", ""),
+                    "uuid": aggr.get("uuid", ""),
+                    "size_bytes": size_bytes,
+                    "used_bytes": used_bytes,
+                    "available_bytes": available_bytes,
+                    "utilization_percent": round(utilization, 2),
+                    "state": aggr.get("state", "unknown"),
+                }
+            )
 
         logger.info("Collected space metrics for %d aggregates", len(results))
         return results
@@ -208,18 +212,20 @@ class OntapMetricsCollector:
             dedupe_savings = space.get("dedupe_savings", 0)
             compression_savings = space.get("compression_savings", 0)
 
-            results.append({
-                "name": vol.get("name", ""),
-                "uuid": vol.get("uuid", ""),
-                "svm_name": vol.get("svm", {}).get("name", ""),
-                "dedupe_enabled": efficiency.get("dedupe", "none") != "none",
-                "compression_enabled": efficiency.get("compression", "none") != "none",
-                "dedupe_savings_bytes": dedupe_savings,
-                "compression_savings_bytes": compression_savings,
-                "overall_ratio": round(ratio, 2),
-                "logical_used_bytes": logical_used,
-                "physical_used_bytes": physical_used,
-            })
+            results.append(
+                {
+                    "name": vol.get("name", ""),
+                    "uuid": vol.get("uuid", ""),
+                    "svm_name": vol.get("svm", {}).get("name", ""),
+                    "dedupe_enabled": efficiency.get("dedupe", "none") != "none",
+                    "compression_enabled": efficiency.get("compression", "none") != "none",
+                    "dedupe_savings_bytes": dedupe_savings,
+                    "compression_savings_bytes": compression_savings,
+                    "overall_ratio": round(ratio, 2),
+                    "logical_used_bytes": logical_used,
+                    "physical_used_bytes": physical_used,
+                }
+            )
 
         logger.info("Collected efficiency metrics for %d volumes", len(results))
         return results
@@ -258,14 +264,16 @@ class OntapMetricsCollector:
             # Cloud storage used (capacity pool tier)
             cloud_used = space.get("cloud_storage", {}).get("used", 0)
 
-            results.append({
-                "name": vol.get("name", ""),
-                "uuid": vol.get("uuid", ""),
-                "svm_name": vol.get("svm", {}).get("name", ""),
-                "tiering_policy": tiering.get("policy", "none"),
-                "cooling_period_days": tiering.get("min_cooling_days", 31),
-                "cloud_storage_used_bytes": cloud_used,
-            })
+            results.append(
+                {
+                    "name": vol.get("name", ""),
+                    "uuid": vol.get("uuid", ""),
+                    "svm_name": vol.get("svm", {}).get("name", ""),
+                    "tiering_policy": tiering.get("policy", "none"),
+                    "cooling_period_days": tiering.get("min_cooling_days", 31),
+                    "cloud_storage_used_bytes": cloud_used,
+                }
+            )
 
         logger.info("Collected tiering metrics for %d volumes", len(results))
         return results
@@ -301,12 +309,14 @@ class OntapMetricsCollector:
 
         results = []
         for snap in records:
-            results.append({
-                "name": snap.get("name", ""),
-                "uuid": snap.get("uuid", ""),
-                "create_time": snap.get("create_time", ""),
-                "size_bytes": snap.get("size", 0),
-            })
+            results.append(
+                {
+                    "name": snap.get("name", ""),
+                    "uuid": snap.get("uuid", ""),
+                    "create_time": snap.get("create_time", ""),
+                    "size_bytes": snap.get("size", 0),
+                }
+            )
 
         logger.info("Collected %d snapshots for volume %s", len(results), volume_uuid)
         return results
@@ -336,12 +346,14 @@ class OntapMetricsCollector:
 
         results = []
         for policy in records:
-            results.append({
-                "name": policy.get("name", ""),
-                "uuid": policy.get("uuid", ""),
-                "enabled": policy.get("enabled", False),
-                "schedules": policy.get("copies", []),
-            })
+            results.append(
+                {
+                    "name": policy.get("name", ""),
+                    "uuid": policy.get("uuid", ""),
+                    "enabled": policy.get("enabled", False),
+                    "schedules": policy.get("copies", []),
+                }
+            )
 
         logger.info("Collected %d snapshot policies", len(results))
         return results
@@ -383,13 +395,15 @@ class OntapMetricsCollector:
             fixed = policy.get("fixed", {})
             adaptive = policy.get("adaptive", {})
 
-            results.append({
-                "name": policy.get("name", ""),
-                "uuid": policy.get("uuid", ""),
-                "max_throughput_iops": fixed.get("max_throughput_iops"),
-                "max_throughput_mbps": fixed.get("max_throughput_mbps"),
-                "min_throughput_iops": adaptive.get("expected_iops"),
-            })
+            results.append(
+                {
+                    "name": policy.get("name", ""),
+                    "uuid": policy.get("uuid", ""),
+                    "max_throughput_iops": fixed.get("max_throughput_iops"),
+                    "max_throughput_mbps": fixed.get("max_throughput_mbps"),
+                    "min_throughput_iops": adaptive.get("expected_iops"),
+                }
+            )
 
         logger.info("Collected %d QoS policies", len(results))
         return results
