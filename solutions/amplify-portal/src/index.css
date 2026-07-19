@@ -423,3 +423,26 @@ button[type="submit"]:disabled {
 .preview-hint {
   opacity: 0.7;
 }
+
+/* Results Breadcrumb */
+.results-breadcrumb {
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.breadcrumb-link {
+  background: none;
+  border: none;
+  color: #0066cc;
+  cursor: pointer;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.breadcrumb-link:hover {
+  color: #004499;
+}
