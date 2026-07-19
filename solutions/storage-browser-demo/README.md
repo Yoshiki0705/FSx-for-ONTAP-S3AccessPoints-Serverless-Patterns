@@ -32,11 +32,20 @@ Edit `src/StorageBrowserFSxN.tsx` — update the `CONFIG` object:
 
 ## Running (development)
 
-You need a backend `/api/credentials` endpoint that returns temporary AWS credentials. For local development, use a Vite proxy to a small Express server or provide credentials via environment variables.
+Two terminals needed:
 
 ```bash
+# Terminal 1: Start the credentials API (uses your local AWS credentials)
+node server/credentials-api.mjs
+
+# Terminal 2: Start the Vite dev server (proxies /api/credentials to port 3001)
 npm run dev
+# Open http://localhost:5173
 ```
+
+The credentials API reads from your standard AWS credential chain (`~/.aws/credentials`, env vars, or IAM role). It exposes temporary credentials at `http://localhost:3001/api/credentials` which Vite proxies to the frontend.
+
+**Security**: The credentials server is for local development only. For production, use Cognito Identity Pool or API Gateway + Lambda (see detailed guide).
 
 ## Architecture
 
