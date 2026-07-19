@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "S3AccessPointAlias",
+    "ParameterValue": "your-ap-xxxxx-ext-s3alias"
+  },
+  {
+    "ParameterKey": "S3AccessPointName",
+    "ParameterValue": "your-s3ap-name"
+  },
+  {
+    "ParameterKey": "GatewayName",
+    "ParameterValue": "eda-mcp-gateway"
+  },
+  {
+    "ParameterKey": "LambdaMemorySize",
+    "ParameterValue": "256"
+  },
+  {
+    "ParameterKey": "LambdaTimeout",
+    "ParameterValue": "30"
+  }
+]
