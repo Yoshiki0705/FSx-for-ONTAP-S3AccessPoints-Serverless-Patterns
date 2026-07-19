@@ -55,7 +55,9 @@ def handler(event: dict[str, Any], context: Any) -> None:
         logger.exception("Failed to handle %s", request_type)
         physical_id = event.get("PhysicalResourceId", "NONE")
         send_response(
-            event, context, "FAILED",
+            event,
+            context,
+            "FAILED",
             {"Error": str(e)},
             physical_id,
         )
@@ -82,7 +84,8 @@ def create_s3_access_point(properties: dict[str, Any]) -> tuple[str, dict[str, s
         # CRITICAL: No domain prefix! "user01" not "DOMAIN\\user01"
         logger.info(
             "Creating WINDOWS-type S3 AP: %s for user: %s",
-            ap_name, windows_username,
+            ap_name,
+            windows_username,
         )
         nfs_config["FileSystemUserType"] = "WINDOWS"
         nfs_config["WindowsUser"] = {"Name": windows_username}
@@ -91,7 +94,9 @@ def create_s3_access_point(properties: dict[str, Any]) -> tuple[str, dict[str, s
         unix_gid = properties.get("UnixGroupId", "1001")
         logger.info(
             "Creating UNIX-type S3 AP: %s for UID: %s GID: %s",
-            ap_name, unix_uid, unix_gid,
+            ap_name,
+            unix_uid,
+            unix_gid,
         )
         nfs_config["FileSystemUserType"] = "UNIX"
         nfs_config["UnixUser"] = {
@@ -156,7 +161,9 @@ def create_s3ap_via_volume(
 
     logger.info(
         "Creating S3 AP '%s' on volume %s (fs: %s)",
-        ap_name, volume_id, fs_id,
+        ap_name,
+        volume_id,
+        fs_id,
     )
 
     try:
@@ -167,7 +174,9 @@ def create_s3ap_via_volume(
             Bucket=bucket_name,
             VpcConfiguration={
                 "VpcId": get_vpc_id_from_filesystem(fs_id),
-            } if False else {},  # Internet origin for hands-on simplicity
+            }
+            if False
+            else {},  # Internet origin for hands-on simplicity
         )
         ap_arn = response.get("AccessPointArn", f"arn:aws:s3:{region}:{account_id}:accesspoint/{ap_name}")
         logger.info("S3 AP created: %s", ap_arn)
@@ -259,9 +268,7 @@ def wait_for_association(association_id: str, timeout: int = 300) -> dict[str, s
     """Wait for DRA to become available."""
     start = time.time()
     while time.time() - start < timeout:
-        response = fsx_client.describe_data_repository_associations(
-            AssociationIds=[association_id]
-        )
+        response = fsx_client.describe_data_repository_associations(AssociationIds=[association_id])
         assoc = response["Associations"][0]
         status = assoc.get("Lifecycle", "UNKNOWN")
 
@@ -275,9 +282,7 @@ def wait_for_association(association_id: str, timeout: int = 300) -> dict[str, s
             }
         elif status in ("FAILED", "MISCONFIGURED"):
             failure_details = assoc.get("FailureDetails", {})
-            raise RuntimeError(
-                f"DRA {association_id} failed: {status} - {failure_details}"
-            )
+            raise RuntimeError(f"DRA {association_id} failed: {status} - {failure_details}")
 
         logger.info("DRA %s status: %s, waiting...", association_id, status)
         time.sleep(10)
@@ -293,15 +298,17 @@ def send_response(
     physical_resource_id: str,
 ) -> None:
     """Send response to CloudFormation pre-signed URL."""
-    response_body = json.dumps({
-        "Status": status,
-        "Reason": f"See CloudWatch Log Stream: {context.log_stream_name}",
-        "PhysicalResourceId": physical_resource_id,
-        "StackId": event["StackId"],
-        "RequestId": event["RequestId"],
-        "LogicalResourceId": event["LogicalResourceId"],
-        "Data": data,
-    })
+    response_body = json.dumps(
+        {
+            "Status": status,
+            "Reason": f"See CloudWatch Log Stream: {context.log_stream_name}",
+            "PhysicalResourceId": physical_resource_id,
+            "StackId": event["StackId"],
+            "RequestId": event["RequestId"],
+            "LogicalResourceId": event["LogicalResourceId"],
+            "Data": data,
+        }
+    )
 
     logger.info("Response status: %s, physical_id: %s", status, physical_resource_id)
 
