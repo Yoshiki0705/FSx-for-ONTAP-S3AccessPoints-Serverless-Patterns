@@ -6,14 +6,16 @@ import { ResultsViewer } from "./components/ResultsViewer";
 import { JobHistory } from "./components/JobHistory";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { AiPanel } from "./components/AiPanel";
+import { AthenaQueryPanel } from "./components/AthenaQueryPanel";
 
-type View = "files" | "submit" | "results" | "history";
+type View = "files" | "submit" | "results" | "history" | "analytics";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "files", label: "Files" },
   { id: "submit", label: "Process" },
   { id: "results", label: "Results" },
   { id: "history", label: "History" },
+  { id: "analytics", label: "Analytics" },
 ];
 
 /**
@@ -116,6 +118,9 @@ function App() {
               }}
             />
           )}
+        </div>
+        <div id="panel-analytics" role="tabpanel" aria-labelledby="tab-analytics" hidden={currentView !== "analytics"}>
+          {currentView === "analytics" && <AthenaQueryPanel />}
         </div>
       </main>
     </div>
