@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { portalSettings } from "../portal-settings";
+import { FilePreview } from "./FilePreview";
+import { RestoreFromSnapshot } from "./RestoreFromSnapshot";
 
 const client = generateClient<Schema>();
 
 interface FileExplorerProps {
   onSelectPrefix: (prefix: string) => void;
+  onFileSelect?: (fileKey: string, fileName: string) => void;
 }
 
 interface FileItem {
@@ -24,7 +28,7 @@ interface FileItem {
  * - Pagination (1000 objects per page)
  * - File selection for processing
  */
-export function FileExplorer({ onSelectPrefix }: FileExplorerProps) {
+export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps) {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [currentPrefix, setCurrentPrefix] = useState("");
   const [loading, setLoading] = useState(false);
@@ -108,9 +112,11 @@ export function FileExplorer({ onSelectPrefix }: FileExplorerProps) {
           className="process-btn"
           onClick={() => onSelectPrefix(currentPrefix)}
           title="Process files in this directory"
+          disabled={!portalSettings.processingEnabled}
         >
           Process this folder
         </button>
+        <RestoreFromSnapshot currentPrefix={currentPrefix} />
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -138,16 +144,19 @@ export function FileExplorer({ onSelectPrefix }: FileExplorerProps) {
           </div>
         ))}
 
-        {regularFiles.map((file) => (
-          <div key={file.key} className="file-item">
-            <span className="icon">📄</span>
-            <span className="name">{file.key.replace(currentPrefix, "")}</span>
-            <span className="size">{formatSize(file.size)}</span>
-            <span className="modified">
-              {file.lastModified ? new Date(file.lastModified).toLocaleDateString() : "-"}
-            </span>
-          </div>
-        ))}
+        {regularFiles.map((file) => {
+          const fileName = file.key.replace(currentPrefix, "");
+          return (
+            <div key={file.key} className="file-item">
+              <FilePreview fileKey={file.key} fileName={fileName} onSelect={onFileSelect} />
+              <span className="name">{fileName}</span>
+              <span className="size">{formatSize(file.size)}</span>
+              <span className="modified">
+                {file.lastModified ? new Date(file.lastModified).toLocaleDateString() : "-"}
+              </span>
+            </div>
+          );
+        })}
 
         {files.length === 0 && !loading && (
           <div className="empty-state">No files in this directory</div>

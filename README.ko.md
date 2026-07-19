@@ -1,1127 +1,215 @@
-# FSx for ONTAP S3 Access Points Serverless Patterns
+# FSx for ONTAP S3 Access Points — 서버리스 패턴
 
-🌐 **Language / 言語**: [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+![tests](https://img.shields.io/badge/tests-2%2C162%2B%20passed-brightgreen) ![cfn-lint](https://img.shields.io/badge/cfn--lint-0%20errors-brightgreen) ![ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen) ![patterns](https://img.shields.io/badge/patterns-42%2B-blue) ![region](https://img.shields.io/badge/verified-ap--northeast--1-blue)
 
-## Current Status
+🌐 [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-본 리포지토리는 **28개의 산업별 유스케이스** + **이벤트 기반 FPolicy 패턴** + **7개의 FlexCache/FlexClone 패턴** + **콘텐츠 엣지 배포 패턴**을 포함하는 서버리스 패턴 라이브러리입니다.
+---
 
-초기 5개 패턴(Phase 1)에서 Phase 2–13을 통해 확장되었습니다. Phase 10에서 공유 FPolicy 이벤트 수집 파이프라인 도입, Phase 11에서 전체 17 UC에 디스패치 전개, Phase 12에서 Persistent Store 리플레이 검증·SLO 관측성·용량 가드레일·시크릿 로테이션으로 운영 강화, Phase 13에서 FlexClone/FlexCache 서버리스 자동화를 구현했습니다.
+> **42개의 레퍼런스 패턴** — FSx for ONTAP의 엔터프라이즈 NAS 데이터를 S3 Access Points를 통해 서버리스로 처리합니다. **데이터 복사 불필요**.
+>
+> 28개 산업별 UC + 7개 FlexCache/FlexClone + 2개 GenAI + SAP + HA 모니터링 + 이벤트 드리븐 + 엣지 배포 + File Portal UI
 
-Amazon FSx for ONTAP의 S3 Access Points를 활용한 업종별 서버리스 자동화 패턴 모음집입니다.
+---
 
-> **본 리포지토리의 위치**: 이것은 「설계 판단을 배우기 위한 레퍼런스 구현」입니다. 일부 유스케이스는 AWS 환경에서 E2E 검증을 완료했으며, 나머지 유스케이스도 CloudFormation 배포, 공통 Discovery Lambda, 주요 컴포넌트의 동작 확인을 실시했습니다. PoC에서 프로덕션 환경으로의 단계적 적용을 상정하여, 비용 최적화, 보안, 에러 핸들링의 설계 판단을 구체적인 코드로 보여주는 것을 목적으로 합니다.
+## 시작하기
 
-**테스트**: 1,499+ unit/property tests | 126 test files | cfn-lint + ruff validation
+| 하고 싶은 것... | 가이드 | 소요 시간 |
+|---|---|---|
+| FSx 없이 데모 체험 | [Demo Mode Guide](docs/demo-mode-guide.md) | 5분 |
+| 웹 포털로 파일 브라우징 | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.en.md) | 10분 |
+| AWS에 패턴 배포 | [Deployment Guide](docs/guides/deployment-guide.md) | 30분 |
+| 워크로드에 맞는 패턴 찾기 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15분 |
+| 비용 견적 | [Cost Calculator](docs/cost-calculator.md) | 5분 |
+| 핸즈온 랩 환경 구축 | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60분 |
 
-## Governance Disclaimer
+---
 
-본 리포지토리의 거버넌스 문서는 아키텍처 및 운영 리뷰를 지원하기 위한 것입니다. 법무 판단, 컴플라이언스 평가, 프라이버시 평가, 규제 대응을 대체하지 않습니다.
+<details>
+<summary><strong>📂 전체 패턴 (클릭하여 펼치기)</strong></summary>
 
-## 관련 기사
+### 산업별 유스케이스 (UC1-UC28 + SAP)
 
-본 리포지토리는 다음 기사에서 해설한 아키텍처의 구현 예시입니다:
+| # | 디렉토리 | 산업 | 요약 |
+|---|---|---|---|
+| UC1 | [`legal-compliance/`](solutions/industry/legal-compliance/) | 법무 | NTFS ACL 감사 및 컴플라이언스 보고 |
+| UC2 | [`financial-idp/`](solutions/industry/financial-idp/) | 금융 | 청구서 OCR 및 엔티티 추출 |
+| UC3 | [`manufacturing-analytics/`](solutions/industry/manufacturing-analytics/) | 제조 | IoT 센서 및 품질 검사 |
+| UC4 | [`media-vfx/`](solutions/industry/media-vfx/) | 미디어 | VFX 렌더링 품질 검사 |
+| UC5 | [`healthcare-dicom/`](solutions/industry/healthcare-dicom/) | 의료 | DICOM 익명화 |
+| UC6 | [`semiconductor-eda/`](solutions/industry/semiconductor-eda/) | 반도체 | GDS/OASIS 검증 |
+| UC7 | [`genomics-pipeline/`](solutions/industry/genomics-pipeline/) | 유전체학 | FASTQ/VCF 품질 검사 |
+| UC8 | [`energy-seismic/`](solutions/industry/energy-seismic/) | 에너지 | SEG-Y 탄성파 데이터 분석 |
+| UC9 | [`autonomous-driving/`](solutions/industry/autonomous-driving/) | 자동차 | 영상/LiDAR 전처리 |
+| UC10 | [`construction-bim/`](solutions/industry/construction-bim/) | 건설 | BIM 모델 관리 |
+| UC11 | [`retail-catalog/`](solutions/industry/retail-catalog/) | 유통 | 상품 이미지 태깅 |
+| UC12 | [`logistics-ocr/`](solutions/industry/logistics-ocr/) | 물류 | 배송 문서 OCR |
+| UC13 | [`education-research/`](solutions/industry/education-research/) | 교육 | 논문 분류 |
+| UC14 | [`insurance-claims/`](solutions/industry/insurance-claims/) | 보험 | 손해 사정 |
+| UC15 | [`defense-satellite/`](solutions/industry/defense-satellite/) | 방위 | 위성 이미지 분석 |
+| UC16 | [`government-archives/`](solutions/industry/government-archives/) | 정부 | 공문서 및 정보 공개 |
+| UC17 | [`smart-city-geospatial/`](solutions/industry/smart-city-geospatial/) | 스마트시티 | 지리공간 분석 |
+| UC18 | [`telecom-network-analytics/`](solutions/industry/telecom-network-analytics/) | 통신 | CDR/네트워크 로그 분석 |
+| UC19 | [`adtech-creative-management/`](solutions/industry/adtech-creative-management/) | 광고 | 크리에이티브 자산 관리 |
+| UC20 | [`travel-document-processing/`](solutions/industry/travel-document-processing/) | 여행 | 예약 문서 처리 |
+| UC21 | [`agri-food-traceability/`](solutions/industry/agri-food-traceability/) | 농업 | 이력 추적 |
+| UC22 | [`transportation-maintenance/`](solutions/industry/transportation-maintenance/) | 교통 | 장비 점검 |
+| UC23 | [`sustainability-esg-reporting/`](solutions/industry/sustainability-esg-reporting/) | ESG | 지표 추출 |
+| UC24 | [`nonprofit-grant-management/`](solutions/industry/nonprofit-grant-management/) | 비영리 | 보조금 관리 |
+| UC25 | [`utilities-asset-inspection/`](solutions/industry/utilities-asset-inspection/) | 유틸리티 | 드론/SCADA 분석 |
+| UC26 | [`real-estate-portfolio/`](solutions/industry/real-estate-portfolio/) | 부동산 | 물건 이미지 및 계약서 |
+| UC27 | [`hr-document-screening/`](solutions/industry/hr-document-screening/) | HR | 이력서 스크리닝 |
+| UC28 | [`chemical-sds-management/`](solutions/industry/chemical-sds-management/) | 화학 | SDS 및 실험 노트 |
+| SAP | [`sap/erp-adjacent/`](solutions/sap/erp-adjacent/) | SAP/ERP | IDoc 및 EDI 처리 |
 
-- **FSx for ONTAP S3 Access Points as a Serverless Automation Boundary — AI Data Pipelines, Volume-Level SnapMirror DR, and Capacity Guardrails**
-  https://dev.to/yoshikifujiwara/fsx-for-ontap-s3-access-points-as-a-serverless-automation-boundary-ai-data-pipelines-ili
+### FlexCache / FlexClone (FC1-FC7)
 
-기사에서는 아키텍처의 설계 사상과 트레이드오프를 해설하고, 본 리포지토리에서는 구체적이고 재사용 가능한 구현 패턴을 제공합니다.
+| # | 디렉토리 | 패턴 |
+|---|---|---|
+| FC1 | [`flexcache/anycast-dr/`](solutions/flexcache/anycast-dr/) | AnyCast / DR 페일오버 |
+| FC2 | [`flexcache/dynamic-render-workflow/`](solutions/flexcache/dynamic-render-workflow/) | 작업별 동적 FlexCache |
+| FC3 | [`flexcache/rag-enterprise-files/`](solutions/flexcache/rag-enterprise-files/) | 권한 인식 RAG |
+| FC4 | [`flexcache/automotive-cae/`](solutions/flexcache/automotive-cae/) | CAE 시뮬레이션 분석 |
+| FC5 | [`flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/) | 연구 데이터 분류 |
+| FC6 | [`flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/) | 게임 에셋 품질 검사 |
+| FC7 | [`flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/) | FlexClone Dev/Test 및 CI/CD |
 
-## 개요
+### GenAI / HA / 이벤트 드리븐 / 엣지 / File Portal
 
-이 리포지토리는 FSx for ONTAP에 저장된 엔터프라이즈 데이터를 **S3 Access Points**를 통해 서버리스로 처리하는 **28개의 산업별 패턴 (Phase 1: UC1–UC5, Phase 2: UC6–UC14, Phase 7: UC15–UC17, Phase 14: UC18–UC19, Phase 15: UC20–UC22, Phase 16: UC23–UC28)**을 제공합니다.
+| 디렉토리 | 요약 |
+|---|---|
+| [`genai/kb-selfservice-curation/`](solutions/genai/kb-selfservice-curation/) | Bedrock KB 셀프서비스 운영 |
+| [`genai/quick-agentic-workspace/`](solutions/genai/quick-agentic-workspace/) | 에이전틱 워크스페이스 |
+| [`ha/lifekeeper-monitoring/`](solutions/ha/lifekeeper-monitoring/) | HA LifeKeeper AI 모니터링 |
+| [`event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy 이벤트 드리븐 파이프라인 |
+| [`edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/엣지 배포 (벤더 중립) |
+| [`amplify-portal/`](solutions/amplify-portal/) | File Portal UI (Amplify Gen2) |
+| [`nextcloud-test/`](solutions/nextcloud-test/) | File Portal UI (Nextcloud Docker) |
 
-> 이하에서는 FSx for ONTAP S3 Access Points를 간략히 **S3 AP**로 표기합니다.
+### 인프라 및 공유 모듈
 
-각 유스케이스는 독립적인 CloudFormation 템플릿으로 구성되어 있으며, 공통 모듈(ONTAP REST API 클라이언트, FSx 헬퍼, S3 AP 헬퍼)은 `shared/`에 배치하여 재사용합니다.
+| 디렉토리 | 요약 |
+|---|---|
+| [`shared/`](shared/) | 공통 Python 모듈 (S3ApHelper, OntapClient, Observability) |
+| [`operations/`](operations/) | 6개 운영 최적화 패턴 |
+| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | 핸즈온 랩 IaC (VPC/AD/FSx/EC2/S3AP) |
+| [`docs/`](docs/) | 설계 가이드 및 벤치마크 (40+ 문서) |
+| [`scripts/`](scripts/) | 배포, 벤치마크, 유틸리티 |
+| [`.github/workflows/`](.github/workflows/) | CI/CD (lint → test → security → deploy) |
 
-### 주요 특징
+</details>
 
-- **폴링 기반 아키텍처**: S3 AP가 `GetBucketNotificationConfiguration`을 지원하지 않으므로, EventBridge Scheduler + Step Functions에 의한 정기 실행
-- **이벤트 기반 경로 (Phase 10)**: ONTAP FPolicy → ECS Fargate → SQS → EventBridge를 통한 NFSv3 파일 이벤트 감지 ([퀵스타트](docs/event-driven/README.md))
-- **SMB (CIFS) 지원 검증 완료**: NFSv3 및 SMB 프로토콜 모두에서 FPolicy E2E 테스트 완료 — SMB에는 AD 참가 SVM 필요 ([SMB 설정](docs/event-driven/README.md#smb-cifs-テスト手順))
-- **공통 모듈 분리**: OntapClient / FsxHelper / S3ApHelper를 모든 유스케이스에서 재사용
-- **CloudFormation / SAM Transform 기반**: 각 유스케이스가 독립적인 CloudFormation 템플릿(SAM Transform 사용)으로 완결
-- **보안 우선**: TLS 검증 기본 활성화, 최소 권한 IAM, KMS 암호화
-- **비용 최적화**: 고비용 상시 가동 리소스(Interface VPC Endpoints 등)를 옵셔널화
-
-### 설계 가이드 및 운영 문서
-
-| 문서 | 내용 |
-|------|------|
-| [S3AP 이중 레이어 인가 모델](docs/s3ap-authorization-model.md) | AWS IAM + 파일 시스템 권한의 듀얼 레이어 인가 설계 |
-| [Deployment Profiles](docs/deployment-profiles.md) | PoC / Production / Compliance-sensitive 3가지 프로파일 정의 |
-| [Trigger Mode Decision Guide](docs/trigger-mode-decision-guide.md) | POLLING / EVENT_DRIVEN / HYBRID 선택 기준 |
-| [Enterprise Workload Examples](docs/enterprise-workload-examples.md) | SAP・EDI・감사・배치 출력 등 엔터프라이즈 적용 예시 |
-| [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | 처리량 설계・Lambda 사이징・동시성 계산 |
-| [S3AP Benchmark Results](docs/s3ap-benchmark-results.md) | 실측값: PutObject/GetObject/Range GET/ListObjectsV2 레이턴시 |
-| [Partner/SI Delivery Checklist](docs/partner-si-delivery-checklist.md) | 파트너・SI 제안・설계・구축 체크리스트 |
-| [Governance Checklist](docs/governance-checklist.md) | 규제・공공・의료 워크로드 거버넌스 확인 항목 |
-| [Production Readiness](docs/production-readiness.md) | PoC → 본번의 4단계 Maturity Model |
-| [Customer Discovery Template](docs/customer-discovery-template.md) | 고객 히어링 시트 |
-| [Well-Architected Mapping](docs/well-architected-mapping.md) | AWS Well-Architected 6 Pillar 대응표 |
-| [Quick Start Guide](docs/quick-start.md) | 30분 내 첫 배포 가이드 |
-| 🏗️ 핸즈온 Lab 환경 구축 (S3 AP + Tamperproof + FlexClone) | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) |
+---
 
 ## 아키텍처
 
+```
+EventBridge Scheduler (주기적 트리거)
+  └→ Step Functions State Machine
+      ├→ Discovery Lambda: S3 AP를 통해 파일 목록 조회
+      ├→ Map State (병렬): 각 파일을 AI/ML로 처리
+      └→ Report Lambda: 결과 생성 → SNS 알림
+```
+
+이것은 모든 패턴에서 공유하는 공통 흐름입니다. AI/ML 서비스 (Bedrock, Textract, Comprehend, Rekognition)는 UC에 따라 다릅니다.
+
+<details>
+<summary><strong>Mermaid 다이어그램 (클릭하여 펼치기)</strong></summary>
+
 ```mermaid
 graph TB
-    subgraph "Scheduling Layer"
-        EBS[EventBridge Scheduler<br/>cron/rate expressions]
-        KDS[Kinesis Data Streams<br/>Near-real-time detection<br/>UC11 opt-in]
-    end
-
-    subgraph "Orchestration Layer"
-        SFN[Step Functions<br/>State Machine]
-    end
-
-    subgraph "Compute Layer"
-        DL[Discovery Lambda<br/>Object Detection<br/>Within VPC]
-        PL[Processing Lambda<br/>AI/ML Processing<br/>Map State parallel]
-        RL[Report Lambda<br/>Report Generation & Notification]
-    end
-
-    subgraph "Data Sources"
-        FSXN[FSx for ONTAP<br/>Volume]
-        S3AP[S3 Access Point<br/>ListObjectsV2 / GetObject /<br/>Range / PutObject]
-        ONTAP_API[ONTAP REST API<br/>ACL / Volume Metadata]
-    end
-
-    subgraph "AI/ML Services"
-        BEDROCK[Amazon Bedrock<br/>Nova / Claude]
-        TEXTRACT[Amazon Textract<br/>OCR ⚠️ Cross-Region]
-        COMPREHEND[Amazon Comprehend /<br/>Comprehend Medical ⚠️]
-        REKOGNITION[Amazon Rekognition<br/>Image Analysis]
-        SAGEMAKER[Amazon SageMaker<br/>Batch / Real-time /<br/>Serverless Inference<br/>UC9 opt-in]
-    end
-
-    subgraph "Data Analytics"
-        GLUE[AWS Glue<br/>Data Catalog]
-        ATHENA[Amazon Athena<br/>SQL Analytics]
-    end
-
-    subgraph "Storage & State Management"
-        S3OUT[S3 Output Bucket<br/>SSE-KMS Encryption]
-        DDB[DynamoDB<br/>Task Token Store<br/>UC9 opt-in]
-        SM[Secrets Manager]
-    end
-
-    subgraph "Notifications"
-        SNS[SNS Topic<br/>Email / Slack]
-    end
-
-    subgraph "Observability (Phase 3+)"
-        XRAY[AWS X-Ray<br/>Distributed Tracing]
-        CW[CloudWatch<br/>EMF Metrics /<br/>Dashboards]
-    end
-
-    subgraph "VPC Endpoints (Optional)"
-        VPCE_S3[S3 Gateway EP<br/>Free]
-        VPCE_IF[Interface EPs<br/>Secrets Manager / FSx /<br/>CloudWatch / SNS]
-    end
-
-    EBS -->|Periodic trigger| SFN
-    KDS -->|Real-time| SFN
-    SFN -->|Step 1| DL
-    SFN -->|Step 2 Map| PL
-    SFN -->|Step 3| RL
-
-    DL -->|ListObjectsV2| S3AP
-    DL -->|REST API| ONTAP_API
-    PL -->|GetObject / Range| S3AP
-    PL -->|PutObject| S3OUT
-    PL --> BEDROCK
-    PL --> TEXTRACT
-    PL --> COMPREHEND
-    PL --> REKOGNITION
-    PL --> SAGEMAKER
-    PL --> GLUE
-    PL --> ATHENA
-
-    S3AP -.->|Exposes| FSXN
-    GLUE -.-> ATHENA
-
-    DL --> VPCE_S3
-    DL --> VPCE_IF --> SM
-    RL --> SNS
-
-    SFN --> XRAY
-    DL --> CW
-    PL --> CW
-    RL --> CW
-
-    SAGEMAKER -.-> DDB
+    EBS[EventBridge Scheduler] --> SFN[Step Functions]
+    SFN --> DL[Discovery Lambda<br/>S3 AP ListObjectsV2]
+    SFN --> PL[Processing Lambda<br/>AI/ML processing]
+    SFN --> RL[Report Lambda<br/>notification]
+    DL --> S3AP[S3 Access Point]
+    PL --> S3AP
+    S3AP --> FSXN[FSx for ONTAP Volume]
+    PL --> AI[Bedrock / Textract /<br/>Comprehend / Rekognition]
 ```
 
-> 이 다이어그램은 전체 Phase(Phase 1~5)의 서비스를 포함한 전체 아키텍처를 보여줍니다. SageMaker, Kinesis, DynamoDB는 CloudFormation Conditions로 옵트인 제어되며, 활성화하지 않는 한 추가 비용이 발생하지 않습니다. PoC/데모 용도로는 VPC 외부 Lambda 구성도 선택할 수 있습니다.
+</details>
 
-### 워크플로우 개요
+<details>
+<summary><strong>카테고리별 아키텍처 (FlexCache, GenAI, HA, 이벤트 드리븐, 엣지)</strong></summary>
 
-```
-EventBridge Scheduler (정기 실행)
-  └─→ Step Functions State Machine
-       ├─→ Discovery Lambda: S3 AP에서 오브젝트 목록 취득 → Manifest 생성
-       ├─→ Map State (병렬 처리): 각 오브젝트를 AI/ML 서비스로 처리
-       └─→ Report/Notification: 결과 리포트 생성 → SNS 통지
-```
+각 카테고리의 상세 아키텍처 다이어그램:
+- [FlexCache / FlexClone](docs/industry-workload-mapping.md)
+- [GenAI (Bedrock KB / Agentic)](solutions/genai/kb-selfservice-curation/docs/architecture.md)
+- [HA LifeKeeper Monitoring](solutions/ha/lifekeeper-monitoring/README.md)
+- [Event-Driven FPolicy](solutions/event-driven/fpolicy/README.md)
+- [Edge / CDN](solutions/edge/content-delivery/docs/architecture.md)
+- [File Portal (Amplify Gen2)](solutions/amplify-portal/README.md)
 
-## 유스케이스 목록
+</details>
 
-### Phase 1 (UC1–UC5)
+---
 
-| # | 디렉토리 | 업종 | 패턴 | 사용 AI/ML 서비스 | ap-northeast-1 확인 상태 |
-|---|----------|------|------|-----------------|------------------------|
-| UC1 | `solutions/industry/legal-compliance/` | 법무・컴플라이언스 | 파일 서버 감사・데이터 거버넌스 | Athena, Bedrock | ✅ E2E 성공 |
-| UC2 | `solutions/industry/financial-idp/` | 금융・보험 | 계약서・청구서 자동 처리 (IDP) | Textract ⚠️, Comprehend, Bedrock | ⚠️ 도쿄 미지원（대응 리전 이용） |
-| UC3 | `solutions/industry/manufacturing-analytics/` | 제조업 | IoT 센서 로그・품질 검사 이미지 분석 | Athena, Rekognition | ✅ E2E 성공 |
-| UC4 | `solutions/industry/media-vfx/` | 미디어 | VFX 렌더링 파이프라인 | Rekognition, Deadline Cloud | ⚠️ Deadline Cloud 설정 필요 |
-| UC5 | `solutions/industry/healthcare-dicom/` | 의료 | DICOM 이미지 자동 분류・익명화 | Rekognition, Comprehend Medical ⚠️ | ⚠️ 도쿄 미지원（대응 리전 이용） |
+## 주요 S3 Access Point 제약 사항
 
-### Phase 2 (UC6–UC14)
+| 제약 사항 | 해결 방법 |
+|---|---|
+| S3 Event Notifications 미지원 | EventBridge Scheduler 폴링 또는 FPolicy |
+| Presigned URL 비공식 | 실제로 동작하지만 프로덕션에서는 비권장 |
+| 5GB 업로드 제한 | Multipart Upload |
+| Athena 결과를 S3AP에 쓸 수 없음 | 표준 S3 버킷으로 출력 |
+| SSE-FSX 전용 | 볼륨 수준 KMS 암호화 사용 |
 
-| # | 디렉토리 | 업종 | 패턴 | 사용 AI/ML 서비스 | ap-northeast-1 확인 상태 |
-|---|----------|------|------|-----------------|------------------------|
-| UC6 | `solutions/industry/semiconductor-eda/` | 반도체 / EDA | GDS/OASIS 검증・메타데이터 추출・DRC 집계 | Athena, Bedrock | ✅ 테스트 성공 |
-| UC7 | `solutions/industry/genomics-pipeline/` | 유전체학 | FASTQ/VCF 품질 체크・변이 호출 집계 | Athena, Bedrock, Comprehend Medical ⚠️ | ⚠️ Cross-Region (us-east-1) |
-| UC8 | `solutions/industry/energy-seismic/` | 에너지 | SEG-Y 메타데이터 추출・유정 로그 이상 감지 | Athena, Bedrock, Rekognition | ✅ 테스트 성공 |
-| UC9 | `solutions/industry/autonomous-driving/` | 자율주행 / ADAS | 영상/LiDAR 전처리・품질 체크・어노테이션 | Rekognition, Bedrock, SageMaker | ✅ 테스트 성공 |
-| UC10 | `solutions/industry/construction-bim/` | 건설 / AEC | BIM 버전 관리・도면 OCR・안전 컴플라이언스 | Textract ⚠️, Bedrock, Rekognition | ⚠️ Cross-Region (us-east-1) |
-| UC11 | `solutions/industry/retail-catalog/` | 소매 / EC | 상품 이미지 태깅・카탈로그 메타데이터 생성 | Rekognition, Bedrock | ✅ 테스트 성공 |
-| UC12 | `solutions/industry/logistics-ocr/` | 물류 | 배송 전표 OCR・창고 재고 이미지 분석 | Textract ⚠️, Rekognition, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC13 | `solutions/industry/education-research/` | 교육 / 연구 | 논문 PDF 분류・인용 네트워크 분석 | Textract ⚠️, Comprehend, Bedrock | ⚠️ Cross-Region (us-east-1) |
-| UC14 | `solutions/industry/insurance-claims/` | 보험 | 사고 사진 손해 평가・견적서 OCR・사정 보고서 | Rekognition, Textract ⚠️, Bedrock | ⚠️ Cross-Region (us-east-1) |
+상세: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Compatibility Matrix (AWS 확인)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/blob/main/docs/en/compatibility-matrix.md)
 
-> **리전 제약**: Amazon Textract와 Amazon Comprehend Medical은 ap-northeast-1(도쿄)에서 사용할 수 없습니다. Phase 2 UC(UC7, UC10, UC12, UC13, UC14)는 Cross_Region_Client를 통해 us-east-1로 API 호출을 라우팅합니다. Rekognition, Comprehend, Bedrock, Athena는 ap-northeast-1에서 사용 가능합니다.
-> 
-> 참고: [Textract 지원 리전](https://docs.aws.amazon.com/general/latest/gr/textract.html) | [Comprehend Medical 지원 리전](https://docs.aws.amazon.com/general/latest/gr/comprehend-med.html)
+---
 
-### Phase 7 (UC15–UC17) 공공 부문 확장
+<details>
+<summary><strong>📚 관련 기사 및 리포지토리</strong></summary>
 
-| # | 디렉토리 | 업계 | 패턴 | AI/ML 서비스 | ap-northeast-1 검증 상태 |
-|---|---------|------|------|-------------|------------------------|
-| UC15 | `solutions/industry/defense-satellite/` | 국방·우주 | 위성 이미지 분석 (물체 탐지, 변화 탐지, 경고) | Rekognition, SageMaker (선택), Bedrock | ✅ 코드 + 테스트 완료, AWS 검증됨 |
-| UC16 | `solutions/industry/government-archives/` | 정부 | 공문서 아카이브·FOIA (OCR, 분류, 삭제, 20일 기한 추적) | Textract ⚠️, Comprehend, Bedrock, OpenSearch (선택) | ✅ 코드 + 테스트 완료, AWS 검증됨 |
-| UC17 | `solutions/industry/smart-city-geospatial/` | 스마트 시티 | 지리 공간 분석 (CRS 정규화, 토지 이용, 위험 매핑, 계획 보고서) | Rekognition, SageMaker (선택), Bedrock (Nova Lite) | ✅ 코드 + 테스트 완료, AWS 검증됨 |
-| UC18 | [`solutions/industry/telecom-network-analytics/`](solutions/industry/telecom-network-analytics/) | 통신 | CDR/네트워크 로그 분석・이상 감지 |
-| UC19 | [`solutions/industry/adtech-creative-management/`](solutions/industry/adtech-creative-management/) | 광고 | 크리에이티브 자산 관리・브랜드 컴플라이언스 |
-| UC20 | [`solutions/industry/travel-document-processing/`](solutions/industry/travel-document-processing/) | 여행 | 예약 문서 처리・시설 점검 이미지 분석 |
-| UC21 | [`solutions/industry/agri-food-traceability/`](solutions/industry/agri-food-traceability/) | 농업・식품 | 농지 항공 이미지・추적성 문서 관리 |
-| UC22 | [`solutions/industry/transportation-maintenance/`](solutions/industry/transportation-maintenance/) | 운수・철도 | 설비 점검 이미지・보수 보고서 분석 |
-| UC23 | [`solutions/industry/sustainability-esg-reporting/`](solutions/industry/sustainability-esg-reporting/) | 지속가능성 | ESG 메트릭스 추출・리포팅 |
-| UC24 | [`solutions/industry/nonprofit-grant-management/`](solutions/industry/nonprofit-grant-management/) | NPO | 보조금 신청 분류・성과 매칭 |
-| UC25 | [`solutions/industry/utilities-asset-inspection/`](solutions/industry/utilities-asset-inspection/) | 전력 | 드론 이미지・SCADA 로그 분석 |
-| UC26 | [`solutions/industry/real-estate-portfolio/`](solutions/industry/real-estate-portfolio/) | 부동산 | 물건 이미지 분석・계약서 데이터 추출 |
-| UC27 | [`solutions/industry/hr-document-screening/`](solutions/industry/hr-document-screening/) | 인사・HR | 이력서 스크리닝・후보자 평가 |
-| UC28 | [`solutions/industry/chemical-sds-management/`](solutions/industry/chemical-sds-management/) | 화학・소재 | SDS 관리・실험 노트 분석 |
-| UC29 | [`solutions/genai/kb-selfservice-curation/`](solutions/genai/kb-selfservice-curation/) | 전 산업 공통 | 셀프서비스 AI 지식 운영(매니지드 Bedrock KB + Windows 드래그&드롭) |
-| UC30 | [`solutions/genai/quick-agentic-workspace/`](solutions/genai/quick-agentic-workspace/) | 전 산업 공통 | Amazon Quick 에이전트형 워크스페이스(Index/Sight/Flows + S3 AP 데이터 기반) |
+### 기사 시리즈
 
-> **공공 부문 적합성**: UC15는 DoD CC SRG / CSfC / FedRAMP High (GovCloud 마이그레이션 시), UC16은 NARA / FOIA 섹션 552 / 섹션 508, UC17은 INSPIRE 지침 / OGC 표준 준수.
+| 주제 | 일본어 | 영어 |
+|---|---|---|
+| 42 패턴 소개 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part1-introduction) | [dev.to](https://dev.to/aws-builders/industry-specific-serverless-automation-patterns-with-fsx-for-ontap-s3-access-points-3e0a) |
+| 프로덕션 아키텍처 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part2-production-architecture) | — |
+| 운영 기준선 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part3-operational-baseline) | [dev.to](https://dev.to/aws-builders/production-rollout-vpc-endpoint-auto-detection-and-the-cdk-no-go-fsx-for-ontap-s3-access-3lni) |
+| FPolicy 이벤트 드리븐 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part4-event-driven-fpolicy) | [dev.to](https://dev.to/aws-builders/fpolicy-event-driven-pipeline-multi-account-stacksets-and-cost-optimization-fsx-for-ontap-s3-5bd6) |
+| 28개 산업 패턴 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part5-field-ready-28-patterns) | [dev.to](https://dev.to/aws-builders/from-serverless-patterns-to-field-ready-reference-architecture-fsx-for-ontap-s3-access-points-dhj) |
+| GenAI 통합 | [Hatena](https://hakobiya.hatenablog.com/entry/fsxn-s3ap-serverless-part6-genai-42-patterns) | — |
 
-### Phase 13: FlexCache × S3 AP × Serverless 확장 패턴
+### 관련 리포지토리
 
-| # | 디렉토리 | 패턴 | 개요 | 상태 |
-|---|---------|------|------|------|
-| FC1 | [`solutions/flexcache/anycast-dr/`](solutions/flexcache/anycast-dr/README.md) | FlexCache AnyCast / DR | 헬스 체크·라우트 판정·페일오버 시뮬레이션 | ✅ 코드·문서 완료 |
-| FC2 | [`solutions/flexcache/dynamic-render-workflow/`](solutions/flexcache/dynamic-render-workflow/README.md) | Dynamic FlexCache Render/EDA | 작업 단위 FlexCache 동적 생성·삭제 워크플로 | ✅ 코드·테스트 완료 |
-| FC3 | [`solutions/flexcache/rag-enterprise-files/`](solutions/flexcache/rag-enterprise-files/README.md) | GenAI RAG over Enterprise Files | 권한 기반 RAG (S3 AP 경유, 데이터 복사 불필요) | ✅ 코드·테스트 완료 |
-| FC4 | [`solutions/flexcache/automotive-cae/`](solutions/flexcache/automotive-cae/README.md) | Automotive CAE Analytics | CAE 시뮬레이션 결과 자동 분석 | ✅ 코드·테스트 완료 |
-| FC5 | [`solutions/flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/README.md) | Life Sciences Research | 연구 데이터 자동 분석 | ✅ 템플릿 완료 |
-| FC6 | [`solutions/flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/README.md) | Gaming Build Pipeline | 게임 에셋 품질 체크·로그 분석 | ✅ 템플릿 완료 |
-| FC7 | [`solutions/flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/README.md) | FlexClone Dev/Test & CI/CD (Phase 15) | FlexClone 기반 Dev/Test 리프레시 및 CI/CD | ✅ 코드·테스트 완료 |
+| 리포지토리 | 요약 |
+|---|---|
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 권한 인식 RAG 챗봇 (CDK + Next.js + ECS) |
+| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | 레이크하우스 통합 (Databricks, Snowflake, Athena, Glue, EMR) |
+| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 마이그레이션 |
 
-### 인프라・공통 패턴
+</details>
 
-| 디렉터리 | 내용 |
-|:---|:---|
-| [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | **핸즈온 Lab IaC** (CloudFormation 네스트 스택: VPC/AD/FSx/EC2/S3AP. S3 AP + Tamperproof Snapshot + FlexClone 복구를 개별적으로 검증 가능) |
-| [`solutions/event-driven/fpolicy/`](solutions/event-driven/fpolicy/) | FPolicy 이벤트 기반 파이프라인 |
-| [`solutions/edge/content-delivery/`](solutions/edge/content-delivery/) | CDN/엣지 배포 패턴(벤더 비종속・CloudFront/서드파티, [CDN 비교](docs/cdn-comparison.en.md)) |
+<details>
+<summary><strong>🔧 개발자 가이드 (테스트 및 기여)</strong></summary>
 
-> **중요**: FlexCache 볼륨에 S3 Access Point를 연결할 수 있는지는 ONTAP 버전 및 FSx for ONTAP 서비스 사양에 따라 다릅니다. PoC 시 반드시 실제 환경에서 검증하세요.
-
-
-### 문서 (아키텍처·데모 가이드)
-
-각 UC의 상세 아키텍처 다이어그램과 데모 가이드는 docs/ 폴더에 8개 언어로 제공됩니다.
-
-| # | 유스케이스 | 아키텍처 | 데모 가이드 |
-|---|-----------|----------|------------|
-| UC1 | 법무·컴플라이언스 | [📐 Architecture](solutions/industry/legal-compliance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/legal-compliance/docs/demo-guide.md) |
-| UC2 | 금융·IDP | [📐 Architecture](solutions/industry/financial-idp/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/financial-idp/docs/demo-guide.md) |
-| UC3 | 제조업 | [📐 Architecture](solutions/industry/manufacturing-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/manufacturing-analytics/docs/demo-guide.md) |
-| UC4 | 미디어 (VFX) | [📐 Architecture](solutions/industry/media-vfx/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/media-vfx/docs/demo-guide.md) |
-| UC5 | 의료 (DICOM) | [📐 Architecture](solutions/industry/healthcare-dicom/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/healthcare-dicom/docs/demo-guide.md) |
-| UC6 | 반도체 / EDA | [📐 Architecture](solutions/industry/semiconductor-eda/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/semiconductor-eda/docs/demo-guide.md) |
-| UC7 | 게노믹스 | [📐 Architecture](solutions/industry/genomics-pipeline/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/genomics-pipeline/docs/demo-guide.md) |
-| UC8 | 에너지 | [📐 Architecture](solutions/industry/energy-seismic/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/energy-seismic/docs/demo-guide.md) |
-| UC9 | 자율 주행 / ADAS | [📐 Architecture](solutions/industry/autonomous-driving/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/autonomous-driving/docs/demo-guide.md) |
-| UC10 | 건설 / BIM | [📐 Architecture](solutions/industry/construction-bim/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/construction-bim/docs/demo-guide.md) |
-| UC11 | 소매 / EC | [📐 Architecture](solutions/industry/retail-catalog/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/retail-catalog/docs/demo-guide.md) |
-| UC12 | 물류 | [📐 Architecture](solutions/industry/logistics-ocr/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/logistics-ocr/docs/demo-guide.md) |
-| UC13 | 교육 / 연구 | [📐 Architecture](solutions/industry/education-research/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/education-research/docs/demo-guide.md) |
-| UC14 | 보험 | [📐 Architecture](solutions/industry/insurance-claims/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/insurance-claims/docs/demo-guide.md) |
-| UC15 | 국방·위성 | [📐 Architecture](solutions/industry/defense-satellite/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/defense-satellite/docs/demo-guide.md) |
-| UC16 | 정부 (FOIA) | [📐 Architecture](solutions/industry/government-archives/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/government-archives/docs/demo-guide.md) |
-| UC17 | 스마트 시티 | [📐 Architecture](solutions/industry/smart-city-geospatial/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/smart-city-geospatial/docs/demo-guide.md) |
-| UC18 | 통신 | [📐 Architecture](solutions/industry/telecom-network-analytics/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/telecom-network-analytics/docs/demo-guide.md) |
-| UC19 | 광고 | [📐 Architecture](solutions/industry/adtech-creative-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/adtech-creative-management/docs/demo-guide.md) |
-| UC20 | 여행 | [📐 Architecture](solutions/industry/travel-document-processing/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/travel-document-processing/docs/demo-guide.md) |
-| UC21 | 농업·식품 | [📐 Architecture](solutions/industry/agri-food-traceability/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/agri-food-traceability/docs/demo-guide.md) |
-| UC22 | 운수·철도 | [📐 Architecture](solutions/industry/transportation-maintenance/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/transportation-maintenance/docs/demo-guide.md) |
-| UC23 | 지속가능성 | [📐 Architecture](solutions/industry/sustainability-esg-reporting/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/sustainability-esg-reporting/docs/demo-guide.md) |
-| UC24 | NPO | [📐 Architecture](solutions/industry/nonprofit-grant-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/nonprofit-grant-management/docs/demo-guide.md) |
-| UC25 | 전력 | [📐 Architecture](solutions/industry/utilities-asset-inspection/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/utilities-asset-inspection/docs/demo-guide.md) |
-| UC26 | 부동산 | [📐 Architecture](solutions/industry/real-estate-portfolio/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/real-estate-portfolio/docs/demo-guide.md) |
-| UC27 | 인사·HR | [📐 Architecture](solutions/industry/hr-document-screening/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/hr-document-screening/docs/demo-guide.md) |
-| UC28 | 화학·소재 | [📐 Architecture](solutions/industry/chemical-sds-management/docs/architecture.md) | [🎬 Demo Guide](solutions/industry/chemical-sds-management/docs/demo-guide.md) |
-| UC29 | 전 산업 공통 (셀프서비스 KB) | [📐 Architecture](solutions/genai/kb-selfservice-curation/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/kb-selfservice-curation/docs/demo-guide.md) |
-| UC30 | 전 산업 공통 (Amazon Quick) | [📐 Architecture](solutions/genai/quick-agentic-workspace/docs/architecture.md) | [🎬 Demo Guide](solutions/genai/quick-agentic-workspace/docs/demo-guide.md) |
-| — | 콘텐츠 엣지 배포 (CDN) | [📐 Architecture](solutions/edge/content-delivery/docs/architecture.md) | [🎬 Demo Guide](solutions/edge/content-delivery/docs/demo-guide.md) |
-
-## UI/UX 스크린샷 (엔드유저 / 직원 / 담당자 뷰)
-
-각 UC의 **엔드유저, 직원, 담당자가 일상 업무에서 실제로 보는 UI/UX 화면**을
-각 UC의 README 및 demo-guide에 게재합니다. Step Functions 워크플로 그래프와 같은
-기술자용 뷰는 각 phase의 검증 결과 문서(`docs/verification-results-phase*.md`)에
-정리되어 있습니다.
-
-Public Sector (UC15/16/17)뿐만 아니라 모든 업종의 UC에서 동일한 방침을 채택:
-
-- **담당자 시점**: S3 콘솔에서 결과물 확인, Bedrock 리포트 열람, SNS 메일 수신,
-  DynamoDB로 이력 검색 등의 일상 업무 화면
-- **기술자 시점 제외**: CloudFormation 스택 이벤트, Lambda 로그, Step Functions
-  그래프(워크플로 시각화 목적 제외)는 `verification-results-*.md` 쪽에 분리
-
-| UC | 업종 | 화면 수 | 주요 내용 | 위치 |
-|----|------|---------|----------|------|
-| UC1 | 법무·컴플라이언스 | 1 | Step Functions 그래프 (감사 담당자용 워크플로 시각화) | [`solutions/industry/legal-compliance/docs/demo-guide.ko.md`](solutions/industry/legal-compliance/docs/demo-guide.ko.md) |
-| UC2 | 금융·IDP | 1 | Step Functions 그래프 (청구서 처리 담당자용 워크플로 시각화) | [`solutions/industry/financial-idp/docs/demo-guide.ko.md`](solutions/industry/financial-idp/docs/demo-guide.ko.md) |
-| UC3 | 제조·분석 | 1 | Step Functions 그래프 (품질관리 담당자용 워크플로 시각화) | [`solutions/industry/manufacturing-analytics/docs/demo-guide.ko.md`](solutions/industry/manufacturing-analytics/docs/demo-guide.ko.md) |
-| UC4 | 미디어·VFX | 미게재 | (렌더링 담당자용 화면, 향후 촬영 예정) | [`solutions/industry/media-vfx/docs/demo-guide.ko.md`](solutions/industry/media-vfx/docs/demo-guide.ko.md) |
-| UC5 | 의료·DICOM | 1 | Step Functions 그래프 (의료정보관리자용 워크플로 시각화) | [`solutions/industry/healthcare-dicom/docs/demo-guide.ko.md`](solutions/industry/healthcare-dicom/docs/demo-guide.ko.md) |
-| UC6 | 반도체·EDA | 4 | FSx Volumes / S3 출력 버킷 / Athena 쿼리 결과 / Bedrock 설계 리뷰 리포트 | [`solutions/industry/semiconductor-eda/docs/demo-guide.ko.md`](solutions/industry/semiconductor-eda/docs/demo-guide.ko.md) |
-| UC7 | 유전체학 파이프라인 | 1 | Step Functions 그래프 (연구자용 워크플로 시각화) | [`solutions/industry/genomics-pipeline/docs/demo-guide.ko.md`](solutions/industry/genomics-pipeline/docs/demo-guide.ko.md) |
-| UC8 | 에너지·지진 탐사 | 1 | Step Functions 그래프 (지질 해석 담당자용 워크플로 시각화) | [`solutions/industry/energy-seismic/docs/demo-guide.ko.md`](solutions/industry/energy-seismic/docs/demo-guide.ko.md) |
-| UC9 | 자율주행 | 미게재 | (ADAS 분석 담당자용 화면, 향후 촬영 예정) | [`solutions/industry/autonomous-driving/docs/demo-guide.ko.md`](solutions/industry/autonomous-driving/docs/demo-guide.ko.md) |
-| UC10 | 건설·BIM | 1 | Step Functions 그래프 (BIM 관리자 / 안전 담당자용 워크플로 시각화) | [`solutions/industry/construction-bim/docs/demo-guide.ko.md`](solutions/industry/construction-bim/docs/demo-guide.ko.md) |
-| UC11 | 소매·카탈로그 | 2 | 상품 태그 결과 / S3 출력 버킷 (EC 담당자용) | [`solutions/industry/retail-catalog/docs/demo-guide.ko.md`](solutions/industry/retail-catalog/docs/demo-guide.ko.md) |
-| UC12 | 물류·OCR | 1 | Step Functions 그래프 (배송 담당자용 워크플로 시각화) | [`solutions/industry/logistics-ocr/docs/demo-guide.ko.md`](solutions/industry/logistics-ocr/docs/demo-guide.ko.md) |
-| UC13 | 교육·연구 | 1 | Step Functions 그래프 (연구 사무 담당자용 워크플로 시각화) | [`solutions/industry/education-research/docs/demo-guide.ko.md`](solutions/industry/education-research/docs/demo-guide.ko.md) |
-| UC14 | 보험 | 2 | 청구 리포트 / S3 출력 버킷 (보험 조정 담당자용) | [`solutions/industry/insurance-claims/docs/demo-guide.ko.md`](solutions/industry/insurance-claims/docs/demo-guide.ko.md) |
-| UC15 | 방위·위성 이미지 (Public Sector) | 4 | S3 업로드 / 출력 / SNS 이메일 / JSON 결과물 (분석 담당자용) | [`solutions/industry/defense-satellite/README.md`](solutions/industry/defense-satellite/README.md) |
-| UC16 | 정부·FOIA (Public Sector) | 5 | 업로드 / 편집 프리뷰 / 메타데이터 / FOIA 알림 이메일 / DynamoDB 보존 이력 (공문서 담당자용) | [`solutions/industry/government-archives/README.md`](solutions/industry/government-archives/README.md) |
-| UC17 | 스마트시티 (Public Sector) | 5 | GIS 업로드 / Bedrock 리포트 / 리스크 맵 / 토지 이용 분포 / 시계열 이력 (도시 계획 담당자용) | [`solutions/industry/smart-city-geospatial/README.md`](solutions/industry/smart-city-geospatial/README.md) |
-
-**공통 스크린샷** (업종 횡단 범용 화면, `docs/screenshots/masked/common/`):
-- `fsx-s3ap-detail.png` — FSx for ONTAP S3 Access Point 상세 뷰 (업종 무관하게 스토리지 관리자가 참조)
-- `s3ap-list.png` — S3 Access Points 목록 (업종 무관하게 IT 관리자가 참조)
-
-**Phase별 뷰** (`docs/screenshots/masked/phase{1..7}/`):
-- Phase 1-6b: 인프라 구축 / 기능 추가 시 기술자용 화면
-- Phase 7: UC15/16/17 공통 FSx S3 Access Points 뷰 등
-
-산업 매핑 표 (8 언어): [`docs/screenshots/uc-industry-mapping.md`](docs/screenshots/uc-industry-mapping.md).
-추가 워크플로: [`docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md`](docs/screenshots/SCREENSHOT_ADDITION_WORKFLOW.md).
-
-> 모든 문서는 8개 언어(일본어·English·한국어·간체 중국어·번체 중국어·Français·Deutsch·Español)로 제공됩니다.
-## AWS 사양상의 제약 및 해결 방법
-
-### 출력 대상 선택 (OutputDestination 파라미터)
-
-각 UC의 CloudFormation 템플릿에는 `OutputDestination` 파라미터가 있어
-AI/ML 아티팩트의 쓰기 대상을 선택할 수 있습니다 (UC9/10/11/12/14에서 구현됨,
-다른 UC는 Pattern A 또는 Pattern C로 커버됨 - 아래의 Pattern 표 참조):
-
-- **`STANDARD_S3`** (기본값): 새 S3 버킷에 쓰기 (기존 동작)
-- **`FSXN_S3AP`**: S3 Access Point를 통해 동일한 FSx for ONTAP 볼륨에 다시 쓰기
-  (**"no data movement" 패턴**, SMB/NFS 사용자가 기존 디렉토리 구조 내에서
-  AI 아티팩트를 볼 수 있음)
+### 테스트
 
 ```bash
-# FSXN_S3AP 모드로 배포
-aws cloudformation deploy \
-  --template-file solutions/industry/retail-catalog/template-deploy.yaml \
-  --stack-name fsxn-retail-catalog-demo \
-  --parameter-overrides \
-    OutputDestination=FSXN_S3AP \
-    OutputS3APPrefix=ai-outputs/ \
-    ... (기타 필수 파라미터)
+pytest shared/tests/ -v                    # Unit tests
+ruff check . && ruff format --check .      # Python linter
+cfn-lint solutions/industry/*/template.yaml # CloudFormation validation
 ```
 
-### FSx for ONTAP S3 Access Points의 AWS 사양 제약
+### 기술 스택
 
-FSx for ONTAP S3 Access Points는 S3 API의 일부만 지원합니다
-([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) 참조).
-다음 제약 사항으로 인해 일부 기능은 표준 S3 버킷을 사용해야 합니다:
+Python 3.12 | CloudFormation + SAM | Lambda (ARM64) | Step Functions | EventBridge | Bedrock / Textract / Comprehend / Rekognition | Secrets Manager | Athena + Glue
 
-| AWS 사양 제약 | 영향 | 프로젝트 해결 방법 | 기능 개선 요청 (FR) |
-|---|---|---|---|
-| Athena 쿼리 결과 출력 위치에 S3AP 지정 불가<br>(Athena는 S3AP에 write back 불가) | UC6/7/8/13에서 Athena 결과는 표준 S3 필수 | 각 템플릿에서 Athena 결과 전용 S3 버킷 생성 | [FR-1](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-1) |
-| S3AP에서 S3 Event Notifications / EventBridge 이벤트 발행 불가 | 이벤트 기반 워크플로 구현 불가 | EventBridge Scheduler + Discovery Lambda 폴링 방식 | [FR-2](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-2) |
-| S3AP에서 Object Lifecycle 정책 미지원 | 7년 보관(UC1 법무), 영구 보관(UC16 정부 아카이브) 등의 자동화 곤란 | 정기 삭제 Lambda 스위퍼 (미구현, 백로그) | [FR-3](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-3) |
-| S3AP에서 Object Versioning / Presigned URL 미지원 | 문서 버전 관리, 외부 감사인을 위한 시간 제한 공유 불가 | DynamoDB로 버전 관리, 표준 S3 복사 + Presign | [FR-4](docs/aws-feature-requests/fsxn-s3ap-improvements.md#fr-4) |
-| 5GB 업로드 상한 | 대형 바이너리(4K 비디오, 비압축 GeoTIFF 등) | `shared.s3ap_helper.multipart_upload()`으로 5GB 미만까지 지원 | (AWS 사양으로 수용) |
-| SSE-FSX만 지원 (SSE-KMS 불가) | 커스텀 KMS 키로 암호화 불가 | FSx 볼륨 자체의 KMS 설정으로 암호화 | (AWS 사양으로 수용) |
+### 기여 방법
 
-4가지 기능 개선 요청(FR-1~FR-4)의 자세한 내용과 비즈니스 영향은
-[`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](docs/aws-feature-requests/fsxn-s3ap-improvements.md)
-에 정리되어 있습니다.
+Issue와 Pull Request를 환영합니다. [CONTRIBUTING.md](CONTRIBUTING.md)를 참고해 주세요.
 
-3가지 출력 패턴(Pattern A/B/C)의 자세한 비교는
-[`docs/output-destination-patterns.md`](docs/output-destination-patterns.md)를 참조하세요.
+</details>
 
-### UC별 출력 대상 제약
-
-28개 UC는 3가지 출력 패턴으로 분류됩니다:
-
-- **🟢 UC1-5** (Pattern A, 2026-05-11 업데이트): `S3AccessPointOutputAlias` (legacy, optional) + 신규 추가된 `OutputDestination` / `OutputS3APAlias` / `OutputS3APPrefix` 지원. 기본값 `OutputDestination=FSXN_S3AP`로 기존 동작 유지
-- **🟢🆕 UC9/10/11/12/14** (Pattern B, 2026-05-10 구현): `OutputDestination` 전환 메커니즘 (STANDARD_S3 ⇄ FSXN_S3AP). 기본값 `OutputDestination=STANDARD_S3`. UC11/14는 AWS 실증, UC9/10/12는 단위 테스트만 완료
-- **🟡 UC6/7/8/13**: 현재는 `OUTPUT_BUCKET`만 (표준 S3 고정). Athena 결과는 AWS 사양상 표준 S3 필수이므로 `OutputDestination` 적용은 부분적
-- **🟢 UC15-17**: Pattern A (FSx for ONTAP S3 AP로 write back, Phase 7의 일부)
-
-| UC | 입력 | 출력 | 선택 메커니즘 | 비고 |
-|----|------|------|----------|------|
-| UC1 legal-compliance | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 계약 메타데이터 / 감사 로그 |
-| UC2 financial-idp | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 청구서 OCR 결과 |
-| UC3 manufacturing-analytics | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 검사 결과 / 이상 감지 |
-| UC4 media-vfx | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | 렌더링 메타데이터 |
-| UC5 healthcare-dicom | S3AP | S3AP (기존) | ✅ `OutputDestination` + legacy `S3AccessPointOutputAlias` | DICOM 메타데이터 / 익명화 결과 |
-| UC6 semiconductor-eda | S3AP | **선택 가능 (하이브리드)** | ✅ `OutputDestination` | Bedrock 보고서/메타데이터 → 전환 가능, Athena DRC 결과 → 표준 S3 고정 (AWS 사양) |
-| UC7 genomics-pipeline | S3AP | **선택 가능 (하이브리드)** | ✅ `OutputDestination` | QC/Variant/Summary → 전환 가능, Athena 결과 → 표준 S3 고정 (AWS 사양) |
-| UC8 energy-seismic | S3AP | **선택 가능 (하이브리드)** | ✅ `OutputDestination` | 메타데이터/이상 감지/컴플라이언스 → 전환 가능, Athena → 표준 S3 고정 |
-| UC9 autonomous-driving | S3AP | **선택 가능** 🆕 | ✅ `OutputDestination` | ADAS 분석 결과 |
-| UC10 construction-bim | S3AP | **선택 가능** 🆕 | ✅ `OutputDestination` | BIM 메타데이터 / 안전 컴플라이언스 보고서 |
-| **UC11 retail-catalog** | S3AP | **선택 가능** | ✅ `OutputDestination` | AWS 실증 완료 2026-05-10 |
-| UC12 logistics-ocr | S3AP | **선택 가능** 🆕 | ✅ `OutputDestination` | 배송 화물 OCR |
-| UC13 education-research | S3AP | **선택 가능** | ✅ `OutputDestination` | OCR/분류/인용 분석/메타데이터 → 전체 전환 가능 |
-| **UC14 insurance-claims** | S3AP | **선택 가능** | ✅ `OutputDestination` | AWS 실증 완료 2026-05-10 |
-| UC15 defense-satellite | S3AP | S3AP | 기존 패턴 | 객체 감지 / 변화 감지 결과 |
-| UC16 government-archives | S3AP | S3AP | 기존 패턴 | FOIA 편집 결과 / 메타데이터 |
-| UC17 smart-city-geospatial | S3AP | S3AP | 기존 패턴 | GIS 분석 결과 / 리스크 맵 |
-
-**현재 상태 및 다음 단계**:
-
-전체 28 UC + SAP에서 `OutputDestination` 파라미터를 통한 출력 대상 전환이 가능합니다. UC6/7/8만 Athena 결과 출력은 AWS 사양상 표준 S3 고정이며, 기타 아티팩트(Bedrock 보고서, 메타데이터 등)는 `FSXN_S3AP`로 전환 가능합니다.
-
-남은 과제:
-- UC9/10/12/15/16/17의 AWS 실제 배포 검증 (단위 테스트 완료, UC11/14 검증 완료)
-## 리전 선택 가이드
-
-본 패턴 컬렉션은 **ap-northeast-1(도쿄)**에서 검증을 실시했지만, 필요한 서비스가 이용 가능한 모든 AWS 리전에 배포할 수 있습니다.
-
-### 배포 전 체크리스트
-
-1. [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/)에서 서비스 가용성 확인
-2. Phase 3 서비스 확인:
-   - **Kinesis Data Streams**: 거의 모든 리전에서 이용 가능 (샤드 요금은 리전에 따라 다름)
-   - **SageMaker Batch Transform**: 인스턴스 타입 가용성이 리전에 따라 다름
-   - **X-Ray / CloudWatch EMF**: 거의 모든 리전에서 이용 가능
-3. Cross-Region 대상 서비스(Textract, Comprehend Medical)의 타겟 리전 확인
-
-자세한 내용은 [리전 호환성 매트릭스](docs/region-compatibility.md)를 참조하세요.
-
-### Phase 3 기능 요약
-
-| 기능 | 설명 | 대상 UC |
-|------|------|---------|
-| Kinesis 스트리밍 | 준실시간 파일 변경 감지 및 처리 | UC11 (옵트인) |
-| SageMaker Batch Transform | 점군 세그멘테이션 추론 (Callback Pattern) | UC9 (옵트인) |
-| X-Ray 트레이싱 | 분산 트레이싱을 통한 실행 경로 시각화 | 전체 14 UC |
-| CloudWatch EMF | 구조화된 메트릭 출력 (FilesProcessed, Duration, Errors) | 전체 14 UC |
-| 관측성 대시보드 | 전체 UC 횡단 메트릭 일원 표시 | 공통 |
-| 알림 자동화 | 에러율 임계값 기반 SNS 알림 | 공통 |
-
-자세한 내용은 [스트리밍 vs 폴링 선택 가이드](docs/streaming-vs-polling-guide-ko.md)를 참조하세요.
-
-### Phase 4 기능 요약
-
-| 기능 | 설명 | 대상 UC |
-|------|------|---------|
-| DynamoDB Task Token Store | SageMaker Callback Pattern의 프로덕션 안전한 Token 관리 (Correlation ID 방식) | UC9 (옵트인) |
-| Real-time Inference Endpoint | SageMaker Real-time Endpoint를 통한 저지연 추론 | UC9 (옵트인) |
-| A/B Testing | Multi-Variant Endpoint를 통한 모델 버전 비교 | UC9 (옵트인) |
-| Model Registry | SageMaker Model Registry를 통한 모델 라이프사이클 관리 | UC9 (옵트인) |
-| Multi-Account Deployment | StackSets / Cross-Account IAM / S3 AP 정책을 통한 멀티 계정 지원 | 전체 UC (템플릿 제공) |
-| Event-Driven Prototype | S3 Event Notifications → EventBridge → Step Functions 파이프라인 | 프로토타입 |
-
-Phase 4의 모든 기능은 CloudFormation Conditions로 옵트인 제어되며, 활성화하지 않는 한 추가 비용이 발생하지 않습니다.
-
-자세한 내용은 다음 문서를 참조하세요:
-- [추론 비용 비교 가이드](docs/inference-cost-comparison.md)
-- [Model Registry 가이드](docs/model-registry-guide.md)
-- [Multi-Account PoC 결과](docs/multi-account/poc-results.md)
-- [Event-Driven 아키텍처 설계](docs/event-driven/architecture-design.md)
-
-### Phase 5 기능 요약
-
-| 기능 | 설명 | 대상 UC |
-|------|------|---------|
-| SageMaker Serverless Inference | 제3 라우팅 옵션 (Batch / Real-time / Serverless 3-way 선택) | UC9 (옵트인) |
-| Scheduled Scaling | 업무 시간 기반 SageMaker Endpoint 자동 스케일링 | UC9 (옵트인) |
-| CloudWatch Billing Alarms | Warning / Critical / Emergency 3단계 비용 알림 | 공통 (옵트인) |
-| Auto-Stop Lambda | 미사용 SageMaker Endpoint 자동 감지 및 스케일 다운 | 공통 (옵트인) |
-| CI/CD Pipeline | GitHub Actions 워크플로우 (cfn-lint → pytest → cfn-guard → Bandit → deploy) | 전체 UC |
-| Multi-Region | DynamoDB Global Tables + CrossRegionClient 페일오버 | 공통 (옵트인) |
-| Disaster Recovery | DR Tier 1/2/3 정의, 페일오버 런북 | 공통 (설계 문서) |
-
-Phase 5의 모든 기능도 CloudFormation Conditions로 옵트인 제어되며, 활성화하지 않는 한 추가 비용이 발생하지 않습니다.
-
-자세한 내용은 다음 문서를 참조하세요:
-- [Serverless Inference 콜드 스타트 특성](docs/serverless-inference-cold-start.md)
-- [비용 최적화 베스트 프랙티스 가이드](docs/cost-optimization-guide.md)
-- [CI/CD 가이드](docs/ci-cd-guide.md)
-- [Multi-Region Step Functions 설계](docs/multi-region/step-functions-design.md)
-- [Disaster Recovery 가이드](docs/multi-region/disaster-recovery.md)
-
-### 스크린샷
-
-> 아래는 검증 환경에서의 촬영 예시입니다. 환경 고유 정보(계정 ID 등)는 마스킹 처리되었습니다.
-
-#### 전체 5 UC의 Step Functions 배포・실행 확인
-
-![Step Functions 전체 워크플로우](docs/screenshots/masked/phase1/phase1-step-functions-all-succeeded.png)
-
-> UC1・UC3은 완전한 E2E 검증, UC2・UC4・UC5는 CloudFormation 배포와 주요 컴포넌트의 동작 확인을 실시했습니다. 리전 제약이 있는 AI/ML 서비스(Textract, Comprehend Medical)를 사용하는 경우 지원 리전으로의 크로스 리전 호출이 필요하므로, 데이터 레지던시 및 컴플라이언스 요건을 확인하세요.
-
-#### Phase 2: 전체 9 UC CloudFormation 배포・Step Functions 실행 성공
-
-![CloudFormation Phase 2 스택](docs/screenshots/masked/phase2/phase2-cloudformation-phase2-stacks.png)
-
-> 전체 9 스택(UC6–UC14)이 CREATE_COMPLETE / UPDATE_COMPLETE. 총 205 리소스.
-
-![Step Functions Phase 2 워크플로우](docs/screenshots/masked/phase2/phase2-step-functions-phase2-all-workflows.png)
-
-> 전체 9 워크플로우 활성화. 테스트 데이터 투입 후 E2E 실행에서 전체 SUCCEEDED 확인.
-
-![UC6 실행 Graph View](docs/screenshots/masked/phase2/phase2-step-functions-uc6-execution-graph.png)
-
-> UC6(반도체 EDA) Step Functions 실행 상세. Discovery → ProcessObjects (Map) → DrcAggregation → ReportGeneration 전체 스테이트 성공.
-
-![EventBridge Phase 2 스케줄](docs/screenshots/masked/phase2/phase2-eventbridge-phase2-schedules.png)
-
-> 전체 9 UC의 EventBridge Scheduler 스케줄(rate(1 hour))이 활성화.
-
-#### AI/ML 서비스 화면 (Phase 1)
-
-##### Amazon Bedrock — 모델 카탈로그
-
-![Bedrock 모델 카탈로그](docs/screenshots/masked/phase1/phase1-bedrock-model-catalog.png)
-
-##### Amazon Rekognition — 라벨 검출
-
-![Rekognition 라벨 검출](docs/screenshots/masked/phase1/phase1-rekognition-label-detection.png)
-
-##### Amazon Comprehend — 엔티티 검출
-
-![Comprehend 콘솔](docs/screenshots/masked/phase1/phase1-comprehend-console.png)
-
-#### AI/ML 서비스 화면 (Phase 2)
-
-##### Amazon Bedrock — 모델 카탈로그 (UC6: 리포트 생성)
-
-![Bedrock 모델 카탈로그 Phase 2](docs/screenshots/masked/phase2/phase2-bedrock-model-catalog.png)
-
-> UC6(반도체 EDA)에서 Nova Lite 모델을 사용한 DRC 리포트 생성에 활용.
-
-##### Amazon Athena — 쿼리 실행 이력 (UC6: 메타데이터 집계)
-
-![Athena 쿼리 이력 Phase 2](docs/screenshots/masked/phase2/phase2-athena-query-history.png)
-
-> UC6의 Step Functions 워크플로우 내에서 Athena 쿼리(cell_count, bbox, naming, invalid) 실행.
-
-##### Amazon Rekognition — 라벨 검출 (UC11: 상품 이미지 태깅)
-
-![Rekognition 라벨 검출 Phase 2](docs/screenshots/masked/phase2/phase2-rekognition-label-detection.png)
-
-> UC11(소매 카탈로그)에서 상품 이미지로부터 15개 라벨(Lighting 98.5%, Light 96.0%, Purple 92.0% 등) 검출.
-
-##### Amazon Textract — 문서 OCR (UC12: 배송 전표 읽기)
-
-![Textract 문서 분석 Phase 2](docs/screenshots/masked/phase2/phase2-textract-analyze-document.png)
-
-> UC12(물류 OCR)에서 배송 전표 PDF로부터 텍스트 추출. Cross-Region(us-east-1) 경유로 실행.
-
-##### Amazon Comprehend Medical — 의료 엔티티 검출 (UC7: 게노믹스 분석)
-
-![Comprehend Medical 리얼타임 분석 Phase 2](docs/screenshots/masked/phase2/phase2-comprehend-medical-genomics-analysis.png)
-
-> UC7(게노믹스 파이프라인)에서 VCF 분석 결과로부터 유전자명(GC)을 DetectEntitiesV2 API로 추출. Cross-Region(us-east-1) 경유로 실행.
-
-##### Lambda 함수 목록 (Phase 2)
-
-![Lambda 함수 목록 Phase 2](docs/screenshots/masked/phase2/phase2-lambda-phase2-functions.png)
-
-> Phase 2의 전체 Lambda 함수(Discovery, Processing, Report 등)가 정상 배포 완료.
-
-#### Phase 3: 실시간 처리・SageMaker 통합・관측 가능성 강화
-
-##### Step Functions E2E 실행 성공 (UC11)
-
-![Step Functions Phase 3 실행 성공](docs/screenshots/masked/phase3/phase3-step-functions-uc11-succeeded.png)
-
-> UC11 Step Functions 워크플로우 E2E 실행 성공. Discovery → ImageTagging Map → CatalogMetadata Map → QualityCheck 전체 스테이트 성공 (8.974초). X-Ray 트레이스 생성 확인.
-
-##### Kinesis Data Streams (UC11 스트리밍 모드)
-
-![Kinesis Data Stream](docs/screenshots/masked/phase3/phase3-kinesis-stream-active.png)
-
-> UC11 Kinesis Data Stream (1 샤드, 프로비저닝 모드) 활성 상태. 모니터링 메트릭 표시.
-
-##### DynamoDB 상태 관리 테이블 (UC11 변경 감지)
-
-![DynamoDB State Tables](docs/screenshots/masked/phase3/phase3-dynamodb-state-tables.png)
-
-> UC11 변경 감지용 DynamoDB 테이블. streaming-state (상태 관리) 및 streaming-dead-letter (DLQ) 테이블.
-
-##### 관측 가능성 스택
-
-![X-Ray Traces](docs/screenshots/masked/phase3/phase3-xray-traces.png)
-
-> X-Ray 트레이스. Stream Producer Lambda 1분 간격 실행 트레이스 (전체 OK, 레이턴시 7-11ms).
-
-![CloudWatch Dashboard](docs/screenshots/masked/phase3/phase3-cloudwatch-dashboard.png)
-
-> 전체 14 UC 횡단 CloudWatch 대시보드. Step Functions 성공/실패, Lambda 에러율, EMF 커스텀 메트릭.
-
-![CloudWatch Alarms](docs/screenshots/masked/phase3/phase3-cloudwatch-alarms.png)
-
-> Phase 3 알림 자동화. Step Functions 실패율, Lambda 에러율, Kinesis Iterator Age 임계값 알람 (전체 OK 상태).
-
-##### S3 Access Point 확인
-
-![S3 AP Available](docs/screenshots/masked/phase3/phase3-s3ap-available.png)
-
-> FSx for ONTAP S3 Access Point (fsxn-eda-s3ap) Available 상태. FSx 콘솔 볼륨 S3 탭에서 확인.
-
-#### Phase 4: 프로덕션 SageMaker 통합, 실시간 추론, 멀티 계정, 이벤트 기반
-
-##### DynamoDB Task Token Store
-
-![DynamoDB Task Token Store](docs/screenshots/masked/phase4/phase4-dynamodb-task-token-store.png)
-
-> DynamoDB Task Token Store 테이블. 8자리 hex Correlation ID를 파티션 키로 Task Token을 저장. TTL 활성화, PAY_PER_REQUEST 모드, GSI(TransformJobNameIndex) 구성 완료.
-
-##### SageMaker Real-time Endpoint (Multi-Variant A/B Testing)
-
-![SageMaker Endpoint](docs/screenshots/masked/phase4/phase4-sagemaker-realtime-endpoint.png)
-
-> SageMaker Real-time Inference Endpoint. Multi-Variant 구성(model-v1: 70%, model-v2: 30%)으로 A/B 테스트. Auto Scaling 구성 완료.
-
-##### Step Functions 워크플로우 (Realtime/Batch 라우팅)
-
-![Step Functions Phase 4](docs/screenshots/masked/phase4/phase4-step-functions-routing.png)
-
-> UC9 Step Functions 워크플로우. Choice State에서 file_count < threshold인 경우 Real-time Endpoint로, 그 외에는 Batch Transform으로 라우팅.
-
-##### Event-Driven Prototype — EventBridge Rule
-
-![EventBridge Rule](docs/screenshots/masked/phase4/phase4-eventbridge-event-rule.png)
-
-> Event-Driven Prototype EventBridge Rule. S3 ObjectCreated 이벤트를 suffix (.jpg, .png) + prefix (products/)로 필터링하여 Step Functions를 트리거.
-
-##### Event-Driven Prototype — Step Functions 실행 성공
-
-![Event-Driven Step Functions](docs/screenshots/masked/phase4/phase4-event-driven-sfn-succeeded.png)
-
-> Event-Driven Prototype Step Functions 실행 성공. S3 PutObject → EventBridge → Step Functions → EventProcessor → LatencyReporter 모든 상태 성공.
-
-##### CloudFormation Phase 4 스택
-
-![CloudFormation Phase 4](docs/screenshots/masked/phase4/phase4-cloudformation-stacks.png)
-
-> Phase 4 CloudFormation 스택. UC9 확장(Task Token Store + Real-time Endpoint) 및 Event-Driven Prototype CREATE_COMPLETE.
-
-#### Phase 5: Serverless Inference·비용 최적화·Multi-Region
-
-##### SageMaker Serverless Inference Endpoint
-
-![SageMaker Serverless Endpoint 설정](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-settings.png)
-
-> SageMaker Serverless Inference Endpoint 설정. 메모리 4096 MB, 최대 동시 실행 5.
-
-![SageMaker Serverless Endpoint Config](docs/screenshots/masked/phase5/phase5-sagemaker-serverless-endpoint-config.png)
-
-> Serverless Endpoint Configuration 상세. 프로비저닝 불필요, 요청 시에만 컴퓨트 리소스 할당.
-
-##### CloudWatch Billing Alarms (3단계 비용 알림)
-
-![CloudWatch Billing Alarms](docs/screenshots/masked/phase5/phase5-cloudwatch-billing-alarms.png)
-
-> Warning / Critical / Emergency 3단계 Billing Alarms. 임계값 초과 시 SNS 알림.
-
-##### DynamoDB Global Table (Multi-Region)
-
-![DynamoDB Global Table](docs/screenshots/masked/phase5/phase5-dynamodb-global-table.png)
-
-> DynamoDB Global Table 구성. Multi-Region 복제 활성화.
-
-![DynamoDB Global Replicas](docs/screenshots/masked/phase5/phase5-dynamodb-global-replicas.png)
-
-> Global Table 레플리카 구성. 여러 리전 간 데이터 동기화.
-
-## 기술 스택
-
-| 레이어 | 기술 |
-|--------|------|
-| 언어 | Python 3.12 |
-| IaC | CloudFormation (YAML) + SAM Transform |
-| 컴퓨트 | AWS Lambda（본번: VPC 내 / PoC: VPC 외도 선택 가능） |
-| 오케스트레이션 | AWS Step Functions |
-| 스케줄링 | Amazon EventBridge Scheduler |
-| 스토리지 | FSx for ONTAP (S3 AP) + S3 출력 버킷 (SSE-KMS) |
-| 통지 | Amazon SNS |
-| 분석 | Amazon Athena + AWS Glue Data Catalog |
-| AI/ML | Amazon Bedrock, Textract, Comprehend, Rekognition |
-| 보안 | Secrets Manager, KMS, IAM 최소 권한 |
-| 테스트 | pytest + Hypothesis (PBT), moto, cfn-lint, ruff |
-
-## 사전 요구 사항
-
-- **AWS 계정**: 유효한 AWS 계정과 적절한 IAM 권한
-- **FSx for ONTAP**: 배포 완료된 파일 시스템
-  - ONTAP 버전: S3 Access Points를 지원하는 버전(9.17.1P4D3에서 검증 완료)
-  - S3 Access Point가 관련 부여된 FSx for ONTAP 볼륨(network origin은 유스케이스에 따라 선택. Athena / Glue 사용 시 `internet` 권장)
-- **네트워크**: VPC, 프라이빗 서브넷, 라우트 테이블
-- **Secrets Manager**: ONTAP REST API 인증 정보(`{"username":"fsxadmin","password":"..."}` 형식)를 사전 등록
-- **S3 버킷**: Lambda 배포 패키지 저장용 버킷을 사전 생성(예: `fsxn-s3ap-deploy-<account-id>`)
-- **Python 3.12+**: 로컬 개발・테스트용
-- **AWS CLI v2**: 배포・관리용
-
-### 사전 준비 명령어
-
-```bash
-# 1. 배포용 S3 버킷 생성
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-aws s3 mb "s3://fsxn-s3ap-deploy-${ACCOUNT_ID}" --region $AWS_DEFAULT_REGION
-
-# 2. ONTAP 인증 정보를 Secrets Manager에 등록
-aws secretsmanager create-secret \
-  --name fsxn-ontap-credentials \
-  --secret-string '{"username":"fsxadmin","password":"<your-ontap-password>"}' \
-  --region $AWS_DEFAULT_REGION
-
-# 3. 기존 S3 Gateway Endpoint 확인(중복 생성 방지)
-aws ec2 describe-vpc-endpoints \
-  --filters "Name=vpc-id,Values=<your-vpc-id>" "Name=service-name,Values=com.amazonaws.${AWS_DEFAULT_REGION}.s3" \
-  --query 'VpcEndpoints[*].{Id:VpcEndpointId,State:State}' \
-  --output table
-# → 결과가 있는 경우 EnableS3GatewayEndpoint=false로 배포
-```
-
-### Lambda 배치 선택 가이드
-
-| 용도 | 권장 배치 | 이유 |
-|------|----------|------|
-| 데모 / PoC | VPC 외 Lambda | VPC Endpoint 불필요, 저비용・설정 간편 |
-| 프로덕션 / 폐쇄망 요건 | VPC 내 Lambda | Secrets Manager / FSx / SNS 등을 PrivateLink 경유로 이용 가능 |
-| Athena / Glue 사용 UC | S3 AP network origin: `internet` | AWS 관리형 서비스에서의 접근이 필요 |
-
-### VPC 내 Lambda에서 S3 AP에 접근하는 경우의 주의사항
-
-> **UC1 배포 검증(2026-05-03)에서 확인된 중요 사항**
-
-- **S3 Gateway Endpoint의 라우트 테이블 연결이 필수**: `RouteTableIds`에 프라이빗 서브넷의 라우트 테이블 ID를 지정하지 않으면, VPC 내 Lambda에서 S3 / S3 AP로의 접근이 타임아웃됨
-- **VPC DNS 해석 확인**: VPC의 `enableDnsSupport` / `enableDnsHostnames`가 활성화되어 있는지 확인
-- **PoC / 데모 환경에서는 Lambda를 VPC 외에서 실행하는 것을 권장**: S3 AP의 network origin이 `internet`이면 VPC 외 Lambda에서 문제없이 접근 가능. VPC Endpoint 불필요로 비용 절감・설정 간소화 가능
-- 자세한 내용은 [트러블슈팅 가이드](docs/guides/troubleshooting-guide.md#6-lambda-vpc-内実行時の-s3-ap-タイムアウト)를 참조
-
-### 필요한 AWS 서비스 쿼터
-
-| 서비스 | 쿼터 | 권장값 |
-|--------|------|--------|
-| Lambda 동시 실행 수 | ConcurrentExecutions | 100 이상 |
-| Step Functions 실행 수 | StartExecution/초 | 기본값 (25) |
-| S3 Access Point | 계정당 AP 수 | 기본값 (10,000) |
-
-## 빠른 시작
-
-### 1. 리포지토리 클론
-
-```bash
-git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns.git
-cd FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
-```
-
-### 2. 의존성 설치
-
-```bash
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-```
-
-### 3. 테스트 실행
-
-```bash
-# 유닛 테스트(커버리지 포함)
-pytest shared/tests/ --cov=shared --cov-report=term-missing -v
-
-# 프로퍼티 기반 테스트
-pytest shared/tests/test_properties.py -v
-
-# 린터
-ruff check .
-ruff format --check .
-```
-
-### 4. 유스케이스 배포(예: UC1 법무・컴플라이언스)
-
-> ⚠️ **기존 환경에 대한 영향에 관한 중요 사항**
->
-> 배포 전에 다음을 확인하세요:
->
-> | 파라미터 | 기존 환경에 대한 영향 | 확인 방법 |
-> |---------|---------------------|----------|
-> | `VpcId` / `PrivateSubnetIds` | 지정한 VPC/서브넷에 Lambda ENI가 생성됨 | `aws ec2 describe-network-interfaces --filters Name=group-id,Values=<sg-id>` |
-> | `EnableS3GatewayEndpoint=true` | VPC에 S3 Gateway Endpoint가 추가됨. **동일 VPC에 기존 S3 Gateway Endpoint가 있는 경우 `false`로 설정** | `aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=<vpc-id>` |
-> | `PrivateRouteTableIds` | S3 Gateway Endpoint가 라우트 테이블에 연결됨. 기존 라우팅에는 영향 없음 | `aws ec2 describe-route-tables --route-table-ids <rtb-id>` |
-> | `ScheduleExpression` | EventBridge Scheduler가 정기적으로 Step Functions를 실행. **불필요한 실행을 피하기 위해 배포 후 스케줄 비활성화 가능** | AWS 콘솔 → EventBridge → Schedules |
-> | `NotificationEmail` | SNS 구독 확인 이메일이 발송됨 | 이메일 수신 확인 |
->
-> **스택 삭제 시 주의사항**:
-> - S3 버킷(Athena Results)에 오브젝트가 남아 있으면 삭제가 실패합니다. 사전에 `aws s3 rm s3://<bucket> --recursive`로 비워주세요
-> - 버전 관리가 활성화된 버킷은 `aws s3api delete-objects`로 모든 버전을 삭제해야 합니다
-> - VPC Endpoints 삭제에 5-15분이 소요될 수 있습니다
-> - Lambda의 ENI 해제에 시간이 걸려 Security Group 삭제가 실패할 수 있습니다. 몇 분 기다린 후 재시도하세요
-
-```bash
-# 리전 설정(환경 변수로 관리)
-export AWS_DEFAULT_REGION=us-east-1  # 전체 서비스 지원 리전 권장
-
-# Lambda 패키징
-./scripts/deploy_uc.sh legal-compliance package
-
-# CloudFormation 배포
-aws cloudformation create-stack \
-  --stack-name fsxn-legal-compliance \
-  --template-body file://solutions/industry/legal-compliance/template-deploy.yaml \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameters \
-    ParameterKey=DeployBucket,ParameterValue=<your-deploy-bucket> \
-    ParameterKey=S3AccessPointAlias,ParameterValue=<your-volume-ext-s3alias> \
-    ParameterKey=S3AccessPointName,ParameterValue=<your-s3ap-name> \
-    ParameterKey=S3AccessPointOutputAlias,ParameterValue=<your-output-volume-ext-s3alias> \
-    ParameterKey=OntapSecretName,ParameterValue=<your-ontap-secret-name> \
-    ParameterKey=OntapManagementIp,ParameterValue=<your-ontap-management-ip> \
-    ParameterKey=SvmUuid,ParameterValue=<your-svm-uuid> \
-    ParameterKey=VolumeUuid,ParameterValue=<your-volume-uuid> \
-    ParameterKey=VpcId,ParameterValue=<your-vpc-id> \
-    'ParameterKey=PrivateSubnetIds,ParameterValue=<subnet-1>,<subnet-2>' \
-    'ParameterKey=PrivateRouteTableIds,ParameterValue=<rtb-1>,<rtb-2>' \
-    ParameterKey=NotificationEmail,ParameterValue=<your-email@example.com> \
-    ParameterKey=EnableVpcEndpoints,ParameterValue=true \
-    ParameterKey=EnableS3GatewayEndpoint,ParameterValue=true
-```
-
-> **참고**: `<...>` 플레이스홀더를 실제 환경 값으로 교체하세요.
->
-> **`EnableVpcEndpoints` 에 대해**: Quick Start에서는 VPC 내 Lambda에서 Secrets Manager / CloudWatch / SNS로의 도달성을 확보하기 위해 `true`를 지정합니다. 기존 Interface VPC Endpoints 또는 NAT Gateway가 있는 경우 `false`를 지정하여 비용을 절감할 수 있습니다.
-> 
-> **리전 선택**: 모든 AI/ML 서비스가 사용 가능한 `us-east-1` 또는 `us-west-2`를 권장합니다. `ap-northeast-1`에서는 Textract와 Comprehend Medical을 사용할 수 없습니다(크로스 리전 호출로 대응 가능). 자세한 내용은 [리전 호환성 매트릭스](docs/region-compatibility.md)를 참조하세요.
->
-> **VPC 연결성**: Discovery Lambda는 VPC 내에 배치됩니다. ONTAP REST API 및 S3 Access Point에 접근하려면 NAT Gateway 또는 Interface VPC Endpoints가 필요합니다. `EnableVpcEndpoints=true`를 설정하거나 기존 NAT Gateway를 사용하세요.
-
-### 검증 완료 환경
-
-| 항목 | 값 |
-|------|-----|
-| AWS 리전 | ap-northeast-1 (도쿄) |
-| FSx for ONTAP 버전 | ONTAP 9.17.1P4D3 |
-| FSx 구성 | SINGLE_AZ_1 |
-| Python | 3.12 |
-| 배포 방식 | CloudFormation(SAM Transform 사용) |
-
-전체 5 유스케이스의 CloudFormation 스택 배포와 Discovery Lambda의 동작 확인을 완료했습니다.
-자세한 내용은 [검증 결과 기록](docs/verification-results.md)을 참조하세요.
-
-## 비용 구조 요약
-
-### 환경별 비용 추정
-
-| 환경 | 고정비/월 | 변동비/월 | 합계/월 |
-|------|----------|----------|--------|
-| 데모/PoC | ~$0 | ~$1〜$3 | **~$1〜$3** |
-| 프로덕션(1 UC) | ~$29 | ~$1〜$3 | **~$30〜$32** |
-| 프로덕션(전체 5 UC) | ~$29 | ~$5〜$15 | **~$34〜$44** |
-
-### 비용 분류
-
-- **요청 기반(종량 과금)**: Lambda, Step Functions, S3 API, Textract, Comprehend, Rekognition, Bedrock, Athena — 사용하지 않으면 $0
-- **상시 가동(고정비)**: Interface VPC Endpoints (~$28.80/월) — **옵셔널(opt-in)**
-
-> Quick Start에서는 VPC 내 Lambda의 도달성을 우선하여 `EnableVpcEndpoints=true`를 지정합니다. 저비용 PoC를 우선하는 경우, VPC 외 Lambda 구성 또는 기존 NAT / Interface VPC Endpoints 활용을 검토하세요.
-
-> 자세한 비용 분석은 [docs/cost-analysis.md](docs/cost-analysis.md)를 참조하세요.
-
-### 옵셔널 리소스
-
-고비용 상시 가동 리소스는 CloudFormation 파라미터로 옵셔널화되어 있습니다.
-
-| 리소스 | 파라미터 | 기본값 | 월간 고정비 | 설명 |
-|--------|---------|--------|-----------|------|
-| Interface VPC Endpoints | `EnableVpcEndpoints` | `false` | ~$28.80 | Secrets Manager, FSx, CloudWatch, SNS용. 프로덕션 환경에서는 `true` 권장. Quick Start에서는 도달성 우선으로 `true` 지정 |
-| CloudWatch Alarms | `EnableCloudWatchAlarms` | `false` | ~$0.10/알람 | Step Functions 실패율, Lambda 에러율 모니터링 |
-
-> **S3 Gateway VPC Endpoint**는 추가 시간 과금이 없으므로, VPC 내 Lambda에서 S3 AP에 접근하는 구성에서는 활성화를 권장합니다. 단, 기존 S3 Gateway Endpoint가 있는 경우나 PoC / 데모 용도로 Lambda를 VPC 외에 배치하는 경우에는 `EnableS3GatewayEndpoint=false`를 지정하세요. S3 API 요청이나 데이터 전송, 각 AWS 서비스 이용 요금은 통상대로 발생합니다.
-
-## 보안 및 인가 모델
-
-본 솔루션은 **복수의 인가 레이어**를 조합하여, 각각이 다른 역할을 담당합니다:
-
-| 레이어 | 역할 | 제어 대상 |
-|--------|------|----------|
-| **IAM** | AWS 서비스와 S3 Access Points에 대한 접근 제어 | Lambda 실행 역할, S3 AP 정책 |
-| **S3 Access Point** | S3 AP에 연결된 파일 시스템 사용자를 통해 접근 경계를 정의 | S3 AP 정책, network origin, 연결 사용자 |
-| **ONTAP 파일 시스템** | 파일 레벨 권한을 강제 | UNIX 퍼미션 / NTFS ACL |
-| **ONTAP REST API** | 메타데이터와 컨트롤 플레인 작업만 공개 | Secrets Manager 인증 + TLS |
-
-**중요한 설계상의 주의점**:
-
-- S3 API는 파일 레벨 ACL을 공개하지 않습니다. 파일 권한 정보는 **ONTAP REST API를 통해서만** 취득 가능합니다(UC1의 ACL Collection이 이 패턴)
-- S3 AP를 통한 접근은 IAM / S3 AP 정책에서 허가된 후, S3 AP에 연결된 UNIX / Windows 파일 시스템 사용자로서 ONTAP 측에서 인가됩니다
-- ONTAP REST API 인증 정보는 Secrets Manager에서 관리하며, Lambda 환경 변수에는 저장하지 않습니다
-
-## 호환성 매트릭스
-
-| 항목 | 값 / 확인 내용 |
-|------|---------------|
-| ONTAP 버전 | 9.17.1P4D3에서 검증 완료(S3 Access Points를 지원하는 버전 필요) |
-| 검증 완료 리전 | ap-northeast-1(도쿄) |
-| 권장 리전 | us-east-1 / us-west-2(전체 AI/ML 서비스 이용 시) |
-| Python 버전 | 3.12+ |
-| CloudFormation Transform | AWS::Serverless-2016-10-31 |
-| 검증 완료 볼륨 security style | UNIX, NTFS |
-
-### FSx for ONTAP S3 Access Points 지원 API
-
-S3 AP를 통해 사용 가능한 API 서브셋:
-
-| API | 지원 |
-|-----|------|
-| ListObjectsV2 | ✅ |
-| GetObject | ✅ |
-| PutObject | ✅ (최대 5 GB) |
-| HeadObject | ✅ |
-| DeleteObject | ✅ |
-| DeleteObjects | ✅ |
-| CopyObject | ✅ (동일 AP 내, 동일 리전) |
-| GetObjectAttributes | ✅ |
-| GetObjectTagging / PutObjectTagging | ✅ |
-| CreateMultipartUpload | ✅ |
-| UploadPart / UploadPartCopy | ✅ |
-| CompleteMultipartUpload | ✅ |
-| AbortMultipartUpload | ✅ |
-| ListParts / ListMultipartUploads | ✅ |
-| HeadBucket / GetBucketLocation | ✅ |
-| GetBucketNotificationConfiguration | ❌(미지원 → 폴링 설계의 이유) |
-| Presign | ❌ |
-
-### S3 Access Point 네트워크 오리진 제약
-
-| 네트워크 오리진 | Lambda (VPC 외) | Lambda (VPC 내) | Athena / Glue | 권장 UC |
-|---------------|----------------|----------------|--------------|---------|
-| **internet** | ✅ | ✅ (S3 Gateway EP 경유) | ✅ | UC1, UC3 (Athena 사용) |
-| **VPC** | ❌ | ✅ (S3 Gateway EP 필수) | ❌ | UC2, UC4, UC5 (Athena 미사용) |
-
-> **중요**: Athena / Glue는 AWS 관리형 인프라에서 접근하므로, VPC origin의 S3 AP에는 접근할 수 없습니다. UC1(법무)과 UC3(제조업)은 Athena를 사용하므로, S3 AP는 **internet** network origin으로 생성해야 합니다.
-
-### S3 AP 제약 사항
-
-- **PutObject 최대 크기**: 5 GB. multipart upload API는 지원되지만, 5 GB 초과 업로드 가능 여부는 유스케이스별로 검증하세요.
-- **암호화**: SSE-FSX만 지원(FSx가 투명하게 처리, ServerSideEncryption 파라미터 지정 불필요)
-- **ACL**: `bucket-owner-full-control`만 지원
-- **미지원 기능**: Object Versioning, Object Lock, Object Lifecycle, Static Website Hosting, Requester Pays, Presigned URL
-
-## 문서
-
-자세한 가이드와 스크린샷은 `docs/` 디렉토리에 저장되어 있습니다.
-
-| 문서 | 설명 |
-|------|------|
-| [docs/guides/deployment-guide.md](docs/guides/deployment-guide.md) | 배포 절차서(사전 요건 확인 → 파라미터 준비 → 배포 → 동작 확인) |
-| [docs/guides/operations-guide.md](docs/guides/operations-guide.md) | 운영 절차서(스케줄 변경, 수동 실행, 로그 확인, 알람 대응) |
-| [docs/guides/troubleshooting-guide.md](docs/guides/troubleshooting-guide.md) | 트러블슈팅(AccessDenied, VPC Endpoint, ONTAP 타임아웃, Athena) |
-| [docs/cost-analysis.md](docs/cost-analysis.md) | 비용 구조 분석 |
-| [docs/references.md](docs/references.md) | 참고 링크 모음 |
-| [docs/extension-patterns.md](docs/extension-patterns.md) | 확장 패턴 가이드 |
-| [docs/region-compatibility.md](docs/region-compatibility.md) | AWS 리전별 AI/ML 서비스 지원 현황 |
-| [docs/article-draft.md](docs/article-draft.md) | dev.to 기사 원본 드래프트(공개 버전은 README 상단의 관련 기사 참조) |
-| [docs/verification-results.md](docs/verification-results.md) | AWS 환경 검증 결과 기록 |
-| [docs/screenshots/](docs/screenshots/README.md) | AWS 콘솔 스크린샷(마스킹 완료) |
-
-## 디렉토리 구조
-
-```
-fsxn-s3ap-serverless-patterns/
-├── README.md                          # 본 파일
-├── LICENSE                            # MIT License
-├── requirements.txt                   # 프로덕션 의존성
-├── requirements-dev.txt               # 개발 의존성
-├── shared/                            # 공통 모듈
-│   ├── __init__.py
-│   ├── ontap_client.py               # ONTAP REST API 클라이언트
-│   ├── fsx_helper.py                 # AWS FSx API 헬퍼
-│   ├── s3ap_helper.py                # S3 Access Point 헬퍼
-│   ├── exceptions.py                 # 공통 예외・에러 핸들러
-│   ├── discovery_handler.py          # 공통 Discovery Lambda 템플릿
-│   ├── cfn/                          # CloudFormation 스니펫
-│   └── tests/                        # 유닛 테스트・프로퍼티 테스트
-├── solutions/industry/legal-compliance/                  # UC1: 법무・컴플라이언스
-├── solutions/industry/financial-idp/                     # UC2: 금융・보험
-├── solutions/industry/manufacturing-analytics/           # UC3: 제조업
-├── solutions/industry/media-vfx/                         # UC4: 미디어
-├── solutions/industry/healthcare-dicom/                  # UC5: 의료
-├── infrastructure/                    # 인프라 템플릿
-│   ├── demo-ad-environment.yaml      # AD + EC2 테스트 환경 (WINDOWS S3 AP)
-│   └── handson-lab/                  # 핸즈온 Lab IaC (CloudFormation 네스트 스택)
-│       ├── cloudformation/           # 7 템플릿 (network/ad/iam/fsx/s3ap/ec2/main)
-│       ├── lambda/                   # Custom Resource (AD User / S3 AP)
-│       ├── scripts/                  # deploy / setup_ontap / cleanup / verify
-│       └── docs/                     # 가이드 / 비용 견적
-├── scripts/                           # 검증・배포 스크립트
-│   ├── deploy_uc.sh                  # UC 배포 스크립트(범용)
-│   ├── verify_shared_modules.py      # 공통 모듈 AWS 환경 검증
-│   └── verify_cfn_templates.sh       # CloudFormation 템플릿 검증
-├── .github/workflows/                 # CI/CD (lint, test)
-└── docs/                              # 문서
-    ├── guides/                        # 운영 절차서
-    │   ├── deployment-guide.md       # 배포 절차
-    │   ├── operations-guide.md       # 운영 절차
-    │   └── troubleshooting-guide.md  # 트러블슈팅
-    ├── screenshots/                   # AWS 콘솔 스크린샷
-    ├── cost-analysis.md               # 비용 구조 분석
-    ├── references.md                  # 참고 링크 모음
-    ├── extension-patterns.md          # 확장 패턴 가이드
-    ├── region-compatibility.md        # 리전 호환성 매트릭스
-    ├── verification-results.md        # 검증 결과 기록
-    └── article-draft.md               # dev.to 기사 원본 드래프트
-```
-
-## 공통 모듈 (shared/)
-
-| 모듈 | 설명 |
-|------|------|
-| `ontap_client.py` | ONTAP REST API 클라이언트(Secrets Manager 인증, urllib3, TLS, 재시도) |
-| `fsx_helper.py` | AWS FSx API + CloudWatch 메트릭 취득 |
-| `s3ap_helper.py` | S3 Access Point 헬퍼(페이지네이션, 접미사 필터) |
-| `exceptions.py` | 공통 예외 클래스, `lambda_error_handler` 데코레이터 |
-| `discovery_handler.py` | 공통 Discovery Lambda 템플릿(Manifest 생성) |
-
-## 개발
-
-### 테스트 실행
-
-```bash
-# 전체 테스트
-pytest shared/tests/ -v
-
-# 커버리지 포함
-pytest shared/tests/ --cov=shared --cov-report=term-missing --cov-fail-under=80 -v
-
-# 프로퍼티 기반 테스트만
-pytest shared/tests/test_properties.py -v
-```
-
-### 린터
-
-```bash
-# Python 린터
-ruff check .
-ruff format --check .
-
-# CloudFormation 템플릿 검증
-cfn-lint */template.yaml */template-deploy.yaml
-```
-
-## 이 패턴 모음을 사용해야 하는 경우 / 사용하지 말아야 하는 경우
-
-### 사용해야 하는 경우
-
-- FSx for ONTAP 상의 기존 NAS 데이터를 이동하지 않고 서버리스로 처리하고 싶은 경우
-- Lambda에서 NFS / SMB 마운트 없이 파일 목록 취득이나 전처리를 수행하고 싶은 경우
-- S3 Access Points와 ONTAP REST API의 책임 분리를 배우고 싶은 경우
-- 업종별 AI / ML 처리 패턴을 PoC로 빠르게 검증하고 싶은 경우
-- EventBridge Scheduler + Step Functions에 의한 폴링 기반 설계가 허용되는 경우
-
-### 사용하지 말아야 하는 경우
-
-- 실시간 파일 변경 이벤트 처리가 필수인 경우(S3 Event Notification 미지원)
-- Presigned URL 등 완전한 S3 버킷 호환성이 필요한 경우
-- 이미 EC2 / ECS 기반의 상시 가동 배치 인프라가 있고, NFS 마운트 운영이 허용되는 경우
-- 파일 데이터가 이미 S3 표준 버킷에 존재하고, S3 이벤트 통지로 처리 가능한 경우
-
-## 프로덕션 적용 시 추가 검토 사항
-
-본 리포지토리는 프로덕션 적용을 고려한 설계 판단을 포함하지만, 실제 프로덕션 환경에서는 다음을 추가로 검토하세요.
-
-- 조직의 IAM / SCP / Permission Boundary와의 정합성
-- S3 AP 정책과 ONTAP 측 사용자 권한 리뷰
-- Lambda / Step Functions / Bedrock / Textract 등의 감사 로그・실행 로그(CloudTrail / CloudWatch Logs) 활성화
-- CloudWatch Alarms / SNS / Incident Management 연계(`EnableCloudWatchAlarms=true`)
-- 데이터 분류, 개인정보, 의료정보 등 업종 고유의 컴플라이언스 요건
-- 리전 제약과 크로스 리전 호출 시의 데이터 레지던시 확인
-- Step Functions의 실행 이력 보존 기간과 로그 레벨 설정
-- Lambda의 Reserved Concurrency / Provisioned Concurrency 설정
-
-## 관련 저장소 (동일 저자)
-
-| 저장소 | 개요 | 관련성 |
-|--------|------|--------|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | FSx for ONTAP + Bedrock 권한 인식 RAG 챗봇 (CDK v2, Next.js, ECS) | 본 저장소 FC3 (GenAI RAG) 패턴의 전체 구현 버전 | <!-- allow:naming -->
-| [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | FSx for ONTAP S3 AP × Lakehouse 플랫폼 통합 (Databricks, Snowflake, Athena, Glue, EMR) | S3 AP 호환성 매트릭스, 플랫폼별 검증 결과, DataSync 패턴 |
-| [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 마이그레이션 패턴 | 마이그레이션 후 데이터에 S3 AP 패턴 적용 가능 |
-
-### 저장소 간의 관계
-
-```
-Permission-aware-RAG-FSxN-CDK (CDK v2) # allow:naming
-├── RAG app (Next.js + Bedrock + OpenSearch)
-├── Document read via FSx for ONTAP S3 AP
-├── NTFS ACL permission filtering
-└── Production-ready Web UI
-        │
-        │ S3 AP, ONTAP REST API, Bedrock
-        ▼
-FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns [this repo]
-├── 42 patterns (28 UC + 7 FC + 2 GenAI + SAP + HA + ED + Edge)
-├── CloudFormation/SAM templates (independently deployable)
-├── shared/ modules (S3ApHelper, OntapClient, Observability)
-├── Benchmarks, Governance, Partner/SI assets
-└── Hands-on Lab IaC (infrastructure/handson-lab/)
-        │                       │
-        │ FSx for ONTAP, EC2    │ S3 AP, DataSync, Lakehouse
-        │                       ▼
-        │               fsxn-lakehouse-integrations
-        │               ├── Lakehouse (Databricks, Snowflake, etc.)
-        │               ├── S3 AP Compatibility Matrix (AWS confirmed)
-        │               └── DataSync patterns
-        ▼
-vmware-migration-ec2-ontap
-├── VMware -> EC2 + FSx for ONTAP migration
-├── S3 AP patterns applicable to migrated data
-└── On-prem NAS -> Cloud-native AI processing path
-```
-
-### 사용 가이드
-
-| 유스 케이스 | 권장 저장소 |
-|------------|------------|
-| 권한 인식 RAG 챗봇을 구축하고 싶다 | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | <!-- allow:naming -->
-| Lakehouse 플랫폼과 FSx for ONTAP를 통합하고 싶다 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) |
-| VMware를 EC2 + FSx for ONTAP로 마이그레이션하고 싶다 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) |
-| S3 AP 설계 패턴을 배우고 싶다 | 본 저장소 |
-| 업계별 서버리스 자동화를 PoC하고 싶다 | 본 저장소 (`solutions/industry/`) |
-| GenAI / Bedrock KB / 에이전트형 AI를 구축하고 싶다 | 본 저장소 (`solutions/genai/`) |
-| FPolicy 이벤트 드리븐 파이프라인을 구축하고 싶다 | 본 저장소 (`solutions/event-driven/`) |
-| FlexCache × 서버리스 설계를 검토하고 싶다 | 본 저장소 (`solutions/flexcache/`) |
-| HA 클러스터 (LifeKeeper) AI 모니터링을 구현하고 싶다 | 본 저장소 (`solutions/ha/`) |
-| S3 AP + Tamperproof Snapshot 핸즈온 환경을 구축하고 싶다 | 본 저장소 ([`infrastructure/handson-lab/`](infrastructure/handson-lab/)) |
-
-## 기여
-
-Issue와 Pull Request를 환영합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.
+---
 
 ## 라이선스
 
-MIT License — 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
+MIT — [LICENSE](LICENSE)
+
+---
+
+🌐 [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
