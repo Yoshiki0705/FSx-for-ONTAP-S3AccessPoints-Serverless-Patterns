@@ -125,27 +125,34 @@ export const storage = defineStorage({
 
 ---
 
-### FR-7: FSx for ONTAP S3 AP — Presigned URL Support (Priority Escalation)
+### ~~FR-7: FSx for ONTAP S3 AP — Presigned URL Support~~（⚠️ 実動作確認済み・公式ドキュメントの修正要望に変更）
 
 **Service**: Amazon FSx for ONTAP
 
-**Current state**: Presigned URLs are documented as "not supported" for FSx for ONTAP S3 Access Points ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)). This was previously submitted as FR-4.
+**Current state**: Presigned URLs は FSx for ONTAP S3 AP の互換性テーブルで "Not supported" と記載されている（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）。
 
-**Technical context**: ONTAP native S3 (non-FSx) は ONTAP 9.11 以降で Presigned URL をサポートしている（[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket)）。つまり ONTAP のプロトコル層には実装が存在する。FSx for ONTAP S3 AP で未サポートなのは AWS 側の S3 AP レイヤーの制約であり、技術的に不可能ではないことを示唆している。
+**しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[検証記録](../repost-draft-presigned-url-compatibility.md), [互換性ノート](../s3ap-compatibility-notes.en.md#presigned-url-support)）。AWS Support に確認した結果:
 
-**Why escalation**: This is the single most impactful limitation for file portal use cases. Without Presigned URLs:
-- No browser-native file preview (images, PDF, video)
-- No direct file download (must proxy through Lambda, adding latency + cost)
-- No time-limited sharing links
-- Storage Browser for S3 cannot function (it relies on Presigned URLs for preview/download)
+1. **Presigning はクライアントサイド操作** — `aws s3 presign` は SigV4 署名をローカルで計算するだけ。ネットワークリクエストは発生しない。
+2. **生成された URL は標準の GetObject** — 署名が Authorization ヘッダーではなくクエリパラメータに埋め込まれるだけ。
+3. **GetObject がサポートされている以上、Presigned URL をブロックすることは構造的に不可能**。
+4. **ドキュメントの意図**: "Presigned URL ワークフローを公式にテストしていない" という趣旨と思われる。
 
-**Business context**: Every enterprise file portal competitor (Box, Google Drive, SharePoint, Nextcloud) provides direct-to-browser file access. The absence of Presigned URL support forces all file access through a Lambda proxy, which:
-- Adds 200-500ms latency per file operation
-- Costs $0.20/1M requests + data transfer through Lambda
-- Cannot handle large files (Lambda 6MB response limit for synchronous invocation)
-- Prevents browser-native media playback (video/audio streaming)
+**Technical context**: ONTAP native S3 は ONTAP 9.11 以降で Presigned URL を正式サポート（[NetApp KB](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket)）。プロトコル層に制約はない。
 
-**Requested behavior**: Support `s3.generate_presigned_url()` with the S3 AP alias or ARN as the bucket parameter, honoring the dual-authorization model (IAM + ONTAP file system identity).
+**FR-7 の変更**: 機能要望ではなく、**ドキュメント修正要望**に格下げ。
+- 互換性テーブルの「Presign — Not supported」を「Presign — Works (client-side SigV4; executes as GetObject)」に修正してほしい
+- または注記として "Presigned URLs function correctly because they execute as standard GetObject requests. The service does not officially test presigned URL workflows." を追記してほしい
+
+**Production Guidance**: AWS Support は「"Not supported" に分類されている操作を本番で依存することは推奨しない」と回答。動作は確認できるが、リージョン間の一貫性やサービスアップデート後の動作保証はない。
+
+**実装への影響**: Presigned URL が動作するため、以下は **今すぐ実装可能**:
+- ブラウザネイティブのファイルプレビュー（画像/PDF/動画）
+- ファイルダウンロード（Lambda プロキシ不要）
+- 時限付き共有リンク
+- Storage Browser for S3 の FSx for ONTAP S3 AP 対応（S3 AP がクライアント利用をサポートした場合）
+
+**残るリスク**: AWS が将来的に Presigned URL のクエリパラメータ形式を S3 AP レイヤーで明示的にブロックする可能性（低いが非ゼロ）。本番利用する場合は、フォールバック（Lambda プロキシ）を用意しておくのが prudent。
 
 ---
 
@@ -164,34 +171,33 @@ export const storage = defineStorage({
 
 ---
 
-### FR-9: 全文検索 — OpenSearch Serverless / Amazon Quick の FSx for ONTAP S3 AP ネイティブ連携
+### FR-9: Amazon Quick — FSx for ONTAP S3 AP をデータソースとしたエンタープライズ検索・Q&A
 
-**Service**: Amazon OpenSearch Service / Amazon Quick
+**Service**: Amazon Quick
 
 **Current state**: 
 - **Amazon Kendra**: Maintenance Mode (2026/6/30)、新規利用停止 (2026/7/30)。使用不可。
 - **Amazon Q Business**: 同様に新規利用停止 (2026/7/31)。後継は **Amazon Quick**。([公式案内](https://docs.aws.amazon.com/amazonq/latest/qbusiness-ug/qbusiness-availability-change.html))
-- **Amazon Quick**: Q Business/QuickSight の後継サービス（2025/10 Quick Suite → 2026 Amazon Quick）。S3 コネクタ経由でデータ接続可能。FSx for ONTAP S3 AP との直接連携は明示ドキュメント未確認だが、S3 AP が標準 S3 API を提供するため、S3 コネクタで AP alias を指定できる可能性が高い（要検証）。
+- **Amazon Quick**: Q Business/QuickSight の後継サービス（2025/10 Quick Suite → 2026 Amazon Quick）。Chat Agent 機能により、接続したデータソースに対する自然言語検索・Q&A が可能。S3 コネクタ経由でデータ接続可能。FSx for ONTAP S3 AP との直接連携は明示ドキュメント未確認だが、S3 AP が標準 S3 API を提供するため、S3 コネクタで AP alias を指定できる可能性が高い（要検証）。
 - **Amazon Bedrock Knowledge Base**: FSx for ONTAP S3 AP を直接データソースとして利用可能（[公式チュートリアル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html)）。RAG ベースの質問応答は **実現済み**。
-- **Amazon OpenSearch Service**: S3 AP を直接データソースとして指定する Ingestion パイプラインの公式サポートは未確認。
 
-**Gap**: 
-- Bedrock Knowledge Base は RAG（質問応答）に適しているが、ファイルポータルに必要な「キーワード検索 → ファイル一覧表示」パターンには最適化されていない
-- Amazon Quick が FSx for ONTAP S3 AP を直接データソースとして使えれば、エンタープライズ検索 + AI Q&A が統合的に実現する（要検証）
-- OpenSearch Serverless でキーワード検索を実現する場合、S3 AP からの増分取り込みパイプラインが必要
+**分析**: 
+- 従来の「キーワード検索 → ファイル一覧表示」パターンは、**Amazon Quick の Chat Agent** で代替可能。Chat Agent はデータソース内のドキュメントを自然言語で検索し、関連ファイルを提示できる。
+- Bedrock Knowledge Base も RAG 目的で同様の検索を提供済み。
+- **OpenSearch を独自に構築する必要性は低い**。Amazon Quick の S3 コネクタが S3 AP を受け付けることが確認できれば、全文検索要件は解決する。
 
 **Requested behavior**: 
-1. Amazon Quick の S3 コネクタが FSx for ONTAP S3 AP ARN/alias を受け付けることを公式確認・ドキュメント化
-2. OpenSearch Ingestion が FSx for ONTAP S3 AP をソースとして直接クロールできるようにする（ListObjectsV2 + GetObject による増分取り込み）
+- Amazon Quick の S3 コネクタが FSx for ONTAP S3 AP ARN/alias を受け付けることを公式確認・ドキュメント化
+- Chat Agent が FSx for ONTAP 上のドキュメントを検索対象にできることを公式チュートリアルとして提供
 
-**Impact**: ファイルポータルの「検索バー」機能を実現するための最短経路。現状は ListObjectsV2 のプレフィクス検索のみ（部分一致・本文検索不可）。
+**Impact**: ファイルポータルに Amazon Quick の Chat Agent を埋め込めば、自然言語でファイルを検索・質問できる UI が実現する。
 
 **What works today (no FR needed)**:
 - Bedrock Knowledge Base → FSx for ONTAP S3 AP: RAG / AI Q&A（公式チュートリアル）
 - Transfer Family → FSx for ONTAP S3 AP: SFTP/FTPS ファイル交換（2026/1 GA）
 - CloudFront → FSx for ONTAP S3 AP: ビデオストリーミング（公式チュートリアル）
 
-**Workaround**: Lambda ベースのクローラーが S3 AP 経由でファイルを取得し、OpenSearch Serverless にインデックスする。RAG 目的ならワークアラウンド不要（Bedrock KB で実現済み）。
+**Workaround**: Bedrock Knowledge Base を直接利用すれば RAG ベースの検索は今すぐ実現可能。ファイルポータル UI に RetrieveAndGenerate API を組み込むことで、ユーザーは自然言語で NAS データを検索できる。
 
 ---
 
@@ -215,14 +221,14 @@ Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP
 
 | Rank | FR | Impact | Effort (estimated) | Status |
 |------|-----|--------|-------------------|--------|
-| 1 | FR-7 (Presigned URL) | Unblocks FR-5, preview, download, sharing | Medium (S3 AP signing layer) | Open |
-| 2 | FR-5 (Storage Browser + S3 AP) | Closes 4 gaps with zero custom code | Low (if FR-7 is resolved) | On Roadmap (Amplify UI) |
-| 3 | FR-6 (Amplify Storage + S3 AP) | Developer experience for NAS-backed apps | Medium | Open |
-| 4 | FR-9 (OpenSearch / Amazon Quick + S3 AP) | Full-text search without data copy | Medium | Open |
-| 5 | FR-8 (Audit UI) | Compliance requirement | Low | Open |
+| 1 | FR-5 (Storage Browser + S3 AP) | Closes 4 gaps with zero custom code | Low | On Roadmap (Amplify UI) |
+| 2 | FR-6 (Amplify Storage + S3 AP) | Developer experience for NAS-backed apps | Medium | Open |
+| 3 | FR-9 (Amazon Quick + S3 AP) | Enterprise search / AI Q&A over NAS data | Low (if S3 connector works) | 要検証 |
+| 4 | FR-8 (Audit UI) | Compliance requirement | Low | Open |
+| — | FR-7 (Presigned URL docs correction) | ドキュメント修正のみ（実動作は確認済み） | — | ドキュメント修正要望 |
 | — | ~~FR-10 (Transfer Family)~~ | ~~B2B file exchange~~ | — | ✅ Resolved (2026/1) |
 
-**Critical dependency**: FR-7 (Presigned URL) is the keystone. Without it, FR-5 (Storage Browser) cannot function, and all preview/download/sharing features remain blocked.
+**状況の変化**: FR-7 (Presigned URL) が「動作確認済み」であるため、**Storage Browser の S3 AP 対応（FR-5）が最優先**に昇格。Presigned URL が動作する以上、Storage Browser が S3 AP を受け付けさえすれば、プレビュー・ダウンロード・アップロードが全て動作する。
 
 **Positive signal**: Storage Browser for S3 の公式ロードマップに「Support for S3 Access Points」が明記されている（[Amplify UI Storage Browser docs](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)）。これは FR-5 が AWS 側でも認識されていることを示す。
 
