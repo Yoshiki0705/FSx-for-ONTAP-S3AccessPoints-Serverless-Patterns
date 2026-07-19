@@ -97,7 +97,7 @@ aws fsx create-and-attach-s3-access-point --region ap-northeast-1 \
 > コマンド名は `create-and-attach-s3-access-point`（`create-s3-access-point-attachment` ではない）。
 > `WindowsUser` は `Name` のみ（`DOMAIN\\user` 形式）。
 > Windows identity にすることで、S3 AP 経由アクセスが NTFS ACL に基づき認可される。
-> Quick の S3 KB 認可（UNIX root 起因の制約）も改善が期待できる。
+> Amazon Quick の S3 ナレッジベースも Windows identity の S3 AP で正常動作する（[AWS Storage Blog 参照](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)）。
 
 ### 4. Bedrock KB データソース接続 + AutoSync 再ポイント
 - 新 S3 AP エイリアスに対し inclusionPrefixes を設定したデータソースを KB に追加
