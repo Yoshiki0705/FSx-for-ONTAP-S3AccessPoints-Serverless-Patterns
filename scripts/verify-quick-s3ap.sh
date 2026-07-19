@@ -63,12 +63,36 @@ wait_for_cfn() {
 # =============================================================================
 if [[ "$ACTION" == "cleanup" ]]; then
   log "=== Cleanup mode ==="
+  log "Deletion order: S3 AP → Volume → SVM → CloudFormation stack (AD)"
 
-  # Delete S3 AP
+  # Delete S3 AP first (volume cannot be deleted while AP attached)
   log "Deleting S3 AP: $AP_NAME"
   aws fsx detach-and-delete-s3-access-point --name "$AP_NAME" --region "$REGION" 2>/dev/null || true
+  sleep 30  # Wait for AP deletion to complete
 
-  # Delete CloudFormation stack
+  # Delete volume (only after S3 AP is gone)
+  log "Deleting volume..."
+  local vol_id
+  vol_id=$(aws fsx describe-volumes --region "$REGION" \
+    --query "Volumes[?Name=='quick_test_data'].VolumeId" --output text 2>/dev/null || echo "")
+  if [[ -n "$vol_id" ]]; then
+    aws fsx delete-volume --volume-id "$vol_id" --ontap-configuration '{"SkipFinalBackup":true}' \
+      --region "$REGION" 2>/dev/null || true
+    sleep 30
+  fi
+
+  # Delete SVM
+  log "Deleting SVM..."
+  local svm_id
+  svm_id=$(aws fsx describe-storage-virtual-machines --region "$REGION" \
+    --query "StorageVirtualMachines[?Name=='quick-verify-svm'].StorageVirtualMachineId" --output text 2>/dev/null || echo "")
+  if [[ -n "$svm_id" ]]; then
+    aws fsx delete-storage-virtual-machine --storage-virtual-machine-id "$svm_id" \
+      --region "$REGION" 2>/dev/null || true
+    sleep 60
+  fi
+
+  # Delete CloudFormation stack (AD + EC2)
   log "Deleting stack: $STACK_NAME"
   aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$REGION"
   aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" --region "$REGION"
@@ -129,30 +153,66 @@ aws cloudformation deploy \
     FsxFileSystemId="$FS_ID" \
     OntapManagementIp="" \
     OntapSecretName="" \
-  --capabilities CAPABILITY_IAM \
+  --capabilities CAPABILITY_NAMED_IAM \
   --region "$REGION" \
   --no-fail-on-empty-changeset
 
 wait_for_cfn
 
-# --- Step 3: Join SVM to AD ---
-log "=== Step 3: Joining SVM to AD ==="
-log "Using scripts/demo-ad-join-svm.sh"
+# --- Step 3: Create new SVM with AD config (cleanest approach) ---
+log "=== Step 3: Creating new SVM with AD join ==="
+log "Note: Using create-storage-virtual-machine with AD config."
+log "This is more reliable than joining an existing SVM (which may have stale AD state)."
 
-./scripts/demo-ad-join-svm.sh \
-  --svm-id "$SVM_ID" \
-  --ad-stack-name "$STACK_NAME" \
-  --netbios-name "QUICKSVM" \
-  --region "$REGION"
+# Get AD password and DNS IPs from stack outputs
+AD_DNS_IPS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" \
+  --query 'Stacks[0].Outputs[?OutputKey==`DnsIpAddresses`].OutputValue' --output text)
+AD_SHORT=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" \
+  --query 'Stacks[0].Outputs[?OutputKey==`DomainShortName`].OutputValue' --output text)
+
+# Convert DNS IPs to JSON array
+DNS_JSON=$(echo "$AD_DNS_IPS" | tr ',' '\n' | jq -R . | jq -s .)
+
+SVM_RESULT=$(aws fsx create-storage-virtual-machine \
+  --file-system-id "$FS_ID" \
+  --name quick-verify-svm \
+  --active-directory-configuration "{
+    \"SelfManagedActiveDirectoryConfiguration\": {
+      \"DomainName\": \"$DOMAIN_NAME\",
+      \"OrganizationalUnitDistinguishedName\": \"OU=Computers,OU=$AD_SHORT,DC=$(echo $DOMAIN_NAME | sed 's/\./,DC=/g')\",
+      \"UserName\": \"Admin\",
+      \"Password\": \"$AD_PASSWORD\",
+      \"DnsIps\": $DNS_JSON,
+      \"FileSystemAdministratorsGroup\": \"Domain Admins\"
+    },
+    \"NetBiosName\": \"QUICKSVM\"
+  }" \
+  --region "$REGION" --output json 2>&1)
+
+NEW_SVM_ID=$(echo "$SVM_RESULT" | jq -r '.StorageVirtualMachine.StorageVirtualMachineId')
+log "SVM creating: $NEW_SVM_ID (waiting for CREATED...)"
+
+for i in $(seq 1 24); do
+  sleep 10
+  SVM_STATUS=$(aws fsx describe-storage-virtual-machines --storage-virtual-machine-ids "$NEW_SVM_ID" \
+    --region "$REGION" --query 'StorageVirtualMachines[0].Lifecycle' --output text)
+  log "  SVM status: $SVM_STATUS"
+  if [[ "$SVM_STATUS" == "CREATED" ]]; then break; fi
+  if [[ "$SVM_STATUS" == "FAILED" || "$SVM_STATUS" == "MISCONFIGURED" ]]; then
+    log "ERROR: SVM creation failed with status $SVM_STATUS"
+    exit 1
+  fi
+done
 
 # --- Step 4: Create NTFS volume with test documents ---
 log "=== Step 4: Creating NTFS volume for Quick test data ==="
+# Note: Volume names must use underscores only (no hyphens allowed)
 VOLUME_RESULT=$(aws fsx create-volume \
   --volume-type ONTAP \
-  --name quick-test-data \
+  --name quick_test_data \
   --ontap-configuration "{
-    \"StorageVirtualMachineId\": \"$SVM_ID\",
-    \"JunctionPath\": \"/quick-test-data\",
+    \"StorageVirtualMachineId\": \"$NEW_SVM_ID\",
+    \"JunctionPath\": \"/quick_test_data\",
     \"SizeInMegabytes\": 1024,
     \"StorageEfficiencyEnabled\": true,
     \"SecurityStyle\": \"NTFS\"
@@ -222,8 +282,18 @@ cat <<INSTRUCTIONS
 NEXT STEPS (Manual — Amazon Quick Console)
 ============================================================
 
-1. Open Amazon Quick console: https://$REGION.quicksight.aws.amazon.com/
-   (or https://quick.aws.amazon.com/ for the newer interface)
+⚠️ REGION CONSTRAINT (verified 2026-07-19):
+   Quick S3 Knowledge base is available ONLY in:
+   us-east-1 (Virginia), us-west-2 (Oregon),
+   ap-southeast-2 (Sydney), eu-west-1 (Dublin).
+   
+   If your Quick account is in ap-northeast-1 (Tokyo),
+   use Bedrock Knowledge Base instead (S3 AP supported natively).
+   Or create a Quick account in a supported region and connect
+   via the Internet-origin S3 AP (cross-region access works).
+
+1. Open Amazon Quick console in a SUPPORTED REGION:
+   https://us-east-1.quicksight.aws.amazon.com/
 
 2. Navigate to: Integrations → Knowledge bases → Amazon S3
 
