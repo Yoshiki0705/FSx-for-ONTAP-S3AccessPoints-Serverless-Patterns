@@ -7,6 +7,7 @@ Description: >-
   The script auto-verifies AD DC reachability post-join (required for S3 AP data ops).
   CRITICAL: WindowsUser.Name must be username only (no domain prefix).
   Also used for: Amazon Quick knowledge base integration (see scripts/verify-quick-s3ap.sh).
+  Deploy with: --capabilities CAPABILITY_NAMED_IAM (not CAPABILITY_IAM).
 
 # =====================================================================
 # Metadata
