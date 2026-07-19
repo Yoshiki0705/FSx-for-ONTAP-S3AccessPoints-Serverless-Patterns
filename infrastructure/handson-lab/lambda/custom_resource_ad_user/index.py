@@ -49,7 +49,9 @@ def handler(event: dict[str, Any], context: Any) -> None:
         logger.exception("Failed to handle %s", request_type)
         physical_id = event.get("PhysicalResourceId", "NONE")
         send_response(
-            event, context, "FAILED",
+            event,
+            context,
+            "FAILED",
             {"Error": str(e)},
             physical_id,
         )
@@ -67,7 +69,9 @@ def create_user(properties: dict[str, Any]) -> tuple[str, dict[str, str]]:
 
     logger.info(
         "Creating AD user: %s in directory %s (domain: %s)",
-        username, directory_id, domain_name,
+        username,
+        directory_id,
+        domain_name,
     )
 
     try:
@@ -98,9 +102,7 @@ def create_user(properties: dict[str, Any]) -> tuple[str, dict[str, str]]:
     }
 
 
-def update_user(
-    event: dict[str, Any], properties: dict[str, Any]
-) -> tuple[str, dict[str, str]]:
+def update_user(event: dict[str, Any], properties: dict[str, Any]) -> tuple[str, dict[str, str]]:
     """Update AD user (reset password if changed)."""
     directory_id = properties["DirectoryId"]
     username = properties["UserName"]
@@ -139,9 +141,7 @@ def update_user(
     }
 
 
-def delete_user(
-    event: dict[str, Any], properties: dict[str, Any]
-) -> tuple[str, dict[str, str]]:
+def delete_user(event: dict[str, Any], properties: dict[str, Any]) -> tuple[str, dict[str, str]]:
     """Delete AD user from AWS Managed AD."""
     directory_id = properties["DirectoryId"]
     username = properties["UserName"]
@@ -179,15 +179,17 @@ def send_response(
     physical_resource_id: str,
 ) -> None:
     """Send response to CloudFormation pre-signed URL."""
-    response_body = json.dumps({
-        "Status": status,
-        "Reason": f"See CloudWatch Log Stream: {context.log_stream_name}",
-        "PhysicalResourceId": physical_resource_id,
-        "StackId": event["StackId"],
-        "RequestId": event["RequestId"],
-        "LogicalResourceId": event["LogicalResourceId"],
-        "Data": data,
-    })
+    response_body = json.dumps(
+        {
+            "Status": status,
+            "Reason": f"See CloudWatch Log Stream: {context.log_stream_name}",
+            "PhysicalResourceId": physical_resource_id,
+            "StackId": event["StackId"],
+            "RequestId": event["RequestId"],
+            "LogicalResourceId": event["LogicalResourceId"],
+            "Data": data,
+        }
+    )
 
     logger.info("Response: %s", response_body)
 
