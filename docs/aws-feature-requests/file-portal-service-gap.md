@@ -24,12 +24,12 @@
 
 ### 方法論
 
-Compared current Amplify Gen2 File Portal capabilities against 15 representative SaaS/OSS cloud storage services across 4 categories. Data sourced from official documentation, release announcements, and feature pages (2025-07 ~ 2026-07).
+当 Amplify Gen2 ファイルポータルの現在の機能を、4 カテゴリにわたる 15 の代表的な SaaS/OSS クラウドストレージサービスと比較しました。データは公式ドキュメント、リリースアナウンス、機能ページから取得しています（2025-07 〜 2026-07）。
 
-**Comparison targets**:
+**比較対象**:
 
-| Category | Service | Key differentiator |
-|----------|---------|-------------------|
+| カテゴリ | サービス | 主な特徴 |
+|----------|---------|---------|
 | Enterprise | Box Enterprise Advanced | AI Agent (GA Apr 2026), governance, retention, AI Studio |
 | Enterprise | SharePoint Online (M365) | Copilot (Jul 2026), document library AI, Power Automate |
 | Enterprise | Google Drive (Workspace) | Gemini integration (2026), AI file organization, real-time co-editing |
@@ -38,13 +38,13 @@ Compared current Amplify Gen2 File Portal capabilities against 15 representative
 | Consumer/SMB | Dropbox Business | Dash AI universal search (2025), multimodal search, OpenAI integration |
 | Consumer/SMB | OneDrive (M365) | Files On-Demand, Windows/macOS integration, Copilot |
 | Consumer/SMB | iCloud Drive | Apple ecosystem, Pages/Numbers/Keynote collaboration |
-| Security-focused | Tresorit | E2E zero-knowledge encryption, Swiss privacy law, Engage platform |
-| Cost-optimized | Wasabi | S3 100% bit-compatible, $6.99/TB/month, no egress fees |
-| OSS Self-hosted | Nextcloud | AGPL-3.0, Hub 26 (Governance tool, Euro-Office), federation |
-| OSS Self-hosted | ownCloud Infinite Scale | Go microservices, Spaces, multi-storage, federation (Kiteworks) |
-| OSS Self-hosted | Seafile | Block-level delta sync, Git-like data model, AI property automation |
-| AWS Native | Storage Browser for S3 | React component (Amplify UI), S3 AP ロードマップ記載 |
-| AWS Native | Transfer Family | SFTP/FTPS, FSx for ONTAP S3 AP 対応 (2026/1 GA) |
+| セキュリティ特化 | Tresorit | E2E zero-knowledge encryption, Swiss privacy law, Engage platform |
+| コスト最適 | Wasabi | S3 100% bit-compatible, $6.99/TB/month, no egress fees |
+| OSS セルフホスト | Nextcloud | AGPL-3.0, Hub 26 (Governance tool, Euro-Office), federation |
+| OSS セルフホスト | ownCloud Infinite Scale | Go microservices, Spaces, multi-storage, federation (Kiteworks) |
+| OSS セルフホスト | Seafile | Block-level delta sync, Git-like data model, AI property automation |
+| AWS ネイティブ | Storage Browser for S3 | React component (Amplify UI), S3 AP ロードマップ記載 |
+| AWS ネイティブ | Transfer Family | SFTP/FTPS, FSx for ONTAP S3 AP 対応 (2026/1 GA) |
 
 **除外**: NAS ベンダー提供ソリューション（Synology Drive, QNAP, TrueNAS 等）。FSx for ONTAP を扱う記事で NAS ベンダー同士の比較を行うとポジショントークに見えるため。
 
@@ -117,19 +117,19 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 | **S3 API** (S3 AP) | サーバーレス処理パイプライン（Lambda, Step Functions, Bedrock, Athena） | リクエスト単位課金。5GB/オブジェクト上限。並列性は無制限にスケール | Internet-origin AP: VPC 外から直接アクセス可。VPC-origin AP: VPC Endpoint 経由 |
 | **SFTP/FTPS** | B2B ファイル交換、レガシーシステム連携 | Transfer Family 経由。スループットはインスタンスタイプに依存 | パブリック or VPC エンドポイント (Transfer Family) |
 
-#### なぜこれらが同時に必要になるのか — ペルソナ視点
+#### なぜこれらが同時に必要になるのか — ワークロード別の視点
 
-> **EDA/半導体設計 (EDA Engineer)**: シミュレーションジョブは NFSv3 でサブミット（低レイテンシ・高スループット）。結果ログを AI で分析するには S3 AP 経由で Lambda/Bedrock に渡す。同じファイルに両方のプロトコルからアクセスできないと、データコピーが発生してストレージコストとパイプライン遅延が倍増する。
+> **半導体 EDA ワークロードの場合**: シミュレーションジョブは NFSv3 でサブミット（低レイテンシ・高スループット）。結果ログを AI で分析するには S3 AP 経由で Lambda/Bedrock に渡す。同じファイルに両方のプロトコルからアクセスできないと、データコピーが発生してストレージコストとパイプライン遅延が倍増する。
 
-> **製造 OT / CAD エンジニア (Manufacturing OT)**: CAD ワークステーションは SMB 3.x で共有フォルダにアクセス（AD 認証 + ファイルロック）。工場のタブレットからは S3 AP 経由の Web ポータル (Presigned URL) で図面を閲覧。NFSv3 でバッチレンダリングサーバーが中間ファイルを読み書き。3 プロトコルが同一ボリュームで共存する必要がある。
+> **製造業 CAD ワークフローの場合**: CAD ワークステーションは SMB 3.x で共有フォルダにアクセス（AD 認証 + ファイルロック）。工場のタブレットからは S3 AP 経由の Web ポータル (Presigned URL) で図面を閲覧。NFSv3 でバッチレンダリングサーバーが中間ファイルを読み書き。3 プロトコルが同一ボリュームで共存する必要がある。
 
-> **データサイエンティスト / ML エンジニア (AI/ML Engineer)**: 学習データは NFSv3 マウントで GPU インスタンスから高速読み取り。学習完了後のモデルアーティファクトを S3 AP 経由で Bedrock Knowledge Base に登録。SMB 経由でビジネスアナリストがレポートを確認。プロトコル間でデータ移動が不要な構造がイテレーション速度に直結する。
+> **ML 学習パイプラインの場合**: 学習データは NFSv3 マウントで GPU インスタンスから高速読み取り。学習完了後のモデルアーティファクトを S3 AP 経由で Bedrock Knowledge Base に登録。SMB 経由でビジネスアナリストがレポートを確認。プロトコル間でデータ移動が不要な構造がイテレーション速度に直結する。
 
-> **SRE / プラットフォームエンジニア (SRE)**: NFSv3 は stateless のため、フェイルオーバー時にセッション再確立が不要（可用性に寄与）。NFSv4.1 はデリゲーションでメタデータ負荷を軽減（小ファイル大量アクセスの場面で有効）。S3 API はリクエスト単位のスケーリングで突発的な AI 処理バーストに対応。各プロトコルの運用特性を理解した上で適材適所に選ぶ必要がある。
+> **運用設計の観点**: NFSv3 は stateless のため、フェイルオーバー時にセッション再確立が不要（可用性に寄与）。NFSv4.1 はデリゲーションでメタデータ負荷を軽減（小ファイル大量アクセスの場面で有効）。S3 API はリクエスト単位のスケーリングで突発的な AI 処理バーストに対応。各プロトコルの運用特性を理解した上で適材適所に選ぶ必要がある。
 
-> **コンプライアンスオフィサー (Compliance Officer)**: SMB のアクセスは AD + NTFS ACL で制御。NFSv4.1 のアクセスは Kerberos + UNIX パーミッションで制御。S3 AP のアクセスは IAM + File System Identity で制御。プロトコルが異なっても同一ファイルに対して一貫したアクセス制御が適用される（ONTAP のマルチプロトコル ID マッピング）。監査の観点では、全プロトコルのアクセスが CloudTrail + ONTAP Audit Log で横断的に追跡可能であることが重要。
+> **監査・コンプライアンスの観点**: SMB のアクセスは AD + NTFS ACL で制御。NFSv4.1 のアクセスは Kerberos + UNIX パーミッションで制御。S3 AP のアクセスは IAM + File System Identity で制御。プロトコルが異なっても同一ファイルに対して一貫したアクセス制御が適用される（ONTAP のマルチプロトコル ID マッピング）。監査の観点では、全プロトコルのアクセスが CloudTrail + ONTAP Audit Log で横断的に追跡可能であることが重要。
 
-> **ネットワークエンジニア (Network Engineer)**: NFSv4.1 は TCP 2049 単一ポートで動作するため、ファイアウォール設定がシンプル。NFSv3 は portmapper + 動的ポートが必要で、セキュリティグループ設定が複雑になる。S3 AP (Internet-origin) は HTTPS/443 のみで VPC 外からアクセスできるため、ネットワーク設計の自由度が高い。用途に応じてプロトコルとネットワーク経路を選択できる柔軟性が、多様なワークロードの統合を可能にする。
+> **ネットワーク設計の観点**: NFSv4.1 は TCP 2049 単一ポートで動作するため、ファイアウォール設定がシンプル。NFSv3 は portmapper + 動的ポートが必要で、セキュリティグループ設定が複雑になる。S3 AP (Internet-origin) は HTTPS/443 のみで VPC 外からアクセスできるため、ネットワーク設計の自由度が高い。用途に応じてプロトコルとネットワーク経路を選択できる柔軟性が、多様なワークロードの統合を可能にする。
 
 #### パフォーマンス設計上の注意点
 
@@ -145,7 +145,7 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 
 マルチプロトコルアクセスで最も重要な技術的要素は、プロトコル間のデータ一貫性です:
 
-- **書き込み即時可視性**: NFSv3 で書き込んだファイルは、同時に S3 AP の `ListObjectsV2` や SMB のディレクトリ一覧に即座に反映される（一般的な S3 の結果整合性とは異なる）
+- **書き込み即時可視性**: NFSv3 で書き込んだファイルは、同時に S3 AP の `ListObjectsV2` や SMB のディレクトリ一覧に即座に反映される（標準 S3 は S3 操作内で強一貫性を提供するが、NFS/SMB/S3 API 間のプロトコル横断一貫性は FSx for ONTAP 固有の特性）
 - **ファイルロックの共存**: SMB の Opportunistic Lock (oplock) と NFSv4.1 の Delegation は同一ボリューム上で共存可能。ただし、異なるプロトコルから同一ファイルへの同時書き込みが発生すると oplock/delegation がブレイクされ、パフォーマンスが一時的に低下する
 - **S3 AP からの読み取りとロック**: S3 AP の GetObject はファイルロックを取得しない（read-only のスナップショット読み取り）。NFS/SMB で書き込み中のファイルを S3 AP で読むと、書き込み途中の状態が見える可能性がある。処理パイプラインでは書き込み完了を確認してから S3 AP 読み取りを行う設計が望ましい
 
@@ -256,7 +256,7 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 export const storage = defineStorage({
   name: 'nasFiles',
   accessPoint: {
-    alias: 'my-fsxn-ap-s3alias',
+    alias: 'my-portal-ap-s3alias',
     // or ARN: 'arn:aws:s3:ap-northeast-1:123456789012:accesspoint/my-ap'
   }
 });
@@ -459,7 +459,7 @@ Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP
 
 #### 16. Database Administrator
 
-> **Data note**: FR-9 (Search) should leverage the S3 AP's ability to expose file metadata (size, lastModified, security style) alongside content. A search index that includes both content AND ONTAP metadata (volume name, aggregate, tiering state) would be uniquely valuable for storage planning decisions.
+> **Data note**: FR-9 (Search) should leverage the S3 AP's ability to expose file metadata (size, lastModified, security style) alongside content. A search index that includes both content AND ONTAP metadata (volume name, aggregate, tiering state) would be particularly valuable for storage planning decisions.
 
 #### 17. Cost Optimization (FinOps) Analyst
 
@@ -479,7 +479,7 @@ Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP
 
 #### 21. Semiconductor / EDA Engineer
 
-> **EDA note**: GDS/OASIS layout files can be 50-100GB. Preview requires a specialized renderer, not just a file download. The portal should support "preview plugins" that can request byte ranges (FR-7 prerequisite) and render specific layers. This is unique to EDA and wouldn't be solved by generic preview.
+> **EDA note**: GDS/OASIS layout files can be 50-100GB. Preview requires a specialized renderer, not just a file download. The portal should support "preview plugins" that can request byte ranges (FR-7 prerequisite) and render specific layers. This is specific to EDA and wouldn't be solved by generic preview.
 
 #### 22. Human Resources
 

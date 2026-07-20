@@ -42,14 +42,26 @@ export function VersionHistory() {
       });
 
       if (response.data) {
-        setSnapshots((response.data.snapshots || []) as Snapshot[]);
+        const snapshotData = response.data.snapshots;
+        if (typeof snapshotData === "string") {
+          try {
+            setSnapshots(JSON.parse(snapshotData) as Snapshot[]);
+          } catch {
+            setSnapshots([]);
+          }
+        } else {
+          setSnapshots((snapshotData || []) as Snapshot[]);
+        }
         setVolumeName(response.data.volumeName || "");
         if (response.data.error) {
           setError(response.data.error);
         }
+      } else if (response.errors) {
+        setError(response.errors.map((e) => e.message).join(", "));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load snapshots");
+      const message = err instanceof Error ? err.message : "Failed to load snapshots";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -96,12 +108,29 @@ export function VersionHistory() {
       </div>
 
       {error && (
-        <div className="info-message">
-          <p>{error}</p>
-          <small>
-            To enable Version History, configure ONTAP_MGMT_IP, ONTAP_SECRET_NAME,
-            and VOLUME_NAME environment variables on the ListSnapshots Lambda.
-          </small>
+        <div className="protection-section" style={{ marginTop: "1rem" }}>
+          <div className="protection-info">
+            <h3>📸 ONTAP Connection Required</h3>
+            <p>
+              Snapshots are stored on the FSx for ONTAP volume and require connectivity
+              to the ONTAP management LIF (REST API). This section will display snapshot history
+              once the connection is configured.
+            </p>
+            <ul>
+              <li>The <strong>ListSnapshots Lambda</strong> must be deployed in a VPC subnet that can reach the management LIF</li>
+              <li>Environment variables required: <code>ONTAP_MGMT_IP</code>, <code>ONTAP_SECRET_NAME</code>, <code>VOLUME_NAME</code>, <code>SVM_NAME</code></li>
+              <li>Security group must allow outbound TCP/443 to the management LIF IP</li>
+            </ul>
+            <p className="integration-note">
+              <strong>DemoMode note</strong>: File browsing, AI processing, and upload work without ONTAP connectivity
+              (via S3 AP or regular S3). Only Data Protection features (Snapshots, ARP/AI status, SnapLock) require
+              the VPC Lambda → ONTAP REST API path.
+            </p>
+            <details>
+              <summary>Error details</summary>
+              <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem", background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
+            </details>
+          </div>
         </div>
       )}
 
