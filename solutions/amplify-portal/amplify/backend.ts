@@ -4,7 +4,8 @@ import { data } from "./data/resource";
 import { config } from "./portal-config";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import { Duration, Stack } from "aws-cdk-lib";
+import { Aspects, Duration, Stack } from "aws-cdk-lib";
+import { AwsSolutionsChecks, NagSuppressions } from "cdk-nag";
 
 /**
  * FSx for ONTAP File Portal — Amplify Gen2 Backend
@@ -1794,3 +1795,45 @@ def handler(event, context):
 );
 
 api.addLambdaDataSource("GlueCatalogLambdaDataSource", glueCatalogFunction);
+
+
+// --- cdk-nag: Apply AWS Solutions Checks ---
+// Reference: CDK Conference Japan 2026 — "AI Coding Agent時代のcdk-nagガードレール"
+// cdk-nag runs at synth time and validates all constructs against AWS best practices.
+// Suppressions below document known acceptable deviations.
+const allStacks = [dataStack, Stack.of(backend.auth.resources.userPool)];
+for (const stack of allStacks) {
+  Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));
+}
+
+// Known suppressions — these are intentional design decisions, not oversights.
+// Each suppression includes the rationale for future reviewers.
+NagSuppressions.addStackSuppressions(dataStack, [
+  {
+    id: "AwsSolutions-IAM5",
+    reason:
+      "Wildcard (*) resources are used for: (1) DynamoDB tables that are environment-specific " +
+      "(resolved at deploy time), (2) Secrets Manager secrets (single secret per deployment), " +
+      "(3) Glue catalog (read-only cross-database access). " +
+      "Production deployments should scope these to specific ARNs via portal-config.ts.",
+  },
+  {
+    id: "AwsSolutions-IAM4",
+    reason:
+      "AWS managed policies (AWSLambdaBasicExecutionRole, AWSLambdaVPCAccessExecutionRole) " +
+      "are used for standard Lambda execution permissions. These are AWS-recommended for Lambda.",
+  },
+  {
+    id: "AwsSolutions-L1",
+    reason:
+      "All Lambda functions explicitly use Python 3.12 (latest supported runtime as of 2026-07). " +
+      "cdk-nag may flag this if a newer runtime becomes available.",
+  },
+  {
+    id: "AwsSolutions-COG4",
+    reason:
+      "Cognito User Pool is configured by Amplify Gen2 defineAuth with MFA=OPTIONAL and " +
+      "email verification. Advanced security features (WAF, compromised credentials) are " +
+      "production additions not included in this reference architecture.",
+  },
+]);
