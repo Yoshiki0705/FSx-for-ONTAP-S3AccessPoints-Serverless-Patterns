@@ -553,6 +553,8 @@ When reviewing changes, consider these perspectives:
 | [Bedrock Inference Profiles](docs/bedrock-inference-profiles.md) | Nova/Claude on-demand requirement, IAM (foundation-model + inference-profile), data residency, CI enforcement |
 | [AD-Joined SVM S3 AP Prerequisites](docs/en/ad-joined-svm-s3ap-prerequisites.md) | AD DC reachability, Internet-origin AP + VPC-external Lambda, same-account policy |
 | [File Portal UI Options](docs/file-portal-amplify-gen2.md) | Amplify Gen2 / Nextcloud / Custom Build comparison, selection guide, implementation roadmap |
+| [SaaS Gap Analysis (JA)](docs/aws-feature-requests/file-portal-service-gap.md) | 15 SaaS 比較, AI エージェント動向, プロトコルアクセシビリティ, ペルソナレビュー |
+| [SaaS Gap Analysis (EN)](docs/aws-feature-requests/file-portal-service-gap.en.md) | English version of gap matrix + feature requests |
 | [Nextcloud External Storage Setup](docs/nextcloud-external-storage-s3ap.md) | Nextcloud + FSx for ONTAP S3 AP step-by-step configuration |
 | [Workshop EDA Integration Guide](docs/workshop-eda-integration.md) | AWS Workshop modules mapped to UC patterns (EDA scenarios, Athena, Glue, AgentCore, Quick) |
 | [Quick Desktop MCP Setup](docs/quick-desktop-mcp-setup.md) | AgentCore MCP Gateway + Quick Desktop E2E setup (Import method, IaC, lessons learned) |

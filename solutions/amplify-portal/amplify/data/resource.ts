@@ -134,6 +134,269 @@ const schema = a.schema({
       })
     ),
 
+  listSnapshots: a
+    .query()
+    .arguments({
+      maxResults: a.integer(),
+    })
+    .returns(
+      a.customType({
+        snapshots: a.json(),
+        volumeName: a.string(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "ListSnapshotsLambdaDataSource",
+        entry: "./resolvers/list-snapshots.js",
+      })
+    ),
+
+  searchFiles: a
+    .query()
+    .arguments({
+      query: a.string().required(),
+      maxResults: a.integer(),
+    })
+    .returns(
+      a.customType({
+        results: a.json(),
+        query: a.string(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "SearchFilesLambdaDataSource",
+        entry: "./resolvers/search-files.js",
+      })
+    ),
+
+  queryAuditLog: a
+    .query()
+    .arguments({
+      fileKeyPrefix: a.string(),
+      startDate: a.string(),
+      endDate: a.string(),
+      eventType: a.string(),
+      maxResults: a.integer(),
+    })
+    .returns(
+      a.customType({
+        events: a.json(),
+        queryExecutionId: a.string(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "QueryAuditLogLambdaDataSource",
+        entry: "./resolvers/query-audit-log.js",
+      })
+    ),
+
+  listFilesFromAp: a
+    .query()
+    .arguments({
+      prefix: a.string(),
+      maxKeys: a.integer(),
+      apAlias: a.string().required(),
+    })
+    .returns(
+      a.customType({
+        files: a.ref("FileItem").array(),
+        nextContinuationToken: a.string(),
+        isTruncated: a.boolean(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "ListFilesLambdaDataSource",
+        entry: "./resolvers/list-files-from-ap.js",
+      })
+    ),
+
+  getFileMetadata: a
+    .query()
+    .arguments({
+      fileKeys: a.string().array().required(),
+    })
+    .returns(
+      a.customType({
+        metadata: a.json(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "GetFileMetadataLambdaDataSource",
+        entry: "./resolvers/get-file-metadata.js",
+      })
+    ),
+
+  generateQrCode: a
+    .mutation()
+    .arguments({
+      key: a.string().required(),
+      expiresIn: a.integer(),
+    })
+    .returns(
+      a.customType({
+        qrCodeBase64: a.string(),
+        presignedUrl: a.string(),
+        expiresIn: a.integer(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(
+      a.handler.custom({
+        dataSource: "GenerateQrCodeLambdaDataSource",
+        entry: "./resolvers/generate-qr-code.js",
+      })
+    ),
+
+  // --- E-1/E-2: Real-time notifications (FPolicy + SFTP) ---
+  FileNotification: a
+    .model({
+      source: a.string().required(),   // "FPOLICY" | "SFTP" | "PORTAL"
+      eventType: a.string().required(), // "CREATE" | "MODIFY" | "DELETE" | "RENAME"
+      fileKey: a.string().required(),
+      fileName: a.string(),
+      fileSize: a.integer(),
+      clientIp: a.string(),
+      userName: a.string(),
+      timestamp: a.string().required(),
+    })
+    .authorization((allow) => [allow.authenticated()]),
+
+  // --- UX-1: Favorites / Pinned files ---
+  Favorite: a
+    .model({
+      fileKey: a.string().required(),
+      fileName: a.string(),
+      pinnedAt: a.string().required(),
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  // --- UX-2: User-defined tags ---
+  FileTag: a
+    .model({
+      fileKey: a.string().required(),
+      tag: a.string().required(),
+      color: a.string(),  // Optional: hex color for badge display
+      taggedAt: a.string().required(),
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  // --- UX-3: Trash (soft delete) ---
+  trashFile: a
+    .mutation()
+    .arguments({ key: a.string().required() })
+    .returns(a.customType({ success: a.boolean(), trashKey: a.string(), error: a.string() }))
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/trash-file.js" })),
+
+  restoreFromTrash: a
+    .mutation()
+    .arguments({ trashKey: a.string().required() })
+    .returns(a.customType({ success: a.boolean(), restoredKey: a.string(), error: a.string() }))
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/restore-from-trash.js" })),
+
+  // --- UX-6: Folder watch notifications ---
+  FolderWatch: a
+    .model({
+      folderPrefix: a.string().required(),  // e.g., "contracts/2026/"
+      notifyOnCreate: a.boolean(),
+      notifyOnModify: a.boolean(),
+      notifyOnDelete: a.boolean(),
+      createdAt: a.string(),
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  // --- Data Protection: Read (authenticated) ---
+  getProtectionSummary: a
+    .query()
+    .arguments({ volumeName: a.string() })
+    .returns(a.customType({ data: a.json(), error: a.string() }))
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/get-protection-summary.js" })),
+
+  // --- Data Protection: Write (storage-admin only) ---
+  createSnapshot: a
+    .mutation()
+    .arguments({ name: a.string().required(), comment: a.string() })
+    .returns(a.customType({ success: a.boolean(), snapshotName: a.string(), error: a.string() }))
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/create-snapshot.js" })),
+
+  deleteSnapshot: a
+    .mutation()
+    .arguments({ snapshotId: a.string().required(), snapshotName: a.string().required() })
+    .returns(a.customType({ success: a.boolean(), error: a.string() }))
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/delete-snapshot.js" })),
+
+  updateArpState: a
+    .mutation()
+    .arguments({ state: a.string().required() })
+    .returns(a.customType({ success: a.boolean(), newState: a.string(), error: a.string() }))
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/update-arp-state.js" })),
+
+  updateRetentionPolicy: a
+    .mutation()
+    .arguments({ target: a.string().required(), mode: a.string(), days: a.integer() })
+    .returns(a.customType({ success: a.boolean(), error: a.string() }))
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/update-retention.js" })),
+
+  // --- UX-7: File request (external upload link) ---
+  createUploadLink: a
+    .mutation()
+    .arguments({
+      destinationPrefix: a.string().required(),
+      fileName: a.string(),
+      expiresIn: a.integer(),
+      maxSizeBytes: a.integer(),
+    })
+    .returns(a.customType({
+      uploadUrl: a.string(),
+      destinationKey: a.string(),
+      expiresIn: a.integer(),
+      error: a.string(),
+    }))
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/create-upload-link.js" })),
+
+  // --- UX-8: Recent files ---
+  RecentFile: a
+    .model({
+      fileKey: a.string().required(),
+      fileName: a.string(),
+      accessedAt: a.string().required(),
+      action: a.string(),  // "view" | "download" | "ai_query"
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  // --- UX-9: Rename file ---
+  renameFile: a
+    .mutation()
+    .arguments({
+      sourceKey: a.string().required(),
+      destinationKey: a.string().required(),
+    })
+    .returns(a.customType({ success: a.boolean(), newKey: a.string(), error: a.string() }))
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/rename-file.js" })),
+
   // --- AI/Analytics Mutations ---
   askAboutFile: a
     .mutation()

@@ -1,85 +1,224 @@
-# Feature Requests: File Portal UI — SaaS Gap Analysis & AWS Service Improvements
+# 機能要望: ファイルポータル UI — SaaS ギャップ分析と AWS サービス改善提案
 
-**Submitter**: Yoshiki Fujiwara (AWS Community Builder)
-**Date**: 2026-07-18
-**Project**: [fsxn-s3ap-serverless-patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
-**Context**: File Portal UI built with Amplify Gen2 + FSx for ONTAP S3 Access Points
-**Status**: Draft — preparing for submission
+> 🌐 言語: **日本語** | [English](./file-portal-service-gap.en.md)
 
----
-
-## Executive Summary
-
-Enterprise file portals (Box, Google Drive, SharePoint) provide a mature set of capabilities that users expect as baseline: file preview with thumbnails, sharing links, version history, comments, full-text search, retention policies, desktop sync, audit logs, and collaborative editing.
-
-Our File Portal UI (`solutions/amplify-portal/`) currently provides: file listing, folder navigation, image type detection, AI/ML job submission, real-time results, job history, FlexClone restore, and breadcrumb navigation. This covers the **processing orchestration** layer well, but the **file management experience** has gaps relative to SaaS expectations.
-
-This document identifies the gaps, maps them to AWS service limitations, and proposes feature requests (FR-5 through FR-10) that would enable AWS-native file portals to reach parity with SaaS offerings — without requiring data movement from FSx for ONTAP.
+**提出者**: 藤原 慶樹 (AWS Community Builder)
+**日付**: 2026-07-18
+**プロジェクト**: [fsxn-s3ap-serverless-patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
+**コンテキスト**: Amplify Gen2 + FSx for ONTAP S3 Access Points で構築したファイルポータル UI
+**ステータス**: ドラフト — 提出準備中
 
 ---
 
-## SaaS Feature Gap Analysis
+## エグゼクティブサマリー
 
-### Methodology
+エンタープライズ向け (Box, Google Drive, SharePoint, Egnyte, Citrix ShareFile)、Consumer/SMB (Dropbox, OneDrive, iCloud)、OSS (Nextcloud, ownCloud, Seafile)、セキュリティ特化 (Tresorit)、コスト最適 (Wasabi) を含む 15 サービスが、それぞれの強みでファイル管理体験を提供しています。2025-2026 年には Box Agent、SharePoint Copilot、Google Gemini、Dropbox Dash など AI エージェント機能が急速に普及し、ファイルストレージの価値は「保管・共有」から「AI による活用・自動化」へシフトしています。
 
-Compared current Amplify Gen2 File Portal capabilities against:
-- Box Enterprise Advanced (2025): document management, governance, AI, retention
-- Google Drive / Google Workspace: real-time collaboration, search, preview
-- SharePoint Online: enterprise content management, workflow, compliance
-- Industry checklists: Moxo 2025, fast.io 2026 guides
+当ファイルポータル UI (`solutions/amplify-portal/`) は現在、ファイル一覧、フォルダナビゲーション、ファイルプレビュー（Presigned URL）、アップロード/ダウンロード（Storage Browser）、AI/ML ジョブ投入（Bedrock/Rekognition/Comprehend）、自然言語ファイル操作（Quick MCP）、リアルタイム結果表示、ジョブ履歴、FlexClone 復元、ブレッドクラムナビゲーションを提供しています。Presigned URL の動作確認と Storage Browser 統合により基本ファイル管理 UX のギャップは大幅に縮小しました。残るギャップ（バージョン履歴・コメント・同期クライアント）は Nextcloud 併用で補完可能です。
 
-### Gap Matrix
+本ドキュメントでは残存ギャップを特定し、AWS サービス制約にマッピングした上で、データ移動なしに FSx for ONTAP 上で AWS ネイティブなファイルポータルを実現するための機能要望を提案します。
 
-| Feature | Box | Google Drive | SharePoint | Our Portal | Gap Severity |
+---
+
+## SaaS 機能ギャップ分析
+
+### 方法論
+
+Compared current Amplify Gen2 File Portal capabilities against 15 representative SaaS/OSS cloud storage services across 4 categories. Data sourced from official documentation, release announcements, and feature pages (2025-07 ~ 2026-07).
+
+**Comparison targets**:
+
+| Category | Service | Key differentiator |
+|----------|---------|-------------------|
+| Enterprise | Box Enterprise Advanced | AI Agent (GA Apr 2026), governance, retention, AI Studio |
+| Enterprise | SharePoint Online (M365) | Copilot (Jul 2026), document library AI, Power Automate |
+| Enterprise | Google Drive (Workspace) | Gemini integration (2026), AI file organization, real-time co-editing |
+| Enterprise | Citrix ShareFile | StorageZones (hybrid), e-signatures, VDR, granular access |
+| Enterprise | Egnyte | Hybrid sync (cloud + on-prem), AI metadata tagging, DLP, ransomware protection |
+| Consumer/SMB | Dropbox Business | Dash AI universal search (2025), multimodal search, OpenAI integration |
+| Consumer/SMB | OneDrive (M365) | Files On-Demand, Windows/macOS integration, Copilot |
+| Consumer/SMB | iCloud Drive | Apple ecosystem, Pages/Numbers/Keynote collaboration |
+| Security-focused | Tresorit | E2E zero-knowledge encryption, Swiss privacy law, Engage platform |
+| Cost-optimized | Wasabi | S3 100% bit-compatible, $6.99/TB/month, no egress fees |
+| OSS Self-hosted | Nextcloud | AGPL-3.0, Hub 26 (Governance tool, Euro-Office), federation |
+| OSS Self-hosted | ownCloud Infinite Scale | Go microservices, Spaces, multi-storage, federation (Kiteworks) |
+| OSS Self-hosted | Seafile | Block-level delta sync, Git-like data model, AI property automation |
+| AWS Native | Storage Browser for S3 | React component (Amplify UI), S3 AP ロードマップ記載 |
+| AWS Native | Transfer Family | SFTP/FTPS, FSx for ONTAP S3 AP 対応 (2026/1 GA) |
+
+**除外**: NAS ベンダー提供ソリューション（Synology Drive, QNAP, TrueNAS 等）。FSx for ONTAP を扱う記事で NAS ベンダー同士の比較を行うとポジショントークに見えるため。
+
+### Gap Matrix — 基本ファイル管理機能
+
+Enterprise SaaS (Box / SharePoint / Google Drive / Citrix ShareFile / Egnyte) はすべて以下を満たすため、この表では「Enterprise SaaS」としてまとめています。Consumer/SMB (Dropbox / OneDrive / iCloud) も基本機能は同様です。
+
+| Feature | Enterprise SaaS | Consumer/SMB | OSS Self-hosted | Our Portal | Gap Severity |
 |---------|:---:|:---:|:---:|:---:|:---:|
-| File listing & folder navigation | Yes | Yes | Yes | Yes | — |
-| File preview (images/PDF/video/Office) | Yes | Yes | Yes | Partial (type icon only) | High |
-| File download | Yes | Yes | Yes | No | High |
-| File upload (drag & drop) | Yes | Yes | Yes | No | High |
-| Sharing links (time-limited, password) | Yes | Yes | Yes | No | High |
-| Version history | Yes | Yes | Yes | No | Medium |
-| Comments / annotations | Yes | Yes | Yes | No | Low |
-| Full-text search | Yes | Yes | Yes | No | High |
-| Retention policies (compliance) | Yes | Vault | Yes | No | Medium |
-| Desktop sync client | Yes | Yes | Yes | No | Low |
-| Collaborative real-time editing | Yes | Yes | Yes | No | Low |
-| Audit trail (who accessed what) | Yes | Yes | Yes | No | Medium |
-| Mobile responsive UI | Yes | Yes | Yes | Partial | Low |
-| AI/ML processing pipeline trigger | No | No | No | Yes | — (unique to this pattern) |
-| FlexClone / Snapshot restore | No | No | No | Yes | — (unique to this pattern) |
-| Job history & status tracking | No | No | No | Yes | — (unique to this pattern) |
-| Multi-protocol access (NFS/SMB/S3) | No | No | No | Yes | — (unique to this pattern) |
+| File listing & folder navigation | ✅ | ✅ | ✅ | ✅ | — |
+| File preview (images/PDF/video/Office) | ✅ | ✅ | ✅ | ✅ (Presigned URL) | — (解決済) |
+| File download | ✅ | ✅ | ✅ | ✅ (Presigned URL) | — (解決済) |
+| File upload (drag & drop) | ✅ | ✅ | ✅ | ✅ (Storage Browser) | — (解決済) |
+| Sharing links (time-limited, password) | ✅ | ✅ | ✅ | ✅ (Presigned URL) | — (解決済) |
+| Version history | ✅ | ✅ | ✅ (Nextcloud/ownCloud) | ❌ | Medium |
+| Comments / annotations | ✅ | △ (limited) | ✅ (Nextcloud) | ❌ | Low |
+| Full-text search | ✅ | ✅ | ✅ (Nextcloud/Seafile) | ❌ | Medium |
+| Retention policies (compliance) | ✅ | △ (Vault only) | ✅ (Nextcloud Governance) | ❌ | Medium |
+| Desktop sync client | ✅ | ✅ | ✅ | ❌ | Low |
+| Collaborative real-time editing | ✅ | ✅ | ✅ (Nextcloud Office) | ❌ | Low |
+| Audit trail (who accessed what) | ✅ | ✅ | ✅ | △ (CloudTrail raw) | Medium |
+| Mobile responsive UI | ✅ | ✅ | ✅ | △ | Low |
 
-### Key Insight
+### Gap Matrix — AI・インテリジェンス機能（2025-2026 新潮流）
 
-Our portal's unique capabilities (AI/ML pipeline, FlexClone, multi-protocol) address use cases that SaaS file management products do not cover. The gaps are in **basic file management UX** — most of which are blocked by AWS service limitations, not by implementation effort.
+SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較。ファイルストレージの価値が「保管」から「活用」にシフトしている傾向が見られます。
+
+| AI/Intelligence Feature | Box | SharePoint | Google Drive | Dropbox | Egnyte | Our Portal |
+|-------------------------|:---:|:---:|:---:|:---:|:---:|:---:|
+| AI エージェント（自然言語でファイル横断タスク） | ✅ Box Agent | ✅ Copilot | ✅ Gemini | ✅ Dash | ❌ | ✅ Quick MCP |
+| AI ドキュメント要約・Q&A | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ Bedrock |
+| AI ファイル自動分類・メタデータ付与 | ✅ AI Studio | ✅ Copilot | ✅ Gemini | △ | ✅ | ✅ Comprehend |
+| AI ワークフロー自動化 | ✅ | ✅ Power Automate | ✅ AppSheet | △ | ❌ | ✅ Step Functions |
+| 画像/動画 AI 分析 | △ | △ | ✅ | ✅ Multimodal | ❌ | ✅ Rekognition |
+| RAG / Knowledge Base 統合 | ✅ | ✅ | ✅ NotebookLM | ❌ | ❌ | ✅ Bedrock KB |
+| データ分類・DLP | ✅ Shield | ✅ Purview | ✅ DLP | ❌ | ✅ | ✅ (labels) |
+| E2E 暗号化（ゼロ知識） | ✅ KeySafe | ❌ | ✅ CSE | ❌ | ❌ | ❌ |
+
+### Gap Matrix — セキュリティ・ガバナンス特化
+
+| Security/Governance Feature | Tresorit | Box | Egnyte | Nextcloud | Our Portal |
+|-----------------------------|:---:|:---:|:---:|:---:|:---:|
+| E2E ゼロ知識暗号化 | ✅ | △ KeySafe (BYOK) | ❌ | ✅ (plugin) | ❌ |
+| データレジデンシー制御 | ✅ (Swiss) | ✅ Zones | ✅ | ✅ (self-host) | ✅ (リージョン指定) |
+| ランサムウェア防御 | △ | ✅ | ✅ | ✅ (plugin) | ✅ (ARP/AI + FlexClone/Snapshot) |
+| リーガルホールド | ❌ | ✅ | ✅ | ✅ Governance | ❌ |
+| eDiscovery | ❌ | ✅ | △ | ❌ | ❌ |
+| FedRAMP / ISMAP 認証 | ❌ | ✅ | ❌ | ❌ | ✅ (AWS 基盤) |
+
+### Gap Matrix — ハイブリッド・接続性
+
+| Hybrid/Connectivity | Egnyte | Citrix ShareFile | Nextcloud | ownCloud OCIS | Our Portal |
+|---------------------|:---:|:---:|:---:|:---:|:---:|
+| オンプレミス同期 (NAS/SAN) | ✅ Storage Sync | ✅ StorageZones | ✅ External Storage | ✅ multi-storage | ✅ (SnapMirror + S3 AP) |
+| S3 互換ストレージ接続 | ❌ | ❌ | ✅ | ✅ | ✅ (native) |
+| SFTP/FTPS エンドポイント | ❌ | ❌ | ❌ | ❌ | ✅ (Transfer Family) |
+| マルチプロトコル同時アクセス (NFS/SMB/S3) | ❌ | ❌ | △ (External) | ❌ | ✅ |
+| FlexClone 即時復元 | ❌ | ❌ | ❌ | ❌ | ✅ |
+| フェデレーション (サーバー間連携) | ❌ | ❌ | ✅ | ✅ | ❌ |
+
+### プロトコルアクセシビリティの詳細 — なぜマルチプロトコルが重要か
+
+単に「NFS/SMB/S3 に対応」と言うだけでは不十分です。業務の現場では、プロトコルの選択がパフォーマンス、接続性、ワークフロー互換性に直接影響します。各プロトコルが異なる要件に応えている構造を俯瞰します。
+
+| プロトコル | 主な用途 | パフォーマンス特性 | 接続性の要件 |
+|-----------|---------|-----------------|------------|
+| **NFSv3** | Linux/UNIX ワークロード（EDA, HPC, AI 学習データ） | 低レイテンシ・高スループット。ステートレスのためフェイルオーバーが高速 | VPC 内 or Direct Connect/VPN。ステートレスのため NAT 環境でも安定 |
+| **NFSv4.1** | Linux ワークロード + セッション管理が必要な場合 | NFSv3 同等のスループット + デリゲーション（クライアントキャッシュ委任）でメタデータ負荷軽減 | VPC 内。単一ポート (TCP 2049) のためファイアウォール設定が容易 |
+| **SMB 3.x** | Windows ワークステーション（CAD, Office, DTP） | マルチチャネルで帯域集約が可能。暗号化 (AES-128-GCM) によるオーバーヘッドあり | AD 環境 (Kerberos 認証) が前提。VPC 内 or Direct Connect |
+| **S3 API** (S3 AP) | サーバーレス処理パイプライン（Lambda, Step Functions, Bedrock, Athena） | リクエスト単位課金。5GB/オブジェクト上限。並列性は無制限にスケール | Internet-origin AP: VPC 外から直接アクセス可。VPC-origin AP: VPC Endpoint 経由 |
+| **SFTP/FTPS** | B2B ファイル交換、レガシーシステム連携 | Transfer Family 経由。スループットはインスタンスタイプに依存 | パブリック or VPC エンドポイント (Transfer Family) |
+
+#### なぜこれらが同時に必要になるのか — ペルソナ視点
+
+> **EDA/半導体設計 (EDA Engineer)**: シミュレーションジョブは NFSv3 でサブミット（低レイテンシ・高スループット）。結果ログを AI で分析するには S3 AP 経由で Lambda/Bedrock に渡す。同じファイルに両方のプロトコルからアクセスできないと、データコピーが発生してストレージコストとパイプライン遅延が倍増する。
+
+> **製造 OT / CAD エンジニア (Manufacturing OT)**: CAD ワークステーションは SMB 3.x で共有フォルダにアクセス（AD 認証 + ファイルロック）。工場のタブレットからは S3 AP 経由の Web ポータル (Presigned URL) で図面を閲覧。NFSv3 でバッチレンダリングサーバーが中間ファイルを読み書き。3 プロトコルが同一ボリュームで共存する必要がある。
+
+> **データサイエンティスト / ML エンジニア (AI/ML Engineer)**: 学習データは NFSv3 マウントで GPU インスタンスから高速読み取り。学習完了後のモデルアーティファクトを S3 AP 経由で Bedrock Knowledge Base に登録。SMB 経由でビジネスアナリストがレポートを確認。プロトコル間でデータ移動が不要な構造がイテレーション速度に直結する。
+
+> **SRE / プラットフォームエンジニア (SRE)**: NFSv3 は stateless のため、フェイルオーバー時にセッション再確立が不要（可用性に寄与）。NFSv4.1 はデリゲーションでメタデータ負荷を軽減（小ファイル大量アクセスの場面で有効）。S3 API はリクエスト単位のスケーリングで突発的な AI 処理バーストに対応。各プロトコルの運用特性を理解した上で適材適所に選ぶ必要がある。
+
+> **コンプライアンスオフィサー (Compliance Officer)**: SMB のアクセスは AD + NTFS ACL で制御。NFSv4.1 のアクセスは Kerberos + UNIX パーミッションで制御。S3 AP のアクセスは IAM + File System Identity で制御。プロトコルが異なっても同一ファイルに対して一貫したアクセス制御が適用される（ONTAP のマルチプロトコル ID マッピング）。監査の観点では、全プロトコルのアクセスが CloudTrail + ONTAP Audit Log で横断的に追跡可能であることが重要。
+
+> **ネットワークエンジニア (Network Engineer)**: NFSv4.1 は TCP 2049 単一ポートで動作するため、ファイアウォール設定がシンプル。NFSv3 は portmapper + 動的ポートが必要で、セキュリティグループ設定が複雑になる。S3 AP (Internet-origin) は HTTPS/443 のみで VPC 外からアクセスできるため、ネットワーク設計の自由度が高い。用途に応じてプロトコルとネットワーク経路を選択できる柔軟性が、多様なワークロードの統合を可能にする。
+
+#### パフォーマンス設計上の注意点
+
+全プロトコル (NFS/SMB/S3 AP) は同一の FSx for ONTAP スループットバジェットを共有します。設計時に考慮すべきポイント:
+
+- **スループット共有**: 128 MBps のファイルシステムで、NFS ワークロードが 100 MBps を消費している場合、S3 AP 経由のポータルアクセスには残り 28 MBps しか利用できない
+- **対策 1 — FlexCache**: 読み取り負荷の高いプロトコル（例: ポータルの S3 AP 読み取り）を FlexCache にオフロードし、元ボリュームの書き込み帯域を確保
+- **対策 2 — スループット容量の段階的拡張**: CloudWatch `ThroughputUtilization` が 80% を超えたらスループット容量の引き上げを検討
+- **対策 3 — ワークロード分離**: 書き込み集中（NFS/SMB）と読み取り集中（S3 AP ポータル）を別ボリュームに分離し、I/O パターンを予測可能にする
+- **モニタリング**: `ThroughputUtilization`, `DataReadBytes`, `DataWriteBytes` をプロトコル別に CloudWatch で監視。ポータル追加前後のベースライン比較を推奨
+
+#### データ一貫性モデルとプロトコル間整合性
+
+マルチプロトコルアクセスで最も重要な技術的要素は、プロトコル間のデータ一貫性です:
+
+- **書き込み即時可視性**: NFSv3 で書き込んだファイルは、同時に S3 AP の `ListObjectsV2` や SMB のディレクトリ一覧に即座に反映される（一般的な S3 の結果整合性とは異なる）
+- **ファイルロックの共存**: SMB の Opportunistic Lock (oplock) と NFSv4.1 の Delegation は同一ボリューム上で共存可能。ただし、異なるプロトコルから同一ファイルへの同時書き込みが発生すると oplock/delegation がブレイクされ、パフォーマンスが一時的に低下する
+- **S3 AP からの読み取りとロック**: S3 AP の GetObject はファイルロックを取得しない（read-only のスナップショット読み取り）。NFS/SMB で書き込み中のファイルを S3 AP で読むと、書き込み途中の状態が見える可能性がある。処理パイプラインでは書き込み完了を確認してから S3 AP 読み取りを行う設計が望ましい
+
+> **DR/バックアップ設計 (DR Specialist)**: FlexClone で取得したスナップショットは全プロトコルから同一時点のデータとして参照可能。プロトコル間でデータの不整合が発生しない一貫性モデルは、ポイントインタイムリカバリの信頼性に直結する。
+
+#### マルチプロトコル ID マッピングとアクセス制御
+
+プロトコルごとに認証メカニズムは異なりますが、ONTAP のマルチプロトコル ID マッピングにより同一ファイルに対して一貫したアクセス制御が実現されます:
+
+| プロトコル | 認証メカニズム | ID マッピング方向 |
+|-----------|-------------|----------------|
+| NFSv3 | AUTH_SYS (UID/GID) | —（直接 UNIX パーミッション評価） |
+| NFSv4.1 | Kerberos (RPCSEC_GSS) | Kerberos principal → UNIX UID |
+| SMB 3.x | Kerberos (AD) | Windows SID → UNIX UID (name-mapping) |
+| S3 API (S3 AP) | IAM (SigV4) | File System Identity → UNIX UID or Windows SID |
+
+> **セキュリティ監査 (Security Auditor)**: 異なるプロトコルからアクセスしても、最終的に同一の UNIX パーミッション or NTFS ACL で評価される。「NFS からはアクセスできるが S3 AP からはできない」という状態は、File System Identity の UID/GID 設定で意図的に制御可能。これはファイルレベルのゼロトラスト設計に活用できる。
+
+### Gap Matrix — コスト構造
+
+| Cost Model | Wasabi | Dropbox | Box | Google | Nextcloud | Our Portal |
+|------------|:---:|:---:|:---:|:---:|:---:|:---:|
+| ストレージ単価 (1TB/月) | ~$7 | ~$150 | ~$200+ | ~$144 | $0 (self-host) | ~$21 (Capacity Pool) |
+| エグレス課金 | なし | なし | なし | なし | なし | あり (AWS 標準) |
+| ユーザー単価モデル | ❌ (TB課金) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Free Tier / OSS 利用可 | ❌ | △ (2GB) | △ (15GB) | ✅ (15GB) | ✅ (AGPL) | ✅ (DemoMode) |
+
+> **Cost note**: 上記は公開価格帯の目安。実際のコストは利用量・契約条件で大きく異なります。
+
+### 主要な知見（拡充版）
+
+1. **AI エージェント化の波**: 2025-2026 年に Box Agent、SharePoint Copilot、Google Gemini in Drive、Dropbox Dash が相次いで GA。ファイルストレージの価値は「保管・共有」から「AI による活用・自動化」にシフトしています。当ポータルの Bedrock / Rekognition / Quick MCP 連携はこの潮流と同じ方向性。
+
+2. **ハイブリッド接続の構造的な違い**: Egnyte の Storage Sync や Citrix の StorageZones はオンプレミス接続をカバーしますが、NFS/SMB/S3 の同時マルチプロトコルアクセスと即時一貫性（strong consistency）は FSx for ONTAP S3 AP の構造的な特性です。他のアプローチでは同期遅延やプロトコル間の不整合が発生しうる点がトレードオフとなります。
+
+3. **OSS の急速な進化**: Nextcloud Hub 26 で Governance ツールが追加され、ownCloud OCIS はフェデレーションを強化。企業向け機能が OSS でもカバーされつつあります。当ポータルと Nextcloud の併用パターンは引き続き有効。
+
+4. **セキュリティ特化の選択肢**: Tresorit のゼロ知識暗号化は、規制の厳しい業界（法務・医療・金融）で根強い需要。当ポータルでは AWS KMS + CloudTrail でカバーしますが、E2E ゼロ知識は構造的に異なるアプローチです。
+
+5. **基本ファイル管理 UX のギャップは縮小中**: Presigned URL の動作確認と Storage Browser for S3 の統合により、ファイルプレビュー・ダウンロード・アップロード・共有リンクは実装済み。残るギャップはバージョン履歴・コメント・デスクトップ同期・リアルタイム共同編集 — これらは Nextcloud 併用で補完可能。
+
+6. **トレードオフの対称性**: どのアプローチにも制約があります。
+   - SaaS: ベンダーロックイン、データ移動が必要、カスタム処理パイプラインの柔軟性に制限
+   - OSS Self-hosted: 運用負荷、スケーラビリティは自己責任、サポート SLA なし（Community Edition）
+   - 当ポータル: バージョン履歴/コメント/同期クライアントが未実装、Nextcloud 併用で補完が必要
+   - Wasabi: ファイル管理 UI なし（ストレージ API のみ）、AI 機能なし
 
 ---
 
-## Root Cause Analysis: Why Gaps Exist
+## 根本原因分析: ギャップが存在する理由
 
-| Gap | Root cause (AWS service limitation) |
-|-----|--------------------------------------|
-| No real file preview | FSx for ONTAP S3 AP does not support Presigned URLs (FR-4, previously submitted) |
-| No file download | Same — Presigned URL needed for browser-initiated download |
-| No sharing links | Same — time-limited Presigned URLs are the standard mechanism |
-| No file upload | S3 AP PutObject works, but Amplify Storage component only supports standard S3 buckets |
-| No full-text search | No native search/indexing service for S3 AP content; OpenSearch requires data copy |
-| No version history | S3 AP does not support Object Versioning |
-| No audit trail UI | CloudTrail logs S3 AP data events, but no managed UI component to surface them |
-| No retention policies | S3 AP does not support Lifecycle Configuration |
+| ギャップ | 根本原因（AWS サービス制約） |
+|---------|--------------------------|
+| ファイルプレビューなし | FSx for ONTAP S3 AP が Presigned URL を公式サポートしていない（FR-4、提出済み） |
+| ファイルダウンロードなし | 同上 — ブラウザからのダウンロードには Presigned URL が必要 |
+| 共有リンクなし | 同上 — 時限付き Presigned URL が標準メカニズム |
+| ファイルアップロードなし | S3 AP の PutObject は動作するが、Amplify Storage コンポーネントが標準 S3 バケットのみサポート |
+| 全文検索なし | S3 AP コンテンツ向けネイティブ検索/インデックスサービスなし。OpenSearch はデータコピーが必要 |
+| バージョン履歴なし | S3 AP がオブジェクトバージョニングをサポートしていない |
+| 監査証跡 UI なし | CloudTrail は S3 AP データイベントを記録するが、コンプライアンス担当者向けのマネージド UI がない |
+| リテンションポリシーなし | S3 AP がライフサイクル設定をサポートしていない |
 
-**Conclusion**: 5 of 8 high/medium gaps trace back to the Presigned URL limitation (FR-4) or the lack of Amplify/Storage Browser support for S3 Access Points.
+**結論**: 8 つの High/Medium ギャップのうち 5 つが Presigned URL 制約（FR-4）または Amplify/Storage Browser の S3 Access Points 非対応に起因しています。
 
 ---
 
-## Feature Requests
+## 機能要望
 
 ### FR-5: Storage Browser for S3 — FSx for ONTAP S3 Access Points の公式サポート
 
-**Service**: Amazon S3 / Amplify UI
+**対象サービス**: Amazon S3 / Amplify UI
 
-**Current state**: [Storage Browser for S3](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) (GA December 2024) provides browse, download, upload, copy, delete, and file preview for S3 data. Its public roadmap explicitly lists **"Support for S3 Access Points"** as a feature under evaluation ([source](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)). 
+**現状**: [Storage Browser for S3](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) (2024 年 12 月 GA) は S3 データに対するブラウズ、ダウンロード、アップロード、コピー、削除、ファイルプレビューを提供。公式ロードマップに **「Support for S3 Access Points」** が評価中として明記されている（[ソース](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)）。
 
 **動作原理**: Storage Browser はクライアントサイドで S3 API（`ListObjectsV2`、`GetObject`、`PutObject`、`DeleteObject`）を呼ぶ React コンポーネント。FSx for ONTAP S3 AP はこれらの操作をすべてサポートしており、S3 AP alias (`xxx-s3alias`) は SDK にバケット名として渡せる。Presigned URL（動作確認済み）と同じ論理で、クライアントが S3 AP alias をバケット名として使用すれば動作する。
 
@@ -92,28 +231,28 @@ Our portal's unique capabilities (AI/ML pipeline, FlexClone, multi-protocol) add
 - 動作確認後、re:Post で「Storage Browser + FSx for ONTAP S3 AP の構成例」として投稿
 - Amplify UI GitHub で公式サポートを要望（ロードマップ加速）
 
-**Impact**: 公式サポートされれば以下が即座に利用可能:
-- File preview (images, video, text)
-- File download
-- File upload (with 5GB limit per FSx for ONTAP S3 AP constraint)
-- Copy and delete operations
-- Folder creation
+**影響**: 公式サポートされれば以下が即座に利用可能:
+- ファイルプレビュー（画像、動画、テキスト）
+- ファイルダウンロード
+- ファイルアップロード（FSx for ONTAP S3 AP の 5GB 制限付き）
+- コピー・削除操作
+- フォルダ作成
 
-This single FR would close 4 of the 8 gaps (preview, download, upload, partial sharing) and eliminate the need for custom file management components.
+この単一の FR で 8 つのギャップのうち 4 つ（プレビュー、ダウンロード、アップロード、部分的な共有）が解消され、カスタムファイル管理コンポーネントが不要になる。
 
-**Workaround**: Custom React components (FileExplorer, FilePreview) calling Lambda-proxied S3 API operations against the AP. This approach cannot provide real previews without Presigned URL support.
+**ワークアラウンド**: カスタム React コンポーネント（FileExplorer, FilePreview）が Lambda プロキシ経由で AP に対して S3 API を呼び出し。Presigned URL サポートなしでは実際のプレビューは提供できない。
 
 ---
 
-### FR-6: Amplify Storage Category — Support S3 Access Points as Backend
+### FR-6: Amplify Storage カテゴリ — S3 Access Points のバックエンドサポート
 
-**Service**: AWS Amplify Gen2
+**対象サービス**: AWS Amplify Gen2
 
-**Current state**: Amplify Storage (`defineStorage` in `amplify/storage/resource.ts`) only supports standard S3 buckets. The ["Use with custom S3"](https://docs.amplify.aws/android/build-a-backend/storage/use-with-custom-s3/) documentation allows connecting to an existing bucket, but provides no mechanism to specify an S3 Access Point.
+**現状**: Amplify Storage (`defineStorage` in `amplify/storage/resource.ts`) は標準 S3 バケットのみサポート。["Use with custom S3"](https://docs.amplify.aws/android/build-a-backend/storage/use-with-custom-s3/) ドキュメントでは既存バケットへの接続は可能だが、S3 Access Point を指定するメカニズムは提供されていない。
 
-**Requested behavior**: Allow `defineStorage` or a new `defineStorageAccessPoint` to accept:
+**要望する動作**: `defineStorage` または新しい `defineStorageAccessPoint` で AP alias / ARN を受け付けること:
 ```typescript
-// Option A: AP alias
+// オプション A: AP alias
 export const storage = defineStorage({
   name: 'nasFiles',
   accessPoint: {
@@ -121,26 +260,19 @@ export const storage = defineStorage({
     // or ARN: 'arn:aws:s3:ap-northeast-1:123456789012:accesspoint/my-ap'
   }
 });
-
-// Option B: Custom endpoint configuration
-export const storage = defineStorage({
-  name: 'nasFiles',
-  bucket: { /* existing bucket config */ },
-  accessPointArn: 'arn:aws:s3:...:accesspoint/my-ap'
-});
 ```
 
-**Impact**: Developers could use `Amplify.Storage.list()`, `.get()`, `.put()` against FSx for ONTAP data without custom Lambda proxies.
+**影響**: 開発者がカスタム Lambda プロキシなしに `Amplify.Storage.list()`, `.get()`, `.put()` で FSx for ONTAP データにアクセス可能になる。
 
-**Workaround**: Custom AppSync resolvers + Lambda functions that call S3 API with the AP alias. All file operations go through Lambda, adding latency and cost.
+**ワークアラウンド**: カスタム AppSync リゾルバ + Lambda 関数で AP alias を使って S3 API を呼び出し。全ファイル操作が Lambda 経由となり、レイテンシとコストが増加。
 
 ---
 
-### ~~FR-7: FSx for ONTAP S3 AP — Presigned URL Support~~（⚠️ 実動作確認済み・公式ドキュメントの修正要望に変更）
+### ~~FR-7: FSx for ONTAP S3 AP — Presigned URL サポート~~（⚠️ 実動作確認済み・公式ドキュメントの修正要望に変更）
 
-**Service**: Amazon FSx for ONTAP
+**対象サービス**: Amazon FSx for ONTAP
 
-**Current state**: Presigned URLs は FSx for ONTAP S3 AP の互換性テーブルで "Not supported" と記載されている（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）。
+**現状**: Presigned URLs は FSx for ONTAP S3 AP の互換性テーブルで "Not supported" と記載されている（[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）。
 
 **しかし、実際には動作する**。当プロジェクトおよびお客様環境で検証済み（[検証記録](../repost-draft-presigned-url-compatibility.md), [互換性ノート](../s3ap-compatibility-notes.en.md#presigned-url-support)）。AWS Support に確認した結果:
 
@@ -167,18 +299,18 @@ export const storage = defineStorage({
 
 ---
 
-### FR-8: FSx for ONTAP S3 AP — CloudTrail Data Event Integration with Managed Audit UI
+### FR-8: FSx for ONTAP S3 AP — CloudTrail データイベントとマネージド監査 UI の統合
 
-**Service**: Amazon FSx for ONTAP / AWS CloudTrail
+**対象サービス**: Amazon FSx for ONTAP / AWS CloudTrail
 
-**Current state**: CloudTrail can log S3 data events for S3 Access Points. However, there is no managed UI component that surfaces "who accessed which file, when" in a user-friendly format for compliance officers.
+**現状**: CloudTrail は S3 Access Points の S3 データイベントを記録可能。ただし、「誰が、いつ、どのファイルにアクセスしたか」をコンプライアンス担当者向けにわかりやすく表示するマネージド UI コンポーネントは存在しない。
 
-**Requested behavior**: 
-1. Confirm and document CloudTrail data event logging for FSx for ONTAP S3 AP operations (GetObject, PutObject, DeleteObject) with the file path (S3 key) in the event record
-2. Provide a CloudTrail Insights or Security Hub integration that presents file access patterns in a portal-friendly format
-3. Alternatively, enable integration with AWS Audit Manager for file-level access tracking
+**要望する動作**:
+1. FSx for ONTAP S3 AP 操作（GetObject, PutObject, DeleteObject）の CloudTrail データイベントログ記録をドキュメントで確認・明記（S3 キー＝ファイルパスがイベントレコードに含まれること）
+2. CloudTrail Insights または Security Hub 統合で、ファイルアクセスパターンをポータル向けフォーマットで提示
+3. あるいは、AWS Audit Manager のカスタムフレームワークでファイルレベルのアクセス追跡を実現
 
-**Impact**: Regulated industries (healthcare, finance, government) require demonstrable audit trails for file access. Currently, building this requires custom Athena queries over CloudTrail logs.
+**影響**: 規制産業（医療・金融・政府機関）ではファイルアクセスの証明可能な監査証跡が必須。現状ではカスタム Athena クエリで CloudTrail ログを解析する必要がある。
 
 ---
 
@@ -221,9 +353,9 @@ Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP
 
 ---
 
-## Priority Ranking（最終版）
+## 優先度ランキング（最終版）
 
-| FR | Status | Next Action |
+| FR | ステータス | 次のアクション |
 |-----|--------|-------------|
 | ~~FR-5~~ (Storage Browser + S3 AP) | 📋 要検証（クライアントサイドで動作する原理） | `createManagedAuthAdapter` で S3 AP alias 指定して検証 |
 | **FR-6** (Amplify Storage + S3 AP) | **Open** | GitHub Issue on amplify-backend |
@@ -234,34 +366,34 @@ Transfer Family は SFTP/FTPS エンドポイント経由で FSx for ONTAP S3 AP
 
 **結論**: 真に「動かない」FR は **FR-6 (Amplify Storage category)** と **FR-8 (Audit UI)** の 2 つのみ。他はすべて動作確認済みまたはクライアントサイドで動作する構成が存在する。
 
-**Positive signal**: Storage Browser for S3 の公式ロードマップに「Support for S3 Access Points」が明記されている（[Amplify UI Storage Browser docs](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)）。
+**ポジティブシグナル**: Storage Browser for S3 の公式ロードマップに「Support for S3 Access Points」が明記されている（[Amplify UI Storage Browser docs](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser)）。
 
 ---
 
-## What We Can Build Today (Without These FRs)
+## 現時点で構築可能な機能（FR なしで実現済み）
 
-Despite the gaps, our portal provides capabilities that SaaS products cannot:
+ギャップがあるにもかかわらず、当ポータルは SaaS ファイル管理製品では提供されない機能を備えています:
 
-| Capability | How it works |
-|---|---|
-| AI/ML processing pipeline | Step Functions + Bedrock/Textract/Comprehend triggered from UI |
-| FlexClone snapshot restore | ONTAP REST API creates point-in-time clone in seconds |
-| Multi-protocol data access | Same file accessible via NFS (Linux), SMB (Windows), S3 API (cloud) |
-| SFTP/FTPS file exchange | Transfer Family → FSx for ONTAP S3 AP (GA 2026/1) |
-| RAG / AI Q&A over NAS data | Bedrock Knowledge Base → FSx for ONTAP S3 AP (direct data source) |
-| Data classification labels | Automated INTERNAL/CUI/PUBLIC tagging on processing results |
-| Job execution history | DynamoDB-backed, owner-scoped, with status tracking |
-| Event-driven + polling hybrid | TriggerMode parameter per use case |
+| 機能 | 実現方法 |
+|------|---------|
+| AI/ML 処理パイプライン | Step Functions + Bedrock/Textract/Comprehend を UI から起動 |
+| FlexClone スナップショット復元 | ONTAP REST API で数秒のポイントインタイムクローン作成 |
+| マルチプロトコルデータアクセス | 同一ファイルに NFS (Linux)、SMB (Windows)、S3 API (クラウド) からアクセス |
+| SFTP/FTPS ファイル交換 | Transfer Family → FSx for ONTAP S3 AP (2026/1 GA) |
+| NAS データへの RAG / AI Q&A | Bedrock Knowledge Base → FSx for ONTAP S3 AP（直接データソース） |
+| データ分類ラベル | 処理結果への自動 INTERNAL/CUI/PUBLIC タグ付け |
+| ジョブ実行履歴 | DynamoDB ベース、オーナースコープ、ステータス追跡付き |
+| イベント駆動 + ポーリングハイブリッド | ユースケースごとの TriggerMode パラメータ |
 
-These capabilities are not available in SaaS file management products, which makes a custom portal worth building even with the current limitations in basic file management UX.
+これらの機能は SaaS ファイル管理製品では利用できないため、基本ファイル管理 UX に制約があっても独自ポータルを構築する価値があります。
 
 ---
 
-## 30-Persona Review
+## 30 ペルソナレビュー
 
-### Methodology
+### 方法論
 
-Solicited feedback from role-based archetypes representing enterprise file portal stakeholders. Each perspective evaluates the gap analysis and FR prioritization.
+エンタープライズファイルポータルのステークホルダーを代表するロールベースのアーキタイプからフィードバックを収集。各視点からギャップ分析と FR 優先度付けを評価。
 
 ---
 
@@ -387,62 +519,62 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 
 ---
 
-## Consolidated Recommendations from Persona Review
+## ペルソナレビューからの統合推奨事項
 
-### Immediate actions (no AWS FR needed)
+### 即座に実行可能（AWS FR 不要）
 
-1. **"My Files" scoped view**: Implement per-user home directory based on Cognito identity → ONTAP user mapping
-2. **Accessibility metadata pipeline**: Use existing Rekognition/Comprehend results to generate alt-text for previewed files
-3. **QR code access pattern**: Document short-expiry URL generation (via Lambda proxy) for OT/manufacturing use
+1. **「マイファイル」スコープドビュー**: Cognito ID → ONTAP ユーザーマッピングに基づくユーザーごとのホームディレクトリ実装
+2. **アクセシビリティメタデータパイプライン**: 既存の Rekognition/Comprehend 結果を使用してプレビューファイルの alt テキストを生成
+3. **QR コードアクセスパターン**: OT/製造業向けの短有効期限 URL 生成（Lambda プロキシ経由）を文書化
 
-### Requires FR-7 (Presigned URL) — keystone dependency
+### FR-7（Presigned URL）が必要 — キーストーン依存
 
-4. Storage Browser integration (FR-5)
-5. Mobile-native file viewing
-6. Side-by-side snapshot comparison (DR)
-7. Video scrubbing / Range GET preview
-8. Automated E2E testing with stable URLs
+4. Storage Browser 統合 (FR-5)
+5. モバイルネイティブファイル表示
+6. スナップショットの並列比較 (DR)
+7. 動画スクラビング / Range GET プレビュー
+8. 安定 URL による自動 E2E テスト
 
-### Independent improvements (separate FRs)
+### 独立した改善（別 FR）
 
-9. OpenSearch Serverless connector with ONTAP metadata enrichment (FR-9)
-10. Transfer Family SFTP endpoint for B2B exchange (FR-10)
-11. Audit trail with legal-hold certificate generation (FR-8)
+9. ONTAP メタデータ付き OpenSearch Serverless コネクタ (FR-9)
+10. B2B 交換用 Transfer Family SFTP エンドポイント (FR-10)
+11. リーガルホールド証明書生成付き監査証跡 (FR-8)
 
 ---
 
-## Relationship to Previously Submitted FRs
+## 既提出 FR との関係
 
-| Previous FR | This doc extends |
+| 既提出 FR | 本ドキュメントとの関連 |
 |---|---|
-| FR-1 (Athena output) | No direct relation |
-| FR-2 (Event Notifications) | Enables real-time portal updates (file change → push notification to UI) |
-| FR-3 (Lifecycle) | Enables retention policy display in portal UI |
-| FR-4 (Versioning + Presigned) | **FR-7 is a priority escalation of FR-4's Presigned URL component** |
+| FR-1 (Athena 出力) | 直接的な関連なし |
+| FR-2 (Event Notifications) | ポータルのリアルタイム更新を実現（ファイル変更 → UI へのプッシュ通知） |
+| FR-3 (Lifecycle) | ポータル UI でのリテンションポリシー表示を実現 |
+| FR-4 (Versioning + Presigned) | **FR-7 は FR-4 の Presigned URL コンポーネントの優先度引き上げ** |
 
-## Already Resolved (since original FR submission)
+## 解決済み（FR 提出後に実現）
 
-| Capability | Resolution | Source |
-|---|---|---|
-| SFTP/FTPS access to FSx for ONTAP | ✅ Transfer Family + S3 AP (2026/1 GA) | [docs](https://docs.aws.amazon.com/transfer/latest/userguide/fsx-s3-access-points.html) |
-| RAG over NAS data | ✅ Bedrock Knowledge Base + S3 AP | [FSx User Guide tutorial](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html) |
-| Enterprise search / AI Q&A | ✅ Amazon Quick + S3 AP (AD identity 必須) | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/), [Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) |
-| Video streaming from NAS | ✅ CloudFront + S3 AP | [FSx User Guide tutorial](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-access-points-with-aws-services.html) |
-| Presigned URL for file preview/download | ✅ 動作確認済み（client-side SigV4） | [プロジェクト検証記録](../repost-draft-presigned-url-compatibility.md) |
-
----
-
-## Next Steps
-
-1. Submit FR-5, FR-6, FR-7 to AWS via re:Post and/or Support cases
-2. File GitHub issue on [aws-amplify/amplify-ui](https://github.com/aws-amplify/amplify-ui) for Storage Browser + S3 AP support
-3. File GitHub issue on [aws-amplify/amplify-backend](https://github.com/aws-amplify/amplify-backend) for Storage category S3 AP support
-4. Document workaround architecture for customers who need capabilities today
-5. Track AWS responses and update this document
+| 機能 | 解決方法 | ソース |
+|------|---------|--------|
+| FSx for ONTAP への SFTP/FTPS アクセス | ✅ Transfer Family + S3 AP (2026/1 GA) | [ドキュメント](https://docs.aws.amazon.com/transfer/latest/userguide/fsx-s3-access-points.html) |
+| NAS データへの RAG | ✅ Bedrock Knowledge Base + S3 AP | [FSx ユーザーガイド チュートリアル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html) |
+| エンタープライズ検索 / AI Q&A | ✅ Amazon Quick + S3 AP (AD identity 必須) | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/), [Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/9cd82e0b-8348-456b-932a-818b9e5825a1/en-US/08-quicksuite/61-setup) |
+| NAS からの動画ストリーミング | ✅ CloudFront + S3 AP | [FSx ユーザーガイド](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-access-points-with-aws-services.html) |
+| ファイルプレビュー/ダウンロード用 Presigned URL | ✅ 動作確認済み（client-side SigV4） | [プロジェクト検証記録](../repost-draft-presigned-url-compatibility.md) |
 
 ---
 
-## References
+## 次のステップ
+
+1. FR-5, FR-6, FR-7 を re:Post および/または Support ケース経由で AWS に提出
+2. [aws-amplify/amplify-ui](https://github.com/aws-amplify/amplify-ui) に Storage Browser + S3 AP サポートの GitHub Issue を作成
+3. [aws-amplify/amplify-backend](https://github.com/aws-amplify/amplify-backend) に Storage カテゴリの S3 AP サポートの GitHub Issue を作成
+4. 現時点で機能が必要な場合のワークアラウンドアーキテクチャを文書化
+5. AWS からの回答を追跡し、本ドキュメントを更新
+
+---
+
+## 参考文献
 
 1. [Storage Browser for S3 — Amplify UI](https://ui.docs.amplify.aws/react/connected-components/storage/storage-browser) — includes public roadmap with "Support for S3 Access Points"
 2. [Storage Browser for S3 is now GA — AWS News (2024/12)](https://aws.amazon.com/about-aws/whats-new/2024/12/storage-browser-amazon-s3)
@@ -463,4 +595,8 @@ Solicited feedback from role-based archetypes representing enterprise file porta
 
 ---
 
-*Content was rephrased for compliance with licensing restrictions. All feature descriptions are based on publicly available documentation.*
+*ライセンス制約への準拠のため、内容はパラフレーズされています。すべての機能説明は公開ドキュメントに基づいています。*
+
+---
+
+> 🌐 言語: **日本語** | [English](./file-portal-service-gap.en.md)

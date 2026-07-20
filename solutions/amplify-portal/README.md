@@ -86,16 +86,32 @@ sequenceDiagram
 
 ---
 
-## Portal Tabs (6)
+## Portal Tabs (6) + New Features
 
 | Tab | Purpose | Key Components |
 |-----|---------|----------------|
-| **Files** | Browse, preview, AI Q&A, share links | FileExplorer + FilePreview + ShareLink + AiPanel |
+| **Files** | Browse, preview, AI Q&A, share links, QR access | FileExplorer + FilePreview + ShareLink + AiPanel + QR Code |
 | **Upload** | Drag-and-drop upload, file management | Storage Browser for S3 (zero custom code) |
 | **Process** | Trigger AI/ML workflows | JobSubmitForm → Step Functions |
-| **Results** | Real-time job status + output | ResultsViewer (5s polling) + FlexCloneStatus |
+| **Results** | Real-time job status + output (WebSocket push) | ResultsViewer (subscription-based) + FlexCloneStatus |
 | **History** | Past job executions | JobHistory (DynamoDB, owner-scoped) |
 | **Analytics** | SQL queries on cataloged data | AthenaQueryPanel → Glue Data Catalog |
+| **Audit** | File access audit trail (compliance) | AuditLog (Athena → CloudTrail S3 data events) |
+| **Version History** | Snapshot-based file history | VersionHistory (ONTAP Snapshots) + SnapshotCompare |
+| **Search** | Full-text semantic search | SearchFiles (Bedrock Knowledge Base) |
+
+### Additional Features (P1/P2 — implemented 2026-07-20)
+
+| Feature | Description | Key Files |
+|---------|-------------|-----------|
+| **My Files (group routing)** | Cognito group → different S3 AP per team | `list-files.js`, `portal-config.ts` (`groupApMapping`) |
+| **CONFIDENTIAL guardrail** | Blocks AI processing for classified files | `shared/ai_guardrails.py`, askAboutFile Lambda |
+| **AI metadata badges** | Inline display of classification, labels, entities per file | `get-file-metadata.js`, GetFileMetadata Lambda |
+| **QR code access** | Presigned URL → QR PNG for OT/manufacturing tablets | `generate-qr-code.js`, GenerateQrCode Lambda |
+| **Real-time notifications** | FPolicy/SFTP file events → WebSocket push | `FileNotification` model, `notification-bridge/handler.py` |
+| **WebSocket job updates** | Replaces 5s polling with subscription push | `job-status-updater/handler.py` |
+| **Mobile responsive** | Tablet (768px) + phone (480px) breakpoints | `src/index.css` media queries |
+| **CloudWatch dashboard** | Portal usage metrics (CDK construct) | `monitoring/dashboard.ts` |
 
 > **Detailed guide with screenshots**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
 
@@ -174,6 +190,8 @@ Edit `portal-config.ts`:
 | `stateMachineArn` | No | `"arn:aws:states:..."` | Step Functions ARN for processing |
 | `stateMachineResourceScope` | No | `"*"` | IAM scope (use specific ARN in production) |
 | `s3ApResourceArns` | No | `["arn:aws:s3:..."]` | IAM scope for S3 AP (restrict in production) |
+| `groupApMapping` | No | `{"eng": "ap-eng-xxx"}` | Cognito group → S3 AP alias mapping (My Files) |
+| `bedrockKbId` | No | `"KB123ABC"` | Bedrock Knowledge Base ID (full-text search) |
 
 ### Environment Variable Override
 
@@ -183,6 +201,8 @@ Instead of editing the file, you can set environment variables:
 export AMPLIFY_PORTAL_REGION=ap-northeast-1
 export AMPLIFY_PORTAL_S3AP_ALIAS=myap-abc123-s3alias
 export AMPLIFY_PORTAL_SFN_ARN=arn:aws:states:ap-northeast-1:123456789012:stateMachine:uc1-workflow
+export AMPLIFY_PORTAL_GROUP_AP_MAPPING='{"engineering":"ap-eng-xxx-s3alias","legal":"ap-legal-xxx-s3alias"}'
+export AMPLIFY_PORTAL_BEDROCK_KB_ID=KB123ABC
 ```
 
 ---
@@ -217,9 +237,14 @@ For development without FSx for ONTAP:
 1. Create an S3 AP attached to your FSx for ONTAP volume (Internet-origin recommended)
 2. Note the AP alias from AWS Console → FSx → S3 Access Points
 3. Set `s3ApAlias` in `portal-config.ts`
-4. Redeploy: `make sandbox`
+4. Set `s3ApAlias` in `src/portal-settings.ts` (same alias — needed for Upload tab)
+5. Redeploy: `make sandbox`
 
 > **Note**: The ListFiles Lambda runs VPC-external (no VpcConfig). This is intentional — Internet-origin S3 APs are accessible without VPC placement. If using a VPC-origin AP, you must add VPC configuration to the Lambda.
+
+> **Upload Tab**: Storage Browser uses Cognito Identity Pool credentials to call S3 API directly from the browser. The required IAM permissions are automatically provisioned by `backend.ts` (no manual IAM configuration needed). Ensure `s3ApAlias` is set in both `portal-config.ts` and `src/portal-settings.ts`.
+
+> **Upload Tab workflow**: Location 選択 → S3 AP alias をクリック → フォルダナビゲーション → ファイル選択でプレビュー/ダウンロード、またはドラッグ＆ドロップでアップロード。アップロードしたファイルは NFS/SMB から即座に参照可能です（ONTAP の strong consistency）。
 
 > **Throughput note**: S3 AP operations share FSx for ONTAP throughput capacity with NFS/SMB workloads. For concurrent user planning, see [Throughput and Capacity Planning](../../docs/file-portal-amplify-gen2.md#スループットと容量計画).
 
@@ -359,22 +384,24 @@ The Upload tab (Storage Browser for S3) reads `region`, `accountId`, and `s3ApAl
 
 If you see "Network Error" in the Upload tab, check that `portal-settings.ts` has the correct `s3ApAlias`.
 
-### 9. Cognito Identity Pool IAM Must Allow S3 AP Access
+### 9. ~~Cognito Identity Pool IAM Must Allow S3 AP Access~~ (自動設定済み)
 
-The Amplify sandbox auto-creates a Cognito Identity Pool, but its IAM role does NOT include S3 AP access by default. For the Upload tab (Storage Browser) to work, the Identity Pool's authenticated role needs:
+> **Resolved**: `backend.ts` で Cognito Identity Pool の authenticated ロールに S3 AP アクセス権限を CDK で自動付与するように変更しました。手動での `aws iam put-role-policy` は不要です。
 
-```json
-{
-  "Effect": "Allow",
-  "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
-  "Resource": [
-    "arn:aws:s3:::your-ap-alias-ext-s3alias",
-    "arn:aws:s3:::your-ap-alias-ext-s3alias/*"
-  ]
-}
+`backend.ts` の以下の部分が自動設定します:
+```typescript
+authenticatedRole.addToPrincipalPolicy(
+  new iam.PolicyStatement({
+    sid: "StorageBrowserS3APAccess",
+    actions: ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket", "s3:GetBucketLocation"],
+    resources: config.s3ApResourceArns,
+  })
+);
 ```
 
-Add this via `amplify/auth/resource.ts` inline policy or post-deploy CLI.
+Upload タブが「AccessDenied」を表示する場合は、`portal-config.ts` の `s3ApResourceArns` に正しい S3 AP ARN が含まれていることを確認してください。sandbox デフォルト (`arn:aws:s3:*:*:accesspoint/*`) であれば全ての AP にアクセスできます。
+
+> **Storage Browser の認証モード**: Storage Browser は `createManagedAuthAdapter` (S3 Access Grants 必須) ではなく、**直接認証モード** (`getLocationCredentials` + `listLocations`) を使用しています。S3 Access Grants のセットアップは不要です。
 
 ### 10. Sandbox Deletion Is Complete
 
@@ -407,8 +434,14 @@ amplify-portal/
 │   │   └── resolvers/              # APPSYNC_JS resolvers (7 files)
 │   │       ├── start-processing.js # HTTP → StepFunctions.StartExecution
 │   │       ├── get-job-status.js   # HTTP → StepFunctions.DescribeExecution
-│   │       ├── list-files.js       # Lambda → S3 AP ListObjectsV2
+│   │       ├── list-files.js       # Lambda → S3 AP ListObjectsV2 (+ group routing)
+│   │       ├── list-files-from-ap.js # Lambda → Arbitrary AP (for SnapshotCompare)
+│   │       ├── list-snapshots.js   # Lambda → ONTAP Snapshot list (VPC)
+│   │       ├── search-files.js     # Lambda → Bedrock KB Retrieve
+│   │       ├── get-file-metadata.js # Lambda → DynamoDB AI metadata
 │   │       ├── get-presigned-url.js # Lambda → Presigned URL generation
+│   │       ├── generate-qr-code.js # Lambda → Presigned URL + QR PNG
+│   │       ├── query-audit-log.js  # Lambda → Athena (CloudTrail)
 │   │       ├── ask-about-file.js   # Lambda → Bedrock Converse API
 │   │       ├── detect-labels.js    # Lambda → Rekognition DetectLabels
 │   │       └── run-athena-query.js # Lambda → Athena StartQueryExecution
@@ -425,12 +458,20 @@ amplify-portal/
 │       ├── StorageBrowserTab.tsx   # Storage Browser for S3 (Upload tab)
 │       ├── AiPanel.tsx             # Bedrock Q&A chat interface
 │       ├── AthenaQueryPanel.tsx    # SQL editor + results table
+│       ├── AuditLog.tsx            # File access audit trail (CloudTrail → Athena)
+│       ├── VersionHistory.tsx      # ONTAP Snapshot listing + restore trigger
+│       ├── SnapshotCompare.tsx     # Side-by-side diff (current vs FlexClone)
 │       ├── JobSubmitForm.tsx       # UC pattern selection + job submission
-│       ├── ResultsViewer.tsx       # Status polling + output display
+│       ├── ResultsViewer.tsx       # Status (subscription-based) + output display
 │       ├── FlexCloneStatus.tsx     # Clone creation progress
 │       ├── RestoreFromSnapshot.tsx # FlexClone trigger dialog
 │       ├── JobHistory.tsx          # Past executions (DynamoDB)
 │       └── LoadingSkeleton.tsx     # Auth loading placeholder
+├── functions/
+│   ├── notification-bridge/handler.py  # EventBridge → DynamoDB (FPolicy + SFTP events)
+│   └── job-status-updater/handler.py   # Step Functions → DynamoDB (WebSocket push)
+├── monitoring/
+│   └── dashboard.ts               # CloudWatch Dashboard CDK construct
 ├── docs/
 │   ├── portal-tabs-guide.md       # 6-tab detailed guide with screenshots
 │   └── screenshots/               # Portal UI screenshots
@@ -549,7 +590,13 @@ This portal is an **optional frontend layer**. It does not modify the core patte
 ## Related Documentation
 
 - [File Portal UI Options (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
+- [Deployment Runbook (EN)](../../docs/en/portal-deployment-runbook.md) | [JA](../../docs/ja/portal-deployment-runbook.md)
+- [Demo Guide with Screenshots (EN)](../../docs/en/portal-demo-guide.md) | [JA](../../docs/ja/portal-demo-guide.md)
+- [SaaS Gap Analysis & Feature Requests (JA)](../../docs/aws-feature-requests/file-portal-service-gap.md) | [EN](../../docs/aws-feature-requests/file-portal-service-gap.en.md)
+- [Full-text Search Design Decision](../../.private/design-decisions/c4-fulltext-search-comparison.md) (gitignored — private)
+- [Portal Roadmap (P0-P4)](../../.private/file-portal-roadmap.md) (gitignored — private)
 - [Quick Desktop MCP Setup (AgentCore Gateway)](../../docs/quick-desktop-mcp-setup.md)
 - [Nextcloud External Storage Setup](../../docs/nextcloud-external-storage-s3ap.md)
 - [S3AP Compatibility Notes](../../docs/s3ap-compatibility-notes.md)
 - [Demo Mode Guide](../../docs/demo-mode-guide.md)
+- [Storage Browser Demo Guide](../../docs/en/storage-browser-demo-guide.md)
