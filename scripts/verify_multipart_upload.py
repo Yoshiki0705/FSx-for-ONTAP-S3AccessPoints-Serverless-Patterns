@@ -109,7 +109,7 @@ def main():
             MultipartUpload={"Parts": parts},
         )
         total_elapsed = time.perf_counter() - total_start
-        logger.info(f"✅ CompleteMultipartUpload succeeded")
+        logger.info("✅ CompleteMultipartUpload succeeded")
         logger.info(f"   Location: {complete_resp.get('Location', 'N/A')}")
         logger.info(f"   Total time: {total_elapsed:.1f}s")
         logger.info(f"   Throughput: {total_bytes / total_elapsed / (1024*1024):.1f} MB/s")

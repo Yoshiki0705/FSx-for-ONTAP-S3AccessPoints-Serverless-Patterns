@@ -327,7 +327,7 @@ def main():
                 reqs.append("CROSS_REGION_AP (optional)")
             req_str = f" [{', '.join(reqs)}]" if reqs else ""
             print(f"  [{cat}] {tid:4s} — {desc}{req_str}")
-        print(f"\nEnvironment:")
+        print("\nEnvironment:")
         print(f"  S3AP_ALIAS={S3AP_ALIAS or '(not set)'}")
         print(f"  NFS_MOUNT_PATH={NFS_MOUNT or '(not set)'}")
         print(f"  NEXTCLOUD_URL={NEXTCLOUD_URL or '(not set)'}")

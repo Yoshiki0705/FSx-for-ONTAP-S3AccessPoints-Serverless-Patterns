@@ -37,7 +37,6 @@ import logging
 import os
 import statistics
 import subprocess
-import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -475,7 +474,7 @@ def test_g3_unicode_filenames():
             body = resp["Body"].read().decode("utf-8")
             s3ap_readable = True
             content_match = body == f"test content for {label}"
-        except Exception as e:
+        except Exception:
             s3ap_readable = False
             content_match = False
 

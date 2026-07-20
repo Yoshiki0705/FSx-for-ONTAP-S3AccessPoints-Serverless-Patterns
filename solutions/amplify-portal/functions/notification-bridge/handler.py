@@ -22,7 +22,6 @@ import os
 from datetime import datetime, timezone
 
 import boto3
-import urllib3
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

@@ -222,7 +222,7 @@ graph TB
 | リポジトリ | 概要 |
 |---|---|
 | [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) | 可観測性統合 (ARP/AI 自動対応、メトリクス、アラート) |
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 権限考慮型 RAG チャットボット（CDK + Next.js + ECS） |
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 権限考慮型 RAG チャットボット（CDK + Next.js + ECS） | <!-- allow:naming (external repo name) -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | Lakehouse 統合（Databricks, Snowflake, Athena, Glue, EMR） |
 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 移行 |
 
