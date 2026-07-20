@@ -51,6 +51,9 @@ Compared current Amplify Gen2 File Portal capabilities against 15 representative
 
 ### Gap Matrix — Basic File Management
 
+> **Data freshness**: Based on official documentation and release notes from 2025-07 through 2026-07. Service capabilities change rapidly — refer to each vendor's official site for the latest status.
+> **Reference mapping**: Storage Browser [1][2][3], FSx for ONTAP S3 AP compatibility [4], Transfer Family [5][6][7], Presigned URL [12], Box Retention [13], File portal requirements [14][15]
+
 Enterprise SaaS (Box / SharePoint / Google Drive / Citrix ShareFile / Egnyte) all satisfy the following, so they are grouped as "Enterprise SaaS" in this table. Consumer/SMB (Dropbox / OneDrive / iCloud) also cover basic features similarly.
 
 | Feature | Enterprise SaaS | Consumer/SMB | OSS Self-hosted | Our Portal | Gap Severity |
@@ -71,6 +74,9 @@ Enterprise SaaS (Box / SharePoint / Google Drive / Citrix ShareFile / Egnyte) al
 
 ### Gap Matrix — AI / Intelligence Features (2025-2026 New Wave)
 
+> **Data freshness**: Box Agent GA (2026/4), SharePoint Copilot expanded preview (2026/7), Google Gemini Drive integration (2026), Dropbox Dash (2025). AI features are updated monthly — this comparison is a snapshot as of 2026-07.
+> **Reference mapping**: Bedrock RAG [8], Amazon Quick [11], Kendra deprecation [9], Q Business sunset [10]
+
 Comparison with AI features that SaaS vendors have rapidly shipped in 2025-2026. File storage value is shifting from "storage" to "utilization."
 
 | AI/Intelligence Feature | Box | SharePoint | Google Drive | Dropbox | Egnyte | Our Portal |
@@ -87,6 +93,9 @@ Comparison with AI features that SaaS vendors have rapidly shipped in 2025-2026.
 
 ### Gap Matrix — Security & Governance
 
+> **Data freshness**: Based on each product's official security pages and certification status (verified 2026-07). Certification status (FedRAMP, ISMAP, etc.) is updated annually — check the latest from each certification body's public registry.
+> **Reference mapping**: Box Retention/Governance [13]
+
 | Security/Governance Feature | Tresorit | Box | Egnyte | Nextcloud | Our Portal |
 |-----------------------------|:---:|:---:|:---:|:---:|:---:|
 | E2E zero-knowledge encryption | ✅ | △ KeySafe (BYOK) | ❌ | ✅ (plugin) | ❌ |
@@ -97,6 +106,9 @@ Comparison with AI features that SaaS vendors have rapidly shipped in 2025-2026.
 | FedRAMP / ISMAP certification | ❌ | ✅ | ❌ | ❌ | ✅ (AWS infrastructure) |
 
 ### Gap Matrix — Hybrid & Connectivity
+
+> **Data freshness**: Transfer Family FSx for ONTAP S3 AP support GA 2026/1 [5][6][7]. Nextcloud External Storage S3 compatibility verified on Nextcloud 29. ownCloud OCIS multi-storage per OCIS 5.x documentation.
+> **Reference mapping**: Transfer Family [5][6][7], S3 AP compatibility [4]
 
 | Hybrid/Connectivity | Egnyte | Citrix ShareFile | Nextcloud | ownCloud OCIS | Our Portal |
 |---------------------|:---:|:---:|:---:|:---:|:---:|
@@ -167,6 +179,9 @@ Authentication mechanisms differ per protocol, but ONTAP's multi-protocol identi
 > **Security Auditor**: Regardless of access protocol, files are ultimately evaluated against the same UNIX permissions or NTFS ACLs. A state where "accessible via NFS but not via S3 AP" is intentionally controllable through the File System Identity's UID/GID configuration. This can be leveraged for file-level zero-trust design.
 
 ### Gap Matrix — Cost Structure
+
+> **Data freshness**: Pricing based on each service's public pricing page as of 2026-07. Actual costs vary by currency exchange rates and contract type (annual vs. monthly). Wasabi pricing per [wasabi.com/pricing](https://wasabi.com/pricing).
+> **Reference mapping**: Enterprise file sharing guides [14][15]
 
 | Cost Model | Wasabi | Dropbox | Box | Google | Nextcloud | Our Portal |
 |------------|:---:|:---:|:---:|:---:|:---:|:---:|
