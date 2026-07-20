@@ -156,7 +156,24 @@ export function AuditLog() {
         </div>
       </div>
 
-      {error && <div className="info-message"><p>{error}</p></div>}
+      {error && (
+        <div className="protection-info" style={{ marginTop: "1rem" }}>
+          <h3>⚠️ Audit Query Configuration Required</h3>
+          <p>
+            The Audit Trail queries CloudTrail S3 data events via Athena. If you see this message,
+            the Athena query infrastructure is not yet configured.
+          </p>
+          <ul>
+            <li>Enable CloudTrail S3 data events for your S3 AP ARN</li>
+            <li>Create an Athena table over CloudTrail logs (Glue Crawler or manual DDL)</li>
+            <li>Set <code>ATHENA_AUDIT_DATABASE</code>, <code>ATHENA_AUDIT_TABLE</code>, <code>ATHENA_AUDIT_OUTPUT</code> on the Lambda</li>
+          </ul>
+          <details>
+            <summary>Error details</summary>
+            <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem", background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
+          </details>
+        </div>
+      )}
 
       {events.length > 0 && (
         <div className="audit-results">

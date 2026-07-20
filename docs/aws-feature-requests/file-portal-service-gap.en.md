@@ -119,19 +119,19 @@ Simply stating "supports NFS/SMB/S3" is insufficient. In practice, protocol sele
 | **S3 API** (S3 AP) | Serverless processing pipelines (Lambda, Step Functions, Bedrock, Athena) | Per-request billing. 5GB/object limit. Parallelism scales without bound | Internet-origin AP: direct access from outside VPC. VPC-origin AP: via VPC Endpoint |
 | **SFTP/FTPS** | B2B file exchange, legacy system integration | Via Transfer Family. Throughput depends on instance type | Public or VPC endpoint (Transfer Family) |
 
-#### Why simultaneous access matters — Persona perspectives
+#### Why simultaneous access matters — Workload perspectives
 
-> **EDA/Semiconductor (EDA Engineer)**: Simulation jobs are submitted via NFSv3 (low latency, high throughput). Result logs are analyzed by AI via S3 AP (Lambda/Bedrock). Without simultaneous multi-protocol access to the same files, data copying would double storage cost and pipeline latency.
+> **Semiconductor EDA workloads**: Simulation jobs are submitted via NFSv3 (low latency, high throughput). Result logs are analyzed by AI via S3 AP (Lambda/Bedrock). Without simultaneous multi-protocol access to the same files, data copying would double storage cost and pipeline latency.
 
-> **Manufacturing OT / CAD Engineer (Manufacturing OT)**: CAD workstations access shared folders via SMB 3.x (AD auth + file locking). Factory tablets browse drawings via S3 AP web portal (Presigned URL). Batch rendering servers read/write intermediate files via NFSv3. All three protocols must coexist on the same volume.
+> **Manufacturing CAD workflows**: CAD workstations access shared folders via SMB 3.x (AD auth + file locking). Factory tablets browse drawings via S3 AP web portal (Presigned URL). Batch rendering servers read/write intermediate files via NFSv3. All three protocols must coexist on the same volume.
 
-> **Data Scientist / ML Engineer (AI/ML Engineer)**: Training data is read at high speed from GPU instances via NFSv3 mount. After training, model artifacts are registered to Bedrock Knowledge Base via S3 AP. Business analysts review reports via SMB. The structure where no data movement is required between protocols directly impacts iteration velocity.
+> **ML training pipelines**: Training data is read at high speed from GPU instances via NFSv3 mount. After training, model artifacts are registered to Bedrock Knowledge Base via S3 AP. Business analysts review reports via SMB. The structure where no data movement is required between protocols directly impacts iteration velocity.
 
-> **SRE / Platform Engineer (SRE)**: NFSv3 is stateless, so failover requires no session re-establishment (benefits availability). NFSv4.1 delegation reduces metadata load (effective for many-small-file access patterns). S3 API scales per-request to handle burst AI processing. Understanding each protocol's operational characteristics enables right-tool-for-the-job selection.
+> **Operational design considerations**: NFSv3 is stateless, so failover requires no session re-establishment (benefits availability). NFSv4.1 delegation reduces metadata load (effective for many-small-file access patterns). S3 API scales per-request to handle burst AI processing. Understanding each protocol's operational characteristics enables right-tool-for-the-job selection.
 
-> **Compliance Officer**: SMB access is governed by AD + NTFS ACLs. NFSv4.1 access is governed by Kerberos + UNIX permissions. S3 AP access is governed by IAM + File System Identity. Despite different protocols, consistent access control applies to the same file (via ONTAP's multi-protocol identity mapping). From an audit perspective, all protocol accesses are trackable across CloudTrail + ONTAP Audit Log.
+> **Audit and compliance considerations**: SMB access is governed by AD + NTFS ACLs. NFSv4.1 access is governed by Kerberos + UNIX permissions. S3 AP access is governed by IAM + File System Identity. Despite different protocols, consistent access control applies to the same file (via ONTAP's multi-protocol identity mapping). From an audit perspective, all protocol accesses are trackable across CloudTrail + ONTAP Audit Log.
 
-> **Network Engineer**: NFSv4.1 operates on a single port (TCP 2049), simplifying firewall configuration. NFSv3 requires portmapper + dynamic ports, making security group setup more complex. S3 AP (Internet-origin) uses only HTTPS/443 and is accessible from outside the VPC, providing network design flexibility. The ability to choose protocol and network path per workload enables integration of diverse workloads on shared data.
+> **Network design considerations**: NFSv4.1 operates on a single port (TCP 2049), simplifying firewall configuration. NFSv3 requires portmapper + dynamic ports, making security group setup more complex. S3 AP (Internet-origin) uses only HTTPS/443 and is accessible from outside the VPC, providing network design flexibility. The ability to choose protocol and network path per workload enables integration of diverse workloads on shared data.
 
 #### Performance design considerations
 
@@ -147,7 +147,7 @@ All protocols (NFS/SMB/S3 AP) share the same FSx for ONTAP throughput budget. Ke
 
 The most critical technical aspect of multi-protocol access is data consistency across protocols:
 
-- **Write-immediate visibility**: A file written via NFSv3 is immediately visible in S3 AP's `ListObjectsV2` and SMB directory listings (unlike typical S3 eventual consistency)
+- **Write-immediate visibility**: A file written via NFSv3 is immediately visible in S3 AP's `ListObjectsV2` and SMB directory listings (standard S3 provides strong consistency within S3 operations since December 2020, but cross-protocol consistency between NFS/SMB/S3 API is a characteristic specific to FSx for ONTAP)
 - **File lock coexistence**: SMB Opportunistic Locks (oplocks) and NFSv4.1 Delegations coexist on the same volume. However, concurrent writes to the same file from different protocols will break oplocks/delegations, temporarily reducing performance
 - **S3 AP reads and locking**: S3 AP's GetObject does not acquire file locks (read-only snapshot read). Reading a file via S3 AP while it's being written via NFS/SMB may expose an in-progress state. Processing pipelines should confirm write completion before S3 AP reads
 
