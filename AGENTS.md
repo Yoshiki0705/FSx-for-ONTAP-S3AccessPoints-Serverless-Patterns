@@ -446,6 +446,44 @@ EC2 IAM role requires: `AmazonSSMManagedInstanceCore` + `AmazonSSMDirectoryServi
 - Join script: `scripts/demo-ad-join-svm.sh` (auto-resolves from CFn stack outputs)
 - Parameter file: `params/demo-ad-environment.example.json`
 
+## CDK / IaC Quality Gates
+
+This project implements a 6-layer defense architecture for infrastructure code quality:
+
+| Layer | Tool | Purpose |
+|:---:|------|---------|
+| 1 | cfn-lint | Template syntax validation |
+| 2 | cdk-nag (AwsSolutionsChecks) | AWS compliance checks |
+| 3 | gitleaks + zizmor | Secrets + Actions security |
+| 4 | IAM Access Analyzer | Over-permissive policy detection |
+| 5 | CDK harness tests (17 assertions) | Structural regression prevention |
+| 6 | floci integration tests (9 tests) | S3 AP runtime behavior |
+
+**Key rules for AI agents writing CDK/SAM code:**
+- `resources: ["*"]` MUST have `// Restrict to ... in production` comment
+- cdk-nag suppressions MUST include `reason` explaining why it's acceptable
+- Lambda env vars for external infra MUST use `process.env.VAR || ""` (DemoMode compatible)
+- AppSync Data Sources MUST be in the same stack as the API (cross-stack = deploy failure)
+- All Lambda functions: Python 3.12, ARM64, explicit timeout, description field
+- No `@aws-cdk/*-alpha` modules — use L1 + escape hatches instead
+
+**Validation commands:**
+```bash
+# amplify-portal CDK checks
+cd solutions/amplify-portal
+npx tsc --noEmit            # Type check
+npx vitest run              # CDK harness + component tests
+npm run build               # Vite production build
+
+# SAM template checks
+cfn-lint solutions/industry/*/template.yaml
+python scripts/validate-iam-policies.py solutions/industry/*/template.yaml
+
+# Integration tests (requires floci running)
+docker run -d -p 4566:4566 floci/floci:latest
+python -m pytest shared/tests/integration/ -v
+```
+
 ## External Dependencies
 
 - **AWS Region**: ap-northeast-1 (Tokyo) — primary deployment target
