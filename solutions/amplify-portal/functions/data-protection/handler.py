@@ -22,6 +22,7 @@ Environment:
     VOLUME_NAME: Target volume name
     SVM_NAME: SVM name
 """
+
 from __future__ import annotations
 
 import json
@@ -103,8 +104,7 @@ def handler(event, context):
 
 def _get_volume_uuid(http, headers) -> str:
     """Resolve volume UUID from name."""
-    data = _ontap_get(http, headers, "/storage/volumes",
-                      f"name={VOLUME_NAME}&svm.name={SVM_NAME}&fields=uuid")
+    data = _ontap_get(http, headers, "/storage/volumes", f"name={VOLUME_NAME}&svm.name={SVM_NAME}&fields=uuid")
     if not data.get("records"):
         raise ValueError(f"Volume '{VOLUME_NAME}' not found")
     return data["records"][0]["uuid"]
@@ -123,27 +123,30 @@ def _get_snapshots(http, headers, event):
     max_results = event.get("maxResults", 20)
 
     data = _ontap_get(
-        http, headers,
+        http,
+        headers,
         f"/storage/volumes/{vol_uuid}/snapshots",
         f"order_by=create_time desc&max_records={max_results}"
-        f"&fields=name,create_time,state,comment,snaplock_expiry_time,uuid"
+        f"&fields=name,create_time,state,comment,snaplock_expiry_time,uuid",
     )
 
     snapshots = []
     for s in data.get("records", []):
         expiry = s.get("snaplock_expiry_time")
         name = s.get("name", "")
-        snapshots.append({
-            "name": name,
-            "createTime": s.get("create_time", ""),
-            "state": s.get("state", "valid"),
-            "comment": s.get("comment", ""),
-            "snapshotId": s.get("uuid", ""),
-            "isTamperproof": expiry is not None,
-            "snaplockExpiryTime": expiry,
-            "isArp": name.startswith("Anti_ransomware_backup"),
-            "type": _classify_snapshot(name),
-        })
+        snapshots.append(
+            {
+                "name": name,
+                "createTime": s.get("create_time", ""),
+                "state": s.get("state", "valid"),
+                "comment": s.get("comment", ""),
+                "snapshotId": s.get("uuid", ""),
+                "isTamperproof": expiry is not None,
+                "snaplockExpiryTime": expiry,
+                "isArp": name.startswith("Anti_ransomware_backup"),
+                "type": _classify_snapshot(name),
+            }
+        )
 
     return {
         "snapshots": snapshots,
@@ -176,8 +179,7 @@ def _get_arp_status(http, headers, event):
     States: disabled, dry_run (learning), enabled (active), paused
     """
     vol_uuid = _get_volume_uuid(http, headers)
-    data = _ontap_get(http, headers, f"/storage/volumes/{vol_uuid}",
-                      "fields=anti_ransomware")
+    data = _ontap_get(http, headers, f"/storage/volumes/{vol_uuid}", "fields=anti_ransomware")
 
     arp = data.get("anti_ransomware", {})
     state = arp.get("state", "disabled")
@@ -213,8 +215,12 @@ def _get_arp_suspects(http, headers, event):
     vol_uuid = _get_volume_uuid(http, headers)
 
     try:
-        data = _ontap_get(http, headers, "/security/anti-ransomware/suspects",
-                          f"volume.uuid={vol_uuid}&fields=file.path,suspect_time,file.type")
+        data = _ontap_get(
+            http,
+            headers,
+            "/security/anti-ransomware/suspects",
+            f"volume.uuid={vol_uuid}&fields=file.path,suspect_time,file.type",
+        )
         suspects = [
             {
                 "filePath": s.get("file", {}).get("path", ""),
@@ -240,8 +246,7 @@ def _get_snaplock_config(http, headers, event):
     ONTAP REST: GET /api/storage/volumes/{uuid}?fields=snaplock
     """
     vol_uuid = _get_volume_uuid(http, headers)
-    data = _ontap_get(http, headers, f"/storage/volumes/{vol_uuid}",
-                      "fields=snaplock")
+    data = _ontap_get(http, headers, f"/storage/volumes/{vol_uuid}", "fields=snaplock")
 
     snaplock = data.get("snaplock", {})
     sl_type = snaplock.get("type", "non_snaplock")
@@ -269,19 +274,18 @@ def _get_protection_summary(http, headers, event):
     vol_uuid = _get_volume_uuid(http, headers)
 
     # Get volume with all protection fields
-    data = _ontap_get(http, headers, f"/storage/volumes/{vol_uuid}",
-                      "fields=anti_ransomware,snaplock")
+    data = _ontap_get(http, headers, f"/storage/volumes/{vol_uuid}", "fields=anti_ransomware,snaplock")
 
     # Get snapshot count
-    snap_data = _ontap_get(http, headers,
-                           f"/storage/volumes/{vol_uuid}/snapshots",
-                           "max_records=1&return_records=false")
+    snap_data = _ontap_get(
+        http, headers, f"/storage/volumes/{vol_uuid}/snapshots", "max_records=1&return_records=false"
+    )
     snap_count = snap_data.get("num_records", 0)
 
     # Count ARP snapshots
-    arp_snap_data = _ontap_get(http, headers,
-                               f"/storage/volumes/{vol_uuid}/snapshots",
-                               "name=Anti_ransomware_backup*&return_records=false")
+    arp_snap_data = _ontap_get(
+        http, headers, f"/storage/volumes/{vol_uuid}/snapshots", "name=Anti_ransomware_backup*&return_records=false"
+    )
     arp_snap_count = arp_snap_data.get("num_records", 0)
 
     arp = data.get("anti_ransomware", {})
@@ -345,32 +349,38 @@ def _get_s3_object_lock_status(event):
             lock_rule = lock_config.get("ObjectLockConfiguration", {})
             rule = lock_rule.get("Rule", {}).get("DefaultRetention", {})
 
-            results["buckets"].append({
-                "bucketName": bucket_name,
-                "purpose": bucket_info["purpose"],
-                "objectLockEnabled": lock_rule.get("ObjectLockEnabled") == "Enabled",
-                "defaultRetention": {
-                    "mode": rule.get("Mode", "NONE"),  # GOVERNANCE or COMPLIANCE
-                    "days": rule.get("Days"),
-                    "years": rule.get("Years"),
-                },
-            })
+            results["buckets"].append(
+                {
+                    "bucketName": bucket_name,
+                    "purpose": bucket_info["purpose"],
+                    "objectLockEnabled": lock_rule.get("ObjectLockEnabled") == "Enabled",
+                    "defaultRetention": {
+                        "mode": rule.get("Mode", "NONE"),  # GOVERNANCE or COMPLIANCE
+                        "days": rule.get("Days"),
+                        "years": rule.get("Years"),
+                    },
+                }
+            )
         except s3.exceptions.ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code == "ObjectLockConfigurationNotFoundError":
-                results["buckets"].append({
-                    "bucketName": bucket_name,
-                    "purpose": bucket_info["purpose"],
-                    "objectLockEnabled": False,
-                    "defaultRetention": None,
-                })
+                results["buckets"].append(
+                    {
+                        "bucketName": bucket_name,
+                        "purpose": bucket_info["purpose"],
+                        "objectLockEnabled": False,
+                        "defaultRetention": None,
+                    }
+                )
             else:
-                results["buckets"].append({
-                    "bucketName": bucket_name,
-                    "purpose": bucket_info["purpose"],
-                    "objectLockEnabled": None,
-                    "error": str(e),
-                })
+                results["buckets"].append(
+                    {
+                        "bucketName": bucket_name,
+                        "purpose": bucket_info["purpose"],
+                        "objectLockEnabled": None,
+                        "error": str(e),
+                    }
+                )
 
     # Note: FSx for ONTAP S3 AP does not support GetObjectLockConfiguration
     # (Object Lock is an S3-native feature, not available via S3 AP).

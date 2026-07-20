@@ -52,14 +52,15 @@ def main():
         return
 
     s3 = boto3.client(
-        "s3", region_name=REGION,
+        "s3",
+        region_name=REGION,
         endpoint_url=f"https://s3.{REGION}.amazonaws.com",
         config=Config(signature_version="s3v4"),
     )
 
     total_bytes = args.size * 1024 * 1024
     num_parts = max(1, total_bytes // PART_SIZE)
-    logger.info(f"Testing MultipartUpload: {args.size}MB → {num_parts} parts × {PART_SIZE // (1024*1024)}MB")
+    logger.info(f"Testing MultipartUpload: {args.size}MB → {num_parts} parts × {PART_SIZE // (1024 * 1024)}MB")
     logger.info(f"Target: {S3AP_ALIAS}/{args.key}")
 
     # Step 1: CreateMultipartUpload
@@ -82,8 +83,10 @@ def main():
 
             start = time.perf_counter()
             part_resp = s3.upload_part(
-                Bucket=S3AP_ALIAS, Key=args.key,
-                UploadId=upload_id, PartNumber=part_num,
+                Bucket=S3AP_ALIAS,
+                Key=args.key,
+                UploadId=upload_id,
+                PartNumber=part_num,
                 Body=part_data,
             )
             elapsed = time.perf_counter() - start
@@ -91,11 +94,13 @@ def main():
             etag = part_resp["ETag"]
             parts.append({"PartNumber": part_num, "ETag": etag})
             throughput_mbps = len(part_data) / elapsed / (1024 * 1024)
-            logger.info(f"  Part {part_num}/{num_parts}: {len(part_data)//(1024*1024)}MB in {elapsed:.1f}s ({throughput_mbps:.1f} MB/s)")
+            logger.info(
+                f"  Part {part_num}/{num_parts}: {len(part_data) // (1024 * 1024)}MB in {elapsed:.1f}s ({throughput_mbps:.1f} MB/s)"
+            )
 
         logger.info(f"✅ All {num_parts} UploadPart calls succeeded")
     except Exception as e:
-        logger.error(f"❌ UploadPart FAILED at part {len(parts)+1}: {e}")
+        logger.error(f"❌ UploadPart FAILED at part {len(parts) + 1}: {e}")
         # Abort
         s3.abort_multipart_upload(Bucket=S3AP_ALIAS, Key=args.key, UploadId=upload_id)
         logger.info("Aborted multipart upload")
@@ -104,7 +109,8 @@ def main():
     # Step 3: CompleteMultipartUpload
     try:
         complete_resp = s3.complete_multipart_upload(
-            Bucket=S3AP_ALIAS, Key=args.key,
+            Bucket=S3AP_ALIAS,
+            Key=args.key,
             UploadId=upload_id,
             MultipartUpload={"Parts": parts},
         )
@@ -112,7 +118,7 @@ def main():
         logger.info("✅ CompleteMultipartUpload succeeded")
         logger.info(f"   Location: {complete_resp.get('Location', 'N/A')}")
         logger.info(f"   Total time: {total_elapsed:.1f}s")
-        logger.info(f"   Throughput: {total_bytes / total_elapsed / (1024*1024):.1f} MB/s")
+        logger.info(f"   Throughput: {total_bytes / total_elapsed / (1024 * 1024):.1f} MB/s")
     except Exception as e:
         logger.error(f"❌ CompleteMultipartUpload FAILED: {e}")
         return

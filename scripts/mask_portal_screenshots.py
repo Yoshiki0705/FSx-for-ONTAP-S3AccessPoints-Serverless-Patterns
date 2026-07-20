@@ -20,6 +20,7 @@ Dependencies:
     pip install Pillow
     # Optional (for text-based masking): pip install pytesseract
 """
+
 from __future__ import annotations
 
 import argparse

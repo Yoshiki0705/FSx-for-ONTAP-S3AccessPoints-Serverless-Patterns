@@ -69,7 +69,8 @@ RESULTS_DIR = Path(__file__).parent.parent / ".private" / "p0-results"
 
 def _s3_client(region: str = REGION):
     return boto3.client(
-        "s3", region_name=region,
+        "s3",
+        region_name=region,
         endpoint_url=f"https://s3.{region}.amazonaws.com",
         config=Config(signature_version="s3v4"),
     )
@@ -82,8 +83,10 @@ def _write_result(test_id: str, result: dict) -> Path:
     result["test_id"] = test_id
     result["timestamp"] = ts
     result["environment"] = {
-        "region": REGION, "s3ap_alias": S3AP_ALIAS,
-        "nfs_mount": NFS_MOUNT, "smb_mount": SMB_MOUNT,
+        "region": REGION,
+        "s3ap_alias": S3AP_ALIAS,
+        "nfs_mount": NFS_MOUNT,
+        "smb_mount": SMB_MOUNT,
     }
     with open(path, "w") as f:
         json.dump(result, f, indent=2, default=str)
@@ -91,6 +94,7 @@ def _write_result(test_id: str, result: dict) -> Path:
 
 
 # ─── P3: B-3 Nextcloud S3 AP vs NFSv3 Performance ───────────────────────────
+
 
 def test_b3_nextcloud_vs_nfs():
     """B-3: Compare read latency — Nextcloud (S3 AP) vs NFSv3 direct mount."""
@@ -102,6 +106,7 @@ def test_b3_nextcloud_vs_nfs():
         return None
 
     import urllib3
+
     http = urllib3.PoolManager()
 
     # Find a test file accessible from both NFS and Nextcloud
@@ -138,14 +143,16 @@ def test_b3_nextcloud_vs_nfs():
             nc_ms = None
             nc_success = False
 
-        results.append({
-            "file": filename,
-            "size_bytes": file_size,
-            "nfs_read_ms": round(nfs_ms, 2),
-            "nextcloud_read_ms": round(nc_ms, 2) if nc_ms else None,
-            "nextcloud_success": nc_success,
-            "ratio": round(nc_ms / nfs_ms, 2) if nc_ms and nfs_ms > 0 else None,
-        })
+        results.append(
+            {
+                "file": filename,
+                "size_bytes": file_size,
+                "nfs_read_ms": round(nfs_ms, 2),
+                "nextcloud_read_ms": round(nc_ms, 2) if nc_ms else None,
+                "nextcloud_success": nc_success,
+                "ratio": round(nc_ms / nfs_ms, 2) if nc_ms and nfs_ms > 0 else None,
+            }
+        )
 
     nfs_latencies = [r["nfs_read_ms"] for r in results if r["nfs_read_ms"]]
     nc_latencies = [r["nextcloud_read_ms"] for r in results if r["nextcloud_read_ms"]]
@@ -155,7 +162,8 @@ def test_b3_nextcloud_vs_nfs():
         "nfs_mean_ms": round(statistics.mean(nfs_latencies), 2) if nfs_latencies else None,
         "nextcloud_mean_ms": round(statistics.mean(nc_latencies), 2) if nc_latencies else None,
         "avg_ratio": round(statistics.mean(nc_latencies) / statistics.mean(nfs_latencies), 2)
-            if nc_latencies and nfs_latencies else None,
+        if nc_latencies and nfs_latencies
+        else None,
         "details": results,
         "interpretation": (
             "Ratio > 1 means Nextcloud (S3 AP via WebDAV) is slower than NFS direct. "
@@ -169,6 +177,7 @@ def test_b3_nextcloud_vs_nfs():
 
 
 # ─── P3: G-1 Cross-Region Latency ───────────────────────────────────────────
+
 
 def test_g1_cross_region_latency():
     """G-1: Measure S3 AP access latency from a different region."""
@@ -225,11 +234,13 @@ def test_g1_cross_region_latency():
             "mean": round(statistics.mean(remote_latencies), 2),
             "p50": round(statistics.median(remote_latencies), 2),
             "p95": round(sorted(remote_latencies)[int(len(remote_latencies) * 0.95)], 2),
-        } if remote_latencies else None,
+        }
+        if remote_latencies
+        else None,
         "remote_error": remote_error,
-        "cross_region_overhead_ms": round(
-            statistics.mean(remote_latencies) - statistics.mean(local_latencies), 2
-        ) if remote_latencies else None,
+        "cross_region_overhead_ms": round(statistics.mean(remote_latencies) - statistics.mean(local_latencies), 2)
+        if remote_latencies
+        else None,
         "interpretation": (
             "Cross-region access adds network latency (typically 50-200ms depending on regions). "
             "For interactive portal use, keep users and S3 AP in the same region. "
@@ -237,11 +248,14 @@ def test_g1_cross_region_latency():
         ),
     }
     _write_result("g1", result)
-    logger.info(f"G-1: local={result['local_latency_ms']['mean']}ms, remote={result.get('remote_latency_ms', {}).get('mean', 'N/A')}ms")
+    logger.info(
+        f"G-1: local={result['local_latency_ms']['mean']}ms, remote={result.get('remote_latency_ms', {}).get('mean', 'N/A')}ms"
+    )
     return result
 
 
 # ─── Consolidated Report ─────────────────────────────────────────────────────
+
 
 def generate_report():
     """Generate consolidated report from all result files."""
@@ -278,7 +292,9 @@ def generate_report():
         json.dump(report, f, indent=2, default=str)
 
     logger.info(f"Report: {report_path}")
-    logger.info(f"  Total: {report['total_tests']} | Passed: {report['summary']['passed']} | Failed: {report['summary']['failed']}")
+    logger.info(
+        f"  Total: {report['total_tests']} | Passed: {report['summary']['passed']} | Failed: {report['summary']['failed']}"
+    )
     return report
 
 
@@ -345,6 +361,7 @@ def main():
         else:
             # Delegate to P0 script
             import subprocess
+
             subprocess.run(
                 ["python3", "scripts/verify_portal_p0.py", "--test", args.test],
                 cwd=Path(__file__).parent.parent,
@@ -359,6 +376,7 @@ def main():
     if args.category in ("p0", "all"):
         logger.info("\n--- P0 Tests (pre-production) ---")
         import subprocess
+
         subprocess.run(
             ["python3", "scripts/verify_portal_p0.py"],
             cwd=Path(__file__).parent.parent,

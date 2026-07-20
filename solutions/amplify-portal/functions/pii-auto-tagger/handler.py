@@ -20,6 +20,7 @@ Environment:
     AI_METADATA_TABLE_NAME: DynamoDB table for AI results
     COMPREHEND_LANGUAGE: Language code (default: en)
 """
+
 from __future__ import annotations
 
 import logging
@@ -42,9 +43,9 @@ MAX_FILE_SIZE = 100 * 1024  # 100KB limit for Comprehend
 
 TEXT_EXTENSIONS = {".txt", ".csv", ".json", ".md", ".log", ".xml", ".html", ".yml", ".yaml"}
 
-s3 = boto3.client("s3", region_name=REGION,
-                  endpoint_url=f"https://s3.{REGION}.amazonaws.com",
-                  config=Config(signature_version="s3v4"))
+s3 = boto3.client(
+    "s3", region_name=REGION, endpoint_url=f"https://s3.{REGION}.amazonaws.com", config=Config(signature_version="s3v4")
+)
 comprehend = boto3.client("comprehend", region_name=REGION)
 
 
@@ -76,8 +77,12 @@ def handler(event, context):
     # Check file type
     ext = Path(file_key).suffix.lower()
     if ext not in TEXT_EXTENSIONS:
-        return {"fileKey": file_key, "piiDetected": False, "action": "skipped",
-                "reason": f"Unsupported extension: {ext}"}
+        return {
+            "fileKey": file_key,
+            "piiDetected": False,
+            "action": "skipped",
+            "reason": f"Unsupported extension: {ext}",
+        }
 
     # Download file content
     try:
@@ -124,14 +129,16 @@ def handler(event, context):
         if CLASSIFICATION_TABLE:
             try:
                 table = dynamodb.Table(CLASSIFICATION_TABLE)
-                table.put_item(Item={
-                    "file_key": file_key,
-                    "classification": "RESTRICTED",
-                    "classified_by": "pii-auto-tagger",
-                    "classified_at": now,
-                    "pii_types": pii_types,
-                    "pii_count": pii_count,
-                })
+                table.put_item(
+                    Item={
+                        "file_key": file_key,
+                        "classification": "RESTRICTED",
+                        "classified_by": "pii-auto-tagger",
+                        "classified_at": now,
+                        "pii_types": pii_types,
+                        "pii_count": pii_count,
+                    }
+                )
                 logger.info(f"Classified {file_key} as RESTRICTED ({pii_count} PII entities)")
             except Exception as e:
                 logger.warning(f"Classification table update failed: {e}")
@@ -140,14 +147,16 @@ def handler(event, context):
         if METADATA_TABLE:
             try:
                 table = dynamodb.Table(METADATA_TABLE)
-                table.put_item(Item={
-                    "file_key": file_key,
-                    "classification": "RESTRICTED",
-                    "pii_types": pii_types,
-                    "pii_count": pii_count,
-                    "processed_at": now,
-                    "processing_pattern": "DLP_AUTO_SCAN",
-                })
+                table.put_item(
+                    Item={
+                        "file_key": file_key,
+                        "classification": "RESTRICTED",
+                        "pii_types": pii_types,
+                        "pii_count": pii_count,
+                        "processed_at": now,
+                        "processing_pattern": "DLP_AUTO_SCAN",
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Metadata table update failed: {e}")
 

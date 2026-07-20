@@ -80,13 +80,13 @@ def handler(event: dict, context) -> dict:
     if TABLE_NAME:
         try:
             import uuid
+
             dynamodb = boto3.resource("dynamodb")
             table = dynamodb.Table(TABLE_NAME)
             notification["id"] = str(uuid.uuid4())
             table.put_item(Item=notification)
             logger.info(
-                f"Notification created: {notification['source']} "
-                f"{notification['eventType']} {notification['fileKey']}"
+                f"Notification created: {notification['source']} {notification['eventType']} {notification['fileKey']}"
             )
         except Exception as e:
             logger.error(f"Failed to write notification: {e}")

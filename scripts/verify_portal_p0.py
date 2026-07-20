@@ -137,8 +137,7 @@ def test_b1_throughput_baseline():
 
     _write_result("b1", result)
     logger.info(
-        f"B-1 idle baseline: mean={result['latency_ms']['mean']:.1f}ms, "
-        f"p95={result['latency_ms']['p95']:.1f}ms"
+        f"B-1 idle baseline: mean={result['latency_ms']['mean']:.1f}ms, p95={result['latency_ms']['p95']:.1f}ms"
     )
 
 
@@ -184,14 +183,16 @@ def test_b2_tiering_latency():
         r["Body"].read()
         second_read_ms = (time.perf_counter() - start) * 1000
 
-        results.append({
-            "key": key,
-            "size_bytes": size,
-            "first_read_ms": round(first_read_ms, 2),
-            "second_read_ms": round(second_read_ms, 2),
-            "delta_ms": round(first_read_ms - second_read_ms, 2),
-            "likely_tiered": first_read_ms > second_read_ms * 3,
-        })
+        results.append(
+            {
+                "key": key,
+                "size_bytes": size,
+                "first_read_ms": round(first_read_ms, 2),
+                "second_read_ms": round(second_read_ms, 2),
+                "delta_ms": round(first_read_ms - second_read_ms, 2),
+                "likely_tiered": first_read_ms > second_read_ms * 3,
+            }
+        )
 
     tiered_count = sum(1 for r in results if r["likely_tiered"])
     result = {
@@ -246,20 +247,24 @@ def test_d1_write_in_progress():
             resp = s3.get_object(Bucket=S3AP_ALIAS, Key=test_file)
             body = resp["Body"].read()
             latency = (time.perf_counter() - start) * 1000
-            read_results.append({
-                "attempt": i + 1,
-                "success": True,
-                "bytes_read": len(body),
-                "latency_ms": round(latency, 2),
-                "content_length_header": resp.get("ContentLength"),
-            })
+            read_results.append(
+                {
+                    "attempt": i + 1,
+                    "success": True,
+                    "bytes_read": len(body),
+                    "latency_ms": round(latency, 2),
+                    "content_length_header": resp.get("ContentLength"),
+                }
+            )
         except Exception as e:
-            read_results.append({
-                "attempt": i + 1,
-                "success": False,
-                "error": str(e),
-                "error_type": type(e).__name__,
-            })
+            read_results.append(
+                {
+                    "attempt": i + 1,
+                    "success": False,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                }
+            )
         time.sleep(1)
 
     proc.wait()
@@ -333,13 +338,15 @@ def test_d2_put_visibility():
         if visible:
             nfs_content = nfs_path.read_text()
 
-        results.append({
-            "file": filename,
-            "put_latency_ms": round(put_ms, 2),
-            "nfs_visible_immediately": visible,
-            "nfs_check_latency_ms": round(check_ms, 2),
-            "content_matches": nfs_content == content,
-        })
+        results.append(
+            {
+                "file": filename,
+                "put_latency_ms": round(put_ms, 2),
+                "nfs_visible_immediately": visible,
+                "nfs_check_latency_ms": round(check_ms, 2),
+                "content_matches": nfs_content == content,
+            }
+        )
 
         # Cleanup
         try:
@@ -358,7 +365,8 @@ def test_d2_put_visibility():
         "all_content_matches": all_match,
         "details": results,
         "conclusion": (
-            "PASS: Strong consistency confirmed" if (all_visible and all_match)
+            "PASS: Strong consistency confirmed"
+            if (all_visible and all_match)
             else "INVESTIGATE: Some files not immediately visible or content mismatch"
         ),
     }
@@ -478,14 +486,16 @@ def test_g3_unicode_filenames():
             s3ap_readable = False
             content_match = False
 
-        results.append({
-            "label": label,
-            "name": name,
-            "name_bytes": len(name.encode("utf-8")),
-            "nfs_create": nfs_created,
-            "s3ap_readable": s3ap_readable,
-            "content_matches": content_match,
-        })
+        results.append(
+            {
+                "label": label,
+                "name": name,
+                "name_bytes": len(name.encode("utf-8")),
+                "nfs_create": nfs_created,
+                "s3ap_readable": s3ap_readable,
+                "content_matches": content_match,
+            }
+        )
 
         # Cleanup
         try:
@@ -496,6 +506,7 @@ def test_g3_unicode_filenames():
     # Cleanup deep dirs
     try:
         import shutil
+
         shutil.rmtree(Path(NFS_MOUNT) / "level1", ignore_errors=True)
     except Exception:
         pass
@@ -632,9 +643,9 @@ def main():
         logger.info(f"NFS_MOUNT_PATH: {NFS_MOUNT or '(not set — cross-protocol tests will skip)'}")
         print()
         for key, (desc, func) in TESTS.items():
-            logger.info(f"{'='*60}")
+            logger.info(f"{'=' * 60}")
             logger.info(f"Running {key}: {desc}")
-            logger.info(f"{'='*60}")
+            logger.info(f"{'=' * 60}")
             try:
                 func()
             except Exception as e:

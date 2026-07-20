@@ -16,6 +16,7 @@ Environment:
     CACHE_PREFIX: Prefix for cached PDFs (default: .cache/previews/)
     PRESIGN_EXPIRY: Presigned URL expiry in seconds (default: 300)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -38,7 +39,8 @@ CACHE_PREFIX = os.environ.get("CACHE_PREFIX", ".cache/previews/")
 PRESIGN_EXPIRY = int(os.environ.get("PRESIGN_EXPIRY", "300"))
 
 s3 = boto3.client(
-    "s3", region_name=REGION,
+    "s3",
+    region_name=REGION,
     endpoint_url=f"https://s3.{REGION}.amazonaws.com",
     config=Config(signature_version="s3v4"),
 )
@@ -64,7 +66,8 @@ def handler(event, context):
         s3.head_object(Bucket=AP_ALIAS, Key=cache_key)
         # Cache hit — return presigned URL
         url = s3.generate_presigned_url(
-            "get_object", Params={"Bucket": AP_ALIAS, "Key": cache_key},
+            "get_object",
+            Params={"Bucket": AP_ALIAS, "Key": cache_key},
             ExpiresIn=PRESIGN_EXPIRY,
         )
         logger.info(f"Cache hit: {key} → {cache_key}")
@@ -88,10 +91,17 @@ def handler(event, context):
     try:
         result = subprocess.run(
             [
-                "libreoffice", "--headless", "--convert-to", "pdf",
-                "--outdir", work_dir, str(source_path),
+                "libreoffice",
+                "--headless",
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                work_dir,
+                str(source_path),
             ],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         if result.returncode != 0:
             logger.error(f"LibreOffice error: {result.stderr}")
@@ -106,15 +116,15 @@ def handler(event, context):
 
     # Upload to cache
     try:
-        s3.put_object(Bucket=AP_ALIAS, Key=cache_key, Body=pdf_path.read_bytes(),
-                      ContentType="application/pdf")
+        s3.put_object(Bucket=AP_ALIAS, Key=cache_key, Body=pdf_path.read_bytes(), ContentType="application/pdf")
         logger.info(f"Cached: {cache_key} ({pdf_path.stat().st_size} bytes)")
     except Exception as e:
         logger.warning(f"Cache upload failed (non-fatal): {e}")
 
     # Generate presigned URL
     url = s3.generate_presigned_url(
-        "get_object", Params={"Bucket": AP_ALIAS, "Key": cache_key},
+        "get_object",
+        Params={"Bucket": AP_ALIAS, "Key": cache_key},
         ExpiresIn=PRESIGN_EXPIRY,
     )
 

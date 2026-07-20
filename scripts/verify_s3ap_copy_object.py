@@ -9,6 +9,7 @@ Usage:
 Expected result: CopyObject should work (it's listed as supported in AWS docs).
 This script confirms it works in your specific environment.
 """
+
 from __future__ import annotations
 
 import os
@@ -20,14 +21,18 @@ from botocore.config import Config
 REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
 S3AP_ALIAS = os.environ.get("S3AP_ALIAS", "")
 
+
 def main():
     if not S3AP_ALIAS:
         print("ERROR: S3AP_ALIAS not set")
         return
 
-    s3 = boto3.client("s3", region_name=REGION,
-                      endpoint_url=f"https://s3.{REGION}.amazonaws.com",
-                      config=Config(signature_version="s3v4"))
+    s3 = boto3.client(
+        "s3",
+        region_name=REGION,
+        endpoint_url=f"https://s3.{REGION}.amazonaws.com",
+        config=Config(signature_version="s3v4"),
+    )
 
     test_key = "v2_copy_test_source.txt"
     copy_key = "v2_copy_test_destination.txt"

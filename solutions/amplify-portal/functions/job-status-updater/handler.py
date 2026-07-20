@@ -88,9 +88,7 @@ def handler(event: dict, context) -> dict:
 
         if stop_date:
             # Convert epoch ms to ISO string
-            stop_iso = datetime.fromtimestamp(
-                stop_date / 1000, tz=timezone.utc
-            ).isoformat()
+            stop_iso = datetime.fromtimestamp(stop_date / 1000, tz=timezone.utc).isoformat()
             update_expr += ", stopDate = :stopDate"
             expr_values[":stopDate"] = stop_iso
 

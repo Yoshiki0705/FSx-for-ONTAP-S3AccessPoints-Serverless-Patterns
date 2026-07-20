@@ -51,10 +51,7 @@ class AiGuardrailDenied(Exception):
         self.file_key = file_key
         self.classification = classification
         self.reason = reason
-        super().__init__(
-            f"AI processing blocked for '{file_key}': "
-            f"classification={classification} — {reason}"
-        )
+        super().__init__(f"AI processing blocked for '{file_key}': classification={classification} — {reason}")
 
 
 def get_blocked_levels() -> set[str]:

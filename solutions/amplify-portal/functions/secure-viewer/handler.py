@@ -14,6 +14,7 @@ Environment:
     SHARE_TOKENS_TABLE: DynamoDB table for share tokens
     AWS_REGION: Region
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,9 +31,9 @@ REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
 AP_ALIAS = os.environ.get("S3_AP_ALIAS", "")
 TOKENS_TABLE = os.environ.get("SHARE_TOKENS_TABLE", "")
 
-s3 = boto3.client("s3", region_name=REGION,
-                  endpoint_url=f"https://s3.{REGION}.amazonaws.com",
-                  config=Config(signature_version="s3v4"))
+s3 = boto3.client(
+    "s3", region_name=REGION, endpoint_url=f"https://s3.{REGION}.amazonaws.com", config=Config(signature_version="s3v4")
+)
 
 VIEWER_HTML = """<!DOCTYPE html>
 <html>
@@ -135,7 +136,8 @@ def handler(event, context):
     try:
         # Generate short-lived presigned URL (5 min, for iframe src)
         presigned_url = s3.generate_presigned_url(
-            "get_object", Params={"Bucket": AP_ALIAS, "Key": file_key},
+            "get_object",
+            Params={"Bucket": AP_ALIAS, "Key": file_key},
             ExpiresIn=300,
         )
     except Exception as e:
