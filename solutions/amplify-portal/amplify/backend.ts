@@ -679,7 +679,7 @@ const queryAuditLogRole = new iam.Role(dataStack, "QueryAuditLogLambdaRole", {
             "athena:GetQueryExecution",
             "athena:GetQueryResults",
           ],
-          resources: ["*"],
+          resources: ["*"], // Restrict to specific Athena WorkGroup ARN in production
         }),
         new iam.PolicyStatement({
           actions: ["s3:GetObject", "s3:ListBucket", "s3:PutObject"],
@@ -687,7 +687,7 @@ const queryAuditLogRole = new iam.Role(dataStack, "QueryAuditLogLambdaRole", {
         }),
         new iam.PolicyStatement({
           actions: ["glue:GetTable", "glue:GetDatabase", "glue:GetPartitions"],
-          resources: ["*"],
+          resources: ["*"], // Restrict to specific Glue database/tables in production
         }),
       ],
     }),
