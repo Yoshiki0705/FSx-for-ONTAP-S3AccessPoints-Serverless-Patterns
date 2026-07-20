@@ -6,6 +6,10 @@ vi.mock("aws-amplify/data", () => ({
   generateClient: () => ({
     queries: { listFiles: vi.fn(), getJobStatus: vi.fn() },
     mutations: { startProcessing: vi.fn() },
+    models: {
+      Favorite: { list: vi.fn().mockResolvedValue({ data: [] }) },
+      FileTag: { list: vi.fn().mockResolvedValue({ data: [] }) },
+    },
   }),
 }));
 
@@ -18,48 +22,50 @@ vi.mock("@aws-amplify/ui-react", () => ({
   Authenticator: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+vi.mock("@aws-amplify/ui-react-storage/browser", () => ({
+  createStorageBrowser: () => ({ StorageBrowser: () => null }),
+}));
+
+vi.mock("aws-amplify/auth", () => ({
+  fetchAuthSession: vi.fn().mockResolvedValue({ credentials: {} }),
+}));
+
 vi.mock("../../amplify/data/resource", () => ({}));
 
 import App from "../../src/App";
 
 describe("App", () => {
-  it("renders the portal header", () => {
+  it("renders the portal title", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: /FSx for ONTAP File Portal/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /File Portal/i })
+    ).toBeInTheDocument();
   });
 
-  it("renders navigation with correct ARIA roles", () => {
+  it("renders sidebar navigation with grouped sections", () => {
     render(<App />);
-    const tablist = screen.getByRole("tablist");
-    expect(tablist).toBeInTheDocument();
-    expect(tablist).toHaveAttribute("aria-label", "Portal navigation");
+    const nav = screen.getByRole("navigation", { name: /Main navigation/i });
+    expect(nav).toBeInTheDocument();
 
-    const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(6);
-    expect(tabs[0]).toHaveTextContent("Files");
-    expect(tabs[1]).toHaveTextContent("Upload");
-    expect(tabs[2]).toHaveTextContent("Process");
-    expect(tabs[3]).toHaveTextContent("Results");
-    expect(tabs[4]).toHaveTextContent("History");
-    expect(tabs[5]).toHaveTextContent("Analytics");
+    // Check sidebar items exist
+    expect(screen.getByText("All Files")).toBeInTheDocument();
+    expect(screen.getByText("Favorites")).toBeInTheDocument();
+    expect(screen.getByText("Upload")).toBeInTheDocument();
+    expect(screen.getByText("AI Processing")).toBeInTheDocument();
+    expect(screen.getByText("Audit Trail")).toBeInTheDocument();
   });
 
-  it("marks the active tab with aria-selected", () => {
+  it("marks the active section with aria-current", () => {
     render(<App />);
-    const tabs = screen.getAllByRole("tab");
-    expect(tabs[0]).toHaveAttribute("aria-selected", "true");
-    expect(tabs[1]).toHaveAttribute("aria-selected", "false");
-    expect(tabs[2]).toHaveAttribute("aria-selected", "false");
+    const allFilesBtn = screen.getByText("All Files").closest("button");
+    expect(allFilesBtn).toHaveAttribute("aria-current", "page");
   });
 
-  it("switches tabs on click", async () => {
+  it("switches sections on sidebar click", () => {
     render(<App />);
-    const processTab = screen.getByRole("tab", { name: "Process" });
-
-    fireEvent.click(processTab);
-
-    expect(processTab).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "Files" })).toHaveAttribute("aria-selected", "false");
+    const favoritesBtn = screen.getByText("Favorites").closest("button");
+    fireEvent.click(favoritesBtn!);
+    expect(favoritesBtn).toHaveAttribute("aria-current", "page");
   });
 
   it("displays the user email", () => {
@@ -67,9 +73,17 @@ describe("App", () => {
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
   });
 
-  it("has a sign out button with aria-label", () => {
+  it("has a sign out button", () => {
     render(<App />);
     const signOut = screen.getByRole("button", { name: /sign out/i });
     expect(signOut).toBeInTheDocument();
+  });
+
+  it("has a sidebar toggle button", () => {
+    render(<App />);
+    const toggle = screen.getByRole("button", {
+      name: /collapse navigation/i,
+    });
+    expect(toggle).toBeInTheDocument();
   });
 });
