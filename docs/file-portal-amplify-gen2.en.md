@@ -202,6 +202,12 @@ Day 3: Results (with classification labels) written back to the same volume
 
 ## Amplify Gen2 Integration Pattern
 
+![Amplify Gen2 Portal — Sidebar Layout](../solutions/amplify-portal/docs/screenshots/portal-sidebar-layout.png)
+*Amplify Gen2 portal: Sidebar navigation + AI Processing + Data Protection sections*
+
+![Amplify Gen2 Portal — AI Processing](../solutions/amplify-portal/docs/screenshots/portal-ai-processing.png)
+*AI Processing section: Pattern selection + input path for job submission*
+
 ### Architecture Detail
 
 ```
@@ -288,6 +294,9 @@ solutions/amplify-portal/
 ---
 
 ## Nextcloud Integration Pattern
+
+![Nextcloud File Manager — NAS data mounted via S3 AP](../solutions/nextcloud-test/docs/screenshots/nextcloud-files-view.png)
+*Nextcloud: Mount the S3 AP alias via External Storage app — ONTAP volume files appear directly*
 
 ### Architecture Detail
 
