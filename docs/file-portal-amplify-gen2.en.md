@@ -35,36 +35,36 @@ This document compares three approaches — AWS Amplify Gen2, Nextcloud, and cus
 All three approaches share the same backend integration point: the existing Step Functions state machines that orchestrate Lambda functions accessing FSx for ONTAP S3 Access Points.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────┐
 │           Frontend Layer (choose one)                        │
-│                                                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│  │ Amplify Gen2│  │  Nextcloud  │  │ Custom (Vite/Next.js)│ │
-│  │ React +     │  │  (EC2/ECS)  │  │ + CDK               │ │
-│  │ AppSync     │  │  + External │  │ + API Gateway        │ │
-│  │             │  │    Storage  │  │ + Cognito            │ │
-│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘ │
-└─────────┼────────────────┼─────────────────────┼────────────┘
+│                                                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────┐  │
+│  │ Amplify Gen2│  │  Nextcloud  │  │ Custom (Vite/Next.js)│  │
+│  │ React +     │  │  (EC2/ECS)  │  │ + CDK                │  │
+│  │ AppSync     │  │  + External │  │ + API Gateway        │  │
+│  │             │  │    Storage  │  │ + Cognito            │  │
+│  └──────┬──────┘  └──────┬──────┘  └───────────┬──────────┘  │
+└─────────┼────────────────┼─────────────────────┼─────────────┘
           │                │                     │
           ▼                ▼                     ▼
-┌─────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────┐
 │  Integration Layer                                           │
 │  - AppSync HTTP Resolver → Step Functions                    │
 │  - API Gateway REST → Step Functions                         │
-│  - Nextcloud External Storage → S3 AP (direct)              │
-└─────────────────────────────────────────────────────────────┘
+│  - Nextcloud External Storage → S3 AP (direct)               │
+└──────────────────────────────────────────────────────────────┘
           │
           ▼
-┌─────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────┐
 │  Backend (existing — no modification required)               │
-│  ┌──────────────┐     ┌─────────────────────┐              │
-│  │Step Functions │     │ Lambda Functions     │              │
-│  │(ASL workflows)│────▶│ Discovery (VPC-in)   │              │
-│  │              │     │ Processing (VPC-out) │              │
-│  └──────────────┘     └──────────┬──────────┘              │
-└──────────────────────────────────┼──────────────────────────┘
-                                   │
-                                   ▼
+│  ┌───────────────┐     ┌─────────────────────┐               │
+│  │Step Functions │     │ Lambda Functions    │               │
+│  │(ASL workflows)│────▶│ Discovery (VPC-in)  │               │
+│  │               │     │ Processing (VPC-out)│               │
+│  └───────────────┘     └──────────┬──────────┘               │
+└───────────────────────────────────┼──────────────────────────┘
+                                    │
+                                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  FSx for ONTAP S3 Access Point                              │
 │  (NFS / SMB / S3 — multiprotocol shared namespace)          │
@@ -139,22 +139,30 @@ The two approaches are not exclusive — they can **coexist, each handling what 
 | Function | Nextcloud handles | Amplify Gen2 handles |
 |---|---|---|
 | File browsing & download | ✅ External Storage, immediate | ✅ ListFiles Lambda + image preview |
-| File upload | ✅ Drag & drop, sync client | ❌ Not implemented |
+| File upload | ✅ Drag & drop, sync client | ✅ Storage Browser integration (drag & drop, delete, copy, folder creation) |
 | Desktop/mobile sync | ✅ Official clients | ❌ |
-| Sharing links & comments | ✅ Built-in | ❌ |
+| Sharing links | ✅ Built-in (password protection, expiry) | ✅ Presigned URL (TTL selection + URL copy) |
+| Comments & annotations | ✅ Built-in | ❌ |
 | AI/ML processing workflow trigger | ⚠️ Possible via webhook (setup required) | ✅ AppSync Mutation → Step Functions |
+| AI Q&A (ask questions about files) | ❌ | ✅ Bedrock Converse API |
+| Image AI analysis | ❌ | ✅ Rekognition DetectLabels |
+| Text extraction (OCR) | ❌ | ✅ Textract |
+| Entity/sentiment analysis | ❌ | ✅ Comprehend |
+| Athena SQL queries | ❌ | ✅ Analytics section |
 | Real-time processing status | ❌ No polling mechanism | ✅ 5s polling + status badge |
 | Job execution history | ❌ | ✅ DynamoDB (owner-based auth) |
 | Processing pattern selection UI | ❌ | ✅ Dropdown + parameter input |
 | Data classification label display | ❌ | ✅ dataClassification rendering |
 | FlexClone snapshot restore | ❌ | ✅ Directly from UI |
-| FlexClone status display | ❌ | ✅ In Results tab |
+| Snapshot listing + ARP/AI | ❌ | ✅ Data Protection section |
+| SnapLock (WORM) status | ❌ | ✅ Lock section |
+| Audit Trail (CloudTrail) | ❌ | ✅ Admin section |
 
 ### Coexistence Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Users                                                           │
+│  Users                                                          │
 │  ┌─────────────────────┐   ┌──────────────────────────────────┐ │
 │  │ Nextcloud           │   │ Amplify Gen2 Portal              │ │
 │  │ (File Management)   │   │ (Processing Dashboard)           │ │
@@ -169,11 +177,11 @@ The two approaches are not exclusive — they can **coexist, each handling what 
             │                               │
             ▼                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  FSx for ONTAP                                                   │
-│  ┌───────────────────────────────────────────────────────────┐   │
-│  │ Volume (/vol/data)                                        │   │
-│  │ NFS + SMB + S3 AP — same data, multiprotocol access       │   │
-│  └───────────────────────────────────────────────────────────┘   │
+│  FSx for ONTAP                                                  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Volume (/vol/data)                                        │  │
+│  │ NFS + SMB + S3 AP — same data, multiprotocol access       │  │
+│  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -214,11 +222,11 @@ Day 3: Results (with classification labels) written back to the same volume
 ┌────────────────────────────────────────────────────────┐
 │  Amplify Gen2                                          │
 │  ┌────────────┐  ┌──────────────────────────────────┐  │
-│  │ defineAuth │  │ defineData (AppSync)              │  │
-│  │ Cognito    │  │  - startProcessing mutation       │  │
-│  │ +SAML/OIDC │  │  - getJobStatus query             │  │
-│  │            │  │  - onJobComplete subscription     │  │
-│  └────────────┘  │  HTTP Resolver → Step Functions   │  │
+│  │ defineAuth │  │ defineData (AppSync)             │  │
+│  │ Cognito    │  │  - startProcessing mutation      │  │
+│  │ +SAML/OIDC │  │  - getJobStatus query            │  │
+│  │            │  │  - onJobComplete subscription    │  │
+│  └────────────┘  │  HTTP Resolver → Step Functions  │  │
 │                  └──────────────┬───────────────────┘  │
 │  ┌────────────────────────────────────────────────────┐│
 │  │ CDK Custom Resource                                ││
@@ -366,9 +374,9 @@ For teams choosing to build their own frontend:
 │  or Amplify Hosting (static only)                      │
 │  ┌──────────────────────────────────────────────────┐  │
 │  │ SPA (React/Vue/Angular/Svelte)                   │  │
-│  │  - File listing via API call                      │  │
-│  │  - Job submission form                            │  │
-│  │  - Results polling / WebSocket                    │  │
+│  │  - File listing via API call                     │  │
+│  │  - Job submission form                           │  │
+│  │  - Results polling / WebSocket                   │  │
 │  └──────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────┘
           │
