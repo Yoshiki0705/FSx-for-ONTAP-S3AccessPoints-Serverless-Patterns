@@ -4,20 +4,24 @@
  * Uses @aws-amplify/ui-react-storage's StorageBrowser component
  * with the FSx for ONTAP S3 AP alias as the bucket target.
  *
+ * Uses direct credentials mode (no S3 Access Grants required).
+ * This avoids the ListCallerAccessGrants API call that fails
+ * when Access Grants are not configured for the S3 AP.
+ *
  * Provides: file listing, folder navigation, drag-and-drop upload (max 5GB),
  * download, copy, delete, folder creation — all via S3 AP.
  *
  * Credentials come from Cognito Identity Pool (authenticated user).
  */
-import { createManagedAuthAdapter, createStorageBrowser } from "@aws-amplify/ui-react-storage/browser";
+import { createStorageBrowser } from "@aws-amplify/ui-react-storage/browser";
 import "@aws-amplify/ui-react-storage/styles.css";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { portalSettings } from "../portal-settings";
 
 const { StorageBrowser } = createStorageBrowser({
-  config: createManagedAuthAdapter({
-    credentialsProvider: async () => {
-      // Use Cognito Identity Pool credentials from the authenticated session
+  config: {
+    // Direct credentials mode — bypasses S3 Access Grants
+    getLocationCredentials: async () => {
       const session = await fetchAuthSession();
       const credentials = session.credentials;
       if (!credentials) {
@@ -32,13 +36,26 @@ const { StorageBrowser } = createStorageBrowser({
         },
       };
     },
-    region: portalSettings.region,
-    accountId: portalSettings.accountId,
-    registerAuthListener: (_onAuthStateChange: () => void) => {
-      // Called when auth state changes (e.g., sign out)
-      // StorageBrowser will clear sensitive state automatically
+    // Provide the S3 AP as a pre-configured location
+    listLocations: async () => {
+      return {
+        items: [
+          {
+            bucket: portalSettings.s3ApAlias,
+            id: "fsxn-s3ap",
+            permissions: ["delete", "get", "list", "write"] as const,
+            prefix: "",
+            type: "BUCKET" as const,
+          },
+        ],
+        nextToken: undefined,
+      };
     },
-  }),
+    region: portalSettings.region,
+    registerAuthListener: (_onAuthStateChange: () => void) => {
+      // Called when auth state changes
+    },
+  },
 });
 
 /**
@@ -51,6 +68,20 @@ const { StorageBrowser } = createStorageBrowser({
  * Copy: select file → copy to another location
  */
 export function StorageBrowserTab() {
+  if (!portalSettings.s3ApAlias) {
+    return (
+      <div className="storage-browser-tab">
+        <div className="storage-browser-header">
+          <h2>Upload & Manage Files</h2>
+          <p className="storage-browser-description">
+            Storage Browser is not configured. Set <code>s3ApAlias</code> in{" "}
+            <code>src/portal-settings.ts</code> to enable file upload.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="storage-browser-tab">
       <div className="storage-browser-header">

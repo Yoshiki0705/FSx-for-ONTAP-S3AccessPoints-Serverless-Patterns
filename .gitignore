@@ -184,3 +184,4 @@ cfn-params/*.json
 # params — same convention as cfn-params
 params/*.json
 !params/*.example.json
+docs/screenshots/portal-demo/originals/

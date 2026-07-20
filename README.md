@@ -18,6 +18,8 @@
 |---|---|---|
 | FSx なしでデモを試す | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 分 |
 | Web ポータルでファイルを閲覧・処理 | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.md) | 10 分 |
+| ポータルのデモを見る (スクリーンショット付き) | [Portal Demo Guide (JA)](docs/ja/portal-demo-guide.md) / [EN](docs/en/portal-demo-guide.md) | 5 分 |
+| ポータルを自環境にデプロイ | [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) | 15 分 |
 | パターンを AWS にデプロイ | [Deployment Guide](docs/guides/deployment-guide.md) | 30 分 |
 | 自分のワークロードに合うパターンを探す | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 分 |
 | コストを見積もる | [Cost Calculator](docs/cost-calculator.md) | 5 分 |
@@ -145,6 +147,48 @@ graph TB
 
 ---
 
+<details>
+<summary><strong>📖 ドキュメントガイド（セキュリティ・運用・設計）</strong></summary>
+
+### ファイルポータル
+
+| ドキュメント | 内容 |
+|---|---|
+| [Portal Demo Guide (JA)](docs/ja/portal-demo-guide.md) / [EN](docs/en/portal-demo-guide.md) | スクリーンショット付きデモフロー (15 分) |
+| [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) | デプロイ・削除の運用手順 + トラブルシューティング |
+| [Portal Authorization Design (JA)](docs/ja/portal-authorization-design.md) / [EN](docs/en/portal-authorization-design.md) | RBAC 設計 (Viewer/Contributor/Storage Admin/Auditor) |
+| [File Portal UI Options](docs/file-portal-amplify-gen2.md) | Amplify / Nextcloud / Custom Build の選び方 |
+| [Portal README](solutions/amplify-portal/README.md) | セットアップ全手順 + Known Pitfalls |
+
+### セキュリティ・データ保護
+
+| ドキュメント | 内容 |
+|---|---|
+| [S3 AP Authorization Model (JA)](docs/s3ap-authorization-model.md) / [EN](docs/s3ap-authorization-model.en.md) | IAM + File System Identity の二重認可モデル |
+| [SaaS Gap Analysis (JA)](docs/aws-feature-requests/file-portal-service-gap.md) / [EN](docs/aws-feature-requests/file-portal-service-gap.en.md) | 15 SaaS との機能比較 + プロトコルアクセシビリティ |
+| [AD-Joined SVM Prerequisites](docs/en/ad-joined-svm-s3ap-prerequisites.md) | AD 連携 S3 AP の前提条件と制約 |
+| [Incident Response Playbook](docs/incident-response-playbook.md) | セキュリティインシデント対応手順 |
+
+### S3 AP 技術詳細
+
+| ドキュメント | 内容 |
+|---|---|
+| [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md) | API 互換性・Presigned URL・制約 |
+| [S3AP Performance Considerations](docs/s3ap-performance-considerations.md) | スループット設計・FlexCache 活用 |
+| [ONTAP Integration Notes](docs/ontap-integration-notes.md) | マルチプロトコル共存・ID マッピング |
+
+### 運用
+
+| ドキュメント | 内容 |
+|---|---|
+| [Demo Mode Guide](docs/demo-mode-guide.md) | FSx for ONTAP なしで検証する方法 |
+| [Cost Calculator](docs/cost-calculator.md) | パターン別月額見積もり |
+| [Local Testing Quick Start](docs/local-testing-quick-start.md) | ローカル pytest + sam local |
+
+</details>
+
+---
+
 ## S3 Access Point の主要制約
 
 | 制約 | 回避策 |
@@ -177,6 +221,7 @@ graph TB
 
 | リポジトリ | 概要 |
 |---|---|
+| [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) | 可観測性統合 (ARP/AI 自動対応、メトリクス、アラート) |
 | [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 権限考慮型 RAG チャットボット（CDK + Next.js + ECS） |
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | Lakehouse 統合（Databricks, Snowflake, Athena, Glue, EMR） |
 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 移行 |
