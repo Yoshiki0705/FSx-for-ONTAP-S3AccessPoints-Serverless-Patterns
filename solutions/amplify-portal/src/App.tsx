@@ -9,6 +9,7 @@ import { AiPanel } from "./components/AiPanel";
 import { AthenaQueryPanel } from "./components/AthenaQueryPanel";
 import { StorageBrowserTab } from "./components/StorageBrowserTab";
 import { FavoritesView } from "./components/Favorites";
+import { RecentFiles } from "./components/RecentFiles";
 import { VersionHistory } from "./components/VersionHistory";
 import { AuditLog } from "./components/AuditLog";
 
@@ -172,10 +173,13 @@ function App() {
           />
         )}
         {activeSection === "recent" && (
-          <div className="section-placeholder">
-            <h2>🕐 Recent Files</h2>
-            <p>Files you recently viewed or edited will appear here.</p>
-          </div>
+          <RecentFiles
+            onFileSelect={(fileKey) => {
+              setSelectedFileKey(fileKey);
+              setSelectedFileName(fileKey.split("/").pop() || fileKey);
+              setActiveSection("files");
+            }}
+          />
         )}
         {activeSection === "upload" && <StorageBrowserTab />}
         {activeSection === "process" && (
