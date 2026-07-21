@@ -5,6 +5,9 @@ import type { Schema } from "../../amplify/data/resource";
 const client = generateClient<Schema>();
 
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"];
+const PDF_EXTENSIONS = [".pdf"];
+const DOCX_EXTENSIONS = [".docx"];
+const PREVIEWABLE_EXTENSIONS = [...IMAGE_EXTENSIONS, ...PDF_EXTENSIONS, ...DOCX_EXTENSIONS];
 
 interface BoundingBox {
   width: number;
@@ -52,7 +55,9 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
   const [labelsLoading, setLabelsLoading] = useState(false);
 
   const extension = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
-  const isImage = IMAGE_EXTENSIONS.includes(extension);
+  const isPdf = PDF_EXTENSIONS.includes(extension);
+  const isDocx = DOCX_EXTENSIONS.includes(extension);
+  const isPreviewable = PREVIEWABLE_EXTENSIONS.includes(extension);
 
   const fetchPresignedUrl = useCallback(async () => {
     if (previewUrl) {
@@ -119,7 +124,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
     }
   }, [fileKey, labels.length]);
 
-  if (!isImage) {
+  if (!isPreviewable) {
     return (
       <span
         className="icon file-preview-trigger"
@@ -132,6 +137,99 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
         aria-label={`Download ${fileName}`}
       >
         {loading ? "⏳" : "📄"}
+      </span>
+    );
+  }
+
+  // PDF preview: use iframe with Presigned URL
+  if (isPdf) {
+    return (
+      <span className="icon file-preview-trigger" style={{ position: "relative" }}>
+        <span
+          onClick={() => {
+            onSelect?.(fileKey, fileName);
+            fetchPresignedUrl();
+          }}
+          role="button"
+          aria-label={`Preview PDF: ${fileName}`}
+          title="Click to preview PDF"
+          style={{ cursor: "pointer" }}
+        >
+          {loading ? "⏳" : "📕"}
+        </span>
+
+        {showPreview && previewUrl && (
+          <span
+            className="file-preview-popover file-preview-document"
+            role="dialog"
+            aria-label={`PDF preview: ${fileName}`}
+          >
+            <span className="preview-header">
+              <span className="preview-title">{fileName}</span>
+              <button
+                className="preview-close"
+                onClick={(e) => { e.stopPropagation(); setShowPreview(false); }}
+                aria-label="Close preview"
+              >✕</button>
+            </span>
+            <iframe
+              src={previewUrl}
+              title={`PDF preview: ${fileName}`}
+              className="preview-pdf-iframe"
+              style={{ width: "100%", height: "500px", border: "none" }}
+            />
+            <span className="preview-footer">
+              <button
+                className="preview-download-btn"
+                onClick={(e) => { e.stopPropagation(); window.open(previewUrl, "_blank"); }}
+              >Open in new tab</button>
+            </span>
+          </span>
+        )}
+      </span>
+    );
+  }
+
+  // DOCX preview: fetch and render with docx-preview
+  if (isDocx) {
+    return (
+      <span className="icon file-preview-trigger" style={{ position: "relative" }}>
+        <span
+          onClick={() => {
+            onSelect?.(fileKey, fileName);
+            fetchPresignedUrl();
+          }}
+          role="button"
+          aria-label={`Preview DOCX: ${fileName}`}
+          title="Click to preview document"
+          style={{ cursor: "pointer" }}
+        >
+          {loading ? "⏳" : "📝"}
+        </span>
+
+        {showPreview && previewUrl && (
+          <span
+            className="file-preview-popover file-preview-document"
+            role="dialog"
+            aria-label={`Document preview: ${fileName}`}
+          >
+            <span className="preview-header">
+              <span className="preview-title">{fileName}</span>
+              <button
+                className="preview-close"
+                onClick={(e) => { e.stopPropagation(); setShowPreview(false); }}
+                aria-label="Close preview"
+              >✕</button>
+            </span>
+            <DocxPreviewPane url={previewUrl} />
+            <span className="preview-footer">
+              <button
+                className="preview-download-btn"
+                onClick={(e) => { e.stopPropagation(); window.open(previewUrl, "_blank"); }}
+              >Download</button>
+            </span>
+          </span>
+        )}
       </span>
     );
   }
@@ -215,5 +313,54 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
         </span>
       )}
     </span>
+  );
+}
+
+
+/**
+ * DOCX Preview Pane — renders a .docx file in the browser using docx-preview.
+ * Fetches the file via Presigned URL and renders it into a container div.
+ */
+function DocxPreviewPane({ url }: { url: string }) {
+  const [rendering, setRendering] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
+
+  const containerCallback = useCallback(async (node: HTMLDivElement | null) => {
+    if (!node || rendering) return;
+    setRendering(true);
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+      const blob = await response.blob();
+
+      // Dynamic import to avoid bundling docx-preview when unused
+      const { renderAsync } = await import("docx-preview");
+      await renderAsync(blob, node, undefined, {
+        className: "docx-preview-content",
+        inWrapper: true,
+      });
+    } catch (err) {
+      setRenderError(err instanceof Error ? err.message : "Failed to render document");
+    }
+  }, [url, rendering]);
+
+  if (renderError) {
+    return (
+      <div className="preview-error" style={{ padding: "1rem" }}>
+        <p>Document preview unavailable: {renderError}</p>
+        <small>Try downloading the file instead.</small>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerCallback}
+      className="docx-preview-container"
+      style={{ maxHeight: "500px", overflow: "auto", background: "white", padding: "1rem" }}
+    >
+      {!rendering && <p className="loading">Loading document preview...</p>}
+    </div>
   );
 }
