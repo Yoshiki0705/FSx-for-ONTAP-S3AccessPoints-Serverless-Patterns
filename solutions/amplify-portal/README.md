@@ -86,34 +86,45 @@ sequenceDiagram
 
 ---
 
-## Portal Tabs (6) + New Features
+## Portal UI — Sidebar Layout (12 Sections)
 
-| Tab | Purpose | Key Components |
-|-----|---------|----------------|
-| **Files** | Browse, preview, AI Q&A, share links, QR access | FileExplorer + FilePreview + ShareLink + AiPanel + QR Code |
-| **Upload** | Drag-and-drop upload, file management | Storage Browser for S3 (zero custom code) |
-| **Process** | Trigger AI/ML workflows | JobSubmitForm → Step Functions |
-| **Results** | Real-time job status + output (WebSocket push) | ResultsViewer (subscription-based) + FlexCloneStatus |
-| **History** | Past job executions | JobHistory (DynamoDB, owner-scoped) |
-| **Analytics** | SQL queries on cataloged data | AthenaQueryPanel → Glue Data Catalog |
-| **Audit** | File access audit trail (compliance) | AuditLog (Athena → CloudTrail S3 data events) |
-| **Version History** | Snapshot-based file history | VersionHistory (ONTAP Snapshots) + SnapshotCompare |
-| **Search** | Full-text semantic search | SearchFiles (Bedrock Knowledge Base) |
+![Sidebar Layout](docs/screenshots/portal-sidebar-layout.png)
+*Left sidebar: grouped navigation. Center: active section content. Right: AI assistant (on file selection).*
 
-### Additional Features (P1/P2 — implemented 2026-07-20)
+| Group | Section | Purpose |
+|-------|---------|---------|
+| **Browse** | All Files | Browse, preview, AI Q&A, share links, QR access |
+| | Favorites | Pinned files (DynamoDB, per-user) |
+| | Recent | Recently accessed files |
+| | Upload | Drag-and-drop via Storage Browser for S3 |
+| **AI & Processing** | AI Processing | Trigger AI/ML workflows (Step Functions) |
+| | Job History | Past executions (DynamoDB, owner-scoped) |
+| | Analytics | Athena SQL on Glue Data Catalog |
+| **Data Protection** | Snapshots | ONTAP snapshot listing + FlexClone restore |
+| | Lock | SnapLock (WORM) + S3 Object Lock status |
+| | ARP/AI | Autonomous Ransomware Protection status |
+| **Admin** | Version Diff | Side-by-side file comparison between snapshots |
+| | Audit Trail | CloudTrail S3 data events (who/when/what) |
 
-| Feature | Description | Key Files |
-|---------|-------------|-----------|
-| **My Files (group routing)** | Cognito group → different S3 AP per team | `list-files.js`, `portal-config.ts` (`groupApMapping`) |
-| **CONFIDENTIAL guardrail** | Blocks AI processing for classified files | `shared/ai_guardrails.py`, askAboutFile Lambda |
-| **AI metadata badges** | Inline display of classification, labels, entities per file | `get-file-metadata.js`, GetFileMetadata Lambda |
-| **QR code access** | Presigned URL → QR PNG for OT/manufacturing tablets | `generate-qr-code.js`, GenerateQrCode Lambda |
-| **Real-time notifications** | FPolicy/SFTP file events → WebSocket push | `FileNotification` model, `notification-bridge/handler.py` |
-| **WebSocket job updates** | Replaces 5s polling with subscription push | `job-status-updater/handler.py` |
-| **Mobile responsive** | Tablet (768px) + phone (480px) breakpoints | `src/index.css` media queries |
-| **CloudWatch dashboard** | Portal usage metrics (CDK construct) | `monitoring/dashboard.ts` |
+![AI Processing](docs/screenshots/portal-ai-processing.png)
+*AI Processing: select pattern + input path → submit job to Step Functions*
 
-> **Detailed guide with screenshots**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
+![Data Protection — ARP/AI](docs/screenshots/portal-data-protection-arp.png)
+*ARP/AI: ransomware detection status, alert count, auto-snapshot inventory*
+
+### Additional Features
+
+| Feature | Description |
+|---------|-------------|
+| **My Files (group routing)** | Cognito group → different S3 AP per team |
+| **CONFIDENTIAL guardrail** | Blocks AI processing for classified files (CUI/CONFIDENTIAL) |
+| **AI metadata badges** | Inline classification labels, Rekognition tags, entity counts |
+| **QR code access** | Presigned URL → QR PNG for OT/manufacturing tablets |
+| **Presigned URL sharing** | TTL-configurable share links (5min–1hr) |
+| **cdk-nag compliance** | AwsSolutionsChecks enforced at synth time |
+| **Fallback UI** | Graceful info panel when ONTAP is not connected (no white screen) |
+
+> **Detailed section guide**: [docs/portal-tabs-guide.md](docs/portal-tabs-guide.md)
 
 ---
 
@@ -134,7 +145,7 @@ sequenceDiagram
 
 ## Quick Start (5 minutes)
 
-> **Timing**: First-time setup takes ~8 minutes total (npm install ~2min + sandbox deploy ~5min). Subsequent iterations are much faster (~30s for sandbox updates).
+> **Timing**: First-time setup takes ~15 minutes total (npm install ~2min + CDK bootstrap + sandbox deploy ~10-13min). Subsequent iterations are much faster (~30s for Lambda code changes, ~3min for infra changes).
 
 > **Multi-developer**: Each developer gets a separate sandbox (identified by OS username). Multiple team members can work on the same AWS account without conflicts. Use `npx ampx sandbox --identifier <name>` to customize.
 
