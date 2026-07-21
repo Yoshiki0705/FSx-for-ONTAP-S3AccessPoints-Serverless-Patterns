@@ -10,6 +10,11 @@
 >
 > 28 業界別 UC + 7 FlexCache/FlexClone + 2 GenAI + SAP + HA 監視 + Event-Driven + Edge 配信 + ファイルポータル UI
 
+| | |
+|---|---|
+| ![Amplify Gen2 ポータル](solutions/amplify-portal/docs/screenshots/portal-sidebar-layout.png) | ![Nextcloud External Storage](solutions/nextcloud-test/docs/screenshots/nextcloud-files-view.png) |
+| *Amplify Gen2: AI 処理 + Data Protection* | *Nextcloud: 既存 NAS ワークフロー統合* |
+
 ---
 
 ## はじめる
@@ -240,17 +245,53 @@ graph TB
 <details>
 <summary><strong>🔧 開発者向け（テスト・コントリビュート）</strong></summary>
 
+### セットアップ
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+```
+
 ### テスト
 
 ```bash
-pytest shared/tests/ -v                    # ユニットテスト
-ruff check . && ruff format --check .      # Python リンター
-cfn-lint solutions/industry/*/template.yaml # CloudFormation 検証
+# ユニットテスト + プロパティベーステスト (851 tests)
+pytest shared/tests/ -v
+
+# Amplify ポータル CDK ハーネス + コンポーネント (17 tests)
+cd solutions/amplify-portal && npx vitest run
+
+# S3 統合テスト (floci, 9 tests / 0.26s)
+docker run -d -p 4566:4566 floci/floci:latest
+pytest shared/tests/integration/ -v
+docker stop floci-test
+
+# Python リンター
+ruff check . && ruff format --check .
+
+# CloudFormation 検証
+cfn-lint solutions/industry/*/template.yaml
+
+# IAM ポリシー検証 (AWS 認証情報必要)
+python scripts/validate-iam-policies.py solutions/industry/*/template.yaml
 ```
+
+### CDK / IaC 品質ゲート (6 層防御)
+
+| 層 | ツール | 検査対象 |
+|:---:|------|---------|
+| 1 | cfn-lint | テンプレート構文 |
+| 2 | cdk-nag (AwsSolutionsChecks) | AWS コンプライアンス |
+| 3 | gitleaks + zizmor | シークレット + Actions セキュリティ |
+| 4 | IAM Access Analyzer | 過剰権限検知 |
+| 5 | CDK ハーネステスト | 構造リグレッション |
+| 6 | floci 統合テスト | S3 API 動作検証 |
+
+詳細: [IaC Governance Patterns](solutions/amplify-portal/docs/iac-governance-patterns.md)
 
 ### 技術スタック
 
-Python 3.12 | CloudFormation + SAM | Lambda (ARM64) | Step Functions | EventBridge | Bedrock / Textract / Comprehend / Rekognition | Secrets Manager | Athena + Glue
+Python 3.12 | CloudFormation + SAM | Lambda (ARM64) | Step Functions | EventBridge | Bedrock / Textract / Comprehend / Rekognition | Secrets Manager | Athena + Glue | Amplify Gen2 (React + AppSync + Cognito) | cdk-nag | floci
 
 ### コントリビュート
 
