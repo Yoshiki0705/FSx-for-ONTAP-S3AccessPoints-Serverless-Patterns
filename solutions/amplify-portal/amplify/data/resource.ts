@@ -23,6 +23,7 @@ const schema = a.schema({
     "UC10_MEDIA_PRODUCTION",
     "UC15_MANUFACTURING_QC",
     "OPS1_CAPACITY_RIGHTSIZING",
+    "FC7_FLEXCLONE_RESTORE",
   ]),
 
   // --- DynamoDB Model ---

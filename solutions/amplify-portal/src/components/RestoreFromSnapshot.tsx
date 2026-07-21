@@ -42,7 +42,7 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
 
     try {
       const response = await client.mutations.startProcessing({
-        pattern: "UC1_LEGAL_COMPLIANCE", // Placeholder — in production, use a dedicated FlexClone pattern
+        pattern: "FC7_FLEXCLONE_RESTORE",
         inputPrefix: currentPrefix,
         parameters: JSON.stringify({
           action: "RESTORE_FROM_SNAPSHOT",
