@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  IAM OIDC roles for GitHub Actions CI pipelines.
+  Creates roles that GitHub Actions can assume via OIDC federation
+  (no long-lived credentials stored in secrets).
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Default: Yoshiki0705
+    Description: GitHub organization or username
+
+  RepositoryName:
+    Type: String
+    Default: FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
+    Description: GitHub repository name
+
+Resources:
+  # --- GitHub OIDC Identity Provider ---
+  # Only create if not already exists in the account.
+  # If you already have a GitHub OIDC provider, comment this out.
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+      Tags:
+        - Key: Purpose
+          Value: GitHub Actions OIDC federation
+
+  # --- IAM Policy Validation Role ---
+  # Minimal permissions: only accessanalyzer:ValidatePolicy
+  # Used by: .github/workflows/iam-policy-validation.yml
+  IamValidationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-iam-validation"
+      Description: "Allows GitHub Actions to call IAM Access Analyzer ValidatePolicy API for automated IAM policy security checks in CI."
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "token.actions.githubusercontent.com:aud": sts.amazonaws.com
+              StringLike:
+                "token.actions.githubusercontent.com:sub": !Sub "repo:${GitHubOrg}/${RepositoryName}:*"
+      Policies:
+        - PolicyName: AccessAnalyzerValidatePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - access-analyzer:ValidatePolicy
+                Resource: "*"
+      Tags:
+        - Key: Project
+          Value: !Ref RepositoryName
+        - Key: Purpose
+          Value: CI IAM policy validation
+
+  # --- Amplify Deploy Role (for future PR preview environments) ---
+  # Broader permissions for sandbox deployment.
+  # Used by: .github/workflows/pr-preview.yml (when implemented)
+  AmplifyDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-amplify-deploy"
+      Description: "Allows GitHub Actions to deploy Amplify Gen2 sandboxes for PR preview environments. Broader permissions - only used for internal PRs (not forks)."
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "token.actions.githubusercontent.com:aud": sts.amazonaws.com
+              StringLike:
+                "token.actions.githubusercontent.com:sub": !Sub "repo:${GitHubOrg}/${RepositoryName}:*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess  # Required for CDK bootstrap + full stack deploy
+      # Note: In production, scope down to specific CloudFormation/Cognito/AppSync/Lambda permissions
+      Tags:
+        - Key: Project
+          Value: !Ref RepositoryName
+        - Key: Purpose
+          Value: CI Amplify sandbox deploy
+
+Outputs:
+  IamValidationRoleArn:
+    Description: >
+      ARN for the IAM Validation role.
+      Set as GitHub Secret: IAM_VALIDATION_ROLE_ARN
+    Value: !GetAtt IamValidationRole.Arn
+
+  AmplifyDeployRoleArn:
+    Description: >
+      ARN for the Amplify Deploy role.
+      Set as GitHub Secret: AMPLIFY_DEPLOY_ROLE_ARN
+    Value: !GetAtt AmplifyDeployRole.Arn
+
+  DeployCommand:
+    Description: Deploy this stack
+    Value: !Sub >
+      aws cloudformation deploy
+      --template-file infrastructure/ci-iam-roles.yaml
+      --stack-name ${AWS::StackName}
+      --capabilities CAPABILITY_NAMED_IAM
+      --parameter-overrides GitHubOrg=${GitHubOrg} RepositoryName=${RepositoryName}
+      --region us-east-1
