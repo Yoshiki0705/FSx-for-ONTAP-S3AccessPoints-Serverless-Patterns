@@ -14,18 +14,15 @@ interface ArpData {
 /**
  * ARP/AI Ransomware Protection Status component.
  *
- * Queries ONTAP REST API via VPC Lambda to display real-time
- * Autonomous Ransomware Protection status for the configured volume.
+ * UI inspired by NetApp System Manager:
+ * - Large status indicator (dot + label) at top
+ * - Threat assessment panel with severity color
+ * - Protection details cards
+ * - Action links to related sections (Snapshots for ARP-triggered recovery)
  *
  * Architecture:
  *   AppSync getArpStatus → VPC Lambda → ONTAP REST API
  *   GET /api/storage/volumes?fields=anti_ransomware
- *
- * ARP states:
- *   - disabled: ARP not enabled on this volume
- *   - dry_run: Learning mode (observing patterns, no blocking)
- *   - enabled: Active protection (detecting + auto-snapshot on threat)
- *   - paused: Temporarily paused by admin
  */
 export function ArpStatus() {
   const [arp, setArp] = useState<ArpData | null>(null);
@@ -62,56 +59,6 @@ export function ArpStatus() {
     loadArpStatus();
   }, []);
 
-  const getStateIcon = (state: string): string => {
-    switch (state) {
-      case "enabled": return "✅";
-      case "dry_run": return "🔄";
-      case "paused": return "⏸️";
-      case "disabled": return "⚠️";
-      default: return "❓";
-    }
-  };
-
-  const getStateLabel = (state: string): string => {
-    switch (state) {
-      case "enabled": return "Active — AI-driven protection enabled";
-      case "dry_run": return "Learning mode — observing file patterns";
-      case "paused": return "Paused — temporarily suspended by admin";
-      case "disabled": return "Disabled — not configured on this volume";
-      default: return state;
-    }
-  };
-
-  const getStateBadgeClass = (state: string): string => {
-    switch (state) {
-      case "enabled": return "status-ok";
-      case "dry_run": return "status-learning";
-      case "paused": return "status-warning";
-      case "disabled": return "status-disabled";
-      default: return "";
-    }
-  };
-
-  const getThreatIcon = (probability: string): string => {
-    switch (probability) {
-      case "none": return "🟢";
-      case "low": return "🟡";
-      case "moderate": return "🟠";
-      case "high": return "🔴";
-      default: return "⚪";
-    }
-  };
-
-  const getThreatLabel = (probability: string): string => {
-    switch (probability) {
-      case "none": return "No threats detected";
-      case "low": return "Low probability activity detected";
-      case "moderate": return "Moderate probability — review recommended";
-      case "high": return "HIGH — Potential ransomware attack in progress";
-      default: return "Unknown";
-    }
-  };
-
   if (loading) {
     return (
       <div className="protection-section">
@@ -134,16 +81,13 @@ export function ArpStatus() {
             the connection is configured.
           </p>
           <ul>
-            <li>The <strong>ListSnapshots Lambda</strong> must be deployed in a VPC subnet
-                that can reach the management LIF</li>
             <li>Environment variables required: <code>ONTAP_MGMT_IP</code>,
                 <code>ONTAP_SECRET_NAME</code>, <code>VOLUME_NAME</code>, <code>SVM_NAME</code></li>
-            <li>Security group must allow outbound TCP/443 to the management LIF IP</li>
+            <li>VPC Lambda must reach the management LIF (TCP/443)</li>
           </ul>
           <p className="integration-note">
             <strong>DemoMode note</strong>: File browsing, AI processing, and upload work without
-            ONTAP connectivity. Only Data Protection features (ARP, Snapshots, SnapLock) require
-            the VPC Lambda → ONTAP REST API path.
+            ONTAP connectivity. Only Data Protection features require the VPC Lambda → ONTAP REST API path.
           </p>
           <details>
             <summary>Error details</summary>
@@ -154,6 +98,60 @@ export function ArpStatus() {
       </div>
     );
   }
+
+  // --- Connected state: System Manager-inspired layout ---
+  const getStateDotClass = (state: string): string => {
+    switch (state) {
+      case "enabled": return "status-dot-active";
+      case "dry_run": return "status-dot-learning";
+      case "paused": return "status-dot-warning";
+      case "disabled": return "status-dot-disabled";
+      default: return "status-dot-disabled";
+    }
+  };
+
+  const getStateTitle = (state: string): string => {
+    switch (state) {
+      case "enabled": return "Active Protection";
+      case "dry_run": return "Learning Mode";
+      case "paused": return "Paused";
+      case "disabled": return "Disabled";
+      default: return state;
+    }
+  };
+
+  const getStateSubtitle = (state: string, dryRunStart: string): string => {
+    switch (state) {
+      case "enabled": return "AI-driven monitoring active — detecting anomalous file behavior in real time";
+      case "dry_run": {
+        const since = dryRunStart ? ` since ${new Date(dryRunStart).toLocaleDateString()}` : "";
+        return `Observing file access patterns${since}. No blocking — building behavioral baseline.`;
+      }
+      case "paused": return "Protection temporarily suspended by administrator";
+      case "disabled": return "ARP/AI is not enabled on this volume";
+      default: return "";
+    }
+  };
+
+  const getThreatColor = (probability: string): string => {
+    switch (probability) {
+      case "none": return "#22c55e";    // green
+      case "low": return "#eab308";     // yellow
+      case "moderate": return "#f97316"; // orange
+      case "high": return "#ef4444";    // red
+      default: return "#9ca3af";        // gray
+    }
+  };
+
+  const getThreatLabel = (probability: string): string => {
+    switch (probability) {
+      case "none": return "No Threats Detected";
+      case "low": return "Low — Unusual Activity Observed";
+      case "moderate": return "Moderate — Review Recommended";
+      case "high": return "HIGH — Potential Attack In Progress";
+      default: return "Unknown";
+    }
+  };
 
   return (
     <div className="protection-section">
@@ -169,61 +167,88 @@ export function ArpStatus() {
         </button>
       </div>
 
-      <p className="section-description">
-        ONTAP ARP/AI monitors file activity patterns using machine learning and detects
-        anomalous behavior indicative of ransomware attacks. When suspicious activity is
-        detected, an automatic Snapshot is created to preserve clean data.
-      </p>
-
       {arp && (
         <>
-          <div className="protection-cards">
-            <div className={`protection-card ${getStateBadgeClass(arp.state)}`}>
-              <div className="card-icon">{getStateIcon(arp.state)}</div>
-              <div className="card-content">
-                <h3>ARP State</h3>
-                <p>{getStateLabel(arp.state)}</p>
-                {arp.state === "dry_run" && arp.dryRunStartTime && (
-                  <small>Learning since: {new Date(arp.dryRunStartTime).toLocaleDateString()}</small>
-                )}
-              </div>
+          {/* Primary status indicator — large, System Manager style */}
+          <div className="status-indicator-large">
+            <div className={`status-dot ${getStateDotClass(arp.state)}`} />
+            <div className="status-label">
+              <span className="status-title">{getStateTitle(arp.state)}</span>
+              <span className="status-subtitle">
+                {getStateSubtitle(arp.state, arp.dryRunStartTime)}
+              </span>
             </div>
+          </div>
 
+          {/* Threat Assessment — color-coded banner */}
+          <div
+            className="threat-assessment"
+            style={{ borderLeftColor: getThreatColor(arp.attackProbability) }}
+          >
+            <div className="threat-header">
+              <span
+                className="threat-indicator"
+                style={{ backgroundColor: getThreatColor(arp.attackProbability) }}
+              />
+              <span className="threat-title">Threat Assessment</span>
+            </div>
+            <p className="threat-level">{getThreatLabel(arp.attackProbability)}</p>
+            {arp.attackProbability !== "none" && (
+              <p className="threat-action">
+                Check <strong>Snapshots</strong> section for ARP-triggered recovery points
+              </p>
+            )}
+          </div>
+
+          {/* Protection Details */}
+          <div className="protection-cards">
             <div className="protection-card">
-              <div className="card-icon">{getThreatIcon(arp.attackProbability)}</div>
+              <div className="card-icon">🧠</div>
               <div className="card-content">
-                <h3>Threat Level</h3>
-                <p>{getThreatLabel(arp.attackProbability)}</p>
-                {arp.attackProbability !== "none" && (
-                  <small>Check the Snapshots section for ARP-triggered recovery points</small>
-                )}
+                <h3>AI/ML Detection</h3>
+                <p>{arp.state === "enabled" ? "Active" : arp.state === "dry_run" ? "Learning" : "Inactive"}</p>
+                <small>Monitors file entropy, extension changes, access patterns</small>
               </div>
             </div>
 
             <div className="protection-card">
               <div className="card-icon">📸</div>
               <div className="card-content">
-                <h3>Auto-Snapshot on Threat</h3>
-                <p>{arp.state === "enabled" ? "Active" : "Requires ARP enabled state"}</p>
+                <h3>Auto-Snapshot</h3>
+                <p>{arp.state === "enabled" ? "Armed" : "Requires enabled state"}</p>
                 <small>
                   {arp.state === "enabled"
-                    ? "Immutable Snapshot created automatically when threats are detected"
-                    : "Enable ARP to activate automatic Snapshot protection"}
+                    ? "Immutable snapshot created on threat detection"
+                    : "Enable ARP to activate automatic snapshot protection"}
+                </small>
+              </div>
+            </div>
+
+            <div className="protection-card">
+              <div className="card-icon">🔐</div>
+              <div className="card-content">
+                <h3>Snapshot Tamperproof</h3>
+                <p>{arp.state === "enabled" ? "Auto-locked" : "—"}</p>
+                <small>
+                  {arp.state === "enabled"
+                    ? "ARP snapshots are locked — cannot be deleted even by admin"
+                    : "ARP snapshots are tamperproof when ARP is enabled"}
                 </small>
               </div>
             </div>
           </div>
 
-          <div className="protection-info">
-            <h3>How ARP/AI integrates with this portal</h3>
+          {/* How it works — expandable */}
+          <details className="arp-details">
+            <summary>How ARP/AI integrates with this portal</summary>
             <ul>
-              <li>ONTAP monitors file entropy, extension changes, and access patterns via AI/ML</li>
-              <li>If ransomware-like behavior is detected, ARP creates an immutable Snapshot</li>
-              <li>The <strong>Snapshots</strong> section shows all recovery points (including ARP-triggered ones)</li>
-              <li>FlexClone from an ARP Snapshot restores clean data without downtime</li>
-              <li><strong>Tamperproof</strong>: ARP Snapshots are locked — they cannot be deleted even by admin</li>
+              <li>ONTAP monitors file behavior using machine learning (entropy analysis, access pattern anomaly detection)</li>
+              <li>If ransomware-like activity is detected → automatic immutable Snapshot created</li>
+              <li>ARP Snapshots visible in <strong>Snapshots</strong> tab (filter: "🛡️ ARP")</li>
+              <li>FlexClone from ARP Snapshot → instant clean data restoration without downtime</li>
+              <li>Tamperproof: ARP Snapshots are locked and cannot be deleted until expiry</li>
             </ul>
-          </div>
+          </details>
         </>
       )}
     </div>

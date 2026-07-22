@@ -38,6 +38,7 @@ export function VersionHistory() {
   const [lockDays, setLockDays] = useState("30");
   const [lockLoading, setLockLoading] = useState(false);
   const [lockResult, setLockResult] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "tamperproof" | "scheduled" | "arp" | "manual">("all");
 
   const loadSnapshots = async () => {
     setLoading(true);
@@ -140,8 +141,34 @@ export function VersionHistory() {
     if (name.startsWith("hourly.")) return "Hourly";
     if (name.startsWith("weekly.")) return "Weekly";
     if (name.startsWith("snapmirror.")) return "SnapMirror";
+    if (name.startsWith("Anti_ransomware_backup")) return "ARP";
     return "Manual";
   };
+
+  const getFilteredSnapshots = (): Snapshot[] => {
+    switch (filter) {
+      case "tamperproof":
+        return snapshots.filter((s) => s.isLocked);
+      case "scheduled":
+        return snapshots.filter((s) => {
+          const type = getSnapshotType(s.name);
+          return type === "Daily" || type === "Hourly" || type === "Weekly";
+        });
+      case "arp":
+        return snapshots.filter((s) => getSnapshotType(s.name) === "ARP");
+      case "manual":
+        return snapshots.filter((s) => {
+          const type = getSnapshotType(s.name);
+          return type === "Manual";
+        });
+      default:
+        return snapshots;
+    }
+  };
+
+  const filteredSnapshots = getFilteredSnapshots();
+  const tamperproofCount = snapshots.filter((s) => s.isLocked).length;
+  const arpCount = snapshots.filter((s) => getSnapshotType(s.name) === "ARP").length;
 
   return (
     <div className="version-history">
@@ -194,7 +221,52 @@ export function VersionHistory() {
       )}
 
       {snapshots.length > 0 && (
-        <table className="snapshot-table" role="grid" aria-label="Volume snapshots">
+        <>
+          {/* Filter tabs — separate Tamperproof from regular */}
+          <div className="snapshot-filter-tabs" role="tablist" aria-label="Snapshot filter">
+            <button
+              role="tab"
+              aria-selected={filter === "all"}
+              className={`filter-tab ${filter === "all" ? "active" : ""}`}
+              onClick={() => setFilter("all")}
+            >
+              All ({snapshots.length})
+            </button>
+            <button
+              role="tab"
+              aria-selected={filter === "tamperproof"}
+              className={`filter-tab ${filter === "tamperproof" ? "active" : ""}`}
+              onClick={() => setFilter("tamperproof")}
+            >
+              🔐 Tamperproof ({tamperproofCount})
+            </button>
+            <button
+              role="tab"
+              aria-selected={filter === "scheduled"}
+              className={`filter-tab ${filter === "scheduled" ? "active" : ""}`}
+              onClick={() => setFilter("scheduled")}
+            >
+              📅 Scheduled
+            </button>
+            <button
+              role="tab"
+              aria-selected={filter === "arp"}
+              className={`filter-tab ${filter === "arp" ? "active" : ""}`}
+              onClick={() => setFilter("arp")}
+            >
+              🛡️ ARP ({arpCount})
+            </button>
+            <button
+              role="tab"
+              aria-selected={filter === "manual"}
+              className={`filter-tab ${filter === "manual" ? "active" : ""}`}
+              onClick={() => setFilter("manual")}
+            >
+              ✋ Manual
+            </button>
+          </div>
+
+          <table className="snapshot-table" role="grid" aria-label="Volume snapshots">
           <thead>
             <tr>
               <th scope="col">Snapshot Name</th>
@@ -206,8 +278,8 @@ export function VersionHistory() {
             </tr>
           </thead>
           <tbody>
-            {snapshots.map((snap) => (
-              <tr key={snap.snapshotId || snap.name}>
+            {filteredSnapshots.map((snap) => (
+              <tr key={snap.snapshotId || snap.name} className={snap.isLocked ? "row-locked" : ""}>
                 <td className="snapshot-name" title={snap.comment || undefined}>
                   {snap.name}
                 </td>
@@ -261,6 +333,7 @@ export function VersionHistory() {
             ))}
           </tbody>
         </table>
+        </>
       )}
 
       {lockResult && (
