@@ -152,10 +152,15 @@ aws cloudformation describe-stacks \
 | 症状 | 原因 | 対応 |
 |------|------|------|
 | Files タブ "No files" | s3ApAlias 未設定 | portal-config.ts に設定 → `make sandbox` |
+| **Files タブ "No files" (DemoMode)** | **s3ApResourceArns に S3 AP ARN のみ、バケット ARN がない** | **`arn:aws:s3:::your-bucket` + `arn:aws:s3:::your-bucket/*` を追加** |
 | Upload タブ AccessDenied | portal-settings.ts 未設定 | alias + accountId 設定 → リロード |
 | Process タブ赤バナー | SFn ARN がプレースホルダー | `make sfn-test-create` |
 | ログイン失敗 | ユーザー未作成 | Step 4 実行 |
 | sandbox 失敗 "Cannot find module" | portal-config.ts がない | `cp portal-config.example.ts portal-config.ts` |
+| **sandbox デプロイが 2 分以上** | **IAM ポリシーや環境変数の変更（hot-swap 非対象）** | **想定動作。Lambda コードのみの変更は ~7 秒** |
+| **cdk-nag でデプロイがブロック** | **SKIP_CDK_NAG 未設定** | **`SKIP_CDK_NAG=1 npx ampx sandbox --once` を使用** |
+
+> **DemoMode の IAM に関する注意**: S3 AP ARN (`arn:aws:s3:*:*:accesspoint/*`) と通常の S3 バケット ARN (`arn:aws:s3:::bucket-name`) は**異なるフォーマット**です。DemoMode で通常 S3 バケットを使う場合、`portal-config.ts` の `s3ApResourceArns` にバケット ARN とオブジェクトレベル ARN の両方を追加する必要があります。
 
 ---
 
