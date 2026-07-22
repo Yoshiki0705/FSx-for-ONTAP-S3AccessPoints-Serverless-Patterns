@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -29,6 +30,7 @@ export function ArpStatus() {
   const [volumeName, setVolumeName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const loadArpStatus = async () => {
     setLoading(true);
@@ -62,8 +64,8 @@ export function ArpStatus() {
   if (loading) {
     return (
       <div className="protection-section">
-        <h2>🛡️ Autonomous Ransomware Protection (ARP/AI)</h2>
-        <p className="loading">Loading ARP status...</p>
+        <h2>🛡️ {t("arpTitle")}</h2>
+        <p className="loading">{t("loading")}</p>
       </div>
     );
   }
@@ -72,25 +74,20 @@ export function ArpStatus() {
   if (error) {
     return (
       <div className="protection-section">
-        <h2>🛡️ Autonomous Ransomware Protection (ARP/AI)</h2>
+        <h2>🛡️ {t("arpTitle")}</h2>
         <div className="protection-info">
-          <h3>📡 ONTAP Connection Required</h3>
-          <p>
-            ARP/AI status is retrieved from the ONTAP management LIF via REST API.
-            This section will display real-time ransomware protection status once
-            the connection is configured.
-          </p>
+          <h3>📡 {t("arpOntapRequired")}</h3>
+          <p>{t("arpOntapRequiredDesc")}</p>
           <ul>
-            <li>Environment variables required: <code>ONTAP_MGMT_IP</code>,
+            <li>{t("envVarsRequired")}: <code>ONTAP_MGMT_IP</code>,
                 <code>ONTAP_SECRET_NAME</code>, <code>VOLUME_NAME</code>, <code>SVM_NAME</code></li>
-            <li>VPC Lambda must reach the management LIF (TCP/443)</li>
+            <li>{t("vpcLambdaReq")}</li>
           </ul>
           <p className="integration-note">
-            <strong>DemoMode note</strong>: File browsing, AI processing, and upload work without
-            ONTAP connectivity. Only Data Protection features require the VPC Lambda → ONTAP REST API path.
+            <strong>{t("demoModeNote")}</strong>: {t("arpDemoModeNote")}
           </p>
           <details>
-            <summary>Error details</summary>
+            <summary>{t("errorDetails")}</summary>
             <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem",
                          background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
           </details>
@@ -112,23 +109,23 @@ export function ArpStatus() {
 
   const getStateTitle = (state: string): string => {
     switch (state) {
-      case "enabled": return "Active Protection";
-      case "dry_run": return "Learning Mode";
-      case "paused": return "Paused";
-      case "disabled": return "Disabled";
+      case "enabled": return t("arpStateEnabled");
+      case "dry_run": return t("arpStateDryRun");
+      case "paused": return t("arpStatePaused");
+      case "disabled": return t("arpStateDisabled");
       default: return state;
     }
   };
 
   const getStateSubtitle = (state: string, dryRunStart: string): string => {
     switch (state) {
-      case "enabled": return "AI-driven monitoring active — detecting anomalous file behavior in real time";
+      case "enabled": return t("arpStateEnabled");
       case "dry_run": {
-        const since = dryRunStart ? ` since ${new Date(dryRunStart).toLocaleDateString()}` : "";
-        return `Observing file access patterns${since}. No blocking — building behavioral baseline.`;
+        const since = dryRunStart ? ` (${new Date(dryRunStart).toLocaleDateString()})` : "";
+        return t("arpStateDryRun") + since;
       }
-      case "paused": return "Protection temporarily suspended by administrator";
-      case "disabled": return "ARP/AI is not enabled on this volume";
+      case "paused": return t("arpStatePaused");
+      case "disabled": return t("arpStateDisabled");
       default: return "";
     }
   };
@@ -145,10 +142,10 @@ export function ArpStatus() {
 
   const getThreatLabel = (probability: string): string => {
     switch (probability) {
-      case "none": return "No Threats Detected";
-      case "low": return "Low — Unusual Activity Observed";
-      case "moderate": return "Moderate — Review Recommended";
-      case "high": return "HIGH — Potential Attack In Progress";
+      case "none": return t("arpThreatNone");
+      case "low": return t("arpThreatLow");
+      case "moderate": return t("arpThreatModerate");
+      case "high": return t("arpThreatHigh");
       default: return "Unknown";
     }
   };
@@ -156,13 +153,13 @@ export function ArpStatus() {
   return (
     <div className="protection-section">
       <div className="protection-header">
-        <h2>🛡️ Autonomous Ransomware Protection (ARP/AI)</h2>
+        <h2>🛡️ {t("arpTitle")}</h2>
         {volumeName && (
           <span className="volume-badge" title="Source volume">
-            Volume: {volumeName}
+            {t("volume")}: {volumeName}
           </span>
         )}
-        <button onClick={loadArpStatus} className="refresh-btn" title="Refresh ARP status">
+        <button onClick={loadArpStatus} className="refresh-btn" title={t("refresh")}>
           ↻
         </button>
       </div>
@@ -190,13 +187,11 @@ export function ArpStatus() {
                 className="threat-indicator"
                 style={{ backgroundColor: getThreatColor(arp.attackProbability) }}
               />
-              <span className="threat-title">Threat Assessment</span>
+              <span className="threat-title">{t("arpThreatAssessment")}</span>
             </div>
             <p className="threat-level">{getThreatLabel(arp.attackProbability)}</p>
             {arp.attackProbability !== "none" && (
-              <p className="threat-action">
-                Check <strong>Snapshots</strong> section for ARP-triggered recovery points
-              </p>
+              <p className="threat-action">{t("arpCheckSnapshots")}</p>
             )}
           </div>
 
@@ -205,21 +200,21 @@ export function ArpStatus() {
             <div className="protection-card">
               <div className="card-icon">🧠</div>
               <div className="card-content">
-                <h3>AI/ML Detection</h3>
-                <p>{arp.state === "enabled" ? "Active" : arp.state === "dry_run" ? "Learning" : "Inactive"}</p>
-                <small>Monitors file entropy, extension changes, access patterns</small>
+                <h3>{t("arpAiMlDetection")}</h3>
+                <p>{arp.state === "enabled" ? t("arpActive") : arp.state === "dry_run" ? t("arpLearning") : t("arpInactive")}</p>
+                <small>{t("arpMonitorsEntropy")}</small>
               </div>
             </div>
 
             <div className="protection-card">
               <div className="card-icon">📸</div>
               <div className="card-content">
-                <h3>Auto-Snapshot</h3>
-                <p>{arp.state === "enabled" ? "Armed" : "Requires enabled state"}</p>
+                <h3>{t("arpAutoSnapshot")}</h3>
+                <p>{arp.state === "enabled" ? t("arpArmed") : t("arpRequiresEnabled")}</p>
                 <small>
                   {arp.state === "enabled"
-                    ? "Immutable snapshot created on threat detection"
-                    : "Enable ARP to activate automatic snapshot protection"}
+                    ? t("arpLockedNote")
+                    : t("arpEnableToActivate")}
                 </small>
               </div>
             </div>
@@ -227,12 +222,12 @@ export function ArpStatus() {
             <div className="protection-card">
               <div className="card-icon">🔐</div>
               <div className="card-content">
-                <h3>Snapshot Tamperproof</h3>
-                <p>{arp.state === "enabled" ? "Auto-locked" : "—"}</p>
+                <h3>{t("arpSnapshotTamperproof")}</h3>
+                <p>{arp.state === "enabled" ? t("arpAutoLocked") : "—"}</p>
                 <small>
                   {arp.state === "enabled"
-                    ? "ARP snapshots are locked — cannot be deleted even by admin"
-                    : "ARP snapshots are tamperproof when ARP is enabled"}
+                    ? t("arpLockedNote")
+                    : t("arpTamperproofWhenEnabled")}
                 </small>
               </div>
             </div>
@@ -240,7 +235,7 @@ export function ArpStatus() {
 
           {/* How it works — expandable */}
           <details className="arp-details">
-            <summary>How ARP/AI integrates with this portal</summary>
+            <summary>{t("arpHowItWorks")}</summary>
             <ul>
               <li>ONTAP monitors file behavior using machine learning (entropy analysis, access pattern anomaly detection)</li>
               <li>If ransomware-like activity is detected → automatic immutable Snapshot created</li>
