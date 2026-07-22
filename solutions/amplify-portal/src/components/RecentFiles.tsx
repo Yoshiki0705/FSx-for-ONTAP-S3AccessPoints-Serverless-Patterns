@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -33,6 +34,7 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
   const [recentFiles, setRecentFiles] = useState<RecentFileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const loadRecent = useCallback(async () => {
     setLoading(true);
@@ -73,12 +75,12 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
 
   const getActionLabel = (action: string | null): string => {
     switch (action) {
-      case "view": return "Viewed";
-      case "download": return "Downloaded";
-      case "ai_query": return "AI Query";
-      case "preview": return "Previewed";
-      case "share": return "Shared";
-      default: return "Accessed";
+      case "view": return t("recentActionViewed");
+      case "download": return t("recentActionDownloaded");
+      case "ai_query": return t("recentActionAiQuery");
+      case "preview": return t("recentActionPreviewed");
+      case "share": return t("recentActionShared");
+      default: return t("recentActionAccessed");
     }
   };
 
@@ -116,8 +118,8 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
   if (loading) {
     return (
       <div className="recent-files">
-        <h2>🕐 Recent Files</h2>
-        <p className="loading">Loading recent files...</p>
+        <h2>{t("recentTitle")}</h2>
+        <p className="loading">{t("recentLoading")}</p>
       </div>
     );
   }
@@ -125,8 +127,8 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
   return (
     <div className="recent-files">
       <div className="recent-header">
-        <h2>🕐 Recent Files</h2>
-        <button onClick={loadRecent} className="refresh-btn" title="Refresh">
+        <h2>{t("recentTitle")}</h2>
+        <button onClick={loadRecent} className="refresh-btn" title={t("refresh")}>
           ↻
         </button>
       </div>
@@ -139,11 +141,8 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
 
       {recentFiles.length === 0 && !error && (
         <div className="empty-state">
-          <p>No recent file activity yet.</p>
-          <small>
-            Files you view, download, or query with AI will appear here.
-            Navigate to <strong>All Files</strong> to get started.
-          </small>
+          <p>{t("recentEmpty")}</p>
+          <small>{t("recentEmptyHint")}</small>
         </div>
       )}
 

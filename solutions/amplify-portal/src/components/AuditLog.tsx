@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -41,6 +42,7 @@ export function AuditLog() {
   const [eventType, setEventType] = useState("ALL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const { t } = useTranslation();
 
   const runQuery = async () => {
     setLoading(true);
@@ -96,40 +98,37 @@ export function AuditLog() {
 
   return (
     <div className="audit-log">
-      <h2>Audit Trail</h2>
-      <p className="audit-description">
-        File access events from CloudTrail S3 data events.
-        Shows who accessed which file, when, and what action was performed.
-      </p>
+      <h2>{t("auditTitle")}</h2>
+      <p className="audit-description">{t("auditDescription")}</p>
 
       <div className="audit-filters">
         <div className="filter-row">
           <div className="filter-group">
-            <label htmlFor="audit-file-filter">File path contains</label>
+            <label htmlFor="audit-file-filter">{t("auditFilterFileLabel")}</label>
             <input
               id="audit-file-filter"
               type="text"
               value={fileFilter}
               onChange={(e) => setFileFilter(e.target.value)}
-              placeholder="e.g., contracts/ or report.pdf"
+              placeholder={t("auditFilterFilePlaceholder")}
             />
           </div>
           <div className="filter-group">
-            <label htmlFor="audit-event-type">Event type</label>
+            <label htmlFor="audit-event-type">{t("auditFilterEventTypeLabel")}</label>
             <select
               id="audit-event-type"
               value={eventType}
               onChange={(e) => setEventType(e.target.value)}
             >
-              <option value="ALL">All</option>
-              <option value="READ">Read (Get/List)</option>
-              <option value="WRITE">Write (Put/Delete)</option>
+              <option value="ALL">{t("auditFilterEventTypeAll")}</option>
+              <option value="READ">{t("auditFilterEventTypeRead")}</option>
+              <option value="WRITE">{t("auditFilterEventTypeWrite")}</option>
             </select>
           </div>
         </div>
         <div className="filter-row">
           <div className="filter-group">
-            <label htmlFor="audit-start-date">From</label>
+            <label htmlFor="audit-start-date">{t("auditFilterFromLabel")}</label>
             <input
               id="audit-start-date"
               type="date"
@@ -138,7 +137,7 @@ export function AuditLog() {
             />
           </div>
           <div className="filter-group">
-            <label htmlFor="audit-end-date">To</label>
+            <label htmlFor="audit-end-date">{t("auditFilterToLabel")}</label>
             <input
               id="audit-end-date"
               type="date"
@@ -151,25 +150,22 @@ export function AuditLog() {
             disabled={loading}
             className="audit-query-btn"
           >
-            {loading ? "Querying..." : "Search"}
+            {loading ? t("auditSearchingBtn") : t("auditSearchBtn")}
           </button>
         </div>
       </div>
 
       {error && (
         <div className="protection-info" style={{ marginTop: "1rem" }}>
-          <h3>⚠️ Audit Query Configuration Required</h3>
-          <p>
-            The Audit Trail queries CloudTrail S3 data events via Athena. If you see this message,
-            the Athena query infrastructure is not yet configured.
-          </p>
+          <h3>{t("auditConfigRequired")}</h3>
+          <p>{t("auditConfigRequiredDesc")}</p>
           <ul>
-            <li>Enable CloudTrail S3 data events for your S3 AP ARN</li>
-            <li>Create an Athena table over CloudTrail logs (Glue Crawler or manual DDL)</li>
-            <li>Set <code>ATHENA_AUDIT_DATABASE</code>, <code>ATHENA_AUDIT_TABLE</code>, <code>ATHENA_AUDIT_OUTPUT</code> on the Lambda</li>
+            <li>{t("auditConfigStep1")}</li>
+            <li>{t("auditConfigStep2")}</li>
+            <li>{t("auditConfigStep3")}</li>
           </ul>
           <details>
-            <summary>Error details</summary>
+            <summary>{t("errorDetails")}</summary>
             <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem", background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
           </details>
         </div>
@@ -177,15 +173,15 @@ export function AuditLog() {
 
       {events.length > 0 && (
         <div className="audit-results">
-          <table className="audit-table" role="grid" aria-label="File access audit trail">
+          <table className="audit-table" role="grid" aria-label={t("auditTitle")}>
             <thead>
               <tr>
-                <th scope="col">Time</th>
-                <th scope="col">Action</th>
-                <th scope="col">User</th>
-                <th scope="col">File</th>
-                <th scope="col">Source IP</th>
-                <th scope="col">Status</th>
+                <th scope="col">{t("auditColTime")}</th>
+                <th scope="col">{t("auditColAction")}</th>
+                <th scope="col">{t("auditColUser")}</th>
+                <th scope="col">{t("auditColFile")}</th>
+                <th scope="col">{t("auditColSourceIp")}</th>
+                <th scope="col">{t("auditColStatus")}</th>
               </tr>
             </thead>
             <tbody>
@@ -218,16 +214,13 @@ export function AuditLog() {
             </tbody>
           </table>
           <div className="audit-count">
-            {events.length} event{events.length !== 1 ? "s" : ""} found
+            {events.length} {t("auditEventsFound")}
           </div>
         </div>
       )}
 
       {!loading && events.length === 0 && !error && (
-        <p className="empty-state">
-          Click "Search" to query the audit trail. Configure date range
-          and file path filters to narrow results.
-        </p>
+        <p className="empty-state">{t("auditEmptyState")}</p>
       )}
     </div>
   );
