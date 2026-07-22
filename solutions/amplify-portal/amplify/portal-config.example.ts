@@ -100,10 +100,18 @@ export const config: PortalConfig = {
    * IAM scope for S3 AP access.
    * Sandbox: all access points in all regions
    * Production: restrict to specific AP ARN
+   *
+   * DemoMode (regular S3 bucket): S3 AP ARNs won't work for regular buckets.
+   * Add bucket ARNs explicitly:
+   *   "arn:aws:s3:::your-bucket-name",
+   *   "arn:aws:s3:::your-bucket-name/*",
    */
   s3ApResourceArns: [
     "arn:aws:s3:*:*:accesspoint/*",
     "arn:aws:s3:*:*:accesspoint/*/object/*",
+    // DemoMode: uncomment and set your bucket name
+    // "arn:aws:s3:::your-demo-bucket",
+    // "arn:aws:s3:::your-demo-bucket/*",
   ],
 
   /**

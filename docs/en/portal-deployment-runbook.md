@@ -231,12 +231,17 @@ aws cloudformation describe-stacks \
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Files tab: "No files" | `s3ApAlias` empty in portal-config.ts | Set alias, re-run `make sandbox` |
+| **Files tab: "No files" (DemoMode)** | **`s3ApResourceArns` only has S3 AP ARNs, not bucket ARNs** | **Add `arn:aws:s3:::your-bucket` + `arn:aws:s3:::your-bucket/*` to `s3ApResourceArns`** |
 | Upload tab: "AccessDenied" | `portal-settings.ts` missing alias/accountId | Set both values, reload browser |
 | Upload tab: "ListCallerAccessGrants" | Old code using `createManagedAuthAdapter` | Update StorageBrowserTab.tsx to direct auth mode |
 | Process tab: red banner | Step Functions ARN is placeholder | `make sfn-test-create` or deploy UC pattern |
 | Login fails | User not created or password not set | Run Step 4 commands |
 | `make sandbox` fails: "Cannot find module ./portal-config" | portal-config.ts not created | `cp portal-config.example.ts portal-config.ts` |
 | AppSync resolver: "Data source not found" | Data source in wrong CDK stack | All data sources must be in same stack as API |
+| **sandbox deploy takes 2+ minutes** | **IAM policy / env var changed (not hot-swappable)** | **Expected behavior. Lambda code-only changes deploy in ~7s** |
+| **cdk-nag blocks sandbox deploy** | **SKIP_CDK_NAG not set** | **Use `SKIP_CDK_NAG=1 npx ampx sandbox --once` for dev** |
+
+> **DemoMode IAM lesson**: S3 AP ARNs (`arn:aws:s3:*:*:accesspoint/*`) and regular S3 bucket ARNs (`arn:aws:s3:::bucket-name`) have **different formats**. When using DemoMode with a regular S3 bucket, you must add both the bucket ARN and the object-level ARN to `s3ApResourceArns` in `portal-config.ts`.
 
 ---
 

@@ -205,6 +205,10 @@ Shows files you recently viewed, downloaded, or queried with AI. Sorted by most 
 
 Preview PDF and DOCX files directly in the browser without downloading.
 
+![PDF preview icon](../screenshots/portal-demo/25-pdf-preview-icon.png)
+
+> The 📕 icon appears next to `.pdf` files. Click to open an inline preview using the browser's built-in PDF viewer (iframe + Presigned URL). DOCX files show a 📝 icon and render client-side via the docx-preview library.
+
 | File type | Preview method | Icon |
 |-----------|---------------|:---:|
 | PDF | Browser built-in viewer (iframe + Presigned URL) | 📕 |
