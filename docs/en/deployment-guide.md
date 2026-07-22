@@ -725,7 +725,7 @@ make install
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 # Edit portal-config.ts: set region and s3ApAlias (from your S3 AP)
 # Edit src/portal-settings.ts: set region, accountId, s3ApAlias (for Upload tab)
-make sandbox       # ~5 min first time, ~30s subsequent
+make sandbox       # ~10-15 min first time, ~7s code-only, ~3min infra changes
 make dev           # Start local dev server → http://localhost:5173
 ```
 
