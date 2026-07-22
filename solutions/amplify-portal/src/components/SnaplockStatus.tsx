@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -38,6 +39,7 @@ export function SnaplockStatus() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<"snaplock" | "s3lock" | "tamperproof">("snaplock");
+  const { t } = useTranslation();
 
   const loadStatus = async () => {
     setLoading(true);
@@ -77,8 +79,8 @@ export function SnaplockStatus() {
   if (loading) {
     return (
       <div className="protection-section">
-        <h2>🔒 Lock — Content Immutability</h2>
-        <p className="loading">Loading lock status...</p>
+        <h2>🔒 {t("lockTitle")}</h2>
+        <p className="loading">{t("loading")}</p>
       </div>
     );
   }
@@ -87,22 +89,17 @@ export function SnaplockStatus() {
   if (error) {
     return (
       <div className="protection-section">
-        <h2>🔒 Lock — Content Immutability</h2>
+        <h2>🔒 {t("lockTitle")}</h2>
         <div className="protection-info">
-          <h3>📡 ONTAP Connection Required</h3>
-          <p>
-            SnapLock and Tamperproof Snapshot status is retrieved from the ONTAP
-            management LIF via REST API. This section will display real-time
-            immutability configuration once the connection is configured.
-          </p>
+          <h3>📡 {t("lockOntapRequired")}</h3>
+          <p>{t("lockOntapRequiredDesc")}</p>
           <ul>
-            <li>Environment variables required: <code>ONTAP_MGMT_IP</code>,
+            <li>{t("envVarsRequired")}: <code>ONTAP_MGMT_IP</code>,
                 <code>ONTAP_SECRET_NAME</code>, <code>VOLUME_NAME</code>, <code>SVM_NAME</code></li>
-            <li>VPC Lambda must reach the management LIF (TCP/443)</li>
+            <li>{t("vpcLambdaReq")}</li>
           </ul>
           <p className="integration-note">
-            <strong>DemoMode note</strong>: File browsing, AI processing, and upload work without
-            ONTAP connectivity. Only Data Protection features require the VPC Lambda → ONTAP REST API path.
+            <strong>{t("demoModeNote")}</strong>: {t("arpDemoModeNote")}
           </p>
           <details>
             <summary>Error details</summary>
@@ -117,18 +114,18 @@ export function SnaplockStatus() {
   return (
     <div className="protection-section">
       <div className="protection-header">
-        <h2>🔒 Lock — Content Immutability</h2>
+        <h2>🔒 {t("lockTitle")}</h2>
         {volumeName && (
           <span className="volume-badge" title="Source volume">
-            Volume: {volumeName}
+            {t("volume")}: {volumeName}
           </span>
         )}
-        <button onClick={loadStatus} className="refresh-btn" title="Refresh lock status">
+        <button onClick={loadStatus} className="refresh-btn" title={t("refresh")}>
           ↻
         </button>
       </div>
 
-      {/* Panel selector tabs — inspired by System Manager tabbed panels */}
+      {/* Panel selector tabs */}
       <div className="lock-panel-tabs" role="tablist" aria-label="Lock type selection">
         <button
           role="tab"
@@ -136,7 +133,7 @@ export function SnaplockStatus() {
           className={`panel-tab ${activePanel === "snaplock" ? "active" : ""}`}
           onClick={() => setActivePanel("snaplock")}
         >
-          🔒 ONTAP SnapLock
+          🔒 {t("lockTabSnaplock")}
         </button>
         <button
           role="tab"
@@ -144,7 +141,7 @@ export function SnaplockStatus() {
           className={`panel-tab ${activePanel === "s3lock" ? "active" : ""}`}
           onClick={() => setActivePanel("s3lock")}
         >
-          🪣 S3 Object Lock
+          🪣 {t("lockTabS3ObjectLock")}
         </button>
         <button
           role="tab"
@@ -152,7 +149,7 @@ export function SnaplockStatus() {
           className={`panel-tab ${activePanel === "tamperproof" ? "active" : ""}`}
           onClick={() => setActivePanel("tamperproof")}
         >
-          🔐 Tamperproof Snapshot
+          🔐 {t("lockTabTamperproof")}
         </button>
       </div>
 

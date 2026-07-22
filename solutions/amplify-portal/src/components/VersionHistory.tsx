@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -39,6 +40,7 @@ export function VersionHistory() {
   const [lockLoading, setLockLoading] = useState(false);
   const [lockResult, setLockResult] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "tamperproof" | "scheduled" | "arp" | "manual">("all");
+  const { t } = useTranslation();
 
   const loadSnapshots = async () => {
     setLoading(true);
@@ -173,7 +175,7 @@ export function VersionHistory() {
   return (
     <div className="version-history">
       <div className="version-history-header">
-        <h3>Version History (Snapshots)</h3>
+        <h3>{t("snapshotsTitle")}</h3>
         {volumeName && (
           <span className="volume-badge" title="Source volume">
             Volume: {volumeName}
@@ -217,7 +219,7 @@ export function VersionHistory() {
       )}
 
       {!error && snapshots.length === 0 && !loading && (
-        <p className="empty-state">No snapshots found for this volume.</p>
+        <p className="empty-state">{t("snapshotsEmpty")}</p>
       )}
 
       {snapshots.length > 0 && (
@@ -230,7 +232,7 @@ export function VersionHistory() {
               className={`filter-tab ${filter === "all" ? "active" : ""}`}
               onClick={() => setFilter("all")}
             >
-              All ({snapshots.length})
+              {t("snapshotsFilterAll")} ({snapshots.length})
             </button>
             <button
               role="tab"
@@ -238,7 +240,7 @@ export function VersionHistory() {
               className={`filter-tab ${filter === "tamperproof" ? "active" : ""}`}
               onClick={() => setFilter("tamperproof")}
             >
-              🔐 Tamperproof ({tamperproofCount})
+              {t("snapshotsFilterTamperproof")} ({tamperproofCount})
             </button>
             <button
               role="tab"
@@ -246,7 +248,7 @@ export function VersionHistory() {
               className={`filter-tab ${filter === "scheduled" ? "active" : ""}`}
               onClick={() => setFilter("scheduled")}
             >
-              📅 Scheduled
+              {t("snapshotsFilterScheduled")}
             </button>
             <button
               role="tab"
@@ -254,7 +256,7 @@ export function VersionHistory() {
               className={`filter-tab ${filter === "arp" ? "active" : ""}`}
               onClick={() => setFilter("arp")}
             >
-              🛡️ ARP ({arpCount})
+              {t("snapshotsFilterArp")} ({arpCount})
             </button>
             <button
               role="tab"
@@ -262,19 +264,19 @@ export function VersionHistory() {
               className={`filter-tab ${filter === "manual" ? "active" : ""}`}
               onClick={() => setFilter("manual")}
             >
-              ✋ Manual
+              {t("snapshotsFilterManual")}
             </button>
           </div>
 
           <table className="snapshot-table" role="grid" aria-label="Volume snapshots">
           <thead>
             <tr>
-              <th scope="col">Snapshot Name</th>
-              <th scope="col">Type</th>
-              <th scope="col">Created</th>
-              <th scope="col">Lock</th>
-              <th scope="col">State</th>
-              <th scope="col">Actions</th>
+              <th scope="col">{t("snapshotsColName")}</th>
+              <th scope="col">{t("snapshotsColType")}</th>
+              <th scope="col">{t("snapshotsColCreated")}</th>
+              <th scope="col">{t("snapshotsColLock")}</th>
+              <th scope="col">{t("snapshotsColState")}</th>
+              <th scope="col">{t("snapshotsColActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -308,7 +310,7 @@ export function VersionHistory() {
                 <td className="action-cell">
                   <button
                     className="action-btn"
-                    title="Create FlexClone from this snapshot to browse past files"
+                    title={t("snapshotsBrowseBtn")}
                     onClick={() => {
                       window.dispatchEvent(
                         new CustomEvent("restore-snapshot", {
@@ -317,15 +319,15 @@ export function VersionHistory() {
                       );
                     }}
                   >
-                    Browse
+                    {t("snapshotsBrowseBtn")}
                   </button>
                   {!snap.isLocked && snap.snapshotId && (
                     <button
                       className="action-btn lock-btn"
-                      title="Lock this snapshot (Tamperproof — prevents deletion until expiry)"
+                      title={t("snapshotsLockBtn")}
                       onClick={() => handleLockSnapshot(snap.snapshotId!)}
                     >
-                      🔒 Lock
+                      {t("snapshotsLockBtn")}
                     </button>
                   )}
                 </td>
@@ -345,13 +347,10 @@ export function VersionHistory() {
       {lockDialog && (
         <div className="lock-dialog" role="dialog" aria-labelledby="lock-dialog-title">
           <div className="dialog-content">
-            <h3 id="lock-dialog-title">🔐 Lock Snapshot (Tamperproof)</h3>
-            <p className="dialog-description">
-              Once locked, this Snapshot <strong>cannot be deleted</strong> — even by cluster
-              administrators — until the retention period expires. This is irreversible.
-            </p>
+            <h3 id="lock-dialog-title">{t("snapshotsLockDialogTitle")}</h3>
+            <p className="dialog-description">{t("snapshotsLockDialogDesc")}</p>
             <div className="dialog-field">
-              <label htmlFor="lock-days">Retention period (days):</label>
+              <label htmlFor="lock-days">{t("snapshotsLockDaysLabel")}</label>
               <input
                 id="lock-days"
                 type="number"
@@ -361,7 +360,7 @@ export function VersionHistory() {
                 onChange={(e) => setLockDays(e.target.value)}
                 disabled={lockLoading}
               />
-              <small>1–365 days. Cannot be shortened after locking.</small>
+              <small>{t("snapshotsLockDaysHint")}</small>
             </div>
             <div className="dialog-actions">
               <button
@@ -369,14 +368,14 @@ export function VersionHistory() {
                 onClick={submitLock}
                 disabled={lockLoading}
               >
-                {lockLoading ? "Locking..." : "🔐 Lock Snapshot"}
+                {lockLoading ? t("snapshotsLocking") : t("snapshotsLockConfirmBtn")}
               </button>
               <button
                 className="action-btn cancel-btn"
                 onClick={() => setLockDialog(null)}
                 disabled={lockLoading}
               >
-                Cancel
+                {t("cancel")}
               </button>
             </div>
           </div>
