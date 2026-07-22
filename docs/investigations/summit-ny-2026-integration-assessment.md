@@ -56,7 +56,7 @@
 
 ### 不採用（理由明確化）
 
-- **Bedrock Managed Knowledge Base** → S3 Vectors のコスト優位性 + Permission-Aware RAG の制御性を優先。
+- **Bedrock Managed Knowledge Base** → S3 Vectors のコスト特性 + Permission-Aware RAG の制御性を優先。
 
 ### 将来採用候補（追跡）
 

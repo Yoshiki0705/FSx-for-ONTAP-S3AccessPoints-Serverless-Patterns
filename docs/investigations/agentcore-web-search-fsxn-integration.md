@@ -508,7 +508,7 @@ Web Search Tool の利用規約:
 | Tavily API | $20 (1,000 credits) | API キー管理 |
 | SerpAPI | $50 (5,000 searches) | API キー管理 |
 
-AgentCore Web Search の優位性: 外部 API キー不要、AWS 内完結、データ漏洩リスクなし。
+AgentCore Web Search の特徴: 外部 API キー不要、AWS 内完結、データ漏洩リスクなし。
 
 ---
 
