@@ -10,6 +10,9 @@ interface Snapshot {
   snapshotId: string | null;
   state: string | null;
   comment: string | null;
+  expiryTime: string | null;
+  snaplockExpiryTime: string | null;
+  isLocked: boolean;
 }
 
 /**
@@ -31,6 +34,10 @@ export function VersionHistory() {
   const [volumeName, setVolumeName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lockDialog, setLockDialog] = useState<{ snapshotId: string } | null>(null);
+  const [lockDays, setLockDays] = useState("30");
+  const [lockLoading, setLockLoading] = useState(false);
+  const [lockResult, setLockResult] = useState<string | null>(null);
 
   const loadSnapshots = async () => {
     setLoading(true);
@@ -77,6 +84,54 @@ export function VersionHistory() {
       return new Date(isoString).toLocaleString();
     } catch {
       return isoString;
+    }
+  };
+
+  const handleLockSnapshot = (snapshotId: string) => {
+    setLockDialog({ snapshotId });
+    setLockResult(null);
+  };
+
+  const submitLock = async () => {
+    if (!lockDialog) return;
+    setLockLoading(true);
+    setLockResult(null);
+
+    const days = parseInt(lockDays, 10);
+    if (isNaN(days) || days < 1 || days > 365) {
+      setLockResult("Error: Enter a value between 1 and 365 days");
+      setLockLoading(false);
+      return;
+    }
+
+    // Calculate expiry_time as ISO 8601
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + days);
+    const expiryTime = expiry.toISOString();
+
+    try {
+      const response = await client.mutations.lockSnapshot({
+        snapshotId: lockDialog.snapshotId,
+        expiryTime,
+      });
+
+      if (response.data) {
+        const data = response.data as { success?: boolean; error?: string; expiryTime?: string };
+        if (data.success) {
+          setLockResult(`Snapshot locked until ${expiryTime}`);
+          setLockDialog(null);
+          // Refresh to show updated lock status
+          loadSnapshots();
+        } else {
+          setLockResult(`Error: ${data.error || "Lock failed"}`);
+        }
+      } else if (response.errors) {
+        setLockResult(`Error: ${response.errors.map((e) => e.message).join(", ")}`);
+      }
+    } catch (err) {
+      setLockResult(`Error: ${err instanceof Error ? err.message : "Lock failed"}`);
+    } finally {
+      setLockLoading(false);
     }
   };
 
@@ -145,6 +200,7 @@ export function VersionHistory() {
               <th scope="col">Snapshot Name</th>
               <th scope="col">Type</th>
               <th scope="col">Created</th>
+              <th scope="col">Lock</th>
               <th scope="col">State</th>
               <th scope="col">Actions</th>
             </tr>
@@ -162,17 +218,26 @@ export function VersionHistory() {
                 </td>
                 <td>{formatDate(snap.createTime)}</td>
                 <td>
+                  {snap.isLocked ? (
+                    <span className="lock-badge locked" title={`Locked until: ${snap.expiryTime || snap.snaplockExpiryTime || "unknown"}`}>
+                      🔐 {snap.expiryTime ? formatDate(snap.expiryTime) : "Locked"}
+                    </span>
+                  ) : (
+                    <span className="lock-badge unlocked" title="Not locked — can be deleted">
+                      🔓
+                    </span>
+                  )}
+                </td>
+                <td>
                   <span className={`state-badge state-${snap.state}`}>
                     {snap.state || "valid"}
                   </span>
                 </td>
-                <td>
+                <td className="action-cell">
                   <button
                     className="action-btn"
                     title="Create FlexClone from this snapshot to browse past files"
                     onClick={() => {
-                      // This triggers the existing RestoreFromSnapshot flow
-                      // with the snapshot name pre-filled
                       window.dispatchEvent(
                         new CustomEvent("restore-snapshot", {
                           detail: { snapshotName: snap.name },
@@ -180,13 +245,69 @@ export function VersionHistory() {
                       );
                     }}
                   >
-                    Browse this version
+                    Browse
                   </button>
+                  {!snap.isLocked && snap.snapshotId && (
+                    <button
+                      className="action-btn lock-btn"
+                      title="Lock this snapshot (Tamperproof — prevents deletion until expiry)"
+                      onClick={() => handleLockSnapshot(snap.snapshotId!)}
+                    >
+                      🔒 Lock
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+
+      {lockResult && (
+        <div className={lockResult.startsWith("Error") ? "error-message" : "success-message"}>
+          {lockResult}
+        </div>
+      )}
+
+      {lockDialog && (
+        <div className="lock-dialog" role="dialog" aria-labelledby="lock-dialog-title">
+          <div className="dialog-content">
+            <h3 id="lock-dialog-title">🔐 Lock Snapshot (Tamperproof)</h3>
+            <p className="dialog-description">
+              Once locked, this Snapshot <strong>cannot be deleted</strong> — even by cluster
+              administrators — until the retention period expires. This is irreversible.
+            </p>
+            <div className="dialog-field">
+              <label htmlFor="lock-days">Retention period (days):</label>
+              <input
+                id="lock-days"
+                type="number"
+                min="1"
+                max="365"
+                value={lockDays}
+                onChange={(e) => setLockDays(e.target.value)}
+                disabled={lockLoading}
+              />
+              <small>1–365 days. Cannot be shortened after locking.</small>
+            </div>
+            <div className="dialog-actions">
+              <button
+                className="action-btn lock-confirm-btn"
+                onClick={submitLock}
+                disabled={lockLoading}
+              >
+                {lockLoading ? "Locking..." : "🔐 Lock Snapshot"}
+              </button>
+              <button
+                className="action-btn cancel-btn"
+                onClick={() => setLockDialog(null)}
+                disabled={lockLoading}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="version-history-footer">
