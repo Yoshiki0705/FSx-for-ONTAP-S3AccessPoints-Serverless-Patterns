@@ -284,6 +284,52 @@ storage-admin ユーザーの場合、未ロック Snapshot の隣に **🔒 Loc
 
 ---
 
+### 12. 言語切り替え — 8 ヶ国語対応
+
+ポータルは 8 言語に対応しており、右上のドロップダウンから即座に切り替えられます。
+
+#### 対応言語
+
+| コード | 表示名 | 自動検知 |
+|--------|---------|:--------:|
+| ja | 日本語 | ✅ `ja-*` |
+| en | English | ✅ `en-*` |
+| ko | 한국어 | ✅ `ko-*` |
+| zh-CN | 简体中文 | ✅ `zh-CN`, `zh` |
+| zh-TW | 繁體中文 | ✅ `zh-TW`, `zh-Hant` |
+| fr | Français | ✅ `fr-*` |
+| de | Deutsch | ✅ `de-*` |
+| es | Español | ✅ `es-*` |
+
+#### 動作の仕組み
+
+1. **初回アクセス**: ブラウザの言語設定（`navigator.language`）から最も近い言語を自動選択
+2. **手動切り替え**: トップバーの言語ドロップダウンをクリックして任意の言語を選択
+3. **永続化**: 選択は `localStorage` に保存され、次回訪問時にも同じ言語が適用
+4. **即時反映**: ページリロード不要 — 全ラベルが瞬時に更新
+
+#### スクリーンショット
+
+**日本語（ブラウザ言語から自動検知）**:
+
+![日本語 UI](../screenshots/portal-demo/portal-i18n-ja.png)
+
+**English**:
+
+![英語 UI](../screenshots/portal-demo/portal-i18n-en.png)
+
+**한국어（韓国語）**:
+
+![韓国語 UI](../screenshots/portal-demo/portal-i18n-ko.png)
+
+**简体中文（簡体字中国語）**:
+
+![中国語簡体字 UI](../screenshots/portal-demo/portal-i18n-zh-cn.png)
+
+> サイドバーのナビゲーションラベル、グループヘッダー、トップバーのタイトル、サインアウトボタンがすべて翻訳されます。技術用語（ONTAP, SnapLock, FlexClone, ARP/AI, S3 AP）は製品名・技術名のため全言語で英語のままです。
+
+---
+
 ## 環境削除
 
 デモ終了後は以下の順序で削除します:
