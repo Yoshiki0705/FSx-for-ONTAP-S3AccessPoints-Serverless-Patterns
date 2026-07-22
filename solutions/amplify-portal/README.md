@@ -373,7 +373,7 @@ However, the ARN is **environment-specific** — always update it when switching
 | Cognito user creation (CLI) | 2s | — |
 | `make dev` → browser | 2s | 2s |
 
-**Total first-time setup**: ~8 minutes from `git clone` to working portal.
+**Total first-time setup**: ~15 minutes from `git clone` to working portal (CDK bootstrap + initial deploy). Subsequent changes: ~7 seconds for code-only, ~3 minutes for infra changes.
 
 ### Production Deployment
 
