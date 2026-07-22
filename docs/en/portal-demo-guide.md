@@ -193,6 +193,39 @@ Query CloudTrail S3 data events via Athena to display file access history.
 
 > Shows "who accessed which file, when" for compliance officers. Filter by date range, file path, and operation type.
 
+#### Recent Files (Recent section)
+
+Shows files you recently viewed, downloaded, or queried with AI. Sorted by most recent first.
+
+![Recent Files](../screenshots/portal-demo/23-recent-files.png)
+
+> Similar to Google Drive "Recent" or Box "Recents". Each entry shows the action type (view/download/AI query), relative time (2m ago, 3h ago), and clicking navigates back to the file in All Files. Data is per-user (DynamoDB, owner-scoped).
+
+#### Office File Preview (All Files section)
+
+Preview PDF and DOCX files directly in the browser without downloading.
+
+| File type | Preview method | Icon |
+|-----------|---------------|:---:|
+| PDF | Browser built-in viewer (iframe + Presigned URL) | 📕 |
+| DOCX | Client-side rendering via docx-preview library | 📝 |
+| Images | Presigned URL popover (existing) | 🖼️ |
+| Other | Download link | 📄 |
+
+> Click the 📕 or 📝 icon next to a file to open the inline preview. PDF renders natively; DOCX layout accuracy is approximately 70-80%. For XLSX/PPTX, download and open locally (Phase 2 will add server-side conversion).
+
+#### FlexClone Restore (FC7 pattern)
+
+Restore files from a specific snapshot using FlexClone — zero-copy, instant access to past data.
+
+1. In **All Files**, click **📸 Restore from Snapshot**
+2. Enter the snapshot name (e.g., `daily.2026-07-21_0010`)
+3. Click **Create FlexClone**
+4. The system creates a FlexClone volume + attaches an S3 AP → accessible in seconds
+5. Check the result in **Job History**
+
+> Uses the `FC7_FLEXCLONE_RESTORE` processing pattern. The FlexClone is space-efficient (only changed blocks consume storage) and can be deleted when no longer needed.
+
 ---
 
 ## Cleanup
