@@ -33,7 +33,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.0.0",
     "aws-cdk-lib": "^2.150.0",
-    "cdk-nag": "^3.0.1",
+    "cdk-nag": "^2.38.2",
     "constructs": "^10.0.0",
     "eslint": "^9.0.0",
     "jsdom": "^24.0.0",
