@@ -216,6 +216,16 @@ Day 3: Results (with classification labels) written back to the same volume
 ![Amplify Gen2 Portal — AI Processing](../solutions/amplify-portal/docs/screenshots/portal-ai-processing.png)
 *AI Processing section: Pattern selection + input path for job submission*
 
+#### Multi-Language Support (8 Languages)
+
+The portal supports runtime language switching across 8 languages (日本語 / English / 한국어 / 简体中文 / 繁體中文 / Français / Deutsch / Español).
+
+![English UI](../solutions/amplify-portal/docs/screenshots/portal-en-allfiles.png)
+*English UI: Sidebar navigation + File Explorer*
+
+![Japanese UI — Snapshots](../solutions/amplify-portal/docs/screenshots/portal-ja-snapshots.png)
+*Japanese UI: Snapshot list (column headers, filters, and buttons fully translated)*
+
 ### Architecture Detail
 
 ```

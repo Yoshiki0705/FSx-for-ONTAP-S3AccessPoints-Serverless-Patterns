@@ -136,5 +136,95 @@ export const en: Record<TranslationKeys, string> = {
   errorDetails: "Error details",
   volume: "Volume",
 
+  // --- ARP details (expandable) ---
+  arpDetail1: "ONTAP monitors file behavior using machine learning (entropy analysis, access pattern anomaly detection)",
+  arpDetail2: "If ransomware-like activity is detected → automatic immutable Snapshot created",
+  arpDetail3: "ARP Snapshots visible in Snapshots tab (filter: \"🛡️ ARP\")",
+  arpDetail4: "FlexClone from ARP Snapshot → instant clean data restoration without downtime",
+  arpDetail5: "Tamperproof: ARP Snapshots are locked and cannot be deleted until expiry",
+
+  // --- Snapshots: ONTAP required panel ---
+  snapshotsOntapRequiredTitle: "📸 ONTAP Connection Required",
+  snapshotsOntapRequiredDetail1: "The ListSnapshots Lambda must be deployed in a VPC subnet that can reach the management LIF",
+  snapshotsOntapRequiredDetail2: "Security group must allow outbound TCP/443 to the management LIF IP",
+  snapshotsVolumeLabel: "Volume",
+  snapshotsRefreshTitle: "Refresh snapshot list",
+  snapshotsRefreshBtn: "Refresh",
+  snapshotsLoadingBtn: "Loading...",
+  snapshotsFooterNote: "Each snapshot is a point-in-time view of the volume. \"Browse\" creates a FlexClone with its own S3 Access Point for isolated access.",
+
+  // --- Audit Log ---
+  auditTitle: "Audit Trail",
+  auditDescription: "File access events from CloudTrail S3 data events. Shows who accessed which file, when, and what action was performed.",
+  auditFilterFileLabel: "File path contains",
+  auditFilterFilePlaceholder: "e.g., contracts/ or report.pdf",
+  auditFilterEventTypeLabel: "Event type",
+  auditFilterEventTypeAll: "All",
+  auditFilterEventTypeRead: "Read (Get/List)",
+  auditFilterEventTypeWrite: "Write (Put/Delete)",
+  auditFilterFromLabel: "From",
+  auditFilterToLabel: "To",
+  auditSearchBtn: "Search",
+  auditSearchingBtn: "Querying...",
+  auditColTime: "Time",
+  auditColAction: "Action",
+  auditColUser: "User",
+  auditColFile: "File",
+  auditColSourceIp: "Source IP",
+  auditColStatus: "Status",
+  auditEventsFound: "event(s) found",
+  auditEmptyState: "Click \"Search\" to query the audit trail. Configure date range and file path filters to narrow results.",
+  auditConfigRequired: "⚠️ Audit Query Configuration Required",
+  auditConfigRequiredDesc: "The Audit Trail queries CloudTrail S3 data events via Athena. If you see this message, the Athena query infrastructure is not yet configured.",
+  auditConfigStep1: "Enable CloudTrail S3 data events for your S3 AP ARN",
+  auditConfigStep2: "Create an Athena table over CloudTrail logs (Glue Crawler or manual DDL)",
+  auditConfigStep3: "Set ATHENA_AUDIT_DATABASE, ATHENA_AUDIT_TABLE, ATHENA_AUDIT_OUTPUT on the Lambda",
+
+  // --- File Explorer ---
+  filesTitle: "Files",
+  filesProcessFolder: "Process this folder",
+  filesEmpty: "No files in this directory",
+  filesLoadMore: "Load more files",
+
+  // --- Recent Files ---
+  recentTitle: "🕐 Recent Files",
+  recentLoading: "Loading recent files...",
+  recentEmpty: "No recent file activity yet.",
+  recentEmptyHint: "Files you view, download, or query with AI will appear here. Navigate to All Files to get started.",
+  recentActionViewed: "Viewed",
+  recentActionDownloaded: "Downloaded",
+  recentActionAiQuery: "AI Query",
+  recentActionPreviewed: "Previewed",
+  recentActionShared: "Shared",
+  recentActionAccessed: "Accessed",
+
+  // --- Favorites ---
+  favoritesTitle: "⭐ Favorites",
+  favoritesEmpty: "No favorites yet. Click ☆ on any file to pin it here.",
+  favoritesLoading: "Loading favorites...",
+  favoritesRemove: "Remove from favorites",
+  favoritesAdd: "Add to favorites",
+
+  // --- AI Panel ---
+  aiTitle: "AI Assistant",
+  aiEmptyState: "Select a file to ask questions about its content.",
+  aiEmptyHint: "Click any file in the Files tab, then ask questions here.",
+  aiAskHint: "Ask a question about",
+  aiYou: "You",
+  aiAssistant: "AI",
+  aiThinking: "Thinking...",
+  aiPlaceholder: "Ask about",
+  aiAskBtn: "Ask",
+  aiAskBtnLoading: "...",
+  aiSendLabel: "Send question",
+  aiInputLabel: "Ask a question about the file",
+
+  // --- Lock panel: S3 Object Lock output title ---
+  lockS3OutputTitle: "Output Bucket Protection",
+  lockS3OutputDesc: "S3 Object Lock is configured on output buckets separately from ONTAP. This panel shows the recommended configuration.",
+  lockS3GovernanceRecommended: "Recommended for AI output",
+  lockS3ComplianceFor: "For regulatory archives",
+  lockS3LegalHoldIndefinite: "Indefinite retention",
+
   languageLabel: "Language",
 };

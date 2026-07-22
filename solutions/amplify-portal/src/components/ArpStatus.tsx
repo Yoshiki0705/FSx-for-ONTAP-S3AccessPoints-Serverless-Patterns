@@ -237,11 +237,11 @@ export function ArpStatus() {
           <details className="arp-details">
             <summary>{t("arpHowItWorks")}</summary>
             <ul>
-              <li>ONTAP monitors file behavior using machine learning (entropy analysis, access pattern anomaly detection)</li>
-              <li>If ransomware-like activity is detected → automatic immutable Snapshot created</li>
-              <li>ARP Snapshots visible in <strong>Snapshots</strong> tab (filter: "🛡️ ARP")</li>
-              <li>FlexClone from ARP Snapshot → instant clean data restoration without downtime</li>
-              <li>Tamperproof: ARP Snapshots are locked and cannot be deleted until expiry</li>
+              <li>{t("arpDetail1")}</li>
+              <li>{t("arpDetail2")}</li>
+              <li>{t("arpDetail3")}</li>
+              <li>{t("arpDetail4")}</li>
+              <li>{t("arpDetail5")}</li>
             </ul>
           </details>
         </>
