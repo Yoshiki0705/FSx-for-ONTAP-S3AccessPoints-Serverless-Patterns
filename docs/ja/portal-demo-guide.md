@@ -310,6 +310,10 @@ storage-admin ユーザーの場合、未ロック Snapshot の隣に **🔒 Loc
 
 #### スクリーンショット
 
+**言語ドロップダウン展開時（ピル型、8 言語）**:
+
+![言語ドロップダウン展開](../screenshots/portal-demo/portal-i18n-dropdown-open.png)
+
 **日本語（ブラウザ言語から自動検知）**:
 
 ![日本語 UI](../screenshots/portal-demo/portal-i18n-ja.png)
