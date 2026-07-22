@@ -102,7 +102,7 @@ export function SnaplockStatus() {
             <strong>{t("demoModeNote")}</strong>: {t("arpDemoModeNote")}
           </p>
           <details>
-            <summary>Error details</summary>
+            <summary>{t("errorDetails")}</summary>
             <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem",
                          background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
           </details>
@@ -157,11 +157,7 @@ export function SnaplockStatus() {
       {activePanel === "snaplock" && snaplock && (
         <div className="lock-panel" role="tabpanel" aria-label="ONTAP SnapLock">
           <div className="panel-description">
-            <p>
-              Volume-level WORM (Write Once Read Many) protection. Files committed to a
-              SnapLock volume become immutable — they cannot be modified or deleted via any
-              protocol (NFS/SMB/S3 AP) until the retention period expires.
-            </p>
+            <p>{t("lockSnaplockDesc")}</p>
           </div>
 
           {/* Status badge — System Manager style */}
@@ -169,14 +165,14 @@ export function SnaplockStatus() {
             <div className={`status-dot status-dot-${snaplock.type === "non_snaplock" ? "disabled" : "active"}`} />
             <div className="status-label">
               <span className="status-title">
-                {snaplock.type === "compliance" && "Compliance Mode"}
-                {snaplock.type === "enterprise" && "Enterprise Mode"}
-                {snaplock.type === "non_snaplock" && "Not Configured"}
+                {snaplock.type === "compliance" && t("lockSnaplockCompliance")}
+                {snaplock.type === "enterprise" && t("lockSnaplockEnterprise")}
+                {snaplock.type === "non_snaplock" && t("lockSnaplockNotConfigured")}
               </span>
               <span className="status-subtitle">
-                {snaplock.type === "compliance" && "Files cannot be deleted by anyone until retention expires — no override possible"}
-                {snaplock.type === "enterprise" && "WORM protection with privileged delete available for authorized administrators"}
-                {snaplock.type === "non_snaplock" && "This volume does not have SnapLock enabled. Files can be modified or deleted normally."}
+                {snaplock.type === "compliance" && t("lockSnaplockComplianceDesc")}
+                {snaplock.type === "enterprise" && t("lockSnaplockEnterpriseDesc")}
+                {snaplock.type === "non_snaplock" && t("lockSnaplockNotConfiguredDesc")}
               </span>
             </div>
           </div>
@@ -186,7 +182,7 @@ export function SnaplockStatus() {
               <div className="protection-card">
                 <div className="card-icon">📅</div>
                 <div className="card-content">
-                  <h3>Retention Policy</h3>
+                  <h3>{t("lockRetentionPolicy")}</h3>
                   <p>Default: {snaplock.retentionPeriod?.defaultPeriod || "—"}</p>
                   <small>
                     Min: {snaplock.retentionPeriod?.minimumPeriod || "—"} /
@@ -199,9 +195,9 @@ export function SnaplockStatus() {
                 <div className="protection-card">
                   <div className="card-icon">⏱️</div>
                   <div className="card-content">
-                    <h3>Autocommit</h3>
+                    <h3>{t("lockAutocommit")}</h3>
                     <p>{snaplock.autocommitPeriod}</p>
-                    <small>Files auto-committed to WORM after this period of inactivity</small>
+                    <small>{t("lockAutocommitDesc")}</small>
                   </div>
                 </div>
               )}
@@ -210,9 +206,9 @@ export function SnaplockStatus() {
                 <div className="protection-card">
                   <div className="card-icon">🕐</div>
                   <div className="card-content">
-                    <h3>Compliance Clock</h3>
+                    <h3>{t("lockComplianceClock")}</h3>
                     <p>{new Date(snaplock.complianceClockTime).toLocaleString()}</p>
-                    <small>Tamperproof clock — cannot be reset or adjusted</small>
+                    <small>{t("lockComplianceClockDesc")}</small>
                   </div>
                 </div>
               )}
@@ -220,8 +216,7 @@ export function SnaplockStatus() {
           )}
 
           <div className="panel-footer-note">
-            <strong>Scope</strong>: Applies to all files on this volume accessed via NFS, SMB, or S3 AP.
-            Regulatory coverage: SEC 17a-4, FISC, HIPAA, NARA records retention.
+            {t("lockScope")}
           </div>
         </div>
       )}
@@ -230,20 +225,14 @@ export function SnaplockStatus() {
       {activePanel === "s3lock" && (
         <div className="lock-panel" role="tabpanel" aria-label="S3 Object Lock">
           <div className="panel-description">
-            <p>
-              Bucket-level WORM for S3 output buckets. Protects AI processing results,
-              compliance reports, and archived exports stored in standard S3 (outside FSx for ONTAP).
-            </p>
+            <p>{t("lockS3ObjectLockDesc")}</p>
           </div>
 
           <div className="status-indicator-large">
             <div className="status-dot status-dot-info" />
             <div className="status-label">
-              <span className="status-title">Output Bucket Protection</span>
-              <span className="status-subtitle">
-                S3 Object Lock is configured on output buckets separately from ONTAP.
-                This panel shows the recommended configuration.
-              </span>
+              <span className="status-title">{t("lockS3OutputTitle")}</span>
+              <span className="status-subtitle">{t("lockS3OutputDesc")}</span>
             </div>
           </div>
 
@@ -251,44 +240,33 @@ export function SnaplockStatus() {
             <div className="protection-card">
               <div className="card-icon">🪣</div>
               <div className="card-content">
-                <h3>Governance Mode</h3>
-                <p>Recommended for AI output</p>
-                <small>
-                  Objects locked for a retention period. Authorized users can override
-                  with <code>s3:BypassGovernanceRetention</code> permission.
-                </small>
+                <h3>{t("lockS3Governance")}</h3>
+                <p>{t("lockS3GovernanceRecommended")}</p>
+                <small>{t("lockS3GovernanceDesc")}</small>
               </div>
             </div>
 
             <div className="protection-card">
               <div className="card-icon">🔒</div>
               <div className="card-content">
-                <h3>Compliance Mode</h3>
-                <p>For regulatory archives</p>
-                <small>
-                  Objects cannot be deleted or overwritten by anyone — including root —
-                  until the retention period expires. Use for SEC 17a-4, HIPAA.
-                </small>
+                <h3>{t("lockS3Compliance")}</h3>
+                <p>{t("lockS3ComplianceFor")}</p>
+                <small>{t("lockS3ComplianceDesc")}</small>
               </div>
             </div>
 
             <div className="protection-card">
               <div className="card-icon">⚖️</div>
               <div className="card-content">
-                <h3>Legal Hold</h3>
-                <p>Indefinite retention</p>
-                <small>
-                  Prevents deletion regardless of retention period. Use during litigation
-                  or investigation holds.
-                </small>
+                <h3>{t("lockS3LegalHold")}</h3>
+                <p>{t("lockS3LegalHoldIndefinite")}</p>
+                <small>{t("lockS3LegalHoldDesc")}</small>
               </div>
             </div>
           </div>
 
           <div className="panel-footer-note">
-            <strong>Scope</strong>: Applies to standard S3 buckets used for AI processing output
-            (Athena results, Textract exports, classification reports). Does not apply to
-            FSx for ONTAP S3 AP — use ONTAP SnapLock for source data protection.
+            {t("lockS3Scope")}
           </div>
         </div>
       )}
@@ -297,24 +275,19 @@ export function SnaplockStatus() {
       {activePanel === "tamperproof" && (
         <div className="lock-panel" role="tabpanel" aria-label="Tamperproof Snapshot">
           <div className="panel-description">
-            <p>
-              Snapshot-level locking. When enabled, individual Snapshots can be locked with
-              an expiry time — they cannot be deleted even by cluster administrators until
-              the retention period expires. Protects recovery points against insider threats
-              and ransomware that targets backup deletion.
-            </p>
+            <p>{t("lockTamperproofDesc")}</p>
           </div>
 
           <div className="status-indicator-large">
             <div className={`status-dot status-dot-${snapshotLockingEnabled ? "active" : "disabled"}`} />
             <div className="status-label">
               <span className="status-title">
-                {snapshotLockingEnabled ? "Enabled" : "Not Enabled"}
+                {snapshotLockingEnabled ? t("lockTamperproofEnabled") : t("lockTamperproofNotEnabled")}
               </span>
               <span className="status-subtitle">
                 {snapshotLockingEnabled
-                  ? "Snapshots can be locked with expiry time via the Snapshots section (🔒 Lock button)"
-                  : "Enable with: volume modify -volume <vol> -snapshot-locking-enabled true"}
+                  ? t("lockTamperproofEnabledDesc")
+                  : t("lockTamperproofEnableCmd")}
               </span>
             </div>
           </div>
@@ -324,42 +297,31 @@ export function SnaplockStatus() {
               <div className="protection-card">
                 <div className="card-icon">🔐</div>
                 <div className="card-content">
-                  <h3>How to Lock</h3>
-                  <p>Snapshots section → 🔒 Lock button</p>
-                  <small>Select retention (1-365 days). Once locked, cannot be shortened.</small>
+                  <h3>{t("lockTamperproofHowTo")}</h3>
+                  <p>{t("lockTamperproofHowToDesc")}</p>
                 </div>
               </div>
 
               <div className="protection-card">
                 <div className="card-icon">🛡️</div>
                 <div className="card-content">
-                  <h3>Protection Scope</h3>
-                  <p>Admin-proof</p>
-                  <small>
-                    Locked snapshots survive even privileged-delete attempts.
-                    Neither fsxadmin nor ONTAP CLI can remove them before expiry.
-                  </small>
+                  <h3>{t("lockTamperproofProtection")}</h3>
+                  <p>{t("lockTamperproofProtectionDesc")}</p>
                 </div>
               </div>
 
               <div className="protection-card">
                 <div className="card-icon">🤖</div>
                 <div className="card-content">
-                  <h3>ARP Integration</h3>
-                  <p>Auto-locked on detection</p>
-                  <small>
-                    ARP-triggered snapshots are automatically locked when ransomware
-                    activity is detected (prevents attacker from deleting recovery points).
-                  </small>
+                  <h3>{t("lockTamperproofArpIntegration")}</h3>
+                  <p>{t("lockTamperproofArpIntegrationDesc")}</p>
                 </div>
               </div>
             </div>
           )}
 
           <div className="panel-footer-note">
-            <strong>Note</strong>: On FSx for ONTAP, SnapLock is included at no additional cost.
-            Tamperproof Snapshot uses the same SnapLock compliance clock infrastructure
-            to enforce retention on individual snapshots.
+            {t("lockTamperproofFsxNote")}
           </div>
         </div>
       )}

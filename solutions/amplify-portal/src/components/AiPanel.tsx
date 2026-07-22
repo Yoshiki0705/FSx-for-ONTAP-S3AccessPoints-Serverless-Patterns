@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -33,6 +34,7 @@ export function AiPanel({ selectedFileKey, selectedFileName }: AiPanelProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const askQuestion = useCallback(async () => {
     if (!input.trim() || !selectedFileKey) return;
@@ -91,13 +93,11 @@ export function AiPanel({ selectedFileKey, selectedFileName }: AiPanelProps) {
     return (
       <div className="ai-panel">
         <div className="ai-panel-header">
-          <h3>AI Assistant</h3>
+          <h3>{t("aiTitle")}</h3>
         </div>
         <div className="ai-panel-empty">
-          <p>Select a file to ask questions about its content.</p>
-          <p className="ai-panel-hint">
-            Click any file in the Files tab, then ask questions here.
-          </p>
+          <p>{t("aiEmptyState")}</p>
+          <p className="ai-panel-hint">{t("aiEmptyHint")}</p>
         </div>
       </div>
     );
@@ -106,30 +106,30 @@ export function AiPanel({ selectedFileKey, selectedFileName }: AiPanelProps) {
   return (
     <div className="ai-panel">
       <div className="ai-panel-header">
-        <h3>AI Assistant</h3>
+        <h3>{t("aiTitle")}</h3>
         <span className="ai-panel-file" title={selectedFileKey}>
           {selectedFileName}
         </span>
       </div>
 
-      <div className="ai-panel-messages" role="log" aria-label="AI conversation">
+      <div className="ai-panel-messages" role="log" aria-label={t("aiTitle")}>
         {messages.length === 0 && (
           <div className="ai-panel-hint">
-            Ask a question about <strong>{selectedFileName}</strong>
+            {t("aiAskHint")} <strong>{selectedFileName}</strong>
           </div>
         )}
         {messages.map((msg, idx) => (
           <div key={idx} className={`ai-message ai-message-${msg.role}`}>
             <span className="ai-message-role">
-              {msg.role === "user" ? "You" : "AI"}
+              {msg.role === "user" ? t("aiYou") : t("aiAssistant")}
             </span>
             <span className="ai-message-content">{msg.content}</span>
           </div>
         ))}
         {loading && (
           <div className="ai-message ai-message-assistant">
-            <span className="ai-message-role">AI</span>
-            <span className="ai-message-content ai-loading">Thinking...</span>
+            <span className="ai-message-role">{t("aiAssistant")}</span>
+            <span className="ai-message-content ai-loading">{t("aiThinking")}</span>
           </div>
         )}
       </div>
@@ -141,17 +141,17 @@ export function AiPanel({ selectedFileKey, selectedFileName }: AiPanelProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={`Ask about ${selectedFileName}...`}
+          placeholder={`${t("aiPlaceholder")} ${selectedFileName}...`}
           disabled={loading}
           rows={2}
-          aria-label="Ask a question about the file"
+          aria-label={t("aiInputLabel")}
         />
         <button
           onClick={askQuestion}
           disabled={loading || !input.trim()}
-          aria-label="Send question"
+          aria-label={t("aiSendLabel")}
         >
-          {loading ? "..." : "Ask"}
+          {loading ? t("aiAskBtnLoading") : t("aiAskBtn")}
         </button>
       </div>
     </div>

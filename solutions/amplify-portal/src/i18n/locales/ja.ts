@@ -142,6 +142,96 @@ export const ja = {
   errorDetails: "エラー詳細",
   volume: "ボリューム",
 
+  // --- ARP details (expandable) ---
+  arpDetail1: "ONTAP は機械学習を使用してファイルの動作を監視します（エントロピー分析、アクセスパターン異常検知）",
+  arpDetail2: "ランサムウェアのような活動が検知されると → 自動的に不変スナップショットが作成されます",
+  arpDetail3: "ARP スナップショットは「スナップショット」タブに表示されます（フィルター: 「🛡️ ARP」）",
+  arpDetail4: "ARP スナップショットからの FlexClone → ダウンタイムなしで即座にクリーンデータを復元",
+  arpDetail5: "改ざん防止: ARP スナップショットはロックされ、有効期限まで削除不可",
+
+  // --- Snapshots: ONTAP required panel ---
+  snapshotsOntapRequiredTitle: "📸 ONTAP 接続が必要",
+  snapshotsOntapRequiredDetail1: "ListSnapshots Lambda は管理 LIF に到達可能な VPC サブネットにデプロイされている必要があります",
+  snapshotsOntapRequiredDetail2: "セキュリティグループは管理 LIF IP への TCP/443 アウトバウンドを許可する必要があります",
+  snapshotsVolumeLabel: "Volume",
+  snapshotsRefreshTitle: "スナップショット一覧を更新",
+  snapshotsRefreshBtn: "更新",
+  snapshotsLoadingBtn: "読み込み中...",
+  snapshotsFooterNote: "各スナップショットはボリュームのポイントインタイムビューです。「閲覧」をクリックすると、独自の S3 Access Point を持つ FlexClone が作成されます。",
+
+  // --- Audit Log ---
+  auditTitle: "監査証跡",
+  auditDescription: "CloudTrail S3 データイベントからのファイルアクセスイベント。誰がどのファイルにいつアクセスし、どのような操作を行ったかを表示します。",
+  auditFilterFileLabel: "ファイルパスに含まれる文字列",
+  auditFilterFilePlaceholder: "例: contracts/ または report.pdf",
+  auditFilterEventTypeLabel: "イベントタイプ",
+  auditFilterEventTypeAll: "すべて",
+  auditFilterEventTypeRead: "読み取り (Get/List)",
+  auditFilterEventTypeWrite: "書き込み (Put/Delete)",
+  auditFilterFromLabel: "開始日",
+  auditFilterToLabel: "終了日",
+  auditSearchBtn: "検索",
+  auditSearchingBtn: "検索中...",
+  auditColTime: "日時",
+  auditColAction: "操作",
+  auditColUser: "ユーザー",
+  auditColFile: "ファイル",
+  auditColSourceIp: "ソース IP",
+  auditColStatus: "ステータス",
+  auditEventsFound: "件のイベントが見つかりました",
+  auditEmptyState: "「検索」をクリックして監査証跡を照会します。日付範囲とファイルパスフィルターで結果を絞り込めます。",
+  auditConfigRequired: "⚠️ 監査クエリ設定が必要",
+  auditConfigRequiredDesc: "監査証跡は Athena 経由で CloudTrail S3 データイベントを照会します。このメッセージが表示される場合、Athena クエリ基盤が未設定です。",
+  auditConfigStep1: "S3 AP ARN に対する CloudTrail S3 データイベントを有効化",
+  auditConfigStep2: "CloudTrail ログ上に Athena テーブルを作成（Glue Crawler または手動 DDL）",
+  auditConfigStep3: "Lambda に ATHENA_AUDIT_DATABASE、ATHENA_AUDIT_TABLE、ATHENA_AUDIT_OUTPUT を設定",
+
+  // --- File Explorer ---
+  filesTitle: "ファイル",
+  filesProcessFolder: "このフォルダを処理",
+  filesEmpty: "このディレクトリにファイルがありません",
+  filesLoadMore: "さらに読み込む",
+
+  // --- Recent Files ---
+  recentTitle: "🕐 最近のファイル",
+  recentLoading: "最近のファイルを読み込み中...",
+  recentEmpty: "最近のファイル活動はまだありません。",
+  recentEmptyHint: "閲覧、ダウンロード、または AI で問い合わせたファイルがここに表示されます。「全ファイル」に移動して始めましょう。",
+  recentActionViewed: "閲覧",
+  recentActionDownloaded: "ダウンロード",
+  recentActionAiQuery: "AI 問い合わせ",
+  recentActionPreviewed: "プレビュー",
+  recentActionShared: "共有",
+  recentActionAccessed: "アクセス",
+
+  // --- Favorites ---
+  favoritesTitle: "⭐ お気に入り",
+  favoritesEmpty: "お気に入りはまだありません。任意のファイルの ☆ をクリックしてここにピン留めしましょう。",
+  favoritesLoading: "お気に入りを読み込み中...",
+  favoritesRemove: "お気に入りから削除",
+  favoritesAdd: "お気に入りに追加",
+
+  // --- AI Panel ---
+  aiTitle: "AI アシスタント",
+  aiEmptyState: "ファイルを選択してその内容について質問できます。",
+  aiEmptyHint: "「ファイル」タブで任意のファイルをクリックし、ここで質問してください。",
+  aiAskHint: "について質問する",
+  aiYou: "あなた",
+  aiAssistant: "AI",
+  aiThinking: "考え中...",
+  aiPlaceholder: "について質問...",
+  aiAskBtn: "質問",
+  aiAskBtnLoading: "...",
+  aiSendLabel: "質問を送信",
+  aiInputLabel: "ファイルについて質問する",
+
+  // --- Lock panel: S3 Object Lock output title ---
+  lockS3OutputTitle: "出力バケット保護",
+  lockS3OutputDesc: "S3 Object Lock は ONTAP とは別に出力バケットで設定されます。このパネルは推奨設定を表示します。",
+  lockS3GovernanceRecommended: "AI 出力に推奨",
+  lockS3ComplianceFor: "規制アーカイブ用",
+  lockS3LegalHoldIndefinite: "無期限保持",
+
   // --- Language ---
   languageLabel: "言語",
 } as const;
