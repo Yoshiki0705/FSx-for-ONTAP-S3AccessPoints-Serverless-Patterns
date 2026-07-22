@@ -310,6 +310,10 @@ The portal supports 8 languages with instant switching via the dropdown in the t
 
 #### Screenshots
 
+**Language dropdown open (pill-shaped, 8 languages)**:
+
+![Language dropdown open](../screenshots/portal-demo/portal-i18n-dropdown-open.png)
+
 **Japanese (auto-detected from browser)**:
 
 ![Japanese UI](../screenshots/portal-demo/portal-i18n-ja.png)
