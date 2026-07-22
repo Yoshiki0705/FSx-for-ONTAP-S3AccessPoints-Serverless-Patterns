@@ -284,6 +284,52 @@ For storage-admin users, a **🔒 Lock** button appears next to unlocked snapsho
 
 ---
 
+### 12. Language Switcher — 8 Languages
+
+The portal supports 8 languages with instant switching via the dropdown in the top-right corner.
+
+#### Supported Languages
+
+| Code | Display Name | Auto-detect |
+|------|-------------|:-----------:|
+| ja | 日本語 | ✅ `ja-*` |
+| en | English | ✅ `en-*` |
+| ko | 한국어 | ✅ `ko-*` |
+| zh-CN | 简体中文 | ✅ `zh-CN`, `zh` |
+| zh-TW | 繁體中文 | ✅ `zh-TW`, `zh-Hant` |
+| fr | Français | ✅ `fr-*` |
+| de | Deutsch | ✅ `de-*` |
+| es | Español | ✅ `es-*` |
+
+#### How it works
+
+1. **First visit**: The portal detects your browser language (`navigator.language`) and selects the closest match
+2. **Manual switch**: Click the language dropdown in the topbar and select any language
+3. **Persistence**: Your choice is saved to `localStorage` — next time you visit, the same language is used
+4. **Instant**: No page reload required — all labels update immediately
+
+#### Screenshots
+
+**Japanese (auto-detected from browser)**:
+
+![Japanese UI](../screenshots/portal-demo/portal-i18n-ja.png)
+
+**English**:
+
+![English UI](../screenshots/portal-demo/portal-i18n-en.png)
+
+**Korean**:
+
+![Korean UI](../screenshots/portal-demo/portal-i18n-ko.png)
+
+**Simplified Chinese**:
+
+![Simplified Chinese UI](../screenshots/portal-demo/portal-i18n-zh-cn.png)
+
+> The sidebar navigation labels, group headers, topbar title, and sign-out button are all translated. Technical terms (ONTAP, SnapLock, FlexClone, ARP/AI, S3 AP) remain in English across all languages as they are product/technology names.
+
+---
+
 ## Cleanup
 
 After the demo, delete resources in this order:
