@@ -178,40 +178,34 @@ export function VersionHistory() {
         <h3>{t("snapshotsTitle")}</h3>
         {volumeName && (
           <span className="volume-badge" title="Source volume">
-            Volume: {volumeName}
+            {t("snapshotsVolumeLabel")}: {volumeName}
           </span>
         )}
         <button
           onClick={loadSnapshots}
           disabled={loading}
           className="refresh-btn"
-          title="Refresh snapshot list"
+          title={t("snapshotsRefreshTitle")}
         >
-          {loading ? "Loading..." : "Refresh"}
+          {loading ? t("snapshotsLoadingBtn") : t("snapshotsRefreshBtn")}
         </button>
       </div>
 
       {error && (
         <div className="protection-section" style={{ marginTop: "1rem" }}>
           <div className="protection-info">
-            <h3>📸 ONTAP Connection Required</h3>
-            <p>
-              Snapshots are stored on the FSx for ONTAP volume and require connectivity
-              to the ONTAP management LIF (REST API). This section will display snapshot history
-              once the connection is configured.
-            </p>
+            <h3>{t("snapshotsOntapRequiredTitle")}</h3>
+            <p>{t("snapshotsOntapRequiredDesc")}</p>
             <ul>
-              <li>The <strong>ListSnapshots Lambda</strong> must be deployed in a VPC subnet that can reach the management LIF</li>
-              <li>Environment variables required: <code>ONTAP_MGMT_IP</code>, <code>ONTAP_SECRET_NAME</code>, <code>VOLUME_NAME</code>, <code>SVM_NAME</code></li>
-              <li>Security group must allow outbound TCP/443 to the management LIF IP</li>
+              <li>{t("snapshotsOntapRequiredDetail1")}</li>
+              <li>{t("envVarsRequired")}: <code>ONTAP_MGMT_IP</code>, <code>ONTAP_SECRET_NAME</code>, <code>VOLUME_NAME</code>, <code>SVM_NAME</code></li>
+              <li>{t("snapshotsOntapRequiredDetail2")}</li>
             </ul>
             <p className="integration-note">
-              <strong>DemoMode note</strong>: File browsing, AI processing, and upload work without ONTAP connectivity
-              (via S3 AP or regular S3). Only Data Protection features (Snapshots, ARP/AI status, SnapLock) require
-              the VPC Lambda → ONTAP REST API path.
+              <strong>{t("demoModeNote")}</strong>: {t("arpDemoModeNote")}
             </p>
             <details>
-              <summary>Error details</summary>
+              <summary>{t("errorDetails")}</summary>
               <pre style={{ fontSize: "0.8rem", overflow: "auto", padding: "0.5rem", background: "#f5f5f5", borderRadius: "4px" }}>{error}</pre>
             </details>
           </div>
@@ -383,10 +377,7 @@ export function VersionHistory() {
       )}
 
       <div className="version-history-footer">
-        <small>
-          Each snapshot is a point-in-time view of the volume. "Browse this version"
-          creates a FlexClone with its own S3 Access Point for isolated access.
-        </small>
+        <small>{t("snapshotsFooterNote")}</small>
       </div>
     </div>
   );

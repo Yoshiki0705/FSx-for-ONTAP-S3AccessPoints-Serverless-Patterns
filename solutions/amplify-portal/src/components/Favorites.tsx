@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -33,6 +34,7 @@ export function FavoriteButton({
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   // Check if this file is already favorited
   useEffect(() => {
@@ -85,8 +87,8 @@ export function FavoriteButton({
         toggle();
       }}
       disabled={loading}
-      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-      aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+      title={isFavorite ? t("favoritesRemove") : t("favoritesAdd")}
+      aria-label={isFavorite ? t("favoritesRemove") : t("favoritesAdd")}
     >
       {isFavorite ? "★" : "☆"}
     </button>
@@ -101,6 +103,7 @@ export function FavoritesView({
 }) {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const loadFavorites = useCallback(async () => {
     setLoading(true);
@@ -134,19 +137,19 @@ export function FavoritesView({
     setFavorites((prev) => prev.filter((f) => f.id !== id));
   };
 
-  if (loading) return <div className="loading">Loading favorites...</div>;
+  if (loading) return <div className="loading">{t("favoritesLoading")}</div>;
 
   if (favorites.length === 0) {
     return (
       <div className="favorites-empty">
-        <p>No favorites yet. Click ☆ on any file to pin it here.</p>
+        <p>{t("favoritesEmpty")}</p>
       </div>
     );
   }
 
   return (
     <div className="favorites-view">
-      <h3>⭐ Favorites</h3>
+      <h3>{t("favoritesTitle")}</h3>
       <div className="favorites-list">
         {favorites.map((fav) => (
           <div key={fav.id} className="favorite-item">
@@ -164,7 +167,7 @@ export function FavoritesView({
             <button
               className="favorite-remove"
               onClick={() => removeFavorite(fav.id)}
-              title="Remove from favorites"
+              title={t("favoritesRemove")}
             >
               ✕
             </button>

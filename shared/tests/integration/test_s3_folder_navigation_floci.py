@@ -44,6 +44,7 @@ BUCKET_NAME = "test-portal-ap"
 def is_floci_running() -> bool:
     """Check if floci is accessible."""
     import urllib.request
+
     try:
         urllib.request.urlopen(f"{FLOCI_ENDPOINT}/_floci/health", timeout=2)
         return True
@@ -139,9 +140,7 @@ class TestFolderNavigation:
 
     def test_root_level_listing(self, s3_client):
         """Root prefix should return top-level files + folder prefixes."""
-        response = s3_client.list_objects_v2(
-            Bucket=BUCKET_NAME, Prefix="", Delimiter="/"
-        )
+        response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix="", Delimiter="/")
 
         # Files at root
         root_files = [obj["Key"] for obj in response.get("Contents", [])]
@@ -160,9 +159,7 @@ class TestFolderNavigation:
 
     def test_subfolder_listing(self, s3_client):
         """Navigating into documents/ should show its children only."""
-        response = s3_client.list_objects_v2(
-            Bucket=BUCKET_NAME, Prefix="documents/", Delimiter="/"
-        )
+        response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix="documents/", Delimiter="/")
 
         # No files directly under documents/ (only subfolders)
         files = [obj["Key"] for obj in response.get("Contents", [])]
@@ -175,9 +172,7 @@ class TestFolderNavigation:
 
     def test_deep_subfolder(self, s3_client):
         """Navigating into documents/contracts/2024/ should show files."""
-        response = s3_client.list_objects_v2(
-            Bucket=BUCKET_NAME, Prefix="documents/contracts/2024/", Delimiter="/"
-        )
+        response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix="documents/contracts/2024/", Delimiter="/")
 
         files = [obj["Key"] for obj in response.get("Contents", [])]
         assert "documents/contracts/2024/contract-001.pdf" in files
@@ -190,9 +185,7 @@ class TestFolderNavigation:
 
     def test_pagination(self, s3_client):
         """MaxKeys should limit results and return continuation token."""
-        response = s3_client.list_objects_v2(
-            Bucket=BUCKET_NAME, Prefix="simulation/", Delimiter="/", MaxKeys=2
-        )
+        response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix="simulation/", Delimiter="/", MaxKeys=2)
 
         # Should get at most 2 items (files + folders combined counted differently)
         total = len(response.get("Contents", [])) + len(response.get("CommonPrefixes", []))
@@ -220,18 +213,14 @@ class TestFolderNavigation:
 
     def test_nonexistent_prefix(self, s3_client):
         """Non-existent prefix should return empty results."""
-        response = s3_client.list_objects_v2(
-            Bucket=BUCKET_NAME, Prefix="nonexistent/path/", Delimiter="/"
-        )
+        response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix="nonexistent/path/", Delimiter="/")
 
         assert response.get("Contents", []) == []
         assert response.get("CommonPrefixes", []) == []
 
     def test_hidden_folder_visibility(self, s3_client):
         """.trash/ should appear in root listing (portal filters in UI layer)."""
-        response = s3_client.list_objects_v2(
-            Bucket=BUCKET_NAME, Prefix="", Delimiter="/"
-        )
+        response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix="", Delimiter="/")
 
         folders = [cp["Prefix"] for cp in response.get("CommonPrefixes", [])]
         # S3 does not hide dot-prefixed folders — filtering is application-level
