@@ -360,8 +360,9 @@ export function SnaplockStatus() {
           )}
 
           <div className="panel-footer-note">
-            <strong>Note</strong>: Tamperproof Snapshot does not require a SnapLock license.
-            It operates independently of volume-level SnapLock and can be enabled on any volume.
+            <strong>Note</strong>: On FSx for ONTAP, SnapLock is included at no additional cost.
+            Tamperproof Snapshot uses the same SnapLock compliance clock infrastructure
+            to enforce retention on individual snapshots.
           </div>
         </div>
       )}
