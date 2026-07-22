@@ -167,6 +167,19 @@ curl -X POST "https://<gateway-id>.gateway.bedrock-agentcore.<region>.amazonaws.
 
 ---
 
+### RESOLVED-4: AgentCore Gateway は us-east-1 のみという前提は誤り
+
+| 項目 | 内容 |
+|------|------|
+| **解決日** | 2026-07-21 |
+| **根本原因** | Workshop が us-east-1 を使用していたのは簡便性のためであり、リージョン制約ではなかった |
+
+**修正**: ap-northeast-1 で Gateway + Lambda Target をデプロイし、E2E 動作確認。`tools/list` で 3 ツール返却、`tools/call` でファイル一覧取得成功。AWS サポートも ap-northeast-1 での利用可能性を Lab 環境で確認。
+
+**影響**: クロスリージョンレイテンシーが排除され、アーキテクチャが簡素化。
+
+---
+
 ## 本番化ブロッカー
 
 以下が解決するまで、本番環境での Quick + AgentCore MCP 連携は**PoC フェーズ**にとどめることを推奨:

@@ -41,7 +41,7 @@
 set -euo pipefail
 
 # --- Defaults ---
-GATEWAY_REGION="${AGENTCORE_REGION:-us-east-1}"
+GATEWAY_REGION="${AGENTCORE_REGION:-ap-northeast-1}"
 STACK_NAME="agentcore-mcp-eda"
 S3AP_ALIAS=""
 S3AP_NAME=""

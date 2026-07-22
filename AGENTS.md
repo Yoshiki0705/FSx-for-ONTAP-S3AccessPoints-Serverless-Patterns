@@ -343,6 +343,13 @@ All README and documentation files follow these UX principles:
 | Presigned URL `PermanentRedirect` from Lambda | Global endpoint `s3.amazonaws.com` redirects. Use `endpoint_url=f"https://s3.{region}.amazonaws.com"` |
 | Presigned URL `HEAD` returns 403 but `GET` works | Some S3 AP configurations don't support HEAD on presigned URLs. Use GET for verification |
 | Bedrock `InvokeModel` with `inputText` → ValidationException | Nova/Claude models require Messages API. Use `bedrock.converse()` (not `invoke_model` with `inputText`). Add `bedrock:Converse` to IAM policy |
+| AgentCore Gateway us-east-1 only assumption | **ap-northeast-1 で利用可能（検証済み 2026-07）**。Workshop が us-east-1 を使うのは簡便性のため。Gateway + Lambda + S3 AP を同一リージョンに配置すること |
+| AgentCore Lambda event format: `event.toolName` で取得 | ❌ 正しくは `context.client_context.custom['bedrockAgentCoreToolName']`。event はフラットなパラメータ辞書。ツール名は `targetName___toolName` 形式 |
+| AgentCore Gateway + Quick Desktop: Remote MCP 追加が永続化されない | **Import 方式**（JSON ファイルからの読み込み）を使う。Local/Remote 直接追加は Quick Desktop v0.1000.1495 で不安定 |
+| Quick Web コンソール MCP コネクタ Step 2 エラー | Previous で Step 1 に戻ると OAuth フィールドがクリアされる。一度で全フィールド入力を完了すること。再現しない場合もある（間欠的） |
+| AgentCore Gateway CUSTOM_JWT + Quick Desktop → 403 | NONE auth を PoC に使用。CUSTOM_JWT は認可ポリシー設定が必要（未解決、`docs/agentcore-mcp-remaining-issues.md` 参照） |
+| AgentCore Gateway `create-gateway-target` で Lambda not found | Gateway と Lambda は**同一リージョン**に配置必須。クロスリージョン Lambda 呼び出しは不可 |
+| Quick Desktop サインインで「account name is invalid」 | IAM ユーザー名 ≠ QuickSight ユーザー名。`aws quicksight list-users` で確認。Email ベースのサインインが最もシンプル |
 
 ## S3 Access Point Critical Knowledge
 

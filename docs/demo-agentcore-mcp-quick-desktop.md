@@ -17,14 +17,17 @@ Amazon Quick Desktop から自然言語で質問すると、AgentCore MCP Gatewa
 ```
 Amazon Quick Desktop (MCP Client)
     ↓ stdio (mcp-remote → HTTP Streamable)
-AgentCore MCP Gateway (NONE auth, PoC)
-    ↓ Lambda Invoke
+AgentCore MCP Gateway (ap-northeast-1, NONE auth, PoC)
+    ↓ Lambda Invoke (同一リージョン)
 MCP Tools Lambda (list_files / read_file / search_files)
     ↓ S3 API (ListObjectsV2 / GetObject)
-FSx for ONTAP S3 Access Point
+FSx for ONTAP S3 Access Point (ap-northeast-1)
     ↓
 FSx for ONTAP Volume (/eda_demo — 50 simulation logs)
 ```
+
+> **リージョン**: 全コンポーネントが ap-northeast-1 に配置。クロスリージョンレイテンシーなし。
+> 初期検証時は us-east-1 に配置していましたが、AWS サポートの確認により ap-northeast-1 で利用可能と判明（2026-07-21）。
 
 ---
 
