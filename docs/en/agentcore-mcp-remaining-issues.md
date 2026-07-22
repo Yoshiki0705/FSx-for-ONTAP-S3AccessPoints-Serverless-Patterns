@@ -1,6 +1,6 @@
 # AgentCore MCP Gateway × Amazon Quick — Remaining Issues Tracker
 
-> **Last updated**: 2026-07-20
+> **Last updated**: 2026-07-22
 > **Verified versions**: Quick Desktop v0.1000.1495 / Quick Web (ap-northeast-1) / AgentCore Gateway GA (us-east-1)
 
 ---
@@ -9,34 +9,32 @@
 
 | Category | Open | Resolved | Workaround |
 |----------|:----:|:--------:|:----------:|
-| Quick Web console | 1 | 0 | — |
-| Quick Desktop | 1 | 0 | ✅ Import method |
+| Quick Web console | 0 | 1 | — |
+| Quick Desktop | 0 | 1 | ✅ Import method |
 | AgentCore Gateway auth | 0 | 1 | ✅ Policy Engine + allowedClients |
 | Lambda / Backend | 0 | 3 | — |
+| **API Constraint (newly identified)** | **1** | 0 | ⚠️ Console-only |
 
 ---
 
-## Open Issues
+## Resolved Issues
 
 ### ISSUE-1: Quick Web console MCP connector creation Step 2 UI bug
 
 | Item | Details |
 |------|---------|
-| **Status** | 🔴 Open — filed with AWS Support (tracked internally) |
-| **Severity** | Medium (workaround available) |
+| **Status** | ✅ Resolved (2026-07-21) |
+| **Severity** | Medium |
 | **Found** | 2026-07-19 |
-| **Support Case** | filed with AWS Support (tracked internally) |
+| **Resolved** | 2026-07-20 (no longer reproducible) |
+| **Support Case** | filed with AWS Support — resolved |
 | **re:Post** | https://repost.aws/questions/QUBkeWVPpWTFiG23LggilqWw |
 
 **Symptom**: Connectors → Create for your team → Model Context Protocol → Step 2 (Authenticate) shows "Fix highlighted fields to proceed." error, but no highlighted fields exist.
 
-**Impact**: Cannot create MCP connectors from the Web console. Cannot link MCP tools to Chat Agents.
+**Root cause (confirmed by AWS)**: Navigating from Step 2 back to Step 1 using "Previous" clears OAuth field values. Clicking "Create and continue" in that state triggers a validation error. Reported on re:Post as well.
 
-**Root cause**: Client-side form validation bug. No HTTP request is sent to the backend when clicking "Create and continue" (confirmed via Network tab).
-
-**Workaround**: Add MCP servers via Quick Desktop's Import method instead.
-
-**Resolution path**: AWS Quick team console UI fix required.
+**Resolution**: Re-attempted on 2026-07-20, connector created successfully. Workaround: close the wizard and restart instead of using "Previous".
 
 ---
 
@@ -44,21 +42,54 @@
 
 | Item | Details |
 |------|---------|
-| **Status** | 🔴 Open — filed with AWS Support (tracked internally) |
-| **Severity** | Medium (workaround available) |
+| **Status** | ✅ Resolved (2026-07-21) |
+| **Severity** | Medium |
 | **Found** | 2026-07-20 |
-| **Support Case** | filed with AWS Support (tracked internally) |
+| **Resolved** | 2026-07-20 (no longer reproducible) |
+| **Support Case** | filed with AWS Support — resolved |
 | **Community** | https://community.amazonquicksight.com/t/bug-all-remote-mcp-servers-fail-with-mcpclientinitializationerror-v0-631-0/52420 |
 
-**Symptom**: + Create → MCP server → Local/Remote → Test connection succeeds ("Connected — 3 tools available") → + Add MCP → confirmation dialog → Add server → **MCP SERVERS section shows 0 items (not persisted)**.
+**Symptom**: + Create → MCP server → Local/Remote → Test connection succeeds → Add server → MCP SERVERS shows 0 items.
 
-**Impact**: Cannot add MCP servers via Local or Remote methods.
+**Root cause**: Unknown. Quick Desktop is in preview and may have transient instability. AWS Support could not reproduce.
 
-**Version**: v0.1000.1495 (Build 6475741731)
+**Resolution**: Re-attempted on 2026-07-20, server persisted successfully. Likely Quick Desktop auto-update or backend state change.
 
-**Workaround**: **Import method** (load from JSON file) persists successfully.
+**If it recurs** (AWS Support recommended info to collect):
+- Timestamp (JST)
+- Screen recording of the issue
+- `~/Library/Logs/quickwork` logs
+- Quick Desktop account ID (Manage plan → My account)
+- Whether browser Connectors MCP creation works
 
-**Resolution path**: AWS Quick Desktop team persistence logic fix required.
+**Recommended workaround**: Import method (JSON file) remains the most stable approach.
+
+---
+
+## Known Constraints (API Limitation)
+
+### CONSTRAINT-1: MCP connector cannot be created via API (console-only)
+
+| Item | Details |
+|------|---------|
+| **Status** | ⚠️ Current Limitation (confirmed 2026-07-22) |
+| **Confirmed by** | AWS Support investigation + `CreateActionConnector` API documentation review |
+
+**Details**: The `CreateActionConnector` API's `Type` parameter does not include a value for MCP. Specifying `MODEL_CONTEXT_PROTOCOL` returns `InvalidParameterValueException`.
+
+**Impact**:
+- Cannot create MCP connectors via IaC (CloudFormation / CDK)
+- Cannot automate connector setup in CI/CD pipelines
+- Connector configuration is not easily Git-managed or reproducible
+
+**Workarounds**:
+1. Create via Quick Web console manually (once created, it persists)
+2. Use Quick Desktop Import method (JSON file-based, manageable in Git)
+3. AgentCore Gateway itself IS deployable via CloudFormation/CDK — only the Quick connector is manual
+
+**Production impact**: Connector creation is a one-time setup step. Gateway Lambda targets and auth configuration are fully IaC-manageable, so this is not a major operational blocker.
+
+**Future expectation**: When Amazon Quick reaches GA, `CreateActionConnector` API may support MCP type.
 
 ---
 

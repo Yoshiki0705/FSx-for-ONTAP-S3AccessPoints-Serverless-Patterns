@@ -1,6 +1,6 @@
 # AgentCore MCP Gateway × Amazon Quick — 残課題トラッカー
 
-> **最終更新**: 2026-07-20
+> **最終更新**: 2026-07-22
 > **検証バージョン**: Quick Desktop v0.1000.1495 / Quick Web (ap-northeast-1) / AgentCore Gateway GA (us-east-1)
 
 ---
@@ -9,34 +9,32 @@
 
 | カテゴリ | Open | Resolved | Workaround |
 |---------|:----:|:--------:|:----------:|
-| Quick Web コンソール | 1 | 0 | — |
-| Quick Desktop | 1 | 0 | ✅ Import 方式 |
+| Quick Web コンソール | 0 | 1 | — |
+| Quick Desktop | 0 | 1 | ✅ Import 方式 |
 | AgentCore Gateway 認証 | 0 | 1 | ✅ Policy Engine + allowedClients |
 | Lambda / バックエンド | 0 | 3 | — |
+| **API 制約（新規判明）** | **1** | 0 | ⚠️ コンソール経由のみ |
 
 ---
 
-## Open Issues
+## Resolved Issues
 
 ### ISSUE-1: Quick Web コンソール MCP connector 作成 Step 2 UI バグ
 
 | 項目 | 内容 |
 |------|------|
-| **ステータス** | 🔴 Open — AWS サポートケース起票済み |
-| **重大度** | Medium（回避策あり） |
+| **ステータス** | ✅ Resolved (2026-07-21) |
+| **重大度** | Medium |
 | **発見日** | 2026-07-19 |
-| **Support Case** | filed with AWS Support (tracked internally) |
+| **解決日** | 2026-07-20（再現しなくなった）|
+| **Support Case** | filed with AWS Support — resolved |
 | **re:Post** | https://repost.aws/questions/QUBkeWVPpWTFiG23LggilqWw |
 
 **症状**: Connectors → Create for your team → Model Context Protocol → Step 2 (Authenticate) で「Fix highlighted fields to proceed.」エラーが表示されるが、赤枠のフィールドは存在しない。
 
-**影響**: Web コンソールから MCP コネクタを作成できない。Chat Agent に MCP ツールをリンクできない。
+**根本原因（AWS 確認済み）**: Step 2 から「Previous」で Step 1 に戻ると OAuth フィールドがクリアされ、その状態で「作成して続行」をクリックするとバリデーションエラーが発生する。re:Post にも同一報告あり。
 
-**根本原因**: クライアントサイドのフォームバリデーションバグ。Create and continue 押下時にバックエンドへの HTTP リクエストが送信されない（Network タブで確認済み）。
-
-**回避策**: Quick Desktop の Import 方式で MCP サーバーを追加する。
-
-**解決に必要なアクション**: AWS Quick チームによるコンソール UI 修正。
+**解決**: 2026-07-20 に再試行したところ正常に作成可能。「Previous」を使わずに一度ウィザードを閉じてやり直すことで回避可能。
 
 ---
 
@@ -44,21 +42,54 @@
 
 | 項目 | 内容 |
 |------|------|
-| **ステータス** | 🔴 Open — AWS サポートケース起票済み |
-| **重大度** | Medium（回避策あり） |
+| **ステータス** | ✅ Resolved (2026-07-21) |
+| **重大度** | Medium |
 | **発見日** | 2026-07-20 |
-| **Support Case** | filed with AWS Support (tracked internally) |
+| **解決日** | 2026-07-20（再現しなくなった）|
+| **Support Case** | filed with AWS Support — resolved |
 | **Community** | https://community.amazonquicksight.com/t/bug-all-remote-mcp-servers-fail-with-mcpclientinitializationerror-v0-631-0/52420 |
 
-**症状**: + Create → MCP server → Local/Remote → Test connection 成功（「Connected — 3 tools available」）→ + Add MCP → 確認ダイアログ → Add server → **MCP SERVERS セクションに表示されない（0 件のまま）**。
+**症状**: + Create → MCP server → Local/Remote → Test connection 成功 → Add server → MCP SERVERS に表示されない。
 
-**影響**: Local / Remote 方式での MCP サーバー追加ができない。
+**根本原因**: 不明。Quick Desktop はプレビュー版のため不安定性あり。AWS サポートでも同事象を確認できず。
 
-**バージョン**: v0.1000.1495 (Build 6475741731)
+**解決**: 2026-07-20 に再試行したところ正常に永続化。Quick Desktop の自動アップデートまたはバックエンド側の状態変化と推定。
 
-**回避策**: **Import 方式**（JSON ファイルから読み込み）で追加すると正常に永続化される。
+**再発時の情報収集手順**（AWS サポート推奨）:
+- 検証時間 (JST)
+- 事象発生時の画面動画
+- `~/Library/Logs/quickwork` のログ
+- Quick Desktop アカウント ID (Manage plan → My account)
+- ブラウザの Connectors で MCP 作成可能か確認
 
-**解決に必要なアクション**: AWS Quick Desktop チームによるサーバー永続化ロジック修正。
+**引き続き推奨される回避策**: Import 方式（JSON ファイル）が最も安定。
+
+---
+
+## Known Constraints (API 制約)
+
+### CONSTRAINT-1: MCP コネクタは API 作成不可（コンソール経由のみ）
+
+| 項目 | 内容 |
+|------|------|
+| **ステータス** | ⚠️ Current Limitation (2026-07-22 確認) |
+| **確認方法** | AWS サポートによる検証 + `CreateActionConnector` API ドキュメント確認 |
+
+**詳細**: `CreateActionConnector` API の `Type` パラメータに MCP に相当する値がない。`MODEL_CONTEXT_PROTOCOL` を指定すると `InvalidParameterValueException` が返却される。
+
+**影響**:
+- IaC（CloudFormation / CDK）での MCP コネクタ作成が不可
+- CI/CD パイプラインでのコネクタ自動セットアップが不可
+- コネクタ設定の Git 管理・再現が困難
+
+**回避策**:
+1. Quick Web コンソールから手動作成（一度作成すれば永続）
+2. Quick Desktop の Import 方式（JSON ファイルで設定を管理可能）
+3. AgentCore Gateway 自体は CloudFormation / CDK で作成可能（コネクタのみ手動）
+
+**本番運用への影響**: コネクタ作成は初回セットアップ時のみ必要。Gateway の Lambda ターゲットや認証設定は IaC で管理可能なため、実運用上の大きな障壁にはならない。
+
+**今後の期待**: Amazon Quick が GA になるタイミングで `CreateActionConnector` API が MCP タイプをサポートする可能性あり。
 
 ---
 
