@@ -1,247 +1,204 @@
-# Amplify Gen2 File Portal — タブ構成ガイド
+# Amplify Gen2 File Portal — セクション構成ガイド
 
-> **最終更新**: 2026-07-20
-> **検証**: CDK Sandbox デプロイ → Cognito ログイン → 6 タブ全表示確認済み
+> **最終更新**: 2026-07-22
+> **検証**: CDK Sandbox デプロイ → Cognito ログイン → 12 セクション全表示確認済み
 
 ---
 
 ## 概要
 
-FSx for ONTAP File Portal は 6 つのタブで構成されています。各タブは独立した機能を提供し、同一の FSx for ONTAP S3 Access Point 上のデータにアクセスします。
+FSx for ONTAP File Portal はサイドバーナビゲーション（4 グループ × 12 セクション）で構成されています。各セクションは独立した機能を提供し、同一の FSx for ONTAP S3 Access Point 上のデータにアクセスします。
+
+![サイドバーレイアウト](screenshots/portal-sidebar-layout.png)
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  FSx for ONTAP File Portal                    demo@example.com [↗]  │
-├──────┬────────┬─────────┬─────────┬─────────┬───────────────────────┤
-│ Files│ Upload │ Process │ Results │ History │ Analytics             │
-├──────┴────────┴─────────┴─────────┴─────────┴───────────────────────┤
-│                                                                     │
-│  [タブコンテンツ]                                                      │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ File Portal                         demo@example.com     │
+├────────────┬─────────────────────────────────────────────┤
+│ BROWSE     │  [Main Content Area]                        │
+│  All Files │                                             │
+│  Favorites │  + AI Assistant Panel (right, on selection) │
+│  Recent    │                                             │
+│  Upload    │                                             │
+│────────────│                                             │
+│ AI & PROC. │                                             │
+│  AI Proc.  │                                             │
+│  History   │                                             │
+│  Analytics │                                             │
+│────────────│                                             │
+│ DATA PROT. │                                             │
+│  Snapshots │                                             │
+│  Lock      │                                             │
+│  ARP/AI    │                                             │
+│────────────│                                             │
+│ ADMIN      │                                             │
+│  Version   │                                             │
+│  Audit     │                                             │
+└────────────┴─────────────────────────────────────────────┘
 ```
 
 ---
 
-## タブ一覧
+## Browse グループ
 
-### 1. Files（ファイル閲覧 + AI + 共有リンク）
+### All Files（ファイル閲覧 + AI + 共有 + プレビュー）
 
-![Files Tab](screenshots/portal-files-tab.png)
+| 機能 | 操作 | アイコン |
+|------|------|:---:|
+| フォルダナビゲーション | ディレクトリクリックで移動。ブレッドクラムで階層表示 | — |
+| 画像プレビュー | 🖼️ クリックで Presigned URL 経由の画像ポップオーバー | 🖼️ |
+| **PDF プレビュー** | 📕 クリックで iframe 内 PDF 表示（ブラウザ内蔵ビューア） | 📕 |
+| **DOCX プレビュー** | 📝 クリックで docx-preview によるインラインレンダリング | 📝 |
+| ファイルダウンロード | 📄 クリックで Presigned URL 経由ダウンロード | 📄 |
+| 共有リンク生成 | 🔗 → TTL 選択 (5 分/15 分/1 時間) → URL コピー | 🔗 |
+| AI Q&A | ファイル選択 → AI パネルから質問（Bedrock Converse API） | 🤖 |
+| Rekognition | 画像プレビュー内「Detect Objects」ボタン | 🏷️ |
+| Restore from Snapshot | FlexClone 作成ダイアログ (FC7_FLEXCLONE_RESTORE) | 📸 |
+| Process this folder | 選択中フォルダを AI Processing に渡す | ⚡ |
 
-| 機能 | 操作 |
-|------|------|
-| フォルダナビゲーション | ディレクトリをクリックで移動。ブレッドクラムで階層表示 |
-| ファイルプレビュー | 🖼️ クリックで Presigned URL 経由の画像プレビュー表示 |
-| ファイルダウンロード | 📄 クリックで Presigned URL 経由のダウンロード |
-| **共有リンク生成** | 🔗 クリックで TTL 選択パネル → URL 生成 → コピー |
-| AI Q&A | ファイル選択後、AI Assistant パネルから質問 |
-| Rekognition | 画像プレビュー内「Detect Objects」ボタン |
-| Restore from Snapshot | FlexClone 作成ダイアログ |
-| Process this folder | 選択中フォルダを Process タブに渡す |
+**Office プレビュー（新機能 2026-07-22）**:
+- PDF: Presigned URL を `<iframe>` に渡すだけ（ブラウザ内蔵ビューアで表示）
+- DOCX: `docx-preview` ライブラリでクライアントサイドレンダリング（レイアウト再現度 70-80%）
+- XLSX/PPTX: 現時点非対応（ダウンロードリンク表示）。Phase 2 で Lambda Container Image 対応予定
 
-**共有リンク（新機能）**:
-- TTL: 5 分 / 15 分 / 1 時間 から選択
-- ワンクリックでクリップボードにコピー
-- リンクを知っている人は認証なしでファイルにアクセス可能（Presigned URL）
-- 機密ファイルには使用しないよう注意書き表示
+**CONFIDENTIAL ガードレール**:
+- `shared/ai_guardrails.py` のデータ分類ラベルが CONFIDENTIAL/CUI の場合、AI Q&A をブロック
+- ブロック時はエラーメッセージで分類レベルと理由を表示
 
 ---
 
-### 2. Upload（Storage Browser for S3）
+### Favorites（お気に入り）
 
-![Upload Tab](screenshots/portal-upload-tab.png)
+ユーザーがピン留めしたファイルを DynamoDB に保存（owner-scoped）。ワンクリックで All Files の該当ファイルにジャンプ。
 
-| 機能 | 操作 |
-|------|------|
-| ファイルアップロード | ドラッグ＆ドロップ、またはファイルピッカー（最大 5 GB） |
-| フォルダ作成 | 新規フォルダの作成 |
-| ファイルダウンロード | クリックでダウンロード |
-| コピー | 別パスへコピー |
-| 削除 | 選択ファイルの削除 |
-| 検索 | フィルターボックスでファイル名フィルタリング |
-| ページネーション | 大量ファイルのページ切り替え |
+---
+
+### Recent（最近のファイル）
+
+![Recent Files](../../../docs/screenshots/portal-demo/23-recent-files.png)
+
+| 表示情報 | 説明 |
+|---------|------|
+| ファイル名 + パス | 最後にアクセスしたファイル |
+| アクションアイコン | 👁️ 閲覧 / 📥 ダウンロード / 🤖 AI Q&A / 🖼️ プレビュー / 🔗 共有 |
+| 相対時間 | 「2m ago」「3h ago」「2d ago」形式 |
+| クリック動作 | All Files の該当ファイルにナビゲート |
 
 **技術詳細**:
-- `@aws-amplify/ui-react-storage` の Storage Browser コンポーネントを使用
+- DynamoDB `RecentFile` モデル（owner-scoped, Cognito ユーザーごとに独立）
+- `recordRecentFile()` ユーティリティを他コンポーネントから呼び出してログ記録
+- 最新 30 件を `accessedAt` 降順で表示
+- 空状態: 「No recent file activity yet. Navigate to All Files to get started.」
+
+---
+
+### Upload（Storage Browser for S3）
+
+| 機能 | 操作 |
+|------|------|
+| ファイルアップロード | ドラッグ＆ドロップ（最大 5 GB） |
+| フォルダ作成 | 新規フォルダ |
+| コピー・削除 | ファイル操作 |
+| ページネーション | 大量ファイル対応 |
+
+- `@aws-amplify/ui-react-storage` の Storage Browser コンポーネント
 - Cognito Identity Pool の一時認証情報で S3 AP に直接アクセス（Lambda 不要）
-- NFS/SMB からのファイルがリアルタイムに反映（ONTAP 強一貫性）
-- アップロードしたファイルは即座に NFS/SMB から参照可能
+- NFS/SMB からのファイルがリアルタイム反映（ONTAP 強一貫性）
 
 ---
 
-### 3. Process（ワークフロー起動）
+## AI & Processing グループ
 
-![Process Tab](screenshots/portal-process-tab.png)
+### AI Processing（ワークフロー起動）
+
+![AI Processing](screenshots/portal-ai-processing.png)
 
 | 機能 | 操作 |
 |------|------|
-| パターン選択 | UC1-UC28 / OPS1 からワークフローを選択 |
-| 入力パス指定 | 処理対象のディレクトリパスを指定 |
-| ジョブ投入 | Step Functions state machine を起動 |
-| パラメータ設定 | UC 固有のオプションパラメータ |
+| パターン選択 | UC1-UC28 / OPS1 / FC7_FLEXCLONE_RESTORE |
+| 入力パス指定 | 処理対象ディレクトリ |
+| ジョブ投入 | Step Functions StartExecution（AppSync HTTP resolver） |
 
 ---
 
-### 4. Results（結果表示）
+### Job History（実行履歴）
 
-| 機能 | 操作 |
-|------|------|
-| ステータス表示 | RUNNING / SUCCEEDED / FAILED + タイムスタンプ |
-| 出力データ | Step Functions の output JSON を整形表示 |
-| FlexClone ステータス | クローン作成の進捗表示 |
-| フォルダナビゲーション | 処理結果フォルダへのブレッドクラムリンク |
+DynamoDB `JobExecution` モデル（owner-scoped）。過去のジョブを executionArn, pattern, status, 開始/終了時刻とともに表示。
 
 ---
 
-### 5. History（ジョブ履歴）
+### Analytics（Athena SQL）
 
-| 機能 | 操作 |
-|------|------|
-| 実行一覧 | DynamoDB に保存されたジョブ実行履歴 |
-| オーナーフィルタ | ログインユーザーの実行のみ表示 |
-| 結果遷移 | 過去のジョブをクリックで Results タブに遷移 |
+![Analytics](screenshots/portal-analytics.png)
+
+Athena SQL クエリを実行し、結果をテーブル表示。Glue Data Catalog ブラウザ（データベース → テーブル → スキーマ）も統合。
 
 ---
 
-### 6. Analytics（Athena SQL）
+## Data Protection グループ
 
-| 機能 | 操作 |
-|------|------|
-| SQL エディタ | Athena SQL クエリを入力・実行 |
-| データベース選択 | Glue Data Catalog のデータベースを選択 |
-| 結果テーブル | クエリ結果をテーブル形式で表示（最大 100 行） |
+### Snapshots
 
----
+ONTAP REST API 経由で Snapshot 一覧を取得。各 Snapshot から「Browse this version」ボタンで FlexClone + S3 AP を作成し、過去のファイル状態にアクセス。
 
-## セットアップ手順
-
-### 前提条件
-
-- Node.js 18.17+
-- AWS CLI v2 (認証済み)
-- FSx for ONTAP S3 Access Point（DemoMode なら不要）
-
-### Step 1: 設定ファイル
-
-```bash
-cd solutions/amplify-portal
-npm install
-cp amplify/portal-config.example.ts amplify/portal-config.ts
-```
-
-`portal-config.ts` を編集:
-```typescript
-export const config: PortalConfig = {
-  region: "ap-northeast-1",
-  s3ApAlias: "your-ap-xxxxx-ext-s3alias",  // S3 AP alias or bucket name
-  stateMachineArn: "arn:aws:states:ap-northeast-1:123456789012:stateMachine:your-workflow",
-  stateMachineResourceScope: "*",
-  s3ApResourceArns: [
-    "arn:aws:s3:*:*:accesspoint/*",
-    "arn:aws:s3:*:*:accesspoint/*/object/*",
-  ],
-};
-```
-
-`src/portal-settings.ts` を編集（Upload タブ用）:
-```typescript
-export const portalSettings = {
-  processingEnabled: true,  // Process タブを有効化
-  fileListingEnabled: true,
-  region: "ap-northeast-1",
-  accountId: "123456789012",  // aws sts get-caller-identity --query Account
-  s3ApAlias: "your-ap-xxxxx-ext-s3alias",
-};
-```
-
-### Step 2: デプロイ
-
-```bash
-# CDK Sandbox デプロイ（Cognito + AppSync + Lambda）
-make sandbox
-# → 約 4-5 分で完了。amplify_outputs.json が生成される
-
-# ローカル開発サーバー起動
-make dev
-# → http://localhost:5173
-```
-
-### Step 3: テストユーザー作成
-
-```bash
-USER_POOL_ID=$(jq -r '.auth.user_pool_id' amplify_outputs.json)
-aws cognito-idp admin-create-user \
-  --user-pool-id $USER_POOL_ID \
-  --username demo@example.com \
-  --user-attributes Name=email,Value=demo@example.com Name=email_verified,Value=true \
-  --temporary-password 'Demo1234!' \
-  --region ap-northeast-1
-
-aws cognito-idp admin-set-user-password \
-  --user-pool-id $USER_POOL_ID \
-  --username demo@example.com \
-  --password 'Demo1234!' \
-  --permanent \
-  --region ap-northeast-1
-```
-
-### Step 4: 動作確認
-
-1. http://localhost:5173 にアクセス
-2. `demo@example.com` / `Demo1234!` でログイン
-3. 6 タブが表示されることを確認
-4. Files タブ: ファイル一覧が表示される（S3 AP にデータがある場合）
-5. Upload タブ: Storage Browser が表示される
-6. Files タブ: ファイル行の 🔗 ボタンで共有リンクパネルが開く
+**ONTAP 未接続時のフォールバック UI**: 白画面ではなく、接続手順付きの info パネルを表示。
 
 ---
 
-## クリーンアップ
+### Lock（SnapLock + S3 Object Lock）
 
-```bash
-# Sandbox 削除（全リソース削除）
-make sandbox-delete
-# → Cognito, AppSync, Lambda, DynamoDB, IAM Role 全て削除される
-```
+![Lock](screenshots/portal-data-protection-lock.png)
+
+ONTAP SnapLock（Volume-level WORM）と S3 Object Lock（Bucket-level WORM）の統合ビュー。Compliance/Enterprise モード、保持期間を表示。
 
 ---
 
-## IaC 構成
+### ARP/AI（ランサムウェア検知）
 
-```
-amplify/
-├── auth/resource.ts          # Cognito User Pool + Identity Pool
-├── data/resource.ts          # AppSync GraphQL Schema (queries/mutations)
-├── data/resolvers/           # APPSYNC_JS リゾルバー (7 files)
-│   ├── list-files.js         # Lambda → S3 AP ListObjectsV2
-│   ├── get-presigned-url.js  # Lambda → Presigned URL 生成
-│   ├── start-processing.js   # HTTP → Step Functions StartExecution
-│   ├── get-job-status.js     # HTTP → Step Functions DescribeExecution
-│   ├── ask-about-file.js     # Lambda → Bedrock Converse API
-│   ├── detect-labels.js      # Lambda → Rekognition DetectLabels
-│   └── run-athena-query.js   # Lambda → Athena StartQueryExecution
-├── backend.ts                # 全リソース統合 (Lambda inline, IAM, HTTP DS)
-└── portal-config.ts          # 環境固有設定（gitignore 対象）
-```
+![ARP/AI](screenshots/portal-data-protection-arp.png)
 
-**Lambda 関数（backend.ts に inline 定義）**:
-- `ListFilesFunction` — S3 AP ListObjectsV2 + CommonPrefixes
-- `GetPresignedUrlFunction` — SigV4 presigned URL 生成（共有リンク + プレビュー兼用）
-- `AskAboutFileFunction` — S3 AP GetObject → Bedrock Converse
-- `DetectLabelsFunction` — S3 AP GetObject → Rekognition DetectLabels
-- `ExtractTextFunction` — S3 AP GetObject → Textract AnalyzeDocument
-- `AnalyzeTextFunction` — S3 AP GetObject → Comprehend DetectEntities
-- `RunAthenaQueryFunction` — Athena StartQueryExecution + GetQueryResults
-- `BrowseCatalogFunction` — Glue GetDatabases/GetTables/GetTable
+ONTAP Autonomous Ransomware Protection のステータス。検知イベント数、自動 Snapshot 数を表示。FlexClone 復元ワークフローへの案内付き。
 
 ---
 
-## 関連ドキュメント
+## Admin グループ
 
-| ドキュメント | 内容 |
-|---|---|
-| [Storage Browser Demo Guide](../../docs/en/storage-browser-demo-guide.md) | Storage Browser 単体の詳細セットアップ |
-| [Amplify Hosting Production Guide](../../docs/en/amplify-hosting-production-guide.md) | 本番 Amplify Hosting デプロイ手順 |
-| [S3AP Compatibility Notes](../../docs/s3ap-compatibility-notes.md) | S3 AP の制約と回避策 |
-| [portal-config.example.ts](../amplify/portal-config.example.ts) | 設定ファイルテンプレート |
+### Version Diff（Snapshot 間差分）
+
+2 つの S3 AP（Current Volume vs FlexClone）のファイルを並列比較。追加/削除/変更をカラーコードで表示。
+
+**ONTAP 未接続時のフォールバック UI**: Snapshots セクションと同じ info パネル。
+
+---
+
+### Audit Trail（監査証跡）
+
+![Audit Trail](screenshots/portal-audit-trail.png)
+
+CloudTrail S3 データイベントを Athena で検索。フィルター: ファイルパス、イベント種別（Read/Write/All）、日付範囲。「誰が、いつ、どのファイルを」を表示。
+
+---
+
+## プレビュー対応形式
+
+| 拡張子 | プレビュー方式 | アイコン |
+|--------|:---:|:---:|
+| `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp`, `.svg` | Presigned URL → ポップオーバー | 🖼️ |
+| `.pdf` | Presigned URL → iframe（ブラウザ内蔵ビューア） | 📕 |
+| `.docx` | Presigned URL → docx-preview（クライアントサイド） | 📝 |
+| その他 | ダウンロードリンク | 📄 |
+
+---
+
+## CDK 品質ゲート
+
+このポータルは以下の品質ゲートで保護されています:
+
+| ツール | チェック内容 |
+|--------|------------|
+| cdk-nag (AwsSolutionsChecks) | IAM 過剰権限、暗号化、ログ保持 |
+| CDK ハーネステスト (17 assertions) | Lambda 数、ランタイム、環境変数 |
+| IAM Access Analyzer | ポリシーの SECURITY_WARNING 検知 |
+| floci 統合テスト (9 tests) | S3 ListObjectsV2 + Delimiter 動作 |
+
+`SKIP_CDK_NAG=1 npx ampx sandbox --once` で開発時は nag スキップ可。CI では nag 有効。
