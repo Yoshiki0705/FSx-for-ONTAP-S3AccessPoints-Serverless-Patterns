@@ -33,17 +33,26 @@ vi.mock("aws-amplify/auth", () => ({
 vi.mock("../../amplify/data/resource", () => ({}));
 
 import App from "../../src/App";
+import { I18nProvider } from "../../src/i18n";
+
+function renderApp() {
+  return render(
+    <I18nProvider>
+      <App />
+    </I18nProvider>
+  );
+}
 
 describe("App", () => {
   it("renders the portal title", () => {
-    render(<App />);
+    renderApp();
     expect(
       screen.getByRole("heading", { name: /File Portal/i })
     ).toBeInTheDocument();
   });
 
   it("renders sidebar navigation with grouped sections", () => {
-    render(<App />);
+    renderApp();
     const nav = screen.getByRole("navigation", { name: /Main navigation/i });
     expect(nav).toBeInTheDocument();
 
@@ -56,31 +65,31 @@ describe("App", () => {
   });
 
   it("marks the active section with aria-current", () => {
-    render(<App />);
+    renderApp();
     const allFilesBtn = screen.getByText("All Files").closest("button");
     expect(allFilesBtn).toHaveAttribute("aria-current", "page");
   });
 
   it("switches sections on sidebar click", () => {
-    render(<App />);
+    renderApp();
     const favoritesBtn = screen.getByText("Favorites").closest("button");
     fireEvent.click(favoritesBtn!);
     expect(favoritesBtn).toHaveAttribute("aria-current", "page");
   });
 
   it("displays the user email", () => {
-    render(<App />);
+    renderApp();
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
   });
 
   it("has a sign out button", () => {
-    render(<App />);
+    renderApp();
     const signOut = screen.getByRole("button", { name: /sign out/i });
     expect(signOut).toBeInTheDocument();
   });
 
   it("has a sidebar toggle button", () => {
-    render(<App />);
+    renderApp();
     const toggle = screen.getByRole("button", {
       name: /collapse navigation/i,
     });
