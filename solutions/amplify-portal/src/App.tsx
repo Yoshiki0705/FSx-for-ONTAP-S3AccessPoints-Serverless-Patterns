@@ -14,6 +14,10 @@ import { VersionHistory } from "./components/VersionHistory";
 import { AuditLog } from "./components/AuditLog";
 import { ArpStatus } from "./components/ArpStatus";
 import { SnaplockStatus } from "./components/SnaplockStatus";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { useTranslation } from "./i18n";
+
+import type { TranslationKeys } from "./i18n";
 
 type Section =
   | "files" | "favorites" | "recent" | "upload"
@@ -21,24 +25,31 @@ type Section =
   | "snapshots" | "arp" | "lock"
   | "versions" | "audit";
 
-const NAV_ITEMS: { id: Section; icon: string; label: string; group: "browse" | "actions" | "protection" | "admin" }[] = [
+const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: "browse" | "actions" | "protection" | "admin" }[] = [
   // Browse group
-  { id: "files", icon: "📂", label: "All Files", group: "browse" },
-  { id: "favorites", icon: "⭐", label: "Favorites", group: "browse" },
-  { id: "recent", icon: "🕐", label: "Recent", group: "browse" },
-  { id: "upload", icon: "📤", label: "Upload", group: "browse" },
+  { id: "files", icon: "📂", labelKey: "navAllFiles", group: "browse" },
+  { id: "favorites", icon: "⭐", labelKey: "navFavorites", group: "browse" },
+  { id: "recent", icon: "🕐", labelKey: "navRecent", group: "browse" },
+  { id: "upload", icon: "📤", labelKey: "navUpload", group: "browse" },
   // AI & Processing group
-  { id: "process", icon: "⚡", label: "AI Processing", group: "actions" },
-  { id: "history", icon: "📋", label: "Job History", group: "actions" },
-  { id: "analytics", icon: "📊", label: "Analytics", group: "actions" },
+  { id: "process", icon: "⚡", labelKey: "navAiProcessing", group: "actions" },
+  { id: "history", icon: "📋", labelKey: "navJobHistory", group: "actions" },
+  { id: "analytics", icon: "📊", labelKey: "navAnalytics", group: "actions" },
   // Data Protection group
-  { id: "snapshots", icon: "📸", label: "Snapshots", group: "protection" },
-  { id: "lock", icon: "🔒", label: "Lock", group: "protection" },
-  { id: "arp", icon: "🛡️", label: "ARP/AI", group: "protection" },
+  { id: "snapshots", icon: "📸", labelKey: "navSnapshots", group: "protection" },
+  { id: "lock", icon: "🔒", labelKey: "navLock", group: "protection" },
+  { id: "arp", icon: "🛡️", labelKey: "navArp", group: "protection" },
   // Admin group
-  { id: "versions", icon: "🔄", label: "Version Diff", group: "admin" },
-  { id: "audit", icon: "🔍", label: "Audit Trail", group: "admin" },
+  { id: "versions", icon: "🔄", labelKey: "navVersionDiff", group: "admin" },
+  { id: "audit", icon: "🔍", labelKey: "navAuditTrail", group: "admin" },
 ];
+
+const GROUP_LABELS: Record<string, TranslationKeys> = {
+  browse: "groupBrowse",
+  actions: "groupAiProcessing",
+  protection: "groupDataProtection",
+  admin: "groupAdmin",
+};
 
 /**
  * FSx for ONTAP File Portal — Main Application Shell
@@ -62,6 +73,7 @@ function App() {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user, signOut, authStatus } = useAuthenticator();
+  const { t } = useTranslation();
 
   if (authStatus !== "authenticated") {
     return <LoadingSkeleton />;
@@ -76,78 +88,39 @@ function App() {
         <button
           className="sidebar-toggle"
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+          aria-label={sidebarCollapsed ? t("expandNav") : t("collapseNav")}
         >
           {sidebarCollapsed ? "☰" : "✕"}
         </button>
-        <h1 className="portal-title">File Portal</h1>
+        <h1 className="portal-title">{t("appTitle")}</h1>
         <div className="topbar-spacer" />
+        <LanguageSwitcher />
         <div className="topbar-user">
           <span className="user-email">{user?.signInDetails?.loginId}</span>
           <button onClick={signOut} className="sign-out-btn">
-            Sign Out
+            {t("signOut")}
           </button>
         </div>
       </header>
 
       {/* Left sidebar: Navigation */}
       <nav className="portal-sidebar" aria-label="Main navigation">
-        <div className="sidebar-section">
-          <span className="sidebar-group-label">Browse</span>
-          {NAV_ITEMS.filter((n) => n.group === "browse").map((item) => (
-            <button
-              key={item.id}
-              className={`sidebar-item ${activeSection === item.id ? "active" : ""}`}
-              onClick={() => setActiveSection(item.id)}
-              aria-current={activeSection === item.id ? "page" : undefined}
-            >
-              <span className="sidebar-icon">{item.icon}</span>
-              <span className="sidebar-label">{item.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="sidebar-section">
-          <span className="sidebar-group-label">AI & Processing</span>
-          {NAV_ITEMS.filter((n) => n.group === "actions").map((item) => (
-            <button
-              key={item.id}
-              className={`sidebar-item ${activeSection === item.id ? "active" : ""}`}
-              onClick={() => setActiveSection(item.id)}
-              aria-current={activeSection === item.id ? "page" : undefined}
-            >
-              <span className="sidebar-icon">{item.icon}</span>
-              <span className="sidebar-label">{item.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="sidebar-section">
-          <span className="sidebar-group-label">Data Protection</span>
-          {NAV_ITEMS.filter((n) => n.group === "protection").map((item) => (
-            <button
-              key={item.id}
-              className={`sidebar-item ${activeSection === item.id ? "active" : ""}`}
-              onClick={() => setActiveSection(item.id)}
-              aria-current={activeSection === item.id ? "page" : undefined}
-            >
-              <span className="sidebar-icon">{item.icon}</span>
-              <span className="sidebar-label">{item.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="sidebar-section">
-          <span className="sidebar-group-label">Admin</span>
-          {NAV_ITEMS.filter((n) => n.group === "admin").map((item) => (
-            <button
-              key={item.id}
-              className={`sidebar-item ${activeSection === item.id ? "active" : ""}`}
-              onClick={() => setActiveSection(item.id)}
-              aria-current={activeSection === item.id ? "page" : undefined}
-            >
-              <span className="sidebar-icon">{item.icon}</span>
-              <span className="sidebar-label">{item.label}</span>
-            </button>
-          ))}
-        </div>
+        {(["browse", "actions", "protection", "admin"] as const).map((group) => (
+          <div className="sidebar-section" key={group}>
+            <span className="sidebar-group-label">{t(GROUP_LABELS[group])}</span>
+            {NAV_ITEMS.filter((n) => n.group === group).map((item) => (
+              <button
+                key={item.id}
+                className={`sidebar-item ${activeSection === item.id ? "active" : ""}`}
+                onClick={() => setActiveSection(item.id)}
+                aria-current={activeSection === item.id ? "page" : undefined}
+              >
+                <span className="sidebar-icon">{item.icon}</span>
+                <span className="sidebar-label">{t(item.labelKey)}</span>
+              </button>
+            ))}
+          </div>
+        ))}
       </nav>
 
       {/* Main content area */}
