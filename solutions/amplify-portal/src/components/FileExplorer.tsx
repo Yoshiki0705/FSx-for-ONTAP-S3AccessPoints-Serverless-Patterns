@@ -5,6 +5,7 @@ import { portalSettings } from "../portal-settings";
 import { FilePreview } from "./FilePreview";
 import { RestoreFromSnapshot } from "./RestoreFromSnapshot";
 import { ShareLink } from "./ShareLink";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -36,6 +37,7 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
   const [error, setError] = useState<string | null>(null);
   const [continuationToken, setContinuationToken] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const { t } = useTranslation();
 
   const loadFiles = useCallback(async (prefix: string, token?: string | null) => {
     setLoading(true);
@@ -97,7 +99,7 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
   return (
     <div className="file-explorer">
       <div className="file-explorer-header">
-        <h2>Files</h2>
+        <h2>{t("filesTitle")}</h2>
         <div className="breadcrumb">
           <button onClick={() => navigateToFolder("")}>/</button>
           {currentPrefix.split("/").filter(Boolean).map((part, idx, arr) => (
@@ -112,10 +114,10 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
         <button
           className="process-btn"
           onClick={() => onSelectPrefix(currentPrefix)}
-          title="Process files in this directory"
+          title={t("filesProcessFolder")}
           disabled={!portalSettings.processingEnabled}
         >
-          Process this folder
+          {t("filesProcessFolder")}
         </button>
         <RestoreFromSnapshot currentPrefix={currentPrefix} />
       </div>
@@ -161,18 +163,18 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
         })}
 
         {files.length === 0 && !loading && (
-          <div className="empty-state">No files in this directory</div>
+          <div className="empty-state">{t("filesEmpty")}</div>
         )}
       </div>
 
-      {loading && <div className="loading">Loading...</div>}
+      {loading && <div className="loading">{t("loading")}</div>}
 
       {hasMore && !loading && (
         <button
           className="load-more"
           onClick={() => loadFiles(currentPrefix, continuationToken)}
         >
-          Load more files
+          {t("filesLoadMore")}
         </button>
       )}
     </div>
