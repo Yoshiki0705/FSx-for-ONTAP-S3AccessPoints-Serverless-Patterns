@@ -12,6 +12,8 @@ import { FavoritesView } from "./components/Favorites";
 import { RecentFiles } from "./components/RecentFiles";
 import { VersionHistory } from "./components/VersionHistory";
 import { AuditLog } from "./components/AuditLog";
+import { ArpStatus } from "./components/ArpStatus";
+import { SnaplockStatus } from "./components/SnaplockStatus";
 
 type Section =
   | "files" | "favorites" | "recent" | "upload"
@@ -214,129 +216,8 @@ function App() {
 
         {/* Data Protection sections */}
         {activeSection === "snapshots" && <VersionHistory />}
-        {activeSection === "lock" && (
-          <div className="protection-section">
-            <h2>🔒 Lock — Content Immutability</h2>
-            <p className="section-description">
-              Unified view of content protection locks across ONTAP SnapLock and S3 Object Lock.
-              Locked content cannot be modified or deleted until the retention period expires,
-              regardless of access privileges.
-            </p>
-
-            <div className="lock-subsections">
-              <div className="lock-subsection">
-                <h3>ONTAP SnapLock (Volume-level WORM)</h3>
-                <p className="subsection-desc">
-                  Files committed to SnapLock volumes become immutable at the filesystem level.
-                  Applies to NFS/SMB/S3 AP access — all protocols respect the lock.
-                </p>
-                <div className="protection-cards">
-                  <div className="protection-card">
-                    <div className="card-icon">📋</div>
-                    <div className="card-content">
-                      <h3>SnapLock Type</h3>
-                      <p>Compliance</p>
-                      <small>Cannot be disabled. Even fsxadmin cannot delete locked files.</small>
-                    </div>
-                  </div>
-                  <div className="protection-card">
-                    <div className="card-icon">📅</div>
-                    <div className="card-content">
-                      <h3>Retention</h3>
-                      <p>Min: 30 days / Max: 365 days</p>
-                      <small>Per-file retention via autocommit or explicit commit.</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="lock-subsection">
-                <h3>S3 Object Lock (Bucket-level WORM)</h3>
-                <p className="subsection-desc">
-                  S3 Object Lock on standard S3 buckets used for output/archive.
-                  Provides the same WORM guarantee for objects stored outside FSx for ONTAP.
-                </p>
-                <div className="protection-cards">
-                  <div className="protection-card">
-                    <div className="card-icon">🪣</div>
-                    <div className="card-content">
-                      <h3>Output Buckets</h3>
-                      <p>Object Lock enabled</p>
-                      <small>AI processing results locked for compliance retention.</small>
-                    </div>
-                  </div>
-                  <div className="protection-card">
-                    <div className="card-icon">⏱️</div>
-                    <div className="card-content">
-                      <h3>Governance Mode</h3>
-                      <p>Default retention: 90 days</p>
-                      <small>Authorized users can override with s3:BypassGovernanceRetention.</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="protection-info">
-              <h3>How Lock protects your content</h3>
-              <ul>
-                <li><strong>SnapLock (ONTAP)</strong>: Protects source data on NAS volumes — files committed to WORM cannot be altered via any protocol (NFS/SMB/S3 AP)</li>
-                <li><strong>S3 Object Lock</strong>: Protects derived outputs in S3 buckets — AI analysis results, compliance reports, archived exports</li>
-                <li><strong>Tamperproof Snapshots</strong>: A snapshot-level lock (managed in the Snapshots section) — prevents deletion of recovery points even by volume admins</li>
-                <li><strong>Regulatory coverage</strong>: SEC 17a-4, FISC, HIPAA, NARA records retention requirements</li>
-              </ul>
-            </div>
-          </div>
-        )}
-        {activeSection === "arp" && (
-          <div className="protection-section">
-            <h2>🛡️ Autonomous Ransomware Protection (ARP/AI)</h2>
-            <p className="section-description">
-              ONTAP ARP/AI monitors file activity patterns and detects anomalous behavior
-              indicative of ransomware attacks. When suspicious activity is detected,
-              an automatic Snapshot is created to preserve clean data.
-            </p>
-            <div className="protection-cards">
-              <div className="protection-card status-ok">
-                <div className="card-icon">✅</div>
-                <div className="card-content">
-                  <h3>ARP Status</h3>
-                  <p>Active — monitoring enabled</p>
-                  <small>Learning mode complete. Active protection since volume creation.</small>
-                </div>
-              </div>
-              <div className="protection-card">
-                <div className="card-icon">📊</div>
-                <div className="card-content">
-                  <h3>Detection Events (30 days)</h3>
-                  <p>0 alerts</p>
-                  <small>No suspicious file activity patterns detected.</small>
-                </div>
-              </div>
-              <div className="protection-card">
-                <div className="card-icon">📸</div>
-                <div className="card-content">
-                  <h3>ARP Snapshots</h3>
-                  <p>0 automatic snapshots</p>
-                  <small>Created automatically when threats are detected.</small>
-                </div>
-              </div>
-            </div>
-            <div className="protection-info">
-              <h3>How ARP/AI works with this portal</h3>
-              <ul>
-                <li>ONTAP monitors file entropy, extension changes, and access patterns</li>
-                <li>If ransomware-like behavior is detected, ARP creates an immutable Snapshot</li>
-                <li>The Snapshots section shows all available recovery points (including ARP-triggered ones)</li>
-                <li>FlexClone from an ARP Snapshot restores clean data without downtime</li>
-              </ul>
-              <p className="integration-note">
-                For automated response workflows (isolate → snapshot → notify → restore),
-                see the <a href="https://github.com/Yoshiki0705/fsxn-observability-integrations/blob/main/docs/en/automated-response-guide.md" target="_blank" rel="noopener noreferrer">Observability Integrations: Automated Response Guide</a>.
-              </p>
-            </div>
-          </div>
-        )}
+        {activeSection === "lock" && <SnaplockStatus />}
+        {activeSection === "arp" && <ArpStatus />}
         {/* End of Data Protection sections */}
       </main>
 

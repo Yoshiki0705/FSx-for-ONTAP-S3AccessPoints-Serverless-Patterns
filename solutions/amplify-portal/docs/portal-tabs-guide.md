@@ -137,27 +137,74 @@ Athena SQL クエリを実行し、結果をテーブル表示。Glue Data Catal
 
 ## Data Protection グループ
 
-### Snapshots
+### Snapshots（+ Tamperproof Snapshot ロック）
+
+![Snapshots fallback](screenshots/portal-snapshots-fallback.png)
 
 ONTAP REST API 経由で Snapshot 一覧を取得。各 Snapshot から「Browse this version」ボタンで FlexClone + S3 AP を作成し、過去のファイル状態にアクセス。
+
+**Tamperproof Snapshot（Snapshot Locking）**:
+- 各 Snapshot に 🔐（ロック済み）/ 🔓（未ロック）状態を表示
+- ロック済み Snapshot は `expiry_time` まで削除不可（管理者含む）
+- 「🔒 Lock」ボタン → 保持期間（1-365 日）を指定してロック（storage-admin グループのみ）
+- ONTAP REST API: `PATCH /api/storage/volumes/{uuid}/snapshots/{uuid}` に `expiry_time` を設定
+
+**前提条件（Tamperproof 有効化）**:
+- ボリュームで Snapshot Locking が有効であること: `volume modify -volume <vol> -snapshot-locking-enabled true`
+- SnapLock ライセンスは不要（Snapshot Locking は SnapLock とは別機能）
 
 **ONTAP 未接続時のフォールバック UI**: 白画面ではなく、接続手順付きの info パネルを表示。
 
 ---
 
-### Lock（SnapLock + S3 Object Lock）
+### Lock（SnapLock + Tamperproof + S3 Object Lock）
 
-![Lock](screenshots/portal-data-protection-lock.png)
+![Lock fallback](screenshots/portal-snaplock-status-fallback.png)
 
-ONTAP SnapLock（Volume-level WORM）と S3 Object Lock（Bucket-level WORM）の統合ビュー。Compliance/Enterprise モード、保持期間を表示。
+ONTAP REST API から以下をリアルタイム取得:
+
+| 取得情報 | API | 表示内容 |
+|---------|-----|---------|
+| SnapLock タイプ | `GET /api/storage/volumes?fields=snaplock` | Compliance / Enterprise / Non-SnapLock |
+| 保持ポリシー | 同上 | Default / Min / Max retention period |
+| Autocommit 期間 | 同上 | 非活動ファイルの自動 WORM コミット期間 |
+| Snapshot Locking 有効/無効 | `fields=snapshot_locking_enabled` | 🔐 Enabled / 🔓 Not enabled |
+
+**3 層の不変性を統合表示**:
+1. **ONTAP SnapLock**: ボリュームレベル WORM（NFS/SMB/S3 AP 全プロトコルで強制）
+2. **Tamperproof Snapshot**: Snapshot 単位のロック（Snapshots タブで操作）
+3. **S3 Object Lock**: 出力バケット WORM（AI 処理結果のアーカイブ保護）
+
+**ONTAP 未接続時のフォールバック UI**: 白画面ではなく、接続手順付きの info パネルを表示。
 
 ---
 
 ### ARP/AI（ランサムウェア検知）
 
-![ARP/AI](screenshots/portal-data-protection-arp.png)
+![ARP fallback](screenshots/portal-arp-status-fallback.png)
 
-ONTAP Autonomous Ransomware Protection のステータス。検知イベント数、自動 Snapshot 数を表示。FlexClone 復元ワークフローへの案内付き。
+ONTAP REST API から以下をリアルタイム取得:
+
+| 取得情報 | API | 表示内容 |
+|---------|-----|---------|
+| ARP 状態 | `GET /api/storage/volumes?fields=anti_ransomware` | enabled / dry_run / paused / disabled |
+| 脅威レベル | 同上 (`attack_probability`) | none / low / moderate / high |
+| Learning 開始時刻 | 同上 (`dry_run_start_time`) | dry_run 状態の場合に表示 |
+| 自動 Snapshot | state=enabled 時に有効 | 脅威検知時に自動で不変 Snapshot 作成 |
+
+**ARP 状態カード**:
+- ✅ `enabled`: AI 駆動の保護が有効（ファイルエントロピー、拡張子変更、アクセスパターン監視）
+- 🔄 `dry_run`: Learning モード（パターン学習中、ブロックなし）
+- ⏸️ `paused`: 管理者が一時停止
+- ⚠️ `disabled`: 未設定
+
+**脅威レベル表示**:
+- 🟢 `none`: 脅威なし
+- 🟡 `low`: 低確率の異常検知
+- 🟠 `moderate`: 中程度 — 確認推奨
+- 🔴 `high`: ランサムウェア攻撃の可能性 — 即座に対応が必要
+
+**ONTAP 未接続時のフォールバック UI**: 白画面ではなく、接続手順付きの info パネルを表示。
 
 ---
 

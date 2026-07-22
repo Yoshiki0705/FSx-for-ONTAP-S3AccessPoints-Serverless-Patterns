@@ -232,6 +232,58 @@ Restore files from a specific snapshot using FlexClone — zero-copy, instant ac
 
 ---
 
+### 11. Data Protection — Real-Time ONTAP Monitoring
+
+These sections query the ONTAP REST API via VPC Lambda for live data protection status.
+
+> **DemoMode note**: Without ONTAP connectivity, these sections display an informational fallback panel explaining the connection requirements. All other portal features (file browsing, AI, upload) work without ONTAP.
+
+#### ARP/AI — Ransomware Protection Status
+
+Navigate to **Data Protection → ARP/AI**.
+
+![ARP/AI fallback (DemoMode)](../screenshots/portal-demo/portal-arp-status-fallback.png)
+
+When connected to ONTAP, displays:
+- **ARP State**: enabled / dry_run (learning) / paused / disabled
+- **Threat Level**: none 🟢 / low 🟡 / moderate 🟠 / high 🔴
+- **Auto-Snapshot**: Whether ARP creates immutable snapshots on threat detection
+
+> ARP/AI uses machine learning to monitor file entropy, extension changes, and access patterns. When ransomware-like activity is detected, it creates a tamperproof snapshot automatically.
+
+#### Lock — SnapLock + Tamperproof Snapshot
+
+Navigate to **Data Protection → Lock**.
+
+![Lock fallback (DemoMode)](../screenshots/portal-demo/portal-snaplock-status-fallback.png)
+
+When connected to ONTAP, displays:
+- **SnapLock Type**: Compliance (no override) / Enterprise (privileged delete) / Non-SnapLock
+- **Retention Policy**: Default / Min / Max periods
+- **Snapshot Locking**: Whether Tamperproof Snapshot is enabled on the volume
+- **S3 Object Lock**: Output bucket WORM configuration
+
+> Three layers of immutability: SnapLock (file-level WORM), Tamperproof Snapshot (recovery point protection), S3 Object Lock (AI output archival).
+
+#### Tamperproof Snapshot — Lock Individual Snapshots
+
+Navigate to **Data Protection → Snapshots**.
+
+Each snapshot in the table shows a Lock column:
+- 🔐 = Locked (with expiry time displayed)
+- 🔓 = Unlocked (deletable)
+
+For storage-admin users, a **🔒 Lock** button appears next to unlocked snapshots:
+1. Click **🔒 Lock**
+2. Enter retention period (1-365 days)
+3. Confirm → snapshot becomes tamperproof until expiry
+
+> Once locked, the snapshot **cannot be deleted** — even by the cluster administrator — until the retention period expires. This protects against insider threats and ransomware that targets backup deletion.
+
+**Prerequisites**: Volume must have snapshot locking enabled (`volume modify -volume <vol> -snapshot-locking-enabled true`). The Lock section shows whether this is configured.
+
+---
+
 ## Cleanup
 
 After the demo, delete resources in this order:
