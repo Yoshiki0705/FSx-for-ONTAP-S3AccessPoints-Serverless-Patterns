@@ -185,3 +185,5 @@ cfn-params/*.json
 params/*.json
 !params/*.example.json
 docs/screenshots/portal-demo/originals/
+infrastructure/knfsd-file-cache/terraform/terraform.tfvars
+infrastructure/knfsd-file-cache/.ami-id

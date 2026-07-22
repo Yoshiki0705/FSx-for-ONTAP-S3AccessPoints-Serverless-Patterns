@@ -1,0 +1,332 @@
+{
+  "widgets": [
+    {
+      "height": 2,
+      "width": 24,
+      "y": 0,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "# KNFSD File Cache + FSx for ONTAP — Integrated Dashboard\n\nKNFSD NFS read cache performance alongside FSx for ONTAP throughput and S3 AP Lambda processing.\n\n**Replace**: `${KNFSD_INSTANCE_ID}`, `${FSX_FILE_SYSTEM_ID}`, `${REGION}` before deploying."
+      }
+    },
+    {
+      "height": 1,
+      "width": 24,
+      "y": 2,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## KNFSD Cache Performance"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 3,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["KNFSD", "CacheHitRatio", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "Cache Hit Ratio"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "stat": "Average",
+        "period": 60,
+        "title": "Cache Hit Ratio (%)",
+        "yAxis": {
+          "left": {"min": 0, "max": 100}
+        },
+        "annotations": {
+          "horizontal": [
+            {"label": "Target (95%)", "value": 95, "color": "#2ca02c"},
+            {"label": "Warning (80%)", "value": 80, "color": "#ff7f0e"}
+          ]
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 3,
+      "x": 8,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["KNFSD", "ReadThroughputSource", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "From Source (cache miss)", "color": "#d62728"}],
+          ["KNFSD", "ReadThroughputCache", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "From Cache (hit)", "color": "#2ca02c"}],
+          ["KNFSD", "ReadThroughputTotal", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "Total Client Read", "color": "#1f77b4"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "stat": "Average",
+        "period": 60,
+        "title": "KNFSD Read Throughput (bytes/sec)"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 3,
+      "x": 16,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["KNFSD", "NfsConnectionsTotal", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "Active NFS Connections"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "stat": "Average",
+        "period": 60,
+        "title": "Active NFS Client Connections",
+        "annotations": {
+          "horizontal": [
+            {"label": "Scale-out threshold", "value": 100, "color": "#ff7f0e"}
+          ]
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 9,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["KNFSD", "FsCacheObjectsActive", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "Active Objects"}],
+          ["KNFSD", "FsCacheSpaceUsed", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "Cache Space Used (bytes)", "yAxis": "right"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "stat": "Average",
+        "period": 60,
+        "title": "FS-Cache (L2 NVMe) Utilization"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 9,
+      "x": 8,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["KNFSD", "LruEvictionRate", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "LRU Eviction Rate"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "stat": "Sum",
+        "period": 60,
+        "title": "LRU Eviction Rate (high = cache too small)",
+        "annotations": {
+          "horizontal": [
+            {"label": "Warning", "value": 100, "color": "#ff7f0e"}
+          ]
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 9,
+      "x": 16,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["KNFSD", "NfsReadLatencyMs", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "Read RTT (ms)"}],
+          ["KNFSD", "NfsWriteLatencyMs", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "Write RTT (ms)"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "stat": "Average",
+        "period": 60,
+        "title": "NFS Latency (Client-facing)"
+      }
+    },
+    {
+      "height": 1,
+      "width": 24,
+      "y": 15,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## FSx for ONTAP — Shared Throughput"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 16,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["AWS/FSx", "DataReadBytes", "FileSystemId", "${FSX_FILE_SYSTEM_ID}", {"label": "Read Throughput", "stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "period": 60,
+        "title": "FSx DataReadBytes (shared by KNFSD + S3 AP + NFS/SMB)",
+        "annotations": {
+          "horizontal": [
+            {"label": "80% of provisioned", "value": 858993459, "color": "#ff7f0e"}
+          ]
+        }
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 16,
+      "x": 8,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["AWS/FSx", "DataWriteBytes", "FileSystemId", "${FSX_FILE_SYSTEM_ID}", {"label": "Write Throughput", "stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "period": 60,
+        "title": "FSx DataWriteBytes"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 16,
+      "x": 16,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["AWS/FSx", "DataReadOperations", "FileSystemId", "${FSX_FILE_SYSTEM_ID}", {"label": "Read IOPS", "stat": "Sum"}],
+          ["AWS/FSx", "DataWriteOperations", "FileSystemId", "${FSX_FILE_SYSTEM_ID}", {"label": "Write IOPS", "stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "period": 60,
+        "title": "FSx IOPS"
+      }
+    },
+    {
+      "height": 1,
+      "width": 24,
+      "y": 22,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## S3 AP Lambda Processing (Dual-Path)"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 23,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Duration", {"stat": "p99", "label": "P99 Duration"}],
+          ["AWS/Lambda", "Duration", {"stat": "Average", "label": "Avg Duration"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "period": 60,
+        "title": "Lambda Duration (S3 AP Processing)"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 23,
+      "x": 8,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Errors", {"stat": "Sum", "label": "Errors"}],
+          ["AWS/Lambda", "Throttles", {"stat": "Sum", "label": "Throttles"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "period": 60,
+        "title": "Lambda Errors & Throttles"
+      }
+    },
+    {
+      "height": 6,
+      "width": 8,
+      "y": 23,
+      "x": 16,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "ConcurrentExecutions", {"stat": "Maximum", "label": "Concurrent Executions"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "period": 60,
+        "title": "Lambda Concurrency (S3 AP access)"
+      }
+    },
+    {
+      "height": 1,
+      "width": 24,
+      "y": 29,
+      "x": 0,
+      "type": "text",
+      "properties": {
+        "markdown": "## Bandwidth Sharing Analysis"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 30,
+      "x": 0,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["KNFSD", "ReadThroughputSource", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "KNFSD → FSx (miss only)", "color": "#d62728"}],
+          ["AWS/FSx", "DataReadBytes", "FileSystemId", "${FSX_FILE_SYSTEM_ID}", {"label": "FSx Total Read", "color": "#1f77b4", "stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "period": 60,
+        "title": "KNFSD Source Read vs FSx Total — Bandwidth Sharing"
+      }
+    },
+    {
+      "height": 6,
+      "width": 12,
+      "y": 30,
+      "x": 12,
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["CWAgent", "mem_used_percent", "InstanceId", "${KNFSD_INSTANCE_ID}", {"label": "Memory Used %"}],
+          ["CWAgent", "disk_used_percent", "InstanceId", "${KNFSD_INSTANCE_ID}", "path", "/var/cache/fscache", {"label": "NVMe Cache Used %"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "${REGION}",
+        "stat": "Average",
+        "period": 60,
+        "title": "KNFSD Instance Resources (L1 RAM + L2 NVMe)"
+      }
+    }
+  ]
+}
