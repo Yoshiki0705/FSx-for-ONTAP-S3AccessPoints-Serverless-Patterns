@@ -24,10 +24,12 @@
 | FSx なしでデモを試す | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 分 |
 | Web ポータルでファイルを閲覧・処理 | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.md) | 10 分 |
 | ポータルのデモを見る (スクリーンショット付き) | [Portal Demo Guide (JA)](docs/ja/portal-demo-guide.md) / [EN](docs/en/portal-demo-guide.md) | 5 分 |
+| ポータルのセクション構成を理解する | [Portal Sections Guide](solutions/amplify-portal/docs/portal-tabs-guide.md) | 5 分 |
 | ポータルを自環境にデプロイ | [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) | 15 分 |
 | パターンを AWS にデプロイ | [Deployment Guide](docs/guides/deployment-guide.md) | 30 分 |
 | 自分のワークロードに合うパターンを探す | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 分 |
 | コストを見積もる | [Cost Calculator](docs/cost-calculator.md) | 5 分 |
+| CDK 品質ゲートを理解する | [IaC Governance Patterns](solutions/amplify-portal/docs/iac-governance-patterns.md) | 10 分 |
 | ハンズオン Lab 環境を構築 | [Hands-on Lab IaC](infrastructure/handson-lab/) | 60 分 |
 
 ---
