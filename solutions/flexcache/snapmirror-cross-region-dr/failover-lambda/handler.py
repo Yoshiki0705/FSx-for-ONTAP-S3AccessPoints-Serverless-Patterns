@@ -82,9 +82,7 @@ def ontap_request(
             response.status,
             response.data.decode("utf-8", errors="replace"),
         )
-        raise RuntimeError(
-            f"ONTAP API {method} {path} failed: HTTP {response.status}"
-        )
+        raise RuntimeError(f"ONTAP API {method} {path} failed: HTTP {response.status}")
 
     if response.data:
         return json.loads(response.data.decode("utf-8"))
@@ -138,9 +136,7 @@ def break_snapmirror(mgmt_ip: str, username: str, password: str) -> None:
         logger.info("SnapMirror break initiated for %s", rel_uuid)
 
 
-def set_junction_path(
-    volume_id: str, junction_path: str, region: str
-) -> None:
+def set_junction_path(volume_id: str, junction_path: str, region: str) -> None:
     """Set junction path on the destination volume via FSx API.
 
     After SnapMirror break, junction path may be unset.
@@ -154,9 +150,7 @@ def set_junction_path(
     if not volumes:
         raise RuntimeError(f"Volume {volume_id} not found in FSx API")
 
-    current_jp = (
-        volumes[0].get("OntapConfiguration", {}).get("JunctionPath") or ""
-    )
+    current_jp = volumes[0].get("OntapConfiguration", {}).get("JunctionPath") or ""
     if current_jp:
         logger.info("Junction path already set: %s", current_jp)
         return
@@ -178,14 +172,9 @@ def poll_junction_path(volume_id: str, region: str) -> bool:
         response = fsx.describe_volumes(VolumeIds=[volume_id])
         volumes = response.get("Volumes", [])
         if volumes:
-            jp = (
-                volumes[0].get("OntapConfiguration", {}).get("JunctionPath")
-                or ""
-            )
+            jp = volumes[0].get("OntapConfiguration", {}).get("JunctionPath") or ""
             if jp:
-                logger.info(
-                    "Junction path confirmed: %s (attempt %d)", jp, attempt
-                )
+                logger.info("Junction path confirmed: %s (attempt %d)", jp, attempt)
                 return True
 
         logger.info(
@@ -199,9 +188,7 @@ def poll_junction_path(volume_id: str, region: str) -> bool:
     return False
 
 
-def create_s3_access_point(
-    volume_id: str, ap_name: str, unix_user: str, region: str
-) -> dict[str, str]:
+def create_s3_access_point(volume_id: str, ap_name: str, unix_user: str, region: str) -> dict[str, str]:
     """Create and attach an S3 Access Point on the destination volume.
 
     SM-VAL-008: Do NOT check FSx API VolumeType before creating AP.
@@ -210,9 +197,7 @@ def create_s3_access_point(
     """
     fsx = boto3.client("fsx", region_name=region or None)
 
-    logger.info(
-        "Creating S3 AP '%s' on volume %s (user=%s)", ap_name, volume_id, unix_user
-    )
+    logger.info("Creating S3 AP '%s' on volume %s (user=%s)", ap_name, volume_id, unix_user)
 
     response = fsx.create_and_attach_s3_access_point(
         Name=ap_name,
@@ -261,9 +246,7 @@ def poll_s3_ap_available(ap_name: str, region: str) -> str:
     return f"{ap_name}-{account_id}-s3alias"
 
 
-def publish_notification(
-    topic_arn: str, ap_info: dict[str, str], region: str
-) -> None:
+def publish_notification(topic_arn: str, ap_info: dict[str, str], region: str) -> None:
     """Publish SNS notification with failover result."""
     if not topic_arn:
         logger.info("No SNS topic configured. Skipping notification.")
@@ -334,9 +317,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # Validate required parameters
     if not all([mgmt_ip, volume_id, ap_name]):
-        raise ValueError(
-            "Missing required parameters: DEST_MGMT_IP, DEST_VOLUME_ID, S3_AP_NAME"
-        )
+        raise ValueError("Missing required parameters: DEST_MGMT_IP, DEST_VOLUME_ID, S3_AP_NAME")
 
     # Step 1: Get ONTAP credentials
     logger.info("Step 1/5: Retrieving ONTAP credentials...")
@@ -355,9 +336,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Step 4: Poll for junction path propagation
     logger.info("Step 4/5: Waiting for junction path in FSx API...")
     if not poll_junction_path(volume_id, region):
-        raise RuntimeError(
-            f"Junction path not propagated within timeout for volume {volume_id}"
-        )
+        raise RuntimeError(f"Junction path not propagated within timeout for volume {volume_id}")
 
     # Step 5: Create S3 Access Point
     logger.info("Step 5/5: Creating S3 Access Point on destination volume...")
