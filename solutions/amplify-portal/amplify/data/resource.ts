@@ -330,6 +330,33 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/get-protection-summary.js" })),
 
+  getArpStatus: a
+    .query()
+    .arguments({})
+    .returns(
+      a.customType({
+        volumeName: a.string(),
+        arp: a.json(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/get-arp-status.js" })),
+
+  getSnaplockStatus: a
+    .query()
+    .arguments({})
+    .returns(
+      a.customType({
+        volumeName: a.string(),
+        snaplock: a.json(),
+        snapshotLockingEnabled: a.boolean(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/get-snaplock-status.js" })),
+
   // --- Data Protection: Write (storage-admin only) ---
   createSnapshot: a
     .mutation()
@@ -351,6 +378,16 @@ const schema = a.schema({
     .returns(a.customType({ success: a.boolean(), newState: a.string(), error: a.string() }))
     .authorization((allow) => [allow.groups(["storage-admin"])])
     .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/update-arp-state.js" })),
+
+  lockSnapshot: a
+    .mutation()
+    .arguments({
+      snapshotId: a.string().required(),
+      expiryTime: a.string().required(),
+    })
+    .returns(a.customType({ success: a.boolean(), snapshotId: a.string(), expiryTime: a.string(), error: a.string() }))
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/lock-snapshot.js" })),
 
   updateRetentionPolicy: a
     .mutation()
