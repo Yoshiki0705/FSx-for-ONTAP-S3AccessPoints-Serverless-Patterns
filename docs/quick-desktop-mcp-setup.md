@@ -17,11 +17,11 @@ Amazon Quick Desktop アプリから AgentCore MCP Gateway 経由で、FSx for O
 ```
 Quick Desktop (MCP Client, stdio via mcp-remote)
     ↓ HTTP Streamable
-AgentCore MCP Gateway (NONE auth — PoC)
-    ↓ Lambda Invoke
+AgentCore MCP Gateway (ap-northeast-1, NONE auth — PoC)
+    ↓ Lambda Invoke (同一リージョン)
 MCP Tools Lambda (list_files / read_file / search_files)
     ↓ S3 API
-FSx for ONTAP S3 Access Point
+FSx for ONTAP S3 Access Point (ap-northeast-1)
     ↓
 NFS/SMB ボリューム（EDA シミュレーションログ等）
 ```
@@ -57,7 +57,7 @@ NFS/SMB ボリューム（EDA シミュレーションログ等）
 | Node.js | v22+（`npx` コマンドが使える状態） |
 | AWS CLI | v2.35+ |
 | FSx for ONTAP | S3 Access Point がアタッチ済みのボリューム |
-| AgentCore | us-east-1 リージョン（2026-07 時点での制約） |
+| AgentCore | ap-northeast-1 に対応（2026-07 検証済み。us-east-1 も利用可能） |
 
 ---
 
@@ -162,9 +162,10 @@ JSON の中身（デプロイスクリプトが自動生成）:
 | コンポーネント | 構成 | 備考 |
 |---|---|---|
 | Gateway 認証 | **NONE** | PoC 用。本番は VPC + SG で保護 |
-| MCP 追加方式 | **Import** (JSON file) | Local/Remote はバグあり |
+| MCP 追加方式 | **Import** (JSON file) | Local/Remote はバグあり（間欠的） |
 | MCP トランスポート | **mcp-remote** (stdio proxy) | Remote 直接は不安定 |
-| Lambda リージョン | **us-east-1** (Gateway と同一) | クロスリージョンは不可 |
+| Lambda リージョン | **ap-northeast-1** (Gateway と同一) | クロスリージョンは不可 |
+| Gateway リージョン | **ap-northeast-1** (2026-07 検証済み) | us-east-1 も利用可能 |
 
 ### 動作しない構成（2026-07 時点）
 
