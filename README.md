@@ -1,6 +1,6 @@
 # FSx for ONTAP S3 Access Points — Serverless Patterns
 
-![tests](https://img.shields.io/badge/tests-2%2C162%2B%20passed-brightgreen) ![cfn-lint](https://img.shields.io/badge/cfn--lint-0%20errors-brightgreen) ![ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen) ![patterns](https://img.shields.io/badge/patterns-42%2B-blue) ![region](https://img.shields.io/badge/verified-ap--northeast--1-blue)
+![tests](https://img.shields.io/badge/tests-2%2C162%2B%20passed-brightgreen) ![cfn-lint](https://img.shields.io/badge/cfn--lint-0%20errors-brightgreen) ![ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen) ![patterns](https://img.shields.io/badge/patterns-45%2B-blue) ![region](https://img.shields.io/badge/verified-ap--northeast--1-blue)
 
 🌐 [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
@@ -8,7 +8,7 @@
 
 > FSx for ONTAP 上のエンタープライズ NAS データを、**データコピーなしに** S3 API 経由でサーバーレス処理する **42 パターン**のリファレンス実装集です。
 >
-> 28 業界別 UC + 7 FlexCache/FlexClone + 2 GenAI + SAP + HA 監視 + Event-Driven + Edge 配信 + ファイルポータル UI
+> 28 業界別 UC + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + HA 監視 + Event-Driven + Edge 配信 + ファイルポータル UI
 
 | | |
 |---|---|
@@ -26,6 +26,7 @@
 | ポータルのデモを見る (スクリーンショット付き) | [Portal Demo Guide (JA)](docs/ja/portal-demo-guide.md) / [EN](docs/en/portal-demo-guide.md) | 5 分 |
 | ポータルのセクション構成を理解する | [Portal Sections Guide](solutions/amplify-portal/docs/portal-tabs-guide.md) | 5 分 |
 | ポータルを自環境にデプロイ | [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) | 15 分 |
+| S3 AP のディレクトリ設計・性能特性を理解する | [設計考慮事項](docs/design-considerations.md) | 15 分 |
 | パターンを AWS にデプロイ | [Deployment Guide](docs/guides/deployment-guide.md) | 30 分 |
 | 自分のワークロードに合うパターンを探す | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 分 |
 | コストを見積もる | [Cost Calculator](docs/cost-calculator.md) | 5 分 |
@@ -71,7 +72,7 @@
 | UC28 | [`chemical-sds-management/`](solutions/industry/chemical-sds-management/) | 化学 | SDS・ラボノート |
 | SAP | [`sap/erp-adjacent/`](solutions/sap/erp-adjacent/) | SAP/ERP | IDoc・EDI 処理 |
 
-### FlexCache / FlexClone (FC1-FC7)
+### FlexCache / FlexClone / SnapMirror (FC1-FC10)
 
 | # | ディレクトリ | パターン |
 |---|---|---|
@@ -82,6 +83,9 @@
 | FC5 | [`flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/) | 研究データ分類 |
 | FC6 | [`flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/) | ゲームアセット品質チェック |
 | FC7 | [`flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/) | FlexClone Dev/Test & CI/CD |
+| FC8 | [`flexcache/same-region-s3ap/`](solutions/flexcache/same-region-s3ap/) | S3 AP + FlexCache 同一リージョン読み取り加速 |
+| FC9 | [`flexcache/cross-region-s3ap/`](solutions/flexcache/cross-region-s3ap/) | S3 AP + FlexCache クロスリージョン配信（<3 秒） |
+| FC10 | [`flexcache/snapmirror-cross-region-dr/`](solutions/flexcache/snapmirror-cross-region-dr/) | S3 AP + SnapMirror クロスリージョン DR（RTO ~3 分） |
 
 ### GenAI / HA / Event-Driven / Edge / File Portal
 
@@ -102,6 +106,7 @@
 | [`shared/`](shared/) | 共通 Python モジュール（S3ApHelper, OntapClient, Observability） |
 | [`operations/`](operations/) | 運用最適化 6 パターン（容量/効率/ティアリング/スナップショット/コスト/QoS） |
 | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | ハンズオン Lab IaC（VPC/AD/FSx/EC2/S3AP） |
+| [`infrastructure/s3ap-data-collection/`](infrastructure/s3ap-data-collection/) | S3 AP データ収集インフラ（設計 TIPS 組込テンプレート） |
 | [`docs/`](docs/) | 設計ガイド・ベンチマーク（40+ ドキュメント） |
 | [`scripts/`](scripts/) | デプロイ・ベンチマーク・ユーティリティ |
 | [`.github/workflows/`](.github/workflows/) | CI/CD（lint → test → security → deploy） |

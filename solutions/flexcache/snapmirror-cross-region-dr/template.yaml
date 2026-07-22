@@ -1,0 +1,486 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Pattern 31: SnapMirror Cross-Region DR with S3 Access Points.
+  Creates Source Volume + S3 AP (Region A), DP Destination Volume (same or cross-region),
+  and a Failover Lambda that automates: SnapMirror break → junction path → S3 AP re-attach.
+  SnapMirror relationship setup via companion script (ONTAP REST API).
+
+Parameters:
+  # --- Source Cluster (Region A) ---
+  SourceFileSystemId:
+    Type: String
+    Description: Source FSx for ONTAP File System ID (Region A)
+    AllowedPattern: "^fs-[0-9a-f]{17}$"
+
+  SourceSvmId:
+    Type: String
+    Description: Source SVM ID (Region A)
+    AllowedPattern: "^svm-[0-9a-f]{17}$"
+
+  # --- Destination Cluster (Region B) ---
+  DestFileSystemId:
+    Type: String
+    Description: Destination FSx for ONTAP File System ID (Region B / DR site)
+    AllowedPattern: "^fs-[0-9a-f]{17}$"
+
+  DestSvmId:
+    Type: String
+    Description: Destination SVM ID (Region B)
+    AllowedPattern: "^svm-[0-9a-f]{17}$"
+
+  DestRegion:
+    Type: String
+    Default: us-west-2
+    Description: AWS Region for the destination cluster
+
+  DestManagementIp:
+    Type: String
+    Description: Destination cluster management IP (for ONTAP REST API calls from Lambda)
+
+  # --- Source Volume ---
+  SourceVolumeName:
+    Type: String
+    Default: vol_sm_dr_source
+    Description: Name for the source volume (alphanumeric + underscore only)
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9_]{0,202}$"
+
+  SourceVolumeSizeMB:
+    Type: Number
+    Default: 10240
+    MinValue: 1024
+    Description: Source volume size in MB (minimum 1 GB, default 10 GB)
+
+  SourceJunctionPath:
+    Type: String
+    Default: /sm_dr_source
+    Description: Junction path for the source volume
+    AllowedPattern: "^/[a-zA-Z0-9_/]+$"
+
+  # --- Destination Volume ---
+  DestVolumeName:
+    Type: String
+    Default: vol_sm_dr_dest
+    Description: >-
+      Name for the DP destination volume.
+      SM-VAL-009: MUST be created via FSx API (not ONTAP REST API alone)
+      for S3 AP attachment to work after failover.
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9_]{0,202}$"
+
+  DestVolumeSizeMB:
+    Type: Number
+    Default: 10240
+    MinValue: 1024
+    Description: Destination volume size in MB (should match or exceed source)
+
+  DestJunctionPath:
+    Type: String
+    Default: /sm_dr_dest
+    Description: Junction path set on destination after failover
+    AllowedPattern: "^/[a-zA-Z0-9_/]+$"
+
+  # --- S3 Access Points ---
+  SourceS3AccessPointName:
+    Type: String
+    Default: fsxn-sm-dr-source
+    Description: S3 Access Point name for source volume
+    AllowedPattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    MaxLength: 50
+
+  DestS3AccessPointName:
+    Type: String
+    Default: fsxn-sm-dr-dest
+    Description: S3 Access Point name for destination volume (created during failover)
+    AllowedPattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    MaxLength: 50
+
+  S3APUnixUser:
+    Type: String
+    Default: fsxadmin
+    Description: UNIX user for S3 AP FileSystemIdentity (both source and dest)
+
+  # --- Secrets Manager ---
+  SourceSecretArn:
+    Type: String
+    Description: ARN of Secrets Manager secret for source cluster credentials
+    AllowedPattern: "^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$"
+
+  DestSecretArn:
+    Type: String
+    Description: ARN of Secrets Manager secret for destination cluster credentials
+    AllowedPattern: "^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$"
+
+  # --- Networking ---
+  FailoverLambdaSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >-
+      Subnet IDs for the Failover Lambda (must have route to destination ONTAP mgmt IP).
+      Use private subnets in the destination VPC or subnets with VPC Peering route.
+
+  FailoverLambdaSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security Group for Failover Lambda (needs HTTPS/443 outbound to ONTAP mgmt IP)
+
+  # --- Notification ---
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: Email for DR failover notification (empty = no SNS subscription)
+
+  # --- Environment ---
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment tag
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, ""]]
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Source Cluster — Region A"
+        Parameters:
+          - SourceFileSystemId
+          - SourceSvmId
+          - SourceSecretArn
+      - Label:
+          default: "Destination Cluster — Region B (DR)"
+        Parameters:
+          - DestFileSystemId
+          - DestSvmId
+          - DestRegion
+          - DestManagementIp
+          - DestSecretArn
+      - Label:
+          default: "Source Volume & S3 AP"
+        Parameters:
+          - SourceVolumeName
+          - SourceVolumeSizeMB
+          - SourceJunctionPath
+          - SourceS3AccessPointName
+      - Label:
+          default: "Destination Volume (DR Target)"
+        Parameters:
+          - DestVolumeName
+          - DestVolumeSizeMB
+          - DestJunctionPath
+          - DestS3AccessPointName
+      - Label:
+          default: "S3 AP Configuration"
+        Parameters:
+          - S3APUnixUser
+      - Label:
+          default: "Failover Lambda Networking"
+        Parameters:
+          - FailoverLambdaSubnetIds
+          - FailoverLambdaSecurityGroupId
+      - Label:
+          default: "Notification"
+        Parameters:
+          - NotificationEmail
+      - Label:
+          default: "Environment"
+        Parameters:
+          - Environment
+
+Resources:
+  # ============================================================
+  # Source Volume (Region A)
+  # ============================================================
+  SourceVolume:
+    Type: AWS::FSx::Volume
+    Properties:
+      Name: !Ref SourceVolumeName
+      VolumeType: ONTAP
+      OntapConfiguration:
+        JunctionPath: !Ref SourceJunctionPath
+        StorageVirtualMachineId: !Ref SourceSvmId
+        SizeInMegabytes: !Ref SourceVolumeSizeMB
+        StorageEfficiencyEnabled: true
+        TieringPolicy:
+          Name: AUTO
+          CoolingPeriod: 31
+        OntapVolumeType: RW
+        SecurityStyle: UNIX
+        SnapshotPolicy: default
+      Tags:
+        - Key: Name
+          Value: !Sub "${SourceVolumeName}-${Environment}"
+        - Key: Pattern
+          Value: SnapMirror-Cross-Region-DR-S3AP
+        - Key: Role
+          Value: Source
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ============================================================
+  # Destination Volume (DP type — SM-VAL-009)
+  # ============================================================
+  DestVolume:
+    Type: AWS::FSx::Volume
+    Properties:
+      Name: !Ref DestVolumeName
+      VolumeType: ONTAP
+      OntapConfiguration:
+        StorageVirtualMachineId: !Ref DestSvmId
+        SizeInMegabytes: !Ref DestVolumeSizeMB
+        StorageEfficiencyEnabled: true
+        TieringPolicy:
+          Name: AUTO
+          CoolingPeriod: 31
+        OntapVolumeType: DP
+        SecurityStyle: UNIX
+      Tags:
+        - Key: Name
+          Value: !Sub "${DestVolumeName}-${Environment}"
+        - Key: Pattern
+          Value: SnapMirror-Cross-Region-DR-S3AP
+        - Key: Role
+          Value: Destination-DP
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ============================================================
+  # SNS Topic for DR Notifications
+  # ============================================================
+  FailoverNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "fsxn-sm-dr-failover-${Environment}"
+      Tags:
+        - Key: Pattern
+          Value: SnapMirror-Cross-Region-DR-S3AP
+
+  FailoverNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref FailoverNotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # ============================================================
+  # Failover Lambda Function
+  # ============================================================
+  FailoverFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "fsxn-sm-dr-failover-${Environment}"
+      Description: >-
+        Automates SnapMirror DR failover: break relationship, set junction path,
+        create S3 AP on destination volume, notify via SNS.
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: failover-lambda/
+      Architectures:
+        - arm64
+      MemorySize: 256
+      Timeout: 300
+      VpcConfig:
+        SubnetIds: !Ref FailoverLambdaSubnetIds
+        SecurityGroupIds:
+          - !Ref FailoverLambdaSecurityGroupId
+      Environment:
+        Variables:
+          DEST_MGMT_IP: !Ref DestManagementIp
+          DEST_SECRET_ARN: !Ref DestSecretArn
+          DEST_VOLUME_ID: !Ref DestVolume
+          DEST_JUNCTION_PATH: !Ref DestJunctionPath
+          S3_AP_NAME: !Ref DestS3AccessPointName
+          S3_AP_UNIX_USER: !Ref S3APUnixUser
+          SNS_TOPIC_ARN: !Ref FailoverNotificationTopic
+          DEST_REGION: !Ref DestRegion
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: FSxOperations
+              Effect: Allow
+              Action:
+                - fsx:DescribeVolumes
+                - fsx:UpdateVolume
+                - fsx:CreateDataRepositoryAssociation
+                - fsx:DescribeDataRepositoryAssociations
+              Resource: "*"
+            - Sid: S3APAccess
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:ListBucket
+                - s3:GetBucketLocation
+              Resource:
+                - !Sub "arn:aws:s3:${DestRegion}:${AWS::AccountId}:accesspoint/${DestS3AccessPointName}"
+                - !Sub "arn:aws:s3:${DestRegion}:${AWS::AccountId}:accesspoint/${DestS3AccessPointName}/object/*"
+            - Sid: SecretsManager
+              Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource:
+                - !Ref DestSecretArn
+            - Sid: SNSPublish
+              Effect: Allow
+              Action:
+                - sns:Publish
+              Resource:
+                - !Ref FailoverNotificationTopic
+            - Sid: STSGetCallerIdentity
+              Effect: Allow
+              Action:
+                - sts:GetCallerIdentity
+              Resource: "*"
+            - Sid: CloudWatchLogs
+              Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+            - Sid: VPCNetworkInterface
+              Effect: Allow
+              Action:
+                - ec2:CreateNetworkInterface
+                - ec2:DescribeNetworkInterfaces
+                - ec2:DeleteNetworkInterface
+              Resource: "*"
+      Tags:
+        Pattern: SnapMirror-Cross-Region-DR-S3AP
+
+  # ============================================================
+  # IAM Role: Source S3 AP Data Access
+  # ============================================================
+  SourceDataAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-sm-dr-source-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3APSourcePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3APSourceAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${SourceS3AccessPointName}"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${SourceS3AccessPointName}/object/*"
+        - PolicyName: SecretsManagerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadCreds
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref SourceSecretArn
+                  - !Ref DestSecretArn
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+      Tags:
+        - Key: Pattern
+          Value: SnapMirror-Cross-Region-DR-S3AP
+
+Outputs:
+  SourceVolumeId:
+    Description: Source Volume ID (attach S3 AP here for normal operations)
+    Value: !Ref SourceVolume
+
+  DestVolumeId:
+    Description: Destination DP Volume ID (S3 AP attached here after failover)
+    Value: !Ref DestVolume
+
+  FailoverFunctionArn:
+    Description: Failover Lambda ARN (invoke to trigger DR failover)
+    Value: !GetAtt FailoverFunction.Arn
+
+  FailoverFunctionName:
+    Description: Failover Lambda function name
+    Value: !Ref FailoverFunction
+
+  NotificationTopicArn:
+    Description: SNS Topic for failover notifications
+    Value: !Ref FailoverNotificationTopic
+
+  SourceDataAccessRoleArn:
+    Description: IAM Role for source S3 AP data access
+    Value: !GetAtt SourceDataAccessRole.Arn
+
+  PostDeployInstructions:
+    Description: Steps to complete SnapMirror DR setup
+    Value: !Sub |
+      Stack deployed. Complete the following steps:
+
+      1. Create S3 AP on Source Volume:
+         aws fsx create-and-attach-s3-access-point \
+           --cli-input-json '{
+             "Name": "${SourceS3AccessPointName}",
+             "Type": "ONTAP",
+             "OntapConfiguration": {
+               "VolumeId": "${SourceVolume}",
+               "FileSystemIdentity": {
+                 "Type": "UNIX",
+                 "UnixUser": {"Name": "${S3APUnixUser}"}
+               }
+             }
+           }'
+
+      2. Create Cluster Peering (ONTAP REST API — both clusters):
+         POST /api/cluster/peers
+
+      3. Create SVM Peering (source → dest):
+         POST /api/svm/peers
+         Body: {"applications": ["snapmirror"]}
+
+      4. Create SnapMirror relationship (from DESTINATION cluster):
+         POST /api/snapmirror/relationships
+         Body: {
+           "source": {"path": "<source-svm>:${SourceVolumeName}"},
+           "destination": {"path": "<dest-svm>:${DestVolumeName}"},
+           "policy": {"name": "MirrorAllSnapshots"}
+         }
+         Then initialize:
+         PATCH /api/snapmirror/relationships/<uuid>
+         Body: {"state": "snapmirrored"}
+
+      5. Test failover (dry run):
+         aws lambda invoke \
+           --function-name ${FailoverFunction} \
+           --payload '{"dry_run": true}' \
+           /tmp/failover-result.json
+
+      6. Execute failover (production DR event):
+         aws lambda invoke \
+           --function-name ${FailoverFunction} \
+           --payload '{}' \
+           /tmp/failover-result.json
+
+      Estimated RTO: ~3 minutes
+        - SnapMirror break: instant
+        - Junction path propagation: ~2 min
+        - S3 AP creation: ~30s
+        - First successful S3 API call: ~30s
+
+      RPO: Equal to SnapMirror schedule interval (minimum 5 minutes for FSx for ONTAP)

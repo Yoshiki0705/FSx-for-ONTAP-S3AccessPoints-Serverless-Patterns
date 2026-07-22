@@ -1,0 +1,18 @@
+{
+  "Parameters": {
+    "SourceFileSystemId": "fs-0EXAMPLE1111aaaaa",
+    "SourceSvmId": "svm-0EXAMPLE2222bbbbb",
+    "DestFileSystemId": "fs-0EXAMPLE4444ddddd",
+    "DestSvmId": "svm-0EXAMPLE5555eeeee",
+    "DestRegion": "us-west-2",
+    "OriginVolumeName": "vol_fc_xregion_origin",
+    "OriginVolumeSizeMB": "10240",
+    "OriginJunctionPath": "/fc_xregion_origin",
+    "S3AccessPointName": "fsxn-fc-xregion-origin",
+    "S3APUnixUser": "fsxadmin",
+    "SourceSecretArn": "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsxn/source-credentials-XXXXXX",
+    "DestSecretArn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:fsxn/dest-credentials-XXXXXX",
+    "VpcPeeringConnectionId": "pcx-0EXAMPLE6666ffffff",
+    "Environment": "dev"
+  }
+}
