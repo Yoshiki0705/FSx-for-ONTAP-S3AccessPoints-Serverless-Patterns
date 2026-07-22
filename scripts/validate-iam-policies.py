@@ -51,6 +51,7 @@ def extract_iam_policies(template_path: Path) -> list[dict]:
     Handles CloudFormation intrinsic functions (!Sub, !Ref, etc.) by
     registering custom YAML constructors.
     """
+
     # Register CloudFormation intrinsic function handlers for safe_load
     class CfnLoader(yaml.SafeLoader):
         pass
@@ -64,19 +65,29 @@ def extract_iam_policies(template_path: Path) -> list[dict]:
             return {f"Fn::{tag_suffix}": loader.construct_mapping(node)}
         return {}
 
-    cfn_tags = ["Sub", "Ref", "GetAtt", "Join", "Select", "Split", "If",
-                "Equals", "Not", "And", "Or", "FindInMap", "Base64",
-                "Cidr", "ImportValue", "GetAZs", "Transform"]
+    cfn_tags = [
+        "Sub",
+        "Ref",
+        "GetAtt",
+        "Join",
+        "Select",
+        "Split",
+        "If",
+        "Equals",
+        "Not",
+        "And",
+        "Or",
+        "FindInMap",
+        "Base64",
+        "Cidr",
+        "ImportValue",
+        "GetAZs",
+        "Transform",
+    ]
     for tag in cfn_tags:
-        CfnLoader.add_constructor(
-            f"!{tag}",
-            lambda loader, node, t=tag: _construct_cfn_tag(loader, t, node)
-        )
+        CfnLoader.add_constructor(f"!{tag}", lambda loader, node, t=tag: _construct_cfn_tag(loader, t, node))
     # Handle !Condition
-    CfnLoader.add_constructor(
-        "!Condition",
-        lambda loader, node: {"Condition": loader.construct_scalar(node)}
-    )
+    CfnLoader.add_constructor("!Condition", lambda loader, node: {"Condition": loader.construct_scalar(node)})
 
     with open(template_path) as f:
         if template_path.suffix == ".json":
@@ -99,23 +110,27 @@ def extract_iam_policies(template_path: Path) -> list[dict]:
             for policy in properties.get("Policies", []):
                 doc = policy.get("PolicyDocument")
                 if doc:
-                    policies.append({
-                        "logical_id": logical_id,
-                        "policy_name": policy.get("PolicyName", "unnamed"),
-                        "document": doc,
-                        "source": str(template_path),
-                    })
+                    policies.append(
+                        {
+                            "logical_id": logical_id,
+                            "policy_name": policy.get("PolicyName", "unnamed"),
+                            "document": doc,
+                            "source": str(template_path),
+                        }
+                    )
 
         # AWS::IAM::Policy — standalone policy
         elif resource_type == "AWS::IAM::Policy":
             doc = properties.get("PolicyDocument")
             if doc:
-                policies.append({
-                    "logical_id": logical_id,
-                    "policy_name": properties.get("PolicyName", logical_id),
-                    "document": doc,
-                    "source": str(template_path),
-                })
+                policies.append(
+                    {
+                        "logical_id": logical_id,
+                        "policy_name": properties.get("PolicyName", logical_id),
+                        "document": doc,
+                        "source": str(template_path),
+                    }
+                )
 
     return policies
 
@@ -126,6 +141,7 @@ def resolve_intrinsics(doc: dict) -> str:
     Replaces !Sub, !Ref, !GetAtt with placeholder values so the policy
     document is valid JSON for Access Analyzer.
     """
+
     def resolve(obj):
         if isinstance(obj, dict):
             if "Fn::Sub" in obj:
@@ -191,10 +207,10 @@ def main():
             print(f"  SKIP {template_path} (no IAM policies found)")
             continue
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  Template: {template_path}")
         print(f"  Policies found: {len(policies)}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         for policy in policies:
             policy_json = resolve_intrinsics(policy["document"])
@@ -209,14 +225,12 @@ def main():
 
             if errors:
                 for f in errors:
-                    print(f"     ❌ [{f.get('findingType')}] {f.get('issueCode', '')}: "
-                          f"{f.get('findingDetails', '')}")
+                    print(f"     ❌ [{f.get('findingType')}] {f.get('issueCode', '')}: {f.get('findingDetails', '')}")
                 total_errors += len(errors)
 
             if warnings:
                 for f in warnings:
-                    print(f"     ⚠️  [{f.get('findingType')}] {f.get('issueCode', '')}: "
-                          f"{f.get('findingDetails', '')}")
+                    print(f"     ⚠️  [{f.get('findingType')}] {f.get('issueCode', '')}: {f.get('findingDetails', '')}")
                 total_warnings += len(warnings)
 
             if suggestions:
@@ -224,14 +238,17 @@ def main():
                 # Only show in non-CI mode to reduce noise
                 if not args.ci:
                     for f in suggestions:
-                        print(f"     💡 [{f.get('findingType')}] {f.get('issueCode', '')}: "
-                              f"{f.get('findingDetails', '')}")
+                        print(
+                            f"     💡 [{f.get('findingType')}] {f.get('issueCode', '')}: {f.get('findingDetails', '')}"
+                        )
 
     # Summary
-    print(f"\n{'='*60}")
-    print(f"  SUMMARY: {total_errors} errors/security warnings, "
-          f"{total_warnings} warnings, {total_suggestions} suggestions")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print(
+        f"  SUMMARY: {total_errors} errors/security warnings, "
+        f"{total_warnings} warnings, {total_suggestions} suggestions"
+    )
+    print(f"{'=' * 60}")
 
     if args.ci and total_errors > 0:
         print(f"\n  ❌ CI FAILED: {total_errors} error(s) found")
