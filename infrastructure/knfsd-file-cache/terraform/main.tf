@@ -150,7 +150,10 @@ resource "aws_iam_role_policy" "knfsd_extra" {
       {
         Effect   = "Allow"
         Action   = ["ssm:GetParametersByPath", "ssm:GetParameter"]
-        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/knfsd/${local.cluster_name}/*"
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}:*:parameter/knfsd/${local.cluster_name}/*",
+          "arn:aws:ssm:${var.aws_region}:*:parameter/knfsd/${local.cluster_name}"
+        ]
       },
       {
         Effect   = "Allow"
@@ -244,10 +247,19 @@ resource "aws_instance" "knfsd" {
 
     # Configure FSID SQLite path on FSx for ONTAP (persistent across restarts)
     %{if var.fsid_mode == "local"}
-    SQLITE_DIR=$(dirname "${var.fsid_sqlite_path}")
-    # Wait for source NFS to be mounted (proxy-startup.sh will mount it)
-    # Configure nfs.conf to use FSx for ONTAP path for SQLite
-    sed -i "s|sqlitedb=.*|sqlitedb=${var.fsid_sqlite_path}|" /etc/nfs.conf
+    FSID_SQLITE="${var.fsid_sqlite_path}"
+    FSID_DIR=$(dirname "$FSID_SQLITE")
+
+    # Rewrite nfs.conf to point SQLite at FSx for ONTAP mount path
+    sed -i "s|sqlitedb=.*|sqlitedb=$FSID_SQLITE|" /etc/nfs.conf
+
+    # Create systemd drop-in to ensure SQLite directory exists before fsidd starts
+    mkdir -p /etc/systemd/system/fsidd.service.d
+    cat > /etc/systemd/system/fsidd.service.d/sqlite-dir.conf <<DROPIN
+    [Service]
+    ExecStartPre=/bin/mkdir -p $FSID_DIR
+    DROPIN
+    systemctl daemon-reload
     %{endif}
 
     export CLUSTER_NAME=${local.cluster_name}

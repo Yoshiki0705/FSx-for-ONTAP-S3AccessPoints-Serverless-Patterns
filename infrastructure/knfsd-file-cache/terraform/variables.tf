@@ -111,9 +111,9 @@ variable "source_mounts" {
 }
 
 variable "nfs_version" {
-  description = "NFS version for source mount (3 recommended for re-export stability)"
+  description = "NFS version for source mount. MUST be 4.1 for FSx for ONTAP re-export (NFSv3 filehandle size limit causes Stale file handle on write)"
   type        = string
-  default     = "3"
+  default     = "4.1"
 }
 
 ####################################################################

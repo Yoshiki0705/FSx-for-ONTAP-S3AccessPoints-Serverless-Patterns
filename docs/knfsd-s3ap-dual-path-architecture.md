@@ -12,6 +12,76 @@
 
 ---
 
+## 検証済みパフォーマンスデータ (2026-07-23 実測)
+
+> 以下は実環境での検証結果です。環境: KNFSD proxy m6gd.xlarge (arm64, 16GB RAM, 237GB NVMe) / FSx for ONTAP 128 MBps Single-AZ / Client t4g.micro (916MB RAM) / NFSv4.1
+
+### Dual-Path E2E テスト結果
+
+| テスト | 結果 | 備考 |
+|--------|:----:|------|
+| S3 AP write → KNFSD NFS read | **✅** | 即時反映、内容完全一致 |
+| NFS write → S3 AP read (MD5) | **✅** | `c092ef65e3ee054d183a754f712b034c` 双方一致 |
+| S3 AP batch 50 files → NFS bulk read | **✅** | 50 files in 107ms (2.1ms/file) |
+| S3 AP multipart 50MB → NFS read | **✅** | MD5 完全一致 |
+
+### スループット実測値
+
+| Operation | Throughput | 条件 |
+|-----------|-----------|------|
+| Sequential read (KNFSD proxy cache hit) | **422-619 MB/s** | 500MB file, client cache dropped |
+| Sequential read (client page cache hit) | **5.0-9.1 GB/s** | 100MB file, 2nd read |
+| Large write (write-through via KNFSD) | **157-218 MB/s** | 100MB-1GB |
+| S3 AP multipart upload | 36.6 MiB/s | 50MB file |
+
+### レイテンシ実測値
+
+| Operation | Latency | 条件 |
+|-----------|---------|------|
+| Small file read (cached) | **1.5 ms/file** | 4KB × 1000 files |
+| S3 AP batch read via KNFSD | **2.1 ms/file** | 50 files, content verified |
+| Cache miss → source fetch (10MB) | 55 ms | Initial read from FSx for ONTAP |
+| Cache hit (10MB) | **2 ms** | **28x improvement** |
+
+### nconnect 効果
+
+| nconnect | Cold read (100MB) | Cached read | 備考 |
+|:--------:|:-----------------:|:-----------:|------|
+| 1 (default) | **619 MB/s** | 9.1 GB/s | 小型インスタンスではこちらが良い |
+| 16 | 184 MB/s | 5.0 GB/s | ネットワーク帯域制限のあるインスタンスでは逆効果 |
+
+> **nconnect の推奨**: 100 Gbps NIC を持つ大型インスタンス (c5n.18xlarge, hpc7g) では nconnect=16 が有効。5 Gbps 以下の小型インスタンスでは default (1) を推奨。
+
+### Working Set > Client RAM
+
+| Client RAM | Dataset | Read throughput | Source |
+|:----------:|:-------:|:--------------:|--------|
+| 916 MB | 500 MB | **422-428 MB/s** | KNFSD proxy L1 (RAM 16GB) |
+
+> クライアントの page cache を `drop_caches` でフラッシュしても、KNFSD proxy 側のキャッシュから 400+ MB/s で配信。**クライアント RAM を超えるデータセットに対して KNFSD の価値が最も顕著**。
+
+### FS-Cache (L2 NVMe) 統計
+
+| Metric | Value |
+|--------|-------|
+| Backend | cachefilesd (active) |
+| NVMe | /dev/nvme1n1, 221 GB (xfs) |
+| Cached objects (cookies) | 1,372 |
+| Read operations (RA) | 12,877 |
+| Write operations (WR) | 12,853 (100% success) |
+| Proxy restart 後 | FS-Cache 保持 ✅ |
+
+### 重要な制約: NFSv4.1 必須
+
+| NFS Version | FSx for ONTAP re-export | 理由 |
+|:-----------:|:----------------------:|------|
+| NFSv3 | ❌ Write 時 Stale file handle | Filehandle +22 bytes > 64 byte limit |
+| **NFSv4.1** | **✅ Read/Write 完全動作** | 128 byte limit で十分な余裕 |
+
+> 詳細: [検証結果レポート (private)](.private/knfsd-test-results-20260722.md) / [ブログ記事 (JA)](.private/blog-knfsd-s3ap-draft.md)
+
+---
+
 ## 対象ワークロード
 
 | 業界 | ワークロード | KNFSD の役割 | S3 AP の役割 |

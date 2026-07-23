@@ -57,7 +57,7 @@ source_mounts = [
 
 # --- Cache Tuning ---
 # NFS version: 3 recommended (most stable for re-export)
-nfs_version    = "3"
+nfs_version    = "4.1"  # MUST be 4.1 for FSx for ONTAP (NFSv3 causes Stale file handle due to filehandle size overflow)
 cache_disk_type = "local-nvme"   # "local-nvme" or "ebs"
 nfs_threads    = 16              # 16 for test, 64-128 for production
 
