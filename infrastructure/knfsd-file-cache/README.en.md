@@ -14,7 +14,7 @@ Deployment environment for transparently caching FSx for ONTAP NFS exports via K
 ```
 ┌─── Existing Environment (this project) ──────────────────┐
 │                                                          │
-│  FSx for ONTAP ◄── S3 AP ──► Lambda (serverless)        │
+│  FSx for ONTAP ◄── S3 AP ──► Lambda (serverless)         │
 │       ▲                                                  │
 │       │ NFS mount (source)                               │
 │       ▼                                                  │
