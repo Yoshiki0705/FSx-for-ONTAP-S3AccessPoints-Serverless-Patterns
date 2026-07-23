@@ -27,6 +27,8 @@
 
 ### スループット実測値
 
+> **テスト環境の注記**: 以下は m6gd.xlarge (237 GB NVMe single drive) での測定結果です。本番推奨の im4gn.16xlarge (30 TB NVMe RAID) や i3en.24xlarge (60 TB) では、L2 NVMe の帯域が数倍〜10倍に向上することが期待されます（im4gn の sequential read: 最大 ~8 GB/s）。
+
 | Operation | Throughput | 条件 |
 |-----------|-----------|------|
 | Sequential read (KNFSD proxy cache hit) | **422-619 MB/s** | 500MB file, client cache dropped |

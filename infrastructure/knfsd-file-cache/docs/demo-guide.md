@@ -136,7 +136,7 @@ terraform apply    # "yes" で実行
 **出力例**:
 ```
 knfsd_private_ips = ["10.0.8.66"]
-nfs_mount_commands = ["sudo mount -t nfs -o vers=3 10.0.8.66:/vol1 /mnt/knfsd/vol1"]
+nfs_mount_commands = ["sudo mount -t nfs -o vers=4.1 10.0.8.66:/vol1 /mnt/knfsd/vol1"]
 ```
 
 ### Step 5: 起動確認 (~2 分)
@@ -164,7 +164,7 @@ aws ssm send-command \
 ```bash
 # テスト用 EC2 インスタンスから (同一 VPC 内)
 sudo mkdir -p /mnt/knfsd
-sudo mount -t nfs -o vers=3 <KNFSD_IP>:/vol1 /mnt/knfsd
+sudo mount -t nfs -o vers=4.1 <KNFSD_IP>:/vol1 /mnt/knfsd
 
 # ファイル確認
 ls /mnt/knfsd/
@@ -257,12 +257,12 @@ A: Golden AMI の `/etc/fstab` に追加するか、cloud-init で設定しま�
 
 ```bash
 # /etc/fstab に追加 (Golden AMI)
-<KNFSD_IP>:/vol1  /mnt/assets  nfs  vers=3,nolock,hard,bg  0  0
+<KNFSD_IP>:/vol1  /mnt/assets  nfs  vers=4.1,hard,bg  0  0
 
 # または cloud-init (UserData)
 #!/bin/bash
 mkdir -p /mnt/assets
-mount -t nfs -o vers=3,nolock,hard,bg <KNFSD_IP>:/vol1 /mnt/assets
+mount -t nfs -o vers=4.1,hard,bg <KNFSD_IP>:/vol1 /mnt/assets
 ```
 
 > `bg` オプションにより、KNFSD が未起動でもノードの起動がブロックされません。バックグラウンドで再試行します。

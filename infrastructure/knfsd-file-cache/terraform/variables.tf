@@ -80,12 +80,6 @@ variable "instance_type" {
   default     = "m6gd.xlarge"
 }
 
-variable "cluster_size" {
-  description = "Number of KNFSD proxy instances (1 for test, 2+ for production HA)"
-  type        = number
-  default     = 1
-}
-
 variable "key_pair_name" {
   description = "EC2 key pair for SSH access (optional, SSM recommended instead)"
   type        = string
@@ -114,6 +108,16 @@ variable "nfs_version" {
   description = "NFS version for source mount. MUST be 4.1 for FSx for ONTAP re-export (NFSv3 filehandle size limit causes Stale file handle on write)"
   type        = string
   default     = "4.1"
+
+  validation {
+    condition     = var.nfs_version != "3"
+    error_message = "NFSv3 is incompatible with FSx for ONTAP re-export due to filehandle size overflow (40+ bytes source + 22 bytes re-export > 64-byte NFSv3 limit). Use \"4.1\" or \"4.2\". See: https://github.com/awslabs/knfsd-file-cache/issues/40"
+  }
+
+  validation {
+    condition     = contains(["4.1", "4.2", "4"], var.nfs_version)
+    error_message = "Supported values: \"4.1\" (recommended), \"4.2\", or \"4\"."
+  }
 }
 
 ####################################################################
@@ -208,6 +212,18 @@ variable "fsid_sqlite_path" {
   description = "Path for SQLite FSID database when fsid_mode=local. Placed on FSx for ONTAP NFS mount for persistence across proxy restarts."
   type        = string
   default     = "/srv/nfs/vol1/.knfsd/fsids.sqlite"
+}
+
+# Cross-variable validation: fsid_mode=local is single-node only
+variable "cluster_size" {
+  description = "Number of KNFSD proxy instances (1 for test, 2+ for production HA)"
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.cluster_size >= 1
+    error_message = "cluster_size must be >= 1."
+  }
 }
 
 variable "fsid_database_url" {

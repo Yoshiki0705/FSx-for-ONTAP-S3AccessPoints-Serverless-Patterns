@@ -19,6 +19,11 @@ locals {
   name         = "${var.name_prefix}-${var.environment}"
   cluster_name = var.name_prefix
 
+  # Cross-variable validation: fsid_mode=local only supports single-node
+  _fsid_cluster_check = (var.fsid_mode == "local" && var.cluster_size > 1) ? (
+    file("ERROR: fsid_mode='local' (SQLite) does not support multi-node. Use fsid_mode='external' for cluster_size > 1. See docs/fsid-backend-options.md")
+  ) : null
+
   # NFS mount options (used by proxy-startup.sh via SSM)
   export_map = join("\n", [
     for m in var.source_mounts :

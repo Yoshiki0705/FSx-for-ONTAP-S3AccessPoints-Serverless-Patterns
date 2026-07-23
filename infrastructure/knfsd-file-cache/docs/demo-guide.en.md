@@ -2,8 +2,8 @@
 
 🌐 **Language / 言語**: [日本語](demo-guide.md) | [English](demo-guide.en.md)
 
-> **Verified**: 2026-07-22, ap-northeast-1, arm64 (Graviton), FSx for ONTAP 9.17.1
-> **Measured**: Cache miss 55ms → Cache hit 2ms (**32x speedup**)
+> **Verified**: 2026-07-23, ap-northeast-1, arm64 (Graviton), FSx for ONTAP 9.17.1
+> **Measured**: Cache miss 55ms → Cache hit 2ms (**28x speedup**), proxy cache 422 MB/s
 
 ---
 
@@ -128,11 +128,13 @@ terraform apply   # type "yes"
 ### Step 6: Mount from Client
 
 ```bash
-# From any EC2 in the same VPC
+# From any EC2 in the same VPC (NFSv4.1 REQUIRED for FSx for ONTAP source)
 sudo mkdir -p /mnt/knfsd
-sudo mount -t nfs -o vers=3 <KNFSD_IP>:/vol1 /mnt/knfsd
+sudo mount -t nfs -o vers=4.1 <KNFSD_IP>:/vol1 /mnt/knfsd
 ls /mnt/knfsd/
 ```
+
+> **Critical**: Use `vers=4.1` (not `vers=3`). NFSv3 causes Stale file handle on file creation due to filehandle size overflow. See [Issue #40](https://github.com/awslabs/knfsd-file-cache/issues/40).
 
 ### Step 7: Cache Test
 
@@ -157,11 +159,71 @@ sudo umount /mnt/knfsd
 
 ```bash
 cd infrastructure/knfsd-file-cache/terraform
-terraform destroy
+terraform destroy   # type "yes" — removes all KNFSD resources
 
-# Optionally deregister AMI
-aws ec2 deregister-image --image-id ami-0xxx... --region ap-northeast-1
+# Optionally deregister AMI (if you don't plan to redeploy)
+AMI_ID="ami-0xxx..."
+SNAP_ID=$(aws ec2 describe-images --image-ids $AMI_ID --query 'Images[0].BlockDeviceMappings[0].Ebs.SnapshotId' --output text --region ap-northeast-1)
+aws ec2 deregister-image --image-id $AMI_ID --region ap-northeast-1
+aws ec2 delete-snapshot --snapshot-id $SNAP_ID --region ap-northeast-1
 ```
+
+---
+
+## Optional: Dual-Path Test (S3 AP + KNFSD)
+
+If you have an S3 Access Point on the same FSx for ONTAP volume, test bidirectional data flow:
+
+```bash
+# 1. Write via S3 AP
+echo "dual-path-test-$(date +%s)" > /tmp/s3ap-test.txt
+aws s3 cp /tmp/s3ap-test.txt "s3://arn:aws:s3:ap-northeast-1:$(aws sts get-caller-identity --query Account --output text):accesspoint/YOUR-AP-NAME/dual-path-test.txt"
+
+# 2. Read via KNFSD NFS (should be immediate)
+cat /mnt/knfsd/dual-path-test.txt
+# → Should show same content ✅
+
+# 3. Write via NFS, read via S3 AP
+echo "nfs-write-$(date +%s)" > /mnt/knfsd/nfs-roundtrip.txt
+aws s3 cp "s3://arn:aws:s3:ap-northeast-1:ACCOUNT:accesspoint/YOUR-AP-NAME/nfs-roundtrip.txt" -
+# → Should show same content ✅
+```
+
+> Create S3 AP: `aws fsx create-and-attach-s3-access-point --name my-ap --type ONTAP --ontap-configuration '{"VolumeId":"fsvol-xxx","FileSystemIdentity":{"Type":"UNIX","UnixUser":{"Name":"root"}}}'`
+
+---
+
+## Lessons Learned (from 2026-07-22~23 Verification)
+
+### Critical
+
+| Finding | Impact | Action |
+|---------|--------|--------|
+| **NFSv4.1 required** for FSx for ONTAP | NFSv3 write = Stale file handle | Set `nfs_version = "4.1"` |
+| **Public IP or NAT required** | proxy-startup.sh fails silently | `assign_public_ip = true` |
+| **IAM needs path-level ARN** | GetParametersByPath denied | Include ARN with and without `/*` |
+| **`FSID_MODE=static` is broken** | All writes fail | Use `local` or `external` |
+
+### Performance
+
+| Finding | Numbers |
+|---------|---------|
+| KNFSD L1 (RAM) cache | 5.0-9.1 GB/s |
+| KNFSD proxy → client (L1 serve) | 422-619 MB/s |
+| FS-Cache L2 (NVMe) after reboot | 106 MB/s (5.6x faster than source) |
+| Source FSx for ONTAP NFS fetch | 18-19 MB/s |
+| nconnect=16 on small instances | Counterproductive (619 → 184 MB/s) |
+| S3 AP batch 50 files → NFS read | 107ms (2.1ms/file) |
+| Multipart upload → NFS read | MD5 verified, immediate |
+
+### Operations
+
+| Finding | Detail |
+|---------|--------|
+| Proxy restart: client unaffected | NFSv4.1 grace period handles recovery |
+| FS-Cache survives reboot | NVMe data preserved, `CaRdOps` active post-boot |
+| SQLite on FSx for ONTAP persists | No FSID loss across restarts |
+| `CACHEFILESD_DISK_TYPE` | Must be `local-nvme` (hyphen), not `local_nvme` |
 
 ---
 
@@ -212,7 +274,7 @@ A: Point clients back to FSx for ONTAP's NFS LIF IP directly. Data is always on 
 **Q: How do I auto-mount on render farm nodes?**
 A: Add to `/etc/fstab` in your golden AMI:
 ```
-<KNFSD_IP>:/vol1  /mnt/assets  nfs  vers=3,nolock,hard,bg  0  0
+<KNFSD_IP>:/vol1  /mnt/assets  nfs  vers=4.1,hard,bg  0  0
 ```
 The `bg` option prevents boot from blocking if KNFSD isn't ready yet.
 
