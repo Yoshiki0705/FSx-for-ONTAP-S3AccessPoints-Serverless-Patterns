@@ -277,3 +277,66 @@ Lambda Duration が長い
 - [Access point compatibility (Supported S3 operations)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
 - [S3AP 二段階認可モデル](s3ap-authorization-model.md)
 - [Deployment Profiles](deployment-profiles.md)
+
+## KNFSD File Cache との帯域共有設計
+
+### 背景
+
+[KNFSD File Cache](https://github.com/awslabs/knfsd-file-cache)（Preview、2026 年 7 月）を FSx for ONTAP の NFS 読取りキャッシュとして併用する場合、S3 AP 経由の Lambda 処理と**同じ FSx provisioned throughput を共有**します。帯域の取り合いを防ぐ設計が必要です。
+
+### スループット共有モデル
+
+```
+FSx for ONTAP Provisioned Throughput (例: 1,024 MBps)
+├── KNFSD File Cache ソース読取り (NFS mount)
+│   ├── Cache MISS 時のみ: ソースから fetch
+│   └── Cache HIT 時: FSx 帯域消費なし ← ここがポイント
+├── S3 AP 経由 Lambda 処理 (GetObject / PutObject)
+├── NFS 直接クライアント
+└── SMB 直接クライアント
+```
+
+### KNFSD キャッシュヒット率と FSx 帯域への影響
+
+| KNFSD キャッシュヒット率 | FSx 帯域への影響 | S3 AP 処理への影響 |
+|:---:|---|---|
+| > 95% | KNFSD は FSx 帯域をほぼ消費しない | 影響なし |
+| 70-95% | 初期ウォームアップ時に帯域消費 | 一時的に競合の可能性 |
+| < 70% | キャッシュ不足 — FSx 帯域を大量消費 | S3 AP に SlowDown リスク |
+
+### 設計推奨
+
+#### 帯域配分の目安（KNFSD + S3 AP 併用時）
+
+| フェーズ | KNFSD 帯域消費 | S3 AP 利用推奨 |
+|---------|:---:|---|
+| KNFSD ウォームアップ（初回 fetch） | 高 | S3 AP 処理を控える or MaxConcurrency を下げる |
+| 定常運用（キャッシュ warm） | 低（miss 分のみ） | 通常の MaxConcurrency で処理可能 |
+| バーストコンピュート開始直後 | 中〜高 | S3 AP 側で adaptive retry を有効化 |
+
+#### MaxConcurrency 調整の考え方
+
+```
+# KNFSD 併用時の S3 AP MaxConcurrency 計算
+available_for_s3ap = fsxn_throughput - knfsd_miss_throughput - nfs_smb_direct
+max_concurrency = available_for_s3ap / per_lambda_throughput
+
+# 例: 1,024 MBps FSx、KNFSD miss が 200 MBps、NFS/SMB が 100 MBps
+# available_for_s3ap = 1,024 - 200 - 100 = 724 MBps
+# per_lambda_throughput = 50 MBps とすると
+# max_concurrency ≈ 14
+```
+
+#### 時間帯分離パターン
+
+読取り集中バーストと S3 AP 後処理を時間帯で分離する設計:
+
+```
+[06:00-18:00] コンピュートバースト: KNFSD 経由 EDA/VFX 読取り（帯域優先）
+[18:00-22:00] S3 AP 後処理: Lambda で結果分析・レポート生成（キャッシュ warm 後）
+[22:00-06:00] メンテナンスウィンドウ: Snapshot、SnapMirror
+```
+
+> **Observability note**: KNFSD の CloudWatch metrics（特に `cache_hit_ratio`、`read_throughput_source`）と FSx の `DataReadBytes` を同一ダッシュボードで監視し、帯域競合を早期に検知することを推奨します。KNFSD は 70+ metrics を OTel 経由で公開するため、Prometheus/Grafana との統合も可能です。
+
+> **参考**: 詳細なアーキテクチャガイドは [KNFSD + S3 AP Dual-Path Architecture](./knfsd-s3ap-dual-path-architecture.md) を参照。

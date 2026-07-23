@@ -464,7 +464,7 @@ MCP tool invocations are traceable via:
 
 ### Data Region Note
 
-In this PoC, Lambda is deployed in **us-east-1** (same region as AgentCore Gateway) and accesses the FSx for ONTAP S3 AP in **ap-northeast-1**. File content is transferred cross-region.
+In this PoC, Lambda is deployed in **ap-northeast-1** (same region as FSx for ONTAP S3 AP). This same-region deployment was verified working on 2026-07-22 — no cross-region data transfer occurs.
 
 - **PoC / non-sensitive data**: No issue (S3 AP is Internet-origin, accessible from any region)
 - **Sensitive data / compliance requirements**: Wait for AgentCore Gateway availability in ap-northeast-1, or consider VPC Peering + PrivateLink architecture

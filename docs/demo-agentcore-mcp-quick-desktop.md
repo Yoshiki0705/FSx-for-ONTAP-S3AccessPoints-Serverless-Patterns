@@ -2,10 +2,10 @@
 
 > ⚠️ **本デモは PoC 構成（認証なし Gateway）を使用します。** 機密データを含むボリュームには接続しないでください。本番では CUSTOM_JWT 認証 + VPC 保護が必要です。
 >
-> **Data residency note**: Lambda（us-east-1）→ S3 AP（ap-northeast-1）間でファイル内容がリージョン間転送されます。
+> **Data residency note**: ~~Lambda（us-east-1）→ S3 AP（ap-northeast-1）間でファイル内容がリージョン間転送されます。~~ **2026-07-22 検証完了: Gateway + Lambda を ap-northeast-1 にデプロイ可能。同一リージョン構成でクロスリージョン転送を排除済み。**
 
 > **検証日**: 2026-07-19/20
-> **検証環境**: ap-northeast-1 (Quick) + us-east-1 (AgentCore Gateway)
+> **検証環境**: ap-northeast-1 (Quick + AgentCore Gateway + Lambda + S3 AP)
 > **ステータス**: ✅ E2E 動作確認完了
 
 ## 概要

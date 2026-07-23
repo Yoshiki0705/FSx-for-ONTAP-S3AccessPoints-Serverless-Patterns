@@ -13,7 +13,7 @@ Parameters:
     Description: >
       FSx for ONTAP S3 Access Point Alias（例: my-ap-xxxxx-ext-s3alias）。
       Lambda が ListObjectsV2/GetObject で使用する。
-    AllowedPattern: "^[a-z0-9-]+-ext-s3alias$"
+    AllowedPattern: "^[a-z0-9-]+-s3alias$"
 
   S3AccessPointName:
     Type: String
@@ -113,7 +113,7 @@ Resources:
       Runtime: python3.12
       Architectures:
         - arm64
-      Handler: handler.handler
+      Handler: index.handler
       Role: !GetAtt McpToolsLambdaRole.Arn
       MemorySize: !Ref LambdaMemorySize
       Timeout: !Ref LambdaTimeout

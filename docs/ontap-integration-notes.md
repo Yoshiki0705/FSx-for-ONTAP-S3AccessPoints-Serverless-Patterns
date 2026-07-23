@@ -66,6 +66,55 @@ S3 AP 経由で PutObject した場合:
 | UC19 広告クリエイティブ | FC2 / FC6 | クリエイティブ/レンダーパイプライン |
 | UC18 通信 CDR 分析 | — | Athena 直接クエリ、キャッシュ不要 |
 
+## KNFSD File Cache — NFS 読取りキャッシュの選択肢
+
+> **ステータス**: Preview（2026 年 7 月リリース）。全リージョン利用可能、Apache 2.0 OSS。
+
+[KNFSD File Cache](https://github.com/awslabs/knfsd-file-cache) は FSx for ONTAP の NFS エクスポートを透過的にキャッシュし、大規模コンピュートフリートに対して VPC 内速度で再提供する EC2 ベースのソリューションです。
+
+### FlexCache との使い分け
+
+| 判断基準 | FlexCache | KNFSD File Cache |
+|---------|-----------|------------------|
+| ソースが ONTAP のみ | ✅ 最適 | ○ 利用可能 |
+| 複数ソース統合（オンプレ + FSx for ONTAP + OpenZFS） | 不可 | ✅ 最適 |
+| 書込みキャッシュ（Write-back）が必要 | ✅ 対応 | △ Write-through のみ |
+| 大規模バースト読取り（数百〜千コア） | △ throughput 制約 | ✅ Auto Scaling で対応 |
+| Spot インスタンスとの組み合わせ | — | ✅ キャッシュ warm 維持 |
+| マネージド運用 | ✅ FSx 管理 | △ EC2 運用が必要 |
+| SnapMirror / データ保護統合 | ✅ 統合 | なし |
+| Observability | 基本 | ✅ 70+ metrics + OTel |
+
+### KNFSD が特に有効な UC パターン
+
+| UC / パターン | シナリオ | 理由 |
+|---|---|---|
+| UC6 半導体 EDA | DRC/LVS バースト検証 | 数千コアが同一デザインルールを並列読取り |
+| FC4 自動車 CAE | メッシュ/モデルデータ読取り | 大規模シミュレーションの入力データキャッシュ |
+| FC5 ライフサイエンス | ゲノム/分子データ解析 | 参照データベースの繰り返し読取り |
+| UC19 広告クリエイティブ | VFX レンダリング | テクスチャ/アセットの大量並列読取り |
+| クロスリージョン | リモートリージョンでのバースト | WAN 越しキャッシュ（Fanout Tier 1/Tier 2） |
+
+### KNFSD + S3 AP の組み合わせパターン
+
+KNFSD と S3 AP は**相補的**なアクセスパスとして同一 FSx for ONTAP ボリュームに対して併用できます:
+
+| アクセスパス | 用途 | 特性 |
+|---|---|---|
+| KNFSD → FSx for ONTAP (NFS) | 大規模コンピュート読取り | 高スループット、低レイテンシ、NFS 透過 |
+| S3 AP → FSx for ONTAP (S3 API) | サーバーレス AI/ML 後処理 | Lambda 並列、イベント駆動、VPC 不要 |
+| NFS/SMB 直接 | エンドユーザーアクセス | 既存ワークフロー維持 |
+
+**典型的なワークフロー例（EDA）**:
+1. 設計データを FSx for ONTAP に格納（NFS/SMB でアクセス可能）
+2. DRC/LVS バーストジョブが KNFSD 経由で高速読取り（Spot 活用）
+3. 検証結果を FSx for ONTAP に書戻し（KNFSD write-through）
+4. S3 AP 経由で Lambda が結果サマリ生成・異常検知・レポート配信
+
+> **スループット設計上の注意**: KNFSD のソース読取り、S3 AP アクセス、NFS/SMB 直接アクセスはすべて**同一の FSx provisioned throughput を共有**します。ピーク時のバースト読取りが NFS/SMB ユーザー体験に影響しないよう、throughput capacity の sizing と KNFSD キャッシュヒット率の監視が重要です。
+
+> **参考**: 詳細な比較は [代替アーキテクチャ比較](./comparison-alternatives.md) の「NFS Read Cache 比較」セクション、深掘りアーキテクチャは [KNFSD + S3 AP Dual-Path Architecture](./knfsd-s3ap-dual-path-architecture.md) を参照。
+
 ## Data Protection Notes
 
 | 成果物 | Snapshot 対象 | SnapMirror 対象 | 保持期間 |

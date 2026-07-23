@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Pattern 29: FlexCache Same-Region with S3 Access Points.
+  Creates an Origin Volume with S3 AP attachment + intra-cluster FlexCache.
+  ONTAP-layer operations (SVM Peering, FlexCache creation) are handled by companion script.
+
+Parameters:
+  # --- FSx for ONTAP Cluster ---
+  FileSystemId:
+    Type: String
+    Description: FSx for ONTAP File System ID (single cluster, same-region)
+    AllowedPattern: "^fs-[0-9a-f]{17}$"
+
+  OriginSvmId:
+    Type: String
+    Description: SVM ID for the Origin Volume (S3 AP attached here)
+    AllowedPattern: "^svm-[0-9a-f]{17}$"
+
+  CacheSvmId:
+    Type: String
+    Description: SVM ID for the FlexCache Volume (can be same or different SVM)
+    AllowedPattern: "^svm-[0-9a-f]{17}$"
+
+  # --- Origin Volume ---
+  OriginVolumeName:
+    Type: String
+    Default: vol_fc_origin
+    Description: Name for the Origin Volume (alphanumeric + underscore only)
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9_]{0,202}$"
+
+  OriginVolumeSizeMB:
+    Type: Number
+    Default: 10240
+    MinValue: 1024
+    Description: Origin Volume size in MB (minimum 1 GB, default 10 GB)
+
+  OriginJunctionPath:
+    Type: String
+    Default: /fc_origin
+    Description: Junction path for the Origin Volume
+    AllowedPattern: "^/[a-zA-Z0-9_/]+$"
+
+  # --- S3 Access Point ---
+  S3AccessPointName:
+    Type: String
+    Default: fsxn-fc-same-region-origin
+    Description: S3 Access Point name for Origin Volume
+    AllowedPattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    MaxLength: 50
+
+  S3APUnixUser:
+    Type: String
+    Default: fsxadmin
+    Description: >-
+      UNIX user for S3 AP FileSystemIdentity.
+      Must exist on the Origin SVM (default: fsxadmin, UID 0).
+
+  # --- Secrets Manager ---
+  OntapSecretArn:
+    Type: String
+    Description: >-
+      ARN of Secrets Manager secret containing fsxadmin credentials.
+      Expected JSON: {"username": "fsxadmin", "password": "<pass>"}
+    AllowedPattern: "^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$"
+
+  # --- Environment ---
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment tag
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "FSx for ONTAP Cluster"
+        Parameters:
+          - FileSystemId
+          - OriginSvmId
+          - CacheSvmId
+          - OntapSecretArn
+      - Label:
+          default: "Origin Volume & S3 Access Point"
+        Parameters:
+          - OriginVolumeName
+          - OriginVolumeSizeMB
+          - OriginJunctionPath
+          - S3AccessPointName
+          - S3APUnixUser
+      - Label:
+          default: "Environment"
+        Parameters:
+          - Environment
+
+Resources:
+  # ============================================================
+  # Origin Volume (FlexVol on Origin SVM)
+  # ============================================================
+  OriginVolume:
+    Type: AWS::FSx::Volume
+    Properties:
+      Name: !Ref OriginVolumeName
+      VolumeType: ONTAP
+      OntapConfiguration:
+        JunctionPath: !Ref OriginJunctionPath
+        StorageVirtualMachineId: !Ref OriginSvmId
+        SizeInMegabytes: !Ref OriginVolumeSizeMB
+        StorageEfficiencyEnabled: true
+        TieringPolicy:
+          Name: AUTO
+          CoolingPeriod: 31
+        OntapVolumeType: RW
+        SecurityStyle: UNIX
+        SnapshotPolicy: default
+      Tags:
+        - Key: Name
+          Value: !Sub "${OriginVolumeName}-${Environment}"
+        - Key: Pattern
+          Value: FlexCache-Same-Region-S3AP
+        - Key: Role
+          Value: Origin
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ============================================================
+  # IAM Role: S3 AP Data Access + ONTAP API
+  # ============================================================
+  DataAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fc-same-region-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FSxReadPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: FSxDescribe
+                Effect: Allow
+                Action:
+                  - fsx:DescribeFileSystems
+                  - fsx:DescribeStorageVirtualMachines
+                  - fsx:DescribeVolumes
+                  - fsx:ListTagsForResource
+                Resource: "*"
+        - PolicyName: S3APDataPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3APAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+        - PolicyName: SecretsManagerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadONTAPCreds
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref OntapSecretArn
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+      Tags:
+        - Key: Pattern
+          Value: FlexCache-Same-Region-S3AP
+
+Outputs:
+  FileSystemId:
+    Description: FSx for ONTAP File System ID
+    Value: !Ref FileSystemId
+
+  CacheSvmId:
+    Description: Cache SVM ID (FlexCache will be created here via companion script)
+    Value: !Ref CacheSvmId
+
+  OriginVolumeId:
+    Description: Origin Volume ID (attach S3 AP here)
+    Value: !Ref OriginVolume
+
+  OriginVolumeName:
+    Description: Origin Volume Name
+    Value: !Ref OriginVolumeName
+
+  S3AccessPointName:
+    Description: S3 Access Point name (create post-deploy)
+    Value: !Ref S3AccessPointName
+
+  DataAccessRoleArn:
+    Description: IAM Role ARN for S3 AP data access
+    Value: !GetAtt DataAccessRole.Arn
+
+  PostDeployInstructions:
+    Description: Steps to complete ONTAP-layer setup
+    Value: !Sub |
+      Stack deployed successfully. Complete the following steps:
+
+      1. Create S3 Access Point on Origin Volume:
+         aws fsx create-and-attach-s3-access-point \
+           --cli-input-json '{
+             "Name": "${S3AccessPointName}",
+             "Type": "ONTAP",
+             "OntapConfiguration": {
+               "VolumeId": "${OriginVolume}",
+               "FileSystemIdentity": {
+                 "Type": "UNIX",
+                 "UnixUser": {"Name": "${S3APUnixUser}"}
+               }
+             }
+           }'
+
+      2. Create intra-cluster SVM Peering (required for same-cluster FlexCache):
+         # Via ONTAP REST API on management endpoint
+         POST /api/svm/peers
+         Body: {"svm": {"name": "<origin-svm>"}, "peer": {"svm": {"name": "<cache-svm>"}}}
+
+      3. Create FlexCache Volume (via ONTAP REST API):
+         POST /api/storage/flexcache/flexcaches
+         Body: {
+           "svm": {"name": "<cache-svm>"},
+           "name": "vol_fc_cache",
+           "origins": [{"volume": {"name": "${OriginVolumeName}"}, "svm": {"name": "<origin-svm>"}}],
+           "size": 53687091200,
+           "path": "/fc_cache",
+           "use_tiered_aggregate": true
+         }
+         Note: Minimum FlexCache size on FSx for ONTAP is 50 GB.
+
+      4. Verify data propagation:
+         # Write via S3 AP
+         aws s3api put-object \
+           --bucket ${S3AccessPointName}-<account-id>-s3alias \
+           --key test/hello.txt --body /tmp/hello.txt
+
+         # Read via NFS on FlexCache
+         cat /mnt/fc_cache/test/hello.txt
+         # Data should appear within ~30s (FlexCache TTL)

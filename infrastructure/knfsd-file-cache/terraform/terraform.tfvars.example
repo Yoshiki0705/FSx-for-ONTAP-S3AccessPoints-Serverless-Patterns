@@ -1,0 +1,112 @@
+# =============================================================================
+# KNFSD File Cache — Terraform Variables
+#
+# How to use:
+#   1. Copy this file:  cp terraform.tfvars.example terraform.tfvars
+#   2. Fill in your values (see comments for how to find each)
+#   3. Deploy:          terraform init && terraform apply
+#
+# Prerequisites:
+#   - KNFSD AMI already built (see scripts/setup.sh)
+#   - FSx for ONTAP file system with NFS export available
+#   - Subnet with internet access (or EC2 VPC Endpoint)
+# =============================================================================
+
+# --- Region ---
+aws_region  = "ap-northeast-1"
+environment = "dev"
+name_prefix = "fsxn-knfsd"   # Also becomes SSM Parameter Store path: /knfsd/fsxn-knfsd/
+
+# --- Network ---
+# Find VPC:    aws ec2 describe-vpcs --query 'Vpcs[].VpcId'
+# Find Subnet: aws fsx describe-file-systems --query 'FileSystems[].SubnetIds'
+#              (use same subnet as FSx for ONTAP for best latency)
+vpc_id     = "vpc-0123456789abcdef0"
+subnet_ids = ["subnet-0123456789abcdef0"]
+
+# Public IP: Required if subnet has no NAT Gateway and no EC2 VPC Endpoint
+# proxy-startup.sh calls EC2 API for status tags
+assign_public_ip = true
+
+# Who can mount NFS from KNFSD (default: all RFC1918)
+export_cidrs = ["10.0.0.0/8"]
+
+# --- KNFSD Instance ---
+# AMI: Built by scripts/setup.sh (Packer). Example:
+#   ./scripts/setup.sh --knfsd-repo /tmp/knfsd-file-cache --region ap-northeast-1
+knfsd_ami_id = "ami-0123456789abcdef0"
+
+# Instance type (must have local NVMe for L2 cache):
+#   Test:  m6gd.xlarge    ($0.29/hr, 237 GB NVMe)
+#   Prod:  im4gn.16xlarge ($5.82/hr, 30 TB NVMe)
+instance_type = "m6gd.xlarge"
+cluster_size  = 1
+
+# --- NFS Source (FSx for ONTAP) ---
+# Find NFS IP:      aws fsx describe-storage-virtual-machines \
+#                     --query 'StorageVirtualMachines[].Endpoints.Nfs.IpAddresses[0]'
+# Find Export Path: aws fsx describe-volumes \
+#                     --query 'Volumes[].OntapConfiguration.JunctionPath'
+source_mounts = [
+  {
+    host   = "10.0.1.50"    # SVM NFS LIF IP
+    export = "/vol1"         # Volume junction path
+    mount  = "/vol1"         # Same as export (don't change unless needed)
+  }
+]
+
+# --- Cache Tuning ---
+# NFS version: 3 recommended (most stable for re-export)
+nfs_version    = "4.1"  # MUST be 4.1 for FSx for ONTAP (NFSv3 causes Stale file handle due to filehandle size overflow)
+cache_disk_type = "local-nvme"   # "local-nvme" or "ebs"
+nfs_threads    = 16              # 16 for test, 64-128 for production
+
+# Attribute cache timeouts (seconds):
+# Lower = fresher data visible to clients but more traffic to source
+# Higher = better cache efficiency but stale data risk
+# For Dual-Path with S3 AP: set acregmax=10 for faster S3AP→NFS visibility
+acregmin = 3
+acregmax = 60    # Set to 5-10 if using S3 AP writes that need fast NFS visibility
+acdirmin = 3
+acdirmax = 60
+
+# --- Optional ---
+enable_metrics      = false   # Set true for CloudWatch custom metrics (70+ metrics)
+fsxn_file_system_id = ""      # For integrated CloudWatch dashboard
+fsxn_secret_arn     = ""      # For NetApp REST API auto-detect feature
+
+# --- Cost Control ---
+# Set a Budget alert to catch forgotten instances:
+#   aws budgets create-budget --account-id $(aws sts get-caller-identity --query Account --output text) \
+#     --budget '{"BudgetName":"knfsd-test","BudgetLimit":{"Amount":"10","Unit":"USD"},"TimeUnit":"DAILY","BudgetType":"COST"}'
+#
+# For production: consider Savings Plans or Reserved Instances for im4gn/i8g instances.
+# KNFSD proxies run On-Demand (not Spot) to preserve cache. Compute clients can use Spot.
+
+# --- FSID Backend (critical for NFS re-export) ---
+# Options: "local" (SQLite on FSx for ONTAP, $0) or "external" (RDS PostgreSQL, ~$15/mo)
+# See docs/fsid-backend-options.md for full comparison.
+#
+# "local" (recommended for single-node): SQLite stored on FSx for ONTAP NFS mount
+#   → Persistent across proxy restart/replacement
+#   → $0 additional cost (uses existing FSx for ONTAP)
+#   → Single-node only (SQLite concurrent write limitation)
+#
+# "external" (required for multi-node): PostgreSQL via RDS or Aurora
+#   → Deploy database first: /tmp/knfsd-file-cache/deployment/database/
+#   → Set fsid_database_url to the connection string
+#
+fsid_mode        = "local"
+fsid_sqlite_path = "/srv/nfs/vol1/.knfsd/fsids.sqlite"  # Stored on FSx for ONTAP
+
+# --- Option A: RDS PostgreSQL (uncomment below, comment out "local" above) ---
+# fsid_mode      = "external"
+# fsid_db_engine = "rds"              # db.t4g.micro, ~$15/month
+
+# --- Option B: Aurora Serverless v2 (uncomment below, comment out "local" above) ---
+# fsid_mode      = "external"
+# fsid_db_engine = "aurora-serverless" # 0.5-1 ACU, ~$5-15/month
+
+# --- Option C: Bring your own DB (uncomment below, provide URL) ---
+# fsid_mode         = "external"
+# fsid_database_url = "postgres://user:pass@your-rds-endpoint:5432/knfsd"

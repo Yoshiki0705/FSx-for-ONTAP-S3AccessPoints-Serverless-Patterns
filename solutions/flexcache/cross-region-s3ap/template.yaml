@@ -1,0 +1,336 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Pattern 30: FlexCache Cross-Region with S3 Access Points.
+  Creates Origin Volume + S3 AP in Region A. Region B FSx + FlexCache
+  setup is performed via companion script (requires VPC Peering + Cluster/SVM Peering).
+  This template deploys Region A resources only.
+
+Parameters:
+  # --- Source Cluster (Region A) ---
+  SourceFileSystemId:
+    Type: String
+    Description: Source FSx for ONTAP File System ID (Region A, S3 AP origin)
+    AllowedPattern: "^fs-[0-9a-f]{17}$"
+
+  SourceSvmId:
+    Type: String
+    Description: Source SVM ID (Region A)
+    AllowedPattern: "^svm-[0-9a-f]{17}$"
+
+  # --- Destination Cluster (Region B) ---
+  DestFileSystemId:
+    Type: String
+    Description: >-
+      Destination FSx for ONTAP File System ID (Region B).
+      Must already exist with VPC Peering established between Region A and B.
+    AllowedPattern: "^fs-[0-9a-f]{17}$"
+
+  DestSvmId:
+    Type: String
+    Description: Destination SVM ID (Region B, FlexCache host)
+    AllowedPattern: "^svm-[0-9a-f]{17}$"
+
+  DestRegion:
+    Type: String
+    Default: us-west-2
+    Description: AWS Region where the destination FSx for ONTAP cluster resides
+
+  # --- Origin Volume ---
+  OriginVolumeName:
+    Type: String
+    Default: vol_fc_xregion_origin
+    Description: Name for the Origin Volume (alphanumeric + underscore only)
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9_]{0,202}$"
+
+  OriginVolumeSizeMB:
+    Type: Number
+    Default: 10240
+    MinValue: 1024
+    Description: Origin Volume size in MB (minimum 1 GB, default 10 GB)
+
+  OriginJunctionPath:
+    Type: String
+    Default: /fc_xregion_origin
+    Description: Junction path for the Origin Volume
+    AllowedPattern: "^/[a-zA-Z0-9_/]+$"
+
+  # --- S3 Access Point ---
+  S3AccessPointName:
+    Type: String
+    Default: fsxn-fc-xregion-origin
+    Description: S3 Access Point name for Origin Volume (Region A)
+    AllowedPattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    MaxLength: 50
+
+  S3APUnixUser:
+    Type: String
+    Default: fsxadmin
+    Description: UNIX user for S3 AP FileSystemIdentity
+
+  # --- Secrets Manager ---
+  SourceSecretArn:
+    Type: String
+    Description: >-
+      ARN of Secrets Manager secret for source cluster fsxadmin credentials.
+      Expected JSON: {"username": "fsxadmin", "password": "<pass>"}
+    AllowedPattern: "^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$"
+
+  DestSecretArn:
+    Type: String
+    Description: >-
+      ARN of Secrets Manager secret for destination cluster fsxadmin credentials.
+      Expected JSON: {"username": "fsxadmin", "password": "<pass>"}
+    AllowedPattern: "^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$"
+
+  # --- VPC Peering ---
+  VpcPeeringConnectionId:
+    Type: String
+    Default: ""
+    Description: >-
+      Existing VPC Peering Connection ID between Region A and Region B VPCs.
+      Required for cross-region ONTAP communication (TCP 11104/11105 + ICMP).
+      If empty, you must establish peering manually before running the companion script.
+
+  # --- Environment ---
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment tag
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Source Cluster — Region A (S3 AP Origin)"
+        Parameters:
+          - SourceFileSystemId
+          - SourceSvmId
+          - SourceSecretArn
+      - Label:
+          default: "Destination Cluster — Region B (FlexCache)"
+        Parameters:
+          - DestFileSystemId
+          - DestSvmId
+          - DestRegion
+          - DestSecretArn
+      - Label:
+          default: "Origin Volume & S3 Access Point"
+        Parameters:
+          - OriginVolumeName
+          - OriginVolumeSizeMB
+          - OriginJunctionPath
+          - S3AccessPointName
+          - S3APUnixUser
+      - Label:
+          default: "Network"
+        Parameters:
+          - VpcPeeringConnectionId
+      - Label:
+          default: "Environment"
+        Parameters:
+          - Environment
+
+Resources:
+  # ============================================================
+  # Origin Volume (Region A)
+  # ============================================================
+  OriginVolume:
+    Type: AWS::FSx::Volume
+    Properties:
+      Name: !Ref OriginVolumeName
+      VolumeType: ONTAP
+      OntapConfiguration:
+        JunctionPath: !Ref OriginJunctionPath
+        StorageVirtualMachineId: !Ref SourceSvmId
+        SizeInMegabytes: !Ref OriginVolumeSizeMB
+        StorageEfficiencyEnabled: true
+        TieringPolicy:
+          Name: AUTO
+          CoolingPeriod: 31
+        OntapVolumeType: RW
+        SecurityStyle: UNIX
+        SnapshotPolicy: default
+      Tags:
+        - Key: Name
+          Value: !Sub "${OriginVolumeName}-${Environment}"
+        - Key: Pattern
+          Value: FlexCache-Cross-Region-S3AP
+        - Key: Role
+          Value: Origin
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ============================================================
+  # IAM Role: Cross-Region Operations
+  # ============================================================
+  CrossRegionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "fsxn-fc-xregion-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FSxPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: FSxDescribe
+                Effect: Allow
+                Action:
+                  - fsx:DescribeFileSystems
+                  - fsx:DescribeStorageVirtualMachines
+                  - fsx:DescribeVolumes
+                  - fsx:ListTagsForResource
+                Resource: "*"
+              - Sid: FSxS3AP
+                Effect: Allow
+                Action:
+                  - fsx:CreateDataRepositoryAssociation
+                  - fsx:DeleteDataRepositoryAssociation
+                  - fsx:DescribeDataRepositoryAssociations
+                Resource:
+                  - !Sub "arn:aws:fsx:${AWS::Region}:${AWS::AccountId}:file-system/${SourceFileSystemId}"
+                  - !Sub "arn:aws:fsx:${AWS::Region}:${AWS::AccountId}:volume/*"
+        - PolicyName: S3APPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3APDataAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+        - PolicyName: SecretsManagerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadONTAPCreds
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref SourceSecretArn
+                  - !Ref DestSecretArn
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+      Tags:
+        - Key: Pattern
+          Value: FlexCache-Cross-Region-S3AP
+
+Outputs:
+  DestSvmId:
+    Description: Destination SVM ID (Region B, FlexCache host)
+    Value: !Ref DestSvmId
+
+  VpcPeeringConnectionId:
+    Description: VPC Peering Connection ID (Region A to Region B)
+    Value: !Ref VpcPeeringConnectionId
+
+  OriginVolumeId:
+    Description: Origin Volume ID (Region A, attach S3 AP here)
+    Value: !Ref OriginVolume
+
+  OriginVolumeName:
+    Description: Origin Volume Name
+    Value: !Ref OriginVolumeName
+
+  S3AccessPointName:
+    Description: S3 Access Point name (create post-deploy in Region A)
+    Value: !Ref S3AccessPointName
+
+  CrossRegionRoleArn:
+    Description: IAM Role ARN for cross-region operations
+    Value: !GetAtt CrossRegionRole.Arn
+
+  DestFileSystemId:
+    Description: Destination FSx for ONTAP (Region B)
+    Value: !Ref DestFileSystemId
+
+  DestRegion:
+    Description: Destination region
+    Value: !Ref DestRegion
+
+  PostDeployInstructions:
+    Description: Steps to complete cross-region FlexCache setup
+    Value: !Sub |
+      Stack deployed (Region A resources). Complete the following steps:
+
+      1. Ensure VPC Peering is established between Region A and Region B VPCs.
+         Required ports: TCP 11104, 11105 (ONTAP intercluster), ICMP.
+
+      2. Create S3 Access Point on Origin Volume:
+         aws fsx create-and-attach-s3-access-point \
+           --cli-input-json '{
+             "Name": "${S3AccessPointName}",
+             "Type": "ONTAP",
+             "OntapConfiguration": {
+               "VolumeId": "${OriginVolume}",
+               "FileSystemIdentity": {
+                 "Type": "UNIX",
+                 "UnixUser": {"Name": "${S3APUnixUser}"}
+               }
+             }
+           }'
+
+      3. Create Cluster Peering (ONTAP REST API — both clusters):
+         POST /api/cluster/peers
+         Body: {"remote": {"ip_addresses": ["<dest-intercluster-lif-ip>"]},
+                "authentication": {"passphrase": "<shared-passphrase>"}}
+
+      4. Create SVM Peering (ONTAP REST API — source cluster):
+         POST /api/svm/peers
+         Body: {"svm": {"name": "<source-svm>"},
+                "peer": {"svm": {"name": "<dest-svm>"}, "cluster": {"name": "<dest-cluster>"}},
+                "applications": ["flexcache"]}
+
+      5. Create FlexCache Volume on destination cluster (ONTAP REST API):
+         POST /api/storage/flexcache/flexcaches
+         Body: {
+           "svm": {"name": "<dest-svm>"},
+           "name": "vol_fc_xregion_cache",
+           "origins": [{"volume": {"name": "${OriginVolumeName}"},
+                        "svm": {"name": "<source-svm>"},
+                        "cluster": {"name": "<source-cluster>"}}],
+           "size": 53687091200,
+           "path": "/fc_xregion_cache",
+           "use_tiered_aggregate": true
+         }
+         Note: Minimum FlexCache size 50 GB.
+
+      6. Verify cross-region data propagation:
+         # Write via S3 AP (Region A)
+         aws s3api put-object --bucket <s3-ap-alias> --key test/xr.txt --body /tmp/xr.txt
+
+         # Read via NFS on FlexCache (Region B) — <3 seconds for cross-region
+         cat /mnt/fc_xregion_cache/test/xr.txt
+
+      TEARDOWN ORDER (SM-VAL-011 — Critical):
+        1. Delete FlexCache Volumes
+        2. Delete SVM Peers (both sides) — wait until num_records: 0 on BOTH clusters
+        3. Delete Cluster Peers
+        4. Delete VPC Peering / routes
+        NEVER delete VPC Peering before SVM Peer deletion completes.
