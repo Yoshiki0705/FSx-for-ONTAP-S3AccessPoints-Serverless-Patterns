@@ -93,6 +93,37 @@
 
 ---
 
+## Pending Verification
+
+### CASE-3: AgentCore MCP Gateway ap-northeast-1 (Tokyo) リージョンデプロイ
+
+| 項目 | 内容 |
+|------|------|
+| **ステータス** | 🟡 Pending Customer Action（検証中） |
+| **ケース番号** | 178449261200987 |
+| **起票日** | 2026-07（Feature Request） |
+| **AWS 回答日** | 2026-07-22 |
+
+**経緯**: 当初、AgentCore MCP Gateway を us-east-1 にデプロイしていた（ワークショップ手順と Web Search Tool ドキュメントに従った結果）。Feature Request として ap-northeast-1 対応を問い合わせた。
+
+**AWS サポート回答（Ifra M.）**:
+- us-east-1 制約はワークショップ手順と Web Search Tool ドキュメントに起因するもので、AgentCore Gateway + Lambda targets 自体にリージョン制限はない
+- **ap-northeast-1 でのデプロイをテストしてほしい**
+- テスト結果を共有すればさらにサポート可能
+
+**次のアクション**:
+- [ ] `scripts/deploy-agentcore-mcp.sh` を ap-northeast-1 向けに実行
+- [ ] Gateway + Lambda targets が ap-northeast-1 で正常動作するか確認
+- [ ] Quick Desktop から ap-northeast-1 Gateway に接続テスト
+- [ ] 結果をサポートケースに返信
+
+**影響（成功した場合）**:
+- クロスリージョンデータ転送（us-east-1 → ap-northeast-1）が不要になる
+- データレジデンシー要件を満たせる（ファイル内容が東京リージョン外に出ない）
+- レイテンシ改善（同一リージョン内完結）
+
+---
+
 ### ISSUE-3: AgentCore Gateway CUSTOM_JWT 認証 + Quick Desktop で 403 Forbidden
 
 | 項目 | 内容 |

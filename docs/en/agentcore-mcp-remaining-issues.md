@@ -93,6 +93,37 @@
 
 ---
 
+## Pending Verification
+
+### CASE-3: AgentCore MCP Gateway ap-northeast-1 (Tokyo) region deployment
+
+| Item | Details |
+|------|---------|
+| **Status** | 🟡 Pending Customer Action (testing in progress) |
+| **Case ID** | 178449261200987 |
+| **Filed** | 2026-07 (Feature Request) |
+| **AWS Response** | 2026-07-22 |
+
+**Background**: Initially deployed AgentCore MCP Gateway in us-east-1 (following workshop instructions and Web Search Tool documentation). Filed Feature Request asking about ap-northeast-1 availability.
+
+**AWS Support response (Ifra M.)**:
+- The us-east-1 constraint was driven by workshop instructions and Web Search Tool documentation, NOT an actual regional limitation for AgentCore Gateway with MCP targets
+- **Please test deploying the Gateway with Lambda targets in ap-northeast-1**
+- Will assist further based on test results
+
+**Next actions**:
+- [ ] Run `scripts/deploy-agentcore-mcp.sh` targeting ap-northeast-1
+- [ ] Verify Gateway + Lambda targets work correctly in ap-northeast-1
+- [ ] Test Quick Desktop connection to ap-northeast-1 Gateway
+- [ ] Reply to Support case with findings
+
+**Impact (if successful)**:
+- Eliminates cross-region data transfer (us-east-1 → ap-northeast-1)
+- Satisfies data residency requirements (file content stays in Tokyo region)
+- Latency improvement (same-region round trip)
+
+---
+
 ### ISSUE-3: AgentCore Gateway CUSTOM_JWT auth + Quick Desktop returns 403 Forbidden
 
 | Item | Details |
