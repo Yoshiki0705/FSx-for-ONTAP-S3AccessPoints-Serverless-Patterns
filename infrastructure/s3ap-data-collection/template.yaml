@@ -1,0 +1,594 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FSx for ONTAP S3 Access Points — Data Collection Infrastructure.
+  Deploys a production-ready FSx for ONTAP environment optimized for S3 API data ingestion
+  with serverless processing (Lambda / Step Functions).
+  Includes: File System, SVM, Volume, IAM Roles, Secrets Manager secret placeholder.
+  Post-deploy: Create S3 AP via AWS CLI (see outputs).
+  Design considerations embedded as parameter descriptions and metadata.
+
+# =====================================================================
+# Metadata — Design Considerations Embedded
+# =====================================================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "1. Network Configuration"
+        Parameters:
+          - VpcId
+          - SubnetId
+          - PreferredSubnetId
+          - SecurityGroupId
+      - Label:
+          default: "2. File System Configuration"
+        Parameters:
+          - FileSystemThroughputMBps
+          - StorageCapacityGiB
+          - DeploymentType
+      - Label:
+          default: "3. SVM Configuration"
+        Parameters:
+          - SvmName
+          - RootVolumeSecurityStyle
+      - Label:
+          default: "4. Volume Design (See: Directory Design Tips)"
+        Parameters:
+          - VolumeName
+          - VolumeSizeMB
+          - VolumeSecurityStyle
+          - JunctionPath
+          - TieringPolicyName
+          - TieringCoolingPeriod
+          - StorageEfficiency
+      - Label:
+          default: "5. S3 Access Point Configuration"
+        Parameters:
+          - S3AccessPointName
+          - S3APUnixUser
+          - S3APNetworkOrigin
+      - Label:
+          default: "6. Security & Credentials"
+        Parameters:
+          - FsxAdminPassword
+      - Label:
+          default: "7. Environment & Tags"
+        Parameters:
+          - Environment
+          - ProjectName
+
+# =====================================================================
+# Parameters — Each carries design guidance in Description
+# =====================================================================
+Parameters:
+  # --- Network ---
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: >-
+      VPC for FSx for ONTAP deployment.
+      TIP: Lambda accessing ONTAP REST API must be IN this VPC (management LIF is private).
+      Lambda accessing S3 AP with Internet-origin can be OUTSIDE the VPC.
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: >-
+      Primary subnet for FSx for ONTAP ENIs.
+      Must be a private subnet with route to the internet (for S3 AP Internet-origin access)
+      or appropriate VPC endpoints.
+
+  PreferredSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: >-
+      Preferred subnet (Multi-AZ) or same as SubnetId (Single-AZ).
+      Single-AZ: use the same subnet. Multi-AZ: use a different AZ subnet.
+
+  SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: >-
+      Security group for FSx ENIs.
+      Required inbound: NFS (2049), SMB (445), ONTAP REST API (443) from Lambda/client subnets.
+      For FlexCache cross-region: TCP 11104, 11105, ICMP from peer VPC CIDR.
+
+  # --- File System ---
+  FileSystemThroughputMBps:
+    Type: Number
+    Default: 128
+    AllowedValues: [128, 256, 512, 1024, 2048, 4096]
+    Description: >-
+      Throughput capacity in MBps.
+      DESIGN TIP: This capacity is SHARED across NFS, SMB, and S3 AP traffic.
+      If Lambda batch processing generates high S3 API throughput, it can affect
+      concurrent NFS/SMB client performance. Monitor CloudWatch TotalThroughputUtilization.
+      128 MBps is sufficient for PoC/dev. Production with concurrent NFS + S3 AP: 256+ MBps.
+
+  StorageCapacityGiB:
+    Type: Number
+    Default: 1024
+    MinValue: 1024
+    Description: >-
+      SSD storage capacity in GiB (minimum 1024 GiB = 1 TiB).
+      TIP: With FabricPool AUTO tiering, frequently accessed data stays on SSD,
+      cold data tiers to S3. Size SSD for your hot data set, not total data.
+
+  DeploymentType:
+    Type: String
+    Default: SINGLE_AZ_2
+    AllowedValues: [SINGLE_AZ_2, MULTI_AZ_2]
+    Description: >-
+      SINGLE_AZ_2 for PoC/dev (lower cost). MULTI_AZ_2 for production (HA).
+      Note: S3 AP works identically on both. FlexCache and SnapMirror also supported on both.
+
+  # --- SVM ---
+  SvmName:
+    Type: String
+    Default: svm_data_collection
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9_]{0,46}$"
+    Description: >-
+      Storage Virtual Machine name (alphanumeric + underscore, max 47 chars).
+      TIP: Create separate SVMs for different S3 AP security boundaries.
+      Each SVM can have its own S3 AP with different FileSystemIdentity (UNIX user).
+
+  RootVolumeSecurityStyle:
+    Type: String
+    Default: UNIX
+    AllowedValues: [UNIX, NTFS, MIXED]
+    Description: >-
+      Security style for SVM root volume.
+      UNIX: Simplest for Lambda S3 AP access (UNIX UID/GID permissions).
+      NTFS: Required for Windows AD-based S3 AP access (WINDOWS user type).
+      MIXED: Use only if both UNIX and NTFS access patterns are needed.
+      DESIGN TIP: UNIX is recommended for serverless data collection patterns.
+      NTFS requires AD-joined SVM and AD DC must be reachable for ALL S3 AP data operations.
+
+  # --- Volume Design ---
+  VolumeName:
+    Type: String
+    Default: vol_s3ap_ingest
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9_]{0,202}$"
+    Description: >-
+      Data volume name (alphanumeric + underscore only, NO hyphens).
+      TIP: Use descriptive names indicating the S3 AP purpose (e.g., vol_iot_ingest, vol_batch_output).
+
+  VolumeSizeMB:
+    Type: Number
+    Default: 102400
+    MinValue: 20480
+    Description: >-
+      Volume size in MB (minimum 20 GB, default 100 GB).
+      DESIGN TIP — FlexVol vs FlexGroup:
+      - FlexVol (this template): up to ~100 TB, simplest setup, ideal for single workload / PoC.
+      - FlexGroup: PB-scale, hash-distributed across constituents, requires ONTAP CLI to create.
+      For S3 AP: FlexVol is sufficient for most patterns. Consider FlexGroup only if
+      you expect >20 billion files or need >100 TB in a single namespace.
+
+  VolumeSecurityStyle:
+    Type: String
+    Default: UNIX
+    AllowedValues: [UNIX, NTFS, MIXED]
+    Description: >-
+      UNIX: Lambda S3 AP with UID/GID auth. Most serverless patterns use this.
+      NTFS: AD-integrated patterns. Requires AD-joined SVM.
+      DESIGN TIP: Security style determines the Layer 2 (NAS) permission model.
+      IAM + AP policy is Layer 1. Both layers must Allow for access to succeed.
+
+  JunctionPath:
+    Type: String
+    Default: /ingest
+    AllowedPattern: "^/[a-zA-Z0-9_/]+$"
+    Description: >-
+      Volume mount point within SVM namespace.
+      DESIGN TIP — Directory hierarchy starts here:
+      With junction path /ingest, S3 key "data/2026/07/22/file.json" maps to
+      NFS path /ingest/data/2026/07/22/file.json.
+      Use Hive-style partitioning (year=/month=/day=) to keep <100K files per directory.
+      Avoid flat structure that concentrates all files in one directory.
+
+  TieringPolicyName:
+    Type: String
+    Default: AUTO
+    AllowedValues: [NONE, SNAPSHOT_ONLY, AUTO, ALL]
+    Description: >-
+      FabricPool tiering policy for cost optimization.
+      AUTO: Hot data on SSD, cold data tiers to capacity pool (S3). Recommended for most patterns.
+      SNAPSHOT_ONLY: Only snapshot data tiers. Use for latency-sensitive random reads.
+      ALL: Entire volume tiers (SSD as cache only). Use for archive/infrequent access.
+      NONE: All data on SSD. Use for ultra-low-latency requirements.
+
+  TieringCoolingPeriod:
+    Type: Number
+    Default: 31
+    MinValue: 2
+    MaxValue: 183
+    Description: >-
+      Days of inactivity before data tiers to capacity pool (AUTO/SNAPSHOT_ONLY only).
+      Default 31 days. For IoT data collection where data is written once and rarely re-read,
+      consider a shorter period (7-14 days) to reduce SSD costs.
+
+  StorageEfficiency:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Enable inline deduplication, compression, and compaction.
+      DESIGN TIP: Always enable for text-based data (JSON, CSV, logs) — typical 2-5x savings.
+      For pre-compressed data (images, video, encrypted), savings are minimal but overhead is low.
+
+  # --- S3 Access Point ---
+  S3AccessPointName:
+    Type: String
+    Default: fsxn-data-ingest
+    AllowedPattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    MaxLength: 50
+    Description: >-
+      S3 Access Point name (lowercase, numbers, hyphens; 3-50 chars).
+      DESIGN TIP — Purpose-based separation:
+      Create multiple APs on same volume for different access patterns:
+      - fsxn-ingest-write (PutObject only, data collection Lambda)
+      - fsxn-analytics-read (GetObject/ListBucket only, analytics Lambda)
+      - fsxn-audit-read (GetObject/ListBucket, different UNIX user for audit trail)
+      This template creates one AP; add more post-deploy for production.
+
+  S3APUnixUser:
+    Type: String
+    Default: fsxadmin
+    Description: >-
+      UNIX user for S3 AP FileSystemIdentity (Layer 2 NAS permissions).
+      This user's UID/GID determines file ownership for PutObject operations.
+      DESIGN TIP: For production, create a dedicated UNIX user (not fsxadmin)
+      with appropriate UID/GID. Files created via S3 AP inherit this identity.
+      NFS clients see files owned by this UID. Plan permissions accordingly.
+
+  S3APNetworkOrigin:
+    Type: String
+    Default: Internet
+    AllowedValues: [Internet, VPC]
+    Description: >-
+      DESIGN TIP — Internet vs VPC:
+      Internet: Lambda OUTSIDE VPC can access S3 AP directly. Simplest for serverless patterns.
+                Cannot use S3 Gateway VPC Endpoint (it doesn't work with Internet-origin APs).
+      VPC: Lambda INSIDE VPC accesses via S3 Interface/Gateway Endpoint. Required for
+           VPC-only architectures. Note: S3 Gateway Endpoint does NOT work with S3 AP.
+      Recommendation: Use Internet for most serverless data collection patterns.
+
+  # --- Security ---
+  FsxAdminPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 50
+    Description: >-
+      Password for fsxadmin (ONTAP admin). Stored in Secrets Manager by this template.
+      DESIGN TIP: In production, use AWS Secrets Manager rotation. Never hardcode in Lambda env vars.
+      All patterns in this repo use Secrets Manager ARN references.
+
+  # --- Environment ---
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment tag for resource identification.
+
+  ProjectName:
+    Type: String
+    Default: s3ap-data-collection
+    Description: Project name used in resource naming and tags.
+
+# =====================================================================
+# Resources
+# =====================================================================
+Resources:
+  # --- Secrets Manager for ONTAP Credentials ---
+  OntapAdminSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "fsxn/${ProjectName}-${Environment}/admin"
+      Description: FSx for ONTAP fsxadmin credentials
+      SecretString: !Sub '{"username": "fsxadmin", "password": "${FsxAdminPassword}"}'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # --- FSx for ONTAP File System ---
+  FileSystem:
+    Type: AWS::FSx::FileSystem
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      FileSystemType: ONTAP
+      StorageCapacity: !Ref StorageCapacityGiB
+      SubnetIds:
+        - !Ref SubnetId
+        - !Ref PreferredSubnetId
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+      OntapConfiguration:
+        DeploymentType: !Ref DeploymentType
+        ThroughputCapacity: !Ref FileSystemThroughputMBps
+        PreferredSubnetId: !Ref PreferredSubnetId
+        FsxAdminPassword: !Ref FsxAdminPassword
+        AutomaticBackupRetentionDays: 7
+        DailyAutomaticBackupStartTime: "03:00"
+        WeeklyMaintenanceStartTime: "7:04:00"
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # --- Storage Virtual Machine ---
+  StorageVirtualMachine:
+    Type: AWS::FSx::StorageVirtualMachine
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      FileSystemId: !Ref FileSystem
+      Name: !Ref SvmName
+      RootVolumeSecurityStyle: !Ref RootVolumeSecurityStyle
+      Tags:
+        - Key: Name
+          Value: !Sub "${SvmName}-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # --- Data Collection Volume ---
+  DataVolume:
+    Type: AWS::FSx::Volume
+    Properties:
+      Name: !Ref VolumeName
+      VolumeType: ONTAP
+      OntapConfiguration:
+        JunctionPath: !Ref JunctionPath
+        StorageVirtualMachineId: !Ref StorageVirtualMachine
+        SizeInMegabytes: !Ref VolumeSizeMB
+        StorageEfficiencyEnabled: !Ref StorageEfficiency
+        TieringPolicy:
+          Name: !Ref TieringPolicyName
+          CoolingPeriod: !Ref TieringCoolingPeriod
+        OntapVolumeType: RW
+        SecurityStyle: !Ref VolumeSecurityStyle
+        SnapshotPolicy: default
+      Tags:
+        - Key: Name
+          Value: !Sub "${VolumeName}-${Environment}"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Role
+          Value: S3AP-DataCollection
+
+  # --- IAM Role: Data Ingestion Lambda ---
+  IngestionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-ingestion-${Environment}"
+      Description: >-
+        IAM role for Lambda functions that write data via S3 AP.
+        Least-privilege: PutObject + ListBucket only.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3APWritePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3APPutObject
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # --- IAM Role: Analytics/Read Lambda ---
+  AnalyticsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-analytics-${Environment}"
+      Description: >-
+        IAM role for Lambda functions that read data via S3 AP.
+        Least-privilege: GetObject + ListBucket only.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3APReadPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3APReadOnly
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}"
+                  - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # --- IAM Role: ONTAP Management Lambda (VPC-internal) ---
+  OntapMgmtRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-ontap-mgmt-${Environment}"
+      Description: >-
+        IAM role for Lambda functions that call ONTAP REST API (VPC-internal).
+        Needs VPC access + Secrets Manager read.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SecretsManagerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadOntapCreds
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:fsxn/${ProjectName}-${Environment}/admin-*"
+        - PolicyName: FSxDescribePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: FSxReadOnly
+                Effect: Allow
+                Action:
+                  - fsx:DescribeFileSystems
+                  - fsx:DescribeStorageVirtualMachines
+                  - fsx:DescribeVolumes
+                Resource: "*"
+        - PolicyName: VPCAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                Resource: "*"
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+# =====================================================================
+# Outputs — Post-Deploy Steps with Design Tips
+# =====================================================================
+Outputs:
+  VpcId:
+    Description: VPC ID (for Lambda VPC configuration reference)
+    Value: !Ref VpcId
+
+  S3APNetworkOrigin:
+    Description: S3 AP Network Origin configuration
+    Value: !Ref S3APNetworkOrigin
+
+  FileSystemId:
+    Description: FSx for ONTAP File System ID
+    Value: !Ref FileSystem
+
+  FileSystemManagementDns:
+    Description: Management DNS name (use for ONTAP REST API access from VPC-internal Lambda)
+    Value: !GetAtt FileSystem.DNSName
+
+  StorageVirtualMachineId:
+    Description: SVM ID
+    Value: !Ref StorageVirtualMachine
+
+  DataVolumeId:
+    Description: Data Volume ID (attach S3 AP here)
+    Value: !Ref DataVolume
+
+  OntapSecretArn:
+    Description: Secrets Manager ARN for ONTAP admin credentials
+    Value: !Ref OntapAdminSecret
+
+  IngestionRoleArn:
+    Description: IAM Role for data ingestion Lambda (PutObject only)
+    Value: !GetAtt IngestionRole.Arn
+
+  AnalyticsRoleArn:
+    Description: IAM Role for analytics Lambda (GetObject/ListBucket only)
+    Value: !GetAtt AnalyticsRole.Arn
+
+  OntapMgmtRoleArn:
+    Description: IAM Role for ONTAP management Lambda (VPC-internal)
+    Value: !GetAtt OntapMgmtRole.Arn
+
+  S3AccessPointName:
+    Description: S3 AP name (create post-deploy — see instructions below)
+    Value: !Ref S3AccessPointName
+
+  PostDeployStep1CreateS3AP:
+    Description: "Step 1: Create S3 Access Point"
+    Value: !Sub |
+      aws fsx create-and-attach-s3-access-point \
+        --cli-input-json '{
+          "Name": "${S3AccessPointName}",
+          "Type": "ONTAP",
+          "OntapConfiguration": {
+            "VolumeId": "${DataVolume}",
+            "FileSystemIdentity": {
+              "Type": "UNIX",
+              "UnixUser": {"Name": "${S3APUnixUser}"}
+            }
+          }
+        }'
+
+  PostDeployStep2VerifyAccess:
+    Description: "Step 2: Verify S3 AP data access"
+    Value: !Sub |
+      # Write a test file
+      echo "hello from S3 AP" > /tmp/test.txt
+      aws s3api put-object \
+        --bucket ${S3AccessPointName}-${AWS::AccountId}-s3alias \
+        --key test/hello.txt \
+        --body /tmp/test.txt
+
+      # List files
+      aws s3api list-objects-v2 \
+        --bucket ${S3AccessPointName}-${AWS::AccountId}-s3alias \
+        --prefix test/
+
+  DesignConsiderationsReference:
+    Description: Design guide for directory structure, performance, and security
+    Value: "See docs/design-considerations.md for comprehensive design guidance"

@@ -1,0 +1,25 @@
+{
+  "Parameters": {
+    "SourceFileSystemId": "fs-0EXAMPLE1111aaaaa",
+    "SourceSvmId": "svm-0EXAMPLE2222bbbbb",
+    "DestFileSystemId": "fs-0EXAMPLE4444ddddd",
+    "DestSvmId": "svm-0EXAMPLE5555eeeee",
+    "DestRegion": "us-west-2",
+    "DestManagementIp": "10.0.1.100",
+    "SourceVolumeName": "vol_sm_dr_source",
+    "SourceVolumeSizeMB": "10240",
+    "SourceJunctionPath": "/sm_dr_source",
+    "DestVolumeName": "vol_sm_dr_dest",
+    "DestVolumeSizeMB": "10240",
+    "DestJunctionPath": "/sm_dr_dest",
+    "SourceS3AccessPointName": "fsxn-sm-dr-source",
+    "DestS3AccessPointName": "fsxn-sm-dr-dest",
+    "S3APUnixUser": "fsxadmin",
+    "SourceSecretArn": "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsxn/source-credentials-XXXXXX",
+    "DestSecretArn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:fsxn/dest-credentials-XXXXXX",
+    "FailoverLambdaSubnetIds": "subnet-0EXAMPLE7777ggggg,subnet-0EXAMPLE8888hhhhh",
+    "FailoverLambdaSecurityGroupId": "sg-0EXAMPLE9999iiiii",
+    "NotificationEmail": "",
+    "Environment": "dev"
+  }
+}

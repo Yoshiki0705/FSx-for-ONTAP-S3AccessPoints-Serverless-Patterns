@@ -1,6 +1,6 @@
 # FSx for ONTAP S3 Access Points — Serverless Patterns
 
-![tests](https://img.shields.io/badge/tests-2%2C162%2B%20passed-brightgreen) ![cfn-lint](https://img.shields.io/badge/cfn--lint-0%20errors-brightgreen) ![ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen) ![patterns](https://img.shields.io/badge/patterns-42%2B-blue) ![region](https://img.shields.io/badge/verified-ap--northeast--1-blue)
+![tests](https://img.shields.io/badge/tests-2%2C162%2B%20passed-brightgreen) ![cfn-lint](https://img.shields.io/badge/cfn--lint-0%20errors-brightgreen) ![ruff](https://img.shields.io/badge/ruff-0%20errors-brightgreen) ![patterns](https://img.shields.io/badge/patterns-45%2B-blue) ![region](https://img.shields.io/badge/verified-ap--northeast--1-blue)
 
 🌐 [日本語](README.md) | [English](README.en.md) | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
@@ -8,7 +8,7 @@
 
 > **42 reference patterns** for serverless processing of enterprise NAS data on FSx for ONTAP via S3 Access Points — **no data copying required**.
 >
-> 28 industry UCs + 7 FlexCache/FlexClone + 2 GenAI + SAP + HA monitoring + Event-Driven + Edge delivery + File Portal UI
+> 28 industry UCs + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + HA monitoring + Event-Driven + Edge delivery + File Portal UI
 
 ---
 
@@ -18,6 +18,7 @@
 |---|---|---|
 | Try a demo without FSx | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 min |
 | Browse files via a web portal | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.en.md) | 10 min |
+| Understand S3 AP directory design & performance | [Design Considerations](docs/design-considerations-en.md) | 15 min |
 | Deploy a pattern to AWS | [Deployment Guide](docs/guides/deployment-guide.md) | 30 min |
 | Find the right pattern for my workload | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 min |
 | Estimate costs | [Cost Calculator](docs/cost-calculator.md) | 5 min |
@@ -62,7 +63,7 @@
 | UC28 | [`chemical-sds-management/`](solutions/industry/chemical-sds-management/) | Chemical | SDS & lab notes |
 | SAP | [`sap/erp-adjacent/`](solutions/sap/erp-adjacent/) | SAP/ERP | IDoc & EDI processing |
 
-### FlexCache / FlexClone (FC1-FC7)
+### FlexCache / FlexClone / SnapMirror (FC1-FC10)
 
 | # | Directory | Pattern |
 |---|---|---|
@@ -73,6 +74,9 @@
 | FC5 | [`flexcache/life-sciences-research/`](solutions/flexcache/life-sciences-research/) | Research data classification |
 | FC6 | [`flexcache/gaming-build-pipeline/`](solutions/flexcache/gaming-build-pipeline/) | Game asset quality check |
 | FC7 | [`flexcache/devops-cicd/`](solutions/flexcache/devops-cicd/) | FlexClone Dev/Test & CI/CD |
+| FC8 | [`flexcache/same-region-s3ap/`](solutions/flexcache/same-region-s3ap/) | S3 AP + FlexCache same-region read acceleration |
+| FC9 | [`flexcache/cross-region-s3ap/`](solutions/flexcache/cross-region-s3ap/) | S3 AP + FlexCache cross-region delivery (<3s) |
+| FC10 | [`flexcache/snapmirror-cross-region-dr/`](solutions/flexcache/snapmirror-cross-region-dr/) | S3 AP + SnapMirror cross-region DR (RTO ~3 min) |
 
 ### GenAI / HA / Event-Driven / Edge / File Portal
 
@@ -93,6 +97,7 @@
 | [`shared/`](shared/) | Common Python modules (S3ApHelper, OntapClient, Observability) |
 | [`operations/`](operations/) | 6 operational optimization patterns |
 | [`infrastructure/handson-lab/`](infrastructure/handson-lab/) | Hands-on Lab IaC (VPC/AD/FSx/EC2/S3AP) |
+| [`infrastructure/s3ap-data-collection/`](infrastructure/s3ap-data-collection/) | S3 AP data collection infra (design tips embedded template) |
 | [`docs/`](docs/) | Design guides & benchmarks (40+ docs) |
 | [`scripts/`](scripts/) | Deploy, benchmark, utilities |
 | [`.github/workflows/`](.github/workflows/) | CI/CD (lint → test → security → deploy) |
@@ -177,7 +182,7 @@ Details: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Comp
 
 | Repository | Summary |
 |---|---|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Permission-aware RAG chatbot (CDK + Next.js + ECS) |
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Permission-aware RAG chatbot (CDK + Next.js + ECS) | <!-- allow:naming -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | Lakehouse integration (Databricks, Snowflake, Athena, Glue, EMR) |
 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP migration |
 

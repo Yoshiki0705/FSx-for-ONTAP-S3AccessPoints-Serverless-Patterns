@@ -5,7 +5,7 @@
 > **Data residency note**: File content is transferred cross-region between Lambda (us-east-1) → S3 AP (ap-northeast-1).
 
 > **Verification date**: 2026-07-19/20
-> **Environment**: ap-northeast-1 (Quick) + us-east-1 (AgentCore Gateway)
+> **Environment**: ap-northeast-1 (Quick + AgentCore Gateway + Lambda + S3 AP) — **same-region deployment verified 2026-07-22**
 > **Status**: ✅ E2E verified
 
 ## Overview

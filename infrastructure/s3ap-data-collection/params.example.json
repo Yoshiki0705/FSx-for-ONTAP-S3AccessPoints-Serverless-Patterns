@@ -1,0 +1,26 @@
+{
+  "Parameters": {
+    "VpcId": "vpc-0EXAMPLE1111aaaaa",
+    "SubnetId": "subnet-0EXAMPLE2222bbbbb",
+    "PreferredSubnetId": "subnet-0EXAMPLE2222bbbbb",
+    "SecurityGroupId": "sg-0EXAMPLE3333ccccc",
+    "FileSystemThroughputMBps": "128",
+    "StorageCapacityGiB": "1024",
+    "DeploymentType": "SINGLE_AZ_2",
+    "SvmName": "svm_data_collection",
+    "RootVolumeSecurityStyle": "UNIX",
+    "VolumeName": "vol_s3ap_ingest",
+    "VolumeSizeMB": "102400",
+    "VolumeSecurityStyle": "UNIX",
+    "JunctionPath": "/ingest",
+    "TieringPolicyName": "AUTO",
+    "TieringCoolingPeriod": "31",
+    "StorageEfficiency": "true",
+    "S3AccessPointName": "fsxn-data-ingest",
+    "S3APUnixUser": "fsxadmin",
+    "S3APNetworkOrigin": "Internet",
+    "FsxAdminPassword": "CHANGE_ME_use_strong_password",
+    "Environment": "dev",
+    "ProjectName": "s3ap-data-collection"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "Parameters": {
+    "FileSystemId": "fs-0EXAMPLE1111aaaaa",
+    "OriginSvmId": "svm-0EXAMPLE2222bbbbb",
+    "CacheSvmId": "svm-0EXAMPLE3333ccccc",
+    "OriginVolumeName": "vol_fc_origin",
+    "OriginVolumeSizeMB": "10240",
+    "OriginJunctionPath": "/fc_origin",
+    "S3AccessPointName": "fsxn-fc-same-region-origin",
+    "S3APUnixUser": "fsxadmin",
+    "OntapSecretArn": "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsxn/ontap-credentials-XXXXXX",
+    "Environment": "dev"
+  }
+}
