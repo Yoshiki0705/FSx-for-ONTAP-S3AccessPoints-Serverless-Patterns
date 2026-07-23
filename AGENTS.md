@@ -47,6 +47,12 @@ python3 -m pytest shared/tests/ -q
 
 # cfn-lint validation
 cfn-lint solutions/industry/legal-compliance/template.yaml solutions/sap/erp-adjacent/template.yaml
+
+# KNFSD File Cache (Terraform, infrastructure/knfsd-file-cache/)
+cd infrastructure/knfsd-file-cache && ./scripts/deploy.sh    # Deploy
+cd infrastructure/knfsd-file-cache && ./scripts/validate-cache.sh  # Validate
+cd infrastructure/knfsd-file-cache && ./scripts/cleanup.sh   # Destroy
+python3 -m pytest infrastructure/knfsd-file-cache/tests/ -v -m integration  # Integration tests
 ```
 
 ## Project Layout
@@ -89,7 +95,13 @@ cfn-lint solutions/industry/legal-compliance/template.yaml solutions/sap/erp-adj
 │   ├── cost-optimization/      # OPS5: FinOps integration (planned)
 │   └── qos-monitoring/         # OPS6: QoS policy compliance (planned)
 ├── infrastructure/         # Shared infrastructure templates (not per-pattern)
-│   └── demo-ad-environment.yaml  # AD + EC2 for WINDOWS S3 AP testing
+│   ├── demo-ad-environment.yaml  # AD + EC2 for WINDOWS S3 AP testing
+│   └── knfsd-file-cache/         # KNFSD NFS read cache (Terraform, Preview)
+│       ├── terraform/            # Deployment configuration
+│       ├── scripts/              # setup, deploy, validate, benchmark, cleanup
+│       ├── tests/                # pytest integration tests (dual-path, cache hit)
+│       ├── docs/                 # Demo guide, verification results, troubleshooting
+│       └── dashboards/           # CloudWatch integrated dashboard
 ├── shared/                 # Shared Python modules (imported by all patterns)
 │   ├── s3ap_helper.py      # S3 Access Point helper (core abstraction)
 │   ├── ontap_client.py     # ONTAP REST API client (SVM scope)
@@ -350,6 +362,10 @@ All README and documentation files follow these UX principles:
 | AgentCore Gateway CUSTOM_JWT + Quick Desktop → 403 | NONE auth を PoC に使用。CUSTOM_JWT は認可ポリシー設定が必要（未解決、`docs/agentcore-mcp-remaining-issues.md` 参照） |
 | AgentCore Gateway `create-gateway-target` で Lambda not found | Gateway と Lambda は**同一リージョン**に配置必須。クロスリージョン Lambda 呼び出しは不可 |
 | Quick Desktop サインインで「account name is invalid」 | IAM ユーザー名 ≠ QuickSight ユーザー名。`aws quicksight list-users` で確認。Email ベースのサインインが最もシンプル |
+| KNFSD cache hit speedup が見られない | NVMe なしインスタンス (`t3`, `m6i`) では L2 キャッシュ不可。`m6gd`/`im4gn`/`i3en` を使用 |
+| KNFSD NFS mount: Connection refused | SG で TCP 2049 が未許可。KNFSD SG に NFS inbound rule を追加 |
+| KNFSD 経由 write → S3 AP で見えない | NFS write は非同期。`sync` 後 2-3 秒待機してから S3 AP GetObject |
+| KNFSD Terraform: InvalidAMIID | AMI ビルドリージョンとデプロイリージョンの不一致。`--region` を揃える |
 
 ## S3 Access Point Critical Knowledge
 
@@ -657,7 +673,7 @@ When reviewing changes, consider these perspectives:
 | [Demo Mode Guide](docs/demo-mode-guide.md) | Run without FSx for ONTAP |
 | [Customization Guide](docs/customization-guide.md) | Adapt patterns to your workload |
 | [Cost Calculator](docs/cost-calculator.md) | Estimate monthly costs |
-| [Comparison Alternatives](docs/comparison-alternatives.md) | S3 AP vs EFS vs NFS vs DataSync |
+| [Comparison Alternatives](docs/comparison-alternatives.md) | S3 AP vs EFS vs NFS vs DataSync + NFS Read Cache (FlexCache/KNFSD/File Cache) |
 | [PoC Go/No-Go Template](docs/poc-go-nogo-template.md) | PoC success criteria |
 | [Incident Response Playbook](docs/incident-response-playbook.md) | Security incident handling |
 | [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md) | Known constraints + workarounds |
@@ -678,6 +694,7 @@ When reviewing changes, consider these perspectives:
 | [AgentCore MCP Demo Guide](docs/demo-agentcore-mcp-quick-desktop.md) | E2E demo with screenshots: list_files, read_file, search_files results |
 | [AgentCore MCP Remaining Issues](docs/agentcore-mcp-remaining-issues.md) | Known issues tracker: Web UI bug, Desktop persistence, CUSTOM_JWT 403 |
 | [AgentCore MCP Tools Reference](docs/agentcore-mcp-tools.md) | Lambda tool definitions (list/read/search), input/output schemas, IAM policy |
+| [KNFSD + S3 AP Dual-Path Architecture](docs/knfsd-s3ap-dual-path-architecture.md) | KNFSD File Cache + S3 AP complementary access for EDA/VFX/HPC/Genomics/Finance/Weather/Energy |
 
 ## Agent Output Standards
 

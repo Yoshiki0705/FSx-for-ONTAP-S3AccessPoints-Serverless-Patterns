@@ -188,7 +188,7 @@ JSON の中身（デプロイスクリプトが自動生成）:
 | 4 | 監視 | CloudWatch Metrics + X-Ray |
 | 5 | データリージョン | Lambda を ap-northeast-1 に移行（AgentCore 対応待ち） |
 
-> **Data residency note**: 現在の PoC 構成では Lambda（us-east-1）が S3 AP（ap-northeast-1）のファイル内容を取得するため、データがリージョン間を転送されます。コンプライアンス要件（FISC、個人情報保護法等）がある場合は、AgentCore Gateway の東京リージョン対応を待つか、同一リージョンに閉じた構成を検討してください。
+> **Data residency note**: ~~現在の PoC 構成では Lambda（us-east-1）が S3 AP（ap-northeast-1）のファイル内容を取得するため、データがリージョン間を転送されます。~~ **2026-07-22 検証完了: AgentCore Gateway + Lambda は ap-northeast-1 にデプロイ可能です。** 全コンポーネントを同一リージョンに配置することで、クロスリージョン転送を排除できます。
 
 ---
 
