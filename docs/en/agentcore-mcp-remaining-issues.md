@@ -99,7 +99,7 @@
 
 | Item | Details |
 |------|---------|
-| **Status** | 🟡 Pending Customer Action (testing in progress) |
+| **Status** | ✅ Verified — confirmed working in ap-northeast-1 (2026-07-22) |
 | **Case ID** | 178449261200987 |
 | **Filed** | 2026-07 (Feature Request) |
 | **AWS Response** | 2026-07-22 |
