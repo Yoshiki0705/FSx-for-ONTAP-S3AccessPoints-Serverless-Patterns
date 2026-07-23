@@ -63,7 +63,7 @@ Details: [FSID Backend Selection Guide](docs/fsid-backend-options.en.md)
 |-------|----------|------|
 | AMI Build | Spot c6g.16xlarge × 25min | ~$0.30 |
 | Test (1hr) | m6gd.xlarge | ~$0.29 |
-| **Test Total** | | **< $1** |
+| **Test Total** | | **< $1 (KNFSD incremental only. FSx for ONTAP environment required separately)** |
 | Production (monthly) | im4gn.16xlarge × 24/7 | ~$4,190 |
 | FSID DB (Option A) | RDS db.t4g.micro | ~$15/mo |
 | FSID DB (Option B) | Aurora Serverless v2 | ~$5-15/mo |

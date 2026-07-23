@@ -89,7 +89,7 @@ infrastructure/knfsd-file-cache/
 |---------|---------|--------|
 | AMI ビルド | Spot c6g.16xlarge × 25分 | ~$0.30 |
 | テスト (1時間) | m6gd.xlarge | ~$0.29 |
-| **テスト合計** | | **< $1** |
+| **テスト合計** | | **< $1 (KNFSD 増分のみ。FSx for ONTAP 環境は別途必要)** |
 | 本番 (月額) | im4gn.16xlarge × 24/7 | ~$4,190 |
 | FSID DB (Option A) | RDS db.t4g.micro | ~$15/月 |
 | FSID DB (Option B) | Aurora Serverless v2 | ~$5-15/月 |

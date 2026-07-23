@@ -171,7 +171,9 @@ aws ec2 deregister-image --image-id ami-0xxx... --region ap-northeast-1
 |-------|----------|------|
 | AMI build | Spot c6g.16xlarge × 25min | ~$0.30 |
 | Test (1hr) | m6gd.xlarge | ~$0.29 |
-| **Total** | | **< $1** |
+| **Total** | | **< $1 (KNFSD incremental only)** |
+
+> **Prerequisite costs**: The above assumes an existing FSx for ONTAP environment (~$194/month) + VPC is already running. Building a verification environment from scratch requires FSx for ONTAP minimum configuration (128 MBps / 1 TB SSD) at ~$194/month additionally.
 | Production (monthly) | im4gn.16xlarge × 24/7 | ~$4,190 |
 
 ---

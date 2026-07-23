@@ -212,7 +212,9 @@ aws ec2 deregister-image --image-id ami-0xxx... --region ap-northeast-1
 | AMI ビルド | Spot c6g.16xlarge × 25分 | ~$0.30 |
 | テスト (1時間) | m6gd.xlarge | ~$0.29 |
 | テスト (1時間) | Elastic IP (付与中) | ~$0.005 |
-| **合計** | | **< $1** |
+| **合計** | | **< $1 (KNFSD 増分のみ)** |
+
+> **前提条件のコスト**: 上記は既存の FSx for ONTAP 環境 (~$194/月) + VPC が稼働中であることを前提としています。ゼロから検証環境を構築する場合、FSx for ONTAP の最小構成 (128 MBps / 1 TB SSD) で ~$194/月が別途必要です。
 | 本番 (月額) | im4gn.16xlarge × 24h × 30d | ~$4,190 |
 
 ---
