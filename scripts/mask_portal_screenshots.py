@@ -39,7 +39,7 @@ SCREENSHOTS_DIR = Path(__file__).parent.parent / "docs" / "screenshots" / "porta
 BACKUP_DIR = SCREENSHOTS_DIR / "originals"
 
 # Sensitive values to mask (customize per environment)
-ACCOUNT_ID = "178625946981"
+ACCOUNT_ID = "123456789012"
 ACCOUNT_ID_REPLACEMENT = "123456789012"
 EMAIL = "demo@example.com"
 EMAIL_REPLACEMENT = "user@example.com"

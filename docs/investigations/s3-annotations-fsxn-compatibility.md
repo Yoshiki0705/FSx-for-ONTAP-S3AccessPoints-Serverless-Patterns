@@ -98,7 +98,7 @@ aws s3api put-object-annotation \
 
 ### 起票済み
 
-- Case ID: `case-178625946981-muen-2026-22bf69f4797c9848`
+- Case ID: `case-123456789012-muen-2026-22bf69f4797c9848`
 - 起票日: 2026-06-17T15:52:05Z
 - Service: FSx for NetApp ONTAP - Linux
 - Category: Feature Request

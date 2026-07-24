@@ -2,7 +2,7 @@
 """Mask AWS account IDs and sensitive ARNs in screenshots.
 
 This script applies rectangular masks over regions containing
-AWS account IDs (178625946981) in console screenshots.
+AWS account IDs (123456789012) in console screenshots.
 
 All screenshots are 1680x906 (Phase 16 set).
 """

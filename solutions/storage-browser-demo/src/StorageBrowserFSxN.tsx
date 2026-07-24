@@ -24,7 +24,7 @@ const CONFIG = {
   region: 'ap-northeast-1',
 
   /** AWS account ID (aws sts get-caller-identity --query Account) */
-  accountId: '178625946981',
+  accountId: '123456789012',
 };
 // ===== END CONFIGURATION =====
 
