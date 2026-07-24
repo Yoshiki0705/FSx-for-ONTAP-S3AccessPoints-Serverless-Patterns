@@ -11,14 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR title follows conventional commits
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
           # Allowed prefixes: feat: fix: docs: bench: chore: refactor: test: ci: perf: style:
-          if ! echo "$TITLE" | grep -qE '^(feat|fix|docs|bench|chore|refactor|test|ci|perf|style)(\(.+\))?: .+'; then
+          if ! echo "$PR_TITLE" | grep -qE '^(feat|fix|docs|bench|chore|refactor|test|ci|perf|style)(\(.+\))?: .+'; then
             echo "::error::PR title must follow conventional commits format."
             echo "Expected: <type>: <description> or <type>(scope): <description>"
             echo "Allowed types: feat, fix, docs, bench, chore, refactor, test, ci, perf, style"
-            echo "Got: $TITLE"
+            echo "Got: $PR_TITLE"
             exit 1
           fi
-          echo "✅ PR title is valid: $TITLE"
+          echo "✅ PR title is valid: $PR_TITLE"
