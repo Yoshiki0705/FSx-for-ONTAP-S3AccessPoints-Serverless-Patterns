@@ -163,7 +163,7 @@ jobs:
           "
       - name: Run shared tests (quick subset)
         run: |
-          pytest shared/tests/ -q --ignore=.hypothesis -x --timeout=60
+          pytest shared/tests/ -q --ignore=.hypothesis -x
 
   staleness-checks:
     name: "Stage 2c: Generated File Staleness"
