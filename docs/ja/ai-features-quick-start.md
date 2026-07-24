@@ -53,6 +53,8 @@ npm run dev
 
 ## Step 3: ファイル閲覧（All Files）
 
+![All Files — S3 AP ボリューム内容](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/solutions/amplify-portal/docs/screenshots/portal-main-view.png)
+
 サイドバー「📂 All Files」で FSx for ONTAP のボリューム内容を表示。
 
 - フォルダクリック → ナビゲーション
