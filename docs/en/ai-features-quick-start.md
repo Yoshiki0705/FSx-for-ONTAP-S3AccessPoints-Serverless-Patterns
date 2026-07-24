@@ -55,6 +55,8 @@ npm run dev
 
 ## Step 3: Browse Files (All Files)
 
+![All Files — S3 AP volume contents](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/main/solutions/amplify-portal/docs/screenshots/portal-main-view.png)
+
 The sidebar "📂 All Files" shows your FSx for ONTAP volume contents via S3 AP.
 
 Click folders to navigate. Click file icons:
