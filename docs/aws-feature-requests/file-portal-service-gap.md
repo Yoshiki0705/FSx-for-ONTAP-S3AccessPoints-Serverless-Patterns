@@ -153,15 +153,15 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 - **対策 3 — ワークロード分離**: 書き込み集中（NFS/SMB）と読み取り集中（S3 AP ポータル）を別ボリュームに分離し、I/O パターンを予測可能にする
 - **モニタリング**: `ThroughputUtilization`, `DataReadBytes`, `DataWriteBytes` をプロトコル別に CloudWatch で監視。ポータル追加前後のベースライン比較を推奨
 
-#### データ一貫性モデルとプロトコル間整合性
+#### データ整合性モデルとプロトコル間整合性
 
-マルチプロトコルアクセスで最も重要な技術的要素は、プロトコル間のデータ一貫性です:
+マルチプロトコルアクセスで最も重要な技術的要素は、プロトコル間のデータ整合性です:
 
-- **書き込み即時可視性**: NFSv3 で書き込んだファイルは、同時に S3 AP の `ListObjectsV2` や SMB のディレクトリ一覧に即座に反映される（標準 S3 は S3 操作内で強一貫性を提供するが、NFS/SMB/S3 API 間のプロトコル横断一貫性は FSx for ONTAP 固有の特性）
+- **書き込み即時可視性**: NFSv3 で書き込んだファイルは、同時に S3 AP の `ListObjectsV2` や SMB のディレクトリ一覧に即座に反映される（標準 S3 は S3 操作内で強整合性を提供するが、NFS/SMB/S3 API 間のプロトコル横断整合性は FSx for ONTAP 固有の特性）
 - **ファイルロックの共存**: SMB の Opportunistic Lock (oplock) と NFSv4.1 の Delegation は同一ボリューム上で共存可能。ただし、異なるプロトコルから同一ファイルへの同時書き込みが発生すると oplock/delegation がブレイクされ、パフォーマンスが一時的に低下する
 - **S3 AP からの読み取りとロック**: S3 AP の GetObject はファイルロックを取得しない（read-only のスナップショット読み取り）。NFS/SMB で書き込み中のファイルを S3 AP で読むと、書き込み途中の状態が見える可能性がある。処理パイプラインでは書き込み完了を確認してから S3 AP 読み取りを行う設計が望ましい
 
-> **DR/バックアップ設計 (DR Specialist)**: FlexClone で取得したスナップショットは全プロトコルから同一時点のデータとして参照可能。プロトコル間でデータの不整合が発生しない一貫性モデルは、ポイントインタイムリカバリの信頼性に直結する。
+> **DR/バックアップ設計 (DR Specialist)**: FlexClone で取得したスナップショットは全プロトコルから同一時点のデータとして参照可能。プロトコル間でデータの不整合が発生しない整合性モデルは、ポイントインタイムリカバリの信頼性に直結する。
 
 #### マルチプロトコル ID マッピングとアクセス制御
 
@@ -194,7 +194,7 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 
 1. **AI エージェント化の波**: 2025-2026 年に Box Agent、SharePoint Copilot、Google Gemini in Drive、Dropbox Dash が相次いで GA。ファイルストレージの価値は「保管・共有」から「AI による活用・自動化」にシフトしています。当ポータルの Bedrock / Rekognition / Quick MCP 連携はこの潮流と同じ方向性。
 
-2. **ハイブリッド接続の構造的な違い**: Egnyte の Storage Sync や Citrix の StorageZones はオンプレミス接続をカバーしますが、NFS/SMB/S3 の同時マルチプロトコルアクセスと即時一貫性（strong consistency）は FSx for ONTAP S3 AP の構造的な特性です。他のアプローチでは同期遅延やプロトコル間の不整合が発生しうる点がトレードオフとなります。
+2. **ハイブリッド接続の構造的な違い**: Egnyte の Storage Sync や Citrix の StorageZones はオンプレミス接続をカバーしますが、NFS/SMB/S3 の同時マルチプロトコルアクセスと即時整合性（strong consistency）は FSx for ONTAP S3 AP の構造的な特性です。他のアプローチでは同期遅延やプロトコル間の不整合が発生しうる点がトレードオフとなります。
 
 3. **OSS の急速な進化**: Nextcloud Hub 26 で Governance ツールが追加され、ownCloud OCIS はフェデレーションを強化。企業向け機能が OSS でもカバーされつつあります。当ポータルと Nextcloud の併用パターンは引き続き有効。
 
@@ -302,7 +302,7 @@ export const storage = defineStorage({
 - 互換性テーブルの「Presign — Not supported」を「Presign — Works (client-side SigV4; executes as GetObject)」に修正してほしい
 - または注記として "Presigned URLs function correctly because they execute as standard GetObject requests. The service does not officially test presigned URL workflows." を追記してほしい
 
-**Production Guidance**: AWS Support は「"Not supported" に分類されている操作を本番で依存することは推奨しない」と回答。動作は確認できるが、リージョン間の一貫性やサービスアップデート後の動作保証はない。
+**Production Guidance**: AWS Support は「"Not supported" に分類されている操作を本番で依存することは推奨しない」と回答。動作は確認できるが、リージョン間の整合性やサービスアップデート後の動作保証はない。
 
 **実装への影響**: Presigned URL が動作するため、以下は **今すぐ実装可能**:
 - ブラウザネイティブのファイルプレビュー（画像/PDF/動画）
@@ -310,7 +310,7 @@ export const storage = defineStorage({
 - 時限付き共有リンク
 - Storage Browser for S3 の FSx for ONTAP S3 AP 対応（S3 AP がクライアント利用をサポートした場合）
 
-**Production guidance**: AWS Support は「"Not supported" に分類されている操作を本番で依存することは推奨しない」と回答している。動作は確認済みだが、リージョン間の一貫性やサービスアップデート後の動作保証はない。本番利用する場合は、Lambda プロキシによるフォールバック経路を用意しておくことを推奨。
+**Production guidance**: AWS Support は「"Not supported" に分類されている操作を本番で依存することは推奨しない」と回答している。動作は確認済みだが、リージョン間の整合性やサービスアップデート後の動作保証はない。本番利用する場合は、Lambda プロキシによるフォールバック経路を用意しておくことを推奨。
 
 ---
 
