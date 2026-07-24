@@ -140,9 +140,9 @@ The two approaches are not exclusive — they can **coexist, each handling what 
 |---|---|---|
 | File browsing & download | ✅ External Storage, immediate | ✅ ListFiles Lambda + image preview |
 | File upload | ✅ Drag & drop, sync client | ✅ Storage Browser integration (drag & drop, delete, copy, folder creation) |
-| Desktop/mobile sync | ✅ Official clients | ❌ |
+| Desktop/mobile sync | ✅ Official clients | △ PWA for offline browse + push notifications. Bidirectional sync via NFS/SMB mount |
 | Sharing links | ✅ Built-in (password protection, expiry) | ✅ Presigned URL (TTL selection + URL copy) |
-| Comments & annotations | ✅ Built-in | ❌ |
+| Comments & annotations | ✅ Built-in | ✅ AppSync Subscription + DynamoDB for real-time comments. PDF annotation via react-pdf-highlighter |
 | AI/ML processing workflow trigger | ⚠️ Possible via webhook (setup required) | ✅ AppSync Mutation → Step Functions |
 | AI Q&A (ask questions about files) | ❌ | ✅ Bedrock Converse API |
 | Image AI analysis | ❌ | ✅ Rekognition DetectLabels |
