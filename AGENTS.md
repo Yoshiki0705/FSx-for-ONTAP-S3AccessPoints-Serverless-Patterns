@@ -222,6 +222,17 @@ python3 -m pytest solutions/sap/erp-adjacent/tests/ -v
 - `tests/load/` — requires deployed infrastructure
 - `shared/tests/test_canary_properties.py` — requires live S3 AP
 
+## Self-Review (4-Axis Check)
+
+Before running the Verification Checklist below, walk these four axes to catch issues that automated checks miss:
+
+1. **Implementation gaps** — Is anything in the agreed scope still missing? (e.g., updated a handler but forgot the parallel change in `template.yaml`; tests not added; docs not updated; JA/EN parity broken)
+2. **Oddities** — Is anything in the diff strange or inconsistent? (dead code, leftover variable names from a prior shape, error messages that no longer make sense, half-applied refactors, hardcoded values that should be parameters)
+3. **Polish opportunities** — Are there small in-scope improvements noticed and dismissed as "out of scope"? Default to including them in the same change if they touch the same files and carry no behavior-break risk; defer only when they belong to a genuinely different concern.
+4. **Regression risk** — Full `make test-quick` run (not just the new tests)? Any renamed/removed shared/ exports that other patterns depend on? Any behavior change in shared modules that breaks DemoMode or production path?
+
+Surface findings explicitly and fix them before finalizing. The cost of one more pass is small compared to a follow-up fix or a missed regression.
+
 ## Verification Checklist
 
 Before submitting changes, run:
