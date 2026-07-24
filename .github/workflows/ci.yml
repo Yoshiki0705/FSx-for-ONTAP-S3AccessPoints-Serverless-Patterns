@@ -123,6 +123,98 @@ jobs:
             coverage.xml
             htmlcov/
 
+  runtime-compat:
+    name: "Stage 2a: Python Runtime Compatibility"
+    runs-on: ubuntu-latest
+    if: always()
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    env:
+      AWS_DEFAULT_REGION: ap-northeast-1
+      AWS_ACCESS_KEY_ID: testing
+      AWS_SECRET_ACCESS_KEY: testing
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      - name: Run shared module import smoke test
+        run: |
+          python -c "
+          import shared.s3ap_helper
+          import shared.ontap_client
+          import shared.fsx_helper
+          import shared.exceptions
+          import shared.observability
+          import shared.human_review
+          import shared.data_classification
+          import shared.idempotency_checker
+          import shared.lineage
+          import shared.guardrails
+          import shared.slo
+          print(f'All shared modules imported successfully on Python {__import__(\"sys\").version}')
+          "
+      - name: Run shared tests (quick subset)
+        run: |
+          pytest shared/tests/ -q --ignore=.hypothesis -x
+
+  staleness-checks:
+    name: "Stage 2c: Generated File Staleness"
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      # Verify JA/EN README section parity (same heading count)
+      - name: README JA/EN section parity check
+        run: |
+          JA_HEADINGS=$(grep -c '^##' docs/ja/deployment-guide.md 2>/dev/null || echo 0)
+          EN_HEADINGS=$(grep -c '^##' docs/en/deployment-guide.md 2>/dev/null || echo 0)
+          if [ "$JA_HEADINGS" != "$EN_HEADINGS" ] && [ "$JA_HEADINGS" != "0" ] && [ "$EN_HEADINGS" != "0" ]; then
+            echo "::warning::JA/EN deployment-guide heading count mismatch: JA=$JA_HEADINGS EN=$EN_HEADINGS"
+          fi
+      # Verify naming standardization (no forbidden abbreviations in committed docs)
+      - name: Naming standardization audit
+        run: |
+          # Check for forbidden abbreviations (FSxN, bare FSx, FSx ONTAP without "for")
+          # Exclude .private/, .git/, binary files
+          VIOLATIONS=$(grep -rn --include='*.md' --include='*.yaml' --include='*.py' \
+            -E '\bFSxN\b|(?<!\bfor )ONTAP\b.*\bFSx\b' \
+            docs/ solutions/ operations/ shared/ 2>/dev/null | \
+            grep -v 'FSx for ONTAP' | grep -v '# allow:naming' | \
+            grep -v '.private/' || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::warning::Naming standardization violations found (FSxN / bare FSx):"
+            echo "$VIOLATIONS"
+          fi
+      # Verify no placeholder leaks (real AWS account IDs, internal IPs)
+      - name: Public output safety audit
+        run: |
+          set +e
+          LEAKS=$(grep -rn --include='*.md' --include='*.yaml' --include='*.py' --include='*.json' \
+            -E '[0-9]{12}' \
+            docs/ solutions/ operations/ shared/ scripts/ cfn-params/ 2>/dev/null | \
+            grep -v '123456789012' | \
+            grep -v 'node_modules' | \
+            grep -v '.private/' | \
+            grep -v 'example' | \
+            grep -v '#.*AWS' || true)
+          if [ -n "$LEAKS" ]; then
+            echo "::warning::Potential AWS account ID leaks detected (review manually):"
+            echo "$LEAKS" | head -20
+          fi
+
   portal-test:
     name: "Stage 2b: Amplify Portal (vitest + tsc)"
     runs-on: ubuntu-latest
@@ -203,18 +295,22 @@ jobs:
   final-status:
     name: "CI Final Status"
     runs-on: ubuntu-latest
-    needs: [lint, test, portal-test, security-cfn, security-python]
+    needs: [lint, test, runtime-compat, staleness-checks, portal-test, security-cfn, security-python]
     if: always()
     steps:
       - name: Check all stages
         run: |
           if [[ "${{ needs.lint.result }}" == "failure" ]] || \
              [[ "${{ needs.test.result }}" == "failure" ]] || \
+             [[ "${{ needs.runtime-compat.result }}" == "failure" ]] || \
              [[ "${{ needs.security-cfn.result }}" == "failure" ]] || \
              [[ "${{ needs.security-python.result }}" == "failure" ]]; then
             echo "❌ One or more CI stages failed"
             echo "  Lint: ${{ needs.lint.result }}"
             echo "  Test: ${{ needs.test.result }}"
+            echo "  Runtime Compat: ${{ needs.runtime-compat.result }}"
+            echo "  Staleness: ${{ needs.staleness-checks.result }}"
+            echo "  Portal: ${{ needs.portal-test.result }}"
             echo "  Security (CFN): ${{ needs.security-cfn.result }}"
             echo "  Security (Python): ${{ needs.security-python.result }}"
             exit 1
