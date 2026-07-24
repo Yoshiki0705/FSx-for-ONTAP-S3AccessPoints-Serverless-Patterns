@@ -30,14 +30,16 @@
 
 エンドユーザーがファイルポータルからシームレスに AWS AI/Analytics サービスを利用できるようにする。
 
-| # | Feature | Priority | Architecture |
+| # | Feature | Status | Architecture |
 |---|---|---|---|
-| 1 | **Bedrock ファイル Q&A** | High | 選択ファイル → GetObject → Bedrock InvokeModel → 回答表示 |
-| 2 | **Rekognition ラベル検出** | High | 画像クリック → DetectLabels → バウンディングボックス描画 |
-| 3 | **Athena SQL クエリ UI** | Medium | クエリエディタ → StartQueryExecution → 結果テーブル表示 |
-| 4 | **Textract テキスト抽出** | Medium | PDF/画像 → AnalyzeDocument → 構造化テキスト表示 |
-| 5 | **Comprehend エンティティ抽出** | Low | テキスト → DetectEntities → ハイライト表示 |
-| 6 | **Glue Data Catalog ブラウザ** | Low | テーブル/パーティション一覧 → スキーマ表示 |
+| 1 | ~~Bedrock ファイル Q&A~~ | ✅ PR #161,163 | 選択ファイル → GetObject → Bedrock Converse → 回答表示 |
+| 2 | ~~Rekognition ラベル検出~~ | ✅ PR #161 | 画像クリック → DetectLabels → ラベルタグ表示 |
+| 3 | ~~Athena SQL クエリ UI~~ | ✅ PR #162 | Analytics タブ → SQL エディタ → 結果テーブル |
+| 4 | ~~Textract テキスト抽出~~ | ✅ PR #162 | extractText mutation（PDF/画像 → テキスト） |
+| 5 | ~~Comprehend エンティティ抽出~~ | ✅ PR #162 | analyzeText mutation（entities/sentiment/keyPhrases） |
+| 6 | ~~Glue Data Catalog ブラウザ~~ | ✅ PR #162 | browseCatalog query（DB/テーブル/スキーマ） |
+
+全サービス Sandbox デプロイで動作確認済み（2026-07-19）。Bedrock は Converse API 必須（PR #163 で修正）。
 
 ### File Portal UI (Amplify Gen2) — Completed & Remaining
 
