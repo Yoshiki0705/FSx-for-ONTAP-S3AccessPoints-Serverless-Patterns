@@ -109,3 +109,4 @@ sam deploy \
 - Writes via S3AP are limited to 5 GB max (use NFS for larger test data writes)
 - Lambda VPC placement requirements depend on NetworkOrigin setting (see steering docs)
 - FlexClone split converts to an independent volume (loses space efficiency)
+- **FSx API propagation delay (SM-VAL-009)**: FlexClones are created via ONTAP REST API and take ~30 minutes to propagate to FSx API (`describe-volumes`). S3 AP attachment (`create-and-attach-s3-access-point`) is only possible after the volume appears in FSx API. For automation, implement polling logic that waits for `fsvol-*` ID to appear in `describe-volumes`

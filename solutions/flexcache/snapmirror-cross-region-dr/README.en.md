@@ -45,7 +45,7 @@ graph TB
 |-----------|-------------|
 | Source Volume + S3 AP | Data ingestion point (Region A). Normal operations |
 | SnapMirror Async | Volume-level incremental replication (RPO = schedule interval) |
-| Destination Volume (DP) | Data protection volume (read-only until break). Created via FSx API (SM-VAL-009) |
+| Destination Volume (DP) | Data protection volume (read-only until break). For immediate S3 AP attachment, create via FSx API (SM-VAL-009) |
 | Failover Lambda | Automates: break → junction → S3 AP creation. RTO ~3 min |
 | SNS Topic | Notifies applications of new S3 AP endpoint after failover |
 
@@ -62,7 +62,7 @@ graph TB
 
 - 2 FSx for ONTAP clusters in different regions
 - VPC Peering with Cluster/SVM Peering established
-- DP Destination Volume created via `aws fsx create-volume` (not ONTAP REST API alone — SM-VAL-009)
+- DP Destination Volume: For immediate S3 AP attachment, create via `aws fsx create-volume` (recommended). Volumes created via ONTAP REST API take ~30 min to propagate to FSx API before S3 AP can be attached (SM-VAL-009)
 - SnapMirror relationship initialized and in `snapmirrored` state
 - fsxadmin credentials in Secrets Manager (both regions)
 - Lambda VPC access to destination ONTAP management IP (port 443)
@@ -120,7 +120,7 @@ aws s3api get-object \
 |-----------|---------|
 | SnapMirror Asynchronous only | Synchronous mode NOT supported for S3 NAS bucket volumes |
 | SVM-DR not supported | SVM containing S3 NAS bucket blocks SVM-DR. Volume-level SnapMirror only |
-| DP Volume via FSx API | SM-VAL-009: Volumes created only via ONTAP REST API are invisible to FSx API, blocking S3 AP |
+| DP Volume FSx API propagation | SM-VAL-009: Volumes created via ONTAP REST API take ~30 minutes to propagate to FSx control plane. For immediate S3 AP attachment, use `aws fsx create-volume` |
 | S3 AP not transferred | SM-002: S3 AP is an AWS-layer resource. New AP required at destination |
 | Client application update | New AP has different ARN/alias. Applications must switch endpoints |
 | SnapMirror schedule | FSx for ONTAP minimum: 5-minute intervals |

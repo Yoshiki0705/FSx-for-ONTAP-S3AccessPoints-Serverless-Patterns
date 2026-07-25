@@ -45,7 +45,7 @@ graph TB
 |-----------|------|
 | 소스 볼륨 + S3 AP | 데이터 수집 포인트 (Region A). 정상 운영 시 사용 |
 | SnapMirror Async | 볼륨 레벨 증분 복제 (RPO = 스케줄 간격) |
-| 대상 볼륨 (DP) | 데이터 보호 볼륨 (break 전까지 읽기 전용). FSx API를 통해 생성 (SM-VAL-009) |
+| 대상 볼륨 (DP) | 데이터 보호 볼륨 (break 전까지 읽기 전용). 즉시 S3 AP 연결을 위해 FSx API로 생성 권장 (SM-VAL-009) |
 | Failover Lambda | 자동화: break → junction → S3 AP 생성. RTO ~3분 |
 | SNS Topic | 페일오버 후 새 S3 AP 엔드포인트를 애플리케이션에 통지 |
 
@@ -60,7 +60,7 @@ graph TB
 
 - 서로 다른 리전의 FSx for ONTAP 클러스터 2개
 - VPC Peering 및 Cluster/SVM Peering 설정 완료
-- `aws fsx create-volume`으로 DP 대상 볼륨 생성 (ONTAP REST API 단독으로는 불가 — SM-VAL-009)
+- DP 대상 볼륨: 즉시 S3 AP 연결을 위해 `aws fsx create-volume`으로 생성 권장. ONTAP REST API로 생성한 경우 FSx API 반영(~30분) 후 연결 가능 (SM-VAL-009)
 - SnapMirror 관계 초기화 및 `snapmirrored` 상태 확인
 - Secrets Manager에 fsxadmin 자격 증명 (양 리전)
 - Lambda에서 대상 ONTAP 관리 IP (포트 443)로의 VPC 접근
@@ -118,7 +118,7 @@ aws s3api get-object \
 |----------|------|
 | SnapMirror Asynchronous 전용 | S3 NAS bucket 볼륨에서 Synchronous 모드는 지원되지 않음 |
 | SVM-DR 미지원 | S3 NAS bucket을 포함하는 SVM은 SVM-DR을 차단. 볼륨 레벨 SnapMirror만 가능 |
-| FSx API를 통한 DP 볼륨 | SM-VAL-009: ONTAP REST API만으로 생성된 볼륨은 FSx API에서 인식 불가, S3 AP 차단 |
+| DP 볼륨 FSx API 전파 | SM-VAL-009: ONTAP REST API로 생성된 볼륨은 FSx 컨트롤 플레인에 전파되기까지 ~30분 소요. 즉시 S3 AP 연결이 필요하면 `aws fsx create-volume` 사용 |
 | S3 AP 비전송 | SM-002: S3 AP는 AWS 레이어 리소스. 대상에 새 AP 필요 |
 | 클라이언트 애플리케이션 업데이트 | 새 AP는 다른 ARN/alias를 가짐. 애플리케이션 엔드포인트 전환 필요 |
 | SnapMirror 스케줄 | FSx for ONTAP 최소: 5분 간격 |
