@@ -109,3 +109,4 @@ sam deploy \
 - S3AP 経由の書き込みは最大 5 GB（テストデータの書き込みが必要な場合は NFS 経由）
 - NetworkOrigin 設定により Lambda の VPC 配置要件が変わる（詳細は steering 参照）
 - FlexClone split を実行すると独立ボリュームになる（スペース効率を失う）
+- **FSx API 反映遅延（SM-VAL-009）**: FlexClone は ONTAP REST API で作成されるため、FSx API（`describe-volumes`）に反映されるまで ~30 分かかる。S3 AP アタッチ（`create-and-attach-s3-access-point`）は FSx API にボリュームが表示された後にのみ可能。自動化する場合は `describe-volumes` で `fsvol-*` が返されるまでポーリングするロジックを実装すること

@@ -45,7 +45,7 @@ graph TB
 |--------------|------|
 | Source Volume + S3 AP | データ収集ポイント（Region A）。通常運用時に使用 |
 | SnapMirror Async | ボリュームレベル増分レプリケーション（RPO = スケジュール間隔） |
-| Destination Volume (DP) | データ保護ボリューム（break まで読み取り専用）。FSx API で作成必須（SM-VAL-009） |
+| Destination Volume (DP) | データ保護ボリューム（break まで読み取り専用）。即時 S3 AP アタッチには FSx API で作成推奨（SM-VAL-009） |
 | Failover Lambda | 自動化: break → junction → S3 AP 作成。RTO ~3 分 |
 | SNS Topic | フェイルオーバー後にアプリケーションへ新 S3 AP エンドポイントを通知 |
 
@@ -62,7 +62,7 @@ graph TB
 
 - FSx for ONTAP × 2 クラスタ（異なるリージョン）
 - VPC Peering + Cluster/SVM Peering 確立済み
-- DP 宛先ボリュームを `aws fsx create-volume` で作成済み（SM-VAL-009: ONTAP REST API のみでは FSx API に表示されず S3 AP アタッチ不可）
+- DP 宛先ボリューム: 即時 S3 AP アタッチには `aws fsx create-volume` で作成を推奨。ONTAP REST API で作成した場合は FSx API 反映（~30 分）後にアタッチ可能（SM-VAL-009）
 - SnapMirror 関係が初期化済み（`snapmirrored` 状態）
 - 両リージョンで fsxadmin 認証情報が Secrets Manager に格納済み
 - Lambda が宛先 ONTAP 管理 IP（ポート 443）にアクセス可能な VPC 構成
@@ -120,7 +120,7 @@ aws s3api get-object \
 |------|------|
 | SnapMirror Asynchronous のみ | Synchronous は S3 NAS bucket ボリュームで非サポート |
 | SVM-DR 非対応 | S3 NAS bucket を含む SVM は SVM-DR をブロック。Volume-level SnapMirror のみ |
-| DP Volume は FSx API で作成必須 | SM-VAL-009: ONTAP REST API のみで作成したボリュームは FSx API に見えず、S3 AP アタッチ不可 |
+| DP Volume の FSx API 反映 | SM-VAL-009: ONTAP REST API で作成したボリュームは FSx コントロールプレーンへの反映に ~30 分かかる。即時 S3 AP アタッチが必要な場合は `aws fsx create-volume` を使用 |
 | S3 AP は転送されない | SM-002: S3 AP は AWS レイヤのリソース。宛先に新規 AP が必要 |
 | クライアント切替必須 | 新 AP は ARN/alias が異なる。アプリケーション側でエンドポイント更新が必要 |
 | SnapMirror スケジュール | FSx for ONTAP の最小: 5 分間隔 |
