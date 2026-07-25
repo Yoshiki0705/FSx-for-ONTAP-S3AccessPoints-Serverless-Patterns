@@ -5,6 +5,12 @@ EBS Volume Clones と同様の即時コピー体験を提供するが、以下�
 - S3 API アクセス: S3 Access Point 経由でサーバーレスアクセス可能
 - クロス AZ: EBS Clone は same-AZ 制約あり、S3AP は VPC 外からもアクセス可能
 
+Note (SM-VAL-009):
+    FlexClone は ONTAP REST API で作成されるため、FSx コントロールプレーン
+    (describe-volumes) への反映に ~30 分かかる。S3 AP アタッチは FSx API に
+    ボリュームが表示された後にのみ可能。自動化フローでは describe-volumes を
+    ポーリングし fsvol-* ID の出現を待機するロジックが必要。
+
 Usage:
     Event Types:
     - CREATE: FlexClone を作成し、S3AP alias を返す

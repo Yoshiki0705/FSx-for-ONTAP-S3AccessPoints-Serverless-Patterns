@@ -45,7 +45,7 @@ graph TB
 |-----------|-------------|
 | Volumen origen + S3 AP | Punto de ingesta de datos (Region A). Operaciones normales |
 | SnapMirror Async | Replicación incremental a nivel de volumen (RPO = intervalo de programación) |
-| Volumen destino (DP) | Volumen de protección de datos (solo lectura hasta break). Creado via FSx API (SM-VAL-009) |
+| Volumen destino (DP) | Volumen de protección de datos (solo lectura hasta break). Para adjuntar S3 AP inmediatamente, crear via FSx API (SM-VAL-009) |
 | Failover Lambda | Automatiza: break → junction → creación S3 AP. RTO ~3 min |
 | SNS Topic | Notifica a las aplicaciones el nuevo endpoint S3 AP tras la conmutación |
 
@@ -60,7 +60,7 @@ graph TB
 
 - 2 clusters FSx for ONTAP en diferentes regiones
 - VPC Peering con Cluster/SVM Peering establecidos
-- Volumen DP de destino creado via `aws fsx create-volume` (no solo via ONTAP REST API — SM-VAL-009)
+- Volumen DP de destino: para adjuntar S3 AP inmediatamente, crear via `aws fsx create-volume` (recomendado). Los volúmenes creados via ONTAP REST API tardan ~30 min en propagarse a FSx API (SM-VAL-009)
 - Relación SnapMirror inicializada y en estado `snapmirrored`
 - Credenciales fsxadmin en Secrets Manager (ambas regiones)
 - Acceso VPC desde Lambda a la IP de gestión ONTAP de destino (puerto 443)
@@ -118,7 +118,7 @@ aws s3api get-object \
 |------------|---------|
 | Solo SnapMirror Asynchronous | El modo Synchronous NO es compatible con volúmenes S3 NAS bucket |
 | SVM-DR no soportado | Un SVM que contiene S3 NAS bucket bloquea SVM-DR. Solo SnapMirror a nivel de volumen |
-| Volumen DP via FSx API | SM-VAL-009: Volúmenes creados solo via ONTAP REST API son invisibles para FSx API, bloqueando S3 AP |
+| Propagación Volumen DP a FSx API | SM-VAL-009: Los volúmenes creados via ONTAP REST API tardan ~30 minutos en propagarse al plano de control FSx. Para adjuntar S3 AP inmediatamente, usar `aws fsx create-volume` |
 | S3 AP no se transfiere | SM-002: S3 AP es un recurso de la capa AWS. Nuevo AP requerido en destino |
 | Actualización de la aplicación cliente | El nuevo AP tiene diferente ARN/alias. Las aplicaciones deben cambiar de endpoint |
 | Programación SnapMirror | FSx for ONTAP mínimo: intervalos de 5 minutos |
