@@ -45,7 +45,7 @@ graph TB
 |------|------|
 | 源卷 + S3 AP | 数据摄入点 (Region A)。正常运营时使用 |
 | SnapMirror Async | 卷级增量复制 (RPO = 调度间隔) |
-| 目标卷 (DP) | 数据保护卷（break 前为只读）。通过 FSx API 创建 (SM-VAL-009) |
+| 目标卷 (DP) | 数据保护卷（break 前为只读）。如需即时附加 S3 AP，建议通过 FSx API 创建 (SM-VAL-009) |
 | Failover Lambda | 自动化: break → junction → S3 AP 创建。RTO ~3分钟 |
 | SNS Topic | 故障转移后向应用程序通知新 S3 AP 端点 |
 
@@ -60,7 +60,7 @@ graph TB
 
 - 位于不同区域的 2 个 FSx for ONTAP 集群
 - VPC Peering 及 Cluster/SVM Peering 已建立
-- 通过 `aws fsx create-volume` 创建 DP 目标卷（仅 ONTAP REST API 不可 — SM-VAL-009）
+- DP 目标卷：如需即时附加 S3 AP，建议通过 `aws fsx create-volume` 创建。通过 ONTAP REST API 创建的卷需 ~30 分钟传播至 FSx API 后方可附加（SM-VAL-009）
 - SnapMirror 关系已初始化且处于 `snapmirrored` 状态
 - Secrets Manager 中的 fsxadmin 凭证（两个区域）
 - Lambda 可通过 VPC 访问目标 ONTAP 管理 IP（端口 443）
@@ -118,7 +118,7 @@ aws s3api get-object \
 |------|------|
 | 仅 SnapMirror Asynchronous | S3 NAS bucket 卷不支持 Synchronous 模式 |
 | 不支持 SVM-DR | 包含 S3 NAS bucket 的 SVM 会阻止 SVM-DR。仅支持卷级 SnapMirror |
-| 通过 FSx API 创建 DP 卷 | SM-VAL-009: 仅通过 ONTAP REST API 创建的卷对 FSx API 不可见，阻止 S3 AP |
+| DP 卷 FSx API 传播 | SM-VAL-009: 通过 ONTAP REST API 创建的卷需 ~30 分钟传播至 FSx 控制平面。如需即时附加 S3 AP，使用 `aws fsx create-volume` |
 | S3 AP 不随复制传输 | SM-002: S3 AP 是 AWS 层资源。目标需创建新 AP |
 | 客户端应用程序更新 | 新 AP 具有不同的 ARN/alias。应用程序必须切换端点 |
 | SnapMirror 调度 | FSx for ONTAP 最小间隔: 5分钟 |

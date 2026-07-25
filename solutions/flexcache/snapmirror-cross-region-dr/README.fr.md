@@ -45,7 +45,7 @@ graph TB
 |-----------|-------------|
 | Volume source + S3 AP | Point d'ingestion des données (Region A). Fonctionnement normal |
 | SnapMirror Async | Réplication incrémentale au niveau volume (RPO = intervalle de planification) |
-| Volume destination (DP) | Volume de protection des données (lecture seule jusqu'au break). Créé via FSx API (SM-VAL-009) |
+| Volume destination (DP) | Volume de protection des données (lecture seule jusqu'au break). Pour un attachement S3 AP immédiat, créer via FSx API (SM-VAL-009) |
 | Failover Lambda | Automatise : break → junction → création S3 AP. RTO ~3 min |
 | SNS Topic | Notifie les applications du nouveau point d'accès S3 AP après basculement |
 
@@ -60,7 +60,7 @@ graph TB
 
 - 2 clusters FSx for ONTAP dans des régions différentes
 - VPC Peering avec Cluster/SVM Peering établis
-- Volume DP de destination créé via `aws fsx create-volume` (pas uniquement via ONTAP REST API — SM-VAL-009)
+- Volume DP de destination : pour un attachement S3 AP immédiat, créer via `aws fsx create-volume` (recommandé). Les volumes créés via ONTAP REST API prennent ~30 min pour se propager à FSx API (SM-VAL-009)
 - Relation SnapMirror initialisée et en état `snapmirrored`
 - Identifiants fsxadmin dans Secrets Manager (les deux régions)
 - Accès VPC Lambda vers l'IP de gestion ONTAP de destination (port 443)
@@ -118,7 +118,7 @@ aws s3api get-object \
 |-----------|---------|
 | SnapMirror Asynchronous uniquement | Le mode Synchronous N'EST PAS pris en charge pour les volumes S3 NAS bucket |
 | SVM-DR non supporté | Un SVM contenant un S3 NAS bucket bloque SVM-DR. Uniquement SnapMirror au niveau volume |
-| Volume DP via FSx API | SM-VAL-009 : Les volumes créés uniquement via ONTAP REST API sont invisibles pour FSx API, bloquant S3 AP |
+| Propagation DP Volume vers FSx API | SM-VAL-009 : Les volumes créés via ONTAP REST API prennent ~30 minutes pour se propager au plan de contrôle FSx. Pour un attachement S3 AP immédiat, utiliser `aws fsx create-volume` |
 | S3 AP non transféré | SM-002 : S3 AP est une ressource de la couche AWS. Nouveau AP requis à la destination |
 | Mise à jour de l'application cliente | Le nouveau AP a un ARN/alias différent. Les applications doivent changer de point d'accès |
 | Planification SnapMirror | FSx for ONTAP minimum : intervalles de 5 minutes |

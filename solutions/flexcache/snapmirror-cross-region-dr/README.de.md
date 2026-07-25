@@ -45,7 +45,7 @@ graph TB
 |-----------|-------------|
 | Quellvolume + S3 AP | Datenaufnahmepunkt (Region A). Normalbetrieb |
 | SnapMirror Async | Inkrementelle Replikation auf Volume-Ebene (RPO = Zeitplanintervall) |
-| Zielvolume (DP) | Datenschutzvolume (schreibgeschützt bis Break). Erstellt über FSx API (SM-VAL-009) |
+| Zielvolume (DP) | Datenschutzvolume (schreibgeschützt bis Break). Für sofortiges S3 AP Attachment über FSx API erstellen (SM-VAL-009) |
 | Failover Lambda | Automatisiert: Break → Junction → S3 AP-Erstellung. RTO ~3 Min. |
 | SNS Topic | Benachrichtigt Anwendungen über neuen S3 AP-Endpunkt nach Failover |
 
@@ -60,7 +60,7 @@ graph TB
 
 - 2 FSx for ONTAP-Cluster in verschiedenen Regionen
 - VPC Peering mit Cluster/SVM Peering eingerichtet
-- DP-Zielvolume erstellt über `aws fsx create-volume` (nicht allein über ONTAP REST API — SM-VAL-009)
+- DP-Zielvolume: Für sofortiges S3 AP Attachment über `aws fsx create-volume` erstellen (empfohlen). Über ONTAP REST API erstellte Volumes benötigen ~30 Min für die Propagierung zur FSx API (SM-VAL-009)
 - SnapMirror-Beziehung initialisiert und im Status `snapmirrored`
 - fsxadmin-Anmeldedaten in Secrets Manager (beide Regionen)
 - Lambda VPC-Zugriff auf Ziel-ONTAP-Management-IP (Port 443)
@@ -118,7 +118,7 @@ aws s3api get-object \
 |--------------|---------|
 | Nur SnapMirror Asynchronous | Synchroner Modus wird für S3 NAS Bucket-Volumes NICHT unterstützt |
 | SVM-DR nicht unterstützt | SVM mit S3 NAS Bucket blockiert SVM-DR. Nur SnapMirror auf Volume-Ebene |
-| DP-Volume über FSx API | SM-VAL-009: Nur über ONTAP REST API erstellte Volumes sind für FSx API unsichtbar, blockiert S3 AP |
+| DP Volume FSx API Propagierung | SM-VAL-009: Über ONTAP REST API erstellte Volumes benötigen ~30 Minuten für die Propagierung zum FSx Control Plane. Für sofortiges S3 AP Attachment `aws fsx create-volume` verwenden |
 | S3 AP wird nicht übertragen | SM-002: S3 AP ist eine AWS-Schicht-Ressource. Neuer AP am Ziel erforderlich |
 | Client-Anwendungsupdate | Neuer AP hat anderen ARN/Alias. Anwendungen müssen Endpunkt wechseln |
 | SnapMirror-Zeitplan | FSx for ONTAP Minimum: 5-Minuten-Intervalle |
