@@ -2709,3 +2709,131 @@ button[type="submit"]:disabled {
   border-color: var(--accent-color, #3b82f6);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
+
+/* ─── Storage Dashboard ───────────────────────────────────────────────── */
+.storage-dashboard {
+  margin-bottom: 2rem;
+}
+.storage-dashboard h3 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+}
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+.dashboard-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  background: var(--surface-color, #fff);
+  transition: box-shadow 0.15s;
+}
+.dashboard-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.card-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+.card-content {
+  min-width: 0;
+}
+.card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.card-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.1rem;
+}
+.card-metric {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+.metric-ok { color: #10b981; }
+.metric-warning { color: #f59e0b; }
+.metric-danger { color: #ef4444; }
+
+/* ─── Welcome Modal ───────────────────────────────────────────────────── */
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.welcome-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+}
+.welcome-modal h2 {
+  margin: 0 0 1.5rem;
+}
+.welcome-step-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+.welcome-step h3 {
+  margin: 0.5rem 0;
+}
+.welcome-step p {
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.welcome-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+}
+.welcome-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1d5db;
+  cursor: pointer;
+}
+.welcome-dots .dot.active {
+  background: #3b82f6;
+}
+.welcome-actions {
+  margin-bottom: 1rem;
+}
+.welcome-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* ─── Incident Badge ──────────────────────────────────────────────────── */
+.incident-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+.incident-detected { background: #fee2e2; color: #dc2626; }
+.incident-contained { background: #ffedd5; color: #ea580c; }
+.incident-investigating { background: #fef9c3; color: #ca8a04; }
+.incident-resolved { background: #dcfce7; color: #16a34a; }

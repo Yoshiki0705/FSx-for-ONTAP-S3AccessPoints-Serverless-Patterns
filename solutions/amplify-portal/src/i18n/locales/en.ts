@@ -123,7 +123,7 @@ export const en: Record<TranslationKeys, string> = {
   rmCatAccess: "Access Control",
   rmCatProtection: "Data Protection",
   rmVolumes: "Volumes",
-  rmVolumesDesc: "Capacity management, create/resize/delete",
+  rmVolumesDesc: "Capacity management, create/resize/delete, SnapLock volumes",
   rmExportPolicies: "Export Policies",
   rmExportPoliciesDesc: "Manage NFS access rules",
   rmQosPolicies: "QoS Policies",
