@@ -1,0 +1,140 @@
+# ポータル認可モデル
+
+> Cognito グループによるポータル機能のアクセス制御。すべての操作は AppSync 認可レイヤーで強制されます。フロントエンドはグループ所属に基づいて UI を描画しますが、バックエンドは UI の状態に関係なく不正な呼び出しを拒否します。
+
+## 概要
+
+ポータルは **Amazon Cognito User Pool Groups** でロールベースアクセス制御を実装しています。AppSync スキーマレベルの認可 (`allow.groups(["storage-admin"])`) により、指定された管理者のみが ONTAP インフラへの書き込み操作を実行できます。
+
+| | Authenticated（全ユーザー） | storage-admin グループ |
+|---|---|---|
+| **ロール** | サインイン済みの全ユーザー | ストレージ管理者 |
+| **アクセス** | 読み取り + AI 処理 | 全読み取り + 書き込み + ONTAP 設定変更 |
+| **可能な操作** | ファイル閲覧/DL/UL | 左列のすべてに加えて: |
+| | Snapshot/ARP/AI ステータス表示 | Volume 作成/リサイズ/削除 |
+| | AI 処理ジョブ起動 | クォータルール管理 |
+| | Athena SQL, Bedrock Q&A | Export Policy/SMB 共有 CRUD |
+| | Rekognition, Quick MCP | QoS ポリシー管理 |
+| | Presigned URL 生成 | SnapLock 保持期間設定 |
+| | 最近のファイル, お気に入り, タグ | Qtree 管理 |
+| | FlexClone 復元 | ARP/AI 状態変更 + 一括有効化 |
+| | 保護サマリー表示 | Snapshot 作成/削除/ロック |
+| | | Tamperproof Snapshot 設定 |
+| | | 脅威封じ込め（ブロック/解除） |
+| | | CIFS 共有管理 |
+| | | ストレージ効率表示 |
+| **不可** | ONTAP 設定変更 | |
+| | ユーザーのブロック/解除 | |
+| | ARP 状態変更 | |
+| | ボリューム削除 | |
+| | クォータ/ポリシー管理 | |
+| **強制ポイント** | AppSync: `allow.authenticated()` | AppSync: `allow.groups(["storage-admin"])` |
+
+## 機能別認可マトリクス
+
+### Browse セクション（認証済み全ユーザー）
+
+| 機能 | 認可レベル | AppSync 操作 |
+|------|-----------|-------------|
+| ファイル一覧 | authenticated | `listFiles` query |
+| ファイル DL（Presigned URL） | authenticated | `getPresignedUrl` query |
+| ファイル UL（Storage Browser） | authenticated | Cognito Identity Pool S3 ポリシー |
+| 画像/PDF/DOCX プレビュー | authenticated | `getPresignedUrl` query |
+| 共有リンク生成 | authenticated | `getPresignedUrl` mutation |
+| 最近のファイル | authenticated (owner-scoped) | `RecentFile` model (owner auth) |
+| お気に入り | authenticated (owner-scoped) | `Favorite` model (owner auth) |
+| ファイルタグ | authenticated (owner-scoped) | `FileTag` model (owner auth) |
+
+### AI & Processing セクション（認証済み全ユーザー）
+
+| 機能 | 認可レベル | AppSync 操作 |
+|------|-----------|-------------|
+| AI 処理ジョブ起動 | authenticated | `startProcessing` mutation |
+| ジョブ状態確認 | authenticated | `getJobStatus` query |
+| ジョブ実行履歴 | authenticated (owner-scoped) | `JobExecution` model |
+| Bedrock Q&A | authenticated | `askBedrock` mutation |
+| Rekognition 画像分析 | authenticated | `detectObjects` mutation |
+| Athena SQL クエリ | authenticated | `runAthenaQuery` mutation |
+| FlexClone 復元 | authenticated | `startProcessing` (FC7 パターン) |
+
+### Data Protection セクション（混在）
+
+| 機能 | 認可レベル | AppSync 操作 |
+|------|-----------|-------------|
+| Snapshot 一覧表示 | authenticated | `getSnapshotsWithLockStatus` query |
+| ARP/AI ステータス表示 | authenticated | `getArpStatus` query |
+| SnapLock ステータス表示 | authenticated | `getSnaplockStatus` query |
+| 保護サマリー表示 | authenticated | `getProtectionSummary` query |
+| **SMB ユーザーブロック** | **storage-admin** | `blockSmbUser` mutation |
+| **NFS IP ブロック** | **storage-admin** | `blockNfsIp` mutation |
+| **脅威封じ込め** | **storage-admin** | `containThreat` mutation |
+| **ブロック解除** | **storage-admin** | `unblockSmbUser`/`unblockNfsIp` |
+| **セッション切断** | **storage-admin** | `disconnectSessions` mutation |
+| 有効なブロック一覧 | authenticated | `listActiveBlocks` query |
+
+### Admin セクション（storage-admin のみ）
+
+| 機能 | 認可レベル | AppSync 操作 |
+|------|-----------|-------------|
+| **リソース管理** | | |
+| Volume CRUD | storage-admin | `listVolumes`/`createVolume`/`resizeVolume`/`deleteVolume` |
+| クォータ管理 | storage-admin | `listQuotaRules`/`createQuotaRule`/`deleteQuotaRule`/`getQuotaReport` |
+| Export Policy ルール | storage-admin | `listExportPolicies`/`createExportPolicyRule`/`deleteExportPolicyRule` |
+| CIFS/SMB 共有 | storage-admin | `listCifsShares`/`createCifsShare`/`deleteCifsShare` |
+| Qtree 管理 | storage-admin | `listQtrees`/`createQtree`/`deleteQtree` |
+| QoS ポリシー | storage-admin | `listQosPolicies`/`createQosPolicy`/`deleteQosPolicy`/`assignQosToVolume` |
+| SnapLock 設定 | storage-admin | `getSnaplockConfigAdmin`/`updateSnaplockRetention` |
+| ストレージ効率 | storage-admin | `getEfficiencyStats` |
+| **ARP/AI 管理** | | |
+| 全ボリューム ARP 状態一覧 | storage-admin | `listArpVolumes` |
+| ARP 状態変更 | storage-admin | `updateArpStateAdmin` |
+| ARP 一括有効化 | storage-admin | `enableArpBulk` |
+| 疑わしいファイル表示/クリア | storage-admin | `getArpSuspectsAdmin`/`clearArpSuspects` |
+| サージパラメータ調整 | storage-admin | `updateArpSurgeParams` |
+| **スナップショット管理** | | |
+| スナップショット作成 | storage-admin | `createSnapshot` |
+| スナップショット削除 | storage-admin | `deleteSnapshot` |
+| スナップショットロック（tamperproof） | storage-admin | `lockSnapshot` |
+| ARP 状態更新 | storage-admin | `updateArpState` |
+| 保持ポリシー更新 | storage-admin | `updateRetentionPolicy` |
+| スナップショットポリシー管理 | storage-admin | `listSnapshotPolicies`/`createSnapshotPolicy` |
+| Tamperproof ロック有効化 | storage-admin | `enableSnapshotLocking` |
+
+## storage-admin グループへのユーザー追加
+
+```bash
+# AWS CLI
+aws cognito-idp admin-add-user-to-group \
+  --user-pool-id <user-pool-id> \
+  --username <user-email> \
+  --group-name storage-admin
+
+# AWS Console
+# Cognito → User Pools → <pool> → Groups → storage-admin → Add users
+```
+
+## storage-admin グループの作成
+
+Amplify バックエンド（`amplify/auth/resource.ts`）で自動作成されます。手動作成する場合:
+
+```bash
+aws cognito-idp create-group \
+  --user-pool-id <user-pool-id> \
+  --group-name storage-admin \
+  --description "Storage administrators with ONTAP management access"
+```
+
+## セキュリティ設計原則
+
+1. **多層防御**: フロントエンド UI をバイパスされても AppSync が不正な呼び出しを拒否
+2. **最小権限**: 読み取り操作は広く許可し、書き込み操作は明示的なグループ所属を要求
+3. **Owner スコープ**: 個人データ（お気に入り、履歴、タグ）は Amplify の `allow.owner()` で自分のものだけ表示
+4. **監査証跡**: 全管理操作は `userId` を Lambda ペイロードに含み、CloudTrail で記録
+5. **保護アカウント**: storage-admin でも `fsxadmin`/`administrator` はブロック不可（`ontap_response.py` の安全弁）
+6. **確認ゲート**: 破壊的操作（ボリューム削除、ARP 無効化）は明示的な `confirm: true` が必須
+
+## フロントエンドの挙動
+
+UI は非管理者ユーザーから管理機能を隠しません。代わりに、グレーアウト表示 + 「storage-admin 必要」バッジで表示します。これにより「何ができるか」が可視化され（ユーザーは可能な操作を把握）、一方で不正な実行は防止されます（AppSync が呼び出しを拒否）。
+
+Data Protection の `ArpResponseActions` コンポーネントは例外: 脅威レベルが elevated のときのみアクションボタンを描画し、通常時の認知負荷を軽減します。

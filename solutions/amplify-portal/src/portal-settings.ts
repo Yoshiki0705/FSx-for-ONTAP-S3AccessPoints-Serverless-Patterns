@@ -38,5 +38,5 @@ export const portalSettings = {
    */
   region: "ap-northeast-1",
   accountId: "123456789012",
-  s3ApAlias: "",
+  s3ApAlias: "eda-demo-s3ap-fnwqydfpmd4gabncr8xqepjrrt131apn1a-ext-s3alias",
 };
