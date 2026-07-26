@@ -14,7 +14,11 @@
     "sandbox": "npx ampx sandbox",
     "sandbox:delete": "npx ampx sandbox delete",
     "start": "./scripts/dev.sh",
-    "start:dev": "npx ampx sandbox & SANDBOX_PID=$!; vite; kill $SANDBOX_PID 2>/dev/null"
+    "start:dev": "npx ampx sandbox & SANDBOX_PID=$!; vite; kill $SANDBOX_PID 2>/dev/null",
+    "validate": "./scripts/setup-prerequisites.sh",
+    "e2e": "npx playwright test",
+    "docker:build": "npm run build && docker build -t fsxn-portal .",
+    "docker:run": "docker run -p 8080:80 fsxn-portal"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.0.0",
