@@ -47,6 +47,13 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
   const [hasMore, setHasMore] = useState(false);
   const { t } = useTranslation();
 
+  /** PHI/PII path detection — blocks AI processing for regulated data folders */
+  const isPhiPath = (path: string): boolean => {
+    const lower = path.toLowerCase();
+    return /\/(dicom|phi|pii|hipaa|protected-health)[\/-]/.test(`/${lower}`) ||
+           lower.startsWith("dicom/") || lower.startsWith("phi/") || lower.startsWith("pii/");
+  };
+
   const loadFiles = useCallback(async (prefix: string, token?: string | null) => {
     setLoading(true);
     setError(null);
@@ -123,10 +130,10 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
         <button
           className="process-btn"
           onClick={() => onSelectPrefix(currentPrefix)}
-          title={t("filesProcessFolder")}
-          disabled={!portalSettings.processingEnabled}
+          title={isPhiPath(currentPrefix) ? t("aiPhiBlocked") : t("filesProcessFolder")}
+          disabled={!portalSettings.processingEnabled || isPhiPath(currentPrefix)}
         >
-          {t("filesProcessFolder")}
+          {isPhiPath(currentPrefix) ? `🚫 ${t("aiPhiBlockedShort")}` : t("filesProcessFolder")}
         </button>
         <RestoreFromSnapshot currentPrefix={currentPrefix} />
       </div>

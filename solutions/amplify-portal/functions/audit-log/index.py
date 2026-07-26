@@ -37,14 +37,19 @@ def handler(event, context):
 
     # Build WHERE clause
     conditions = []
-    conditions.append("eventsource = 's3.amazonaws.com'")
 
     if event_type == "ALL":
-        conditions.append("eventname IN ('GetObject', 'PutObject', 'DeleteObject', 'ListBucket')")
+        conditions.append("eventsource = 's3.amazonaws.com'")
+        conditions.append("eventname IN ('GetObject', 'PutObject', 'DeleteObject', 'ListBucket', 'PutObjectLockConfiguration', 'PutBucketObjectLockConfiguration', 'PutObjectRetention')")
     elif event_type == "READ":
+        conditions.append("eventsource = 's3.amazonaws.com'")
         conditions.append("eventname IN ('GetObject', 'ListBucket')")
     elif event_type == "WRITE":
+        conditions.append("eventsource = 's3.amazonaws.com'")
         conditions.append("eventname IN ('PutObject', 'DeleteObject')")
+    elif event_type == "LOCK":
+        conditions.append("eventsource = 's3.amazonaws.com'")
+        conditions.append("eventname IN ('PutObjectLockConfiguration', 'PutBucketObjectLockConfiguration', 'PutObjectRetention', 'PutObjectLegalHold')")
 
     if S3AP_ALIAS:
         conditions.append(f"requestparameters LIKE '%{S3AP_ALIAS}%'")

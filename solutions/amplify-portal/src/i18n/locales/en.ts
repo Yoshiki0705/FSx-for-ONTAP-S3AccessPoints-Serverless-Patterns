@@ -409,6 +409,7 @@ export const en: Record<TranslationKeys, string> = {
   lockRetentionRequired: "Retention must be at least 1 day",
   lockRetentionWarning: "Once locked, retention cannot be shortened — only extended.",
   lockLockBtn: "Lock",
+  lockYears: "years",
   lockSnapshotLocked: "Snapshot locked successfully",
 
   snapshotsTitle: "Version History (Snapshots)",
@@ -470,6 +471,7 @@ export const en: Record<TranslationKeys, string> = {
   auditFilterEventTypeAll: "All",
   auditFilterEventTypeRead: "Read (Get/List)",
   auditFilterEventTypeWrite: "Write (Put/Delete)",
+  auditFilterEventTypeLock: "Lock Changes (Object Lock/Retention)",
   auditFilterFromLabel: "From",
   auditFilterToLabel: "To",
   auditSearchBtn: "Search",
@@ -491,6 +493,8 @@ export const en: Record<TranslationKeys, string> = {
   // --- File Explorer ---
   filesTitle: "Files",
   filesProcessFolder: "Process this folder",
+  aiPhiBlocked: "PHI classified data — AI processing blocked by organization data protection policy",
+  aiPhiBlockedShort: "PHI — AI blocked",
   filesEmpty: "No files in this directory",
   filesLoadMore: "Load more files",
 
