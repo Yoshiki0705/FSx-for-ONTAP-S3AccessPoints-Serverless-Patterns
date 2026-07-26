@@ -5,6 +5,14 @@ import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
+// Parse the JSON string response from generic dispatch endpoints
+function parseResponse<T>(response: { data?: string | null }): T | null {
+  if (!response.data) return null;
+  try {
+    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+  } catch { return null; }
+}
+
 interface Snapshot {
   name: string;
   createTime: string | null;
@@ -47,12 +55,11 @@ export function VersionHistory() {
     setError(null);
 
     try {
-      const response = await client.queries.listSnapshots({
-        maxResults: 20,
-      });
+      const response = await (client.queries as any).protectionQuery({ action: "listSnapshots", params: JSON.stringify({maxResults: 20}) });
+      const data = parseResponse<{ snapshots?: any; volumeName?: string; error?: string }>(response);
 
-      if (response.data) {
-        const snapshotData = response.data.snapshots;
+      if (data) {
+        const snapshotData = data.snapshots;
         if (typeof snapshotData === "string") {
           try {
             setSnapshots(JSON.parse(snapshotData) as Snapshot[]);
@@ -62,12 +69,12 @@ export function VersionHistory() {
         } else {
           setSnapshots((snapshotData || []) as Snapshot[]);
         }
-        setVolumeName(response.data.volumeName || "");
-        if (response.data.error) {
-          setError(response.data.error);
+        setVolumeName(data.volumeName || "");
+        if (data.error) {
+          setError(data.error);
         }
       } else if (response.errors) {
-        setError(response.errors.map((e) => e.message).join(", "));
+        setError(response.errors.map((e: any) => e.message).join(", "));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load snapshots";
@@ -113,13 +120,13 @@ export function VersionHistory() {
     const expiryTime = expiry.toISOString();
 
     try {
-      const response = await client.mutations.lockSnapshot({
+      const response = await (client.mutations as any).protectionMutation({ action: "lockSnapshot", params: JSON.stringify({
         snapshotId: lockDialog.snapshotId,
         expiryTime,
-      });
+      }) });
 
-      if (response.data) {
-        const data = response.data as { success?: boolean; error?: string; expiryTime?: string };
+      const data = parseResponse<{ success?: boolean; error?: string; expiryTime?: string }>(response);
+      if (data) {
         if (data.success) {
           setLockResult(`Snapshot locked until ${expiryTime}`);
           setLockDialog(null);
@@ -129,7 +136,7 @@ export function VersionHistory() {
           setLockResult(`Error: ${data.error || "Lock failed"}`);
         }
       } else if (response.errors) {
-        setLockResult(`Error: ${response.errors.map((e) => e.message).join(", ")}`);
+        setLockResult(`Error: ${response.errors.map((e: any) => e.message).join(", ")}`);
       }
     } catch (err) {
       setLockResult(`Error: ${err instanceof Error ? err.message : "Lock failed"}`);
