@@ -10,6 +10,7 @@ import { QtreeManager } from "./admin/QtreeManager";
 import { EfficiencyPanel } from "./admin/EfficiencyPanel";
 import { ArpAdminManager } from "./admin/ArpAdminManager";
 import { SnapshotAdminManager } from "./admin/SnapshotAdminManager";
+import { StorageDashboard } from "./admin/StorageDashboard";
 
 type AdminPanel = "volumes" | "exportPolicies" | "qos" | "snaplock" | "quotas" | "cifsShares" | "qtrees" | "efficiency" | "arpAdmin" | "snapshotAdmin";
 
@@ -101,6 +102,8 @@ export function ResourceManagement() {
         <h2>🔧 {t("rmTitle")}</h2>
         <span className="rm-badge">{t("rmAdminOnly")}</span>
       </div>
+
+      <StorageDashboard onNavigate={(panel) => setActivePanel(panel as AdminPanel)} />
 
       {categories.map((cat) => {
         const catPanels = panels.filter(p => p.category === cat.key);
