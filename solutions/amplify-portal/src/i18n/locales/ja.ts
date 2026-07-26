@@ -525,6 +525,34 @@ export const ja = {
   // --- File Explorer ---
   filesTitle: "ファイル",
   filesProcessFolder: "このフォルダを処理",
+
+  // --- AI Processing / Job Submit ---
+  aiProcTitle: "AI 処理ジョブの開始",
+  aiProcPattern: "処理パターン",
+  aiProcPrefix: "入力プレフィックス (S3 AP パス)",
+  aiProcPrefixHint: "このプレフィックス配下のファイルが処理されます",
+  aiProcSubmit: "処理を開始",
+  aiProcSubmitting: "開始中...",
+  aiProcNotConfigured: "処理が未設定です。portal-config.ts に有効な Step Functions ARN を設定し、再デプロイしてください。",
+
+  // --- Job History ---
+  jobHistoryTitle: "ジョブ履歴",
+  jobHistoryEmpty: "実行履歴がありません。AI 処理タブからジョブを開始してください。",
+  jobHistoryPattern: "パターン",
+  jobHistoryPrefix: "入力プレフィックス",
+  jobHistoryStatus: "ステータス",
+  jobHistoryStarted: "開始日時",
+
+  // --- Athena / Analytics ---
+  athenaTitle: "SQL クエリ (Athena)",
+  athenaPlaceholder: "SELECT * FROM ...",
+  athenaRun: "クエリ実行",
+  athenaRunning: "実行中...",
+  athenaDatabase: "データベース",
+
+  // --- Upload (Storage Browser) ---
+  uploadTitle: "ファイルのアップロード・管理",
+  uploadDesc: "ファイルをドラッグ＆ドロップするか、ブラウズして直接アップロードできます。変更は NFS/SMB から即座に参照可能です。",
   aiPhiBlocked: "PHI 分類データ — 組織のデータ保護ポリシーにより AI 処理がブロックされています",
   aiPhiBlockedShort: "PHI — AI 処理不可",
   filesEmpty: "このディレクトリにファイルがありません",

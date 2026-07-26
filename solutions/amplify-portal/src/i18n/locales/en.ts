@@ -519,6 +519,34 @@ export const en: Record<TranslationKeys, string> = {
   // --- File Explorer ---
   filesTitle: "Files",
   filesProcessFolder: "Process this folder",
+
+  // --- AI Processing / Job Submit ---
+  aiProcTitle: "Start Processing Job",
+  aiProcPattern: "Processing Pattern",
+  aiProcPrefix: "Input Prefix (S3 AP path)",
+  aiProcPrefixHint: "Files under this prefix will be processed by the selected pattern.",
+  aiProcSubmit: "Start Processing",
+  aiProcSubmitting: "Starting...",
+  aiProcNotConfigured: "Processing is not configured. Set a valid Step Functions ARN in portal-config.ts and redeploy.",
+
+  // --- Job History ---
+  jobHistoryTitle: "History",
+  jobHistoryEmpty: "No job executions found. Start a processing job from the AI Processing tab.",
+  jobHistoryPattern: "Pattern",
+  jobHistoryPrefix: "Input Prefix",
+  jobHistoryStatus: "Status",
+  jobHistoryStarted: "Started",
+
+  // --- Athena / Analytics ---
+  athenaTitle: "SQL Query (Athena)",
+  athenaPlaceholder: "SELECT * FROM ...",
+  athenaRun: "Run Query",
+  athenaRunning: "Running...",
+  athenaDatabase: "Database",
+
+  // --- Upload (Storage Browser) ---
+  uploadTitle: "Upload & Manage Files",
+  uploadDesc: "Drag and drop files to upload, or browse and manage files directly. Changes are immediately visible via NFS/SMB.",
   aiPhiBlocked: "PHI classified data — AI processing blocked by organization data protection policy",
   aiPhiBlockedShort: "PHI — AI blocked",
   filesEmpty: "No files in this directory",

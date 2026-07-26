@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -15,6 +16,7 @@ interface JobHistoryProps {
  * Clicking an execution navigates to the Results tab.
  */
 export function JobHistory({ onSelectExecution }: JobHistoryProps) {
+  const { t } = useTranslation();
   const [jobs, setJobs] = useState<Schema["JobExecution"]["type"][]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export function JobHistory({ onSelectExecution }: JobHistoryProps) {
       {error && <div className="error-message">{error}</div>}
 
       {jobs.length === 0 && !error && (
-        <p className="empty-state">No job executions found. Start a processing job from the Process tab.</p>
+        <p className="empty-state">{t("jobHistoryEmpty")}</p>
       )}
 
       {jobs.length > 0 && (
