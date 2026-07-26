@@ -6,9 +6,14 @@
 
 ---
 
-> **42개의 레퍼런스 패턴** — FSx for ONTAP의 엔터프라이즈 NAS 데이터를 S3 Access Points를 통해 서버리스로 처리합니다. **데이터 복사 불필요**.
+> **45+ 레퍼런스 패턴** — FSx for ONTAP의 엔터프라이즈 NAS 데이터를 S3 Access Points를 통해 서버리스로 처리합니다. **데이터 복사 불필요**.
 >
-> 28개 산업별 UC + 7개 FlexCache/FlexClone + 2개 GenAI + SAP + HA 모니터링 + 이벤트 드리븐 + 엣지 배포 + File Portal UI
+> 28개 산업별 UC + 6개 Operations (OPS) + 10개 FlexCache/FlexClone/SnapMirror + 2개 GenAI + SAP + HA 모니터링 + 이벤트 드리븐 + 엣지 배포 + File Portal UI
+
+| | |
+|---|---|
+| ![Amplify Gen2 포털](solutions/amplify-portal/docs/screenshots/portal-ko-allfiles.png) | ![Nextcloud External Storage](solutions/nextcloud-test/docs/screenshots/nextcloud-files-view.png) |
+| *Amplify Gen2: 파일 브라우징, AI 처리, 스토리지 관리, 데이터 보호* | *Nextcloud: S3 AP를 통한 NAS 파일 브라우징* |
 
 ---
 
