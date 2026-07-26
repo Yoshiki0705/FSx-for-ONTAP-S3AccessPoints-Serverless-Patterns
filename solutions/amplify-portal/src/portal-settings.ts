@@ -22,7 +22,7 @@ export const portalSettings = {
    * Set to true AFTER configuring stateMachineArn in start-processing.js.
    * Default: false (safe-by-default — prevents confusing errors in unconfigured state)
    */
-  processingEnabled: false,
+  processingEnabled: true,
 
   /**
    * Enable the Files tab (S3 AP file listing).
