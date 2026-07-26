@@ -7,6 +7,8 @@ on:
         description: "Deployed portal URL (e.g., https://main.d1234.amplifyapp.com)"
         required: true
         type: string
+  schedule:
+    - cron: "0 9 * * 0"  # Weekly Sunday 09:00 UTC
 
 permissions:
   contents: read
@@ -35,7 +37,7 @@ jobs:
       - name: Run E2E smoke tests
         run: npx playwright test
         env:
-          PORTAL_URL: ${{ inputs.portal_url }}
+          PORTAL_URL: ${{ inputs.portal_url || 'http://localhost:5173' }}
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()

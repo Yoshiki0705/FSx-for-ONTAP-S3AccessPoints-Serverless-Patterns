@@ -585,9 +585,9 @@ export function SnaplockStatus() {
                       <option value={30}>30 {t("rmDays")}</option>
                       <option value={90}>90 {t("rmDays")}</option>
                       <option value={365}>365 {t("rmDays")} (1 year)</option>
-                      <option value={1825}>1,825 {t("rmDays")} — SOX/J-SOX (5 {t("lockYears")})</option>
-                      <option value={2192}>2,192 {t("rmDays")} — HIPAA (6 {t("lockYears")})</option>
-                      <option value={2557}>2,557 {t("rmDays")} — FISC (7 {t("lockYears")})</option>
+                      <option value={1825} title={t("lockSoxTooltip")}>1,825 {t("rmDays")} — SOX/J-SOX (5 {t("lockYears")})</option>
+                      <option value={2192} title={t("lockHipaaTooltip")}>2,192 {t("rmDays")} — HIPAA (6 {t("lockYears")})</option>
+                      <option value={2557} title={t("lockFiscTooltip")}>2,557 {t("rmDays")} — FISC (7 {t("lockYears")})</option>
                     </select>
                   </div>
                   <div className="form-group" style={{ alignSelf: "flex-end" }}>

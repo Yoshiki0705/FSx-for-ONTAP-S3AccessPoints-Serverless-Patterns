@@ -217,6 +217,7 @@ export const en: Record<TranslationKeys, string> = {
   rmEncryption: "Encryption",
   rmContinuouslyAvailable: "Continuously Available",
   rmEncryptionEnable: "Enable SMB in-transit encryption",
+  rmEncryptionClientWarning: "Warning: Clients without SMB 3.0 support (Windows 7/XP) will lose connectivity",
   rmEncryptionDisable: "Disable SMB in-transit encryption",
   rmEncryptionEnabled: "SMB in-transit encryption enabled",
   rmEncryptionDisabled: "SMB in-transit encryption disabled",
@@ -410,6 +411,9 @@ export const en: Record<TranslationKeys, string> = {
   lockRetentionWarning: "Once locked, retention cannot be shortened — only extended.",
   lockLockBtn: "Lock",
   lockYears: "years",
+  lockSoxTooltip: "SOX/J-SOX: Financial records must be retained for 5 years (Securities Exchange Act)",
+  lockHipaaTooltip: "HIPAA: Medical records require minimum 6-year retention",
+  lockFiscTooltip: "FISC: Financial institution data requires 7-year retention (Center for Financial Industry Information Systems)",
   lockSnapshotLocked: "Snapshot locked successfully",
 
   snapshotsTitle: "Version History (Snapshots)",
