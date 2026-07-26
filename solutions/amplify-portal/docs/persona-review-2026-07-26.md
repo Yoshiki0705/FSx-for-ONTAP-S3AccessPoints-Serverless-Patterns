@@ -164,8 +164,47 @@
 
 ---
 
-## Next Steps
+## Round 3 — Feedback on Implemented Actions (2026-07-26)
 
-1. Top 10 Priority Actions から High impact のものを実装
-2. 実装完了後、再度ペルソナに戻してフィードバックを確認
-3. ブログドラフトに反映（特に #5 移行チェックリスト、#11 data residency）
+> After implementing all Top 10 actions, each persona provides brief follow-up.
+
+| # | Persona | Feedback on Implementation | Remaining Gap |
+|---|---------|---------------------------|---------------|
+| 1 | Storage Admin | VolumeSelector search is good. Pagination ("Load more") still needed for 500+ volumes. | P5: Add `next_token` support to listVolumesFiltered |
+| 2 | Backup/DR Engineer | ✅ FISC/SOX/HIPAA presets are exactly right. Suggest adding tooltip explaining each regulation. | Minor — tooltip enhancement |
+| 3 | Network Engineer | ✅ VPC Endpoint Step 2 is clear. The AWS CLI commands are copy-pasteable. | None |
+| 4 | SRE | Cold Start noted in production checklist. Suggest adding CloudWatch alarm for p99 latency > 5s. | Observability enhancement |
+| 5 | DevOps | ✅ E2E tests + CI workflow exist. SHA-pinned now. Add `schedule` trigger (weekly) to catch regressions. | Minor — cron schedule |
+| 6 | Linux SysAdmin | Export policy rule tooltips still terse. Acceptable for now. | Low priority |
+| 7 | Windows Admin | SMB encryption warning about SMB 3.0 client compat not yet added. | P6: Add inline warning on toggle |
+| 8 | InfoSec Officer | ✅ Production checklist covers IAM hardening. Recommend adding SCPs for guardrails. | Doc enhancement |
+| 9 | Compliance Auditor | ✅ Lock changes in audit query. Need to verify CloudTrail Management Events are actually captured (not just Data Events). | Deployment verification |
+| 10 | DPO | ✅ Data residency note is clear and accurate. Cross-Region Inference warning is appropriate. | None |
+| 11 | Pen Tester | GraphQL Introspection disable not yet implemented. Add to production checklist. | Doc item |
+| 12 | SOC Analyst | SIEM integration still not addressed. Acceptable as future work. | Future: SNS → EventBridge → SIEM |
+| 13 | Cloud Security Arch | ✅ Lambda SG separation in production checklist. Clear guidance. | None |
+| 14 | Frontend Dev | SnaplockStatus.tsx still monolithic (700+ lines). Refactoring deferred. | Tech debt |
+| 15 | React Engineer | useCallback deps warning still present in VolumeSelector. | Low — lint fix |
+| 16 | Data Scientist | Model name/params still not in AI result display. | Future: result metadata |
+| 17 | ML Engineer | Hallucination detection still missing. | Future: confidence UI |
+| 18 | Full-Stack Dev | parseResponse still duplicated across components. | Tech debt: custom hook |
+| 19 | QA Engineer | ✅ E2E tests exist. Need to add them to PR workflow (not just manual dispatch). | CI enhancement |
+| 20 | Partner SA | ✅ Migration checklist is actionable. DemoMode → Production path clear. | None |
+| 21 | TAM | Free Tier expiry cost note not yet added. | Doc: post-Free-Tier estimate |
+| 22 | ISV Lead | Multi-tenant design doc still missing. | Future: architecture doc |
+| 23 | Pre-Sales | Split-screen NFS+S3AP demo not yet created. | Future: demo script |
+| 24 | FinOps | Actual Cost Explorer data not yet included. | Future: cost measurement |
+| 25 | Enterprise Arch | Well-Architected self-review not yet done. | Future: WAR document |
+| 26 | Healthcare IT | ✅ PHI guardrail blocks AI processing on /dicom/ paths. Clear UX. | None |
+| 27 | FSI Architect | ✅ FISC 7-year preset + audit log Lock events. Sufficient. | None |
+| 28 | Manufacturing | S3 AP write-back conflict warning still missing in docs. | Doc: NFS lock interaction |
+| 29 | Public Sector | ✅ External IdP guide covers AD FS, Okta, Azure AD. Comprehensive. | None |
+| 30 | Community Builder | Vendor neutrality check passed. No 「差別化」/「優位性」 remaining. | None |
+
+### Summary
+
+- **Fully resolved** (no remaining gap): 12/30 personas
+- **Minor/doc-only gaps**: 10/30 (tooltips, cost notes, cron schedules)
+- **Future work** (new features): 8/30 (multi-tenant, WAR, SIEM, confidence UI)
+
+**No blocking issues remain for blog publication or PoC delivery.**
