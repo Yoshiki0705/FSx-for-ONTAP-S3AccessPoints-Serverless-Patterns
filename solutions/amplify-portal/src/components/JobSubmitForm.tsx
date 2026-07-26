@@ -2,6 +2,7 @@ import { useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { portalSettings } from "../portal-settings";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -37,6 +38,7 @@ const PATTERN_DESCRIPTIONS: Record<ProcessingPattern, string> = {
  * - Submit and trigger Step Functions execution
  */
 export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProps) {
+  const { t } = useTranslation();
   const [prefix, setPrefix] = useState(initialPrefix);
   const [pattern, setPattern] = useState<ProcessingPattern>("UC1_LEGAL_COMPLIANCE");
   const [submitting, setSubmitting] = useState(false);
@@ -93,16 +95,13 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
 
       {!portalSettings.processingEnabled && (
         <div className="error-message" role="alert">
-          Processing is not configured. Set a valid Step Functions ARN in{" "}
-          <code>amplify/data/resolvers/start-processing.js</code> and{" "}
-          <code>amplify/portal-config.ts</code>, then redeploy.
-          See <a href="https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/tree/main/solutions/amplify-portal#connecting-to-a-deployed-uc-pattern">README</a> for details.
+          {t("aiProcNotConfigured")}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="pattern">Processing Pattern</label>
+          <label htmlFor="pattern">{t("aiProcPattern")}</label>
           <select
             id="pattern"
             value={pattern}
@@ -118,7 +117,7 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
         </div>
 
         <div className="form-group">
-          <label htmlFor="prefix">Input Prefix (S3 AP path)</label>
+          <label htmlFor="prefix">{t("aiProcPrefix")}</label>
           <input
             id="prefix"
             type="text"
@@ -136,7 +135,7 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
         {success && <div className="success-message">{success}</div>}
 
         <button type="submit" disabled={submitting || !prefix || !portalSettings.processingEnabled}>
-          {submitting ? "Starting..." : "Start Processing"}
+          {submitting ? t("aiProcSubmitting") : t("aiProcSubmit")}
         </button>
       </form>
     </div>
