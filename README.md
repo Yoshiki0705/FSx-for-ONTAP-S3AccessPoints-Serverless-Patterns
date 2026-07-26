@@ -6,14 +6,14 @@
 
 ---
 
-> FSx for ONTAP 上のエンタープライズ NAS データを、**データコピーなしに** S3 API 経由でサーバーレス処理する **42 パターン**のリファレンス実装集です。
+> FSx for ONTAP 上のエンタープライズ NAS データを、**データコピーなしに** S3 API 経由でサーバーレス処理する **45+ パターン**のリファレンス実装集です。
 >
-> 28 業界別 UC + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + HA 監視 + Event-Driven + Edge 配信 + ファイルポータル UI
+> 28 業界別 UC + 6 Operations (OPS) + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + HA 監視 + Event-Driven + Edge 配信 + ファイルポータル UI
 
 | | |
 |---|---|
 | ![Amplify Gen2 ポータル](solutions/amplify-portal/docs/screenshots/portal-sidebar-layout.png) | ![Nextcloud External Storage](solutions/nextcloud-test/docs/screenshots/nextcloud-files-view.png) |
-| *Amplify Gen2: AI 処理 + Data Protection* | *Nextcloud: 既存 NAS ワークフロー統合* |
+| *Amplify Gen2: ファイルブラウズ・AI 処理・ストレージ管理・データ保護を統合* | *Nextcloud: S3 AP 経由で NAS ファイルをブラウザから閲覧・共有* |
 
 ---
 
