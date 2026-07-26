@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -11,6 +12,7 @@ const client = generateClient<Schema>();
  * (including data on FSx for ONTAP via S3 AP + Glue Crawler).
  */
 export function AthenaQueryPanel() {
+  const { t } = useTranslation();
   const [sql, setSql] = useState("SELECT * FROM default.my_table LIMIT 10");
   const [database, setDatabase] = useState("default");
   const [columns, setColumns] = useState<string[]>([]);
@@ -47,7 +49,7 @@ export function AthenaQueryPanel() {
   return (
     <div className="athena-panel">
       <div className="athena-header">
-        <h3>SQL Query (Athena)</h3>
+        <h3>{t("athenaTitle")}</h3>
         <input
           type="text"
           value={database}
@@ -67,7 +69,7 @@ export function AthenaQueryPanel() {
       />
       <div className="athena-actions">
         <button onClick={runQuery} disabled={loading || !sql.trim()}>
-          {loading ? "Running..." : "Run Query"}
+          {loading ? t("athenaRunning") : t("athenaRun")}
         </button>
         {status && <span className="athena-status">{status}</span>}
       </div>
