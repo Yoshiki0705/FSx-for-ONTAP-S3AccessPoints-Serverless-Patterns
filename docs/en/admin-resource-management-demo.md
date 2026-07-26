@@ -249,3 +249,45 @@ When `vpcId` is empty, Lambda deploys without VPC (admin panels show "ONTAP Conn
 | "Volume not found" | Wrong SVM name | Verify `ONTAP_SVM_NAME` matches `aws fsx describe-storage-virtual-machines` |
 | Template > 1MB | Too many resolvers | Already solved via generic dispatch pattern |
 | No files in File Explorer | S3 AP alias incorrect | Verify alias in `portal-config.ts` matches `aws fsx describe-storage-virtual-machines --query ...S3AccessPoints` |
+
+## New Feature Scenarios (2026-07-26)
+
+### Scenario 10: Storage Health Dashboard
+
+1. Navigate to **Admin > Resources**
+2. Observe the **4 summary cards** at the top of the overview:
+   - 💾 Volumes (count + average capacity %)
+   - 🛡️ ARP Protected (count + threat indicator)
+   - 🔐 Locked Snapshots (tamperproof count)
+   - 📊 Storage Efficiency (ratio + savings %)
+3. Click any card to navigate directly to that panel
+4. If capacity > 85%, the card shows a yellow warning indicator
+
+### Scenario 11: Welcome Onboarding (First-Time User)
+
+1. Clear localStorage: `localStorage.removeItem('portal-welcome-dismissed')`
+2. Reload the page — a welcome modal appears with 3 steps
+3. Step 1: Browse files (S3 AP access explanation)
+4. Step 2: AI Processing (Bedrock/Rekognition/Textract)
+5. Step 3: Data Protection (Snapshots/SnapLock/ARP)
+6. Click "Get Started" — modal dismisses
+7. Check "Don't show again" → modal won't appear on next visit
+
+### Scenario 12: Incident Lifecycle (ARP Containment)
+
+1. Navigate to **Data Protection > ARP/AI**
+2. In the **Incident Response** section, observe the state badge:
+   - 🔴 検知済み (when threat is detected)
+   - 🟠 封じ込め完了 (after containment action)
+   - 🟡 調査中 (during investigation)
+   - 🟢 解決済み (resolved)
+3. Execute **脅威封じ込め** → badge transitions to 「封じ込め完了」
+4. Click **→ 調査開始** → badge transitions to 「調査中」
+5. Click **→ 解決** → badge transitions to 「解決済み」
+
+### Scenario 13: EMS Events (ONTAP Alerts)
+
+1. Navigate to **Admin > Resources** (StorageDashboard will show summary)
+2. EMS events are available via admin API: `getEmsEvents` action
+3. Returns: timestamp, severity (alert/error/emergency), message, node name
+4. Use for operational awareness: disk failures, aggregate warnings, HA takeover events

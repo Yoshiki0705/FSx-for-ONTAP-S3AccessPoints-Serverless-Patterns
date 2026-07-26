@@ -10,8 +10,25 @@ See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../
 
 ## Developer Guide
 
+- **[Getting Started](docs/GETTING-STARTED.md)** — Setup, DemoMode, VPC Endpoints, production checklist
 - **[Implementation Guide](docs/IMPLEMENTATION.md)** — Architecture, config files, component structure, deployment, modification log
 - **[Admin Demo Guide](../../docs/en/admin-resource-management-demo.md)** — E2E demo scenarios for Resource Management + ARP/AI
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Storage Dashboard** | 4-card health overview (capacity, ARP threats, locked snapshots, efficiency) — admin landing page |
+| **Welcome Onboarding** | 3-step guided tour for first-time users (browse → AI → protection) |
+| **ARP/AI Incident Lifecycle** | State tracking: Detected → Contained → Investigating → Resolved |
+| **S3 Object Lock Management** | Status display + retention configuration for output buckets |
+| **EMS Event Viewer** | ONTAP alert/error events from the Event Management System |
+| **PHI Guardrail** | AI processing blocked for /dicom/, /phi/, /pii/ paths |
+| **SMB Encryption Toggle** | ON/OFF for SMB 3.0 in-transit encryption with client compat warning |
+| **Export Policy CRUD** | Create/delete policies (not just rules) |
+| **VolumeSelector Search** | Server-side wildcard filter + 300ms debounce for large environments |
+| **Tamperproof Lock** | Inline lock form with FISC/SOX/HIPAA retention presets |
+| **8-Language i18n** | JA/EN/KO/ZH-CN/ZH-TW/FR/DE/ES with instant runtime switching |
 
 ## Architecture
 
