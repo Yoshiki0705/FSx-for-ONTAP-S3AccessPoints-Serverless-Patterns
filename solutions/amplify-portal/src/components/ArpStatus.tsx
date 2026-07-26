@@ -2,8 +2,17 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { ArpResponseActions } from "./ArpResponseActions";
 
 const client = generateClient<Schema>();
+
+// Parse the JSON string response from generic dispatch endpoints
+function parseResponse<T>(response: { data?: string | null }): T | null {
+  if (!response.data) return null;
+  try {
+    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+  } catch { return null; }
+}
 
 interface ArpData {
   state: string;
@@ -37,10 +46,10 @@ export function ArpStatus() {
     setError(null);
 
     try {
-      const response = await client.queries.getArpStatus({});
+      const response = await (client.queries as any).protectionQuery({ action: "getArpStatus", params: JSON.stringify({}) });
+      const data = parseResponse<{ volumeName?: string; arp?: ArpData; error?: string }>(response);
 
-      if (response.data) {
-        const data = response.data as { volumeName?: string; arp?: ArpData; error?: string };
+      if (data) {
         if (data.error) {
           setError(data.error);
         } else if (data.arp) {
@@ -48,7 +57,7 @@ export function ArpStatus() {
           setVolumeName(data.volumeName || "");
         }
       } else if (response.errors) {
-        setError(response.errors.map((e) => e.message).join(", "));
+        setError(response.errors.map((e: any) => e.message).join(", "));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load ARP status");
@@ -244,6 +253,12 @@ export function ArpStatus() {
               <li>{t("arpDetail5")}</li>
             </ul>
           </details>
+
+          {/* ARP Response Actions — visible for storage-admin users */}
+          <ArpResponseActions
+            threatLevel={arp.attackProbability}
+            volumeName={volumeName}
+          />
         </>
       )}
     </div>

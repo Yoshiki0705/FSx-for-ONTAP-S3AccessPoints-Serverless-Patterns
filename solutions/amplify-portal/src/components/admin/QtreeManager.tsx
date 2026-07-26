@@ -1,0 +1,184 @@
+import { useState, useEffect } from "react";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../../../amplify/data/resource";
+import { useTranslation } from "../../i18n";
+import { VolumeSelector } from "./VolumeSelector";
+
+const client = generateClient<Schema>();
+
+// Parse the JSON string response from generic dispatch endpoints
+function parseResponse<T>(response: { data?: string | null }): T | null {
+  if (!response.data) return null;
+  try {
+    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+  } catch { return null; }
+}
+
+interface Qtree {
+  id: string;
+  name: string;
+  volumeName: string;
+  securityStyle: string;
+  exportPolicy: string;
+}
+
+export function QtreeManager() {
+  const { t } = useTranslation();
+  const [qtrees, setQtrees] = useState<Qtree[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [filterVolume, setFilterVolume] = useState("");
+
+  // Create form state
+  const [newVolumeName, setNewVolumeName] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newSecurityStyle, setNewSecurityStyle] = useState("unix");
+  const [newExportPolicy, setNewExportPolicy] = useState("default");
+
+  const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
+
+  const loadQtrees = async () => {
+    if (!filterVolume) { setQtrees([]); setLoading(false); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await (client.queries as any).adminQuery({ action: "listQtrees", params: JSON.stringify({volumeName: filterVolume}) });
+      const data = parseResponse<{ qtrees?: Qtree[]; error?: string }>(response);
+      if (data) {
+        if (data.error) setError(data.error);
+        else setQtrees(data.qtrees || []);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load qtrees");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadQtrees(); }, [filterVolume]);
+
+  const handleCreate = async () => {
+    if (!newVolumeName || !newName) { setError("Volume name and qtree name are required"); return; }
+    setError(null);
+    try {
+      const response = await (client.mutations as any).adminMutation({ action: "createQtree", params: JSON.stringify({
+        volumeName: newVolumeName, name: newName,
+        securityStyle: newSecurityStyle, exportPolicy: newExportPolicy,
+      }) });
+      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      if (data) {
+        if (data.success) {
+          setSuccess(t("rmQtreeCreated"));
+          setShowCreateForm(false);
+          setNewName(""); setNewExportPolicy("default");
+          clearSuccess();
+          if (newVolumeName === filterVolume) loadQtrees();
+        } else setError(data.error || "Create failed");
+      }
+    } catch (err) { setError(err instanceof Error ? err.message : "Create failed"); }
+  };
+
+  const handleDelete = async (volumeName: string, qtreeId: string, name: string) => {
+    if (!window.confirm(t("rmDeleteConfirm").replace("{name}", name))) return;
+    try {
+      const response = await (client.mutations as any).adminMutation({ action: "deleteQtree", params: JSON.stringify({volumeName, qtreeId, confirm: true}) });
+      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      if (data) {
+        if (data.success) { setSuccess(t("rmDeleted").replace("{name}", name)); clearSuccess(); loadQtrees(); }
+        else setError(data.error || "Delete failed");
+      }
+    } catch (err) { setError(err instanceof Error ? err.message : "Delete failed"); }
+  };
+
+  if (loading && !filterVolume) return <p className="loading">{t("loading")}</p>;
+
+  return (
+    <div className="admin-panel">
+      <div className="panel-header">
+        <h3>{t("rmQtrees")}</h3>
+        <div className="panel-actions">
+          <VolumeSelector
+            label=""
+            onSelect={(vol) => setFilterVolume(vol.name)}
+            autoSelectFirst
+            enableSearch
+          />
+          <button onClick={() => setShowCreateForm(!showCreateForm)} className="btn-primary">
+            + {t("rmCreateQtree")}
+          </button>
+          <button onClick={loadQtrees} className="refresh-btn">↻</button>
+        </div>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
+
+      {showCreateForm && (
+        <div className="create-form">
+          <div className="form-row">
+            <div className="form-group">
+              <label>{t("rmQtreeVolume")}</label>
+              <VolumeSelector
+                onSelect={(vol) => setNewVolumeName(vol.name)}
+                enableSearch
+              />
+            </div>
+            <div className="form-group">
+              <label>{t("rmQtreeName")}</label>
+              <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
+                placeholder="qtree_name" />
+            </div>
+            <div className="form-group">
+              <label>{t("rmSecurityStyle")}</label>
+              <select value={newSecurityStyle} onChange={(e) => setNewSecurityStyle(e.target.value)}>
+                <option value="unix">UNIX</option>
+                <option value="ntfs">NTFS</option>
+                <option value="mixed">Mixed</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Export Policy</label>
+              <input type="text" value={newExportPolicy} onChange={(e) => setNewExportPolicy(e.target.value)}
+                placeholder="default" />
+            </div>
+          </div>
+          <button onClick={handleCreate} className="btn-primary">{t("rmCreate")}</button>
+          <button onClick={() => setShowCreateForm(false)} className="btn-secondary">{t("cancel")}</button>
+        </div>
+      )}
+
+      {loading ? <p className="loading">{t("loading")}</p> : (
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>{t("rmQtreeName")}</th>
+              <th>{t("rmQtreeVolume")}</th>
+              <th>{t("rmSecurityStyle")}</th>
+              <th>Export Policy</th>
+              <th>{t("rmActions")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {qtrees.map((q) => (
+              <tr key={q.id}>
+                <td>{q.name}</td>
+                <td>{q.volumeName}</td>
+                <td>{q.securityStyle}</td>
+                <td>{q.exportPolicy}</td>
+                <td className="action-cell">
+                  <button onClick={() => handleDelete(q.volumeName, q.id, q.name)}
+                    className="btn-sm btn-danger">✕</button>
+                </td>
+              </tr>
+            ))}
+            {qtrees.length === 0 && (
+              <tr><td colSpan={5} className="empty-state">{t("rmNoQtrees")}</td></tr>
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}

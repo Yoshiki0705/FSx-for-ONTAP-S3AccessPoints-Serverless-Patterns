@@ -24,40 +24,19 @@ export interface PortalConfig {
   stateMachineArn: string;
   stateMachineResourceScope: string;
   s3ApResourceArns: string[];
-
-  /**
-   * Group-based S3 AP routing (My Files feature).
-   *
-   * Maps Cognito group names to S3 AP aliases with different File System Identities.
-   * This enables per-team file visibility — each group only sees files accessible
-   * to the UNIX UID/GID assigned to their S3 AP's File System Identity.
-   *
-   * Example:
-   *   groupApMapping: {
-   *     "engineering": "ap-eng-readonly-xxx-s3alias",   // UID 1001
-   *     "legal":       "ap-legal-rw-xxx-s3alias",      // UID 1002
-   *     "admin":       "ap-admin-full-xxx-s3alias",    // UID 0
-   *   }
-   *
-   * If a user belongs to multiple groups, the first matching group (in
-   * the order defined here) is used. If no group matches, falls back to
-   * the default s3ApAlias above.
-   *
-   * Leave empty ({}) to disable group-based routing (all users see the same AP).
-   */
   groupApMapping: Record<string, string>;
-
-  /**
-   * Bedrock Knowledge Base ID for full-text search (C-4).
-   *
-   * Create a KB with FSx for ONTAP S3 AP as the data source:
-   *   AWS Console → Bedrock → Knowledge Bases → Create
-   *   Data source: S3 → Bucket: <s3ApAlias>
-   *
-   * Leave empty to disable the Search feature.
-   * See: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html
-   */
   bedrockKbId: string;
+
+  // VPC configuration (required for ONTAP REST API access)
+  vpcId: string;
+  vpcSubnetIds: string[];
+  vpcSecurityGroupIds: string[];
+
+  // ONTAP connection
+  ontapMgmtIp: string;
+  ontapSecretName: string;
+  ontapSvmName: string;
+  ontapVolumeName: string;
 }
 
 export const config: PortalConfig = {
@@ -128,4 +107,35 @@ export const config: PortalConfig = {
    * Leave empty to disable full-text search.
    */
   bedrockKbId: "",
+
+  // ─── VPC & ONTAP (required for Admin/DataProtection/ARP features) ──────
+
+  /**
+   * VPC where FSx for ONTAP ENIs reside.
+   * Find: aws fsx describe-file-systems --file-system-ids <fs-id> \
+   *         --query "FileSystems[0].{VpcId:VpcId,SubnetIds:SubnetIds}"
+   * Leave empty to deploy without VPC (admin panels show "ONTAP connection required").
+   */
+  vpcId: "",
+  vpcSubnetIds: [],
+  vpcSecurityGroupIds: [],
+
+  /**
+   * ONTAP management LIF IP address.
+   * Find: aws fsx describe-file-systems --file-system-ids <fs-id> \
+   *         --query "FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]"
+   */
+  ontapMgmtIp: "",
+
+  /**
+   * Secrets Manager secret containing ONTAP credentials.
+   * Secret must have: {"username": "fsxadmin", "password": "..."}
+   */
+  ontapSecretName: "",
+
+  /** SVM name (default SVM for operations) */
+  ontapSvmName: "",
+
+  /** Default volume name for snapshot/lock operations */
+  ontapVolumeName: "",
 };
