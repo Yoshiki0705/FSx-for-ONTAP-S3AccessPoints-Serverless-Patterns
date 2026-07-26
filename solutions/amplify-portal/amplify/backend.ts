@@ -339,7 +339,7 @@ const resourceMgmtFunction = new lambda.Function(
     memorySize: 256,
     timeout: Duration.seconds(60),
     description:
-      "Resource management — Volume/ExportPolicy/QoS/SnapLock/S3ObjectLock CRUD (VPC Lambda, ONTAP REST + S3 API)",
+      "Resource management — Volume/ExportPolicy/QoS/SnapLock/S3ObjectLock CRUD (VPC Lambda, ONTAP REST + S3)",
     ...(vpcConfig && { vpc: vpcConfig.vpc, securityGroups: vpcConfig.securityGroups, vpcSubnets: vpcConfig.vpcSubnets }),
   }
 );

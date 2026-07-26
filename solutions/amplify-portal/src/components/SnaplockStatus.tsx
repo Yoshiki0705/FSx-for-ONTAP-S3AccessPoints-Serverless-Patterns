@@ -84,7 +84,7 @@ export function SnaplockStatus() {
   } | null>(null);
 
   // S3 Object Lock configuration form
-  const [s3Buckets, setS3Buckets] = useState<{ name: string; objectLockEnabled: boolean }[]>([]);
+  const [s3Buckets, setS3Buckets] = useState<{ name: string }[]>([]);
   const [s3BucketFilter, setS3BucketFilter] = useState("");
   const [s3SelectedBucket, setS3SelectedBucket] = useState("");
   const [s3LockMode, setS3LockMode] = useState("GOVERNANCE");
@@ -180,7 +180,7 @@ export function SnaplockStatus() {
         action: "listS3Buckets",
         params: JSON.stringify({ nameFilter: nameFilter || "" }),
       });
-      const data = parseResponse<{ buckets?: { name: string; objectLockEnabled: boolean }[] }>(response);
+      const data = parseResponse<{ buckets?: { name: string }[] }>(response);
       if (data && data.buckets) setS3Buckets(data.buckets);
     } catch { /* silent */ }
   };
@@ -492,7 +492,7 @@ export function SnaplockStatus() {
                     <option value="">{t("lockS3SelectBucket")}</option>
                     {s3Buckets.map((b) => (
                       <option key={b.name} value={b.name}>
-                        {b.name} {b.objectLockEnabled ? "🔒" : ""}
+                        {b.name}
                       </option>
                     ))}
                   </select>
