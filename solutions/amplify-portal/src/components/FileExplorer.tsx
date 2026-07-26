@@ -9,6 +9,14 @@ import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
+// Parse the JSON string response from generic dispatch endpoints
+function parseResponse<T>(response: { data?: string | null }): T | null {
+  if (!response.data) return null;
+  try {
+    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+  } catch { return null; }
+}
+
 interface FileExplorerProps {
   onSelectPrefix: (prefix: string) => void;
   onFileSelect?: (fileKey: string, fileName: string) => void;
@@ -44,17 +52,18 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
     setError(null);
 
     try {
-      const response = await client.queries.listFiles({
+      const response = await (client.queries as any).fileQuery({ action: "listFiles", params: JSON.stringify({
         prefix,
         maxKeys: 100,
         continuationToken: token || undefined,
-      });
+      }) });
+      const data = parseResponse<{ files?: FileItem[]; nextContinuationToken?: string; isTruncated?: boolean }>(response);
 
-      if (response.data) {
-        const newFiles = (response.data.files || []) as FileItem[];
+      if (data) {
+        const newFiles = (data.files || []) as FileItem[];
         setFiles(token ? (prev) => [...prev, ...newFiles] : newFiles);
-        setContinuationToken(response.data.nextContinuationToken || null);
-        setHasMore(response.data.isTruncated || false);
+        setContinuationToken(data.nextContinuationToken || null);
+        setHasMore(data.isTruncated || false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load files");

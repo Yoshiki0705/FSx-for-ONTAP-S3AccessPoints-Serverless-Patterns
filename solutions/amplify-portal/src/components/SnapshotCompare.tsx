@@ -4,6 +4,14 @@ import type { Schema } from "../../amplify/data/resource";
 
 const client = generateClient<Schema>();
 
+// Parse the JSON string response from generic dispatch endpoints
+function parseResponse<T>(response: { data?: string | null }): T | null {
+  if (!response.data) return null;
+  try {
+    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+  } catch { return null; }
+}
+
 interface FileItem {
   key: string;
   size: number | null;
@@ -59,16 +67,18 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
     try {
       // Fetch both file lists in parallel
       const [currentResp, cloneResp] = await Promise.all([
-        client.queries.listFiles({ prefix, maxKeys: 500 }),
-        client.queries.listFilesFromAp({
+        (client.queries as any).fileQuery({ action: "listFiles", params: JSON.stringify({prefix, maxKeys: 500}) }),
+        (client.queries as any).fileQuery({ action: "listFilesFromAp", params: JSON.stringify({
           prefix,
           maxKeys: 500,
           apAlias: cloneApAlias,
-        }),
+        }) }),
       ]);
 
-      const currFiles = (currentResp.data?.files || []) as FileItem[];
-      const clnFiles = (cloneResp.data?.files || []) as FileItem[];
+      const currData = parseResponse<{ files?: FileItem[] }>(currentResp);
+      const clnData = parseResponse<{ files?: FileItem[] }>(cloneResp);
+      const currFiles = (currData?.files || []) as FileItem[];
+      const clnFiles = (clnData?.files || []) as FileItem[];
 
       // Compute diff
       const currMap = new Map(currFiles.map((f) => [f.key, f]));

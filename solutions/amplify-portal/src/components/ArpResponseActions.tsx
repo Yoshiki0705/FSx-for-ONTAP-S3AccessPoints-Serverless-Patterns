@@ -1,0 +1,435 @@
+import { useState, useEffect } from "react";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
+
+const client = generateClient<Schema>();
+
+// Parse the JSON string response from generic dispatch endpoints
+function parseResponse<T>(response: { data?: string | null }): T | null {
+  if (!response.data) return null;
+  try {
+    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+  } catch { return null; }
+}
+
+interface ActiveBlock {
+  pattern?: string;
+  index?: number;
+  replacement?: string;
+  policy?: string;
+  rule_index?: number;
+  client_match?: string;
+}
+
+interface ArpResponseActionsProps {
+  /** Current ARP threat level — controls visibility of containment actions */
+  threatLevel: string;
+  /** Volume name for snapshot creation */
+  volumeName: string;
+}
+
+/**
+ * ARP/AI Response Actions — Isolation and Containment controls.
+ *
+ * Provides portal-native containment actions equivalent to DII Storage
+ * Workload Security, executed via ONTAP REST API:
+ * - Block SMB User (name-mapping deny)
+ * - Block NFS IP (export-policy deny rule)
+ * - Full Containment (snapshot + block + disconnect)
+ * - View Active Blocks
+ * - Unblock (remove isolation)
+ *
+ * These mutations require the "storage-admin" Cognito group.
+ * Regular users see the ARP status (read-only) but not action buttons.
+ *
+ * Architecture:
+ *   AppSync mutation → ArpResponseLambdaDataSource → VPC Lambda
+ *   → ONTAP REST API (management LIF)
+ */
+export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActionsProps) {
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<"contain" | "blocks" | "unblock">("contain");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Form state
+  const [domain, setDomain] = useState("");
+  const [username, setUsername] = useState("");
+  const [clientIp, setClientIp] = useState("");
+  const [reason, setReason] = useState("");
+
+  // Active blocks state
+  const [smbBlocks, setSmbBlocks] = useState<ActiveBlock[]>([]);
+  const [nfsBlocks, setNfsBlocks] = useState<ActiveBlock[]>([]);
+  const [blocksLoading, setBlocksLoading] = useState(false);
+
+  const clearForm = () => {
+    setDomain("");
+    setUsername("");
+    setClientIp("");
+    setReason("");
+    setError(null);
+    setResult(null);
+  };
+
+  // Load active blocks
+  const loadActiveBlocks = async () => {
+    setBlocksLoading(true);
+    try {
+      const response = await (client.queries as any).arpQuery({ action: "listActiveBlocks", params: JSON.stringify({}) });
+      const data = parseResponse<{
+        smbBlocks?: ActiveBlock[];
+        nfsBlocks?: ActiveBlock[];
+        total?: number;
+        error?: string;
+      }>(response);
+      if (data) {
+        if (data.error && data.error.length > 5) {
+          // Only show meaningful error messages (not cryptic codes like "4")
+          setError(data.error);
+        } else {
+          setSmbBlocks(data.smbBlocks || []);
+          setNfsBlocks(data.nfsBlocks || []);
+          if (data.error && data.error.length <= 5) {
+            // Short error codes indicate backend module issues — show empty state
+            setSmbBlocks([]);
+            setNfsBlocks([]);
+          }
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load active blocks");
+    } finally {
+      setBlocksLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "blocks") {
+      loadActiveBlocks();
+    }
+  }, [activeTab]);
+
+  // --- Action: Full Containment ---
+  const handleContainThreat = async () => {
+    if (!domain && !username && !clientIp) {
+      setError(t("arpResponseRequireTarget"));
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await (client.mutations as any).arpMutation({ action: "containThreat", params: JSON.stringify({
+        domain: domain || undefined,
+        username: username || undefined,
+        clientIp: clientIp || undefined,
+        volumeName: volumeName || undefined,
+        reason: reason || "portal-initiated",
+      }) });
+
+      const data = parseResponse<{ success?: boolean; status?: string; steps?: unknown; error?: string }>(response);
+      if (data) {
+        if (data.success) {
+          setResult(t("arpResponseContained"));
+          clearForm();
+        } else {
+          setError(data.error || t("arpResponsePartialFailure"));
+        }
+      } else if (response.errors) {
+        setError(response.errors.map((e: any) => e.message).join(", "));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Containment failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Action: Block SMB User ---
+  const handleBlockSmbUser = async () => {
+    if (!domain || !username) {
+      setError(t("arpResponseDomainUserRequired"));
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await (client.mutations as any).arpMutation({ action: "blockSmbUser", params: JSON.stringify({domain, username}) });
+      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      if (data) {
+        if (data.success) {
+          setResult(`${t("arpResponseBlocked")}: ${domain}\\${username}`);
+        } else {
+          setError(data.error || "Block failed");
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Block failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Action: Block NFS IP ---
+  const handleBlockNfsIp = async () => {
+    if (!clientIp) {
+      setError(t("arpResponseIpRequired"));
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await (client.mutations as any).arpMutation({ action: "blockNfsIp", params: JSON.stringify({clientIp}) });
+      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      if (data) {
+        if (data.success) {
+          setResult(`${t("arpResponseBlocked")}: ${clientIp}`);
+        } else {
+          setError(data.error || "Block failed");
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Block failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Action: Unblock SMB User ---
+  const handleUnblockSmbUser = async (pattern: string) => {
+    const parts = pattern.split("\\\\");
+    if (parts.length < 2) return;
+    const [dom, user] = [parts[0], parts.slice(1).join("\\")];
+
+    setLoading(true);
+    try {
+      const response = await (client.mutations as any).arpMutation({ action: "unblockSmbUser", params: JSON.stringify({domain: dom, username: user}) });
+      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      if (data) {
+        if (data.success) {
+          setResult(`${t("arpResponseUnblocked")}: ${pattern}`);
+          loadActiveBlocks();
+        } else {
+          setError(data.error || "Unblock failed");
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unblock failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Action: Unblock NFS IP ---
+  const handleUnblockNfsIp = async (ipMatch: string) => {
+    const ip = ipMatch.replace("fsxn_auto_response,", "");
+    setLoading(true);
+    try {
+      const response = await (client.mutations as any).arpMutation({ action: "unblockNfsIp", params: JSON.stringify({clientIp: ip}) });
+      const data = parseResponse<{ success?: boolean; error?: string }>(response);
+      if (data) {
+        if (data.success) {
+          setResult(`${t("arpResponseUnblocked")}: ${ip}`);
+          loadActiveBlocks();
+        } else {
+          setError(data.error || "Unblock failed");
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unblock failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="arp-response-section">
+      <h3>{t("arpResponseTitle")}</h3>
+
+      {/* Threat-level-aware banner */}
+      {(threatLevel === "high" || threatLevel === "moderate") && (
+        <div className="arp-response-alert" role="alert">
+          <span className="alert-icon">⚠️</span>
+          <span>{t("arpResponseAlertActive")}</span>
+        </div>
+      )}
+
+      {/* Tab navigation */}
+      <div className="arp-response-tabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={activeTab === "contain"}
+          className={activeTab === "contain" ? "tab-active" : ""}
+          onClick={() => { setActiveTab("contain"); setError(null); setResult(null); }}
+        >
+          {t("arpResponseTabContain")}
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === "blocks"}
+          className={activeTab === "blocks" ? "tab-active" : ""}
+          onClick={() => { setActiveTab("blocks"); setError(null); setResult(null); }}
+        >
+          {t("arpResponseTabBlocks")}
+        </button>
+      </div>
+
+      {/* Status messages */}
+      {error && <div className="error-message" role="alert">{error}</div>}
+      {result && <div className="success-message" role="status">{result}</div>}
+
+      {/* Contain tab */}
+      {activeTab === "contain" && (
+        <div className="arp-response-form">
+          <p className="form-description">{t("arpResponseContainDesc")}</p>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="arp-domain">{t("arpResponseDomain")}</label>
+              <input
+                id="arp-domain"
+                type="text"
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                placeholder="CORP"
+                disabled={loading}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="arp-username">{t("arpResponseUsername")}</label>
+              <input
+                id="arp-username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="jdoe"
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="arp-ip">{t("arpResponseClientIp")}</label>
+            <input
+              id="arp-ip"
+              type="text"
+              value={clientIp}
+              onChange={(e) => setClientIp(e.target.value)}
+              placeholder="10.0.5.99"
+              disabled={loading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="arp-reason">{t("arpResponseReason")}</label>
+            <input
+              id="arp-reason"
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={t("arpResponseReasonPlaceholder")}
+              disabled={loading}
+            />
+          </div>
+
+          <div className="arp-action-buttons">
+            <button
+              onClick={handleContainThreat}
+              disabled={loading || (!domain && !username && !clientIp)}
+              className="btn-danger"
+              title={t("arpResponseContainTooltip")}
+            >
+              {loading ? t("processing") : `🛡️ ${t("arpResponseContainBtn")}`}
+            </button>
+            <button
+              onClick={handleBlockSmbUser}
+              disabled={loading || !domain || !username}
+              className="btn-warning"
+            >
+              {`🚫 ${t("arpResponseBlockSmb")}`}
+            </button>
+            <button
+              onClick={handleBlockNfsIp}
+              disabled={loading || !clientIp}
+              className="btn-warning"
+            >
+              {`🚫 ${t("arpResponseBlockNfs")}`}
+            </button>
+          </div>
+
+          <p className="form-note">{t("arpResponseAdminOnly")}</p>
+        </div>
+      )}
+
+      {/* Active Blocks tab */}
+      {activeTab === "blocks" && (
+        <div className="arp-blocks-list">
+          {blocksLoading ? (
+            <p className="loading">{t("loading")}</p>
+          ) : (
+            <>
+              <div className="blocks-section">
+                <h4>{t("arpResponseSmbBlocks")} ({smbBlocks.length})</h4>
+                {smbBlocks.length === 0 ? (
+                  <p className="empty-state">{t("arpResponseNoBlocks")}</p>
+                ) : (
+                  <ul className="blocks-list">
+                    {smbBlocks.map((block, i) => (
+                      <li key={`smb-${i}`} className="block-item">
+                        <span className="block-pattern">{block.pattern}</span>
+                        <button
+                          onClick={() => handleUnblockSmbUser(block.pattern || "")}
+                          disabled={loading}
+                          className="btn-unblock"
+                        >
+                          {t("arpResponseUnblock")}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="blocks-section">
+                <h4>{t("arpResponseNfsBlocks")} ({nfsBlocks.length})</h4>
+                {nfsBlocks.length === 0 ? (
+                  <p className="empty-state">{t("arpResponseNoBlocks")}</p>
+                ) : (
+                  <ul className="blocks-list">
+                    {nfsBlocks.map((block, i) => (
+                      <li key={`nfs-${i}`} className="block-item">
+                        <span className="block-pattern">
+                          {block.client_match?.replace("fsxn_auto_response,", "") || "—"}
+                        </span>
+                        <span className="block-policy">{block.policy}</span>
+                        <button
+                          onClick={() => handleUnblockNfsIp(block.client_match || "")}
+                          disabled={loading}
+                          className="btn-unblock"
+                        >
+                          {t("arpResponseUnblock")}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <button onClick={loadActiveBlocks} className="refresh-btn" disabled={blocksLoading}>
+                ↻ {t("refresh")}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
