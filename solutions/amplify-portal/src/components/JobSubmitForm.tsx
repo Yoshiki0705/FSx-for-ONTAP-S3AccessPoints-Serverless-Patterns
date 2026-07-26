@@ -91,7 +91,7 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
 
   return (
     <div className="job-submit-form">
-      <h2>Start Processing Job</h2>
+      <h2>{t("aiProcTitle")}</h2>
 
       {!portalSettings.processingEnabled && (
         <div className="error-message" role="alert">
@@ -127,7 +127,7 @@ export function JobSubmitForm({ initialPrefix, onJobStarted }: JobSubmitFormProp
             disabled={!portalSettings.processingEnabled}
           />
           <small>
-            Files under this prefix will be processed by the selected pattern.
+            {t("aiProcPrefixHint")}
           </small>
         </div>
 
