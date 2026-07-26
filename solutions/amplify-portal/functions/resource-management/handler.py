@@ -181,6 +181,10 @@ def handler(event, context):
         elif action == "getSnapshotLockingStatus":
             return _get_snapshot_locking_status(http, headers, event)
 
+        # --- EMS Events ---
+        elif action == "getEmsEvents":
+            return _get_ems_events(http, headers, event)
+
         # --- S3 Object Lock ---
         elif action == "getS3ObjectLockStatus":
             return _get_s3_object_lock_status(event)
@@ -1794,3 +1798,37 @@ def _put_s3_object_lock_retention(event, user_id):
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+# ─── EMS Events ──────────────────────────────────────────────────────────────
+
+
+def _get_ems_events(http, headers, event):
+    """Get recent EMS (Event Management System) events from ONTAP.
+
+    ONTAP REST: GET /api/support/ems/events
+    Retrieves alert and error severity events for operational awareness.
+    """
+    max_records = min(event.get("maxRecords", 20), 50)
+    severity_filter = event.get("severity", "alert,error,emergency")
+
+    query = f"/support/ems/events?max_records={max_records}"
+    query += f"&severity={severity_filter}"
+    query += "&order_by=time desc"
+    query += "&fields=time,severity,message.name,message.text,node.name"
+
+    data = _ontap_request(http, headers, "GET", query)
+    if data.get("_error"):
+        return {"events": [], "error": data["_message"]}
+
+    events = [
+        {
+            "time": e.get("time", ""),
+            "severity": e.get("severity", ""),
+            "messageName": e.get("message", {}).get("name", ""),
+            "messageText": e.get("message", {}).get("text", ""),
+            "node": e.get("node", {}).get("name", ""),
+        }
+        for e in data.get("records", [])
+    ]
+    return {"events": events, "count": len(events), "error": None}
