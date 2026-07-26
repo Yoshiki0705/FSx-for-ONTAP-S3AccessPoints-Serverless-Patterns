@@ -126,7 +126,7 @@ export const ja = {
   rmCatAccess: "アクセス制御",
   rmCatProtection: "データ保護",
   rmVolumes: "ボリューム",
-  rmVolumesDesc: "容量管理、作成・リサイズ・削除",
+  rmVolumesDesc: "容量管理、作成・リサイズ・削除・SnapLock ボリューム作成",
   rmExportPolicies: "エクスポートポリシー",
   rmExportPoliciesDesc: "NFS アクセスルールの管理",
   rmQosPolicies: "QoS ポリシー",
