@@ -51,6 +51,27 @@ Key cost drivers post-Free Tier:
 - Lambda: $0.20 per million requests + $0.0000166667 per GB-second
 - DynamoDB: $1.25 per WCU, $0.25 per RCU (on-demand)
 
+## Per-Operation Cost Breakdown
+
+For FinOps teams who need unit economics:
+
+| Operation | Components | Cost per Invocation |
+|-----------|-----------|--------------------|
+| Browse 1 folder (ListObjectsV2) | Lambda (128MB, 200ms) + AppSync | ~$0.0000034 |
+| AI process 1 PDF (Bedrock Nova Lite) | Lambda (256MB, 3s) + Bedrock (1K input + 500 output tokens) | ~$0.005 |
+| AI process 1 PDF (Claude 3.5 Haiku) | Lambda (256MB, 5s) + Bedrock (1K in + 500 out) | ~$0.002 |
+| Lock 1 snapshot (ONTAP REST) | Lambda (256MB, 1s) + AppSync | ~$0.0000084 |
+| Rekognition (1 image) | Lambda + Rekognition DetectLabels | ~$0.001 |
+| Textract (1 page) | Lambda + Textract AnalyzeDocument | ~$0.0015 |
+| Athena query (10MB scanned) | Lambda + Athena | ~$0.00005 |
+
+> Calculation: Lambda @ $0.0000166667/GB-s + AppSync @ $0.000004/request + Bedrock/AI per-token pricing.
+> These are estimates. Actual costs depend on file size, token count, and processing time.
+
+**Example**: Processing 1,000 contract PDFs with Bedrock Nova Lite:
+- 1,000 × $0.005 = **$5.00** (one-time batch)
+- Same volume monthly (5 batches) = **$25.00/month** for AI processing alone
+
 ## FSx for ONTAP Infrastructure Cost (Separate)
 
 The portal's cost is additive to FSx for ONTAP infrastructure:
