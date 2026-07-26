@@ -3,14 +3,24 @@ import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 /**
  * AppSync GraphQL schema for the File Portal.
  *
- * Operations:
- *   - startProcessing: Triggers a Step Functions workflow for a given UC pattern
- *   - getJobStatus: Polls execution status of a running workflow
- *   - listFiles: Lists files in a given prefix via S3 AP (through Lambda)
- *   - onJobComplete: Real-time subscription for workflow completion
+ * Architecture: Generic dispatch pattern to reduce CloudFormation resource count.
+ * Each data source has a single query + mutation endpoint that dispatches by "action" param.
+ * This reduces ~57 individual operations (each generating Resolver + FunctionConfiguration)
+ * to 8 generic endpoints, saving ~100 CloudFormation resources and ~400KB template size.
  *
- * The HTTP data source connects directly to Step Functions API,
- * eliminating the need for a wrapper Lambda (lower latency).
+ * Operations kept as individual endpoints:
+ *   - startProcessing / getJobStatus: Step Functions HTTP data source
+ *   - getPresignedUrl: Single-purpose, unique data source
+ *   - searchFiles: Separate search data source
+ *   - queryAuditLog: Separate audit data source
+ *   - getFileMetadata: Separate metadata data source
+ *   - generateQrCode: Separate QR data source
+ *   - askAboutFile: Bedrock AI data source
+ *   - detectLabels: Rekognition data source
+ *   - runAthenaQuery: Athena data source
+ *   - extractText: Textract data source
+ *   - analyzeText: Comprehend data source
+ *   - browseCatalog: Glue data source
  */
 const schema = a.schema({
   // --- Enums ---
@@ -55,7 +65,7 @@ const schema = a.schema({
     output: a.json(),
   }),
 
-  // --- Mutations ---
+  // --- Step Functions (keep as-is: HTTP data source) ---
   startProcessing: a
     .mutation()
     .arguments({
@@ -77,7 +87,6 @@ const schema = a.schema({
       })
     ),
 
-  // --- Queries ---
   getJobStatus: a
     .query()
     .arguments({
@@ -92,28 +101,99 @@ const schema = a.schema({
       })
     ),
 
-  listFiles: a
+  // =========================================================================
+  // Generic Dispatch: Admin / Resource Management
+  // Replaces 35+ individual rm-* operations (listVolumes, createVolume, etc.)
+  // Actions: listVolumes, getVolume, createVolume, resizeVolume, deleteVolume,
+  //   listExportPolicies, getExportPolicyRules, createExportPolicyRule,
+  //   deleteExportPolicyRule, listQosPolicies, createQosPolicy, deleteQosPolicy,
+  //   assignQosToVolume, getSnaplockConfig, updateSnaplockRetention,
+  //   listQuotaRules, getQuotaReport, createQuotaRule, deleteQuotaRule,
+  //   listCifsShares, createCifsShare, deleteCifsShare,
+  //   listQtrees, createQtree, deleteQtree, getEfficiencyStats,
+  //   listArpVolumes, updateArpStateAdmin, getArpSuspectsAdmin,
+  //   clearArpSuspects, updateArpSurgeParams, enableArpBulk,
+  //   listSnapshotPolicies, createSnapshotPolicy, enableSnapshotLocking,
+  //   lockSnapshot, assignSnapshotPolicy, getSnapshotLockingStatus
+  // =========================================================================
+  adminQuery: a
     .query()
-    .arguments({
-      prefix: a.string(),
-      maxKeys: a.integer(),
-      continuationToken: a.string(),
-    })
-    .returns(
-      a.customType({
-        files: a.ref("FileItem").array(),
-        nextContinuationToken: a.string(),
-        isTruncated: a.boolean(),
-      })
-    )
-    .authorization((allow) => [allow.authenticated()])
-    .handler(
-      a.handler.custom({
-        dataSource: "ListFilesLambdaDataSource",
-        entry: "./resolvers/list-files.js",
-      })
-    ),
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "ResourceMgmtLambdaDataSource", entry: "./resolvers/rm-dispatch.js" })),
 
+  adminMutation: a
+    .mutation()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "ResourceMgmtLambdaDataSource", entry: "./resolvers/rm-dispatch.js" })),
+
+  // =========================================================================
+  // Generic Dispatch: ARP/AI Response Actions
+  // Replaces 7 individual arp-* operations
+  // Actions: blockSmbUser, unblockSmbUser, blockNfsIp, unblockNfsIp,
+  //   containThreat, listActiveBlocks, disconnectSessions
+  // =========================================================================
+  arpQuery: a
+    .query()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ArpResponseLambdaDataSource", entry: "./resolvers/arp-dispatch.js" })),
+
+  arpMutation: a
+    .mutation()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "ArpResponseLambdaDataSource", entry: "./resolvers/arp-dispatch.js" })),
+
+  // =========================================================================
+  // Generic Dispatch: Data Protection (Snapshots, ARP status, SnapLock)
+  // Replaces 9 individual snapshot/protection operations
+  // Actions: listSnapshots, getArpStatus, getSnaplockStatus,
+  //   createSnapshot, deleteSnapshot, updateArpState, lockSnapshot,
+  //   updateRetention, getProtectionSummary
+  // =========================================================================
+  protectionQuery: a
+    .query()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/snapshots-dispatch.js" })),
+
+  protectionMutation: a
+    .mutation()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.groups(["storage-admin"])])
+    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/snapshots-dispatch.js" })),
+
+  // =========================================================================
+  // Generic Dispatch: File Operations
+  // Replaces 6 individual file operations
+  // Actions: listFiles, listFilesFromAp, trashFile, restoreFromTrash,
+  //   createUploadLink, renameFile
+  // =========================================================================
+  fileQuery: a
+    .query()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/files-dispatch.js" })),
+
+  fileMutation: a
+    .mutation()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/files-dispatch.js" })),
+
+  // =========================================================================
+  // Individual operations (unique data sources — keep as-is)
+  // =========================================================================
   getPresignedUrl: a
     .query()
     .arguments({
@@ -132,26 +212,6 @@ const schema = a.schema({
       a.handler.custom({
         dataSource: "GetPresignedUrlLambdaDataSource",
         entry: "./resolvers/get-presigned-url.js",
-      })
-    ),
-
-  listSnapshots: a
-    .query()
-    .arguments({
-      maxResults: a.integer(),
-    })
-    .returns(
-      a.customType({
-        snapshots: a.json(),
-        volumeName: a.string(),
-        error: a.string(),
-      })
-    )
-    .authorization((allow) => [allow.authenticated()])
-    .handler(
-      a.handler.custom({
-        dataSource: "ListSnapshotsLambdaDataSource",
-        entry: "./resolvers/list-snapshots.js",
       })
     ),
 
@@ -200,28 +260,6 @@ const schema = a.schema({
       })
     ),
 
-  listFilesFromAp: a
-    .query()
-    .arguments({
-      prefix: a.string(),
-      maxKeys: a.integer(),
-      apAlias: a.string().required(),
-    })
-    .returns(
-      a.customType({
-        files: a.ref("FileItem").array(),
-        nextContinuationToken: a.string(),
-        isTruncated: a.boolean(),
-      })
-    )
-    .authorization((allow) => [allow.authenticated()])
-    .handler(
-      a.handler.custom({
-        dataSource: "ListFilesLambdaDataSource",
-        entry: "./resolvers/list-files-from-ap.js",
-      })
-    ),
-
   getFileMetadata: a
     .query()
     .arguments({
@@ -263,11 +301,11 @@ const schema = a.schema({
       })
     ),
 
-  // --- E-1/E-2: Real-time notifications (FPolicy + SFTP) ---
+  // --- DynamoDB Models (keep as-is) ---
   FileNotification: a
     .model({
-      source: a.string().required(),   // "FPOLICY" | "SFTP" | "PORTAL"
-      eventType: a.string().required(), // "CREATE" | "MODIFY" | "DELETE" | "RENAME"
+      source: a.string().required(),
+      eventType: a.string().required(),
       fileKey: a.string().required(),
       fileName: a.string(),
       fileSize: a.integer(),
@@ -277,7 +315,6 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated()]),
 
-  // --- UX-1: Favorites / Pinned files ---
   Favorite: a
     .model({
       fileKey: a.string().required(),
@@ -286,35 +323,18 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.owner()]),
 
-  // --- UX-2: User-defined tags ---
   FileTag: a
     .model({
       fileKey: a.string().required(),
       tag: a.string().required(),
-      color: a.string(),  // Optional: hex color for badge display
+      color: a.string(),
       taggedAt: a.string().required(),
     })
     .authorization((allow) => [allow.owner()]),
 
-  // --- UX-3: Trash (soft delete) ---
-  trashFile: a
-    .mutation()
-    .arguments({ key: a.string().required() })
-    .returns(a.customType({ success: a.boolean(), trashKey: a.string(), error: a.string() }))
-    .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/trash-file.js" })),
-
-  restoreFromTrash: a
-    .mutation()
-    .arguments({ trashKey: a.string().required() })
-    .returns(a.customType({ success: a.boolean(), restoredKey: a.string(), error: a.string() }))
-    .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/restore-from-trash.js" })),
-
-  // --- UX-6: Folder watch notifications ---
   FolderWatch: a
     .model({
-      folderPrefix: a.string().required(),  // e.g., "contracts/2026/"
+      folderPrefix: a.string().required(),
       notifyOnCreate: a.boolean(),
       notifyOnModify: a.boolean(),
       notifyOnDelete: a.boolean(),
@@ -322,120 +342,16 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.owner()]),
 
-  // --- Data Protection: Read (authenticated) ---
-  getProtectionSummary: a
-    .query()
-    .arguments({ volumeName: a.string() })
-    .returns(a.customType({ data: a.json(), error: a.string() }))
-    .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/get-protection-summary.js" })),
-
-  getArpStatus: a
-    .query()
-    .arguments({})
-    .returns(
-      a.customType({
-        volumeName: a.string(),
-        arp: a.json(),
-        error: a.string(),
-      })
-    )
-    .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/get-arp-status.js" })),
-
-  getSnaplockStatus: a
-    .query()
-    .arguments({})
-    .returns(
-      a.customType({
-        volumeName: a.string(),
-        snaplock: a.json(),
-        snapshotLockingEnabled: a.boolean(),
-        error: a.string(),
-      })
-    )
-    .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/get-snaplock-status.js" })),
-
-  // --- Data Protection: Write (storage-admin only) ---
-  createSnapshot: a
-    .mutation()
-    .arguments({ name: a.string().required(), comment: a.string() })
-    .returns(a.customType({ success: a.boolean(), snapshotName: a.string(), error: a.string() }))
-    .authorization((allow) => [allow.groups(["storage-admin"])])
-    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/create-snapshot.js" })),
-
-  deleteSnapshot: a
-    .mutation()
-    .arguments({ snapshotId: a.string().required(), snapshotName: a.string().required() })
-    .returns(a.customType({ success: a.boolean(), error: a.string() }))
-    .authorization((allow) => [allow.groups(["storage-admin"])])
-    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/delete-snapshot.js" })),
-
-  updateArpState: a
-    .mutation()
-    .arguments({ state: a.string().required() })
-    .returns(a.customType({ success: a.boolean(), newState: a.string(), error: a.string() }))
-    .authorization((allow) => [allow.groups(["storage-admin"])])
-    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/update-arp-state.js" })),
-
-  lockSnapshot: a
-    .mutation()
-    .arguments({
-      snapshotId: a.string().required(),
-      expiryTime: a.string().required(),
-    })
-    .returns(a.customType({ success: a.boolean(), snapshotId: a.string(), expiryTime: a.string(), error: a.string() }))
-    .authorization((allow) => [allow.groups(["storage-admin"])])
-    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/lock-snapshot.js" })),
-
-  updateRetentionPolicy: a
-    .mutation()
-    .arguments({ target: a.string().required(), mode: a.string(), days: a.integer() })
-    .returns(a.customType({ success: a.boolean(), error: a.string() }))
-    .authorization((allow) => [allow.groups(["storage-admin"])])
-    .handler(a.handler.custom({ dataSource: "ListSnapshotsLambdaDataSource", entry: "./resolvers/update-retention.js" })),
-
-  // --- UX-7: File request (external upload link) ---
-  createUploadLink: a
-    .mutation()
-    .arguments({
-      destinationPrefix: a.string().required(),
-      fileName: a.string(),
-      expiresIn: a.integer(),
-      maxSizeBytes: a.integer(),
-    })
-    .returns(a.customType({
-      uploadUrl: a.string(),
-      destinationKey: a.string(),
-      expiresIn: a.integer(),
-      error: a.string(),
-    }))
-    .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/create-upload-link.js" })),
-
-  // --- UX-8: Recent files ---
   RecentFile: a
     .model({
       fileKey: a.string().required(),
       fileName: a.string(),
       accessedAt: a.string().required(),
-      action: a.string(),  // "view" | "download" | "ai_query"
+      action: a.string(),
     })
     .authorization((allow) => [allow.owner()]),
 
-  // --- UX-9: Rename file ---
-  renameFile: a
-    .mutation()
-    .arguments({
-      sourceKey: a.string().required(),
-      destinationKey: a.string().required(),
-    })
-    .returns(a.customType({ success: a.boolean(), newKey: a.string(), error: a.string() }))
-    .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/rename-file.js" })),
-
-  // --- AI/Analytics Mutations ---
+  // --- AI/Analytics (unique data sources — keep as-is) ---
   askAboutFile: a
     .mutation()
     .arguments({
@@ -478,7 +394,6 @@ const schema = a.schema({
       })
     ),
 
-  // --- Athena SQL Query ---
   runAthenaQuery: a
     .mutation()
     .arguments({
@@ -502,12 +417,11 @@ const schema = a.schema({
       })
     ),
 
-  // --- Textract ---
   extractText: a
     .mutation()
     .arguments({
       key: a.string().required(),
-      mode: a.string(), // "text" or "analyze"
+      mode: a.string(),
     })
     .returns(
       a.customType({
@@ -525,12 +439,11 @@ const schema = a.schema({
       })
     ),
 
-  // --- Comprehend ---
   analyzeText: a
     .mutation()
     .arguments({
       key: a.string().required(),
-      analysisType: a.string(), // "entities", "sentiment", "keyPhrases"
+      analysisType: a.string(),
     })
     .returns(
       a.customType({
@@ -546,11 +459,10 @@ const schema = a.schema({
       })
     ),
 
-  // --- Glue Catalog ---
   browseCatalog: a
     .query()
     .arguments({
-      action: a.string().required(), // "listDatabases", "listTables", "getSchema"
+      action: a.string().required(),
       database: a.string(),
       table: a.string(),
     })
