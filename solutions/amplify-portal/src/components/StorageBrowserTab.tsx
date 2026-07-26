@@ -17,6 +17,7 @@ import { createStorageBrowser } from "@aws-amplify/ui-react-storage/browser";
 import "@aws-amplify/ui-react-storage/styles.css";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { portalSettings } from "../portal-settings";
+import { useTranslation } from "../i18n";
 
 const { StorageBrowser } = createStorageBrowser({
   config: {
@@ -68,11 +69,12 @@ const { StorageBrowser } = createStorageBrowser({
  * Copy: select file → copy to another location
  */
 export function StorageBrowserTab() {
+  const { t } = useTranslation();
   if (!portalSettings.s3ApAlias) {
     return (
       <div className="storage-browser-tab">
         <div className="storage-browser-header">
-          <h2>Upload & Manage Files</h2>
+          <h2>{t("uploadTitle")}</h2>
           <p className="storage-browser-description">
             Storage Browser is not configured. Set <code>s3ApAlias</code> in{" "}
             <code>src/portal-settings.ts</code> to enable file upload.
@@ -85,10 +87,9 @@ export function StorageBrowserTab() {
   return (
     <div className="storage-browser-tab">
       <div className="storage-browser-header">
-        <h2>Upload & Manage Files</h2>
+        <h2>{t("uploadTitle")}</h2>
         <p className="storage-browser-description">
-          Drag and drop files to upload, or browse and manage files directly.
-          Changes are immediately visible via NFS/SMB.
+          {t("uploadDesc")}
         </p>
       </div>
       <StorageBrowser />
