@@ -181,6 +181,14 @@ def handler(event, context):
         elif action == "getSnapshotLockingStatus":
             return _get_snapshot_locking_status(http, headers, event)
 
+        # --- S3 Object Lock ---
+        elif action == "getS3ObjectLockStatus":
+            return _get_s3_object_lock_status(event)
+        elif action == "listS3Buckets":
+            return _list_s3_buckets(event)
+        elif action == "putS3ObjectLockRetention":
+            return _put_s3_object_lock_retention(event, user_id)
+
         else:
             return {"error": f"Unknown action: {action}"}
 
@@ -1628,3 +1636,153 @@ def _get_snapshot_locking_status(http, headers, event):
         },
         "error": None,
     }
+
+
+# ─── S3 Object Lock ──────────────────────────────────────────────────────────
+
+S3_OBJECT_LOCK_BUCKET = os.environ.get("S3_OBJECT_LOCK_BUCKET", "")
+
+
+def _get_s3_object_lock_status(event):
+    """Get S3 Object Lock configuration for the configured output bucket.
+
+    AWS API: s3:GetObjectLockConfiguration
+    This does NOT require ONTAP connectivity — it's a pure S3 API call.
+    """
+    bucket = event.get("bucket") or S3_OBJECT_LOCK_BUCKET
+
+    if not bucket:
+        return {
+            "configured": False,
+            "bucket": None,
+            "objectLockEnabled": False,
+            "defaultRetention": None,
+            "error": None,
+            "message": "No S3 Object Lock bucket configured. Set S3_OBJECT_LOCK_BUCKET to enable.",
+        }
+
+    try:
+        s3 = boto3.client("s3")
+        response = s3.get_object_lock_configuration(Bucket=bucket)
+        config = response.get("ObjectLockConfiguration", {})
+        rule = config.get("Rule", {})
+        retention = rule.get("DefaultRetention", {})
+
+        return {
+            "configured": True,
+            "bucket": bucket,
+            "objectLockEnabled": config.get("ObjectLockEnabled") == "Enabled",
+            "defaultRetention": {
+                "mode": retention.get("Mode", ""),
+                "days": retention.get("Days"),
+                "years": retention.get("Years"),
+            } if retention else None,
+            "error": None,
+        }
+    except s3.exceptions.ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code == "ObjectLockConfigurationNotFoundError":
+            return {
+                "configured": True,
+                "bucket": bucket,
+                "objectLockEnabled": False,
+                "defaultRetention": None,
+                "error": None,
+                "message": "Bucket exists but Object Lock is not enabled.",
+            }
+        return {
+            "configured": False,
+            "bucket": bucket,
+            "objectLockEnabled": False,
+            "defaultRetention": None,
+            "error": str(e),
+        }
+    except Exception as e:
+        return {
+            "configured": False,
+            "bucket": bucket,
+            "objectLockEnabled": False,
+            "defaultRetention": None,
+            "error": str(e),
+        }
+
+
+def _list_s3_buckets(event):
+    """List S3 buckets with Object Lock status.
+
+    Filters by name prefix if provided (server-side filtering for large accounts).
+    """
+    name_filter = event.get("nameFilter", "")
+
+    try:
+        s3 = boto3.client("s3")
+        response = s3.list_buckets()
+        buckets = []
+
+        for b in response.get("Buckets", []):
+            bucket_name = b.get("Name", "")
+
+            # Client-side name filter (S3 ListBuckets doesn't support server-side filter)
+            if name_filter and name_filter.lower() not in bucket_name.lower():
+                continue
+
+            # Check Object Lock status for each bucket
+            lock_enabled = False
+            try:
+                lock_config = s3.get_object_lock_configuration(Bucket=bucket_name)
+                lock_enabled = lock_config.get("ObjectLockConfiguration", {}).get("ObjectLockEnabled") == "Enabled"
+            except Exception:
+                pass  # Bucket doesn't have Object Lock or access denied
+
+            buckets.append({
+                "name": bucket_name,
+                "objectLockEnabled": lock_enabled,
+                "creationDate": b.get("CreationDate", "").isoformat() if hasattr(b.get("CreationDate", ""), "isoformat") else str(b.get("CreationDate", "")),
+            })
+
+        # Limit to 20 results
+        return {"buckets": buckets[:20], "count": len(buckets), "error": None}
+
+    except Exception as e:
+        return {"buckets": [], "error": str(e)}
+
+
+def _put_s3_object_lock_retention(event, user_id):
+    """Update S3 Object Lock default retention configuration.
+
+    AWS API: s3:PutObjectLockConfiguration
+    Note: Bucket must already have Object Lock enabled at creation time.
+    This only updates the default retention rule (mode + days/years).
+    """
+    bucket = event.get("bucket", "")
+    mode = event.get("mode", "GOVERNANCE")  # GOVERNANCE or COMPLIANCE
+    days = event.get("days")
+    years = event.get("years")
+
+    if not bucket:
+        return {"success": False, "error": "Bucket name is required"}
+    if mode not in ("GOVERNANCE", "COMPLIANCE"):
+        return {"success": False, "error": "Mode must be GOVERNANCE or COMPLIANCE"}
+    if not days and not years:
+        return {"success": False, "error": "Either days or years is required"}
+
+    retention = {"Mode": mode}
+    if days:
+        retention["Days"] = int(days)
+    elif years:
+        retention["Years"] = int(years)
+
+    try:
+        s3 = boto3.client("s3")
+        s3.put_object_lock_configuration(
+            Bucket=bucket,
+            ObjectLockConfiguration={
+                "ObjectLockEnabled": "Enabled",
+                "Rule": {"DefaultRetention": retention},
+            },
+        )
+        logger.info(f"S3 Object Lock retention updated: {bucket} ({mode}, {days or years}) by {user_id}")
+        return {"success": True, "error": None}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}

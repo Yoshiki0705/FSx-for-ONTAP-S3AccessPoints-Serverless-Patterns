@@ -28,11 +28,11 @@ cp amplify/portal-config.example.ts amplify/portal-config.ts
 #   ontapMgmtIp, ontapSecretName, ontapSvmName, ontapVolumeName
 #   vpcId, vpcSubnetIds, vpcSecurityGroupIds
 
-# 2. Deploy sandbox
-npx ampx sandbox
-
-# 3. Start dev server (separate terminal)
-npm run dev
+# 2. Start both backend + frontend in one command
+npm start
+# Or manually in separate terminals:
+#   Terminal 1: npx ampx sandbox
+#   Terminal 2: npm run dev
 ```
 
 ### Discover Your Values

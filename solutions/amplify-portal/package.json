@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "sandbox": "npx ampx sandbox",
-    "sandbox:delete": "npx ampx sandbox delete"
+    "sandbox:delete": "npx ampx sandbox delete",
+    "start": "./scripts/dev.sh",
+    "start:dev": "npx ampx sandbox & SANDBOX_PID=$!; vite; kill $SANDBOX_PID 2>/dev/null"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.0.0",

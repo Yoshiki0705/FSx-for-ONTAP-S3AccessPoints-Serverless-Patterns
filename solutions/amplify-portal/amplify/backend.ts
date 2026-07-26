@@ -306,11 +306,15 @@ const resourceMgmtRole = new iam.Role(dataStack, "ResourceMgmtLambdaRole", {
     )] : []),
   ],
   inlinePolicies: {
-    SecretsManagerAccess: new iam.PolicyDocument({
+    SecretsManagerAndS3Access: new iam.PolicyDocument({
       statements: [
         new iam.PolicyStatement({
           actions: ["secretsmanager:GetSecretValue"],
           resources: ["*"], // Restrict to ONTAP_SECRET_NAME ARN in production
+        }),
+        new iam.PolicyStatement({
+          actions: ["s3:GetBucketObjectLockConfiguration", "s3:GetBucketVersioning", "s3:ListAllMyBuckets", "s3:PutBucketObjectLockConfiguration"],
+          resources: ["*"], // Restrict to S3_OBJECT_LOCK_BUCKET ARN in production
         }),
       ],
     }),
@@ -330,11 +334,12 @@ const resourceMgmtFunction = new lambda.Function(
       ONTAP_MGMT_IP: config.ontapMgmtIp,
       ONTAP_SECRET_NAME: config.ontapSecretName,
       SVM_NAME: config.ontapSvmName,
+      S3_OBJECT_LOCK_BUCKET: config.s3ObjectLockBucket,
     },
     memorySize: 256,
     timeout: Duration.seconds(60),
     description:
-      "Resource management — Volume/ExportPolicy/QoS/SnapLock CRUD (VPC Lambda, ONTAP REST)",
+      "Resource management — Volume/ExportPolicy/QoS/SnapLock/S3ObjectLock CRUD (VPC Lambda, ONTAP REST + S3 API)",
     ...(vpcConfig && { vpc: vpcConfig.vpc, securityGroups: vpcConfig.securityGroups, vpcSubnets: vpcConfig.vpcSubnets }),
   }
 );
