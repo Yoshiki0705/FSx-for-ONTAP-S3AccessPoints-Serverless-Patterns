@@ -413,6 +413,7 @@ export const ja = {
   lockRetentionRequired: "保持期間は1日以上である必要があります",
   lockRetentionWarning: "ロック後は保持期間の短縮ができません。延長のみ可能です。",
   lockLockBtn: "ロック実行",
+  lockYears: "年",
   lockSnapshotLocked: "スナップショットをロックしました",
 
   // --- Snapshots ---
@@ -476,6 +477,7 @@ export const ja = {
   auditFilterEventTypeAll: "すべて",
   auditFilterEventTypeRead: "読み取り (Get/List)",
   auditFilterEventTypeWrite: "書き込み (Put/Delete)",
+  auditFilterEventTypeLock: "ロック設定変更 (Object Lock/Retention)",
   auditFilterFromLabel: "開始日",
   auditFilterToLabel: "終了日",
   auditSearchBtn: "検索",
@@ -497,6 +499,8 @@ export const ja = {
   // --- File Explorer ---
   filesTitle: "ファイル",
   filesProcessFolder: "このフォルダを処理",
+  aiPhiBlocked: "PHI 分類データ — 組織のデータ保護ポリシーにより AI 処理がブロックされています",
+  aiPhiBlockedShort: "PHI — AI 処理不可",
   filesEmpty: "このディレクトリにファイルがありません",
   filesLoadMore: "さらに読み込む",
 
