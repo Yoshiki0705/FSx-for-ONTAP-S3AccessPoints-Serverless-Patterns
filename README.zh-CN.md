@@ -6,9 +6,14 @@
 
 ---
 
-> **42 个参考模式** — 通过 S3 Access Points 对 FSx for ONTAP 上的企业 NAS 数据进行无服务器处理。**无需复制数据**。
+> **45+ 个参考模式** — 通过 S3 Access Points 对 FSx for ONTAP 上的企业 NAS 数据进行无服务器处理。**无需复制数据**。
 >
-> 28 个行业用例 + 7 个 FlexCache/FlexClone + 2 个 GenAI + SAP + HA 监控 + 事件驱动 + 边缘分发 + File Portal UI
+> 28 个行业用例 + 6 个运维 (OPS) + 10 个 FlexCache/FlexClone/SnapMirror + 2 个 GenAI + SAP + HA 监控 + 事件驱动 + 边缘分发 + File Portal UI
+
+| | |
+|---|---|
+| ![Amplify Gen2 门户](solutions/amplify-portal/docs/screenshots/portal-zhcn-allfiles.png) | ![Nextcloud External Storage](solutions/nextcloud-test/docs/screenshots/nextcloud-files-view.png) |
+| *Amplify Gen2：文件浏览、AI 处理、存储管理、数据保护* | *Nextcloud：通过 S3 AP 浏览 NAS 文件* |
 
 ---
 
