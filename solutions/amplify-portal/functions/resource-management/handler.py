@@ -257,6 +257,14 @@ def _list_volumes_filtered(http, headers, event):
     if data.get("_error"):
         return {"volumes": [], "error": data["_message"]}
 
+    # ONTAP REST pagination: _links.next.href contains the next page URL
+    next_token = None
+    links = data.get("_links", {})
+    if "next" in links:
+        next_href = links["next"].get("href", "")
+        # Extract the cursor from the next URL for client-side pagination
+        next_token = next_href
+
     volumes = [
         {
             "name": v.get("name", ""),
@@ -268,7 +276,7 @@ def _list_volumes_filtered(http, headers, event):
         }
         for v in data.get("records", [])
     ]
-    return {"volumes": volumes, "count": len(volumes), "error": None}
+    return {"volumes": volumes, "count": len(volumes), "hasMore": next_token is not None, "error": None}
 
 
 def _get_volume(http, headers, event):
