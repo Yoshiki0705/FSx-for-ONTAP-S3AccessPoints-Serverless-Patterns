@@ -1,6 +1,6 @@
 # Development dependencies — pinned for CI reproducibility
 # To upgrade: update versions here + verify tests pass
-pytest==9.1.0
+pytest==9.1.1
 pytest-cov==7.1.0
 pytest-asyncio>=0.24.0
 hypothesis==6.155.2
