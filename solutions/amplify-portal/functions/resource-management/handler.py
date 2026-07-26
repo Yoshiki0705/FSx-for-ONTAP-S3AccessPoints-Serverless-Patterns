@@ -1720,9 +1720,11 @@ def _get_s3_object_lock_status(event):
 
 
 def _list_s3_buckets(event):
-    """List S3 buckets with Object Lock status.
+    """List S3 buckets (name only, fast).
 
-    Filters by name prefix if provided (server-side filtering for large accounts).
+    Filters by name if provided. Does NOT check Object Lock status per bucket
+    (that would timeout with many buckets). Lock status is checked individually
+    via getS3ObjectLockStatus when a bucket is selected.
     """
     name_filter = event.get("nameFilter", "")
 
@@ -1734,26 +1736,17 @@ def _list_s3_buckets(event):
         for b in response.get("Buckets", []):
             bucket_name = b.get("Name", "")
 
-            # Client-side name filter (S3 ListBuckets doesn't support server-side filter)
+            # Client-side name filter
             if name_filter and name_filter.lower() not in bucket_name.lower():
                 continue
 
-            # Check Object Lock status for each bucket
-            lock_enabled = False
-            try:
-                lock_config = s3.get_object_lock_configuration(Bucket=bucket_name)
-                lock_enabled = lock_config.get("ObjectLockConfiguration", {}).get("ObjectLockEnabled") == "Enabled"
-            except Exception:
-                pass  # Bucket doesn't have Object Lock or access denied
-
             buckets.append({
                 "name": bucket_name,
-                "objectLockEnabled": lock_enabled,
                 "creationDate": b.get("CreationDate", "").isoformat() if hasattr(b.get("CreationDate", ""), "isoformat") else str(b.get("CreationDate", "")),
             })
 
-        # Limit to 20 results
-        return {"buckets": buckets[:20], "count": len(buckets), "error": None}
+        # Limit to 30 results
+        return {"buckets": buckets[:30], "count": min(len(buckets), 30), "error": None}
 
     except Exception as e:
         return {"buckets": [], "error": str(e)}
