@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { useIncidentState } from "../hooks/useIncidentState";
 
 const client = generateClient<Schema>();
 
@@ -50,6 +51,7 @@ interface ArpResponseActionsProps {
 export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActionsProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"contain" | "blocks" | "unblock">("contain");
+  const { incident, markContained, markInvestigating, markResolved } = useIncidentState(volumeName || "default");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +137,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
       if (data) {
         if (data.success) {
           setResult(t("arpResponseContained"));
+          markContained(undefined, [username], [clientIp].filter(Boolean));
           clearForm();
         } else {
           setError(data.error || t("arpResponsePartialFailure"));
@@ -253,6 +256,24 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
   return (
     <div className="arp-response-section">
       <h3>{t("arpResponseTitle")}</h3>
+
+      {/* Incident lifecycle state badge */}
+      {incident.state !== "none" && (
+        <div className={`incident-badge incident-${incident.state}`}>
+          {incident.state === "detected" && "🔴 検知済み"}
+          {incident.state === "contained" && "🟠 封じ込め完了"}
+          {incident.state === "investigating" && "🟡 調査中"}
+          {incident.state === "resolved" && "🟢 解決済み"}
+          {incident.state !== "resolved" && (
+            <button className="btn-sm" style={{ marginLeft: "0.5rem" }} onClick={() => {
+              if (incident.state === "contained") markInvestigating();
+              else if (incident.state === "investigating") markResolved();
+            }}>
+              {incident.state === "contained" ? "→ 調査開始" : incident.state === "investigating" ? "→ 解決" : ""}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Threat-level-aware banner */}
       {(threatLevel === "high" || threatLevel === "moderate") && (

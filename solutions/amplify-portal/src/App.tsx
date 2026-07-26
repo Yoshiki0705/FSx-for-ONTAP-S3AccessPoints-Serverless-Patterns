@@ -16,6 +16,7 @@ import { ArpStatus } from "./components/ArpStatus";
 import { SnaplockStatus } from "./components/SnaplockStatus";
 import { ResourceManagement } from "./components/ResourceManagement";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { WelcomeModal } from "./components/WelcomeModal";
 import { useTranslation } from "./i18n";
 
 import type { TranslationKeys } from "./i18n";
@@ -111,6 +112,7 @@ function App() {
 
   return (
     <div className={`portal-layout ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <WelcomeModal />
       {/* Top bar: Search + Notifications + User */}
       <header className="portal-topbar">
         <button
