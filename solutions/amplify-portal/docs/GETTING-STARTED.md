@@ -43,7 +43,41 @@ admin/data-protection 機能は「ONTAP 接続が必要」と表示されます�
 
 出力される値をメモしてください（VPC ID, サブネット, SG, 管理 IP, SVM 名）。
 
-### Step 2: Secrets Manager にクレデンシャルを登録
+### Step 2: VPC Endpoint の確認（必須）
+
+VPC 内の Lambda が AWS サービスにアクセスするには、以下の VPC Endpoint が必要です:
+
+| Endpoint | タイプ | 用途 |
+|----------|--------|------|
+| `com.amazonaws.<region>.s3` | Gateway | S3 API (Object Lock, ファイル操作) |
+| `com.amazonaws.<region>.secretsmanager` | Interface | ONTAP クレデンシャル取得 |
+
+```bash
+# S3 Gateway Endpoint の確認（通常はデフォルト VPC に存在）
+aws ec2 describe-vpc-endpoints \
+  --filters "Name=vpc-id,Values=<vpc-id>" "Name=service-name,Values=com.amazonaws.<region>.s3" \
+  --query "VpcEndpoints[0].{Id:VpcEndpointId,RouteTables:RouteTableIds}"
+
+# Lambda サブネットのルートテーブルが含まれているか確認
+aws ec2 describe-route-tables \
+  --filters "Name=association.subnet-id,Values=<subnet-id>" \
+  --query "RouteTables[0].RouteTableId"
+
+# 含まれていない場合は追加
+aws ec2 modify-vpc-endpoint --vpc-endpoint-id <vpce-id> --add-route-table-ids <rtb-id>
+
+# Secrets Manager Interface Endpoint がない場合は作成
+aws ec2 create-vpc-endpoint \
+  --vpc-id <vpc-id> \
+  --service-name com.amazonaws.<region>.secretsmanager \
+  --vpc-endpoint-type Interface \
+  --subnet-ids <subnet-id> \
+  --security-group-ids <sg-id>
+```
+
+> **Security note**: S3 Gateway Endpoint のルートテーブルに Lambda のサブネットが含まれていないと、S3 API 呼び出し（Object Lock 確認等）がタイムアウトします。
+
+### Step 3: Secrets Manager にクレデンシャルを登録
 
 ```bash
 aws secretsmanager create-secret \
@@ -54,7 +88,7 @@ aws secretsmanager create-secret \
 > fsxadmin のパスワードは FSx for ONTAP 作成時に設定したもの。
 > 変更: `aws fsx update-file-system --file-system-id <id> --ontap-configuration '{"FsxAdminPassword":"NewPassword"}'`
 
-### Step 3: portal-config.ts を編集
+### Step 4: portal-config.ts を編集
 
 ```bash
 cp amplify/portal-config.example.ts amplify/portal-config.ts
@@ -82,7 +116,7 @@ export const config: PortalConfig = {
 };
 ```
 
-### Step 4: 起動
+### Step 5: 起動
 
 ```bash
 npm start
@@ -91,7 +125,7 @@ npm start
 初回は CloudFormation スタック作成のため 3-5 分かかります。
 `Deployment completed` + `http://localhost:5173` が表示されたら完了。
 
-### Step 5: 動作確認
+### Step 6: 動作確認
 
 1. **ファイルブラウズ**: Browse > All Files にフォルダが表示される
 2. **SMB 共有**: Admin > Resources > SMB 共有 に共有一覧が表示される
@@ -117,6 +151,27 @@ npm start
 | `Unknown action: xxx` | Lambda コードが古い | sandbox を Ctrl+C → `npm start` で再起動 |
 | S3 Object Lock 「未設定」 | S3 Gateway Endpoint のルートテーブルに Lambda サブネットが含まれていない | `aws ec2 modify-vpc-endpoint --add-route-table-ids <rtb-id>` |
 | `CDK Assembly Error` | cdk-nag が走っている（通常は CI-only） | `.amplify/artifacts` を削除して再起動 |
+
+## 本番移行チェックリスト
+
+DemoMode/sandbox で検証後、本番に持っていく際の確認項目:
+
+| # | 項目 | 対応 |
+|---|------|------|
+| 1 | IAM 最小権限化 | `resources: ["*"]` を具体的な ARN に制限。portal-config.ts のコメント参照 |
+| 2 | Lambda Security Group 分離 | FSx SG を共用せず、Lambda 専用 SG を作成。Outbound: TCP/443 (ONTAP mgmt LIF IP + VPC Endpoint) のみ |
+| 3 | Cognito 本番設定 | MFA 必須化、パスワードポリシー強化、External IdP (SAML/OIDC) 連携 |
+| 4 | ログ保持期間 | `LogRetentionInDays` を規制要件に合わせて設定 (FISC: 2557日/7年, SOX: 1825日/5年) |
+| 5 | CloudTrail 有効化 | S3 AP ARN に対する Data Event + Management Event を有効化 |
+| 6 | Amplify Hosting | `amplify deploy` で本番 CloudFront + カスタムドメイン |
+| 7 | WAF 追加 | AppSync に AWS WAF を追加（レート制限、IP フィルタ） |
+| 8 | Bedrock data residency | 使用モデルの推論リージョンを確認。ap-northeast-1 の Nova/Claude は同リージョンで推論（cross-region 送信なし） |
+| 9 | cdk-nag 有効化 | CI で `CDK_NAG=1` を設定し、新たな違反を検出 |
+| 10 | Provisioned Concurrency | VPC Lambda の Cold Start を 1-2 秒に短縮 (オプション) |
+
+> **Security note**: 本番では Lambda の Security Group を FSx SG から分離してください。FSx SG は全ポート open（intra-VPC 通信用）ですが、Lambda は TCP/443 outbound のみで十分です。
+
+> **Data residency note**: Amazon Bedrock の On-Demand モデル (Nova, Claude) は、呼び出し元と同じリージョンで推論を実行します。ap-northeast-1 から呼び出した場合、データは ap-northeast-1 内に留まります。Cross-Region Inference を使用する場合はデータが他リージョンに送信される可能性があるため、規制要件に応じて `bedrock:InferenceProfile` の ARN を制限してください。
 
 ## 環境削除
 
