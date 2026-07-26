@@ -220,6 +220,7 @@ export const ja = {
   rmEncryption: "暗号化",
   rmContinuouslyAvailable: "継続的可用性",
   rmEncryptionEnable: "SMB 転送中暗号化を有効化",
+  rmEncryptionClientWarning: "注意: SMB 3.0 非対応クライアント (Windows 7/XP 等) は接続不可になります",
   rmEncryptionDisable: "SMB 転送中暗号化を無効化",
   rmEncryptionEnabled: "SMB 転送中暗号化を有効化しました",
   rmEncryptionDisabled: "SMB 転送中暗号化を無効化しました",
@@ -414,6 +415,9 @@ export const ja = {
   lockRetentionWarning: "ロック後は保持期間の短縮ができません。延長のみ可能です。",
   lockLockBtn: "ロック実行",
   lockYears: "年",
+  lockSoxTooltip: "SOX/J-SOX: 財務記録は5年間保持が必要（証券取引法）",
+  lockHipaaTooltip: "HIPAA: 医療記録は最低6年間保持が必要",
+  lockFiscTooltip: "FISC: 金融機関のデータは7年間保持が必要（金融情報システムセンター）",
   lockSnapshotLocked: "スナップショットをロックしました",
 
   // --- Snapshots ---
