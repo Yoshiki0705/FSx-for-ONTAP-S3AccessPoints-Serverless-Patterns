@@ -6,9 +6,14 @@
 
 ---
 
-> **42 Referenzmuster** für die serverlose Verarbeitung von Enterprise-NAS-Daten auf FSx for ONTAP über S3 Access Points — **keine Datenkopie erforderlich**.
+> **45+ Referenzmuster** für die serverlose Verarbeitung von Enterprise-NAS-Daten auf FSx for ONTAP über S3 Access Points — **keine Datenkopie erforderlich**.
 >
-> 28 Branchen-UCs + 7 FlexCache/FlexClone + 2 GenAI + SAP + HA-Überwachung + Event-Driven + Edge-Bereitstellung + File Portal UI
+> 28 Branchen-UCs + 6 Operations (OPS) + 10 FlexCache/FlexClone/SnapMirror + 2 GenAI + SAP + HA-Überwachung + Event-Driven + Edge-Bereitstellung + File Portal UI
+
+| | |
+|---|---|
+| ![Amplify Gen2 Portal](solutions/amplify-portal/docs/screenshots/portal-de-allfiles.png) | ![Nextcloud External Storage](solutions/nextcloud-test/docs/screenshots/nextcloud-files-view.png) |
+| *Amplify Gen2: Dateibrowsing, KI-Verarbeitung, Speicherverwaltung, Datenschutz* | *Nextcloud: NAS-Dateien über S3 AP browsen* |
 
 ---
 
