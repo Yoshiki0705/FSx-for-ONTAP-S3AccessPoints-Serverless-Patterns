@@ -79,7 +79,7 @@
 > - FSxN が VMware/ブロック系ワークロードの移行先（ランディングゾーン）として、AWS ネイティブの移行フローに正式に組み込まれた。
 > - 中間ストレージ・別建て移行ツールが不要になり、PoC〜本番移行の手数とコスト・リスクを削減。
 > - 「データの管理方法を変えずに AWS へ」という ONTAP の価値（Snapshot/SnapMirror/効率化/FlexClone 等の継続利用）を移行ストーリーに直結できる。
-> - discovery が RVTools / NetApp DII / Migration Evaluator / MPA に対応。NetApp DII 連携は提案時の差別化ポイント。
+> - discovery が RVTools / NetApp DII / Migration Evaluator / MPA に対応。NetApp DII 連携は提案時の特長。
 >
 > 確認事項・留意点
 > - Public Preview のため、対応リージョン・制約・GA 時期は要確認。本番採用判断には未使用。
