@@ -802,13 +802,26 @@ def _arp_list_active_blocks(event):
             "note": "ArpResponseActions module not available in this deployment",
         }
     except Exception as e:
-        logger.error(f"list_active_blocks failed: {e}")
+        error_str = str(e)
+        logger.error(f"list_active_blocks failed: {error_str}")
+        # Short numeric error codes (e.g., "4" from HTTP 404) mean the API endpoint
+        # is not available — typically because CIFS service is not configured on the SVM.
+        # Treat as "no blocks" rather than showing a confusing error.
+        if error_str.isdigit() or "404" in error_str or "not found" in error_str.lower():
+            return {
+                "success": True,
+                "smbBlocks": [],
+                "nfsBlocks": [],
+                "total": 0,
+                "error": None,
+                "note": "Name-mapping API not available (CIFS service may not be configured on this SVM)",
+            }
         return {
             "success": False,
             "smbBlocks": [],
             "nfsBlocks": [],
             "total": 0,
-            "error": f"Failed to retrieve active blocks: {str(e)}",
+            "error": f"Failed to retrieve active blocks: {error_str}",
         }
 
 
