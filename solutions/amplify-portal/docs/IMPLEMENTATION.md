@@ -163,4 +163,7 @@ Without this, `JSON.parse(object)` silently produces `{}` → Lambda receives em
 | 2026-07-26 | P4: VolumeSelector search/debounce | Server-side wildcard filter (ONTAP `name=*keyword*`), 300ms debounce for large environments | VolumeSelector.tsx, QtreeManager.tsx, handler.py |
 | 2026-07-26 | UX: Natural confirm dialogs | Replace colon-separated "本当に削除しますか: X?" with natural "「X」を本当に削除しますか？" across all panels | All admin components, all 8 locale files |
 | 2026-07-26 | UX: Explicit action buttons | Replace cryptic ✕ with labeled buttons (共有削除, ルール削除 etc.) | CifsShareManager.tsx |
-| 2026-07-26 | cdk-nag: Always-on for dataStack | Nag applies to dataStack always (no bypass). Auth stack excluded (Amplify Gen2 managed) | backend.ts |
+| 2026-07-26 | cdk-nag: CI-only opt-in | Nag as CDK Aspect blocks deploy (Amplify Gen2 resources non-compliant). Changed to CDK_NAG=1 opt-in for CI only | backend.ts |
+| 2026-07-26 | S3 Object Lock status + config UI | Live status from real S3 bucket (Governance/1-day). Bucket search + mode/retention config form | SnaplockStatus.tsx, handler.py |
+| 2026-07-26 | Lock panel wording fix | コンテンツ不変性 → データ保護・改ざん防止 (natural Japanese) | ja.ts |
+| 2026-07-26 | scripts/dev.sh | `npm start` runs sandbox + vite together, Ctrl+C stops both | package.json, scripts/dev.sh |

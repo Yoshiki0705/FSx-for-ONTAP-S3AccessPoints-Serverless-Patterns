@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthenticator } from "@aws-amplify/ui-react";
 import { FileExplorer } from "./components/FileExplorer";
 import { JobSubmitForm } from "./components/JobSubmitForm";
@@ -14,6 +14,7 @@ import { VersionHistory } from "./components/VersionHistory";
 import { AuditLog } from "./components/AuditLog";
 import { ArpStatus } from "./components/ArpStatus";
 import { SnaplockStatus } from "./components/SnaplockStatus";
+import { ResourceManagement } from "./components/ResourceManagement";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { useTranslation } from "./i18n";
 
@@ -23,7 +24,7 @@ type Section =
   | "files" | "favorites" | "recent" | "upload"
   | "process" | "history" | "analytics"
   | "snapshots" | "arp" | "lock"
-  | "versions" | "audit";
+  | "versions" | "audit" | "resources";
 
 const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: "browse" | "actions" | "protection" | "admin" }[] = [
   // Browse group
@@ -40,6 +41,7 @@ const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: 
   { id: "lock", icon: "🔒", labelKey: "navLock", group: "protection" },
   { id: "arp", icon: "🛡️", labelKey: "navArp", group: "protection" },
   // Admin group
+  { id: "resources", icon: "🔧", labelKey: "navResources", group: "admin" },
   { id: "versions", icon: "🔄", labelKey: "navVersionDiff", group: "admin" },
   { id: "audit", icon: "🔍", labelKey: "navAuditTrail", group: "admin" },
 ];
@@ -66,7 +68,33 @@ const GROUP_LABELS: Record<string, TranslationKeys> = {
  * - Responsive — sidebar collapses on mobile
  */
 function App() {
-  const [activeSection, setActiveSection] = useState<Section>("files");
+  // Persist navigation state in URL hash for refresh resilience
+  const getInitialSection = (): Section => {
+    const hash = window.location.hash.replace("#", "");
+    const valid: Section[] = ["files","favorites","recent","upload","process","history","analytics","snapshots","arp","lock","versions","audit","resources"];
+    return valid.includes(hash as Section) ? (hash as Section) : "files";
+  };
+
+  const [activeSection, setActiveSectionRaw] = useState<Section>(getInitialSection);
+
+  const setActiveSection = (section: Section) => {
+    setActiveSectionRaw(section);
+    window.location.hash = section;
+  };
+
+  // Listen for hash changes from other components (Lock panel navigation)
+  useEffect(() => {
+    const onHashChange = () => {
+      const hash = window.location.hash.replace("#", "");
+      const valid: Section[] = ["files","favorites","recent","upload","process","history","analytics","snapshots","arp","lock","versions","audit","resources"];
+      if (valid.includes(hash as Section) && hash !== activeSection) {
+        setActiveSectionRaw(hash as Section);
+      }
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [activeSection]);
+
   const [selectedPrefix, setSelectedPrefix] = useState("");
   const [activeJobArn, setActiveJobArn] = useState<string | null>(null);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
@@ -191,6 +219,7 @@ function App() {
         {activeSection === "snapshots" && <VersionHistory />}
         {activeSection === "lock" && <SnaplockStatus />}
         {activeSection === "arp" && <ArpStatus />}
+        {activeSection === "resources" && <ResourceManagement />}
         {/* End of Data Protection sections */}
       </main>
 

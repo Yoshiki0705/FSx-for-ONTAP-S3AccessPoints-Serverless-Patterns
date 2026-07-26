@@ -94,6 +94,21 @@ def handler(event, context):
             return _update_arp_state(http, headers, event)
         elif action == "updateRetentionPolicy":
             return _update_retention_policy(http, headers, event)
+        # ARP/AI Response Actions (isolation/containment)
+        elif action == "blockSmbUser":
+            return _arp_block_smb_user(event)
+        elif action == "unblockSmbUser":
+            return _arp_unblock_smb_user(event)
+        elif action == "blockNfsIp":
+            return _arp_block_nfs_ip(event)
+        elif action == "unblockNfsIp":
+            return _arp_unblock_nfs_ip(event)
+        elif action == "containThreat":
+            return _arp_contain_threat(event)
+        elif action == "listActiveBlocks":
+            return _arp_list_active_blocks(event)
+        elif action == "disconnectSessions":
+            return _arp_disconnect_sessions(event)
         else:
             return {"error": f"Unknown action: {action}"}
 
@@ -577,4 +592,247 @@ def _update_s3_object_lock(mode, days, user_id):
         logger.info(f"S3 Object Lock updated: {output_bucket} → {mode} {days}d by {user_id}")
         return {"success": True, "error": None}
     except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ─── ARP/AI Response Actions (Isolation/Containment) ─────────────────────────
+#
+# These use shared/ontap_response.ArpResponseActions which wraps OntapClient.
+# Provides the same containment capabilities as DII Storage Workload Security
+# but executed from the portal UI without external tools.
+
+
+def _get_arp_response_client():
+    """Initialize ArpResponseActions using project's shared modules.
+
+    Uses the same Secrets Manager credentials as the rest of this Lambda.
+    Imports are deferred to avoid import errors when shared/ is not in path
+    (e.g., during local testing without the layer).
+    """
+    import sys
+    from pathlib import Path
+
+    # Add shared/ to path (Lambda Layer mounts at /opt/python)
+    shared_paths = [
+        "/opt/python",  # Lambda Layer
+        str(Path(__file__).parents[4]),  # Local dev: repo root
+    ]
+    for p in shared_paths:
+        if p not in sys.path:
+            sys.path.insert(0, p)
+
+    from shared.ontap_client import OntapClient, OntapClientConfig
+    from shared.ontap_response import ArpResponseActions
+
+    config = OntapClientConfig(
+        management_ip=MGMT_IP,
+        secret_name=SECRET_NAME,
+        verify_ssl=False,  # PoC — set True + ca_cert_path for production
+    )
+    client = OntapClient(config)
+    return ArpResponseActions(client)
+
+
+def _arp_block_smb_user(event):
+    """Block an SMB user (name-mapping deny rule).
+
+    Event params:
+        domain: Windows domain (e.g., "CORP")
+        username: Username to block (e.g., "jdoe")
+        svm: Optional SVM name override (default: SVM_NAME env var)
+    """
+    arp = _get_arp_response_client()
+    svm = event.get("svm", SVM_NAME)
+    domain = event.get("domain", "")
+    username = event.get("username", "")
+
+    if not domain or not username:
+        return {"success": False, "error": "domain and username are required"}
+
+    try:
+        result = arp.block_smb_user(svm_name=svm, domain=domain, username=username)
+        return {"success": True, **result}
+    except Exception as e:
+        logger.error(f"block_smb_user failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _arp_unblock_smb_user(event):
+    """Unblock a previously blocked SMB user.
+
+    Event params:
+        domain: Windows domain
+        username: Username to unblock
+        svm: Optional SVM name override
+    """
+    arp = _get_arp_response_client()
+    svm = event.get("svm", SVM_NAME)
+    domain = event.get("domain", "")
+    username = event.get("username", "")
+
+    if not domain or not username:
+        return {"success": False, "error": "domain and username are required"}
+
+    try:
+        result = arp.unblock_smb_user(svm_name=svm, domain=domain, username=username)
+        return {"success": True, **result}
+    except Exception as e:
+        logger.error(f"unblock_smb_user failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _arp_block_nfs_ip(event):
+    """Block an IP address from NFS access (export-policy deny rule).
+
+    Event params:
+        clientIp: IP to block (e.g., "10.0.5.99")
+        policyName: Export policy name (default: "default")
+        svm: Optional SVM name override
+    """
+    arp = _get_arp_response_client()
+    svm = event.get("svm", SVM_NAME)
+    client_ip = event.get("clientIp", "")
+    policy_name = event.get("policyName", "default")
+
+    if not client_ip:
+        return {"success": False, "error": "clientIp is required"}
+
+    try:
+        result = arp.block_nfs_ip(
+            svm_name=svm, policy_name=policy_name, client_ip=client_ip
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        logger.error(f"block_nfs_ip failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _arp_unblock_nfs_ip(event):
+    """Unblock a previously blocked NFS IP.
+
+    Event params:
+        clientIp: IP to unblock
+        policyName: Export policy name (default: "default")
+        svm: Optional SVM name override
+    """
+    arp = _get_arp_response_client()
+    svm = event.get("svm", SVM_NAME)
+    client_ip = event.get("clientIp", "")
+    policy_name = event.get("policyName", "default")
+
+    if not client_ip:
+        return {"success": False, "error": "clientIp is required"}
+
+    try:
+        result = arp.unblock_nfs_ip(
+            svm_name=svm, policy_name=policy_name, client_ip=client_ip
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        logger.error(f"unblock_nfs_ip failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _arp_contain_threat(event):
+    """Execute full threat containment (snapshot + block + disconnect).
+
+    Event params:
+        domain: Windows domain (optional, for SMB blocking)
+        username: Username (optional, for SMB blocking)
+        clientIp: IP address (optional, for NFS blocking)
+        volumeName: Volume to snapshot (optional, default: VOLUME_NAME)
+        policyName: Export policy (default: "default")
+        reason: Reason string for audit
+        svm: Optional SVM name override
+    """
+    arp = _get_arp_response_client()
+    svm = event.get("svm", SVM_NAME)
+    domain = event.get("domain")
+    username = event.get("username")
+    client_ip = event.get("clientIp")
+    volume_name = event.get("volumeName", VOLUME_NAME)
+    policy_name = event.get("policyName", "default")
+    reason = event.get("reason", "portal-initiated")
+
+    if not domain and not username and not client_ip:
+        return {
+            "success": False,
+            "error": "At least one of (domain+username) or clientIp is required",
+        }
+
+    try:
+        result = arp.contain_threat(
+            svm_name=svm,
+            domain=domain,
+            username=username,
+            client_ip=client_ip,
+            volume_name=volume_name if volume_name else None,
+            policy_name=policy_name,
+            reason=reason,
+        )
+        return {"success": result["status"] == "contained", **result}
+    except Exception as e:
+        logger.error(f"contain_threat failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _arp_list_active_blocks(event):
+    """List all active isolation blocks on the SVM.
+
+    Event params:
+        svm: Optional SVM name override
+
+    Returns name-mapping deny entries (SMB blocks) and export-policy deny rules (NFS blocks).
+    Falls back to empty lists if the shared module is unavailable or errors.
+    """
+    svm = event.get("svm", SVM_NAME)
+
+    try:
+        arp = _get_arp_response_client()
+        result = arp.list_active_blocks(svm_name=svm)
+        return {"success": True, **result}
+    except ImportError as e:
+        logger.warning(f"Shared module not available for list_active_blocks: {e}")
+        return {
+            "success": True,
+            "smbBlocks": [],
+            "nfsBlocks": [],
+            "total": 0,
+            "error": None,
+            "note": "ArpResponseActions module not available in this deployment",
+        }
+    except Exception as e:
+        logger.error(f"list_active_blocks failed: {e}")
+        return {
+            "success": False,
+            "smbBlocks": [],
+            "nfsBlocks": [],
+            "total": 0,
+            "error": f"Failed to retrieve active blocks: {str(e)}",
+        }
+
+
+def _arp_disconnect_sessions(event):
+    """Disconnect active CIFS sessions for a user or IP.
+
+    Event params:
+        user: Windows user (e.g., "CORP\\jdoe")
+        clientIp: Client IP (at least one required)
+        svm: Optional SVM name override
+    """
+    arp = _get_arp_response_client()
+    svm = event.get("svm", SVM_NAME)
+    user = event.get("user")
+    client_ip = event.get("clientIp")
+
+    if not user and not client_ip:
+        return {"success": False, "error": "At least one of user or clientIp is required"}
+
+    try:
+        result = arp.disconnect_smb_sessions(
+            svm_name=svm, user=user, client_ip=client_ip
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        logger.error(f"disconnect_sessions failed: {e}")
         return {"success": False, "error": str(e)}
