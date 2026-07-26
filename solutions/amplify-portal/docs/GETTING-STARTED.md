@@ -168,6 +168,9 @@ DemoMode/sandbox で検証後、本番に持っていく際の確認項目:
 | 8 | Bedrock data residency | 使用モデルの推論リージョンを確認。ap-northeast-1 の Nova/Claude は同リージョンで推論（cross-region 送信なし） |
 | 9 | cdk-nag 有効化 | CI で `CDK_NAG=1` を設定し、新たな違反を検出 |
 | 10 | Provisioned Concurrency | VPC Lambda の Cold Start を 1-2 秒に短縮 (オプション) |
+| 11 | GraphQL Introspection 無効化 | AppSync Console → Settings → Introspection: OFF（スキーマ情報漏洩防止） |
+| 12 | CloudWatch アラーム | VPC Lambda p99 レイテンシ > 5s のアラームを設定。Provisioned Concurrency 検討トリガーに |
+| 13 | Free Tier 終了後のコスト見積 | AppSync: ~$4/100万リクエスト、Cognito: $0.0055/MAU、Lambda: $0.20/100万呼出。月額目安: $25-60 (利用頻度による) |
 
 > **Security note**: 本番では Lambda の Security Group を FSx SG から分離してください。FSx SG は全ポート open（intra-VPC 通信用）ですが、Lambda は TCP/443 outbound のみで十分です。
 

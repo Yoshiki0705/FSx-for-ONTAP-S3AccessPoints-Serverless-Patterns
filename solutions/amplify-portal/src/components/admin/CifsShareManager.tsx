@@ -192,7 +192,7 @@ export function CifsShareManager() {
                   onClick={() => handleToggleEncryption(s.name, !s.encryption)}
                   className="btn-sm"
                   style={{ marginLeft: "0.5rem" }}
-                  title={s.encryption ? t("rmEncryptionDisable") : t("rmEncryptionEnable")}
+                  title={s.encryption ? t("rmEncryptionDisable") : `${t("rmEncryptionEnable")}\n${t("rmEncryptionClientWarning")}`}
                 >
                   {s.encryption ? "OFF" : "ON"}
                 </button>
