@@ -364,6 +364,12 @@ const searchFilesRole = new iam.Role(dataStack, "SearchFilesLambdaRole", {
           ],
           resources: ["*"], // Restrict to specific KB ARN in production
         }),
+        new iam.PolicyStatement({
+          actions: ["s3:ListBucket", "s3:GetObject"],
+          resources: config.s3ApResourceArns.length > 0
+            ? config.s3ApResourceArns
+            : ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+        }),
       ],
     }),
   },
@@ -380,6 +386,7 @@ const searchFilesFunction = new lambda.Function(
     role: searchFilesRole,
     environment: {
       BEDROCK_KB_ID: config.bedrockKbId || "",
+      S3_AP_ALIAS: config.s3ApAlias,
     },
     memorySize: 256,
     timeout: Duration.seconds(30),
@@ -388,6 +395,60 @@ const searchFilesFunction = new lambda.Function(
 );
 
 api.addLambdaDataSource("SearchFilesLambdaDataSource", searchFilesFunction);
+
+// --- Lambda Data Source for AgentChat (Bedrock Converse with tool_use) ---
+const agentChatRole = new iam.Role(dataStack, "AgentChatLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    BedrockAndS3: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          actions: [
+            "bedrock:InvokeModel",
+            "bedrock:Converse",
+            "bedrock:ApplyGuardrail",
+          ],
+          resources: ["*"], // Restrict to specific model ARN in production
+        }),
+        new iam.PolicyStatement({
+          actions: ["s3:GetObject", "s3:ListBucket"],
+          resources: config.s3ApResourceArns.length > 0
+            ? config.s3ApResourceArns
+            : ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+        }),
+      ],
+    }),
+  },
+});
+
+const agentChatFunction = new lambda.Function(
+  dataStack,
+  "AgentChatFunction",
+  {
+    runtime: lambda.Runtime.PYTHON_3_12,
+    architecture: lambda.Architecture.ARM_64,
+    handler: "handler.handler",
+    code: lambda.Code.fromAsset("functions/agent-chat"),
+    role: agentChatRole,
+    environment: {
+      S3_AP_ALIAS: config.s3ApAlias,
+      AGENT_MODEL_ID: process.env.AGENT_MODEL_ID || "amazon.nova-lite-v1:0",
+      MAX_TOOL_ITERATIONS: "5",
+      BEDROCK_GUARDRAIL_ID: config.bedrockGuardrailId || "",
+      BEDROCK_GUARDRAIL_VERSION: config.bedrockGuardrailVersion || "DRAFT",
+    },
+    memorySize: 512,
+    timeout: Duration.seconds(90),
+    description: "AI Agent Chat — Bedrock Converse with tool_use (list/read/search files via S3 AP)",
+  }
+);
+
+api.addLambdaDataSource("AgentChatLambdaDataSource", agentChatFunction);
 
 // --- Lambda Data Source for QueryAuditLog (Athena over CloudTrail) ---
 const queryAuditLogRole = new iam.Role(dataStack, "QueryAuditLogLambdaRole", {

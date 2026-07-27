@@ -27,6 +27,10 @@ export interface PortalConfig {
   groupApMapping: Record<string, string>;
   bedrockKbId: string;
 
+  // Bedrock Guardrails (PII detection/masking + content filtering)
+  bedrockGuardrailId: string;
+  bedrockGuardrailVersion: string;
+
   // VPC configuration (required for ONTAP REST API access)
   vpcId: string;
   vpcSubnetIds: string[];
@@ -107,6 +111,18 @@ export const config: PortalConfig = {
    * Leave empty to disable full-text search.
    */
   bedrockKbId: "",
+
+  /**
+   * Bedrock Guardrail ID and version for PII detection/masking.
+   * Create in: AWS Console → Bedrock → Guardrails → Create guardrail
+   * Leave empty to disable guardrails (AI responses unfiltered).
+   *
+   * Recommended configuration:
+   *   - PII: ANONYMIZE for EMAIL, PHONE; BLOCK for SSN, CREDIT_CARD
+   *   - Content: BLOCK SEXUAL/VIOLENCE at HIGH strength
+   */
+  bedrockGuardrailId: "",
+  bedrockGuardrailVersion: "DRAFT",
 
   // ─── VPC & ONTAP (required for Admin/DataProtection/ARP features) ──────
 

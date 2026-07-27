@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Bedrock Guardrail for File Portal — PII detection/masking + content filtering.
+  Deploy this stack, then copy the GuardrailId and GuardrailVersion outputs
+  into portal-config.ts (bedrockGuardrailId / bedrockGuardrailVersion).
+
+Parameters:
+  GuardrailName:
+    Type: String
+    Default: file-portal-guardrail
+    Description: Name for the Bedrock Guardrail
+
+  BlockedInputMessage:
+    Type: String
+    Default: "This question cannot be processed due to safety policy."
+    Description: Message shown when input is blocked
+
+  BlockedOutputMessage:
+    Type: String
+    Default: "This response was filtered by the safety guardrail."
+    Description: Message shown when output is blocked
+
+Resources:
+  PortalGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Name: !Ref GuardrailName
+      Description: "PII detection/masking and content filtering for FSx for ONTAP File Portal AI features"
+      BlockedInputMessaging: !Ref BlockedInputMessage
+      BlockedOutputsMessaging: !Ref BlockedOutputMessage
+
+      # --- PII Detection & Masking ---
+      SensitiveInformationPolicyConfig:
+        PiiEntitiesConfig:
+          # Anonymize (mask) — replace with placeholder
+          - Type: EMAIL
+            Action: ANONYMIZE
+          - Type: PHONE
+            Action: ANONYMIZE
+          - Type: NAME
+            Action: ANONYMIZE
+          - Type: IP_ADDRESS
+            Action: ANONYMIZE
+          # Block entirely — reject the response
+          - Type: US_SOCIAL_SECURITY_NUMBER
+            Action: BLOCK
+          - Type: CREDIT_DEBIT_CARD_NUMBER
+            Action: BLOCK
+          - Type: CREDIT_DEBIT_CARD_CVV
+            Action: BLOCK
+          - Type: CREDIT_DEBIT_CARD_EXPIRY
+            Action: BLOCK
+          - Type: AWS_ACCESS_KEY
+            Action: BLOCK
+          - Type: AWS_SECRET_KEY
+            Action: BLOCK
+
+      # --- Content Filtering ---
+      ContentPolicyConfig:
+        FiltersConfig:
+          - Type: SEXUAL
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: VIOLENCE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: INSULTS
+            InputStrength: MEDIUM
+            OutputStrength: MEDIUM
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+
+      # --- Word/Phrase Filtering ---
+      WordPolicyConfig:
+        ManagedWordListsConfig:
+          - Type: PROFANITY
+
+  # Create a version (required for use with Converse API)
+  PortalGuardrailVersion:
+    Type: AWS::Bedrock::GuardrailVersion
+    Properties:
+      GuardrailIdentifier: !GetAtt PortalGuardrail.GuardrailId
+      Description: "Initial version for File Portal"
+
+Outputs:
+  GuardrailId:
+    Description: "Guardrail ID — copy to portal-config.ts bedrockGuardrailId"
+    Value: !GetAtt PortalGuardrail.GuardrailId
+    Export:
+      Name: !Sub "${AWS::StackName}-GuardrailId"
+
+  GuardrailVersion:
+    Description: "Guardrail version number — copy to portal-config.ts bedrockGuardrailVersion"
+    Value: !GetAtt PortalGuardrailVersion.Version
+    Export:
+      Name: !Sub "${AWS::StackName}-GuardrailVersion"
+
+  GuardrailArn:
+    Description: "Guardrail ARN for IAM policy scoping"
+    Value: !GetAtt PortalGuardrail.GuardrailArn
+
+  DeployCommand:
+    Description: "How to deploy this stack"
+    Value: !Sub |
+      aws cloudformation deploy \
+        --template-file infrastructure/bedrock-guardrail.yaml \
+        --stack-name ${AWS::StackName} \
+        --region ${AWS::Region} \
+        --no-fail-on-empty-changeset

@@ -600,6 +600,63 @@ export const ja = {
 
   // --- Language ---
   languageLabel: "言語",
+
+  // --- Agent Chat ---
+  navAgent: "AI エージェント",
+  agentTitle: "AI エージェント",
+
+  // --- Search ---
+  navSearch: "ファイル検索",
+  searchTitle: "ファイル検索",
+  searchInputLabel: "検索キーワード",
+  searchKeywordPlaceholder: "ファイル名で検索...",
+  searchSemanticPlaceholder: "自然言語で検索（例: 熱設計の仕様書）...",
+  searchModeLabel: "検索モード",
+  searchModeKeyword: "キーワード",
+  searchModeSemantic: "セマンティック",
+  searchKeywordDesc: "ファイル名のパターンマッチで検索します。",
+  searchSemanticDesc: "Bedrock Knowledge Base によるベクトル検索。ファイル内容の意味で検索します。",
+  searchSearching: "検索中...",
+  searchNoResults: "一致する結果がありません。別のキーワードを試してください。",
+  searchResultsFound: "件の結果",
+  searchRelevance: "関連度",
+  searchSemanticExamples: "セマンティック検索の例",
+  searchExample1: "「熱設計の上限温度に関する仕様」",
+  searchExample2: "「先週失敗したシミュレーションの原因」",
+  searchExample3: "「NDA の有効期限に関する条項」",
+  agentWelcomeTitle: "NAS ファイルについて何でも聞いてください",
+  agentWelcomeDesc: "自然言語でファイルの検索、内容の読み取り、分析ができます。",
+  agentPlaceholder: "例: 先週の失敗ログを探して...",
+  agentInputLabel: "エージェントへのメッセージ",
+  agentSendLabel: "送信",
+  agentYou: "あなた",
+  agentAssistant: "エージェント",
+  agentSystem: "システム",
+  agentThinking: "考え中...",
+  agentToolCalls: "ツール実行",
+  agentClear: "会話をクリア",
+  agentBlocked: "この操作はブロックされました。",
+  agentSuggestList: "ルートフォルダの一覧を見せて",
+  agentSuggestSearch: "先週のログファイルを検索して",
+  agentSuggestAnalyze: "最新のレポートを要約して",
+  agentSuggestRecent: "最近変更されたファイルを教えて",
+
+  // --- Guardrail ---
+  guardrailApplied: "ガードレール適用済み",
+  guardrailTooltip: "この応答は Bedrock Guardrails によりフィルタリングまたは PII マスキングされました",
+
+  // --- HITL Approval ---
+  approvalTitle: "アクション承認が必要です",
+  approvalDesc: "エージェントが以下の操作を実行しようとしています。承認してください。",
+  approvalAction: "操作",
+  approvalTarget: "対象",
+  approvalReason: "理由",
+  approvalIrreversible: "この操作は不可逆です。実行後に元に戻すことはできません。",
+  approvalApprove: "承認して実行",
+  approvalReject: "拒否",
+  approvalApproved: "操作が承認されました",
+  approvalRejected: "操作が拒否されました",
+  approvalAgentWants: "以下の操作の承認を求めています:",
 } as const;
 
 export type TranslationKeys = keyof typeof ja;
