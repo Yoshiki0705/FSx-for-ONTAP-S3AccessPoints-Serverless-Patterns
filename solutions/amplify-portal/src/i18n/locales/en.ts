@@ -650,4 +650,20 @@ export const en: Record<TranslationKeys, string> = {
   approvalApproved: "Action approved",
   approvalRejected: "Action rejected",
   approvalAgentWants: "Requesting approval for the following action:",
+
+  // --- Agent Task Cards ---
+  cardBrowseTitle: "Browse Folders",
+  cardBrowseDesc: "List directories on the NAS volume",
+  cardSearchTitle: "Search by Name",
+  cardSearchDesc: "Find files with pattern matching",
+  cardKnowledgeTitle: "Search Inside Files",
+  cardKnowledgeDesc: "Semantic search over file contents (RAG)",
+  cardKnowledgePrompt: "What are the thermal design temperature limits?",
+  cardAnalyzeTitle: "Analyze Reports",
+  cardAnalyzeDesc: "Summarize and compare file contents",
+  cardProtectTitle: "Check Protection",
+  cardProtectDesc: "Verify lock status and retention periods",
+  cardProtectPrompt: "Check the current snapshot lock status",
+  cardRecentTitle: "Recent Changes",
+  cardRecentDesc: "Show recently modified files",
 };

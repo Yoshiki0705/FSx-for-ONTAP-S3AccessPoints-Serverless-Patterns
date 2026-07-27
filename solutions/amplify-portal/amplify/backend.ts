@@ -412,6 +412,8 @@ const agentChatRole = new iam.Role(dataStack, "AgentChatLambdaRole", {
             "bedrock:InvokeModel",
             "bedrock:Converse",
             "bedrock:ApplyGuardrail",
+            "bedrock:Retrieve",
+            "bedrock:RetrieveAndGenerate",
           ],
           resources: ["*"], // Restrict to specific model ARN in production
         }),
@@ -438,9 +440,10 @@ const agentChatFunction = new lambda.Function(
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
       AGENT_MODEL_ID: process.env.AGENT_MODEL_ID || "amazon.nova-lite-v1:0",
-      MAX_TOOL_ITERATIONS: "5",
+      MAX_TOOL_ITERATIONS: "8",
       BEDROCK_GUARDRAIL_ID: config.bedrockGuardrailId || "",
       BEDROCK_GUARDRAIL_VERSION: config.bedrockGuardrailVersion || "DRAFT",
+      BEDROCK_KB_ID: config.bedrockKbId || "",
     },
     memorySize: 512,
     timeout: Duration.seconds(90),

@@ -657,6 +657,22 @@ export const ja = {
   approvalApproved: "操作が承認されました",
   approvalRejected: "操作が拒否されました",
   approvalAgentWants: "以下の操作の承認を求めています:",
+
+  // --- Agent Task Cards ---
+  cardBrowseTitle: "フォルダを探索",
+  cardBrowseDesc: "NAS ボリュームのディレクトリを一覧表示",
+  cardSearchTitle: "ファイル名で検索",
+  cardSearchDesc: "パターンマッチでファイルを見つける",
+  cardKnowledgeTitle: "ドキュメント内を検索",
+  cardKnowledgeDesc: "ファイル内容からセマンティック検索（RAG）",
+  cardKnowledgePrompt: "熱設計の上限温度について教えて",
+  cardAnalyzeTitle: "レポートを分析",
+  cardAnalyzeDesc: "ファイルの内容を要約・比較",
+  cardProtectTitle: "データ保護を確認",
+  cardProtectDesc: "ロック状態や保持期間をチェック",
+  cardProtectPrompt: "現在のスナップショットのロック状態を確認して",
+  cardRecentTitle: "最近の変更",
+  cardRecentDesc: "最近更新されたファイルを表示",
 } as const;
 
 export type TranslationKeys = keyof typeof ja;
