@@ -275,7 +275,12 @@ function App() {
         {activeSection === "snapshots" && <VersionHistory />}
         {activeSection === "lock" && <SnaplockStatus />}
         {activeSection === "arp" && <ArpStatus />}
-        {activeSection === "resources" && <ResourceManagement />}
+        {activeSection === "resources" && (
+          <ResourceManagement
+            aiSettings={{ aiAgentEnabled, aiSearchEnabled }}
+            onAiSettingsChange={(s) => { setAiAgentEnabled(s.aiAgentEnabled); setAiSearchEnabled(s.aiSearchEnabled); }}
+          />
+        )}
         {/* End of Data Protection sections */}
       </main>
 
