@@ -3630,3 +3630,70 @@ button[type="submit"]:disabled {
 .agent-disabled-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.6; }
 .agent-disabled h3 { margin: 0 0 0.5rem; color: #475569; }
 .agent-disabled p { max-width: 360px; line-height: 1.5; font-size: 0.9rem; }
+
+/* ─── AI Settings: Feature Sections & Setup Guide ─────────────────────────── */
+
+.ai-settings-feature-section {
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+  background: #fafbfc;
+}
+
+.ai-settings-feature-section .ai-settings-toggle-card {
+  background: transparent;
+  border: none;
+  padding: 0 0 0.75rem;
+}
+
+.ai-settings-feature-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.meta-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+.meta-badge.ready { background: #dcfce7; color: #166534; }
+.meta-badge.setup-needed { background: #fef3c7; color: #92400e; }
+.meta-cost { font-size: 0.75rem; color: #64748b; padding: 0.2rem 0.5rem; background: #f1f5f9; border-radius: 4px; }
+.meta-setup { font-size: 0.75rem; color: #64748b; padding: 0.2rem 0.5rem; }
+
+/* Setup Guide (details/summary) */
+.ai-settings-setup-guide {
+  margin-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.75rem;
+}
+.ai-settings-setup-guide summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2563eb;
+  user-select: none;
+}
+.ai-settings-setup-guide summary:hover { text-decoration: underline; }
+.setup-guide-content { margin-top: 0.75rem; font-size: 0.85rem; line-height: 1.6; }
+.setup-guide-content .setup-intro { color: #475569; margin-bottom: 1rem; }
+
+/* Cost Comparison Table */
+.setup-cost-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.8rem; }
+.setup-cost-table th { text-align: left; padding: 0.4rem 0.5rem; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; color: #475569; }
+.setup-cost-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #e2e8f0; }
+.setup-cost-table tr.recommended { background: #f0fdf4; }
+.setup-cost-table tr.recommended td:first-child::after { content: " (推奨)"; font-size: 0.7rem; color: #16a34a; }
+
+/* Setup Steps */
+.setup-guide-content h5 { margin: 0.75rem 0 0.5rem; font-size: 0.85rem; color: #334155; }
+.setup-steps { margin: 0; padding-left: 1.5rem; }
+.setup-steps li { margin-bottom: 0.4rem; color: #475569; }
+.setup-note { margin-top: 1rem; padding: 0.75rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; }
+.setup-note strong { color: #1e40af; font-size: 0.8rem; }
+.setup-note p { margin: 0.25rem 0 0; color: #1e40af; font-size: 0.8rem; }
