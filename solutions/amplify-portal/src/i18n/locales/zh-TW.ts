@@ -583,4 +583,23 @@ export const zhTW: Record<TranslationKeys, string> = {
   cardProtectPrompt: "檢查目前快照的鎖定狀態",
   cardRecentTitle: "最近變更",
   cardRecentDesc: "顯示最近修改的檔案",
+
+  // --- AI Settings (Admin) ---
+  rmAiSettings: "AI 設定",
+  rmAiSettingsDesc: "啟用/停用 AI 代理和 Knowledge Base",
+  rmCatServices: "AI 服務",
+  aiSettingsLoading: "正在載入設定...",
+  aiSettingsDesc: "AI 代理和 Knowledge Base 搜尋會產生持續運行成本，需要管理員明確啟用。",
+  aiSettingsCostTitle: "費用提示",
+  aiSettingsCostDesc: "Bedrock Knowledge Base 會持續產生 OpenSearch Serverless OCU 費用。不使用時請保持停用狀態。",
+  aiSettingsAgentTitle: "AI 代理",
+  aiSettingsAgentDesc: "透過 AI 對話進行自然語言檔案操作 (Bedrock Converse)",
+  aiSettingsSearchTitle: "語意搜尋",
+  aiSettingsSearchDesc: "檔案內容的向量搜尋 (Bedrock Knowledge Base)",
+  aiSettingsEnabled: "已啟用",
+  aiSettingsDisabled: "已停用",
+  aiSettingsSaved: "設定已儲存",
+  aiSettingsStatusTitle: "目前狀態",
+  aiDisabledTitle: "AI 功能已停用",
+  aiDisabledDesc: "此功能已被管理員停用。如需啟用，請前往管理 > 資源管理 > AI 設定。",
 };

@@ -583,4 +583,23 @@ export const es: Record<TranslationKeys, string> = {
   cardProtectPrompt: "Verificar el estado de bloqueo actual de los snapshots",
   cardRecentTitle: "Cambios recientes",
   cardRecentDesc: "Mostrar archivos modificados recientemente",
+
+  // --- AI Settings (Admin) ---
+  rmAiSettings: "Configuración de IA",
+  rmAiSettingsDesc: "Activar/desactivar el agente IA y la base de conocimientos",
+  rmCatServices: "Servicios de IA",
+  aiSettingsLoading: "Cargando configuración...",
+  aiSettingsDesc: "El agente IA y la búsqueda de Knowledge Base generan costos continuos y deben ser habilitados explícitamente por un administrador.",
+  aiSettingsCostTitle: "Aviso de costos",
+  aiSettingsCostDesc: "Bedrock Knowledge Base genera cargos continuos de OCU de OpenSearch Serverless. Mantenga desactivado si no está en uso.",
+  aiSettingsAgentTitle: "Agente IA",
+  aiSettingsAgentDesc: "Operaciones de archivos en lenguaje natural por chat IA (Bedrock Converse)",
+  aiSettingsSearchTitle: "Búsqueda semántica",
+  aiSettingsSearchDesc: "Búsqueda vectorial del contenido de archivos (Bedrock Knowledge Base)",
+  aiSettingsEnabled: "Habilitado",
+  aiSettingsDisabled: "Deshabilitado",
+  aiSettingsSaved: "Configuración guardada",
+  aiSettingsStatusTitle: "Estado actual",
+  aiDisabledTitle: "Las funciones de IA están deshabilitadas",
+  aiDisabledDesc: "Esta función ha sido deshabilitada por un administrador. Para habilitarla, vaya a Admin > Gestión de recursos > Configuración de IA.",
 };

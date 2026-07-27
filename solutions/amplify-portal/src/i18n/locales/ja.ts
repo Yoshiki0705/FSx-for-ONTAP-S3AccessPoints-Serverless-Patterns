@@ -673,6 +673,25 @@ export const ja = {
   cardProtectPrompt: "現在のスナップショットのロック状態を確認して",
   cardRecentTitle: "最近の変更",
   cardRecentDesc: "最近更新されたファイルを表示",
+
+  // --- AI Settings (Admin) ---
+  rmAiSettings: "AI 設定",
+  rmAiSettingsDesc: "AI エージェント・ナレッジベースの有効化",
+  rmCatServices: "AI サービス",
+  aiSettingsLoading: "設定を読み込み中...",
+  aiSettingsDesc: "AI エージェントと Knowledge Base 検索はランニングコストが発生するため、管理者による有効化が必要です。",
+  aiSettingsCostTitle: "コストに関する注意",
+  aiSettingsCostDesc: "Bedrock Knowledge Base は OpenSearch Serverless の OCU 課金が継続的に発生します。不要な場合は無効のままにしてください。",
+  aiSettingsAgentTitle: "AI エージェント",
+  aiSettingsAgentDesc: "自然言語でファイル操作を行う AI チャット（Bedrock Converse）",
+  aiSettingsSearchTitle: "セマンティック検索",
+  aiSettingsSearchDesc: "ファイル内容のベクトル検索（Bedrock Knowledge Base）",
+  aiSettingsEnabled: "有効",
+  aiSettingsDisabled: "無効",
+  aiSettingsSaved: "設定を保存しました",
+  aiSettingsStatusTitle: "現在の状態",
+  aiDisabledTitle: "AI 機能は無効です",
+  aiDisabledDesc: "この機能は管理者により無効化されています。有効にするには、管理 > リソース管理 > AI 設定 から設定を変更してください。",
 } as const;
 
 export type TranslationKeys = keyof typeof ja;

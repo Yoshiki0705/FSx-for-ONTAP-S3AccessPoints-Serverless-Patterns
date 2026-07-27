@@ -583,4 +583,23 @@ export const de: Record<TranslationKeys, string> = {
   cardProtectPrompt: "Aktuellen Snapshot-Sperrstatus prüfen",
   cardRecentTitle: "Letzte Änderungen",
   cardRecentDesc: "Kürzlich geänderte Dateien anzeigen",
+
+  // --- AI Settings (Admin) ---
+  rmAiSettings: "KI-Einstellungen",
+  rmAiSettingsDesc: "KI-Agent und Knowledge Base aktivieren/deaktivieren",
+  rmCatServices: "KI-Dienste",
+  aiSettingsLoading: "Einstellungen werden geladen...",
+  aiSettingsDesc: "KI-Agent und Knowledge-Base-Suche verursachen laufende Kosten und müssen von einem Administrator explizit aktiviert werden.",
+  aiSettingsCostTitle: "Kostenhinweis",
+  aiSettingsCostDesc: "Bedrock Knowledge Base verursacht kontinuierliche OpenSearch Serverless OCU-Gebühren. Bei Nichtnutzung deaktiviert lassen.",
+  aiSettingsAgentTitle: "KI-Agent",
+  aiSettingsAgentDesc: "Dateioperationen in natürlicher Sprache per KI-Chat (Bedrock Converse)",
+  aiSettingsSearchTitle: "Semantische Suche",
+  aiSettingsSearchDesc: "Vektorsuche in Dateiinhalten (Bedrock Knowledge Base)",
+  aiSettingsEnabled: "Aktiviert",
+  aiSettingsDisabled: "Deaktiviert",
+  aiSettingsSaved: "Einstellungen gespeichert",
+  aiSettingsStatusTitle: "Aktueller Status",
+  aiDisabledTitle: "KI-Funktionen sind deaktiviert",
+  aiDisabledDesc: "Diese Funktion wurde von einem Administrator deaktiviert. Zum Aktivieren gehen Sie zu Admin > Ressourcenverwaltung > KI-Einstellungen.",
 };

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuthenticator } from "@aws-amplify/ui-react";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../amplify/data/resource";
 import { FileExplorer } from "./components/FileExplorer";
 import { JobSubmitForm } from "./components/JobSubmitForm";
 import { ResultsViewer } from "./components/ResultsViewer";
@@ -20,8 +22,11 @@ import { SemanticSearch } from "./components/SemanticSearch";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { useTranslation } from "./i18n";
+import { portalSettings } from "./portal-settings";
 
 import type { TranslationKeys } from "./i18n";
+
+const appClient = generateClient<Schema>();
 
 type Section =
   | "files" | "favorites" | "recent" | "upload"
@@ -108,6 +113,40 @@ function App() {
   const { user, signOut, authStatus } = useAuthenticator();
   const { t } = useTranslation();
 
+  // --- Admin-controlled AI feature gate ---
+  // Query DynamoDB portal settings on mount. Falls back to compile-time portalSettings.
+  const [aiAgentEnabled, setAiAgentEnabled] = useState(portalSettings.aiAgentEnabled);
+  const [aiSearchEnabled, setAiSearchEnabled] = useState(portalSettings.aiAgentEnabled);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAiSettings() {
+      try {
+        const response = await appClient.queries.adminQuery({
+          action: "getPortalSettings",
+          params: JSON.stringify({}),
+        });
+        if (cancelled) return;
+        const parsed = response.data
+          ? (typeof response.data === "string" ? JSON.parse(response.data) : response.data)
+          : null;
+        if (parsed?.settings) {
+          setAiAgentEnabled(parsed.settings.aiAgentEnabled === true);
+          setAiSearchEnabled(parsed.settings.aiSearchEnabled === true);
+        }
+      } catch {
+        // Non-admin users may get auth error — fall back to compile-time default
+      }
+    }
+    loadAiSettings();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Sections hidden when AI is disabled
+  const hiddenSections: Set<Section> = new Set();
+  if (!aiAgentEnabled) hiddenSections.add("agent");
+  if (!aiSearchEnabled) hiddenSections.add("search");
+
   if (authStatus !== "authenticated") {
     return <LoadingSkeleton />;
   }
@@ -142,7 +181,7 @@ function App() {
         {(["browse", "actions", "protection", "admin"] as const).map((group) => (
           <div className="sidebar-section" key={group}>
             <span className="sidebar-group-label">{t(GROUP_LABELS[group])}</span>
-            {NAV_ITEMS.filter((n) => n.group === group).map((item) => (
+            {NAV_ITEMS.filter((n) => n.group === group && !hiddenSections.has(n.id)).map((item) => (
               <button
                 key={item.id}
                 className={`sidebar-item ${activeSection === item.id ? "active" : ""}`}
@@ -200,8 +239,8 @@ function App() {
             }}
           />
         )}
-        {activeSection === "agent" && <AgentChat />}
-        {activeSection === "search" && (
+        {activeSection === "agent" && (aiAgentEnabled ? <AgentChat /> : <AgentDisabled />)}
+        {activeSection === "search" && (aiSearchEnabled ? (
           <SemanticSearch
             onNavigateToFile={(fileKey) => {
               const parts = fileKey.split("/");
@@ -210,7 +249,7 @@ function App() {
               setActiveSection("files");
             }}
           />
-        )}
+        ) : <AgentDisabled />)}
         {activeSection === "history" && (
           <>
             {activeJobArn && (
@@ -249,6 +288,18 @@ function App() {
           />
         </aside>
       )}
+    </div>
+  );
+}
+
+/** Shown when AI features are disabled by admin */
+function AgentDisabled() {
+  const { t } = useTranslation();
+  return (
+    <div className="agent-disabled">
+      <div className="agent-disabled-icon">🔒</div>
+      <h3>{t("aiDisabledTitle")}</h3>
+      <p>{t("aiDisabledDesc")}</p>
     </div>
   );
 }
