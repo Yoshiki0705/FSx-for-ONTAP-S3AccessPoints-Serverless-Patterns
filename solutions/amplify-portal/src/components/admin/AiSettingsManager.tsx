@@ -36,13 +36,19 @@ interface UpdateResponse {
   error?: string;
 }
 
-export function AiSettingsManager() {
+interface AiSettingsManagerProps {
+  /** Initial settings from App-level query (avoids redundant Lambda call) */
+  initialSettings?: { aiAgentEnabled: boolean; aiSearchEnabled: boolean };
+  /** Callback to notify parent when settings change (for nav update) */
+  onSettingsChange?: (settings: { aiAgentEnabled: boolean; aiSearchEnabled: boolean }) => void;
+}
+
+export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSettingsManagerProps) {
   const { t } = useTranslation();
-  const [settings, setSettings] = useState<PortalSettings>({
-    aiAgentEnabled: false,
-    aiSearchEnabled: false,
-  });
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<PortalSettings>(
+    initialSettings ?? { aiAgentEnabled: false, aiSearchEnabled: false }
+  );
+  const [loading, setLoading] = useState(!initialSettings);
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -72,7 +78,7 @@ export function AiSettingsManager() {
     }
   }, []);
 
-  useEffect(() => { loadSettings(); }, [loadSettings]);
+  useEffect(() => { if (!initialSettings) loadSettings(); }, [loadSettings, initialSettings]);
 
   const toggleSetting = async (key: keyof PortalSettings) => {
     const newValue = !settings[key];
@@ -87,7 +93,9 @@ export function AiSettingsManager() {
       });
       const result = parseResponse<UpdateResponse>(response);
       if (result?.success) {
-        setSettings((prev) => ({ ...prev, [key]: newValue }));
+        const newSettings = { ...settings, [key]: newValue };
+        setSettings(newSettings);
+        onSettingsChange?.(newSettings);
         setSuccessMsg(t("aiSettingsSaved"));
         setTimeout(() => setSuccessMsg(null), 3000);
       } else if (result?.error) {

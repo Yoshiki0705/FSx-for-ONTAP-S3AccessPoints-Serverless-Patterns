@@ -23,6 +23,11 @@ interface PanelDef {
   category: "storage" | "access" | "protection" | "monitoring" | "services";
 }
 
+interface ResourceManagementProps {
+  aiSettings?: { aiAgentEnabled: boolean; aiSearchEnabled: boolean };
+  onAiSettingsChange?: (settings: { aiAgentEnabled: boolean; aiSearchEnabled: boolean }) => void;
+}
+
 /**
  * Resource Management — Admin section for ONTAP storage operations.
  *
@@ -34,7 +39,7 @@ interface PanelDef {
  *
  * All operations require the "storage-admin" Cognito group.
  */
-export function ResourceManagement() {
+export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceManagementProps) {
   const { t } = useTranslation();
   const [activePanel, setActivePanel] = useState<AdminPanel | null>(null);
 
@@ -94,7 +99,7 @@ export function ResourceManagement() {
           {activePanel === "arpAdmin" && <ArpAdminManager />}
           {activePanel === "snaplock" && <SnaplockManager />}
           {activePanel === "efficiency" && <EfficiencyPanel />}
-          {activePanel === "aiSettings" && <AiSettingsManager />}
+          {activePanel === "aiSettings" && <AiSettingsManager initialSettings={aiSettings} onSettingsChange={onAiSettingsChange} />}
         </div>
       </div>
     );
