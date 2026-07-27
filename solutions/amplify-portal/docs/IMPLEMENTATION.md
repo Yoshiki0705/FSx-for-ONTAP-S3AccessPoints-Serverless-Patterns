@@ -27,6 +27,7 @@ Browser → Amplify (Cognito auth) → AppSync GraphQL
                     │ arpQuery/Mutation → ArpResponse λ       │ ← VPC
                     │ protectionQuery/Mutation → Snapshots λ  │ ← VPC
                     │ fileQuery/Mutation → ListFiles λ        │ ← No VPC (S3 AP Internet-origin)
+                    │ agentQuery → AgentChat λ               │ ← No VPC (Bedrock + S3 AP)
                     └─────────────────────────────────────────┘
 ```
 
@@ -169,3 +170,80 @@ Without this, `JSON.parse(object)` silently produces `{}` → Lambda receives em
 | 2026-07-26 | S3 Object Lock status + config UI | Live status from real S3 bucket (Governance/1-day). Bucket search + mode/retention config form | SnaplockStatus.tsx, handler.py |
 | 2026-07-26 | Lock panel wording fix | コンテンツ不変性 → データ保護・改ざん防止 (natural Japanese) | ja.ts |
 | 2026-07-26 | scripts/dev.sh | `npm start` runs sandbox + vite together, Ctrl+C stops both | package.json, scripts/dev.sh |
+| 2026-07-27 | AI Agent Chat | Bedrock Converse + tool_use multi-agent (file-explorer, knowledge-analyst, safety-controller) | AgentChat.tsx, handler.py |
+| 2026-07-27 | Admin-gated AI features | DynamoDB PortalSettingsTable + AiSettingsManager toggle UI (disabled by default) | backend.ts, AiSettingsManager.tsx, App.tsx |
+| 2026-07-27 | Phase 1a: Chat history | DynamoDB ChatHistoryTable (userId+sessionId, TTL 90d), auto-save, session list | handler.py, AgentChat.tsx |
+| 2026-07-27 | Phase 1b: File permissions sidebar | ONTAP REST /protocols/file-security/permissions → AgentFileSidebar.tsx | snapshots/index.py, AgentFileSidebar.tsx |
+| 2026-07-27 | Phase 1c: Multimodal image upload | Drag-drop + base64 → Bedrock Converse image content block | handler.py, AgentChat.tsx |
+| 2026-07-27 | Phase 1d: Mode toggle | 3-pill selector (KB/Agent/Multi) with per-mode system prompt + tool filtering | handler.py, AgentChat.tsx |
+| 2026-07-27 | Phase 1e: KB Smart Routing | Group-based KB search scope filtering via GROUP_PATH_PREFIXES + retrievalFilter | handler.py, agent-dispatch.js |
+| 2026-07-27 | Phase 2: Agent Directory | DynamoDB AgentDirectoryTable, CRUD (create/list/get/update/delete), card grid UI | handler.py, AgentDirectory.tsx |
+| 2026-07-27 | Phase 2: Agent Creator | Emoji icon picker, tools selection, system prompt, category, shared toggle | AgentCreator.tsx |
+| 2026-07-27 | Phase 2: Multi-Agent Teams | DynamoDB AgentTeamsTable, team wizard (select agents + assign roles), gallery | handler.py, AgentTeams.tsx |
+| 2026-07-27 | Phase 2: Navigation integration | agentDir section with tabs (Directory/Teams), hidden when AI disabled | App.tsx |
+
+## AI Agent Architecture (Phase 1 + Phase 2)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Frontend (AgentChat.tsx)                                             │
+│                                                                      │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────┐       │
+│  │ Mode Toggle │  │ Card Grid    │  │ Chat Messages        │       │
+│  │ KB/Agent/   │  │ (filtered by │  │ + Tool Trace Timeline│       │
+│  │ Multi-Agent │  │  mode)       │  │ + Citations          │       │
+│  └─────────────┘  └──────────────┘  └──────────────────────┘       │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────┐       │
+│  │ 📎 Image    │  │ 📜 History   │  │ 📂 File Sidebar      │       │
+│  │ Upload      │  │ Panel        │  │ (Permissions)        │       │
+│  └─────────────┘  └──────────────┘  └──────────────────────┘       │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │ agentQuery (AppSync)
+                           ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ Lambda: agent-chat/handler.py                                        │
+│                                                                      │
+│  Dispatch:                                                           │
+│  ├── chat → run_agent_loop(message, history, image, mode, groups)   │
+│  ├── saveSession / loadSession / listSessions / deleteSession       │
+│  ├── listAgents / getAgent / createAgent / updateAgent / deleteAgent│
+│  └── listTeams / createTeam / deleteTeam                            │
+│                                                                      │
+│  Agent Loop:                                                         │
+│  1. Select system prompt + tools based on mode                      │
+│  2. Build messages (text + optional image)                          │
+│  3. Call Bedrock Converse (tool_use loop, max 8 iterations)         │
+│  4. Execute tools: list_files, read_file, search_files,             │
+│     get_volume_summary, kb_search (with smart routing), approval    │
+│  5. Return: { answer, toolCalls (with agent labels), model }        │
+│                                                                      │
+│  DynamoDB Tables:                                                    │
+│  ├── ChatHistoryTable (userId + sessionId, TTL 90d)                 │
+│  ├── AgentDirectoryTable (agentId → name, prompt, tools, icon)      │
+│  ├── AgentTeamsTable (teamId → agents with roles)                   │
+│  └── PortalSettingsTable (settingKey → enabled/disabled)            │
+└─────────────────────────────────────────────────────────────────────┘
+                           │
+                           ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ External Services                                                    │
+│  ├── Bedrock Converse (Nova Lite / Claude) — LLM + Vision           │
+│  ├── Bedrock KB Retrieve (S3 Vectors / OpenSearch Serverless)       │
+│  └── S3 AP (Internet-origin) — File listing/reading                 │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Admin Feature Gating
+
+All AI features are **disabled by default** and controlled via `PortalSettingsTable`:
+
+| Setting Key | Feature | Dependency |
+|-------------|---------|-----------|
+| `aiAgentEnabled` | AI Agent Chat nav + page | None |
+| `aiSearchEnabled` | Semantic Search nav + page | KB configured |
+| `aiMultimodalEnabled` | Image upload in chat | Agent enabled |
+| `chatHistoryEnabled` | Session persistence | Agent enabled |
+| `aiSmartRoutingEnabled` | Group-based KB filtering | Search enabled |
+| `agentDirectoryEnabled` | Agent Directory + Teams | Agent enabled |
+
+Admin toggles these from **Resource Management > AI Settings** panel.

@@ -191,6 +191,7 @@ aws s3 rb s3://fsxn-portal-objectlock-demo --force
 ## 次のステップ
 
 - [Admin Resource Management Demo Guide](../../docs/en/admin-resource-management-demo.md) — 全管理機能の操作手順
+- [AI Agent Demo Guide](./ai-agent-demo-guide.md) — AI エージェント機能の E2E デモ
 - [DemoMode Guide](../../docs/demo-mode-guide.md) — FSx for ONTAP なしでの検証方法
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md) — 設計意図と変更履歴
 - [認可モデル](../../docs/ja/portal-authorization-model.md) — Cognito グループによるアクセス制御
