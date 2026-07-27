@@ -584,6 +584,36 @@ export const es: Record<TranslationKeys, string> = {
   cardRecentTitle: "Cambios recientes",
   cardRecentDesc: "Mostrar archivos modificados recientemente",
 
+  // --- Chat History ---
+  chatHistoryTitle: "Historial de conversaciones",
+  chatHistoryNew: "Nueva conversación",
+  chatHistoryEmpty: "No hay conversaciones guardadas",
+  chatHistoryEnabled: "Historial",
+
+  // --- Multimodal Image Upload ---
+  multimodalAttach: "Adjuntar imagen",
+  multimodalPlaceholder: "Pregunte sobre la imagen...",
+
+  // --- Agent Mode Selector ---
+  modeKb: "Búsqueda KB",
+  modeAgent: "Archivos",
+  modeMulti: "Multi-Agente",
+  modeKbDesc: "Búsqueda semántica vía Knowledge Base (Q&A)",
+  modeAgentDesc: "Explorar, buscar y leer archivos",
+  modeMultiDesc: "Todas las funciones (KB + Archivos + Seguridad)",
+
+  // --- Agent File Sidebar ---
+  sidebarFileInfo: "Info de archivo",
+  sidebarPath: "Ruta",
+  sidebarLoadingPerms: "Cargando permisos...",
+  sidebarSecurityStyle: "Estilo de seguridad",
+  sidebarOwner: "Propietario",
+  sidebarGroup: "Grupo",
+  sidebarUnixPerms: "Permisos UNIX",
+  sidebarAcls: "Lista de control de acceso",
+  sidebarUser: "Usuario",
+  sidebarAccess: "Acceso",
+
   // --- AI Settings (Admin) ---
   rmAiSettings: "Configuración de IA",
   rmAiSettingsDesc: "Activar/desactivar el agente IA y la base de conocimientos",
@@ -600,6 +630,14 @@ export const es: Record<TranslationKeys, string> = {
   aiSettingsDisabled: "Deshabilitado",
   aiSettingsSaved: "Configuración guardada",
   aiSettingsStatusTitle: "Estado actual",
+  aiSettingsMultimodalTitle: "Multimodal (Imagen)",
+  aiSettingsMultimodalDesc: "Arrastra imágenes para preguntar a la IA (Bedrock Vision)",
+  aiSettingsPerImage: "imagen",
+  aiSettingsChatHistoryTitle: "Guardar historial",
+  aiSettingsChatHistoryDesc: "Guardar historial de chat en DynamoDB (TTL 90 días)",
+  aiSettingsSmartRoutingTitle: "Enrutamiento inteligente",
+  aiSettingsSmartRoutingDesc: "Limitar automáticamente el alcance KB por grupo Cognito",
+  aiSettingsGroupMapping: "Requiere configuración groupApMapping",
   aiDisabledTitle: "Las funciones de IA están deshabilitadas",
   aiDisabledDesc: "Esta función ha sido deshabilitada por un administrador. Para habilitarla, vaya a Admin > Gestión de recursos > Configuración de IA.",
 

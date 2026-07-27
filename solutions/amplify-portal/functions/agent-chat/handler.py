@@ -21,6 +21,8 @@ import json
 import os
 import re
 import logging
+import time
+from decimal import Decimal
 from typing import Any
 
 import boto3
@@ -38,6 +40,11 @@ MAX_FILE_READ_BYTES = 50 * 1024  # 50KB per file read
 GUARDRAIL_ID = os.environ.get("BEDROCK_GUARDRAIL_ID", "")
 GUARDRAIL_VERSION = os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
 BEDROCK_KB_ID = os.environ.get("BEDROCK_KB_ID", "")
+
+CHAT_HISTORY_TABLE = os.environ.get("CHAT_HISTORY_TABLE", "")
+# Smart Routing: JSON mapping of Cognito group → allowed path prefixes
+# Example: {"engineering": ["engineering/", "shared/"], "finance": ["finance/", "shared/"]}
+GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
 
 s3 = boto3.client(
     "s3",
@@ -358,11 +365,15 @@ def _tool_get_volume_summary(params: dict[str, Any]) -> str:
         return json.dumps({"error": str(e)})
 
 
-def _tool_kb_search(params: dict[str, Any]) -> str:
+def _tool_kb_search(params: dict[str, Any], user_groups: list[str] | None = None) -> str:
     """Semantic search via Bedrock Knowledge Base (RAG retrieval).
 
     Searches file CONTENT (not just file names) using vector similarity.
     Requires BEDROCK_KB_ID to be configured.
+
+    Smart Routing: When GROUP_PATH_PREFIXES is configured and user belongs to
+    a group with path restrictions, results are filtered to only include files
+    within the user's allowed paths.
     """
     query = params.get("query", "")
     max_results = min(params.get("max_results", 5), 10)
@@ -377,15 +388,35 @@ def _tool_kb_search(params: dict[str, Any]) -> str:
         })
 
     try:
-        response = bedrock_agent_runtime.retrieve(
-            knowledgeBaseId=BEDROCK_KB_ID,
-            retrievalQuery={"text": query},
-            retrievalConfiguration={
+        retrieve_params: dict[str, Any] = {
+            "knowledgeBaseId": BEDROCK_KB_ID,
+            "retrievalQuery": {"text": query},
+            "retrievalConfiguration": {
                 "vectorSearchConfiguration": {
                     "numberOfResults": max_results,
                 }
             },
-        )
+        }
+
+        # Smart Routing: Build filter from user's group path prefixes
+        allowed_prefixes = _get_allowed_prefixes(user_groups)
+        if allowed_prefixes:
+            # Use Bedrock KB filter: startsWith on file URI
+            # Note: filter syntax depends on KB metadata configuration
+            # Using OR filter across allowed prefixes
+            filter_conditions = []
+            for prefix in allowed_prefixes:
+                filter_conditions.append({
+                    "startsWith": {"key": "x-amz-bedrock-kb-source-uri", "value": prefix}
+                })
+            if len(filter_conditions) == 1:
+                retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"] = filter_conditions[0]
+            elif len(filter_conditions) > 1:
+                retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"] = {
+                    "orAll": filter_conditions
+                }
+
+        response = bedrock_agent_runtime.retrieve(**retrieve_params)
 
         results = []
         for item in response.get("retrievalResults", []):
@@ -400,18 +431,48 @@ def _tool_kb_search(params: dict[str, Any]) -> str:
                 parts = s3_uri.replace("s3://", "").split("/", 1)
                 file_key = parts[1] if len(parts) > 1 else ""
 
+            # Post-filter: if smart routing is active, verify file matches allowed paths
+            if allowed_prefixes and file_key:
+                if not any(file_key.startswith(p) for p in allowed_prefixes):
+                    continue
+
             results.append({
                 "fileKey": file_key,
                 "snippet": content[:300],
                 "score": round(score, 4),
             })
 
-        return json.dumps({"results": results, "count": len(results), "query": query})
+        return json.dumps({"results": results, "count": len(results), "query": query,
+                          "smartRouting": bool(allowed_prefixes)})
 
     except Exception as e:
         logger.error(f"KB search error: {e}")
         return json.dumps({"error": str(e), "results": []})
 
+
+def _get_allowed_prefixes(user_groups: list[str] | None) -> list[str]:
+    """Get allowed file path prefixes based on user's Cognito groups.
+
+    Returns empty list if smart routing is disabled (no restrictions).
+    """
+    if not GROUP_PATH_PREFIXES or not user_groups:
+        return []
+
+    # storage-admin group bypasses all restrictions
+    if "storage-admin" in user_groups:
+        return []
+
+    # Collect all prefixes from the user's groups
+    prefixes: list[str] = []
+    for group in user_groups:
+        group_prefixes = GROUP_PATH_PREFIXES.get(group, [])
+        prefixes.extend(group_prefixes)
+
+    # If user has no group with defined prefixes, no restriction
+    if not prefixes:
+        return []
+
+    return list(set(prefixes))
 
 # --- DemoMode Mock Data ---
 
@@ -507,6 +568,9 @@ def _mock_volume_summary() -> str:
 
 # --- Tool Execution Router ---
 
+# Per-request context (set by run_agent_loop, read by tool handlers)
+_request_context: dict[str, Any] = {"user_groups": []}
+
 TOOL_HANDLERS = {
     "list_files": _tool_list_files,
     "read_file": _tool_read_file,
@@ -530,6 +594,9 @@ def execute_tool(name: str, tool_input: dict[str, Any]) -> tuple[str, str]:
     if not handler_fn:
         return json.dumps({"error": f"Unknown tool: {name}"}), agent_label
     try:
+        # kb_search gets user_groups for smart routing
+        if name == "kb_search":
+            return handler_fn(tool_input, user_groups=_request_context.get("user_groups")), agent_label
         return handler_fn(tool_input), agent_label
     except Exception as e:
         logger.error(f"Tool execution error ({name}): {e}")
@@ -538,7 +605,7 @@ def execute_tool(name: str, tool_input: dict[str, Any]) -> tuple[str, str]:
 
 # --- Agent Loop ---
 
-SYSTEM_PROMPT = """You are an AI assistant embedded in a file portal for FSx for ONTAP.
+SYSTEM_PROMPT_MULTI = """You are an AI assistant embedded in a file portal for FSx for ONTAP.
 You help users navigate, search, read, and analyze files stored on NAS volumes.
 
 You operate as a MULTI-AGENT SYSTEM with specialist roles:
@@ -556,14 +623,6 @@ TOOL SELECTION STRATEGY:
 - User asks "what does the spec say about X?" → kb_search (knowledge-analyst)
 - User asks "summarize this file" → read_file then analyze (file-explorer)
 - User asks to delete/lock/block → request_action_approval (safety-controller)
-
-Available tools:
-- list_files: Browse directories
-- read_file: Read file content (blocked for PHI paths like /dicom/, /phi/, /pii/)
-- search_files: Find files by name pattern
-- get_volume_summary: Overview of the volume structure
-- kb_search: Semantic search over file contents via Knowledge Base (RAG)
-- request_action_approval: Request human approval before dangerous actions
 
 Guidelines:
 - Be concise and helpful
@@ -583,10 +642,64 @@ CRITICAL — Human-in-the-Loop (HITL) Rules:
 - Modify retention periods → request_action_approval FIRST
 """
 
+SYSTEM_PROMPT_KB = """You are a knowledge assistant for files stored on FSx for ONTAP.
+You answer questions by searching the Knowledge Base (semantic vector search over file contents).
+
+When a user asks a question:
+1. Use kb_search to find relevant information from the indexed files
+2. Synthesize a clear, concise answer based on the search results
+3. Always cite the source file path for each piece of information
+
+Guidelines:
+- Be concise and factual
+- Always cite sources (file paths) when answering
+- If kb_search returns no results, say so clearly — do not fabricate answers
+- Answer in the same language the user uses
+"""
+
+SYSTEM_PROMPT_AGENT = """You are a file assistant for NAS volumes on FSx for ONTAP.
+You help users browse directories, read files, and search by file name.
+
+Available tools:
+- list_files: Browse directory contents
+- read_file: Read file content (blocked for PHI-protected paths)
+- search_files: Find files by name pattern
+- get_volume_summary: Overview of volume structure
+
+Guidelines:
+- Be concise and helpful
+- If a tool returns an error, explain it clearly
+- Never fabricate file contents
+- Respect PHI guardrails
+- Answer in the same language the user uses
+
+CRITICAL — for any destructive action (delete, lock, block), use request_action_approval FIRST.
+"""
+
+# Mode-to-tools mapping
+TOOLS_KB_ONLY = ["kb_search"]
+TOOLS_AGENT_ONLY = ["list_files", "read_file", "search_files", "get_volume_summary", "request_action_approval"]
+TOOLS_ALL = ["list_files", "read_file", "search_files", "get_volume_summary", "kb_search", "request_action_approval"]
+
+SYSTEM_PROMPTS = {
+    "multi": SYSTEM_PROMPT_MULTI,
+    "kb": SYSTEM_PROMPT_KB,
+    "agent": SYSTEM_PROMPT_AGENT,
+}
+
+TOOLS_BY_MODE = {
+    "multi": TOOLS_ALL,
+    "kb": TOOLS_KB_ONLY,
+    "agent": TOOLS_AGENT_ONLY,
+}
+
 
 def run_agent_loop(
     message: str,
     history: list[dict[str, str]],
+    image: dict | None = None,
+    mode: str = "multi",
+    user_groups: list[str] | None = None,
 ) -> dict[str, Any]:
     """Run the multi-agent Bedrock Converse loop with tool_use.
 
@@ -594,14 +707,32 @@ def run_agent_loop(
     via tool_use. Each tool is associated with a specialist agent role.
     The trace shows which specialist handled each step.
 
-    Multi-Agent Roles:
-      - Supervisor: Orchestrates the overall task, decides which tools to use
-      - file-explorer: Browses, reads, searches files via S3 AP
-      - knowledge-analyst: Performs semantic search via Bedrock KB (RAG)
-      - safety-controller: Gates dangerous operations with HITL approval
+    Modes:
+      - "multi": Full multi-agent (all tools + KB)
+      - "kb": Knowledge Base only (semantic search Q&A)
+      - "agent": File operations only (no KB)
+
+    Args:
+      image: Optional dict with { data: base64_string, mediaType: "image/jpeg" }
+      mode: Agent mode ("multi", "kb", "agent")
+      user_groups: Cognito groups for KB smart routing
 
     Returns: { answer, toolCalls, model, error, guardrailApplied, approvalRequired }
     """
+    import base64
+
+    # Select system prompt and tool set based on mode
+    system_prompt = SYSTEM_PROMPTS.get(mode, SYSTEM_PROMPT_MULTI)
+    allowed_tools = TOOLS_BY_MODE.get(mode, TOOLS_ALL)
+
+    # Filter tool config to only include allowed tools
+    filtered_tools = {
+        "tools": [t for t in TOOL_CONFIG["tools"] if t["toolSpec"]["name"] in allowed_tools]
+    }
+
+    # Store user_groups for smart routing in kb_search
+    _request_context["user_groups"] = user_groups or []
+
     # Build messages from history + new message
     messages = []
     for h in history:
@@ -609,9 +740,29 @@ def run_agent_loop(
             "role": h["role"],
             "content": [{"text": h["content"]}],
         })
+
+    # Build user message content blocks (text + optional image)
+    user_content = [{"text": message}]
+    if image and image.get("data"):
+        try:
+            media_type = image.get("mediaType", "image/jpeg")
+            fmt = media_type.split("/")[-1]  # jpeg, png, gif, webp
+            if fmt == "jpg":
+                fmt = "jpeg"
+            image_bytes = base64.b64decode(image["data"])
+            user_content.append({
+                "image": {
+                    "format": fmt,
+                    "source": {"bytes": image_bytes},
+                }
+            })
+            logger.info(f"Image attached: {fmt}, {len(image_bytes)} bytes")
+        except Exception as e:
+            logger.warning(f"Failed to decode image: {e}")
+
     messages.append({
         "role": "user",
-        "content": [{"text": message}],
+        "content": user_content,
     })
 
     tool_calls_trace: list[dict[str, Any]] = []
@@ -630,8 +781,8 @@ def run_agent_loop(
             converse_params = {
                 "modelId": MODEL_ID,
                 "messages": messages,
-                "system": [{"text": SYSTEM_PROMPT}],
-                "toolConfig": TOOL_CONFIG,
+                "system": [{"text": system_prompt}],
+                "toolConfig": filtered_tools,
                 "inferenceConfig": {
                     "maxTokens": 2048,
                     "temperature": 0.3,
@@ -773,9 +924,14 @@ def handler(event, context):
 
     Actions:
       - chat: Run agent conversation loop
+      - saveSession: Save chat session to DynamoDB
+      - loadSession: Load a specific chat session
+      - listSessions: List user's chat sessions
+      - deleteSession: Delete a chat session
     """
     action = event.get("action", "")
     params = event.get("params", {})
+    user_id = event.get("userId", "anonymous")
     if isinstance(params, str):
         try:
             params = json.loads(params)
@@ -785,11 +941,159 @@ def handler(event, context):
     if action == "chat":
         message = params.get("message", "")
         history = params.get("history", [])
+        image = params.get("image", None)
+        mode = params.get("mode", "multi")
+        user_groups = event.get("userGroups", [])
 
-        if not message:
+        if not message and not image:
             return {"answer": "", "error": "Message is required", "toolCalls": []}
 
-        result = run_agent_loop(message, history)
+        result = run_agent_loop(message, history, image=image, mode=mode, user_groups=user_groups)
         return result
 
+    # --- Chat History Actions ---
+    if action == "saveSession":
+        return _save_session(user_id, params)
+    elif action == "loadSession":
+        return _load_session(user_id, params)
+    elif action == "listSessions":
+        return _list_sessions(user_id, params)
+    elif action == "deleteSession":
+        return _delete_session(user_id, params)
+
     return {"error": f"Unknown action: {action}"}
+
+
+# ─── Chat History Persistence (DynamoDB) ──────────────────────────────────────
+
+
+def _save_session(user_id: str, params: dict) -> dict:
+    """Save or update a chat session.
+
+    Params: { sessionId, title, messages: [...] }
+    """
+    if not CHAT_HISTORY_TABLE:
+        return {"error": "Chat history not configured"}
+
+    session_id = params.get("sessionId", "")
+    title = params.get("title", "Untitled")
+    messages = params.get("messages", [])
+
+    if not session_id:
+        session_id = f"sess-{int(time.time() * 1000)}"
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(CHAT_HISTORY_TABLE)
+
+    now = int(time.time())
+    # TTL: 90 days from last update
+    ttl = now + (90 * 24 * 60 * 60)
+
+    try:
+        table.put_item(Item={
+            "userId": user_id,
+            "sessionId": session_id,
+            "title": title,
+            "messages": json.dumps(messages, ensure_ascii=False),
+            "messageCount": len(messages),
+            "createdAt": Decimal(str(params.get("createdAt", now))),
+            "updatedAt": Decimal(str(now)),
+            "ttl": ttl,
+        })
+        return {"success": True, "sessionId": session_id}
+    except Exception as e:
+        logger.error(f"Save session error: {e}")
+        return {"error": str(e)}
+
+
+def _load_session(user_id: str, params: dict) -> dict:
+    """Load a specific chat session.
+
+    Params: { sessionId }
+    """
+    if not CHAT_HISTORY_TABLE:
+        return {"error": "Chat history not configured"}
+
+    session_id = params.get("sessionId", "")
+    if not session_id:
+        return {"error": "sessionId is required"}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(CHAT_HISTORY_TABLE)
+
+    try:
+        response = table.get_item(Key={"userId": user_id, "sessionId": session_id})
+        item = response.get("Item")
+        if not item:
+            return {"error": "Session not found"}
+
+        messages = json.loads(item.get("messages", "[]"))
+        return {
+            "sessionId": item["sessionId"],
+            "title": item.get("title", ""),
+            "messages": messages,
+            "messageCount": int(item.get("messageCount", 0)),
+            "createdAt": int(item.get("createdAt", 0)),
+            "updatedAt": int(item.get("updatedAt", 0)),
+        }
+    except Exception as e:
+        logger.error(f"Load session error: {e}")
+        return {"error": str(e)}
+
+
+def _list_sessions(user_id: str, params: dict) -> dict:
+    """List chat sessions for a user (most recent first).
+
+    Params: { limit? }
+    """
+    if not CHAT_HISTORY_TABLE:
+        return {"sessions": []}
+
+    limit = int(params.get("limit", 20))
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(CHAT_HISTORY_TABLE)
+
+    try:
+        response = table.query(
+            KeyConditionExpression=boto3.dynamodb.conditions.Key("userId").eq(user_id),
+            ScanIndexForward=False,
+            Limit=limit,
+            ProjectionExpression="sessionId, title, messageCount, createdAt, updatedAt",
+        )
+        sessions = []
+        for item in response.get("Items", []):
+            sessions.append({
+                "sessionId": item["sessionId"],
+                "title": item.get("title", ""),
+                "messageCount": int(item.get("messageCount", 0)),
+                "createdAt": int(item.get("createdAt", 0)),
+                "updatedAt": int(item.get("updatedAt", 0)),
+            })
+        return {"sessions": sessions}
+    except Exception as e:
+        logger.error(f"List sessions error: {e}")
+        return {"sessions": [], "error": str(e)}
+
+
+def _delete_session(user_id: str, params: dict) -> dict:
+    """Delete a chat session.
+
+    Params: { sessionId }
+    """
+    if not CHAT_HISTORY_TABLE:
+        return {"error": "Chat history not configured"}
+
+    session_id = params.get("sessionId", "")
+    if not session_id:
+        return {"error": "sessionId is required"}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(CHAT_HISTORY_TABLE)
+
+    try:
+        table.delete_item(Key={"userId": user_id, "sessionId": session_id})
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Delete session error: {e}")
+        return {"error": str(e)}

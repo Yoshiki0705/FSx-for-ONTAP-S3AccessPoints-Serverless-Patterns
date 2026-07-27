@@ -586,6 +586,36 @@ export const ko: Record<TranslationKeys, string> = {
   cardRecentTitle: "최근 변경",
   cardRecentDesc: "최근 수정된 파일 표시",
 
+  // --- Chat History ---
+  chatHistoryTitle: "대화 기록",
+  chatHistoryNew: "새 대화",
+  chatHistoryEmpty: "저장된 대화가 없습니다",
+  chatHistoryEnabled: "대화 기록",
+
+  // --- Multimodal Image Upload ---
+  multimodalAttach: "이미지 첨부",
+  multimodalPlaceholder: "이미지에 대해 질문하세요...",
+
+  // --- Agent Mode Selector ---
+  modeKb: "KB 검색",
+  modeAgent: "파일 작업",
+  modeMulti: "멀티에이전트",
+  modeKbDesc: "Knowledge Base를 통한 시맨틱 검색 (Q&A)",
+  modeAgentDesc: "파일 탐색, 검색, 읽기",
+  modeMultiDesc: "전체 기능 (KB + 파일 작업 + 안전 제어)",
+
+  // --- Agent File Sidebar ---
+  sidebarFileInfo: "파일 정보",
+  sidebarPath: "경로",
+  sidebarLoadingPerms: "권한 정보 로드 중...",
+  sidebarSecurityStyle: "보안 스타일",
+  sidebarOwner: "소유자",
+  sidebarGroup: "그룹",
+  sidebarUnixPerms: "UNIX 권한",
+  sidebarAcls: "액세스 제어 목록",
+  sidebarUser: "사용자",
+  sidebarAccess: "액세스",
+
   // --- AI Settings (Admin) ---
   rmAiSettings: "AI 설정",
   rmAiSettingsDesc: "AI 에이전트 및 Knowledge Base 활성화",
@@ -602,6 +632,14 @@ export const ko: Record<TranslationKeys, string> = {
   aiSettingsDisabled: "비활성",
   aiSettingsSaved: "설정이 저장되었습니다",
   aiSettingsStatusTitle: "현재 상태",
+  aiSettingsMultimodalTitle: "멀티모달 (이미지 입력)",
+  aiSettingsMultimodalDesc: "이미지를 드래그 앤 드롭하여 AI에 질문 (Bedrock Vision)",
+  aiSettingsPerImage: "이미지",
+  aiSettingsChatHistoryTitle: "대화 기록 저장",
+  aiSettingsChatHistoryDesc: "채팅 기록을 DynamoDB에 영구 저장 (90일 TTL)",
+  aiSettingsSmartRoutingTitle: "스마트 라우팅",
+  aiSettingsSmartRoutingDesc: "Cognito 그룹에 따라 KB 검색 범위를 자동 제한",
+  aiSettingsGroupMapping: "groupApMapping 설정 필요",
   aiDisabledTitle: "AI 기능이 비활성화됨",
   aiDisabledDesc: "이 기능은 관리자에 의해 비활성화되었습니다. 활성화하려면 관리 > 리소스 관리 > AI 설정에서 변경하세요.",
 

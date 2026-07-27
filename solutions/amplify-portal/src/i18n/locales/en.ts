@@ -667,6 +667,36 @@ export const en: Record<TranslationKeys, string> = {
   cardRecentTitle: "Recent Changes",
   cardRecentDesc: "Show recently modified files",
 
+  // --- Chat History ---
+  chatHistoryTitle: "Chat History",
+  chatHistoryNew: "New Chat",
+  chatHistoryEmpty: "No saved conversations",
+  chatHistoryEnabled: "Chat History",
+
+  // --- Multimodal Image Upload ---
+  multimodalAttach: "Attach image",
+  multimodalPlaceholder: "Ask about the image...",
+
+  // --- Agent Mode Selector ---
+  modeKb: "KB Search",
+  modeAgent: "File Ops",
+  modeMulti: "Multi-Agent",
+  modeKbDesc: "Semantic search via Knowledge Base (Q&A)",
+  modeAgentDesc: "Browse, search, and read files",
+  modeMultiDesc: "All features (KB + File Ops + Safety)",
+
+  // --- Agent File Sidebar ---
+  sidebarFileInfo: "File Info",
+  sidebarPath: "Path",
+  sidebarLoadingPerms: "Loading permissions...",
+  sidebarSecurityStyle: "Security Style",
+  sidebarOwner: "Owner",
+  sidebarGroup: "Group",
+  sidebarUnixPerms: "UNIX Permissions",
+  sidebarAcls: "Access Control List",
+  sidebarUser: "User",
+  sidebarAccess: "Access",
+
   // --- AI Settings (Admin) ---
   rmAiSettings: "AI Settings",
   rmAiSettingsDesc: "Enable/disable AI Agent and Knowledge Base",
@@ -683,6 +713,14 @@ export const en: Record<TranslationKeys, string> = {
   aiSettingsDisabled: "Disabled",
   aiSettingsSaved: "Settings saved",
   aiSettingsStatusTitle: "Current status",
+  aiSettingsMultimodalTitle: "Multimodal (Image Input)",
+  aiSettingsMultimodalDesc: "Drag & drop images to ask AI questions (Bedrock Vision)",
+  aiSettingsPerImage: "image",
+  aiSettingsChatHistoryTitle: "Chat History Persistence",
+  aiSettingsChatHistoryDesc: "Save chat sessions to DynamoDB (90-day TTL)",
+  aiSettingsSmartRoutingTitle: "Smart Routing",
+  aiSettingsSmartRoutingDesc: "Auto-scope KB search results by Cognito group membership",
+  aiSettingsGroupMapping: "Requires groupApMapping config",
   aiDisabledTitle: "AI features are disabled",
   aiDisabledDesc: "This feature has been disabled by an administrator. To enable it, go to Admin > Resource Management > AI Settings.",
 

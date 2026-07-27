@@ -255,7 +255,15 @@ def _update_portal_settings(event, user_id):
     value = event.get("value", "")
 
     # Whitelist of allowed settings keys
-    allowed_keys = {"aiAgentEnabled", "aiSearchEnabled"}
+    allowed_keys = {
+        "aiAgentEnabled",
+        "aiSearchEnabled",
+        "aiMultimodalEnabled",
+        "aiSmartRoutingEnabled",
+        "chatHistoryEnabled",
+        "aiVoiceEnabled",
+        "agentDirectoryEnabled",
+    }
     if key not in allowed_keys:
         return {"error": f"Setting '{key}' is not allowed. Valid: {sorted(allowed_keys)}"}
 

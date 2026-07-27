@@ -15,6 +15,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import { ActionApproval, type ApprovalRequest } from "./ActionApproval";
+import { AgentFileSidebar } from "./AgentFileSidebar";
 
 const client = generateClient<Schema>();
 
@@ -219,6 +220,14 @@ function extractCitations(toolCalls: ToolCall[]): string[] {
 
 // --- Component ---
 
+interface ChatSession {
+  sessionId: string;
+  title: string;
+  messageCount: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export function AgentChat() {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -229,6 +238,134 @@ export function AgentChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const requestStartRef = useRef<number>(0);
+
+  // --- Chat History State ---
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [showFileSidebar, setShowFileSidebar] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<{ data: string; mediaType: string; preview: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [agentMode, setAgentMode] = useState<"multi" | "kb" | "agent">("multi");
+
+  // Extract referenced files from tool traces
+  const referencedFiles = messages
+    .flatMap((m) => m.toolCalls || [])
+    .filter((tc) => tc.name === "read_file" || tc.name === "list_files")
+    .map((tc) => {
+      if (tc.name === "read_file") return (tc.input as { key?: string }).key || "";
+      if (tc.name === "list_files") return (tc.input as { prefix?: string }).prefix || "/";
+      return "";
+    })
+    .filter((f) => f && f !== "/")
+    .filter((f, i, arr) => arr.indexOf(f) === i); // deduplicate
+
+  // Load session list on mount
+  useEffect(() => {
+    loadSessions();
+  }, []);
+
+  // Auto-save after messages change (debounced)
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    if (messages.length === 0 || !currentSessionId) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveCurrentSession();
+    }, 2000);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [messages, currentSessionId]);
+
+  async function loadSessions() {
+    try {
+      const response = await (client.queries as any).agentQuery({
+        action: "listSessions",
+        params: JSON.stringify({ limit: 20 }),
+      });
+      const data = parseResponse<{ sessions: ChatSession[] }>(response);
+      if (data?.sessions) setSessions(data.sessions);
+    } catch { /* silent */ }
+  }
+
+  async function saveCurrentSession() {
+    if (messages.length === 0) return;
+    const title = messages[0]?.content.slice(0, 50) || "Untitled";
+    const sessionId = currentSessionId || `sess-${Date.now()}`;
+    if (!currentSessionId) setCurrentSessionId(sessionId);
+
+    try {
+      await (client.queries as any).agentQuery({
+        action: "saveSession",
+        params: JSON.stringify({
+          sessionId,
+          title,
+          messages: messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp })),
+          createdAt: messages[0]?.timestamp || Date.now(),
+        }),
+      });
+      loadSessions();
+    } catch { /* silent fail */ }
+  }
+
+  async function loadSession(sessionId: string) {
+    try {
+      const response = await (client.queries as any).agentQuery({
+        action: "loadSession",
+        params: JSON.stringify({ sessionId }),
+      });
+      const data = parseResponse<{ messages: Array<{ role: string; content: string; timestamp: number }> }>(response);
+      if (data?.messages) {
+        setMessages(data.messages.map((m) => ({
+          id: `msg-${m.timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+          role: m.role as "user" | "assistant" | "system",
+          content: m.content,
+          timestamp: m.timestamp,
+        })));
+        setCurrentSessionId(sessionId);
+        setShowHistory(false);
+      }
+    } catch { /* silent */ }
+  }
+
+  async function deleteSession(sessionId: string) {
+    try {
+      await (client.queries as any).agentQuery({
+        action: "deleteSession",
+        params: JSON.stringify({ sessionId }),
+      });
+      setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId));
+      if (currentSessionId === sessionId) {
+        setMessages([]);
+        setCurrentSessionId("");
+      }
+    } catch { /* silent */ }
+  }
+
+  // --- Image Upload Handlers ---
+  function handleImageSelect(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) { setError("Image must be under 5MB"); return; }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const base64 = dataUrl.split(",")[1];
+      setAttachedImage({ data: base64, mediaType: file.type, preview: dataUrl });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleImageSelect(file);
+  }
+
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleImageSelect(file);
+    e.target.value = "";
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -270,10 +407,18 @@ export function AgentChat() {
         content: m.content,
       }));
 
+      const chatParams: Record<string, unknown> = { message: messageText, history, mode: agentMode };
+      if (attachedImage) {
+        chatParams.image = { data: attachedImage.data, mediaType: attachedImage.mediaType };
+      }
+
       const response = await (client.queries as any).agentQuery({
         action: "chat",
-        params: JSON.stringify({ message: messageText, history }),
+        params: JSON.stringify(chatParams),
       });
+
+      // Clear image after sending
+      setAttachedImage(null);
 
       const data = parseResponse<AgentResponse>(response);
       const responseTimeMs = Date.now() - requestStartRef.current;
@@ -321,7 +466,7 @@ export function AgentChat() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  const clearHistory = () => { setMessages([]); setError(null); setPendingApproval(null); };
+  const clearHistory = () => { setMessages([]); setError(null); setPendingApproval(null); setCurrentSessionId(""); };
   const handleApprove = () => { setPendingApproval(null); setMessages((prev) => [...prev, { id: generateId(), role: "system", content: `✅ ${t("approvalApproved")}`, timestamp: Date.now() }]); };
   const handleReject = () => { setPendingApproval(null); setMessages((prev) => [...prev, { id: generateId(), role: "system", content: `❌ ${t("approvalRejected")}`, timestamp: Date.now() }]); };
 
@@ -330,10 +475,66 @@ export function AgentChat() {
       {/* Header */}
       <div className="agent-chat-header">
         <h2>🤖 {t("agentTitle")}</h2>
-        {messages.length > 0 && (
-          <button className="btn-sm" onClick={clearHistory} title={t("agentClear")}>🗑️</button>
-        )}
+        <div className="agent-header-actions">
+          <button className="btn-sm" onClick={() => setShowHistory(!showHistory)} title={t("chatHistoryTitle")}>📜</button>
+          {referencedFiles.length > 0 && (
+            <button className="btn-sm" onClick={() => setShowFileSidebar(!showFileSidebar)} title={t("sidebarFileInfo")}>📂</button>
+          )}
+          {messages.length > 0 && (
+            <button className="btn-sm" onClick={clearHistory} title={t("agentClear")}>🗑️</button>
+          )}
+        </div>
       </div>
+
+      {/* Mode Selector */}
+      <div className="agent-mode-selector">
+        <button
+          className={`mode-pill ${agentMode === "kb" ? "active" : ""}`}
+          onClick={() => setAgentMode("kb")}
+          title={t("modeKbDesc")}
+        >
+          🧠 {t("modeKb")}
+        </button>
+        <button
+          className={`mode-pill ${agentMode === "agent" ? "active" : ""}`}
+          onClick={() => setAgentMode("agent")}
+          title={t("modeAgentDesc")}
+        >
+          📁 {t("modeAgent")}
+        </button>
+        <button
+          className={`mode-pill ${agentMode === "multi" ? "active" : ""}`}
+          onClick={() => setAgentMode("multi")}
+          title={t("modeMultiDesc")}
+        >
+          🤖 {t("modeMulti")}
+        </button>
+      </div>
+
+      {/* Session History Panel */}
+      {showHistory && (
+        <div className="chat-history-panel">
+          <div className="chat-history-header">
+            <h4>📜 {t("chatHistoryTitle")}</h4>
+            <button className="btn-sm" onClick={() => { clearHistory(); setShowHistory(false); }}>+ {t("chatHistoryNew")}</button>
+          </div>
+          {sessions.length === 0 ? (
+            <p className="chat-history-empty">{t("chatHistoryEmpty")}</p>
+          ) : (
+            <div className="chat-history-list">
+              {sessions.map((s) => (
+                <div key={s.sessionId} className={`chat-history-item ${s.sessionId === currentSessionId ? "active" : ""}`}>
+                  <button className="chat-history-item-btn" onClick={() => loadSession(s.sessionId)}>
+                    <span className="history-title">{s.title}</span>
+                    <span className="history-meta">{s.messageCount} msgs · {new Date(s.updatedAt * 1000).toLocaleDateString()}</span>
+                  </button>
+                  <button className="chat-history-delete" onClick={() => deleteSession(s.sessionId)} title="Delete">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <div className="agent-chat-messages" role="log" aria-label={t("agentTitle")}>
@@ -343,9 +544,15 @@ export function AgentChat() {
             <h3>{t("agentWelcomeTitle")}</h3>
             <p>{t("agentWelcomeDesc")}</p>
 
-            {/* Card Grid — Task Examples (inspired by RAG-FSxN-CDK AgentCard) */}
+            {/* Card Grid — Task Examples (filtered by mode) */}
             <div className="agent-card-grid">
-              {TASK_CARDS.map((card) => (
+              {TASK_CARDS
+                .filter((card) => {
+                  if (agentMode === "kb") return card.agent === "knowledge-analyst";
+                  if (agentMode === "agent") return card.agent === "file-explorer" || card.agent === "safety-controller";
+                  return true; // multi: show all
+                })
+                .map((card) => (
                 <button
                   key={card.id}
                   className="agent-task-card"
@@ -491,26 +698,61 @@ export function AgentChat() {
       )}
 
       {/* Input */}
-      <div className="agent-chat-input">
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={t("agentPlaceholder")}
-          disabled={loading}
-          rows={2}
-          aria-label={t("agentInputLabel")}
-        />
-        <button className="agent-send-btn" onClick={() => sendMessage()} disabled={loading || !input.trim()} aria-label={t("agentSendLabel")}>
-          {loading ? "⏳" : "➤"}
-        </button>
+      <div
+        className="agent-chat-input"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}
+      >
+        {/* Image Preview */}
+        {attachedImage && (
+          <div className="agent-image-preview">
+            <img src={attachedImage.preview} alt="Attached" />
+            <button className="agent-image-remove" onClick={() => setAttachedImage(null)}>✕</button>
+          </div>
+        )}
+        <div className="agent-input-row">
+          <button
+            className="agent-attach-btn"
+            onClick={() => fileInputRef.current?.click()}
+            title={t("multimodalAttach")}
+            disabled={loading}
+          >
+            📎
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            onChange={handleFileInput}
+            style={{ display: "none" }}
+          />
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={attachedImage ? t("multimodalPlaceholder") : t("agentPlaceholder")}
+            disabled={loading}
+            rows={2}
+            aria-label={t("agentInputLabel")}
+          />
+          <button className="agent-send-btn" onClick={() => sendMessage()} disabled={loading || (!input.trim() && !attachedImage)} aria-label={t("agentSendLabel")}>
+            {loading ? "⏳" : "➤"}
+          </button>
+        </div>
       </div>
 
       {/* HITL */}
       {pendingApproval && (
         <ActionApproval request={pendingApproval} onApprove={handleApprove} onReject={handleReject} />
       )}
+
+      {/* File Sidebar (permissions) */}
+      <AgentFileSidebar
+        referencedFiles={referencedFiles}
+        visible={showFileSidebar}
+        onClose={() => setShowFileSidebar(false)}
+      />
     </div>
   );
 }

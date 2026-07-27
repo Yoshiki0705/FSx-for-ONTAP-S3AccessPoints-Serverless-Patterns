@@ -30,6 +30,9 @@ function parseResponse<T>(response: { data?: unknown }): T | null {
 interface PortalSettings {
   aiAgentEnabled: boolean;
   aiSearchEnabled: boolean;
+  aiMultimodalEnabled: boolean;
+  aiSmartRoutingEnabled: boolean;
+  chatHistoryEnabled: boolean;
 }
 
 interface SettingsResponse {
@@ -50,7 +53,7 @@ interface AiSettingsManagerProps {
 export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSettingsManagerProps) {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<PortalSettings>(
-    initialSettings ?? { aiAgentEnabled: false, aiSearchEnabled: false }
+    initialSettings ? { ...initialSettings, aiMultimodalEnabled: false, aiSmartRoutingEnabled: false, chatHistoryEnabled: false } : { aiAgentEnabled: false, aiSearchEnabled: false, aiMultimodalEnabled: false, aiSmartRoutingEnabled: false, chatHistoryEnabled: false }
   );
   const [loading, setLoading] = useState(!initialSettings);
   const [saving, setSaving] = useState<string | null>(null);
@@ -70,6 +73,9 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
         setSettings({
           aiAgentEnabled: result.settings.aiAgentEnabled === true,
           aiSearchEnabled: result.settings.aiSearchEnabled === true,
+          aiMultimodalEnabled: result.settings.aiMultimodalEnabled === true,
+          aiSmartRoutingEnabled: result.settings.aiSmartRoutingEnabled === true,
+          chatHistoryEnabled: result.settings.chatHistoryEnabled === true,
         });
       }
       if (result?.error) setError(result.error);
@@ -222,6 +228,87 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
         </details>
       </div>
 
+      {/* ─── Multimodal Image (requires Agent) ─── */}
+      <div className="ai-settings-feature-section">
+        <div className="ai-settings-toggle-card">
+          <div className="toggle-info">
+            <span className="toggle-icon">🖼️</span>
+            <div>
+              <h4>{t("aiSettingsMultimodalTitle")}</h4>
+              <p>{t("aiSettingsMultimodalDesc")}</p>
+            </div>
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={settings.aiMultimodalEnabled}
+              onChange={() => toggleSetting("aiMultimodalEnabled")}
+              disabled={saving !== null || !settings.aiAgentEnabled}
+            />
+            <span className="toggle-slider" />
+          </label>
+          {saving === "aiMultimodalEnabled" && <span className="toggle-saving">⏳</span>}
+        </div>
+        <div className="ai-settings-feature-meta">
+          <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
+          <span className="meta-cost">~$0.003 / {t("aiSettingsPerImage")}</span>
+        </div>
+      </div>
+
+      {/* ─── Chat History ─── */}
+      <div className="ai-settings-feature-section">
+        <div className="ai-settings-toggle-card">
+          <div className="toggle-info">
+            <span className="toggle-icon">📜</span>
+            <div>
+              <h4>{t("aiSettingsChatHistoryTitle")}</h4>
+              <p>{t("aiSettingsChatHistoryDesc")}</p>
+            </div>
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={settings.chatHistoryEnabled}
+              onChange={() => toggleSetting("chatHistoryEnabled")}
+              disabled={saving !== null || !settings.aiAgentEnabled}
+            />
+            <span className="toggle-slider" />
+          </label>
+          {saving === "chatHistoryEnabled" && <span className="toggle-saving">⏳</span>}
+        </div>
+        <div className="ai-settings-feature-meta">
+          <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
+          <span className="meta-cost">~$0 / {t("aiSettingsPerMonth")}</span>
+        </div>
+      </div>
+
+      {/* ─── Smart Routing (requires Search) ─── */}
+      <div className="ai-settings-feature-section">
+        <div className="ai-settings-toggle-card">
+          <div className="toggle-info">
+            <span className="toggle-icon">🔀</span>
+            <div>
+              <h4>{t("aiSettingsSmartRoutingTitle")}</h4>
+              <p>{t("aiSettingsSmartRoutingDesc")}</p>
+            </div>
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={settings.aiSmartRoutingEnabled}
+              onChange={() => toggleSetting("aiSmartRoutingEnabled")}
+              disabled={saving !== null || !settings.aiSearchEnabled}
+            />
+            <span className="toggle-slider" />
+          </label>
+          {saving === "aiSmartRoutingEnabled" && <span className="toggle-saving">⏳</span>}
+        </div>
+        <div className="ai-settings-feature-meta">
+          <span className="meta-badge setup-needed">⚙️ {t("aiSettingsGroupMapping")}</span>
+          <span className="meta-cost">$0</span>
+        </div>
+      </div>
+
       {/* ─── Status Summary ─── */}
       <div className="ai-settings-status">
         <h4>{t("aiSettingsStatusTitle")}</h4>
@@ -240,6 +327,30 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               <td>
                 <span className={`status-badge ${settings.aiSearchEnabled ? "enabled" : "disabled"}`}>
                   {settings.aiSearchEnabled ? t("aiSettingsEnabled") : t("aiSettingsDisabled")}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>🖼️ {t("aiSettingsMultimodalTitle")}</td>
+              <td>
+                <span className={`status-badge ${settings.aiMultimodalEnabled ? "enabled" : "disabled"}`}>
+                  {settings.aiMultimodalEnabled ? t("aiSettingsEnabled") : t("aiSettingsDisabled")}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>📜 {t("aiSettingsChatHistoryTitle")}</td>
+              <td>
+                <span className={`status-badge ${settings.chatHistoryEnabled ? "enabled" : "disabled"}`}>
+                  {settings.chatHistoryEnabled ? t("aiSettingsEnabled") : t("aiSettingsDisabled")}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>🔀 {t("aiSettingsSmartRoutingTitle")}</td>
+              <td>
+                <span className={`status-badge ${settings.aiSmartRoutingEnabled ? "enabled" : "disabled"}`}>
+                  {settings.aiSmartRoutingEnabled ? t("aiSettingsEnabled") : t("aiSettingsDisabled")}
                 </span>
               </td>
             </tr>
