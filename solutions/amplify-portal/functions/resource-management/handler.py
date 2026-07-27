@@ -250,11 +250,9 @@ def _update_portal_settings(event, user_id):
     if not PORTAL_SETTINGS_TABLE:
         return {"error": "Portal settings table not configured"}
 
-    params = event.get("params", {})
-    if isinstance(params, str):
-        params = json.loads(params)
-    key = params.get("key", "")
-    value = params.get("value", "")
+    # Params are spread into event by the AppSync resolver (rm-dispatch.js)
+    key = event.get("key", "")
+    value = event.get("value", "")
 
     # Whitelist of allowed settings keys
     allowed_keys = {"aiAgentEnabled", "aiSearchEnabled"}
