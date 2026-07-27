@@ -15,6 +15,8 @@ import { AuditLog } from "./components/AuditLog";
 import { ArpStatus } from "./components/ArpStatus";
 import { SnaplockStatus } from "./components/SnaplockStatus";
 import { ResourceManagement } from "./components/ResourceManagement";
+import { AgentChat } from "./components/AgentChat";
+import { SemanticSearch } from "./components/SemanticSearch";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { useTranslation } from "./i18n";
@@ -23,7 +25,7 @@ import type { TranslationKeys } from "./i18n";
 
 type Section =
   | "files" | "favorites" | "recent" | "upload"
-  | "process" | "history" | "analytics"
+  | "process" | "agent" | "search" | "history" | "analytics"
   | "snapshots" | "arp" | "lock"
   | "versions" | "audit" | "resources";
 
@@ -35,6 +37,8 @@ const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: 
   { id: "upload", icon: "📤", labelKey: "navUpload", group: "browse" },
   // AI & Processing group
   { id: "process", icon: "⚡", labelKey: "navAiProcessing", group: "actions" },
+  { id: "agent", icon: "🤖", labelKey: "navAgent", group: "actions" },
+  { id: "search", icon: "🔍", labelKey: "navSearch", group: "actions" },
   { id: "history", icon: "📋", labelKey: "navJobHistory", group: "actions" },
   { id: "analytics", icon: "📊", labelKey: "navAnalytics", group: "actions" },
   // Data Protection group
@@ -72,7 +76,7 @@ function App() {
   // Persist navigation state in URL hash for refresh resilience
   const getInitialSection = (): Section => {
     const hash = window.location.hash.replace("#", "");
-    const valid: Section[] = ["files","favorites","recent","upload","process","history","analytics","snapshots","arp","lock","versions","audit","resources"];
+    const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources"];
     return valid.includes(hash as Section) ? (hash as Section) : "files";
   };
 
@@ -87,7 +91,7 @@ function App() {
   useEffect(() => {
     const onHashChange = () => {
       const hash = window.location.hash.replace("#", "");
-      const valid: Section[] = ["files","favorites","recent","upload","process","history","analytics","snapshots","arp","lock","versions","audit","resources"];
+      const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources"];
       if (valid.includes(hash as Section) && hash !== activeSection) {
         setActiveSectionRaw(hash as Section);
       }
@@ -193,6 +197,17 @@ function App() {
             onJobStarted={(arn) => {
               setActiveJobArn(arn);
               setActiveSection("history");
+            }}
+          />
+        )}
+        {activeSection === "agent" && <AgentChat />}
+        {activeSection === "search" && (
+          <SemanticSearch
+            onNavigateToFile={(fileKey) => {
+              const parts = fileKey.split("/");
+              parts.pop();
+              setSelectedPrefix(parts.length > 0 ? parts.join("/") + "/" : "");
+              setActiveSection("files");
             }}
           />
         )}
