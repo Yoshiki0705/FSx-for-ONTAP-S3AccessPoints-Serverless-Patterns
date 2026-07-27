@@ -6,6 +6,8 @@ Step-by-step demo guide for the web-based file portal that provides file browsin
 
 This portal delivers a file management experience similar to Box, Google Drive, or SharePoint — applied to NAS data on FSx for ONTAP. No data copying required — files written via NFS/SMB are immediately accessible from the browser.
 
+> **Looking for the end-user guide?** If the portal is already deployed and you just need to learn how to use it, see the [User Guide](portal-user-guide.md) instead.
+
 ---
 
 ## Environment Setup (~15 minutes)

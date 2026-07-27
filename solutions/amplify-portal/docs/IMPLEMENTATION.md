@@ -3,6 +3,8 @@
 > Developer/AI reference for understanding, reproducing, and customizing the portal.
 > Each section documents not just WHAT was implemented, but WHY — the design intent behind each decision.
 
+> **End users**: This document is for developers and AI agents. If you're looking for how to use the portal day-to-day, see the [User Guide](../../docs/en/portal-user-guide.md) ([日本語](../../docs/ja/portal-user-guide.md)).
+
 ## Design Intent Summary
 
 This portal implements a **System Manager-equivalent web UI** for FSx for ONTAP, accessible via browser without VPN or CLI tools. Key constraints that shaped the architecture:
