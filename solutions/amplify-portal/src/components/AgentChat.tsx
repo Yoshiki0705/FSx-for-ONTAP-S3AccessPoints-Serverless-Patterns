@@ -316,9 +316,16 @@ export function AgentChat() {
             )}
 
             <div className="agent-message-content">
-              {msg.content.split("\n").map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
+              {msg.content
+                .replace(/<thinking>[\s\S]*?<\/thinking>/g, "")
+                .split("\n")
+                .filter((line) => line.trim())
+                .map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              {!msg.content.replace(/<thinking>[\s\S]*?<\/thinking>/g, "").trim() && msg.toolCalls && msg.toolCalls.length > 0 && (
+                <p className="agent-processing-note">{t("agentThinking")}</p>
+              )}
             </div>
 
             {msg.model && (
