@@ -5,9 +5,11 @@ export function request(ctx) {
   const params = typeof ctx.arguments.params === "string"
     ? JSON.parse(ctx.arguments.params)
     : (ctx.arguments.params || {});
+  // Pass user groups for KB smart routing (group-based search scope)
+  const groups = (ctx.identity.groups || []);
   return {
     operation: "Invoke",
-    payload: { action, params, userId: ctx.identity.username },
+    payload: { action, params, userId: ctx.identity.username, userGroups: groups },
   };
 }
 

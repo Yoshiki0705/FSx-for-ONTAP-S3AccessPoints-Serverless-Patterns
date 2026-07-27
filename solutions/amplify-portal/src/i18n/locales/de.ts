@@ -584,6 +584,36 @@ export const de: Record<TranslationKeys, string> = {
   cardRecentTitle: "Letzte Änderungen",
   cardRecentDesc: "Kürzlich geänderte Dateien anzeigen",
 
+  // --- Chat History ---
+  chatHistoryTitle: "Gesprächsverlauf",
+  chatHistoryNew: "Neues Gespräch",
+  chatHistoryEmpty: "Keine gespeicherten Gespräche",
+  chatHistoryEnabled: "Verlauf",
+
+  // --- Multimodal Image Upload ---
+  multimodalAttach: "Bild anhängen",
+  multimodalPlaceholder: "Frage zum Bild stellen...",
+
+  // --- Agent Mode Selector ---
+  modeKb: "KB-Suche",
+  modeAgent: "Dateien",
+  modeMulti: "Multi-Agent",
+  modeKbDesc: "Semantische Suche über Knowledge Base (Q&A)",
+  modeAgentDesc: "Dateien durchsuchen, suchen und lesen",
+  modeMultiDesc: "Alle Funktionen (KB + Dateien + Sicherheit)",
+
+  // --- Agent File Sidebar ---
+  sidebarFileInfo: "Dateiinfo",
+  sidebarPath: "Pfad",
+  sidebarLoadingPerms: "Berechtigungen werden geladen...",
+  sidebarSecurityStyle: "Sicherheitsstil",
+  sidebarOwner: "Besitzer",
+  sidebarGroup: "Gruppe",
+  sidebarUnixPerms: "UNIX-Berechtigungen",
+  sidebarAcls: "Zugriffssteuerungsliste",
+  sidebarUser: "Benutzer",
+  sidebarAccess: "Zugriff",
+
   // --- AI Settings (Admin) ---
   rmAiSettings: "KI-Einstellungen",
   rmAiSettingsDesc: "KI-Agent und Knowledge Base aktivieren/deaktivieren",
@@ -600,6 +630,14 @@ export const de: Record<TranslationKeys, string> = {
   aiSettingsDisabled: "Deaktiviert",
   aiSettingsSaved: "Einstellungen gespeichert",
   aiSettingsStatusTitle: "Aktueller Status",
+  aiSettingsMultimodalTitle: "Multimodal (Bildeingabe)",
+  aiSettingsMultimodalDesc: "Bilder per Drag & Drop an KI-Fragen anhängen (Bedrock Vision)",
+  aiSettingsPerImage: "Bild",
+  aiSettingsChatHistoryTitle: "Gesprächsverlauf speichern",
+  aiSettingsChatHistoryDesc: "Chat-Verlauf in DynamoDB speichern (90 Tage TTL)",
+  aiSettingsSmartRoutingTitle: "Intelligentes Routing",
+  aiSettingsSmartRoutingDesc: "KB-Suchbereich automatisch nach Cognito-Gruppe einschränken",
+  aiSettingsGroupMapping: "Erfordert groupApMapping-Konfiguration",
   aiDisabledTitle: "KI-Funktionen sind deaktiviert",
   aiDisabledDesc: "Diese Funktion wurde von einem Administrator deaktiviert. Zum Aktivieren gehen Sie zu Admin > Ressourcenverwaltung > KI-Einstellungen.",
 

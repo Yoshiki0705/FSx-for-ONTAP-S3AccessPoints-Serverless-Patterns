@@ -3697,3 +3697,209 @@ button[type="submit"]:disabled {
 .setup-note { margin-top: 1rem; padding: 0.75rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; }
 .setup-note strong { color: #1e40af; font-size: 0.8rem; }
 .setup-note p { margin: 0.25rem 0 0; color: #1e40af; font-size: 0.8rem; }
+
+/* ─── Chat History Panel ──────────────────────────────────────────────────── */
+
+.agent-header-actions { display: flex; gap: 0.25rem; }
+
+.chat-history-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #f8fafc;
+}
+.chat-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 1;
+}
+.chat-history-header h4 { margin: 0; font-size: 0.85rem; }
+.chat-history-empty { padding: 1rem; text-align: center; color: #94a3b8; font-size: 0.8rem; }
+.chat-history-list { padding: 0.25rem; }
+.chat-history-item {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  margin-bottom: 2px;
+  transition: background 0.15s;
+}
+.chat-history-item:hover { background: #e2e8f0; }
+.chat-history-item.active { background: #dbeafe; }
+.chat-history-item-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.history-title { font-size: 0.8rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.history-meta { font-size: 0.7rem; color: #94a3b8; }
+.chat-history-delete {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+}
+.chat-history-delete:hover { background: #fee2e2; color: #dc2626; }
+
+/* ─── Agent File Sidebar ──────────────────────────────────────────────────── */
+
+.agent-file-sidebar {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  margin-top: 0.5rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.afs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+}
+.afs-header h4 { margin: 0; font-size: 0.85rem; }
+.afs-file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.afs-file-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+.afs-file-item:hover { background: #edf2f7; }
+.afs-file-item.active { background: #dbeafe; border-color: #93c5fd; }
+.afs-file-icon { font-size: 0.7rem; }
+.afs-file-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.afs-details { padding: 0.75rem; }
+.afs-path { margin-bottom: 0.5rem; }
+.afs-path-value { display: block; font-size: 0.75rem; margin-top: 0.2rem; word-break: break-all; background: #f1f5f9; padding: 0.3rem 0.5rem; border-radius: 4px; }
+.afs-label { font-size: 0.75rem; font-weight: 600; color: #64748b; }
+.afs-loading { padding: 0.5rem; color: #64748b; font-size: 0.8rem; }
+.afs-error { padding: 0.5rem; color: #dc2626; font-size: 0.8rem; }
+.afs-permissions { display: flex; flex-direction: column; gap: 0.4rem; }
+.afs-perm-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+.afs-badge { padding: 0.1rem 0.4rem; background: #e2e8f0; border-radius: 3px; font-size: 0.7rem; font-weight: 600; }
+.afs-acls { margin-top: 0.5rem; }
+.afs-acl-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 0.3rem; }
+.afs-acl-table th { text-align: left; padding: 0.2rem 0.4rem; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; color: #64748b; }
+.afs-acl-table td { padding: 0.2rem 0.4rem; border-bottom: 1px solid #f1f5f9; }
+.afs-access-badge { padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.65rem; font-weight: 600; }
+.afs-access-badge.read { background: #dcfce7; color: #166534; }
+.afs-access-badge.write { background: #fef3c7; color: #92400e; }
+.afs-access-badge.full_control { background: #fee2e2; color: #991b1b; }
+
+/* ─── Multimodal Image Upload ─────────────────────────────────────────────── */
+
+.agent-chat-input {
+  position: relative;
+}
+.agent-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+.agent-input-row textarea { flex: 1; }
+.agent-attach-btn {
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: background 0.15s;
+}
+.agent-attach-btn:hover { background: #f1f5f9; }
+.agent-attach-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.agent-image-preview {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.agent-image-preview img {
+  max-width: 200px;
+  max-height: 120px;
+  object-fit: cover;
+  display: block;
+}
+.agent-image-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.agent-image-remove:hover { background: rgba(220,38,38,0.8); }
+
+/* ─── Agent Mode Selector ─────────────────────────────────────────────────── */
+
+.agent-mode-selector {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: #f1f5f9;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+.mode-pill {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #64748b;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.mode-pill:hover { background: #e2e8f0; color: #334155; }
+.mode-pill.active {
+  background: white;
+  color: #1e40af;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-weight: 600;
+}

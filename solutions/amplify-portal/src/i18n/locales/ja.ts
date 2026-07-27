@@ -674,6 +674,36 @@ export const ja = {
   cardRecentTitle: "最近の変更",
   cardRecentDesc: "最近更新されたファイルを表示",
 
+  // --- Chat History ---
+  chatHistoryTitle: "会話履歴",
+  chatHistoryNew: "新規会話",
+  chatHistoryEmpty: "保存された会話はありません",
+  chatHistoryEnabled: "会話履歴",
+
+  // --- Multimodal Image Upload ---
+  multimodalAttach: "画像を添付",
+  multimodalPlaceholder: "画像について質問してください...",
+
+  // --- Agent Mode Selector ---
+  modeKb: "KB 検索",
+  modeAgent: "ファイル操作",
+  modeMulti: "マルチエージェント",
+  modeKbDesc: "Knowledge Base によるセマンティック検索（Q&A）",
+  modeAgentDesc: "ファイルの閲覧・検索・読み取り",
+  modeMultiDesc: "全機能（KB + ファイル操作 + 安全制御）",
+
+  // --- Agent File Sidebar ---
+  sidebarFileInfo: "ファイル情報",
+  sidebarPath: "パス",
+  sidebarLoadingPerms: "権限情報を読み込み中...",
+  sidebarSecurityStyle: "セキュリティスタイル",
+  sidebarOwner: "所有者",
+  sidebarGroup: "グループ",
+  sidebarUnixPerms: "UNIX パーミッション",
+  sidebarAcls: "アクセス制御リスト",
+  sidebarUser: "ユーザー",
+  sidebarAccess: "アクセス権",
+
   // --- AI Settings (Admin) ---
   rmAiSettings: "AI 設定",
   rmAiSettingsDesc: "AI エージェント・ナレッジベースの有効化",
@@ -690,6 +720,14 @@ export const ja = {
   aiSettingsDisabled: "無効",
   aiSettingsSaved: "設定を保存しました",
   aiSettingsStatusTitle: "現在の状態",
+  aiSettingsMultimodalTitle: "マルチモーダル（画像入力）",
+  aiSettingsMultimodalDesc: "画像をドラッグ＆ドロップして AI に質問（Bedrock Vision）",
+  aiSettingsPerImage: "画像",
+  aiSettingsChatHistoryTitle: "会話履歴の保存",
+  aiSettingsChatHistoryDesc: "チャット履歴を DynamoDB に永続化（90日間 TTL）",
+  aiSettingsSmartRoutingTitle: "スマートルーティング",
+  aiSettingsSmartRoutingDesc: "Cognito グループに応じて KB 検索範囲を自動制限",
+  aiSettingsGroupMapping: "groupApMapping 設定が必要",
   aiDisabledTitle: "AI 機能は無効です",
   aiDisabledDesc: "この機能は管理者により無効化されています。有効にするには、管理 > リソース管理 > AI 設定 から設定を変更してください。",
 

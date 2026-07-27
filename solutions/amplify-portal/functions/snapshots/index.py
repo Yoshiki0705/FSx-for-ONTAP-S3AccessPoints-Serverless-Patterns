@@ -150,6 +150,70 @@ def handler(event, context):
                 "error": None,
             }
 
+        # --- Action: getFilePermissions ---
+        if action == "getFilePermissions":
+            file_path = event.get("filePath", "")
+            if not file_path:
+                return {"error": "filePath is required", "permissions": None}
+
+            # Ensure path starts with /vol/<volume_name>
+            if not file_path.startswith("/"):
+                file_path = f"/vol/{VOLUME_NAME}/{file_path}"
+            elif not file_path.startswith("/vol/"):
+                file_path = f"/vol/{VOLUME_NAME}{file_path}"
+
+            # Get SVM UUID first
+            svm_url = f"https://{ONTAP_MGMT_IP}/api/svm/svms?name={SVM_NAME}&fields=uuid"
+            svm_resp = http.request("GET", svm_url, headers=headers)
+            svm_data = json.loads(svm_resp.data)
+            if not svm_data.get("records"):
+                return {"error": f"SVM '{SVM_NAME}' not found", "permissions": None}
+            svm_uuid = svm_data["records"][0]["uuid"]
+
+            # Query file-security effective permissions
+            import urllib.parse
+            encoded_path = urllib.parse.quote(file_path, safe="")
+            perm_url = (
+                f"https://{ONTAP_MGMT_IP}/api/protocols/file-security"
+                f"/permissions/{svm_uuid}/{encoded_path}"
+            )
+            perm_resp = http.request("GET", perm_url, headers=headers)
+
+            if perm_resp.status >= 400:
+                # Fallback: get basic file info from volume
+                return {
+                    "filePath": file_path,
+                    "permissions": None,
+                    "error": f"Cannot get permissions (HTTP {perm_resp.status}). File may not exist or API unavailable.",
+                }
+
+            perm_data = json.loads(perm_resp.data)
+            acls = perm_data.get("acls", [])
+            unix_perms = perm_data.get("unix_permissions", "")
+            owner = perm_data.get("owner", "")
+            group = perm_data.get("group", "")
+            security_style = perm_data.get("security_style", "")
+
+            return {
+                "filePath": file_path,
+                "permissions": {
+                    "securityStyle": security_style,
+                    "owner": owner,
+                    "group": group,
+                    "unixPermissions": unix_perms,
+                    "acls": [
+                        {
+                            "user": a.get("user", ""),
+                            "access": a.get("access", ""),
+                            "accessControl": a.get("access_control", ""),
+                            "applyTo": a.get("apply_to", {}),
+                        }
+                        for a in acls[:10]
+                    ],
+                },
+                "error": None,
+            }
+
         # --- Default action: listSnapshots (with lock info) ---
         snap_url = (
             f"https://{ONTAP_MGMT_IP}/api/storage/volumes/{vol_uuid}/snapshots"

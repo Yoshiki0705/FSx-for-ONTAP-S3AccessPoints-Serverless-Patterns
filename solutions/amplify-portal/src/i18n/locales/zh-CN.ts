@@ -584,6 +584,36 @@ export const zhCN: Record<TranslationKeys, string> = {
   cardRecentTitle: "最近变更",
   cardRecentDesc: "显示最近修改的文件",
 
+  // --- Chat History ---
+  chatHistoryTitle: "对话历史",
+  chatHistoryNew: "新对话",
+  chatHistoryEmpty: "没有保存的对话",
+  chatHistoryEnabled: "对话历史",
+
+  // --- Multimodal Image Upload ---
+  multimodalAttach: "附加图片",
+  multimodalPlaceholder: "关于图片提问...",
+
+  // --- Agent Mode Selector ---
+  modeKb: "KB 搜索",
+  modeAgent: "文件操作",
+  modeMulti: "多智能体",
+  modeKbDesc: "通过 Knowledge Base 进行语义搜索 (Q&A)",
+  modeAgentDesc: "浏览、搜索和读取文件",
+  modeMultiDesc: "全部功能 (KB + 文件操作 + 安全控制)",
+
+  // --- Agent File Sidebar ---
+  sidebarFileInfo: "文件信息",
+  sidebarPath: "路径",
+  sidebarLoadingPerms: "加载权限信息...",
+  sidebarSecurityStyle: "安全样式",
+  sidebarOwner: "所有者",
+  sidebarGroup: "组",
+  sidebarUnixPerms: "UNIX 权限",
+  sidebarAcls: "访问控制列表",
+  sidebarUser: "用户",
+  sidebarAccess: "访问权限",
+
   // --- AI Settings (Admin) ---
   rmAiSettings: "AI 设置",
   rmAiSettingsDesc: "启用/禁用 AI 代理和 Knowledge Base",
@@ -600,6 +630,14 @@ export const zhCN: Record<TranslationKeys, string> = {
   aiSettingsDisabled: "已禁用",
   aiSettingsSaved: "设置已保存",
   aiSettingsStatusTitle: "当前状态",
+  aiSettingsMultimodalTitle: "多模态（图像输入）",
+  aiSettingsMultimodalDesc: "拖放图像向 AI 提问 (Bedrock Vision)",
+  aiSettingsPerImage: "图片",
+  aiSettingsChatHistoryTitle: "对话历史保存",
+  aiSettingsChatHistoryDesc: "将聊天记录持久化到 DynamoDB（90天 TTL）",
+  aiSettingsSmartRoutingTitle: "智能路由",
+  aiSettingsSmartRoutingDesc: "根据 Cognito 组自动限制 KB 搜索范围",
+  aiSettingsGroupMapping: "需要配置 groupApMapping",
   aiDisabledTitle: "AI 功能已禁用",
   aiDisabledDesc: "此功能已被管理员禁用。如需启用，请前往管理 > 资源管理 > AI 设置。",
 
