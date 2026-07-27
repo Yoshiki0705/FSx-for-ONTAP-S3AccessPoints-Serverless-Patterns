@@ -95,6 +95,16 @@ const portalSettingsTable = new dynamodb.Table(dataStack, "PortalSettingsTable",
     : undefined,
 });
 
+// --- DynamoDB Table for Chat History (per-user conversation persistence) ---
+// PK: userId (Cognito username), SK: sessionId (timestamp-based)
+// Stores: messages (JSON), title, createdAt, updatedAt
+const chatHistoryTable = new dynamodb.Table(dataStack, "ChatHistoryTable", {
+  partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+  sortKey: { name: "sessionId", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: "ttl",
+});
+
 // --- HTTP Data Source for Step Functions ---
 const sfnEndpoint = `https://states.${config.region}.amazonaws.com`;
 
@@ -444,6 +454,10 @@ const agentChatRole = new iam.Role(dataStack, "AgentChatLambdaRole", {
           actions: ["dynamodb:GetItem"],
           resources: [portalSettingsTable.tableArn],
         }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:DeleteItem"],
+          resources: [chatHistoryTable.tableArn],
+        }),
       ],
     }),
   },
@@ -466,6 +480,10 @@ const agentChatFunction = new lambda.Function(
       BEDROCK_GUARDRAIL_VERSION: config.bedrockGuardrailVersion || "DRAFT",
       BEDROCK_KB_ID: config.bedrockKbId || "",
       PORTAL_SETTINGS_TABLE: portalSettingsTable.tableName,
+      CHAT_HISTORY_TABLE: chatHistoryTable.tableName,
+      GROUP_PATH_PREFIXES: JSON.stringify(config.groupApMapping ? Object.fromEntries(
+        Object.entries(config.groupApMapping).map(([group]) => [group, [`${group}/`, "shared/"]])
+      ) : {}),
     },
     memorySize: 512,
     timeout: Duration.seconds(90),

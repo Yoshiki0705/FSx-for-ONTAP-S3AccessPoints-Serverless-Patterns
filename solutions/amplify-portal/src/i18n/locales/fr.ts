@@ -584,6 +584,36 @@ export const fr: Record<TranslationKeys, string> = {
   cardRecentTitle: "Changements récents",
   cardRecentDesc: "Afficher les fichiers récemment modifiés",
 
+  // --- Chat History ---
+  chatHistoryTitle: "Historique des conversations",
+  chatHistoryNew: "Nouvelle conversation",
+  chatHistoryEmpty: "Aucune conversation enregistrée",
+  chatHistoryEnabled: "Historique",
+
+  // --- Multimodal Image Upload ---
+  multimodalAttach: "Joindre une image",
+  multimodalPlaceholder: "Posez une question sur l'image...",
+
+  // --- Agent Mode Selector ---
+  modeKb: "Recherche KB",
+  modeAgent: "Fichiers",
+  modeMulti: "Multi-Agent",
+  modeKbDesc: "Recherche sémantique via Knowledge Base (Q&R)",
+  modeAgentDesc: "Parcourir, rechercher et lire des fichiers",
+  modeMultiDesc: "Toutes les fonctions (KB + Fichiers + Sécurité)",
+
+  // --- Agent File Sidebar ---
+  sidebarFileInfo: "Info fichier",
+  sidebarPath: "Chemin",
+  sidebarLoadingPerms: "Chargement des permissions...",
+  sidebarSecurityStyle: "Style de sécurité",
+  sidebarOwner: "Propriétaire",
+  sidebarGroup: "Groupe",
+  sidebarUnixPerms: "Permissions UNIX",
+  sidebarAcls: "Liste de contrôle d'accès",
+  sidebarUser: "Utilisateur",
+  sidebarAccess: "Accès",
+
   // --- AI Settings (Admin) ---
   rmAiSettings: "Paramètres IA",
   rmAiSettingsDesc: "Activer/désactiver l'agent IA et la base de connaissances",
@@ -600,6 +630,14 @@ export const fr: Record<TranslationKeys, string> = {
   aiSettingsDisabled: "Désactivé",
   aiSettingsSaved: "Paramètres enregistrés",
   aiSettingsStatusTitle: "État actuel",
+  aiSettingsMultimodalTitle: "Multimodal (Image)",
+  aiSettingsMultimodalDesc: "Glisser-déposer des images pour interroger l'IA (Bedrock Vision)",
+  aiSettingsPerImage: "image",
+  aiSettingsChatHistoryTitle: "Historique des conversations",
+  aiSettingsChatHistoryDesc: "Sauvegarder l'historique dans DynamoDB (TTL 90 jours)",
+  aiSettingsSmartRoutingTitle: "Routage intelligent",
+  aiSettingsSmartRoutingDesc: "Limiter automatiquement la portée KB par groupe Cognito",
+  aiSettingsGroupMapping: "Nécessite la config groupApMapping",
   aiDisabledTitle: "Les fonctions IA sont désactivées",
   aiDisabledDesc: "Cette fonctionnalité a été désactivée par un administrateur. Pour l'activer, allez dans Admin > Gestion des ressources > Paramètres IA.",
 
