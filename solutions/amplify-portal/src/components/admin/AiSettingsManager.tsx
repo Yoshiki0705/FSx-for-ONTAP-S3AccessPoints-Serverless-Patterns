@@ -1,11 +1,17 @@
 /**
  * AiSettingsManager — Admin panel for AI Agent / Knowledge Base feature enablement.
  *
- * Bedrock KB incurs ongoing running costs (OpenSearch Serverless OCU),
- * so these features are disabled by default and must be explicitly enabled
- * by an administrator from this panel.
+ * Architecture integration:
+ *   - AI Agent (Bedrock Converse + tool_use): No KB dependency → instant enable
+ *   - Semantic Search (Bedrock KB Retrieve): Requires KB infrastructure
+ *     → KB deployed separately via RAG-FSxN-CDK or Bedrock Console
+ *     → KB ID configured in portal-config.ts → bedrockKbId
+ *     → Portal Lambda calls bedrock:Retrieve using that KB ID
  *
- * Pattern inspired by RAG-FSxN-CDK FeatureGateConstruct (DynamoDB-backed toggle).
+ * Cost model:
+ *   - AI Agent: ~$0.001/request (Bedrock Converse, pay-per-use)
+ *   - Semantic Search (S3 Vectors backend): ~$1-10/month
+ *   - Semantic Search (OpenSearch Serverless): ~$700/month (2 OCU minimum)
  */
 import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
@@ -37,9 +43,7 @@ interface UpdateResponse {
 }
 
 interface AiSettingsManagerProps {
-  /** Initial settings from App-level query (avoids redundant Lambda call) */
   initialSettings?: { aiAgentEnabled: boolean; aiSearchEnabled: boolean };
-  /** Callback to notify parent when settings change (for nav update) */
   onSettingsChange?: (settings: { aiAgentEnabled: boolean; aiSearchEnabled: boolean }) => void;
 }
 
@@ -68,9 +72,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
           aiSearchEnabled: result.settings.aiSearchEnabled === true,
         });
       }
-      if (result?.error) {
-        setError(result.error);
-      }
+      if (result?.error) setError(result.error);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load settings");
     } finally {
@@ -114,29 +116,13 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
 
   return (
     <div className="ai-settings-manager">
-      <div className="ai-settings-header">
-        <p className="ai-settings-desc">{t("aiSettingsDesc")}</p>
-      </div>
+      <p className="ai-settings-desc">{t("aiSettingsDesc")}</p>
 
-      {error && (
-        <div className="ai-settings-error">⚠️ {error}</div>
-      )}
-      {successMsg && (
-        <div className="ai-settings-success">✅ {successMsg}</div>
-      )}
+      {error && <div className="ai-settings-error">⚠️ {error}</div>}
+      {successMsg && <div className="ai-settings-success">✅ {successMsg}</div>}
 
-      {/* Cost Warning */}
-      <div className="ai-settings-cost-warning">
-        <span className="cost-icon">💰</span>
-        <div>
-          <strong>{t("aiSettingsCostTitle")}</strong>
-          <p>{t("aiSettingsCostDesc")}</p>
-        </div>
-      </div>
-
-      {/* Feature Toggles */}
-      <div className="ai-settings-toggles">
-        {/* AI Agent Chat */}
+      {/* ─── AI Agent (instant-ready) ─── */}
+      <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
             <span className="toggle-icon">🤖</span>
@@ -156,8 +142,15 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
           </label>
           {saving === "aiAgentEnabled" && <span className="toggle-saving">⏳</span>}
         </div>
+        <div className="ai-settings-feature-meta">
+          <span className="meta-badge ready">✅ {t("aiSettingsReady")}</span>
+          <span className="meta-cost">~$0.001 / {t("aiSettingsPerRequest")}</span>
+          <span className="meta-setup">⚡ {t("aiSettingsInstant")}</span>
+        </div>
+      </div>
 
-        {/* Semantic Search (KB) */}
+      {/* ─── Semantic Search (KB required) ─── */}
+      <div className="ai-settings-feature-section">
         <div className="ai-settings-toggle-card">
           <div className="toggle-info">
             <span className="toggle-icon">🔍</span>
@@ -177,9 +170,59 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
           </label>
           {saving === "aiSearchEnabled" && <span className="toggle-saving">⏳</span>}
         </div>
+        <div className="ai-settings-feature-meta">
+          <span className="meta-badge setup-needed">⚙️ {t("aiSettingsKbRequired")}</span>
+          <span className="meta-cost">~$1–10 / {t("aiSettingsPerMonth")}</span>
+          <span className="meta-setup">🕐 {t("aiSettingsSetupTime")}</span>
+        </div>
+
+        {/* KB Setup Guide (collapsible) */}
+        <details className="ai-settings-setup-guide">
+          <summary>{t("aiSettingsSetupGuide")}</summary>
+          <div className="setup-guide-content">
+            <p className="setup-intro">{t("aiSettingsSetupIntro")}</p>
+
+            {/* Cost Comparison Table */}
+            <table className="setup-cost-table">
+              <thead>
+                <tr>
+                  <th>{t("aiSettingsVectorStore")}</th>
+                  <th>{t("aiSettingsMonthlyCost")}</th>
+                  <th>{t("aiSettingsSetupTimeLabel")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="recommended">
+                  <td><strong>S3 Vectors</strong> ⭐</td>
+                  <td>~$1–10</td>
+                  <td>~10 {t("aiSettingsMinutes")}</td>
+                </tr>
+                <tr>
+                  <td>OpenSearch Serverless</td>
+                  <td>~$700</td>
+                  <td>~15 {t("aiSettingsMinutes")}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Setup Steps */}
+            <h5>{t("aiSettingsSetupSteps")}</h5>
+            <ol className="setup-steps">
+              <li>{t("aiSettingsStep1")}</li>
+              <li>{t("aiSettingsStep2")}</li>
+              <li>{t("aiSettingsStep3")}</li>
+              <li>{t("aiSettingsStep4")}</li>
+            </ol>
+
+            <div className="setup-note">
+              <strong>💡 {t("aiSettingsNote")}</strong>
+              <p>{t("aiSettingsNoteDesc")}</p>
+            </div>
+          </div>
+        </details>
       </div>
 
-      {/* Status Summary */}
+      {/* ─── Status Summary ─── */}
       <div className="ai-settings-status">
         <h4>{t("aiSettingsStatusTitle")}</h4>
         <table className="ai-settings-table">

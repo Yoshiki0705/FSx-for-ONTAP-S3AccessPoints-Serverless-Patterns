@@ -692,6 +692,27 @@ export const ja = {
   aiSettingsStatusTitle: "現在の状態",
   aiDisabledTitle: "AI 機能は無効です",
   aiDisabledDesc: "この機能は管理者により無効化されています。有効にするには、管理 > リソース管理 > AI 設定 から設定を変更してください。",
+
+  // --- AI Settings: Status & Setup Guide ---
+  aiSettingsReady: "即時利用可能",
+  aiSettingsPerRequest: "リクエスト",
+  aiSettingsInstant: "追加セットアップ不要",
+  aiSettingsKbRequired: "Knowledge Base の構築が必要",
+  aiSettingsPerMonth: "月",
+  aiSettingsSetupTime: "セットアップ: 約10〜35分",
+  aiSettingsSetupGuide: "📖 セットアップガイド（セマンティック検索）",
+  aiSettingsSetupIntro: "セマンティック検索には Bedrock Knowledge Base が必要です。KB はこのポータルとは独立してデプロイされ、KB ID を portal-config.ts に設定することで接続されます。",
+  aiSettingsVectorStore: "ベクトルストア",
+  aiSettingsMonthlyCost: "月額コスト",
+  aiSettingsSetupTimeLabel: "セットアップ時間",
+  aiSettingsMinutes: "分",
+  aiSettingsSetupSteps: "セットアップ手順",
+  aiSettingsStep1: "Bedrock Knowledge Base を作成（コンソール or RAG-FSxN-CDK でデプロイ）",
+  aiSettingsStep2: "ベクトルストアに S3 Vectors を選択（推奨）→ Embedding モデル: Titan Text Embeddings V2",
+  aiSettingsStep3: "データソースとして FSx for ONTAP S3 AP（または S3 バケット）を接続 → データ同期を実行",
+  aiSettingsStep4: "KB ID を portal-config.ts の bedrockKbId に設定 → サンドボックスを再デプロイ",
+  aiSettingsNote: "RAG-FSxN-CDK をお持ちの場合",
+  aiSettingsNoteDesc: "cdk deploy -c vectorStoreType=s3vectors で KB 一式が自動作成されます。出力される KB ID をそのまま使用できます。",
 } as const;
 
 export type TranslationKeys = keyof typeof ja;
