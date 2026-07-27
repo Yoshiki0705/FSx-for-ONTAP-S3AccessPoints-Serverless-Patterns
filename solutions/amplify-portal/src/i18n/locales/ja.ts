@@ -603,6 +603,7 @@ export const ja = {
 
   // --- Agent Chat ---
   navAgent: "AI エージェント",
+  navAgentDir: "エージェント管理",
   agentTitle: "AI エージェント",
 
   // --- Search ---
@@ -683,6 +684,57 @@ export const ja = {
   // --- Multimodal Image Upload ---
   multimodalAttach: "画像を添付",
   multimodalPlaceholder: "画像について質問してください...",
+
+  // --- Agent Directory ---
+  agentDirTitle: "エージェント一覧",
+  agentDirCreate: "新規作成",
+  agentDirSearchPlaceholder: "エージェントを検索...",
+  agentDirAll: "すべて",
+  agentDirEmpty: "エージェントがまだ登録されていません。",
+  agentDirBack: "一覧に戻る",
+  agentDirShared: "共有",
+  agentDirTools: "使用ツール",
+  agentDirSystemPrompt: "システムプロンプト",
+  agentDirUseInChat: "チャットで使用",
+  agentDirDelete: "削除",
+  agentDirDeleteConfirm: "このエージェントを削除しますか？",
+
+  // --- Agent Creator ---
+  agentCreatorTitle: "エージェント作成",
+  agentCreatorIcon: "アイコン",
+  agentCreatorName: "名前",
+  agentCreatorNamePlaceholder: "例: ログ分析エージェント",
+  agentCreatorNameRequired: "名前は必須です",
+  agentCreatorDesc: "説明",
+  agentCreatorDescPlaceholder: "このエージェントの役割を簡潔に...",
+  agentCreatorCategory: "カテゴリ",
+  agentCreatorPrompt: "システムプロンプト",
+  agentCreatorPromptPlaceholder: "エージェントの動作を定義するプロンプトを入力...\n例: あなたはログ分析の専門家です。ユーザーがログファイルについて質問した場合...",
+  agentCreatorPromptHint: "空の場合はデフォルトのマルチエージェントプロンプトが使用されます",
+  agentCreatorTools: "使用ツール",
+  agentCreatorToolsRequired: "少なくとも1つのツールを選択してください",
+  agentCreatorShared: "他のユーザーと共有する",
+  agentCreatorSharedHint: "有効にすると、全ユーザーがこのエージェントを使用できます",
+  agentCreatorSubmit: "エージェントを作成",
+
+  // --- Agent Teams ---
+  teamsTitle: "マルチエージェントチーム",
+  teamsCreate: "チーム作成",
+  teamsEmpty: "チームがまだ登録されていません。",
+  teamsUse: "使用",
+  teamsDeleteConfirm: "このチームを削除しますか？",
+  teamsWizardTitle: "チーム作成ウィザード",
+  teamsName: "チーム名",
+  teamsNamePlaceholder: "例: ドキュメント分析チーム",
+  teamsNameRequired: "チーム名は必須です",
+  teamsDesc: "説明",
+  teamsDescPlaceholder: "チームの目的...",
+  teamsSelectAgents: "エージェントを選択",
+  teamsSelected: "件選択済み",
+  teamsNoMoreAgents: "利用可能なエージェントがありません",
+  teamsAssignRoles: "役割を割り当て",
+  teamsShared: "他のユーザーと共有",
+  teamsMinAgents: "チームには最低2つのエージェントが必要です",
 
   // --- Agent Mode Selector ---
   modeKb: "KB 検索",

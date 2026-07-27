@@ -596,6 +596,7 @@ export const en: Record<TranslationKeys, string> = {
 
   // --- Agent Chat ---
   navAgent: "AI Agent",
+  navAgentDir: "Agent Registry",
   agentTitle: "AI Agent",
 
   // --- Search ---
@@ -676,6 +677,57 @@ export const en: Record<TranslationKeys, string> = {
   // --- Multimodal Image Upload ---
   multimodalAttach: "Attach image",
   multimodalPlaceholder: "Ask about the image...",
+
+  // --- Agent Directory ---
+  agentDirTitle: "Agent Directory",
+  agentDirCreate: "Create New",
+  agentDirSearchPlaceholder: "Search agents...",
+  agentDirAll: "All",
+  agentDirEmpty: "No agents registered yet.",
+  agentDirBack: "Back to list",
+  agentDirShared: "Shared",
+  agentDirTools: "Tools",
+  agentDirSystemPrompt: "System Prompt",
+  agentDirUseInChat: "Use in Chat",
+  agentDirDelete: "Delete",
+  agentDirDeleteConfirm: "Delete this agent?",
+
+  // --- Agent Creator ---
+  agentCreatorTitle: "Create Agent",
+  agentCreatorIcon: "Icon",
+  agentCreatorName: "Name",
+  agentCreatorNamePlaceholder: "e.g., Log Analysis Agent",
+  agentCreatorNameRequired: "Name is required",
+  agentCreatorDesc: "Description",
+  agentCreatorDescPlaceholder: "Brief description of this agent's role...",
+  agentCreatorCategory: "Category",
+  agentCreatorPrompt: "System Prompt",
+  agentCreatorPromptPlaceholder: "Define the agent's behavior...\ne.g., You are a log analysis expert. When users ask about log files...",
+  agentCreatorPromptHint: "If empty, the default multi-agent prompt is used",
+  agentCreatorTools: "Tools",
+  agentCreatorToolsRequired: "Select at least one tool",
+  agentCreatorShared: "Share with other users",
+  agentCreatorSharedHint: "When enabled, all users can use this agent",
+  agentCreatorSubmit: "Create Agent",
+
+  // --- Agent Teams ---
+  teamsTitle: "Multi-Agent Teams",
+  teamsCreate: "Create Team",
+  teamsEmpty: "No teams registered yet.",
+  teamsUse: "Use",
+  teamsDeleteConfirm: "Delete this team?",
+  teamsWizardTitle: "Team Creation Wizard",
+  teamsName: "Team Name",
+  teamsNamePlaceholder: "e.g., Document Analysis Team",
+  teamsNameRequired: "Team name is required",
+  teamsDesc: "Description",
+  teamsDescPlaceholder: "Purpose of this team...",
+  teamsSelectAgents: "Select Agents",
+  teamsSelected: "selected",
+  teamsNoMoreAgents: "No more agents available",
+  teamsAssignRoles: "Assign Roles",
+  teamsShared: "Share with other users",
+  teamsMinAgents: "A team requires at least 2 agents",
 
   // --- Agent Mode Selector ---
   modeKb: "KB Search",

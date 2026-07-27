@@ -22,6 +22,7 @@ import os
 import re
 import logging
 import time
+import uuid
 from decimal import Decimal
 from typing import Any
 
@@ -42,6 +43,8 @@ GUARDRAIL_VERSION = os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
 BEDROCK_KB_ID = os.environ.get("BEDROCK_KB_ID", "")
 
 CHAT_HISTORY_TABLE = os.environ.get("CHAT_HISTORY_TABLE", "")
+AGENT_DIRECTORY_TABLE = os.environ.get("AGENT_DIRECTORY_TABLE", "")
+AGENT_TEAMS_TABLE = os.environ.get("AGENT_TEAMS_TABLE", "")
 # Smart Routing: JSON mapping of Cognito group → allowed path prefixes
 # Example: {"engineering": ["engineering/", "shared/"], "finance": ["finance/", "shared/"]}
 GROUP_PATH_PREFIXES = json.loads(os.environ.get("GROUP_PATH_PREFIXES", "{}"))
@@ -961,6 +964,26 @@ def handler(event, context):
     elif action == "deleteSession":
         return _delete_session(user_id, params)
 
+    # --- Agent Directory Actions ---
+    elif action == "listAgents":
+        return _list_agents(user_id, params)
+    elif action == "getAgent":
+        return _get_agent(params)
+    elif action == "createAgent":
+        return _create_agent(user_id, params)
+    elif action == "updateAgent":
+        return _update_agent(user_id, params)
+    elif action == "deleteAgent":
+        return _delete_agent(user_id, params)
+
+    # --- Agent Teams Actions ---
+    elif action == "listTeams":
+        return _list_teams(user_id, params)
+    elif action == "createTeam":
+        return _create_team(user_id, params)
+    elif action == "deleteTeam":
+        return _delete_team(user_id, params)
+
     return {"error": f"Unknown action: {action}"}
 
 
@@ -1096,4 +1119,302 @@ def _delete_session(user_id: str, params: dict) -> dict:
         return {"success": True}
     except Exception as e:
         logger.error(f"Delete session error: {e}")
+        return {"error": str(e)}
+
+
+# ─── Agent Directory (DynamoDB) ───────────────────────────────────────────────
+
+
+def _list_agents(user_id: str, params: dict) -> dict:
+    """List agents: user's own + shared agents."""
+    if not AGENT_DIRECTORY_TABLE:
+        return {"agents": [], "error": "Agent directory not configured"}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(AGENT_DIRECTORY_TABLE)
+
+    try:
+        response = table.scan()
+        agents = []
+        for item in response.get("Items", []):
+            # Show user's own agents + shared agents
+            if item.get("createdBy") == user_id or item.get("isShared", False):
+                agents.append({
+                    "agentId": item["agentId"],
+                    "name": item.get("name", ""),
+                    "description": item.get("description", ""),
+                    "icon": item.get("icon", "🤖"),
+                    "category": item.get("category", "custom"),
+                    "tools": item.get("tools", []),
+                    "isShared": item.get("isShared", False),
+                    "createdBy": item.get("createdBy", ""),
+                    "createdAt": int(item.get("createdAt", 0)),
+                })
+        # Sort by createdAt desc
+        agents.sort(key=lambda a: a["createdAt"], reverse=True)
+        return {"agents": agents}
+    except Exception as e:
+        logger.error(f"List agents error: {e}")
+        return {"agents": [], "error": str(e)}
+
+
+def _get_agent(params: dict) -> dict:
+    """Get a specific agent by ID."""
+    if not AGENT_DIRECTORY_TABLE:
+        return {"error": "Agent directory not configured"}
+
+    agent_id = params.get("agentId", "")
+    if not agent_id:
+        return {"error": "agentId is required"}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(AGENT_DIRECTORY_TABLE)
+
+    try:
+        response = table.get_item(Key={"agentId": agent_id})
+        item = response.get("Item")
+        if not item:
+            return {"error": "Agent not found"}
+
+        return {
+            "agent": {
+                "agentId": item["agentId"],
+                "name": item.get("name", ""),
+                "description": item.get("description", ""),
+                "systemPrompt": item.get("systemPrompt", ""),
+                "icon": item.get("icon", "🤖"),
+                "category": item.get("category", "custom"),
+                "tools": item.get("tools", []),
+                "isShared": item.get("isShared", False),
+                "createdBy": item.get("createdBy", ""),
+                "createdAt": int(item.get("createdAt", 0)),
+                "updatedAt": int(item.get("updatedAt", 0)),
+            }
+        }
+    except Exception as e:
+        logger.error(f"Get agent error: {e}")
+        return {"error": str(e)}
+
+
+def _create_agent(user_id: str, params: dict) -> dict:
+    """Create a new custom agent."""
+    if not AGENT_DIRECTORY_TABLE:
+        return {"error": "Agent directory not configured"}
+
+    name = params.get("name", "").strip()
+    if not name:
+        return {"error": "Agent name is required"}
+
+    description = params.get("description", "")
+    system_prompt = params.get("systemPrompt", "")
+    tools = params.get("tools", [])
+    icon = params.get("icon", "🤖")
+    category = params.get("category", "custom")
+    is_shared = params.get("isShared", False)
+
+    # Validate tools against available tool names
+    valid_tools = {"list_files", "read_file", "search_files", "get_volume_summary", "kb_search", "request_action_approval"}
+    invalid = [t for t in tools if t not in valid_tools]
+    if invalid:
+        return {"error": f"Invalid tools: {invalid}. Valid: {sorted(valid_tools)}"}
+
+    agent_id = str(uuid.uuid4())
+    now = int(time.time())
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(AGENT_DIRECTORY_TABLE)
+
+    try:
+        table.put_item(Item={
+            "agentId": agent_id,
+            "name": name,
+            "description": description,
+            "systemPrompt": system_prompt,
+            "tools": tools,
+            "icon": icon,
+            "category": category,
+            "isShared": is_shared,
+            "createdBy": user_id,
+            "createdAt": Decimal(str(now)),
+            "updatedAt": Decimal(str(now)),
+        })
+        return {"success": True, "agentId": agent_id}
+    except Exception as e:
+        logger.error(f"Create agent error: {e}")
+        return {"error": str(e)}
+
+
+def _update_agent(user_id: str, params: dict) -> dict:
+    """Update an existing agent (only creator can update)."""
+    if not AGENT_DIRECTORY_TABLE:
+        return {"error": "Agent directory not configured"}
+
+    agent_id = params.get("agentId", "")
+    if not agent_id:
+        return {"error": "agentId is required"}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(AGENT_DIRECTORY_TABLE)
+
+    # Check ownership
+    try:
+        existing = table.get_item(Key={"agentId": agent_id}).get("Item")
+        if not existing:
+            return {"error": "Agent not found"}
+        if existing.get("createdBy") != user_id:
+            return {"error": "Only the creator can update this agent"}
+    except Exception as e:
+        return {"error": str(e)}
+
+    # Build update expression
+    updates = {}
+    for key in ["name", "description", "systemPrompt", "tools", "icon", "category", "isShared"]:
+        if key in params:
+            updates[key] = params[key]
+    updates["updatedAt"] = Decimal(str(int(time.time())))
+
+    try:
+        expr_parts = []
+        expr_values = {}
+        expr_names = {}
+        for i, (k, v) in enumerate(updates.items()):
+            attr_name = f"#k{i}"
+            attr_val = f":v{i}"
+            expr_parts.append(f"{attr_name} = {attr_val}")
+            expr_names[attr_name] = k
+            expr_values[attr_val] = v
+
+        table.update_item(
+            Key={"agentId": agent_id},
+            UpdateExpression="SET " + ", ".join(expr_parts),
+            ExpressionAttributeNames=expr_names,
+            ExpressionAttributeValues=expr_values,
+        )
+        return {"success": True, "agentId": agent_id}
+    except Exception as e:
+        logger.error(f"Update agent error: {e}")
+        return {"error": str(e)}
+
+
+def _delete_agent(user_id: str, params: dict) -> dict:
+    """Delete an agent (only creator can delete)."""
+    if not AGENT_DIRECTORY_TABLE:
+        return {"error": "Agent directory not configured"}
+
+    agent_id = params.get("agentId", "")
+    if not agent_id:
+        return {"error": "agentId is required"}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(AGENT_DIRECTORY_TABLE)
+
+    # Check ownership
+    try:
+        existing = table.get_item(Key={"agentId": agent_id}).get("Item")
+        if not existing:
+            return {"error": "Agent not found"}
+        if existing.get("createdBy") != user_id:
+            return {"error": "Only the creator can delete this agent"}
+    except Exception as e:
+        return {"error": str(e)}
+
+    try:
+        table.delete_item(Key={"agentId": agent_id})
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Delete agent error: {e}")
+        return {"error": str(e)}
+
+
+# ─── Agent Teams (DynamoDB) ───────────────────────────────────────────────────
+
+
+def _list_teams(user_id: str, params: dict) -> dict:
+    """List teams: user's own + shared."""
+    if not AGENT_TEAMS_TABLE:
+        return {"teams": [], "error": "Agent teams not configured"}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(AGENT_TEAMS_TABLE)
+
+    try:
+        response = table.scan()
+        teams = []
+        for item in response.get("Items", []):
+            if item.get("createdBy") == user_id or item.get("isShared", False):
+                teams.append({
+                    "teamId": item["teamId"],
+                    "name": item.get("name", ""),
+                    "description": item.get("description", ""),
+                    "agents": json.loads(item["agents"]) if isinstance(item.get("agents"), str) else item.get("agents", []),
+                    "isShared": item.get("isShared", False),
+                    "createdBy": item.get("createdBy", ""),
+                    "createdAt": int(item.get("createdAt", 0)),
+                })
+        teams.sort(key=lambda t: t["createdAt"], reverse=True)
+        return {"teams": teams}
+    except Exception as e:
+        logger.error(f"List teams error: {e}")
+        return {"teams": [], "error": str(e)}
+
+
+def _create_team(user_id: str, params: dict) -> dict:
+    """Create a multi-agent team."""
+    if not AGENT_TEAMS_TABLE:
+        return {"error": "Agent teams not configured"}
+
+    name = params.get("name", "").strip()
+    if not name:
+        return {"error": "Team name is required"}
+
+    agents = params.get("agents", [])
+    if len(agents) < 2:
+        return {"error": "A team requires at least 2 agents"}
+
+    description = params.get("description", "")
+    is_shared = params.get("isShared", False)
+    team_id = str(uuid.uuid4())
+    now = int(time.time())
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(AGENT_TEAMS_TABLE)
+
+    try:
+        table.put_item(Item={
+            "teamId": team_id,
+            "name": name,
+            "description": description,
+            "agents": json.dumps(agents, ensure_ascii=False),
+            "isShared": is_shared,
+            "createdBy": user_id,
+            "createdAt": Decimal(str(now)),
+        })
+        return {"success": True, "teamId": team_id}
+    except Exception as e:
+        logger.error(f"Create team error: {e}")
+        return {"error": str(e)}
+
+
+def _delete_team(user_id: str, params: dict) -> dict:
+    """Delete a team (only creator can delete)."""
+    if not AGENT_TEAMS_TABLE:
+        return {"error": "Agent teams not configured"}
+
+    team_id = params.get("teamId", "")
+    if not team_id:
+        return {"error": "teamId is required"}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(AGENT_TEAMS_TABLE)
+
+    try:
+        existing = table.get_item(Key={"teamId": team_id}).get("Item")
+        if not existing:
+            return {"error": "Team not found"}
+        if existing.get("createdBy") != user_id:
+            return {"error": "Only the creator can delete this team"}
+        table.delete_item(Key={"teamId": team_id})
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Delete team error: {e}")
         return {"error": str(e)}
