@@ -32,6 +32,8 @@ npm start
 ファイルブラウズ・AI 処理・アップロードは DemoMode で動作します。
 admin/data-protection 機能は「ONTAP 接続が必要」と表示されます。
 
+> **エンドユーザー向け**: デプロイ完了後、ポータルを使い始めるユーザーには [ユーザーガイド](../../docs/ja/portal-user-guide.md)（[EN](../../docs/en/portal-user-guide.md)）を案内してください。デプロイ手順の知識は不要で、日常操作だけをカバーしています。
+
 ## フルセットアップ（FSx for ONTAP 接続あり）
 
 ### Step 1: 前提条件の確認
