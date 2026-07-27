@@ -14,7 +14,7 @@ See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../
 - **[Getting Started](docs/GETTING-STARTED.md)** — Setup, DemoMode, VPC Endpoints, production checklist
 - **[Implementation Guide](docs/IMPLEMENTATION.md)** — Architecture, config files, component structure, deployment, modification log
 - **[Admin Demo Guide](../../docs/en/admin-resource-management-demo.md)** — E2E demo scenarios for Resource Management + ARP/AI
-- **[AI Agent Demo Guide](../../docs/en/ai-agent-demo-guide.md)** — AI Agent Chat, Semantic Search, Guardrails, HITL
+- **[AI Agent Demo Guide](docs/ai-agent-demo-guide.en.md)** — AI Agent Chat, Semantic Search, Guardrails, HITL
 
 ## Key Features
 
@@ -31,6 +31,13 @@ See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../
 | **VolumeSelector Search** | Server-side wildcard filter + 300ms debounce for large environments |
 | **Tamperproof Lock** | Inline lock form with FISC/SOX/HIPAA retention presets |
 | **8-Language i18n** | JA/EN/KO/ZH-CN/ZH-TW/FR/DE/ES with instant runtime switching |
+| **AI Agent Chat** | Natural language file ops via Bedrock Converse + tool_use (3 modes: KB/Agent/Multi) |
+| **Multimodal Input** | Drag-and-drop image upload with Bedrock Vision API analysis |
+| **Chat History** | DynamoDB-persisted sessions with auto-save and restore |
+| **Agent Directory** | Custom agent registry with creator form, category filter, and sharing |
+| **Multi-Agent Teams** | Team wizard with role assignment (Supervisor/Collaborator/Reviewer) |
+| **KB Smart Routing** | Group-based KB search scope filtering for multi-tenant access control |
+| **Admin Feature Gates** | AI features disabled by default, toggled per-feature from admin panel |
 
 ## Architecture
 

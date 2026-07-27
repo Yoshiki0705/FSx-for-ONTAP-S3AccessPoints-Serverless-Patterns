@@ -119,6 +119,41 @@ GROUP BY extension
 ORDER BY file_count DESC
 ```
 
+### AI エージェント（管理者による有効化が必要）
+
+自然言語でファイル操作ができる AI チャットインターフェースです。Bedrock Converse + tool_use を使用し、ファイルの検索・読取・分析が可能です。
+
+> この機能は管理者が「AI 設定」で有効化した場合のみ表示されます。
+
+**3 つのモード**:
+| モード | 用途 |
+|--------|------|
+| 🧠 KB 検索 | Knowledge Base によるファイル内容のセマンティック検索 |
+| 📁 ファイル操作 | ディレクトリ一覧、ファイル検索、読み取り |
+| 🤖 マルチエージェント | 全機能（KB + ファイル操作 + 安全制御） |
+
+**主な機能**:
+- カードグリッドから定番タスクをワンクリックで開始
+- 📎 画像添付 → AI が画像内容を解析して回答
+- 📜 会話履歴 → 過去のセッションを復元可能
+- 📂 ファイルサイドバー → 参照ファイルの NFS/SMB 権限を表示
+- ツール実行トレース → どのエージェントが何を実行したか可視化
+
+### エージェント管理（管理者による有効化が必要）
+
+カスタムエージェントの作成・管理とマルチエージェントチームの構成ができます。
+
+- **エージェント一覧**: 登録済みエージェントのカードグリッド（検索・フィルタ付き）
+- **エージェント作成**: アイコン、名前、システムプロンプト、使用ツール、カテゴリを設定
+- **チーム作成**: 複数のエージェントを選択し、役割 (Supervisor/Collaborator/Reviewer) を割り当て
+
+### ファイル検索（管理者による有効化が必要）
+
+Bedrock Knowledge Base を利用したセマンティック検索です。ファイル内容の意味に基づいて検索できます。
+
+- **キーワードモード**: ファイル名のパターンマッチ
+- **セマンティックモード**: ベクトル検索（KB 構築が必要）
+
 ---
 
 ## Data Protection — データ保護
@@ -224,6 +259,7 @@ aws cognito-idp admin-set-user-password --user-pool-id <pool-id> --username <you
 | [コンプライアンスガイド](portal-compliance-guide.md) | セキュリティ/コンプライアンス | 規制統制の検証 |
 | [クイックリファレンス](portal-quick-reference.md) | 全ロール | 1 ページチートシート |
 | [AI 機能クイックスタート](ai-features-quick-start.md) | 全ユーザー | Bedrock、Rekognition、Athena を試す |
+| [AI エージェント デモガイド](../../solutions/amplify-portal/docs/ai-agent-demo-guide.md) | 全ユーザー | AI エージェント機能の E2E デモ |
 | [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) | 開発者 | アーキテクチャとカスタマイズ |
 | [認可モデル](portal-authorization-model.md) | セキュリティチーム | Cognito グループ、IAM、ファイルレベルアクセス |
 | [Storage Browser デモ](storage-browser-demo-guide.md) | 全ユーザー | Storage Browser でのアップロード/ダウンロード |
