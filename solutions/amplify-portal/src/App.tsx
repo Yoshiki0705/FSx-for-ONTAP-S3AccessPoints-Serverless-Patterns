@@ -18,6 +18,9 @@ import { ArpStatus } from "./components/ArpStatus";
 import { SnaplockStatus } from "./components/SnaplockStatus";
 import { ResourceManagement } from "./components/ResourceManagement";
 import { AgentChat } from "./components/AgentChat";
+import { AgentDirectory } from "./components/AgentDirectory";
+import { AgentCreator } from "./components/AgentCreator";
+import { AgentTeams } from "./components/AgentTeams";
 import { SemanticSearch } from "./components/SemanticSearch";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { WelcomeModal } from "./components/WelcomeModal";
@@ -32,7 +35,7 @@ type Section =
   | "files" | "favorites" | "recent" | "upload"
   | "process" | "agent" | "search" | "history" | "analytics"
   | "snapshots" | "arp" | "lock"
-  | "versions" | "audit" | "resources";
+  | "versions" | "audit" | "resources" | "agentDir";
 
 const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: "browse" | "actions" | "protection" | "admin" }[] = [
   // Browse group
@@ -46,6 +49,7 @@ const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: 
   { id: "search", icon: "🔍", labelKey: "navSearch", group: "actions" },
   { id: "history", icon: "📋", labelKey: "navJobHistory", group: "actions" },
   { id: "analytics", icon: "📊", labelKey: "navAnalytics", group: "actions" },
+  { id: "agentDir", icon: "🗂️", labelKey: "navAgentDir", group: "actions" },
   // Data Protection group
   { id: "snapshots", icon: "📸", labelKey: "navSnapshots", group: "protection" },
   { id: "lock", icon: "🔒", labelKey: "navLock", group: "protection" },
@@ -81,7 +85,7 @@ function App() {
   // Persist navigation state in URL hash for refresh resilience
   const getInitialSection = (): Section => {
     const hash = window.location.hash.replace("#", "");
-    const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources"];
+    const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources","agentDir"];
     return valid.includes(hash as Section) ? (hash as Section) : "files";
   };
 
@@ -96,7 +100,7 @@ function App() {
   useEffect(() => {
     const onHashChange = () => {
       const hash = window.location.hash.replace("#", "");
-      const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources"];
+      const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources","agentDir"];
       if (valid.includes(hash as Section) && hash !== activeSection) {
         setActiveSectionRaw(hash as Section);
       }
@@ -146,6 +150,7 @@ function App() {
   const hiddenSections: Set<Section> = new Set();
   if (!aiAgentEnabled) hiddenSections.add("agent");
   if (!aiSearchEnabled) hiddenSections.add("search");
+  if (!aiAgentEnabled) hiddenSections.add("agentDir");
 
   if (authStatus !== "authenticated") {
     return <LoadingSkeleton />;
@@ -281,6 +286,9 @@ function App() {
             onAiSettingsChange={(s) => { setAiAgentEnabled(s.aiAgentEnabled); setAiSearchEnabled(s.aiSearchEnabled); }}
           />
         )}
+        {activeSection === "agentDir" && (
+          <AgentDirectoryPage />
+        )}
         {/* End of Data Protection sections */}
       </main>
 
@@ -292,6 +300,42 @@ function App() {
             selectedFileName={selectedFileName}
           />
         </aside>
+      )}
+    </div>
+  );
+}
+
+/** Agent Directory Page — combines Directory, Creator, and Teams */
+function AgentDirectoryPage() {
+  const { t } = useTranslation();
+  const [view, setView] = useState<"directory" | "creator" | "teams">("directory");
+
+  return (
+    <div>
+      {/* Tab bar */}
+      <div className="agent-dir-tabs">
+        <button className={`agent-dir-tab ${view === "directory" ? "active" : ""}`} onClick={() => setView("directory")}>
+          🗂️ {t("agentDirTitle")}
+        </button>
+        <button className={`agent-dir-tab ${view === "teams" ? "active" : ""}`} onClick={() => setView("teams")}>
+          🧩 {t("teamsTitle")}
+        </button>
+      </div>
+
+      {view === "directory" && (
+        <AgentDirectory
+          onCreateAgent={() => setView("creator")}
+          onSelectAgent={() => {/* TODO: switch to chat with agent */}}
+        />
+      )}
+      {view === "creator" && (
+        <AgentCreator
+          onCreated={() => setView("directory")}
+          onCancel={() => setView("directory")}
+        />
+      )}
+      {view === "teams" && (
+        <AgentTeams />
       )}
     </div>
   );
