@@ -119,6 +119,41 @@ GROUP BY extension
 ORDER BY file_count DESC
 ```
 
+### AI Agent (Requires admin enablement)
+
+A natural-language AI chat interface for file operations. Uses Bedrock Converse + tool_use to search, read, and analyze files.
+
+> This feature only appears when enabled by an admin in "AI Settings".
+
+**3 Modes**:
+| Mode | Purpose |
+|------|---------|
+| 🧠 KB Search | Semantic search over file contents via Knowledge Base |
+| 📁 File Ops | Directory listing, file search, read |
+| 🤖 Multi-Agent | All features (KB + File Ops + Safety) |
+
+**Key capabilities**:
+- Card grid for one-click common tasks
+- 📎 Image attachment → AI analyzes image content
+- 📜 Chat history → Restore previous sessions
+- 📂 File sidebar → Shows NFS/SMB permissions of referenced files
+- Tool trace timeline → Visualizes which agent executed what
+
+### Agent Registry (Requires admin enablement)
+
+Create and manage custom agents and multi-agent teams.
+
+- **Agent Directory**: Card grid of registered agents (with search and filter)
+- **Agent Creator**: Set icon, name, system prompt, tools, category
+- **Team Creation**: Select multiple agents and assign roles (Supervisor/Collaborator/Reviewer)
+
+### File Search (Requires admin enablement)
+
+Semantic search powered by Bedrock Knowledge Base, searching by meaning of file contents.
+
+- **Keyword mode**: Pattern matching on file names
+- **Semantic mode**: Vector search (requires KB setup)
+
 ---
 
 ## Data Protection
