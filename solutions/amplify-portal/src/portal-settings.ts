@@ -32,6 +32,14 @@ export const portalSettings = {
   fileListingEnabled: true,
 
   /**
+   * Enable AI Agent Chat and Bedrock Knowledge Base features.
+   * Default: false — Bedrock KB incurs ongoing cost (OpenSearch Serverless OCU charges).
+   * Admin can enable at runtime from Resource Management > AI Settings panel.
+   * This compile-time flag is the FALLBACK when DynamoDB settings are unavailable.
+   */
+  aiAgentEnabled: false,
+
+  /**
    * Storage Browser configuration.
    * Required for the Upload tab (Storage Browser for S3 component).
    * Set these to match your FSx for ONTAP S3 AP and account.

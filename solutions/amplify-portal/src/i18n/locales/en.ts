@@ -666,4 +666,23 @@ export const en: Record<TranslationKeys, string> = {
   cardProtectPrompt: "Check the current snapshot lock status",
   cardRecentTitle: "Recent Changes",
   cardRecentDesc: "Show recently modified files",
+
+  // --- AI Settings (Admin) ---
+  rmAiSettings: "AI Settings",
+  rmAiSettingsDesc: "Enable/disable AI Agent and Knowledge Base",
+  rmCatServices: "AI Services",
+  aiSettingsLoading: "Loading settings...",
+  aiSettingsDesc: "AI Agent and Knowledge Base search incur ongoing running costs and must be explicitly enabled by an administrator.",
+  aiSettingsCostTitle: "Cost notice",
+  aiSettingsCostDesc: "Bedrock Knowledge Base incurs continuous OpenSearch Serverless OCU charges. Keep disabled if not in use.",
+  aiSettingsAgentTitle: "AI Agent",
+  aiSettingsAgentDesc: "Natural language file operations via AI chat (Bedrock Converse)",
+  aiSettingsSearchTitle: "Semantic Search",
+  aiSettingsSearchDesc: "Vector search over file contents (Bedrock Knowledge Base)",
+  aiSettingsEnabled: "Enabled",
+  aiSettingsDisabled: "Disabled",
+  aiSettingsSaved: "Settings saved",
+  aiSettingsStatusTitle: "Current status",
+  aiDisabledTitle: "AI features are disabled",
+  aiDisabledDesc: "This feature has been disabled by an administrator. To enable it, go to Admin > Resource Management > AI Settings.",
 };

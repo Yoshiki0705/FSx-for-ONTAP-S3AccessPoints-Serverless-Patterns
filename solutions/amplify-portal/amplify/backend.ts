@@ -6,6 +6,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { Aspects, Duration, Stack } from "aws-cdk-lib";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { AwsSolutionsChecks, NagSuppressions } from "cdk-nag";
 
 /**
@@ -82,6 +83,17 @@ const vpcConfig = config.vpcId
       },
     }
   : undefined;
+
+// --- DynamoDB Table for Portal Settings (admin-controlled feature gates) ---
+// Stores runtime settings like AI Agent enablement.
+// Key: settingKey (string), Value: settingValue (string/JSON)
+const portalSettingsTable = new dynamodb.Table(dataStack, "PortalSettingsTable", {
+  partitionKey: { name: "settingKey", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  removalPolicy: Stack.of(dataStack).stackName.includes("sandbox")
+    ? undefined // default RETAIN for sandbox
+    : undefined,
+});
 
 // --- HTTP Data Source for Step Functions ---
 const sfnEndpoint = `https://states.${config.region}.amazonaws.com`;
@@ -316,6 +328,10 @@ const resourceMgmtRole = new iam.Role(dataStack, "ResourceMgmtLambdaRole", {
           actions: ["s3:GetBucketObjectLockConfiguration", "s3:GetBucketVersioning", "s3:ListAllMyBuckets", "s3:PutBucketObjectLockConfiguration"],
           resources: ["*"], // Restrict to S3_OBJECT_LOCK_BUCKET ARN in production
         }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Scan"],
+          resources: [portalSettingsTable.tableArn],
+        }),
       ],
     }),
   },
@@ -335,6 +351,7 @@ const resourceMgmtFunction = new lambda.Function(
       ONTAP_SECRET_NAME: config.ontapSecretName,
       SVM_NAME: config.ontapSvmName,
       S3_OBJECT_LOCK_BUCKET: config.s3ObjectLockBucket,
+      PORTAL_SETTINGS_TABLE: portalSettingsTable.tableName,
     },
     memorySize: 256,
     timeout: Duration.seconds(60),
@@ -423,6 +440,10 @@ const agentChatRole = new iam.Role(dataStack, "AgentChatLambdaRole", {
             ? config.s3ApResourceArns
             : ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
         }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:GetItem"],
+          resources: [portalSettingsTable.tableArn],
+        }),
       ],
     }),
   },
@@ -444,6 +465,7 @@ const agentChatFunction = new lambda.Function(
       BEDROCK_GUARDRAIL_ID: config.bedrockGuardrailId || "",
       BEDROCK_GUARDRAIL_VERSION: config.bedrockGuardrailVersion || "DRAFT",
       BEDROCK_KB_ID: config.bedrockKbId || "",
+      PORTAL_SETTINGS_TABLE: portalSettingsTable.tableName,
     },
     memorySize: 512,
     timeout: Duration.seconds(90),

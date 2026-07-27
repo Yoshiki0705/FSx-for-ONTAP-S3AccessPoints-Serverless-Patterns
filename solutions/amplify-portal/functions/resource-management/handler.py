@@ -34,6 +34,7 @@ logger.setLevel(logging.INFO)
 MGMT_IP = os.environ.get("ONTAP_MGMT_IP", "")
 SECRET_NAME = os.environ.get("ONTAP_SECRET_NAME", "")
 SVM_NAME = os.environ.get("SVM_NAME", "")
+PORTAL_SETTINGS_TABLE = os.environ.get("PORTAL_SETTINGS_TABLE", "")
 
 
 def _get_credentials():
@@ -65,6 +66,12 @@ def handler(event, context):
     """Route to appropriate handler based on action."""
     action = event.get("action", "")
     user_id = event.get("userId", "unknown")
+
+    # --- Portal Settings (DynamoDB only, no ONTAP needed) ---
+    if action == "getPortalSettings":
+        return _get_portal_settings(event)
+    elif action == "updatePortalSettings":
+        return _update_portal_settings(event, user_id)
 
     if not all([MGMT_IP, SECRET_NAME]):
         return {"error": "ONTAP connection not configured"}
@@ -198,6 +205,75 @@ def handler(event, context):
 
     except Exception as e:
         logger.error(f"Resource management error: {e}")
+        return {"error": str(e)}
+
+
+# ─── Portal Settings (DynamoDB) ───────────────────────────────────────────────
+
+
+def _get_portal_settings(event):
+    """Read all portal settings from DynamoDB.
+
+    Returns: { settings: { aiAgentEnabled: bool, ... } }
+    """
+    if not PORTAL_SETTINGS_TABLE:
+        return {"settings": {"aiAgentEnabled": False}}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(PORTAL_SETTINGS_TABLE)
+
+    try:
+        response = table.scan()
+        settings = {}
+        for item in response.get("Items", []):
+            key = item.get("settingKey", "")
+            value = item.get("settingValue", "")
+            # Parse boolean strings
+            if value in ("true", "True", "1"):
+                settings[key] = True
+            elif value in ("false", "False", "0"):
+                settings[key] = False
+            else:
+                settings[key] = value
+        return {"settings": settings}
+    except Exception as e:
+        logger.error(f"Failed to read portal settings: {e}")
+        return {"settings": {"aiAgentEnabled": False}, "error": str(e)}
+
+
+def _update_portal_settings(event, user_id):
+    """Update a portal setting in DynamoDB.
+
+    Params: { key: str, value: str }
+    Only specific keys are allowed (whitelist).
+    """
+    if not PORTAL_SETTINGS_TABLE:
+        return {"error": "Portal settings table not configured"}
+
+    params = event.get("params", {})
+    if isinstance(params, str):
+        params = json.loads(params)
+    key = params.get("key", "")
+    value = params.get("value", "")
+
+    # Whitelist of allowed settings keys
+    allowed_keys = {"aiAgentEnabled", "aiSearchEnabled"}
+    if key not in allowed_keys:
+        return {"error": f"Setting '{key}' is not allowed. Valid: {sorted(allowed_keys)}"}
+
+    ddb = boto3.resource("dynamodb")
+    table = ddb.Table(PORTAL_SETTINGS_TABLE)
+
+    try:
+        table.put_item(Item={
+            "settingKey": key,
+            "settingValue": str(value).lower(),
+            "updatedBy": user_id,
+        })
+        logger.info(f"Portal setting updated: {key}={value} by {user_id}")
+        return {"success": True, "key": key, "value": value}
+    except Exception as e:
+        logger.error(f"Failed to update portal setting: {e}")
         return {"error": str(e)}
 
 
