@@ -8,8 +8,9 @@ AWS provides building blocks (S3 API, Cognito, AppSync) but no integrated manage
 
 See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
 
-## Developer Guide
+## Documentation
 
+- **[User Guide](../../docs/en/portal-user-guide.md)** — End-user guide for daily portal usage (no deploy knowledge needed)
 - **[Getting Started](docs/GETTING-STARTED.md)** — Setup, DemoMode, VPC Endpoints, production checklist
 - **[Implementation Guide](docs/IMPLEMENTATION.md)** — Architecture, config files, component structure, deployment, modification log
 - **[Admin Demo Guide](../../docs/en/admin-resource-management-demo.md)** — E2E demo scenarios for Resource Management + ARP/AI
