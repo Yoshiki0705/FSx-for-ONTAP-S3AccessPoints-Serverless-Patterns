@@ -4096,3 +4096,76 @@ button[type="submit"]:disabled {
 }
 .agent-dir-tab:hover { background: #f1f5f9; color: #334155; }
 .agent-dir-tab.active { background: #eff6ff; color: #1e40af; border-bottom: 2px solid #2563eb; }
+
+/* ─── Lock Dialog (Modal Overlay) ─────────────────────────────────────────── */
+
+.lock-dialog {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.lock-dialog .dialog-content {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.lock-dialog .dialog-description {
+  color: #64748b;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+.lock-dialog .dialog-field {
+  margin-bottom: 1rem;
+}
+.lock-dialog .dialog-field label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.lock-dialog .dialog-field input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.lock-dialog .dialog-field small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+.lock-dialog .dialog-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+.lock-dialog .lock-confirm-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.lock-dialog .lock-confirm-btn:hover { background: #b91c1c; }
+.lock-dialog .lock-confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.lock-dialog .cancel-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.lock-dialog .cancel-btn:hover { background: #e2e8f0; }
