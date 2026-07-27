@@ -105,6 +105,20 @@ const chatHistoryTable = new dynamodb.Table(dataStack, "ChatHistoryTable", {
   timeToLiveAttribute: "ttl",
 });
 
+// --- DynamoDB Table for Agent Directory (custom agent registry) ---
+// PK: agentId (UUID). Stores: name, description, systemPrompt, tools, icon, category, isShared
+const agentDirectoryTable = new dynamodb.Table(dataStack, "AgentDirectoryTable", {
+  partitionKey: { name: "agentId", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+});
+
+// --- DynamoDB Table for Multi-Agent Teams ---
+// PK: teamId (UUID). Stores: name, description, agents (list), createdBy
+const agentTeamsTable = new dynamodb.Table(dataStack, "AgentTeamsTable", {
+  partitionKey: { name: "teamId", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+});
+
 // --- HTTP Data Source for Step Functions ---
 const sfnEndpoint = `https://states.${config.region}.amazonaws.com`;
 
@@ -458,6 +472,10 @@ const agentChatRole = new iam.Role(dataStack, "AgentChatLambdaRole", {
           actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:DeleteItem"],
           resources: [chatHistoryTable.tableArn],
         }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Scan", "dynamodb:DeleteItem", "dynamodb:UpdateItem"],
+          resources: [agentDirectoryTable.tableArn, agentTeamsTable.tableArn],
+        }),
       ],
     }),
   },
@@ -481,6 +499,8 @@ const agentChatFunction = new lambda.Function(
       BEDROCK_KB_ID: config.bedrockKbId || "",
       PORTAL_SETTINGS_TABLE: portalSettingsTable.tableName,
       CHAT_HISTORY_TABLE: chatHistoryTable.tableName,
+      AGENT_DIRECTORY_TABLE: agentDirectoryTable.tableName,
+      AGENT_TEAMS_TABLE: agentTeamsTable.tableName,
       GROUP_PATH_PREFIXES: JSON.stringify(config.groupApMapping ? Object.fromEntries(
         Object.entries(config.groupApMapping).map(([group]) => [group, [`${group}/`, "shared/"]])
       ) : {}),
