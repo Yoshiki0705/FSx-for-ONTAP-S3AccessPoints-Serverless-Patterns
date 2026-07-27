@@ -585,4 +585,23 @@ export const ko: Record<TranslationKeys, string> = {
   cardProtectPrompt: "현재 스냅샷 잠금 상태를 확인해줘",
   cardRecentTitle: "최근 변경",
   cardRecentDesc: "최근 수정된 파일 표시",
+
+  // --- AI Settings (Admin) ---
+  rmAiSettings: "AI 설정",
+  rmAiSettingsDesc: "AI 에이전트 및 Knowledge Base 활성화",
+  rmCatServices: "AI 서비스",
+  aiSettingsLoading: "설정 로드 중...",
+  aiSettingsDesc: "AI 에이전트와 Knowledge Base 검색은 지속적인 비용이 발생하므로 관리자가 명시적으로 활성화해야 합니다.",
+  aiSettingsCostTitle: "비용 안내",
+  aiSettingsCostDesc: "Bedrock Knowledge Base는 OpenSearch Serverless OCU 요금이 지속적으로 발생합니다. 사용하지 않는 경우 비활성 상태로 유지하세요.",
+  aiSettingsAgentTitle: "AI 에이전트",
+  aiSettingsAgentDesc: "자연어로 파일 작업을 수행하는 AI 채팅 (Bedrock Converse)",
+  aiSettingsSearchTitle: "시맨틱 검색",
+  aiSettingsSearchDesc: "파일 내용의 벡터 검색 (Bedrock Knowledge Base)",
+  aiSettingsEnabled: "활성",
+  aiSettingsDisabled: "비활성",
+  aiSettingsSaved: "설정이 저장되었습니다",
+  aiSettingsStatusTitle: "현재 상태",
+  aiDisabledTitle: "AI 기능이 비활성화됨",
+  aiDisabledDesc: "이 기능은 관리자에 의해 비활성화되었습니다. 활성화하려면 관리 > 리소스 관리 > AI 설정에서 변경하세요.",
 };

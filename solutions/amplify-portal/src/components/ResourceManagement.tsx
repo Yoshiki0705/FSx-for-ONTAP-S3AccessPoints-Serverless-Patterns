@@ -11,15 +11,16 @@ import { EfficiencyPanel } from "./admin/EfficiencyPanel";
 import { ArpAdminManager } from "./admin/ArpAdminManager";
 import { SnapshotAdminManager } from "./admin/SnapshotAdminManager";
 import { StorageDashboard } from "./admin/StorageDashboard";
+import { AiSettingsManager } from "./admin/AiSettingsManager";
 
-type AdminPanel = "volumes" | "exportPolicies" | "qos" | "snaplock" | "quotas" | "cifsShares" | "qtrees" | "efficiency" | "arpAdmin" | "snapshotAdmin";
+type AdminPanel = "volumes" | "exportPolicies" | "qos" | "snaplock" | "quotas" | "cifsShares" | "qtrees" | "efficiency" | "arpAdmin" | "snapshotAdmin" | "aiSettings";
 
 interface PanelDef {
   id: AdminPanel;
   icon: string;
   label: string;
   description: string;
-  category: "storage" | "access" | "protection" | "monitoring";
+  category: "storage" | "access" | "protection" | "monitoring" | "services";
 }
 
 /**
@@ -60,12 +61,15 @@ export function ResourceManagement() {
     { id: "arpAdmin", icon: "🛡️", label: t("rmArpAdmin"), description: t("rmArpAdminDesc"), category: "protection" },
     { id: "snapshotAdmin", icon: "📸", label: t("rmSnapshotAdmin"), description: t("rmSnapshotAdminDesc"), category: "protection" },
     { id: "snaplock", icon: "🔒", label: t("rmSnaplock"), description: t("rmSnaplockDesc"), category: "protection" },
+    // AI & Services
+    { id: "aiSettings", icon: "🤖", label: t("rmAiSettings"), description: t("rmAiSettingsDesc"), category: "services" },
   ];
 
   const categories = [
     { key: "storage", label: t("rmCatStorage"), icon: "🗄️" },
     { key: "access", label: t("rmCatAccess"), icon: "🔐" },
     { key: "protection", label: t("rmCatProtection"), icon: "🛡️" },
+    { key: "services", label: t("rmCatServices"), icon: "🤖" },
   ] as const;
 
   // Render the detail panel when one is selected
@@ -90,6 +94,7 @@ export function ResourceManagement() {
           {activePanel === "arpAdmin" && <ArpAdminManager />}
           {activePanel === "snaplock" && <SnaplockManager />}
           {activePanel === "efficiency" && <EfficiencyPanel />}
+          {activePanel === "aiSettings" && <AiSettingsManager />}
         </div>
       </div>
     );
