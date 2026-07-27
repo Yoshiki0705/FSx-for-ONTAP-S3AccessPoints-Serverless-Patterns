@@ -66,24 +66,86 @@ interface AgentResponse {
 
 const AGENT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   "file-explorer": { bg: "#ebf8ff", text: "#2b6cb0", border: "#bee3f8" },
+  "knowledge-analyst": { bg: "#faf5ff", text: "#6b46c1", border: "#e9d8fd" },
   "safety-controller": { bg: "#fff5f5", text: "#c53030", border: "#fed7d7" },
   "general": { bg: "#f7fafc", text: "#4a5568", border: "#e2e8f0" },
 };
 
 const AGENT_ICONS: Record<string, string> = {
   "file-explorer": "📁",
+  "knowledge-analyst": "🧠",
   "safety-controller": "🛡️",
   "general": "⚙️",
 };
 
-// --- Suggested Prompts ---
+// --- Suggested Prompts (Card Grid) ---
 
-const SUGGESTED_PROMPTS = [
-  { key: "agentSuggestList", icon: "📂" },
-  { key: "agentSuggestSearch", icon: "🔍" },
-  { key: "agentSuggestAnalyze", icon: "📊" },
-  { key: "agentSuggestRecent", icon: "🕐" },
-] as const;
+interface TaskCard {
+  id: string;
+  icon: string;
+  titleKey: string;
+  descKey: string;
+  promptKey: string;
+  agent: string;
+  color: string;
+}
+
+const TASK_CARDS: TaskCard[] = [
+  {
+    id: "browse",
+    icon: "📂",
+    titleKey: "cardBrowseTitle",
+    descKey: "cardBrowseDesc",
+    promptKey: "agentSuggestList",
+    agent: "file-explorer",
+    color: "#ebf8ff",
+  },
+  {
+    id: "search",
+    icon: "🔍",
+    titleKey: "cardSearchTitle",
+    descKey: "cardSearchDesc",
+    promptKey: "agentSuggestSearch",
+    agent: "file-explorer",
+    color: "#f0fff4",
+  },
+  {
+    id: "knowledge",
+    icon: "🧠",
+    titleKey: "cardKnowledgeTitle",
+    descKey: "cardKnowledgeDesc",
+    promptKey: "cardKnowledgePrompt",
+    agent: "knowledge-analyst",
+    color: "#faf5ff",
+  },
+  {
+    id: "analyze",
+    icon: "📊",
+    titleKey: "cardAnalyzeTitle",
+    descKey: "cardAnalyzeDesc",
+    promptKey: "agentSuggestAnalyze",
+    agent: "knowledge-analyst",
+    color: "#fffbeb",
+  },
+  {
+    id: "protect",
+    icon: "🛡️",
+    titleKey: "cardProtectTitle",
+    descKey: "cardProtectDesc",
+    promptKey: "cardProtectPrompt",
+    agent: "safety-controller",
+    color: "#fff5f5",
+  },
+  {
+    id: "recent",
+    icon: "🕐",
+    titleKey: "cardRecentTitle",
+    descKey: "cardRecentDesc",
+    promptKey: "agentSuggestRecent",
+    agent: "file-explorer",
+    color: "#f7fafc",
+  },
+];
 
 // --- P0: Markdown Renderer ---
 
@@ -280,11 +342,22 @@ export function AgentChat() {
             <div className="agent-welcome-icon">🤖</div>
             <h3>{t("agentWelcomeTitle")}</h3>
             <p>{t("agentWelcomeDesc")}</p>
-            <div className="agent-suggestions">
-              {SUGGESTED_PROMPTS.map((s) => (
-                <button key={s.key} className="agent-suggestion-btn" onClick={() => sendMessage(t(s.key as any))}>
-                  <span className="suggestion-icon">{s.icon}</span>
-                  <span className="suggestion-text">{t(s.key as any)}</span>
+
+            {/* Card Grid — Task Examples (inspired by RAG-FSxN-CDK AgentCard) */}
+            <div className="agent-card-grid">
+              {TASK_CARDS.map((card) => (
+                <button
+                  key={card.id}
+                  className="agent-task-card"
+                  style={{ background: card.color }}
+                  onClick={() => sendMessage(t(card.promptKey as any))}
+                >
+                  <div className="card-top">
+                    <span className="card-icon">{card.icon}</span>
+                    <span className="card-agent-tag">{card.agent}</span>
+                  </div>
+                  <div className="card-title">{t(card.titleKey as any)}</div>
+                  <div className="card-desc">{t(card.descKey as any)}</div>
                 </button>
               ))}
             </div>

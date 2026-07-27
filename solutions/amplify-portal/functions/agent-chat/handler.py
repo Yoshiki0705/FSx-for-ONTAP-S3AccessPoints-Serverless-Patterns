@@ -33,10 +33,11 @@ logger.setLevel(logging.INFO)
 REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
 S3_AP_ALIAS = os.environ.get("S3_AP_ALIAS", "")
 MODEL_ID = os.environ.get("AGENT_MODEL_ID", "amazon.nova-lite-v1:0")
-MAX_TOOL_ITERATIONS = int(os.environ.get("MAX_TOOL_ITERATIONS", "5"))
+MAX_TOOL_ITERATIONS = int(os.environ.get("MAX_TOOL_ITERATIONS", "8"))
 MAX_FILE_READ_BYTES = 50 * 1024  # 50KB per file read
 GUARDRAIL_ID = os.environ.get("BEDROCK_GUARDRAIL_ID", "")
 GUARDRAIL_VERSION = os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
+BEDROCK_KB_ID = os.environ.get("BEDROCK_KB_ID", "")
 
 s3 = boto3.client(
     "s3",
@@ -45,6 +46,7 @@ s3 = boto3.client(
     config=Config(signature_version="s3v4"),
 )
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
+bedrock_agent_runtime = boto3.client("bedrock-agent-runtime", region_name=REGION) if BEDROCK_KB_ID else None
 
 # --- PHI Guardrail ---
 PHI_PATTERN = re.compile(
@@ -187,6 +189,34 @@ TOOL_CONFIG = {
                 },
             }
         },
+        {
+            "toolSpec": {
+                "name": "kb_search",
+                "description": (
+                    "Semantic search over file CONTENTS using Bedrock Knowledge Base (RAG). "
+                    "Unlike search_files (which matches file names), kb_search finds relevant "
+                    "passages INSIDE files based on meaning. Use when the user asks about "
+                    "specific content, topics, or information within documents. "
+                    "Returns relevant text snippets with source file paths and relevance scores."
+                ),
+                "inputSchema": {
+                    "json": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Natural language query to search file contents (e.g., 'thermal design temperature limits')",
+                            },
+                            "max_results": {
+                                "type": "integer",
+                                "description": "Maximum number of results to return (default: 5, max: 10)",
+                            },
+                        },
+                        "required": ["query"],
+                    }
+                },
+            }
+        },
     ]
 }
 
@@ -196,6 +226,7 @@ TOOL_AGENT_MAP = {
     "read_file": "file-explorer",
     "search_files": "file-explorer",
     "get_volume_summary": "file-explorer",
+    "kb_search": "knowledge-analyst",
     "request_action_approval": "safety-controller",
 }
 
@@ -327,6 +358,61 @@ def _tool_get_volume_summary(params: dict[str, Any]) -> str:
         return json.dumps({"error": str(e)})
 
 
+def _tool_kb_search(params: dict[str, Any]) -> str:
+    """Semantic search via Bedrock Knowledge Base (RAG retrieval).
+
+    Searches file CONTENT (not just file names) using vector similarity.
+    Requires BEDROCK_KB_ID to be configured.
+    """
+    query = params.get("query", "")
+    max_results = min(params.get("max_results", 5), 10)
+
+    if not query:
+        return json.dumps({"error": "Query is required for KB search"})
+
+    if not BEDROCK_KB_ID or not bedrock_agent_runtime:
+        return json.dumps({
+            "error": "Knowledge Base not configured. Set BEDROCK_KB_ID to enable semantic search over file contents.",
+            "results": [],
+        })
+
+    try:
+        response = bedrock_agent_runtime.retrieve(
+            knowledgeBaseId=BEDROCK_KB_ID,
+            retrievalQuery={"text": query},
+            retrievalConfiguration={
+                "vectorSearchConfiguration": {
+                    "numberOfResults": max_results,
+                }
+            },
+        )
+
+        results = []
+        for item in response.get("retrievalResults", []):
+            content = item.get("content", {}).get("text", "")
+            location = item.get("location", {})
+            s3_uri = location.get("s3Location", {}).get("uri", "")
+            score = item.get("score", 0)
+
+            # Extract file key from S3 URI
+            file_key = ""
+            if s3_uri:
+                parts = s3_uri.replace("s3://", "").split("/", 1)
+                file_key = parts[1] if len(parts) > 1 else ""
+
+            results.append({
+                "fileKey": file_key,
+                "snippet": content[:300],
+                "score": round(score, 4),
+            })
+
+        return json.dumps({"results": results, "count": len(results), "query": query})
+
+    except Exception as e:
+        logger.error(f"KB search error: {e}")
+        return json.dumps({"error": str(e), "results": []})
+
+
 # --- DemoMode Mock Data ---
 
 
@@ -426,6 +512,7 @@ TOOL_HANDLERS = {
     "read_file": _tool_read_file,
     "search_files": _tool_search_files,
     "get_volume_summary": _tool_get_volume_summary,
+    "kb_search": _tool_kb_search,
     "request_action_approval": lambda params: json.dumps({
         "approval_required": True,
         "action_type": params.get("action_type", "unknown"),
@@ -454,33 +541,46 @@ def execute_tool(name: str, tool_input: dict[str, Any]) -> tuple[str, str]:
 SYSTEM_PROMPT = """You are an AI assistant embedded in a file portal for FSx for ONTAP.
 You help users navigate, search, read, and analyze files stored on NAS volumes.
 
-You operate as a multi-agent system with specialist roles:
-- file-explorer: Handles list_files, read_file, search_files, get_volume_summary
-- safety-controller: Handles request_action_approval for dangerous operations
+You operate as a MULTI-AGENT SYSTEM with specialist roles:
+- **file-explorer** (Tools: list_files, read_file, search_files, get_volume_summary)
+  Handles file browsing, reading, and name-based pattern search.
+- **knowledge-analyst** (Tool: kb_search)
+  Handles semantic search over file CONTENTS using RAG (Knowledge Base).
+  Use kb_search when users ask about topics, concepts, or information INSIDE files.
+- **safety-controller** (Tool: request_action_approval)
+  Gates dangerous/irreversible operations. Always request approval first.
+
+TOOL SELECTION STRATEGY:
+- User asks "what files are in X folder?" → list_files (file-explorer)
+- User asks "find files named X" → search_files (file-explorer)
+- User asks "what does the spec say about X?" → kb_search (knowledge-analyst)
+- User asks "summarize this file" → read_file then analyze (file-explorer)
+- User asks to delete/lock/block → request_action_approval (safety-controller)
 
 Available tools:
 - list_files: Browse directories
 - read_file: Read file content (blocked for PHI paths like /dicom/, /phi/, /pii/)
 - search_files: Find files by name pattern
 - get_volume_summary: Overview of the volume structure
-- request_action_approval: Request human approval before dangerous/irreversible actions
+- kb_search: Semantic search over file contents via Knowledge Base (RAG)
+- request_action_approval: Request human approval before dangerous actions
 
 Guidelines:
 - Be concise and helpful
-- When asked about file contents, use read_file to get the actual content before answering
-- When asked to find files, use search_files or list_files
+- When asked about file contents, prefer kb_search for questions about topics/meaning
+- Use read_file only when the user specifies a particular file to read
 - If a tool returns an error, explain it clearly to the user
 - Never fabricate file contents — only report what the tools return
-- Respect PHI guardrails: if read_file is blocked, explain why and suggest alternatives
+- Respect PHI guardrails: if read_file is blocked, explain why
 - Answer in the same language the user uses
+- When citing information from kb_search, mention the source file path
 
 CRITICAL — Human-in-the-Loop (HITL) Rules:
-- If the user asks to DELETE files, volumes, or snapshots → use request_action_approval FIRST
-- If the user asks to LOCK snapshots (SnapLock/tamperproof) → use request_action_approval FIRST
-- If the user asks to BLOCK users or IPs → use request_action_approval FIRST
-- If the user asks to ENABLE SnapLock Compliance (irreversible) → use request_action_approval FIRST
-- If the user asks to modify retention periods → use request_action_approval FIRST
-- NEVER execute destructive actions without approval. Always explain WHY approval is needed.
+- DELETE files/volumes/snapshots → request_action_approval FIRST
+- LOCK snapshots (SnapLock/tamperproof) → request_action_approval FIRST
+- BLOCK users or IPs → request_action_approval FIRST
+- ENABLE SnapLock Compliance (irreversible) → request_action_approval FIRST
+- Modify retention periods → request_action_approval FIRST
 """
 
 
@@ -488,9 +588,19 @@ def run_agent_loop(
     message: str,
     history: list[dict[str, str]],
 ) -> dict[str, Any]:
-    """Run the Bedrock Converse agent loop with tool_use.
+    """Run the multi-agent Bedrock Converse loop with tool_use.
 
-    Returns: { answer, toolCalls, model, error }
+    Architecture: Supervisor (single LLM call) dispatches to specialist agents
+    via tool_use. Each tool is associated with a specialist agent role.
+    The trace shows which specialist handled each step.
+
+    Multi-Agent Roles:
+      - Supervisor: Orchestrates the overall task, decides which tools to use
+      - file-explorer: Browses, reads, searches files via S3 AP
+      - knowledge-analyst: Performs semantic search via Bedrock KB (RAG)
+      - safety-controller: Gates dangerous operations with HITL approval
+
+    Returns: { answer, toolCalls, model, error, guardrailApplied, approvalRequired }
     """
     # Build messages from history + new message
     messages = []
