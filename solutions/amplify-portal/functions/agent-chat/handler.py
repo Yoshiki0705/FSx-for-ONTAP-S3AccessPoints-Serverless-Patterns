@@ -630,6 +630,9 @@ def run_agent_loop(
         ]
         answer = "\n".join(text_blocks) if text_blocks else ""
 
+        # Strip <thinking> tags (Nova models include reasoning in these)
+        answer = re.sub(r"<thinking>[\s\S]*?</thinking>", "", answer).strip()
+
         # If guardrail blocked entirely and no text, use a user-friendly message
         if guardrail_applied and not answer:
             answer = ""
@@ -674,9 +677,9 @@ def handler(event, context):
         history = params.get("history", [])
 
         if not message:
-            return json.dumps({"answer": "", "error": "Message is required", "toolCalls": []})
+            return {"answer": "", "error": "Message is required", "toolCalls": []}
 
         result = run_agent_loop(message, history)
-        return json.dumps(result)
+        return result
 
-    return json.dumps({"error": f"Unknown action: {action}"})
+    return {"error": f"Unknown action: {action}"}
