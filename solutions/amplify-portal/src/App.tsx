@@ -272,12 +272,12 @@ function App() {
             />
           </>
         )}
-        {activeSection === "versions" && <VersionHistory />}
+        {activeSection === "versions" && <VersionHistory mode="diff" />}
         {activeSection === "audit" && <AuditLog />}
         {activeSection === "analytics" && <AthenaQueryPanel />}
 
         {/* Data Protection sections */}
-        {activeSection === "snapshots" && <VersionHistory />}
+        {activeSection === "snapshots" && <VersionHistory mode="browse" />}
         {activeSection === "lock" && <SnaplockStatus />}
         {activeSection === "arp" && <ArpStatus />}
         {activeSection === "resources" && (
