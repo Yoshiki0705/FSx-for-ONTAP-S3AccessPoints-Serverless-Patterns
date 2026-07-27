@@ -313,11 +313,7 @@ export function VersionHistory() {
                     className="action-btn"
                     title={t("snapshotsBrowseBtn")}
                     onClick={() => {
-                      window.dispatchEvent(
-                        new CustomEvent("restore-snapshot", {
-                          detail: { snapshotName: snap.name },
-                        })
-                      );
+                      alert(`FlexClone + S3 AP browse for "${snap.name}" — requires ONTAP VPC connection`);
                     }}
                   >
                     {t("snapshotsBrowseBtn")}
