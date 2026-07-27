@@ -14,6 +14,7 @@ See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../
 - **[Getting Started](docs/GETTING-STARTED.md)** — Setup, DemoMode, VPC Endpoints, production checklist
 - **[Implementation Guide](docs/IMPLEMENTATION.md)** — Architecture, config files, component structure, deployment, modification log
 - **[Admin Demo Guide](../../docs/en/admin-resource-management-demo.md)** — E2E demo scenarios for Resource Management + ARP/AI
+- **[AI Agent Demo Guide](../../docs/en/ai-agent-demo-guide.md)** — AI Agent Chat, Semantic Search, Guardrails, HITL
 
 ## Key Features
 
