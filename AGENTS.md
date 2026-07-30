@@ -377,6 +377,8 @@ All README and documentation files follow these UX principles:
 | KNFSD NFS mount: Connection refused | SG で TCP 2049 が未許可。KNFSD SG に NFS inbound rule を追加 |
 | KNFSD 経由 write → S3 AP で見えない | NFS write は非同期。`sync` 後 2-3 秒待機してから S3 AP GetObject |
 | KNFSD Terraform: InvalidAMIID | AMI ビルドリージョンとデプロイリージョンの不一致。`--region` を揃える |
+| Tamperproof 有効化 → 無効化できない | `snapshot_locking_enabled` は不可逆（400 Bad Request）。ただしポリシーの retention_period 削除で新規ロック停止は可能。詳細は [docs/tamperproof-snapshot-design.md](docs/tamperproof-snapshot-design.md) |
+| Tamperproof 有効化 ≠ 全 Snapshot 自動ロック | 有効化は「ロック機能 ON」であり「自動ロック」ではない。ポリシーに retention_period を設定して初めて自動ロックが発動 |
 
 ## S3 Access Point Critical Knowledge
 
@@ -746,6 +748,12 @@ When reviewing changes, consider these perspectives:
 | [AgentCore MCP Remaining Issues](docs/agentcore-mcp-remaining-issues.md) | Known issues tracker: Web UI bug, Desktop persistence, CUSTOM_JWT 403 |
 | [AgentCore MCP Tools Reference](docs/agentcore-mcp-tools.md) | Lambda tool definitions (list/read/search), input/output schemas, IAM policy |
 | [KNFSD + S3 AP Dual-Path Architecture](docs/knfsd-s3ap-dual-path-architecture.md) | KNFSD File Cache + S3 AP complementary access for EDA/VFX/HPC/Genomics/Finance/Weather/Energy |
+| [Tamperproof Snapshot Design](docs/tamperproof-snapshot-design.md) | 3-layer design (volume enable / policy retention / individual lock), irreversibility rules, operation patterns |
+| [PoC → Production Guide (EN)](docs/en/portal-poc-to-production.md) | DemoMode → production FSx for ONTAP connectivity migration checklist |
+| [PoC → 本番移行ガイド (JA)](docs/ja/portal-poc-to-production.md) | DemoMode から本番接続への移行手順（ネットワーク/認証/シークレット/監査/コスト） |
+| [Scaling Guide (EN)](docs/en/portal-scaling-guide.md) | Capacity planning, throughput sharing, QoS, component scaling, growth estimation |
+| [スケーリングガイド (JA)](docs/ja/portal-scaling-guide.md) | キャパシティプランニング、スループット共有、QoS、スケーリング特性 |
+| [Accessibility Statement](docs/en/portal-accessibility.md) | ARIA, keyboard navigation, screen reader compatibility, WCAG 2.1 AA note |
 
 ## Agent Output Standards
 

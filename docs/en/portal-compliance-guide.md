@@ -178,3 +178,5 @@ When a ransomware incident is detected:
 | [Admin Demo Guide](admin-resource-management-demo.md) | Storage admin operations |
 | [Incident Response Playbook](../../docs/incident-response-playbook.md) | Full incident response procedures |
 | [Quick Reference Card](portal-quick-reference.md) | 1-page cheat sheet |
+| [PoC → Production Guide](portal-poc-to-production.md) | Production deployment checklist (audit trail, MFA, secrets) |
+| [Accessibility Statement](portal-accessibility.md) | WCAG compliance and assistive technology support |

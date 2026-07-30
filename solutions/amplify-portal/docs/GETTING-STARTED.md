@@ -4,12 +4,17 @@
 
 ## 前提条件
 
-| 項目 | 必須 | 備考 |
-|------|:---:|------|
-| AWS アカウント | ✅ | Amplify sandbox 用。Cognito/AppSync/Lambda は Free Tier 内 |
-| Node.js 18+ | ✅ | `node --version` で確認 |
-| AWS CLI v2 | ✅ | `aws --version` で確認 |
-| FSx for ONTAP ファイルシステム | — | DemoMode なら不要。admin 機能を使う場合に必要 |
+| 項目 | 必須 | バージョン | 確認コマンド |
+|------|:---:|---------|----------|
+| AWS アカウント | ✅ | — | Free Tier で可。IAM ユーザーまたは SSO で認証済み |
+| Node.js | ✅ | 20.x 以上 | `node --version` |
+| npm | ✅ | 10.x 以上 | `npm --version` |
+| AWS CLI | ✅ | 2.x | `aws --version` |
+| Amplify CLI | ✅ | 最新版 | `npx ampx --version` |
+| FSx for ONTAP | — | ONTAP 9.15+ | DemoMode なら不要。admin 機能に必要 |
+| Docker | — | 24.x 以上 | `docker --version`（Nextcloud 利用時のみ） |
+
+> **検証環境**: 本ガイドは Node.js 20.18.x / Amplify Gen2 1.x / Python 3.12 (Lambda) / ONTAP 9.17.1 / ap-northeast-1 で検証しています。
 
 ## クイックスタート（DemoMode — FSx for ONTAP なし）
 
@@ -190,6 +195,9 @@ aws s3 rb s3://fsxn-portal-objectlock-demo --force
 
 ## 次のステップ
 
+- [PoC → 本番移行ガイド](../../docs/ja/portal-poc-to-production.md) — DemoMode から本番接続への移行チェックリスト
+- [スケーリングガイド](../../docs/ja/portal-scaling-guide.md) — キャパシティプランニングとスループット管理
+- [アクセシビリティ](../../docs/en/portal-accessibility.md) — キーボードナビゲーション、ARIA、スクリーンリーダー対応
 - [Admin Resource Management Demo Guide](../../docs/en/admin-resource-management-demo.md) — 全管理機能の操作手順
 - [AI Agent Demo Guide](./ai-agent-demo-guide.md) — AI エージェント機能の E2E デモ
 - [DemoMode Guide](../../docs/demo-mode-guide.md) — FSx for ONTAP なしでの検証方法

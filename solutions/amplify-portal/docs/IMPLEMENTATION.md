@@ -181,6 +181,22 @@ Without this, `JSON.parse(object)` silently produces `{}` → Lambda receives em
 | 2026-07-27 | Phase 2: Agent Creator | Emoji icon picker, tools selection, system prompt, category, shared toggle | AgentCreator.tsx |
 | 2026-07-27 | Phase 2: Multi-Agent Teams | DynamoDB AgentTeamsTable, team wizard (select agents + assign roles), gallery | handler.py, AgentTeams.tsx |
 | 2026-07-27 | Phase 2: Navigation integration | agentDir section with tabs (Directory/Teams), hidden when AI disabled | App.tsx |
+| 2026-07-27 | Lock dialog UX fix | Error message shown inside modal (not page bottom); Enable Tamperproof button when locking not enabled | VersionHistory.tsx, snapshots/index.py |
+| 2026-07-27 | Lock column display fix | Unlocked snapshots show `—` instead of 🔓 icon (was confusing: all appeared locked) | VersionHistory.tsx |
+| 2026-07-27 | Version Diff feature | Checkbox selection + compare button + diff result table (added/modified/deleted). DemoMode client-side fallback | VersionHistory.tsx, snapshots/index.py |
+| 2026-07-27 | Clone from Snapshot rename | "Restore" → "Clone" with ransomware recovery/audit/test use-case description. Full i18n | RestoreFromSnapshot.tsx, ja.ts, en.ts |
+| 2026-07-27 | Retention period range hint | ISO field shows valid range P1D–P36500D / P1M–P1200M / P1Y–P100Y | ja.ts, en.ts |
+| 2026-07-27 | Tamperproof enable: custom modal | Replace window.prompt with custom dialog: 3 bullet points + ENABLE typed confirmation + disabled-until-correct button | SnapshotAdminManager.tsx, ja.ts, en.ts |
+| 2026-07-27 | Snapshot policy assign to volume | Policy tab: "Assign to volume" button + VolumeSelector dialog. Tamperproof tab: inline dropdown to change policy | SnapshotAdminManager.tsx, ja.ts, en.ts |
+| 2026-07-27 | Snapshot policy delete | Delete button per policy row (red). Cannot delete if assigned — error guides to detach first | SnapshotAdminManager.tsx, handler.py, ja.ts, en.ts |
+| 2026-07-27 | Tamperproof design doc | 3-layer design guide + stop flow (Pattern D) + API reference | docs/tamperproof-snapshot-design.md |
+| 2026-07-28 | ShareLink i18n | Full Japanese translation for share link dialog (title, expires, generate, copy, security note) | ShareLink.tsx, ja.ts, en.ts |
+| 2026-07-28 | ShareLink user guide | Detailed share link usage guide in portal-tabs-guide.md (操作手順, 仕様, セキュリティ) | portal-tabs-guide.md |
+| 2026-07-28 | Folder share link | Copy direct link to folder (`#files?path=prefix`). initialPrefix prop on FileExplorer for external navigation | FileExplorer.tsx, App.tsx, ja.ts, en.ts |
+| 2026-07-28 | ZIP folder download | Download all files as ZIP (500 files / 500MB max). DemoMode mock. Lambda action in list-files handler | list-files/index.py, FolderDownload.tsx, ja.ts, en.ts |
+| 2026-07-28 | Folder favorites | Star button (☆/★) on both folders and files. FavoritesView shows 📁/📄 with correct navigation | FileExplorer.tsx, Favorites.tsx, App.tsx |
+| 2026-07-28 | AD/OIDC auth config | Environment-driven OIDC/SAML in auth/resource.ts. authMode in portal-settings. socialProviders in Authenticator | auth/resource.ts, portal-settings.ts, main.tsx |
+| 2026-07-28 | Folder sharing design doc | ZIP generation architecture + AD/OIDC integration plan | docs/folder-sharing-and-auth-design.md |
 
 ## AI Agent Architecture (Phase 1 + Phase 2)
 
@@ -247,3 +263,75 @@ All AI features are **disabled by default** and controlled via `PortalSettingsTa
 | `agentDirectoryEnabled` | Agent Directory + Teams | Agent enabled |
 
 Admin toggles these from **Resource Management > AI Settings** panel.
+
+---
+
+## Modification Log
+
+### 2026-07-30: 6 New ResourceManagement Panels
+
+**Added panels (16 total, up from 10)**:
+
+| Panel | Category | Component | Lambda Actions |
+|-------|----------|-----------|---------------|
+| FlexClone | Storage | `FlexCloneManager.tsx` | listFlexClones, createFlexClone, splitFlexClone |
+| Local Users | Access Control | `LocalUserManager.tsx` | listLocalUsers, createLocalUser, deleteLocalUser, listLocalGroups, createLocalGroup, deleteLocalGroup, listGroupMembers, addGroupMember, removeGroupMember |
+| Name Mapping | Access Control | `NameMappingManager.tsx` | listNameMappings, createNameMapping, deleteNameMapping |
+| FPolicy | Data Protection | `FPolicyManager.tsx` | listFpolicyPolicies, listFpolicyEvents, getFpolicyStatus |
+| Vscan | Data Protection | `VscanManager.tsx` | getVscanStatus, listVscanPolicies |
+| SnapMirror | Data Protection | `SnapMirrorStatus.tsx` | listSnapmirrorRelationships, getSnapmirrorTransfers |
+
+**Design decisions**:
+- **Vscan guidance**: When Vscan is not configured (`enabled: false`), displays a 5-step setup wizard with 6-vendor comparison table and external links (AWS Blog, GitHub samples, NetApp docs). This "zero-to-configured" flow was added because Vscan has the highest setup barrier of any ONTAP feature — it requires external Windows/Linux infrastructure.
+- **FlexClone split**: Confirmation dialog required because split is irreversible (clone becomes independent volume, losing space efficiency).
+- **NameMapping direction selector**: 4 directions (win_unix, unix_win, s3_unix, s3_win) exposed. `s3_unix` is auto-managed by FSx when S3 AP is attached — the UI shows it for visibility but notes it shouldn't be manually modified.
+- **SnapMirror expandable transfers**: Click to expand last 10 transfers per relationship, avoiding heavy API calls on initial load.
+- **DemoMode behavior**: All panels render gracefully with empty state when ONTAP is not connected. No API errors shown to users.
+
+### 2026-07-30: Graceful Error Handling for New Panels
+
+**Problem**: When the backend Lambda hasn't been redeployed after adding new actions (or in DemoMode), panels showed `"⚠️ Unknown action: listVscanPolicies"` etc. as red error banners.
+
+**Fix**: All 6 new panels now filter out `"Unknown action"` and `"ONTAP connection not configured"` errors from the UI, falling back to empty state (which is the correct DemoMode behavior). Affected files:
+- `VscanManager.tsx` — `loadData()` response handling
+- `NameMappingManager.tsx` — `loadMappings()` response handling
+- `LocalUserManager.tsx` — `loadUsers()` + `loadGroups()` (2 locations)
+- `FlexCloneManager.tsx` — `loadClones()` response handling
+- `SnapMirrorStatus.tsx` — `loadRelationships()` response handling
+- `FPolicyManager.tsx` — `loadData()` across all 3 tabs
+
+### 2026-07-30: Athena Query Panel UX Improvement
+
+**Problem**: The Athena panel showed only a bare SQL textarea with `SELECT * FROM default.my_table LIMIT 10` — no explanation of what to input or how the panel relates to Glue Crawler.
+
+**Fix**: Added guidance panel with:
+- Explanation: "Catalog FSx for ONTAP files with Glue Crawler, then query with SQL here"
+- Expandable `<details>` section with 3 practical query examples (copy-pasteable)
+- Default SQL changed to `SHOW TABLES IN default` (discover tables first)
+- Multi-line placeholder with commented examples
+
+**ResourceManagement final layout (4 categories × 16 panels + 1 service)**:
+```
+Storage (🗄️):        Volumes / 🧬FlexClone / Qtree / Quotas / Efficiency
+Access Control (🔐): Export Policies / SMB Shares / 👤Local Users / 🔀Name Mapping / QoS
+Data Protection (🛡️): ARP/AI / Snapshots / SnapLock / 📡FPolicy / 🦠Vscan / 🪞SnapMirror
+Services (🤖):       AI Settings
+```
+
+
+---
+
+## Related Documents
+
+| Document | Purpose |
+|----------|---------|
+| [Getting Started Guide](./GETTING-STARTED.md) | 30-minute quickstart with DemoMode |
+| [PoC → Production Guide](../../docs/en/portal-poc-to-production.md) | Migration checklist for production FSx for ONTAP connectivity |
+| [Scaling Guide](../../docs/en/portal-scaling-guide.md) | Capacity planning, throughput sharing, QoS, growth estimation |
+| [Accessibility Statement](../../docs/en/portal-accessibility.md) | ARIA, keyboard nav, screen reader, WCAG compliance note |
+| [Security Review](./SECURITY-REVIEW.md) | Threat model, IAM permissions, data flow analysis |
+| [Authorization Model](../../docs/en/portal-authorization-model.md) | Cognito groups, S3 AP identity, role separation |
+| [User Guide](../../docs/en/portal-user-guide.md) | End-user documentation (8 languages) |
+| [Compliance Guide](../../docs/en/portal-compliance-guide.md) | Auditor-facing verification procedures |
+| [AI Agent Demo Guide](./ai-agent-demo-guide.en.md) | E2E agent chat demonstration |
+| [Admin Demo Guide](../../docs/en/admin-resource-management-demo.md) | Admin operations walkthrough |
