@@ -262,3 +262,6 @@ aws cognito-idp admin-set-user-password --user-pool-id <pool-id> --username <you
 | [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) | Developers | Architecture and customization |
 | [Portal Authorization Model](portal-authorization-model.md) | Security teams | Cognito groups, IAM, file-level access |
 | [Storage Browser Demo](storage-browser-demo-guide.md) | All users | Upload/download via Storage Browser |
+| [PoC → Production Guide](portal-poc-to-production.md) | Administrators | Migrate from DemoMode to production FSx for ONTAP |
+| [Scaling Guide](portal-scaling-guide.md) | Architects | Capacity planning and throughput management |
+| [Accessibility Statement](portal-accessibility.md) | All users | Keyboard navigation, screen reader support |

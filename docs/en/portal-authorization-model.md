@@ -138,3 +138,14 @@ aws cognito-idp create-group \
 The UI does not hide admin features from non-admin users — instead, it shows them grayed out with a "storage-admin required" badge. This makes the capability visible (users know what's possible) while preventing unauthorized execution (AppSync rejects the call if attempted).
 
 The `ArpResponseActions` component in Data Protection is an exception: it renders action buttons only when threat level is elevated, reducing cognitive load during normal operation.
+
+
+---
+
+## Related Documents
+
+- [PoC → Production Guide](./portal-poc-to-production.md) — Authentication setup (MFA, groups, SAML federation) for production
+- [Scaling Guide](./portal-scaling-guide.md) — How auth scales (Cognito 1M users, rate limits)
+- [Accessibility Statement](./portal-accessibility.md) — How ARIA roles interact with authorization states
+- [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) — Generic Dispatch authorization schema
+- [Compliance Guide](./portal-compliance-guide.md) — Auditor procedures for verifying access controls

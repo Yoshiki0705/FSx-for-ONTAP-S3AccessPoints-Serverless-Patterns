@@ -61,6 +61,7 @@ aws fsx describe-storage-virtual-machines \
 | Panel | Description | ONTAP REST Endpoint |
 |-------|-------------|---------------------|
 | **Volumes** | Create, resize, delete volumes with capacity visualization | `/storage/volumes` |
+| **FlexClone** | Instant zero-copy volume clones: create, list, split | `/storage/volumes` (clone fields) |
 | **Qtrees** | Manage directory structures within volumes | `/storage/qtrees` |
 | **Quotas** | User/tree/group space and file limits | `/storage/quota/rules`, `/storage/quota/reports` |
 | **Storage Efficiency** | Deduplication, compression, savings ratio dashboard | `/storage/volumes?fields=efficiency,space` |
@@ -71,6 +72,8 @@ aws fsx describe-storage-virtual-machines \
 |-------|-------------|---------------------|
 | **Export Policies** | NFS access rules (clients, ro/rw, superuser) | `/protocols/nfs/export-policies` |
 | **SMB Shares** | CIFS/SMB shared folder management | `/protocols/cifs/shares` |
+| **Local Users** | SMB local users/groups: create, list, delete, membership | `/protocols/cifs/local-users`, `/protocols/cifs/local-groups` |
+| **Name Mapping** | Windows↔UNIX/S3 user name translation rules | `/name-services/name-mappings` |
 | **QoS Policies** | Fixed (max IOPS/MBps) and Adaptive (expected/peak) | `/storage/qos/policies` |
 
 ### Data Protection Category
@@ -80,6 +83,9 @@ aws fsx describe-storage-virtual-machines \
 | **ARP/AI Protection** | Ransomware protection state per volume, bulk enable | `/storage/volumes?fields=anti_ransomware` |
 | **Snapshot Management** | Policies, schedules, tamperproof locking | `/storage/snapshot-policies`, `/storage/volumes/{id}/snapshots` |
 | **SnapLock** | WORM retention configuration (Compliance/Enterprise) | `/storage/volumes?fields=snaplock` |
+| **FPolicy** | File access event notification and audit configuration | `/protocols/fpolicy` |
+| **Vscan** | On-access virus scanning setup + vendor guidance | `/protocols/vscan` |
+| **SnapMirror** | Data replication relationships and transfer history | `/snapmirror/relationships` |
 
 ## Demo Scenarios
 
@@ -160,6 +166,97 @@ aws fsx describe-storage-virtual-machines \
 4. After 300ms debounce, dropdown filters to matching volumes only
 5. Select a volume → qtrees for that volume are loaded
 
+### Scenario 10: FlexClone — Instant Volume Copy
+
+1. Navigate to **Admin > Resources > FlexClone**
+2. Observe existing clones (if any) with parent volume and split status
+3. Click **+ Create Clone** → fill:
+   - Clone Name: `clone_dev_test`
+   - Parent Volume: `vol_production`
+   - Snapshot (optional): leave empty for current state, or enter a snapshot name
+4. Click **Create** → observe new clone appears instantly (metadata-only copy)
+5. Click **Split** on the clone → confirm → split initiates (background process)
+6. Observe split progress percentage updating
+
+> **Note**: FlexClone shares the parent volume's throughput budget. Use for dev/test or forensics, not as a permanent parallel workload.
+
+### Scenario 11: Vscan — Antivirus Setup Guidance (DemoMode)
+
+1. Navigate to **Admin > Resources > Vscan**
+2. Since Vscan is not configured, the 5-step setup guidance displays:
+   - **Step 1**: Vendor selection table (6 vendors with license links)
+   - **Step 2**: NetApp Antivirus Connector download button
+   - **Step 3**: EC2 architecture diagram + AWS Blog/GitHub links
+   - **Step 4**: ONTAP CLI commands (scanner-pool, policy, enable)
+   - **Step 5**: Return to this panel to verify
+3. Click vendor links → verify they open correct external pages
+4. Click the Antivirus Connector download button → verify it opens mysupport.netapp.com
+5. After configuring Vscan (production), this panel shows on-access policy details
+
+### Scenario 12: SnapMirror — Replication Monitoring
+
+1. Navigate to **Admin > Resources > SnapMirror**
+2. Observe replication relationships (source → destination, state, health, lag time)
+3. Click **▶ Transfers** on a relationship → expand transfer history
+4. Observe last 10 transfers: state (success/failed), bytes transferred, end time, duration
+5. Click **▼** to collapse the transfer details
+6. Verify healthy/unhealthy badges reflect the `healthy` field from ONTAP API
+
+### Scenario 13: Local Users — SMB User/Group Management
+
+1. Navigate to **Admin > Resources > Local Users**
+2. **Users tab**:
+   - View list of SMB local users (name, full name, disabled status)
+   - Click **+ Create User** → fill name, password (must meet complexity requirements), full name
+   - Click Create → user appears in list
+   - Click **Delete** → confirm → user removed
+3. **Groups tab**:
+   - View list of local groups with member count
+   - Click a group card → expand to see members
+   - Click **+ Add Member** → select user → add
+   - Click **Remove** next to a member → confirm removal
+   - Click **+ Create Group** → enter name → create
+
+### Scenario 14: Name Mapping — Identity Translation Rules
+
+1. Navigate to **Admin > Resources > Name Mapping**
+2. Observe existing rules (direction, index, pattern, replacement)
+3. Click **+ Create** → fill:
+   - Direction: `Windows → UNIX` (from dropdown: win_unix / unix_win / s3_unix / s3_win)
+   - Index: 1 (priority order)
+   - Pattern: `DOMAIN\\(.+)` (regex)
+   - Replacement: `\1` (extract username from domain prefix)
+4. Click Create → new rule appears in the table
+5. Click **Delete** on a rule → confirm deletion
+6. Test deny mapping: create with replacement = `" "` (space) to block a specific user
+
+> **Security context**: Name mapping deny (`" "` replacement) blocks SMB access on UNIX/MIXED security style volumes. NTFS volumes use Windows ACLs directly and are not affected.
+
+### Scenario 15: FPolicy — File Access Audit Configuration
+
+1. Navigate to **Admin > Resources > FPolicy**
+2. **Policies tab**: View policies with enabled/disabled state, priority, engine, events
+3. **Events tab**: View configured events (protocol, monitored operations: open/close/read/write/delete/rename)
+4. **Status tab**: View external engine connection state (connected/disconnected)
+5. Verify the 3-tab structure renders without errors in DemoMode (empty lists displayed)
+
+### Scenario 16: Athena SQL — NAS Data Analytics
+
+1. Navigate to **AI & Processing > Analytics** (sidebar: 📊 分析)
+2. Observe the guidance panel explaining what Athena does and how it relates to Glue Crawler + S3 AP
+3. Click **📝 クエリ例を見る** to expand example queries
+4. Start with `SHOW TABLES IN default` (pre-filled) to discover available tables
+5. Click **クエリ実行** to run the query
+6. If tables exist, modify the query: `SELECT key, size FROM default.s3_objects ORDER BY size DESC LIMIT 20`
+7. Observe results rendered as a table with column headers and row count
+
+> **Prerequisites for Athena**: A Glue Crawler must have been configured to catalog files from the S3 AP. Without a Glue table, `SHOW TABLES` returns empty. The portal's Athena panel is a query interface — it does not create Glue Crawlers or tables.
+
+**What this panel enables**: Rather than opening the AWS Athena console separately, storage administrators and data engineers can run SQL queries directly from the portal. Typical use cases:
+- "Which files are larger than 1 GB?" (capacity planning)
+- "What was modified in the last 7 days?" (change tracking)
+- "How much data is in the engineering/ folder?" (project sizing)
+
 ## Architecture Notes
 
 ### CloudFormation Template Size Optimization
@@ -172,7 +269,7 @@ The portal uses a **generic dispatch pattern** to keep the CloudFormation templa
 
 | Endpoint | Data Source | Operations |
 |----------|------------|------------|
-| `adminQuery` / `adminMutation` | ResourceMgmtLambda | 36 admin operations |
+| `adminQuery` / `adminMutation` | ResourceMgmtLambda | 48 admin operations |
 | `arpQuery` / `arpMutation` | ArpResponseLambda | 7 ARP operations |
 | `protectionQuery` / `protectionMutation` | ListSnapshotsLambda | 9 protection operations |
 | `fileQuery` / `fileMutation` | ListFilesLambda | 6 file operations |
@@ -238,6 +335,14 @@ When `vpcId` is empty, Lambda deploys without VPC (admin panels show "ONTAP Conn
 | `solutions/amplify-portal/docs/screenshots/lock-panel-tamperproof.png` | Lock panel Tamperproof tab (inline lock form) |
 | `solutions/amplify-portal/docs/screenshots/lock-panel-s3objectlock.png` | Lock panel S3 Object Lock tab (ONTAP-independent) |
 | `solutions/amplify-portal/docs/screenshots/qtree-volume-selector.png` | Qtree panel with VolumeSelector search/filter |
+| `docs/screenshots/resource-management-overview.png` | Full Resource Management card grid (16 panels across 4 categories) |
+| `docs/screenshots/vscan-setup-guidance.png` | Vscan 5-step setup guidance with 6-vendor comparison table |
+| `docs/screenshots/flexclone-manager.png` | FlexClone panel with clone list and create form |
+| `docs/screenshots/snapmirror-status.png` | SnapMirror relationships with transfer history expansion |
+| `docs/screenshots/local-user-manager.png` | Local User Manager (Users tab with CRUD operations) |
+| `docs/screenshots/name-mapping-manager.png` | Name Mapping rules with direction selector and create form |
+| `docs/screenshots/athena-query-panel.png` | Athena SQL panel with guidance text and SHOW TABLES default |
+| `docs/screenshots/athena-query-panel-expanded.png` | Athena SQL panel with example queries expanded |
 | `solutions/amplify-portal/docs/screenshots/storage-dashboard.png` | Storage Health Dashboard (4-card grid: capacity, ARP, locks, efficiency) |
 | `solutions/amplify-portal/docs/screenshots/ai-processing-ready.png` | AI Processing page (ready, no error) |
 | `solutions/amplify-portal/docs/screenshots/lock-panel-s3objectlock-config.png` | S3 Object Lock config form with bucket list |
