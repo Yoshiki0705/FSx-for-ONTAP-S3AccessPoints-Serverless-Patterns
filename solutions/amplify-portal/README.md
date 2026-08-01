@@ -16,7 +16,7 @@ AWS provides building blocks (S3 API, Cognito, AppSync) but no integrated manage
 - Legal: accumulated contract PDFs (AI classification + deadline tracking)
 - Research: genomics and simulation results (browser search/preview for non-CLI users)
 
-This portal does **not** replace existing SaaS file sharing (Box, SharePoint, Google Drive). It adds a complementary layer for NAS-specific capabilities that SaaS tools cannot provide: Snapshot restore, SnapLock WORM, ransomware containment, and direct AI processing on NAS data without data copy.
+This portal does **not** replace existing SaaS file sharing (Box, SharePoint, Google Drive) — but it can work alongside them or standalone. It provides NAS-specific capabilities that require direct volume access: Snapshot restore, SnapLock WORM, ransomware containment, and AI processing on NAS data without data copy. In NAS-only environments, the portal serves as the primary browser-based file access layer.
 
 See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
 
