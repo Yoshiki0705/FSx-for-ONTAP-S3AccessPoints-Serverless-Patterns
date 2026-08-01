@@ -115,6 +115,8 @@ aws fsx describe-storage-virtual-machines \
 
 ### Scenario 4: Snapshot Tamperproof Locking
 
+> ⚠️ **Irreversible operation**: Enabling snapshot locking on a volume cannot be undone. Once a snapshot is locked with a retention period, the period can only be extended — never shortened. Verify your organization's retention policy before proceeding.
+
 1. Navigate to **Admin > Resources > Snapshot Management**
 2. Switch to **Tamperproof** tab
 3. Enter a volume UUID → click **Check Status**
@@ -195,6 +197,8 @@ aws fsx describe-storage-virtual-machines \
 5. After configuring Vscan (production), this panel shows on-access policy details
 
 ### Scenario 12: SnapMirror — Replication Lifecycle Management
+
+> ⚠️ **Destructive operations**: The Break action severs the replication relationship. After breaking, the destination volume becomes writable but re-sync requires delta transfer and overwrites destination changes. The Resync action discards all changes on the destination. Both require explicit confirmation in the UI.
 
 1. Navigate to **Admin > Resources > SnapMirror**
 2. Observe replication relationships displayed as source→destination cards:
