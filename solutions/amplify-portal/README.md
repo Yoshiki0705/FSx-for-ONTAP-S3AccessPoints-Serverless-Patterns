@@ -8,6 +8,16 @@ Web-based file portal for browsing, processing, and viewing results on FSx for O
 
 AWS provides building blocks (S3 API, Cognito, AppSync) but no integrated managed service that delivers a Box/Google Drive-like file management experience for NAS data on FSx for ONTAP. To give end users browser-based access to files, processing triggers, and result viewing, you need to assemble your own solution. This project is one such assembly using Amplify Gen2.
 
+**Who is this for?** Teams with large-scale business data on NAS that want AI processing, audit trails, or data protection visibility — without moving data off the volume:
+- Manufacturing: CAD/EDA design files (AI quality inspection)
+- Financial services: trading logs and risk outputs (anomaly detection + 7-year audit)
+- Healthcare: DICOM medical images (AI diagnostic support + HIPAA retention)
+- Media: video assets in ProRes/MXF (AI metadata tagging)
+- Legal: accumulated contract PDFs (AI classification + deadline tracking)
+- Research: genomics and simulation results (browser search/preview for non-CLI users)
+
+This portal does **not** replace existing SaaS file sharing (Box, SharePoint, Google Drive). It adds a complementary layer for NAS-specific capabilities that SaaS tools cannot provide: Snapshot restore, SnapLock WORM, ransomware containment, and direct AI processing on NAS data without data copy.
+
 See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
 
 ## Documentation
