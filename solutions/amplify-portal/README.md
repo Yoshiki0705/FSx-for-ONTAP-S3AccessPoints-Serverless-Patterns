@@ -1,5 +1,7 @@
 # FSx for ONTAP File Portal — Amplify Gen2
 
+🌐 **Language**: [日本語](README.ja.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+
 Web-based file portal for browsing, processing, and viewing results on FSx for ONTAP volumes via S3 Access Points.
 
 ## Why build a file portal?
@@ -642,3 +644,7 @@ This portal is an **optional frontend layer**. It does not modify the core patte
 - [S3AP Compatibility Notes](../../docs/s3ap-compatibility-notes.md)
 - [Demo Mode Guide](../../docs/demo-mode-guide.md)
 - [Storage Browser Demo Guide](../../docs/en/storage-browser-demo-guide.md)
+
+---
+
+🌐 **Language**: [日本語](README.ja.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
