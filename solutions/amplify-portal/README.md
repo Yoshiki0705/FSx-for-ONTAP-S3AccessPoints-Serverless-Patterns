@@ -18,6 +18,15 @@ AWS provides building blocks (S3 API, Cognito, AppSync) but no integrated manage
 
 This portal does **not** replace existing SaaS file sharing (Box, SharePoint, Google Drive) — but it can work alongside them or standalone. It provides NAS-specific capabilities that require direct volume access: Snapshot restore, SnapLock WORM, ransomware containment, and AI processing on NAS data without data copy. In NAS-only environments, the portal serves as the primary browser-based file access layer.
 
+### Why Amplify Gen2?
+
+[AWS Amplify Gen2](https://docs.amplify.aws/) provides a TypeScript code-first framework to build full-stack web applications on AWS without managing servers. For this project it means:
+- **No web server to maintain** — React frontend + serverless backend (Lambda, AppSync, Cognito)
+- **Built-in auth** — Cognito handles sign-up, MFA, and enterprise SSO (SAML/OIDC)
+- **Direct AWS integration** — S3 AP, Bedrock (AI), Step Functions, Athena connect with minimal code
+- **Git push deploys** — `git push` triggers build + deploy automatically
+- **CDK extensible** — add any AWS resource when standard features aren't enough
+
 See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
 
 ## Documentation
