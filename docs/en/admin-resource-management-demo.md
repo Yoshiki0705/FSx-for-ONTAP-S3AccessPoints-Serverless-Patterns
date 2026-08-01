@@ -381,20 +381,20 @@ When `vpcId` is empty, Lambda deploys without VPC (admin panels show "ONTAP Conn
 
 | File | Description |
 |------|-------------|
-| `docs/screenshots/01-file-explorer-with-data.png` | File Explorer showing 29 directories from FSx for ONTAP S3 AP |
-| `docs/screenshots/05-resource-management-overview-en.png` | Resource Management card grid (Storage/Access/Protection categories) |
-| `docs/screenshots/06-volumes-panel-en.png` | Volume Manager with live ONTAP data |
-| `docs/screenshots/07-storage-efficiency-en.png` | Storage Efficiency dashboard (1.21x ratio) |
+| `docs/screenshots/file-explorer-directories.png` | File Explorer showing directories from FSx for ONTAP S3 AP |
+| `docs/screenshots/resource-management-overview.png` | Resource Management card grid (Storage/Access/Protection/AI categories, full page) |
+| `docs/screenshots/volumes-panel.png` | Volume Manager with live ONTAP data |
+| `docs/screenshots/storage-efficiency-panel.png` | Storage Efficiency dashboard |
 | `docs/screenshots/08-arp-admin-panel-en.png` | ARP/AI Administration with 9 volumes |
-| `docs/screenshots/09-snapshots-version-history-en.png` | Snapshot Version History with hourly/weekly/daily |
-| `docs/screenshots/10-file-explorer-directories-en.png` | File Explorer (English) with directory listing |
+| `docs/screenshots/snapshots-version-history.png` | Snapshot Version History with hourly/weekly/daily |
+| `docs/screenshots/quota-manager.png` | Quota Manager with volume selector and rule table |
+| `docs/screenshots/quota-create-form.png` | Quota creation form (type, target, limits) |
 | `solutions/amplify-portal/docs/screenshots/smb-shares-panel.png` | SMB Shares with encryption toggle + CA info + delete button |
 | `solutions/amplify-portal/docs/screenshots/export-policy-panel.png` | Export Policy with create/delete policy actions |
 | `solutions/amplify-portal/docs/screenshots/lock-panel-snaplock.png` | Lock panel SnapLock tab (inline volume list) |
 | `solutions/amplify-portal/docs/screenshots/lock-panel-tamperproof.png` | Lock panel Tamperproof tab (inline lock form) |
 | `solutions/amplify-portal/docs/screenshots/lock-panel-s3objectlock.png` | Lock panel S3 Object Lock tab (ONTAP-independent) |
 | `solutions/amplify-portal/docs/screenshots/qtree-volume-selector.png` | Qtree panel with VolumeSelector search/filter |
-| `docs/screenshots/resource-management-overview.png` | Full Resource Management card grid (16 panels across 4 categories) |
 | `docs/screenshots/vscan-setup-guidance.png` | Vscan 5-step setup guidance with 6-vendor comparison table |
 | `docs/screenshots/flexclone-manager.png` | FlexClone panel with clone list and create form |
 | `docs/screenshots/snapmirror-status.png` | SnapMirror relationships with state badges, RPO warning, action buttons |
