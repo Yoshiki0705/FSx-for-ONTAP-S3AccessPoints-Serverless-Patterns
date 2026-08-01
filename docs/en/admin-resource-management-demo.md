@@ -85,7 +85,8 @@ aws fsx describe-storage-virtual-machines \
 | **SnapLock** | WORM retention configuration (Compliance/Enterprise) | `/storage/volumes?fields=snaplock` |
 | **FPolicy** | File access event notification and audit configuration | `/protocols/fpolicy` |
 | **Vscan** | On-access virus scanning setup + vendor guidance | `/protocols/vscan` |
-| **SnapMirror** | Data replication relationships and transfer history | `/snapmirror/relationships` |
+| **SnapMirror** | Replication lifecycle: sync, break, resync, quiesce, delete + transfer history | `/snapmirror/relationships`, `/snapmirror/relationships/{id}/transfers` |
+| **FlexCache** | Read cache volumes: create (async), list, delete (3-step auto) with origin visualization | `/storage/flexcache/flexcaches` |
 
 ## Demo Scenarios
 
@@ -193,14 +194,38 @@ aws fsx describe-storage-virtual-machines \
 4. Click the Antivirus Connector download button → verify it opens mysupport.netapp.com
 5. After configuring Vscan (production), this panel shows on-access policy details
 
-### Scenario 12: SnapMirror — Replication Monitoring
+### Scenario 12: SnapMirror — Replication Lifecycle Management
 
 1. Navigate to **Admin > Resources > SnapMirror**
-2. Observe replication relationships (source → destination, state, health, lag time)
-3. Click **▶ Transfers** on a relationship → expand transfer history
-4. Observe last 10 transfers: state (success/failed), bytes transferred, end time, duration
-5. Click **▼** to collapse the transfer details
-6. Verify healthy/unhealthy badges reflect the `healthy` field from ONTAP API
+2. Observe replication relationships displayed as source→destination cards:
+   - Source path badge: `📦 svm01:vol_production`
+   - Arrow: `→`
+   - Destination path badge: `🪞 svm01_dr:vol_production_mirror`
+3. Each relationship shows:
+   - **Health badge**: 正常 (green) / 異常 (red)
+   - **State badge** with color coding:
+     - ✅ 同期中 (snapmirrored) — green
+     - 🔴 ブレーク済み (broken_off) — red
+     - 🔄 転送中 (transferring) — blue
+     - ⏸️ 一時停止 (quiesced/paused) — gray
+     - ⚪ 未初期化 (uninitialized) — white
+   - **Lag time** with RPO warning: if lag contains "hour" or "day", shows `⚠️ RPO` in red bold
+   - **Policy**: e.g., MirrorAllSnapshots, Asynchronous
+4. **Action buttons** (context-sensitive per state):
+   - `snapmirrored` state: [🔄 同期] [⏸️ 一時停止] [⚡ ブレーク] [🗑️ 削除]
+   - `broken_off` state: [🔁 再同期] [🗑️ 削除]
+   - `paused` state: [▶️ 再開] [🗑️ 削除]
+5. Click **🔄 同期** → confirm dialog → manual transfer initiates
+6. Click **⚡ ブレーク** → confirm (warns: "フェイルオーバーに使用します") → destination becomes writable
+7. Click **🔁 再同期** → confirm (warns: "宛先の変更は破棄されます") → relationship resumes
+8. Click **▶ 転送履歴** on a relationship → expand transfer history table:
+   - Columns: 状態 (success/failed badge), サイズ (formatted bytes), 完了日時, 所要時間
+   - Shows last 10 transfers
+9. Click **▼** to collapse transfer details
+
+> **RPO monitoring**: If lag time exceeds your RPO target (e.g., "2 hours"), the red `⚠️ RPO` warning indicates replication is behind schedule. Trigger a manual sync or investigate network/load issues.
+
+> **DR failover workflow**: Break → promote destination as primary → redirect client access → after recovery, resync to original source.
 
 ### Scenario 13: Local Users — SMB User/Group Management
 
@@ -232,7 +257,39 @@ aws fsx describe-storage-virtual-machines \
 
 > **Security context**: Name mapping deny (`" "` replacement) blocks SMB access on UNIX/MIXED security style volumes. NTFS volumes use Windows ACLs directly and are not affected.
 
-### Scenario 15: FPolicy — File Access Audit Configuration
+### Scenario 15: FlexCache — Create, Monitor, Delete
+
+1. Navigate to **Admin > Resources > FlexCache** (⚡ icon in Storage category)
+2. If no FlexCache volumes exist, observe the guidance panel:
+   - Explanation of what FlexCache does (remote read caching)
+   - Typical use cases (EDA/CAD, build pipelines, AI inference data)
+   - Links to NetApp FlexCache docs and AWS FSx for ONTAP volume management
+3. Click **+ FlexCache 作成** → the creation form opens with:
+   - **キャッシュ名** (required): e.g., `flexcache_eda_tokyo`
+   - **オリジンボリューム名** (required): datalist dropdown of existing volumes
+   - **オリジン SVM** (optional): leave empty for same-SVM caching
+   - **サイズ (GiB)**: default 100, hint says "10% of origin recommended"
+   - **ジャンクションパス**: auto-fills as `/<cache_name>`
+   - **プリポピュレートパス**: comma-separated paths to pre-warm (e.g., `/data/models/, /cache/datasets/`)
+4. Fill the form → click **作成**:
+   - Button shows spinner + "作成中..." during async request
+   - Success toast: "FlexCache を作成しました（バックグラウンドで構築中）"
+   - Progressive refresh at 10s / 30s / 60s (ONTAP FlexCache creation takes 30-120s)
+5. After refresh, the new FlexCache appears in the list showing:
+   - Origin→Cache arrow visualization: `📦 vol_production@svm01 → ⚡ flexcache_eda_tokyo@svm01`
+   - Size and junction path
+   - Global File Locking badge (if enabled)
+   - Cache metrics reference note
+6. Click **▶ Origins** → expand origin details table (cluster, SVM, volume, state)
+7. To delete: click **削除** → inline confirmation appears: "本当に削除？ [実行] [取消]"
+   - Deletion executes 3-step automation: unmount → offline → delete
+   - Success toast confirms removal
+
+> **Note**: FlexCache shares the parent volume's throughput budget. Recommended cache size is 10-20% of origin. Use for read-heavy workloads (EDA/CAD, build pipelines, AI inference) — not as a write target.
+
+> **Multi-FS indicator**: The panel header shows which FSx for ONTAP management IP the operations target, useful when multiple file systems are accessible.
+
+### Scenario 16: FPolicy — File Access Audit Configuration
 
 1. Navigate to **Admin > Resources > FPolicy**
 2. **Policies tab**: View policies with enabled/disabled state, priority, engine, events
@@ -316,6 +373,8 @@ When `vpcId` is empty, Lambda deploys without VPC (admin panels show "ONTAP Conn
 | Lock Panel | ✅ | 3 tabs: SnapLock (inline volume list), S3 Object Lock (ONTAP-independent), Tamperproof (inline lock form) |
 | Snapshots (Data Protection) | ✅ | hourly/weekly/daily snapshots displayed with lock buttons |
 | ARP/AI Status | ✅ | vol1 state: disabled, response actions available |
+| FlexCache | ✅ | Create/list/delete E2E verified, 3-step delete (unmount→offline→delete), progressive refresh |
+| SnapMirror | ✅ | List with state badges, action buttons (sync/break/resync/quiesce/resume/delete), transfer history |
 | File Explorer | ✅ | 29 directories from S3 AP (ai-outputs, contracts, dicom, ...) |
 
 ## Screenshots
@@ -338,9 +397,13 @@ When `vpcId` is empty, Lambda deploys without VPC (admin panels show "ONTAP Conn
 | `docs/screenshots/resource-management-overview.png` | Full Resource Management card grid (16 panels across 4 categories) |
 | `docs/screenshots/vscan-setup-guidance.png` | Vscan 5-step setup guidance with 6-vendor comparison table |
 | `docs/screenshots/flexclone-manager.png` | FlexClone panel with clone list and create form |
-| `docs/screenshots/snapmirror-status.png` | SnapMirror relationships with transfer history expansion |
+| `docs/screenshots/snapmirror-status.png` | SnapMirror relationships with state badges, RPO warning, action buttons |
 | `docs/screenshots/local-user-manager.png` | Local User Manager (Users tab with CRUD operations) |
 | `docs/screenshots/name-mapping-manager.png` | Name Mapping rules with direction selector and create form |
+| `docs/screenshots/flexcache-manager.png` | FlexCache panel with create form (origin datalist, prepopulate paths) and cache list |
+| `docs/screenshots/flexcache-create-success.png` | FlexCache creation success toast + progressive refresh indicator |
+| `docs/screenshots/flexcache-delete-confirm.png` | FlexCache inline delete confirmation ("本当に削除？ [実行] [取消]") |
+| `docs/screenshots/snapmirror-transfers.png` | SnapMirror transfer history expansion (success/failed, size, duration) |
 | `docs/screenshots/athena-query-panel.png` | Athena SQL panel with guidance text and SHOW TABLES default |
 | `docs/screenshots/athena-query-panel-expanded.png` | Athena SQL panel with example queries expanded |
 | `solutions/amplify-portal/docs/screenshots/storage-dashboard.png` | Storage Health Dashboard (4-card grid: capacity, ARP, locks, efficiency) |
