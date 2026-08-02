@@ -157,7 +157,7 @@ und die gesamte Kette arbeitet mit einem konsistenten Destination.
 **Hinweise**:
 
 - Angabe von `S3AccessPointName` wird dringend empfohlen (IAM-Berechtigung sowohl für Alias- als auch ARN-Format)
-- Objekte über 5 GB sind mit FSx for ONTAP S3 AP nicht möglich (AWS-Spezifikation), Multipart-Upload erforderlich
+- Die Objektgrößenobergrenze liegt bei 50 GB (AWS-Spezifikation). Ein einzelnes PutObject ist auf 5 GB begrenzt, daher ist oberhalb von 5 GB ein Multipart-Upload erforderlich
 - ComplianceCheck Lambda verwendet nur DynamoDB und wird daher nicht von `OutputDestination` beeinflusst
 - FoiaDeadlineReminder Lambda verwendet nur DynamoDB + SNS und wird nicht beeinflusst
 - OpenSearch-Index wird separat über den Parameter `OpenSearchMode` verwaltet (unabhängig von `OutputDestination`)

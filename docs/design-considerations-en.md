@@ -128,7 +128,8 @@ Satisfies both tenant isolation and time-series access patterns in multi-tenant 
 | < 64 KB | Metadata processing overhead is relatively larger | Batching/aggregation can be advantageous |
 | 64 KB – 1 MB | Typical document / JSON size range | Optimal for most serverless patterns |
 | > 1 MB | Data transfer dominates. Performance gap with Amazon S3 narrows for larger objects | Consider Multipart Upload |
-| > 5 GB | S3 AP PutObject limit (5 GB) applies | Multipart Upload required (ONTAP 9.16.1+) |
+| 5-50 GB | Exceeds the 5 GB single PutObject limit | Multipart Upload required (ONTAP 9.16.1+) |
+| > 50 GB | Exceeds the S3 AP object size limit (50 GB) | Split the file, or place it via NFS/SMB |
 
 ### Throughput Design
 
@@ -211,7 +212,7 @@ FSx for ONTAP S3 AP is "S3 compatible" but NOT "identical to Amazon S3." Conside
 
 | Feature | S3 AP Support | Alternative | Notes |
 |---------|:------------:|-------------|-------|
-| GetObject / PutObject | ✅ | — | Max 5 GB/object |
+| GetObject / PutObject | ✅ | — | 50 GB object limit (single PutObject 5 GB) |
 | Multipart Upload | ✅ | — | ONTAP 9.16.1+ |
 | ListObjectsV2 | ✅ | — | Prefix / Delimiter / MaxKeys supported |
 | HeadObject | ✅ | — | |

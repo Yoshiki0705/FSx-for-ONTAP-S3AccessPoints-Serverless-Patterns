@@ -19,7 +19,7 @@
 
 - 需要渲染作业的即时触发（文件保存触发）
 - 使用 Deadline Cloud 以外的渲染农场（如本地部署的 Thinkbox Deadline 等）
-- 渲染输出超过 5 GB（S3 AP PutObject 的上限）
+- 渲染输出超过 50 GB（S3 AP 对象大小上限；5–50 GB 可用分段上传）
 - 质量检查需要自有的画质评估模型（Rekognition 的标签检测不够充分）
 
 ### 主要功能

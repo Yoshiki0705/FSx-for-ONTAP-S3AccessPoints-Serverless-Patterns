@@ -351,7 +351,7 @@ solutions/amplify-portal/
 **S3 AP constraints with Nextcloud**:
 - Presigned URLs are listed as "Not supported" in AWS docs but actually work (they are client-side SigV4 calculations that execute as standard GetObject; [details](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, production reliance is not recommended, so Nextcloud can also proxy file downloads through its server process for governance control
 - `ListObjectsV2` pagination (max 1000 objects/request) is handled natively by Nextcloud's S3 backend
-- PutObject (max 5 GB) enables file upload from Nextcloud UI to FSx for ONTAP
+- PutObject (5 GB per single PUT, up to 50 GB via multipart) enables file upload from Nextcloud UI to FSx for ONTAP
 
 **NFS mount alternative**: For lower-latency file browsing and preview generation, Nextcloud can mount the FSx for ONTAP volume directly via NFS (requires EC2 placement in the same VPC/subnet).
 

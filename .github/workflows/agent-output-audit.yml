@@ -163,18 +163,40 @@ jobs:
       - name: "Check: JA/EN parity (warning only)"
         if: steps.changes.outputs.md_count > 0
         run: |
-          # Find changed JA docs and check if corresponding EN doc has matching section count
+          # Two JA/EN conventions are used in this repo:
+          #   1. path-based:    docs/ja/foo.md  <-> docs/en/foo.md
+          #   2. sibling-based: docs/foo.md     <-> docs/foo.en.md
+          # Both are checked. Warning-only: several known gaps predate this check.
           while IFS= read -r file; do
             [ -z "$file" ] && continue
             [ ! -f "$file" ] && continue
-            # Check if this is a JA doc with a parallel EN doc
-            EN_FILE=$(echo "$file" | sed 's|/ja/|/en/|')
-            if [ "$file" != "$EN_FILE" ] && [ -f "$EN_FILE" ]; then
-              JA_SECTIONS=$(grep -c '^##' "$file" || echo 0)
-              EN_SECTIONS=$(grep -c '^##' "$EN_FILE" || echo 0)
-              if [ "$JA_SECTIONS" -ne "$EN_SECTIONS" ]; then
-                echo "::warning file=$file::JA/EN parity: JA has ${JA_SECTIONS} sections, EN has ${EN_SECTIONS} sections"
+            case "$file" in
+              *.en.md) continue ;;   # already the English side
+            esac
+
+            EN_FILE=""
+            # Convention 1: /ja/ -> /en/
+            CANDIDATE=$(echo "$file" | sed 's|/ja/|/en/|')
+            if [ "$file" != "$CANDIDATE" ] && [ -f "$CANDIDATE" ]; then
+              EN_FILE="$CANDIDATE"
+            else
+              # Convention 2: foo.md -> foo.en.md
+              CANDIDATE="${file%.md}.en.md"
+              if [ -f "$CANDIDATE" ]; then
+                EN_FILE="$CANDIDATE"
+              elif grep -q "$(basename "$CANDIDATE")" "$file" 2>/dev/null; then
+                # The doc advertises an English version that does not exist.
+                echo "::warning file=$file::JA/EN parity: links to $(basename "$CANDIDATE") but that file is missing"
+                continue
               fi
+            fi
+
+            [ -z "$EN_FILE" ] && continue
+
+            JA_SECTIONS=$(grep -c '^##' "$file" || echo 0)
+            EN_SECTIONS=$(grep -c '^##' "$EN_FILE" || echo 0)
+            if [ "$JA_SECTIONS" -ne "$EN_SECTIONS" ]; then
+              echo "::warning file=$file::JA/EN parity: JA has ${JA_SECTIONS} sections, EN ($EN_FILE) has ${EN_SECTIONS}"
             fi
           done < /tmp/changed_md.txt
           echo "✅ Parity check complete (warnings only)"

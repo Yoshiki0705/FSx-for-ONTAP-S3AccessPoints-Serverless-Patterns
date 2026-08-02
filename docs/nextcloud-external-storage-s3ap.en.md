@@ -350,7 +350,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 | Constraint | Impact | Workaround |
 |-----------|--------|-----------|
 | **Presigned URLs (listed as "Not supported" but works)** | Nextcloud can generate direct download links via Presigned URL (works as a signed GetObject request). However, AWS recommends against production reliance. | Option A: Use Presigned URL for direct download (reduces server load). Option B: Proxy through server process (governance-first). |
-| **PutObject max 5 GB** | Large file uploads limited | Nextcloud uses multipart upload for large files. Verify S3 AP multipart support with your ONTAP version (9.15.1+). |
+| **50 GB object size limit (single PUT 5 GB)** | Files above 50 GB cannot be uploaded | Nextcloud uses multipart upload for large files, which covers 5-50 GB. Verify S3 AP multipart support with your ONTAP version (9.15.1+). |
 | **ListObjectsV2 max 1000/request** | Large directories need pagination | Nextcloud handles this automatically via its S3 backend library. |
 | **No S3 event notifications** | Cannot trigger on S3 AP upload events | Use Nextcloud Flow/Workflow webhook, or FPolicy (ONTAP-native event), or scheduled scan. |
 | **AD-joined SVM: DC must be reachable** | If AD DC is down, all S3 AP operations fail (AccessDenied) | Monitor AD DC health. See [AD-Joined SVM S3 AP Prerequisites](./en/ad-joined-svm-s3ap-prerequisites.md). |
@@ -390,7 +390,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 **Upload fails:**
 
 1. Check `s3:PutObject` permission on `accesspoint/<name>/object/*`
-2. Verify file size < 5 GB for single PutObject (multipart for larger)
+2. Verify file size < 5 GB for single PutObject (multipart for 5-50 GB; above 50 GB is not supported)
 3. Check ONTAP volume has available space
 
 **Files uploaded via Nextcloud not visible on NFS:**
@@ -426,7 +426,7 @@ A: Nextcloud shows an error when accessing the external storage folder. Other Ne
 A: Yes. Add multiple External Storage entries, each pointing to a different S3 AP alias. They appear as separate folders in Nextcloud.
 
 **Q: Is there a file size limit for uploads through Nextcloud?**
-A: FSx for ONTAP S3 AP supports PutObject up to 5 GB and multipart upload for larger files. Nextcloud's PHP upload limit (`upload_max_filesize`, `post_max_size`) may also apply — adjust in `php.ini` as needed.
+A: FSx for ONTAP S3 AP supports objects up to 50 GB. A single PutObject is capped at 5 GB, and multipart upload covers 5-50 GB. Nextcloud's PHP upload limit (`upload_max_filesize`, `post_max_size`) may also apply — adjust in `php.ini` as needed.
 
 ---
 

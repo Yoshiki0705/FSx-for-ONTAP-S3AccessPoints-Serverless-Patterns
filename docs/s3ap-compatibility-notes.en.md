@@ -12,7 +12,7 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 |---|:---:|:---:|
 | Serverless integration (Lambda, Step Functions) | ✅ | — |
 | POSIX semantics required (lock, rename, symlink) | — | ✅ |
-| Large sequential file processing | △ (5GB limit) | ✅ |
+| Large sequential file processing | △ (50 GiB object limit) | ✅ |
 | Permission-aware file access control | ✅ (dual-layer auth) | ✅ (NTFS/UNIX ACL) |
 | Low-latency metadata operations (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
 | Existing application compatibility | — | ✅ |
@@ -27,11 +27,85 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 |-----------|--------|
 | ListObjectsV2 | ✅ Tested |
 | GetObject | ✅ Tested |
-| PutObject (max 5 GB) | ✅ Tested |
+| PutObject | ✅ Tested |
 | Range GET | ✅ Tested |
 | HeadObject | ✅ Tested |
 | DeleteObject | ✅ Tested |
-| MultipartUpload | ✅ Supported (per AWS docs) |
+| MultipartUpload (`CreateMultipartUpload` / `UploadPart` / `CompleteMultipartUpload`) | ✅ Tested |
+
+> Size limits differ per API. See the next section, "Upload size limits".
+
+## Upload size limits
+
+### 1. Pick the method from the file size
+
+Once you know the size of the file you want to upload, the method is determined.
+
+| File size | Method to use | Possible |
+|-----------|---------------|:---:|
+| **Up to 5 GiB** | Single `PutObject` (one API call) | ✅ |
+| **Above 5 GiB up to 50 GiB** | Multipart upload (required) | ✅ |
+| **Above 50 GiB** | Not possible through the S3 AP | ❌ Place the file on the volume via NFS/SMB |
+| Download (`GetObject`) | No size limit | ✅ Files larger than 50 GiB can be retrieved |
+
+> High-level SDK APIs (`upload_file` / `TransferManager`, Amplify Storage Browser, and similar) switch to multipart automatically above a threshold, so you usually do not choose the method yourself. **They do not, however, work around the 50 GiB limit.**
+
+### 2. How methods, APIs, and limits map
+
+**Method A: single `PutObject`** — one API call produces the object. That single call's limit is also the object size limit.
+
+```
+PutObject (one call) ──▶ object complete
+   limit 5 GiB
+```
+
+**Method B: multipart upload** — three APIs called in sequence. Each limit applies to a different thing.
+
+```
+CreateMultipartUpload ──▶ UploadPart × N ──▶ CompleteMultipartUpload ──▶ object complete
+   no limit                per-part            whole-object total
+                           limit 5 GiB         limit 50 GiB
+                           (no cumulative      (first checked here)
+                            check)
+```
+
+| API called | What the limit applies to | Measured | Checked when |
+|------------|---------------------------|----------|--------------|
+| `PutObject` (Method A) | One object | **5 GiB** = 5,368,709,120 bytes | On Content-Length, immediately |
+| `UploadPart` (Method B) | One part | **5 GiB** = 5,368,709,120 bytes | On Content-Length, immediately |
+| `CompleteMultipartUpload` (Method B) | Whole-object total | **50 GiB** = 53,687,091,200 bytes | After all parts are transferred |
+
+Measurement details and reproduction: [measured object size limits](s3ap-object-size-limits-verification.en.md)
+
+> **Watch the units**: "5 GB" and "50 GB" in the AWS documentation are both **binary (GiB)**. Read as decimal, that is off by 368 MB at 5 GB and by 3.7 GB at 50 GB.
+>
+> The increase from 5 GiB to 50 GiB arrived as a documentation update; no corresponding What's New announcement was found (archived copies show 5 GB on 2026-03-08 and 50 GB on 2026-06-25).
+
+### 3. What happens when you exceed a limit — Method B has a trap
+
+⚠️ **The whole-object limit is checked only at `CompleteMultipartUpload`.** `UploadPart` performs no cumulative size check. In the measured 50 GiB + 1 test, all 11 parts were accepted and the rejection came only **after about 10 minutes (590 s) of transferring the entire payload**.
+
+| | Method A (`PutObject`) | Method B (`UploadPart`) | Method B (`CompleteMultipartUpload`) |
+|---|---|---|---|
+| Checked on | Content-Length | Content-Length | After all parts transferred |
+| Time to failure | Immediate (~2.7 s) | Immediate | **After the full transfer** |
+| Transfer wasted | Near zero (~12 MB) | Near zero | **Up to 50 GiB** |
+| Returns `MaxSizeAllowed` | ✅ Yes | ✅ Yes | ❌ **No** |
+
+```
+Code    : EntityTooLarge
+Message : Your proposed upload exceeds the maximum allowed size
+Extra   : {'ProposedSize': '5368709121', 'MaxSizeAllowed': '5368709120'}   <- PutObject / UploadPart only
+```
+
+**Implementation recommendations**:
+
+- **Validate client-side that the object is 50 GiB or smaller before starting the upload.** There is no service-side pre-flight check, and the `CompleteMultipartUpload` error omits `MaxSizeAllowed`, so an overage is only discovered after the transfer finishes.
+- `CompleteMultipartUpload` itself is slow (about 557 s for 50 GiB). Set a generous `read_timeout` (1800 s was used in testing).
+
+Sources: [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) / [Uploading objects (Amazon S3 User Guide)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
+>
+> Sources: [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) / [Uploading objects (Amazon S3 User Guide)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
 
 ## Not Equivalent to Full S3 Bucket Semantics
 
@@ -73,6 +147,77 @@ AI-driven monitoring of volume behavior (data entropy changes, file extension ch
 > Combined: "ARP detects threat → creates Snapshot → Tamperproof locks it" for multi-layer defense.
 
 > **Note**: SnapLock is an ONTAP-native WORM option, but it is not a drop-in replacement for S3 Object Lock APIs. Validate regulatory requirements before choosing between SnapLock and standard S3 Object Lock.
+
+---
+
+## S3 Annotations (GA 2026-06-16)
+
+### Overview
+
+Amazon S3 Annotations attach mutable structured metadata (JSON/XML/YAML/text) to an object, up to 1 GB total (1,000 annotations x 1 MB). Annotations propagate automatically when an object is copied or replicated, and are deleted automatically with the object. They are queryable from Athena via S3 Metadata annotation tables.
+
+### API
+
+| API | Description |
+|-----|-------------|
+| `PutObjectAnnotation` | Add or update an annotation |
+| `GetObjectAnnotation` | Retrieve an annotation by name |
+| `ListObjectAnnotations` | List an object's annotations |
+| `DeleteObjectAnnotation` | Delete an annotation |
+
+### Support status on FSx for ONTAP S3 Access Points
+
+| API | FSx for ONTAP S3 AP status | HTTP status | Notes |
+|-----|:--:|:--:|-------|
+| PutObjectAnnotation | ❌ Not supported | 501 NotImplemented | Confirmed by hands-on testing on 2026-06-18 |
+| GetObjectAnnotation | ❌ Not supported (inferred) | — | Because PutObjectAnnotation is unsupported |
+| ListObjectAnnotations | ❌ Not supported (inferred) | — | Same as above |
+| DeleteObjectAnnotation | ❌ Not supported (inferred) | — | Same as above |
+
+> **Test result (2026-06-18)**: Calling `PutObjectAnnotation` through an FSx for ONTAP S3 AP alias returns `501 NotImplemented` — `"An access point you provided implies functionality that is not implemented"`. The same API was confirmed working against a standard S3 bucket (HTTP 200).
+>
+> **Next action**: File a feature request with AWS Support. See `docs/investigations/s3-annotations-fsxn-compatibility.md` for details.
+
+### Recommended pattern (settled)
+
+FSx for ONTAP S3 AP does not support the annotation APIs (501 NotImplemented confirmed). We recommend this pattern:
+
+```
+FSx for ONTAP S3 AP (READ) -> Lambda processing -> Standard S3 Bucket (WRITE + Annotations)
+```
+
+Apply annotations to the destination used by `OutputDestination=STANDARD_S3`, so that rich metadata is associated with the processing results derived from FSx for ONTAP data.
+
+### How this project would use them
+
+| Usage pattern | Annotation name | Content |
+|---------------|-----------------|---------|
+| Processing metadata | `processing_metadata` | UC ID, confidence, human review, model ID, lineage |
+| Data classification | `data_classification` | Classification level, labels, rationale |
+| AI analysis summary | `ai_summary` | LLM-generated summary text |
+| Citations | `citations` | Source file path, chunk position, quoted text |
+| Audit trail | `audit_trail` | Actor, timestamp, approval state |
+
+### Implementation module
+
+`shared/s3_annotations.py` provides the `AnnotationHelper` class. In environments where the API is unsupported, three fallback behaviours can be selected:
+
+- `skip` (default): log and skip
+- `tag`: fall back to Object Tagging (subject to the 10-tag / 256-character limits)
+- `error`: raise an exception
+
+### Use cases if annotations become supported on FSx for ONTAP S3 AP
+
+If annotations were supported through an FSx for ONTAP S3 AP, the following would become possible:
+
+- Attach AI analysis results directly to files on FSx for ONTAP as annotations
+- NFS/SMB users see only the file itself, while annotations remain exclusive to the serverless pipeline
+- Cross-volume metadata search through S3 Metadata annotation tables
+- Hold Permission-Aware RAG ACL metadata in annotations
+
+> **Feature request candidate**: Support `PutObjectAnnotation` / `GetObjectAnnotation` on FSx for ONTAP S3 Access Points, enabling AI metadata to be attached to NAS files.
+
+---
 
 ## Recommended Trigger Patterns
 
@@ -128,6 +273,17 @@ Reasons:
 | Presigned URLs | **Not supported (doc)** | Do not depend on. Design alternatives |
 | ListObjectVersions | **Not supported (doc)** | Use ListObjectsV2 instead |
 
+### Presigned URL Alternatives
+
+Ways to provide time-limited file access without depending on presigned URLs:
+
+| Alternative | Summary | Use case |
+|-------------|---------|----------|
+| API Gateway + Lambda proxy | Download through Lambda with IAM/JWT authentication | Web apps, mobile |
+| CloudFront signed URLs | Origin controlled via Lambda@Edge | Large-scale distribution |
+| Temporary STS credentials | Scoped IAM (time-limited, prefix-limited) | Batch processing, partner integration |
+| Application-layer broker | Includes audit logging and access revocation | Regulated industries |
+
 ### Documentation Improvement Outlook
 
 AWS Support has escalated documentation improvements to the FSx for ONTAP service team:
@@ -181,7 +337,7 @@ Reference points from each UC to this document:
 | UC2, UC14 (Financial) | Cross-region invocation — Textract not available in ap-northeast-1 |
 | UC5, UC7 (Healthcare/Genomics) | Range GET — Effective for partial reads of DICOM/genomics headers |
 | UC3, UC11 (Real-time) | EVENT_DRIVEN — FPolicy-based, not native S3 notifications |
-| UC4 (Media/VFX) | PutObject — Writing back processing results (max 5 GB) |
+| UC4 (Media/VFX) | PutObject — Writing back processing results (single PUT 5 GiB / up to 50 GiB via multipart) |
 | FC1 (FlexCache Anycast/DR) | FlexCache × S3AP integration — Awaiting AWS release |
 | FC2-FC6 (FlexClone patterns) | S3AP attachment to FlexClone volumes — Junction path configuration required |
 

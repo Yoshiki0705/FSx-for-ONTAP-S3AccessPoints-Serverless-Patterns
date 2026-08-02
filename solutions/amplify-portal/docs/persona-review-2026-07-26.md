@@ -66,7 +66,7 @@
 **Priority**: Medium — 運用統合
 
 ### 14. Cloud Security Architect
-**Insight**: VPC Lambda の Security Group が FSx と同じ SG を使っている（`sg-015df9ccadf010bf5`）。これは全ポート open。Lambda 専用 SG を作成し、outbound を TCP/443 (ONTAP mgmt) + TCP/443 (S3/Secrets Manager VPC Endpoint) のみに制限するベストプラクティスを doc に追記すべき。
+**Insight**: VPC Lambda の Security Group が FSx と同じ SG を使っている（`sg-0123456789abcdef0`）。これは全ポート open。Lambda 専用 SG を作成し、outbound を TCP/443 (ONTAP mgmt) + TCP/443 (S3/Secrets Manager VPC Endpoint) のみに制限するベストプラクティスを doc に追記すべき。
 **Priority**: High — Least privilege
 
 ---

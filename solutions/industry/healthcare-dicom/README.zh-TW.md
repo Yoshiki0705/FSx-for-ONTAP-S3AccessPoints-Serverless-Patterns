@@ -21,7 +21,7 @@
 - 即時 DICOM 路由（需要 DICOM MWL / MPPS 整合）
 - 影像診斷輔助 AI（CAD）— 本模式專注於分類·匿名化
 - 在 Comprehend Medical 不支援的區域，法規上不允許跨區域資料傳輸
-- DICOM 檔案大小超過 5 GB（MR/CT 的多影格等）
+- DICOM 檔案大小超過 50 GB（MR/CT 的多影格等）
 
 ### 主要功能
 

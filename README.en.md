@@ -161,7 +161,7 @@ Detailed architecture diagrams for each category:
 |---|---|
 | No S3 Event Notifications | EventBridge Scheduler polling or FPolicy |
 | Presigned URLs unofficial | Works in practice but not production-recommended |
-| 5GB upload limit | Multipart Upload |
+| 50 GB max object size (single PutObject 5 GB) | Multipart Upload above 5 GB |
 | Cannot write Athena results to S3AP | Output to standard S3 bucket |
 | SSE-FSX only | Use volume-level KMS encryption |
 

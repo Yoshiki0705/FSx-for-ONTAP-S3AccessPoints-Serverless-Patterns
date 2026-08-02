@@ -198,7 +198,7 @@ sam deploy \
 **Hinweise**:
 
 - Angabe von `S3AccessPointName` wird dringend empfohlen (IAM-Berechtigung sowohl für Alias- als auch ARN-Format)
-- Objekte über 5 GB sind mit FSx for ONTAP S3 AP nicht möglich (AWS-Spezifikation), Multipart-Upload erforderlich
+- Die Objektgrößenobergrenze liegt bei 50 GB (AWS-Spezifikation). Ein einzelnes PutObject ist auf 5 GB begrenzt, daher ist oberhalb von 5 GB ein Multipart-Upload erforderlich
 - AWS-Spezifikationsbeschränkungen siehe
   [Abschnitt „AWS-Spezifikationsbeschränkungen und Workarounds" im Projekt-README](../../README.md#aws-仕様上の制約と回避策)
   und [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)

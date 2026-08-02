@@ -19,7 +19,7 @@ A serverless workflow that leverages S3 Access Points in FSx for ONTAP to automa
 
 - You need immediate kick-off of rendering jobs (file-save triggers)
 - You use a rendering farm other than Deadline Cloud (e.g., on-premises Thinkbox Deadline)
-- Rendering output exceeds 5 GB (the S3 AP PutObject limit)
+- Rendering output exceeds 50 GB (the S3 AP object size limit; 5-50 GB works via multipart)
 - Quality checks require a proprietary image-quality evaluation model (Rekognition label detection is insufficient)
 
 ### Key features

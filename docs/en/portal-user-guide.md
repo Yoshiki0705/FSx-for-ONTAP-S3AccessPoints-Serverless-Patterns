@@ -79,7 +79,7 @@ Shows your recently viewed, downloaded, or AI-queried files with relative timest
 Drag-and-drop file upload powered by Storage Browser for S3. Also supports:
 - Folder creation
 - File copy and delete
-- Multi-file upload (up to 5 GB per file)
+- Multi-file upload (up to 50 GB per file)
 
 ---
 

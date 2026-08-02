@@ -66,6 +66,55 @@ When PutObject is performed via S3 AP:
 | UC19 Ad creative | FC2 / FC6 | Creative/render pipeline |
 | UC18 Telecom CDR analysis | — | Direct Athena query, no caching needed |
 
+## KNFSD File Cache — An Option for NFS Read Caching
+
+> **Status**: Preview (released July 2026). Available in all Regions, Apache 2.0 OSS.
+
+[KNFSD File Cache](https://github.com/awslabs/knfsd-file-cache) is an EC2-based solution that transparently caches FSx for ONTAP NFS exports and re-serves them at in-VPC speed to large compute fleets.
+
+### Choosing Between FlexCache and KNFSD
+
+| Criterion | FlexCache | KNFSD File Cache |
+|---------|-----------|------------------|
+| Source is ONTAP only | ✅ Best fit | ○ Usable |
+| Multi-source consolidation (on-premises + FSx for ONTAP + OpenZFS) | Not possible | ✅ Best fit |
+| Write caching (write-back) required | ✅ Supported | △ Write-through only |
+| Large burst reads (hundreds to thousands of cores) | △ Throughput constrained | ✅ Handled via Auto Scaling |
+| Combining with Spot Instances | — | ✅ Keeps cache warm |
+| Managed operations | ✅ FSx-managed | △ Requires EC2 operations |
+| SnapMirror / data protection integration | ✅ Integrated | None |
+| Observability | Basic | ✅ 70+ metrics + OTel |
+
+### UC Patterns Where KNFSD Is Especially Effective
+
+| UC / Pattern | Scenario | Reason |
+|---|---|---|
+| UC6 Semiconductor EDA | DRC/LVS burst verification | Thousands of cores read the same design rules in parallel |
+| FC4 Automotive CAE | Mesh/model data reads | Caches input data for large-scale simulations |
+| FC5 Life sciences | Genomic/molecular data analysis | Repeated reads of reference databases |
+| UC19 Ad creative | VFX rendering | Massively parallel reads of textures/assets |
+| Cross-Region | Bursts in a remote Region | Caching across the WAN (Fanout Tier 1/Tier 2) |
+
+### Combining KNFSD with S3 AP
+
+KNFSD and S3 AP are **complementary** access paths and can be used together against the same FSx for ONTAP volume:
+
+| Access Path | Use | Characteristics |
+|---|---|---|
+| KNFSD → FSx for ONTAP (NFS) | Large-scale compute reads | High throughput, low latency, NFS-transparent |
+| S3 AP → FSx for ONTAP (S3 API) | Serverless AI/ML post-processing | Lambda parallelism, event-driven, no VPC required |
+| NFS/SMB direct | End-user access | Preserves existing workflows |
+
+**Typical workflow example (EDA)**:
+1. Store design data in FSx for ONTAP (accessible via NFS/SMB)
+2. DRC/LVS burst jobs read at high speed via KNFSD (leveraging Spot)
+3. Write verification results back to FSx for ONTAP (KNFSD write-through)
+4. Lambda generates result summaries, detects anomalies, and distributes reports via S3 AP
+
+> **Throughput design note**: KNFSD source reads, S3 AP access, and direct NFS/SMB access all **share the same FSx provisioned throughput**. Sizing throughput capacity and monitoring the KNFSD cache hit rate are important so that peak burst reads do not affect the NFS/SMB user experience.
+
+> **Reference**: For a detailed comparison, see the "NFS Read Cache Comparison" section in [Alternative Architecture Comparison](./comparison-alternatives.md) (Japanese); for a deeper architecture discussion, see [KNFSD + S3 AP Dual-Path Architecture](./knfsd-s3ap-dual-path-architecture.en.md).
+
 ## Data Protection Notes
 
 | Artifact | Snapshot Target | SnapMirror Target | Retention Period |

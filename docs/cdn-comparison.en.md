@@ -19,38 +19,98 @@ customer contracts, SLAs, operations, and regional requirements outside this doc
 | Dual-layer authz (AWS + ONTAP) | IAM then ONTAP file identity (UNIX UID / Windows AD) | Delivery limited to what the ONTAP identity can read |
 | Presigned URLs unsupported | Officially not supported | Viewer token auth cannot use S3 presigned URLs; use CDN-native tokens |
 | NetworkOrigin (Internet/VPC, immutable) | CDN accesses from managed/external network | CDN integration needs **Internet origin** |
-| PutObject max 5 GB | Single PUT limit | Large write-backs need multipart |
+| 50 GB object size limit | Single PUT limited to 5 GB | Write-backs above 5 GB need multipart |
 
 ## 2. Integration mechanisms (vendor-neutral)
 
-- **M1 — Native SigV4 origin-pull**: CDN pulls the S3 AP directly, signing origin requests with SigV4.
-  Achievable where the CDN ships SigV4 origin signing. **To verify**: the S3 AP `accesspoint alias`
-  host differs from a standard bucket; SigV4 behavior must be validated on hardware.
-- **M2 — Edge-compute SigV4 signing**: implement SigV4 in the CDN's edge runtime (Workers/Compute/EdgeWorkers).
-  Achievable where native origin signing is absent; you own signing/key management.
-- **M3 — Push to a CDN-native S3-compatible store**: keep FSx as master, replicate only approved
-  renditions to the CDN's object store. Avoids the origin-auth question; CDN-agnostic; lowest-risk first step.
-- **M4 — Self-managed SigV4 signing proxy**: place a signing intermediary (Lambda Function URL / ALB) as the
-  origin. Works with almost any CDN; the proxy becomes an availability/scaling concern.
+Ways to connect an S3 AP to a delivery network fall into four technical categories.
 
-> Universal constraint: viewer token auth cannot use S3 presigned URLs — use CDN-native tokens.
-> Public delivery bypasses NFS/SMB ACLs, so deliver only approved renditions (see section 4).
+### M1: Native SigV4 origin-pull (the CDN fetches the S3 AP directly)
+
+```
+Viewer → CDN Edge ──(SigV4 signed)──> S3 AP (Internet origin) → FSx for ONTAP
+```
+
+- Applies when the CDN **ships built-in support** for signing origin requests with AWS SigV4 on a cache miss.
+- **What is achievable**: deliver artifacts on FSx for ONTAP directly, without moving data.
+- **Not achievable / to verify**: an S3 AP uses **different addressing (the `accesspoint alias` hostname)** than
+  a standard S3 bucket. Whether each CDN's SigV4 implementation signs correctly for the combination of
+  AP alias host + Region + the `s3` service name **requires hands-on verification** (a track record with
+  standard buckets does not automatically carry over to an AP).
+
+### M2: SigV4 signing via edge compute
+
+```
+Viewer → CDN Edge (SigV4 signed in Worker/Compute) → S3 AP → FSx for ONTAP
+```
+
+- Implement SigV4 yourself in the edge runtime when the CDN has no built-in origin signing.
+- **What is achievable**: the equivalent of M1 even on CDNs without native origin signing, with full control
+  over the signing logic.
+- **Not achievable / to verify**: you must maintain the signing implementation, key management, and cache-key
+  design yourself. How AWS credentials reach the edge (avoiding long-lived keys, using short-lived credentials)
+  is a design problem.
+
+### M3: Publish to a CDN-native S3-compatible store (push)
+
+```
+FSx for ONTAP ─(S3 AP read)→ processing ─push→ CDN-side S3-compatible store → CDN Edge → Viewer
+```
+
+- Keep FSx for ONTAP as the master and write out **only the approved, transcoded renditions** to the CDN's
+  object store.
+- **What is achievable**: **avoids** the S3 AP origin-authentication question. CDN-agnostic. The master and the
+  delivery tier can be physically separated.
+- **Not achievable / to verify**: the delivery store is a copy of FSx for ONTAP, so replication lag,
+  consistency, and dual-custody all need design. Not suited to delivery with real-time requirements.
+
+### M4: Self-managed SigV4 signing proxy as a generic HTTP origin
+
+```
+Viewer → CDN Edge → signing proxy (adds SigV4) → S3 AP → FSx for ONTAP
+```
+
+- Even a CDN with neither SigV4 origin signing nor edge compute can integrate if you place a signing
+  intermediary (Lambda + Function URL / ALB, etc.) as the origin.
+- **What is achievable**: the equivalent of M1 on nearly any CDN.
+- **Not achievable / to verify**: the intermediary becomes a single point of failure and a scaling target.
+  The proxy needs its own availability design.
+
+> **Universal hard constraint**: with any of these mechanisms, S3 presigned URLs cannot be used for
+> viewer-facing token authentication. Implement viewer auth with each CDN's native token / signed-URL
+> mechanism.
+> Also, because public delivery does not pass through ONTAP NFS/SMB ACLs, **restrict what you deliver to
+> approved renditions** (see section 4).
+
+---
 
 ## 2.5 Performance / throughput considerations (Storage design)
 
-CDN integration affects FSx for ONTAP's shared throughput. Understand origin-fetch load per mechanism:
+CDN integration affects the shared throughput design of FSx for ONTAP. You need to understand the read-load
+characteristics of each delivery mechanism.
 
 | Aspect | ORIGIN_PULL (M1/M2/M4) | PUBLISH_PUSH (M3) |
 |--------|------------------------|-------------------|
-| FSx read load | On every cache miss (ongoing) | Initial replication only (zero at steady state) |
-| Cache stampede risk | Simultaneous origin fetches can spike FSx | Absorbed by the delivery store (FSx unaffected) |
-| NFS/SMB bandwidth contention | Yes (S3AP/NFS/SMB share throughput) | Only during initial copy |
-| Large-media partial fetch | Range GET effective (CDN→S3 AP Range support TBV) | Depends on delivery store |
+| FSx for ONTAP read load | Occurs on every cache miss (ongoing) | Initial replication only (zero at steady state) |
+| Cache stampede | Simultaneous origin fetches can concentrate on FSx for ONTAP | Absorbed by the delivery store (independent of FSx for ONTAP) |
+| Bandwidth contention with production NFS/SMB | Yes (S3 AP/NFS/SMB share throughput) | Only during initial replication |
+| Partial fetch of large media | Range GET is effective (depends on CDN→S3 AP Range support) | Depends on Range delivery in the store |
 
-- Use CDN **Origin Shield / high TTL / tiered cache** to reduce origin fetches.
-- Consider **FlexCache** to isolate delivery reads from production volumes (ONTAP native).
-- PUBLISH_PUSH avoids steady-state FSx reads entirely — lowest contention risk.
-- Quantitative sizing requires measurement (object size × concurrency × FSx provisioned throughput).
+### What is achievable / design considerations (fact-based)
+
+- Provisioned throughput on FSx for ONTAP is shared across NFS/SMB/S3 AP. ORIGIN_PULL origin fetches share
+  bandwidth with production workloads, so you need to **estimate the cache-miss rate and concurrent connections**.
+- CDN-side **Origin Shield / high TTL / tiered caching** can reduce the number of origin fetches (a per-CDN
+  feature).
+- One option is to use **FlexCache** to separate a delivery-read cache volume from production volumes
+  (ONTAP native; see the FlexCache pattern set for details). This is a design decision based on requirements
+  and cost.
+- PUBLISH_PUSH generates no FSx for ONTAP reads during steady-state delivery after the initial replication, so
+  the impact on production workloads is small.
+
+> All quantitative values depend on the FSx for ONTAP configuration (throughput capacity), file size, and cache
+> hit rate, so **production estimates must be based on measurement** (do not present general guidance as
+> figures for a specific environment).
 
 ## 2.6 Cost considerations (qualitative)
 
@@ -99,7 +159,7 @@ CDN integration affects FSx for ONTAP's shared throughput. Understand origin-fet
 7. **Data residency / geo-restriction**: CDNs deliver globally. Exclude data that may not leave a region,
    or enforce geo-blocking; include residency checks in the approval process.
 
-### 4.1 Evidence classification
+## 4.1 Evidence classification
 - **Public evidence**: section 3 vendor capabilities — based on public docs, **time-sensitive**, re-verify before adoption.
 - **To be verified (this project)**: SigV4 origin signing behavior against the FSx for ONTAP S3 AP accesspoint alias.
 

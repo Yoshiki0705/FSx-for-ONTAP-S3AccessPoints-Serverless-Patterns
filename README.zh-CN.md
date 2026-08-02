@@ -156,7 +156,7 @@ graph TB
 |---|---|
 | 不支持 S3 Event Notifications | EventBridge Scheduler 轮询或 FPolicy |
 | Presigned URL 非官方支持 | 实际可用但不推荐用于生产 |
-| 5GB 上传限制 | Multipart Upload |
+| 对象大小上限 50 GB（单次 PutObject 5 GB） | 超过 5 GB 使用 Multipart Upload |
 | 无法将 Athena 结果写入 S3AP | 输出到标准 S3 存储桶 |
 | 仅支持 SSE-FSX | 使用卷级 KMS 加密 |
 

@@ -291,7 +291,7 @@ LifeKeeper V10.0.1 以降、Amazon FSx for NetApp ONTAP を共有ディスクと
 
 1. **LifeKeeper ログ形式**: 本パターンはキーワードベースの分類を行う。LifeKeeper のバージョンによりログ形式が異なる場合、分類ロジックの調整が必要
 2. **リアルタイム性**: ポーリング間隔 (デフォルト 5 分) がフェイルオーバー検知の遅延となる。即時性が必要な場合は FPolicy イベント駆動 (EVENT_DRIVEN/HYBRID) を使用
-3. **S3 AP 制約**: FSx for ONTAP S3 Access Points の標準制約が適用される（最大 5GB/オブジェクト、サポート操作に制限あり）
+3. **S3 AP 制約**: FSx for ONTAP S3 Access Points の標準制約が適用される（オブジェクト上限 50 GB / 単一 PutObject は 5 GB、サポート操作に制限あり）
 4. **Bedrock リージョン**: Bedrock モデルの利用可能リージョンに制約あり
 
 ---

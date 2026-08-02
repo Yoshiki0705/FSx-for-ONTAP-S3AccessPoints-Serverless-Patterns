@@ -20,7 +20,7 @@ Anforderungen) und liegt beim Kunden.
 | Zweistufige Autorisierung (AWS + ONTAP) | IAM, dann ONTAP-Dateiidentität (UNIX UID / Windows AD) | Auslieferung auf das beschränkt, was die ONTAP-Identität lesen kann |
 | Presigned URLs nicht unterstützt | Offiziell nicht unterstützt | Zuschauer-Token-Auth kann keine S3-Presigned-URLs nutzen; CDN-native Tokens verwenden |
 | NetworkOrigin (Internet/VPC, unveränderlich) | CDN greift aus managed/externem Netzwerk zu | CDN-Integration benötigt **Internet-Origin** |
-| PutObject max. 5 GB | Limit eines einzelnen PUT | Große Rückschreibvorgänge benötigen Multipart |
+| Objektgrößenlimit 50 GB | Einzelnes PUT auf 5 GB begrenzt | Rückschreibvorgänge über 5 GB benötigen Multipart |
 
 ## 2. Integrationsmechanismen (anbieterneutral)
 

@@ -207,7 +207,7 @@ graph TB
 |---|---|
 | S3 Event Notifications 非対応 | EventBridge Scheduler ポーリング or FPolicy |
 | Presigned URL 非公式 | 動作するが本番非推奨 |
-| 5GB アップロード上限 | Multipart Upload で対応 |
+| オブジェクトサイズ上限 50 GB（単一 PutObject は 5 GB） | 5 GB 超は Multipart Upload で対応 |
 | Athena 結果を S3AP に書き戻し不可 | 標準 S3 バケットに出力 |
 | SSE-FSX のみ | ボリュームの KMS 設定で暗号化 |
 

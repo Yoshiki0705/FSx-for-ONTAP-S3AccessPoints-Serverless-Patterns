@@ -24,7 +24,7 @@ After changing the throughput capacity of our FSx for ONTAP file system, all S3 
 
 ### Environment
 
-- **File System ID**: fs-09ffe72a3b2b7dbbd
+- **File System ID**: fs-0123456789abcdef0
 - **Region**: ap-northeast-1
 - **Deployment Type**: SINGLE_AZ_1
 - **ONTAP Version**: (current)

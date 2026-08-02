@@ -156,7 +156,7 @@ Diagramas de arquitectura detallados por categoría:
 |---|---|
 | Sin S3 Event Notifications | Polling con EventBridge Scheduler o FPolicy |
 | URLs prefirmadas no oficiales | Funcionan en la práctica pero no se recomiendan para producción |
-| Límite de carga de 5 GB | Multipart Upload |
+| Tamaño máximo de objeto de 50 GB (PutObject único 5 GB) | Multipart Upload por encima de 5 GB |
 | No se pueden escribir resultados de Athena en S3AP | Salida a bucket S3 estándar |
 | Solo SSE-FSX | Usar cifrado KMS a nivel de volumen |
 

@@ -126,7 +126,7 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 | **NFSv3** | Linux/UNIX ワークロード（EDA, HPC, AI 学習データ） | 低レイテンシ・高スループット。ステートレスのためフェイルオーバーが高速 | VPC 内 or Direct Connect/VPN。ステートレスのため NAT 環境でも安定 |
 | **NFSv4.1** | Linux ワークロード + セッション管理が必要な場合 | NFSv3 同等のスループット + デリゲーション（クライアントキャッシュ委任）でメタデータ負荷軽減 | VPC 内。単一ポート (TCP 2049) のためファイアウォール設定が容易 |
 | **SMB 3.x** | Windows ワークステーション（CAD, Office, DTP） | マルチチャネルで帯域集約が可能。暗号化 (AES-128-GCM) によるオーバーヘッドあり | AD 環境 (Kerberos 認証) が前提。VPC 内 or Direct Connect |
-| **S3 API** (S3 AP) | サーバーレス処理パイプライン（Lambda, Step Functions, Bedrock, Athena） | リクエスト単位課金。5GB/オブジェクト上限。並列性は無制限にスケール | Internet-origin AP: VPC 外から直接アクセス可。VPC-origin AP: VPC Endpoint 経由 |
+| **S3 API** (S3 AP) | サーバーレス処理パイプライン（Lambda, Step Functions, Bedrock, Athena） | リクエスト単位課金。50 GB/オブジェクト上限（単一 PutObject は 5 GB）。並列性は無制限にスケール | Internet-origin AP: VPC 外から直接アクセス可。VPC-origin AP: VPC Endpoint 経由 |
 | **SFTP/FTPS** | B2B ファイル交換、レガシーシステム連携 | Transfer Family 経由。スループットはインスタンスタイプに依存 | パブリック or VPC エンドポイント (Transfer Family) |
 
 #### なぜこれらが同時に必要になるのか — ワークロード別の視点
@@ -249,7 +249,7 @@ SaaS 各社が 2025-2026 年に急速に投入している AI 機能との比較
 **影響**: 公式サポートされれば以下が即座に利用可能:
 - ファイルプレビュー（画像、動画、テキスト）
 - ファイルダウンロード
-- ファイルアップロード（FSx for ONTAP S3 AP の 5GB 制限付き）
+- ファイルアップロード（FSx for ONTAP S3 AP の 50 GB 制限付き。5 GB 超はマルチパート）
 - コピー・削除操作
 - フォルダ作成
 

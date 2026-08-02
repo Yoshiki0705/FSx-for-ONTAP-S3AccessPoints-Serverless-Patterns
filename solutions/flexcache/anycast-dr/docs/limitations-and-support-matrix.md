@@ -44,7 +44,7 @@
 | Event Notifications 非対応 | イベント駆動不可 | EventBridge Scheduler ポーリング |
 | Lifecycle Policy 非対応 | 自動削除不可 | Lambda スイーパー |
 | Versioning 非対応 | バージョン管理不可 | DynamoDB でバージョン管理 |
-| 5GB アップロード上限 | 大ファイル書き込み制限 | NFS/SMB 経由で書き込み |
+| オブジェクト上限 50 GB（単一 PutObject は 5 GB） | 50 GB 超のファイル書き込み制限 | 5〜50 GB はマルチパート、50 GB 超は NFS/SMB 経由で書き込み |
 | SSE-FSX のみ | カスタム KMS 不可 | FSx ボリューム KMS 設定 |
 | NetworkOrigin 変更不可 | 作成後のアクセス経路変更不可 | 事前に適切な設定で作成 |
 

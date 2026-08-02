@@ -21,7 +21,7 @@ Aprovechando los S3 Access Points de FSx for ONTAP, este flujo de trabajo sin se
 - Enrutamiento DICOM en tiempo real (requiere integración DICOM MWL / MPPS)
 - IA de asistencia al diagnóstico en imágenes (CAD) — este patrón se especializa en clasificación y anonimización
 - La transferencia de datos entre regiones no está permitida por motivos normativos en regiones donde Comprehend Medical no está disponible
-- El tamaño de los archivos DICOM supera los 5 GB (por ejemplo, MR/CT multiframe)
+- El tamaño de los archivos DICOM supera los 50 GB (por ejemplo, MR/CT multiframe)
 
 ### Funciones principales
 

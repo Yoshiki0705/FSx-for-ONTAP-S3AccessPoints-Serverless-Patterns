@@ -212,7 +212,7 @@ sam deploy \
 **주의사항**:
 
 - `S3AccessPointName` 지정을 강력히 권장(Alias 형식과 ARN 형식 모두 IAM 허가)
-- 5GB 초과 객체는 FSx for ONTAP S3 AP에서 불가(AWS 사양), 멀티파트 업로드 필수
+- 객체 크기 상한은 50 GB (AWS 사양). 단일 PutObject는 5 GB까지이므로 5 GB 초과 시 멀티파트 업로드 필수
 - AWS 사양상의 제약은
   [프로젝트 README의 "AWS 사양상의 제약과 회피책" 섹션](../../README.md#aws-仕様上の制約と回避策)
   및 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)를 참조

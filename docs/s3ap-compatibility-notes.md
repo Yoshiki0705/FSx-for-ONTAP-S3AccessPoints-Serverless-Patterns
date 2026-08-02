@@ -10,7 +10,7 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 |------|:---:|:---:|
 | サーバーレス連携 (Lambda, Step Functions) | ✅ | — |
 | POSIX セマンティクス必須 (lock, rename, symlink) | — | ✅ |
-| 大容量ファイルの逐次処理 | △ (5GB 上限あり) | ✅ |
+| 大容量ファイルの逐次処理 | △ (オブジェクト上限 50 GiB) | ✅ |
 | 権限ベースのファイルアクセス制御 | ✅ (dual-layer auth) | ✅ (NTFS/UNIX ACL) |
 | 低レイテンシ metadata 操作 (stat, readdir) | △ (tens of ms) | ✅ (sub-ms) |
 | 既存アプリケーション互換性 | — | ✅ |
@@ -25,11 +25,82 @@ FSx for ONTAP S3 Access Points provide an S3-facing access boundary for file dat
 |-----------|--------|
 | ListObjectsV2 | ✅ Tested |
 | GetObject | ✅ Tested |
-| PutObject (max 5 GB) | ✅ Tested |
+| PutObject | ✅ Tested |
 | Range GET | ✅ Tested |
 | HeadObject | ✅ Tested |
 | DeleteObject | ✅ Tested |
-| MultipartUpload | ✅ Supported (per AWS docs) |
+| MultipartUpload (`CreateMultipartUpload` / `UploadPart` / `CompleteMultipartUpload`) | ✅ Tested |
+
+> サイズ上限は API ごとに異なります。次節「アップロードサイズの上限」を参照してください。
+
+## アップロードサイズの上限
+
+### 1. まずファイルサイズから方式を選ぶ
+
+アップロードしたいファイルのサイズが決まれば、使う方式は一意に決まります。
+
+| ファイルサイズ | 使う方式 | 可否 |
+|---------------|---------|:---:|
+| **〜 5 GiB** | 単一 `PutObject`（API を 1 回呼ぶだけ） | ✅ |
+| **5 GiB 超 〜 50 GiB** | マルチパートアップロード（必須） | ✅ |
+| **50 GiB 超** | S3 AP 経由では不可 | ❌ NFS/SMB でボリュームに直接配置 |
+| ダウンロード（`GetObject`） | サイズ上限なし | ✅ 50 GiB 超のファイルも取得可 |
+
+> AWS SDK の高レベル API（`upload_file` / `TransferManager`、Amplify Storage Browser など）は、しきい値を超えると自動的にマルチパートへ切り替えます。その場合、方式の選択を意識する必要はありませんが、**50 GiB の上限は自動では回避されません**。
+
+### 2. 方式と API と上限の対応
+
+**方式 A: 単一 `PutObject`** — API 1 回でオブジェクトが完成します。この 1 回の上限がそのままオブジェクトサイズの上限になります。
+
+```
+PutObject (1 回) ──▶ オブジェクト完成
+   上限 5 GiB
+```
+
+**方式 B: マルチパートアップロード** — 3 種類の API を順に呼びます。上限は API ごとに異なる対象にかかります。
+
+```
+CreateMultipartUpload ──▶ UploadPart × N 回 ──▶ CompleteMultipartUpload ──▶ オブジェクト完成
+   上限なし                 1 パートあたり           オブジェクト合計
+                            上限 5 GiB               上限 50 GiB
+                            （累積は検査されない）    （ここで初めて検査）
+```
+
+| 呼び出す API | 上限がかかる対象 | 実測値 | 検査タイミング |
+|-------------|----------------|-------|--------------|
+| `PutObject`（方式 A） | オブジェクト 1 個 | **5 GiB** = 5,368,709,120 バイト | Content-Length で即時 |
+| `UploadPart`（方式 B） | パート 1 個 | **5 GiB** = 5,368,709,120 バイト | Content-Length で即時 |
+| `CompleteMultipartUpload`（方式 B） | オブジェクト合計 | **50 GiB** = 53,687,091,200 バイト | 全パート転送後 |
+
+実測値の詳細と再現手順: [オブジェクトサイズ上限の実測検証](s3ap-object-size-limits-verification.md)
+
+> **単位に注意**: AWS ドキュメントの「5 GB」「50 GB」はいずれも**二進表記（GiB）**でした。十進で解釈すると 5 GB では 368 MB、50 GB では 3.7 GB の差が生じます。
+>
+> なお上限が 5 GiB から 50 GiB に引き上げられたのはドキュメント更新によるもので、対応する What's New アナウンスは確認できていません（アーカイブでは 2026-03-08 時点 5 GB、2026-06-25 時点 50 GB）。
+
+### 3. 上限超過時の挙動 — 方式 B には落とし穴があります
+
+⚠️ **オブジェクト合計の上限は `CompleteMultipartUpload` でのみ検査されます。** `UploadPart` には累積サイズの検査がありません。50 GiB + 1 バイトの実測では、全 11 パートが正常に受理され、**約 10 分（590 秒）かけて全データを転送し終えた後**に拒否されました。
+
+| | 方式 A（`PutObject`） | 方式 B（`UploadPart`） | 方式 B（`CompleteMultipartUpload`） |
+|---|---|---|---|
+| 検査 | Content-Length | Content-Length | 全パート転送後 |
+| 失敗までの時間 | 即時（約 2.7 秒） | 即時 | **全量転送後** |
+| 無駄になる転送量 | ほぼゼロ（約 12 MB） | ほぼゼロ | **最大 50 GiB** |
+| `MaxSizeAllowed` の返却 | ✅ あり | ✅ あり | ❌ **なし** |
+
+```
+Code    : EntityTooLarge
+Message : Your proposed upload exceeds the maximum allowed size
+Extra   : {'ProposedSize': '5368709121', 'MaxSizeAllowed': '5368709120'}   ← PutObject / UploadPart のみ
+```
+
+**実装上の推奨**:
+
+- **アップロード開始前にクライアント側で 50 GiB 以下であることを検証してください。** サービス側に事前チェックはなく、`CompleteMultipartUpload` のエラーには `MaxSizeAllowed` が含まれないため、超過は転送完了後にしか判明しません。
+- `CompleteMultipartUpload` 自体に時間がかかります（50 GiB で約 557 秒）。`read_timeout` を長めに設定してください（実測では 1800 秒を使用）。
+
+出典: [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) / [Uploading objects (Amazon S3 User Guide)](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
 
 ## Not Equivalent to Full S3 Bucket Semantics
 
@@ -258,7 +329,7 @@ AWS サポートは FSx for ONTAP サービスチームにドキュメント改�
 | UC2, UC14 (Financial) | Cross-region invocation — Textract が ap-northeast-1 で未提供 |
 | UC5, UC7 (Healthcare/Genomics) | Range GET — DICOM/genomics ヘッダーの部分読み取りに有効 |
 | UC3, UC11 (Real-time) | EVENT_DRIVEN — FPolicy ベース、ネイティブ S3 通知ではない |
-| UC4 (Media/VFX) | PutObject — 処理結果の書き戻し（max 5 GB） |
+| UC4 (Media/VFX) | PutObject — 処理結果の書き戻し（単一 PUT 5 GiB / Multipart で 50 GiB まで） |
 | FC1 (FlexCache Anycast/DR) | FlexCache × S3AP 統合 — AWS リリース待ち |
 | FC2-FC6 (FlexClone patterns) | FlexClone ボリュームへの S3AP アタッチ — junction path 設定が必要 |
 

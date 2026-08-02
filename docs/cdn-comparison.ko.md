@@ -19,7 +19,7 @@ FSx for ONTAP S3 Access Points(S3 AP) 상의 데이터를 CDN/엣지 네트워�
 | 2단계 인가(AWS + ONTAP) | IAM 후 ONTAP 파일 ID(UNIX UID / Windows AD) | 배포 대상은 ONTAP ID로 읽을 수 있는 범위로 한정 |
 | Presigned URL 미지원 | 공식 미지원 | 시청자 토큰 인증에 S3 Presigned URL 사용 불가. CDN 네이티브 토큰 사용 |
 | NetworkOrigin(Internet/VPC, 변경 불가) | CDN은 관리형/외부망에서 접근 | CDN 연계에는 **Internet origin** 필요 |
-| PutObject 최대 5 GB | 단일 PUT 한도 | 대용량 쓰기는 멀티파트 |
+| 객체 크기 상한 50 GB | 단일 PUT은 5 GB까지 | 5 GB 초과 쓰기는 멀티파트 |
 
 ## 2. 통합 메커니즘(벤더 비종속)
 

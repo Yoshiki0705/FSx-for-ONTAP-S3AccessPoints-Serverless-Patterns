@@ -80,7 +80,8 @@
 | NFSv3 | ❌ Write 時 Stale file handle | Filehandle +22 bytes > 64 byte limit |
 | **NFSv4.1** | **✅ Read/Write 完全動作** | 128 byte limit で十分な余裕 |
 
-> 詳細: [検証結果レポート (private)](.private/knfsd-test-results-20260722.md) / [ブログ記事 (JA)](.private/blog-knfsd-s3ap-draft.md)
+> 詳細な検証記録（実測ログ・日付・実行環境）は本リポジトリ外の非公開領域（`.private/`、gitignored）で
+> 管理しています。再現手順は [KNFSD File Cache の検証手順](../infrastructure/knfsd-file-cache/docs/demo-guide.md) を参照してください。
 
 ---
 

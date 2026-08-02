@@ -157,7 +157,7 @@ EntityExtraction → Redaction → IndexGeneration），因此 `shared/output_wr
 **注意事項**：
 
 - 強烈建議指定 `S3AccessPointName`（同時允許 Alias 格式和 ARN 格式的 IAM 權限）
-- 超過 5GB 的物件無法使用 FSx for ONTAP S3 AP（AWS 規格），必須使用多部分上傳
+- 物件大小上限為 50 GB（AWS 規格）。單次 PutObject 上限為 5 GB，因此超過 5 GB 必須使用多部分上傳
 - ComplianceCheck Lambda 僅使用 DynamoDB，因此不受 `OutputDestination` 影響
 - FoiaDeadlineReminder Lambda 僅使用 DynamoDB + SNS，因此不受影響
 - OpenSearch 索引由 `OpenSearchMode` 參數另行管理（與 `OutputDestination` 獨立）

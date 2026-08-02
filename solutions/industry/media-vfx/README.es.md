@@ -19,7 +19,7 @@ Un flujo de trabajo sin servidor que aprovecha los S3 Access Points de FSx for O
 
 - Necesita un inicio inmediato de los trabajos de renderizado (desencadenadores al guardar archivos)
 - Utiliza una granja de renderizado distinta de Deadline Cloud (p. ej., Thinkbox Deadline local)
-- La salida de renderizado supera los 5 GB (el límite de S3 AP PutObject)
+- La salida de renderizado supera los 50 GB (el límite de tamaño de objeto de S3 AP; 5-50 GB es posible con multipart)
 - Las verificaciones de calidad requieren un modelo propio de evaluación de la calidad de imagen (la detección de etiquetas de Rekognition es insuficiente)
 
 ### Características principales

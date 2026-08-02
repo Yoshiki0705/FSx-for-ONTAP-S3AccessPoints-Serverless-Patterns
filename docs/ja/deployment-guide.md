@@ -535,7 +535,7 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 - **S3 AP NetworkOrigin は変更不可** — 作成後に Internet から VPC、またはその逆に変更できません。
 - **ONTAP S3 サーバーと S3 AP の競合** — SVM に ONTAP ネイティブの S3 サーバー（`vserver object-store-server`）が有効な場合、S3 Access Point の作成が失敗します。別の SVM を使用するか、S3 サーバーを先に削除してください。
 - **S3 AP は Presigned URL をサポートしない** — 非サポートとして文書化されています。
-- **PutObject の最大オブジェクトサイズは 5 GB** — より大きなファイルには Multipart Upload を使用してください。
+- **オブジェクトサイズ上限は 50 GB（アップロード時）** — 単一 `PutObject` で送れるのは 5 GB までなので、5 GB を超えるファイルには Multipart Upload を使用してください。ダウンロードは 50 GB 超も可能です。
 - **S3 Gateway VPC Endpoint は Internet-origin S3 AP トラフィックをルーティングしない** — NAT Gateway または VPC 外部 Lambda を使用してください。
 
 ### WINDOWS ユーザータイプ S3 Access Point — AD 要件
@@ -606,7 +606,7 @@ aws fsx create-and-attach-s3-access-point ...
 | `Network timeout` (ONTAP 接続) | VPC 内 Lambda が ONTAP 管理 LIF に到達できない | SG がポート 443 のエグレスを許可しているか確認; ONTAP 管理 IP がプライベートサブネットから到達可能か確認 |
 | `Access Denied` (S3 AP 操作) | IAM ポリシーまたは S3 AP リソースポリシーの不一致 | IAM アイデンティティポリシーと S3 AP リソースポリシーの両方がアクションを許可しているか確認 |
 | `Secret not found` | シークレット名のタイポまたはリージョン間違い | `aws secretsmanager describe-secret --secret-id <NAME>` で確認 |
-| `ONTAP S3 server exists on SVM` | ONTAP ネイティブ S3 が FSx S3 AP と競合 | 別の SVM を使用するか、ONTAP S3 サーバーを削除（既知の制約事項を参照） |
+| `ONTAP S3 server exists on SVM` | ONTAP ネイティブ S3 が FSx for ONTAP S3 AP と競合 | 別の SVM を使用するか、ONTAP S3 サーバーを削除（既知の制約事項を参照） |
 | `Bedrock InvokeModel AccessDenied` | リージョンでモデルアクセスが有効化されていない | Bedrock コンソールでモデルアクセスを有効化; クロスリージョン推論プロファイル ID を使用 |
 | WINDOWS S3 AP データ操作で `AccessDenied` | `WindowsUser.Name` にドメインプレフィクスが含まれている | ドメインプレフィクスを削除 — `"DOMAIN\\Admin"` ではなく `"Admin"` を使用 |
 | S3 AP 作成失敗（WINDOWS タイプ） | SVM が AD ドメインに未参加 | 先に SVM を AD に参加: `./scripts/demo-ad-join-svm.sh` |

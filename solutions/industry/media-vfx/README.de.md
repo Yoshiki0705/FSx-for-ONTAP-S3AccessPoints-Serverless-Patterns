@@ -19,7 +19,7 @@ Ein serverloser Workflow, der die S3 Access Points von FSx for ONTAP nutzt, um d
 
 - Sie benötigen ein sofortiges Anstoßen von Rendering-Jobs (Trigger beim Speichern von Dateien)
 - Sie verwenden eine andere Render-Farm als Deadline Cloud (z. B. Thinkbox Deadline On-Premises)
-- Die Rendering-Ausgabe überschreitet 5 GB (die Obergrenze von S3 AP PutObject)
+- Die Rendering-Ausgabe überschreitet 50 GB (die Objektgrößenobergrenze von S3 AP; 5-50 GB per Multipart möglich)
 - Für die Qualitätsprüfung ist ein proprietäres Modell zur Bildqualitätsbewertung erforderlich (die Labelerkennung von Rekognition reicht nicht aus)
 
 ### Hauptfunktionen

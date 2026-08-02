@@ -13,7 +13,7 @@ Einseiter für die tägliche Portal-Nutzung. Drucken Sie diese Seite aus oder se
 | 📂 All Files | Durchsuchen, Vorschau, Download, Teilen, AI-Q&A |
 | ⭐ Favorites | Angeheftete Dateien |
 | 🕐 Recent | Ihr Zugriffsverlauf |
-| 📤 Upload | Drag-and-Drop-Upload (max. 5 GB/Datei) |
+| 📤 Upload | Drag-and-Drop-Upload (max. 50 GB/Datei) |
 | ⚡ AI Processing | AI/ML-Workflows auf Ordner anwenden |
 | 📋 Job History | Vergangene Job-Ergebnisse + Status |
 | 📊 Analytics | Athena-SQL-Abfragen |
