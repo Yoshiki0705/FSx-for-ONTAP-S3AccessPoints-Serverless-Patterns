@@ -21,7 +21,7 @@ Leveraging the S3 Access Points of FSx for ONTAP, this serverless workflow autom
 - Real-time DICOM routing (requires DICOM MWL / MPPS integration)
 - Diagnostic assistance AI for imaging (CAD) — this pattern specializes in classification and anonymization
 - Cross-region data transfer is not permitted for regulatory reasons in regions where Comprehend Medical is unavailable
-- DICOM file size exceeds 5 GB (e.g., multi-frame MR/CT)
+- DICOM file size exceeds 50 GB (e.g., multi-frame MR/CT)
 
 ### Main Features
 

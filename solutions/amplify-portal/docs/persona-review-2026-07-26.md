@@ -66,7 +66,7 @@
 **Priority**: Medium — 運用統合
 
 ### 14. Cloud Security Architect
-**Insight**: VPC Lambda の Security Group が FSx と同じ SG を使っている（`sg-015df9ccadf010bf5`）。これは全ポート open。Lambda 専用 SG を作成し、outbound を TCP/443 (ONTAP mgmt) + TCP/443 (S3/Secrets Manager VPC Endpoint) のみに制限するベストプラクティスを doc に追記すべき。
+**Insight**: VPC Lambda の Security Group が FSx と同じ SG を使っている（`sg-0123456789abcdef0`）。これは全ポート open。Lambda 専用 SG を作成し、outbound を TCP/443 (ONTAP mgmt) + TCP/443 (S3/Secrets Manager VPC Endpoint) のみに制限するベストプラクティスを doc に追記すべき。
 **Priority**: High — Least privilege
 
 ---
@@ -199,7 +199,7 @@
 | 27 | FSI Architect | ✅ FISC 7-year preset + audit log Lock events. Sufficient. | None |
 | 28 | Manufacturing | S3 AP write-back conflict warning still missing in docs. | Doc: NFS lock interaction |
 | 29 | Public Sector | ✅ External IdP guide covers AD FS, Okta, Azure AD. Comprehensive. | None |
-| 30 | Community Builder | Vendor neutrality check passed. No 「差別化」/「優位性」 remaining. | None |
+| 30 | Community Builder | Vendor neutrality check passed. No superiority- or differentiation-framing terms remain. | None |
 
 ### Summary
 

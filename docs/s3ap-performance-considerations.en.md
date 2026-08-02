@@ -53,9 +53,11 @@ Data access via S3 Access Points for FSx for ONTAP depends on the FSx file syste
 
 | Operation | Max Size | Notes |
 |-----------|----------|-------|
-| PutObject (single) | 5 GB | Files larger than this cannot be uploaded |
-| GetObject | No limit | Files larger than 5 GB can be downloaded |
-| Multipart Upload | 5 GB (completed object) | Upload in parts |
+| Object size limit (upload) | **50 GiB** (53,687,091,200 bytes) | Measured. Enforced at `CompleteMultipartUpload` |
+| PutObject (single) | **5 GiB** (5,368,709,120 bytes) | Amazon S3 API-wide single PUT limit. Use Multipart Upload above 5 GiB |
+| UploadPart (per part) | **5 GiB** (5,368,709,120 bytes) | Cumulative size is not checked |
+| GetObject | No limit | Files larger than 50 GiB can be downloaded |
+| Multipart Upload | 50 GiB (completed object) | Upload in parts. Required for objects between 5 GiB and 50 GiB |
 | Storage Class | FSX_ONTAP only | Other storage classes cannot be specified |
 | Encryption | SSE-FSX only | SSE-KMS / SSE-S3 cannot be used |
 
@@ -66,8 +68,15 @@ Data access via S3 Access Points for FSx for ONTAP depends on the FSx file syste
 | < 1 MB | Direct GetObject, in-memory processing | 256-512 MB |
 | 1-100 MB | GetObject + streaming processing | 512 MB - 1 GB |
 | 100 MB - 1 GB | Range GET (partial read) or write to /tmp | 1-3 GB |
-| 1-5 GB | /tmp (10 GB) + streaming, or EFS mount | 3-10 GB |
-| > 5 GB | GetObject only (PutObject not available), consider splitting | ECS/Batch recommended |
+| 1 GB - 5 GiB | /tmp (10 GB) + streaming, or EFS mount | 3-10 GB |
+| 5 GiB - 50 GiB | Multipart Upload (single PutObject not available). Read via Range GET streaming | ECS/Batch recommended |
+| > 50 GiB | Readable. Write-back exceeds the object limit, so split it or place the file via NFS/SMB | ECS/Batch recommended |
+
+> **About the object size limit**: The maximum object size for uploads is **50 GiB = 53,687,091,200 bytes** (measured). The AWS documentation writes it as "50 GB", but the value is binary. It was previously "5 GB" and was raised in a documentation update (archived copies show 5 GB on 2026-03-08 and 50 GB on 2026-06-25; no corresponding What's New announcement was found). The 5 GiB limit on a single `PutObject` is an Amazon S3 API-wide constraint and has not changed.
+>
+> ⚠️ The whole-object limit is enforced only at `CompleteMultipartUpload`; `UploadPart` performs no cumulative check. An over-limit object fails only after the full transfer, so **validate size client-side before starting the upload**. Details: [measured object size limits](s3ap-object-size-limits-verification.en.md)
+>
+> Sources: [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) / [Uploading objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
 
 ## ListObjectsV2 Pagination
 
@@ -275,5 +284,70 @@ Lambda Duration is high
 - [Amazon FSx for ONTAP performance](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html)
 - [Accessing your data via Amazon S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 - [Access point compatibility (Supported S3 operations)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
+- [S3 AP dual-layer authorization model](s3ap-authorization-model.en.md)
+- [Deployment Profiles](deployment-profiles.md)
+
+## Sharing Bandwidth with KNFSD File Cache
+
+### Background
+
+If you run [KNFSD File Cache](https://github.com/awslabs/knfsd-file-cache) (Preview, July 2026) as an NFS read cache in front of FSx for ONTAP, it **shares the same FSx provisioned throughput** as your S3 AP-based Lambda processing. The design has to prevent the two from competing for bandwidth.
+
+### Throughput sharing model
+
+```
+FSx for ONTAP Provisioned Throughput (e.g. 1,024 MBps)
+├── KNFSD File Cache source reads (NFS mount)
+│   ├── On cache MISS only: fetch from the source
+│   └── On cache HIT: no FSx bandwidth consumed  <- this is the key point
+├── S3 AP Lambda processing (GetObject / PutObject)
+├── Direct NFS clients
+└── Direct SMB clients
+```
+
+### KNFSD cache hit ratio and its effect on FSx bandwidth
+
+| KNFSD cache hit ratio | Effect on FSx bandwidth | Effect on S3 AP processing |
+|:---:|---|---|
+| > 95% | KNFSD consumes almost no FSx bandwidth | None |
+| 70-95% | Bandwidth consumed during initial warm-up | Possible temporary contention |
+| < 70% | Insufficient cache — consumes substantial FSx bandwidth | Risk of `SlowDown` on S3 AP |
+
+### Design recommendations
+
+#### Bandwidth allocation guideline (KNFSD + S3 AP together)
+
+| Phase | KNFSD bandwidth use | S3 AP recommendation |
+|-------|:---:|---|
+| KNFSD warm-up (first fetch) | High | Hold off S3 AP processing, or lower MaxConcurrency |
+| Steady state (cache warm) | Low (misses only) | Normal MaxConcurrency is fine |
+| Just after a compute burst starts | Medium to high | Enable adaptive retry on the S3 AP side |
+
+#### How to adjust MaxConcurrency
+
+```
+# S3 AP MaxConcurrency when KNFSD is also in use
+available_for_s3ap = fsxn_throughput - knfsd_miss_throughput - nfs_smb_direct
+max_concurrency = available_for_s3ap / per_lambda_throughput
+
+# Example: 1,024 MBps FSx, KNFSD misses 200 MBps, NFS/SMB 100 MBps
+# available_for_s3ap = 1,024 - 200 - 100 = 724 MBps
+# with per_lambda_throughput = 50 MBps
+# max_concurrency ~= 14
+```
+
+#### Time-window separation pattern
+
+Separate read-heavy bursts from S3 AP post-processing by time of day:
+
+```
+[06:00-18:00] Compute burst: EDA/VFX reads through KNFSD (bandwidth priority)
+[18:00-22:00] S3 AP post-processing: Lambda analysis and reporting (after cache is warm)
+[22:00-06:00] Maintenance window: Snapshot, SnapMirror
+```
+
+> **Observability note**: Monitor KNFSD's CloudWatch metrics (particularly `cache_hit_ratio` and `read_throughput_source`) alongside the FSx `DataReadBytes` metric on the same dashboard, so bandwidth contention is detected early. KNFSD exposes 70+ metrics via OTel, so integration with Prometheus/Grafana is also possible.
+
+> **See also**: For the detailed architecture guide, see [KNFSD + S3 AP Dual-Path Architecture](./knfsd-s3ap-dual-path-architecture.en.md).
 - [S3AP Dual-Layer Authorization Model](s3ap-authorization-model.md)
 - [Deployment Profiles](deployment-profiles.md)

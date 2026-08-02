@@ -131,7 +131,7 @@ sam deploy \
 **注意事项**：
 
 - 强烈建议指定 `S3AccessPointName`（同时为 Alias 格式和 ARN 格式授予 IAM 权限）
-- 超过 5GB 的对象在 FSx for ONTAP S3 AP 中不可用（AWS 规范），必须使用分段上传
+- 对象大小上限为 50 GB（AWS 规范）。单次 PutObject 上限为 5 GB，因此超过 5 GB 必须使用分段上传
 - ChangeDetection Lambda 仅使用 DynamoDB，因此不受 `OutputDestination` 影响
 - AlertGeneration Lambda 仅使用 SNS，因此不受 `OutputDestination` 影响
 - AWS 规范上的限制请参考

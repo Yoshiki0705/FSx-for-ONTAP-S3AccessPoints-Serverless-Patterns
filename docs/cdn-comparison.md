@@ -30,7 +30,7 @@ CDN 統合の設計は、すべて以下の S3 AP の仕様から導かれます
 | **二段階認可（AWS 側 + ONTAP 側）** | IAM 認可の後、AP に紐づく ONTAP ファイルシステム ID（UNIX UID / Windows AD）でも認可 | 配信対象は ONTAP 側 ID で読める範囲に限定される |
 | **Presigned URL（ドキュメント上 Not supported だが動作する）** | Presigned URL は実際には動作する（GetObject の署名付きリクエスト）が、AWS は本番依存を非推奨。[詳細](./s3ap-compatibility-notes.md#presigned-url-support) | 視聴者向けトークン認証に S3 Presigned URL を使用可能だが本番保証なし。CDN ネイティブのトークン機構も選択肢 |
 | **NetworkOrigin（Internet / VPC、作成後変更不可）** | CDN は AWS マネージド/外部網からアクセス | CDN 連携には **Internet origin** が必要。VPC origin はクラウド外 CDN から到達不可 |
-| **PutObject 上限 5 GB** | 単一 PUT は 5 GB まで | 配信成果物の書き戻しは大容量時にマルチパート |
+| **オブジェクト上限 50 GB** | 単一 PUT は 5 GB まで | 配信成果物の書き戻しは 5 GB 超でマルチパート |
 
 > 上記は FSx for ONTAP S3 AP の仕様であり、配信ベンダー側の制約ではありません。
 > いずれの CDN を使う場合も、この制約の上で設計します。

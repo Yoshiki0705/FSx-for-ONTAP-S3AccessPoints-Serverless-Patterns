@@ -13,7 +13,7 @@
 | 📂 All Files | ブラウズ、プレビュー、ダウンロード、共有、AI Q&A |
 | ⭐ Favorites | ピン留めしたファイル |
 | 🕐 Recent | アクセス履歴 |
-| 📤 Upload | ドラッグ＆ドロップアップロード（最大 5 GB/ファイル） |
+| 📤 Upload | ドラッグ＆ドロップアップロード（最大 50 GB/ファイル） |
 | ⚡ AI Processing | フォルダに対する AI/ML ワークフローの実行 |
 | 📋 Job History | 過去のジョブ結果とステータス |
 | 📊 Analytics | Athena SQL クエリ |

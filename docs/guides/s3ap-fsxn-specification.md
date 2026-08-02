@@ -12,7 +12,7 @@ FSx for ONTAP S3 Access Point（以下 S3 AP）は、ONTAP ボリューム上の
 
 **重要な前提**:
 - S3 AP は `GetObject`、`PutObject`、`DeleteObject`、マルチパートアップロードをサポート（[互換性テーブル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)参照）
-- 最大アップロードサイズ: 5 GB、ストレージクラス: `FSX_ONTAP` のみ、暗号化: SSE-FSX のみ
+- 最大アップロードサイズ: 50 GB（単一 PutObject は 5 GB）、ストレージクラス: `FSX_ONTAP` のみ、暗号化: SSE-FSX のみ
 - ACL（`bucket-owner-full-control` のみ）、Object Versioning、Object Lock、署名付き URL は非サポート
 - NetworkOrigin（Internet/VPC）により VPC からのアクセス経路が異なる（本環境は Internet Origin）
 
@@ -91,7 +91,7 @@ Resources:
                 Resource: !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3AccessPointName}/object/*"
 ```
 
-> **Note**: PutObject の最大サイズは 5 GB。それ以上のファイルはマルチパートアップロード（CreateMultipartUpload + UploadPart + CompleteMultipartUpload）を使用。
+> **Note**: アップロード時のオブジェクトサイズ上限は 50 GB です。ただし単一 PutObject で送れるのは Amazon S3 API 共通の上限である 5 GB までなので、5 GB を超えて 50 GB までのファイルはマルチパートアップロード（CreateMultipartUpload + UploadPart + CompleteMultipartUpload）を使用してください。
 
 ---
 

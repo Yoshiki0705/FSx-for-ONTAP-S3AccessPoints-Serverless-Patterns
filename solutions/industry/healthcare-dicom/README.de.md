@@ -21,7 +21,7 @@ Mithilfe der S3 Access Points von FSx for ONTAP klassifiziert und anonymisiert d
 - DICOM-Routing in Echtzeit (erfordert eine DICOM-MWL-/MPPS-Integration)
 - Diagnoseunterstützende KI für Bilder (CAD) — dieses Muster ist auf Klassifizierung und Anonymisierung spezialisiert
 - Regionsübergreifende Datenübertragung ist aus regulatorischen Gründen in Regionen, in denen Comprehend Medical nicht verfügbar ist, nicht zulässig
-- Die DICOM-Dateigröße überschreitet 5 GB (z. B. Multi-Frame-MR/CT)
+- Die DICOM-Dateigröße überschreitet 50 GB (z. B. Multi-Frame-MR/CT)
 
 ### Hauptfunktionen
 

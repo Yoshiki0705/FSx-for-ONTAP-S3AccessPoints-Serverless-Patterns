@@ -11,12 +11,12 @@
 
 | リソース | 値・状況 |
 |---|---|
-| FSx for ONTAP ファイルシステム | `fs-09ffe72a3b2b7dbbd`、VPC `vpc-0ae01826f906191af`、subnet `subnet-0e36804c7fbc819a6` |
-| AD 連携 SVM | `FPolicySMB`（`svm-037cedb30df493c1e`）、ドメイン `FPOLICY.LOCAL`、SMB `FPOLSMB.FPOLICY.LOCAL`（10.0.15.0） |
-| AD DNS/DC | 10.0.5.22 / 10.0.28.223（自己管理 AD）。DC EC2 `itani-vpc03-ad1`（stopped、共有） |
-| ONTAP 管理 LIF | 10.0.15.0（VPC 内プライベート） |
+| FSx for ONTAP ファイルシステム | `fs-0123456789abcdef0`、VPC `vpc-0123456789abcdef0`、subnet `subnet-0123456789abcdef0` |
+| AD 連携 SVM | `FPolicySMB`（`svm-0123456789abcdef0`）、ドメイン `FPOLICY.LOCAL`、SMB `FPOLSMB.FPOLICY.LOCAL`（10.0.x.x） |
+| AD DNS/DC | 10.0.x.x / 10.0.x.x（自己管理 AD）。DC EC2 `<shared-ad-dc>`（stopped、共有） |
+| ONTAP 管理 LIF | 10.0.x.x（VPC 内プライベート） |
 | ONTAP 認証情報 | Secrets Manager `fsx-ontap-fsxadmin-credentials` |
-| Windows クライアント候補 | `maru-win01`（別VPC・到達不可）, `test-fujiwara-win-for-itani-vpc03`（stopped） |
+| Windows クライアント候補 | `<shared-win-client-2>`（別VPC・到達不可）, `<shared-win-client-1>`（stopped） |
 
 > **注意**: `FPolicySMB` SVM と AD（FPOLICY.LOCAL）は同僚の検証環境。共有リソースのため、
 > 利用可否は事前合意が必要。専用環境にしたい場合は別途 AWS Managed Microsoft AD + 新規 SVM を作成する。
@@ -27,18 +27,24 @@
 
 | 確認項目 | 実測結果 | 影響 |
 |---|---|---|
-| Windows identity S3 AP 作成（FPOLICY\Admin） | **失敗**: "Failed to lookup the provided user in ONTAP" | AD ユーザーを ONTAP が解決できない |
-| AD DC `itani-vpc03-ad1`（172.29.2.77） | **stopped**、`vpc-061918058c0b96a8f`（172.29.x） | DC 停止中。ユーザー解決不可の一因 |
-| Windows クライアント `test-fujiwara-win-for-itani-vpc03`（172.29.12.161） | **stopped**、同上 VPC（172.29.x） | RDP 操作元の候補だが停止中・別VPC |
-| FSx for ONTAP ファイルシステム / FPolicySMB SVM | VPC `vpc-0ae01826f906191af`（10.0.x）、AD DNS 10.0.5.22 / 10.0.28.223 | DC/クライアント（172.29.x）と別セグメント。到達性に VPC ピアリング等の確認が必要 |
-| `maru-win01`（172.30.1.253） | running だが `vpc-05192d06e1e91d756`（172.30.x） | さらに別VPC。FSx for ONTAP に到達不可 |
+| Windows identity S3 AP 作成（`FPOLICY\Admin` を指定） | **失敗**: "Failed to lookup the provided user in ONTAP" | AD ユーザーを ONTAP が解決できない。**指定値の形式にも誤りがある**（下記注記参照） |
+| AD DC `<shared-ad-dc>`（172.29.x.x） | **stopped**、`vpc-0123456789abcdef1`（172.29.x） | DC 停止中。ユーザー解決不可の一因 |
+| Windows クライアント `<shared-win-client-1>`（172.29.x.x） | **stopped**、同上 VPC（172.29.x） | RDP 操作元の候補だが停止中・別VPC |
+| FSx for ONTAP ファイルシステム / FPolicySMB SVM | VPC `vpc-0123456789abcdef0`（10.0.x）、AD DNS 10.0.x.x / 10.0.x.x | DC/クライアント（172.29.x）と別セグメント。到達性に VPC ピアリング等の確認が必要 |
+| `<shared-win-client-2>`（172.30.x.x） | running だが `vpc-0123456789abcdef2`（172.30.x） | さらに別VPC。FSx for ONTAP に到達不可 |
 
 > いずれも**同僚の共有リソース**かつ**複数 VPC にまたがる**。停止 EC2 の起動・AD 認証情報・
 > VPC 間到達性・RDP 人手操作が必要で、無断のトライ&エラー変更は行わない（安全方針）。
 
+> **指定値の形式に関する補足**: 上記の試行では `WindowsUser.Name` に `FPOLICY\Admin` を指定していたが、
+> これは**誤った形式**である。正しくはユーザー名のみ（`Admin`）を指定する。AD DC が停止していたことが
+> 直接の失敗要因だが、DC を起動して再試行する際は指定値もユーザー名のみに修正する必要がある。
+> 詳細は手順 3 の注記を参照。
+
 ### 先に進むために必要な判断（ユーザー確認事項）
-1. **AD ユーザー**: S3 AP Windows identity 用に ONTAP が解決可能な FPOLICY.LOCAL ユーザー（`DOMAIN\user`）の提供
-2. **AD DC 起動可否**: `itani-vpc03-ad1`（共有）を起動してよいか。または別の稼働 DC があるか
+1. **AD ユーザー**: S3 AP Windows identity 用に ONTAP が解決可能な FPOLICY.LOCAL ユーザーの提供
+   （`WindowsUser.Name` にはユーザー名のみを指定する。`DOMAIN\user` 形式は不可 — 手順 3 の注記参照）
+2. **AD DC 起動可否**: `<shared-ad-dc>`（共有）を起動してよいか。または別の稼働 DC があるか
 3. **AD/SVM 方針**: 共有 `FPolicySMB`/FPOLICY.LOCAL を使うか、専用の AWS Managed Microsoft AD + 新規 SVM を新設するか（後者はコスト発生）
 4. **VPC 作業ホスト**: SMB 共有/NTFS ACL 作成（ONTAP REST）と RDP ドラッグ&ドロップを行う、FSx for ONTAP VPC（または到達可能な）Windows/Linux ホスト
 5. **到達性**: DC/クライアントの VPC（172.29.x / 172.30.x）と FSx for ONTAP VPC（10.0.x）間のピアリング有無
@@ -67,7 +73,7 @@
 aws fsx create-volume --region ap-northeast-1 \
   --volume-type ONTAP --name ai_knowledge_smb \
   --ontap-configuration '{
-    "StorageVirtualMachineId": "svm-037cedb30df493c1e",
+    "StorageVirtualMachineId": "svm-0123456789abcdef0",
     "JunctionPath": "/ai_knowledge_smb",
     "SecurityStyle": "NTFS",
     "SizeInBytes": "10737418240",
@@ -77,7 +83,7 @@ aws fsx create-volume --region ap-northeast-1 \
 ```
 
 ### 2. SMB 共有 + ロールフォルダ + NTFS ACL（ONTAP・VPC 内ホストから）
-ONTAP REST（管理 LIF 10.0.15.0、`fsx-ontap-fsxadmin-credentials`）または Windows から:
+ONTAP REST（管理 LIF 10.0.x.x、`fsx-ontap-fsxadmin-credentials`）または Windows から:
 ```
 # ONTAP CLI 例（CIFS 共有作成）
 vserver cifs share create -vserver FPolicySMB -share-name ai-knowledge -path /ai_knowledge_smb
@@ -91,11 +97,15 @@ aws fsx create-and-attach-s3-access-point --region ap-northeast-1 \
   --name fsxn-ai-knowledge-smb-s3ap --type ONTAP \
   --ontap-configuration '{
     "VolumeId": "<ai_knowledge_smb の VolumeId>",
-    "FileSystemIdentity": {"Type": "WINDOWS", "WindowsUser": {"Name": "FPOLICY\\<解決可能なADユーザー>"}}
+    "FileSystemIdentity": {"Type": "WINDOWS", "WindowsUser": {"Name": "<解決可能なADユーザー名>"}}
   }'
 ```
 > コマンド名は `create-and-attach-s3-access-point`（`create-s3-access-point-attachment` ではない）。
-> `WindowsUser` は `Name` のみ（`DOMAIN\\user` 形式）。
+>
+> **重要: `WindowsUser.Name` はユーザー名のみを指定する**（例: `Admin`）。`DOMAIN\Admin` のような
+> ドメインプレフィクスを付けてはいけない。プレフィクス付きは API バリデーションを通過することがあるが、
+> データプレーン操作（ListObjectsV2 / GetObject / PutObject）が `AccessDenied` で無言のうちに失敗する。
+> ドメインは SVM の AD 参加設定から解決されるため、`Name` に含める必要はない。
 > Windows identity にすることで、S3 AP 経由アクセスが NTFS ACL に基づき認可される。
 > Amazon Quick の S3 ナレッジベースも Windows identity の S3 AP で正常動作する（[AWS Storage Blog 参照](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/)）。
 

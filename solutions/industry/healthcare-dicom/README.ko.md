@@ -21,7 +21,7 @@ FSx for ONTAP의 S3 Access Points를 활용하여 DICOM 의료 이미지의 자�
 - 실시간 DICOM 라우팅(DICOM MWL / MPPS 연동이 필요)
 - 이미지 진단 지원 AI(CAD) — 본 패턴은 분류·익명화에 특화
 - Comprehend Medical 미지원 리전에서 규제상 크로스 리전 데이터 전송이 허용되지 않는 경우
-- DICOM 파일 크기가 5 GB를 초과하는 경우(MR/CT의 멀티 프레임 등)
+- DICOM 파일 크기가 50 GB를 초과하는 경우(MR/CT의 멀티 프레임 등)
 
 ### 주요 기능
 

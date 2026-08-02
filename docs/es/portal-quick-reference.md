@@ -13,7 +13,7 @@ Hoja de referencia de una página para las operaciones diarias del portal. Impri
 | 📂 All Files | Explorar, previsualizar, descargar, compartir, Q&A con AI |
 | ⭐ Favorites | Archivos fijados |
 | 🕐 Recent | Su historial de acceso |
-| 📤 Upload | Carga por arrastrar y soltar (máx. 5 GB/archivo) |
+| 📤 Upload | Carga por arrastrar y soltar (máx. 50 GB/archivo) |
 | ⚡ AI Processing | Ejecutar flujos de trabajo AI/ML en carpetas |
 | 📋 Job History | Resultados de trabajos anteriores + estado |
 | 📊 Analytics | Consultas SQL de Athena |

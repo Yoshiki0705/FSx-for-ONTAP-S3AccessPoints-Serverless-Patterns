@@ -243,7 +243,7 @@ FSx CloudWatch metrics: DataReadBytes, NetworkThroughput (captured simultaneousl
 
 ---
 
-> **Note**: The documentation backlog is complete. Benchmarks at 256/512 MBps configurations are optional additional validations that require FSx throughput configuration changes (incurring additional cost). They do not change current guidance or architecture recommendations. Future 256/512 MBps validations will confirm how the observed practical concurrency point shifts with increased FSx throughput capacity.
+> **Note**: The 256/512 MBps validations were completed on 2026-05-25 (1 MB files) and 2026-06-06 (202 bytes files). Increasing FSx throughput capacity is effective at improving tail latency for large files (1 MB+), but has no effect for small files. VPC-internal Lambda testing is the next validation priority.
 
 > **Important**: The results in this document are not service limits. They are a sizing reference from a specific test environment.
 
@@ -252,7 +252,7 @@ FSx CloudWatch metrics: DataReadBytes, NetworkThroughput (captured simultaneousl
 ## Operational Note: S3 AP Availability During Throughput Capacity Change
 
 **Observation Date**: 2026-05-23
-**Environment**: fs-09ffe72a3b2b7dbbd (SINGLE_AZ_1, ap-northeast-1)
+**Environment**: fs-0123456789abcdef0 (SINGLE_AZ_1, ap-northeast-1)
 
 ### Observed Behavior
 
@@ -276,7 +276,7 @@ When changing FSx throughput capacity from 128 MBps → 256 MBps, the following 
 
 ### Impact Scope
 
-- **All S3 APs across all SVMs** were affected (both FSxN_OnPre SVM and verification-svm)
+- **All S3 APs across all SVMs** were affected (both the primary SVM and the verification SVM)
 - Occurred regardless of NetworkOrigin (Internet/VPC)
 - The file system itself remained in `AVAILABLE` state
 - Impact on NFS/SMB access was not confirmed (EC2 connection unavailable)
@@ -358,20 +358,300 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (impact on shared
 - Confirm time-series correlation with FSx CloudWatch metrics (DataReadBytes, NetworkThroughput)
 - Measure Range GET (1KB, 100KB, 1MB from 5MB file) at each capacity to confirm partial read scaling characteristics
 
-### Validation Results (to be added after validation)
+### Validation Results (additional validation, 2026-06-06)
 
-> TBD: To be filled after 256/512 MBps measurements
+**Small file (202 bytes) test results**: Increasing throughput capacity does not affect P50 latency for small files (P50 ≈ 57-60 ms at concurrency ≤25 for both 256 MBps and 512 MBps). The bottleneck is connection overhead (TLS + S3 AP routing), not FSx bandwidth.
 
-**Conclusion**: [Hypothesis was supported / partially supported / rejected]
+**Updated Conclusion**:
+- The hypothesis is **partially supported, depending on file size**
+- Large files (1 MB+): Increasing throughput capacity improves P99 (51% improvement from 128→256 MBps at concurrency=20)
+- Small files (< 1 KB): Throughput capacity does not affect P50/P99 (connection overhead dominant)
+- Limitation of Internet-path testing: The effect of 512 MBps is masked by client bandwidth
+
+**Conclusion**: The hypothesis was partially supported — at 128 MBps, P99 reached 980 ms for 1 MB files at concurrency=20, confirming signs of bandwidth saturation.
 
 **Observed practical concurrency points**:
 
 | FSx Capacity | Observed Practical Concurrency | Observed P99 at Limit | Deviation from Prediction |
 |-------------|-------------------------------|----------------------|--------------------------|
-| 256 MBps | TBD | TBD | TBD |
-| 512 MBps | TBD | TBD | TBD |
+| 128 MBps | concurrency=10 (1 MB) | 239 ms | Within predicted range |
+| 128 MBps | concurrency=20 (1 MB) | 981 ms | Signs of bandwidth saturation |
+| 256 MBps | concurrency=20 (1 MB) | 481 ms | 51% improvement over 128 MBps |
+| 256 MBps | concurrency=50 (1 MB) | 850 ms | Signs of bandwidth saturation |
+| 512 MBps | concurrency=20 (1 MB) | 738 ms | Comparable to 256 MBps (client bandwidth limited) |
+| 512 MBps | concurrency=50 (1 MB) | 4,495 ms | Client-side bottleneck |
 
-**Analysis**: TBD
+**Analysis**:
+- 128→256 MBps: P99 for 1 MB at concurrency=20 improved from 981ms → 481ms (51% improvement)
+- 256→512 MBps: Limited improvement. At concurrency=20, 481ms → 738ms (degradation). This indicates that client-side bandwidth limits of Internet-path testing became dominant
+- **Conclusion**: In Internet-path testing, the effect of increasing FSx bandwidth beyond 256 MBps is difficult to observe. VPC-internal Lambda testing is needed
+
+---
+
+## Concurrency Benchmark Results (2026-05-25)
+
+### Test Environment
+
+| Item | Value |
+|------|-------|
+| Run ID | s3ap-bench-2026-05-25-003 |
+| Region | ap-northeast-1 (Tokyo) |
+| FSx for ONTAP | Single-AZ (First-generation) |
+| Throughput Capacity | 128 MBps |
+| S3 Access Point | NetworkOrigin=Internet |
+| Client | macOS (boto3, Python 3.9) — via Internet |
+| Concurrency | 1, 5, 10, 20 |
+| Iterations | 10 iterations per concurrency level |
+| Measurement Date | 2026-05-25 |
+
+> **Important**: These benchmark results are measured values from an Internet-path test environment and do not constitute a service-level guarantee. Use them as a sizing reference.
+
+### GetObject — Latency by Concurrency
+
+#### 1 KB file
+
+| Concurrency | Requests | Avg | P50 | P90 | P95 | P99 | Min | Max |
+|:-----------:|:--------:|----:|----:|----:|----:|----:|----:|----:|
+| 1 | 10 | 51.1 ms | 49.7 ms | 69.4 ms | 69.4 ms | 54.1 ms | 45.3 ms | 69.4 ms |
+| 5 | 50 | 79.3 ms | 53.0 ms | 72.0 ms | 368.2 ms | 387.3 ms | 45.9 ms | 426.4 ms |
+| 10 | 100 | 66.0 ms | 52.1 ms | 63.3 ms | 104.2 ms | 476.1 ms | 45.2 ms | 481.3 ms |
+| 20 | 200 | 113.6 ms | 95.8 ms | 270.9 ms | 372.5 ms | 410.4 ms | 46.9 ms | 430.6 ms |
+
+#### 100 KB file
+
+| Concurrency | Requests | Avg | P50 | P90 | P95 | P99 | Min | Max |
+|:-----------:|:--------:|----:|----:|----:|----:|----:|----:|----:|
+| 1 | 10 | 57.1 ms | 56.3 ms | 69.2 ms | 69.2 ms | 58.0 ms | 51.8 ms | 69.2 ms |
+| 5 | 50 | 54.2 ms | 52.7 ms | 61.9 ms | 70.9 ms | 71.9 ms | 45.5 ms | 78.3 ms |
+| 10 | 100 | 56.8 ms | 53.0 ms | 68.3 ms | 71.5 ms | 90.3 ms | 44.6 ms | 204.5 ms |
+| 20 | 200 | 97.1 ms | 110.8 ms | 136.3 ms | 141.5 ms | 225.0 ms | 45.1 ms | 532.4 ms |
+
+#### 1 MB file
+
+| Concurrency | Requests | Avg | P50 | P90 | P95 | P99 | Min | Max |
+|:-----------:|:--------:|----:|----:|----:|----:|----:|----:|----:|
+| 1 | 10 | 68.5 ms | 67.8 ms | 83.3 ms | 83.3 ms | 76.1 ms | 61.6 ms | 83.3 ms |
+| 5 | 50 | 119.8 ms | 116.8 ms | 149.4 ms | 154.6 ms | 160.1 ms | 67.2 ms | 346.3 ms |
+| 10 | 100 | 176.5 ms | 175.0 ms | 213.0 ms | 227.4 ms | 239.3 ms | 120.6 ms | 251.7 ms |
+| 20 | 200 | 328.5 ms | 256.0 ms | 643.3 ms | 827.8 ms | 980.7 ms | 96.7 ms | 1284.2 ms |
+
+### Analysis
+
+**1 KB file (connection overhead dominant)**:
+- Concurrency=1: P50 ~50 ms (baseline latency)
+- Concurrency=20: P50 increases to ~96 ms (connection pool contention)
+- P99 is 400-480 ms across all concurrency levels (occasional spikes)
+
+**100 KB file (balanced)**:
+- Concurrency=1-10: Stable (P50: 52-53 ms, P90: 61-68 ms)
+- Concurrency=20: P50 increases to 111 ms (bandwidth effects begin)
+
+**1 MB file (bandwidth dominant)**:
+- Concurrency=1: P50 68 ms (~15 MB/s throughput)
+- Concurrency=5: P50 117 ms (~43 MB/s aggregate throughput)
+- Concurrency=10: P50 175 ms (~57 MB/s aggregate, 44% of 128 MBps)
+- Concurrency=20: P50 256 ms, P99 981 ms (**signs of bandwidth saturation**)
+
+### Sizing Guidance
+
+| Workload | Recommended MaxConcurrency | Rationale |
+|----------|:---:|-----------|
+| Many small files (< 10 KB) | 10-20 | Connection overhead dominant; bandwidth headroom available |
+| Medium files (100 KB - 1 MB) | 5-10 | Keeps P90 below 200 ms |
+| Large files (1 MB+) | 5 | Avoids bandwidth saturation, keeps P99 below 500 ms |
+
+> **Note**: The above is a sizing reference for a 128 MBps environment, not a service limit. Higher concurrency is possible in 256/512 MBps environments. Access from VPC-internal Lambda reduces network latency and improves throughput.
+
+---
+
+## 256 MBps Benchmark Results (2026-05-25)
+
+### Test Environment
+
+| Item | Value |
+|------|-------|
+| Run ID | s3ap-bench-2026-05-25-004 |
+| Throughput Capacity | 256 MBps |
+| Other | Identical conditions to the 128 MBps test |
+
+### GetObject — 1 MB file (256 MBps)
+
+| Concurrency | Avg | P50 | P90 | P95 | P99 | Max |
+|:-----------:|----:|----:|----:|----:|----:|----:|
+| 1 | 86.8 ms | 87.6 ms | 131.5 ms | 131.5 ms | 93.2 ms | 131.5 ms |
+| 5 | 116.4 ms | 114.8 ms | 140.4 ms | 152.1 ms | 174.9 ms | 204.3 ms |
+| 10 | 172.2 ms | 173.7 ms | 216.5 ms | 228.5 ms | 236.4 ms | 236.7 ms |
+| 20 | 270.7 ms | 257.2 ms | 395.0 ms | 435.0 ms | 480.9 ms | 713.1 ms |
+| 50 | 503.4 ms | 527.8 ms | 750.1 ms | 786.9 ms | 850.1 ms | 900.7 ms |
+
+---
+
+## 512 MBps Benchmark Results (2026-05-25)
+
+### Test Environment
+
+| Item | Value |
+|------|-------|
+| Run ID | s3ap-bench-2026-05-25-005 |
+| Throughput Capacity | 512 MBps |
+| Other | Identical conditions to the 128 MBps test |
+
+### GetObject — 1 MB file (512 MBps)
+
+| Concurrency | Avg | P50 | P90 | P95 | P99 | Max |
+|:-----------:|----:|----:|----:|----:|----:|----:|
+| 1 | 77.9 ms | 76.2 ms | 97.1 ms | 97.1 ms | 95.5 ms | 97.1 ms |
+| 5 | 124.3 ms | 114.8 ms | 168.6 ms | 194.2 ms | 307.6 ms | 350.2 ms |
+| 10 | 181.3 ms | 184.3 ms | 205.2 ms | 212.4 ms | 228.8 ms | 327.2 ms |
+| 20 | 266.8 ms | 249.2 ms | 380.3 ms | 464.5 ms | 738.1 ms | 747.4 ms |
+| 50 | 573.8 ms | 546.2 ms | 781.6 ms | 811.6 ms | 4,494.7 ms | 4,576.9 ms |
+
+---
+
+## Comparative Analysis: 128 vs 256 vs 512 MBps
+
+### 1 MB GetObject P50 Comparison
+
+| Concurrency | 128 MBps | 256 MBps | 512 MBps | 256 vs 128 Improvement |
+|:-----------:|:--------:|:--------:|:--------:|:-----------------:|
+| 1 | 67.8 ms | 87.6 ms | 76.2 ms | — (baseline comparable) |
+| 5 | 116.8 ms | 114.8 ms | 114.8 ms | 2% |
+| 10 | 175.0 ms | 173.7 ms | 184.3 ms | 1% |
+| 20 | 256.0 ms | 257.2 ms | 249.2 ms | — |
+| 50 | N/A | 527.8 ms | 546.2 ms | — |
+
+### 1 MB GetObject P99 Comparison
+
+| Concurrency | 128 MBps | 256 MBps | 512 MBps | 256 vs 128 Improvement |
+|:-----------:|:--------:|:--------:|:--------:|:-----------------:|
+| 1 | 76.1 ms | 93.2 ms | 95.5 ms | — |
+| 5 | 160.1 ms | 174.9 ms | 307.6 ms | — |
+| 10 | 239.3 ms | 236.4 ms | 228.8 ms | 1% |
+| 20 | 980.7 ms | 480.9 ms | 738.1 ms | **51% improvement** |
+| 50 | N/A | 850.1 ms | 4,494.7 ms | — |
+
+### Conclusion
+
+1. **P50 (median) is largely independent of throughput capacity**: The Internet-path baseline latency (connection establishment + TLS handshake) is dominant
+2. **The difference appears in P99 (tail latency)**: 128 MBps at concurrency=20 gives P99=981ms → 256 MBps gives P99=481ms (51% improvement)
+3. **The effect of 512 MBps is difficult to observe in Internet-path testing**: Client-side bandwidth (~100 Mbps) becomes the bottleneck, so the increased FSx-side bandwidth cannot be utilized
+4. **VPC-internal Lambda testing is needed**: Measuring the true effect of FSx throughput capacity requires testing from VPC-internal Lambda (low latency, high bandwidth)
+
+### Sizing Guidance (Updated)
+
+| Workload | 128 MBps Recommendation | 256 MBps Recommendation | 512 MBps Recommendation |
+|----------|:---:|:---:|:---:|
+| Small files (< 10 KB) | MaxConcurrency=20 | MaxConcurrency=50 | MaxConcurrency=50 |
+| Medium files (100 KB) | MaxConcurrency=10 | MaxConcurrency=20 | MaxConcurrency=50 |
+| Large files (1 MB+) | MaxConcurrency=5 | MaxConcurrency=10 | MaxConcurrency=20 |
+
+> **Note**: The above is a sizing reference, not a service limit. A VPC-internal Lambda + VPC-origin S3 AP configuration is expected to reduce public Internet path overhead, but this remains unmeasured. Validate with your own workload profile in your actual environment.
+
+---
+
+## Lambda Egress Path Benchmark Results (2026-05-25)
+
+> **Note**: This is access from a VPC-external Lambda (no VpcConfig) to an Internet-origin S3 AP. It uses the AWS-managed Lambda egress path and is not a true VPC-internal path (VPC-origin S3 AP).
+
+### Test Environment
+
+| Item | Value |
+|------|-------|
+| Run ID | s3ap-bench-2026-05-25-006 |
+| Throughput Capacity | 128 MBps |
+| Execution Environment | AWS Lambda (1769 MB, ARM64, outside VPC) |
+| S3 AP | NetworkOrigin=Internet |
+| Network Path | AWS internal network (not via the Internet) |
+| Measurement Date | 2026-05-25 |
+
+> **Important**: Access from a VPC-external Lambda to an Internet Origin S3 AP travels over the AWS internal network. Compared to Internet-path testing from a local PC, connection establishment latency is substantially lower.
+
+### GetObject — Lambda vs Internet Comparison (1 MB, 128 MBps)
+
+| Concurrency | Internet P50 | Lambda P50 | Improvement | Internet P99 | Lambda P99 |
+|:-----------:|:---:|:---:|:---:|:---:|:---:|
+| 1 | 67.8 ms | 61.7 ms | 9% | 76.1 ms | 81.7 ms |
+| 5 | 116.8 ms | 60.5 ms | **48%** | 160.1 ms | 254.1 ms |
+| 10 | 175.0 ms | 73.2 ms | **58%** | 239.3 ms | 928.4 ms |
+| 20 | 256.0 ms | 121.9 ms | **52%** | 980.7 ms | 1,317.8 ms |
+| 50 | N/A | 127.7 ms | — | N/A | 995.0 ms |
+
+### Analysis
+
+1. **P50 improves substantially from Lambda**: 175ms → 73ms at concurrency=10 (58% improvement)
+2. **P99 remains high even from Lambda**: 1,318 ms at concurrency=20. This is caused by internal queuing in the S3 AP data plane
+3. **P50 stays at 128 ms even at concurrency=50**: Lambda's parallel threads operate efficiently against the S3 AP
+4. **The bottleneck is the S3 AP data plane**: The limiting factor is FSx for ONTAP-side processing capacity, not Lambda network bandwidth
+
+### Sizing Guidance (Lambda Execution)
+
+| Workload | Recommended MaxConcurrency | P50 Guide | P99 Guide |
+|----------|:---:|:---:|:---:|
+| Small files (1 KB) | 50 | ~63 ms | ~994 ms |
+| Medium files (100 KB) | 20 | ~79 ms | ~1,044 ms |
+| Large files (1 MB) | 10 | ~73 ms | ~928 ms |
+
+> **Note**: P99 around 1 second is a characteristic of the S3 AP data plane. Set Step Functions Lambda timeouts to 30 seconds or more and handle this with retry patterns.
+
+---
+
+## Small File Throughput Comparison (2026-06-06)
+
+### Test Environment
+
+| Item | Value |
+|------|-------|
+| Run ID (256) | s3ap-bench-2026-06-06-256mbps |
+| Run ID (512) | s3ap-bench-2026-06-06-512mbps |
+| Object Size | 202 bytes (JSON manifest) |
+| Iterations | 50 iterations per concurrency level |
+| Warm-up | 3 requests |
+| Client | macOS (boto3, Python 3.12) — via Internet |
+| Measurement Date | 2026-06-06 |
+
+> **Purpose**: Confirm the effect of throughput capacity changes on small files (where connection overhead is dominant). Comparison against the large file (1 MB) test (2026-05-25).
+
+### GetObject — 202 bytes file (256 MBps)
+
+| Concurrency | Mean | P50 | P90 | P95 | P99 | Max | StdDev | Errors |
+|:-----------:|-----:|----:|----:|----:|----:|----:|-------:|:------:|
+| 1 | 59.4 ms | 56.9 ms | 65.8 ms | 72.8 ms | 100.8 ms | 100.8 ms | 8.1 ms | 0 |
+| 5 | 83.1 ms | 56.3 ms | 126.8 ms | 283.7 ms | 536.8 ms | 536.8 ms | 99.0 ms | 0 |
+| 10 | 98.5 ms | 56.5 ms | 317.8 ms | 498.1 ms | 508.7 ms | 508.7 ms | 123.8 ms | 0 |
+| 20 | 111.6 ms | 57.8 ms | 333.9 ms | 401.6 ms | 552.5 ms | 552.5 ms | 123.2 ms | 0 |
+| 25 | 134.8 ms | 60.3 ms | 355.5 ms | 380.4 ms | 468.3 ms | 468.3 ms | 122.8 ms | 0 |
+| 50 | 255.5 ms | 257.9 ms | 492.6 ms | 500.6 ms | 614.5 ms | 614.5 ms | 142.3 ms | 0 |
+
+### GetObject — 202 bytes file (512 MBps)
+
+| Concurrency | Mean | P50 | P90 | P95 | P99 | Max | StdDev | Errors |
+|:-----------:|-----:|----:|----:|----:|----:|----:|-------:|:------:|
+| 1 | 60.4 ms | 59.8 ms | 64.6 ms | 65.1 ms | 89.4 ms | 89.4 ms | 5.6 ms | 0 |
+| 5 | 89.7 ms | 57.4 ms | 85.8 ms | 346.0 ms | 690.2 ms | 690.2 ms | 115.4 ms | 0 |
+| 10 | 101.0 ms | 57.2 ms | 222.7 ms | 481.4 ms | 746.5 ms | 746.5 ms | 141.3 ms | 0 |
+| 20 | 128.1 ms | 58.0 ms | 435.0 ms | 455.4 ms | 504.2 ms | 504.2 ms | 147.0 ms | 0 |
+| 25 | 132.3 ms | 59.9 ms | 384.1 ms | 401.9 ms | 580.6 ms | 580.6 ms | 127.3 ms | 0 |
+| 50 | 255.8 ms | 246.1 ms | 430.0 ms | 442.5 ms | 700.6 ms | 700.6 ms | 148.1 ms | 0 |
+
+### Small File Comparative Analysis
+
+**P50 comparison (202 bytes GetObject)**:
+
+| Concurrency | 256 MBps P50 | 512 MBps P50 | Difference |
+|:-----------:|:---:|:---:|:---:|
+| 1 | 56.9 ms | 59.8 ms | ≈comparable |
+| 10 | 56.5 ms | 57.2 ms | ≈comparable |
+| 25 | 60.3 ms | 59.9 ms | ≈comparable |
+| 50 | 257.9 ms | 246.1 ms | ≈comparable |
+
+**Conclusion (small files)**:
+1. **P50 does not depend on throughput capacity**: P50 is nearly identical between 256 MBps and 512 MBps (~57-60 ms at concurrency ≤25)
+2. **The bottleneck for small files is connection overhead**: TLS handshake + S3 AP routing dominates, not file transfer time
+3. **P50 increases to ~250 ms at concurrency=50**: Request queuing occurs in the S3 AP data plane
+4. **P99 is more stable at 256 MBps**: The higher P99 at 512 MBps (690-747 ms) may be sampling noise
+5. **Increasing throughput capacity is only effective for large file transfers**: No cost benefit for small file processing
+
+> **Sizing insight**: For small-file-centric workloads (metadata reads, JSON manifests, log entries), 128 MBps is sufficient. Increasing throughput capacity is effective when processing files of 1 MB or larger in parallel.
 
 ---
 

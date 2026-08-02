@@ -40,9 +40,9 @@ Browser → Amplify (Cognito auth) → AppSync GraphQL
 | `region` | `ap-northeast-1` | All resources colocated in same region as FSx for ONTAP |
 | `s3ApAlias` | `eda-demo-s3ap-...-ext-s3alias` | Internet-origin S3 AP for file browsing without VPC |
 | `stateMachineArn` | `arn:aws:states:...` | Step Functions workflow for AI processing (UC patterns) |
-| `vpcId` | `vpc-05192d06e1e91d756` | VPC where FSx ENIs reside — Lambda must be here for ONTAP REST API |
-| `vpcSubnetIds` | `subnet-0dc75edfe8650bf44` | Same subnet as FSx for ONTAP — ensures network path exists |
-| `vpcSecurityGroupIds` | `sg-015df9ccadf010bf5` | FSx's own SG — allows all-traffic egress by default |
+| `vpcId` | `vpc-0123456789abcdef2` | VPC where FSx ENIs reside — Lambda must be here for ONTAP REST API |
+| `vpcSubnetIds` | `subnet-0123456789abcdef1` | Same subnet as FSx for ONTAP — ensures network path exists |
+| `vpcSecurityGroupIds` | `sg-0123456789abcdef0` | FSx's own SG — allows all-traffic egress by default |
 | `groupApMapping` | `{}` | Per-team S3 AP routing for file isolation (My Files feature) |
 | `bedrockKbId` | `""` | Bedrock Knowledge Base for semantic file search |
 

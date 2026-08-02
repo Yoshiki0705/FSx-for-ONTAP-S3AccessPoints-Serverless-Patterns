@@ -79,7 +79,7 @@ Zeigt Ihre kürzlich angesehenen, heruntergeladenen oder per AI abgefragten Date
 Drag-and-Drop-Dateiupload basierend auf Storage Browser for S3. Unterstützt außerdem:
 - Ordnererstellung
 - Kopieren und Löschen von Dateien
-- Multi-Datei-Upload (bis zu 5 GB pro Datei)
+- Multi-Datei-Upload (bis zu 50 GB pro Datei)
 
 ---
 

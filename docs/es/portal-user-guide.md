@@ -79,7 +79,7 @@ Muestra los archivos que ha visto, descargado o consultado con AI recientemente,
 Carga de archivos mediante arrastrar y soltar basada en Storage Browser for S3. También soporta:
 - Creación de carpetas
 - Copia y eliminación de archivos
-- Carga de múltiples archivos (hasta 5 GB por archivo)
+- Carga de múltiples archivos (hasta 50 GB por archivo)
 
 ---
 

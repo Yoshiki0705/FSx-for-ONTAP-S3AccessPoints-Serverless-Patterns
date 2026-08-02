@@ -401,7 +401,15 @@ Both must Allow:
 
 ### Supported Operations
 
-PutObject (max 5GB), GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
+PutObject, GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
+**Measured size limits** (2026-08-02, ap-northeast-1 — see [size limit verification](docs/s3ap-object-size-limits-verification.md)):
+- Single `PutObject`: **5 GiB = 5,368,709,120 bytes**. Rejected on Content-Length (immediate, ~2.7s) with 400 `EntityTooLarge` + `MaxSizeAllowed`.
+- `UploadPart` per part: **5 GiB** (same value, same fast rejection).
+- Whole object (upload): **50 GiB = 53,687,091,200 bytes**. 50 GiB succeeds; 50 GiB + 1 fails.
+- ⚠️ The whole-object limit is checked **only at `CompleteMultipartUpload`, after the entire payload is transferred** (~10 min for 50 GiB). `UploadPart` has no cumulative check, and the Complete error omits `MaxSizeAllowed`. **Validate object size client-side before uploading.**
+- `CompleteMultipartUpload` took ~557s to assemble a 50 GiB object — set a long `read_timeout`.
+- Docs say "5 GB"/"50 GB" but both are **binary** (GiB).
+`UploadPartCopy` is documented as Supported but **fails with `NoSuchKey`** in practice (`CopyObject` works) — server-side assembly of large objects is not possible.
 NOT supported: GetBucketNotificationConfiguration.
 Presigned URLs: Listed as "Not supported" in AWS docs, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support advises against production reliance. See docs/s3ap-compatibility-notes.md for details.
 
@@ -741,6 +749,8 @@ When reviewing changes, consider these perspectives:
 | [File Portal UI Options](docs/file-portal-amplify-gen2.md) | Amplify Gen2 / Nextcloud / Custom Build comparison, selection guide, implementation roadmap |
 | [SaaS Gap Analysis (JA)](docs/aws-feature-requests/file-portal-service-gap.md) | 15 SaaS 比較, AI エージェント動向, プロトコルアクセシビリティ, ペルソナレビュー |
 | [SaaS Gap Analysis (EN)](docs/aws-feature-requests/file-portal-service-gap.en.md) | English version of gap matrix + feature requests |
+| [Lambda / HealthOmics S3 AP Gaps (JA)](docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md) | FR-5/6/7: Lambda セルフマネージドコードストレージ・AWS HealthOmics と FSx for ONTAP S3 AP の統合ギャップ、AWS Support 提出用テキスト |
+| [Lambda / HealthOmics S3 AP Gaps (EN)](docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.en.md) | English version: integration assessment, requested behavior, workaround architectures |
 | [Nextcloud External Storage Setup](docs/nextcloud-external-storage-s3ap.md) | Nextcloud + FSx for ONTAP S3 AP step-by-step configuration |
 | [Workshop EDA Integration Guide](docs/workshop-eda-integration.md) | AWS Workshop modules mapped to UC patterns (EDA scenarios, Athena, Glue, AgentCore, Quick) |
 | [Quick Desktop MCP Setup](docs/quick-desktop-mcp-setup.md) | AgentCore MCP Gateway + Quick Desktop E2E setup (Import method, IaC, lessons learned) |

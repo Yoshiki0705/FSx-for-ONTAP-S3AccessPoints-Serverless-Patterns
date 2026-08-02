@@ -56,7 +56,7 @@ This means Athena Workgroup `ResultConfiguration.OutputLocation` must point to a
 
 ### Requested Behavior
 
-Allow Athena Workgroup `ResultConfiguration.OutputLocation` to accept an FSx for ONTAP S3 AP alias or ARN (e.g., `s3://my-ap-alias-ext-s3alias/athena-results/` or the equivalent ARN form). The service must honor SSE-FSX as the encryption mode and the 5 GB object size limit automatically.
+Allow Athena Workgroup `ResultConfiguration.OutputLocation` to accept an FSx for ONTAP S3 AP alias or ARN (e.g., `s3://my-ap-alias-ext-s3alias/athena-results/` or the equivalent ARN form). The service must honor SSE-FSX as the encryption mode and the access point object size limit automatically (5 GB when this was submitted; since raised to 50 GB — see "Secondary / Informational Findings" #1).
 
 ### Workaround in this Project
 
@@ -166,6 +166,8 @@ External DynamoDB table for document version tracking; standard S3 copy + presig
 While preparing these FRs, we also noted the following which are *documented but not addressed by this request* — we accept them as fundamental design choices of the integration:
 
 1. **5 GB upload size limit** — documented, aligned with pre-multipart-upload S3 semantics.
+
+   > **Correction (2026-08-02, after this document was submitted)**: The FSx for ONTAP S3 AP *object size* ceiling for uploads is now **50 GB**, not 5 GB. The archived AWS page showed 5 GB on 2026-03-08 and 50 GB on 2026-06-25; no corresponding What's New announcement was found. The 5 GB figure remains correct for a *single* `PutObject` (an Amazon S3 API-wide limit), so objects between 5 GB and 50 GB require multipart upload. This correction does not change FR-1 through FR-4. See [`lambda-healthomics-s3ap-gaps.md`](./lambda-healthomics-s3ap-gaps.md) for the evidence trail.
 2. **SSE-FSX as the only encryption mode** — expected given FSx-managed encryption.
 3. **`FSX_ONTAP` as the only storage class** — expected.
 4. **`GetObjectAcl` / `PutObjectAcl` limited to `bucket-owner-full-control`** — acceptable; ONTAP file-level NTFS ACLs provide the granular access control via the dual-authorization model described in [the AWS Storage Blog](https://aws.amazon.com/blogs/storage/enabling-ai-powered-analytics-on-enterprise-file-data-configuring-s3-access-points-for-amazon-fsx-for-netapp-ontap-with-active-directory/).

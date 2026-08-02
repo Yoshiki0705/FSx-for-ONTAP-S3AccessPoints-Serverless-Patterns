@@ -157,7 +157,7 @@ EntityExtraction → Redaction → IndexGeneration)이므로, `shared/output_wri
 **주의사항**:
 
 - `S3AccessPointName` 지정을 강력히 권장 (Alias 형식과 ARN 형식 모두 IAM 허용)
-- 5GB 초과 객체는 FSx for ONTAP S3 AP에서 불가 (AWS 사양), 멀티파트 업로드 필수
+- 객체 크기 상한은 50 GB (AWS 사양). 단일 PutObject는 5 GB까지이므로 5 GB 초과 시 멀티파트 업로드 필수
 - ComplianceCheck Lambda는 DynamoDB만 사용하므로 `OutputDestination`의 영향을 받지 않습니다
 - FoiaDeadlineReminder Lambda는 DynamoDB + SNS만 사용하므로 영향을 받지 않습니다
 - OpenSearch 인덱스는 `OpenSearchMode` 파라미터로 별도 관리됩니다 (`OutputDestination`과 독립적)

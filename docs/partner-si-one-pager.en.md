@@ -26,7 +26,7 @@ Propose to customers who match the following criteria:
 - ✅ Want to leverage AI/ML (Bedrock, Textract, Comprehend, Rekognition)
 - ✅ Need event-driven or scheduled file processing automation
 
-> **Note**: S3 Access Points are NOT read-only. PutObject (max 5 GB), DeleteObject, and MultipartUpload are supported. Constraints: FSX_ONTAP storage class only, SSE-FSX encryption only. See [S3AP Compatibility Notes](s3ap-compatibility-notes.md) for details.
+> **Note**: S3 Access Points are NOT read-only. PutObject (5 GB per single PUT, up to 50 GB via multipart), DeleteObject, and MultipartUpload are supported. Constraints: FSX_ONTAP storage class only, SSE-FSX encryption only. See [S3AP Compatibility Notes](s3ap-compatibility-notes.md) for details.
 
 ## How — How to Run a PoC
 

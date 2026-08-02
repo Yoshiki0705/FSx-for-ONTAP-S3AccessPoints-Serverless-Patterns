@@ -13,7 +13,7 @@
 | 📂 All Files | 탐색, 미리보기, 다운로드, 공유, AI Q&A |
 | ⭐ Favorites | 고정된 파일 |
 | 🕐 Recent | 접근 이력 |
-| 📤 Upload | 드래그 앤 드롭 업로드 (최대 5 GB/파일) |
+| 📤 Upload | 드래그 앤 드롭 업로드 (최대 50 GB/파일) |
 | ⚡ AI Processing | 폴더에 대한 AI/ML 워크플로 실행 |
 | 📋 Job History | 과거 작업 결과 + 상태 |
 | 📊 Analytics | Athena SQL 쿼리 |

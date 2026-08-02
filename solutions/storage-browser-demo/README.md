@@ -6,7 +6,7 @@ A minimal React app demonstrating [Storage Browser for S3](https://ui.docs.ampli
 
 - Browse FSx for ONTAP volume files from a web browser
 - Preview images, videos, and text files
-- Upload files (up to 5 GB) and create folders
+- Upload files (up to 50 GB; multipart above 5 GB) and create folders
 - Download and delete files
 - All while the same files remain accessible via NFS and SMB
 

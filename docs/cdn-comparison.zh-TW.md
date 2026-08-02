@@ -17,7 +17,7 @@
 | 雙層授權（AWS + ONTAP） | 先 IAM 再 ONTAP 檔案身分（UNIX UID / Windows AD） | 傳遞對象限於 ONTAP 身分可讀範圍 |
 | 不支援 Presigned URL | 官方不支援 | 觀眾權杖驗證不能用 S3 Presigned URL；用 CDN 原生權杖 |
 | NetworkOrigin（Internet/VPC，不可變更） | CDN 從受管/外部網路存取 | CDN 整合需 **Internet origin** |
-| PutObject 最大 5 GB | 單次 PUT 限制 | 大檔寫回需分段上傳 |
+| 物件大小上限 50 GB | 單次 PUT 限制為 5 GB | 超過 5 GB 的寫回需多部分上傳 |
 
 ## 2. 整合機制（供應商中立）
 
