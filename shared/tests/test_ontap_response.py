@@ -299,22 +299,21 @@ class TestCreateIncidentSnapshot:
             "/snapshots",
             [
                 # First call: cooldown check (returns recent snapshot)
-                {"records": [{"name": "incident_response_20260725_120000", "create_time": recent_time}], "num_records": 1},
+                {
+                    "records": [{"name": "incident_response_20260725_120000", "create_time": recent_time}],
+                    "num_records": 1,
+                },
             ],
         )
 
-        result = arp.create_incident_snapshot(
-            svm_name="svm1", volume_name="vol1", cooldown_minutes=15
-        )
+        result = arp.create_incident_snapshot(svm_name="svm1", volume_name="vol1", cooldown_minutes=15)
 
         assert result["status"] == "skipped"
         assert "cooldown" in result["reason"]
 
     def test_cooldown_zero_always_creates(self, arp, mock_client):
         """cooldown_minutes=0 bypasses cooldown check."""
-        result = arp.create_incident_snapshot(
-            svm_name="svm1", volume_name="vol1", cooldown_minutes=0
-        )
+        result = arp.create_incident_snapshot(svm_name="svm1", volume_name="vol1", cooldown_minutes=0)
 
         assert result["status"] == "created"
 

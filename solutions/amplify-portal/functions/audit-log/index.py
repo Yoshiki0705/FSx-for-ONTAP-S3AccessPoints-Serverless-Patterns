@@ -1,5 +1,4 @@
 import os
-import json
 import time
 import boto3
 
@@ -40,7 +39,9 @@ def handler(event, context):
 
     if event_type == "ALL":
         conditions.append("eventsource = 's3.amazonaws.com'")
-        conditions.append("eventname IN ('GetObject', 'PutObject', 'DeleteObject', 'ListBucket', 'PutObjectLockConfiguration', 'PutBucketObjectLockConfiguration', 'PutObjectRetention')")
+        conditions.append(
+            "eventname IN ('GetObject', 'PutObject', 'DeleteObject', 'ListBucket', 'PutObjectLockConfiguration', 'PutBucketObjectLockConfiguration', 'PutObjectRetention')"
+        )
     elif event_type == "READ":
         conditions.append("eventsource = 's3.amazonaws.com'")
         conditions.append("eventname IN ('GetObject', 'ListBucket')")
@@ -49,7 +50,9 @@ def handler(event, context):
         conditions.append("eventname IN ('PutObject', 'DeleteObject')")
     elif event_type == "LOCK":
         conditions.append("eventsource = 's3.amazonaws.com'")
-        conditions.append("eventname IN ('PutObjectLockConfiguration', 'PutBucketObjectLockConfiguration', 'PutObjectRetention', 'PutObjectLegalHold')")
+        conditions.append(
+            "eventname IN ('PutObjectLockConfiguration', 'PutBucketObjectLockConfiguration', 'PutObjectRetention', 'PutObjectLegalHold')"
+        )
 
     if S3AP_ALIAS:
         conditions.append(f"requestparameters LIKE '%{S3AP_ALIAS}%'")
@@ -109,9 +112,7 @@ def handler(event, context):
             }
 
         # Get results
-        results_resp = athena.get_query_results(
-            QueryExecutionId=query_id, MaxResults=max_results + 1
-        )
+        results_resp = athena.get_query_results(QueryExecutionId=query_id, MaxResults=max_results + 1)
 
         rows = results_resp["ResultSet"]["Rows"]
         if len(rows) <= 1:
@@ -123,17 +124,19 @@ def handler(event, context):
         for row in rows[1:]:
             values = [col.get("VarCharValue", "") for col in row["Data"]]
             event_dict = dict(zip(headers, values))
-            events.append({
-                "timestamp": event_dict.get("eventtime", ""),
-                "action": event_dict.get("eventname", ""),
-                "userArn": event_dict.get("user_arn", ""),
-                "principalId": event_dict.get("principal_id", ""),
-                "sourceIp": event_dict.get("sourceipaddress", ""),
-                "fileKey": event_dict.get("file_key", ""),
-                "bucketName": event_dict.get("bucket_name", ""),
-                "errorCode": event_dict.get("errorcode", ""),
-                "errorMessage": event_dict.get("errormessage", ""),
-            })
+            events.append(
+                {
+                    "timestamp": event_dict.get("eventtime", ""),
+                    "action": event_dict.get("eventname", ""),
+                    "userArn": event_dict.get("user_arn", ""),
+                    "principalId": event_dict.get("principal_id", ""),
+                    "sourceIp": event_dict.get("sourceipaddress", ""),
+                    "fileKey": event_dict.get("file_key", ""),
+                    "bucketName": event_dict.get("bucket_name", ""),
+                    "errorCode": event_dict.get("errorcode", ""),
+                    "errorMessage": event_dict.get("errormessage", ""),
+                }
+            )
 
         return {
             "events": events,

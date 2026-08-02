@@ -9,6 +9,7 @@ returns an informative error (frontend can suggest switching to keyword mode).
 
 DemoMode: When S3_AP_ALIAS is empty, returns mock results for keyword mode.
 """
+
 from __future__ import annotations
 
 import os
@@ -93,12 +94,14 @@ def _search_semantic(query: str, max_results: int) -> dict:
                 parts = s3_uri.replace("s3://", "").split("/", 1)
                 file_key = parts[1] if len(parts) > 1 else ""
 
-            results.append({
-                "fileKey": file_key,
-                "s3Uri": s3_uri,
-                "snippet": content[:500],
-                "score": round(score, 4),
-            })
+            results.append(
+                {
+                    "fileKey": file_key,
+                    "s3Uri": s3_uri,
+                    "snippet": content[:500],
+                    "score": round(score, 4),
+                }
+            )
 
         return {
             "results": results,
@@ -137,12 +140,14 @@ def _search_keyword(query: str, max_results: int) -> dict:
             for obj in page.get("Contents", []):
                 key = obj.get("Key", "")
                 if pattern in key.lower():
-                    matches.append({
-                        "fileKey": key,
-                        "snippet": "",
-                        "score": 0,
-                        "s3Uri": f"s3://{S3_AP_ALIAS}/{key}",
-                    })
+                    matches.append(
+                        {
+                            "fileKey": key,
+                            "snippet": "",
+                            "score": 0,
+                            "s3Uri": f"s3://{S3_AP_ALIAS}/{key}",
+                        }
+                    )
                     if len(matches) >= max_results:
                         break
             if len(matches) >= max_results:
@@ -187,11 +192,9 @@ def _mock_keyword_search(query: str, max_results: int) -> dict:
     ]
 
     pattern = query.lower()
-    matches = [
-        {"fileKey": f, "snippet": "", "score": 0, "s3Uri": ""}
-        for f in all_files
-        if pattern in f.lower()
-    ][:max_results]
+    matches = [{"fileKey": f, "snippet": "", "score": 0, "s3Uri": ""} for f in all_files if pattern in f.lower()][
+        :max_results
+    ]
 
     return {
         "results": matches,

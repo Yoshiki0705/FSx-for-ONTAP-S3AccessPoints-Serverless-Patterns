@@ -1,4 +1,5 @@
 """Test KNFSD → FSx for ONTAP NFS connectivity and instance health."""
+
 from __future__ import annotations
 
 import time
@@ -12,9 +13,7 @@ class TestKnfsdInstanceHealth:
     @pytest.mark.integration
     def test_instance_running(self, ec2_client, knfsd_config):
         """KNFSD instance should be in 'running' state."""
-        response = ec2_client.describe_instances(
-            InstanceIds=[knfsd_config["knfsd_instance_id"]]
-        )
+        response = ec2_client.describe_instances(InstanceIds=[knfsd_config["knfsd_instance_id"]])
         state = response["Reservations"][0]["Instances"][0]["State"]["Name"]
         assert state == "running", f"KNFSD instance state: {state}"
 
@@ -22,9 +21,7 @@ class TestKnfsdInstanceHealth:
     def test_ssm_agent_online(self, ssm_client, knfsd_config):
         """SSM agent should be online for remote management."""
         response = ssm_client.describe_instance_information(
-            Filters=[
-                {"Key": "InstanceIds", "Values": [knfsd_config["knfsd_instance_id"]]}
-            ]
+            Filters=[{"Key": "InstanceIds", "Values": [knfsd_config["knfsd_instance_id"]]}]
         )
         instances = response.get("InstanceInformationList", [])
         assert len(instances) > 0, "Instance not registered with SSM"
@@ -33,13 +30,8 @@ class TestKnfsdInstanceHealth:
     @pytest.mark.integration
     def test_security_group_nfs_port(self, ec2_client, knfsd_config):
         """Security group should allow NFS (TCP 2049) inbound."""
-        response = ec2_client.describe_instances(
-            InstanceIds=[knfsd_config["knfsd_instance_id"]]
-        )
-        sg_ids = [
-            sg["GroupId"]
-            for sg in response["Reservations"][0]["Instances"][0]["SecurityGroups"]
-        ]
+        response = ec2_client.describe_instances(InstanceIds=[knfsd_config["knfsd_instance_id"]])
+        sg_ids = [sg["GroupId"] for sg in response["Reservations"][0]["Instances"][0]["SecurityGroups"]]
 
         for sg_id in sg_ids:
             sg = ec2_client.describe_security_groups(GroupIds=[sg_id])
@@ -94,18 +86,14 @@ class TestFsxnConnectivity:
     @pytest.mark.integration
     def test_fsxn_file_system_available(self, fsx_client, knfsd_config):
         """FSx for ONTAP file system should be in AVAILABLE state."""
-        response = fsx_client.describe_file_systems(
-            FileSystemIds=[knfsd_config["fsxn_file_system_id"]]
-        )
+        response = fsx_client.describe_file_systems(FileSystemIds=[knfsd_config["fsxn_file_system_id"]])
         fs = response["FileSystems"][0]
         assert fs["Lifecycle"] == "AVAILABLE"
 
     @pytest.mark.integration
     def test_fsxn_throughput_sufficient(self, fsx_client, knfsd_config):
         """FSx for ONTAP should have at least 128 MBps throughput."""
-        response = fsx_client.describe_file_systems(
-            FileSystemIds=[knfsd_config["fsxn_file_system_id"]]
-        )
+        response = fsx_client.describe_file_systems(FileSystemIds=[knfsd_config["fsxn_file_system_id"]])
         ontap_config = response["FileSystems"][0].get("OntapConfiguration", {})
         throughput = ontap_config.get("ThroughputCapacity", 0)
         assert throughput >= 128, f"Throughput too low for KNFSD test: {throughput} MBps"

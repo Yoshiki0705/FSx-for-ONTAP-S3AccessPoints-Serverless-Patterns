@@ -114,7 +114,7 @@ def handler(event, context):
                 return {
                     "success": False,
                     "error": "Snapshot locking is not enabled on this volume. "
-                             "Enable with: volume modify -volume <vol> -snapshot-locking-enabled true",
+                    "Enable with: volume modify -volume <vol> -snapshot-locking-enabled true",
                 }
 
             # PATCH snapshot to set expiry_time
@@ -172,11 +172,9 @@ def handler(event, context):
 
             # Query file-security effective permissions
             import urllib.parse
+
             encoded_path = urllib.parse.quote(file_path, safe="")
-            perm_url = (
-                f"https://{ONTAP_MGMT_IP}/api/protocols/file-security"
-                f"/permissions/{svm_uuid}/{encoded_path}"
-            )
+            perm_url = f"https://{ONTAP_MGMT_IP}/api/protocols/file-security/permissions/{svm_uuid}/{encoded_path}"
             perm_resp = http.request("GET", perm_url, headers=headers)
 
             if perm_resp.status >= 400:
