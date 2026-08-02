@@ -371,17 +371,19 @@ class TestSnaplock:
 
 class TestErrorHandling:
     def test_missing_ontap_config(self, mock_secrets):
+        import handler as handler_module
         from handler import handler
 
-        # Temporarily clear env
-        orig = os.environ.get("ONTAP_MGMT_IP")
-        os.environ["ONTAP_MGMT_IP"] = ""
-        try:
+        # MGMT_IP is read into a module-level constant at import time, so
+        # clearing the environment variable here would not affect the handler:
+        # it would fall through the guard and attempt a real HTTPS connection to
+        # the placeholder address, hanging until the socket timed out. Patch the
+        # resolved constant instead so the guard is actually exercised.
+        with patch.object(handler_module, "MGMT_IP", ""):
             result = handler({"action": "listVolumes"}, None)
-            assert "error" in result
-            assert "not configured" in result["error"]
-        finally:
-            os.environ["ONTAP_MGMT_IP"] = orig or "10.0.0.1"
+
+        assert "error" in result
+        assert "not configured" in result["error"]
 
     def test_unknown_action(self, mock_secrets):
         from handler import handler
