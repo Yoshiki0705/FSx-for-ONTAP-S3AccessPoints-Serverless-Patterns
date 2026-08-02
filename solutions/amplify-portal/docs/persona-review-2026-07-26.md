@@ -199,7 +199,7 @@
 | 27 | FSI Architect | ✅ FISC 7-year preset + audit log Lock events. Sufficient. | None |
 | 28 | Manufacturing | S3 AP write-back conflict warning still missing in docs. | Doc: NFS lock interaction |
 | 29 | Public Sector | ✅ External IdP guide covers AD FS, Okta, Azure AD. Comprehensive. | None |
-| 30 | Community Builder | Vendor neutrality check passed. No 「差別化」/「優位性」 remaining. | None |
+| 30 | Community Builder | Vendor neutrality check passed. No superiority- or differentiation-framing terms remain. | None |
 
 ### Summary
 
