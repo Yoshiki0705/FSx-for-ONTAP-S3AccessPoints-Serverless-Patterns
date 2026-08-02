@@ -126,7 +126,7 @@ sam deploy \
 **주의사항**:
 
 - `S3AccessPointName` 지정을 강력히 권장 (Alias 형식과 ARN 형식 모두 IAM 허가)
-- 5GB 초과 객체는 FSx for ONTAP S3 AP에서 불가 (AWS 사양), 멀티파트 업로드 필수
+- 객체 크기 상한은 50 GB (AWS 사양). 단일 PutObject는 5 GB까지이므로 5 GB 초과 시 멀티파트 업로드 필수
 - ChangeDetection Lambda는 DynamoDB만 사용하므로 `OutputDestination`의 영향을 받지 않음
 - Bedrock 보고서는 Markdown (`text/markdown; charset=utf-8`)으로 기록되므로 SMB/NFS
   클라이언트의 텍스트 에디터에서 직접 열람 가능

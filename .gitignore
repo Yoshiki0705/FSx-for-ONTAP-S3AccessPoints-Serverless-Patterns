@@ -173,6 +173,9 @@ scripts/*.local.env
 # Blog drafts (internal review; publish to dev.to separately when finalized)
 **/docs/blog-draft*.md
 
+# Working blog drafts and session scratch notes (canonical copies live in .private/)
+drafts/
+
 # Persona review board records (internal project-context; not for public repo)
 docs/review-uc*
 docs/review-*-persona-board*.md

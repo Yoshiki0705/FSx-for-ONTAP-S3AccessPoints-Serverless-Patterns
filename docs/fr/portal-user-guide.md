@@ -79,7 +79,7 @@ Affiche vos fichiers récemment consultés, téléchargés ou interrogés par AI
 Upload de fichiers par glisser-déposer basé sur Storage Browser for S3. Prend également en charge :
 - Création de dossiers
 - Copie et suppression de fichiers
-- Upload multi-fichiers (jusqu'à 5 Go par fichier)
+- Upload multi-fichiers (jusqu'à 50 Go par fichier)
 
 ---
 

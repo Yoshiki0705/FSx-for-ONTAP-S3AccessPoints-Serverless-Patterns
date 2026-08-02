@@ -128,7 +128,8 @@ s3://<ap-alias>/tenant-b/2026/07/22/invoice.csv
 | < 64 KB | メタデータ処理のオーバーヘッドが相対的に大きい | バッチ処理で集約が有利な場面がある |
 | 64 KB – 1 MB | 一般的なドキュメント / JSON サイズ | 多くのサーバーレスパターンで最適なレンジ |
 | > 1 MB | データ転送が支配的。大きいほど Amazon S3 との性能差が縮小する傾向 | Multipart Upload の利用を検討 |
-| > 5 GB | S3 AP の PutObject 上限（5 GB）に注意 | Multipart Upload 必須（ONTAP 9.16.1+） |
+| 5-50 GB | 単一 PutObject の 5 GB 上限を超える | Multipart Upload 必須（ONTAP 9.16.1+） |
+| > 50 GB | S3 AP のオブジェクトサイズ上限（50 GB）を超える | 分割、または NFS/SMB 経由で配置 |
 
 ### スループット設計
 
@@ -211,7 +212,7 @@ FSx for ONTAP S3 AP は「S3 互換」だが「Amazon S3 と同一」ではな�
 
 | 機能 | S3 AP 対応 | 代替手段 | 備考 |
 |------|:----------:|---------|------|
-| GetObject / PutObject | ✅ | — | 最大 5 GB/オブジェクト |
+| GetObject / PutObject | ✅ | — | オブジェクト上限 50 GB（単一 PutObject は 5 GB） |
 | Multipart Upload | ✅ | — | ONTAP 9.16.1 以上 |
 | ListObjectsV2 | ✅ | — | Prefix / Delimiter / MaxKeys 対応 |
 | HeadObject | ✅ | — | |

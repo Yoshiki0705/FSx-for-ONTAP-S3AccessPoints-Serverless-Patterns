@@ -538,7 +538,7 @@ aws fsx describe-file-systems --file-system-ids fs-XXXXXXXXX \
 - **S3 AP NetworkOrigin is immutable** — cannot change from Internet to VPC or vice versa after creation.
 - **ONTAP S3 server conflicts with S3 AP** — if the SVM has an ONTAP native S3 server enabled (`vserver object-store-server`), S3 Access Point creation will fail. Use a different SVM or remove the S3 server first.
 - **S3 AP does not support Presigned URLs** — documented as unsupported.
-- **Maximum object size via PutObject is 5 GB** — use Multipart Upload for larger files.
+- **Maximum object size is 50 GB for uploads** — a single `PutObject` is capped at 5 GB, so use Multipart Upload for files above 5 GB. Downloads may exceed 50 GB.
 - **S3 Gateway VPC Endpoint does NOT route Internet-origin S3 AP traffic** — use NAT Gateway or VPC-external Lambda instead.
 
 ### WINDOWS User Type S3 Access Points — AD Requirements

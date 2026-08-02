@@ -131,7 +131,7 @@ sam deploy \
 **Points d'attention** :
 
 - Spécification de `S3AccessPointName` fortement recommandée (autoriser IAM pour les formats Alias et ARN)
-- Objets supérieurs à 5GB non supportés par FSx for ONTAP S3 AP (spécification AWS), multipart upload obligatoire
+- La limite de taille d'objet est de 50 GB (spécification AWS). Un seul PutObject est limité à 5 GB, un multipart upload est donc obligatoire au-delà de 5 GB
 - La Lambda ChangeDetection utilise uniquement DynamoDB, donc non affectée par `OutputDestination`
 - La Lambda AlertGeneration utilise uniquement SNS, donc non affectée par `OutputDestination`
 - Pour les contraintes de spécification AWS, voir

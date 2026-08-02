@@ -19,7 +19,7 @@ FSx for ONTAP の S3 Access Points を活用し、VFX レンダリングジョ�
 
 - レンダリングジョブの即時キック（ファイル保存トリガー）が必要
 - Deadline Cloud 以外のレンダリングファーム（Thinkbox Deadline オンプレ等）を使用
-- レンダリング出力が 5 GB を超える（S3 AP PutObject の上限）
+- レンダリング出力が 50 GB を超える（S3 AP のオブジェクトサイズ上限。5〜50 GB はマルチパートで対応可）
 - 品質チェックに独自の画質評価モデルが必要（Rekognition のラベル検出では不十分）
 
 ### 主な機能

@@ -1,6 +1,6 @@
 # Admin Resource Management — Demo Guide
 
-> E2E verified on 2026-07-26 against FSx for ONTAP (fs-0123456789abcdef0, ONTAP 9.17.1)
+> E2E verified on 2026-07-26 against FSx for ONTAP (fs-0123456789abcdef1, ONTAP 9.17.1)
 
 ## Overview
 

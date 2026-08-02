@@ -212,7 +212,7 @@ sam deploy \
 **Notas**:
 
 - Se recomienda encarecidamente especificar `S3AccessPointName` (permitir IAM en formato Alias y ARN)
-- Objetos superiores a 5GB no son posibles con FSx for ONTAP S3 AP (especificación de AWS), se requiere carga multiparte
+- El límite de tamaño de objeto es de 50 GB (especificación de AWS). Un único PutObject está limitado a 5 GB, por lo que se requiere carga multiparte por encima de 5 GB
 - Para restricciones de especificación de AWS, consulte
   [la sección "AWS 仕様上の制約と回避策" del README del proyecto](../../README.md#aws-仕様上の制約と回避策)
   y [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)

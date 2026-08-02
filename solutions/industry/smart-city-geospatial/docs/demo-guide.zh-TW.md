@@ -126,7 +126,7 @@ sam deploy \
 **注意事項**：
 
 - 強烈建議指定 `S3AccessPointName`（同時以 Alias 格式和 ARN 格式授予 IAM 權限）
-- 超過 5GB 的物件在 FSx for ONTAP S3 AP 中不可行（AWS 規格），必須使用多部分上傳
+- 物件大小上限為 50 GB（AWS 規格）。單次 PutObject 上限為 5 GB，因此超過 5 GB 必須使用多部分上傳
 - ChangeDetection Lambda 僅使用 DynamoDB，因此不受 `OutputDestination` 影響
 - Bedrock 報告以 Markdown（`text/markdown; charset=utf-8`）格式寫出，因此可在 SMB/NFS
   用戶端的文字編輯器中直接檢視

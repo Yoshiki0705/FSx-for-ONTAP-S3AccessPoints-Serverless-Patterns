@@ -159,7 +159,7 @@
 A: バッチ処理（定期スキャン）では問題になりません。リアルタイム応答が必要な場合は EFS + Lambda を検討してください。
 
 **Q: S3 AP で書き込みもできるか？**
-A: はい。PutObject（最大 5 GB）をサポートしています。AI 処理結果を同じボリュームに書き戻し、NFS/SMB ユーザーが閲覧できます。
+A: はい。PutObject をサポートしています（オブジェクト上限 50 GB、単一 PutObject は 5 GB まで。5 GB 超は Multipart Upload）。AI 処理結果を同じボリュームに書き戻し、NFS/SMB ユーザーが閲覧できます。
 
 **Q: FlexCache と EFS の違いは？**
 A: FlexCache は ONTAP ボリュームのキャッシュであり、Origin のデータ変更が自動的に反映されます。EFS は独立したファイルシステムです。

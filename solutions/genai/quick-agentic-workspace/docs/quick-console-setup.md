@@ -221,8 +221,8 @@ AWS Storage Blog ([source](https://aws.amazon.com/blogs/storage/enabling-ai-powe
 CloudFormation Stack: quick-verify-ad-env
 AD Domain:           quick.verify.local (short: QUICKV)
 Directory ID:        d-956797dc4e
-SVM:                 quick-verify-svm (svm-095a498b30a1824a7)
-Volume:              quick_test_vol (fsvol-088fdc091530d4d69, NTFS, /quick_test)
+SVM:                 quick-verify-svm (svm-0123456789abcdef1)
+Volume:              quick_test_vol (fsvol-0123456789abcdef0, NTFS, /quick_test)
 S3 AP Name:          quick-verify-ad
 S3 AP Alias:         quick-verify-ad-iwq81486tzgfet7ef3tut8uxbt8inapn1a-ext-s3alias
 Identity:            WINDOWS / Admin
@@ -246,10 +246,10 @@ Data Access:         PutObject ✅, ListObjectsV2 ✅, GetObject ✅ (ap-northea
 aws fsx detach-and-delete-s3-access-point --name quick-verify-ad --region ap-northeast-1
 
 # ボリューム削除
-aws fsx delete-volume --volume-id fsvol-088fdc091530d4d69 --region ap-northeast-1
+aws fsx delete-volume --volume-id fsvol-0123456789abcdef0 --region ap-northeast-1
 
 # SVM 削除
-aws fsx delete-storage-virtual-machine --storage-virtual-machine-id svm-095a498b30a1824a7 --region ap-northeast-1
+aws fsx delete-storage-virtual-machine --storage-virtual-machine-id svm-0123456789abcdef1 --region ap-northeast-1
 
 # AD 環境削除（月額 ~$73 のコスト削減）
 aws cloudformation delete-stack --stack-name quick-verify-ad-env --region ap-northeast-1

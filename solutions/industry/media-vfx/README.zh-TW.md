@@ -19,7 +19,7 @@
 
 - 需要渲染任務的即時觸發（檔案儲存觸發）
 - 使用 Deadline Cloud 以外的渲染農場（如地端部署的 Thinkbox Deadline 等）
-- 渲染輸出超過 5 GB（S3 AP PutObject 的上限）
+- 渲染輸出超過 50 GB（S3 AP 物件大小上限；5–50 GB 可用多部分上傳）
 - 品質檢查需要自有的畫質評估模型（Rekognition 的標籤偵測不夠充分）
 
 ### 主要功能

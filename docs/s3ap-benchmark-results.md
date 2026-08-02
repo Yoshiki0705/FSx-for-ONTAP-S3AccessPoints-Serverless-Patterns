@@ -276,7 +276,7 @@ FSx throughput capacity を 128 MBps → 256 MBps に変更した際、以下の
 
 ### 影響範囲
 
-- **全 SVM の全 S3 AP** が影響を受けた（FSxN_OnPre SVM、verification-svm の両方）
+- **全 SVM の全 S3 AP** が影響を受けた（プライマリ SVM、検証用 SVM の両方）
 - NetworkOrigin (Internet/VPC) に関係なく発生
 - ファイルシステム自体は `AVAILABLE` 状態のまま
 - NFS/SMB アクセスへの影響は未確認（EC2 接続不可のため）
