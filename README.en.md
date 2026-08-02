@@ -23,6 +23,7 @@
 |---|---|---|
 | Try a demo without FSx | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 min |
 | Browse files via a web portal | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.en.md) | 10 min |
+| See the architecture figures (light / dark) | [Architecture Diagram Index](docs/architecture-diagrams.en.md) | 5 min |
 | Understand S3 AP directory design & performance | [Design Considerations](docs/design-considerations-en.md) | 15 min |
 | Deploy a pattern to AWS | [Deployment Guide](docs/guides/deployment-guide.md) | 30 min |
 | Find the right pattern for my workload | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 min |

@@ -17,6 +17,7 @@ Siehe auch: [UI-Auswahlguide für das Dateiportal (Amplify / Nextcloud / Custom)
 - **[Implementierungsguide](docs/IMPLEMENTATION.md)** — Architektur, Konfigurationsdateien, Komponentenstruktur, Deployment, Änderungsprotokoll
 - **[Admin-Demo-Guide](../../docs/en/admin-resource-management-demo.md)** — E2E-Demo-Szenarien für Ressourcenverwaltung + ARP/AI
 - **[AI Agent Demo-Guide](docs/ai-agent-demo-guide.en.md)** — AI Agent Chat, Semantische Suche, Guardrails, HITL
+- **[Index der Architekturdiagramme](../../docs/architecture-diagrams.en.md)** — alle 13 Abbildungen (helles Design / dunkles Design)
 
 ## Hauptfunktionen
 
@@ -43,15 +44,23 @@ Siehe auch: [UI-Auswahlguide für das Dateiportal (Amplify / Nextcloud / Custom)
 
 ## Architektur
 
+![Architektur des Amplify Gen2 KI-Verarbeitungsportals. Ein Webbrowser und Amazon Quick gehen über AWS Amplify, Amazon Cognito und Amazon Bedrock AgentCore; die AppSync GraphQL API ruft Lambda-Funktionen auf, die außerhalb der VPC auf ARM64 laufen. Diese Funktionen nutzen Bedrock / Rekognition / Athena / Textract / Comprehend und lesen und schreiben das FSx for ONTAP Volume über den S3 Access Point. Audit-Logs werden als WORM in S3 Object Lock geschrieben](../../docs/images/amplify-vpc-split-en.svg)
+
+*Abbildung: Architektur des Amplify Gen2 Portals — Lambda-Funktionen außerhalb der VPC lesen und schreiben das FSx for ONTAP Volume über den S3 Access Point*
+
+> Die Abbildung oben verwendet das helle Design (weißer Hintergrund). Wenn Sie den Dark Mode bevorzugen, nutzen Sie die [Version im dunklen Design](../../docs/images/amplify-vpc-split-en-dark.svg). Der [Index der Architekturdiagramme](../../docs/architecture-diagrams.en.md) listet alle 13 Abbildungen mit hellen und dunklen Links auf.
+
+Dieselbe Architektur als Text:
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Amplify Gen2                                           │
-│  ┌──────────┐  ┌─────────────────────────────────────┐  │
-│  │ Cognito  │  │ AppSync GraphQL API                 │  │
-│  │ Auth     │  │  startProcessing → Step Functions   │  │
-│  │ +MFA     │  │  getJobStatus → Step Functions      │  │
-│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │  │
-│  └──────────┘  └──────────────┬──────────────────────┘  │
+┌──────────────────────────────────────────────────────────┐
+│  Amplify Gen2                                            │
+│  ┌──────────┐  ┌─────────────────────────────────────┐   │
+│  │ Cognito  │  │ AppSync GraphQL API                 │   │
+│  │ Auth     │  │  startProcessing → Step Functions   │   │
+│  │ +MFA     │  │  getJobStatus → Step Functions      │   │
+│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │   │
+│  └──────────┘  └──────────────┬──────────────────────┘   │
 │                               │                          │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │ CDK (in data stack)                                 │ │
