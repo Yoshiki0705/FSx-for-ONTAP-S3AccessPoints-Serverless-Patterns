@@ -21,7 +21,7 @@ FSx for ONTAP の S3 Access Points を活用し、DICOM 医用画像の自動分
 - リアルタイムの DICOM ルーティング（DICOM MWL / MPPS 連携が必要）
 - 画像の診断支援 AI（CAD）— 本パターンは分類・匿名化に特化
 - Comprehend Medical 非対応リージョンでクロスリージョンのデータ転送が規制上許容できない
-- DICOM ファイルサイズが 5 GB を超える（MR/CT のマルチフレーム等）
+- DICOM ファイルサイズが 50 GB を超える（MR/CT のマルチフレーム等）
 
 ### 主な機能
 

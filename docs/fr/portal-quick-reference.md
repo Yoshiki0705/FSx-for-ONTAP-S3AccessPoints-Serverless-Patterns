@@ -13,7 +13,7 @@ Aide-mémoire d'une page pour les opérations quotidiennes du portail. Imprimez 
 | 📂 All Files | Parcourir, prévisualiser, télécharger, partager, Q&R AI |
 | ⭐ Favorites | Fichiers épinglés |
 | 🕐 Recent | Historique d'accès |
-| 📤 Upload | Téléversement par glisser-déposer (max 5 Go/fichier) |
+| 📤 Upload | Téléversement par glisser-déposer (max 50 Go/fichier) |
 | ⚡ AI Processing | Déclencher des workflows AI/ML sur des dossiers |
 | 📋 Job History | Résultats des tâches passées + état |
 | 📊 Analytics | Requêtes SQL Athena |

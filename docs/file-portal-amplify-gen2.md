@@ -351,7 +351,7 @@ solutions/amplify-portal/
 **S3 AP と Nextcloud の制約事項**:
 - Presigned URL は AWS ドキュメント上「Not supported」だが、実際にはクライアント側で生成・利用可能（GetObject の署名付きリクエストとして動作する。[詳細](./s3ap-compatibility-notes.md#presigned-url-support)）。ただし本番依存は非推奨のため、Nextcloud はサーバープロセス経由でのダウンロードプロキシも選択可能
 - `ListObjectsV2` のページネーション（1リクエスト最大1000オブジェクト）は Nextcloud の S3 バックエンドがネイティブに処理
-- PutObject（最大 5 GB）により Nextcloud UI から FSx for ONTAP へのアップロードが可能
+- PutObject（単一 PUT 5 GB / Multipart で 50 GB まで）により Nextcloud UI から FSx for ONTAP へのアップロードが可能
 
 **NFS マウントの併用**: より低レイテンシのファイル閲覧やプレビュー生成には、Nextcloud が FSx for ONTAP ボリュームを NFS で直接マウントする構成も可能（同一 VPC/サブネット内の EC2 配置が必要）。
 

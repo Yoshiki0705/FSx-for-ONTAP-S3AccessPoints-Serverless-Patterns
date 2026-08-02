@@ -258,7 +258,7 @@ Key differences when implementing serverless patterns on this infrastructure:
 | **S3 Event Notification unsupported** | Can't use PutObject-triggered Lambda | FPolicy + EventBridge for event-driven |
 | **Versioning unsupported** | No object generation management | ONTAP Snapshot (volume-level point-in-time) |
 | **ListObjectsV2 performance** | Delay with large file directories | Hive partitioning + prefix-limited + external catalog |
-| **PutObject 5 GB limit** | Large files need splitting | Multipart Upload (ONTAP 9.16.1+) |
+| **50 GB object limit (single PutObject 5 GB)** | Files above 50 GB need splitting | Multipart Upload for 5-50 GB (ONTAP 9.16.1+) |
 
 Details: [Design Considerations](../../docs/design-considerations-en.md)
 

@@ -13,7 +13,7 @@ One-page cheat sheet for daily portal operations. Print or bookmark this page.
 | 📂 All Files | Browse, preview, download, share, AI Q&A |
 | ⭐ Favorites | Pinned files |
 | 🕐 Recent | Your access history |
-| 📤 Upload | Drag-and-drop upload (max 5 GB/file) |
+| 📤 Upload | Drag-and-drop upload (max 50 GB/file) |
 | ⚡ AI Processing | Trigger AI/ML workflows on folders |
 | 📋 Job History | Past job results + status |
 | 📊 Analytics | Athena SQL queries |

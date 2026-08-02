@@ -156,7 +156,7 @@ Detaillierte Architekturdiagramme je Kategorie:
 |---|---|
 | Keine S3 Event Notifications | EventBridge Scheduler-Polling oder FPolicy |
 | Presigned URLs inoffiziell | Funktionieren in der Praxis, aber nicht für Produktion empfohlen |
-| 5-GB-Upload-Limit | Multipart Upload |
+| Max. Objektgröße 50 GB (einzelnes PutObject 5 GB) | Multipart Upload oberhalb von 5 GB |
 | Athena-Ergebnisse können nicht auf S3AP geschrieben werden | Ausgabe in Standard-S3-Bucket |
 | Nur SSE-FSX | Volume-Level-KMS-Verschlüsselung verwenden |
 
@@ -182,7 +182,7 @@ Details: [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Comp
 
 | Repository | Zusammenfassung |
 |---|---|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Berechtigungsbewusster RAG-Chatbot (CDK + Next.js + ECS) |
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Berechtigungsbewusster RAG-Chatbot (CDK + Next.js + ECS) | <!-- allow:naming (external repo name) -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | Lakehouse-Integration (Databricks, Snowflake, Athena, Glue, EMR) |
 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP-Migration |
 

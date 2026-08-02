@@ -15,7 +15,7 @@ Storage Browser for S3 は Amplify UI の React コンポーネント（2024年1
 | ファイル一覧・フォルダナビゲーション | ページネーション付きリスト + ブレッドクラム |
 | ファイルプレビュー | 画像・動画・テキストをブラウザ内レンダリング |
 | ファイルダウンロード | Presigned URL による直接ダウンロード |
-| ファイルアップロード | ドラッグ＆ドロップ、最大 5 GB（FSx for ONTAP S3 AP 制約） |
+| ファイルアップロード | ドラッグ＆ドロップ、最大 50 GB（FSx for ONTAP S3 AP のオブジェクトサイズ上限） |
 | コピー＆削除 | 単一ファイルまたはフォルダ丸ごと |
 | フォルダ作成 | 新規フォルダ作成（S3 プレフィクス作成） |
 
@@ -274,7 +274,7 @@ npm run dev
 
 | 制約 | 詳細 | 回避策 |
 |---|---|---|
-| アップロードサイズ | 5 GB（FSx for ONTAP S3 AP 制約） | Storage Browser は 5 GB まで自動対応 |
+| アップロードサイズ | オブジェクト上限 50 GB / 単一 PutObject は 5 GB（FSx for ONTAP S3 AP 制約） | Storage Browser はマルチパートに自動切替するため 5〜50 GB も可。50 GB 超は NFS/SMB 経由で配置 |
 | 公式ロードマップ | "Support for S3 Access Points" が評価中 | 方式 2（managed auth + AP alias）で動作 |
 | Presigned URL ドキュメント | FSx docs で "Not supported" 記載 | 動作確認済み（client-side SigV4）。[詳細](../s3ap-compatibility-notes.en.md) |
 

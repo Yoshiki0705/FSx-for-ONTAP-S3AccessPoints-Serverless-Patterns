@@ -13,7 +13,7 @@
 | 📂 All Files | 浏览、预览、下载、共享、AI 问答 |
 | ⭐ Favorites | 已固定的文件 |
 | 🕐 Recent | 您的访问历史 |
-| 📤 Upload | 拖放上传（最大 5 GB/文件） |
+| 📤 Upload | 拖放上传（最大 50 GB/文件） |
 | ⚡ AI Processing | 对文件夹触发 AI/ML 工作流 |
 | 📋 Job History | 历史作业结果 + 状态 |
 | 📊 Analytics | Athena SQL 查询 |

@@ -14,10 +14,19 @@
 `s3.put_object` unconditionally. This works for AI artifact sizes typical
 today (metadata JSONs, Bedrock reports — all well under 1 MB). But:
 
-1. **FSx for ONTAP S3 AP PutObject hard limit is 5 GB**. Objects ≥ 5 GB must use
-   multipart upload. This is AWS-enforced; FR-1/FR-2/FR-3 do not address it
-   (accepted as fundamental per
-   [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](aws-feature-requests/fsxn-s3ap-improvements.md)).
+1. **A single `PutObject` is capped at 5 GB**. Objects ≥ 5 GB must use
+   multipart upload. This is the Amazon S3 API-wide single-PUT limit and is
+   AWS-enforced; FR-1/FR-2/FR-3 do not address it.
+
+   > **Object ceiling update**: The FSx for ONTAP S3 AP *object size* ceiling
+   > for uploads is **50 GB** (previously 5 GB — the archived AWS page showed
+   > 5 GB on 2026-03-08 and 50 GB on 2026-06-25; no What's New announcement was
+   > found). This does **not** change the design below: the 5 GB single-PUT
+   > boundary that drives multipart promotion is unchanged. What changed is the
+   > upper bound reachable *via* multipart, which moved from 5 GB (i.e. multipart
+   > bought nothing) to 50 GB — which makes `put_stream` materially more useful.
+   > See [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
+   > and [Uploading objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html).
 2. **Future use cases WILL generate large artifacts**. Near-term candidates:
    - UC4 media-vfx: 4K video frames / compositing outputs
    - UC7 genomics-pipeline: sharded VCF / BAM → summary tar
@@ -462,7 +471,9 @@ hybrid work (UC7/UC8) may adopt it.
   part size (except last), 5 GB maximum part size, 10,000 parts max
   per upload
 - `OutputWriter` default `part_size=100 MB` is well within these
-  bounds: allows 1 TB total per upload (100 MB × 10,000)
+  bounds: the part/count math would allow 1 TB per upload (100 MB × 10,000),
+  but the binding constraint is the FSx for ONTAP S3 AP **object size ceiling
+  of 50 GB**, so that is the effective maximum
 - Expose `part_size` as a parameter so callers can tune for their data
   size profile (smaller parts for more parallelism on upload, larger
   parts for fewer network round-trips)
@@ -509,7 +520,7 @@ hybrid work (UC7/UC8) may adopt it.
 - [`shared/s3ap_helper.py`](../shared/s3ap_helper.py) — Contains `multipart_upload` method to be reused (lines 434-540)
 - [`shared/tests/test_output_writer.py`](../shared/tests/test_output_writer.py) — Existing 28 tests; new tests land here
 - [`docs/output-destination-patterns.md`](output-destination-patterns.md) — Pattern catalog; add "Large object handling" section
-- [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](aws-feature-requests/fsxn-s3ap-improvements.md) — 5 GB limit accepted as fundamental (section "Secondary / Informational Findings" #1)
+- [`docs/aws-feature-requests/fsxn-s3ap-improvements.md`](aws-feature-requests/fsxn-s3ap-improvements.md) — single-PUT 5 GB limit accepted as fundamental (section "Secondary / Informational Findings" #1; note the object ceiling has since moved to 50 GB)
 - [`docs/verification-results-phase7-outputdestination.md`](verification-results-phase7-outputdestination.md) — Phase 7 Theme E verification report (same doc pattern will apply to B-P8-3 verification)
 - [`docs/design-pattern-c-to-b-hybrid.md`](design-pattern-c-to-b-hybrid.md) — B-P8-2 design (potential `put_stream` adopter in UC7/UC8 AI artifacts)
 
