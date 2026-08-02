@@ -115,6 +115,9 @@ KNFSD and S3 AP are **complementary** access paths and can be used together agai
 
 > **Reference**: For a detailed comparison, see the "NFS Read Cache Comparison" section in [Alternative Architecture Comparison](./comparison-alternatives.md) (Japanese); for a deeper architecture discussion, see [KNFSD + S3 AP Dual-Path Architecture](./knfsd-s3ap-dual-path-architecture.en.md).
 
+> **SMB migration note**: for ACL-preserving migration from a Windows file server, including files the
+> copy account has no ACL rights to, see [ACL-preserving copy via Backup Operators](./smb-acl-migration-backup-operators.en.md).
+
 ## Data Protection Notes
 
 | Artifact | Snapshot Target | SnapMirror Target | Retention Period |
