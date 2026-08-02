@@ -1,13 +1,15 @@
 import os
-import json
 import boto3
 from botocore.config import Config
 
 region = os.environ.get("AWS_REGION", "ap-northeast-1")
-s3 = boto3.client("s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4"))
+s3 = boto3.client(
+    "s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4")
+)
 comprehend = boto3.client("comprehend", region_name=region)
 
 MAX_TEXT_SIZE = 5000  # Comprehend limit per request
+
 
 def handler(event, context):
     """Analyze text file from FSx for ONTAP S3 AP using Comprehend."""
@@ -38,8 +40,7 @@ def handler(event, context):
         else:  # entities
             response = comprehend.detect_entities(Text=text, LanguageCode="en")
             entities = [
-                {"text": e["Text"], "type": e["Type"], "score": round(e["Score"], 3)}
-                for e in response["Entities"][:30]
+                {"text": e["Text"], "type": e["Type"], "score": round(e["Score"], 3)} for e in response["Entities"][:30]
             ]
             return {"results": entities, "error": None}
 

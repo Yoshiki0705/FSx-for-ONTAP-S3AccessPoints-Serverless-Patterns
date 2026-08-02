@@ -77,21 +77,29 @@ class TestListVolumes:
         from handler import handler
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp({
-                "/storage/volumes": {
-                    "status": 200,
-                    "data": {
-                        "records": [
-                            {"name": "vol1", "uuid": "uuid-1", "size": 107374182400,
-                             "state": "online", "type": "rw", "style": "flexvol",
-                             "nas": {"security_style": "unix"},
-                             "space": {"used": 53687091200},
-                             "snaplock": {"type": "non_snaplock"}},
-                        ],
-                        "num_records": 1,
+            mock_pool.return_value = MockHttp(
+                {
+                    "/storage/volumes": {
+                        "status": 200,
+                        "data": {
+                            "records": [
+                                {
+                                    "name": "vol1",
+                                    "uuid": "uuid-1",
+                                    "size": 107374182400,
+                                    "state": "online",
+                                    "type": "rw",
+                                    "style": "flexvol",
+                                    "nas": {"security_style": "unix"},
+                                    "space": {"used": 53687091200},
+                                    "snaplock": {"type": "non_snaplock"},
+                                },
+                            ],
+                            "num_records": 1,
+                        },
                     },
-                },
-            })
+                }
+            )
 
             result = handler({"action": "listVolumes"}, None)
 
@@ -139,9 +147,11 @@ class TestCreateVolume:
         from handler import handler
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp({
-                "/storage/volumes": {"status": 202, "data": {}},
-            })
+            mock_pool.return_value = MockHttp(
+                {
+                    "/storage/volumes": {"status": 202, "data": {}},
+                }
+            )
 
             result = handler({"action": "createVolume", "name": "test_vol", "sizeGiB": 50}, None)
 
@@ -156,10 +166,15 @@ class TestDeleteVolume:
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
-            result = handler({
-                "action": "deleteVolume", "volumeUuid": "uuid-1",
-                "volumeName": "vol1", "confirm": False,
-            }, None)
+            result = handler(
+                {
+                    "action": "deleteVolume",
+                    "volumeUuid": "uuid-1",
+                    "volumeName": "vol1",
+                    "confirm": False,
+                },
+                None,
+            )
 
         assert result["success"] is False
         assert "confirm" in result["error"]
@@ -170,10 +185,15 @@ class TestDeleteVolume:
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
-            result = handler({
-                "action": "deleteVolume", "volumeUuid": "",
-                "volumeName": "vol1", "confirm": True,
-            }, None)
+            result = handler(
+                {
+                    "action": "deleteVolume",
+                    "volumeUuid": "",
+                    "volumeName": "vol1",
+                    "confirm": True,
+                },
+                None,
+            )
 
         assert result["success"] is False
         assert "volumeUuid" in result["error"]
@@ -201,12 +221,14 @@ class TestExportPolicies:
         from handler import handler
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp({
-                "/protocols/nfs/export-policies": {
-                    "status": 200,
-                    "data": {"records": [{"id": 1, "name": "default", "rules": [{}]}]},
-                },
-            })
+            mock_pool.return_value = MockHttp(
+                {
+                    "/protocols/nfs/export-policies": {
+                        "status": 200,
+                        "data": {"records": [{"id": 1, "name": "default", "rules": [{}]}]},
+                    },
+                }
+            )
 
             result = handler({"action": "listExportPolicies"}, None)
 
@@ -220,16 +242,24 @@ class TestExportPolicies:
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
-            result = handler({
-                "action": "createExportPolicyRule",
-                "policyId": "", "clientMatch": "10.0.0.0/16",
-            }, None)
+            result = handler(
+                {
+                    "action": "createExportPolicyRule",
+                    "policyId": "",
+                    "clientMatch": "10.0.0.0/16",
+                },
+                None,
+            )
             assert result["success"] is False
 
-            result = handler({
-                "action": "createExportPolicyRule",
-                "policyId": "42", "clientMatch": "",
-            }, None)
+            result = handler(
+                {
+                    "action": "createExportPolicyRule",
+                    "policyId": "42",
+                    "clientMatch": "",
+                },
+                None,
+            )
             assert result["success"] is False
 
 
@@ -241,14 +271,23 @@ class TestQosPolicies:
         from handler import handler
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp({
-                "/storage/qos/policies": {
-                    "status": 200,
-                    "data": {"records": [
-                        {"name": "gold", "uuid": "q-1", "fixed": {"max_throughput_iops": 10000}, "adaptive": {}},
-                    ]},
-                },
-            })
+            mock_pool.return_value = MockHttp(
+                {
+                    "/storage/qos/policies": {
+                        "status": 200,
+                        "data": {
+                            "records": [
+                                {
+                                    "name": "gold",
+                                    "uuid": "q-1",
+                                    "fixed": {"max_throughput_iops": 10000},
+                                    "adaptive": {},
+                                },
+                            ]
+                        },
+                    },
+                }
+            )
 
             result = handler({"action": "listQosPolicies"}, None)
 
@@ -262,10 +301,14 @@ class TestQosPolicies:
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
-            result = handler({
-                "action": "createQosPolicy", "name": "test",
-                "policyType": "fixed",
-            }, None)
+            result = handler(
+                {
+                    "action": "createQosPolicy",
+                    "name": "test",
+                    "policyType": "fixed",
+                },
+                None,
+            )
 
         assert result["success"] is False
         assert "maxIops" in result["error"] or "required" in result["error"]
@@ -276,10 +319,14 @@ class TestQosPolicies:
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
-            result = handler({
-                "action": "createQosPolicy", "name": "test",
-                "policyType": "adaptive",
-            }, None)
+            result = handler(
+                {
+                    "action": "createQosPolicy",
+                    "name": "test",
+                    "policyType": "adaptive",
+                },
+                None,
+            )
 
         assert result["success"] is False
         assert "expectedIops" in result["error"]
@@ -306,10 +353,14 @@ class TestSnaplock:
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
 
-            result = handler({
-                "action": "updateSnaplockRetention",
-                "volumeUuid": "uuid-1", "days": 0,
-            }, None)
+            result = handler(
+                {
+                    "action": "updateSnaplockRetention",
+                    "volumeUuid": "uuid-1",
+                    "days": 0,
+                },
+                None,
+            )
 
         assert result["success"] is False
         assert "days" in result["error"]
@@ -320,17 +371,19 @@ class TestSnaplock:
 
 class TestErrorHandling:
     def test_missing_ontap_config(self, mock_secrets):
+        import handler as handler_module
         from handler import handler
 
-        # Temporarily clear env
-        orig = os.environ.get("ONTAP_MGMT_IP")
-        os.environ["ONTAP_MGMT_IP"] = ""
-        try:
+        # MGMT_IP is read into a module-level constant at import time, so
+        # clearing the environment variable here would not affect the handler:
+        # it would fall through the guard and attempt a real HTTPS connection to
+        # the placeholder address, hanging until the socket timed out. Patch the
+        # resolved constant instead so the guard is actually exercised.
+        with patch.object(handler_module, "MGMT_IP", ""):
             result = handler({"action": "listVolumes"}, None)
-            assert "error" in result
-            assert "not configured" in result["error"]
-        finally:
-            os.environ["ONTAP_MGMT_IP"] = orig or "10.0.0.1"
+
+        assert "error" in result
+        assert "not configured" in result["error"]
 
     def test_unknown_action(self, mock_secrets):
         from handler import handler

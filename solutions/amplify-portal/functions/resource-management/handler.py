@@ -271,11 +271,13 @@ def _update_portal_settings(event, user_id):
     table = ddb.Table(PORTAL_SETTINGS_TABLE)
 
     try:
-        table.put_item(Item={
-            "settingKey": key,
-            "settingValue": str(value).lower(),
-            "updatedBy": user_id,
-        })
+        table.put_item(
+            Item={
+                "settingKey": key,
+                "settingValue": str(value).lower(),
+                "updatedBy": user_id,
+            }
+        )
         logger.info(f"Portal setting updated: {key}={value} by {user_id}")
         return {"success": True, "key": key, "value": value}
     except Exception as e:
@@ -293,7 +295,9 @@ def _list_volumes(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     data = _ontap_request(
-        http, headers, "GET",
+        http,
+        headers,
+        "GET",
         f"/storage/volumes?svm.name={svm}"
         f"&fields=name,uuid,size,state,type,style,nas,space,guarantee,snaplock"
         f"&max_records=50",
@@ -304,19 +308,21 @@ def _list_volumes(http, headers, event):
     volumes = []
     for v in data.get("records", []):
         space = v.get("space", {})
-        volumes.append({
-            "name": v.get("name", ""),
-            "uuid": v.get("uuid", ""),
-            "sizeBytes": v.get("size", 0),
-            "sizeGiB": round(v.get("size", 0) / (1024**3), 1),
-            "usedBytes": space.get("used", 0),
-            "usedPercent": round(space.get("used", 0) / max(v.get("size", 1), 1) * 100, 1),
-            "state": v.get("state", ""),
-            "type": v.get("type", ""),
-            "style": v.get("style", ""),
-            "securityStyle": v.get("nas", {}).get("security_style", ""),
-            "snaplockType": v.get("snaplock", {}).get("type", "non_snaplock"),
-        })
+        volumes.append(
+            {
+                "name": v.get("name", ""),
+                "uuid": v.get("uuid", ""),
+                "sizeBytes": v.get("size", 0),
+                "sizeGiB": round(v.get("size", 0) / (1024**3), 1),
+                "usedBytes": space.get("used", 0),
+                "usedPercent": round(space.get("used", 0) / max(v.get("size", 1), 1) * 100, 1),
+                "state": v.get("state", ""),
+                "type": v.get("type", ""),
+                "style": v.get("style", ""),
+                "securityStyle": v.get("nas", {}).get("security_style", ""),
+                "snaplockType": v.get("snaplock", {}).get("type", "non_snaplock"),
+            }
+        )
 
     return {"volumes": volumes, "count": len(volumes), "error": None}
 
@@ -372,7 +378,9 @@ def _get_volume(http, headers, event):
         return {"error": "volumeUuid is required"}
 
     data = _ontap_request(
-        http, headers, "GET",
+        http,
+        headers,
+        "GET",
         f"/storage/volumes/{vol_uuid}"
         f"?fields=name,uuid,size,state,type,style,nas,space,guarantee,"
         f"snapshot_policy,qos,tiering,efficiency,autosize,snaplock,anti_ransomware",
@@ -476,7 +484,10 @@ def _delete_volume(http, headers, event, user_id):
 
     # Offline first
     offline_data = _ontap_request(
-        http, headers, "PATCH", f"/storage/volumes/{vol_uuid}",
+        http,
+        headers,
+        "PATCH",
+        f"/storage/volumes/{vol_uuid}",
         body={"state": "offline"},
     )
     if offline_data.get("_error"):
@@ -498,7 +509,9 @@ def _list_export_policies(http, headers, event):
     """List export policies for the SVM."""
     svm = event.get("svm", SVM_NAME)
     data = _ontap_request(
-        http, headers, "GET",
+        http,
+        headers,
+        "GET",
         f"/protocols/nfs/export-policies?svm.name={svm}&fields=name,id,rules",
     )
     if data.get("_error"):
@@ -522,9 +535,10 @@ def _get_export_policy_rules(http, headers, event):
         return {"rules": [], "error": "policyId is required"}
 
     data = _ontap_request(
-        http, headers, "GET",
-        f"/protocols/nfs/export-policies/{policy_id}/rules"
-        f"?fields=clients,ro_rule,rw_rule,superuser,protocols,index",
+        http,
+        headers,
+        "GET",
+        f"/protocols/nfs/export-policies/{policy_id}/rules?fields=clients,ro_rule,rw_rule,superuser,protocols,index",
     )
     if data.get("_error"):
         return {"rules": [], "error": data["_message"]}
@@ -564,7 +578,9 @@ def _create_export_policy_rule(http, headers, event, user_id):
     }
 
     data = _ontap_request(
-        http, headers, "POST",
+        http,
+        headers,
+        "POST",
         f"/protocols/nfs/export-policies/{policy_id}/rules",
         body=body,
     )
@@ -584,7 +600,9 @@ def _delete_export_policy_rule(http, headers, event, user_id):
         return {"success": False, "error": "policyId and ruleIndex are required"}
 
     data = _ontap_request(
-        http, headers, "DELETE",
+        http,
+        headers,
+        "DELETE",
         f"/protocols/nfs/export-policies/{policy_id}/rules/{rule_index}",
     )
     if data.get("_error"):
@@ -647,9 +665,10 @@ def _list_qos_policies(http, headers, event):
     """List QoS policies for the SVM."""
     svm = event.get("svm", SVM_NAME)
     data = _ontap_request(
-        http, headers, "GET",
-        f"/storage/qos/policies?svm.name={svm}"
-        f"&fields=name,uuid,fixed,adaptive",
+        http,
+        headers,
+        "GET",
+        f"/storage/qos/policies?svm.name={svm}&fields=name,uuid,fixed,adaptive",
     )
     if data.get("_error"):
         return {"policies": [], "error": data["_message"]}
@@ -658,15 +677,17 @@ def _list_qos_policies(http, headers, event):
     for p in data.get("records", []):
         fixed = p.get("fixed", {})
         adaptive = p.get("adaptive", {})
-        policies.append({
-            "name": p.get("name", ""),
-            "uuid": p.get("uuid", ""),
-            "type": "adaptive" if adaptive else "fixed",
-            "maxThroughputIops": fixed.get("max_throughput_iops"),
-            "maxThroughputMbps": fixed.get("max_throughput_mbps"),
-            "expectedIops": adaptive.get("expected_iops"),
-            "peakIops": adaptive.get("peak_iops"),
-        })
+        policies.append(
+            {
+                "name": p.get("name", ""),
+                "uuid": p.get("uuid", ""),
+                "type": "adaptive" if adaptive else "fixed",
+                "maxThroughputIops": fixed.get("max_throughput_iops"),
+                "maxThroughputMbps": fixed.get("max_throughput_mbps"),
+                "expectedIops": adaptive.get("expected_iops"),
+                "peakIops": adaptive.get("peak_iops"),
+            }
+        )
 
     return {"policies": policies, "error": None}
 
@@ -795,7 +816,9 @@ def _get_snaplock_config(http, headers, event):
         svm = event.get("svm", SVM_NAME)
         if vol_name:
             resolve = _ontap_request(
-                http, headers, "GET",
+                http,
+                headers,
+                "GET",
                 f"/storage/volumes?name={vol_name}&svm.name={svm}&fields=uuid",
             )
             records = resolve.get("records", [])
@@ -807,7 +830,9 @@ def _get_snaplock_config(http, headers, event):
             return {"config": None, "error": "volumeUuid or volumeName is required"}
 
     data = _ontap_request(
-        http, headers, "GET",
+        http,
+        headers,
+        "GET",
         f"/storage/volumes/{vol_uuid}?fields=snaplock,name",
     )
     if data.get("_error"):
@@ -877,18 +902,20 @@ def _list_quota_rules(http, headers, event):
     for r in data.get("records", []):
         space = r.get("space", {})
         files = r.get("files", {})
-        rules.append({
-            "uuid": r.get("uuid", ""),
-            "type": r.get("type", ""),  # "tree", "user", "group"
-            "volumeName": r.get("volume", {}).get("name", ""),
-            "qtreeName": r.get("qtree", {}).get("name", ""),
-            "users": [u.get("name", "") for u in r.get("users", [])],
-            "groupName": r.get("group", {}).get("name", ""),
-            "spaceHardLimit": space.get("hard_limit"),
-            "spaceSoftLimit": space.get("soft_limit"),
-            "filesHardLimit": files.get("hard_limit"),
-            "filesSoftLimit": files.get("soft_limit"),
-        })
+        rules.append(
+            {
+                "uuid": r.get("uuid", ""),
+                "type": r.get("type", ""),  # "tree", "user", "group"
+                "volumeName": r.get("volume", {}).get("name", ""),
+                "qtreeName": r.get("qtree", {}).get("name", ""),
+                "users": [u.get("name", "") for u in r.get("users", [])],
+                "groupName": r.get("group", {}).get("name", ""),
+                "spaceHardLimit": space.get("hard_limit"),
+                "spaceSoftLimit": space.get("soft_limit"),
+                "filesHardLimit": files.get("hard_limit"),
+                "filesSoftLimit": files.get("soft_limit"),
+            }
+        )
 
     return {"rules": rules, "count": len(rules), "error": None}
 
@@ -913,21 +940,25 @@ def _get_quota_report(http, headers, event):
     for r in data.get("records", []):
         space = r.get("space", {})
         files = r.get("files", {})
-        entries.append({
-            "type": r.get("type", ""),
-            "volumeName": r.get("volume", {}).get("name", ""),
-            "qtreeName": r.get("qtree", {}).get("name", ""),
-            "users": [u.get("name", "") for u in r.get("users", [])],
-            "groupName": r.get("group", {}).get("name", ""),
-            "spaceUsed": space.get("used", {}).get("total", 0),
-            "spaceHardLimit": space.get("hard_limit", 0),
-            "spaceSoftLimit": space.get("soft_limit", 0),
-            "spaceUsedPercent": round(
-                space.get("used", {}).get("total", 0) / max(space.get("hard_limit", 1), 1) * 100, 1
-            ) if space.get("hard_limit") else 0,
-            "filesUsed": files.get("used", {}).get("total", 0),
-            "filesHardLimit": files.get("hard_limit", 0),
-        })
+        entries.append(
+            {
+                "type": r.get("type", ""),
+                "volumeName": r.get("volume", {}).get("name", ""),
+                "qtreeName": r.get("qtree", {}).get("name", ""),
+                "users": [u.get("name", "") for u in r.get("users", [])],
+                "groupName": r.get("group", {}).get("name", ""),
+                "spaceUsed": space.get("used", {}).get("total", 0),
+                "spaceHardLimit": space.get("hard_limit", 0),
+                "spaceSoftLimit": space.get("soft_limit", 0),
+                "spaceUsedPercent": round(
+                    space.get("used", {}).get("total", 0) / max(space.get("hard_limit", 1), 1) * 100, 1
+                )
+                if space.get("hard_limit")
+                else 0,
+                "filesUsed": files.get("used", {}).get("total", 0),
+                "filesHardLimit": files.get("hard_limit", 0),
+            }
+        )
 
     return {"entries": entries, "count": len(entries), "error": None}
 
@@ -1010,7 +1041,9 @@ def _list_cifs_shares(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     data = _ontap_request(
-        http, headers, "GET",
+        http,
+        headers,
+        "GET",
         f"/protocols/cifs/shares?svm.name={svm}"
         f"&fields=name,path,comment,acls,encryption,continuously_available"
         f"&max_records=50",
@@ -1020,14 +1053,16 @@ def _list_cifs_shares(http, headers, event):
 
     shares = []
     for s in data.get("records", []):
-        shares.append({
-            "name": s.get("name", ""),
-            "path": s.get("path", ""),
-            "comment": s.get("comment", ""),
-            "encryption": s.get("encryption", False),
-            "continuouslyAvailable": s.get("continuously_available", False),
-            "aclCount": len(s.get("acls", [])),
-        })
+        shares.append(
+            {
+                "name": s.get("name", ""),
+                "path": s.get("path", ""),
+                "comment": s.get("comment", ""),
+                "encryption": s.get("encryption", False),
+                "continuouslyAvailable": s.get("continuously_available", False),
+                "aclCount": len(s.get("acls", [])),
+            }
+        )
 
     return {"shares": shares, "count": len(shares), "error": None}
 
@@ -1093,7 +1128,9 @@ def _update_cifs_share(http, headers, event, user_id):
         return {"success": False, "error": "No changes specified"}
 
     data = _ontap_request(
-        http, headers, "PATCH",
+        http,
+        headers,
+        "PATCH",
         f"/protocols/cifs/shares/{svm_uuid}/{share_name}",
         body=body,
     )
@@ -1154,14 +1191,16 @@ def _list_qtrees(http, headers, event):
 
     qtrees = []
     for q in data.get("records", []):
-        qtrees.append({
-            "id": q.get("id"),
-            "name": q.get("name", ""),
-            "volumeName": q.get("volume", {}).get("name", ""),
-            "securityStyle": q.get("security_style", ""),
-            "exportPolicy": q.get("export_policy", {}).get("name", ""),
-            "unixPermissions": q.get("unix_permissions", ""),
-        })
+        qtrees.append(
+            {
+                "id": q.get("id"),
+                "name": q.get("name", ""),
+                "volumeName": q.get("volume", {}).get("name", ""),
+                "securityStyle": q.get("security_style", ""),
+                "exportPolicy": q.get("export_policy", {}).get("name", ""),
+                "unixPermissions": q.get("unix_permissions", ""),
+            }
+        )
 
     return {"qtrees": qtrees, "count": len(qtrees), "error": None}
 
@@ -1213,7 +1252,9 @@ def _delete_qtree(http, headers, event, user_id):
 
     # Get volume UUID
     vol_data = _ontap_request(
-        http, headers, "GET",
+        http,
+        headers,
+        "GET",
         f"/storage/volumes?name={vol_name}&svm.name={svm}&fields=uuid",
     )
     vol_records = vol_data.get("records", [])
@@ -1239,10 +1280,10 @@ def _get_efficiency_stats(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     data = _ontap_request(
-        http, headers, "GET",
-        f"/storage/volumes?svm.name={svm}"
-        f"&fields=name,efficiency,space"
-        f"&max_records=50",
+        http,
+        headers,
+        "GET",
+        f"/storage/volumes?svm.name={svm}&fields=name,efficiency,space&max_records=50",
     )
     if data.get("_error"):
         return {"volumes": [], "error": data["_message"]}
@@ -1259,17 +1300,19 @@ def _get_efficiency_stats(http, headers, event):
         total_logical += logical
         total_physical += physical
 
-        volumes.append({
-            "name": v.get("name", ""),
-            "dedupe": eff.get("dedupe", "none"),
-            "compression": eff.get("compression", "none"),
-            "crossVolumeDeduplication": eff.get("cross_volume_dedupe", "none"),
-            "compaction": eff.get("compaction", "none"),
-            "logicalUsedBytes": logical,
-            "physicalUsedBytes": physical,
-            "savingsRatio": round(logical / max(physical, 1), 2),
-            "savingsPercent": round((1 - physical / max(logical, 1)) * 100, 1) if logical > 0 else 0,
-        })
+        volumes.append(
+            {
+                "name": v.get("name", ""),
+                "dedupe": eff.get("dedupe", "none"),
+                "compression": eff.get("compression", "none"),
+                "crossVolumeDeduplication": eff.get("cross_volume_dedupe", "none"),
+                "compaction": eff.get("compaction", "none"),
+                "logicalUsedBytes": logical,
+                "physicalUsedBytes": physical,
+                "savingsRatio": round(logical / max(physical, 1), 2),
+                "savingsPercent": round((1 - physical / max(logical, 1)) * 100, 1) if logical > 0 else 0,
+            }
+        )
 
     overall_ratio = round(total_logical / max(total_physical, 1), 2) if total_physical > 0 else 1.0
     overall_savings = round((1 - total_physical / max(total_logical, 1)) * 100, 1) if total_logical > 0 else 0
@@ -1299,10 +1342,10 @@ def _list_arp_volumes(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     data = _ontap_request(
-        http, headers, "GET",
-        f"/storage/volumes?svm.name={svm}"
-        f"&fields=name,uuid,anti_ransomware,type,nas,size"
-        f"&max_records=100",
+        http,
+        headers,
+        "GET",
+        f"/storage/volumes?svm.name={svm}&fields=name,uuid,anti_ransomware,type,nas,size&max_records=100",
     )
     if data.get("_error"):
         return {"volumes": [], "error": data["_message"]}
@@ -1315,17 +1358,19 @@ def _list_arp_volumes(http, headers, event):
         # Determine if this is a NAS or SAN volume
         is_san = not bool(nas.get("path"))  # No junction path = likely SAN
 
-        volumes.append({
-            "name": v.get("name", ""),
-            "uuid": v.get("uuid", ""),
-            "state": arp.get("state", "disabled"),
-            "attackProbability": arp.get("attack_probability", "none"),
-            "dryRunStartTime": arp.get("dry_run_start_time"),
-            "surgeAsNormal": arp.get("surge_as_normal", False),
-            "volumeType": "SAN" if is_san else "NAS",
-            "sizeGiB": round(v.get("size", 0) / (1024**3), 1),
-            "type": vol_type,
-        })
+        volumes.append(
+            {
+                "name": v.get("name", ""),
+                "uuid": v.get("uuid", ""),
+                "state": arp.get("state", "disabled"),
+                "attackProbability": arp.get("attack_probability", "none"),
+                "dryRunStartTime": arp.get("dry_run_start_time"),
+                "surgeAsNormal": arp.get("surge_as_normal", False),
+                "volumeType": "SAN" if is_san else "NAS",
+                "sizeGiB": round(v.get("size", 0) / (1024**3), 1),
+                "type": vol_type,
+            }
+        )
 
     # Summary counts
     enabled_count = sum(1 for v in volumes if v["state"] == "enabled")
@@ -1405,7 +1450,9 @@ def _get_arp_suspects_admin(http, headers, event):
 
     try:
         data = _ontap_request(
-            http, headers, "GET",
+            http,
+            headers,
+            "GET",
             f"/security/anti-ransomware/suspects"
             f"?volume.uuid={vol_uuid}"
             f"&fields=file.path,file.type,suspect_time,file.entropy",
@@ -1416,12 +1463,14 @@ def _get_arp_suspects_admin(http, headers, event):
         suspects = []
         for s in data.get("records", []):
             file_info = s.get("file", {})
-            suspects.append({
-                "filePath": file_info.get("path", ""),
-                "fileType": file_info.get("type", ""),
-                "entropy": file_info.get("entropy"),
-                "suspectTime": s.get("suspect_time", ""),
-            })
+            suspects.append(
+                {
+                    "filePath": file_info.get("path", ""),
+                    "fileType": file_info.get("type", ""),
+                    "entropy": file_info.get("entropy"),
+                    "suspectTime": s.get("suspect_time", ""),
+                }
+            )
 
         return {
             "suspects": suspects,
@@ -1512,9 +1561,7 @@ def _enable_arp_bulk(http, headers, event, user_id):
             results.append({"uuid": vol_uuid, "success": True})
 
     success_count = sum(1 for r in results if r["success"])
-    logger.info(
-        f"ARP bulk enable: {success_count}/{len(vol_uuids)} → '{target_state}' by {user_id}"
-    )
+    logger.info(f"ARP bulk enable: {success_count}/{len(vol_uuids)} → '{target_state}' by {user_id}")
 
     return {
         "success": success_count == len(vol_uuids),
@@ -1535,10 +1582,10 @@ def _list_snapshot_policies(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     data = _ontap_request(
-        http, headers, "GET",
-        f"/storage/snapshot-policies?svm.name={svm}"
-        f"&fields=name,uuid,enabled,copies,comment,scope"
-        f"&max_records=50",
+        http,
+        headers,
+        "GET",
+        f"/storage/snapshot-policies?svm.name={svm}&fields=name,uuid,enabled,copies,comment,scope&max_records=50",
     )
     if data.get("_error"):
         return {"policies": [], "error": data["_message"]}
@@ -1546,23 +1593,25 @@ def _list_snapshot_policies(http, headers, event):
     policies = []
     for p in data.get("records", []):
         copies = p.get("copies", [])
-        policies.append({
-            "name": p.get("name", ""),
-            "uuid": p.get("uuid", ""),
-            "enabled": p.get("enabled", True),
-            "comment": p.get("comment", ""),
-            "scope": p.get("scope", ""),
-            "scheduleCount": len(copies),
-            "schedules": [
-                {
-                    "schedule": c.get("schedule", {}).get("name", ""),
-                    "count": c.get("count", 0),
-                    "prefix": c.get("prefix", ""),
-                    "retentionPeriod": c.get("retention_period", ""),
-                }
-                for c in copies
-            ],
-        })
+        policies.append(
+            {
+                "name": p.get("name", ""),
+                "uuid": p.get("uuid", ""),
+                "enabled": p.get("enabled", True),
+                "comment": p.get("comment", ""),
+                "scope": p.get("scope", ""),
+                "scheduleCount": len(copies),
+                "schedules": [
+                    {
+                        "schedule": c.get("schedule", {}).get("name", ""),
+                        "count": c.get("count", 0),
+                        "prefix": c.get("prefix", ""),
+                        "retentionPeriod": c.get("retention_period", ""),
+                    }
+                    for c in copies
+                ],
+            }
+        )
 
     return {"policies": policies, "count": len(policies), "error": None}
 
@@ -1657,11 +1706,14 @@ def _lock_snapshot(http, headers, event, user_id):
         return {"success": False, "error": "retentionDays must be > 0"}
 
     from datetime import datetime, timezone, timedelta
+
     expiry = (datetime.now(timezone.utc) + timedelta(days=retention_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     body = {"expiry_time": expiry}
     data = _ontap_request(
-        http, headers, "PATCH",
+        http,
+        headers,
+        "PATCH",
         f"/storage/volumes/{vol_uuid}/snapshots/{snap_uuid}",
         body=body,
     )
@@ -1704,7 +1756,9 @@ def _get_snapshot_locking_status(http, headers, event):
         return {"config": None, "error": "volumeUuid is required"}
 
     data = _ontap_request(
-        http, headers, "GET",
+        http,
+        headers,
+        "GET",
         f"/storage/volumes/{vol_uuid}?fields=name,snapshot_locking_enabled,snapshot_policy",
     )
     if data.get("_error"):
@@ -1712,7 +1766,9 @@ def _get_snapshot_locking_status(http, headers, event):
 
     # Count locked snapshots
     snap_data = _ontap_request(
-        http, headers, "GET",
+        http,
+        headers,
+        "GET",
         f"/storage/volumes/{vol_uuid}/snapshots?fields=expiry_time,snaplock_expiry_time&max_records=100",
     )
     locked_count = 0
@@ -1770,7 +1826,9 @@ def _get_s3_object_lock_status(event):
                 "mode": retention.get("Mode", ""),
                 "days": retention.get("Days"),
                 "years": retention.get("Years"),
-            } if retention else None,
+            }
+            if retention
+            else None,
             "error": None,
         }
     except s3.exceptions.ClientError as e:
@@ -1822,10 +1880,14 @@ def _list_s3_buckets(event):
             if name_filter and name_filter.lower() not in bucket_name.lower():
                 continue
 
-            buckets.append({
-                "name": bucket_name,
-                "creationDate": b.get("CreationDate", "").isoformat() if hasattr(b.get("CreationDate", ""), "isoformat") else str(b.get("CreationDate", "")),
-            })
+            buckets.append(
+                {
+                    "name": bucket_name,
+                    "creationDate": b.get("CreationDate", "").isoformat()
+                    if hasattr(b.get("CreationDate", ""), "isoformat")
+                    else str(b.get("CreationDate", "")),
+                }
+            )
 
         # Limit to 30 results
         return {"buckets": buckets[:30], "count": min(len(buckets), 30), "error": None}

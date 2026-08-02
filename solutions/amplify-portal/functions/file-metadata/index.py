@@ -1,5 +1,4 @@
 import os
-import json
 import boto3
 
 METADATA_TABLE = os.environ.get("AI_METADATA_TABLE_NAME", "")
@@ -44,16 +43,18 @@ def handler(event, context):
                 resp = table.get_item(Key=key)
                 if resp.get("Item"):
                     item = resp["Item"]
-                    results.append({
-                        "fileKey": item.get("file_key", ""),
-                        "classification": item.get("classification"),
-                        "rekognitionLabels": item.get("rekognition_labels"),
-                        "comprehendEntities": item.get("comprehend_entities_count"),
-                        "textractLength": item.get("textract_text_length"),
-                        "bedrockSummary": item.get("bedrock_summary"),
-                        "processedAt": item.get("processed_at"),
-                        "pattern": item.get("processing_pattern"),
-                    })
+                    results.append(
+                        {
+                            "fileKey": item.get("file_key", ""),
+                            "classification": item.get("classification"),
+                            "rekognitionLabels": item.get("rekognition_labels"),
+                            "comprehendEntities": item.get("comprehend_entities_count"),
+                            "textractLength": item.get("textract_text_length"),
+                            "bedrockSummary": item.get("bedrock_summary"),
+                            "processedAt": item.get("processed_at"),
+                            "pattern": item.get("processing_pattern"),
+                        }
+                    )
             except Exception:
                 continue
 

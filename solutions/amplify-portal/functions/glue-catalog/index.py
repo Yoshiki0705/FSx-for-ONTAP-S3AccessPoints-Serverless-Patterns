@@ -1,9 +1,9 @@
 import os
-import json
 import boto3
 
 region = os.environ.get("AWS_REGION", "ap-northeast-1")
 glue = boto3.client("glue", region_name=region)
+
 
 def handler(event, context):
     """Browse Glue Data Catalog — databases, tables, and schema."""
@@ -14,7 +14,9 @@ def handler(event, context):
     try:
         if action == "listDatabases":
             response = glue.get_databases(MaxResults=50)
-            databases = [{"name": db["Name"], "description": db.get("Description", "")} for db in response["DatabaseList"]]
+            databases = [
+                {"name": db["Name"], "description": db.get("Description", "")} for db in response["DatabaseList"]
+            ]
             return {"databases": databases, "error": None}
 
         elif action == "listTables":
@@ -41,8 +43,7 @@ def handler(event, context):
                 for c in response["Table"].get("StorageDescriptor", {}).get("Columns", [])
             ]
             partition_keys = [
-                {"name": p["Name"], "type": p["Type"]}
-                for p in response["Table"].get("PartitionKeys", [])
+                {"name": p["Name"], "type": p["Type"]} for p in response["Table"].get("PartitionKeys", [])
             ]
             return {
                 "schema": columns,
