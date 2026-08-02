@@ -24,6 +24,7 @@ def generate_qr_png(data: str) -> bytes:
     """
     try:
         import segno
+
         qr = segno.make(data)
         buffer = io.BytesIO()
         qr.save(buffer, kind="png", scale=6, border=2)
@@ -49,8 +50,7 @@ def handler(event, context):
     requested_expiry = event.get("expiresIn", 300)
 
     if not AP_ALIAS or not key:
-        return {"qrCodeBase64": "", "presignedUrl": "", "expiresIn": 0,
-                "error": "Missing S3_AP_ALIAS or file key"}
+        return {"qrCodeBase64": "", "presignedUrl": "", "expiresIn": 0, "error": "Missing S3_AP_ALIAS or file key"}
 
     # Enforce max expiry for security
     expiry = min(requested_expiry, MAX_EXPIRY)
@@ -76,5 +76,4 @@ def handler(event, context):
 
     except Exception as e:
         print(f"QR generation error: {e}")
-        return {"qrCodeBase64": "", "presignedUrl": "", "expiresIn": 0,
-                "error": str(e)}
+        return {"qrCodeBase64": "", "presignedUrl": "", "expiresIn": 0, "error": str(e)}

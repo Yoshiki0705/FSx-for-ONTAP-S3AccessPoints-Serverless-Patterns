@@ -22,6 +22,11 @@ import { resolve } from "path";
 const BACKEND_PATH = resolve(__dirname, "../../amplify/backend.ts");
 const backendSource = readFileSync(BACKEND_PATH, "utf-8");
 
+// Handler bodies used to be inline in backend.ts and now live under functions/.
+// Assertions about Python behaviour must read the handler source directly.
+const PRESIGNED_URL_HANDLER = resolve(__dirname, "../../functions/presigned-url/index.py");
+const presignedUrlSource = readFileSync(PRESIGNED_URL_HANDLER, "utf-8");
+
 describe("Backend Infrastructure Structure", () => {
   describe("Lambda Functions", () => {
     const expectedLambdas = [
@@ -38,6 +43,9 @@ describe("Backend Infrastructure Structure", () => {
       "TextractFunction",
       "ComprehendFunction",
       "GlueCatalogFunction",
+      "AgentChatFunction",
+      "ArpResponseFunction",
+      "ResourceMgmtFunction",
     ];
 
     it("defines all expected Lambda functions", () => {
@@ -130,7 +138,7 @@ describe("Backend Infrastructure Structure", () => {
 
   describe("Security Configuration", () => {
     it("uses SigV4 for S3 presigned URLs", () => {
-      expect(backendSource).toContain('signature_version="s3v4"');
+      expect(presignedUrlSource).toContain('signature_version="s3v4"');
     });
 
     it("has CONFIDENTIAL guardrail in AskAboutFile", () => {
@@ -139,9 +147,9 @@ describe("Backend Infrastructure Structure", () => {
     });
 
     it("Presigned URL has max expiry enforcement", () => {
-      expect(backendSource).toContain("min(event.get");
+      expect(presignedUrlSource).toContain("min(event.get");
       // GetPresignedUrl caps at 3600
-      expect(backendSource).toContain("3600");
+      expect(presignedUrlSource).toContain("3600");
     });
 
     it("cdk-nag is applied", () => {
@@ -159,11 +167,12 @@ describe("Backend Infrastructure Structure", () => {
     });
 
     it("ONTAP-related env vars are optional (DemoMode compatible)", () => {
-      // ONTAP env vars in CDK configuration (not inline Python) should use process.env with fallback
+      // ONTAP env vars must be sourced from portal-config (config.<property>)
+      // rather than bare process.env, so DemoMode has defined fallbacks.
       const cdkConfigLines = backendSource.split("\n").filter(
         (line) =>
           (line.includes("ONTAP_MGMT_IP:") || line.includes("ONTAP_SECRET_NAME:")) &&
-          line.includes("process.env")
+          line.includes("config.")
       );
       // At least the environment block in ListSnapshotsFunction should have these
       expect(cdkConfigLines.length).toBeGreaterThanOrEqual(2);

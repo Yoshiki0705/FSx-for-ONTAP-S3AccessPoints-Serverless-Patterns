@@ -14,27 +14,34 @@ s3 = boto3.client(
 
 AUDIT_TABLE = os.environ.get("URL_AUDIT_TABLE_NAME", "")
 
+
 def log_url_generation(user_id: str, key: str, expires_in: int):
     """F-3: Log Presigned URL generation for audit purposes."""
     if not AUDIT_TABLE:
         return
     try:
         import uuid
+
         dynamodb = boto3.resource("dynamodb")
         table = dynamodb.Table(AUDIT_TABLE)
-        table.put_item(Item={
-            "id": str(uuid.uuid4()),
-            "file_key": key,
-            "generated_by": user_id,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "expires_in_seconds": expires_in,
-            "expires_at": datetime.fromtimestamp(
-                datetime.now(timezone.utc).timestamp() + expires_in, tz=timezone.utc
-            ).isoformat(),
-            "ttl": int(datetime.now(timezone.utc).timestamp()) + expires_in + 86400,  # Auto-delete 1 day after expiry
-        })
+        table.put_item(
+            Item={
+                "id": str(uuid.uuid4()),
+                "file_key": key,
+                "generated_by": user_id,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "expires_in_seconds": expires_in,
+                "expires_at": datetime.fromtimestamp(
+                    datetime.now(timezone.utc).timestamp() + expires_in, tz=timezone.utc
+                ).isoformat(),
+                "ttl": int(datetime.now(timezone.utc).timestamp())
+                + expires_in
+                + 86400,  # Auto-delete 1 day after expiry
+            }
+        )
     except Exception as e:
         print(f"Audit log warning: {e}")
+
 
 def handler(event, context):
     """Generate a presigned URL for an object on FSx for ONTAP S3 AP.

@@ -15,6 +15,7 @@ The agent loop:
 
 Supports DemoMode: when S3_AP_ALIAS is empty, tools return mock data.
 """
+
 from __future__ import annotations
 
 import json
@@ -59,17 +60,13 @@ bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 bedrock_agent_runtime = boto3.client("bedrock-agent-runtime", region_name=REGION) if BEDROCK_KB_ID else None
 
 # --- PHI Guardrail ---
-PHI_PATTERN = re.compile(
-    r"/(dicom|phi|pii|hipaa|protected-health)[/\-]", re.IGNORECASE
-)
+PHI_PATTERN = re.compile(r"/(dicom|phi|pii|hipaa|protected-health)[/\-]", re.IGNORECASE)
 
 
 def is_phi_path(path: str) -> bool:
     """Check if path is PHI-protected (same logic as frontend isPhiPath)."""
     lower = path.lower()
-    return bool(PHI_PATTERN.search(f"/{lower}")) or any(
-        lower.startswith(p) for p in ("dicom/", "phi/", "pii/")
-    )
+    return bool(PHI_PATTERN.search(f"/{lower}")) or any(lower.startswith(p) for p in ("dicom/", "phi/", "pii/"))
 
 
 # --- Tool Definitions (Bedrock Converse format) ---
@@ -258,9 +255,7 @@ def _tool_list_files(params: dict[str, Any]) -> str:
             Delimiter="/",
             MaxKeys=max_keys,
         )
-        folders = [
-            cp["Prefix"] for cp in resp.get("CommonPrefixes", [])
-        ]
+        folders = [cp["Prefix"] for cp in resp.get("CommonPrefixes", [])]
         files = [
             {
                 "key": obj["Key"],
@@ -270,12 +265,14 @@ def _tool_list_files(params: dict[str, Any]) -> str:
             for obj in resp.get("Contents", [])
             if not obj["Key"].endswith("/")
         ]
-        return json.dumps({
-            "folders": folders,
-            "files": files,
-            "total": len(folders) + len(files),
-            "truncated": resp.get("IsTruncated", False),
-        })
+        return json.dumps(
+            {
+                "folders": folders,
+                "files": files,
+                "total": len(folders) + len(files),
+                "truncated": resp.get("IsTruncated", False),
+            }
+        )
     except Exception as e:
         return json.dumps({"error": str(e)})
 
@@ -288,11 +285,13 @@ def _tool_read_file(params: dict[str, Any]) -> str:
 
     # PHI guardrail
     if is_phi_path(key):
-        return json.dumps({
-            "error": f"PHI guardrail: cannot read files in protected path. "
-                     f"File '{key}' is in a PHI/PII protected directory.",
-            "blocked": True,
-        })
+        return json.dumps(
+            {
+                "error": f"PHI guardrail: cannot read files in protected path. "
+                f"File '{key}' is in a PHI/PII protected directory.",
+                "blocked": True,
+            }
+        )
 
     if not S3_AP_ALIAS:
         return _mock_read_file(key)
@@ -330,11 +329,13 @@ def _tool_search_files(params: dict[str, Any]) -> str:
         for page in pages:
             for obj in page.get("Contents", []):
                 if pattern in obj["Key"].lower():
-                    matches.append({
-                        "key": obj["Key"],
-                        "size": obj["Size"],
-                        "modified": obj["LastModified"].isoformat() if obj.get("LastModified") else None,
-                    })
+                    matches.append(
+                        {
+                            "key": obj["Key"],
+                            "size": obj["Size"],
+                            "modified": obj["LastModified"].isoformat() if obj.get("LastModified") else None,
+                        }
+                    )
                     if len(matches) >= 20:
                         break
             if len(matches) >= 20:
@@ -359,11 +360,13 @@ def _tool_get_volume_summary(params: dict[str, Any]) -> str:
         )
         folders = [cp["Prefix"] for cp in resp.get("CommonPrefixes", [])]
         root_files = len(resp.get("Contents", []))
-        return json.dumps({
-            "top_level_folders": folders,
-            "root_file_count": root_files,
-            "folder_count": len(folders),
-        })
+        return json.dumps(
+            {
+                "top_level_folders": folders,
+                "root_file_count": root_files,
+                "folder_count": len(folders),
+            }
+        )
     except Exception as e:
         return json.dumps({"error": str(e)})
 
@@ -385,10 +388,12 @@ def _tool_kb_search(params: dict[str, Any], user_groups: list[str] | None = None
         return json.dumps({"error": "Query is required for KB search"})
 
     if not BEDROCK_KB_ID or not bedrock_agent_runtime:
-        return json.dumps({
-            "error": "Knowledge Base not configured. Set BEDROCK_KB_ID to enable semantic search over file contents.",
-            "results": [],
-        })
+        return json.dumps(
+            {
+                "error": "Knowledge Base not configured. Set BEDROCK_KB_ID to enable semantic search over file contents.",
+                "results": [],
+            }
+        )
 
     try:
         retrieve_params: dict[str, Any] = {
@@ -409,9 +414,7 @@ def _tool_kb_search(params: dict[str, Any], user_groups: list[str] | None = None
             # Using OR filter across allowed prefixes
             filter_conditions = []
             for prefix in allowed_prefixes:
-                filter_conditions.append({
-                    "startsWith": {"key": "x-amz-bedrock-kb-source-uri", "value": prefix}
-                })
+                filter_conditions.append({"startsWith": {"key": "x-amz-bedrock-kb-source-uri", "value": prefix}})
             if len(filter_conditions) == 1:
                 retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"] = filter_conditions[0]
             elif len(filter_conditions) > 1:
@@ -439,14 +442,17 @@ def _tool_kb_search(params: dict[str, Any], user_groups: list[str] | None = None
                 if not any(file_key.startswith(p) for p in allowed_prefixes):
                     continue
 
-            results.append({
-                "fileKey": file_key,
-                "snippet": content[:300],
-                "score": round(score, 4),
-            })
+            results.append(
+                {
+                    "fileKey": file_key,
+                    "snippet": content[:300],
+                    "score": round(score, 4),
+                }
+            )
 
-        return json.dumps({"results": results, "count": len(results), "query": query,
-                          "smartRouting": bool(allowed_prefixes)})
+        return json.dumps(
+            {"results": results, "count": len(results), "query": query, "smartRouting": bool(allowed_prefixes)}
+        )
 
     except Exception as e:
         logger.error(f"KB search error: {e}")
@@ -476,6 +482,7 @@ def _get_allowed_prefixes(user_groups: list[str] | None) -> list[str]:
         return []
 
     return list(set(prefixes))
+
 
 # --- DemoMode Mock Data ---
 
@@ -562,11 +569,13 @@ def _mock_search_files(pattern: str, prefix: str) -> str:
 
 def _mock_volume_summary() -> str:
     """Mock volume summary for DemoMode."""
-    return json.dumps({
-        "top_level_folders": ["engineering/", "contracts/", "simulation/", "reports/"],
-        "root_file_count": 2,
-        "folder_count": 4,
-    })
+    return json.dumps(
+        {
+            "top_level_folders": ["engineering/", "contracts/", "simulation/", "reports/"],
+            "root_file_count": 2,
+            "folder_count": 4,
+        }
+    )
 
 
 # --- Tool Execution Router ---
@@ -580,13 +589,15 @@ TOOL_HANDLERS = {
     "search_files": _tool_search_files,
     "get_volume_summary": _tool_get_volume_summary,
     "kb_search": _tool_kb_search,
-    "request_action_approval": lambda params: json.dumps({
-        "approval_required": True,
-        "action_type": params.get("action_type", "unknown"),
-        "target": params.get("target", ""),
-        "reason": params.get("reason", ""),
-        "is_reversible": params.get("is_reversible", True),
-    }),
+    "request_action_approval": lambda params: json.dumps(
+        {
+            "approval_required": True,
+            "action_type": params.get("action_type", "unknown"),
+            "target": params.get("target", ""),
+            "reason": params.get("reason", ""),
+            "is_reversible": params.get("is_reversible", True),
+        }
+    ),
 }
 
 
@@ -729,9 +740,7 @@ def run_agent_loop(
     allowed_tools = TOOLS_BY_MODE.get(mode, TOOLS_ALL)
 
     # Filter tool config to only include allowed tools
-    filtered_tools = {
-        "tools": [t for t in TOOL_CONFIG["tools"] if t["toolSpec"]["name"] in allowed_tools]
-    }
+    filtered_tools = {"tools": [t for t in TOOL_CONFIG["tools"] if t["toolSpec"]["name"] in allowed_tools]}
 
     # Store user_groups for smart routing in kb_search
     _request_context["user_groups"] = user_groups or []
@@ -739,10 +748,12 @@ def run_agent_loop(
     # Build messages from history + new message
     messages = []
     for h in history:
-        messages.append({
-            "role": h["role"],
-            "content": [{"text": h["content"]}],
-        })
+        messages.append(
+            {
+                "role": h["role"],
+                "content": [{"text": h["content"]}],
+            }
+        )
 
     # Build user message content blocks (text + optional image)
     user_content = [{"text": message}]
@@ -753,20 +764,24 @@ def run_agent_loop(
             if fmt == "jpg":
                 fmt = "jpeg"
             image_bytes = base64.b64decode(image["data"])
-            user_content.append({
-                "image": {
-                    "format": fmt,
-                    "source": {"bytes": image_bytes},
+            user_content.append(
+                {
+                    "image": {
+                        "format": fmt,
+                        "source": {"bytes": image_bytes},
+                    }
                 }
-            })
+            )
             logger.info(f"Image attached: {fmt}, {len(image_bytes)} bytes")
         except Exception as e:
             logger.warning(f"Failed to decode image: {e}")
 
-    messages.append({
-        "role": "user",
-        "content": user_content,
-    })
+    messages.append(
+        {
+            "role": "user",
+            "content": user_content,
+        }
+    )
 
     tool_calls_trace: list[dict[str, Any]] = []
     guardrail_applied = False
@@ -798,7 +813,13 @@ def run_agent_loop(
             response = bedrock.converse(**converse_params)
         except Exception as e:
             logger.error(f"Bedrock converse error: {e}")
-            return {"answer": "", "toolCalls": tool_calls_trace, "model": MODEL_ID, "error": str(e), "guardrailApplied": False}
+            return {
+                "answer": "",
+                "toolCalls": tool_calls_trace,
+                "model": MODEL_ID,
+                "error": str(e),
+                "guardrailApplied": False,
+            }
 
         stop_reason = response.get("stopReason", "")
         output_message = response.get("output", {}).get("message", {})
@@ -806,10 +827,7 @@ def run_agent_loop(
         # Check if model wants to use tools
         if stop_reason == "tool_use":
             # Process tool use blocks
-            tool_use_blocks = [
-                block for block in output_message.get("content", [])
-                if "toolUse" in block
-            ]
+            tool_use_blocks = [block for block in output_message.get("content", []) if "toolUse" in block]
 
             # Append assistant message (with tool requests)
             messages.append(output_message)
@@ -835,13 +853,15 @@ def run_agent_loop(
 
                 if result_data.get("approval_required"):
                     # Stop the loop and return approval request to frontend
-                    tool_calls_trace.append({
-                        "name": tool_name,
-                        "input": tool_input,
-                        "output": result[:500],
-                        "status": "approval_required",
-                        "agent": agent_label,
-                    })
+                    tool_calls_trace.append(
+                        {
+                            "name": tool_name,
+                            "input": tool_input,
+                            "output": result[:500],
+                            "status": "approval_required",
+                            "agent": agent_label,
+                        }
+                    )
                     return {
                         "answer": "",
                         "toolCalls": tool_calls_trace,
@@ -857,26 +877,32 @@ def run_agent_loop(
                     }
 
                 # Record for trace
-                tool_calls_trace.append({
-                    "name": tool_name,
-                    "input": tool_input,
-                    "output": result[:500],  # Truncate for frontend
-                    "status": "completed" if "error" not in result else "error",
-                    "agent": agent_label,
-                })
-
-                tool_results.append({
-                    "toolResult": {
-                        "toolUseId": tool_use_id,
-                        "content": [{"json": result_data if result_data else {"text": result}}],
+                tool_calls_trace.append(
+                    {
+                        "name": tool_name,
+                        "input": tool_input,
+                        "output": result[:500],  # Truncate for frontend
+                        "status": "completed" if "error" not in result else "error",
+                        "agent": agent_label,
                     }
-                })
+                )
+
+                tool_results.append(
+                    {
+                        "toolResult": {
+                            "toolUseId": tool_use_id,
+                            "content": [{"json": result_data if result_data else {"text": result}}],
+                        }
+                    }
+                )
 
             # Append tool results as user message
-            messages.append({
-                "role": "user",
-                "content": tool_results,
-            })
+            messages.append(
+                {
+                    "role": "user",
+                    "content": tool_results,
+                }
+            )
 
             # Continue loop for next Bedrock call
             continue
@@ -887,11 +913,7 @@ def run_agent_loop(
             guardrail_applied = True
             logger.info("Guardrail intervened on response")
 
-        text_blocks = [
-            block["text"]
-            for block in output_message.get("content", [])
-            if "text" in block
-        ]
+        text_blocks = [block["text"] for block in output_message.get("content", []) if "text" in block]
         answer = "\n".join(text_blocks) if text_blocks else ""
 
         # Strip <thinking> tags (Nova models include reasoning in these)
@@ -1013,16 +1035,18 @@ def _save_session(user_id: str, params: dict) -> dict:
     ttl = now + (90 * 24 * 60 * 60)
 
     try:
-        table.put_item(Item={
-            "userId": user_id,
-            "sessionId": session_id,
-            "title": title,
-            "messages": json.dumps(messages, ensure_ascii=False),
-            "messageCount": len(messages),
-            "createdAt": Decimal(str(params.get("createdAt", now))),
-            "updatedAt": Decimal(str(now)),
-            "ttl": ttl,
-        })
+        table.put_item(
+            Item={
+                "userId": user_id,
+                "sessionId": session_id,
+                "title": title,
+                "messages": json.dumps(messages, ensure_ascii=False),
+                "messageCount": len(messages),
+                "createdAt": Decimal(str(params.get("createdAt", now))),
+                "updatedAt": Decimal(str(now)),
+                "ttl": ttl,
+            }
+        )
         return {"success": True, "sessionId": session_id}
     except Exception as e:
         logger.error(f"Save session error: {e}")
@@ -1086,13 +1110,15 @@ def _list_sessions(user_id: str, params: dict) -> dict:
         )
         sessions = []
         for item in response.get("Items", []):
-            sessions.append({
-                "sessionId": item["sessionId"],
-                "title": item.get("title", ""),
-                "messageCount": int(item.get("messageCount", 0)),
-                "createdAt": int(item.get("createdAt", 0)),
-                "updatedAt": int(item.get("updatedAt", 0)),
-            })
+            sessions.append(
+                {
+                    "sessionId": item["sessionId"],
+                    "title": item.get("title", ""),
+                    "messageCount": int(item.get("messageCount", 0)),
+                    "createdAt": int(item.get("createdAt", 0)),
+                    "updatedAt": int(item.get("updatedAt", 0)),
+                }
+            )
         return {"sessions": sessions}
     except Exception as e:
         logger.error(f"List sessions error: {e}")
@@ -1139,17 +1165,19 @@ def _list_agents(user_id: str, params: dict) -> dict:
         for item in response.get("Items", []):
             # Show user's own agents + shared agents
             if item.get("createdBy") == user_id or item.get("isShared", False):
-                agents.append({
-                    "agentId": item["agentId"],
-                    "name": item.get("name", ""),
-                    "description": item.get("description", ""),
-                    "icon": item.get("icon", "🤖"),
-                    "category": item.get("category", "custom"),
-                    "tools": item.get("tools", []),
-                    "isShared": item.get("isShared", False),
-                    "createdBy": item.get("createdBy", ""),
-                    "createdAt": int(item.get("createdAt", 0)),
-                })
+                agents.append(
+                    {
+                        "agentId": item["agentId"],
+                        "name": item.get("name", ""),
+                        "description": item.get("description", ""),
+                        "icon": item.get("icon", "🤖"),
+                        "category": item.get("category", "custom"),
+                        "tools": item.get("tools", []),
+                        "isShared": item.get("isShared", False),
+                        "createdBy": item.get("createdBy", ""),
+                        "createdAt": int(item.get("createdAt", 0)),
+                    }
+                )
         # Sort by createdAt desc
         agents.sort(key=lambda a: a["createdAt"], reverse=True)
         return {"agents": agents}
@@ -1213,7 +1241,14 @@ def _create_agent(user_id: str, params: dict) -> dict:
     is_shared = params.get("isShared", False)
 
     # Validate tools against available tool names
-    valid_tools = {"list_files", "read_file", "search_files", "get_volume_summary", "kb_search", "request_action_approval"}
+    valid_tools = {
+        "list_files",
+        "read_file",
+        "search_files",
+        "get_volume_summary",
+        "kb_search",
+        "request_action_approval",
+    }
     invalid = [t for t in tools if t not in valid_tools]
     if invalid:
         return {"error": f"Invalid tools: {invalid}. Valid: {sorted(valid_tools)}"}
@@ -1225,19 +1260,21 @@ def _create_agent(user_id: str, params: dict) -> dict:
     table = ddb.Table(AGENT_DIRECTORY_TABLE)
 
     try:
-        table.put_item(Item={
-            "agentId": agent_id,
-            "name": name,
-            "description": description,
-            "systemPrompt": system_prompt,
-            "tools": tools,
-            "icon": icon,
-            "category": category,
-            "isShared": is_shared,
-            "createdBy": user_id,
-            "createdAt": Decimal(str(now)),
-            "updatedAt": Decimal(str(now)),
-        })
+        table.put_item(
+            Item={
+                "agentId": agent_id,
+                "name": name,
+                "description": description,
+                "systemPrompt": system_prompt,
+                "tools": tools,
+                "icon": icon,
+                "category": category,
+                "isShared": is_shared,
+                "createdBy": user_id,
+                "createdAt": Decimal(str(now)),
+                "updatedAt": Decimal(str(now)),
+            }
+        )
         return {"success": True, "agentId": agent_id}
     except Exception as e:
         logger.error(f"Create agent error: {e}")
@@ -1342,15 +1379,19 @@ def _list_teams(user_id: str, params: dict) -> dict:
         teams = []
         for item in response.get("Items", []):
             if item.get("createdBy") == user_id or item.get("isShared", False):
-                teams.append({
-                    "teamId": item["teamId"],
-                    "name": item.get("name", ""),
-                    "description": item.get("description", ""),
-                    "agents": json.loads(item["agents"]) if isinstance(item.get("agents"), str) else item.get("agents", []),
-                    "isShared": item.get("isShared", False),
-                    "createdBy": item.get("createdBy", ""),
-                    "createdAt": int(item.get("createdAt", 0)),
-                })
+                teams.append(
+                    {
+                        "teamId": item["teamId"],
+                        "name": item.get("name", ""),
+                        "description": item.get("description", ""),
+                        "agents": json.loads(item["agents"])
+                        if isinstance(item.get("agents"), str)
+                        else item.get("agents", []),
+                        "isShared": item.get("isShared", False),
+                        "createdBy": item.get("createdBy", ""),
+                        "createdAt": int(item.get("createdAt", 0)),
+                    }
+                )
         teams.sort(key=lambda t: t["createdAt"], reverse=True)
         return {"teams": teams}
     except Exception as e:
@@ -1380,15 +1421,17 @@ def _create_team(user_id: str, params: dict) -> dict:
     table = ddb.Table(AGENT_TEAMS_TABLE)
 
     try:
-        table.put_item(Item={
-            "teamId": team_id,
-            "name": name,
-            "description": description,
-            "agents": json.dumps(agents, ensure_ascii=False),
-            "isShared": is_shared,
-            "createdBy": user_id,
-            "createdAt": Decimal(str(now)),
-        })
+        table.put_item(
+            Item={
+                "teamId": team_id,
+                "name": name,
+                "description": description,
+                "agents": json.dumps(agents, ensure_ascii=False),
+                "isShared": is_shared,
+                "createdBy": user_id,
+                "createdAt": Decimal(str(now)),
+            }
+        )
         return {"success": True, "teamId": team_id}
     except Exception as e:
         logger.error(f"Create team error: {e}")

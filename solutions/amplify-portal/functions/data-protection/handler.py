@@ -698,9 +698,7 @@ def _arp_block_nfs_ip(event):
         return {"success": False, "error": "clientIp is required"}
 
     try:
-        result = arp.block_nfs_ip(
-            svm_name=svm, policy_name=policy_name, client_ip=client_ip
-        )
+        result = arp.block_nfs_ip(svm_name=svm, policy_name=policy_name, client_ip=client_ip)
         return {"success": True, **result}
     except Exception as e:
         logger.error(f"block_nfs_ip failed: {e}")
@@ -724,9 +722,7 @@ def _arp_unblock_nfs_ip(event):
         return {"success": False, "error": "clientIp is required"}
 
     try:
-        result = arp.unblock_nfs_ip(
-            svm_name=svm, policy_name=policy_name, client_ip=client_ip
-        )
+        result = arp.unblock_nfs_ip(svm_name=svm, policy_name=policy_name, client_ip=client_ip)
         return {"success": True, **result}
     except Exception as e:
         logger.error(f"unblock_nfs_ip failed: {e}")
@@ -842,9 +838,7 @@ def _arp_disconnect_sessions(event):
         return {"success": False, "error": "At least one of user or clientIp is required"}
 
     try:
-        result = arp.disconnect_smb_sessions(
-            svm_name=svm, user=user, client_ip=client_ip
-        )
+        result = arp.disconnect_smb_sessions(svm_name=svm, user=user, client_ip=client_ip)
         return {"success": True, **result}
     except Exception as e:
         logger.error(f"disconnect_sessions failed: {e}")

@@ -11,6 +11,7 @@ Limitations:
   - ZIP file is stored in a temp bucket with 1-day lifecycle expiration
   - Presigned URL expires in 1 hour (configurable)
 """
+
 from __future__ import annotations
 
 import io
@@ -98,7 +99,7 @@ def handler(event, context):
         if total_size > MAX_TOTAL_BYTES:
             return {
                 "success": False,
-                "error": f"Total size ({total_size // (1024*1024)} MB) exceeds maximum ({MAX_TOTAL_BYTES // (1024*1024)} MB).",
+                "error": f"Total size ({total_size // (1024 * 1024)} MB) exceeds maximum ({MAX_TOTAL_BYTES // (1024 * 1024)} MB).",
                 "downloadUrl": None,
             }
 
@@ -113,7 +114,7 @@ def handler(event, context):
             for obj in objects:
                 key = obj["Key"]
                 # Strip the prefix for relative paths in ZIP
-                relative_path = key[len(prefix):] if key.startswith(prefix) else key
+                relative_path = key[len(prefix) :] if key.startswith(prefix) else key
                 if not relative_path:
                     continue
 

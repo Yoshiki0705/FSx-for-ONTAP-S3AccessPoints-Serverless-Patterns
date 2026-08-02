@@ -1,8 +1,10 @@
-# AWS Support Case 177840169000484 — 返信案
+# AWS Support 返信案 — Athena OutputLocation への FSx for ONTAP S3 AP 指定
 
-## 宛先: Ryo M. 様
+> ケース番号および担当エンジニア名は本リポジトリには記載しません（`.private/` で追跡）。
 
 ---
+
+お世話になっております。
 
 お世話になっております。
 ご検証いただきありがとうございます。
