@@ -182,7 +182,7 @@ graph TB
 
 | 儲存庫 | 摘要 |
 |---|---|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 權限感知 RAG 聊天機器人 (CDK + Next.js + ECS) |
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 權限感知 RAG 聊天機器人 (CDK + Next.js + ECS) | <!-- allow:naming (external repo name) -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | 湖倉整合 (Databricks, Snowflake, Athena, Glue, EMR) |
 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 遷移 |
 

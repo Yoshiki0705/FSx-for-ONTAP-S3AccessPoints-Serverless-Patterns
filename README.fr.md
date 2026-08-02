@@ -182,7 +182,7 @@ Détails : [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.en.md) | [Co
 
 | Dépôt | Résumé |
 |---|---|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Chatbot RAG avec gestion des permissions (CDK + Next.js + ECS) |
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | Chatbot RAG avec gestion des permissions (CDK + Next.js + ECS) | <!-- allow:naming (external repo name) -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | Intégration Lakehouse (Databricks, Snowflake, Athena, Glue, EMR) |
 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | Migration VMware → EC2 + FSx for ONTAP |
 

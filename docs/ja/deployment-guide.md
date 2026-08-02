@@ -448,7 +448,7 @@ cat /tmp/output.json | jq .
 | Lambda Duration | `AWS/Lambda` | タイムアウトの 80% 超過 |
 | Step Functions ExecutionsFailed | `AWS/States` | 15 分間で > 0 |
 | SQS ApproximateAgeOfOldestMessage | `AWS/SQS` | > 3600 秒（FPolicy） |
-| Custom: FilesProcessed | `FSxN/S3AP` | 2 連続期間で = 0 |
+| Custom: FilesProcessed | `FSxN/S3AP` | 2 連続期間で = 0 | <!-- allow:naming (existing CloudWatch namespace) -->
 
 ### 月次レビューチェックリスト
 
