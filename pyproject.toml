@@ -40,7 +40,7 @@ dev = [
     "bandit==1.9.4",
 ]
 xray = [
-    "aws-xray-sdk==2.14.0",
+    "aws-xray-sdk==2.15.0",
 ]
 
 [project.urls]
