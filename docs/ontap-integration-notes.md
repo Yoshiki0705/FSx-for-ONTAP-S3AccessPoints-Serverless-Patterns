@@ -115,6 +115,9 @@ KNFSD と S3 AP は**相補的**なアクセスパスとして同一 FSx for ONT
 
 > **参考**: 詳細な比較は [代替アーキテクチャ比較](./comparison-alternatives.md) の「NFS Read Cache 比較」セクション、深掘りアーキテクチャは [KNFSD + S3 AP Dual-Path Architecture](./knfsd-s3ap-dual-path-architecture.md) を参照。
 
+> **SMB 移行に関する補足**: Windows ファイルサーバーからの ACL 付きデータ移行で、コピー実行ユーザーに
+> ACL 上の権限がないファイルを扱う方法は [Backup Operators 特権による ACL 付きデータコピー](./smb-acl-migration-backup-operators.md) を参照。
+
 ## Data Protection Notes
 
 | 成果物 | Snapshot 対象 | SnapMirror 対象 | 保持期間 |
