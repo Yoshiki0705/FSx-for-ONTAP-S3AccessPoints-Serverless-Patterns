@@ -1,4 +1,5 @@
 """Test KNFSD File Cache hit/miss behavior."""
+
 from __future__ import annotations
 
 import time
@@ -25,9 +26,7 @@ class TestCacheBehavior:
             InstanceId=instance_id,
         )
         if result["Status"] != "Success":
-            pytest.fail(
-                f"SSM command failed: {result.get('StandardErrorContent', 'unknown')}"
-            )
+            pytest.fail(f"SSM command failed: {result.get('StandardErrorContent', 'unknown')}")
         return result["StandardOutputContent"].strip()
 
     def test_cache_miss_then_hit(self, ssm_client, knfsd_config):
@@ -90,9 +89,7 @@ umount $MOUNT 2>/dev/null || true
         assert miss_ms > 0, "Cache miss time should be > 0"
         assert hit_ms > 0, "Cache hit time should be > 0"
         # Cache hit should be at least 2x faster (conservative threshold)
-        assert hit_ms < miss_ms, (
-            f"Cache hit ({hit_ms}ms) should be faster than miss ({miss_ms}ms)"
-        )
+        assert hit_ms < miss_ms, f"Cache hit ({hit_ms}ms) should be faster than miss ({miss_ms}ms)"
 
     def test_multiple_reads_stay_cached(self, ssm_client, knfsd_config):
         """Multiple reads of same file should all be cache hits after first."""
@@ -140,6 +137,5 @@ umount $MOUNT 2>/dev/null || true
         first_read = times[0]
         cached_avg = sum(times[1:]) / len(times[1:])
         assert cached_avg < first_read, (
-            f"Cached reads avg ({cached_avg:.0f}ms) should be faster than "
-            f"first read ({first_read}ms)"
+            f"Cached reads avg ({cached_avg:.0f}ms) should be faster than first read ({first_read}ms)"
         )

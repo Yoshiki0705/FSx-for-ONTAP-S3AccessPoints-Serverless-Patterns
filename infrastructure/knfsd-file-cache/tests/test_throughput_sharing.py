@@ -1,4 +1,5 @@
 """Test FSx for ONTAP throughput sharing between KNFSD and S3 AP."""
+
 from __future__ import annotations
 
 import time
@@ -82,14 +83,14 @@ umount $MOUNT 2>/dev/null || true
         time.sleep(60)  # Wait for CloudWatch metric publication
 
         after = datetime.now(timezone.utc)
-        total_read = self._get_fsxn_read_bytes(
-            cloudwatch_client, fsxn_id, now, after
-        )
+        total_read = self._get_fsxn_read_bytes(cloudwatch_client, fsxn_id, now, after)
 
         # We wrote 50 MB of test data. If cache works, FSx should see
         # ~50 MB (first pass) but NOT another 50 MB (second pass was cached).
         # With some tolerance for other traffic:
-        assert total_read is not None, "Could not retrieve FSx DataReadBytes metric"
+        assert total_read is not None, (
+            f"Could not retrieve FSx DataReadBytes metric (baseline for the 5 minutes before the test: {baseline})"
+        )
 
     def test_s3ap_accessible_during_knfsd_burst(self, s3_client, knfsd_config):
         """S3 AP should remain accessible while KNFSD is actively caching."""
