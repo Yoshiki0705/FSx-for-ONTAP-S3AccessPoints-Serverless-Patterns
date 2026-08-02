@@ -21,5 +21,9 @@
     }
   },
   "include": ["src", "tests"],
-  "exclude": ["amplify_outputs.json"]
+  // tests/e2e holds Playwright specs. @playwright/test is intentionally not a
+  // package.json dependency (the e2e workflow provisions it via npx), so those
+  // specs are type-checked and run by Playwright's own runner instead. This
+  // matches playwright.config.ts, which already sits outside the include paths.
+  "exclude": ["amplify_outputs.json", "tests/e2e"]
 }

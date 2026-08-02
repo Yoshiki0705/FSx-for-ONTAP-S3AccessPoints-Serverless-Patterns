@@ -46,8 +46,10 @@ function renderApp() {
 describe("App", () => {
   it("renders the portal title", () => {
     renderApp();
+    // Scope to the h1: the welcome tour also renders an h2 that contains
+    // "Welcome to File Portal", which would otherwise match ambiguously.
     expect(
-      screen.getByRole("heading", { name: /File Portal/i })
+      screen.getByRole("heading", { level: 1, name: /File Portal/i })
     ).toBeInTheDocument();
   });
 
