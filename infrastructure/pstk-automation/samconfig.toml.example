@@ -1,0 +1,25 @@
+# SAM CLI Configuration — FSx for ONTAP PSTK Automation
+# Copy to samconfig.toml and fill in your values
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "pstk-automation"
+resolve_s3 = true
+s3_prefix = "pstk-automation"
+region = "ap-northeast-1"
+capabilities = "CAPABILITY_NAMED_IAM"
+confirm_changeset = true
+
+parameter_overrides = [
+    "ExecutionMode=Lambda",
+    "VpcId=vpc-0123456789abcdef0",
+    "SubnetId=subnet-0123456789abcdef0",
+    "FsxMgmtEndpointIp=10.0.1.100",
+    "SvmName=svm1",
+    "FsxAdminSecretArn=arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:fsxn-admin-credentials-XXXXXX",
+    "EnableApiGateway=true"
+]
+
+[default.build.parameters]
+use_container = false
