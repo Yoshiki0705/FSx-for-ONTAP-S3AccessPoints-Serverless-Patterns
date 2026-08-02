@@ -17,6 +17,7 @@ AWS はビルディングブロック（S3 API、Cognito、AppSync）を提供�
 - **[実装ガイド](docs/IMPLEMENTATION.md)** — アーキテクチャ、設定ファイル、コンポーネント構成、デプロイ、変更ログ
 - **[管理者デモガイド](../../docs/en/admin-resource-management-demo.md)** — リソース管理 + ARP/AI の E2E デモシナリオ
 - **[AI Agent デモガイド](docs/ai-agent-demo-guide.en.md)** — AI Agent Chat、セマンティック検索、ガードレール、HITL
+- **[構成図インデックス](../../docs/architecture-diagrams.md)** — 全 13 枚の構成図（ライトテーマ / ダークテーマ）
 
 ## 主な機能
 
@@ -43,15 +44,23 @@ AWS はビルディングブロック（S3 API、Cognito、AppSync）を提供�
 
 ## アーキテクチャ
 
+![Amplify Gen2 による AI 処理ポータルの構成。Web ブラウザと Amazon Quick から AWS Amplify・Amazon Cognito・Amazon Bedrock AgentCore を経由し、AppSync GraphQL API から VPC 外の Lambda を呼び出す。Lambda は Bedrock / Rekognition / Athena / Textract / Comprehend を利用し、S3 Access Point 経由で FSx for ONTAP ボリュームを読み書きする。監査ログは S3 Object Lock に WORM 保存される](../../docs/images/amplify-vpc-split.svg)
+
+*図: Amplify Gen2 ポータルの構成 — VPC 外の Lambda が S3 Access Point 経由で FSx for ONTAP ボリュームを読み書きする*
+
+> 上図はライトテーマ（白背景）です。ダークモードで見たい場合は [ダークテーマ版](../../docs/images/amplify-vpc-split-dark.svg)をご利用ください。全 13 枚の図をライト / ダーク両方のリンク付きでまとめた [構成図インデックス](../../docs/architecture-diagrams.md) もあります。
+
+以下は同じ構成をテキストで表したものです。
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Amplify Gen2                                           │
-│  ┌──────────┐  ┌─────────────────────────────────────┐  │
-│  │ Cognito  │  │ AppSync GraphQL API                 │  │
-│  │ Auth     │  │  startProcessing → Step Functions   │  │
-│  │ +MFA     │  │  getJobStatus → Step Functions      │  │
-│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │  │
-│  └──────────┘  └──────────────┬──────────────────────┘  │
+┌──────────────────────────────────────────────────────────┐
+│  Amplify Gen2                                            │
+│  ┌──────────┐  ┌─────────────────────────────────────┐   │
+│  │ Cognito  │  │ AppSync GraphQL API                 │   │
+│  │ Auth     │  │  startProcessing → Step Functions   │   │
+│  │ +MFA     │  │  getJobStatus → Step Functions      │   │
+│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │   │
+│  └──────────┘  └──────────────┬──────────────────────┘   │
 │                               │                          │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │ CDK (in data stack)                                 │ │

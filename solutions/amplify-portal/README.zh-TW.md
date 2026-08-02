@@ -17,6 +17,7 @@ AWS 提供了建構模組（S3 API、Cognito、AppSync），但沒有提供整�
 - **[實作指南](docs/IMPLEMENTATION.md)** — 架構、設定檔、元件結構、部署、變更日誌
 - **[管理員示範指南](../../docs/en/admin-resource-management-demo.md)** — 資源管理 + ARP/AI E2E 示範場景
 - **[AI Agent 示範指南](docs/ai-agent-demo-guide.en.md)** — AI Agent Chat、語意搜尋、護欄、HITL
+- **[架構圖索引](../../docs/architecture-diagrams.en.md)** — 全部 13 張圖（淺色主題 / 深色主題）
 
 ## 主要功能
 
@@ -43,15 +44,23 @@ AWS 提供了建構模組（S3 API、Cognito、AppSync），但沒有提供整�
 
 ## 架構
 
+![Amplify Gen2 AI 處理門戶架構。Web 瀏覽器與 Amazon Quick 經由 AWS Amplify、Amazon Cognito、Amazon Bedrock AgentCore，由 AppSync GraphQL API 呼叫 VPC 外的 ARM64 Lambda 函式。這些函式使用 Bedrock / Rekognition / Athena / Textract / Comprehend，並透過 S3 Access Point 讀寫 FSx for ONTAP 卷冊。稽核日誌以 WORM 方式寫入 S3 Object Lock](../../docs/images/amplify-vpc-split-en.svg)
+
+*圖: Amplify Gen2 門戶架構 — VPC 外的 Lambda 透過 S3 Access Point 讀寫 FSx for ONTAP 卷冊*
+
+> 上圖為淺色主題（白色背景）。若您偏好深色模式，請使用[深色主題版本](../../docs/images/amplify-vpc-split-en-dark.svg)。[架構圖索引](../../docs/architecture-diagrams.en.md)彙整了全部 13 張圖，並同時提供淺色與深色連結。
+
+以下是同一架構的文字表示。
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Amplify Gen2                                           │
-│  ┌──────────┐  ┌─────────────────────────────────────┐  │
-│  │ Cognito  │  │ AppSync GraphQL API                 │  │
-│  │ Auth     │  │  startProcessing → Step Functions   │  │
-│  │ +MFA     │  │  getJobStatus → Step Functions      │  │
-│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │  │
-│  └──────────┘  └──────────────┬──────────────────────┘  │
+┌──────────────────────────────────────────────────────────┐
+│  Amplify Gen2                                            │
+│  ┌──────────┐  ┌─────────────────────────────────────┐   │
+│  │ Cognito  │  │ AppSync GraphQL API                 │   │
+│  │ Auth     │  │  startProcessing → Step Functions   │   │
+│  │ +MFA     │  │  getJobStatus → Step Functions      │   │
+│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │   │
+│  └──────────┘  └──────────────┬──────────────────────┘   │
 │                               │                          │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │ CDK (in data stack)                                 │ │

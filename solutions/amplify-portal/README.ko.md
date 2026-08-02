@@ -17,6 +17,7 @@ AWS는 빌딩 블록(S3 API, Cognito, AppSync)을 제공하지만, FSx for ONTAP
 - **[구현 가이드](docs/IMPLEMENTATION.md)** — 아키텍처, 설정 파일, 컴포넌트 구조, 배포, 변경 로그
 - **[관리자 데모 가이드](../../docs/en/admin-resource-management-demo.md)** — 리소스 관리 + ARP/AI E2E 데모 시나리오
 - **[AI Agent 데모 가이드](docs/ai-agent-demo-guide.en.md)** — AI Agent Chat, 시맨틱 검색, 가드레일, HITL
+- **[아키텍처 다이어그램 색인](../../docs/architecture-diagrams.en.md)** — 13개 그림 전체(라이트 테마 / 다크 테마)
 
 ## 주요 기능
 
@@ -43,15 +44,23 @@ AWS는 빌딩 블록(S3 API, Cognito, AppSync)을 제공하지만, FSx for ONTAP
 
 ## 아키텍처
 
+![Amplify Gen2 AI 처리 포털 아키텍처. 웹 브라우저와 Amazon Quick이 AWS Amplify, Amazon Cognito, Amazon Bedrock AgentCore를 거치고, AppSync GraphQL API가 VPC 외부 ARM64 Lambda 함수를 호출한다. 이 함수들은 Bedrock / Rekognition / Athena / Textract / Comprehend를 사용하며 S3 Access Point를 통해 FSx for ONTAP 볼륨을 읽고 쓴다. 감사 로그는 S3 Object Lock에 WORM으로 저장된다](../../docs/images/amplify-vpc-split-en.svg)
+
+*그림: Amplify Gen2 포털 아키텍처 — VPC 외부의 Lambda가 S3 Access Point를 통해 FSx for ONTAP 볼륨을 읽고 쓴다*
+
+> 위 그림은 라이트 테마(흰 배경)입니다. 다크 모드를 선호하면 [다크 테마 버전](../../docs/images/amplify-vpc-split-en-dark.svg)을 이용하세요. 13개 그림 전체를 라이트 / 다크 링크와 함께 정리한 [아키텍처 다이어그램 색인](../../docs/architecture-diagrams.en.md)도 있습니다.
+
+동일한 아키텍처를 텍스트로 표현한 것입니다.
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Amplify Gen2                                           │
-│  ┌──────────┐  ┌─────────────────────────────────────┐  │
-│  │ Cognito  │  │ AppSync GraphQL API                 │  │
-│  │ Auth     │  │  startProcessing → Step Functions   │  │
-│  │ +MFA     │  │  getJobStatus → Step Functions      │  │
-│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │  │
-│  └──────────┘  └──────────────┬──────────────────────┘  │
+┌──────────────────────────────────────────────────────────┐
+│  Amplify Gen2                                            │
+│  ┌──────────┐  ┌─────────────────────────────────────┐   │
+│  │ Cognito  │  │ AppSync GraphQL API                 │   │
+│  │ Auth     │  │  startProcessing → Step Functions   │   │
+│  │ +MFA     │  │  getJobStatus → Step Functions      │   │
+│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │   │
+│  └──────────┘  └──────────────┬──────────────────────┘   │
 │                               │                          │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │ CDK (in data stack)                                 │ │
