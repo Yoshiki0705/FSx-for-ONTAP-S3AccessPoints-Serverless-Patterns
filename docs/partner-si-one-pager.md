@@ -17,7 +17,7 @@
 
 ## When — いつ使うか
 
-以下の条件に当てはまる顧客に提案可能:
+以下の条件に当てはまる導入先に提案可能:
 
 - ✅ FSx for ONTAP にファイルデータを保有している
 - ✅ ファイルデータに対するサーバーレス自動処理が必要
@@ -52,11 +52,11 @@ Step 4: Go/No-Go 基準で評価
 | ガバナンス | [docs/governance-checklist.md](governance-checklist.md) |
 | 本番化基準 | [docs/production-readiness.md](production-readiness.md) |
 | ベンチマーク | [docs/s3ap-benchmark-results.md](s3ap-benchmark-results.md) |
-| 顧客ヒアリング | [docs/customer-discovery-template.md](customer-discovery-template.md) |
+| 要件ヒアリング | [docs/customer-discovery-template.md](customer-discovery-template.md) |
 | トリガー選択 | [docs/trigger-mode-decision-guide.md](trigger-mode-decision-guide.md) |
 | 公共セクター | [docs/public-sector-adoption-roadmap.md](public-sector-adoption-roadmap.md) |
 | ワークショップ | [docs/workshop-guide.md](workshop-guide.md) |
 
 ---
 
-> **注意**: 本リポジトリは「設計判断を学ぶためのリファレンス実装」です。本番環境への適用には顧客固有のセキュリティレビュー、コンプライアンス評価、性能検証が必要です。
+> **注意**: 本リポジトリは「設計判断を学ぶためのリファレンス実装」です。本番環境への適用には導入先固有のセキュリティレビュー、コンプライアンス評価、性能検証が必要です。

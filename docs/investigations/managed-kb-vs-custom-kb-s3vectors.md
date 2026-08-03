@@ -20,7 +20,7 @@ AWS Summit NYC 2026 で **Amazon Bedrock Managed Knowledge Base** が GA にな�
 |------|----------------------|-------------------------------|
 | ベクトルストア | AWS 管理（選択不可、最適化済み） | **S3 Vectors を明示選択** |
 | ベクトルストアコスト | 一体型（価格非公開、高め見込み） | **最大 90% 削減**（S3 Vectors 公式ブログ） |
-| データコネクタ | S3, SharePoint, Confluence, Google Drive, OneDrive, Web Crawler (6種) | S3 (S3 AP 経由で FSx ONTAP 接続) |
+| データコネクタ | S3, SharePoint, Confluence, Google Drive, OneDrive, Web Crawler (6種) | S3 (S3 AP 経由で FSx for ONTAP 接続) |
 | Smart Parsing | マルチフォーマット自動判別 ✅ | Textract + Lambda で自前実装 |
 | Agentic Retriever | マルチステップ・条件分岐検索 ✅ | Step Functions + 条件分岐で自前実装 |
 | AgentCore Gateway 統合 | ネイティブ（コネクタターゲット） | MCP ツールとして手動接続 |
@@ -34,7 +34,7 @@ AWS Summit NYC 2026 で **Amazon Bedrock Managed Knowledge Base** が GA にな�
 | 権限変更の反映 | 非対応（推測） | **再同期ワークフロー** で対応 |
 | リージョン | 主要リージョン（GA） | **任意リージョン** (S3 Vectors GA 済み) |
 | コスト透明性 | ブラックボックス | **各コンポーネント個別計測** |
-| FSx ONTAP S3 AP 統合 | S3 コネクタ経由で可能 | **検証済み・本番運用実績** |
+| FSx for ONTAP S3 AP 統合 | S3 コネクタ経由で可能 | **検証済み・本番運用実績** |
 
 ---
 
@@ -50,9 +50,9 @@ S3 Vectors は OpenSearch Serverless 比で最大 90% のコスト削減を実�
 
 本プロジェクトの核心は **NTFS ACL / AD Group ベースの権限フィルタリング**。Managed KB がこの粒度の metadata filtering をサポートする保証がない。S3 Vectors では metadata に `department`, `owner`, `allowed_groups`, `denied_principals` を自由に付与し、検索時にフィルタできる。
 
-#### 3.3 FSx ONTAP ライフサイクルとの連動
+#### 3.3 FSx for ONTAP ライフサイクルとの連動
 
-ファイル削除・権限変更・Snapshot 復元など、FSx ONTAP 固有のイベントに対して即座にベクトルインデックスを更新する必要がある。Managed KB のインデックス更新タイミングは AWS 管理であり、FPolicy イベント → 即時反映の要件を満たせない可能性がある。
+ファイル削除・権限変更・Snapshot 復元など、FSx for ONTAP 固有のイベントに対して即座にベクトルインデックスを更新する必要がある。Managed KB のインデックス更新タイミングは AWS 管理であり、FPolicy イベント → 即時反映の要件を満たせない可能性がある。
 
 #### 3.4 Embedding / Chunking の制御
 
@@ -90,7 +90,7 @@ Managed KB を採用しないが、その設計思想から以下を Custom KB �
 
 ## 6. Partner/SI 向けガイダンス
 
-### 顧客に Managed KB を推奨するケース
+### 導入先に Managed KB を推奨するケース
 
 - 小〜中規模のドキュメント QA（< 10,000 ファイル）
 - ACL 制御が不要、またはアプリケーション層で十分
@@ -98,7 +98,7 @@ Managed KB を採用しないが、その設計思想から以下を Custom KB �
 - 最速で RAG PoC を立ち上げたい（1-2 日）
 - 運用チームが小さく、ベクトルストアの管理を避けたい
 
-### 顧客に Custom KB + S3 Vectors を推奨するケース
+### 導入先に Custom KB + S3 Vectors を推奨するケース
 
 - FSx for ONTAP 上のファイルが主要データソース
 - NTFS ACL / AD Group ベースの権限制御が必須
@@ -135,6 +135,6 @@ Q4: コスト最適化が最重要か？
 
 - [AgentCore Web Search 統合設計](./agentcore-web-search-fsxn-integration.md)
 - [AWS Context メタデータ Graph 連携](./aws-context-fsxn-metadata-graph.md)
-- [S3 Annotations × FSx S3 AP 互換性](./s3-annotations-fsxn-compatibility.md)
+- [S3 Annotations × FSx for ONTAP S3 AP 互換性](./s3-annotations-fsxn-compatibility.md)
 - [コスト比較: S3 AP vs 代替アプローチ](../comparison-alternatives.md)
 - [S3 Vectors + Bedrock KB: Building cost-effective RAG](https://aws.amazon.com/blogs/machine-learning/building-cost-effective-rag-applications-with-amazon-bedrock-knowledge-bases-and-amazon-s3-vectors/) (AWS Blog)

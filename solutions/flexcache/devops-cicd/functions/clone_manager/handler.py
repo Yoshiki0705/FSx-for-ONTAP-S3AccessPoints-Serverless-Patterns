@@ -1,6 +1,6 @@
 """FlexClone Manager — ONTAP REST API で FlexClone を作成・削除する Lambda。
 
-EBS Volume Clones と同様の即時コピー体験を提供するが、以下の点で差別化:
+EBS Volume Clones と同様の即時コピー体験を提供するが、以下の点が異なる:
 - スペース効率: 変更ブロックのみ消費（EBS Clone はフルコピー）
 - S3 API アクセス: S3 Access Point 経由でサーバーレスアクセス可能
 - クロス AZ: EBS Clone は same-AZ 制約あり、S3AP は VPC 外からもアクセス可能
