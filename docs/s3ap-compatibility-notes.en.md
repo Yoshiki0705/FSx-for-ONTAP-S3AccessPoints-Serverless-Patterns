@@ -115,7 +115,7 @@ Not all bucket-level features or integration patterns apply directly:
 - Bucket lifecycle policies
 - Bucket versioning
 - Object Lock (on the S3AP itself)
-- Presigned URLs (**Listed as "Not supported"** — but observed working; see [Presigned URL Support](#presigned-url-support) for AWS Support clarification)
+- Presigned URLs (**Listed as "Not supported"** — but observed working; AWS documentation correction submitted, not yet published. See [Presigned URL Support](#presigned-url-support) for ONTAP version requirements and details)
 
 ### WORM / Immutable Storage Alternatives
 
@@ -231,7 +231,7 @@ If annotations were supported through an FSx for ONTAP S3 AP, the following woul
 
 ## Presigned URL Support
 
-> ⚠️ **Production Warning**: AWS Support explicitly states that operations marked "Not supported" should NOT be relied upon for production workloads, even when they return success today. Design alternatives for any workflow that requires presigned URL access to FSx for ONTAP S3 Access Points.
+> ⚠️ **Production Warning**: The published AWS compatibility table still lists `Presign — Not supported`. In a later response, AWS Support confirmed that presigned URLs are supported at the ONTAP layer (subject to version requirements) and has submitted a documentation correction, but **that correction is not yet published**. Until the published documentation is updated, design alternatives for any production workload that would depend on presigned URLs (see "Additional AWS Support Confirmation" below).
 
 ### Status: Listed as "Not supported" — but observed working
 
@@ -252,6 +252,20 @@ The AWS documentation compatibility table lists `Presign — Not supported`, but
 | PutObject | Not tested | — | May work based on same principle as GetObject |
 | HeadObject | Not tested | — | Same as above |
 
+### Additional AWS Support Confirmation (ONTAP Version Requirements)
+
+In a subsequent response, AWS Support confirmed — citing NetApp KB articles — that **ONTAP S3 does support presigned URLs**. The supported signature versions depend on the ONTAP release.
+
+| ONTAP version | Presigned URL signature versions |
+|---------------|----------------------------------|
+| 9.16.1 and later | v4 + v2 presigned URLs |
+| 9.11.1 and later | v4 presigned URLs only |
+| Earlier than 9.11.1 | Presigned URLs not supported |
+
+- NetApp recommends using v4 signatures where possible
+- This repository's verification environment runs ONTAP 9.17.1P6, which satisfies both thresholds
+- This confirmation concerns **ONTAP-layer** behavior. Until the AWS compatibility table for FSx for ONTAP S3 Access Points is updated, the production use warning below remains in effect
+
 ### ⚠️ Production Use Warning
 
 Clear guidance from AWS Support:
@@ -270,7 +284,7 @@ Reasons:
 |---------|--------|----------|
 | GetObject, PutObject, ListObjectsV2 | **Supported** | Build freely |
 | Conditional writes (If-None-Match) | **Blocked** | Cannot use (returns NotImplemented) |
-| Presigned URLs | **Not supported (doc)** | Do not depend on. Design alternatives |
+| Presigned URLs | **Not supported (doc) / correction submitted, unpublished** | Do not depend on until the published docs are corrected. Design alternatives (ONTAP 9.11.1+ supports v4) |
 | ListObjectVersions | **Not supported (doc)** | Use ListObjectsV2 instead |
 
 ### Presigned URL Alternatives
@@ -289,14 +303,19 @@ Ways to provide time-limited file access without depending on presigned URLs:
 AWS Support has escalated documentation improvements to the FSx for ONTAP service team:
 1. Removal or restructuring of the "Presign" row (since it is not an API)
 2. Clarification distinguishing "Not supported + hard-blocked" (returns error) from "Not supported + may incidentally work" (no guarantee)
+3. Reflecting presigned URL support by ONTAP release (v4 from 9.11.1, v2 from 9.16.1)
 
-> **Content was rephrased for compliance with licensing restrictions. Source: AWS Support correspondence (May 2026).**
+**Current status**: AWS Support has submitted the documentation correction to the internal documentation team and work is in progress. However, **the correction has not yet been reflected in the published documentation**. Update this section once the published table changes.
+
+> **Content was rephrased for compliance with licensing restrictions. Sources: AWS Support correspondence (May–July 2026) and the NetApp KB articles linked below.**
 
 ### AWS Documentation Reference
 
 - [Access point compatibility — FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
-  - Compatibility table lists `Presign — Not supported` (documentation improvement escalation in progress)
+  - Compatibility table lists `Presign — Not supported` (correction submitted, not yet published)
 - [re:Post: FSx for ONTAP S3 Access Points — Presigned URL behavior clarification](https://repost.aws/questions/QUtD1NGAd6RWGIxGlBRX4xpw)
+- [NetApp KB: What version of ONTAP support pre-signed URLs for S3 bucket](https://kb.netapp.com/on-prem/ontap/da/S3/S3-KBs/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket)
+- [NetApp KB: Does ONTAP S3 support AWSv2 signatures?](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/Does_ONTAP_S3_support_AWSv2_signatures)
 
 ---
 
