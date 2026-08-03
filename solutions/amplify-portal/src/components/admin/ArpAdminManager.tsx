@@ -293,27 +293,27 @@ export function ArpAdminManager() {
               <td className="action-cell">
                 {vol.state === "disabled" && (
                   <>
-                    <button onClick={() => handleStateChange(vol, "enabled")} className="btn-sm" title="ARP/AI (no learning)">AI</button>
-                    <button onClick={() => handleStateChange(vol, "dry_run")} className="btn-sm" title="Classic ARP (learning)">Learn</button>
+                    <button onClick={() => handleStateChange(vol, "enabled")} className="btn-sm" title={t("arpModeNoLearning")}>AI</button>
+                    <button onClick={() => handleStateChange(vol, "dry_run")} className="btn-sm" title={t("arpModeClassic")}>Learn</button>
                   </>
                 )}
                 {vol.state === "dry_run" && (
-                  <button onClick={() => handleStateChange(vol, "enabled")} className="btn-sm" title="Activate">{t("rmArpActivate")}</button>
+                  <button onClick={() => handleStateChange(vol, "enabled")} className="btn-sm" title={t("arpActivate")}>{t("rmArpActivate")}</button>
                 )}
                 {vol.state === "enabled" && (
-                  <button onClick={() => handleStateChange(vol, "paused")} className="btn-sm" title="Pause">⏸</button>
+                  <button onClick={() => handleStateChange(vol, "paused")} className="btn-sm" title={t("arpPause")}>⏸</button>
                 )}
                 {vol.state === "paused" && (
-                  <button onClick={() => handleStateChange(vol, "enabled")} className="btn-sm" title="Resume">▶</button>
+                  <button onClick={() => handleStateChange(vol, "enabled")} className="btn-sm" title={t("arpResume")}>▶</button>
                 )}
                 {vol.state !== "disabled" && (
-                  <button onClick={() => handleStateChange(vol, "disabled")} className="btn-sm btn-danger" title="Disable">✕</button>
+                  <button onClick={() => handleStateChange(vol, "disabled")} className="btn-sm btn-danger" title={t("arpDisable")}>✕</button>
                 )}
                 {vol.attackProbability !== "none" && (
-                  <button onClick={() => handleViewSuspects(vol)} className="btn-sm" title="View suspects">🔍</button>
+                  <button onClick={() => handleViewSuspects(vol)} className="btn-sm" title={t("arpViewSuspects")}>🔍</button>
                 )}
                 {vol.state === "enabled" && (
-                  <button onClick={() => handleSurgeAsNormal(vol)} className="btn-sm" title="Mark surge as normal">📊</button>
+                  <button onClick={() => handleSurgeAsNormal(vol)} className="btn-sm" title={t("arpMarkSurgeNormal")}>📊</button>
                 )}
               </td>
             </tr>

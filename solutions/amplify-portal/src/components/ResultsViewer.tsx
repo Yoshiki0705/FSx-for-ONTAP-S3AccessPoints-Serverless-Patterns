@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { FlexCloneStatus } from "./FlexCloneStatus";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -31,6 +32,7 @@ interface JobResult {
  * Auto-polls every 5 seconds while status is RUNNING.
  */
 export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }: ResultsViewerProps) {
+  const { t } = useTranslation();
   const [result, setResult] = useState<JobResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,9 +74,9 @@ export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }:
   if (!executionArn) {
     return (
       <div className="results-viewer">
-        <h2>Results</h2>
+        <h2>{t("labelResults")}</h2>
         <div className="empty-state">
-          No active job. Submit a processing job from the Process tab.
+          {t("rvNoActiveJob")}
         </div>
       </div>
     );
@@ -95,10 +97,10 @@ export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }:
 
   return (
     <div className="results-viewer">
-      <h2>Results</h2>
+      <h2>{t("labelResults")}</h2>
 
       {inputPrefix && onNavigateToFolder && (
-        <nav className="results-breadcrumb" aria-label="Processed folder">
+        <nav className="results-breadcrumb" aria-label={t("rvFolderAria")}>
           <span>Processed: </span>
           <button
             className="breadcrumb-link"
@@ -119,23 +121,23 @@ export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }:
               {result.status}
             </span>
             {result.status === "RUNNING" && (
-              <span className="polling-indicator">Polling every 5s...</span>
+              <span className="polling-indicator">{t("rvPolling")}</span>
             )}
           </div>
 
           <dl className="result-details">
-            <dt>Execution ARN</dt>
+            <dt>{t("rvExecutionArn")}</dt>
             <dd className="arn">{result.executionArn}</dd>
 
-            <dt>Started</dt>
+            <dt>{t("labelStarted")}</dt>
             <dd>{result.startDate ? new Date(parseFloat(result.startDate) * 1000).toLocaleString() : "-"}</dd>
 
-            <dt>Completed</dt>
+            <dt>{t("labelCompleted")}</dt>
             <dd>{result.stopDate ? new Date(parseFloat(result.stopDate) * 1000).toLocaleString() : "-"}</dd>
 
             {dataClassification && (
               <>
-                <dt>Data Classification</dt>
+                <dt>{t("rvDataClassification")}</dt>
                 <dd className={`classification classification-${dataClassification.toLowerCase()}`}>
                   {dataClassification}
                 </dd>
@@ -149,7 +151,7 @@ export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }:
                 <FlexCloneStatus cloneInfo={result.output.flexClone as Record<string, string>} />
               )}
               <details className="result-output">
-                <summary>Output Data</summary>
+                <summary>{t("rvOutputData")}</summary>
                 <pre>{JSON.stringify(result.output, null, 2)}</pre>
               </details>
             </>
@@ -161,7 +163,7 @@ export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }:
         </div>
       )}
 
-      {loading && !result && <div className="loading">Loading status...</div>}
+      {loading && !result && <div className="loading">{t("rvLoadingStatus")}</div>}
     </div>
   );
 }

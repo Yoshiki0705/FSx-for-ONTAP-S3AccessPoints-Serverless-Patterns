@@ -1,3 +1,4 @@
+import { useTranslation } from "../i18n";
 /**
  * FlexClone status display for Results tab.
  *
@@ -32,6 +33,7 @@ interface FlexCloneStatusProps {
 }
 
 export function FlexCloneStatus({ cloneInfo }: FlexCloneStatusProps) {
+  const { t } = useTranslation();
   const statusIcon = (status: string | undefined) => {
     switch (status) {
       case "online": return "🟢";
@@ -42,30 +44,30 @@ export function FlexCloneStatus({ cloneInfo }: FlexCloneStatusProps) {
   };
 
   return (
-    <div className="flexclone-status" aria-label="FlexClone information">
+    <div className="flexclone-status" aria-label={t("fcsAria")}>
       <h4>🔄 FlexClone Volume</h4>
       <dl className="clone-details">
-        <dt>Volume</dt>
+        <dt>{t("volume")}</dt>
         <dd>{cloneInfo.volumeName || "-"}</dd>
 
-        <dt>Parent</dt>
+        <dt>{t("labelParent")}</dt>
         <dd>{cloneInfo.parentVolume || "-"}</dd>
 
-        <dt>Status</dt>
+        <dt>{t("rmState")}</dt>
         <dd>
           {statusIcon(cloneInfo.status)} {cloneInfo.status || "unknown"}
         </dd>
 
         {cloneInfo.createdAt && (
           <>
-            <dt>Created</dt>
+            <dt>{t("labelCreated")}</dt>
             <dd>{new Date(cloneInfo.createdAt).toLocaleString()}</dd>
           </>
         )}
 
         {cloneInfo.sizeUsed && (
           <>
-            <dt>Size Used</dt>
+            <dt>{t("fcsSizeUsed")}</dt>
             <dd>{cloneInfo.sizeUsed}</dd>
           </>
         )}
