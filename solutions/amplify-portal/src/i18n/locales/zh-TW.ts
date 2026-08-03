@@ -792,6 +792,7 @@ export const zhTW: Record<TranslationKeys, string> = {
   clLicenses: "授權",
   clLicenseName: "套件",
   clNoLicenses: "沒有授權",
+  clManagedByAwsHint: "在 FSx for ONTAP 中，叢集由 AWS 管理，因此此清單可能為空。這是預期行為，而非錯誤。",
   clScope: "範圍",
   clNoInterfaces: "沒有介面",
   clServices: "服務",

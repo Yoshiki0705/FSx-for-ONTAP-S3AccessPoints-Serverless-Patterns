@@ -2717,9 +2717,13 @@ def _list_snapmirror_relationships(http, headers, event):
     cross-cluster operation that belongs with a change-managed runbook rather
     than a portal button.
     """
+    # `last_transfer_size` is NOT a field on this endpoint — ONTAP 9.17 rejects the
+    # whole request with "The value \"last_transfer_size\" is invalid for field
+    # \"fields\"", so the relationship list came back empty. Per-transfer byte counts
+    # are available from getSnapmirrorTransfers (transfers[].bytes_transferred).
     params = (
         "fields=uuid,source.path,source.svm.name,destination.path,destination.svm.name,"
-        "state,healthy,policy.name,lag_time,last_transfer_type,last_transfer_size"
+        "state,healthy,policy.name,lag_time,last_transfer_type"
         "&max_records=100"
     )
 
@@ -2743,7 +2747,6 @@ def _list_snapmirror_relationships(http, headers, event):
                 "policy": r.get("policy", {}).get("name", ""),
                 "lagTime": r.get("lag_time", ""),
                 "lastTransferType": r.get("last_transfer_type", ""),
-                "lastTransferSize": r.get("last_transfer_size", 0),
             }
         )
 

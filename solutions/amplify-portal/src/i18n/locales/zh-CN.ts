@@ -792,6 +792,7 @@ export const zhCN: Record<TranslationKeys, string> = {
   clLicenses: "许可证",
   clLicenseName: "软件包",
   clNoLicenses: "没有许可证",
+  clManagedByAwsHint: "在 FSx for ONTAP 中，集群由 AWS 管理，因此此列表可能为空。这是预期行为，而非错误。",
   clScope: "范围",
   clNoInterfaces: "没有接口",
   clServices: "服务",
