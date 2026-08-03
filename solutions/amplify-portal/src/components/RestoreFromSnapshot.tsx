@@ -2,6 +2,7 @@ import { useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { portalSettings } from "../portal-settings";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -24,6 +25,7 @@ interface RestoreFromSnapshotProps {
  * The button is disabled when processing is not configured.
  */
 export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps) {
+  const { t } = useTranslation();
   const [showDialog, setShowDialog] = useState(false);
   const [snapshotName, setSnapshotName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -75,7 +77,7 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
       <button
         className="restore-btn"
         onClick={() => setShowDialog(true)}
-        title="Create a FlexClone from a snapshot for point-in-time recovery"
+        title={t("rfsButtonTitle")}
       >
         📸 Restore from Snapshot
       </button>
@@ -85,14 +87,14 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
       {showDialog && (
         <div className="restore-dialog" role="dialog" aria-labelledby="restore-title">
           <div className="dialog-content">
-            <h3 id="restore-title">Restore from Snapshot</h3>
+            <h3 id="restore-title">{t("rfsTitle")}</h3>
             <p className="dialog-description">
               Creates a FlexClone volume from the specified snapshot.
               The clone will have its own S3 Access Point for isolated access.
             </p>
 
             <div className="form-group">
-              <label htmlFor="snapshot-name">Snapshot Name</label>
+              <label htmlFor="snapshot-name">{t("rfsSnapshotName")}</label>
               <input
                 id="snapshot-name"
                 type="text"
@@ -101,11 +103,11 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
                 placeholder="e.g., daily.2026-07-18_0010"
                 disabled={submitting}
               />
-              <small>Enter the ONTAP snapshot name to restore from.</small>
+              <small>{t("rfsSnapshotHint")}</small>
             </div>
 
             <div className="form-group">
-              <label>Target Prefix</label>
+              <label>{t("rfsTargetPrefix")}</label>
               <input type="text" value={currentPrefix || "/"} disabled />
             </div>
 
@@ -124,7 +126,7 @@ export function RestoreFromSnapshot({ currentPrefix }: RestoreFromSnapshotProps)
                 disabled={submitting}
                 className="cancel-btn"
               >
-                Cancel
+                {t("cancel")}
               </button>
             </div>
           </div>

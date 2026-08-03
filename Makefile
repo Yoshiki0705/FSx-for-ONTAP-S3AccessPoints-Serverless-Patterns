@@ -8,7 +8,8 @@
 #   make deploy-uc1 — Deploy UC1 (requires samconfig.toml)
 #   make clean      — Remove build artifacts
 
-.PHONY: install test lint clean help
+.PHONY: install test lint clean help \
+	lint-python lint-python-check lint-python-format format-python lint-cfn
 
 # Python interpreter — auto-detect .venv if available (override with: make test PYTHON=python3.13)
 # Priority: 1) explicit override  2) .venv/bin/python  3) system python3.12
@@ -119,10 +120,22 @@ test-ha-lifekeeper:
 # ============================================================
 lint: lint-python lint-cfn
 
-lint-python:
+lint-python: lint-python-check lint-python-format
+
+lint-python-check:
 	ruff check shared/ solutions/ operations/ \
 		--config pyproject.toml 2>/dev/null || \
 	ruff check shared/ solutions/ operations/
+
+# CI runs `ruff format --check` as its own step, so `make lint` has to run it
+# too. Without this, formatting drift passes locally and only fails in the
+# pipeline.
+lint-python-format:
+	ruff format --check .
+
+# Rewrites files in place. Use after lint-python-format reports drift.
+format-python:
+	ruff format .
 
 # Template discovery comes from the `templates:` globs in .cfnlintrc, so this
 # target cannot drift out of sync with the patterns that actually exist.

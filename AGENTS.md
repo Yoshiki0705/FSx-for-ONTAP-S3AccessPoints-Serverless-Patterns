@@ -238,12 +238,24 @@ Surface findings explicitly and fix them before finalizing. The cost of one more
 Before submitting changes, run:
 
 1. `make test-quick` — key tests pass
-2. `make lint` — no lint errors
+2. `make lint` — no lint errors. This now covers **both** `ruff check` and
+   `ruff format --check`, because CI runs them as separate steps and formatting
+   drift used to pass locally and only fail in the pipeline. Run `make
+   format-python` to fix drift.
 3. `cfn-lint` on modified templates
 4. If modifying UC templates: verify TriggerMode params + conditions present
 5. If adding new shared module: add tests in `shared/tests/`
 6. If modifying README: ensure Governance Note + Performance Considerations present
 7. If adding output: include `data_classification` field
+8. If touching `solutions/amplify-portal/amplify/**`: the IAM Policy Validation
+   workflow fires on that path and scans **every** template under
+   `solutions/industry/` and `infrastructure/`, not just what you changed. A
+   failure there may be pre-existing debt rather than something you introduced —
+   check `git diff --name-only` for template changes before assuming ownership.
+9. If adding user-facing UI strings: add the key to `ja.ts` first, then to all 7
+   other locales, and use `t("key")` in the component. No hardcoded strings in
+   JSX text, `aria-label`, `title` or `placeholder`. Product names, SQL literals
+   and technical terms (ONTAP, FlexCache, SnapLock, S3 AP) stay untranslated.
 
 ## New Pattern: Field-Shareable Definition of Done
 

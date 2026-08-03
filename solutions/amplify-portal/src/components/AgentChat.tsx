@@ -528,7 +528,7 @@ export function AgentChat() {
                     <span className="history-title">{s.title}</span>
                     <span className="history-meta">{s.messageCount} msgs · {new Date(s.updatedAt * 1000).toLocaleDateString()}</span>
                   </button>
-                  <button className="chat-history-delete" onClick={() => deleteSession(s.sessionId)} title="Delete">×</button>
+                  <button className="chat-history-delete" onClick={() => deleteSession(s.sessionId)} title={t("delete")}>×</button>
                 </div>
               ))}
             </div>
@@ -660,8 +660,8 @@ export function AgentChat() {
             {/* P3: Feedback Buttons */}
             {msg.role === "assistant" && !msg.feedback && (
               <div className="agent-feedback">
-                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "positive")} title="Good response">👍</button>
-                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "negative")} title="Bad response">👎</button>
+                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "positive")} title={t("acGoodResponse")}>👍</button>
+                <button className="feedback-btn" onClick={() => handleFeedback(msg.id, "negative")} title={t("acBadResponse")}>👎</button>
               </div>
             )}
             {msg.feedback && (

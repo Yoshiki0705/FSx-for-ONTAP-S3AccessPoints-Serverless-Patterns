@@ -251,7 +251,7 @@ export function ExportPolicyManager() {
                     <option value="krb5">krb5 (Kerberos)</option>
                     <option value="ntlm">ntlm (Windows)</option>
                   </select>
-                  <small>Read-only access security</small>
+                  <small>{t("epRoSecurity")}</small>
                 </div>
                 <div className="form-group">
                   <label>{t("rmRwRule")}</label>
@@ -263,7 +263,7 @@ export function ExportPolicyManager() {
                     <option value="krb5">krb5 (Kerberos)</option>
                     <option value="ntlm">ntlm (Windows)</option>
                   </select>
-                  <small>Read-write access security</small>
+                  <small>{t("epRwSecurity")}</small>
                 </div>
                 <div className="form-group">
                   <label>{t("rmSuperuser")}</label>
@@ -273,7 +273,7 @@ export function ExportPolicyManager() {
                     <option value="none">none (squash root)</option>
                     <option value="krb5">krb5 (Kerberos root)</option>
                   </select>
-                  <small>Root (UID 0) access</small>
+                  <small>{t("epRootAccess")}</small>
                 </div>
               </div>
               <button onClick={handleAddRule} className="btn-primary">{t("rmCreate")}</button>
