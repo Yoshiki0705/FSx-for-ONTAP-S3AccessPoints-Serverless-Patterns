@@ -834,6 +834,7 @@ export const ja = {
   clLicenses: "ライセンス",
   clLicenseName: "パッケージ",
   clNoLicenses: "ライセンスがありません",
+  clManagedByAwsHint: "FSx for ONTAP ではクラスター管理を AWS が担うため、この一覧が空で返る場合があります（エラーではありません）。",
   clScope: "スコープ",
   clNoInterfaces: "インターフェイスがありません",
   clServices: "サービス",
