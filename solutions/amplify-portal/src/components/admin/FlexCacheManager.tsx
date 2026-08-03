@@ -287,11 +287,11 @@ export function FlexCacheManager() {
                   </button>
                   {confirmDelete === cache.uuid ? (
                     <span style={{ display: "inline-flex", gap: "0.25rem", alignItems: "center" }}>
-                      <span style={{ color: "#e53e3e", fontSize: "0.75rem" }}>本当に削除？</span>
+                      <span style={{ color: "#e53e3e", fontSize: "0.75rem" }}>{t("rmReallyDelete")}</span>
                       <button className="rm-btn-danger-sm" onClick={() => { setConfirmDelete(null); handleDelete(cache); }} disabled={deleting === cache.uuid}>
-                        {deleting === cache.uuid ? "..." : "実行"}
+                        {deleting === cache.uuid ? "..." : t("rmExecute")}
                       </button>
-                      <button className="rm-btn-sm" onClick={() => setConfirmDelete(null)}>取消</button>
+                      <button className="rm-btn-sm" onClick={() => setConfirmDelete(null)}>{t("cancel")}</button>
                     </span>
                   ) : (
                     <button className="rm-btn-danger-sm" onClick={() => setConfirmDelete(cache.uuid)} disabled={deleting === cache.uuid}>
