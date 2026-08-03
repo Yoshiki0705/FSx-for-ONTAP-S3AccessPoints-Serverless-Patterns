@@ -41,10 +41,7 @@ BOX_H = 64
 SQUID = "#232F3E"
 
 # ---------------------------------------------------------------- styling ----
-TITLE_STYLE = (
-    "text;html=1;align=center;verticalAlign=middle;"
-    f"fontSize=16;fontStyle=1;fontColor={SQUID};"
-)
+TITLE_STYLE = f"text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor={SQUID};"
 NOTE_STYLE = (
     "rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 4;"
     f"strokeColor={SQUID};fillColor=#FFFFFF;align=left;verticalAlign=top;"
@@ -68,10 +65,7 @@ GROUP_STYLE = (
     "strokeColor={stroke};fillColor=none;verticalAlign=top;align=left;"
     "spacingLeft=30;fontColor={stroke};dashed=0;"
 )
-SECTION_LABEL_STYLE = (
-    "text;html=1;align=center;verticalAlign=middle;fontSize=13;fontStyle=1;"
-    "fontColor=#ED7100;"
-)
+SECTION_LABEL_STYLE = "text;html=1;align=center;verticalAlign=middle;fontSize=13;fontStyle=1;fontColor=#ED7100;"
 
 SERVICE = "service"
 RESOURCE = "resource"
@@ -223,8 +217,7 @@ def check_labels(diagram: Diagram) -> list[str]:
         first = re.sub(r"<[^>]+>", "", lines[0]).strip()
         if "&#xa;" in n.label:
             problems.append(
-                f"{n.id}: '&#xa;' does not break a line in an html=1 label "
-                f"(it collapses to a space) — use '<br>'"
+                f"{n.id}: '&#xa;' does not break a line in an html=1 label (it collapses to a space) — use '<br>'"
             )
         if n.kind == BOX or PREFIX_EXEMPT.match(first):
             continue
@@ -341,10 +334,7 @@ def check_math_triggers(diagram: Diagram) -> list[str]:
     for where, text in texts:
         hit = MATH_TRIGGER.search(text or "")
         if hit:
-            problems.append(
-                f"{where}: {hit.group(0)!r} triggers draw.io math typesetting "
-                f"— use plain text in {text!r}"
-            )
+            problems.append(f"{where}: {hit.group(0)!r} triggers draw.io math typesetting — use plain text in {text!r}")
     return problems
 
 
@@ -421,9 +411,7 @@ def build(diagram: Diagram, icons: IconResolver) -> str:
         + check_vertical_edge_labels(diagram)
     )
     if problems:
-        raise ValueError(
-            f"{diagram.id}: label rule violations:\n  - " + "\n  - ".join(problems)
-        )
+        raise ValueError(f"{diagram.id}: label rule violations:\n  - " + "\n  - ".join(problems))
 
     grid = diagram.grid
     by_id = {n.id: n for n in diagram.nodes}
@@ -537,9 +525,7 @@ def build(diagram: Diagram, icons: IconResolver) -> str:
 
     if diagram.notes:
         note_w = 640.0
-        note_lines = _note_lines(
-            diagram.notes, diagram.note_lang, note_w - NOTE_PADDING
-        )
+        note_lines = _note_lines(diagram.notes, diagram.note_lang, note_w - NOTE_PADDING)
         note_h = 14 + len(note_lines) * NOTE_LINE_H
         cells.append(
             f'        <mxCell id="d-notes" '
@@ -568,9 +554,7 @@ def build(diagram: Diagram, icons: IconResolver) -> str:
     )
 
 
-def _group_rect(
-    g: Group, nodes: list[Node], grid: Grid
-) -> tuple[float, float, float, float]:
+def _group_rect(g: Group, nodes: list[Node], grid: Grid) -> tuple[float, float, float, float]:
     i = g.inset
     x0 = MARGIN_X + g.cols[0] * grid.col_pitch + 20 + i
     x1 = MARGIN_X + (g.cols[1] + 1) * grid.col_pitch - 20 - i
@@ -581,9 +565,7 @@ def _group_rect(
     # a border drawn on the cell boundary cuts through them. Grow to contain them.
     # This runs after the inset so label containment always wins.
     for n in nodes:
-        inside = (
-            g.cols[0] <= n.col <= g.cols[1] and g.rows[0] <= n.row <= g.rows[1]
-        )
+        inside = g.cols[0] <= n.col <= g.cols[1] and g.rows[0] <= n.row <= g.rows[1]
         if not inside:
             continue
         lx0, lx1 = n.label_extent(grid)
@@ -607,9 +589,7 @@ def write(diagram: Diagram, icons: IconResolver, out_dir: Path) -> Path:
 
 # ------------------------------------------------------------- translation ----
 # CJK ideographs, kana, and the full-width punctuation these diagrams use.
-CJK_RE = re.compile(
-    r"[\u2460-\u24FF\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\uFF00-\uFFEF]"
-)
+CJK_RE = re.compile(r"[\u2460-\u24FF\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\uFF00-\uFFEF]")
 
 
 def translate_diagram(diagram: Diagram, mapping: dict[str, str]) -> Diagram:
@@ -640,14 +620,9 @@ def translate_diagram(diagram: Diagram, mapping: dict[str, str]) -> Diagram:
         title=tr(diagram.title, "title"),
         note_lang="en",
         nodes=[replace(n, label=tr(n.label, f"node {n.id}")) for n in diagram.nodes],
-        edges=[
-            replace(e, label=tr(e.label, f"edge {e.source}->{e.target}"))
-            for e in diagram.edges
-        ],
+        edges=[replace(e, label=tr(e.label, f"edge {e.source}->{e.target}")) for e in diagram.edges],
         groups=[replace(g, label=tr(g.label, f"group {g.id}")) for g in diagram.groups],
-        sections=[
-            replace(s, label=tr(s.label, f"section {s.id}")) for s in diagram.sections
-        ],
+        sections=[replace(s, label=tr(s.label, f"section {s.id}")) for s in diagram.sections],
         notes=[
             (tr(head, f"note {i} headline"), tr(detail, f"note {i} detail"))
             for i, (head, detail) in enumerate(diagram.notes, start=1)
