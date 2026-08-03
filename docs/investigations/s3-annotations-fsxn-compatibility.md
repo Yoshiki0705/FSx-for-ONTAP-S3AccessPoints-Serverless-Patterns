@@ -63,10 +63,10 @@ aws s3api get-object-annotation \
 cat /tmp/annotation-output.json
 ```
 
-#### Step 3: FSxN S3 Access Point で annotation 付与を試行
+#### Step 3: FSx for ONTAP S3 Access Point で annotation 付与を試行
 
 ```bash
-# FSxN S3 AP alias を使用
+# FSx for ONTAP S3 AP alias を使用
 S3AP_ALIAS="<fsxn-volume-alias>-ext-s3alias"
 
 # annotation 付与を試行
@@ -77,9 +77,9 @@ aws s3api put-object-annotation \
   --annotation-payload /tmp/test-annotation.json
 
 # 期待される結果パターン:
-# A) 成功 (HTTP 200) → FSxN S3 AP で annotation サポート確認
+# A) 成功 (HTTP 200) → FSx for ONTAP S3 AP で annotation サポート確認
 # B) AccessDenied → IAM ポリシーに s3:PutObjectAnnotation 追加が必要
-# C) NotImplemented / UnsupportedOperation → FSxN S3 AP 未サポート
+# C) NotImplemented / UnsupportedOperation → FSx for ONTAP S3 AP 未サポート
 # D) InvalidAction → S3 API として認識されていない
 ```
 
@@ -130,17 +130,17 @@ We are building serverless AI/ML processing pipelines that read enterprise files
 Specific scenarios:
 1. Attaching AI-generated document classification (INTERNAL/RESTRICTED/CUI) to files processed by compliance pipelines
 2. Storing processing lineage (model ID, chunking strategy, timestamp) alongside source documents for RAG systems
-3. Enabling Athena-based metadata queries across FSxN volumes via S3 Metadata annotation tables
+3. Enabling Athena-based metadata queries across FSx for ONTAP volumes via S3 Metadata annotation tables
 4. Supporting Permission-Aware RAG by storing ACL metadata as annotations queryable at search time
 
 **Business impact:**
 - Eliminates need for separate metadata databases (DynamoDB/RDS) to track AI analysis results
-- Enables unified metadata queries across FSxN volumes via S3 Metadata + Athena
+- Enables unified metadata queries across FSx for ONTAP volumes via S3 Metadata + Athena
 - Supports agentic AI workflows that need to discover and act on file metadata autonomously (aligned with S3 Annotations' stated GA use case)
 - Reduces operational complexity in hybrid NAS + AI architectures
 
 **Workaround currently in use:**
-Processing results are written to a standard S3 bucket with annotations attached there. This loses co-location with source files and requires maintaining a separate mapping between FSxN paths and S3 output objects.
+Processing results are written to a standard S3 bucket with annotations attached there. This loses co-location with source files and requires maintaining a separate mapping between FSx for ONTAP paths and S3 output objects.
 
 **AWS Region:** ap-northeast-1 (Tokyo)
 **FSx for ONTAP version:** ONTAP 9.17.1P6
@@ -174,7 +174,7 @@ Retrieved annotation: {"uc_id": "annotation-test", "data_classification": "INTER
   "annotation_schema_version": "1.0"}
 ```
 
-### Step 3 結果（FSxN S3 AP）— ❌ 未サポート
+### Step 3 結果（FSx for ONTAP S3 AP）— ❌ 未サポート
 
 ```
 PutObjectAnnotation FAILED:
@@ -186,8 +186,8 @@ PutObjectAnnotation FAILED:
 
 ### 判定
 
-- [ ] ~~FSxN S3 AP で S3 Annotations がサポートされている~~
-- [x] **FSxN S3 AP で S3 Annotations が未サポート → Feature Request 起票**
+- [ ] ~~FSx for ONTAP S3 AP で S3 Annotations がサポートされている~~
+- [x] **FSx for ONTAP S3 AP で S3 Annotations が未サポート → Feature Request 起票**
 - [ ] ~~IAM ポリシー調整で解決可能~~
 
 ### 補足事項

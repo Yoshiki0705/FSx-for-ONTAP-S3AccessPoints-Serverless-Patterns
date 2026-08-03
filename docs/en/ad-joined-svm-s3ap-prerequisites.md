@@ -388,7 +388,7 @@ def handler(event, context):
     # Emit metric
     cw = boto3.client("cloudwatch")
     cw.put_metric_data(
-        Namespace="FSxN/S3AP",
+        Namespace="FSxN/S3AP",  # allow:naming — metric namespace identifier
         MetricData=[{
             "MetricName": "AdDcReachable",
             "Value": 1.0 if status.dc_reachable else 0.0,
@@ -410,7 +410,7 @@ AdDcReachabilityAlarm:
   Type: AWS::CloudWatch::Alarm
   Properties:
     AlarmName: !Sub "${AWS::StackName}-ad-dc-unreachable"
-    Namespace: FSxN/S3AP
+    Namespace: FSxN/S3AP  # allow:naming — metric namespace identifier
     MetricName: AdDcReachable
     Dimensions:
       - Name: SvmName
