@@ -2,7 +2,7 @@
 
 ## Purpose
 
-NetApp パートナーが顧客環境に FSx for ONTAP S3 AP Serverless Patterns をデプロイする際の事前確認・検証・引き渡しチェックリスト。
+NetApp パートナーが導入先環境に FSx for ONTAP S3 AP Serverless Patterns をデプロイする際の事前確認・検証・引き渡しチェックリスト。
 
 ---
 
