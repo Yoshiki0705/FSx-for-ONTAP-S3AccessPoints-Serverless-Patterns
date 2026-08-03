@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { PdfViewer } from "./PdfViewer";
 
 const client = generateClient<Schema>();
 
@@ -164,26 +165,11 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
             role="dialog"
             aria-label={`PDF preview: ${fileName}`}
           >
-            <span className="preview-header">
-              <span className="preview-title">{fileName}</span>
-              <button
-                className="preview-close"
-                onClick={(e) => { e.stopPropagation(); setShowPreview(false); }}
-                aria-label="Close preview"
-              >✕</button>
-            </span>
-            <iframe
-              src={previewUrl}
-              title={`PDF preview: ${fileName}`}
-              className="preview-pdf-iframe"
-              style={{ width: "100%", height: "500px", border: "none" }}
+            <PdfViewer
+              url={previewUrl}
+              fileName={fileName}
+              onClose={() => setShowPreview(false)}
             />
-            <span className="preview-footer">
-              <button
-                className="preview-download-btn"
-                onClick={(e) => { e.stopPropagation(); window.open(previewUrl, "_blank"); }}
-              >Open in new tab</button>
-            </span>
           </span>
         )}
       </span>

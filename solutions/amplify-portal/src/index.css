@@ -343,6 +343,298 @@ body {
   width: 1.5rem;
 }
 
+/* A file row wraps the grid line plus its expandable tag editor. */
+.file-row {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.file-row:last-child {
+  border-bottom: none;
+}
+
+.file-row .file-item {
+  border-bottom: none;
+}
+
+.tag-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 2px 4px;
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+
+.tag-toggle:hover,
+.tag-toggle.active {
+  opacity: 1;
+}
+
+.file-tags-inline {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.tag-badge {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  color: #1f2933;
+  white-space: nowrap;
+}
+
+.file-tags-editor {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.75rem 0.6rem 2.5rem;
+  background: #f8fafc;
+}
+
+.file-tags-editor .tags-list {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: #1f2933;
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0;
+  color: var(--color-text-secondary);
+}
+
+.tag-input-row {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tag-input {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.tag-add-btn {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.tag-add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Snapshot comparison launcher (needs the clone's access point alias). */
+.snapshot-compare-launcher {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.75rem;
+  background: #f8fafc;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+}
+
+.snapshot-compare-launcher label {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.snapshot-compare-launcher input {
+  flex: 1 1 18rem;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: monospace;
+}
+
+.snapshot-compare-launcher .rm-hint {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+
+.compare-btn {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.compare-btn:hover {
+  background: #f3f6f9;
+}
+
+/* SnapMirror per-relationship operations and their confirmation row. */
+.sm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.sm-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff7ed;
+  border-top: 1px solid #fed7aa;
+}
+
+.sm-confirm-text {
+  flex: 1 1 20rem;
+  font-size: 0.78rem;
+  color: #9a3412;
+}
+
+/* Peering: the generated passphrase is shown once and must be copied out. */
+.peer-passphrase {
+  padding: 0.75rem;
+  margin: 0.75rem 0;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius);
+}
+
+.peer-passphrase-value {
+  display: block;
+  margin: 0.4rem 0;
+  padding: 0.4rem 0.6rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: monospace;
+  font-size: 0.9rem;
+  word-break: break-all;
+  user-select: all;
+}
+
+.peer-accept-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.peer-accept-row input {
+  font-size: 0.78rem;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.cl-services {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* FPolicy event operation checkboxes. */
+.fp-ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fp-op {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+/* PDF viewer used inside the file preview popover. */
+.pdf-viewer-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.pdf-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pdf-viewer-title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdf-viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.pdf-open-btn,
+.pdf-close-btn {
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  cursor: pointer;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.pdf-loading {
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.pdf-viewer-frame {
+  width: 100%;
+  height: 500px;
+  border: none;
+}
+
 .file-item {
   display: grid;
   grid-template-columns: auto 1fr 6rem 8rem;

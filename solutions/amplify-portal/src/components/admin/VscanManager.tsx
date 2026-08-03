@@ -27,6 +27,54 @@ export function VscanManager() {
   const [policies, setPolicies] = useState<VscanPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newMaxMb, setNewMaxMb] = useState(2048);
+  const [newExts, setNewExts] = useState("");
+  const [newMandatory, setNewMandatory] = useState(false);
+
+  /** Run a write action, then refresh. */
+  const runAction = async (action: string, params: Record<string, unknown>) => {
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const resp = await (client.mutations as any).adminMutation({
+        action,
+        params: JSON.stringify(params),
+      });
+      const data = parseResponse<{ success?: boolean; error?: string }>(resp);
+      if (data?.success) {
+        setSuccess(t("vsActionDone"));
+        setTimeout(() => setSuccess(null), 4000);
+        loadData();
+      } else {
+        setError(data?.error || "Action failed");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createPolicy = async () => {
+    const exts = newExts
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    await runAction("createVscanPolicy", {
+      name: newName.trim(),
+      mandatory: newMandatory,
+      maxFileSize: newMaxMb * 1024 * 1024,
+      excludedExtensions: exts.length > 0 ? exts : undefined,
+    });
+    setShowCreate(false);
+    setNewName("");
+    setNewExts("");
+  };
 
   const loadData = async () => {
     setLoading(true); setError(null);
@@ -255,6 +303,7 @@ vserver vscan enable -vserver <svm-name>`}</pre>
   return (
     <div className="vscan-manager">
       {error && <div className="rm-error">⚠️ {error}</div>}
+      {success && <div className="rm-success">✅ {success}</div>}
 
       {loading ? (
         <div className="rm-loading">{t("ontapConnecting")}</div>
@@ -267,6 +316,13 @@ vserver vscan enable -vserver <svm-name>`}</pre>
                 {enabled ? t("vsEnabled") : t("vsDisabled")}
               </span>
             </span>
+            <button
+              className={enabled ? "rm-btn-danger-sm" : "rm-btn-primary"}
+              disabled={busy}
+              onClick={() => runAction("setVscanEnabled", { enabled: !enabled })}
+            >
+              {enabled ? t("vsDisableBtn") : t("vsEnableBtn")}
+            </button>
             {enabled && (
               <button className="rm-btn-sm" onClick={loadData}>
                 🔄 {t("rmApply")}
@@ -278,9 +334,79 @@ vserver vscan enable -vserver <svm-name>`}</pre>
             renderSetupGuide()
           ) : (
             <>
-              <h4 style={{ marginTop: "1rem" }}>
-                📋 {t("vsPolicies")}
-              </h4>
+              <div className="lu-toolbar" style={{ marginTop: "1rem" }}>
+                <h4 style={{ margin: 0 }}>📋 {t("vsPolicies")}</h4>
+                <button
+                  className="rm-btn-primary"
+                  disabled={busy}
+                  onClick={() => setShowCreate((v) => !v)}
+                >
+                  + {t("vsCreatePolicy")}
+                </button>
+              </div>
+
+              {showCreate && (
+                <div className="rm-form">
+                  <h4>{t("vsCreatePolicy")}</h4>
+                  <div className="rm-form-row">
+                    <label htmlFor="vs-name">{t("vsPolicyName")}</label>
+                    <input
+                      id="vs-name"
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="scan_all_cifs"
+                      disabled={busy}
+                    />
+                  </div>
+                  <div className="rm-form-row">
+                    <label htmlFor="vs-max">{t("vsMaxFileSize")} (MB)</label>
+                    <input
+                      id="vs-max"
+                      type="number"
+                      min={1}
+                      value={newMaxMb}
+                      onChange={(e) => setNewMaxMb(Number(e.target.value))}
+                      disabled={busy}
+                    />
+                  </div>
+                  <div className="rm-form-row">
+                    <label htmlFor="vs-ext">{t("vsExcludedExt")}</label>
+                    <input
+                      id="vs-ext"
+                      type="text"
+                      value={newExts}
+                      onChange={(e) => setNewExts(e.target.value)}
+                      placeholder="tmp, log"
+                      disabled={busy}
+                    />
+                  </div>
+                  <div className="rm-form-row">
+                    <label htmlFor="vs-mandatory">{t("vsMandatory")}</label>
+                    <input
+                      id="vs-mandatory"
+                      type="checkbox"
+                      checked={newMandatory}
+                      onChange={(e) => setNewMandatory(e.target.checked)}
+                      disabled={busy}
+                    />
+                  </div>
+                  <div className="rm-form-actions">
+                    <button
+                      className="rm-btn-primary"
+                      disabled={busy || !newName.trim()}
+                      onClick={createPolicy}
+                    >
+                      {t("rmCreate")}
+                    </button>
+                    <button className="rm-btn-secondary" onClick={() => setShowCreate(false)}>
+                      {t("cancel")}
+                    </button>
+                  </div>
+                  <p className="rm-hint">{t("vsCreateHint")}</p>
+                </div>
+              )}
+
               {policies.length === 0 ? (
                 <p className="rm-empty">{t("vsNoPolicies")}</p>
               ) : (
@@ -292,6 +418,7 @@ vserver vscan enable -vserver <svm-name>`}</pre>
                       <th>{t("vsMandatory")}</th>
                       <th>{t("vsMaxFileSize")}</th>
                       <th>{t("vsExcludedExt")}</th>
+                      <th>{t("rmActions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -313,6 +440,31 @@ vserver vscan enable -vserver <svm-name>`}</pre>
                           {p.excludedExtensions.length > 0
                             ? p.excludedExtensions.join(", ")
                             : "—"}
+                        </td>
+                        <td>
+                          <span className="sm-actions" style={{ padding: 0, border: "none" }}>
+                            <button
+                              className="rm-btn-sm"
+                              disabled={busy}
+                              onClick={() =>
+                                runAction("setVscanPolicyEnabled", {
+                                  name: p.name,
+                                  enabled: !p.enabled,
+                                })
+                              }
+                            >
+                              {p.enabled ? t("vsDisableBtn") : t("vsEnableBtn")}
+                            </button>
+                            <button
+                              className="rm-btn-danger-sm"
+                              disabled={busy}
+                              onClick={() =>
+                                runAction("deleteVscanPolicy", { name: p.name })
+                              }
+                            >
+                              {t("delete")}
+                            </button>
+                          </span>
                         </td>
                       </tr>
                     ))}

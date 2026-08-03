@@ -5,7 +5,8 @@ import { config } from "./portal-config";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
-import { Aspects, Duration, Stack } from "aws-cdk-lib";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import { Aspects, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { AwsSolutionsChecks, NagSuppressions } from "cdk-nag";
 
@@ -181,6 +182,75 @@ const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
 
 api.addLambdaDataSource("ListFilesLambdaDataSource", listFilesFunction);
 
+// --- Lambda Data Source for FolderDownload (ZIP of a prefix) ---
+// Uses functions/folder-download/index.py
+// Reads every object under a prefix through the S3 Access Point, builds a ZIP in
+// memory, stores it in a short-lived bucket and returns a presigned URL.
+const zipTempBucket = new s3.Bucket(dataStack, "FolderZipTempBucket", {
+  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+  encryption: s3.BucketEncryption.S3_MANAGED,
+  enforceSSL: true,
+  removalPolicy: RemovalPolicy.DESTROY,
+  autoDeleteObjects: true,
+  // Archives are a transient download artefact, so expire them the next day.
+  lifecycleRules: [
+    {
+      id: "expire-zip-archives",
+      enabled: true,
+      expiration: Duration.days(1),
+      abortIncompleteMultipartUploadAfter: Duration.days(1),
+    },
+  ],
+  serverAccessLogsPrefix: undefined,
+});
+
+const folderDownloadRole = new iam.Role(dataStack, "FolderDownloadLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    S3ApReadAndZipWrite: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          actions: ["s3:GetObject", "s3:ListBucket"],
+          resources: config.s3ApResourceArns,
+        }),
+        new iam.PolicyStatement({
+          actions: ["s3:PutObject", "s3:GetObject"],
+          resources: [`${zipTempBucket.bucketArn}/*`],
+        }),
+      ],
+    }),
+  },
+});
+
+const folderDownloadFunction = new lambda.Function(
+  dataStack,
+  "FolderDownloadFunction",
+  {
+    runtime: lambda.Runtime.PYTHON_3_12,
+    architecture: lambda.Architecture.ARM_64,
+    handler: "index.handler",
+    code: lambda.Code.fromAsset("functions/folder-download"),
+    role: folderDownloadRole,
+    environment: {
+      S3_AP_ALIAS: config.s3ApAlias,
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      ZIP_TEMP_BUCKET: zipTempBucket.bucketName,
+    },
+    // ZIP assembly is memory and time bound; see the caps in the handler.
+    memorySize: 1024,
+    timeout: Duration.minutes(5),
+    description:
+      "Builds a ZIP of an S3 Access Point prefix and returns a presigned download URL",
+  }
+);
+
+api.addLambdaDataSource("FolderDownloadLambdaDataSource", folderDownloadFunction);
+
 // --- Lambda Data Source for GetPresignedUrl ---
 const getPresignedUrlRole = new iam.Role(dataStack, "GetPresignedUrlLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
@@ -330,7 +400,11 @@ api.addLambdaDataSource("ArpResponseLambdaDataSource", arpResponseFunction);
 
 // --- Lambda Data Source for Resource Management (Admin) ---
 // Uses functions/resource-management/handler.py
-// Provides: Volume CRUD, Export Policy, QoS Policy, SnapLock management
+// Provides: Volume CRUD, Export Policy, QoS Policy, SnapLock, Quota, Qtree,
+// CIFS share, ARP admin, snapshot policy, SMB local users/groups, name mapping,
+// FlexCache and FlexClone management, plus read-only SnapMirror, Vscan and
+// FPolicy status. All ONTAP access is HTTPS to the management endpoint using
+// the Secrets Manager credential, so no extra AWS permissions are required.
 const resourceMgmtRole = new iam.Role(dataStack, "ResourceMgmtLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
   managedPolicies: [
@@ -380,7 +454,7 @@ const resourceMgmtFunction = new lambda.Function(
     memorySize: 256,
     timeout: Duration.seconds(60),
     description:
-      "Resource management — Volume/ExportPolicy/QoS/SnapLock/S3ObjectLock CRUD (VPC Lambda, ONTAP REST + S3)",
+      "Resource management — Volume/ExportPolicy/QoS/SnapLock/Quota/Qtree/CIFS/ARP/Snapshot/LocalUser/NameMapping/FlexCache/FlexClone CRUD plus read-only SnapMirror/Vscan/FPolicy (VPC Lambda, ONTAP REST + S3)",
     ...(vpcConfig && { vpc: vpcConfig.vpc, securityGroups: vpcConfig.securityGroups, vpcSubnets: vpcConfig.vpcSubnets }),
   }
 );

@@ -7,7 +7,9 @@
 
 ## Design Intent Summary
 
-This portal implements a **System Manager-equivalent web UI** for FSx for ONTAP, accessible via browser without VPN or CLI tools. Key constraints that shaped the architecture:
+This portal provides a **browser-based web UI for day-to-day FSx for ONTAP operations**, reachable without a VPN to the management LIF and without CLI tools. It is not a replacement for ONTAP System Manager: cluster configuration, node management and upgrades stay with System Manager and the ONTAP CLI. For the exact division of responsibility and the per-panel implementation status, see the [Admin Capability Map](admin-capability-map.en.md) ([日本語](admin-capability-map.md)).
+
+Key constraints that shaped the architecture:
 
 1. **CloudFormation 1MB template limit** → Led to generic dispatch pattern (8 endpoints instead of 73)
 2. **ONTAP REST API requires VPC access** → Led to VPC split architecture (File Lambdas outside, Admin Lambdas inside)
@@ -310,7 +312,7 @@ Admin toggles these from **Resource Management > AI Settings** panel.
 - Default SQL changed to `SHOW TABLES IN default` (discover tables first)
 - Multi-line placeholder with commented examples
 
-**ResourceManagement final layout (4 categories × 16 panels + 1 service)**:
+**ResourceManagement layout at that point (4 categories × 16 panels + 1 service)**:
 ```
 Storage (🗄️):        Volumes / 🧬FlexClone / Qtree / Quotas / Efficiency
 Access Control (🔐): Export Policies / SMB Shares / 👤Local Users / 🔀Name Mapping / QoS
@@ -318,6 +320,41 @@ Data Protection (🛡️): ARP/AI / Snapshots / SnapLock / 📡FPolicy / 🦠Vsc
 Services (🤖):       AI Settings
 ```
 
+### 2026-08-03: ONTAP write operations, cluster and SVM peering
+
+**Problem**: several panels rendered data but could not change it. SnapMirror, Vscan and
+FPolicy were read-only, and cluster/SVM peering had no surface at all — the area the AWS
+Management Console does not cover, which forced operators to the ONTAP CLI.
+
+**Fix**: added 36 actions to `functions/resource-management/handler.py` (110 total) and two
+panels, `admin/PeeringManager.tsx` and `admin/ClusterManager.tsx`.
+
+- SnapMirror writes: update now, quiesce, resume, break, resync, abort transfer, delete
+- Vscan writes: service enable/disable, on-access policy create / enable / delete
+- FPolicy writes: event and policy create / delete, policy enable/disable
+- Peering: cluster peer and SVM peer create / accept / delete, intercluster LIF visibility
+- Cluster: nodes, licences, LIFs (with enable/disable), protocol services
+  (with enable/disable), DNS read/update, asynchronous jobs
+
+Destructive operations are confirm-gated in both layers: the UI shows an inline
+confirmation row, and the handler refuses without `confirm=true`, so a direct call that
+bypasses the UI is rejected the same way.
+
+`ShareLink.tsx` was fully hardcoded English; it now uses 15 new i18n keys, added to all
+8 locales (1012 keys each, parity asserted).
+
+**ResourceManagement layout (5 categories × 20 panels)**:
+```
+Storage (🗄️):        Volumes / Qtree / Quotas / Efficiency / ⚡FlexCache / 🧬FlexClone
+Access Control (🔐): Export Policies / SMB Shares / QoS / 👤Local Users / 🔀Name Mapping
+Data Protection (🛡️): ARP/AI / Snapshots / SnapLock / 🪞SnapMirror / 🦠Vscan / 📡FPolicy
+Cluster (🖥️):        🔗Peering / 🖥️Cluster information
+Services (🤖):       AI Settings
+```
+
+Handler tests: 166 (was 79). Verification boundary: the handler runs against mocked ONTAP
+responses and the UI is driven against that real handler output; the hop from a deployed
+Lambda to a live ONTAP cluster is not covered.
 
 ---
 
