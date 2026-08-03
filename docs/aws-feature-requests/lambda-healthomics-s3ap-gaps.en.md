@@ -187,7 +187,25 @@ Steps 2 and 4 are what FR-6 would remove.
 
 `S3ObjectStorageMode` is documented on the [`Code` property of `AWS::Lambda::Function`](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-lambda-function-code.html) with allowed values `COPY | REFERENCE`. By contrast, `AWS::Serverless::Function` and `AWS::Serverless::LayerVersion` expose only `CodeUri` / `ContentUri` (a local path or an S3 URI), and we could not find an equivalent property in the SAM resource reference.
 
-> **Verification note**: This is based on public documentation, not on hands-on verification of the SAM implementation. If support already exists or is planned, please correct us. The launch announcement lists AWS SAM as a supported path, so an intended mechanism may exist.
+> **Verification status update (August 2026)**: This item was originally an inference from public documentation alone. AWS Support has since reproduced it hands-on and confirmed that SAM discards the property without warning. See "AWS Support Confirmation" below.
+
+### AWS Support Confirmation (August 2026)
+
+AWS Support reproduced this in a test environment and confirmed the following. This upgrades the item from our original inference ("we could not find the property documented") to **behaviour verified hands-on**.
+
+| Checked | Result |
+|---------|--------|
+| Specifying `S3ObjectStorageMode: REFERENCE` under `CodeUri` on `AWS::Serverless::Function` | `sam validate` and `sam deploy` both **succeed without error** |
+| Mode of the function actually created | The property is **silently dropped** during the SAM transform; the function is created in the default `COPY` mode |
+| Properties accepted by SAM's `S3Location` type | Only `Bucket` / `Key` / `Version`; anything else is discarded during transformation (not specific to `S3ObjectStorageMode`) |
+| Methods listed in the Lambda Developer Guide | Console / AWS CLI / CloudFormation. **AWS SAM is not listed** |
+| `update-function-code` drift | Confirmed. `S3ObjectStorageMode` must be specified on every call or it reverts to `COPY` |
+
+> ⚠️ **What this means in practice**: A successful `sam deploy` does not mean `REFERENCE` mode was applied, so **the deployment result gives no signal that it was skipped**. Any workflow that depends on `REFERENCE` mode needs a post-deploy step that confirms the mode actually in effect.
+
+The Inactive-state coupling was also confirmed: Lambda periodically re-reads the source object and transitions the function to Inactive if access is lost. However, AWS Support explicitly stated they **could not confirm that this is the specific reason FSx for ONTAP S3 access points are unsupported**, so this document does not present it as the cause.
+
+On the AWS side, a feature request has been raised with the Lambda service team, a bug report with the SAM team (to add `S3ObjectStorageMode` to `AWS::Serverless::Function` and `AWS::Serverless::LayerVersion`), and feedback that SAM should raise a validation error for unrecognised properties rather than discarding them silently. Whether public tracking (for example a GitHub issue) exists is an open question we have asked.
 
 ### Impact on Our Patterns
 
