@@ -295,7 +295,7 @@ AdDcReachabilityAlarm:
   Type: AWS::CloudWatch::Alarm
   Properties:
     AlarmName: !Sub "${AWS::StackName}-ad-dc-unreachable"
-    Namespace: FSxN/S3AP
+    Namespace: FSxN/S3AP  # allow:naming — メトリクス名前空間の識別子
     MetricName: AdDcReachable
     Dimensions:
       - Name: SvmName

@@ -42,7 +42,7 @@
 | ドキュメント | ファイル |
 |------------|---------|
 | AgentCore Web Search 統合設計 | `docs/investigations/agentcore-web-search-fsxn-integration.md` |
-| AWS Context × FSx ONTAP メタデータ Graph | `docs/investigations/aws-context-fsxn-metadata-graph.md` |
+| AWS Context × FSx for ONTAP メタデータ Graph | `docs/investigations/aws-context-fsxn-metadata-graph.md` |
 | Managed KB vs Custom KB + S3 Vectors ADR | `docs/investigations/managed-kb-vs-custom-kb-s3vectors.md` |
 | Summit NY 2026 統合評価サマリ（本文書） | `docs/investigations/summit-ny-2026-integration-assessment.md` |
 
@@ -60,9 +60,9 @@
 
 ### 将来採用候補（追跡）
 
-- **AWS Context** → GA 時に FSx ONTAP メタデータの Knowledge Graph 化を検討。
+- **AWS Context** → GA 時に FSx for ONTAP メタデータの Knowledge Graph 化を検討。
 - **Glue Business Context & Semantic Search** → Preview 期間中に Glue Crawler + S3 AP の PoC を実施。
-- **S3 Annotations** → FSx S3 AP 互換性検証の結果次第。
+- **S3 Annotations** → FSx for ONTAP S3 AP 互換性検証の結果次第。
 
 ---
 
@@ -84,7 +84,7 @@
 ## 次のアクション（優先順）
 
 1. `scripts/poc-web-search.py setup` で us-east-1 に Gateway を作成し動作確認
-2. S3 Annotations × FSx S3 AP 互換性検証を完了
+2. S3 Annotations × FSx for ONTAP S3 AP 互換性検証を完了
 3. Glue Crawler で S3 AP ファイル一覧のカタログ化 PoC
 4. AWS Context Preview / GA のリリースノート監視
 5. ap-northeast-1 への AgentCore Web Search 対応リージョン拡大を監視
