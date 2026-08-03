@@ -1,14 +1,15 @@
 import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
-/** TTL presets in seconds */
+/** TTL presets in seconds, labelled through i18n */
 const TTL_OPTIONS = [
-  { label: "5 min", value: 300 },
-  { label: "15 min", value: 900 },
-  { label: "1 hour", value: 3600 },
+  { labelKey: "slTtl5", value: 300 },
+  { labelKey: "slTtl15", value: 900 },
+  { labelKey: "slTtl1h", value: 3600 },
 ] as const;
 
 interface ShareLinkProps {
@@ -28,6 +29,7 @@ interface ShareLinkProps {
  * - URLs are logged via CloudTrail (S3 AP GetObject data events)
  */
 export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
+  const { t } = useTranslation();
   const [showPanel, setShowPanel] = useState(false);
   const [selectedTtl, setSelectedTtl] = useState(300);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
@@ -50,14 +52,14 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
       if (response.data?.url) {
         setGeneratedUrl(response.data.url);
       } else {
-        setError(response.data?.error || "Failed to generate link");
+        setError(response.data?.error || t("slFailed"));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Link generation failed");
+      setError(err instanceof Error ? err.message : t("slFailed"));
     } finally {
       setLoading(false);
     }
-  }, [fileKey, selectedTtl]);
+  }, [fileKey, selectedTtl, t]);
 
   const copyToClipboard = useCallback(async () => {
     if (!generatedUrl) return;
@@ -90,24 +92,26 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
       <button
         className="share-link-btn"
         onClick={() => setShowPanel(!showPanel)}
-        title={`Share ${fileName}`}
-        aria-label={`Generate share link for ${fileName}`}
+        title={`${t("slShareTitle")}: ${fileName}`}
+        aria-label={`${t("slGenerateAria")}: ${fileName}`}
       >
         🔗
       </button>
 
       {showPanel && (
-        <div className="share-link-panel" role="dialog" aria-label="Share link">
+        <div className="share-link-panel" role="dialog" aria-label={t("slDialogLabel")}>
           <div className="share-link-header">
-            <span className="share-link-title">Share: {fileName}</span>
-            <button className="share-link-close" onClick={handleClose} aria-label="Close">
+            <span className="share-link-title">
+              {t("slShareTitle")}: {fileName}
+            </span>
+            <button className="share-link-close" onClick={handleClose} aria-label={t("close")}>
               ✕
             </button>
           </div>
 
           <div className="share-link-ttl">
-            <label>Expires in:</label>
-            <div className="ttl-options" role="radiogroup" aria-label="Link expiry time">
+            <label>{t("slExpiresIn")}</label>
+            <div className="ttl-options" role="radiogroup" aria-label={t("slExpiryGroup")}>
               {TTL_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -119,7 +123,7 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
                   role="radio"
                   aria-checked={selectedTtl === opt.value}
                 >
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               ))}
             </div>
@@ -131,7 +135,7 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
               onClick={generateLink}
               disabled={loading}
             >
-              {loading ? "Generating..." : "Generate Link"}
+              {loading ? t("slGenerating") : t("slGenerate")}
             </button>
           )}
 
@@ -142,20 +146,18 @@ export function ShareLink({ fileKey, fileName }: ShareLinkProps) {
                 value={generatedUrl}
                 readOnly
                 className="share-link-url"
-                aria-label="Generated share link URL"
+                aria-label={t("slUrlAria")}
                 onClick={(e) => (e.target as HTMLInputElement).select()}
               />
               <button className="share-link-copy" onClick={copyToClipboard}>
-                {copied ? "✓ Copied" : "Copy"}
+                {copied ? t("slCopied") : t("slCopy")}
               </button>
             </div>
           )}
 
           {error && <div className="share-link-error" role="alert">{error}</div>}
 
-          <div className="share-link-note">
-            Anyone with this link can access the file until it expires. Do not share links to confidential files.
-          </div>
+          <div className="share-link-note">{t("slNote")}</div>
         </div>
       )}
     </span>

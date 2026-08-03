@@ -203,7 +203,7 @@ export function NameMappingManager() {
                 <td>
                   <button className="rm-btn-danger-sm"
                     onClick={() => handleDelete(m)}>
-                    {t("luRemoveMember")}
+                    {t("nmDelete")}
                   </button>
                 </td>
               </tr>

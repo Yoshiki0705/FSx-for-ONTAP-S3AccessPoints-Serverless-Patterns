@@ -19,6 +19,8 @@ import { LocalUserManager } from "./admin/LocalUserManager";
 import { NameMappingManager } from "./admin/NameMappingManager";
 import { VscanManager } from "./admin/VscanManager";
 import { FPolicyManager } from "./admin/FPolicyManager";
+import { PeeringManager } from "./admin/PeeringManager";
+import { ClusterManager } from "./admin/ClusterManager";
 
 type AdminPanel =
   | "volumes"
@@ -38,14 +40,16 @@ type AdminPanel =
   | "localUsers"
   | "nameMapping"
   | "vscan"
-  | "fpolicy";
+  | "fpolicy"
+  | "peering"
+  | "cluster";
 
 interface PanelDef {
   id: AdminPanel;
   icon: string;
   label: string;
   description: string;
-  category: "storage" | "access" | "protection" | "services";
+  category: "storage" | "access" | "protection" | "services" | "cluster";
 }
 
 interface ResourceManagementProps {
@@ -98,6 +102,9 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
     { id: "snapMirror", icon: "🔄", label: t("rmSnapMirror"), description: t("rmSnapMirrorDesc"), category: "protection" },
     { id: "vscan", icon: "🦠", label: t("rmVscan"), description: t("rmVscanDesc"), category: "protection" },
     { id: "fpolicy", icon: "📜", label: t("rmFpolicy"), description: t("rmFpolicyDesc"), category: "protection" },
+    // Cluster — the areas the AWS console does not cover
+    { id: "peering", icon: "🔗", label: t("rmPeering"), description: t("rmPeeringDesc"), category: "cluster" },
+    { id: "cluster", icon: "🖥️", label: t("rmCluster"), description: t("rmClusterDesc"), category: "cluster" },
     // AI & Services
     { id: "aiSettings", icon: "🤖", label: t("rmAiSettings"), description: t("rmAiSettingsDesc"), category: "services" },
   ];
@@ -106,6 +113,7 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
     { key: "storage", label: t("rmCatStorage"), icon: "🗄️" },
     { key: "access", label: t("rmCatAccess"), icon: "🔐" },
     { key: "protection", label: t("rmCatProtection"), icon: "🛡️" },
+    { key: "cluster", label: t("rmCatCluster"), icon: "🖥️" },
     { key: "services", label: t("rmCatServices"), icon: "🤖" },
   ] as const;
 
@@ -138,6 +146,8 @@ export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceM
           {activePanel === "nameMapping" && <NameMappingManager />}
           {activePanel === "vscan" && <VscanManager />}
           {activePanel === "fpolicy" && <FPolicyManager />}
+          {activePanel === "peering" && <PeeringManager />}
+          {activePanel === "cluster" && <ClusterManager />}
           {activePanel === "aiSettings" && <AiSettingsManager initialSettings={aiSettings} onSettingsChange={onAiSettingsChange} />}
         </div>
       </div>
