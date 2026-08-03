@@ -325,6 +325,12 @@ ONTAP REST: `/svm/peers`
 | ⚙️ サービス | `/protocols/{nfs,cifs,s3}/services`、`/name-services/dns` | プロトコルの有効・無効、DNS ドメイン・サーバーの更新 |
 | 📜 ジョブ | `/cluster/jobs` | 非同期ジョブの状態とメッセージ |
 
+> **ノード・ライセンスが空になる場合**: FSx for ONTAP ではクラスター管理を
+> AWS が担うため、`/cluster/nodes` と `/cluster/licensing/licenses` が
+> 0 件で返ることがあります。実測（ONTAP 9.17.1P7D1）でも両方 0 件、
+> エラーなしでした。画面には同じ趣旨の注記を出しています。
+> クラスター名と ONTAP バージョン（`/cluster`）は取得できます。
+
 **LIF の有効・無効**
 
 行の `有効化` / `無効化` で切り替えます。無効化は確認が必要です。
