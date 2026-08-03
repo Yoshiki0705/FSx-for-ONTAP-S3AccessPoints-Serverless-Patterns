@@ -187,7 +187,25 @@ Step Functions で以下を構成します（未実装、新パターン候補�
 
 `S3ObjectStorageMode` は [`AWS::Lambda::Function` の `Code` プロパティ](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-lambda-function-code.html)に `COPY | REFERENCE` の許可値を持つプロパティとして文書化されています。一方 `AWS::Serverless::Function` / `AWS::Serverless::LayerVersion` は `CodeUri` / `ContentUri`（ローカルパスまたは S3 URI）のみを公開しており、SAM リソースリファレンスに該当プロパティの記載を確認できませんでした。
 
-> **検証状況に関する注記**: これは公開ドキュメント上での確認結果であり、SAM の実装状況を実機検証したものではありません。既に対応済み、または対応予定である場合はご指摘ください。リリースアナウンスは利用手段として AWS SAM を挙げているため、意図された経路が存在する可能性があります。
+> **検証状況の更新（2026-08）**: 当初この項目は公開ドキュメントのみに基づく推定でした。その後 AWS サポートが実機で再現し、SAM が当該プロパティを警告なく破棄することを確認しています。詳細は下記「AWS サポートによる確認結果」を参照してください。
+
+### AWS サポートによる確認結果（2026-08）
+
+AWS サポートが検証環境で再現し、以下を確認しました。当初の「ドキュメントに記載が見つからない」という推定から、**実機で確認された挙動**に格上げされています。
+
+| 確認事項 | 結果 |
+|---------|------|
+| `AWS::Serverless::Function` の `CodeUri` に `S3ObjectStorageMode: REFERENCE` を指定 | `sam validate` / `sam deploy` は**エラーなく成功する** |
+| 実際に作成される関数のモード | SAM 変換時にプロパティが**警告なく破棄**され、既定の `COPY` モードで作成される |
+| SAM の `S3Location` 型が受け付けるプロパティ | `Bucket` / `Key` / `Version` のみ。それ以外は変換時に破棄される（`S3ObjectStorageMode` 固有の問題ではない） |
+| Lambda 開発者ガイドが挙げる利用手段 | コンソール / AWS CLI / CloudFormation。**AWS SAM は記載されていない** |
+| `update-function-code` のドリフト | 確認済み。`S3ObjectStorageMode` は毎回指定が必要で、省略すると `COPY` に戻る |
+
+> ⚠️ **実務上の意味**: `sam deploy` が成功しても `REFERENCE` モードは適用されていないため、**デプロイ結果からは適用漏れに気づけません**。`REFERENCE` モードを前提にする場合は、デプロイ後に実際のモードを確認する手順が必要です。
+
+Inactive 状態の結合（Lambda がソースオブジェクトを定期的に再読み込みし、アクセスできなくなると関数を Inactive に遷移させる）についても確認が取れました。ただし AWS サポートからは「**これが FSx for ONTAP S3 AP 非対応の理由であるという確認は取れていない**」と明示されているため、本ドキュメントでも原因として断定しません。
+
+AWS サポート側では、Lambda サービスチームへの機能リクエスト、SAM チームへのバグ報告（`AWS::Serverless::Function` / `AWS::Serverless::LayerVersion` への `S3ObjectStorageMode` 追加）、および未知のプロパティを警告なく破棄せずバリデーションエラーとすべき旨のフィードバックが起票されています。公開追跡先（GitHub issue 等）の有無は照会中です。
 
 ### 本プロジェクトへの影響
 
