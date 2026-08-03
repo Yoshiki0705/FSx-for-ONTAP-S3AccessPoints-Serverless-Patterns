@@ -6,6 +6,9 @@ import { FilePreview } from "./FilePreview";
 import { RestoreFromSnapshot } from "./RestoreFromSnapshot";
 import { ShareLink } from "./ShareLink";
 import { FavoriteButton } from "./Favorites";
+import { FolderDownload } from "./FolderDownload";
+import { FileTagsBadges, FileTagsEditor } from "./FileTags";
+import { SnapshotCompare } from "./SnapshotCompare";
 import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
@@ -61,6 +64,15 @@ export function FileExplorer({
   const [error, setError] = useState<string | null>(null);
   const [continuationToken, setContinuationToken] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  // Only one tag editor is open at a time, keyed by file key.
+  const [tagEditorFor, setTagEditorFor] = useState<string | null>(null);
+  // Bumped after a tag edit so the row badges reload.
+  const [tagRefresh, setTagRefresh] = useState(0);
+  // Snapshot comparison needs the clone's S3 Access Point alias, which the
+  // restore job reports asynchronously, so it is entered here.
+  const [showCompare, setShowCompare] = useState(false);
+  const [cloneAliasDraft, setCloneAliasDraft] = useState("");
+  const [cloneAlias, setCloneAlias] = useState("");
   const { t } = useTranslation();
 
   /** PHI/PII path detection — blocks AI processing for regulated data folders */
@@ -159,8 +171,44 @@ export function FileExplorer({
         >
           {isPhiPath(currentPrefix) ? `🚫 ${t("aiPhiBlockedShort")}` : t("filesProcessFolder")}
         </button>
+        <FolderDownload currentPrefix={currentPrefix} />
         <RestoreFromSnapshot currentPrefix={currentPrefix} />
+        <button
+          className="compare-btn"
+          onClick={() => setShowCompare((v) => !v)}
+          title={showCompare ? t("scClose") : t("scCompare")}
+          aria-expanded={showCompare}
+        >
+          🔍 {showCompare ? t("scClose") : t("scCompare")}
+        </button>
       </div>
+
+      {showCompare && (
+        <div className="snapshot-compare-launcher">
+          <label htmlFor="clone-ap-alias">{t("scCloneAlias")}</label>
+          <input
+            id="clone-ap-alias"
+            type="text"
+            value={cloneAliasDraft}
+            onChange={(e) => setCloneAliasDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") setCloneAlias(cloneAliasDraft.trim());
+            }}
+            placeholder="fsxn-clone-ap-..."
+          />
+          <button
+            className="rm-btn-primary"
+            onClick={() => setCloneAlias(cloneAliasDraft.trim())}
+            disabled={!cloneAliasDraft.trim()}
+          >
+            {t("scCompare")}
+          </button>
+          <p className="rm-hint">{t("scCloneAliasHint")}</p>
+          {cloneAlias && (
+            <SnapshotCompare cloneApAlias={cloneAlias} cloneLabel={cloneAlias} />
+          )}
+        </div>
+      )}
 
       {error && <div className="error-message">{error}</div>}
 
@@ -198,18 +246,39 @@ export function FileExplorer({
 
         {regularFiles.map((file) => {
           const fileName = file.key.replace(currentPrefix, "");
+          const tagsOpen = tagEditorFor === file.key;
           return (
-            <div key={file.key} className="file-item">
-              <span className="file-item-actions">
-                <FavoriteButton fileKey={file.key} fileName={fileName} />
-                <FilePreview fileKey={file.key} fileName={fileName} onSelect={onFileSelect} />
-                <ShareLink fileKey={file.key} fileName={fileName} />
-              </span>
-              <span className="name">{fileName}</span>
-              <span className="size">{formatSize(file.size)}</span>
-              <span className="modified">
-                {file.lastModified ? new Date(file.lastModified).toLocaleDateString() : "-"}
-              </span>
+            <div key={file.key} className="file-row">
+              <div className="file-item">
+                <span className="file-item-actions">
+                  <FavoriteButton fileKey={file.key} fileName={fileName} />
+                  <FilePreview fileKey={file.key} fileName={fileName} onSelect={onFileSelect} />
+                  <ShareLink fileKey={file.key} fileName={fileName} />
+                  <button
+                    className={`tag-toggle ${tagsOpen ? "active" : ""}`}
+                    onClick={() => setTagEditorFor(tagsOpen ? null : file.key)}
+                    title={t("tagsEdit")}
+                    aria-label={t("tagsEdit")}
+                    aria-expanded={tagsOpen}
+                  >
+                    🏷️
+                  </button>
+                </span>
+                <span className="name">
+                  {fileName}
+                  <FileTagsBadges fileKey={file.key} refreshKey={tagRefresh} />
+                </span>
+                <span className="size">{formatSize(file.size)}</span>
+                <span className="modified">
+                  {file.lastModified ? new Date(file.lastModified).toLocaleDateString() : "-"}
+                </span>
+              </div>
+              {tagsOpen && (
+                <FileTagsEditor
+                  fileKey={file.key}
+                  onChange={() => setTagRefresh((n) => n + 1)}
+                />
+              )}
             </div>
           );
         })}

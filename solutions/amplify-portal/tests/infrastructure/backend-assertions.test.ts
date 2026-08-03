@@ -31,6 +31,7 @@ describe("Backend Infrastructure Structure", () => {
   describe("Lambda Functions", () => {
     const expectedLambdas = [
       "ListFilesFunction",
+      "FolderDownloadFunction",
       "GetPresignedUrlFunction",
       "ListSnapshotsFunction",
       "SearchFilesFunction",
@@ -67,7 +68,10 @@ describe("Backend Infrastructure Structure", () => {
     });
 
     it("all Lambda functions have explicit timeout", () => {
-      const timeoutMatches = (backendSource.match(/timeout: Duration\.seconds\(/g) || []).length;
+      // Timeouts may be expressed in seconds or minutes.
+      const timeoutMatches = (
+        backendSource.match(/timeout: Duration\.(?:seconds|minutes)\(/g) || []
+      ).length;
       expect(timeoutMatches).toBeGreaterThanOrEqual(expectedLambdas.length);
     });
 
