@@ -491,14 +491,10 @@ class TestLocalUsers:
     def test_delete_resolves_svm_uuid_then_deletes(self, mock_secrets):
         from handler import handler
 
-        http = MockHttp(
-            {"/svm/svms": {"data": {"records": [{"uuid": "svm-uuid-1"}]}}}
-        )
+        http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-uuid-1"}]}}})
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
-            result = handler(
-                {"action": "deleteLocalUser", "sid": "S-1-5-21-1", "name": "bob"}, None
-            )
+            result = handler({"action": "deleteLocalUser", "sid": "S-1-5-21-1", "name": "bob"}, None)
 
         assert result["success"] is True
         assert http.calls[-1][0] == "DELETE"
@@ -763,9 +759,7 @@ class TestFlexCache:
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = MockHttp()
-            result = handler(
-                {"action": "createFlexCache", "name": "cache1", "sizeGiB": 10}, None
-            )
+            result = handler({"action": "createFlexCache", "name": "cache1", "sizeGiB": 10}, None)
 
         assert result["success"] is False
         assert "originVolume" in result["error"]
@@ -791,13 +785,7 @@ class TestFlexCache:
     def test_create_converts_gib_and_returns_job_id(self, mock_secrets):
         from handler import handler
 
-        http = MockHttp(
-            {
-                "/storage/flexcache/flexcaches": {
-                    "data": {"job": {"uuid": "job-1"}}
-                }
-            }
-        )
+        http = MockHttp({"/storage/flexcache/flexcaches": {"data": {"job": {"uuid": "job-1"}}}})
         with patch("handler.urllib3.PoolManager") as mock_pool:
             mock_pool.return_value = http
             result = handler(
@@ -1024,9 +1012,7 @@ class TestSnapMirror:
                     }
                 }
             )
-            result = handler(
-                {"action": "getSnapmirrorTransfers", "relationshipUuid": "r1"}, None
-            )
+            result = handler({"action": "getSnapmirrorTransfers", "relationshipUuid": "r1"}, None)
 
         assert result["transfers"][0]["bytesTransferred"] == 2048
         assert result["transfers"][0]["duration"] == "PT30S"
@@ -1049,9 +1035,7 @@ class TestVscan:
         from handler import handler
 
         with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp(
-                {"/protocols/vscan": {"data": {"records": [{"enabled": True}]}}}
-            )
+            mock_pool.return_value = MockHttp({"/protocols/vscan": {"data": {"records": [{"enabled": True}]}}})
             result = handler({"action": "getVscanStatus"}, None)
 
         assert result["enabled"] is True
@@ -1245,9 +1229,7 @@ class TestSnapMirrorWrites:
         http = MockHttp({"/transfers": {"data": {"job": {"uuid": "j1"}}}})
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = http
-            result = handler(
-                {"action": "updateSnapmirrorNow", "relationshipUuid": "r1"}, None
-            )
+            result = handler({"action": "updateSnapmirrorNow", "relationshipUuid": "r1"}, None)
 
         assert result["success"] is True
         assert result["jobId"] == "j1"
@@ -1302,9 +1284,7 @@ class TestSnapMirrorWrites:
         http = MockHttp({"/snapmirror/relationships/r1": {"data": {}}})
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = http
-            result = handler(
-                {"action": "breakSnapmirror", "relationshipUuid": "r1", "confirm": True}, None
-            )
+            result = handler({"action": "breakSnapmirror", "relationshipUuid": "r1", "confirm": True}, None)
 
         assert result["success"] is True
         assert json.loads(http.calls[0][2]["body"]) == {"state": "broken_off"}
@@ -1472,9 +1452,7 @@ class TestFPolicyWrites:
 
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
-            result = handler(
-                {"action": "createFpolicyEvent", "name": "ev1", "protocol": "cifs"}, None
-            )
+            result = handler({"action": "createFpolicyEvent", "name": "ev1", "protocol": "cifs"}, None)
 
         assert result["success"] is False
         assert "file operation" in result["error"]
@@ -1517,9 +1495,7 @@ class TestFPolicyWrites:
 
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
-            result = handler(
-                {"action": "setFpolicyPolicyEnabled", "name": "audit", "enabled": True}, None
-            )
+            result = handler({"action": "setFpolicyPolicyEnabled", "name": "audit", "enabled": True}, None)
 
         assert result["success"] is False
         assert "priority" in result["error"]
@@ -1530,9 +1506,7 @@ class TestFPolicyWrites:
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = http
-            result = handler(
-                {"action": "setFpolicyPolicyEnabled", "name": "audit", "enabled": False}, None
-            )
+            result = handler({"action": "setFpolicyPolicyEnabled", "name": "audit", "enabled": False}, None)
 
         assert result["success"] is True
         body = json.loads(http.calls[-1][2]["body"])
@@ -1544,9 +1518,7 @@ class TestFPolicyWrites:
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = http
-            result = handler(
-                {"action": "deleteFpolicyEvent", "name": "ev1", "confirm": True}, None
-            )
+            result = handler({"action": "deleteFpolicyEvent", "name": "ev1", "confirm": True}, None)
 
         assert result["success"] is True
         assert http.calls[-1][0] == "DELETE"
@@ -1637,9 +1609,7 @@ class TestClusterPeers:
 
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
-            result = handler(
-                {"action": "createClusterPeer", "remoteAddresses": ["198.51.100.7"]}, None
-            )
+            result = handler({"action": "createClusterPeer", "remoteAddresses": ["198.51.100.7"]}, None)
 
         assert result["success"] is False
         assert "passphrase" in result["error"]
@@ -1670,13 +1640,7 @@ class TestClusterPeers:
 
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
-                {
-                    "/cluster/peers": {
-                        "data": {
-                            "records": [{"authentication": {"passphrase": "abc-123"}}]
-                        }
-                    }
-                }
+                {"/cluster/peers": {"data": {"records": [{"authentication": {"passphrase": "abc-123"}}]}}}
             )
             result = handler(
                 {
@@ -1724,9 +1688,7 @@ class TestClusterPeers:
         http = MockHttp({"/cluster/peers/cp1": {"data": {}}})
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = http
-            result = handler(
-                {"action": "acceptClusterPeer", "uuid": "cp1", "passphrase": "abc"}, None
-            )
+            result = handler({"action": "acceptClusterPeer", "uuid": "cp1", "passphrase": "abc"}, None)
 
         assert result["success"] is True
         assert http.calls[0][0] == "PATCH"
@@ -1834,11 +1796,7 @@ class TestClusterInventory:
 
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
-                {
-                    "/cluster?": {
-                        "data": {"name": "Cluster1", "version": {"full": "NetApp Release 9.17.1"}}
-                    }
-                }
+                {"/cluster?": {"data": {"name": "Cluster1", "version": {"full": "NetApp Release 9.17.1"}}}}
             )
             result = handler({"action": "getClusterInfo"}, None)
 
@@ -1933,9 +1891,7 @@ class TestClusterInventory:
 
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
-            result = handler(
-                {"action": "setNetworkInterfaceEnabled", "uuid": "i1", "enabled": False}, None
-            )
+            result = handler({"action": "setNetworkInterfaceEnabled", "uuid": "i1", "enabled": False}, None)
 
         assert result["success"] is False
         assert "confirm" in result["error"]
@@ -1946,9 +1902,7 @@ class TestClusterInventory:
         http = MockHttp({"/network/ip/interfaces/i1": {"data": {}}})
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = http
-            result = handler(
-                {"action": "setNetworkInterfaceEnabled", "uuid": "i1", "enabled": True}, None
-            )
+            result = handler({"action": "setNetworkInterfaceEnabled", "uuid": "i1", "enabled": True}, None)
 
         assert result["success"] is True
         assert json.loads(http.calls[0][2]["body"]) == {"enabled": True}
@@ -1993,19 +1947,11 @@ class TestClusterInventory:
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp(
                 {
-                    "/protocols/nfs/services": {
-                        "data": {"records": [{"enabled": True, "state": "online"}]}
-                    },
+                    "/protocols/nfs/services": {"data": {"records": [{"enabled": True, "state": "online"}]}},
                     "/protocols/cifs/services": {
-                        "data": {
-                            "records": [
-                                {"enabled": True, "ad_domain": {"fqdn": "demo.fsx.local"}}
-                            ]
-                        }
+                        "data": {"records": [{"enabled": True, "ad_domain": {"fqdn": "demo.fsx.local"}}]}
                     },
-                    "/protocols/s3/services": {
-                        "data": {"records": [{"enabled": True, "name": "svm1_s3"}]}
-                    },
+                    "/protocols/s3/services": {"data": {"records": [{"enabled": True, "name": "svm1_s3"}]}},
                 }
             )
             result = handler({"action": "listProtocolServices"}, None)
@@ -2020,9 +1966,7 @@ class TestClusterInventory:
 
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = MockHttp()
-            result = handler(
-                {"action": "setProtocolServiceEnabled", "protocol": "smb", "enabled": True}, None
-            )
+            result = handler({"action": "setProtocolServiceEnabled", "protocol": "smb", "enabled": True}, None)
 
         assert result["success"] is False
         assert "nfs, cifs or s3" in result["error"]

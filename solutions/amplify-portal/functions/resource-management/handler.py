@@ -2222,9 +2222,7 @@ def _delete_local_user(http, headers, event, user_id):
     if err:
         return {"success": False, "error": err}
 
-    data = _ontap_request(
-        http, headers, "DELETE", f"/protocols/cifs/local-users/{svm_uuid}/{sid}"
-    )
+    data = _ontap_request(http, headers, "DELETE", f"/protocols/cifs/local-users/{svm_uuid}/{sid}")
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -2297,9 +2295,7 @@ def _delete_local_group(http, headers, event, user_id):
     if err:
         return {"success": False, "error": err}
 
-    data = _ontap_request(
-        http, headers, "DELETE", f"/protocols/cifs/local-groups/{svm_uuid}/{sid}"
-    )
+    data = _ontap_request(http, headers, "DELETE", f"/protocols/cifs/local-groups/{svm_uuid}/{sid}")
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -2362,9 +2358,7 @@ def _add_group_member(http, headers, event, user_id):
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
-    logger.info(
-        f"SMB group member added: {member_name} -> {group_name or group_sid} by {user_id}"
-    )
+    logger.info(f"SMB group member added: {member_name} -> {group_name or group_sid} by {user_id}")
     return {"success": True, "error": None}
 
 
@@ -2396,9 +2390,7 @@ def _remove_group_member(http, headers, event, user_id):
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
-    logger.info(
-        f"SMB group member removed: {member_name} from {group_name or group_sid} by {user_id}"
-    )
+    logger.info(f"SMB group member removed: {member_name} from {group_name or group_sid} by {user_id}")
     return {"success": True, "error": None}
 
 
@@ -2583,9 +2575,7 @@ def _create_flexcache(http, headers, event, user_id):
     if prepopulate_paths:
         body["prepopulate"] = {"dir_paths": prepopulate_paths}
 
-    data = _ontap_request(
-        http, headers, "POST", "/storage/flexcache/flexcaches", body=body
-    )
+    data = _ontap_request(http, headers, "POST", "/storage/flexcache/flexcaches", body=body)
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -2808,9 +2798,7 @@ def _get_vscan_status(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
 
-    data = _ontap_request(
-        http, headers, "GET", f"/protocols/vscan?svm.name={svm}&fields=enabled"
-    )
+    data = _ontap_request(http, headers, "GET", f"/protocols/vscan?svm.name={svm}&fields=enabled")
     if data.get("_error"):
         return {"enabled": False, "error": data["_message"]}
 
@@ -2864,10 +2852,7 @@ def _get_fpolicy_status(http, headers, event):
     ONTAP REST: GET /api/protocols/fpolicy (connections sub-object)
     """
     svm = event.get("svm", SVM_NAME)
-    params = (
-        f"svm.name={svm}&fields=connections.node.name,connections.policy.name,"
-        "connections.server,connections.state"
-    )
+    params = f"svm.name={svm}&fields=connections.node.name,connections.policy.name,connections.server,connections.state"
 
     data = _ontap_request(http, headers, "GET", f"/protocols/fpolicy?{params}")
     if data.get("_error"):
@@ -2895,8 +2880,7 @@ def _list_fpolicy_policies(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     params = (
-        f"svm.name={svm}&fields=policies.name,policies.enabled,policies.priority,"
-        "policies.engine.name,policies.events"
+        f"svm.name={svm}&fields=policies.name,policies.enabled,policies.priority,policies.engine.name,policies.events"
     )
 
     data = _ontap_request(http, headers, "GET", f"/protocols/fpolicy?{params}")
@@ -2913,10 +2897,7 @@ def _list_fpolicy_policies(http, headers, event):
                     "enabled": bool(p.get("enabled", False)),
                     "priority": p.get("priority", 0),
                     "engineType": p.get("engine", {}).get("name", ""),
-                    "events": [
-                        e.get("name", "") if isinstance(e, dict) else str(e)
-                        for e in events
-                    ],
+                    "events": [e.get("name", "") if isinstance(e, dict) else str(e) for e in events],
                 }
             )
 
@@ -2972,9 +2953,7 @@ def _update_snapmirror_now(http, headers, event, user_id):
     if not rel_uuid:
         return {"success": False, "error": "relationshipUuid is required"}
 
-    data = _ontap_request(
-        http, headers, "POST", f"/snapmirror/relationships/{rel_uuid}/transfers", body={}
-    )
+    data = _ontap_request(http, headers, "POST", f"/snapmirror/relationships/{rel_uuid}/transfers", body={})
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -3117,9 +3096,7 @@ def _delete_snapmirror(http, headers, event, user_id):
     if not event.get("confirm", False):
         return {"success": False, "error": "confirm=true is required"}
 
-    data = _ontap_request(
-        http, headers, "DELETE", f"/snapmirror/relationships/{rel_uuid}"
-    )
+    data = _ontap_request(http, headers, "DELETE", f"/snapmirror/relationships/{rel_uuid}")
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -3144,9 +3121,7 @@ def _set_vscan_enabled(http, headers, event, user_id):
     if err:
         return {"success": False, "error": err}
 
-    data = _ontap_request(
-        http, headers, "PATCH", f"/protocols/vscan/{svm_uuid}", body={"enabled": bool(enabled)}
-    )
+    data = _ontap_request(http, headers, "PATCH", f"/protocols/vscan/{svm_uuid}", body={"enabled": bool(enabled)})
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -3280,18 +3255,16 @@ def _create_fpolicy_event(http, headers, event, user_id):
         return {"success": False, "error": "at least one file operation is required"}
 
     body = {
-            "name": name,
-            "protocol": protocol,
-            "file_operations": {op: True for op in file_operations},
+        "name": name,
+        "protocol": protocol,
+        "file_operations": {op: True for op in file_operations},
     }
 
     svm_uuid, err = _get_svm_uuid(http, headers, svm)
     if err:
         return {"success": False, "error": err}
 
-    data = _ontap_request(
-        http, headers, "POST", f"/protocols/fpolicy/{svm_uuid}/events", body=body
-    )
+    data = _ontap_request(http, headers, "POST", f"/protocols/fpolicy/{svm_uuid}/events", body=body)
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -3363,9 +3336,7 @@ def _create_fpolicy_policy(http, headers, event, user_id):
     if priority is not None:
         body["priority"] = int(priority)
 
-    data = _ontap_request(
-        http, headers, "POST", f"/protocols/fpolicy/{svm_uuid}/policies", body=body
-    )
+    data = _ontap_request(http, headers, "POST", f"/protocols/fpolicy/{svm_uuid}/policies", body=body)
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -3626,10 +3597,7 @@ def _list_svm_peers(http, headers, event):
 
     ONTAP REST: GET /api/svm/peers
     """
-    params = (
-        "fields=name,uuid,state,applications,svm.name,peer.svm.name,peer.cluster.name"
-        "&max_records=100"
-    )
+    params = "fields=name,uuid,state,applications,svm.name,peer.svm.name,peer.cluster.name&max_records=100"
 
     data = _ontap_request(http, headers, "GET", f"/svm/peers?{params}")
     if data.get("_error"):
@@ -3694,9 +3662,7 @@ def _accept_svm_peer(http, headers, event, user_id):
     if not uuid:
         return {"success": False, "error": "uuid is required"}
 
-    data = _ontap_request(
-        http, headers, "PATCH", f"/svm/peers/{uuid}", body={"state": "peered"}
-    )
+    data = _ontap_request(http, headers, "PATCH", f"/svm/peers/{uuid}", body={"state": "peered"})
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -3731,9 +3697,7 @@ def _get_cluster_info(http, headers, event):
 
     ONTAP REST: GET /api/cluster
     """
-    data = _ontap_request(
-        http, headers, "GET", "/cluster?fields=name,version,management_interfaces"
-    )
+    data = _ontap_request(http, headers, "GET", "/cluster?fields=name,version,management_interfaces")
     if data.get("_error"):
         return {"error": data["_message"]}
 
@@ -3753,10 +3717,7 @@ def _list_nodes(http, headers, event):
 
     ONTAP REST: GET /api/cluster/nodes
     """
-    params = (
-        "fields=name,uuid,state,model,serial_number,version.full,uptime,ha.enabled,"
-        "ha.partners.name&max_records=50"
-    )
+    params = "fields=name,uuid,state,model,serial_number,version.full,uptime,ha.enabled,ha.partners.name&max_records=50"
 
     data = _ontap_request(http, headers, "GET", f"/cluster/nodes?{params}")
     if data.get("_error"):
@@ -3791,8 +3752,7 @@ def _list_licenses(http, headers, event):
         http,
         headers,
         "GET",
-        "/cluster/licensing/licenses?fields=name,state,scope,licenses.expiry_time"
-        "&max_records=100",
+        "/cluster/licensing/licenses?fields=name,state,scope,licenses.expiry_time&max_records=100",
     )
     if data.get("_error"):
         return {"licenses": [], "error": data["_message"]}
@@ -3948,9 +3908,7 @@ def _list_protocol_services(http, headers, event):
     svm = event.get("svm", SVM_NAME)
     services = []
 
-    nfs = _ontap_request(
-        http, headers, "GET", f"/protocols/nfs/services?svm.name={svm}&fields=enabled,state"
-    )
+    nfs = _ontap_request(http, headers, "GET", f"/protocols/nfs/services?svm.name={svm}&fields=enabled,state")
     if not nfs.get("_error"):
         rec = (nfs.get("records") or [{}])[0]
         services.append(
@@ -3981,9 +3939,7 @@ def _list_protocol_services(http, headers, event):
             }
         )
 
-    s3 = _ontap_request(
-        http, headers, "GET", f"/protocols/s3/services?svm.name={svm}&fields=enabled,name"
-    )
+    s3 = _ontap_request(http, headers, "GET", f"/protocols/s3/services?svm.name={svm}&fields=enabled,name")
     if not s3.get("_error"):
         recs = s3.get("records") or []
         rec = recs[0] if recs else {}
@@ -4082,8 +4038,7 @@ def _get_job(http, headers, event):
         http,
         headers,
         "GET",
-        f"/cluster/jobs/{job_uuid}?fields=uuid,description,state,message,code,"
-        "start_time,end_time",
+        f"/cluster/jobs/{job_uuid}?fields=uuid,description,state,message,code,start_time,end_time",
     )
     if data.get("_error"):
         return {"error": data["_message"]}
