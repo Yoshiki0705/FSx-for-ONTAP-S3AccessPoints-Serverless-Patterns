@@ -197,7 +197,7 @@ export function SnapshotAdminManager() {
               </div>
               <div className="form-group">
                 <label>{t("rmShareComment")}</label>
-                <input type="text" value={policyComment} onChange={(e) => setPolicyComment(e.target.value)} placeholder="Optional" />
+                <input type="text" value={policyComment} onChange={(e) => setPolicyComment(e.target.value)} placeholder={t("labelOptional")} />
               </div>
               <button onClick={handleCreatePolicy} className="btn-primary">{t("rmCreate")}</button>
               <button onClick={() => setShowCreatePolicy(false)} className="btn-secondary">{t("cancel")}</button>

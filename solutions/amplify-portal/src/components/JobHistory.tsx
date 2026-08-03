@@ -57,15 +57,15 @@ export function JobHistory({ onSelectExecution }: JobHistoryProps) {
   if (loading) {
     return (
       <div className="job-history">
-        <h2>History</h2>
-        <p>Loading job history...</p>
+        <h2>{t("labelHistory")}</h2>
+        <p>{t("jhLoading")}</p>
       </div>
     );
   }
 
   return (
     <div className="job-history">
-      <h2>History</h2>
+      <h2>{t("labelHistory")}</h2>
 
       {error && <div className="error-message">{error}</div>}
 
@@ -77,11 +77,11 @@ export function JobHistory({ onSelectExecution }: JobHistoryProps) {
         <table className="history-table">
           <thead>
             <tr>
-              <th>Pattern</th>
-              <th>Input Prefix</th>
-              <th>Status</th>
-              <th>Started</th>
-              <th>Action</th>
+              <th>{t("jobHistoryPattern")}</th>
+              <th>{t("jhInputPrefix")}</th>
+              <th>{t("rmState")}</th>
+              <th>{t("labelStarted")}</th>
+              <th>{t("rmActions")}</th>
             </tr>
           </thead>
           <tbody>

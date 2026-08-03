@@ -147,7 +147,7 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
       )}
 
       {recentFiles.length > 0 && (
-        <ul className="recent-list" role="list" aria-label="Recently accessed files">
+        <ul className="recent-list" role="list" aria-label={t("recentFilesAria")}>
           {recentFiles.map((item) => (
             <li
               key={item.id}

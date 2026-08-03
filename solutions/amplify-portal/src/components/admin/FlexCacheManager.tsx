@@ -303,10 +303,10 @@ export function FlexCacheManager() {
               {expandedUuid === cache.uuid && (
                 <div className="lu-members-panel">
                   {cache.origins.length === 0 ? (
-                    <p className="rm-empty-sm">No origins found</p>
+                    <p className="rm-empty-sm">{t("fcNoOrigins")}</p>
                   ) : (
                     <table className="rm-table" style={{ fontSize: "0.85rem" }}>
-                      <thead><tr><th>Origin Cluster</th><th>Origin SVM</th><th>Origin Volume</th><th>State</th></tr></thead>
+                      <thead><tr><th>{t("fcOriginCluster")}</th><th>{t("fcOriginSvm")}</th><th>{t("fcOriginVolume")}</th><th>State</th></tr></thead>
                       <tbody>
                         {cache.origins.map((origin, i) => (
                           <tr key={i}>
