@@ -67,17 +67,11 @@ TRANSLATIONS: dict[str, str] = {
         "FSx for ONTAP S3 Access Points — Amplify Gen2 and Nextcloud Side by Side"
     ),
     # ---- node labels -----------------------------------------------------
-    "AWS Lambda + AI サービス&#xa;"
-    "(Amazon Bedrock / Amazon Textract / Amazon Athena ほか)": (
-        "AWS Lambda + AI services&#xa;"
-        "(Amazon Bedrock / Amazon Textract / Amazon Athena, and others)"
+    "AWS Lambda + AI サービス&#xa;(Amazon Bedrock / Amazon Textract / Amazon Athena ほか)": (
+        "AWS Lambda + AI services&#xa;(Amazon Bedrock / Amazon Textract / Amazon Athena, and others)"
     ),
-    "Amazon EC2&#xa;(Nextcloud / ファイル共有 UI)": (
-        "Amazon EC2&#xa;(Nextcloud / file sharing UI)"
-    ),
-    "AWS Amplify&#xa;(Gen2 / AI 処理ダッシュボード)": (
-        "AWS Amplify&#xa;(Gen2 / AI processing dashboard)"
-    ),
+    "Amazon EC2&#xa;(Nextcloud / ファイル共有 UI)": ("Amazon EC2&#xa;(Nextcloud / file sharing UI)"),
+    "AWS Amplify&#xa;(Gen2 / AI 処理ダッシュボード)": ("AWS Amplify&#xa;(Gen2 / AI processing dashboard)"),
     "AWS Lambda&#xa;(VPC 外 / ARM64)": "AWS Lambda&#xa;(outside VPC / ARM64)",
     "Web ブラウザ&#xa;(ファイル管理 + 同期)": "Web browser&#xa;(file management + sync)",
     "Web ブラウザ&#xa;(AI ポータル)": "Web browser&#xa;(AI portal)",

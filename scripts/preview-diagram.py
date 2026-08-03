@@ -54,10 +54,7 @@ def preview(src: Path, out_dir: Path, max_dim: int) -> tuple[Path, str]:
         out_dir.mkdir(parents=True, exist_ok=True)
         dest = out_dir / f"{src.stem}.png"
         resized.save(dest, optimize=True)
-        note = (
-            f"{src.name}: {width}x{height} -> {resized.width}x{resized.height} "
-            f"(scale {scale:.3f})"
-        )
+        note = f"{src.name}: {width}x{height} -> {resized.width}x{resized.height} (scale {scale:.3f})"
     return dest, note
 
 
@@ -70,10 +67,7 @@ def resolve_sources(names: list[str], pattern: str) -> list[Path]:
                 found.append(candidate)
                 continue
             stem = candidate.stem.removesuffix("@2x")
-            matches = sorted(
-                Path(p)
-                for p in globlib.glob(str(REPO_ROOT / f"docs/images/png/{stem}*.png"))
-            )
+            matches = sorted(Path(p) for p in globlib.glob(str(REPO_ROOT / f"docs/images/png/{stem}*.png")))
             if not matches:
                 print(f"NOT FOUND: {name}", file=sys.stderr)
             found.extend(matches)
