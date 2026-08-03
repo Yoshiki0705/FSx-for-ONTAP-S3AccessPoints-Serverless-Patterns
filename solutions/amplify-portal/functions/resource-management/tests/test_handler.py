@@ -982,6 +982,25 @@ class TestSnapMirror:
         assert rel["healthy"] is True
         assert rel["policy"] == "MirrorAllSnapshots"
 
+    def test_does_not_request_unsupported_fields(self, mock_secrets):
+        """Guard the requested `fields` list, not just the response mapping.
+
+        A mock ONTAP returns records whatever `fields` we ask for, so asserting
+        only on the mapped output cannot catch an invalid field name. Real ONTAP
+        9.17 rejects the entire request when one field is unknown, which silently
+        emptied the relationship list until this was found on a live cluster.
+        """
+        from handler import handler
+
+        mock_http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+            handler({"action": "listSnapmirrorRelationships"}, None)
+
+        urls = [url for _method, url, _kwargs in mock_http.calls]
+        assert any("/snapmirror/relationships" in u for u in urls)
+        assert not any("last_transfer_size" in u for u in urls)
+
     def test_transfers_require_relationship_uuid(self, mock_secrets):
         from handler import handler
 

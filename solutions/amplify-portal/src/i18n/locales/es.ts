@@ -792,6 +792,7 @@ export const es: Record<TranslationKeys, string> = {
   clLicenses: "Licencias",
   clLicenseName: "Paquete",
   clNoLicenses: "No hay licencias",
+  clManagedByAwsHint: "En FSx for ONTAP, AWS gestiona el clúster, por lo que esta lista puede estar vacía. Es lo esperado, no un error.",
   clScope: "Ámbito",
   clNoInterfaces: "No hay interfaces",
   clServices: "Servicios",

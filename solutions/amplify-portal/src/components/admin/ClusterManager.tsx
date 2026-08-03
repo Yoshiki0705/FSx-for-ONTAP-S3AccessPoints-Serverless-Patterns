@@ -216,7 +216,10 @@ export function ClusterManager() {
 
           <h4>{t("clNodes")}</h4>
           {nodes.length === 0 ? (
-            <p className="rm-empty">{t("clNoNodes")}</p>
+            <>
+              <p className="rm-empty">{t("clNoNodes")}</p>
+              <p className="rm-hint">{t("clManagedByAwsHint")}</p>
+            </>
           ) : (
             <table className="rm-table">
               <thead>
@@ -244,7 +247,10 @@ export function ClusterManager() {
 
           <h4 style={{ marginTop: "1rem" }}>{t("clLicenses")}</h4>
           {licenses.length === 0 ? (
-            <p className="rm-empty">{t("clNoLicenses")}</p>
+            <>
+              <p className="rm-empty">{t("clNoLicenses")}</p>
+              <p className="rm-hint">{t("clManagedByAwsHint")}</p>
+            </>
           ) : (
             <table className="rm-table">
               <thead>

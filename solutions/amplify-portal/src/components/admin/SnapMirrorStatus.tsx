@@ -43,7 +43,6 @@ interface SnapMirrorRelationship {
   policy: string;
   lagTime: string;
   lastTransferType: string;
-  lastTransferSize: number;
 }
 
 interface Transfer {

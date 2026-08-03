@@ -792,6 +792,7 @@ export const ko: Record<TranslationKeys, string> = {
   clLicenses: "라이선스",
   clLicenseName: "패키지",
   clNoLicenses: "라이선스가 없습니다",
+  clManagedByAwsHint: "FSx for ONTAP에서는 AWS가 클러스터를 관리하므로 이 목록이 비어 있을 수 있습니다. 오류가 아닙니다.",
   clScope: "범위",
   clNoInterfaces: "인터페이스가 없습니다",
   clServices: "서비스",

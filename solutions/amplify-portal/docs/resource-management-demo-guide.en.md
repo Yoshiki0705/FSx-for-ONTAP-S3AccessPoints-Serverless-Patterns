@@ -328,6 +328,12 @@ There are four tabs.
 | ⚙️ Services | `/protocols/{nfs,cifs,s3}/services`, `/name-services/dns` | Protocol enable/disable, DNS domains and servers |
 | 📜 Jobs | `/cluster/jobs` | State and message of asynchronous jobs |
 
+> **When nodes and licences come back empty**: on FSx for ONTAP, AWS manages the
+> cluster, so `/cluster/nodes` and `/cluster/licensing/licenses` can return zero
+> records. Measured on ONTAP 9.17.1P7D1: both returned zero records with no error.
+> The panel shows a note to the same effect. Cluster name and ONTAP version
+> (`/cluster`) are still available.
+
 **Enable or disable a LIF**
 
 Use `Enable` / `Disable` on the row. Disabling requires confirmation.
