@@ -140,6 +140,17 @@ def extract_iam_policies(template_path: Path) -> list[dict]:
 _OMIT = object()
 
 ARN_PLACEHOLDER = "arn:aws:*:*:123456789012:*"
+REGION_PLACEHOLDER = "ap-northeast-1"
+
+# Policy keys whose value must be an ARN. A Ref to a template parameter in one
+# of these positions has to become an ARN-shaped placeholder, otherwise Access
+# Analyzer reports MISSING_ARN_FIELD for a template that is perfectly valid --
+# the parameter simply carries the ARN at deploy time.
+_ARN_KEYS = frozenset({"Resource", "NotResource", "AWS", "Federated"})
+
+# Condition keys whose value must be a Region name, for the same reason
+# (otherwise: INVALID_REGION).
+_REGION_KEYS = frozenset({"aws:RequestedRegion", "ec2:Region"})
 
 
 def resolve_intrinsics(doc: dict) -> str:
@@ -154,15 +165,21 @@ def resolve_intrinsics(doc: dict) -> str:
     Fn::If is resolved to its true branch, so the policy is validated as it
     exists when the condition holds. The false branch is not validated; that is
     a deliberate limitation of a single-pass check.
+
+    Resolution is position-aware. A Ref to a template parameter carries no type
+    information here, so what it must look like depends on where it sits: an ARN
+    under Resource, a Region under aws:RequestedRegion. Substituting a generic
+    "ref-Name" string everywhere produced 53 false MISSING_ARN_FIELD and
+    INVALID_REGION findings across templates that were correct.
     """
 
-    def resolve(obj):
+    def resolve(obj, key=None):
         if isinstance(obj, dict):
             if "Fn::If" in obj:
                 branches = obj["Fn::If"]
                 # [condition_name, value_if_true, value_if_false]
                 if isinstance(branches, list) and len(branches) == 3:
-                    return resolve(branches[1])
+                    return resolve(branches[1], key)
                 return _OMIT
             if "Ref" in obj:
                 ref = obj["Ref"]
@@ -171,13 +188,18 @@ def resolve_intrinsics(doc: dict) -> str:
                 if ref == "AWS::AccountId":
                     return "123456789012"
                 if ref == "AWS::Region":
-                    return "ap-northeast-1"
+                    return REGION_PLACEHOLDER
                 if ref == "AWS::Partition":
                     return "aws"
                 if ref == "AWS::StackName":
                     return "test-stack"
                 if ref == "AWS::URLSuffix":
                     return "amazonaws.com"
+                # A Ref to a template parameter. Shape it for its position.
+                if key in _ARN_KEYS:
+                    return ARN_PLACEHOLDER
+                if key in _REGION_KEYS:
+                    return REGION_PLACEHOLDER
                 return f"ref-{ref}"
             for fn in (
                 "Fn::Sub",
@@ -192,16 +214,21 @@ def resolve_intrinsics(doc: dict) -> str:
                 "Fn::Cidr",
             ):
                 if fn in obj:
-                    # Fn::Split returns a list; everything else a scalar ARN-ish string.
-                    return [ARN_PLACEHOLDER] if fn == "Fn::Split" else ARN_PLACEHOLDER
+                    if fn == "Fn::Split":
+                        return [ARN_PLACEHOLDER]
+                    if key in _REGION_KEYS:
+                        return REGION_PLACEHOLDER
+                    # Everything else is a scalar, ARN-ish string.
+                    return ARN_PLACEHOLDER
             out = {}
-            for key, value in obj.items():
-                resolved_value = resolve(value)
+            for inner_key, value in obj.items():
+                resolved_value = resolve(value, inner_key)
                 if resolved_value is not _OMIT:
-                    out[key] = resolved_value
+                    out[inner_key] = resolved_value
             return out
         if isinstance(obj, list):
-            return [item for item in (resolve(i) for i in obj) if item is not _OMIT]
+            # A list inherits its parent's position, e.g. Resource: [a, b].
+            return [item for item in (resolve(i, key) for i in obj) if item is not _OMIT]
         return obj
 
     resolved = resolve(doc)
