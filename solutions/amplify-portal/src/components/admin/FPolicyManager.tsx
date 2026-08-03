@@ -46,6 +46,8 @@ export function FPolicyManager() {
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  /** Policy or event awaiting delete confirmation. */
+  const [confirmFor, setConfirmFor] = useState<{ kind: "policy" | "event"; name: string } | null>(null);
   // Policy form
   const [polName, setPolName] = useState("");
   const [polEvents, setPolEvents] = useState("");
@@ -71,6 +73,7 @@ export function FPolicyManager() {
         setSuccess(t("fpActionDone"));
         setTimeout(() => setSuccess(null), 4000);
         setShowCreate(false);
+        setConfirmFor(null);
         loadData();
       } else {
         setError(data?.error || "Action failed");
@@ -240,10 +243,22 @@ export function FPolicyManager() {
                     </button>
                     <button className="rm-btn-danger-sm" disabled={busy || p.enabled}
                       title={p.enabled ? t("fpDisableFirst") : t("delete")}
-                      onClick={() => runAction("deleteFpolicyPolicy", { name: p.name })}>
+                      onClick={() => setConfirmFor({ kind: "policy", name: p.name })}>
                       {t("delete")}
                     </button>
                   </span>
+                  {confirmFor?.kind === "policy" && confirmFor.name === p.name && (
+                    <span className="peer-accept-row" role="alertdialog">
+                      <span className="sm-confirm-text">{t("fpConfirmDeletePolicy")}</span>
+                      <button className="rm-btn-danger-sm" disabled={busy}
+                        onClick={() => runAction("deleteFpolicyPolicy", { name: p.name, confirm: true })}>
+                        {t("rmExecute")}
+                      </button>
+                      <button className="rm-btn-sm" onClick={() => setConfirmFor(null)}>
+                        {t("cancel")}
+                      </button>
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}</tbody>
@@ -260,9 +275,21 @@ export function FPolicyManager() {
                 <td>{e.fileOperations.join(", ") || "—"}</td>
                 <td>
                   <button className="rm-btn-danger-sm" disabled={busy}
-                    onClick={() => runAction("deleteFpolicyEvent", { name: e.name })}>
+                    onClick={() => setConfirmFor({ kind: "event", name: e.name })}>
                     {t("delete")}
                   </button>
+                  {confirmFor?.kind === "event" && confirmFor.name === e.name && (
+                    <span className="peer-accept-row" role="alertdialog">
+                      <span className="sm-confirm-text">{t("fpConfirmDeleteEvent")}</span>
+                      <button className="rm-btn-danger-sm" disabled={busy}
+                        onClick={() => runAction("deleteFpolicyEvent", { name: e.name, confirm: true })}>
+                        {t("rmExecute")}
+                      </button>
+                      <button className="rm-btn-sm" onClick={() => setConfirmFor(null)}>
+                        {t("cancel")}
+                      </button>
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}</tbody>

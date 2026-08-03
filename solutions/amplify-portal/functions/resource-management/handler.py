@@ -3230,11 +3230,16 @@ def _delete_vscan_policy(http, headers, event, user_id):
     """Delete a Vscan on-access policy.
 
     ONTAP REST: DELETE /api/protocols/vscan/{svm.uuid}/on-access-policies/{name}
+
+    Deleting the policy takes its scope out of scanning, so it is confirm-gated
+    here as well as in the UI. A caller that bypasses the UI is refused too.
     """
     svm = event.get("svm", SVM_NAME)
     name = event.get("name", "")
     if not name:
         return {"success": False, "error": "name is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
 
     svm_uuid, err = _get_svm_uuid(http, headers, svm)
     if err:
@@ -3300,11 +3305,14 @@ def _delete_fpolicy_event(http, headers, event, user_id):
     ONTAP REST: DELETE /api/protocols/fpolicy/{svm.uuid}/events/{name}
 
     An event still referenced by a policy cannot be removed; ONTAP rejects it.
+    Removing it stops the policies that subscribe to it, so it is confirm-gated.
     """
     svm = event.get("svm", SVM_NAME)
     name = event.get("name", "")
     if not name:
         return {"success": False, "error": "name is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
 
     svm_uuid, err = _get_svm_uuid(http, headers, svm)
     if err:
@@ -3410,12 +3418,15 @@ def _delete_fpolicy_policy(http, headers, event, user_id):
 
     ONTAP REST: DELETE /api/protocols/fpolicy/{svm.uuid}/policies/{name}
 
-    A policy has to be disabled before it can be deleted.
+    A policy has to be disabled before it can be deleted. Deleting it stops the
+    audit events it generates, so it is confirm-gated.
     """
     svm = event.get("svm", SVM_NAME)
     name = event.get("name", "")
     if not name:
         return {"success": False, "error": "name is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
 
     svm_uuid, err = _get_svm_uuid(http, headers, svm)
     if err:

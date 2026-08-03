@@ -207,6 +207,11 @@ ONTAP REST: `/protocols/vscan/{svm.uuid}`,
 Success criterion: the enabled state updates in the list immediately, and excluded
 paths and extensions render comma-separated.
 
+`📖 Show setup guide` in the toolbar opens the setup steps, including the list of
+interoperable products, where to obtain the connector, and example ONTAP CLI commands.
+It appears automatically while Vscan is disabled, and the same content stays reachable
+from that button once Vscan is on.
+
 > **Prerequisite note**: policy definitions can be created from this portal, but actual
 > scanning requires an external scan engine and a Vscan connector. The scanner side is
 > configured with the scanner product's own management tool.

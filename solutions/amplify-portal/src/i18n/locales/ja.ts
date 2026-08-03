@@ -1091,6 +1091,13 @@ export const ja = {
   vsMandatory: "スキャン必須",
   vsMaxFileSize: "最大ファイルサイズ",
   vsExcludedExt: "除外する拡張子",
+  // --- Vscan / FPolicy delete confirmation ---
+  vsConfirmDeletePolicy: "このポリシーを削除すると、対象がスキャンされなくなります。続行しますか？",
+  vsShowSetupGuide: "セットアップガイドを表示",
+  vsHideSetupGuide: "セットアップガイドを隠す",
+  fpConfirmDeletePolicy: "このポリシーを削除すると、監査イベントの発生が止まります。続行しますか？",
+  fpConfirmDeleteEvent: "このイベント定義を削除すると、購読しているポリシーが動作しなくなります。続行しますか？",
+
   // --- Share link ---
   slShareTitle: "共有",
   slGenerateAria: "共有リンクを生成",

@@ -1048,6 +1048,13 @@ export const de: Record<TranslationKeys, string> = {
   vsMandatory: "Scan verpflichtend",
   vsMaxFileSize: "Maximale Dateigröße",
   vsExcludedExt: "Ausgeschlossene Erweiterungen",
+  // --- Vscan / FPolicy delete confirmation ---
+  vsConfirmDeletePolicy: "Das Löschen dieser Richtlinie beendet die Prüfung ihres Bereichs. Fortfahren?",
+  vsShowSetupGuide: "Einrichtungsleitfaden anzeigen",
+  vsHideSetupGuide: "Einrichtungsleitfaden ausblenden",
+  fpConfirmDeletePolicy: "Das Löschen dieser Richtlinie beendet die Erzeugung von Audit-Ereignissen. Fortfahren?",
+  fpConfirmDeleteEvent: "Das Löschen dieser Ereignisdefinition beendet jede Richtlinie, die sie abonniert. Fortfahren?",
+
   // --- Share link ---
   slShareTitle: "Teilen",
   slGenerateAria: "Freigabelink erzeugen",

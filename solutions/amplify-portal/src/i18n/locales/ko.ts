@@ -1048,6 +1048,13 @@ export const ko: Record<TranslationKeys, string> = {
   vsMandatory: "스캔 필수",
   vsMaxFileSize: "최대 파일 크기",
   vsExcludedExt: "제외 확장자",
+  // --- Vscan / FPolicy delete confirmation ---
+  vsConfirmDeletePolicy: "이 정책을 삭제하면 해당 범위가 스캔되지 않습니다. 계속하시겠습니까?",
+  vsShowSetupGuide: "설정 가이드 표시",
+  vsHideSetupGuide: "설정 가이드 숨기기",
+  fpConfirmDeletePolicy: "이 정책을 삭제하면 감사 이벤트가 생성되지 않습니다. 계속하시겠습니까?",
+  fpConfirmDeleteEvent: "이 이벤트 정의를 삭제하면 이를 구독하는 정책이 동작하지 않습니다. 계속하시겠습니까?",
+
   // --- Share link ---
   slShareTitle: "공유",
   slGenerateAria: "공유 링크 생성",

@@ -1048,6 +1048,13 @@ export const zhTW: Record<TranslationKeys, string> = {
   vsMandatory: "強制掃描",
   vsMaxFileSize: "最大檔案大小",
   vsExcludedExt: "排除的副檔名",
+  // --- Vscan / FPolicy delete confirmation ---
+  vsConfirmDeletePolicy: "刪除此原則後，其範圍將不再被掃描。是否繼續？",
+  vsShowSetupGuide: "顯示設定指南",
+  vsHideSetupGuide: "隱藏設定指南",
+  fpConfirmDeletePolicy: "刪除此原則後，將不再產生稽核事件。是否繼續？",
+  fpConfirmDeleteEvent: "刪除此事件定義後，訂閱它的原則將無法運作。是否繼續？",
+
   // --- Share link ---
   slShareTitle: "共用",
   slGenerateAria: "產生共用連結",

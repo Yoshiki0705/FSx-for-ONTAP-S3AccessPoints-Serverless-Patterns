@@ -1048,6 +1048,13 @@ export const zhCN: Record<TranslationKeys, string> = {
   vsMandatory: "强制扫描",
   vsMaxFileSize: "最大文件大小",
   vsExcludedExt: "排除的扩展名",
+  // --- Vscan / FPolicy delete confirmation ---
+  vsConfirmDeletePolicy: "删除此策略后，其范围将不再被扫描。是否继续？",
+  vsShowSetupGuide: "显示设置指南",
+  vsHideSetupGuide: "隐藏设置指南",
+  fpConfirmDeletePolicy: "删除此策略后，将不再生成审计事件。是否继续？",
+  fpConfirmDeleteEvent: "删除此事件定义后，订阅它的策略将无法工作。是否继续？",
+
   // --- Share link ---
   slShareTitle: "共享",
   slGenerateAria: "生成共享链接",

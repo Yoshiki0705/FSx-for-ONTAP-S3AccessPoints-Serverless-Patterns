@@ -1084,6 +1084,13 @@ export const en: Record<TranslationKeys, string> = {
   vsMandatory: "Scan mandatory",
   vsMaxFileSize: "Max file size",
   vsExcludedExt: "Excluded extensions",
+  // --- Vscan / FPolicy delete confirmation ---
+  vsConfirmDeletePolicy: "Deleting this policy stops its scope being scanned. Continue?",
+  vsShowSetupGuide: "Show setup guide",
+  vsHideSetupGuide: "Hide setup guide",
+  fpConfirmDeletePolicy: "Deleting this policy stops audit events being generated. Continue?",
+  fpConfirmDeleteEvent: "Deleting this event definition stops any policy that subscribes to it. Continue?",
+
   // --- Share link ---
   slShareTitle: "Share",
   slGenerateAria: "Generate share link",

@@ -1544,7 +1544,9 @@ class TestFPolicyWrites:
         http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
         with patch("handler.urllib3.PoolManager") as mp:
             mp.return_value = http
-            result = handler({"action": "deleteFpolicyEvent", "name": "ev1"}, None)
+            result = handler(
+                {"action": "deleteFpolicyEvent", "name": "ev1", "confirm": True}, None
+            )
 
         assert result["success"] is True
         assert http.calls[-1][0] == "DELETE"
@@ -2139,3 +2141,65 @@ class TestPeeringAndClusterActionsAreRouted:
             result = handler({"action": action}, None)
 
         assert result.get("error") != f"Unknown action: {action}"
+
+
+class TestConfirmGatedDeletesMatchUiPayloads:
+    """Assert the confirm-gated deletes accept exactly what the UI sends.
+
+    A panel that omits ``confirm`` renders a delete button that can never
+    succeed. That shipped once for Vscan and FPolicy, so the contract is pinned
+    here: without ``confirm`` the handler must refuse, and with the parameters
+    the UI actually sends it must succeed.
+    """
+
+    # (action, params the UI sends, response key the handler writes to)
+    UI_DELETE_PAYLOADS = [
+        ("deleteVscanPolicy", {"name": "scan_all_cifs", "confirm": True}, "/on-access-policies"),
+        ("deleteFpolicyPolicy", {"name": "audit_all", "confirm": True}, "/policies"),
+        ("deleteFpolicyEvent", {"name": "file_ops_cifs", "confirm": True}, "/events"),
+        ("deleteSnapmirror", {"relationshipUuid": "sm-1", "confirm": True}, "/snapmirror"),
+        ("breakSnapmirror", {"relationshipUuid": "sm-1", "confirm": True}, "/snapmirror"),
+        ("resyncSnapmirror", {"relationshipUuid": "sm-1", "confirm": True}, "/snapmirror"),
+        ("deleteClusterPeer", {"uuid": "cp-1", "confirm": True}, "/cluster/peers"),
+        ("deleteSvmPeer", {"uuid": "sp-1", "confirm": True}, "/svm/peers"),
+    ]
+
+    @pytest.mark.parametrize("action,params,_path", UI_DELETE_PAYLOADS)
+    def test_refuses_without_confirm(self, action, params, _path, mock_secrets):
+        from handler import handler
+
+        without_confirm = {k: v for k, v in params.items() if k != "confirm"}
+        with patch("handler.urllib3.PoolManager") as mp:
+            mp.return_value = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "u1"}]}}})
+            result = handler({"action": action, **without_confirm}, None)
+
+        assert result.get("success") is False, f"{action} should refuse without confirm"
+        assert "confirm" in (result.get("error") or "").lower()
+
+    @pytest.mark.parametrize("action,params,_path", UI_DELETE_PAYLOADS)
+    def test_succeeds_with_ui_payload(self, action, params, _path, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mp:
+            mp.return_value = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "u1"}]}}})
+            result = handler({"action": action, **params}, None)
+
+        assert result.get("success") is True, f"{action} failed with the UI payload: {result}"
+        assert result.get("error") is None
+
+    def test_delete_vscan_policy_targets_the_named_policy(self, mock_secrets):
+        """The policy name must appear in the request path, not the body."""
+        from handler import handler
+
+        http = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "svm-1"}]}}})
+        with patch("handler.urllib3.PoolManager") as mp:
+            mp.return_value = http
+            result = handler(
+                {"action": "deleteVscanPolicy", "name": "scan_all_cifs", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is True
+        deletes = [c for c in http.calls if c[0] == "DELETE"]
+        assert len(deletes) == 1
+        assert "/protocols/vscan/svm-1/on-access-policies/scan_all_cifs" in deletes[0][1]

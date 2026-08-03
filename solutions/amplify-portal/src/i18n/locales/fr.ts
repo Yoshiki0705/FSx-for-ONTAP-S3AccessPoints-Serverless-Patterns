@@ -1048,6 +1048,13 @@ export const fr: Record<TranslationKeys, string> = {
   vsMandatory: "Analyse obligatoire",
   vsMaxFileSize: "Taille de fichier maximale",
   vsExcludedExt: "Extensions exclues",
+  // --- Vscan / FPolicy delete confirmation ---
+  vsConfirmDeletePolicy: "Supprimer cette politique arrête l'analyse de son périmètre. Continuer ?",
+  vsShowSetupGuide: "Afficher le guide de configuration",
+  vsHideSetupGuide: "Masquer le guide de configuration",
+  fpConfirmDeletePolicy: "Supprimer cette politique arrête la génération des événements d'audit. Continuer ?",
+  fpConfirmDeleteEvent: "Supprimer cette définition d'événement arrête toute politique qui y est abonnée. Continuer ?",
+
   // --- Share link ---
   slShareTitle: "Partager",
   slGenerateAria: "Générer un lien de partage",

@@ -30,6 +30,10 @@ export function VscanManager() {
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  /** Name of the policy awaiting delete confirmation. */
+  const [confirmFor, setConfirmFor] = useState<string | null>(null);
+  /** The setup guide is shown automatically when Vscan is off, and on demand when on. */
+  const [showGuide, setShowGuide] = useState(false);
   const [newName, setNewName] = useState("");
   const [newMaxMb, setNewMaxMb] = useState(2048);
   const [newExts, setNewExts] = useState("");
@@ -48,6 +52,7 @@ export function VscanManager() {
       const data = parseResponse<{ success?: boolean; error?: string }>(resp);
       if (data?.success) {
         setSuccess(t("vsActionDone"));
+        setConfirmFor(null);
         setTimeout(() => setSuccess(null), 4000);
         loadData();
       } else {
@@ -114,9 +119,12 @@ export function VscanManager() {
   // ─── Setup Guidance (shown when Vscan is not enabled) ───
   const renderSetupGuide = () => (
     <div className="vs-setup-guide">
-      <div className="rm-error" style={{ background: "#fff3cd", borderColor: "#ffc107", color: "#856404" }}>
-        ⚠️ {t("vsNotConfigured")}
-      </div>
+      {/* The "not configured" warning only makes sense while Vscan is off. */}
+      {!enabled && (
+        <div className="rm-error" style={{ background: "#fff3cd", borderColor: "#ffc107", color: "#856404" }}>
+          ⚠️ {t("vsNotConfigured")}
+        </div>
+      )}
 
       <div className="vs-guide-section">
         <h4>📋 {t("vsSetupOverview")}</h4>
@@ -324,9 +332,16 @@ vserver vscan enable -vserver <svm-name>`}</pre>
               {enabled ? t("vsDisableBtn") : t("vsEnableBtn")}
             </button>
             {enabled && (
-              <button className="rm-btn-sm" onClick={loadData}>
-                🔄 {t("rmApply")}
-              </button>
+              <>
+                <button className="rm-btn-sm" onClick={loadData}>
+                  🔄 {t("rmApply")}
+                </button>
+                {/* The scanner-side setup steps stay useful after Vscan is on, so keep
+                    them reachable rather than only showing them while it is off. */}
+                <button className="rm-btn-sm" onClick={() => setShowGuide((v) => !v)}>
+                  📖 {showGuide ? t("vsHideSetupGuide") : t("vsShowSetupGuide")}
+                </button>
+              </>
             )}
           </div>
 
@@ -334,6 +349,7 @@ vserver vscan enable -vserver <svm-name>`}</pre>
             renderSetupGuide()
           ) : (
             <>
+              {showGuide && renderSetupGuide()}
               <div className="lu-toolbar" style={{ marginTop: "1rem" }}>
                 <h4 style={{ margin: 0 }}>📋 {t("vsPolicies")}</h4>
                 <button
@@ -458,13 +474,36 @@ vserver vscan enable -vserver <svm-name>`}</pre>
                             <button
                               className="rm-btn-danger-sm"
                               disabled={busy}
-                              onClick={() =>
-                                runAction("deleteVscanPolicy", { name: p.name })
-                              }
+                              onClick={() => setConfirmFor(p.name)}
                             >
                               {t("delete")}
                             </button>
                           </span>
+                          {confirmFor === p.name && (
+                            <span className="peer-accept-row" role="alertdialog">
+                              <span className="sm-confirm-text">
+                                {t("vsConfirmDeletePolicy")}
+                              </span>
+                              <button
+                                className="rm-btn-danger-sm"
+                                disabled={busy}
+                                onClick={() =>
+                                  runAction("deleteVscanPolicy", {
+                                    name: p.name,
+                                    confirm: true,
+                                  })
+                                }
+                              >
+                                {t("rmExecute")}
+                              </button>
+                              <button
+                                className="rm-btn-sm"
+                                onClick={() => setConfirmFor(null)}
+                              >
+                                {t("cancel")}
+                              </button>
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
