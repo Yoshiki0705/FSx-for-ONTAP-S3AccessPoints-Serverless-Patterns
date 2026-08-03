@@ -7,6 +7,9 @@ on:
       - "solutions/**/template.yaml"
       - "infrastructure/**/*.yaml"
       - "solutions/amplify-portal/amplify/**"
+      # The validator itself, so a change to how it resolves intrinsics is
+      # exercised against the real templates rather than only unit-tested.
+      - "scripts/validate-iam-policies.py"
 
 permissions:
   contents: read
