@@ -5,6 +5,7 @@ import { portalSettings } from "../portal-settings";
 import { FilePreview } from "./FilePreview";
 import { RestoreFromSnapshot } from "./RestoreFromSnapshot";
 import { ShareLink } from "./ShareLink";
+import { FavoriteButton } from "./Favorites";
 import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
@@ -20,6 +21,16 @@ function parseResponse<T>(response: { data?: string | null }): T | null {
 interface FileExplorerProps {
   onSelectPrefix: (prefix: string) => void;
   onFileSelect?: (fileKey: string, fileName: string) => void;
+  /**
+   * Folder to open on mount and whenever the value changes. Lets other views
+   * (favorites, recent, search, job results) hand a location to the explorer.
+   */
+  initialPrefix?: string;
+  /**
+   * Bumped by the caller on every navigation request so that asking for the
+   * same folder twice still re-opens it, even after browsing elsewhere.
+   */
+  prefixNonce?: number;
 }
 
 interface FileItem {
@@ -38,9 +49,14 @@ interface FileItem {
  * - Pagination (1000 objects per page)
  * - File selection for processing
  */
-export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps) {
+export function FileExplorer({
+  onSelectPrefix,
+  onFileSelect,
+  initialPrefix = "",
+  prefixNonce = 0,
+}: FileExplorerProps) {
   const [files, setFiles] = useState<FileItem[]>([]);
-  const [currentPrefix, setCurrentPrefix] = useState("");
+  const [currentPrefix, setCurrentPrefix] = useState(initialPrefix);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [continuationToken, setContinuationToken] = useState<string | null>(null);
@@ -82,6 +98,14 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
   useEffect(() => {
     loadFiles(currentPrefix);
   }, [currentPrefix, loadFiles]);
+
+  // Follow the location handed in by another view (favorites, recent, search,
+  // job results). Keyed on prefixNonce as well as the prefix so that repeating
+  // the same request re-opens the folder instead of doing nothing.
+  useEffect(() => {
+    setCurrentPrefix(initialPrefix);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrefix, prefixNonce]);
 
   const navigateToFolder = (folderKey: string) => {
     setCurrentPrefix(folderKey);
@@ -143,32 +167,44 @@ export function FileExplorer({ onSelectPrefix, onFileSelect }: FileExplorerProps
       <div className="file-list">
         {currentPrefix && (
           <div className="file-item folder" onClick={navigateUp}>
-            <span className="icon">📁</span>
+            <span className="file-item-actions">
+              <span className="favorite-btn-spacer" aria-hidden="true" />
+              <span className="icon">📁</span>
+            </span>
             <span className="name">..</span>
             <span className="size">-</span>
             <span className="modified">-</span>
           </div>
         )}
 
-        {folders.map((folder) => (
-          <div
-            key={folder}
-            className="file-item folder"
-            onClick={() => navigateToFolder(folder)}
-          >
-            <span className="icon">📁</span>
-            <span className="name">{folder.replace(currentPrefix, "").replace("/", "")}</span>
-            <span className="size">-</span>
-            <span className="modified">-</span>
-          </div>
-        ))}
+        {folders.map((folder) => {
+          const folderName = folder.replace(currentPrefix, "").replace("/", "");
+          return (
+            <div
+              key={folder}
+              className="file-item folder"
+              onClick={() => navigateToFolder(folder)}
+            >
+              <span className="file-item-actions">
+                <FavoriteButton fileKey={folder} fileName={folderName} />
+                <span className="icon">📁</span>
+              </span>
+              <span className="name">{folderName}</span>
+              <span className="size">-</span>
+              <span className="modified">-</span>
+            </div>
+          );
+        })}
 
         {regularFiles.map((file) => {
           const fileName = file.key.replace(currentPrefix, "");
           return (
             <div key={file.key} className="file-item">
-              <FilePreview fileKey={file.key} fileName={fileName} onSelect={onFileSelect} />
-              <ShareLink fileKey={file.key} fileName={fileName} />
+              <span className="file-item-actions">
+                <FavoriteButton fileKey={file.key} fileName={fileName} />
+                <FilePreview fileKey={file.key} fileName={fileName} onSelect={onFileSelect} />
+                <ShareLink fileKey={file.key} fileName={fileName} />
+              </span>
               <span className="name">{fileName}</span>
               <span className="size">{formatSize(file.size)}</span>
               <span className="modified">
