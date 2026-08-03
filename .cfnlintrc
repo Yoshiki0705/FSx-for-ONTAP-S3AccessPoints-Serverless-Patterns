@@ -4,6 +4,7 @@
 templates:
   - "solutions/**/template.yaml"
   - "solutions/**/template-deploy.yaml"
+  - "operations/**/template.yaml"
 
 ignore_templates:
   - "shared/cfn/*.yaml"

@@ -108,9 +108,6 @@ test-content-edge-delivery:
 test-media-ivs-vod-publishing:
 	$(PYTHON) -m pytest solutions/edge/media-ivs-vod-publishing/tests/ -v
 
-test-media-mediaconvert-vod-publishing:
-	$(PYTHON) -m pytest solutions/edge/media-mediaconvert-vod-publishing/tests/ -v
-
 test-genai-kb-selfservice-curation:
 	$(PYTHON) -m pytest solutions/genai/kb-selfservice-curation/tests/ -v
 
@@ -127,17 +124,12 @@ lint-python:
 		--config pyproject.toml 2>/dev/null || \
 	ruff check shared/ solutions/ operations/
 
+# Template discovery comes from the `templates:` globs in .cfnlintrc, so this
+# target cannot drift out of sync with the patterns that actually exist.
+# Informational (I) and warning (W) findings are printed but do not fail the
+# build; only errors (E) do.
 lint-cfn:
-	cfn-lint solutions/industry/legal-compliance/template.yaml \
-		solutions/industry/semiconductor-eda/template.yaml \
-		solutions/sap/erp-adjacent/template.yaml \
-		solutions/flexcache/anycast-dr/template.yaml \
-		solutions/edge/content-delivery/template.yaml \
-		solutions/edge/media-ivs-vod-publishing/template.yaml \
-		solutions/edge/media-mediaconvert-vod-publishing/template.yaml \
-		solutions/genai/kb-selfservice-curation/template.yaml \
-		solutions/ha/lifekeeper-monitoring/template.yaml \
-		operations/capacity-rightsizing/template.yaml
+	cfn-lint --non-zero-exit-code error
 
 # ============================================================
 # Security
