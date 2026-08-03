@@ -263,7 +263,7 @@ Two industry cases presented at DAIS 2026 serve as reference patterns for AI pro
 
 | 設計原則 | 7-Eleven | AstraZeneca | 本リポジトリの実装 |
 |---------|----------|-------------|-----------------|
-| 非構造化データの AI アクセス | 共有ドライブ上の PDF/XLS | NAS 上の臨床文書 | FSx ONTAP S3 AP (`S3ApHelper`) |
+| 非構造化データの AI アクセス | 共有ドライブ上の PDF/XLS | NAS 上の臨床文書 | FSx for ONTAP S3 AP (`S3ApHelper`) |
 | 権限保持 | — (言及なし) | Unity Catalog + Entra ID | ONTAP ACL → vector metadata filter |
 | マルチモーダル | 画像 + テキスト | テキスト中心 | Rekognition + Bedrock multimodal |
 | エージェント分割 | 機能別 (検索/画像/部品/Web) | 治療領域別 | Step Functions parallel branches |
@@ -390,7 +390,7 @@ User (Entra ID / Cognito)
 > - 7-Eleven と AstraZeneca の事例は **Databricks プラットフォーム上で構築** されたものである
 > - 本ドキュメントは、同等の課題を **AWS-native サービス + FSx for ONTAP S3 AP** で解決するアーキテクチャパターンを提案するものである
 > - Databricks Agent Bricks と AWS Bedrock Agents は異なるプラットフォームであり、本ドキュメントは「同一課題に対する別アプローチ」として位置づける
-> - 「Databricks の代替」や「競合ツールとの比較」という位置づけではなく、「利用者課題起点で、AWS-native 実装パターンを提示する」という right-tool-for-the-job フレーミングを維持する
+> - 「Databricks の代替」や「製品間の優劣比較」という位置づけではなく、「利用者課題起点で、AWS-native 実装パターンを提示する」という right-tool-for-the-job フレーミングを維持する
 
 ---
 
