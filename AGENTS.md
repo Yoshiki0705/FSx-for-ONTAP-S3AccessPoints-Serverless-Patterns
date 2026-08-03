@@ -362,7 +362,7 @@ All README and documentation files follow these UX principles:
 | `aws fsx create-and-attach-s3-access-point` positional args fail | Use `--cli-input-json file://create-ap.json`. Positional `--ontap-configuration` parsing is fragile |
 | Delete volume while S3 AP attached → BadRequest | Delete S3 AP first (`detach-and-delete-s3-access-point`), wait for deletion, then delete volume |
 | Quick S3 Knowledge base not visible in ap-northeast-1 | S3 KB feature only available in us-east-1, us-west-2, ap-southeast-2, eu-west-1. Use Bedrock KB for Tokyo region, or cross-region Quick account |
-| Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign. Use `Config(signature_version="s3v4")` explicitly |
+| Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign, and ONTAP S3 only supports v2 presigned URLs from 9.16.1. Use `Config(signature_version="s3v4")` explicitly (v4 supported from ONTAP 9.11.1; NetApp recommends v4) |
 | Presigned URL `PermanentRedirect` from Lambda | Global endpoint `s3.amazonaws.com` redirects. Use `endpoint_url=f"https://s3.{region}.amazonaws.com"` |
 | Presigned URL `HEAD` returns 403 but `GET` works | Some S3 AP configurations don't support HEAD on presigned URLs. Use GET for verification |
 | Bedrock `InvokeModel` with `inputText` → ValidationException | Nova/Claude models require Messages API. Use `bedrock.converse()` (not `invoke_model` with `inputText`). Add `bedrock:Converse` to IAM policy |
@@ -412,7 +412,7 @@ PutObject, GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
 - Docs say "5 GB"/"50 GB" but both are **binary** (GiB).
 `UploadPartCopy` is documented as Supported but **fails with `NoSuchKey`** in practice (`CopyObject` works) — server-side assembly of large objects is not possible.
 NOT supported: GetBucketNotificationConfiguration.
-Presigned URLs: Listed as "Not supported" in AWS docs, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support advises against production reliance. See docs/s3ap-compatibility-notes.md for details.
+Presigned URLs: Listed as "Not supported" in the AWS compatibility table, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support has since confirmed ONTAP-layer support (v4 from ONTAP 9.11.1, v2 from 9.16.1) and submitted a doc correction — **not yet published**, so continue to avoid production reliance until it is. See docs/s3ap-compatibility-notes.md for details.
 
 ### NetworkOrigin (Immutable After Creation)
 
