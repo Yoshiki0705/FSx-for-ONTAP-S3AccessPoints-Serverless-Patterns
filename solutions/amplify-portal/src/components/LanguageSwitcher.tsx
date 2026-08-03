@@ -15,7 +15,7 @@ import { useTranslation, LOCALES, type Locale } from "../i18n";
  * Persists to localStorage, auto-detects browser language on first visit.
  */
 export function LanguageSwitcher() {
-  const { locale, setLocale } = useTranslation();
+  const { locale, setLocale, t } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +55,7 @@ export function LanguageSwitcher() {
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label="Language"
+        aria-label={t("languageLabel")}
       >
         <span className="lang-globe">🌐</span>
         <span className="lang-current">{currentLabel}</span>
@@ -63,7 +63,7 @@ export function LanguageSwitcher() {
       </button>
 
       {open && (
-        <ul className="lang-dropdown" role="listbox" aria-label="Select language">
+        <ul className="lang-dropdown" role="listbox" aria-label={t("langSelectAria")}>
           {LOCALES.map((loc) => (
             <li
               key={loc.code}

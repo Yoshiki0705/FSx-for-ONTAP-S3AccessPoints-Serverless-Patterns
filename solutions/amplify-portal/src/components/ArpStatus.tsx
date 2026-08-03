@@ -164,7 +164,7 @@ export function ArpStatus() {
       <div className="protection-header">
         <h2>🛡️ {t("arpTitle")}</h2>
         {volumeName && (
-          <span className="volume-badge" title="Source volume">
+          <span className="volume-badge" title={t("srcVolumeTitle")}>
             {t("volume")}: {volumeName}
           </span>
         )}

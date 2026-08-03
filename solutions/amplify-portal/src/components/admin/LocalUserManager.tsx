@@ -362,7 +362,7 @@ export function LocalUserManager() {
                   type="text"
                   value={newUserFullName}
                   onChange={(e) => setNewUserFullName(e.target.value)}
-                  placeholder="Display Name"
+                  placeholder={t("luDisplayNamePh")}
                 />
               </div>
               <div className="rm-form-row">
@@ -371,7 +371,7 @@ export function LocalUserManager() {
                   type="text"
                   value={newUserDescription}
                   onChange={(e) => setNewUserDescription(e.target.value)}
-                  placeholder="Role / purpose"
+                  placeholder={t("luRolePh")}
                 />
               </div>
               <div className="rm-form-actions">
@@ -457,7 +457,7 @@ export function LocalUserManager() {
                   type="text"
                   value={newGroupDescription}
                   onChange={(e) => setNewGroupDescription(e.target.value)}
-                  placeholder="Group purpose"
+                  placeholder={t("luGroupPurposePh")}
                 />
               </div>
               <div className="rm-form-actions">
