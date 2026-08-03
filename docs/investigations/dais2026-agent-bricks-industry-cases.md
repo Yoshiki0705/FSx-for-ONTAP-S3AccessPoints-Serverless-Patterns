@@ -390,7 +390,7 @@ User (Entra ID / Cognito)
 > - 7-Eleven と AstraZeneca の事例は **Databricks プラットフォーム上で構築** されたものである
 > - 本ドキュメントは、同等の課題を **AWS-native サービス + FSx for ONTAP S3 AP** で解決するアーキテクチャパターンを提案するものである
 > - Databricks Agent Bricks と AWS Bedrock Agents は異なるプラットフォームであり、本ドキュメントは「同一課題に対する別アプローチ」として位置づける
-> - 「Databricks の代替」や「競合ツールとの比較」という位置づけではなく、「顧客課題起点で、AWS-native 実装パターンを提示する」という right-tool-for-the-job フレーミングを維持する
+> - 「Databricks の代替」や「競合ツールとの比較」という位置づけではなく、「利用者課題起点で、AWS-native 実装パターンを提示する」という right-tool-for-the-job フレーミングを維持する
 
 ---
 

@@ -90,7 +90,7 @@ Managed KB を採用しないが、その設計思想から以下を Custom KB �
 
 ## 6. Partner/SI 向けガイダンス
 
-### 顧客に Managed KB を推奨するケース
+### 導入先に Managed KB を推奨するケース
 
 - 小〜中規模のドキュメント QA（< 10,000 ファイル）
 - ACL 制御が不要、またはアプリケーション層で十分
@@ -98,7 +98,7 @@ Managed KB を採用しないが、その設計思想から以下を Custom KB �
 - 最速で RAG PoC を立ち上げたい（1-2 日）
 - 運用チームが小さく、ベクトルストアの管理を避けたい
 
-### 顧客に Custom KB + S3 Vectors を推奨するケース
+### 導入先に Custom KB + S3 Vectors を推奨するケース
 
 - FSx for ONTAP 上のファイルが主要データソース
 - NTFS ACL / AD Group ベースの権限制御が必須
