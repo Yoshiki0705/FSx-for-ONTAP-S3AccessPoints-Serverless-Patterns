@@ -1118,6 +1118,29 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   aqDatabaseAria: "Nombre de la base de datos",
   aqDatabaseHint: "Nombre de la base de datos en Glue Data Catalog. Indique la que creó Glue Crawler (normalmente default).",
   aqSqlAria: "Consulta SQL",
+  aqDatabaseArrow: "← Nombre de la BD de Glue",
+  aqDatabaseExplain:
+    "Escriba el nombre de la base de datos en el Glue Data Catalog, la que contiene las tablas catalogadas por el Glue Crawler. Si aún no ha creado ninguna, deje {db} y compruébelo con {cmd}.",
+  aqGuidanceBody:
+    "Catalogue los archivos de FSx for ONTAP con un Glue Crawler y podrá analizarlos con SQL desde aquí.",
+  aqExamplesToggle: "Ver ejemplos de consulta",
+  aqExampleTopSizes: "Los 20 archivos más grandes, de mayor a menor tamaño",
+  aqExampleFolderTotal: "Tamaño total de una carpeta",
+  aqExampleRecent: "Archivos modificados en los últimos 7 días",
+  aqExamplesNote:
+    "Los nombres de tabla dependen de la configuración de su Glue Crawler. Compruébelo con {cmd}.",
+  aqSqlPlaceholder:
+    "-- ejemplo: SHOW TABLES IN default\n-- ejemplo: SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10",
+  aqQueryFailed: "No se pudo ejecutar la consulta",
+  aqRowsReturned: "{count} filas devueltas",
+  aqSetupRequired: "Se requiere configuración",
+  aqSetupToggle: "Ver los pasos de configuración",
+  aqSetupStep1: "Consola de AWS → Athena → Grupos de trabajo → seleccione «primary»",
+  aqSetupStep2:
+    "Editar configuración → escriba una ruta de S3 en «Ubicación de resultados de consulta» (por ejemplo {path})",
+  aqSetupStep3: "Guarde y vuelva a ejecutar la consulta en este panel",
+  aqSetupEnvHint:
+    "También puede definir una ruta de S3 en la variable de entorno {env} de {file} y volver a implementar.",
   fpvClickDownload: "Haga clic para descargar o seleccionar para el procesamiento con IA",
   fpvClickPdf: "Haga clic para previsualizar el PDF",
   fpvClickDoc: "Haga clic para previsualizar el documento",

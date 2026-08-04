@@ -1154,6 +1154,27 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   aqDatabaseAria: "Database name",
   aqDatabaseHint: "The Glue Data Catalog database name. Use the database the Glue Crawler created (usually default).",
   aqSqlAria: "SQL query",
+  aqDatabaseArrow: "← Glue DB name",
+  aqDatabaseExplain:
+    "Enter the database name in the Glue Data Catalog — the one holding the tables the Glue Crawler cataloged. If you have not created one, leave it as {db} and check with {cmd}.",
+  aqGuidanceBody:
+    "Catalog files on FSx for ONTAP with a Glue Crawler and you can analyze them with SQL from here.",
+  aqExamplesToggle: "Show query examples",
+  aqExampleTopSizes: "Top 20 files by size, largest first",
+  aqExampleFolderTotal: "Total size of one folder",
+  aqExampleRecent: "Files modified in the last 7 days",
+  aqExamplesNote: "Table names depend on your Glue Crawler configuration. Check with {cmd}.",
+  aqSqlPlaceholder:
+    "-- example: SHOW TABLES IN default\n-- example: SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10",
+  aqQueryFailed: "The query failed to run",
+  aqRowsReturned: "{count} rows returned",
+  aqSetupRequired: "Setup required",
+  aqSetupToggle: "Show setup steps",
+  aqSetupStep1: "AWS console → Athena → Workgroups → select \"primary\"",
+  aqSetupStep2: "Edit settings → enter an S3 path under \"Query result location\" (for example {path})",
+  aqSetupStep3: "Save, then run the query again from this panel",
+  aqSetupEnvHint:
+    "Alternatively, set an S3 path in the {env} environment variable in {file} and redeploy.",
   fpvClickDownload: "Click to download or select for AI processing",
   fpvClickPdf: "Click to preview the PDF",
   fpvClickDoc: "Click to preview the document",
