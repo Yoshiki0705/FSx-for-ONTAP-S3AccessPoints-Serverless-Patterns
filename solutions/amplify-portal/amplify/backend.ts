@@ -562,9 +562,13 @@ api.addLambdaDataSource("ListSnapshotsLambdaDataSource", listSnapshotsFunction);
 
 // --- Lambda Data Source for ARP/AI Response Actions ---
 // Uses functions/data-protection/handler.py (dedicated handler for write operations)
+// Actions from: functions/data-protection/handler.py
 // Provides: blockSmbUser, unblockSmbUser, blockNfsIp, unblockNfsIp,
-//           containThreat, listActiveBlocks, disconnectSessions,
-//           sweepExpiredBlocks (schedule-driven, not exposed through AppSync)
+//           containThreat, listActiveBlocks, disconnectSessions, listSvms,
+//           sweepExpiredBlocks, getSnapshotsWithLockStatus, getArpStatus,
+//           getArpSuspects, getSnapLockConfig, getS3ObjectLockStatus,
+//           getProtectionSummary, createSnapshot, deleteSnapshot,
+//           updateArpState, updateRetentionPolicy
 const arpResponseRole = new iam.Role(dataStack, "ArpResponseLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
   managedPolicies: [
