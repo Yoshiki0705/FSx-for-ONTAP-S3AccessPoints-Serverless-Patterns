@@ -165,11 +165,34 @@ const listFilesRole = new iam.Role(dataStack, "ListFilesLambdaRole", {
   },
 });
 
+/**
+ * Bundle a Python function directory, leaving out everything that is only
+ * needed on a developer machine.
+ *
+ * Without the exclusions, `functions/<name>/tests/` and the `__pycache__`
+ * directories are uploaded with the handler. That ships test code — including
+ * the injection payloads used as fixtures — into the runtime, and grows every
+ * package for no benefit.
+ */
+const functionCode = (directory: string) =>
+  lambda.Code.fromAsset(directory, {
+    exclude: [
+      "tests",
+      "tests/**",
+      "__pycache__",
+      "**/__pycache__",
+      "*.pyc",
+      ".pytest_cache",
+      ".pytest_cache/**",
+      "conftest.py",
+    ],
+  });
+
 const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
   runtime: lambda.Runtime.PYTHON_3_12,
   architecture: lambda.Architecture.ARM_64,
   handler: "index.handler",
-  code: lambda.Code.fromAsset("functions/list-files"),
+  code: functionCode("functions/list-files"),
   role: listFilesRole,
   environment: {
     S3_AP_ALIAS: config.s3ApAlias,
@@ -234,7 +257,7 @@ const folderDownloadFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/folder-download"),
+    code: functionCode("functions/folder-download"),
     role: folderDownloadRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -282,7 +305,7 @@ const getPresignedUrlFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/presigned-url"),
+    code: functionCode("functions/presigned-url"),
     role: getPresignedUrlRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -329,7 +352,7 @@ const listSnapshotsFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/snapshots"),
+    code: functionCode("functions/snapshots"),
     role: listSnapshotsRole,
     environment: {
       ONTAP_MGMT_IP: config.ontapMgmtIp,
@@ -380,7 +403,7 @@ const arpResponseFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "handler.handler",
-    code: lambda.Code.fromAsset("functions/data-protection"),
+    code: functionCode("functions/data-protection"),
     role: arpResponseRole,
     environment: {
       ONTAP_MGMT_IP: config.ontapMgmtIp,
@@ -444,7 +467,7 @@ const resourceMgmtFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "handler.handler",
-    code: lambda.Code.fromAsset("functions/resource-management"),
+    code: functionCode("functions/resource-management"),
     role: resourceMgmtRole,
     environment: {
       ONTAP_MGMT_IP: config.ontapMgmtIp,
@@ -499,7 +522,7 @@ const searchFilesFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/search-files"),
+    code: functionCode("functions/search-files"),
     role: searchFilesRole,
     environment: {
       BEDROCK_KB_ID: config.bedrockKbId || "",
@@ -564,7 +587,7 @@ const agentChatFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "handler.handler",
-    code: lambda.Code.fromAsset("functions/agent-chat"),
+    code: functionCode("functions/agent-chat"),
     role: agentChatRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -628,7 +651,7 @@ const queryAuditLogFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/audit-log"),
+    code: functionCode("functions/audit-log"),
     role: queryAuditLogRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -676,7 +699,7 @@ const getFileMetadataFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/file-metadata"),
+    code: functionCode("functions/file-metadata"),
     role: getFileMetadataRole,
     environment: {
       AI_METADATA_TABLE_NAME: process.env.AI_METADATA_TABLE_NAME || "",
@@ -716,7 +739,7 @@ const generateQrCodeFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/generate-qr"),
+    code: functionCode("functions/generate-qr"),
     role: generateQrCodeRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -765,7 +788,7 @@ const askAboutFileFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/ask-about-file"),
+    code: functionCode("functions/ask-about-file"),
     role: askAboutFileRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -814,7 +837,7 @@ const detectLabelsFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/detect-labels"),
+    code: functionCode("functions/detect-labels"),
     role: detectLabelsRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -877,7 +900,7 @@ const athenaQueryFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/athena-query"),
+    code: functionCode("functions/athena-query"),
     role: athenaQueryRole,
     environment: {
       ATHENA_WORKGROUP: "primary",
@@ -922,7 +945,7 @@ const textractFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/textract"),
+    code: functionCode("functions/textract"),
     role: textractRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -970,7 +993,7 @@ const comprehendFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/comprehend-analysis"),
+    code: functionCode("functions/comprehend-analysis"),
     role: comprehendRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -1016,7 +1039,7 @@ const glueCatalogFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/glue-catalog"),
+    code: functionCode("functions/glue-catalog"),
     role: glueCatalogRole,
     environment: {},
     memorySize: 256,
