@@ -1,4 +1,5 @@
 """Test KNFSD write-through behavior to FSx for ONTAP."""
+
 from __future__ import annotations
 
 import time
@@ -101,8 +102,6 @@ umount $MOUNT 2>/dev/null || true
             time.sleep(2)
             head = s3_client.head_object(Bucket=s3ap_alias, Key=test_key)
             s3_size = head["ContentLength"]
-            assert s3_size == file_size_bytes, (
-                f"Size mismatch: NFS={nfs_size}, S3 AP={s3_size}"
-            )
+            assert s3_size == file_size_bytes, f"Size mismatch: NFS={nfs_size}, S3 AP={s3_size}"
         finally:
             s3_client.delete_object(Bucket=s3ap_alias, Key=test_key)

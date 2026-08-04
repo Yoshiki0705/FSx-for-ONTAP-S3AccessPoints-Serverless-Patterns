@@ -21,7 +21,7 @@
 - 实时 DICOM 路由（需要 DICOM MWL / MPPS 集成）
 - 图像诊断辅助 AI（CAD）— 本模式专注于分类·匿名化
 - 在 Comprehend Medical 不支持的区域，法规上不允许跨区域数据传输
-- DICOM 文件大小超过 5 GB（MR/CT 的多帧等）
+- DICOM 文件大小超过 50 GB（MR/CT 的多帧等）
 
 ### 主要功能
 

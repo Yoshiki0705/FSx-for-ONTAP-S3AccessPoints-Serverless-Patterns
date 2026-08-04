@@ -12,7 +12,7 @@ FSx for NetApp ONTAP を **Single Source of Truth（マスター）** として�
 Google Media CDN ほか）の技術比較は **[docs/cdn-comparison.md](../docs/cdn-comparison.md)** を参照してください。
 
 > 本パターンは reference implementation（参照実装）です。配信ベンダーの選定や権利処理・地域制限・
-> コンプライアンスは顧客が判断します。
+> コンプライアンスは導入先が判断します。
 
 > **TL;DR（30秒）**: ONTAP/NAS のマスターを動かさず、**承認済みの配信用成果物だけ**を CloudFront や
 > サードパーティ CDN から配信する。初手は検証リスク最小の `PUBLISH_PUSH`（M3）。SigV4 直引き（ORIGIN_PULL）は
@@ -42,10 +42,10 @@ permission-aware フィルタ・承認証跡・PII マスクの動作を確認�
 
 ## Partner/SI 利用ガイド
 
-- **最初の顧客質問**: 「既存の NAS/ONTAP 資産を、コピーせずにエッジ配信へつなげたいか。配信は CloudFront か、
+- **最初に確認したい質問**: 「既存の NAS/ONTAP 資産を、コピーせずにエッジ配信へつなげたいか。配信は CloudFront か、
   既存契約の CDN（Akamai 等）か」
 - **PoC 成果物**: DemoMode デモ → 承認済みレンディションの配信マニフェスト →（任意）実機 SigV4 検証結果。
-- 配信網選定は [CDN 比較](../docs/cdn-comparison.md) を顧客会話でそのまま使用可能。
+- 配信網選定は [CDN 比較](../docs/cdn-comparison.md) を導入検討の会話でそのまま使用可能。
 
 ## 解決する課題
 

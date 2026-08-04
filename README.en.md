@@ -23,6 +23,7 @@
 |---|---|---|
 | Try a demo without FSx | [Demo Mode Guide](docs/demo-mode-guide.md) | 5 min |
 | Browse files via a web portal | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.en.md) | 10 min |
+| See the architecture figures (light / dark) | [Architecture Diagram Index](docs/architecture-diagrams.en.md) | 5 min |
 | Understand S3 AP directory design & performance | [Design Considerations](docs/design-considerations-en.md) | 15 min |
 | Deploy a pattern to AWS | [Deployment Guide](docs/guides/deployment-guide.md) | 30 min |
 | Find the right pattern for my workload | [Pattern Selection Guide](docs/pattern-selection-guide.md) | 15 min |
@@ -161,7 +162,7 @@ Detailed architecture diagrams for each category:
 |---|---|
 | No S3 Event Notifications | EventBridge Scheduler polling or FPolicy |
 | Presigned URLs unofficial | Works in practice but not production-recommended |
-| 5GB upload limit | Multipart Upload |
+| 50 GB max object size (single PutObject 5 GB) | Multipart Upload above 5 GB |
 | Cannot write Athena results to S3AP | Output to standard S3 bucket |
 | SSE-FSX only | Use volume-level KMS encryption |
 

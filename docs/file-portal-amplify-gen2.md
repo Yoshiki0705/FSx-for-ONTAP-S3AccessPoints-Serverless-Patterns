@@ -34,6 +34,16 @@ Box や Google Drive のようなファイル管理体験（フォルダナビ�
 
 3つのアプローチすべてが、同じバックエンド統合ポイント（FSx for ONTAP S3 Access Points にアクセスする Lambda を Step Functions でオーケストレーション）を共有します。
 
+Amplify Gen2 と Nextcloud を併用した場合の全体像は次のとおりです。どちらのフロントエンドも同一の S3 Access Point を経由するため、データを移動させずに既存の NFS / SMB クライアントと共存します。
+
+![FSx for ONTAP S3 Access Points を使ったファイルポータルの全体構成。利用者の Web ブラウザから Amplify Gen2（AI 処理ダッシュボード）と Nextcloud（ファイル共有 UI）の 2 つのフロントエンドに接続し、どちらも同一の S3 Access Point 経由で FSx for ONTAP ボリュームを参照する。同じボリュームには既存の NFS / SMB クライアントも同時にアクセスしている](images/architecture-overview.svg)
+
+*図: 全体構成 — 2 つのフロントエンドが同一の S3 Access Point を経由して同じボリュームを参照する*
+
+> 図はライトテーマ（白背景）です。ダークモードで見たい場合は [ダークテーマ版](images/architecture-overview-dark.svg)をご利用ください。全 13 枚の一覧は [構成図インデックス](architecture-diagrams.md) にあります。
+
+下の図は、カスタムビルドを含む 3 つの選択肢が共通のバックエンドを共有する関係を示したものです。
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │              フロントエンド層（以下のいずれかを選択）              │
@@ -351,7 +361,7 @@ solutions/amplify-portal/
 **S3 AP と Nextcloud の制約事項**:
 - Presigned URL は AWS ドキュメント上「Not supported」だが、実際にはクライアント側で生成・利用可能（GetObject の署名付きリクエストとして動作する。[詳細](./s3ap-compatibility-notes.md#presigned-url-support)）。ただし本番依存は非推奨のため、Nextcloud はサーバープロセス経由でのダウンロードプロキシも選択可能
 - `ListObjectsV2` のページネーション（1リクエスト最大1000オブジェクト）は Nextcloud の S3 バックエンドがネイティブに処理
-- PutObject（最大 5 GB）により Nextcloud UI から FSx for ONTAP へのアップロードが可能
+- PutObject（単一 PUT 5 GB / Multipart で 50 GB まで）により Nextcloud UI から FSx for ONTAP へのアップロードが可能
 
 **NFS マウントの併用**: より低レイテンシのファイル閲覧やプレビュー生成には、Nextcloud が FSx for ONTAP ボリュームを NFS で直接マウントする構成も可能（同一 VPC/サブネット内の EC2 配置が必要）。
 

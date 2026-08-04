@@ -37,7 +37,6 @@ def handler(event, context):
     max_keys = event.get("maxKeys", 100)
     continuation_token = event.get("continuationToken")
     user_groups = event.get("groups", [])
-    user_id = event.get("userId", "")
 
     # Determine which AP to use
     if action == "listFilesFromAp" and event.get("apAlias"):
@@ -48,8 +47,7 @@ def handler(event, context):
         ap_alias = resolve_ap_alias(user_groups)
 
     if not ap_alias:
-        return {"files": [], "isTruncated": False, "nextContinuationToken": None,
-                "resolvedAp": "", "scope": "none"}
+        return {"files": [], "isTruncated": False, "nextContinuationToken": None, "resolvedAp": "", "scope": "none"}
 
     # UX-3: Trash file (Copy to .trash/, then delete original)
     if action == "trashFile":
@@ -83,6 +81,7 @@ def handler(event, context):
         file_name = event.get("fileName", "")
         expires_in = min(event.get("expiresIn", 3600), 86400)  # Max 24h
         import uuid as _uuid
+
         dest_key = f"{dest_prefix.rstrip('/')}/{file_name or _uuid.uuid4().hex[:8]}"
         try:
             url = s3.generate_presigned_url(
@@ -149,5 +148,10 @@ def handler(event, context):
         }
     except Exception as e:
         print(f"Error listing files: {e}")
-        return {"files": [], "isTruncated": False, "nextContinuationToken": None,
-                "resolvedAp": ap_alias, "scope": "error"}
+        return {
+            "files": [],
+            "isTruncated": False,
+            "nextContinuationToken": None,
+            "resolvedAp": ap_alias,
+            "scope": "error",
+        }

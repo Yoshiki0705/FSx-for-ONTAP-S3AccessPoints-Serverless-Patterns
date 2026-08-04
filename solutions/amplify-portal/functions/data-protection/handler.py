@@ -16,11 +16,26 @@ Reference:
 - ARP snapshot prefix: "Anti_ransomware_backup"
 - Observability project: https://github.com/Yoshiki0705/fsxn-observability-integrations
 
+Containment blocks and expiry:
+    ONTAP name-mapping and export-policy rules carry no timestamp, so a block
+    read back from the cluster cannot say when it was created or when it should
+    end. Expiry therefore needs a ledger of the portal's own blocks, which is
+    what CONTAINMENT_BLOCKS_TABLE holds. A scheduled sweep lifts the rows whose
+    expiry has passed.
+
+    The sweep only ever lifts blocks recorded in that ledger. Blocks placed by
+    other means — an operator at the ONTAP CLI, another automation — are left
+    alone, because this component cannot know the intent behind them and an
+    unexpected unblock is a silent loss of containment.
+
 Environment:
     ONTAP_MGMT_IP: FSx for ONTAP management endpoint
     ONTAP_SECRET_NAME: Secrets Manager secret (username/password)
     VOLUME_NAME: Target volume name
     SVM_NAME: SVM name
+    CONTAINMENT_BLOCKS_TABLE: DynamoDB ledger of portal-created blocks (optional;
+        without it blocking still works but nothing expires automatically)
+    DEFAULT_BLOCK_TTL_HOURS: Fallback expiry when a caller does not pass one
 """
 
 from __future__ import annotations
@@ -28,9 +43,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
 import boto3
 import urllib3
+from botocore.config import Config as BotoConfig
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -41,6 +60,20 @@ MGMT_IP = os.environ.get("ONTAP_MGMT_IP", "")
 SECRET_NAME = os.environ.get("ONTAP_SECRET_NAME", "")
 VOLUME_NAME = os.environ.get("VOLUME_NAME", "")
 SVM_NAME = os.environ.get("SVM_NAME", "")
+BLOCKS_TABLE = os.environ.get("CONTAINMENT_BLOCKS_TABLE", "")
+
+# Applied when a caller does not pass ttlHours. A bounded default matters more
+# than a long one: an expiry that has to be requested is an expiry that gets
+# forgotten, and a block nobody remembers is indistinguishable from an outage.
+DEFAULT_BLOCK_TTL_HOURS = int(os.environ.get("DEFAULT_BLOCK_TTL_HOURS", "24"))
+
+# Ceiling on a single request, so a typo cannot park a block for years.
+MAX_BLOCK_TTL_HOURS = 24 * 90
+
+# How long a lifted or expired row is kept after its expiry, for audit. The
+# native DynamoDB TTL is set from this, deliberately later than expiresAt, so
+# the record of a containment action outlives the containment itself.
+LEDGER_RETENTION_DAYS = int(os.environ.get("CONTAINMENT_LEDGER_RETENTION_DAYS", "400"))
 
 
 def _get_credentials():
@@ -51,8 +84,30 @@ def _get_credentials():
     return data.get("username", "fsxadmin"), data.get("password", "")
 
 
+# Identifiers supplied by the caller (a snapshot id, for example) end up in the
+# request path. Unencoded, a value containing a traversal segment sends the
+# request somewhere the action never advertised.
+_UNSAFE_PATH_CHARS = re.compile(r"[\x00-\x1f\x7f\\]")
+
+
+def _is_unsafe_path(path: str) -> bool:
+    """True if the assembled request path must not be sent."""
+    if _UNSAFE_PATH_CHARS.search(path):
+        return True
+    route = path.split("?", 1)[0]
+    return any(segment == ".." for segment in route.split("/"))
+
+
+def _seg(value) -> str:
+    """Percent-encode a value used as a single path segment."""
+    return quote(str(value), safe="")
+
+
 def _ontap_get(http, headers, path, params=""):
     """Make GET request to ONTAP REST API."""
+    if _is_unsafe_path(path):
+        logger.warning("Refused ONTAP request with unsafe path: %r", path[:200])
+        return {"error": {"message": "Invalid characters in request path"}}
     url = f"https://{MGMT_IP}/api{path}"
     if params:
         url += f"?{params}"
@@ -95,20 +150,30 @@ def handler(event, context):
         elif action == "updateRetentionPolicy":
             return _update_retention_policy(http, headers, event)
         # ARP/AI Response Actions (isolation/containment)
+        #
+        # Wrapped in _fan_out so an action can target several SVMs in one call. A
+        # compromised account is usually reachable on every SVM that trusts the
+        # same directory, and doing those one at a time leaves the others open
+        # for as long as it takes. Fan-out only happens when the caller passes
+        # `svms` or `allSvms`.
         elif action == "blockSmbUser":
-            return _arp_block_smb_user(event)
+            return _fan_out(event, _arp_block_smb_user, http, headers, gated=True)
         elif action == "unblockSmbUser":
-            return _arp_unblock_smb_user(event)
+            return _fan_out(event, _arp_unblock_smb_user, http, headers)
         elif action == "blockNfsIp":
-            return _arp_block_nfs_ip(event)
+            return _fan_out(event, _arp_block_nfs_ip, http, headers, gated=True)
         elif action == "unblockNfsIp":
-            return _arp_unblock_nfs_ip(event)
+            return _fan_out(event, _arp_unblock_nfs_ip, http, headers)
         elif action == "containThreat":
-            return _arp_contain_threat(event)
+            return _fan_out(event, _arp_contain_threat, http, headers, gated=True)
+        elif action == "listSvms":
+            return _list_svms(http, headers, event)
         elif action == "listActiveBlocks":
-            return _arp_list_active_blocks(event)
+            return _list_active_blocks_across(event, http, headers)
+        elif action == "sweepExpiredBlocks":
+            return _sweep_expired_blocks(event)
         elif action == "disconnectSessions":
-            return _arp_disconnect_sessions(event)
+            return _fan_out(event, _arp_disconnect_sessions, http, headers, gated=True)
         else:
             return {"error": f"Unknown action: {action}"}
 
@@ -458,7 +523,7 @@ def _delete_snapshot(http, headers, event):
     if not snap_uuid:
         return {"success": False, "error": "snapshotId is required"}
 
-    url = f"https://{MGMT_IP}/api/storage/volumes/{vol_uuid}/snapshots/{snap_uuid}"
+    url = f"https://{MGMT_IP}/api/storage/volumes/{vol_uuid}/snapshots/{_seg(snap_uuid)}"
     resp = http.request("DELETE", url, headers=headers)
 
     if resp.status in (200, 202):
@@ -612,12 +677,23 @@ def _get_arp_response_client():
     import sys
     from pathlib import Path
 
-    # Add shared/ to path (Lambda Layer mounts at /opt/python)
-    shared_paths = [
-        "/opt/python",  # Lambda Layer
-        str(Path(__file__).parents[4]),  # Local dev: repo root
-    ]
-    for p in shared_paths:
+    # `/opt/python` is where the shared-modules Lambda layer mounts. The repo
+    # root is only useful when running locally from a checkout.
+    #
+    # This previously used `Path(__file__).parents[4]`, which has three parents
+    # in the Lambda runtime (`/var/task/handler.py`) and therefore raised
+    # `IndexError: 4` before any import was attempted. Because `str(IndexError(4))`
+    # is the string "4", it read like an HTTP status and was mistaken for one —
+    # the containment actions were failing for a packaging reason while
+    # reporting something else entirely. Walk the parents defensively instead.
+    candidates = ["/opt/python"]
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "shared" / "ontap_response.py").exists():
+            candidates.append(str(parent))
+            break
+
+    for p in candidates:
         if p not in sys.path:
             sys.path.insert(0, p)
 
@@ -633,25 +709,334 @@ def _get_arp_response_client():
     return ArpResponseActions(client)
 
 
+def _arp_client_or_error():
+    """Build the ARP client, converting a construction failure into a readable error.
+
+    Returns (client, None) or (None, error_dict).
+
+    Without this, a failure here escapes to the generic handler except clause
+    and the UI shows whatever `str(e)` produced.
+
+    Do not pattern-match on the text of the exception to guess a cause. An
+    earlier version treated a short numeric message as an HTTP 404 and reported
+    "the SVM may not have a CIFS service configured". The actual exception was
+    `IndexError: 4` from a path calculation, so the message was confidently
+    wrong about a packaging problem. Report the exception type and let the
+    operator see the real detail.
+    """
+    try:
+        return _get_arp_response_client(), None
+    except ImportError as e:
+        return None, {
+            "success": False,
+            "error": (
+                "Containment is unavailable: the shared ONTAP modules are not on the "
+                f"Python path ({e}). The function needs the shared-modules layer attached."
+            ),
+        }
+    except Exception as e:
+        return None, {
+            "success": False,
+            "error": f"Failed to initialise the ONTAP client: {type(e).__name__}: {e}",
+        }
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _iso(moment: datetime) -> str:
+    return moment.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _blocks_table():
+    """Return the ledger table, or None when no table is configured.
+
+    Returning None rather than raising keeps blocking usable in a deployment
+    without the ledger: containment is the urgent half, expiry is the tidy-up.
+    Callers surface this as `expiryTracked: false` so the difference is visible
+    instead of looking like a block that will expire on its own.
+
+    The timeouts are deliberately short and retries are off. This function runs
+    in a VPC, and if the subnet has no route to DynamoDB the default client
+    settings hang until the Lambda is killed. That turned a block ONTAP had
+    already accepted into a timeout at the caller — an operator would read that
+    as "containment failed" when the principal was in fact blocked. Failing in
+    seconds keeps the ledger a side effect of the block rather than a gate on it.
+    """
+    if not BLOCKS_TABLE:
+        return None
+    return boto3.resource(
+        "dynamodb",
+        config=BotoConfig(
+            connect_timeout=3,
+            read_timeout=5,
+            retries={"max_attempts": 1, "mode": "standard"},
+        ),
+    ).Table(BLOCKS_TABLE)
+
+
+def _block_id(block_type: str, svm: str, *parts: str) -> str:
+    """Stable identity for a block, so re-blocking updates one row.
+
+    Without this, repeatedly blocking the same principal would leave several
+    rows with different expiries and the earliest one would lift a block the
+    operator had just extended.
+    """
+    return "#".join([block_type, svm, *parts])
+
+
+def _validated_ttl_hours(event) -> tuple[int | None, dict | None]:
+    """Resolve the requested expiry.
+
+    Returns (hours, error). hours of 0 means the caller explicitly asked for an
+    indefinite block, which is allowed but recorded as such — an unbounded block
+    should be a deliberate statement, not the effect of omitting a field.
+    """
+    if "ttlHours" not in event or event.get("ttlHours") is None:
+        return DEFAULT_BLOCK_TTL_HOURS, None
+
+    raw = event.get("ttlHours")
+    if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
+        return None, {"success": False, "error": "ttlHours must be a number"}
+    try:
+        hours = int(raw)
+    except (TypeError, ValueError):
+        return None, {"success": False, "error": "ttlHours must be a number"}
+
+    if hours < 0:
+        return None, {"success": False, "error": "ttlHours cannot be negative"}
+    if hours > MAX_BLOCK_TTL_HOURS:
+        return None, {
+            "success": False,
+            "error": f"ttlHours cannot exceed {MAX_BLOCK_TTL_HOURS} ({MAX_BLOCK_TTL_HOURS // 24} days)",
+        }
+    return hours, None
+
+
+def _record_block(block_type: str, block_id: str, svm: str, params: dict, ttl_hours: int, event) -> dict:
+    """Write the ledger row for a block that ONTAP has just accepted.
+
+    Recorded after the cluster call succeeds, never before: a row for a block
+    that does not exist would make the sweep try to lift nothing, and worse,
+    would tell an operator a principal is contained when it is not.
+    """
+    table = _blocks_table()
+    if table is None:
+        return {"expiryTracked": False, "expiresAt": None}
+
+    created = _now()
+    expires = created + timedelta(hours=ttl_hours) if ttl_hours > 0 else None
+    item = {
+        "blockId": block_id,
+        "blockType": block_type,
+        "svm": svm,
+        "status": "active",
+        "createdAt": _iso(created),
+        "createdBy": event.get("userId") or event.get("actor") or "unknown",
+        "expiresAt": _iso(expires) if expires else None,
+        # Kept past expiry on purpose, so the audit trail of a containment
+        # action outlives the block.
+        "ttl": int(((expires or created) + timedelta(days=LEDGER_RETENTION_DAYS)).timestamp()),
+        **params,
+    }
+
+    try:
+        table.put_item(Item=item)
+        return {"expiryTracked": True, "expiresAt": item["expiresAt"]}
+    except Exception as e:
+        # The block itself is in place, so this is not a failure of containment.
+        # It does mean nothing will expire it, which the caller must be told.
+        logger.error(f"ledger write failed for {block_id}: {type(e).__name__}: {e}")
+        return {
+            "expiryTracked": False,
+            "expiresAt": None,
+            "ledgerError": type(e).__name__,
+        }
+
+
+def _mark_lifted(block_id: str, reason: str) -> None:
+    """Close out a ledger row once the block is gone from the cluster."""
+    table = _blocks_table()
+    if table is None:
+        return
+    try:
+        table.update_item(
+            Key={"blockId": block_id},
+            UpdateExpression="SET #s = :s, liftedAt = :t, liftReason = :r",
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":s": "lifted",
+                ":t": _iso(_now()),
+                ":r": reason,
+            },
+        )
+    except Exception as e:
+        # A stale 'active' row is the safe direction to fail: the next sweep
+        # retries the unblock, and unblocking something already unblocked is
+        # harmless. Losing the row would be worse.
+        logger.error(f"ledger update failed for {block_id}: {type(e).__name__}: {e}")
+
+
+def _list_svms(http, headers, event):
+    """List the SVMs on the cluster, for choosing containment targets.
+
+    A compromised account is usually reachable on every SVM that trusts the same
+    directory, so containing it on one SVM is often only part of the job. The
+    portal cannot decide that on the operator's behalf, but it can show them the
+    choice.
+    """
+    try:
+        data = _ontap_get(http, headers, "/svm/svms", "fields=name,state&max_records=200")
+        svms = [{"name": r.get("name"), "state": r.get("state")} for r in data.get("records", []) if r.get("name")]
+        return {"success": True, "svms": svms, "total": len(svms), "error": None}
+    except Exception as e:
+        logger.error(f"list_svms failed: {type(e).__name__}: {e}")
+        return {
+            "success": False,
+            "svms": [],
+            "total": 0,
+            "error": f"Failed to list SVMs: {type(e).__name__}",
+        }
+
+
+def _svm_targets(event, http, headers) -> tuple[list[str] | None, dict | None]:
+    """Resolve which SVMs an action should act on.
+
+    Returns (targets, error). Fan-out is never implicit: an operator who names
+    one SVM gets one SVM. `svms` names them explicitly, `allSvms` asks the
+    cluster. Widening the blast radius has to be something the caller asked for.
+    """
+    if event.get("allSvms"):
+        listing = _list_svms(http, headers, event)
+        if not listing["success"]:
+            return None, {"success": False, "error": listing["error"]}
+        # Only SVMs that are actually serving data. Blocking on a stopped SVM
+        # would report a containment that is not protecting anything.
+        names = [s["name"] for s in listing["svms"] if s.get("state") == "running"]
+        if not names:
+            return None, {"success": False, "error": "No running SVMs found on the cluster"}
+        return names, None
+
+    requested = event.get("svms")
+    if requested is not None:
+        if not isinstance(requested, list) or not requested:
+            return None, {"success": False, "error": "svms must be a non-empty list of SVM names"}
+        names = []
+        for entry in requested:
+            if not isinstance(entry, str) or not entry.strip():
+                return None, {"success": False, "error": "svms must contain non-empty strings"}
+            names.append(entry.strip())
+        # Preserve order but drop duplicates, so a repeated name does not turn
+        # into a second block attempt reported as "already blocked".
+        return list(dict.fromkeys(names)), None
+
+    return [event.get("svm", SVM_NAME)], None
+
+
+def _fan_out(event, single, http, headers, gated: bool = False):
+    """Run a single-SVM containment action across the resolved targets.
+
+    Partial results are reported as such. Claiming overall success would hide a
+    gap in containment; claiming overall failure would hide the SVMs where the
+    block did land and now needs lifting. Both readings lead an operator to the
+    wrong next action, so the response names each SVM and its outcome.
+
+    Gated actions are checked once here rather than once per SVM, so a missing
+    confirmation returns the reason instead of a list of identical refusals.
+    """
+    if gated:
+        gate = _require_confirm(event)
+        if gate:
+            return gate
+
+    targets, error = _svm_targets(event, http, headers)
+    if error:
+        return error
+
+    if len(targets) == 1:
+        return single({**event, "svm": targets[0]})
+
+    results = {}
+    for svm in targets:
+        try:
+            results[svm] = single({**event, "svm": svm})
+        except Exception as e:
+            # A raise here would abandon the SVMs not yet visited and lose the
+            # record of the ones already done.
+            logger.error(f"fan-out to {svm} raised: {type(e).__name__}: {e}")
+            results[svm] = {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    succeeded = sorted(s for s, r in results.items() if r.get("success"))
+    failed = sorted(s for s, r in results.items() if not r.get("success"))
+
+    return {
+        "success": not failed,
+        "action": next((r.get("action") for r in results.values() if r.get("action")), event.get("action")),
+        "fannedOut": True,
+        "targets": targets,
+        "succeededOn": succeeded,
+        "failedOn": failed,
+        "perSvm": results,
+        "error": None
+        if not failed
+        else f"Succeeded on {len(succeeded)} of {len(targets)} SVMs; failed on: {', '.join(failed)}",
+    }
+
+
+def _require_confirm(event):
+    """Return an error dict unless the caller passed confirm=true.
+
+    Blocking a user or a client IP cuts data access for that principal across
+    the whole SVM. A UI dialog alone is a suggestion, not a control — anything
+    calling AppSync directly bypasses it — so the gate lives here as well.
+
+    Unblock actions are deliberately NOT gated: they restore access, and a
+    confirmation step on the way back out of a mistaken block only slows the
+    recovery down.
+    """
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required for containment operations"}
+    return None
+
+
 def _arp_block_smb_user(event):
     """Block an SMB user (name-mapping deny rule).
 
     Event params:
         domain: Windows domain (e.g., "CORP")
         username: Username to block (e.g., "jdoe")
+        confirm: Must be true — this cuts the user's access SVM-wide
         svm: Optional SVM name override (default: SVM_NAME env var)
     """
-    arp = _get_arp_response_client()
     svm = event.get("svm", SVM_NAME)
     domain = event.get("domain", "")
     username = event.get("username", "")
 
     if not domain or not username:
         return {"success": False, "error": "domain and username are required"}
+    gate = _require_confirm(event)
+    if gate:
+        return gate
+    ttl_hours, ttl_error = _validated_ttl_hours(event)
+    if ttl_error:
+        return ttl_error
+
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
 
     try:
         result = arp.block_smb_user(svm_name=svm, domain=domain, username=username)
-        return {"success": True, **result}
+        ledger = _record_block(
+            "smb",
+            _block_id("smb", svm, domain, username),
+            svm,
+            {"domain": domain, "username": username},
+            ttl_hours,
+            event,
+        )
+        return {"success": True, **result, **ledger}
     except Exception as e:
         logger.error(f"block_smb_user failed: {e}")
         return {"success": False, "error": str(e)}
@@ -665,7 +1050,9 @@ def _arp_unblock_smb_user(event):
         username: Username to unblock
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
     svm = event.get("svm", SVM_NAME)
     domain = event.get("domain", "")
     username = event.get("username", "")
@@ -675,6 +1062,7 @@ def _arp_unblock_smb_user(event):
 
     try:
         result = arp.unblock_smb_user(svm_name=svm, domain=domain, username=username)
+        _mark_lifted(_block_id("smb", svm, domain, username), event.get("reason", "manual"))
         return {"success": True, **result}
     except Exception as e:
         logger.error(f"unblock_smb_user failed: {e}")
@@ -687,21 +1075,37 @@ def _arp_block_nfs_ip(event):
     Event params:
         clientIp: IP to block (e.g., "10.0.5.99")
         policyName: Export policy name (default: "default")
+        confirm: Must be true — this cuts the client's NFS access
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
     svm = event.get("svm", SVM_NAME)
     client_ip = event.get("clientIp", "")
     policy_name = event.get("policyName", "default")
 
     if not client_ip:
         return {"success": False, "error": "clientIp is required"}
+    gate = _require_confirm(event)
+    if gate:
+        return gate
+    ttl_hours, ttl_error = _validated_ttl_hours(event)
+    if ttl_error:
+        return ttl_error
+
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
 
     try:
-        result = arp.block_nfs_ip(
-            svm_name=svm, policy_name=policy_name, client_ip=client_ip
+        result = arp.block_nfs_ip(svm_name=svm, policy_name=policy_name, client_ip=client_ip)
+        ledger = _record_block(
+            "nfs",
+            _block_id("nfs", svm, policy_name, client_ip),
+            svm,
+            {"policyName": policy_name, "clientIp": client_ip},
+            ttl_hours,
+            event,
         )
-        return {"success": True, **result}
+        return {"success": True, **result, **ledger}
     except Exception as e:
         logger.error(f"block_nfs_ip failed: {e}")
         return {"success": False, "error": str(e)}
@@ -715,7 +1119,9 @@ def _arp_unblock_nfs_ip(event):
         policyName: Export policy name (default: "default")
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
     svm = event.get("svm", SVM_NAME)
     client_ip = event.get("clientIp", "")
     policy_name = event.get("policyName", "default")
@@ -724,9 +1130,8 @@ def _arp_unblock_nfs_ip(event):
         return {"success": False, "error": "clientIp is required"}
 
     try:
-        result = arp.unblock_nfs_ip(
-            svm_name=svm, policy_name=policy_name, client_ip=client_ip
-        )
+        result = arp.unblock_nfs_ip(svm_name=svm, policy_name=policy_name, client_ip=client_ip)
+        _mark_lifted(_block_id("nfs", svm, policy_name, client_ip), event.get("reason", "manual"))
         return {"success": True, **result}
     except Exception as e:
         logger.error(f"unblock_nfs_ip failed: {e}")
@@ -743,9 +1148,9 @@ def _arp_contain_threat(event):
         volumeName: Volume to snapshot (optional, default: VOLUME_NAME)
         policyName: Export policy (default: "default")
         reason: Reason string for audit
+        confirm: Must be true — this blocks and disconnects in one call
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
     svm = event.get("svm", SVM_NAME)
     domain = event.get("domain")
     username = event.get("username")
@@ -759,6 +1164,16 @@ def _arp_contain_threat(event):
             "success": False,
             "error": "At least one of (domain+username) or clientIp is required",
         }
+    gate = _require_confirm(event)
+    if gate:
+        return gate
+    ttl_hours, ttl_error = _validated_ttl_hours(event)
+    if ttl_error:
+        return ttl_error
+
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
 
     try:
         result = arp.contain_threat(
@@ -770,7 +1185,42 @@ def _arp_contain_threat(event):
             policy_name=policy_name,
             reason=reason,
         )
-        return {"success": result["status"] == "contained", **result}
+        contained = result["status"] == "contained"
+
+        # This path places the same blocks as the individual actions, so it has
+        # to record them the same way. Leaving them out of the ledger would make
+        # the most urgent route the only one that never expires.
+        expiries = []
+        if contained:
+            if domain and username:
+                expiries.append(
+                    _record_block(
+                        "smb",
+                        _block_id("smb", svm, domain, username),
+                        svm,
+                        {"domain": domain, "username": username, "viaContainThreat": True},
+                        ttl_hours,
+                        event,
+                    )
+                )
+            if client_ip:
+                expiries.append(
+                    _record_block(
+                        "nfs",
+                        _block_id("nfs", svm, policy_name, client_ip),
+                        svm,
+                        {"policyName": policy_name, "clientIp": client_ip, "viaContainThreat": True},
+                        ttl_hours,
+                        event,
+                    )
+                )
+
+        return {
+            "success": contained,
+            **result,
+            "expiryTracked": bool(expiries) and all(e["expiryTracked"] for e in expiries),
+            "expiresAt": next((e["expiresAt"] for e in expiries if e["expiresAt"]), None),
+        }
     except Exception as e:
         logger.error(f"contain_threat failed: {e}")
         return {"success": False, "error": str(e)}
@@ -787,42 +1237,226 @@ def _arp_list_active_blocks(event):
     """
     svm = event.get("svm", SVM_NAME)
 
-    try:
-        arp = _get_arp_response_client()
-        result = arp.list_active_blocks(svm_name=svm)
-        return {"success": True, **result}
-    except ImportError as e:
-        logger.warning(f"Shared module not available for list_active_blocks: {e}")
-        return {
-            "success": True,
-            "smbBlocks": [],
-            "nfsBlocks": [],
-            "total": 0,
-            "error": None,
-            "note": "ArpResponseActions module not available in this deployment",
-        }
-    except Exception as e:
-        error_str = str(e)
-        logger.error(f"list_active_blocks failed: {error_str}")
-        # Short numeric error codes (e.g., "4" from HTTP 404) mean the API endpoint
-        # is not available — typically because CIFS service is not configured on the SVM.
-        # Treat as "no blocks" rather than showing a confusing error.
-        if error_str.isdigit() or "404" in error_str or "not found" in error_str.lower():
-            return {
-                "success": True,
-                "smbBlocks": [],
-                "nfsBlocks": [],
-                "total": 0,
-                "error": None,
-                "note": "Name-mapping API not available (CIFS service may not be configured on this SVM)",
-            }
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        # Surface it rather than reporting an empty list. "No blocks" and "could
+        # not ask" look identical to an operator otherwise, and this listing is
+        # the only way to find and lift a block that was set by mistake.
         return {
             "success": False,
             "smbBlocks": [],
             "nfsBlocks": [],
             "total": 0,
-            "error": f"Failed to retrieve active blocks: {error_str}",
+            "error": client_error["error"],
         }
+
+    try:
+        result = arp.list_active_blocks(svm_name=svm)
+        # The shared module returns snake_case keys; the UI reads camelCase, and
+        # the error branches below already used camelCase. Spreading the raw
+        # result therefore produced a response the Active Blocks tab could not
+        # read: real blocks existed on the SVM and the panel showed none of them.
+        # Since that tab is the only way to lift a block from the portal, the
+        # mismatch made a mistaken block unliftable through the UI.
+        smb_blocks = _annotate_expiry(result.get("smb_blocks", []), "smb", svm)
+        nfs_blocks = _annotate_expiry(result.get("nfs_blocks", []), "nfs", svm)
+        return {
+            "success": True,
+            "action": result.get("action", "list_active_blocks"),
+            "svm": result.get("svm", svm),
+            "smbBlocks": smb_blocks,
+            "nfsBlocks": nfs_blocks,
+            "total": result.get("total", 0),
+            "error": None,
+        }
+    except Exception as e:
+        logger.error(f"list_active_blocks failed: {type(e).__name__}: {e}")
+        return {
+            "success": False,
+            "smbBlocks": [],
+            "nfsBlocks": [],
+            "total": 0,
+            "error": f"Failed to retrieve active blocks: {type(e).__name__}: {e}",
+        }
+
+
+def _list_active_blocks_across(event, http, headers):
+    """List active blocks on one SVM or across several.
+
+    Blocking can fan out, so the listing has to as well. A block placed on an SVM
+    the listing does not cover is invisible, and an invisible block cannot be
+    lifted from the portal — the same trap as reporting an empty list when the
+    query failed.
+
+    Each entry carries its own `svm`, because the unblock call needs to know
+    where the block actually is.
+    """
+    targets, error = _svm_targets(event, http, headers)
+    if error:
+        return {"success": False, "smbBlocks": [], "nfsBlocks": [], "total": 0, **error}
+
+    if len(targets) == 1:
+        return _arp_list_active_blocks({**event, "svm": targets[0]})
+
+    smb, nfs, failures = [], [], []
+    for svm in targets:
+        result = _arp_list_active_blocks({**event, "svm": svm})
+        if not result.get("success"):
+            failures.append(f"{svm}: {result.get('error')}")
+            continue
+        for entry in result.get("smbBlocks", []):
+            smb.append({**entry, "svm": svm})
+        for entry in result.get("nfsBlocks", []):
+            nfs.append({**entry, "svm": svm})
+
+    return {
+        # A listing that silently skipped an SVM would let a block hide there.
+        "success": not failures,
+        "action": "list_active_blocks",
+        "svm": ", ".join(targets),
+        "svms": targets,
+        "smbBlocks": smb,
+        "nfsBlocks": nfs,
+        "total": len(smb) + len(nfs),
+        "error": None if not failures else "; ".join(failures),
+    }
+
+
+def _ledger_rows(status: str = "active") -> list[dict]:
+    """Read ledger rows with the given status.
+
+    A scan is adequate here and a GSI would be premature: the table only ever
+    holds one row per contained principal, and a deployment with enough
+    simultaneous blocks to make this expensive has a much bigger problem.
+    """
+    table = _blocks_table()
+    if table is None:
+        return []
+
+    rows: list[dict] = []
+    kwargs: dict = {
+        "FilterExpression": "#s = :s",
+        "ExpressionAttributeNames": {"#s": "status"},
+        "ExpressionAttributeValues": {":s": status},
+    }
+    while True:
+        page = table.scan(**kwargs)
+        rows.extend(page.get("Items", []))
+        cursor = page.get("LastEvaluatedKey")
+        if not cursor:
+            return rows
+        kwargs["ExclusiveStartKey"] = cursor
+
+
+def _annotate_expiry(blocks: list, block_type: str, svm: str) -> list:
+    """Attach expiry to the blocks the cluster reported.
+
+    ONTAP has no timestamp for these rules, so expiry can only come from the
+    ledger. Blocks with no matching row get `expiresAt: None` and
+    `managedByPortal: False` — that is the honest answer for a block placed
+    outside the portal, and it tells the operator the sweep will not lift it.
+    """
+    try:
+        rows = {row["blockId"]: row for row in _ledger_rows("active")}
+    except Exception as e:
+        logger.error(f"ledger read failed while annotating: {type(e).__name__}: {e}")
+        rows = {}
+
+    annotated = []
+    for block in blocks:
+        entry = dict(block) if isinstance(block, dict) else {"value": block}
+        match = None
+        for row in rows.values():
+            if row.get("blockType") != block_type or row.get("svm") != svm:
+                continue
+            if block_type == "smb":
+                needle = f"{row.get('domain', '')}\\{row.get('username', '')}"
+                if needle and needle.replace("\\", "") in str(entry.get("pattern", "")).replace("\\", ""):
+                    match = row
+                    break
+            else:
+                if str(row.get("clientIp", "")) and str(row.get("clientIp")) in str(entry.get("client_match", "")):
+                    match = row
+                    break
+        entry["expiresAt"] = match.get("expiresAt") if match else None
+        entry["managedByPortal"] = match is not None
+        annotated.append(entry)
+    return annotated
+
+
+def _sweep_expired_blocks(event):
+    """Lift the blocks whose expiry has passed.
+
+    Invoked on a schedule. Only ledger rows are considered, so a block placed
+    outside the portal is never touched — see the module docstring.
+
+    A row whose unblock fails stays `active` deliberately, so the next run tries
+    again. Unblocking something already unblocked is harmless; leaving a
+    principal cut off because one sweep failed is not.
+    """
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return {"success": False, "swept": 0, "failed": 0, "error": client_error["error"]}
+
+    try:
+        rows = _ledger_rows("active")
+    except Exception as e:
+        logger.error(f"sweep could not read the ledger: {type(e).__name__}: {e}")
+        return {
+            "success": False,
+            "swept": 0,
+            "failed": 0,
+            "error": f"Ledger read failed: {type(e).__name__}",
+        }
+
+    now = _now()
+    swept, failed, details = 0, 0, []
+
+    for row in rows:
+        expires_at = row.get("expiresAt")
+        if not expires_at:
+            continue  # explicitly indefinite
+        try:
+            due = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+        except ValueError:
+            logger.error(f"unparseable expiresAt on {row.get('blockId')}: {expires_at!r}")
+            failed += 1
+            continue
+        if due > now:
+            continue
+
+        block_id = row["blockId"]
+        try:
+            if row.get("blockType") == "smb":
+                arp.unblock_smb_user(
+                    svm_name=row.get("svm", SVM_NAME),
+                    domain=row.get("domain", ""),
+                    username=row.get("username", ""),
+                )
+            else:
+                arp.unblock_nfs_ip(
+                    svm_name=row.get("svm", SVM_NAME),
+                    policy_name=row.get("policyName", "default"),
+                    client_ip=row.get("clientIp", ""),
+                )
+            _mark_lifted(block_id, "expired")
+            swept += 1
+            details.append({"blockId": block_id, "result": "lifted"})
+        except Exception as e:
+            failed += 1
+            logger.error(f"sweep failed to lift {block_id}: {type(e).__name__}: {e}")
+            details.append({"blockId": block_id, "result": f"failed: {type(e).__name__}"})
+
+    logger.info(f"sweep complete: {swept} lifted, {failed} failed, {len(rows)} active rows examined")
+    return {
+        "success": failed == 0,
+        "action": "sweep_expired_blocks",
+        "swept": swept,
+        "failed": failed,
+        "examined": len(rows),
+        "details": details,
+        "error": None if failed == 0 else f"{failed} block(s) could not be lifted",
+    }
 
 
 def _arp_disconnect_sessions(event):
@@ -831,20 +1465,25 @@ def _arp_disconnect_sessions(event):
     Event params:
         user: Windows user (e.g., "CORP\\jdoe")
         clientIp: Client IP (at least one required)
+        confirm: Must be true — this drops the user's open sessions
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
     svm = event.get("svm", SVM_NAME)
     user = event.get("user")
     client_ip = event.get("clientIp")
 
     if not user and not client_ip:
         return {"success": False, "error": "At least one of user or clientIp is required"}
+    gate = _require_confirm(event)
+    if gate:
+        return gate
+
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
 
     try:
-        result = arp.disconnect_smb_sessions(
-            svm_name=svm, user=user, client_ip=client_ip
-        )
+        result = arp.disconnect_smb_sessions(svm_name=svm, user=user, client_ip=client_ip)
         return {"success": True, **result}
     except Exception as e:
         logger.error(f"disconnect_sessions failed: {e}")

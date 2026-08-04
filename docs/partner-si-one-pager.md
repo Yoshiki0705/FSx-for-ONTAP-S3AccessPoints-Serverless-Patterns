@@ -17,7 +17,7 @@
 
 ## When — いつ使うか
 
-以下の条件に当てはまる顧客に提案可能:
+以下の条件に当てはまる導入先に提案可能:
 
 - ✅ FSx for ONTAP にファイルデータを保有している
 - ✅ ファイルデータに対するサーバーレス自動処理が必要
@@ -26,7 +26,7 @@
 - ✅ AI/ML（Bedrock, Textract, Comprehend, Rekognition）を活用したい
 - ✅ イベント駆動またはスケジュール実行でファイル処理を自動化したい
 
-> **Note**: S3 Access Points は読み取り専用ではありません。PutObject（最大 5 GB）、DeleteObject、MultipartUpload もサポートされています。ただし FSX_ONTAP ストレージクラスのみ、SSE-FSX 暗号化のみ等の制約があります。詳細は [S3AP Compatibility Notes](s3ap-compatibility-notes.md) を参照。
+> **Note**: S3 Access Points は読み取り専用ではありません。PutObject（単一 PUT は 5 GB、Multipart で 50 GB まで）、DeleteObject、MultipartUpload もサポートされています。ただし FSX_ONTAP ストレージクラスのみ、SSE-FSX 暗号化のみ等の制約があります。詳細は [S3AP Compatibility Notes](s3ap-compatibility-notes.md) を参照。
 
 ## How — PoC の進め方
 
@@ -52,11 +52,11 @@ Step 4: Go/No-Go 基準で評価
 | ガバナンス | [docs/governance-checklist.md](governance-checklist.md) |
 | 本番化基準 | [docs/production-readiness.md](production-readiness.md) |
 | ベンチマーク | [docs/s3ap-benchmark-results.md](s3ap-benchmark-results.md) |
-| 顧客ヒアリング | [docs/customer-discovery-template.md](customer-discovery-template.md) |
+| 要件ヒアリング | [docs/customer-discovery-template.md](customer-discovery-template.md) |
 | トリガー選択 | [docs/trigger-mode-decision-guide.md](trigger-mode-decision-guide.md) |
 | 公共セクター | [docs/public-sector-adoption-roadmap.md](public-sector-adoption-roadmap.md) |
 | ワークショップ | [docs/workshop-guide.md](workshop-guide.md) |
 
 ---
 
-> **注意**: 本リポジトリは「設計判断を学ぶためのリファレンス実装」です。本番環境への適用には顧客固有のセキュリティレビュー、コンプライアンス評価、性能検証が必要です。
+> **注意**: 本リポジトリは「設計判断を学ぶためのリファレンス実装」です。本番環境への適用には導入先固有のセキュリティレビュー、コンプライアンス評価、性能検証が必要です。

@@ -11,29 +11,64 @@ import { EfficiencyPanel } from "./admin/EfficiencyPanel";
 import { ArpAdminManager } from "./admin/ArpAdminManager";
 import { SnapshotAdminManager } from "./admin/SnapshotAdminManager";
 import { StorageDashboard } from "./admin/StorageDashboard";
+import { AiSettingsManager } from "./admin/AiSettingsManager";
+import { FlexCacheManager } from "./admin/FlexCacheManager";
+import { FlexCloneManager } from "./admin/FlexCloneManager";
+import { SnapMirrorStatus } from "./admin/SnapMirrorStatus";
+import { LocalUserManager } from "./admin/LocalUserManager";
+import { NameMappingManager } from "./admin/NameMappingManager";
+import { VscanManager } from "./admin/VscanManager";
+import { FPolicyManager } from "./admin/FPolicyManager";
+import { PeeringManager } from "./admin/PeeringManager";
+import { ClusterManager } from "./admin/ClusterManager";
 
-type AdminPanel = "volumes" | "exportPolicies" | "qos" | "snaplock" | "quotas" | "cifsShares" | "qtrees" | "efficiency" | "arpAdmin" | "snapshotAdmin";
+type AdminPanel =
+  | "volumes"
+  | "exportPolicies"
+  | "qos"
+  | "snaplock"
+  | "quotas"
+  | "cifsShares"
+  | "qtrees"
+  | "efficiency"
+  | "arpAdmin"
+  | "snapshotAdmin"
+  | "aiSettings"
+  | "flexCache"
+  | "flexClone"
+  | "snapMirror"
+  | "localUsers"
+  | "nameMapping"
+  | "vscan"
+  | "fpolicy"
+  | "peering"
+  | "cluster";
 
 interface PanelDef {
   id: AdminPanel;
   icon: string;
   label: string;
   description: string;
-  category: "storage" | "access" | "protection" | "monitoring";
+  category: "storage" | "access" | "protection" | "services" | "cluster";
+}
+
+interface ResourceManagementProps {
+  aiSettings?: { aiAgentEnabled: boolean; aiSearchEnabled: boolean };
+  onAiSettingsChange?: (settings: { aiAgentEnabled: boolean; aiSearchEnabled: boolean }) => void;
 }
 
 /**
  * Resource Management — Admin section for ONTAP storage operations.
  *
  * UI inspired by ONTAP System Manager's card-based navigation:
- * - Category headers (Storage, Access Control, Protection, Monitoring)
+ * - Category headers (Storage, Access Control, Protection, AI Services)
  * - Icon cards with description for each management area
  * - Clicking a card opens the detail panel (replaces card grid)
  * - Back button returns to the overview grid
  *
  * All operations require the "storage-admin" Cognito group.
  */
-export function ResourceManagement() {
+export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceManagementProps) {
   const { t } = useTranslation();
   const [activePanel, setActivePanel] = useState<AdminPanel | null>(null);
 
@@ -52,20 +87,34 @@ export function ResourceManagement() {
     { id: "qtrees", icon: "🌳", label: t("rmQtrees"), description: t("rmQtreesDesc"), category: "storage" },
     { id: "quotas", icon: "📊", label: t("rmQuotas"), description: t("rmQuotasDesc"), category: "storage" },
     { id: "efficiency", icon: "📈", label: t("rmEfficiency"), description: t("rmEfficiencyDesc"), category: "storage" },
+    { id: "flexCache", icon: "⚡", label: t("rmFlexCache"), description: t("rmFlexCacheDesc"), category: "storage" },
+    { id: "flexClone", icon: "🧬", label: t("rmFlexClone"), description: t("rmFlexCloneDesc"), category: "storage" },
     // Access Control
     { id: "exportPolicies", icon: "📋", label: t("rmExportPolicies"), description: t("rmExportPoliciesDesc"), category: "access" },
     { id: "cifsShares", icon: "📁", label: t("rmCifsShares"), description: t("rmCifsSharesDesc"), category: "access" },
     { id: "qos", icon: "⚡", label: t("rmQosPolicies"), description: t("rmQosPoliciesDesc"), category: "access" },
+    { id: "localUsers", icon: "👤", label: t("rmLocalUsers"), description: t("rmLocalUsersDesc"), category: "access" },
+    { id: "nameMapping", icon: "🔗", label: t("rmNameMapping"), description: t("rmNameMappingDesc"), category: "access" },
     // Protection
     { id: "arpAdmin", icon: "🛡️", label: t("rmArpAdmin"), description: t("rmArpAdminDesc"), category: "protection" },
     { id: "snapshotAdmin", icon: "📸", label: t("rmSnapshotAdmin"), description: t("rmSnapshotAdminDesc"), category: "protection" },
     { id: "snaplock", icon: "🔒", label: t("rmSnaplock"), description: t("rmSnaplockDesc"), category: "protection" },
+    { id: "snapMirror", icon: "🔄", label: t("rmSnapMirror"), description: t("rmSnapMirrorDesc"), category: "protection" },
+    { id: "vscan", icon: "🦠", label: t("rmVscan"), description: t("rmVscanDesc"), category: "protection" },
+    { id: "fpolicy", icon: "📜", label: t("rmFpolicy"), description: t("rmFpolicyDesc"), category: "protection" },
+    // Cluster — the areas the AWS console does not cover
+    { id: "peering", icon: "🔗", label: t("rmPeering"), description: t("rmPeeringDesc"), category: "cluster" },
+    { id: "cluster", icon: "🖥️", label: t("rmCluster"), description: t("rmClusterDesc"), category: "cluster" },
+    // AI & Services
+    { id: "aiSettings", icon: "🤖", label: t("rmAiSettings"), description: t("rmAiSettingsDesc"), category: "services" },
   ];
 
   const categories = [
     { key: "storage", label: t("rmCatStorage"), icon: "🗄️" },
     { key: "access", label: t("rmCatAccess"), icon: "🔐" },
     { key: "protection", label: t("rmCatProtection"), icon: "🛡️" },
+    { key: "cluster", label: t("rmCatCluster"), icon: "🖥️" },
+    { key: "services", label: t("rmCatServices"), icon: "🤖" },
   ] as const;
 
   // Render the detail panel when one is selected
@@ -90,6 +139,16 @@ export function ResourceManagement() {
           {activePanel === "arpAdmin" && <ArpAdminManager />}
           {activePanel === "snaplock" && <SnaplockManager />}
           {activePanel === "efficiency" && <EfficiencyPanel />}
+          {activePanel === "flexCache" && <FlexCacheManager />}
+          {activePanel === "flexClone" && <FlexCloneManager />}
+          {activePanel === "snapMirror" && <SnapMirrorStatus />}
+          {activePanel === "localUsers" && <LocalUserManager />}
+          {activePanel === "nameMapping" && <NameMappingManager />}
+          {activePanel === "vscan" && <VscanManager />}
+          {activePanel === "fpolicy" && <FPolicyManager />}
+          {activePanel === "peering" && <PeeringManager />}
+          {activePanel === "cluster" && <ClusterManager />}
+          {activePanel === "aiSettings" && <AiSettingsManager initialSettings={aiSettings} onSettingsChange={onAiSettingsChange} />}
         </div>
       </div>
     );

@@ -1,5 +1,4 @@
 import os
-import json
 import time
 import boto3
 
@@ -8,6 +7,7 @@ athena = boto3.client("athena", region_name=region)
 
 WORKGROUP = os.environ.get("ATHENA_WORKGROUP", "primary")
 OUTPUT_LOCATION = os.environ.get("ATHENA_OUTPUT_LOCATION", "")
+
 
 def handler(event, context):
     """Execute an Athena SQL query and return results.
@@ -55,4 +55,22 @@ def handler(event, context):
         return {"columns": columns, "rows": rows, "status": "SUCCEEDED", "error": None, "executionId": execution_id}
 
     except Exception as e:
-        return {"columns": [], "rows": [], "status": "ERROR", "error": str(e)}
+        error_msg = str(e)
+        # Provide user-friendly guidance for common setup issues
+        if "No output location provided" in error_msg:
+            return {
+                "columns": [],
+                "rows": [],
+                "status": "SETUP_REQUIRED",
+                "error": "Athena の出力先が未設定です。AWS コンソールで Athena ワークグループの「クエリ結果の場所」を設定するか、ポータルの環境変数 ATHENA_OUTPUT_LOCATION に S3 パス（例: s3://my-bucket/athena-results/）を設定してください。",
+                "setupHint": "ATHENA_OUTPUT_LOCATION",
+            }
+        if "Database" in error_msg and "not found" in error_msg.lower():
+            return {
+                "columns": [],
+                "rows": [],
+                "status": "SETUP_REQUIRED",
+                "error": f"データベース '{database}' が見つかりません。Glue Crawler でデータカタログを作成するか、データベース名を確認してください。SHOW DATABASES で利用可能なデータベースを確認できます。",
+                "setupHint": "DATABASE_NOT_FOUND",
+            }
+        return {"columns": [], "rows": [], "status": "ERROR", "error": error_msg}

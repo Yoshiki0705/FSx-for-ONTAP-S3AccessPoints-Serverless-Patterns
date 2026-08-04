@@ -22,10 +22,16 @@ import { resolve } from "path";
 const BACKEND_PATH = resolve(__dirname, "../../amplify/backend.ts");
 const backendSource = readFileSync(BACKEND_PATH, "utf-8");
 
+// Handler bodies used to be inline in backend.ts and now live under functions/.
+// Assertions about Python behaviour must read the handler source directly.
+const PRESIGNED_URL_HANDLER = resolve(__dirname, "../../functions/presigned-url/index.py");
+const presignedUrlSource = readFileSync(PRESIGNED_URL_HANDLER, "utf-8");
+
 describe("Backend Infrastructure Structure", () => {
   describe("Lambda Functions", () => {
     const expectedLambdas = [
       "ListFilesFunction",
+      "FolderDownloadFunction",
       "GetPresignedUrlFunction",
       "ListSnapshotsFunction",
       "SearchFilesFunction",
@@ -38,6 +44,9 @@ describe("Backend Infrastructure Structure", () => {
       "TextractFunction",
       "ComprehendFunction",
       "GlueCatalogFunction",
+      "AgentChatFunction",
+      "ArpResponseFunction",
+      "ResourceMgmtFunction",
     ];
 
     it("defines all expected Lambda functions", () => {
@@ -59,7 +68,10 @@ describe("Backend Infrastructure Structure", () => {
     });
 
     it("all Lambda functions have explicit timeout", () => {
-      const timeoutMatches = (backendSource.match(/timeout: Duration\.seconds\(/g) || []).length;
+      // Timeouts may be expressed in seconds or minutes.
+      const timeoutMatches = (
+        backendSource.match(/timeout: Duration\.(?:seconds|minutes)\(/g) || []
+      ).length;
       expect(timeoutMatches).toBeGreaterThanOrEqual(expectedLambdas.length);
     });
 
@@ -130,7 +142,7 @@ describe("Backend Infrastructure Structure", () => {
 
   describe("Security Configuration", () => {
     it("uses SigV4 for S3 presigned URLs", () => {
-      expect(backendSource).toContain('signature_version="s3v4"');
+      expect(presignedUrlSource).toContain('signature_version="s3v4"');
     });
 
     it("has CONFIDENTIAL guardrail in AskAboutFile", () => {
@@ -139,9 +151,9 @@ describe("Backend Infrastructure Structure", () => {
     });
 
     it("Presigned URL has max expiry enforcement", () => {
-      expect(backendSource).toContain("min(event.get");
+      expect(presignedUrlSource).toContain("min(event.get");
       // GetPresignedUrl caps at 3600
-      expect(backendSource).toContain("3600");
+      expect(presignedUrlSource).toContain("3600");
     });
 
     it("cdk-nag is applied", () => {
@@ -159,11 +171,12 @@ describe("Backend Infrastructure Structure", () => {
     });
 
     it("ONTAP-related env vars are optional (DemoMode compatible)", () => {
-      // ONTAP env vars in CDK configuration (not inline Python) should use process.env with fallback
+      // ONTAP env vars must be sourced from portal-config (config.<property>)
+      // rather than bare process.env, so DemoMode has defined fallbacks.
       const cdkConfigLines = backendSource.split("\n").filter(
         (line) =>
           (line.includes("ONTAP_MGMT_IP:") || line.includes("ONTAP_SECRET_NAME:")) &&
-          line.includes("process.env")
+          line.includes("config.")
       );
       // At least the environment block in ListSnapshotsFunction should have these
       expect(cdkConfigLines.length).toBeGreaterThanOrEqual(2);
@@ -179,5 +192,82 @@ describe("Backend Infrastructure Structure", () => {
     it("grants s3:PutObject for uploads", () => {
       expect(backendSource).toContain('"s3:PutObject"');
     });
+  });
+});
+
+
+describe("Containment block expiry", () => {
+  it("defines the ledger table with a TTL attribute", () => {
+    // ONTAP deny rules carry no timestamp, so without this table nothing can
+    // say when a block was placed or when it should be lifted.
+    expect(backendSource).toContain('"ContainmentBlocksTable"');
+    expect(backendSource).toContain('timeToLiveAttribute: "ttl"');
+  });
+
+  it("retains the ledger table on stack removal", () => {
+    // Losing it would leave blocks on the cluster with nothing recording that
+    // they were ever meant to expire.
+    const table = backendSource.slice(
+      backendSource.indexOf('"ContainmentBlocksTable"'),
+      backendSource.indexOf('"ContainmentBlocksTable"') + 700
+    );
+    expect(table).toContain("RemovalPolicy.RETAIN");
+  });
+
+  it("schedules the sweep against the ARP function", () => {
+    expect(backendSource).toContain('"ContainmentBlockSweepSchedule"');
+    expect(backendSource).toContain('action: "sweepExpiredBlocks"');
+    const rule = backendSource.slice(
+      backendSource.indexOf('"ContainmentBlockSweepSchedule"'),
+      backendSource.indexOf('"ContainmentBlockSweepSchedule"') + 900
+    );
+    expect(rule).toContain("targets.LambdaFunction(arpResponseFunction");
+  });
+
+  it("grants the ARP role Scan but not DeleteItem on the ledger", () => {
+    // Scan is what lets the sweep find due rows without knowing their keys.
+    // DeleteItem is deliberately absent: rows are closed out by status so the
+    // audit trail survives, and the native TTL removes them later.
+    const role = backendSource.slice(
+      backendSource.indexOf('"ArpResponseLambdaRole"'),
+      backendSource.indexOf('"ArpResponseLambdaRole"') + 2000
+    );
+    expect(role).toContain('"dynamodb:Scan"');
+    expect(role).toContain('"dynamodb:UpdateItem"');
+    expect(role).not.toContain('"dynamodb:DeleteItem"');
+  });
+
+  it("passes the table name and default expiry to the ARP function", () => {
+    expect(backendSource).toContain("CONTAINMENT_BLOCKS_TABLE: containmentBlocksTable.tableName");
+    expect(backendSource).toContain("DEFAULT_BLOCK_TTL_HOURS: String(config.defaultBlockTtlHours)");
+  });
+
+  it("can add a DynamoDB gateway endpoint for the VPC functions", () => {
+    // A Lambda ENI has no public IP, so a subnet whose default route is an
+    // internet gateway has no egress at all. Without a path to DynamoDB the
+    // ledger call hung until the function was killed, which made a block ONTAP
+    // had already accepted look like a failure at the caller.
+    expect(backendSource).toContain('"DynamoDbGatewayEndpoint"');
+    expect(backendSource).toContain('vpcEndpointType: "Gateway"');
+    expect(backendSource).toContain("config.vpcRouteTableIds");
+  });
+
+  it("refuses to deploy into a VPC with no path to the ledger", () => {
+    // Documenting the requirement is not enough: without the endpoint the
+    // deployment looks complete while expiry silently never runs, and that is
+    // visible only to someone reading an individual action's response.
+    expect(backendSource).toContain("vpcRouteTableIds is required when vpcId is set");
+    expect(backendSource).toContain("config.allowNoBlockExpiry");
+    // The message has to name the config field, not only an environment
+    // variable: portal-config.ts is gitignored and copied from the example,
+    // which takes plain values, so the variable is only read where the local
+    // configuration happens to wire it up.
+    expect(backendSource).toContain("vpcRouteTableIds in portal-config.ts");
+  });
+
+  it("only creates the endpoint when route tables are supplied", () => {
+    // The VPC belongs to another stack; writing to its route tables should be a
+    // deliberate choice rather than a side effect of deploying the portal.
+    expect(backendSource).toContain("vpcConfig && config.vpcRouteTableIds.length > 0");
   });
 });

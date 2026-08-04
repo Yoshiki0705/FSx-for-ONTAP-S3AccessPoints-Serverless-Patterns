@@ -34,6 +34,16 @@ This document compares three approaches — AWS Amplify Gen2, Nextcloud, and cus
 
 All three approaches share the same backend integration point: the existing Step Functions state machines that orchestrate Lambda functions accessing FSx for ONTAP S3 Access Points.
 
+Here is the overall picture when Amplify Gen2 and Nextcloud run side by side. Because both frontends go through the same S3 Access Point, no data is moved and existing NFS/SMB clients keep working unchanged.
+
+![File portal architecture built on FSx for ONTAP S3 Access Points. Users reach two frontends from a web browser — Amplify Gen2 as an AI processing dashboard and Nextcloud as a file sharing UI — and both read and write the same FSx for ONTAP volume through one S3 Access Point. Existing NFS and SMB clients access the same volume concurrently](images/architecture-overview-en.svg)
+
+*Figure: Overall architecture — two frontends reaching the same volume through one S3 Access Point*
+
+> The figure uses the light theme (white background). If you prefer dark mode, use the [dark theme version](images/architecture-overview-en-dark.svg). All 13 figures are listed in the [architecture diagram index](architecture-diagrams.en.md).
+
+The diagram below shows how all three options, including a custom build, share that common backend.
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │           Frontend Layer (choose one)                        │
@@ -351,7 +361,7 @@ solutions/amplify-portal/
 **S3 AP constraints with Nextcloud**:
 - Presigned URLs are listed as "Not supported" in AWS docs but actually work (they are client-side SigV4 calculations that execute as standard GetObject; [details](./s3ap-compatibility-notes.en.md#presigned-url-support)). However, production reliance is not recommended, so Nextcloud can also proxy file downloads through its server process for governance control
 - `ListObjectsV2` pagination (max 1000 objects/request) is handled natively by Nextcloud's S3 backend
-- PutObject (max 5 GB) enables file upload from Nextcloud UI to FSx for ONTAP
+- PutObject (5 GB per single PUT, up to 50 GB via multipart) enables file upload from Nextcloud UI to FSx for ONTAP
 
 **NFS mount alternative**: For lower-latency file browsing and preview generation, Nextcloud can mount the FSx for ONTAP volume directly via NFS (requires EC2 placement in the same VPC/subnet).
 

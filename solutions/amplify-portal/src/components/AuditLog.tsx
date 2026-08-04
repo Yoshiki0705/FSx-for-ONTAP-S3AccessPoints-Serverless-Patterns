@@ -47,6 +47,7 @@ export function AuditLog() {
   const runQuery = async () => {
     setLoading(true);
     setError(null);
+    setEvents([]);
 
     try {
       const response = await client.queries.queryAuditLog({
@@ -58,10 +59,20 @@ export function AuditLog() {
       });
 
       if (response.data) {
-        setEvents((response.data.events || []) as AuditEvent[]);
+        const rawEvents = response.data.events;
+        // Handle events being string (JSON), array, or null
+        let parsed: AuditEvent[] = [];
+        if (Array.isArray(rawEvents)) {
+          parsed = rawEvents as AuditEvent[];
+        } else if (typeof rawEvents === "string") {
+          try { parsed = JSON.parse(rawEvents); } catch { parsed = []; }
+        }
+        setEvents(parsed);
         if (response.data.error) {
           setError(response.data.error);
         }
+      } else if (response.errors) {
+        setError(response.errors.map((e: { message: string }) => e.message).join(", "));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to query audit log");

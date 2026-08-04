@@ -2,10 +2,17 @@ import { defineBackend } from "@aws-amplify/backend";
 import { auth } from "./auth/resource";
 import { data } from "./data/resource";
 import { config } from "./portal-config";
+import * as crypto from "crypto";
+import * as fs from "fs";
+import * as path from "path";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
-import { Aspects, Duration, Stack } from "aws-cdk-lib";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import { AssetHashType, Aspects, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as events from "aws-cdk-lib/aws-events";
+import * as targets from "aws-cdk-lib/aws-events-targets";
 import { AwsSolutionsChecks, NagSuppressions } from "cdk-nag";
 
 /**
@@ -83,6 +90,108 @@ const vpcConfig = config.vpcId
     }
   : undefined;
 
+/**
+ * DynamoDB gateway endpoint for the VPC Lambda functions.
+ *
+ * Only created when route table IDs are supplied, because a gateway endpoint is
+ * attached to route tables rather than to subnets, and this stack does not own
+ * the VPC. Set AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS to the route tables used by
+ * the Lambda subnets.
+ *
+ * Why it is needed: a Lambda ENI has no public IP, so a subnet whose default
+ * route is an internet gateway gives the function no egress at all. Interface
+ * endpoints cover Secrets Manager and friends, and the S3 gateway endpoint
+ * covers S3 — DynamoDB has no path unless one is added. Without it the
+ * containment ledger is unreachable and nothing expires.
+ *
+ * A gateway endpoint carries no hourly or data processing charge, unlike an
+ * interface endpoint.
+ *
+ * The handler degrades rather than failing when the ledger is unreachable, so
+ * leaving this unset costs the expiry feature, not the ability to contain.
+ */
+if (vpcConfig && config.vpcRouteTableIds.length === 0 && !config.allowNoBlockExpiry) {
+  // Fail at synth rather than deploying something that looks complete. Without a
+  // path to DynamoDB, containment still blocks but nothing expires, and that is
+  // visible only to someone reading the response of an individual action — not
+  // to whoever is relying on blocks lifting themselves.
+  throw new Error(
+    "vpcRouteTableIds is required when vpcId is set, so the VPC functions can reach " +
+      "the containment block ledger over a DynamoDB gateway endpoint. Without it, " +
+      "blocks are placed on the cluster but never expire.\n\n" +
+      "  Find the route tables for your subnets:\n" +
+      '    aws ec2 describe-route-tables --filters "Name=association.subnet-id,Values=<subnet-id>" \\\n' +
+      '      --query "RouteTables[].RouteTableId" --output text\n\n' +
+      "  Then set vpcRouteTableIds in portal-config.ts (or the environment variable\n" +
+      "  your configuration reads it from).\n\n" +
+      "  To deploy without block expiry on purpose, set allowNoBlockExpiry."
+  );
+}
+
+if (vpcConfig && config.vpcRouteTableIds.length > 0) {
+  new ec2.CfnVPCEndpoint(dataStack, "DynamoDbGatewayEndpoint", {
+    vpcId: config.vpcId,
+    serviceName: `com.amazonaws.${config.region}.dynamodb`,
+    vpcEndpointType: "Gateway",
+    routeTableIds: config.vpcRouteTableIds,
+  });
+}
+
+// --- DynamoDB Table for Portal Settings (admin-controlled feature gates) ---
+// Stores runtime settings like AI Agent enablement.
+// Key: settingKey (string), Value: settingValue (string/JSON)
+const portalSettingsTable = new dynamodb.Table(dataStack, "PortalSettingsTable", {
+  partitionKey: { name: "settingKey", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  removalPolicy: Stack.of(dataStack).stackName.includes("sandbox")
+    ? undefined // default RETAIN for sandbox
+    : undefined,
+});
+
+// --- DynamoDB Table for Chat History (per-user conversation persistence) ---
+// PK: userId (Cognito username), SK: sessionId (timestamp-based)
+// Stores: messages (JSON), title, createdAt, updatedAt
+const chatHistoryTable = new dynamodb.Table(dataStack, "ChatHistoryTable", {
+  partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+  sortKey: { name: "sessionId", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: "ttl",
+});
+
+// --- DynamoDB Table for Agent Directory (custom agent registry) ---
+// PK: agentId (UUID). Stores: name, description, systemPrompt, tools, icon, category, isShared
+const agentDirectoryTable = new dynamodb.Table(dataStack, "AgentDirectoryTable", {
+  partitionKey: { name: "agentId", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+});
+
+// --- DynamoDB Table for Multi-Agent Teams ---
+// PK: teamId (UUID). Stores: name, description, agents (list), createdBy
+const agentTeamsTable = new dynamodb.Table(dataStack, "AgentTeamsTable", {
+  partitionKey: { name: "teamId", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+});
+
+// --- DynamoDB Table for Containment Blocks (expiry ledger) ---
+// PK: blockId ("smb#<svm>#<domain>#<user>" or "nfs#<svm>#<policy>#<ip>").
+//
+// ONTAP name-mapping and export-policy deny rules carry no timestamp, so a block
+// read back from the cluster cannot say when it was placed or when it should
+// end. Expiry therefore needs a record of the portal's own blocks, which is what
+// this table is. A scheduled sweep lifts the rows whose expiry has passed.
+//
+// The native TTL is set later than the block's own expiry on purpose, so the
+// audit trail of a containment action outlives the containment itself.
+const containmentBlocksTable = new dynamodb.Table(dataStack, "ContainmentBlocksTable", {
+  partitionKey: { name: "blockId", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: "ttl",
+  // Losing this table would leave blocks in place on the cluster with nothing
+  // recording that they should ever be lifted.
+  removalPolicy: RemovalPolicy.RETAIN,
+  pointInTimeRecovery: true,
+});
+
 // --- HTTP Data Source for Step Functions ---
 const sfnEndpoint = `https://states.${config.region}.amazonaws.com`;
 
@@ -128,11 +237,152 @@ const listFilesRole = new iam.Role(dataStack, "ListFilesLambdaRole", {
   },
 });
 
+/**
+ * Bundle a Python function directory, leaving out everything that is only
+ * needed on a developer machine.
+ *
+ * Without the exclusions, `functions/<name>/tests/` and the `__pycache__`
+ * directories are uploaded with the handler. That ships test code — including
+ * the injection payloads used as fixtures — into the runtime, and grows every
+ * package for no benefit.
+ */
+const functionCode = (directory: string) =>
+  lambda.Code.fromAsset(directory, {
+    exclude: [
+      "tests",
+      "tests/**",
+      "__pycache__",
+      "**/__pycache__",
+      "*.pyc",
+      ".pytest_cache",
+      ".pytest_cache/**",
+      "conftest.py",
+    ],
+  });
+
+/**
+ * Layer carrying the repository's `shared/` Python modules.
+ *
+ * `functions/data-protection/handler.py` imports `shared.ontap_client` and
+ * `shared.ontap_response` for the containment actions. Neither was ever
+ * packaged: the function asset covers only its own directory and no layer
+ * existed, so every containment call failed at import time. The failure was
+ * additionally disguised, because the fallback path calculation raised
+ * `IndexError: 4` and the string "4" was misread as an HTTP status.
+ *
+ * A layer mounts at `/opt`, and Python only picks up `/opt/python`, so the
+ * archive has to carry a `python/` prefix. `Code.fromAsset` would place the
+ * files at the archive root, hence the local bundling hook that restages them.
+ * It runs without Docker, which keeps `ampx sandbox` usable on a laptop.
+ */
+// Asset paths in this file are resolved from the working directory (see the
+// `functions/...` arguments above), which is `solutions/amplify-portal`. This
+// file is an ES module, so `__dirname` is not available.
+const sharedModulesDir = path.resolve(process.cwd(), "..", "..", "shared");
+
+if (!fs.existsSync(path.join(sharedModulesDir, "ontap_response.py"))) {
+  throw new Error(
+    `Shared Python modules not found at ${sharedModulesDir}. ` +
+      "Run ampx from solutions/amplify-portal so the layer can be staged; " +
+      "deploying without it silently breaks the ARP containment actions."
+  );
+}
+
+/**
+ * Fingerprint of the Python sources that go into the layer.
+ *
+ * This lands in the layer Description, which matters for a practical reason:
+ * `ampx sandbox` deploys through CDK hotswap, and hotswap updates Lambda code
+ * in place while skipping LayerVersion content changes. A layer whose only
+ * difference is its S3 key therefore never gets republished in a sandbox, and
+ * the function keeps running against the previous version.
+ *
+ * A LayerVersion is immutable, so changing a property forces CloudFormation to
+ * create a replacement — and a resource CloudFormation must create is not
+ * hotswappable, which makes the deployment fall back to a real stack update.
+ * Tying the description to the content means "shared/ changed" and "the layer
+ * is republished" cannot drift apart.
+ */
+const sharedSourcesFingerprint = (() => {
+  const hash = crypto.createHash("sha256");
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (["tests", "__pycache__", ".pytest_cache", "cfn", "scripts"].includes(entry.name)) {
+          continue;
+        }
+        walk(full);
+      } else if (entry.name.endsWith(".py")) {
+        hash.update(path.relative(sharedModulesDir, full));
+        hash.update(fs.readFileSync(full));
+      }
+    }
+  };
+  walk(sharedModulesDir);
+  return hash.digest("hex").slice(0, 12);
+})();
+
+const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer", {
+  description:
+    "Repository shared/ Python modules (ONTAP client and ARP containment actions) " +
+    `at /opt/python/shared [sources ${sharedSourcesFingerprint}]`,
+  compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
+  compatibleArchitectures: [lambda.Architecture.ARM_64],
+  code: lambda.Code.fromAsset(sharedModulesDir, {
+    exclude: ["tests", "tests/**", "__pycache__", "**/__pycache__", "*.pyc"],
+    // Hash the staged tree, not the source directory. With a source hash, fixing
+    // the bundler does not change the asset key, so CDK reuses the object it
+    // already uploaded — which is how a corrected bundler still produced a layer
+    // containing the earlier, incomplete file set.
+    assetHashType: AssetHashType.OUTPUT,
+    bundling: {
+      image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+      command: [],
+      local: {
+        tryBundle(outputDir: string) {
+          // `shared/__init__.py` imports its subpackages eagerly (streaming,
+          // routing, observability and so on), so copying only the top-level
+          // modules produces a layer that fails at `import shared` with
+          // "No module named 'shared.streaming'". Copy the whole Python tree.
+          const skipDirs = new Set(["tests", "__pycache__", ".pytest_cache", "cfn", "scripts"]);
+
+          const copyPython = (from: string, to: string): number => {
+            let copied = 0;
+            for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+              const source = path.join(from, entry.name);
+              if (entry.isDirectory()) {
+                if (skipDirs.has(entry.name)) continue;
+                copied += copyPython(source, path.join(to, entry.name));
+              } else if (entry.name.endsWith(".py")) {
+                fs.mkdirSync(to, { recursive: true });
+                fs.copyFileSync(source, path.join(to, entry.name));
+                copied += 1;
+              }
+            }
+            return copied;
+          };
+
+          const target = path.join(outputDir, "python", "shared");
+          fs.mkdirSync(target, { recursive: true });
+          const copied = copyPython(sharedModulesDir, target);
+          if (copied === 0) {
+            throw new Error(`Staged no Python files from ${sharedModulesDir}`);
+          }
+          return true;
+        },
+      },
+    },
+  }),
+});
+
 const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
   runtime: lambda.Runtime.PYTHON_3_12,
   architecture: lambda.Architecture.ARM_64,
   handler: "index.handler",
-  code: lambda.Code.fromAsset("functions/list-files"),
+  code: functionCode("functions/list-files"),
   role: listFilesRole,
   environment: {
     S3_AP_ALIAS: config.s3ApAlias,
@@ -144,6 +394,75 @@ const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
 });
 
 api.addLambdaDataSource("ListFilesLambdaDataSource", listFilesFunction);
+
+// --- Lambda Data Source for FolderDownload (ZIP of a prefix) ---
+// Uses functions/folder-download/index.py
+// Reads every object under a prefix through the S3 Access Point, builds a ZIP in
+// memory, stores it in a short-lived bucket and returns a presigned URL.
+const zipTempBucket = new s3.Bucket(dataStack, "FolderZipTempBucket", {
+  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+  encryption: s3.BucketEncryption.S3_MANAGED,
+  enforceSSL: true,
+  removalPolicy: RemovalPolicy.DESTROY,
+  autoDeleteObjects: true,
+  // Archives are a transient download artefact, so expire them the next day.
+  lifecycleRules: [
+    {
+      id: "expire-zip-archives",
+      enabled: true,
+      expiration: Duration.days(1),
+      abortIncompleteMultipartUploadAfter: Duration.days(1),
+    },
+  ],
+  serverAccessLogsPrefix: undefined,
+});
+
+const folderDownloadRole = new iam.Role(dataStack, "FolderDownloadLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    S3ApReadAndZipWrite: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          actions: ["s3:GetObject", "s3:ListBucket"],
+          resources: config.s3ApResourceArns,
+        }),
+        new iam.PolicyStatement({
+          actions: ["s3:PutObject", "s3:GetObject"],
+          resources: [`${zipTempBucket.bucketArn}/*`],
+        }),
+      ],
+    }),
+  },
+});
+
+const folderDownloadFunction = new lambda.Function(
+  dataStack,
+  "FolderDownloadFunction",
+  {
+    runtime: lambda.Runtime.PYTHON_3_12,
+    architecture: lambda.Architecture.ARM_64,
+    handler: "index.handler",
+    code: functionCode("functions/folder-download"),
+    role: folderDownloadRole,
+    environment: {
+      S3_AP_ALIAS: config.s3ApAlias,
+      GROUP_AP_MAPPING: JSON.stringify(config.groupApMapping || {}),
+      ZIP_TEMP_BUCKET: zipTempBucket.bucketName,
+    },
+    // ZIP assembly is memory and time bound; see the caps in the handler.
+    memorySize: 1024,
+    timeout: Duration.minutes(5),
+    description:
+      "Builds a ZIP of an S3 Access Point prefix and returns a presigned download URL",
+  }
+);
+
+api.addLambdaDataSource("FolderDownloadLambdaDataSource", folderDownloadFunction);
 
 // --- Lambda Data Source for GetPresignedUrl ---
 const getPresignedUrlRole = new iam.Role(dataStack, "GetPresignedUrlLambdaRole", {
@@ -176,7 +495,7 @@ const getPresignedUrlFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/presigned-url"),
+    code: functionCode("functions/presigned-url"),
     role: getPresignedUrlRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -223,7 +542,7 @@ const listSnapshotsFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/snapshots"),
+    code: functionCode("functions/snapshots"),
     role: listSnapshotsRole,
     environment: {
       ONTAP_MGMT_IP: config.ontapMgmtIp,
@@ -243,8 +562,13 @@ api.addLambdaDataSource("ListSnapshotsLambdaDataSource", listSnapshotsFunction);
 
 // --- Lambda Data Source for ARP/AI Response Actions ---
 // Uses functions/data-protection/handler.py (dedicated handler for write operations)
+// Actions from: functions/data-protection/handler.py
 // Provides: blockSmbUser, unblockSmbUser, blockNfsIp, unblockNfsIp,
-//           containThreat, listActiveBlocks, disconnectSessions
+//           containThreat, listActiveBlocks, disconnectSessions, listSvms,
+//           sweepExpiredBlocks, getSnapshotsWithLockStatus, getArpStatus,
+//           getArpSuspects, getSnapLockConfig, getS3ObjectLockStatus,
+//           getProtectionSummary, createSnapshot, deleteSnapshot,
+//           updateArpState, updateRetentionPolicy
 const arpResponseRole = new iam.Role(dataStack, "ArpResponseLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
   managedPolicies: [
@@ -262,6 +586,19 @@ const arpResponseRole = new iam.Role(dataStack, "ArpResponseLambdaRole", {
           actions: ["secretsmanager:GetSecretValue"],
           resources: ["*"], // Restrict to ONTAP_SECRET_NAME ARN in production
         }),
+        new iam.PolicyStatement({
+          // Scan is needed by the expiry sweep, which has to find due rows
+          // without knowing their keys. No DeleteItem: rows are closed out by
+          // status so the audit trail survives, and the native TTL removes them
+          // later.
+          actions: [
+            "dynamodb:PutItem",
+            "dynamodb:GetItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:Scan",
+          ],
+          resources: [containmentBlocksTable.tableArn],
+        }),
       ],
     }),
   },
@@ -274,27 +611,66 @@ const arpResponseFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "handler.handler",
-    code: lambda.Code.fromAsset("functions/data-protection"),
+    code: functionCode("functions/data-protection"),
     role: arpResponseRole,
     environment: {
       ONTAP_MGMT_IP: config.ontapMgmtIp,
       ONTAP_SECRET_NAME: config.ontapSecretName,
       VOLUME_NAME: config.ontapVolumeName,
       SVM_NAME: config.ontapSvmName,
+      CONTAINMENT_BLOCKS_TABLE: containmentBlocksTable.tableName,
+      DEFAULT_BLOCK_TTL_HOURS: String(config.defaultBlockTtlHours),
     },
+    // Without this layer the containment actions cannot import
+    // shared.ontap_response and fail before reaching ONTAP.
+    layers: [sharedPythonLayer],
     memorySize: 256,
     timeout: Duration.seconds(60),
     description:
-      "ARP/AI response actions — user/IP blocking, snapshot, session disconnect (VPC Lambda, ONTAP REST)",
+      "ARP/AI response actions — user/IP blocking, snapshot, session disconnect " +
+      "(VPC Lambda, ONTAP REST, requires the shared-modules layer)",
     ...(vpcConfig && { vpc: vpcConfig.vpc, securityGroups: vpcConfig.securityGroups, vpcSubnets: vpcConfig.vpcSubnets }),
   }
 );
 
 api.addLambdaDataSource("ArpResponseLambdaDataSource", arpResponseFunction);
 
+// --- Scheduled sweep that lifts expired containment blocks ---
+//
+// Reuses the ARP function rather than adding a second one. That function already
+// sits in the VPC with a route to the ONTAP management endpoint and already holds
+// the unblock logic; a separate Lambda would need the same VPC attachment and the
+// same credential for no gain.
+//
+// An EventBridge rule is enough here. EventBridge Scheduler would add a schedule
+// group and an invocation role to manage, and buys nothing for a fixed interval
+// with no timezone or one-off semantics involved.
+//
+// The interval bounds how long a block outlives its expiry, so it is a coarser
+// control than it looks: at one hour, "expires in 1h" can mean up to two.
+new events.Rule(dataStack, "ContainmentBlockSweepSchedule", {
+  description:
+    "Lifts FSx for ONTAP containment blocks whose expiry has passed (portal-created blocks only)",
+  schedule: events.Schedule.rate(Duration.minutes(config.blockSweepIntervalMinutes)),
+  targets: [
+    new targets.LambdaFunction(arpResponseFunction, {
+      event: events.RuleTargetInput.fromObject({ action: "sweepExpiredBlocks" }),
+      // A failed sweep is retried by the next tick, so a dead-letter queue would
+      // collect events that are already superseded.
+      retryAttempts: 2,
+    }),
+  ],
+});
+
 // --- Lambda Data Source for Resource Management (Admin) ---
 // Uses functions/resource-management/handler.py
-// Provides: Volume CRUD, Export Policy, QoS Policy, SnapLock management
+// Provides: Volume CRUD, Export Policy, QoS Policy, SnapLock, Quota, Qtree,
+// CIFS share, ARP admin, snapshot policy, SMB local users/groups, name mapping,
+// FlexCache and FlexClone management, SnapMirror lifecycle (transfer, quiesce,
+// resume, break, resync, delete), Vscan and FPolicy policy management, cluster
+// and SVM peering, and cluster inventory. All ONTAP access is HTTPS to the
+// management endpoint using the Secrets Manager credential, so no extra AWS
+// permissions are required.
 const resourceMgmtRole = new iam.Role(dataStack, "ResourceMgmtLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
   managedPolicies: [
@@ -316,6 +692,10 @@ const resourceMgmtRole = new iam.Role(dataStack, "ResourceMgmtLambdaRole", {
           actions: ["s3:GetBucketObjectLockConfiguration", "s3:GetBucketVersioning", "s3:ListAllMyBuckets", "s3:PutBucketObjectLockConfiguration"],
           resources: ["*"], // Restrict to S3_OBJECT_LOCK_BUCKET ARN in production
         }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Scan"],
+          resources: [portalSettingsTable.tableArn],
+        }),
       ],
     }),
   },
@@ -328,18 +708,19 @@ const resourceMgmtFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "handler.handler",
-    code: lambda.Code.fromAsset("functions/resource-management"),
+    code: functionCode("functions/resource-management"),
     role: resourceMgmtRole,
     environment: {
       ONTAP_MGMT_IP: config.ontapMgmtIp,
       ONTAP_SECRET_NAME: config.ontapSecretName,
       SVM_NAME: config.ontapSvmName,
       S3_OBJECT_LOCK_BUCKET: config.s3ObjectLockBucket,
+      PORTAL_SETTINGS_TABLE: portalSettingsTable.tableName,
     },
     memorySize: 256,
     timeout: Duration.seconds(60),
     description:
-      "Resource management — Volume/ExportPolicy/QoS/SnapLock/S3ObjectLock CRUD (VPC Lambda, ONTAP REST + S3)",
+      "Resource management — Volume/ExportPolicy/QoS/SnapLock/Quota/Qtree/CIFS/ARP/Snapshot/LocalUser/NameMapping/FlexCache/FlexClone/SnapMirror/Vscan/FPolicy/Peering CRUD and cluster inventory (VPC Lambda, ONTAP REST + S3)",
     ...(vpcConfig && { vpc: vpcConfig.vpc, securityGroups: vpcConfig.securityGroups, vpcSubnets: vpcConfig.vpcSubnets }),
   }
 );
@@ -364,6 +745,12 @@ const searchFilesRole = new iam.Role(dataStack, "SearchFilesLambdaRole", {
           ],
           resources: ["*"], // Restrict to specific KB ARN in production
         }),
+        new iam.PolicyStatement({
+          actions: ["s3:ListBucket", "s3:GetObject"],
+          resources: config.s3ApResourceArns.length > 0
+            ? config.s3ApResourceArns
+            : ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+        }),
       ],
     }),
   },
@@ -376,10 +763,11 @@ const searchFilesFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/search-files"),
+    code: functionCode("functions/search-files"),
     role: searchFilesRole,
     environment: {
       BEDROCK_KB_ID: config.bedrockKbId || "",
+      S3_AP_ALIAS: config.s3ApAlias,
     },
     memorySize: 256,
     timeout: Duration.seconds(30),
@@ -388,6 +776,82 @@ const searchFilesFunction = new lambda.Function(
 );
 
 api.addLambdaDataSource("SearchFilesLambdaDataSource", searchFilesFunction);
+
+// --- Lambda Data Source for AgentChat (Bedrock Converse with tool_use) ---
+const agentChatRole = new iam.Role(dataStack, "AgentChatLambdaRole", {
+  assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+  managedPolicies: [
+    iam.ManagedPolicy.fromAwsManagedPolicyName(
+      "service-role/AWSLambdaBasicExecutionRole"
+    ),
+  ],
+  inlinePolicies: {
+    BedrockAndS3: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          actions: [
+            "bedrock:InvokeModel",
+            "bedrock:Converse",
+            "bedrock:ApplyGuardrail",
+            "bedrock:Retrieve",
+            "bedrock:RetrieveAndGenerate",
+          ],
+          resources: ["*"], // Restrict to specific model ARN in production
+        }),
+        new iam.PolicyStatement({
+          actions: ["s3:GetObject", "s3:ListBucket"],
+          resources: config.s3ApResourceArns.length > 0
+            ? config.s3ApResourceArns
+            : ["arn:aws:s3:*:*:accesspoint/*", "arn:aws:s3:*:*:accesspoint/*/object/*"],
+        }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:GetItem"],
+          resources: [portalSettingsTable.tableArn],
+        }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:DeleteItem"],
+          resources: [chatHistoryTable.tableArn],
+        }),
+        new iam.PolicyStatement({
+          actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Scan", "dynamodb:DeleteItem", "dynamodb:UpdateItem"],
+          resources: [agentDirectoryTable.tableArn, agentTeamsTable.tableArn],
+        }),
+      ],
+    }),
+  },
+});
+
+const agentChatFunction = new lambda.Function(
+  dataStack,
+  "AgentChatFunction",
+  {
+    runtime: lambda.Runtime.PYTHON_3_12,
+    architecture: lambda.Architecture.ARM_64,
+    handler: "handler.handler",
+    code: functionCode("functions/agent-chat"),
+    role: agentChatRole,
+    environment: {
+      S3_AP_ALIAS: config.s3ApAlias,
+      AGENT_MODEL_ID: process.env.AGENT_MODEL_ID || "amazon.nova-lite-v1:0",
+      MAX_TOOL_ITERATIONS: "8",
+      BEDROCK_GUARDRAIL_ID: config.bedrockGuardrailId || "",
+      BEDROCK_GUARDRAIL_VERSION: config.bedrockGuardrailVersion || "DRAFT",
+      BEDROCK_KB_ID: config.bedrockKbId || "",
+      PORTAL_SETTINGS_TABLE: portalSettingsTable.tableName,
+      CHAT_HISTORY_TABLE: chatHistoryTable.tableName,
+      AGENT_DIRECTORY_TABLE: agentDirectoryTable.tableName,
+      AGENT_TEAMS_TABLE: agentTeamsTable.tableName,
+      GROUP_PATH_PREFIXES: JSON.stringify(config.groupApMapping ? Object.fromEntries(
+        Object.entries(config.groupApMapping).map(([group]) => [group, [`${group}/`, "shared/"]])
+      ) : {}),
+    },
+    memorySize: 512,
+    timeout: Duration.seconds(90),
+    description: "AI Agent Chat — Bedrock Converse with tool_use (list/read/search files via S3 AP)",
+  }
+);
+
+api.addLambdaDataSource("AgentChatLambdaDataSource", agentChatFunction);
 
 // --- Lambda Data Source for QueryAuditLog (Athena over CloudTrail) ---
 const queryAuditLogRole = new iam.Role(dataStack, "QueryAuditLogLambdaRole", {
@@ -428,7 +892,7 @@ const queryAuditLogFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/audit-log"),
+    code: functionCode("functions/audit-log"),
     role: queryAuditLogRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -476,7 +940,7 @@ const getFileMetadataFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/file-metadata"),
+    code: functionCode("functions/file-metadata"),
     role: getFileMetadataRole,
     environment: {
       AI_METADATA_TABLE_NAME: process.env.AI_METADATA_TABLE_NAME || "",
@@ -516,7 +980,7 @@ const generateQrCodeFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/generate-qr"),
+    code: functionCode("functions/generate-qr"),
     role: generateQrCodeRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -565,7 +1029,7 @@ const askAboutFileFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/ask-about-file"),
+    code: functionCode("functions/ask-about-file"),
     role: askAboutFileRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -614,7 +1078,7 @@ const detectLabelsFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/detect-labels"),
+    code: functionCode("functions/detect-labels"),
     role: detectLabelsRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -677,7 +1141,7 @@ const athenaQueryFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/athena-query"),
+    code: functionCode("functions/athena-query"),
     role: athenaQueryRole,
     environment: {
       ATHENA_WORKGROUP: "primary",
@@ -722,7 +1186,7 @@ const textractFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/textract"),
+    code: functionCode("functions/textract"),
     role: textractRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -770,7 +1234,7 @@ const comprehendFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/comprehend-analysis"),
+    code: functionCode("functions/comprehend-analysis"),
     role: comprehendRole,
     environment: {
       S3_AP_ALIAS: config.s3ApAlias,
@@ -816,7 +1280,7 @@ const glueCatalogFunction = new lambda.Function(
     runtime: lambda.Runtime.PYTHON_3_12,
     architecture: lambda.Architecture.ARM_64,
     handler: "index.handler",
-    code: lambda.Code.fromAsset("functions/glue-catalog"),
+    code: functionCode("functions/glue-catalog"),
     role: glueCatalogRole,
     environment: {},
     memorySize: 256,

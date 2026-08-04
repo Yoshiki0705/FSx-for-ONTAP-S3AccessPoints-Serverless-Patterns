@@ -14,8 +14,8 @@ FSx for ONTAP の S3 Access Points (以下 S3 AP) 上のデータを、CDN/エ�
 - マーケティング的な訴求
 
 本ドキュメントが扱うのは **「FSx for ONTAP S3 AP の技術制約に対して、各統合メカニズムで何が実現でき、
-何が実現できず、何が要検証か」** のみです。配信ベンダーの選定は、顧客の既存契約・SLA・運用体制・
-リージョン要件など、本ドキュメントの範囲外の要素を含めて顧客が判断するものです。
+何が実現できず、何が要検証か」** のみです。配信ベンダーの選定は、導入先の既存契約・SLA・運用体制・
+リージョン要件など、本ドキュメントの範囲外の要素を含めて導入先が判断するものです。
 
 ---
 
@@ -30,7 +30,7 @@ CDN 統合の設計は、すべて以下の S3 AP の仕様から導かれます
 | **二段階認可（AWS 側 + ONTAP 側）** | IAM 認可の後、AP に紐づく ONTAP ファイルシステム ID（UNIX UID / Windows AD）でも認可 | 配信対象は ONTAP 側 ID で読める範囲に限定される |
 | **Presigned URL（ドキュメント上 Not supported だが動作する）** | Presigned URL は実際には動作する（GetObject の署名付きリクエスト）が、AWS は本番依存を非推奨。[詳細](./s3ap-compatibility-notes.md#presigned-url-support) | 視聴者向けトークン認証に S3 Presigned URL を使用可能だが本番保証なし。CDN ネイティブのトークン機構も選択肢 |
 | **NetworkOrigin（Internet / VPC、作成後変更不可）** | CDN は AWS マネージド/外部網からアクセス | CDN 連携には **Internet origin** が必要。VPC origin はクラウド外 CDN から到達不可 |
-| **PutObject 上限 5 GB** | 単一 PUT は 5 GB まで | 配信成果物の書き戻しは大容量時にマルチパート |
+| **オブジェクト上限 50 GB** | 単一 PUT は 5 GB まで | 配信成果物の書き戻しは 5 GB 超でマルチパート |
 
 > 上記は FSx for ONTAP S3 AP の仕様であり、配信ベンダー側の制約ではありません。
 > いずれの CDN を使う場合も、この制約の上で設計します。
@@ -149,7 +149,7 @@ CDN 連携は FSx for ONTAP の共有スループット設計に影響します�
 - **Gcore**: S3 互換オブジェクトストレージ + ストレージをオリジンにする構成あり。M3 相当が可能だが、
   主対象外のため注記扱い。
 - **Edgio（旧 Limelight / Edgecast）**: **2025年1月15日に CDN 事業停止**。資産の多くは Akamai が取得。
-  **稼働中の選択肢ではない**ため比較対象から除外（メディア顧客の移行先として Akamai が関係する背景のみ補足）。
+  **稼働中の選択肢ではない**ため比較対象から除外（メディア業界の移行先として Akamai が関係する背景のみ補足）。
 
 > 出典の所在: CloudFront OAC（AWS 公式 FSx チュートリアル）、Akamai Cloud Access Manager（techdocs.akamai.com）、
 > Fastly S3 互換プライベートオリジン（fastly.com/documentation）、Cloudflare Workers/R2（developers.cloudflare.com）、
@@ -204,4 +204,4 @@ CDN を使う/使わないに関わらず、S3 AP 配信では以下を固定要
 > 採用前に各社の最新公式ドキュメントで再確認してください。FSx for ONTAP S3 AP の accesspoint alias に対する
 > SigV4 オリジン署名の動作は、本プロジェクトでも実機検証項目（要検証）として扱います。実機検証手順は
 > [ORIGIN_PULL SigV4 検証チェックリスト](cdn-origin-verification-checklist.md) を参照。配信ベンダーの選定は
-> 顧客の契約・SLA・運用・規制要件を含めて顧客が判断するものです。
+> 導入先の契約・SLA・運用・規制要件を含めて導入先が判断するものです。

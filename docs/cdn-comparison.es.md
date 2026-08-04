@@ -19,7 +19,7 @@ factores fuera de este alcance (contratos, SLA, operación, requisitos regionale
 | Autorización en dos capas (AWS + ONTAP) | IAM y luego identidad de archivo ONTAP (UNIX UID / Windows AD) | Distribución limitada a lo que la identidad ONTAP puede leer |
 | URL prefirmadas no admitidas | Oficialmente no soportadas | La auth por token de espectador no puede usar URL prefirmadas S3; usar tokens nativos del CDN |
 | NetworkOrigin (Internet/VPC, inmutable) | El CDN accede desde red gestionada/externa | La integración CDN necesita **origen Internet** |
-| PutObject máx. 5 GB | Límite de un único PUT | Las reescrituras grandes requieren multipart |
+| Límite de tamaño de objeto 50 GB | Un único PUT limitado a 5 GB | Las reescrituras de más de 5 GB requieren multipart |
 
 ## 2. Mecanismos de integración (neutrales respecto al proveedor)
 

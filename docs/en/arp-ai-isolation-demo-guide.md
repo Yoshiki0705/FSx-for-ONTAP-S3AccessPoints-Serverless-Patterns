@@ -77,6 +77,11 @@ After a few minutes, ARP should detect the pattern and the threat level will cha
    - **Client IP**: `10.0.5.99` (the attacker's workstation IP)
    - **Reason**: "ARP/AI detected high-probability ransomware"
 4. Click **🛡️ Contain Threat**
+5. A confirmation row appears stating what the action will do — it creates a snapshot, blocks the targets and disconnects their SMB sessions, across the whole SVM. Click **Run** to proceed, or **Cancel** to go back.
+
+![The containment form in the portal with domain, username, client IP and reason filled in. Below the four action buttons, a confirmation row explains that the action creates a snapshot, blocks the targets and disconnects their SMB sessions across the whole SVM, with Run and Cancel buttons](../screenshots/arp-containment-confirm.png)
+
+> **Why two steps**: a block removes a principal's data access SVM-wide. The Lambda enforces the same gate independently — a call arriving at AppSync without `confirm: true` is refused, so bypassing the browser does not bypass the check.
 
 **Expected result**: The portal executes all steps in sequence:
 - ✅ Creates an `incident_response_YYYYMMDD_HHMMSS` snapshot
@@ -115,11 +120,65 @@ curl -sk -u fsxadmin:<password> \
 
 ### Step 7: Individual Actions
 
-You can also use the individual buttons:
-- **🚫 Block SMB User** — blocks only the SMB user (requires domain + username)
-- **🚫 Block NFS IP** — blocks only the NFS IP (requires IP address)
+You can also use the individual buttons. Each one asks for confirmation, with wording specific to what it does:
 
-These are useful when you want to block one protocol without affecting the other.
+| Button | Requires | What to know |
+|---|---|---|
+| 🚫 Block SMB User | domain + username | Denies the next authentication. An already-open session keeps working until it is dropped. |
+| 🚫 Block NFS IP | IP address | Effective at the ONTAP layer immediately, but client-side attribute caching can let an existing mount read and write for up to 60 seconds. |
+| 🔌 Disconnect SMB sessions | domain + username, or IP | Drops live sessions. On its own it does not stop the next login — pair it with a block. |
+
+These are useful when you want to act on one protocol without affecting the other, or when a block is already in place and you now need to cut the sessions that survived it.
+
+> **Ordering note**: block first, then disconnect. Disconnecting before the block is in place invites the client to reconnect successfully.
+
+## Where the portal is self-contained, and where it needs something else
+
+The containment primitives here are a port of `ontap_response.py` from
+[fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations)
+(the module docstring records this). The ONTAP mechanisms are identical —
+name-mapping deny, export-policy deny rule, protective snapshot, CIFS session
+disconnect. What differs is the trigger and the layers around it.
+
+### Self-contained in the portal
+
+| Capability | Requires |
+|---|---|
+| Review ARP/AI state, attack probability and suspect files | The portal reaching the ONTAP REST API |
+| Block and unblock an SMB user or an NFS client IP | `storage-admin` group |
+| Create a protective snapshot; lock a snapshot (WORM) | Same |
+| Disconnect CIFS sessions | An AD-joined SVM |
+| List active blocks and lift them individually | — |
+| Audit file access that went through the S3 Access Point | CloudTrail data events + Athena |
+| FlexClone a snapshot to browse it; diff two generations | — |
+
+Every one of these runs **only when a person clicks**. Nothing in the portal
+contains a threat unattended.
+
+### Needs something outside the portal
+
+| Goal | What it takes |
+|---|---|
+| Contain without waiting for a human | An SNS topic plus a response Lambda |
+| Be told about a detection instead of finding it | EMS → webhook → SIEM or an observability platform |
+| Cut NFS off immediately, without the client cache window | A VPC NACL deny rule (network layer) |
+| Avoid leaving a false-positive block in place indefinitely | TTL auto-unblock (EventBridge Scheduler) |
+| Apply the same block across several SVMs at once | A multi-SVM fan-out |
+| Judge a recovery point before restoring from it | A verification workflow (FlexClone + isolated scan) |
+| Detect anomalies against a per-user ML baseline | A SIEM with anomaly detection, or a dedicated storage security product |
+| Trace file access that arrived over NFS or SMB directly | An ONTAP audit log / FPolicy delivery pipeline |
+
+> **Audit scope note**: the portal's audit trail reads CloudTrail S3 data events
+> for the S3 Access Point. Access that arrived over NFS or SMB does not appear
+> there — that requires ONTAP's own audit log or FPolicy events. The two are
+> complementary, not substitutes, and it is easy to assume the portal shows both.
+
+So the portal is the **hands** of incident response: it puts the ONTAP
+containment actions in a browser, behind Cognito groups, with confirmation and
+an audit trail. If you need something watching around the clock and moving those
+hands for you, detection and response belong in a pipeline. Conversely, if you
+already detect in a SIEM and only lack a way to stop it at the storage layer, an
+SNS-triggered response Lambda fits that shape better than a portal button.
 
 ## Parameter Reference
 
@@ -182,6 +241,11 @@ Snapshot creation includes a 15-minute cooldown to prevent snapshot storms durin
 ## Security Considerations
 
 - **All containment actions are logged** in CloudTrail (AppSync data events + Lambda execution)
+- **Confirmation is enforced in the Lambda**, not only in the browser — `blockSmbUser`, `blockNfsIp`, `containThreat` and `disconnectSessions` refuse a call without `confirm: true`. Unblocking is deliberately not gated.
+- **Blocks expire.** The default is 24 hours, and the operator can choose 1 hour to 7 days, or "indefinite", at the point of blocking. A scheduled sweep lifts blocks whose expiry has passed, so a false positive becomes an indefinite lockout only when someone explicitly chooses indefinite.
+  - The lift can be later than the expiry by up to one sweep interval (15 minutes by default). The expiry is a lower bound on when access returns, not an exact time.
+  - The sweep only lifts blocks this portal created. A block placed elsewhere — at the ONTAP CLI, by another automation — is shown as "Not portal-managed" and left alone. The portal cannot know the intent behind it, and lifting it would be a silent loss of containment.
+  - To lift a block before its expiry, or to lift an indefinite one, use the Active Blocks tab.
 - **Protected accounts** prevent accidental lockout of admin credentials
 - **Input validation** blocks injection attempts (`;`, `|`, `&`, `` ` `` in usernames)
 - **Cognito group authorization** ensures only designated admins can execute response actions
@@ -194,3 +258,4 @@ Snapshot creation includes a 15-minute cooldown to prevent snapshot storms durin
 - [ONTAP Anti-Ransomware REST API](https://docs.netapp.com/us-en/ontap-restapi/)
 - [fsxn-observability-integrations (source implementation)](https://github.com/Yoshiki0705/fsxn-observability-integrations)
 - [DII Storage Workload Security reference](https://docs.netapp.com/us-en/cloudinsights/cs_restrict_user_access.html)
+- [日本語版](../ja/arp-ai-isolation-demo-guide.md)

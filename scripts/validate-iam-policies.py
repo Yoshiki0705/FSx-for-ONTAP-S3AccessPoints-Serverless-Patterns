@@ -135,39 +135,105 @@ def extract_iam_policies(template_path: Path) -> list[dict]:
     return policies
 
 
+# Sentinel for values that must be removed entirely, rather than replaced with a
+# placeholder: Ref AWS::NoValue, and Fn::If branches that resolve to it.
+_OMIT = object()
+
+ARN_PLACEHOLDER = "arn:aws:*:*:123456789012:*"
+REGION_PLACEHOLDER = "ap-northeast-1"
+
+# Policy keys whose value must be an ARN. A Ref to a template parameter in one
+# of these positions has to become an ARN-shaped placeholder, otherwise Access
+# Analyzer reports MISSING_ARN_FIELD for a template that is perfectly valid --
+# the parameter simply carries the ARN at deploy time.
+_ARN_KEYS = frozenset({"Resource", "NotResource", "AWS", "Federated"})
+
+# Condition keys whose value must be a Region name, for the same reason
+# (otherwise: INVALID_REGION).
+_REGION_KEYS = frozenset({"aws:RequestedRegion", "ec2:Region"})
+
+
 def resolve_intrinsics(doc: dict) -> str:
     """Best-effort resolution of CloudFormation intrinsics for validation.
 
-    Replaces !Sub, !Ref, !GetAtt with placeholder values so the policy
-    document is valid JSON for Access Analyzer.
+    Access Analyzer only accepts fully resolved IAM JSON, so every intrinsic has
+    to be replaced with a placeholder before the document is submitted. Any
+    intrinsic left in place is reported as INVALID_POLICY_ELEMENT, and because
+    Fn::If nests Effect inside a branch it also produces a spurious
+    MISSING_EFFECT for the enclosing statement.
+
+    Fn::If is resolved to its true branch, so the policy is validated as it
+    exists when the condition holds. The false branch is not validated; that is
+    a deliberate limitation of a single-pass check.
+
+    Resolution is position-aware. A Ref to a template parameter carries no type
+    information here, so what it must look like depends on where it sits: an ARN
+    under Resource, a Region under aws:RequestedRegion. Substituting a generic
+    "ref-Name" string everywhere produced 53 false MISSING_ARN_FIELD and
+    INVALID_REGION findings across templates that were correct.
     """
 
-    def resolve(obj):
+    def resolve(obj, key=None):
         if isinstance(obj, dict):
-            if "Fn::Sub" in obj:
-                val = obj["Fn::Sub"]
-                if isinstance(val, list):
-                    return "arn:aws:*:*:123456789012:*"
-                return "arn:aws:*:*:123456789012:*"
+            if "Fn::If" in obj:
+                branches = obj["Fn::If"]
+                # [condition_name, value_if_true, value_if_false]
+                if isinstance(branches, list) and len(branches) == 3:
+                    return resolve(branches[1], key)
+                return _OMIT
             if "Ref" in obj:
                 ref = obj["Ref"]
+                if ref == "AWS::NoValue":
+                    return _OMIT
                 if ref == "AWS::AccountId":
                     return "123456789012"
                 if ref == "AWS::Region":
-                    return "ap-northeast-1"
+                    return REGION_PLACEHOLDER
+                if ref == "AWS::Partition":
+                    return "aws"
                 if ref == "AWS::StackName":
                     return "test-stack"
+                if ref == "AWS::URLSuffix":
+                    return "amazonaws.com"
+                # A Ref to a template parameter. Shape it for its position.
+                if key in _ARN_KEYS:
+                    return ARN_PLACEHOLDER
+                if key in _REGION_KEYS:
+                    return REGION_PLACEHOLDER
                 return f"ref-{ref}"
-            if "Fn::GetAtt" in obj:
-                return "arn:aws:*:*:123456789012:*"
-            if "Fn::Join" in obj:
-                return "arn:aws:*:*:123456789012:*"
-            return {k: resolve(v) for k, v in obj.items()}
+            for fn in (
+                "Fn::Sub",
+                "Fn::GetAtt",
+                "Fn::Join",
+                "Fn::Select",
+                "Fn::FindInMap",
+                "Fn::ImportValue",
+                "Fn::Split",
+                "Fn::Transform",
+                "Fn::Base64",
+                "Fn::Cidr",
+            ):
+                if fn in obj:
+                    if fn == "Fn::Split":
+                        return [ARN_PLACEHOLDER]
+                    if key in _REGION_KEYS:
+                        return REGION_PLACEHOLDER
+                    # Everything else is a scalar, ARN-ish string.
+                    return ARN_PLACEHOLDER
+            out = {}
+            for inner_key, value in obj.items():
+                resolved_value = resolve(value, inner_key)
+                if resolved_value is not _OMIT:
+                    out[inner_key] = resolved_value
+            return out
         if isinstance(obj, list):
-            return [resolve(item) for item in obj]
+            # A list inherits its parent's position, e.g. Resource: [a, b].
+            return [item for item in (resolve(i, key) for i in obj) if item is not _OMIT]
         return obj
 
     resolved = resolve(doc)
+    if resolved is _OMIT:
+        resolved = {}
     return json.dumps(resolved)
 
 

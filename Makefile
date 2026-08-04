@@ -8,7 +8,8 @@
 #   make deploy-uc1 — Deploy UC1 (requires samconfig.toml)
 #   make clean      — Remove build artifacts
 
-.PHONY: install test lint clean help
+.PHONY: install test lint clean help \
+	lint-python lint-python-check lint-python-format format-python lint-cfn
 
 # Python interpreter — auto-detect .venv if available (override with: make test PYTHON=python3.13)
 # Priority: 1) explicit override  2) .venv/bin/python  3) system python3.12
@@ -108,9 +109,6 @@ test-content-edge-delivery:
 test-media-ivs-vod-publishing:
 	$(PYTHON) -m pytest solutions/edge/media-ivs-vod-publishing/tests/ -v
 
-test-media-mediaconvert-vod-publishing:
-	$(PYTHON) -m pytest solutions/edge/media-mediaconvert-vod-publishing/tests/ -v
-
 test-genai-kb-selfservice-curation:
 	$(PYTHON) -m pytest solutions/genai/kb-selfservice-curation/tests/ -v
 
@@ -122,22 +120,29 @@ test-ha-lifekeeper:
 # ============================================================
 lint: lint-python lint-cfn
 
-lint-python:
+lint-python: lint-python-check lint-python-format
+
+lint-python-check:
 	ruff check shared/ solutions/ operations/ \
 		--config pyproject.toml 2>/dev/null || \
 	ruff check shared/ solutions/ operations/
 
+# CI runs `ruff format --check` as its own step, so `make lint` has to run it
+# too. Without this, formatting drift passes locally and only fails in the
+# pipeline.
+lint-python-format:
+	ruff format --check .
+
+# Rewrites files in place. Use after lint-python-format reports drift.
+format-python:
+	ruff format .
+
+# Template discovery comes from the `templates:` globs in .cfnlintrc, so this
+# target cannot drift out of sync with the patterns that actually exist.
+# Informational (I) and warning (W) findings are printed but do not fail the
+# build; only errors (E) do.
 lint-cfn:
-	cfn-lint solutions/industry/legal-compliance/template.yaml \
-		solutions/industry/semiconductor-eda/template.yaml \
-		solutions/sap/erp-adjacent/template.yaml \
-		solutions/flexcache/anycast-dr/template.yaml \
-		solutions/edge/content-delivery/template.yaml \
-		solutions/edge/media-ivs-vod-publishing/template.yaml \
-		solutions/edge/media-mediaconvert-vod-publishing/template.yaml \
-		solutions/genai/kb-selfservice-curation/template.yaml \
-		solutions/ha/lifekeeper-monitoring/template.yaml \
-		operations/capacity-rightsizing/template.yaml
+	cfn-lint --non-zero-exit-code error
 
 # ============================================================
 # Security

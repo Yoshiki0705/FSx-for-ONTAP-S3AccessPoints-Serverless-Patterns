@@ -4,12 +4,17 @@
 
 ## 前提条件
 
-| 項目 | 必須 | 備考 |
-|------|:---:|------|
-| AWS アカウント | ✅ | Amplify sandbox 用。Cognito/AppSync/Lambda は Free Tier 内 |
-| Node.js 18+ | ✅ | `node --version` で確認 |
-| AWS CLI v2 | ✅ | `aws --version` で確認 |
-| FSx for ONTAP ファイルシステム | — | DemoMode なら不要。admin 機能を使う場合に必要 |
+| 項目 | 必須 | バージョン | 確認コマンド |
+|------|:---:|---------|----------|
+| AWS アカウント | ✅ | — | Free Tier で可。IAM ユーザーまたは SSO で認証済み |
+| Node.js | ✅ | 20.x 以上 | `node --version` |
+| npm | ✅ | 10.x 以上 | `npm --version` |
+| AWS CLI | ✅ | 2.x | `aws --version` |
+| Amplify CLI | ✅ | 最新版 | `npx ampx --version` |
+| FSx for ONTAP | — | ONTAP 9.15+ | DemoMode なら不要。admin 機能に必要 |
+| Docker | — | 24.x 以上 | `docker --version`（Nextcloud 利用時のみ） |
+
+> **検証環境**: 本ガイドは Node.js 20.18.x / Amplify Gen2 1.x / Python 3.12 (Lambda) / ONTAP 9.17.1 / ap-northeast-1 で検証しています。
 
 ## クイックスタート（DemoMode — FSx for ONTAP なし）
 
@@ -31,6 +36,8 @@ npm start
 ブラウザで `http://localhost:5173` を開き、Cognito でユーザー登録 → サインイン。
 ファイルブラウズ・AI 処理・アップロードは DemoMode で動作します。
 admin/data-protection 機能は「ONTAP 接続が必要」と表示されます。
+
+> **エンドユーザー向け**: デプロイ完了後、ポータルを使い始めるユーザーには [ユーザーガイド](../../docs/ja/portal-user-guide.md)（[EN](../../docs/en/portal-user-guide.md)）を案内してください。デプロイ手順の知識は不要で、日常操作だけをカバーしています。
 
 ## フルセットアップ（FSx for ONTAP 接続あり）
 
@@ -105,6 +112,10 @@ export const config: PortalConfig = {
   vpcId: "vpc-0123456789abcdef0",
   vpcSubnetIds: ["subnet-0123456789abcdef0"],
   vpcSecurityGroupIds: ["sg-0123456789abcdef0"],
+  // vpcId を設定する場合は必須。vpcSubnetIds に紐づくルートテーブルを指定します。
+  // 未設定のまま vpcId を設定すると synth が失敗します（理由は後述）。
+  vpcRouteTableIds: ["rtb-0123456789abcdef0"],
+  allowNoBlockExpiry: false,
 
   // ONTAP 接続
   ontapMgmtIp: "172.30.x.x",  // management LIF IP
@@ -114,6 +125,32 @@ export const config: PortalConfig = {
 
   // ... 他はデフォルトのまま
 };
+```
+
+#### `vpcRouteTableIds` について
+
+DynamoDB ゲートウェイエンドポイントを作成するための設定です。VPC 内の Lambda が封じ込めブロックの台帳（DynamoDB）に到達するために必要です。
+
+Lambda の ENI にはパブリック IP が付かないため、デフォルトルートが Internet Gateway 向きのサブネットでは外向き通信ができません。Secrets Manager はインターフェイスエンドポイントで到達できますが、DynamoDB には経路がありません。ゲートウェイエンドポイントは時間課金・データ処理課金がありません。
+
+**未設定のまま `vpcId` を設定した場合、synth が失敗します。** ドキュメントに書くだけでは不十分だからです。エンドポイントがないと、デプロイは成功したように見える一方で**ブロックの有効期限が一切動きません**。ブロックはクラスタに設定されるものの台帳への書き込みが失敗し、定期スイープはそのブロックを認識できません。レスポンスは `expiryTracked: false` を返すので黙って壊れるわけではありませんが、気づくのは個々の操作のレスポンスを読んだ人だけで、「ブロックは自動で解除される」と考えている運用者には届きません。
+
+意図的に有効期限なしで運用する場合は `allowNoBlockExpiry: true` を設定してください。
+
+サブネットに紐づくルートテーブルの確認:
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=association.subnet-id,Values=<subnet-id>" \
+  --query "RouteTables[].RouteTableId" --output text
+```
+
+明示的な関連付けがないサブネットは VPC のメインルートテーブルを使います:
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=vpc-id,Values=<vpc-id>" "Name=association.main,Values=true" \
+  --query "RouteTables[].RouteTableId" --output text
 ```
 
 ### Step 5: 起動
@@ -132,15 +169,42 @@ npm start
 3. **Lock パネル**: Data Protection > Lock でタブが表示される
 4. **ARP/AI**: Data Protection > ARP/AI でボリュームの保護状態が表示される
 
-## 既存の SaaS ツールを使っている方へ
+## このポータルの前提と位置づけ
 
-| 現在の環境 | このポータルの使い方 |
+**対象**: NAS 上に非構造化データを持ち、そのデータの保護・活用を進めたい方。
+
+| あなたの環境 | このポータルの使い方 |
 |-----------|-------------------|
-| Box / Google Drive / SharePoint | 日常のファイル共有はそのまま。NAS 上のデータ（CAD、EDA ログ等）への AI 処理のみ本ポータルを併用 |
-| Nextcloud を運用中 | External Storage で S3 AP を追加接続するだけ（本リポジトリにセットアップガイドあり） |
-| Egnyte / Citrix ShareFile | FSx for ONTAP への SnapMirror 連携 + S3 AP で AI 処理レイヤーを追加 |
+| オンプレ NAS からの移行を検討中 | FSx for ONTAP + S3 AP で、ブラウザアクセス・AI 処理・データ保護を実現 |
+| 既に FSx for ONTAP を利用中 | S3 AP を有効化し、既存データに本ポータルの全機能を追加 |
+| NAS + Box/SharePoint/Google Drive 併用 | SaaS はそのまま。NAS データへの AI 処理・監査・保護を追加 |
+| Nextcloud を運用中 | External Storage で S3 AP を追加接続（セットアップガイドあり） |
 
-**本ポータルは既存ツールの置き換えではありません。** NAS データへの AI 処理・監査証跡・データ保護の可視化レイヤーとして追加するアプローチです。
+NAS のみの環境では単独利用、SaaS 併用環境では追加レイヤーとして、それぞれの状況に合わせて使えます。
+
+**業界別の利用例**:
+- **金融**: トレーディングログの異常検知 + FISC 7年監査証跡
+- **製造**: CAD/EDA ファイルの AI 品質検査
+- **医療**: DICOM 画像の AI 診断支援 + HIPAA 保持管理
+- **メディア**: 映像素材の AI メタデータ自動タグ付け
+- **法務**: 契約書 PDF の AI 分類 + 期限管理可視化
+- **研究**: ゲノム/シミュレーション結果のブラウザ検索
+
+### NFS/SMB ファイルサーバーに Web 体験を追加する
+
+NFS/SMB ファイルサーバーの高スループット・低レイテンシ・マルチプロトコル対応はそのまま活かしつつ、以下のような Web 体験を**データ移動なし**で追加します:
+
+| 追加される体験 | 本ポータルでの実現 |
+|---|---|
+| ブラウザからのアクセス（VPN 不要） | S3 AP + Cognito 認証（Internet-origin） |
+| 自然言語ファイル検索 | Bedrock Knowledge Base セマンティック検索 |
+| 共有リンク（期限付き） | Presigned URL + QR コード |
+| バージョン管理・ワンクリック復元 | Snapshot UI + FlexClone |
+| 監査証跡を UI で確認 | CloudTrail + Athena セルフサービス |
+| AI 自動分類・タグ付け | Bedrock + Step Functions ワンクリック |
+| ランサムウェア対策の可視化 | ARP/AI ダッシュボード |
+
+既存の NFS/SMB ワークフローには影響しません。S3 AP は同じボリュームへの追加アクセスパスです。
 
 ## トラブルシューティング
 
@@ -188,7 +252,11 @@ aws s3 rb s3://fsxn-portal-objectlock-demo --force
 
 ## 次のステップ
 
+- [PoC → 本番移行ガイド](../../docs/ja/portal-poc-to-production.md) — DemoMode から本番接続への移行チェックリスト
+- [スケーリングガイド](../../docs/ja/portal-scaling-guide.md) — キャパシティプランニングとスループット管理
+- [アクセシビリティ](../../docs/en/portal-accessibility.md) — キーボードナビゲーション、ARIA、スクリーンリーダー対応
 - [Admin Resource Management Demo Guide](../../docs/en/admin-resource-management-demo.md) — 全管理機能の操作手順
+- [AI Agent Demo Guide](./ai-agent-demo-guide.md) — AI エージェント機能の E2E デモ
 - [DemoMode Guide](../../docs/demo-mode-guide.md) — FSx for ONTAP なしでの検証方法
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md) — 設計意図と変更履歴
 - [認可モデル](../../docs/ja/portal-authorization-model.md) — Cognito グループによるアクセス制御

@@ -6,7 +6,7 @@
 
 S3 Access Points for FSx for ONTAP 経由のデータアクセスは、FSx ファイルシステムのプロビジョンドスループットに依存します。本ドキュメントでは、パフォーマンス設計時に考慮すべき要素を整理します。
 
-> **重要**: 本ドキュメントの数値はサービス上限値ではありません。特定のテスト環境における sizing reference です。実案件では顧客固有のワークロード特性、ファイルサイズ分布、並列度、FSx throughput 構成で測定値を取得してください。
+> **重要**: 本ドキュメントの数値はサービス上限値ではありません。特定のテスト環境における sizing reference です。実案件では導入先固有のワークロード特性、ファイルサイズ分布、並列度、FSx for ONTAP の throughput 構成で測定値を取得してください。
 
 > **AWS ドキュメント引用**: "Amazon S3 access points for FSx for ONTAP file systems deliver latency in the tens of milliseconds range, consistent with S3 bucket access. The throughput and requests per second you can drive to an Amazon FSx file system via the S3 API depends on the file system's provisioned throughput."
 > — [Accessing your data via Amazon S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
@@ -53,9 +53,11 @@ S3 Access Points for FSx for ONTAP 経由のデータアクセスは、FSx フ�
 
 | 操作 | 最大サイズ | 備考 |
 |------|-----------|------|
-| PutObject (単一) | 5 GB | これを超えるファイルはアップロード不可 |
-| GetObject | 制限なし | 5 GB 超のファイルもダウンロード可能 |
-| Multipart Upload | 5 GB (完了後のオブジェクト) | パーツ単位でアップロード |
+| オブジェクトサイズ上限（アップロード） | **50 GiB**（53,687,091,200 バイト） | 実測確定。`CompleteMultipartUpload` で検査される |
+| PutObject (単一) | **5 GiB**（5,368,709,120 バイト） | Amazon S3 API 共通の単一 PUT 上限。5 GiB 超は Multipart Upload を使用 |
+| UploadPart (1 パート) | **5 GiB**（5,368,709,120 バイト） | 累積サイズは検査されない |
+| GetObject | 制限なし | 50 GiB 超のファイルもダウンロード可能 |
+| Multipart Upload | 50 GiB (完了後のオブジェクト) | パーツ単位でアップロード。5 GiB〜50 GiB のオブジェクトはこの方式が必須 |
 | Storage Class | FSX_ONTAP のみ | 他のストレージクラスは指定不可 |
 | 暗号化 | SSE-FSX のみ | SSE-KMS / SSE-S3 は使用不可 |
 
@@ -66,8 +68,15 @@ S3 Access Points for FSx for ONTAP 経由のデータアクセスは、FSx フ�
 | < 1 MB | 直接 GetObject、メモリ内処理 | 256-512 MB |
 | 1-100 MB | GetObject + ストリーミング処理 | 512 MB - 1 GB |
 | 100 MB - 1 GB | Range GET (部分読み取り) または /tmp 書き出し | 1-3 GB |
-| 1-5 GB | /tmp (10 GB) + ストリーミング、または EFS マウント | 3-10 GB |
-| > 5 GB | GetObject のみ（PutObject 不可）、分割処理を検討 | ECS/Batch 推奨 |
+| 1 GB - 5 GiB | /tmp (10 GB) + ストリーミング、または EFS マウント | 3-10 GB |
+| 5 GiB - 50 GiB | Multipart Upload（単一 PutObject 不可）。読み取りは Range GET でストリーミング | ECS/Batch 推奨 |
+| > 50 GiB | 読み取りは可能。書き戻しはオブジェクト上限超過のため分割、または NFS/SMB 経由で配置 | ECS/Batch 推奨 |
+
+> **オブジェクトサイズ上限について**: アップロード時のオブジェクトサイズ上限は **50 GiB = 53,687,091,200 バイト**（実測確定）。AWS ドキュメントの表記は「50 GB」ですが二進値です。以前は「5 GB」で、ドキュメント更新により引き上げられました（アーカイブでは 2026-03-08 時点 5 GB、2026-06-25 時点 50 GB。対応する What's New アナウンスは確認できていません）。単一 `PutObject` の 5 GiB 上限は Amazon S3 API 共通の制約であり変更されていません。
+>
+> ⚠️ オブジェクト合計の上限は `CompleteMultipartUpload` でのみ検査され、`UploadPart` に累積チェックはありません。超過時は全データ転送後に失敗するため、**アップロード開始前にクライアント側でサイズ検証を行ってください**。詳細: [オブジェクトサイズ上限の実測検証](s3ap-object-size-limits-verification.md)
+>
+> 出典: [Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) / [Uploading objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
 
 ## ListObjectsV2 Pagination
 

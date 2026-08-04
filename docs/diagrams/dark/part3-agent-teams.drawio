@@ -1,0 +1,57 @@
+<mxfile host="Kiro" agent="Kiro" version="1.0.0">
+  <diagram id="part3-agent-teams" name="Part3 Agent Teams">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageWidth="1600" pageHeight="1200" background="#161B22">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d-title" value="Agent Teams — Supervisor が調整するマルチエージェント協調" style="text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="145" y="122" width="1630" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="user" value="利用者の指示&lt;br&gt;「engineering/ を分析して」" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#E6EDF3;fillColor=#2D333B;align=center;verticalAlign=middle;fontSize=12;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="145" y="192" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="supervisor" value="Supervisor&lt;br&gt;safety-controller" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#589BE5;fillColor=#152A3E;align=center;verticalAlign=middle;fontSize=12;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="435" y="200" width="180" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="explorer" value="Collaborator&lt;br&gt;file-explorer" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#57A83A;fillColor=#16301C;align=center;verticalAlign=middle;fontSize=12;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="725" y="200" width="180" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="analyst" value="Collaborator&lt;br&gt;knowledge-analyst" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#57A83A;fillColor=#16301C;align=center;verticalAlign=middle;fontSize=12;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="200" width="180" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="auditor" value="Reviewer&lt;br&gt;compliance-auditor" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#ED7100;fillColor=#3A2412;align=center;verticalAlign=middle;fontSize=12;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="1305" y="200" width="180" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="answer" value="利用者への最終回答&lt;br&gt;要約 + フィルタリング結果" style="rounded=1;whiteSpace=wrap;html=1;dashed=0;strokeColor=#E6EDF3;fillColor=#2D333B;align=center;verticalAlign=middle;fontSize=12;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="1595" y="192" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=12;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="user" target="supervisor" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="① 探索" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=12;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="supervisor" target="explorer" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" x="0" y="-13" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2" value="② 分析" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=12;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="explorer" target="analyst" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" x="0" y="-13" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" value="③ 検証" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=12;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="analyst" target="auditor" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" x="0" y="-13" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" value="④ 統合" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#E6EDF3;strokeWidth=1;fontSize=12;fontColor=#E6EDF3;labelBackgroundColor=#21262D;" edge="1" source="auditor" target="answer" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" x="0" y="-13" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d-notes" value="&lt;b&gt;補足&lt;/b&gt;&lt;br&gt;&lt;b&gt;※1 各ステップは Supervisor が仲介する&lt;/b&gt;&lt;br&gt;Collaborator 同士は直接やり取りせず、Supervisor が指示と結果を受け渡す&lt;br&gt;&lt;b&gt;※2 利用者から見た体験&lt;/b&gt;&lt;br&gt;1 回のチャット送信で複数フェーズが完了し、途中の往復は表に出ない" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 4;strokeColor=#E6EDF3;fillColor=#21262D;align=left;verticalAlign=top;spacingLeft=10;spacingTop=4;fontSize=11;fontColor=#E6EDF3;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="346" width="640" height="94" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

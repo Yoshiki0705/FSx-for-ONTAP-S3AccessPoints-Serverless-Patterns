@@ -156,7 +156,7 @@ graph TB
 |---|---|
 | S3 Event Notifications 미지원 | EventBridge Scheduler 폴링 또는 FPolicy |
 | Presigned URL 비공식 | 실제로 동작하지만 프로덕션에서는 비권장 |
-| 5GB 업로드 제한 | Multipart Upload |
+| 최대 객체 크기 50 GB (단일 PutObject 5 GB) | 5 GB 초과 시 Multipart Upload |
 | Athena 결과를 S3AP에 쓸 수 없음 | 표준 S3 버킷으로 출력 |
 | SSE-FSX 전용 | 볼륨 수준 KMS 암호화 사용 |
 
@@ -182,7 +182,7 @@ graph TB
 
 | 리포지토리 | 요약 |
 |---|---|
-| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 권한 인식 RAG 챗봇 (CDK + Next.js + ECS) |
+| [Permission-aware-RAG-FSxN-CDK](https://github.com/Yoshiki0705/Permission-aware-RAG-FSxN-CDK-github) | 권한 인식 RAG 챗봇 (CDK + Next.js + ECS) | <!-- allow:naming (external repo name) -->
 | [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations) | 레이크하우스 통합 (Databricks, Snowflake, Athena, Glue, EMR) |
 | [vmware-migration-ec2-ontap](https://github.com/Yoshiki0705/vmware-migration-ec2-ontap) | VMware → EC2 + FSx for ONTAP 마이그레이션 |
 

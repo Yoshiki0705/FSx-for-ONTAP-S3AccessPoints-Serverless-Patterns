@@ -1,18 +1,44 @@
 # FSx for ONTAP File Portal — Amplify Gen2
 
+🌐 **Language**: [日本語](README.ja.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+
 Web-based file portal for browsing, processing, and viewing results on FSx for ONTAP volumes via S3 Access Points.
 
 ## Why build a file portal?
 
 AWS provides building blocks (S3 API, Cognito, AppSync) but no integrated managed service that delivers a Box/Google Drive-like file management experience for NAS data on FSx for ONTAP. To give end users browser-based access to files, processing triggers, and result viewing, you need to assemble your own solution. This project is one such assembly using Amplify Gen2.
 
+**Who is this for?** Teams with unstructured data on NAS — whether on-premises or in the cloud — looking to protect and leverage that data with modern capabilities:
+- Manufacturing: CAD/EDA design files (AI quality inspection)
+- Financial services: trading logs and risk outputs (anomaly detection + 7-year audit)
+- Healthcare: DICOM medical images (AI diagnostic support + HIPAA retention)
+- Media: video assets in ProRes/MXF (AI metadata tagging)
+- Legal: accumulated contract PDFs (AI classification + deadline tracking)
+- Research: genomics and simulation results (browser search/preview for non-CLI users)
+
+This portal does **not** replace existing SaaS file sharing (Box, SharePoint, Google Drive) — but it can work alongside them or standalone. It provides NAS-specific capabilities that require direct volume access: Snapshot restore, SnapLock WORM, ransomware containment, and AI processing on NAS data without data copy. In NAS-only environments, the portal serves as the primary browser-based file access layer.
+
+### Why Amplify Gen2?
+
+[AWS Amplify Gen2](https://docs.amplify.aws/) provides a TypeScript code-first framework to build full-stack web applications on AWS without managing servers. For this project it means:
+- **No web server to maintain** — React frontend + serverless backend (Lambda, AppSync, Cognito)
+- **Built-in auth** — Cognito handles sign-up, MFA, and enterprise SSO (SAML/OIDC)
+- **Direct AWS integration** — S3 AP, Bedrock (AI), Step Functions, Athena connect with minimal code
+- **Git push deploys** — `git push` triggers build + deploy automatically
+- **CDK extensible** — add any AWS resource when standard features aren't enough
+
 See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../docs/file-portal-amplify-gen2.md)
 
-## Developer Guide
+## Documentation
 
+- **[User Guide](../../docs/en/portal-user-guide.md)** — End-user guide for daily portal usage (no deploy knowledge needed)
 - **[Getting Started](docs/GETTING-STARTED.md)** — Setup, DemoMode, VPC Endpoints, production checklist
 - **[Implementation Guide](docs/IMPLEMENTATION.md)** — Architecture, config files, component structure, deployment, modification log
+- **[Admin Capability Map](docs/admin-capability-map.en.md)** — interface coverage, implementation status for all 20 panels, mapping to System Manager capability areas, ONTAP REST endpoint mapping
+- **[Resource Management Demo Guide](docs/resource-management-demo-guide.en.md)** — steps for all 20 panels (including FlexCache / FlexClone / SnapMirror / Local users / Name mapping / Vscan / FPolicy / Cluster and SVM peering / Cluster information)
 - **[Admin Demo Guide](../../docs/en/admin-resource-management-demo.md)** — E2E demo scenarios for Resource Management + ARP/AI
+- **[AI Agent Demo Guide](docs/ai-agent-demo-guide.en.md)** — AI Agent Chat, Semantic Search, Guardrails, HITL
+- **[Architecture Diagram Index](../../docs/architecture-diagrams.en.md)** — all 13 figures (light theme / dark theme)
 
 ## Key Features
 
@@ -29,18 +55,33 @@ See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../
 | **VolumeSelector Search** | Server-side wildcard filter + 300ms debounce for large environments |
 | **Tamperproof Lock** | Inline lock form with FISC/SOX/HIPAA retention presets |
 | **8-Language i18n** | JA/EN/KO/ZH-CN/ZH-TW/FR/DE/ES with instant runtime switching |
+| **AI Agent Chat** | Natural language file ops via Bedrock Converse + tool_use (3 modes: KB/Agent/Multi) |
+| **Multimodal Input** | Drag-and-drop image upload with Bedrock Vision API analysis |
+| **Chat History** | DynamoDB-persisted sessions with auto-save and restore |
+| **Agent Directory** | Custom agent registry with creator form, category filter, and sharing |
+| **Multi-Agent Teams** | Team wizard with role assignment (Supervisor/Collaborator/Reviewer) |
+| **KB Smart Routing** | Group-based KB search scope filtering for multi-tenant access control |
+| **Admin Feature Gates** | AI features disabled by default, toggled per-feature from admin panel |
 
 ## Architecture
 
+![Amplify Gen2 AI processing portal architecture. A web browser and Amazon Quick reach AWS Amplify, Amazon Cognito, and the Amazon Bedrock AgentCore; AppSync GraphQL API invokes Lambda functions running outside the VPC on ARM64. Those functions call Bedrock, Rekognition, Athena, Textract, and Comprehend, and read and write the FSx for ONTAP volume through the S3 Access Point. Audit logs are written to S3 Object Lock as WORM](../../docs/images/amplify-vpc-split-en.svg)
+
+*Figure: the Amplify Gen2 portal — Lambda functions outside the VPC read and write the FSx for ONTAP volume through the S3 Access Point*
+
+> The figure above uses the light theme (white background). If you prefer dark mode, use the [dark theme version](../../docs/images/amplify-vpc-split-en-dark.svg). All 13 figures are listed with both light and dark links in the [architecture diagram index](../../docs/architecture-diagrams.en.md).
+
+The same architecture as text:
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Amplify Gen2                                           │
-│  ┌──────────┐  ┌─────────────────────────────────────┐  │
-│  │ Cognito  │  │ AppSync GraphQL API                 │  │
-│  │ Auth     │  │  startProcessing → Step Functions   │  │
-│  │ +MFA     │  │  getJobStatus → Step Functions      │  │
-│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │  │
-│  └──────────┘  └──────────────┬──────────────────────┘  │
+┌──────────────────────────────────────────────────────────┐
+│  Amplify Gen2                                            │
+│  ┌──────────┐  ┌─────────────────────────────────────┐   │
+│  │ Cognito  │  │ AppSync GraphQL API                 │   │
+│  │ Auth     │  │  startProcessing → Step Functions   │   │
+│  │ +MFA     │  │  getJobStatus → Step Functions      │   │
+│  │ +SAML    │  │  listFiles → Lambda → S3 AP         │   │
+│  └──────────┘  └──────────────┬──────────────────────┘   │
 │                               │                          │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │ CDK (in data stack)                                 │ │
@@ -633,3 +674,7 @@ This portal is an **optional frontend layer**. It does not modify the core patte
 - [S3AP Compatibility Notes](../../docs/s3ap-compatibility-notes.md)
 - [Demo Mode Guide](../../docs/demo-mode-guide.md)
 - [Storage Browser Demo Guide](../../docs/en/storage-browser-demo-guide.md)
+
+---
+
+🌐 **Language**: [日本語](README.ja.md) | English | [한국어](README.ko.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)

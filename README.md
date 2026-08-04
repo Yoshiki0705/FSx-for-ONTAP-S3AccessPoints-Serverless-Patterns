@@ -25,6 +25,7 @@
 | Web ポータルでファイルを閲覧・処理 | [File Portal UI (Amplify / Nextcloud)](docs/file-portal-amplify-gen2.md) | 10 分 |
 | ポータルのデモを見る (スクリーンショット付き) | [Portal Demo Guide (JA)](docs/ja/portal-demo-guide.md) / [EN](docs/en/portal-demo-guide.md) | 5 分 |
 | ポータルのセクション構成を理解する | [Portal Sections Guide](solutions/amplify-portal/docs/portal-tabs-guide.md) | 5 分 |
+| 構成図を見る（ライト / ダーク） | [構成図インデックス](docs/architecture-diagrams.md) | 5 分 |
 | ポータルを自環境にデプロイ | [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) | 15 分 |
 | S3 AP のディレクトリ設計・性能特性を理解する | [設計考慮事項](docs/design-considerations.md) | 15 分 |
 | パターンを AWS にデプロイ | [Deployment Guide](docs/guides/deployment-guide.md) | 30 分 |
@@ -170,6 +171,7 @@ graph TB
 | [Deployment Runbook (JA)](docs/ja/portal-deployment-runbook.md) / [EN](docs/en/portal-deployment-runbook.md) | デプロイ・削除の運用手順 + トラブルシューティング |
 | [Portal Authorization Design (JA)](docs/ja/portal-authorization-design.md) / [EN](docs/en/portal-authorization-design.md) | RBAC 設計 (Viewer/Contributor/Storage Admin/Auditor) |
 | [File Portal UI Options](docs/file-portal-amplify-gen2.md) | Amplify / Nextcloud / Custom Build の選び方 |
+| [構成図インデックス (JA)](docs/architecture-diagrams.md) / [EN](docs/architecture-diagrams.en.md) | 全 13 図の一覧（ライトテーマ = 既定 / ダークテーマ） |
 | [Portal README](solutions/amplify-portal/README.md) | セットアップ全手順 + Known Pitfalls |
 
 ### セキュリティ・データ保護
@@ -207,7 +209,7 @@ graph TB
 |---|---|
 | S3 Event Notifications 非対応 | EventBridge Scheduler ポーリング or FPolicy |
 | Presigned URL 非公式 | 動作するが本番非推奨 |
-| 5GB アップロード上限 | Multipart Upload で対応 |
+| オブジェクトサイズ上限 50 GB（単一 PutObject は 5 GB） | 5 GB 超は Multipart Upload で対応 |
 | Athena 結果を S3AP に書き戻し不可 | 標準 S3 バケットに出力 |
 | SSE-FSX のみ | ボリュームの KMS 設定で暗号化 |
 

@@ -192,6 +192,31 @@ const schema = a.schema({
     .handler(a.handler.custom({ dataSource: "ListFilesLambdaDataSource", entry: "./resolvers/files-dispatch.js" })),
 
   // =========================================================================
+  // Generic Dispatch: Folder Download
+  // ZIP assembly runs on its own Lambda because it needs more memory and a
+  // longer timeout than the file listing path.
+  // Actions: downloadFolderAsZip
+  // =========================================================================
+  folderMutation: a
+    .mutation()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "FolderDownloadLambdaDataSource", entry: "./resolvers/files-dispatch.js" })),
+
+  // =========================================================================
+  // Generic Dispatch: AI Agent Chat
+  // Multi-tool conversational agent using Bedrock Converse with tool_use.
+  // Actions: chat (multi-turn conversation with list_files/read_file/search_files tools)
+  // =========================================================================
+  agentQuery: a
+    .query()
+    .arguments({ action: a.string().required(), params: a.json() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.custom({ dataSource: "AgentChatLambdaDataSource", entry: "./resolvers/agent-dispatch.js" })),
+
+  // =========================================================================
   // Individual operations (unique data sources — keep as-is)
   // =========================================================================
   getPresignedUrl: a

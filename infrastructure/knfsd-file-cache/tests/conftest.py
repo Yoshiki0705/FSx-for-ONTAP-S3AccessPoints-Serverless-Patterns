@@ -19,6 +19,7 @@ Environment variables (for integration tests):
     FSXN_FILE_SYSTEM_ID   - FSx for ONTAP file system ID
     CLIENT_INSTANCE_ID    - EC2 instance ID for client-side tests (SSM)
 """
+
 from __future__ import annotations
 
 import os
@@ -69,6 +70,7 @@ def boto3_session():
     """Boto3 session for integration tests."""
     try:
         import boto3
+
         return boto3.Session(region_name=os.environ.get("AWS_REGION", "ap-northeast-1"))
     except ImportError:
         pytest.skip("boto3 not available")
@@ -135,6 +137,7 @@ def mock_exportfs_output():
 # =============================================================================
 # Pytest Markers
 # =============================================================================
+
 
 def pytest_configure(config):
     """Register custom markers."""

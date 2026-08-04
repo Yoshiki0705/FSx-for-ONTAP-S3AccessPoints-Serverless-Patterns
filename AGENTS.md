@@ -238,12 +238,24 @@ Surface findings explicitly and fix them before finalizing. The cost of one more
 Before submitting changes, run:
 
 1. `make test-quick` — key tests pass
-2. `make lint` — no lint errors
+2. `make lint` — no lint errors. This now covers **both** `ruff check` and
+   `ruff format --check`, because CI runs them as separate steps and formatting
+   drift used to pass locally and only fail in the pipeline. Run `make
+   format-python` to fix drift.
 3. `cfn-lint` on modified templates
 4. If modifying UC templates: verify TriggerMode params + conditions present
 5. If adding new shared module: add tests in `shared/tests/`
 6. If modifying README: ensure Governance Note + Performance Considerations present
 7. If adding output: include `data_classification` field
+8. If touching `solutions/amplify-portal/amplify/**`: the IAM Policy Validation
+   workflow fires on that path and scans **every** template under
+   `solutions/industry/` and `infrastructure/`, not just what you changed. A
+   failure there may be pre-existing debt rather than something you introduced —
+   check `git diff --name-only` for template changes before assuming ownership.
+9. If adding user-facing UI strings: add the key to `ja.ts` first, then to all 7
+   other locales, and use `t("key")` in the component. No hardcoded strings in
+   JSX text, `aria-label`, `title` or `placeholder`. Product names, SQL literals
+   and technical terms (ONTAP, FlexCache, SnapLock, S3 AP) stay untranslated.
 
 ## New Pattern: Field-Shareable Definition of Done
 
@@ -339,6 +351,7 @@ All README and documentation files follow these UX principles:
 | `SNSPublishMessagePolicy` with TopicArn | Use `TopicName: !GetAtt Topic.TopicName` |
 | `Handler: index.handler` but file is `handler.py` | Use `Handler: handler.handler` |
 | `DefinitionBody` inline in SAM StateMachine | Use `DefinitionUri: statemachine/workflow.asl.json` |
+| `S3ObjectStorageMode: REFERENCE` on `AWS::Serverless::Function` silently has no effect | SAM's `S3Location` accepts only `Bucket`/`Key`/`Version` and drops anything else during transform, so `sam validate`/`sam deploy` succeed but the function runs in `COPY` mode (confirmed with AWS Support). CloudFormation is a documented supported method, so use a native `AWS::Lambda::Function` when `REFERENCE` mode is required. See docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md FR-7 |
 | CloudFormation `validate-template` fails for large templates | Use S3 URL upload for templates >51KB |
 | Internet-origin S3AP from VPC Lambda | Use VPC-external Lambda or NAT Gateway |
 | S3 Gateway VPC Endpoint + Internet-origin S3AP | Does NOT work — use NAT or VPC-external |
@@ -362,7 +375,7 @@ All README and documentation files follow these UX principles:
 | `aws fsx create-and-attach-s3-access-point` positional args fail | Use `--cli-input-json file://create-ap.json`. Positional `--ontap-configuration` parsing is fragile |
 | Delete volume while S3 AP attached → BadRequest | Delete S3 AP first (`detach-and-delete-s3-access-point`), wait for deletion, then delete volume |
 | Quick S3 Knowledge base not visible in ap-northeast-1 | S3 KB feature only available in us-east-1, us-west-2, ap-southeast-2, eu-west-1. Use Bedrock KB for Tokyo region, or cross-region Quick account |
-| Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign. Use `Config(signature_version="s3v4")` explicitly |
+| Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign, and ONTAP S3 only supports v2 presigned URLs from 9.16.1. Use `Config(signature_version="s3v4")` explicitly (v4 supported from ONTAP 9.11.1; NetApp recommends v4) |
 | Presigned URL `PermanentRedirect` from Lambda | Global endpoint `s3.amazonaws.com` redirects. Use `endpoint_url=f"https://s3.{region}.amazonaws.com"` |
 | Presigned URL `HEAD` returns 403 but `GET` works | Some S3 AP configurations don't support HEAD on presigned URLs. Use GET for verification |
 | Bedrock `InvokeModel` with `inputText` → ValidationException | Nova/Claude models require Messages API. Use `bedrock.converse()` (not `invoke_model` with `inputText`). Add `bedrock:Converse` to IAM policy |
@@ -377,6 +390,14 @@ All README and documentation files follow these UX principles:
 | KNFSD NFS mount: Connection refused | SG で TCP 2049 が未許可。KNFSD SG に NFS inbound rule を追加 |
 | KNFSD 経由 write → S3 AP で見えない | NFS write は非同期。`sync` 後 2-3 秒待機してから S3 AP GetObject |
 | KNFSD Terraform: InvalidAMIID | AMI ビルドリージョンとデプロイリージョンの不一致。`--region` を揃える |
+| Tamperproof 有効化 → 無効化できない | `snapshot_locking_enabled` は不可逆（400 Bad Request）。ただしポリシーの retention_period 削除で新規ロック停止は可能。詳細は [docs/tamperproof-snapshot-design.md](docs/tamperproof-snapshot-design.md) |
+| Tamperproof 有効化 ≠ 全 Snapshot 自動ロック | 有効化は「ロック機能 ON」であり「自動ロック」ではない。ポリシーに retention_period を設定して初めて自動ロックが発動 |
+| ポータルの Lambda が `shared/` を import できない | `functions/<name>/` の asset にはそのディレクトリしか入らない。`shared.*` を使う関数には `amplify/backend.ts` の `SharedPythonLayer` を `layers:` で付与する。レイヤーは `/opt` にマウントされ Python が見るのは `/opt/python` なので、アーカイブに `python/` プレフィックスが必要（`Code.fromAsset` の `bundling.local` で再配置している） |
+| `shared/` を変更しても sandbox のレイヤーが更新されない | `ampx sandbox` は hotswap で Lambda を更新し、LayerVersion の内容変更をスキップする（hotswap 無効化フラグは存在しない）。テンプレート側に変更がある場合のみ CloudFormation が走る。確実に反映するには `ampx sandbox delete` → 再デプロイ、またはパイプラインデプロイ |
+| 例外メッセージからエラー原因を推測する実装 | `str(IndexError(4))` は `"4"` で HTTP 404 に見える。実際に `Path(__file__).parents[4]`（Lambda では親が 3 つ）の IndexError を「CIFS 未設定」と誤報告していた。`type(e).__name__` を含めて報告し、文字列パターンで原因を決めない |
+| ONTAP REST の `fields=` に存在しないフィールドを混ぜる → 一覧が空になる | ONTAP はリクエスト全体を 400 で拒否し（例: `The value "last_transfer_size" is invalid for field "fields"`）、ハンドラ側は空リスト + error で返す。モック ONTAP は `fields` を無視してレコードを返すため、レスポンス整形のアサートだけでは検出できない。**送信 URL の `fields` 自体をテストで固定する**（`MockHttp.calls` を検査） |
+| `/cluster/nodes` と `/cluster/licensing/licenses` が 0 件 | エラーではない。FSx for ONTAP ではクラスター管理を AWS が担うため 0 件で返ることがある（ONTAP 9.17.1P7D1 で実測）。UI 側に「エラーではない」旨の注記を出す |
+| robocopy で ACL 権限のないファイルがスキップされる | Backup Operators への追加だけでは不足。robocopy に `/B`（バックアップモード）が必要。コピー先は SVM の `BUILTIN\Backup Operators` にも追加（`SeRestorePrivilege` で差分上書き）。詳細は [smb-acl-migration-backup-operators.md](docs/smb-acl-migration-backup-operators.md) |
 
 ## S3 Access Point Critical Knowledge
 
@@ -399,9 +420,17 @@ Both must Allow:
 
 ### Supported Operations
 
-PutObject (max 5GB), GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
+PutObject, GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
+**Measured size limits** (2026-08-02, ap-northeast-1 — see [size limit verification](docs/s3ap-object-size-limits-verification.md)):
+- Single `PutObject`: **5 GiB = 5,368,709,120 bytes**. Rejected on Content-Length (immediate, ~2.7s) with 400 `EntityTooLarge` + `MaxSizeAllowed`.
+- `UploadPart` per part: **5 GiB** (same value, same fast rejection).
+- Whole object (upload): **50 GiB = 53,687,091,200 bytes**. 50 GiB succeeds; 50 GiB + 1 fails.
+- ⚠️ The whole-object limit is checked **only at `CompleteMultipartUpload`, after the entire payload is transferred** (~10 min for 50 GiB). `UploadPart` has no cumulative check, and the Complete error omits `MaxSizeAllowed`. **Validate object size client-side before uploading.**
+- `CompleteMultipartUpload` took ~557s to assemble a 50 GiB object — set a long `read_timeout`.
+- Docs say "5 GB"/"50 GB" but both are **binary** (GiB).
+`UploadPartCopy` is documented as Supported but **fails with `NoSuchKey`** in practice (`CopyObject` works) — server-side assembly of large objects is not possible.
 NOT supported: GetBucketNotificationConfiguration.
-Presigned URLs: Listed as "Not supported" in AWS docs, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support advises against production reliance. See docs/s3ap-compatibility-notes.md for details.
+Presigned URLs: Listed as "Not supported" in the AWS compatibility table, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support has since confirmed ONTAP-layer support (v4 from ONTAP 9.11.1, v2 from 9.16.1) and submitted a doc correction — **not yet published**, so continue to avoid production reliance until it is. See docs/s3ap-compatibility-notes.md for details.
 
 ### NetworkOrigin (Immutable After Creation)
 
@@ -733,12 +762,15 @@ When reviewing changes, consider these perspectives:
 | [Partner/SI Checklist](docs/partner-si-delivery-checklist.md) | Customer delivery workflow |
 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | Customer situation → recommended UC |
 | [ONTAP Integration Notes](docs/ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
+| [SMB ACL Migration via Backup Operators](docs/smb-acl-migration-backup-operators.md) | Windows file server → FSx for ONTAP with ACLs the copy account cannot read (`SeBackupPrivilege`/`SeRestorePrivilege`, robocopy `/B`, DataSync) |
 | [S3 Bucket User Guide](docs/s3-bucket-user-guide.md) | Standard S3 vs FSx for ONTAP S3 AP differences |
 | [Bedrock Inference Profiles](docs/bedrock-inference-profiles.md) | Nova/Claude on-demand requirement, IAM (foundation-model + inference-profile), data residency, CI enforcement |
 | [AD-Joined SVM S3 AP Prerequisites](docs/en/ad-joined-svm-s3ap-prerequisites.md) | AD DC reachability, Internet-origin AP + VPC-external Lambda, same-account policy |
 | [File Portal UI Options](docs/file-portal-amplify-gen2.md) | Amplify Gen2 / Nextcloud / Custom Build comparison, selection guide, implementation roadmap |
 | [SaaS Gap Analysis (JA)](docs/aws-feature-requests/file-portal-service-gap.md) | 15 SaaS 比較, AI エージェント動向, プロトコルアクセシビリティ, ペルソナレビュー |
 | [SaaS Gap Analysis (EN)](docs/aws-feature-requests/file-portal-service-gap.en.md) | English version of gap matrix + feature requests |
+| [Lambda / HealthOmics S3 AP Gaps (JA)](docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md) | FR-5/6/7: Lambda セルフマネージドコードストレージ・AWS HealthOmics と FSx for ONTAP S3 AP の統合ギャップ、AWS Support 提出用テキスト |
+| [Lambda / HealthOmics S3 AP Gaps (EN)](docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.en.md) | English version: integration assessment, requested behavior, workaround architectures |
 | [Nextcloud External Storage Setup](docs/nextcloud-external-storage-s3ap.md) | Nextcloud + FSx for ONTAP S3 AP step-by-step configuration |
 | [Workshop EDA Integration Guide](docs/workshop-eda-integration.md) | AWS Workshop modules mapped to UC patterns (EDA scenarios, Athena, Glue, AgentCore, Quick) |
 | [Quick Desktop MCP Setup](docs/quick-desktop-mcp-setup.md) | AgentCore MCP Gateway + Quick Desktop E2E setup (Import method, IaC, lessons learned) |
@@ -746,6 +778,14 @@ When reviewing changes, consider these perspectives:
 | [AgentCore MCP Remaining Issues](docs/agentcore-mcp-remaining-issues.md) | Known issues tracker: Web UI bug, Desktop persistence, CUSTOM_JWT 403 |
 | [AgentCore MCP Tools Reference](docs/agentcore-mcp-tools.md) | Lambda tool definitions (list/read/search), input/output schemas, IAM policy |
 | [KNFSD + S3 AP Dual-Path Architecture](docs/knfsd-s3ap-dual-path-architecture.md) | KNFSD File Cache + S3 AP complementary access for EDA/VFX/HPC/Genomics/Finance/Weather/Energy |
+| [Tamperproof Snapshot Design](docs/tamperproof-snapshot-design.md) | 3-layer design (volume enable / policy retention / individual lock), irreversibility rules, operation patterns |
+| [PoC → Production Guide (EN)](docs/en/portal-poc-to-production.md) | DemoMode → production FSx for ONTAP connectivity migration checklist |
+| [PoC → 本番移行ガイド (JA)](docs/ja/portal-poc-to-production.md) | DemoMode から本番接続への移行手順（ネットワーク/認証/シークレット/監査/コスト） |
+| [Scaling Guide (EN)](docs/en/portal-scaling-guide.md) | Capacity planning, throughput sharing, QoS, component scaling, growth estimation |
+| [スケーリングガイド (JA)](docs/ja/portal-scaling-guide.md) | キャパシティプランニング、スループット共有、QoS、スケーリング特性 |
+| [Accessibility Statement](docs/en/portal-accessibility.md) | ARIA, keyboard navigation, screen reader compatibility, WCAG 2.1 AA note |
+| [構成図インデックス (JA)](docs/architecture-diagrams.md) | 全 13 図のライト / ダーク両テーマ一覧、命名規則、再生成手順 |
+| [Architecture Diagram Index (EN)](docs/architecture-diagrams.en.md) | All 13 figures in light / dark, naming convention, regeneration steps |
 
 ## Agent Output Standards
 
@@ -782,3 +822,113 @@ When reviewing changes, consider these perspectives:
 gitleaks detect --config .gitleaks.toml --no-git --source .
 # CI が agent-output チェックをミラー: .github/workflows/agent-output-audit.yml
 ```
+
+## Architecture Diagrams (draw.io + Official AWS Icons)
+
+> 詳細ルールはユーザーレベル Kiro global steering `global-architecture-diagram-standards.md` を参照。
+> ここはこのリポジトリ固有のパス・コマンドと、必ず守る最小セット。
+
+### Layout
+
+```
+docs/diagrams/                     # .drawio（Part1 は手書きソース / Part2・3 は生成物）
+├── file-portal-overview.drawio            # Part1: JA authoring（直接編集する）
+├── file-portal-architecture.drawio
+├── nextcloud-only-architecture.drawio
+├── amplify-nextcloud-combined-architecture.drawio
+├── part2-*.drawio / part3-*.drawio        # 生成物（手編集禁止 / spec は scripts/ 側）
+├── *-en.drawio                            # 生成物（手編集禁止）
+└── dark/*.drawio                          # 生成物（手編集禁止 / ライト版から派生）
+docs/images/            *.svg              # ライト。GitHub docs 用（相対パス参照）
+docs/images/            *-dark.svg         # ダーク
+docs/images/png/        *@2x.png           # ライト。ブログ用（絶対 raw URL 参照）
+docs/images/png/        *-dark@2x.png      # ダーク
+```
+
+### テーマ（ライト = 既定 / ダーク = 併記）
+
+全図を 2 テーマで公開する。**ライトが既定**で、README・docs・ブログに表示するのは常にライト版。ダーク版は同じ内容の選択肢として、図ごとにリンクを併記し、[構成図インデックス](docs/architecture-diagrams.md)（JA / EN）に一覧を置く。
+
+ダーク版は CSS ではなく**別ソースとして生成する**。draw.io の SVG は `light-dark()` で自前の配色を反転させるが、埋め込み済み AWS アイコンは追随しない（実測: 24 要素中 0 個）。反転だけでは濃紺の線画が黒背景に乗って判読不能になるため、`Res_*_48_Light` → `Res_*_48_Dark`（白い線画）へアイコン素材ごと差し替える。`Arch_*` サービスアイコンは公式に単色タイル 1 種類のみなので両テーマ共通。
+
+エクスポート後は `scripts/pin-svg-theme.py` が `light-dark()` を第 1 引数（= ソースが指定した配色）に解決し、閲覧環境のダークモード設定で勝手に反転しないよう固定する。ライトソースならライト、ダークソースならダークに固定される。
+
+図には 2 系統ある。**編集先を間違えないこと**。
+
+| 系統 | ソース | JA→EN | 編集対象 |
+|------|--------|-------|----------|
+| Part1（4 図） | `docs/diagrams/*.drawio` を直接手書き | `generate-en-diagrams.py`（XML 文字列置換 + `TRANSLATIONS`） | `.drawio` |
+| Part2/Part3（9 図 × JA/EN） | `scripts/build-part2-part3-diagrams.py` の宣言的 spec | 同スクリプトの `EN` 辞書 → `translate_diagram()` で spec ごと翻訳 | **スクリプト**（`.drawio` は毎回上書き） |
+
+Part2/3 が spec レベルで翻訳するのは、**EN ラベルは JA より幅が広く、レイアウト検査を EN でも再実行する必要があるため**。完成 XML への文字列置換ではラベル衝突が無言で残る（実際に `agent-teams` の EN ステップラベルが桁溢れし、`check_edge_labels` が検出した）。
+
+### Commands
+
+```bash
+# 1. 公式アイコンパッケージを取得（リポジトリ外に展開すること）
+#    現行版の URL は必ず https://aws.amazon.com/architecture/icons/ から再取得
+curl -s https://aws.amazon.com/architecture/icons/ | grep -oE 'https://[^"]*Icon-package[^"]*\.zip'
+unzip -q Icon-package_*.zip -d /tmp/awsicons -x '__MACOSX/*'
+
+# 2. Part1: 公式アイコン・規定サイズ・公式サービス名・単色プリセット矢印を適用
+python3 scripts/apply-official-aws-icons.py --icon-root /tmp/awsicons
+
+# 3. Part1: EN 版を JA から生成（CJK 残存で fail するゲート付き）
+python3 scripts/generate-en-diagrams.py
+
+# 4. Part2/Part3: spec から JA + EN を同時生成（レイアウト検査は EN でも再実行）
+python3 scripts/build-part2-part3-diagrams.py --icon-root /tmp/awsicons
+
+# 5. ダークテーマのソースをライト版から生成（アイコン素材ごと差し替え）
+python3 scripts/make-dark-diagrams.py --icon-root /tmp/awsicons
+
+# 6. ライト + ダークを SVG + PNG@2x にエクスポート（テーマ固定まで実行される）
+bash scripts/export-diagrams.sh
+
+# 7. 目視確認用に 2000px 以下へ縮小（エージェントが読める形にする）
+python3 scripts/preview-diagram.py            # 全 part2/part3
+python3 scripts/preview-diagram.py part3-agentchat-modes
+python3 scripts/preview-diagram.py --glob 'docs/images/png/*-dark@2x.png' --out-dir /tmp/dark-previews
+```
+
+`scripts/apply-official-aws-icons.py` と `scripts/make-dark-diagrams.py` は冪等。Part1 の JA 図を編集したら 2→3→5→6→7、Part2/3 の spec を編集したら 4→5→6→7 を再実行する。**ダーク生成（5）はライト版の変更後に必ず実行する**（漏れはコミット前に `make-dark-diagrams.py --icon-root <dir> --check` を走らせると exit 1 で検出できる。アイコンパッケージはリポジトリに含めないため CI では実行できない = ローカルでの確認が必須）。
+`-en.drawio`、`part2-*` / `part3-*` の `.drawio`、`dark/` 配下を直接編集してはいけない（次回生成で上書きされる）。
+
+### 必ず守る最小セット
+
+| 項目 | ルール |
+|------|--------|
+| アイコン世代 | 公式 Asset Package の現行四半期版のみ。draw.io 同梱 `mxgraph.aws4` は 2019 世代なので使わない |
+| サイズ | サービス 80×80（`Arch_*_64.svg` の native）、リソース 48×48（`Res_*_48.svg`）。リスケール禁止、混在禁止 |
+| ラベル | 公式サービス名 + `Amazon`/`AWS` 前置を必須。略称禁止（`ALB` → `Elastic Load Balancing`）。2 行以内 |
+| ラベル例外 | 非 AWS 要素（`Web ブラウザ` / `NFS クライアント` / `Nextcloud` 等）は前置不要 |
+| 矢印 | 単色プリセット Open Arrow のみ（`endArrow=open;endFill=0;strokeColor=#232F3E`）。色分け・線幅変更・破線での意味付けは禁止 |
+| 注記 | `補足` 見出し + `※1`/`※2`（EN は `*1`/`*2`）。太字見出し（体言止め）+ 次行に詳細。段落文で書かない |
+| 検証 | `ET.parse()` 通過だけでは不十分。**必ず PNG をレンダリングして目視確認**（JA/EN 個別に） |
+| 目視の手順 | `@2x` PNG は 2000px を超えるためエージェントが直接読めない。`scripts/preview-diagram.py` で縮小してから読む（`/tmp` 出力。コミットしない） |
+| 一括目視 | 枚数が多いときはコンタクトシートを 1 枚作る。6 列 × 300px セルなら 2000px 制限に収まる（5 列 × 370px は 2358px で拒否された） |
+| テーマ | ライトが既定。図を追加・変更したらダーク版も同時に更新し、表示側にはライトを出してダークをリンクで併記する |
+| ダークの配色 | アイコンは `Res_*_48_Dark` に差し替え。背景・面・文字は `make-dark-diagrams.py` の `PALETTE` に集約（個別図でハードコードしない） |
+| 公開 | アイコン素材そのものをリポジトリにコミットしない（埋め込み済み完成図のみ可） |
+
+### Common Pitfalls（このリポジトリで実際に踏んだもの）
+
+| Pitfall | Solution |
+|---------|----------|
+| `xml.sax.saxutils.escape()` が `"` をエスケープせず XML 破損 | HTML 属性は単引用符にし、`escape(s, {'"': '&quot;'})` を使う。または定数を事前エスケープ済み文字列にする |
+| XML 破損時 drawio が該当セル以降を無言で捨てる（export は成功する） | 書き込み後に `ET.parse()` ゲート必須。さらに PNG 目視 |
+| スクリプトが「N 個追加」と報告するが実際は未挿入 | 構築したリストを数えず、出力に `id="..."` が存在するかを検証する |
+| エッジラベルが中点に置かれアイコンに重なる | `<mxGeometry x="-0.4" relative="1">` + `<mxPoint as="offset" y="16"/>` で退避。縦線は `x` オフセット |
+| アイコン拡大でラベル衝突 | 座標をスケール。横は長い公式名のため 1.6 前後必要、縦は 1.25 程度に圧縮（非対称スケール） |
+| EN ラベルが JA より長く衝突 | EN 版は個別にレンダリング確認する。Part2/3 は spec ごと翻訳して EN でも検査を再実行する（`translate_diagram()`） |
+| 画像読み込みが `image dimensions exceed max allowed size ... 2000 pixels` で失敗 | `@2x` エクスポートは長辺 2000px 超が普通。`python3 scripts/preview-diagram.py <name>` で縮小コピーを作り、そちらを読む。**PNG を直接読もうとしてセッションを落とさない** |
+| 縦線のエッジラベルがノードラベルの 3 行目に見える | アイコンのラベルは真下に描かれ縦線の経路上にある。`vertical_label_shortfall()` が自動で下へ退避（`check_vertical_edge_labels` が明示 `at`/`dy` の取り違えを検出） |
+| 注記が枠外へはみ出す / 枠が足りない | `whiteSpace=wrap` はエクスポート時に効かない。`_wrap_note()` で明示改行し、枠高は折り返し後の行数から算出する |
+| CJK の折り返しで `の` 直後の半角スペースが消える | トークン化で「CJK 1 文字 + 後続スペース」を 1 トークンにする。`findall` の選択肢から漏れた空白は落ちる |
+| ダーク版で AWS リソースアイコンが見えない | `Res_*_48_Light`（濃紺の線画）が残っている。`make-dark-diagrams.py` を通して `Res_*_48_Dark` に差し替える |
+| SVG が閲覧環境のダークモードで勝手に反転する | `pin-svg-theme.py` 未適用。draw.io は `light-dark()` + `color-scheme: light dark` を出力するため、固定しないと配色が反転する（アイコンだけ追随せず判読不能になる） |
+| ライト版を直したのにダーク版が古い | `make-dark-diagrams.py` の再実行漏れ。コミット前に `--check` を走らせると exit 1 で検出できる（アイコンパッケージが必要なので CI では代替できない） |
+| `drawio` が PATH にない（macOS） | `/Applications/draw.io.app/Contents/MacOS/draw.io` を直接呼ぶ |
+| ヘルパースクリプトを別ディレクトリへ移動して repo root 解決が壊れる | `dirname` からの相対階層を見直し、ソースディレクトリ存在チェックを入れる |
+| ブログの画像が 404 | ブログは `raw.githubusercontent.com/.../main/...` 参照。`docs/images/` を main に push してから公開する |
+| ラベル変更後に alt text が古いまま | alt text は図の記述なので公式サービス名に追随させる（本文プロースの機能名はそのままでよい） |

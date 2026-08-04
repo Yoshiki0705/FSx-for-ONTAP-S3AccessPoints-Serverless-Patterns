@@ -29,7 +29,7 @@
 | S3 Access Points (FlexCache volume) | ⚠️ 未確認/要検証 | ❌ | ❌ | ❌ |
 | S3 AP ListObjectsV2 | ✅ | ❌ | ❌ | ❌ |
 | S3 AP GetObject | ✅ | ❌ | ❌ | ❌ |
-| S3 AP PutObject (≤5GB) | ✅ | ❌ | ❌ | ❌ |
+| S3 AP PutObject (単一 PUT ≤5GB / オブジェクト ≤50GB) | ✅ | ❌ | ❌ | ❌ |
 | S3 AP HeadObject | ✅ | ❌ | ❌ | ❌ |
 | S3 AP DeleteObject | ✅ | ❌ | ❌ | ❌ |
 | S3 AP GetBucketNotification | ❌ | ❌ | ❌ | ❌ |

@@ -1,11 +1,13 @@
 import os
-import json
 import boto3
 from botocore.config import Config
 
 region = os.environ.get("AWS_REGION", "ap-northeast-1")
-s3 = boto3.client("s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4"))
+s3 = boto3.client(
+    "s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4")
+)
 textract = boto3.client("textract", region_name=region)
+
 
 def handler(event, context):
     """Extract text from a document/image on FSx for ONTAP S3 AP using Textract."""
@@ -26,9 +28,7 @@ def handler(event, context):
                 FeatureTypes=["TABLES", "FORMS"],
             )
         else:
-            response = textract.detect_document_text(
-                Document={"Bytes": doc_bytes}
-            )
+            response = textract.detect_document_text(Document={"Bytes": doc_bytes})
 
         # Extract text lines
         lines = []

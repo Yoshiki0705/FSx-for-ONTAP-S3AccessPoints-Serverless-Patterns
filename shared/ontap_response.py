@@ -63,9 +63,7 @@ PROTECTED_ACCOUNTS: set[str] = {
 
 _extra = os.environ.get("PROTECTED_ACCOUNTS_EXTRA", "")
 if _extra:
-    PROTECTED_ACCOUNTS.update(
-        name.strip().lower() for name in _extra.split(",") if name.strip()
-    )
+    PROTECTED_ACCOUNTS.update(name.strip().lower() for name in _extra.split(",") if name.strip())
 
 
 class ArpResponseError(Exception):
@@ -133,7 +131,7 @@ class ArpResponseActions:
 
     def _get_svm_uuid(self, svm_name: str) -> str:
         """Resolve SVM name to UUID."""
-        data = self._client.get(f"/svm/svms", params={"name": svm_name, "fields": "uuid"})
+        data = self._client.get("/svm/svms", params={"name": svm_name, "fields": "uuid"})
         records = data.get("records", [])
         if not records:
             raise ArpResponseError(f"SVM not found: {svm_name}", status_code=404)
@@ -141,9 +139,7 @@ class ArpResponseActions:
 
     def _is_svm_ad_joined(self, svm_name: str) -> bool:
         """Check if SVM has CIFS service (= AD-joined)."""
-        data = self._client.get(
-            "/protocols/cifs/services", params={"svm.name": svm_name, "fields": "name"}
-        )
+        data = self._client.get("/protocols/cifs/services", params={"svm.name": svm_name, "fields": "name"})
         return len(data.get("records", [])) > 0
 
     def _get_volume_uuid(self, svm_name: str, volume_name: str) -> str:
@@ -154,9 +150,7 @@ class ArpResponseActions:
         )
         records = data.get("records", [])
         if not records:
-            raise ArpResponseError(
-                f"Volume {volume_name} not found in SVM {svm_name}", status_code=404
-            )
+            raise ArpResponseError(f"Volume {volume_name} not found in SVM {svm_name}", status_code=404)
         return records[0]["uuid"]
 
     # ------------------------------------------------------------------
@@ -189,12 +183,20 @@ class ArpResponseActions:
     # SMB User Blocking
     # ------------------------------------------------------------------
 
+    def _existing_win_unix_mappings(self, svm_uuid: str) -> list[dict[str, Any]]:
+        """Current win_unix name-mappings on the SVM, with index and pattern."""
+        data = self._client.get(
+            "/name-services/name-mappings",
+            params={"svm.uuid": svm_uuid, "direction": "win_unix", "fields": "index,pattern"},
+        )
+        return data.get("records", [])
+
     def block_smb_user(
         self,
         svm_name: str,
         domain: str,
         username: str,
-        position: int = 1,
+        position: int | None = None,
     ) -> dict[str, Any]:
         """Block an SMB user by creating a deny name-mapping.
 
@@ -205,7 +207,11 @@ class ArpResponseActions:
             svm_name: SVM name.
             domain: Windows domain (e.g., "CORP").
             username: Username to block.
-            position: Rule position (1 = highest priority).
+            position: Rule position (1 = evaluated first). Defaults to the lowest
+                free index. This used to default to 1 unconditionally, which made
+                a second block impossible: ONTAP rejects an occupied index with a
+                bare 409, so containing a second principal during an incident
+                failed with nothing to explain why.
 
         Returns:
             Dict with blocking details.
@@ -213,6 +219,35 @@ class ArpResponseActions:
         _validate_username(username)
         svm_uuid = self._get_svm_uuid(svm_name)
         pattern = f"{domain}\\\\{username}"
+
+        existing = self._existing_win_unix_mappings(svm_uuid)
+
+        # Re-blocking a principal who is already blocked is a normal thing to do
+        # during an incident — a second alert, or an operator who cannot see the
+        # first block. It should be a no-op, not a 409.
+        for record in existing:
+            if str(record.get("pattern", "")) == pattern:
+                logger.info(
+                    "SMB user already blocked: %s\\%s on SVM %s (index %s)",
+                    domain,
+                    username,
+                    svm_name,
+                    record.get("index"),
+                )
+                return {
+                    "action": "block_smb_user",
+                    "svm": svm_name,
+                    "pattern": pattern,
+                    "position": record.get("index"),
+                    "status": "already_blocked",
+                    "marker": RESPONSE_MARKER,
+                }
+
+        if position is None:
+            used = {record.get("index") for record in existing}
+            position = 1
+            while position in used:
+                position += 1
 
         ad_joined = self._is_svm_ad_joined(svm_name)
         replacement = "nobody" if ad_joined else " "
@@ -227,7 +262,11 @@ class ArpResponseActions:
 
         logger.info(
             "Blocking SMB user: %s\\%s on SVM %s (position %d, ad_joined=%s)",
-            domain, username, svm_name, position, ad_joined,
+            domain,
+            username,
+            svm_name,
+            position,
+            ad_joined,
         )
 
         self._client.post("/name-services/name-mappings", body=body)
@@ -241,9 +280,7 @@ class ArpResponseActions:
             "marker": RESPONSE_MARKER,
         }
 
-    def unblock_smb_user(
-        self, svm_name: str, domain: str, username: str
-    ) -> dict[str, Any]:
+    def unblock_smb_user(self, svm_name: str, domain: str, username: str) -> dict[str, Any]:
         """Remove SMB user block by deleting the name-mapping entry."""
         svm_uuid = self._get_svm_uuid(svm_name)
         pattern = f"{domain}\\\\{username}"
@@ -263,9 +300,7 @@ class ArpResponseActions:
 
         for record in records:
             index = record.get("index", 0)
-            self._client.delete(
-                f"/name-services/name-mappings/{svm_uuid}/win_unix/{index}"
-            )
+            self._client.delete(f"/name-services/name-mappings/{svm_uuid}/win_unix/{index}")
             logger.info("Removed name-mapping: %s position %d", pattern, index)
 
         return {
@@ -321,13 +356,9 @@ class ArpResponseActions:
             "index": rule_index,
         }
 
-        logger.info(
-            "Blocking NFS IP: %s on SVM %s policy %s", client_ip, svm_name, policy_name
-        )
+        logger.info("Blocking NFS IP: %s on SVM %s policy %s", client_ip, svm_name, policy_name)
 
-        self._client.post(
-            f"/protocols/nfs/export-policies/{policy_id}/rules", body=body
-        )
+        self._client.post(f"/protocols/nfs/export-policies/{policy_id}/rules", body=body)
 
         return {
             "action": "block_nfs_ip",
@@ -339,9 +370,7 @@ class ArpResponseActions:
             "marker": RESPONSE_MARKER,
         }
 
-    def unblock_nfs_ip(
-        self, svm_name: str, policy_name: str, client_ip: str
-    ) -> dict[str, Any]:
+    def unblock_nfs_ip(self, svm_name: str, policy_name: str, client_ip: str) -> dict[str, Any]:
         """Remove NFS IP block by deleting the export-policy rule."""
         data = self._client.get(
             "/protocols/nfs/export-policies",
@@ -368,9 +397,7 @@ class ArpResponseActions:
                 match_str = client.get("match", "")
                 if RESPONSE_MARKER in match_str and client_ip in match_str:
                     rule_index = rule["index"]
-                    self._client.delete(
-                        f"/protocols/nfs/export-policies/{policy_id}/rules/{rule_index}"
-                    )
+                    self._client.delete(f"/protocols/nfs/export-policies/{policy_id}/rules/{rule_index}")
                     deleted += 1
 
         return {
@@ -470,9 +497,7 @@ class ArpResponseActions:
             Dict with disconnection details.
         """
         if not user and not client_ip:
-            raise ArpResponseError(
-                "At least one of user or client_ip is required", status_code=400
-            )
+            raise ArpResponseError("At least one of user or client_ip is required", status_code=400)
 
         svm_uuid = self._get_svm_uuid(svm_name)
 
@@ -501,9 +526,7 @@ class ArpResponseActions:
             conn_id = session.get("connection_id")
             if identifier and conn_id:
                 try:
-                    self._client.delete(
-                        f"/protocols/cifs/sessions/{svm_uuid}/{identifier}/{conn_id}"
-                    )
+                    self._client.delete(f"/protocols/cifs/sessions/{svm_uuid}/{identifier}/{conn_id}")
                     disconnected += 1
                 except Exception as e:
                     logger.warning("Failed to disconnect session: %s", e)
@@ -539,11 +562,13 @@ class ArpResponseActions:
             for record in data.get("records", []):
                 replacement = record.get("replacement", "")
                 if replacement in (" ", "nobody"):
-                    smb_blocks.append({
-                        "pattern": record.get("pattern", ""),
-                        "index": record.get("index", 0),
-                        "replacement": replacement,
-                    })
+                    smb_blocks.append(
+                        {
+                            "pattern": record.get("pattern", ""),
+                            "index": record.get("index", 0),
+                            "replacement": replacement,
+                        }
+                    )
         except Exception:
             pass
 
@@ -562,11 +587,13 @@ class ArpResponseActions:
                 for rule in rules_data.get("records", []):
                     for client_entry in rule.get("clients", []):
                         if RESPONSE_MARKER in client_entry.get("match", ""):
-                            nfs_blocks.append({
-                                "policy": policy.get("name", ""),
-                                "rule_index": rule["index"],
-                                "client_match": client_entry["match"],
-                            })
+                            nfs_blocks.append(
+                                {
+                                    "policy": policy.get("name", ""),
+                                    "rule_index": rule["index"],
+                                    "client_match": client_entry["match"],
+                                }
+                            )
         except Exception:
             pass
 
@@ -629,11 +656,13 @@ class ArpResponseActions:
                 )
                 results["steps"].append(snap)
             except (ArpResponseError, Exception) as e:
-                results["steps"].append({
-                    "action": "create_incident_snapshot",
-                    "status": "failed",
-                    "error": str(e),
-                })
+                results["steps"].append(
+                    {
+                        "action": "create_incident_snapshot",
+                        "status": "failed",
+                        "error": str(e),
+                    }
+                )
 
         # Step 2: Block SMB user
         if domain and username:
@@ -641,39 +670,41 @@ class ArpResponseActions:
                 block = self.block_smb_user(svm_name=svm_name, domain=domain, username=username)
                 results["steps"].append(block)
             except (ArpResponseError, Exception) as e:
-                results["steps"].append({
-                    "action": "block_smb_user",
-                    "status": "failed",
-                    "error": str(e),
-                })
+                results["steps"].append(
+                    {
+                        "action": "block_smb_user",
+                        "status": "failed",
+                        "error": str(e),
+                    }
+                )
 
         # Step 3: Block NFS IP
         if client_ip:
             try:
-                block = self.block_nfs_ip(
-                    svm_name=svm_name, policy_name=policy_name, client_ip=client_ip
-                )
+                block = self.block_nfs_ip(svm_name=svm_name, policy_name=policy_name, client_ip=client_ip)
                 results["steps"].append(block)
             except (ArpResponseError, Exception) as e:
-                results["steps"].append({
-                    "action": "block_nfs_ip",
-                    "status": "failed",
-                    "error": str(e),
-                })
+                results["steps"].append(
+                    {
+                        "action": "block_nfs_ip",
+                        "status": "failed",
+                        "error": str(e),
+                    }
+                )
 
         # Step 4: Disconnect sessions
         if domain and username:
             try:
-                disc = self.disconnect_smb_sessions(
-                    svm_name=svm_name, user=f"{domain}\\{username}"
-                )
+                disc = self.disconnect_smb_sessions(svm_name=svm_name, user=f"{domain}\\{username}")
                 results["steps"].append(disc)
             except (ArpResponseError, Exception) as e:
-                results["steps"].append({
-                    "action": "disconnect_smb_sessions",
-                    "status": "failed",
-                    "error": str(e),
-                })
+                results["steps"].append(
+                    {
+                        "action": "disconnect_smb_sessions",
+                        "status": "failed",
+                        "error": str(e),
+                    }
+                )
 
         failed = [s for s in results["steps"] if s.get("status") == "failed"]
         results["status"] = "partial_failure" if failed else "contained"

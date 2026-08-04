@@ -1,11 +1,13 @@
 import os
-import json
 import boto3
 from botocore.config import Config
 
 region = os.environ.get("AWS_REGION", "ap-northeast-1")
-s3 = boto3.client("s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4"))
+s3 = boto3.client(
+    "s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4")
+)
 rekognition = boto3.client("rekognition", region_name=region)
+
 
 def handler(event, context):
     """Detect objects/labels in an image file on FSx for ONTAP S3 AP using Rekognition.
@@ -42,15 +44,17 @@ def handler(event, context):
             }
             for instance in label.get("Instances", []):
                 box = instance.get("BoundingBox", {})
-                label_data["instances"].append({
-                    "boundingBox": {
-                        "width": round(box.get("Width", 0), 4),
-                        "height": round(box.get("Height", 0), 4),
-                        "left": round(box.get("Left", 0), 4),
-                        "top": round(box.get("Top", 0), 4),
-                    },
-                    "confidence": round(instance.get("Confidence", 0), 1),
-                })
+                label_data["instances"].append(
+                    {
+                        "boundingBox": {
+                            "width": round(box.get("Width", 0), 4),
+                            "height": round(box.get("Height", 0), 4),
+                            "left": round(box.get("Left", 0), 4),
+                            "top": round(box.get("Top", 0), 4),
+                        },
+                        "confidence": round(instance.get("Confidence", 0), 1),
+                    }
+                )
             labels.append(label_data)
 
         return {"labels": labels, "imageWidth": None, "imageHeight": None, "error": None}

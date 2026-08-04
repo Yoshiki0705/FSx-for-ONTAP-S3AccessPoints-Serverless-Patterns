@@ -1,10 +1,11 @@
 import os
-import json
 import boto3
 from botocore.config import Config
 
 region = os.environ.get("AWS_REGION", "ap-northeast-1")
-s3 = boto3.client("s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4"))
+s3 = boto3.client(
+    "s3", region_name=region, endpoint_url=f"https://s3.{region}.amazonaws.com", config=Config(signature_version="s3v4")
+)
 bedrock = boto3.client("bedrock-runtime", region_name=region)
 
 MAX_FILE_SIZE = 100 * 1024  # 100KB max for inline context
@@ -73,8 +74,8 @@ def handler(event, context):
             "answer": "",
             "model": MODEL_ID,
             "error": f"AI processing blocked: file classified as {classification}. "
-                     f"Files with classification {', '.join(sorted(AI_BLOCKED_LEVELS))} "
-                     f"cannot be sent to AI services.",
+            f"Files with classification {', '.join(sorted(AI_BLOCKED_LEVELS))} "
+            f"cannot be sent to AI services.",
             "blocked": True,
             "classification": classification,
         }

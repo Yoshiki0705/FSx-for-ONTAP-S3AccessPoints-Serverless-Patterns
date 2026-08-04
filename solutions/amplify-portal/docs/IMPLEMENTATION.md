@@ -3,9 +3,13 @@
 > Developer/AI reference for understanding, reproducing, and customizing the portal.
 > Each section documents not just WHAT was implemented, but WHY — the design intent behind each decision.
 
+> **End users**: This document is for developers and AI agents. If you're looking for how to use the portal day-to-day, see the [User Guide](../../docs/en/portal-user-guide.md) ([日本語](../../docs/ja/portal-user-guide.md)).
+
 ## Design Intent Summary
 
-This portal implements a **System Manager-equivalent web UI** for FSx for ONTAP, accessible via browser without VPN or CLI tools. Key constraints that shaped the architecture:
+This portal provides a **browser-based web UI for day-to-day FSx for ONTAP operations**, reachable without a VPN to the management LIF and without CLI tools. It is not a replacement for ONTAP System Manager: cluster configuration, node management and upgrades stay with System Manager and the ONTAP CLI. For the exact division of responsibility and the per-panel implementation status, see the [Admin Capability Map](admin-capability-map.en.md) ([日本語](admin-capability-map.md)).
+
+Key constraints that shaped the architecture:
 
 1. **CloudFormation 1MB template limit** → Led to generic dispatch pattern (8 endpoints instead of 73)
 2. **ONTAP REST API requires VPC access** → Led to VPC split architecture (File Lambdas outside, Admin Lambdas inside)
@@ -25,6 +29,7 @@ Browser → Amplify (Cognito auth) → AppSync GraphQL
                     │ arpQuery/Mutation → ArpResponse λ       │ ← VPC
                     │ protectionQuery/Mutation → Snapshots λ  │ ← VPC
                     │ fileQuery/Mutation → ListFiles λ        │ ← No VPC (S3 AP Internet-origin)
+                    │ agentQuery → AgentChat λ               │ ← No VPC (Bedrock + S3 AP)
                     └─────────────────────────────────────────┘
 ```
 
@@ -37,9 +42,9 @@ Browser → Amplify (Cognito auth) → AppSync GraphQL
 | `region` | `ap-northeast-1` | All resources colocated in same region as FSx for ONTAP |
 | `s3ApAlias` | `eda-demo-s3ap-...-ext-s3alias` | Internet-origin S3 AP for file browsing without VPC |
 | `stateMachineArn` | `arn:aws:states:...` | Step Functions workflow for AI processing (UC patterns) |
-| `vpcId` | `vpc-05192d06e1e91d756` | VPC where FSx ENIs reside — Lambda must be here for ONTAP REST API |
-| `vpcSubnetIds` | `subnet-0dc75edfe8650bf44` | Same subnet as FSx for ONTAP — ensures network path exists |
-| `vpcSecurityGroupIds` | `sg-015df9ccadf010bf5` | FSx's own SG — allows all-traffic egress by default |
+| `vpcId` | `vpc-0123456789abcdef2` | VPC where FSx ENIs reside — Lambda must be here for ONTAP REST API |
+| `vpcSubnetIds` | `subnet-0123456789abcdef1` | Same subnet as FSx for ONTAP — ensures network path exists |
+| `vpcSecurityGroupIds` | `sg-0123456789abcdef0` | FSx's own SG — allows all-traffic egress by default |
 | `groupApMapping` | `{}` | Per-team S3 AP routing for file isolation (My Files feature) |
 | `bedrockKbId` | `""` | Bedrock Knowledge Base for semantic file search |
 
@@ -167,3 +172,203 @@ Without this, `JSON.parse(object)` silently produces `{}` → Lambda receives em
 | 2026-07-26 | S3 Object Lock status + config UI | Live status from real S3 bucket (Governance/1-day). Bucket search + mode/retention config form | SnaplockStatus.tsx, handler.py |
 | 2026-07-26 | Lock panel wording fix | コンテンツ不変性 → データ保護・改ざん防止 (natural Japanese) | ja.ts |
 | 2026-07-26 | scripts/dev.sh | `npm start` runs sandbox + vite together, Ctrl+C stops both | package.json, scripts/dev.sh |
+| 2026-07-27 | AI Agent Chat | Bedrock Converse + tool_use multi-agent (file-explorer, knowledge-analyst, safety-controller) | AgentChat.tsx, handler.py |
+| 2026-07-27 | Admin-gated AI features | DynamoDB PortalSettingsTable + AiSettingsManager toggle UI (disabled by default) | backend.ts, AiSettingsManager.tsx, App.tsx |
+| 2026-07-27 | Phase 1a: Chat history | DynamoDB ChatHistoryTable (userId+sessionId, TTL 90d), auto-save, session list | handler.py, AgentChat.tsx |
+| 2026-07-27 | Phase 1b: File permissions sidebar | ONTAP REST /protocols/file-security/permissions → AgentFileSidebar.tsx | snapshots/index.py, AgentFileSidebar.tsx |
+| 2026-07-27 | Phase 1c: Multimodal image upload | Drag-drop + base64 → Bedrock Converse image content block | handler.py, AgentChat.tsx |
+| 2026-07-27 | Phase 1d: Mode toggle | 3-pill selector (KB/Agent/Multi) with per-mode system prompt + tool filtering | handler.py, AgentChat.tsx |
+| 2026-07-27 | Phase 1e: KB Smart Routing | Group-based KB search scope filtering via GROUP_PATH_PREFIXES + retrievalFilter | handler.py, agent-dispatch.js |
+| 2026-07-27 | Phase 2: Agent Directory | DynamoDB AgentDirectoryTable, CRUD (create/list/get/update/delete), card grid UI | handler.py, AgentDirectory.tsx |
+| 2026-07-27 | Phase 2: Agent Creator | Emoji icon picker, tools selection, system prompt, category, shared toggle | AgentCreator.tsx |
+| 2026-07-27 | Phase 2: Multi-Agent Teams | DynamoDB AgentTeamsTable, team wizard (select agents + assign roles), gallery | handler.py, AgentTeams.tsx |
+| 2026-07-27 | Phase 2: Navigation integration | agentDir section with tabs (Directory/Teams), hidden when AI disabled | App.tsx |
+| 2026-07-27 | Lock dialog UX fix | Error message shown inside modal (not page bottom); Enable Tamperproof button when locking not enabled | VersionHistory.tsx, snapshots/index.py |
+| 2026-07-27 | Lock column display fix | Unlocked snapshots show `—` instead of 🔓 icon (was confusing: all appeared locked) | VersionHistory.tsx |
+| 2026-07-27 | Version Diff feature | Checkbox selection + compare button + diff result table (added/modified/deleted). DemoMode client-side fallback | VersionHistory.tsx, snapshots/index.py |
+| 2026-07-27 | Clone from Snapshot rename | "Restore" → "Clone" with ransomware recovery/audit/test use-case description. Full i18n | RestoreFromSnapshot.tsx, ja.ts, en.ts |
+| 2026-07-27 | Retention period range hint | ISO field shows valid range P1D–P36500D / P1M–P1200M / P1Y–P100Y | ja.ts, en.ts |
+| 2026-07-27 | Tamperproof enable: custom modal | Replace window.prompt with custom dialog: 3 bullet points + ENABLE typed confirmation + disabled-until-correct button | SnapshotAdminManager.tsx, ja.ts, en.ts |
+| 2026-07-27 | Snapshot policy assign to volume | Policy tab: "Assign to volume" button + VolumeSelector dialog. Tamperproof tab: inline dropdown to change policy | SnapshotAdminManager.tsx, ja.ts, en.ts |
+| 2026-07-27 | Snapshot policy delete | Delete button per policy row (red). Cannot delete if assigned — error guides to detach first | SnapshotAdminManager.tsx, handler.py, ja.ts, en.ts |
+| 2026-07-27 | Tamperproof design doc | 3-layer design guide + stop flow (Pattern D) + API reference | docs/tamperproof-snapshot-design.md |
+| 2026-07-28 | ShareLink i18n | Full Japanese translation for share link dialog (title, expires, generate, copy, security note) | ShareLink.tsx, ja.ts, en.ts |
+| 2026-07-28 | ShareLink user guide | Detailed share link usage guide in portal-tabs-guide.md (操作手順, 仕様, セキュリティ) | portal-tabs-guide.md |
+| 2026-07-28 | Folder share link | Copy direct link to folder (`#files?path=prefix`). initialPrefix prop on FileExplorer for external navigation | FileExplorer.tsx, App.tsx, ja.ts, en.ts |
+| 2026-07-28 | ZIP folder download | Download all files as ZIP (500 files / 500MB max). DemoMode mock. Lambda action in list-files handler | list-files/index.py, FolderDownload.tsx, ja.ts, en.ts |
+| 2026-07-28 | Folder favorites | Star button (☆/★) on both folders and files. FavoritesView shows 📁/📄 with correct navigation | FileExplorer.tsx, Favorites.tsx, App.tsx |
+| 2026-07-28 | AD/OIDC auth config | Environment-driven OIDC/SAML in auth/resource.ts. authMode in portal-settings. socialProviders in Authenticator | auth/resource.ts, portal-settings.ts, main.tsx |
+| 2026-07-28 | Folder sharing design doc | ZIP generation architecture + AD/OIDC integration plan | docs/folder-sharing-and-auth-design.md |
+
+## AI Agent Architecture (Phase 1 + Phase 2)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Frontend (AgentChat.tsx)                                             │
+│                                                                      │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────┐       │
+│  │ Mode Toggle │  │ Card Grid    │  │ Chat Messages        │       │
+│  │ KB/Agent/   │  │ (filtered by │  │ + Tool Trace Timeline│       │
+│  │ Multi-Agent │  │  mode)       │  │ + Citations          │       │
+│  └─────────────┘  └──────────────┘  └──────────────────────┘       │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────┐       │
+│  │ 📎 Image    │  │ 📜 History   │  │ 📂 File Sidebar      │       │
+│  │ Upload      │  │ Panel        │  │ (Permissions)        │       │
+│  └─────────────┘  └──────────────┘  └──────────────────────┘       │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │ agentQuery (AppSync)
+                           ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ Lambda: agent-chat/handler.py                                        │
+│                                                                      │
+│  Dispatch:                                                           │
+│  ├── chat → run_agent_loop(message, history, image, mode, groups)   │
+│  ├── saveSession / loadSession / listSessions / deleteSession       │
+│  ├── listAgents / getAgent / createAgent / updateAgent / deleteAgent│
+│  └── listTeams / createTeam / deleteTeam                            │
+│                                                                      │
+│  Agent Loop:                                                         │
+│  1. Select system prompt + tools based on mode                      │
+│  2. Build messages (text + optional image)                          │
+│  3. Call Bedrock Converse (tool_use loop, max 8 iterations)         │
+│  4. Execute tools: list_files, read_file, search_files,             │
+│     get_volume_summary, kb_search (with smart routing), approval    │
+│  5. Return: { answer, toolCalls (with agent labels), model }        │
+│                                                                      │
+│  DynamoDB Tables:                                                    │
+│  ├── ChatHistoryTable (userId + sessionId, TTL 90d)                 │
+│  ├── AgentDirectoryTable (agentId → name, prompt, tools, icon)      │
+│  ├── AgentTeamsTable (teamId → agents with roles)                   │
+│  └── PortalSettingsTable (settingKey → enabled/disabled)            │
+└─────────────────────────────────────────────────────────────────────┘
+                           │
+                           ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ External Services                                                    │
+│  ├── Bedrock Converse (Nova Lite / Claude) — LLM + Vision           │
+│  ├── Bedrock KB Retrieve (S3 Vectors / OpenSearch Serverless)       │
+│  └── S3 AP (Internet-origin) — File listing/reading                 │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Admin Feature Gating
+
+All AI features are **disabled by default** and controlled via `PortalSettingsTable`:
+
+| Setting Key | Feature | Dependency |
+|-------------|---------|-----------|
+| `aiAgentEnabled` | AI Agent Chat nav + page | None |
+| `aiSearchEnabled` | Semantic Search nav + page | KB configured |
+| `aiMultimodalEnabled` | Image upload in chat | Agent enabled |
+| `chatHistoryEnabled` | Session persistence | Agent enabled |
+| `aiSmartRoutingEnabled` | Group-based KB filtering | Search enabled |
+| `agentDirectoryEnabled` | Agent Directory + Teams | Agent enabled |
+
+Admin toggles these from **Resource Management > AI Settings** panel.
+
+---
+
+## Modification Log
+
+### 2026-07-30: 6 New ResourceManagement Panels
+
+**Added panels (16 total, up from 10)**:
+
+| Panel | Category | Component | Lambda Actions |
+|-------|----------|-----------|---------------|
+| FlexClone | Storage | `FlexCloneManager.tsx` | listFlexClones, createFlexClone, splitFlexClone |
+| Local Users | Access Control | `LocalUserManager.tsx` | listLocalUsers, createLocalUser, deleteLocalUser, listLocalGroups, createLocalGroup, deleteLocalGroup, listGroupMembers, addGroupMember, removeGroupMember |
+| Name Mapping | Access Control | `NameMappingManager.tsx` | listNameMappings, createNameMapping, deleteNameMapping |
+| FPolicy | Data Protection | `FPolicyManager.tsx` | listFpolicyPolicies, listFpolicyEvents, getFpolicyStatus |
+| Vscan | Data Protection | `VscanManager.tsx` | getVscanStatus, listVscanPolicies |
+| SnapMirror | Data Protection | `SnapMirrorStatus.tsx` | listSnapmirrorRelationships, getSnapmirrorTransfers |
+
+**Design decisions**:
+- **Vscan guidance**: When Vscan is not configured (`enabled: false`), displays a 5-step setup wizard with 6-vendor comparison table and external links (AWS Blog, GitHub samples, NetApp docs). This "zero-to-configured" flow was added because Vscan has the highest setup barrier of any ONTAP feature — it requires external Windows/Linux infrastructure.
+- **FlexClone split**: Confirmation dialog required because split is irreversible (clone becomes independent volume, losing space efficiency).
+- **NameMapping direction selector**: 4 directions (win_unix, unix_win, s3_unix, s3_win) exposed. `s3_unix` is auto-managed by FSx when S3 AP is attached — the UI shows it for visibility but notes it shouldn't be manually modified.
+- **SnapMirror expandable transfers**: Click to expand last 10 transfers per relationship, avoiding heavy API calls on initial load.
+- **DemoMode behavior**: All panels render gracefully with empty state when ONTAP is not connected. No API errors shown to users.
+
+### 2026-07-30: Graceful Error Handling for New Panels
+
+**Problem**: When the backend Lambda hasn't been redeployed after adding new actions (or in DemoMode), panels showed `"⚠️ Unknown action: listVscanPolicies"` etc. as red error banners.
+
+**Fix**: All 6 new panels now filter out `"Unknown action"` and `"ONTAP connection not configured"` errors from the UI, falling back to empty state (which is the correct DemoMode behavior). Affected files:
+- `VscanManager.tsx` — `loadData()` response handling
+- `NameMappingManager.tsx` — `loadMappings()` response handling
+- `LocalUserManager.tsx` — `loadUsers()` + `loadGroups()` (2 locations)
+- `FlexCloneManager.tsx` — `loadClones()` response handling
+- `SnapMirrorStatus.tsx` — `loadRelationships()` response handling
+- `FPolicyManager.tsx` — `loadData()` across all 3 tabs
+
+### 2026-07-30: Athena Query Panel UX Improvement
+
+**Problem**: The Athena panel showed only a bare SQL textarea with `SELECT * FROM default.my_table LIMIT 10` — no explanation of what to input or how the panel relates to Glue Crawler.
+
+**Fix**: Added guidance panel with:
+- Explanation: "Catalog FSx for ONTAP files with Glue Crawler, then query with SQL here"
+- Expandable `<details>` section with 3 practical query examples (copy-pasteable)
+- Default SQL changed to `SHOW TABLES IN default` (discover tables first)
+- Multi-line placeholder with commented examples
+
+**ResourceManagement layout at that point (4 categories × 16 panels + 1 service)**:
+```
+Storage (🗄️):        Volumes / 🧬FlexClone / Qtree / Quotas / Efficiency
+Access Control (🔐): Export Policies / SMB Shares / 👤Local Users / 🔀Name Mapping / QoS
+Data Protection (🛡️): ARP/AI / Snapshots / SnapLock / 📡FPolicy / 🦠Vscan / 🪞SnapMirror
+Services (🤖):       AI Settings
+```
+
+### 2026-08-03: ONTAP write operations, cluster and SVM peering
+
+**Problem**: several panels rendered data but could not change it. SnapMirror, Vscan and
+FPolicy were read-only, and cluster/SVM peering had no surface at all — the area the AWS
+Management Console does not cover, which forced operators to the ONTAP CLI.
+
+**Fix**: added 36 actions to `functions/resource-management/handler.py` (110 total) and two
+panels, `admin/PeeringManager.tsx` and `admin/ClusterManager.tsx`.
+
+- SnapMirror writes: update now, quiesce, resume, break, resync, abort transfer, delete
+- Vscan writes: service enable/disable, on-access policy create / enable / delete
+- FPolicy writes: event and policy create / delete, policy enable/disable
+- Peering: cluster peer and SVM peer create / accept / delete, intercluster LIF visibility
+- Cluster: nodes, licences, LIFs (with enable/disable), protocol services
+  (with enable/disable), DNS read/update, asynchronous jobs
+
+Destructive operations are confirm-gated in both layers: the UI shows an inline
+confirmation row, and the handler refuses without `confirm=true`, so a direct call that
+bypasses the UI is rejected the same way.
+
+`ShareLink.tsx` was fully hardcoded English; it now uses 15 new i18n keys, added to all
+8 locales (1012 keys each, parity asserted).
+
+**ResourceManagement layout (5 categories × 20 panels)**:
+```
+Storage (🗄️):        Volumes / Qtree / Quotas / Efficiency / ⚡FlexCache / 🧬FlexClone
+Access Control (🔐): Export Policies / SMB Shares / QoS / 👤Local Users / 🔀Name Mapping
+Data Protection (🛡️): ARP/AI / Snapshots / SnapLock / 🪞SnapMirror / 🦠Vscan / 📡FPolicy
+Cluster (🖥️):        🔗Peering / 🖥️Cluster information
+Services (🤖):       AI Settings
+```
+
+Handler tests: 166 (was 79). Verification boundary: the handler runs against mocked ONTAP
+responses and the UI is driven against that real handler output; the hop from a deployed
+Lambda to a live ONTAP cluster is not covered.
+
+---
+
+## Related Documents
+
+| Document | Purpose |
+|----------|---------|
+| [Getting Started Guide](./GETTING-STARTED.md) | 30-minute quickstart with DemoMode |
+| [PoC → Production Guide](../../docs/en/portal-poc-to-production.md) | Migration checklist for production FSx for ONTAP connectivity |
+| [Scaling Guide](../../docs/en/portal-scaling-guide.md) | Capacity planning, throughput sharing, QoS, growth estimation |
+| [Accessibility Statement](../../docs/en/portal-accessibility.md) | ARIA, keyboard nav, screen reader, WCAG compliance note |
+| [Security Review](./SECURITY-REVIEW.md) | Threat model, IAM permissions, data flow analysis |
+| [Authorization Model](../../docs/en/portal-authorization-model.md) | Cognito groups, S3 AP identity, role separation |
+| [User Guide](../../docs/en/portal-user-guide.md) | End-user documentation (8 languages) |
+| [Compliance Guide](../../docs/en/portal-compliance-guide.md) | Auditor-facing verification procedures |
+| [AI Agent Demo Guide](./ai-agent-demo-guide.en.md) | E2E agent chat demonstration |
+| [Admin Demo Guide](../../docs/en/admin-resource-management-demo.md) | Admin operations walkthrough |

@@ -125,7 +125,7 @@ sam deploy \
 **Notes**:
 
 - Strongly recommend specifying `S3AccessPointName` (IAM permissions for both Alias and ARN formats)
-- Objects over 5GB not supported by FSx for ONTAP S3 AP (AWS specification), multipart upload required
+- Object size limit is 50 GB (AWS specification). A single PutObject is capped at 5 GB, so multipart upload is required above 5 GB
 - ChangeDetection Lambda uses DynamoDB only, so not affected by `OutputDestination`
 - Bedrock reports are written as Markdown (`text/markdown; charset=utf-8`), directly viewable
   in text editors on SMB/NFS clients

@@ -258,7 +258,7 @@ graph TD
 | **S3 Event Notification 非対応** | PutObject トリガーの Lambda は使えない | FPolicy + EventBridge でイベント駆動を実現 |
 | **Versioning 非対応** | オブジェクトの世代管理ができない | ONTAP Snapshot（ボリューム単位のポイントインタイム）で代替 |
 | **ListObjectsV2 性能特性** | 大量ファイルディレクトリで遅延 | Hive パーティション + Prefix 限定 + 外部カタログ |
-| **PutObject 上限 5 GB** | 大ファイルは分割が必要 | Multipart Upload (ONTAP 9.16.1+) |
+| **オブジェクト上限 50 GB（単一 PutObject は 5 GB）** | 50 GB 超のファイルは分割が必要 | 5〜50 GB は Multipart Upload (ONTAP 9.16.1+) |
 
 詳細: [設計考慮事項](../../docs/design-considerations.md)
 

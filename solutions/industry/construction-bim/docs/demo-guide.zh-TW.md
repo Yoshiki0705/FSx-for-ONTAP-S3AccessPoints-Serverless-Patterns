@@ -198,7 +198,7 @@ sam deploy \
 **注意事項**：
 
 - 強烈建議指定 `S3AccessPointName`（同時以 Alias 格式和 ARN 格式授予 IAM 權限）
-- 超過 5GB 的物件無法透過 FSx for ONTAP S3 AP 處理（AWS 規格），必須使用分段上傳
+- 物件大小上限為 50 GB（AWS 規格）。單次 PutObject 上限為 5 GB，因此超過 5 GB 必須使用多部分上傳
 - AWS 規格上的限制請參照
   [專案 README 的「AWS 規格上的限制與因應對策」章節](../../README.md#aws-仕様上の制約と回避策)
   以及 [`docs/output-destination-patterns.md`](../../docs/output-destination-patterns.md)

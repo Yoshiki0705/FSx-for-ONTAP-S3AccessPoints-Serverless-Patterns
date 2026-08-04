@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuthenticator } from "@aws-amplify/ui-react";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../amplify/data/resource";
 import { FileExplorer } from "./components/FileExplorer";
 import { JobSubmitForm } from "./components/JobSubmitForm";
 import { ResultsViewer } from "./components/ResultsViewer";
@@ -8,24 +10,32 @@ import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { AiPanel } from "./components/AiPanel";
 import { AthenaQueryPanel } from "./components/AthenaQueryPanel";
 import { StorageBrowserTab } from "./components/StorageBrowserTab";
-import { FavoritesView } from "./components/Favorites";
+import { FavoritesView, isFolderKey } from "./components/Favorites";
 import { RecentFiles } from "./components/RecentFiles";
 import { VersionHistory } from "./components/VersionHistory";
 import { AuditLog } from "./components/AuditLog";
 import { ArpStatus } from "./components/ArpStatus";
 import { SnaplockStatus } from "./components/SnaplockStatus";
 import { ResourceManagement } from "./components/ResourceManagement";
+import { AgentChat } from "./components/AgentChat";
+import { AgentDirectory } from "./components/AgentDirectory";
+import { AgentCreator } from "./components/AgentCreator";
+import { AgentTeams } from "./components/AgentTeams";
+import { SemanticSearch } from "./components/SemanticSearch";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { useTranslation } from "./i18n";
+import { portalSettings } from "./portal-settings";
 
 import type { TranslationKeys } from "./i18n";
 
+const appClient = generateClient<Schema>();
+
 type Section =
   | "files" | "favorites" | "recent" | "upload"
-  | "process" | "history" | "analytics"
+  | "process" | "agent" | "search" | "history" | "analytics"
   | "snapshots" | "arp" | "lock"
-  | "versions" | "audit" | "resources";
+  | "versions" | "audit" | "resources" | "agentDir";
 
 const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: "browse" | "actions" | "protection" | "admin" }[] = [
   // Browse group
@@ -35,8 +45,11 @@ const NAV_ITEMS: { id: Section; icon: string; labelKey: TranslationKeys; group: 
   { id: "upload", icon: "📤", labelKey: "navUpload", group: "browse" },
   // AI & Processing group
   { id: "process", icon: "⚡", labelKey: "navAiProcessing", group: "actions" },
+  { id: "agent", icon: "🤖", labelKey: "navAgent", group: "actions" },
+  { id: "search", icon: "🔍", labelKey: "navSearch", group: "actions" },
   { id: "history", icon: "📋", labelKey: "navJobHistory", group: "actions" },
   { id: "analytics", icon: "📊", labelKey: "navAnalytics", group: "actions" },
+  { id: "agentDir", icon: "🗂️", labelKey: "navAgentDir", group: "actions" },
   // Data Protection group
   { id: "snapshots", icon: "📸", labelKey: "navSnapshots", group: "protection" },
   { id: "lock", icon: "🔒", labelKey: "navLock", group: "protection" },
@@ -68,11 +81,19 @@ const GROUP_LABELS: Record<string, TranslationKeys> = {
  * - Contextual actions — file operations appear on hover/selection
  * - Responsive — sidebar collapses on mobile
  */
+
+/** Folder holding the given object key, as a prefix with a trailing slash. */
+function parentPrefixOf(fileKey: string): string {
+  const parts = fileKey.split("/");
+  parts.pop();
+  return parts.length > 0 ? parts.join("/") + "/" : "";
+}
+
 function App() {
   // Persist navigation state in URL hash for refresh resilience
   const getInitialSection = (): Section => {
     const hash = window.location.hash.replace("#", "");
-    const valid: Section[] = ["files","favorites","recent","upload","process","history","analytics","snapshots","arp","lock","versions","audit","resources"];
+    const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources","agentDir"];
     return valid.includes(hash as Section) ? (hash as Section) : "files";
   };
 
@@ -87,7 +108,7 @@ function App() {
   useEffect(() => {
     const onHashChange = () => {
       const hash = window.location.hash.replace("#", "");
-      const valid: Section[] = ["files","favorites","recent","upload","process","history","analytics","snapshots","arp","lock","versions","audit","resources"];
+      const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources","agentDir"];
       if (valid.includes(hash as Section) && hash !== activeSection) {
         setActiveSectionRaw(hash as Section);
       }
@@ -97,12 +118,55 @@ function App() {
   }, [activeSection]);
 
   const [selectedPrefix, setSelectedPrefix] = useState("");
+  const [prefixNonce, setPrefixNonce] = useState(0);
   const [activeJobArn, setActiveJobArn] = useState<string | null>(null);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
+
+  /** Show the file explorer at the given folder, even if it is already there. */
+  const openInFiles = (prefix: string) => {
+    setSelectedPrefix(prefix);
+    setPrefixNonce((n) => n + 1);
+    setActiveSection("files");
+  };
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user, signOut, authStatus } = useAuthenticator();
   const { t } = useTranslation();
+
+  // --- Admin-controlled AI feature gate ---
+  // Query DynamoDB portal settings on mount. Falls back to compile-time portalSettings.
+  const [aiAgentEnabled, setAiAgentEnabled] = useState(portalSettings.aiAgentEnabled);
+  const [aiSearchEnabled, setAiSearchEnabled] = useState(portalSettings.aiAgentEnabled);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAiSettings() {
+      try {
+        const response = await appClient.queries.adminQuery({
+          action: "getPortalSettings",
+          params: JSON.stringify({}),
+        });
+        if (cancelled) return;
+        const parsed = response.data
+          ? (typeof response.data === "string" ? JSON.parse(response.data) : response.data)
+          : null;
+        if (parsed?.settings) {
+          setAiAgentEnabled(parsed.settings.aiAgentEnabled === true);
+          setAiSearchEnabled(parsed.settings.aiSearchEnabled === true);
+        }
+      } catch {
+        // Non-admin users may get auth error — fall back to compile-time default
+      }
+    }
+    loadAiSettings();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Sections hidden when AI is disabled
+  const hiddenSections: Set<Section> = new Set();
+  if (!aiAgentEnabled) hiddenSections.add("agent");
+  if (!aiSearchEnabled) hiddenSections.add("search");
+  if (!aiAgentEnabled) hiddenSections.add("agentDir");
 
   if (authStatus !== "authenticated") {
     return <LoadingSkeleton />;
@@ -138,7 +202,7 @@ function App() {
         {(["browse", "actions", "protection", "admin"] as const).map((group) => (
           <div className="sidebar-section" key={group}>
             <span className="sidebar-group-label">{t(GROUP_LABELS[group])}</span>
-            {NAV_ITEMS.filter((n) => n.group === group).map((item) => (
+            {NAV_ITEMS.filter((n) => n.group === group && !hiddenSections.has(n.id)).map((item) => (
               <button
                 key={item.id}
                 className={`sidebar-item ${activeSection === item.id ? "active" : ""}`}
@@ -157,6 +221,8 @@ function App() {
       <main className={`portal-main ${showAiPanel ? "with-panel" : ""}`}>
         {activeSection === "files" && (
           <FileExplorer
+            initialPrefix={selectedPrefix}
+            prefixNonce={prefixNonce}
             onSelectPrefix={(prefix) => {
               setSelectedPrefix(prefix);
               setActiveSection("process");
@@ -169,11 +235,14 @@ function App() {
         )}
         {activeSection === "favorites" && (
           <FavoritesView
-            onNavigate={(fileKey) => {
-              const parts = fileKey.split("/");
-              parts.pop();
-              setSelectedPrefix(parts.length > 0 ? parts.join("/") + "/" : "");
-              setActiveSection("files");
+            onNavigate={(favoriteKey) => {
+              // A folder favorite opens that folder; a file favorite opens the
+              // folder containing it.
+              openInFiles(
+                isFolderKey(favoriteKey)
+                  ? favoriteKey
+                  : parentPrefixOf(favoriteKey)
+              );
             }}
           />
         )}
@@ -182,7 +251,7 @@ function App() {
             onFileSelect={(fileKey) => {
               setSelectedFileKey(fileKey);
               setSelectedFileName(fileKey.split("/").pop() || fileKey);
-              setActiveSection("files");
+              openInFiles(parentPrefixOf(fileKey));
             }}
           />
         )}
@@ -196,16 +265,19 @@ function App() {
             }}
           />
         )}
+        {activeSection === "agent" && (aiAgentEnabled ? <AgentChat /> : <AgentDisabled />)}
+        {activeSection === "search" && (aiSearchEnabled ? (
+          <SemanticSearch
+            onNavigateToFile={(fileKey) => openInFiles(parentPrefixOf(fileKey))}
+          />
+        ) : <AgentDisabled />)}
         {activeSection === "history" && (
           <>
             {activeJobArn && (
               <ResultsViewer
                 executionArn={activeJobArn}
                 inputPrefix={selectedPrefix}
-                onNavigateToFolder={(prefix) => {
-                  setSelectedPrefix(prefix);
-                  setActiveSection("files");
-                }}
+                onNavigateToFolder={(prefix) => openInFiles(prefix)}
               />
             )}
             <JobHistory
@@ -213,15 +285,23 @@ function App() {
             />
           </>
         )}
-        {activeSection === "versions" && <VersionHistory />}
+        {activeSection === "versions" && <VersionHistory mode="diff" />}
         {activeSection === "audit" && <AuditLog />}
         {activeSection === "analytics" && <AthenaQueryPanel />}
 
         {/* Data Protection sections */}
-        {activeSection === "snapshots" && <VersionHistory />}
+        {activeSection === "snapshots" && <VersionHistory mode="browse" />}
         {activeSection === "lock" && <SnaplockStatus />}
         {activeSection === "arp" && <ArpStatus />}
-        {activeSection === "resources" && <ResourceManagement />}
+        {activeSection === "resources" && (
+          <ResourceManagement
+            aiSettings={{ aiAgentEnabled, aiSearchEnabled }}
+            onAiSettingsChange={(s) => { setAiAgentEnabled(s.aiAgentEnabled); setAiSearchEnabled(s.aiSearchEnabled); }}
+          />
+        )}
+        {activeSection === "agentDir" && (
+          <AgentDirectoryPage />
+        )}
         {/* End of Data Protection sections */}
       </main>
 
@@ -234,6 +314,54 @@ function App() {
           />
         </aside>
       )}
+    </div>
+  );
+}
+
+/** Agent Directory Page — combines Directory, Creator, and Teams */
+function AgentDirectoryPage() {
+  const { t } = useTranslation();
+  const [view, setView] = useState<"directory" | "creator" | "teams">("directory");
+
+  return (
+    <div>
+      {/* Tab bar */}
+      <div className="agent-dir-tabs">
+        <button className={`agent-dir-tab ${view === "directory" ? "active" : ""}`} onClick={() => setView("directory")}>
+          🗂️ {t("agentDirTitle")}
+        </button>
+        <button className={`agent-dir-tab ${view === "teams" ? "active" : ""}`} onClick={() => setView("teams")}>
+          🧩 {t("teamsTitle")}
+        </button>
+      </div>
+
+      {view === "directory" && (
+        <AgentDirectory
+          onCreateAgent={() => setView("creator")}
+          onSelectAgent={() => {/* TODO: switch to chat with agent */}}
+        />
+      )}
+      {view === "creator" && (
+        <AgentCreator
+          onCreated={() => setView("directory")}
+          onCancel={() => setView("directory")}
+        />
+      )}
+      {view === "teams" && (
+        <AgentTeams />
+      )}
+    </div>
+  );
+}
+
+/** Shown when AI features are disabled by admin */
+function AgentDisabled() {
+  const { t } = useTranslation();
+  return (
+    <div className="agent-disabled">
+      <div className="agent-disabled-icon">🔒</div>
+      <h3>{t("aiDisabledTitle")}</h3>
+      <p>{t("aiDisabledDesc")}</p>
     </div>
   );
 }

@@ -350,7 +350,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 | 制約 | 影響 | 回避策 |
 |------|------|--------|
 | **Presigned URL（ドキュメント上 Not supported だが動作する）** | Nextcloud が S3 AP への直接ダウンロードリンクを Presigned URL で生成可能（GetObject の署名付きリクエストとして動作）。ただし AWS は本番依存を非推奨 | 選択肢 A: Presigned URL を利用しダイレクトダウンロード（サーバー負荷軽減）。選択肢 B: サーバープロセス経由プロキシ（ガバナンス重視）。 |
-| **PutObject 最大 5 GB** | 大ファイルアップロードに制限 | Nextcloud はマルチパートアップロードを使用。ONTAP バージョン（9.15.1+）での S3 AP マルチパートサポートを確認。 |
+| **オブジェクト上限 50 GB（単一 PUT は 5 GB）** | 50 GB 超のファイルはアップロード不可 | Nextcloud はマルチパートアップロードを使用するため 5〜50 GB は対応可。ONTAP バージョン（9.15.1+）での S3 AP マルチパートサポートを確認。 |
 | **ListObjectsV2 最大 1000/リクエスト** | 大規模ディレクトリにページネーションが必要 | Nextcloud の S3 バックエンドライブラリが自動処理。 |
 | **S3 イベント通知なし** | S3 AP アップロードイベントでトリガーできない | Nextcloud Flow/Workflow の webhook、FPolicy（ONTAP ネイティブイベント）、またはスケジュールスキャンを使用。 |
 | **AD-joined SVM: DC 到達性必須** | AD DC がダウンすると全 S3 AP 操作が失敗（AccessDenied） | AD DC の健全性を監視。[AD-Joined SVM S3 AP 前提条件](./en/ad-joined-svm-s3ap-prerequisites.md)を参照。 |
@@ -390,7 +390,7 @@ curl -s https://nextcloud.example.com/status.php | jq .
 **アップロードが失敗する:**
 
 1. `accesspoint/<name>/object/*` に対する `s3:PutObject` 権限を確認
-2. 単一 PutObject ではファイルサイズ < 5 GB であることを確認（それ以上はマルチパート）
+2. 単一 PutObject ではファイルサイズ < 5 GB であることを確認（5〜50 GB はマルチパート、50 GB 超は非対応）
 3. ONTAP ボリュームに空き容量があることを確認
 
 **Nextcloud からアップロードしたファイルが NFS で見えない:**
@@ -426,7 +426,7 @@ A: Nextcloud は外部ストレージフォルダへのアクセス時にエラ�
 A: はい。External Storage エントリを複数追加し、それぞれ異なる S3 AP エイリアスを指定します。Nextcloud では別々のフォルダとして表示されます。
 
 **Q: Nextcloud 経由のアップロードにファイルサイズ制限はありますか？**
-A: FSx for ONTAP S3 AP は PutObject で最大 5 GB、マルチパートアップロードでそれ以上をサポートします。Nextcloud の PHP アップロード制限（`upload_max_filesize`、`post_max_size`）も適用されるため、必要に応じて `php.ini` で調整してください。
+A: FSx for ONTAP S3 AP はオブジェクトサイズ 50 GB までをサポートします。単一 PutObject は 5 GB までで、5〜50 GB はマルチパートアップロードで対応します。Nextcloud の PHP アップロード制限（`upload_max_filesize`、`post_max_size`）も適用されるため、必要に応じて `php.ini` で調整してください。
 
 **Q: Nextcloud の External Storage で S3 AP を使う際の重要設定は？**
 A: **パススタイルを有効にする**が最も重要です。S3 AP エイリアスはバーチャルホストスタイル（`ap-alias.s3.region.amazonaws.com`）に対応しないため、パススタイル（`s3.region.amazonaws.com/ap-alias`）を使用する必要があります。

@@ -17,7 +17,7 @@
 | 双层授权（AWS + ONTAP） | 先 IAM 再 ONTAP 文件身份（UNIX UID / Windows AD） | 分发对象限于 ONTAP 身份可读范围 |
 | 不支持 Presigned URL | 官方不支持 | 观众令牌认证不能用 S3 Presigned URL；用 CDN 原生令牌 |
 | NetworkOrigin（Internet/VPC，不可变更） | CDN 从托管/外部网络访问 | CDN 集成需 **Internet origin** |
-| PutObject 最大 5 GB | 单次 PUT 限制 | 大文件写回需分段上传 |
+| 对象大小上限 50 GB | 单次 PUT 限制为 5 GB | 超过 5 GB 的写回需分段上传 |
 
 ## 2. 集成机制（厂商中立）
 

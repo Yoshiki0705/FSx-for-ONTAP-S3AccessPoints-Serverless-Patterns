@@ -19,7 +19,7 @@ FSx for ONTAP의 S3 Access Points를 활용하여 VFX 렌더링 작업의 자동
 
 - 렌더링 작업의 즉시 실행(파일 저장 트리거)이 필요하다
 - Deadline Cloud 이외의 렌더 팜(온프레미스 Thinkbox Deadline 등)을 사용한다
-- 렌더링 출력이 5 GB를 초과한다(S3 AP PutObject의 상한)
+- 렌더링 출력이 50 GB를 초과한다(S3 AP 객체 크기 상한. 5~50 GB는 멀티파트로 가능)
 - 품질 검사에 자체 화질 평가 모델이 필요하다(Rekognition의 레이블 검출로는 불충분)
 
 ### 주요 기능
