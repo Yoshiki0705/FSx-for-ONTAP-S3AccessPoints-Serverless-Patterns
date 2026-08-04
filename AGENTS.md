@@ -392,6 +392,9 @@ All README and documentation files follow these UX principles:
 | KNFSD Terraform: InvalidAMIID | AMI ビルドリージョンとデプロイリージョンの不一致。`--region` を揃える |
 | Tamperproof 有効化 → 無効化できない | `snapshot_locking_enabled` は不可逆（400 Bad Request）。ただしポリシーの retention_period 削除で新規ロック停止は可能。詳細は [docs/tamperproof-snapshot-design.md](docs/tamperproof-snapshot-design.md) |
 | Tamperproof 有効化 ≠ 全 Snapshot 自動ロック | 有効化は「ロック機能 ON」であり「自動ロック」ではない。ポリシーに retention_period を設定して初めて自動ロックが発動 |
+| ポータルの Lambda が `shared/` を import できない | `functions/<name>/` の asset にはそのディレクトリしか入らない。`shared.*` を使う関数には `amplify/backend.ts` の `SharedPythonLayer` を `layers:` で付与する。レイヤーは `/opt` にマウントされ Python が見るのは `/opt/python` なので、アーカイブに `python/` プレフィックスが必要（`Code.fromAsset` の `bundling.local` で再配置している） |
+| `shared/` を変更しても sandbox のレイヤーが更新されない | `ampx sandbox` は hotswap で Lambda を更新し、LayerVersion の内容変更をスキップする（hotswap 無効化フラグは存在しない）。テンプレート側に変更がある場合のみ CloudFormation が走る。確実に反映するには `ampx sandbox delete` → 再デプロイ、またはパイプラインデプロイ |
+| 例外メッセージからエラー原因を推測する実装 | `str(IndexError(4))` は `"4"` で HTTP 404 に見える。実際に `Path(__file__).parents[4]`（Lambda では親が 3 つ）の IndexError を「CIFS 未設定」と誤報告していた。`type(e).__name__` を含めて報告し、文字列パターンで原因を決めない |
 | ONTAP REST の `fields=` に存在しないフィールドを混ぜる → 一覧が空になる | ONTAP はリクエスト全体を 400 で拒否し（例: `The value "last_transfer_size" is invalid for field "fields"`）、ハンドラ側は空リスト + error で返す。モック ONTAP は `fields` を無視してレコードを返すため、レスポンス整形のアサートだけでは検出できない。**送信 URL の `fields` 自体をテストで固定する**（`MockHttp.calls` を検査） |
 | `/cluster/nodes` と `/cluster/licensing/licenses` が 0 件 | エラーではない。FSx for ONTAP ではクラスター管理を AWS が担うため 0 件で返ることがある（ONTAP 9.17.1P7D1 で実測）。UI 側に「エラーではない」旨の注記を出す |
 | robocopy で ACL 権限のないファイルがスキップされる | Backup Operators への追加だけでは不足。robocopy に `/B`（バックアップモード）が必要。コピー先は SVM の `BUILTIN\Backup Operators` にも追加（`SeRestorePrivilege` で差分上書き）。詳細は [smb-acl-migration-backup-operators.md](docs/smb-acl-migration-backup-operators.md) |
