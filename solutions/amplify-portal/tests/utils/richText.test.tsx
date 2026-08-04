@@ -57,6 +57,11 @@ describe("locale placeholder contract", () => {
     aqRowsReturned: ["{count}"],
     durationRange: ["{from}", "{to}"],
     durationDaysWithMonths: ["{n}", "{m}"],
+    // These two matter more than the rest: the prompt asks the operator to type a
+    // word and the component compares against it. A locale that lost {keyword}
+    // would ask for nothing in particular and reject whatever was typed.
+    rmSnapLockConfirm: ["{keyword}"],
+    rmSnapLockCancelled: ["{keyword}"],
   };
 
   for (const [name, locale] of Object.entries(locales)) {

@@ -330,10 +330,8 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   rmSavingsRatio: "節省比率",
   rmNoEfficiencyData: "無效率資料",
   // --- Resource Management: ARP/AI Admin ---
-  rmArpEnabled: "已啟用",
   rmArpLearning: "學習中",
   rmArpPaused: "已暫停",
-  rmArpDisabled: "已停用",
   rmArpTotal: "總計",
   rmArpState: "保護狀態",
   rmArpThreat: "威脅",
@@ -863,8 +861,6 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   aiSettingsAgentDesc: "透過 AI 對話進行自然語言檔案操作 (Bedrock Converse + tool_use)",
   aiSettingsSearchTitle: "語意搜尋",
   aiSettingsSearchDesc: "檔案內容的向量搜尋 (Bedrock Knowledge Base)。後端可使用 S3 Vectors（推薦，低成本）或 OpenSearch Serverless。",
-  aiSettingsEnabled: "已啟用",
-  aiSettingsDisabled: "已停用",
   aiSettingsSaved: "設定已儲存",
   aiSettingsStatusTitle: "目前狀態",
   aiSettingsMultimodalTitle: "多模態（圖像輸入）",
@@ -1079,8 +1075,6 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   vsTroubleshootLink: "疑難排解",
   vsStep5Title: "驗證運作狀況",
   vsStep5Desc: "確認針對測試檔案執行了掃描，並且掃描統計數據在增加。",
-  vsEnabled: "已啟用",
-  vsDisabled: "已停用",
   vsPolicies: "Vscan 原則",
   vsNoPolicies: "沒有 Vscan 原則",
   vsEnableBtn: "啟用",
@@ -1139,6 +1133,28 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   aqSetupStep3: "儲存後在此面板重新執行查詢",
   aqSetupEnvHint:
     "或者在 {file} 的環境變數 {env} 中設定 S3 路徑並重新部署。",
+
+  // --- Shared state labels ---
+  stateEnabled: "已啟用",
+  stateDisabled: "已停用",
+  rmLoadFailed: "載入失敗",
+  rmActionFailed: "操作失敗",
+  rmSnapLockConfirm:
+    "⚠️ 要啟用 Tamperproof Snapshot 鎖定嗎？\n\n" +
+    "【重要】在 Compliance 磁碟區上此操作無法復原。\n" +
+    "啟用後，已鎖定的 Snapshot 在保留期間屆滿前\n" +
+    "任何人都無法刪除（包含 root 與 fsxadmin）。\n\n" +
+    "※ 此操作僅為磁碟區開啟鎖定功能。\n" +
+    "  個別 Snapshot 需另外透過「Lock」按鈕指定保留期間來鎖定。\n\n" +
+    "要繼續，請輸入 {keyword}：",
+  rmSnapLockCancelled: "已取消啟用（需要輸入 {keyword}）",
+  slNewVolumeOnly: "SnapLock 只能在建立新磁碟區時啟用",
+  slNewVolumeOnlyWhy: "無法為既有磁碟區事後啟用 SnapLock，這是 ONTAP 的限制。",
+  slNewVolumeOnlyHow: "若需要 SnapLock 磁碟區，請從「磁碟區管理」中新建。",
+  fcacheMetricsHint: "指標：可在 ONTAP System Manager 中查看",
+  vhDiffTitle: "版本差異",
+  vhDiffNotice:
+    "選擇兩個快照比較內容的功能預計於後續版本實作。目前顯示快照清單。",
   fpvClickDownload: "點擊下載或選擇用於 AI 處理",
   fpvClickPdf: "點擊預覽 PDF",
   fpvClickDoc: "點擊預覽文件",

@@ -330,10 +330,8 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   rmSavingsRatio: "Ratio d'économie",
   rmNoEfficiencyData: "Aucune donnée d'efficacité disponible",
   // --- Resource Management: ARP/AI Admin ---
-  rmArpEnabled: "Activé",
   rmArpLearning: "En apprentissage",
   rmArpPaused: "En pause",
-  rmArpDisabled: "Désactivé",
   rmArpTotal: "Total",
   rmArpState: "État de protection",
   rmArpThreat: "Menace",
@@ -863,8 +861,6 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   aiSettingsAgentDesc: "Opérations de fichiers en langage naturel via chat IA (Bedrock Converse + tool_use)",
   aiSettingsSearchTitle: "Recherche sémantique",
   aiSettingsSearchDesc: "Recherche vectorielle dans le contenu des fichiers (Bedrock Knowledge Base). Le backend peut utiliser S3 Vectors (recommandé, faible coût) ou OpenSearch Serverless.",
-  aiSettingsEnabled: "Activé",
-  aiSettingsDisabled: "Désactivé",
   aiSettingsSaved: "Paramètres enregistrés",
   aiSettingsStatusTitle: "État actuel",
   aiSettingsMultimodalTitle: "Multimodal (Image)",
@@ -1079,8 +1075,6 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   vsTroubleshootLink: "Dépannage",
   vsStep5Title: "Vérifier le fonctionnement",
   vsStep5Desc: "Vérifiez que les analyses s'exécutent sur un fichier de test et que les statistiques d'analyse augmentent.",
-  vsEnabled: "Activé",
-  vsDisabled: "Désactivé",
   vsPolicies: "Politiques Vscan",
   vsNoPolicies: "Aucune politique Vscan",
   vsEnableBtn: "Activer",
@@ -1141,6 +1135,31 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   aqSetupStep3: "Enregistrez, puis relancez la requête depuis cet écran",
   aqSetupEnvHint:
     "Vous pouvez aussi définir un chemin S3 dans la variable d'environnement {env} de {file}, puis redéployer.",
+
+  // --- Shared state labels ---
+  stateEnabled: "Activé",
+  stateDisabled: "Désactivé",
+  rmLoadFailed: "Échec du chargement",
+  rmActionFailed: "L'opération a échoué",
+  rmSnapLockConfirm:
+    "⚠️ Activer le verrouillage Tamperproof Snapshot ?\n\n" +
+    "IMPORTANT : sur un volume Compliance, cette action est irréversible.\n" +
+    "Une fois activé, un snapshot verrouillé ne peut être supprimé par personne\n" +
+    "avant l'expiration de sa période de rétention, y compris root et fsxadmin.\n\n" +
+    "Remarque : cela active seulement la fonction de verrouillage du volume.\n" +
+    "  Chaque snapshot se verrouille séparément via le bouton « Lock »,\n" +
+    "  où vous définissez la période de rétention.\n\n" +
+    "Saisissez {keyword} pour continuer :",
+  rmSnapLockCancelled: "Activation annulée — vous devez saisir {keyword}",
+  slNewVolumeOnly: "SnapLock ne peut être activé qu'à la création d'un volume",
+  slNewVolumeOnlyWhy:
+    "SnapLock ne peut pas être activé après coup sur un volume existant ; c'est une contrainte ONTAP.",
+  slNewVolumeOnlyHow:
+    "Si vous avez besoin d'un volume SnapLock, créez-en un depuis la gestion des volumes.",
+  fcacheMetricsHint: "Métriques : disponibles dans ONTAP System Manager",
+  vhDiffTitle: "Différences entre versions",
+  vhDiffNotice:
+    "La comparaison du contenu de deux snapshots est prévue pour une version ultérieure. Pour l'instant, la liste des snapshots est affichée.",
   fpvClickDownload: "Cliquez pour télécharger ou sélectionner pour le traitement IA",
   fpvClickPdf: "Cliquez pour prévisualiser le PDF",
   fpvClickDoc: "Cliquez pour prévisualiser le document",

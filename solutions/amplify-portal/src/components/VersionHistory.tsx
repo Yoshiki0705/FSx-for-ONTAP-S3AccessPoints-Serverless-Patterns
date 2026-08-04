@@ -183,9 +183,9 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
     <div className="version-history">
       {mode === "diff" && (
         <div className="version-diff-notice" style={{ padding: "1rem", background: "#fffbeb", border: "1px solid #fbbf24", borderRadius: "8px", marginBottom: "1rem" }}>
-          <strong>🔄 バージョン差分</strong>
+          <strong>🔄 {t("vhDiffTitle")}</strong>
           <p style={{ margin: "0.25rem 0 0", fontSize: "0.85rem", color: "#78350f" }}>
-            2つのスナップショットを選択して内容を比較する機能です（将来実装予定）。現在はスナップショット一覧を表示しています。
+            {t("vhDiffNotice")}
           </p>
         </div>
       )}

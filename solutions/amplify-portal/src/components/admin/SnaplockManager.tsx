@@ -133,10 +133,9 @@ export function SnaplockManager() {
 
           {!config.isEnabled && (
             <div className="info-message" style={{ marginTop: "1rem" }}>
-              <strong>ℹ️ SnapLock は新規ボリューム作成時にのみ有効化できます</strong>
+              <strong>ℹ️ {t("slNewVolumeOnly")}</strong>
               <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                既存ボリュームに後からSnapLockを有効にすることはできません（ONTAP の仕様）。
-                SnapLock ボリュームが必要な場合は「ボリューム管理」から新規作成してください。
+                {t("slNewVolumeOnlyWhy")} {t("slNewVolumeOnlyHow")}
               </p>
             </div>
           )}
