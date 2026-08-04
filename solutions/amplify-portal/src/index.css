@@ -4812,3 +4812,132 @@ button[type="submit"]:disabled {
   gap: 0.4rem;
   margin: 0.5rem 0;
 }
+
+/* ARP/AI containment panel
+   These classes had no rules anywhere, so the containment form, its tabs and
+   the active-block list rendered unstyled. */
+.arp-response-section {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+.arp-response-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+.arp-response-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  border: 1px solid #f3c7bf;
+  border-radius: 6px;
+  background: #fdecea;
+  color: #8a2c14;
+}
+.arp-response-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.arp-response-tabs button {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.arp-response-tabs button.tab-active {
+  border-color: var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-weight: 600;
+}
+.arp-response-form .form-description,
+.arp-response-form .form-note {
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0.4rem 0;
+}
+.arp-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.85rem 0 0.5rem;
+}
+
+/* Confirmation row for containment actions */
+.arp-confirm-row {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid #f0c36d;
+  border-radius: 6px;
+  background: #fdf6e3;
+}
+.arp-confirm-title {
+  margin: 0 0 0.3rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #7a5b12;
+}
+.arp-confirm-detail {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #7a5b12;
+}
+.arp-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Active blocks list */
+.arp-blocks-list .blocks-section {
+  margin-bottom: 1rem;
+}
+.arp-blocks-list h4 {
+  margin: 0 0 0.45rem;
+  font-size: 0.9rem;
+}
+.blocks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.block-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+.block-pattern {
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+}
+.block-policy {
+  color: var(--color-text-secondary);
+}
+.btn-unblock {
+  margin-left: auto;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-bg);
+  cursor: pointer;
+}

@@ -939,7 +939,7 @@ class TestFlexClone:
         assert "volumeUuid" in result["error"]
 
 
-# --- SnapMirror (read-only) ---
+# --- SnapMirror (inventory and lifecycle) ---
 
 
 class TestSnapMirror:
@@ -1037,7 +1037,7 @@ class TestSnapMirror:
         assert result["transfers"][0]["duration"] == "PT30S"
 
 
-# --- Vscan (read-only) ---
+# --- Vscan (status and policy management) ---
 
 
 class TestVscan:
@@ -1096,7 +1096,7 @@ class TestVscan:
         assert pol["excludedExtensions"] == ["tmp"]
 
 
-# --- FPolicy (read-only) ---
+# --- FPolicy (status and policy management) ---
 
 
 class TestFPolicy:
