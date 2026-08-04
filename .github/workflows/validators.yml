@@ -22,6 +22,19 @@ jobs:
       - name: Run S3AP IAM validator
         run: python3 scripts/check_s3ap_iam_patterns.py
 
+  portal-drift-check:
+    name: "Portal doc/code drift check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      - name: Check portal action inventory, i18n coverage and doc claims
+        run: python3 scripts/check_portal_drift.py
+
   handler-name-check:
     name: "Handler undefined-name sweep"
     runs-on: ubuntu-latest
@@ -179,6 +192,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - s3ap-iam-patterns
+      - portal-drift-check
       - handler-name-check
       - conditional-refs-check
       - python-quality
@@ -192,12 +206,18 @@ jobs:
     steps:
       - name: Evaluate
         run: |
+          # Every job listed in `needs` must appear here. This step runs with
+          # `if: always()`, so a dependency failing does not stop it — only a
+          # missing entry does, silently. cfn-guard-security was in `needs` and
+          # absent from this map, so its failures were never counted.
           declare -A results=(
             ["s3ap-iam-patterns"]="${{ needs.s3ap-iam-patterns.result }}"
+            ["portal-drift-check"]="${{ needs.portal-drift-check.result }}"
             ["handler-name-check"]="${{ needs.handler-name-check.result }}"
             ["conditional-refs-check"]="${{ needs.conditional-refs-check.result }}"
             ["python-quality"]="${{ needs.python-quality.result }}"
             ["sensitive-leak-check"]="${{ needs.sensitive-leak-check.result }}"
+            ["cfn-guard-security"]="${{ needs.cfn-guard-security.result }}"
             ["deprecated-models-check"]="${{ needs.deprecated-models-check.result }}"
             ["bedrock-inference-profile-check"]="${{ needs.bedrock-inference-profile-check.result }}"
             ["actions-pinning-check"]="${{ needs.actions-pinning-check.result }}"
