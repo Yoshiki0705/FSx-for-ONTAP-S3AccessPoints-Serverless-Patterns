@@ -814,6 +814,35 @@ def _validated_ttl_hours(event) -> tuple[int | None, dict | None]:
     return hours, None
 
 
+def _actor(event) -> dict:
+    """Who took this action, and how that was established.
+
+    `userId` is set by the AppSync resolver from the Cognito identity, and the
+    resolver strips any the caller supplied, so it can be trusted on that path.
+    A direct invocation of this function carries no identity at all, and the two
+    cases must not look the same in the ledger: "unknown" alone reads like a
+    lookup that failed rather than an action nobody is accountable for.
+
+    There is deliberately no fallback to a caller-supplied field. An earlier
+    version fell back to `actor`, which no resolver set or cleared, so a caller
+    could name anyone they liked as long as `userId` happened to be absent.
+
+    What this does not defend against: anyone holding lambda:InvokeFunction on
+    this function can send both fields and be attributed as whoever they name.
+    There is no way to tell from inside the handler, and it is a smaller problem
+    than the one that permission already grants — the holder can block any
+    principal outright. The IAM policy on the function is the real boundary; this
+    keeps the AppSync path honest and makes an unattributed action look like one.
+    """
+    via = event.get("invokedVia")
+    if via == "appsync" and event.get("userId"):
+        return {"createdBy": event["userId"], "createdVia": "appsync"}
+
+    # Reaching here means the call did not come through the portal. Record that
+    # plainly instead of attributing it to someone.
+    return {"createdBy": "unattributed", "createdVia": "direct-invoke"}
+
+
 def _record_block(block_type: str, block_id: str, svm: str, params: dict, ttl_hours: int, event) -> dict:
     """Write the ledger row for a block that ONTAP has just accepted.
 
@@ -833,7 +862,7 @@ def _record_block(block_type: str, block_id: str, svm: str, params: dict, ttl_ho
         "svm": svm,
         "status": "active",
         "createdAt": _iso(created),
-        "createdBy": event.get("userId") or event.get("actor") or "unknown",
+        **_actor(event),
         "expiresAt": _iso(expires) if expires else None,
         # Kept past expiry on purpose, so the audit trail of a containment
         # action outlives the block.
@@ -1384,6 +1413,53 @@ def _annotate_expiry(blocks: list, block_type: str, svm: str) -> list:
     return annotated
 
 
+METRIC_NAMESPACE = "FsxOntapPortal/Containment"
+
+
+def _emit_sweep_metrics(swept: int, failed: int, examined: int) -> None:
+    """Publish the sweep outcome as CloudWatch metrics, via an embedded-format log.
+
+    EMF is written to stdout and picked up by the log group, so this needs no
+    cloudwatch:PutMetricData permission and cannot fail on a throttle.
+
+    `SweepRuns` is emitted on every run, including clean ones, so an alarm can
+    treat missing data as a breach. Alarming only on failures would leave the
+    worst case invisible: a sweep that has stopped running altogether reports no
+    failures at all, and blocks quietly outlive their expiry.
+
+    Wrapped so a metrics problem can never take down the sweep. The sweep exists
+    to restore access; losing telemetry is the lesser harm.
+    """
+    try:
+        print(
+            json.dumps(
+                {
+                    "_aws": {
+                        "Timestamp": int(_now().timestamp() * 1000),
+                        "CloudWatchMetrics": [
+                            {
+                                "Namespace": METRIC_NAMESPACE,
+                                "Dimensions": [[]],
+                                "Metrics": [
+                                    {"Name": "SweepRuns", "Unit": "Count"},
+                                    {"Name": "SweepFailures", "Unit": "Count"},
+                                    {"Name": "BlocksLifted", "Unit": "Count"},
+                                    {"Name": "ActiveBlocksExamined", "Unit": "Count"},
+                                ],
+                            }
+                        ],
+                    },
+                    "SweepRuns": 1,
+                    "SweepFailures": failed,
+                    "BlocksLifted": swept,
+                    "ActiveBlocksExamined": examined,
+                }
+            )
+        )
+    except Exception as e:
+        logger.error(f"could not emit sweep metrics: {type(e).__name__}: {e}")
+
+
 def _sweep_expired_blocks(event):
     """Lift the blocks whose expiry has passed.
 
@@ -1396,12 +1472,17 @@ def _sweep_expired_blocks(event):
     """
     arp, client_error = _arp_client_or_error()
     if client_error:
+        # Counted as a failure, not just logged. A sweep that cannot reach ONTAP
+        # lifts nothing, which is indistinguishable from having nothing to lift
+        # unless it says so.
+        _emit_sweep_metrics(swept=0, failed=1, examined=0)
         return {"success": False, "swept": 0, "failed": 0, "error": client_error["error"]}
 
     try:
         rows = _ledger_rows("active")
     except Exception as e:
         logger.error(f"sweep could not read the ledger: {type(e).__name__}: {e}")
+        _emit_sweep_metrics(swept=0, failed=1, examined=0)
         return {
             "success": False,
             "swept": 0,
@@ -1448,6 +1529,7 @@ def _sweep_expired_blocks(event):
             details.append({"blockId": block_id, "result": f"failed: {type(e).__name__}"})
 
     logger.info(f"sweep complete: {swept} lifted, {failed} failed, {len(rows)} active rows examined")
+    _emit_sweep_metrics(swept=swept, failed=failed, examined=len(rows))
     return {
         "success": failed == 0,
         "action": "sweep_expired_blocks",
