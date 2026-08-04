@@ -28,6 +28,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+from urllib.parse import quote
 
 import boto3
 import urllib3
@@ -51,8 +53,30 @@ def _get_credentials():
     return data.get("username", "fsxadmin"), data.get("password", "")
 
 
+# Identifiers supplied by the caller (a snapshot id, for example) end up in the
+# request path. Unencoded, a value containing a traversal segment sends the
+# request somewhere the action never advertised.
+_UNSAFE_PATH_CHARS = re.compile(r"[\x00-\x1f\x7f\\]")
+
+
+def _is_unsafe_path(path: str) -> bool:
+    """True if the assembled request path must not be sent."""
+    if _UNSAFE_PATH_CHARS.search(path):
+        return True
+    route = path.split("?", 1)[0]
+    return any(segment == ".." for segment in route.split("/"))
+
+
+def _seg(value) -> str:
+    """Percent-encode a value used as a single path segment."""
+    return quote(str(value), safe="")
+
+
 def _ontap_get(http, headers, path, params=""):
     """Make GET request to ONTAP REST API."""
+    if _is_unsafe_path(path):
+        logger.warning("Refused ONTAP request with unsafe path: %r", path[:200])
+        return {"error": {"message": "Invalid characters in request path"}}
     url = f"https://{MGMT_IP}/api{path}"
     if params:
         url += f"?{params}"
@@ -458,7 +482,7 @@ def _delete_snapshot(http, headers, event):
     if not snap_uuid:
         return {"success": False, "error": "snapshotId is required"}
 
-    url = f"https://{MGMT_IP}/api/storage/volumes/{vol_uuid}/snapshots/{snap_uuid}"
+    url = f"https://{MGMT_IP}/api/storage/volumes/{vol_uuid}/snapshots/{_seg(snap_uuid)}"
     resp = http.request("DELETE", url, headers=headers)
 
     if resp.status in (200, 202):
