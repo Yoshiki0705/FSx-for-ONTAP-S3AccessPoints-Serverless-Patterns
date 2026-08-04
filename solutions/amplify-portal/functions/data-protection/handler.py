@@ -70,6 +70,30 @@ DEFAULT_BLOCK_TTL_HOURS = int(os.environ.get("DEFAULT_BLOCK_TTL_HOURS", "24"))
 # Ceiling on a single request, so a typo cannot park a block for years.
 MAX_BLOCK_TTL_HOURS = 24 * 90
 
+# Actions that change who can reach the filer, and so are worth noticing when
+# they arrive without a portal identity behind them.
+#
+# `sweepExpiredBlocks` is deliberately absent: EventBridge invokes it directly
+# and it carries no user by design. Including it would put the alarm in breach
+# every quarter of an hour and teach everyone to ignore it.
+#
+# The unblocks are present even though they restore access. A forged unblock ends
+# containment early, which is as much an incident as a forged block starting one.
+STATE_CHANGING_ACTIONS = frozenset(
+    {
+        "blockSmbUser",
+        "unblockSmbUser",
+        "blockNfsIp",
+        "unblockNfsIp",
+        "containThreat",
+        "disconnectSessions",
+        "createSnapshot",
+        "deleteSnapshot",
+        "updateArpState",
+        "updateRetentionPolicy",
+    }
+)
+
 # How long a lifted or expired row is kept after its expiry, for audit. The
 # native DynamoDB TTL is set from this, deliberately later than expiresAt, so
 # the record of a containment action outlives the containment itself.
@@ -118,6 +142,11 @@ def _ontap_get(http, headers, path, params=""):
 def handler(event, context):
     """Route to appropriate handler based on action."""
     action = event.get("action", "")
+
+    # Before the configuration check, so an unattributed attempt is recorded even
+    # when it could not have done anything. Someone probing for a way in is worth
+    # seeing whether or not the attempt would have worked.
+    _note_attribution(action, event)
 
     if not all([MGMT_IP, SECRET_NAME]):
         return {"error": "ONTAP connection not configured (set ONTAP_MGMT_IP, ONTAP_SECRET_NAME)"}
@@ -1458,6 +1487,68 @@ def _emit_sweep_metrics(swept: int, failed: int, examined: int) -> None:
         )
     except Exception as e:
         logger.error(f"could not emit sweep metrics: {type(e).__name__}: {e}")
+
+
+def _note_attribution(action: str, event) -> None:
+    """Record whether a state-changing action came with a portal identity.
+
+    This is detection, not prevention, and the distinction is worth being clear
+    about. Within one account a principal may invoke a function if *either* its
+    own identity policy or the function's resource policy allows it, and the
+    Lambda permission API only writes Allow statements. So no resource policy
+    added here can take invoke rights away from a principal that already has
+    them; it can only hand them to more. Prevention lives in the identity
+    policies and any service control policy or permissions boundary above them —
+    outside this stack. See docs/portal-authorization-model.md.
+
+    What is achievable from inside the function is making the case visible. A
+    direct invocation is already recorded as `unattributed` / `direct-invoke` in
+    the ledger, but only somebody reading that row would ever see it. Emitting a
+    metric turns it into something that can raise an alarm while the containment
+    is still in force.
+
+    Expected to fire during operational work: scripts/portal-probes/ invokes this
+    function directly on purpose. That is the same event the alarm is for, so the
+    probes are documented as tripping it rather than exempted — an exemption would
+    be a hole shaped exactly like the thing being watched for.
+    """
+    if action not in STATE_CHANGING_ACTIONS:
+        return
+
+    attributed = _actor(event)["createdVia"] == "appsync"
+    if not attributed:
+        logger.warning(f"state-changing action '{action}' invoked without a portal identity; recorded as unattributed")
+
+    try:
+        print(
+            json.dumps(
+                {
+                    "_aws": {
+                        "Timestamp": int(_now().timestamp() * 1000),
+                        "CloudWatchMetrics": [
+                            {
+                                "Namespace": METRIC_NAMESPACE,
+                                "Dimensions": [[]],
+                                "Metrics": [
+                                    {"Name": "UnattributedContainmentActions", "Unit": "Count"},
+                                    {"Name": "AttributedContainmentActions", "Unit": "Count"},
+                                ],
+                            }
+                        ],
+                    },
+                    "UnattributedContainmentActions": 0 if attributed else 1,
+                    "AttributedContainmentActions": 1 if attributed else 0,
+                    # Not a metric dimension: the action name would multiply the
+                    # metric by cardinality for no gain, since the alarm is on
+                    # "any of them". Kept as a log field so the log tells you
+                    # which one without the metric paying for it.
+                    "action": action,
+                }
+            )
+        )
+    except Exception as e:
+        # Losing telemetry must never stop a containment action from running.
+        logger.error(f"could not emit attribution metric: {type(e).__name__}: {e}")
 
 
 def _sweep_expired_blocks(event):

@@ -26,6 +26,14 @@ Every containment defect found so far was found here rather than by the test sui
 - **They ask first.** Any probe that changes state prompts unless `--yes` is passed.
 - `lift` is the exception to "no real targets": it takes a `--domain` and `--username` you supply, because its whole purpose is to remove a real block.
 
+### These probes trip the unattributed-action alarm
+
+They invoke the ARP function directly, so their containment actions arrive with no Cognito identity and are recorded as `unattributed` / `direct-invoke`. That raises `<stack>-containment-unattributed-action` on the first one.
+
+This is intended. The alarm exists to catch a state-changing containment action that nobody is accountable for, and a probe run is exactly that — the fact that you meant it is not something the function can see. Exempting the probes would leave a hole shaped like the thing being watched for.
+
+If you run probes routinely, either expect the alarm and close it, or point `alarmEmail` at somewhere that will not be mistaken for production alerting. See [the authorization model](../../docs/en/portal-authorization-model.md#what-happens-when-the-lambda-is-invoked-directly).
+
 ## Usage
 
 ```bash

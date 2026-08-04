@@ -286,10 +286,30 @@ describe("Containment block expiry", () => {
     expect(alarm).toContain("TreatMissingData.NOT_BREACHING");
   });
 
-  it("routes both alarms to a topic", () => {
+  it("routes all three alarms to a topic", () => {
     expect(backendSource).toContain('"ContainmentAlarmTopic"');
     expect(backendSource).toContain("sweepFailureAlarm.addAlarmAction");
     expect(backendSource).toContain("sweepSilentAlarm.addAlarmAction");
+    expect(backendSource).toContain("unattributedActionAlarm.addAlarmAction");
+  });
+
+  it("alarms on a containment action that carries no portal identity", () => {
+    // Prevention is not available here: within one account an identity policy
+    // alone authorises Invoke, and the Lambda permission API writes only Allow
+    // statements, so nothing added to this stack can revoke it. The reachable
+    // requirement is that it cannot happen quietly.
+    expect(backendSource).toContain('"ContainmentUnattributedActionAlarm"');
+    const alarm = backendSource.slice(
+      backendSource.indexOf('"ContainmentUnattributedActionAlarm"'),
+      backendSource.indexOf('"ContainmentUnattributedActionAlarm"') + 1400
+    );
+    expect(alarm).toContain('sweepMetric("UnattributedContainmentActions"');
+    // First occurrence, not a pattern: one unaccountable containment action is
+    // already the thing worth looking at, and nothing retries it away.
+    expect(alarm).toContain("evaluationPeriods: 1");
+    expect(alarm).toContain("datapointsToAlarm: 1");
+    // Missing data is the normal state — no containment actions ran.
+    expect(alarm).toContain("TreatMissingData.NOT_BREACHING");
   });
 
   it("refuses to deploy into a VPC with no path to the ledger", () => {

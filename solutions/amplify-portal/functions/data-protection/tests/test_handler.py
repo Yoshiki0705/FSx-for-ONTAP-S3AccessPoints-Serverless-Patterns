@@ -912,3 +912,155 @@ class TestAuditAttribution:
         # action nobody is accountable for.
         assert row["createdBy"] == "unattributed"
         assert row["createdVia"] == "direct-invoke"
+
+
+class TestUnattributedActionIsReported:
+    """The ledger already recorded a direct invocation; nothing announced it.
+
+    A forged containment action is not preventable from inside the function — in
+    one account an identity policy alone is enough to invoke it, and a Lambda
+    resource policy can only grant, never revoke. So the requirement these cover
+    is narrower and achievable: the case must not be silent while the containment
+    is still in force.
+    """
+
+    def _metrics(self, capsys):
+        """The EMF documents written to stdout, in order."""
+        emitted = []
+        for line in capsys.readouterr().out.split("\n"):
+            line = line.strip()
+            if not line.startswith("{"):
+                continue
+            try:
+                doc = json.loads(line)
+            except ValueError:
+                continue
+            if "_aws" in doc:
+                emitted.append(doc)
+        return emitted
+
+    def _named(self, capsys, name):
+        return [d for d in self._metrics(capsys) if name in d]
+
+    def test_a_direct_invocation_is_counted(self, mock_secrets, mock_arp, ledger, capsys):
+        from handler import handler
+
+        handler(
+            {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
+            None,
+        )
+
+        docs = self._named(capsys, "UnattributedContainmentActions")
+        assert docs, "no attribution metric was emitted"
+        assert docs[0]["UnattributedContainmentActions"] == 1
+        assert docs[0]["AttributedContainmentActions"] == 0
+        # Which action it was belongs in the log, not in a metric dimension.
+        assert docs[0]["action"] == "blockSmbUser"
+
+    def test_an_appsync_call_is_counted_as_attributed(self, mock_secrets, mock_arp, ledger, capsys):
+        from handler import handler
+
+        handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "userId": "alice",
+                "invokedVia": "appsync",
+            },
+            None,
+        )
+
+        docs = self._named(capsys, "UnattributedContainmentActions")
+        assert docs[0]["UnattributedContainmentActions"] == 0
+        assert docs[0]["AttributedContainmentActions"] == 1
+
+    def test_the_scheduled_sweep_is_not_counted(self, capsys):
+        """EventBridge invokes the sweep directly and carries no user by design.
+
+        Counting it would put the alarm in breach every sweep interval, which
+        trains people to ignore it — the failure mode the alarm exists to avoid.
+        """
+        from handler import _note_attribution
+
+        _note_attribution("sweepExpiredBlocks", {})
+
+        assert not self._named(capsys, "UnattributedContainmentActions")
+
+    @pytest.mark.parametrize(
+        "action",
+        ["listSvms", "listActiveBlocks", "getArpStatus", "getSnapshotsWithLockStatus"],
+    )
+    def test_a_read_only_action_is_not_counted(self, action, capsys):
+        """Reads change nothing, so an unattributed one is not an incident.
+
+        Called directly rather than through `handler`, because these actions
+        reach ONTAP over HTTPS and the suite does not stub the transport.
+        """
+        from handler import _note_attribution
+
+        _note_attribution(action, {})
+
+        assert not self._named(capsys, "UnattributedContainmentActions")
+
+    @pytest.mark.parametrize(
+        "action",
+        [
+            "blockSmbUser",
+            "unblockSmbUser",
+            "blockNfsIp",
+            "unblockNfsIp",
+            "containThreat",
+            "disconnectSessions",
+            "createSnapshot",
+            "deleteSnapshot",
+            "updateArpState",
+            "updateRetentionPolicy",
+        ],
+    )
+    def test_every_state_changing_action_is_counted(self, action, capsys):
+        """Including the unblocks: ending containment early is also an incident."""
+        from handler import _note_attribution
+
+        _note_attribution(action, {})
+
+        docs = self._named(capsys, "UnattributedContainmentActions")
+        assert docs, f"{action} emitted no attribution metric"
+        assert docs[0]["UnattributedContainmentActions"] == 1
+
+    def test_reported_even_when_ontap_is_not_configured(self, monkeypatch, capsys):
+        """An attempt that could not have worked is still worth seeing.
+
+        Someone looking for a way in produces exactly this, and a metric that
+        only counted attempts which reached the cluster would miss it. Asserted
+        through `handler` because the ordering is the point: the emit has to come
+        before the configuration check that returns early.
+        """
+        import handler as handler_module
+
+        monkeypatch.setattr(handler_module, "MGMT_IP", "")
+        result = handler_module.handler(
+            {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
+            None,
+        )
+
+        assert "error" in result
+        docs = self._named(capsys, "UnattributedContainmentActions")
+        assert docs and docs[0]["UnattributedContainmentActions"] == 1
+
+    def test_a_metrics_failure_does_not_stop_the_action(self, monkeypatch):
+        """Telemetry is the lesser concern when access is being cut or restored.
+
+        Serialisation is broken rather than stdout: patching `print` would take
+        out pytest's own capture along with the code under test.
+        """
+        import handler as handler_module
+
+        def explode(*_args, **_kwargs):
+            raise RuntimeError("cannot serialise")
+
+        monkeypatch.setattr(handler_module.json, "dumps", explode)
+
+        # Raising here would abandon a containment action over a metric.
+        handler_module._note_attribution("blockSmbUser", {})

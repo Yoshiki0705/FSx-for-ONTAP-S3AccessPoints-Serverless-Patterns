@@ -727,6 +727,50 @@ const sweepSilentAlarm = new cloudwatch.Alarm(dataStack, "ContainmentSweepSilent
 });
 sweepSilentAlarm.addAlarmAction(new cloudwatchActions.SnsAction(containmentAlarmTopic));
 
+/**
+ * A containment action that arrived without a portal identity behind it.
+ *
+ * This is detection and not prevention, and the difference is worth stating
+ * plainly. Inside a single account a principal may invoke a function if *either*
+ * its identity policy or the function's resource policy allows it, and the
+ * Lambda permission API writes only Allow statements. No resource policy added
+ * here could take invoke rights away from a principal that already holds them.
+ * Prevention belongs to the identity policies and to any SCP or permissions
+ * boundary above them, which this stack does not own — the copy-paste policy for
+ * that is in docs/portal-authorization-model.md.
+ *
+ * So the function reports instead: the AppSync resolver is the only path that
+ * supplies a Cognito identity, and anything else is recorded as
+ * `unattributed` / `direct-invoke` in the ledger. Until now that was visible
+ * only to somebody reading the row afterwards. This alarms on it while the
+ * containment is still in force.
+ *
+ * Fires on the first occurrence rather than waiting for a pattern. One
+ * containment action nobody is accountable for is already the thing worth
+ * looking at, and unlike a failed sweep it is not something that retries itself.
+ *
+ * Expect this to fire when scripts/portal-probes/ is run against a deployment:
+ * those invoke the function directly, which is exactly the event described above.
+ * Exempting them would leave a hole the shape of the thing being watched for.
+ */
+const unattributedActionAlarm = new cloudwatch.Alarm(dataStack, "ContainmentUnattributedActionAlarm", {
+  alarmName: `${Stack.of(dataStack).stackName}-containment-unattributed-action`,
+  alarmDescription:
+    "A state-changing containment action ran without a portal identity, so the ledger " +
+    "records it as unattributed/direct-invoke. Either something invoked the ARP function " +
+    "directly (the probe scripts do this deliberately) or a principal holds " +
+    "lambda:InvokeFunction that should not. Check CloudTrail for the Invoke call and the " +
+    "ledger row for what it changed.",
+  metric: sweepMetric("UnattributedContainmentActions", "Sum"),
+  threshold: 0,
+  comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+  evaluationPeriods: 1,
+  datapointsToAlarm: 1,
+  // No data means no containment actions ran, which is the normal state.
+  treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+});
+unattributedActionAlarm.addAlarmAction(new cloudwatchActions.SnsAction(containmentAlarmTopic));
+
 new events.Rule(dataStack, "ContainmentBlockSweepSchedule", {
   description:
     "Lifts FSx for ONTAP containment blocks whose expiry has passed (portal-created blocks only)",

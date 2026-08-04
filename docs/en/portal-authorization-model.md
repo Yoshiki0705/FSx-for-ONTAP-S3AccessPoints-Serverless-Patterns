@@ -135,6 +135,57 @@ aws cognito-idp create-group \
 7. **Input is validated for both SQL and request paths**: the values that reach the audit-log Athena query (`fileKeyPrefix`, `startDate`, `endDate`, `eventType`, `maxResults`) are pattern-checked and then rendered as literals with single quotes doubled. LIKE metacharacters (`%`, `_`) are escaped as well, so a prefix is not interpreted as a wildcard. ONTAP request paths percent-encode caller-supplied names, and `_ontap_request` refuses any path containing a `..` segment or a control character. That check lives in the one function all 110-plus actions pass through rather than in each action.
 8. **Expiry and the sweep**: a block carries an expiry, 24 hours by default, and a scheduled sweep lifts blocks whose expiry has passed. The operator can choose 1 hour to 7 days, or indefinite, at the point of blocking. ONTAP name-mapping and export-policy rules carry no timestamp, so expiry is tracked in a portal-side ledger (DynamoDB) and the sweep only considers rows in that ledger — a block placed outside the portal is reported as "Not portal-managed" and never lifted automatically. See the [containment boundary](../../solutions/amplify-portal/docs/resource-management-demo-guide.en.md) for what this means operationally.
 
+## What Happens When the Lambda Is Invoked Directly
+
+The audit subject (`createdBy` / `createdVia`) is decided by whether the call arrived through AppSync. The `arp-dispatch.js` resolver injects `userId` from the Cognito identity along with `invokedVia: "appsync"`, and the Lambda attributes the action to a user only when both are present. Anything else is recorded as `unattributed` / `direct-invoke`.
+
+**A principal holding `lambda:InvokeFunction` can supply both fields itself and be attributed as whoever it names.** There is no way to tell from inside the function.
+
+### Why the stack cannot prevent this
+
+Within a single account, a call succeeds if **either** an identity-based policy **or** a resource-based policy allows it. And the Lambda permission API (`AddPermission`) can only write Allow statements. So adding a resource policy to this stack cannot take `lambda:InvokeFunction` away from a principal that already has it — it can only hand it to more principals.
+
+The two layers that do prevent it are both outside this stack:
+
+1. **Identity-based policies** — who is granted `lambda:InvokeFunction` in the first place
+2. **An SCP or permissions boundary** — an organization-level rule forbidding invocation from anywhere but the intended paths
+
+### Example SCP
+
+Denies invocation of the portal's ARP function by anything other than the AppSync data-source role and the containment sweep's EventBridge rule. Replace the `aws:PrincipalArn` values with the ones from your own deployment.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyDirectInvokeOfPortalContainment",
+      "Effect": "Deny",
+      "Action": "lambda:InvokeFunction",
+      "Resource": "arn:aws:lambda:<region>:<account-id>:function:*ArpResponseFunction*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::<account-id>:role/*AppSync*DataSource*",
+            "arn:aws:iam::<account-id>:role/*ContainmentBlockSweep*"
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+> **Operational note**: applying this also stops the live-verification probes in `scripts/portal-probes/` from working. Where you use the probes, add the role they run as to the `ArnNotLike` exclusion list.
+
+### What the stack does instead
+
+Since it cannot prevent this, it makes sure it **cannot happen quietly**. When a state-changing containment action arrives without an AppSync identity, the function emits the EMF metric `UnattributedContainmentActions`, and a CloudWatch alarm (`<stack>-containment-unattributed-action`) fires on the first occurrence. The point is to notice while the containment is still in force.
+
+The ledger row already recorded `direct-invoke`, but only somebody reading that row afterwards would ever have seen it.
+
+Running `scripts/portal-probes/` trips this alarm on purpose. The probes really do change state from outside the portal, so exempting them would leave a hole shaped exactly like the thing being watched for.
+
 ## Frontend Behavior
 
 The UI does not hide admin features from non-admin users — instead, it shows them grayed out with a "storage-admin required" badge. This makes the capability visible (users know what's possible) while preventing unauthorized execution (AppSync rejects the call if attempted).
