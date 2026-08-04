@@ -132,7 +132,8 @@ aws cognito-idp create-group \
 4. **監査証跡**: 全管理操作は `userId` を Lambda ペイロードに含み、CloudTrail で記録
 5. **保護アカウント**: storage-admin でも `fsxadmin`/`administrator` はブロック不可（`ontap_response.py` の安全弁）
 6. **確認ゲート**: 破壊的操作は、ブラウザのダイアログだけでなく Lambda のペイロードに明示的な `confirm: true` を要求します。対象は `deleteVolume`、`deleteExportPolicy`、`deleteCifsShare`、SnapMirror の `break`/`resync`/`delete`、Vscan と FPolicy のポリシー削除、クラスターピア削除、および ARP の封じ込めアクション全部（`blockSmbUser`、`blockNfsIp`、`containThreat`、`disconnectSessions`）です。解除系は意図的にゲートしていません — アクセスを戻す操作であり、誤ったブロックから復帰する経路に確認を挟むと回復が遅れるだけです。
-7. **自動失効はしない**: ブロックは誰かが解除するまで残ります。TTL もスケジュール解除もないため、誤検知が無期限のロックアウトになるのを防ぐのは「有効なブロック」タブだけです。運用上の意味は [封じ込めの境界](./arp-ai-isolation-demo-guide.md) を参照してください。
+7. **入力は SQL とリクエストパスの両方で検証する**: 監査ログの Athena クエリに入る値（`fileKeyPrefix`、`startDate`、`endDate`、`eventType`、`maxResults`）は、パターン検証を通してから、シングルクォートを二重化してリテラル化します。LIKE のメタ文字（`%`、`_`）もエスケープするため、プレフィックスはワイルドカードとして解釈されません。ONTAP のリクエストパスは、呼び出し側の名前を percent-encode し、`..` セグメントと制御文字を `_ontap_request` の入口で拒否します。パスの検証を各アクションに任せず 1 箇所に置いているのは、同じ関数を 110 以上のアクションが通るためです。
+8. **自動失効はしない**: ブロックは誰かが解除するまで残ります。TTL もスケジュール解除もないため、誤検知が無期限のロックアウトになるのを防ぐのは「有効なブロック」タブだけです。運用上の意味は [封じ込めの境界](./arp-ai-isolation-demo-guide.md) を参照してください。
 
 ## フロントエンドの挙動
 
