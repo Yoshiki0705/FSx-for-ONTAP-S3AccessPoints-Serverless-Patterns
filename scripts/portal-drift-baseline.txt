@@ -38,26 +38,3 @@ src/components/admin/SnapshotAdminManager.tsx	"有効化後にロックされた
 src/components/admin/SnapshotAdminManager.tsx	"続行するには ENABLE と入力してください:",
 src/components/admin/SnapshotAdminManager.tsx	"誰も削除できなくなります（root / fsxadmin 含む）。\n\n" +
 src/components/admin/SnapshotAdminManager.tsx	setError("有効化がキャンセルされました（ENABLE と入力する必要があります）");
-src/components/admin/VolumeManager.tsx	<option value="D">日</option>
-src/components/admin/VolumeManager.tsx	<option value="M">ヶ月</option>
-src/components/admin/VolumeManager.tsx	<option value="P0D">制限なし</option>
-src/components/admin/VolumeManager.tsx	<option value="P10950D">30年</option>
-src/components/admin/VolumeManager.tsx	<option value="P180D">180日 (6ヶ月)</option>
-src/components/admin/VolumeManager.tsx	<option value="P1825D">5年</option>
-src/components/admin/VolumeManager.tsx	<option value="P1D">1日</option>
-src/components/admin/VolumeManager.tsx	<option value="P30D">30日 (1ヶ月)</option>
-src/components/admin/VolumeManager.tsx	<option value="P30D">30日</option>
-src/components/admin/VolumeManager.tsx	<option value="P3650D">10年</option>
-src/components/admin/VolumeManager.tsx	<option value="P365D">1年</option>
-src/components/admin/VolumeManager.tsx	<option value="P730D">2年</option>
-src/components/admin/VolumeManager.tsx	<option value="P7D">7日</option>
-src/components/admin/VolumeManager.tsx	<option value="P90D">90日 (3ヶ月)</option>
-src/components/admin/VolumeManager.tsx	<option value="P90D">90日</option>
-src/components/admin/VolumeManager.tsx	<option value="Y">年</option>
-src/components/admin/VolumeManager.tsx	<option value="custom">カスタム...</option>
-src/components/admin/VolumeManager.tsx	<small>0日〜30年</small>
-src/components/admin/VolumeManager.tsx	<small>1日〜30年</small>
-src/i18n/index.tsx	{ code: "ja", label: "日本語" },
-src/i18n/index.tsx	{ code: "ko", label: "한국어" },
-src/i18n/index.tsx	{ code: "zh-CN", label: "简体中文" },
-src/i18n/index.tsx	{ code: "zh-TW", label: "繁體中文" },

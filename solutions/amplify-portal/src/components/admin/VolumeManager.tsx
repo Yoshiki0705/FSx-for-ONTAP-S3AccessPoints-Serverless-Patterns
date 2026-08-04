@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { durationLabel, durationRange } from "../../utils/duration";
 
 const client = generateClient<Schema>();
 
@@ -174,54 +175,42 @@ export function VolumeManager() {
                 <div className="form-group">
                   <label>{t("rmSnaplockRetentionDefault")}</label>
                   <select value={newRetentionDefault} onChange={(e) => setNewRetentionDefault(e.target.value)}>
-                    <option value="P1D">1日</option>
-                    <option value="P7D">7日</option>
-                    <option value="P30D">30日 (1ヶ月)</option>
-                    <option value="P90D">90日 (3ヶ月)</option>
-                    <option value="P180D">180日 (6ヶ月)</option>
-                    <option value="P365D">1年</option>
-                    <option value="P730D">2年</option>
-                    <option value="P1825D">5年</option>
-                    <option value="P3650D">10年</option>
-                    <option value="custom">カスタム...</option>
+                    {["P1D", "P7D", "P30D", "P90D", "P180D", "P365D", "P730D", "P1825D", "P3650D", "custom"].map(
+                      (period) => (
+                        <option key={period} value={period}>{durationLabel(period, t)}</option>
+                      )
+                    )}
                   </select>
                   {newRetentionDefault === "custom" && (
                     <div className="form-row" style={{ marginTop: "0.3rem", gap: "0.5rem" }}>
                       <input type="number" value={customRetentionNum} onChange={(e) => setCustomRetentionNum(e.target.value)}
                         min={1} max={10950} style={{ width: "80px" }} />
                       <select value={customRetentionUnit} onChange={(e) => setCustomRetentionUnit(e.target.value)} style={{ width: "100px" }}>
-                        <option value="D">日</option>
-                        <option value="M">ヶ月</option>
-                        <option value="Y">年</option>
+                        <option value="D">{t("durationUnitDay")}</option>
+                        <option value="M">{t("durationUnitMonth")}</option>
+                        <option value="Y">{t("durationUnitYear")}</option>
                       </select>
                     </div>
                   )}
-                  <small>{t("rmRetentionDefaultHint")} (1日〜30年)</small>
+                  <small>{t("rmRetentionDefaultHint")} ({durationRange("P1D", "P10950D", t)})</small>
                 </div>
                 <div className="form-group">
                   <label>{t("rmSnaplockRetentionMin")}</label>
                   <select value={newRetentionMin} onChange={(e) => setNewRetentionMin(e.target.value)}>
-                    <option value="P0D">制限なし</option>
-                    <option value="P1D">1日</option>
-                    <option value="P7D">7日</option>
-                    <option value="P30D">30日</option>
-                    <option value="P90D">90日</option>
-                    <option value="P365D">1年</option>
+                    {["P0D", "P1D", "P7D", "P30D", "P90D", "P365D"].map((period) => (
+                      <option key={period} value={period}>{durationLabel(period, t)}</option>
+                    ))}
                   </select>
-                  <small>0日〜30年</small>
+                  <small>{durationRange("P0D", "P10950D", t)}</small>
                 </div>
                 <div className="form-group">
                   <label>{t("rmSnaplockRetentionMax")}</label>
                   <select value={newRetentionMax} onChange={(e) => setNewRetentionMax(e.target.value)}>
-                    <option value="P30D">30日</option>
-                    <option value="P90D">90日</option>
-                    <option value="P365D">1年</option>
-                    <option value="P730D">2年</option>
-                    <option value="P1825D">5年</option>
-                    <option value="P3650D">10年</option>
-                    <option value="P10950D">30年</option>
+                    {["P30D", "P90D", "P365D", "P730D", "P1825D", "P3650D", "P10950D"].map((period) => (
+                      <option key={period} value={period}>{durationLabel(period, t)}</option>
+                    ))}
                   </select>
-                  <small>1日〜30年</small>
+                  <small>{durationRange("P1D", "P10950D", t)}</small>
                 </div>
                 <div className="info-message" style={{ marginTop: "0.5rem" }}>
                   ⚠️ {t("rmSnaplockRetentionWarning")}
