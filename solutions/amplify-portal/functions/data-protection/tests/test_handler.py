@@ -575,3 +575,256 @@ class TestExpiryInListing:
 
         assert result["smbBlocks"][0]["managedByPortal"] is True
         assert result["smbBlocks"][0]["expiresAt"] is not None
+
+
+# --- Multi-SVM fan-out --------------------------------------------------------
+#
+# A compromised account is usually reachable on every SVM that trusts the same
+# directory, so containing it one SVM at a time leaves the rest open for as long
+# as that takes. These tests pin the two properties that matter: fan-out never
+# happens unless asked for, and a partial result is reported as partial.
+
+
+@pytest.fixture
+def mock_http():
+    """Patch the ONTAP GET helper used for SVM discovery."""
+    with patch("handler._ontap_get") as get:
+        get.return_value = {
+            "records": [
+                {"name": "svm1", "state": "running"},
+                {"name": "svm2", "state": "running"},
+                {"name": "svm_stopped", "state": "stopped"},
+            ]
+        }
+        yield get
+
+
+class TestFanOutTargeting:
+    def test_no_fan_out_without_being_asked(self, mock_secrets, mock_arp, ledger):
+        """An operator who names one SVM gets one SVM."""
+        from handler import handler
+
+        result = handler({"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True}, None)
+
+        assert result.get("fannedOut") is not True
+        assert mock_arp.block_smb_user.call_count == 1
+
+    def test_explicit_svm_list_hits_each_one(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        result = handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "svms": ["svmA", "svmB", "svmC"],
+            },
+            None,
+        )
+
+        assert result["success"] is True
+        assert result["fannedOut"] is True
+        assert result["succeededOn"] == ["svmA", "svmB", "svmC"]
+        assert mock_arp.block_smb_user.call_count == 3
+        # One ledger row per SVM, since a block on each is a separate thing to lift.
+        assert len(ledger) == 3
+
+    def test_duplicate_names_are_collapsed(self, mock_secrets, mock_arp, ledger):
+        """Otherwise the repeat comes back as 'already blocked' and reads as a fault."""
+        from handler import handler
+
+        result = handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "svms": ["svmA", "svmA", "svmB"],
+            },
+            None,
+        )
+
+        assert result["targets"] == ["svmA", "svmB"]
+        assert mock_arp.block_smb_user.call_count == 2
+
+    def test_all_svms_asks_the_cluster_and_skips_stopped_ones(self, mock_secrets, mock_arp, ledger, mock_http):
+        """A block on a stopped SVM would report containment that protects nothing."""
+        from handler import handler
+
+        result = handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "allSvms": True,
+            },
+            None,
+        )
+
+        assert result["targets"] == ["svm1", "svm2"]
+        assert "svm_stopped" not in result["targets"]
+
+    @pytest.mark.parametrize("bad", [[], "svm1", {}, [""], [None]], ids=["empty", "string", "dict", "blank", "none"])
+    def test_rejects_an_unusable_svm_list(self, bad, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        result = handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "svms": bad,
+            },
+            None,
+        )
+
+        assert result["success"] is False
+        assert "svms" in result["error"]
+        mock_arp.block_smb_user.assert_not_called()
+
+    def test_confirmation_is_checked_once_not_per_svm(self, mock_secrets, mock_arp, ledger):
+        """A missing confirmation should explain itself, not return N refusals."""
+        from handler import handler
+
+        result = handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "svms": ["svmA", "svmB"],
+            },
+            None,
+        )
+
+        assert result["success"] is False
+        assert "confirm=true" in result["error"]
+        assert result.get("fannedOut") is not True
+        mock_arp.block_smb_user.assert_not_called()
+
+
+class TestFanOutPartialResults:
+    def test_partial_failure_names_both_sides(self, mock_secrets, mock_arp, ledger):
+        """Overall success would hide a gap; overall failure would hide real blocks.
+
+        Either reading sends the operator to the wrong next action, so both the
+        SVMs that worked and the ones that did not are named.
+        """
+        from handler import handler
+
+        def block(svm_name, domain, username):
+            if svm_name == "svmB":
+                raise RuntimeError("ONTAP unreachable")
+            return {"action": "block_smb_user", "status": "blocked"}
+
+        mock_arp.block_smb_user.side_effect = block
+
+        result = handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "svms": ["svmA", "svmB", "svmC"],
+            },
+            None,
+        )
+
+        assert result["success"] is False
+        assert result["succeededOn"] == ["svmA", "svmC"]
+        assert result["failedOn"] == ["svmB"]
+        assert "svmB" in result["error"]
+        # The blocks that landed must still be recorded, or they cannot be lifted.
+        assert len(ledger) == 2
+
+    def test_one_svm_raising_does_not_abandon_the_rest(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        calls = []
+
+        def block(svm_name, domain, username):
+            calls.append(svm_name)
+            if svm_name == "svmA":
+                raise RuntimeError("boom")
+            return {"action": "block_smb_user", "status": "blocked"}
+
+        mock_arp.block_smb_user.side_effect = block
+
+        result = handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "svms": ["svmA", "svmB"],
+            },
+            None,
+        )
+
+        assert calls == ["svmA", "svmB"]
+        assert result["succeededOn"] == ["svmB"]
+
+
+class TestListSvms:
+    def test_reports_state_so_stopped_svms_are_visible(self, mock_secrets, mock_arp, mock_http):
+        from handler import handler
+
+        result = handler({"action": "listSvms"}, None)
+
+        assert result["success"] is True
+        assert result["total"] == 3
+        assert {s["name"] for s in result["svms"]} == {"svm1", "svm2", "svm_stopped"}
+
+    def test_reports_failure_rather_than_an_empty_cluster(self, mock_secrets, mock_arp):
+        from handler import handler
+
+        with patch("handler._ontap_get", side_effect=RuntimeError("timeout")):
+            result = handler({"action": "listSvms"}, None)
+
+        assert result["success"] is False
+        assert result["svms"] == []
+        assert "RuntimeError" in result["error"]
+
+
+class TestListBlocksAcrossSvms:
+    def test_each_entry_carries_its_svm(self, mock_secrets, mock_arp, ledger):
+        """The unblock call needs to know where the block actually is."""
+        from handler import handler
+
+        mock_arp.list_active_blocks.side_effect = lambda svm_name: {
+            "action": "list_active_blocks",
+            "svm": svm_name,
+            "smb_blocks": [{"pattern": f"CORP\\\\{svm_name}user", "index": 1}],
+            "nfs_blocks": [],
+            "total": 1,
+        }
+
+        result = handler({"action": "listActiveBlocks", "svms": ["svmA", "svmB"]}, None)
+
+        assert result["success"] is True
+        assert result["total"] == 2
+        assert {b["svm"] for b in result["smbBlocks"]} == {"svmA", "svmB"}
+
+    def test_a_skipped_svm_is_a_failure_not_a_shorter_list(self, mock_secrets, mock_arp, ledger):
+        """A block hiding on an unreadable SVM cannot be lifted from the portal."""
+        from handler import handler
+
+        def listing(svm_name):
+            if svm_name == "svmB":
+                raise RuntimeError("unreachable")
+            return {
+                "action": "list_active_blocks",
+                "svm": svm_name,
+                "smb_blocks": [],
+                "nfs_blocks": [],
+                "total": 0,
+            }
+
+        mock_arp.list_active_blocks.side_effect = listing
+
+        result = handler({"action": "listActiveBlocks", "svms": ["svmA", "svmB"]}, None)
+
+        assert result["success"] is False
+        assert "svmB" in result["error"]

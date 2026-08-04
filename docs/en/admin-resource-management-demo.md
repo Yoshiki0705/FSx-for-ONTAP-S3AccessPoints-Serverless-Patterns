@@ -355,10 +355,38 @@ export const config: PortalConfig = {
   vpcId: process.env.AMPLIFY_PORTAL_VPC_ID || "",
   vpcSubnetIds: (process.env.AMPLIFY_PORTAL_VPC_SUBNET_IDS || "").split(",").filter(Boolean),
   vpcSecurityGroupIds: (process.env.AMPLIFY_PORTAL_VPC_SG_IDS || "").split(",").filter(Boolean),
+  // Required whenever vpcId is set — see below.
+  vpcRouteTableIds: (process.env.AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS || "").split(",").filter(Boolean),
 };
 ```
 
 When `vpcId` is empty, Lambda deploys without VPC (admin panels show "ONTAP Connection Required" gracefully).
+
+#### `vpcRouteTableIds` is required when using a VPC
+
+Set this to the route tables associated with your Lambda subnets. It creates a DynamoDB gateway endpoint, which the VPC functions need to reach the containment block ledger. **Synth refuses to run without it** when `vpcId` is set, so this is not something you can leave for later.
+
+`portal-config.ts` is gitignored and copied from `portal-config.example.ts`, which takes plain values. The `AMPLIFY_PORTAL_*` environment variables shown above are how the reference configuration reads them — they only apply if your own `portal-config.ts` wires them up the same way. Setting the field directly always works.
+
+A Lambda ENI has no public IP, so a subnet whose default route is an internet gateway gives the function no egress at all. Interface endpoints cover Secrets Manager; DynamoDB has no path unless one is added. Gateway endpoints carry no hourly or data processing charge.
+
+**What happens if you leave it unset**: containment still works, but nothing expires. Blocks are placed on the cluster and the scheduled sweep never sees them, because the ledger write fails. The response reports `expiryTracked: false` rather than pretending the block will lift itself, so the condition is visible — but only to someone reading the response.
+
+Find the route tables for your subnets with:
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=association.subnet-id,Values=<your-subnet-id>" \
+  --query "RouteTables[].RouteTableId" --output text
+```
+
+If a subnet has no explicit association, it uses the VPC main route table:
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=vpc-id,Values=<your-vpc-id>" "Name=association.main,Values=true" \
+  --query "RouteTables[].RouteTableId" --output text
+```
 
 ## Verified Results (2026-07-26)
 
