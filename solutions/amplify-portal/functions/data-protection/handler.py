@@ -633,21 +633,74 @@ def _get_arp_response_client():
     return ArpResponseActions(client)
 
 
+def _arp_client_or_error():
+    """Build the ARP client, converting a construction failure into a readable error.
+
+    Returns (client, None) or (None, error_dict).
+
+    Without this, a failure here escapes to the generic handler except clause and
+    the UI shows whatever `str(e)` produced — observed as a bare "4" on an SVM
+    with no CIFS service, which tells an operator nothing. `listActiveBlocks`
+    already translated that case; the action paths did not.
+    """
+    try:
+        return _get_arp_response_client(), None
+    except ImportError as e:
+        return None, {
+            "success": False,
+            "error": f"Containment module not available in this deployment: {e}",
+        }
+    except Exception as e:
+        detail = str(e)
+        if detail.isdigit() or "404" in detail or "not found" in detail.lower():
+            return None, {
+                "success": False,
+                "error": (
+                    "Could not reach the ONTAP identity APIs — the SVM may not have a "
+                    "CIFS service configured, which SMB containment requires"
+                ),
+            }
+        return None, {"success": False, "error": f"Failed to initialise the ONTAP client: {detail}"}
+
+
+def _require_confirm(event):
+    """Return an error dict unless the caller passed confirm=true.
+
+    Blocking a user or a client IP cuts data access for that principal across
+    the whole SVM. A UI dialog alone is a suggestion, not a control — anything
+    calling AppSync directly bypasses it — so the gate lives here as well.
+
+    Unblock actions are deliberately NOT gated: they restore access, and a
+    confirmation step on the way back out of a mistaken block only slows the
+    recovery down.
+    """
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required for containment operations"}
+    return None
+
+
 def _arp_block_smb_user(event):
     """Block an SMB user (name-mapping deny rule).
 
     Event params:
         domain: Windows domain (e.g., "CORP")
         username: Username to block (e.g., "jdoe")
+        confirm: Must be true — this cuts the user's access SVM-wide
         svm: Optional SVM name override (default: SVM_NAME env var)
     """
-    arp = _get_arp_response_client()
     svm = event.get("svm", SVM_NAME)
     domain = event.get("domain", "")
     username = event.get("username", "")
 
     if not domain or not username:
         return {"success": False, "error": "domain and username are required"}
+    gate = _require_confirm(event)
+    if gate:
+        return gate
+
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
 
     try:
         result = arp.block_smb_user(svm_name=svm, domain=domain, username=username)
@@ -665,7 +718,9 @@ def _arp_unblock_smb_user(event):
         username: Username to unblock
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
     svm = event.get("svm", SVM_NAME)
     domain = event.get("domain", "")
     username = event.get("username", "")
@@ -687,15 +742,22 @@ def _arp_block_nfs_ip(event):
     Event params:
         clientIp: IP to block (e.g., "10.0.5.99")
         policyName: Export policy name (default: "default")
+        confirm: Must be true — this cuts the client's NFS access
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
     svm = event.get("svm", SVM_NAME)
     client_ip = event.get("clientIp", "")
     policy_name = event.get("policyName", "default")
 
     if not client_ip:
         return {"success": False, "error": "clientIp is required"}
+    gate = _require_confirm(event)
+    if gate:
+        return gate
+
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
 
     try:
         result = arp.block_nfs_ip(svm_name=svm, policy_name=policy_name, client_ip=client_ip)
@@ -713,7 +775,9 @@ def _arp_unblock_nfs_ip(event):
         policyName: Export policy name (default: "default")
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
     svm = event.get("svm", SVM_NAME)
     client_ip = event.get("clientIp", "")
     policy_name = event.get("policyName", "default")
@@ -739,9 +803,9 @@ def _arp_contain_threat(event):
         volumeName: Volume to snapshot (optional, default: VOLUME_NAME)
         policyName: Export policy (default: "default")
         reason: Reason string for audit
+        confirm: Must be true — this blocks and disconnects in one call
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
     svm = event.get("svm", SVM_NAME)
     domain = event.get("domain")
     username = event.get("username")
@@ -755,6 +819,13 @@ def _arp_contain_threat(event):
             "success": False,
             "error": "At least one of (domain+username) or clientIp is required",
         }
+    gate = _require_confirm(event)
+    if gate:
+        return gate
+
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
 
     try:
         result = arp.contain_threat(
@@ -827,15 +898,22 @@ def _arp_disconnect_sessions(event):
     Event params:
         user: Windows user (e.g., "CORP\\jdoe")
         clientIp: Client IP (at least one required)
+        confirm: Must be true — this drops the user's open sessions
         svm: Optional SVM name override
     """
-    arp = _get_arp_response_client()
     svm = event.get("svm", SVM_NAME)
     user = event.get("user")
     client_ip = event.get("clientIp")
 
     if not user and not client_ip:
         return {"success": False, "error": "At least one of user or clientIp is required"}
+    gate = _require_confirm(event)
+    if gate:
+        return gate
+
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        return client_error
 
     try:
         result = arp.disconnect_smb_sessions(svm_name=svm, user=user, client_ip=client_ip)
