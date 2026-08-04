@@ -3,12 +3,15 @@ import { ja, en, ko, zhCN, zhTW, fr, de, es, type TranslationKeys } from "./loca
 
 export type Locale = "ja" | "en" | "ko" | "zh-CN" | "zh-TW" | "fr" | "de" | "es";
 
+// Each language is named in its own script, so these labels are correct in every
+// locale and must not go through translation — a Japanese speaker looking for
+// Korean looks for "한국어", not for the Japanese word for Korean.
 export const LOCALES: { code: Locale; label: string }[] = [
-  { code: "ja", label: "日本語" },
+  { code: "ja", label: "日本語" }, // i18n-exempt: native script by design
   { code: "en", label: "English" },
-  { code: "ko", label: "한국어" },
-  { code: "zh-CN", label: "简体中文" },
-  { code: "zh-TW", label: "繁體中文" },
+  { code: "ko", label: "한국어" }, // i18n-exempt: native script by design
+  { code: "zh-CN", label: "简体中文" }, // i18n-exempt: native script by design
+  { code: "zh-TW", label: "繁體中文" }, // i18n-exempt: native script by design
   { code: "fr", label: "Français" },
   { code: "de", label: "Deutsch" },
   { code: "es", label: "Español" },
