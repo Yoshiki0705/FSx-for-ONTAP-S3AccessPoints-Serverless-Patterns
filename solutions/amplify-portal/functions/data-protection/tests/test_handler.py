@@ -11,6 +11,7 @@ skips it — so the gate has to hold in the Lambda too.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -293,3 +294,284 @@ class TestActiveBlocksResponseShape:
         for key in ("success", "smbBlocks", "nfsBlocks", "total", "error"):
             assert key in ok, key
             assert key in failed, key
+
+
+# --- Containment block expiry (TTL auto-unblock) -----------------------------
+#
+# ONTAP name-mapping and export-policy rules carry no timestamp, so expiry can
+# only come from the portal's own ledger. These tests pin the two properties
+# that matter operationally: a block acquires an expiry by default, and the
+# sweep never touches a block the portal did not place.
+
+
+@pytest.fixture
+def ledger():
+    """Patch the ledger table with an in-memory stand-in."""
+    rows: dict[str, dict] = {}
+    table = MagicMock()
+
+    def put_item(Item):
+        rows[Item["blockId"]] = dict(Item)
+
+    def update_item(Key, UpdateExpression, ExpressionAttributeNames, ExpressionAttributeValues):
+        row = rows.get(Key["blockId"])
+        if row is not None:
+            row["status"] = ExpressionAttributeValues[":s"]
+            row["liftedAt"] = ExpressionAttributeValues[":t"]
+            row["liftReason"] = ExpressionAttributeValues[":r"]
+
+    def scan(**kwargs):
+        wanted = kwargs["ExpressionAttributeValues"][":s"]
+        return {"Items": [r for r in rows.values() if r.get("status") == wanted]}
+
+    table.put_item.side_effect = put_item
+    table.update_item.side_effect = update_item
+    table.scan.side_effect = scan
+
+    with patch("handler._blocks_table", return_value=table):
+        yield rows
+
+
+class TestBlockExpiryRecording:
+    def test_block_gets_a_default_expiry(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        result = handler({"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True}, None)
+
+        assert result["success"] is True
+        assert result["expiryTracked"] is True
+        assert result["expiresAt"] is not None
+        row = ledger["smb#fsxsvm01#CORP#jdoe"] if "smb#fsxsvm01#CORP#jdoe" in ledger else next(iter(ledger.values()))
+        assert row["status"] == "active"
+        assert row["blockType"] == "smb"
+        # Kept past the block's own expiry, so the audit trail outlives the block.
+        expires = datetime.fromisoformat(row["expiresAt"].replace("Z", "+00:00"))
+        assert row["ttl"] > expires.timestamp()
+
+    def test_zero_ttl_is_recorded_as_indefinite_not_silently_defaulted(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        result = handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "ttlHours": 0,
+            },
+            None,
+        )
+
+        assert result["success"] is True
+        assert result["expiresAt"] is None
+        assert result["expiryTracked"] is True
+        assert next(iter(ledger.values()))["expiresAt"] is None
+
+    @pytest.mark.parametrize(
+        "bad", [-1, 24 * 91, "abc", True, [], {"h": 1}], ids=["negative", "over-max", "text", "bool", "list", "dict"]
+    )
+    def test_rejects_unusable_ttl(self, bad, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        result = handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "ttlHours": bad,
+            },
+            None,
+        )
+
+        assert result["success"] is False
+        assert "ttlHours" in result["error"]
+        # Nothing may be blocked when the expiry is unusable: a block whose
+        # expiry was rejected would otherwise become an indefinite one.
+        mock_arp.block_smb_user.assert_not_called()
+        assert ledger == {}
+
+    def test_block_still_succeeds_without_a_ledger_but_says_so(self, mock_secrets, mock_arp):
+        """Containment is the urgent half; expiry is the tidy-up.
+
+        A deployment with no table must still be able to block, but it must not
+        look like the block will expire on its own.
+        """
+        from handler import handler
+
+        with patch("handler._blocks_table", return_value=None):
+            result = handler(
+                {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
+                None,
+            )
+
+        assert result["success"] is True
+        assert result["expiryTracked"] is False
+        assert result["expiresAt"] is None
+
+    def test_ledger_write_failure_does_not_report_a_failed_block(self, mock_secrets, mock_arp):
+        from handler import handler
+
+        table = MagicMock()
+        table.put_item.side_effect = RuntimeError("throttled")
+        with patch("handler._blocks_table", return_value=table):
+            result = handler(
+                {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
+                None,
+            )
+
+        # The block is in place, so success is accurate. What changed is that
+        # nothing will expire it, which the caller has to be told.
+        assert result["success"] is True
+        assert result["expiryTracked"] is False
+        assert result["ledgerError"] == "RuntimeError"
+
+    def test_contain_threat_records_both_blocks_it_places(self, mock_secrets, mock_arp, ledger):
+        """The most urgent route must not be the one that never expires."""
+        from handler import handler
+
+        result = handler(
+            {
+                "action": "containThreat",
+                "domain": "CORP",
+                "username": "jdoe",
+                "clientIp": "203.0.113.99",
+                "confirm": True,
+            },
+            None,
+        )
+
+        assert result["success"] is True
+        assert result["expiryTracked"] is True
+        assert {r["blockType"] for r in ledger.values()} == {"smb", "nfs"}
+        assert all(r.get("viaContainThreat") for r in ledger.values())
+
+    def test_manual_unblock_closes_the_row(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        handler({"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True}, None)
+        handler({"action": "unblockSmbUser", "domain": "CORP", "username": "jdoe"}, None)
+
+        row = next(iter(ledger.values()))
+        assert row["status"] == "lifted"
+        assert row["liftReason"] == "manual"
+
+
+class TestExpirySweep:
+    def _row(self, block_id, **over):
+        base = {
+            "blockId": block_id,
+            "blockType": "smb",
+            "svm": "fsxsvm01",
+            "status": "active",
+            "domain": "CORP",
+            "username": "jdoe",
+            "expiresAt": "2020-01-01T00:00:00Z",
+        }
+        base.update(over)
+        return base
+
+    def test_lifts_only_blocks_that_are_due(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        future = (datetime.now(timezone.utc) + timedelta(hours=5)).isoformat().replace("+00:00", "Z")
+        ledger["due"] = self._row("due")
+        ledger["later"] = self._row("later", username="alice", expiresAt=future)
+        ledger["forever"] = self._row("forever", username="bob", expiresAt=None)
+
+        result = handler({"action": "sweepExpiredBlocks"}, None)
+
+        assert result["success"] is True
+        assert result["swept"] == 1
+        assert ledger["due"]["status"] == "lifted"
+        assert ledger["due"]["liftReason"] == "expired"
+        assert ledger["later"]["status"] == "active"
+        assert ledger["forever"]["status"] == "active"
+        assert mock_arp.unblock_smb_user.call_count == 1
+
+    def test_ignores_blocks_the_portal_did_not_place(self, mock_secrets, mock_arp, ledger):
+        """A block set at the ONTAP CLI must survive the sweep.
+
+        The portal cannot know the intent behind it, and lifting it would be a
+        silent loss of containment.
+        """
+        from handler import handler
+
+        result = handler({"action": "sweepExpiredBlocks"}, None)
+
+        assert result["swept"] == 0
+        assert result["examined"] == 0
+        mock_arp.unblock_smb_user.assert_not_called()
+        mock_arp.unblock_nfs_ip.assert_not_called()
+
+    def test_failed_unblock_leaves_the_row_active_for_the_next_run(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        ledger["due"] = self._row("due")
+        mock_arp.unblock_smb_user.side_effect = RuntimeError("ONTAP unreachable")
+
+        result = handler({"action": "sweepExpiredBlocks"}, None)
+
+        assert result["success"] is False
+        assert result["failed"] == 1
+        # Retried next tick. Unblocking twice is harmless; leaving a principal
+        # cut off because one sweep failed is not.
+        assert ledger["due"]["status"] == "active"
+
+    def test_nfs_rows_use_the_export_policy_unblock(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        ledger["due"] = self._row("due", blockType="nfs", policyName="default", clientIp="203.0.113.99")
+
+        result = handler({"action": "sweepExpiredBlocks"}, None)
+
+        assert result["swept"] == 1
+        mock_arp.unblock_nfs_ip.assert_called_once()
+        assert mock_arp.unblock_nfs_ip.call_args.kwargs["client_ip"] == "203.0.113.99"
+
+    def test_unparseable_expiry_is_counted_not_ignored(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        ledger["broken"] = self._row("broken", expiresAt="whenever")
+
+        result = handler({"action": "sweepExpiredBlocks"}, None)
+
+        assert result["failed"] == 1
+        assert result["success"] is False
+        mock_arp.unblock_smb_user.assert_not_called()
+
+
+class TestExpiryInListing:
+    def test_marks_blocks_without_a_ledger_row_as_unmanaged(self, mock_secrets, mock_arp, ledger):
+        """The honest answer for a block placed outside the portal."""
+        from handler import handler
+
+        mock_arp.list_active_blocks.return_value = {
+            "action": "list_active_blocks",
+            "svm": "fsxsvm01",
+            "smb_blocks": [{"pattern": "CORP\\\\stranger", "index": 1, "replacement": " "}],
+            "nfs_blocks": [],
+            "total": 1,
+        }
+
+        result = handler({"action": "listActiveBlocks"}, None)
+
+        assert result["smbBlocks"][0]["managedByPortal"] is False
+        assert result["smbBlocks"][0]["expiresAt"] is None
+
+    def test_shows_expiry_for_a_portal_block(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        handler({"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True}, None)
+        mock_arp.list_active_blocks.return_value = {
+            "action": "list_active_blocks",
+            "svm": "fsxsvm01",
+            "smb_blocks": [{"pattern": "CORP\\\\jdoe", "index": 1, "replacement": " "}],
+            "nfs_blocks": [],
+            "total": 1,
+        }
+
+        result = handler({"action": "listActiveBlocks"}, None)
+
+        assert result["smbBlocks"][0]["managedByPortal"] is True
+        assert result["smbBlocks"][0]["expiresAt"] is not None

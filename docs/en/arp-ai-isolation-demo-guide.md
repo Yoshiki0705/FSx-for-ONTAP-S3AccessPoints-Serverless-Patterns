@@ -81,7 +81,7 @@ After a few minutes, ARP should detect the pattern and the threat level will cha
 
 ![The containment form in the portal with domain, username, client IP and reason filled in. Below the four action buttons, a confirmation row explains that the action creates a snapshot, blocks the targets and disconnects their SMB sessions across the whole SVM, with Run and Cancel buttons](../screenshots/arp-containment-confirm.png)
 
-> **Why two steps**: a block removes a principal's data access SVM-wide and nothing expires it automatically. The Lambda enforces the same gate independently — a call arriving at AppSync without `confirm: true` is refused, so bypassing the browser does not bypass the check.
+> **Why two steps**: a block removes a principal's data access SVM-wide. The Lambda enforces the same gate independently — a call arriving at AppSync without `confirm: true` is refused, so bypassing the browser does not bypass the check.
 
 **Expected result**: The portal executes all steps in sequence:
 - ✅ Creates an `incident_response_YYYYMMDD_HHMMSS` snapshot
@@ -242,7 +242,10 @@ Snapshot creation includes a 15-minute cooldown to prevent snapshot storms durin
 
 - **All containment actions are logged** in CloudTrail (AppSync data events + Lambda execution)
 - **Confirmation is enforced in the Lambda**, not only in the browser — `blockSmbUser`, `blockNfsIp`, `containThreat` and `disconnectSessions` refuse a call without `confirm: true`. Unblocking is deliberately not gated.
-- **Blocks do not expire.** There is no TTL and no scheduled unblock, so the Active Blocks tab is the only thing between a false positive and an indefinite lockout. Review it as part of the incident close-out.
+- **Blocks expire.** The default is 24 hours, and the operator can choose 1 hour to 7 days, or "indefinite", at the point of blocking. A scheduled sweep lifts blocks whose expiry has passed, so a false positive becomes an indefinite lockout only when someone explicitly chooses indefinite.
+  - The lift can be later than the expiry by up to one sweep interval (15 minutes by default). The expiry is a lower bound on when access returns, not an exact time.
+  - The sweep only lifts blocks this portal created. A block placed elsewhere — at the ONTAP CLI, by another automation — is shown as "Not portal-managed" and left alone. The portal cannot know the intent behind it, and lifting it would be a silent loss of containment.
+  - To lift a block before its expiry, or to lift an indefinite one, use the Active Blocks tab.
 - **Protected accounts** prevent accidental lockout of admin credentials
 - **Input validation** blocks injection attempts (`;`, `|`, `&`, `` ` `` in usernames)
 - **Cognito group authorization** ensures only designated admins can execute response actions

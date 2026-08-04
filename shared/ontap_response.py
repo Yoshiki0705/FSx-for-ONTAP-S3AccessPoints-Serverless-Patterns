@@ -183,12 +183,20 @@ class ArpResponseActions:
     # SMB User Blocking
     # ------------------------------------------------------------------
 
+    def _existing_win_unix_mappings(self, svm_uuid: str) -> list[dict[str, Any]]:
+        """Current win_unix name-mappings on the SVM, with index and pattern."""
+        data = self._client.get(
+            "/name-services/name-mappings",
+            params={"svm.uuid": svm_uuid, "direction": "win_unix", "fields": "index,pattern"},
+        )
+        return data.get("records", [])
+
     def block_smb_user(
         self,
         svm_name: str,
         domain: str,
         username: str,
-        position: int = 1,
+        position: int | None = None,
     ) -> dict[str, Any]:
         """Block an SMB user by creating a deny name-mapping.
 
@@ -199,7 +207,11 @@ class ArpResponseActions:
             svm_name: SVM name.
             domain: Windows domain (e.g., "CORP").
             username: Username to block.
-            position: Rule position (1 = highest priority).
+            position: Rule position (1 = evaluated first). Defaults to the lowest
+                free index. This used to default to 1 unconditionally, which made
+                a second block impossible: ONTAP rejects an occupied index with a
+                bare 409, so containing a second principal during an incident
+                failed with nothing to explain why.
 
         Returns:
             Dict with blocking details.
@@ -207,6 +219,35 @@ class ArpResponseActions:
         _validate_username(username)
         svm_uuid = self._get_svm_uuid(svm_name)
         pattern = f"{domain}\\\\{username}"
+
+        existing = self._existing_win_unix_mappings(svm_uuid)
+
+        # Re-blocking a principal who is already blocked is a normal thing to do
+        # during an incident — a second alert, or an operator who cannot see the
+        # first block. It should be a no-op, not a 409.
+        for record in existing:
+            if str(record.get("pattern", "")) == pattern:
+                logger.info(
+                    "SMB user already blocked: %s\\%s on SVM %s (index %s)",
+                    domain,
+                    username,
+                    svm_name,
+                    record.get("index"),
+                )
+                return {
+                    "action": "block_smb_user",
+                    "svm": svm_name,
+                    "pattern": pattern,
+                    "position": record.get("index"),
+                    "status": "already_blocked",
+                    "marker": RESPONSE_MARKER,
+                }
+
+        if position is None:
+            used = {record.get("index") for record in existing}
+            position = 1
+            while position in used:
+                position += 1
 
         ad_joined = self._is_svm_ad_joined(svm_name)
         replacement = "nobody" if ad_joined else " "
