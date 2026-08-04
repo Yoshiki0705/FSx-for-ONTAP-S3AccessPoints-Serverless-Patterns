@@ -828,3 +828,87 @@ class TestListBlocksAcrossSvms:
 
         assert result["success"] is False
         assert "svmB" in result["error"]
+
+
+# --- Audit attribution ---------------------------------------------------------
+#
+# The ledger row says who contained a principal. If a caller can set that, the
+# audit trail is worth nothing, and the trail is the reason this feature can be
+# described as auditable at all.
+
+
+class TestAuditAttribution:
+    def test_records_the_appsync_identity(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "userId": "alice",
+                "invokedVia": "appsync",
+            },
+            None,
+        )
+
+        row = next(iter(ledger.values()))
+        assert row["createdBy"] == "alice"
+        assert row["createdVia"] == "appsync"
+
+    def test_a_caller_cannot_name_someone_else_without_the_appsync_marker(self, mock_secrets, mock_arp, ledger):
+        """A userId with no resolver marker is a direct invocation, not a user.
+
+        The resolver sets both together. Accepting a userId on its own would let
+        anyone with lambda:InvokeFunction attribute a block to a colleague.
+        """
+        from handler import handler
+
+        handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "userId": "alice",
+            },
+            None,
+        )
+
+        row = next(iter(ledger.values()))
+        assert row["createdBy"] == "unattributed"
+        assert row["createdVia"] == "direct-invoke"
+
+    def test_the_removed_actor_fallback_is_not_honoured(self, mock_secrets, mock_arp, ledger):
+        """`actor` used to be trusted, and no resolver ever cleared it."""
+        from handler import handler
+
+        handler(
+            {
+                "action": "blockSmbUser",
+                "domain": "CORP",
+                "username": "jdoe",
+                "confirm": True,
+                "actor": "someone-else",
+            },
+            None,
+        )
+
+        row = next(iter(ledger.values()))
+        assert row["createdBy"] == "unattributed"
+        assert "someone-else" not in row.values()
+
+    def test_an_unattributed_action_is_distinguishable_from_a_failed_lookup(self, mock_secrets, mock_arp, ledger):
+        from handler import handler
+
+        handler(
+            {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
+            None,
+        )
+
+        row = next(iter(ledger.values()))
+        # "unknown" would read as a lookup that failed. This has to read as an
+        # action nobody is accountable for.
+        assert row["createdBy"] == "unattributed"
+        assert row["createdVia"] == "direct-invoke"

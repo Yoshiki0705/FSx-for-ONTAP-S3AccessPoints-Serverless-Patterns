@@ -252,6 +252,46 @@ describe("Containment block expiry", () => {
     expect(backendSource).toContain("config.vpcRouteTableIds");
   });
 
+  it("alarms on a sweep that stops running, not only on one that errors", () => {
+    // The failure mode that matters most: a sweep which has stopped firing
+    // reports no failures, so alarming only on errors would call it healthy
+    // while blocks quietly outlive their expiry.
+    expect(backendSource).toContain('"ContainmentSweepSilentAlarm"');
+    const alarm = backendSource.slice(
+      backendSource.indexOf('"ContainmentSweepSilentAlarm"'),
+      backendSource.indexOf('"ContainmentSweepSilentAlarm"') + 1200
+    );
+    expect(alarm).toContain("TreatMissingData.BREACHING");
+    expect(alarm).toContain('sweepMetric("SweepRuns"');
+  });
+
+  it("ties the alarm window to the sweep interval", () => {
+    // A period chosen independently of the schedule drifts from it. A fixed hour
+    // against a 15 minute sweep also meant recovery took two hours after the
+    // sweep came back.
+    expect(backendSource).toContain(
+      "period: Duration.minutes(config.blockSweepIntervalMinutes)"
+    );
+    expect(backendSource).toContain("MISSED_SWEEPS_BEFORE_ALARM");
+  });
+
+  it("alarms on repeated sweep failures rather than the first one", () => {
+    // A single failed lift is retried on the next tick by design.
+    expect(backendSource).toContain('"ContainmentSweepFailureAlarm"');
+    const alarm = backendSource.slice(
+      backendSource.indexOf('"ContainmentSweepFailureAlarm"'),
+      backendSource.indexOf('"ContainmentSweepFailureAlarm"') + 1200
+    );
+    expect(alarm).toContain("datapointsToAlarm: 2");
+    expect(alarm).toContain("TreatMissingData.NOT_BREACHING");
+  });
+
+  it("routes both alarms to a topic", () => {
+    expect(backendSource).toContain('"ContainmentAlarmTopic"');
+    expect(backendSource).toContain("sweepFailureAlarm.addAlarmAction");
+    expect(backendSource).toContain("sweepSilentAlarm.addAlarmAction");
+  });
+
   it("refuses to deploy into a VPC with no path to the ledger", () => {
     // Documenting the requirement is not enough: without the endpoint the
     // deployment looks complete while expiry silently never runs, and that is
