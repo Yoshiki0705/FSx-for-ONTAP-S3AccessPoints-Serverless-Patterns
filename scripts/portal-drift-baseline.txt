@@ -8,20 +8,6 @@
 # Regenerate with: python3 scripts/check_portal_drift.py --write-baseline
 #
 # Format: <path relative to solutions/amplify-portal>\t<collapsed line text>
-src/components/AthenaQueryPanel.tsx	-- ファイル一覧（サイズ降順 Top 20）<br/>
-src/components/AthenaQueryPanel.tsx	-- 最近 7 日間に更新されたファイル<br/>
-src/components/AthenaQueryPanel.tsx	-- 特定フォルダの合計サイズ<br/>
-src/components/AthenaQueryPanel.tsx	<li>AWS コンソール → Athena → ワークグループ → 「primary」を選択</li>
-src/components/AthenaQueryPanel.tsx	<li>「設定を編集」→「クエリ結果の場所」に S3 パスを入力（例: <code>s3:
-src/components/AthenaQueryPanel.tsx	<li>保存して、このパネルでクエリを再実行</li>
-src/components/AthenaQueryPanel.tsx	<summary style={{ cursor: "pointer" }}>📖 設定手順を見る</summary>
-src/components/AthenaQueryPanel.tsx	placeholder={"-- 例: SHOW TABLES IN default\n-- 例: SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10"}
-src/components/AthenaQueryPanel.tsx	{status === "SETUP_REQUIRED" && <strong>⚙️ セットアップが必要です</strong>}
-src/components/AthenaQueryPanel.tsx	※ テーブル名は Glue Crawler の設定に依存します。<code>SHOW TABLES IN default</code> で確認できます。
-src/components/AthenaQueryPanel.tsx	← Glue DB 名
-src/components/AthenaQueryPanel.tsx	または <code>portal-config.ts</code> の環境変数 <code>ATHENA_OUTPUT_LOCATION</code> に S3 パスを設定してリデプロイしてください。
-src/components/AthenaQueryPanel.tsx	📝 クエリ例を見る
-src/components/AthenaQueryPanel.tsx	📦 <strong>データベース名</strong>: Glue Data Catalog 上のデータベース名を入力します。Glue Crawler でカタログ化したテーブルが格納されているデータベースです。未作成の場合は <code>default</code> のまま、<code>SHOW DATABASES</code> で確認できます。
 src/components/VersionHistory.tsx	2つのスナップショットを選択して内容を比較する機能です（将来実装予定）。現在はスナップショット一覧を表示しています。
 src/components/VersionHistory.tsx	<strong>🔄 バージョン差分</strong>
 src/components/admin/FlexCacheManager.tsx	setError(e instanceof Error ? e.message : "作成に失敗しました");
