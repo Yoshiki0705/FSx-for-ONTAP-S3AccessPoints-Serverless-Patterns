@@ -14,7 +14,7 @@ Amazon Bedrock AgentCore Gateway の Web Search Tool を、既存の FSx for ONT
 
 ### 期待される価値
 
-| ユースケース | 内部文書 (FSx ONTAP) | 外部情報 (Web Search) | 統合効果 |
+| ユースケース | 内部文書 (FSx for ONTAP) | 外部情報 (Web Search) | 統合効果 |
 |-------------|--------------------|--------------------|---------|
 | 法務コンプライアンス (UC1) | 社内規定・契約書 | 最新法規・判例・ガイドライン | 社内ルールと最新規制の両方に基づく回答 |
 | 保険請求処理 (UC10) | 保険約款・過去事例 | 最新の医療費相場・法改正 | 査定精度の向上 |
@@ -128,7 +128,7 @@ Agent (MCP Client)
 ユーザーの質問
   │
   ├─→ [1] Bedrock KB Retrieve (ap-northeast-1)
-  │     FSx ONTAP S3 AP → S3 Vectors → 関連チャンク取得
+  │     FSx for ONTAP S3 AP → S3 Vectors → 関連チャンク取得
   │     ※ 内部文書（社内規定、仕様書、議事録）
   │
   ├─→ [2] AgentCore Web Search (us-east-1)
@@ -204,7 +204,7 @@ def hybrid_query(question: str, kb_id: str, web_search_gateway_url: str) -> dict
 HYBRID_SYSTEM_PROMPT = """あなたは企業向け業務アシスタントです。
 
 回答の根拠として2種類の情報源を使い分けてください:
-1. <internal_documents> — 社内文書（FSx ONTAP 上のファイル由来）。信頼度が高い内部情報。
+1. <internal_documents> — 社内文書（FSx for ONTAP 上のファイル由来）。信頼度が高い内部情報。
 2. <web_search_results> — リアルタイム Web 検索結果。最新の外部情報。
 
 ルール:
@@ -456,7 +456,7 @@ SYSTEM_PROMPT_ADDENDUM = """
 
 | データ種別 | 扱い | 注意点 |
 |-----------|------|--------|
-| FSx ONTAP 内部文書 | ACL に基づきユーザー権限で制御 | Permission-Aware RAG の原則維持 |
+| FSx for ONTAP 内部文書 | ACL に基づきユーザー権限で制御 | Permission-Aware RAG の原則維持 |
 | Web 検索結果 | 公開情報のみ | 社内機密を Web クエリに含めない |
 | 統合回答 | 内部情報 + 外部情報の混合 | 回答内の引用でソースを明確に分離 |
 
@@ -560,7 +560,7 @@ AgentCore Web Search の特徴: 外部 API キー不要、AWS 内完結、デー
 
 ### 判定: APPROVE WITH COMMENTS
 
-AgentCore Web Search は本プロジェクトの FSx ONTAP ハイブリッド RAG パターンに高い適合性がある。us-east-1 リージョン制約はクロスリージョン呼び出しで暫定対応可能。
+AgentCore Web Search は本プロジェクトの FSx for ONTAP ハイブリッド RAG パターンに高い適合性がある。us-east-1 リージョン制約はクロスリージョン呼び出しで暫定対応可能。
 
 ### 次のアクション
 

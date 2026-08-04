@@ -34,6 +34,8 @@ See also: [File Portal UI Selection Guide (Amplify / Nextcloud / Custom)](../../
 - **[User Guide](../../docs/en/portal-user-guide.md)** — End-user guide for daily portal usage (no deploy knowledge needed)
 - **[Getting Started](docs/GETTING-STARTED.md)** — Setup, DemoMode, VPC Endpoints, production checklist
 - **[Implementation Guide](docs/IMPLEMENTATION.md)** — Architecture, config files, component structure, deployment, modification log
+- **[Admin Capability Map](docs/admin-capability-map.en.md)** — interface coverage, implementation status for all 20 panels, mapping to System Manager capability areas, ONTAP REST endpoint mapping
+- **[Resource Management Demo Guide](docs/resource-management-demo-guide.en.md)** — steps for all 20 panels (including FlexCache / FlexClone / SnapMirror / Local users / Name mapping / Vscan / FPolicy / Cluster and SVM peering / Cluster information)
 - **[Admin Demo Guide](../../docs/en/admin-resource-management-demo.md)** — E2E demo scenarios for Resource Management + ARP/AI
 - **[AI Agent Demo Guide](docs/ai-agent-demo-guide.en.md)** — AI Agent Chat, Semantic Search, Guardrails, HITL
 - **[Architecture Diagram Index](../../docs/architecture-diagrams.en.md)** — all 13 figures (light theme / dark theme)

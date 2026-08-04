@@ -212,7 +212,7 @@ FSx for ONTAP S3 Access Points 経由の各 S3 API 操作のレイテンシと�
 
 > **免責事項**: 本ドキュメントに記載されたベンチマーク結果およびコスト数値はテスト環境での実測値であり、サービスレベル保証ではありません。本番環境での採用前に、お客様自身の AWS アカウント・リージョン・FSx for ONTAP 構成・ワークロードプロファイルで検証してください。
 
-> ドキュメント整備バックログは完了しています。顧客固有の検証は、データ分類、規制要件、運用ポリシーに応じて別途必要です。
+> ドキュメント整備バックログは完了しています。導入先固有の検証は、データ分類、規制要件、運用ポリシーに応じて別途必要です。
 
 ---
 
@@ -545,7 +545,7 @@ Concurrent NFS/SMB workload: [None / Light / Production-level] (共有スルー�
 | 中ファイル (100 KB) | MaxConcurrency=10 | MaxConcurrency=20 | MaxConcurrency=50 |
 | 大ファイル (1 MB+) | MaxConcurrency=5 | MaxConcurrency=10 | MaxConcurrency=20 |
 
-> **注記**: 上記は sizing reference であり、service limit ではありません。VPC-internal Lambda + VPC-origin S3 AP 構成ではパブリックインターネット経路のオーバーヘッドが削減されると想定されますが、未測定です。実環境では顧客固有のワークロードプロファイルで検証してください。
+> **注記**: 上記は sizing reference であり、service limit ではありません。VPC-internal Lambda + VPC-origin S3 AP 構成ではパブリックインターネット経路のオーバーヘッドが削減されると想定されますが、未測定です。実環境では導入先固有のワークロードプロファイルで検証してください。
 
 ---
 

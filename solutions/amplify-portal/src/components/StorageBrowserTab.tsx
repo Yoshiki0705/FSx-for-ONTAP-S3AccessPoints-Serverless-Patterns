@@ -76,7 +76,7 @@ export function StorageBrowserTab() {
         <div className="storage-browser-header">
           <h2>{t("uploadTitle")}</h2>
           <p className="storage-browser-description">
-            Storage Browser is not configured. Set <code>s3ApAlias</code> in{" "}
+            {t("sbNotConfigured")} <code>s3ApAlias</code> in{" "}
             <code>src/portal-settings.ts</code> to enable file upload.
           </p>
         </div>

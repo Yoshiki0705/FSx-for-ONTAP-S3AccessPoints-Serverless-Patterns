@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { PdfViewer } from "./PdfViewer";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -47,6 +49,7 @@ interface FilePreviewProps {
  *   → S3 AP alias (FSx for ONTAP) → signed URL → <img src={url} />
  */
 export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
+  const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -132,7 +135,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
           onSelect?.(fileKey, fileName);
           handleDownload();
         }}
-        title="Click to download / select for AI"
+        title={t("fpvClickDownload")}
         role="button"
         aria-label={`Download ${fileName}`}
       >
@@ -152,7 +155,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
           }}
           role="button"
           aria-label={`Preview PDF: ${fileName}`}
-          title="Click to preview PDF"
+          title={t("fpvClickPdf")}
           style={{ cursor: "pointer" }}
         >
           {loading ? "⏳" : "📕"}
@@ -164,26 +167,11 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
             role="dialog"
             aria-label={`PDF preview: ${fileName}`}
           >
-            <span className="preview-header">
-              <span className="preview-title">{fileName}</span>
-              <button
-                className="preview-close"
-                onClick={(e) => { e.stopPropagation(); setShowPreview(false); }}
-                aria-label="Close preview"
-              >✕</button>
-            </span>
-            <iframe
-              src={previewUrl}
-              title={`PDF preview: ${fileName}`}
-              className="preview-pdf-iframe"
-              style={{ width: "100%", height: "500px", border: "none" }}
+            <PdfViewer
+              url={previewUrl}
+              fileName={fileName}
+              onClose={() => setShowPreview(false)}
             />
-            <span className="preview-footer">
-              <button
-                className="preview-download-btn"
-                onClick={(e) => { e.stopPropagation(); window.open(previewUrl, "_blank"); }}
-              >Open in new tab</button>
-            </span>
           </span>
         )}
       </span>
@@ -201,7 +189,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
           }}
           role="button"
           aria-label={`Preview DOCX: ${fileName}`}
-          title="Click to preview document"
+          title={t("fpvClickDoc")}
           style={{ cursor: "pointer" }}
         >
           {loading ? "⏳" : "📝"}
@@ -218,7 +206,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
               <button
                 className="preview-close"
                 onClick={(e) => { e.stopPropagation(); setShowPreview(false); }}
-                aria-label="Close preview"
+                aria-label={t("fpvClosePreview")}
               >✕</button>
             </span>
             <DocxPreviewPane url={previewUrl} />
@@ -226,7 +214,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
               <button
                 className="preview-download-btn"
                 onClick={(e) => { e.stopPropagation(); window.open(previewUrl, "_blank"); }}
-              >Download</button>
+              >{t("download")}</button>
             </span>
           </span>
         )}
@@ -243,7 +231,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
         }}
         role="button"
         aria-label={`Preview ${fileName}`}
-        title="Click to preview"
+        title={t("fpvClickPreview")}
         style={{ cursor: "pointer" }}
       >
         {loading ? "⏳" : "🖼️"}
@@ -263,7 +251,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
                 e.stopPropagation();
                 setShowPreview(false);
               }}
-              aria-label="Close preview"
+              aria-label={t("fpvClosePreview")}
             >
               ✕
             </button>
@@ -282,7 +270,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
                 window.open(previewUrl, "_blank");
               }}
             >
-              Download
+              {t("download")}
             </button>
             <button
               className="preview-detect-btn"
@@ -322,6 +310,7 @@ export function FilePreview({ fileKey, fileName, onSelect }: FilePreviewProps) {
  * Fetches the file via Presigned URL and renders it into a container div.
  */
 function DocxPreviewPane({ url }: { url: string }) {
+  const { t } = useTranslation();
   const [rendering, setRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
 
@@ -348,8 +337,10 @@ function DocxPreviewPane({ url }: { url: string }) {
   if (renderError) {
     return (
       <div className="preview-error" style={{ padding: "1rem" }}>
-        <p>Document preview unavailable: {renderError}</p>
-        <small>Try downloading the file instead.</small>
+        <p>
+          {t("fpvDocUnavailable")}: {renderError}
+        </p>
+        <small>{t("fpvTryDownload")}</small>
       </div>
     );
   }
@@ -360,7 +351,7 @@ function DocxPreviewPane({ url }: { url: string }) {
       className="docx-preview-container"
       style={{ maxHeight: "500px", overflow: "auto", background: "white", padding: "1rem" }}
     >
-      {!rendering && <p className="loading">Loading document preview...</p>}
+      {!rendering && <p className="loading">{t("fpvLoadingDoc")}</p>}
     </div>
   );
 }

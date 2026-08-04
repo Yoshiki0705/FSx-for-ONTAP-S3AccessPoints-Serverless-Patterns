@@ -57,7 +57,7 @@ AWS Context は、組織のデータ全体にわたる関係性を**自動的に
 
 ## 3. FSx for ONTAP メタデータの Graph マッピング設計
 
-### 3.1 FSx ONTAP のメタデータ階層
+### 3.1 FSx for ONTAP のメタデータ階層
 
 ```
 Organization (AWS Account)
@@ -121,7 +121,7 @@ Organization (AWS Account)
 S3 AP 経由のファイル一覧を Glue テーブルとして登録し、AWS Context がそのテーブルを Graph に取り込む。
 
 ```
-FSx ONTAP Volume
+FSx for ONTAP Volume
   → S3 Access Point (ListObjectsV2)
   → Glue Crawler (S3 AP をデータソースとして登録)
   → Glue Data Catalog テーブル (ファイルパス、サイズ、更新日時)
@@ -153,7 +153,7 @@ ONTAP REST API (volumes, shares, security descriptors)
 S3 Annotations (GA) を使い、S3 AP 経由のファイルにメタデータ annotation を付与。Glue Semantic Search で検索。
 
 ```
-FSx ONTAP Volume
+FSx for ONTAP Volume
   → S3 Access Point
   → S3 Annotations API (PutObjectAnnotation)
     annotation: {"department": "sales", "project": "q3-launch", "classification": "INTERNAL"}
@@ -163,7 +163,7 @@ FSx ONTAP Volume
 ```
 
 **利点**: GA 即利用可能。追加インフラ不要。
-**制約**: S3 Annotations の FSx S3 AP 互換性は未検証（別途調査中: s3-annotations-fsxn-compatibility.md）。
+**制約**: S3 Annotations の FSx for ONTAP S3 AP 互換性は未検証（別途調査中: s3-annotations-fsxn-compatibility.md）。
 
 ---
 
@@ -212,11 +212,11 @@ context_results = aws_context_client.agentic_search(
 
 Glue Data Catalog の **Skill Assets** (Preview) は、URI ベースでドキュメント・手順書をデータアセットに関連付ける機能。
 
-### FSx ONTAP パターンでの活用案
+### FSx for ONTAP パターンでの活用案
 
 | Skill Asset | 対象 | 内容 |
 |-------------|------|------|
-| `s3://skills/ontap-query-patterns.md` | FSx ONTAP Glue テーブル | S3 AP 経由のクエリパターン、制約事項 |
+| `s3://skills/ontap-query-patterns.md` | FSx for ONTAP Glue テーブル | S3 AP 経由のクエリパターン、制約事項 |
 | `s3://skills/acl-resolution-guide.md` | ACL メタデータテーブル | NTFS ACL → AD Group 解決の手順 |
 | `s3://skills/data-classification-rules.md` | 分類メタデータ | INTERNAL/CUI/REGULATED の判定基準 |
 | `s3://skills/ingestion-troubleshooting.md` | KB テーブル | インジェスト失敗時の診断手順 |
@@ -244,7 +244,7 @@ aws glue update-table \
   --database-name fsxn_metadata \
   --table-input '{
     "Name": "ai_knowledge_files",
-    "Description": "FSx ONTAP AI Knowledge Base source files (7 departments)",
+    "Description": "FSx for ONTAP AI Knowledge Base source files (7 departments)",
     "Parameters": {
       "business_context.owner_team": "Data Platform",
       "business_context.sensitivity": "INTERNAL",
@@ -268,7 +268,7 @@ aws glue create-asset \
   --asset-name "fsxn-s3ap-query-guide" \
   --asset-type SKILL \
   --uri "s3://my-skills-bucket/ontap-query-patterns.md" \
-  --description "FSx ONTAP S3 AP 経由のデータアクセスパターンとベストプラクティス"
+  --description "FSx for ONTAP S3 AP 経由のデータアクセスパターンとベストプラクティス"
 ```
 
 ---
@@ -305,14 +305,14 @@ aws glue create-asset \
 
 ---
 
-## 9. FSx ONTAP 固有の考慮事項
+## 9. FSx for ONTAP 固有の考慮事項
 
 ### 9.1 ACL メタデータの取得
 
 | 方式 | 利点 | 制約 |
 |------|------|------|
 | ONTAP REST API (security descriptors) | 正確な NTFS ACL 取得 | Volume 単位の API 呼び出し、大量ファイルでは遅い |
-| S3 AP HeadObject | x-amz-meta-* にACLは含まれない | FSx S3 AP は ACL をオブジェクトメタデータとして公開しない |
+| S3 AP HeadObject | x-amz-meta-* にACLは含まれない | FSx for ONTAP S3 AP は ACL をオブジェクトメタデータとして公開しない |
 | FPolicy イベント | リアルタイムで操作ユーザー + パスを取得 | ACL 全体の取得には不十分 |
 | AD LDAP クエリ | グループメンバーシップ解決 | 別途 LDAP 接続が必要 |
 
@@ -340,10 +340,10 @@ aws glue create-asset \
 
 | フェーズ | 時期 | アクション | 依存 |
 |---------|------|----------|------|
-| Phase 0 (即時) | 2026-06 | S3 Annotations × FSx S3 AP 互換性検証を完了 | s3-annotations-fsxn-compatibility.md |
+| Phase 0 (即時) | 2026-06 | S3 Annotations × FSx for ONTAP S3 AP 互換性検証を完了 | s3-annotations-fsxn-compatibility.md |
 | Phase 1 (短期) | 2026-Q3 | Glue Crawler で S3 AP ファイル一覧をカタログ化 | Glue Business Context Preview |
 | Phase 2 (短期) | 2026-Q3 | Skill Assets 作成（S3 AP クエリガイド、ACL ルール） | Skill Assets Preview |
-| Phase 3 (中期) | AWS Context Preview 時 | FSx ONTAP メタデータの Graph 投入 PoC | AWS Context Preview 開始 |
+| Phase 3 (中期) | AWS Context Preview 時 | FSx for ONTAP メタデータの Graph 投入 PoC | AWS Context Preview 開始 |
 | Phase 4 (中期) | AWS Context GA 時 | Identity-aware search と Permission-Aware RAG 統合 | AWS Context GA |
 | Phase 5 (長期) | GA + 安定後 | S3 Vectors metadata filter を Graph クエリに移行 | Graph の ACL 解決が十分な精度に |
 
@@ -358,12 +358,12 @@ AWS Context は **Coming soon** のため即時実装はできないが、FSx fo
 ### ブロッカー
 
 1. AWS Context の GA 時期が未定
-2. FSx ONTAP / S3 AP が AWS Context のデータソースとしてネイティブ対応するかは不明
+2. FSx for ONTAP / S3 AP が AWS Context のデータソースとしてネイティブ対応するかは不明
 3. Identity-aware search が NTFS ACL / AD Group を解決できる深さが不明
 
 ### 即時アクション
 
-1. **S3 Annotations × FSx S3 AP 互換性検証を先行完了**（別調査ドキュメント）
+1. **S3 Annotations × FSx for ONTAP S3 AP 互換性検証を先行完了**（別調査ドキュメント）
 2. **Glue Crawler で S3 AP ファイル一覧のカタログ化を PoC** — AWS Context 前段として有用
 3. **Graph モデル設計書を維持更新** — AWS Context GA 時に迅速に対応できるよう
 
@@ -379,7 +379,7 @@ AWS Context は **Coming soon** のため即時実装はできないが、FSx fo
 
 ## 12. 関連ドキュメント
 
-- [S3 Annotations × FSx S3 AP 互換性調査](./s3-annotations-fsxn-compatibility.md)
+- [S3 Annotations × FSx for ONTAP S3 AP 互換性調査](./s3-annotations-fsxn-compatibility.md)
 - [AgentCore Web Search 統合設計](./agentcore-web-search-fsxn-integration.md)
 - [DAIS 2026 Agent Bricks 業種別ユースケース](./dais2026-agent-bricks-industry-cases.md)
 - [UC29 Self-Service KB Curation](../../solutions/genai/kb-selfservice-curation/README.md)

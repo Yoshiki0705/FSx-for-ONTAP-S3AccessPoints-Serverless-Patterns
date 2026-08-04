@@ -80,7 +80,7 @@ AWS Storage Blog の横断モニタリング記事。
 - このパターンは**デプロイ可能な SAM テンプレート**として完成させる
 - 記事のアーキテクチャコンセプトは参考にする (CloudWatch カスタムメトリクス + Lambda)
 
-### [Performance warnings and recommendations (FSx Console)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance-insights-FSxN.html)
+### [Performance warnings and recommendations (FSx Console)](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance-insights-FSxN.html) <!-- allow:naming — AWS documentation URL -->
 
 FSx コンソール上の組み込みパフォーマンス警告。
 
@@ -97,7 +97,7 @@ FSx コンソール上の組み込みパフォーマンス警告。
 | Automate monitoring at scale for FSx for ONTAP volumes | [AWS Blog](https://aws.amazon.com/blogs/storage/automate-monitoring-at-scale-for-amazon-fsx-for-netapp-ontap-volumes/) | OPS1 |
 | Simplifying FSx for ONTAP monitoring using Amazon Managed Grafana | [re:Post](https://repost.aws/articles/ARIXhwrbtiSomPpjaTd2Eq5g/simplifying-amazon-fsx-for-netapp-ontap-monitoring-using-amazon-managed-grafana) | OPS1, OPS6 |
 | Monitoring FSx for ONTAP with Amazon CloudWatch | [AWS Docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/monitoring-cloudwatch.html) | 全 OPS |
-| Performance warnings and recommendations | [AWS Docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance-insights-FSxN.html) | OPS1 |
+| Performance warnings and recommendations | [AWS Docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance-insights-FSxN.html)<!-- allow:naming — AWS documentation URL --> | OPS1 |
 | Creating a storage capacity utilization alarm | [AWS Docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/alarm-low-primary-storage.html) | OPS1 |
 | Updating storage capacity dynamically | [AWS Docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/automate-storage-capacity-increase.html) | OPS1 |
 | Volume data tiering | [AWS Docs](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/volume-data-tiering.html) | OPS3 |

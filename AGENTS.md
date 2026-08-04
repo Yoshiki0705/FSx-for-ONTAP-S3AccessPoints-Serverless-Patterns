@@ -238,12 +238,24 @@ Surface findings explicitly and fix them before finalizing. The cost of one more
 Before submitting changes, run:
 
 1. `make test-quick` — key tests pass
-2. `make lint` — no lint errors
+2. `make lint` — no lint errors. This now covers **both** `ruff check` and
+   `ruff format --check`, because CI runs them as separate steps and formatting
+   drift used to pass locally and only fail in the pipeline. Run `make
+   format-python` to fix drift.
 3. `cfn-lint` on modified templates
 4. If modifying UC templates: verify TriggerMode params + conditions present
 5. If adding new shared module: add tests in `shared/tests/`
 6. If modifying README: ensure Governance Note + Performance Considerations present
 7. If adding output: include `data_classification` field
+8. If touching `solutions/amplify-portal/amplify/**`: the IAM Policy Validation
+   workflow fires on that path and scans **every** template under
+   `solutions/industry/` and `infrastructure/`, not just what you changed. A
+   failure there may be pre-existing debt rather than something you introduced —
+   check `git diff --name-only` for template changes before assuming ownership.
+9. If adding user-facing UI strings: add the key to `ja.ts` first, then to all 7
+   other locales, and use `t("key")` in the component. No hardcoded strings in
+   JSX text, `aria-label`, `title` or `placeholder`. Product names, SQL literals
+   and technical terms (ONTAP, FlexCache, SnapLock, S3 AP) stay untranslated.
 
 ## New Pattern: Field-Shareable Definition of Done
 
@@ -339,6 +351,7 @@ All README and documentation files follow these UX principles:
 | `SNSPublishMessagePolicy` with TopicArn | Use `TopicName: !GetAtt Topic.TopicName` |
 | `Handler: index.handler` but file is `handler.py` | Use `Handler: handler.handler` |
 | `DefinitionBody` inline in SAM StateMachine | Use `DefinitionUri: statemachine/workflow.asl.json` |
+| `S3ObjectStorageMode: REFERENCE` on `AWS::Serverless::Function` silently has no effect | SAM's `S3Location` accepts only `Bucket`/`Key`/`Version` and drops anything else during transform, so `sam validate`/`sam deploy` succeed but the function runs in `COPY` mode (confirmed with AWS Support). CloudFormation is a documented supported method, so use a native `AWS::Lambda::Function` when `REFERENCE` mode is required. See docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md FR-7 |
 | CloudFormation `validate-template` fails for large templates | Use S3 URL upload for templates >51KB |
 | Internet-origin S3AP from VPC Lambda | Use VPC-external Lambda or NAT Gateway |
 | S3 Gateway VPC Endpoint + Internet-origin S3AP | Does NOT work — use NAT or VPC-external |
@@ -362,7 +375,7 @@ All README and documentation files follow these UX principles:
 | `aws fsx create-and-attach-s3-access-point` positional args fail | Use `--cli-input-json file://create-ap.json`. Positional `--ontap-configuration` parsing is fragile |
 | Delete volume while S3 AP attached → BadRequest | Delete S3 AP first (`detach-and-delete-s3-access-point`), wait for deletion, then delete volume |
 | Quick S3 Knowledge base not visible in ap-northeast-1 | S3 KB feature only available in us-east-1, us-west-2, ap-southeast-2, eu-west-1. Use Bedrock KB for Tokyo region, or cross-region Quick account |
-| Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign. Use `Config(signature_version="s3v4")` explicitly |
+| Presigned URL `SignatureDoesNotMatch` from Lambda | boto3 defaults to SigV2 for presign, and ONTAP S3 only supports v2 presigned URLs from 9.16.1. Use `Config(signature_version="s3v4")` explicitly (v4 supported from ONTAP 9.11.1; NetApp recommends v4) |
 | Presigned URL `PermanentRedirect` from Lambda | Global endpoint `s3.amazonaws.com` redirects. Use `endpoint_url=f"https://s3.{region}.amazonaws.com"` |
 | Presigned URL `HEAD` returns 403 but `GET` works | Some S3 AP configurations don't support HEAD on presigned URLs. Use GET for verification |
 | Bedrock `InvokeModel` with `inputText` → ValidationException | Nova/Claude models require Messages API. Use `bedrock.converse()` (not `invoke_model` with `inputText`). Add `bedrock:Converse` to IAM policy |
@@ -379,6 +392,11 @@ All README and documentation files follow these UX principles:
 | KNFSD Terraform: InvalidAMIID | AMI ビルドリージョンとデプロイリージョンの不一致。`--region` を揃える |
 | Tamperproof 有効化 → 無効化できない | `snapshot_locking_enabled` は不可逆（400 Bad Request）。ただしポリシーの retention_period 削除で新規ロック停止は可能。詳細は [docs/tamperproof-snapshot-design.md](docs/tamperproof-snapshot-design.md) |
 | Tamperproof 有効化 ≠ 全 Snapshot 自動ロック | 有効化は「ロック機能 ON」であり「自動ロック」ではない。ポリシーに retention_period を設定して初めて自動ロックが発動 |
+| ポータルの Lambda が `shared/` を import できない | `functions/<name>/` の asset にはそのディレクトリしか入らない。`shared.*` を使う関数には `amplify/backend.ts` の `SharedPythonLayer` を `layers:` で付与する。レイヤーは `/opt` にマウントされ Python が見るのは `/opt/python` なので、アーカイブに `python/` プレフィックスが必要（`Code.fromAsset` の `bundling.local` で再配置している） |
+| `shared/` を変更しても sandbox のレイヤーが更新されない | `ampx sandbox` は hotswap で Lambda を更新し、LayerVersion の内容変更をスキップする（hotswap 無効化フラグは存在しない）。テンプレート側に変更がある場合のみ CloudFormation が走る。確実に反映するには `ampx sandbox delete` → 再デプロイ、またはパイプラインデプロイ |
+| 例外メッセージからエラー原因を推測する実装 | `str(IndexError(4))` は `"4"` で HTTP 404 に見える。実際に `Path(__file__).parents[4]`（Lambda では親が 3 つ）の IndexError を「CIFS 未設定」と誤報告していた。`type(e).__name__` を含めて報告し、文字列パターンで原因を決めない |
+| ONTAP REST の `fields=` に存在しないフィールドを混ぜる → 一覧が空になる | ONTAP はリクエスト全体を 400 で拒否し（例: `The value "last_transfer_size" is invalid for field "fields"`）、ハンドラ側は空リスト + error で返す。モック ONTAP は `fields` を無視してレコードを返すため、レスポンス整形のアサートだけでは検出できない。**送信 URL の `fields` 自体をテストで固定する**（`MockHttp.calls` を検査） |
+| `/cluster/nodes` と `/cluster/licensing/licenses` が 0 件 | エラーではない。FSx for ONTAP ではクラスター管理を AWS が担うため 0 件で返ることがある（ONTAP 9.17.1P7D1 で実測）。UI 側に「エラーではない」旨の注記を出す |
 | robocopy で ACL 権限のないファイルがスキップされる | Backup Operators への追加だけでは不足。robocopy に `/B`（バックアップモード）が必要。コピー先は SVM の `BUILTIN\Backup Operators` にも追加（`SeRestorePrivilege` で差分上書き）。詳細は [smb-acl-migration-backup-operators.md](docs/smb-acl-migration-backup-operators.md) |
 
 ## S3 Access Point Critical Knowledge
@@ -412,7 +430,7 @@ PutObject, GetObject, ListObjectsV2, HeadObject, DeleteObject, MultipartUpload.
 - Docs say "5 GB"/"50 GB" but both are **binary** (GiB).
 `UploadPartCopy` is documented as Supported but **fails with `NoSuchKey`** in practice (`CopyObject` works) — server-side assembly of large objects is not possible.
 NOT supported: GetBucketNotificationConfiguration.
-Presigned URLs: Listed as "Not supported" in AWS docs, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support advises against production reliance. See docs/s3ap-compatibility-notes.md for details.
+Presigned URLs: Listed as "Not supported" in the AWS compatibility table, but observed working (client-side SigV4 calculation → standard GetObject). AWS Support has since confirmed ONTAP-layer support (v4 from ONTAP 9.11.1, v2 from 9.16.1) and submitted a doc correction — **not yet published**, so continue to avoid production reliance until it is. See docs/s3ap-compatibility-notes.md for details.
 
 ### NetworkOrigin (Immutable After Creation)
 

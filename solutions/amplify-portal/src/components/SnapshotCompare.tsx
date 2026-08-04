@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -55,6 +56,7 @@ interface SnapshotCompareProps {
  * (via RestoreFromSnapshot or FlexClone workflow).
  */
 export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotCompareProps) {
+  const { t } = useTranslation();
   const [compareResults, setCompareResults] = useState<CompareResult[]>([]);
   const [currentPrefix, setCurrentPrefix] = useState("");
   const [loading, setLoading] = useState(false);
@@ -178,7 +180,7 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
   if (!cloneApAlias) {
     return (
       <div className="snapshot-compare empty-state">
-        <p>Select a snapshot and create a FlexClone to compare file versions.</p>
+        <p>{t("scIntro")}</p>
       </div>
     );
   }
@@ -186,9 +188,9 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
   return (
     <div className="snapshot-compare">
       <div className="compare-header">
-        <h3>Side-by-side Compare</h3>
+        <h3>{t("scSideBySide")}</h3>
         <div className="compare-labels">
-          <span className="compare-label current">Current Volume</span>
+          <span className="compare-label current">{t("scCurrentVolume")}</span>
           <span className="compare-vs">vs</span>
           <span className="compare-label clone">
             {cloneLabel || "FlexClone"} ({cloneApAlias.slice(0, 20)}...)
@@ -220,19 +222,19 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
         </div>
       )}
 
-      {loading && <div className="loading">Comparing files...</div>}
+      {loading && <div className="loading">{t("scComparing")}</div>}
       {error && <div className="error-message">{error}</div>}
 
       {!loading && compareResults.length > 0 && (
-        <table className="compare-table" role="grid" aria-label="File comparison">
+        <table className="compare-table" role="grid" aria-label={t("scAria")}>
           <thead>
             <tr>
-              <th scope="col">Status</th>
+              <th scope="col">{t("rmState")}</th>
               <th scope="col">File</th>
-              <th scope="col">Current Size</th>
-              <th scope="col">Clone Size</th>
-              <th scope="col">Current Date</th>
-              <th scope="col">Clone Date</th>
+              <th scope="col">{t("scCurrentSize")}</th>
+              <th scope="col">{t("scCloneSize")}</th>
+              <th scope="col">{t("scCurrentDate")}</th>
+              <th scope="col">{t("scCloneDate")}</th>
             </tr>
           </thead>
           <tbody>
@@ -260,7 +262,7 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
       )}
 
       {!loading && compareResults.length === 0 && !error && (
-        <p className="empty-state">No files found in this path.</p>
+        <p className="empty-state">{t("scNoFiles")}</p>
       )}
     </div>
   );

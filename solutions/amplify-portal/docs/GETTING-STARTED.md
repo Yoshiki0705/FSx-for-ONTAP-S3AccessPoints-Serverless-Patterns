@@ -112,6 +112,10 @@ export const config: PortalConfig = {
   vpcId: "vpc-0123456789abcdef0",
   vpcSubnetIds: ["subnet-0123456789abcdef0"],
   vpcSecurityGroupIds: ["sg-0123456789abcdef0"],
+  // vpcId を設定する場合は必須。vpcSubnetIds に紐づくルートテーブルを指定します。
+  // 未設定のまま vpcId を設定すると synth が失敗します（理由は後述）。
+  vpcRouteTableIds: ["rtb-0123456789abcdef0"],
+  allowNoBlockExpiry: false,
 
   // ONTAP 接続
   ontapMgmtIp: "172.30.x.x",  // management LIF IP
@@ -121,6 +125,32 @@ export const config: PortalConfig = {
 
   // ... 他はデフォルトのまま
 };
+```
+
+#### `vpcRouteTableIds` について
+
+DynamoDB ゲートウェイエンドポイントを作成するための設定です。VPC 内の Lambda が封じ込めブロックの台帳（DynamoDB）に到達するために必要です。
+
+Lambda の ENI にはパブリック IP が付かないため、デフォルトルートが Internet Gateway 向きのサブネットでは外向き通信ができません。Secrets Manager はインターフェイスエンドポイントで到達できますが、DynamoDB には経路がありません。ゲートウェイエンドポイントは時間課金・データ処理課金がありません。
+
+**未設定のまま `vpcId` を設定した場合、synth が失敗します。** ドキュメントに書くだけでは不十分だからです。エンドポイントがないと、デプロイは成功したように見える一方で**ブロックの有効期限が一切動きません**。ブロックはクラスタに設定されるものの台帳への書き込みが失敗し、定期スイープはそのブロックを認識できません。レスポンスは `expiryTracked: false` を返すので黙って壊れるわけではありませんが、気づくのは個々の操作のレスポンスを読んだ人だけで、「ブロックは自動で解除される」と考えている運用者には届きません。
+
+意図的に有効期限なしで運用する場合は `allowNoBlockExpiry: true` を設定してください。
+
+サブネットに紐づくルートテーブルの確認:
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=association.subnet-id,Values=<subnet-id>" \
+  --query "RouteTables[].RouteTableId" --output text
+```
+
+明示的な関連付けがないサブネットは VPC のメインルートテーブルを使います:
+
+```bash
+aws ec2 describe-route-tables \
+  --filters "Name=vpc-id,Values=<vpc-id>" "Name=association.main,Values=true" \
+  --query "RouteTables[].RouteTableId" --output text
 ```
 
 ### Step 5: 起動

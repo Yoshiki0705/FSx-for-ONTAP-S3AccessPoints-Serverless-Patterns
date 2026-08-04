@@ -40,9 +40,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "docs" / "diagrams"
 
-AWS_ICON_PACKAGE_URL = (
-    "https://aws.amazon.com/architecture/icons/  (Asset Package, e.g. Icon-package_04302026)"
-)
+AWS_ICON_PACKAGE_URL = "https://aws.amazon.com/architecture/icons/  (Asset Package, e.g. Icon-package_04302026)"
 
 SOURCES = [
     "file-portal-overview.drawio",

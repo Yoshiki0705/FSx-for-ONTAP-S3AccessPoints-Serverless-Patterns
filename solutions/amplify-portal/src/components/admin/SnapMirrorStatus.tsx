@@ -12,6 +12,26 @@ function parseResponse<T>(response: { data?: string | null }): T | null {
   } catch { return null; }
 }
 
+/** Success message per write action. */
+const SUCCESS_KEY = {
+  updateSnapmirrorNow: "smUpdateStarted",
+  quiesceSnapmirror: "smQuiesced",
+  resumeSnapmirror: "smResumed",
+  breakSnapmirror: "smBroken",
+  resyncSnapmirror: "smResyncStarted",
+  deleteSnapmirror: "smDeleted",
+} as const;
+
+/** Confirmation prompt per destructive action. */
+const CONFIRM_KEY = {
+  breakSnapmirror: "smConfirmBreak",
+  resyncSnapmirror: "smConfirmResync",
+  deleteSnapmirror: "smConfirmDelete",
+} as const;
+
+type WriteAction = keyof typeof SUCCESS_KEY;
+type ConfirmAction = keyof typeof CONFIRM_KEY;
+
 interface SnapMirrorRelationship {
   uuid: string;
   sourcePath: string;
@@ -23,7 +43,6 @@ interface SnapMirrorRelationship {
   policy: string;
   lagTime: string;
   lastTransferType: string;
-  lastTransferSize: number;
 }
 
 interface Transfer {
@@ -41,6 +60,10 @@ export function SnapMirrorStatus() {
   const [expandedUuid, setExpandedUuid] = useState<string | null>(null);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [transfersLoading, setTransfersLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [busyUuid, setBusyUuid] = useState<string | null>(null);
+  // Break, resync and delete redirect or discard data, so they ask first.
+  const [confirmFor, setConfirmFor] = useState<{ uuid: string; action: ConfirmAction } | null>(null);
 
   const loadRelationships = async () => {
     setLoading(true); setError(null);
@@ -79,9 +102,40 @@ export function SnapMirrorStatus() {
     return `${(bytes / 1024**3).toFixed(2)} GB`;
   };
 
+  /** Run a write action, then refresh the list. */
+  const runAction = async (
+    action: WriteAction,
+    uuid: string,
+    extra: Record<string, unknown> = {}
+  ) => {
+    setBusyUuid(uuid);
+    setError(null);
+    setSuccess(null);
+    try {
+      const resp = await (client.mutations as any).adminMutation({
+        action,
+        params: JSON.stringify({ relationshipUuid: uuid, ...extra }),
+      });
+      const data = parseResponse<{ success?: boolean; error?: string }>(resp);
+      if (data?.success) {
+        setSuccess(t(SUCCESS_KEY[action]));
+        setTimeout(() => setSuccess(null), 4000);
+        loadRelationships();
+      } else {
+        setError(data?.error || "Action failed");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setBusyUuid(null);
+      setConfirmFor(null);
+    }
+  };
+
   return (
     <div className="snapmirror-status">
       {error && <div className="rm-error">⚠️ {error}</div>}
+      {success && <div className="rm-success">✅ {success}</div>}
 
       {loading ? <div className="rm-loading">{t("ontapConnecting")}</div> : relationships.length === 0 ? (
         <p className="rm-empty">{t("smNoRelationships")}</p>
@@ -106,6 +160,73 @@ export function SnapMirrorStatus() {
                   </button>
                 </div>
               </div>
+
+              <div className="sm-actions">
+                <button
+                  className="rm-btn-sm"
+                  disabled={busyUuid === r.uuid}
+                  onClick={() => runAction("updateSnapmirrorNow", r.uuid)}
+                >
+                  ⟳ {t("smUpdateNow")}
+                </button>
+                {r.state === "paused" ? (
+                  <button
+                    className="rm-btn-sm"
+                    disabled={busyUuid === r.uuid}
+                    onClick={() => runAction("resumeSnapmirror", r.uuid)}
+                  >
+                    ▶ {t("smResume")}
+                  </button>
+                ) : (
+                  <button
+                    className="rm-btn-sm"
+                    disabled={busyUuid === r.uuid}
+                    onClick={() => runAction("quiesceSnapmirror", r.uuid)}
+                  >
+                    ⏸ {t("smQuiesce")}
+                  </button>
+                )}
+                {r.state === "broken_off" ? (
+                  <button
+                    className="rm-btn-sm"
+                    disabled={busyUuid === r.uuid}
+                    onClick={() => setConfirmFor({ uuid: r.uuid, action: "resyncSnapmirror" })}
+                  >
+                    ⇄ {t("smResync")}
+                  </button>
+                ) : (
+                  <button
+                    className="rm-btn-danger-sm"
+                    disabled={busyUuid === r.uuid}
+                    onClick={() => setConfirmFor({ uuid: r.uuid, action: "breakSnapmirror" })}
+                  >
+                    ✂ {t("smBreak")}
+                  </button>
+                )}
+                <button
+                  className="rm-btn-danger-sm"
+                  disabled={busyUuid === r.uuid}
+                  onClick={() => setConfirmFor({ uuid: r.uuid, action: "deleteSnapmirror" })}
+                >
+                  {t("smDelete")}
+                </button>
+              </div>
+
+              {confirmFor?.uuid === r.uuid && (
+                <div className="sm-confirm" role="alertdialog">
+                  <span className="sm-confirm-text">{t(CONFIRM_KEY[confirmFor.action])}</span>
+                  <button
+                    className="rm-btn-danger-sm"
+                    disabled={busyUuid === r.uuid}
+                    onClick={() => runAction(confirmFor.action, r.uuid, { confirm: true })}
+                  >
+                    {t("rmExecute")}
+                  </button>
+                  <button className="rm-btn-secondary" onClick={() => setConfirmFor(null)}>
+                    {t("cancel")}
+                  </button>
+                </div>
+              )}
 
               {expandedUuid === r.uuid && (
                 <div className="lu-members-panel">

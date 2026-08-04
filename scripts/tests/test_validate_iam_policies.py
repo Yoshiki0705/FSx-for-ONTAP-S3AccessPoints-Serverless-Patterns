@@ -145,4 +145,52 @@ class TestPseudoParameters:
         doc = {"Statement": [{"Effect": "Allow", "Action": "s3:*", "Resource": {"Ref": "MyBucket"}}]}
         # json.loads in _resolved would already raise; assert the shape too.
         out = _resolved(mod, doc)
-        assert out["Statement"][0]["Resource"] == "ref-MyBucket"
+        assert out["Statement"][0]["Resource"] == mod.ARN_PLACEHOLDER
+
+
+class TestPositionAwareRefs:
+    """A Ref to a template parameter has to be shaped for where it sits.
+
+    Substituting a generic "ref-Name" string everywhere produced 51 false
+    MISSING_ARN_FIELD and 2 false INVALID_REGION findings from Access Analyzer
+    across templates that were correct — the parameter simply carries the ARN or
+    Region at deploy time.
+    """
+
+    def test_ref_under_resource_becomes_an_arn(self, mod):
+        out = _resolved(mod, {"Resource": {"Ref": "FsxAdminSecretArn"}})
+        assert out["Resource"].startswith("arn:aws:")
+
+    def test_ref_under_not_resource_becomes_an_arn(self, mod):
+        out = _resolved(mod, {"NotResource": {"Ref": "SomeArnParam"}})
+        assert out["NotResource"].startswith("arn:aws:")
+
+    def test_ref_in_a_resource_list_becomes_an_arn(self, mod):
+        out = _resolved(mod, {"Resource": [{"Ref": "ArnA"}, {"Ref": "ArnB"}]})
+        assert all(r.startswith("arn:aws:") for r in out["Resource"])
+
+    def test_ref_under_principal_becomes_an_arn(self, mod):
+        out = _resolved(mod, {"Principal": {"AWS": {"Ref": "RoleArnParam"}}})
+        assert out["Principal"]["AWS"].startswith("arn:aws:")
+
+    @pytest.mark.parametrize("condition_key", ["aws:RequestedRegion", "ec2:Region"])
+    def test_ref_in_a_region_condition_becomes_a_region(self, mod, condition_key):
+        out = _resolved(
+            mod,
+            {"Condition": {"StringEquals": {condition_key: {"Ref": "CrossRegion"}}}},
+        )
+        value = out["Condition"]["StringEquals"][condition_key]
+        assert value == mod.REGION_PLACEHOLDER
+        assert not value.startswith("ref-")
+
+    def test_ref_elsewhere_keeps_the_generic_placeholder(self, mod):
+        """Positions with no ARN or Region requirement are left recognisable."""
+        out = _resolved(mod, {"Condition": {"StringEquals": {"s3:prefix": {"Ref": "Prefix"}}}})
+        assert out["Condition"]["StringEquals"]["s3:prefix"] == "ref-Prefix"
+
+    def test_sub_in_a_region_condition_becomes_a_region(self, mod):
+        out = _resolved(
+            mod,
+            {"Condition": {"StringEquals": {"aws:RequestedRegion": {"Fn::Sub": "${Region}"}}}},
+        )
+        assert out["Condition"]["StringEquals"]["aws:RequestedRegion"] == mod.REGION_PLACEHOLDER
