@@ -1161,6 +1161,27 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   aqDatabaseAria: "データベース名",
   aqDatabaseHint: "Glue Data Catalog のデータベース名。Glue Crawler が作成したデータベースを指定します（通常は default）。",
   aqSqlAria: "SQL クエリ",
+  aqDatabaseArrow: "← Glue DB 名",
+  aqDatabaseExplain:
+    "Glue Data Catalog 上のデータベース名を入力します。Glue Crawler でカタログ化したテーブルが格納されているデータベースです。未作成の場合は {db} のまま、{cmd} で確認できます。",
+  aqGuidanceBody:
+    "FSx for ONTAP 上のファイルを Glue Crawler でカタログ化すると、ここから SQL で分析できます。",
+  aqExamplesToggle: "クエリ例を見る",
+  aqExampleTopSizes: "ファイル一覧（サイズ降順 Top 20）",
+  aqExampleFolderTotal: "特定フォルダの合計サイズ",
+  aqExampleRecent: "最近 7 日間に更新されたファイル",
+  aqExamplesNote: "テーブル名は Glue Crawler の設定に依存します。{cmd} で確認できます。",
+  aqSqlPlaceholder:
+    "-- 例: SHOW TABLES IN default\n-- 例: SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10",
+  aqQueryFailed: "クエリの実行に失敗しました",
+  aqRowsReturned: "{count} 行を取得しました",
+  aqSetupRequired: "セットアップが必要です",
+  aqSetupToggle: "設定手順を見る",
+  aqSetupStep1: "AWS コンソール → Athena → ワークグループ → 「primary」を選択",
+  aqSetupStep2: "「設定を編集」→「クエリ結果の場所」に S3 パスを入力（例: {path}）",
+  aqSetupStep3: "保存して、このパネルでクエリを再実行",
+  aqSetupEnvHint:
+    "または {file} の環境変数 {env} に S3 パスを設定してリデプロイしてください。",
   fpvClickDownload: "クリックでダウンロード / AI 処理の対象に選択",
   fpvClickPdf: "クリックで PDF をプレビュー",
   fpvClickDoc: "クリックで文書をプレビュー",

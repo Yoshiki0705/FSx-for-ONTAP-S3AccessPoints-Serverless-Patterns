@@ -1118,6 +1118,27 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   aqDatabaseAria: "데이터베이스 이름",
   aqDatabaseHint: "Glue Data Catalog의 데이터베이스 이름입니다. Glue Crawler가 만든 데이터베이스를 지정합니다(보통 default).",
   aqSqlAria: "SQL 쿼리",
+  aqDatabaseArrow: "← Glue DB 이름",
+  aqDatabaseExplain:
+    "Glue Data Catalog의 데이터베이스 이름을 입력합니다. Glue Crawler가 카탈로그화한 테이블이 저장된 데이터베이스입니다. 아직 만들지 않았다면 {db} 그대로 두고 {cmd} 로 확인할 수 있습니다.",
+  aqGuidanceBody:
+    "FSx for ONTAP의 파일을 Glue Crawler로 카탈로그화하면 여기에서 SQL로 분석할 수 있습니다.",
+  aqExamplesToggle: "쿼리 예시 보기",
+  aqExampleTopSizes: "크기 내림차순 상위 20개 파일",
+  aqExampleFolderTotal: "특정 폴더의 총 크기",
+  aqExampleRecent: "최근 7일간 수정된 파일",
+  aqExamplesNote: "테이블 이름은 Glue Crawler 설정에 따라 다릅니다. {cmd} 로 확인할 수 있습니다.",
+  aqSqlPlaceholder:
+    "-- 예: SHOW TABLES IN default\n-- 예: SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10",
+  aqQueryFailed: "쿼리 실행에 실패했습니다",
+  aqRowsReturned: "{count}개 행을 가져왔습니다",
+  aqSetupRequired: "설정이 필요합니다",
+  aqSetupToggle: "설정 절차 보기",
+  aqSetupStep1: "AWS 콘솔 → Athena → 작업 그룹 → \"primary\" 선택",
+  aqSetupStep2: "설정 편집 → \"쿼리 결과 위치\"에 S3 경로 입력 (예: {path})",
+  aqSetupStep3: "저장한 뒤 이 패널에서 쿼리를 다시 실행",
+  aqSetupEnvHint:
+    "또는 {file} 의 환경 변수 {env} 에 S3 경로를 설정하고 다시 배포하세요.",
   fpvClickDownload: "클릭하여 다운로드하거나 AI 처리 대상으로 선택",
   fpvClickPdf: "클릭하여 PDF 미리보기",
   fpvClickDoc: "클릭하여 문서 미리보기",

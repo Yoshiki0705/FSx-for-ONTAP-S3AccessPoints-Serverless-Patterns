@@ -1118,6 +1118,29 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   aqDatabaseAria: "Datenbankname",
   aqDatabaseHint: "Name der Datenbank im Glue Data Catalog. Geben Sie die vom Glue Crawler erstellte Datenbank an (in der Regel default).",
   aqSqlAria: "SQL-Abfrage",
+  aqDatabaseArrow: "← Glue-DB-Name",
+  aqDatabaseExplain:
+    "Geben Sie den Datenbanknamen im Glue Data Catalog ein, also die Datenbank mit den vom Glue Crawler katalogisierten Tabellen. Wenn noch keine angelegt ist, belassen Sie {db} und prüfen Sie mit {cmd}.",
+  aqGuidanceBody:
+    "Katalogisieren Sie Dateien auf FSx for ONTAP mit einem Glue Crawler, dann können Sie sie hier per SQL auswerten.",
+  aqExamplesToggle: "Abfragebeispiele anzeigen",
+  aqExampleTopSizes: "Die 20 größten Dateien, absteigend nach Größe",
+  aqExampleFolderTotal: "Gesamtgröße eines Ordners",
+  aqExampleRecent: "In den letzten 7 Tagen geänderte Dateien",
+  aqExamplesNote:
+    "Tabellennamen hängen von der Konfiguration Ihres Glue Crawlers ab. Prüfen Sie mit {cmd}.",
+  aqSqlPlaceholder:
+    "-- Beispiel: SHOW TABLES IN default\n-- Beispiel: SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10",
+  aqQueryFailed: "Die Abfrage konnte nicht ausgeführt werden",
+  aqRowsReturned: "{count} Zeilen zurückgegeben",
+  aqSetupRequired: "Einrichtung erforderlich",
+  aqSetupToggle: "Einrichtungsschritte anzeigen",
+  aqSetupStep1: "AWS-Konsole → Athena → Arbeitsgruppen → „primary“ auswählen",
+  aqSetupStep2:
+    "Einstellungen bearbeiten → unter „Speicherort der Abfrageergebnisse“ einen S3-Pfad eingeben (zum Beispiel {path})",
+  aqSetupStep3: "Speichern und die Abfrage in diesem Bereich erneut ausführen",
+  aqSetupEnvHint:
+    "Alternativ einen S3-Pfad in der Umgebungsvariablen {env} in {file} setzen und neu bereitstellen.",
   fpvClickDownload: "Zum Herunterladen klicken oder für die KI-Verarbeitung auswählen",
   fpvClickPdf: "Zum Vorschauen des PDF klicken",
   fpvClickDoc: "Zum Vorschauen des Dokuments klicken",
