@@ -233,6 +233,8 @@ There are three tabs.
 | 📡 Events | Event definition name, protocol, monitored operations |
 | 🔌 Connections | Node, policy, external server, connection state |
 
+![The Policies tab of the FPolicy panel. One row shows the audit_all policy as enabled with priority 1, engine external and the file_ops_cifs event set, alongside Disable and Delete actions. Delete is not clickable because the policy is enabled](../../../docs/screenshots/fpolicy-manager.png)
+
 1. On the `📡 Events` tab choose `+ Create event`
    (name, protocol, operations to monitor)
 2. On the `📋 Policies` tab choose `+ Create policy`
