@@ -541,3 +541,78 @@ class TestSmbBlockIndexAllocation:
         assert result["status"] == "already_blocked"
         assert result["position"] == 4
         assert not [c for c in mock_client.calls if c[0] == "POST"]
+
+
+class TestNfsBlockRuleIndex:
+    """Export-policy inserts renumber rules the portal does not own.
+
+    Unlike the SMB name-mapping path this never conflicts, so it produced no
+    error — but every block silently shifted existing rules down a position, and
+    nothing said so.
+    """
+
+    def test_reports_how_many_rules_it_shifted(self, mock_client):
+        mock_client._responses["/protocols/nfs/export-policies"] = {
+            "records": [{"id": 42}],
+            "num_records": 1,
+        }
+        mock_client._responses["/protocols/nfs/export-policies/42/rules"] = {
+            # RFC 5737 documentation ranges, so the fixture cannot be mistaken
+            # for real export rules.
+            "records": [
+                {"index": 1, "clients": [{"match": "198.51.100.0/24"}]},
+                {"index": 2, "clients": [{"match": "203.0.113.0/24"}]},
+            ],
+            "num_records": 2,
+        }
+        arp = ArpResponseActions(mock_client)
+
+        result = arp.block_nfs_ip(svm_name="svm1", policy_name="default", client_ip="203.0.113.99")
+
+        assert result["status"] == "blocked"
+        assert result["rule_index"] == 1
+        assert result["rules_shifted"] == 2
+
+    def test_a_deny_rule_still_lands_first_by_default(self, mock_client):
+        """It has to be evaluated before any rule that would permit the client."""
+        mock_client._responses["/protocols/nfs/export-policies"] = {
+            "records": [{"id": 42}],
+            "num_records": 1,
+        }
+        arp = ArpResponseActions(mock_client)
+
+        arp.block_nfs_ip(svm_name="svm1", policy_name="default", client_ip="203.0.113.99")
+
+        post = next(c for c in mock_client.calls if c[0] == "POST")
+        assert post[2]["index"] == 1
+
+    def test_an_explicit_index_is_honoured(self, mock_client):
+        mock_client._responses["/protocols/nfs/export-policies"] = {
+            "records": [{"id": 42}],
+            "num_records": 1,
+        }
+        arp = ArpResponseActions(mock_client)
+
+        arp.block_nfs_ip(svm_name="svm1", policy_name="default", client_ip="203.0.113.99", rule_index=5)
+
+        post = next(c for c in mock_client.calls if c[0] == "POST")
+        assert post[2]["index"] == 5
+
+    def test_re_blocking_the_same_ip_does_not_renumber_again(self, mock_client):
+        mock_client._responses["/protocols/nfs/export-policies"] = {
+            "records": [{"id": 42}],
+            "num_records": 1,
+        }
+        mock_client._responses["/protocols/nfs/export-policies/42/rules"] = {
+            "records": [
+                {"index": 3, "clients": [{"match": f"{RESPONSE_MARKER},203.0.113.99"}]},
+            ],
+            "num_records": 1,
+        }
+        arp = ArpResponseActions(mock_client)
+
+        result = arp.block_nfs_ip(svm_name="svm1", policy_name="default", client_ip="203.0.113.99")
+
+        assert result["status"] == "already_blocked"
+        assert result["rule_index"] == 3
+        assert not [c for c in mock_client.calls if c[0] == "POST"]

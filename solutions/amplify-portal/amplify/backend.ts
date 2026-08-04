@@ -11,8 +11,12 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { AssetHashType, Aspects, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
+import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
 import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import { AwsSolutionsChecks, NagSuppressions } from "cdk-nag";
 
 /**
@@ -648,6 +652,81 @@ api.addLambdaDataSource("ArpResponseLambdaDataSource", arpResponseFunction);
 //
 // The interval bounds how long a block outlives its expiry, so it is a coarser
 // control than it looks: at one hour, "expires in 1h" can mean up to two.
+// --- Alerting on the sweep ---
+//
+// A failing sweep used to be visible only in CloudWatch Logs, so a principal
+// could stay contained long past its expiry with nobody notified.
+//
+// Two alarms, because the two failure modes are not the same shape:
+//
+//   SweepFailures  — the sweep ran and could not lift something
+//   SweepRuns      — the sweep did not run at all
+//
+// The second is the one that matters more and is the easier to miss: a sweep
+// that has stopped firing reports no failures, so alarming only on errors would
+// call that healthy. It uses treatMissingData: BREACHING for exactly that reason.
+const containmentAlarmTopic = new sns.Topic(dataStack, "ContainmentAlarmTopic", {
+  displayName: "FSx for ONTAP portal containment alarms",
+});
+
+if (config.alarmEmail) {
+  containmentAlarmTopic.addSubscription(new subscriptions.EmailSubscription(config.alarmEmail));
+}
+
+// One period per sweep, so the alarm window follows the schedule instead of
+// being a number picked independently of it. A fixed hour meant four datapoints
+// per period and a recovery that took two hours after the sweep came back.
+const sweepMetric = (metricName: string, statistic: string) =>
+  new cloudwatch.Metric({
+    namespace: "FsxOntapPortal/Containment",
+    metricName,
+    statistic,
+    period: Duration.minutes(config.blockSweepIntervalMinutes),
+  });
+
+// How many sweeps may be missed before anyone is told. Four is long enough that
+// a single throttled or slow run is not an incident, and short enough that a
+// block does not outlive its expiry by much more than an hour at the default
+// interval.
+const MISSED_SWEEPS_BEFORE_ALARM = 4;
+
+const sweepFailureAlarm = new cloudwatch.Alarm(dataStack, "ContainmentSweepFailureAlarm", {
+  alarmName: `${Stack.of(dataStack).stackName}-containment-sweep-failures`,
+  alarmDescription:
+    "The containment sweep could not lift one or more expired blocks. Access stays " +
+    "cut off for those principals until this succeeds. Check the ARP function logs, " +
+    "then scripts/portal-probes/diagnose_vpc_egress.py and probe_containment.py blocks.",
+  metric: sweepMetric("SweepFailures", "Sum"),
+  threshold: 0,
+  comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+  evaluationPeriods: 2,
+  // A single failed lift is retried on the next tick by design, so alarm on a
+  // failure that persists rather than on the first one.
+  datapointsToAlarm: 2,
+  // Missing data here is covered by the other alarm; treating it as a failure
+  // would make both fire for one cause.
+  treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+});
+sweepFailureAlarm.addAlarmAction(new cloudwatchActions.SnsAction(containmentAlarmTopic));
+
+const sweepSilentAlarm = new cloudwatch.Alarm(dataStack, "ContainmentSweepSilentAlarm", {
+  alarmName: `${Stack.of(dataStack).stackName}-containment-sweep-not-running`,
+  alarmDescription:
+    "The containment sweep has stopped reporting. Blocks will not expire while this " +
+    "is true, and nothing else will say so. Check the EventBridge rule and the ARP " +
+    "function's own errors.",
+  metric: sweepMetric("SweepRuns", "Sum"),
+  threshold: 1,
+  comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+  evaluationPeriods: MISSED_SWEEPS_BEFORE_ALARM,
+  datapointsToAlarm: MISSED_SWEEPS_BEFORE_ALARM,
+  // The point of this alarm: no data means the sweep is not running, which is a
+  // problem, not an absence of one. A freshly deployed stack sits here until the
+  // first sweep reports, which is correct — nothing is expiring yet.
+  treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+});
+sweepSilentAlarm.addAlarmAction(new cloudwatchActions.SnsAction(containmentAlarmTopic));
+
 new events.Rule(dataStack, "ContainmentBlockSweepSchedule", {
   description:
     "Lifts FSx for ONTAP containment blocks whose expiry has passed (portal-created blocks only)",

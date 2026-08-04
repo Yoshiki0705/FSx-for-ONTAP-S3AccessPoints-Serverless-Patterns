@@ -39,6 +39,8 @@ export interface PortalConfig {
   vpcRouteTableIds: string[];
   // Escape hatch: deploy into a VPC with no block expiry, on purpose.
   allowNoBlockExpiry: boolean;
+  // Notified when the containment sweep fails or stops running. Empty = nobody.
+  alarmEmail: string;
 
   // ONTAP connection
   ontapMgmtIp: string;
@@ -162,6 +164,15 @@ export const config: PortalConfig = {
    */
   vpcRouteTableIds: [],
   allowNoBlockExpiry: false,
+
+  /**
+   * Address to notify when the containment sweep fails or stops running.
+   *
+   * Left empty, the alarms still exist and are visible in the console, but the
+   * SNS topic has no subscriber so nothing reaches a person. Blocks not expiring
+   * is a silent condition, which is the reason the alarms exist at all.
+   */
+  alarmEmail: "",
 
   /**
    * ONTAP management LIF IP address.
