@@ -137,6 +137,16 @@ def check_action_inventories() -> list[Finding]:
     return findings
 
 
+# Declares a literal as deliberately untranslated. Some text must not go through
+# i18n at all — a language picker shows each language in its own script, so
+# "日本語" is correct in every locale and translating it would be a bug.
+#
+# This is separate from the baseline on purpose. The baseline means "not fixed
+# yet"; an exemption means "correct as it is". Collapsing the two would leave a
+# backlog nobody can finish, because some of it should never change.
+EXEMPT = re.compile(r"//\s*i18n-exempt\b(?::\s*(?P<reason>.+))?")
+
+
 def _strip_comments_and_imports(source: str) -> list[tuple[int, str]]:
     """Source lines with comments removed, keeping original line numbers."""
     lines = source.split("\n")
@@ -200,17 +210,26 @@ def check_hardcoded_strings(baseline: set[str] | None = None) -> tuple[list[Find
     findings: list[Finding] = []
     fingerprints: list[str] = []
     fallbacks = 0
+    exempted = 0
 
     components = sorted((PORTAL / "src").rglob("*.tsx"))
     if not components:
         return [Finding("hardcoded-string", "src", "no .tsx files found, so nothing is covered")], []
 
     for path in components:
+        raw_lines = path.read_text().split("\n")
         for number, text in _strip_comments_and_imports(path.read_text()):
             if not CJK.search(text):
                 continue
             if "t(" in text:
                 fallbacks += 1
+                continue
+            # An exemption may sit on the line or immediately above it, so a long
+            # line does not have to carry the marker and the reason.
+            here = raw_lines[number - 1] if number <= len(raw_lines) else ""
+            above = raw_lines[number - 2] if number >= 2 else ""
+            if EXEMPT.search(here) or EXEMPT.search(above):
+                exempted += 1
                 continue
             fingerprint = _fingerprint(path, text)
             fingerprints.append(fingerprint)
@@ -229,9 +248,11 @@ def check_hardcoded_strings(baseline: set[str] | None = None) -> tuple[list[Find
             Finding(
                 "hardcoded-string",
                 "(how to resolve)",
-                "add a key to src/i18n/locales/ja.ts and the other seven locales, or if this "
-                "is genuinely not user-facing, append the line to scripts/portal-drift-baseline.txt "
-                f"with a reason. {fallbacks} existing t()-with-fallback lines are not counted here.",
+                "add a key to src/i18n/locales/ja.ts and the other seven locales. If the text "
+                "must stay as it is in every locale — a language name in its own script, for "
+                "instance — mark the line with '// i18n-exempt: <reason>' rather than baselining "
+                f"it. {fallbacks} t()-with-fallback and {exempted} exempted line(s) are not "
+                "counted here.",
             )
         )
     return findings, fingerprints
