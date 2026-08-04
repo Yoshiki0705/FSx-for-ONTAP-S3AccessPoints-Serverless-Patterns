@@ -321,7 +321,7 @@ vserver vscan enable -vserver <svm-name>`}</pre>
             <span className="lu-count">
               Vscan:{" "}
               <span className={`lu-badge ${enabled ? "active" : "disabled"}`}>
-                {enabled ? t("vsEnabled") : t("vsDisabled")}
+                {enabled ? t("stateEnabled") : t("stateDisabled")}
               </span>
             </span>
             <button

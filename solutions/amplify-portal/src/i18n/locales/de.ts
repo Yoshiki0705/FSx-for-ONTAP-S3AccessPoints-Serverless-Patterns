@@ -330,10 +330,8 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   rmSavingsRatio: "Einsparungsverhältnis",
   rmNoEfficiencyData: "Keine Effizienzdaten verfügbar",
   // --- Resource Management: ARP/AI Admin ---
-  rmArpEnabled: "Aktiviert",
   rmArpLearning: "Lernend",
   rmArpPaused: "Pausiert",
-  rmArpDisabled: "Deaktiviert",
   rmArpTotal: "Gesamt",
   rmArpState: "Schutzstatus",
   rmArpThreat: "Bedrohung",
@@ -863,8 +861,6 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   aiSettingsAgentDesc: "Dateioperationen in natürlicher Sprache per KI-Chat (Bedrock Converse + tool_use)",
   aiSettingsSearchTitle: "Semantische Suche",
   aiSettingsSearchDesc: "Vektorsuche in Dateiinhalten (Bedrock Knowledge Base). Backend kann S3 Vectors (empfohlen, kostengünstig) oder OpenSearch Serverless verwenden.",
-  aiSettingsEnabled: "Aktiviert",
-  aiSettingsDisabled: "Deaktiviert",
   aiSettingsSaved: "Einstellungen gespeichert",
   aiSettingsStatusTitle: "Aktueller Status",
   aiSettingsMultimodalTitle: "Multimodal (Bildeingabe)",
@@ -1079,8 +1075,6 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   vsTroubleshootLink: "Fehlerbehebung",
   vsStep5Title: "Betrieb überprüfen",
   vsStep5Desc: "Prüfen Sie, ob Scans für eine Testdatei ausgeführt werden und die Scan-Statistiken steigen.",
-  vsEnabled: "Aktiviert",
-  vsDisabled: "Deaktiviert",
   vsPolicies: "Vscan-Richtlinien",
   vsNoPolicies: "Keine Vscan-Richtlinien",
   vsEnableBtn: "Aktivieren",
@@ -1141,6 +1135,31 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   aqSetupStep3: "Speichern und die Abfrage in diesem Bereich erneut ausführen",
   aqSetupEnvHint:
     "Alternativ einen S3-Pfad in der Umgebungsvariablen {env} in {file} setzen und neu bereitstellen.",
+
+  // --- Shared state labels ---
+  stateEnabled: "Aktiviert",
+  stateDisabled: "Deaktiviert",
+  rmLoadFailed: "Laden fehlgeschlagen",
+  rmActionFailed: "Der Vorgang ist fehlgeschlagen",
+  rmSnapLockConfirm:
+    "⚠️ Tamperproof-Snapshot-Sperre aktivieren?\n\n" +
+    "WICHTIG: Auf einem Compliance-Volume lässt sich das nicht zurücknehmen.\n" +
+    "Nach der Aktivierung kann ein gesperrter Snapshot von niemandem gelöscht\n" +
+    "werden, bis seine Aufbewahrungsfrist abläuft — auch nicht von root oder fsxadmin.\n\n" +
+    "Hinweis: Damit wird nur die Sperrfunktion des Volumes eingeschaltet.\n" +
+    "  Einzelne Snapshots werden separat über die Schaltfläche „Lock“ gesperrt,\n" +
+    "  wo Sie die Aufbewahrungsfrist festlegen.\n\n" +
+    "Zum Fortfahren {keyword} eingeben:",
+  rmSnapLockCancelled: "Aktivierung abgebrochen — Sie müssen {keyword} eingeben",
+  slNewVolumeOnly: "SnapLock kann nur beim Anlegen eines Volumes aktiviert werden",
+  slNewVolumeOnlyWhy:
+    "Für ein bestehendes Volume lässt sich SnapLock nicht nachträglich einschalten; das ist eine ONTAP-Einschränkung.",
+  slNewVolumeOnlyHow:
+    "Wenn Sie ein SnapLock-Volume benötigen, legen Sie es in der Volume-Verwaltung neu an.",
+  fcacheMetricsHint: "Metriken: im ONTAP System Manager verfügbar",
+  vhDiffTitle: "Versionsunterschiede",
+  vhDiffNotice:
+    "Zwei Snapshots auszuwählen und ihren Inhalt zu vergleichen ist für eine künftige Version geplant. Derzeit wird die Snapshot-Liste angezeigt.",
   fpvClickDownload: "Zum Herunterladen klicken oder für die KI-Verarbeitung auswählen",
   fpvClickPdf: "Zum Vorschauen des PDF klicken",
   fpvClickDoc: "Zum Vorschauen des Dokuments klicken",

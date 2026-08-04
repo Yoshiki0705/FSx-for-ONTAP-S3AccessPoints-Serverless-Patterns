@@ -330,10 +330,8 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   rmSavingsRatio: "Ratio de ahorro",
   rmNoEfficiencyData: "Sin datos de eficiencia disponibles",
   // --- Resource Management: ARP/AI Admin ---
-  rmArpEnabled: "Habilitado",
   rmArpLearning: "Aprendiendo",
   rmArpPaused: "En pausa",
-  rmArpDisabled: "Deshabilitado",
   rmArpTotal: "Total",
   rmArpState: "Estado de protección",
   rmArpThreat: "Amenaza",
@@ -863,8 +861,6 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   aiSettingsAgentDesc: "Operaciones de archivos en lenguaje natural por chat IA (Bedrock Converse + tool_use)",
   aiSettingsSearchTitle: "Búsqueda semántica",
   aiSettingsSearchDesc: "Búsqueda vectorial del contenido de archivos (Bedrock Knowledge Base). El backend puede usar S3 Vectors (recomendado, bajo costo) o OpenSearch Serverless.",
-  aiSettingsEnabled: "Habilitado",
-  aiSettingsDisabled: "Deshabilitado",
   aiSettingsSaved: "Configuración guardada",
   aiSettingsStatusTitle: "Estado actual",
   aiSettingsMultimodalTitle: "Multimodal (Imagen)",
@@ -1079,8 +1075,6 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   vsTroubleshootLink: "Solución de problemas",
   vsStep5Title: "Verificar el funcionamiento",
   vsStep5Desc: "Compruebe que los análisis se ejecutan sobre un archivo de prueba y que las estadísticas de análisis aumentan.",
-  vsEnabled: "Habilitado",
-  vsDisabled: "Deshabilitado",
   vsPolicies: "Políticas Vscan",
   vsNoPolicies: "No hay políticas Vscan",
   vsEnableBtn: "Activar",
@@ -1141,6 +1135,31 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   aqSetupStep3: "Guarde y vuelva a ejecutar la consulta en este panel",
   aqSetupEnvHint:
     "También puede definir una ruta de S3 en la variable de entorno {env} de {file} y volver a implementar.",
+
+  // --- Shared state labels ---
+  stateEnabled: "Habilitado",
+  stateDisabled: "Deshabilitado",
+  rmLoadFailed: "No se pudo cargar",
+  rmActionFailed: "La operación falló",
+  rmSnapLockConfirm:
+    "⚠️ ¿Habilitar el bloqueo Tamperproof Snapshot?\n\n" +
+    "IMPORTANTE: en un volumen Compliance esta acción no se puede deshacer.\n" +
+    "Una vez habilitado, nadie puede eliminar un snapshot bloqueado\n" +
+    "hasta que expire su periodo de retención, ni root ni fsxadmin.\n\n" +
+    "Nota: esto solo activa la función de bloqueo del volumen.\n" +
+    "  Cada snapshot se bloquea por separado con el botón «Lock»,\n" +
+    "  donde se indica el periodo de retención.\n\n" +
+    "Escriba {keyword} para continuar:",
+  rmSnapLockCancelled: "Se canceló la habilitación: tiene que escribir {keyword}",
+  slNewVolumeOnly: "SnapLock solo se puede habilitar al crear un volumen",
+  slNewVolumeOnlyWhy:
+    "No es posible habilitar SnapLock después en un volumen existente; es una restricción de ONTAP.",
+  slNewVolumeOnlyHow:
+    "Si necesita un volumen SnapLock, cree uno desde la gestión de volúmenes.",
+  fcacheMetricsHint: "Métricas: disponibles en ONTAP System Manager",
+  vhDiffTitle: "Diferencias entre versiones",
+  vhDiffNotice:
+    "Seleccionar dos snapshots para comparar su contenido está previsto para una versión futura. Por ahora se muestra la lista de snapshots.",
   fpvClickDownload: "Haga clic para descargar o seleccionar para el procesamiento con IA",
   fpvClickPdf: "Haga clic para previsualizar el PDF",
   fpvClickDoc: "Haga clic para previsualizar el documento",

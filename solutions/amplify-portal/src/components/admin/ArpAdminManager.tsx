@@ -167,10 +167,10 @@ export function ArpAdminManager() {
 
   const getStateLabel = (state: string) => {
     switch (state) {
-      case "enabled": return t("rmArpEnabled");
+      case "enabled": return t("stateEnabled");
       case "dry_run": return t("rmArpLearning");
       case "paused": return t("rmArpPaused");
-      case "disabled": return t("rmArpDisabled");
+      case "disabled": return t("stateDisabled");
       default: return state;
     }
   };
@@ -197,7 +197,7 @@ export function ArpAdminManager() {
         <div className="form-row" style={{ marginBottom: "1.5rem" }}>
           <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid #22c55e", borderRadius: "8px" }}>
             <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#22c55e" }}>{summary.enabled}</div>
-            <div>{t("rmArpEnabled")}</div>
+            <div>{t("stateEnabled")}</div>
           </div>
           <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid #3b82f6", borderRadius: "8px" }}>
             <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#3b82f6" }}>{summary.learning}</div>
@@ -205,7 +205,7 @@ export function ArpAdminManager() {
           </div>
           <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid #9ca3af", borderRadius: "8px" }}>
             <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#9ca3af" }}>{summary.disabled}</div>
-            <div>{t("rmArpDisabled")}</div>
+            <div>{t("stateDisabled")}</div>
           </div>
           <div className="form-group" style={{ textAlign: "center", padding: "0.75rem", border: "1px solid var(--border-color)", borderRadius: "8px" }}>
             <div style={{ fontSize: "1.5rem", fontWeight: 700 }}>{summary.total}</div>
@@ -222,7 +222,7 @@ export function ArpAdminManager() {
             <div className="form-group">
               <label>{t("rmArpTargetState")}</label>
               <select value={bulkState} onChange={(e) => setBulkState(e.target.value as "enabled" | "dry_run")}>
-                <option value="enabled">{t("rmArpEnabled")} (ARP/AI — {t("rmArpNoLearning")})</option>
+                <option value="enabled">{t("stateEnabled")} (ARP/AI — {t("rmArpNoLearning")})</option>
                 <option value="dry_run">{t("rmArpLearning")} ({t("rmArpClassic30Day")})</option>
               </select>
             </div>

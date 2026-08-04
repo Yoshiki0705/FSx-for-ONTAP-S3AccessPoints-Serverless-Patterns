@@ -132,6 +132,7 @@ ARP/AI の封じ込め操作について、以下が実装・ライブ検証済�
 | 監査主体の記録 | ✅ | AppSync 経由でない呼び出しは `unattributed` / `direct-invoke` として記録。詳細は下記 |
 | スイープ失敗の通知 | ✅ | EMF メトリクス + アラーム 2 本（失敗検知と、スイープ自体の停止検知） |
 | NFS ブロックの index | ✅ | index 1 のまま（deny ルールは先に評価される必要があるため）だが `rules_shifted` を返し、再ブロックは `already_blocked` の no-op |
+| i18n 直書き文字列（当初 53 件） | ✅ | ベースラインは 0 件。空が正常な状態で、以後の直書きは CI が失敗させます（空ベースラインでも検知することを実証済み） |
 
 ### この作業で見つかった実装の問題（すべて修正済み）
 
@@ -149,7 +150,6 @@ ARP/AI の封じ込め操作について、以下が実装・ライブ検証済�
 |---|:---:|---|
 | 📋 Lambda を直接呼べる主体の制限 | 中 | 監査フィールドは AppSync 経由かどうかで判定していますが、`lambda:InvokeFunction` を持つ主体は両方を偽装できます。実効的な境界は関数の IAM ポリシー側です |
 | 📋 `ttlHours` 上限の運用的な根拠 | 低 | 90 日は恣意的な値です。インシデント対応の実運用に合わせるべきです |
-| 📋 i18n 直書き文字列 30 件 | 中 | `scripts/portal-drift-baseline.txt` に記録済み。8 言語のうち 7 言語で見えないため、キー化が必要です。残りは `AthenaQueryPanel.tsx` 14 / `SnapshotAdminManager.tsx` 8 / `SnaplockManager.tsx` 3 / `FlexCacheManager.tsx` 3 / `VersionHistory.tsx` 2。新規発生は CI が阻止します |
 
 ### このロードマップ自体の記載誤り（訂正）
 

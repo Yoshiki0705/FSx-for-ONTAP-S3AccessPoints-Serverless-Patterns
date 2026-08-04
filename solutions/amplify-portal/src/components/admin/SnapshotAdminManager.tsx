@@ -6,6 +6,16 @@ import { VolumeSelector } from "./VolumeSelector";
 
 const client = generateClient<Schema>();
 
+/**
+ * The word the operator has to type to confirm enabling locking.
+ *
+ * Deliberately not translated and deliberately not left inside the prompt text:
+ * the comparison below is against this exact string, so a locale that rendered
+ * a translated word would ask for one thing and accept another. Interpolating it
+ * into the message keeps the two in step.
+ */
+const ENABLE_KEYWORD = "ENABLE";
+
 // Parse the JSON string response from generic dispatch endpoints
 function parseResponse<T>(response: { data?: string | null }): T | null {
   if (!response.data) return null;
@@ -72,7 +82,7 @@ export function SnapshotAdminManager() {
         if (data.error) setError(data.error);
         else setPolicies(data.policies || []);
       }
-    } catch (err) { setError(err instanceof Error ? err.message : "Load failed"); }
+    } catch (err) { setError(err instanceof Error ? err.message : t("rmLoadFailed")); }
     finally { setLoading(false); }
   };
 
@@ -86,7 +96,7 @@ export function SnapshotAdminManager() {
         if (data.error) setError(data.error);
         else setLockConfig(data.config || null);
       }
-    } catch (err) { setError(err instanceof Error ? err.message : "Load failed"); }
+    } catch (err) { setError(err instanceof Error ? err.message : t("rmLoadFailed")); }
     finally { setLoading(false); }
   };
 
@@ -107,26 +117,20 @@ export function SnapshotAdminManager() {
           setResult(`${t("rmSnapPolicyCreated")}: ${policyName}`); clearResult();
           setShowCreatePolicy(false); setPolicyName(""); setPolicyComment("");
           loadPolicies();
-        } else setError(data.error || "Failed");
+        } else setError(data.error || t("rmActionFailed"));
       }
-    } catch (err) { setError(err instanceof Error ? err.message : "Failed"); }
+    } catch (err) { setError(err instanceof Error ? err.message : t("rmActionFailed")); }
   };
 
   const handleEnableLocking = async () => {
     if (!volumeUuid) return;
     // Multi-step safety confirmation — enabling locking on a Compliance volume is IRREVERSIBLE
     const confirmed = window.prompt(
-      "⚠️ Tamperproof Snapshot ロックを有効化しますか？\n\n" +
-      "【重要】この操作は Compliance ボリュームでは取り消せません。\n" +
-      "有効化後にロックされた Snapshot は、保持期間が満了するまで\n" +
-      "誰も削除できなくなります（root / fsxadmin 含む）。\n\n" +
-      "※ この操作はボリューム上の「ロック機能」を有効にするだけです。\n" +
-      "  個別 Snapshot のロックは別途「Lock」ボタンから保持期間を指定して行います。\n\n" +
-      "続行するには ENABLE と入力してください:",
+      t("rmSnapLockConfirm").replace("{keyword}", ENABLE_KEYWORD),
       ""
     );
-    if (confirmed !== "ENABLE") {
-      setError("有効化がキャンセルされました（ENABLE と入力する必要があります）");
+    if (confirmed !== ENABLE_KEYWORD) {
+      setError(t("rmSnapLockCancelled").replace("{keyword}", ENABLE_KEYWORD));
       return;
     }
     try {
@@ -134,9 +138,9 @@ export function SnapshotAdminManager() {
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setResult(t("rmSnapLockingEnabled")); clearResult(); loadLockingStatus(); }
-        else setError(data.error || "Failed");
+        else setError(data.error || t("rmActionFailed"));
       }
-    } catch (err) { setError(err instanceof Error ? err.message : "Failed"); }
+    } catch (err) { setError(err instanceof Error ? err.message : t("rmActionFailed")); }
   };
 
   if (loading && activeTab === "policies" && policies.length === 0) return <p className="loading">{t("loading")}</p>;
@@ -218,7 +222,7 @@ export function SnapshotAdminManager() {
                       </div>
                     ))}
                   </td>
-                  <td><span className={`state-badge state-${p.enabled ? "online" : "offline"}`}>{p.enabled ? "Enabled" : "Disabled"}</span></td>
+                  <td><span className={`state-badge state-${p.enabled ? "online" : "offline"}`}>{p.enabled ? t("stateEnabled") : t("stateDisabled")}</span></td>
                   <td>{p.comment || "—"}</td>
                 </tr>
               ))}
@@ -250,7 +254,7 @@ export function SnapshotAdminManager() {
               <div className="detail-card">
                 <div className="detail-label">{t("rmSnapLockingState")}</div>
                 <div className={`detail-value ${lockConfig.snapshotLockingEnabled ? "text-success" : ""}`}>
-                  {lockConfig.snapshotLockingEnabled ? "🔒 Enabled" : "— Disabled"}
+                  {lockConfig.snapshotLockingEnabled ? `🔒 ${t("stateEnabled")}` : `— ${t("stateDisabled")}`}
                 </div>
               </div>
               <div className="detail-card">
