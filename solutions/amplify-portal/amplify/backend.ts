@@ -2,13 +2,14 @@ import { defineBackend } from "@aws-amplify/backend";
 import { auth } from "./auth/resource";
 import { data } from "./data/resource";
 import { config } from "./portal-config";
+import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import { Aspects, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { AssetHashType, Aspects, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { AwsSolutionsChecks, NagSuppressions } from "cdk-nag";
 
@@ -218,13 +219,56 @@ if (!fs.existsSync(path.join(sharedModulesDir, "ontap_response.py"))) {
   );
 }
 
+/**
+ * Fingerprint of the Python sources that go into the layer.
+ *
+ * This lands in the layer Description, which matters for a practical reason:
+ * `ampx sandbox` deploys through CDK hotswap, and hotswap updates Lambda code
+ * in place while skipping LayerVersion content changes. A layer whose only
+ * difference is its S3 key therefore never gets republished in a sandbox, and
+ * the function keeps running against the previous version.
+ *
+ * A LayerVersion is immutable, so changing a property forces CloudFormation to
+ * create a replacement — and a resource CloudFormation must create is not
+ * hotswappable, which makes the deployment fall back to a real stack update.
+ * Tying the description to the content means "shared/ changed" and "the layer
+ * is republished" cannot drift apart.
+ */
+const sharedSourcesFingerprint = (() => {
+  const hash = crypto.createHash("sha256");
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (["tests", "__pycache__", ".pytest_cache", "cfn", "scripts"].includes(entry.name)) {
+          continue;
+        }
+        walk(full);
+      } else if (entry.name.endsWith(".py")) {
+        hash.update(path.relative(sharedModulesDir, full));
+        hash.update(fs.readFileSync(full));
+      }
+    }
+  };
+  walk(sharedModulesDir);
+  return hash.digest("hex").slice(0, 12);
+})();
+
 const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer", {
   description:
-    "Repository shared/ Python modules (ONTAP client and ARP containment actions) at /opt/python/shared",
+    "Repository shared/ Python modules (ONTAP client and ARP containment actions) " +
+    `at /opt/python/shared [sources ${sharedSourcesFingerprint}]`,
   compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
   compatibleArchitectures: [lambda.Architecture.ARM_64],
   code: lambda.Code.fromAsset(sharedModulesDir, {
     exclude: ["tests", "tests/**", "__pycache__", "**/__pycache__", "*.pyc"],
+    // Hash the staged tree, not the source directory. With a source hash, fixing
+    // the bundler does not change the asset key, so CDK reuses the object it
+    // already uploaded — which is how a corrected bundler still produced a layer
+    // containing the earlier, incomplete file set.
+    assetHashType: AssetHashType.OUTPUT,
     bundling: {
       image: lambda.Runtime.PYTHON_3_12.bundlingImage,
       command: [],
