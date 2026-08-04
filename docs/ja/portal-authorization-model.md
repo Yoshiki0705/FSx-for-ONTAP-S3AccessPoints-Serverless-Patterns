@@ -133,7 +133,58 @@ aws cognito-idp create-group \
 5. **保護アカウント**: storage-admin でも `fsxadmin`/`administrator` はブロック不可（`ontap_response.py` の安全弁）
 6. **確認ゲート**: 破壊的操作は、ブラウザのダイアログだけでなく Lambda のペイロードに明示的な `confirm: true` を要求します。対象は `deleteVolume`、`deleteExportPolicy`、`deleteCifsShare`、SnapMirror の `break`/`resync`/`delete`、Vscan と FPolicy のポリシー削除、クラスターピア削除、および ARP の封じ込めアクション全部（`blockSmbUser`、`blockNfsIp`、`containThreat`、`disconnectSessions`）です。解除系は意図的にゲートしていません — アクセスを戻す操作であり、誤ったブロックから復帰する経路に確認を挟むと回復が遅れるだけです。
 7. **入力は SQL とリクエストパスの両方で検証する**: 監査ログの Athena クエリに入る値（`fileKeyPrefix`、`startDate`、`endDate`、`eventType`、`maxResults`）は、パターン検証を通してから、シングルクォートを二重化してリテラル化します。LIKE のメタ文字（`%`、`_`）もエスケープするため、プレフィックスはワイルドカードとして解釈されません。ONTAP のリクエストパスは、呼び出し側の名前を percent-encode し、`..` セグメントと制御文字を `_ontap_request` の入口で拒否します。パスの検証を各アクションに任せず 1 箇所に置いているのは、同じ関数を 110 以上のアクションが通るためです。
-8. **有効期限とスイープ**: ブロックには既定 24 時間の有効期限が付き、期限を過ぎたものは定期実行のスイープが解除します。ブロック時に 1 時間〜7 日、または「無期限」を明示的に選べます。ONTAP の name-mapping と export-policy のルールにはタイムスタンプがないため、期限はポータル側の台帳（DynamoDB）で管理し、スイープはその台帳にある行だけを対象にします。外部で設定されたブロックは「ポータル管理外」として解除しません。運用上の意味は [封じ込めの境界](./arp-ai-isolation-demo-guide.md) を参照してください。
+8. **有効期限とスイープ**: ブロックには既定 24 時間の有効期限が付き、期限を過ぎたものは定期実行のスイープが解除します。ブロック時に 1 時間〜7 日、または「無期限」を明示的に選べます。API 経由の上限は既定 30 日（`maxBlockTtlHours`、0 で上限なし）で、これは安全な数字というより道具の切り替え点です — deny ルールは 1 SVM にしか効かないため、それより長く締め出す必要がある主体はディレクトリ側で無効化すべきです。上限超過は拒否し、クランプはしません。ONTAP の name-mapping と export-policy のルールにはタイムスタンプがないため、期限はポータル側の台帳（DynamoDB）で管理し、スイープはその台帳にある行だけを対象にします。外部で設定されたブロックは「ポータル管理外」として解除しません。運用上の意味は [封じ込めの境界](./arp-ai-isolation-demo-guide.md) を参照してください。
+
+## Lambda を直接呼ばれた場合の扱い
+
+監査証跡の主体（`createdBy` / `createdVia`）は、呼び出しが AppSync 経由かどうかで決まります。リゾルバ `arp-dispatch.js` が Cognito の identity から `userId` と `invokedVia: "appsync"` を注入し、Lambda は両方が揃っている場合だけユーザーに帰属させ、それ以外は `unattributed` / `direct-invoke` として記録します。
+
+**`lambda:InvokeFunction` を持つ主体は、この 2 つのフィールドを自分で詰めて任意の名前に帰属させられます。** 関数の内部からこれを見分ける方法はありません。
+
+### スタック側で防げない理由
+
+同一アカウント内では、**アイデンティティベースのポリシーとリソースベースのポリシーのどちらかが許可していれば呼び出しは成立します**。そして Lambda の権限 API（`AddPermission`）が書けるのは Allow ステートメントだけです。つまりこのスタックにリソースポリシーを足しても、既に `lambda:InvokeFunction` を持つ主体から権限を取り上げることはできません。増やすことしかできません。
+
+実際の防止レイヤーは次の 2 つで、いずれもこのスタックの外にあります。
+
+1. **アイデンティティベースのポリシー** — 誰に `lambda:InvokeFunction` を与えるか
+2. **SCP または Permissions Boundary** — 組織レベルで、想定した経路以外からの呼び出しを禁止する
+
+### SCP の例
+
+ポータルの ARP 関数を、AppSync のデータソースロールと封じ込めスイープの EventBridge ルール以外から呼べないようにする例です。`aws:PrincipalArn` の値は自環境のものに置き換えてください。
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyDirectInvokeOfPortalContainment",
+      "Effect": "Deny",
+      "Action": "lambda:InvokeFunction",
+      "Resource": "arn:aws:lambda:<region>:<account-id>:function:*ArpResponseFunction*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::<account-id>:role/*AppSync*DataSource*",
+            "arn:aws:iam::<account-id>:role/*ContainmentBlockSweep*"
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+> **運用上の注意**: これを適用すると `scripts/portal-probes/` のライブ検証プローブも動かなくなります。プローブを使う環境では、実行に使うロールを `ArnNotLike` の除外リストに加えてください。
+
+### 代わりにスタックが行うこと
+
+防げない代わりに、**黙って起きないようにしています**。状態を変える封じ込めアクションが AppSync の identity を伴わずに届いた場合、EMF メトリクス `UnattributedContainmentActions` を発行し、CloudWatch アラーム（`<stack>-containment-unattributed-action`）が 1 件目で発火します。封じ込めがまだ有効なうちに気づけることが目的です。
+
+台帳の行にも以前から `direct-invoke` は記録されていましたが、それは後から行を読んだ人にしか見えませんでした。
+
+`scripts/portal-probes/` を実行すると、このアラームは意図的に発火します。プローブは実際に「ポータル外からの状態変更」を行っているため、除外するとアラームが監視したい事象そのものの形をした穴になります。
 
 ## フロントエンドの挙動
 
