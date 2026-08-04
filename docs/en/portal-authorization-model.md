@@ -131,13 +131,15 @@ aws cognito-idp create-group \
 3. **Owner scoping**: Personal data (favorites, history, tags) uses Amplify's `allow.owner()` — users see only their own
 4. **Audit trail**: All admin actions include `userId` in the Lambda payload → logged in CloudTrail
 5. **Protected accounts**: Even storage-admins cannot block `fsxadmin`/`administrator` (safety valve in `ontap_response.py`)
-6. **Confirmation gates**: Destructive operations (delete volume, disable ARP) require explicit `confirm: true`
+6. **Confirmation gates**: Destructive operations require explicit `confirm: true` in the Lambda payload, not only a dialog in the browser. This covers `deleteVolume`, `deleteExportPolicy`, `deleteCifsShare`, the SnapMirror `break`/`resync`/`delete` paths, the Vscan and FPolicy policy deletes, cluster-peer delete, and every ARP containment action (`blockSmbUser`, `blockNfsIp`, `containThreat`, `disconnectSessions`). Unblocking is deliberately **not** gated — it restores access, and a confirmation step on the way out of a mistaken block only delays recovery.
+7. **Input is validated for both SQL and request paths**: the values that reach the audit-log Athena query (`fileKeyPrefix`, `startDate`, `endDate`, `eventType`, `maxResults`) are pattern-checked and then rendered as literals with single quotes doubled. LIKE metacharacters (`%`, `_`) are escaped as well, so a prefix is not interpreted as a wildcard. ONTAP request paths percent-encode caller-supplied names, and `_ontap_request` refuses any path containing a `..` segment or a control character. That check lives in the one function all 110-plus actions pass through rather than in each action.
+8. **Expiry and the sweep**: a block carries an expiry, 24 hours by default, and a scheduled sweep lifts blocks whose expiry has passed. The operator can choose 1 hour to 7 days, or indefinite, at the point of blocking. ONTAP name-mapping and export-policy rules carry no timestamp, so expiry is tracked in a portal-side ledger (DynamoDB) and the sweep only considers rows in that ledger — a block placed outside the portal is reported as "Not portal-managed" and never lifted automatically. See the [containment boundary](../../solutions/amplify-portal/docs/resource-management-demo-guide.en.md) for what this means operationally.
 
 ## Frontend Behavior
 
 The UI does not hide admin features from non-admin users — instead, it shows them grayed out with a "storage-admin required" badge. This makes the capability visible (users know what's possible) while preventing unauthorized execution (AppSync rejects the call if attempted).
 
-The `ArpResponseActions` component in Data Protection is an exception: it renders action buttons only when threat level is elevated, reducing cognitive load during normal operation.
+The `ArpResponseActions` component in Data Protection always renders its containment form — an operator may need to block a user that ARP has not flagged. What changes with the threat level is a warning banner above the form, not the availability of the actions. Each action then asks for confirmation, and the Lambda refuses the call unless `confirm: true` arrives with it.
 
 
 ---

@@ -122,7 +122,7 @@ KNFSD と S3 AP は**相補的**なアクセスパスとして同一 FSx for ONT
 
 | 成果物 | Snapshot 対象 | SnapMirror 対象 | 保持期間 |
 |--------|:---:|:---:|---|
-| 入力ファイル（顧客データ） | ✅ | ✅ | 顧客既存ポリシー |
+| 入力ファイル（導入先データ） | ✅ | ✅ | 導入先の既存ポリシー |
 | 抽出 JSON 結果 | UC 定義 | UC 定義 | Success Metrics に基づく |
 | Human Review 決定記録 | ✅ | ✅ | 監査保持期間 |
 | 中間プロンプト/出力 | 通常 No | No | 短期保持（7-30日） |
@@ -186,7 +186,7 @@ OT 環境固有の考慮事項:
 | 発見事項 | 影響 | 証拠 | 要望 |
 |---------|------|------|------|
 | Throughput 変更中に S3 AP が ServiceUnavailable | 運用リスク | Phase 14 timeline | 動作の文書化 / 可用性改善 |
-| Presigned URL が動くが unsupported | 顧客混乱 | AWS Support case | ドキュメント明確化 |
+| Presigned URL が動くが unsupported | 利用者の混乱 | AWS Support case | ドキュメント明確化 |
 | VPC-origin benchmark 未実施 | 設計ギャップ | Phase 15 Next | ガイダンス提供 |
 | FlexCache × S3 AP 未対応 | 機能ギャップ | FC1 ブロッカー | ロードマップ検討 |
 | ListObjectsV2 高レイテンシ (30-80x vs native S3) | 性能制約 | Benchmark data | 最適化 |

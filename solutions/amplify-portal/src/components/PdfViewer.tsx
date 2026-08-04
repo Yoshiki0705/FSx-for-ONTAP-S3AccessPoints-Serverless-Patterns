@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "../i18n";
 
 /**
  * UX-4: PDF Inline Viewer.
@@ -21,27 +22,42 @@ export function PdfViewer({
   onClose?: () => void;
 }) {
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
+  const title = fileName || t("pdfTitle");
 
   return (
     <div className="pdf-viewer-container">
       <div className="pdf-viewer-header">
-        <span className="pdf-viewer-title">{fileName || "PDF Preview"}</span>
+        <span className="pdf-viewer-title">{title}</span>
         <div className="pdf-viewer-actions">
-          <a href={url} target="_blank" rel="noopener noreferrer" className="pdf-open-btn">
-            Open in new tab ↗
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pdf-open-btn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {t("pdfOpenNewTab")} ↗
           </a>
           {onClose && (
-            <button className="pdf-close-btn" onClick={onClose}>
-              ✕ Close
+            <button
+              className="pdf-close-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              aria-label={t("pdfClose")}
+            >
+              ✕ {t("pdfClose")}
             </button>
           )}
         </div>
       </div>
-      {loading && <div className="pdf-loading">Loading PDF...</div>}
+      {loading && <div className="pdf-loading">{t("pdfLoading")}</div>}
       <iframe
         src={url}
         className="pdf-viewer-frame"
-        title={fileName || "PDF Preview"}
+        title={title}
         onLoad={() => setLoading(false)}
       />
     </div>

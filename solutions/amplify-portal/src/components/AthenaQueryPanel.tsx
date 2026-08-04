@@ -55,10 +55,10 @@ export function AthenaQueryPanel() {
             type="text"
             value={database}
             onChange={(e) => setDatabase(e.target.value)}
-            placeholder="Database"
+            placeholder={t("aqDatabase")}
             className="athena-db-input"
-            aria-label="Database name"
-            title="Glue Data Catalog のデータベース名。Glue Crawler が作成したデータベースを指定します（通常は default）。"
+            aria-label={t("aqDatabaseAria")}
+            title={t("aqDatabaseHint")}
           />
           <span style={{ fontSize: "0.75rem", color: "var(--text-secondary, #666)", whiteSpace: "nowrap" }}>
             ← Glue DB 名
@@ -103,7 +103,7 @@ export function AthenaQueryPanel() {
         onChange={(e) => setSql(e.target.value)}
         rows={4}
         placeholder={"-- 例: SHOW TABLES IN default\n-- 例: SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10"}
-        aria-label="SQL query"
+        aria-label={t("aqSqlAria")}
       />
       <div className="athena-actions">
         <button onClick={runQuery} disabled={loading || !sql.trim()}>

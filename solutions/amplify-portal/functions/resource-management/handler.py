@@ -5,11 +5,30 @@ Modeled after ONTAP System Manager's storage management capabilities,
 implemented via ONTAP REST API for programmatic access.
 
 ONTAP REST API endpoints used:
-- /storage/volumes — Volume CRUD + resize
+- /storage/volumes — Volume CRUD + resize, FlexClone create/split
 - /protocols/nfs/export-policies — Export policy management
 - /protocols/nfs/export-policies/{id}/rules — Export policy rules
 - /storage/qos/policies — QoS policy management
 - /storage/volumes/{uuid} (snaplock fields) — SnapLock configuration
+- /protocols/cifs/local-users — SMB local user management
+- /protocols/cifs/local-groups — SMB local group management
+- /protocols/cifs/local-groups/{svm}/{sid}/members — Local group membership
+- /name-services/name-mappings — Windows <-> UNIX identity mapping
+- /storage/flexcache/flexcaches — FlexCache create/list/delete
+- /snapmirror/relationships — Replication status, transfer, quiesce/resume,
+  break, resync, delete
+- /snapmirror/relationships/{uuid}/transfers — On-demand transfer and abort
+- /protocols/vscan/{svm.uuid} — Virus scanning enable/disable
+- /protocols/vscan/{svm.uuid}/on-access-policies — On-access policy management
+- /protocols/fpolicy/{svm.uuid}/events — File access event definitions
+- /protocols/fpolicy/{svm.uuid}/policies — File access notification policies
+- /cluster/peers — Cluster peering (create with passphrase, accept, delete)
+- /svm/peers — SVM peering (create, accept, delete)
+- /network/ip/interfaces — LIF inventory, intercluster LIF check, enable/disable
+- /cluster, /cluster/nodes, /cluster/licensing/licenses — Cluster inventory
+- /name-services/dns — DNS domains and servers
+- /protocols/{nfs,cifs,s3}/services — Data protocol service state
+- /cluster/jobs — Asynchronous job progress for the operations above
 
 Environment:
     ONTAP_MGMT_IP: FSx for ONTAP management endpoint
@@ -22,6 +41,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+from urllib.parse import quote
 
 import boto3
 import urllib3
@@ -45,8 +66,47 @@ def _get_credentials():
     return data.get("username", "fsxadmin"), data.get("password", "")
 
 
+# Caller-supplied names reach ONTAP request paths in many of the actions below.
+# An unencoded value containing a traversal sequence would redirect the request
+# to a different endpoint — a "delete this share" call could reach a cluster
+# resource instead. Rather than trusting ~110 call sites to remember, the check
+# lives in the one function they all go through.
+_UNSAFE_PATH_CHARS = re.compile(r"[\x00-\x1f\x7f\\]")
+
+
+def _is_unsafe_path(path: str) -> bool:
+    """True if the assembled request path must not be sent."""
+    if _UNSAFE_PATH_CHARS.search(path):
+        return True
+    # Split off the query string, then look for a traversal segment. `..` inside
+    # a name (for example "my..share") is fine; a whole segment of ".." is not.
+    route = path.split("?", 1)[0]
+    return any(segment == ".." for segment in route.split("/"))
+
+
+def _seg(value) -> str:
+    """Percent-encode a value used as a single path segment."""
+    return quote(str(value), safe="")
+
+
+def _qval(value) -> str:
+    """Percent-encode a value used as a query-string value.
+
+    Without this, a name containing `&` or `=` adds parameters to the request
+    instead of being matched as a name.
+    """
+    return quote(str(value), safe="")
+
+
 def _ontap_request(http, headers, method, path, body=None):
     """Make an ONTAP REST API request."""
+    if _is_unsafe_path(path):
+        logger.warning("Refused ONTAP request with unsafe path: %r", path[:200])
+        return {
+            "_error": True,
+            "_status": 400,
+            "_message": "Invalid characters in request path",
+        }
     url = f"https://{MGMT_IP}/api{path}"
     kwargs = {"headers": headers}
     if body:
@@ -200,6 +260,146 @@ def handler(event, context):
         elif action == "putS3ObjectLockRetention":
             return _put_s3_object_lock_retention(event, user_id)
 
+        # --- SMB Local Users and Groups ---
+        elif action == "listLocalUsers":
+            return _list_local_users(http, headers, event)
+        elif action == "createLocalUser":
+            return _create_local_user(http, headers, event, user_id)
+        elif action == "deleteLocalUser":
+            return _delete_local_user(http, headers, event, user_id)
+        elif action == "listLocalGroups":
+            return _list_local_groups(http, headers, event)
+        elif action == "createLocalGroup":
+            return _create_local_group(http, headers, event, user_id)
+        elif action == "deleteLocalGroup":
+            return _delete_local_group(http, headers, event, user_id)
+        elif action == "listGroupMembers":
+            return _list_group_members(http, headers, event)
+        elif action == "addGroupMember":
+            return _add_group_member(http, headers, event, user_id)
+        elif action == "removeGroupMember":
+            return _remove_group_member(http, headers, event, user_id)
+
+        # --- Name Mapping (Windows <-> UNIX identity) ---
+        elif action == "listNameMappings":
+            return _list_name_mappings(http, headers, event)
+        elif action == "createNameMapping":
+            return _create_name_mapping(http, headers, event, user_id)
+        elif action == "deleteNameMapping":
+            return _delete_name_mapping(http, headers, event, user_id)
+
+        # --- FlexCache ---
+        elif action == "listFlexCaches":
+            return _list_flexcaches(http, headers, event)
+        elif action == "createFlexCache":
+            return _create_flexcache(http, headers, event, user_id)
+        elif action == "deleteFlexCache":
+            return _delete_flexcache(http, headers, event, user_id)
+
+        # --- FlexClone ---
+        elif action == "listFlexClones":
+            return _list_flexclones(http, headers, event)
+        elif action == "createFlexClone":
+            return _create_flexclone(http, headers, event, user_id)
+        elif action == "splitFlexClone":
+            return _split_flexclone(http, headers, event, user_id)
+
+        # --- SnapMirror ---
+        elif action == "listSnapmirrorRelationships":
+            return _list_snapmirror_relationships(http, headers, event)
+        elif action == "getSnapmirrorTransfers":
+            return _get_snapmirror_transfers(http, headers, event)
+        elif action == "updateSnapmirrorNow":
+            return _update_snapmirror_now(http, headers, event, user_id)
+        elif action == "quiesceSnapmirror":
+            return _set_snapmirror_state(http, headers, event, user_id, "paused")
+        elif action == "resumeSnapmirror":
+            return _set_snapmirror_state(http, headers, event, user_id, "snapmirrored")
+        elif action == "breakSnapmirror":
+            return _break_snapmirror(http, headers, event, user_id)
+        elif action == "resyncSnapmirror":
+            return _resync_snapmirror(http, headers, event, user_id)
+        elif action == "abortSnapmirrorTransfer":
+            return _abort_snapmirror_transfer(http, headers, event, user_id)
+        elif action == "deleteSnapmirror":
+            return _delete_snapmirror(http, headers, event, user_id)
+
+        # --- Vscan ---
+        elif action == "getVscanStatus":
+            return _get_vscan_status(http, headers, event)
+        elif action == "listVscanPolicies":
+            return _list_vscan_policies(http, headers, event)
+        elif action == "setVscanEnabled":
+            return _set_vscan_enabled(http, headers, event, user_id)
+        elif action == "createVscanPolicy":
+            return _create_vscan_policy(http, headers, event, user_id)
+        elif action == "setVscanPolicyEnabled":
+            return _set_vscan_policy_enabled(http, headers, event, user_id)
+        elif action == "deleteVscanPolicy":
+            return _delete_vscan_policy(http, headers, event, user_id)
+
+        # --- FPolicy ---
+        elif action == "getFpolicyStatus":
+            return _get_fpolicy_status(http, headers, event)
+        elif action == "listFpolicyPolicies":
+            return _list_fpolicy_policies(http, headers, event)
+        elif action == "listFpolicyEvents":
+            return _list_fpolicy_events(http, headers, event)
+        elif action == "createFpolicyEvent":
+            return _create_fpolicy_event(http, headers, event, user_id)
+        elif action == "deleteFpolicyEvent":
+            return _delete_fpolicy_event(http, headers, event, user_id)
+        elif action == "createFpolicyPolicy":
+            return _create_fpolicy_policy(http, headers, event, user_id)
+        elif action == "setFpolicyPolicyEnabled":
+            return _set_fpolicy_policy_enabled(http, headers, event, user_id)
+        elif action == "deleteFpolicyPolicy":
+            return _delete_fpolicy_policy(http, headers, event, user_id)
+
+        # --- Peering (cluster and SVM) ---
+        elif action == "listInterclusterLifs":
+            return _list_intercluster_lifs(http, headers, event)
+        elif action == "listClusterPeers":
+            return _list_cluster_peers(http, headers, event)
+        elif action == "createClusterPeer":
+            return _create_cluster_peer(http, headers, event, user_id)
+        elif action == "acceptClusterPeer":
+            return _accept_cluster_peer(http, headers, event, user_id)
+        elif action == "deleteClusterPeer":
+            return _delete_cluster_peer(http, headers, event, user_id)
+        elif action == "listSvmPeers":
+            return _list_svm_peers(http, headers, event)
+        elif action == "createSvmPeer":
+            return _create_svm_peer(http, headers, event, user_id)
+        elif action == "acceptSvmPeer":
+            return _accept_svm_peer(http, headers, event, user_id)
+        elif action == "deleteSvmPeer":
+            return _delete_svm_peer(http, headers, event, user_id)
+
+        # --- Cluster inventory and services ---
+        elif action == "getClusterInfo":
+            return _get_cluster_info(http, headers, event)
+        elif action == "listNodes":
+            return _list_nodes(http, headers, event)
+        elif action == "listLicenses":
+            return _list_licenses(http, headers, event)
+        elif action == "listNetworkInterfaces":
+            return _list_network_interfaces(http, headers, event)
+        elif action == "setNetworkInterfaceEnabled":
+            return _set_network_interface_enabled(http, headers, event, user_id)
+        elif action == "getDnsConfig":
+            return _get_dns_config(http, headers, event)
+        elif action == "updateDnsConfig":
+            return _update_dns_config(http, headers, event, user_id)
+        elif action == "listProtocolServices":
+            return _list_protocol_services(http, headers, event)
+        elif action == "setProtocolServiceEnabled":
+            return _set_protocol_service_enabled(http, headers, event, user_id)
+        elif action == "listJobs":
+            return _list_jobs(http, headers, event)
+        elif action == "getJob":
+            return _get_job(http, headers, event)
+
         else:
             return {"error": f"Unknown action: {action}"}
 
@@ -298,7 +498,7 @@ def _list_volumes(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/volumes?svm.name={svm}"
+        f"/storage/volumes?svm.name={_qval(svm)}"
         f"&fields=name,uuid,size,state,type,style,nas,space,guarantee,snaplock"
         f"&max_records=50",
     )
@@ -337,7 +537,7 @@ def _list_volumes_filtered(http, headers, event):
     name_filter = event.get("nameFilter", "")
     max_records = min(event.get("maxRecords", 20), 50)
 
-    query = f"/storage/volumes?svm.name={svm}"
+    query = f"/storage/volumes?svm.name={_qval(svm)}"
     query += "&fields=name,uuid,size,state,nas,snaplock"
     query += f"&max_records={max_records}"
 
@@ -512,7 +712,7 @@ def _list_export_policies(http, headers, event):
         http,
         headers,
         "GET",
-        f"/protocols/nfs/export-policies?svm.name={svm}&fields=name,id,rules",
+        f"/protocols/nfs/export-policies?svm.name={_qval(svm)}&fields=name,id,rules",
     )
     if data.get("_error"):
         return {"policies": [], "error": data["_message"]}
@@ -668,7 +868,7 @@ def _list_qos_policies(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/qos/policies?svm.name={svm}&fields=name,uuid,fixed,adaptive",
+        f"/storage/qos/policies?svm.name={_qval(svm)}&fields=name,uuid,fixed,adaptive",
     )
     if data.get("_error"):
         return {"policies": [], "error": data["_message"]}
@@ -819,7 +1019,7 @@ def _get_snaplock_config(http, headers, event):
                 http,
                 headers,
                 "GET",
-                f"/storage/volumes?name={vol_name}&svm.name={svm}&fields=uuid",
+                f"/storage/volumes?name={_qval(vol_name)}&svm.name={_qval(svm)}&fields=uuid",
             )
             records = resolve.get("records", [])
             if records:
@@ -889,7 +1089,7 @@ def _list_quota_rules(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     vol_name = event.get("volumeName", "")
-    params = f"svm.name={svm}&fields=type,qtree.name,users.name,group.name,space,files,volume.name"
+    params = f"svm.name={_qval(svm)}&fields=type,qtree.name,users.name,group.name,space,files,volume.name"
     if vol_name:
         params += f"&volume.name={vol_name}"
     params += "&max_records=50"
@@ -927,7 +1127,7 @@ def _get_quota_report(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     vol_name = event.get("volumeName", "")
-    params = f"svm.name={svm}&fields=space,files,users.name,group.name,qtree.name,type,volume.name"
+    params = f"svm.name={_qval(svm)}&fields=space,files,users.name,group.name,qtree.name,type,volume.name"
     if vol_name:
         params += f"&volume.name={vol_name}"
     params += "&max_records=50"
@@ -1044,7 +1244,7 @@ def _list_cifs_shares(http, headers, event):
         http,
         headers,
         "GET",
-        f"/protocols/cifs/shares?svm.name={svm}"
+        f"/protocols/cifs/shares?svm.name={_qval(svm)}"
         f"&fields=name,path,comment,acls,encryption,continuously_available"
         f"&max_records=50",
     )
@@ -1112,7 +1312,7 @@ def _update_cifs_share(http, headers, event, user_id):
         return {"success": False, "error": "name is required"}
 
     # Get SVM UUID
-    svm_data = _ontap_request(http, headers, "GET", f"/svm/svms?name={svm}&fields=uuid")
+    svm_data = _ontap_request(http, headers, "GET", f"/svm/svms?name={_qval(svm)}&fields=uuid")
     svm_records = svm_data.get("records", [])
     if not svm_records:
         return {"success": False, "error": f"SVM '{svm}' not found"}
@@ -1131,7 +1331,7 @@ def _update_cifs_share(http, headers, event, user_id):
         http,
         headers,
         "PATCH",
-        f"/protocols/cifs/shares/{svm_uuid}/{share_name}",
+        f"/protocols/cifs/shares/{svm_uuid}/{_seg(share_name)}",
         body=body,
     )
     if data.get("_error"):
@@ -1156,13 +1356,13 @@ def _delete_cifs_share(http, headers, event, user_id):
         return {"success": False, "error": "confirm=true is required"}
 
     # Get SVM UUID
-    svm_data = _ontap_request(http, headers, "GET", f"/svm/svms?name={svm}&fields=uuid")
+    svm_data = _ontap_request(http, headers, "GET", f"/svm/svms?name={_qval(svm)}&fields=uuid")
     svm_records = svm_data.get("records", [])
     if not svm_records:
         return {"success": False, "error": f"SVM '{svm}' not found"}
     svm_uuid = svm_records[0]["uuid"]
 
-    data = _ontap_request(http, headers, "DELETE", f"/protocols/cifs/shares/{svm_uuid}/{share_name}")
+    data = _ontap_request(http, headers, "DELETE", f"/protocols/cifs/shares/{svm_uuid}/{_seg(share_name)}")
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -1180,7 +1380,7 @@ def _list_qtrees(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     vol_name = event.get("volumeName", "")
-    params = f"svm.name={svm}&fields=name,id,volume.name,security_style,export_policy.name,unix_permissions"
+    params = f"svm.name={_qval(svm)}&fields=name,id,volume.name,security_style,export_policy.name,unix_permissions"
     if vol_name:
         params += f"&volume.name={vol_name}"
     params += "&max_records=100"
@@ -1255,7 +1455,7 @@ def _delete_qtree(http, headers, event, user_id):
         http,
         headers,
         "GET",
-        f"/storage/volumes?name={vol_name}&svm.name={svm}&fields=uuid",
+        f"/storage/volumes?name={_qval(vol_name)}&svm.name={_qval(svm)}&fields=uuid",
     )
     vol_records = vol_data.get("records", [])
     if not vol_records:
@@ -1283,7 +1483,7 @@ def _get_efficiency_stats(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/volumes?svm.name={svm}&fields=name,efficiency,space&max_records=50",
+        f"/storage/volumes?svm.name={_qval(svm)}&fields=name,efficiency,space&max_records=50",
     )
     if data.get("_error"):
         return {"volumes": [], "error": data["_message"]}
@@ -1345,7 +1545,7 @@ def _list_arp_volumes(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/volumes?svm.name={svm}&fields=name,uuid,anti_ransomware,type,nas,size&max_records=100",
+        f"/storage/volumes?svm.name={_qval(svm)}&fields=name,uuid,anti_ransomware,type,nas,size&max_records=100",
     )
     if data.get("_error"):
         return {"volumes": [], "error": data["_message"]}
@@ -1585,7 +1785,7 @@ def _list_snapshot_policies(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/snapshot-policies?svm.name={svm}&fields=name,uuid,enabled,copies,comment,scope&max_records=50",
+        f"/storage/snapshot-policies?svm.name={_qval(svm)}&fields=name,uuid,enabled,copies,comment,scope&max_records=50",
     )
     if data.get("_error"):
         return {"policies": [], "error": data["_message"]}
@@ -1969,3 +2169,1928 @@ def _get_ems_events(http, headers, event):
         for e in data.get("records", [])
     ]
     return {"events": events, "count": len(events), "error": None}
+
+
+# ─── SMB Local Users and Groups ───────────────────────────────────────────────
+
+
+def _get_svm_uuid(http, headers, svm_name):
+    """Resolve an SVM name to its UUID.
+
+    Several CIFS endpoints are keyed by SVM UUID rather than name, so callers
+    that need a path segment resolve it here first.
+    """
+    data = _ontap_request(http, headers, "GET", f"/svm/svms?name={_qval(svm_name)}&fields=uuid")
+    if data.get("_error"):
+        return None, data["_message"]
+    records = data.get("records", [])
+    if not records:
+        return None, f"SVM '{svm_name}' not found"
+    return records[0]["uuid"], None
+
+
+def _list_local_users(http, headers, event):
+    """List SMB local users for the SVM.
+
+    ONTAP REST: GET /api/protocols/cifs/local-users
+    """
+    svm = event.get("svm", SVM_NAME)
+    params = f"svm.name={_qval(svm)}&fields=name,sid,full_name,description,account_disabled,membership&max_records=200"
+
+    data = _ontap_request(http, headers, "GET", f"/protocols/cifs/local-users?{params}")
+    if data.get("_error"):
+        return {"users": [], "error": data["_message"]}
+
+    users = []
+    for u in data.get("records", []):
+        # ONTAP strips the SVM prefix on display names ("SERVER\user" -> "user")
+        raw_name = u.get("name", "")
+        users.append(
+            {
+                "name": raw_name.split("\\")[-1] if "\\" in raw_name else raw_name,
+                "sid": u.get("sid", ""),
+                "fullName": u.get("full_name", ""),
+                "description": u.get("description", ""),
+                "disabled": bool(u.get("account_disabled", False)),
+                "memberOf": [g.get("name", "") for g in u.get("membership", [])],
+            }
+        )
+
+    return {"users": users, "count": len(users), "error": None}
+
+
+def _create_local_user(http, headers, event, user_id):
+    """Create an SMB local user.
+
+    ONTAP REST: POST /api/protocols/cifs/local-users
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    password = event.get("password", "")
+
+    if not name or not password:
+        return {"success": False, "error": "name and password are required"}
+
+    body = {"svm": {"name": svm}, "name": name, "password": password}
+    if event.get("fullName"):
+        body["full_name"] = event["fullName"]
+    if event.get("description"):
+        body["description"] = event["description"]
+
+    data = _ontap_request(http, headers, "POST", "/protocols/cifs/local-users", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    # Never log the password; the name is enough for the audit trail.
+    logger.info(f"SMB local user created: {name} by {user_id}")
+    return {"success": True, "name": name, "error": None}
+
+
+def _delete_local_user(http, headers, event, user_id):
+    """Delete an SMB local user.
+
+    ONTAP REST: DELETE /api/protocols/cifs/local-users/{svm.uuid}/{sid}
+    """
+    svm = event.get("svm", SVM_NAME)
+    sid = event.get("sid", "")
+    name = event.get("name", "")
+
+    if not sid:
+        return {"success": False, "error": "sid is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(http, headers, "DELETE", f"/protocols/cifs/local-users/{svm_uuid}/{sid}")
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SMB local user deleted: {name or sid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _list_local_groups(http, headers, event):
+    """List SMB local groups for the SVM.
+
+    ONTAP REST: GET /api/protocols/cifs/local-groups
+    """
+    svm = event.get("svm", SVM_NAME)
+    params = f"svm.name={_qval(svm)}&fields=name,sid,description&max_records=200"
+
+    data = _ontap_request(http, headers, "GET", f"/protocols/cifs/local-groups?{params}")
+    if data.get("_error"):
+        return {"groups": [], "error": data["_message"]}
+
+    groups = []
+    for g in data.get("records", []):
+        raw_name = g.get("name", "")
+        groups.append(
+            {
+                "name": raw_name.split("\\")[-1] if "\\" in raw_name else raw_name,
+                "sid": g.get("sid", ""),
+                "description": g.get("description", ""),
+            }
+        )
+
+    return {"groups": groups, "count": len(groups), "error": None}
+
+
+def _create_local_group(http, headers, event, user_id):
+    """Create an SMB local group.
+
+    ONTAP REST: POST /api/protocols/cifs/local-groups
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+
+    if not name:
+        return {"success": False, "error": "name is required"}
+
+    body = {"svm": {"name": svm}, "name": name}
+    if event.get("description"):
+        body["description"] = event["description"]
+
+    data = _ontap_request(http, headers, "POST", "/protocols/cifs/local-groups", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SMB local group created: {name} by {user_id}")
+    return {"success": True, "name": name, "error": None}
+
+
+def _delete_local_group(http, headers, event, user_id):
+    """Delete an SMB local group.
+
+    ONTAP REST: DELETE /api/protocols/cifs/local-groups/{svm.uuid}/{sid}
+    """
+    svm = event.get("svm", SVM_NAME)
+    sid = event.get("sid", "")
+    name = event.get("name", "")
+
+    if not sid:
+        return {"success": False, "error": "sid is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(http, headers, "DELETE", f"/protocols/cifs/local-groups/{svm_uuid}/{sid}")
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SMB local group deleted: {name or sid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _list_group_members(http, headers, event):
+    """List the members of an SMB local group.
+
+    ONTAP REST: GET /api/protocols/cifs/local-groups/{svm.uuid}/{group_sid}/members
+    """
+    svm = event.get("svm", SVM_NAME)
+    group_sid = event.get("groupSid", "")
+
+    if not group_sid:
+        return {"members": [], "error": "groupSid is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"members": [], "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/protocols/cifs/local-groups/{svm_uuid}/{group_sid}/members?fields=name&max_records=200",
+    )
+    if data.get("_error"):
+        return {"members": [], "error": data["_message"]}
+
+    members = [{"name": m.get("name", "")} for m in data.get("records", [])]
+    return {"members": members, "count": len(members), "error": None}
+
+
+def _add_group_member(http, headers, event, user_id):
+    """Add a local user, AD user or AD group to an SMB local group.
+
+    ONTAP REST: POST /api/protocols/cifs/local-groups/{svm.uuid}/{group_sid}/members
+    """
+    svm = event.get("svm", SVM_NAME)
+    group_sid = event.get("groupSid", "")
+    group_name = event.get("groupName", "")
+    member_name = event.get("memberName", "")
+
+    if not group_sid or not member_name:
+        return {"success": False, "error": "groupSid and memberName are required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "POST",
+        f"/protocols/cifs/local-groups/{svm_uuid}/{group_sid}/members",
+        body={"name": member_name},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SMB group member added: {member_name} -> {group_name or group_sid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _remove_group_member(http, headers, event, user_id):
+    """Remove a member from an SMB local group.
+
+    ONTAP REST: DELETE /api/protocols/cifs/local-groups/{svm.uuid}/{group_sid}/members/{name}
+    """
+    svm = event.get("svm", SVM_NAME)
+    group_sid = event.get("groupSid", "")
+    group_name = event.get("groupName", "")
+    member_name = event.get("memberName", "")
+
+    if not group_sid or not member_name:
+        return {"success": False, "error": "groupSid and memberName are required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    # Member names can contain a domain backslash, so percent-encode the segment.
+    encoded = quote(member_name, safe="")
+    data = _ontap_request(
+        http,
+        headers,
+        "DELETE",
+        f"/protocols/cifs/local-groups/{svm_uuid}/{group_sid}/members/{encoded}",
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SMB group member removed: {member_name} from {group_name or group_sid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+# ─── Name Mapping (Windows <-> UNIX identity) ─────────────────────────────────
+
+
+def _list_name_mappings(http, headers, event):
+    """List name-mapping rules for the SVM.
+
+    ONTAP REST: GET /api/name-services/name-mappings
+    """
+    svm = event.get("svm", SVM_NAME)
+    params = f"svm.name={_qval(svm)}&fields=direction,index,pattern,replacement&max_records=200"
+
+    data = _ontap_request(http, headers, "GET", f"/name-services/name-mappings?{params}")
+    if data.get("_error"):
+        return {"mappings": [], "error": data["_message"]}
+
+    mappings = []
+    for m in data.get("records", []):
+        mappings.append(
+            {
+                "direction": m.get("direction", ""),
+                "index": m.get("index", 0),
+                "pattern": m.get("pattern", ""),
+                "replacement": m.get("replacement", ""),
+            }
+        )
+    mappings.sort(key=lambda m: (m["direction"], m["index"]))
+
+    return {"mappings": mappings, "count": len(mappings), "error": None}
+
+
+def _create_name_mapping(http, headers, event, user_id):
+    """Create a name-mapping rule.
+
+    ONTAP REST: POST /api/name-services/name-mappings
+
+    Directions are win_unix, unix_win and s3_unix. Entries whose direction is
+    s3_unix are created and removed by FSx for ONTAP when an S3 Access Point is
+    attached, so they are not managed here.
+    """
+    svm = event.get("svm", SVM_NAME)
+    direction = event.get("direction", "")
+    index = event.get("index")
+    pattern = event.get("pattern", "")
+    replacement = event.get("replacement", "")
+
+    if not direction or not pattern or not replacement:
+        return {
+            "success": False,
+            "error": "direction, pattern and replacement are required",
+        }
+    if direction == "s3_unix":
+        return {
+            "success": False,
+            "error": "s3_unix mappings are managed automatically by FSx for ONTAP",
+        }
+    if index is None:
+        return {"success": False, "error": "index is required"}
+
+    body = {
+        "svm": {"name": svm},
+        "direction": direction,
+        "index": int(index),
+        "pattern": pattern,
+        "replacement": replacement,
+    }
+
+    data = _ontap_request(http, headers, "POST", "/name-services/name-mappings", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Name mapping created: {direction}[{index}] by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _delete_name_mapping(http, headers, event, user_id):
+    """Delete a name-mapping rule.
+
+    ONTAP REST: DELETE /api/name-services/name-mappings/{svm.uuid}/{direction}/{index}
+    """
+    svm = event.get("svm", SVM_NAME)
+    direction = event.get("direction", "")
+    index = event.get("index")
+
+    if not direction or index is None:
+        return {"success": False, "error": "direction and index are required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "DELETE",
+        f"/name-services/name-mappings/{svm_uuid}/{direction}/{int(index)}",
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Name mapping deleted: {direction}[{index}] by {user_id}")
+    return {"success": True, "error": None}
+
+
+# ─── FlexCache ────────────────────────────────────────────────────────────────
+
+
+def _list_flexcaches(http, headers, event):
+    """List FlexCache volumes hosted on this cluster.
+
+    ONTAP REST: GET /api/storage/flexcache/flexcaches
+    """
+    params = (
+        "fields=name,uuid,svm.name,size,path,origins.cluster.name,"
+        "origins.svm.name,origins.volume.name,origins.state,global_file_locking_enabled"
+        "&max_records=100"
+    )
+
+    data = _ontap_request(http, headers, "GET", f"/storage/flexcache/flexcaches?{params}")
+    if data.get("_error"):
+        return {"caches": [], "error": data["_message"]}
+
+    caches = []
+    for c in data.get("records", []):
+        origins = []
+        for o in c.get("origins", []):
+            origins.append(
+                {
+                    "clusterName": o.get("cluster", {}).get("name", ""),
+                    "svmName": o.get("svm", {}).get("name", ""),
+                    "volumeName": o.get("volume", {}).get("name", ""),
+                    "state": o.get("state", ""),
+                }
+            )
+        caches.append(
+            {
+                "name": c.get("name", ""),
+                "uuid": c.get("uuid", ""),
+                "svmName": c.get("svm", {}).get("name", ""),
+                "sizeGiB": round(c.get("size", 0) / (1024**3), 2),
+                "path": c.get("path", ""),
+                "origins": origins,
+                "globalFileLocking": bool(c.get("global_file_locking_enabled", False)),
+            }
+        )
+
+    return {"caches": caches, "count": len(caches), "error": None}
+
+
+def _create_flexcache(http, headers, event, user_id):
+    """Create a FlexCache volume.
+
+    ONTAP REST: POST /api/storage/flexcache/flexcaches
+
+    NetApp's guidance is to size a cache at roughly 10% of the origin volume,
+    with 1 GiB as the smallest usable constituent.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    origin_volume = event.get("originVolume", "")
+    origin_svm = event.get("originSvm") or svm
+    size_gib = event.get("sizeGiB")
+    path = event.get("path") or f"/{name}"
+    prepopulate_paths = event.get("prepopulatePaths")
+
+    if not name or not origin_volume:
+        return {"success": False, "error": "name and originVolume are required"}
+    if not size_gib:
+        return {"success": False, "error": "sizeGiB is required"}
+    if float(size_gib) < 1:
+        return {"success": False, "error": "sizeGiB must be at least 1"}
+
+    body = {
+        "name": name,
+        "svm": {"name": svm},
+        "size": int(float(size_gib) * 1024**3),
+        "path": path,
+        "origins": [{"volume": {"name": origin_volume}, "svm": {"name": origin_svm}}],
+    }
+    if prepopulate_paths:
+        body["prepopulate"] = {"dir_paths": prepopulate_paths}
+
+    data = _ontap_request(http, headers, "POST", "/storage/flexcache/flexcaches", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    # FlexCache creation is asynchronous; surface the job so the UI can report it.
+    job_id = data.get("job", {}).get("uuid", "")
+    logger.info(f"FlexCache created: {name} from {origin_svm}:{origin_volume} by {user_id}")
+    return {"success": True, "jobId": job_id, "error": None}
+
+
+def _delete_flexcache(http, headers, event, user_id):
+    """Delete a FlexCache volume.
+
+    ONTAP REST: DELETE /api/storage/flexcache/flexcaches/{uuid}
+    """
+    uuid = event.get("uuid", "")
+    name = event.get("name", "")
+
+    if not uuid:
+        return {"success": False, "error": "uuid is required"}
+
+    data = _ontap_request(http, headers, "DELETE", f"/storage/flexcache/flexcaches/{uuid}")
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"FlexCache deleted: {name or uuid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+# ─── FlexClone ────────────────────────────────────────────────────────────────
+
+
+def _list_flexclones(http, headers, event):
+    """List FlexClone volumes in the SVM.
+
+    ONTAP REST: GET /api/storage/volumes?clone.is_flexclone=true
+    """
+    svm = event.get("svm", SVM_NAME)
+    params = (
+        f"svm.name={_qval(svm)}&clone.is_flexclone=true"
+        "&fields=name,uuid,size,state,space.used,clone.parent_volume.name,"
+        "clone.parent_snapshot.name,clone.split_initiated,clone.split_complete_percent"
+        "&max_records=100"
+    )
+
+    data = _ontap_request(http, headers, "GET", f"/storage/volumes?{params}")
+    if data.get("_error"):
+        return {"clones": [], "error": data["_message"]}
+
+    clones = []
+    for v in data.get("records", []):
+        clone = v.get("clone", {})
+        clones.append(
+            {
+                "name": v.get("name", ""),
+                "uuid": v.get("uuid", ""),
+                "sizeGiB": round(v.get("size", 0) / (1024**3), 2),
+                "state": v.get("state", ""),
+                "parentVolume": clone.get("parent_volume", {}).get("name", ""),
+                "parentSnapshot": clone.get("parent_snapshot", {}).get("name", ""),
+                "splitInitiated": bool(clone.get("split_initiated", False)),
+                "splitCompletePercent": clone.get("split_complete_percent", 0),
+                "usedGiB": round(v.get("space", {}).get("used", 0) / (1024**3), 2),
+            }
+        )
+
+    return {"clones": clones, "count": len(clones), "error": None}
+
+
+def _create_flexclone(http, headers, event, user_id):
+    """Create a writable FlexClone from a snapshot.
+
+    ONTAP REST: POST /api/storage/volumes with a clone block
+
+    The clone's security style and export policy are inherited from the parent
+    volume and cannot be set at creation time.
+    """
+    svm = event.get("svm", SVM_NAME)
+    clone_name = event.get("cloneName", "")
+    parent_volume = event.get("parentVolume", "")
+    parent_snapshot = event.get("parentSnapshot", "")
+
+    if not clone_name or not parent_volume:
+        return {"success": False, "error": "cloneName and parentVolume are required"}
+
+    clone = {"parent_volume": {"name": parent_volume}}
+    if parent_snapshot:
+        clone["parent_snapshot"] = {"name": parent_snapshot}
+
+    body = {"name": clone_name, "svm": {"name": svm}, "clone": clone}
+
+    data = _ontap_request(http, headers, "POST", "/storage/volumes", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(
+        f"FlexClone created: {clone_name} from {parent_volume}"
+        f"{':' + parent_snapshot if parent_snapshot else ''} by {user_id}"
+    )
+    return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}
+
+
+def _split_flexclone(http, headers, event, user_id):
+    """Start splitting a FlexClone from its parent.
+
+    ONTAP REST: PATCH /api/storage/volumes/{uuid} with clone.split_initiated
+
+    Splitting makes the clone independent, so it stops sharing blocks with the
+    parent and its space consumption grows to the full size of the data.
+    """
+    volume_uuid = event.get("volumeUuid", "")
+    volume_name = event.get("volumeName", "")
+
+    if not volume_uuid:
+        return {"success": False, "error": "volumeUuid is required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/storage/volumes/{volume_uuid}",
+        body={"clone": {"split_initiated": True}},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"FlexClone split started: {volume_name or volume_uuid} by {user_id}")
+    return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}
+
+
+# ─── SnapMirror inventory ─────────────────────────────────────────────────────
+
+
+def _list_snapmirror_relationships(http, headers, event):
+    """List SnapMirror relationships whose destination is on this cluster.
+
+    ONTAP REST: GET /api/snapmirror/relationships
+
+    Read-only by design: creating or breaking a replication relationship is a
+    cross-cluster operation that belongs with a change-managed runbook rather
+    than a portal button.
+    """
+    # `last_transfer_size` is NOT a field on this endpoint — ONTAP 9.17 rejects the
+    # whole request with "The value \"last_transfer_size\" is invalid for field
+    # \"fields\"", so the relationship list came back empty. Per-transfer byte counts
+    # are available from getSnapmirrorTransfers (transfers[].bytes_transferred).
+    params = (
+        "fields=uuid,source.path,source.svm.name,destination.path,destination.svm.name,"
+        "state,healthy,policy.name,lag_time,last_transfer_type"
+        "&max_records=100"
+    )
+
+    data = _ontap_request(http, headers, "GET", f"/snapmirror/relationships?{params}")
+    if data.get("_error"):
+        return {"relationships": [], "error": data["_message"]}
+
+    relationships = []
+    for r in data.get("records", []):
+        src = r.get("source", {})
+        dst = r.get("destination", {})
+        relationships.append(
+            {
+                "uuid": r.get("uuid", ""),
+                "sourcePath": src.get("path", ""),
+                "sourceSvm": src.get("svm", {}).get("name", ""),
+                "destinationPath": dst.get("path", ""),
+                "destinationSvm": dst.get("svm", {}).get("name", ""),
+                "state": r.get("state", ""),
+                "healthy": bool(r.get("healthy", False)),
+                "policy": r.get("policy", {}).get("name", ""),
+                "lagTime": r.get("lag_time", ""),
+                "lastTransferType": r.get("last_transfer_type", ""),
+            }
+        )
+
+    return {"relationships": relationships, "count": len(relationships), "error": None}
+
+
+def _get_snapmirror_transfers(http, headers, event):
+    """List recent transfers for one SnapMirror relationship.
+
+    ONTAP REST: GET /api/snapmirror/relationships/{uuid}/transfers
+    """
+    relationship_uuid = event.get("relationshipUuid", "")
+
+    if not relationship_uuid:
+        return {"transfers": [], "error": "relationshipUuid is required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/snapmirror/relationships/{relationship_uuid}/transfers"
+        "?fields=state,bytes_transferred,end_time,total_duration&max_records=20",
+    )
+    if data.get("_error"):
+        return {"transfers": [], "error": data["_message"]}
+
+    transfers = []
+    for tr in data.get("records", []):
+        transfers.append(
+            {
+                "state": tr.get("state", ""),
+                "bytesTransferred": tr.get("bytes_transferred", 0),
+                "endTime": tr.get("end_time", ""),
+                "duration": tr.get("total_duration", ""),
+            }
+        )
+
+    return {"transfers": transfers, "count": len(transfers), "error": None}
+
+
+# ─── Vscan inventory ──────────────────────────────────────────────────────────
+
+
+def _get_vscan_status(http, headers, event):
+    """Report whether Vscan is enabled on the SVM.
+
+    ONTAP REST: GET /api/protocols/vscan
+
+    Vscan requires an external scan engine and a Vscan connector, so the portal
+    reports configuration state and leaves provisioning to the scanner vendor's
+    own tooling.
+    """
+    svm = event.get("svm", SVM_NAME)
+
+    data = _ontap_request(http, headers, "GET", f"/protocols/vscan?svm.name={_qval(svm)}&fields=enabled")
+    if data.get("_error"):
+        return {"enabled": False, "error": data["_message"]}
+
+    records = data.get("records", [])
+    if not records:
+        return {"enabled": False, "error": None}
+
+    return {"enabled": bool(records[0].get("enabled", False)), "error": None}
+
+
+def _list_vscan_policies(http, headers, event):
+    """List Vscan on-access policies for the SVM.
+
+    ONTAP REST: GET /api/protocols/vscan (on_access_policies sub-object)
+    """
+    svm = event.get("svm", SVM_NAME)
+    params = (
+        f"svm.name={_qval(svm)}&fields=on_access_policies.name,on_access_policies.enabled,"
+        "on_access_policies.mandatory,on_access_policies.scope.max_file_size,"
+        "on_access_policies.scope.exclude_paths,on_access_policies.scope.exclude_extensions"
+    )
+
+    data = _ontap_request(http, headers, "GET", f"/protocols/vscan?{params}")
+    if data.get("_error"):
+        return {"policies": [], "error": data["_message"]}
+
+    policies = []
+    for record in data.get("records", []):
+        for p in record.get("on_access_policies", []):
+            scope = p.get("scope", {})
+            policies.append(
+                {
+                    "name": p.get("name", ""),
+                    "enabled": bool(p.get("enabled", False)),
+                    "mandatory": bool(p.get("mandatory", False)),
+                    "maxFileSize": scope.get("max_file_size", 0),
+                    "excludedPaths": scope.get("exclude_paths", []) or [],
+                    "excludedExtensions": scope.get("exclude_extensions", []) or [],
+                }
+            )
+
+    return {"policies": policies, "count": len(policies), "error": None}
+
+
+# ─── FPolicy inventory ────────────────────────────────────────────────────────
+
+
+def _get_fpolicy_status(http, headers, event):
+    """Report FPolicy external engine connection status.
+
+    ONTAP REST: GET /api/protocols/fpolicy (connections sub-object)
+    """
+    svm = event.get("svm", SVM_NAME)
+    params = f"svm.name={_qval(svm)}&fields=connections.node.name,connections.policy.name,connections.server,connections.state"
+
+    data = _ontap_request(http, headers, "GET", f"/protocols/fpolicy?{params}")
+    if data.get("_error"):
+        return {"connections": [], "error": data["_message"]}
+
+    connections = []
+    for record in data.get("records", []):
+        for c in record.get("connections", []):
+            connections.append(
+                {
+                    "node": c.get("node", {}).get("name", ""),
+                    "policy": c.get("policy", {}).get("name", ""),
+                    "server": c.get("server", ""),
+                    "state": c.get("state", ""),
+                }
+            )
+
+    return {"connections": connections, "count": len(connections), "error": None}
+
+
+def _list_fpolicy_policies(http, headers, event):
+    """List FPolicy policies for the SVM.
+
+    ONTAP REST: GET /api/protocols/fpolicy (policies sub-object)
+    """
+    svm = event.get("svm", SVM_NAME)
+    params = f"svm.name={_qval(svm)}&fields=policies.name,policies.enabled,policies.priority,policies.engine.name,policies.events"
+
+    data = _ontap_request(http, headers, "GET", f"/protocols/fpolicy?{params}")
+    if data.get("_error"):
+        return {"policies": [], "error": data["_message"]}
+
+    policies = []
+    for record in data.get("records", []):
+        for p in record.get("policies", []):
+            events = p.get("events", [])
+            policies.append(
+                {
+                    "name": p.get("name", ""),
+                    "enabled": bool(p.get("enabled", False)),
+                    "priority": p.get("priority", 0),
+                    "engineType": p.get("engine", {}).get("name", ""),
+                    "events": [e.get("name", "") if isinstance(e, dict) else str(e) for e in events],
+                }
+            )
+
+    return {"policies": policies, "count": len(policies), "error": None}
+
+
+def _list_fpolicy_events(http, headers, event):
+    """List FPolicy event definitions for the SVM.
+
+    ONTAP REST: GET /api/protocols/fpolicy (events sub-object)
+
+    These are the event definitions that policies subscribe to, not a live feed
+    of file access records.
+    """
+    svm = event.get("svm", SVM_NAME)
+    params = f"svm.name={_qval(svm)}&fields=events.name,events.protocol,events.file_operations"
+
+    data = _ontap_request(http, headers, "GET", f"/protocols/fpolicy?{params}")
+    if data.get("_error"):
+        return {"events": [], "error": data["_message"]}
+
+    events = []
+    for record in data.get("records", []):
+        for e in record.get("events", []):
+            ops = e.get("file_operations", {}) or {}
+            enabled_ops = [name for name, on in ops.items() if on is True]
+            events.append(
+                {
+                    "name": e.get("name", ""),
+                    "protocol": e.get("protocol", ""),
+                    "fileOperations": sorted(enabled_ops),
+                }
+            )
+
+    return {"events": events, "count": len(events), "error": None}
+
+
+# ─── SnapMirror write operations ──────────────────────────────────────────────
+#
+# Replication state changes are consequential, so the operations that redirect
+# or discard data (break, resync, delete) require an explicit confirm flag.
+
+
+def _update_snapmirror_now(http, headers, event, user_id):
+    """Start an on-demand SnapMirror transfer.
+
+    ONTAP REST: POST /api/snapmirror/relationships/{uuid}/transfers
+
+    On an uninitialised relationship this performs the initialize; otherwise it
+    performs an incremental update.
+    """
+    rel_uuid = event.get("relationshipUuid", "")
+    if not rel_uuid:
+        return {"success": False, "error": "relationshipUuid is required"}
+
+    data = _ontap_request(http, headers, "POST", f"/snapmirror/relationships/{rel_uuid}/transfers", body={})
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SnapMirror transfer started: {rel_uuid} by {user_id}")
+    return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}
+
+
+def _set_snapmirror_state(http, headers, event, user_id, state):
+    """Pause (quiesce) or resume a SnapMirror relationship.
+
+    ONTAP REST: PATCH /api/snapmirror/relationships/{uuid} with a state value
+    """
+    rel_uuid = event.get("relationshipUuid", "")
+    if not rel_uuid:
+        return {"success": False, "error": "relationshipUuid is required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/snapmirror/relationships/{rel_uuid}",
+        body={"state": state},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SnapMirror state set to {state}: {rel_uuid} by {user_id}")
+    return {
+        "success": True,
+        "state": state,
+        "jobId": data.get("job", {}).get("uuid", ""),
+        "error": None,
+    }
+
+
+def _break_snapmirror(http, headers, event, user_id):
+    """Break a SnapMirror relationship so the destination can serve data.
+
+    ONTAP REST: PATCH /api/snapmirror/relationships/{uuid} state=broken_off
+
+    After a break the destination becomes writable and diverges from the source,
+    so this is gated behind an explicit confirmation.
+    """
+    rel_uuid = event.get("relationshipUuid", "")
+    if not rel_uuid:
+        return {"success": False, "error": "relationshipUuid is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/snapmirror/relationships/{rel_uuid}",
+        body={"state": "broken_off"},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SnapMirror broken off: {rel_uuid} by {user_id}")
+    return {
+        "success": True,
+        "state": "broken_off",
+        "jobId": data.get("job", {}).get("uuid", ""),
+        "error": None,
+    }
+
+
+def _resync_snapmirror(http, headers, event, user_id):
+    """Resynchronise a broken SnapMirror relationship.
+
+    ONTAP REST: PATCH /api/snapmirror/relationships/{uuid} state=snapmirrored
+
+    Resync discards changes written to the destination after the break, so it
+    requires an explicit confirmation.
+    """
+    rel_uuid = event.get("relationshipUuid", "")
+    if not rel_uuid:
+        return {"success": False, "error": "relationshipUuid is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/snapmirror/relationships/{rel_uuid}",
+        body={"state": "snapmirrored"},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SnapMirror resync started: {rel_uuid} by {user_id}")
+    return {
+        "success": True,
+        "state": "snapmirrored",
+        "jobId": data.get("job", {}).get("uuid", ""),
+        "error": None,
+    }
+
+
+def _abort_snapmirror_transfer(http, headers, event, user_id):
+    """Abort an in-progress SnapMirror transfer.
+
+    ONTAP REST: PATCH /api/snapmirror/relationships/{uuid}/transfers/{transfer_uuid}
+    with state=aborted
+    """
+    rel_uuid = event.get("relationshipUuid", "")
+    transfer_uuid = event.get("transferUuid", "")
+    if not rel_uuid or not transfer_uuid:
+        return {
+            "success": False,
+            "error": "relationshipUuid and transferUuid are required",
+        }
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/snapmirror/relationships/{rel_uuid}/transfers/{transfer_uuid}",
+        body={"state": "aborted"},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SnapMirror transfer aborted: {transfer_uuid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _delete_snapmirror(http, headers, event, user_id):
+    """Delete a SnapMirror relationship.
+
+    ONTAP REST: DELETE /api/snapmirror/relationships/{uuid}
+
+    The destination volume is left in place; only the relationship is removed.
+    """
+    rel_uuid = event.get("relationshipUuid", "")
+    if not rel_uuid:
+        return {"success": False, "error": "relationshipUuid is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    data = _ontap_request(http, headers, "DELETE", f"/snapmirror/relationships/{rel_uuid}")
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SnapMirror relationship deleted: {rel_uuid} by {user_id}")
+    return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}
+
+
+# ─── Vscan write operations ───────────────────────────────────────────────────
+
+
+def _set_vscan_enabled(http, headers, event, user_id):
+    """Enable or disable Vscan on the SVM.
+
+    ONTAP REST: PATCH /api/protocols/vscan/{svm.uuid}
+    """
+    svm = event.get("svm", SVM_NAME)
+    enabled = event.get("enabled")
+    if enabled is None:
+        return {"success": False, "error": "enabled is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(http, headers, "PATCH", f"/protocols/vscan/{svm_uuid}", body={"enabled": bool(enabled)})
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Vscan enabled={bool(enabled)} on {svm} by {user_id}")
+    return {"success": True, "enabled": bool(enabled), "error": None}
+
+
+def _create_vscan_policy(http, headers, event, user_id):
+    """Create a Vscan on-access policy.
+
+    ONTAP REST: POST /api/protocols/vscan/{svm.uuid}/on-access-policies
+
+    ONTAP enables a policy on creation. Scanning still requires a scanner pool
+    backed by an external scan engine.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    if not name:
+        return {"success": False, "error": "name is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    scope = {}
+    if event.get("maxFileSize"):
+        scope["max_file_size"] = int(event["maxFileSize"])
+    if event.get("excludedPaths"):
+        scope["exclude_paths"] = event["excludedPaths"]
+    if event.get("excludedExtensions"):
+        scope["exclude_extensions"] = event["excludedExtensions"]
+
+    body = {"name": name, "mandatory": bool(event.get("mandatory", False))}
+    if scope:
+        body["scope"] = scope
+
+    data = _ontap_request(
+        http,
+        headers,
+        "POST",
+        f"/protocols/vscan/{svm_uuid}/on-access-policies",
+        body=body,
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Vscan on-access policy created: {name} by {user_id}")
+    return {"success": True, "name": name, "error": None}
+
+
+def _set_vscan_policy_enabled(http, headers, event, user_id):
+    """Enable or disable a Vscan on-access policy.
+
+    ONTAP REST: PATCH /api/protocols/vscan/{svm.uuid}/on-access-policies/{name}
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    enabled = event.get("enabled")
+    if not name or enabled is None:
+        return {"success": False, "error": "name and enabled are required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/protocols/vscan/{svm_uuid}/on-access-policies/{quote(name, safe='')}",
+        body={"enabled": bool(enabled)},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Vscan policy {name} enabled={bool(enabled)} by {user_id}")
+    return {"success": True, "enabled": bool(enabled), "error": None}
+
+
+def _delete_vscan_policy(http, headers, event, user_id):
+    """Delete a Vscan on-access policy.
+
+    ONTAP REST: DELETE /api/protocols/vscan/{svm.uuid}/on-access-policies/{name}
+
+    Deleting the policy takes its scope out of scanning, so it is confirm-gated
+    here as well as in the UI. A caller that bypasses the UI is refused too.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    if not name:
+        return {"success": False, "error": "name is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "DELETE",
+        f"/protocols/vscan/{svm_uuid}/on-access-policies/{quote(name, safe='')}",
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Vscan policy deleted: {name} by {user_id}")
+    return {"success": True, "error": None}
+
+
+# ─── FPolicy write operations ─────────────────────────────────────────────────
+
+
+def _create_fpolicy_event(http, headers, event, user_id):
+    """Create an FPolicy event definition.
+
+    ONTAP REST: POST /api/protocols/fpolicy/{svm.uuid}/events
+
+    An event names the protocol and the file operations to watch. Policies then
+    subscribe to events by name.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    protocol = event.get("protocol", "")
+    file_operations = event.get("fileOperations") or []
+
+    if not name or not protocol:
+        return {"success": False, "error": "name and protocol are required"}
+    if not file_operations:
+        return {"success": False, "error": "at least one file operation is required"}
+
+    body = {
+        "name": name,
+        "protocol": protocol,
+        "file_operations": {op: True for op in file_operations},
+    }
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(http, headers, "POST", f"/protocols/fpolicy/{svm_uuid}/events", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"FPolicy event created: {name} ({protocol}) by {user_id}")
+    return {"success": True, "name": name, "error": None}
+
+
+def _delete_fpolicy_event(http, headers, event, user_id):
+    """Delete an FPolicy event definition.
+
+    ONTAP REST: DELETE /api/protocols/fpolicy/{svm.uuid}/events/{name}
+
+    An event still referenced by a policy cannot be removed; ONTAP rejects it.
+    Removing it stops the policies that subscribe to it, so it is confirm-gated.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    if not name:
+        return {"success": False, "error": "name is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "DELETE",
+        f"/protocols/fpolicy/{svm_uuid}/events/{quote(name, safe='')}",
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"FPolicy event deleted: {name} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _create_fpolicy_policy(http, headers, event, user_id):
+    """Create an FPolicy policy.
+
+    ONTAP REST: POST /api/protocols/fpolicy/{svm.uuid}/policies
+
+    A policy needs the events it monitors and an engine. The engine must already
+    exist; the portal does not create external engine definitions.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    events = event.get("events") or []
+    engine_name = event.get("engineName", "native")
+    priority = event.get("priority")
+
+    if not name:
+        return {"success": False, "error": "name is required"}
+    if not events:
+        return {"success": False, "error": "at least one event is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    body = {
+        "name": name,
+        "events": [{"name": e} for e in events],
+        "engine": {"name": engine_name},
+    }
+    # ONTAP treats a policy with a priority as enabled.
+    if priority is not None:
+        body["priority"] = int(priority)
+
+    data = _ontap_request(http, headers, "POST", f"/protocols/fpolicy/{svm_uuid}/policies", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"FPolicy policy created: {name} by {user_id}")
+    return {"success": True, "name": name, "error": None}
+
+
+def _set_fpolicy_policy_enabled(http, headers, event, user_id):
+    """Enable or disable an FPolicy policy.
+
+    ONTAP REST: PATCH /api/protocols/fpolicy/{svm.uuid}/policies/{name}
+
+    ONTAP requires a priority when enabling a policy; it is not needed when
+    disabling one.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    enabled = event.get("enabled")
+    priority = event.get("priority")
+
+    if not name or enabled is None:
+        return {"success": False, "error": "name and enabled are required"}
+    if enabled and priority is None:
+        return {"success": False, "error": "priority is required when enabling a policy"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    body = {"enabled": bool(enabled)}
+    if enabled:
+        body["priority"] = int(priority)
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/protocols/fpolicy/{svm_uuid}/policies/{quote(name, safe='')}",
+        body=body,
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"FPolicy policy {name} enabled={bool(enabled)} by {user_id}")
+    return {"success": True, "enabled": bool(enabled), "error": None}
+
+
+def _delete_fpolicy_policy(http, headers, event, user_id):
+    """Delete an FPolicy policy.
+
+    ONTAP REST: DELETE /api/protocols/fpolicy/{svm.uuid}/policies/{name}
+
+    A policy has to be disabled before it can be deleted. Deleting it stops the
+    audit events it generates, so it is confirm-gated.
+    """
+    svm = event.get("svm", SVM_NAME)
+    name = event.get("name", "")
+    if not name:
+        return {"success": False, "error": "name is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "DELETE",
+        f"/protocols/fpolicy/{svm_uuid}/policies/{quote(name, safe='')}",
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"FPolicy policy deleted: {name} by {user_id}")
+    return {"success": True, "error": None}
+
+
+# ─── Cluster and SVM peering ──────────────────────────────────────────────────
+#
+# Peering is the area that most often forces operators to the ONTAP CLI, because
+# it is not exposed in the AWS console. Both halves of a peer relationship have
+# to be configured, and the authentication passphrase has to travel between them.
+
+
+def _list_intercluster_lifs(http, headers, event):
+    """List intercluster LIFs, which peering depends on.
+
+    ONTAP REST: GET /api/network/ip/interfaces
+
+    Without an intercluster LIF on both sides, creating a cluster peer fails.
+    Listing them first is the quickest way to see whether the prerequisite holds.
+    """
+    params = (
+        "services=intercluster_core"
+        "&fields=name,uuid,ip.address,enabled,state,location.node.name,svm.name"
+        "&max_records=100"
+    )
+
+    data = _ontap_request(http, headers, "GET", f"/network/ip/interfaces?{params}")
+    if data.get("_error"):
+        return {"lifs": [], "error": data["_message"]}
+
+    lifs = []
+    for r in data.get("records", []):
+        lifs.append(
+            {
+                "name": r.get("name", ""),
+                "uuid": r.get("uuid", ""),
+                "address": r.get("ip", {}).get("address", ""),
+                "enabled": bool(r.get("enabled", False)),
+                "state": r.get("state", ""),
+                "node": r.get("location", {}).get("node", {}).get("name", ""),
+            }
+        )
+
+    return {"lifs": lifs, "count": len(lifs), "error": None}
+
+
+def _list_cluster_peers(http, headers, event):
+    """List cluster peer relationships.
+
+    ONTAP REST: GET /api/cluster/peers
+    """
+    params = (
+        "fields=name,uuid,status.state,status.update_time,remote.name,"
+        "remote.ip_addresses,authentication.state,encryption.state,ipspace.name"
+        "&max_records=100"
+    )
+
+    data = _ontap_request(http, headers, "GET", f"/cluster/peers?{params}")
+    if data.get("_error"):
+        return {"peers": [], "error": data["_message"]}
+
+    peers = []
+    for r in data.get("records", []):
+        remote = r.get("remote", {})
+        peers.append(
+            {
+                "name": r.get("name", ""),
+                "uuid": r.get("uuid", ""),
+                "state": r.get("status", {}).get("state", ""),
+                "updateTime": r.get("status", {}).get("update_time", ""),
+                "remoteName": remote.get("name", ""),
+                "remoteAddresses": remote.get("ip_addresses", []) or [],
+                "authState": r.get("authentication", {}).get("state", ""),
+                "encryptionState": r.get("encryption", {}).get("state", ""),
+                "ipspace": r.get("ipspace", {}).get("name", ""),
+            }
+        )
+
+    return {"peers": peers, "count": len(peers), "error": None}
+
+
+def _create_cluster_peer(http, headers, event, user_id):
+    """Create a cluster peer relationship.
+
+    ONTAP REST: POST /api/cluster/peers
+
+    Two ways to authenticate:
+    - generatePassphrase=true asks ONTAP to produce a passphrase, which is
+      returned once and must then be entered on the remote cluster.
+    - Supplying a passphrase matches one already generated on the remote side.
+
+    The remote addresses are the intercluster LIF addresses of the other cluster.
+    """
+    remote_addresses = event.get("remoteAddresses") or []
+    passphrase = event.get("passphrase", "")
+    generate = bool(event.get("generatePassphrase", False))
+
+    if not remote_addresses:
+        return {"success": False, "error": "remoteAddresses is required"}
+    if not generate and not passphrase:
+        return {
+            "success": False,
+            "error": "either passphrase or generatePassphrase=true is required",
+        }
+
+    body = {"remote": {"ip_addresses": remote_addresses}}
+    if event.get("name"):
+        body["name"] = event["name"]
+    if event.get("ipspace"):
+        body["ipspace"] = {"name": event["ipspace"]}
+    if generate:
+        body["generate_passphrase"] = True
+    else:
+        body["authentication"] = {"passphrase": passphrase}
+
+    data = _ontap_request(http, headers, "POST", "/cluster/peers", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    # ONTAP returns the generated passphrase in the creation response only.
+    generated = ""
+    records = data.get("records") or []
+    if records:
+        generated = records[0].get("authentication", {}).get("passphrase", "")
+    if not generated:
+        generated = data.get("authentication", {}).get("passphrase", "")
+
+    logger.info(f"Cluster peer created for {remote_addresses} by {user_id}")
+    return {
+        "success": True,
+        "passphrase": generated,
+        "error": None,
+    }
+
+
+def _accept_cluster_peer(http, headers, event, user_id):
+    """Complete a cluster peer relationship by supplying the passphrase.
+
+    ONTAP REST: PATCH /api/cluster/peers/{uuid}
+    """
+    uuid = event.get("uuid", "")
+    passphrase = event.get("passphrase", "")
+    if not uuid or not passphrase:
+        return {"success": False, "error": "uuid and passphrase are required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/cluster/peers/{uuid}",
+        body={"authentication": {"passphrase": passphrase}},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Cluster peer accepted: {uuid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _delete_cluster_peer(http, headers, event, user_id):
+    """Delete a cluster peer relationship.
+
+    ONTAP REST: DELETE /api/cluster/peers/{uuid}
+
+    SVM peers and replication relationships that depend on it must be removed
+    first; ONTAP rejects the delete otherwise.
+    """
+    uuid = event.get("uuid", "")
+    if not uuid:
+        return {"success": False, "error": "uuid is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    data = _ontap_request(http, headers, "DELETE", f"/cluster/peers/{uuid}")
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Cluster peer deleted: {uuid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _list_svm_peers(http, headers, event):
+    """List SVM peer relationships.
+
+    ONTAP REST: GET /api/svm/peers
+    """
+    params = "fields=name,uuid,state,applications,svm.name,peer.svm.name,peer.cluster.name&max_records=100"
+
+    data = _ontap_request(http, headers, "GET", f"/svm/peers?{params}")
+    if data.get("_error"):
+        return {"peers": [], "error": data["_message"]}
+
+    peers = []
+    for r in data.get("records", []):
+        peer = r.get("peer", {})
+        peers.append(
+            {
+                "name": r.get("name", ""),
+                "uuid": r.get("uuid", ""),
+                "state": r.get("state", ""),
+                "applications": r.get("applications", []) or [],
+                "localSvm": r.get("svm", {}).get("name", ""),
+                "peerSvm": peer.get("svm", {}).get("name", ""),
+                "peerCluster": peer.get("cluster", {}).get("name", ""),
+            }
+        )
+
+    return {"peers": peers, "count": len(peers), "error": None}
+
+
+def _create_svm_peer(http, headers, event, user_id):
+    """Create an SVM peer relationship.
+
+    ONTAP REST: POST /api/svm/peers
+
+    The clusters must already be peered. The relationship starts in a pending
+    state and the remote side accepts it.
+    """
+    local_svm = event.get("localSvm", SVM_NAME)
+    peer_svm = event.get("peerSvm", "")
+    peer_cluster = event.get("peerCluster", "")
+    applications = event.get("applications") or ["snapmirror"]
+
+    if not peer_svm:
+        return {"success": False, "error": "peerSvm is required"}
+
+    body = {
+        "svm": {"name": local_svm},
+        "peer": {"svm": {"name": peer_svm}},
+        "applications": applications,
+    }
+    if peer_cluster:
+        body["peer"]["cluster"] = {"name": peer_cluster}
+
+    data = _ontap_request(http, headers, "POST", "/svm/peers", body=body)
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SVM peer created: {local_svm} <-> {peer_svm} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _accept_svm_peer(http, headers, event, user_id):
+    """Accept a pending SVM peer relationship.
+
+    ONTAP REST: PATCH /api/svm/peers/{uuid} with state=peered
+    """
+    uuid = event.get("uuid", "")
+    if not uuid:
+        return {"success": False, "error": "uuid is required"}
+
+    data = _ontap_request(http, headers, "PATCH", f"/svm/peers/{uuid}", body={"state": "peered"})
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SVM peer accepted: {uuid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _delete_svm_peer(http, headers, event, user_id):
+    """Delete an SVM peer relationship.
+
+    ONTAP REST: DELETE /api/svm/peers/{uuid}
+    """
+    uuid = event.get("uuid", "")
+    if not uuid:
+        return {"success": False, "error": "uuid is required"}
+    if not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required"}
+
+    data = _ontap_request(http, headers, "DELETE", f"/svm/peers/{uuid}")
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"SVM peer deleted: {uuid} by {user_id}")
+    return {"success": True, "error": None}
+
+
+# ─── Cluster inventory and services ───────────────────────────────────────────
+
+
+def _get_cluster_info(http, headers, event):
+    """Report cluster identity and version.
+
+    ONTAP REST: GET /api/cluster
+    """
+    data = _ontap_request(http, headers, "GET", "/cluster?fields=name,version,management_interfaces")
+    if data.get("_error"):
+        return {"error": data["_message"]}
+
+    version = data.get("version", {})
+    return {
+        "name": data.get("name", ""),
+        "version": version.get("full", ""),
+        "generation": version.get("generation"),
+        "major": version.get("major"),
+        "minor": version.get("minor"),
+        "error": None,
+    }
+
+
+def _list_nodes(http, headers, event):
+    """List cluster nodes and their health.
+
+    ONTAP REST: GET /api/cluster/nodes
+    """
+    params = "fields=name,uuid,state,model,serial_number,version.full,uptime,ha.enabled,ha.partners.name&max_records=50"
+
+    data = _ontap_request(http, headers, "GET", f"/cluster/nodes?{params}")
+    if data.get("_error"):
+        return {"nodes": [], "error": data["_message"]}
+
+    nodes = []
+    for r in data.get("records", []):
+        ha = r.get("ha", {})
+        nodes.append(
+            {
+                "name": r.get("name", ""),
+                "uuid": r.get("uuid", ""),
+                "state": r.get("state", ""),
+                "model": r.get("model", ""),
+                "serialNumber": r.get("serial_number", ""),
+                "version": r.get("version", {}).get("full", ""),
+                "uptimeSeconds": r.get("uptime", 0),
+                "haEnabled": bool(ha.get("enabled", False)),
+                "haPartners": [p.get("name", "") for p in ha.get("partners", [])],
+            }
+        )
+
+    return {"nodes": nodes, "count": len(nodes), "error": None}
+
+
+def _list_licenses(http, headers, event):
+    """List installed licence packages.
+
+    ONTAP REST: GET /api/cluster/licensing/licenses
+    """
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        "/cluster/licensing/licenses?fields=name,state,scope,licenses.expiry_time&max_records=100",
+    )
+    if data.get("_error"):
+        return {"licenses": [], "error": data["_message"]}
+
+    licenses = []
+    for r in data.get("records", []):
+        entries = r.get("licenses", []) or []
+        licenses.append(
+            {
+                "name": r.get("name", ""),
+                "state": r.get("state", ""),
+                "scope": r.get("scope", ""),
+                "expiryTime": entries[0].get("expiry_time", "") if entries else "",
+            }
+        )
+
+    return {"licenses": licenses, "count": len(licenses), "error": None}
+
+
+def _list_network_interfaces(http, headers, event):
+    """List IP interfaces (LIFs) on the cluster.
+
+    ONTAP REST: GET /api/network/ip/interfaces
+    """
+    params = (
+        "fields=name,uuid,ip.address,ip.netmask,enabled,state,scope,svm.name,"
+        "location.node.name,location.port.name,services&max_records=200"
+    )
+
+    data = _ontap_request(http, headers, "GET", f"/network/ip/interfaces?{params}")
+    if data.get("_error"):
+        return {"interfaces": [], "error": data["_message"]}
+
+    interfaces = []
+    for r in data.get("records", []):
+        loc = r.get("location", {})
+        interfaces.append(
+            {
+                "name": r.get("name", ""),
+                "uuid": r.get("uuid", ""),
+                "address": r.get("ip", {}).get("address", ""),
+                "netmask": r.get("ip", {}).get("netmask", ""),
+                "enabled": bool(r.get("enabled", False)),
+                "state": r.get("state", ""),
+                "scope": r.get("scope", ""),
+                "svmName": r.get("svm", {}).get("name", ""),
+                "node": loc.get("node", {}).get("name", ""),
+                "port": loc.get("port", {}).get("name", ""),
+                "services": r.get("services", []) or [],
+            }
+        )
+
+    return {"interfaces": interfaces, "count": len(interfaces), "error": None}
+
+
+def _set_network_interface_enabled(http, headers, event, user_id):
+    """Bring an IP interface up or down.
+
+    ONTAP REST: PATCH /api/network/ip/interfaces/{uuid}
+
+    Disabling the interface that carries the management or data path will cut
+    that path, so callers should confirm which LIF they are changing.
+    """
+    uuid = event.get("uuid", "")
+    enabled = event.get("enabled")
+    if not uuid or enabled is None:
+        return {"success": False, "error": "uuid and enabled are required"}
+    if not enabled and not event.get("confirm", False):
+        return {"success": False, "error": "confirm=true is required to disable a LIF"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/network/ip/interfaces/{uuid}",
+        body={"enabled": bool(enabled)},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"LIF {uuid} enabled={bool(enabled)} by {user_id}")
+    return {"success": True, "enabled": bool(enabled), "error": None}
+
+
+def _get_dns_config(http, headers, event):
+    """Read the DNS configuration for the SVM.
+
+    ONTAP REST: GET /api/name-services/dns
+    """
+    svm = event.get("svm", SVM_NAME)
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/name-services/dns?svm.name={_qval(svm)}&fields=domains,servers,dynamic_dns.enabled",
+    )
+    if data.get("_error"):
+        return {"domains": [], "servers": [], "error": data["_message"]}
+
+    records = data.get("records", [])
+    if not records:
+        return {"domains": [], "servers": [], "dynamicDns": False, "error": None}
+
+    r = records[0]
+    return {
+        "domains": r.get("domains", []) or [],
+        "servers": r.get("servers", []) or [],
+        "dynamicDns": bool(r.get("dynamic_dns", {}).get("enabled", False)),
+        "error": None,
+    }
+
+
+def _update_dns_config(http, headers, event, user_id):
+    """Update DNS domains and servers for the SVM.
+
+    ONTAP REST: PATCH /api/name-services/dns/{svm.uuid}
+
+    An AD-joined SVM resolves domain controllers through these servers, so a
+    wrong value here breaks SMB and, on AD-joined SVMs, S3 Access Point data
+    operations as well.
+    """
+    svm = event.get("svm", SVM_NAME)
+    domains = event.get("domains") or []
+    servers = event.get("servers") or []
+
+    if not domains or not servers:
+        return {"success": False, "error": "domains and servers are required"}
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/name-services/dns/{svm_uuid}",
+        body={"domains": domains, "servers": servers},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"DNS updated for {svm} by {user_id}")
+    return {"success": True, "error": None}
+
+
+def _list_protocol_services(http, headers, event):
+    """Report which data protocols are enabled on the SVM.
+
+    ONTAP REST: GET /api/protocols/nfs/services, /api/protocols/cifs/services,
+    /api/protocols/s3/services
+    """
+    svm = event.get("svm", SVM_NAME)
+    services = []
+
+    nfs = _ontap_request(http, headers, "GET", f"/protocols/nfs/services?svm.name={_qval(svm)}&fields=enabled,state")
+    if not nfs.get("_error"):
+        rec = (nfs.get("records") or [{}])[0]
+        services.append(
+            {
+                "protocol": "nfs",
+                "enabled": bool(rec.get("enabled", False)),
+                "state": rec.get("state", ""),
+                "detail": "",
+            }
+        )
+
+    cifs = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/protocols/cifs/services?svm.name={_qval(svm)}&fields=enabled,name,ad_domain.fqdn",
+    )
+    if not cifs.get("_error"):
+        recs = cifs.get("records") or []
+        rec = recs[0] if recs else {}
+        services.append(
+            {
+                "protocol": "cifs",
+                "enabled": bool(rec.get("enabled", False)) if recs else False,
+                "state": "",
+                # An AD-joined SVM shows its domain here; empty means not joined.
+                "detail": rec.get("ad_domain", {}).get("fqdn", "") if recs else "",
+            }
+        )
+
+    s3 = _ontap_request(http, headers, "GET", f"/protocols/s3/services?svm.name={_qval(svm)}&fields=enabled,name")
+    if not s3.get("_error"):
+        recs = s3.get("records") or []
+        rec = recs[0] if recs else {}
+        services.append(
+            {
+                "protocol": "s3",
+                "enabled": bool(rec.get("enabled", False)) if recs else False,
+                "state": "",
+                "detail": rec.get("name", "") if recs else "",
+            }
+        )
+
+    return {"services": services, "count": len(services), "error": None}
+
+
+def _set_protocol_service_enabled(http, headers, event, user_id):
+    """Enable or disable a data protocol on the SVM.
+
+    ONTAP REST: PATCH /api/protocols/{nfs|cifs|s3}/services/{svm.uuid}
+
+    Disabling a protocol disconnects clients using it, so it is confirm-gated.
+    """
+    svm = event.get("svm", SVM_NAME)
+    protocol = event.get("protocol", "")
+    enabled = event.get("enabled")
+
+    if protocol not in ("nfs", "cifs", "s3"):
+        return {"success": False, "error": "protocol must be nfs, cifs or s3"}
+    if enabled is None:
+        return {"success": False, "error": "enabled is required"}
+    if not enabled and not event.get("confirm", False):
+        return {
+            "success": False,
+            "error": "confirm=true is required to disable a protocol",
+        }
+
+    svm_uuid, err = _get_svm_uuid(http, headers, svm)
+    if err:
+        return {"success": False, "error": err}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "PATCH",
+        f"/protocols/{protocol}/services/{svm_uuid}",
+        body={"enabled": bool(enabled)},
+    )
+    if data.get("_error"):
+        return {"success": False, "error": data["_message"]}
+
+    logger.info(f"Protocol {protocol} enabled={bool(enabled)} on {svm} by {user_id}")
+    return {"success": True, "enabled": bool(enabled), "error": None}
+
+
+def _list_jobs(http, headers, event):
+    """List recent asynchronous jobs.
+
+    ONTAP REST: GET /api/cluster/jobs
+
+    FlexCache creation, FlexClone split, SnapMirror transfers and peering all
+    run as jobs, so this is where their progress and failure reasons appear.
+    """
+    params = "fields=uuid,description,state,message,code,start_time,end_time&max_records=50"
+
+    data = _ontap_request(http, headers, "GET", f"/cluster/jobs?{params}")
+    if data.get("_error"):
+        return {"jobs": [], "error": data["_message"]}
+
+    jobs = []
+    for r in data.get("records", []):
+        jobs.append(
+            {
+                "uuid": r.get("uuid", ""),
+                "description": r.get("description", ""),
+                "state": r.get("state", ""),
+                "message": r.get("message", ""),
+                "code": r.get("code", 0),
+                "startTime": r.get("start_time", ""),
+                "endTime": r.get("end_time", ""),
+            }
+        )
+
+    return {"jobs": jobs, "count": len(jobs), "error": None}
+
+
+def _get_job(http, headers, event):
+    """Report the state of a single asynchronous job.
+
+    ONTAP REST: GET /api/cluster/jobs/{uuid}
+    """
+    job_uuid = event.get("jobId", "")
+    if not job_uuid:
+        return {"error": "jobId is required"}
+
+    data = _ontap_request(
+        http,
+        headers,
+        "GET",
+        f"/cluster/jobs/{job_uuid}?fields=uuid,description,state,message,code,start_time,end_time",
+    )
+    if data.get("_error"):
+        return {"error": data["_message"]}
+
+    return {
+        "uuid": data.get("uuid", ""),
+        "description": data.get("description", ""),
+        "state": data.get("state", ""),
+        "message": data.get("message", ""),
+        "code": data.get("code", 0),
+        "startTime": data.get("start_time", ""),
+        "endTime": data.get("end_time", ""),
+        "error": None,
+    }

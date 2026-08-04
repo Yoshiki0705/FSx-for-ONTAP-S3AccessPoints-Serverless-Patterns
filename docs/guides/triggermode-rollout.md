@@ -135,13 +135,13 @@ aws cloudformation deploy \
 
 ## MSP / マルチテナント命名ガイダンス
 
-MSP や複数顧客環境では、共有リソース名にテナント識別子を含めてクロステナント衝突を防止する。
+MSP やマルチテナント環境では、共有リソース名にテナント識別子を含めてクロステナント衝突を防止する。
 
 ### 推奨パラメータ
 
 | パラメータ | 用途 | 例 |
 |-----------|------|-----|
-| `CustomerId` | 顧客識別子 | `acme`, `globex` |
+| `CustomerId` | テナント識別子 | `acme`, `globex` |
 | `EnvironmentName` | 環境名 | `prod`, `staging`, `dev` |
 | `Region` | デプロイリージョン | `apne1`, `use1` |
 
@@ -160,7 +160,7 @@ MSP や複数顧客環境では、共有リソース名にテナント識別子�
 Parameters:
   CustomerId:
     Type: String
-    Description: 顧客識別子（MSP 環境用）
+    Description: テナント識別子（MSP 環境用）
     Default: "default"
 
 Resources:
@@ -174,8 +174,8 @@ Resources:
 
 - 固定名（`fsxn-s3ap-idempotency-store` 等）は単一テナント環境向け
 - マルチテナント環境では必ず `CustomerId` プレフィックスを付与
-- EventBridge Bus 名も顧客別に分離することで、ルーティングの独立性を確保
-- OAM Sink は共有サービスアカウントに 1 つ、各顧客アカウントから Link で接続
+- EventBridge Bus 名もテナント別に分離することで、ルーティングの独立性を確保
+- OAM Sink は共有サービスアカウントに 1 つ、各テナントアカウントから Link で接続
 
 
 ## TriggerMode Governance

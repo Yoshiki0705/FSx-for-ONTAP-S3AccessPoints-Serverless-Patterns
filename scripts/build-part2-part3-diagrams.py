@@ -316,8 +316,7 @@ def part3_overview() -> Diagram:
             ),
             (
                 "マルチエージェントが効く範囲",
-                "「探索 → 分析 → 判定」の複数フェーズを持つタスクに限られ、"
-                "単純な検索は単一エージェントの方が速い",
+                "「探索 → 分析 → 判定」の複数フェーズを持つタスクに限られ、単純な検索は単一エージェントの方が速い",
             ),
         ],
     )
@@ -365,13 +364,11 @@ def part3_agentchat() -> Diagram:
         notes=[
             (
                 "Gateway 経由の MCP ツールは 3 種",
-                "list_files / read_file / search_files。ツール名は "
-                "targetName___toolName 形式で渡る",
+                "list_files / read_file / search_files。ツール名は targetName___toolName 形式で渡る",
             ),
             (
                 "Gateway と Lambda は同一リージョンに置く",
-                "クロスリージョンの Lambda 呼び出しはできないため、"
-                "Gateway・Lambda・S3 AP を同じリージョンに配置する",
+                "クロスリージョンの Lambda 呼び出しはできないため、Gateway・Lambda・S3 AP を同じリージョンに配置する",
             ),
         ],
     )
@@ -473,18 +470,14 @@ EN: dict[str, str] = {
     "ストレージ運用機能をポータルに組み込む — 管理操作の経路": (
         "Storage Operations in the Portal — Admin Operation Path"
     ),
-    "ARP/AI インシデントライフサイクル — 4 状態での管理": (
-        "ARP/AI Incident Lifecycle — Tracked as Four States"
-    ),
+    "ARP/AI インシデントライフサイクル — 4 状態での管理": ("ARP/AI Incident Lifecycle — Tracked as Four States"),
     "Audit Log — 「誰がいつ何にアクセスしたか」を UI で確認する経路": (
         "Audit Log — Answering Who Accessed What and When from the UI"
     ),
     "ブラウザから ONTAP REST API を操作する経路（VPC 内 Lambda）": (
         "Reaching the ONTAP REST API from the Browser (Lambda in the VPC)"
     ),
-    "PoC から本番接続までの 3 フェーズ": (
-        "Three Phases from PoC to Production Connectivity"
-    ),
+    "PoC から本番接続までの 3 フェーズ": ("Three Phases from PoC to Production Connectivity"),
     "ファイルポータルに AI エージェントを組み込む — 全体構成": (
         "Adding AI Agents to the File Portal — Overall Architecture"
     ),
@@ -506,18 +499,13 @@ EN: dict[str, str] = {
     "調査中 (Investigating)": "Investigating",
     "解決済み (Resolved)": "Resolved",
     "Phase 1: PoC<br>（約 15 分）": "Phase 1: PoC<br>(~15 min)",
-    "Phase 2: VPC 接続追加<br>（約 30 分）": (
-        "Phase 2: Add VPC connectivity<br>(~30 min)"
-    ),
-    "Phase 3: 本番ハードニング<br>（約 60 分）": (
-        "Phase 3: Production hardening<br>(~60 min)"
-    ),
+    "Phase 2: VPC 接続追加<br>（約 30 分）": ("Phase 2: Add VPC connectivity<br>(~30 min)"),
+    "Phase 3: 本番ハードニング<br>（約 60 分）": ("Phase 3: Production hardening<br>(~60 min)"),
     "DemoMode=true<br>S3 バケットで動作確認<br>認証: Amazon Cognito": (
         "DemoMode=true<br>Verify against an S3 bucket<br>Auth: Amazon Cognito"
     ),
     "ONTAP 管理 LIF へ接続<br>AWS Secrets Manager 登録<br>VPC エンドポイント追加": (
-        "Connect to the ONTAP management LIF<br>Store credentials in AWS Secrets "
-        "Manager<br>Add VPC endpoints"
+        "Connect to the ONTAP management LIF<br>Store credentials in AWS Secrets Manager<br>Add VPC endpoints"
     ),
     "IAM 最小権限化<br>MFA 必須化 / AWS WAF 追加<br>監査ログ有効化": (
         "Least-privilege IAM<br>Require MFA / add AWS WAF<br>Enable audit logs"
@@ -527,12 +515,8 @@ EN: dict[str, str] = {
     "mode=kb<br>セマンティック検索のみ": "mode=kb<br>Semantic search only",
     "mode=agent<br>ファイルツールのみ": "mode=agent<br>File tools only",
     "mode=multi<br>全ツールで協調": "mode=multi<br>All tools, coordinated",
-    "利用者の指示<br>「engineering/ を分析して」": (
-        "User request<br>&quot;Analyze engineering/&quot;"
-    ),
-    "利用者への最終回答<br>要約 + フィルタリング結果": (
-        "Final answer to the user<br>Summary + filtered results"
-    ),
+    "利用者の指示<br>「engineering/ を分析して」": ("User request<br>&quot;Analyze engineering/&quot;"),
+    "利用者への最終回答<br>要約 + フィルタリング結果": ("Final answer to the user<br>Summary + filtered results"),
     # ---- edge labels ----------------------------------------------------------
     "認証 / グループ判定": "Auth / groups",
     "認証情報の取得": "Get credentials",
@@ -561,13 +545,11 @@ EN: dict[str, str] = {
     # ---- notes ----------------------------------------------------------------
     "権限分離は Cognito Groups で行う": "Cognito Groups separate the privileges",
     "storage-admin グループのみが変更操作を実行でき、一般ユーザーは閲覧のみ": (
-        "Only the storage-admin group can run change operations; everyone else is "
-        "read-only"
+        "Only the storage-admin group can run change operations; everyone else is read-only"
     ),
     "不可逆操作は実行前に確認が必要": "Irreversible operations need a confirmation",
     "SnapLock Compliance の有効化と保持期間の短縮は取り消せない": (
-        "Enabling SnapLock Compliance and shortening a retention period cannot be "
-        "undone"
+        "Enabling SnapLock Compliance and shortening a retention period cannot be undone"
     ),
     "各状態で記録される情報": "What each state records",
     "検知=detectedAt / 封じ込め=containedAt・blockedUsers・blockedIps・snapshotName"
@@ -577,8 +559,7 @@ EN: dict[str, str] = {
     ),
     "現在の制約": "Current limitation",
     "状態は localStorage 保存でブラウザ間共有されない。本番では DynamoDB 永続化を推奨": (
-        "State lives in localStorage and is not shared across browsers; persist it "
-        "in DynamoDB for production"
+        "State lives in localStorage and is not shared across browsers; persist it in DynamoDB for production"
     ),
     "前提条件": "Prerequisites",
     "S3 AP の ARN に対して CloudTrail のデータイベントを有効化し、"
@@ -603,38 +584,28 @@ EN: dict[str, str] = {
         "(or the reverse) causes auth failures that can lock the ONTAP account"
     ),
     "追加コストの目安": "Rough added cost",
-    "Phase 1 は 0 USD、Phase 2 で VPC Lambda 約 5 USD/月、"
-    "Phase 3 で CloudTrail データイベント約 10〜50 USD/月": (
+    "Phase 1 は 0 USD、Phase 2 で VPC Lambda 約 5 USD/月、Phase 3 で CloudTrail データイベント約 10〜50 USD/月": (
         "Phase 1 is 0 USD; Phase 2 adds roughly 5 USD/month for the VPC Lambda; "
         "Phase 3 adds roughly 10-50 USD/month for CloudTrail data events"
     ),
     "Phase をまたいでも変わらないもの": "What stays the same across phases",
     "フロントエンドの UI、Cognito の設定、アプリケーションコードは変更不要": (
-        "The frontend UI, the Cognito configuration, and the application code need "
-        "no changes"
+        "The frontend UI, the Cognito configuration, and the application code need no changes"
     ),
     "破壊的操作は人間が承認してから実行": "A human approves destructive operations",
     "エージェントは提案までを担当し、実行は HITL の承認モーダルを経る": (
-        "The agent stops at a proposal; execution goes through the HITL approval "
-        "modal"
+        "The agent stops at a proposal; execution goes through the HITL approval modal"
     ),
     "マルチエージェントが効く範囲": "Where multi-agent pays off",
-    "「探索 → 分析 → 判定」の複数フェーズを持つタスクに限られ、"
-    "単純な検索は単一エージェントの方が速い": (
-        "Only for tasks with several phases (explore, analyze, decide); a single "
-        "agent is faster for a plain search"
+    "「探索 → 分析 → 判定」の複数フェーズを持つタスクに限られ、単純な検索は単一エージェントの方が速い": (
+        "Only for tasks with several phases (explore, analyze, decide); a single agent is faster for a plain search"
     ),
     "Gateway 経由の MCP ツールは 3 種": "Three MCP tools through the Gateway",
-    "list_files / read_file / search_files。ツール名は "
-    "targetName___toolName 形式で渡る": (
-        "list_files / read_file / search_files. Tool names arrive as "
-        "targetName___toolName"
+    "list_files / read_file / search_files。ツール名は targetName___toolName 形式で渡る": (
+        "list_files / read_file / search_files. Tool names arrive as targetName___toolName"
     ),
-    "Gateway と Lambda は同一リージョンに置く": (
-        "Keep the Gateway and the Lambda in one Region"
-    ),
-    "クロスリージョンの Lambda 呼び出しはできないため、"
-    "Gateway・Lambda・S3 AP を同じリージョンに配置する": (
+    "Gateway と Lambda は同一リージョンに置く": ("Keep the Gateway and the Lambda in one Region"),
+    "クロスリージョンの Lambda 呼び出しはできないため、Gateway・Lambda・S3 AP を同じリージョンに配置する": (
         "Cross-Region Lambda invocation is not available, so place the Gateway, the "
         "Lambda, and the S3 AP in the same Region"
     ),
@@ -648,13 +619,11 @@ EN: dict[str, str] = {
     ),
     "各ステップは Supervisor が仲介する": "The Supervisor brokers every step",
     "Collaborator 同士は直接やり取りせず、Supervisor が指示と結果を受け渡す": (
-        "Collaborators never talk to each other directly; the Supervisor passes the "
-        "instructions and the results"
+        "Collaborators never talk to each other directly; the Supervisor passes the instructions and the results"
     ),
     "利用者から見た体験": "What the user experiences",
     "1 回のチャット送信で複数フェーズが完了し、途中の往復は表に出ない": (
-        "One chat message completes several phases, and the intermediate exchanges "
-        "stay hidden"
+        "One chat message completes several phases, and the intermediate exchanges stay hidden"
     ),
 }
 
@@ -694,10 +663,7 @@ def main() -> int:
         for variant in variants:
             try:
                 path = write(variant, icons, OUT_DIR)
-                print(
-                    f"  {path.name}: {len(variant.nodes)} nodes, "
-                    f"{len(variant.edges)} edges, XML OK"
-                )
+                print(f"  {path.name}: {len(variant.nodes)} nodes, {len(variant.edges)} edges, XML OK")
             except Exception as exc:  # noqa: BLE001 - surface any spec error clearly
                 print(f"  {variant.id}: FAILED -> {exc}", file=sys.stderr)
                 failed = True

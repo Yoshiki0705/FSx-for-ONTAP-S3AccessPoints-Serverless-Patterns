@@ -1,5 +1,5 @@
 # Runtime dependencies — pinned for deployment reproducibility
-boto3==1.43.29
+boto3==1.43.63
 urllib3==2.7.0
 # jsonschema: ARM64 Lambda 互換性のため 4.17.x を使用（4.18+ は rpds-py が必要で ARM64 ビルド問題あり）
 jsonschema==4.17.3

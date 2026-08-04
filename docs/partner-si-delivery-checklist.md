@@ -4,7 +4,7 @@
 
 ## 概要
 
-本チェックリストは、パートナーおよび SI が顧客に FSx for ONTAP S3 Access Points サーバーレスパターンを提案・設計・構築する際の確認項目を整理したものです。
+本チェックリストは、パートナーおよび SI が導入先に FSx for ONTAP S3 Access Points サーバーレスパターンを提案・設計・構築する際の確認項目を整理したものです。
 
 > 📄 **初回提案向け**: [Partner/SI 1 枚要約](partner-si-one-pager.md) — What / When / How / Where を 1 ページで把握
 
@@ -13,10 +13,10 @@
 1. 最も近いユースケースまたは FlexCache/FlexClone パターンを特定する
 2. 関連する Success Metrics を確認する
 3. Customer-Ready PoC Plan Template をコピーする
-4. Sample Baseline を顧客固有の測定値に置き換える
+4. Sample Baseline を導入先固有の測定値に置き換える
 5. Go / No-Go 基準と次フェーズのオーナーシップを合意する
 
-## 顧客ワークロード分類
+## 導入先ワークロード分類
 
 ### Step 1: データ特性の確認
 
@@ -84,7 +84,7 @@
 
 | 確認項目 | 選択肢 |
 |---------|--------|
-| 運用主体 | 顧客自社運用 / パートナー運用 / マネージドサービス |
+| 運用主体 | 導入先の自社運用 / パートナー運用 / マネージドサービス |
 | 監視 | CloudWatch Alarm のみ / ダッシュボード + Alarm / SLO + Runbook |
 | 障害対応 | 自動復旧のみ / Runbook 手動対応 / 24/7 オンコール |
 | 変更管理 | 手動デプロイ / CI/CD (StackSets) / GitOps |
@@ -212,7 +212,7 @@ Automate document discovery and audit report generation for legal file shares st
 See [Production Readiness Exit Criteria](production-readiness.md#exit-criteria各レベル完了条件)
 ```
 
-> 上記は UC1 の例です。各 UC の Success Metrics を参照し、顧客の業務要件に合わせてカスタマイズしてください。
+> 上記は UC1 の例です。各 UC の Success Metrics を参照し、導入先の業務要件に合わせてカスタマイズしてください。
 
 ### Industry Expansion Guide
 <!-- 旧見出し: 横展開ガイド -->
@@ -272,7 +272,7 @@ FC1 FlexCache Anycast/DR パターンの PoC 成功基準例:
 | False positive failovers (24h test) | 0 | DynamoDB routing table change audit |
 | Audit event completeness | 100% | DynamoDB Streams / CloudWatch Logs record count |
 
-> 上記は参考値です。顧客の SLA 要件に合わせて調整してください。詳細は [solutions/flexcache/anycast-dr/docs/](../solutions/flexcache/anycast-dr/docs/) を参照。
+> 上記は参考値です。導入先の SLA 要件に合わせて調整してください。詳細は [solutions/flexcache/anycast-dr/docs/](../solutions/flexcache/anycast-dr/docs/) を参照。
 
 > FlexCache/FlexClone patterns are optional extensions for customers who need distributed read access, dataset branching, cache lifecycle automation, or workload-specific acceleration. Not all customers need these patterns.
 
@@ -287,7 +287,7 @@ FC1 FlexCache Anycast/DR パターンの PoC 成功基準例:
 - **UC1 Legal Compliance**: 10 files, 404 ms total (discovery + sequential read)
 - **UC16 Government Archives**: 10 documents, 389 ms total
 
-> これらは小規模サンプルランの結果であり、本番性能見積もりではありません。顧客 PoC では、これらの sample baseline を、顧客自身のデータセット、ファイルサイズ、並列度、FSx throughput 構成で取得した測定値に置き換えてください。
+> これらは小規模サンプルランの結果であり、本番性能見積もりではありません。導入先 PoC では、これらの sample baseline を、導入先自身のデータセット、ファイルサイズ、並列度、FSx for ONTAP の throughput 構成で取得した測定値に置き換えてください。
 
 ```markdown
 ### Selected Use Case
@@ -341,7 +341,7 @@ FC1 FlexCache Anycast/DR パターンの PoC 成功基準例:
 - Business sponsor approval:
 ```
 
-> 上記テンプレートを顧客の業務要件に合わせてカスタマイズし、PoC 合意資料として使用してください。
+> 上記テンプレートを導入先の業務要件に合わせてカスタマイズし、PoC 合意資料として使用してください。
 
 ---
 

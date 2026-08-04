@@ -10,7 +10,7 @@ import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import { AiPanel } from "./components/AiPanel";
 import { AthenaQueryPanel } from "./components/AthenaQueryPanel";
 import { StorageBrowserTab } from "./components/StorageBrowserTab";
-import { FavoritesView } from "./components/Favorites";
+import { FavoritesView, isFolderKey } from "./components/Favorites";
 import { RecentFiles } from "./components/RecentFiles";
 import { VersionHistory } from "./components/VersionHistory";
 import { AuditLog } from "./components/AuditLog";
@@ -81,6 +81,14 @@ const GROUP_LABELS: Record<string, TranslationKeys> = {
  * - Contextual actions — file operations appear on hover/selection
  * - Responsive — sidebar collapses on mobile
  */
+
+/** Folder holding the given object key, as a prefix with a trailing slash. */
+function parentPrefixOf(fileKey: string): string {
+  const parts = fileKey.split("/");
+  parts.pop();
+  return parts.length > 0 ? parts.join("/") + "/" : "";
+}
+
 function App() {
   // Persist navigation state in URL hash for refresh resilience
   const getInitialSection = (): Section => {
@@ -110,8 +118,16 @@ function App() {
   }, [activeSection]);
 
   const [selectedPrefix, setSelectedPrefix] = useState("");
+  const [prefixNonce, setPrefixNonce] = useState(0);
   const [activeJobArn, setActiveJobArn] = useState<string | null>(null);
   const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
+
+  /** Show the file explorer at the given folder, even if it is already there. */
+  const openInFiles = (prefix: string) => {
+    setSelectedPrefix(prefix);
+    setPrefixNonce((n) => n + 1);
+    setActiveSection("files");
+  };
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user, signOut, authStatus } = useAuthenticator();
@@ -205,6 +221,8 @@ function App() {
       <main className={`portal-main ${showAiPanel ? "with-panel" : ""}`}>
         {activeSection === "files" && (
           <FileExplorer
+            initialPrefix={selectedPrefix}
+            prefixNonce={prefixNonce}
             onSelectPrefix={(prefix) => {
               setSelectedPrefix(prefix);
               setActiveSection("process");
@@ -217,11 +235,14 @@ function App() {
         )}
         {activeSection === "favorites" && (
           <FavoritesView
-            onNavigate={(fileKey) => {
-              const parts = fileKey.split("/");
-              parts.pop();
-              setSelectedPrefix(parts.length > 0 ? parts.join("/") + "/" : "");
-              setActiveSection("files");
+            onNavigate={(favoriteKey) => {
+              // A folder favorite opens that folder; a file favorite opens the
+              // folder containing it.
+              openInFiles(
+                isFolderKey(favoriteKey)
+                  ? favoriteKey
+                  : parentPrefixOf(favoriteKey)
+              );
             }}
           />
         )}
@@ -230,7 +251,7 @@ function App() {
             onFileSelect={(fileKey) => {
               setSelectedFileKey(fileKey);
               setSelectedFileName(fileKey.split("/").pop() || fileKey);
-              setActiveSection("files");
+              openInFiles(parentPrefixOf(fileKey));
             }}
           />
         )}
@@ -247,12 +268,7 @@ function App() {
         {activeSection === "agent" && (aiAgentEnabled ? <AgentChat /> : <AgentDisabled />)}
         {activeSection === "search" && (aiSearchEnabled ? (
           <SemanticSearch
-            onNavigateToFile={(fileKey) => {
-              const parts = fileKey.split("/");
-              parts.pop();
-              setSelectedPrefix(parts.length > 0 ? parts.join("/") + "/" : "");
-              setActiveSection("files");
-            }}
+            onNavigateToFile={(fileKey) => openInFiles(parentPrefixOf(fileKey))}
           />
         ) : <AgentDisabled />)}
         {activeSection === "history" && (
@@ -261,10 +277,7 @@ function App() {
               <ResultsViewer
                 executionArn={activeJobArn}
                 inputPrefix={selectedPrefix}
-                onNavigateToFolder={(prefix) => {
-                  setSelectedPrefix(prefix);
-                  setActiveSection("files");
-                }}
+                onNavigateToFolder={(prefix) => openInFiles(prefix)}
               />
             )}
             <JobHistory

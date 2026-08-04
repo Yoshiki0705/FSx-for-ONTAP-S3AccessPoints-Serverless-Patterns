@@ -192,7 +192,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
       <div className="version-history-header">
         <h3>{t("snapshotsTitle")}</h3>
         {volumeName && (
-          <span className="volume-badge" title="Source volume">
+          <span className="volume-badge" title={t("srcVolumeTitle")}>
             {t("snapshotsVolumeLabel")}: {volumeName}
           </span>
         )}
@@ -234,7 +234,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
       {snapshots.length > 0 && (
         <>
           {/* Filter tabs — separate Tamperproof from regular */}
-          <div className="snapshot-filter-tabs" role="tablist" aria-label="Snapshot filter">
+          <div className="snapshot-filter-tabs" role="tablist" aria-label={t("vhSnapshotFilterAria")}>
             <button
               role="tab"
               aria-selected={filter === "all"}
@@ -277,7 +277,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
             </button>
           </div>
 
-          <table className="snapshot-table" role="grid" aria-label="Volume snapshots">
+          <table className="snapshot-table" role="grid" aria-label={t("vhVolumeSnapshotsAria")}>
           <thead>
             <tr>
               <th scope="col">{t("snapshotsColName")}</th>
@@ -306,7 +306,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
                       🔐 {snap.expiryTime ? formatDate(snap.expiryTime) : "Locked"}
                     </span>
                   ) : (
-                    <span className="lock-badge unlocked" title="Not locked — can be deleted">
+                    <span className="lock-badge unlocked" title={t("vhNotLockedTitle")}>
                       🔓
                     </span>
                   )}
