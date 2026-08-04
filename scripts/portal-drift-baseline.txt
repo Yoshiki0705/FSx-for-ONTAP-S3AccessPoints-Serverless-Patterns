@@ -1,26 +1,16 @@
-# Hardcoded user-facing strings in the portal that predate this check.
+# Hardcoded user-facing strings in the portal that are not translated yet.
 #
-# The check fails only on lines absent from this file, so new drift is
-# blocked without demanding the whole backlog be cleared first. Removing a
-# line from here after adding a translation key is the intended direction;
-# adding one needs a reason.
+# This file is empty, and that is the intended state: the backlog it was
+# created to hold has been worked off. The check fails on any line absent
+# from here, so with the file empty every new hardcoded string is a failure.
+#
+# Do not add a line here to make the check pass. Either add a translation
+# key, or — if the text must read the same in every locale, such as a
+# language name in its own script — mark the line with
+# '// i18n-exempt: <reason>' instead. An entry here says 'still to do',
+# which is a promise to someone; an exemption says 'correct as it is'.
 #
 # Regenerate with: python3 scripts/check_portal_drift.py --write-baseline
 #
 # Format: <path relative to solutions/amplify-portal>\t<collapsed line text>
-src/components/VersionHistory.tsx	2つのスナップショットを選択して内容を比較する機能です（将来実装予定）。現在はスナップショット一覧を表示しています。
-src/components/VersionHistory.tsx	<strong>🔄 バージョン差分</strong>
-src/components/admin/FlexCacheManager.tsx	setError(e instanceof Error ? e.message : "作成に失敗しました");
-src/components/admin/FlexCacheManager.tsx	setError(e instanceof Error ? e.message : "削除に失敗しました");
-src/components/admin/FlexCacheManager.tsx	📊 メトリクス: ONTAP System Manager で確認可
-src/components/admin/SnaplockManager.tsx	<strong>ℹ️ SnapLock は新規ボリューム作成時にのみ有効化できます</strong>
-src/components/admin/SnaplockManager.tsx	SnapLock ボリュームが必要な場合は「ボリューム管理」から新規作成してください。
-src/components/admin/SnaplockManager.tsx	既存ボリュームに後からSnapLockを有効にすることはできません（ONTAP の仕様）。
-src/components/admin/SnapshotAdminManager.tsx	" 個別 Snapshot のロックは別途「Lock」ボタンから保持期間を指定して行います。\n\n" +
-src/components/admin/SnapshotAdminManager.tsx	"※ この操作はボリューム上の「ロック機能」を有効にするだけです。\n" +
-src/components/admin/SnapshotAdminManager.tsx	"⚠️ Tamperproof Snapshot ロックを有効化しますか？\n\n" +
-src/components/admin/SnapshotAdminManager.tsx	"【重要】この操作は Compliance ボリュームでは取り消せません。\n" +
-src/components/admin/SnapshotAdminManager.tsx	"有効化後にロックされた Snapshot は、保持期間が満了するまで\n" +
-src/components/admin/SnapshotAdminManager.tsx	"続行するには ENABLE と入力してください:",
-src/components/admin/SnapshotAdminManager.tsx	"誰も削除できなくなります（root / fsxadmin 含む）。\n\n" +
-src/components/admin/SnapshotAdminManager.tsx	setError("有効化がキャンセルされました（ENABLE と入力する必要があります）");
+

@@ -341,10 +341,8 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   rmNoEfficiencyData: "効率データがありません",
 
   // --- Resource Management: ARP/AI Admin ---
-  rmArpEnabled: "有効",
   rmArpLearning: "学習中",
   rmArpPaused: "一時停止",
-  rmArpDisabled: "無効",
   rmArpTotal: "合計",
   rmArpState: "保護状態",
   rmArpThreat: "脅威",
@@ -905,8 +903,6 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   aiSettingsAgentDesc: "自然言語でファイル操作を行う AI チャット（Bedrock Converse + tool_use）",
   aiSettingsSearchTitle: "セマンティック検索",
   aiSettingsSearchDesc: "ファイル内容のベクトル検索（Bedrock Knowledge Base）。バックエンドは S3 Vectors（推奨・低コスト）または OpenSearch Serverless を選択可能。",
-  aiSettingsEnabled: "有効",
-  aiSettingsDisabled: "無効",
   aiSettingsSaved: "設定を保存しました",
   aiSettingsStatusTitle: "現在の状態",
   aiSettingsMultimodalTitle: "マルチモーダル（画像入力）",
@@ -1122,8 +1118,6 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   vsTroubleshootLink: "トラブルシューティング",
   vsStep5Title: "動作を確認する",
   vsStep5Desc: "テストファイルでスキャンが実行されること、スキャン統計が増加することを確認します。",
-  vsEnabled: "有効",
-  vsDisabled: "無効",
   vsPolicies: "Vscan ポリシー",
   vsNoPolicies: "Vscan ポリシーがありません",
   vsEnableBtn: "有効化",
@@ -1182,6 +1176,33 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   aqSetupStep3: "保存して、このパネルでクエリを再実行",
   aqSetupEnvHint:
     "または {file} の環境変数 {env} に S3 パスを設定してリデプロイしてください。",
+
+  // --- Shared state labels ---
+  // One pair for the whole portal. Previously rmArp*, aiSettings* and vs* each
+  // carried their own copy, which drifted: Korean had three different words for
+  // the same state.
+  stateEnabled: "有効",
+  stateDisabled: "無効",
+  rmLoadFailed: "読み込みに失敗しました",
+  rmActionFailed: "操作に失敗しました",
+  // {keyword} is substituted with the literal the component compares against, so
+  // the prompt cannot ask for a word the check will reject.
+  rmSnapLockConfirm:
+    "⚠️ Tamperproof Snapshot ロックを有効化しますか？\n\n" +
+    "【重要】この操作は Compliance ボリュームでは取り消せません。\n" +
+    "有効化後にロックされた Snapshot は、保持期間が満了するまで\n" +
+    "誰も削除できなくなります（root / fsxadmin 含む）。\n\n" +
+    "※ この操作はボリューム上の「ロック機能」を有効にするだけです。\n" +
+    "  個別 Snapshot のロックは別途「Lock」ボタンから保持期間を指定して行います。\n\n" +
+    "続行するには {keyword} と入力してください:",
+  rmSnapLockCancelled: "有効化がキャンセルされました（{keyword} と入力する必要があります）",
+  slNewVolumeOnly: "SnapLock は新規ボリューム作成時にのみ有効化できます",
+  slNewVolumeOnlyWhy: "既存ボリュームに後から SnapLock を有効にすることはできません（ONTAP の仕様）。",
+  slNewVolumeOnlyHow: "SnapLock ボリュームが必要な場合は「ボリューム管理」から新規作成してください。",
+  fcacheMetricsHint: "メトリクス: ONTAP System Manager で確認可",
+  vhDiffTitle: "バージョン差分",
+  vhDiffNotice:
+    "2 つのスナップショットを選択して内容を比較する機能です（将来実装予定）。現在はスナップショット一覧を表示しています。",
   fpvClickDownload: "クリックでダウンロード / AI 処理の対象に選択",
   fpvClickPdf: "クリックで PDF をプレビュー",
   fpvClickDoc: "クリックで文書をプレビュー",

@@ -108,10 +108,10 @@ export function FlexCacheManager() {
         setTimeout(() => loadCaches(), 30000);
         setTimeout(() => loadCaches(), 60000);
       } else {
-        setError(data?.error || t("fcacheCreateFailed") || "作成に失敗しました");
+        setError(data?.error || t("fcacheCreateFailed"));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "作成に失敗しました");
+      setError(e instanceof Error ? e.message : t("fcacheCreateFailed"));
     } finally { setCreating(false); }
   };
 
@@ -127,10 +127,10 @@ export function FlexCacheManager() {
         setSuccess(t("fcacheDeleted") || `FlexCache "${cache.name}" を削除しました`);
         clearSuccess(); loadCaches();
       } else {
-        setError(data?.error || t("fcacheDeleteFailed") || "削除に失敗しました");
+        setError(data?.error || t("fcacheDeleteFailed"));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "削除に失敗しました");
+      setError(e instanceof Error ? e.message : t("fcacheDeleteFailed"));
     } finally { setDeleting(null); }
   };
 
@@ -274,7 +274,7 @@ export function FlexCacheManager() {
                     </span>
                     {cache.origins.length > 0 && (
                       <span style={{ fontSize: "0.7rem", color: "#718096", marginLeft: "0.5rem" }} title="Cache metrics available via ONTAP REST API /storage/flexcache/flexcaches/{uuid}?fields=cache_hit_ratio">
-                        📊 メトリクス: ONTAP System Manager で確認可
+                        📊 {t("fcacheMetricsHint")}
                       </span>
                     )}
                     {cache.globalFileLocking && <span className="lu-badge">🔒 Global Lock</span>}
