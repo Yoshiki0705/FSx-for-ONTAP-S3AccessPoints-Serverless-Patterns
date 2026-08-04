@@ -171,3 +171,49 @@ class TestUnknownAction:
         result = handler({"action": "definitelyNotAnAction"}, None)
 
         assert "Unknown action" in result["error"]
+
+
+class TestRequestPathSafety:
+    """A caller-supplied snapshot id must not redirect the request."""
+
+    def test_traversal_segment_is_refused(self):
+        from handler import _is_unsafe_path
+
+        assert _is_unsafe_path("/storage/volumes/uuid/snapshots/../../cluster/nodes")
+
+    def test_dots_inside_a_segment_are_allowed(self):
+        from handler import _is_unsafe_path
+
+        assert not _is_unsafe_path("/storage/volumes/uuid/snapshots/daily..2026")
+
+    def test_control_characters_are_refused(self):
+        from handler import _is_unsafe_path
+
+        assert _is_unsafe_path("/storage/volumes/a\nb")
+        assert _is_unsafe_path("/storage/volumes/a\\b")
+
+    def test_snapshot_id_is_percent_encoded(self, mock_secrets):
+        from handler import handler
+
+        captured = []
+
+        class RecordingHttp:
+            def request(self, method, url, **kwargs):
+                captured.append((method, url))
+
+                class R:
+                    status = 200
+                    data = json.dumps({"records": [{"uuid": "vol-1"}]}).encode()
+
+                return R()
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = RecordingHttp()
+            handler(
+                {"action": "deleteSnapshot", "snapshotId": "../../cluster/nodes"},
+                None,
+            )
+
+        deletes = [url for method, url in captured if method == "DELETE"]
+        assert deletes, captured
+        assert not any("/../" in url for url in deletes), deletes

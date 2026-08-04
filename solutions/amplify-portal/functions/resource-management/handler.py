@@ -41,6 +41,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from urllib.parse import quote
 
 import boto3
@@ -65,8 +66,47 @@ def _get_credentials():
     return data.get("username", "fsxadmin"), data.get("password", "")
 
 
+# Caller-supplied names reach ONTAP request paths in many of the actions below.
+# An unencoded value containing a traversal sequence would redirect the request
+# to a different endpoint — a "delete this share" call could reach a cluster
+# resource instead. Rather than trusting ~110 call sites to remember, the check
+# lives in the one function they all go through.
+_UNSAFE_PATH_CHARS = re.compile(r"[\x00-\x1f\x7f\\]")
+
+
+def _is_unsafe_path(path: str) -> bool:
+    """True if the assembled request path must not be sent."""
+    if _UNSAFE_PATH_CHARS.search(path):
+        return True
+    # Split off the query string, then look for a traversal segment. `..` inside
+    # a name (for example "my..share") is fine; a whole segment of ".." is not.
+    route = path.split("?", 1)[0]
+    return any(segment == ".." for segment in route.split("/"))
+
+
+def _seg(value) -> str:
+    """Percent-encode a value used as a single path segment."""
+    return quote(str(value), safe="")
+
+
+def _qval(value) -> str:
+    """Percent-encode a value used as a query-string value.
+
+    Without this, a name containing `&` or `=` adds parameters to the request
+    instead of being matched as a name.
+    """
+    return quote(str(value), safe="")
+
+
 def _ontap_request(http, headers, method, path, body=None):
     """Make an ONTAP REST API request."""
+    if _is_unsafe_path(path):
+        logger.warning("Refused ONTAP request with unsafe path: %r", path[:200])
+        return {
+            "_error": True,
+            "_status": 400,
+            "_message": "Invalid characters in request path",
+        }
     url = f"https://{MGMT_IP}/api{path}"
     kwargs = {"headers": headers}
     if body:
@@ -458,7 +498,7 @@ def _list_volumes(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/volumes?svm.name={svm}"
+        f"/storage/volumes?svm.name={_qval(svm)}"
         f"&fields=name,uuid,size,state,type,style,nas,space,guarantee,snaplock"
         f"&max_records=50",
     )
@@ -497,7 +537,7 @@ def _list_volumes_filtered(http, headers, event):
     name_filter = event.get("nameFilter", "")
     max_records = min(event.get("maxRecords", 20), 50)
 
-    query = f"/storage/volumes?svm.name={svm}"
+    query = f"/storage/volumes?svm.name={_qval(svm)}"
     query += "&fields=name,uuid,size,state,nas,snaplock"
     query += f"&max_records={max_records}"
 
@@ -672,7 +712,7 @@ def _list_export_policies(http, headers, event):
         http,
         headers,
         "GET",
-        f"/protocols/nfs/export-policies?svm.name={svm}&fields=name,id,rules",
+        f"/protocols/nfs/export-policies?svm.name={_qval(svm)}&fields=name,id,rules",
     )
     if data.get("_error"):
         return {"policies": [], "error": data["_message"]}
@@ -828,7 +868,7 @@ def _list_qos_policies(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/qos/policies?svm.name={svm}&fields=name,uuid,fixed,adaptive",
+        f"/storage/qos/policies?svm.name={_qval(svm)}&fields=name,uuid,fixed,adaptive",
     )
     if data.get("_error"):
         return {"policies": [], "error": data["_message"]}
@@ -979,7 +1019,7 @@ def _get_snaplock_config(http, headers, event):
                 http,
                 headers,
                 "GET",
-                f"/storage/volumes?name={vol_name}&svm.name={svm}&fields=uuid",
+                f"/storage/volumes?name={_qval(vol_name)}&svm.name={_qval(svm)}&fields=uuid",
             )
             records = resolve.get("records", [])
             if records:
@@ -1049,7 +1089,7 @@ def _list_quota_rules(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     vol_name = event.get("volumeName", "")
-    params = f"svm.name={svm}&fields=type,qtree.name,users.name,group.name,space,files,volume.name"
+    params = f"svm.name={_qval(svm)}&fields=type,qtree.name,users.name,group.name,space,files,volume.name"
     if vol_name:
         params += f"&volume.name={vol_name}"
     params += "&max_records=50"
@@ -1087,7 +1127,7 @@ def _get_quota_report(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     vol_name = event.get("volumeName", "")
-    params = f"svm.name={svm}&fields=space,files,users.name,group.name,qtree.name,type,volume.name"
+    params = f"svm.name={_qval(svm)}&fields=space,files,users.name,group.name,qtree.name,type,volume.name"
     if vol_name:
         params += f"&volume.name={vol_name}"
     params += "&max_records=50"
@@ -1204,7 +1244,7 @@ def _list_cifs_shares(http, headers, event):
         http,
         headers,
         "GET",
-        f"/protocols/cifs/shares?svm.name={svm}"
+        f"/protocols/cifs/shares?svm.name={_qval(svm)}"
         f"&fields=name,path,comment,acls,encryption,continuously_available"
         f"&max_records=50",
     )
@@ -1272,7 +1312,7 @@ def _update_cifs_share(http, headers, event, user_id):
         return {"success": False, "error": "name is required"}
 
     # Get SVM UUID
-    svm_data = _ontap_request(http, headers, "GET", f"/svm/svms?name={svm}&fields=uuid")
+    svm_data = _ontap_request(http, headers, "GET", f"/svm/svms?name={_qval(svm)}&fields=uuid")
     svm_records = svm_data.get("records", [])
     if not svm_records:
         return {"success": False, "error": f"SVM '{svm}' not found"}
@@ -1291,7 +1331,7 @@ def _update_cifs_share(http, headers, event, user_id):
         http,
         headers,
         "PATCH",
-        f"/protocols/cifs/shares/{svm_uuid}/{share_name}",
+        f"/protocols/cifs/shares/{svm_uuid}/{_seg(share_name)}",
         body=body,
     )
     if data.get("_error"):
@@ -1316,13 +1356,13 @@ def _delete_cifs_share(http, headers, event, user_id):
         return {"success": False, "error": "confirm=true is required"}
 
     # Get SVM UUID
-    svm_data = _ontap_request(http, headers, "GET", f"/svm/svms?name={svm}&fields=uuid")
+    svm_data = _ontap_request(http, headers, "GET", f"/svm/svms?name={_qval(svm)}&fields=uuid")
     svm_records = svm_data.get("records", [])
     if not svm_records:
         return {"success": False, "error": f"SVM '{svm}' not found"}
     svm_uuid = svm_records[0]["uuid"]
 
-    data = _ontap_request(http, headers, "DELETE", f"/protocols/cifs/shares/{svm_uuid}/{share_name}")
+    data = _ontap_request(http, headers, "DELETE", f"/protocols/cifs/shares/{svm_uuid}/{_seg(share_name)}")
     if data.get("_error"):
         return {"success": False, "error": data["_message"]}
 
@@ -1340,7 +1380,7 @@ def _list_qtrees(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     vol_name = event.get("volumeName", "")
-    params = f"svm.name={svm}&fields=name,id,volume.name,security_style,export_policy.name,unix_permissions"
+    params = f"svm.name={_qval(svm)}&fields=name,id,volume.name,security_style,export_policy.name,unix_permissions"
     if vol_name:
         params += f"&volume.name={vol_name}"
     params += "&max_records=100"
@@ -1415,7 +1455,7 @@ def _delete_qtree(http, headers, event, user_id):
         http,
         headers,
         "GET",
-        f"/storage/volumes?name={vol_name}&svm.name={svm}&fields=uuid",
+        f"/storage/volumes?name={_qval(vol_name)}&svm.name={_qval(svm)}&fields=uuid",
     )
     vol_records = vol_data.get("records", [])
     if not vol_records:
@@ -1443,7 +1483,7 @@ def _get_efficiency_stats(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/volumes?svm.name={svm}&fields=name,efficiency,space&max_records=50",
+        f"/storage/volumes?svm.name={_qval(svm)}&fields=name,efficiency,space&max_records=50",
     )
     if data.get("_error"):
         return {"volumes": [], "error": data["_message"]}
@@ -1505,7 +1545,7 @@ def _list_arp_volumes(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/volumes?svm.name={svm}&fields=name,uuid,anti_ransomware,type,nas,size&max_records=100",
+        f"/storage/volumes?svm.name={_qval(svm)}&fields=name,uuid,anti_ransomware,type,nas,size&max_records=100",
     )
     if data.get("_error"):
         return {"volumes": [], "error": data["_message"]}
@@ -1745,7 +1785,7 @@ def _list_snapshot_policies(http, headers, event):
         http,
         headers,
         "GET",
-        f"/storage/snapshot-policies?svm.name={svm}&fields=name,uuid,enabled,copies,comment,scope&max_records=50",
+        f"/storage/snapshot-policies?svm.name={_qval(svm)}&fields=name,uuid,enabled,copies,comment,scope&max_records=50",
     )
     if data.get("_error"):
         return {"policies": [], "error": data["_message"]}
@@ -2140,7 +2180,7 @@ def _get_svm_uuid(http, headers, svm_name):
     Several CIFS endpoints are keyed by SVM UUID rather than name, so callers
     that need a path segment resolve it here first.
     """
-    data = _ontap_request(http, headers, "GET", f"/svm/svms?name={svm_name}&fields=uuid")
+    data = _ontap_request(http, headers, "GET", f"/svm/svms?name={_qval(svm_name)}&fields=uuid")
     if data.get("_error"):
         return None, data["_message"]
     records = data.get("records", [])
@@ -2155,7 +2195,7 @@ def _list_local_users(http, headers, event):
     ONTAP REST: GET /api/protocols/cifs/local-users
     """
     svm = event.get("svm", SVM_NAME)
-    params = f"svm.name={svm}&fields=name,sid,full_name,description,account_disabled,membership&max_records=200"
+    params = f"svm.name={_qval(svm)}&fields=name,sid,full_name,description,account_disabled,membership&max_records=200"
 
     data = _ontap_request(http, headers, "GET", f"/protocols/cifs/local-users?{params}")
     if data.get("_error"):
@@ -2236,7 +2276,7 @@ def _list_local_groups(http, headers, event):
     ONTAP REST: GET /api/protocols/cifs/local-groups
     """
     svm = event.get("svm", SVM_NAME)
-    params = f"svm.name={svm}&fields=name,sid,description&max_records=200"
+    params = f"svm.name={_qval(svm)}&fields=name,sid,description&max_records=200"
 
     data = _ontap_request(http, headers, "GET", f"/protocols/cifs/local-groups?{params}")
     if data.get("_error"):
@@ -2403,7 +2443,7 @@ def _list_name_mappings(http, headers, event):
     ONTAP REST: GET /api/name-services/name-mappings
     """
     svm = event.get("svm", SVM_NAME)
-    params = f"svm.name={svm}&fields=direction,index,pattern,replacement&max_records=200"
+    params = f"svm.name={_qval(svm)}&fields=direction,index,pattern,replacement&max_records=200"
 
     data = _ontap_request(http, headers, "GET", f"/name-services/name-mappings?{params}")
     if data.get("_error"):
@@ -2614,7 +2654,7 @@ def _list_flexclones(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     params = (
-        f"svm.name={svm}&clone.is_flexclone=true"
+        f"svm.name={_qval(svm)}&clone.is_flexclone=true"
         "&fields=name,uuid,size,state,space.used,clone.parent_volume.name,"
         "clone.parent_snapshot.name,clone.split_initiated,clone.split_complete_percent"
         "&max_records=100"
@@ -2801,7 +2841,7 @@ def _get_vscan_status(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
 
-    data = _ontap_request(http, headers, "GET", f"/protocols/vscan?svm.name={svm}&fields=enabled")
+    data = _ontap_request(http, headers, "GET", f"/protocols/vscan?svm.name={_qval(svm)}&fields=enabled")
     if data.get("_error"):
         return {"enabled": False, "error": data["_message"]}
 
@@ -2819,7 +2859,7 @@ def _list_vscan_policies(http, headers, event):
     """
     svm = event.get("svm", SVM_NAME)
     params = (
-        f"svm.name={svm}&fields=on_access_policies.name,on_access_policies.enabled,"
+        f"svm.name={_qval(svm)}&fields=on_access_policies.name,on_access_policies.enabled,"
         "on_access_policies.mandatory,on_access_policies.scope.max_file_size,"
         "on_access_policies.scope.exclude_paths,on_access_policies.scope.exclude_extensions"
     )
@@ -2855,7 +2895,7 @@ def _get_fpolicy_status(http, headers, event):
     ONTAP REST: GET /api/protocols/fpolicy (connections sub-object)
     """
     svm = event.get("svm", SVM_NAME)
-    params = f"svm.name={svm}&fields=connections.node.name,connections.policy.name,connections.server,connections.state"
+    params = f"svm.name={_qval(svm)}&fields=connections.node.name,connections.policy.name,connections.server,connections.state"
 
     data = _ontap_request(http, headers, "GET", f"/protocols/fpolicy?{params}")
     if data.get("_error"):
@@ -2882,9 +2922,7 @@ def _list_fpolicy_policies(http, headers, event):
     ONTAP REST: GET /api/protocols/fpolicy (policies sub-object)
     """
     svm = event.get("svm", SVM_NAME)
-    params = (
-        f"svm.name={svm}&fields=policies.name,policies.enabled,policies.priority,policies.engine.name,policies.events"
-    )
+    params = f"svm.name={_qval(svm)}&fields=policies.name,policies.enabled,policies.priority,policies.engine.name,policies.events"
 
     data = _ontap_request(http, headers, "GET", f"/protocols/fpolicy?{params}")
     if data.get("_error"):
@@ -2916,7 +2954,7 @@ def _list_fpolicy_events(http, headers, event):
     of file access records.
     """
     svm = event.get("svm", SVM_NAME)
-    params = f"svm.name={svm}&fields=events.name,events.protocol,events.file_operations"
+    params = f"svm.name={_qval(svm)}&fields=events.name,events.protocol,events.file_operations"
 
     data = _ontap_request(http, headers, "GET", f"/protocols/fpolicy?{params}")
     if data.get("_error"):
@@ -3850,7 +3888,7 @@ def _get_dns_config(http, headers, event):
         http,
         headers,
         "GET",
-        f"/name-services/dns?svm.name={svm}&fields=domains,servers,dynamic_dns.enabled",
+        f"/name-services/dns?svm.name={_qval(svm)}&fields=domains,servers,dynamic_dns.enabled",
     )
     if data.get("_error"):
         return {"domains": [], "servers": [], "error": data["_message"]}
@@ -3911,7 +3949,7 @@ def _list_protocol_services(http, headers, event):
     svm = event.get("svm", SVM_NAME)
     services = []
 
-    nfs = _ontap_request(http, headers, "GET", f"/protocols/nfs/services?svm.name={svm}&fields=enabled,state")
+    nfs = _ontap_request(http, headers, "GET", f"/protocols/nfs/services?svm.name={_qval(svm)}&fields=enabled,state")
     if not nfs.get("_error"):
         rec = (nfs.get("records") or [{}])[0]
         services.append(
@@ -3927,7 +3965,7 @@ def _list_protocol_services(http, headers, event):
         http,
         headers,
         "GET",
-        f"/protocols/cifs/services?svm.name={svm}&fields=enabled,name,ad_domain.fqdn",
+        f"/protocols/cifs/services?svm.name={_qval(svm)}&fields=enabled,name,ad_domain.fqdn",
     )
     if not cifs.get("_error"):
         recs = cifs.get("records") or []
@@ -3942,7 +3980,7 @@ def _list_protocol_services(http, headers, event):
             }
         )
 
-    s3 = _ontap_request(http, headers, "GET", f"/protocols/s3/services?svm.name={svm}&fields=enabled,name")
+    s3 = _ontap_request(http, headers, "GET", f"/protocols/s3/services?svm.name={_qval(svm)}&fields=enabled,name")
     if not s3.get("_error"):
         recs = s3.get("records") or []
         rec = recs[0] if recs else {}
