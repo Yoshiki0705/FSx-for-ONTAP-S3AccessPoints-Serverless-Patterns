@@ -11,6 +11,8 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { AssetHashType, Aspects, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as events from "aws-cdk-lib/aws-events";
+import * as targets from "aws-cdk-lib/aws-events-targets";
 import { AwsSolutionsChecks, NagSuppressions } from "cdk-nag";
 
 /**
@@ -88,6 +90,35 @@ const vpcConfig = config.vpcId
     }
   : undefined;
 
+/**
+ * DynamoDB gateway endpoint for the VPC Lambda functions.
+ *
+ * Only created when route table IDs are supplied, because a gateway endpoint is
+ * attached to route tables rather than to subnets, and this stack does not own
+ * the VPC. Set AMPLIFY_PORTAL_VPC_ROUTE_TABLE_IDS to the route tables used by
+ * the Lambda subnets.
+ *
+ * Why it is needed: a Lambda ENI has no public IP, so a subnet whose default
+ * route is an internet gateway gives the function no egress at all. Interface
+ * endpoints cover Secrets Manager and friends, and the S3 gateway endpoint
+ * covers S3 — DynamoDB has no path unless one is added. Without it the
+ * containment ledger is unreachable and nothing expires.
+ *
+ * A gateway endpoint carries no hourly or data processing charge, unlike an
+ * interface endpoint.
+ *
+ * The handler degrades rather than failing when the ledger is unreachable, so
+ * leaving this unset costs the expiry feature, not the ability to contain.
+ */
+if (vpcConfig && config.vpcRouteTableIds.length > 0) {
+  new ec2.CfnVPCEndpoint(dataStack, "DynamoDbGatewayEndpoint", {
+    vpcId: config.vpcId,
+    serviceName: `com.amazonaws.${config.region}.dynamodb`,
+    vpcEndpointType: "Gateway",
+    routeTableIds: config.vpcRouteTableIds,
+  });
+}
+
 // --- DynamoDB Table for Portal Settings (admin-controlled feature gates) ---
 // Stores runtime settings like AI Agent enablement.
 // Key: settingKey (string), Value: settingValue (string/JSON)
@@ -121,6 +152,26 @@ const agentDirectoryTable = new dynamodb.Table(dataStack, "AgentDirectoryTable",
 const agentTeamsTable = new dynamodb.Table(dataStack, "AgentTeamsTable", {
   partitionKey: { name: "teamId", type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+});
+
+// --- DynamoDB Table for Containment Blocks (expiry ledger) ---
+// PK: blockId ("smb#<svm>#<domain>#<user>" or "nfs#<svm>#<policy>#<ip>").
+//
+// ONTAP name-mapping and export-policy deny rules carry no timestamp, so a block
+// read back from the cluster cannot say when it was placed or when it should
+// end. Expiry therefore needs a record of the portal's own blocks, which is what
+// this table is. A scheduled sweep lifts the rows whose expiry has passed.
+//
+// The native TTL is set later than the block's own expiry on purpose, so the
+// audit trail of a containment action outlives the containment itself.
+const containmentBlocksTable = new dynamodb.Table(dataStack, "ContainmentBlocksTable", {
+  partitionKey: { name: "blockId", type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: "ttl",
+  // Losing this table would leave blocks in place on the cluster with nothing
+  // recording that they should ever be lifted.
+  removalPolicy: RemovalPolicy.RETAIN,
+  pointInTimeRecovery: true,
 });
 
 // --- HTTP Data Source for Step Functions ---
@@ -494,7 +545,8 @@ api.addLambdaDataSource("ListSnapshotsLambdaDataSource", listSnapshotsFunction);
 // --- Lambda Data Source for ARP/AI Response Actions ---
 // Uses functions/data-protection/handler.py (dedicated handler for write operations)
 // Provides: blockSmbUser, unblockSmbUser, blockNfsIp, unblockNfsIp,
-//           containThreat, listActiveBlocks, disconnectSessions
+//           containThreat, listActiveBlocks, disconnectSessions,
+//           sweepExpiredBlocks (schedule-driven, not exposed through AppSync)
 const arpResponseRole = new iam.Role(dataStack, "ArpResponseLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
   managedPolicies: [
@@ -511,6 +563,19 @@ const arpResponseRole = new iam.Role(dataStack, "ArpResponseLambdaRole", {
         new iam.PolicyStatement({
           actions: ["secretsmanager:GetSecretValue"],
           resources: ["*"], // Restrict to ONTAP_SECRET_NAME ARN in production
+        }),
+        new iam.PolicyStatement({
+          // Scan is needed by the expiry sweep, which has to find due rows
+          // without knowing their keys. No DeleteItem: rows are closed out by
+          // status so the audit trail survives, and the native TTL removes them
+          // later.
+          actions: [
+            "dynamodb:PutItem",
+            "dynamodb:GetItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:Scan",
+          ],
+          resources: [containmentBlocksTable.tableArn],
         }),
       ],
     }),
@@ -531,6 +596,8 @@ const arpResponseFunction = new lambda.Function(
       ONTAP_SECRET_NAME: config.ontapSecretName,
       VOLUME_NAME: config.ontapVolumeName,
       SVM_NAME: config.ontapSvmName,
+      CONTAINMENT_BLOCKS_TABLE: containmentBlocksTable.tableName,
+      DEFAULT_BLOCK_TTL_HOURS: String(config.defaultBlockTtlHours),
     },
     // Without this layer the containment actions cannot import
     // shared.ontap_response and fail before reaching ONTAP.
@@ -545,6 +612,33 @@ const arpResponseFunction = new lambda.Function(
 );
 
 api.addLambdaDataSource("ArpResponseLambdaDataSource", arpResponseFunction);
+
+// --- Scheduled sweep that lifts expired containment blocks ---
+//
+// Reuses the ARP function rather than adding a second one. That function already
+// sits in the VPC with a route to the ONTAP management endpoint and already holds
+// the unblock logic; a separate Lambda would need the same VPC attachment and the
+// same credential for no gain.
+//
+// An EventBridge rule is enough here. EventBridge Scheduler would add a schedule
+// group and an invocation role to manage, and buys nothing for a fixed interval
+// with no timezone or one-off semantics involved.
+//
+// The interval bounds how long a block outlives its expiry, so it is a coarser
+// control than it looks: at one hour, "expires in 1h" can mean up to two.
+new events.Rule(dataStack, "ContainmentBlockSweepSchedule", {
+  description:
+    "Lifts FSx for ONTAP containment blocks whose expiry has passed (portal-created blocks only)",
+  schedule: events.Schedule.rate(Duration.minutes(config.blockSweepIntervalMinutes)),
+  targets: [
+    new targets.LambdaFunction(arpResponseFunction, {
+      event: events.RuleTargetInput.fromObject({ action: "sweepExpiredBlocks" }),
+      // A failed sweep is retried by the next tick, so a dead-letter queue would
+      // collect events that are already superseded.
+      retryAttempts: 2,
+    }),
+  ],
+});
 
 // --- Lambda Data Source for Resource Management (Admin) ---
 // Uses functions/resource-management/handler.py
