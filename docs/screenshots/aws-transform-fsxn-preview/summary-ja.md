@@ -41,7 +41,7 @@
   - AWS Transform managed storage（デフォルト）
   - 自前の S3 バケット
 
-設計上の留意点（FSxN / ガバナンス視点）:
+設計上の留意点（FSx for ONTAP / ガバナンス視点）:
 - artifact storage に「自前の S3 バケット」を選べば、入力ソース／出力データを自社管理下に置ける（データ主権・監査要件のある案件で有利）。
 - アクセス方式が不可逆のため、本番導入前に IdP 連携方針を確定してから有効化する。検証だけなら IAM-only が最小構成。
 
@@ -57,14 +57,14 @@
 案 A（日本語・簡潔）
 > 【FSx for ONTAP × 移行】
 > AWS Transform（エージェント型 AI の移行サービス）が、ブロックストレージの移行先として Amazon FSx for NetApp ONTAP をサポート（Public Preview）。
-> VMware 等のブロック/NFS ワークロードを、コンピュート・ネットワークと同じ移行ウェーブで FSxN へ直接移行。中間ストレージや別ツール不要に。
+> VMware 等のブロック/NFS ワークロードを、コンピュート・ネットワークと同じ移行ウェーブで FSx for ONTAP へ直接移行。中間ストレージや別ツール不要に。
 > ONTAP の管理方法を変えずに AWS へ。
 > https://aws.amazon.com/jp/about-aws/whats-new/2026/06/aws-transform-vmware-fsx-for-ontap-preview/
 
 案 B（英語）
 > AWS Transform for migrations now supports Amazon FSx for NetApp ONTAP as a storage destination (Public Preview).
 > Migrate block storage workloads (incl. VMware block/NFS datastores) to FSx for ONTAP within the same migration wave as compute & network — no intermediate storage, no separate tooling. Keep managing data the ONTAP way on AWS.
-> #FSxN #NetApp #AWS
+> #FSxforONTAP #NetApp #AWS
 
 ---
 
@@ -73,17 +73,17 @@
 > **AWS Transform が FSx for ONTAP を移行先としてサポート（Public Preview / 2026-06-16）**
 >
 > 概要
-> エージェント型 AI の移行サービス AWS Transform for migrations に、ブロックストレージワークロードの移行先として FSx for ONTAP が追加（従来の EBS に加えて選択可）。discovery → 計画 → 移行を自動化し、コンピュート・ネットワークと同一の移行ウェーブ内でブロックデータを FSxN ボリュームへ直接レプリケート。
+> エージェント型 AI の移行サービス AWS Transform for migrations に、ブロックストレージワークロードの移行先として FSx for ONTAP が追加（従来の EBS に加えて選択可）。discovery → 計画 → 移行を自動化し、コンピュート・ネットワークと同一の移行ウェーブ内でブロックデータを FSx for ONTAP ボリュームへ直接レプリケート。
 >
-> FSxN 視点での意義
-> - FSxN が VMware/ブロック系ワークロードの移行先（ランディングゾーン）として、AWS ネイティブの移行フローに正式に組み込まれた。
+> FSx for ONTAP 視点での意義
+> - FSx for ONTAP が VMware/ブロック系ワークロードの移行先（ランディングゾーン）として、AWS ネイティブの移行フローに正式に組み込まれた。
 > - 中間ストレージ・別建て移行ツールが不要になり、PoC〜本番移行の手数とコスト・リスクを削減。
 > - 「データの管理方法を変えずに AWS へ」という ONTAP の価値（Snapshot/SnapMirror/効率化/FlexClone 等の継続利用）を移行ストーリーに直結できる。
 > - discovery が RVTools / NetApp DII / Migration Evaluator / MPA に対応。NetApp DII 連携は提案時の特長。
 >
 > 確認事項・留意点
 > - Public Preview のため、対応リージョン・制約・GA 時期は要確認。本番採用判断には未使用。
-> - 移行先としての FSxN はブロック（iSCSI）想定。対象プロトコル・LUN/ボリューム構成の前提を案件ごとに確認。
+> - 移行先としての FSx for ONTAP はブロック（iSCSI）想定。対象プロトコル・LUN/ボリューム構成の前提を案件ごとに確認。
 > - コンソール上、FSx for ONTAP 宛先の選択は VMware migration の移行ウェーブ計画フロー内に出現。実機 UI はジョブ作成まで進めて確認予定。
 >
 > 一次情報

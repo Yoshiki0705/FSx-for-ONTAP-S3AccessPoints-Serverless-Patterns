@@ -138,7 +138,7 @@ export function CifsShareManager() {
             <div className="form-group">
               <label>{t("rmShareComment")}</label>
               <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Optional description" />
+                placeholder={t("csDescriptionPh")} />
             </div>
           </div>
           <button onClick={handleCreate} className="btn-primary">{t("rmCreate")}</button>

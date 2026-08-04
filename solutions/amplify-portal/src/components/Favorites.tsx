@@ -13,17 +13,31 @@ interface FavoriteItem {
 }
 
 /**
- * UX-1: Favorites / Pinned files.
+ * UX-1: Favorites / Pinned files and folders.
  *
  * Provides:
- * - FavoriteButton: ⭐ toggle button for any file in the listing
- * - FavoritesView: filtered view showing only pinned files
+ * - FavoriteButton: ⭐ toggle button for any file or folder in the listing
+ * - FavoritesView: filtered view showing only pinned entries
  *
  * Data model: DynamoDB "Favorite" table with owner-based auth.
  * Each user sees only their own favorites.
+ *
+ * Folders are stored in the same table and distinguished by a trailing slash
+ * on `fileKey` (e.g. "claims/2026/"), matching how the S3 Access Point
+ * reports common prefixes. No extra column is needed.
  */
 
-/** Toggle button to add/remove a file from favorites */
+/** True when the stored key refers to a folder (common prefix) rather than an object. */
+export function isFolderKey(key: string): boolean {
+  return key.endsWith("/");
+}
+
+/** Last path segment of a file or folder key, ignoring any trailing slash. */
+function baseName(key: string): string {
+  return key.split("/").filter(Boolean).pop() || key;
+}
+
+/** Toggle button to add/remove a file or folder from favorites */
 export function FavoriteButton({
   fileKey,
   fileName,
@@ -64,7 +78,7 @@ export function FavoriteButton({
       } else {
         const { data } = await client.models.Favorite.create({
           fileKey,
-          fileName: fileName || fileKey.split("/").pop() || fileKey,
+          fileName: fileName || baseName(fileKey),
           pinnedAt: new Date().toISOString(),
         });
         if (data) {
@@ -156,10 +170,17 @@ export function FavoritesView({
             <span
               className="favorite-file-name"
               onClick={() => onNavigate?.(fav.fileKey)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onNavigate?.(fav.fileKey);
+                }
+              }}
               role="button"
               tabIndex={0}
             >
-              📄 {fav.fileName || fav.fileKey}
+              {isFolderKey(fav.fileKey) ? "📁" : "📄"}{" "}
+              {fav.fileName || baseName(fav.fileKey)}
             </span>
             <span className="favorite-path" title={fav.fileKey}>
               {fav.fileKey}

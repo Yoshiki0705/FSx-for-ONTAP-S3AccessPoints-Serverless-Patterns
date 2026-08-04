@@ -52,7 +52,9 @@ export function FolderDownload({ currentPrefix }: FolderDownloadProps) {
     setResult(null);
 
     try {
-      const response = await (client.mutations as any).fileMutation({
+      // Routed to its own Lambda: ZIP assembly needs more memory and a longer
+      // timeout than the shared file-listing function.
+      const response = await (client.mutations as any).folderMutation({
         action: "downloadFolderAsZip",
         params: JSON.stringify({ prefix: currentPrefix }),
       });

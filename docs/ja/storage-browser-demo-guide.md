@@ -63,7 +63,7 @@ Storage Browser for S3 は Amplify UI の React コンポーネント（2024年1
 
 ### 方式 1: Amplify Auth (Cognito)
 
-用途: 顧客・パートナー向けポータル（ソーシャルログイン / エンタープライズ SSO）
+用途: パートナー・関係組織向けポータル（ソーシャルログイン / エンタープライズ SSO）
 
 **Note**: Amplify Storage カテゴリが S3 AP をネイティブサポートしていないため（FR-6）、現時点では方式 2 を推奨。
 

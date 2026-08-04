@@ -33,7 +33,7 @@
 | UC11 | retail-catalog | REALTIME | 商品カタログのリアルタイム更新 |
 | UC12 | media-vfx | HIGH_VOLUME | VFX レンダリングの大量処理 |
 | UC13 | education-research | BATCH | 研究データの定期分析 |
-| UC14 | insurance-claims | REALTIME | 保険請求の即時処理。顧客対応に影響 |
+| UC14 | insurance-claims | REALTIME | 保険請求の即時処理。エンドユーザー対応に影響 |
 | UC15 | defense-satellite | BATCH | 衛星画像の定期分析 |
 | UC16 | government-archives | BATCH | 公文書の定期アーカイブ処理 |
 | UC17 | smart-city-geospatial | REALTIME | 都市データのリアルタイム分析 |
@@ -48,7 +48,7 @@
 ### REALTIME を選択する場合
 - 処理の即時性が必要（秒〜分単位の SLA）
 - エラー発生時に即座に運用チームへの通知が必要
-- 顧客対応や安全性に直接影響するワークロード
+- エンドユーザー対応や安全性に直接影響するワークロード
 
 ### HIGH_VOLUME を選択する場合
 - 大量ファイル（1000+ ファイル/実行）の並列処理

@@ -1,0 +1,63 @@
+# Hardcoded user-facing strings in the portal that predate this check.
+#
+# The check fails only on lines absent from this file, so new drift is
+# blocked without demanding the whole backlog be cleared first. Removing a
+# line from here after adding a translation key is the intended direction;
+# adding one needs a reason.
+#
+# Regenerate with: python3 scripts/check_portal_drift.py --write-baseline
+#
+# Format: <path relative to solutions/amplify-portal>\t<collapsed line text>
+src/components/AthenaQueryPanel.tsx	-- ファイル一覧（サイズ降順 Top 20）<br/>
+src/components/AthenaQueryPanel.tsx	-- 最近 7 日間に更新されたファイル<br/>
+src/components/AthenaQueryPanel.tsx	-- 特定フォルダの合計サイズ<br/>
+src/components/AthenaQueryPanel.tsx	<li>AWS コンソール → Athena → ワークグループ → 「primary」を選択</li>
+src/components/AthenaQueryPanel.tsx	<li>「設定を編集」→「クエリ結果の場所」に S3 パスを入力（例: <code>s3:
+src/components/AthenaQueryPanel.tsx	<li>保存して、このパネルでクエリを再実行</li>
+src/components/AthenaQueryPanel.tsx	<summary style={{ cursor: "pointer" }}>📖 設定手順を見る</summary>
+src/components/AthenaQueryPanel.tsx	placeholder={"-- 例: SHOW TABLES IN default\n-- 例: SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10"}
+src/components/AthenaQueryPanel.tsx	{status === "SETUP_REQUIRED" && <strong>⚙️ セットアップが必要です</strong>}
+src/components/AthenaQueryPanel.tsx	※ テーブル名は Glue Crawler の設定に依存します。<code>SHOW TABLES IN default</code> で確認できます。
+src/components/AthenaQueryPanel.tsx	← Glue DB 名
+src/components/AthenaQueryPanel.tsx	または <code>portal-config.ts</code> の環境変数 <code>ATHENA_OUTPUT_LOCATION</code> に S3 パスを設定してリデプロイしてください。
+src/components/AthenaQueryPanel.tsx	📝 クエリ例を見る
+src/components/AthenaQueryPanel.tsx	📦 <strong>データベース名</strong>: Glue Data Catalog 上のデータベース名を入力します。Glue Crawler でカタログ化したテーブルが格納されているデータベースです。未作成の場合は <code>default</code> のまま、<code>SHOW DATABASES</code> で確認できます。
+src/components/VersionHistory.tsx	2つのスナップショットを選択して内容を比較する機能です（将来実装予定）。現在はスナップショット一覧を表示しています。
+src/components/VersionHistory.tsx	<strong>🔄 バージョン差分</strong>
+src/components/admin/FlexCacheManager.tsx	setError(e instanceof Error ? e.message : "作成に失敗しました");
+src/components/admin/FlexCacheManager.tsx	setError(e instanceof Error ? e.message : "削除に失敗しました");
+src/components/admin/FlexCacheManager.tsx	📊 メトリクス: ONTAP System Manager で確認可
+src/components/admin/SnaplockManager.tsx	<strong>ℹ️ SnapLock は新規ボリューム作成時にのみ有効化できます</strong>
+src/components/admin/SnaplockManager.tsx	SnapLock ボリュームが必要な場合は「ボリューム管理」から新規作成してください。
+src/components/admin/SnaplockManager.tsx	既存ボリュームに後からSnapLockを有効にすることはできません（ONTAP の仕様）。
+src/components/admin/SnapshotAdminManager.tsx	" 個別 Snapshot のロックは別途「Lock」ボタンから保持期間を指定して行います。\n\n" +
+src/components/admin/SnapshotAdminManager.tsx	"※ この操作はボリューム上の「ロック機能」を有効にするだけです。\n" +
+src/components/admin/SnapshotAdminManager.tsx	"⚠️ Tamperproof Snapshot ロックを有効化しますか？\n\n" +
+src/components/admin/SnapshotAdminManager.tsx	"【重要】この操作は Compliance ボリュームでは取り消せません。\n" +
+src/components/admin/SnapshotAdminManager.tsx	"有効化後にロックされた Snapshot は、保持期間が満了するまで\n" +
+src/components/admin/SnapshotAdminManager.tsx	"続行するには ENABLE と入力してください:",
+src/components/admin/SnapshotAdminManager.tsx	"誰も削除できなくなります（root / fsxadmin 含む）。\n\n" +
+src/components/admin/SnapshotAdminManager.tsx	setError("有効化がキャンセルされました（ENABLE と入力する必要があります）");
+src/components/admin/VolumeManager.tsx	<option value="D">日</option>
+src/components/admin/VolumeManager.tsx	<option value="M">ヶ月</option>
+src/components/admin/VolumeManager.tsx	<option value="P0D">制限なし</option>
+src/components/admin/VolumeManager.tsx	<option value="P10950D">30年</option>
+src/components/admin/VolumeManager.tsx	<option value="P180D">180日 (6ヶ月)</option>
+src/components/admin/VolumeManager.tsx	<option value="P1825D">5年</option>
+src/components/admin/VolumeManager.tsx	<option value="P1D">1日</option>
+src/components/admin/VolumeManager.tsx	<option value="P30D">30日 (1ヶ月)</option>
+src/components/admin/VolumeManager.tsx	<option value="P30D">30日</option>
+src/components/admin/VolumeManager.tsx	<option value="P3650D">10年</option>
+src/components/admin/VolumeManager.tsx	<option value="P365D">1年</option>
+src/components/admin/VolumeManager.tsx	<option value="P730D">2年</option>
+src/components/admin/VolumeManager.tsx	<option value="P7D">7日</option>
+src/components/admin/VolumeManager.tsx	<option value="P90D">90日 (3ヶ月)</option>
+src/components/admin/VolumeManager.tsx	<option value="P90D">90日</option>
+src/components/admin/VolumeManager.tsx	<option value="Y">年</option>
+src/components/admin/VolumeManager.tsx	<option value="custom">カスタム...</option>
+src/components/admin/VolumeManager.tsx	<small>0日〜30年</small>
+src/components/admin/VolumeManager.tsx	<small>1日〜30年</small>
+src/i18n/index.tsx	{ code: "ja", label: "日本語" },
+src/i18n/index.tsx	{ code: "ko", label: "한국어" },
+src/i18n/index.tsx	{ code: "zh-CN", label: "简体中文" },
+src/i18n/index.tsx	{ code: "zh-TW", label: "繁體中文" },

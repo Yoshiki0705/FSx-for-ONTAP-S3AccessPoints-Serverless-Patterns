@@ -305,7 +305,7 @@ export function SnaplockStatus() {
 
       {/* === Tab A: ONTAP SnapLock === */}
       {activePanel === "snaplock" && (
-        <div className="lock-panel" role="tabpanel" aria-label="ONTAP SnapLock">
+        <div className="lock-panel" role="tabpanel" aria-label={t("slkOntapAria")}>
           {ontapError ? (
             <div className="protection-info">
               <h3>📡 {t("lockOntapRequired")}</h3>
@@ -420,7 +420,7 @@ export function SnaplockStatus() {
 
       {/* === Tab B: S3 Object Lock === */}
       {activePanel === "s3lock" && (
-        <div className="lock-panel" role="tabpanel" aria-label="S3 Object Lock">
+        <div className="lock-panel" role="tabpanel" aria-label={t("slkS3Aria")}>
           {/* Status indicator */}
           <div className="status-indicator-large">
             <div className={`status-dot ${s3LockStatus?.objectLockEnabled ? "status-dot-active" : "status-dot-disabled"}`} />
@@ -533,7 +533,7 @@ export function SnaplockStatus() {
 
       {/* === Tab C: Tamperproof Snapshot === */}
       {activePanel === "tamperproof" && (
-        <div className="lock-panel" role="tabpanel" aria-label="Tamperproof Snapshot">
+        <div className="lock-panel" role="tabpanel" aria-label={t("slkTamperAria")}>
           {ontapError ? (
             <div className="protection-info">
               <h3>📡 {t("lockOntapRequired")}</h3>

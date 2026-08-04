@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
 
@@ -12,10 +13,18 @@ const TAG_COLORS = ["#e3f2fd", "#f3e5f5", "#e8f5e9", "#fff3e0", "#fce4ec", "#e0f
  * Allows users to add custom tags (e.g., "Project-X", "Urgent", "Review")
  * to any file. Tags are stored per-user (owner-based auth).
  */
-export function FileTagsEditor({ fileKey }: { fileKey: string }) {
+export function FileTagsEditor({
+  fileKey,
+  onChange,
+}: {
+  fileKey: string;
+  /** Called after a tag is added or removed so the row badges can refresh. */
+  onChange?: () => void;
+}) {
   const [tags, setTags] = useState<{ id: string; tag: string; color: string }[]>([]);
   const [newTag, setNewTag] = useState("");
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     async function loadTags() {
@@ -47,6 +56,7 @@ export function FileTagsEditor({ fileKey }: { fileKey: string }) {
       if (data) {
         setTags((prev) => [...prev, { id: data.id, tag: data.tag, color: data.color || color }]);
         setNewTag("");
+        onChange?.();
       }
     } catch (err) {
       console.error("Add tag error:", err);
@@ -58,6 +68,7 @@ export function FileTagsEditor({ fileKey }: { fileKey: string }) {
   const removeTag = async (id: string) => {
     await client.models.FileTag.delete({ id });
     setTags((prev) => prev.filter((t) => t.id !== id));
+    onChange?.();
   };
 
   return (
@@ -76,7 +87,7 @@ export function FileTagsEditor({ fileKey }: { fileKey: string }) {
           value={newTag}
           onChange={(e) => setNewTag(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addTag()}
-          placeholder="Add tag..."
+          placeholder={t("tagsPlaceholder")}
           className="tag-input"
           disabled={loading}
         />
@@ -89,7 +100,14 @@ export function FileTagsEditor({ fileKey }: { fileKey: string }) {
 }
 
 /** Inline tag display (read-only badges) for file listing */
-export function FileTagsBadges({ fileKey }: { fileKey: string }) {
+export function FileTagsBadges({
+  fileKey,
+  refreshKey = 0,
+}: {
+  fileKey: string;
+  /** Bumped by the caller after an edit so the badges reload. */
+  refreshKey?: number;
+}) {
   const [tags, setTags] = useState<{ tag: string; color: string }[]>([]);
 
   useEffect(() => {
@@ -106,7 +124,7 @@ export function FileTagsBadges({ fileKey }: { fileKey: string }) {
       }
     }
     load();
-  }, [fileKey]);
+  }, [fileKey, refreshKey]);
 
   if (tags.length === 0) return null;
 

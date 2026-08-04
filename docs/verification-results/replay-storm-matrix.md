@@ -118,4 +118,4 @@
 - Out-of-order distance (OOD) は未計測（イベントタイムスタンプ相関が必要）
 - ONTAP Persistent Store の実使用量は未計測（ONTAP CLI アクセスが必要）
 
-> **Governance Caveat**: これらの結果は特定のテスト環境からの sizing reference であり、service limit ではありません。本番環境では顧客固有のワークロードプロファイルで検証してください。
+> **Governance Caveat**: これらの結果は特定のテスト環境からの sizing reference であり、service limit ではありません。本番環境では導入先固有のワークロードプロファイルで検証してください。

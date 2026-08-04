@@ -110,7 +110,7 @@ Not all bucket-level features or integration patterns apply directly:
 - Bucket lifecycle policies
 - Bucket versioning
 - Object Lock (on the S3AP itself)
-- Presigned URLs (**Listed as "Not supported"** — but observed working; see [Presigned URL Support](#presigned-url-support) for AWS Support clarification)
+- Presigned URLs (**Listed as "Not supported"** — but observed working; AWS ドキュメント修正提出済・未公開。ONTAP バージョン要件を含む詳細は [Presigned URL Support](#presigned-url-support) を参照)
 
 ### WORM / Immutable Storage の代替
 
@@ -222,7 +222,7 @@ FSx for ONTAP S3 AP (READ) → Lambda 処理 → Standard S3 Bucket (WRITE + Ann
 
 ## Presigned URL Support
 
-> ⚠️ **Production Warning**: AWS Support explicitly states that operations marked "Not supported" should NOT be relied upon for production workloads, even when they return success today. Design alternatives for any workflow that requires presigned URL access to FSx for ONTAP S3 Access Points.
+> ⚠️ **Production Warning**: 公開されている AWS 互換性テーブルは現時点でも `Presign — Not supported` のままです。AWS サポートは後続の回答で、ONTAP レベルでは presigned URL がサポートされている（バージョン要件あり）ことを確認し、ドキュメント修正を提出済みですが、**修正はまだ公開されていません**。公開ドキュメントが更新されるまでは、presigned URL に依存する本番ワークロードには代替手段を設計してください（下記「AWS サポート追加確認」参照）。
 
 ### Status: Listed as "Not supported" — but observed working
 
@@ -243,6 +243,20 @@ AWS ドキュメントの互換性テーブルでは `Presign — Not supported`
 | PutObject | 未検証 | — | GetObject と同じ原理で動作する可能性あり |
 | HeadObject | 未検証 | — | 同上 |
 
+### AWS サポート追加確認（ONTAP バージョン要件）
+
+その後の AWS サポート回答で、NetApp KB を根拠として **ONTAP S3 は presigned URL をサポートしている**ことが確認されました。ただしサポート範囲は ONTAP バージョンに依存します。
+
+| ONTAP バージョン | Presigned URL の署名バージョン |
+|-----------------|-------------------------------|
+| 9.16.1 以降 | v4 + v2 presigned URL |
+| 9.11.1 以降 | v4 presigned URL のみ |
+| 9.11.1 未満 | presigned URL 非対応 |
+
+- NetApp は可能な限り v4 署名を使用することを推奨しています
+- 本リポジトリの検証環境は ONTAP 9.17.1P6 のため、両方の閾値を満たします
+- この確認は **ONTAP レイヤー**の挙動に関するものです。FSx for ONTAP S3 Access Points 経由の presigned URL について AWS 側の互換性テーブルが更新されるまでは、下記の本番利用に関する注意が引き続き有効です
+
 ### ⚠️ 本番利用に関する注意
 
 AWS サポートの明確な指針:
@@ -261,7 +275,7 @@ AWS サポートの明確な指針:
 |---------|--------|----------|
 | GetObject, PutObject, ListObjectsV2 | **Supported** | 自由に構築可能 |
 | Conditional writes (If-None-Match) | **Blocked** | 使用不可（NotImplemented を返す） |
-| Presigned URLs | **Not supported (doc)** | 依存しない。代替手段を設計すること |
+| Presigned URLs | **Not supported (doc) / 修正提出済・未公開** | 公開ドキュメント修正まで依存しない。代替手段を設計すること（ONTAP 9.11.1 以降で v4 をサポート） |
 | ListObjectVersions | **Not supported (doc)** | ListObjectsV2 を使用すること |
 
 ### Presigned URL 代替手段
@@ -280,14 +294,19 @@ Presigned URL に依存せずに時間制限付きファイルアクセスを実
 AWS サポートは FSx for ONTAP サービスチームにドキュメント改善をエスカレーション済み:
 1. "Presign" 行の削除または再構成（API ではないため）
 2. "Not supported + hard-blocked"（エラーを返す）と "Not supported + may incidentally work"（保証なし）の区別を明確化
+3. ONTAP バージョン別の presigned URL サポート状況（9.11.1 以降で v4、9.16.1 以降で v2）の反映
 
-> **Content was rephrased for compliance with licensing restrictions. Source: AWS Support correspondence (May 2026).**
+**現在のステータス**: AWS サポートはドキュメント修正を社内ドキュメントチームに提出済みで、対応が進行中です。ただし**公開ドキュメントへの反映はまだ完了していません**。公開テーブルが更新された時点で本セクションを更新してください。
+
+> **Content was rephrased for compliance with licensing restrictions. Sources: AWS Support correspondence (May–July 2026) and NetApp KB articles linked below.**
 
 ### AWS Documentation Reference
 
 - [Access point compatibility — FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
-  - 互換性テーブルに `Presign — Not supported` と記載（ドキュメント改善エスカレーション中）
+  - 互換性テーブルに `Presign — Not supported` と記載（ドキュメント修正提出済・未公開）
 - [re:Post: FSx for ONTAP S3 Access Points — Presigned URL behavior clarification](https://repost.aws/questions/QUtD1NGAd6RWGIxGlBRX4xpw)
+- [NetApp KB: What version of ONTAP support pre-signed URLs for S3 bucket](https://kb.netapp.com/on-prem/ontap/da/S3/S3-KBs/What_version_of_ONTAP_support_pre-signed_URLs_for_S3_bucket)
+- [NetApp KB: Does ONTAP S3 support AWSv2 signatures?](https://kb.netapp.com/Advice_and_Troubleshooting/Data_Storage_Software/ONTAP_OS/Does_ONTAP_S3_support_AWSv2_signatures)
 
 ---
 
