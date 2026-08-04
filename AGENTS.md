@@ -351,7 +351,7 @@ All README and documentation files follow these UX principles:
 | `SNSPublishMessagePolicy` with TopicArn | Use `TopicName: !GetAtt Topic.TopicName` |
 | `Handler: index.handler` but file is `handler.py` | Use `Handler: handler.handler` |
 | `DefinitionBody` inline in SAM StateMachine | Use `DefinitionUri: statemachine/workflow.asl.json` |
-| `S3ObjectStorageMode: REFERENCE` on `AWS::Serverless::Function` silently has no effect | SAM's `S3Location` accepts only `Bucket`/`Key`/`Version` and drops anything else during transform, so `sam validate`/`sam deploy` succeed but the function runs in `COPY` mode (confirmed with AWS Support). CloudFormation is a documented supported method, so use a native `AWS::Lambda::Function` when `REFERENCE` mode is required. See docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md FR-7 |
+| `S3ObjectStorageMode: REFERENCE` on `AWS::Serverless::Function` silently has no effect | SAM's `S3Location` accepts only `Bucket`/`Key`/`Version` and drops anything else during transform, so `sam validate`/`sam deploy` succeed but the function runs in `COPY` mode (confirmed with AWS Support). Use a native `AWS::Lambda::Function` with `Code.S3ObjectStorageMode` for functions needing `REFERENCE`; mixing `AWS::Serverless::` and native `AWS::` resources in one SAM template is confirmed supported. See docs/aws-feature-requests/lambda-healthomics-s3ap-gaps.md FR-7 |
 | CloudFormation `validate-template` fails for large templates | Use S3 URL upload for templates >51KB |
 | Internet-origin S3AP from VPC Lambda | Use VPC-external Lambda or NAT Gateway |
 | S3 Gateway VPC Endpoint + Internet-origin S3AP | Does NOT work — use NAT or VPC-external |
