@@ -1118,6 +1118,29 @@ arpResponseSweepNote: "Les blocages se lèvent d'eux-mêmes à l'échéance. Pou
   aqDatabaseAria: "Nom de la base de données",
   aqDatabaseHint: "Nom de la base de données dans Glue Data Catalog. Indiquez celle créée par Glue Crawler (généralement default).",
   aqSqlAria: "Requête SQL",
+  aqDatabaseArrow: "← Nom de la base Glue",
+  aqDatabaseExplain:
+    "Saisissez le nom de la base dans le Glue Data Catalog, celle qui contient les tables cataloguées par le Glue Crawler. Si vous n'en avez pas créé, laissez {db} et vérifiez avec {cmd}.",
+  aqGuidanceBody:
+    "Cataloguez les fichiers sur FSx for ONTAP avec un Glue Crawler, puis analysez-les en SQL depuis cet écran.",
+  aqExamplesToggle: "Afficher des exemples de requêtes",
+  aqExampleTopSizes: "Les 20 fichiers les plus volumineux, par taille décroissante",
+  aqExampleFolderTotal: "Taille totale d'un dossier",
+  aqExampleRecent: "Fichiers modifiés au cours des 7 derniers jours",
+  aqExamplesNote:
+    "Les noms de tables dépendent de la configuration de votre Glue Crawler. Vérifiez avec {cmd}.",
+  aqSqlPlaceholder:
+    "-- exemple : SHOW TABLES IN default\n-- exemple : SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10",
+  aqQueryFailed: "L'exécution de la requête a échoué",
+  aqRowsReturned: "{count} lignes renvoyées",
+  aqSetupRequired: "Configuration requise",
+  aqSetupToggle: "Afficher les étapes de configuration",
+  aqSetupStep1: "Console AWS → Athena → Groupes de travail → sélectionnez « primary »",
+  aqSetupStep2:
+    "Modifier les paramètres → saisissez un chemin S3 dans « Emplacement des résultats de requête » (par exemple {path})",
+  aqSetupStep3: "Enregistrez, puis relancez la requête depuis cet écran",
+  aqSetupEnvHint:
+    "Vous pouvez aussi définir un chemin S3 dans la variable d'environnement {env} de {file}, puis redéployer.",
   fpvClickDownload: "Cliquez pour télécharger ou sélectionner pour le traitement IA",
   fpvClickPdf: "Cliquez pour prévisualiser le PDF",
   fpvClickDoc: "Cliquez pour prévisualiser le document",

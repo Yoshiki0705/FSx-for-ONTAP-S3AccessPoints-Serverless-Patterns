@@ -1118,6 +1118,27 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   aqDatabaseAria: "数据库名称",
   aqDatabaseHint: "Glue Data Catalog 中的数据库名称。指定 Glue Crawler 创建的数据库（通常是 default）。",
   aqSqlAria: "SQL 查询",
+  aqDatabaseArrow: "← Glue 数据库名称",
+  aqDatabaseExplain:
+    "输入 Glue Data Catalog 中的数据库名称，即存放 Glue Crawler 已编目表的数据库。如果尚未创建，保留 {db} 并使用 {cmd} 查看。",
+  aqGuidanceBody:
+    "用 Glue Crawler 为 FSx for ONTAP 上的文件编目后，即可在此处使用 SQL 进行分析。",
+  aqExamplesToggle: "查看查询示例",
+  aqExampleTopSizes: "按大小降序排列的前 20 个文件",
+  aqExampleFolderTotal: "指定文件夹的总大小",
+  aqExampleRecent: "最近 7 天内修改的文件",
+  aqExamplesNote: "表名取决于 Glue Crawler 的配置，可使用 {cmd} 查看。",
+  aqSqlPlaceholder:
+    "-- 示例: SHOW TABLES IN default\n-- 示例: SELECT key, size FROM default.s3_objects LIMIT 20\nSELECT * FROM default.my_table LIMIT 10",
+  aqQueryFailed: "查询执行失败",
+  aqRowsReturned: "已返回 {count} 行",
+  aqSetupRequired: "需要先完成设置",
+  aqSetupToggle: "查看设置步骤",
+  aqSetupStep1: "AWS 控制台 → Athena → 工作组 → 选择 \"primary\"",
+  aqSetupStep2: "编辑设置 → 在\"查询结果位置\"中输入 S3 路径（例如 {path}）",
+  aqSetupStep3: "保存后在此面板中重新运行查询",
+  aqSetupEnvHint:
+    "或者在 {file} 的环境变量 {env} 中设置 S3 路径并重新部署。",
   fpvClickDownload: "点击下载或选择用于 AI 处理",
   fpvClickPdf: "点击预览 PDF",
   fpvClickDoc: "点击预览文档",
