@@ -101,10 +101,56 @@ graph TD
 
 ### SnapMirror API Methods for OntapClient
 
-- `break_snapmirror(relationship_uuid)` — DR 切り替え
-- `resync_snapmirror(relationship_uuid)` — 正常復帰
-- `get_snapmirror_status(relationship_uuid)` — 状態確認
-- `list_snapmirror_relationships(svm_name)` — 関係一覧
+**状況が変わりました**: これは調査項目ではなく、実証済みコードの移設作業になりました。
+
+`solutions/amplify-portal/functions/resource-management/handler.py` に 9 アクションが実装済みで、REST のリクエスト/レスポンス形状は実クラスタで動作確認できています。一方 `shared/ontap_client.py` には SnapMirror 関連の実装が 1 つもありません（`grep -c snapmirror` → 0）。つまり残っているのは「形状を調べる」ことではなく「ハンドラから共有クライアントへ引き上げる」ことです。
+
+| 計画されていたメソッド | 実装済みアクション | 実証済みエンドポイント |
+|---|---|---|
+| `break_snapmirror` | `breakSnapmirror` | `PATCH /snapmirror/relationships/{uuid}` |
+| `resync_snapmirror` | `resyncSnapmirror` | `PATCH /snapmirror/relationships/{uuid}` |
+| `get_snapmirror_status` | `getSnapmirrorTransfers` | `GET /snapmirror/relationships/{uuid}/transfers` |
+| `list_snapmirror_relationships` | `listSnapmirrorRelationships` | `GET /snapmirror/relationships` |
+
+ハンドラ側にはこれ以外に `quiesceSnapmirror` / `resumeSnapmirror` / `updateSnapmirrorNow` / `abortSnapmirrorTransfer` / `deleteSnapmirror` もあります。共有クライアントへ移す際は、この 9 アクション全体を対象にしたほうが、一部だけ移して二重管理になるより安全です。
+
+📋 残作業: `shared/ontap_client.py` にメソッドを追加し、ハンドラ側をそれを呼ぶよう置き換える（振る舞いを変えない移設なので、既存の 191 テストが回帰検出に使えます）
+
+---
+
+## ✅ ファイルポータル: 封じ込めの有効期限とマルチ SVM 対応（完了）
+
+ARP/AI の封じ込め操作について、以下が実装・ライブ検証済みです。
+
+| 項目 | 状況 | 備考 |
+|---|:---:|---|
+| ブロックの有効期限とスイープ | ✅ | 既定 24 時間、1 時間〜7 日、または明示的な無期限 |
+| ポータル管理外ブロックの保護 | ✅ | 台帳にない行は自動解除の対象外（`managedByPortal: false` として表示） |
+| マルチ SVM ファンアウト | ✅ | `svms` で明示指定、`allSvms` でクラスタに問い合わせ。部分失敗は SVM 単位で報告 |
+| ドキュメント/コード乖離の CI ガード | ✅ | `scripts/check_portal_drift.py`（validators ワークフロー） |
+| ライブ検証用プローブ | ✅ | `scripts/portal-probes/` |
+
+### この作業で見つかった実装の問題（すべて修正済み）
+
+ユニットテストではなくライブ検証で見つかったものです。設計判断の記録として残します。
+
+- 共有モジュールが Lambda にパッケージされておらず、封じ込めは**一度も**動作していませんでした。エラー文字列が `4` だったため HTTP ステータスと誤読され、原因の特定が遅れました
+- SMB ブロックの name-mapping index が 1 固定で、2 人目をブロックできませんでした（ONTAP は素の 409 を返すだけ）
+- 台帳（DynamoDB）への書き込みが Lambda のタイムアウトまでハングし、**ONTAP が受理済みのブロックが失敗として報告されて**いました。VPC サブネットのデフォルトルートが Internet Gateway 向きで、Lambda ENI にパブリック IP がないためです
+
+### 残っている課題
+
+| 項目 | 優先度 | 内容 |
+|---|:---:|---|
+| 📋 封じ込め操作の監査主体 | 高 | `createdBy` が `event.userId` を信頼しています。AppSync の Cognito identity から取得すべきです（現状は呼び出し側の自己申告） |
+| 📋 スイープ失敗の通知 | 高 | 現状 CloudWatch Logs に残るだけです。SVM 到達不能で解除が継続的に失敗しても誰も気づきません |
+| 📋 NFS ブロックの index 固定 | 中 | `block_nfs_ip` は `rule_index=1` 固定のままです。export-policy は挿入セマンティクスなので 409 にはなりませんが、既存ルールを押し下げ続けます |
+| 📋 `ttlHours` 上限の運用的な根拠 | 低 | 90 日は恣意的な値です。インシデント対応の実運用に合わせるべきです |
+| 📋 i18n 直書き文字列 53 件 | 中 | `scripts/portal-drift-baseline.txt` に記録済み。8 言語のうち 7 言語で見えないため、キー化が必要です。新規発生は CI が阻止します |
+
+### 運用上の注意
+
+`vpcId` を設定する場合、`vpcRouteTableIds` は**必須**です（未設定なら synth が失敗します）。DynamoDB ゲートウェイエンドポイントがないと、封じ込めは動作する一方で有効期限が一切動きません。詳細は [Portal Getting Started](solutions/amplify-portal/docs/GETTING-STARTED.md) を参照してください。
 
 ---
 
@@ -114,3 +160,6 @@ graph TD
 - [AD-Joined SVM S3 AP Prerequisites](docs/en/ad-joined-svm-s3ap-prerequisites.md)
 - [S3AP Compatibility Notes](docs/s3ap-compatibility-notes.md)
 - [Incident Response Playbook](docs/incident-response-playbook.md)
+- [ARP/AI 封じ込めデモガイド (JA)](docs/ja/arp-ai-isolation-demo-guide.md) / [EN](docs/en/arp-ai-isolation-demo-guide.md)
+- [ポータル認可モデル (JA)](docs/ja/portal-authorization-model.md) / [EN](docs/en/portal-authorization-model.md)
+- [ライブ検証プローブ](scripts/portal-probes/README.md)
