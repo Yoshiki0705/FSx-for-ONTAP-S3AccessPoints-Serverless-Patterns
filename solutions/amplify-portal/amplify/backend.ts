@@ -110,6 +110,24 @@ const vpcConfig = config.vpcId
  * The handler degrades rather than failing when the ledger is unreachable, so
  * leaving this unset costs the expiry feature, not the ability to contain.
  */
+if (vpcConfig && config.vpcRouteTableIds.length === 0 && !config.allowNoBlockExpiry) {
+  // Fail at synth rather than deploying something that looks complete. Without a
+  // path to DynamoDB, containment still blocks but nothing expires, and that is
+  // visible only to someone reading the response of an individual action — not
+  // to whoever is relying on blocks lifting themselves.
+  throw new Error(
+    "vpcRouteTableIds is required when vpcId is set, so the VPC functions can reach " +
+      "the containment block ledger over a DynamoDB gateway endpoint. Without it, " +
+      "blocks are placed on the cluster but never expire.\n\n" +
+      "  Find the route tables for your subnets:\n" +
+      '    aws ec2 describe-route-tables --filters "Name=association.subnet-id,Values=<subnet-id>" \\\n' +
+      '      --query "RouteTables[].RouteTableId" --output text\n\n' +
+      "  Then set vpcRouteTableIds in portal-config.ts (or the environment variable\n" +
+      "  your configuration reads it from).\n\n" +
+      "  To deploy without block expiry on purpose, set allowNoBlockExpiry."
+  );
+}
+
 if (vpcConfig && config.vpcRouteTableIds.length > 0) {
   new ec2.CfnVPCEndpoint(dataStack, "DynamoDbGatewayEndpoint", {
     vpcId: config.vpcId,

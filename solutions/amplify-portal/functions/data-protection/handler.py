@@ -150,22 +150,30 @@ def handler(event, context):
         elif action == "updateRetentionPolicy":
             return _update_retention_policy(http, headers, event)
         # ARP/AI Response Actions (isolation/containment)
+        #
+        # Wrapped in _fan_out so an action can target several SVMs in one call. A
+        # compromised account is usually reachable on every SVM that trusts the
+        # same directory, and doing those one at a time leaves the others open
+        # for as long as it takes. Fan-out only happens when the caller passes
+        # `svms` or `allSvms`.
         elif action == "blockSmbUser":
-            return _arp_block_smb_user(event)
+            return _fan_out(event, _arp_block_smb_user, http, headers, gated=True)
         elif action == "unblockSmbUser":
-            return _arp_unblock_smb_user(event)
+            return _fan_out(event, _arp_unblock_smb_user, http, headers)
         elif action == "blockNfsIp":
-            return _arp_block_nfs_ip(event)
+            return _fan_out(event, _arp_block_nfs_ip, http, headers, gated=True)
         elif action == "unblockNfsIp":
-            return _arp_unblock_nfs_ip(event)
+            return _fan_out(event, _arp_unblock_nfs_ip, http, headers)
         elif action == "containThreat":
-            return _arp_contain_threat(event)
+            return _fan_out(event, _arp_contain_threat, http, headers, gated=True)
+        elif action == "listSvms":
+            return _list_svms(http, headers, event)
         elif action == "listActiveBlocks":
-            return _arp_list_active_blocks(event)
+            return _list_active_blocks_across(event, http, headers)
         elif action == "sweepExpiredBlocks":
             return _sweep_expired_blocks(event)
         elif action == "disconnectSessions":
-            return _arp_disconnect_sessions(event)
+            return _fan_out(event, _arp_disconnect_sessions, http, headers, gated=True)
         else:
             return {"error": f"Unknown action: {action}"}
 
@@ -870,6 +878,112 @@ def _mark_lifted(block_id: str, reason: str) -> None:
         logger.error(f"ledger update failed for {block_id}: {type(e).__name__}: {e}")
 
 
+def _list_svms(http, headers, event):
+    """List the SVMs on the cluster, for choosing containment targets.
+
+    A compromised account is usually reachable on every SVM that trusts the same
+    directory, so containing it on one SVM is often only part of the job. The
+    portal cannot decide that on the operator's behalf, but it can show them the
+    choice.
+    """
+    try:
+        data = _ontap_get(http, headers, "/svm/svms", "fields=name,state&max_records=200")
+        svms = [{"name": r.get("name"), "state": r.get("state")} for r in data.get("records", []) if r.get("name")]
+        return {"success": True, "svms": svms, "total": len(svms), "error": None}
+    except Exception as e:
+        logger.error(f"list_svms failed: {type(e).__name__}: {e}")
+        return {
+            "success": False,
+            "svms": [],
+            "total": 0,
+            "error": f"Failed to list SVMs: {type(e).__name__}",
+        }
+
+
+def _svm_targets(event, http, headers) -> tuple[list[str] | None, dict | None]:
+    """Resolve which SVMs an action should act on.
+
+    Returns (targets, error). Fan-out is never implicit: an operator who names
+    one SVM gets one SVM. `svms` names them explicitly, `allSvms` asks the
+    cluster. Widening the blast radius has to be something the caller asked for.
+    """
+    if event.get("allSvms"):
+        listing = _list_svms(http, headers, event)
+        if not listing["success"]:
+            return None, {"success": False, "error": listing["error"]}
+        # Only SVMs that are actually serving data. Blocking on a stopped SVM
+        # would report a containment that is not protecting anything.
+        names = [s["name"] for s in listing["svms"] if s.get("state") == "running"]
+        if not names:
+            return None, {"success": False, "error": "No running SVMs found on the cluster"}
+        return names, None
+
+    requested = event.get("svms")
+    if requested is not None:
+        if not isinstance(requested, list) or not requested:
+            return None, {"success": False, "error": "svms must be a non-empty list of SVM names"}
+        names = []
+        for entry in requested:
+            if not isinstance(entry, str) or not entry.strip():
+                return None, {"success": False, "error": "svms must contain non-empty strings"}
+            names.append(entry.strip())
+        # Preserve order but drop duplicates, so a repeated name does not turn
+        # into a second block attempt reported as "already blocked".
+        return list(dict.fromkeys(names)), None
+
+    return [event.get("svm", SVM_NAME)], None
+
+
+def _fan_out(event, single, http, headers, gated: bool = False):
+    """Run a single-SVM containment action across the resolved targets.
+
+    Partial results are reported as such. Claiming overall success would hide a
+    gap in containment; claiming overall failure would hide the SVMs where the
+    block did land and now needs lifting. Both readings lead an operator to the
+    wrong next action, so the response names each SVM and its outcome.
+
+    Gated actions are checked once here rather than once per SVM, so a missing
+    confirmation returns the reason instead of a list of identical refusals.
+    """
+    if gated:
+        gate = _require_confirm(event)
+        if gate:
+            return gate
+
+    targets, error = _svm_targets(event, http, headers)
+    if error:
+        return error
+
+    if len(targets) == 1:
+        return single({**event, "svm": targets[0]})
+
+    results = {}
+    for svm in targets:
+        try:
+            results[svm] = single({**event, "svm": svm})
+        except Exception as e:
+            # A raise here would abandon the SVMs not yet visited and lose the
+            # record of the ones already done.
+            logger.error(f"fan-out to {svm} raised: {type(e).__name__}: {e}")
+            results[svm] = {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    succeeded = sorted(s for s, r in results.items() if r.get("success"))
+    failed = sorted(s for s, r in results.items() if not r.get("success"))
+
+    return {
+        "success": not failed,
+        "action": next((r.get("action") for r in results.values() if r.get("action")), event.get("action")),
+        "fannedOut": True,
+        "targets": targets,
+        "succeededOn": succeeded,
+        "failedOn": failed,
+        "perSvm": results,
+        "error": None
+        if not failed
+        else f"Succeeded on {len(succeeded)} of {len(targets)} SVMs; failed on: {', '.join(failed)}",
+    }
+
+
 def _require_confirm(event):
     """Return an error dict unless the caller passed confirm=true.
 
@@ -1164,6 +1278,48 @@ def _arp_list_active_blocks(event):
             "total": 0,
             "error": f"Failed to retrieve active blocks: {type(e).__name__}: {e}",
         }
+
+
+def _list_active_blocks_across(event, http, headers):
+    """List active blocks on one SVM or across several.
+
+    Blocking can fan out, so the listing has to as well. A block placed on an SVM
+    the listing does not cover is invisible, and an invisible block cannot be
+    lifted from the portal — the same trap as reporting an empty list when the
+    query failed.
+
+    Each entry carries its own `svm`, because the unblock call needs to know
+    where the block actually is.
+    """
+    targets, error = _svm_targets(event, http, headers)
+    if error:
+        return {"success": False, "smbBlocks": [], "nfsBlocks": [], "total": 0, **error}
+
+    if len(targets) == 1:
+        return _arp_list_active_blocks({**event, "svm": targets[0]})
+
+    smb, nfs, failures = [], [], []
+    for svm in targets:
+        result = _arp_list_active_blocks({**event, "svm": svm})
+        if not result.get("success"):
+            failures.append(f"{svm}: {result.get('error')}")
+            continue
+        for entry in result.get("smbBlocks", []):
+            smb.append({**entry, "svm": svm})
+        for entry in result.get("nfsBlocks", []):
+            nfs.append({**entry, "svm": svm})
+
+    return {
+        # A listing that silently skipped an SVM would let a block hide there.
+        "success": not failures,
+        "action": "list_active_blocks",
+        "svm": ", ".join(targets),
+        "svms": targets,
+        "smbBlocks": smb,
+        "nfsBlocks": nfs,
+        "total": len(smb) + len(nfs),
+        "error": None if not failures else "; ".join(failures),
+    }
 
 
 def _ledger_rows(status: str = "active") -> list[dict]:
