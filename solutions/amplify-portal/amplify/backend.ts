@@ -402,9 +402,11 @@ api.addLambdaDataSource("ArpResponseLambdaDataSource", arpResponseFunction);
 // Uses functions/resource-management/handler.py
 // Provides: Volume CRUD, Export Policy, QoS Policy, SnapLock, Quota, Qtree,
 // CIFS share, ARP admin, snapshot policy, SMB local users/groups, name mapping,
-// FlexCache and FlexClone management, plus read-only SnapMirror, Vscan and
-// FPolicy status. All ONTAP access is HTTPS to the management endpoint using
-// the Secrets Manager credential, so no extra AWS permissions are required.
+// FlexCache and FlexClone management, SnapMirror lifecycle (transfer, quiesce,
+// resume, break, resync, delete), Vscan and FPolicy policy management, cluster
+// and SVM peering, and cluster inventory. All ONTAP access is HTTPS to the
+// management endpoint using the Secrets Manager credential, so no extra AWS
+// permissions are required.
 const resourceMgmtRole = new iam.Role(dataStack, "ResourceMgmtLambdaRole", {
   assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
   managedPolicies: [
@@ -454,7 +456,7 @@ const resourceMgmtFunction = new lambda.Function(
     memorySize: 256,
     timeout: Duration.seconds(60),
     description:
-      "Resource management — Volume/ExportPolicy/QoS/SnapLock/Quota/Qtree/CIFS/ARP/Snapshot/LocalUser/NameMapping/FlexCache/FlexClone CRUD plus read-only SnapMirror/Vscan/FPolicy (VPC Lambda, ONTAP REST + S3)",
+      "Resource management — Volume/ExportPolicy/QoS/SnapLock/Quota/Qtree/CIFS/ARP/Snapshot/LocalUser/NameMapping/FlexCache/FlexClone/SnapMirror/Vscan/FPolicy/Peering CRUD and cluster inventory (VPC Lambda, ONTAP REST + S3)",
     ...(vpcConfig && { vpc: vpcConfig.vpc, securityGroups: vpcConfig.securityGroups, vpcSubnets: vpcConfig.vpcSubnets }),
   }
 );
