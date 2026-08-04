@@ -39,6 +39,16 @@ export interface PortalConfig {
   vpcRouteTableIds: string[];
   // Escape hatch: deploy into a VPC with no block expiry, on purpose.
   allowNoBlockExpiry: boolean;
+
+  // Bucket backing the S3 Object Lock panel. Empty disables that panel.
+  s3ObjectLockBucket: string;
+
+  // Containment block expiry. All three are read by backend.ts and passed to the
+  // ARP function; leaving one out puts the string "undefined" in its environment
+  // and the function then fails on import. tests/infrastructure guards this.
+  defaultBlockTtlHours: number;
+  maxBlockTtlHours: number;
+  blockSweepIntervalMinutes: number;
   // Notified when the containment sweep fails or stops running. Empty = nobody.
   alarmEmail: string;
 
@@ -164,6 +174,53 @@ export const config: PortalConfig = {
    */
   vpcRouteTableIds: [],
   allowNoBlockExpiry: false,
+
+  /**
+   * Bucket used by the S3 Object Lock panel in Data Protection.
+   *
+   * Left empty, the panel reports that no bucket is configured rather than
+   * failing — the handler already treats an empty value as "feature off".
+   */
+  s3ObjectLockBucket: "",
+
+  /**
+   * Expiry applied to a containment block when the caller does not name one.
+   *
+   * A bounded default matters more than a long one. An expiry that has to be
+   * requested is an expiry that gets forgotten, and a block nobody remembers is
+   * indistinguishable from an outage.
+   */
+  defaultBlockTtlHours: 24,
+
+  /**
+   * Longest expiry a single request may ask for. 0 removes the ceiling.
+   *
+   * 30 days, chosen on which instrument is right rather than which number is
+   * safe. An ONTAP deny rule covers one SVM; a principal that must stay locked
+   * out longer than an investigation runs should be disabled in the directory,
+   * which covers the whole estate and is visible to whoever owns the account
+   * lifecycle.
+   *
+   * Note what this does not catch: someone typing 90 meaning days gets 90 hours,
+   * and no ceiling detects that. What catches it is `expiresAt` in the response.
+   * Raise this if your incident practice needs longer holds, or set 0 and bound
+   * it elsewhere.
+   *
+   * Must be at or above defaultBlockTtlHours, or synth fails — otherwise every
+   * block that did not name its own expiry would be refused for exceeding a
+   * limit the caller never set.
+   */
+  maxBlockTtlHours: 24 * 30,
+
+  /**
+   * How often the sweep looks for blocks whose expiry has passed.
+   *
+   * This bounds how long a block outlives its expiry, so it is a coarser control
+   * than it appears: at 60, "expires in 1h" can mean up to two. It also sets the
+   * period of both sweep alarms, so raising it slows detection of a sweep that
+   * has stopped running.
+   */
+  blockSweepIntervalMinutes: 15,
 
   /**
    * Address to notify when the containment sweep fails or stops running.
