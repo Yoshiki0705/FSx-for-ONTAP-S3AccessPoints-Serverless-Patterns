@@ -320,7 +320,7 @@ class ArpResponseActions:
         svm_name: str,
         policy_name: str,
         client_ip: str,
-        rule_index: int = 1,
+        rule_index: int | None = None,
     ) -> dict[str, Any]:
         """Block an IP address from NFS access via export-policy rule.
 
@@ -328,7 +328,12 @@ class ArpResponseActions:
             svm_name: SVM name.
             policy_name: Export policy name (e.g., "default").
             client_ip: IP address to block.
-            rule_index: Rule position (1 = evaluated first).
+            rule_index: Rule position. Defaults to 1, which is what a deny rule
+                wants — it has to be evaluated before any rule that would permit
+                the client. Unlike the SMB name-mapping path this does not
+                conflict, because an export policy inserts at a position and
+                shifts the rest down; the cost is that every block renumbers
+                rules the portal does not own, so the insert is reported.
 
         Returns:
             Dict with blocking details.
@@ -347,16 +352,53 @@ class ArpResponseActions:
             )
         policy_id = records[0]["id"]
 
+        existing = self._client.get(
+            f"/protocols/nfs/export-policies/{policy_id}/rules",
+            params={"fields": "clients,index"},
+        ).get("records", [])
+
+        # Re-blocking during an incident is normal — a repeat alert, or an
+        # operator who cannot see the first rule. Adding a second identical deny
+        # rule would work but renumbers the policy again for no gain.
+        for rule in existing:
+            for client in rule.get("clients", []):
+                match = client.get("match", "")
+                if RESPONSE_MARKER in match and client_ip in match:
+                    logger.info(
+                        "NFS IP already blocked: %s on SVM %s policy %s (index %s)",
+                        client_ip,
+                        svm_name,
+                        policy_name,
+                        rule.get("index"),
+                    )
+                    return {
+                        "action": "block_nfs_ip",
+                        "svm": svm_name,
+                        "policy": policy_name,
+                        "client_ip": client_ip,
+                        "rule_index": rule.get("index"),
+                        "status": "already_blocked",
+                        "marker": RESPONSE_MARKER,
+                    }
+
+        position = 1 if rule_index is None else rule_index
         body = {
             "clients": [{"match": f"{RESPONSE_MARKER},{client_ip}"}],
             "ro_rule": ["never"],
             "rw_rule": ["never"],
             "superuser": ["never"],
             "protocols": ["any"],
-            "index": rule_index,
+            "index": position,
         }
 
-        logger.info("Blocking NFS IP: %s on SVM %s policy %s", client_ip, svm_name, policy_name)
+        logger.info(
+            "Blocking NFS IP: %s on SVM %s policy %s at index %d, shifting %d existing rule(s) down",
+            client_ip,
+            svm_name,
+            policy_name,
+            position,
+            sum(1 for r in existing if r.get("index", 0) >= position),
+        )
 
         self._client.post(f"/protocols/nfs/export-policies/{policy_id}/rules", body=body)
 
@@ -365,7 +407,11 @@ class ArpResponseActions:
             "svm": svm_name,
             "policy": policy_name,
             "client_ip": client_ip,
-            "rule_index": rule_index,
+            "rule_index": position,
+            # An export-policy insert renumbers everything at or after this
+            # position, including rules the portal did not create. Reported so an
+            # operator reconciling the policy afterwards knows why.
+            "rules_shifted": sum(1 for r in existing if r.get("index", 0) >= position),
             "status": "blocked",
             "marker": RESPONSE_MARKER,
         }
