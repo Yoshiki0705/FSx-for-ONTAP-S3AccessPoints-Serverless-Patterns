@@ -129,6 +129,9 @@ ARP/AI の封じ込め操作について、以下が実装・ライブ検証済�
 | マルチ SVM ファンアウト | ✅ | `svms` で明示指定、`allSvms` でクラスタに問い合わせ。部分失敗は SVM 単位で報告 |
 | ドキュメント/コード乖離の CI ガード | ✅ | `scripts/check_portal_drift.py`（validators ワークフロー） |
 | ライブ検証用プローブ | ✅ | `scripts/portal-probes/` |
+| 監査主体の記録 | ✅ | AppSync 経由でない呼び出しは `unattributed` / `direct-invoke` として記録。詳細は下記 |
+| スイープ失敗の通知 | ✅ | EMF メトリクス + アラーム 2 本（失敗検知と、スイープ自体の停止検知） |
+| NFS ブロックの index | ✅ | index 1 のまま（deny ルールは先に評価される必要があるため）だが `rules_shifted` を返し、再ブロックは `already_blocked` の no-op |
 
 ### この作業で見つかった実装の問題（すべて修正済み）
 
@@ -137,16 +140,24 @@ ARP/AI の封じ込め操作について、以下が実装・ライブ検証済�
 - 共有モジュールが Lambda にパッケージされておらず、封じ込めは**一度も**動作していませんでした。エラー文字列が `4` だったため HTTP ステータスと誤読され、原因の特定が遅れました
 - SMB ブロックの name-mapping index が 1 固定で、2 人目をブロックできませんでした（ONTAP は素の 409 を返すだけ）
 - 台帳（DynamoDB）への書き込みが Lambda のタイムアウトまでハングし、**ONTAP が受理済みのブロックが失敗として報告されて**いました。VPC サブネットのデフォルトルートが Internet Gateway 向きで、Lambda ENI にパブリック IP がないためです
+- スイープの早期 return（ONTAP 到達不能、台帳が読めない）がメトリクス送出より前にあり、**まさに気づきたい 2 ケースだけが無言**でした。両方で `failed=1` を出すようにしました
+- スイープが止まると失敗も報告されないため、エラー監視だけでは健全に見えます。`SweepRuns` の欠測を `treatMissingData: BREACHING` で監視する 2 本目のアラームを追加しました。アラームの期間は `blockSweepIntervalMinutes` から導出しています（当初の 1 時間固定では 15 分間隔のスイープに対して復旧検知が 2 時間になっていました）
 
 ### 残っている課題
 
 | 項目 | 優先度 | 内容 |
 |---|:---:|---|
-| 📋 封じ込め操作の監査主体 | 高 | `createdBy` が `event.userId` を信頼しています。AppSync の Cognito identity から取得すべきです（現状は呼び出し側の自己申告） |
-| 📋 スイープ失敗の通知 | 高 | 現状 CloudWatch Logs に残るだけです。SVM 到達不能で解除が継続的に失敗しても誰も気づきません |
-| 📋 NFS ブロックの index 固定 | 中 | `block_nfs_ip` は `rule_index=1` 固定のままです。export-policy は挿入セマンティクスなので 409 にはなりませんが、既存ルールを押し下げ続けます |
+| 📋 Lambda を直接呼べる主体の制限 | 中 | 監査フィールドは AppSync 経由かどうかで判定していますが、`lambda:InvokeFunction` を持つ主体は両方を偽装できます。実効的な境界は関数の IAM ポリシー側です |
 | 📋 `ttlHours` 上限の運用的な根拠 | 低 | 90 日は恣意的な値です。インシデント対応の実運用に合わせるべきです |
-| 📋 i18n 直書き文字列 53 件 | 中 | `scripts/portal-drift-baseline.txt` に記録済み。8 言語のうち 7 言語で見えないため、キー化が必要です。新規発生は CI が阻止します |
+| 📋 i18n 直書き文字列 30 件 | 中 | `scripts/portal-drift-baseline.txt` に記録済み。8 言語のうち 7 言語で見えないため、キー化が必要です。残りは `AthenaQueryPanel.tsx` 14 / `SnapshotAdminManager.tsx` 8 / `SnaplockManager.tsx` 3 / `FlexCacheManager.tsx` 3 / `VersionHistory.tsx` 2。新規発生は CI が阻止します |
+
+### このロードマップ自体の記載誤り（訂正）
+
+上の表にあった「`createdBy` が `event.userId` を信頼している」という記載は**誤り**でした。実際にはリゾルバ `arp-dispatch.js` が以前から `ctx.identity.username` を `params` の後に展開して上書きしていたため、`userId` は偽装できませんでした。
+
+実際に露出していたのは隣にあった `actor` フォールバックで、こちらはどのリゾルバも設定も消去もしていませんでした。フォールバックを削除し、AppSync 経由（`invokedVia == "appsync"`）かつ `userId` がある場合のみ主体として採用するようにしました。それ以外は `unattributed` / `direct-invoke` として記録します（`unknown` は「照会に失敗した」と読めてしまうため避けました）。
+
+もう一点、識別情報のフィルタを `Object.keys` とループで書き直した最初の版は APPSYNC_JS に拒否され、`The code contains one or more errors`（400）だけが返ってデプロイがロールバックしました。明示的な「展開後に上書き」に戻し、理由をリゾルバ内に記録しています。
 
 ### 運用上の注意
 
