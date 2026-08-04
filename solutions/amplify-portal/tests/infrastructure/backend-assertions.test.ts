@@ -252,6 +252,19 @@ describe("Containment block expiry", () => {
     expect(backendSource).toContain("config.vpcRouteTableIds");
   });
 
+  it("refuses to deploy into a VPC with no path to the ledger", () => {
+    // Documenting the requirement is not enough: without the endpoint the
+    // deployment looks complete while expiry silently never runs, and that is
+    // visible only to someone reading an individual action's response.
+    expect(backendSource).toContain("vpcRouteTableIds is required when vpcId is set");
+    expect(backendSource).toContain("config.allowNoBlockExpiry");
+    // The message has to name the config field, not only an environment
+    // variable: portal-config.ts is gitignored and copied from the example,
+    // which takes plain values, so the variable is only read where the local
+    // configuration happens to wire it up.
+    expect(backendSource).toContain("vpcRouteTableIds in portal-config.ts");
+  });
+
   it("only creates the endpoint when route tables are supplied", () => {
     // The VPC belongs to another stack; writing to its route tables should be a
     // deliberate choice rather than a side effect of deploying the portal.
