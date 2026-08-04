@@ -62,13 +62,55 @@ VOLUME_NAME = os.environ.get("VOLUME_NAME", "")
 SVM_NAME = os.environ.get("SVM_NAME", "")
 BLOCKS_TABLE = os.environ.get("CONTAINMENT_BLOCKS_TABLE", "")
 
+
+def _env_int(name: str, default: int) -> int:
+    """Read an integer setting, falling back rather than failing to import.
+
+    These used to be bare `int(os.environ.get(...))` at module scope, which makes
+    a malformed value fatal: the exception is raised while the module is being
+    imported, so every action the function serves fails before its handler runs.
+
+    That was not hypothetical. `backend.ts` sets these with
+    `String(config.defaultBlockTtlHours)`, and the field was missing from
+    portal-config.example.ts — so a configuration copied from the example put the
+    literal string "undefined" in the environment and the whole function was dead
+    on arrival. The example is fixed and a test now guards it, but the blast
+    radius of a typo here is so much larger than the setting itself that it
+    should not be fatal either way.
+
+    A bad value is logged and the default used. Containment stays available with a
+    sane expiry, which is the outcome worth preserving.
+    """
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        logger.error(f"{name}={raw!r} is not an integer; using {default}")
+        return default
+
+
 # Applied when a caller does not pass ttlHours. A bounded default matters more
 # than a long one: an expiry that has to be requested is an expiry that gets
 # forgotten, and a block nobody remembers is indistinguishable from an outage.
-DEFAULT_BLOCK_TTL_HOURS = int(os.environ.get("DEFAULT_BLOCK_TTL_HOURS", "24"))
+DEFAULT_BLOCK_TTL_HOURS = _env_int("DEFAULT_BLOCK_TTL_HOURS", 24)
 
-# Ceiling on a single request, so a typo cannot park a block for years.
-MAX_BLOCK_TTL_HOURS = 24 * 90
+# Longest expiry a single request may ask for. 0 removes the ceiling.
+#
+# 30 days rather than the 90 this started as, and the reason is which instrument
+# is the right one rather than which number is safe. An ONTAP deny rule covers one
+# SVM. A principal that has to stay locked out for longer than an investigation
+# runs should be disabled in the directory instead: that covers the whole estate,
+# and it is visible to the team who own the account lifecycle, whereas a
+# name-mapping rule on one filer is not.
+#
+# This is not the guard against a unit slip that it looks like. Someone typing
+# `90` meaning days gets 90 hours, which no ceiling can catch — what catches that
+# is `expiresAt` coming back in the response. The ceiling only stops absurd
+# values, so it is set where the instrument should change and left configurable
+# for teams whose incident practice differs.
+MAX_BLOCK_TTL_HOURS = _env_int("MAX_BLOCK_TTL_HOURS", 24 * 30)
 
 # Actions that change who can reach the filer, and so are worth noticing when
 # they arrive without a portal identity behind them.
@@ -97,7 +139,7 @@ STATE_CHANGING_ACTIONS = frozenset(
 # How long a lifted or expired row is kept after its expiry, for audit. The
 # native DynamoDB TTL is set from this, deliberately later than expiresAt, so
 # the record of a containment action outlives the containment itself.
-LEDGER_RETENTION_DAYS = int(os.environ.get("CONTAINMENT_LEDGER_RETENTION_DAYS", "400"))
+LEDGER_RETENTION_DAYS = _env_int("CONTAINMENT_LEDGER_RETENTION_DAYS", 400)
 
 
 def _get_credentials():
@@ -835,10 +877,21 @@ def _validated_ttl_hours(event) -> tuple[int | None, dict | None]:
 
     if hours < 0:
         return None, {"success": False, "error": "ttlHours cannot be negative"}
-    if hours > MAX_BLOCK_TTL_HOURS:
+    # 0 disables the ceiling, for a deployment that has decided its own bound
+    # belongs somewhere other than in this function.
+    if MAX_BLOCK_TTL_HOURS > 0 and hours > MAX_BLOCK_TTL_HOURS:
         return None, {
             "success": False,
-            "error": f"ttlHours cannot exceed {MAX_BLOCK_TTL_HOURS} ({MAX_BLOCK_TTL_HOURS // 24} days)",
+            # Names both ways forward, because the refusal on its own leaves the
+            # caller guessing and the likely next move — halving the number until
+            # it is accepted — produces an expiry nobody chose.
+            "error": (
+                f"ttlHours {hours} exceeds the maximum of {MAX_BLOCK_TTL_HOURS} "
+                f"({MAX_BLOCK_TTL_HOURS // 24} days). For a block that should outlast an "
+                "investigation, disable the account in the directory instead — a deny rule "
+                "here covers only this SVM. To hold it open deliberately, pass ttlHours=0 "
+                "for no expiry, or raise maxBlockTtlHours in portal-config.ts."
+            ),
         }
     return hours, None
 

@@ -132,6 +132,24 @@ if (vpcConfig && config.vpcRouteTableIds.length === 0 && !config.allowNoBlockExp
   );
 }
 
+/**
+ * A default expiry above the ceiling would be silently unreachable: every block
+ * that did not name its own `ttlHours` would be refused, and the refusal would
+ * point at a value the caller never supplied. Caught at synth because the
+ * combination is a configuration mistake with no correct interpretation.
+ *
+ * `maxBlockTtlHours: 0` removes the ceiling, so it is not a violation.
+ */
+if (config.maxBlockTtlHours > 0 && config.defaultBlockTtlHours > config.maxBlockTtlHours) {
+  throw new Error(
+    `defaultBlockTtlHours (${config.defaultBlockTtlHours}) is above maxBlockTtlHours ` +
+      `(${config.maxBlockTtlHours}), so every block that does not pass its own ttlHours ` +
+      "would be refused for exceeding a limit the caller never set.\n\n" +
+      "  Lower defaultBlockTtlHours, raise maxBlockTtlHours, or set maxBlockTtlHours to 0 " +
+      "to remove the ceiling."
+  );
+}
+
 if (vpcConfig && config.vpcRouteTableIds.length > 0) {
   new ec2.CfnVPCEndpoint(dataStack, "DynamoDbGatewayEndpoint", {
     vpcId: config.vpcId,
@@ -624,6 +642,7 @@ const arpResponseFunction = new lambda.Function(
       SVM_NAME: config.ontapSvmName,
       CONTAINMENT_BLOCKS_TABLE: containmentBlocksTable.tableName,
       DEFAULT_BLOCK_TTL_HOURS: String(config.defaultBlockTtlHours),
+      MAX_BLOCK_TTL_HOURS: String(config.maxBlockTtlHours),
     },
     // Without this layer the containment actions cannot import
     // shared.ontap_response and fail before reaching ONTAP.

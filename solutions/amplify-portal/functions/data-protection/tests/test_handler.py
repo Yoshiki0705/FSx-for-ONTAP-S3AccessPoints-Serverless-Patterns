@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1064,3 +1065,110 @@ class TestUnattributedActionIsReported:
 
         # Raising here would abandon a containment action over a metric.
         handler_module._note_attribution("blockSmbUser", {})
+
+
+class TestSettingsSurviveABadValue:
+    """A malformed setting must not take the whole function down.
+
+    These were bare `int(os.environ.get(...))` at module scope, so a bad value
+    raised during import and every action failed before its handler ran. That is
+    how a configuration copied from portal-config.example.ts behaved: the example
+    did not declare defaultBlockTtlHours, backend.ts writes it with
+    String(config.defaultBlockTtlHours), and the environment got "undefined".
+    """
+
+    def test_a_non_numeric_value_falls_back_instead_of_raising(self, monkeypatch):
+        from handler import _env_int
+
+        monkeypatch.setenv("SOME_SETTING", "undefined")
+        assert _env_int("SOME_SETTING", 24) == 24
+
+    @pytest.mark.parametrize("value", ["", "  ", "1.5.2", "twenty", "None"])
+    def test_other_malformed_values_also_fall_back(self, monkeypatch, value):
+        from handler import _env_int
+
+        monkeypatch.setenv("SOME_SETTING", value)
+        assert _env_int("SOME_SETTING", 7) == 7
+
+    def test_an_absent_value_uses_the_default(self, monkeypatch):
+        from handler import _env_int
+
+        monkeypatch.delenv("SOME_SETTING", raising=False)
+        assert _env_int("SOME_SETTING", 24) == 24
+
+    def test_a_valid_value_is_honoured(self, monkeypatch):
+        from handler import _env_int
+
+        monkeypatch.setenv("SOME_SETTING", "72")
+        assert _env_int("SOME_SETTING", 24) == 72
+
+    def test_the_module_imports_with_the_value_that_used_to_kill_it(self):
+        """The regression itself, run the way it actually happened."""
+        import os
+        import subprocess
+        import sys
+
+        env = {**os.environ, "DEFAULT_BLOCK_TTL_HOURS": "undefined"}
+        env["PYTHONPATH"] = str(Path(__file__).parent.parent)
+        result = subprocess.run(
+            [sys.executable, "-c", "import handler; print(handler.DEFAULT_BLOCK_TTL_HOURS)"],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=str(Path(__file__).parent.parent),
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == "24"
+
+
+class TestTtlCeiling:
+    def test_refuses_above_the_ceiling_and_says_what_to_do(self, monkeypatch):
+        import handler as handler_module
+
+        monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 24 * 30)
+        hours, error = handler_module._validated_ttl_hours({"ttlHours": 24 * 365})
+
+        assert hours is None
+        # A refusal that does not name a way forward invites halving the number
+        # until it is accepted, which produces an expiry nobody chose.
+        assert "ttlHours=0" in error["error"]
+        assert "directory" in error["error"]
+        assert "maxBlockTtlHours" in error["error"]
+
+    def test_the_ceiling_is_configurable(self, monkeypatch):
+        import handler as handler_module
+
+        monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 24 * 90)
+        hours, error = handler_module._validated_ttl_hours({"ttlHours": 24 * 60})
+
+        assert error is None
+        assert hours == 24 * 60
+
+    def test_zero_removes_the_ceiling(self, monkeypatch):
+        """A deployment may decide the bound belongs somewhere else."""
+        import handler as handler_module
+
+        monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 0)
+        hours, error = handler_module._validated_ttl_hours({"ttlHours": 24 * 3650})
+
+        assert error is None
+        assert hours == 24 * 3650
+
+    def test_an_indefinite_block_is_still_allowed_under_a_ceiling(self, monkeypatch):
+        """ttlHours=0 is 'no expiry', not 'zero hours', so a ceiling cannot bar it."""
+        import handler as handler_module
+
+        monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 24 * 30)
+        hours, error = handler_module._validated_ttl_hours({"ttlHours": 0})
+
+        assert error is None
+        assert hours == 0
+
+    def test_the_boundary_itself_is_accepted(self, monkeypatch):
+        import handler as handler_module
+
+        monkeypatch.setattr(handler_module, "MAX_BLOCK_TTL_HOURS", 720)
+        hours, error = handler_module._validated_ttl_hours({"ttlHours": 720})
+
+        assert error is None
+        assert hours == 720

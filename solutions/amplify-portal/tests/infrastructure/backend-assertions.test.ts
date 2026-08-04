@@ -196,6 +196,52 @@ describe("Backend Infrastructure Structure", () => {
 });
 
 
+describe("portal-config.example.ts covers what backend.ts reads", () => {
+  // The failure this prevents is total and silent at deploy time. backend.ts
+  // writes Lambda environment values with String(config.<field>), so a field the
+  // example never declared becomes the literal "undefined" in the environment.
+  // defaultBlockTtlHours was missing exactly this way: int("undefined") raised
+  // while the ARP module was being imported, so every containment action failed
+  // before its handler ran, on a deployment configured exactly as documented.
+  const EXAMPLE_PATH = resolve(__dirname, "../../amplify/portal-config.example.ts");
+  const exampleSource = readFileSync(EXAMPLE_PATH, "utf-8");
+
+  it("declares every config field backend.ts uses", () => {
+    // `config.example.ts` appears in prose, so drop what a property access cannot be.
+    const used = new Set(
+      [...backendSource.matchAll(/\bconfig\.([a-zA-Z][a-zA-Z0-9]*)/g)]
+        .map((m) => m[1])
+        .filter((name) => !["example", "ts", "s"].includes(name))
+    );
+    expect(used.size).toBeGreaterThan(10);
+
+    const missing = [...used].filter(
+      // Declared in the interface or assigned in the literal — either proves the
+      // field exists on the object a deployer copies.
+      (name) =>
+        !new RegExp(`^\\s{2}${name}\\??\\s*:`, "m").test(exampleSource) &&
+        !new RegExp(`^\\s{2}${name}\\s*:`, "m").test(exampleSource)
+    );
+
+    expect(
+      missing,
+      `backend.ts reads config fields the example does not define: ${missing.join(", ")}. ` +
+        'A missing field becomes the string "undefined" in the Lambda environment.'
+    ).toEqual([]);
+  });
+
+  it("gives the block expiry fields values, not just types", () => {
+    // A declared-but-unassigned field is the same failure with extra steps.
+    for (const field of [
+      "defaultBlockTtlHours",
+      "maxBlockTtlHours",
+      "blockSweepIntervalMinutes",
+    ]) {
+      expect(exampleSource).toMatch(new RegExp(`^\\s{2}${field}:\\s*\\d`, "m"));
+    }
+  });
+});
+
 describe("Containment block expiry", () => {
   it("defines the ledger table with a TTL attribute", () => {
     // ONTAP deny rules carry no timestamp, so without this table nothing can
@@ -237,9 +283,17 @@ describe("Containment block expiry", () => {
     expect(role).not.toContain('"dynamodb:DeleteItem"');
   });
 
-  it("passes the table name and default expiry to the ARP function", () => {
+  it("passes the table name and both expiry bounds to the ARP function", () => {
     expect(backendSource).toContain("CONTAINMENT_BLOCKS_TABLE: containmentBlocksTable.tableName");
     expect(backendSource).toContain("DEFAULT_BLOCK_TTL_HOURS: String(config.defaultBlockTtlHours)");
+    expect(backendSource).toContain("MAX_BLOCK_TTL_HOURS: String(config.maxBlockTtlHours)");
+  });
+
+  it("refuses a default expiry above the ceiling", () => {
+    // Otherwise every block that did not name its own ttlHours would be refused,
+    // citing a limit the caller never supplied.
+    expect(backendSource).toContain("is above maxBlockTtlHours");
+    expect(backendSource).toContain("config.maxBlockTtlHours > 0 && config.defaultBlockTtlHours");
   });
 
   it("can add a DynamoDB gateway endpoint for the VPC functions", () => {
