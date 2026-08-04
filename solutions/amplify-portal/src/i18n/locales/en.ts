@@ -338,10 +338,8 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   rmNoEfficiencyData: "No efficiency data available",
 
   // --- Resource Management: ARP/AI Admin ---
-  rmArpEnabled: "Enabled",
   rmArpLearning: "Learning",
   rmArpPaused: "Paused",
-  rmArpDisabled: "Disabled",
   rmArpTotal: "Total",
   rmArpState: "Protection State",
   rmArpThreat: "Threat",
@@ -898,8 +896,6 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   aiSettingsAgentDesc: "Natural language file operations via AI chat (Bedrock Converse + tool_use)",
   aiSettingsSearchTitle: "Semantic Search",
   aiSettingsSearchDesc: "Vector search over file contents (Bedrock Knowledge Base). Backend can use S3 Vectors (recommended, low-cost) or OpenSearch Serverless.",
-  aiSettingsEnabled: "Enabled",
-  aiSettingsDisabled: "Disabled",
   aiSettingsSaved: "Settings saved",
   aiSettingsStatusTitle: "Current status",
   aiSettingsMultimodalTitle: "Multimodal (Image Input)",
@@ -1115,8 +1111,6 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   vsTroubleshootLink: "Troubleshooting",
   vsStep5Title: "Verify operation",
   vsStep5Desc: "Confirm that scans run against a test file and that scan statistics increase.",
-  vsEnabled: "Enabled",
-  vsDisabled: "Disabled",
   vsPolicies: "Vscan policies",
   vsNoPolicies: "No Vscan policies",
   vsEnableBtn: "Enable",
@@ -1175,6 +1169,30 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   aqSetupStep3: "Save, then run the query again from this panel",
   aqSetupEnvHint:
     "Alternatively, set an S3 path in the {env} environment variable in {file} and redeploy.",
+
+  // --- Shared state labels ---
+  stateEnabled: "Enabled",
+  stateDisabled: "Disabled",
+  rmLoadFailed: "Failed to load",
+  rmActionFailed: "The operation failed",
+  rmSnapLockConfirm:
+    "⚠️ Enable Tamperproof Snapshot locking?\n\n" +
+    "IMPORTANT: on a Compliance volume this cannot be undone.\n" +
+    "Once enabled, a locked snapshot cannot be deleted by anyone\n" +
+    "until its retention period expires — including root and fsxadmin.\n\n" +
+    "Note: this only turns the locking capability on for the volume.\n" +
+    "  Individual snapshots are locked separately from the \"Lock\" button,\n" +
+    "  where you set the retention period.\n\n" +
+    "Type {keyword} to continue:",
+  rmSnapLockCancelled: "Enabling was cancelled — you have to type {keyword}",
+  slNewVolumeOnly: "SnapLock can only be enabled when a volume is created",
+  slNewVolumeOnlyWhy:
+    "SnapLock cannot be turned on for an existing volume afterwards; this is an ONTAP constraint.",
+  slNewVolumeOnlyHow: "If you need a SnapLock volume, create one from Volume Management.",
+  fcacheMetricsHint: "Metrics: available in ONTAP System Manager",
+  vhDiffTitle: "Version diff",
+  vhDiffNotice:
+    "Selecting two snapshots to compare their contents is planned for a future release. For now this shows the snapshot list.",
   fpvClickDownload: "Click to download or select for AI processing",
   fpvClickPdf: "Click to preview the PDF",
   fpvClickDoc: "Click to preview the document",

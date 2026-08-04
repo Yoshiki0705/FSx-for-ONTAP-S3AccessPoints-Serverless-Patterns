@@ -330,10 +330,8 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   rmSavingsRatio: "절약 비율",
   rmNoEfficiencyData: "효율성 데이터 없음",
   // --- Resource Management: ARP/AI Admin ---
-  rmArpEnabled: "활성화됨",
   rmArpLearning: "학습 중",
   rmArpPaused: "일시 중지",
-  rmArpDisabled: "비활성화됨",
   rmArpTotal: "전체",
   rmArpState: "보호 상태",
   rmArpThreat: "위협",
@@ -863,8 +861,6 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   aiSettingsAgentDesc: "자연어로 파일 작업을 수행하는 AI 채팅 (Bedrock Converse + tool_use)",
   aiSettingsSearchTitle: "시맨틱 검색",
   aiSettingsSearchDesc: "파일 내용의 벡터 검색 (Bedrock Knowledge Base). 백엔드로 S3 Vectors (권장, 저비용) 또는 OpenSearch Serverless 선택 가능.",
-  aiSettingsEnabled: "활성",
-  aiSettingsDisabled: "비활성",
   aiSettingsSaved: "설정이 저장되었습니다",
   aiSettingsStatusTitle: "현재 상태",
   aiSettingsMultimodalTitle: "멀티모달 (이미지 입력)",
@@ -1079,8 +1075,6 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   vsTroubleshootLink: "문제 해결",
   vsStep5Title: "동작 확인",
   vsStep5Desc: "테스트 파일로 스캔이 실행되고 스캔 통계가 증가하는지 확인합니다.",
-  vsEnabled: "활성화",
-  vsDisabled: "비활성화",
   vsPolicies: "Vscan 정책",
   vsNoPolicies: "Vscan 정책이 없습니다",
   vsEnableBtn: "활성화",
@@ -1139,6 +1133,28 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   aqSetupStep3: "저장한 뒤 이 패널에서 쿼리를 다시 실행",
   aqSetupEnvHint:
     "또는 {file} 의 환경 변수 {env} 에 S3 경로를 설정하고 다시 배포하세요.",
+
+  // --- Shared state labels ---
+  stateEnabled: "활성화",
+  stateDisabled: "비활성화",
+  rmLoadFailed: "불러오지 못했습니다",
+  rmActionFailed: "작업에 실패했습니다",
+  rmSnapLockConfirm:
+    "⚠️ Tamperproof Snapshot 잠금을 활성화하시겠습니까?\n\n" +
+    "[중요] Compliance 볼륨에서는 이 작업을 취소할 수 없습니다.\n" +
+    "활성화 후 잠긴 Snapshot은 보존 기간이 만료될 때까지\n" +
+    "누구도 삭제할 수 없습니다(root / fsxadmin 포함).\n\n" +
+    "※ 이 작업은 볼륨의 잠금 기능을 켜는 것뿐입니다.\n" +
+    "  개별 Snapshot 잠금은 \"Lock\" 버튼에서 보존 기간을 지정해 수행합니다.\n\n" +
+    "계속하려면 {keyword} 를 입력하세요:",
+  rmSnapLockCancelled: "활성화가 취소되었습니다({keyword} 를 입력해야 합니다)",
+  slNewVolumeOnly: "SnapLock은 볼륨을 새로 만들 때만 활성화할 수 있습니다",
+  slNewVolumeOnlyWhy: "기존 볼륨에 나중에 SnapLock을 활성화할 수는 없습니다(ONTAP 제약).",
+  slNewVolumeOnlyHow: "SnapLock 볼륨이 필요하면 볼륨 관리에서 새로 만드세요.",
+  fcacheMetricsHint: "메트릭: ONTAP System Manager에서 확인 가능",
+  vhDiffTitle: "버전 차이",
+  vhDiffNotice:
+    "두 스냅샷을 선택해 내용을 비교하는 기능은 향후 구현 예정입니다. 현재는 스냅샷 목록을 표시합니다.",
   fpvClickDownload: "클릭하여 다운로드하거나 AI 처리 대상으로 선택",
   fpvClickPdf: "클릭하여 PDF 미리보기",
   fpvClickDoc: "클릭하여 문서 미리보기",

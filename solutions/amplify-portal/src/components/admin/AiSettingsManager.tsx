@@ -318,7 +318,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               <td>🤖 {t("aiSettingsAgentTitle")}</td>
               <td>
                 <span className={`status-badge ${settings.aiAgentEnabled ? "enabled" : "disabled"}`}>
-                  {settings.aiAgentEnabled ? t("aiSettingsEnabled") : t("aiSettingsDisabled")}
+                  {settings.aiAgentEnabled ? t("stateEnabled") : t("stateDisabled")}
                 </span>
               </td>
             </tr>
@@ -326,7 +326,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               <td>🔍 {t("aiSettingsSearchTitle")}</td>
               <td>
                 <span className={`status-badge ${settings.aiSearchEnabled ? "enabled" : "disabled"}`}>
-                  {settings.aiSearchEnabled ? t("aiSettingsEnabled") : t("aiSettingsDisabled")}
+                  {settings.aiSearchEnabled ? t("stateEnabled") : t("stateDisabled")}
                 </span>
               </td>
             </tr>
@@ -334,7 +334,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               <td>🖼️ {t("aiSettingsMultimodalTitle")}</td>
               <td>
                 <span className={`status-badge ${settings.aiMultimodalEnabled ? "enabled" : "disabled"}`}>
-                  {settings.aiMultimodalEnabled ? t("aiSettingsEnabled") : t("aiSettingsDisabled")}
+                  {settings.aiMultimodalEnabled ? t("stateEnabled") : t("stateDisabled")}
                 </span>
               </td>
             </tr>
@@ -342,7 +342,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               <td>📜 {t("aiSettingsChatHistoryTitle")}</td>
               <td>
                 <span className={`status-badge ${settings.chatHistoryEnabled ? "enabled" : "disabled"}`}>
-                  {settings.chatHistoryEnabled ? t("aiSettingsEnabled") : t("aiSettingsDisabled")}
+                  {settings.chatHistoryEnabled ? t("stateEnabled") : t("stateDisabled")}
                 </span>
               </td>
             </tr>
@@ -350,7 +350,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
               <td>🔀 {t("aiSettingsSmartRoutingTitle")}</td>
               <td>
                 <span className={`status-badge ${settings.aiSmartRoutingEnabled ? "enabled" : "disabled"}`}>
-                  {settings.aiSmartRoutingEnabled ? t("aiSettingsEnabled") : t("aiSettingsDisabled")}
+                  {settings.aiSmartRoutingEnabled ? t("stateEnabled") : t("stateDisabled")}
                 </span>
               </td>
             </tr>

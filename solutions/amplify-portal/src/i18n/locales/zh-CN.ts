@@ -330,10 +330,8 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   rmSavingsRatio: "节省比率",
   rmNoEfficiencyData: "无效率数据",
   // --- Resource Management: ARP/AI Admin ---
-  rmArpEnabled: "已启用",
   rmArpLearning: "学习中",
   rmArpPaused: "已暂停",
-  rmArpDisabled: "已禁用",
   rmArpTotal: "总计",
   rmArpState: "保护状态",
   rmArpThreat: "威胁",
@@ -863,8 +861,6 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   aiSettingsAgentDesc: "通过 AI 对话进行自然语言文件操作 (Bedrock Converse + tool_use)",
   aiSettingsSearchTitle: "语义搜索",
   aiSettingsSearchDesc: "文件内容的向量搜索 (Bedrock Knowledge Base)。后端可使用 S3 Vectors（推荐，低成本）或 OpenSearch Serverless。",
-  aiSettingsEnabled: "已启用",
-  aiSettingsDisabled: "已禁用",
   aiSettingsSaved: "设置已保存",
   aiSettingsStatusTitle: "当前状态",
   aiSettingsMultimodalTitle: "多模态（图像输入）",
@@ -1079,8 +1075,6 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   vsTroubleshootLink: "故障排查",
   vsStep5Title: "验证运行情况",
   vsStep5Desc: "确认针对测试文件执行了扫描，并且扫描统计数据在增加。",
-  vsEnabled: "已启用",
-  vsDisabled: "已禁用",
   vsPolicies: "Vscan 策略",
   vsNoPolicies: "没有 Vscan 策略",
   vsEnableBtn: "启用",
@@ -1139,6 +1133,28 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   aqSetupStep3: "保存后在此面板中重新运行查询",
   aqSetupEnvHint:
     "或者在 {file} 的环境变量 {env} 中设置 S3 路径并重新部署。",
+
+  // --- Shared state labels ---
+  stateEnabled: "已启用",
+  stateDisabled: "已禁用",
+  rmLoadFailed: "加载失败",
+  rmActionFailed: "操作失败",
+  rmSnapLockConfirm:
+    "⚠️ 要启用 Tamperproof Snapshot 锁定吗？\n\n" +
+    "【重要】在 Compliance 卷上此操作无法撤销。\n" +
+    "启用后，已锁定的 Snapshot 在保留期届满前\n" +
+    "任何人都无法删除（包括 root 与 fsxadmin）。\n\n" +
+    "※ 此操作仅为卷开启锁定功能。\n" +
+    "  单个 Snapshot 需另外通过\"Lock\"按钮指定保留期来锁定。\n\n" +
+    "要继续，请输入 {keyword}：",
+  rmSnapLockCancelled: "已取消启用（需要输入 {keyword}）",
+  slNewVolumeOnly: "SnapLock 只能在创建新卷时启用",
+  slNewVolumeOnlyWhy: "无法为已有卷事后启用 SnapLock，这是 ONTAP 的限制。",
+  slNewVolumeOnlyHow: "如果需要 SnapLock 卷，请从\"卷管理\"中新建。",
+  fcacheMetricsHint: "指标：可在 ONTAP System Manager 中查看",
+  vhDiffTitle: "版本差异",
+  vhDiffNotice:
+    "选择两个快照比较内容的功能计划在后续版本实现。当前显示快照列表。",
   fpvClickDownload: "点击下载或选择用于 AI 处理",
   fpvClickPdf: "点击预览 PDF",
   fpvClickDoc: "点击预览文档",

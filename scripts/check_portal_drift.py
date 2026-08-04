@@ -321,12 +321,17 @@ def main() -> int:
     if "--write-baseline" in sys.argv:
         _, fingerprints = check_hardcoded_strings(baseline=set())
         BASELINE.write_text(
-            "# Hardcoded user-facing strings in the portal that predate this check.\n"
+            "# Hardcoded user-facing strings in the portal that are not translated yet.\n"
             "#\n"
-            "# The check fails only on lines absent from this file, so new drift is\n"
-            "# blocked without demanding the whole backlog be cleared first. Removing a\n"
-            "# line from here after adding a translation key is the intended direction;\n"
-            "# adding one needs a reason.\n"
+            "# This file is empty, and that is the intended state: the backlog it was\n"
+            "# created to hold has been worked off. The check fails on any line absent\n"
+            "# from here, so with the file empty every new hardcoded string is a failure.\n"
+            "#\n"
+            "# Do not add a line here to make the check pass. Either add a translation\n"
+            "# key, or — if the text must read the same in every locale, such as a\n"
+            "# language name in its own script — mark the line with\n"
+            "# '// i18n-exempt: <reason>' instead. An entry here says 'still to do',\n"
+            "# which is a promise to someone; an exemption says 'correct as it is'.\n"
             "#\n"
             "# Regenerate with: python3 scripts/check_portal_drift.py --write-baseline\n"
             "#\n"
