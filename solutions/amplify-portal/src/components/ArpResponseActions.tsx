@@ -21,6 +21,42 @@ interface ActiveBlock {
   policy?: string;
   rule_index?: number;
   client_match?: string;
+  /**
+   * When the block is due to be lifted, or null for an indefinite one.
+   *
+   * ONTAP rules carry no timestamp, so this comes from the portal's ledger.
+   * A block placed outside the portal has no row and reports
+   * `managedByPortal: false` — the scheduled sweep will not lift it.
+   */
+  expiresAt?: string | null;
+  managedByPortal?: boolean;
+}
+
+/**
+ * Expiry state of one block.
+ *
+ * Three distinct cases, and collapsing any two of them would mislead:
+ * an expiry the sweep will act on, an indefinite block the portal owns, and a
+ * block placed outside the portal that the sweep deliberately leaves alone.
+ */
+function BlockExpiry({ block }: { block: ActiveBlock }) {
+  const { t } = useTranslation();
+
+  if (!block.managedByPortal) {
+    return (
+      <span className="block-expiry block-expiry-unmanaged" title={t("arpResponseUnmanagedHint")}>
+        {t("arpResponseUnmanaged")}
+      </span>
+    );
+  }
+  if (!block.expiresAt) {
+    return <span className="block-expiry block-expiry-indefinite">{t("arpResponseNoExpiry")}</span>;
+  }
+  return (
+    <span className="block-expiry">
+      {t("arpResponseExpiresAt")}: {new Date(block.expiresAt).toLocaleString()}
+    </span>
+  );
 }
 
 /** Containment actions that require an explicit confirmation before running. */
@@ -64,6 +100,10 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
   const [username, setUsername] = useState("");
   const [clientIp, setClientIp] = useState("");
   const [reason, setReason] = useState("");
+  // Hours until the block lifts itself. 0 means indefinite, which stays
+  // available but has to be chosen — an expiry that must be requested is one
+  // that gets forgotten, and a forgotten block reads as an outage.
+  const [ttlHours, setTtlHours] = useState(24);
 
   // Active blocks state
   const [smbBlocks, setSmbBlocks] = useState<ActiveBlock[]>([]);
@@ -96,17 +136,18 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
         error?: string;
       }>(response);
       if (data) {
-        if (data.error && data.error.length > 5) {
-          // Only show meaningful error messages (not cryptic codes like "4")
+        // Previously this branched on error string length, to hide a backend
+        // message that was literally "4" — an IndexError whose text was a bare
+        // number. That guess also swallowed any genuinely short error, and the
+        // backend now reports the exception type instead, so the response is
+        // taken at face value: report failures, render successes.
+        if (data.error) {
           setError(data.error);
+          setSmbBlocks([]);
+          setNfsBlocks([]);
         } else {
           setSmbBlocks(data.smbBlocks || []);
           setNfsBlocks(data.nfsBlocks || []);
-          if (data.error && data.error.length <= 5) {
-            // Short error codes indicate backend module issues — show empty state
-            setSmbBlocks([]);
-            setNfsBlocks([]);
-          }
         }
       }
     } catch (err) {
@@ -140,6 +181,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
         volumeName: volumeName || undefined,
         reason: reason || "portal-initiated",
         confirm: true,
+        ttlHours,
       }) });
 
       const data = parseResponse<{ success?: boolean; status?: string; steps?: unknown; error?: string }>(response);
@@ -172,7 +214,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     setResult(null);
 
     try {
-      const response = await (client.mutations as any).arpMutation({ action: "blockSmbUser", params: JSON.stringify({domain, username, confirm: true}) });
+      const response = await (client.mutations as any).arpMutation({ action: "blockSmbUser", params: JSON.stringify({domain, username, confirm: true, ttlHours}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
@@ -199,7 +241,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     setResult(null);
 
     try {
-      const response = await (client.mutations as any).arpMutation({ action: "blockNfsIp", params: JSON.stringify({clientIp, confirm: true}) });
+      const response = await (client.mutations as any).arpMutation({ action: "blockNfsIp", params: JSON.stringify({clientIp, confirm: true, ttlHours}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
@@ -431,6 +473,26 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
             />
           </div>
 
+          <div className="form-group">
+            <label htmlFor="arp-ttl">{t("arpResponseTtlLabel")}</label>
+            <select
+              id="arp-ttl"
+              value={ttlHours}
+              onChange={(e) => setTtlHours(Number(e.target.value))}
+              disabled={loading}
+            >
+              <option value={1}>{t("arpResponseTtl1h")}</option>
+              <option value={4}>{t("arpResponseTtl4h")}</option>
+              <option value={24}>{t("arpResponseTtl24h")}</option>
+              <option value={72}>{t("arpResponseTtl72h")}</option>
+              <option value={168}>{t("arpResponseTtl7d")}</option>
+              <option value={0}>{t("arpResponseTtlIndefinite")}</option>
+            </select>
+            <p className="form-note">
+              {ttlHours === 0 ? t("arpResponseTtlIndefiniteNote") : t("arpResponseTtlNote")}
+            </p>
+          </div>
+
           <div className="arp-action-buttons">
             <button
               onClick={() => setPending("contain")}
@@ -479,7 +541,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
           )}
 
           <p className="form-note">{t("arpResponseAdminOnly")}</p>
-          <p className="form-note">{t("arpResponseNoBlockExpiry")}</p>
+          <p className="form-note">{t("arpResponseSweepNote")}</p>
         </div>
       )}
 
@@ -499,6 +561,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
                     {smbBlocks.map((block, i) => (
                       <li key={`smb-${i}`} className="block-item">
                         <span className="block-pattern">{block.pattern}</span>
+                        <BlockExpiry block={block} />
                         <button
                           onClick={() => handleUnblockSmbUser(block.pattern || "")}
                           disabled={loading}
@@ -524,6 +587,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
                           {block.client_match?.replace("fsxn_auto_response,", "") || "—"}
                         </span>
                         <span className="block-policy">{block.policy}</span>
+                        <BlockExpiry block={block} />
                         <button
                           onClick={() => handleUnblockNfsIp(block.client_match || "")}
                           disabled={loading}

@@ -194,3 +194,67 @@ describe("Backend Infrastructure Structure", () => {
     });
   });
 });
+
+
+describe("Containment block expiry", () => {
+  it("defines the ledger table with a TTL attribute", () => {
+    // ONTAP deny rules carry no timestamp, so without this table nothing can
+    // say when a block was placed or when it should be lifted.
+    expect(backendSource).toContain('"ContainmentBlocksTable"');
+    expect(backendSource).toContain('timeToLiveAttribute: "ttl"');
+  });
+
+  it("retains the ledger table on stack removal", () => {
+    // Losing it would leave blocks on the cluster with nothing recording that
+    // they were ever meant to expire.
+    const table = backendSource.slice(
+      backendSource.indexOf('"ContainmentBlocksTable"'),
+      backendSource.indexOf('"ContainmentBlocksTable"') + 700
+    );
+    expect(table).toContain("RemovalPolicy.RETAIN");
+  });
+
+  it("schedules the sweep against the ARP function", () => {
+    expect(backendSource).toContain('"ContainmentBlockSweepSchedule"');
+    expect(backendSource).toContain('action: "sweepExpiredBlocks"');
+    const rule = backendSource.slice(
+      backendSource.indexOf('"ContainmentBlockSweepSchedule"'),
+      backendSource.indexOf('"ContainmentBlockSweepSchedule"') + 900
+    );
+    expect(rule).toContain("targets.LambdaFunction(arpResponseFunction");
+  });
+
+  it("grants the ARP role Scan but not DeleteItem on the ledger", () => {
+    // Scan is what lets the sweep find due rows without knowing their keys.
+    // DeleteItem is deliberately absent: rows are closed out by status so the
+    // audit trail survives, and the native TTL removes them later.
+    const role = backendSource.slice(
+      backendSource.indexOf('"ArpResponseLambdaRole"'),
+      backendSource.indexOf('"ArpResponseLambdaRole"') + 2000
+    );
+    expect(role).toContain('"dynamodb:Scan"');
+    expect(role).toContain('"dynamodb:UpdateItem"');
+    expect(role).not.toContain('"dynamodb:DeleteItem"');
+  });
+
+  it("passes the table name and default expiry to the ARP function", () => {
+    expect(backendSource).toContain("CONTAINMENT_BLOCKS_TABLE: containmentBlocksTable.tableName");
+    expect(backendSource).toContain("DEFAULT_BLOCK_TTL_HOURS: String(config.defaultBlockTtlHours)");
+  });
+
+  it("can add a DynamoDB gateway endpoint for the VPC functions", () => {
+    // A Lambda ENI has no public IP, so a subnet whose default route is an
+    // internet gateway has no egress at all. Without a path to DynamoDB the
+    // ledger call hung until the function was killed, which made a block ONTAP
+    // had already accepted look like a failure at the caller.
+    expect(backendSource).toContain('"DynamoDbGatewayEndpoint"');
+    expect(backendSource).toContain('vpcEndpointType: "Gateway"');
+    expect(backendSource).toContain("config.vpcRouteTableIds");
+  });
+
+  it("only creates the endpoint when route tables are supplied", () => {
+    // The VPC belongs to another stack; writing to its route tables should be a
+    // deliberate choice rather than a side effect of deploying the portal.
+    expect(backendSource).toContain("vpcConfig && config.vpcRouteTableIds.length > 0");
+  });
+});

@@ -469,3 +469,75 @@ class TestUnblockSmbUser:
         result = arp.unblock_smb_user(svm_name="svm1", domain="CORP", username="notblocked")
 
         assert result["status"] == "not_found"
+
+
+class TestSmbBlockIndexAllocation:
+    """Index selection for win_unix deny mappings.
+
+    The index used to be hardcoded to 1. ONTAP rejects a POST to an occupied
+    index with a bare 409, so once any mapping existed at index 1 — from an
+    earlier block, or placed by an operator at the CLI — every further block
+    failed with nothing in the message to explain why. Containing a second
+    principal during an incident was impossible.
+    """
+
+    def test_uses_index_1_when_nothing_is_mapped(self, arp, mock_client):
+        arp.block_smb_user(svm_name="svm1", domain="CORP", username="jdoe")
+
+        post = next(c for c in mock_client.calls if c[0] == "POST")
+        assert post[2]["index"] == 1
+
+    def test_skips_indexes_already_in_use(self, mock_client):
+        mock_client._responses["/name-services/name-mappings"] = {
+            "records": [
+                {"index": 1, "pattern": "CORP\\\\someone"},
+                {"index": 2, "pattern": "CORP\\\\someone_else"},
+            ],
+            "num_records": 2,
+        }
+        arp = ArpResponseActions(mock_client)
+
+        arp.block_smb_user(svm_name="svm1", domain="CORP", username="jdoe")
+
+        post = next(c for c in mock_client.calls if c[0] == "POST")
+        assert post[2]["index"] == 3
+
+    def test_fills_a_gap_left_by_an_earlier_unblock(self, mock_client):
+        mock_client._responses["/name-services/name-mappings"] = {
+            "records": [
+                {"index": 1, "pattern": "CORP\\\\someone"},
+                {"index": 3, "pattern": "CORP\\\\third"},
+            ],
+            "num_records": 2,
+        }
+        arp = ArpResponseActions(mock_client)
+
+        arp.block_smb_user(svm_name="svm1", domain="CORP", username="jdoe")
+
+        post = next(c for c in mock_client.calls if c[0] == "POST")
+        assert post[2]["index"] == 2
+
+    def test_an_explicit_position_is_still_honoured(self, arp, mock_client):
+        arp.block_smb_user(svm_name="svm1", domain="CORP", username="jdoe", position=7)
+
+        post = next(c for c in mock_client.calls if c[0] == "POST")
+        assert post[2]["index"] == 7
+
+    def test_re_blocking_the_same_principal_is_a_no_op(self, mock_client):
+        """A second alert for the same user must not fail.
+
+        Re-blocking is normal during an incident — a repeat alert, or an operator
+        who cannot see that the block is already in place. Previously this hit
+        the occupied index and returned 409.
+        """
+        mock_client._responses["/name-services/name-mappings"] = {
+            "records": [{"index": 4, "pattern": "CORP\\\\jdoe"}],
+            "num_records": 1,
+        }
+        arp = ArpResponseActions(mock_client)
+
+        result = arp.block_smb_user(svm_name="svm1", domain="CORP", username="jdoe")
+
+        assert result["status"] == "already_blocked"
+        assert result["position"] == 4
+        assert not [c for c in mock_client.calls if c[0] == "POST"]
