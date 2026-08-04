@@ -4,4 +4,4 @@ urllib3==2.7.0
 # jsonschema: ARM64 Lambda 互換性のため 4.17.x を使用（4.18+ は rpds-py が必要で ARM64 ビルド問題あり）
 jsonschema==4.17.3
 # Optional: X-Ray トレーシング（ENABLE_XRAY=true 時のみ使用）
-aws-xray-sdk==2.14.0
+aws-xray-sdk==2.15.0
