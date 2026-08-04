@@ -636,12 +636,23 @@ def _get_arp_response_client():
     import sys
     from pathlib import Path
 
-    # Add shared/ to path (Lambda Layer mounts at /opt/python)
-    shared_paths = [
-        "/opt/python",  # Lambda Layer
-        str(Path(__file__).parents[4]),  # Local dev: repo root
-    ]
-    for p in shared_paths:
+    # `/opt/python` is where the shared-modules Lambda layer mounts. The repo
+    # root is only useful when running locally from a checkout.
+    #
+    # This previously used `Path(__file__).parents[4]`, which has three parents
+    # in the Lambda runtime (`/var/task/handler.py`) and therefore raised
+    # `IndexError: 4` before any import was attempted. Because `str(IndexError(4))`
+    # is the string "4", it read like an HTTP status and was mistaken for one —
+    # the containment actions were failing for a packaging reason while
+    # reporting something else entirely. Walk the parents defensively instead.
+    candidates = ["/opt/python"]
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "shared" / "ontap_response.py").exists():
+            candidates.append(str(parent))
+            break
+
+    for p in candidates:
         if p not in sys.path:
             sys.path.insert(0, p)
 
@@ -662,29 +673,31 @@ def _arp_client_or_error():
 
     Returns (client, None) or (None, error_dict).
 
-    Without this, a failure here escapes to the generic handler except clause and
-    the UI shows whatever `str(e)` produced — observed as a bare "4" on an SVM
-    with no CIFS service, which tells an operator nothing. `listActiveBlocks`
-    already translated that case; the action paths did not.
+    Without this, a failure here escapes to the generic handler except clause
+    and the UI shows whatever `str(e)` produced.
+
+    Do not pattern-match on the text of the exception to guess a cause. An
+    earlier version treated a short numeric message as an HTTP 404 and reported
+    "the SVM may not have a CIFS service configured". The actual exception was
+    `IndexError: 4` from a path calculation, so the message was confidently
+    wrong about a packaging problem. Report the exception type and let the
+    operator see the real detail.
     """
     try:
         return _get_arp_response_client(), None
     except ImportError as e:
         return None, {
             "success": False,
-            "error": f"Containment module not available in this deployment: {e}",
+            "error": (
+                "Containment is unavailable: the shared ONTAP modules are not on the "
+                f"Python path ({e}). The function needs the shared-modules layer attached."
+            ),
         }
     except Exception as e:
-        detail = str(e)
-        if detail.isdigit() or "404" in detail or "not found" in detail.lower():
-            return None, {
-                "success": False,
-                "error": (
-                    "Could not reach the ONTAP identity APIs — the SVM may not have a "
-                    "CIFS service configured, which SMB containment requires"
-                ),
-            }
-        return None, {"success": False, "error": f"Failed to initialise the ONTAP client: {detail}"}
+        return None, {
+            "success": False,
+            "error": f"Failed to initialise the ONTAP client: {type(e).__name__}: {e}",
+        }
 
 
 def _require_confirm(event):
@@ -878,41 +891,30 @@ def _arp_list_active_blocks(event):
     """
     svm = event.get("svm", SVM_NAME)
 
-    try:
-        arp = _get_arp_response_client()
-        result = arp.list_active_blocks(svm_name=svm)
-        return {"success": True, **result}
-    except ImportError as e:
-        logger.warning(f"Shared module not available for list_active_blocks: {e}")
-        return {
-            "success": True,
-            "smbBlocks": [],
-            "nfsBlocks": [],
-            "total": 0,
-            "error": None,
-            "note": "ArpResponseActions module not available in this deployment",
-        }
-    except Exception as e:
-        error_str = str(e)
-        logger.error(f"list_active_blocks failed: {error_str}")
-        # Short numeric error codes (e.g., "4" from HTTP 404) mean the API endpoint
-        # is not available — typically because CIFS service is not configured on the SVM.
-        # Treat as "no blocks" rather than showing a confusing error.
-        if error_str.isdigit() or "404" in error_str or "not found" in error_str.lower():
-            return {
-                "success": True,
-                "smbBlocks": [],
-                "nfsBlocks": [],
-                "total": 0,
-                "error": None,
-                "note": "Name-mapping API not available (CIFS service may not be configured on this SVM)",
-            }
+    arp, client_error = _arp_client_or_error()
+    if client_error:
+        # Surface it rather than reporting an empty list. "No blocks" and "could
+        # not ask" look identical to an operator otherwise, and this listing is
+        # the only way to find and lift a block that was set by mistake.
         return {
             "success": False,
             "smbBlocks": [],
             "nfsBlocks": [],
             "total": 0,
-            "error": f"Failed to retrieve active blocks: {error_str}",
+            "error": client_error["error"],
+        }
+
+    try:
+        result = arp.list_active_blocks(svm_name=svm)
+        return {"success": True, **result}
+    except Exception as e:
+        logger.error(f"list_active_blocks failed: {type(e).__name__}: {e}")
+        return {
+            "success": False,
+            "smbBlocks": [],
+            "nfsBlocks": [],
+            "total": 0,
+            "error": f"Failed to retrieve active blocks: {type(e).__name__}: {e}",
         }
 
 

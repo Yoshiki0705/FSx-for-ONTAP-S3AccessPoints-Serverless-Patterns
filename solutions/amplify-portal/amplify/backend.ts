@@ -2,6 +2,8 @@ import { defineBackend } from "@aws-amplify/backend";
 import { auth } from "./auth/resource";
 import { data } from "./data/resource";
 import { config } from "./portal-config";
+import * as fs from "fs";
+import * as path from "path";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
@@ -187,6 +189,81 @@ const functionCode = (directory: string) =>
       "conftest.py",
     ],
   });
+
+/**
+ * Layer carrying the repository's `shared/` Python modules.
+ *
+ * `functions/data-protection/handler.py` imports `shared.ontap_client` and
+ * `shared.ontap_response` for the containment actions. Neither was ever
+ * packaged: the function asset covers only its own directory and no layer
+ * existed, so every containment call failed at import time. The failure was
+ * additionally disguised, because the fallback path calculation raised
+ * `IndexError: 4` and the string "4" was misread as an HTTP status.
+ *
+ * A layer mounts at `/opt`, and Python only picks up `/opt/python`, so the
+ * archive has to carry a `python/` prefix. `Code.fromAsset` would place the
+ * files at the archive root, hence the local bundling hook that restages them.
+ * It runs without Docker, which keeps `ampx sandbox` usable on a laptop.
+ */
+// Asset paths in this file are resolved from the working directory (see the
+// `functions/...` arguments above), which is `solutions/amplify-portal`. This
+// file is an ES module, so `__dirname` is not available.
+const sharedModulesDir = path.resolve(process.cwd(), "..", "..", "shared");
+
+if (!fs.existsSync(path.join(sharedModulesDir, "ontap_response.py"))) {
+  throw new Error(
+    `Shared Python modules not found at ${sharedModulesDir}. ` +
+      "Run ampx from solutions/amplify-portal so the layer can be staged; " +
+      "deploying without it silently breaks the ARP containment actions."
+  );
+}
+
+const sharedPythonLayer = new lambda.LayerVersion(dataStack, "SharedPythonLayer", {
+  description:
+    "Repository shared/ Python modules (ONTAP client and ARP containment actions) at /opt/python/shared",
+  compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
+  compatibleArchitectures: [lambda.Architecture.ARM_64],
+  code: lambda.Code.fromAsset(sharedModulesDir, {
+    exclude: ["tests", "tests/**", "__pycache__", "**/__pycache__", "*.pyc"],
+    bundling: {
+      image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+      command: [],
+      local: {
+        tryBundle(outputDir: string) {
+          // `shared/__init__.py` imports its subpackages eagerly (streaming,
+          // routing, observability and so on), so copying only the top-level
+          // modules produces a layer that fails at `import shared` with
+          // "No module named 'shared.streaming'". Copy the whole Python tree.
+          const skipDirs = new Set(["tests", "__pycache__", ".pytest_cache", "cfn", "scripts"]);
+
+          const copyPython = (from: string, to: string): number => {
+            let copied = 0;
+            for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+              const source = path.join(from, entry.name);
+              if (entry.isDirectory()) {
+                if (skipDirs.has(entry.name)) continue;
+                copied += copyPython(source, path.join(to, entry.name));
+              } else if (entry.name.endsWith(".py")) {
+                fs.mkdirSync(to, { recursive: true });
+                fs.copyFileSync(source, path.join(to, entry.name));
+                copied += 1;
+              }
+            }
+            return copied;
+          };
+
+          const target = path.join(outputDir, "python", "shared");
+          fs.mkdirSync(target, { recursive: true });
+          const copied = copyPython(sharedModulesDir, target);
+          if (copied === 0) {
+            throw new Error(`Staged no Python files from ${sharedModulesDir}`);
+          }
+          return true;
+        },
+      },
+    },
+  }),
+});
 
 const listFilesFunction = new lambda.Function(dataStack, "ListFilesFunction", {
   runtime: lambda.Runtime.PYTHON_3_12,
@@ -411,10 +488,14 @@ const arpResponseFunction = new lambda.Function(
       VOLUME_NAME: config.ontapVolumeName,
       SVM_NAME: config.ontapSvmName,
     },
+    // Without this layer the containment actions cannot import
+    // shared.ontap_response and fail before reaching ONTAP.
+    layers: [sharedPythonLayer],
     memorySize: 256,
     timeout: Duration.seconds(60),
     description:
-      "ARP/AI response actions — user/IP blocking, snapshot, session disconnect (VPC Lambda, ONTAP REST)",
+      "ARP/AI response actions — user/IP blocking, snapshot, session disconnect " +
+      "(VPC Lambda, ONTAP REST, requires the shared-modules layer)",
     ...(vpcConfig && { vpc: vpcConfig.vpc, securityGroups: vpcConfig.securityGroups, vpcSubnets: vpcConfig.vpcSubnets }),
   }
 );
