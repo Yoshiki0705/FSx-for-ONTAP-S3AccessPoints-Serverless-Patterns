@@ -939,7 +939,7 @@ class TestFlexClone:
         assert "volumeUuid" in result["error"]
 
 
-# --- SnapMirror (read-only) ---
+# --- SnapMirror (inventory and lifecycle) ---
 
 
 class TestSnapMirror:
@@ -982,7 +982,7 @@ class TestSnapMirror:
         assert rel["healthy"] is True
         assert rel["policy"] == "MirrorAllSnapshots"
 
-    def test_does_not_request_unsupported_fields(self, mock_secrets):
+    def test_snapmirror_does_not_request_unsupported_fields(self, mock_secrets):
         """Guard the requested `fields` list, not just the response mapping.
 
         A mock ONTAP returns records whatever `fields` we ask for, so asserting
@@ -1037,7 +1037,7 @@ class TestSnapMirror:
         assert result["transfers"][0]["duration"] == "PT30S"
 
 
-# --- Vscan (read-only) ---
+# --- Vscan (status and policy management) ---
 
 
 class TestVscan:
@@ -1096,7 +1096,7 @@ class TestVscan:
         assert pol["excludedExtensions"] == ["tmp"]
 
 
-# --- FPolicy (read-only) ---
+# --- FPolicy (status and policy management) ---
 
 
 class TestFPolicy:
@@ -2166,3 +2166,83 @@ class TestConfirmGatedDeletesMatchUiPayloads:
         deletes = [c for c in http.calls if c[0] == "DELETE"]
         assert len(deletes) == 1
         assert "/protocols/vscan/svm-1/on-access-policies/scan_all_cifs" in deletes[0][1]
+
+
+# --- Request path safety ---
+
+
+class TestRequestPathSafety:
+    """Caller-supplied names must not be able to redirect an ONTAP request.
+
+    Many actions build the request path from a name the caller sent. Without
+    encoding, a value containing a traversal segment sends the request to a
+    different endpoint than the action advertises — a share delete reaching a
+    cluster resource, for example.
+    """
+
+    def test_traversal_segment_is_refused(self):
+        from handler import _is_unsafe_path
+
+        assert _is_unsafe_path("/protocols/cifs/shares/uuid/../../cluster/nodes")
+        assert _is_unsafe_path("/storage/volumes/..")
+
+    def test_dots_inside_a_name_are_allowed(self):
+        """`..` within a segment is a legal character sequence in a name."""
+        from handler import _is_unsafe_path
+
+        assert not _is_unsafe_path("/protocols/cifs/shares/uuid/my..share")
+        assert not _is_unsafe_path("/storage/volumes?name=vol.1.2")
+
+    def test_control_characters_and_backslash_are_refused(self):
+        from handler import _is_unsafe_path
+
+        assert _is_unsafe_path("/storage/volumes/a\nb")
+        assert _is_unsafe_path("/storage/volumes/a\x00b")
+        assert _is_unsafe_path("/storage/volumes/a\\b")
+
+    def test_ordinary_paths_pass(self):
+        from handler import _is_unsafe_path
+
+        assert not _is_unsafe_path("/storage/volumes?svm.name=svm1&fields=uuid")
+        assert not _is_unsafe_path("/protocols/cifs/shares/1234-5678/data")
+
+    def test_unsafe_path_never_reaches_the_network(self, mock_secrets):
+        from handler import _ontap_request
+
+        mock_http = MockHttp()
+        result = _ontap_request(mock_http, {}, "DELETE", "/protocols/cifs/shares/u/../../cluster")
+
+        assert result["_error"] is True
+        assert result["_status"] == 400
+        assert mock_http.calls == []
+
+    def test_share_name_is_percent_encoded(self, mock_secrets):
+        from handler import handler
+
+        mock_http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+            handler(
+                {
+                    "action": "deleteCifsShare",
+                    "name": "../../cluster/nodes",
+                    "confirm": True,
+                },
+                None,
+            )
+
+        urls = [url for _m, url, _k in mock_http.calls]
+        # The traversal must be encoded rather than forming path segments.
+        assert not any("/../" in u for u in urls), urls
+
+    def test_svm_query_value_is_encoded(self, mock_secrets):
+        """An `&` in a name would otherwise append query parameters."""
+        from handler import handler
+
+        mock_http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+            handler({"action": "listVolumes", "svm": "svm1&fields=uuid"}, None)
+
+        urls = [url for _m, url, _k in mock_http.calls]
+        assert any("svm1%26fields%3Duuid" in u for u in urls), urls

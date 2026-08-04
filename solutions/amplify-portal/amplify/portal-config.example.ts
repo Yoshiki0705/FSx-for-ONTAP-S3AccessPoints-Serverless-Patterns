@@ -35,6 +35,10 @@ export interface PortalConfig {
   vpcId: string;
   vpcSubnetIds: string[];
   vpcSecurityGroupIds: string[];
+  // Required whenever vpcId is set. See the assignment below for why.
+  vpcRouteTableIds: string[];
+  // Escape hatch: deploy into a VPC with no block expiry, on purpose.
+  allowNoBlockExpiry: boolean;
 
   // ONTAP connection
   ontapMgmtIp: string;
@@ -135,6 +139,29 @@ export const config: PortalConfig = {
   vpcId: "",
   vpcSubnetIds: [],
   vpcSecurityGroupIds: [],
+
+  /**
+   * Route tables associated with vpcSubnetIds. Required whenever vpcId is set.
+   *
+   * Creates a DynamoDB gateway endpoint, which the VPC functions need to reach
+   * the containment block ledger. A Lambda ENI has no public IP, so a subnet
+   * whose default route is an internet gateway gives the function no egress at
+   * all — interface endpoints cover Secrets Manager, but DynamoDB has no path
+   * unless one is added. Gateway endpoints are not billed.
+   *
+   * Left unset, containment still works but nothing expires: blocks land on the
+   * cluster and the scheduled sweep never sees them. The response reports
+   * expiryTracked: false rather than implying the block will lift itself.
+   *
+   *   aws ec2 describe-route-tables \
+   *     --filters "Name=association.subnet-id,Values=<subnet-id>" \
+   *     --query "RouteTables[].RouteTableId" --output text
+   *
+   * Deploying with vpcId set and this empty is refused, because the result looks
+   * complete while expiry does not run. Set allowNoBlockExpiry to accept that.
+   */
+  vpcRouteTableIds: [],
+  allowNoBlockExpiry: false,
 
   /**
    * ONTAP management LIF IP address.
