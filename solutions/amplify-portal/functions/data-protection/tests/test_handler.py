@@ -238,3 +238,58 @@ class TestRequestPathSafety:
         deletes = [url for method, url in captured if method == "DELETE"]
         assert deletes, captured
         assert not any("/../" in url for url in deletes), deletes
+
+
+class TestActiveBlocksResponseShape:
+    """The listing must use the key names the UI reads.
+
+    The shared module returns snake_case. The UI reads camelCase, and the error
+    branches already returned camelCase, so spreading the raw result produced a
+    response the Active Blocks tab silently could not read — real blocks on the
+    SVM showed as none. That tab is the only way to lift a block from the
+    portal, so the mismatch made a mistaken block unliftable through the UI.
+    """
+
+    def test_snake_case_from_shared_is_mapped_to_camel_case(self, mock_secrets, mock_arp):
+        from handler import handler
+
+        mock_arp.list_active_blocks.return_value = {
+            "action": "list_active_blocks",
+            "svm": "svm1",
+            "smb_blocks": [{"pattern": "CORP\\\\testuser01", "index": 1, "replacement": " "}],
+            # RFC 5737 documentation range, so the fixture cannot be mistaken
+            # for a real internal address.
+            "nfs_blocks": [{"policy": "default", "rule_index": 1, "client_match": "m,203.0.113.99"}],
+            "total": 2,
+        }
+
+        result = handler({"action": "listActiveBlocks"}, None)
+
+        assert result["success"] is True
+        assert len(result["smbBlocks"]) == 1
+        assert len(result["nfsBlocks"]) == 1
+        assert result["total"] == 2
+        # The raw snake_case keys must not leak through as well, or a consumer
+        # could read either and the two would drift.
+        assert "smb_blocks" not in result
+        assert "nfs_blocks" not in result
+
+    def test_success_and_error_shapes_agree(self, mock_secrets, mock_arp):
+        """Both branches must expose the same keys, or the UI breaks on one."""
+        from handler import handler
+
+        mock_arp.list_active_blocks.return_value = {
+            "action": "list_active_blocks",
+            "svm": "svm1",
+            "smb_blocks": [],
+            "nfs_blocks": [],
+            "total": 0,
+        }
+        ok = handler({"action": "listActiveBlocks"}, None)
+
+        with patch("handler._get_arp_response_client", side_effect=ImportError("no module")):
+            failed = handler({"action": "listActiveBlocks"}, None)
+
+        for key in ("success", "smbBlocks", "nfsBlocks", "total", "error"):
+            assert key in ok, key
+            assert key in failed, key

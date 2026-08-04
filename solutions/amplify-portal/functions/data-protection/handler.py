@@ -906,7 +906,21 @@ def _arp_list_active_blocks(event):
 
     try:
         result = arp.list_active_blocks(svm_name=svm)
-        return {"success": True, **result}
+        # The shared module returns snake_case keys; the UI reads camelCase, and
+        # the error branches below already used camelCase. Spreading the raw
+        # result therefore produced a response the Active Blocks tab could not
+        # read: real blocks existed on the SVM and the panel showed none of them.
+        # Since that tab is the only way to lift a block from the portal, the
+        # mismatch made a mistaken block unliftable through the UI.
+        return {
+            "success": True,
+            "action": result.get("action", "list_active_blocks"),
+            "svm": result.get("svm", svm),
+            "smbBlocks": result.get("smb_blocks", []),
+            "nfsBlocks": result.get("nfs_blocks", []),
+            "total": result.get("total", 0),
+            "error": None,
+        }
     except Exception as e:
         logger.error(f"list_active_blocks failed: {type(e).__name__}: {e}")
         return {
