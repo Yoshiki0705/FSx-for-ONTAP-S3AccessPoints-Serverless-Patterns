@@ -125,16 +125,20 @@ class TestUnblockIsNotGated:
 
 
 class TestClientFailureIsReadable:
-    """A failure building the ONTAP client must not reach the UI as a bare code.
+    """A failure building the ONTAP client must reach the UI as something usable.
 
-    Observed against a live SVM with no CIFS service: the action returned
-    {"error": "4"}, which tells an operator nothing about what to fix.
+    The original symptom was `{"error": "4"}`. The first attempt at a fix guessed
+    that a short numeric message meant an HTTP 404 and reported "the SVM may not
+    have a CIFS service configured". It was actually `IndexError: 4` from
+    `Path(__file__).parents[4]` — a packaging problem being described as a
+    configuration problem. So the requirement is not "produce a friendly
+    message", it is "name the exception and do not guess".
     """
 
-    def test_numeric_error_is_translated(self, mock_secrets):
+    def test_exception_type_is_reported_not_guessed(self, mock_secrets):
         from handler import handler
 
-        with patch("handler._get_arp_response_client", side_effect=Exception("4")):
+        with patch("handler._get_arp_response_client", side_effect=IndexError(4)):
             result = handler(
                 {"action": "blockSmbUser", "domain": "CORP", "username": "jdoe", "confirm": True},
                 None,
@@ -142,16 +146,33 @@ class TestClientFailureIsReadable:
 
         assert result["success"] is False
         assert result["error"] != "4"
-        assert "CIFS" in result["error"]
+        assert "IndexError" in result["error"]
+        # The old message invented a cause. It must not come back.
+        assert "CIFS" not in result["error"]
 
-    def test_import_error_is_named(self, mock_secrets):
+    def test_import_error_points_at_the_layer(self, mock_secrets):
         from handler import handler
 
         with patch("handler._get_arp_response_client", side_effect=ImportError("no module")):
             result = handler({"action": "blockNfsIp", "clientIp": "10.0.5.99", "confirm": True}, None)
 
         assert result["success"] is False
-        assert "not available" in result["error"]
+        assert "layer" in result["error"]
+
+    def test_list_active_blocks_reports_the_failure(self, mock_secrets):
+        """An empty list and "could not ask" must not look the same.
+
+        This listing is the only route to finding and lifting a mistaken block,
+        so reporting success with zero rows when the call failed is misleading.
+        """
+        from handler import handler
+
+        with patch("handler._get_arp_response_client", side_effect=ImportError("no module")):
+            result = handler({"action": "listActiveBlocks"}, None)
+
+        assert result["success"] is False
+        assert result["smbBlocks"] == []
+        assert "layer" in result["error"]
 
     def test_client_is_not_built_before_the_gate(self, mock_secrets):
         """An unconfirmed call must not even try to construct the client."""
