@@ -131,13 +131,14 @@ aws cognito-idp create-group \
 3. **Owner scoping**: Personal data (favorites, history, tags) uses Amplify's `allow.owner()` — users see only their own
 4. **Audit trail**: All admin actions include `userId` in the Lambda payload → logged in CloudTrail
 5. **Protected accounts**: Even storage-admins cannot block `fsxadmin`/`administrator` (safety valve in `ontap_response.py`)
-6. **Confirmation gates**: Destructive operations (delete volume, disable ARP) require explicit `confirm: true`
+6. **Confirmation gates**: Destructive operations require explicit `confirm: true` in the Lambda payload, not only a dialog in the browser. This covers `deleteVolume`, `deleteExportPolicy`, `deleteCifsShare`, the SnapMirror `break`/`resync`/`delete` paths, the Vscan and FPolicy policy deletes, cluster-peer delete, and every ARP containment action (`blockSmbUser`, `blockNfsIp`, `containThreat`, `disconnectSessions`). Unblocking is deliberately **not** gated — it restores access, and a confirmation step on the way out of a mistaken block only delays recovery.
+7. **No automatic expiry**: a block stays until someone removes it. The portal has no TTL and no scheduled unblock, so the Active Blocks tab is the only thing standing between a false positive and an indefinite lockout. See the [containment boundary](../../solutions/amplify-portal/docs/resource-management-demo-guide.en.md) for what this means operationally.
 
 ## Frontend Behavior
 
 The UI does not hide admin features from non-admin users — instead, it shows them grayed out with a "storage-admin required" badge. This makes the capability visible (users know what's possible) while preventing unauthorized execution (AppSync rejects the call if attempted).
 
-The `ArpResponseActions` component in Data Protection is an exception: it renders action buttons only when threat level is elevated, reducing cognitive load during normal operation.
+The `ArpResponseActions` component in Data Protection always renders its containment form — an operator may need to block a user that ARP has not flagged. What changes with the threat level is a warning banner above the form, not the availability of the actions. Each action then asks for confirmation, and the Lambda refuses the call unless `confirm: true` arrives with it.
 
 
 ---

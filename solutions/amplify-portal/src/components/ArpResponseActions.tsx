@@ -23,6 +23,9 @@ interface ActiveBlock {
   client_match?: string;
 }
 
+/** Containment actions that require an explicit confirmation before running. */
+type ConfirmAction = "contain" | "blockSmb" | "blockNfs" | "disconnect";
+
 interface ArpResponseActionsProps {
   /** Current ARP threat level — controls visibility of containment actions */
   threatLevel: string;
@@ -66,6 +69,11 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
   const [smbBlocks, setSmbBlocks] = useState<ActiveBlock[]>([]);
   const [nfsBlocks, setNfsBlocks] = useState<ActiveBlock[]>([]);
   const [blocksLoading, setBlocksLoading] = useState(false);
+
+  // Pending containment action awaiting confirmation. Blocking cuts data access
+  // for a principal across the whole SVM and nothing expires it automatically,
+  // so the operator states the intent twice. The backend enforces the same gate.
+  const [pending, setPending] = useState<ConfirmAction | null>(null);
 
   const clearForm = () => {
     setDomain("");
@@ -131,6 +139,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
         clientIp: clientIp || undefined,
         volumeName: volumeName || undefined,
         reason: reason || "portal-initiated",
+        confirm: true,
       }) });
 
       const data = parseResponse<{ success?: boolean; status?: string; steps?: unknown; error?: string }>(response);
@@ -163,7 +172,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     setResult(null);
 
     try {
-      const response = await (client.mutations as any).arpMutation({ action: "blockSmbUser", params: JSON.stringify({domain, username}) });
+      const response = await (client.mutations as any).arpMutation({ action: "blockSmbUser", params: JSON.stringify({domain, username, confirm: true}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
@@ -190,7 +199,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     setResult(null);
 
     try {
-      const response = await (client.mutations as any).arpMutation({ action: "blockNfsIp", params: JSON.stringify({clientIp}) });
+      const response = await (client.mutations as any).arpMutation({ action: "blockNfsIp", params: JSON.stringify({clientIp, confirm: true}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) {
@@ -204,6 +213,65 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- Action: Disconnect SMB sessions ---
+  //
+  // Blocking a user only stops the next authentication — an already-open SMB
+  // session keeps working until it is dropped. This exists as its own action so
+  // an operator can cut live sessions without re-running the whole containment.
+  const handleDisconnectSessions = async () => {
+    if (!domain || !username) {
+      if (!clientIp) {
+        setError(t("arpResponseRequireTarget"));
+        return;
+      }
+    }
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await (client.mutations as any).arpMutation({ action: "disconnectSessions", params: JSON.stringify({
+        user: domain && username ? `${domain}\\${username}` : undefined,
+        clientIp: clientIp || undefined,
+        confirm: true,
+      }) });
+      const data = parseResponse<{ success?: boolean; disconnected?: number; error?: string }>(response);
+      if (data) {
+        if (data.success) {
+          setResult(`${t("arpResponseDisconnected")}: ${data.disconnected ?? 0}`);
+        } else {
+          setError(data.error || "Disconnect failed");
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Disconnect failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Confirmation descriptions are per-action because the consequences differ:
+  // an NFS block is subject to client-side caching, an SMB block is not, and a
+  // disconnect on its own does not prevent the next login.
+  const confirmMessage = (action: ConfirmAction): string => {
+    switch (action) {
+      case "contain": return t("arpResponseConfirmContain");
+      case "blockSmb": return t("arpResponseConfirmBlockSmb");
+      case "blockNfs": return t("arpResponseConfirmBlockNfs");
+      case "disconnect": return t("arpResponseConfirmDisconnect");
+    }
+  };
+
+  const runPending = async () => {
+    const action = pending;
+    setPending(null);
+    if (!action) return;
+    if (action === "contain") await handleContainThreat();
+    else if (action === "blockSmb") await handleBlockSmbUser();
+    else if (action === "blockNfs") await handleBlockNfsIp();
+    else if (action === "disconnect") await handleDisconnectSessions();
   };
 
   // --- Action: Unblock SMB User ---
@@ -260,16 +328,18 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
       {/* Incident lifecycle state badge */}
       {incident.state !== "none" && (
         <div className={`incident-badge incident-${incident.state}`}>
-          {incident.state === "detected" && "🔴 検知済み"}
-          {incident.state === "contained" && "🟠 封じ込め完了"}
-          {incident.state === "investigating" && "🟡 調査中"}
-          {incident.state === "resolved" && "🟢 解決済み"}
-          {incident.state !== "resolved" && (
+          {incident.state === "detected" && `🔴 ${t("incidentDetected")}`}
+          {incident.state === "contained" && `🟠 ${t("incidentContained")}`}
+          {incident.state === "investigating" && `🟡 ${t("incidentInvestigating")}`}
+          {incident.state === "resolved" && `🟢 ${t("incidentResolved")}`}
+          {(incident.state === "contained" || incident.state === "investigating") && (
             <button className="btn-sm" style={{ marginLeft: "0.5rem" }} onClick={() => {
               if (incident.state === "contained") markInvestigating();
-              else if (incident.state === "investigating") markResolved();
+              else markResolved();
             }}>
-              {incident.state === "contained" ? "→ 調査開始" : incident.state === "investigating" ? "→ 解決" : ""}
+              {incident.state === "contained"
+                ? `→ ${t("incidentToInvestigating")}`
+                : `→ ${t("incidentToResolved")}`}
             </button>
           )}
         </div>
@@ -363,7 +433,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
 
           <div className="arp-action-buttons">
             <button
-              onClick={handleContainThreat}
+              onClick={() => setPending("contain")}
               disabled={loading || (!domain && !username && !clientIp)}
               className="btn-danger"
               title={t("arpResponseContainTooltip")}
@@ -371,22 +441,45 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
               {loading ? t("processing") : `🛡️ ${t("arpResponseContainBtn")}`}
             </button>
             <button
-              onClick={handleBlockSmbUser}
+              onClick={() => setPending("blockSmb")}
               disabled={loading || !domain || !username}
               className="btn-warning"
             >
               {`🚫 ${t("arpResponseBlockSmb")}`}
             </button>
             <button
-              onClick={handleBlockNfsIp}
+              onClick={() => setPending("blockNfs")}
               disabled={loading || !clientIp}
               className="btn-warning"
             >
               {`🚫 ${t("arpResponseBlockNfs")}`}
             </button>
+            <button
+              onClick={() => setPending("disconnect")}
+              disabled={loading || (!(domain && username) && !clientIp)}
+              className="btn-warning"
+            >
+              {`🔌 ${t("arpResponseDisconnect")}`}
+            </button>
           </div>
 
+          {pending && (
+            <div className="arp-confirm-row" role="alertdialog" aria-label={t("arpResponseConfirmTitle")}>
+              <p className="arp-confirm-title">{t("arpResponseConfirmTitle")}</p>
+              <p className="arp-confirm-detail">{confirmMessage(pending)}</p>
+              <div className="arp-confirm-actions">
+                <button onClick={runPending} disabled={loading} className="btn-danger">
+                  {t("arpResponseConfirmRun")}
+                </button>
+                <button onClick={() => setPending(null)} disabled={loading} className="btn-sm">
+                  {t("arpResponseConfirmCancel")}
+                </button>
+              </div>
+            </div>
+          )}
+
           <p className="form-note">{t("arpResponseAdminOnly")}</p>
+          <p className="form-note">{t("arpResponseNoBlockExpiry")}</p>
         </div>
       )}
 

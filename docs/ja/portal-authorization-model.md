@@ -131,10 +131,11 @@ aws cognito-idp create-group \
 3. **Owner スコープ**: 個人データ（お気に入り、履歴、タグ）は Amplify の `allow.owner()` で自分のものだけ表示
 4. **監査証跡**: 全管理操作は `userId` を Lambda ペイロードに含み、CloudTrail で記録
 5. **保護アカウント**: storage-admin でも `fsxadmin`/`administrator` はブロック不可（`ontap_response.py` の安全弁）
-6. **確認ゲート**: 破壊的操作（ボリューム削除、ARP 無効化）は明示的な `confirm: true` が必須
+6. **確認ゲート**: 破壊的操作は、ブラウザのダイアログだけでなく Lambda のペイロードに明示的な `confirm: true` を要求します。対象は `deleteVolume`、`deleteExportPolicy`、`deleteCifsShare`、SnapMirror の `break`/`resync`/`delete`、Vscan と FPolicy のポリシー削除、クラスターピア削除、および ARP の封じ込めアクション全部（`blockSmbUser`、`blockNfsIp`、`containThreat`、`disconnectSessions`）です。解除系は意図的にゲートしていません — アクセスを戻す操作であり、誤ったブロックから復帰する経路に確認を挟むと回復が遅れるだけです。
+7. **自動失効はしない**: ブロックは誰かが解除するまで残ります。TTL もスケジュール解除もないため、誤検知が無期限のロックアウトになるのを防ぐのは「有効なブロック」タブだけです。運用上の意味は [封じ込めの境界](./arp-ai-isolation-demo-guide.md) を参照してください。
 
 ## フロントエンドの挙動
 
 UI は非管理者ユーザーから管理機能を隠しません。代わりに、グレーアウト表示 + 「storage-admin 必要」バッジで表示します。これにより「何ができるか」が可視化され（ユーザーは可能な操作を把握）、一方で不正な実行は防止されます（AppSync が呼び出しを拒否）。
 
-Data Protection の `ArpResponseActions` コンポーネントは例外: 脅威レベルが elevated のときのみアクションボタンを描画し、通常時の認知負荷を軽減します。
+Data Protection の `ArpResponseActions` コンポーネントは、封じ込めフォームを常に描画します。ARP が検知していないユーザーをブロックしたい場面もあるためです。脅威レベルで変わるのはフォーム上部の警告バナーであり、アクションの可用性ではありません。各アクションは実行前に確認を求め、Lambda 側も `confirm: true` を伴わない呼び出しを拒否します。
