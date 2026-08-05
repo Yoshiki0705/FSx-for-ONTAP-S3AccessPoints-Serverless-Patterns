@@ -18,12 +18,35 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 import boto3
 import urllib3
 
 logger = logging.getLogger(__name__)
+
+# Caller-supplied names reach request paths: a share name, a volume name, a
+# relationship UUID. A value carrying a `..` segment redirects the request to a
+# different endpoint, so a "delete this share" call can arrive at a cluster
+# resource instead. Callers are expected to percent-encode each segment, but the
+# check belongs here as well rather than in every call site — the portal handler
+# learned this the same way and put it in the one function all its requests go
+# through.
+_UNSAFE_PATH_CHARS = re.compile(r"[\x00-\x1f\x7f\\]")
+
+
+def is_unsafe_path(path: str) -> bool:
+    """True if an assembled request path must not be sent.
+
+    A `..` inside a name is fine ("my..share"); a whole segment of `..` is not.
+    The query string is excluded from the traversal check because a value there
+    cannot change which endpoint is addressed.
+    """
+    if _UNSAFE_PATH_CHARS.search(path):
+        return True
+    route = path.split("?", 1)[0]
+    return any(segment == ".." for segment in route.split("/"))
 
 
 class OntapClientError(Exception):
@@ -38,6 +61,24 @@ class OntapClientError(Exception):
         super().__init__(message)
         self.status_code = status_code
         self.response_body = response_body
+
+    @property
+    def ontap_message(self) -> str:
+        """The message ONTAP returned, or this exception's own message.
+
+        ONTAP reports failures as {"error": {"message": ..., "code": ...}}. Callers
+        that surface errors to a person want that text, not the HTTP status line.
+        """
+        if self.response_body:
+            try:
+                parsed = json.loads(self.response_body)
+            except (json.JSONDecodeError, TypeError):
+                parsed = None
+            if isinstance(parsed, dict):
+                message = parsed.get("error", {})
+                if isinstance(message, dict) and message.get("message"):
+                    return str(message["message"])
+        return str(self)
 
 
 class OntapClientConfig:
@@ -222,8 +263,15 @@ class OntapClient:
             dict: レスポンスボディ (JSON パース済み)
 
         Raises:
-            OntapClientError: 非 2xx レスポンスの場合
+            OntapClientError: 非 2xx レスポンスの場合、または path が不正な場合
         """
+        if is_unsafe_path(path):
+            logger.warning("Refused ONTAP request with unsafe path: %r", path[:200])
+            raise OntapClientError(
+                "Invalid characters in request path",
+                status_code=400,
+            )
+
         pool = self._get_pool()
         headers = self._make_headers()
         headers["Content-Type"] = "application/json"
@@ -532,6 +580,116 @@ class OntapClient:
             f"/storage/flexcache/flexcaches/{uuid}",
             body={"prepopulate": body},
         )
+
+    # --- SnapMirror 操作メソッド ---
+    #
+    # These carry only the request path, the payload and the field mapping. Input
+    # validation, the confirm gate on the destructive ones, the audit log line and
+    # the camelCase response shaping stay with the caller: whether a particular
+    # operation needs a human to confirm it is a property of the surface exposing
+    # it, not of the protocol.
+    #
+    # Field selections are the ones verified against a live cluster. Notably
+    # `last_transfer_size` is NOT a field on the relationships endpoint -- ONTAP
+    # 9.17 rejects the whole request with 'The value "last_transfer_size" is
+    # invalid for field "fields"' and the list comes back empty. Per-transfer byte
+    # counts come from list_snapmirror_transfers() instead.
+
+    RELATIONSHIP_FIELDS = (
+        "uuid,source.path,source.svm.name,destination.path,destination.svm.name,"
+        "state,healthy,policy.name,lag_time,last_transfer_type"
+    )
+    TRANSFER_FIELDS = "state,bytes_transferred,end_time,total_duration"
+
+    def list_snapmirror_relationships(self, max_records: int = 100) -> list[dict]:
+        """SnapMirror リレーションシップ一覧取得
+
+        ONTAP REST: GET /snapmirror/relationships
+
+        Returns:
+            list[dict]: リレーションシップの生レコード
+        """
+        result = self.get(
+            "/snapmirror/relationships",
+            params={"fields": self.RELATIONSHIP_FIELDS, "max_records": str(max_records)},
+        )
+        return result.get("records", [])
+
+    def list_snapmirror_transfers(
+        self,
+        relationship_uuid: str,
+        max_records: int = 20,
+    ) -> list[dict]:
+        """1 つのリレーションシップの転送履歴取得
+
+        ONTAP REST: GET /snapmirror/relationships/{uuid}/transfers
+        """
+        result = self.get(
+            f"/snapmirror/relationships/{relationship_uuid}/transfers",
+            params={"fields": self.TRANSFER_FIELDS, "max_records": str(max_records)},
+        )
+        return result.get("records", [])
+
+    def set_snapmirror_state(self, relationship_uuid: str, state: str) -> dict:
+        """SnapMirror の state を変更
+
+        ONTAP REST: PATCH /snapmirror/relationships/{uuid}
+
+        `paused` で quiesce、`snapmirrored` で resume/resync、`broken_off` で break。
+        break と resync は宛先のデータを不可逆に変えるため、呼び出し側で確認を取ること。
+        """
+        return self.patch(
+            f"/snapmirror/relationships/{relationship_uuid}",
+            body={"state": state},
+        )
+
+    def quiesce_snapmirror(self, relationship_uuid: str) -> dict:
+        """転送を一時停止 (state=paused)"""
+        return self.set_snapmirror_state(relationship_uuid, "paused")
+
+    def resume_snapmirror(self, relationship_uuid: str) -> dict:
+        """一時停止した転送を再開 (state=snapmirrored)"""
+        return self.set_snapmirror_state(relationship_uuid, "snapmirrored")
+
+    def break_snapmirror(self, relationship_uuid: str) -> dict:
+        """リレーションシップを break して宛先を書き込み可能にする
+
+        break 後、宛先はソースから乖離します。呼び出し側で確認を取ること。
+        """
+        return self.set_snapmirror_state(relationship_uuid, "broken_off")
+
+    def resync_snapmirror(self, relationship_uuid: str) -> dict:
+        """break したリレーションシップを再同期する
+
+        break 後に宛先へ書き込まれた変更は破棄されます。呼び出し側で確認を取ること。
+        """
+        return self.set_snapmirror_state(relationship_uuid, "snapmirrored")
+
+    def update_snapmirror_now(self, relationship_uuid: str) -> dict:
+        """スケジュールを待たず即時転送を開始
+
+        ONTAP REST: POST /snapmirror/relationships/{uuid}/transfers
+        """
+        return self.post(f"/snapmirror/relationships/{relationship_uuid}/transfers")
+
+    def abort_snapmirror_transfer(self, relationship_uuid: str, transfer_uuid: str) -> dict:
+        """進行中の転送を中断
+
+        ONTAP REST: PATCH /snapmirror/relationships/{uuid}/transfers/{transfer_uuid}
+        """
+        return self.patch(
+            f"/snapmirror/relationships/{relationship_uuid}/transfers/{transfer_uuid}",
+            body={"state": "aborted"},
+        )
+
+    def delete_snapmirror(self, relationship_uuid: str) -> dict:
+        """リレーションシップを削除
+
+        ONTAP REST: DELETE /snapmirror/relationships/{uuid}
+
+        宛先ボリュームは残りますが複製は止まります。呼び出し側で確認を取ること。
+        """
+        return self.delete(f"/snapmirror/relationships/{relationship_uuid}")
 
     def wait_ontap_job(
         self,
