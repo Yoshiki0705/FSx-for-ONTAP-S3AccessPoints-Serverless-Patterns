@@ -148,6 +148,25 @@ We therefore assess FSx for ONTAP S3 AP as unsupported for HealthOmics input and
 1. **Staging (copying) is built into the design** — inputs are copied to a scratch volume, so even if an S3 AP URI were accepted, part of the "no data movement" value would not be realized. That said, a run-scoped temporary volume is materially different from a permanent second copy.
 2. **Encryption model difference** — HealthOmics assumes Amazon S3 and KMS permissions, whereas SSE-FSX is the only server-side encryption mode on FSx for ONTAP S3 AP ([Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)). This creates a difference in service role permission design.
 
+### AWS Support Confirmation (August 2026)
+
+This section was originally an assessment based on public documentation. AWS Support has since answered three questions about current behaviour.
+
+| Question | AWS Support answer |
+|----------|--------------------|
+| Is the restriction specific to FSx for ONTAP S3 access points? | It applies to **S3 access points in general**. `StartRun`'s `outputUri` contract requires `s3://USER-OWNED-BUCKET/` form and treats the first path segment as a bucket name. Access point ARNs and virtual-hosted-style URLs are rejected with a validation error at run submission, **identically for standard S3 access points and FSx for ONTAP ones**. There is no access-point-specific handling of any kind |
+| Does SSE-FSX conflict with the service role's KMS requirements? | The requirement that the run's service role and the caller hold permissions such as `kms:GenerateDataKey` and `kms:Decrypt` is documented for SSE-KMS output buckets. However, because access points are not a supported destination, **HealthOmics has not been qualified against SSE-FSX, so whether it would present an additional obstacle is unconfirmed** |
+| How are output objects near the 50 GiB limit handled? | HealthOmics writes large run outputs using **multipart upload**, so a single-`PutObject` limit is not the governing mechanism. No threshold can be stated for access point writes because that path is untested. Our copy-back step runs in our own Lambda, so the applicable limits are those of the S3 and FSx APIs it calls |
+
+Two things follow from this.
+
+1. The **encryption model difference noted under "Current State" is unconfirmed rather than a verified blocker**. This document does not present it as one.
+2. The restriction is **not specific to FSx for ONTAP**. We state this explicitly so readers do not over-generalise the scope.
+
+On the object size limit mentioned under "Requested Behavior": because HealthOmics uses multipart upload, that concern is on a different axis from the single-PUT limit.
+
+AWS Support confirmed that the documentation request — noting HealthOmics support status in the FSx for ONTAP user guide — is tracked independently of whether the feature is implemented.
+
 ### Impact on Our Patterns
 
 | Pattern | Impact |
@@ -205,7 +224,9 @@ AWS Support reproduced this in a test environment and confirmed the following. T
 
 The Inactive-state coupling was also confirmed: Lambda periodically re-reads the source object and transitions the function to Inactive if access is lost. However, AWS Support explicitly stated they **could not confirm that this is the specific reason FSx for ONTAP S3 access points are unsupported**, so this document does not present it as the cause.
 
-On the AWS side, a feature request has been raised with the Lambda service team, a bug report with the SAM team (to add `S3ObjectStorageMode` to `AWS::Serverless::Function` and `AWS::Serverless::LayerVersion`), and feedback that SAM should raise a validation error for unrecognised properties rather than discarding them silently. Whether public tracking (for example a GitHub issue) exists is an open question we have asked.
+On the AWS side, a feature request has been raised with the Lambda service team, a bug report with the SAM team (to add `S3ObjectStorageMode` to `AWS::Serverless::Function` and `AWS::Serverless::LayerVersion`), and feedback that SAM should raise a validation error for unrecognised properties rather than discarding them silently. However, these are **internal tickets and are not publicly accessible**. AWS Support advised that opening an issue ourselves on [aws/serverless-application-model](https://github.com/aws/serverless-application-model) is the appropriate channel for public tracking, and encouraged it on the grounds that community-filed issues with clear reproduction steps help the SAM team prioritise.
+
+**Supported workaround (confirmed with AWS Support)**: For functions that require `REFERENCE` mode, define them as a native `AWS::Lambda::Function` with `Code.S3ObjectStorageMode: REFERENCE` rather than `AWS::Serverless::Function`, so no SAM transform is involved. Mixing `AWS::Serverless::` and native `AWS::` resources in the same SAM template was also confirmed to be **a valid and supported pattern**. This is the recommended path until SAM adds native support.
 
 ### Impact on Our Patterns
 
@@ -222,7 +243,7 @@ Support `S3ObjectStorageMode` (or an equivalent SAM-side property) on `AWS::Serv
 
 ### Workaround in this Project
 
-None (remaining on `COPY` mode).
+Remaining on `COPY` mode. No pattern here currently needs `REFERENCE` mode, so there is no reason to change the repository-wide packaging convention. If that changes, we will apply the **supported workaround** above (a native `AWS::Lambda::Function`) to the specific functions that need it, rather than rewriting every template.
 
 ---
 
