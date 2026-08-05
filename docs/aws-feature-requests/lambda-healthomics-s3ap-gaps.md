@@ -216,7 +216,7 @@ AWS サポートが検証環境で再現し、以下を確認しました。当�
 |---------|------|
 | `AWS::Serverless::Function` の `CodeUri` に `S3ObjectStorageMode: REFERENCE` を指定 | `sam validate` / `sam deploy` は**エラーなく成功する** |
 | 実際に作成される関数のモード | SAM 変換時にプロパティが**警告なく破棄**され、既定の `COPY` モードで作成される |
-| SAM の `S3Location` 型が受け付けるプロパティ | `Bucket` / `Key` / `Version` のみ。それ以外は変換時に破棄される（`S3ObjectStorageMode` 固有の問題ではない） |
+| SAM の `S3Location` 型が受け付けるプロパティ（リリース版） | `Bucket` / `Key` / `Version` のみ。それ以外は変換時に破棄される（`S3ObjectStorageMode` 固有の問題ではない） |
 | Lambda 開発者ガイドが挙げる利用手段 | コンソール / AWS CLI / CloudFormation。**AWS SAM は記載されていない** |
 | `update-function-code` のドリフト | 確認済み。`S3ObjectStorageMode` は毎回指定が必要で、省略すると `COPY` に戻る |
 
@@ -226,7 +226,44 @@ Inactive 状態の結合（Lambda がソースオブジェクトを定期的に�
 
 AWS サポート側では、Lambda サービスチームへの機能リクエスト、SAM チームへのバグ報告（`AWS::Serverless::Function` / `AWS::Serverless::LayerVersion` への `S3ObjectStorageMode` 追加）、および未知のプロパティを警告なく破棄せずバリデーションエラーとすべき旨のフィードバックが起票されています。ただしこれらは**内部チケットであり公開されていません**。AWS サポートからは、公開追跡が必要であれば [aws/serverless-application-model](https://github.com/aws/serverless-application-model) に自分たちで issue を起票することが適切な経路であり、再現手順が明確なコミュニティ起票は優先度判断に役立つため推奨する、との回答を得ています。
 
-**サポートされる回避策（AWS サポート確認済み）**: `REFERENCE` モードが必要な関数は、`AWS::Serverless::Function` ではなくネイティブの `AWS::Lambda::Function` に `Code.S3ObjectStorageMode: REFERENCE` を指定して定義します。SAM 変換を経由しないため確実に適用されます。SAM テンプレート内に `AWS::Serverless::` リソースとネイティブ `AWS::` リソースを混在させることは**有効かつサポートされた構成**であることも確認済みです。SAM がネイティブ対応するまでは、これが推奨経路となります。
+**サポートされる回避策（AWS サポート確認済み）**: `REFERENCE` モードが必要な関数は、`AWS::Serverless::Function` ではなくネイティブの `AWS::Lambda::Function` に `Code.S3ObjectStorageMode: REFERENCE` を指定して定義します。SAM 変換を経由しないため確実に適用されます。SAM テンプレート内に `AWS::Serverless::` リソースとネイティブ `AWS::` リソースを混在させることは**有効かつサポートされた構成**であることも確認済みです。
+
+### 上流での対応状況（2026-08 時点の自己調査）
+
+FR-7 の要望内容は **すでに upstream に実装・マージ済み**でした。本項は AWS サポートの回答ではなく、`aws/serverless-application-model` を直接調査した結果です。
+
+| 項目 | 内容 |
+|------|------|
+| 該当 PR | [aws/serverless-application-model#3959](https://github.com/aws/serverless-application-model/pull/3959) `feat: pass S3ObjectStorageMode through from CodeUri and ContentUri`（2026-07-20 マージ、テストは [#3961](https://github.com/aws/serverless-application-model/pull/3961)） |
+| **SAM 側のプロパティ名** | **`StorageMode`**（`CodeUri` / `ContentUri` の中）。CloudFormation 側の `S3ObjectStorageMode` とは名前が異なる |
+| 変換後のマッピング | `CodeUri.StorageMode` → `Code.S3ObjectStorageMode` |
+| リリース状況 | **未リリース**。最新リリース `aws-sam-translator` 1.111.0（2026-07-02）はマージ（07-20）より前で、当該コードを含まない |
+
+```yaml
+# リリース後の想定（現行リリースでは未対応）
+CodeUri:
+  Bucket: my-artifacts
+  Key: app.zip
+  StorageMode: REFERENCE     # ← SAM 側の名前。S3ObjectStorageMode ではない
+```
+
+> ⚠️ **名前の非対称性に注意**: `CodeUri` に CloudFormation 側の名前 `S3ObjectStorageMode` を書いた場合、リリース後も**引き続き無言で破棄されます**。受け付けられるのは `StorageMode` のみです。
+
+**したがって現時点の結論は変わりません**（現行リリースでは SAM 経由で `REFERENCE` を指定できないため、上記のネイティブリソース方式が有効な回避策）。ただし理由は「SAM が未対応」ではなく「**実装済みだがリリース待ち、かつプロパティ名が `StorageMode`**」です。リリース後は本節と回避策の再評価が必要です。
+
+### バリデーション欠落の起票
+
+未知プロパティが無言で破棄される点は、本プロジェクトから公開 issue として起票しました: [aws/serverless-application-model#3970](https://github.com/aws/serverless-application-model/issues/3970)
+
+AWS サポートの内部チケットは非公開で、代理起票もできないとの回答だったため、自前の検証結果に基づいて起票しています。ローカル検証（`aws-sam-translator` 1.111.0）で確認した挙動:
+
+| `CodeUri` に指定した内容 | 変換結果 | 出力への反映 |
+|------------------------|---------|------------|
+| `S3ObjectStorageMode: REFERENCE` | 成功・警告なし | なし |
+| `StorageMode: REFERENCE` | 成功・警告なし | なし（1.111.0 では未実装のため） |
+| `TotallyMadeUpProperty: whatever` | 成功・警告なし | なし |
+
+`sam validate` と `sam validate --lint` の**両方が valid を返します**。一方で SAM スキーマの `definitions.CodeUri` は `"additionalProperties": false` を宣言しており、スキーマ上は不正と定義されているのに変換時に強制されていない、という不整合が論点です。
 
 ### 本プロジェクトへの影響
 
