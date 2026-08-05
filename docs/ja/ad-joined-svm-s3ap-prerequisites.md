@@ -20,9 +20,9 @@ AD参加SVM では、全ての S3 Access Point データ操作に Active Directo
 
 | 必要なもの | 確認場所 |
 |----------|---------|
-| FSx for ONTAP ファイルシステム（デプロイ済み） | AWS Console → FSx → ONTAP |
+| FSx for ONTAP ファイルシステム（デプロイ済み） | AWS Console → Amazon FSx → ONTAP |
 | AD に参加した SVM | `scripts/demo-ad-join-svm.sh` または AWS Console |
-| ONTAP 管理 IP | AWS Console → FSx → ファイルシステム → 管理 → 管理エンドポイント |
+| ONTAP 管理 IP | AWS Console → Amazon FSx → ファイルシステム → 管理 → 管理エンドポイント |
 | Secrets Manager の ONTAP 管理者認証情報 | `fsxn/admin` シークレット（スタックデプロイ時に作成） |
 | S3 AP 操作用の IAM 権限 | [同一アカウント AP リソースポリシー](#同一アカウント-ap-リソースポリシー)を参照 |
 
@@ -52,7 +52,7 @@ AD参加SVM では、全ての S3 Access Point データ操作に Active Directo
 以下のコマンドで、AD参加SVM が S3 AP データ操作可能な状態か確認できる:
 
 ```bash
-# 値を置き換えてください（管理IPはAWS Console → FSx → ファイルシステム → 管理で確認）
+# 値を置き換えてください（管理IPはAWS Console → Amazon FSx → ファイルシステム → 管理で確認）
 MGMT_IP="<your-ontap-mgmt-ip>"
 SVM_NAME="<your-svm-name>"
 CREDS="fsxadmin:<your-password>"
@@ -175,7 +175,7 @@ FsxToAdSecurityGroupRule:
     DestinationSecurityGroupId: !Ref AdControllerSecurityGroup
 ```
 
-> **ネットワークに関する補足**: これらのルールは FSx ENI → AD DC 向け。S3 AP にアクセスする Lambda にはこれらのポートは不要 — Lambda は S3 API 層経由で通信し、AD に直接接続しない。
+> **ネットワークに関する補足**: これらのルールは SVM ENI → AD DC 向け。S3 AP にアクセスする Lambda にはこれらのポートは不要 — Lambda は S3 API 層経由で通信し、AD に直接接続しない。
 
 ---
 
@@ -252,6 +252,35 @@ IAM アイデンティティポリシーのみで十分:
 | 条件キー制約 | ✅ | ✅ |
 | IAM を超える制約（明示的 deny） | ✅ | ✅ |
 
+### CloudFormation の例（同一アカウント / AP ポリシー不要）
+
+```yaml
+S3ApDataReaderRole:
+  Type: AWS::IAM::Role
+  Properties:
+    AssumeRolePolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+    ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Policies:
+      - PolicyName: S3ApAccess
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+              Resource:
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3ApName}"
+                - !Sub "arn:aws:s3:${AWS::Region}:${AWS::AccountId}:accesspoint/${S3ApName}/object/*"
+```
+
 > **IAMに関する補足**: Resource ARN は Access Point 形式（`arn:aws:s3:<region>:<account>:accesspoint/<name>`）を使用すること。バケット形式 ARN（`arn:aws:s3:::<alias>`）は動作しない。これは[公式ドキュメントに記載された既知の問題](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html)。
 
 ---
@@ -278,7 +307,7 @@ status = require_ad_dc_reachability(client, svm_name=os.environ["SVM_NAME"])
 ### シェルチェック（スクリプト/自動化用）
 
 ```bash
-# 管理IP: AWS Console → FSx → ファイルシステム → 管理で確認
+# 管理IP: AWS Console → Amazon FSx → ファイルシステム → 管理で確認
 curl -sku "$ONTAP_USER:$ONTAP_PASS" \
   "https://$MGMT_IP/api/protocols/cifs/domains?svm.name=$SVM_NAME&fields=discovered_servers" \
   | jq '[.records[0].discovered_servers[]
@@ -334,6 +363,35 @@ AdHealthCheckSchedule:
     Target:
       Arn: !GetAtt AdHealthCheckFunction.Arn
       RoleArn: !GetAtt SchedulerRole.Arn
+```
+
+### CloudWatch カスタムメトリクス
+
+`shared/ad_health_check.py` の結果を CloudWatch メトリクスとして発行すれば、ダッシュボードで可視化できます。
+
+```python
+import boto3
+from shared.ad_health_check import check_ad_dc_reachability
+
+def handler(event, context):
+    status = check_ad_dc_reachability(ontap_client, svm_name)
+
+    # メトリクス発行
+    cw = boto3.client("cloudwatch")
+    cw.put_metric_data(
+        Namespace="FSxN/S3AP",  # allow:naming — メトリクス名前空間の識別子
+        MetricData=[{
+            "MetricName": "AdDcReachable",
+            "Value": 1.0 if status.dc_reachable else 0.0,
+            "Unit": "None",
+            "Dimensions": [{"Name": "SvmName", "Value": svm_name}],
+        }],
+    )
+
+    if not status.is_healthy:
+        # SNS で通知
+        sns = boto3.client("sns")
+        sns.publish(TopicArn=os.environ["ALARM_TOPIC_ARN"], ...)
 ```
 
 ### CloudWatch アラーム
@@ -394,6 +452,15 @@ curl -sku user:pass \
 3. AWS Managed AD の場合、ディレクトリのステータスが `Active` か確認
 4. AD を再作成した場合、SVM は CIFS force-delete + re-join が必要（新しい NetBIOS 名が必要）
 
+### 症状: WINDOWS タイプの S3 AP 作成が失敗する
+
+**原因**: SVM がまだ AD に参加していない。
+
+**解決策**: 先に SVM を AD に参加させる:
+```bash
+./scripts/demo-ad-join-svm.sh --stack-name <your-ad-stack> --svm-name <svm-name>
+```
+
 ### ワークフローへの組み込み: `preflight_ad_dc_reachability()`
 
 `shared/ad_health_check.py` には 3 つの入口があります。ワークフローの先頭に置くなら `preflight_ad_dc_reachability()` を使います。
@@ -448,6 +515,16 @@ logger.info("AD DC pre-flight: %s", status.message)
 4. ✅ ファイルシステム ID に対象パスへのパーミッションがある
 5. ✅ ボリュームがマウント済み（ジャンクションパスあり）でオンライン
 
+### 症状: ONTAP が `RESULT_ERROR_SECD_IN_DISCOVERY` を報告する
+
+**原因**: SVM が DNS 経由で AD ドメインコントローラーを検出できない。
+
+**解決策**: SVM の DNS 設定が AD ドメイン名を解決できるか確認する:
+```bash
+curl -sku user:pass "https://<mgmt-ip>/api/name-services/dns?svm.name=<svm>&fields=servers,domains"
+# "servers" に AD DC の DNS IP が含まれていることを確認
+```
+
 ---
 
 ## FAQ
@@ -458,7 +535,7 @@ logger.info("AD DC pre-flight: %s", status.message)
 
 ### Q: HeadBucket をヘルスチェックに使える？
 
-**使えない。** 代わりに以下を使用:
+**使えない。** HeadBucket は S3 層のメタデータしか検証しないため、AD DC の状態にかかわらず常に成功します。代わりに以下を使用:
 - `ListObjectsV2`（`MaxKeys=1`）— データプレーンヘルスチェック
 - ONTAP API `GET /protocols/cifs/domains?fields=discovered_servers` — インフラチェック
 - `shared/ad_health_check.py` → `check_ad_dc_reachability()` — プログラムチェック
@@ -472,6 +549,13 @@ logger.info("AD DC pre-flight: %s", status.message)
 VPC Lambda のトラフィックは VPC ネットワーキングを経由する。Internet-origin S3 AP エンドポイントは S3 Gateway VPC Endpoint を通過**しない**。以下のいずれかが必要:
 - NAT Gateway（$32+/月）— 動作するがコスト高
 - `VpcConfig` なし（VPC外）— **推奨**、追加コスト $0
+
+### Q: ワークフロー実行中に AD DC が到達不能になったら？
+
+S3 AP のデータ操作は **即座に** AccessDenied で失敗します（ONTAP 層でのタイムアウトやリトライはありません）。Step Functions ワークフローには次を含めてください:
+- 一時障害に対する指数バックオフ付き `Retry`（`BackoffRate: 2.0`）
+- `AdDcUnreachableError` を捕捉する `Catch`（SNS で運用者へ通知）
+- 事前検知のための監視アラーム（[モニタリングとアラート](#モニタリングとアラート)を参照）
 
 ### Q: ONTAP 管理 IP はどこで確認する？
 
