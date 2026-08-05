@@ -52,9 +52,24 @@ This pattern **reads and estimates only**. It does not modify or purchase
 resources.
 
 The figures are **not AWS billing data**. They are estimates produced by applying
-unit prices to the capacity and throughput configuration read from ONTAP. Actual
-charges differ with region, discount agreements, Savings Plans, data transfer and
-other service usage. **Reconcile against AWS Cost Explorer and your invoice.**
+unit prices to configuration values read from the FSx API. Actual charges differ
+with region, discount agreements, Savings Plans, data transfer and other service
+usage. **Reconcile against AWS Cost Explorer and your invoice.**
+
+Accuracy also differs by component:
+
+| Component | Source | Accuracy |
+|-----------|--------|----------|
+| SSD capacity | FSx API `StorageCapacity` | Configured value (accurate) |
+| Throughput | FSx API `ThroughputCapacity` | Configured value (accurate) |
+| Capacity Pool | **SSD capacity × 0.5, an estimate** | Not actual usage |
+| Backup | **SSD capacity × 0.2, an estimate** | Not actual usage |
+
+Actual Capacity Pool and backup usage is not collected
+(`functions/collect/handler.py`). Any figure including those two components is a
+coefficient calculation rather than a measurement, and bears no relation to the
+real tiering state or backup retention. Read the breakdown proportions with that
+in mind.
 
 Unit prices are supplied as template parameters, so they do not follow AWS price
 changes automatically. Review them periodically.
