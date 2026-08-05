@@ -1,0 +1,44 @@
+name: Published Articles Claim Check
+
+# Deliberately not a pull-request gate. This job reaches out to Hatena and dev.to,
+# so it can fail for reasons that have nothing to do with the change under review,
+# and a required check that cries wolf is one people learn to force through. The
+# offline half of the same rule table already runs on every PR, inside the
+# portal-drift-check job in validators.yml.
+#
+# What this catches instead is the case no PR ever could: an article that was
+# accurate when published and became wrong later, because the portal grew the
+# feature the article told readers to go and build. Two Part 2 posts sat in that
+# state for a month.
+on:
+  schedule:
+    # Mondays 21:00 UTC (Tuesday 06:00 JST). The articles change rarely; what
+    # changes often is the code underneath the claims they make.
+    - cron: "0 21 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: published-articles-check
+  cancel-in-progress: false
+
+jobs:
+  published-claims:
+    name: "Stale claims in published articles"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      - name: Check published articles against the claim rules
+        # --require-fetch makes an unreachable article an error rather than a
+        # skip. That is the right trade here and the wrong one on a PR: nobody is
+        # waiting on this run, so a transient failure costs nothing, while a
+        # permanent one — a re-slugged post, a moved blog — would otherwise pass
+        # silently forever and quietly stop covering anything.
+        run: python3 scripts/check_published_articles.py --require-fetch

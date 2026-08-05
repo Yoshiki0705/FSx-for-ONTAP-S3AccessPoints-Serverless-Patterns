@@ -18,6 +18,11 @@ Three classes of drift, all of which have actually shipped in this repository:
 Run with no arguments to check everything:
 
     python3 scripts/check_portal_drift.py
+
+The claim rules are shared with `check_published_articles.py`, which applies them
+to the published blog posts over the network. Two articles carried a stale claim
+for a month while this check passed, because the rules only knew the phrasings
+used in `docs/` and the globs only covered files that are committed.
 """
 
 from __future__ import annotations
@@ -33,6 +38,26 @@ PORTAL = ROOT / "solutions" / "amplify-portal"
 # Characters that only appear in a user-facing string. Comments are exempt: they
 # are for whoever maintains the file, not for the person using the portal.
 CJK = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]")
+
+# Wider than CJK above: this one decides whether joining two wrapped lines needs a
+# space between them, so it has to include CJK punctuation and fullwidth forms.
+# Japanese does not space its words, and a renderer inserts nothing at a line
+# break between two wide characters. Joining "TTL も" and "スケジュール解除もない"
+# with a space produces text that exists nowhere and matches nothing.
+WIDE = re.compile(r"[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uff00-\uffef]")
+
+
+def unwrap(lines: list[str]) -> str:
+    """Join hard-wrapped lines back into one string, the way a reader sees them."""
+    joined = ""
+    for line in lines:
+        piece = line.strip()
+        if not piece:
+            continue
+        if joined and not (WIDE.match(piece[0]) and WIDE.search(joined[-1])):
+            joined += " "
+        joined += piece
+    return re.sub(r"[ \t]+", " ", joined).strip()
 
 
 @dataclass
@@ -261,18 +286,43 @@ def check_hardcoded_strings(baseline: set[str] | None = None) -> tuple[list[Find
 # A claim that is false, paired with the code that disproves it. Both halves are
 # checked: the rule only fires while the contradicting code is present, so it
 # stops complaining by itself if the behaviour is ever removed.
+#
+# Each pattern names the *false half* of a sentence, not the topic. Two published
+# articles listed "TTL auto-unblock (EventBridge Scheduler)" and "a multi-SVM
+# fan-out" as things you still had to build outside the portal, months after both
+# shipped. The goal phrasings on the left of those table rows ("not leave a
+# false-positive block in place indefinitely") are true statements and are
+# deliberately not matched: they read the same whether the capability exists or
+# not. Only the right-hand answer — "here is what you must go and build" — turns
+# false when the feature lands.
 CONTRADICTIONS = [
     {
+        "name": "block-expiry",
         "claim": re.compile(
             r"(blocks?\s+do\s+not\s+expire"
             r"|nothing\s+expires\s+it\s+automatically"
             r"|no\s+TTL\s+and\s+no\s+scheduled\s+unblock"
+            # Wording that actually shipped in the published Part 2 articles.
+            r"|(?:portal|it)\s+has\s+no\s+TTL"
+            r"|nothing\s+lifts\s+it\s+but\s+a\s+person"
+            r"|TTL\s+auto-unblock\s*\(\s*EventBridge"
             r"|ブロックは自動では失効しません"
-            r"|TTL もスケジュール解除もない)",
+            r"|TTL もスケジュール解除もない"
+            r"|ポータルには\s*TTL\s*がない"
+            r"|TTL\s*自動解除\s*（\s*EventBridge)",
             re.IGNORECASE,
         ),
         "disproved_by": ("functions/data-protection/handler.py", "sweepExpiredBlocks"),
         "why": "the expiry sweep exists, so blocks do expire",
+    },
+    {
+        "name": "multi-svm-fanout",
+        "claim": re.compile(
+            r"(multi-SVM\s+fan-?out" r"|マルチ\s*SVM\s*へのファンアウト)",
+            re.IGNORECASE,
+        ),
+        "disproved_by": ("functions/data-protection/handler.py", "allSvms"),
+        "why": "the handler accepts `svms` and `allSvms`, so fan-out is built in",
     },
 ]
 # A rule matching "read-only" near "containment" was tried and removed: the
@@ -280,29 +330,121 @@ CONTRADICTIONS = [
 # containment actions" is correct, and no pattern over those words separates it
 # from a false claim. A rule that cannot tell a true statement from a false one
 # trains people to ignore the check.
+#
+# Tense matters in the corrected text and the patterns respect it. "a block
+# stayed until a person lifted it" and "当時は有効期限がなく" describe the old
+# behaviour and are accurate; "nothing lifts it but a person" and "TTL がない"
+# assert it about the present and are not.
 
-DOC_GLOBS = ["docs/ja/*.md", "docs/en/*.md", "solutions/amplify-portal/docs/*.md"]
+# `drafts/` is gitignored, so in CI this glob matches nothing and costs nothing.
+# Locally it is the only place the article text exists, and an article is where
+# this class of drift has actually reached readers — catching it in the draft is
+# the cheapest place to catch it.
+DOC_GLOBS = [
+    "docs/ja/*.md",
+    "docs/en/*.md",
+    "solutions/amplify-portal/docs/*.md",
+    "drafts/blog/*.md",
+]
 
 
-def check_doc_contradictions() -> list[Finding]:
-    findings: list[Finding] = []
+def active_contradictions() -> list[dict]:
+    """Rules whose disproving code is still present in the portal handlers."""
+    active = []
     for rule in CONTRADICTIONS:
         handler_path, marker = rule["disproved_by"]
         handler = PORTAL / handler_path
-        if not handler.exists() or marker not in handler.read_text():
-            # The claim may now be accurate; nothing to enforce.
-            continue
-        for pattern in DOC_GLOBS:
-            for path in sorted(ROOT.glob(pattern)):
-                for number, line in enumerate(path.read_text().split("\n"), start=1):
-                    if rule["claim"].search(line):
-                        findings.append(
-                            Finding(
-                                "doc-contradiction",
-                                f"{path.relative_to(ROOT)}:{number}",
-                                f"{rule['why']}: {line.strip()[:90]}",
-                            )
-                        )
+        if handler.exists() and marker in handler.read_text():
+            active.append(rule)
+    return active
+
+
+def scan_text(text: str, rules: list[dict] | None = None) -> list[tuple[dict, int, str]]:
+    """Find claims in `text`, as (rule, line number, the matching text).
+
+    Both whole lines and unwrapped paragraphs are searched. Article prose is
+    hard-wrapped at about 80 columns, so a claim regularly straddles two lines and
+    appears on neither: "blocks do not\\nexpire". Lines are tried first because
+    they pin the exact number; the unwrapped paragraph is the fallback that
+    catches the wrapped case, and a hit found both ways is reported once.
+    """
+    if rules is None:
+        rules = active_contradictions()
+    lines = text.split("\n")
+    hits: list[tuple[dict, int, str]] = []
+
+    for rule in rules:
+        matched_lines: set[int] = set()
+        for number, line in enumerate(lines, start=1):
+            if rule["claim"].search(line):
+                matched_lines.add(number)
+                hits.append((rule, number, line.strip()))
+
+        # Paragraphs: runs of non-blank lines, joined so wrapped claims surface.
+        # A paragraph that already produced a line hit for this rule is skipped,
+        # so a second, wrapped instance of the same rule in that paragraph is not
+        # listed separately. The paragraph is already named in the output and
+        # whoever opens it sees both.
+        start = None
+        for index, line in enumerate(lines + [""]):
+            if line.strip():
+                if start is None:
+                    start = index
+                continue
+            if start is None:
+                continue
+            block = lines[start:index]
+            if not any(number in matched_lines for number in range(start + 1, index + 1)):
+                collapsed = unwrap(block)
+                match = rule["claim"].search(collapsed)
+                if match:
+                    window = collapsed[max(0, match.start() - 30) : match.end() + 30]
+                    hits.append((rule, start + 1, f"...{window}..."))
+            start = None
+
+    return hits
+
+
+# Some files quote a stale claim on purpose: a correction sheet has to carry the
+# before text verbatim to be usable as one. The marker names a reason so the next
+# reader can tell a deliberate quotation from an oversight, and it is deliberately
+# unavailable to published articles — a live article asserting something false is
+# a finding whatever the intent behind it.
+EXEMPT_FILE = re.compile(r"<!--\s*drift-exempt-file:\s*(.+?)\s*-->")
+EXEMPT_LINE = re.compile(r"<!--\s*drift-exempt:\s*(.+?)\s*-->")
+
+
+def check_doc_contradictions() -> list[Finding]:
+    rules = active_contradictions()
+    if not rules:
+        return []
+    findings: list[Finding] = []
+    exempt_files = 0
+    for pattern in DOC_GLOBS:
+        for path in sorted(ROOT.glob(pattern)):
+            text = path.read_text()
+            if EXEMPT_FILE.search(text):
+                exempt_files += 1
+                continue
+            lines = text.split("\n")
+            for rule, number, matched in scan_text(text, rules):
+                if EXEMPT_LINE.search(lines[number - 1]):
+                    continue
+                findings.append(
+                    Finding(
+                        "doc-contradiction",
+                        f"{path.relative_to(ROOT)}:{number}",
+                        f"{rule['why']}: {matched[:110]}",
+                    )
+                )
+    if exempt_files and findings:
+        findings.append(
+            Finding(
+                "doc-contradiction",
+                "(note)",
+                f"{exempt_files} file(s) skipped via 'drift-exempt-file'.",
+            )
+        )
     return findings
 
 

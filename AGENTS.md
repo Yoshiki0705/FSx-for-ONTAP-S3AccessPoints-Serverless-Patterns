@@ -38,6 +38,12 @@ make deploy-ops1
 # Security scan
 make security
 
+# Doc/code drift: action inventories, i18n coverage, stale claim rules (offline)
+make drift
+
+# Stale claims in the published blog posts (needs network; not a PR gate)
+make drift-published
+
 # Clean build artifacts
 make clean
 
@@ -243,6 +249,11 @@ Before submitting changes, run:
    drift used to pass locally and only fail in the pipeline. Run `make
    format-python` to fix drift.
 3. `cfn-lint` on modified templates
+3a. `make drift` — action inventories, i18n coverage and stale claim rules.
+   If the change **removes a limitation** (ships something the docs told readers
+   to build themselves), also run `make drift-published`: two published articles
+   kept telling readers to build block expiry and multi-SVM fan-out for a month
+   after both shipped, and no repository-only check can see that.
 4. If modifying UC templates: verify TriggerMode params + conditions present
 5. If adding new shared module: add tests in `shared/tests/`
 6. If modifying README: ensure Governance Note + Performance Considerations present
@@ -702,6 +713,7 @@ This is a **public repository**. All committed content is visible to the world.
 ```bash
 make lint
 make test-quick
+make drift
 git diff --cached | grep -i '/Users/' && echo "LEAK DETECTED" || echo "OK"
 ```
 
