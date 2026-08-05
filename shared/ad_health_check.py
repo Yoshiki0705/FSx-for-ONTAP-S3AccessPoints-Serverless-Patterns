@@ -30,6 +30,22 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# `/protocols/cifs/domains` の discovered_servers は server_type ごとにエントリを返す。
+# Kerberos / 認証の到達性を示すのは ms_dc のエントリで、ms_ldap は健全な SVM でも
+# state が undetermined のままになる（実機で確認）。
+DC_SERVER_TYPE = "ms_dc"
+
+
+def _describe_server(server: object) -> str:
+    """discovered_servers の 1 エントリを、ログに載せて安全な短い文字列にする。
+
+    生の dict をそのままメッセージに入れるとノード UUID やサーバー IP まで含まれる。
+    障害の切り分けに必要なのは種別と状態なので、そこだけを残す。
+    """
+    if not isinstance(server, dict):
+        return str(server)
+    return "{}/{}".format(server.get("server_type", "unknown"), server.get("state", "unknown"))
+
 
 @dataclass
 class AdHealthStatus:
@@ -133,10 +149,23 @@ def check_ad_dc_reachability(
         logger.info(status.message)
         return status
 
-    # CIFS 有効 = AD参加
-    status.is_ad_joined = True
-    ad_domain_info = cifs_record.get("ad_domain", {})
+    # CIFS 有効 かつ ad_domain.fqdn あり = AD参加
+    #
+    # CIFS が有効でも AD ドメインを持たない SVM が実在する（ワークグループ運用）。
+    # 検証環境の 1 台がまさにこの状態で、以前の「CIFS 有効 = AD参加」判定は
+    # `is_ad_joined=True, ad_domain=None` という矛盾した結果を返し、
+    # その後の DC チェックも無意味になっていた。到達すべき DC が無いので、
+    # ここは AD未参加として扱うのが正しい。
+    ad_domain_info = cifs_record.get("ad_domain") or {}
     status.ad_domain = ad_domain_info.get("fqdn")
+    if not status.ad_domain:
+        status.is_ad_joined = False
+        status.dc_reachable = None
+        status.message = f"SVM '{svm_name}' has CIFS enabled but no AD domain (workgroup mode). AD DC check skipped."
+        logger.info(status.message)
+        return status
+
+    status.is_ad_joined = True
     logger.info(
         "SVM '%s' is AD-joined (domain: %s). Checking DC reachability...",
         svm_name,
@@ -187,14 +216,55 @@ def check_ad_dc_reachability(
         logger.error(status.message)
         return status
 
-    # DC 到達可能
-    status.dc_reachable = True
-    status.discovered_servers = discovered if isinstance(discovered, list) else [str(discovered)]
+    if not isinstance(discovered, list):
+        status.dc_reachable = None
+        status.discovered_servers = [str(discovered)]
+        status.message = (
+            f"SVM '{svm_name}' (domain: {status.ad_domain}). "
+            f"discovered_servers was not a list ({type(discovered).__name__}) — "
+            "cannot verify DC reachability."
+        )
+        logger.warning(status.message)
+        return status
+
+    # 各エントリの state を見る。
+    #
+    # 以前はリストが空でなければ到達可能としていた。実機データはそれが不十分だと
+    # 示している: 健全な SVM でも `ms_ldap` のエントリは `state: undetermined` で、
+    # 到達性を示しているのは `ms_dc` かつ `state: ok` のエントリだけだった。
+    # DC が落ちてもエントリ自体は残り得るため、空判定だけではこのチェックが
+    # 検出するために作られた障害そのものを見逃す。
+    #
+    # 逆に「全エントリが ok」を要求するのも誤り。健全な状態で ms_ldap が
+    # undetermined なので、それでは常に到達不能と判定してしまう。
+    status.discovered_servers = [_describe_server(s) for s in discovered]
+    usable = [
+        s
+        for s in discovered
+        if isinstance(s, dict) and s.get("server_type") == DC_SERVER_TYPE and s.get("state") == "ok"
+    ]
+
+    if usable:
+        status.dc_reachable = True
+        status.message = (
+            f"SVM '{svm_name}' (domain: {status.ad_domain}) — AD DC reachable. "
+            f"{len(usable)} of {len(discovered)} discovered server(s) are "
+            f"{DC_SERVER_TYPE} in state 'ok': {status.discovered_servers}"
+        )
+        logger.info(status.message)
+        return status
+
+    status.dc_reachable = False
     status.message = (
-        f"SVM '{svm_name}' (domain: {status.ad_domain}) — "
-        f"AD DC reachable. Discovered servers: {status.discovered_servers}"
+        f"AD CONNECTIVITY FAILURE: SVM '{svm_name}' (domain: {status.ad_domain}) "
+        f"has {len(discovered)} discovered server(s) but none is a {DC_SERVER_TYPE} "
+        f"in state 'ok': {status.discovered_servers}. "
+        "S3 AP data operations (ListObjectsV2/GetObject/PutObject) will fail with AccessDenied. "
+        "HeadBucket will still succeed (false positive). "
+        "Verify: SVM DNS IPs point to active AD DCs, "
+        "Security Groups allow ports 53/88/389/445/636 from SVM ENIs to DC IPs."
     )
-    logger.info(status.message)
+    logger.error(status.message)
     return status
 
 
