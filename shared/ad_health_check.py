@@ -25,6 +25,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from shared.ontap_client import OntapClientError
+
 if TYPE_CHECKING:
     from shared.ontap_client import OntapClient
 
@@ -97,9 +99,33 @@ class AdDcUnreachableError(Exception):
         self.svm_name = svm_name
 
 
+def _svm_filter(svm_name: str | None, svm_uuid: str | None) -> tuple[dict[str, str], str]:
+    """SVM の指定方法を ONTAP のクエリパラメータと表示名に変換する。
+
+    このモジュールは当初 SVM 名しか受け付けなかった。しかしパターン側の Lambda が
+    環境変数で持っているのは `SVM_UUID` であり、名前は持っていない。名前しか
+    受け付けないままだと、呼び出し側に SVM_NAME を追加する（= 全テンプレート変更）
+    以外に統合手段が無くなる。
+
+    実機で確認したところ、`/protocols/cifs/services` と `/protocols/cifs/domains`
+    はいずれも `svm.uuid` をフィルタとして受け付け、`svm.name` と同一のレコードを
+    返す。したがって UUID をそのまま渡せる。
+
+    Returns:
+        (クエリパラメータ, ログ/メッセージ用の表示名)
+    """
+    if bool(svm_name) == bool(svm_uuid):
+        raise ValueError("Specify exactly one of svm_name or svm_uuid")
+    if svm_name:
+        return {"svm.name": svm_name}, svm_name
+    return {"svm.uuid": svm_uuid or ""}, f"uuid={svm_uuid}"
+
+
 def check_ad_dc_reachability(
     ontap_client: OntapClient,
-    svm_name: str,
+    svm_name: str | None = None,
+    *,
+    svm_uuid: str | None = None,
 ) -> AdHealthStatus:
     """AD DC 到達性チェック
 
@@ -108,12 +134,16 @@ def check_ad_dc_reachability(
 
     Args:
         ontap_client: ONTAP REST API クライアント
-        svm_name: 対象 SVM 名
+        svm_name: 対象 SVM 名（svm_uuid とどちらか一方を指定）
+        svm_uuid: 対象 SVM UUID（svm_name とどちらか一方を指定）。
+                  パターン側の Lambda は環境変数 SVM_UUID を持つため、
+                  こちらを使えばテンプレート変更なしで呼び出せる。
 
     Returns:
         AdHealthStatus: チェック結果
 
     Raises:
+        ValueError: svm_name と svm_uuid の指定が 0 個または 2 個の場合
         OntapClientError: ONTAP API 呼び出しに失敗した場合
             (ネットワーク不通、認証エラー等)
 
@@ -123,20 +153,29 @@ def check_ad_dc_reachability(
         - discovered_servers が None/未返却の場合は
           dc_reachable=None (確認不可) として楽観的に続行
     """
+    svm_filter, svm_label = _svm_filter(svm_name, svm_uuid)
     status = AdHealthStatus()
 
     # Step 1: CIFS サービスの有無を確認 (= AD参加判定)
-    logger.info("Checking CIFS service status for SVM '%s'...", svm_name)
+    logger.info("Checking CIFS service status for SVM '%s'...", svm_label)
     cifs_response = ontap_client.get(
         "/protocols/cifs/services",
-        params={"svm.name": svm_name, "fields": "enabled,ad_domain.fqdn"},
+        params={**svm_filter, "fields": "enabled,ad_domain.fqdn"},
     )
 
     cifs_records = cifs_response.get("records", [])
+
+    # UUID で問い合わせた場合、応答に SVM 名が入っている。以降のメッセージは人が
+    # 読むものなので、`uuid=...` より名前のほうが役に立つ。
+    if svm_uuid and cifs_records:
+        resolved = (cifs_records[0].get("svm") or {}).get("name")
+        if resolved:
+            svm_label = resolved
+
     if not cifs_records:
         status.is_ad_joined = False
         status.dc_reachable = None
-        status.message = f"SVM '{svm_name}' is not AD-joined (no CIFS service). AD DC check skipped."
+        status.message = f"SVM '{svm_label}' is not AD-joined (no CIFS service). AD DC check skipped."
         logger.info(status.message)
         return status
 
@@ -145,7 +184,7 @@ def check_ad_dc_reachability(
     if not cifs_enabled:
         status.is_ad_joined = False
         status.dc_reachable = None
-        status.message = f"SVM '{svm_name}' has CIFS service disabled. AD DC check skipped."
+        status.message = f"SVM '{svm_label}' has CIFS service disabled. AD DC check skipped."
         logger.info(status.message)
         return status
 
@@ -161,21 +200,21 @@ def check_ad_dc_reachability(
     if not status.ad_domain:
         status.is_ad_joined = False
         status.dc_reachable = None
-        status.message = f"SVM '{svm_name}' has CIFS enabled but no AD domain (workgroup mode). AD DC check skipped."
+        status.message = f"SVM '{svm_label}' has CIFS enabled but no AD domain (workgroup mode). AD DC check skipped."
         logger.info(status.message)
         return status
 
     status.is_ad_joined = True
     logger.info(
         "SVM '%s' is AD-joined (domain: %s). Checking DC reachability...",
-        svm_name,
+        svm_label,
         status.ad_domain,
     )
 
     # Step 2: CIFS ドメイン検出サーバーを確認
     domains_response = ontap_client.get(
         "/protocols/cifs/domains",
-        params={"svm.name": svm_name, "fields": "discovered_servers"},
+        params={**svm_filter, "fields": "discovered_servers"},
     )
 
     domain_records = domains_response.get("records", [])
@@ -183,7 +222,7 @@ def check_ad_dc_reachability(
         # ドメインレコード自体が無い — 異常状態だが確認不可として続行
         status.dc_reachable = None
         status.message = (
-            f"SVM '{svm_name}' is AD-joined (domain: {status.ad_domain}) "
+            f"SVM '{svm_label}' is AD-joined (domain: {status.ad_domain}) "
             "but no CIFS domain records found. Cannot verify DC reachability — proceeding optimistically."
         )
         logger.warning(status.message)
@@ -195,7 +234,7 @@ def check_ad_dc_reachability(
         # フィールド自体が返されない場合 — 確認不可として続行
         status.dc_reachable = None
         status.message = (
-            f"SVM '{svm_name}' is AD-joined (domain: {status.ad_domain}). "
+            f"SVM '{svm_label}' is AD-joined (domain: {status.ad_domain}). "
             "discovered_servers field not available — cannot verify DC reachability."
         )
         logger.warning(status.message)
@@ -206,7 +245,7 @@ def check_ad_dc_reachability(
         status.dc_reachable = False
         status.discovered_servers = []
         status.message = (
-            f"AD CONNECTIVITY FAILURE: SVM '{svm_name}' (domain: {status.ad_domain}) "
+            f"AD CONNECTIVITY FAILURE: SVM '{svm_label}' (domain: {status.ad_domain}) "
             "cannot reach any AD Domain Controllers. discovered_servers is empty. "
             "S3 AP data operations (ListObjectsV2/GetObject/PutObject) will fail with AccessDenied. "
             "HeadBucket will still succeed (false positive). "
@@ -220,7 +259,7 @@ def check_ad_dc_reachability(
         status.dc_reachable = None
         status.discovered_servers = [str(discovered)]
         status.message = (
-            f"SVM '{svm_name}' (domain: {status.ad_domain}). "
+            f"SVM '{svm_label}' (domain: {status.ad_domain}). "
             f"discovered_servers was not a list ({type(discovered).__name__}) — "
             "cannot verify DC reachability."
         )
@@ -247,7 +286,7 @@ def check_ad_dc_reachability(
     if usable:
         status.dc_reachable = True
         status.message = (
-            f"SVM '{svm_name}' (domain: {status.ad_domain}) — AD DC reachable. "
+            f"SVM '{svm_label}' (domain: {status.ad_domain}) — AD DC reachable. "
             f"{len(usable)} of {len(discovered)} discovered server(s) are "
             f"{DC_SERVER_TYPE} in state 'ok': {status.discovered_servers}"
         )
@@ -256,7 +295,7 @@ def check_ad_dc_reachability(
 
     status.dc_reachable = False
     status.message = (
-        f"AD CONNECTIVITY FAILURE: SVM '{svm_name}' (domain: {status.ad_domain}) "
+        f"AD CONNECTIVITY FAILURE: SVM '{svm_label}' (domain: {status.ad_domain}) "
         f"has {len(discovered)} discovered server(s) but none is a {DC_SERVER_TYPE} "
         f"in state 'ok': {status.discovered_servers}. "
         "S3 AP data operations (ListObjectsV2/GetObject/PutObject) will fail with AccessDenied. "
@@ -270,32 +309,96 @@ def check_ad_dc_reachability(
 
 def require_ad_dc_reachability(
     ontap_client: OntapClient,
-    svm_name: str,
+    svm_name: str | None = None,
+    *,
+    svm_uuid: str | None = None,
 ) -> AdHealthStatus:
     """AD DC 到達性を検証し、到達不能なら例外を投げる
 
-    Step Functions ワークフローの先頭で使用する。
     AD参加SVM で AD DC に到達できない場合、早期に失敗させて
     後続の S3 AP データ操作で AccessDenied になるのを防ぐ。
 
+    ONTAP API 自体が失敗した場合は `OntapClientError` がそのまま伝播する。
+    ワークフローの先頭に無条件で挟む用途では `preflight_ad_dc_reachability()`
+    を使うこと。
+
     Args:
         ontap_client: ONTAP REST API クライアント
-        svm_name: 対象 SVM 名
+        svm_name: 対象 SVM 名（svm_uuid とどちらか一方を指定）
+        svm_uuid: 対象 SVM UUID（svm_name とどちらか一方を指定）
 
     Returns:
         AdHealthStatus: 正常時のチェック結果
 
     Raises:
         AdDcUnreachableError: AD DC に到達不能な場合
+        ValueError: svm_name と svm_uuid の指定が 0 個または 2 個の場合
         OntapClientError: ONTAP API 呼び出しに失敗した場合
     """
-    status = check_ad_dc_reachability(ontap_client, svm_name)
+    status = check_ad_dc_reachability(ontap_client, svm_name, svm_uuid=svm_uuid)
 
     if not status.is_healthy:
         raise AdDcUnreachableError(
             message=status.message,
             status=status,
-            svm_name=svm_name,
+            svm_name=svm_name or f"uuid={svm_uuid}",
         )
 
     return status
+
+
+def preflight_ad_dc_reachability(
+    ontap_client: OntapClient,
+    svm_name: str | None = None,
+    *,
+    svm_uuid: str | None = None,
+) -> AdHealthStatus:
+    """ワークフロー先頭に無条件で挟める AD DC 到達性チェック
+
+    `require_ad_dc_reachability()` との違いは、チェック自体が実行できなかった
+    場合の扱いにある。
+
+    - AD DC に到達できないと**判定できた**場合: `AdDcUnreachableError` を投げる。
+      後続の S3 AP データ操作は AccessDenied になるので、ここで落ちたほうが早い。
+    - チェック自体が失敗した場合（ONTAP API がタイムアウトした、認証が切れた等）:
+      警告ログを残して「確認不可」の status を返し、例外は投げない。
+
+    この 2 つ目が重要。診断のために足した処理が新しい障害要因になってはいけない。
+    ONTAP API の一時的な失敗でワークフロー全体を止めるのは、防ごうとしている
+    問題より大きい害になる。`require_ad_dc_reachability()` は
+    `OntapClientError` をそのまま通すため、そのまま各パターンの先頭に置くと
+    まさにそれが起きる。
+
+    Args:
+        ontap_client: ONTAP REST API クライアント
+        svm_name: 対象 SVM 名（svm_uuid とどちらか一方を指定）
+        svm_uuid: 対象 SVM UUID（svm_name とどちらか一方を指定）。
+                  パターン側の Lambda は環境変数 SVM_UUID を持つため、
+                  こちらを使えばテンプレート変更なしで呼び出せる。
+
+    Returns:
+        AdHealthStatus: チェック結果。チェック不可の場合は dc_reachable=None。
+
+    Raises:
+        AdDcUnreachableError: AD DC に到達不能と判定できた場合
+        ValueError: svm_name と svm_uuid の指定が 0 個または 2 個の場合
+    """
+    # 指定不正はプログラムの誤りなので、ここは黙って続行してはいけない。
+    svm_filter, svm_label = _svm_filter(svm_name, svm_uuid)
+    del svm_filter
+
+    try:
+        return require_ad_dc_reachability(ontap_client, svm_name, svm_uuid=svm_uuid)
+    except AdDcUnreachableError:
+        raise
+    except OntapClientError as e:
+        status = AdHealthStatus(
+            dc_reachable=None,
+            message=(
+                f"AD DC reachability could not be checked for SVM '{svm_label}': {e}. "
+                "Proceeding. If a later S3 AP data operation fails with AccessDenied, "
+                "the AD domain controllers are the first thing to check."
+            ),
+        )
+        logger.warning(status.message)
+        return status
