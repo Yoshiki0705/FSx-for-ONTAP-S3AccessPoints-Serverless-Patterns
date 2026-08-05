@@ -34,6 +34,18 @@ jobs:
           AWS_ACCESS_KEY_ID: testing
           AWS_SECRET_ACCESS_KEY: testing
         run: pytest shared/tests/test_properties.py -v
+      - name: Run scripts/ tests
+        # pytest.ini sets testpaths to shared/tests, so nothing here ran until now.
+        # cleanup_generic_ucs.py had been building stack names like
+        # fsxn-solutions/industry/legal-compliance-demo since the repository was
+        # reorganised, which S3 rejects outright; the test for it had been failing
+        # locally the whole time with nobody watching. A cleanup script that cannot
+        # run leaves demo stacks billing, so these need to be in CI.
+        env:
+          AWS_DEFAULT_REGION: ap-northeast-1
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
+        run: pytest scripts/tests/ -v
 
   cfn-validate:
     runs-on: ubuntu-latest
