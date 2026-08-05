@@ -1,4 +1,4 @@
-# FSx ONTAP S3AP Serverless Patterns — Makefile
+# FSx for ONTAP S3AP Serverless Patterns — Makefile
 #
 # Usage:
 #   make install    — Install development dependencies
@@ -9,7 +9,8 @@
 #   make clean      — Remove build artifacts
 
 .PHONY: install test lint clean help \
-	lint-python lint-python-check lint-python-format format-python lint-cfn
+	lint-python lint-python-check lint-python-format format-python lint-cfn \
+	drift drift-published
 
 # Python interpreter — auto-detect .venv if available (override with: make test PYTHON=python3.13)
 # Priority: 1) explicit override  2) .venv/bin/python  3) system python3.12
@@ -143,6 +144,20 @@ format-python:
 # build; only errors (E) do.
 lint-cfn:
 	cfn-lint --non-zero-exit-code error
+
+# ============================================================
+# Drift checks
+# ============================================================
+# Offline. Covers docs/, the portal docs, and drafts/blog when it exists locally.
+drift:
+	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py -q
+	$(PYTHON) scripts/check_portal_drift.py
+
+# Fetches the published posts from Hatena and dev.to, so it needs network and is
+# not part of `make lint`. Run it after shipping a feature that makes an article's
+# "you would have to build this yourself" list shorter.
+drift-published:
+	$(PYTHON) scripts/check_published_articles.py
 
 # ============================================================
 # Security
