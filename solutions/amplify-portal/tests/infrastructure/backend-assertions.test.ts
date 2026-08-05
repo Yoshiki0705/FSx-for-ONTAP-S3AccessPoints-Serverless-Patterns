@@ -385,3 +385,32 @@ describe("Containment block expiry", () => {
     expect(backendSource).toContain("vpcConfig && config.vpcRouteTableIds.length > 0");
   });
 });
+
+describe("Shared Python layer attachment", () => {
+  // functionCode() bundles only the function's own directory, so a handler that
+  // imports shared/ needs the layer. Without it the failure appears at request
+  // time as an ImportError from inside one action, not at deploy time.
+  const functionsImportingShared = [
+    "functions/data-protection",
+    "functions/resource-management",
+  ];
+
+  for (const directory of functionsImportingShared) {
+    it(`attaches the layer to ${directory}`, () => {
+      const marker = `code: functionCode("${directory}")`;
+      const start = backendSource.indexOf(marker);
+      expect(start, `${marker} not found`).toBeGreaterThan(-1);
+      // The layer must be listed inside this function's own property block, not
+      // merely somewhere in the file.
+      const block = backendSource.slice(start, backendSource.indexOf("memorySize", start));
+      expect(block).toContain("layers: [sharedPythonLayer]");
+    });
+  }
+
+  it("keeps the layer's description tied to the content hash", () => {
+    // ampx sandbox deploys through hotswap, which skips LayerVersion content
+    // changes. A layer differing only by S3 key is never republished, and the
+    // function keeps importing the previous version of shared/.
+    expect(backendSource).toContain("sources ${sharedSourcesFingerprint}");
+  });
+});

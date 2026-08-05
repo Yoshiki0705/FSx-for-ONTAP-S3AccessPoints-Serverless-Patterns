@@ -69,6 +69,35 @@ def mock_http():
     return MockHttp()
 
 
+def snapmirror_client(pool):
+    """Patch the handler's client builder onto `pool`.
+
+    The SnapMirror actions go through shared/ontap_client.py rather than this
+    handler's own urllib3 pool, so `patch("handler.urllib3.PoolManager")` no longer
+    reaches them. Injecting the same MockHttp keeps these tests at the wire level,
+    which is where their value is: they assert the request path, the body and the
+    requested `fields`, and one of them exists because a field name real ONTAP
+    rejects silently emptied a list on a live cluster.
+
+    `_pool` and `_credentials` are set directly so the fake stays off both the
+    network and Secrets Manager. Note that a SnapMirror test which forgets this
+    patch does not merely fail -- it reaches out for real and hangs, which is why
+    the handler hands the client its own boto3 session.
+    """
+    from shared.ontap_client import OntapClient, OntapClientConfig
+
+    client = OntapClient(
+        OntapClientConfig(
+            management_ip="10.0.0.1",
+            secret_name="test/secret",
+            verify_ssl=False,
+        )
+    )
+    client._pool = pool
+    client._credentials = {"username": "fsxadmin", "password": "test"}
+    return patch("handler._shared_client", return_value=client)
+
+
 # --- Volume Tests ---
 
 
@@ -946,8 +975,8 @@ class TestSnapMirror:
     def test_list_maps_source_and_destination(self, mock_secrets):
         from handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp(
+        with snapmirror_client(
+            MockHttp(
                 {
                     "/snapmirror/relationships": {
                         "data": {
@@ -974,6 +1003,7 @@ class TestSnapMirror:
                     }
                 }
             )
+        ):
             result = handler({"action": "listSnapmirrorRelationships"}, None)
 
         rel = result["relationships"][0]
@@ -993,8 +1023,7 @@ class TestSnapMirror:
         from handler import handler
 
         mock_http = MockHttp()
-        with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = mock_http
+        with snapmirror_client(mock_http):
             handler({"action": "listSnapmirrorRelationships"}, None)
 
         urls = [url for _method, url, _kwargs in mock_http.calls]
@@ -1004,8 +1033,7 @@ class TestSnapMirror:
     def test_transfers_require_relationship_uuid(self, mock_secrets):
         from handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp()
+        with snapmirror_client(MockHttp()):
             result = handler({"action": "getSnapmirrorTransfers"}, None)
 
         assert result["transfers"] == []
@@ -1014,8 +1042,8 @@ class TestSnapMirror:
     def test_transfers_maps_fields(self, mock_secrets):
         from handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mock_pool:
-            mock_pool.return_value = MockHttp(
+        with snapmirror_client(
+            MockHttp(
                 {
                     "/transfers": {
                         "data": {
@@ -1031,6 +1059,7 @@ class TestSnapMirror:
                     }
                 }
             )
+        ):
             result = handler({"action": "getSnapmirrorTransfers", "relationshipUuid": "r1"}, None)
 
         assert result["transfers"][0]["bytesTransferred"] == 2048
@@ -1238,6 +1267,41 @@ class TestNewActionsAreRouted:
         assert result.get("error") != f"Unknown action: {action}"
 
 
+class TestSharedClientConstruction:
+    """Guard the two properties of _shared_client() that tests depend on."""
+
+    def test_uses_the_handler_module_boto3_session(self):
+        """A client with its own session escapes `patch("handler.boto3")`.
+
+        Every other action in this handler reads its credential through
+        `handler.boto3`, so patching that module used to control all AWS access. A
+        client building its own session breaks that, and the symptom is not a
+        failing test: the unpatched test reaches real Secrets Manager and hangs on
+        credential discovery. That happened while this was being written.
+        """
+        import handler as handler_module
+
+        with patch("handler.boto3") as mock_boto3:
+            client = handler_module._shared_client()
+
+        assert client._session is mock_boto3.Session.return_value
+
+    def test_tls_verification_matches_the_rest_of_the_handler(self):
+        """The other actions use cert_reqs=CERT_NONE; this must not differ silently.
+
+        Turning verification on is not a flag flip. The FSx for ONTAP management
+        LIF presents a self-signed certificate by default, so a client that
+        verifies would fail every SnapMirror call in an environment where the rest
+        of the handler works.
+        """
+        import handler as handler_module
+
+        with patch("handler.boto3"):
+            client = handler_module._shared_client()
+
+        assert client._config.verify_ssl is False
+
+
 # --- SnapMirror write operations ---
 
 
@@ -1246,8 +1310,7 @@ class TestSnapMirrorWrites:
         from handler import handler
 
         http = MockHttp({"/transfers": {"data": {"job": {"uuid": "j1"}}}})
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = http
+        with snapmirror_client(http):
             result = handler({"action": "updateSnapmirrorNow", "relationshipUuid": "r1"}, None)
 
         assert result["success"] is True
@@ -1259,8 +1322,7 @@ class TestSnapMirrorWrites:
     def test_update_now_requires_uuid(self, mock_secrets):
         from handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = MockHttp()
+        with snapmirror_client(MockHttp()):
             result = handler({"action": "updateSnapmirrorNow"}, None)
 
         assert result["success"] is False
@@ -1270,8 +1332,7 @@ class TestSnapMirrorWrites:
         from handler import handler
 
         http = MockHttp({"/snapmirror/relationships/r1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = http
+        with snapmirror_client(http):
             result = handler({"action": "quiesceSnapmirror", "relationshipUuid": "r1"}, None)
 
         assert result["state"] == "paused"
@@ -1281,8 +1342,7 @@ class TestSnapMirrorWrites:
         from handler import handler
 
         http = MockHttp({"/snapmirror/relationships/r1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = http
+        with snapmirror_client(http):
             result = handler({"action": "resumeSnapmirror", "relationshipUuid": "r1"}, None)
 
         assert result["state"] == "snapmirrored"
@@ -1290,8 +1350,7 @@ class TestSnapMirrorWrites:
     def test_break_requires_confirm(self, mock_secrets):
         from handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = MockHttp()
+        with snapmirror_client(MockHttp()):
             result = handler({"action": "breakSnapmirror", "relationshipUuid": "r1"}, None)
 
         assert result["success"] is False
@@ -1301,8 +1360,7 @@ class TestSnapMirrorWrites:
         from handler import handler
 
         http = MockHttp({"/snapmirror/relationships/r1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = http
+        with snapmirror_client(http):
             result = handler({"action": "breakSnapmirror", "relationshipUuid": "r1", "confirm": True}, None)
 
         assert result["success"] is True
@@ -1311,8 +1369,7 @@ class TestSnapMirrorWrites:
     def test_resync_requires_confirm(self, mock_secrets):
         from handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = MockHttp()
+        with snapmirror_client(MockHttp()):
             result = handler({"action": "resyncSnapmirror", "relationshipUuid": "r1"}, None)
 
         assert result["success"] is False
@@ -1322,8 +1379,7 @@ class TestSnapMirrorWrites:
         from handler import handler
 
         http = MockHttp({"/transfers/t1": {"data": {}}})
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = http
+        with snapmirror_client(http):
             result = handler(
                 {
                     "action": "abortSnapmirrorTransfer",
@@ -1339,8 +1395,7 @@ class TestSnapMirrorWrites:
     def test_delete_requires_confirm(self, mock_secrets):
         from handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = MockHttp()
+        with snapmirror_client(MockHttp()):
             result = handler({"action": "deleteSnapmirror", "relationshipUuid": "r1"}, None)
 
         assert result["success"] is False
@@ -1349,8 +1404,8 @@ class TestSnapMirrorWrites:
     def test_write_error_is_propagated(self, mock_secrets):
         from handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = MockHttp(
+        with snapmirror_client(
+            MockHttp(
                 {
                     "/snapmirror/relationships/r1": {
                         "status": 409,
@@ -1358,6 +1413,7 @@ class TestSnapMirrorWrites:
                     }
                 }
             )
+        ):
             result = handler({"action": "quiesceSnapmirror", "relationshipUuid": "r1"}, None)
 
         assert result["success"] is False
@@ -2132,8 +2188,10 @@ class TestConfirmGatedDeletesMatchUiPayloads:
         from handler import handler
 
         without_confirm = {k: v for k, v in params.items() if k != "confirm"}
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "u1"}]}}})
+        pool = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "u1"}]}}})
+        # Three of these actions go through the shared client and five through
+        # this handler's own pool, so both are faked for every row.
+        with patch("handler.urllib3.PoolManager", return_value=pool), snapmirror_client(pool):
             result = handler({"action": action, **without_confirm}, None)
 
         assert result.get("success") is False, f"{action} should refuse without confirm"
@@ -2143,8 +2201,8 @@ class TestConfirmGatedDeletesMatchUiPayloads:
     def test_succeeds_with_ui_payload(self, action, params, _path, mock_secrets):
         from handler import handler
 
-        with patch("handler.urllib3.PoolManager") as mp:
-            mp.return_value = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "u1"}]}}})
+        pool = MockHttp({"/svm/svms": {"data": {"records": [{"uuid": "u1"}]}}})
+        with patch("handler.urllib3.PoolManager", return_value=pool), snapmirror_client(pool):
             result = handler({"action": action, **params}, None)
 
         assert result.get("success") is True, f"{action} failed with the UI payload: {result}"

@@ -852,6 +852,12 @@ const resourceMgmtFunction = new lambda.Function(
     handler: "handler.handler",
     code: functionCode("functions/resource-management"),
     role: resourceMgmtRole,
+    // The SnapMirror actions call shared/ontap_client.py, which reaches this
+    // function at /opt/python/shared through the layer. functionCode() bundles
+    // only the function directory, so without the layer the import fails at
+    // request time rather than at deploy time. The import is lazy and only the
+    // SnapMirror actions take that path; the other actions are unaffected.
+    layers: [sharedPythonLayer],
     environment: {
       ONTAP_MGMT_IP: config.ontapMgmtIp,
       ONTAP_SECRET_NAME: config.ontapSecretName,
