@@ -394,6 +394,21 @@ curl -sku user:pass \
 3. AWS Managed AD の場合、ディレクトリのステータスが `Active` か確認
 4. AD を再作成した場合、SVM は CIFS force-delete + re-join が必要（新しい NetBIOS 名が必要）
 
+### 診断メッセージ: `shared/s3ap_helper.py`
+
+このリポジトリのパターンは S3 AP アクセスを `shared/s3ap_helper.py` の `S3ApHelper` 経由で行います。同モジュールは AccessDenied を捕捉すると、上記 2 層の両方を挙げた `S3ApHelperError` を送出します。
+
+以前のメッセージは IAM と AP ポリシーだけを指していたため、原因がファイルシステム層のときに真逆の方向へ調査を誘導していました。現在は次を含みます。
+
+- AWS 側（IAM identity ポリシー / AP リソースポリシー、AP 形式 ARN の注意）
+- ONTAP ファイルシステム側（AD 参加 SVM で AD DC 到達不能の可能性）
+- 切り分け手段としての HeadBucket（S3 メタデータ層だけを見るため、ファイルシステム層が原因でも成功する）
+- `ms_dc` かつ `state=ok` のエントリを確認する具体的な判定条件
+
+`S3ApHelper` は AP のエイリアス/ARN しか持たず SVM 名を知らないため、「AD が原因」と断定はしません。両方の可能性と切り分け手順を示します。
+
+対象は 8 操作すべてです: ListObjectsV2 / GetObject / PutObject / HeadObject / DeleteObject / ストリーミングダウンロード / Range ダウンロード / CreateMultipartUpload。AccessDenied 以外（`NoSuchKey` 等）にはこの診断は付きません。
+
 ### 症状: 正しい IAM ポリシーなのに AccessDenied
 
 **チェックリスト**（順に確認）:

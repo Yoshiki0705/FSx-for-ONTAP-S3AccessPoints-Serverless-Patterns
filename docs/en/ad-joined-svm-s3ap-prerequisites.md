@@ -532,6 +532,34 @@ stop answering, so check for at least one `ms_dc` entry at `state: ok`.
 ./scripts/demo-ad-join-svm.sh --stack-name <your-ad-stack> --svm-name <svm-name>
 ```
 
+### Diagnostic Message: `shared/s3ap_helper.py`
+
+The patterns in this repository reach S3 Access Points through `S3ApHelper` in
+`shared/s3ap_helper.py`. When it catches an AccessDenied, it raises an
+`S3ApHelperError` that names both of the layers described above.
+
+The earlier message pointed only at IAM and the Access Point policy, which sent
+the investigation in the wrong direction whenever the cause was the file-system
+layer. It now covers:
+
+- The AWS side (IAM identity policy / AP resource policy, plus the note that the
+  Resource ARN must be the Access Point form, not a bucket-style ARN)
+- The ONTAP file-system side (on an AD-joined SVM, the domain controllers may be
+  unreachable)
+- HeadBucket as the discriminator — it only checks the S3 metadata layer, so it
+  succeeds even when the file-system layer is the cause
+- The concrete reachability condition: at least one entry with
+  `server_type=ms_dc` and `state=ok`
+
+`S3ApHelper` holds only the Access Point alias or ARN and does not know the SVM
+name, so it does not assert that AD is the cause. It presents both possibilities
+and how to tell them apart.
+
+This applies to all eight operations: ListObjectsV2, GetObject, PutObject,
+HeadObject, DeleteObject, streaming download, range download, and
+CreateMultipartUpload. Errors other than AccessDenied (such as `NoSuchKey`) do
+not carry the diagnosis.
+
 ### Symptom: AccessDenied Despite Correct IAM Policy
 
 **Checklist** (check in order):
