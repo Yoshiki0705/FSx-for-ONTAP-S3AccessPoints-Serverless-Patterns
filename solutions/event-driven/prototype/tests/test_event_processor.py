@@ -20,6 +20,8 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 # Add project root to path for shared module imports
 _project_root = Path(__file__).resolve().parent.parent.parent
@@ -399,15 +401,16 @@ class TestHandler:
         },
     )
     def test_missing_file_key_raises_error(self):
-        """ファイルキーが見つからない場合はエラーレスポンスを返す"""
+        """ファイルキーが見つからない場合は例外を送出する
+
+        lambda_error_handler はログを残して例外を再送出する。以前は 500 レスポンスを
+        返していたが、それでは Lambda が正常終了し、呼び出し側は失敗を成功と判定して
+        いた。
+        """
         event = {"detail": {}}
         context = MagicMock()
         context.function_name = "test-function"
         context.aws_request_id = "test-request-id"
 
-        result = handler(event, context)
-
-        # lambda_error_handler catches the ValueError
-        assert result["statusCode"] == 500
-        body = json.loads(result["body"])
-        assert "error" in body
+        with pytest.raises(ValueError):
+            handler(event, context)

@@ -24,7 +24,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
-from shared.exceptions import S3ApHelperError, lambda_error_handler
+from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
 
@@ -66,58 +66,24 @@ def parse_suffix_filter(suffix_filter_str: str) -> list[str]:
     return suffixes
 
 
-def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
+def validate_s3ap_connectivity(s3ap: S3ApHelper) -> None:
     """S3 Access Point への接続性を検証する。
 
-    HeadBucket (GetBucketLocation 相当) を使用して S3 AP が到達可能か確認する。
-    ListObjectsV2 で MaxKeys=1 を実行することで、最小限の権限で接続性を確認する。
+    以前はここで例外を捕捉して statusCode 503 の辞書を返し、ハンドラがそれを早期
+    return していた。Lambda は正常終了するため、Step Functions はこのタスクを
+    成功と判定して次のステートへ進む。後続で JSON パスが解決できずに落ちるなど、
+    実際の原因とは無関係なエラーが表面に出ていた。ステートマシンに定義済みの
+    States.TaskFailed の Retry / Catch も発火しない。
+
+    そのため何も捕捉せず、失敗をそのまま伝播させる。
 
     Args:
-        s3ap: S3ApHelper インスタンス
+        s3ap: 検証対象の S3 Access Point ヘルパー
 
-    Returns:
-        None: 接続成功時
-        dict: 接続失敗時の構造化エラーレスポンス
+    Raises:
+        S3ApHelperError: S3 Access Point に到達できない場合
     """
-    try:
-        # MaxKeys=1 で軽量な接続性テストを実行
-        s3ap.list_objects(prefix="", suffix="", max_keys=1)
-        return None
-    except S3ApHelperError as e:
-        logger.error(
-            "S3 Access Point connectivity validation failed: %s (error_code=%s)",
-            str(e),
-            e.error_code,
-        )
-        return {
-            "statusCode": 503,
-            "body": json.dumps(
-                {
-                    "error": "S3 Access Point unreachable",
-                    "error_type": "ConnectivityError",
-                    "error_code": e.error_code or "Unknown",
-                    "access_point": s3ap.bucket_param,
-                    "message": str(e),
-                }
-            ),
-        }
-    except Exception as e:
-        logger.error(
-            "Unexpected error during S3 AP connectivity validation: %s",
-            str(e),
-        )
-        return {
-            "statusCode": 503,
-            "body": json.dumps(
-                {
-                    "error": "S3 Access Point unreachable",
-                    "error_type": "ConnectivityError",
-                    "error_code": "UnexpectedError",
-                    "access_point": s3ap.bucket_param,
-                    "message": str(e),
-                }
-            ),
-        }
+    s3ap.list_objects(prefix="", suffix="", max_keys=1)
 
 
 @trace_lambda_handler
@@ -159,9 +125,7 @@ def handler(event, context):
             "use_case": "telecom-network-analytics",
         },
     ):
-        connectivity_error = validate_s3ap_connectivity(s3ap)
-        if connectivity_error is not None:
-            return connectivity_error
+        validate_s3ap_connectivity(s3ap)
 
     # Step 2: サフィックスフィルタのパース
     suffixes = parse_suffix_filter(suffix_filter_str)

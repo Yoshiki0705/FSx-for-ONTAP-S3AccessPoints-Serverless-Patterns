@@ -470,6 +470,7 @@ def test_ontap_client_non_2xx_error_propagation(status_code, response_body):
 # ---------------------------------------------------------------------------
 
 import json as _json
+import logging
 
 from shared.exceptions import lambda_error_handler
 
@@ -484,12 +485,18 @@ from shared.exceptions import lambda_error_handler
     error_type=st.sampled_from([ValueError, TypeError, RuntimeError, KeyError, IOError]),
     request_id=st.uuids().map(str),
 )
-def test_lambda_error_handler_structured_response(error_message, error_type, request_id):
-    """Feature: fsxn-s3ap-serverless-patterns, Property 15: Lambda error handler produces structured response
+def test_lambda_error_handler_logs_and_reraises(error_message, error_type, request_id):
+    """Feature: fsxn-s3ap-serverless-patterns, Property 15: Lambda error handler logs and fails the invocation
 
     For any unhandled exception raised within a Lambda function handler, the
-    error handling wrapper SHALL log the full stack trace and return a response
-    with statusCode >= 500 and a JSON body containing error and request_id fields.
+    error handling wrapper SHALL log the full stack trace and SHALL let the
+    exception propagate, so that the Lambda invocation fails.
+
+    以前この property は `{"statusCode": 500, ...}` を返すことを固定していた。
+    それは Lambda を正常終了させるため、Step Functions からは成功に見える。
+    このリポジトリのハンドラはすべて Step Functions のタスクか EventBridge の
+    ターゲットで、戻り値の statusCode を読む利用者は存在しない。各ステートマシンが
+    定義している States.TaskFailed の Retry / Catch も発火しなかった。
 
     **Validates: Requirements 13.5**
     """
@@ -502,19 +509,15 @@ def test_lambda_error_handler_structured_response(error_message, error_type, req
     mock_context = MagicMock()
     mock_context.aws_request_id = request_id
 
-    response = failing_handler({}, mock_context)
-
-    # Assert statusCode >= 500
-    assert response["statusCode"] >= 500
-
-    # Assert body is valid JSON containing required fields
-    body = _json.loads(response["body"])
-    assert "error" in body
-    assert "request_id" in body
-    assert body["request_id"] == request_id
-    # KeyError wraps its argument in quotes via __str__ and may repr() non-ASCII chars.
-    # We verify the error field is non-empty rather than exact containment.
-    assert len(body["error"]) > 0
+    # 例外が呼び出し側まで伝播することを固定する。ここが return に戻ると
+    # Lambda は正常終了し、Step Functions は失敗を成功と判定する。
+    #
+    # ログ出力の検証は caplog を使うため、hypothesis と併用できない
+    # （function-scoped fixture）。TestLambdaErrorHandlerLogging に分離している。
+    with pytest.raises(error_type):
+        failing_handler({}, mock_context)
+    # KeyError wraps its argument in quotes via __str__ and may repr() non-ASCII chars,
+    # so we do not assert exact containment of the message.
 
 
 # ---------------------------------------------------------------------------

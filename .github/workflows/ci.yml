@@ -108,6 +108,13 @@ jobs:
             solutions/event-driven/prototype
             solutions/edge/content-delivery
             solutions/flexcache/devops-cicd
+            operations/capacity-rightsizing
+            operations/storage-efficiency
+            operations/tiering-optimizer
+            operations/snapshot-lifecycle
+            operations/cost-optimization
+            operations/qos-monitoring
+            operations
           "
           for d in $PATTERNS; do
             echo "::group::pytest $d"

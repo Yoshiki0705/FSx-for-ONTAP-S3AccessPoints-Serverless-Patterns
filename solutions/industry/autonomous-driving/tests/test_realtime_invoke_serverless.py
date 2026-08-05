@@ -434,10 +434,11 @@ class TestTotalTimeoutGuard:
                     "sagemaker-runtime": mock_runtime,
                 }[service]
                 with patch("functions.realtime_invoke.handler.time.sleep"):
-                    result = handler(event, context)
-
-        # lambda_error_handler catches the exception and returns error response
-        assert result["statusCode"] == 500
+                    # lambda_error_handler logs and re-raises. Returning a 500 here
+                    # would let the Lambda finish normally, and Step Functions would
+                    # read a cold-start timeout as a success.
+                    with pytest.raises(ServerlessColdStartTimeoutError):
+                        handler(event, context)
 
 
 # ---------------------------------------------------------------------------
