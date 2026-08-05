@@ -130,11 +130,17 @@ def _audit_volume_snapshots(
     expired_snapshots = []
     compliant_snapshots = []
     protected_snapshots = []  # Within min retention (never delete)
+    unknown_age_snapshots = []  # 経過日数が判定できなかったもの
 
     for snap in snapshots:
-        age_days = snap.get("age_days", 0)
+        age_days = snap.get("age_days")
 
-        if age_days < min_retention_days:
+        if age_days is None:
+            # 経過日数が分からないものを既定値 0 として扱うと「若すぎて削除不可」に
+            # 分類され、期限切れの検出から外れる。実際には期限を超えていても
+            # コンプライアンス 100% に見えてしまうため、判定不能として別に数える。
+            unknown_age_snapshots.append(snap)
+        elif age_days < min_retention_days:
             # Protected: too young to delete
             protected_snapshots.append(snap)
         elif age_days > effective_max_days:
@@ -149,7 +155,9 @@ def _audit_volume_snapshots(
 
     # Total snapshot size
     total_size = sum(s.get("size_bytes", 0) for s in snapshots)
-    oldest_age = max((s.get("age_days", 0) for s in snapshots), default=0)
+    # age_days が None のものを 0 とみなすと最古が誤って若く見えるため、除外して取る。
+    known_ages = [s["age_days"] for s in snapshots if s.get("age_days") is not None]
+    oldest_age = max(known_ages, default=0)
 
     return {
         "fs_id": fs_id,
@@ -158,11 +166,13 @@ def _audit_volume_snapshots(
         "total_snapshots": len(snapshots),
         "total_size_bytes": total_size,
         "oldest_snapshot_age_days": oldest_age,
-        "retention_compliant": len(expired_snapshots) == 0,
+        # 判定不能が残っている状態を「準拠」と言い切ってはいけない。
+        "retention_compliant": len(expired_snapshots) == 0 and not unknown_age_snapshots,
         "expired_snapshots": expired_snapshots,
         "expired_count": len(expired_snapshots),
         "protected_count": len(protected_snapshots),
         "compliant_count": len(compliant_snapshots),
+        "unknown_age_count": len(unknown_age_snapshots),
         "policy_drift_detected": drift_detected,
         "policy_drift_details": drift_details,
     }

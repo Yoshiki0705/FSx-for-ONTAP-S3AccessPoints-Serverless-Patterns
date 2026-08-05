@@ -126,17 +126,46 @@ def _collect_live(fs_id: str) -> dict[str, Any]:
         now = datetime.now(UTC)
 
         # Enrich with age calculation
+        #
+        # 経過日数が分からない場合の扱いに注意が必要。以前はいずれの失敗でも
+        # age_days = 0 にしていた。0 は min_retention_days 未満なので analyze 側で
+        # 「保護対象（削除禁止）」に分類され、期限切れ判定から外れる。つまり
+        # タイムスタンプが読めないスナップショットは、実際には保持期限を超えていても
+        # 「新しくて健全」として集計され、RetentionCompliancePercent が 100% に
+        # 見えてしまう。保持コンプライアンスを見るパターンで最も避けたい種類の
+        # 静かな誤りである。
+        #
+        # そこで age_days は None のままにし、解析できなかった事実を
+        # age_unknown フラグとして残す。件数はボリューム単位で集計して
+        # レポートまで運ぶ。
+        unknown_age_count = 0
         for snap in snaps:
             create_time_str = snap.get("create_time", "")
+            age_days = None
             if create_time_str:
                 try:
                     create_time = datetime.fromisoformat(create_time_str)
+                    if create_time.tzinfo is None:
+                        # ONTAP はタイムゾーン付きで返すが、構成によっては naive の
+                        # 可能性がある。aware な now との減算は TypeError になるため、
+                        # UTC とみなして扱う。
+                        create_time = create_time.replace(tzinfo=UTC)
                     age_days = (now - create_time).days
-                    snap["age_days"] = age_days
-                except (ValueError, TypeError):
-                    snap["age_days"] = 0
+                except (ValueError, TypeError) as e:
+                    logger.warning(
+                        "Could not parse create_time %r for snapshot %r on volume %r: %s",
+                        create_time_str,
+                        snap.get("name"),
+                        vol_name,
+                        e,
+                    )
             else:
-                snap["age_days"] = 0
+                logger.warning("Snapshot %r on volume %r has no create_time", snap.get("name"), vol_name)
+
+            snap["age_days"] = age_days
+            snap["age_unknown"] = age_days is None
+            if age_days is None:
+                unknown_age_count += 1
             snap["volume_name"] = vol_name
             snap["volume_uuid"] = vol_uuid
             snap["fs_id"] = fs_id
@@ -147,6 +176,7 @@ def _collect_live(fs_id: str) -> dict[str, Any]:
                 "volume_uuid": vol_uuid,
                 "snapshots": snaps,
                 "snapshot_count": len(snaps),
+                "unknown_age_count": unknown_age_count,
             }
         )
 
@@ -154,6 +184,9 @@ def _collect_live(fs_id: str) -> dict[str, Any]:
         "fs_id": fs_id,
         "volume_snapshots": volume_snapshots,
         "snapshot_policies": policies,
+        # 経過日数が判定できなかった総数。0 でない場合、コンプライアンス率は
+        # その分だけ判定不能な対象を含んでいることになる。
+        "unknown_age_count": sum(v["unknown_age_count"] for v in volume_snapshots),
         "collected_at": datetime.now(UTC).isoformat(),
     }
 
