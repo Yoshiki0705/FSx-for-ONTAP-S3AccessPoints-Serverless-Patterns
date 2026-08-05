@@ -1,207 +1,393 @@
-"""UC4 メディア VFX Lambda ハンドラー ユニットテスト
+"""Media VFX パターンのハンドラを実際に実行して検証する
 
-各ハンドラーの入出力形式、エラーハンドリング、
-ヘルパー関数のロジックをテストする。
-AWS サービス呼び出しは unittest.mock でモック化。
+## このファイルの変更について
+
+以前はハンドラのソースを文字列として読み、`assert ".exr" in content` のように
+部分文字列の有無だけを見ていた。それは「そのファイルにその文字列がある」ことしか
+示さない。`.exr` が docstring やコメントに出てくるだけでも通るし、
+`_filter_render_assets` が `.exr` を落とすように壊れても通る。
+
+いまは実際に呼ぶ。拡張子の判定はフィルタ関数に渡して結果を見る。Deadline Cloud
+への送信は `create_job` の引数を見る。テンプレートは YAML として解析して
+`Parameters` や関数の `Environment.Variables` に在るかを問う。
+
+`handler` 関数の存在と `@lambda_error_handler` による例外伝播は、全パターン共通の
+契約として `shared/tests/test_discovery_handlers_behaviour.py` が検証している。
+ここでは重複させず、このパターン固有の振る舞いだけを見る。
 """
 
-import os
-import sys
+from __future__ import annotations
 
+import json
+from unittest.mock import MagicMock
 
-# shared モジュールのパスを追加
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import pytest
+
+from shared.testing import load_pattern_handler, load_sam_template
+
+PATTERN = "solutions/industry/media-vfx"
+DISCOVERY = f"{PATTERN}/functions/discovery/handler.py"
+JOB_SUBMIT = f"{PATTERN}/functions/job_submit/handler.py"
+TEMPLATE = f"{PATTERN}/template.yaml"
 
 
 # =========================================================================
-# Discovery Handler テスト
+# Discovery Handler
 # =========================================================================
 
 
 class TestDiscoveryHandler:
-    """Discovery Lambda ハンドラーのテスト"""
+    """Discovery ハンドラの振る舞い"""
 
-    def test_handler_module_importable(self):
-        """ハンドラーモジュールがインポート可能であることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
-        assert os.path.exists(handler_path), f"handler.py not found: {handler_path}"
+    def test_returns_render_assets_and_a_manifest_key(self, monkeypatch):
+        """レンダリング対象を返し、Manifest キーを返すことを検証する"""
+        harness = load_pattern_handler(
+            DISCOVERY,
+            monkeypatch,
+            objects=[
+                {"Key": "shots/a.exr", "Size": 10},
+                {"Key": "notes/readme.txt", "Size": 1},
+            ],
+        )
 
-    def test_handler_has_lambda_entry_point(self):
-        """ハンドラーに handler 関数が定義されていることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "def handler(event, context):" in content
+        result = harness.handler({}, harness.context)
 
-    def test_handler_uses_lambda_error_handler(self):
-        """ハンドラーが lambda_error_handler デコレータを使用していることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "@lambda_error_handler" in content
+        assert [o["Key"] for o in result["objects"]] == ["shots/a.exr"]
+        assert result["total_objects"] == 1
+        assert result["manifest_key"].startswith("manifests/")
 
-    def test_handler_returns_objects_key(self):
-        """ハンドラーの返り値に objects キーが含まれることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert '"objects"' in content or "'objects'" in content
+    def test_manifest_key_is_date_partitioned(self, monkeypatch):
+        """Manifest キーが `manifests/YYYY/MM/DD/<id>.json` 形式であることを検証する
 
-    def test_handler_defines_render_asset_extensions(self):
-        """ハンドラーが RENDER_ASSET_EXTENSIONS 定数を定義していることを確認（UC4 固有）"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "RENDER_ASSET_EXTENSIONS" in content
+        Athena / Glue のパーティション射影が日付階層を前提にしているため、
+        階層が崩れるとクエリ側が読めなくなる。
+        """
+        harness = load_pattern_handler(DISCOVERY, monkeypatch, objects=[{"Key": "s/a.exr", "Size": 1}])
 
-    def test_handler_supports_exr_dpx_tga(self):
-        """ハンドラーが .exr, .dpx, .tga 拡張子をサポートしていることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert ".exr" in content
-        assert ".dpx" in content
-        assert ".tga" in content
+        key = harness.handler({}, harness.context)["manifest_key"]
 
-    def test_handler_supports_usd_formats(self):
-        """ハンドラーが USD 系フォーマット (.usd, .usda, .usdc, .usdz) をサポートしていることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert ".usd" in content
-        assert ".usda" in content
-        assert ".usdc" in content
-        assert ".usdz" in content
+        prefix, year, month, day, name = key.split("/")
+        assert prefix == "manifests"
+        assert (len(year), len(month), len(day)) == (4, 2, 2)
+        assert year.isdigit() and month.isdigit() and day.isdigit()
+        assert name.endswith(".json")
 
-    def test_handler_has_filter_render_assets(self):
-        """ハンドラーに _filter_render_assets 関数が定義されていることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "def _filter_render_assets(" in content
+    def test_manifest_is_written_through_the_output_access_point(self, monkeypatch):
+        """Manifest が出力用 S3 AP に書かれることを検証する
 
-    def test_handler_generates_manifest_key(self):
-        """ハンドラーが manifests/ プレフィックス付きキーを生成することを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "discovery", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "manifests/" in content
+        入力 AP に書き戻すと、読み取り専用の入力ボリュームに書こうとして失敗する。
+
+        「出力 AP のインスタンスが生成されたか」では不十分で、入力用と出力用は
+        どちらも必ず生成される。書き込みを受けたのがどちらかを見る必要がある
+        （この区別を入れる前は、出力先を入力 AP に差し替える変異が検出されなかった）。
+        """
+        harness = load_pattern_handler(DISCOVERY, monkeypatch)
+        writes: list[tuple[str, str]] = []
+
+        class RecordingS3Ap:
+            def __init__(self, access_point, *a, **kw):
+                self.access_point = access_point
+
+            def list_objects(self, prefix="", suffix="", max_keys=1000):
+                return [{"Key": "s/a.exr", "Size": 1}]
+
+            def put_object(self, **kw):
+                writes.append((self.access_point, kw["key"]))
+                return {}
+
+        monkeypatch.setenv("S3_ACCESS_POINT", "in-sentinel-ext-s3alias")
+        monkeypatch.setenv("S3_ACCESS_POINT_OUTPUT", "out-sentinel-ext-s3alias")
+        monkeypatch.setattr(harness.module, "S3ApHelper", RecordingS3Ap)
+
+        harness.handler({}, harness.context)
+
+        assert writes, "the manifest was never written"
+        written_to = {access_point for access_point, _ in writes}
+        assert written_to == {"out-sentinel-ext-s3alias"}, f"manifest written to {written_to}"
+
+    def test_output_access_point_falls_back_to_the_input(self, monkeypatch):
+        """S3_ACCESS_POINT_OUTPUT 未設定時は入力 AP を使うことを検証する"""
+        harness = load_pattern_handler(
+            DISCOVERY,
+            monkeypatch,
+            env={"S3_ACCESS_POINT": "only-one-ext-s3alias", "S3_ACCESS_POINT_OUTPUT": ""},
+            objects=[{"Key": "s/a.exr", "Size": 1}],
+        )
+        monkeypatch.delenv("S3_ACCESS_POINT_OUTPUT", raising=False)
+
+        harness.handler({}, harness.context)
+
+        assert {i.access_point for i in harness.s3ap_instances} == {"only-one-ext-s3alias"}
+
+    def test_prefix_filter_is_passed_to_the_access_point(self, monkeypatch):
+        """PREFIX_FILTER の値が list_objects の prefix に渡ることを検証する
+
+        渡されないと、対象プレフィックス外まで走査して課金と実行時間が増える。
+        """
+        harness = load_pattern_handler(DISCOVERY, monkeypatch, env={"PREFIX_FILTER": "project-x/"})
+        recorded: list[dict] = []
+
+        class RecordingS3Ap:
+            def __init__(self, access_point, *a, **kw):
+                self.access_point = access_point
+
+            def list_objects(self, prefix="", suffix="", max_keys=1000):
+                recorded.append({"prefix": prefix, "suffix": suffix})
+                return [{"Key": "project-x/a.exr", "Size": 1}]
+
+            def put_object(self, **kw):
+                return {}
+
+        monkeypatch.setattr(harness.module, "S3ApHelper", RecordingS3Ap)
+
+        harness.handler({}, harness.context)
+
+        assert recorded, "list_objects was never called"
+        assert recorded[0]["prefix"] == "project-x/"
+
+
+class TestRenderAssetFiltering:
+    """`_filter_render_assets` の判定"""
+
+    @pytest.fixture
+    def filter_assets(self, monkeypatch):
+        harness = load_pattern_handler(DISCOVERY, monkeypatch)
+        return harness.module._filter_render_assets
+
+    @pytest.mark.parametrize(
+        "extension",
+        [".exr", ".dpx", ".tga", ".obj", ".fbx", ".blend", ".abc", ".ma", ".mb", ".hip", ".hda"],
+    )
+    def test_keeps_render_formats(self, filter_assets, extension):
+        """レンダリング対象の拡張子が残ることを検証する"""
+        kept = filter_assets([{"Key": f"shots/asset{extension}", "Size": 1}])
+
+        assert [o["Key"] for o in kept] == [f"shots/asset{extension}"]
+
+    @pytest.mark.parametrize("extension", [".usd", ".usda", ".usdc", ".usdz"])
+    def test_keeps_usd_formats(self, filter_assets, extension):
+        """USD 系フォーマットが残ることを検証する"""
+        kept = filter_assets([{"Key": f"scene{extension}", "Size": 1}])
+
+        assert len(kept) == 1
+
+    @pytest.mark.parametrize("key", ["notes.txt", "thumb.jpg", "report.pdf", "archive.zip", "noextension"])
+    def test_drops_non_render_files(self, filter_assets, key):
+        """レンダリング対象外のファイルが落ちることを検証する"""
+        assert filter_assets([{"Key": key, "Size": 1}]) == []
+
+    def test_matches_extensions_case_insensitively(self, filter_assets):
+        """大文字の拡張子も対象になることを検証する
+
+        DCC ツールや Windows 由来のファイルは `.EXR` を出すことがある。
+        """
+        kept = filter_assets([{"Key": "shots/frame.EXR", "Size": 1}])
+
+        assert len(kept) == 1
+
+    def test_does_not_match_extension_in_the_middle_of_a_name(self, filter_assets):
+        """拡張子が名前の途中にあるだけのファイルは対象外であることを検証する"""
+        assert filter_assets([{"Key": "shots/asset.exr.bak", "Size": 1}]) == []
 
 
 # =========================================================================
-# Job Submit Handler テスト
+# Job Submit Handler
 # =========================================================================
+
+
+def _load_job_submit(monkeypatch, deadline=None, **env):
+    """job_submit を読み込み、Deadline Cloud クライアントを差し替える"""
+    harness = load_pattern_handler(
+        JOB_SUBMIT,
+        monkeypatch,
+        env={"DEADLINE_FARM_ID": "farm-abc", "DEADLINE_QUEUE_ID": "queue-def", **env},
+    )
+    client = deadline or MagicMock()
+    if deadline is None:
+        client.create_job.return_value = {"jobId": "job-123"}
+    monkeypatch.setattr(harness.module.boto3, "client", lambda name, **kw: client)
+    return harness, client
 
 
 class TestJobSubmitHandler:
-    """Job Submit Lambda ハンドラーのテスト"""
+    """Job Submit ハンドラの振る舞い"""
 
-    def test_handler_module_importable(self):
-        """Job Submit ハンドラーモジュールが存在することを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "job_submit", "handler.py")
-        assert os.path.exists(handler_path), f"handler.py not found: {handler_path}"
+    def test_returns_submitted_status_and_job_id(self, monkeypatch):
+        """送信後に SUBMITTED と jobId を返すことを検証する"""
+        harness, _ = _load_job_submit(monkeypatch)
 
-    def test_handler_has_lambda_entry_point(self):
-        """Job Submit ハンドラーに handler 関数が定義されていることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "job_submit", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "def handler(event, context):" in content
+        result = harness.handler({"Key": "shots/a.exr", "Size": 10}, harness.context)
 
-    def test_build_job_template_defined(self):
-        """_build_job_template 関数が定義されていることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "job_submit", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "def _build_job_template(" in content
+        assert result["status"] == "SUBMITTED"
+        assert result["job_id"] == "job-123"
+        assert result["asset_key"] == "shots/a.exr"
 
-    def test_handler_uses_deadline_cloud(self):
-        """ハンドラーが AWS Deadline Cloud を使用していることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "job_submit", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "deadline" in content
-        assert "create_job" in content
+    def test_submits_with_the_farm_and_queue_from_the_environment(self, monkeypatch):
+        """環境変数の Farm / Queue ID で create_job を呼ぶことを検証する
 
-    def test_handler_uses_deadline_farm_id(self):
-        """ハンドラーが DEADLINE_FARM_ID 環境変数を使用していることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "job_submit", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "DEADLINE_FARM_ID" in content
+        ハードコードされた ID への退行を検出する。
+        """
+        harness, client = _load_job_submit(
+            monkeypatch,
+            DEADLINE_FARM_ID="farm-sentinel",
+            DEADLINE_QUEUE_ID="queue-sentinel",
+        )
 
-    def test_handler_uses_deadline_queue_id(self):
-        """ハンドラーが DEADLINE_QUEUE_ID 環境変数を使用していることを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "job_submit", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "DEADLINE_QUEUE_ID" in content
+        result = harness.handler({"Key": "shots/a.exr"}, harness.context)
 
-    def test_handler_returns_submitted_status(self):
-        """ハンドラーが SUBMITTED ステータスを返すことを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "job_submit", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert '"SUBMITTED"' in content
+        kwargs = client.create_job.call_args.kwargs
+        assert kwargs["farmId"] == "farm-sentinel"
+        assert kwargs["queueId"] == "queue-sentinel"
+        assert result["farm_id"] == "farm-sentinel"
+        assert result["queue_id"] == "queue-sentinel"
 
-    def test_handler_uses_head_object(self):
-        """ハンドラーが head_object でアセットメタデータを確認することを確認"""
-        handler_path = os.path.join(os.path.dirname(__file__), "..", "functions", "job_submit", "handler.py")
-        with open(handler_path) as f:
-            content = f.read()
-        assert "head_object" in content
+    def test_confirms_asset_metadata_before_submitting(self, monkeypatch):
+        """ジョブ送信前に head_object でアセットを確認することを検証する
+
+        存在しないアセットに対してジョブを投げると、Deadline 側のキューで失敗し、
+        原因が Lambda のログに残らない。
+        """
+        harness, client = _load_job_submit(monkeypatch)
+
+        harness.handler({"Key": "shots/a.exr"}, harness.context)
+
+        assert "head_object" in harness.calls
+        assert client.create_job.called
+
+    def test_template_is_sent_as_json(self, monkeypatch):
+        """テンプレートが JSON 文字列として送られることを検証する"""
+        harness, client = _load_job_submit(monkeypatch)
+
+        harness.handler({"Key": "shots/a.exr"}, harness.context)
+
+        kwargs = client.create_job.call_args.kwargs
+        assert kwargs["templateType"] == "JSON"
+        template = json.loads(kwargs["template"])
+        assert template["parameters"]["asset_key"]["string"] == "shots/a.exr"
+
+    def test_failure_from_deadline_propagates(self, monkeypatch):
+        """Deadline 呼び出しの失敗が伝播することを検証する
+
+        飲み込むと Step Functions はジョブ未送信を成功と見なして次へ進む。
+        """
+        client = MagicMock()
+        client.create_job.side_effect = RuntimeError("deadline unavailable")
+        harness, _ = _load_job_submit(monkeypatch, deadline=client)
+
+        with pytest.raises(RuntimeError, match="deadline unavailable"):
+            harness.handler({"Key": "shots/a.exr"}, harness.context)
+
+
+class TestJobTemplate:
+    """`_build_job_template` の構築結果"""
+
+    @pytest.fixture
+    def build(self, monkeypatch):
+        harness = load_pattern_handler(JOB_SUBMIT, monkeypatch)
+        return harness.module._build_job_template
+
+    def test_job_name_contains_the_asset_file_name(self, build):
+        """ジョブ名にアセットのファイル名が入ることを検証する
+
+        Deadline のコンソールでどのアセットのジョブか分かるようにするため。
+        """
+        template = build("shots/seq010/frame.exr", "out-ap")
+
+        assert template["name"].startswith("render-frame.exr-")
+
+    def test_parameters_carry_the_key_and_output_target(self, build):
+        """パラメータにアセットキーと出力先が入ることを検証する"""
+        template = build("shots/a.exr", "out-ap-ext-s3alias")
+
+        assert template["parameters"]["asset_key"]["string"] == "shots/a.exr"
+        assert template["parameters"]["output_bucket"]["string"] == "out-ap-ext-s3alias"
+        assert template["parameters"]["asset_name"]["string"] == "a.exr"
 
 
 # =========================================================================
-# CloudFormation テンプレート整合性テスト
+# CloudFormation テンプレート
 # =========================================================================
 
 
 class TestTemplateConsistency:
-    """CloudFormation テンプレートの整合性テスト"""
+    """テンプレートの構造
 
-    def test_template_exists(self):
-        """template.yaml が存在することを確認"""
-        template_path = os.path.join(os.path.dirname(__file__), "..", "template.yaml")
-        assert os.path.exists(template_path)
+    以前は文字列として読んで名前の有無を見ていた。それでは `Description` や
+    コメントに名前があるだけで通るため、YAML として解析して在るべき場所を問う。
+    """
 
-    def test_template_deploy_exists(self):
-        """template-deploy.yaml が存在することを確認"""
-        template_path = os.path.join(os.path.dirname(__file__), "..", "template-deploy.yaml")
-        assert os.path.exists(template_path)
+    @pytest.fixture
+    def tpl(self):
+        return load_sam_template(TEMPLATE)
 
-    def test_template_has_suffix_filter(self):
-        """テンプレートに SUFFIX_FILTER 環境変数が定義されていることを確認"""
-        template_path = os.path.join(os.path.dirname(__file__), "..", "template.yaml")
-        with open(template_path) as f:
-            content = f.read()
-        assert "SUFFIX_FILTER" in content
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "EnableVpcEndpoints",
+            "EnableS3GatewayEndpoint",
+            "PrivateRouteTableIds",
+            "DeadlineFarmId",
+            "DeadlineQueueId",
+        ],
+    )
+    def test_parameter_is_declared(self, tpl, name):
+        """パラメータが Parameters に宣言されていることを検証する"""
+        assert name in tpl.parameters, f"declared parameters: {sorted(tpl.parameters)}"
 
-    def test_template_has_vpc_endpoint_parameter(self):
-        """テンプレートに EnableVpcEndpoints パラメータが定義されていることを確認"""
-        template_path = os.path.join(os.path.dirname(__file__), "..", "template.yaml")
-        with open(template_path) as f:
-            content = f.read()
-        assert "EnableVpcEndpoints" in content
+    def test_suffix_filter_is_passed_to_a_function(self, tpl):
+        """SUFFIX_FILTER が実際に環境変数として渡されることを検証する"""
+        assert "SUFFIX_FILTER" in tpl.all_function_env_names()
 
-    def test_template_has_s3_gateway_endpoint_parameter(self):
-        """テンプレートに EnableS3GatewayEndpoint パラメータが定義されていることを確認"""
-        template_path = os.path.join(os.path.dirname(__file__), "..", "template.yaml")
-        with open(template_path) as f:
-            content = f.read()
-        assert "EnableS3GatewayEndpoint" in content
+    def test_deadline_ids_reach_the_job_submit_function(self, tpl):
+        """Deadline の Farm / Queue ID が job_submit に渡ることを検証する"""
+        env = tpl.function_env("JobSubmitFunction")
 
-    def test_template_has_route_table_ids_parameter(self):
-        """テンプレートに PrivateRouteTableIds パラメータが定義されていることを確認"""
-        template_path = os.path.join(os.path.dirname(__file__), "..", "template.yaml")
-        with open(template_path) as f:
-            content = f.read()
-        assert "PrivateRouteTableIds" in content
+        assert "DEADLINE_FARM_ID" in env
+        assert "DEADLINE_QUEUE_ID" in env
 
-    def test_template_suffix_filter_includes_exr(self):
-        """テンプレートの SUFFIX_FILTER に .exr が含まれることを確認（UC4 固有）"""
-        template_path = os.path.join(os.path.dirname(__file__), "..", "template.yaml")
-        with open(template_path) as f:
-            content = f.read()
-        assert ".exr" in content
+    def test_conditions_only_reference_declared_names(self, tpl):
+        """Conditions が未宣言の名前を参照していないことを検証する"""
+        assert tpl.undefined_condition_refs() == set()
+
+
+class TestSuffixFilterIsNotWiredToDiscovery:
+    """`SUFFIX_FILTER` と実際のフィルタ条件の乖離を明示的に固定する
+
+    テンプレートは `DiscoveryFunction` に
+    `SUFFIX_FILTER: ".exr,.dpx,.tga,.obj,.fbx,.abc,.usd"` を渡すが、
+    discovery ハンドラはこの環境変数を**読まない**。判定はモジュール定数
+    `RENDER_ASSET_EXTENSIONS`（15 拡張子）で行われる。
+
+    つまり運用者が `SUFFIX_FILTER` を狭めても検出対象は変わらない。効かないノブが
+    テンプレートに見えている状態で、これは設定ミスを誘発する。
+
+    ここではその乖離を落とさずに固定する。フィルタを `SUFFIX_FILTER` 準拠に
+    変えると、テンプレートに列挙されていない 8 形式（`.blend` `.ma` `.mb` `.hip`
+    `.hda` `.usda` `.usdc` `.usdz`）が検出されなくなる機能退行になるため、
+    どちらへ寄せるかは実装ではなく設計の判断になる。
+    """
+
+    def test_discovery_ignores_suffix_filter(self, monkeypatch):
+        """SUFFIX_FILTER を狭めても検出結果が変わらないことを検証する"""
+        harness = load_pattern_handler(
+            DISCOVERY,
+            monkeypatch,
+            env={"SUFFIX_FILTER": ".exr"},
+            objects=[{"Key": "a.exr", "Size": 1}, {"Key": "b.blend", "Size": 1}],
+        )
+
+        result = harness.handler({}, harness.context)
+
+        # SUFFIX_FILTER が効いていれば .blend は落ちるが、実際には残る
+        assert {o["Key"] for o in result["objects"]} == {"a.exr", "b.blend"}
+
+    def test_handler_covers_more_formats_than_the_template_lists(self, monkeypatch):
+        """ハンドラの対象拡張子がテンプレートの列挙より広いことを検証する"""
+        harness = load_pattern_handler(DISCOVERY, monkeypatch)
+        tpl = load_sam_template(TEMPLATE)
+
+        listed = {s.strip() for s in str(tpl.function_env("DiscoveryFunction")["SUFFIX_FILTER"]).split(",")}
+        actual = set(harness.module.RENDER_ASSET_EXTENSIONS)
+
+        assert listed < actual, "the template now lists everything the handler filters on; update this test"
+        assert actual - listed == {".blend", ".ma", ".mb", ".hip", ".hda", ".usda", ".usdc", ".usdz"}
