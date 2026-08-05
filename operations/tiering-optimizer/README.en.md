@@ -31,6 +31,35 @@ FabricPool configuration (policy + cooling period) with cost savings estimates.
 | Capacity Pool | ~$0.021/GB/month |
 | **Savings** | **~$0.104/GB/month** |
 
+## Output
+
+### CloudWatch custom metrics (namespace: `FSxOps`)
+
+| Metric | Unit | Meaning |
+|--------|:----:|---------|
+| `TieringPotentialSavingsUSD` | None | Estimated monthly saving from a policy change |
+| `TieringRecommendationCount` | Count | Number of recommendations produced |
+
+### S3 report
+
+Carries a `data_classification` field (default `INTERNAL`, overridable via the
+`DATA_CLASSIFICATION` environment variable).
+
+## Success Metrics
+
+| Outcome | Metric | Target | Human Review |
+|---------|--------|--------|:------------:|
+| Cold data tiered | Share of capacity on the Capacity Pool tier | Trending up | ✅ |
+| Cost reduction | Realised share of `TieringPotentialSavingsUSD` | 70% or more of the estimate | ✅ |
+| Policy coverage | Volumes still on policy `none` | 0 | ✅ |
+| Execution stability | Workflow success rate | > 99% | — |
+| Latency impact | Read latency after tiering | Within business requirements | ✅ |
+
+> **What the estimate is**: the saving is calculated from the unit prices supplied
+> as template parameters and the current Capacity Pool footprint. It is not an AWS
+> billing figure, and the volume actually tiered depends on access patterns and the
+> cooling period, so the outcome will differ from the estimate.
+
 ## Testing
 
 ```bash
