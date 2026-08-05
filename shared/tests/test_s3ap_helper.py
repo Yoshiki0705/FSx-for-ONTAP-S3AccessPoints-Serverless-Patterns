@@ -15,7 +15,7 @@ import pytest
 from botocore.exceptions import ClientError
 
 from shared.exceptions import S3ApHelperError
-from shared.s3ap_helper import S3ApHelper
+from shared.s3ap_helper import S3ApHelper, access_denied_message
 
 
 # ---------------------------------------------------------------------------
@@ -339,3 +339,164 @@ class TestS3ApHelper:
         assert len(S3ApHelper.SUPPORTED_OPERATIONS) == 21
         for op in expected_ops:
             assert op in S3ApHelper.SUPPORTED_OPERATIONS
+
+
+# ---------------------------------------------------------------------------
+# TestAccessDeniedDiagnosis
+# ---------------------------------------------------------------------------
+
+
+class TestAccessDeniedDiagnosis:
+    """AccessDenied 診断メッセージのテスト
+
+    AccessDenied の原因は AWS 側（IAM / AP ポリシー）と ONTAP ファイルシステム側
+    （AD 参加 SVM で AD DC に到達できない）の 2 つの層に分かれる。以前のメッセージは
+    前者だけを指していたため、後者が原因のときに真逆の方向へ人を送っていた。
+
+    ここでは「両方の層に言及する」「切り分け方を示す」「AD だと断定しない」の 3 点を
+    固定する。
+    """
+
+    def test_names_both_layers(self):
+        """AWS 側と ONTAP ファイルシステム側の両方に言及することを検証する"""
+        msg = access_denied_message("ListObjectsV2", "my-ap-ext-s3alias")
+
+        # AWS 側
+        assert "IAM" in msg
+        assert "Access Point policy" in msg
+        # ONTAP ファイルシステム側
+        assert "file-system" in msg
+        assert "AD-joined" in msg
+        assert "domain controllers" in msg
+
+    def test_names_headbucket_as_discriminator(self):
+        """2 つの層を切り分ける手段として HeadBucket を示すことを検証する
+
+        HeadBucket は S3 メタデータ層だけを見るため、ファイルシステム層が原因の
+        ケースでも成功する。これが切り分けの決め手になる。
+        """
+        msg = access_denied_message("GetObject", "my-ap-ext-s3alias")
+
+        assert "HeadBucket" in msg
+        assert "metadata layer" in msg
+
+    def test_gives_dc_reachability_check(self):
+        """DC 到達性の判定条件を具体的に示すことを検証する
+
+        「エントリが 1 件以上ある」では不十分で、server_type=ms_dc かつ state=ok の
+        エントリが必要。DC が応答しなくなってもエントリ自体は残るため。
+        """
+        msg = access_denied_message("PutObject", "my-ap-ext-s3alias")
+
+        assert "ms_dc" in msg
+        assert "state=ok" in msg
+        assert "discovered_servers" in msg
+        assert "ad_health_check" in msg
+        # 件数だけで判断させない注意書き
+        assert "not sufficient" in msg
+
+    def test_does_not_assert_ad_is_the_cause(self):
+        """AD が原因だと断定しないことを検証する
+
+        S3ApHelper は AP のエイリアス/ARN しか知らず SVM 名を持たないため、AD 参加
+        SVM かどうかを判定できない。断定ではなく可能性として示す必要がある。
+        """
+        msg = access_denied_message("ListObjectsV2", "my-ap-ext-s3alias")
+
+        lowered = msg.lower()
+        assert "two possible layers" in lowered
+        # 断定的な言い回しを禁止する
+        for forbidden in (
+            "this is an ad",
+            "the cause is ad",
+            "caused by ad",
+            "must be ad",
+        ):
+            assert forbidden not in lowered
+
+    def test_includes_access_point_arn_form_hint(self):
+        """AP 形式の ARN が必要である点に触れることを検証する"""
+        msg = access_denied_message("ListObjectsV2", "my-ap-ext-s3alias")
+
+        assert "accesspoint/" in msg
+        assert "bucket-style" in msg
+
+    def test_includes_operation_and_access_point(self):
+        """操作名と Access Point 名がメッセージに含まれることを検証する"""
+        msg = access_denied_message("DeleteObject", "some-ap-ext-s3alias")
+
+        assert "DeleteObject" in msg
+        assert "some-ap-ext-s3alias" in msg
+
+    def test_detail_is_optional(self):
+        """detail を省略しても括弧が空で残らないことを検証する"""
+        # 本文には check_ad_dc_reachability() など括弧を含む記述があるため、
+        # 件名（1 行目）だけを見る
+        without = access_denied_message("GetObject", "my-ap").splitlines()[0]
+        assert "()" not in without
+        assert "my-ap" in without
+
+        with_detail = access_denied_message("GetObject", "my-ap", detail="key='a/b.csv'").splitlines()[0]
+        assert "(key='a/b.csv')" in with_detail
+
+    # --- 各操作の except 節が診断メッセージを使っていることを検証する ---
+
+    @pytest.mark.parametrize(
+        "invoke,client_method",
+        [
+            (lambda h: h.list_objects(prefix="data/"), "list_objects_v2"),
+            (lambda h: h.get_object("a.csv"), "get_object"),
+            (lambda h: h.put_object("a.csv", b"x"), "put_object"),
+            (lambda h: h.head_object("a.csv"), "head_object"),
+            (lambda h: h.delete_object("a.csv"), "delete_object"),
+            (lambda h: list(h.streaming_download("a.csv")), "get_object"),
+            (lambda h: h.streaming_download_range("a.csv", 0, 10), "get_object"),
+            (
+                lambda h: h.multipart_upload("a.csv", iter([b"x"])),
+                "create_multipart_upload",
+            ),
+        ],
+        ids=[
+            "list_objects",
+            "get_object",
+            "put_object",
+            "head_object",
+            "delete_object",
+            "streaming_download",
+            "streaming_download_range",
+            "multipart_upload",
+        ],
+    )
+    def test_every_operation_emits_both_layers(self, alias_helper, mock_session, invoke, client_method):
+        """全 8 操作の AccessDenied が両層に言及することを検証する
+
+        1 箇所だけ IAM のみの旧文面が残る、という事故を防ぐ。
+        """
+        client = mock_session.client.return_value
+        getattr(client, client_method).side_effect = _make_client_error(code="AccessDenied")
+
+        with pytest.raises(S3ApHelperError) as exc_info:
+            invoke(alias_helper)
+
+        msg = str(exc_info.value)
+        assert exc_info.value.error_code == "AccessDenied"
+        assert "IAM" in msg
+        assert "file-system" in msg
+        assert "HeadBucket" in msg
+        assert "ms_dc" in msg
+
+    def test_non_access_denied_keeps_plain_message(self, alias_helper, mock_session):
+        """AccessDenied 以外では診断メッセージを付けないことを検証する
+
+        NoSuchKey 等に AD の話を出すとノイズになる。
+        """
+        client = mock_session.client.return_value
+        client.get_object.side_effect = _make_client_error(code="NoSuchKey")
+
+        with pytest.raises(S3ApHelperError) as exc_info:
+            alias_helper.get_object("missing.csv")
+
+        msg = str(exc_info.value)
+        assert exc_info.value.error_code == "NoSuchKey"
+        assert "HeadBucket" not in msg
+        assert "ms_dc" not in msg

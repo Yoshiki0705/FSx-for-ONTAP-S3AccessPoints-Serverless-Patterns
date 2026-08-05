@@ -24,6 +24,58 @@ from shared.exceptions import S3ApHelperError
 
 logger = logging.getLogger(__name__)
 
+# AccessDenied のとき、原因は 2 つの層のどちらかにある。
+#
+# これまでこのモジュールのメッセージは IAM と AP ポリシーだけを指していた。原因が
+# もう一方の層にあるとき、その案内は真逆の方向へ人を送る。AD 参加 SVM（CIFS 有効）
+# では、ONTAP が S3 AP のデータ操作ごとに unix→win の逆引き name-mapping を行い、
+# これには AD DC への LDAP/Kerberos 接続が必要になる。DC に到達できないと
+# ListObjectsV2 / GetObject / PutObject は AccessDenied になる。IAM も AP ポリシーも
+# ネットワーク経路も正常なまま失敗するため、切り分けが難しい。
+#
+# 見分け方: HeadBucket は S3 メタデータ層だけを見るので、この状況でも成功する。
+# HeadBucket が通ってデータ操作が AccessDenied なら、IAM ではなくファイルシステム層。
+#
+# ここで「AD の問題だ」と断定はしない。SVM 名を知らないので判定できない。両方の
+# 可能性と、切り分ける手順を示すのが正しい。
+_ACCESS_DENIED_LAYERS = (
+    "AccessDenied has two possible layers here.\n"
+    "  1. AWS side — the IAM identity policy or the Access Point policy. Note that "
+    "the Resource ARN must be the Access Point form "
+    "(arn:aws:s3:<region>:<account>:accesspoint/<name>[/object/*]); a bucket-style "
+    "ARN does not work.\n"
+    "  2. ONTAP file-system side — on an AD-joined SVM (CIFS enabled), every data "
+    "operation needs the SVM to reach its AD domain controllers. When they are "
+    "unreachable, this call fails while IAM, the AP policy and the network are all "
+    "correct.\n"
+    "To tell them apart, call HeadBucket on the same Access Point. HeadBucket only "
+    "checks the S3 metadata layer, so it succeeds in case 2 — a HeadBucket that "
+    "works alongside a failing data operation points at the file system, not IAM.\n"
+    "For case 2, check DC reachability with shared.ad_health_check."
+    "check_ad_dc_reachability(), or:\n"
+    "  GET /api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers\n"
+    "and look for at least one entry with server_type=ms_dc and state=ok. A "
+    "non-empty list is not sufficient: entries persist after the controllers stop "
+    "answering."
+)
+
+
+def access_denied_message(operation: str, access_point: str, detail: str = "") -> str:
+    """AccessDenied 用のメッセージを組み立てる。
+
+    7 箇所の except 節が同じ本文を使うため、1 箇所にまとめている。片方の層の案内
+    だけが残る事故を防ぐのが狙い。
+
+    Args:
+        operation: 失敗した S3 操作（例: "ListObjectsV2"）
+        access_point: 対象の S3 AP Alias または ARN
+        detail: 対象キーなどの追加情報（任意）
+    """
+    subject = f"{operation} on S3 Access Point '{access_point}'"
+    if detail:
+        subject = f"{subject} ({detail})"
+    return f"Access denied: {subject}.\n{_ACCESS_DENIED_LAYERS}"
+
 
 class S3ApHelper:
     """S3 Access Point ヘルパー
@@ -160,10 +212,12 @@ class S3ApHelper:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code == "AccessDenied":
                 raise S3ApHelperError(
-                    f"Access denied to S3 Access Point '{self._access_point}'. "
-                    f"Verify that the IAM role has s3:ListBucket permission "
-                    f"on the Access Point and that the Access Point policy "
-                    f"allows the operation. Original error: {e}",
+                    access_denied_message(
+                        "ListObjectsV2",
+                        self._access_point,
+                        detail=f"prefix='{prefix}'",
+                    )
+                    + f"\nOriginal error: {e}",
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
@@ -198,10 +252,12 @@ class S3ApHelper:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code == "AccessDenied":
                 raise S3ApHelperError(
-                    f"Access denied when getting object '{key}' from "
-                    f"S3 Access Point '{self._access_point}'. "
-                    f"Verify that the IAM role has s3:GetObject permission "
-                    f"on the Access Point. Original error: {e}",
+                    access_denied_message(
+                        "GetObject",
+                        self._access_point,
+                        detail=f"key='{key}'",
+                    )
+                    + f"\nOriginal error: {e}",
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
@@ -248,10 +304,12 @@ class S3ApHelper:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code == "AccessDenied":
                 raise S3ApHelperError(
-                    f"Access denied when putting object '{key}' to "
-                    f"S3 Access Point '{self._access_point}'. "
-                    f"Verify that the IAM role has s3:PutObject permission "
-                    f"on the Access Point. Original error: {e}",
+                    access_denied_message(
+                        "PutObject",
+                        self._access_point,
+                        detail=f"key='{key}'",
+                    )
+                    + f"\nOriginal error: {e}",
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
@@ -284,10 +342,12 @@ class S3ApHelper:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code == "AccessDenied":
                 raise S3ApHelperError(
-                    f"Access denied when heading object '{key}' from "
-                    f"S3 Access Point '{self._access_point}'. "
-                    f"Verify that the IAM role has s3:GetObject permission "
-                    f"on the Access Point. Original error: {e}",
+                    access_denied_message(
+                        "HeadObject",
+                        self._access_point,
+                        detail=f"key='{key}'",
+                    )
+                    + f"\nOriginal error: {e}",
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
@@ -316,10 +376,12 @@ class S3ApHelper:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code == "AccessDenied":
                 raise S3ApHelperError(
-                    f"Access denied when deleting object '{key}' from "
-                    f"S3 Access Point '{self._access_point}'. "
-                    f"Verify that the IAM role has s3:DeleteObject permission "
-                    f"on the Access Point. Original error: {e}",
+                    access_denied_message(
+                        "DeleteObject",
+                        self._access_point,
+                        detail=f"key='{key}'",
+                    )
+                    + f"\nOriginal error: {e}",
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
@@ -360,10 +422,12 @@ class S3ApHelper:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code == "AccessDenied":
                 raise S3ApHelperError(
-                    f"Access denied when streaming object '{key}' from "
-                    f"S3 Access Point '{self._access_point}'. "
-                    f"Verify that the IAM role has s3:GetObject permission "
-                    f"on the Access Point. Original error: {e}",
+                    access_denied_message(
+                        "GetObject",
+                        self._access_point,
+                        detail=f"streaming key='{key}'",
+                    )
+                    + f"\nOriginal error: {e}",
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
@@ -413,10 +477,12 @@ class S3ApHelper:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code == "AccessDenied":
                 raise S3ApHelperError(
-                    f"Access denied when downloading range of object '{key}' "
-                    f"from S3 Access Point '{self._access_point}'. "
-                    f"Verify that the IAM role has s3:GetObject permission "
-                    f"on the Access Point. Original error: {e}",
+                    access_denied_message(
+                        "GetObject",
+                        self._access_point,
+                        detail=f"range bytes={start}-{end} key='{key}'",
+                    )
+                    + f"\nOriginal error: {e}",
                     error_code=error_code,
                 ) from e
             raise S3ApHelperError(
@@ -456,6 +522,16 @@ class S3ApHelper:
             )
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            if error_code == "AccessDenied":
+                raise S3ApHelperError(
+                    access_denied_message(
+                        "CreateMultipartUpload",
+                        self._access_point,
+                        detail=f"key='{key}'",
+                    )
+                    + f"\nOriginal error: {e}",
+                    error_code=error_code,
+                ) from e
             raise S3ApHelperError(
                 f"Failed to create multipart upload for key '{key}' on S3 Access Point '{self._access_point}': {e}",
                 error_code=error_code,
