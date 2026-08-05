@@ -1,5 +1,5 @@
 # Bandit Security Scanner Configuration
-# Project: FSxN S3AP Serverless Patterns
+# Project: FSx for ONTAP S3 AP Serverless Patterns
 
 exclude_dirs:
   - tests
