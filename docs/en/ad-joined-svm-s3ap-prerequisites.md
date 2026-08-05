@@ -570,14 +570,11 @@ reads an NTFS security descriptor per object in a downstream Map state, so AD DC
 reachability is a precondition. Failing once at the head avoids repeating the
 same failure N times after the Map fans out.
 
-> **Error-surface note**: `lambda_error_handler` catches the exception and
-> returns `statusCode: 500`, so the Lambda completes normally. Step Functions
-> therefore treats the Discovery task as successful, and the downstream Map then
-> fails with `States.Runtime` because it cannot resolve
-> `ItemsPath: $.discovery.objects`. The workflow does stop, but what surfaces is
-> a JSON path error rather than the AD message; the root cause is identifiable
-> in CloudWatch Logs. This behaviour is independent of the pre-flight and is the
-> same for any failure in this pattern.
+> **Error-surface note**: `lambda_error_handler` logs the diagnosis and then
+> re-raises. The Lambda invocation fails, so Step Functions treats the Discovery
+> task as failed and the `States.TaskFailed` Retry / Catch already defined in the
+> state machine takes effect. The exception type is preserved, so a `Catch` can
+> match `AdDcUnreachableError` via `ErrorEquals`.
 
 ### Diagnostic Message: `shared/s3ap_helper.py`
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 def test_compute_tile_count_exact(tiling_handler):
     """Tile count for image exactly divisible by tile size."""
@@ -45,12 +47,16 @@ def test_extract_image_dimensions_fallback_non_tiff(tiling_handler):
 
 
 def test_handler_missing_key_raises(tiling_handler, lambda_context, monkeypatch):
-    """Handler raises ValueError when 'Key' is missing in event."""
+    """Handler raises ValueError when 'Key' is missing in event.
+
+    lambda_error_handler はスタックトレースを記録したうえで例外を再送出するため、
+    Lambda の呼び出しが失敗する。以前は 500 応答を返して正常終了していたが、それだと
+    Step Functions が失敗を成功と判定していた。
+    """
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
 
-    result = tiling_handler.handler({}, lambda_context)
-    # lambda_error_handler wraps ValueError to a 5xx response
-    assert result["statusCode"] >= 500
+    with pytest.raises(ValueError):
+        tiling_handler.handler({}, lambda_context)
 
 
 def test_handler_uses_fallback_when_rasterio_unavailable(tiling_handler, lambda_context, monkeypatch):
