@@ -33,6 +33,9 @@ from botocore.exceptions import ClientError
 # ---------------------------------------------------------------------------
 # UC directory mapping
 # ---------------------------------------------------------------------------
+# Values are repository paths. The deployed stack is named after the last
+# component only -- `fsxn-semiconductor-eda-demo`, not the whole path -- so build
+# stack names with stack_name_for() rather than interpolating a value from here.
 UC_DIR_MAP: dict[str, str] = {
     "UC1": "solutions/industry/legal-compliance",
     "UC2": "solutions/industry/financial-idp",
@@ -54,6 +57,24 @@ UC_DIR_MAP: dict[str, str] = {
 }
 
 ALL_UCS = list(UC_DIR_MAP.keys())
+
+
+def stack_name_for(uc_dir: str) -> str:
+    """Stack name for a pattern, given its directory or just its directory name.
+
+    Accepts either form because both reach here: UC_DIR_MAP holds repository paths
+    such as `solutions/industry/legal-compliance`, and a caller may pass a bare
+    name on the command line. Only the last path component belongs in the name.
+
+    The path form used to be interpolated whole, producing
+    `fsxn-solutions/industry/legal-compliance-demo`. CloudFormation stack names and
+    S3 bucket names cannot contain a slash, so every cleanup run failed on the
+    first bucket call with ParamValidationError -- and because this is the script
+    that tears demo stacks down, failing meant the stacks stayed up and kept
+    billing. The tests caught it; nothing ran them.
+    """
+    return f"fsxn-{uc_dir.rstrip('/').rsplit('/', 1)[-1]}-demo"
+
 
 # ---------------------------------------------------------------------------
 # Result tracking
@@ -457,7 +478,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             uc_dir = uc_input
             uc_label = uc_input
 
-        stack_name = f"fsxn-{uc_dir}-demo"
+        stack_name = stack_name_for(uc_dir)
 
         print("=" * 50)
         print(f"  Cleaning up: {stack_name} ({uc_label})")

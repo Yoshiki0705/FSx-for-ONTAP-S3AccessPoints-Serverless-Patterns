@@ -6,6 +6,7 @@ Uses unittest.mock for CloudFormation (moto CFn requires openapi_spec_validator)
 
 from __future__ import annotations
 
+import re
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -450,9 +451,32 @@ def test_main_all_flag(aws_env, capsys):
     assert exit_code == 0
     captured = capsys.readouterr()
     assert "DRY-RUN MODE" in captured.out
-    # Should mention all 17 UCs
-    for uc_dir in cleanup.UC_DIR_MAP.values():
-        assert f"fsxn-{uc_dir}-demo" in captured.out
+    # Written out rather than derived from UC_DIR_MAP. The previous version built
+    # its expectation with the same expression the code used, so when the map
+    # changed to repository paths and the names became
+    # fsxn-solutions/industry/legal-compliance-demo, the assertion followed the bug
+    # and kept passing. A test that recomputes the value under test asserts nothing.
+    for name in (
+        "fsxn-legal-compliance-demo",
+        "fsxn-financial-idp-demo",
+        "fsxn-manufacturing-analytics-demo",
+        "fsxn-media-vfx-demo",
+        "fsxn-healthcare-dicom-demo",
+        "fsxn-semiconductor-eda-demo",
+        "fsxn-genomics-pipeline-demo",
+        "fsxn-energy-seismic-demo",
+        "fsxn-autonomous-driving-demo",
+        "fsxn-construction-bim-demo",
+        "fsxn-retail-catalog-demo",
+        "fsxn-logistics-ocr-demo",
+        "fsxn-education-research-demo",
+        "fsxn-insurance-claims-demo",
+        "fsxn-defense-satellite-demo",
+        "fsxn-government-archives-demo",
+        "fsxn-smart-city-geospatial-demo",
+    ):
+        assert name in captured.out
+    assert "fsxn-solutions/" not in captured.out, "a repository path reached a stack name"
 
 
 # ---------------------------------------------------------------------------
@@ -463,6 +487,31 @@ def test_main_all_flag(aws_env, capsys):
 def test_uc_dir_map_has_17_entries():
     """UC_DIR_MAP covers all 17 UCs."""
     assert len(cleanup.UC_DIR_MAP) == 17
+
+
+def test_stack_name_uses_only_the_last_path_component():
+    """A repository path must not reach a stack or bucket name.
+
+    `fsxn-semiconductor-eda-demo` and `fsxn-retail-catalog-demo` are stacks that
+    really existed, which is what fixes the expected shape here.
+    """
+    assert cleanup.stack_name_for("solutions/industry/semiconductor-eda") == ("fsxn-semiconductor-eda-demo")
+    # A bare name is accepted too: the CLI takes an unmapped argument as-is.
+    assert cleanup.stack_name_for("retail-catalog") == "fsxn-retail-catalog-demo"
+    assert cleanup.stack_name_for("solutions/industry/media-vfx/") == "fsxn-media-vfx-demo"
+
+
+def test_no_stack_name_would_be_rejected_by_s3():
+    """Every mapped pattern must yield a name S3 accepts for a derived bucket.
+
+    cleanup_stack() derives `{stack}-output-{account}` and passes it to
+    head_bucket, so an invalid character here surfaces as ParamValidationError at
+    runtime rather than as a bad name in a report.
+    """
+    for uc, uc_dir in cleanup.UC_DIR_MAP.items():
+        stack = cleanup.stack_name_for(uc_dir)
+        bucket = f"{stack}-output-{ACCOUNT_ID}"
+        assert re.fullmatch(r"[a-zA-Z0-9.\-_]{1,255}", bucket), f"{uc}: {bucket}"
     for i in range(1, 18):
         assert f"UC{i}" in cleanup.UC_DIR_MAP
 
