@@ -57,18 +57,37 @@ MGMT_IP="<your-ontap-mgmt-ip>"
 SVM_NAME="<your-svm-name>"
 CREDS="fsxadmin:<your-password>"
 
-# AD DC 到達性チェック（discovered_servers のカウントが > 0 であれば正常）
+# AD DC 到達性チェック
+# 判定は「件数 > 0」ではなく「server_type=ms_dc かつ state=ok が 1 件以上あるか」
 curl -sku "$CREDS" \
   "https://$MGMT_IP/api/protocols/cifs/domains?svm.name=$SVM_NAME&fields=discovered_servers" \
-  | jq '{dc_count: (.records[0].discovered_servers | length), servers: .records[0].discovered_servers}'
+  | jq '{
+      usable_dc: [.records[0].discovered_servers[]
+                  | select(.server_type == "ms_dc" and .state == "ok")] | length,
+      all: [.records[0].discovered_servers[] | {server_type, state}]
+    }'
 ```
 
-**正常時の結果**:
+**正常時の結果**（実機の AD 参加 SVM から取得）:
 ```json
-{"dc_count": 2, "servers": [{"server_ip": "10.0.1.10", ...}, {"server_ip": "10.0.2.10", ...}]}
+{
+  "usable_dc": 2,
+  "all": [
+    {"server_type": "ms_ldap", "state": "undetermined"},
+    {"server_type": "ms_dc",   "state": "ok"},
+    {"server_type": "ms_ldap", "state": "undetermined"},
+    {"server_type": "ms_dc",   "state": "ok"}
+  ]
+}
 ```
 
-**異常時** (`dc_count: 0`): AD DC 到達不能 — S3 AP データ操作は AccessDenied で失敗する。[トラブルシューティング](#トラブルシューティング)を参照。
+**異常時** (`usable_dc: 0`): AD DC 到達不能 — S3 AP データ操作は AccessDenied で失敗する。[トラブルシューティング](#トラブルシューティング)を参照。
+
+> **件数だけで判定しないこと**: 以前この節は「`discovered_servers` の件数 > 0 なら正常」と書いていました。**これは誤りです。** 上の実機出力が示すとおり、正常な SVM でも `ms_ldap` のエントリは `state: undetermined` のままで、到達性を示しているのは `ms_dc` かつ `state: ok` のエントリだけです。DC が落ちてもエントリ自体は残り得るため、件数だけを見ると、このチェックが検出するために存在する障害をそのまま見逃します。
+>
+> 逆に「全エントリが `ok`」を要求するのも誤りです。正常時に `ms_ldap` が `undetermined` なので、常に異常と判定してしまいます。
+>
+> `shared/ad_health_check.py` はこの規則で判定します（実機検証済み）。
 
 > **認証情報に関する補足**: `curl -sku` パターンはインタラクティブなデバッグ専用。本番 Lambda では必ず Secrets Manager 経由で認証情報を取得すること（`shared/ontap_client.py`）。
 
@@ -100,6 +119,33 @@ AD参加SVM（CIFS有効）では、ONTAP のマルチプロトコル ID パイ�
 | CreateMultipartUpload | ✅ | ❌ AccessDenied | ファイルシステム |
 
 > **セキュリティに関する補足**: HeadBucket は S3 メタデータ層（AP の存在と IAM）のみを検証する。ONTAP ファイルシステム層は通過しない。**HeadBucket を S3 AP データプレーン準備状態のヘルスチェックとして使用してはならない。**
+
+### SVM が AD 参加かどうかの判定
+
+「CIFS が有効なら AD 参加」ではありません。**CIFS が有効でも AD ドメインを持たない SVM が実在します**（ワークグループ運用）。判定には `ad_domain.fqdn` の有無を使ってください。
+
+```bash
+curl -sku "$CREDS" \
+  "https://$MGMT_IP/api/protocols/cifs/services?fields=svm.name,enabled,ad_domain.fqdn" \
+  | jq '[.records[] | {svm: .svm.name, enabled, ad_domain: .ad_domain.fqdn}]'
+```
+
+実機の 2 台を並べた例:
+
+```json
+[
+  {"svm": "svm-a", "enabled": true, "ad_domain": "EXAMPLE.LOCAL"},
+  {"svm": "svm-b", "enabled": true, "ad_domain": null}
+]
+```
+
+| SVM | CIFS | `ad_domain.fqdn` | 判定 | AD DC チェック |
+|---|:---:|---|---|---|
+| svm-a | 有効 | あり | AD 参加 | 必要 |
+| svm-b | 有効 | なし（ワークグループ） | AD 未参加 | 不要（到達すべき DC が無い） |
+| （CIFS なし） | 無効 | — | AD 未参加 | 不要 |
+
+`ad_domain` を見ずに CIFS の有無だけで判定すると、ワークグループ SVM を「AD 参加・ドメイン不明」と誤って扱い、後続の DC チェックも無意味になります。
 
 ### 必要なネットワーク接続（SVM ENI → AD DC）
 
@@ -235,8 +281,10 @@ status = require_ad_dc_reachability(client, svm_name=os.environ["SVM_NAME"])
 # 管理IP: AWS Console → FSx → ファイルシステム → 管理で確認
 curl -sku "$ONTAP_USER:$ONTAP_PASS" \
   "https://$MGMT_IP/api/protocols/cifs/domains?svm.name=$SVM_NAME&fields=discovered_servers" \
-  | jq '.records[0].discovered_servers | length'
-# 結果: 0 = AD DC 到達不能, >0 = 正常
+  | jq '[.records[0].discovered_servers[]
+         | select(.server_type == "ms_dc" and .state == "ok")] | length'
+# 結果: 0 = AD DC 到達不能, >=1 = 正常
+# 全体の件数ではなく ms_dc/ok の件数で判定すること（理由は「クイックスタート検証」参照）
 ```
 
 ### Step Functions 統合
@@ -321,7 +369,9 @@ graph TD
     B -->|No| C[IAM / AP ポリシー問題<br/>ARN 形式を確認]
     B -->|Yes| D{SVM に CIFS が有効?}
     D -->|No| E[ファイルシステム ID の<br/>パーミッションを確認]
-    D -->|Yes| F{discovered_servers<br/>カウント > 0?}
+    D -->|Yes| D2{ad_domain.fqdn あり?}
+    D2 -->|No| E2[ワークグループ SVM<br/>AD は無関係]
+    D2 -->|Yes| F{ms_dc かつ state=ok が<br/>1 件以上ある?}
     F -->|Yes| G[WindowsUser.Name を確認<br/>ドメインプレフィックスなし]
     F -->|No| H[AD DC 到達不能<br/>ネットワーク/DNS/AD状態を修正]
 ```
@@ -336,7 +386,7 @@ curl -sku user:pass \
   "https://<mgmt-ip>/api/protocols/cifs/domains?svm.name=<svm>&fields=discovered_servers"
 ```
 
-`discovered_servers` が `[]`（空配列）の場合、AD DC に到達不能。
+`discovered_servers` が `[]`（空配列）なら到達不能です。**ただし空でなくても到達不能なことがあります** — `ms_dc` かつ `state: ok` のエントリが 1 件も無い場合です（DC が落ちてもエントリは残り得る）。
 
 **解決策**:
 1. SVM DNS IP がアクティブな AD DC アドレスを指しているか確認
@@ -385,6 +435,29 @@ AWS Console → Amazon FSx → ファイルシステム → ファイルシス�
 aws fsx describe-file-systems --file-system-ids fs-XXXXX \
   --query "FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]"
 ```
+
+---
+
+## 実機検証の記録
+
+`shared/ad_health_check.py` を実クラスタ（ap-northeast-1）に対して実行し、AD 参加 SVM と「CIFS 有効・AD ドメインなし」SVM の両方で確認しました。単体テストはトランスポートをスタブするため、`discovered_servers` の実際のフィールド構成はここでしか確認できません。
+
+| 検証項目 | 結果 |
+|---|---|
+| AD 参加 SVM の判定 | `is_ad_joined=True`、`ad_domain` を取得 |
+| 到達性判定 | `ms_dc` かつ `state: ok` が 2 件 → `dc_reachable=True` |
+| `ms_ldap` の状態 | 正常な SVM でも `state: undetermined`（**件数だけの判定が誤りである根拠**） |
+| CIFS 有効・AD ドメインなしの SVM | `is_ad_joined=False`（ワークグループとして扱う）。ドメイン照会に進まない |
+| `require_ad_dc_reachability()` | 健全な SVM・ワークグループ SVM のいずれも正常リターン |
+| ログ出力 | ノード UUID・DC の IP を含まず、`server_type/state` の要約のみ |
+| パストラバーサル拒否 | `OntapClient` が送信前に 400 で拒否 |
+
+この検証で 2 つの実装バグが判明し、修正しました。
+
+1. **到達性を件数だけで判定していた** — `discovered_servers` が空でなければ `dc_reachable=True` としていました。実機では正常時も `ms_ldap` が `undetermined` であり、DC が落ちてもエントリは残り得ます。件数判定では、このチェックが検出するために作られた障害を見逃します
+2. **CIFS 有効を AD 参加と同一視していた** — 実在するワークグループ SVM に対し `is_ad_joined=True, ad_domain=None` という矛盾した結果を返し、後続の DC チェックも無意味になっていました
+
+検証は既存リソースを変更せず、デプロイ済み Lambda のロール・サブネット・セキュリティグループを再利用した一時的な関数から実施し、確認後に削除しています。クラスタへの操作は GET のみです。
 
 ---
 
