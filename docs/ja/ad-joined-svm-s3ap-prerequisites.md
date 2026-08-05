@@ -422,7 +422,7 @@ logger.info("AD DC pre-flight: %s", status.message)
 
 **組み込み済みのパターン**: `legal-compliance` の discovery。このパターンは後続の Map ステートでオブジェクトごとに NTFS セキュリティ記述子を読むため、AD DC 到達性が前提になります。先頭で 1 回落とせば、Map が展開してから同じ失敗を N 回繰り返すのを防げます。
 
-> **エラー表面に関する補足**: `lambda_error_handler` は例外を捕捉して `statusCode: 500` を返すため、Lambda は正常終了します。そのため Step Functions は Discovery タスクを成功と見なし、後続の Map が `ItemsPath: $.discovery.objects` を解決できず `States.Runtime` で失敗します。ワークフローは止まりますが、表面に出るのは JSON パスのエラーで AD の話ではありません。根本原因は CloudWatch Logs 側で特定できます。これは pre-flight とは独立した既存の挙動で、このパターンのどの失敗でも同じです。
+> **エラー表面に関する補足**: `lambda_error_handler` は診断ログを残したうえで例外を再送出します。Lambda の呼び出しが失敗するため、Step Functions は Discovery タスクを失敗として扱い、ステートマシンに定義済みの `States.TaskFailed` の Retry / Catch が働きます。例外型はそのまま保たれるので、`Catch` の `ErrorEquals` で `AdDcUnreachableError` を判別できます。
 
 ### 診断メッセージ: `shared/s3ap_helper.py`
 

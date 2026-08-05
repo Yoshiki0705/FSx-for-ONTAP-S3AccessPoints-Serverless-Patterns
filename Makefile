@@ -87,6 +87,13 @@ test:
 		solutions/ha/lifekeeper-monitoring/tests/ \
 		--tb=short -q
 	$(PYTHON) -m pytest scripts/tests/ --tb=short -q
+	# operations/ は 6 パターン分のテストを持つが、この行が無かったため CI でも
+	# ローカルでも一度も実行されていなかった。パターンごとに分けているのは、
+	# handler.py を同名モジュールとして読み込む都合で衝突を避けるため。
+	$(PYTHON) -m pytest operations/ --tb=short -q
+
+test-ops:
+	$(PYTHON) -m pytest operations/ -v
 
 test-quick:
 	$(PYTHON) -m pytest shared/tests/test_s3ap_helper.py shared/tests/test_properties.py shared/tests/test_fsx_helper.py --tb=short -q

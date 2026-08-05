@@ -320,12 +320,12 @@ class TestHandlerIntegration:
 
         event = {"s3_uri": "s3://bucket/key"}
 
+        # lambda_error_handler はログを残して例外を再送出する。以前は 500 レスポンスを
+        # 返していたが、それでは Lambda が正常終了し Step Functions が失敗を成功と
+        # 判定していた。
         with patch.dict(os.environ, {"ENDPOINT_NAME": ""}, clear=False):
-            result = handler(event, context)
-
-        # lambda_error_handler がキャッチして 500 レスポンスを返す
-        assert result["statusCode"] == 500
-        assert "ENDPOINT_NAME" in result["body"]
+            with pytest.raises(ValueError, match="ENDPOINT_NAME"):
+                handler(event, context)
 
     def test_handler_missing_s3_uri_raises_value_error(self):
         """handler: s3_uri 未指定で ValueError"""
@@ -336,8 +336,5 @@ class TestHandlerIntegration:
         event = {}
 
         with patch.dict(os.environ, {"ENDPOINT_NAME": "my-endpoint"}):
-            result = handler(event, context)
-
-        # lambda_error_handler がキャッチして 500 レスポンスを返す
-        assert result["statusCode"] == 500
-        assert "s3_uri" in result["body"]
+            with pytest.raises(ValueError, match="s3_uri"):
+                handler(event, context)

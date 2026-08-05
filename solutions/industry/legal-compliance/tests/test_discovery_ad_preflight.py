@@ -125,23 +125,17 @@ def test_preflight_receives_the_svm_uuid_from_env(discovery, monkeypatch):
     assert seen["svm_name"] is None
 
 
-def test_unreachable_dc_stops_before_listing_and_names_ad(discovery, monkeypatch):
-    """DC 到達不能なら S3 AP に触らず、AD が原因だと分かる形で終わることを検証する
+def test_unreachable_dc_fails_the_invocation_before_listing(discovery, monkeypatch):
+    """DC 到達不能なら S3 AP に触らず、呼び出しそのものを失敗させることを検証する
 
-    `lambda_error_handler` が例外を捕捉して statusCode 500 を返すため、ハンドラは
-    例外を送出せずに正常リターンする。ここでは実際の契約をそのまま固定する:
+    `lambda_error_handler` は診断ログを残して例外を再送出する。Lambda の呼び出しが
+    失敗するので、Step Functions は Discovery タスクを失敗として扱い、ステート
+    マシンに定義済みの `States.TaskFailed` の Retry / Catch が働く。
 
+    固定したい点:
     - list_objects に到達しない（S3 AP を叩かずに止まる）
-    - 応答から AD DC が原因だと特定できる
-
-    なお Step Functions 側では、Discovery が 500 を返すと後続の Map が
-    `ItemsPath: $.discovery.objects` を解決できず States.Runtime で失敗する。
-    ワークフローは止まるが、表面に出るのは JSON パスのエラーで AD の話ではない。
-    これは pre-flight とは独立した既存の課題（このパターンのどの失敗でも同じ）。
-    根本原因は CloudWatch Logs 側で特定できる。
+    - 例外型が保たれる（Catch の ErrorEquals で判別できる）
     """
-    import json
-
     module, calls = discovery
 
     from shared.ad_health_check import AdDcUnreachableError, AdHealthStatus
@@ -156,13 +150,9 @@ def test_unreachable_dc_stops_before_listing_and_names_ad(discovery, monkeypatch
 
     monkeypatch.setattr(module, "preflight_ad_dc_reachability", raiser)
 
-    result = module.handler({}, _context())
+    with pytest.raises(AdDcUnreachableError, match="AD CONNECTIVITY FAILURE"):
+        module.handler({}, _context())
 
     assert "preflight" in calls
     assert "list_objects" not in calls, "S3 AP was touched despite an unreachable AD DC"
     assert "put_object" not in calls
-
-    assert result["statusCode"] == 500
-    body = json.loads(result["body"])
-    assert body["error_type"] == "AdDcUnreachableError"
-    assert "AD CONNECTIVITY FAILURE" in body["error"]
