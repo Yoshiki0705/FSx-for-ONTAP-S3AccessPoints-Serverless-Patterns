@@ -84,7 +84,12 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             }
         )
 
-    return {"reports": results, "total_recommendations": total_recs, "reported_at": now.isoformat()}
+    return {
+        "reports": results,
+        "total_recommendations": total_recs,
+        "reported_at": now.isoformat(),
+        "data_classification": _data_classification(),
+    }
 
 
 def _publish_metrics(cw_client: Any, fs_id: str, summary: dict) -> None:
@@ -152,3 +157,15 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:.75rem;text-align:lef
 <div class="section"><h2>推奨アクション</h2><table><thead><tr><th>Volume</th><th>現在</th><th>推奨</th><th>Cooling</th><th>月額削減</th></tr></thead><tbody>{rec_rows or '<tr><td colspan="5">推奨なし</td></tr>'}</tbody></table>{ai_section}</div>
 <div class="section"><p><strong>参考</strong>: SSD ${0.125}/GB/月, Capacity Pool ${0.021}/GB/月. ティアリングポリシー変更は <a href="https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/volume-data-tiering.html">AWS Docs</a> 参照.</p></div>
 </body></html>"""
+
+
+def _data_classification() -> str:
+    """レポートに付与するデータ分類ラベルを返す。
+
+    OPS パターンのレポートは容量・コスト・QoS 設定といった運用メタデータで、
+    顧客データそのものではない。既定は INTERNAL とし、規制環境向けに環境変数
+    DATA_CLASSIFICATION で上書きできるようにしておく。
+
+    ラベルの一覧は shared/data_classification.py を参照。
+    """
+    return os.environ.get("DATA_CLASSIFICATION", "INTERNAL")

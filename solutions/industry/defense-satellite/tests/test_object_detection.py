@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 def test_detect_with_rekognition_returns_labels(object_detection_handler):
     """Rekognition detection returns structured label list."""
@@ -114,8 +116,13 @@ def test_handler_routes_to_rekognition_for_small_images(object_detection_handler
 
 
 def test_handler_requires_tile_key(object_detection_handler, lambda_context, monkeypatch):
-    """Handler raises ValueError when tile_key missing."""
+    """Handler raises ValueError when tile_key missing.
+
+    lambda_error_handler はスタックトレースを記録したうえで例外を再送出するため、
+    Lambda の呼び出しが失敗する。以前は 500 応答を返して正常終了していたが、それだと
+    Step Functions が失敗を成功と判定していた。
+    """
     monkeypatch.setenv("OUTPUT_BUCKET", "test-bucket")
 
-    result = object_detection_handler.handler({}, lambda_context)
-    assert result["statusCode"] >= 500
+    with pytest.raises(ValueError):
+        object_detection_handler.handler({}, lambda_context)

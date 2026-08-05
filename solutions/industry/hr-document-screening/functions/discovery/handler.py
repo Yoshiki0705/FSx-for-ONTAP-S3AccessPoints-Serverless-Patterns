@@ -17,7 +17,7 @@ import os
 import re
 from datetime import datetime, timezone
 
-from shared.exceptions import S3ApHelperError, lambda_error_handler
+from shared.exceptions import lambda_error_handler
 from shared.observability import EmfMetrics, trace_lambda_handler, xray_subsegment
 from shared.s3ap_helper import S3ApHelper
 
@@ -113,39 +113,24 @@ def extract_submission_date(key: str) -> str | None:
     return None
 
 
-def validate_s3ap_connectivity(s3ap: S3ApHelper) -> dict | None:
-    """S3 Access Point への接続性を検証する。"""
-    try:
-        s3ap.list_objects(prefix="", suffix="", max_keys=1)
-        return None
-    except S3ApHelperError as e:
-        logger.error("S3 AP connectivity failed: %s", str(e))
-        return {
-            "statusCode": 503,
-            "body": json.dumps(
-                {
-                    "error": "S3 Access Point unreachable",
-                    "error_type": "ConnectivityError",
-                    "error_code": e.error_code or "Unknown",
-                    "access_point": s3ap.bucket_param,
-                    "message": str(e),
-                }
-            ),
-        }
-    except Exception as e:
-        logger.error("Unexpected S3 AP error: %s", str(e))
-        return {
-            "statusCode": 503,
-            "body": json.dumps(
-                {
-                    "error": "S3 Access Point unreachable",
-                    "error_type": "ConnectivityError",
-                    "error_code": "UnexpectedError",
-                    "access_point": s3ap.bucket_param,
-                    "message": str(e),
-                }
-            ),
-        }
+def validate_s3ap_connectivity(s3ap: S3ApHelper) -> None:
+    """S3 Access Point への接続性を検証する。
+
+    以前はここで例外を捕捉して statusCode 503 の辞書を返し、ハンドラがそれを早期
+    return していた。Lambda は正常終了するため、Step Functions はこのタスクを
+    成功と判定して次のステートへ進む。後続で JSON パスが解決できずに落ちるなど、
+    実際の原因とは無関係なエラーが表面に出ていた。ステートマシンに定義済みの
+    States.TaskFailed の Retry / Catch も発火しない。
+
+    そのため何も捕捉せず、失敗をそのまま伝播させる。
+
+    Args:
+        s3ap: 検証対象の S3 Access Point ヘルパー
+
+    Raises:
+        S3ApHelperError: S3 Access Point に到達できない場合
+    """
+    s3ap.list_objects(prefix="", suffix="", max_keys=1)
 
 
 @trace_lambda_handler
@@ -171,9 +156,7 @@ def handler(event, context):
         name="s3ap_connectivity_validation",
         annotations={"use_case": "hr-document-screening"},
     ):
-        connectivity_error = validate_s3ap_connectivity(s3ap)
-        if connectivity_error is not None:
-            return connectivity_error
+        validate_s3ap_connectivity(s3ap)
 
     # オブジェクト一覧取得
     resumes: list[dict] = []

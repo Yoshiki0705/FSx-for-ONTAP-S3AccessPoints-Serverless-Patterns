@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import functools
-import json
 import logging
 import traceback
 
@@ -104,18 +103,29 @@ class TokenStorageError(Exception):
 def lambda_error_handler(func):
     """Lambda 関数の共通エラーハンドリングデコレータ
 
-    未処理例外をキャッチし、スタックトレースをログ出力した上で
-    構造化されたエラーレスポンスを返す。
+    未処理例外のスタックトレースを構造化ログに残し、そのうえで例外を再送出する。
 
-    Returns:
-        dict: {
-            "statusCode": 500,
-            "body": json.dumps({
-                "error": str(e),
-                "error_type": type(e).__name__,
-                "request_id": context.aws_request_id,
-            })
-        }
+    以前は例外を飲み込んで `{"statusCode": 500, ...}` を返していた。これは
+    Lambda を正常終了させるため、呼び出し側から見ると**成功**になる。この
+    リポジトリのハンドラは Step Functions のタスクと EventBridge のターゲット
+    であり、いずれも戻り値の statusCode を見ない。結果として:
+
+    - Step Functions は失敗したタスクを成功と判定し、次のステートへ進む。
+      Map の `ItemsPath` が解決できずに `States.Runtime` で落ちるなど、実際の
+      原因とは無関係なエラーが表面に出る。
+    - 各ステートマシンが定義している `States.TaskFailed` の Retry / Catch は
+      Lambda が失敗しないため一度も発火しない（死んだ設定になっていた）。
+    - EventBridge のリトライと DLQ も同様に働かない。
+
+    リポジトリ全体を調べたうえでの変更である: 戻り値の statusCode を参照している
+    ステートマシンは存在せず、API Gateway イベントを持つ唯一のテンプレートは
+    このデコレータを使っていない。つまり 500 辞書に依存している利用者はいない。
+
+    HTTP レスポンス形状が必要な関数（API Gateway / AppSync の背後）では、この
+    デコレータではなくハンドラ内で明示的に整形すること。
+
+    Raises:
+        Exception: ハンドラが投げた例外をそのまま再送出する
     """
 
     @functools.wraps(func)
@@ -129,15 +139,6 @@ def lambda_error_handler(func):
                 str(e),
                 traceback.format_exc(),
             )
-            return {
-                "statusCode": 500,
-                "body": json.dumps(
-                    {
-                        "error": str(e),
-                        "error_type": type(e).__name__,
-                        "request_id": context.aws_request_id,
-                    }
-                ),
-            }
+            raise
 
     return wrapper

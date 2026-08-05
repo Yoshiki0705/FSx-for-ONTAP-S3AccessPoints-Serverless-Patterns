@@ -106,6 +106,8 @@ class TestValidateS3ApConnectivity:
         mock_s3ap = MagicMock()
         mock_s3ap.bucket_param = "test-ap"
         mock_s3ap.list_objects.side_effect = S3ApHelperError("Fail", error_code="ServiceUnavailable")
-        result = validate_s3ap_connectivity(mock_s3ap)
-        assert result is not None
-        assert result["statusCode"] == 503
+        # validate_s3ap_connectivity は失敗を捕捉せず伝播させる。
+        # 503 の辞書を返していた頃は Lambda が正常終了し、Step Functions が
+        # 失敗を成功と判定していた。
+        with pytest.raises(Exception):
+            validate_s3ap_connectivity(mock_s3ap)

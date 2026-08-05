@@ -14,6 +14,8 @@ import os
 import sys
 import time
 from decimal import Decimal
+
+import pytest
 from unittest.mock import MagicMock, patch
 
 import boto3
@@ -316,10 +318,8 @@ class TestHandlerIntegration:
         context.function_name = "inference-comparison"
 
         with patch.dict(os.environ, {"AB_TEST_TABLE_NAME": "", "ENDPOINT_NAME": "ep"}):
-            result = handler({}, context)
-
-        assert result["statusCode"] == 500
-        assert "AB_TEST_TABLE_NAME" in result["body"]
+            with pytest.raises(ValueError, match="AB_TEST_TABLE_NAME"):
+                handler({}, context)
 
     def test_handler_missing_endpoint_name_raises_value_error(self):
         """handler: ENDPOINT_NAME 未設定で ValueError"""
@@ -328,7 +328,5 @@ class TestHandlerIntegration:
         context.function_name = "inference-comparison"
 
         with patch.dict(os.environ, {"AB_TEST_TABLE_NAME": "table", "ENDPOINT_NAME": ""}):
-            result = handler({}, context)
-
-        assert result["statusCode"] == 500
-        assert "ENDPOINT_NAME" in result["body"]
+            with pytest.raises(ValueError, match="ENDPOINT_NAME"):
+                handler({}, context)
