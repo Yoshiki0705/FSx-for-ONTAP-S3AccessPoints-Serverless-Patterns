@@ -84,9 +84,12 @@ def _live_data(fs_id: str) -> dict[str, Any]:
     for p in policies:
         p["fs_id"] = fs_id
 
+    # 以前ここは空リストを返していた（"Would require cross-referencing volumes vs
+    # policies"）。そのため analyze 側の「QoS 未割り当てボリューム」検出は本番モードで
+    # 一度も発火せず、DemoMode でだけ動いているように見えていた。
     return {
         "fs_id": fs_id,
         "qos_policies": policies,
-        "volumes_without_qos": [],  # Would require cross-referencing volumes vs policies
+        "volumes_without_qos": collector.collect_volumes_without_qos(),
         "collected_at": datetime.now(UTC).isoformat(),
     }

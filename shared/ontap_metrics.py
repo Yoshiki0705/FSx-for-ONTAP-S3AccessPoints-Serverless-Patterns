@@ -368,13 +368,18 @@ class OntapMetricsCollector:
                 - max_throughput_iops (int|None): 最大 IOPS
                 - max_throughput_mbps (int|None): 最大スループット (MBps)
                 - min_throughput_iops (int|None): 最小 IOPS (QoS adaptive)
+                - assigned_volume_count (int): このポリシーが適用されているオブジェクト数
 
         Raises:
             OntapClientError: ONTAP API 呼び出しに失敗した場合
         """
         logger.info("Collecting QoS policies")
+        # object_count は実機で有効なフィールドであることを確認済み。これを取らないと
+        # 「ポリシーに何本のボリュームが乗っているか」が分からず、集約度の推奨
+        # （1 ポリシーに多数のボリューム、上限なしポリシーの影響範囲）が本番モードで
+        # 一度も発火しない状態になる。
         params = {
-            "fields": "name,uuid,fixed,adaptive",
+            "fields": "name,uuid,fixed,adaptive,object_count",
             "return_records": "true",
             "max_records": "100",
         }
@@ -402,11 +407,49 @@ class OntapMetricsCollector:
                     "max_throughput_iops": fixed.get("max_throughput_iops"),
                     "max_throughput_mbps": fixed.get("max_throughput_mbps"),
                     "min_throughput_iops": adaptive.get("expected_iops"),
+                    # 呼び出し側（OPS6 の analyze）が推奨の判定に使うキー名に揃える。
+                    "assigned_volume_count": policy.get("object_count", 0),
                 }
             )
 
         logger.info("Collected %d QoS policies", len(results))
         return results
+
+    def collect_volumes_without_qos(self) -> list[str]:
+        """QoS ポリシーが割り当てられていないボリューム名を収集する。
+
+        `/storage/volumes` は `qos.policy.name` をフィールドとして受け付ける。実機で
+        確認したところ、ポリシーが未割り当てのボリュームでは **レコードに qos キー
+        自体が現れない**（空文字や null ではなく、キーの省略）。したがって「qos キーが
+        無い、またはポリシー名が空」を未割り当てと判定する。
+
+        この情報が無いと、OPS6 の「QoS 未割り当てボリューム」検出（README で Medium
+        と記載）が本番モードで一度も発火しない。
+
+        Returns:
+            list[str]: QoS ポリシーが割り当てられていないボリューム名
+
+        Raises:
+            OntapClientError: ONTAP API 呼び出しに失敗した場合
+        """
+        logger.info("Collecting volumes without a QoS policy")
+        params = {
+            "fields": "name,uuid,qos.policy.name",
+            "type": "rw",  # データボリュームのみ (dp, ls を除外)
+            "return_records": "true",
+            "max_records": "500",
+        }
+
+        records = self._paginate("/storage/volumes", params)
+
+        unassigned = []
+        for vol in records:
+            policy_name = ((vol.get("qos") or {}).get("policy") or {}).get("name")
+            if not policy_name:
+                unassigned.append(vol.get("name", ""))
+
+        logger.info("Found %d volume(s) without a QoS policy", len(unassigned))
+        return unassigned
 
     def _paginate(
         self,
