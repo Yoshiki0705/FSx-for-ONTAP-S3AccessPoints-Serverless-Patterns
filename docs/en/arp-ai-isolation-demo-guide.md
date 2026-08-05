@@ -149,11 +149,14 @@ disconnect. What differs is the trigger and the layers around it.
 | Create a protective snapshot; lock a snapshot (WORM) | Same |
 | Disconnect CIFS sessions | An AD-joined SVM |
 | List active blocks and lift them individually | — |
+| Block expiry and automatic lifting (24 hours by default) | The block ledger (DynamoDB) being reachable |
+| Apply the same block across several SVMs (`svms` or `allSvms`) | — |
 | Audit file access that went through the S3 Access Point | CloudTrail data events + Athena |
 | FlexClone a snapshot to browse it; diff two generations | — |
 
-Every one of these runs **only when a person clicks**. Nothing in the portal
-contains a threat unattended.
+Every one of these **starts when a person clicks**. Nothing in the portal
+contains a threat unattended — expiry is the one exception, and it only ever
+works in the direction of ending a lockout.
 
 ### Needs something outside the portal
 
@@ -162,8 +165,6 @@ contains a threat unattended.
 | Contain without waiting for a human | An SNS topic plus a response Lambda |
 | Be told about a detection instead of finding it | EMS → webhook → SIEM or an observability platform |
 | Cut NFS off immediately, without the client cache window | A VPC NACL deny rule (network layer) |
-| Avoid leaving a false-positive block in place indefinitely | TTL auto-unblock (EventBridge Scheduler) |
-| Apply the same block across several SVMs at once | A multi-SVM fan-out |
 | Judge a recovery point before restoring from it | A verification workflow (FlexClone + isolated scan) |
 | Detect anomalies against a per-user ML baseline | A SIEM with anomaly detection, or a dedicated storage security product |
 | Trace file access that arrived over NFS or SMB directly | An ONTAP audit log / FPolicy delivery pipeline |
@@ -235,6 +236,7 @@ Snapshot creation includes a 15-minute cooldown to prevent snapshot storms durin
 | "SVM not found" | SVM name doesn't match | Verify `SVM_NAME` matches `aws fsx describe-storage-virtual-machines` |
 | "Cannot block protected account" | Attempting to block fsxadmin/admin | Use a non-protected username |
 | "Export policy not found" | Policy name mismatch | Check `policyName` param (default: "default") |
+| "confirm=true is required for containment operations" | Called directly, without going through the confirmation | Run it from the confirmation row in the UI. When calling the API directly, pass `confirm: true` |
 | Mutations return "Not Authorized" | User not in storage-admin group | Add user to Cognito `storage-admin` group |
 | Block succeeds but user still has access | NTFS security style volume | Name-mapping blocks only work on UNIX/MIXED volumes |
 
