@@ -98,6 +98,82 @@ def _qval(value) -> str:
     return quote(str(value), safe="")
 
 
+def _shared_client():
+    """Build an OntapClient from shared/, or raise ImportError if unavailable.
+
+    `shared/` arrives at /opt/python through a Lambda layer; functionCode() in
+    backend.ts bundles only this directory. The parent walk is the fallback for
+    running the module from a checkout, where the layer does not exist.
+
+    verify_ssl is False to match the request path the rest of this handler uses
+    (`urllib3.PoolManager(cert_reqs="CERT_NONE")`). The FSx for ONTAP management
+    LIF presents a self-signed certificate by default, so turning verification on
+    is not a flag flip -- it needs a trusted CA reachable from the function and a
+    ca_cert_path pointing at it.
+    """
+    import sys
+    from pathlib import Path
+
+    candidates = ["/opt/python"]
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "shared" / "ontap_client.py").exists():
+            candidates.append(str(parent))
+            break
+    for candidate in candidates:
+        if candidate not in sys.path:
+            sys.path.insert(0, candidate)
+
+    from shared.ontap_client import OntapClient, OntapClientConfig
+
+    return OntapClient(
+        OntapClientConfig(
+            management_ip=MGMT_IP,
+            secret_name=SECRET_NAME,
+            verify_ssl=False,  # PoC — set True + ca_cert_path for production
+        ),
+        # Pass this module's session rather than letting the client build its own.
+        # Every other action in this handler reads its credential through
+        # `handler.boto3`, so a test patching that module controlled all AWS access.
+        # A client with its own session breaks that: an unpatched test reaches real
+        # Secrets Manager and hangs on credential discovery instead of failing.
+        session=boto3.Session(),
+    )
+
+
+def _client_or_error():
+    """(client, None) on success, (None, error_dict) on failure.
+
+    Built on demand rather than alongside the urllib3 pool: only the SnapMirror
+    actions take this path, and constructing the client reads the credential
+    secret, which the other actions should not pay for.
+    """
+    try:
+        return _shared_client(), None
+    except ImportError as e:
+        logger.error("shared/ is not importable: %s", e)
+        return None, {
+            "success": False,
+            "error": f"shared modules are unavailable to this function ({type(e).__name__})",
+        }
+    except Exception as e:
+        logger.error("Could not build the ONTAP client: %s: %s", type(e).__name__, e)
+        return None, {
+            "success": False,
+            "error": f"Could not build the ONTAP client ({type(e).__name__})",
+        }
+
+
+def _client_error(exc) -> str:
+    """The message to show for a failed client call.
+
+    OntapClientError carries the response body; `ontap_message` pulls ONTAP's own
+    error text out of it. Falling back to str(exc) keeps a transport failure --
+    which has no ONTAP body -- readable.
+    """
+    return getattr(exc, "ontap_message", None) or str(exc)
+
+
 def _ontap_request(http, headers, method, path, body=None):
     """Make an ONTAP REST API request."""
     if _is_unsafe_path(path):
@@ -306,23 +382,23 @@ def handler(event, context):
 
         # --- SnapMirror ---
         elif action == "listSnapmirrorRelationships":
-            return _list_snapmirror_relationships(http, headers, event)
+            return _list_snapmirror_relationships(event)
         elif action == "getSnapmirrorTransfers":
-            return _get_snapmirror_transfers(http, headers, event)
+            return _get_snapmirror_transfers(event)
         elif action == "updateSnapmirrorNow":
-            return _update_snapmirror_now(http, headers, event, user_id)
+            return _update_snapmirror_now(event, user_id)
         elif action == "quiesceSnapmirror":
-            return _set_snapmirror_state(http, headers, event, user_id, "paused")
+            return _set_snapmirror_state(event, user_id, "paused")
         elif action == "resumeSnapmirror":
-            return _set_snapmirror_state(http, headers, event, user_id, "snapmirrored")
+            return _set_snapmirror_state(event, user_id, "snapmirrored")
         elif action == "breakSnapmirror":
-            return _break_snapmirror(http, headers, event, user_id)
+            return _break_snapmirror(event, user_id)
         elif action == "resyncSnapmirror":
-            return _resync_snapmirror(http, headers, event, user_id)
+            return _resync_snapmirror(event, user_id)
         elif action == "abortSnapmirrorTransfer":
-            return _abort_snapmirror_transfer(http, headers, event, user_id)
+            return _abort_snapmirror_transfer(event, user_id)
         elif action == "deleteSnapmirror":
-            return _delete_snapmirror(http, headers, event, user_id)
+            return _delete_snapmirror(event, user_id)
 
         # --- Vscan ---
         elif action == "getVscanStatus":
@@ -2748,7 +2824,7 @@ def _split_flexclone(http, headers, event, user_id):
 # ─── SnapMirror inventory ─────────────────────────────────────────────────────
 
 
-def _list_snapmirror_relationships(http, headers, event):
+def _list_snapmirror_relationships(event):
     """List SnapMirror relationships whose destination is on this cluster.
 
     ONTAP REST: GET /api/snapmirror/relationships
@@ -2757,22 +2833,21 @@ def _list_snapmirror_relationships(http, headers, event):
     cross-cluster operation that belongs with a change-managed runbook rather
     than a portal button.
     """
-    # `last_transfer_size` is NOT a field on this endpoint — ONTAP 9.17 rejects the
-    # whole request with "The value \"last_transfer_size\" is invalid for field
-    # \"fields\"", so the relationship list came back empty. Per-transfer byte counts
-    # are available from getSnapmirrorTransfers (transfers[].bytes_transferred).
-    params = (
-        "fields=uuid,source.path,source.svm.name,destination.path,destination.svm.name,"
-        "state,healthy,policy.name,lag_time,last_transfer_type"
-        "&max_records=100"
-    )
+    # The field selection lives in OntapClient.RELATIONSHIP_FIELDS, including the
+    # note that `last_transfer_size` is not a field on this endpoint — ONTAP 9.17
+    # rejects the whole request and the list comes back empty. Per-transfer byte
+    # counts come from getSnapmirrorTransfers instead.
+    client, error = _client_or_error()
+    if error:
+        return {"relationships": [], "error": error["error"]}
 
-    data = _ontap_request(http, headers, "GET", f"/snapmirror/relationships?{params}")
-    if data.get("_error"):
-        return {"relationships": [], "error": data["_message"]}
+    try:
+        records = client.list_snapmirror_relationships()
+    except Exception as e:
+        return {"relationships": [], "error": _client_error(e)}
 
     relationships = []
-    for r in data.get("records", []):
+    for r in records:
         src = r.get("source", {})
         dst = r.get("destination", {})
         relationships.append(
@@ -2793,7 +2868,7 @@ def _list_snapmirror_relationships(http, headers, event):
     return {"relationships": relationships, "count": len(relationships), "error": None}
 
 
-def _get_snapmirror_transfers(http, headers, event):
+def _get_snapmirror_transfers(event):
     """List recent transfers for one SnapMirror relationship.
 
     ONTAP REST: GET /api/snapmirror/relationships/{uuid}/transfers
@@ -2803,18 +2878,17 @@ def _get_snapmirror_transfers(http, headers, event):
     if not relationship_uuid:
         return {"transfers": [], "error": "relationshipUuid is required"}
 
-    data = _ontap_request(
-        http,
-        headers,
-        "GET",
-        f"/snapmirror/relationships/{relationship_uuid}/transfers"
-        "?fields=state,bytes_transferred,end_time,total_duration&max_records=20",
-    )
-    if data.get("_error"):
-        return {"transfers": [], "error": data["_message"]}
+    client, error = _client_or_error()
+    if error:
+        return {"transfers": [], "error": error["error"]}
+
+    try:
+        records = client.list_snapmirror_transfers(relationship_uuid)
+    except Exception as e:
+        return {"transfers": [], "error": _client_error(e)}
 
     transfers = []
-    for tr in data.get("records", []):
+    for tr in records:
         transfers.append(
             {
                 "state": tr.get("state", ""),
@@ -2982,7 +3056,7 @@ def _list_fpolicy_events(http, headers, event):
 # or discard data (break, resync, delete) require an explicit confirm flag.
 
 
-def _update_snapmirror_now(http, headers, event, user_id):
+def _update_snapmirror_now(event, user_id):
     """Start an on-demand SnapMirror transfer.
 
     ONTAP REST: POST /api/snapmirror/relationships/{uuid}/transfers
@@ -2994,15 +3068,20 @@ def _update_snapmirror_now(http, headers, event, user_id):
     if not rel_uuid:
         return {"success": False, "error": "relationshipUuid is required"}
 
-    data = _ontap_request(http, headers, "POST", f"/snapmirror/relationships/{rel_uuid}/transfers", body={})
-    if data.get("_error"):
-        return {"success": False, "error": data["_message"]}
+    client, error = _client_or_error()
+    if error:
+        return error
+
+    try:
+        data = client.update_snapmirror_now(rel_uuid)
+    except Exception as e:
+        return {"success": False, "error": _client_error(e)}
 
     logger.info(f"SnapMirror transfer started: {rel_uuid} by {user_id}")
     return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}
 
 
-def _set_snapmirror_state(http, headers, event, user_id, state):
+def _set_snapmirror_state(event, user_id, state):
     """Pause (quiesce) or resume a SnapMirror relationship.
 
     ONTAP REST: PATCH /api/snapmirror/relationships/{uuid} with a state value
@@ -3011,15 +3090,14 @@ def _set_snapmirror_state(http, headers, event, user_id, state):
     if not rel_uuid:
         return {"success": False, "error": "relationshipUuid is required"}
 
-    data = _ontap_request(
-        http,
-        headers,
-        "PATCH",
-        f"/snapmirror/relationships/{rel_uuid}",
-        body={"state": state},
-    )
-    if data.get("_error"):
-        return {"success": False, "error": data["_message"]}
+    client, error = _client_or_error()
+    if error:
+        return error
+
+    try:
+        data = client.set_snapmirror_state(rel_uuid, state)
+    except Exception as e:
+        return {"success": False, "error": _client_error(e)}
 
     logger.info(f"SnapMirror state set to {state}: {rel_uuid} by {user_id}")
     return {
@@ -3030,7 +3108,7 @@ def _set_snapmirror_state(http, headers, event, user_id, state):
     }
 
 
-def _break_snapmirror(http, headers, event, user_id):
+def _break_snapmirror(event, user_id):
     """Break a SnapMirror relationship so the destination can serve data.
 
     ONTAP REST: PATCH /api/snapmirror/relationships/{uuid} state=broken_off
@@ -3044,15 +3122,14 @@ def _break_snapmirror(http, headers, event, user_id):
     if not event.get("confirm", False):
         return {"success": False, "error": "confirm=true is required"}
 
-    data = _ontap_request(
-        http,
-        headers,
-        "PATCH",
-        f"/snapmirror/relationships/{rel_uuid}",
-        body={"state": "broken_off"},
-    )
-    if data.get("_error"):
-        return {"success": False, "error": data["_message"]}
+    client, error = _client_or_error()
+    if error:
+        return error
+
+    try:
+        data = client.break_snapmirror(rel_uuid)
+    except Exception as e:
+        return {"success": False, "error": _client_error(e)}
 
     logger.info(f"SnapMirror broken off: {rel_uuid} by {user_id}")
     return {
@@ -3063,7 +3140,7 @@ def _break_snapmirror(http, headers, event, user_id):
     }
 
 
-def _resync_snapmirror(http, headers, event, user_id):
+def _resync_snapmirror(event, user_id):
     """Resynchronise a broken SnapMirror relationship.
 
     ONTAP REST: PATCH /api/snapmirror/relationships/{uuid} state=snapmirrored
@@ -3077,15 +3154,14 @@ def _resync_snapmirror(http, headers, event, user_id):
     if not event.get("confirm", False):
         return {"success": False, "error": "confirm=true is required"}
 
-    data = _ontap_request(
-        http,
-        headers,
-        "PATCH",
-        f"/snapmirror/relationships/{rel_uuid}",
-        body={"state": "snapmirrored"},
-    )
-    if data.get("_error"):
-        return {"success": False, "error": data["_message"]}
+    client, error = _client_or_error()
+    if error:
+        return error
+
+    try:
+        data = client.resync_snapmirror(rel_uuid)
+    except Exception as e:
+        return {"success": False, "error": _client_error(e)}
 
     logger.info(f"SnapMirror resync started: {rel_uuid} by {user_id}")
     return {
@@ -3096,7 +3172,7 @@ def _resync_snapmirror(http, headers, event, user_id):
     }
 
 
-def _abort_snapmirror_transfer(http, headers, event, user_id):
+def _abort_snapmirror_transfer(event, user_id):
     """Abort an in-progress SnapMirror transfer.
 
     ONTAP REST: PATCH /api/snapmirror/relationships/{uuid}/transfers/{transfer_uuid}
@@ -3110,21 +3186,20 @@ def _abort_snapmirror_transfer(http, headers, event, user_id):
             "error": "relationshipUuid and transferUuid are required",
         }
 
-    data = _ontap_request(
-        http,
-        headers,
-        "PATCH",
-        f"/snapmirror/relationships/{rel_uuid}/transfers/{transfer_uuid}",
-        body={"state": "aborted"},
-    )
-    if data.get("_error"):
-        return {"success": False, "error": data["_message"]}
+    client, error = _client_or_error()
+    if error:
+        return error
+
+    try:
+        client.abort_snapmirror_transfer(rel_uuid, transfer_uuid)
+    except Exception as e:
+        return {"success": False, "error": _client_error(e)}
 
     logger.info(f"SnapMirror transfer aborted: {transfer_uuid} by {user_id}")
     return {"success": True, "error": None}
 
 
-def _delete_snapmirror(http, headers, event, user_id):
+def _delete_snapmirror(event, user_id):
     """Delete a SnapMirror relationship.
 
     ONTAP REST: DELETE /api/snapmirror/relationships/{uuid}
@@ -3137,9 +3212,14 @@ def _delete_snapmirror(http, headers, event, user_id):
     if not event.get("confirm", False):
         return {"success": False, "error": "confirm=true is required"}
 
-    data = _ontap_request(http, headers, "DELETE", f"/snapmirror/relationships/{rel_uuid}")
-    if data.get("_error"):
-        return {"success": False, "error": data["_message"]}
+    client, error = _client_or_error()
+    if error:
+        return error
+
+    try:
+        data = client.delete_snapmirror(rel_uuid)
+    except Exception as e:
+        return {"success": False, "error": _client_error(e)}
 
     logger.info(f"SnapMirror relationship deleted: {rel_uuid} by {user_id}")
     return {"success": True, "jobId": data.get("job", {}).get("uuid", ""), "error": None}

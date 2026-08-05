@@ -288,3 +288,180 @@ class TestOntapClient:
         assert result["name"] == "svm1"
         call_kwargs = mock_pool.request.call_args
         assert "/api/svm/svms/svm-123" in call_kwargs.kwargs["url"]
+
+
+# ---------------------------------------------------------------------------
+# Request path safety
+# ---------------------------------------------------------------------------
+
+
+def _client_with_pool(config: OntapClientConfig, response_body: dict | None = None):
+    """A client wired to a MagicMock pool, with credentials pre-cached."""
+    response = MagicMock()
+    response.status = 200
+    response.data = json.dumps(response_body if response_body is not None else {}).encode()
+    pool = MagicMock()
+    pool.request.return_value = response
+    client = OntapClient(config)
+    client._pool = pool
+    client._credentials = {"username": "admin", "password": "secret123"}
+    return client, pool
+
+
+class TestPathSafety:
+    """A caller-supplied name must not be able to redirect the request.
+
+    Volume names, share names and relationship UUIDs all reach request paths. A
+    value carrying a `..` segment addresses a different endpoint, so a "delete
+    this share" call can arrive at a cluster resource. Callers are expected to
+    percent-encode each segment; this is the check that does not depend on all of
+    them remembering.
+    """
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/storage/volumes/../../cluster",
+            "/protocols/cifs/shares/..",
+            "/storage/volumes/a/../../../cluster/nodes",
+            "/storage/volumes/\x00null",
+            "/storage/volumes/back\\slash",
+            "/storage/volumes/bell\x07",
+        ],
+    )
+    def test_refuses_unsafe_paths(self, default_config, path):
+        client, pool = _client_with_pool(default_config)
+        with pytest.raises(OntapClientError) as excinfo:
+            client.get(path)
+        assert excinfo.value.status_code == 400
+        pool.request.assert_not_called(), "an unsafe path must not reach the network"
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/storage/volumes",
+            "/storage/volumes/my..volume",
+            "/protocols/cifs/shares/share.with.dots",
+            "/snapmirror/relationships/8b3f-uuid/transfers",
+            "/storage/volumes?name=has..dots&fields=uuid",
+        ],
+    )
+    def test_allows_safe_paths(self, default_config, path):
+        """`..` inside a name is a legitimate name, not traversal."""
+        client, pool = _client_with_pool(default_config)
+        client.get(path)
+        assert pool.request.called
+
+
+class TestOntapMessage:
+    """Surface ONTAP's own error text, not the HTTP status line."""
+
+    def test_extracts_the_ontap_message(self):
+        error = OntapClientError(
+            "ONTAP API error: PATCH /snapmirror/relationships/r1 returned 409",
+            status_code=409,
+            response_body=json.dumps({"error": {"message": "relationship is busy", "code": "13303842"}}),
+        )
+        assert error.ontap_message == "relationship is busy"
+
+    @pytest.mark.parametrize(
+        "body",
+        [None, "", "not json at all", json.dumps({"error": "a string, not an object"}), json.dumps([1, 2])],
+    )
+    def test_falls_back_to_its_own_message(self, body):
+        """A transport failure has no ONTAP body; the message must still read."""
+        error = OntapClientError("Request timeout for GET /cluster", response_body=body)
+        assert error.ontap_message == "Request timeout for GET /cluster"
+
+
+# ---------------------------------------------------------------------------
+# SnapMirror
+# ---------------------------------------------------------------------------
+
+
+class TestSnapMirror:
+    """Paths and payloads verified against a live cluster before being lifted here."""
+
+    def test_list_relationships_requests_the_supported_fields_only(self, default_config):
+        """`last_transfer_size` is not a field on this endpoint.
+
+        ONTAP 9.17 rejects the whole request when one field name is unknown, and
+        the relationship list comes back empty rather than erroring visibly. That
+        cost a live debugging session, so the field list is pinned here.
+        """
+        client, pool = _client_with_pool(default_config, {"records": [{"uuid": "r1"}]})
+        records = client.list_snapmirror_relationships()
+
+        assert records == [{"uuid": "r1"}]
+        fields = pool.request.call_args.kwargs["fields"]
+        assert "last_transfer_size" not in fields["fields"]
+        for expected in ("uuid", "source.path", "destination.svm.name", "state", "healthy", "lag_time"):
+            assert expected in fields["fields"]
+        assert "/api/snapmirror/relationships" in pool.request.call_args.kwargs["url"]
+
+    def test_list_transfers_targets_the_relationship(self, default_config):
+        client, pool = _client_with_pool(default_config, {"records": [{"state": "success"}]})
+        records = client.list_snapmirror_transfers("r1")
+
+        assert records == [{"state": "success"}]
+        assert pool.request.call_args.kwargs["url"].endswith("/snapmirror/relationships/r1/transfers")
+        assert pool.request.call_args.kwargs["fields"]["fields"] == client.TRANSFER_FIELDS
+
+    def test_empty_records_gives_an_empty_list(self, default_config):
+        client, _pool = _client_with_pool(default_config, {})
+        assert client.list_snapmirror_relationships() == []
+        assert client.list_snapmirror_transfers("r1") == []
+
+    @pytest.mark.parametrize(
+        "method_name,expected_state",
+        [
+            ("quiesce_snapmirror", "paused"),
+            ("resume_snapmirror", "snapmirrored"),
+            ("break_snapmirror", "broken_off"),
+            ("resync_snapmirror", "snapmirrored"),
+        ],
+    )
+    def test_state_changes_patch_the_relationship(self, default_config, method_name, expected_state):
+        client, pool = _client_with_pool(default_config, {"job": {"uuid": "j1"}})
+        getattr(client, method_name)("r1")
+
+        kwargs = pool.request.call_args.kwargs
+        assert kwargs["method"] == "PATCH"
+        assert kwargs["url"].endswith("/snapmirror/relationships/r1")
+        assert json.loads(kwargs["body"]) == {"state": expected_state}
+
+    def test_update_now_posts_a_transfer(self, default_config):
+        client, pool = _client_with_pool(default_config, {"job": {"uuid": "j1"}})
+        result = client.update_snapmirror_now("r1")
+
+        assert result == {"job": {"uuid": "j1"}}
+        kwargs = pool.request.call_args.kwargs
+        assert kwargs["method"] == "POST"
+        assert kwargs["url"].endswith("/snapmirror/relationships/r1/transfers")
+        # An on-demand transfer takes no payload; sending one would be a change in
+        # what ONTAP is asked to do.
+        assert "body" not in kwargs
+
+    def test_abort_patches_the_named_transfer(self, default_config):
+        client, pool = _client_with_pool(default_config)
+        client.abort_snapmirror_transfer("r1", "t1")
+
+        kwargs = pool.request.call_args.kwargs
+        assert kwargs["method"] == "PATCH"
+        assert kwargs["url"].endswith("/snapmirror/relationships/r1/transfers/t1")
+        assert json.loads(kwargs["body"]) == {"state": "aborted"}
+
+    def test_delete_removes_the_relationship(self, default_config):
+        client, pool = _client_with_pool(default_config, {"job": {"uuid": "j1"}})
+        client.delete_snapmirror("r1")
+
+        kwargs = pool.request.call_args.kwargs
+        assert kwargs["method"] == "DELETE"
+        assert kwargs["url"].endswith("/snapmirror/relationships/r1")
+
+    def test_a_traversal_uuid_is_refused_before_the_request(self, default_config):
+        """The SnapMirror paths interpolate the UUID directly, so this is the guard."""
+        client, pool = _client_with_pool(default_config)
+        with pytest.raises(OntapClientError):
+            client.break_snapmirror("../../cluster")
+        pool.request.assert_not_called()
