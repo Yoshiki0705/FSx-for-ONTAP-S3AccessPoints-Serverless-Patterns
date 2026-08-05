@@ -211,8 +211,17 @@ def load_sam_template(template_path: str | Path) -> SamTemplate:
     if not path.exists():
         raise FileNotFoundError(f"template not found: {path}")
 
+    # `yaml.load(..., Loader=_CfnLoader)` と等価だが、ローダーを直接使う。
+    # `yaml.load` は渡した Loader に関係なく「安全でない読み込み」として静的解析に
+    # 検出されるため（bandit B506 / ruff S506）、抑制コメントで黙らせるより、
+    # 実際に使うローダーが読んで分かる形にする。_CfnLoader は SafeLoader 派生なので
+    # 任意 Python オブジェクトの構築は起きない。
     with path.open(encoding="utf-8") as handle:
-        raw = yaml.load(handle, Loader=_CfnLoader)  # noqa: S506 - SafeLoader 派生
+        loader = _CfnLoader(handle)
+        try:
+            raw = loader.get_single_data()
+        finally:
+            loader.dispose()
 
     if not isinstance(raw, dict):
         raise AssertionError(f"template did not parse to a mapping: {path}")
