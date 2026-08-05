@@ -114,7 +114,38 @@ graph TD
 
 ハンドラ側にはこれ以外に `quiesceSnapmirror` / `resumeSnapmirror` / `updateSnapmirrorNow` / `abortSnapmirrorTransfer` / `deleteSnapmirror` もあります。共有クライアントへ移す際は、この 9 アクション全体を対象にしたほうが、一部だけ移して二重管理になるより安全です。
 
-📋 残作業: `shared/ontap_client.py` にメソッドを追加し、ハンドラ側をそれを呼ぶよう置き換える（振る舞いを変えない移設なので、既存の 191 テストが回帰検出に使えます）
+#### これは「移設」ではありません（前提の訂正）
+
+以前ここには「振る舞いを変えない移設なので、既存の 191 テストが回帰検出に使えます」と書いていました。**どちらも成り立ちません。** ハンドラの `_ontap_request` と `shared/OntapClient` は規約が異なるため、単純に差し替えると振る舞いが変わります。
+
+| 観点 | ハンドラ `_ontap_request` | `shared/OntapClient` | 差し替えた場合 |
+|---|---|---|---|
+| パス検査 | `_is_unsafe_path()` で制御文字と `..` セグメントを拒否 | **なし** | **セキュリティ後退。** SnapMirror 系は `relationshipUuid` を `_seg()` を通さず直接補間しているので、この検査が唯一の防御 |
+| エラー | 戻り値 `{"_error", "_status", "_message"}`。ONTAP の `error.message` を抽出 | `OntapClientError` を raise。生のレスポンスボディを保持 | 全呼び出し元に try/except が必要。メッセージ抽出を移さないと UI の文言が変わる |
+| TLS | `cert_reqs="CERT_NONE"` 固定 | `verify_ssl=True` 既定 → `CERT_REQUIRED` | **本番停止。** FSx for ONTAP の管理 LIF は既定で自己署名証明書。`verify_ssl=False` を明示しない限り 9 アクション全滅 |
+| 認証情報 | `data.get("username", "fsxadmin")` と既定値を許容 | `creds['username']` | `username` を持たないシークレットは現在動くが、差し替えると KeyError |
+| 空ボディ | `if body:` — `{}` は送らない | `if body is not None:` — `{}` を送る | 空ボディの PATCH の扱いが変わる |
+| タイムアウト | 未設定（無制限） | connect 10s / read 30s | 改善。ただし振る舞いの変更ではある |
+| リトライ | `Retry.DEFAULT`（total=3、PATCH/POST は対象外、DELETE は対象） | 同じ許可メソッド + backoff | 実質同一。backoff が加わるだけ（urllib3 2.7.0 で確認） |
+
+「既存テストが回帰検出に使える」も誤りです。最も危険な TLS とタイムアウトは、トランスポートをスタブした単体テストでは一度も踏まれません（`resource-management/tests/test_handler.py` の `_ontap_request` 参照は 2 箇所）。
+
+実施状況:
+
+| # | 内容 | 状態 |
+|---|---|---|
+| 1 | `OntapClient._request()` にパス検査を追加 | ✅ `is_unsafe_path()`。`OntapClient` を使う全パターンに対する防御の追加でもある |
+| 2 | 9 メソッドを `OntapClient` に追加 | ✅ HTTP パスとフィールド対応のみ。入力検証・`confirm` ゲート・監査ログ・camelCase 整形はハンドラに残した |
+| 3 | ハンドラ側を置き換え | ✅ `verify_ssl=False` を明示。`OntapClientError.ontap_message` で ONTAP のエラー文言を維持 |
+| 4 | **実クラスタで 9 アクションを確認** | 📋 **未実施。** TLS・タイムアウト・bodyless POST の Content-Type は単体テストで検証できない |
+
+3 で追加で分かった差分:
+
+- **`resource-management` は Layer 未添付だった。** `functionCode()` は関数ディレクトリのみを同梱するため、`shared/` は `/opt/python` の Layer 経由でしか届かない。添付漏れはデプロイ時ではなくリクエスト時に 1 アクションの ImportError として現れる。`backend.ts` で添付し、構造アサーションで固定した
+- **`OntapClient` が独自の `boto3.Session()` を作ると `patch("handler.boto3")` が効かなくなる。** 症状はテスト失敗ではなく、実 Secrets Manager への到達によるハング（実際に踏んだ）。ハンドラのセッションを渡すよう修正し、専用テストで固定した
+- **bodyless POST の Content-Type が異なる。** ハンドラは `if body:` で `{}` を送らず Content-Type も付けないが、`OntapClient._request` は常に付ける。ONTAP が許容するかは 4 で確認すること
+
+4 が残っている間は、この 9 アクションを本番相当環境で使う前に必ず疎通確認してください。単体テストは 234 件通り、7 種の変異（パス検査の削除、`last_transfer_size` の再導入、state の誤り、エラー変換の削除、セッション受け渡しの削除ほか）をすべて検出しますが、TLS とタイムアウトはトランスポートをスタブしている以上どうしても踏めません。
 
 ---
 
