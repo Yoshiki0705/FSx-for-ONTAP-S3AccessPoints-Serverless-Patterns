@@ -173,13 +173,11 @@ class TestValidateS3apConnectivity:
         mock_s3ap.list_objects.side_effect = S3ApHelperError("Access denied", error_code="AccessDenied")
         mock_s3ap.bucket_param = "test-ap-alias"
 
-        result = validate_s3ap_connectivity(mock_s3ap)
-        assert result is not None
-        assert result["statusCode"] == 503
-        body = json.loads(result["body"])
-        assert body["error_type"] == "ConnectivityError"
-        assert body["error_code"] == "AccessDenied"
-        assert body["access_point"] == "test-ap-alias"
+        # validate_s3ap_connectivity は失敗を捕捉せず伝播させる。
+        # 503 の辞書を返していた頃は Lambda が正常終了し、Step Functions が
+        # 失敗を成功と判定していた。
+        with pytest.raises(Exception):
+            validate_s3ap_connectivity(mock_s3ap)
 
     def test_connectivity_unexpected_error(self):
         """予期しない例外発生時は 503 レスポンスを返す"""
@@ -187,11 +185,11 @@ class TestValidateS3apConnectivity:
         mock_s3ap.list_objects.side_effect = RuntimeError("Network timeout")
         mock_s3ap.bucket_param = "test-ap-alias"
 
-        result = validate_s3ap_connectivity(mock_s3ap)
-        assert result is not None
-        assert result["statusCode"] == 503
-        body = json.loads(result["body"])
-        assert body["error_code"] == "UnexpectedError"
+        # validate_s3ap_connectivity は失敗を捕捉せず伝播させる。
+        # 503 の辞書を返していた頃は Lambda が正常終了し、Step Functions が
+        # 失敗を成功と判定していた。
+        with pytest.raises(Exception):
+            validate_s3ap_connectivity(mock_s3ap)
 
 
 # ============================================================
@@ -326,11 +324,10 @@ class TestHandler:
             mock_instance.list_objects.side_effect = S3ApHelperError("Access denied", error_code="AccessDenied")
             mock_instance.bucket_param = "test-ap-alias"
 
-            result = handler({}, self._make_context())
-
-            assert result["statusCode"] == 503
-            body = json.loads(result["body"])
-            assert body["error_type"] == "ConnectivityError"
+            # 接続失敗は伝播する。503 の辞書を返していた頃は Lambda が正常終了し、
+            # Step Functions が失敗を成功と判定していた。
+            with pytest.raises(Exception):
+                handler({}, self._make_context())
 
     @patch.dict(
         os.environ,

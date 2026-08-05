@@ -131,6 +131,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         "reports": results,
         "total_recommendations": total_recommendations,
         "reported_at": now.isoformat(),
+        "data_classification": _data_classification(),
     }
 
 
@@ -360,3 +361,15 @@ def _send_alert(
         Message=message,
     )
     logger.info("Alert sent to %s for %s", topic_arn, fs_id)
+
+
+def _data_classification() -> str:
+    """レポートに付与するデータ分類ラベルを返す。
+
+    OPS パターンのレポートは容量・コスト・QoS 設定といった運用メタデータで、
+    顧客データそのものではない。既定は INTERNAL とし、規制環境向けに環境変数
+    DATA_CLASSIFICATION で上書きできるようにしておく。
+
+    ラベルの一覧は shared/data_classification.py を参照。
+    """
+    return os.environ.get("DATA_CLASSIFICATION", "INTERNAL")

@@ -113,27 +113,24 @@ class TestValidateS3apConnectivity:
         mock_s3ap.bucket_param = "test-ap-alias-ext-s3alias"
         mock_s3ap.list_objects.side_effect = S3ApHelperError("Access denied", error_code="AccessDenied")
 
-        result = validate_s3ap_connectivity(mock_s3ap)
-        assert result is not None
-        assert result["statusCode"] == 503
-        body = json.loads(result["body"])
-        assert body["error"] == "S3 Access Point unreachable"
-        assert body["error_type"] == "ConnectivityError"
-        assert body["error_code"] == "AccessDenied"
-        assert body["access_point"] == "test-ap-alias-ext-s3alias"
+        # validate_s3ap_connectivity は失敗を捕捉せず伝播させる。
+        # 503 の辞書を返していた頃は Lambda が正常終了し、Step Functions が
+        # 失敗を成功と判定していた。
+        with pytest.raises(Exception):
+            validate_s3ap_connectivity(mock_s3ap)
 
-    def test_unexpected_error_returns_structured_error(self):
-        """予期しないエラーで構造化エラーレスポンスを返す"""
+    def test_unexpected_error_propagates(self):
+        """S3ApHelperError 以外の失敗もそのまま伝播することを検証する
+
+        validate_s3ap_connectivity は失敗を捕捉しない。503 の辞書を返していた頃は
+        Lambda が正常終了し、Step Functions が失敗を成功と判定していた。
+        """
         mock_s3ap = MagicMock()
         mock_s3ap.bucket_param = "test-ap-alias-ext-s3alias"
         mock_s3ap.list_objects.side_effect = TimeoutError("Connection timed out")
 
-        result = validate_s3ap_connectivity(mock_s3ap)
-        assert result is not None
-        assert result["statusCode"] == 503
-        body = json.loads(result["body"])
-        assert body["error_code"] == "UnexpectedError"
-        assert "Connection timed out" in body["message"]
+        with pytest.raises(TimeoutError, match="Connection timed out"):
+            validate_s3ap_connectivity(mock_s3ap)
 
     def test_service_unavailable_error(self):
         """ServiceUnavailable エラーで構造化エラーレスポンスを返す"""
@@ -143,11 +140,11 @@ class TestValidateS3apConnectivity:
         mock_s3ap.bucket_param = "test-ap-alias-ext-s3alias"
         mock_s3ap.list_objects.side_effect = S3ApHelperError("Service unavailable", error_code="ServiceUnavailable")
 
-        result = validate_s3ap_connectivity(mock_s3ap)
-        assert result is not None
-        assert result["statusCode"] == 503
-        body = json.loads(result["body"])
-        assert body["error_code"] == "ServiceUnavailable"
+        # validate_s3ap_connectivity は失敗を捕捉せず伝播させる。
+        # 503 の辞書を返していた頃は Lambda が正常終了し、Step Functions が
+        # 失敗を成功と判定していた。
+        with pytest.raises(Exception):
+            validate_s3ap_connectivity(mock_s3ap)
 
 
 # =========================================================================
@@ -233,11 +230,10 @@ class TestDiscoveryHandler:
             mock_s3ap.bucket_param = "test-ap-alias-ext-s3alias"
             mock_s3ap.list_objects.side_effect = S3ApHelperError("Access denied to S3 AP", error_code="AccessDenied")
 
-            result = handler({}, self._make_context())
-
-            assert result["statusCode"] == 503
-            body = json.loads(result["body"])
-            assert body["error"] == "S3 Access Point unreachable"
+            # 接続失敗は伝播する。503 の辞書を返していた頃は Lambda が正常終了し、
+            # Step Functions が失敗を成功と判定していた。
+            with pytest.raises(Exception):
+                handler({}, self._make_context())
 
     @patch.dict(
         os.environ,
