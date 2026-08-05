@@ -216,7 +216,7 @@ AWS Support reproduced this in a test environment and confirmed the following. T
 |---------|--------|
 | Specifying `S3ObjectStorageMode: REFERENCE` under `CodeUri` on `AWS::Serverless::Function` | `sam validate` and `sam deploy` both **succeed without error** |
 | Mode of the function actually created | The property is **silently dropped** during the SAM transform; the function is created in the default `COPY` mode |
-| Properties accepted by SAM's `S3Location` type | Only `Bucket` / `Key` / `Version`; anything else is discarded during transformation (not specific to `S3ObjectStorageMode`) |
+| Properties accepted by SAM's `S3Location` type (released versions) | Only `Bucket` / `Key` / `Version`; anything else is discarded during transformation (not specific to `S3ObjectStorageMode`) |
 | Methods listed in the Lambda Developer Guide | Console / AWS CLI / CloudFormation. **AWS SAM is not listed** |
 | `update-function-code` drift | Confirmed. `S3ObjectStorageMode` must be specified on every call or it reverts to `COPY` |
 
@@ -226,7 +226,44 @@ The Inactive-state coupling was also confirmed: Lambda periodically re-reads the
 
 On the AWS side, a feature request has been raised with the Lambda service team, a bug report with the SAM team (to add `S3ObjectStorageMode` to `AWS::Serverless::Function` and `AWS::Serverless::LayerVersion`), and feedback that SAM should raise a validation error for unrecognised properties rather than discarding them silently. However, these are **internal tickets and are not publicly accessible**. AWS Support advised that opening an issue ourselves on [aws/serverless-application-model](https://github.com/aws/serverless-application-model) is the appropriate channel for public tracking, and encouraged it on the grounds that community-filed issues with clear reproduction steps help the SAM team prioritise.
 
-**Supported workaround (confirmed with AWS Support)**: For functions that require `REFERENCE` mode, define them as a native `AWS::Lambda::Function` with `Code.S3ObjectStorageMode: REFERENCE` rather than `AWS::Serverless::Function`, so no SAM transform is involved. Mixing `AWS::Serverless::` and native `AWS::` resources in the same SAM template was also confirmed to be **a valid and supported pattern**. This is the recommended path until SAM adds native support.
+**Supported workaround (confirmed with AWS Support)**: For functions that require `REFERENCE` mode, define them as a native `AWS::Lambda::Function` with `Code.S3ObjectStorageMode: REFERENCE` rather than `AWS::Serverless::Function`, so no SAM transform is involved. Mixing `AWS::Serverless::` and native `AWS::` resources in the same SAM template was also confirmed to be **a valid and supported pattern**.
+
+### Upstream Status (our own investigation, August 2026)
+
+What FR-7 asks for is **already implemented and merged upstream**. This subsection comes from inspecting `aws/serverless-application-model` directly, not from an AWS Support answer.
+
+| Item | Detail |
+|------|--------|
+| Pull request | [aws/serverless-application-model#3959](https://github.com/aws/serverless-application-model/pull/3959) `feat: pass S3ObjectStorageMode through from CodeUri and ContentUri`, merged 2026-07-20 (tests in [#3961](https://github.com/aws/serverless-application-model/pull/3961)) |
+| **SAM-side property name** | **`StorageMode`**, inside `CodeUri` / `ContentUri` — a different name from CloudFormation's `S3ObjectStorageMode` |
+| Mapping applied by the transform | `CodeUri.StorageMode` → `Code.S3ObjectStorageMode` |
+| Release status | **Not yet released.** The latest release, `aws-sam-translator` 1.111.0 (2026-07-02), predates the 2026-07-20 merge and does not contain the code |
+
+```yaml
+# Expected once released (not available in current releases)
+CodeUri:
+  Bucket: my-artifacts
+  Key: app.zip
+  StorageMode: REFERENCE     # the SAM-side name, not S3ObjectStorageMode
+```
+
+> ⚠️ **Watch the name asymmetry**: writing CloudFormation's `S3ObjectStorageMode` inside `CodeUri` will **continue to be silently dropped even after release**. Only `StorageMode` is accepted.
+
+**The practical conclusion is unchanged** — on current releases you cannot select `REFERENCE` through SAM, so the native-resource workaround above stands. But the reason is not "SAM does not support it"; it is "**implemented, pending release, and the property is named `StorageMode`**". Re-evaluate this section and the workaround once a release includes it.
+
+### Validation Gap Filed Upstream
+
+We filed the silent-drop behaviour as a public issue: [aws/serverless-application-model#3970](https://github.com/aws/serverless-application-model/issues/3970)
+
+AWS Support's tickets are internal and they could not file on our behalf, so the issue is written from our own testing. Behaviour observed locally against `aws-sam-translator` 1.111.0:
+
+| Value placed in `CodeUri` | Transform result | Reflected in output |
+|---------------------------|------------------|---------------------|
+| `S3ObjectStorageMode: REFERENCE` | succeeded, no warning | no |
+| `StorageMode: REFERENCE` | succeeded, no warning | no (not implemented in 1.111.0) |
+| `TotallyMadeUpProperty: whatever` | succeeded, no warning | no |
+
+**Both `sam validate` and `sam validate --lint` report the template as valid.** Meanwhile the SAM schema's `definitions.CodeUri` declares `"additionalProperties": false`, so the schema does define these as invalid — the inconsistency is that nothing enforces it at transform time.
 
 ### Impact on Our Patterns
 
