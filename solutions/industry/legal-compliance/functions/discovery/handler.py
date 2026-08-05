@@ -23,6 +23,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
+from shared.ad_health_check import preflight_ad_dc_reachability
 from shared.exceptions import lambda_error_handler
 from shared.ontap_client import OntapClient, OntapClientConfig
 from shared.s3ap_helper import S3ApHelper
@@ -102,14 +103,6 @@ def handler(event, context):
         suffix,
     )
 
-    # S3 AP からオブジェクト一覧取得
-    with xray_subsegment(
-        name="s3ap_list_objects",
-        annotations={"service_name": "s3", "operation": "ListObjectsV2", "use_case": "legal-compliance"},
-    ):
-        objects = s3ap.list_objects(prefix=prefix, suffix=suffix)
-
-    # ONTAP メタデータ収集
     verify_ssl = os.environ.get("VERIFY_SSL", "true").lower() != "false"
     ontap_config = OntapClientConfig(
         management_ip=os.environ["ONTAP_MANAGEMENT_IP"],
@@ -118,6 +111,31 @@ def handler(event, context):
     )
     ontap_client = OntapClient(ontap_config)
     svm_uuid = os.environ["SVM_UUID"]
+
+    # AD DC 到達性の事前チェック。
+    #
+    # このパターンは後続の Map ステートでオブジェクトごとに NTFS セキュリティ
+    # 記述子を読む。AD 参加 SVM で AD DC に到達できないと、S3 AP のデータ操作は
+    # すべて AccessDenied になる（HeadBucket だけは成功するため紛らわしい）。
+    # ここで 1 回落としておけば、Map が展開してから同じ失敗を N 回繰り返すのを
+    # 防げるうえ、原因が層まで特定された状態で止まる。
+    #
+    # 最初の S3 AP データ操作より前に置くことが必須。後ろに置くと list_objects が
+    # 先に AccessDenied になり、チェックの意味が無くなる。
+    #
+    # AD 未参加 SVM では何もしない。チェック自体が失敗した場合も止めない
+    # （preflight_ad_dc_reachability の契約）。
+    ad_status = preflight_ad_dc_reachability(ontap_client, svm_uuid=svm_uuid)
+    logger.info("AD DC pre-flight: %s", ad_status.message)
+
+    # S3 AP からオブジェクト一覧取得
+    with xray_subsegment(
+        name="s3ap_list_objects",
+        annotations={"service_name": "s3", "operation": "ListObjectsV2", "use_case": "legal-compliance"},
+    ):
+        objects = s3ap.list_objects(prefix=prefix, suffix=suffix)
+
+    # ONTAP メタデータ収集
     metadata = _collect_ontap_metadata(ontap_client, svm_uuid)
 
     # Manifest 生成

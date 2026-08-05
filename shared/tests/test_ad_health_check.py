@@ -14,8 +14,10 @@ from shared.ad_health_check import (
     AdDcUnreachableError,
     AdHealthStatus,
     check_ad_dc_reachability,
+    preflight_ad_dc_reachability,
     require_ad_dc_reachability,
 )
+from shared.ontap_client import OntapClientError
 
 
 # --- Fixtures ----------------------------------------------------------------
@@ -335,3 +337,194 @@ class TestRequireAdDcReachability:
 
         assert status.is_healthy is True
         assert status.dc_reachable is None
+
+
+# --- SVM を UUID で指定する ---------------------------------------------------
+
+
+def _healthy_responses():
+    """AD 参加 + DC 到達可能な SVM の応答を返す side_effect を作る"""
+
+    def side_effect(path, params=None):
+        if path == "/protocols/cifs/services":
+            return {
+                "records": [
+                    {
+                        "svm": {"name": "svm-from-response", "uuid": "u-1"},
+                        "enabled": True,
+                        "ad_domain": {"fqdn": "EXAMPLE.LOCAL"},
+                    }
+                ]
+            }
+        return {
+            "records": [
+                {
+                    "discovered_servers": [
+                        {"server_type": "ms_ldap", "state": "undetermined"},
+                        {"server_type": "ms_dc", "state": "ok"},
+                    ]
+                }
+            ]
+        }
+
+    return side_effect
+
+
+class TestSvmIdentification:
+    """svm_name / svm_uuid のどちらでも呼べることを検証する
+
+    パターン側の Lambda が環境変数で持っているのは SVM_UUID であり名前ではない。
+    名前しか受け付けないままだと、全テンプレートに SVM_NAME を追加しない限り
+    このチェックを組み込めなかった。
+
+    ONTAP の `/protocols/cifs/services` と `/protocols/cifs/domains` はいずれも
+    `svm.uuid` をフィルタとして受け付ける（実機で確認済み）。
+    """
+
+    def test_uuid_is_sent_as_svm_uuid_filter(self, mock_ontap_client):
+        """svm_uuid 指定時は svm.uuid でクエリすることを検証する"""
+        mock_ontap_client.get.side_effect = _healthy_responses()
+
+        check_ad_dc_reachability(mock_ontap_client, svm_uuid="u-1")
+
+        for call in mock_ontap_client.get.call_args_list:
+            params = call.kwargs["params"]
+            assert params.get("svm.uuid") == "u-1"
+            assert "svm.name" not in params
+
+    def test_name_is_sent_as_svm_name_filter(self, mock_ontap_client):
+        """svm_name 指定時は svm.name でクエリすることを検証する"""
+        mock_ontap_client.get.side_effect = _healthy_responses()
+
+        check_ad_dc_reachability(mock_ontap_client, "svm-a")
+
+        for call in mock_ontap_client.get.call_args_list:
+            params = call.kwargs["params"]
+            assert params.get("svm.name") == "svm-a"
+            assert "svm.uuid" not in params
+
+    def test_uuid_query_uses_resolved_name_in_message(self, mock_ontap_client):
+        """UUID 指定時は応答の SVM 名をメッセージに使うことを検証する
+
+        メッセージは人が読むものなので、`uuid=...` より名前のほうが有用。
+        """
+        mock_ontap_client.get.side_effect = _healthy_responses()
+
+        status = check_ad_dc_reachability(mock_ontap_client, svm_uuid="u-1")
+
+        assert "svm-from-response" in status.message
+        assert "uuid=u-1" not in status.message
+
+    def test_uuid_falls_back_to_uuid_label_when_no_records(self, mock_ontap_client):
+        """レコードが無ければ UUID をそのまま表示に使うことを検証する"""
+        mock_ontap_client.get.return_value = {"records": []}
+
+        status = check_ad_dc_reachability(mock_ontap_client, svm_uuid="u-9")
+
+        assert "uuid=u-9" in status.message
+
+    @pytest.mark.parametrize(
+        "args,kwargs",
+        [
+            ((), {}),
+            (("svm-a",), {"svm_uuid": "u-1"}),
+            ((None,), {"svm_uuid": None}),
+        ],
+        ids=["neither", "both", "both-none"],
+    )
+    def test_rejects_ambiguous_identification(self, mock_ontap_client, args, kwargs):
+        """名前と UUID の指定が 0 個/2 個なら ValueError を投げることを検証する"""
+        with pytest.raises(ValueError, match="exactly one"):
+            check_ad_dc_reachability(mock_ontap_client, *args, **kwargs)
+
+    def test_require_accepts_uuid(self, mock_ontap_client):
+        """require_ad_dc_reachability も UUID で呼べることを検証する"""
+        mock_ontap_client.get.side_effect = _healthy_responses()
+
+        status = require_ad_dc_reachability(mock_ontap_client, svm_uuid="u-1")
+
+        assert status.dc_reachable is True
+
+    def test_require_error_carries_uuid_label(self, mock_ontap_client):
+        """UUID 指定で到達不能なら例外の svm_name に UUID 表記が入ることを検証する"""
+
+        def side_effect(path, params=None):
+            if path == "/protocols/cifs/services":
+                return {
+                    "records": [
+                        {"enabled": True, "ad_domain": {"fqdn": "EXAMPLE.LOCAL"}},
+                    ]
+                }
+            return {"records": [{"discovered_servers": []}]}
+
+        mock_ontap_client.get.side_effect = side_effect
+
+        with pytest.raises(AdDcUnreachableError) as exc_info:
+            require_ad_dc_reachability(mock_ontap_client, svm_uuid="u-7")
+
+        assert exc_info.value.svm_name == "uuid=u-7"
+
+
+# --- preflight_ad_dc_reachability --------------------------------------------
+
+
+class TestPreflightAdDcReachability:
+    """ワークフロー先頭に無条件で置ける版のテスト
+
+    require_ad_dc_reachability との違いは、チェック自体が失敗したときの扱い。
+    診断のために足した処理が新しい障害要因になってはいけない。
+    """
+
+    def test_raises_when_dc_definitively_unreachable(self, mock_ontap_client):
+        """DC 到達不能と判定できた場合は例外を投げることを検証する"""
+
+        def side_effect(path, params=None):
+            if path == "/protocols/cifs/services":
+                return {"records": [{"enabled": True, "ad_domain": {"fqdn": "EXAMPLE.LOCAL"}}]}
+            return {"records": [{"discovered_servers": []}]}
+
+        mock_ontap_client.get.side_effect = side_effect
+
+        with pytest.raises(AdDcUnreachableError):
+            preflight_ad_dc_reachability(mock_ontap_client, svm_uuid="u-1")
+
+    def test_does_not_raise_when_check_itself_fails(self, mock_ontap_client):
+        """ONTAP API が失敗しても例外を投げないことを検証する
+
+        これがこの関数の存在理由。ONTAP API の一時的な失敗でワークフロー全体を
+        止めるのは、防ごうとしている問題より大きい害になる。
+        """
+        mock_ontap_client.get.side_effect = OntapClientError("connection timed out")
+
+        status = preflight_ad_dc_reachability(mock_ontap_client, svm_uuid="u-1")
+
+        assert status.dc_reachable is None
+        assert status.is_healthy is True
+        assert "could not be checked" in status.message
+        # 後続で AccessDenied が出たときの手がかりを残す
+        assert "AccessDenied" in status.message
+
+    def test_passes_through_for_non_ad_joined_svm(self, mock_ontap_client):
+        """AD 未参加 SVM では何も止めないことを検証する"""
+        mock_ontap_client.get.return_value = {"records": []}
+
+        status = preflight_ad_dc_reachability(mock_ontap_client, svm_uuid="u-1")
+
+        assert status.is_ad_joined is False
+        assert status.is_healthy is True
+
+    def test_returns_healthy_status_when_reachable(self, mock_ontap_client):
+        """DC 到達可能なら健全な status を返すことを検証する"""
+        mock_ontap_client.get.side_effect = _healthy_responses()
+
+        status = preflight_ad_dc_reachability(mock_ontap_client, svm_uuid="u-1")
+
+        assert status.dc_reachable is True
+        assert status.is_ad_joined is True
+
+    def test_rejects_ambiguous_identification(self, mock_ontap_client):
+        """指定不正はプログラムの誤りなので黙って続行しないことを検証する"""
+        with pytest.raises(ValueError, match="exactly one"):
+            preflight_ad_dc_reachability(mock_ontap_client)
+
+        mock_ontap_client.get.assert_not_called()

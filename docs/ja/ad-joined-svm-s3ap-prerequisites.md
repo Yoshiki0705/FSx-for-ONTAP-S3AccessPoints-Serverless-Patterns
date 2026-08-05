@@ -394,6 +394,36 @@ curl -sku user:pass \
 3. AWS Managed AD の場合、ディレクトリのステータスが `Active` か確認
 4. AD を再作成した場合、SVM は CIFS force-delete + re-join が必要（新しい NetBIOS 名が必要）
 
+### ワークフローへの組み込み: `preflight_ad_dc_reachability()`
+
+`shared/ad_health_check.py` には 3 つの入口があります。ワークフローの先頭に置くなら `preflight_ad_dc_reachability()` を使います。
+
+| 関数 | DC 到達不能と判定 | チェック自体が失敗（ONTAP API エラー等） |
+|------|:---:|:---:|
+| `check_ad_dc_reachability()` | status を返す | `OntapClientError` を送出 |
+| `require_ad_dc_reachability()` | 例外を送出 | `OntapClientError` を送出 |
+| `preflight_ad_dc_reachability()` | 例外を送出 | 警告ログ + 続行 |
+
+3 つ目の列が重要です。診断のために足した処理が新しい障害要因になってはいけません。ONTAP API の一時的な失敗でワークフロー全体を止めるのは、防ごうとしている問題より大きい害になります。
+
+**SVM は名前でも UUID でも指定できます。**
+
+```python
+from shared.ad_health_check import preflight_ad_dc_reachability
+
+# パターン側の Lambda は環境変数 SVM_UUID を持つ（SVM_NAME は持たない）
+status = preflight_ad_dc_reachability(ontap_client, svm_uuid=os.environ["SVM_UUID"])
+logger.info("AD DC pre-flight: %s", status.message)
+```
+
+`/protocols/cifs/services` と `/protocols/cifs/domains` はいずれも `svm.uuid` をフィルタとして受け付け、`svm.name` と同一のレコードを返します（実機確認済み）。UUID で問い合わせた場合、応答に含まれる SVM 名がメッセージに使われます。
+
+**配置位置**: 最初の S3 AP データ操作より**前**に置いてください。後ろに置くと `list_objects` が先に AccessDenied になり、チェックの意味が無くなります。
+
+**組み込み済みのパターン**: `legal-compliance` の discovery。このパターンは後続の Map ステートでオブジェクトごとに NTFS セキュリティ記述子を読むため、AD DC 到達性が前提になります。先頭で 1 回落とせば、Map が展開してから同じ失敗を N 回繰り返すのを防げます。
+
+> **エラー表面に関する補足**: `lambda_error_handler` は例外を捕捉して `statusCode: 500` を返すため、Lambda は正常終了します。そのため Step Functions は Discovery タスクを成功と見なし、後続の Map が `ItemsPath: $.discovery.objects` を解決できず `States.Runtime` で失敗します。ワークフローは止まりますが、表面に出るのは JSON パスのエラーで AD の話ではありません。根本原因は CloudWatch Logs 側で特定できます。これは pre-flight とは独立した既存の挙動で、このパターンのどの失敗でも同じです。
+
 ### 診断メッセージ: `shared/s3ap_helper.py`
 
 このリポジトリのパターンは S3 AP アクセスを `shared/s3ap_helper.py` の `S3ApHelper` 経由で行います。同モジュールは AccessDenied を捕捉すると、上記 2 層の両方を挙げた `S3ApHelperError` を送出します。

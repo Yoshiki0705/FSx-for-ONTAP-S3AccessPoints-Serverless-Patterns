@@ -532,6 +532,53 @@ stop answering, so check for at least one `ms_dc` entry at `state: ok`.
 ./scripts/demo-ad-join-svm.sh --stack-name <your-ad-stack> --svm-name <svm-name>
 ```
 
+### Workflow Integration: `preflight_ad_dc_reachability()`
+
+`shared/ad_health_check.py` offers three entry points. For the head of a
+workflow, use `preflight_ad_dc_reachability()`.
+
+| Function | DC found unreachable | The check itself fails (ONTAP API error, etc.) |
+|----------|:---:|:---:|
+| `check_ad_dc_reachability()` | returns status | raises `OntapClientError` |
+| `require_ad_dc_reachability()` | raises | raises `OntapClientError` |
+| `preflight_ad_dc_reachability()` | raises | logs a warning and continues |
+
+That third column is the point. A check added for diagnosis must not become a
+new source of failure: stopping an entire workflow because the ONTAP API
+hiccupped is a bigger harm than the problem being prevented.
+
+**The SVM can be given by name or by UUID.**
+
+```python
+from shared.ad_health_check import preflight_ad_dc_reachability
+
+# Pattern Lambdas carry SVM_UUID in the environment, not SVM_NAME
+status = preflight_ad_dc_reachability(ontap_client, svm_uuid=os.environ["SVM_UUID"])
+logger.info("AD DC pre-flight: %s", status.message)
+```
+
+Both `/protocols/cifs/services` and `/protocols/cifs/domains` accept `svm.uuid`
+as a filter and return the same records as `svm.name` (verified against a
+cluster). When queried by UUID, the SVM name from the response is used in the
+messages.
+
+**Placement**: put it **before** the first S3 AP data operation. Placed after,
+`list_objects` fails with AccessDenied first and the check becomes pointless.
+
+**Already integrated**: the `legal-compliance` discovery function. That pattern
+reads an NTFS security descriptor per object in a downstream Map state, so AD DC
+reachability is a precondition. Failing once at the head avoids repeating the
+same failure N times after the Map fans out.
+
+> **Error-surface note**: `lambda_error_handler` catches the exception and
+> returns `statusCode: 500`, so the Lambda completes normally. Step Functions
+> therefore treats the Discovery task as successful, and the downstream Map then
+> fails with `States.Runtime` because it cannot resolve
+> `ItemsPath: $.discovery.objects`. The workflow does stop, but what surfaces is
+> a JSON path error rather than the AD message; the root cause is identifiable
+> in CloudWatch Logs. This behaviour is independent of the pre-flight and is the
+> same for any failure in this pattern.
+
 ### Diagnostic Message: `shared/s3ap_helper.py`
 
 The patterns in this repository reach S3 Access Points through `S3ApHelper` in
