@@ -98,13 +98,20 @@ class TestCheckAdDcReachability:
                 "records": [{"enabled": True, "ad_domain": {"fqdn": "demo.fsx.local"}}],
                 "num_records": 1,
             },
-            # CIFS domains response
+            # CIFS domains response — the shape a live cluster returns.
+            # Captured from an AD-joined SVM whose S3 AP data operations work: the
+            # ms_ldap entries sit at state "undetermined" even when everything is
+            # healthy, and only the ms_dc entries reach "ok". The earlier fixture
+            # here carried neither field, which is why the check could report
+            # "reachable" from a list of servers that were all unusable.
             {
                 "records": [
                     {
                         "discovered_servers": [
-                            {"server_ip": "10.0.1.10", "server_name": "DC1"},
-                            {"server_ip": "10.0.2.10", "server_name": "DC2"},
+                            {"server_type": "ms_ldap", "state": "undetermined", "preference": "favored"},
+                            {"server_type": "ms_dc", "state": "ok", "preference": "favored"},
+                            {"server_type": "ms_ldap", "state": "undetermined", "preference": "favored"},
+                            {"server_type": "ms_dc", "state": "ok", "preference": "favored"},
                         ]
                     }
                 ],
@@ -117,8 +124,15 @@ class TestCheckAdDcReachability:
         assert status.is_ad_joined is True
         assert status.dc_reachable is True
         assert status.ad_domain == "demo.fsx.local"
-        assert len(status.discovered_servers) == 2
+        assert len(status.discovered_servers) == 4
         assert status.is_healthy is True
+        # The summary must not carry node UUIDs or server IPs into a log line.
+        assert status.discovered_servers == [
+            "ms_ldap/undetermined",
+            "ms_dc/ok",
+            "ms_ldap/undetermined",
+            "ms_dc/ok",
+        ]
 
     def test_ad_joined_dc_unreachable_empty_list(self, mock_ontap_client):
         """AD参加SVM + discovered_servers が空リスト → DC到達不能"""
@@ -142,6 +156,87 @@ class TestCheckAdDcReachability:
         assert status.is_healthy is False
         assert "AD CONNECTIVITY FAILURE" in status.message
         assert "AccessDenied" in status.message
+
+    def test_cifs_enabled_without_ad_domain_is_not_ad_joined(self, mock_ontap_client):
+        """CIFS 有効 + AD ドメインなし（ワークグループ運用）→ AD未参加として扱う
+
+        検証環境に実在した構成。以前は「CIFS 有効 = AD参加」としていたため
+        `is_ad_joined=True, ad_domain=None` という矛盾した結果になり、
+        その後の DC チェックも意味を持たなかった。到達すべき DC が存在しない。
+        """
+        mock_ontap_client.get.side_effect = [
+            {
+                "records": [{"enabled": True, "ad_domain": None}],
+                "num_records": 1,
+            },
+        ]
+
+        status = check_ad_dc_reachability(mock_ontap_client, "svm-workgroup")
+
+        assert status.is_ad_joined is False
+        assert status.ad_domain is None
+        assert status.dc_reachable is None
+        assert status.is_healthy is True
+        assert "workgroup" in status.message
+        # ドメイン照会まで進んではいけない（CIFS サービスの 1 回だけ）。
+        assert mock_ontap_client.get.call_count == 1
+
+    def test_servers_listed_but_none_usable_is_unreachable(self, mock_ontap_client):
+        """DC が列挙されていても ms_dc/ok が無ければ到達不能
+
+        DC が落ちてもエントリ自体は残り得る。空判定だけでは、このチェックが
+        検出するために作られた障害そのものを見逃す。
+        """
+        mock_ontap_client.get.side_effect = [
+            {
+                "records": [{"enabled": True, "ad_domain": {"fqdn": "demo.fsx.local"}}],
+                "num_records": 1,
+            },
+            {
+                "records": [
+                    {
+                        "discovered_servers": [
+                            {"server_type": "ms_ldap", "state": "undetermined"},
+                            {"server_type": "ms_dc", "state": "unavailable"},
+                        ]
+                    }
+                ],
+                "num_records": 1,
+            },
+        ]
+
+        status = check_ad_dc_reachability(mock_ontap_client, "svm-degraded")
+
+        assert status.is_ad_joined is True
+        assert status.dc_reachable is False
+        assert status.is_healthy is False
+        assert "AD CONNECTIVITY FAILURE" in status.message
+        assert "AccessDenied" in status.message
+
+    def test_ldap_only_at_undetermined_is_not_enough(self, mock_ontap_client):
+        """ms_ldap だけが undetermined で並ぶ状態は到達可能とみなさない"""
+        mock_ontap_client.get.side_effect = [
+            {
+                "records": [{"enabled": True, "ad_domain": {"fqdn": "demo.fsx.local"}}],
+                "num_records": 1,
+            },
+            {
+                "records": [
+                    {
+                        "discovered_servers": [
+                            {"server_type": "ms_ldap", "state": "undetermined"},
+                            {"server_type": "ms_ldap", "state": "undetermined"},
+                        ]
+                    }
+                ],
+                "num_records": 1,
+            },
+        ]
+
+        status = check_ad_dc_reachability(mock_ontap_client, "svm-ldap-only")
+
+        assert status.dc_reachable is False
+        assert status.is_healthy is False
 
     def test_ad_joined_discovered_servers_none(self, mock_ontap_client):
         """AD参加SVM + discovered_servers が None → 確認不可、楽観的続行"""
@@ -198,7 +293,7 @@ class TestRequireAdDcReachability:
         """正常時は AdHealthStatus を返す"""
         mock_ontap_client.get.side_effect = [
             {"records": [{"enabled": True, "ad_domain": {"fqdn": "demo.fsx.local"}}]},
-            {"records": [{"discovered_servers": [{"server_ip": "10.0.1.10"}]}]},
+            {"records": [{"discovered_servers": [{"server_type": "ms_dc", "state": "ok"}]}]},
         ]
 
         status = require_ad_dc_reachability(mock_ontap_client, "svm-ok")

@@ -57,18 +57,43 @@ MGMT_IP="<your-ontap-mgmt-ip>"
 SVM_NAME="<your-svm-name>"
 CREDS="fsxadmin:<your-password>"
 
-# Check AD DC reachability (expect discovered_servers count > 0)
+# Check AD DC reachability.
+# The test is not "count > 0" but "at least one server_type=ms_dc with state=ok".
 curl -sku "$CREDS" \
   "https://$MGMT_IP/api/protocols/cifs/domains?svm.name=$SVM_NAME&fields=discovered_servers" \
-  | jq '{dc_count: (.records[0].discovered_servers | length), servers: .records[0].discovered_servers}'
+  | jq '{
+      usable_dc: [.records[0].discovered_servers[]
+                  | select(.server_type == "ms_dc" and .state == "ok")] | length,
+      all: [.records[0].discovered_servers[] | {server_type, state}]
+    }'
 ```
 
-**Expected result** (healthy):
+**Expected result** (healthy — captured from a live AD-joined SVM):
 ```json
-{"dc_count": 2, "servers": [{"server_ip": "10.0.1.10", ...}, {"server_ip": "10.0.2.10", ...}]}
+{
+  "usable_dc": 2,
+  "all": [
+    {"server_type": "ms_ldap", "state": "undetermined"},
+    {"server_type": "ms_dc",   "state": "ok"},
+    {"server_type": "ms_ldap", "state": "undetermined"},
+    {"server_type": "ms_dc",   "state": "ok"}
+  ]
+}
 ```
 
-**Failure indicator** (`dc_count: 0`): AD DC unreachable — S3 AP data operations will fail with AccessDenied. See [Troubleshooting](#troubleshooting).
+**Failure indicator** (`usable_dc: 0`): AD DC unreachable — S3 AP data operations will fail with AccessDenied. See [Troubleshooting](#troubleshooting).
+
+> **Do not judge on the count alone.** This section used to say that a
+> `discovered_servers` count above zero meant healthy. **That is wrong.** As the
+> live output above shows, a healthy SVM leaves its `ms_ldap` entries at
+> `state: undetermined`, and only the `ms_dc` entries reach `ok`. Entries can
+> persist after the DCs stop answering, so counting them misses the very failure
+> this check exists to catch.
+>
+> Requiring *every* entry to be `ok` is equally wrong: `ms_ldap` sits at
+> `undetermined` when all is well, so that rule reports failure permanently.
+>
+> `shared/ad_health_check.py` applies the rule above, verified against a cluster.
 
 > **Credential security note**: The `curl -sku` pattern above is for interactive debugging only. In production Lambda functions, always retrieve credentials from Secrets Manager via `shared/ontap_client.py`.
 
@@ -100,6 +125,36 @@ The only condition is that CIFS is **enabled** on the SVM. This is counter-intui
 | CreateMultipartUpload | ✅ | ❌ AccessDenied | File system |
 
 > **Security note**: HeadBucket validates only at the S3 metadata layer (AP existence and IAM). It does NOT traverse the ONTAP file-system layer. **Never use HeadBucket as a health check for S3 AP data-plane readiness.**
+
+### Deciding Whether an SVM Is AD-Joined
+
+CIFS being enabled does not make an SVM AD-joined. **An SVM can have CIFS enabled
+with no AD domain at all** (workgroup mode). Test on the presence of
+`ad_domain.fqdn`.
+
+```bash
+curl -sku "$CREDS" \
+  "https://$MGMT_IP/api/protocols/cifs/services?fields=svm.name,enabled,ad_domain.fqdn" \
+  | jq '[.records[] | {svm: .svm.name, enabled, ad_domain: .ad_domain.fqdn}]'
+```
+
+Two SVMs on the same cluster, from a live run:
+
+```json
+[
+  {"svm": "svm-a", "enabled": true, "ad_domain": "EXAMPLE.LOCAL"},
+  {"svm": "svm-b", "enabled": true, "ad_domain": null}
+]
+```
+
+| SVM | CIFS | `ad_domain.fqdn` | Verdict | AD DC check |
+|---|:---:|---|---|---|
+| svm-a | enabled | present | AD-joined | required |
+| svm-b | enabled | absent (workgroup) | not AD-joined | not applicable — there is no DC to reach |
+| (no CIFS) | disabled | — | not AD-joined | not applicable |
+
+Testing CIFS alone treats a workgroup SVM as "AD-joined, domain unknown", which
+also makes the DC check that follows it meaningless.
 
 ### Required Network Connectivity (SVM ENIs → AD DC)
 
@@ -283,8 +338,10 @@ print(f"Discovered servers: {status.discovered_servers}")
 # management IP: AWS Console → FSx → File system → Administration
 curl -sku "$ONTAP_USER:$ONTAP_PASS" \
   "https://$MGMT_IP/api/protocols/cifs/domains?svm.name=$SVM_NAME&fields=discovered_servers" \
-  | jq '.records[0].discovered_servers | length'
-# Result: 0 = AD DC unreachable, >0 = healthy
+  | jq '[.records[0].discovered_servers[]
+         | select(.server_type == "ms_dc" and .state == "ok")] | length'
+# Result: 0 = AD DC unreachable, >=1 = healthy
+# Count ms_dc/ok entries, not the whole list (see Quick Start Validation)
 ```
 
 ### Step Functions Integration
@@ -436,7 +493,9 @@ graph TD
     B -->|No| C[IAM / AP policy issue<br/>Check ARN format]
     B -->|Yes| D{SVM has CIFS enabled?}
     D -->|No| E[Check file-system identity<br/>permissions on volume]
-    D -->|Yes| F{discovered_servers<br/>count > 0?}
+    D -->|Yes| D2{ad_domain.fqdn present?}
+    D2 -->|No| E2[Workgroup SVM<br/>AD is not involved]
+    D2 -->|Yes| F{at least one<br/>ms_dc with state=ok?}
     F -->|Yes| G[Check WindowsUser.Name<br/>no domain prefix]
     F -->|No| H[AD DC UNREACHABLE<br/>Fix network/DNS/AD status]
 ```
@@ -452,6 +511,8 @@ curl -sku user:pass \
 ```
 
 If `discovered_servers` is `[]` (empty array), the AD DC is unreachable.
+**A non-empty list does not mean reachable**: entries persist after the DCs
+stop answering, so check for at least one `ms_dc` entry at `state: ok`.
 
 **Resolution**:
 1. Verify SVM DNS IPs point to active AD DC addresses
@@ -529,6 +590,39 @@ AWS Console → Amazon FSx → File systems → Select your file system → Admi
 aws fsx describe-file-systems --file-system-ids fs-XXXXX \
   --query "FileSystems[0].OntapConfiguration.Endpoints.Management.IpAddresses[0]"
 ```
+
+---
+
+## Verified Against a Cluster
+
+`shared/ad_health_check.py` was run against a live cluster (ap-northeast-1) for both
+an AD-joined SVM and an SVM with CIFS enabled but no AD domain. Unit tests stub the
+transport, so the real field layout of `discovered_servers` can only be confirmed
+here.
+
+| Checked | Result |
+|---|---|
+| AD-joined detection | `is_ad_joined=True`, `ad_domain` populated |
+| Reachability verdict | 2 entries `ms_dc` at `state: ok` -> `dc_reachable=True` |
+| `ms_ldap` state | `undetermined` even on a healthy SVM (**why counting alone is wrong**) |
+| CIFS enabled, no AD domain | `is_ad_joined=False` (workgroup); no domain query issued |
+| `require_ad_dc_reachability()` | returns for both the healthy and the workgroup SVM |
+| Log output | no node UUIDs or DC addresses, only a `server_type/state` summary |
+| Path traversal | refused by `OntapClient` with 400 before the request went out |
+
+The run found two implementation bugs, both fixed:
+
+1. **Reachability was judged on the count alone.** A non-empty `discovered_servers`
+   set `dc_reachable=True`. On a live cluster the healthy state still leaves
+   `ms_ldap` at `undetermined`, and entries persist after DCs stop answering, so
+   counting misses the failure this check exists to catch.
+2. **CIFS enabled was treated as AD-joined.** A real workgroup SVM produced the
+   contradictory `is_ad_joined=True, ad_domain=None`, which also made the DC check
+   that followed it meaningless.
+
+Verification changed nothing that existed: a temporary function reusing the deployed
+Lambda's role, subnet and security group, deleted afterwards. The cluster saw only
+GETs.
 
 ---
 
