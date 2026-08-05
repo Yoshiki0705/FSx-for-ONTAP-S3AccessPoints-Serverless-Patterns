@@ -20,9 +20,9 @@ AD-joined SVMs require Active Directory Domain Controller (AD DC) connectivity f
 
 | You need | Where to find it |
 |----------|-----------------|
-| FSx for ONTAP file system (deployed) | AWS Console → FSx → ONTAP |
+| FSx for ONTAP file system (deployed) | AWS Console → Amazon FSx → ONTAP |
 | SVM joined to Active Directory | `scripts/demo-ad-join-svm.sh` or AWS Console |
-| ONTAP management IP | AWS Console → FSx → File system → Administration → Management endpoint |
+| ONTAP management IP | AWS Console → Amazon FSx → File system → Administration → Management endpoint |
 | ONTAP admin credentials in Secrets Manager | `fsxn/admin` secret (created during stack deploy) |
 | IAM permissions for S3 AP operations | See [Same-Account AP Resource Policy](#same-account-ap-resource-policy) |
 
@@ -52,7 +52,7 @@ AD-joined SVMs require Active Directory Domain Controller (AD DC) connectivity f
 Run this single command to verify your AD-joined SVM is ready for S3 AP data operations:
 
 ```bash
-# Replace with your values (find mgmt IP in AWS Console → FSx → File system → Administration)
+# Replace with your values (find mgmt IP in AWS Console → Amazon FSx → File system → Administration)
 MGMT_IP="<your-ontap-mgmt-ip>"
 SVM_NAME="<your-svm-name>"
 CREDS="fsxadmin:<your-password>"
@@ -187,7 +187,7 @@ FsxToAdSecurityGroupRule:
 # Use !Ref AdControllerSecurityGroup or specific CIDR for AD DC IPs
 ```
 
-> **Network note**: These rules are for FSx ENIs → AD DCs. Lambda functions accessing S3 AP do NOT need these ports — they communicate via the S3 API layer, not directly with AD.
+> **Network note**: These rules are for SVM ENIs → AD DCs. Lambda functions accessing S3 AP do NOT need these ports — they communicate via the S3 API layer, not directly with AD.
 
 ---
 
@@ -335,7 +335,7 @@ print(f"Discovered servers: {status.discovered_servers}")
 
 ```bash
 # Check AD DC discovery from ONTAP REST API
-# management IP: AWS Console → FSx → File system → Administration
+# management IP: AWS Console → Amazon FSx → File system → Administration
 curl -sku "$ONTAP_USER:$ONTAP_PASS" \
   "https://$MGMT_IP/api/protocols/cifs/domains?svm.name=$SVM_NAME&fields=discovered_servers" \
   | jq '[.records[0].discovered_servers[]
