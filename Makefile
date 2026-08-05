@@ -86,6 +86,7 @@ test:
 	$(PYTHON) -m pytest \
 		solutions/ha/lifekeeper-monitoring/tests/ \
 		--tb=short -q
+	$(PYTHON) -m pytest scripts/tests/ --tb=short -q
 
 test-quick:
 	$(PYTHON) -m pytest shared/tests/test_s3ap_helper.py shared/tests/test_properties.py shared/tests/test_fsx_helper.py --tb=short -q
@@ -149,8 +150,10 @@ lint-cfn:
 # Drift checks
 # ============================================================
 # Offline. Covers docs/, the portal docs, and drafts/blog when it exists locally.
+# The rules' own tests run under `make test` with the rest of scripts/tests; this
+# target runs them too so a rule change can be checked without the full suite.
 drift:
-	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py -q
+	$(PYTHON) -m pytest scripts/tests/test_stale_claim_rules.py --tb=short -q
 	$(PYTHON) scripts/check_portal_drift.py
 
 # Fetches the published posts from Hatena and dev.to, so it needs network and is
