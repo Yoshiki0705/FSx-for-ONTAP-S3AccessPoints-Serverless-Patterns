@@ -114,7 +114,28 @@ graph TD
 
 ハンドラ側にはこれ以外に `quiesceSnapmirror` / `resumeSnapmirror` / `updateSnapmirrorNow` / `abortSnapmirrorTransfer` / `deleteSnapmirror` もあります。共有クライアントへ移す際は、この 9 アクション全体を対象にしたほうが、一部だけ移して二重管理になるより安全です。
 
-📋 残作業: `shared/ontap_client.py` にメソッドを追加し、ハンドラ側をそれを呼ぶよう置き換える（振る舞いを変えない移設なので、既存の 191 テストが回帰検出に使えます）
+#### これは「移設」ではありません（前提の訂正）
+
+以前ここには「振る舞いを変えない移設なので、既存の 191 テストが回帰検出に使えます」と書いていました。**どちらも成り立ちません。** ハンドラの `_ontap_request` と `shared/OntapClient` は規約が異なるため、単純に差し替えると振る舞いが変わります。
+
+| 観点 | ハンドラ `_ontap_request` | `shared/OntapClient` | 差し替えた場合 |
+|---|---|---|---|
+| パス検査 | `_is_unsafe_path()` で制御文字と `..` セグメントを拒否 | **なし** | **セキュリティ後退。** SnapMirror 系は `relationshipUuid` を `_seg()` を通さず直接補間しているので、この検査が唯一の防御 |
+| エラー | 戻り値 `{"_error", "_status", "_message"}`。ONTAP の `error.message` を抽出 | `OntapClientError` を raise。生のレスポンスボディを保持 | 全呼び出し元に try/except が必要。メッセージ抽出を移さないと UI の文言が変わる |
+| TLS | `cert_reqs="CERT_NONE"` 固定 | `verify_ssl=True` 既定 → `CERT_REQUIRED` | **本番停止。** FSx for ONTAP の管理 LIF は既定で自己署名証明書。`verify_ssl=False` を明示しない限り 9 アクション全滅 |
+| 認証情報 | `data.get("username", "fsxadmin")` と既定値を許容 | `creds['username']` | `username` を持たないシークレットは現在動くが、差し替えると KeyError |
+| 空ボディ | `if body:` — `{}` は送らない | `if body is not None:` — `{}` を送る | 空ボディの PATCH の扱いが変わる |
+| タイムアウト | 未設定（無制限） | connect 10s / read 30s | 改善。ただし振る舞いの変更ではある |
+| リトライ | `Retry.DEFAULT`（total=3、PATCH/POST は対象外、DELETE は対象） | 同じ許可メソッド + backoff | 実質同一。backoff が加わるだけ（urllib3 2.7.0 で確認） |
+
+「既存テストが回帰検出に使える」も誤りです。最も危険な TLS とタイムアウトは、トランスポートをスタブした単体テストでは一度も踏まれません（`resource-management/tests/test_handler.py` の `_ontap_request` 参照は 2 箇所）。
+
+📋 残作業（この順序で）:
+
+1. `OntapClient._request()` にパス検査を追加する — 現在 `OntapClient` を使っている全パターンにとっても防御の追加になる
+2. 9 メソッドを `OntapClient` に追加する（HTTP パスとレスポンスのフィールド対応のみ。入力検証・`confirm` ゲート・監査ログ・camelCase 整形はハンドラの責務として残す）
+3. ハンドラ側を置き換える。`verify_ssl=False` を明示し、`OntapClientError` を既存のエラー戻り値形へ変換する 1 箇所のヘルパーを通す
+4. 実クラスタで 9 アクションを確認する。TLS とタイムアウトは単体テストでは検証できない
 
 ---
 
