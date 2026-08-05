@@ -107,6 +107,21 @@ sam build && sam deploy --parameter-overrides \
 
 ---
 
+## Success Metrics
+
+| Outcome | Metric | Target | Human Review |
+|---------|--------|--------|:------------:|
+| Retention compliance | `RetentionCompliancePercent` | 100% | ✅ |
+| Unneeded snapshots reduced | `ExpiredSnapshotSizeGB` | Trending down | ✅ |
+| Policy drift resolved | `PolicyDriftVolumeCount` | 0 | ✅ |
+| Detection latency | Time from drift to detection | Within the schedule interval | — |
+| Execution stability | Workflow success rate | > 99% | — |
+
+> **What the compliance figure means**: `RetentionCompliancePercent` is the share of
+> volumes matching their *configured* retention policy. **It is not a judgement on
+> whether a legal retention requirement is met.** Whether the configured period
+> itself satisfies regulation is a question for your compliance function.
+
 ## Testing
 
 ```bash
@@ -136,3 +151,11 @@ make test-ops4
 | ONTAP Snapshot Policy (native) | This pattern **audits compliance** with the policy. Policy configuration is ONTAP native. |
 | [NetApp/FSx-ONTAP-monitoring](https://github.com/NetApp/FSx-ONTAP-monitoring) | Monitoring only. This pattern adds retention compliance + drift detection + AI recommendations. |
 | AWS Backup | Manages backup lifecycle. This pattern is specific to ONTAP native snapshots. |
+
+## Related Documentation
+
+| Document | Contents |
+|----------|----------|
+| [operations/docs/metrics-mapping.md](../docs/metrics-mapping.md) | Metrics mapping table |
+| [operations/docs/ops-adoption-roadmap.md](../docs/ops-adoption-roadmap.md) | Phased adoption guide |
+| [operations/docs/existing-solutions-reference.md](../docs/existing-solutions-reference.md) | Comparison with existing solutions |

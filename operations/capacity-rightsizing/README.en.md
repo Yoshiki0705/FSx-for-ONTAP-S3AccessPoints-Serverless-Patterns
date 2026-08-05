@@ -126,6 +126,20 @@ s3://{stack-name}-reports-{account-id}/
 
 ---
 
+## Success Metrics
+
+| Outcome | Metric | Target | Human Review |
+|---------|--------|--------|:------------:|
+| Capacity exhaustion prevented | Days left above the utilization threshold | 0 days | ✅ |
+| Over-provisioning reduced | Cumulative `MonthlyCostDeltaUSD` | Negative (a saving) | ✅ |
+| Utilization visibility | Share of volumes with retrievable metrics | 100% | — |
+| Recommendation quality | Share of recommendations adopted | > 60% | ✅ |
+| Execution stability | Workflow success rate | > 99% | — |
+
+> **On these targets**: they are operational guides, not benchmark results.
+> `MonthlyCostDeltaUSD` is an estimate based on the unit prices supplied as
+> template parameters — it is not an AWS billing figure.
+
 ## Testing
 
 ```bash
