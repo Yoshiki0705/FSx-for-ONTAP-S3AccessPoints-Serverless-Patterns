@@ -1172,3 +1172,102 @@ class TestTtlCeiling:
 
         assert error is None
         assert hours == 720
+
+
+class TestRetentionPolicyGuard:
+    """`updateRetentionPolicy` is this handler's own copy of the retention actions.
+
+    The resource management handler guards its equivalents, so without the same
+    rule here the duplicate becomes the unguarded way to set a lock. Neither
+    target has a call site in the portal UI, which is precisely why the Lambda has
+    to refuse on its own: there is no dialog in front of it.
+    """
+
+    class _RecordingHttp:
+        """Records requests so a refusal can be shown to have reached nothing."""
+
+        def __init__(self):
+            self.calls: list[tuple] = []
+
+        def request(self, method, url, **kwargs):  # pragma: no cover - not reached
+            self.calls.append((method, url, kwargs))
+            raise AssertionError("a refused operation must not reach ONTAP")
+
+    def test_snaplock_retention_refused_without_ack(self):
+        from handler import _update_retention_policy
+
+        http = self._RecordingHttp()
+        result = _update_retention_policy(http, {}, {"target": "snaplock", "days": 180})
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        # Naming the consequence is the point of the guard, not the flag itself.
+        assert "180 days" in result["error"]
+        assert "cannot be deleted or shortened" in result["error"]
+        assert http.calls == []
+
+    def test_s3_object_lock_refused_without_ack(self):
+        from handler import _update_retention_policy
+
+        http = self._RecordingHttp()
+        result = _update_retention_policy(http, {}, {"target": "s3_object_lock", "mode": "COMPLIANCE", "days": 30})
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        assert "COMPLIANCE" in result["error"]
+        assert http.calls == []
+
+    def test_ack_must_be_true_not_truthy(self):
+        """A JSON body carrying the string "true" must not satisfy the guard."""
+        from handler import _update_retention_policy
+
+        result = _update_retention_policy(
+            self._RecordingHttp(),
+            {},
+            {"target": "snaplock", "days": 180, "acknowledgeIrreversible": "true"},
+        )
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+
+    @pytest.mark.parametrize(
+        ("event", "expected"),
+        [
+            ({"target": "nonsense", "days": 30}, "Invalid target"),
+            ({"target": "snaplock", "days": 0}, "days must be > 0"),
+            ({"target": "s3_object_lock", "days": 30, "mode": "LENIENT"}, "Invalid mode"),
+        ],
+    )
+    def test_validation_runs_before_the_guard(self, event, expected):
+        """A malformed request hears what is wrong with it, not about the flag.
+
+        Otherwise the acknowledgement masks every input error behind it, and the
+        operator sets the flag in order to find out what they got wrong — which is
+        the opposite of what the flag is for.
+        """
+        from handler import _update_retention_policy
+
+        result = _update_retention_policy(self._RecordingHttp(), {}, event)
+
+        assert result["success"] is False
+        assert expected in result["error"]
+        assert "acknowledgeIrreversible" not in result["error"]
+
+    def test_ack_lets_the_operation_proceed(self):
+        """With the flag the guard steps aside and the real call is attempted."""
+        from handler import _update_retention_policy
+
+        with patch("handler._get_volume_uuid", return_value="uuid-1"):
+            http = MagicMock()
+            http.request.return_value = MagicMock(status=200)
+            result = _update_retention_policy(
+                http,
+                {},
+                {"target": "snaplock", "days": 180, "acknowledgeIrreversible": True},
+            )
+
+        assert result["success"] is True
+        method, url = http.request.call_args[0][0], http.request.call_args[0][1]
+        assert method == "PATCH"
+        assert "uuid-1" in url
+        assert json.loads(http.request.call_args[1]["body"]) == {"snaplock": {"retention": {"default": "P180D"}}}

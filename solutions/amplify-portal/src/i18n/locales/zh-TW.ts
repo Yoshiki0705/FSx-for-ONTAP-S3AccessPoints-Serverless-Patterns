@@ -376,6 +376,8 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
   rmSnapCount: "保留數量",
   rmSnapRetention: "保留期",
   rmSnapRetentionHint: "ISO 8601 格式：P30D = 30天，P1Y = 1年（在 Tamperproof 磁碟區上作為鎖定時長套用）",
+  rmSnapRetentionInvalid:
+    "保留期格式不正確。請使用 ISO 8601 期間格式，例如 P30D、P6M 或 P1Y。",
   rmSnapNoPolicies: "未找到快照原則",
   rmSnapTamperproofDesc: "啟用 Tamperproof Snapshot 後可為快照設定到期時間進行鎖定。鎖定的快照在保留期到期前任何人（包括管理員）都無法刪除。",
   rmSnapVolumeUuid: "磁碟區 UUID",
@@ -1278,6 +1280,16 @@ arpResponseSweepNote: "封鎖會在設定的期限過後自動解除。如需提
     "此後存入的物件在 {date}（{days} 天）之前無法刪除。",
   slcS3FutureObjectsOnly:
     "不適用於現有物件。適用於設定之後存入的物件。",
+  slcPolicyNoRetention:
+    "未設定保留期，因此此原則建立的 Snapshot 不會被鎖定，可作為一般 Snapshot 刪除。",
+  slcPolicyEverySnapshotLocked:
+    "這不是一次性鎖定。此原則依 {schedule} 排程建立的 Snapshot，此後都會被鎖定 {period}。",
+  slcPolicyFirstSnapshotUntil:
+    "排程下一次建立的 Snapshot 在 {date} 之前無法刪除。之後的 Snapshot 隨排程順延。",
+  slcPolicyCountNotACap:
+    "保留數量 {count} 不再起到上限作用。已鎖定的 Snapshot 無法在輪替中刪除，因此在到期前會超出 {count} 累積，並佔用相應容量。",
+  slcPolicyStoppable:
+    "原則本身可以復原。刪除保留期、切換原則或解除關聯均可停止新的鎖定。已鎖定的 Snapshot 會保留至到期。",
 
   // --- Shared / misc ---
   processing: "處理中...",

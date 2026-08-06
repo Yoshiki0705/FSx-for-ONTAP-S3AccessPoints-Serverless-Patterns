@@ -385,6 +385,8 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   rmSnapCount: "Retention Count",
   rmSnapRetention: "Retention Period",
   rmSnapRetentionHint: "ISO 8601 format: P30D = 30 days, P1Y = 1 year (applied as lock duration on Tamperproof volumes)",
+  rmSnapRetentionInvalid:
+    "The retention period is not a valid format. Use an ISO 8601 period, for example P30D, P6M or P1Y.",
   rmSnapNoPolicies: "No snapshot policies found",
   rmSnapTamperproofDesc: "Enabling Tamperproof Snapshot allows you to lock snapshots with an expiry time. Locked snapshots cannot be deleted by anyone — including administrators — until the retention period expires.",
   rmSnapVolumeUuid: "Volume UUID",
@@ -1316,6 +1318,16 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
     "Objects stored from now on cannot be deleted until {date} ({days} days).",
   slcS3FutureObjectsOnly:
     "Existing objects are unaffected. This applies to objects stored after the change.",
+  slcPolicyNoRetention:
+    "No retention period is set, so snapshots this policy takes will not be locked. They can be deleted as ordinary snapshots.",
+  slcPolicyEverySnapshotLocked:
+    "This is not one lock. Every snapshot this policy takes on the {schedule} schedule will be locked for {period}, from now on.",
+  slcPolicyFirstSnapshotUntil:
+    "The next snapshot the schedule takes cannot be deleted until {date}. Later ones move forward with the schedule.",
+  slcPolicyCountNotACap:
+    "The count of {count} stops acting as a limit. A locked snapshot cannot be rotated out, so locked snapshots accumulate past {count} until they expire, consuming that much capacity.",
+  slcPolicyStoppable:
+    "The policy itself can be undone. Removing the retention period, switching policy or detaching it stops new locks. Snapshots already locked remain until they expire.",
 
   // --- Shared / misc ---
   processing: "Processing...",

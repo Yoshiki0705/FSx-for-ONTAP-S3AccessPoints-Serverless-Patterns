@@ -7,7 +7,11 @@ import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { VolumeSelector } from "./VolumeSelector";
 import { parseResponse } from "../../utils/parseResponse";
-import type { SnaplockIntent } from "../../utils/snaplockConsequences";
+import {
+  isZeroPeriod,
+  parseIsoPeriod,
+  type SnaplockIntent,
+} from "../../utils/snaplockConsequences";
 
 const client = generateClient<Schema>();
 
@@ -103,12 +107,46 @@ export function SnapshotAdminManager() {
     actionError ??
     errorMessage(policiesQuery.error ?? lockQuery.error, t("rmLoadFailed"));
 
+  /**
+   * A retention period on a policy is the recurring form of a snapshot lock:
+   * every snapshot the schedule takes is locked, without anyone present to
+   * approve each one. The field is free text, so it is validated here first —
+   * previously `P99Y` was accepted silently and would have locked every
+   * snapshot for a century.
+   *
+   * With no retention this is an ordinary policy, so it submits directly rather
+   * than asking about consequences it does not have.
+   */
+  const handleCreatePolicyClick = () => {
+    if (!policyName) { setError(t("rmSnapPolicyNameRequired")); return; }
+
+    const trimmed = policyRetention.trim();
+    if (!trimmed) { setError(null); void handleCreatePolicy(); return; }
+
+    const period = parseIsoPeriod(trimmed);
+    if (!period) { setError(t("rmSnapRetentionInvalid")); return; }
+    if (isZeroPeriod(period)) { setError(null); void handleCreatePolicy(); return; }
+
+    setError(null);
+    setPendingSnaplock({
+      kind: "snapshotPolicyRetention",
+      policyName,
+      retentionPeriod: trimmed,
+      schedule: policySchedule,
+      count: policyCount,
+    });
+  };
+
   const handleCreatePolicy = async () => {
     if (!policyName) { setError(t("rmSnapPolicyNameRequired")); return; }
     try {
+      const retention = policyRetention.trim();
       const response = await client.mutations.adminMutation({ action: "createSnapshotPolicy", params: JSON.stringify({
         name: policyName, comment: policyComment,
-        schedules: JSON.stringify([{ schedule: policySchedule, count: policyCount, retentionPeriod: policyRetention || undefined }]),
+        schedules: JSON.stringify([{ schedule: policySchedule, count: policyCount, retentionPeriod: retention || undefined }]),
+        // Only sent when a retention period makes the policy lock snapshots;
+        // the backend refuses that combination without it.
+        ...(retention ? { acknowledgeIrreversible: true } : {}),
       }) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
@@ -157,8 +195,12 @@ export function SnapshotAdminManager() {
           intent={pendingSnaplock}
           onCancel={() => setPendingSnaplock(null)}
           onConfirm={() => {
+            const intent = pendingSnaplock;
             setPendingSnaplock(null);
-            void handleEnableLocking();
+            // This panel raises two different intents, so the confirmation has
+            // to dispatch rather than assume which one is pending.
+            if (intent.kind === "snapshotPolicyRetention") void handleCreatePolicy();
+            else void handleEnableLocking();
           }}
         />
       )}
@@ -218,7 +260,7 @@ export function SnapshotAdminManager() {
                 <label>{t("rmShareComment")}</label>
                 <input type="text" value={policyComment} onChange={(e) => setPolicyComment(e.target.value)} placeholder={t("labelOptional")} />
               </div>
-              <button onClick={handleCreatePolicy} className="btn-primary">{t("rmCreate")}</button>
+              <button onClick={handleCreatePolicyClick} className="btn-primary">{t("rmCreate")}</button>
               <button onClick={() => setShowCreatePolicy(false)} className="btn-secondary">{t("cancel")}</button>
             </div>
           )}

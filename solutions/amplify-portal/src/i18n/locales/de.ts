@@ -376,6 +376,8 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   rmSnapCount: "Aufbewahrungsanzahl",
   rmSnapRetention: "Aufbewahrungsfrist",
   rmSnapRetentionHint: "ISO 8601-Format: P30D = 30 Tage, P1Y = 1 Jahr (wird als Sperrdauer auf Tamperproof-Volumes angewendet)",
+  rmSnapRetentionInvalid:
+    "Die Aufbewahrungsfrist hat kein gültiges Format. Verwenden Sie eine ISO 8601-Dauer, zum Beispiel P30D, P6M oder P1Y.",
   rmSnapNoPolicies: "Keine Snapshot-Richtlinien gefunden",
   rmSnapTamperproofDesc: "Die Aktivierung von Tamperproof Snapshot ermöglicht das Sperren von Snapshots mit einer Ablaufzeit. Gesperrte Snapshots können von niemandem — einschließlich Administratoren — gelöscht werden, bis die Aufbewahrungsfrist abläuft.",
   rmSnapVolumeUuid: "Volume-UUID",
@@ -1288,6 +1290,16 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
     "Ab jetzt gespeicherte Objekte können bis {date} ({days} Tage) nicht gelöscht werden.",
   slcS3FutureObjectsOnly:
     "Bestehende Objekte sind nicht betroffen. Dies gilt für Objekte, die nach der Änderung gespeichert werden.",
+  slcPolicyNoRetention:
+    "Es ist keine Aufbewahrungsdauer gesetzt, daher werden Snapshots dieser Richtlinie nicht gesperrt. Sie lassen sich wie gewöhnliche Snapshots löschen.",
+  slcPolicyEverySnapshotLocked:
+    "Dies ist keine einmalige Sperre. Jeder Snapshot, den diese Richtlinie im Zeitplan {schedule} erstellt, wird ab jetzt für {period} gesperrt.",
+  slcPolicyFirstSnapshotUntil:
+    "Der nächste Snapshot des Zeitplans kann bis {date} nicht gelöscht werden. Spätere verschieben sich mit dem Zeitplan.",
+  slcPolicyCountNotACap:
+    "Die Anzahl {count} wirkt nicht mehr als Grenze. Ein gesperrter Snapshot kann nicht rotiert werden, daher sammeln sich gesperrte Snapshots bis zum Ablauf über {count} hinaus an und belegen entsprechend Kapazität.",
+  slcPolicyStoppable:
+    "Die Richtlinie selbst ist umkehrbar. Aufbewahrungsdauer entfernen, Richtlinie wechseln oder lösen stoppt neue Sperren. Bereits gesperrte Snapshots bleiben bis zum Ablauf.",
 
   // --- Shared / misc ---
   processing: "Wird verarbeitet...",

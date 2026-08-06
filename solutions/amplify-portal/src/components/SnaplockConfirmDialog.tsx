@@ -17,8 +17,8 @@ import {
   SNAPLOCK_CONFIRM_KEYWORD,
   confirmationLevel,
   describeConsequences,
+  headlineUntil,
   intentSubject,
-  lockedUntil,
   type SnaplockConsequence,
   type SnaplockIntent,
   type SnaplockSeverity,
@@ -66,7 +66,7 @@ export function SnaplockConfirmDialog({
   const at = now ?? new Date();
   const consequences = describeConsequences(intent, at);
   const level = confirmationLevel(intent);
-  const until = lockedUntil(intent, at);
+  const until = headlineUntil(intent, at);
 
   const ready =
     level === "keyword" ? typed.trim() === SNAPLOCK_CONFIRM_KEYWORD : acknowledged;

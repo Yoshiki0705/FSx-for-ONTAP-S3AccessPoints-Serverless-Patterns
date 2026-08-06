@@ -376,6 +376,8 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   rmSnapCount: "保留数量",
   rmSnapRetention: "保留期",
   rmSnapRetentionHint: "ISO 8601 格式：P30D = 30天，P1Y = 1年（在 Tamperproof 卷上作为锁定时长应用）",
+  rmSnapRetentionInvalid:
+    "保留期格式不正确。请使用 ISO 8601 期间格式，例如 P30D、P6M 或 P1Y。",
   rmSnapNoPolicies: "未找到快照策略",
   rmSnapTamperproofDesc: "启用 Tamperproof Snapshot 后可为快照设置过期时间进行锁定。锁定的快照在保留期到期前任何人（包括管理员）都无法删除。",
   rmSnapVolumeUuid: "卷 UUID",
@@ -1278,6 +1280,16 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
     "此后存入的对象在 {date}（{days} 天）之前无法删除。",
   slcS3FutureObjectsOnly:
     "不适用于现有对象。适用于设置之后存入的对象。",
+  slcPolicyNoRetention:
+    "未设置保留期，因此此策略创建的 Snapshot 不会被锁定，可作为普通 Snapshot 删除。",
+  slcPolicyEverySnapshotLocked:
+    "这不是一次性锁定。此策略按 {schedule} 计划创建的 Snapshot，此后都会被锁定 {period}。",
+  slcPolicyFirstSnapshotUntil:
+    "计划下一次创建的 Snapshot 在 {date} 之前无法删除。之后的 Snapshot 随计划顺延。",
+  slcPolicyCountNotACap:
+    "保留数量 {count} 不再起到上限作用。已锁定的 Snapshot 无法在轮换中删除，因此在到期前会超出 {count} 累积，并占用相应容量。",
+  slcPolicyStoppable:
+    "策略本身可以撤销。删除保留期、切换策略或解除关联均可停止新的锁定。已锁定的 Snapshot 会保留至到期。",
 
   // --- Shared / misc ---
   processing: "处理中...",
