@@ -314,24 +314,30 @@ function DocxPreviewPane({ url }: { url: string }) {
   const [rendering, setRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
 
-  const containerCallback = useCallback(async (node: HTMLDivElement | null) => {
+  const containerCallback = useCallback((node: HTMLDivElement | null) => {
     if (!node || rendering) return;
     setRendering(true);
 
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
-      const blob = await response.blob();
+    // Not an async callback: React 19 lets a ref callback return a cleanup
+    // function, so returning a Promise is both a type error and a promise
+    // nobody observes. Start the work explicitly instead. The catch below is
+    // inside the async body, so no rejection escapes.
+    void (async () => {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+        const blob = await response.blob();
 
-      // Dynamic import to avoid bundling docx-preview when unused
-      const { renderAsync } = await import("docx-preview");
-      await renderAsync(blob, node, undefined, {
-        className: "docx-preview-content",
-        inWrapper: true,
-      });
-    } catch (err) {
-      setRenderError(err instanceof Error ? err.message : "Failed to render document");
-    }
+        // Dynamic import to avoid bundling docx-preview when unused
+        const { renderAsync } = await import("docx-preview");
+        await renderAsync(blob, node, undefined, {
+          className: "docx-preview-content",
+          inWrapper: true,
+        });
+      } catch (err) {
+        setRenderError(err instanceof Error ? err.message : "Failed to render document");
+      }
+    })();
   }, [url, rendering]);
 
   if (renderError) {

@@ -78,7 +78,7 @@ export function FileExplorer({
   /** PHI/PII path detection — blocks AI processing for regulated data folders */
   const isPhiPath = (path: string): boolean => {
     const lower = path.toLowerCase();
-    return /\/(dicom|phi|pii|hipaa|protected-health)[\/-]/.test(`/${lower}`) ||
+    return /\/(dicom|phi|pii|hipaa|protected-health)[/-]/.test(`/${lower}`) ||
            lower.startsWith("dicom/") || lower.startsWith("phi/") || lower.startsWith("pii/");
   };
 
@@ -116,7 +116,6 @@ export function FileExplorer({
   // the same request re-opens the folder instead of doing nothing.
   useEffect(() => {
     setCurrentPrefix(initialPrefix);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrefix, prefixNonce]);
 
   const navigateToFolder = (folderKey: string) => {
