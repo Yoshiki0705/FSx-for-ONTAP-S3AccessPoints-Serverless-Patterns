@@ -252,6 +252,20 @@ jobs:
         run: npm run lint
       - name: Run vitest
         run: npx vitest run
+      # src/main.tsx imports ../amplify_outputs.json, which `ampx sandbox`
+      # generates and .gitignore excludes — so `npm run build` cannot resolve it
+      # on a clean checkout, only on a machine that has already deployed a
+      # sandbox. The import already carries a @ts-ignore acknowledging the file
+      # "may not exist before first sandbox deploy".
+      #
+      # A placeholder is enough here: the build only needs the module to resolve.
+      # The real values are read at runtime by Amplify.configure(), which this
+      # job never reaches.
+      - name: Create amplify_outputs placeholder (build-time only)
+        run: |
+          if [ ! -f amplify_outputs.json ]; then
+            echo '{"version":"1.4"}' > amplify_outputs.json
+          fi
       # tsc does not exercise the CSS pipeline. Vite 8 minifies with
       # lightningcss, which rejects malformed CSS that esbuild used to tolerate,
       # so a build is the only step that catches it.
