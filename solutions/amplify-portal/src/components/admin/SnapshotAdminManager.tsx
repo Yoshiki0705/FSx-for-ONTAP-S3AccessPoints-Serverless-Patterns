@@ -4,20 +4,16 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
+import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { VolumeSelector } from "./VolumeSelector";
 import { parseResponse } from "../../utils/parseResponse";
+import type { SnaplockIntent } from "../../utils/snaplockConsequences";
 
 const client = generateClient<Schema>();
 
-/**
- * The word the operator has to type to confirm enabling locking.
- *
- * Deliberately not translated and deliberately not left inside the prompt text:
- * the comparison below is against this exact string, so a locale that rendered
- * a translated word would ask for one thing and accept another. Interpolating it
- * into the message keeps the two in step.
- */
-const ENABLE_KEYWORD = "ENABLE";
+// The typed keyword now lives with the confirmation dialog, as
+// SNAPLOCK_CONFIRM_KEYWORD, so that every irreversible SnapLock action asks for
+// the same word instead of each panel choosing its own.
 
 // Parse the JSON string response from generic dispatch endpoints
 
@@ -56,6 +52,8 @@ export function SnapshotAdminManager() {
   const [actionError, setActionError] = useState<string | null>(null);
   const setError = setActionError;
   const [result, setResult] = useState<string | null>(null);
+  /** Set while the consequence dialog is open; null when nothing is pending. */
+  const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
   const [showCreatePolicy, setShowCreatePolicy] = useState(false);
   const [volumeUuid, setVolumeUuid] = useState("");
 
@@ -123,19 +121,25 @@ export function SnapshotAdminManager() {
     } catch (err) { setError(err instanceof Error ? err.message : t("rmActionFailed")); }
   };
 
+  /**
+   * Enabling locking cannot be undone, so it goes through the consequence
+   * dialog. That replaces a `window.prompt` which asked for a keyword but could
+   * not show what enabling actually does, and which the browser renders as a
+   * bare unstyled box with no room for the explanation.
+   */
+  const handleEnableLockingClick = () => {
+    if (!volumeUuid) return;
+    setError(null);
+    setPendingSnaplock({
+      kind: "enableSnapshotLocking",
+      volumeName: lockConfig?.volumeName || volumeUuid,
+    });
+  };
+
   const handleEnableLocking = async () => {
     if (!volumeUuid) return;
-    // Multi-step safety confirmation — enabling locking on a Compliance volume is IRREVERSIBLE
-    const confirmed = window.prompt(
-      t("rmSnapLockConfirm").replace("{keyword}", ENABLE_KEYWORD),
-      ""
-    );
-    if (confirmed !== ENABLE_KEYWORD) {
-      setError(t("rmSnapLockCancelled").replace("{keyword}", ENABLE_KEYWORD));
-      return;
-    }
     try {
-      const response = await client.mutations.adminMutation({ action: "enableSnapshotLocking", params: JSON.stringify({volumeUuid, enabled: true}) });
+      const response = await client.mutations.adminMutation({ action: "enableSnapshotLocking", params: JSON.stringify({volumeUuid, enabled: true, acknowledgeIrreversible: true}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setResult(t("rmSnapLockingEnabled")); clearResult(); loadLockingStatus(); }
@@ -148,6 +152,16 @@ export function SnapshotAdminManager() {
 
   return (
     <div className="admin-panel">
+      {pendingSnaplock && (
+        <SnaplockConfirmDialog
+          intent={pendingSnaplock}
+          onCancel={() => setPendingSnaplock(null)}
+          onConfirm={() => {
+            setPendingSnaplock(null);
+            void handleEnableLocking();
+          }}
+        />
+      )}
       <div className="panel-header">
         <h3>{t("rmSnapshotAdmin")}</h3>
         <div className="panel-actions">
@@ -268,7 +282,7 @@ export function SnapshotAdminManager() {
               </div>
 
               {!lockConfig.snapshotLockingEnabled && (
-                <button onClick={handleEnableLocking} className="btn-primary" style={{ marginTop: "1rem" }}>
+                <button onClick={handleEnableLockingClick} className="btn-primary" style={{ marginTop: "1rem" }}>
                   🔒 {t("rmSnapEnableLocking")}
                 </button>
               )}

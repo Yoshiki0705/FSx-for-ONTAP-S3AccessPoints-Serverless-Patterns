@@ -4,8 +4,10 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { errorMessage, unwrap } from "../../lib/portalQuery";
+import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { durationLabel, durationRange } from "../../utils/duration";
 import { parseResponse } from "../../utils/parseResponse";
+import type { SnaplockIntent } from "../../utils/snaplockConsequences";
 
 const client = generateClient<Schema>();
 
@@ -44,6 +46,9 @@ export function VolumeManager() {
   const [customRetentionNum, setCustomRetentionNum] = useState("30");
   const [customRetentionUnit, setCustomRetentionUnit] = useState("D");
 
+  /** Set while the consequence dialog is open; null when nothing is pending. */
+  const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
+
   const {
     data: volumes = [],
     isPending: loading,
@@ -63,6 +68,31 @@ export function VolumeManager() {
   const error = actionError ?? errorMessage(queryError, "Failed to load volumes");
 
 
+  /** The retention default as it will be sent, resolving the custom row. */
+  const resolvedRetentionDefault = () =>
+    newRetentionDefault === "custom"
+      ? `P${customRetentionNum}${customRetentionUnit}`
+      : newRetentionDefault;
+
+  /**
+   * A SnapLock volume cannot be un-SnapLocked, and once it holds an unexpired
+   * WORM file the SVM and file system stop being deletable too. So the create
+   * button routes through the consequence dialog instead of submitting, and
+   * only a plain volume submits directly.
+   */
+  const handleCreateClick = () => {
+    if (!newName) { setError(t("rmVolumeNameRequired")); return; }
+    if (newSnaplockType === "none") { void handleCreate(); return; }
+    setError(null);
+    setPendingSnaplock({
+      kind: "createSnaplockVolume",
+      volumeName: newName,
+      snaplockType: newSnaplockType as "compliance" | "enterprise",
+      retentionDefault: resolvedRetentionDefault(),
+      retentionMax: newRetentionMax,
+    });
+  };
+
   const handleCreate = async () => {
     if (!newName) { setError(t("rmVolumeNameRequired")); return; }
     setActionResult(null);
@@ -72,9 +102,12 @@ export function VolumeManager() {
         sizeGiB: newSize,
         securityStyle: newStyle,
         snaplockType: newSnaplockType !== "none" ? newSnaplockType : undefined,
-        retentionDefault: newSnaplockType !== "none" ? (newRetentionDefault === "custom" ? `P${customRetentionNum}${customRetentionUnit}` : newRetentionDefault) : undefined,
+        retentionDefault: newSnaplockType !== "none" ? resolvedRetentionDefault() : undefined,
         retentionMin: newSnaplockType !== "none" ? newRetentionMin : undefined,
         retentionMax: newSnaplockType !== "none" ? newRetentionMax : undefined,
+        // The backend refuses SnapLock settings without this, so a caller that
+        // bypasses the dialog cannot create a lock either.
+        acknowledgeIrreversible: newSnaplockType !== "none" ? true : undefined,
       }) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
@@ -119,6 +152,16 @@ export function VolumeManager() {
 
   return (
     <div className="admin-panel">
+      {pendingSnaplock && (
+        <SnaplockConfirmDialog
+          intent={pendingSnaplock}
+          onCancel={() => setPendingSnaplock(null)}
+          onConfirm={() => {
+            setPendingSnaplock(null);
+            void handleCreate();
+          }}
+        />
+      )}
       <div className="panel-header">
         <h3>{t("rmVolumes")}</h3>
         <div className="panel-actions">
@@ -218,7 +261,7 @@ export function VolumeManager() {
               </>
             )}
           </div>
-          <button onClick={handleCreate} className="btn-primary">{t("rmCreate")}</button>
+          <button onClick={handleCreateClick} className="btn-primary">{t("rmCreate")}</button>
           <button onClick={() => setShowCreateForm(false)} className="btn-secondary">{t("cancel")}</button>
         </div>
       )}

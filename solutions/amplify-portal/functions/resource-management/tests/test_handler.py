@@ -2304,3 +2304,281 @@ class TestRequestPathSafety:
 
         urls = [url for _m, url, _k in mock_http.calls]
         assert any("svm1%26fields%3Duuid" in u for u in urls), urls
+
+
+# --- Irreversible-operation acknowledgement ----------------------------------
+#
+# The portal shows a dialog stating what becomes undeletable and until when, but
+# that dialog is client-side. These tests hold the server side of it: the lock
+# must not be creatable by a caller that never saw the consequences, whether that
+# is a script, a direct AppSync call, or an agent.
+#
+# Each case asserts both directions. Asserting only the refusal would pass just
+# as well if the guard rejected everything, and asserting only the success would
+# pass if the guard were removed.
+
+
+class TestIrreversibleAcknowledgement:
+    def test_snaplock_volume_refused_without_ack(self, mock_secrets):
+        from handler import handler
+
+        mock_http = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+
+            result = handler(
+                {
+                    "action": "createVolume",
+                    "name": "worm_vol",
+                    "sizeGiB": 50,
+                    "snaplockType": "enterprise",
+                    "retentionDefault": "P30D",
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        # The refusal has to name the effect, not just demand a flag.
+        assert "cannot be deleted" in result["error"]
+        # Nothing may reach ONTAP: a refusal that still created the volume would
+        # be worse than no guard at all.
+        assert not any(method == "POST" for method, _url, _kwargs in mock_http.calls)
+
+    def test_snaplock_volume_created_with_ack(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+
+            result = handler(
+                {
+                    "action": "createVolume",
+                    "name": "worm_vol",
+                    "sizeGiB": 50,
+                    "snaplockType": "enterprise",
+                    "retentionDefault": "P30D",
+                    "acknowledgeIrreversible": True,
+                },
+                None,
+            )
+
+        assert result["success"] is True
+
+    def test_plain_volume_needs_no_ack(self, mock_secrets):
+        """The guard is scoped to SnapLock, so ordinary volume work is unchanged."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+
+            result = handler(
+                {"action": "createVolume", "name": "plain_vol", "sizeGiB": 50},
+                None,
+            )
+
+        assert result["success"] is True
+
+    def test_ack_must_be_true_not_truthy(self, mock_secrets):
+        """A string body would make `if event.get(...)` pass; the check is `is True`."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp({"/storage/volumes": {"status": 202, "data": {}}})
+
+            result = handler(
+                {
+                    "action": "createVolume",
+                    "name": "worm_vol",
+                    "sizeGiB": 50,
+                    "snaplockType": "compliance",
+                    "acknowledgeIrreversible": "true",
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+
+    def test_retention_update_refused_without_ack(self, mock_secrets):
+        from handler import handler
+
+        mock_http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+
+            result = handler(
+                {"action": "updateSnaplockRetention", "volumeUuid": "uuid-1", "days": 30},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        assert "30 days" in result["error"]
+        assert not any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
+
+    def test_retention_update_applied_with_ack(self, mock_secrets):
+        from handler import handler
+
+        mock_http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+
+            result = handler(
+                {
+                    "action": "updateSnaplockRetention",
+                    "volumeUuid": "uuid-1",
+                    "days": 30,
+                    "acknowledgeIrreversible": True,
+                },
+                None,
+            )
+
+        assert result["success"] is True
+        assert any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
+
+    def test_enable_snapshot_locking_refused_without_ack(self, mock_secrets):
+        from handler import handler
+
+        mock_http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+
+            result = handler(
+                {"action": "enableSnapshotLocking", "volumeUuid": "uuid-1", "enabled": True},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "cannot be disabled" in result["error"]
+        assert not any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
+
+    def test_enable_snapshot_locking_allowed_with_ack(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+
+            result = handler(
+                {
+                    "action": "enableSnapshotLocking",
+                    "volumeUuid": "uuid-1",
+                    "enabled": True,
+                    "acknowledgeIrreversible": True,
+                },
+                None,
+            )
+
+        assert result["success"] is True
+
+    def test_disabling_snapshot_locking_needs_no_ack(self, mock_secrets):
+        """Only enabling creates the one-way state; disabling creates no lock."""
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+
+            result = handler(
+                {"action": "enableSnapshotLocking", "volumeUuid": "uuid-1", "enabled": False},
+                None,
+            )
+
+        # ONTAP refuses this itself; the point is that the guard is not what
+        # refused it, so the caller sees the real reason.
+        assert "acknowledgeIrreversible" not in str(result.get("error") or "")
+
+    def test_lock_snapshot_refused_without_ack(self, mock_secrets):
+        from handler import handler
+
+        mock_http = MockHttp()
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = mock_http
+
+            result = handler(
+                {
+                    "action": "lockSnapshot",
+                    "volumeUuid": "uuid-1",
+                    "snapshotUuid": "snap-1",
+                    "retentionDays": 7,
+                },
+                None,
+            )
+
+        assert result["success"] is False
+        assert "acknowledgeIrreversible" in result["error"]
+        assert "7 days" in result["error"]
+        assert not any(method == "PATCH" for method, _url, _kwargs in mock_http.calls)
+
+    def test_lock_snapshot_allowed_with_ack(self, mock_secrets):
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+
+            result = handler(
+                {
+                    "action": "lockSnapshot",
+                    "volumeUuid": "uuid-1",
+                    "snapshotUuid": "snap-1",
+                    "retentionDays": 7,
+                    "acknowledgeIrreversible": True,
+                },
+                None,
+            )
+
+        assert result["success"] is True
+
+    def test_validation_runs_before_the_guard(self, mock_secrets):
+        """A caller with a bad value should hear about the value, not the flag.
+
+        Otherwise adding the acknowledgement would mask every input error behind
+        it, and the operator would set the flag to find out what was wrong.
+        """
+        from handler import handler
+
+        with patch("handler.urllib3.PoolManager") as mock_pool:
+            mock_pool.return_value = MockHttp()
+
+            result = handler(
+                {"action": "updateSnaplockRetention", "volumeUuid": "uuid-1", "days": 0},
+                None,
+            )
+
+        assert result["success"] is False
+        assert "days must be > 0" in result["error"]
+        assert "acknowledgeIrreversible" not in result["error"]
+
+    def test_s3_object_lock_compliance_names_its_own_effect(self, mock_secrets):
+        """COMPLIANCE and GOVERNANCE differ in what the operator is agreeing to."""
+        from handler import handler
+
+        with patch("handler.boto3") as mock_boto3:
+            mock_sm = MagicMock()
+            mock_sm.get_secret_value.return_value = {
+                "SecretString": json.dumps({"username": "fsxadmin", "password": "test"})
+            }
+            mock_boto3.client.return_value = mock_sm
+
+            compliance = handler(
+                {
+                    "action": "putS3ObjectLockRetention",
+                    "bucket": "example-bucket",
+                    "mode": "COMPLIANCE",
+                    "days": 14,
+                },
+                None,
+            )
+            governance = handler(
+                {
+                    "action": "putS3ObjectLockRetention",
+                    "bucket": "example-bucket",
+                    "mode": "GOVERNANCE",
+                    "days": 14,
+                },
+                None,
+            )
+
+        assert compliance["success"] is False
+        assert "cannot be shortened or removed" in compliance["error"]
+        assert governance["success"] is False
+        assert "BypassGovernanceRetention" in governance["error"]

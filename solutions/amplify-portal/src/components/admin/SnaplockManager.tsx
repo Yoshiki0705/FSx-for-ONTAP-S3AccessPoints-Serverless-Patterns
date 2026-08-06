@@ -2,8 +2,10 @@ import { useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { SnaplockConfirmDialog } from "../SnaplockConfirmDialog";
 import { VolumeSelector } from "./VolumeSelector";
 import { parseResponse } from "../../utils/parseResponse";
+import type { SnaplockIntent } from "../../utils/snaplockConsequences";
 
 const client = generateClient<Schema>();
 
@@ -32,6 +34,8 @@ export function SnaplockManager() {
   const [result, setResult] = useState<string | null>(null);
   const [volumeInput, setVolumeInput] = useState("");
   const [retentionDays, setRetentionDays] = useState(30);
+  /** Set while the consequence dialog is open; null when nothing is pending. */
+  const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
 
   const loadConfig = async (volumeName?: string) => {
     const name = volumeName || volumeInput;
@@ -50,6 +54,21 @@ export function SnaplockManager() {
     finally { setLoading(false); }
   };
 
+  /**
+   * Raising the default retention changes how long files committed from now on
+   * stay undeletable, and an unexpired WORM file blocks the SVM and file system
+   * as well. The dialog states that before the change is sent.
+   */
+  const handleUpdateRetentionClick = () => {
+    if (!config || retentionDays <= 0) return;
+    setError(null);
+    setPendingSnaplock({
+      kind: "updateSnaplockRetention",
+      volumeName: config.volumeName,
+      retentionDefault: `P${retentionDays}D`,
+    });
+  };
+
   const handleUpdateRetention = async () => {
     if (!config || retentionDays <= 0) return;
     // Need volume UUID — fetch it
@@ -62,6 +81,7 @@ export function SnaplockManager() {
 
         const response = await client.mutations.adminMutation({ action: "updateSnaplockRetention", params: JSON.stringify({
           volumeUuid: vol.uuid, days: retentionDays,
+          acknowledgeIrreversible: true,
         }) });
         const data = parseResponse<{ success?: boolean; error?: string }>(response);
         if (data) {
@@ -76,6 +96,16 @@ export function SnaplockManager() {
 
   return (
     <div className="admin-panel">
+      {pendingSnaplock && (
+        <SnaplockConfirmDialog
+          intent={pendingSnaplock}
+          onCancel={() => setPendingSnaplock(null)}
+          onConfirm={() => {
+            setPendingSnaplock(null);
+            void handleUpdateRetention();
+          }}
+        />
+      )}
       <div className="panel-header">
         <h3>{t("rmSnaplock")}</h3>
       </div>
@@ -146,7 +176,7 @@ export function SnaplockManager() {
                     min={1} max={36500} />
                   <small>{t("rmRetentionHint")}</small>
                 </div>
-                <button onClick={handleUpdateRetention} className="btn-primary">{t("rmApply")}</button>
+                <button onClick={handleUpdateRetentionClick} className="btn-primary">{t("rmApply")}</button>
               </div>
             </div>
           )}

@@ -24,6 +24,16 @@
 #
 # To check this file still matches reality:
 #   ls -d solutions/*/*/tests operations/*/tests | sed 's:/tests$::' | sort
+#
+# The amplify-portal entries below are one level deeper than the rest, because the
+# portal keeps a tests/ directory per Lambda rather than per pattern. They are
+# listed for the same reason this file exists: their 351 tests ran in neither the
+# Makefile nor CI, so the portal's backend guards and validation were unprotected
+# against regression. The glob in the check above does not reach them — use
+#   ls -d solutions/amplify-portal/functions/*/tests | sed 's:/tests$::'
+solutions/amplify-portal/functions/audit-log
+solutions/amplify-portal/functions/data-protection
+solutions/amplify-portal/functions/resource-management
 operations/capacity-rightsizing
 operations/cost-optimization
 operations/qos-monitoring

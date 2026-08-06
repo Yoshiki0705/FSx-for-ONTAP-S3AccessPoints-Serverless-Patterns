@@ -1233,6 +1233,52 @@ arpResponseSweepNote: "阻止会在设定的期限过后自动解除。如需提
   slFailed: "生成链接失败",
   slNote: "任何持有此链接的人在过期前都可以打开该文件。请勿共享机密文件的链接。",
 
+  // --- SnapLock consequence confirmation ---
+  slcTitle: "应用此设置会发生什么",
+  slcSubject: "对象：{name}",
+  slcUntilHeadline: "在 {date} 之前无法删除",
+  slcSeeDocs: "应用设置前，请确认将无法删除的范围。",
+  slcTypeToConfirm: "此操作无法撤销。要继续，请输入 {keyword}。",
+  slcKeywordHint: "以大写输入 {keyword} 即可继续。",
+  slcAcknowledge: "我已阅读以上内容。",
+  slcCancel: "取消",
+  slcProceed: "应用",
+  slcTypeImmutable:
+    "SnapLock 类型（{type}）仅在创建时设置，之后既不能更改也不能解除。",
+  slcComplianceNoDelete:
+    "在 Compliance 下，保留期满之前任何人都无法删除。账户管理员不能，AWS 也不能。",
+  slcEnterprisePrivilegedDelete:
+    "在 Enterprise 下，仅在特权删除可用时才能删除。将 PrivilegedDelete 设为 PERMANENTLY_DISABLED 会永久失去该途径。",
+  slcWormBlocksParents:
+    "只要还存在一个未到期的 WORM 文件，此卷、其所属 SVM 以及文件系统都无法删除。",
+  slcWormMaxUntil:
+    "保留期上限为 {period}。现在提交的文件最长在 {date} 之前无法删除。",
+  slcEmptyStillDeletable:
+    "刚创建的空卷仍可删除。无法删除的起点是第一个文件被确定为 WORM 之时。",
+  slcBillingContinues:
+    "在文件系统无法删除期间，该文件系统的费用会持续产生。",
+  slcRetentionFutureFilesOnly:
+    "仅适用于此更改之后提交的文件。现有 WORM 文件的保留期不会改变。",
+  slcRetentionNewFileUntil:
+    "在此设置（{period}）下，现在提交的文件在 {date} 之前无法删除。",
+  slcRetentionZero: "保留期为 0，因此新文件不会被锁定。",
+  slcLockingCannotDisable:
+    "Snapshot 锁定一旦启用便无法停用（400 Bad Request）。",
+  slcLockingLocksNothingYet:
+    "仅启用不会锁定任何内容。只有通过策略的保留期或单独锁定才会产生锁定。",
+  slcSnapshotExtendOnly:
+    "Snapshot 锁定只能延长，既不能缩短也不能解除。",
+  slcSnapshotUntil: "此 Snapshot 在 {date}（{days} 天）之前无法删除。",
+  slcSnapshotScope: "不影响其他 Snapshot 和卷本身。",
+  slcS3ComplianceNoChange:
+    "在 COMPLIANCE 模式下，已设置的保留期既不能缩短也不能解除。",
+  slcS3GovernanceBypass:
+    "在 GOVERNANCE 模式下，拥有 s3:BypassGovernanceRetention 权限的调用方可以覆盖它。",
+  slcS3ObjectsUntil:
+    "此后存入的对象在 {date}（{days} 天）之前无法删除。",
+  slcS3FutureObjectsOnly:
+    "不适用于现有对象。适用于设置之后存入的对象。",
+
   // --- Shared / misc ---
   processing: "处理中...",
   athenaGuidanceTitle: "使用方法",

@@ -4,7 +4,9 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import { errorMessage } from "../lib/portalQuery";
+import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
 import { parseResponse } from "../utils/parseResponse";
+import type { SnaplockIntent } from "../utils/snaplockConsequences";
 
 const client = generateClient<Schema>();
 
@@ -42,6 +44,8 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
   const [lockLoading, setLockLoading] = useState(false);
   const [lockResult, setLockResult] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "tamperproof" | "scheduled" | "arp" | "manual">("all");
+  /** Set while the consequence dialog is open; null when nothing is pending. */
+  const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
   const { t } = useTranslation();
 
   const {
@@ -108,7 +112,29 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
     setLockResult(null);
   };
 
-  const submitLock = async () => {
+  /**
+   * The day count is validated here, then the consequence dialog states the
+   * resulting date and that the lock cannot be shortened or released. This
+   * dialog only collects a number; it never said what the number does.
+   */
+  const submitLock = () => {
+    if (!lockDialog) return;
+    setLockResult(null);
+
+    const days = parseInt(lockDays, 10);
+    if (isNaN(days) || days < 1 || days > 365) {
+      setLockResult("Error: Enter a value between 1 and 365 days");
+      return;
+    }
+
+    setPendingSnaplock({
+      kind: "lockSnapshot",
+      snapshotName: lockDialog.snapshotId,
+      retentionDays: days,
+    });
+  };
+
+  const performLock = async () => {
     if (!lockDialog) return;
     setLockLoading(true);
     setLockResult(null);
@@ -129,6 +155,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
       const response = await client.mutations.protectionMutation({ action: "lockSnapshot", params: JSON.stringify({
         snapshotId: lockDialog.snapshotId,
         expiryTime,
+        acknowledgeIrreversible: true,
       }) });
 
       const data = parseResponse<{ success?: boolean; error?: string; expiryTime?: string }>(response);
@@ -187,6 +214,16 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
 
   return (
     <div className="version-history">
+      {pendingSnaplock && (
+        <SnaplockConfirmDialog
+          intent={pendingSnaplock}
+          onCancel={() => setPendingSnaplock(null)}
+          onConfirm={() => {
+            setPendingSnaplock(null);
+            void performLock();
+          }}
+        />
+      )}
       {mode === "diff" && (
         <div className="version-diff-notice" style={{ padding: "1rem", background: "#fffbeb", border: "1px solid #fbbf24", borderRadius: "8px", marginBottom: "1rem" }}>
           <strong>🔄 {t("vhDiffTitle")}</strong>

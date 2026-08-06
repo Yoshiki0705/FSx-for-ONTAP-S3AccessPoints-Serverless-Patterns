@@ -4940,3 +4940,163 @@ button[type="submit"]:disabled {
   background: var(--color-bg);
   cursor: pointer;
 }
+
+/* ── SnapLock consequence confirmation dialog ───────────────────────────────
+   Severity is carried by a left border and an icon rather than by colour alone,
+   so the distinction between "cannot be undone" and "expires on its own"
+   survives greyscale printing and the common forms of colour blindness. */
+
+.slc-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  /* Above the language switcher (1001), which is the highest thing otherwise. */
+  z-index: 1100;
+}
+
+.slc-dialog {
+  background: var(--surface-color, #ffffff);
+  color: var(--text-color, #374151);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  padding: 1.5rem;
+  max-width: 40rem;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+}
+
+.slc-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+.slc-subject {
+  margin: 0 0 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+/* The date is the one value an operator can check against the console, so it is
+   given its own line and the largest type in the dialog. */
+.slc-until {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.slc-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.slc-item {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border-left: 4px solid transparent;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.slc-irreversible {
+  background: #fef2f2;
+  border-left-color: #dc2626;
+}
+
+.slc-blocksDeletion {
+  background: #fffbeb;
+  border-left-color: #d97706;
+}
+
+.slc-info {
+  background: #f8fafc;
+  border-left-color: #94a3b8;
+}
+
+.slc-icon {
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.slc-docs {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.slc-gate {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.slc-gate label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.slc-gate input[type="text"] {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+}
+
+.slc-hint {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.slc-checkbox {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.slc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Deliberately not styled as the primary action: the safe way out of this
+   dialog is cancelling, and the confirm button stays disabled until the
+   operator has typed the keyword or ticked the box. */
+.slc-proceed {
+  padding: 0.5rem 1.1rem;
+  border: 1px solid #b91c1c;
+  border-radius: 6px;
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.slc-proceed:disabled {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+}

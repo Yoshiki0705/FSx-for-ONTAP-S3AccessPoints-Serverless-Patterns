@@ -109,6 +109,21 @@ def handler(event, context):
             if not snap_uuid or not expiry_time:
                 return {"success": False, "error": "snapshotId and expiryTime required"}
 
+            # The portal shows a dialog stating the expiry date and that the lock
+            # can only be extended, but that dialog is client-side. Requiring the
+            # flag here means a direct call cannot set a lock without saying so.
+            if event.get("acknowledgeIrreversible") is not True:
+                return {
+                    "success": False,
+                    "error": (
+                        "acknowledgeIrreversible=true is required for this operation. "
+                        f"The snapshot cannot be deleted until {expiry_time}, and the "
+                        "expiry can afterwards only be extended, never shortened or "
+                        "released. See docs/tamperproof-snapshot-design.md before "
+                        "setting it."
+                    ),
+                }
+
             # Check if snapshot locking is enabled on volume
             if not vol_record.get("snapshot_locking_enabled", False):
                 return {

@@ -1281,6 +1281,53 @@ arpResponseSweepNote: "ブロックは指定した期限が過ぎると自動で
   slFailed: "リンクの生成に失敗しました",
   slNote: "このリンクを知っていれば、有効期限まで誰でもファイルにアクセスできます。機密ファイルのリンクは共有しないでください。",
 
+  // --- SnapLock consequence confirmation ---
+  slcTitle: "この設定を適用すると何が起きるか",
+  slcSubject: "対象: {name}",
+  slcUntilHeadline: "{date} まで削除できなくなります",
+  slcSeeDocs: "設定を適用する前に、削除できなくなる範囲を確認してください。",
+  slcTypeToConfirm: "取り消せない操作です。続行するには {keyword} と入力してください。",
+  slcKeywordHint: "大文字で {keyword} と入力すると続行できます。",
+  slcAcknowledge: "上記の内容を確認しました。",
+  slcCancel: "やめる",
+  slcProceed: "適用する",
+  slcTypeImmutable:
+    "SnapLock の種別（{type}）は作成時にのみ設定でき、後から変更も解除もできません。",
+  slcComplianceNoDelete:
+    "Compliance では、保持期間が満了するまで誰も削除できません。アカウント管理者も、AWS も削除できません。",
+  slcEnterprisePrivilegedDelete:
+    "Enterprise では、特権削除が有効な場合に限り削除できます。PrivilegedDelete を PERMANENTLY_DISABLED にすると、この経路も永久に失われます。",
+  slcWormBlocksParents:
+    "未満了の WORM ファイルが 1 つでも残っている間、このボリューム、所属する SVM、およびファイルシステムを削除できません。",
+  slcWormMaxUntil:
+    "上限保持期間は {period} です。今コミットされたファイルは最長 {date} まで削除できません。",
+  slcEmptyStillDeletable:
+    "作成直後の空のボリュームは削除できます。削除できなくなるのは、最初のファイルが WORM に確定した時点からです。",
+  slcBillingContinues:
+    "ファイルシステムを削除できない間、そのファイルシステムの料金は発生し続けます。",
+  slcRetentionFutureFilesOnly:
+    "変更後にコミットされるファイルにのみ適用されます。既存の WORM ファイルの保持期間は変わりません。",
+  slcRetentionNewFileUntil:
+    "この設定（{period}）では、今コミットされたファイルは {date} まで削除できません。",
+  slcRetentionZero: "保持期間が 0 のため、新規ファイルはロックされません。",
+  slcLockingCannotDisable:
+    "Snapshot ロックは有効化すると無効化できません（400 Bad Request）。",
+  slcLockingLocksNothingYet:
+    "有効化しただけでは何もロックされません。ポリシーの保持期間、または個別ロックで初めてロックが発生します。",
+  slcSnapshotExtendOnly:
+    "Snapshot のロックは延長のみ可能です。短縮も解除もできません。",
+  slcSnapshotUntil: "この Snapshot は {date}（{days} 日間）まで削除できません。",
+  slcSnapshotScope:
+    "他の Snapshot とボリューム本体には影響しません。",
+  slcS3ComplianceNoChange:
+    "COMPLIANCE モードでは、設定した保持期間を短縮も解除もできません。",
+  slcS3GovernanceBypass:
+    "GOVERNANCE モードでは、s3:BypassGovernanceRetention 権限を持つ利用者が上書きできます。",
+  slcS3ObjectsUntil:
+    "以降に格納されるオブジェクトは {date}（{days} 日間）まで削除できません。",
+  slcS3FutureObjectsOnly:
+    "既存オブジェクトには適用されません。設定後に格納されるオブジェクトが対象です。",
+
   // --- Shared / misc ---
   processing: "処理中...",
   athenaGuidanceTitle: "使い方",

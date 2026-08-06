@@ -1238,6 +1238,57 @@ arpResponseSweepNote: "Sperren heben sich nach Ablauf der Frist selbst auf. Für
   slFailed: "Link konnte nicht erzeugt werden",
   slNote: "Wer diesen Link besitzt, kann die Datei bis zum Ablauf öffnen. Geben Sie keine Links zu vertraulichen Dateien weiter.",
 
+  // --- SnapLock consequence confirmation ---
+  slcTitle: "Was diese Einstellung bewirkt",
+  slcSubject: "Ziel: {name}",
+  slcUntilHeadline: "Löschen bis {date} nicht möglich",
+  slcSeeDocs:
+    "Prüfen Sie vor dem Anwenden, was dadurch nicht mehr gelöscht werden kann.",
+  slcTypeToConfirm:
+    "Dies kann nicht rückgängig gemacht werden. Geben Sie {keyword} ein, um fortzufahren.",
+  slcKeywordHint: "Geben Sie {keyword} in Großbuchstaben ein, um fortzufahren.",
+  slcAcknowledge: "Ich habe das Obige gelesen.",
+  slcCancel: "Abbrechen",
+  slcProceed: "Anwenden",
+  slcTypeImmutable:
+    "Der SnapLock-Typ ({type}) wird nur bei der Erstellung festgelegt. Er kann danach weder geändert noch entfernt werden.",
+  slcComplianceNoDelete:
+    "Unter Compliance kann niemand vor Ablauf der Aufbewahrung löschen — auch nicht der Kontoinhaber und auch nicht AWS.",
+  slcEnterprisePrivilegedDelete:
+    "Unter Enterprise ist das Löschen nur möglich, solange privilegiertes Löschen verfügbar ist. PrivilegedDelete auf PERMANENTLY_DISABLED zu setzen entfernt diesen Weg dauerhaft.",
+  slcWormBlocksParents:
+    "Solange auch nur eine nicht abgelaufene WORM-Datei vorhanden ist, können dieses Volume, sein SVM und das Dateisystem nicht gelöscht werden.",
+  slcWormMaxUntil:
+    "Die Obergrenze der Aufbewahrung ist {period}. Eine jetzt festgeschriebene Datei kann längstens bis {date} nicht gelöscht werden.",
+  slcEmptyStillDeletable:
+    "Ein leeres Volume lässt sich direkt nach der Erstellung noch löschen. Der Punkt ohne Rückkehr ist die erste als WORM festgeschriebene Datei.",
+  slcBillingContinues:
+    "Solange das Dateisystem nicht gelöscht werden kann, laufen die Kosten dafür weiter.",
+  slcRetentionFutureFilesOnly:
+    "Gilt nur für Dateien, die nach dieser Änderung festgeschrieben werden. Die Aufbewahrung bestehender WORM-Dateien ändert sich nicht.",
+  slcRetentionNewFileUntil:
+    "Mit dieser Einstellung ({period}) kann eine jetzt festgeschriebene Datei bis {date} nicht gelöscht werden.",
+  slcRetentionZero:
+    "Die Aufbewahrung ist null, neue Dateien werden daher nicht gesperrt.",
+  slcLockingCannotDisable:
+    "Snapshot-Sperrung kann nach dem Aktivieren nicht mehr deaktiviert werden (400 Bad Request).",
+  slcLockingLocksNothingYet:
+    "Das Aktivieren allein sperrt nichts. Eine Sperre entsteht erst durch eine Aufbewahrungsdauer in der Richtlinie oder eine einzelne Sperre.",
+  slcSnapshotExtendOnly:
+    "Eine Snapshot-Sperre kann nur verlängert werden. Sie kann weder verkürzt noch aufgehoben werden.",
+  slcSnapshotUntil:
+    "Dieser Snapshot kann bis {date} ({days} Tage) nicht gelöscht werden.",
+  slcSnapshotScope:
+    "Andere Snapshots und das Volume selbst sind nicht betroffen.",
+  slcS3ComplianceNoChange:
+    "Im COMPLIANCE-Modus kann die Aufbewahrungsdauer weder verkürzt noch entfernt werden.",
+  slcS3GovernanceBypass:
+    "Im GOVERNANCE-Modus kann ein Aufrufer mit s3:BypassGovernanceRetention sie übergehen.",
+  slcS3ObjectsUntil:
+    "Ab jetzt gespeicherte Objekte können bis {date} ({days} Tage) nicht gelöscht werden.",
+  slcS3FutureObjectsOnly:
+    "Bestehende Objekte sind nicht betroffen. Dies gilt für Objekte, die nach der Änderung gespeichert werden.",
+
   // --- Shared / misc ---
   processing: "Wird verarbeitet...",
   athenaGuidanceTitle: "Verwendung",
