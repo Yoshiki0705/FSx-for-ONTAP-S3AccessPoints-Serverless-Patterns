@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . --max-warnings 176",
+    "lint": "eslint . --max-warnings 41",
     "sandbox": "npx ampx sandbox",
     "sandbox:delete": "npx ampx sandbox delete",
     "start": "./scripts/dev.sh",

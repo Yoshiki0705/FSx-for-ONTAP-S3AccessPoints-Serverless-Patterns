@@ -56,7 +56,7 @@ export function AgentCreator({ onCreated, onCancel }: AgentCreatorProps) {
     setError(null);
 
     try {
-      const response = await (client.queries as any).agentQuery({
+      const response = await client.queries.agentQuery({
         action: "createAgent",
         params: JSON.stringify({
           name: name.trim(),

@@ -2,16 +2,11 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface CifsShare {
   name: string;
@@ -40,7 +35,7 @@ export function CifsShareManager() {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "listCifsShares", params: JSON.stringify({}) });
+      const response = await client.queries.adminQuery({ action: "listCifsShares", params: JSON.stringify({}) });
       const data = parseResponse<{ shares?: CifsShare[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -59,7 +54,7 @@ export function CifsShareManager() {
     if (!newName || !newPath) { setError("Name and path are required"); return; }
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "createCifsShare", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "createCifsShare", params: JSON.stringify({
         name: newName, path: newPath, comment: newComment,
       }) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
@@ -78,7 +73,7 @@ export function CifsShareManager() {
   const handleDelete = async (name: string) => {
     if (!window.confirm(t("rmShareDeleteConfirm").replace("{name}", name))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "deleteCifsShare", params: JSON.stringify({name, confirm: true}) });
+      const response = await client.mutations.adminMutation({ action: "deleteCifsShare", params: JSON.stringify({name, confirm: true}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setSuccess(t("rmShareDeleted").replace("{name}", name)); clearSuccess(); loadShares(); }
@@ -90,7 +85,7 @@ export function CifsShareManager() {
   const handleToggleEncryption = async (name: string, enable: boolean) => {
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "updateCifsShare",
         params: JSON.stringify({ name, encryption: enable }),
       });

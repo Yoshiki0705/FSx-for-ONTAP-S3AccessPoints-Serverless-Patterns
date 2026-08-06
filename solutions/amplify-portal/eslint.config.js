@@ -60,33 +60,44 @@ export default tseslint.config(
         },
       ],
 
-      // The three rules below are warnings, not errors, and that is a
-      // deliberate ratchet rather than an exemption.
+      // When this config was introduced the portal had never been linted, and it
+      // reported 176 findings:
       //
-      // This config is the first time the portal has ever been linted — the
-      // `lint` script existed without a config file, so it exited 2 on every
-      // run. Turning ~170 pre-existing findings into errors would either block
-      // every future change or force a mass rewrite inside an unrelated
-      // dependency upgrade. As warnings they are visible on every run and
-      // `--max-warnings` (see package.json) pins the current count, so the
-      // number can only go down.
-      //
-      // Baseline at the time of writing — 176 warnings, matching the
-      // `--max-warnings 176` in the lint script:
-      //   @typescript-eslint/no-explicit-any   134  typing debt, mostly around
-      //                                             `client.mutations as any`
-      //                                             for Amplify-generated types
-      //   react-hooks/set-state-in-effect       32  needs per-case judgement
-      //                                             about render behaviour
-      //   react-hooks/exhaustive-deps            8  possible stale closures
+      //   @typescript-eslint/no-explicit-any   134
+      //   react-hooks/set-state-in-effect       32
+      //   react-hooks/exhaustive-deps            8
       //   react-hooks/immutability               2
       //
-      // The react-hooks findings are the ones worth real attention: they can
-      // indicate extra render passes or stale reads, not just style.
-      "@typescript-eslint/no-explicit-any": "warn",
+      // All 134 `any` and both immutability findings are now fixed, so those two
+      // rules are errors — a new one fails the build instead of joining a backlog.
+      //
+      // The 134 `any` were not suppressed one by one. 113 were
+      // `(client.queries as any)` / `(client.mutations as any)`, needed only because
+      // 30 copies of a local `parseResponse` helper declared their parameter as
+      // `{ data?: string | null }` while the schema returns `a.json()`. Removing the
+      // casts surfaced 104 type errors, all of them that single disagreement; one
+      // shared helper in src/utils/parseResponse.ts with the honest `unknown`
+      // signature resolved every one. The rest were a `TaskCard` whose key fields
+      // were `string` rather than `TranslationKeys`, callback parameters TypeScript
+      // could infer once the response type was no longer erased, and a lookup of a
+      // `window` global that nothing ever assigns.
+      "@typescript-eslint/no-explicit-any": "error",
+      "react-hooks/immutability": "error",
+      // These two remain warnings, as a ratchet rather than an exemption.
+      // `--max-warnings` in package.json pins the count, so it can only go down.
+      //
+      //   react-hooks/set-state-in-effect  33  Almost all are the fetch-on-mount
+      //       shape: `const load = async () => { setLoading(true); ... }` called
+      //       straight from a mount effect, so the first setState runs before the
+      //       first await. `loading` already initialises to `true` in these
+      //       components, which makes that call a no-op on the mount path. Clearing
+      //       them means restructuring ~30 components for a pattern that is
+      //       idiomatic, so each needs its own judgement about render behaviour.
+      //       (33, not the original 32: fixing AgentFileSidebar's immutability
+      //       finding moved its reset calls into the effect body.)
+      //   react-hooks/exhaustive-deps       8  Possible stale closures.
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/exhaustive-deps": "warn",
-      "react-hooks/immutability": "warn",
     },
   },
   {

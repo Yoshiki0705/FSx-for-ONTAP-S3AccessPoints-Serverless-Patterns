@@ -15,18 +15,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { JSX } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
-import { useTranslation } from "../i18n";
+import { useTranslation, type TranslationKeys } from "../i18n";
 import { ActionApproval, type ApprovalRequest } from "./ActionApproval";
 import { AgentFileSidebar } from "./AgentFileSidebar";
+import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 // --- Types ---
 
@@ -86,9 +80,12 @@ const AGENT_ICONS: Record<string, string> = {
 interface TaskCard {
   id: string;
   icon: string;
-  titleKey: string;
-  descKey: string;
-  promptKey: string;
+  // Typed as TranslationKeys, not string, so a key that no locale defines is a
+  // compile error here rather than a card rendering its own key name at runtime.
+  // These were `string`, which forced `t(card.titleKey as any)` at each use.
+  titleKey: TranslationKeys;
+  descKey: TranslationKeys;
+  promptKey: TranslationKeys;
   agent: string;
   color: string;
 }
@@ -281,7 +278,7 @@ export function AgentChat() {
 
   async function loadSessions() {
     try {
-      const response = await (client.queries as any).agentQuery({
+      const response = await client.queries.agentQuery({
         action: "listSessions",
         params: JSON.stringify({ limit: 20 }),
       });
@@ -297,7 +294,7 @@ export function AgentChat() {
     if (!currentSessionId) setCurrentSessionId(sessionId);
 
     try {
-      await (client.queries as any).agentQuery({
+      await client.queries.agentQuery({
         action: "saveSession",
         params: JSON.stringify({
           sessionId,
@@ -312,7 +309,7 @@ export function AgentChat() {
 
   async function loadSession(sessionId: string) {
     try {
-      const response = await (client.queries as any).agentQuery({
+      const response = await client.queries.agentQuery({
         action: "loadSession",
         params: JSON.stringify({ sessionId }),
       });
@@ -332,7 +329,7 @@ export function AgentChat() {
 
   async function deleteSession(sessionId: string) {
     try {
-      await (client.queries as any).agentQuery({
+      await client.queries.agentQuery({
         action: "deleteSession",
         params: JSON.stringify({ sessionId }),
       });
@@ -415,7 +412,7 @@ export function AgentChat() {
         chatParams.image = { data: attachedImage.data, mediaType: attachedImage.mediaType };
       }
 
-      const response = await (client.queries as any).agentQuery({
+      const response = await client.queries.agentQuery({
         action: "chat",
         params: JSON.stringify(chatParams),
       });
@@ -560,14 +557,14 @@ export function AgentChat() {
                   key={card.id}
                   className="agent-task-card"
                   style={{ background: card.color }}
-                  onClick={() => sendMessage(t(card.promptKey as any))}
+                  onClick={() => sendMessage(t(card.promptKey))}
                 >
                   <div className="card-top">
                     <span className="card-icon">{card.icon}</span>
                     <span className="card-agent-tag">{card.agent}</span>
                   </div>
-                  <div className="card-title">{t(card.titleKey as any)}</div>
-                  <div className="card-desc">{t(card.descKey as any)}</div>
+                  <div className="card-title">{t(card.titleKey)}</div>
+                  <div className="card-desc">{t(card.descKey)}</div>
                 </button>
               ))}
             </div>

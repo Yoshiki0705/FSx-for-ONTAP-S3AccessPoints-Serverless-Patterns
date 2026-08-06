@@ -2,16 +2,11 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface SnaplockData {
   type: string;
@@ -98,7 +93,7 @@ export function SnaplockStatus() {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).protectionQuery({
+      const response = await client.queries.protectionQuery({
         action: "getSnaplockStatus",
         params: JSON.stringify({}),
       });
@@ -125,7 +120,7 @@ export function SnaplockStatus() {
 
   const loadLockedSnapshots = async () => {
     try {
-      const response = await (client.queries as any).protectionQuery({
+      const response = await client.queries.protectionQuery({
         action: "listSnapshots",
         params: JSON.stringify({ maxResults: 50 }),
       });
@@ -143,7 +138,7 @@ export function SnaplockStatus() {
 
   const loadSnaplockVolumes = async () => {
     try {
-      const response = await (client.queries as any).adminQuery({
+      const response = await client.queries.adminQuery({
         action: "listVolumes",
         params: JSON.stringify({}),
       });
@@ -158,7 +153,7 @@ export function SnaplockStatus() {
 
   const loadS3ObjectLockStatus = async () => {
     try {
-      const response = await (client.queries as any).adminQuery({
+      const response = await client.queries.adminQuery({
         action: "getS3ObjectLockStatus",
         params: JSON.stringify({}),
       });
@@ -176,7 +171,7 @@ export function SnaplockStatus() {
 
   const loadS3Buckets = async (nameFilter?: string) => {
     try {
-      const response = await (client.queries as any).adminQuery({
+      const response = await client.queries.adminQuery({
         action: "listS3Buckets",
         params: JSON.stringify({ nameFilter: nameFilter || "" }),
       });
@@ -196,7 +191,7 @@ export function SnaplockStatus() {
     setS3Configuring(true);
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "putS3ObjectLockRetention",
         params: JSON.stringify({
           bucket: s3SelectedBucket,
@@ -226,7 +221,7 @@ export function SnaplockStatus() {
     setLockingInProgress(true);
     setError(null);
     try {
-      const response = await (client.mutations as any).protectionMutation({
+      const response = await client.mutations.protectionMutation({
         action: "lockSnapshot",
         params: JSON.stringify({
           snapshotName: lockTargetSnap,

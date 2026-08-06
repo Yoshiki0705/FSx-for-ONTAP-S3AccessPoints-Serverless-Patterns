@@ -2,15 +2,9 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface FPolicyPolicy {
   name: string;
@@ -64,7 +58,7 @@ export function FPolicyManager() {
     setError(null);
     setSuccess(null);
     try {
-      const resp = await (client.mutations as any).adminMutation({
+      const resp = await client.mutations.adminMutation({
         action,
         params: JSON.stringify(params),
       });
@@ -92,17 +86,17 @@ export function FPolicyManager() {
     setLoading(true); setError(null);
     try {
       if (tab === "policies") {
-        const resp = await (client.queries as any).adminQuery({ action: "listFpolicyPolicies", params: JSON.stringify({}) });
+        const resp = await client.queries.adminQuery({ action: "listFpolicyPolicies", params: JSON.stringify({}) });
         const data = parseResponse<{ policies?: FPolicyPolicy[]; error?: string }>(resp);
         if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) setError(data.error);
         else setPolicies(data?.policies || []);
       } else if (tab === "events") {
-        const resp = await (client.queries as any).adminQuery({ action: "listFpolicyEvents", params: JSON.stringify({}) });
+        const resp = await client.queries.adminQuery({ action: "listFpolicyEvents", params: JSON.stringify({}) });
         const data = parseResponse<{ events?: FPolicyEvent[]; error?: string }>(resp);
         if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) setError(data.error);
         else setEvents(data?.events || []);
       } else {
-        const resp = await (client.queries as any).adminQuery({ action: "getFpolicyStatus", params: JSON.stringify({}) });
+        const resp = await client.queries.adminQuery({ action: "getFpolicyStatus", params: JSON.stringify({}) });
         const data = parseResponse<{ connections?: FPolicyConnection[]; error?: string }>(resp);
         if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) setError(data.error);
         else setConnections(data?.connections || []);

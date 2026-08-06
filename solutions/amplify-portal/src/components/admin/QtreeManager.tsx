@@ -3,16 +3,11 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { VolumeSelector } from "./VolumeSelector";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface Qtree {
   id: string;
@@ -44,7 +39,7 @@ export function QtreeManager() {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "listQtrees", params: JSON.stringify({volumeName: filterVolume}) });
+      const response = await client.queries.adminQuery({ action: "listQtrees", params: JSON.stringify({volumeName: filterVolume}) });
       const data = parseResponse<{ qtrees?: Qtree[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -63,7 +58,7 @@ export function QtreeManager() {
     if (!newVolumeName || !newName) { setError("Volume name and qtree name are required"); return; }
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "createQtree", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "createQtree", params: JSON.stringify({
         volumeName: newVolumeName, name: newName,
         securityStyle: newSecurityStyle, exportPolicy: newExportPolicy,
       }) });
@@ -83,7 +78,7 @@ export function QtreeManager() {
   const handleDelete = async (volumeName: string, qtreeId: string, name: string) => {
     if (!window.confirm(t("rmDeleteConfirm").replace("{name}", name))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "deleteQtree", params: JSON.stringify({volumeName, qtreeId, confirm: true}) });
+      const response = await client.mutations.adminMutation({ action: "deleteQtree", params: JSON.stringify({volumeName, qtreeId, confirm: true}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setSuccess(t("rmDeleted").replace("{name}", name)); clearSuccess(); loadQtrees(); }
