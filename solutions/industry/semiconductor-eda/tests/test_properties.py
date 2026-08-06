@@ -265,17 +265,34 @@ def test_eda_metadata_extraction_completeness(library_name, cell_count):
 # ---------------------------------------------------------------------------
 
 
+# A single path segment: alphanumerics plus the punctuation that appears in real
+# EDA file names, but never "/" — the separator is added by _s3_keys() below.
+_PATH_SEGMENT = st.text(
+    min_size=1,
+    max_size=24,
+    alphabet=st.characters(
+        whitelist_categories=("L", "N"),
+        whitelist_characters="_-.",
+        max_codepoint=127,
+    ),
+)
+
+# Build keys by joining segments instead of generating free text and filtering for
+# "/". The filtered version was flaky: "/" was 1 character out of a ~66-character
+# alphabet, so most candidates lacked one and Hypothesis tripped its
+# filter_too_much health check on unlucky seeds (reproduced ~1 run in 8, on both
+# 6.165.0 and 6.165.2, so this predates the dependency pin). Constructing the value
+# satisfies "contains '/', no leading or trailing '/'" by shape, with nothing
+# discarded.
+_S3_KEYS = st.builds(
+    "/".join,
+    st.lists(_PATH_SEGMENT, min_size=2, max_size=4),
+)
+
+
 @settings(max_examples=100)
 @given(
-    file_key=st.text(
-        min_size=5,
-        max_size=100,
-        alphabet=st.characters(
-            whitelist_categories=("L", "N"),
-            whitelist_characters="/_-.",
-            max_codepoint=127,
-        ),
-    ).filter(lambda x: "/" in x and not x.startswith("/") and not x.endswith("/")),
+    file_key=_S3_KEYS,
     library_name=st.text(
         min_size=1, max_size=30, alphabet=st.characters(whitelist_categories=("L", "N"), max_codepoint=127)
     ),

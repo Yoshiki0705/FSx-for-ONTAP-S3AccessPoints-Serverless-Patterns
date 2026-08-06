@@ -1,5 +1,14 @@
-# Development dependencies — pinned for CI reproducibility
-# To upgrade: update versions here + verify tests pass
+# Development dependencies — the single source of truth for dev tooling.
+#
+# Consumed by:
+#   - Makefile `install` target (local .venv)
+#   - .github/workflows/{ci,test,rag-eval}.yml
+#   - .github/workflows/{ci,lint,test}.yaml single-tool jobs, which grep the
+#     pin out of this file rather than re-declaring a version
+#
+# Every version is exact-pinned so a local run and a CI run resolve to the same
+# tool. Upgrades belong to Renovate, or: bump here, then `make install && make lint
+# && make test`.
 pytest==9.1.1
 pytest-cov==7.1.0
 pytest-asyncio==1.4.0
@@ -8,4 +17,5 @@ moto[all]==5.2.2
 ruff==0.15.17
 cfn-lint==1.53.3
 pyarrow==25.0.0
-bandit>=1.9.1
+bandit==1.9.4
+pip-audit==2.10.1

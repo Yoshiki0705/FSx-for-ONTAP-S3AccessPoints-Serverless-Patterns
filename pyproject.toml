@@ -29,17 +29,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest==9.1.1",
-    "pytest-cov==7.1.0",
-    "pytest-asyncio==1.4.0",
-    "hypothesis==6.165.0",
-    "moto[all]==5.2.2",
-    "ruff==0.15.17",
-    "cfn-lint==1.53.3",
-    "pyarrow==25.0.0",
-    "bandit==1.9.4",
-]
+# Dev tooling is NOT declared here. It lives in requirements-dev.txt, which the
+# Makefile and every CI workflow install from. A `dev` extra used to duplicate
+# that list and drifted from it (bandit was pinned here but a floating range
+# there), while nothing consumed `.[dev]` — no workflow, Makefile target, or
+# document referenced it.
 xray = [
     "aws-xray-sdk==2.15.0",
 ]
@@ -71,19 +65,11 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 
-[tool.pytest.ini_options]
-testpaths = ["shared/tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
-addopts = "-v --tb=short --import-mode=importlib"
-asyncio_mode = "auto"
-markers = [
-    "property: Property-based tests (Hypothesis)",
-    "integration: Integration tests requiring AWS credentials",
-    "e2e: End-to-end tests requiring real AWS infrastructure",
-    "load: Load tests requiring real AWS infrastructure (skip in CI)",
-]
+# Pytest configuration lives in pytest.ini, not here. A [tool.pytest.ini_options]
+# block used to duplicate it, but pytest.ini takes precedence whenever it exists,
+# so that block was dead — pytest said so on every run:
+#   "WARNING: ignoring pytest config in pyproject.toml!"
+# Editing it had no effect, which is worse than not having it.
 
 [tool.bandit]
 exclude_dirs = ["tests", ".hypothesis", "__pycache__"]

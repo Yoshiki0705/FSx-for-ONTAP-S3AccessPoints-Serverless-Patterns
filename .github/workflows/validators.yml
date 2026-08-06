@@ -186,7 +186,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install dependencies
-        run: pip install pip-audit
+        run: pip install "$(grep -m1 '^pip-audit==' requirements-dev.txt)"
       - name: Audit Python dependencies
         run: pip-audit -r requirements.txt --desc
 

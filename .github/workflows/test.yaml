@@ -57,7 +57,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install cfn-lint
-        run: pip install cfn-lint
+        run: pip install "$(grep -m1 '^cfn-lint==' requirements-dev.txt)"
       - name: Validate all UC templates (YAML parse)
         run: |
           python3 -c "
