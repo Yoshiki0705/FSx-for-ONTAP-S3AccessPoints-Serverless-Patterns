@@ -202,6 +202,10 @@ cp amplify/portal-config.example.ts amplify/portal-config.ts
 
 # 3. Backend in persönliche Sandbox deployen (~3-5 Min. beim ersten Mal, ~30s inkrementell)
 make sandbox
+# ⚠️ `npm run build` kann vor diesem Schritt nicht laufen: src/main.tsx
+#    importiert ../amplify_outputs.json, das die Sandbox erzeugt und
+#    .gitignore ausschließt. In einem frischen Klon schlägt der Build mit
+#    "[UNRESOLVED_IMPORT] Could not resolve '../amplify_outputs.json'" fehl.
 
 # 4. In einem anderen Terminal den Entwicklungsserver starten
 make dev

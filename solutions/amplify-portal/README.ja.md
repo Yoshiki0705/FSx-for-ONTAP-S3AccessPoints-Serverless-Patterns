@@ -204,6 +204,10 @@ cp amplify/portal-config.example.ts amplify/portal-config.ts
 
 # 3. 個人サンドボックスにバックエンドをデプロイ（初回は約 3-5 分、差分は約 30 秒）
 make sandbox
+# ⚠️ このステップより前に `npm run build` は実行できません。src/main.tsx が
+#    ../amplify_outputs.json を import しており、このファイルは sandbox が
+#    生成し .gitignore で除外されています。クローン直後のビルドは
+#    "[UNRESOLVED_IMPORT] Could not resolve '../amplify_outputs.json'" で失敗します。
 
 # 4. 別のターミナルで開発サーバーを起動
 make dev
