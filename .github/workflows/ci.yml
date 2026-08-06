@@ -70,53 +70,19 @@ jobs:
             --cov-report=html:htmlcov \
             -v --ignore=.hypothesis
       - name: Run pattern tests
-        # Each pattern runs in its OWN pytest invocation. Many patterns ship a
+        # Directories come from pattern-test-dirs.txt, which the Makefile `test`
+        # target also reads. This step used to carry its own copy of the list, and
+        # the two drifted: CI ran 37 directories, the Makefile 16, and 13 with
+        # passing tests (~790 tests) appeared in neither, so they never ran anywhere.
+        #
+        # Each pattern gets its OWN pytest invocation. Many patterns ship a
         # functions/ package with colliding module names (e.g. functions.discovery),
         # so a single combined invocation raises ModuleNotFoundError as sys.modules
         # caches the first pattern's package. A fresh process per pattern avoids this.
         # See AGENTS.md "from functions.xxx import collision in batch test runs".
         run: |
           set -e
-          PATTERNS="
-            solutions/industry/legal-compliance
-            solutions/industry/financial-idp
-            solutions/industry/manufacturing-analytics
-            solutions/industry/media-vfx
-            solutions/industry/healthcare-dicom
-            solutions/industry/semiconductor-eda
-            solutions/industry/genomics-pipeline
-            solutions/industry/energy-seismic
-            solutions/industry/autonomous-driving
-            solutions/industry/construction-bim
-            solutions/industry/retail-catalog
-            solutions/industry/logistics-ocr
-            solutions/industry/education-research
-            solutions/industry/insurance-claims
-            solutions/industry/defense-satellite
-            solutions/industry/government-archives
-            solutions/industry/smart-city-geospatial
-            solutions/sap/erp-adjacent
-            solutions/flexcache/anycast-dr
-            solutions/flexcache/dynamic-render-workflow
-            solutions/flexcache/rag-enterprise-files
-            solutions/flexcache/automotive-cae
-            solutions/flexcache/life-sciences-research
-            solutions/flexcache/gaming-build-pipeline
-            solutions/genai/kb-selfservice-curation
-            solutions/genai/quick-agentic-workspace
-            solutions/ha/lifekeeper-monitoring
-            solutions/event-driven/prototype
-            solutions/edge/content-delivery
-            solutions/flexcache/devops-cicd
-            operations/capacity-rightsizing
-            operations/storage-efficiency
-            operations/tiering-optimizer
-            operations/snapshot-lifecycle
-            operations/cost-optimization
-            operations/qos-monitoring
-            operations
-          "
-          for d in $PATTERNS; do
+          grep -v '^#' pattern-test-dirs.txt | grep -v '^$' | while read -r d; do
             echo "::group::pytest $d"
             pytest "$d/tests/" -q --ignore=.hypothesis
             echo "::endgroup::"
