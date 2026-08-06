@@ -48,7 +48,6 @@ const backend = defineBackend({
 // This ensures the Upload tab (Storage Browser for S3) can access the S3 AP
 // directly from the browser without manual IAM configuration.
 const authResources = backend.auth.resources;
-const identityPoolId = authResources.cfnResources.cfnIdentityPool.ref;
 
 // Get the authenticated role created by Amplify Auth
 const authenticatedRole = authResources.authenticatedUserIamRole;

@@ -16,15 +16,20 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
-import { resolve } from "path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-const BACKEND_PATH = resolve(__dirname, "../../amplify/backend.ts");
+// import.meta.dirname, not __dirname: this package is "type": "module", so
+// __dirname does not exist at runtime. It only worked because the test runner
+// transpiled the file; TypeScript 7 reports it correctly.
+const HERE = import.meta.dirname;
+
+const BACKEND_PATH = resolve(HERE, "../../amplify/backend.ts");
 const backendSource = readFileSync(BACKEND_PATH, "utf-8");
 
 // Handler bodies used to be inline in backend.ts and now live under functions/.
 // Assertions about Python behaviour must read the handler source directly.
-const PRESIGNED_URL_HANDLER = resolve(__dirname, "../../functions/presigned-url/index.py");
+const PRESIGNED_URL_HANDLER = resolve(HERE, "../../functions/presigned-url/index.py");
 const presignedUrlSource = readFileSync(PRESIGNED_URL_HANDLER, "utf-8");
 
 describe("Backend Infrastructure Structure", () => {
@@ -174,7 +179,7 @@ describe("Backend Infrastructure Structure", () => {
       // ONTAP env vars must be sourced from portal-config (config.<property>)
       // rather than bare process.env, so DemoMode has defined fallbacks.
       const cdkConfigLines = backendSource.split("\n").filter(
-        (line) =>
+        (line: string) =>
           (line.includes("ONTAP_MGMT_IP:") || line.includes("ONTAP_SECRET_NAME:")) &&
           line.includes("config.")
       );
@@ -203,7 +208,7 @@ describe("portal-config.example.ts covers what backend.ts reads", () => {
   // defaultBlockTtlHours was missing exactly this way: int("undefined") raised
   // while the ARP module was being imported, so every containment action failed
   // before its handler ran, on a deployment configured exactly as documented.
-  const EXAMPLE_PATH = resolve(__dirname, "../../amplify/portal-config.example.ts");
+  const EXAMPLE_PATH = resolve(HERE, "../../amplify/portal-config.example.ts");
   const exampleSource = readFileSync(EXAMPLE_PATH, "utf-8");
 
   it("declares every config field backend.ts uses", () => {
