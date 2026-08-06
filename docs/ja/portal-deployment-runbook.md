@@ -58,16 +58,36 @@ make install
 cp amplify/portal-config.example.ts amplify/portal-config.ts
 ```
 
-**portal-config.ts** を編集:
-- `region`: FSx for ONTAP のリージョン
-- `s3ApAlias`: Step 1 で取得した alias
+`amplify/portal-config.ts` を編集:
 
-**src/portal-settings.ts** を編集:
-- `region`: 同上
-- `accountId`: AWS アカウント ID
-- `s3ApAlias`: 同じ alias
+```typescript
+export const config: PortalConfig = {
+  region: "ap-northeast-1",                              // FSx for ONTAP のリージョン
+  s3ApAlias: "portal-demo-xxx-ext-s3alias",             // Step 1 で取得
+  stateMachineArn: "arn:aws:states:...:placeholder",    // または実際の UC パターンの ARN
+  stateMachineResourceScope: "*",                        // 本番では絞る
+  s3ApResourceArns: [
+    "arn:aws:s3:*:*:accesspoint/*",
+    "arn:aws:s3:*:*:accesspoint/*/object/*",
+  ],
+  groupApMapping: {},                                    // 空 = 全ユーザーが同じ AP を共有
+  bedrockKbId: "",                                       // 空 = 検索無効
+};
+```
 
-> **検証で得た知見**: 2 つのファイルに同じ alias を設定する必要があります。片方だけだと Files タブは動くが Upload タブが AccessDenied になります。
+`src/portal-settings.ts` を編集:
+
+```typescript
+export const portalSettings = {
+  processingEnabled: false,       // SFn ARN 設定後に true
+  fileListingEnabled: true,       // s3ApAlias 設定後に true
+  region: "ap-northeast-1",      // portal-config と同じ
+  accountId: "123456789012",     // AWS アカウント ID
+  s3ApAlias: "portal-demo-xxx-ext-s3alias",  // 同じ alias
+};
+```
+
+> **検証で得た知見**: 同じ S3 AP alias を 2 つのファイルに設定する必要があります — `portal-config.ts`（バックエンド Lambda）と `portal-settings.ts`（フロントエンドの Storage Browser）。片方を忘れると Files タブが "No files" になるか、Upload タブが "AccessDenied" になります。
 
 ---
 
@@ -77,7 +97,17 @@ cp amplify/portal-config.example.ts amplify/portal-config.ts
 make sandbox
 ```
 
-初回: ~5 分、以降: ~30-90 秒（差分更新）
+**初回**: 約 5 分（CDK bootstrap + スタック全体の作成）
+**以降**: 約 30-90 秒（差分更新）
+
+**作成されるもの**:
+- Cognito User Pool + Identity Pool
+- AppSync GraphQL API（20 以上の resolver）
+- 10 以上の Lambda 関数（Python 3.13、ARM64）
+- 6 つの DynamoDB テーブル（JobExecution, FileNotification, Favorite, FileTag, FolderWatch, RecentFile）
+- IAM ロール（Lambda ごとに最小権限）
+
+> **検証で得た知見**: 全リソースが同一の CDK スタックに入ります。スタックをまたぐ参照は resolver のバインドに失敗します。
 
 ---
 
@@ -105,7 +135,13 @@ aws cognito-idp admin-set-user-password \
 
 ```bash
 make dev
-# → http://localhost:5173 でブラウザアクセス
+# → http://localhost:5173
+```
+
+本番ビルドのプレビュー:
+```bash
+npx vite build && npx vite preview --port 4173
+# → http://localhost:4173
 ```
 
 ---
@@ -154,9 +190,11 @@ aws cloudformation describe-stacks \
 | Files タブ "No files" | s3ApAlias 未設定 | portal-config.ts に設定 → `make sandbox` |
 | **Files タブ "No files" (DemoMode)** | **s3ApResourceArns に S3 AP ARN のみ、バケット ARN がない** | **`arn:aws:s3:::your-bucket` + `arn:aws:s3:::your-bucket/*` を追加** |
 | Upload タブ AccessDenied | portal-settings.ts 未設定 | alias + accountId 設定 → リロード |
+| Upload タブ "ListCallerAccessGrants" | 旧コードが `createManagedAuthAdapter` を使用 | StorageBrowserTab.tsx を direct auth モードに更新 |
 | Process タブ赤バナー | SFn ARN がプレースホルダー | `make sfn-test-create` |
 | ログイン失敗 | ユーザー未作成 | Step 4 実行 |
 | sandbox 失敗 "Cannot find module" | portal-config.ts がない | `cp portal-config.example.ts portal-config.ts` |
+| AppSync resolver "Data source not found" | Data source が別の CDK スタックにある | Data source は API と同一スタックに置く |
 | **sandbox デプロイが 2 分以上** | **IAM ポリシーや環境変数の変更（hot-swap 非対象）** | **想定動作。Lambda コードのみの変更は ~7 秒** |
 | **cdk-nag でデプロイがブロック** | **SKIP_CDK_NAG 未設定** | **`SKIP_CDK_NAG=1 npx ampx sandbox --once` を使用** |
 
@@ -190,3 +228,6 @@ aws cloudformation describe-stacks \
 | `stateMachineArn` | portal-config.ts + start-processing.js | Process タブのワークフロー起動 |
 | `groupApMapping` | portal-config.ts | チームごとのファイル分離 (My Files) |
 | `bedrockKbId` | portal-config.ts | 全文セマンティック検索 |
+| `ONTAP_MGMT_IP` | Lambda 環境変数 | バージョン履歴（Snapshot 一覧） |
+| `CLASSIFICATION_TABLE_NAME` | Lambda 環境変数 | CONFIDENTIAL ガードレール |
+| `AI_METADATA_TABLE_NAME` | Lambda 環境変数 | AI 結果のインラインバッジ |
