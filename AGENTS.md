@@ -403,6 +403,11 @@ All README and documentation files follow these UX principles:
 | KNFSD Terraform: InvalidAMIID | AMI ビルドリージョンとデプロイリージョンの不一致。`--region` を揃える |
 | Tamperproof 有効化 → 無効化できない | `snapshot_locking_enabled` は不可逆（400 Bad Request）。ただしポリシーの retention_period 削除で新規ロック停止は可能。詳細は [docs/tamperproof-snapshot-design.md](docs/tamperproof-snapshot-design.md) |
 | Tamperproof 有効化 ≠ 全 Snapshot 自動ロック | 有効化は「ロック機能 ON」であり「自動ロック」ではない。ポリシーに retention_period を設定して初めて自動ロックが発動 |
+| SnapLock 監査ログボリュームを作成 → ファイルシステムが最短 6 か月削除できない | 未満了の監査ログはボリューム → SVM → **ファイルシステム**の削除を連鎖ブロックする。保持期間満了前の削除はアカウント閉鎖以外に経路がない（AWS サポートでも不可）。**検証用ファイルシステムに作らない**。確認事項は [docs/tamperproof-snapshot-design.md](docs/tamperproof-snapshot-design.md) の事前チェック |
+| `CreateSnaplockConfiguration` の `RetentionPeriod` で監査ログ保持期間は縛れない | `RetentionPeriod` はボリューム上の WORM ファイル用。監査ログ側の保持期間を指定するフィールドは AWS API に**存在しない**（6 フィールドのみ）。AWS API だけで作ると既定の 6 か月が適用される。明示指定は ONTAP CLI の `snaplock log create -retention-period` のみ |
+| `DescribeVolumes` が `AuditLogVolume: False` → 削除できるはず、と読める | 読めない。SVM レベルの監査ログ指定を解除しても ONTAP の `snaplock.is_audit_log` は読み取り専用で解除できず（`PATCH` は 262196 で拒否）、削除可否は変わらない。判断は ONTAP の `snaplock.is_audit_log` と `snaplock.expiry_time` で行う |
+| `DeleteVolume` がエラーを返さないのに削除されない | 未満了 WORM / 監査ログがある場合、`DELETING` に遷移後、無言で `CREATED` に復帰する。`BypassSnaplockEnterpriseRetention=true` / `SkipFinalBackup=true` を付けても同じ。レスポンスではなく数十秒後の `Lifecycle` で判定する |
+| SnapLock 種別を後から変更・解除しようとする | 不可。`snaplock.type` は**作成時のみ**。`compliance` ⇄ `enterprise` の変更も、SnapLock の解除もできない。`PrivilegedDelete=PERMANENTLY_DISABLED` も終端状態（設定すると `enterprise` が `compliance` 相当になる） |
 | ポータルの Lambda が `shared/` を import できない | `functions/<name>/` の asset にはそのディレクトリしか入らない。`shared.*` を使う関数には `amplify/backend.ts` の `SharedPythonLayer` を `layers:` で付与する。レイヤーは `/opt` にマウントされ Python が見るのは `/opt/python` なので、アーカイブに `python/` プレフィックスが必要（`Code.fromAsset` の `bundling.local` で再配置している） |
 | `shared/` を変更しても sandbox のレイヤーが更新されない | `ampx sandbox` は hotswap で Lambda を更新し、LayerVersion の内容変更をスキップする（hotswap 無効化フラグは存在しない）。テンプレート側に変更がある場合のみ CloudFormation が走る。確実に反映するには `ampx sandbox delete` → 再デプロイ、またはパイプラインデプロイ |
 | 例外メッセージからエラー原因を推測する実装 | `str(IndexError(4))` は `"4"` で HTTP 404 に見える。実際に `Path(__file__).parents[4]`（Lambda では親が 3 つ）の IndexError を「CIFS 未設定」と誤報告していた。`type(e).__name__` を含めて報告し、文字列パターンで原因を決めない |
@@ -734,6 +739,30 @@ gh issue list --state open | grep "Dependency Dashboard"    # the dashboard issu
 
 Major-version bumps wait for a checkbox on the Dependency Dashboard issue, so a long "Pending Approval" list is normal operation, not a broken install.
 
+## Irreversible Operations — Confirm Before Executing
+
+Some AWS and ONTAP operations cannot be undone, and a few of them lock a **parent** resource for months. Verifying afterwards is not a recovery path: for these there is no recovery path.
+
+**Confirm with the account owner before executing, every time:**
+
+| Operation | Why |
+|---|---|
+| Create a SnapLock volume (`compliance` / `enterprise`) | `snaplock.type` is creation-time only. Unexpired WORM files block volume → SVM → **file system** deletion |
+| Create a SnapLock audit log volume | Minimum 6 months. AWS API has no field for the audit-log retention, so the default applies. **No route to early deletion exists other than closing the account** |
+| `PrivilegedDelete=PERMANENTLY_DISABLED` | Terminal state. Makes `enterprise` behave as `compliance` |
+| `snapshot_locking_enabled = true` | Cannot be disabled |
+| Lock a snapshot (`expiry_time`) | Extendable only. Cannot be shortened or released |
+| S3 Object Lock `COMPLIANCE` mode | Retention cannot be shortened or removed |
+| Delete a volume, SVM or file system | Data loss |
+
+**Rules:**
+
+- **State the blast radius before asking**, not after: which resources become undeletable, for how long, and what it costs per month while locked.
+- **Never accept a default for a retention value.** If the API offers no way to set it, that is a reason to stop and ask, not a reason to proceed.
+- **Read the "cannot be deleted" section of the service documentation before the first call**, not after the first failure.
+- **A verification environment is the worst place for these.** A file system that cannot be deleted for six months is a six-month bill, and verification file systems usually carry other volumes that then cannot be moved either.
+- If an operation returns success but the resource does not change, **do not retry with more flags**. Check `Lifecycle` and stop.
+
 ## Cost Awareness
 
 ### High-Cost Resources (monitor actively)
@@ -784,6 +813,8 @@ When reviewing changes, consider these perspectives:
 | [Pattern Selection Guide](docs/pattern-selection-guide.md) | Customer situation → recommended UC |
 | [ONTAP Integration Notes](docs/ontap-integration-notes.md) | NAS coexistence, identity, data protection, OT |
 | [SMB ACL Migration via Backup Operators](docs/smb-acl-migration-backup-operators.md) | Windows file server → FSx for ONTAP with ACLs the copy account cannot read (`SeBackupPrivilege`/`SeRestorePrivilege`, robocopy `/B`, DataSync) |
+| [SnapLock Audit Log Retention FR (JA)](docs/aws-feature-requests/snaplock-audit-log-retention.md) | SL-1〜SL-3: 監査ログ保持期間の指定手段、無言で失敗する `DeleteVolume`、`AuditLogVolume` の表示と実態の不一致 |
+| [SnapLock Audit Log Retention FR (EN)](docs/aws-feature-requests/snaplock-audit-log-retention.en.md) | English version of SL-1 to SL-3 |
 | [S3 Bucket User Guide](docs/s3-bucket-user-guide.md) | Standard S3 vs FSx for ONTAP S3 AP differences |
 | [Bedrock Inference Profiles](docs/bedrock-inference-profiles.md) | Nova/Claude on-demand requirement, IAM (foundation-model + inference-profile), data residency, CI enforcement |
 | [AD-Joined SVM S3 AP Prerequisites](docs/en/ad-joined-svm-s3ap-prerequisites.md) | AD DC reachability, Internet-origin AP + VPC-external Lambda, same-account policy |
