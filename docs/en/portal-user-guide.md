@@ -259,6 +259,7 @@ aws cognito-idp admin-set-user-password --user-pool-id <pool-id> --username <you
 | [Compliance Guide](portal-compliance-guide.md) | Security/Compliance | Verify regulatory controls |
 | [Quick Reference](portal-quick-reference.md) | All roles | 1-page cheat sheet |
 | [AI Features Quick Start](ai-features-quick-start.md) | All users | Try Bedrock, Rekognition, Athena |
+| [AI Agent Demo Guide](../../solutions/amplify-portal/docs/ai-agent-demo-guide.md) | All users | E2E demo of the AI agent features |
 | [Implementation Guide](../../solutions/amplify-portal/docs/IMPLEMENTATION.md) | Developers | Architecture and customization |
 | [Portal Authorization Model](portal-authorization-model.md) | Security teams | Cognito groups, IAM, file-level access |
 | [Storage Browser Demo](storage-browser-demo-guide.md) | All users | Upload/download via Storage Browser |

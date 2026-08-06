@@ -213,8 +213,19 @@ jobs:
       # soft-wrapped near 80 columns, which on the largest pair here accounts for
       # an 83-line gap with identical content.
       #
-      # Ratcheted rather than strict. 69 mismatches across 9 of 15 pairs predate
-      # the check; failing on those would block unrelated work. The baseline can
-      # only go down — lower it when gaps are closed.
+      # Ratcheted rather than strict. The baseline can only go down — lower it when
+      # gaps are closed.
+      #
+      # Started at 69 across 9 of 15 pairs. Now 50 across 5 pairs, after closing
+      # portal-authorization-design (JA was missing 10 sections, including the
+      # AppSync authorization patterns and the UI-behaviour matrix),
+      # portal-deployment-runbook (8 per-section gaps), and one table row each in
+      # portal-compliance-guide and portal-user-guide.
+      #
+      # The remaining 50 sit in 5 pairs whose section lists differ, so the
+      # positional comparison misaligns and the reported number is not the amount
+      # of work: amplify-hosting-production-guide 26 (JA 16 / EN 19 sections),
+      # storage-browser-demo-guide 12 (22/23), ai-features-quick-start 8 (11/12),
+      # deployment-guide 3 (49/58), portal-authorization-model 1 (14/15).
       - name: "Check: JA/EN structural parity (ratcheted)"
-        run: python3 scripts/check_doc_structural_parity.py --max-mismatches 69
+        run: python3 scripts/check_doc_structural_parity.py --max-mismatches 50
