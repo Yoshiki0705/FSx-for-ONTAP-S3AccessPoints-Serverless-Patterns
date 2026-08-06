@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -16,9 +18,8 @@ interface QosPolicy { name: string; uuid: string; type: string; maxThroughputIop
  */
 export function QosPolicyManager() {
   const { t } = useTranslation();
-  const [policies, setPolicies] = useState<QosPolicy[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [result, setResult] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -30,20 +31,24 @@ export function QosPolicyManager() {
   const [expectedIops, setExpectedIops] = useState<number | undefined>(undefined);
   const [peakIops, setPeakIops] = useState<number | undefined>(undefined);
 
-  const loadPolicies = async () => {
-    setLoading(true);
-    try {
-      const response = await client.queries.adminQuery({ action: "listQosPolicies", params: JSON.stringify({}) });
-      const data = parseResponse<{ policies?: QosPolicy[]; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setPolicies(data.policies || []);
-      }
-    } catch (err) { setError(err instanceof Error ? err.message : "Load failed"); }
-    finally { setLoading(false); }
-  };
+  const {
+    data: policies = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listQosPolicies"],
+    queryFn: () =>
+      unwrap<{ policies?: QosPolicy[] }>(
+        client.queries.adminQuery({ action: "listQosPolicies", params: JSON.stringify({}) }),
+      ).then((d) => d?.policies ?? []),
+  });
 
-  useEffect(() => { loadPolicies(); }, []);
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadPolicies = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load policies");
+
 
   const handleCreate = async () => {
     if (!newName) { setError(t("rmQosNameRequired")); return; }
