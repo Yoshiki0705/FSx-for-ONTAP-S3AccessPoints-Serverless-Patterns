@@ -2,15 +2,9 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
-
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface LocalUser {
   name: string;
@@ -67,7 +61,7 @@ export function LocalUserManager() {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({
+      const response = await client.queries.adminQuery({
         action: "listLocalUsers", params: JSON.stringify({}),
       });
       const data = parseResponse<{ users?: LocalUser[]; error?: string }>(response);
@@ -90,7 +84,7 @@ export function LocalUserManager() {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({
+      const response = await client.queries.adminQuery({
         action: "listLocalGroups", params: JSON.stringify({}),
       });
       const data = parseResponse<{ groups?: LocalGroup[]; error?: string }>(response);
@@ -125,7 +119,7 @@ export function LocalUserManager() {
     }
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "createLocalUser",
         params: JSON.stringify({
           name: newUserName,
@@ -155,7 +149,7 @@ export function LocalUserManager() {
     const displayName = user.fullName || user.name;
     if (!window.confirm(t("luDeleteUserConfirm").replace("{name}", displayName))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "deleteLocalUser",
         params: JSON.stringify({ sid: user.sid, name: user.name }),
       });
@@ -180,7 +174,7 @@ export function LocalUserManager() {
     }
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "createLocalGroup",
         params: JSON.stringify({
           name: newGroupName,
@@ -206,7 +200,7 @@ export function LocalUserManager() {
   const handleDeleteGroup = async (group: LocalGroup) => {
     if (!window.confirm(t("luDeleteGroupConfirm").replace("{name}", group.name))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "deleteLocalGroup",
         params: JSON.stringify({ sid: group.sid, name: group.name }),
       });
@@ -227,7 +221,7 @@ export function LocalUserManager() {
   const loadGroupMembers = async (groupSid: string) => {
     setMembersLoading(true);
     try {
-      const response = await (client.queries as any).adminQuery({
+      const response = await client.queries.adminQuery({
         action: "listGroupMembers",
         params: JSON.stringify({ groupSid }),
       });
@@ -252,7 +246,7 @@ export function LocalUserManager() {
   const handleAddMember = async (group: LocalGroup) => {
     if (!newMemberName) return;
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "addGroupMember",
         params: JSON.stringify({
           groupSid: group.sid,
@@ -277,7 +271,7 @@ export function LocalUserManager() {
   const handleRemoveMember = async (group: LocalGroup, memberName: string) => {
     if (!window.confirm(t("luRemoveMemberConfirm").replace("{member}", memberName).replace("{group}", group.name))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({
+      const response = await client.mutations.adminMutation({
         action: "removeGroupMember",
         params: JSON.stringify({
           groupSid: group.sid,

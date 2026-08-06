@@ -82,6 +82,15 @@ const GROUP_LABELS: Record<string, TranslationKeys> = {
  * - Responsive — sidebar collapses on mobile
  */
 
+/** Sections that may appear in the URL hash. */
+const SECTIONS: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources","agentDir"];
+
+/** The hash without its leading "#", if it names a section. */
+function sectionFromHash(): Section | null {
+  const hash = window.location.hash.replace("#", "");
+  return SECTIONS.includes(hash as Section) ? (hash as Section) : null;
+}
+
 /** Folder holding the given object key, as a prefix with a trailing slash. */
 function parentPrefixOf(fileKey: string): string {
   const parts = fileKey.split("/");
@@ -90,32 +99,30 @@ function parentPrefixOf(fileKey: string): string {
 }
 
 function App() {
-  // Persist navigation state in URL hash for refresh resilience
-  const getInitialSection = (): Section => {
-    const hash = window.location.hash.replace("#", "");
-    const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources","agentDir"];
-    return valid.includes(hash as Section) ? (hash as Section) : "files";
-  };
+  // Navigation state is persisted in the URL hash so a refresh restores the section.
+  const [activeSection, setActiveSection] = useState<Section>(() => sectionFromHash() ?? "files");
 
-  const [activeSection, setActiveSectionRaw] = useState<Section>(getInitialSection);
+  // State is the source of truth; the hash mirrors it. Writing the hash from the
+  // click handler instead would mutate a value outside the component during the
+  // render pass React attributes it to.
+  useEffect(() => {
+    if (sectionFromHash() !== activeSection) {
+      window.location.hash = activeSection;
+    }
+  }, [activeSection]);
 
-  const setActiveSection = (section: Section) => {
-    setActiveSectionRaw(section);
-    window.location.hash = section;
-  };
-
-  // Listen for hash changes from other components (Lock panel navigation)
+  // Listen for hash changes from other components (Lock panel navigation) and from
+  // the browser's back/forward buttons. No activeSection dependency: setting state
+  // to its current value is a no-op, so the guard the comparison used to provide is
+  // not needed, and the listener no longer detaches on every navigation.
   useEffect(() => {
     const onHashChange = () => {
-      const hash = window.location.hash.replace("#", "");
-      const valid: Section[] = ["files","favorites","recent","upload","process","agent","search","history","analytics","snapshots","arp","lock","versions","audit","resources","agentDir"];
-      if (valid.includes(hash as Section) && hash !== activeSection) {
-        setActiveSectionRaw(hash as Section);
-      }
+      const section = sectionFromHash();
+      if (section) setActiveSection(section);
     };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
-  }, [activeSection]);
+  }, []);
 
   const [selectedPrefix, setSelectedPrefix] = useState("");
   const [prefixNonce, setPrefixNonce] = useState(0);

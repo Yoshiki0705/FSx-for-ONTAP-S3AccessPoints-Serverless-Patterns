@@ -3,16 +3,11 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { durationLabel, durationRange } from "../../utils/duration";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface Volume {
   name: string;
@@ -52,7 +47,7 @@ export function VolumeManager() {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "listVolumes", params: JSON.stringify({}) });
+      const response = await client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) });
       const data = parseResponse<{ volumes?: Volume[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -71,7 +66,7 @@ export function VolumeManager() {
     if (!newName) { setError(t("rmVolumeNameRequired")); return; }
     setActionResult(null);
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "createVolume", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "createVolume", params: JSON.stringify({
         name: newName,
         sizeGiB: newSize,
         securityStyle: newStyle,
@@ -98,7 +93,7 @@ export function VolumeManager() {
     const newSizeGiB = parseInt(input, 10);
     if (isNaN(newSizeGiB) || newSizeGiB <= 0) { setError("Invalid size"); return; }
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "resizeVolume", params: JSON.stringify({volumeUuid: uuid, newSizeGiB}) });
+      const response = await client.mutations.adminMutation({ action: "resizeVolume", params: JSON.stringify({volumeUuid: uuid, newSizeGiB}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setActionResult(`${name} → ${newSizeGiB} GiB`); loadVolumes(); }
@@ -110,7 +105,7 @@ export function VolumeManager() {
   const handleDelete = async (uuid: string, name: string) => {
     if (!confirm(t("rmDeleteConfirm").replace("{name}", name))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "deleteVolume", params: JSON.stringify({volumeUuid: uuid, volumeName: name, confirm: true}) });
+      const response = await client.mutations.adminMutation({ action: "deleteVolume", params: JSON.stringify({volumeUuid: uuid, volumeName: name, confirm: true}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setActionResult(t("rmDeleted").replace("{name}", name)); loadVolumes(); }

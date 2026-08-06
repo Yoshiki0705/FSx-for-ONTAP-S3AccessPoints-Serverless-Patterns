@@ -65,8 +65,8 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
     setLoading(true);
     try {
       const [teamsResp, agentsResp] = await Promise.all([
-        (client.queries as any).agentQuery({ action: "listTeams", params: JSON.stringify({}) }),
-        (client.queries as any).agentQuery({ action: "listAgents", params: JSON.stringify({}) }),
+        client.queries.agentQuery({ action: "listTeams", params: JSON.stringify({}) }),
+        client.queries.agentQuery({ action: "listAgents", params: JSON.stringify({}) }),
       ]);
       const teamsData = parseResp<{ teams: TeamItem[] }>(teamsResp);
       const agentsData = parseResp<{ agents: AgentOption[] }>(agentsResp);
@@ -98,7 +98,7 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
     setWizSaving(true);
     setWizError(null);
     try {
-      const response = await (client.queries as any).agentQuery({
+      const response = await client.queries.agentQuery({
         action: "createTeam",
         params: JSON.stringify({
           name: wizName.trim(),
@@ -123,7 +123,7 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
   async function deleteTeam(teamId: string) {
     if (!confirm(t("teamsDeleteConfirm"))) return;
     try {
-      await (client.queries as any).agentQuery({
+      await client.queries.agentQuery({
         action: "deleteTeam",
         params: JSON.stringify({ teamId }),
       });

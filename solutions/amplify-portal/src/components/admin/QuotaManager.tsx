@@ -3,16 +3,11 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
 import { VolumeSelector } from "./VolumeSelector";
+import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface QuotaRule {
   uuid: string;
@@ -61,7 +56,7 @@ export function QuotaManager() {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "listQuotaRules", params: JSON.stringify({volumeName}) });
+      const response = await client.queries.adminQuery({ action: "listQuotaRules", params: JSON.stringify({volumeName}) });
       const data = parseResponse<{ rules?: QuotaRule[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -79,7 +74,7 @@ export function QuotaManager() {
     setLoading(true);
     setError(null);
     try {
-      const response = await (client.queries as any).adminQuery({ action: "getQuotaReport", params: JSON.stringify({volumeName}) });
+      const response = await client.queries.adminQuery({ action: "getQuotaReport", params: JSON.stringify({volumeName}) });
       const data = parseResponse<{ usage?: QuotaUsage[]; error?: string }>(response);
       if (data) {
         if (data.error) setError(data.error);
@@ -104,7 +99,7 @@ export function QuotaManager() {
   const handleCreate = async () => {
     setError(null);
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "createQuotaRule", params: JSON.stringify({
+      const response = await client.mutations.adminMutation({ action: "createQuotaRule", params: JSON.stringify({
         volumeName, type: newType, qtreeName: newType === "tree" ? newQtreeName : undefined,
         userName: newType === "user" ? newUserName : undefined,
         groupName: newType === "group" ? newGroupName : undefined,
@@ -125,7 +120,7 @@ export function QuotaManager() {
   const handleDelete = async (ruleUuid: string) => {
     if (!window.confirm(t("rmDeleteConfirm"))) return;
     try {
-      const response = await (client.mutations as any).adminMutation({ action: "deleteQuotaRule", params: JSON.stringify({ruleUuid}) });
+      const response = await client.mutations.adminMutation({ action: "deleteQuotaRule", params: JSON.stringify({ruleUuid}) });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
       if (data) {
         if (data.success) { setSuccess(t("rmDeleted")); clearSuccess(); loadRules(); }

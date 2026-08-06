@@ -2,16 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface FileItem {
   key: string;
@@ -69,8 +64,8 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
     try {
       // Fetch both file lists in parallel
       const [currentResp, cloneResp] = await Promise.all([
-        (client.queries as any).fileQuery({ action: "listFiles", params: JSON.stringify({prefix, maxKeys: 500}) }),
-        (client.queries as any).fileQuery({ action: "listFilesFromAp", params: JSON.stringify({
+        client.queries.fileQuery({ action: "listFiles", params: JSON.stringify({prefix, maxKeys: 500}) }),
+        client.queries.fileQuery({ action: "listFilesFromAp", params: JSON.stringify({
           prefix,
           maxKeys: 500,
           apAlias: cloneApAlias,

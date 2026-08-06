@@ -60,33 +60,95 @@ export default tseslint.config(
         },
       ],
 
-      // The three rules below are warnings, not errors, and that is a
-      // deliberate ratchet rather than an exemption.
+      // When this config was introduced the portal had never been linted, and it
+      // reported 176 findings:
       //
-      // This config is the first time the portal has ever been linted — the
-      // `lint` script existed without a config file, so it exited 2 on every
-      // run. Turning ~170 pre-existing findings into errors would either block
-      // every future change or force a mass rewrite inside an unrelated
-      // dependency upgrade. As warnings they are visible on every run and
-      // `--max-warnings` (see package.json) pins the current count, so the
-      // number can only go down.
-      //
-      // Baseline at the time of writing — 176 warnings, matching the
-      // `--max-warnings 176` in the lint script:
-      //   @typescript-eslint/no-explicit-any   134  typing debt, mostly around
-      //                                             `client.mutations as any`
-      //                                             for Amplify-generated types
-      //   react-hooks/set-state-in-effect       32  needs per-case judgement
-      //                                             about render behaviour
-      //   react-hooks/exhaustive-deps            8  possible stale closures
+      //   @typescript-eslint/no-explicit-any   134
+      //   react-hooks/set-state-in-effect       32
+      //   react-hooks/exhaustive-deps            8
       //   react-hooks/immutability               2
       //
-      // The react-hooks findings are the ones worth real attention: they can
-      // indicate extra render passes or stale reads, not just style.
-      "@typescript-eslint/no-explicit-any": "warn",
+      // All 134 `any` and both immutability findings are now fixed, so those two
+      // rules are errors — a new one fails the build instead of joining a backlog.
+      //
+      // The 134 `any` were not suppressed one by one. 113 were
+      // `(client.queries as any)` / `(client.mutations as any)`, needed only because
+      // 30 copies of a local `parseResponse` helper declared their parameter as
+      // `{ data?: string | null }` while the schema returns `a.json()`. Removing the
+      // casts surfaced 104 type errors, all of them that single disagreement; one
+      // shared helper in src/utils/parseResponse.ts with the honest `unknown`
+      // signature resolved every one. The rest were a `TaskCard` whose key fields
+      // were `string` rather than `TranslationKeys`, callback parameters TypeScript
+      // could infer once the response type was no longer erased, and a lookup of a
+      // `window` global that nothing ever assigns.
+      "@typescript-eslint/no-explicit-any": "error",
+      "react-hooks/immutability": "error",
+      // These two remain warnings, as a ratchet rather than an exemption.
+      // `--max-warnings` in package.json pins the count, so it can only go down.
+      //
+      //   react-hooks/set-state-in-effect  34  Client-side data fetching in an
+      //       effect. Not fixable locally — see below.
+      //
+      //       All 34 are the fetch-on-mount shape: a loader that sets loading and
+      //       error state, called from a mount effect, with the same loader wired to
+      //       a refresh button.
+      //
+      //       react.dev lists this exact shape ("setting loading state
+      //       synchronously") as one to avoid, and the documented remedy is to rely
+      //       on `loading` already initialising to `true` instead of setting it in
+      //       the effect. That remedy was applied to ArpStatus in full — the
+      //       synchronous setLoading/setError removed, the loader memoised, the
+      //       refresh button given its own handler so its spinner still appears —
+      //       and the warning did not clear. The rule traces into the memoised
+      //       loader, so an effect that calls anything which eventually sets state
+      //       is flagged, whether or not the call is synchronous. That is +20/-8
+      //       lines per component, roughly 600 lines across the portal, for no
+      //       change in the count.
+      //
+      //       The rule is enforcing an architectural position rather than a coding
+      //       slip. The ✅ examples in its own documentation are measuring from a
+      //       ref in useLayoutEffect and computing during render; neither covers
+      //       fetching. react.dev's guidance for data fetching is a framework's
+      //       built-in loading or a dedicated library — TanStack Query, SWR — or in
+      //       React 19 `use()` with Suspense, which drops the loading state
+      //       altogether. Any of those clears these 34 honestly; nothing short of
+      //       them does.
+      //
+      //       That is a deliberate dependency and architecture decision affecting
+      //       every admin panel, and these panels need a deployed FSx for ONTAP
+      //       backend and storage-admin membership to exercise, so it does not
+      //       belong in a lint pass. Upstream has an open issue about the rule's
+      //       strictness for legitimate patterns: facebook/react#34743.
+      //
+      //       (34, up from the original 32: fixing AgentFileSidebar's immutability
+      //       finding moved its reset calls into the effect body, and memoising
+      //       AgentChat's loadSessions let the rule trace into it.)
+      //
+      //   react-hooks/exhaustive-deps       6  Down from 8. The two real ones were
+      //       in AgentChat and are fixed — see the notes at sendMessage and
+      //       saveCurrentSession; the sendMessage one silently dropped an attached
+      //       image and sent a stale agent mode.
+      //
+      //       The remaining 6 all have the shape
+      //       `useEffect(() => { loadX(); }, [trigger])`, where the array lists the
+      //       state that should cause a reload and omits the loader itself. The
+      //       loaders are plain function declarations, so they get a new identity
+      //       every render; adding them as written would re-run the fetch on every
+      //       render instead of on the trigger.
+      //
+      //       The honest fix is to memoise each loader and depend on it. That is
+      //       deliberately not done here for two reasons. VolumeSelector cannot take
+      //       it at all: its loader closes over the `onSelect` prop, and all four
+      //       call sites pass an inline arrow, so the identity changes every parent
+      //       render — and because the loader calls `onSelect`, which sets parent
+      //       state, the result would be an unbounded refetch loop rather than a
+      //       cosmetic re-render. For the other five, getting a memo dependency
+      //       wrong produces the same class of loop, and these are admin panels that
+      //       cannot be exercised without a deployed FSx for ONTAP backend and
+      //       storage-admin group membership. Converting them belongs in a change
+      //       that can be verified against a running sandbox.
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/exhaustive-deps": "warn",
-      "react-hooks/immutability": "warn",
     },
   },
   {

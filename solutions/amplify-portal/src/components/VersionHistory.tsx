@@ -2,16 +2,11 @@ import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
 // Parse the JSON string response from generic dispatch endpoints
-function parseResponse<T>(response: { data?: string | null }): T | null {
-  if (!response.data) return null;
-  try {
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-  } catch { return null; }
-}
 
 interface Snapshot {
   name: string;
@@ -55,8 +50,12 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
     setError(null);
 
     try {
-      const response = await (client.queries as any).protectionQuery({ action: "listSnapshots", params: JSON.stringify({maxResults: 20}) });
-      const data = parseResponse<{ snapshots?: any; volumeName?: string; error?: string }>(response);
+      const response = await client.queries.protectionQuery({ action: "listSnapshots", params: JSON.stringify({maxResults: 20}) });
+      // `unknown`, not `any`: this resolver has been seen to return the snapshot list
+      // either as an array or as a JSON string that needs a second parse, which the
+      // branch below handles. `unknown` states that without disabling the checks that
+      // make the branch necessary.
+      const data = parseResponse<{ snapshots?: unknown; volumeName?: string; error?: string }>(response);
 
       if (data) {
         const snapshotData = data.snapshots;
@@ -74,7 +73,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
           setError(data.error);
         }
       } else if (response.errors) {
-        setError(response.errors.map((e: any) => e.message).join(", "));
+        setError(response.errors.map((e) => e.message).join(", "));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load snapshots";
@@ -120,7 +119,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
     const expiryTime = expiry.toISOString();
 
     try {
-      const response = await (client.mutations as any).protectionMutation({ action: "lockSnapshot", params: JSON.stringify({
+      const response = await client.mutations.protectionMutation({ action: "lockSnapshot", params: JSON.stringify({
         snapshotId: lockDialog.snapshotId,
         expiryTime,
       }) });
@@ -136,7 +135,7 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
           setLockResult(`Error: ${data.error || "Lock failed"}`);
         }
       } else if (response.errors) {
-        setLockResult(`Error: ${response.errors.map((e: any) => e.message).join(", ")}`);
+        setLockResult(`Error: ${response.errors.map((e) => e.message).join(", ")}`);
       }
     } catch (err) {
       setLockResult(`Error: ${err instanceof Error ? err.message : "Lock failed"}`);
