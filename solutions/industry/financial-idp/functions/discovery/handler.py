@@ -20,10 +20,12 @@ from datetime import datetime, timezone
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import xray_subsegment, EmfMetrics, trace_lambda_handler
+from shared.suffix_filter import allowed_suffixes
 
 logger = logging.getLogger(__name__)
 
-# 金融・保険ユースケースで対象とするドキュメント拡張子
+# 金融・保険ユースケースで対象とするドキュメント拡張子。
+# テンプレートの SUFFIX_FILTER で上書きできる（未設定時はこの既定を使う）。
 DOCUMENT_SUFFIXES = (".pdf", ".tiff", ".tif", ".jpeg", ".jpg")
 
 
@@ -49,8 +51,9 @@ def handler(event, context):
     )
 
     # 対象ドキュメントを各サフィックスで検出
+    suffixes = allowed_suffixes(DOCUMENT_SUFFIXES)
     all_objects: list[dict] = []
-    for suffix in DOCUMENT_SUFFIXES:
+    for suffix in suffixes:
         with xray_subsegment(
             name="s3ap_list_objects",
             annotations={"service_name": "s3", "operation": "ListObjectsV2", "use_case": "financial-idp"},

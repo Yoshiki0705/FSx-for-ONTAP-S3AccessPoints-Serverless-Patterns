@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from shared.exceptions import lambda_error_handler
 from shared.s3ap_helper import S3ApHelper
 from shared.observability import EmfMetrics, trace_lambda_handler
+from shared.suffix_filter import allowed_suffixes
 
 logger = logging.getLogger(__name__)
 
@@ -48,46 +49,17 @@ RENDER_ASSET_EXTENSIONS = (
 )
 
 
-def _parse_suffix_filter(raw: str) -> tuple[str, ...]:
-    """`SUFFIX_FILTER` の値を拡張子タプルに変換する
-
-    運用者が編集する値なので、書き方の揺れを吸収する。ドットの有無・大文字・
-    余分な空白のいずれかで無言の不一致（何も検出しない、あるいは一部だけ検出する）
-    が起きると、原因の分かりにくい取りこぼしになる。
-
-    Args:
-        raw: カンマ区切りの拡張子。例: ".exr, .dpx" / "exr,DPX"
-
-    Returns:
-        tuple[str, ...]: 正規化した拡張子。有効な項目が無ければ空タプル
-    """
-    extensions = []
-    for token in raw.split(","):
-        ext = token.strip().lower()
-        if not ext:
-            continue
-        if not ext.startswith("."):
-            ext = f".{ext}"
-        if ext not in extensions:
-            extensions.append(ext)
-    return tuple(extensions)
-
-
 def _allowed_extensions() -> tuple[str, ...]:
     """検出対象の拡張子を決める
 
     `SUFFIX_FILTER` が設定されていればそれを使い、未設定または実質空なら
-    `RENDER_ASSET_EXTENSIONS` を使う。
-
-    フォールバックを残すのは、環境変数の欠落や打ち間違いで空になったときに
-    「1 件も検出せず成功を返す」状態にしないため。対象を絞りたい場合は
-    `SUFFIX_FILTER` に明示的に列挙する。
+    `RENDER_ASSET_EXTENSIONS` を使う。正規化の詳細は
+    `shared/suffix_filter.py` を参照。
 
     Returns:
         tuple[str, ...]: 検出対象の拡張子
     """
-    configured = _parse_suffix_filter(os.environ.get("SUFFIX_FILTER", ""))
-    return configured or RENDER_ASSET_EXTENSIONS
+    return allowed_suffixes(RENDER_ASSET_EXTENSIONS)
 
 
 def _filter_render_assets(objects: list[dict], extensions: tuple[str, ...] | None = None) -> list[dict]:
