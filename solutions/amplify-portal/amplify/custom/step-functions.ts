@@ -2,7 +2,6 @@ import { Stack, Duration, CfnOutput } from "aws-cdk-lib";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { CfnParameter } from "aws-cdk-lib";
-import type { DefineBackendBase } from "@aws-amplify/backend";
 
 /**
  * CDK Custom Stack: Step Functions + S3 AP Integration
@@ -20,7 +19,12 @@ import type { DefineBackendBase } from "@aws-amplify/backend";
  * - Note the State Machine ARN from the deployment output
  * - Set the ARN in the parameter below (or use SSM Parameter Store)
  */
-export function stepFunctionsStack(stack: Stack, backend: DefineBackendBase) {
+// `_backend` is typed `unknown` rather than a backend type: this function has
+// no callers yet (the wiring at the bottom of this file is still commented out),
+// and it previously imported `DefineBackendBase`, which `@aws-amplify/backend`
+// does not export. That went unnoticed because `amplify/` was outside the
+// tsconfig include list. Give it a real type when the call site lands.
+export function stepFunctionsStack(stack: Stack, _backend: unknown) {
   // --- Parameters ---
   const stateMachineArnParam = new CfnParameter(stack, "StateMachineArn", {
     type: "String",
@@ -38,6 +42,11 @@ export function stepFunctionsStack(stack: Stack, backend: DefineBackendBase) {
     default: "",
   });
 
+  // Kept, not deleted: constructing a CfnParameter is what adds the
+  // TargetRegion parameter to the synthesized template. Removing the binding
+  // would remove the parameter, which is a template change rather than a
+  // cleanup. The `void` below satisfies noUnusedLocals, which — unlike ESLint —
+  // has no underscore-prefix exemption.
   const awsRegionParam = new CfnParameter(stack, "TargetRegion", {
     type: "String",
     description: "AWS Region where Step Functions and S3 AP are deployed",
@@ -45,6 +54,9 @@ export function stepFunctionsStack(stack: Stack, backend: DefineBackendBase) {
   });
 
   // --- IAM Role for AppSync HTTP Data Source (Step Functions) ---
+  // Kept for the same reason as TargetRegion above: the role is created for its
+  // presence in the stack, and the data-source wiring that will consume it is
+  // still commented out at the bottom of this file.
   const sfnDataSourceRole = new iam.Role(stack, "SfnDataSourceRole", {
     assumedBy: new iam.ServicePrincipal("appsync.amazonaws.com"),
     description: "Allows AppSync to invoke Step Functions StartExecution and DescribeExecution",
@@ -192,4 +204,10 @@ def handler(event, context):
   //
   // This will be completed when the Amplify sandbox is first deployed
   // and the GraphQL API resource becomes available.
+
+  // Both constructs above exist for their effect on the stack, not for their
+  // bindings. Referencing them here keeps noUnusedLocals satisfied without
+  // deleting resources from the synthesized template.
+  void awsRegionParam;
+  void sfnDataSourceRole;
 }
