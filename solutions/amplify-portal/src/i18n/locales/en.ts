@@ -1271,6 +1271,52 @@ arpResponseSweepNote: "Blocks lift themselves once their expiry passes. To lift 
   slFailed: "Failed to generate link",
   slNote: "Anyone with this link can open the file until it expires. Do not share links to confidential files.",
 
+  // --- SnapLock consequence confirmation ---
+  slcTitle: "What applying this setting does",
+  slcSubject: "Target: {name}",
+  slcUntilHeadline: "Cannot be deleted until {date}",
+  slcSeeDocs: "Check what becomes undeletable before applying this setting.",
+  slcTypeToConfirm: "This cannot be undone. Type {keyword} to continue.",
+  slcKeywordHint: "Type {keyword} in capitals to continue.",
+  slcAcknowledge: "I have read the above.",
+  slcCancel: "Cancel",
+  slcProceed: "Apply",
+  slcTypeImmutable:
+    "The SnapLock type ({type}) is set only at creation. It cannot be changed or removed afterwards.",
+  slcComplianceNoDelete:
+    "Under Compliance, nobody can delete before retention expires — not the account owner, and not AWS.",
+  slcEnterprisePrivilegedDelete:
+    "Under Enterprise, deletion is possible only while privileged delete is available. Setting PrivilegedDelete to PERMANENTLY_DISABLED removes that route for good.",
+  slcWormBlocksParents:
+    "While even one unexpired WORM file remains, this volume, its SVM and the file system cannot be deleted.",
+  slcWormMaxUntil:
+    "The retention ceiling is {period}. A file committed now cannot be deleted until {date} at the latest.",
+  slcEmptyStillDeletable:
+    "An empty volume can still be deleted right after creation. The point of no return is the first file committed to WORM.",
+  slcBillingContinues:
+    "While the file system cannot be deleted, charges for it continue.",
+  slcRetentionFutureFilesOnly:
+    "Applies only to files committed after this change. Retention on existing WORM files does not change.",
+  slcRetentionNewFileUntil:
+    "With this setting ({period}), a file committed now cannot be deleted until {date}.",
+  slcRetentionZero: "Retention is zero, so new files will not be locked.",
+  slcLockingCannotDisable:
+    "Snapshot locking cannot be disabled once enabled (400 Bad Request).",
+  slcLockingLocksNothingYet:
+    "Enabling on its own locks nothing. A lock happens only through a policy retention period or an individual lock.",
+  slcSnapshotExtendOnly:
+    "A snapshot lock can only be extended. It cannot be shortened or released.",
+  slcSnapshotUntil: "This snapshot cannot be deleted until {date} ({days} days).",
+  slcSnapshotScope: "Other snapshots and the volume itself are unaffected.",
+  slcS3ComplianceNoChange:
+    "In COMPLIANCE mode the retention period cannot be shortened or removed.",
+  slcS3GovernanceBypass:
+    "In GOVERNANCE mode a caller holding s3:BypassGovernanceRetention can override it.",
+  slcS3ObjectsUntil:
+    "Objects stored from now on cannot be deleted until {date} ({days} days).",
+  slcS3FutureObjectsOnly:
+    "Existing objects are unaffected. This applies to objects stored after the change.",
+
   // --- Shared / misc ---
   processing: "Processing...",
   athenaGuidanceTitle: "How to use",
