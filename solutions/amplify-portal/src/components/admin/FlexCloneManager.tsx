@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { errorMessage } from "../../lib/portalQuery";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
@@ -20,9 +22,9 @@ interface FlexClone {
 
 export function FlexCloneManager() {
   const { t } = useTranslation();
-  const [clones, setClones] = useState<FlexClone[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Errors raised by the create/split handlers, kept separate from the query's own
+  // error so a failed action does not read as a failed load, and vice versa.
+  const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -32,21 +34,31 @@ export function FlexCloneManager() {
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
-  const loadClones = async () => {
-    setLoading(true); setError(null);
-    try {
+  // Deliberately not using `unwrap` here. This action tolerates two payload errors
+  // — "Unknown action" and "not configured" — and shows an empty list instead,
+  // because FlexClone is optional and a cluster without it should render an empty
+  // panel rather than an error. `unwrap` promotes every payload error to a
+  // rejection, which would turn that supported configuration into a failure.
+  const {
+    data: clones = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listFlexClones"],
+    queryFn: async () => {
       const resp = await client.queries.adminQuery({ action: "listFlexClones", params: JSON.stringify({}) });
       const data = parseResponse<{ clones?: FlexClone[]; error?: string }>(resp);
       if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) {
-        setError(data.error);
-      } else {
-        setClones(data?.clones || []);
+        throw new Error(data.error);
       }
-    } catch (e) { setError(e instanceof Error ? e.message : "Load failed"); }
-    finally { setLoading(false); }
-  };
+      return data?.clones ?? [];
+    },
+  });
 
-  useEffect(() => { loadClones(); }, []);
+  const loadClones = () => void refetch();
+  const setError = setActionError;
+  const error = actionError ?? errorMessage(queryError, "Load failed");
 
   const handleCreate = async () => {
     if (!cloneName || !parentVolume) { setError(t("fcCloneNameRequired")); return; }
