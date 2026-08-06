@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { durationLabel, durationRange } from "../../utils/duration";
 import { parseResponse } from "../../utils/parseResponse";
 
@@ -26,9 +28,8 @@ interface Volume {
  */
 export function VolumeManager() {
   const { t } = useTranslation();
-  const [volumes, setVolumes] = useState<Volume[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [actionResult, setActionResult] = useState<string | null>(null);
 
@@ -43,24 +44,24 @@ export function VolumeManager() {
   const [customRetentionNum, setCustomRetentionNum] = useState("30");
   const [customRetentionUnit, setCustomRetentionUnit] = useState("D");
 
-  const loadVolumes = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) });
-      const data = parseResponse<{ volumes?: Volume[]; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setVolumes(data.volumes || []);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load volumes");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: volumes = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listVolumes"],
+    queryFn: () =>
+      unwrap<{ volumes?: Volume[] }>(
+        client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) }),
+      ).then((d) => d?.volumes ?? []),
+  });
 
-  useEffect(() => { loadVolumes(); }, []);
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadVolumes = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load volumes");
+
 
   const handleCreate = async () => {
     if (!newName) { setError(t("rmVolumeNameRequired")); return; }

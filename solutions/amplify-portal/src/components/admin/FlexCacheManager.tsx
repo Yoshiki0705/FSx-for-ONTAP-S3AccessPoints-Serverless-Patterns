@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>({ authMode: "userPool" });
@@ -25,9 +27,8 @@ interface FlexCacheVolume {
 
 export function FlexCacheManager() {
   const { t } = useTranslation();
-  const [caches, setCaches] = useState<FlexCacheVolume[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [expandedUuid, setExpandedUuid] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -40,37 +41,55 @@ export function FlexCacheManager() {
   const [newSizeGiB, setNewSizeGiB] = useState(100);
   const [newPath, setNewPath] = useState("");
   const [prepopulatePaths, setPrepopulatePaths] = useState("");
-  const [availableVolumes, setAvailableVolumes] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 5000);
 
-  const loadCaches = async () => {
-    setLoading(true); setError(null);
-    try {
-      const resp = await client.queries.adminQuery({
-        action: "listFlexCaches", params: JSON.stringify({}),
-      });
-      const data = parseResponse<{ caches?: FlexCacheVolume[]; error?: string }>(resp);
-      if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) {
-        setError(data.error);
-      } else {
-        setCaches(data?.caches || []);
+  const {
+    data: caches = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listFlexCaches"],
+    queryFn: async () => {
+      const data = parseResponse<{ caches?: FlexCacheVolume[]; error?: string }>(
+        await client.queries.adminQuery({
+          action: "listFlexCaches",
+          params: JSON.stringify({}),
+        }),
+      );
+      // A dispatcher that is not wired yet is an empty list, not a failure.
+      if (
+        data?.error &&
+        !data.error.includes("Unknown action") &&
+        !data.error.includes("not configured")
+      ) {
+        throw new Error(data.error);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Load failed");
-    } finally { setLoading(false); }
-  };
+      return data?.caches ?? [];
+    },
+  });
 
-  useEffect(() => {
-    loadCaches();
-    // Fetch available volumes for origin selection
-    client.queries.adminQuery({ action: "listVolumes", params: JSON.stringify({}) })
-      .then((resp) => {
-        const data = parseResponse<{ volumes?: { name: string }[] }>(resp);
-        if (data?.volumes) setAvailableVolumes(data.volumes.map(v => v.name));
-      }).catch(() => {});
-  }, []);
+  // Origin candidates only populate the create form, so a failed lookup leaves
+  // the field empty rather than blocking the panel.
+  const { data: availableVolumes = [] } = useQuery({
+    queryKey: ["admin", "flexCacheOriginCandidates"],
+    queryFn: async () => {
+      const data = parseResponse<{ volumes?: { name: string }[] }>(
+        await client.queries.adminQuery({
+          action: "listVolumes",
+          params: JSON.stringify({}),
+        }),
+      );
+      return (data?.volumes ?? []).map((v) => v.name);
+    },
+  });
+
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadCaches = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Load failed");
 
   const handleCreate = async () => {
     if (!newName || !newOriginVolume) {

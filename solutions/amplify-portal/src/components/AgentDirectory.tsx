@@ -5,10 +5,12 @@
  * Shows a card grid of available agents with search/filter,
  * detail panel, and navigation to the agent creator.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { errorMessage } from "../lib/portalQuery";
 
 const client = generateClient<Schema>();
 
@@ -43,31 +45,31 @@ interface AgentDirectoryProps {
 
 export function AgentDirectory({ onSelectAgent, onCreateAgent }: AgentDirectoryProps) {
   const { t } = useTranslation();
-  const [agents, setAgents] = useState<AgentItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [selectedAgent, setSelectedAgent] = useState<AgentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const queryClient = useQueryClient();
 
-  const loadAgents = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await client.queries.agentQuery({
-        action: "listAgents",
-        params: JSON.stringify({}),
-      });
-      const data = parseResp<{ agents: AgentItem[] }>(response);
-      if (data?.agents) setAgents(data.agents);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load agents");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const AGENTS_KEY = ["agents", "listAgents"];
 
-  useEffect(() => { loadAgents(); }, [loadAgents]);
+  const {
+    data: agents = [],
+    isPending: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: AGENTS_KEY,
+    queryFn: async () => {
+      const data = parseResp<{ agents: AgentItem[] }>(
+        await client.queries.agentQuery({
+          action: "listAgents",
+          params: JSON.stringify({}),
+        }),
+      );
+      return data?.agents ?? [];
+    },
+  });
+  const error = errorMessage(queryError, "Failed to load agents");
 
   async function loadAgentDetail(agentId: string) {
     setDetailLoading(true);
@@ -89,7 +91,10 @@ export function AgentDirectory({ onSelectAgent, onCreateAgent }: AgentDirectoryP
         action: "deleteAgent",
         params: JSON.stringify({ agentId }),
       });
-      setAgents((prev) => prev.filter((a) => a.agentId !== agentId));
+      // Drop the row from the cache rather than refetching the whole directory.
+      queryClient.setQueryData<AgentItem[]>(AGENTS_KEY, (prev) =>
+        (prev ?? []).filter((a) => a.agentId !== agentId),
+      );
       setSelectedAgent(null);
     } catch { /* silent */ }
   }

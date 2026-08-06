@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -18,9 +20,8 @@ interface CifsShare {
 
 export function CifsShareManager() {
   const { t } = useTranslation();
-  const [shares, setShares] = useState<CifsShare[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -31,24 +32,23 @@ export function CifsShareManager() {
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
-  const loadShares = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.adminQuery({ action: "listCifsShares", params: JSON.stringify({}) });
-      const data = parseResponse<{ shares?: CifsShare[]; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setShares(data.shares || []);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load CIFS shares");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: shares = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listCifsShares"],
+    queryFn: () =>
+      unwrap<{ shares?: CifsShare[] }>(
+        client.queries.adminQuery({ action: "listCifsShares", params: JSON.stringify({}) }),
+      ).then((d) => d?.shares ?? []),
+  });
 
-  useEffect(() => { loadShares(); }, []);
+  // The create/delete/encryption handlers report through their own state, so a
+  // failed action is not confused with a failed load.
+  const loadShares = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load CIFS shares");
 
   const handleCreate = async () => {
     if (!newName || !newPath) { setError("Name and path are required"); return; }

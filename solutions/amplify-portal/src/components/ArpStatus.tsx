@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { errorMessage, unwrap } from "../lib/portalQuery";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import { ArpResponseActions } from "./ArpResponseActions";
-import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
 
@@ -30,40 +30,24 @@ interface ArpData {
  *   GET /api/storage/volumes?fields=anti_ransomware
  */
 export function ArpStatus() {
-  const [arp, setArp] = useState<ArpData | null>(null);
-  const [volumeName, setVolumeName] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
 
-  const loadArpStatus = async () => {
-    setLoading(true);
-    setError(null);
+  const {
+    data,
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["protection", "getArpStatus"],
+    queryFn: () =>
+      unwrap<{ volumeName?: string; arp?: ArpData }>(
+        client.queries.protectionQuery({ action: "getArpStatus", params: JSON.stringify({}) }),
+      ),
+  });
 
-    try {
-      const response = await client.queries.protectionQuery({ action: "getArpStatus", params: JSON.stringify({}) });
-      const data = parseResponse<{ volumeName?: string; arp?: ArpData; error?: string }>(response);
-
-      if (data) {
-        if (data.error) {
-          setError(data.error);
-        } else if (data.arp) {
-          setArp(data.arp);
-          setVolumeName(data.volumeName || "");
-        }
-      } else if (response.errors) {
-        setError(response.errors.map((e) => e.message).join(", "));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load ARP status");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadArpStatus();
-  }, []);
+  const arp = data?.arp ?? null;
+  const volumeName = data?.volumeName ?? "";
+  const error = errorMessage(queryError, "Failed to load ARP status");
 
   if (loading) {
     return (
@@ -163,7 +147,7 @@ export function ArpStatus() {
             {t("volume")}: {volumeName}
           </span>
         )}
-        <button onClick={loadArpStatus} className="refresh-btn" title={t("refresh")}>
+        <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
           ↻
         </button>
       </div>

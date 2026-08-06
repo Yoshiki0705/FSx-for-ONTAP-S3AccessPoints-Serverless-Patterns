@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { VolumeSelector } from "./VolumeSelector";
 import { parseResponse } from "../../utils/parseResponse";
 
@@ -31,10 +33,8 @@ interface QuotaUsage {
 
 export function QuotaManager() {
   const { t } = useTranslation();
-  const [rules, setRules] = useState<QuotaRule[]>([]);
-  const [usage, setUsage] = useState<QuotaUsage[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"rules" | "report">("rules");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -51,50 +51,43 @@ export function QuotaManager() {
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
-  const loadRules = async () => {
-    if (!volumeName) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.adminQuery({ action: "listQuotaRules", params: JSON.stringify({volumeName}) });
-      const data = parseResponse<{ rules?: QuotaRule[]; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setRules(data.rules || []);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load quota rules");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Rules and the usage report are separate queries so each tab keeps its own
+  // cache entry, both keyed on the selected volume.
+  const rulesQuery = useQuery({
+    queryKey: ["admin", "listQuotaRules", volumeName],
+    enabled: !!volumeName && activeTab === "rules",
+    queryFn: () =>
+      unwrap<{ rules?: QuotaRule[] }>(
+        client.queries.adminQuery({
+          action: "listQuotaRules",
+          params: JSON.stringify({ volumeName }),
+        }),
+      ).then((d) => d?.rules ?? []),
+  });
 
-  const loadReport = async () => {
-    if (!volumeName) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.adminQuery({ action: "getQuotaReport", params: JSON.stringify({volumeName}) });
-      const data = parseResponse<{ usage?: QuotaUsage[]; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setUsage(data.usage || []);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load quota report");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const reportQuery = useQuery({
+    queryKey: ["admin", "getQuotaReport", volumeName],
+    enabled: !!volumeName && activeTab === "report",
+    queryFn: () =>
+      unwrap<{ usage?: QuotaUsage[] }>(
+        client.queries.adminQuery({
+          action: "getQuotaReport",
+          params: JSON.stringify({ volumeName }),
+        }),
+      ).then((d) => d?.usage ?? []),
+  });
 
-  useEffect(() => {
-    if (!volumeName) return;
-    if (activeTab === "rules") {
-      loadRules();
-    } else {
-      loadReport();
-    }
-  }, [volumeName, activeTab]);
+  const rules = rulesQuery.data ?? [];
+  const usage = reportQuery.data ?? [];
+  const loading = rulesQuery.isFetching || reportQuery.isFetching;
+
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadRules = () => void rulesQuery.refetch();
+  const loadReport = () => void reportQuery.refetch();
+  const error =
+    actionError ??
+    errorMessage(rulesQuery.error ?? reportQuery.error, "Failed to load quotas");
 
   const handleCreate = async () => {
     setError(null);

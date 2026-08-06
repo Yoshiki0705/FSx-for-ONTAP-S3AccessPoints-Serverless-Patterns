@@ -4,12 +4,16 @@
  * Ported from RAG-FSxN-CDK multi-agent-teams pattern.
  * Shows existing teams as cards + wizard to create new teams by selecting agents.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
+
+/** Cache key for the teams + agents bundle, shared with the delete action. */
+const TEAMS_KEY = ["agents", "teamsAndAgents"];
 
 interface TeamAgent {
   agentId: string;
@@ -48,9 +52,6 @@ interface AgentTeamsProps {
 
 export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
   const { t } = useTranslation();
-  const [teams, setTeams] = useState<TeamItem[]>([]);
-  const [agents, setAgents] = useState<AgentOption[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
 
   // Wizard state
@@ -61,22 +62,31 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
   const [wizSaving, setWizSaving] = useState(false);
   const [wizError, setWizError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
+  const queryClient = useQueryClient();
+
+  // The wizard needs both lists before it is useful, so they stay one query and
+  // are fetched in parallel inside it.
+  const {
+    data,
+    isPending: loading,
+    refetch,
+  } = useQuery({
+    queryKey: TEAMS_KEY,
+    queryFn: async () => {
       const [teamsResp, agentsResp] = await Promise.all([
         client.queries.agentQuery({ action: "listTeams", params: JSON.stringify({}) }),
         client.queries.agentQuery({ action: "listAgents", params: JSON.stringify({}) }),
       ]);
-      const teamsData = parseResp<{ teams: TeamItem[] }>(teamsResp);
-      const agentsData = parseResp<{ agents: AgentOption[] }>(agentsResp);
-      if (teamsData?.teams) setTeams(teamsData.teams);
-      if (agentsData?.agents) setAgents(agentsData.agents);
-    } catch { /* silent */ }
-    finally { setLoading(false); }
-  }, []);
+      return {
+        teams: parseResp<{ teams: TeamItem[] }>(teamsResp)?.teams ?? [],
+        agents: parseResp<{ agents: AgentOption[] }>(agentsResp)?.agents ?? [],
+      };
+    },
+  });
 
-  useEffect(() => { loadData(); }, [loadData]);
+  const teams = data?.teams ?? [];
+  const agents = data?.agents ?? [];
+  const loadData = () => void refetch();
 
   function addAgentToTeam(agent: AgentOption) {
     if (wizAgents.find((a) => a.agentId === agent.agentId)) return;
@@ -127,7 +137,14 @@ export function AgentTeams({ onSelectTeam }: AgentTeamsProps) {
         action: "deleteTeam",
         params: JSON.stringify({ teamId }),
       });
-      setTeams((prev) => prev.filter((t) => t.teamId !== teamId));
+      // Drop the card from the cache rather than refetching both lists.
+      queryClient.setQueryData<{ teams: TeamItem[]; agents: AgentOption[] }>(
+        TEAMS_KEY,
+        (prev) =>
+          prev
+            ? { ...prev, teams: prev.teams.filter((x) => x.teamId !== teamId) }
+            : prev,
+      );
     } catch { /* silent */ }
   }
 

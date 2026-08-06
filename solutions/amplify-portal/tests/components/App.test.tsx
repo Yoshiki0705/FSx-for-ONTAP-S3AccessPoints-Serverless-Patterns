@@ -32,14 +32,23 @@ vi.mock("aws-amplify/auth", () => ({
 
 vi.mock("../../amplify/data/resource", () => ({}));
 
+import { QueryClientProvider } from "@tanstack/react-query";
 import App from "../../src/App";
+import { createPortalQueryClient } from "../../src/lib/queryClient";
 import { I18nProvider } from "../../src/i18n";
 
+/**
+ * Mirrors main.tsx: the panels fetch through TanStack Query, so the client has
+ * to be in scope. A fresh client per render keeps one test's cache out of the
+ * next one.
+ */
 function renderApp() {
   return render(
-    <I18nProvider>
-      <App />
-    </I18nProvider>
+    <QueryClientProvider client={createPortalQueryClient()}>
+      <I18nProvider>
+        <App />
+      </I18nProvider>
+    </QueryClientProvider>
   );
 }
 

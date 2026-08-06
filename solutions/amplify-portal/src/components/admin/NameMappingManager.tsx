@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -15,9 +17,8 @@ interface NameMapping {
 
 export function NameMappingManager() {
   const { t } = useTranslation();
-  const [mappings, setMappings] = useState<NameMapping[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -28,26 +29,34 @@ export function NameMappingManager() {
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
-  const loadMappings = async () => {
-    setLoading(true); setError(null);
-    try {
-      const resp = await client.queries.adminQuery({
-        action: "listNameMappings", params: JSON.stringify({}),
-      });
-      const data = parseResponse<{
-        mappings?: NameMapping[]; error?: string
-      }>(resp);
-      if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) {
-        setError(data.error);
-      } else {
-        setMappings(data?.mappings || []);
+  const {
+    data: mappings = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listNameMappings"],
+    queryFn: async () => {
+      const data = parseResponse<{ mappings?: NameMapping[]; error?: string }>(
+        await client.queries.adminQuery({ action: "listNameMappings", params: JSON.stringify({}) }),
+      );
+      // A dispatcher that has not been wired yet is an empty list, not a failure.
+      if (
+        data?.error &&
+        !data.error.includes("Unknown action") &&
+        !data.error.includes("not configured")
+      ) {
+        throw new Error(data.error);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Load failed");
-    } finally { setLoading(false); }
-  };
+      return data?.mappings ?? [];
+    },
+  });
 
-  useEffect(() => { loadMappings(); }, []);
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadMappings = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load mappings");
+
 
   const handleCreate = async () => {
     if (!newPattern || !newReplacement) {
