@@ -518,9 +518,14 @@ Resources:
           S3_ACCESS_POINT_OUTPUT: !Ref S3AccessPointOutputAlias
           PREFIX_FILTER: ""
           # Discovery が検出する拡張子。ハンドラの RENDER_ASSET_EXTENSIONS と
-          # 同じ 15 種を列挙する。ここを編集すれば検出対象が変わる。
-          # 空にするとハンドラ側の既定（同じ 15 種）にフォールバックする。
-          SUFFIX_FILTER: ".exr,.dpx,.tga,.obj,.fbx,.blend,.abc,.usd,.usda,.usdc,.usdz,.ma,.mb,.hip,.hda"
+          # 同じ 31 種を列挙する。ここを編集すれば検出対象が変わる。
+          # 空にするとハンドラ側の既定（同じ 31 種）にフォールバックする。
+          #
+          # 内訳: DCC シーン (Maya/3ds Max/Blender/Houdini/Cinema 4D/Nuke/
+          # After Effects/KeyShot/Unreal Engine/VRED) + レンダラーシーン
+          # (Arnold/V-Ray) + 交換形式 (OBJ/FBX/Alembic/USD) + プレート
+          # (EXR/DPX/TGA) + 映像コンテナ (MOV/MP4/MXF)
+          SUFFIX_FILTER: ".ma,.mb,.max,.blend,.hip,.hipnc,.hiplc,.hda,.c4d,.nk,.aep,.bip,.ksp,.uproject,.umap,.vpb,.ass,.vrscene,.obj,.fbx,.abc,.usd,.usda,.usdc,.usdz,.exr,.dpx,.tga,.mov,.mp4,.mxf"
       LoggingConfig:
         LogGroup: !Ref DiscoveryLogGroup
       Tags:
@@ -929,10 +934,39 @@ Resources:
               - prefix: "/media/"
               - prefix: "/vfx/"
               - prefix: "/renders/"
+              # Discovery の SUFFIX_FILTER と同じ 31 種に揃える。片方だけ広げると
+              # 「イベントでは起動するが Discovery が拾わない」形式が生まれる。
+              - suffix: ".ma"
+              - suffix: ".mb"
+              - suffix: ".max"
+              - suffix: ".blend"
+              - suffix: ".hip"
+              - suffix: ".hipnc"
+              - suffix: ".hiplc"
+              - suffix: ".hda"
+              - suffix: ".c4d"
+              - suffix: ".nk"
+              - suffix: ".aep"
+              - suffix: ".bip"
+              - suffix: ".ksp"
+              - suffix: ".uproject"
+              - suffix: ".umap"
+              - suffix: ".vpb"
+              - suffix: ".ass"
+              - suffix: ".vrscene"
+              - suffix: ".obj"
+              - suffix: ".fbx"
+              - suffix: ".abc"
+              - suffix: ".usd"
+              - suffix: ".usda"
+              - suffix: ".usdc"
+              - suffix: ".usdz"
               - suffix: ".exr"
               - suffix: ".dpx"
+              - suffix: ".tga"
               - suffix: ".mov"
               - suffix: ".mp4"
+              - suffix: ".mxf"
       State: ENABLED
       Targets:
         - Id: step-functions-target
