@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { errorMessage } from "../lib/portalQuery";
 import { useIncidentState } from "../hooks/useIncidentState";
 import { parseResponse } from "../utils/parseResponse";
 
@@ -106,7 +108,8 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
   const { incident, markContained, markInvestigating, markResolved } = useIncidentState(volumeName || "default");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
 
   // Form state
   const [domain, setDomain] = useState("");
@@ -128,10 +131,7 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
   /** SVM scope for a request, omitted entirely when the default is wanted. */
   const svmScope = () => (selectedSvms.length > 0 ? { svms: selectedSvms } : {});
 
-  // Active blocks state
-  const [smbBlocks, setSmbBlocks] = useState<ActiveBlock[]>([]);
-  const [nfsBlocks, setNfsBlocks] = useState<ActiveBlock[]>([]);
-  const [blocksLoading, setBlocksLoading] = useState(false);
+
 
   // Pending containment action awaiting confirmation. Blocking cuts data access
   // for a principal across the whole SVM and nothing expires it automatically,
@@ -147,44 +147,49 @@ export function ArpResponseActions({ threatLevel, volumeName }: ArpResponseActio
     setResult(null);
   };
 
-  // Load active blocks
-  const loadActiveBlocks = async () => {
-    setBlocksLoading(true);
-    try {
-      const response = await client.queries.arpQuery({ action: "listActiveBlocks", params: JSON.stringify({...svmScope()}) });
+  // Active blocks, per SVM scope. The scope is part of the key, so widening it
+  // reloads on its own and each scope keeps its own result. Fetching only while
+  // the tab is open matches what the effect's condition used to do.
+  const {
+    data: blocks,
+    isFetching: blocksLoading,
+    error: blocksError,
+    refetch: refetchBlocks,
+  } = useQuery({
+    queryKey: ["arp", "listActiveBlocks", selectedSvms],
+    enabled: activeTab === "blocks",
+    queryFn: async () => {
       const data = parseResponse<{
         smbBlocks?: ActiveBlock[];
         nfsBlocks?: ActiveBlock[];
         total?: number;
         error?: string;
-      }>(response);
-      if (data) {
-        // Previously this branched on error string length, to hide a backend
-        // message that was literally "4" — an IndexError whose text was a bare
-        // number. That guess also swallowed any genuinely short error, and the
-        // backend now reports the exception type instead, so the response is
-        // taken at face value: report failures, render successes.
-        if (data.error) {
-          setError(data.error);
-          setSmbBlocks([]);
-          setNfsBlocks([]);
-        } else {
-          setSmbBlocks(data.smbBlocks || []);
-          setNfsBlocks(data.nfsBlocks || []);
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load active blocks");
-    } finally {
-      setBlocksLoading(false);
-    }
-  };
+      }>(
+        await client.queries.arpQuery({
+          action: "listActiveBlocks",
+          params: JSON.stringify({ ...svmScope() }),
+        }),
+      );
+      // Previously this branched on error string length, to hide a backend
+      // message that was literally "4" — an IndexError whose text was a bare
+      // number. That guess also swallowed any genuinely short error, and the
+      // backend now reports the exception type instead, so the response is
+      // taken at face value: report failures, render successes.
+      if (data?.error) throw new Error(data.error);
+      return {
+        smbBlocks: data?.smbBlocks ?? [],
+        nfsBlocks: data?.nfsBlocks ?? [],
+      };
+    },
+  });
 
-  useEffect(() => {
-    if (activeTab === "blocks") {
-      loadActiveBlocks();
-    }
-  }, [activeTab, selectedSvms]);
+  const smbBlocks = blocks?.smbBlocks ?? [];
+  const nfsBlocks = blocks?.nfsBlocks ?? [];
+  const loadActiveBlocks = () => void refetchBlocks();
+
+  // A containment action reports its own failure; a failed listing reports the
+  // load. Both surface in the same banner, the action first.
+  const error = actionError ?? errorMessage(blocksError, "Failed to load active blocks");
 
   // Load the SVM list once, so the operator can widen the scope deliberately.
   // A failure here is not surfaced as an error: it only means the picker is

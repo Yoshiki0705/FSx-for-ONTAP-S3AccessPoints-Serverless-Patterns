@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { errorMessage } from "../lib/portalQuery";
 import { portalSettings } from "../portal-settings";
 import { FilePreview } from "./FilePreview";
 import { RestoreFromSnapshot } from "./RestoreFromSnapshot";
@@ -38,6 +40,13 @@ interface FileItem {
   storageClass: string | null;
 }
 
+/** One page of a listing. Named so getNextPageParam can be annotated. */
+interface FilePage {
+  files: FileItem[];
+  nextContinuationToken?: string;
+  isTruncated: boolean;
+}
+
 /**
  * File Explorer component.
  *
@@ -53,12 +62,18 @@ export function FileExplorer({
   initialPrefix = "",
   prefixNonce = 0,
 }: FileExplorerProps) {
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [currentPrefix, setCurrentPrefix] = useState(initialPrefix);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [continuationToken, setContinuationToken] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
+  // Where the explorer is, plus the caller request it came from. Keeping the
+  // honoured request alongside the location lets a prop change be detected
+  // during render, so following the caller needs no effect and no extra pass.
+  const [nav, setNav] = useState({
+    prefix: initialPrefix,
+    fromPrefix: initialPrefix,
+    fromNonce: prefixNonce,
+  });
+  if (nav.fromNonce !== prefixNonce || nav.fromPrefix !== initialPrefix) {
+    setNav({ prefix: initialPrefix, fromPrefix: initialPrefix, fromNonce: prefixNonce });
+  }
+  const currentPrefix = nav.prefix;
   // Only one tag editor is open at a time, keyed by file key.
   const [tagEditorFor, setTagEditorFor] = useState<string | null>(null);
   // Bumped after a tag edit so the row badges reload.
@@ -77,46 +92,48 @@ export function FileExplorer({
            lower.startsWith("dicom/") || lower.startsWith("phi/") || lower.startsWith("pii/");
   };
 
-  const loadFiles = useCallback(async (prefix: string, token?: string | null) => {
-    setLoading(true);
-    setError(null);
+  // S3 continuation tokens are exactly what useInfiniteQuery models, so "load
+  // more" appends a page instead of the loader concatenating onto local state.
+  // Changing folder changes the key, which discards the accumulated pages.
+  const {
+    data,
+    isFetching: loading,
+    error: queryError,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["files", "listFiles", currentPrefix],
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last: FilePage) =>
+      last.isTruncated ? last.nextContinuationToken ?? undefined : undefined,
+    queryFn: async ({ pageParam }): Promise<FilePage> => {
+      const response = await client.queries.fileQuery({
+        action: "listFiles",
+        params: JSON.stringify({
+          prefix: currentPrefix,
+          maxKeys: 100,
+          continuationToken: pageParam,
+        }),
+      });
+      const parsed = parseResponse<{
+        files?: FileItem[];
+        nextContinuationToken?: string;
+        isTruncated?: boolean;
+      }>(response);
+      return {
+        files: (parsed?.files ?? []) as FileItem[],
+        nextContinuationToken: parsed?.nextContinuationToken,
+        isTruncated: parsed?.isTruncated ?? false,
+      };
+    },
+  });
 
-    try {
-      const response = await client.queries.fileQuery({ action: "listFiles", params: JSON.stringify({
-        prefix,
-        maxKeys: 100,
-        continuationToken: token || undefined,
-      }) });
-      const data = parseResponse<{ files?: FileItem[]; nextContinuationToken?: string; isTruncated?: boolean }>(response);
-
-      if (data) {
-        const newFiles = (data.files || []) as FileItem[];
-        setFiles(token ? (prev) => [...prev, ...newFiles] : newFiles);
-        setContinuationToken(data.nextContinuationToken || null);
-        setHasMore(data.isTruncated || false);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load files");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadFiles(currentPrefix);
-  }, [currentPrefix, loadFiles]);
-
-  // Follow the location handed in by another view (favorites, recent, search,
-  // job results). Keyed on prefixNonce as well as the prefix so that repeating
-  // the same request re-opens the folder instead of doing nothing.
-  useEffect(() => {
-    setCurrentPrefix(initialPrefix);
-  }, [initialPrefix, prefixNonce]);
+  const files = data?.pages.flatMap((p) => p.files) ?? [];
+  const hasMore = hasNextPage;
+  const error = errorMessage(queryError, "Failed to load files");
 
   const navigateToFolder = (folderKey: string) => {
-    setCurrentPrefix(folderKey);
-    setContinuationToken(null);
-    setFiles([]);
+    setNav((prev) => ({ ...prev, prefix: folderKey }));
   };
 
   const navigateUp = () => {
@@ -287,7 +304,7 @@ export function FileExplorer({
       {hasMore && !loading && (
         <button
           className="load-more"
-          onClick={() => loadFiles(currentPrefix, continuationToken)}
+          onClick={() => void fetchNextPage()}
         >
           {t("filesLoadMore")}
         </button>

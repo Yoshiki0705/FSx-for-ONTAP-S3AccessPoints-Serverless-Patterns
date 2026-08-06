@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { errorMessage, unwrap } from "../lib/portalQuery";
 import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -53,14 +55,8 @@ interface UnlockedSnapshot {
  * - S3 Object Lock tab: Informational (not applicable to FSx for ONTAP S3 AP)
  */
 export function SnaplockStatus() {
-  const [snaplock, setSnaplock] = useState<SnaplockData | null>(null);
-  const [snapshotLockingEnabled, setSnapshotLockingEnabled] = useState(false);
-  const [volumeName, setVolumeName] = useState("");
-  const [lockedSnapshots, setLockedSnapshots] = useState<LockedSnapshot[]>([]);
-  const [snaplockVolumes, setSnaplockVolumes] = useState<SnaplockVolume[]>([]);
-  const [unlockedSnapshots, setUnlockedSnapshots] = useState<UnlockedSnapshot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<"snaplock" | "s3lock" | "tamperproof">("snaplock");
 
@@ -69,17 +65,7 @@ export function SnaplockStatus() {
   const [lockRetentionDays, setLockRetentionDays] = useState(30);
   const [lockingInProgress, setLockingInProgress] = useState(false);
 
-  // S3 Object Lock state
-  const [s3LockStatus, setS3LockStatus] = useState<{
-    configured: boolean;
-    bucket: string | null;
-    objectLockEnabled: boolean;
-    defaultRetention: { mode: string; days?: number; years?: number } | null;
-    message?: string;
-  } | null>(null);
-
   // S3 Object Lock configuration form
-  const [s3Buckets, setS3Buckets] = useState<{ name: string }[]>([]);
   const [s3BucketFilter, setS3BucketFilter] = useState("");
   const [s3SelectedBucket, setS3SelectedBucket] = useState("");
   const [s3LockMode, setS3LockMode] = useState("GOVERNANCE");
@@ -89,74 +75,57 @@ export function SnaplockStatus() {
 
   const { t } = useTranslation();
 
-  const loadStatus = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.protectionQuery({
-        action: "getSnaplockStatus",
-        params: JSON.stringify({}),
-      });
-      const data = parseResponse<{
+  // Four independent fetches, so four queries. Only the first gates the page;
+  // the other three feed panels that degrade to empty, which is also why they
+  // swallowed their errors before.
+  const statusQuery = useQuery({
+    queryKey: ["protection", "getSnaplockStatus"],
+    queryFn: () =>
+      unwrap<{
         volumeName?: string;
         snaplock?: SnaplockData;
         snapshotLockingEnabled?: boolean;
-        error?: string;
-      }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else {
-          setSnaplock(data.snaplock || null);
-          setSnapshotLockingEnabled(data.snapshotLockingEnabled || false);
-          setVolumeName(data.volumeName || "");
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load status");
-    } finally {
-      setLoading(false);
-    }
-  };
+      }>(
+        client.queries.protectionQuery({
+          action: "getSnaplockStatus",
+          params: JSON.stringify({}),
+        }),
+      ),
+  });
 
-  const loadLockedSnapshots = async () => {
-    try {
-      const response = await client.queries.protectionQuery({
-        action: "listSnapshots",
-        params: JSON.stringify({ maxResults: 50 }),
-      });
-      const data = parseResponse<{ snapshots?: LockedSnapshot[] }>(response);
-      if (data && data.snapshots) {
-        setLockedSnapshots(data.snapshots.filter((s) => s.isLocked));
-        setUnlockedSnapshots(
-          data.snapshots
-            .filter((s) => !s.isLocked)
-            .map((s) => ({ name: s.name, createTime: s.createTime, snapshotId: s.snapshotId }))
-        );
-      }
-    } catch { /* silent */ }
-  };
+  // Locked and unlocked come from one listing, so they are split here rather
+  // than kept as two pieces of state that could disagree.
+  const snapshotsQuery = useQuery({
+    queryKey: ["protection", "listSnapshots", 50],
+    queryFn: async () => {
+      const data = parseResponse<{ snapshots?: LockedSnapshot[] }>(
+        await client.queries.protectionQuery({
+          action: "listSnapshots",
+          params: JSON.stringify({ maxResults: 50 }),
+        }),
+      );
+      return data?.snapshots ?? [];
+    },
+  });
 
-  const loadSnaplockVolumes = async () => {
-    try {
-      const response = await client.queries.adminQuery({
-        action: "listVolumes",
-        params: JSON.stringify({}),
-      });
-      const data = parseResponse<{ volumes?: SnaplockVolume[] }>(response);
-      if (data && data.volumes) {
-        setSnaplockVolumes(
-          data.volumes.filter((v) => v.snaplockType && v.snaplockType !== "non_snaplock")
-        );
-      }
-    } catch { /* silent — admin query may fail for non-admin users */ }
-  };
+  const volumesQuery = useQuery({
+    queryKey: ["admin", "snaplockVolumes"],
+    queryFn: async () => {
+      const data = parseResponse<{ volumes?: SnaplockVolume[] }>(
+        await client.queries.adminQuery({
+          action: "listVolumes",
+          params: JSON.stringify({}),
+        }),
+      );
+      return (data?.volumes ?? []).filter(
+        (v) => v.snaplockType && v.snaplockType !== "non_snaplock",
+      );
+    },
+  });
 
-  const loadS3ObjectLockStatus = async () => {
-    try {
-      const response = await client.queries.adminQuery({
-        action: "getS3ObjectLockStatus",
-        params: JSON.stringify({}),
-      });
+  const s3LockQuery = useQuery({
+    queryKey: ["admin", "getS3ObjectLockStatus"],
+    queryFn: async () => {
       const data = parseResponse<{
         configured: boolean;
         bucket: string | null;
@@ -164,27 +133,60 @@ export function SnaplockStatus() {
         defaultRetention: { mode: string; days?: number; years?: number } | null;
         message?: string;
         error?: string;
-      }>(response);
-      if (data) setS3LockStatus(data);
-    } catch { /* silent */ }
+      }>(
+        await client.queries.adminQuery({
+          action: "getS3ObjectLockStatus",
+          params: JSON.stringify({}),
+        }),
+      );
+      return data ?? null;
+    },
+  });
+
+  // The bucket picker only opens with the config form, and the filter is part of
+  // the key, so typing re-queries without a separate loader call.
+  const s3BucketsQuery = useQuery({
+    queryKey: ["admin", "listS3Buckets", s3BucketFilter],
+    enabled: showS3Config,
+    queryFn: async () => {
+      const data = parseResponse<{ buckets?: { name: string }[] }>(
+        await client.queries.adminQuery({
+          action: "listS3Buckets",
+          params: JSON.stringify({ nameFilter: s3BucketFilter }),
+        }),
+      );
+      return data?.buckets ?? [];
+    },
+  });
+
+  const snaplock = statusQuery.data?.snaplock ?? null;
+  const snapshotLockingEnabled = statusQuery.data?.snapshotLockingEnabled ?? false;
+  const volumeName = statusQuery.data?.volumeName ?? "";
+  const allSnapshots = snapshotsQuery.data ?? [];
+  const lockedSnapshots = allSnapshots.filter((s) => s.isLocked);
+  const unlockedSnapshots: UnlockedSnapshot[] = allSnapshots
+    .filter((s) => !s.isLocked)
+    .map((s) => ({ name: s.name, createTime: s.createTime, snapshotId: s.snapshotId }));
+  const snaplockVolumes = volumesQuery.data ?? [];
+  const s3LockStatus = s3LockQuery.data ?? null;
+  const s3Buckets = s3BucketsQuery.data ?? [];
+
+  const loading = statusQuery.isPending;
+  const error = actionError ?? errorMessage(statusQuery.error, "Failed to load status");
+
+  // The lock and configure handlers report through their own state, so a failed
+  // action is never mistaken for a failed load.
+  const loadLockedSnapshots = () => void snapshotsQuery.refetch();
+  const loadS3ObjectLockStatus = () => void s3LockQuery.refetch();
+
+  /** The refresh button reloads the three panels the header covers. */
+  const refreshAll = () => {
+    void statusQuery.refetch();
+    void snapshotsQuery.refetch();
+    void volumesQuery.refetch();
   };
 
-  const loadS3Buckets = async (nameFilter?: string) => {
-    try {
-      const response = await client.queries.adminQuery({
-        action: "listS3Buckets",
-        params: JSON.stringify({ nameFilter: nameFilter || "" }),
-      });
-      const data = parseResponse<{ buckets?: { name: string }[] }>(response);
-      if (data && data.buckets) setS3Buckets(data.buckets);
-    } catch { /* silent */ }
-  };
-
-  const handleS3BucketSearch = (value: string) => {
-    setS3BucketFilter(value);
-    // Debounce not needed here since filtering is client-side in Lambda
-    loadS3Buckets(value);
-  };
+  const handleS3BucketSearch = (value: string) => setS3BucketFilter(value);
 
   const handleConfigureS3Lock = async () => {
     if (!s3SelectedBucket) { setError(t("lockS3SelectBucketRequired")); return; }
@@ -244,13 +246,6 @@ export function SnaplockStatus() {
     }
   };
 
-  useEffect(() => {
-    loadStatus();
-    loadLockedSnapshots();
-    loadSnaplockVolumes();
-    loadS3ObjectLockStatus();
-  }, []);
-
   const formatDate = (iso: string | null | undefined) => {
     if (!iso) return "—";
     try { return new Date(iso).toLocaleString(); } catch { return iso; }
@@ -273,7 +268,7 @@ export function SnaplockStatus() {
       <div className="protection-header">
         <h2>🔒 {t("lockTitle")}</h2>
         {volumeName && <span className="volume-badge">{t("volume")}: {volumeName}</span>}
-        <button onClick={() => { loadStatus(); loadLockedSnapshots(); loadSnaplockVolumes(); }} className="refresh-btn">↻</button>
+        <button onClick={refreshAll} className="refresh-btn">↻</button>
       </div>
 
       {error && !ontapError && <div className="error-message">{error}</div>}
@@ -465,7 +460,8 @@ export function SnaplockStatus() {
 
           {/* S3 Object Lock configuration form */}
           <div style={{ marginTop: "1.5rem" }}>
-            <button className="btn-primary" onClick={() => { setShowS3Config(!showS3Config); if (!showS3Config) loadS3Buckets(); }}>
+            {/* Opening the form enables the bucket query, so no explicit load. */}
+            <button className="btn-primary" onClick={() => setShowS3Config(!showS3Config)}>
               🔧 {t("lockS3ConfigureBtn")}
             </button>
           </div>

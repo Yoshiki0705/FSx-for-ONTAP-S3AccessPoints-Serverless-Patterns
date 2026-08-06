@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { errorMessage } from "../lib/portalQuery";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
@@ -31,36 +32,26 @@ interface RecentFilesProps {
  * - Auto-cleanup of entries older than 30 days
  */
 export function RecentFiles({ onFileSelect }: RecentFilesProps) {
-  const [recentFiles, setRecentFiles] = useState<RecentFileItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
 
-  const loadRecent = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Sorting and slicing happen in the query function rather than during render, so
+  // the trimmed list is what gets cached and re-renders do not redo the work.
+  const {
+    data: recentFiles = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["recentFiles"],
+    queryFn: async () => {
+      const response = await client.models.RecentFile.list({ limit: 50 });
+      return ((response.data ?? []) as RecentFileItem[])
+        .sort((a, b) => b.accessedAt.localeCompare(a.accessedAt))
+        .slice(0, 30);
+    },
+  });
 
-    try {
-      const response = await client.models.RecentFile.list({
-        limit: 50,
-      });
-
-      if (response.data) {
-        const items = (response.data as RecentFileItem[])
-          .sort((a, b) => b.accessedAt.localeCompare(a.accessedAt))
-          .slice(0, 30);
-        setRecentFiles(items);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load recent files");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadRecent();
-  }, [loadRecent]);
+  const error = errorMessage(queryError, "Failed to load recent files");
 
   const getActionIcon = (action: string | null): string => {
     switch (action) {
@@ -128,7 +119,7 @@ export function RecentFiles({ onFileSelect }: RecentFilesProps) {
     <div className="recent-files">
       <div className="recent-header">
         <h2>{t("recentTitle")}</h2>
-        <button onClick={loadRecent} className="refresh-btn" title={t("refresh")}>
+        <button onClick={() => void refetch()} className="refresh-btn" title={t("refresh")}>
           ↻
         </button>
       </div>

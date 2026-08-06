@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -51,11 +53,8 @@ type Tab = "cluster" | "svm" | "lifs";
 export function PeeringManager() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("cluster");
-  const [lifs, setLifs] = useState<InterclusterLif[]>([]);
-  const [clusterPeers, setClusterPeers] = useState<ClusterPeer[]>([]);
-  const [svmPeers, setSvmPeers] = useState<SvmPeer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmFor, setConfirmFor] = useState<string | null>(null);
@@ -79,39 +78,37 @@ export function PeeringManager() {
   const isTransient = (msg?: string) =>
     !!msg && (msg.includes("Unknown action") || msg.includes("not configured"));
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  // One query per tab. The tab is part of the key, so switching tabs serves the
+  // cached list immediately instead of refetching from scratch.
+  const {
+    data: peering,
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "peering", tab],
+    queryFn: async () => {
       const action =
         tab === "cluster" ? "listClusterPeers" : tab === "svm" ? "listSvmPeers" : "listInterclusterLifs";
-      const resp = await client.queries.adminQuery({
-        action,
-        params: JSON.stringify({}),
-      });
-      if (tab === "cluster") {
-        const data = parseResponse<{ peers?: ClusterPeer[]; error?: string }>(resp);
-        if (data?.error && !isTransient(data.error)) setError(data.error);
-        else setClusterPeers(data?.peers || []);
-      } else if (tab === "svm") {
-        const data = parseResponse<{ peers?: SvmPeer[]; error?: string }>(resp);
-        if (data?.error && !isTransient(data.error)) setError(data.error);
-        else setSvmPeers(data?.peers || []);
-      } else {
-        const data = parseResponse<{ lifs?: InterclusterLif[]; error?: string }>(resp);
-        if (data?.error && !isTransient(data.error)) setError(data.error);
-        else setLifs(data?.lifs || []);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [tab]);
+      const data = parseResponse<{
+        peers?: ClusterPeer[] | SvmPeer[];
+        lifs?: InterclusterLif[];
+        error?: string;
+      }>(await client.queries.adminQuery({ action, params: JSON.stringify({}) }));
+      // A dispatcher that is not wired yet is an empty list, not a failure.
+      if (data?.error && !isTransient(data.error)) throw new Error(data.error);
+      return data;
+    },
+  });
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const clusterPeers = (tab === "cluster" ? peering?.peers ?? [] : []) as ClusterPeer[];
+  const svmPeers = (tab === "svm" ? peering?.peers ?? [] : []) as SvmPeer[];
+  const lifs = tab === "lifs" ? peering?.lifs ?? [] : [];
+
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadData = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load peering");
 
   const runAction = async (action: string, params: Record<string, unknown>) => {
     setBusy(true);

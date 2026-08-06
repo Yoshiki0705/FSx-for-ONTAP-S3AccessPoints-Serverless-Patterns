@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
-import { parseResponse } from "../../utils/parseResponse";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 
 const client = generateClient<Schema>();
 
@@ -39,60 +40,60 @@ interface VolumeSelectorProps {
  */
 export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFirst = false, enableSearch = false }: VolumeSelectorProps) {
   const { t } = useTranslation();
-  const [volumes, setVolumes] = useState<VolumeInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedUuid, setSelectedUuid] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  // The committed filter, updated after the debounce. It is part of the query
+  // key, so typing does not fire a request per keystroke.
+  const [nameFilter, setNameFilter] = useState<string | undefined>(undefined);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadVolumes = useCallback(async (nameFilter?: string) => {
-    setLoading(true);
-    try {
+  const {
+    data: volumes = [],
+    isFetching: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["admin", "volumeSelector", nameFilter ?? null],
+    queryFn: async () => {
       const action = nameFilter !== undefined ? "listVolumesFiltered" : "listVolumes";
       const params: Record<string, unknown> = {};
       if (nameFilter !== undefined) {
         params.nameFilter = nameFilter;
         params.maxRecords = 20;
       }
-      const response = await client.queries.adminQuery({
-        action,
-        params: JSON.stringify(params),
-      });
-      const data = parseResponse<{ volumes?: VolumeInfo[]; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else {
-          // Filter out internal volumes (root volumes)
-          const userVolumes = (data.volumes || []).filter(
-            (v) => !v.name.endsWith("_root") && v.state === "online"
-          );
-          setVolumes(userVolumes);
-          // Auto-select first if requested and no filter active
-          if (autoSelectFirst && userVolumes.length > 0 && !nameFilter) {
-            setSelectedUuid(userVolumes[0].uuid);
-            onSelect(userVolumes[0]);
-          }
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load volumes");
-    } finally {
-      setLoading(false);
-    }
-  }, [autoSelectFirst, onSelect]);
+      const data = await unwrap<{ volumes?: VolumeInfo[] }>(
+        client.queries.adminQuery({ action, params: JSON.stringify(params) }),
+      );
+      // Internal root volumes are not selectable targets.
+      return (data?.volumes ?? []).filter(
+        (v) => !v.name.endsWith("_root") && v.state === "online"
+      );
+    },
+  });
+  const error = errorMessage(queryError, "Failed to load volumes");
 
-  // Initial load (no filter)
+  // The auto-selected volume is derived, not stored: an effect that wrote it to
+  // state would be the same extra render pass the old loader had. State only
+  // holds an explicit user choice.
+  const autoPick =
+    autoSelectFirst && nameFilter === undefined ? volumes[0] : undefined;
+  const effectiveUuid = selectedUuid || autoPick?.uuid || "";
+
+  // The parent still has to be told which volume is in effect. This notifies it
+  // once per auto-picked volume; it sets no local state.
+  const notifiedRef = useRef<string | null>(null);
   useEffect(() => {
-    loadVolumes();
-  }, []);
+    if (!autoPick || selectedUuid) return;
+    if (notifiedRef.current === autoPick.uuid) return;
+    notifiedRef.current = autoPick.uuid;
+    onSelect(autoPick);
+  }, [autoPick, selectedUuid, onSelect]);
 
   // Debounced search (300ms) for enableSearch mode
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      loadVolumes(value || undefined);
+      setNameFilter(value || undefined);
     }, 300);
   };
 
@@ -129,7 +130,7 @@ export function VolumeSelector({ onSelect, label, showUuid = false, autoSelectFi
         </select>
       ) : (
         <select
-          value={selectedUuid}
+          value={effectiveUuid}
           onChange={(e) => handleChange(e.target.value)}
           className="volume-selector-dropdown"
         >

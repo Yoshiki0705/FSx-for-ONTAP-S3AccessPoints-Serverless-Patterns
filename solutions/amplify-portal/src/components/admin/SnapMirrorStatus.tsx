@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -48,9 +50,8 @@ interface Transfer {
 
 export function SnapMirrorStatus() {
   const { t } = useTranslation();
-  const [relationships, setRelationships] = useState<SnapMirrorRelationship[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [expandedUuid, setExpandedUuid] = useState<string | null>(null);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [transfersLoading, setTransfersLoading] = useState(false);
@@ -59,21 +60,34 @@ export function SnapMirrorStatus() {
   // Break, resync and delete redirect or discard data, so they ask first.
   const [confirmFor, setConfirmFor] = useState<{ uuid: string; action: ConfirmAction } | null>(null);
 
-  const loadRelationships = async () => {
-    setLoading(true); setError(null);
-    try {
-      const resp = await client.queries.adminQuery({ action: "listSnapmirrorRelationships", params: JSON.stringify({}) });
-      const data = parseResponse<{ relationships?: SnapMirrorRelationship[]; error?: string }>(resp);
-      if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) {
-        setError(data.error);
-      } else {
-        setRelationships(data?.relationships || []);
+  const {
+    data: relationships = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listSnapmirrorRelationships"],
+    queryFn: async () => {
+      const data = parseResponse<{ relationships?: SnapMirrorRelationship[]; error?: string }>(
+        await client.queries.adminQuery({ action: "listSnapmirrorRelationships", params: JSON.stringify({}) }),
+      );
+      // A dispatcher that has not been wired yet is an empty list, not a failure.
+      if (
+        data?.error &&
+        !data.error.includes("Unknown action") &&
+        !data.error.includes("not configured")
+      ) {
+        throw new Error(data.error);
       }
-    } catch (e) { setError(e instanceof Error ? e.message : "Load failed"); }
-    finally { setLoading(false); }
-  };
+      return data?.relationships ?? [];
+    },
+  });
 
-  useEffect(() => { loadRelationships(); }, []);
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadRelationships = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load relationships");
+
 
   const toggleTransfers = async (uuid: string) => {
     if (expandedUuid === uuid) { setExpandedUuid(null); return; }

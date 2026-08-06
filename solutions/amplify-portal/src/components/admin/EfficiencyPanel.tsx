@@ -1,12 +1,10 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
-import { parseResponse } from "../../utils/parseResponse";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 
 const client = generateClient<Schema>();
-
-// Parse the JSON string response from generic dispatch endpoints
 
 interface VolumeEfficiency {
   name: string;
@@ -25,37 +23,31 @@ interface EfficiencyStats {
 
 export function EfficiencyPanel() {
   const { t } = useTranslation();
-  const [stats, setStats] = useState<EfficiencyStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadStats = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.adminQuery({ action: "getEfficiencyStats", params: JSON.stringify({}) });
-      const data = parseResponse<{ stats?: EfficiencyStats; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setStats(data.stats || null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load efficiency stats");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data,
+    isPending,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "getEfficiencyStats"],
+    queryFn: () =>
+      unwrap<{ stats?: EfficiencyStats }>(
+        client.queries.adminQuery({ action: "getEfficiencyStats", params: JSON.stringify({}) }),
+      ),
+  });
 
-  useEffect(() => { loadStats(); }, []);
+  const stats = data?.stats ?? null;
+  const error = errorMessage(queryError, "Failed to load efficiency stats");
 
-  if (loading) return <p className="loading">{t("loading")}</p>;
+  if (isPending) return <p className="loading">{t("loading")}</p>;
 
   return (
     <div className="admin-panel">
       <div className="panel-header">
         <h3>{t("rmEfficiency")}</h3>
         <div className="panel-actions">
-          <button onClick={loadStats} className="refresh-btn">↻</button>
+          <button onClick={() => void refetch()} className="refresh-btn">↻</button>
         </div>
       </div>
 

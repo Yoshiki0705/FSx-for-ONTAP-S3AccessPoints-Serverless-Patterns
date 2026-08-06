@@ -10,11 +10,24 @@ vi.mock("aws-amplify/data", () => ({
 
 vi.mock("../../../amplify/data/resource", () => ({}));
 
+import { QueryClientProvider } from "@tanstack/react-query";
 import { ResultsViewer } from "../../src/components/ResultsViewer";
+import { createPortalQueryClient } from "../../src/lib/queryClient";
 import { I18nProvider } from "../../src/i18n";
 
-/** The component reads its copy through useTranslation, which needs the provider. */
-const renderWithI18n = (ui: ReactElement) => render(<I18nProvider>{ui}</I18nProvider>);
+/**
+ * The component reads its copy through useTranslation and fetches through
+ * TanStack Query, so both providers are required.
+ *
+ * A fresh client per render, not the app singleton: a shared cache would carry
+ * one test's data into the next.
+ */
+const renderWithI18n = (ui: ReactElement) =>
+  render(
+    <QueryClientProvider client={createPortalQueryClient()}>
+      <I18nProvider>{ui}</I18nProvider>
+    </QueryClientProvider>,
+  );
 
 describe("ResultsViewer", () => {
   it("shows empty state when no execution ARN is provided", () => {

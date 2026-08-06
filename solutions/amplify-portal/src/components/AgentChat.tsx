@@ -13,6 +13,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 // React 19 removed the global `JSX` namespace; it is now exported from "react".
 import type { JSX } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation, type TranslationKeys } from "../i18n";
@@ -21,6 +22,9 @@ import { AgentFileSidebar } from "./AgentFileSidebar";
 import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
+
+/** Cache key for the saved chat sessions, shared with the delete action. */
+const SESSIONS_KEY = ["agents", "listSessions"];
 
 // --- Types ---
 
@@ -239,7 +243,6 @@ export function AgentChat() {
   const requestStartRef = useRef<number>(0);
 
   // --- Chat History State ---
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [showHistory, setShowHistory] = useState(false);
   const [showFileSidebar, setShowFileSidebar] = useState(false);
@@ -272,16 +275,23 @@ export function AgentChat() {
   //
   // Memoising instead makes the identity change exactly when messages or
   // currentSessionId change, which is what the dependency array already said.
-  const loadSessions = useCallback(async () => {
-    try {
-      const response = await client.queries.agentQuery({
-        action: "listSessions",
-        params: JSON.stringify({ limit: 20 }),
-      });
-      const data = parseResponse<{ sessions: ChatSession[] }>(response);
-      if (data?.sessions) setSessions(data.sessions);
-    } catch { /* silent */ }
-  }, []);
+  const queryClient = useQueryClient();
+  const { data: sessions = [], refetch: refetchSessions } = useQuery({
+    queryKey: SESSIONS_KEY,
+    queryFn: async () => {
+      const data = parseResponse<{ sessions: ChatSession[] }>(
+        await client.queries.agentQuery({
+          action: "listSessions",
+          params: JSON.stringify({ limit: 20 }),
+        }),
+      );
+      return data?.sessions ?? [];
+    },
+  });
+
+  // Stable identity, so the auto-save effect below can depend on it without
+  // restarting its debounce timer on every render.
+  const loadSessions = useCallback(() => void refetchSessions(), [refetchSessions]);
 
   const saveCurrentSession = useCallback(async () => {
     if (messages.length === 0) return;
@@ -302,11 +312,6 @@ export function AgentChat() {
       loadSessions();
     } catch { /* silent fail */ }
   }, [messages, currentSessionId, loadSessions]);
-
-  // Load session list on mount
-  useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
 
   // Auto-save after messages change (debounced)
   // React 19 requires useRef to be called with an explicit initial value.
@@ -346,7 +351,10 @@ export function AgentChat() {
         action: "deleteSession",
         params: JSON.stringify({ sessionId }),
       });
-      setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId));
+      // Drop the row from the cache rather than refetching the whole list.
+      queryClient.setQueryData<ChatSession[]>(SESSIONS_KEY, (prev) =>
+        (prev ?? []).filter((s) => s.sessionId !== sessionId),
+      );
       if (currentSessionId === sessionId) {
         setMessages([]);
         setCurrentSessionId("");

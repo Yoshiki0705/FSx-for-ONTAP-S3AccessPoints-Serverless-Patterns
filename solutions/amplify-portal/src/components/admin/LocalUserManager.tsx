@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -30,10 +32,8 @@ type Tab = "users" | "groups";
 export function LocalUserManager() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("users");
-  const [users, setUsers] = useState<LocalUser[]>([]);
-  const [groups, setGroups] = useState<LocalGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
 
   // Create user form
@@ -56,56 +56,47 @@ export function LocalUserManager() {
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
-  // ─── Load Users ───
-  const loadUsers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.adminQuery({
-        action: "listLocalUsers", params: JSON.stringify({}),
-      });
-      const data = parseResponse<{ users?: LocalUser[]; error?: string }>(response);
-      if (data) {
-        if (data.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) {
-          setError(data.error);
-        } else {
-          setUsers(data.users || []);
-        }
+  // ─── Load Users / Groups ───
+  // One query keyed on the active tab. Both lists are cached, so flipping back
+  // to a tab shows its rows immediately.
+  const {
+    data: listing,
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "localIdentities", tab],
+    queryFn: async () => {
+      const data = parseResponse<{
+        users?: LocalUser[];
+        groups?: LocalGroup[];
+        error?: string;
+      }>(
+        await client.queries.adminQuery({
+          action: tab === "users" ? "listLocalUsers" : "listLocalGroups",
+          params: JSON.stringify({}),
+        }),
+      );
+      // A dispatcher that is not wired yet is an empty list, not a failure.
+      if (
+        data?.error &&
+        !data.error.includes("Unknown action") &&
+        !data.error.includes("not configured")
+      ) {
+        throw new Error(data.error);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users");
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data;
+    },
+  });
 
-  // ─── Load Groups ───
-  const loadGroups = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.adminQuery({
-        action: "listLocalGroups", params: JSON.stringify({}),
-      });
-      const data = parseResponse<{ groups?: LocalGroup[]; error?: string }>(response);
-      if (data) {
-        if (data.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) {
-          setError(data.error);
-        } else {
-          setGroups(data.groups || []);
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load groups");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const users = tab === "users" ? listing?.users ?? [] : [];
+  const groups = tab === "groups" ? listing?.groups ?? [] : [];
 
-  useEffect(() => {
-    if (tab === "users") loadUsers();
-    else loadGroups();
-  }, [tab]);
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadUsers = () => void refetch();
+  const loadGroups = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load local identities");
 
   // ─── Create User ───
   const handleCreateUser = async () => {

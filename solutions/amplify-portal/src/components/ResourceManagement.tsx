@@ -58,6 +58,17 @@ interface ResourceManagementProps {
 }
 
 /**
+ * Panel another view asked us to open, if any.
+ *
+ * A pure read, so it is safe for React to call it more than once (StrictMode
+ * double-invokes state initialisers). The value is cleared separately.
+ */
+function readRedirectPanel(): AdminPanel | null {
+  if (typeof sessionStorage === "undefined") return null;
+  return (sessionStorage.getItem("rm-panel") as AdminPanel | null) ?? null;
+}
+
+/**
  * Resource Management — Admin section for ONTAP storage operations.
  *
  * UI inspired by ONTAP System Manager's card-based navigation:
@@ -70,15 +81,17 @@ interface ResourceManagementProps {
  */
 export function ResourceManagement({ aiSettings, onAiSettingsChange }: ResourceManagementProps) {
   const { t } = useTranslation();
-  const [activePanel, setActivePanel] = useState<AdminPanel | null>(null);
+  // Auto-open sub-panel if redirected from Lock panel. Reading the handoff in
+  // the initialiser means the first render already shows the right panel; an
+  // effect would render the grid first and then replace it.
+  const [activePanel, setActivePanel] = useState<AdminPanel | null>(
+    () => readRedirectPanel(),
+  );
 
-  // Auto-open sub-panel if redirected from Lock panel
+  // The handoff has been consumed, so clear it: a later visit starts on the
+  // grid. Clearing is not state, so it stays in an effect.
   useEffect(() => {
-    const target = sessionStorage.getItem("rm-panel");
-    if (target) {
-      sessionStorage.removeItem("rm-panel");
-      setActivePanel(target as AdminPanel);
-    }
+    if (typeof sessionStorage !== "undefined") sessionStorage.removeItem("rm-panel");
   }, []);
 
   const panels: PanelDef[] = [

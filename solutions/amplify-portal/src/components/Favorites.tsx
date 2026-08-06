@@ -1,9 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
+
+/** Cache key for the pinned list, shared by the view and its remove action. */
+const FAVORITES_KEY = ["favorites", "list"];
 
 interface FavoriteItem {
   id: string;
@@ -115,40 +119,28 @@ export function FavoritesView({
 }: {
   onNavigate?: (fileKey: string) => void;
 }) {
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
-  const loadFavorites = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data } = await client.models.Favorite.list({
-        limit: 50,
-      });
-      if (data) {
-        setFavorites(
-          data.map((f) => ({
-            id: f.id,
-            fileKey: f.fileKey,
-            fileName: f.fileName,
-            pinnedAt: f.pinnedAt,
-          }))
-        );
-      }
-    } catch (err) {
-      console.error("Load favorites error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadFavorites();
-  }, [loadFavorites]);
+  const { data: favorites = [], isPending: loading } = useQuery({
+    queryKey: FAVORITES_KEY,
+    queryFn: async () => {
+      const { data } = await client.models.Favorite.list({ limit: 50 });
+      return (data ?? []).map((f) => ({
+        id: f.id,
+        fileKey: f.fileKey,
+        fileName: f.fileName,
+        pinnedAt: f.pinnedAt,
+      })) as FavoriteItem[];
+    },
+  });
 
   const removeFavorite = async (id: string) => {
     await client.models.Favorite.delete({ id });
-    setFavorites((prev) => prev.filter((f) => f.id !== id));
+    // Drop the row from the cache rather than refetching the whole list.
+    queryClient.setQueryData<FavoriteItem[]>(FAVORITES_KEY, (prev) =>
+      (prev ?? []).filter((f) => f.id !== id),
+    );
   };
 
   if (loading) return <div className="loading">{t("favoritesLoading")}</div>;

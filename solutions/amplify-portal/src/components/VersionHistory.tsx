@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { errorMessage } from "../lib/portalQuery";
 import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -34,10 +36,7 @@ interface Snapshot {
  * If ONTAP is not configured, this component shows an info message.
  */
 export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }) {
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [volumeName, setVolumeName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [lockDialog, setLockDialog] = useState<{ snapshotId: string } | null>(null);
   const [lockDays, setLockDays] = useState("30");
   const [lockLoading, setLockLoading] = useState(false);
@@ -45,47 +44,55 @@ export function VersionHistory({ mode = "browse" }: { mode?: "browse" | "diff" }
   const [filter, setFilter] = useState<"all" | "tamperproof" | "scheduled" | "arp" | "manual">("all");
   const { t } = useTranslation();
 
-  const loadSnapshots = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await client.queries.protectionQuery({ action: "listSnapshots", params: JSON.stringify({maxResults: 20}) });
+  const {
+    data,
+    isFetching: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["protection", "listSnapshots"],
+    queryFn: async () => {
+      const response = await client.queries.protectionQuery({
+        action: "listSnapshots",
+        params: JSON.stringify({ maxResults: 20 }),
+      });
       // `unknown`, not `any`: this resolver has been seen to return the snapshot list
       // either as an array or as a JSON string that needs a second parse, which the
       // branch below handles. `unknown` states that without disabling the checks that
       // make the branch necessary.
-      const data = parseResponse<{ snapshots?: unknown; volumeName?: string; error?: string }>(response);
-
-      if (data) {
-        const snapshotData = data.snapshots;
-        if (typeof snapshotData === "string") {
-          try {
-            setSnapshots(JSON.parse(snapshotData) as Snapshot[]);
-          } catch {
-            setSnapshots([]);
-          }
-        } else {
-          setSnapshots((snapshotData || []) as Snapshot[]);
+      const parsed = parseResponse<{
+        snapshots?: unknown;
+        volumeName?: string;
+        error?: string;
+      }>(response);
+      if (!parsed) {
+        if (response.errors?.length) {
+          throw new Error(response.errors.map((e) => e.message).join(", "));
         }
-        setVolumeName(data.volumeName || "");
-        if (data.error) {
-          setError(data.error);
-        }
-      } else if (response.errors) {
-        setError(response.errors.map((e) => e.message).join(", "));
+        return { snapshots: [] as Snapshot[], volumeName: "" };
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load snapshots";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (parsed.error) throw new Error(parsed.error);
 
-  useEffect(() => {
-    loadSnapshots();
-  }, []);
+      const raw = parsed.snapshots;
+      const snapshots = ((): Snapshot[] => {
+        if (typeof raw !== "string") return (raw ?? []) as Snapshot[];
+        try {
+          return JSON.parse(raw) as Snapshot[];
+        } catch {
+          return [];
+        }
+      })();
+      return { snapshots, volumeName: parsed.volumeName ?? "" };
+    },
+  });
+
+  const snapshots = data?.snapshots ?? [];
+  const volumeName = data?.volumeName ?? "";
+
+  // The lock dialog reports through lockResult, so a failed lock never shows up
+  // here as a failed load.
+  const loadSnapshots = () => void refetch();
+  const error = errorMessage(queryError, "Failed to load snapshots");
 
   const formatDate = (isoString: string | null) => {
     if (!isoString) return "—";
