@@ -1,0 +1,74 @@
+# Pattern directories whose tests are run, one per line.
+#
+# Read by BOTH the Makefile `test` target and .github/workflows/ci.yml, because
+# those two kept their own hand-maintained lists and drifted apart. CI listed 37
+# directories, the Makefile reached 16, and 13 directories with passing tests —
+# about 790 tests — were in neither, so they never executed anywhere. Adding a
+# pattern meant remembering two places, and forgetting one was silent.
+#
+# Each directory gets its own pytest process. Many patterns ship a functions/
+# package with colliding module names (functions.discovery in every one of them),
+# so a single combined invocation raises ModuleNotFoundError once sys.modules
+# caches the first pattern's package. See AGENTS.md, "from functions.xxx import
+# collision in batch test runs".
+#
+# Excluded on purpose:
+#   solutions/event-driven/fpolicy   tests/ holds only an empty __init__.py, so
+#                                    pytest collects nothing and exits 5, which
+#                                    fails the loop under `set -e`. Add it here
+#                                    once it has a test.
+#
+# `shared/`, `scripts/` and `operations/` as a whole are invoked separately by the
+# Makefile and by CI; the per-pattern operations/ entries below are the individual
+# OPS patterns.
+#
+# To check this file still matches reality:
+#   ls -d solutions/*/*/tests operations/*/tests | sed 's:/tests$::' | sort
+operations/capacity-rightsizing
+operations/cost-optimization
+operations/qos-monitoring
+operations/snapshot-lifecycle
+operations/storage-efficiency
+operations/tiering-optimizer
+solutions/edge/content-delivery
+solutions/edge/media-ivs-vod-publishing
+solutions/event-driven/prototype
+solutions/flexcache/anycast-dr
+solutions/flexcache/automotive-cae
+solutions/flexcache/devops-cicd
+solutions/flexcache/dynamic-render-workflow
+solutions/flexcache/gaming-build-pipeline
+solutions/flexcache/life-sciences-research
+solutions/flexcache/rag-enterprise-files
+solutions/genai/kb-selfservice-curation
+solutions/genai/quick-agentic-workspace
+solutions/ha/lifekeeper-monitoring
+solutions/industry/adtech-creative-management
+solutions/industry/agri-food-traceability
+solutions/industry/autonomous-driving
+solutions/industry/chemical-sds-management
+solutions/industry/construction-bim
+solutions/industry/defense-satellite
+solutions/industry/education-research
+solutions/industry/energy-seismic
+solutions/industry/financial-idp
+solutions/industry/genomics-pipeline
+solutions/industry/government-archives
+solutions/industry/healthcare-dicom
+solutions/industry/hr-document-screening
+solutions/industry/insurance-claims
+solutions/industry/legal-compliance
+solutions/industry/logistics-ocr
+solutions/industry/manufacturing-analytics
+solutions/industry/media-vfx
+solutions/industry/nonprofit-grant-management
+solutions/industry/real-estate-portfolio
+solutions/industry/retail-catalog
+solutions/industry/semiconductor-eda
+solutions/industry/smart-city-geospatial
+solutions/industry/sustainability-esg-reporting
+solutions/industry/telecom-network-analytics
+solutions/industry/transportation-maintenance
+solutions/industry/travel-document-processing
+solutions/industry/utilities-asset-inspection
+solutions/sap/erp-adjacent
