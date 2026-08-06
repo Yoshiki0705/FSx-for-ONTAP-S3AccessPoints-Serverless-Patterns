@@ -202,6 +202,10 @@ cp amplify/portal-config.example.ts amplify/portal-config.ts
 
 # 3. 개인 샌드박스에 백엔드 배포 (최초 ~3-5분, 증분 ~30초)
 make sandbox
+# ⚠️ 이 단계 전에는 `npm run build`를 실행할 수 없습니다. src/main.tsx가
+#    ../amplify_outputs.json을 import하며, 이 파일은 sandbox가 생성하고
+#    .gitignore가 제외합니다. 새로 클론한 상태에서는 빌드가
+#    "[UNRESOLVED_IMPORT] Could not resolve '../amplify_outputs.json'"로 실패합니다.
 
 # 4. 다른 터미널에서 개발 서버 시작
 make dev
