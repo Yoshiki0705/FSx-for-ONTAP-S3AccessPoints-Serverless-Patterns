@@ -13,10 +13,12 @@
  *   - Semantic Search (S3 Vectors backend): ~$1-10/month
  *   - Semantic Search (OpenSearch Serverless): ~$700/month (2 OCU minimum)
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -39,6 +41,15 @@ interface UpdateResponse {
   error?: string;
 }
 
+/** Everything off. Also the shape callers get before the fetch resolves. */
+const DEFAULT_SETTINGS: PortalSettings = {
+  aiAgentEnabled: false,
+  aiSearchEnabled: false,
+  aiMultimodalEnabled: false,
+  aiSmartRoutingEnabled: false,
+  chatHistoryEnabled: false,
+};
+
 interface AiSettingsManagerProps {
   initialSettings?: { aiAgentEnabled: boolean; aiSearchEnabled: boolean };
   onSettingsChange?: (settings: { aiAgentEnabled: boolean; aiSearchEnabled: boolean }) => void;
@@ -46,41 +57,46 @@ interface AiSettingsManagerProps {
 
 export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSettingsManagerProps) {
   const { t } = useTranslation();
-  const [settings, setSettings] = useState<PortalSettings>(
-    initialSettings ? { ...initialSettings, aiMultimodalEnabled: false, aiSmartRoutingEnabled: false, chatHistoryEnabled: false } : { aiAgentEnabled: false, aiSearchEnabled: false, aiMultimodalEnabled: false, aiSmartRoutingEnabled: false, chatHistoryEnabled: false }
-  );
-  const [loading, setLoading] = useState(!initialSettings);
   const [saving, setSaving] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const loadSettings = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.adminQuery({
-        action: "getPortalSettings",
-        params: JSON.stringify({}),
-      });
-      const result = parseResponse<SettingsResponse>(response);
-      if (result?.settings) {
-        setSettings({
-          aiAgentEnabled: result.settings.aiAgentEnabled === true,
-          aiSearchEnabled: result.settings.aiSearchEnabled === true,
-          aiMultimodalEnabled: result.settings.aiMultimodalEnabled === true,
-          aiSmartRoutingEnabled: result.settings.aiSmartRoutingEnabled === true,
-          chatHistoryEnabled: result.settings.chatHistoryEnabled === true,
-        });
-      }
-      if (result?.error) setError(result.error);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load settings");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const SETTINGS_KEY = ["admin", "getPortalSettings"];
 
-  useEffect(() => { if (!initialSettings) loadSettings(); }, [loadSettings, initialSettings]);
+  // A caller that already has the flags passes them in, and the panel then does
+  // not fetch at all. Toggles write straight into this cache entry, so the
+  // rendered state is the cache rather than a copy of it.
+  const {
+    data: settings = DEFAULT_SETTINGS,
+    isPending,
+    error: queryError,
+  } = useQuery({
+    queryKey: SETTINGS_KEY,
+    enabled: !initialSettings,
+    initialData: initialSettings
+      ? { ...DEFAULT_SETTINGS, ...initialSettings }
+      : undefined,
+    queryFn: async () => {
+      const result = await unwrap<SettingsResponse>(
+        client.queries.adminQuery({
+          action: "getPortalSettings",
+          params: JSON.stringify({}),
+        }),
+      );
+      const s = result?.settings;
+      return {
+        aiAgentEnabled: s?.aiAgentEnabled === true,
+        aiSearchEnabled: s?.aiSearchEnabled === true,
+        aiMultimodalEnabled: s?.aiMultimodalEnabled === true,
+        aiSmartRoutingEnabled: s?.aiSmartRoutingEnabled === true,
+        chatHistoryEnabled: s?.chatHistoryEnabled === true,
+      };
+    },
+  });
+  const loading = isPending && !initialSettings;
+  const error = actionError ?? errorMessage(queryError, "Failed to load settings");
 
   const toggleSetting = async (key: keyof PortalSettings) => {
     const newValue = !settings[key];
@@ -96,7 +112,7 @@ export function AiSettingsManager({ initialSettings, onSettingsChange }: AiSetti
       const result = parseResponse<UpdateResponse>(response);
       if (result?.success) {
         const newSettings = { ...settings, [key]: newValue };
-        setSettings(newSettings);
+        queryClient.setQueryData(SETTINGS_KEY, newSettings);
         onSettingsChange?.(newSettings);
         setSuccessMsg(t("aiSettingsSaved"));
         setTimeout(() => setSuccessMsg(null), 3000);
