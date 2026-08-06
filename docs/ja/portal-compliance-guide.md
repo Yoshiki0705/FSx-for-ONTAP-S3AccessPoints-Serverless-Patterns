@@ -178,3 +178,5 @@
 | [管理者デモガイド](admin-resource-management-demo.md) | ストレージ管理者の操作手順 |
 | [インシデント対応プレイブック](../../docs/incident-response-playbook.md) | 完全なインシデント対応手順 |
 | [クイックリファレンス](portal-quick-reference.md) | 1 ページチートシート |
+| [PoC → 本番移行ガイド](portal-poc-to-production.md) | 本番デプロイのチェックリスト（監査証跡、MFA、シークレット） |
+| [アクセシビリティ声明](portal-accessibility.md) | WCAG 準拠と支援技術のサポート状況 |
