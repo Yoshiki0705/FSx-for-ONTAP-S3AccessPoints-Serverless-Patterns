@@ -83,72 +83,29 @@ export default tseslint.config(
       // `window` global that nothing ever assigns.
       "@typescript-eslint/no-explicit-any": "error",
       "react-hooks/immutability": "error",
-      // These two remain warnings, as a ratchet rather than an exemption.
-      // `--max-warnings` in package.json pins the count, so it can only go down.
+      // These two were carried as warnings behind a `--max-warnings` ratchet while
+      // the portal fetched in effects. Both are now zero and are errors.
       //
-      //   react-hooks/set-state-in-effect  34  Client-side data fetching in an
-      //       effect. Not fixable locally — see below.
+      // They were not fixable by rearranging the effects. The documented react.dev
+      // remedy for `set-state-in-effect` ("do not set loading state synchronously")
+      // was applied to ArpStatus in full and the warning stayed: the rule traces
+      // into the loader, so an effect that calls anything which eventually sets
+      // state is flagged whether or not the call is synchronous. react.dev's own
+      // guidance for fetching is a dedicated library, so the fix was to adopt one.
       //
-      //       All 34 are the fetch-on-mount shape: a loader that sets loading and
-      //       error state, called from a mount effect, with the same loader wired to
-      //       a refresh button.
+      // Every loader is now a TanStack Query `useQuery`, which also removed the
+      // `exhaustive-deps` findings: those effects listed the trigger state and
+      // omitted the loader, because the loaders were re-created each render and
+      // depending on them would have refetched on every render. With the trigger in
+      // the query key there is no loader closure left to depend on. VolumeSelector
+      // was the one that could not be memoised at all — its loader called the
+      // `onSelect` prop, which sets parent state, so depending on it would have
+      // looped; its default selection is derived during render instead.
       //
-      //       react.dev lists this exact shape ("setting loading state
-      //       synchronously") as one to avoid, and the documented remedy is to rely
-      //       on `loading` already initialising to `true` instead of setting it in
-      //       the effect. That remedy was applied to ArpStatus in full — the
-      //       synchronous setLoading/setError removed, the loader memoised, the
-      //       refresh button given its own handler so its spinner still appears —
-      //       and the warning did not clear. The rule traces into the memoised
-      //       loader, so an effect that calls anything which eventually sets state
-      //       is flagged, whether or not the call is synchronous. That is +20/-8
-      //       lines per component, roughly 600 lines across the portal, for no
-      //       change in the count.
-      //
-      //       The rule is enforcing an architectural position rather than a coding
-      //       slip. The ✅ examples in its own documentation are measuring from a
-      //       ref in useLayoutEffect and computing during render; neither covers
-      //       fetching. react.dev's guidance for data fetching is a framework's
-      //       built-in loading or a dedicated library — TanStack Query, SWR — or in
-      //       React 19 `use()` with Suspense, which drops the loading state
-      //       altogether. Any of those clears these 34 honestly; nothing short of
-      //       them does.
-      //
-      //       That is a deliberate dependency and architecture decision affecting
-      //       every admin panel, and these panels need a deployed FSx for ONTAP
-      //       backend and storage-admin membership to exercise, so it does not
-      //       belong in a lint pass. Upstream has an open issue about the rule's
-      //       strictness for legitimate patterns: facebook/react#34743.
-      //
-      //       (34, up from the original 32: fixing AgentFileSidebar's immutability
-      //       finding moved its reset calls into the effect body, and memoising
-      //       AgentChat's loadSessions let the rule trace into it.)
-      //
-      //   react-hooks/exhaustive-deps       6  Down from 8. The two real ones were
-      //       in AgentChat and are fixed — see the notes at sendMessage and
-      //       saveCurrentSession; the sendMessage one silently dropped an attached
-      //       image and sent a stale agent mode.
-      //
-      //       The remaining 6 all have the shape
-      //       `useEffect(() => { loadX(); }, [trigger])`, where the array lists the
-      //       state that should cause a reload and omits the loader itself. The
-      //       loaders are plain function declarations, so they get a new identity
-      //       every render; adding them as written would re-run the fetch on every
-      //       render instead of on the trigger.
-      //
-      //       The honest fix is to memoise each loader and depend on it. That is
-      //       deliberately not done here for two reasons. VolumeSelector cannot take
-      //       it at all: its loader closes over the `onSelect` prop, and all four
-      //       call sites pass an inline arrow, so the identity changes every parent
-      //       render — and because the loader calls `onSelect`, which sets parent
-      //       state, the result would be an unbounded refetch loop rather than a
-      //       cosmetic re-render. For the other five, getting a memo dependency
-      //       wrong produces the same class of loop, and these are admin panels that
-      //       cannot be exercised without a deployed FSx for ONTAP backend and
-      //       storage-admin group membership. Converting them belongs in a change
-      //       that can be verified against a running sandbox.
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/exhaustive-deps": "warn",
+      // Cache writes replace the local-list edits that mutation handlers used to
+      // make, so a deleted row disappears without refetching the collection.
+      "react-hooks/set-state-in-effect": "error",
+      "react-hooks/exhaustive-deps": "error",
     },
   },
   {

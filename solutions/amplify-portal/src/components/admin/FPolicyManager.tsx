@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -32,11 +34,8 @@ type Tab = "policies" | "events" | "connections";
 export function FPolicyManager() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("policies");
-  const [policies, setPolicies] = useState<FPolicyPolicy[]>([]);
-  const [events, setEvents] = useState<FPolicyEvent[]>([]);
-  const [connections, setConnections] = useState<FPolicyConnection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -82,30 +81,49 @@ export function FPolicyManager() {
   const toggleOp = (op: string) =>
     setEvOps((prev) => (prev.includes(op) ? prev.filter((o) => o !== op) : [...prev, op]));
 
-  const loadData = async () => {
-    setLoading(true); setError(null);
-    try {
-      if (tab === "policies") {
-        const resp = await client.queries.adminQuery({ action: "listFpolicyPolicies", params: JSON.stringify({}) });
-        const data = parseResponse<{ policies?: FPolicyPolicy[]; error?: string }>(resp);
-        if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) setError(data.error);
-        else setPolicies(data?.policies || []);
-      } else if (tab === "events") {
-        const resp = await client.queries.adminQuery({ action: "listFpolicyEvents", params: JSON.stringify({}) });
-        const data = parseResponse<{ events?: FPolicyEvent[]; error?: string }>(resp);
-        if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) setError(data.error);
-        else setEvents(data?.events || []);
-      } else {
-        const resp = await client.queries.adminQuery({ action: "getFpolicyStatus", params: JSON.stringify({}) });
-        const data = parseResponse<{ connections?: FPolicyConnection[]; error?: string }>(resp);
-        if (data?.error && !data.error.includes("Unknown action") && !data.error.includes("not configured")) setError(data.error);
-        else setConnections(data?.connections || []);
+  // One query per tab. The tab is part of the key, which is also what removed
+  // the exhaustive-deps warning: the effect listed only [tab] while the loader
+  // it called closed over the tab as well.
+  const {
+    data,
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "fpolicy", tab],
+    queryFn: async () => {
+      const action =
+        tab === "policies"
+          ? "listFpolicyPolicies"
+          : tab === "events"
+            ? "listFpolicyEvents"
+            : "getFpolicyStatus";
+      const parsed = parseResponse<{
+        policies?: FPolicyPolicy[];
+        events?: FPolicyEvent[];
+        connections?: FPolicyConnection[];
+        error?: string;
+      }>(await client.queries.adminQuery({ action, params: JSON.stringify({}) }));
+      // A dispatcher that is not wired yet is an empty list, not a failure.
+      if (
+        parsed?.error &&
+        !parsed.error.includes("Unknown action") &&
+        !parsed.error.includes("not configured")
+      ) {
+        throw new Error(parsed.error);
       }
-    } catch (e) { setError(e instanceof Error ? e.message : "Load failed"); }
-    finally { setLoading(false); }
-  };
+      return parsed;
+    },
+  });
 
-  useEffect(() => { loadData(); }, [tab]);
+  const policies = tab === "policies" ? data?.policies ?? [] : [];
+  const events = tab === "events" ? data?.events ?? [] : [];
+  const connections = tab === "connections" ? data?.connections ?? [] : [];
+
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadData = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Load failed");
 
   return (
     <div className="fpolicy-manager">

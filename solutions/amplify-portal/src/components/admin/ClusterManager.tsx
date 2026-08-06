@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -72,16 +74,12 @@ type Tab = "overview" | "interfaces" | "services" | "jobs";
 export function ClusterManager() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("overview");
-  const [cluster, setCluster] = useState<ClusterInfo | null>(null);
-  const [nodes, setNodes] = useState<NodeInfo[]>([]);
-  const [licenses, setLicenses] = useState<LicenseInfo[]>([]);
-  const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
-  const [services, setServices] = useState<ServiceInfo[]>([]);
-  const [jobs, setJobs] = useState<JobInfo[]>([]);
-  const [dnsDomains, setDnsDomains] = useState("");
-  const [dnsServers, setDnsServers] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // The DNS inputs are an editable form seeded from the cluster. State holds
+  // only what the operator typed; until then the loaded value is shown. Seeding
+  // state from the response would need an effect and an extra render pass.
+  const [dnsDraft, setDnsDraft] = useState<{ domains: string; servers: string } | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmFor, setConfirmFor] = useState<string | null>(null);
@@ -97,45 +95,74 @@ export function ClusterManager() {
     return parseResponse<T & { error?: string }>(resp);
   };
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  // One query per tab. Each tab fetches only what it renders, and the tab is
+  // part of the key so going back to a tab shows its data straight away.
+  const {
+    data,
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "cluster", tab],
+    queryFn: async () => {
+      // A dispatcher that is not wired yet leaves the section empty rather than
+      // failing the whole tab.
+      const fail = (msg?: string) => {
+        if (msg && !isTransient(msg)) throw new Error(msg);
+      };
       if (tab === "overview") {
         const info = await query<ClusterInfo>("getClusterInfo");
-        if (info?.error && !isTransient(info.error)) setError(info.error);
-        else if (info) setCluster({ name: info.name, version: info.version });
-
+        fail(info?.error);
         const n = await query<{ nodes?: NodeInfo[] }>("listNodes");
-        setNodes(n?.nodes || []);
         const l = await query<{ licenses?: LicenseInfo[] }>("listLicenses");
-        setLicenses(l?.licenses || []);
-      } else if (tab === "interfaces") {
-        const i = await query<{ interfaces?: InterfaceInfo[] }>("listNetworkInterfaces");
-        if (i?.error && !isTransient(i.error)) setError(i.error);
-        else setInterfaces(i?.interfaces || []);
-      } else if (tab === "services") {
-        const s = await query<{ services?: ServiceInfo[] }>("listProtocolServices");
-        if (s?.error && !isTransient(s.error)) setError(s.error);
-        else setServices(s?.services || []);
-        const d = await query<{ domains?: string[]; servers?: string[] }>("getDnsConfig");
-        setDnsDomains((d?.domains || []).join(", "));
-        setDnsServers((d?.servers || []).join(", "));
-      } else {
-        const j = await query<{ jobs?: JobInfo[] }>("listJobs");
-        if (j?.error && !isTransient(j.error)) setError(j.error);
-        else setJobs(j?.jobs || []);
+        return {
+          cluster: info ? { name: info.name, version: info.version } : null,
+          nodes: n?.nodes ?? [],
+          licenses: l?.licenses ?? [],
+        };
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [tab]);
+      if (tab === "interfaces") {
+        const i = await query<{ interfaces?: InterfaceInfo[] }>("listNetworkInterfaces");
+        fail(i?.error);
+        return { interfaces: i?.interfaces ?? [] };
+      }
+      if (tab === "services") {
+        const s = await query<{ services?: ServiceInfo[] }>("listProtocolServices");
+        fail(s?.error);
+        const d = await query<{ domains?: string[]; servers?: string[] }>("getDnsConfig");
+        return {
+          services: s?.services ?? [],
+          dns: {
+            domains: (d?.domains ?? []).join(", "),
+            servers: (d?.servers ?? []).join(", "),
+          },
+        };
+      }
+      const j = await query<{ jobs?: JobInfo[] }>("listJobs");
+      fail(j?.error);
+      return { jobs: j?.jobs ?? [] };
+    },
+  });
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const cluster = ("cluster" in (data ?? {}) ? data!.cluster : null) as ClusterInfo | null;
+  const nodes = ("nodes" in (data ?? {}) ? data!.nodes : []) as NodeInfo[];
+  const licenses = ("licenses" in (data ?? {}) ? data!.licenses : []) as LicenseInfo[];
+  const interfaces = ("interfaces" in (data ?? {}) ? data!.interfaces : []) as InterfaceInfo[];
+  const services = ("services" in (data ?? {}) ? data!.services : []) as ServiceInfo[];
+  const jobs = ("jobs" in (data ?? {}) ? data!.jobs : []) as JobInfo[];
+  const loadedDns = ("dns" in (data ?? {}) ? data!.dns : null) as
+    | { domains: string; servers: string }
+    | null;
+
+  const dnsDomains = dnsDraft?.domains ?? loadedDns?.domains ?? "";
+  const dnsServers = dnsDraft?.servers ?? loadedDns?.servers ?? "";
+  const setDnsDomains = (v: string) => setDnsDraft({ domains: v, servers: dnsServers });
+  const setDnsServers = (v: string) => setDnsDraft({ domains: dnsDomains, servers: v });
+
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadData = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Load failed");
 
   const runAction = async (action: string, params: Record<string, unknown>) => {
     setBusy(true);

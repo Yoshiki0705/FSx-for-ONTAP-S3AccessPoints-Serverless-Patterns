@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -59,10 +61,8 @@ interface ArpSuspect {
  */
 export function ArpAdminManager() {
   const { t } = useTranslation();
-  const [volumes, setVolumes] = useState<ArpVolume[]>([]);
-  const [summary, setSummary] = useState<ArpSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [result, setResult] = useState<string | null>(null);
   const [selectedVolume, setSelectedVolume] = useState<ArpVolume | null>(null);
   const [suspects, setSuspects] = useState<ArpSuspect[]>([]);
@@ -71,20 +71,27 @@ export function ArpAdminManager() {
 
   const clearResult = () => setTimeout(() => setResult(null), 4000);
 
-  const loadVolumes = async () => {
-    setLoading(true); setError(null);
-    try {
-      const response = await client.queries.adminQuery({ action: "listArpVolumes", params: JSON.stringify({}) });
-      const data = parseResponse<{ volumes?: ArpVolume[]; summary?: ArpSummary; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else { setVolumes(data.volumes || []); setSummary(data.summary || null); }
-      }
-    } catch (err) { setError(err instanceof Error ? err.message : "Load failed"); }
-    finally { setLoading(false); }
-  };
+  // The volume list and its summary counts come back in one payload, so they
+  // stay one query rather than two that could disagree.
+  const {
+    data: arp,
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listArpVolumes"],
+    queryFn: () =>
+      unwrap<{ volumes?: ArpVolume[]; summary?: ArpSummary }>(
+        client.queries.adminQuery({ action: "listArpVolumes", params: JSON.stringify({}) }),
+      ),
+  });
+  const volumes = arp?.volumes ?? [];
+  const summary = arp?.summary ?? null;
 
-  useEffect(() => { loadVolumes(); }, []);
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadVolumes = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load volumes");
 
   const handleStateChange = async (vol: ArpVolume, newState: string) => {
     const confirmMsg = newState === "disabled"

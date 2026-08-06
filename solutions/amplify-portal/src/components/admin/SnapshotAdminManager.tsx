@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { VolumeSelector } from "./VolumeSelector";
 import { parseResponse } from "../../utils/parseResponse";
 
@@ -51,10 +53,8 @@ interface LockingConfig {
 export function SnapshotAdminManager() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"policies" | "tamperproof">("policies");
-  const [policies, setPolicies] = useState<SnapshotPolicy[]>([]);
-  const [lockConfig, setLockConfig] = useState<LockingConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [result, setResult] = useState<string | null>(null);
   const [showCreatePolicy, setShowCreatePolicy] = useState(false);
   const [volumeUuid, setVolumeUuid] = useState("");
@@ -68,36 +68,42 @@ export function SnapshotAdminManager() {
 
   const clearResult = () => setTimeout(() => setResult(null), 4000);
 
-  const loadPolicies = async () => {
-    setLoading(true); setError(null);
-    try {
-      const response = await client.queries.adminQuery({ action: "listSnapshotPolicies", params: JSON.stringify({}) });
-      const data = parseResponse<{ policies?: SnapshotPolicy[]; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setPolicies(data.policies || []);
-      }
-    } catch (err) { setError(err instanceof Error ? err.message : t("rmLoadFailed")); }
-    finally { setLoading(false); }
-  };
+  const policiesQuery = useQuery({
+    queryKey: ["admin", "listSnapshotPolicies"],
+    enabled: activeTab === "policies",
+    queryFn: () =>
+      unwrap<{ policies?: SnapshotPolicy[] }>(
+        client.queries.adminQuery({
+          action: "listSnapshotPolicies",
+          params: JSON.stringify({}),
+        }),
+      ).then((d) => d?.policies ?? []),
+  });
 
-  const loadLockingStatus = async () => {
-    if (!volumeUuid) return;
-    setLoading(true); setError(null);
-    try {
-      const response = await client.queries.adminQuery({ action: "getSnapshotLockingStatus", params: JSON.stringify({volumeUuid}) });
-      const data = parseResponse<{ config?: LockingConfig; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setLockConfig(data.config || null);
-      }
-    } catch (err) { setError(err instanceof Error ? err.message : t("rmLoadFailed")); }
-    finally { setLoading(false); }
-  };
+  // Locking status is per volume, so the selected volume is part of the key.
+  const lockQuery = useQuery({
+    queryKey: ["admin", "getSnapshotLockingStatus", volumeUuid],
+    enabled: !!volumeUuid,
+    queryFn: () =>
+      unwrap<{ config?: LockingConfig }>(
+        client.queries.adminQuery({
+          action: "getSnapshotLockingStatus",
+          params: JSON.stringify({ volumeUuid }),
+        }),
+      ).then((d) => d?.config ?? null),
+  });
 
-  useEffect(() => {
-    if (activeTab === "policies") loadPolicies();
-  }, [activeTab]);
+  const policies = policiesQuery.data ?? [];
+  const lockConfig = lockQuery.data ?? null;
+  const loading = policiesQuery.isFetching || lockQuery.isFetching;
+
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadPolicies = () => void policiesQuery.refetch();
+  const loadLockingStatus = () => void lockQuery.refetch();
+  const error =
+    actionError ??
+    errorMessage(policiesQuery.error ?? lockQuery.error, t("rmLoadFailed"));
 
   const handleCreatePolicy = async () => {
     if (!policyName) { setError(t("rmSnapPolicyNameRequired")); return; }

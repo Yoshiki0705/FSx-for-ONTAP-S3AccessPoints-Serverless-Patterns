@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
+import { errorMessage } from "../lib/portalQuery";
 import { parseResponse } from "../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -52,16 +54,19 @@ interface SnapshotCompareProps {
  */
 export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotCompareProps) {
   const { t } = useTranslation();
-  const [compareResults, setCompareResults] = useState<CompareResult[]>([]);
   const [currentPrefix, setCurrentPrefix] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadComparison = useCallback(async (prefix: string) => {
-    setLoading(true);
-    setError(null);
-
-    try {
+  // Both listings plus the diff are one derived value, so they live in a single
+  // query keyed on the clone and the prefix.
+  const {
+    data: compareResults = [],
+    isFetching: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["compare", cloneApAlias, currentPrefix],
+    enabled: !!cloneApAlias,
+    queryFn: async () => {
+      const prefix = currentPrefix;
       // Fetch both file lists in parallel
       const [currentResp, cloneResp] = await Promise.all([
         client.queries.fileQuery({ action: "listFiles", params: JSON.stringify({prefix, maxKeys: 500}) }),
@@ -124,19 +129,11 @@ export function SnapshotCompare({ cloneApAlias, cloneLabel }: SnapshotComparePro
         return order[a.status] - order[b.status];
       });
 
-      setCompareResults(results);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load comparison");
-    } finally {
-      setLoading(false);
-    }
-  }, [cloneApAlias]);
+      return results;
+    },
+  });
 
-  useEffect(() => {
-    if (cloneApAlias) {
-      loadComparison(currentPrefix);
-    }
-  }, [currentPrefix, cloneApAlias, loadComparison]);
+  const error = errorMessage(queryError, "Failed to load comparison");
 
   const formatSize = (bytes: number | null) => {
     if (bytes === null) return "—";

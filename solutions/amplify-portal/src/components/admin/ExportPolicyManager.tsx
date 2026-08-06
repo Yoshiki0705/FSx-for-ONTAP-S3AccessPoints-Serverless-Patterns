@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { parseResponse } from "../../utils/parseResponse";
 
 const client = generateClient<Schema>();
@@ -17,11 +19,10 @@ interface ExportRule { index: number; clients: string[]; roRule: string[]; rwRul
  */
 export function ExportPolicyManager() {
   const { t } = useTranslation();
-  const [policies, setPolicies] = useState<ExportPolicy[]>([]);
   const [selectedPolicy, setSelectedPolicy] = useState<ExportPolicy | null>(null);
   const [rules, setRules] = useState<ExportRule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [result, setResult] = useState<string | null>(null);
   const [showAddRule, setShowAddRule] = useState(false);
   const [showCreatePolicy, setShowCreatePolicy] = useState(false);
@@ -32,21 +33,28 @@ export function ExportPolicyManager() {
   const [newRwRule, setNewRwRule] = useState("sys");
   const [newSuperuser, setNewSuperuser] = useState("sys");
 
-  const loadPolicies = async () => {
-    setLoading(true);
-    try {
-      const response = await client.queries.adminQuery({ action: "listExportPolicies", params: JSON.stringify({}) });
-      const data = parseResponse<{ policies?: ExportPolicy[]; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setPolicies(data.policies || []);
-      }
-    } catch (err) { setError(err instanceof Error ? err.message : "Load failed"); }
-    finally { setLoading(false); }
-  };
+  const {
+    data: policies = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listExportPolicies"],
+    queryFn: () =>
+      unwrap<{ policies?: ExportPolicy[] }>(
+        client.queries.adminQuery({ action: "listExportPolicies", params: JSON.stringify({}) }),
+      ).then((d) => d?.policies ?? []),
+  });
 
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadPolicies = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load policies");
+
+  // Drilling into a policy is user-driven, not a mount effect, so it stays a
+  // plain handler. It carried a pending flag that the render gate never showed
+  // (the gate also requires !selectedPolicy), so the flag is gone.
   const loadRules = async (policyId: string) => {
-    setLoading(true);
     try {
       const response = await client.queries.adminQuery({ action: "getExportPolicyRules", params: JSON.stringify({policyId}) });
       const data = parseResponse<{ rules?: ExportRule[]; error?: string }>(response);
@@ -55,10 +63,7 @@ export function ExportPolicyManager() {
         else setRules(data.rules || []);
       }
     } catch (err) { setError(err instanceof Error ? err.message : "Load failed"); }
-    finally { setLoading(false); }
   };
-
-  useEffect(() => { loadPolicies(); }, []);
 
   const handleCreatePolicy = async () => {
     if (!newPolicyName.trim()) { setError(t("rmPolicyNameRequired")); return; }

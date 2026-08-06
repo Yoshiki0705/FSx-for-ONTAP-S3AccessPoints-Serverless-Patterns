@@ -5,9 +5,11 @@
  * Ported from RAG-FSxN-CDK agent-mode-sidebar pattern.
  * Calls protectionQuery({ action: "getFilePermissions", filePath }) via existing VPC Lambda.
  */
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
+import { errorMessage } from "../lib/portalQuery";
 import { useTranslation } from "../i18n";
 
 const client = generateClient<Schema>();
@@ -41,65 +43,41 @@ interface AgentFileSidebarProps {
 
 export function AgentFileSidebar({ referencedFiles, visible, onClose }: AgentFileSidebarProps) {
   const { t } = useTranslation();
-  const [selectedFile, setSelectedFile] = useState<string>("");
-  const [permissions, setPermissions] = useState<FilePermissions | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // The explicit pick only. With none, the newest referenced file is shown, so
+  // the default is derived instead of being written back into state.
+  const [picked, setPicked] = useState<string>("");
+  const selectedFile =
+    picked || (referencedFiles.length > 0 ? referencedFiles[referencedFiles.length - 1] : "");
+  const setSelectedFile = setPicked;
 
-  // Auto-select latest file
-  useEffect(() => {
-    if (referencedFiles.length > 0 && !selectedFile) {
-      setSelectedFile(referencedFiles[referencedFiles.length - 1]);
-    }
-  }, [referencedFiles, selectedFile]);
-
-  // Fetch permissions when the selected file changes.
+  // Permissions for whichever file is shown.
   //
-  // The fetch lives inside the effect rather than in a function declared below it.
-  // Hoisting made the previous arrangement run, but the effect could not list the
-  // function as a dependency, so it captured whichever version existed when the
-  // effect was created.
-  //
-  // `cancelled` drops a response whose request has been superseded. Switching files
-  // while a request is in flight otherwise lets the slower response land last and
-  // show one file's permissions under another file's name.
-  useEffect(() => {
-    if (!selectedFile || !visible) return;
-    let cancelled = false;
-
-    setLoading(true);
-    setError(null);
-    setPermissions(null);
-
-    (async () => {
-      try {
-        const response = await client.queries.protectionQuery({
-          action: "getFilePermissions",
-          params: JSON.stringify({ filePath: selectedFile }),
-        });
-        if (cancelled) return;
-        const data = response.data
-          ? (typeof response.data === "string" ? JSON.parse(response.data) : response.data) as PermissionsResponse
-          : null;
-
-        if (data?.permissions) {
-          setPermissions(data.permissions);
-        }
-        if (data?.error) {
-          setError(data.error);
-        }
-      } catch (e: unknown) {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Failed to load permissions");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedFile, visible]);
+  // The file is part of the query key, which is also what makes switching files
+  // mid-flight safe: a superseded response belongs to a different key, so it can
+  // no longer land last and show one file's permissions under another's name.
+  // That is what the old `cancelled` flag was for.
+  const {
+    data: permissions = null,
+    isFetching: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["protection", "getFilePermissions", selectedFile],
+    enabled: !!selectedFile && visible,
+    queryFn: async () => {
+      const response = await client.queries.protectionQuery({
+        action: "getFilePermissions",
+        params: JSON.stringify({ filePath: selectedFile }),
+      });
+      const data = response.data
+        ? ((typeof response.data === "string"
+            ? JSON.parse(response.data)
+            : response.data) as PermissionsResponse)
+        : null;
+      if (data?.error) throw new Error(data.error);
+      return data?.permissions ?? null;
+    },
+  });
+  const error = errorMessage(queryError, "Failed to load permissions");
 
   if (!visible || referencedFiles.length === 0) return null;
 

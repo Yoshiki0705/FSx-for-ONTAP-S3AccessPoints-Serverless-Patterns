@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../amplify/data/resource";
 import { useTranslation } from "../../i18n";
+import { errorMessage, unwrap } from "../../lib/portalQuery";
 import { VolumeSelector } from "./VolumeSelector";
 import { parseResponse } from "../../utils/parseResponse";
 
@@ -19,9 +21,8 @@ interface Qtree {
 
 export function QtreeManager() {
   const { t } = useTranslation();
-  const [qtrees, setQtrees] = useState<Qtree[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [filterVolume, setFilterVolume] = useState("");
@@ -34,25 +35,29 @@ export function QtreeManager() {
 
   const clearSuccess = () => setTimeout(() => setSuccess(null), 3000);
 
-  const loadQtrees = async () => {
-    if (!filterVolume) { setQtrees([]); setLoading(false); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await client.queries.adminQuery({ action: "listQtrees", params: JSON.stringify({volumeName: filterVolume}) });
-      const data = parseResponse<{ qtrees?: Qtree[]; error?: string }>(response);
-      if (data) {
-        if (data.error) setError(data.error);
-        else setQtrees(data.qtrees || []);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load qtrees");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Keyed on the selected volume, so picking a different volume switches lists
+  // without a manual reload. Disabled until a volume is chosen.
+  const {
+    data: qtrees = [],
+    isPending: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin", "listQtrees", filterVolume],
+    enabled: !!filterVolume,
+    queryFn: () =>
+      unwrap<{ qtrees?: Qtree[] }>(
+        client.queries.adminQuery({
+          action: "listQtrees",
+          params: JSON.stringify({ volumeName: filterVolume }),
+        }),
+      ).then((d) => d?.qtrees ?? []),
+  });
 
-  useEffect(() => { loadQtrees(); }, [filterVolume]);
+  // Mutation handlers report through their own state, so a failed action is
+  // never mistaken for a failed load.
+  const loadQtrees = () => void refetch();
+  const error = actionError ?? errorMessage(queryError, "Failed to load qtrees");
 
   const handleCreate = async () => {
     if (!newVolumeName || !newName) { setError("Volume name and qtree name are required"); return; }
