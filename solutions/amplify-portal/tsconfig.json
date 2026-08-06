@@ -16,11 +16,23 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    // Declared explicitly because TypeScript 7 no longer resolves these
+    // implicitly. Without "vite/client", side-effect `.css` imports fail with
+    // TS2882; without "node", the infrastructure tests cannot see `node:fs`
+    // and `node:path`. Both packages were already installed — only the
+    // declaration was missing, so TypeScript 5 happened to tolerate it.
+    "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "tests"],
+  // `amplify` is included deliberately. It used to be absent, which meant the
+  // entire CDK backend definition — over 1400 lines in amplify/backend.ts — was
+  // never type-checked by `tsc --noEmit` or `npm run build`. That is how
+  // backend.ts came to read three config properties that portal-config.ts does
+  // not define, and how a `DefineBackendBase` import survived even though
+  // @aws-amplify/backend never exported it.
+  "include": ["src", "tests", "amplify"],
   // tests/e2e holds Playwright specs. @playwright/test is intentionally not a
   // package.json dependency (the e2e workflow provisions it via npx), so those
   // specs are type-checked and run by Playwright's own runner instead. This

@@ -93,7 +93,12 @@ export function QuotaManager() {
   };
 
   useEffect(() => {
-    if (volumeName) activeTab === "rules" ? loadRules() : loadReport();
+    if (!volumeName) return;
+    if (activeTab === "rules") {
+      loadRules();
+    } else {
+      loadReport();
+    }
   }, [volumeName, activeTab]);
 
   const handleCreate = async () => {
