@@ -12,16 +12,21 @@
 	lint-python lint-python-check lint-python-format format-python lint-cfn \
 	drift drift-published
 
-# Python interpreter — auto-detect .venv if available (override with: make test PYTHON=python3.13)
-# Priority: 1) explicit override  2) .venv/bin/python  3) system python3.12
+# Target Python version — must match the Lambda runtime in the SAM templates
+# (`Runtime: python3.13`). Declared once here so `install`, the interpreter
+# fallback, and the venv freshness check cannot drift apart.
+PY_VERSION := 3.13
+
+# Python interpreter — auto-detect .venv if available (override with: make test PYTHON=python3.12)
+# Priority: 1) explicit override  2) .venv/bin/python  3) system python$(PY_VERSION)
 ifeq ($(origin PYTHON), undefined)
   ifneq (,$(wildcard .venv/bin/python))
     PYTHON := .venv/bin/python
   else
-    PYTHON := python3.12
+    PYTHON := python$(PY_VERSION)
   endif
 else
-  PYTHON ?= python3.12
+  PYTHON ?= python$(PY_VERSION)
 endif
 
 # Default target
@@ -51,11 +56,11 @@ help:
 # Setup
 # ============================================================
 install:
-	@echo "🐍 Setting up Python 3.12 virtual environment..."
-	@command -v python3.12 >/dev/null 2>&1 || { echo "❌ python3.12 not found. Install: brew install python@3.12"; exit 1; }
-	@if [ ! -f .venv/bin/python ] || ! .venv/bin/python --version 2>/dev/null | grep -q "3.12"; then \
-		echo "  Creating .venv (python3.12)..."; \
-		python3.12 -m venv .venv --clear; \
+	@echo "🐍 Setting up Python $(PY_VERSION) virtual environment..."
+	@command -v python$(PY_VERSION) >/dev/null 2>&1 || { echo "❌ python$(PY_VERSION) not found. Install: brew install python@$(PY_VERSION)"; exit 1; }
+	@if [ ! -f .venv/bin/python ] || ! .venv/bin/python --version 2>/dev/null | grep -q "$(PY_VERSION)"; then \
+		echo "  Creating .venv (python$(PY_VERSION))..."; \
+		python$(PY_VERSION) -m venv .venv --clear; \
 	fi
 	@echo "  Installing dependencies..."
 	.venv/bin/pip install --upgrade pip -q

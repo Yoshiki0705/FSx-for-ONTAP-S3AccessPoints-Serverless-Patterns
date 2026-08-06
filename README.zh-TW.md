@@ -201,7 +201,7 @@ cfn-lint solutions/industry/*/template.yaml # CloudFormation validation
 
 ### 技術堆疊
 
-Python 3.12 | CloudFormation + SAM | Lambda (ARM64) | Step Functions | EventBridge | Bedrock / Textract / Comprehend / Rekognition | Secrets Manager | Athena + Glue
+Python 3.13 | CloudFormation + SAM | Lambda (ARM64) | Step Functions | EventBridge | Bedrock / Textract / Comprehend / Rekognition | Secrets Manager | Athena + Glue
 
 ### 貢獻
 

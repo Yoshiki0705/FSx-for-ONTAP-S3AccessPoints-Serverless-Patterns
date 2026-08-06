@@ -273,7 +273,7 @@ Resources:
         Automates SnapMirror DR failover: break relationship, set junction path,
         create S3 AP on destination volume, notify via SNS.
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: failover-lambda/
       Architectures:
         - arm64

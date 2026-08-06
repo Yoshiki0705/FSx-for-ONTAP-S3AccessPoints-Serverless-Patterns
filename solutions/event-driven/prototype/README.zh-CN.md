@@ -88,7 +88,7 @@ response = s3ap.get_object(file_key)
 ### 前提条件
 
 - 已配置 AWS CLI
-- Python 3.12
+- Python 3.13
 - 用于 Lambda 部署包的 S3 存储桶
 
 ### 部署

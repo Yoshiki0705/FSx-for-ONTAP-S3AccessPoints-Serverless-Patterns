@@ -141,7 +141,7 @@ Resources:
     Condition: IsS3APExternalMonitorEnabled
     Properties:
       FunctionName: !Sub "${ProjectPrefix}-s3ap-ext-monitor"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: ../lambdas/s3ap_external_monitor/
       MemorySize: 128

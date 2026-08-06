@@ -651,7 +651,7 @@ Resources:
     Properties:
       Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/discovery/
       Layers:
@@ -684,7 +684,7 @@ Resources:
     Properties:
       Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-cdr-analyzer"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/cdr_analyzer/
       Layers:
@@ -709,7 +709,7 @@ Resources:
     Properties:
       Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-log-analyzer"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/log_analyzer/
       Layers:
@@ -734,7 +734,7 @@ Resources:
     Properties:
       Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-anomaly-detector"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/anomaly_detector/
       Layers:
@@ -761,7 +761,7 @@ Resources:
     Properties:
       Tracing: !If [EnableXRay, "Active", "PassThrough"]
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: functions/report/
       Layers:

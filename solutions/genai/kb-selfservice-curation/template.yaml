@@ -278,7 +278,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/auto_sync/
       Timeout: 120
       MemorySize: 512
@@ -296,7 +296,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/ingestion_status/
       Timeout: 30
       MemorySize: 256
@@ -311,7 +311,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/query/
       Timeout: 60
       MemorySize: 256
@@ -596,7 +596,7 @@ Resources:
     Condition: IsScenarioCEnabled
     Properties:
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: functions/kb_trigger/
       Timeout: 60
       MemorySize: 256

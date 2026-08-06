@@ -417,7 +417,7 @@ AdHealthCheckFunction:
   Type: AWS::Serverless::Function
   Properties:
     Handler: handler.handler
-    Runtime: python3.12
+    Runtime: python3.13
     Architectures: [arm64]
     Timeout: 30
     VpcConfig:

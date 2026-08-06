@@ -148,7 +148,7 @@ Resources:
     Properties:
       FunctionName: dynamic-flexcache-CreateFlexCache
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: src/create_flexcache/
       Timeout: 300
       MemorySize: 256
@@ -171,7 +171,7 @@ Resources:
     Properties:
       FunctionName: dynamic-flexcache-SubmitJob
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: src/submit_job/
       Timeout: 60
       MemorySize: 256
@@ -182,7 +182,7 @@ Resources:
     Properties:
       FunctionName: dynamic-flexcache-MonitorJob
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: src/monitor_job/
       Timeout: 30
       MemorySize: 128
@@ -193,7 +193,7 @@ Resources:
     Properties:
       FunctionName: dynamic-flexcache-CleanupFlexCache
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: src/cleanup_flexcache/
       Timeout: 300
       MemorySize: 256
@@ -210,7 +210,7 @@ Resources:
     Properties:
       FunctionName: dynamic-flexcache-Report
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: src/report/
       Timeout: 60
       MemorySize: 256

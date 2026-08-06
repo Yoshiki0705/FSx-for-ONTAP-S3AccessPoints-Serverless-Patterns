@@ -94,7 +94,7 @@ export function stepFunctionsStack(stack: Stack, backend: DefineBackendBase) {
   // This Lambda lists objects in the S3 AP. It runs VPC-external
   // (no VpcConfig) for Internet-origin S3 AP access.
   const listFilesFunction = new lambda.Function(stack, "ListFilesFunction", {
-    runtime: lambda.Runtime.PYTHON_3_12,
+    runtime: lambda.Runtime.PYTHON_3_13,
     architecture: lambda.Architecture.ARM_64,
     handler: "handler.handler",
     code: lambda.Code.fromInline(`

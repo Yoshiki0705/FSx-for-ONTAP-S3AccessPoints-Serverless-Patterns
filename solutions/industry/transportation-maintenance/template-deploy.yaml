@@ -205,7 +205,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-discovery"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -375,7 +375,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-deterioration-detector"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -403,7 +403,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-maintenance-extractor"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
@@ -427,7 +427,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-report"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket
