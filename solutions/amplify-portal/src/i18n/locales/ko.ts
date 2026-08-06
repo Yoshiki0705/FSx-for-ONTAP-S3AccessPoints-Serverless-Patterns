@@ -1233,6 +1233,52 @@ arpResponseSweepNote: "차단은 지정한 기한이 지나면 자동으로 해�
   slFailed: "링크 생성에 실패했습니다",
   slNote: "이 링크를 가진 사람은 누구나 만료 전까지 파일을 열 수 있습니다. 기밀 파일의 링크는 공유하지 마십시오.",
 
+  // --- SnapLock consequence confirmation ---
+  slcTitle: "이 설정을 적용하면 어떻게 되는지",
+  slcSubject: "대상: {name}",
+  slcUntilHeadline: "{date}까지 삭제할 수 없습니다",
+  slcSeeDocs: "설정을 적용하기 전에 삭제할 수 없게 되는 범위를 확인하십시오.",
+  slcTypeToConfirm: "취소할 수 없는 작업입니다. 계속하려면 {keyword}를 입력하십시오.",
+  slcKeywordHint: "대문자로 {keyword}를 입력하면 계속할 수 있습니다.",
+  slcAcknowledge: "위 내용을 확인했습니다.",
+  slcCancel: "취소",
+  slcProceed: "적용",
+  slcTypeImmutable:
+    "SnapLock 유형({type})은 생성 시에만 설정할 수 있으며, 이후 변경하거나 해제할 수 없습니다.",
+  slcComplianceNoDelete:
+    "Compliance에서는 보존 기간이 만료될 때까지 누구도 삭제할 수 없습니다. 계정 관리자도, AWS도 삭제할 수 없습니다.",
+  slcEnterprisePrivilegedDelete:
+    "Enterprise에서는 특권 삭제가 활성화된 경우에만 삭제할 수 있습니다. PrivilegedDelete를 PERMANENTLY_DISABLED로 설정하면 이 경로도 영구히 사라집니다.",
+  slcWormBlocksParents:
+    "만료되지 않은 WORM 파일이 하나라도 남아 있는 동안에는 이 볼륨, 소속 SVM, 파일 시스템을 삭제할 수 없습니다.",
+  slcWormMaxUntil:
+    "보존 기간 상한은 {period}입니다. 지금 커밋된 파일은 최대 {date}까지 삭제할 수 없습니다.",
+  slcEmptyStillDeletable:
+    "생성 직후의 빈 볼륨은 삭제할 수 있습니다. 삭제할 수 없게 되는 시점은 첫 파일이 WORM으로 확정된 때부터입니다.",
+  slcBillingContinues:
+    "파일 시스템을 삭제할 수 없는 동안 해당 파일 시스템의 요금은 계속 발생합니다.",
+  slcRetentionFutureFilesOnly:
+    "변경 후 커밋되는 파일에만 적용됩니다. 기존 WORM 파일의 보존 기간은 변경되지 않습니다.",
+  slcRetentionNewFileUntil:
+    "이 설정({period})에서는 지금 커밋된 파일을 {date}까지 삭제할 수 없습니다.",
+  slcRetentionZero: "보존 기간이 0이므로 새 파일은 잠기지 않습니다.",
+  slcLockingCannotDisable:
+    "Snapshot 잠금은 활성화하면 비활성화할 수 없습니다(400 Bad Request).",
+  slcLockingLocksNothingYet:
+    "활성화만으로는 아무것도 잠기지 않습니다. 정책의 보존 기간 또는 개별 잠금을 통해서만 잠금이 발생합니다.",
+  slcSnapshotExtendOnly:
+    "Snapshot 잠금은 연장만 가능합니다. 단축도 해제도 할 수 없습니다.",
+  slcSnapshotUntil: "이 Snapshot은 {date}({days}일간)까지 삭제할 수 없습니다.",
+  slcSnapshotScope: "다른 Snapshot과 볼륨 자체에는 영향이 없습니다.",
+  slcS3ComplianceNoChange:
+    "COMPLIANCE 모드에서는 설정한 보존 기간을 단축하거나 해제할 수 없습니다.",
+  slcS3GovernanceBypass:
+    "GOVERNANCE 모드에서는 s3:BypassGovernanceRetention 권한을 가진 사용자가 재정의할 수 있습니다.",
+  slcS3ObjectsUntil:
+    "이후 저장되는 객체는 {date}({days}일간)까지 삭제할 수 없습니다.",
+  slcS3FutureObjectsOnly:
+    "기존 객체에는 적용되지 않습니다. 설정 후 저장되는 객체가 대상입니다.",
+
   // --- Shared / misc ---
   processing: "처리 중...",
   athenaGuidanceTitle: "사용 방법",

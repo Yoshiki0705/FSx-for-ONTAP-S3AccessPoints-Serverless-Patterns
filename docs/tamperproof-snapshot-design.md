@@ -130,6 +130,67 @@ Tamperproof を有効化した後でも、**新規ロックを停止**できま�
 
 **結論**: `snapshot_locking_enabled` は OFF にできないが、ポリシーのデタッチ/変更により **実質的に Tamperproof の運用を完全に停止**できる。既存ロックのみが満了まで残る。
 
+## SnapLock ボリュームは上記 3 レイヤーとは別物
+
+ここまでは **Snapshot** のロックです。**ボリューム自体を SnapLock にする**のは別の仕組みで、影響範囲が広く、取り消せる範囲も違います。名前が似ているため取り違えやすいので、区別します。
+
+| | Snapshot ロック（レイヤー 1〜3） | SnapLock ボリューム |
+|---|---|---|
+| 対象 | Snapshot | ボリューム上の**ファイル**（WORM） |
+| 設定タイミング | 後から有効化できる | **作成時のみ**。後から付与も解除も不可 |
+| 種別変更 | — | 不可（`compliance` ⇄ `enterprise` も不可） |
+| 削除をブロックする範囲 | その Snapshot のみ | ボリューム → **SVM → ファイルシステム**まで連鎖 |
+| ONTAP フィールド | `snapshot_locking_enabled` / `expiry_time` | `snaplock.type` / `snaplock.retention` |
+
+### 削除ロックは親リソースまで連鎖する
+
+未満了の WORM ファイル（または未満了の監査ログ）が 1 つでも残っていると、次のすべてが削除できません。
+
+```
+未満了の WORM ファイル / 監査ログ
+        ↓ ブロック
+   ボリューム            ← DELETE が失敗（ONTAP エラー 525057）
+        ↓ ブロック
+   SVM
+        ↓ ブロック
+   ファイルシステム      ← 満了まで課金が続く
+```
+
+`compliance` では保持期間満了まで**誰も**削除できません（アカウント管理者も、AWS も）。`enterprise` は特権削除が**有効な場合に限り**削除できますが、`PrivilegedDelete=PERMANENTLY_DISABLED` は終端状態で、これを設定すると `compliance` と同じ扱いになります。
+
+### 監査ログボリュームの保持期間
+
+SnapLock 監査ログボリューム（`snaplock.is_audit_log = true`）は、上記の連鎖ブロックを**最短 6 か月**発生させます。
+
+| 項目 | 内容 |
+|---|---|
+| 最小保持期間 | 6 か月（[AWS ドキュメント記載](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/snaplock-delete-volume.html)。より短い値が拒否されるかは未検証） |
+| `enterprise` で作成した場合 | 同じくブロックする（種別による例外はない） |
+| AWS API での保持期間指定 | **手段がない**（下記） |
+| 保持期間満了前の削除 | 不可。AWS サポート経由でも不可。アカウント閉鎖以外の経路は存在しない |
+
+**AWS API には監査ログ保持期間を指定するフィールドがありません。** `CreateSnaplockConfiguration` は `SnaplockType` / `AuditLogVolume` / `AutocommitPeriod` / `PrivilegedDelete` / `RetentionPeriod` / `VolumeAppendModeEnabled` の 6 つで、`RetentionPeriod` はボリューム上の WORM ファイル用です。監査ログ側の保持期間は ONTAP CLI の `snaplock log create -retention-period` でのみ指定できます。
+
+つまり **AWS API だけで監査ログボリュームを作ると、既定の 6 か月が適用され、それを選ぶ余地がありません**。ボリューム側の `RetentionPeriod` を 0 にしていても関係ありません（縛っているパラメータが別）。
+
+### 診断上の落とし穴: `AuditLogVolume: False` は「削除できる」を意味しない
+
+SVM レベルの監査ログ指定は ONTAP REST API で解除できます（アンマウント後に `DELETE /api/storage/snaplock/audit-logs/{svm.uuid}`）。しかしボリューム側の `snaplock.is_audit_log` は読み取り専用で解除できず（`PATCH` は `262196` で拒否）、**削除可否は変わりません**。
+
+この状態で AWS API の `DescribeVolumes` は `AuditLogVolume: False` を返します。AWS API だけを見ると「もう監査ログボリュームではない = 削除できるはず」と読めますが、実際には削除できません。**判断は ONTAP 側の `snaplock.is_audit_log` と `snaplock.expiry_time` で行ってください。**
+
+さらに AWS API の `DeleteVolume` は、この状況で**エラーを返しません**。`DELETING` に遷移した後、無言で `CREATED` に戻ります。`BypassSnaplockEnterpriseRetention=true` や `SkipFinalBackup=true` を付けても同じです。成功したように見えて何も起きていないため、レスポンスではなく数十秒後の `Lifecycle` で判断する必要があります。
+
+### 事前チェック（作成前に必ず）
+
+SnapLock ボリューム、特に監査ログボリュームを作る前に、以下を確認してください。
+
+- [ ] このファイルシステムを**今後 6 か月削除しない**ことが確定しているか
+- [ ] 検証用ファイルシステムに作ろうとしていないか（検証用こそ消せなくなると困る）
+- [ ] 監査ログが本当に必要か。SnapLock ボリュームの利用自体には監査ログは必須ではない
+- [ ] 必要な場合、保持期間を ONTAP CLI で明示指定できる経路があるか
+- [ ] 同一 SVM・同一ファイルシステムに、消せなくなると困る他のボリュームが載っていないか
+
 ## ポータル UI での対応
 
 | UI 場所 | 操作 | レイヤー |
@@ -138,6 +199,12 @@ Tamperproof を有効化した後でも、**新規ロックを停止**できま�
 | スナップショット画面 → ロックダイアログ内「🔓 Tamperproof 有効化」| ボリューム機能を ON | レイヤー 1 |
 | リソース管理 → スナップショット管理 → Tamperproof タブ | ボリューム機能を ON | レイヤー 1 |
 | リソース管理 → スナップショット管理 → ポリシータブ | ポリシー管理 | レイヤー 2 |
+| リソース管理 → ボリューム管理 → 作成フォームの SnapLock 設定 | **SnapLock ボリュームの作成** | 別（上記セクション） |
+| リソース管理 → SnapLock 管理 → 既定保持期間の変更 | WORM ファイルの既定保持期間 | 別（上記セクション） |
+
+不可逆な操作、および削除ロックを発生させる操作は、実行前に確認ダイアログが出ます。ダイアログは入力値から「何がいつまで削除できなくなるか」を具体的な日付で示し、取り消せない項目を明示します。詳細は [ポータル実装ガイド](../solutions/amplify-portal/docs/IMPLEMENTATION.md) を参照してください。
+
+なお、ポータルには**監査ログボリュームを作成する経路はありません**。監査ログボリュームは削除ロックの影響が最大（最短 6 か月、ファイルシステムまで連鎖）で、かつ AWS API に保持期間の指定手段がないため、GUI からは作成できないようにしています。必要な場合は ONTAP CLI で保持期間を明示して作成してください。
 
 ## ONTAP REST API リファレンス
 

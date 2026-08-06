@@ -4,7 +4,9 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { useTranslation } from "../i18n";
 import { errorMessage, unwrap } from "../lib/portalQuery";
+import { SnaplockConfirmDialog } from "./SnaplockConfirmDialog";
 import { parseResponse } from "../utils/parseResponse";
+import type { SnaplockIntent } from "../utils/snaplockConsequences";
 
 const client = generateClient<Schema>();
 
@@ -58,6 +60,8 @@ export function SnaplockStatus() {
   const [actionError, setActionError] = useState<string | null>(null);
   const setError = setActionError;
   const [success, setSuccess] = useState<string | null>(null);
+  /** Set while the consequence dialog is open; null when nothing is pending. */
+  const [pendingSnaplock, setPendingSnaplock] = useState<SnaplockIntent | null>(null);
   const [activePanel, setActivePanel] = useState<"snaplock" | "s3lock" | "tamperproof">("snaplock");
 
   // Lock form state
@@ -188,6 +192,34 @@ export function SnaplockStatus() {
 
   const handleS3BucketSearch = (value: string) => setS3BucketFilter(value);
 
+  /**
+   * COMPLIANCE retention cannot be shortened or removed, and GOVERNANCE can only
+   * be overridden by a caller holding the bypass permission. Either way the
+   * operator should see which of the two they picked before it applies.
+   */
+  const handleConfigureS3LockClick = () => {
+    if (!s3SelectedBucket) { setError(t("lockS3SelectBucketRequired")); return; }
+    setError(null);
+    setPendingSnaplock({
+      kind: "s3ObjectLock",
+      bucket: s3SelectedBucket,
+      mode: s3LockMode === "COMPLIANCE" ? "COMPLIANCE" : "GOVERNANCE",
+      days: s3LockDays,
+    });
+  };
+
+  /** A snapshot lock can be extended but never shortened or released. */
+  const handleLockSnapshotClick = () => {
+    if (!lockTargetSnap) { setError(t("lockSelectSnapshotRequired")); return; }
+    if (lockRetentionDays <= 0) { setError(t("lockRetentionRequired")); return; }
+    setError(null);
+    setPendingSnaplock({
+      kind: "lockSnapshot",
+      snapshotName: lockTargetSnap,
+      retentionDays: lockRetentionDays,
+    });
+  };
+
   const handleConfigureS3Lock = async () => {
     if (!s3SelectedBucket) { setError(t("lockS3SelectBucketRequired")); return; }
     setS3Configuring(true);
@@ -199,6 +231,7 @@ export function SnaplockStatus() {
           bucket: s3SelectedBucket,
           mode: s3LockMode,
           days: s3LockDays,
+          acknowledgeIrreversible: true,
         }),
       });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
@@ -228,6 +261,7 @@ export function SnaplockStatus() {
         params: JSON.stringify({
           snapshotName: lockTargetSnap,
           retentionDays: lockRetentionDays,
+          acknowledgeIrreversible: true,
         }),
       });
       const data = parseResponse<{ success?: boolean; error?: string }>(response);
@@ -265,6 +299,18 @@ export function SnaplockStatus() {
 
   return (
     <div className="protection-section">
+      {pendingSnaplock && (
+        <SnaplockConfirmDialog
+          intent={pendingSnaplock}
+          onCancel={() => setPendingSnaplock(null)}
+          onConfirm={() => {
+            const intent = pendingSnaplock;
+            setPendingSnaplock(null);
+            if (intent.kind === "s3ObjectLock") void handleConfigureS3Lock();
+            else void handleLockSnapshot();
+          }}
+        />
+      )}
       <div className="protection-header">
         <h2>🔒 {t("lockTitle")}</h2>
         {volumeName && <span className="volume-badge">{t("volume")}: {volumeName}</span>}
@@ -507,7 +553,7 @@ export function SnaplockStatus() {
                   </select>
                 </div>
               </div>
-              <button onClick={handleConfigureS3Lock} className="btn-primary" disabled={s3Configuring || !s3SelectedBucket}>
+              <button onClick={handleConfigureS3LockClick} className="btn-primary" disabled={s3Configuring || !s3SelectedBucket}>
                 {s3Configuring ? t("loading") : t("lockS3ApplyBtn")}
               </button>
               <button onClick={() => setShowS3Config(false)} className="btn-secondary" style={{ marginLeft: "0.5rem" }}>
@@ -583,7 +629,7 @@ export function SnaplockStatus() {
                   </div>
                   <div className="form-group" style={{ alignSelf: "flex-end" }}>
                     <button
-                      onClick={handleLockSnapshot}
+                      onClick={handleLockSnapshotClick}
                       className="btn-primary"
                       disabled={lockingInProgress || !lockTargetSnap}
                     >

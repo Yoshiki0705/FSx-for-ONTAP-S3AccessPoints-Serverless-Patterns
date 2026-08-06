@@ -1238,6 +1238,53 @@ arpResponseSweepNote: "Los bloqueos se levantan por sí solos al vencer el plazo
   slFailed: "No se pudo generar el enlace",
   slNote: "Cualquier persona con este enlace puede abrir el archivo hasta que caduque. No comparta enlaces a archivos confidenciales.",
 
+  // --- SnapLock consequence confirmation ---
+  slcTitle: "Qué hace este ajuste",
+  slcSubject: "Objetivo: {name}",
+  slcUntilHeadline: "No se podrá eliminar hasta el {date}",
+  slcSeeDocs: "Compruebe qué dejará de poder eliminarse antes de aplicar este ajuste.",
+  slcTypeToConfirm: "Esto no se puede deshacer. Escriba {keyword} para continuar.",
+  slcKeywordHint: "Escriba {keyword} en mayúsculas para continuar.",
+  slcAcknowledge: "He leído lo anterior.",
+  slcCancel: "Cancelar",
+  slcProceed: "Aplicar",
+  slcTypeImmutable:
+    "El tipo de SnapLock ({type}) se define solo al crear el volumen. Después no se puede cambiar ni quitar.",
+  slcComplianceNoDelete:
+    "En modo Compliance, nadie puede eliminar antes de que expire la retención: ni el propietario de la cuenta ni AWS.",
+  slcEnterprisePrivilegedDelete:
+    "En modo Enterprise, la eliminación solo es posible mientras la eliminación privilegiada esté disponible. Establecer PrivilegedDelete en PERMANENTLY_DISABLED elimina esa vía de forma definitiva.",
+  slcWormBlocksParents:
+    "Mientras quede un solo archivo WORM sin expirar, no se podrán eliminar este volumen, su SVM ni el sistema de archivos.",
+  slcWormMaxUntil:
+    "El límite de retención es {period}. Un archivo confirmado ahora no podrá eliminarse hasta el {date} como máximo.",
+  slcEmptyStillDeletable:
+    "Un volumen vacío todavía se puede eliminar justo después de crearlo. El punto sin retorno es el primer archivo confirmado como WORM.",
+  slcBillingContinues:
+    "Mientras el sistema de archivos no se pueda eliminar, sus cargos continúan.",
+  slcRetentionFutureFilesOnly:
+    "Se aplica solo a los archivos confirmados después de este cambio. La retención de los archivos WORM existentes no cambia.",
+  slcRetentionNewFileUntil:
+    "Con este ajuste ({period}), un archivo confirmado ahora no podrá eliminarse hasta el {date}.",
+  slcRetentionZero: "La retención es cero, por lo que los archivos nuevos no se bloquearán.",
+  slcLockingCannotDisable:
+    "El bloqueo de snapshots no se puede desactivar una vez activado (400 Bad Request).",
+  slcLockingLocksNothingYet:
+    "Activarlo por sí solo no bloquea nada. El bloqueo se produce únicamente mediante un periodo de retención en la política o un bloqueo individual.",
+  slcSnapshotExtendOnly:
+    "Un bloqueo de snapshot solo se puede ampliar. No se puede acortar ni liberar.",
+  slcSnapshotUntil:
+    "Este snapshot no se podrá eliminar hasta el {date} ({days} días).",
+  slcSnapshotScope: "Los demás snapshots y el propio volumen no se ven afectados.",
+  slcS3ComplianceNoChange:
+    "En modo COMPLIANCE, el periodo de retención no se puede acortar ni quitar.",
+  slcS3GovernanceBypass:
+    "En modo GOVERNANCE, quien tenga s3:BypassGovernanceRetention puede omitirlo.",
+  slcS3ObjectsUntil:
+    "Los objetos almacenados desde ahora no se podrán eliminar hasta el {date} ({days} días).",
+  slcS3FutureObjectsOnly:
+    "No se aplica a los objetos existentes. Se aplica a los objetos almacenados tras el cambio.",
+
   // --- Shared / misc ---
   processing: "Procesando...",
   athenaGuidanceTitle: "Cómo usarlo",

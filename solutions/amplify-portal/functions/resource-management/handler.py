@@ -89,6 +89,37 @@ def _seg(value) -> str:
     return quote(str(value), safe="")
 
 
+# Operations that create a retention lock need the caller to say so explicitly.
+#
+# The portal shows a dialog that spells out what becomes undeletable and until
+# when, but that dialog is client-side: a direct AppSync call, a script, or an
+# agent reaches the same actions without it. Requiring the flag here means the
+# lock cannot be created by a caller that never saw the consequences, and the
+# refusal names the specific effect rather than saying "confirm required".
+#
+# It is a deliberate design that this is not a boolean on the whole handler:
+# only the operations whose effect cannot be undone carry the requirement, so
+# ordinary volume and snapshot work is unaffected.
+_IRREVERSIBLE_ACK_FIELD = "acknowledgeIrreversible"
+
+
+def _require_ack(event, effect: str):
+    """None when the caller acknowledged the lock, or an error response.
+
+    `effect` is the consequence in one sentence, so a caller reading only the
+    error learns what the flag is agreeing to.
+    """
+    if event.get(_IRREVERSIBLE_ACK_FIELD) is True:
+        return None
+    return {
+        "success": False,
+        "error": (
+            f"{_IRREVERSIBLE_ACK_FIELD}=true is required for this operation. {effect} "
+            "See docs/tamperproof-snapshot-design.md before setting it."
+        ),
+    }
+
+
 def _qval(value) -> str:
     """Percent-encode a value used as a query-string value.
 
@@ -701,6 +732,18 @@ def _create_volume(http, headers, event, user_id):
     # SnapLock configuration (optional — only at creation time)
     snaplock_type = event.get("snaplockType")
     if snaplock_type and snaplock_type in ("compliance", "enterprise"):
+        # The type cannot be changed or removed afterwards, and once the volume
+        # holds an unexpired WORM file the SVM and file system stop being
+        # deletable too. A plain volume needs no acknowledgement.
+        refused = _require_ack(
+            event,
+            f"A {snaplock_type} SnapLock volume cannot be converted back, and while it "
+            "holds an unexpired WORM file the volume, its SVM and the file system "
+            "cannot be deleted.",
+        )
+        if refused:
+            return refused
+
         body["snaplock"] = {
             "type": snaplock_type,
         }
@@ -1143,6 +1186,17 @@ def _update_snaplock_retention(http, headers, event, user_id):
         return {"success": False, "error": "volumeUuid is required"}
     if days <= 0:
         return {"success": False, "error": "days must be > 0"}
+
+    # A file committed after this change stays undeletable for the new period,
+    # and while any WORM file is unexpired the parents cannot be deleted either.
+    refused = _require_ack(
+        event,
+        f"Files committed after this change cannot be deleted for {days} days, and while "
+        "any WORM file is unexpired the volume, its SVM and the file system cannot be "
+        "deleted.",
+    )
+    if refused:
+        return refused
 
     duration = f"P{days}D"
     body = {"snaplock": {"retention": {"default": duration}}}
@@ -1954,6 +2008,16 @@ def _enable_snapshot_locking(http, headers, event, user_id):
     if not vol_uuid:
         return {"success": False, "error": "volumeUuid is required"}
 
+    # Only enabling is guarded. Disabling is refused by ONTAP anyway, and a
+    # caller attempting it is not creating a lock.
+    if enabled:
+        refused = _require_ack(
+            event,
+            "Snapshot locking cannot be disabled once enabled.",
+        )
+        if refused:
+            return refused
+
     body = {"snapshot_locking_enabled": enabled}
     data = _ontap_request(http, headers, "PATCH", f"/storage/volumes/{vol_uuid}", body=body)
     if data.get("_error"):
@@ -1980,6 +2044,14 @@ def _lock_snapshot(http, headers, event, user_id):
         return {"success": False, "error": "volumeUuid and snapshotUuid are required"}
     if retention_days <= 0:
         return {"success": False, "error": "retentionDays must be > 0"}
+
+    refused = _require_ack(
+        event,
+        f"The snapshot cannot be deleted for {retention_days} days, and the expiry can "
+        "afterwards only be extended, never shortened or released.",
+    )
+    if refused:
+        return refused
 
     from datetime import datetime, timezone, timedelta
 
@@ -2190,6 +2262,21 @@ def _put_s3_object_lock_retention(event, user_id):
         return {"success": False, "error": "Mode must be GOVERNANCE or COMPLIANCE"}
     if not days and not years:
         return {"success": False, "error": "Either days or years is required"}
+
+    period = f"{days} days" if days else f"{years} years"
+    if mode == "COMPLIANCE":
+        effect = (
+            f"Objects stored from now on cannot be deleted for {period}, and in COMPLIANCE "
+            "mode that retention cannot be shortened or removed."
+        )
+    else:
+        effect = (
+            f"Objects stored from now on cannot be deleted for {period} unless the caller "
+            "holds s3:BypassGovernanceRetention."
+        )
+    refused = _require_ack(event, effect)
+    if refused:
+        return refused
 
     retention = {"Mode": mode}
     if days:
