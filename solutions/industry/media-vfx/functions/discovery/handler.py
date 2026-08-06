@@ -10,6 +10,9 @@ Environment Variables:
     S3_ACCESS_POINT: S3 AP Alias or ARN (入力読み取り用)
     S3_ACCESS_POINT_OUTPUT: S3 AP Alias or ARN (出力書き込み用、省略時は S3_ACCESS_POINT を使用)
     PREFIX_FILTER: プレフィックスフィルタ (optional)
+    SUFFIX_FILTER: 検出対象の拡張子。カンマ区切り (optional)
+        未設定または実質空の場合は RENDER_ASSET_EXTENSIONS を使用する。
+        ドットの有無・大文字・空白は正規化される（"exr, DPX" は ".exr,.dpx"）。
 """
 
 from __future__ import annotations
@@ -45,16 +48,60 @@ RENDER_ASSET_EXTENSIONS = (
 )
 
 
-def _filter_render_assets(objects: list[dict]) -> list[dict]:
+def _parse_suffix_filter(raw: str) -> tuple[str, ...]:
+    """`SUFFIX_FILTER` の値を拡張子タプルに変換する
+
+    運用者が編集する値なので、書き方の揺れを吸収する。ドットの有無・大文字・
+    余分な空白のいずれかで無言の不一致（何も検出しない、あるいは一部だけ検出する）
+    が起きると、原因の分かりにくい取りこぼしになる。
+
+    Args:
+        raw: カンマ区切りの拡張子。例: ".exr, .dpx" / "exr,DPX"
+
+    Returns:
+        tuple[str, ...]: 正規化した拡張子。有効な項目が無ければ空タプル
+    """
+    extensions = []
+    for token in raw.split(","):
+        ext = token.strip().lower()
+        if not ext:
+            continue
+        if not ext.startswith("."):
+            ext = f".{ext}"
+        if ext not in extensions:
+            extensions.append(ext)
+    return tuple(extensions)
+
+
+def _allowed_extensions() -> tuple[str, ...]:
+    """検出対象の拡張子を決める
+
+    `SUFFIX_FILTER` が設定されていればそれを使い、未設定または実質空なら
+    `RENDER_ASSET_EXTENSIONS` を使う。
+
+    フォールバックを残すのは、環境変数の欠落や打ち間違いで空になったときに
+    「1 件も検出せず成功を返す」状態にしないため。対象を絞りたい場合は
+    `SUFFIX_FILTER` に明示的に列挙する。
+
+    Returns:
+        tuple[str, ...]: 検出対象の拡張子
+    """
+    configured = _parse_suffix_filter(os.environ.get("SUFFIX_FILTER", ""))
+    return configured or RENDER_ASSET_EXTENSIONS
+
+
+def _filter_render_assets(objects: list[dict], extensions: tuple[str, ...] | None = None) -> list[dict]:
     """レンダリング対象アセットのみをフィルタリングする
 
     Args:
         objects: S3ApHelper.list_objects() の結果リスト
+        extensions: 対象拡張子。省略時は `RENDER_ASSET_EXTENSIONS`
 
     Returns:
-        list[dict]: レンダリング対象拡張子に一致するオブジェクトのみ
+        list[dict]: 対象拡張子に一致するオブジェクトのみ
     """
-    return [obj for obj in objects if any(obj["Key"].lower().endswith(ext) for ext in RENDER_ASSET_EXTENSIONS)]
+    allowed = extensions if extensions is not None else RENDER_ASSET_EXTENSIONS
+    return [obj for obj in objects if any(obj["Key"].lower().endswith(ext) for ext in allowed)]
 
 
 @trace_lambda_handler
@@ -71,18 +118,20 @@ def handler(event, context):
     s3ap = S3ApHelper(os.environ["S3_ACCESS_POINT"])
     s3ap_output = S3ApHelper(os.environ.get("S3_ACCESS_POINT_OUTPUT", os.environ["S3_ACCESS_POINT"]))
     prefix = os.environ.get("PREFIX_FILTER", "")
+    extensions = _allowed_extensions()
 
     logger.info(
-        "Media VFX Discovery started: access_point=%s, prefix=%r",
+        "Media VFX Discovery started: access_point=%s, prefix=%r, extensions=%s",
         os.environ["S3_ACCESS_POINT"],
         prefix,
+        ",".join(extensions),
     )
 
     # S3 AP からオブジェクト一覧取得
     all_objects = s3ap.list_objects(prefix=prefix)
 
     # レンダリング対象アセットのみフィルタリング
-    render_assets = _filter_render_assets(all_objects)
+    render_assets = _filter_render_assets(all_objects, extensions)
 
     logger.info(
         "Render assets found: total_scanned=%d, render_assets=%d",

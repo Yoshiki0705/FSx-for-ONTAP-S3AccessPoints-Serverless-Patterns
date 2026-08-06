@@ -40,10 +40,15 @@ class TestDiscoveryHandler:
     """Discovery ハンドラの振る舞い"""
 
     def test_returns_render_assets_and_a_manifest_key(self, monkeypatch):
-        """レンダリング対象を返し、Manifest キーを返すことを検証する"""
+        """レンダリング対象を返し、Manifest キーを返すことを検証する
+
+        SUFFIX_FILTER を空にして既定の 15 種を使う。ハーネスの共通既定は `.txt`
+        なので、明示しないとこのテストは `.txt` を対象に検証してしまう。
+        """
         harness = load_pattern_handler(
             DISCOVERY,
             monkeypatch,
+            env={"SUFFIX_FILTER": ""},
             objects=[
                 {"Key": "shots/a.exr", "Size": 10},
                 {"Key": "notes/readme.txt", "Size": 1},
@@ -350,25 +355,19 @@ class TestTemplateConsistency:
         assert tpl.undefined_condition_refs() == set()
 
 
-class TestSuffixFilterIsNotWiredToDiscovery:
-    """`SUFFIX_FILTER` と実際のフィルタ条件の乖離を明示的に固定する
+class TestSuffixFilterDrivesDiscovery:
+    """`SUFFIX_FILTER` が実際に検出対象を決めることを検証する
 
-    テンプレートは `DiscoveryFunction` に
-    `SUFFIX_FILTER: ".exr,.dpx,.tga,.obj,.fbx,.abc,.usd"` を渡すが、
-    discovery ハンドラはこの環境変数を**読まない**。判定はモジュール定数
-    `RENDER_ASSET_EXTENSIONS`（15 拡張子）で行われる。
+    以前はテンプレートが `SUFFIX_FILTER` を渡していてもハンドラが読まず、
+    判定はモジュール定数だけで行われていた。編集しても何も起きないノブが
+    テンプレートに見えている状態で、設定ミスを誘発していた。
 
-    つまり運用者が `SUFFIX_FILTER` を狭めても検出対象は変わらない。効かないノブが
-    テンプレートに見えている状態で、これは設定ミスを誘発する。
-
-    ここではその乖離を落とさずに固定する。フィルタを `SUFFIX_FILTER` 準拠に
-    変えると、テンプレートに列挙されていない 8 形式（`.blend` `.ma` `.mb` `.hip`
-    `.hda` `.usda` `.usdc` `.usdz`）が検出されなくなる機能退行になるため、
-    どちらへ寄せるかは実装ではなく設計の判断になる。
+    いまはハンドラが読む。テンプレートは定数と同じ 15 種を列挙しており、
+    ここを編集すれば検出対象が変わる。
     """
 
-    def test_discovery_ignores_suffix_filter(self, monkeypatch):
-        """SUFFIX_FILTER を狭めても検出結果が変わらないことを検証する"""
+    def test_narrowing_the_filter_narrows_the_result(self, monkeypatch):
+        """SUFFIX_FILTER を狭めると検出対象が狭まることを検証する"""
         harness = load_pattern_handler(
             DISCOVERY,
             monkeypatch,
@@ -378,16 +377,78 @@ class TestSuffixFilterIsNotWiredToDiscovery:
 
         result = harness.handler({}, harness.context)
 
-        # SUFFIX_FILTER が効いていれば .blend は落ちるが、実際には残る
+        assert {o["Key"] for o in result["objects"]} == {"a.exr"}
+
+    def test_an_empty_filter_falls_back_to_the_full_set(self, monkeypatch):
+        """SUFFIX_FILTER が空なら既定の 15 種にフォールバックすることを検証する
+
+        環境変数の欠落で空になったときに「1 件も検出せず成功」にしないため。
+        """
+        harness = load_pattern_handler(
+            DISCOVERY,
+            monkeypatch,
+            env={"SUFFIX_FILTER": ""},
+            objects=[{"Key": "a.exr", "Size": 1}, {"Key": "b.blend", "Size": 1}],
+        )
+
+        result = harness.handler({}, harness.context)
+
         assert {o["Key"] for o in result["objects"]} == {"a.exr", "b.blend"}
 
-    def test_handler_covers_more_formats_than_the_template_lists(self, monkeypatch):
-        """ハンドラの対象拡張子がテンプレートの列挙より広いことを検証する"""
+    def test_an_unset_filter_falls_back_to_the_full_set(self, monkeypatch):
+        """SUFFIX_FILTER 未設定なら既定の 15 種を使うことを検証する"""
+        harness = load_pattern_handler(DISCOVERY, monkeypatch, objects=[{"Key": "b.blend", "Size": 1}])
+        monkeypatch.delenv("SUFFIX_FILTER", raising=False)
+
+        result = harness.handler({}, harness.context)
+
+        assert [o["Key"] for o in result["objects"]] == ["b.blend"]
+
+    @pytest.mark.parametrize("raw", ["exr", ".EXR", " .exr ", ".exr,", ",.exr"])
+    def test_filter_values_are_normalised(self, monkeypatch, raw):
+        """ドットの有無・大文字・空白・余分なカンマを吸収することを検証する
+
+        運用者が編集する値なので、書き方の揺れで無言の取りこぼしが起きないこと。
+        """
+        harness = load_pattern_handler(
+            DISCOVERY,
+            monkeypatch,
+            env={"SUFFIX_FILTER": raw},
+            objects=[{"Key": "a.exr", "Size": 1}, {"Key": "b.blend", "Size": 1}],
+        )
+
+        result = harness.handler({}, harness.context)
+
+        assert {o["Key"] for o in result["objects"]} == {"a.exr"}, f"SUFFIX_FILTER={raw!r}"
+
+    def test_a_dotless_filter_value_still_requires_a_dot_in_the_key(self, monkeypatch):
+        """ドット無しで書いても、拡張子の区切りとして解釈されることを検証する
+
+        `SUFFIX_FILTER="exr"` をそのまま `endswith("exr")` に使うと、
+        `render_latestexr` のように拡張子ではない名前まで一致してしまう。
+        ドットを補う正規化は、この取り違えを防ぐためにある
+        （この検証を入れる前は、ドット補完を外す変異が検出されなかった）。
+        """
+        harness = load_pattern_handler(
+            DISCOVERY,
+            monkeypatch,
+            env={"SUFFIX_FILTER": "exr"},
+            objects=[{"Key": "shots/a.exr", "Size": 1}, {"Key": "shots/render_latestexr", "Size": 1}],
+        )
+
+        result = harness.handler({}, harness.context)
+
+        assert [o["Key"] for o in result["objects"]] == ["shots/a.exr"]
+
+    def test_template_lists_exactly_what_the_handler_defaults_to(self, monkeypatch):
+        """テンプレートの列挙とハンドラの既定が一致することを検証する
+
+        片方だけ増えると、テンプレート経由の検出対象と既定が食い違い、
+        フォールバックしたときだけ挙動が変わる。
+        """
         harness = load_pattern_handler(DISCOVERY, monkeypatch)
         tpl = load_sam_template(TEMPLATE)
 
-        listed = {s.strip() for s in str(tpl.function_env("DiscoveryFunction")["SUFFIX_FILTER"]).split(",")}
-        actual = set(harness.module.RENDER_ASSET_EXTENSIONS)
+        listed = harness.module._parse_suffix_filter(str(tpl.function_env("DiscoveryFunction")["SUFFIX_FILTER"]))
 
-        assert listed < actual, "the template now lists everything the handler filters on; update this test"
-        assert actual - listed == {".blend", ".ma", ".mb", ".hip", ".hda", ".usda", ".usdc", ".usdz"}
+        assert set(listed) == set(harness.module.RENDER_ASSET_EXTENSIONS)
