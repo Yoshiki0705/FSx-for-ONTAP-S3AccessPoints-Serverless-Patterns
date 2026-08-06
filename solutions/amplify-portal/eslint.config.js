@@ -86,13 +86,40 @@ export default tseslint.config(
       // These two remain warnings, as a ratchet rather than an exemption.
       // `--max-warnings` in package.json pins the count, so it can only go down.
       //
-      //   react-hooks/set-state-in-effect  34  Almost all are the fetch-on-mount
-      //       shape: `const load = async () => { setLoading(true); ... }` called
-      //       straight from a mount effect, so the first setState runs before the
-      //       first await. `loading` already initialises to `true` in these
-      //       components, which makes that call a no-op on the mount path. Clearing
-      //       them means restructuring ~30 components for a pattern that is
-      //       idiomatic, so each needs its own judgement about render behaviour.
+      //   react-hooks/set-state-in-effect  34  Client-side data fetching in an
+      //       effect. Not fixable locally — see below.
+      //
+      //       All 34 are the fetch-on-mount shape: a loader that sets loading and
+      //       error state, called from a mount effect, with the same loader wired to
+      //       a refresh button.
+      //
+      //       react.dev lists this exact shape ("setting loading state
+      //       synchronously") as one to avoid, and the documented remedy is to rely
+      //       on `loading` already initialising to `true` instead of setting it in
+      //       the effect. That remedy was applied to ArpStatus in full — the
+      //       synchronous setLoading/setError removed, the loader memoised, the
+      //       refresh button given its own handler so its spinner still appears —
+      //       and the warning did not clear. The rule traces into the memoised
+      //       loader, so an effect that calls anything which eventually sets state
+      //       is flagged, whether or not the call is synchronous. That is +20/-8
+      //       lines per component, roughly 600 lines across the portal, for no
+      //       change in the count.
+      //
+      //       The rule is enforcing an architectural position rather than a coding
+      //       slip. The ✅ examples in its own documentation are measuring from a
+      //       ref in useLayoutEffect and computing during render; neither covers
+      //       fetching. react.dev's guidance for data fetching is a framework's
+      //       built-in loading or a dedicated library — TanStack Query, SWR — or in
+      //       React 19 `use()` with Suspense, which drops the loading state
+      //       altogether. Any of those clears these 34 honestly; nothing short of
+      //       them does.
+      //
+      //       That is a deliberate dependency and architecture decision affecting
+      //       every admin panel, and these panels need a deployed FSx for ONTAP
+      //       backend and storage-admin membership to exercise, so it does not
+      //       belong in a lint pass. Upstream has an open issue about the rule's
+      //       strictness for legitimate patterns: facebook/react#34743.
+      //
       //       (34, up from the original 32: fixing AgentFileSidebar's immutability
       //       finding moved its reset calls into the effect body, and memoising
       //       AgentChat's loadSessions let the rule trace into it.)
