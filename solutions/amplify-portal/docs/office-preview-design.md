@@ -50,15 +50,24 @@ if (key.endsWith(".docx")) {
 XLSX/PPTX 対応が必要になった場合:
 
 ```dockerfile
-FROM ghcr.io/shelfio/libreoffice-lambda-base-image:node20-x86_64-26.2-01
+FROM public.ecr.aws/shelf/lambda-libreoffice-base:26.2-python3.13-x86_64
+
+# 必須。LibreOffice は初回起動時にユーザープロファイルを書き込むが、Lambda の
+# ファイルシステムは /tmp 以外が読み取り専用のため、これを省くと
+# "User installation could not be completed" で終了コード 77 になる。
+ENV HOME=/tmp
 
 COPY handler.py ${LAMBDA_TASK_ROOT}
 CMD ["handler.handler"]
 ```
 
-- [shelfio/libreoffice-lambda-base-image](https://github.com/shelfio/libreoffice-lambda-base-image): LibreOffice 26.2、Python 3.12/3.13 対応
-- Container Image なので 250MB Layer 制限を回避（最大 10GB）
-- x86_64 のみ（ARM64 は LibreOffice が対応していない）
+実装済みの Dockerfile は [`functions/office-convert/Dockerfile`](../functions/office-convert/Dockerfile) にあり、ローカルビルドと変換動作を確認済みです（まだ `DockerImageFunction` からは参照していません）。
+
+- [shelfio/libreoffice-lambda-base-image](https://github.com/shelfio/libreoffice-lambda-base-image): LibreOffice 26.2、Python 3.12/3.13/3.14 対応
+- 配布先は Amazon ECR Public (`public.ecr.aws/shelf/lambda-libreoffice-base`)。タグはバージョン先頭の `26.2-python3.13-x86_64` 形式
+- Container Image なので 250MB Layer 制限を回避（最大 10GB）。イメージサイズは約 833 MB
+- x86_64 のみ（ARM64 は LibreOffice が対応していない）。このプロジェクトの他の Lambda は ARM64 統一なので、この関数だけ明示的に `architecture: lambda.Architecture.X86_64` を指定する必要がある
+- `handler.py` は `libreoffice` をパス解決前提で呼び出す。ベースイメージが `/usr/bin/libreoffice` → `/opt/libreoffice26.2/program/soffice` のシンボリックリンクを用意しているため、そのまま解決される
 - コールドスタート: 3-8 秒（Provisioned Concurrency で緩和可能）
 
 **フロー**:
