@@ -7,8 +7,8 @@ set -euo pipefail
 #   ./scripts/package_fpolicy_lambdas.sh [DEPLOY_BUCKET]
 #
 # 注意事項:
-#   - jsonschema は 4.17.x を使用（4.18+ は rpds-py が必要で ARM64 Lambda 非互換）
-#   - ARM64 Lambda 用にプラットフォーム指定でインストール
+#   - jsonschema のバージョンは requirements.txt から読む（ここに書かない）
+#   - ARM64 / python3.13 Lambda 用にプラットフォーム指定でインストール
 #   - スキーマファイルは handler.py と同一ディレクトリに配置
 # =============================================================================
 
@@ -33,14 +33,34 @@ echo "[1/3] Packaging fpolicy_engine..."
 DEST="$BUILD_DIR/fpolicy_engine"
 mkdir -p "$DEST"
 
-# Install jsonschema (ARM64 compatible version)
-pip3 install 'jsonschema>=4.17.0,<4.18.0' \
+# Install jsonschema for the Lambda's platform.
+#
+# The version comes from requirements.txt. This line used to carry its own range
+# ('jsonschema>=4.17.0,<4.18.0'), which made it a third place the version was
+# declared alongside requirements.txt and pyproject.toml, and it drifted from both.
+JSONSCHEMA_PIN=$(grep -m1 '^jsonschema==' "$PROJECT_ROOT/requirements.txt")
+if [ -z "$JSONSCHEMA_PIN" ]; then
+  echo "ERROR: no '^jsonschema==' pin found in requirements.txt" >&2
+  exit 1
+fi
+echo "  jsonschema pin: $JSONSCHEMA_PIN (from requirements.txt)"
+
+# --python-version matches the Runtime in shared/cfn/fpolicy-ingestion.yaml
+# (python3.13). It said 3.12 before, which selects cp312 wheel tags for a cp313
+# runtime — harmless for a pure-Python package, wrong as soon as a dependency
+# ships compiled wheels, which is exactly what jsonschema 4.18+ does via rpds-py.
+#
+# There is deliberately no fallback to a plain `pip3 install`. The previous line
+# ended with `2>/dev/null || pip3 install ... -t "$DEST"`, which on failure
+# silently installed wheels for the *build machine* — macOS arm64 wheels in a
+# Linux Lambda zip — and hid the reason with 2>/dev/null. A zip that fails to
+# import at runtime is worse than a build that stops here.
+pip3 install "$JSONSCHEMA_PIN" \
   -t "$DEST" \
   --quiet \
   --platform manylinux2014_aarch64 \
   --only-binary=:all: \
-  --python-version 3.12 2>/dev/null || \
-pip3 install 'jsonschema>=4.17.0,<4.18.0' -t "$DEST" --quiet
+  --python-version 3.13
 
 # Copy handler and schema
 cp "$PROJECT_ROOT/shared/lambdas/fpolicy_engine/handler.py" "$DEST/"
