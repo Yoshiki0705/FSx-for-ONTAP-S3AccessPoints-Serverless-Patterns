@@ -30,22 +30,70 @@ from shared.suffix_filter import allowed_suffixes
 logger = logging.getLogger(__name__)
 
 # レンダリング対象アセットの拡張子一覧
-RENDER_ASSET_EXTENSIONS = (
-    ".exr",
-    ".dpx",
-    ".tga",
+#
+# AWS Deadline Cloud が submitter を提供する DCC と、そのシーン/プロジェクト
+# ファイル形式を基準に列挙する。対応 DCC の一覧は AWS の公開情報を参照:
+# https://aws.amazon.com/deadline-cloud/features/
+# https://docs.aws.amazon.com/deadline-cloud/latest/developerguide/code-examples.html
+#
+# 汎用ラスター形式（.png / .jpg / .jpeg）は意図的に含めない。サムネイルや参考画像
+# まで検出対象に入り、レンダリングジョブとして投入されてしまう。プレート形式は
+# VFX パイプラインで実際に使われる .exr / .dpx / .tga に限定する。
+
+# DCC のシーン / プロジェクトファイル（Deadline Cloud の submitter 対象）
+DCC_SCENE_EXTENSIONS = (
+    ".ma",  # Autodesk Maya (ASCII)
+    ".mb",  # Autodesk Maya (binary)
+    ".max",  # Autodesk 3ds Max
+    ".blend",  # Blender
+    ".hip",  # SideFX Houdini
+    ".hipnc",  # Houdini (non-commercial)
+    ".hiplc",  # Houdini (indie)
+    ".hda",  # Houdini Digital Asset
+    ".c4d",  # Maxon Cinema 4D
+    ".nk",  # Foundry Nuke
+    ".aep",  # Adobe After Effects
+    ".bip",  # Luxion KeyShot
+    ".ksp",  # Luxion KeyShot package
+    ".uproject",  # Unreal Engine
+    ".umap",  # Unreal Engine level
+    ".vpb",  # Autodesk VRED
+)
+
+# レンダラーのシーン記述ファイル
+RENDERER_SCENE_EXTENSIONS = (
+    ".ass",  # Autodesk Arnold scene source
+    ".vrscene",  # Chaos V-Ray
+)
+
+# ジオメトリ / シーン交換形式
+INTERCHANGE_EXTENSIONS = (
     ".obj",
     ".fbx",
-    ".blend",
-    ".abc",
+    ".abc",  # Alembic
     ".usd",
     ".usda",
     ".usdc",
     ".usdz",
-    ".ma",
-    ".mb",
-    ".hip",
-    ".hda",
+)
+
+# プレート / 画像シーケンス形式
+PLATE_EXTENSIONS = (
+    ".exr",
+    ".dpx",
+    ".tga",
+)
+
+# 映像コンテナ。コンポジット入力や納品素材として Deadline Cloud のワークフローに
+# 入るため対象に含める（FPolicy イベント側の起動条件とも揃える）。
+VIDEO_EXTENSIONS = (
+    ".mov",
+    ".mp4",
+    ".mxf",
+)
+
+RENDER_ASSET_EXTENSIONS = (
+    DCC_SCENE_EXTENSIONS + RENDERER_SCENE_EXTENSIONS + INTERCHANGE_EXTENSIONS + PLATE_EXTENSIONS + VIDEO_EXTENSIONS
 )
 
 

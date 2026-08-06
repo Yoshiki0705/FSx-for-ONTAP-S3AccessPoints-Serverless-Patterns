@@ -98,7 +98,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "fsxn-fpolicy-bridge-${AWS::StackName}"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       Code:
         S3Bucket: !Ref DeployBucket

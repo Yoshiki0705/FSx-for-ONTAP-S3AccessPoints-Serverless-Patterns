@@ -300,7 +300,7 @@ python scripts/validate-iam-policies.py solutions/industry/*/template.yaml
 
 ### 技術スタック
 
-Python 3.12 | CloudFormation + SAM | Lambda (ARM64) | Step Functions | EventBridge | Bedrock / Textract / Comprehend / Rekognition | Secrets Manager | Athena + Glue | Amplify Gen2 (React + AppSync + Cognito) | cdk-nag | floci
+Python 3.13 | CloudFormation + SAM | Lambda (ARM64) | Step Functions | EventBridge | Bedrock / Textract / Comprehend / Rekognition | Secrets Manager | Athena + Glue | Amplify Gen2 (React + AppSync + Cognito) | cdk-nag | floci
 
 ### コントリビュート
 

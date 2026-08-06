@@ -154,7 +154,7 @@ Resources:
     Condition: IsLineageRetentionEnabled
     Properties:
       FunctionName: !Sub "${ProjectPrefix}-lineage-export"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: ../lambdas/lineage_export/
       MemorySize: 512

@@ -65,7 +65,7 @@ AWS는 빌딩 블록(S3 API, Cognito, AppSync)을 제공하지만, FSx for ONTAP
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │ CDK (in data stack)                                 │ │
 │  │  - HTTP Data Source → states.<region>.amazonaws.com │ │
-│  │  - Lambda Data Source → ListFiles (Python 3.12)     │ │
+│  │  - Lambda Data Source → ListFiles (Python 3.13)     │ │
 │  └─────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────┘
           │                              │

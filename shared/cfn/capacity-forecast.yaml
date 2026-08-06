@@ -126,7 +126,7 @@ Resources:
     Condition: IsCapacityForecastEnabled
     Properties:
       FunctionName: !Sub "${ProjectPrefix}-capacity-forecast"
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: handler.handler
       CodeUri: ../lambdas/capacity_forecast/
       MemorySize: 256

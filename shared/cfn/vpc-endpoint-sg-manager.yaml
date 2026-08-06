@@ -49,7 +49,7 @@ Resources:
       Description: >-
         CloudFormation Custom Resource — manages VPC Endpoint SG ingress rules
         for UC demo stacks automatically on Create/Update/Delete.
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: index.handler
       Role: !GetAtt VpcEndpointSgManagerRole.Arn
       Timeout: 60

@@ -175,7 +175,7 @@ Resources:
     Properties:
       FunctionName: !Sub 'flexcache-anycast-HealthCheck-${Environment}'
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: src/health_check/
       Timeout: 60
       MemorySize: 256
@@ -194,7 +194,7 @@ Resources:
     Properties:
       FunctionName: !Sub 'flexcache-anycast-RouteDecision-${Environment}'
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: src/route_decision/
       Timeout: 30
       MemorySize: 256
@@ -212,7 +212,7 @@ Resources:
     Properties:
       FunctionName: !Sub 'flexcache-anycast-Discovery-${Environment}'
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: src/discovery/
       Timeout: 120
       MemorySize: 512
@@ -231,7 +231,7 @@ Resources:
     Properties:
       FunctionName: !Sub 'flexcache-anycast-Report-${Environment}'
       Handler: handler.handler
-      Runtime: python3.12
+      Runtime: python3.13
       CodeUri: src/report/
       Timeout: 60
       MemorySize: 256

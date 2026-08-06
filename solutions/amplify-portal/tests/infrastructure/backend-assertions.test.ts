@@ -60,8 +60,8 @@ describe("Backend Infrastructure Structure", () => {
       expect(lambdaCount).toBe(expectedLambdas.length);
     });
 
-    it("all Lambda functions use Python 3.12 ARM64", () => {
-      const pythonMatches = (backendSource.match(/runtime: lambda\.Runtime\.PYTHON_3_12/g) || []).length;
+    it("all Lambda functions use Python 3.13 ARM64", () => {
+      const pythonMatches = (backendSource.match(/runtime: lambda\.Runtime\.PYTHON_3_13/g) || []).length;
       const armMatches = (backendSource.match(/architecture: lambda\.Architecture\.ARM_64/g) || []).length;
       expect(pythonMatches).toBe(expectedLambdas.length);
       expect(armMatches).toBe(expectedLambdas.length);
