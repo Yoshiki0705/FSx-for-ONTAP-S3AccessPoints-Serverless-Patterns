@@ -86,16 +86,40 @@ export default tseslint.config(
       // These two remain warnings, as a ratchet rather than an exemption.
       // `--max-warnings` in package.json pins the count, so it can only go down.
       //
-      //   react-hooks/set-state-in-effect  33  Almost all are the fetch-on-mount
+      //   react-hooks/set-state-in-effect  34  Almost all are the fetch-on-mount
       //       shape: `const load = async () => { setLoading(true); ... }` called
       //       straight from a mount effect, so the first setState runs before the
       //       first await. `loading` already initialises to `true` in these
       //       components, which makes that call a no-op on the mount path. Clearing
       //       them means restructuring ~30 components for a pattern that is
       //       idiomatic, so each needs its own judgement about render behaviour.
-      //       (33, not the original 32: fixing AgentFileSidebar's immutability
-      //       finding moved its reset calls into the effect body.)
-      //   react-hooks/exhaustive-deps       8  Possible stale closures.
+      //       (34, up from the original 32: fixing AgentFileSidebar's immutability
+      //       finding moved its reset calls into the effect body, and memoising
+      //       AgentChat's loadSessions let the rule trace into it.)
+      //
+      //   react-hooks/exhaustive-deps       6  Down from 8. The two real ones were
+      //       in AgentChat and are fixed — see the notes at sendMessage and
+      //       saveCurrentSession; the sendMessage one silently dropped an attached
+      //       image and sent a stale agent mode.
+      //
+      //       The remaining 6 all have the shape
+      //       `useEffect(() => { loadX(); }, [trigger])`, where the array lists the
+      //       state that should cause a reload and omits the loader itself. The
+      //       loaders are plain function declarations, so they get a new identity
+      //       every render; adding them as written would re-run the fetch on every
+      //       render instead of on the trigger.
+      //
+      //       The honest fix is to memoise each loader and depend on it. That is
+      //       deliberately not done here for two reasons. VolumeSelector cannot take
+      //       it at all: its loader closes over the `onSelect` prop, and all four
+      //       call sites pass an inline arrow, so the identity changes every parent
+      //       render — and because the loader calls `onSelect`, which sets parent
+      //       state, the result would be an unbounded refetch loop rather than a
+      //       cosmetic re-render. For the other five, getting a memo dependency
+      //       wrong produces the same class of loop, and these are admin panels that
+      //       cannot be exercised without a deployed FSx for ONTAP backend and
+      //       storage-admin group membership. Converting them belongs in a change
+      //       that can be verified against a running sandbox.
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/exhaustive-deps": "warn",
     },

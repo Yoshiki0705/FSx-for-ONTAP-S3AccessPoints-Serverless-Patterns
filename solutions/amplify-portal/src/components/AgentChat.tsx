@@ -259,24 +259,20 @@ export function AgentChat() {
     .filter((f) => f && f !== "/")
     .filter((f, i, arr) => arr.indexOf(f) === i); // deduplicate
 
-  // Load session list on mount
-  useEffect(() => {
-    loadSessions();
-  }, []);
-
-  // Auto-save after messages change (debounced)
-  // React 19 requires useRef to be called with an explicit initial value.
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => {
-    if (messages.length === 0 || !currentSessionId) return;
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      saveCurrentSession();
-    }, 2000);
-    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [messages, currentSessionId]);
-
-  async function loadSessions() {
+  // loadSessions and saveCurrentSession are useCallback rather than plain function
+  // declarations, and are declared above the effects that use them.
+  //
+  // As function declarations they were re-created every render, so the auto-save
+  // effect could not list saveCurrentSession as a dependency. It was not actually
+  // reading stale values — the effect re-runs on messages and currentSessionId, so
+  // the closure it captured came from the same render as those values. But adding
+  // the function to satisfy the linter would have re-run the effect on *every*
+  // render, clearing and restarting the 2-second timer each time and starving the
+  // debounce it exists to provide.
+  //
+  // Memoising instead makes the identity change exactly when messages or
+  // currentSessionId change, which is what the dependency array already said.
+  const loadSessions = useCallback(async () => {
     try {
       const response = await client.queries.agentQuery({
         action: "listSessions",
@@ -285,9 +281,9 @@ export function AgentChat() {
       const data = parseResponse<{ sessions: ChatSession[] }>(response);
       if (data?.sessions) setSessions(data.sessions);
     } catch { /* silent */ }
-  }
+  }, []);
 
-  async function saveCurrentSession() {
+  const saveCurrentSession = useCallback(async () => {
     if (messages.length === 0) return;
     const title = messages[0]?.content.slice(0, 50) || "Untitled";
     const sessionId = currentSessionId || `sess-${Date.now()}`;
@@ -305,7 +301,24 @@ export function AgentChat() {
       });
       loadSessions();
     } catch { /* silent fail */ }
-  }
+  }, [messages, currentSessionId, loadSessions]);
+
+  // Load session list on mount
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
+
+  // Auto-save after messages change (debounced)
+  // React 19 requires useRef to be called with an explicit initial value.
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    if (messages.length === 0 || !currentSessionId) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveCurrentSession();
+    }, 2000);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [messages, currentSessionId, saveCurrentSession]);
 
   async function loadSession(sessionId: string) {
     try {
@@ -460,7 +473,13 @@ export function AgentChat() {
     } finally {
       setLoading(false);
     }
-  }, [input, messages, t]);
+    // agentMode and attachedImage are read above and belong here. Without them the
+    // callback kept whichever values existed when input, messages or t last changed.
+    // Typing hid the problem, because each keystroke changes `input` and rebuilds the
+    // callback. The task cards do not: they call sendMessage(t(card.promptKey))
+    // directly, so attaching an image or switching mode and then clicking a card sent
+    // the previous mode and dropped the image.
+  }, [input, messages, t, agentMode, attachedImage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
