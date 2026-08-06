@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../amplify/data/resource";
 import { FlexCloneStatus } from "./FlexCloneStatus";
 import { useTranslation } from "../i18n";
+import { errorMessage } from "../lib/portalQuery";
 
 const client = generateClient<Schema>();
 
@@ -33,43 +34,31 @@ interface JobResult {
  */
 export function ResultsViewer({ executionArn, inputPrefix, onNavigateToFolder }: ResultsViewerProps) {
   const { t } = useTranslation();
-  const [result, setResult] = useState<JobResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStatus = useCallback(async () => {
-    if (!executionArn) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await client.queries.getJobStatus({ executionArn });
-
-      if (response.data) {
-        setResult(response.data as unknown as JobResult);
-      } else if (response.errors) {
-        setError(response.errors.map((e) => e.message).join(", "));
+  // Polling is the query's own concern: refetchInterval keeps asking every 5s
+  // while the execution is RUNNING and stops on its own once it is not. That
+  // replaces a setInterval that had to be torn down by hand.
+  const {
+    data: result = null,
+    isFetching: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["jobStatus", executionArn],
+    enabled: !!executionArn,
+    refetchInterval: (query) =>
+      query.state.data?.status === "RUNNING" ? 5000 : false,
+    queryFn: async () => {
+      const response = await client.queries.getJobStatus({
+        executionArn: executionArn!,
+      });
+      if (response.errors?.length) {
+        throw new Error(response.errors.map((e) => e.message).join(", "));
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch status");
-    } finally {
-      setLoading(false);
-    }
-  }, [executionArn]);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
-
-  // Auto-poll while RUNNING
-  useEffect(() => {
-    if (result?.status !== "RUNNING") return;
-
-    const interval = setInterval(fetchStatus, 5000);
-    return () => clearInterval(interval);
-  }, [result?.status, fetchStatus]);
+      return response.data as unknown as JobResult;
+    },
+  });
+  const error = errorMessage(queryError, "Failed to fetch status");
+  const fetchStatus = () => void refetch();
 
   if (!executionArn) {
     return (
